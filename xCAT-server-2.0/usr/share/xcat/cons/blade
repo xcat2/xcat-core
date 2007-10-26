@@ -1,0 +1,45 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use xCAT::Table;
+use File::Basename;
+my $scriptname = $0;
+
+$mptab = xCAT::Table->new('mp');
+unless ($mptab) {
+  sleep 5; #Try not to overwhelm logfiles...
+  die "mp table must be configured";
+}
+$mpatab = xCAT::Table->new('mpa');
+$passtab = xCAT::Table->new('passwd');
+
+my $username = "USERID";
+my $passsword = "PASSW0RD";
+my $mm;
+my $slot;
+my $dba;
+if ($passtab) {
+  ($dba) = $passtab->getAttribs({key=>blade},qw(username password));
+  if ($dba->{username}) {
+    $username = $dba->{username};
+  }
+  if ($dba->{password}) {
+    $password = $dba->{password};
+  }
+}
+
+$dba = $mptab->getNodeAttribs($ARGV[0],[qw(mpa id)]);
+$mm = $dba->{mpa};
+$slot = $dba->{id};
+if ($mpatab) {
+  ($dba) = $mpatab->getAttribs({mpa=>$mm},qw(username password));
+  if ($dba) {
+    if ($dba->{username}) { $username = $dba->username; }
+    if ($dba->{password}) { $password = $dba->password; }
+  }
+}
+my $pathtochild= dirname($scriptname). "/";
+exec $pathtochild."blade.expect $mm $slot $username $password";
+  
+
+
+

@@ -1,0 +1,446 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use IO::Socket::SSL;
+use IO::Socket::INET;
+use File::Basename;
+use Data::Dumper;
+use Getopt::Long;
+use xCAT::MsgUtils;
+use xCAT::Client submit_request;
+my $bname = basename($0);
+
+#-----------------------------------------------------------------------------
+
+=head1    xdsh/xdcp
+
+This program is the client interface for xdsh/xdcp.
+
+
+   xdsh/xdcp command
+   This is the client interface for the xdsh/xdcp command
+   Call parse_args to verify input
+   Build hash and submit request
+   Note: xdsh/xdcp (dsh/dcp for xCAT) only supports a subset of the options
+		 supported by dsh/dcp.   See help and man page of each command for the
+		 differences.
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+
+#$ENV{XCATBYPASS} = "yes";   # set bypass mode
+my $rc = 0;
+
+# check for help and Environment Variables
+if ($bname eq "xdsh")
+{
+    &parse_args_xdsh;
+}
+else
+{    # xdcp
+    &parse_args_xdcp;
+}
+
+# report unsupported dsh exports
+&check_invalid_exports;
+
+my $cmdref;
+$cmdref->{command}->[0] = $bname;    # save my command name
+
+my $arg = shift(@ARGV);
+while ($arg =~ /^-/)
+{
+    push(@{$cmdref->{arg}}, $arg);    # save command arguments
+    $arg = shift(@ARGV);
+}
+$cmdref->{noderange}->[0] = $arg;     # save nodes
+
+#
+# add flgs for all the valid dsh/dcp Env Variable set
+#
+# The first ones are common to dsh/dcp
+# if nodes from file and none on the command line
+if ($ENV{'DSH_NODE_RSH'})
+{
+    my $value = $ENV{'DSH_NODE_RSH'};
+    push(@{$cmdref->{arg}}, "-r $value ");
+
+}
+if ($ENV{'DSH_NODE_OPTS'})
+{
+    my $value = $ENV{'DSH_NODE_OPTS'};
+    push(@{$cmdref->{arg}}, "-o $value ");
+
+}
+if ($ENV{'DSH_FANOUT'})
+{
+    my $value = $ENV{'DSH_FANOUT'};
+    push(@{$cmdref->{arg}}, "-f $value ");
+
+}
+if ($ENV{'DSH_TIMEOUT'})
+{
+    my $value = $ENV{'DSH_TIMEOUT'};
+    push(@{$cmdref->{arg}}, "-t $value ");
+
+}
+if ($bname eq "xdsh")
+{
+    if ($ENV{'DSH_REPORT'})
+    {
+        my $value = $ENV{'DSH_REPORT'};
+        push(@{$cmdref->{arg}}, "--report $value ");
+
+    }
+}
+## set XCAT Context always ##
+push(@{$cmdref->{arg}}, "-C XCAT");
+
+foreach (@ARGV) { push(@{$cmdref->{arg}}, $_); }
+
+xCAT::Client::submit_request($cmdref, \&handle_response);
+exit $rc;
+
+#-----------------------------------------------------------------------------
+
+=head3 parse_args_xdsh
+  
+  Parses for dsh input
+  Check if the command  ask for help and display usage
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_args_xdsh
+{
+
+    my $usagemsg1 =
+      " xdsh -h \n xdsh -q \n xdsh -v \n xdsh [noderange] [group]\n";
+    my $usagemsg2 =
+      "      [-C context] [-c] [-e] [-E environment_file] [-f fanout]\n";
+    my $usagemsg3 =
+      "      [-F output_file] [-i] [-l user_ID] [-L] [--log log_file]\n";
+    my $usagemsg4 = "      [-m] [-o options] [-Q] [-r remote_shell] \n";
+    my $usagemsg5 =
+      "      [-s] [-S ksh | csh] [-t timeout] [-T] [-X environment variables] [-v] [-z]\n";
+    my $usagemsg6 =
+      "      [--report report_path] [--report-name report_name]\n";
+    my $usagemsg7 = "      [command_list]\n";
+    my $usagemsg8 = "Note:Context is always set to XCAT\n";
+    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
+      $usagemsg5 .= $usagemsg6 .= $usagemsg7;
+
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+
+    if (
+        !GetOptions(
+            'e|execute'                                => \$::EXECUTE,
+            'f|fanout=i'                               => \$::FANOUT,
+            'h|help'                                   => \$::HELP,
+            'i|notify'                                 => \$::NOTIFY,
+            'l|user=s'                                 => \$::USER,
+            'm|monitor'                                => \$::MONITOR,
+            'o|node-options=s'                         => \$::NODEOPTS,
+            'q|show-config'                            => \$::SHOWCFG,
+            'r|node-rsh=s'                             => \$::NODERSH,
+            's|stream'                                 => \$::STREAM,
+            't|timeout=i'                              => \$::TIMEOUT,
+            'v|verify'                                 => \$::VERIFY,
+            'z|exit-status'                            => \$::EXITSTAT,
+            'E|environment=s'                          => \$::ENV,
+            'F|output-file=s'                          => \$::OUTPUTFILE,
+            'I|ignore-sig|ignoresig=s'                 => \$::IGNORESIG,
+            'L|no-locale'                              => \$::NOLOCALE,
+            'Q|silent'                                 => \$::SILENT,
+            'S|syntax=s'                               => \$::SYNTAX,
+            'T|trace'                                  => \$::TRACE,
+            'V|version'                                => \$::VERSION,
+            'command-name|commandName=s'               => \$::COMMANDNAME,
+            'command-description|commandDescription=s' => \$::COMMANDDES,
+            'log=s'                                    => \$::LOG,
+            'report=s'                                 => \$::REPORT,
+            'R|reports=s'                              => \$::REPORTS,
+            'report-name|reportName=s'                 => \$::REPORTNAME,
+            'W|noFileWriting'                          => \$::NOFILEWRITE,
+
+            'w|wcoll=s' => \$::WCOLL,
+            'X:s'       => \$::IGNORENV
+
+        )
+      )
+    {
+        xCAT::MsgUtils->message("I", "$usagemsg");
+        exit 1;
+    }
+
+    if ($::HELP)
+    {
+        xCAT::MsgUtils->message("I", "$usagemsg");
+        exit 0;
+    }
+
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 parse_args_xdcp
+  
+  Parses for dcp input
+  Check if the command  ask for help and display usage
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_args_xdcp
+{
+    my $usagemsg1 =
+      " xdcp -h \n xdcp -q \n xdcp -v \n xdcp [noderange] [group]\n";
+    my $usagemsg2 = "      [-C context] [-c] [-f fanout] [-l user_ID]\n";
+    my $usagemsg3 =
+      "      [-o options] [-s] [-p] [-P] [-Q] [-r node_remote_copy]\n";
+    my $usagemsg4 =
+      "      [-R] [-t timeout] [-T] [-X environment variables] [-v] \n";
+    my $usagemsg5 = "      source_file... target_path\n";
+    my $usagemsg6 = "Note:Context is always set to XCAT\n";
+    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
+      $usagemsg5 .= $usagemsg6;
+
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+
+    if (
+        !GetOptions(
+            'f|fanout=i'       => \$::FANOUT,
+            'h|help'           => \$::HELP,
+            'l|user=s'         => \$::USER,
+            'o|node-options=s' => \$::NODEOPTS,
+            'p|preserver'      => \$::PRESERVE,
+            'q|show-config'    => \$::SHOWCFG,
+            'r|c|node-rcp=s'   => \$::NODERCP,
+            's'                => \$::RSYNC,
+            't|timeout=i'      => \$::TIMEOUT,
+            'v|verify'         => \$::VERIFY,
+            'Q|silent'         => \$::SILENT,
+            'P|pull'           => \$::PULL,
+            'R|recursive'      => \$::RECURSIVE,
+            'T|trace'          => \$::TRACE,
+            'V|version'        => \$::VERSION,
+            'w|wcoll=s'        => \$::WCOLL,
+            'X:s'              => \$::IGNORENV
+
+        )
+      )
+    {
+        xCAT::MsgUtils->message("I", "$usagemsg");
+        exit 1;
+    }
+
+    if ($::HELP)
+    {
+        xCAT::MsgUtils->message("I", "$usagemsg");
+        exit 0;
+    }
+}
+
+#-----------------------------------------------------------------------------
+
+=head3  check_invalid_exports
+   Check for unsupported dsh exports and warns
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub check_invalid_exports
+
+{
+    ##
+    #  Check for unsupported Environment Variables
+    #  DSH_DEVICE_LIST, DSH_DEVICE_OPTS, DSH_DEVICE_RCP,DSH_DEVICE_RSH,
+    #   DSH_NODEGROUP_PATH
+    ##
+    if ($ENV{'DSH_NODE_LIST'})
+    {
+        xCAT::MsgUtils->message(
+            "I",
+            "DSH_NODE_LIST is set but is not supported. It will be ignored.\n"
+            );
+    }
+    if ($ENV{'DSH_DEVICE_LIST'})
+    {
+        xCAT::MsgUtils->message(
+            "I",
+            "DSH_DEVICE_LIST is set but is not supported. It will be ignored.\n"
+            );
+    }
+    if ($ENV{'DSH_DEVICE_OPTS'})
+    {
+        xCAT::MsgUtils->message(
+            "I",
+            "DSH_DEVICE_OPTS is set but is not supported. It will be ignored.\n"
+            );
+    }
+    if ($ENV{'DSH_DEVICE_RCP'})
+    {
+        xCAT::MsgUtils->message(
+             "I",
+             "DSH_DEVICE_RCP is set but is not supported. It will be ignored.\n"
+             );
+    }
+    if ($ENV{'DSH_DEVICE_RSH'})
+    {
+        xCAT::MsgUtils->message(
+             "I",
+             "DSH_DEVICE_RSH is set but is not supported. It will be ignored.\n"
+             );
+    }
+    if ($ENV{'DSH_NODEGROUP_PATH'})
+    {
+        xCAT::MsgUtils->message(
+            "I",
+            "DSH_NODEGROUP_PATH is set but is not supported. It will be ignored.\n"
+            );
+    }
+    if ($ENV{'RSYNC_RSH'})
+    {
+        xCAT::MsgUtils->message("I",
+               " RSYNC_RSH is set but is not supported. It will be ignored.\n");
+    }
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 handle_response 
+ handle_response is the callback that is
+ invoked to print out the data returned by
+ the plugin.
+
+ Format of the response hash:
+  {data => [ 'data str1', 'data str2', '...' ] }
+
+    Results are printed as:
+       data str1
+       data str2
+
+ or:
+  {data => [ {desc => [ 'desc1' ],
+              contents => [ 'contents1' ] },
+             {desc => [ 'desc2 ],
+              contents => [ 'contents2' ] }
+                :
+            ] }
+    NOTE:  In this format, only the data array can have more than one
+           element. All other arrays are assumed to be a single element.
+    Results are printed as:
+       desc1: contents1
+       desc2: contents2
+
+ or:
+  {node => [ {name => ['node1'],
+              data => [ {desc => [ 'node1 desc' ],
+                         contents => [ 'node1 contents' ] } ] },
+             {name => ['node2'],
+              data => [ {desc => [ 'node2 desc' ],
+                         contents => [ 'node2 contents' ] } ] },
+                :
+             ] }
+    NOTE:  Only the node array can have more than one element.
+           All other arrays are assumed to be a single element.
+
+    This was generated from the corresponding HTML:
+    <xcatrequest>
+      <node>
+        <name>node1</name>
+        <data>
+          <desc>node1 desc</desc>
+          <contents>node1 contents</contents>
+        </data>
+      </node>
+      <node>
+        <name>node2</name>
+        <data>
+          <desc>node2 desc</desc>
+          <contents>node2 contents</contents>
+        </data>
+      </node>
+    </xcatrequest>
+
+   Results are printed as:
+      node_name: desc: contents
+=cut
+
+#-----------------------------------------------------------------------------
+sub handle_response
+{
+    my $rsp = shift;
+
+    # Handle {node} structure
+    if ($rsp->{node})
+    {
+        my $nodes = ($rsp->{node});
+        my $node;
+        foreach $node (@$nodes)
+        {
+            my $desc = $node->{name}->[0];
+            if ($node->{data})
+            {
+                if (ref(\($node->{data}->[0])) eq 'SCALAR')
+                {
+                    $desc = $desc . ": " . $node->{data}->[0];
+                }
+                else
+                {
+                    if ($node->{data}->[0]->{desc})
+                    {
+                        $desc = $desc . ": " . $node->{data}->[0]->{desc}->[0];
+                    }
+                    if ($node->{data}->[0]->{contents})
+                    {
+                        $desc = "$desc: " . $node->{data}->[0]->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc)
+            {
+                print "$desc\n";
+            }
+        }
+    }
+
+    # Handle {data} structure with no nodes
+    if ($rsp->{data})
+    {
+        my $data = ($rsp->{data});
+        my $data_entry;
+        foreach $data_entry (@$data)
+        {
+            my $desc;
+            if (ref(\($data_entry)) eq 'SCALAR')
+            {
+                $desc = $data_entry;
+            }
+            else
+            {
+                if ($data_entry->{desc})
+                {
+                    $desc = $data_entry->{desc}->[0];
+                }
+                if ($data_entry->{contents})
+                {
+                    if ($desc)
+                    {
+                        $desc = "$desc: " . $data_entry->{contents}->[0];
+                    }
+                    else
+                    {
+                        $desc = $data_entry->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc)
+            {
+                print "$desc\n";
+            }
+        }
+    }
+}

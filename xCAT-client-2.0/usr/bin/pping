@@ -1,0 +1,73 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#Note, this pping still frontends fping.  I think it would be possible to write a perl equivalent, but
+#I've not had the time.  Net::Ping shows perl code I could see being adapted for a somewhat
+#asynchronous ICMP ping (the tcp syn is interesting, but far too limited, and that is currently the only async 
+#method Net::Ping provides.
+use IO::Socket::SSL;
+use XML::Simple;
+use Data::Dumper;
+use IO::Handle;
+use IO::Select;
+use xCAT::Utils;
+use Getopt::Long;
+my $interface;
+GetOptions("interface=s" => \$interface);
+my $xcathost='localhost:3001';
+if ($ENV{XCATHOST}) {
+          $xcathost=$ENV{XCATHOST};
+}
+
+unless (@ARGV) {
+    print "Usage: pping [-i suffix] <noderange>\n";
+    exit(1);
+}
+my $noderange = $ARGV[0];
+my $client = IO::Socket::SSL->new(
+                PeerAddr=>$xcathost,
+                SSL_key_file=>$ENV{HOME}."/.xcat/client-key.pem",
+                SSL_cert_file=>$ENV{HOME}."/.xcat/client-cert.pem",
+                SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
+                SSL_use_cert => 1,
+                #SSL_verify_mode => 1,
+             );
+die "Connection failure: $!\n" unless ($client);
+my %cmdref = (command => 'noderange', noderange => $noderange);
+$SIG{ALRM} = sub { die "No response getting noderange" };
+alarm(15);
+print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+alarm(15);
+my $response="";
+my @nodes=();
+while (<$client>) {
+  alarm(0);
+  $response .= $_;
+  if ($response =~ m/<\/xcatresponse>/) {
+    $rsp=XMLin($response, ForceArray => ['node']);
+    $response='';
+    if ($rsp->{warning}) {
+      printf "Warning: ".$rsp->{warning}."\n";
+    }
+    if ($rsp->{error}) {
+      die ("ERROR: ".$rsp->{error}."\n");
+    } elsif ($rsp->{node}) {
+      @nodes=@{$rsp->{node}};
+    }
+    if ($rsp->{serverdone}) {
+      last;
+    }
+  }
+}
+close($client);
+my $children = 0;
+my $inputs = new IO::Select;
+$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
+if ($interface) {
+  foreach (@nodes) {
+    s/$/-$interface/;
+  }
+}
+
+exec "fping ".join(' ',@nodes). " 2> /dev/null";
+
+

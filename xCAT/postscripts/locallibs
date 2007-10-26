@@ -1,0 +1,50 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+. $XCATROOT/lib/functions
+
+if LOCALFS=$(tabdb $SITETAB localfs 1)
+then
+	LOCALDIR=$(echo $LOCALFS | awk -F: '{print $2}')
+else
+	echo "$0: localfs not defined in $SITETAB" | logger -t xcat
+	exit 1
+fi
+
+ARCH=$(uname -m)
+
+DIRS="$LOCALDIR/goto/lib"
+
+case "$ARCH" in
+	i686)
+		DIRS="$DIRS $LOCALDIR/intel/$ARCH/lib"
+		DIRS="$DIRS $LOCALDIR/intel/mkl70/lib/32"
+		;;
+	x86_64)
+		DIRS="$DIRS $LOCALDIR/intel/$ARCH/lib"
+		DIRS="$DIRS $LOCALDIR/intel/mkl70/lib/32"
+		;;
+	ia64)
+		DIRS="$DIRS $LOCALDIR/intel/$ARCH/lib"
+		DIRS="$DIRS $LOCALDIR/intel/mkl70/lib/64"
+		;;
+	ppc64)
+		;;
+esac
+
+for i in $DIRS
+do
+	if egrep "^$i\$" /etc/ld.so.conf >/dev/null 2>&1
+	then
+		:
+	else
+		echo $i >>/etc/ld.so.conf
+	fi
+done
+
+/sbin/ldconfig
+
+

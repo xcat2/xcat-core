@@ -1,0 +1,2 @@
+#node,mpa,id,comments,disable
+"blade","|\D+(\d+)|amm(($1-1)/14+1)|","|\D+(\d+)|(($1-1)%14+1)|",,

@@ -1,0 +1,35 @@
+#!/usr/bin/env expect
+
+set timeout 45
+
+set bcmm [lindex $argv 0]
+set bayno [lindex $argv 1]
+set username [lindex $argv 2]
+set password [lindex $argv 3]
+set cmdline "console -o -T blade\[$bayno\]"
+
+spawn telnet $bcmm
+expect -re ".*username: "
+send "$username\r"
+expect -re ".*password: "
+send "$password\r"
+expect -re ".*system> "
+send "$cmdline\r"
+expect {
+	eof {
+		exit
+	}
+	-re ".*system> " { 
+		sleep 5
+		send "$cmdline\r"
+	}
+	"?" {
+		interact {
+			-o
+			"system> " { 
+				sleep 5
+				send "$cmdline\r"
+			}
+		}
+	}
+}

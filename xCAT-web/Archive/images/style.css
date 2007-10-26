@@ -1,0 +1,157 @@
+body {
+	background-color: #ffffff;
+	color:#666666;
+	font-family:Arial,Helv,sans-serif;
+	font-size:11px;
+	margin:0;
+	padding:0;
+}
+
+a:link,a:visited {
+	color: #FFF; 
+	font-weight: 
+	bold; text-decoration:none;
+}
+
+a:hover {
+	color: #fff;
+	text-decoration:underline;
+}
+
+.content_title {
+	position: absolute;
+	padding-top: 18px;
+	padding-left: 17px;
+	font-size:14px;
+	margin-bottom: 1px;
+	font-weight:bold;
+	width: 400px;
+	color: #FFF;
+	background: url(header.gif) no-repeat top left;
+	height: 21px;
+}
+
+#content_title a, #content_title a:visited {
+	color: #FFF;
+}
+
+h3 {
+	margin-top: 0px;
+	margin-bottom: 0px;
+	padding-top: 15px;
+	padding-left: 18px;
+	font-size:12px;
+	color: #fff;
+	background: url(rightheader.gif) no-repeat top left;
+	height: 20px;
+}
+
+#zaglavlje {
+	font-size: 20px;
+	font-weight: bold;
+	margin-bottom: 0px;
+	padding-top: 3px;
+	padding-left: 26px;
+	color: #fff;
+	height: 73px;
+	background: url(rightcontent.gif) no-repeat;
+}
+
+#logo {
+padding-top: 25px;	
+}
+
+#lijeva_kolona {
+	float: left;
+	width: 130px;
+}
+
+#lijeva_kolona a, #lijeva_kolona a:visited {
+	display: block;
+	background: url(menulink.gif);
+	padding-top: 3px;
+	padding-left: 20px;
+	height: 20px;
+	color: #ccc;
+}
+
+#lijeva_kolona a:hover {
+	color: #FFF;
+	text-decoration: none;
+}
+
+#sadrzaj {
+	width: 750px;
+	margin: 5px auto;
+	background-color: #fff;
+	color: #333;
+	line-height: 130%;
+}
+
+#desna_kolona {
+	float: right;
+	width: 240px;
+	background: #FFF url(rightcontent.gif);
+	text-align:justify;
+	color: #ccc;
+}
+
+.srednja_kolona {
+	margin-left: 135px;
+	margin-right: 240px;
+	max-width: 34em;
+	background: url(content.gif) top left;
+	text-align:justify;
+}
+
+#menuheader {
+	background: url(menuheader.gif) no-repeat;
+	height: 23px;
+}
+
+#menufooter {
+	background: url(menufooter.gif) no-repeat left top;
+	height: 21px;
+}
+
+.text {
+	padding: 40px 18px 25px 18px;
+	color: #FFF;
+	background: url(footer.gif) no-repeat left bottom;
+}
+
+.text_desno {
+	padding: 0px 18px 25px 18px;
+	color: #e2e2e2;
+	background: url(rightfooter.gif) no-repeat left bottom;
+}
+
+#info {
+	color: #ccc;
+	background: #5982B3;
+	font-size: 9px;
+	margin-top: 5px;
+	margin-bottom: 5px;
+	padding: 5px;
+	border:	1px solid #6F92BD;
+}
+
+#hmenu {
+	padding: 13px 0 5px 0;
+	float: right;
+}
+
+#hmenu a {
+	padding: 12px 13px 2px 11px;
+	text-decoration: none;
+	color: #414141;
+	background: #ccc url(hmenuarrow.gif) no-repeat top center;
+	margin: 0 0 3px 1px;
+	border-bottom: 4px solid #BCBCBC;
+}
+
+#hmenu a:hover {
+	background: #3C6491 url(hmenuarrowhover.gif) no-repeat top center;
+	color: #FFFFFF;
+	border-bottom: 4px solid #2F4A6C;
+}

@@ -1,0 +1,241 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+. $XCATROOT/lib/functions
+
+RESNAME=$(whatismyres2 $NODE)
+NFS=$(tabdb $NODERESTAB $RESNAME $noderes_nfs_install)
+MYMASTER=$(tabdb $NODERESTAB $RESNAME $noderes_config_server)
+
+DHCP=0
+TFTP=0
+CONS=0
+INSTALL=0
+VNFS=0
+SNMP=0
+SYSLOG=0
+NTP=0
+DNS=0
+WULF=0
+
+for i in $*
+do
+	export $(echo $i | tr '[:lower:]' '[:upper:]')=1
+done
+
+if [ "$VNFS" = "1" ]
+then
+	logger -t xcat "Install: setup /srv/vnfs"
+	cd /
+	mkdir -p /srv/vnfs
+	echo "$MYMASTER:/srv/vnfs /srv/vnfs nfs timeo=14,intr 1 2" >>/etc/fstab
+
+	logger -t xcat "Install: copying /vnfs"
+	mkdir -p /vnfs
+	mkdir -p /vnfstmp
+	mount -r -o nolock $NFS:/vnfs /vnfstmp 2>&1 | logger -t xcat
+	cd /vnfstmp
+	find . -print | cpio -dump /vnfs 2>&1 | logger -t xcat
+	cd /
+	umount /vnfstmp
+	rmdir /vnfstmp
+
+	logger -t xcat "Install: Setup NFS for /vnfs"
+	case "$OSVER" in
+		sles[89]|suse8*|suse9*|suse10*)
+			echo "/vnfs *(ro,sync,no_root_squash)" >>/etc/exports
+			chkconfig -a nfslock 2>&1 | logger -t xcat
+			chkconfig -a nfsserver 2>&1 | logger -t xcat
+			;;
+		rh*)
+			echo "/vnfs *(ro,sync,no_root_squash)" >>/etc/exports
+			chkconfig --level 345 nfs on 2>&1 | logger -t xcat
+			chkconfig --level 345 nfslock on 2>&1 | logger -t xcat
+			;;
+	esac
+fi
+
+if [ "$TFTP" = "1" ]
+then
+	logger -t xcat "Install: Setup TFTPD"
+	cd /
+	mkdir -p $TFTPDIR
+	echo "$MYMASTER:$TFTPDIR $TFTPDIR nfs timeo=14,intr 1 2" >>/etc/fstab
+
+	case "$OSVER" in
+		sles[89]|suse8*|suse9*|suse10*)
+			cp $XCATROOT/rc.d/atftpd.suse /etc/init.d/atftpd
+			cd /usr/sbin
+			ln -s /etc/init.d/atftpd rcatftpd
+			chkconfig -a atftpd 2>&1 | logger -t xcat
+			;;
+		rh*)
+			cp $XCATROOT/rc.d/atftpd /etc/rc.d/init.d/atftpd
+			chkconfig --level 345 atftpd on 2>&1 | logger -t xcat
+			;;
+	esac
+fi
+
+if [ "$WULF" = "1" ]
+then
+	logger -t xcat "Install: Setup warewulf"
+	case "$OSVER" in
+		sles[89]|suse8*|suse9*|suse10*)
+			#cp $XCATROOT/rc.d/wwautosyncd.suse /etc/init.d/wwautosyncd
+			#cd /usr/sbin
+			#ln -s /etc/init.d/wwautosyncd rcwwautosyncd
+			#chkconfig -a wwautosyncd 2>&1 | logger -t xcat
+
+			cp $XCATROOT/rc.d/vnfsd.suse /etc/init.d/vnfsd
+			cd /usr/sbin
+			ln -s /etc/init.d/vnfsd rcvnfsd
+			chkconfig -a vnfsd 2>&1 | logger -t xcat
+
+			cp $XCATROOT/rc.d/warewulfd.suse /etc/init.d/warewulf
+			cd /usr/sbin
+			ln -s /etc/init.d/warewulf rcwarewulf
+			chkconfig -a wwwarewulf 2>&1 | logger -t xcat
+
+			chkconfig --del wwnewd | logger -t xcat
+			;;
+		rh*)
+			#cp $XCATROOT/rc.d/wwautosyncd /etc/rc.d/init.d/wwautosyncd
+			#chkconfig --level 345 wwautosyncd on 2>&1 | logger -t xcat
+			chkconfig --level 345 vnfsd on 2>&1 | logger -t xcat
+			chkconfig --level 345 warewulf on 2>&1 | logger -t xcat
+			chkconfig --del wwnewd | logger -t xcat
+			;;
+	esac
+
+	cd /etc
+	rm -rf warewulf
+	mkdir warewulf
+	echo "$MYMASTER:/etc/warewulf /etc/warewulf nfs timeo=14,intr 1 2" >>/etc/fstab
+	rm -f /usr/sbin/wwinit
+
+	cd /usr/sbin
+	patch -p0 <$XCATROOT/patch/warewulf/ww26.warewulfd
+	cd /usr/lib/warewulf/Warewulf
+	patch -p0 <$XCATROOT/patch/warewulf/ww26.Config.pm
+	case "$OSVER" in
+		rh*)
+			cd /etc/init.d
+			patch -p0 <$XCATROOT/patch/warewulf/ww26.warewulf.init.d
+			;;
+	esac
+fi
+
+if [ "$CONS" = "1" ]
+then
+	logger -t xcat "Install: Setup conserver"
+	case "$OSVER" in
+		sles[89]|suse8*|suse9*|suse10*)
+			cp $XCATROOT/rc.d/conserver.suse /etc/init.d/conserver
+			cd /usr/sbin
+			ln -s /etc/init.d/conserver rcconserver
+			chkconfig -a conserver 2>&1 | logger -t xcat
+			perl -pi -e 's!^CONCONFIG.*!CONCONFIG=/etc/conserver.cf!' /etc/init.d/conserver
+			;;
+		rh*)
+			cp $XCATROOT/rc.d/conserver /etc/rc.d/init.d/conserver
+			chkconfig --level 345 conserver on 2>&1 | logger -t xcat
+			perl -pi -e 's!^CONCONFIG.*!CONCONFIG=/etc/conserver.cf!' /etc/rc.d/init.d/conserver
+			;;
+	esac
+
+	cp -f $XCATROOT/etc/conserver.cf.$(hostname -s) /etc/conserver.cf
+fi
+
+if [ "$DHCP" = "1" ]
+then
+	NR=$(
+		perl -ni -e "print \$1 if m/^subdhcpd\s+$(hostname -s),([^,]*?),([^,]*?),/" <$XCATROOT/etc/site.tab
+	)
+	echo "$XCATROOT/sbin/makedhcp $NR >/dev/null 2>&1" >>/etc/rc.local
+	#echo "perl -pi -e 's/^.*makedhcp.*\\n$//' /etc/rc.local" >>/etc/rc.local
+fi
+
+if [ "$DNS" = "1" ]
+then
+	case "$OSVER" in
+		rh*)
+			START=$(
+				grep -n "^#START named.conf" $0 | awk -F: '{print $1}'
+			)
+			START=$(($START + 1))
+			END=$(
+				grep -n "^#END named.conf" $0 | awk -F: '{print $1}'
+			)
+			END=$(($END - $START))
+			tail +$START $0 | head -$END >/etc/named.conf
+			MIP=$(host $MYMASTER | head -1 | awk '{print $NF}')
+			perl -pi -e "s/MYMASTER/$MIP/" /etc/named.conf
+			cp /etc/named.conf /var/named/chroot/etc
+			chkconfig --level 345 named on
+			;;
+	esac
+fi
+
+exit 0
+
+#START named.conf
+options {
+	directory "/var/named";
+	dump-file "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+	forward only;
+	forwarders {
+		MYMASTER;
+	};
+};
+
+controls {
+	inet 127.0.0.1 allow { localhost; } keys { rndckey; };
+};
+
+zone "." IN {
+	type hint;
+	file "named.ca";
+};
+
+zone "localdomain" IN {
+	type master;
+	file "localdomain.zone";
+	allow-update { none; };
+};
+
+zone "localhost" IN {
+	type master;
+	file "localhost.zone";
+	allow-update { none; };
+};
+
+zone "0.0.127.in-addr.arpa" IN {
+	type master;
+	file "named.local";
+	allow-update { none; };
+};
+
+zone "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa" IN {
+        type master;
+	file "named.ip6.local";
+	allow-update { none; };
+};
+
+zone "255.in-addr.arpa" IN {
+	type master;
+	file "named.broadcast";
+	allow-update { none; };
+};
+
+zone "0.in-addr.arpa" IN {
+	type master;
+	file "named.zero";
+	allow-update { none; };
+};
+
+include "/etc/rndc.key";
+#END named.conf

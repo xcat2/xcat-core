@@ -1,0 +1,84 @@
+      <post-scripts config:type="list">
+        <script>
+          <filename>xcat.sh</filename>
+          <interpreter>shell</interpreter>
+          <source>
+
+<![CDATA[
+#!/bin/sh
+
+cd /etc/sysconfig/network
+rm -f ifcfg-eth-id*
+rm -f ifcfg-myri*
+cat >ifcfg-eth0 <<EOF
+DEVICE=eth0
+BOOTPROTO=dhcp
+STARTMODE=onboot
+EOF
+
+export PRINIC=#TABLE:noderes:$NODE:primarynic#
+if [ -z "$PRINIC" ]; then
+    export PRINIC=eth0
+fi
+if [ "$PRINIC" != "eth0" ]
+then
+	cd /etc/sysconfig/network
+	if [ ! -r ifcfg-$PRINIC ]
+	then
+		cp -f ifcfg-eth0 ifcfg-$PRINIC
+		perl -pi -e "s/eth0/$PRINIC/" ifcfg-$PRINIC
+		echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
+	fi
+fi
+perl -pi -e 's/^FIREWALL="yes"/FIREWALL="no"/' /etc/sysconfig/network/config
+/etc/init.d/network restart
+
+RAND=$(perl -e 'print int(rand(50)). "\n"')
+sleep $RAND
+jsi=0
+while [ $(hostname) == 'linux' ]
+do
+	if [ $jsi -gt 10 ]; then
+		logger "Slept too long!"
+		exit
+	fi
+	let jsi=jsi+1
+	sleep 1
+done
+echo "Slept $jsi seconds before hostname made sense."
+
+HOSTNAME=$(hostname -s)
+echo $HOSTNAME
+
+/sbin/portmap
+export MASTER_IP=#XCATVAR:XCATMASTER#
+export MASTER_IPS=#XCATVAR:XCATMASTER#
+mkdir -p /xcatpost
+for i in $(seq 1 20)
+do
+	GOTIT=0
+	for i in $MASTER_IPS
+	do
+		mount -r $i:/install/postscripts /xcatpost
+		if [ "$?" = "0" ]
+		then
+			GOTIT=1
+			break
+		fi
+	done
+	if [ "$GOTIT" = "1" ]
+	then
+		break
+	fi
+	RAND=$(perl -e 'print int(rand(5)). "\n"')
+	sleep $RAND
+done
+cd /
+/xcatpost/#TABLE:nodelist:$NODE:node#
+umount /xcatpost
+rmdir /xcatpost
+]]>
+
+          </source>
+        </script>
+      </post-scripts>

@@ -1,0 +1,67 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use xCAT::Table;
+use xCAT::NodeRange;
+use IO::Socket::SSL;
+use XML::Simple;
+use Data::Dumper;
+use strict;
+my $xcathost='localhost:3001';
+if ($ENV{XCATHOST}) {
+  $xcathost=$ENV{XCATHOST};
+}
+
+my $server = IO::Socket::SSL->new(
+  PeerAddr=>$xcathost,
+  SSL_key_file=>$ENV{HOME}."/.xcat/client-key.pem",
+  SSL_cert_file=>$ENV{HOME}."/.xcat/client-cert.pem",
+  SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
+  SSL_use_cert => 1,
+  #SSL_verify_mode => 1,
+  );
+die "Connection failure: $!\n" unless ($server);
+my $target=shift(@ARGV);
+my %request=(); #Start building the hash to XML-ify
+$request{command}='getnodeattributes';
+$request{noderange}=$target;
+
+for (@ARGV) {
+  my $temp;
+  my $table;
+  my $column;
+  my $value;
+  ($table,$column) = split('\.',$_,2);
+  $request{table}=$table; #build/reuse request specific elements
+  $request{attribute}=$column;
+  print $server XMLout(\%request,RootName => 'xcatrequest',NoAttr => 1);
+  alarm(30);
+  my $response;
+  while (<$server>) {
+    alarm(0);
+    $response .= $_;
+    if  ($response =~ m/<\/xcatresponse>/) {
+      my $reply=XMLin($response);
+      $response="";
+      if ($reply->{error}) {
+        printf "ERROR: ".$reply->{error}."\n";
+      }
+      if ($reply->{warning}) {
+        printf "Warning: ".$reply->{warning}."\n";
+      }
+      if ($reply->{attributes}{$column}) {
+        printf "$table.$column:".$reply->{attributes}{$column}."\n";
+      }
+      if ($reply->{serverdone}) {
+        last;
+      }
+    }
+  }
+}
+
+
+
+  #my $tab = xCAT::Table->new($table,-create => 1);
+  #my $rec = $tab->getAttribs($key,$val,$column);
+
+#  if ($rec->{$column}) { printf $rec->{$column}."\n"; }
+#}

@@ -1,0 +1,161 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#Just like xcatclient, but needs to read a file in and pass it as $request->data
+use IO::Socket::SSL;
+use IO::Socket::INET;
+use File::Basename;
+use Data::Dumper;
+use xCAT::Client submit_request;
+my $bname = basename($0);
+
+#########################################
+# Main
+#   Build hash and submit request
+#########################################   
+
+my $cmdref;
+my $exitcode=0;
+$cmdref->{command}->[0] = "tabrestore";
+
+my $arg=shift(@ARGV);
+while ($arg =~ /^-/) {
+  push (@{$cmdref->{arg}}, $arg);
+  $arg=shift(@ARGV);
+}
+unless ($arg) {
+  printf("Usage: tabrestore [tablename].csv\n");
+  exit(1);
+}
+my $filename = $arg;
+unless (-r $filename) { 
+  printf("Unable to open $arg for reading.\n");
+  exit(1);
+}
+my $tabname = basename($filename);
+$tabname =~ s/\..*//;
+$cmdref->{table}->[0] = $tabname;
+my $fh;
+open($fh,$filename);
+while (<$fh>) {
+  push @{$cmdref->{data}},$_;
+}
+
+foreach (@ARGV) { push (@{$cmdref->{arg}}, $_ ); }
+#$cmdref->{arg}=\@ARGV;
+xCAT::Client::submit_request($cmdref,\&handle_response);
+exit $exitcode;
+
+
+##########################################
+# handle_response is the callback that is 
+# invoked to print out the data returned by
+# the plugin.
+# 
+# Format of the response hash:
+#  {data => [ 'data str1', 'data str2', '...' ] }
+#
+#    Results are printed as:
+#       data str1
+#       data str2
+#
+# or:
+#  {data => [ {desc => [ 'desc1' ],
+#              contents => [ 'contents1' ] },
+#             {desc => [ 'desc2 ],
+#              contents => [ 'contents2' ] } 
+#                :
+#            ] }
+#    NOTE:  In this format, only the data array can have more than one 
+#           element. All other arrays are assumed to be a single element.
+#    Results are printed as:
+#       desc1: contents1
+#       desc2: contents2
+#
+# or:
+#  {node => [ {name => ['node1'],
+#              data => [ {desc => [ 'node1 desc' ],
+#                         contents => [ 'node1 contents' ] } ] },
+#             {name => ['node2'],
+#              data => [ {desc => [ 'node2 desc' ],
+#                         contents => [ 'node2 contents' ] } ] },
+#                :
+#             ] }
+#    NOTE:  Only the node array can have more than one element. 
+#           All other arrays are assumed to be a single element.
+#
+#    This was generated from the corresponding HTML:
+#    <xcatrequest>
+#      <node>
+#        <name>node1</name>
+#        <data>
+#          <desc>node1 desc</desc>
+#          <contents>node1 contents</contents>
+#        </data>
+#      </node>
+#      <node>
+#        <name>node2</name>
+#        <data>
+#          <desc>node2 desc</desc>
+#          <contents>node2 contents</contents>
+#        </data>
+#      </node>
+#    </xcatrequest>
+#
+#   Results are printed as:
+#      node_name: desc: contents
+########################################## 
+sub handle_response {
+  my $rsp = shift;
+  # Handle {node} structure
+  if ($rsp->{node}) {
+    my $nodes=($rsp->{node});
+    my $node;
+    foreach $node (@$nodes) {
+      my $desc=$node->{name}->[0];
+      if ($node->{data}) { 
+         if (ref(\($node->{data}->[0])) eq 'SCALAR') {
+            $desc=$desc.": ".$node->{data}->[0];
+         } else {
+            if ($node->{data}->[0]->{desc}) {
+              $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
+            }
+            if ($node->{data}->[0]->{contents}) { 
+	       $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
+            }
+         }
+      }
+      if ($desc) {
+         print "$desc\n";
+      }
+    }
+  }
+
+  # Handle {data} structure with no nodes
+  if ($rsp->{error}) {
+    $exitcode=1;
+  }
+  if ($rsp->{data}) {
+    my $data=($rsp->{data});
+    my $data_entry;
+    foreach $data_entry (@$data) {
+      my $desc;
+         if (ref(\($data_entry)) eq 'SCALAR') {
+            $desc=$data_entry;
+         } else {
+            if ($data_entry->{desc}) {
+              $desc=$data_entry->{desc}->[0];
+            }
+            if ($data_entry->{contents}) { 
+               if ($desc) {
+	          $desc="$desc: ".$data_entry->{contents}->[0];
+               } else {
+	          $desc=$data_entry->{contents}->[0];
+            }
+         }
+      }
+      if ($desc) {
+         print "$desc\n";
+      }
+    }
+  }
+}

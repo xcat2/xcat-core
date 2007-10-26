@@ -1,0 +1,100 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use xCAT::Table;
+use xCAT::NodeRange;
+use Getopt::Long;
+
+use strict;
+#This or something like this must always be available and not depend on server
+#Otherwise, can't set things to let server run in the first place
+
+sub usage {
+  print "Usage:\n";
+  print " To add or update rows for tables:
+   chtab keycolname=keyvalue[,keycolname=keyvalue...] [tablename.colname=newvalue] [tablename.colname=newvalue]...\n";
+  print " To delete rows from tables:
+   chtab -d|--delete keycolname=keyvalue[,keycolname=keyvalue...] tablename [tablename]...\n";
+  print " To display usage and other information:
+   chtab [-h|--help|-v|--Version]\n\n";
+  print "   -d|--delete  Delete the rows from a list of tables.
+   -v|--version Display the version of this command.
+   -h|--help    Display this usage information. 
+   keycolname=keyvalue   a column name-and-value pair that identifies the rows in a table to be changed.
+   tablename.colname=newvalue    the new value for the specified row and column of the table.\n";
+}  
+
+my %tables;
+
+# options can be bundled up like -vV
+Getopt::Long::Configure("bundling") ;
+$Getopt::Long::ignorecase=0;
+
+# parse the options
+if(!GetOptions(
+      'd|delete'   => \$::DELETE,
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION,))
+{
+  &usage;
+  exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($::HELP) { &usage; exit(0);}
+
+# display the version statement if -v or --verison is specified
+if ($::VERSION)
+{
+  print "chtab version 1.0\n";
+  exit(0);
+}
+
+my $target = shift @ARGV;
+unless ($target) {
+  usage;
+  exit(1);
+}
+my %keyhash;
+my @keypairs=split(/,/,$target);
+foreach (@keypairs) {
+  m/(.*)=(.*)/;
+  my $key=$1;
+  my $val=$2;
+  $keyhash{$key}=$val;
+}
+
+
+if ($::DELETE) {
+  #delete option is specified
+  my @tables_to_del=@ARGV;
+  for (@tables_to_del) {
+    $tables{$_} = xCAT::Table->new($_,-create => 1,-autocommit => 0);
+    $tables{$_}->delEntries(\%keyhash);
+    $tables{$_}->commit;
+  }
+}
+else {
+  #update or create option
+  my %tableupdates;
+  for (@ARGV) {
+	my $temp;
+	my $table;
+	my $column;
+	my $value;
+	($table,$temp) = split('\.',$_,2);
+	($column,$value) = split("=",$temp,2);
+    unless ($tables{$table}) {
+	  $tables{$table} = xCAT::Table->new($table,-create => 1,-autocommit => 0);
+    }
+    $tableupdates{$table}{$column}=$value;
+  }
+  
+  #commit all the changes
+  foreach (keys %tables) {
+    if (exists($tableupdates{$_})) {
+      $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+    }
+    $tables{$_}->commit;
+  }
+}
+

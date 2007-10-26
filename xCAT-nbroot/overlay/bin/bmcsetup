@@ -1,0 +1,28 @@
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+modprobe ipmi_si
+modprobe ipmi_devintf
+while ! getipmi.awk
+do
+    echo "Retrying retrieval of IPMI settings from server"
+done
+BMCIP=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+BMCGW=`grep gateway /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+BMCUS=`grep username /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+BMCPW=`grep password /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+ipmitool lan set 1 ipsrc static
+ipmitool lan set 1 ipaddr $BMCIP
+ipmitool lan set 1 netmask $BMCNM
+if [ ! -z "$BMCGW" ]; then
+    ipmitool lan set 1 defgw ipaddr $BMCGW
+fi
+ipmitool user disable 1
+ipmitool user disable 3
+ipmitool user disable 4
+ipmitool user enable 2
+ipmitool user priv 2 4 1
+ipmitool user set name 2 $BMCUS
+ipmitool user set password 2 $BMCPW
+echo "Set up following user table: "
+ipmitool user list 1
+

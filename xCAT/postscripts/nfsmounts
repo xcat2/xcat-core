@@ -1,0 +1,54 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+. $XCATROOT/lib/functions
+
+if HOMEFS=$(tabdb $SITETAB homefs 1) 
+then
+	:
+else
+	echo "$0: homefs not defined in $SITETAB" | logger -t xcat
+fi
+
+if LOCALFS=$(tabdb $SITETAB localfs 1)
+then
+	:
+else
+	echo "$0: localfs not defined in $SITETAB" | logger -t xcat
+fi
+
+XCATFS=$MASTER:$XCATROOT
+
+logger -t xcat "Install: setup NFS mounts in fstab"
+
+case "$OSVER" in
+	rhfc[23])
+		XOPTS=",nfsvers=2"
+		;;
+	rh*[45])
+		XOPTS=",nfsvers=2"
+		;;
+esac
+
+if [ -n "$HOMEFS" -a "$HOMEFS" != "NA" ]
+then
+	mkdir -p /home
+#	echo "$HOMEFS /home nfs rsize=4096,wsize=4096,timeo=14,intr$XOPTS 1 2" >>/etc/fstab
+	echo "$HOMEFS /home nfs timeo=14,intr$XOPTS 1 2" >>/etc/fstab
+fi
+if [ -n "$LOCALFS" -a "$LOCALFS" != "NA" ]
+then
+	mkdir -p /usr/local
+#	echo "$LOCALFS /usr/local nfs rsize=4096,wsize=4096,timeo=14,intr$XOPTS 1 2" >>/etc/fstab
+	echo "$LOCALFS /usr/local nfs timeo=14,intr$XOPTS 1 2" >>/etc/fstab
+fi
+if [ -n "$XCATFS" -a "$XCATFS" != "NA" ]
+then
+	mkdir -p $XCATROOT
+#	echo "$XCATFS $XCATROOT nfs rsize=4096,wsize=4096,timeo=14,intr$XOPTS 1 2" >>/etc/fstab
+	echo "$XCATFS $XCATROOT nfs timeo=14,intr$XOPTS 1 2" >>/etc/fstab
+fi
+

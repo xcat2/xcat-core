@@ -1,0 +1,6 @@
+#node,switch,vlan,port,comments,disable
+40perswitch,"|\D+(\d+)|switch(($1-1)/40+1)|",,"|\D+(\d+)|(($1-1)%40+1)|"
+41perswitch,"|\D+(\d+)|switch(($1-1)/41+1)|",,"|\D+(\d+)|(($1-1)%41+1)|"
+42perswitch,"|\D+(\d+)|switch(($1-1)/42+1)|",,"|\D+(\d+)|(($1-1)%42+1)|"
+20perswitch,"|\D+(\d+)|switch(($1-1)/20+1)|",,"|\D+(\d+)|(($1-1)%20+1)|"
+21perswitch,"|\D+(\d+)|switch(($1-1)/21+1)|",,"|\D+(\d+)|(($1-1)%21+1)|"

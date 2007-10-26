@@ -1,0 +1,42 @@
+#!/bin/bash
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+function cexit {
+  if [ -d /tmp/tabedit.$$ ]; then
+    rm -rf /tmp/tabedit.$$;
+  fi
+  exit
+}
+trap cexit 2 15
+
+TABLE=$1
+if [ -z "$EDITOR" ]; then
+  echo "Define EDITOR environment variable before running this command"
+  exit 1
+fi
+if [ -z "$TABLE" ]; then
+    echo "Usage: tabedit <tablename>";
+    exit 1
+fi
+mkdir -p /tmp/tabedit.$$/
+xcatclientnnr tabdump $1 > /tmp/tabedit.$$/$1.csv
+#use md5sum to check if it actually changes..
+SUM=`md5sum /tmp/tabedit.$$/$1.csv`
+EXIT=0
+while [ $EXIT -eq 0 ]; do
+  cd /tmp/tabedit.$$
+  "$EDITOR" $1.csv
+  cd -
+  NEWSUM=`md5sum /tmp/tabedit.$$/$1.csv`
+  if [ "$NEWSUM" == "$SUM" ]; then
+    echo "No file modifications detected, not restoring."
+    break;
+  fi
+  if `dirname $0`/tabrestore /tmp/tabedit.$$/$1.csv; then
+    break;
+  else
+    echo "Above errors occured, hit enter to edit, or ctrl-c to abort"
+    read JNK
+  fi
+done
+cexit
+

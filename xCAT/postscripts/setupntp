@@ -1,0 +1,40 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+. $XCATROOT/lib/functions
+
+if TIMESERVERS=$(tabdb $SITETAB timeservers 1) 
+then
+	:
+else
+	echo "$0: timeservers not defined in $SITETAB" | logger -t xcat
+	exit
+fi
+
+logger -t xcat "Install: Setup NTP"
+
+for i in $(echo $TIMESERVERS | tr ',' ' ')
+do
+	echo "server $i.$DOMAIN"
+done >/etc/ntp.conf
+
+mkdir -p /etc/ntp
+chown ntp /etc/ntp
+
+echo "driftfile /etc/ntp/drift
+multicastclient
+broadcastdelay	0.008
+authenticate no
+keys		/etc/ntp/keys
+trustedkey	65535
+requestkey	65535
+controlkey	65535" >>/etc/ntp.conf
+
+for i in $(echo $TIMESERVERS | tr ',' ' ')
+do
+	echo "$i.$DOMAIN"
+done >/etc/ntp/step-tickers
+

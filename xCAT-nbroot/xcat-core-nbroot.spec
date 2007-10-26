@@ -1,0 +1,56 @@
+%define epoch   0
+%define version	2.0
+%ifarch i386 i586 i686
+%define tarch x86
+%endif
+%ifarch x86_64
+%define tarch x86_64
+%endif
+%ifarch ppc ppc64
+%define tarch ppc64
+%endif
+BuildArch: noarch
+%define name	xCAT-nbroot-core-%{tarch}
+Release: snap%(date +"%Y%m%d%H%M")
+AutoReq: false
+AutoProv: false
+
+
+
+
+
+
+Name:	 %{name}
+#Epoch:   %{epoch}
+Version: %{version}
+Group: System/Utilities
+License: EPL
+Vendor: IBM Corp.
+Summary: xCAT-nbroot-coreprovides opensource components of the netboot image
+URL:	 http://xcat.org
+Source1: xcat-nbrootoverlay.tar.gz
+
+Buildroot: %{_localstatedir}/tmp/xCAT-nbroot-core
+Packager: IBM Corp.
+
+%Description
+xcat-nbroot-core provides the xCAT scripts for the mini-root environment
+All files included are as they were downloadable on 4/7/2007
+%Prep
+
+
+%Build
+
+%Install
+rm -rf $RPM_BUILD_ROOT
+mkdir -p $RPM_BUILD_ROOT/usr/share/xcat/netboot/%{tarch}/nbroot
+cd $RPM_BUILD_ROOT/usr/share/xcat/netboot/%{tarch}/nbroot
+tar zxvf %{SOURCE1}
+cd -
+
+
+
+%Files
+%defattr(-,root,root)
+%doc LICENSE.html
+/

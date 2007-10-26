@@ -1,0 +1,2 @@
+#node,servicenode,netboot,tftpserver,nfsserver,kernel,initrd,kcmdline,nfsdir,serialport,installnic,primarynic,xcatmaster,current_osimage,next_osimage,comments,disable
+"compute",,pxe,,

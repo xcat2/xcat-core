@@ -1,0 +1,57 @@
+#!/bin/bash
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+if [ $# -ne 1 ];  then
+  echo "Usage: mknb <arch>"
+  exit 1
+fi
+if [ ! -d /usr/share/xcat/netboot/$1 ]; then 
+  echo "Unsupported architecture: $1"
+  exit 1
+fi
+if [ ! -r ~/.ssh/id_rsa.pub ]; then
+  #echo "Need to generate ssh keys"
+  ssh-keygen -t rsa -q -b 2048 -N "" -f ~/.ssh/id_rsa
+  #exit 1
+fi
+mkdir -p /tmp/mknb.$$
+cp -a /usr/share/xcat/netboot/$1/nbroot/* /tmp/mknb.$$/
+mkdir -p /tmp/mknb.$$/root/.ssh
+cp ~/.ssh/id_rsa.pub /tmp/mknb.$$/root/.ssh/authorized_keys
+if [ -f /install/postscripts/hostkeys/ssh_host_key ]; then
+    cp /install/postscripts/hostkeys/ssh_host_key /tmp/mknb.$$/etc/ssh_host_key
+    cp /install/postscripts/hostkeys/ssh_host_rsa_key /tmp/mknb.$$/etc/ssh_host_rsa_key
+    cp /install/postscripts/hostkeys/ssh_host_dsa_key /tmp/mknb.$$/etc/ssh_host_dsa_key
+fi
+if [ ! -f /tmp/mknb.$$/etc/ssh_host_key ]; then 
+    echo Generating SSH1 RSA Key...
+    /usr/bin/ssh-keygen -t rsa1 -f /tmp/mknb.$$/etc/ssh_host_key -C '' -N ''
+    echo Generating SSH2 RSA Key...
+    /usr/bin/ssh-keygen -t rsa -f /tmp/mknb.$$/etc/ssh_host_rsa_key -C '' -N ''
+    echo Generating SSH2 DSA Key...
+    /usr/bin/ssh-keygen -t dsa -f /tmp/mknb.$$/etc/ssh_host_dsa_key -C '' -N ''
+fi
+cd /tmp/mknb.$$
+echo "Packing nbfs.$1.gz"
+find . | cpio -o -H newc | gzip -9 > /tftpboot/xcat/nbfs.$1.gz
+cd -
+rm -rf /tmp/mknb.$$
+if [ "$1" = "x86_64" -a ! -f /tftpboot/pxelinux.0 -a -f /usr/lib/syslinux/pxelinux.0 ]; then
+  cp /usr/lib/syslinux/pxelinux.0 /tftpboot/pxelinux.0
+fi
+if [ "$1" = "x86_64" -a ! -f /tftpboot/pxelinux.cfg/default ]; then
+  mkdir -p /tftpboot/pxelinux.cfg
+  echo "default xCAT
+  LABEL xCAT
+  KERNEL xcat/nbk.x86_64
+  APPEND initrd=xcat/nbfs.x86_64.gz xcatd="`gettab  key=master site.value|awk -F: '{print $2}'`:`gettab key=xcatdport site.value|awk -F: '{print $2}'` > /tftpboot/pxelinux.cfg/default
+fi
+if [ "$1" = "ppc64" -a ! -f /tftpboot/etc/yaboot.conf ]; then
+   mkdir -p /tftpboot/etc
+   echo "timeout=5
+   label=xcat
+   image=xcat/nbk.ppc64
+   initrd=xcat/nbfs.ppc64.gz
+   append=\"xcatd="`gettab key=master site.value|awk -F: '{print $2}'`:`gettab key=xcatdport site.value|awk -F: '{print $2}'`\"> /tftpboot/etc/yaboot.conf
+fi
+
+  

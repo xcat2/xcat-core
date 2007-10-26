@@ -1,0 +1,108 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use IO::Socket::SSL;
+use XML::Simple;
+use Data::Dumper;
+use IO::Handle;
+use IO::Select;
+use xCAT::Utils;
+use Getopt::Long;
+use POSIX qw(:signal_h :errno_h :sys_wait_h);
+my $interface;
+Getopt::Long::Configure("require_order");
+GetOptions(
+  "interface=s" => \$interface,
+  );
+my %nodehdl;
+my $xcathost='localhost:3001';
+if ($ENV{XCATHOST}) {
+          $xcathost=$ENV{XCATHOST};
+}
+
+my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
+unless (@ARGV) {
+    print "Usage: psh [-i <suffix] <noderange> <command>\n";
+}
+my $noderange = $ARGV[0];
+my $client = IO::Socket::SSL->new(
+                PeerAddr=>$xcathost,
+                SSL_key_file=>$ENV{HOME}."/.xcat/client-key.pem",
+                SSL_cert_file=>$ENV{HOME}."/.xcat/client-cert.pem",
+                SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
+                SSL_use_cert => 1,
+                #SSL_verify_mode => 1,
+             );
+die "Connection failure: $!\n" unless ($client);
+my %cmdref = (command => 'noderange', noderange => $noderange);
+$SIG{ALRM} = sub { die "No response getting noderange" };
+alarm(15);
+print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+alarm(15);
+my $response="";
+my @nodes=();
+while (<$client>) {
+  alarm(0);
+  $response .= $_;
+  if ($response =~ m/<\/xcatresponse>/) {
+    $rsp=XMLin($response, ForceArray => ['node']);
+    $response='';
+    if ($rsp->{warning}) {
+      printf "Warning: ".$rsp->{warning}."\n";
+    }
+    if ($rsp->{error}) {
+      die ("ERROR: ".$rsp->{error}."\n");
+    } elsif ($rsp->{node}) {
+      @nodes=@{$rsp->{node}};
+    }
+    if ($rsp->{serverdone}) {
+      last;
+    }
+  }
+}
+close($client);
+my $children = 0;
+my $inputs = new IO::Select;
+$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
+if ($interface) {
+  foreach (@nodes) {
+    s/$/-$interface/;
+  }
+}
+foreach (@nodes) {
+  my $node=$_;
+  while ($children > $pshmaxp) { processoutput($inputs); }
+  my $child;
+  $children++;
+  sshnode(\$child,$node,@ARGV[1 .. $#ARGV]);
+  $inputs->add($child);
+  $nodehdl{$child} = $node;
+}
+while ($children) {
+  processoutput($inputs);
+}
+while (processoutput($inputs)) {};
+exit(0);
+
+sub processoutput { #This way, one arbiter handles output, no interrupting
+  my $inputs = shift;
+  my @readyins = $inputs->can_read(1);
+  my $rc = @readyins;
+  my $readyh;
+  foreach $readyh (@readyins) {
+    my $line = <$readyh>;
+    unless ($line) {
+      $inputs->remove($readyh);
+      close($readyh);
+      next;
+    }
+    print $nodehdl{$readyh}.": ".$line;
+  }
+  return $rc;
+}
+sub sshnode {
+  my $out = shift;
+  my $node = shift;
+  my $in;
+  my $args = join(" ",@_);
+  open($$out,"ssh -o BatchMode=yes $node " . xCAT::Utils->quote($args) . " 2>&1 |");
+}

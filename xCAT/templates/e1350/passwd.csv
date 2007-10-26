@@ -1,0 +1,4 @@
+#key,username,password,comments,disable
+"blade","USERID","PASSW0RD",,
+"system","root","cluster",,
+"ipmi","USERID","PASSW0RD",,

@@ -1,0 +1,58 @@
+#
+# Setup hostname
+#
+echo "post scripts" >/root/post.log
+export PRINIC=#TABLE:noderes:THISNODE:primarynic#
+if [ -z "$PRINIC" ]
+then
+    export PRINIC=eth0
+fi
+IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+if [ -z $IP ]
+then
+	dhclient eth0
+	IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+fi
+echo "search #TABLE:site:key=domain:value#" >/etc/resolv.conf
+for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
+do
+	echo "nameserver $i"
+done >>/etc/resolv.conf
+export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
+hostname $HOSTNAME
+#
+# Run xCAT post install
+#
+export MASTER_IP="#XCATVAR:XCATMASTER#"
+export MASTER_IPS="#XCATVAR:XCATMASTER#"
+mkdir -p /xcatpost
+RAND=$(perl -e 'print int(rand(50)). "\n"')
+sleep $RAND
+for i in $(seq 1 20)
+do
+	GOTIT=0
+	for i in $MASTER_IPS
+	do
+#		mount -r $i:$XCATROOT $XCATROOT
+		mount -o ro,nolock $i:/install/postscripts /xcatpost
+		if [ "$?" = "0" ]
+		then
+			GOTIT=1
+			break
+		fi
+	done
+	if [ "$GOTIT" = "1" ]
+	then
+		break
+	fi
+	RAND=$(perl -e 'print int(rand(5)). "\n"')
+	sleep $RAND
+done
+#mount -r #XCATVAR:MASTER_IP#:$XCATROOT $XCATROOT
+#mount -o ro,nolock #XCATVAR:MASTER_IP#:$XCATROOT $XCATROOT
+#$XCATROOT/bin/postage
+/xcatpost/#TABLE:nodelist:THISNODE:node#
+cd /
+umount /xcatpost
+rmdir /xcatpost
+exit 0

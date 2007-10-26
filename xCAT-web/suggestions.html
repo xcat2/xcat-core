@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<META http-equiv="Content-Style-Type" content="text/css">
+<META name="GENERATOR" content="IBM WebSphere Studio Homepage Builder V6.0.2 for Windows">
+<title>Send Sugestions to the CSM Development Team</title>
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+
+<body>
+
+<h1 class="BlueBack">Send Sugestions to the CSM Development Team</h1>
+
+<p>Suggestions, bug reports, bug fixes, etc., are always welcome. &nbsp;Please post them to the <A href="doc.cgi?book=web&section=forum" target="_parent">CSM forum</A>. &nbsp;Contributions are also welcome, such as minor new features, better
+images, or even whole new pages. &nbsp;See the <a
+href="CSMLinuxGUIWhitepaper.html#developing">developer section of
+the CSM Linux GUI white paper</a> for more info. &nbsp;Thanks!</p>
+
+<h3>Todo List</h3>
+
+<p>The following items are already on our todo list, in
+approximately priority order:</p>
+
+<ul>
+  <li>When the license expires, have to give a good msg from the main page</li>
+  <li>Finish modifying the following pages with the More... links: definenode,
+  definehwdev, dev properties, condition properties, response properties.</li>
+  <li>Change the xcsm-utils resources so they can also be defined in the xcsm
+  dir</li>
+  <li>Add LastEvent to the Condition Attributes page, for releases in which it
+  is supported</li>
+  <li>Have the task pane save the current task in the cookie and have each page set the current task</li>
+  <li>Add list of CSM env vars to Tips section of CSM Config page.</li>
+  <li>Add hw ctrl info to the Add Nodes page</li>
+  <li>Finish rack layout of partitioned pSeries systems</li>
+  <li>Add -c option (adapter config) to updatenode page. &nbsp;Also run cfmupdatenode
+  if only -F specified and smsupdatenode if only -S specified.</li>
+  <li>Monitoring:
+  <ul>
+    <li>Add&nbsp;to Sensor page:
+    <ul>
+      <li>create&nbsp;a&nbsp;mkresources&nbsp;file&nbsp;to&nbsp;facilitate creating/modifying sensors on nodes</li>
+      <li>force the execution of a sensor immediately</li>
+    </ul>
+    </li>
+    <li>Provide an Operator monitoring mode (log in as non-root user and get simpler
+    monitoring page)</li>
+    <li>Add option to monitor in node group view and be able to drill down to the
+    problem node</li>
+    <li>Make drill down on the problem more obvious</li>
+    <li>Add additional conditions/sensors for a more complete &quot;Health Monitoring&quot;</li>
+  </ul>
+  </li>
+  <li>Be able to log in as non-root id and su to root (exploit webmin acls)</li>
+  <li>Display&nbsp;the 1st time user/set up cluster wizard page link automatically
+  if no nodes are defined.</li>
+  <li>Scalabilty improvements: <ul>
+            <li>When a large # of nodes are displayed on the main
+                page, only get the 1st 50.</li>
+  </ul>
+  </li>
+  <li>Fix running perfmondata -h in Tips section of perfmon page, and add it
+  to xcsm/utils</li>
+  <li>Get gnuplot (and plotutils on SLES) installed
+        automatically.</li>
+  <li>Add to the Diagnose MS page to restart the HWCTRLRM with
+        tracing on or off: <ul>
+            <li>stopsrc -s IBM.HWCTRLRM</li>
+            <li>If IBM.HWCTRLRM does not stop within a minute,
+                &quot;ps -ef | grep HW&quot; and kill any
+                processes.</li>
+            <li>Delete the contents of /var/log/csm</li>
+            <li>startsrc -s IBM.HWCTRLRM
+                -eHC_JAVA_VERBOSE=/tmp/jni.txt</li>
+            <li>send the trace files in /var/log/csm and
+                /tmp/jni.txt</li>
+        </ul>
+    </li>
+  <li>Add some items from csmsnap design to Diagnose MS page</li>
+  <li>Clean up code for HW Ctrl page</li>
+  <li>Add BIOS/firmware flashing page</li>
+  <li>Debug or improve opening a console for a node</li>
+  <li>Install page: <ul>
+            <li>Set up page should use InstallTemplate attribute
+                as default for the template file</li>
+            <li>Implement remaining buttons:&nbsp; Test Console,
+                Copy Distros, Run Install Probe.</li>
+    <li>Add nodegrp option to page and add a link to this page on the task list.</li>
+    <li>Update monitoring of install progress</li>
+    <li>Add list &amp; manipulation of install images (sets of distro rpms) that
+    are in /csminstall</li>
+  </ul>
+    </li>
+  <li>Add copycsmpkgs to Updatenode page.</li>
+  <li>Make the perf mon page extensible so users can add their
+        own conditions </li>
+    <li>Make the main page extensible so users can add their own
+        attributes to be shown in the node table. </li>
+  <li>Make the main page monitor the node Status and update it</li>
+  <li>Network management:
+  <ul>
+    <li>Query status, link speed, throughput of all network adapters on a node</li>
+  </ul>
+  </li>
+  <li>Implement a summary page</li>
+    <li>Software Maintenance page: &nbsp;Allow distro CDs to be
+        made available as ISOs and mounted</li>
+  <li>Modify the web interface so it can start up before CSM is
+        installed, so it can be used to install CSM on the mgmt
+        svr.</li>
+  <li>Have this interface launched from the new CSM LWC console and from IBM
+  Director.</li>
+</ul>
+
+<h3>Known Defects and Limitations</h3>
+
+<ul>
+  <li>Perfmon graph page doesn't download gnuplot for SuSE
+        correctly.</li>
+  <li>When you use the browser's Back button to return to the
+        main page, the image checkboxes of the rack nodes are not
+        checked.</li>
+</ul>
+
+<p>The <b>Change Log</b> describing recent enhancements is in the
+<a href="README">README file</a>.</p>
+</body>
+</html>

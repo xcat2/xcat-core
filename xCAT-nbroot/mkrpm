@@ -1,0 +1,8 @@
+cd `dirname $0`
+tar --exclude .svn -czvf xcat-nbrootoverlay.tar.gz -C overlay/  .
+cp *.gz /usr/src/redhat/SOURCES
+cp xcat-core-nbroot.spec /usr/src/redhat/SPECS
+rm xcat-nbrootoverlay.tar.gz
+rpmbuild -ba /usr/src/redhat/SPECS/xcat-core-nbroot.spec --target $1
+cd -
+

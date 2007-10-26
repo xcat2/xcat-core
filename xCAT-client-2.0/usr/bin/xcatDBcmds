@@ -1,0 +1,241 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+use File::Basename;
+use xCAT::Client submit_request;
+
+my $bname = basename($0);
+
+#########################################
+# Main
+#
+#   xcatDBcmds
+#
+#	Handles xCAT DB object management commands: 
+#		xdefmk, xdefch, xdefls, & xdefrm. 
+#
+#	Builds hash and submits request.
+#
+#       Note: The subroutines that implement these commands
+#               are in /usr/lib/xcat/plugins/DBobjectdefs.pm
+#               on the xCAT management node.
+#
+#########################################
+
+my $cmdref;
+
+# set the command name to pass to the plugin
+if ($bname =~ /xcatDBcmds/)
+{
+    $cmdref->{command}->[0] = shift @ARGV;
+}
+elsif ($bname =~ /^(.*$)/)
+{
+    $cmdref->{command}->[0] = $1;
+}
+else
+{
+    printf("Bad usage\n");
+    exit 1;
+}
+
+print "The command \'$cmdref->{command}->[0]\' is not yet available.\n";
+exit 0;
+
+# add all the cmd line args to the hash - to pass to the plugin subroutine
+foreach (@ARGV)
+{
+    push(@{$cmdref->{arg}}, $_);
+}
+
+if (!($bname =~ /xdefmk/))
+{
+
+    #
+    #  We need to see if a noderange was provided on the command line
+    #  - the command line could be flags(options) -> noderange -> attr=val pairs
+    #  - the noderange is used by xCAT remote access support infrastructure
+    #  	so we need to set it now
+    #
+
+    use Getopt::Long;
+
+    # Allows opts to be grouped (e.g. -avx)
+    Getopt::Long::Configure("bundling");
+
+    # parse the options
+    if (
+        !GetOptions(
+                    'all|a'     => \$::opt_a,
+                    'dynamic|d' => \$::opt_d,
+                    'f=s'       => \$::opt_f,
+                    'i=s'       => \$::opt_i,
+                    'help|h'    => \$::opt_h,
+                    'long|l'    => \$::opt_l,
+                    'm|minus'   => \$::opt_m,
+                    'o=s'       => \$::opt_o,
+                    'r|relace'  => \$::opt_r,
+                    't=s'       => \$::opt_t,
+                    'verbose|V' => \$::opt_V,
+                    'version|v' => \$::opt_v,
+                    'w=s'       => \$::opt_w,
+                    'x=s'       => \$::opt_x,
+                    'z=s'       => \$::opt_z
+        )
+      )
+    {
+        return 1;
+    }
+
+    #  a node range would be the next arg - but not if it contains an "=" sign
+    #	- then it would be an attr=val operand
+    my $arg = shift(@ARGV);
+    if (!($arg =~ /=/))
+    {
+        $cmdref->{noderange}->[0] = $arg;
+
+        #  could check if valid noderange at this point???
+    }
+
+}
+
+xCAT::Client::submit_request($cmdref, \&handle_response);
+
+print "\n";
+
+exit 0;
+
+#  may want to modify handle_response at some point!!!!!!!
+
+##########################################
+# handle_response is the callback that is
+# invoked to print out the data returned by
+# the plugin.
+#
+# Format of the response hash:
+#  {data => [ 'data str1', 'data str2', '...' ] }
+#
+#    Results are printed as:
+#       data str1
+#       data str2
+#
+# or:
+#  {data => [ {desc => [ 'desc1' ],
+#              contents => [ 'contents1' ] },
+#             {desc => [ 'desc2 ],
+#              contents => [ 'contents2' ] }
+#                :
+#            ] }
+#    NOTE:  In this format, only the data array can have more than one
+#           element. All other arrays are assumed to be a single element.
+#    Results are printed as:
+#       desc1: contents1
+#       desc2: contents2
+#
+# or:
+#  {node => [ {name => ['node1'],
+#              data => [ {desc => [ 'node1 desc' ],
+#                         contents => [ 'node1 contents' ] } ] },
+#             {name => ['node2'],
+#              data => [ {desc => [ 'node2 desc' ],
+#                         contents => [ 'node2 contents' ] } ] },
+#                :
+#             ] }
+#    NOTE:  Only the node array can have more than one element.
+#           All other arrays are assumed to be a single element.
+#
+#    This was generated from the corresponding HTML:
+#    <xcatrequest>
+#      <node>
+#        <name>node1</name>
+#        <data>
+#          <desc>node1 desc</desc>
+#          <contents>node1 contents</contents>
+#        </data>
+#      </node>
+#      <node>
+#        <name>node2</name>
+#        <data>
+#          <desc>node2 desc</desc>
+#          <contents>node2 contents</contents>
+#        </data>
+#      </node>
+#    </xcatrequest>
+#
+#   Results are printed as:
+#      node_name: desc: contents
+##########################################
+sub handle_response
+{
+    my $rsp = shift;
+
+    # Handle {node} structure
+    if ($rsp->{node})
+    {
+        my $nodes = ($rsp->{node});
+        my $node;
+        foreach $node (@$nodes)
+        {
+            my $desc = $node->{name}->[0];
+            if ($node->{data})
+            {
+                if (ref(\($node->{data}->[0])) eq 'SCALAR')
+                {
+                    $desc = $desc . ": " . $node->{data}->[0];
+                }
+                else
+                {
+                    if ($node->{data}->[0]->{desc})
+                    {
+                        $desc = $desc . ": " . $node->{data}->[0]->{desc}->[0];
+                    }
+                    if ($node->{data}->[0]->{contents})
+                    {
+                        $desc = "$desc: " . $node->{data}->[0]->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc)
+            {
+                print "$desc\n";
+            }
+        }
+    }
+
+    # Handle {data} structure with no nodes
+    if ($rsp->{data})
+    {
+        my $data = ($rsp->{data});
+        my $data_entry;
+        foreach $data_entry (@$data)
+        {
+            my $desc;
+            if (ref(\($data_entry)) eq 'SCALAR')
+            {
+                $desc = $data_entry;
+            }
+            else
+            {
+                if ($data_entry->{desc})
+                {
+                    $desc = $data_entry->{desc}->[0];
+                }
+                if ($data_entry->{contents})
+                {
+                    if ($desc)
+                    {
+                        $desc = "$desc: " . $data_entry->{contents}->[0];
+                    }
+                    else
+                    {
+                        $desc = $data_entry->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc)
+            {
+                print "$desc\n";
+            }
+        }
+    }
+}

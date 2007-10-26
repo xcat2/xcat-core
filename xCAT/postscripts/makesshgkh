@@ -1,0 +1,21 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+#TODO: something
+exit 0
+
+. $XCATROOT/lib/functions
+
+echo "$RSHC" | grep "ssh" >/dev/null 2>&1
+if [ "$?" = "0" ]
+then
+	logger -t xcat "Install: Running makesshgkh on the server"
+
+	service sshd start
+	ssh $MASTER $XCATROOT/sbin/makesshgkh $NODE
+	service sshd stop
+fi
+
+exit 0

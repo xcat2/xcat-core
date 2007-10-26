@@ -1,0 +1,685 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+use Socket;
+use IO::Socket;
+use IO::Handle;
+use IO::Select;
+use IO::Socket::SSL;
+use IO::Socket::INET;
+use XML::Simple;
+use xCAT::Table;
+use Data::Dumper;
+use Getopt::Long;
+use Sys::Syslog;
+use xCAT::NotifHandler;
+
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+
+
+use Storable qw(dclone);
+use POSIX qw(WNOHANG setsid);
+use strict;
+my $pidfile;
+GetOptions(
+  'pidfile|p=s' => \$pidfile
+);
+
+my $plugins_dir='/usr/lib/xcat/plugins';
+my $quit = 0;
+my $port;
+my $sport;
+my $domain;
+my $xcatdir;
+my $sitetab=xCAT::Table->new('site');
+unless ($sitetab) {
+    print ("ERROR: Unable to open basic site table for configuration\n");
+}
+my ($tmp) = $sitetab->getAttribs({'key'=>'xcatdport'},'value');
+unless ($tmp) {
+  die "ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001";
+}
+$port = $tmp->{value};
+$sport = $tmp->{value}+1;
+
+($tmp) = $sitetab->getAttribs({'key'=>'xcatconfdir'},'value');
+$xcatdir = ($tmp ? $tmp->{value} : "/etc/xcat");
+
+my $progname;
+$SIG{PIPE} = sub { die "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)" };
+sub daemonize {
+  chdir('/');
+  umask 0;
+  my $pid;
+  defined($pid = fork) or die "Can't fork: $!";
+  if ($pid) {
+    if ($pidfile) {
+      open(PFILE, '>', $pidfile);
+      print PFILE $pid;
+      close (PFILE);
+    } else {
+      printf ("xCATd starting as PID $pid \n");
+    }
+    exit;
+  }
+  open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
+  open STDOUT, '>/dev/null';
+  open STDERR, '>/dev/null';
+  $0='xcatd';
+  $progname = \$0;
+  setsid or die "Can't start new session";
+}
+  
+my %cmd_handlers;
+sub do_installm_service { 
+  #This function servers as a handler for messages from installing nodes
+  my $socket = IO::Socket::INET->new(LocalPort=>$sport,
+                                     Proto    => 'tcp',
+                                     ReuseAddr => 1,
+                                     Listen => 64);
+  unless ($socket) {
+    syslog("local1|err","xcatd unable to open install monitor services on $sport");
+    die;
+  }
+  until ($quit) {
+    $SIG{ALRM} = sub { die "XCATTIMEOUT"; }; 
+    my $conn;
+    next unless $conn = $socket->accept;
+    my $client = gethostbyaddr(inet_aton($conn->peerhost),AF_INET);
+    $client =~ s/\..*//;
+    my $node;
+    ($node) = noderange($client); #ensure this is coming from a node IP at least
+    unless ($node) {  #Means the source isn't a valid deal...
+      close($conn);
+      next;
+    }
+    eval {
+      alarm(2);
+      print $conn "ready\n";
+      while (my $text = <$conn>) {
+        alarm(0);
+        print $conn "done\n";
+        $text =~ s/\r//g;
+        if ($text =~ /next/) {
+          my %request = (
+            command => [ 'nodeset' ],
+            node => [ $node ],
+            arg => [ 'next' ],
+            );
+          close($conn);
+          my $pid=fork();
+          unless ($pid) { #fork off the nodeset and potential slowness
+            plugin_command(\%request,undef,\&convey_response);
+            exit(0);
+          }
+        }
+        alarm(2);
+      }
+      alarm(0);
+    };
+    if ($@) {
+      if ($@ =~ /XCATTIMEOUT/) {
+        syslog("local1|err","xcatd installmonitor timed out talking to $node");
+      } else {
+        syslog("local1|err","xcatd: possible BUG encountered by xCAT install monitor service: ".$@);
+      }
+    }
+  }
+}
+    
+
+sub do_udp_service { #This function opens up a UDP port
+  #It will do similar to the standard service, except:
+  #-Obviously, unencrypted and messages are not guaranteed
+  #-For that reason, more often than not plugins designed with
+  #-this method will not expect to have a callback
+  #Also, this throttles to handle one message at a time, so no forking either
+  #Explicitly, to handle whatever operations nodes periodically send during discover state
+  #Could be used for heartbeating and such as desired
+  my $socket = IO::Socket::INET->new(LocalPort => $port,
+                                     Proto     => 'udp');
+  openlog("xCAT UDP",'','local1');
+  unless ($socket) {
+    syslog("err","xCAT UDP service unable to open port $port: $!");
+    closelog();
+    die "Unable to start UDP on $port";
+  }
+  my $data;
+  my $part;
+  my $sport;
+  my $client;
+  my $peerhost;
+  until ($quit) {
+    eval { while ($part = $socket->recv($data,1500)) {
+        ($sport,$client) = sockaddr_in($part);
+        $peerhost=gethostbyaddr($client,AF_INET)."\n";
+        my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
+        if ($req and $req->{command} and ($req->{command}->[0] eq "findme")) {
+          $req->{'!xcat_clienthost'}=gethostbyaddr($client,AF_INET)."\n";
+          $req->{'!xcat_clientip'}=inet_ntoa($client);
+          $req->{'!xcat_clientport'}=$sport;
+          if (defined($cmd_handlers{"findme"})) {
+            plugin_command($req,undef,\&convey_response);
+          }
+        }
+        if ($quit) { last; }
+      }
+    };
+    if ($@) {
+      syslog("local1|err","xcatd: possible BUG encountered by xCAT UDP service: ".$@);
+    }
+  }
+}
+
+
+
+sub scan_plugins {
+  my @plugins=glob($plugins_dir."/*.pm");
+  foreach (@plugins) {
+    /.*\/([^\/]*).pm$/;
+    my $modname = $1;
+    require "$_";
+    no strict 'refs';
+    my $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
+    foreach (keys %$cmd_adds) {
+      my $value = $_;
+      if (defined($cmd_handlers{$_})) {
+        my $add=1;
+        #This next bit of code iterates through the handlers.
+        #If the value doesn't contain an equal, and has an equivalent entry added by 
+        # another plugin already, don't add (otherwise would hit the DB multiple times)
+        # a better idea, restructure the cmd_handlers as a multi-level hash
+        # prove out this idea real quick before doing that
+        foreach (@{$cmd_handlers{$_}}) {
+          if (($_->[1] eq $cmd_adds->{$value}) and (($cmd_adds->{$value} !~ /=/) or ($_->[0] eq $modname))) {
+            $add = 0;
+          }
+        }
+        if ($add) { push @{$cmd_handlers{$_}},[$modname,$cmd_adds->{$_}]; }
+        #die "Conflicting handler information from $modname";
+      } else {
+        $cmd_handlers{$_} = [ [$modname,$cmd_adds->{$_}] ];
+      }
+    }
+  }
+}
+scan_plugins;
+daemonize;
+$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {} };
+$SIG{TERM} = $SIG{INT} = sub { printf("Asked to quit...\n"); $quit++ };
+  
+my $pid = fork;
+defined $pid or die "Unable to fork for UDP/TCP";
+unless ($pid) {
+  $$progname="xcatd: UDP listener";
+  do_udp_service;
+  exit(0);
+}
+$pid = fork;
+defined $pid or die "Unable to fork installmonitor";
+unless ($pid) {
+  $$progname="xcatd: install monitor";
+  do_installm_service;
+  exit(0);
+}
+$$progname="xcatd: SSL listener";
+openlog("xCAT SSL","","local1");
+my $listener = IO::Socket::SSL->new(
+    LocalPort => $port,
+    Listen => 64,
+    Reuse => 1,
+    SSL_key_file=>$xcatdir."/cert/server-key.pem",
+    SSL_cert_file=>$xcatdir."/cert/server-cert.pem",
+    SSL_ca_file=>$xcatdir."/cert/ca.pem",
+    SSL_verify_mode=> 1
+    );
+
+unless ($listener) {
+  kill $pid;
+  syslog("err","xCAT service unable to open SSL services on $port: $!");
+  closelog();
+  die "ERROR:Unable to start xCAT service on port $port.";
+}
+closelog();
+
+#setup signal in NotifHandler so that the cache can be updated
+xCAT::NotifHandler::setup($$);
+
+my $peername;
+until ($quit) {
+  next unless my $connection=$listener->accept;
+  my $child = fork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
+  
+  unless (defined $child) {
+    die "xCATd cannot fork";
+  }
+
+  if ($child == 0) {
+    $listener->close;
+    my $peerhost=undef;
+    my $peer=$connection->peer_certificate("owner");
+    if ($peer) {
+      $peer =~ m/CN=([^\/]*)/;
+      $peername = $1;
+    } else {
+      $peername=undef;
+    }
+    my ($tmp) = $sitetab->getAttribs({'key'=>'domain'},'value');
+    if (defined $tmp->{value}) {
+        $domain = $tmp->{value};
+    }
+    $peerhost = gethostbyaddr(inet_aton($connection->peerhost),AF_INET);
+    $peerhost =~ s/\.$domain\.*$//;
+    $peerhost =~ s/-eth\d*$//;
+    $peerhost =~ s/-myri\d*$//;
+    $peerhost =~ s/-ib\d*$//;
+    #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
+    $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost);
+    service_connection($connection,$peername,$peerhost);
+    exit(0);
+  }
+  $connection->close(SSL_no_shutdown => 1); #Without no shutdown, you can guess what the client ends up thinking..
+}
+$listener->close;
+
+
+my $parent_fd;
+my %resps;
+
+
+
+
+
+sub plugin_command {
+  my $req = shift;
+  my $sock = shift;
+  my $callback = shift;
+  my %handler_hash;
+  use xCAT::NodeRange;
+  $Main::resps={};  
+  my @nodes;
+  if ($req->{node}) {
+    @nodes = @{$req->{node}};
+  } elsif ($req->{noderange}) {
+    @nodes = noderange($req->{noderange}->[0]);
+    if (nodesmissed) {
+      my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',nodesmissed)};
+      if ($sock) {
+        print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
+      }
+      return ($rsp);
+    }
+  }
+  if (@nodes) { $req->{node} = \@nodes; }
+  if (defined($cmd_handlers{$req->{command}->[0]})) {
+    my $hdlspec;
+    foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
+      $hdlspec =$_->[1];
+      my $ownmod = $_->[0];
+      if ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
+        my $table;
+        my $cols;
+        ($table,$cols) = split(/:/,$hdlspec);
+        my @colmns=split(/,/,$cols);
+        my @columns;
+        my $hdlrtable=xCAT::Table->new($table);
+        unless ($hdlrtable) {
+          #TODO: proper error handling
+        }
+        my $node;
+        my $colvals = {};
+        foreach my $colu (@colmns) {
+          if ($colu =~ /=/) { #a value redirect to a pattern/specific name
+            my $coln; my $colv;
+            ($coln,$colv) = split(/=/,$colu,2);
+            $colvals->{$coln} = $colv;
+            push (@columns,$coln);
+          } else {
+            push (@columns,$colu);
+          }
+        }
+            
+
+        unless (@nodes) { #register the plugin in the event of usage
+          $handler_hash{$ownmod} = 1;
+        }
+        foreach $node (@nodes) {
+          my $attribs = $hdlrtable->getNodeAttribs($node,\@columns);
+          unless (defined($attribs)) { next; } #TODO: This really ought to craft an unsupported response for this request
+          foreach (@columns) {
+            my $col=$_;
+            if (defined($attribs->{$col})) {
+              if ($colvals->{$col}) { #A pattern match style request.
+                if ($attribs->{$col} =~ /$colvals->{$col}/) {
+                  $handler_hash{$ownmod}->{$node} = 1;
+                  last;
+                }
+              } else {
+                $handler_hash{$attribs->{$col}}->{$node} = 1;
+                last;
+              }
+            }
+          }
+        }
+      } else {
+        unless (@nodes) {
+          $handler_hash{$hdlspec} = 1;
+        }
+        foreach (@nodes) { #Specified a specific plugin, not a table lookup
+          $handler_hash{$hdlspec}->{$_} = 1;
+        }
+      }
+    }
+  } else {
+    return 1;  #TODO: error back that request has no known plugin for it
+  }
+  my $children=0;
+  $SIG{CHLD} = sub {while (waitpid(-1, WNOHANG) > 0) { $children--; } };
+  my $check_fds;
+  if ($sock) { 
+    $check_fds = new IO::Select;
+  }  
+  foreach (keys %handler_hash) {
+    my $modname = $_;
+    if (-r $plugins_dir."/".$modname.".pm") {
+      require $plugins_dir."/".$modname.".pm";
+      $children++;
+      my $pfd; #will be referenced for inter-process messaging.
+      my $child;
+      if ($sock) { #If $sock not passed in, don't fork..
+        socketpair($pfd, $parent_fd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+        #pipe($pfd,$cfd);
+        $parent_fd->autoflush(1);
+        $pfd->autoflush(1);
+        $child = fork;
+      } else {
+        $child = 0;
+      }
+      unless (defined $child) { die "Fork failed"; }
+      if ($child == 0) {
+        my $oldprogname=$$progname;
+        $$progname=$oldprogname.": $modname instance";
+        if ($sock) { close $pfd; }
+        unless ($handler_hash{$_} == 1) {
+          my @nodes = sort {($a =~ /(\d+)/)[0] <=> ($b =~ /(\d+)/)[0] || $a cmp $b } (keys %{$handler_hash{$_}});
+          $req->{node}=\@nodes;
+        }
+        no strict  "refs";
+        ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+        $$progname=$oldprogname;
+        if ($sock) { 
+          close($parent_fd);
+          exit(0);
+        } 
+      } else {
+        close $parent_fd;
+        $check_fds->add($pfd);
+      }
+    }
+  }
+  unless ($sock) { return $Main::resps };
+  while ($children > 0) {
+    relay_fds($check_fds,$sock);
+  }
+  #while (relay_fds($check_fds,$sock)) {}
+  my %done;
+  $done{serverdone} = {};
+  if ($req->{transid}) {
+    $done{transid}=$req->{transid}->[0];
+  }
+  if ($sock) { print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); }
+}
+
+
+sub do_request {
+  my $req = shift;
+  my $second = shift;
+  my $rsphandler = \&build_response;
+  my $sock = undef;
+  if ($second) {
+    if (ref($second) eq "CODE") {
+      $rsphandler = $second;
+    } elsif (ref($second) eq "GLOB") {
+      $sock = $second;
+    }
+  }
+
+  #my $sock = shift; #If no sock, will return a response hash
+  if ($cmd_handlers{$req->{command}->[0]}) {
+     return plugin_command($req,$sock,$rsphandler);
+  } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
+     my @nodes = noderange($req->{noderange}->[0]);
+     my %resp;
+     if (nodesmissed) {
+       $resp{warning}="Invalid nodes in noderange:".join ',',nodesmissed;
+     }
+     $resp{serverdone} = {};
+     @{$resp{node}}=@nodes;
+     if ($req->{transid}) {
+       $resp{transid}=$req->{transid}->[0];
+     }
+     if ($sock) { 
+       print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1); 
+     } else {
+       return (\%resp);
+     }
+  } else {
+     my %resp=(error=>"Unsupported request");
+     $resp{serverdone} = {};
+     if ($req->{transid}) {
+       $resp{transid}=$req->{transid}->[0];
+     }
+     if ($sock) { 
+       print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
+     } else {
+       return (\%resp);
+     }
+  }
+}
+
+sub convey_response {
+  my $resp=shift;
+  #TODO: This is where the following will/may happen:
+  #-Track transaction id
+  #-Save output for deferred commands
+  unless ($parent_fd) {
+    build_response($resp);
+    return;
+  }
+  print $parent_fd XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
+  <$parent_fd>; #Block until parent acks data
+  #print "woo";
+#  KeyAttr => [], NoAttr => 1)
+}
+
+sub build_response {
+# Handle responses from do_request calls made directly from a plugin
+#   Merge this response into the full response hash.  We'll collect all
+#   the responses and ship it back on the return to the plugin.
+#   Note:  Need to create a new "deep clone" copy of each response structure
+#      otherwise the next call will overwrite the reference we pushed on
+#      the response array
+  my $resp = shift;
+  foreach (keys %$resp) {
+    my $subresp = dclone($resp->{$_});
+    push (@{$Main::resps->{$_}}, @{$subresp});
+  }
+}
+
+sub service_connection {
+  my $sock = shift;
+  my $peername = shift;
+  my $peerhost = shift;
+  my $peerport = $sock->peerport;
+  my %tables=();
+  #some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
+  # -Well, minimally, ignore requests if requesting node is not in spconfig mode (stage3)
+  # -Option to generate a random password per 'getipmi' request.  This reduces the exposure to a D.O.S. hopefully
+  #Give only 15 seconds of silence allowed or terminate connection.  Using alarm since we are in thread-unsafe world anyway
+  my $timedout = 0;
+
+  $SIG{ALRM} = sub { $timedout = 1; die; }; 
+  eval {
+    my $request;
+    my $req=undef;
+    alarm(15);
+    while (<$sock>) {
+      alarm(0);
+      $request .= $_;
+      #$req = eval { XMLin($request, ForceArray => [ 'attribute' , 'attributepair' ]) };
+      if ($request =~ m/<\/xcatrequest>/) {
+        $req = eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
+        #we have a full request..
+        #printf $request."\n";
+        $request="";
+        if (validate($peername,$peerhost,$req)) {
+          $req->{'!xcat_authname'} = [$peername];
+          $req->{'!xcat_clienthost'} = [$peerhost];
+          $req->{'!xcat_clientport'}= [$peerport];
+          $$progname="xCATd SSL: ".$req->{command}->[0]." for ".($peername ? $peername ."@".$peerhost : $peerhost);
+          if ($cmd_handlers{$req->{command}->[0]}) {
+            return plugin_command($req,$sock,\&convey_response);
+          } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
+            my @nodes = noderange($req->{noderange}->[0]);
+            my %resp;
+            if (nodesmissed) {
+              $resp{warning}="Invalid nodes in noderange:".join ',',nodesmissed;
+            }
+            $resp{serverdone} = {};
+            @{$resp{node}}=@nodes;
+            if ($req->{transid}) {
+              $resp{transid}=$req->{transid}->[0];
+            }
+            print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
+            next;
+          } else {
+            my %resp=(error=>"Unsupported request");
+            $resp{serverdone} = {};
+            if ($req->{transid}) {
+              $resp{transid}=$req->{transid}->[0];
+            }
+            print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
+            next;
+          }
+        } else { 
+          my %resp=(error=>"Permission denied for request");
+          $resp{serverdone} = {};
+          if ($req->{transid}) {
+            $resp{transid}=$req->{transid}->[0];
+          }
+          my $response=XMLout(\%resp,RootName =>'xcatresponse',NoAttr => 1);
+          print $sock $response;
+          next;
+        }
+      }
+      alarm(15);
+    } 
+  };
+  if ($@) { # The eval statement caught a program bug..
+    unless ($@ =~ /^SIGPIPE/) {
+        syslog("local1|err","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
+    } else {
+        syslog("local1|info","xcatd: Unexpected client disconnect");
+    }
+  }
+  alarm(0);
+  foreach (keys %tables) {
+    $tables{$_}->commit;
+  }
+  $sock->close;
+  if ($timedout == 1) {
+    printf ("Client timeout");
+  }
+}
+
+sub relay_fds { #Relays file descriptors from pipes to children to the SSL socket
+  my $fds = shift;
+  my $sock = shift;
+  unless ($sock) { return 0; }
+  my $collate = ( scalar @_ > 0 ? shift  : 0);
+  my @readyset = $fds->can_read(1);
+  my $rfh;
+  my $rc = @readyset;
+  my $text;
+  foreach $rfh (@readyset) { #go through each child, extract a complete, atomic message
+    my $line;
+    while ($line = <$rfh>) { #Will break on complete </xcatresponse> messages, avoid interleave
+      print $sock $line; 
+      if ($line =~ /<\/xcatresponse>/) {
+        last;
+      }
+    }                       
+    if ($line) { 
+      print $rfh "fin\n"; #Notify convey_response message done
+    } else {
+      $fds->remove($rfh);      
+      close($rfh);             
+    }
+  }
+  return $rc;
+}
+
+sub validate {
+  #BIG TODO, make this do something meaningful
+  #here is where we check if  $peername is allowed to do $request.  $peername if set signifies client has a 
+  #cert that the xCAT CA accepted.  This will be a policy table with $peername as key
+  #things like 'stage2/stage3' and install images will have no client certificate.
+  #A client key for something that a third party could easily tftp down themselves means nothing
+  #however, privacy between the nodes can be maintained, and $peerhost will be checked just like 1.2.0.
+# returns 1 if policy engine allows the action, 0 if denied
+  my $peername=shift;
+  my $peerhost=shift;
+  my $request=shift;
+  my $policytable = xCAT::Table->new('policy');
+  unless ($policytable) {
+    syslog("err","Unable to open policy data, denying");
+    return 0;
+  }
+  my @policies = $policytable->getTable;
+  my $rule;
+  foreach $rule (@policies) {
+    if ($rule->{name} and $rule->{name} ne '*') {
+      #TODO: more complex matching (lists, wildcards)
+      next unless ($peername eq $rule->{name});
+    }
+    if ($rule->{time} and $rule->{time} ne '*') {
+      #TODO: time ranges
+    }
+    if ($rule->{host} and $rule->{host} ne '*') {
+      #TODO: more complex matching (lists, noderanges?, wildcards)
+      next unless ($peerhost eq $rule->{host});
+    }
+    if ($rule->{commands} and $rule->{commands} ne '*') {
+      #TODO: syntax for multiple commands
+      next unless ($request->{command}->[0] eq $rule->{commands});
+    }
+    if ($rule->{parameters} and $rule->{parameters} ne '*') {
+      next; #TODO: not ignore this field
+    }
+    if ($rule->{noderange} and $rule->{noderange} ne '*') {
+      next; #TODO: not ignore this field
+    }
+    # If we are still in, that means this rule is the first match and dictates behavior.
+    if ($rule->{rule}) {
+      if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
+        my $logst = "xCAT: Allowing ".$request->{command}->[0];
+        if ($peername) { $logst .= " for " . $peername };
+        syslog("authpriv|info",$logst);
+        return 1;
+      } else {
+        my $logst = "xCAT: Denying ".$request->{command}->[0];
+        if ($peername) { $logst .= " for " . $peername };
+        syslog("authpriv|info",$logst);
+        return 0;
+      }
+    } else { #Shouldn't be possible....
+      syslog("err","Impossible line in xcatd reached");
+      return 0;
+    }
+  }
+  #Reached end of policy table, reject by default.
+  syslog("err","Request matched no policy rule: ".$request->{command}->[0]);
+  return 0;
+}
+

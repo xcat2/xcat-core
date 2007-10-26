@@ -1,0 +1,19 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#Stunnel init for xcat:
+XCATDEST=""
+for parm in `cat /proc/cmdline`; do
+	key=`echo $parm|awk -F= '{print $1}'`
+	if [ "$key" == "xcatd" ]; then
+		XCATDEST=`echo $parm|awk -F= '{print $2}'`
+	fi
+done
+mkdir -p /etc/stunnel
+echo 'client=yes' > /etc/stunnel/stunnel.conf
+echo 'foreground=yes' >> /etc/stunnel/stunnel.conf
+echo 'verify=0' >> /etc/stunnel/stunnel.conf
+echo '[xcatds]' >> /etc/stunnel/stunnel.conf
+echo 'accept=301' >> /etc/stunnel/stunnel.conf
+echo 'connect='$XCATDEST >> /etc/stunnel/stunnel.conf
+mkdir -p /usr/var/run/stunnel
+stunnel &

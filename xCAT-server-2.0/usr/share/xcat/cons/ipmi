@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use xCAT::Table;
+my $dba;
+my $ipmitab = xCAT::Table->new('ipmi');
+unless ($ipmitab) { sleep 5; die "Unable to open IPMI table"; }
+my $passtab = xCAT::Table->new('passwd');
+my $username = 'USERID';
+my $password = 'PASSW0RD';
+my $node = $ARGV[0];
+my $bmc = $node;
+if ($passtab) {
+  ($dba) = $passtab->getAttribs({key=>'ipmi'},qw(username password));
+  if ($dba) {
+    if ($dba->{username}) { $username = $dba->{username}; }
+    if ($dba->{password}) { $password = $dba->{password}; }
+  }
+}
+
+$dba = $ipmitab->getNodeAttribs($ARGV[0],[qw(bmc username password)]);
+if ($dba) {
+  if ($dba->{bmc}) { $bmc = $dba->{bmc}; }
+  if ($dba->{username}) { $username = $dba->{username}; }
+  if ($dba->{password}) { $password = $dba->{password}; }
+}
+system "ipmitool -I lanplus -U $username -P $password -H $bmc sol deactivate"; #Stop any active session
+exec "ipmitool -I lanplus -U $username -P $password -H $bmc sol activate";
+  
+

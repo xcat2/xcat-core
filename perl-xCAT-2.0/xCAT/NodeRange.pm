@@ -1,0 +1,325 @@
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+package xCAT::NodeRange;
+use xCAT::Table;
+use Data::Dumper;
+require Exporter;
+use strict;
+
+#Perl implementation of noderange
+our @ISA = qw(Exporter);
+our @EXPORT = qw(noderange nodesmissed);
+
+my $missingnodes=[];
+my $nodelist; #=xCAT::Table->new('nodelist',-create =>1);
+my $nodeprefix = "node";
+
+
+sub subnodes (\@@) {
+    #Subtract set of nodes from the first list
+    my $nodes = shift;
+    my $node;
+    foreach $node (@_) {
+        @$nodes = (grep(!/^$node$/,@$nodes));
+    }
+}
+sub nodesmissed {
+  return @$missingnodes;
+}
+
+sub expandatom {
+	my $atom = shift;
+	my $verify = (scalar(@_) == 1 ? shift : 1);
+        my @nodes= ();
+	my $nprefix=(defined ($ENV{'XCAT_NODE_PREFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : 'node');
+	my $nsuffix=(defined ($ENV{'XCAT_NODE_SUFFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : '');
+	if ($nodelist->getAttribs({node=>$atom},'node')) {
+		#The atom is a plain old nodename
+		return ($atom);
+	}
+    if ($atom =~ /^\(.*\)$/) {
+      $atom =~ s/^\((.*)\)$/$1/;
+      return noderange($atom);
+    }
+	foreach($nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'node','groups')) {
+		my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
+		if (grep { $_ eq "$atom" } @groups ) {
+			push @nodes,$_->{node};
+		}
+	}
+	if ($atom =~ m/^[0-9]+\z/) {
+		my $nodename=$nprefix.$atom.$nsuffix;
+		return expandatom($nodename,$verify);
+	}
+	my $nodelen=@nodes;
+	if ($nodelen > 0) {
+		return @nodes;
+	}
+	if ($atom =~ m/(.*)\[(.*)\](.*)/) { #bracket range
+	#for the time being, we are only going to consider one [] per atom
+	#xcat 1.2 does no better
+		my @subelems = split(/([\,\-\:])/,$2);
+		my $subrange="";
+		while (my $subelem = shift @subelems) {
+			my $subop=shift @subelems;
+			$subrange=$subrange."$1$subelem$3$subop";
+		}
+		foreach (split /,/,$subrange) {
+			my @newnodes=expandatom($_,$verify);
+			@nodes=(@nodes,@newnodes);
+		}
+		return @nodes;
+	}
+	if ($atom =~ m/\+/) {#process + operator
+		$atom =~ m/^([^0-9]*)([0-9]+)([^\+]*)\+([0-9]+)/;
+		my $pref=$1;
+		my $startnum=$2;
+		my $suf=$3;
+		my $end=$4+$startnum;
+        my $endnum = sprintf("%d",$end);
+        if (length ($startnum) > length ($endnum)) {
+          $endnum = sprintf("%0".length($startnum)."d",$end);
+        }
+		if (($pref eq "") && ($suf eq "")) {
+			$pref=$nprefix;
+			$suf=$nsuffix;
+		}
+		foreach ("$startnum".."$endnum") {
+			my @addnodes=expandatom($pref.$_.$suf,$verify);
+			@nodes=(@nodes,@addnodes);
+		}
+		return (@nodes);
+	}
+    if ($atom =~ m/[-:]/) {#process - range operator
+      my $left;
+      my $right;
+      if ($atom =~ m/:/) {
+        ($left,$right)=split /:/,$atom;
+      } else {
+        my $count= ($atom =~ tr/-//);
+        if (($count % 2)==0) { #can't understand even numbers of - in range context
+          if ($verify) {
+            push @$missingnodes,$atom;
+            return (); 
+          } else { #but we might not really be in range context, if noverify
+            return  ($atom);
+          }
+        }
+        my $expr="([^-]+?".("-[^-]*"x($count/2)).")-(.*)";
+        $atom =~ m/$expr/;
+        $left=$1;
+        $right=$2;
+      }
+      if ($left eq $right) { #if they said node1-node1 for some strange reason
+		return expandatom($left,$verify);
+      }
+      my @leftarr=split(/(\d+)/,$left);
+      my @rightarr=split(/(\d+)/,$right);
+      if (scalar(@leftarr) != scalar(@rightarr)) { #Mismatch formatting..
+        if ($verify) {
+          push @$missingnodes,$atom;
+          return (); #mismatched range, bail.
+        } else { #Not in verify mode, just have to guess it's meant to be a nodename
+          return  ($atom);
+        }
+      }
+      my $prefix = ""; 
+      my $suffix = "";
+      foreach (0..$#leftarr) {
+        my $idx = $_;
+        if ($leftarr[$idx] =~ /^\d+$/ and $rightarr[$idx] =~ /^\d+$/) { #pure numeric component
+          if ($leftarr[$idx] ne $rightarr[$idx]) { #We have found the iterator (only supporting one for now)
+            my $prefix = join('',@leftarr[0..($idx-1)]); #Make a prefix of the pre-validated parts
+            my $luffix; #However, the remainder must still be validated to be the same
+            my $ruffix;
+            if ($idx eq $#leftarr) { 
+              $luffix="";
+              $ruffix="";
+            } else {
+              $ruffix = join('',@rightarr[($idx+1)..$#rightarr]);
+              $luffix = join('',@leftarr[($idx+1)..$#leftarr]);
+            }
+            if ($luffix ne $ruffix) { #the suffixes mismatched..
+              if ($verify) {
+                push @$missingnodes,$atom;
+                return ();
+              } else {
+                return ($atom);
+              }
+            }
+            foreach ($leftarr[$idx]..$rightarr[$idx]) {
+              my @addnodes=expandatom($prefix.$_.$luffix,$verify);
+              @nodes=(@nodes,@addnodes);
+            }
+            return (@nodes); #the return has been built, return, exiting loop and all
+          }
+        } elsif ($leftarr[$idx] ne $rightarr[$idx]) {
+          if ($verify) {
+            push @$missingnodes,$atom;
+            return ();
+          } else {
+            return ($atom);
+          }
+        } 
+        $prefix .= $leftarr[$idx]; #If here, it means that the pieces were the same, but more to come
+      }
+      #I cannot conceive how the code could possibly be here, but whatever it is, it must be questionable
+      if ($verify) {
+        push @$missingnodes,$atom;
+        return (); #mismatched range, bail.
+      } else { #Not in verify mode, just have to guess it's meant to be a nodename
+        return  ($atom);
+      }
+	} 
+		
+	
+	if ($atom =~ m/^\//) { #A regex
+        unless ($verify) { #If not in verify mode, regex makes zero possible sense
+          return ($atom);
+        }
+		#TODO: check against all groups
+		$atom = substr($atom,1);
+		foreach ($nodelist->getAllAttribs('node')) {
+			if ($_->{node} =~ m/^${atom}$/) {
+				push(@nodes,$_->{node});
+			}
+		}
+		return(@nodes);
+	} 
+    push @$missingnodes,$atom;
+	if ($verify) {
+		return ();
+	} else {
+		return ($atom);
+	}
+}
+
+sub noderange {
+  $missingnodes=[];
+  #We for now just do left to right operations
+  #TODO: Parentheses... A parenthetical group to the right of an intersection makes the obvious
+  #answer not work
+  my $range=shift;
+  my $verify = (scalar(@_) == 1 ? shift : 1);
+  $nodelist =xCAT::Table->new('nodelist',-create =>1);
+  my %nodes = ();
+  my %delnodes = ();
+  my $op = ",";
+  #my @elems = split(/(,(?![^[]*?])|@)/,$range); #, or @ but ignore , within []
+  my @elems = split(/(,(?![^[]*?])(?![^\(]*?\))|@(?![^\(]*?\)))/,$range); #, or @ but ignore , within []
+
+  while (my $atom = shift @elems) {
+    if ($atom =~ /^-/) {
+      $atom = substr($atom,1);
+      $op = $op."-";
+    }
+    if ($atom =~ /^\^(.*)$/) {
+      open(NRF,$1);
+      while (<NRF>) {
+        my $line=$_;
+        unless ($line =~ m/^[\^#]/) {
+          $line =~ m/^([^:	 ]*)/;
+          my $newrange = $1;
+          chomp($newrange);
+          my @filenodes = noderange($newrange);
+          foreach (@filenodes) {
+            $nodes{$_}=1;
+          }
+        }
+      }
+      close(NRF);
+      next;
+    }
+    my %newset = map { $_ =>1 } expandatom($atom,$verify);
+    if ($op =~ /@/) {
+      foreach (keys %nodes) {
+        unless ($newset{$_}) {
+          delete $nodes{$_};
+        }
+      }
+    } elsif ($op =~ /,-/) {
+		foreach (keys %newset) {
+			$delnodes{$_}=1; #delay removal to end
+		}
+	} else {
+		foreach (keys %newset) {
+			$nodes{$_}=1;
+		}
+	}
+	$op = shift @elems;
+    }
+    foreach (keys %nodes) {
+		if ($delnodes{$_}) {
+			delete $nodes{$_};
+		}
+    }
+    undef $nodelist;
+    return sort (keys %nodes);
+    
+}
+
+
+1;
+
+=head1 NAME
+
+xCAT::NodeRange - Perl module for xCAT noderange expansion
+
+=head1 SYNOPSIS
+
+	use xCAT::NodeRange;
+	my @nodes=noderange("storage@rack1,node[1-200],^/tmp/nodelist,node300-node400,node401+10,500-550");
+
+=head1 DESCRIPTION
+
+noderange interprets xCAT noderange formatted strings and returns a list of xCAT nodelists.  The following two operations are supported on elements, and interpreted left to right:
+
+, union next element with everything to the left.
+
+@ take intersection of element to the right with everything on the left (i.e. mask out anything to the left not belonging to what is described to the right)
+
+Each element can be a number of things:
+
+A node name, i.e.:
+
+=item * node1
+
+A hyphenated node range (only one group of numbers may differ between the left and right hand side, and those numbers will increment in a base 10 fashion):
+
+node1-node200 node1-compute-node200-compute
+node1:node200 node1-compute:node200-compute
+
+A noderange denoted by brackets:
+
+node[1-200] node[001-200]
+
+A regular expression describing the noderange:
+
+/d(1.?.?|200)
+
+A node plus offset (this increments the first number found in nodename):
+
+node1+199
+
+And most of the above substituting groupnames.  
+3C
+3C
+
+NodeRange tries to be intelligent about detecting padding, so you can:
+node001-node200
+And it will increment according to the pattern.
+
+
+=head1 AUTHOR
+
+Jarrod Johnson (jbjohnso@us.ibm.com)
+
+=head1 COPYRIGHT
+
+Copyright 2007 IBM Corp.  All rights reserved.
+
+TODO: What license is this?
+
+
+
+
+=cut

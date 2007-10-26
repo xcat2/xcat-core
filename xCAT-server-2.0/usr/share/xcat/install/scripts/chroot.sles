@@ -1,0 +1,44 @@
+      <chroot-scripts config:type="list">
+        <script>
+          <filename>boot.sh</filename>
+          <interpreter>shell</interpreter>
+          <source>
+
+<![CDATA[
+#!/bin/sh
+
+AWK=`find / -name awk | head -1`
+#old awk /mounts/instsys/bin/awk -f
+
+cat >/tmp/updateflag.awk <<EOF
+#!$AWK -f
+
+BEGIN {
+	xcatdport = #TABLE:site:key=xcatiport:value#
+	xcatdhost = "#XCATVAR:XCATMASTER#"
+
+	ns = "/inet/tcp/0/" xcatdhost "/" xcatdport
+
+	while(1) {
+		if((ns |& getline) > 0)
+			print \$0
+
+		if(\$0 == "ready")
+			print "next" |& ns
+		if(\$0 == "done")
+			break
+	}
+
+	close(ns)
+
+	exit 0
+}
+EOF
+
+chmod 755 /tmp/updateflag.awk
+/tmp/updateflag.awk
+]]>
+
+          </source>
+        </script>
+      </chroot-scripts>

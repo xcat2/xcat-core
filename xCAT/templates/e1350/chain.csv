@@ -1,0 +1,3 @@
+#node,currstate,currchain,chain,ondiscover,comments,disable
+"ipmi",,,"runcmd=bmcsetup,standby","nodediscover",,
+"blade",,,"standby","nodediscover",,

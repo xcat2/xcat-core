@@ -1,0 +1,18 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+. $XCATROOT/lib/functions
+
+RESNAME=$(whatismyres2 $NODE)
+
+NFS=$(tabdb $NODERESTAB $RESNAME $noderes_nfs_install)
+POSTDIR=post
+POST_DIR=$(tabdb $NODERESTAB $RESNAME $noderes_install_dir)/$POSTDIR
+
+logger -t xcat "Install: mounting /post"
+mkdir /post 2>&1 | logger -t xcat
+mount -r -o nolock $NFS:$POST_DIR /post 2>&1 | logger -t xcat
+

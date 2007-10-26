@@ -1,0 +1,172 @@
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+package xCAT_plugin::pxe;
+use Data::Dumper;
+use Sys::Syslog;
+use Socket;
+
+my $request;
+my $callback;
+my $dhcpconf = "/etc/dhcpd.conf";
+my $tftpdir = "/tftpboot";
+#my $dhcpver = 3;
+
+my %usage = (
+    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup]",
+);
+sub handled_commands {
+  return {
+    nodeset => "noderes:netboot"
+  }
+}
+
+sub check_dhcp {
+  #TODO: omapi magic to do things right
+  my $node = shift;
+  my $dhcpfile;
+  open ($dhcpfile,$dhcpconf);
+  while (<$dhcpfile>) {
+    if (/host $node\b/) {
+      close $dhcpfile;
+      return 1;
+    }
+  }
+  close $dhcpfile;
+  return 0;
+}
+
+sub getstate {
+  my $node = shift;
+  if (check_dhcp($node)) {
+    if (-r $tftpdir . "/pxelinux.cfg/".$node) {
+      my $fhand;
+      open ($fhand,$tftpdir . "/pxelinux.cfg/".$node);
+      my $headline = <$fhand>;
+      close $fhand;
+      $headline =~ s/^#//;
+      chomp($headline);
+      return $headline;
+    } else {
+      return "boot";
+    }
+  } else {
+    return "discover";
+  }
+}
+
+sub setstate {
+=pod
+
+  This function will manipulate the pxelinux.cfg structure to match what the noderes/chain tables indicate the node should be booting.
+
+=cut
+  my $node = shift;
+  my $restab = xCAT::Table->new('noderes');
+  my $kern = $restab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
+  my $pcfg;
+  open($pcfg,'>',$tftpdir."/pxelinux.cfg/".$node);
+  my $chaintab = xCAT::Table->new('chain');
+  my $cref=$chaintab->getNodeAttribs($node,['currstate']);
+  if ($cref->{currstate}) {
+    print $pcfg "#".$cref->{currstate}."\n";
+  }
+  print $pcfg "DEFAULT xCAT\n";
+  print $pcfg "LABEL xCAT\n";
+  my $chaintab = xCAT::Table->new('chain');
+  my $stref = $chaintab->getNodeAttribs($node,['currstate']);
+  if ($stref and $stref->{currstate} eq "boot") {
+    print $pcfg "LOCALBOOT 0\n";
+    close($pcfg);
+  } elsif ($kern and $kern->{kernel}) {
+    #It's time to set pxelinux for this node to boot the kernel..
+    print $pcfg " KERNEL ".$kern->{kernel}."\n";
+    if ($kern->{initrd} or $kern->{kcmdline}) {
+      print $pcfg " APPEND ";
+    }
+    if ($kern and $kern->{initrd}) {
+      print $pcfg "initrd=".$kern->{initrd}." ";
+    }
+    if ($kern and $kern->{kcmdline}) {
+      print $pcfg $kern->{kcmdline}."\n";
+    } else {
+      print $pcfg "\n";
+    }
+    close($pcfg);
+    my $inetn = inet_aton($node);
+    unless ($inetn) {
+     syslog("local1|err","xCAT unable to resolve IP for $node in pxe plugin");
+     return;
+    }
+  } else { #TODO: actually, should possibly default to xCAT image?
+    print $pcfg "LOCALBOOT 0\n";
+    close($pcfg);
+  }
+  my $ip = inet_ntoa(inet_aton($node));;
+  unless ($ip) {
+    syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+    return;
+  }
+  my @ipa=split(/\./,$ip);
+  my $pname = sprintf("%02X%02X%02X%02X",@ipa);
+  link($tftpdir."/pxelinux.cfg/".$node,$tftpdir."/pxelinux.cfg/".$pname);
+}
+  
+
+    
+my $errored = 0;
+sub pass_along { 
+    my $resp = shift;
+    $callback->($resp);
+    if ($resp and $resp->{errorcode} and $resp->{errorcode}->[0]) {
+        $errored=1;
+    }
+}
+
+
+
+
+
+sub process_request {
+  $request = shift;
+  $callback = shift;
+  my $sub_req = shift;
+  my @args;
+  my @nodes;
+  if (ref($request->{node})) {
+    @nodes = @{$request->{node}};
+  } else {
+    if ($request->{node}) { @nodes = ($request->{node}); }
+  }
+  unless (@nodes) {
+      if ($usage{$request->{command}->[0]}) {
+          $callback->({data=>$usage{$request->{command}->[0]}});
+      }
+      return;
+  }
+      
+  if (ref($request->{arg})) {
+    @args=@{$request->{arg}};
+  } else {
+    @args=($request->{arg});
+  }
+  unless ($args[0] eq 'stat' or $args[0] eq 'enact') {
+    $sub_req->({command=>['setdestiny'],
+           node=>\@nodes,
+         arg=>[$args[0]]},\&pass_along);
+  }
+  if ($errored) { return; }
+  foreach (@nodes) {
+    my %response;
+    $response{node}->[0]->{name}->[0]=$_;
+    if ($args[0] eq 'stat') {
+      $response{node}->[0]->{data}->[0]= getstate($_);
+      $callback->(\%response);
+    } elsif ($args[0] eq 'enact') {
+      setstate($_);
+    } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
+      setstate($_);
+    }
+  }
+}
+
+
+1;

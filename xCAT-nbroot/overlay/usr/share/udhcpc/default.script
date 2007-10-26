@@ -1,0 +1,26 @@
+#!/bin/sh
+case $1 in
+deconfig)
+	/sbin/ifconfig $interface up
+	/sbin/ifconfig $interface 0.0.0.0
+	;;
+bound|renew)
+	/sbin/ifconfig $interface $ip netmask $subnet
+        if [ -n "$router" ] ; then
+             echo "deleting routers"
+             while route del default gw 0.0.0.0 dev $interface ; do
+                :
+               done
+
+              for i in $router ; do
+               route add default gw $i dev $interface
+              done
+        fi
+        echo -n > /etc/resolv.conf
+        [ -n "$domain" ] && echo search $domain >> /etc/resolv.conf
+        for i in $dns ; do
+          echo adding dns $i
+          echo nameserver $i >> /etc/resolv.conf
+        done
+	;;
+esac

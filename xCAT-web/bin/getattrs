@@ -1,0 +1,71 @@
+#!/usr/bin/perl
+use strict;
+use Getopt::Long;
+
+$::XCATROOT = "";
+GetOptions('web' => \$::HTML,
+	   'h|help' => \$::HELP);
+
+if($::HELP){
+	print "$0 --help  prints this help message\n";
+	print "$0         prints attributes with nodes\n";
+	print "$0 --html  prints attributes with nodes with html parameters\n\n" ;
+	exit 0;
+}
+
+
+if(-f "/etc/sysconfig/xcat"){
+	$::XCATROOT=`awk -F= '{print \$2}' /etc/sysconfig/xcat`;
+	chomp($::XCATROOT);
+	if($::XCATROOT eq ""){
+		print "XCATROOT not defined in /etc/sysconfig/xcat!\n";
+		exit;
+	}
+}else{
+	print "file /etc/sysconfig/xcat doesn't exist\n";
+	exit;
+}
+#print "$::XCATROOT\n";
+my $f = "$::XCATROOT/etc/nodelist.tab";	
+unless(-f "$f"){
+	print "$f doesn't exist!\n";
+	exit 1;
+}
+my $nh;
+open(FILE, "$f") or die "can't open $f!";
+while(my $line = <FILE>){
+	chomp $line;
+	# skip lines that start with # or with a space and then #
+	if($line =~ /^\s*#/){ next; }
+	
+	# skip lines that are blank
+	if($line =~ /^$/){ next; }
+
+	my ($node,$attrs) = split(/\s+/, $line);
+	#print "$node\n";
+	my @attrs = split(/,/, $attrs);
+	foreach my $a (@attrs){
+		#print "$a\n";
+		if($a ne ""){
+			push @{$nh->{$a}}, $node;
+		}
+	}
+}
+if($::HTML){ print "<ul id='nodelist'>\n"; }
+foreach (sort keys %$nh){
+	if($::HTML){
+		print "<li>$_\n";
+		print "<ul>\n";
+		foreach(sort @{$nh->{$_}}){
+			print "<li>$_</li>\n";
+		}
+		print "</ul></li>\n";
+
+	}else{
+		print $_ . ":\n";
+		foreach(@{$nh->{$_}}){
+			print "\t$_\n";
+		}
+	}
+}
+if($::HTML){ print "</ul>\n"; }

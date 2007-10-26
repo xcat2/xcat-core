@@ -1,0 +1,70 @@
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+package xCAT_plugin::copycds;
+use Storable qw(dclone);
+use xCAT::Table;
+use Data::Dumper;
+use Getopt::Long;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+
+my $processed = 0;
+my $callback;
+
+sub handled_commands {
+  return {
+    copycds => "copycds",
+  }
+}
+  
+sub take_answer {
+#TODO: Intelligently filter and decide things
+  my $resp = shift;
+  $callback->($resp);
+}
+
+sub process_request {
+  my $request = shift;
+  $callback = shift;
+  my $doreq = shift;
+  my $distname = undef;
+  my $arch = undef;
+
+  @ARGV = @{$request->{arg}};
+  GetOptions(
+    'n|name|osver=s' => \$distname,
+    'a|arch=s' => \$arch
+  );
+  if ($arch and $arch =~ /i.86/) {
+    $arch = x86;
+  }
+  my @args = @ARGV; #copy ARGV
+  unless ($#args >= 0) {
+    $callback->({error=>"copycds needs at least one full path to ISO currently."});
+    return;
+  }
+  foreach (@args) {
+    unless (-r $_ and -f $_) {
+      $callback->({error=>"copycds currently only understands FULL path to iso files, $_ not processed"});
+      return;
+    }
+    mkdir "/mnt/xcat";
+    if (system("mount -o loop $_ /mnt/xcat")) {
+      $callback->({error=>"copycds was unable to examine $_ as an install image"});
+      return;
+    }
+    my $newreq = dclone($request);
+    $newreq->{command}= [ 'copycd' ]; #Note the singular, it's different
+    $newreq->{arg} = ["-p","/mnt/xcat"];
+    if ($distname) {
+      push @{$newreq->{arg}},("-n",$distname);
+    }
+    if ($arch) {
+      push @{$newreq->{arg}},("-a",$arch);
+    }
+    $doreq->($newreq,\&take_answer);
+
+    system("umount /mnt/xcat");
+  }
+}
+
+1;

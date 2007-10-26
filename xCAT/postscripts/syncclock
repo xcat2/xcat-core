@@ -1,0 +1,37 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+. $XCATROOT/lib/functions
+
+if TIMESERVERS=$(tabdb $SITETAB timeservers 1) 
+then
+	:
+else
+	echo "$0: timeservers not defined in $SITETAB" | logger -t xcat
+	exit
+fi
+
+T=$(echo $TIMESERVERS | awk -F, '{print $1}')
+
+if [ -n "$T" -a "$T" != "NA" ]
+then
+	logger -t xcat "Install: sync clock"
+	ntpdate -bs $T 2>&1 | logger -t xcat
+
+	case "$OSVER" in
+		rh9|rh[awe]s[34]|rh*5)
+			hwclock -w 2>&1 | logger -t xcat
+			;;
+		rh*)
+			setclock 2>&1 | logger -t xcat
+			;;
+		sles*|suse8*|suse9*|suse10)
+			clock -w 2>&1 | logger -t xcat
+			;;
+	esac
+fi
+
+

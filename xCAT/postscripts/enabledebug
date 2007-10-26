@@ -1,0 +1,14 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+case $OSVER in
+	sles*|suse*|ul*)
+		perl -pi -e 's/^KERNEL_LOGLEVEL=1/KERNEL_LOGLEVEL=8/' /etc/sysconfig/syslog
+		;;
+	rh*)
+		;;
+esac
+

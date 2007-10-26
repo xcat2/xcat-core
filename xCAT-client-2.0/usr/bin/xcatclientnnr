@@ -1,0 +1,25 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use File::Basename;
+
+#######################################
+# It handles the commands without noderanges.
+#######################################
+my $bname = basename($0);
+my $cmd;
+if($bname =~ /xcatclientnnr/) {
+  $cmd = shift @ARGV;
+} elsif ($bname =~/^(.*$)/) {
+  $cmd = $1;
+} else {
+  printf("Bad usage\n");
+  exit(1);
+}
+exec("/usr/bin/xcatclient $cmd NO_NODE_RANGE @ARGV 2>&1");
+#if (system("/usr/bin/xcatclient $cmd NO_NODE_RANGE @ARGV 2>&1") != 0) {
+#  print "$cmd failed: $?\n";
+#}
+
+#exit;
+
+

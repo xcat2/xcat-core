@@ -1,0 +1,2 @@
+#node,bmc,username,password,comments,disable
+ipmi,|\D+(\d+)|bmc($1)|

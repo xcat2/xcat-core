@@ -1,0 +1,158 @@
+div#nav {
+  /* background-color : #d8dff1; */
+  position: absolute;
+  left: 0px;
+  top: 95px;
+}
+
+div#content {
+  /* background-color : #fcfaeb; */
+  position: absolute;
+  left: 125px;
+  top: 95px;
+}
+
+P#logo {
+ background-color: #d8dff1;  /* #f5f3cf #fffdb0 */
+ vertical-align : middle;;
+	padding-top: 5px;
+	text-align: center;
+	padding-bottom: 5px;
+	margin-bottom: 10px;
+}
+
+p#Banner {
+ font-weight: bolder;
+ font-size: 20pt;
+ font-style: italic;
+ color: gray;
+ text-align: center;
+ margin: 10px;
+}
+
+/* pre { padding: 0px; margin: 0px; } */
+
+.TableRow { background-color : #d8dff1; }
+.Info {color : blue;}
+.Error {font-weight : bold; color : red;}
+.Trace {color: gray;  padding: 0px; margin: 0px;}
+
+.BasicHeading {background-color : #8CA4D9;}
+.BlueBack {background-color : #C2CEDE; /* #8CA4D9; */ }
+
+.LightBlueBack {background-color : #bfccea;}
+
+.FilterBox {background-color : #e8e8e8;}
+.LightGrayBack {background-color : #e8e8e8;}
+
+.Middle {vertical-align : middle;}
+.Center {text-align : center;}
+.YellowBackground {background-color : yellow;}
+.SmallText {font-size : small;}
+.XSmallText {font-size : x-small;}
+.XXSmallText {font-size : xx-small;}
+.SmallTextarea {font-size:9pt; font-family:Arial;}
+.Font8 {font-size : 8pt;}
+.Boxed { border: 1px solid gray; }
+.NoMargin { margin: 0px; }
+
+.but{
+  background-color : #fbf999;
+  padding-top : 0px;
+  padding-left : 0px;
+  padding-right : 0px;
+  padding-bottom : 0px;
+  margin-top : 0px;
+  margin-left : 0px;
+  margin-right : 0px;
+  margin-bottom : 0px;
+}
+
+.txtfld {font-size : 8pt; font-family : sans-serif; font-weight : bold;}
+
+.bt {
+  font-size : 8pt;
+  font-weight : bold;
+  font-family : sans-serif;
+  background-image : url(images/bt.gif);
+	text-align: center;
+}
+
+INPUT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
+SELECT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
+TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
+TABLE {font-size : 10pt; font-family : Arial;}
+BODY {font-size : 10pt; font-family : Arial;
+}
+
+/* The rest of the styles are for the navigation area */
+#foo {
+  margin-left : 0px;
+  margin-right : 0px;
+  margin-top : 0px;
+  margin-bottom : 0px;
+  padding-top : 0px;
+  padding-left : 0px;
+  padding-right : 0px;
+  padding-bottom : 0px;
+ }
+
+table#navtable {
+  width: 105px;
+  font-size : 8pt;
+  padding-left : 1px;
+  border: 0px;
+  white-space: nowrap;
+}
+
+.NavCurLink { background-color: #fcfaeb; }
+
+
+#nav A{
+  /* text-decoration : none; */
+  font-weight : bold;
+  font-family : sans-serif;
+}
+
+#nav P{
+  text-indent : 0px;
+  padding: 0px;
+  margin: 0px;
+  font-weight : bold;
+  font-family : sans-serif;
+  cursor : default;
+  vertical-align : middle;
+}
+
+#nav TD{
+  white-space: nowrap;
+  vertical-align : middle;
+  font-weight : bold;
+  font-family : sans-serif;
+  /* border: 1px solid gray; */
+}
+
+#nav IMG {
+ border: 0px;
+}
+
+.InnerTable{
+  margin-left : 0px;
+  margin-right : 0px;
+  margin-top : 0px;
+  margin-bottom : 0px;
+  border: 0px;
+  width: 100%;
+  font-size : 8pt;
+  white-space: nowrap;
+}
+
+.Hidden { visibility : hidden ;}
+
+/* OuterTable is not currently used */
+.OuterTable{
+  margin-left : 1px;
+  margin-right : 1px;
+  margin-top : 0px;
+  margin-bottom : 0px;
+}

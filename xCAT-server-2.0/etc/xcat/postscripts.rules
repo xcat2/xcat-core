@@ -1,0 +1,202 @@
+# Post Install Scripts
+#
+# The Post Install Scripts table is a rules-based system for determining
+# which install scripts and in what order to execute them.
+#
+# Rules and actions are formatted:
+#
+# RULE {
+#     script [args]
+#     script [args]
+#     script [args]
+#     ...
+# }
+# 
+# Rules are defined as VAR=REGEX.  Where VAR may be any exported 
+# environmental variable, ALL, or NODERANGE (special, see below).
+#
+# Regular expressions (REGEX or regex) are a powerful way to define a match.
+# The perl regex engine is used to parse the rules.  Please do not confuse
+# regex with shell expansion characters.
+#
+# e.g. compute* does NOT match anything starting with 'compute' as bash
+# would.  compute.* is the correct regex for a that match.  man perlre for
+# regex docs.  (BTW, regex compute* matches 'comput' with 0 or more 'e's at
+# the end.)
+#
+# There is no need to place beginning and end markers (^$) in your regex.
+# They are added automatically.
+# 
+# Actions are defined as:  script [optional args]
+#
+# A special action/script "STOP" will stop processing all rules and exit.
+# 
+# Scripts are run top-down multiples rules can match.
+#
+# Nesting with () and operators and, or, and not are supported.
+# 
+# The following VARs are exported by xCAT:
+# 
+# OSVER=(rh62|rh70|rh71|rh72|rh73|rh80|suse81|sles8)
+# OSVER is the OS that has just been installed.  OSVER may be defined by
+# regex.  (e.g. rh.* is "anything starting with rh")
+#
+# ARCH=(x86|ia64)
+# ARCH is the hardware architecture (uname -m).  ARCH may be defined by
+# regex.
+#
+# NODERANGE=(e.g. node1-node10)
+# NODERANGE follows the xCAT noderange format as defined by noderange.5
+# (man noderange).  Regex is supported as part of noderange, however it
+# must be prefixed with a '@', e.g. (@node.* is "anything starting with
+# node").
+#
+# ALL (Apply to all)
+#
+# TABLE:TABLENAME:KEY:FIELD=
+# 
+# The last rule is special and is determined at runtime.
+# 
+# TABLENAME is the name of an xCAT table located in $XCATROOT/etc.  You
+# may create your own tables.
+# 
+# KEY is the first field of any xCAT table.  $NODE  is a
+# special value for key, usually the key is a fixed name, however many xCAT
+# tables start with a node or resource group name.
+# 
+# FIELD is a numeric value for fields associated with KEY.  The first field
+# is 1.  Special names are available (e.g. $nodehm_eth0) and are defined in
+# $XCATROOT/lib/functions.  Any environmental variable can be used.
+#
+# e.g.:
+#
+# TABLE:nodehm.tab:$NODENAME:$nodehm_eth0=e1000
+# 
+# Would only execute scripts where eth0 was defined as e1000 in nodehm.tab
+# for any node.
+# 
+# The script $XCATROOT/bin/postage is the master post installation script
+# that parses this table and runs the scripts.  You can use the script
+# $XCATROOT/bin/postrules NODENAME ARCH OSVER to parse this table to test
+# your rules.
+#
+# e.g. postrules node1 x86 rh73
+#
+
+
+# Setup syslog
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	syslog
+}
+
+# update/add packages
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	updaterpms nodeps
+	otherrpms
+	forcerpms
+}
+
+# setup NFS mounts
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	nfsmounts
+}
+
+# sync clock
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	syncclock
+	setupntp
+}
+
+# Setup PAM
+TABLE:noderes:$NODE:access=Y and
+(OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.*) {
+	setuppam
+}
+
+# Setup PBS
+TABLE:noderes:$NODE:pbs=Y and
+(OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.*) {
+	openpbs
+}
+
+# Setup paths
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	setuppaths
+}
+
+# Setup services
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	setupservices
+}
+
+# Setup rsh/ssh.
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	remoteshell
+}
+
+# Enable sysctl
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	enablesysreq
+}
+
+# Enable debug
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	enabledebug
+}
+
+# Setup Myrinet MX
+TABLE:noderes:$NODE:install_roll=Y {
+	setupstage
+}
+
+# Re setup syslog, RPM updates may have hosed it.
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	resyslog
+}
+
+
+ALL {
+	serialconsole
+}
+
+#
+# Start custom section
+#
+# Here is a good place to put custom code
+#
+
+#
+# End custom section
+#
+
+# Sync dirs
+OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+	syncdirs
+}
+
+# Unmount /post.
+ALL	{
+	umountpost
+}
+
+# Update remote boot flag.  rsh/ssh must be setup first
+# unless xcatd is used.  To use rsh or ssh, pass as
+# option to updateflag else pass xcatd
+#
+#2nd arg can be Master IP for multiple master IP support.
+#
+ALL {
+	updateflag.awk $MASTER
+}
+
+# hardcode networking
+#OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+#	hardnis
+#	hardmodopts options e1000 RxIntDelay=0,0 TxIntDelay=0,0 RxAbsIntDelay=0,0 TxAbsIntDelay=0,0 InterruptThrottleRate=0,0
+#}
+
+# SuSE needs an extra reboot.
+OSVER=sles.* or OSVER=suse.* {
+	reboot
+}
+

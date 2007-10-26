@@ -1,0 +1,5 @@
+#node,power,mgt,cons,termserver,termport,conserver,serialspeed,serialflow,getmac,comments,disable
+"ipmi",,"ipmi",,,,,,,,,
+"blade",,"blade",,,,,,,,,
+"cyclades",,,"cyclades",,,,,,,,
+"mrv",,,"mrv",,,,,,,,
