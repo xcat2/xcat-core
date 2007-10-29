@@ -186,7 +186,7 @@ ALL	{
 #2nd arg can be Master IP for multiple master IP support.
 #
 ALL {
-	updateflag.awk $MASTER
+	updateflag.awk $MASTER 3002
 }
 
 # hardcode networking
