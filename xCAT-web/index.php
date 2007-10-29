@@ -3,20 +3,20 @@
 // Main page of the xCAT web interface
 
 $TOPDIR = '.';
-require_once "$TOPDIR/functions.php"; //NOTE: it is essential to include this file before include top.php and nav.php
+require_once "$TOPDIR/functions.php";
 require_once "$TOPDIR/nav.php";
 
-require_once("globalconfig.php");
+//require_once("globalconfig.php");
 require_once("lib/XCAT/HTML/HTMLProducer.class.php");
 require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
 
-insertHeader('Nodes', $TOPDIR, '', '');
-insertNav('nodes', $TOPDIR);
+insertHeader('Nodes', NULL, NULL);
+insertNav('nodes');
 if (isAIX()) { $aixDisabled = 'disabled'; }
 ?>
 <div id=content align=center>
-<h1>Cluster Groups and Nodes</h1>
+<h1 class=PageHeading>Cluster Groups and Nodes</h1>
 <table border=0 cellspacing=0>
   <tr class="BlueBack">
     <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#">Attribute</a></div></td>
