@@ -52,6 +52,10 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
 %files -f files.list
 %defattr(-, root, root)
 %doc LICENSE.html
+%doc README 
+%doc xCAT2.0.doc 
+%doc xCAT2.0.pdf
+
 
 %changelog
 * Wed May 2 2007 - Norm Nott nott@us.ibm.com
