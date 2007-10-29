@@ -1,22 +1,31 @@
-This set of templates, *.csv files, is based on the address scheme given:
-ftp://ftp.software.ibm.com/eserver/xseries/1350FS_0507.pdf. 
-Additional information can be found in the /usr/share/doc/xCAT/xCAT2.0.doc[pdf]
-manual in the install.
+README for: /usr/share/xcat/templates/e1350 directory
+-----------------------------------------------------
 
-Check the 1350 default templates to see, if they apply to your environment.
-If you decide to use some of the templates or create your own, then you can 
-use the tabrestore command on each template to load the tables in the database. 
-The templates are located : /usr/share/xcat/templates/e1350 directory.
+The set of *.csv files in this directory are sample xCAT table values that
+you may wish to use as templates for defining your xCAT cluster.
+The data is based on defining a cluster using the address scheme given in:
+ftp://ftp.software.ibm.com/eserver/xseries/1350FS_0507.pdf.
+Additional information on using xCAT 2.0 can be found in 
+/usr/share/doc/xcat/xCAT2.0.doc[pdf] on your system.
 
-To load the database tables with a set of templates:
-for i in *.csv; do tabrestore $i; done
+Check the 1350 default templates to see if they apply to your environment.
+If you decide to use some of these templates, modify them, or create your own,
+you can first edit the files and then load them into the database, or load the
+files first and then edit the database once they are loaded.
 
-To verify run tabdump <tablename>.   For example: tabdump nodetype 
+To load a file, use the tabrestore command on each template to load the tables 
+in the database.
+
+To load the database tables:
+   for i in *.csv; do tabrestore $i; done
+
+To verify that a table has been correctly loaded, run "tabdump <tablename>".   
+For example: 
+   tabdump nodetype 
 
 
-
-You can  add nodes to the database by using the nodeadd command. 
-See example below and /usr/share/doc/xCAT/xCAT2.0.doc[pdf].  
+You can add nodes to the database by using the nodeadd command. 
+See the example below and details in /usr/share/xcat/xCAT2.0.doc[pdf].  
 
 For example, to add 2048 IPMI rackmount nodes which happen to start 
 at the first U of the first rack, with each rack having a 1U switch
