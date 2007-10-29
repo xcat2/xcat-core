@@ -1,19 +1,33 @@
-This set of templates is based on the address scheme given:
-ftp://ftp.software.ibm.com/eserver/xseries/1350FS_0507.pdf
-To load:
-for i in *.csv; do tabload $i; done
+This set of templates, *.csv files, is based on the address scheme given:
+ftp://ftp.software.ibm.com/eserver/xseries/1350FS_0507.pdf. 
+Additional information can be found in the /usr/share/doc/xCAT/xCAT2.0.doc[pdf]
+manual in the install.
 
-For what any of the tags used in this readme do, grep <tagname> *.csv and you will see what settings it
-provides interpretations for.
+Check the 1350 default templates to see, if they apply to your environment.
+If you decide to use some of the templates or create your own, then you can 
+use the tabrestore command on each template to load the tables in the database. 
+The templates are located : /usr/share/xcat/templates/e1350 directory.
+
+To load the database tables with a set of templates:
+for i in *.csv; do tabrestore $i; done
+
+To verify run tabdump <tablename>.   For example: tabdump nodetype 
 
 
-After which, the various provided tags can be used to add nodes and automatically follow thing.
-For example, to add 2048 IPMI rackmount nodes which happen to start at the first U of the first rack,
-with each rack having a 1U switch and 41 servers plugged into that switch, numbered 1-41 in order,
-intended to have the 'compute' profile, named node1-node0248, and have a convenience group called 'all':
-nodeadd node1-node2048 tags=41nodeperrack,41perswitch,ipmi,compute,all
 
-After that, a lot of things will be populated according to that scheme:
+You can  add nodes to the database by using the nodeadd command. 
+See example below and /usr/share/doc/xCAT/xCAT2.0.doc[pdf].  
+
+For example, to add 2048 IPMI rackmount nodes which happen to start 
+at the first U of the first rack, with each rack having a 1U switch
+and 41 servers plugged into that switch, numbered 1-41 in order.
+Nodes named node1-node2048, and be members of groups named:
+  41nodeperrack,41perswitch,ipmi,compute,all 
+
+The run the following:
+nodeadd node1-node2048 groups=41nodeperrack,41perswitch,ipmi,compute,all
+
+After that, other tables will setup according to that scheme:
 nodels node1235 nodepos.u nodepos.rack switch.switch switch.port ipmi.bmc hosts.ip
 node1235: hosts.ip: 172.20.131.5
 node1235: nodepos.u: 5
@@ -22,19 +36,20 @@ node1235: switch.switch: switch31
 node1235: switch.port: 5
 node1235: ipmi.bmc: bmc1235
 
-Note the hosts table is only used if you use the makehosts command.
+Note: the hosts table is only used if you use the makehosts command to setup /etc/hosts.
 
 An example with blades, 56 to a rack and padding out to four digits:
-nodeadd node0001-node2048 tags=blade,compute,all,56nodeperrack
+nodeadd node0001-node2048 groups=blade,compute,all,56nodeperrack
 
 
-And if wanting to use makehosts for non-server equipment, nodeadd can help for that as well with these templates:
+If wanting to use makehosts for non-server equipment, nodeadd can help for that as well with these templates:
 (Supplementing the previous rackmount example)
-nodeadd switch1-switch50 tags=switch
-nodeadd bmc1-bmc2048 tags=41bmcperrack
+
+nodeadd switch1-switch50 groups=switch
+nodeadd bmc1-bmc2048 groups=41bmcperrack
 makehosts switch,41bmcperrack
 
 (And to make hosts file entries for 147 AMMs for the 2048 blades above)
-nodeadd amm1-amm147 tags=amm
+nodeadd amm1-amm147 groups=amm
 makehosts amm
 
