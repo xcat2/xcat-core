@@ -4,7 +4,7 @@
 
 $TOPDIR = '.';
 require_once "$TOPDIR/functions.php";
-require_once "$TOPDIR/nav.php";
+//require_once "$TOPDIR/nav.php";
 
 //require_once("globalconfig.php");
 require_once("lib/XCAT/HTML/HTMLProducer.class.php");

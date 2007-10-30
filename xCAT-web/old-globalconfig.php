@@ -1,6 +1,7 @@
 <?php
 
-//Todo: get rid of the include path
+//Note: this file is not used any more
+
 // Set the include path
 $APP_ROOT = dirname(__FILE__);
 // Switch : to ; on Windows
@@ -16,7 +17,7 @@ require_once("lib/config.php");
 $XCATROOT = getenv("XCATROOT") ? getenv("XCATROOT").'/bin' : '/opt/xcat/bin';
 $SYSTEMROOT = '/bin';
 $TOPDIR = '.';
-$CURRDIR = '/opt/xcat/web';    //Todo: eliminate the need for this
+$CURRDIR = '/opt/xcat/web';
 $IMAGEDIR = "$TOPDIR/images";
 
 // Put any configuration global variables here

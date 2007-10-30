@@ -1,22 +1,22 @@
 <?php
 /*------------------------------------------------------------------------------
-  Include files, insert header and menu bar
+  Produce the page for running commands on the nodes of the cluster
 ------------------------------------------------------------------------------*/
 $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
 setcookie("history", "date;hello.sh", $expire_time);
 
-require_once("globalconfig.php");
+//require_once("globalconfig.php");
 require_once("XCAT/XCATCommand/XCATCommandRunner.class.php");
 
-require_once "$TOPDIR/functions.php";	//NOTE: it is essential to include this file before include top.php and nav.php
-require_once "$TOPDIR/nav.php";
+require_once "$TOPDIR/functions.php";
+//require_once "$TOPDIR/nav.php";
 
-insertHeader('Run commands on xCAT nodes', $TOPDIR, '', '');
-insertNav('dsh', $TOPDIR);
+insertHeader('Run commands on xCAT nodes', array('themes/default.css'),
+			array('javascripts/prototype.js', 'javascripts/effect.js', 'javascripts/window.js'));
+insertNav('dsh');
 if (isAIX()) { $aixDisabled = 'disabled'; }
 ?>
-</td>
-<td width="796" class="BorderMe" valign="top" align="left">
+<div id=content>
 <FORM NAME="dsh_options" onsubmit="checkEmpty();">
 <input type="hidden" id="nodename" value=<?php echo @$_REQUEST["node"] ?> >
 <TABLE class="inner_table" cellspacing=0 cellpadding=5>
@@ -161,9 +161,7 @@ if (isAIX()) { $aixDisabled = 'disabled'; }
   </TBODY>
 </TABLE>
 </FORM>
-</TD>
-</TR>
-</TABLE>
+<div>
 <script type="text/javascript" src="js_xcat/event.js"> </script>
 <script type="text/javascript" src="js_xcat/ui.js"> </script>
 <SCRIPT language="JavaScript">

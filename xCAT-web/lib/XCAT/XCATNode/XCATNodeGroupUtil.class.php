@@ -1,5 +1,5 @@
 <?php
-require_once("config.php");
+//require_once("config.php");
 
 /**
  * Contains some utilities for XCATNodes.
@@ -35,8 +35,7 @@ class XCATNodeGroupUtil {
 	 * Return the image string based on the node/group status
 	 */
 	function getImageString($status){
-			$config = &Config::getInstance();
-			$imagedir = $config->getValue("IMAGEDIR");
+			$imagedir = 'images';
 			$greengif = $imagedir . "/green-ball-m.gif";
 			$yellowgif = $imagedir . "/yellow-ball-m.gif";
 			$redgif = $imagedir . "/red-ball-m.gif";

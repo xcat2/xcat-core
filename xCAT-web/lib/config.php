@@ -1,4 +1,6 @@
 <?php
+//Note: this file is not used any more
+
 class Config {
 	var $configMap;
 

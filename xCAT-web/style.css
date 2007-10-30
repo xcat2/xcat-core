@@ -6,7 +6,7 @@ div#nav {
 }
 
 div#content {
-  /* background-color : #fcfaeb; */
+  background-color : #fcfaeb;
   position: absolute;
   left: 125px;
   top: 95px;
@@ -28,6 +28,12 @@ p#Banner {
  color: gray;
  text-align: center;
  margin: 10px;
+}
+
+.PageHeading {
+ background-color: #c0c0c0;
+ margin-top: 5px;
+ margin-bottom: 5px;
 }
 
 /* pre { padding: 0px; margin: 0px; } */

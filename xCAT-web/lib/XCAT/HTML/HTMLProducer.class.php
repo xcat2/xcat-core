@@ -2,7 +2,7 @@
 /**
  * Produces HTML for use in the interface.
  */
-require_once("config.php");
+//require_once("config.php");
 
 class HTMLProducer {
 
@@ -45,11 +45,12 @@ EOS;
  * @param String nodeGroupName		The name of the node group.
  */
 function getToggleString($nodeGroupName) {
-	global $imagedir;
-	global $colTxt, $exTxt;
-	global $bulgif;
-	global $minusgif;
-	global $plusgif;
+$colTxt = "Click to collapse section";
+$exTxt = "Click to expand section";
+$bulgif = "$TOPDIR/images/h3bg_new.gif";
+$minusgif = "$TOPDIR/images/minus-sign.gif";
+$plusgif = "$TOPDIR/images/plus-sign.gif";
+
 	$html = <<<EOS
 <span
 	title="Click to expand section"
@@ -67,8 +68,7 @@ EOS;
  */
 function getXCATGroupTableRow($nodeGroup) {
 
-$config = &Config::getInstance();
-$imagedir = $config->getValue("IMAGEDIR");
+$imagedir = 'images';
 $nodeGroupName = $nodeGroup->getName();
 $img_string = XCATNodeGroupUtil::getImageString($nodeGroup->getStatus());
 
@@ -97,8 +97,7 @@ EOE;
 	 * returns the table that contains all the nodes information of that group
 	 */
 function getXCATNodeGroupSection($nodeGroup) {
-		$config = &Config::getInstance();
-		$imagedir = $config->getValue("IMAGEDIR");
+		$imagedir = 'images';
 		$right_arrow_gif = $imagedir . "/grey_arrow_r.gif";
 		$left_arrow_gif = $imagedir . "/grey_arrow_l.gif";
 
@@ -129,8 +128,7 @@ EOS;
 	 */
 function getXCATNodeTableRow($node) {
 
-		$config = &Config::getInstance();
-		$imagedir = $config->getValue("IMAGEDIR");
+		$imagedir = 'images';
 
 		//echo $node->getName();
 		$html = "<tr bgcolor=\"#FFFF66\" class=\"indent\">

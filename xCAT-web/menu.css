@@ -256,7 +256,7 @@ width: 100%;
 .inner_table{
 	/*border-collapse:collapse;*/
 	border: 3px;
-	background-color:green;
+	/* background-color: green; */
 	margin-left : 15px;
   margin-right : 0px;
   margin-top : 0px;

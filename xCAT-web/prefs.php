@@ -3,17 +3,15 @@
   Include files, insert header and menu bar
 ------------------------------------------------------------------------------*/
 
-require_once("globalconfig.php");
+//require_once("globalconfig.php");
 
 require_once "$TOPDIR/functions.php";	//NOTE: it is essential to include this file before include top.php and nav.php
-require_once "$TOPDIR/nav.php";
+//require_once "$TOPDIR/nav.php";
 
-insertHeader('Preferences', $TOPDIR, '', '');
-insertNav('prefs', $TOPDIR);
+insertHeader('Preferences', NULL, NULL);
+insertNav('prefs');
 if (isAIX()) { $aixDisabled = 'disabled'; }
 ?>
-</td>
-<td width="796" class="BorderMe" valign="top" align="left">
 <FORM NAME="prefs">
 <TABLE class="inner_table" cellspacing=0 cellpadding=5>
   <TBODY>

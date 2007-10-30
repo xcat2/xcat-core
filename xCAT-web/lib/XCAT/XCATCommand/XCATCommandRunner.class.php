@@ -1,10 +1,10 @@
 <?php
-require_once("config.php");
-require_once("XCAT/XCATNode/XCATNodeGroupUtil.class.php");
-require_once("XCAT/XCATNode/XCATNode.class.php");
-require_once("XCAT/XCATNode/XCATNodeManager.class.php");
-require_once("XCAT/XCATNodeGroup/XCATNodeGroup.class.php");
-require_once("XCAT/XCATNodeGroup/XCATNodeGroupManager.class.php");
+//require_once("config.php");
+require_once("lib/XCAT/XCATNode/XCATNodeGroupUtil.class.php");
+require_once("lib/XCAT/XCATNode/XCATNode.class.php");
+require_once("lib/XCAT/XCATNode/XCATNodeManager.class.php");
+require_once("lib/XCAT/XCATNodeGroup/XCATNodeGroup.class.php");
+require_once("lib/XCAT/XCATNodeGroup/XCATNodeGroupManager.class.php");
 
 class XCATCommandRunner {
 	var $XCATRoot;
@@ -14,9 +14,8 @@ class XCATCommandRunner {
 	var $XCATNodeGroupManager;
 
 	function XCATCommandRunner() {
-		$config = &Config::getInstance();
-		$this->XCATRoot = $config->getValue("XCATROOT");
-		$this->CurrDir = $config->getValue("CURRDIR");
+		$this->XCATRoot = '/opt/xcat/bin';   //todo: get rid of these
+		$this->CurrDir = '/opt/xcat/web';
 
 		$this->XCATNodeManager = &XCATNodeManager::getInstance();
 		$this->XCATNodeGroupManager = &XCATNodeGroupManager::getInstance();

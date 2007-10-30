@@ -1,3 +1,5 @@
+// Javascript functions that most pages need.
+// Note: this is included by all pages, so only put functions in this file that most/all pages need.
 
 function setCookies(form)
 {

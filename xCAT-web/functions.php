@@ -2,11 +2,23 @@
 
 // Contains all the common php functions that most pages need.
 
+// Some common/global settings
+session_start();     // retain session variables across page requests
+
+// The settings below display error on the screen, instead of giving blank pages.
+error_reporting(E_ALL ^ E_NOTICE);
+ini_set('display_errors', true);
+
+// Todo: get rid of these globals
+$XCATROOT = '/opt/xcat/bin';
+$CURRDIR = '/opt/xcat/web';
+
 
 /*-----------------------------------------------------------------------------------------------
 	Function to insert the header part of the HTML and the top part of the page
 ------------------------------------------------------------------------------------------------*/
-function insertHeader($title, $TOPDIR, $stylesheet, $javascript) {
+function insertHeader($title, $stylesheets, $javascripts) {
+global $TOPDIR;
 if (!$TOPDIR) 	$TOPDIR = '.';
 ?>
 
@@ -18,13 +30,16 @@ if (!$TOPDIR) 	$TOPDIR = '.';
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="menu.css">
 <script type="text/javascript" src="functions.js"></script>
+
 <script type="text/javascript" src="js_xcat/event.js"> </script>
 <script type="text/javascript" src="js_xcat/ui.js"> </script>
 
+<!-- These are only needed for popup windows, so only need it for specific pages like dsh
 <script type="text/javascript" src="javascripts/prototype.js"> </script>
 <script type="text/javascript" src="javascripts/effect.js"> </script>
 <script type="text/javascript" src="javascripts/window.js"> </script>
 <link href="themes/default.css" rel="stylesheet" type="text/css"/>
+-->
 
 <link rel="stylesheet" href="css/xcattop.css">
 <link rel="stylesheet" href="css/xcat.css">
@@ -36,8 +51,16 @@ if (!$TOPDIR) 	$TOPDIR = '.';
 <script src="js/xcat.js" type="text/javascript"></script>
 
 <?php
-if ($stylesheet) { echo "<LINK rel=stylesheet href='$stylesheet' type='text/css'>\n"; }
-if ($javascript) { echo "<script type='text/javascript' src='$javascript'></script>\n"; }
+if ($stylesheets) {
+	foreach ($stylesheets as $s) {
+		echo "<LINK rel=stylesheet href='$s' type='text/css'>\n";
+		}
+	}
+if ($javascripts) {
+	foreach ($javascripts as $j) {
+		echo "<script type='text/javascript' src='$j'></script>\n";
+		}
+	}
 ?>
 </head>
 <body>
@@ -50,16 +73,17 @@ if ($javascript) { echo "<script type='text/javascript' src='$javascript'></scri
 <?php }  // end insertHeader
 
 
+// A few constants
+/*
 require_once("lib/config.php");
 $config = &Config::getInstance();
 $imagedir = $config->getValue("IMAGEDIR");
-
-// A few constants
 $colTxt = "Click to collapse section";
 $exTxt = "Click to expand section";
 $bulgif = "$imagedir/h3bg_new.gif";
 $minusgif = "$imagedir/minus-sign.gif";
 $plusgif = "$imagedir/plus-sign.gif";
+*/
 
 
 /** ----------------------------------------------------------------------------------------------
@@ -109,9 +133,86 @@ function runcmd ($cmd, $mode, &$output, $options=NULL){
 	}
 	return $ret_stat;
 }
+
+
+/*------------------------------------------------------------------------------
+   Create the navigation area on the left.
+   $currentlink is the key of the link to the page
+   that is currently being displayed.
+------------------------------------------------------------------------------*/
+
+function insertNav($currentLink) {
+// A few constants
+global $TOPDIR;    // or could use $GLOBALS['TOPDIR']
+$colTxt = "Click to collapse section";
+$exTxt = "Click to expand section";
+$bulgif = "$TOPDIR/images/h3bg_new.gif";
+$minusgif = "$TOPDIR/images/minus-sign.gif";
+$plusgif = "$TOPDIR/images/plus-sign.gif";
+
+echo '<div id=nav><table border="0" cellpadding="0" cellspacing="1" width="110">';
+
+//Console section
+insertInner('open', 1,'Console', 'constab', $currentLink, array(
+	'prefs' => array("$TOPDIR/prefs.php", 'Preferences'),
+	'updategui' => array("$TOPDIR/softmaint/updategui.php", 'Update'),
+	'suggestions' => array("$TOPDIR/suggestions.html", 'Suggestions'),
+	'logout' => array("$TOPDIR/logout.php", 'Logout')
+));
+
+// xCAT Cluster section
 ?>
+ <TR><TD id="menu_level1" width="110">
+ <P title="<?php echo $colTxt; ?>" onclick="toggleSection(this,'clustab')" ondblclick="toggleSection(this,'clustab')">
+ <IMG src=<?php echo $minusgif ?> id='clustab-im'> xCAT Cluster
+ </P></TD></TR>
+ <TR><TD>
+  <TABLE id='clustab' cellpadding=0 cellspacing=0 width="110"><TBODY>
+    <TR><TD id="menu_level2"><A href="csmconfig">Settings</A></TD></TR>
 
 <?php
+	insertInner('open', 2,'Installation', 'installtab', $currentLink, array(
+		'softmaint' => array("$TOPDIR/softmaint", 'MS Software'),
+		'addnodes' => array("$TOPDIR/addnodes.php", 'Add Nodes'),
+		'definenode' => array("$TOPDIR/definenode.php", 'Define Nodes'),
+		'hwctrl' => array("$TOPDIR/hwctrl/index.php", 'HW Control')
+	));
+	insertInner('open', 2,'Administration', 'admintab', $currentLink, array(
+		'nodes' => array("$TOPDIR/index.php", 'Nodes'),
+		'layout' => array("$TOPDIR/hwctrl/layout.php", 'Layout'),
+		'dsh' => array("$TOPDIR/dsh.php", 'Run Cmds'),
+		'dcp' => array("$TOPDIR/dcp.php", 'Copy Files'),
+		'cfm' => array("$TOPDIR/cfm.php", 'Sync Files'),
+		'shell' => array("$TOPDIR/shell.php", 'Cmd on MS'),
+		'import' => array("$TOPDIR/import.php", 'Import/Export'),
+	));
+	insertInner('open', 2,'Monitor', 'montab', $currentLink, array(
+		'conditions' => array("$TOPDIR/mon", 'Conditions'),
+		'responses' => array("$TOPDIR/mon/resp.php", 'Responses'),
+		'sensors' => array("$TOPDIR/mon/sensor.php", 'Sensors'),
+		'rmcclass' => array("$TOPDIR/mon/rmcclass.php", 'RMC Classes'),
+		'auditlog' => array("$TOPDIR/mon/auditlog.php", 'Event Log'),
+		'perfmon' => array("$TOPDIR/perfmon/index.php", 'Performance'),
+
+	));
+	insertInner('open', 2,'Diagnostics', 'diagtab', $currentLink, array(
+		'diagms' => array("$TOPDIR/diagms", 'MS Diags'),
+	));
+
+  echo '</TABLE></TD></TR>';
+
+insertInner('open', 1,'Documentation', 'doctab', $currentLink, array(
+	'xcatdocs' => array(getDocURL('web','docs'), 'xCAT Docs'),
+	'forum' => array(getDocURL('web','forum'), 'Mailing List'),
+	'codeupdates' => array(getDocURL('web','updates'), 'Code Updates'),
+	'opensrc' => array(getDocURL('web','opensrc'), 'Open Src Reqs'),
+	'wiki' => array(getDocURL('web','wiki'), 'xCAT Wiki'),
+));
+
+echo '</table></div>';
+}  //end insertNav
+
+
 /**--------------------------------------------------------------
 	Insert one inner table in the nav area function above.
 	Type is the type of the menu item, i.e: close or open (plus sign/minus sign)
@@ -120,13 +221,15 @@ function runcmd ($cmd, $mode, &$output, $options=NULL){
 	CurrentLink is the key of the link for the current page.
 	List is a keyed array of href, label pairs.
 ----------------------------------------------------------------*/
-function insertInner($type,$level,$title, $id, $currentLink, $TOPDIR, $list) {
-	// A few constants
-	global $imagedir;
-	global $colTxt;
-	global $bulgif;
-	global $minusgif;
-	global $plusgif;
+function insertInner($type,$level,$title, $id, $currentLink, $list) {
+// A few constants
+global $TOPDIR;    // or could use $GLOBALS['TOPDIR']
+$colTxt = "Click to collapse section";
+$exTxt = "Click to expand section";
+$bulgif = "$TOPDIR/images/h3bg_new.gif";
+$minusgif = "$TOPDIR/images/minus-sign.gif";
+$plusgif = "$TOPDIR/images/plus-sign.gif";
+
 	switch($level){
 		case 1: $menu_level = "menu_level1"; break;
 		case 2: $menu_level = "menu_level2"; break;
@@ -134,14 +237,16 @@ function insertInner($type,$level,$title, $id, $currentLink, $TOPDIR, $list) {
 	}
 	if ($type == "open"){
 		$gif = $minusgif;
+		$hoverTxt = $colTxt;
 		$style = "display:inline";
 	}else {
 		$gif = $plusgif;
+		$hoverTxt = $exTxt;
 		$style = "display:none";
 	}
 ?>
 <TR><TD id=<?php echo $menu_level; if($level == 2) echo " class=no-link"; ?>>
-<P title=<?php echo $colTxt; ?> onclick="toggleSection(this,'<?php echo $id ?>')" ondblclick="toggleSection(this,'<?php echo $id ?>')">
+<P title="<?php echo $hoverTxt; ?>" onclick="toggleSection(this,'<?php echo $id ?>')" ondblclick="toggleSection(this,'<?php echo $id ?>')">
 <IMG src=<?php echo $gif; ?> id=<?php echo $id."-im" ?>> <?php echo $title ?></P></TD></TR>
 <TR><TD >
 <TABLE id=<?php echo $id ?> width="100%" cellpadding="0" cellspacing="0" border=0 style=<?php echo $style ?>>
