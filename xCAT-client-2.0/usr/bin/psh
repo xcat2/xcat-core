@@ -95,7 +95,8 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
       close($readyh);
       next;
     }
-    print $nodehdl{$readyh}.": ".$line;
+    chomp($line);
+    print $nodehdl{$readyh}.": ".$line."\n";
   }
   return $rc;
 }
