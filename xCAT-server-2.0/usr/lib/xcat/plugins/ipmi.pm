@@ -67,6 +67,7 @@ my @pass;
 my $channel_number;
 my %sdr_hash;
 my %fru_hash;
+my $ipmiv2=0;
 my $authoffset=0;
 my $enable_cache="yes";
 my $cache_dir = "/var/cache/xcat";
@@ -1233,10 +1234,18 @@ sub beacon {
 	my $code;
 
 	if($subcommand eq "on") {
-		@cmd = (0x04,0xFF);
+        if ($ipmiv2) {
+		    @cmd = (0x04,0x0,0x01);
+        } else {
+		    @cmd = (0x04,0xFF);
+        }
 	}
 	elsif($subcommand eq "off") {
-		@cmd = (0x04,0x00);
+        if ($ipmiv2) {
+            @cmd = (0x04,0x0,0x00);
+        } else {
+		    @cmd = (0x04,0x00);
+        }
 	}
 	else {
 		return(1,"unsupported command beacon $subcommand");
@@ -3668,7 +3677,7 @@ sub getchanauthcap {
 	my @response;
 	my $code;
 
-	@data = ($rqsa,$seqlun,0x38,0x0e,0x04);
+	@data = ($rqsa,$seqlun,0x38,0x8e,0x04);
 	@rn = ($rssa,$netfun);
 	$length = (scalar @data)+4;
 	
@@ -3702,6 +3711,9 @@ sub getchanauthcap {
 
 	$channel_number=$response[21];
 
+	if($response[22] & 0b10000000) {
+		$ipmiv2=1;
+	}
 	if($response[22] & 0b00000100) {
 		$auth=0x02;
 	}
