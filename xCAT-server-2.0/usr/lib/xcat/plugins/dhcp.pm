@@ -177,7 +177,7 @@ sub process_request {
   }
   foreach (@nrn) {
     my @line = split /\s+/;
-    if ($activenics{$line[7]}) {
+    if ($activenics{$line[7]} and $line[3] !~ /G/) {
       addnet($line[0],$line[2]);
     }
   }
