@@ -25,7 +25,7 @@ For example:
 
 
 You can add nodes to the database by using the nodeadd command. 
-See the example below and details in /usr/share/perl-xCAT-2.0/xCAT2.0.doc[pdf].  
+See the example below and details in /usr/share/doc/perl-xCAT-2.0/xCAT2.0.doc[pdf].  
 
 For example, to add 2048 IPMI rackmount nodes which happen to start 
 at the first U of the first rack, with each rack having a 1U switch
