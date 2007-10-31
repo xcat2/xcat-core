@@ -536,6 +536,13 @@ sub FIXUP {
     } else {
         print BOOT 
               qq|\noptions {\n\tdirectory "$DBDir";\n|;
+         if (@forwarders) {
+            print BOOT qq|\tforwarders {\n|;
+            foreach (@forwarders) {
+                print BOOT qq|\t\t$_;\n|;
+            }
+            print BOOT qq|\t};\n|;
+         }
         if (-r "spcl.options") {
             print BOOT "\t# These options came from the file spcl.options\n";
             #
@@ -553,7 +560,9 @@ sub FIXUP {
         foreach $line (@bootmsgs_v8) {
 	    print BOOT $line;
         }
-        #print BOOT qq|zone "." in {\n\ttype hint;\n\tfile "db.cache";\n};\n\n|;
+        unless (@forwarders) {
+            print BOOT qq|zone "." in {\n\ttype hint;\n\tfile "db.cache";\n};\n\n|;
+        }
         if (-r "spcl.boot") {
             print BOOT qq|include "spcl.boot";\n\n|;
         }
@@ -568,6 +577,9 @@ sub FIXUP {
     
     $file = "DB.127.0.0.1";
     &MAKE_SOA($DBDir."db.127.0.0", $file);
+    my $nothing;
+    open($nothing,">>",$DBDir."db.cache");
+    close($nothing);
     printf $file "%-30s\tIN  PTR   localhost.\n", &REVERSE("127.0.0.1");
     close($file);
 }
@@ -852,7 +864,7 @@ sub SUBNETS {
 sub GEN_BOOT {
     local(*F, $revaddr, $n);
 
-    if (! -e "boot.cacheonly") {
+    if (0) { #! -e "boot.cacheonly") { DISABLE THIS PART
         #
         # Create a boot file for a cache-only server
         #
