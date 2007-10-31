@@ -67,7 +67,10 @@ if ($javascripts) {
 <table border=0 align=left cellspacing=0 cellpadding=0>
 <tr>
     <td><img src="images/xCAT_icon.gif"></td>
-    <td background="images/header_bg.gif" width=700><p id=Banner>xCAT - e<u>x</u>treme <u>C</u>luster <u>A</u>dministration <u>T</u>ool</p></td>
+    <td background="images/header_bg.gif" width=700>
+    	<p id=banner>xCAT - e<u>x</u>treme <u>C</u>luster <u>A</u>dministration <u>T</u>ool</p>
+    	<p id=disclaimer>This interface is still under construction and not yet ready for use.</p>
+    </td>
 </tr>
 </table>
 <?php }  // end insertHeader
@@ -86,55 +89,6 @@ $plusgif = "$imagedir/plus-sign.gif";
 */
 
 
-/** ----------------------------------------------------------------------------------------------
- Function to run the commands on the remote nodes. Four arguments:
- 		1. The command
-		2. Mode:
-			  0: If successful, return output to a reference variable in the caller function, with the newlines removed.
-			  	 Otherwise, print the error msg to the screen
-		  	  2: Like mode 0, if successful, return output to a reference variable in the caller function, with the newlines removed.
-		  	     But error msgs are output to reference variable in the caller function
-			  1: Long running cmd, intermediate results/errors are ouput as the command is executed
-			 -1: Like mode 1
-			  3: Long running cmd. Results/errors are output to a file and return a file handle to the caller function
-		3. Reference variable to hold the output returned to caller function
-		4. Reference to an options hash, e.g. { NoVerbose => 1, NoRedirectStderr => 1 }
-	Return status: 0 - successful, error - 1
-------------------------------------------------------------------------------------------------*/
-function runcmd ($cmd, $mode, &$output, $options=NULL){
-
-	//Set error output to the same source as standard output (on Linux)
-	if (strstr($cmd,'2>&1') == FALSE && !$options["NoRedirectStdErr"])
-		$cmd .= ' 2>&1';
-
-	$ret_stat = "";
-	$arr_output = NULL;
-	if ($mode == 3){
-		$handle = popen($cmd, "r");
-		if($handle){
-			$output = $handle;	//return file handle to caller
-			return 0;	//successful
-		}else{
-			echo "Piping command into a file failed";
-			return 1;
-		}
-	}elseif ($mode == 0 || $mode == 2 ){
-		exec($cmd,$arr_output,$ret_stat);
-		if ($ret_stat == 0){
-			$output = $arr_output;
-		} else {
-			//output the error msg to the screen
-			if ($mode == 0)	echo $arr_output[0];
-			//output error msg to the caller function
-			elseif ($mode == 2) $output = $arr_output[0];
-		}
-	}elseif ($mode == 1 || $mode == -1){
-		system($cmd,$ret_stat);
-	}
-	return $ret_stat;
-}
-
-
 /*------------------------------------------------------------------------------
    Create the navigation area on the left.
    $currentlink is the key of the link to the page
@@ -150,7 +104,7 @@ $bulgif = "$TOPDIR/images/h3bg_new.gif";
 $minusgif = "$TOPDIR/images/minus-sign.gif";
 $plusgif = "$TOPDIR/images/plus-sign.gif";
 
-echo '<div id=nav><table border="0" cellpadding="0" cellspacing="1" width="110">';
+echo '<div id=nav><table border="0" cellpadding="0" cellspacing="1" width="70">';
 
 //Console section
 insertInner('open', 1,'Console', 'constab', $currentLink, array(
@@ -162,13 +116,13 @@ insertInner('open', 1,'Console', 'constab', $currentLink, array(
 
 // xCAT Cluster section
 ?>
- <TR><TD id="menu_level1" width="110">
+ <TR><TD id="menu_level1">
  <P title="<?php echo $colTxt; ?>" onclick="toggleSection(this,'clustab')" ondblclick="toggleSection(this,'clustab')">
  <IMG src=<?php echo $minusgif ?> id='clustab-im'> xCAT Cluster
  </P></TD></TR>
  <TR><TD>
-  <TABLE id='clustab' cellpadding=0 cellspacing=0 width="110"><TBODY>
-    <TR><TD id="menu_level2"><A href="csmconfig">Settings</A></TD></TR>
+  <TABLE id='clustab' cellpadding=0 cellspacing=0 width="100%"><TBODY>
+    <TR><TD id="menu_level3"><A href="csmconfig"><IMG src='<?php echo "$TOPDIR/images/h3bg_new.gif" ?>'>&nbsp;Settings</A></TD></TR>
 
 <?php
 	insertInner('open', 2,'Installation', 'installtab', $currentLink, array(
@@ -245,7 +199,7 @@ $plusgif = "$TOPDIR/images/plus-sign.gif";
 		$style = "display:none";
 	}
 ?>
-<TR><TD id=<?php echo $menu_level; if($level == 2) echo " class=no-link"; ?>>
+<TR><TD id=<?php echo $menu_level; ?>>
 <P title="<?php echo $hoverTxt; ?>" onclick="toggleSection(this,'<?php echo $id ?>')" ondblclick="toggleSection(this,'<?php echo $id ?>')">
 <IMG src=<?php echo $gif; ?> id=<?php echo $id."-im" ?>> <?php echo $title ?></P></TD></TR>
 <TR><TD >
@@ -255,15 +209,64 @@ $plusgif = "$TOPDIR/images/plus-sign.gif";
 
 foreach ($list as $key => $link) {
 	if ($key == $currentLink){
-		echo "<TR><TD bgcolor='#CCCCCC' id='menu_level3' class='current'><IMG src='". $TOPDIR . "/images/h3bg_new.gif'>&nbsp;$link[1]</TD></TR>\n";
+		echo "<TR><TD id='menu_level3' class='current'><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;$link[1]</TD></TR>\n";
 	}else{
-		echo "<TR><TD bgcolor='#CCCCCC' id='menu_level3'><A href='$link[0]'><IMG src='". $TOPDIR . "/images/h3bg_new.gif'>&nbsp;$link[1]</A></TD></TR>\n";
+		echo "<TR><TD id='menu_level3'><A href='$link[0]'><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;$link[1]</A></TD></TR>\n";
 	}
 }
 ?>
 </TABLE></TD></TR>
 
-<?php }//end function
+<?php }//end insertInner
+
+
+/** ----------------------------------------------------------------------------------------------
+ Function to run the commands on the remote nodes. Four arguments:
+ 		1. The command
+		2. Mode:
+			  0: If successful, return output to a reference variable in the caller function, with the newlines removed.
+			  	 Otherwise, print the error msg to the screen
+		  	  2: Like mode 0, if successful, return output to a reference variable in the caller function, with the newlines removed.
+		  	     But error msgs are output to reference variable in the caller function
+			  1: Long running cmd, intermediate results/errors are ouput as the command is executed
+			 -1: Like mode 1
+			  3: Long running cmd. Results/errors are output to a file and return a file handle to the caller function
+		3. Reference variable to hold the output returned to caller function
+		4. Reference to an options hash, e.g. { NoVerbose => 1, NoRedirectStderr => 1 }
+	Return status: 0 - successful, error - 1
+------------------------------------------------------------------------------------------------*/
+function runcmd ($cmd, $mode, &$output, $options=NULL){
+
+	//Set error output to the same source as standard output (on Linux)
+	if (strstr($cmd,'2>&1') == FALSE && !$options["NoRedirectStdErr"])
+		$cmd .= ' 2>&1';
+
+	$ret_stat = "";
+	$arr_output = NULL;
+	if ($mode == 3){
+		$handle = popen($cmd, "r");
+		if($handle){
+			$output = $handle;	//return file handle to caller
+			return 0;	//successful
+		}else{
+			echo "Piping command into a file failed";
+			return 1;
+		}
+	}elseif ($mode == 0 || $mode == 2 ){
+		exec($cmd,$arr_output,$ret_stat);
+		if ($ret_stat == 0){
+			$output = $arr_output;
+		} else {
+			//output the error msg to the screen
+			if ($mode == 0)	echo $arr_output[0];
+			//output error msg to the caller function
+			elseif ($mode == 2) $output = $arr_output[0];
+		}
+	}elseif ($mode == 1 || $mode == -1){
+		system($cmd,$ret_stat);
+	}
+	return $ret_stat;
+}
 
 
 // Send the keys and values in the primary global arrays

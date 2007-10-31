@@ -2,11 +2,12 @@
 /*------------------------------------------------------------------------------
   Produce the page for running commands on the nodes of the cluster
 ------------------------------------------------------------------------------*/
+$TOPDIR = '.';
 $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
 setcookie("history", "date;hello.sh", $expire_time);
 
 //require_once("globalconfig.php");
-require_once("XCAT/XCATCommand/XCATCommandRunner.class.php");
+require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
 require_once "$TOPDIR/functions.php";
 //require_once "$TOPDIR/nav.php";

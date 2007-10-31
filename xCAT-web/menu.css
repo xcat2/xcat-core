@@ -1,8 +1,9 @@
 /*
+Styles for the navigation area and some other general styles.
 
+Some of this came from:
 	template: Artificial Intelligence
 	author: luka cvrk (www.solucija.com)
-
 */
 
 body {
@@ -14,10 +15,9 @@ body {
 	color: #333;
 }
 
-.middle{
-	font: normal 1em Tahoma, Verdana, Arial, Helvetica, Sans-Serif;
-}
+.middle{ font: normal 1em Tahoma, Verdana, Arial, Helvetica, Sans-Serif; }
 
+/* this overlaps the BlueBack class in style.css */
 .BlueBack{
 	font: bold .9em Tahoma, Verdana, Arial, Helvetica, Sans-Serif;
 	color:#003399;
@@ -39,26 +39,106 @@ h3 { clear: both; font-size: 1.1em; color: #000; background: #fff url(images/h3b
 .image { float: left; border: 2px solid #e2e2e2; padding: 3px; margin: 0 15px 10px 0; }
 .no-border {border:0;}
 
-/* CONTENT WRAPPER */
-
-#main {
-	width: 900px;
-	margin: 25px auto 0 auto;
+.inner_table{
+	/*border-collapse:collapse;*/
+	border: 3px;
+	/* background-color: green; */
+	margin-left : 15px;
+  margin-right : 0px;
+  margin-top : 0px;
 }
 
-/* TOP LEFT LOGO */
+td.BorderMe { border:1px dotted #CCC; }
 
-#logo {
+tr.indent td { padding:0px 0 0px 10px; }
+
+.none { display:none; }
+
+
+/* LEFT VERTICAL MENU/Navigation area */
+
+#menu_level1 {
 	float: left;
+	color: #3F5B7F;
+	background: #C2CEDE;
+	font-weight: bold;
+	font-size:12px;
+	width: 100%;
+	height:100%;
+	padding: 0px 5px 0px 0px;
 }
+	/* menu_level1 rows are not links or lists, they are collapseable sections...
+	#menu_level1 li { list-style: none; }
+	#menu_level1 a:link,a:visited {
+		display: block;
+		color: #3F5B7F; font-weight: bold; background: #C2CEDE; width: 100%;	height:100%; padding: 0px; font-weight: bold;
+		text-decoration: none;
+	}
+	#menu_level1 a:hover { background: #9EB1C9 ; color: #fff; text-decoration: underline; }
+	*/
+
+#menu_level2 {
+	float: left;
+	color: #3F5B7F;
+	font-weight: bold;
+	background: #BDBDBD ;
+	font-size: 11px;
+	padding: 0px 5px 0px 3px;
+	border-bottom: 1px solid #fff;
+}
+	/* menu_level2 rows are not links or lists, they are collapseable sections...
+	#menu_level2 li { list-style: none; }
+	#menu_level2 a:link, a:visited {
+		display: block;
+		color: #3F5B7F; font-weight: bold; background: #BDBDBD;
+		width: 100%;
+		height:100%;
+		padding: 0px 5px 0px 15px;
+		text-decoration: none;
+	}
+	#menu_level2 a img { border: 0 none; }
+	#menu_level2 a:hover { background: #999999; color: #fff;  }
+	#menu_level2 a.current { background: #999999; color: #fff;  }
+	#menu_level2.no-link {  }
+	*/
+
+#menu_level3 {
+	float: left;
+	color: #3F5B7F;
+	font-weight: bold;
+	background: #CCCCCC ;
+	border-bottom: 1px solid #fff;
+	font-size:11px;
+	padding: 0px 5px 0px 15px;
+	width: 100%;
+}
+	/* #menu_level3 li { list-style: none; } */
+	#menu_level3 a:link, a:visited {
+		display: block;
+		/* color: #3F5B7F; width: 110px; font-weight: bold; background: #CCCCCC; */
+		height:100%;
+		text-decoration: none;
+	}
+	#menu_level3 a img { border: 0 none; }
+	#menu_level3 a:hover { background: #999999; color: #fff;  }
+	/* #menu_level3 a.current { background: #999999; color: #fff; } */
+	#menu_level3.current { background: #FFFFFF ; }
+
+/* CONTENT WRAPPER */
+/* #main { width: 900px; margin: 25px auto 0 auto; } */
+
+/* TOP LEFT LOGO - not used...
+#logo { float: left; }
 	#logo h1 { color: #FFFFFF;  background: inherit;}
 	#logo h3 { color: #999999;  background: inherit;}
+*/
 
-/* TOP RIGHT HORIZONTAL MENU */
+/* .main_table { border-collapse:collapse; } */
 
+/* TOP RIGHT HORIZONTAL MENU - not used...
 #menu {
 	float: right;
-	/*background: #fff url(images/barul.gif) no-repeat bottom right; */
+	/*background: #fff url(images/barul.gif) no-repeat bottom right; *//*
 	color: #808080;
 	padding: 18px 1px 11px 0;
 	margin: 0;
@@ -66,29 +146,28 @@ h3 { clear: both; font-size: 1.1em; color: #000; background: #fff url(images/h3b
 	#menu li {
 		padding: 14px 18px 14px 18px;
 		color: #444;
-		/*background: #fff url(images/bar.gif) no-repeat bottom left; */
+		/*background: #fff url(images/bar.gif) no-repeat bottom left; *//*
 		display: inline;
 	}
 	#menu li.active {
-		/*background: #fff url(images/baractive.gif) no-repeat bottom left; */
+		/*background: #fff url(images/baractive.gif) no-repeat bottom left; *//*
 		color: #FFFF00;
 		font-weight: bold;
 		padding: 14px 18px 14px 18px;
 		margin: 0 1px 0 0;
 	}
 	#menu li a {
-		/*background: #f8f8f8; */
+		/*background: #f8f8f8; *//*
 		color: #808080;
 		text-decoration: none; font: bold 2em "Trebuchet MS", Helvetica, Sans-Serif; margin: 0; color: #fff; background-color:transparent;
 	}
 	#menu li a:hover {
 		color: #000;
-		/*background: #f8f8f8; */
+		/*background: #f8f8f8; *//*
 	}
 	.key { text-decoration: underline; } /* ACCESKEY UNDERLINED LETTER */
 
-/* LEFT INTRO SIDE */
-
+/* LEFT INTRO SIDE - not used
 #intro_left {
 	clear: left;
 	float: left;
@@ -99,90 +178,9 @@ h3 { clear: both; font-size: 1.1em; color: #000; background: #fff url(images/h3b
 }
 	#intro_left a { color: #fff; background: inherit; }
 	#intro_left p { padding: 14px 15px; margin: 0; }
+*/
 
-/* LEFT VERTICAL MENU */
-
-#menu_level1 {
-		float: left;
-		color: #3F5B7F;
-		background: #C2CEDE;
-		font-weight: bold;
-		font-size:12px;
-		width: 100%;
-		height:100%;
-		padding: 0px;
-}
-		#menu_level1 li { list-style: none; }
-		#menu_level1 a:link,a:visited {
-			display: block;
-			color: #3F5B7F;
-			font-weight: bold;
-			background: #C2CEDE;
-			width: 100%;
-			height:100%;
-			padding: 0px;
-			font-weight: bold;
-			text-decoration: none;
-		}
-		#menu_level1 a:hover { background: #9EB1C9 ; color: #fff; text-decoration: underline;   }
-
-#menu_level2 {
-float: left;
-color: #3F5B7F;
-font-weight: bold;
-background: #BDBDBD ;
-font-size:11px;
-border-bottom: 1px solid #fff;
-width: 110px;
-}
-		#menu_level2 li { list-style: none; }
-		#menu_level2 a:link, a:visited {
-			display: block;
-			color: #3F5B7F;
-			width: 110px;
-			height:100%;
-			padding: 0px 0px 0px 15px;
-			font-weight: bold;
-			background: #BDBDBD ;
-			text-decoration: none;
-
-		}
-		#menu_level2 a img { border: 0 none; }
-		#menu_level2 a:hover { background: #999999; color: #fff;  }
-		#menu_level2 a.current { background: #999999; color: #fff;  }
-		#menu_level2.no-link { padding: 0px 0px 0px 3px; }
-
-#menu_level3 {
-float: left;
-/*color: #FFFF00;*/
-color: #3F5B7F;
-font-weight: bold;
-background: #CCCCCC ;
-border-bottom: 1px solid #fff;
-font-size:11px;
-width: 100%;
-}
-		#menu_level3 li { list-style: none; }
-		#menu_level3 a:link, a:visited {
-			display: block;
-			color: #3F5B7F;
-			width: 110px;
-			height:100%;
-			padding: 0px 0px 0px 15px;
-			background: #CCCCCC ;
-			/*margin: 0;*/
-			font-weight: bold;
-			text-decoration: none;
-
-		}
-		#menu_level3 a img { border: 0 none; }
-		#menu_level3 a:hover { background: #999999; color: #fff;  }
-		#menu_level3 a.current { background: #999999; color: #fff; }
-		#menu_level3.current {padding: 0px 0px 0px 15px; background: #FFFFFF ; }
-
-
-/* RIGHT INTRO SIDE */
-
+/* RIGHT INTRO SIDE - not used...
 #intro_right {
 	float: right;
 	width: 340px;
@@ -195,9 +193,9 @@ width: 100%;
 }
 	#intro_right h1 { margin: 0 0 20px 0; }
 	#intro_right .white { color: #FFF; background-color:transparent; }
+*/
 
-/* LEFT SIDE */
-
+/* LEFT SIDE - not used...
 #left {
 	float: left;
 	width: 250px;
@@ -214,9 +212,9 @@ width: 100%;
 		background: #FFFFAD url(images/package.gif) no-repeat;
 		color: #585616;
 	}
+*/
 
-/* RIGHT SIDE */
-
+/* RIGHT SIDE - not used...
 #right {
 	float: right;
 	width: 643px;
@@ -244,32 +242,8 @@ width: 100%;
 		background: #eee;
 		color: #444;
 	}
+*/
 
-/* FOOTER */
-
+/* FOOTER - not used...
 #footer { clear: both; padding: 5px; border-top: 1px solid #ccc; }
-
-.main_table{
-	border-collapse:collapse;
-}
-
-.inner_table{
-	/*border-collapse:collapse;*/
-	border: 3px;
-	/* background-color: green; */
-	margin-left : 15px;
-  margin-right : 0px;
-  margin-top : 0px;
-}
-
-td.BorderMe{
-	border:1px dotted #CCC;
-}
-
-tr.indent td{
-	padding:0px 0 0px 10px;
-}
-
-.none{
-	display:none;
-}
+*/
