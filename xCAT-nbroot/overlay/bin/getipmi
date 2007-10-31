@@ -1,0 +1,4 @@
+#!/bin/sh
+if ! getipmi.awk 301; then
+    getipmi.awk 300;
+fi

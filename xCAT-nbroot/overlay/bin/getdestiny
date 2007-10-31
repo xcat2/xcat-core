@@ -1,0 +1,4 @@
+#!/bin/sh
+if ! getdestiny.awk 301; then
+    getdestiny.awk 300;
+fi

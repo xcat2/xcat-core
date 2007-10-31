@@ -1,7 +1,8 @@
 #!/usr/bin/awk -f
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN {
-        ns = "/inet/tcp/0/127.0.0.1/301"
+        localport = ARGV[1]
+        ns = "/inet/tcp/0/127.0.0.1/" localport
 
         print "<xcatrequest>" |& ns
         print "<command>getbmcconfig</command>" |& ns

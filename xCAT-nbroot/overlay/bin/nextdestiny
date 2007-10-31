@@ -1,0 +1,4 @@
+#!/bin/sh
+if ! nextdestiny.awk 301; then
+    nextdestiny.awk 300;
+fi

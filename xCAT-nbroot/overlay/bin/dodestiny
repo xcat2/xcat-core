@@ -19,8 +19,9 @@ while :; do
     echo "Server notified us of standby condition, please check chain table".
     echo "Retrying destiny in 15 seconds"
     usleep 15000000 # something may be transiently wrong, check back in 15 seconds
-    while ! getdestiny.awk; do
+    while ! getdestiny; do
         echo "Retrying destiny retrieval"
+        usleep 300000
     done
     exec $0
   fi
@@ -31,6 +32,7 @@ while :; do
   if [ $DESTINY == "discover" ]; then
     echo "MAC discovery begins"
     minixcatd.awk &
+    usleep 500000 #Mitigate occurrances of 'failed to notify node'
     while [ ! -r /restart ]; do
       ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1 "|" $5}'
       MTM="unknown"
@@ -67,20 +69,23 @@ while :; do
       if [ "$SERIAL" != "unknown" ]; then
         echo "<serial>$SERIAL</serial>"
       fi
-      echo "</xcatrequest>" )| udpcat.awk $XCATMASTER $XCATPORT
-      usleep 30000000
+      echo "</xcatrequest>" ) > /tmp/discout
+      cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT
+      usleep 5000000 #Give the preferred method 5 seconds to complete before resorting
+      cat /tmp/discout | udpcat.awk `cat /tmp/dhcpserver` $XCATPORT
+      usleep 25000000
     done
     #Discovery complete, restart requested.
     exec /bin/restart
   fi
   if [ $DESTINY == "reboot" ]; then
-    while ! nextdestiny.awk ; do
+    while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
     reboot -f
   fi
   if [ $DEST == "runcmd" ]; then
-    while ! nextdestiny.awk ; do
+    while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
     $TARG
@@ -103,7 +108,7 @@ while :; do
     mkdir /tmp/$TARG
     cd /tmp/$TARG
     wget $TARG
-    while ! nextdestiny.awk ; do
+    while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
     tar zxvf $TARG
