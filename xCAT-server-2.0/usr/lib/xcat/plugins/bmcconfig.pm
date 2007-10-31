@@ -60,7 +60,7 @@ sub process_request  {
   my $gennedpassword=0;
   my $bmc;
   my $password = 'PASSW0RD';
-  if ($passtable) { $tmphash=$passtable->getAttribs({key=>'ipmi'},'username','password'); }
+  if ($passtable) { ($tmphash)=$passtable->getAttribs({key=>'ipmi'},'username','password'); }
   #Check for generics, can grab for both user and pass with a query
   #since they cannot be in disparate records in passwd tab
   if ($tmphash->{username}) { 

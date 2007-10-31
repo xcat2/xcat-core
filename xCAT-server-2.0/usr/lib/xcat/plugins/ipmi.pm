@@ -310,17 +310,17 @@ sub ipmiinit {
 	
 	my $table = xCAT::Table->new('site');
 	if ($table) {
-		$tmp=$table->getAttribs({'key'=>'ipmimaxp'},'value');
+		($tmp)=$table->getAttribs({'key'=>'ipmimaxp'},'value');
 		if (defined($tmp)) { $ipmimaxp=$tmp->{value}; }
-		$tmp=$table->getAttribs({'key'=>'ipmitimeout'},'value');
+		($tmp)=$table->getAttribs({'key'=>'ipmitimeout'},'value');
 		if (defined($tmp)) { $ipmitimeout=$tmp->{value}; }
-		$tmp=$table->getAttribs({'key'=>'ipmiretries'},'value');
+		($tmp)=$table->getAttribs({'key'=>'ipmiretries'},'value');
 		if (defined($tmp)) { $ipmitrys=$tmp->{value}; }
-		$tmp=$table->getAttribs({'key'=>'ipmisdrcache'},'value');
+		($tmp)=$table->getAttribs({'key'=>'ipmisdrcache'},'value');
 	}
 	$table = xCAT::Table->new('passwd');
 	if ($table) {
-		$tmp=$table->getAttribs({'key'=>'ipmi'},['username','password']);
+		($tmp)=$table->getAttribs({'key'=>'ipmi'},'username','password');
 		if (defined($tmp)) {
 			$ipmiuser = $tmp->{username};
 			$ipmipass = $tmp->{password};
@@ -4334,18 +4334,18 @@ sub process_request {
 	my $ipmitab = xCAT::Table->new('ipmi');
 	my $tmp;
 	if ($sitetab) {
-		$tmp=$sitetab->getAttribs({'key'=>'ipmimaxp'},'value');
+		($tmp)=$sitetab->getAttribs({'key'=>'ipmimaxp'},'value');
 		if (defined($tmp)) { $ipmimaxp=$tmp->{value}; }
-		$tmp=$sitetab->getAttribs({'key'=>'ipmitimeout'},'value');
+		($tmp)=$sitetab->getAttribs({'key'=>'ipmitimeout'},'value');
 		if (defined($tmp)) { $ipmitimeout=$tmp->{value}; }
-		$tmp=$sitetab->getAttribs({'key'=>'ipmiretries'},'value');
+		($tmp)=$sitetab->getAttribs({'key'=>'ipmiretries'},'value');
 		if (defined($tmp)) { $ipmitrys=$tmp->{value}; }
-		$tmp=$sitetab->getAttribs({'key'=>'ipmisdrcache'},'value');
+		($tmp)=$sitetab->getAttribs({'key'=>'ipmisdrcache'},'value');
 		if (defined($tmp)) { $enable_cache=$tmp->{value}; }
 	}
 	my $passtab = xCAT::Table->new('passwd');
 	if ($passtab) {
-		$tmp=$passtab->getAttribs({'key'=>'ipmi'},['username','password']);
+		($tmp)=$passtab->getAttribs({'key'=>'ipmi'},'username','password');
 		if (defined($tmp)) { 
 			$ipmiuser = $tmp->{username};
 			$ipmipass = $tmp->{password};
