@@ -3677,7 +3677,7 @@ sub getchanauthcap {
 	my @response;
 	my $code;
 
-	@data = ($rqsa,$seqlun,0x38,0x8e,0x04);
+	@data = ($rqsa,$seqlun,0x38,0x0e,0x04);
 	@rn = ($rssa,$netfun);
 	$length = (scalar @data)+4;
 	
