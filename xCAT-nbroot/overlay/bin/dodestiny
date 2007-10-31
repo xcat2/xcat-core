@@ -70,10 +70,15 @@ while :; do
         echo "<serial>$SERIAL</serial>"
       fi
       echo "</xcatrequest>" ) > /tmp/discout
-      cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT
-      usleep 5000000 #Give the preferred method 5 seconds to complete before resorting
-      cat /tmp/discout | udpcat.awk `cat /tmp/dhcpserver` $XCATPORT
-      usleep 25000000
+      cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT & #can't figure out how to make a hung gawk behave..
+      if usleep 8000000 #Give the preferred method 5 seconds to complete before resorting
+      then
+        #if usleep succeeded, that means it wasn't killed and therefore, no answer yet
+        killall udpcat.awk #reap hung ones
+        cat /tmp/discout | udpcat.awk `cat /tmp/dhcpserver` $XCATPORT &
+        usleep 8000000
+      fi
+      killall udpcat.awk #reap hung ones
     done
     #Discovery complete, restart requested.
     exec /bin/restart
