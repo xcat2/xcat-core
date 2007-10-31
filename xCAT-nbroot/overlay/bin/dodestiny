@@ -83,7 +83,7 @@ while :; do
     #Discovery complete, restart requested.
     exec /bin/restart
   fi
-  if [ $DESTINY == "reboot" ]; then
+  if [ $DESTINY == "reboot" -o $DESTINY == "boot" ]; then
     while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
