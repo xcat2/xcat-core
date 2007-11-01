@@ -2,6 +2,7 @@ cd `dirname $0`
 tar --exclude .svn -czvf postscripts.tar.gz  postscripts LICENSE.html
 tar --exclude .svn -czvf templates.tar.gz templates
 mv -f *.gz /usr/src/redhat/SOURCES
+cp xcat.conf /usr/src/redhat/SOURCES
 rpmbuild -ba xCAT.spec 
 cd -
 

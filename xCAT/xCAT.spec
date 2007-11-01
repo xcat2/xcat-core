@@ -63,6 +63,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     if ! grep /install /etc/exports; then
         echo '/install *(ro,no_root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
         service nfs restart
+	chkconfig nfs on
     fi
     if [ ! -r /etc/xcat/site.sqlite ]; then 
       chtab key=xcatdport site.value=3001
@@ -95,6 +96,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     makenetworks
     chtab key=nameservers site.value=`grep nameserver /etc/resolv.conf|awk '{printf $2 ","}'|sed -e s/,$//`
     service httpd restart
+    chkconfig httpd on
     echo "xCAT is now installed, it is recommended to tabedit networks and set a dynamic ip address range on any networks where nodes are to be discovered"
     echo "Then, run makedhcp -n to create a new dhcpd.configuration file, and /etc/init.d/dhcpd restart"
     echo "Either examine sample configuration templates, or write your own, or specify a value per node with nodeadd or tabedit."
