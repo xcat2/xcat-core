@@ -209,7 +209,7 @@ $plusgif = "$TOPDIR/images/plus-sign.gif";
 
 foreach ($list as $key => $link) {
 	if ($key == $currentLink){
-		echo "<TR><TD id='menu_level3' class='current'><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;$link[1]</TD></TR>\n";
+		echo "<TR><TD id='menu_level3' class='CurrentMenuItem'><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;$link[1]</TD></TR>\n";
 	}else{
 		echo "<TR><TD id='menu_level3'><A href='$link[0]'><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;$link[1]</A></TD></TR>\n";
 	}

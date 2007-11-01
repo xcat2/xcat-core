@@ -57,6 +57,11 @@ tr.indent td { padding:0px 0 0px 10px; }
 
 /* LEFT VERTICAL MENU/Navigation area */
 
+#nav TD{
+  white-space: nowrap;
+  vertical-align : middle;
+}
+
 #menu_level1 {
 	float: left;
 	color: #3F5B7F;
@@ -122,128 +127,5 @@ tr.indent td { padding:0px 0 0px 10px; }
 	#menu_level3 a img { border: 0 none; }
 	#menu_level3 a:hover { background: #999999; color: #fff;  }
 	/* #menu_level3 a.current { background: #999999; color: #fff; } */
-	#menu_level3.current { background: #FFFFFF ; }
+	#menu_level3.CurrentMenuItem { background: #FFFFFF ; }
 
-/* CONTENT WRAPPER */
-/* #main { width: 900px; margin: 25px auto 0 auto; } */
-
-/* TOP LEFT LOGO - not used...
-#logo { float: left; }
-	#logo h1 { color: #FFFFFF;  background: inherit;}
-	#logo h3 { color: #999999;  background: inherit;}
-*/
-
-/* .main_table { border-collapse:collapse; } */
-
-/* TOP RIGHT HORIZONTAL MENU - not used...
-#menu {
-	float: right;
-	/*background: #fff url(images/barul.gif) no-repeat bottom right; *//*
-	color: #808080;
-	padding: 18px 1px 11px 0;
-	margin: 0;
-}
-	#menu li {
-		padding: 14px 18px 14px 18px;
-		color: #444;
-		/*background: #fff url(images/bar.gif) no-repeat bottom left; *//*
-		display: inline;
-	}
-	#menu li.active {
-		/*background: #fff url(images/baractive.gif) no-repeat bottom left; *//*
-		color: #FFFF00;
-		font-weight: bold;
-		padding: 14px 18px 14px 18px;
-		margin: 0 1px 0 0;
-	}
-	#menu li a {
-		/*background: #f8f8f8; *//*
-		color: #808080;
-		text-decoration: none; font: bold 2em "Trebuchet MS", Helvetica, Sans-Serif; margin: 0; color: #fff; background-color:transparent;
-	}
-	#menu li a:hover {
-		color: #000;
-		/*background: #f8f8f8; *//*
-	}
-	.key { text-decoration: underline; } /* ACCESKEY UNDERLINED LETTER */
-
-/* LEFT INTRO SIDE - not used
-#intro_left {
-	clear: left;
-	float: left;
-	width: 250px;
-	background: #8D9CAF url(images/leftintrobg.gif) repeat-x;
-	color: #E5EAF2;
-	margin: 0 0 1px 0;
-}
-	#intro_left a { color: #fff; background: inherit; }
-	#intro_left p { padding: 14px 15px; margin: 0; }
-*/
-
-/* RIGHT INTRO SIDE - not used...
-#intro_right {
-	float: right;
-	width: 340px;
-	padding: 25px 280px 0 20px;
-	background: #BCCEDA url(images/intro.jpg) no-repeat;
-	color: #547592;
-	margin: 0 0 6px 0;
-	height: 174px;
-	border: 2px solid #e2e2e2;
-}
-	#intro_right h1 { margin: 0 0 20px 0; }
-	#intro_right .white { color: #FFF; background-color:transparent; }
-*/
-
-/* LEFT SIDE - not used...
-#left {
-	float: left;
-	width: 250px;
-}
-	.box {
-		padding: 4px 15px;
-		border: 1px solid #ccc;
-		margin: 0 0 10px 0;
-	}
-	.note {
-		padding: 15px 15px 20px 100px;
-		border: 1px solid #CFCB66;
-		margin: 0 0 5px 0;
-		background: #FFFFAD url(images/package.gif) no-repeat;
-		color: #585616;
-	}
-*/
-
-/* RIGHT SIDE - not used...
-#right {
-	float: right;
-	width: 643px;
-}
-	.leftcol {
-		float: left;
-		padding: 12px 15px;
-		width: 285px;
-		border:#ccc 1px solid;
-		text-align: justify;
-		margin: 0 0 10px 0;
-	}
-	.rightcol {
-		float: right;
-		padding: 10px 15px;
-		width: 285px;
-		border:#ccc 1px solid;
-		margin: 0 0 10px 0;
-		}
-	.special {
-		clear: both;
-		margin:0px 0 20px 0;
-		padding: 5px 20px;
-		border: 1px solid #ccc;
-		background: #eee;
-		color: #444;
-	}
-*/
-
-/* FOOTER - not used...
-#footer { clear: both; padding: 5px; border-top: 1px solid #ccc; }
-*/

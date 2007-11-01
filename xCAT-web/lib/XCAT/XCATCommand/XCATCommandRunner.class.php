@@ -14,8 +14,9 @@ class XCATCommandRunner {
 	var $XCATNodeGroupManager;
 
 	function XCATCommandRunner() {
-		$this->XCATRoot = '/opt/xcat/bin';   //todo: get rid of these
-		$this->CurrDir = '/opt/xcat/web';
+		$this->XCATRoot = '';   //'/opt/xcat/bin';   //todo: get rid of these
+		$this->CurrDir = '';    //'/opt/xcat/web';
+		$this->Sudo = '\bin\sudo ';
 
 		$this->XCATNodeManager = &XCATNodeManager::getInstance();
 		$this->XCATNodeGroupManager = &XCATNodeGroupManager::getInstance();
@@ -44,7 +45,7 @@ class XCATCommandRunner {
 	 * @return An array containing names of all nodes.
 	 */
 	function getAllNodeNames() {
-		$cmdString = "sudo " . $this->XCATRoot . "/nodels";
+		$cmdString = $this->Sudo . $this->XCATRoot . "/nodels";
 		$outputStat = $this->runCommand($cmdString);
 
 		return $outputStat["output"];
@@ -57,7 +58,7 @@ class XCATCommandRunner {
 	 * @return An array containing the name of all nodes in the group.
 	 */
 	function getNodeNamesByGroupName($groupName) {
-		$cmdString = "sudo " . $this->XCATRoot . "/nodels $groupName";
+		$cmdString = $this->Sudo . $this->XCATRoot . "/nodels $groupName";
 		$outputStat = $this->runCommand($cmdString);
 
 		return $outputStat["output"];
@@ -68,7 +69,7 @@ class XCATCommandRunner {
 	 */
 	function getXCATNodeByName($nodeName) {
 
-			$cmdString = "sudo " . $this->XCATRoot . "/nodestat $nodeName";
+			$cmdString = $this->Sudo . $this->XCATRoot . "/nodestat $nodeName";
 			$outputStat = $this->runCommand($cmdString);
 
 			$xcn = new XCATNode();
@@ -91,7 +92,7 @@ class XCATCommandRunner {
 	 * @return An array containing the name of every node group.
 	 */
 	function getAllGroupNames() {
-		$cmdString = "sudo " . $this->XCATRoot . "/listattr";
+		$cmdString = $this->Sudo . $this->XCATRoot . "/listattr";
 		$outputStat = $this->runCommand($cmdString);
 
 		return $outputStat["output"];
@@ -136,6 +137,7 @@ class XCATCommandRunner {
 			$groupStatArr = $this->getGroupStatus(); //get the status of all the groups
 
 			foreach($xcatGroupNames as $groupName) {
+				//echo "<p>group=$groupName</p>";
 				$xcatGroup = $this->getXCATGroupByName($groupName, $groupStatArr);
 				array_push($xcatGroups, $xcatGroup);
 			}
@@ -160,7 +162,7 @@ class XCATCommandRunner {
 	 * @return An array containing the status of all the groups
 	 */
 	function getGroupStatus() {
-		$cmdString = "sudo " . $this->CurrDir . "/cmds/grpattr";
+		$cmdString = $this->Sudo . $this->CurrDir . "/grpattr";   // "/cmds/grpattr";
 		$outputStat = $this->runCommand($cmdString);
 		$groupStats = $outputStat["output"];
 		$groupStatArr = array();
@@ -178,7 +180,7 @@ class XCATCommandRunner {
 	function getNodeOrGroupStatus($nodegroupName, $group) {
 		$stat = "";
 		if ($group == FALSE){
-			$cmdString = "sudo " . $this->XCATRoot . "/nodestat " . $nodegroupName;
+			$cmdString = $this->Sudo . $this->XCATRoot . "/nodestat " . $nodegroupName;
 			$outputStat = $this->runCommand($cmdString);
 			$nodegroupStat = $outputStat["output"][0];
 

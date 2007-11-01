@@ -8,8 +8,8 @@ div#nav {
 div#content {
   background-color : #fcfaeb;
   position: absolute;
-  left: 125px;
-  top: 95px;
+  left: 120px;
+  top: 90px;
 }
 
 /* not used...
@@ -87,6 +87,7 @@ P#logo {
 
 .txtfld {font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 
+/* this was used to make buttons out of table cells...
 .bt {
   font-size : 8pt;
   font-weight : bold;
@@ -94,18 +95,17 @@ P#logo {
   background-image : url(images/bt.gif);
 	text-align: center;
 }
+*/
 
 INPUT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 SELECT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 TABLE {font-size : 10pt; font-family : Arial;}
-BODY {font-size : 10pt; font-family : Arial;
-}
+BODY {font-size : 10pt; font-family : Arial; }
 
-/* The rest of the styles are for the navigation area */
-
+/* The rest of the styles were for the navigation area, but are not used any more...
 table#navtable {
-  /* width: 105px; */
+  width: 105px;
   font-size : 8pt;
   padding-left : 1px;
   border: 0px;
@@ -114,9 +114,7 @@ table#navtable {
 
 .NavCurLink { background-color: #fcfaeb; }
 
-
 #nav A{
-  /* text-decoration : none; */
   font-weight : bold;
   font-family : sans-serif;
 }
@@ -131,17 +129,7 @@ table#navtable {
   vertical-align : middle;
 }
 
-#nav TD{
-  white-space: nowrap;
-  vertical-align : middle;
-  font-weight : bold;
-  font-family : sans-serif;
-  /* border: 1px solid gray; */
-}
-
-#nav IMG {
- border: 0px;
-}
+#nav IMG {  border: 0px; }
 
 .InnerTable{
   margin-left : 0px;
@@ -154,11 +142,10 @@ table#navtable {
   white-space: nowrap;
 }
 
-
-/* OuterTable is not currently used */
 .OuterTable{
   margin-left : 1px;
   margin-right : 1px;
   margin-top : 0px;
   margin-bottom : 0px;
 }
+*/

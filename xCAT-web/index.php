@@ -5,6 +5,7 @@
 $TOPDIR = '.';
 require_once "$TOPDIR/functions.php";
 //require_once "$TOPDIR/nav.php";
+if (isAIX()) { $aixDisabled = 'disabled'; }
 
 //require_once("globalconfig.php");
 require_once("lib/XCAT/HTML/HTMLProducer.class.php");
@@ -13,35 +14,39 @@ require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
 insertHeader('Nodes', NULL, NULL);
 insertNav('nodes');
-if (isAIX()) { $aixDisabled = 'disabled'; }
-?>
-<div id=content align=center>
-<h1 class=PageHeading>Cluster Groups and Nodes</h1>
-<table border=0 cellspacing=0>
-  <tr class="BlueBack">
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#">Attribute</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#">Define Like</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#">Create Group</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#">Ping</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#">Update</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#">Run Cmd</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#">Copy Files</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC"><div align="center"><a href="#"></a></div></td>
-  </tr>
-  <tr>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC" class="BlueBack"><div align="center"><a href="#">Soft Maint</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC" class="BlueBack"><div align="center"><a href="#">HW Ctrl</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC" class="BlueBack"><div align="center"><a href="#">RSA/MM/FSP</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC" class="BlueBack"><div align="center"><a href="#">Install</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC" class="BlueBack"><div align="center"><a href="#">Perf Mon</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC" class="BlueBack"><div align="center"><a href="#">Webmin</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC" class="BlueBack"><div align="center"><a href="#">Diagnose</a></div></td>
-    <td width="90" height="20" background="images/baractive2.gif" bgcolor="#CCCCCC" class="BlueBack"><div align="center"><a href="#">Remove</a></div></td>
-  </tr>
-</table>
-<br>
-<form name="nodelist">
-<?php
+
+echo "<div id=content align=center> <h1 class=PageHeading>Cluster Groups and Nodes</h1>";
+
+
+insertButtons(array(
+	array(
+		'name=propButton value="Attributes"',
+		'name=defineButton value="Create Like"',
+		'name=createGroupButton value="Create Group"',
+		'name=pingNodesButton value="Ping"',
+		//'name=updateButton value="Updatenode"',
+		'name=runcmdButton value="Run Cmd"',
+		'name=copyFilesButton value="Copy Files"'
+	),
+	array(
+		//'name=softMaintButton value="Soft Maint" onclick="this.form.nodesNeeded=1;"',
+		'name=hwctrlButton value="HW Ctrl"',
+		'name=rsaButton value="RSA/MM/FSP" onclick="this.form.nodesNeeded=1;"',
+		'name=installButton value="Install"',
+		'name=perfmonButton value="Perf Mon"',
+		//'name=webminButton value="Webmin" onclick="this.form.nodesNeeded=1;"',
+		'name=diagButton value="Diagnose" onclick="this.form.nodesNeeded=1;"',
+		'name=removeButton value="Remove"'
+	),
+));
+
+echo '<br><form name="nodelist">';
+
+/*
+$output = array();
+runcmd("\bin\sudo listattr", 2, $output);
+foreach ($output as $line) { echo "<p>line=$line</p>"; }
+*/
 
 echo HTMLProducer::getXCATNodeTableHeader();
 
