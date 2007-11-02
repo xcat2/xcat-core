@@ -1,15 +1,23 @@
+
+div#header {
+  /* background-color : #d8dff1; */
+  position: absolute;
+  left: 15px;
+  top: 15px;
+}
+
 div#nav {
   /* background-color : #d8dff1; */
   position: absolute;
   left: 0px;
-  top: 95px;
+  top: 80px;
 }
 
 div#content {
-  background-color : #fcfaeb;
+  /* background-color : #fcfaeb; */
   position: absolute;
   left: 120px;
-  top: 90px;
+  top: 80px;
 }
 
 /* not used...
@@ -25,9 +33,9 @@ P#logo {
 
 #banner {
  font-weight: bolder;
- font-size: 20pt;
+ font-size: 16pt;
  font-style: italic;
- color: gray;
+ color: #6a8ab5;  /* #3F5B7F;  gray; */
  text-align: center;
  margin: 10px;
 }
@@ -37,28 +45,55 @@ P#logo {
  font-size: 9pt;
  color: red;
  text-align: center;
+ margin: 5px;
 }
 
 .PageHeading {
- background-color: #c0c0c0;
- margin-top: 5px;
- margin-bottom: 5px;
+ /* font-size: 10pt; */
+ font: bold 1.4em "Trebuchet MS", Helvetica, Sans-Serif;
+ color: white;
+ background-color: transparent;  /* #c0c0c0; */
+ border: 1px solid white;
+ border-bottom-style: none;
+ margin: 2px 2px 10px 2px;
 }
+
+.ContentForm { margin: 10px 2px 15px 2px; }
+
+BODY {
+	font-size : 10pt;
+	font-family : Arial;
+	margin: 0;
+	padding: 10px;
+	background: url(images/background.gif) repeat-y;
+	/* background: black; */
+	font: normal 12px Tahoma, Verdana, Arial, Helvetica, Sans-Serif;
+	line-height: 1.6em;
+	color: white;  /* #333; */
+}
+
+INPUT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
+SELECT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
+TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
+TABLE {font-size : 10pt; font-family : Arial;}
 
 /* pre { padding: 0px; margin: 0px; } */
 
-.TableRow { background-color : #d8dff1; }
+.TableHeader { color: black; background-color : #fffdb0; font-weight : bold; font-size : 9pt; white-space: nowrap; }
+.TableRow { color: black; background-color : #b3c2d9; font-size : 9pt; white-space: nowrap; } /* #d8dff1 */
 .Info {color : blue;}
 .Error {font-weight : bold; color : red;}
 .Trace {color: gray;  padding: 0px; margin: 0px;}
 
 .BasicHeading {background-color : #8CA4D9;}
 .BlueBack {background-color : #C2CEDE; /* #8CA4D9; */ }
-
 .LightBlueBack {background-color : #bfccea;}
-
 .FilterBox {background-color : #e8e8e8;}
 .LightGrayBack {background-color : #e8e8e8;}
+.CreamHeading { font-weight : bolder; background-color : #fffdb0; }
+.LightCreamHeading { font-weight : bolder; background-color : #fffece; }
+.SlateBackground { background-color : #95aece; }
+.DarkSlateBackground { background-color : #698ebc; }
 
 .Middle {vertical-align : middle;}
 .Center {text-align : center;}
@@ -70,19 +105,14 @@ P#logo {
 .Font8 {font-size : 8pt;}
 .Boxed { border: 1px solid gray; }
 .NoMargin { margin: 0px; }
+.NoPadding { padding: 0px; margin: 0px; }
 .Hidden { visibility : hidden ;}
 
 
 .but{
-  background-color : #fbf999;
-  padding-top : 0px;
-  padding-left : 0px;
-  padding-right : 0px;
-  padding-bottom : 0px;
-  margin-top : 0px;
-  margin-left : 0px;
-  margin-right : 0px;
-  margin-bottom : 0px;
+  background-color: #3F5B7F;  /* #6a8ab5;  #fbf999; */
+  padding: 0px;
+  margin: 0px;
 }
 
 .txtfld {font-size : 8pt; font-family : sans-serif; font-weight : bold;}
@@ -96,12 +126,6 @@ P#logo {
 	text-align: center;
 }
 */
-
-INPUT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
-SELECT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
-TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
-TABLE {font-size : 10pt; font-family : Arial;}
-BODY {font-size : 10pt; font-family : Arial; }
 
 /* The rest of the styles were for the navigation area, but are not used any more...
 table#navtable {

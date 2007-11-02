@@ -6,15 +6,6 @@ Some of this came from:
 	author: luka cvrk (www.solucija.com)
 */
 
-body {
-	margin: 0;
-	padding: 10px;
-	background: #fff url(images/bg.gif) repeat-x;
-	font: normal 12px Tahoma, Verdana, Arial, Helvetica, Sans-Serif;
-	line-height: 1.6em;
-	color: #333;
-}
-
 .middle{ font: normal 1em Tahoma, Verdana, Arial, Helvetica, Sans-Serif; }
 
 /* this overlaps the BlueBack class in style.css */
@@ -34,7 +25,8 @@ a { color: #546F92; background: inherit; }
 a:hover { color: #808080; background: inherit; }
 h1  { font: bold 2em "Trebuchet MS", Helvetica, Sans-Serif; margin: 0; color: #000000; background-color:transparent; }
 h2  { font: bold 1.4em "Trebuchet MS", Helvetica, Sans-Serif; }
-h3 { clear: both; font-size: 1.1em; color: #000; background: #fff url(images/h3bg.gif) no-repeat center left; padding: 0 14px; margin: 0;}
+/* h3 { clear: both; font-size: 1.1em; color: #000; background: #fff url(images/h3bg.gif) no-repeat center left; padding: 0 14px; margin: 0;} */
+h3 { clear: both; font-size: 1.1em; color: #000; background-color: #fff; padding: 0 14px; margin: 0;}
 .blue { color: #546F92; background: inherit; }
 .image { float: left; border: 2px solid #e2e2e2; padding: 3px; margin: 0 15px 10px 0; }
 .no-border {border:0;}
@@ -64,8 +56,8 @@ tr.indent td { padding:0px 0 0px 10px; }
 
 #menu_level1 {
 	float: left;
-	color: #3F5B7F;
-	background: #C2CEDE;
+	color: white;  /* #3F5B7F; */
+	/* background: #C2CEDE; */
 	font-weight: bold;
 	font-size:12px;
 	width: 100%;
@@ -84,9 +76,9 @@ tr.indent td { padding:0px 0 0px 10px; }
 
 #menu_level2 {
 	float: left;
-	color: #3F5B7F;
+	color: white;  /* #3F5B7F; */
+	/* background: #BDBDBD ; */
 	font-weight: bold;
-	background: #BDBDBD ;
 	font-size: 11px;
 	padding: 0px 5px 0px 3px;
 	border-bottom: 1px solid #fff;
@@ -108,10 +100,10 @@ tr.indent td { padding:0px 0 0px 10px; }
 	*/
 
 #menu_level3 {
-	float: left;
+	/* float: left; */
 	color: #3F5B7F;
 	font-weight: bold;
-	background: #CCCCCC ;
+	/* background: #CCCCCC ; */
 	border-bottom: 1px solid #fff;
 	font-size:11px;
 	padding: 0px 5px 0px 15px;

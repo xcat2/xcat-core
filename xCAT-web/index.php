@@ -4,18 +4,16 @@
 
 $TOPDIR = '.';
 require_once "$TOPDIR/functions.php";
-//require_once "$TOPDIR/nav.php";
 if (isAIX()) { $aixDisabled = 'disabled'; }
 
-//require_once("globalconfig.php");
-require_once("lib/XCAT/HTML/HTMLProducer.class.php");
+require_once("lib/GroupNodeTable.class.php");
 require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
 
 insertHeader('Nodes', NULL, NULL);
 insertNav('nodes');
 
-echo "<div id=content align=center> <h1 class=PageHeading>Cluster Groups and Nodes</h1>";
+echo "<div id=content align=center> <p class=PageHeading>Cluster Groups and Nodes</p>";
 
 
 insertButtons(array(
@@ -40,15 +38,11 @@ insertButtons(array(
 	),
 ));
 
-echo '<br><form name="nodelist">';
+echo '<form name="nodelist" class=ContentForm>';
 
-/*
-$output = array();
-runcmd("\bin\sudo listattr", 2, $output);
-foreach ($output as $line) { echo "<p>line=$line</p>"; }
-*/
+/* $output = array(); runcmd("\bin\sudo listattr", 2, $output); foreach ($output as $line) { echo "<p>line=$line</p>"; } */
 
-echo HTMLProducer::getXCATNodeTableHeader();
+GroupNodeTable::insertGroupTableHeader();
 
 // Get all the names of the groups
 $xcmdr = new XCATCommandRunner();
@@ -57,10 +51,10 @@ $nodeGroupNames = $xcmdr->getAllXCATGroups();
 
 // Print the HTML for each of them
 foreach($nodeGroupNames as $key => $nodeGroupName) {
-	echo HTMLProducer::getXCATGroupTableRow($nodeGroupName);
+	echo GroupNodeTable::insertGroupTableRow($nodeGroupName);
 }
 
-echo HTMLProducer::getXCATNodeTableFooter();
+GroupNodeTable::insertGroupTableFooter();
 ?>
 <script type="text/javascript" src="js_xcat/event.js"> </script>
 <script type="text/javascript" src="js_xcat/ui.js"> </script>
@@ -70,21 +64,21 @@ echo HTMLProducer::getXCATNodeTableFooter();
 -->
 </SCRIPT>
 </form>
-<br>
 <table>
 <tr>
-  <td><div align="center"><img src="images/green-ball-m.gif"></div></td>
-  <td>Node is good (Status is  ready/pbs/sshd)</td>
+  <td><img src="images/green-ball-m.gif"></td>
+  <td align=left>Node is good (Status is ready/pbs/sshd)</td>
 </tr>
 <tr>
-  <td><div align="center"><img src="images/red-ball-m.gif"></div></td>
-  <td>Node is bad (Status is 'noping')</td>
+  <td><img src="images/red-ball-m.gif"></td>
+  <td align=left>Node is bad (Status is 'noping')</td>
 </tr>
 <tr>
-  <td><div align="center"><img src="images/yellow-ball-m.gif"></div></td>
-  <td>Other status (unknown/node unavailable...)</td>
+  <td><img src="images/yellow-ball-m.gif"></td>
+  <td align=left>Other status (unknown/node unavailable...)</td>
 </tr>
 </table>
+<p id=disclaimer>This interface is still under construction and not yet ready for use.</p>
 </div>
 </BODY>
 </HTML>

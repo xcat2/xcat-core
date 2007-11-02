@@ -64,15 +64,17 @@ if ($javascripts) {
 ?>
 </head>
 <body>
+<div id=header>
 <table border=0 align=left cellspacing=0 cellpadding=0>
 <tr>
     <td><img src="images/xCAT_icon.gif"></td>
-    <td background="images/header_bg.gif" width=700>
+    <!-- <td background="images/header_bg.gif" width=700> -->
+    <td width=600>
     	<p id=banner>xCAT - e<u>x</u>treme <u>C</u>luster <u>A</u>dministration <u>T</u>ool</p>
-    	<p id=disclaimer>This interface is still under construction and not yet ready for use.</p>
     </td>
 </tr>
 </table>
+</div>
 <?php }  // end insertHeader
 
 
@@ -104,7 +106,7 @@ $bulgif = "$TOPDIR/images/h3bg_new.gif";
 $minusgif = "$TOPDIR/images/minus-sign.gif";
 $plusgif = "$TOPDIR/images/plus-sign.gif";
 
-echo '<div id=nav><table border="0" cellpadding="0" cellspacing="1" width="70">';
+echo '<div id=nav><table border=1 cellpadding=0 cellspacing=1 width=70>';
 
 //Console section
 insertInner('open', 1,'Console', 'constab', $currentLink, array(
@@ -198,14 +200,14 @@ $plusgif = "$TOPDIR/images/plus-sign.gif";
 		$hoverTxt = $exTxt;
 		$style = "display:none";
 	}
-?>
-<TR><TD id=<?php echo $menu_level; ?>>
-<P title="<?php echo $hoverTxt; ?>" onclick="toggleSection(this,'<?php echo $id ?>')" ondblclick="toggleSection(this,'<?php echo $id ?>')">
-<IMG src=<?php echo $gif; ?> id=<?php echo $id."-im" ?>> <?php echo $title ?></P></TD></TR>
-<TR><TD >
-<TABLE id=<?php echo $id ?> width="100%" cellpadding="0" cellspacing="0" border=0 style=<?php echo $style ?>>
 
-<?php
+echo <<<EOS
+<TR><TD id=$menu_level>
+<P title="$hoverTxt" onclick="toggleSection(this,'$id')" ondblclick="toggleSection(this,'$id')">
+<IMG src=$gif id=$id-im> $title</P></TD></TR>
+<TR><TD >
+<TABLE id=$id width="100%" cellpadding="0" cellspacing="0" border=0 style=$style>
+EOS;
 
 foreach ($list as $key => $link) {
 	if ($key == $currentLink){
@@ -214,10 +216,10 @@ foreach ($list as $key => $link) {
 		echo "<TR><TD id='menu_level3'><A href='$link[0]'><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;$link[1]</A></TD></TR>\n";
 	}
 }
-?>
-</TABLE></TD></TR>
 
-<?php }//end insertInner
+echo "</TABLE></TD></TR>\n";
+
+}   //end insertInner
 
 
 /** ----------------------------------------------------------------------------------------------

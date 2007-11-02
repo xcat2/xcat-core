@@ -1,60 +1,47 @@
 <?php
-// This file is not longer used...
 /**
  * Produces HTML for use in the interface.
  */
 //require_once("config.php");
 
-class HTMLProducer {
+class GroupNodeTable {
 
 
-function HTMLProducer() {}
+function GroupNodeTable() {}
 
 /**
  * @return A string containing the HTML for the header of the table.
  */
-function getXCATNodeTableHeader() {
-$html = <<<EOS
-<table width="483" border="0" cellspacing="1" cellpadding=0>
-<tr bgcolor="#C2CEDE" class="BlueBack">
-	<td width="88">
-		<div align="center">
-			<input type="checkbox" name="chk_node_all" id="chk_node_all" />
-			Nodes
-		</div>
-	</td>
-	<td width="40"><div align="center">HW Type</div></td>
-	<td width="25"><div align="center">OS</div></td>
-	<td width="46"><div align="center">Mode</div></td>
-	<td width="47"><div align="center">Status</div></td>
-	<td width="89"><div align="center">HW Ctrl Pt</div></td>
-	<td width="74"><div align="center">Comment</div></td>
-	</tr>
+function insertGroupTableHeader() {
+echo <<<EOS
+<table border="0" cellspacing="1" cellpadding=1>
+<tr class=TableHeader>
+	<td width="88" align=left><input type="checkbox" name="chk_node_all" id="chk_node_all">Groups</td>
+	<td>HW Type</td><td>OS</td><td>Mode</td><td>Status</td><td>HW Ctrl Pt</td><td>Comment</td>
+</tr>
 EOS;
-
-	return $html;
+	return;
 }
 
-function getXCATNodeTableFooter() {
-$html = <<<EOS
-</table>
-EOS;
-	return $html;
+function insertGroupTableFooter() {
+	echo "</table>";
+	return;
 }
 
 /**
  * @param String nodeGroupName		The name of the node group.
  */
 function getToggleString($nodeGroupName) {
-$colTxt = "Click to collapse section";
+global $TOPDIR;
+//$colTxt = "Click to collapse section";
 $exTxt = "Click to expand section";
-$bulgif = "$TOPDIR/images/h3bg_new.gif";
-$minusgif = "$TOPDIR/images/minus-sign.gif";
+//$bulgif = "$TOPDIR/images/h3bg_new.gif";
+//$minusgif = "$TOPDIR/images/minus-sign.gif";
 $plusgif = "$TOPDIR/images/plus-sign.gif";
 
 	$html = <<<EOS
 <span
-	title="Click to expand section"
+	title="$exTxt"
 	id="img_gr_$nodeGroupName"
 	onclick="XCATui.updateNodeList('$nodeGroupName')"
 	ondblclick="toggleSection(this,'div_$nodeGroupName')">
@@ -67,30 +54,26 @@ EOS;
 /**
  * @param String nodeGroup	The group.
  */
-function getXCATGroupTableRow($nodeGroup) {
-
-$imagedir = 'images';
+function insertGroupTableRow($nodeGroup) {
 $nodeGroupName = $nodeGroup->getName();
 $img_string = XCATNodeGroupUtil::getImageString($nodeGroup->getStatus());
 
-$html = <<<EOS
-<tr bgcolor="#FFCC00">
-	<td>
-EOS;
-		$html .= HTMLProducer::getToggleString($nodeGroupName);
-		$html .= <<<EOE
-<input type="checkbox" name="chk_node_group_$nodeGroupName"  id="chk_node_group_$nodeGroupName"><b>$nodeGroupName</b></span>
+//echo '<tr bgcolor="#FFCC00"><td align=left>';
+echo '<tr class=TableRow><td align=left>';
+echo GroupNodeTable::getToggleString($nodeGroupName);
+echo <<<EOE
+	<input type="checkbox" name="chk_node_group_$nodeGroupName"  id="chk_node_group_$nodeGroupName"><b>$nodeGroupName</b></span>
 	</td>
-	<td><div align="center">&nbsp;</div></td>
-	<td><div align="center">&nbsp;</div></td>
-	<td><div align="center">&nbsp;</div></td>
-	<td><div align="center">$img_string</div></td>
-	<td><div align="center">&nbsp;</div></td>
-	<td ><div align="center">&nbsp;</div></td>
-</tr>
-<tr><td colspan=7><div id=div_$nodeGroupName style="display:none"></div></td></tr>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	<td>$img_string</td>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	</tr>
+	<tr style="display:none"><td colspan=7><div id=div_$nodeGroupName style="display:none"></div></td></tr>
 EOE;
-		return $html;
+return;
 }
 
 	/**
@@ -113,7 +96,7 @@ EOS;
 		$nodes = $nodeGroup->getNodes();
 
 		foreach($nodes as $nodeName => $node) {
-			$html .= HTMLProducer::getXCATNodeTableRow($node);
+			$html .= GroupNodeTable::getXCATNodeTableRow($node);
 		}
 
 		$html .= "<TR bgcolor=\"#FFFF66\"><TD colspan=9 align=\"right\"><image src=\"$left_arrow_gif\" alt=\"Previous page\">&nbsp;&nbsp;&nbsp;&nbsp;<image src=\"$right_arrow_gif\" alt=\"Next page\">&nbsp;&nbsp;</TD></TR>";
