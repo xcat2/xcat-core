@@ -105,7 +105,7 @@ TABLE {font-size : 10pt; font-family : Arial;}
 .Font8 {font-size : 8pt;}
 .Boxed { border: 1px solid gray; }
 .NoMargin { margin: 0px; }
-.NoPadding { padding: 0px; margin: 0px; }
+.NoPadding { padding: 0px; margin: 0px; border: 0px none white; }
 .Hidden { visibility : hidden ;}
 
 

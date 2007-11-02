@@ -106,7 +106,7 @@ $bulgif = "$TOPDIR/images/h3bg_new.gif";
 $minusgif = "$TOPDIR/images/minus-sign.gif";
 $plusgif = "$TOPDIR/images/plus-sign.gif";
 
-echo '<div id=nav><table border=1 cellpadding=0 cellspacing=1 width=70>';
+echo '<div id=nav><table border=0 cellpadding=0 cellspacing=1 width=70>';
 
 //Console section
 insertInner('open', 1,'Console', 'constab', $currentLink, array(
@@ -117,16 +117,16 @@ insertInner('open', 1,'Console', 'constab', $currentLink, array(
 ));
 
 // xCAT Cluster section
-?>
- <TR><TD id="menu_level1">
- <P title="<?php echo $colTxt; ?>" onclick="toggleSection(this,'clustab')" ondblclick="toggleSection(this,'clustab')">
- <IMG src=<?php echo $minusgif ?> id='clustab-im'> xCAT Cluster
+echo <<<EOS
+ <TR><TD id=menu_level1>
+ <P class=NoPadding title="$colTxt" onclick="toggleSection(this,'clustab')" ondblclick="toggleSection(this,'clustab')">
+ <IMG class=NoPadding src="$minusgif" id='clustab-im'> xCAT Cluster
  </P></TD></TR>
  <TR><TD>
   <TABLE id='clustab' cellpadding=0 cellspacing=0 width="100%"><TBODY>
-    <TR><TD id="menu_level3"><A href="csmconfig"><IMG src='<?php echo "$TOPDIR/images/h3bg_new.gif" ?>'>&nbsp;Settings</A></TD></TR>
+    <TR><TD id=menu_level3><A href="csmconfig"><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;Settings</A></TD></TR>
+EOS;
 
-<?php
 	insertInner('open', 2,'Installation', 'installtab', $currentLink, array(
 		'softmaint' => array("$TOPDIR/softmaint", 'MS Software'),
 		'addnodes' => array("$TOPDIR/addnodes.php", 'Add Nodes'),
@@ -203,9 +203,9 @@ $plusgif = "$TOPDIR/images/plus-sign.gif";
 
 echo <<<EOS
 <TR><TD id=$menu_level>
-<P title="$hoverTxt" onclick="toggleSection(this,'$id')" ondblclick="toggleSection(this,'$id')">
-<IMG src=$gif id=$id-im> $title</P></TD></TR>
-<TR><TD >
+<P class=NoPadding title="$hoverTxt" onclick="toggleSection(this,'$id')" ondblclick="toggleSection(this,'$id')">
+<IMG class=NoPadding src=$gif id=$id-im> $title</P></TD></TR>
+<TR><TD width="100%">
 <TABLE id=$id width="100%" cellpadding="0" cellspacing="0" border=0 style=$style>
 EOS;
 
