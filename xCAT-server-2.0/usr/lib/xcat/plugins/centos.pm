@@ -3,6 +3,8 @@ package xCAT_plugin::centos;
 use Storable qw(dclone);
 use Sys::Syslog;
 use xCAT::Table;
+use Cwd;
+use File::Copy;
 use xCAT::Template;
 use xCAT::Postage;
 use Data::Dumper;
@@ -25,7 +27,8 @@ my %numdiscs = (
 sub handled_commands {
   return {
     copycd => "centos",
-    mkinstall => "nodetype:os=centos.*"
+    mkinstall => "nodetype:os=centos.*",
+    mknetboot => "centos"
   }
 }
   
@@ -40,7 +43,78 @@ sub process_request {
     return copycd($request,$callback,$doreq);
   } elsif ($request->{command}->[0] eq 'mkinstall') {
     return mkinstall($request,$callback,$doreq);
+  } elsif ($request->{command}->[0] eq 'mknetboot') {
+    return makenetboot($request,$callback,$doreq);
   }
+}
+
+sub makenetboot {
+    my $req = shift;
+    my $callback = shift;
+    my $doreq = shift;
+    my @args=@{$req->{arg}};
+    unless (grep /^centos/,@args) {
+        return;
+    }
+    (my $osver,my $arch, my $profile)=split(/-/,$args[0],3);
+    my $installroot;
+    my $sitetab = xCAT::Table->new('site');
+    if ($sitetab) { 
+        (my $ref) = $sitetab->getAttribs({key=>installdir},value);
+        print Dumper($ref);
+        if ($ref and $ref->{value}) {
+            $installroot = $ref->{value};
+        }
+    }
+    unless ($installroot) {
+        $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
+        return;
+    }
+    my $srcdir = "/$installroot/$osver/$arch";
+    unless ( -d $srcdir."/repodata" ) {
+        $callback->({error=>["copycds has not been run for $osver/$arch"],errorcode=>[1]});
+        return;
+    }
+    my $yumconf;
+    open($yumconf,">","/tmp/mknetboot.$$.yum.conf");
+    print $yumconf "[$osver-$arch]\nname=$osver-$arch\nbaseurl=file:///$srcdir\ngpgcheck=0\n";
+    close($yumconf);
+    system("yum -y -c /tmp/mknetboot.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* --enablerepo=$osver-$arch install bash dhclient kernel openssh-server openssh-clients dhcpv6_client vim-minimal");
+    my $cfgfile;
+    open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/fstab");
+    print $cfgfile "devpts  /dev/pts    devpts  gid=5,mode=620 0 0\n";
+    print $cfgfile "tmpfs   /dev/shm    tmpfs   defaults    0 0\n";
+    print $cfgfile "proc    /proc   proc    defaults    0 0\n";
+    print $cfgfile "sysfs   /sys    sysfs   defaults    0 0\n";
+    close($cfgfile);
+    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network");
+    print $cfgfile "NETWORKING=yes\n";
+    close($cfgfile);
+    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network-scripts/ifcfg-eth0");
+    print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=eth0\n";
+    close($cfgfile);
+    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network-scripts/ifcfg-eth1");
+    print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=eth1\n";
+    close($cfgfile);
+    link("$installroot/netboot/$osver/$arch/$profile/rootimg/sbin/init","$installroot/netboot/$osver/$arch/$profile/rootimg/init");
+    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+    if (-d "$installroot/postscripts/hostkeys") {
+        for my $key (<$installroot/postscripts/hostkeys/*key>) {
+            copy ($key,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/");
+        }
+    }
+    if (-d "/$installroot/postscripts/.ssh") {
+        mkdir("/$installroot/root/.ssh");
+        chmod(0700,"/$installroot/root/.ssh");
+        for my $file (</$installroot/postscripts/.ssh/*>) {
+            copy ($key,"/$installroot/root/.ssh/");
+        }
+        chmod(0600,</$installroot/root/.ssh/*>);
+    }
+    my $oldpath=cwd;
+    chdir("$installroot/netboot/$osver/$arch/$profile/rootimg");
+    system("find . '!' -wholename './usr/share/man*' -a '!' -wholename './usr/share/locale*' -a '!' -wholename './usr/share/i18n*' -a '!' -wholename './var/cache/yum*' -a '!' -wholename './usr/share/doc*' -a '!' -wholename './usr/lib/locale*' -a '!' -wholename './boot*' |cpio -H newc -o | gzip -c - > ../rootimg.gz");
+    chdir($oldpath);
 }
 
 sub mkinstall {
