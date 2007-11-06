@@ -47,12 +47,16 @@ sub setdestiny {
   my $state = $req->{arg}->[0];
   if ($state eq "next") {
     return nextdestiny();
-  } elsif ($state =~ /^install$/ or $state eq "install") {
+  } elsif ($state =~ /^install$/ or $state eq "install" or $state eq "netboot") {
+    chomp($state);
+    $subreq->({command=>["mk$state"],
+              node=>$req->{node}}, \&relay_response);
+    if ($errored) { return; }
     my $nodetype = xCAT::Table->new('nodetype');
     foreach (@{$req->{node}}) {
       my $ntent = $nodetype->getNodeAttribs($_,[qw(os arch profile)]);
       if ($ntent and $ntent->{os}) {
-        $state = "install ".$ntent->{os};
+        $state .= " ".$ntent->{os};
       }
       if ($ntent and $ntent->{arch}) {
         $state .= "-".$ntent->{arch};
@@ -60,11 +64,8 @@ sub setdestiny {
       if ($ntent and $ntent->{profile}) {
         $state .= "-".$ntent->{profile};
       }
-      $chaintab->setNodeAttribs($_,{currchain=>"boot"});
+      unless ($state =~ /^netboot/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
     }
-    $subreq->({command=>["mkinstall"],
-              node=>$req->{node}}, \&relay_response);
-    if ($errored) { return; }
   } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/) {
     my $noderes=xCAT::Table->new('noderes');
     my $nodetype = xCAT::Table->new('nodetype');

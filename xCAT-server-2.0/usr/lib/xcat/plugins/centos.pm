@@ -27,8 +27,8 @@ my %numdiscs = (
 sub handled_commands {
   return {
     copycd => "centos",
+    mknetboot => "nodetype:os=centos.*",
     mkinstall => "nodetype:os=centos.*",
-    mknetboot => "centos"
   }
 }
   
@@ -44,21 +44,21 @@ sub process_request {
   } elsif ($request->{command}->[0] eq 'mkinstall') {
     return mkinstall($request,$callback,$doreq);
   } elsif ($request->{command}->[0] eq 'mknetboot') {
-    return makenetboot($request,$callback,$doreq);
+    return mknetboot($request,$callback,$doreq);
   }
 }
 
-sub makenetboot {
+sub mknetboot {
     my $req = shift;
     my $callback = shift;
     my $doreq = shift;
+    my $tftpdir = "/tftpboot";
+    my $nodes = @{$request->{node}};
     my @args=@{$req->{arg}};
-    unless (grep /^centos/,@args) {
-        return;
-    }
-    (my $osver,my $arch, my $profile)=split(/-/,$args[0],3);
-    my $installroot;
+    my @nodes = @{$req->{node}};
+    my $ostab = xCAT::Table->new('nodetype');
     my $sitetab = xCAT::Table->new('site');
+    my $installroot;
     if ($sitetab) { 
         (my $ref) = $sitetab->getAttribs({key=>installdir},value);
         print Dumper($ref);
@@ -66,6 +66,58 @@ sub makenetboot {
             $installroot = $ref->{value};
         }
     }
+    foreach $node (@nodes) {
+        my $ent = $ostab->getNodeAttribs($node,['os','arch','profile']);
+        unless ($ent->{os} and $ent->{arch} and $ent->{profile}) {
+            $callback->({error=>["Insufficient nodetype entry for $node"],errorcode=>[1]});
+            next;
+        }
+        my $osver = $ent->{os};
+        my $arch = $ent->{arch};
+        my $profile = $ent->{profile};
+        unless (-r "/$installroot/netboot/$osver/$arch/$profile/kernel" and -r "$installroot/netboot/$osver/$arch/$profile/rootimg.gz") {
+            makenetboot($osver,$arch,$profile,$installroot,$callback);
+            mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+        }
+        unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/rootimg.gz") {
+            mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+        }
+        unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/rootimg.gz") {
+            $callback->({error=>["Netboot image creation failed for $node"],errorcode=>[1]});
+            next;
+        }
+        my $restab = xCAT::Table->new('noderes');
+        my $hmtab = xCAT::Table->new('nodehm');
+        my $ent = $restab->getNodeAttribs($node,['serialport','primarynic']);
+        my $kcmdline;
+        if (defined $ent->{serialport}) {
+            my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
+            unless ($sent->{serialspeed}) {
+                $callback->({error=>["serialport defined, but no serialspeed for $node in nodehm table"],errorcode=>[1]});
+                next;
+            }
+            $kcmdline .= "console=ttyS".$ent->{serialport}.",".$sent->{serialspeed};
+            if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/) {
+                $kcmdline .= "n8r";
+            }
+        }
+        $restab->setNodeAttribs($node,{
+           kernel=>"xcat/netboot/$osver/$arch/kernel",
+           initrd=>"xcat/netboot/$osver/$arch/rootimg.gz",
+           kcmdline=>$kcmdline
+        });
+    }
+}
+sub makenetboot {
+    my $osver = shift;
+    my $arch = shift;
+    my $profile = shift;
+    my $installroot = shift;
+    my $callback = shift;
     unless ($installroot) {
         $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
         return;
