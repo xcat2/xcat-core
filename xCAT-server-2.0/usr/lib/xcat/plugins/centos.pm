@@ -106,8 +106,8 @@ sub mknetboot {
             }
         }
         $restab->setNodeAttribs($node,{
-           kernel=>"xcat/netboot/$osver/$arch/kernel",
-           initrd=>"xcat/netboot/$osver/$arch/rootimg.gz",
+           kernel=>"xcat/netboot/$osver/$arch/$profile/kernel",
+           initrd=>"xcat/netboot/$osver/$arch/$profile/rootimg.gz",
            kcmdline=>$kcmdline
         });
     }
@@ -154,14 +154,15 @@ sub makenetboot {
         for my $key (<$installroot/postscripts/hostkeys/*key>) {
             copy ($key,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/");
         }
+        chmod 0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/*key>;
     }
     if (-d "/$installroot/postscripts/.ssh") {
-        mkdir("/$installroot/root/.ssh");
-        chmod(0700,"/$installroot/root/.ssh");
+        mkpath("/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh");
+        chmod(0700,"/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/");
         for my $file (</$installroot/postscripts/.ssh/*>) {
-            copy ($key,"/$installroot/root/.ssh/");
+            copy ($file,"/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/");
         }
-        chmod(0600,</$installroot/root/.ssh/*>);
+        chmod(0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/*>);
     }
     my $oldpath=cwd;
     chdir("$installroot/netboot/$osver/$arch/$profile/rootimg");
