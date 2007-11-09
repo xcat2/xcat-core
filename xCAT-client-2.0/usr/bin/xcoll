@@ -24,4 +24,5 @@ foreach (keys %collated) {
     print "$nodes\n";
     print "====================================\n";
     print $_;
+    print "\n";
 }
