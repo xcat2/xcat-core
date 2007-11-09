@@ -57,6 +57,11 @@ my $bladediagbuildidoid = '1.3.6.1.4.1.2.3.51.2.2.21.5.2.1.6'; #bladeDiagsVpdBui
 my $bladediagdateoid = '1.3.6.1.4.1.2.3.51.2.2.21.5.2.1.8';#bladeDiagsVpdDate
 my $eventlogoid = '1.3.6.1.4.1.2.3.51.2.3.4.2.1.2';#readEventLogString
 my $clearlogoid = '.1.3.6.1.4.1.2.3.51.2.3.4.3';#clearEventLog
+my $blower1speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.1';#blower2speed
+my $blower1stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.10';#blower1State
+my $blower2stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.11';#blower2State
+my $blower2speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.2';#blower2speed
+
 my @macoids = (
   '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.2', #bladeMACAddress1Vpd
   '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.3', #bladeMACAddress2Vpd
@@ -340,6 +345,65 @@ sub bootseq {
 }
 
 
+sub vitals {
+   my @output;
+   my $tmp;
+   my @vitems;
+   foreach (@_) {
+     if ($_ eq 'all') {
+	push @vitems,qw(temp,voltage,fan,summary);
+     } else {
+	push @vitems,split( /,/,$_);
+     }
+   }
+   my $tmp;
+   if (grep /fan/,@vitems or grep /blower/,@vitems) {
+     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.1.0']);
+     push @output,"Blower 1:  $tmp";
+     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.2.0']);
+     push @output,"Blower 2:  $tmp";
+     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.1']);
+     push @output,"Fan Pack 1:  $tmp";
+     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.2']);
+     push @output,"Fan Pack 2:  $tmp";
+     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.3']);
+     push @output,"Fan Pack 3:  $tmp";
+     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.4']);
+     push @output,"Fan Pack 4:  $tmp";
+   }
+   if (grep /volt/,@vitems) {
+	for my $idx (15..40) {
+	   $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
+           unless ($tmp =~ /Not Readable/) {
+             $tmp =~ s/ = /:/;
+             push @output,"$tmp";
+           }
+	}
+    }
+
+   if (grep /temp/,@vitems) {
+      $tmp=$session->get(["1.3.6.1.4.1.2.3.51.2.2.1.5.1.0"]);
+      push (@output,"Ambient: $tmp");
+      for my $idx (6..20) {
+	if ($idx eq 11) {
+		next;
+	}
+        $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.3.1.$idx.$slot"]);
+        unless ($tmp =~ /Not Readable/) {
+          $tmp =~ s/ = /:/;
+          push @output,"$tmp";
+        }
+      }
+   }
+   if (grep /summary/,@vitems) {
+      $tmp="Status: ".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.3.'.$slot]);
+      $tmp.="-".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.4.'.$slot]);
+      push @output,"$tmp";
+   }
+   return(0,@output);
+}
+	
+  
 sub inv {
   my @invitems;
   my $data;
@@ -525,6 +589,8 @@ sub bladecmd {
     return beacon(@args);
   } elsif ($command eq "rpower") {
     return power(@args);
+  } elsif ($command eq "rvitals") {
+    return vitals(@args);
   } elsif ($command =~ /r[ms]preset/) {
     return resetmp(@args);
   } elsif ($command eq "rbootseq") {
