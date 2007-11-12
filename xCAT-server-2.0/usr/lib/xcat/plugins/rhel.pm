@@ -14,13 +14,16 @@ use File::Copy;
 
 my %discids = (
   "1170973598.629055" => "rhelc5",
-  "1170978545.752040" => "rhels5"
+  "1170978545.752040" => "rhels5",
+  "1192660014.052098" => "rhels5.1",
+  "1192663619.181374" => "rhels5.1",
   );
 
 sub handled_commands {
   return {
     copycd => "rhel",
-    mkinstall => "nodetype:os=rh.*"
+    mkinstall => "nodetype:os=rh.*",
+    mknetboot => "nodetype:os=rh.*"
   }
 }
   
@@ -35,9 +38,132 @@ sub process_request {
     return copycd($request,$callback,$doreq);
   } elsif ($request->{command}->[0] eq 'mkinstall') {
     return mkinstall($request,$callback,$doreq);
+  } elsif ($request->{command}->[0] eq 'mknetboot') {
+    return mknetboot($request,$callback,$doreq);
   }
 }
 
+sub mknetboot {
+    my $req = shift;
+    my $callback = shift;
+    my $doreq = shift;
+    my $tftpdir = "/tftpboot";
+    my $nodes = @{$request->{node}};
+    my @args=@{$req->{arg}};
+    my @nodes = @{$req->{node}};
+    my $ostab = xCAT::Table->new('nodetype');
+    my $sitetab = xCAT::Table->new('site');
+    my $installroot;
+    if ($sitetab) { 
+        (my $ref) = $sitetab->getAttribs({key=>installdir},value);
+        print Dumper($ref);
+        if ($ref and $ref->{value}) {
+            $installroot = $ref->{value};
+        }
+    }
+    foreach $node (@nodes) {
+        my $ent = $ostab->getNodeAttribs($node,['os','arch','profile']);
+        unless ($ent->{os} and $ent->{arch} and $ent->{profile}) {
+            $callback->({error=>["Insufficient nodetype entry for $node"],errorcode=>[1]});
+            next;
+        }
+        my $osver = $ent->{os};
+        my $arch = $ent->{arch};
+        my $profile = $ent->{profile};
+        unless (-r "/$installroot/netboot/$osver/$arch/$profile/kernel" and -r "$installroot/netboot/$osver/$arch/$profile/rootimg.gz") {
+            makenetboot($osver,$arch,$profile,$installroot,$callback);
+            mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+        }
+        unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/rootimg.gz") {
+            mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+        }
+        unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/rootimg.gz") {
+            $callback->({error=>["Netboot image creation failed for $node"],errorcode=>[1]});
+            next;
+        }
+        my $restab = xCAT::Table->new('noderes');
+        my $hmtab = xCAT::Table->new('nodehm');
+        my $ent = $restab->getNodeAttribs($node,['serialport','primarynic']);
+        my $kcmdline;
+        if (defined $ent->{serialport}) {
+            my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
+            unless ($sent->{serialspeed}) {
+                $callback->({error=>["serialport defined, but no serialspeed for $node in nodehm table"],errorcode=>[1]});
+                next;
+            }
+            $kcmdline .= "console=ttyS".$ent->{serialport}.",".$sent->{serialspeed};
+            if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/) {
+                $kcmdline .= "n8r";
+            }
+        }
+        $restab->setNodeAttribs($node,{
+           kernel=>"xcat/netboot/$osver/$arch/$profile/kernel",
+           initrd=>"xcat/netboot/$osver/$arch/$profile/rootimg.gz",
+           kcmdline=>$kcmdline
+        });
+    }
+}
+sub makenetboot {
+    my $osver = shift;
+    my $arch = shift;
+    my $profile = shift;
+    my $installroot = shift;
+    my $callback = shift;
+    unless ($installroot) {
+        $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
+        return;
+    }
+    my $srcdir = "/$installroot/$osver/$arch";
+    unless ( -d $srcdir."/repodata" ) {
+        $callback->({error=>["copycds has not been run for $osver/$arch"],errorcode=>[1]});
+        return;
+    }
+    my $yumconf;
+    open($yumconf,">","/tmp/mknetboot.$$.yum.conf");
+    print $yumconf "[$osver-$arch]\nname=$osver-$arch\nbaseurl=file:///$srcdir\ngpgcheck=0\n";
+    close($yumconf);
+    system("yum -y -c /tmp/mknetboot.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* --enablerepo=$osver-$arch install bash dhclient kernel openssh-server openssh-clients dhcpv6_client vim-minimal");
+    my $cfgfile;
+    open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/fstab");
+    print $cfgfile "devpts  /dev/pts    devpts  gid=5,mode=620 0 0\n";
+    print $cfgfile "tmpfs   /dev/shm    tmpfs   defaults    0 0\n";
+    print $cfgfile "proc    /proc   proc    defaults    0 0\n";
+    print $cfgfile "sysfs   /sys    sysfs   defaults    0 0\n";
+    close($cfgfile);
+    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network");
+    print $cfgfile "NETWORKING=yes\n";
+    close($cfgfile);
+    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network-scripts/ifcfg-eth0");
+    print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=eth0\n";
+    close($cfgfile);
+    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network-scripts/ifcfg-eth1");
+    print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=eth1\n";
+    close($cfgfile);
+    link("$installroot/netboot/$osver/$arch/$profile/rootimg/sbin/init","$installroot/netboot/$osver/$arch/$profile/rootimg/init");
+    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+    if (-d "$installroot/postscripts/hostkeys") {
+        for my $key (<$installroot/postscripts/hostkeys/*key>) {
+            copy ($key,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/");
+        }
+        chmod 0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/*key>;
+    }
+    if (-d "/$installroot/postscripts/.ssh") {
+        mkpath("/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh");
+        chmod(0700,"/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/");
+        for my $file (</$installroot/postscripts/.ssh/*>) {
+            copy ($file,"/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/");
+        }
+        chmod(0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/*>);
+    }
+    my $oldpath=cwd;
+    chdir("$installroot/netboot/$osver/$arch/$profile/rootimg");
+    system("find . '!' -wholename './usr/share/man*' -a '!' -wholename './usr/share/locale*' -a '!' -wholename './usr/share/i18n*' -a '!' -wholename './var/cache/yum*' -a '!' -wholename './usr/share/doc*' -a '!' -wholename './usr/lib/locale*' -a '!' -wholename './boot*' |cpio -H newc -o | gzip -c - > ../rootimg.gz");
+    chdir($oldpath);
+}
 sub mkinstall {
   my $request = shift;
   my $callback = shift;
@@ -158,6 +284,11 @@ sub copycd {
     $darch = "x86";
   }
   close($dinfo);
+  if ($discids{$did}) {
+      unless ($distname) {
+          $distname = $discids{$did};
+      }
+  }
   if ($desc =~ /^Red Hat Enterprise Linux Client 5$/) {
     unless ($distname) {
       $distname = "rhelc5";
@@ -167,7 +298,6 @@ sub copycd {
       $distname = "rhels5";
     }
   }
-
   print $desc;
   unless ($distname) {
     return; #Do nothing, not ours..
@@ -180,6 +310,7 @@ sub copycd {
       $callback->({error=>"Requested RedHat architecture $arch, but media is $darch"});
       return;
     }
+    if ($arch =~ /ppc/) { $arch = "ppc64" };
   }
   %{$request} = (); #clear request we've got it.
 

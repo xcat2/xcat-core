@@ -63,4 +63,11 @@ do
         esac
     fi
 done
+if [ -d /proc/device-tree/lhea* ]; then
+		    modprobe ehea
+            for i in /sys/bus/ibmebus/devices/port*; do
+    		    udhcpc -i eth$nic -b
+                nic=$(($nic + 1))
+            done
+fi
 

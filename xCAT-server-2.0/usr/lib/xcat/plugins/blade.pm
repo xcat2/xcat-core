@@ -397,7 +397,7 @@ sub vitals {
    }
    if (grep /summary/,@vitems) {
       $tmp="Status: ".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.3.'.$slot]);
-      $tmp.="-".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.4.'.$slot]);
+      $tmp.=", ".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.4.'.$slot]);
       push @output,"$tmp";
    }
    return(0,@output);
