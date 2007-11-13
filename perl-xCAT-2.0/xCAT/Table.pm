@@ -12,6 +12,7 @@ use DBI;
 
 #use strict;
 use Data::Dumper;
+use Scalar::Util qw/weaken/;
 use xCAT::Schema;
 use xCAT::NodeRange;
 use Text::Balanced qw(extract_bracketed);
@@ -246,7 +247,7 @@ sub new
     updateschema($self);
     if ($self->{tabname} eq 'nodelist')
     {
-        $self->{nodelist} = $self;
+        weaken($self->{nodelist} = $self);
     }
     else
     {
@@ -1407,6 +1408,12 @@ sub close
 {
     my $self = shift;
     if ($self->{dbh}) { $self->{dbh}->disconnect(); }
+    undef $self->{dbh};
+    if ($self->{tabname} eq 'nodelist') {
+       undef $self->{nodelist};
+    } else {
+       $self->{nodelist}->close();
+    }
 }
 
 #--------------------------------------------------------------------------

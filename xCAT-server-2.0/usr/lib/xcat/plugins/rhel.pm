@@ -117,9 +117,9 @@ sub makenetboot {
         $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
         return;
     }
-    my $srcdir = "/$installroot/$osver/$arch";
+    my $srcdir = "/$installroot/$osver/$arch/Server";
     unless ( -d $srcdir."/repodata" ) {
-        $callback->({error=>["copycds has not been run for $osver/$arch"],errorcode=>[1]});
+        $callback->({error=>["copycds has not been run for $osver/$arch (/$installroot/$osver/$arch/Server/repodata not found"],errorcode=>[1]});
         return;
     }
     my $yumconf;
