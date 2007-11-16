@@ -41,6 +41,7 @@ chmod 755 $RPM_BUILD_ROOT/usr/sbin/*
 #chmod 755 $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
 
 ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/rpower
+ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/rscan
 ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/sbin/makedhcp
 ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/sbin/makehosts
 ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/sbin/nodeset
