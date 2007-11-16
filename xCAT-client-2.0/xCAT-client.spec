@@ -56,6 +56,12 @@ ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/reventlog
 ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/nodels
 ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/nodech
 ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/noderm
+ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/rnetboot
+ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/getmacs
+ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/mkvm
+ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/rmvm
+ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/lsvm
+ln -sf /usr/bin/xcatclient $RPM_BUILD_ROOT/usr/bin/chvm
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/sbin/tabdump
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/sbin/makedns
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/bin/gettab
