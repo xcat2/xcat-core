@@ -5,6 +5,18 @@ package xCAT::Schema;
 #certain SQL backends don't ascribe meaning to the data types anyway.
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
+  ppchcp => {
+    cols => [qw(hcp username password comments disable)],
+    keys => [qw(hcp)],
+  },
+  ppc => {
+    cols => [qw(node hcp id profile mgt comments disable)],
+    keys => [qw(node)],
+  },
+  ppcDirect => {
+    cols => [qw(hcp username password comments disable)],
+    keys => [qw(hcp)],
+  },
   nodetype => {
     cols => [qw(node os arch profile comments disable)],
     keys => [qw(node)],
