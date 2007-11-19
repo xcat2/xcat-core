@@ -28,7 +28,7 @@ sub handled_commands {
 my %usage = (
     "rpower" => "Usage: rpower <noderange> [on|off|reset|stat|boot]",
     "rbeacon" => "Usage: rbeacon <noderange> [on|off|stat]",
-    "rvitals" => "Usage: rvitals <noderange> [all|temp|voltage|fanspeed|power|leds]",
+    "rvitals" => "Usage: rvitals <noderange> [all|temp|wattage|voltage|fanspeed|power|leds]",
     "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
     "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
     "rsetboot" => "Usage: rsetboot <noderange> [net|hd|cd|def|stat]"
@@ -2918,8 +2918,11 @@ sub vitals {
 		@sensor_filters=(0x01);
 	}
 	elsif($subcommand eq "voltage") {
-		@sensor_filters=(0x02,0x03);
+		@sensor_filters=(0x02);
 	}
+    elsif($subcommand =~ /watt/) {
+        @sensor_filters=(0x03);
+    }
 	elsif($subcommand eq "fanspeed") {
 		@sensor_filters=(0x04);
 	}
@@ -2984,6 +2987,10 @@ sub vitals {
 						$per = "% ";
 					}
 	
+                    if($unitdesc eq "Watts") {
+                        my $f = ($reading * 3.413);
+                        $unitdesc = "Watts (".int($f+.5)." BTUs/hr)";
+                    }
 					if($unitdesc eq "C") {
 						my $f = ($reading * 9/5) + 32;
 						$unitdesc = "C (" . int($f + .5) . " F)";
