@@ -182,12 +182,24 @@ sub mkinstall {
     my $os = $ent->{os};
     my $arch = $ent->{arch};
     my $profile = $ent->{profile};
-    unless (-r "/usr/share/xcat/install/rh/".$ent->{profile}.".tmpl") {
+    unless (-r "/usr/share/xcat/install/rh/".$ent->{profile}.".tmpl" or 
+            -r "/usr/share/xcat/install/rh/$profile.$arch.tmpl" or
+            -r "/usr/share/xcat/install/rh/$profile.$os.tmpl" or
+            -r "/usr/share/xcat/install/rh/$profile.$os.$arch.tmpl") {
       $callback->({error=>["No kickstart template exists for ".$ent->{profile}],errorcode=>[1]});
       next;
     }
     #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
-    xCAT::Template->subvars("/usr/share/xcat/install/rh/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
+    
+    if ( -r "/usr/share/xcat/install/rh/$profile.$os.$arch.tmpl" ) { 
+       xCAT::Template->subvars("/usr/share/xcat/install/rh/$profile.$os.$arch.tmpl","/install/autoinst/".$node,$node);
+    } elsif ( -r "/usr/share/xcat/install/rh/$profile.$arch.tmpl" ) { 
+       xCAT::Template->subvars("/usr/share/xcat/install/rh/$profile.$arch.tmpl","/install/autoinst/".$node,$node);
+    } elsif ( -r "/usr/share/xcat/install/rh/$profile.$os.tmpl" ) { 
+       xCAT::Template->subvars("/usr/share/xcat/install/rh/$profile.$os.tmpl","/install/autoinst/".$node,$node);
+    } else {
+       xCAT::Template->subvars("/usr/share/xcat/install/rh/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
+    }
     mkpath "/install/postscripts/";
     xCAT::Postage->writescript($node,"/install/postscripts/".$node);
     if (($arch =~ /x86/ and 
