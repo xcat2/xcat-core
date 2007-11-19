@@ -36,7 +36,7 @@ sub add_ppc {
             $serial,
             $server,
             $profile,
-            $mgt,
+            $parent,
             $ips ) = split /,/;
 
          
@@ -49,7 +49,7 @@ sub add_ppc {
             $u->{hcp}     = $server;
             $u->{id}      = $id;
             $u->{profile} = $profile;
-            $u->{mgt}     = $mgt;
+            $u->{parent}  = $parent;
             $db{ppc}->setAttribs( $k, $u );
             $db{ppc}{commit} = 1;
 
@@ -176,3 +176,4 @@ sub credentials {
 
 
 1;
+
