@@ -286,7 +286,7 @@ sub resolve {
     my $request = shift;
     my $node    = shift;
     my $tabs    = shift;
-    my @attribs = qw(id profile mgt hcp);
+    my @attribs = qw(id profile parent hcp);
     my @values  = ();
 
     #################################
@@ -324,24 +324,26 @@ sub resolve {
     if ( $type =~ /^osi$/ ) {
         $att->{bpa}  = 0;
         $att->{type} = "lpar";
-        $att->{node} = $att->{mgt};
+        $att->{node} = $att->{parent};
 
-        if ( !exists( $att->{mgt} )) {
-            return( sprintf( $errmsg{NO_ATTR}, "mgt", "ppc" )); 
+        if ( !exists( $att->{parent} )) {
+            return( sprintf( $errmsg{NO_ATTR}, "parent", "ppc" )); 
         }
         #############################
         # Get BPA (if any)
         #############################
         if (( $request->{command} eq "rvitals" ) &&
             ( $request->{method}  =~ /^all|temp$/ )) { 
-           my ($ent) = $tabs->{ppc}->getAttribs({'node'=>$att->{mgt}}, "mgt" );
+           my ($ent) = $tabs->{ppc}->getAttribs(
+                                 {node=>$att->{parent}}, "parent" );
      
            #############################
            # Find MTMS in vpd database 
            #############################
-           if (( defined( $ent )) && exists( $ent->{mgt} )) {
+           if (( defined( $ent )) && exists( $ent->{parent} )) {
                my @attrs = qw(mtm serial);
-               my ($vpd) = $tabs->{vpd}->getAttribs({node=>$ent->{mgt}},@attrs );
+               my ($vpd) = $tabs->{vpd}->getAttribs(
+                                 {node=>$ent->{parent}},@attrs );
 
                if ( !defined( $vpd )) {
                    return( sprintf( $errmsg{NO_UNDEF}, "vpd" )); 
@@ -367,14 +369,14 @@ sub resolve {
         $att->{fsp}     = 0;
         $att->{node}    = $node;
         $att->{type}    = $type;
-        $att->{mgt}     = exists($att->{mgt}) ? $att->{mgt} : 0;
-        $att->{bpa}     = $att->{mgt};
+        $att->{parent}  = exists($att->{parent}) ? $att->{parent} : 0;
+        $att->{bpa}     = $att->{parent};
     }
     elsif ( $type =~ /^bpa$/ ) {
         $att->{profile} = 0;
         $att->{id}      = 0;
         $att->{bpa}     = 0;
-        $att->{mgt}     = 0;
+        $att->{parent}  = 0;
         $att->{fsp}     = 0;
         $att->{node}    = $node;
         $att->{type}    = $type;
@@ -628,3 +630,4 @@ sub process_request {
 
 
 1;
+
