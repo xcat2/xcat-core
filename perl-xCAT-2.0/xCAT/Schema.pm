@@ -10,7 +10,7 @@ package xCAT::Schema;
     keys => [qw(hcp)],
   },
   ppc => {
-    cols => [qw(node hcp id profile mgt comments disable)],
+    cols => [qw(node hcp id profile parent comments disable)],
     keys => [qw(node)],
   },
   ppcDirect => {
