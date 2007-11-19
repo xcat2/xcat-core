@@ -351,12 +351,30 @@ sub vitals {
    my @vitems;
    foreach (@_) {
      if ($_ eq 'all') {
-	push @vitems,qw(temp,voltage,fan,summary);
+	push @vitems,qw(temp,wattage,voltage,fan,summary);
      } else {
 	push @vitems,split( /,/,$_);
      }
    }
    my $tmp;
+   if (grep /watt/,@vitems) {
+       if ($slot < 8) {
+        $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.".($slot+16)]);
+       } else {
+        $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.3.1.1.7.".($slot+9)]);
+       }
+       unless ($tmp =~ /Not Readable/) {
+         if ($tmp =~ /(\d+)W/) {
+             $tmp = "$1 Watts (". int($tmp * 3.413+0.5)." BTUs/hr)";
+         }
+         $tmp =~ s/^/Power Usage:/;
+
+
+         push @output,"$tmp";
+       }
+   }
+       
+        
    if (grep /fan/,@vitems or grep /blower/,@vitems) {
      $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.1.0']);
      push @output,"Blower 1:  $tmp";
