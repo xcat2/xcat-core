@@ -162,8 +162,9 @@ sub tabdb
       ($ent) = $tabh->getAttribs(\%kp,$field);
     }
     $tabh->close;
-    unless($ent and  $ent->{$field}) {
-      return "#TABLEBAD:$table:field $field not found#";
+    unless($ent and  defined($ent->{$field})) {
+      return "";
+      #return "#TABLEBAD:$table:field $field not found#";
     }
     return $ent->{$field};
 

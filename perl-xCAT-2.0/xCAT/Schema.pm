@@ -25,6 +25,10 @@ package xCAT::Schema;
     cols => [qw(node rack u chassis slot room comments disable)],
     keys => [qw(node)],
   },
+  iscsi => {
+      cols => [qw(node server target userid passwd comments disable)],
+      keys => [qw(node)],
+  },
   vpd => {
     cols => [qw(node serial mtm comments disable)],
     keys => [qw(node)],
