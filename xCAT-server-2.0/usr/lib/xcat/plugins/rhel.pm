@@ -190,13 +190,23 @@ sub mkinstall {
     xCAT::Template->subvars("/usr/share/xcat/install/rh/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
     mkpath "/install/postscripts/";
     xCAT::Postage->writescript($node,"/install/postscripts/".$node);
-    if (-r "/install/$os/$arch/images/pxeboot/vmlinuz" 
-      and -r  "/install/$os/$arch/images/pxeboot/initrd.img") {
+    if (($arch =~ /x86/ and 
+      (-r "/install/$os/$arch/images/pxeboot/vmlinuz" and -r  "/install/$os/$arch/images/pxeboot/initrd.img")) 
+      or $arch =~ /ppc/ and 
+      (-r "/install/$os/$arch/ppc/ppc64/vmlinuz" and -r "/install/$os/$arch/ppc/ppc64/ramdisk.image.gz")) {
       unless ($doneimgs{"$os|$arch"}) {
       #TODO: driver slipstream, targetted for network.
         mkpath("/tftpboot/xcat/$os/$arch");
-        copy("/install/$os/$arch/images/pxeboot/vmlinuz","/tftpboot/xcat/$os/$arch/");
-        copy("/install/$os/$arch/images/pxeboot/initrd.img","/tftpboot/xcat/$os/$arch/");
+        if ($arch =~ /x86/) {
+           copy("/install/$os/$arch/images/pxeboot/vmlinuz","/tftpboot/xcat/$os/$arch/");
+           copy("/install/$os/$arch/images/pxeboot/initrd.img","/tftpboot/xcat/$os/$arch/");
+        } elsif ($arch =~ /ppc/) {
+           copy("/install/$os/$arch/ppc/ppc64/vmlinuz","/tftpboot/xcat/$os/$arch/");
+           copy("/install/$os/$arch/ppc/ppc64/ramdisk.image.gz","/tftpboot/xcat/$os/$arch/initrd.img");
+        } else {
+            $callback->({error=>["Plugin doesn't know how to handle architecture $arch"],errorcode=>[1]});
+            next;
+        }
         $doneimgs{"$os|$arch"}=1;
       }
       #We have a shot...
