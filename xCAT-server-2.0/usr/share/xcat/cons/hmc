@@ -4,8 +4,6 @@
 use strict;
 use Getopt::Long;
 use xCAT::Table;
-use Expect;
-use xCAT::PPCcli;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 
 
@@ -40,7 +38,7 @@ sub parse_args {
     local *usage = sub {
 
         my $cmd = __FILE__;
-        $cmd =~ s/(.*)(rcons.[\w]{3})/$2/;
+        $cmd =~ s/.*([\w]{3}$)/$1/;
 
         if ( defined( $_[0] )) {
             print STDERR "$_[0]\n";
@@ -148,7 +146,7 @@ sub invoke_cmd {
     # Get node power type 
     ##################################
     my $hwtype = __FILE__;
-    $hwtype    =~ s/(.*)([\w]{3})/$2/;
+    $hwtype    =~ s/.*([\w]{3})$/$1/;
 
     #################################
     # Get node type
@@ -239,4 +237,5 @@ if ( $result ne "0" ) {
     exit(1);
 }
 exit(0);
+
 
