@@ -3,9 +3,11 @@
 package xCAT::PPCscan;
 use strict;
 use Getopt::Long;
+use Socket;
 use XML::Simple;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCdb;
+
 
 ##############################################
 # Globals
@@ -103,6 +105,30 @@ sub parse_args {
 }
 
 
+
+##########################################################################
+# Returns short-hostname given an IP 
+##########################################################################
+sub getshorthost {
+
+    my $ip = shift;
+
+    my $host = gethostbyaddr( inet_aton($ip), AF_INET );
+    if ( $host and !$! ) {
+        ##############################
+        # Get short-hostname
+        ##############################
+        if ( $host =~ /([^\.]+)\./ ) {
+           return($1);
+        }
+    }
+    ##################################
+    # Failed
+    ##################################
+    return undef;
+}
+
+
 ##########################################################################
 # Returns I/O bus information
 ##########################################################################
@@ -113,17 +139,15 @@ sub enumerate {
     my $server = @$exp[3];
     my @values = (); 
     my %cage   = ();
-
-    #####################################################
-    # Cache all type information as:
-    # type,name,id,model,serial,hcp,profile,frame,ips
-    #####################################################
+    my $Rc;
+    my $filter;
 
     #########################################
     # Get hardware control point info 
     #########################################
+    {
     my $hcp = xCAT::PPCcli::lshmc( $exp );
-    my $Rc  = shift(@$hcp);
+    $Rc = shift(@$hcp);
 
     #########################################
     # Return error 
@@ -135,18 +159,22 @@ sub enumerate {
     # Success 
     #########################################
     my ($model,$serial) = split /,/, @$hcp[0];
-    my ($prof,$id,$ips,$bpa) = undef;
+    my $id   = "";
+    my $prof = "";
+    my $ips  = "";
+    my $bpa  = "";
 
     push @values, join( ",",
         $hwtype,$server,$id,$model,$serial,$server,$prof,$bpa,$ips );
-   
+    }
+ 
     #########################################
     # Enumerate frames (IVM has no frame)
     #########################################
     if ( $hwtype ne "ivm" ) { 
-        my $filter = "type_model,serial_num,name,frame_num,ipaddr_a,ipaddr_b";
+        $filter    = "type_model,serial_num,name,frame_num,ipaddr_a,ipaddr_b";
         my $frames = xCAT::PPCcli::lssyscfg( $exp, "bpas", $filter );
-        my $Rc = shift(@$frames);
+        $Rc = shift(@$frames);
 
         #####################################
         # Expect error 
@@ -164,10 +192,10 @@ sub enumerate {
         # If frames found, enumerate cages 
         #####################################
         if ( $Rc != NR_ERROR ) {
-            my $filter = "cage_num,type_model_serial_num";
+            $filter = "cage_num,type_model_serial_num";
 
-            foreach my $values ( @$frames ) {
-                my ($model,$serial) = split /,/, $values;
+            foreach my $val ( @$frames ) {
+                my ($model,$serial) = split /,/, $val;
                 my $mtms = "$model*$serial";
 
                 my $cages = xCAT::PPCcli::lssyscfg($exp,"cage",$mtms,$filter);
@@ -184,7 +212,7 @@ sub enumerate {
                 #############################
                 foreach ( @$cages ) {
                     my ($cageid,$mtms) = split /,/;
-                    $cage{$mtms} = "$cageid,$values";
+                    $cage{$mtms} = "$cageid,$val";
                 }          
             }
         }
@@ -192,8 +220,8 @@ sub enumerate {
     #########################################
     # Enumerate CECs 
     #########################################
-    my $filter = "name,type_model,serial_num,ipaddr";
-    my $cecs   = xCAT::PPCcli::lssyscfg( $exp, "fsps", $filter );
+    $filter  = "name,type_model,serial_num,ipaddr";
+    my $cecs = xCAT::PPCcli::lssyscfg( $exp, "fsps", $filter );
     $Rc = shift(@$cecs);
 
     #########################################
@@ -208,7 +236,8 @@ sub enumerate {
         #####################################
         my ($fsp,$model,$serial,$ips) = split /,/;
         my $mtms   = "$model*$serial";
-        my $cageid = undef;
+        my $cageid = "";
+        my $fname  = "";
 
         #####################################
         # Get cage CEC is in
@@ -218,29 +247,44 @@ sub enumerate {
         #####################################
         # Save frame information
         #####################################
-        if ( defined($frame)) {
-            my ($cage,$model,$serial,$fname,$id,$ipa,$ipb) = split /,/, $frame;
-            my $prof =  undef;
-            my $bpa  =  undef; 
-            my $ips  = "$ipa $ipb";
+        if ( defined($frame) ) {
+            my ($cage,$model,$serial,$name,$id,$ipa,$ipb) = split /,/, $frame;
+            my $prof = "";
+            my $bpa  = ""; 
             $cageid  = $cage;
-            $frame   = $fname;
+            $fname   = $name;
 
+            #######################################
+            # Convert IP-A to short-hostname.
+            # If fails, use user-defined FSP name
+            #######################################
+            my $host = getshorthost( $ipa );
+            if ( defined($host) ) {
+                $fname = $host;
+            }
             push @values, join( ",",
-                "bpa",$fname,$id,$model,$serial,$server,$prof,$bpa,$ips );
+                "bpa",$fname,$id,$model,$serial,$server,$prof,$bpa,"$ipa $ipb");
         }
         #####################################
         # Save CEC information
         #####################################
-        my $prof = undef;
+        my $prof = "";
 
+        #######################################
+        # Convert IP to short-hostname.
+        # If fails, use user-defined FSP name
+        #######################################
+        my $host = getshorthost( $ips );
+        if ( defined($host) ) {
+            $fsp = $host;
+        }
         push @values, join( ",",
-            "fsp",$fsp,$cageid,$model,$serial,$server,$prof,$frame,$ips );
+            "fsp",$fsp,$cageid,$model,$serial,$server,$prof,$fname,$ips );
 
         #####################################
         # Enumerate LPARs 
         #####################################
-        my $filter = "name,lpar_id,default_profile,curr_profile"; 
+        $filter    = "name,lpar_id,default_profile,curr_profile"; 
         my $lpars  = xCAT::PPCcli::lssyscfg( $exp, "lpar", $mtms, $filter );
         $Rc = shift(@$lpars); 
 
@@ -266,7 +310,7 @@ sub enumerate {
         foreach ( @$lpars ) {
             my ($name,$lparid,$dprof,$curprof) = split /,/;
             my $prof = (length($curprof)) ? $curprof : $dprof;
-            my $ips  = undef;
+            my $ips  = "";
             
             #####################################
             # Save LPAR information
@@ -325,14 +369,14 @@ sub format_output {
             my $length  = length( $1 );
             $max_length = ($length > $max_length) ? $length : $max_length;
         }
-        my $format = sprintf "%%-%ds", ($max_length + 2 );
+        my $format = sprintf( "%%-%ds", ($max_length + 2 ));
         $header[1][1] = $format;
 
         #######################################
         # Add header
         #######################################
         foreach ( @header ) {
-            $result .= sprintf @$_[1], @$_[0];
+            $result .= sprintf( @$_[1], @$_[0] );
         }
         #######################################
         # Add node information
@@ -352,8 +396,8 @@ sub format_output {
                     if ( $data[0] !~ /^hmc|ivm$/ ) {
                         $d = $data[8]; 
                     }
-                } 
-                $result .= sprintf @$_[1], $d;
+                }
+                $result .= sprintf( @$_[1], $d );
             }
         }
     }
