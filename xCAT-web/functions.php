@@ -17,40 +17,36 @@ $CURRDIR = '/opt/xcat/web';
 /*-----------------------------------------------------------------------------------------------
 	Function to insert the header part of the HTML and the top part of the page
 ------------------------------------------------------------------------------------------------*/
-function insertHeader($title, $stylesheets, $javascripts) {
+function insertHeader($title, $stylesheets, $javascripts, $currents) {
 global $TOPDIR;
 if (!$TOPDIR) 	$TOPDIR = '.';
-?>
 
+echo <<<EOS
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 Strict//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title><?php echo $title; ?></title>
+<title>$title</title>
 <meta http-equiv="Content-Type" content="application/xhtml+xml;  charset=iso-8859-1">
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="menu.css">
-<script type="text/javascript" src="functions.js"></script>
+<link href="style.css" rel="stylesheet">
+<script src="functions.js" type="text/javascript"></script>
 
-<script type="text/javascript" src="js_xcat/event.js"> </script>
-<script type="text/javascript" src="js_xcat/ui.js"> </script>
+EOS;
 
-<!-- These are only needed for popup windows, so only need it for specific pages like dsh
-<script type="text/javascript" src="javascripts/prototype.js"> </script>
-<script type="text/javascript" src="javascripts/effect.js"> </script>
-<script type="text/javascript" src="javascripts/window.js"> </script>
-<link href="themes/default.css" rel="stylesheet" type="text/css"/>
--->
-
-<link rel="stylesheet" href="css/xcattop.css">
-<link rel="stylesheet" href="css/xcat.css">
-<link rel="stylesheet" href="css/clickTree.css">
+/* These are only needed for popup windows, so only need it for specific pages like dsh
+<script src="js_xcat/event.js" type="text/javascript"> </script>
+<script src="js_xcat/ui.js" type="text/javascript"> </script>
+<link href="css/xcattop.css" rel="stylesheet">
+<link href="css/xcat.css" rel="stylesheet">
+<link href="css/clickTree.css" rel="stylesheet">
 <script src="js/windows.js" type="text/javascript"></script>
 <script src="js/clickTree.js" type="text/javascript"></script>
 <script src="js/prototype.js" type="text/javascript"></script>
 <script src="js/scriptaculous.js" type="text/javascript"></script>
 <script src="js/xcat.js" type="text/javascript"></script>
+<script src="js/effect.js" type="text/javascript"> </script>
+<link href="themes/default.css" rel="stylesheet" type="text/css"/>
+*/
 
-<?php
 if ($stylesheets) {
 	foreach ($stylesheets as $s) {
 		echo "<LINK rel=stylesheet href='$s' type='text/css'>\n";
@@ -61,165 +57,75 @@ if ($javascripts) {
 		echo "<script type='text/javascript' src='$j'></script>\n";
 		}
 	}
-?>
-</head>
-<body>
-<div id=header>
-<table border=0 align=left cellspacing=0 cellpadding=0>
+echo "</head><body>\n";
+echo <<<EOS
+<table id=headingTable border=0 cellspacing=0 cellpadding=0>
 <tr>
-    <td><img src="images/xCAT_icon.gif"></td>
-    <!-- <td background="images/header_bg.gif" width=700> -->
-    <td width=600>
-    	<p id=banner>xCAT - e<u>x</u>treme <u>C</u>luster <u>A</u>dministration <u>T</u>ool</p>
-    </td>
-</tr>
-</table>
-</div>
-<?php }  // end insertHeader
+    <td><img id=xcatImage src='images/xCAT_icon.gif'></td>
+    <td width='100%'>
 
-
-// A few constants
-/*
-require_once("lib/config.php");
-$config = &Config::getInstance();
-$imagedir = $config->getValue("IMAGEDIR");
-$colTxt = "Click to collapse section";
-$exTxt = "Click to expand section";
-$bulgif = "$imagedir/h3bg_new.gif";
-$minusgif = "$imagedir/minus-sign.gif";
-$plusgif = "$imagedir/plus-sign.gif";
-*/
-
-
-/*------------------------------------------------------------------------------
-   Create the navigation area on the left.
-   $currentlink is the key of the link to the page
-   that is currently being displayed.
-------------------------------------------------------------------------------*/
-
-function insertNav($currentLink) {
-// A few constants
-global $TOPDIR;    // or could use $GLOBALS['TOPDIR']
-$colTxt = "Click to collapse section";
-$exTxt = "Click to expand section";
-$bulgif = "$TOPDIR/images/h3bg_new.gif";
-$minusgif = "$TOPDIR/images/minus-sign.gif";
-$plusgif = "$TOPDIR/images/plus-sign.gif";
-
-echo '<div id=nav><table border=0 cellpadding=0 cellspacing=1 width=70>';
-
-//Console section
-insertInner('open', 1,'Console', 'constab', $currentLink, array(
-	'prefs' => array("$TOPDIR/prefs.php", 'Preferences'),
-	'updategui' => array("$TOPDIR/softmaint/updategui.php", 'Update'),
-	'suggestions' => array("$TOPDIR/suggestions.html", 'Suggestions'),
-	'logout' => array("$TOPDIR/logout.php", 'Logout')
-));
-
-// xCAT Cluster section
-echo <<<EOS
- <TR><TD id=menu_level1>
- <P class=NoPadding title="$colTxt" onclick="toggleSection(this,'clustab')" ondblclick="toggleSection(this,'clustab')">
- <IMG class=NoPadding src="$minusgif" id='clustab-im'> xCAT Cluster
- </P></TD></TR>
- <TR><TD>
-  <TABLE id='clustab' cellpadding=0 cellspacing=0 width="100%"><TBODY>
-    <TR><TD id=menu_level3><A href="csmconfig"><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;Settings</A></TD></TR>
 EOS;
+//echo "<div id=top><img id=xcatImage src='./images/xCAT_icon.gif'><div id=menuDiv>\n";
 
-	insertInner('open', 2,'Installation', 'installtab', $currentLink, array(
-		'softmaint' => array("$TOPDIR/softmaint", 'MS Software'),
-		'addnodes' => array("$TOPDIR/addnodes.php", 'Add Nodes'),
-		'definenode' => array("$TOPDIR/definenode.php", 'Define Nodes'),
-		'hwctrl' => array("$TOPDIR/hwctrl/index.php", 'HW Control')
+insertMenus($currents);
+
+echo "</td></tr></table>\n";
+//echo "</div></div>\n";     // end the top div
+}  // end insertHeader
+
+
+// Insert the menus at the top of the page
+//   $currents is an array of the current menu choice tree
+function insertMenus($currents) {
+	global $TOPDIR;
+	echo "<table border=0 cellspacing=0 cellpadding=0>\n";
+
+	insertMenuRow($currents[0], 1, array(
+		'machines' => array('Machines', "$TOPDIR/machines/frames.php"),
+		'jobs' => array('Jobs', "$TOPDIR/jobs/jobs.php"),
+		'deploy' => array('Deploy', "$TOPDIR/deploy/images.php"),
+		'config' => array('Configuration', "$TOPDIR/config/site.php"),
+		'support' => array('Support', "$TOPDIR/support/diagnose.php")
 	));
-	insertInner('open', 2,'Administration', 'admintab', $currentLink, array(
-		'nodes' => array("$TOPDIR/index.php", 'Nodes'),
-		'layout' => array("$TOPDIR/hwctrl/layout.php", 'Layout'),
-		'dsh' => array("$TOPDIR/dsh.php", 'Run Cmds'),
-		'dcp' => array("$TOPDIR/dcp.php", 'Copy Files'),
-		'cfm' => array("$TOPDIR/cfm.php", 'Sync Files'),
-		'shell' => array("$TOPDIR/shell.php", 'Cmd on MS'),
-		'import' => array("$TOPDIR/import.php", 'Import/Export'),
-	));
-	insertInner('open', 2,'Monitor', 'montab', $currentLink, array(
-		'conditions' => array("$TOPDIR/mon", 'Conditions'),
-		'responses' => array("$TOPDIR/mon/resp.php", 'Responses'),
-		'sensors' => array("$TOPDIR/mon/sensor.php", 'Sensors'),
-		'rmcclass' => array("$TOPDIR/mon/rmcclass.php", 'RMC Classes'),
-		'auditlog' => array("$TOPDIR/mon/auditlog.php", 'Event Log'),
-		'perfmon' => array("$TOPDIR/perfmon/index.php", 'Performance'),
-
-	));
-	insertInner('open', 2,'Diagnostics', 'diagtab', $currentLink, array(
-		'diagms' => array("$TOPDIR/diagms", 'MS Diags'),
-	));
-
-  echo '</TABLE></TD></TR>';
-
-insertInner('open', 1,'Documentation', 'doctab', $currentLink, array(
-	'xcatdocs' => array(getDocURL('web','docs'), 'xCAT Docs'),
-	'forum' => array(getDocURL('web','forum'), 'Mailing List'),
-	'codeupdates' => array(getDocURL('web','updates'), 'Code Updates'),
-	'opensrc' => array(getDocURL('web','opensrc'), 'Open Src Reqs'),
-	'wiki' => array(getDocURL('web','wiki'), 'xCAT Wiki'),
-));
-
-echo '</table></div>';
-}  //end insertNav
-
-
-/**--------------------------------------------------------------
-	Insert one inner table in the nav area function above.
-	Type is the type of the menu item, i.e: close or open (plus sign/minus sign)
-	Level is the level of the parent menu item (can be first or second)
-	Id is the id property of the table.
-	CurrentLink is the key of the link for the current page.
-	List is a keyed array of href, label pairs.
-----------------------------------------------------------------*/
-function insertInner($type,$level,$title, $id, $currentLink, $list) {
-// A few constants
-global $TOPDIR;    // or could use $GLOBALS['TOPDIR']
-$colTxt = "Click to collapse section";
-$exTxt = "Click to expand section";
-$bulgif = "$TOPDIR/images/h3bg_new.gif";
-$minusgif = "$TOPDIR/images/minus-sign.gif";
-$plusgif = "$TOPDIR/images/plus-sign.gif";
-
-	switch($level){
-		case 1: $menu_level = "menu_level1"; break;
-		case 2: $menu_level = "menu_level2"; break;
-		default: $menu_level = "menu_level1";
+	if ($currents[0] == 'machines') {
+		insertMenuRow($currents[1], 0, array(
+			'lab' => array('Lab Floor', "$TOPDIR/views/lab.php"),
+			'frames' => array('Frames', "$TOPDIR/views/frames.php"),
+			'groups' => array('Groups', "$TOPDIR/views/groups.php"),
+			'nodes' => array('Nodes', "$TOPDIR/views/nodes.php"),
+			'layout' => array('Layout', "$TOPDIR/views/layout.php")
+		));
 	}
-	if ($type == "open"){
-		$gif = $minusgif;
-		$hoverTxt = $colTxt;
-		$style = "display:inline";
-	}else {
-		$gif = $plusgif;
-		$hoverTxt = $exTxt;
-		$style = "display:none";
-	}
-
-echo <<<EOS
-<TR><TD id=$menu_level>
-<P class=NoPadding title="$hoverTxt" onclick="toggleSection(this,'$id')" ondblclick="toggleSection(this,'$id')">
-<IMG class=NoPadding src=$gif id=$id-im> $title</P></TD></TR>
-<TR><TD width="100%">
-<TABLE id=$id width="100%" cellpadding="0" cellspacing="0" border=0 style=$style>
-EOS;
-
-foreach ($list as $key => $link) {
-	if ($key == $currentLink){
-		echo "<TR><TD id='menu_level3' class='CurrentMenuItem'><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;$link[1]</TD></TR>\n";
-	}else{
-		echo "<TR><TD id='menu_level3'><A href='$link[0]'><IMG src='$TOPDIR/images/h3bg_new.gif'>&nbsp;$link[1]</A></TD></TR>\n";
-	}
+	echo "</table>\n";
 }
 
-echo "</TABLE></TD></TR>\n";
 
-}   //end insertInner
+// Insert one set of choices under a main choice.
+function insertMenuRow($current, $isTop, $items) {
+	global $TOPDIR;
+	//$img = "$TOPDIR/images/h3bg_new.gif";
+	$menuRowClass = $isTop ? '' : 'class=MenuRow';
+	$menuItemClass = $isTop ? 'class=MenuItemTop' : 'class=MenuItem';
+	$currentClass = $isTop ? 'CurrentMenuItemTop' : '';
+
+	//echo "<TABLE class=MenuTable id=mainNav cellpadding=0 cellspacing=0 border=0><tr>\n";
+	//echo "<div class=$menuRowClass><ul id=mainNav>\n";
+	echo "<tr><td $menuRowClass><ul id=mainNav>\n";
+
+	foreach ($items as $key => $link) {
+		if ($key == $current){
+			//echo "<TD><a id=$key href='$link[1]'>$link[0]</a></TD>\n";
+			echo "<li class='CurrentMenuItem $currentClass'>$link[0]</li>\n";
+		} else {
+			//echo "<TD><a class=NavItem id=$key href='$link[1]'>$link[0]</a></TD>\n";
+			echo "<li><a $menuItemClass id=$key href='$link[1]'>$link[0]</a></li>\n";
+		}
+	}
+
+	//echo "</TR></TABLE>\n";
+	//echo "</ul></div>\n";
+	echo "</td></tr></ul>\n";
+}
 
 
 /** ----------------------------------------------------------------------------------------------
@@ -290,6 +196,7 @@ function dumpGlobals() { //------------------------------------
 function isInstalled($rpmfile) { //------------------------------------
 	$aixrpmopt = isAIX() ? '--ignoreos' : '';
 	$lang = isWindows() ? '' : 'LANG=C';
+	$out = array();
 	$rc = runcmd("$lang /bin/rpm -U $aixrpmopt --test $rpmfile", 2, $out);
 	# The rc is not reliable in this case because it will be 1 if it is already installed
 	# of if there is some other problem like a dependency is not satisfied.  So we parse the
@@ -512,9 +419,12 @@ function insertTabs ($tablist, $currentTabIndex) { //---------------------------
 // Create the Action buttons in a table.  Buttonlist is an array of arrays of button attribute strings.
 function insertButtons ($buttonsets) { //------------------------------------
 	foreach ($buttonsets as $buttonlist) {
-		echo "<TABLE cellpadding=0 cellspacing=2><TBODY><TR><TD nowrap>";
-		foreach ($buttonlist as $button) { echo "<INPUT type=submit class=but $button >"; }
-		echo "</TD></TR></TBODY></TABLE>\n";
+		echo "<TABLE cellpadding=0 cellspacing=2><TR>";
+		foreach ($buttonlist as $button) {
+			//echo "<td><INPUT type=submit class=but $button ></td>";
+			echo "<td><a class=button href=''><span>$button</span></a></td>";
+			}
+		echo "</TR></TABLE>\n";
 	}
 }
 

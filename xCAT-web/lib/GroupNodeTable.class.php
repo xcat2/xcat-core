@@ -76,6 +76,7 @@ EOE;
 return;
 }
 
+// This is used by nodes_by_group.php
 	/**
 	 * @param XCATNodeGroup	nodeGroup	The node group for which we want to generate the html.
 	 * returns the table that contains all the nodes information of that group

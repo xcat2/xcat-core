@@ -1,4 +1,7 @@
 /*
+
+This file is no longer used.
+
 Styles for the navigation area and some other general styles.
 
 Some of this came from:
@@ -108,7 +111,7 @@ tr.indent td { padding:0px 0 0px 10px; }
 	border-bottom: 1px solid #fff;
 	font-size:11px;
 	padding: 0px 5px 0px 15px;
-	width: 100%;
+	/* width: 100%; */
 }
 	/* #menu_level3 li { list-style: none; } */
 	#menu_level3 a:link, a:visited {

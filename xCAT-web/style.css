@@ -1,44 +1,103 @@
-
-div#header {
-  /* background-color : #d8dff1; */
-  position: absolute;
-  left: 15px;
-  top: 15px;
+#headingTable {
+	margin: 0 20px 10px 20px;
+	/* background: #FFF url(./images/top.jpg) repeat-x top; */
+	background-color: #002432;
 }
 
-div#nav {
-  /* background-color : #d8dff1; */
-  position: absolute;
-  left: 0px;
-  top: 80px;
-}
-
-div#content {
-  /* background-color : #fcfaeb; */
-  position: absolute;
-  left: 120px;
-  top: 80px;
-}
-
-/* not used...
-P#logo {
- background-color: #d8dff1;  #f5f3cf #fffdb0
- vertical-align : middle;;
-	padding-top: 5px;
-	text-align: center;
-	padding-bottom: 5px;
-	margin-bottom: 10px;
+/*
+#top {
+	margin: 0 auto 10px auto;
+	padding: 0;
+	color: #666;
+	background: #FFF url(./images/top.jpg) repeat-x top;
+	background-color: #002432;
+	height: 65px;
 }
 */
 
-#banner {
- font-weight: bolder;
- font-size: 16pt;
- font-style: italic;
- color: #6a8ab5;  /* #3F5B7F;  gray; */
- text-align: center;
- margin: 10px;
+#xcatImage {
+	/* float: left; */
+	margin: 5px;
+	}
+
+.MenuRow {
+	border-left: 2px solid white;
+	border-right: 2px solid white;
 }
+
+#mainNav {
+	/* position: absolute;
+	float: left; */
+	list-style: none;
+	margin: 0px;
+}
+
+#mainNav li {
+	float: left;
+	font: .8em Verdana, Arial, Sans-Serif;
+	line-height: 2.5em;
+	font-weight: bold;
+	/* border: 1px solid white; */
+}
+
+.CurrentMenuItem {
+  display: block;
+  padding: 0 2em;
+  background: #09334b;
+  color: #fafafa;
+}
+
+.CurrentMenuItemTop {
+	border-left: 2px solid white;
+	border-top: 2px solid white;
+	border-right: 2px solid white;
+	/* border-bottom: 2px solid #09334b; */
+}
+
+.MenuItemTop { border-bottom: 2px solid white; }
+.MenuItem { /* border-bottom: 2px solid #002432; */ }
+
+#mainNav a {
+  display: block;
+  float: left; /* IE/Mac 5.2 Fix */
+  padding: 0 2em;
+  text-decoration: none;
+  color: #a1a1a1;
+  border-left: 1px solid #273942;
+  cursor: pointer;
+}
+
+/* IE/Win 5.x Fix */
+* html #mainNav a {
+  width: 1px;
+}
+
+#mainNav a:hover {
+  background: #09334b;
+  color: #fafafa;
+}
+
+/*
+body.home #mainNav a#home, body.tutorials #mainNav a#tutorials {
+  background: #09334b;
+  color: #fafafa;
+  cursor: default;
+}
+*/
+
+#mainNav li a.active {
+  color: #fafafa;
+
+}
+
+/*
+div#content {
+  background-color : #fcfaeb;
+  position: absolute;
+  left: 120px;
+  top: 180px;
+}
+*/
 
 #disclaimer {
  font-weight: bold;
@@ -46,16 +105,6 @@ P#logo {
  color: red;
  text-align: center;
  margin: 5px;
-}
-
-.PageHeading {
- /* font-size: 10pt; */
- font: bold 1.4em "Trebuchet MS", Helvetica, Sans-Serif;
- color: white;
- background-color: transparent;  /* #c0c0c0; */
- border: 1px solid white;
- border-bottom-style: none;
- margin: 2px 2px 10px 2px;
 }
 
 .ContentForm { margin: 10px 2px 15px 2px; }
@@ -76,7 +125,6 @@ INPUT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-
 SELECT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 TABLE {font-size : 10pt; font-family : Arial;}
-
 /* pre { padding: 0px; margin: 0px; } */
 
 .TableHeader { color: black; background-color : #fffdb0; font-weight : bold; font-size : 9pt; white-space: nowrap; }
@@ -107,69 +155,44 @@ TABLE {font-size : 10pt; font-family : Arial;}
 .NoMargin { margin: 0px; }
 .NoPadding { padding: 0px; margin: 0px; border: 0px none white; }
 .Hidden { visibility : hidden ;}
+.Txtfld {font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 
-
-.but{
-  background-color: #3F5B7F;  /* #6a8ab5;  #fbf999; */
+/*
+.but {
+  background-color: #3F5B7F;
   padding: 0px;
   margin: 0px;
 }
-
-.txtfld {font-size : 8pt; font-family : sans-serif; font-weight : bold;}
-
-/* this was used to make buttons out of table cells...
-.bt {
-  font-size : 8pt;
-  font-weight : bold;
-  font-family : sans-serif;
-  background-image : url(images/bt.gif);
-	text-align: center;
-}
 */
 
-/* The rest of the styles were for the navigation area, but are not used any more...
-table#navtable {
-  width: 105px;
-  font-size : 8pt;
-  padding-left : 1px;
-  border: 0px;
-  white-space: nowrap;
+
+a.button {
+    background: transparent url('./images/bg_button_a.gif') no-repeat scroll top right;
+    color: #444;
+    display: block;
+    float: left;
+    font: normal 12px arial, sans-serif;
+    height: 24px;
+    margin-right: 6px;
+    padding-right: 18px; /* sliding doors padding */
+    text-decoration: none;
+    cursor: pointer;
 }
 
-.NavCurLink { background-color: #fcfaeb; }
-
-#nav A{
-  font-weight : bold;
-  font-family : sans-serif;
+a.button span {
+    background: transparent url('./images/bg_button_span.gif') no-repeat;
+    display: block;
+    line-height: 14px;
+    padding: 5px 0 5px 18px;
 }
 
-#nav P{
-  text-indent : 0px;
-  padding: 0px;
-  margin: 0px;
-  font-weight : bold;
-  font-family : sans-serif;
-  cursor : default;
-  vertical-align : middle;
+a.button:active {
+    background-position: bottom right;
+    color: #000;
+    outline: none; /* hide dotted outline in Firefox */
 }
 
-#nav IMG {  border: 0px; }
-
-.InnerTable{
-  margin-left : 0px;
-  margin-right : 0px;
-  margin-top : 0px;
-  margin-bottom : 0px;
-  border: 0px;
-  width: 100%;
-  font-size : 8pt;
-  white-space: nowrap;
+a.button:active span {
+    background-position: bottom left;
+    padding: 6px 0 4px 18px; /* push text down 1px */
 }
-
-.OuterTable{
-  margin-left : 1px;
-  margin-right : 1px;
-  margin-top : 0px;
-  margin-bottom : 0px;
-}
-*/

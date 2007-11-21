@@ -9,14 +9,31 @@ if (isAIX()) { $aixDisabled = 'disabled'; }
 require_once("lib/GroupNodeTable.class.php");
 require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
+insertHeader('Nodes', NULL, NULL, array('machines','nodes'));
 
-insertHeader('Nodes', NULL, NULL);
-insertNav('nodes');
-
-echo "<div id=content align=center> <p class=PageHeading>Cluster Groups and Nodes</p>";
-
+echo "<div id=content align=center>\n";
 
 insertButtons(array(
+	array(
+		'Attributes',
+		'Create Like',
+		'Create Group',
+		'Ping',
+		//'Updatenode',
+		'Run Cmd',
+		'Copy Files'
+	),
+	array(
+		//'Soft Maint',
+		'HW Ctrl',
+		'RSA/MM/FSP',
+		'Install',
+		'Perf Mon',
+		//'Webmin',
+		'Diagnose',
+		'Remove'
+	),
+	/*
 	array(
 		'name=propButton value="Attributes"',
 		'name=defineButton value="Create Like"',
@@ -36,6 +53,7 @@ insertButtons(array(
 		'name=diagButton value="Diagnose" onclick="this.form.nodesNeeded=1;"',
 		'name=removeButton value="Remove"'
 	),
+	*/
 ));
 
 echo '<form name="nodelist" class=ContentForm>';
@@ -46,7 +64,6 @@ GroupNodeTable::insertGroupTableHeader();
 
 // Get all the names of the groups
 $xcmdr = new XCATCommandRunner();
-//$nodeGroupNames = $xcmdr->getAllGroupNames();
 $nodeGroupNames = $xcmdr->getAllXCATGroups();
 
 // Print the HTML for each of them
@@ -55,14 +72,9 @@ foreach($nodeGroupNames as $key => $nodeGroupName) {
 }
 
 GroupNodeTable::insertGroupTableFooter();
-?>
-<script type="text/javascript" src="js_xcat/event.js"> </script>
-<script type="text/javascript" src="js_xcat/ui.js"> </script>
-<SCRIPT language="JavaScript">
-<!--
-	XCATEvent.doExpandNodes();
--->
-</SCRIPT>
+
+echo <<<EOS
+<!-- <SCRIPT language="JavaScript"> XCATEvent.doExpandNodes(); </SCRIPT> -->
 </form>
 <table>
 <tr>
@@ -82,3 +94,5 @@ GroupNodeTable::insertGroupTableFooter();
 </div>
 </BODY>
 </HTML>
+EOS;
+?>

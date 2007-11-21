@@ -1,6 +1,6 @@
 <?php
 
-require_once("XCAT/HTML/HTMLProducer.class.php");
+require_once("lib/GroupNodeTable.class.php");
 
 /**
  * This class exposes an API for calling the XCAT PHP classes.
@@ -47,7 +47,7 @@ class XCATWebservice {
 	}
 
 	function getXCATNodeRows($nodeGroupName) {
-		$html = HTMLProducer::getXCATNodeTableRows($nodeGroupName);
+		$html = GroupNodeTable::getXCATNodeTableRow($nodeGroupName);
 
 		echo $html;
 	}
