@@ -19,7 +19,7 @@ $CURRDIR = '/opt/xcat/web';
 ------------------------------------------------------------------------------------------------*/
 function insertHeader($title, $stylesheets, $javascripts, $currents) {
 global $TOPDIR;
-if (!$TOPDIR) 	$TOPDIR = '.';
+if (!$TOPDIR) 	$TOPDIR = '..';
 
 echo <<<EOS
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 Strict//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11-strict.dtd">
@@ -27,8 +27,8 @@ echo <<<EOS
 <head>
 <title>$title</title>
 <meta http-equiv="Content-Type" content="application/xhtml+xml;  charset=iso-8859-1">
-<link href="style.css" rel="stylesheet">
-<script src="functions.js" type="text/javascript"></script>
+<link href="$TOPDIR/lib/style.css" rel="stylesheet">
+<script src="$TOPDIR/lib/functions.js" type="text/javascript"></script>
 
 EOS;
 
@@ -61,11 +61,11 @@ echo "</head><body>\n";
 echo <<<EOS
 <table id=headingTable border=0 cellspacing=0 cellpadding=0>
 <tr>
-    <td><img id=xcatImage src='images/xCAT_icon.gif'></td>
+    <td><img id=xcatImage src='$TOPDIR/images/xCAT_icon.gif'></td>
     <td width='100%'>
 
 EOS;
-//echo "<div id=top><img id=xcatImage src='./images/xCAT_icon.gif'><div id=menuDiv>\n";
+//echo "<div id=top><img id=xcatImage src='$TOPDIR/images/xCAT_icon.gif'><div id=menuDiv>\n";
 
 insertMenus($currents);
 
@@ -366,6 +366,16 @@ function getHWTypeImage($hwtype, $powermethod) { //-----------------------------
 }
 
 
+// Return the image that represents the status string passed in
+function getStatusImage($status) {
+	global $TOPDIR;
+	if ($status == 'good') { return "$TOPDIR/images/green-ball-m.gif"; }
+	elseif ($status == 'warning') { return "$TOPDIR/images/yellow-ball-m.gif"; }
+	elseif ($status == 'bad') { return "$TOPDIR/images/red-ball-m.gif"; }
+	else { return "$TOPDIR/images/blue-ball-m.gif"; }
+}
+
+
 // Returns the specified user preference value.  Not finished.
 function getPref($key) { //------------------------------------
 	if ($key == 'MaxNodesDisplayed') { return 50; }
@@ -386,8 +396,23 @@ function getNodes($group, $noderange) { //------------------------------------
 
 
 // Returns the node groups defined in the cluster.  Not finished.
-function getGroups() { //------------------------------------
+function getGroups() {
 	return array('AllNodes','group1','group2');
+}
+
+
+// Returns the aggregate status of each node group in the cluster.  The return value is a
+// hash in which the key is the group name and the value is the status as returned by nodestat.
+function getGroupStatus() {
+	$groups = array();
+	$output = array();
+	runcmd("/bin/sudo grpattr", 2, $output);
+	foreach ($output as $line) {
+		//echo "<p>line=$line</p>";
+		$vals = preg_split('/: */', $line);
+		if (count($vals) == 2) { $groups[$vals[0]] = $vals[1]; }
+	}
+	return $groups;
 }
 
 // Returns true if we are running on AIX ------------------------------------
@@ -406,10 +431,10 @@ function insertTabs ($tablist, $currentTabIndex) { //---------------------------
 	foreach ($tablist as $key => $tab) {
 		if ($key != 0) { echo "<TD width=2></TD>"; }
 		if ($currentTabIndex == $key) {
-			echo "<TD align=center background='images/tab-current.gif'><b>$tab[0]</b></TD>";
+			echo "<TD align=center background='$TOPDIR/images/tab-current.gif'><b>$tab[0]</b></TD>";
 			}
 		else {
-			echo "<TD align=center background='images/tab.gif'><A href='$tab[1]'>$tab[0]</A></TD>";
+			echo "<TD align=center background='$TOPDIR/images/tab.gif'><A href='$tab[1]'>$tab[0]</A></TD>";
 			}
 	}
     echo "</TR><TR><TD colspan=7 height=7 bgcolor='#CBCBCB'></TD></TR></TBODY></TABLE>\n";

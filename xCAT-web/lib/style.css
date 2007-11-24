@@ -1,6 +1,6 @@
 #headingTable {
 	margin: 0 20px 10px 20px;
-	/* background: #FFF url(./images/top.jpg) repeat-x top; */
+	/* background: #FFF url(../images/top.jpg) repeat-x top; */
 	background-color: #002432;
 }
 
@@ -9,7 +9,7 @@
 	margin: 0 auto 10px auto;
 	padding: 0;
 	color: #666;
-	background: #FFF url(./images/top.jpg) repeat-x top;
+	background: #FFF url(../images/top.jpg) repeat-x top;
 	background-color: #002432;
 	height: 65px;
 }
@@ -99,14 +99,6 @@ div#content {
 }
 */
 
-#disclaimer {
- font-weight: bold;
- font-size: 9pt;
- color: red;
- text-align: center;
- margin: 5px;
-}
-
 .ContentForm { margin: 10px 2px 15px 2px; }
 
 BODY {
@@ -114,7 +106,7 @@ BODY {
 	font-family : Arial;
 	margin: 0;
 	padding: 10px;
-	background: url(images/background.gif) repeat-y;
+	background: url(../images/background.gif) repeat-y;
 	/* background: black; */
 	font: normal 12px Tahoma, Verdana, Arial, Helvetica, Sans-Serif;
 	line-height: 1.6em;
@@ -167,7 +159,7 @@ TABLE {font-size : 10pt; font-family : Arial;}
 
 
 a.button {
-    background: transparent url('./images/bg_button_a.gif') no-repeat scroll top right;
+    background: transparent url('../images/bg_button_a.gif') no-repeat scroll top right;
     color: #444;
     display: block;
     float: left;
@@ -180,7 +172,7 @@ a.button {
 }
 
 a.button span {
-    background: transparent url('./images/bg_button_span.gif') no-repeat;
+    background: transparent url('../images/bg_button_span.gif') no-repeat;
     display: block;
     line-height: 14px;
     padding: 5px 0 5px 18px;

@@ -1,10 +1,8 @@
 <?php
-//require_once("config.php");
-require_once("lib/XCAT/XCATNode/XCATNodeGroupUtil.class.php");
-require_once("lib/XCAT/XCATNode/XCATNode.class.php");
-require_once("lib/XCAT/XCATNode/XCATNodeManager.class.php");
-require_once("lib/XCAT/XCATNodeGroup/XCATNodeGroup.class.php");
-require_once("lib/XCAT/XCATNodeGroup/XCATNodeGroupManager.class.php");
+require_once("../lib/XCAT/XCATNode/XCATNode.class.php");
+require_once("../lib/XCAT/XCATNode/XCATNodeManager.class.php");
+require_once("../lib/XCAT/XCATNodeGroup/XCATNodeGroup.class.php");
+require_once("../lib/XCAT/XCATNodeGroup/XCATNodeGroupManager.class.php");
 
 class XCATCommandRunner {
 	var $XCATRoot;
@@ -40,18 +38,6 @@ class XCATCommandRunner {
 	}
 
 	/**
-	 * Will always return an up to date list of node names.
-	 *
-	 * @return An array containing names of all nodes.
-	 */
-	function getAllNodeNames() {
-		$cmdString = $this->Sudo . $this->XCATRoot . "/nodels";
-		$outputStat = $this->runCommand($cmdString);
-
-		return $outputStat["output"];
-	}
-
-	/**
 	 * Will always return an up to date list of node names belonging to the group.
 	 *
 	 * @param String groupName	The name of the XCATNodeGroup
@@ -74,7 +60,7 @@ class XCATCommandRunner {
 
 			$xcn = new XCATNode();
 			$xcn->setName($nodeName);
-			$xcn->setStatus(XCATNodeGroupUtil::determineNodeStatus($outputStat["output"][0]));
+			$xcn->setStatus($this->determineNodeStatus($outputStat["output"][0]));
 			$xcn->setHwType("HW Type");
 			$xcn->setOs("OS");
 			$xcn->setMode("Mode");
@@ -86,6 +72,26 @@ class XCATCommandRunner {
 
 
 			return $xcn;
+	}
+
+	/**
+	 * @param String nodestatStr	The status of the node as output by the nodestat command
+	 * @return "good", "bad", or "other"
+	 */
+	function determineNodeStatus($nodestatStr) {
+		$status = NULL;
+
+		if ((strpos($nodestatStr, "ready") != FALSE) ||
+			(strpos($nodestatStr, "pbs") != FALSE) ||
+			(strpos($nodestatStr, "sshd") != FALSE)) {
+			$status = 'good';
+		} else if(strpos($nodestatStr, "noping") != FALSE) {
+			$status = 'bad';
+		} else {
+			$status = 'other';
+		}
+
+		return $status;
 	}
 
 	/**
@@ -120,81 +126,6 @@ class XCATCommandRunner {
 
 
 		return $xcatNodeGroup;
-	}
-
-
-	/**
-	 * This function will run the command to get all
-	 * the groups, and then for each group, it will get
-	 * their nodes, and for each node, it will get its
-	 * information once.
-	 */
-	function getAllXCATGroups() {
-			$xcatGroupNames = $this->getAllGroupNames();
-
-			$xcatGroups = array();
-
-			$groupStatArr = $this->getGroupStatus(); //get the status of all the groups
-
-			foreach($xcatGroupNames as $groupName) {
-				//echo "<p>group=$groupName</p>";
-				$xcatGroup = $this->getXCATGroupByName($groupName, $groupStatArr);
-				array_push($xcatGroups, $xcatGroup);
-			}
-
-
-			return $xcatGroups;
-	}
-
-	function getXCATGroupByName($groupName, $groupStatArr){
-
-			$xcg = new XCATNodeGroup();
-			$xcg->setName($groupName);
-			$xcg->setStatus(XCATNodeGroupUtil::determineNodeStatus($groupStatArr[$groupName]));
-
-			return $xcg;
-	}
-
-
-	/**
-	 * Will always return an up to date status of the groups
-	 *
-	 * @return An array containing the status of all the groups
-	 */
-	function getGroupStatus() {
-		$cmdString = $this->Sudo . $this->CurrDir . "/grpattr";   // "/cmds/grpattr";
-		$outputStat = $this->runCommand($cmdString);
-		$groupStats = $outputStat["output"];
-		$groupStatArr = array();
-		foreach($groupStats as $key => $groupStat) {
-			if (strpos($groupStat,':') != FALSE){
-				$stat = substr($groupStat,strpos($groupStat,':') + 2); //there's a space between the colon and the status
-				$grp = substr($groupStat,0, strpos($groupStat,':'));
-				$groupStatArr[$grp] = $stat;
-			}
-		}
-
-		return $groupStatArr;
-	}
-
-	function getNodeOrGroupStatus($nodegroupName, $group) {
-		$stat = "";
-		if ($group == FALSE){
-			$cmdString = $this->Sudo . $this->XCATRoot . "/nodestat " . $nodegroupName;
-			$outputStat = $this->runCommand($cmdString);
-			$nodegroupStat = $outputStat["output"][0];
-
-			if (strpos($nodegroupStat,':') != FALSE){
-					$stat = substr($nodegroupStat,strpos($nodegroupStat,':') + 2); //there's a space between the colon and the status
-			}
-		}else{
-			$StatArr = $this->getGroupStatus();
-			$stat = $StatArr[$nodegroupName];
-		}
-
-		if ($stat != "")	$stat = XCATNodeGroupUtil::determineNodeStatus($stat);
-
-		return $stat;
 	}
 
 }

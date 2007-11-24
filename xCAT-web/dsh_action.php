@@ -21,8 +21,7 @@ $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
 
 <FORM>
 <?php
-require_once("globalconfig.php");
-require_once("XCAT/XCATCommand/XCATCommandRunner.class.php");
+require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
 require_once "$TOPDIR/functions.php";
 

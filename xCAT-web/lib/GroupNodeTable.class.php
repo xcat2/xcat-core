@@ -54,9 +54,8 @@ EOS;
 /**
  * @param String nodeGroup	The group.
  */
-function insertGroupTableRow($nodeGroup) {
-$nodeGroupName = $nodeGroup->getName();
-$img_string = XCATNodeGroupUtil::getImageString($nodeGroup->getStatus());
+function insertGroupTableRow($nodeGroupName, $status) {
+$img_string = getStatusImage(GroupNodeTable::determineStatus($status));
 
 //echo '<tr bgcolor="#FFCC00"><td align=left>';
 echo '<tr class=TableRow><td align=left>';
@@ -67,7 +66,7 @@ echo <<<EOE
 	<td>&nbsp;</td>
 	<td>&nbsp;</td>
 	<td>&nbsp;</td>
-	<td>$img_string</td>
+	<td><img src="$img_string"></td>
 	<td>&nbsp;</td>
 	<td>&nbsp;</td>
 	</tr>
@@ -81,7 +80,7 @@ return;
 	 * @param XCATNodeGroup	nodeGroup	The node group for which we want to generate the html.
 	 * returns the table that contains all the nodes information of that group
 	 */
-function getXCATNodeGroupSection($nodeGroup) {
+function getNodeGroupSection($nodeGroup) {
 		$imagedir = 'images';
 		$right_arrow_gif = $imagedir . "/grey_arrow_r.gif";
 		$left_arrow_gif = $imagedir . "/grey_arrow_l.gif";
@@ -97,7 +96,7 @@ EOS;
 		$nodes = $nodeGroup->getNodes();
 
 		foreach($nodes as $nodeName => $node) {
-			$html .= GroupNodeTable::getXCATNodeTableRow($node);
+			$html .= GroupNodeTable::getNodeTableRow($node);
 		}
 
 		$html .= "<TR bgcolor=\"#FFFF66\"><TD colspan=9 align=\"right\"><image src=\"$left_arrow_gif\" alt=\"Previous page\">&nbsp;&nbsp;&nbsp;&nbsp;<image src=\"$right_arrow_gif\" alt=\"Next page\">&nbsp;&nbsp;</TD></TR>";
@@ -111,7 +110,7 @@ EOS;
 	/**
 	 * @param XCATNode	node	The node for which we want to generate the html.
 	 */
-function getXCATNodeTableRow($node) {
+function getNodeTableRow($node) {
 
 		$imagedir = 'images';
 
@@ -123,7 +122,7 @@ function getXCATNodeTableRow($node) {
 				"<td width=43><div align=center>" . $node->getMode(). "</div></td>";
 
 		$stat = $node->getStatus();
-		$img_string = XCATNodeGroupUtil::getImageString($stat);
+		$img_string = '<img src="' . getStatusImage($stat) . '">';
 
 		$html .= "<td width=43><div align=center>" . $img_string . "</div></td>".
 				"<td width=85><div align=center>" . $node->getHwCtrlPt(). "</div></td>".
@@ -132,5 +131,19 @@ function getXCATNodeTableRow($node) {
 EOS;
 		return $html;
 	}
+
+/**
+ * @param String nodestatStr	The status of the node as output by the nodestat command
+ * @return "good", "bad", "warning", or "unknown"
+ */
+function determineStatus($statStr) {
+	$status = NULL;
+	if ($statStr == "ready" || $statStr == "pbs" || $statStr == "sshd") { $status = "good"; }
+	else if ($statStr == "noping") { $status = "bad"; }
+	else if ($statStr == "ping") { $status = "warning"; }
+	else { $status = "unknown"; }
+	return $status;
 }
+
+}   // end the class
 ?>

@@ -2,14 +2,14 @@
 
 // Main page of the xCAT web interface
 
-$TOPDIR = '.';
-require_once "$TOPDIR/functions.php";
+$TOPDIR = '..';
+require_once "$TOPDIR/lib/functions.php";
 if (isAIX()) { $aixDisabled = 'disabled'; }
 
-require_once("lib/GroupNodeTable.class.php");
-require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
+require_once("$TOPDIR/lib/GroupNodeTable.class.php");
+require_once("$TOPDIR/lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
-insertHeader('Nodes', array('index.css'), NULL, array('machines','nodes'));
+insertHeader('Groups', array('groups.css'), NULL, array('machines','groups'));
 
 echo "<div id=content align=center>\n";
 

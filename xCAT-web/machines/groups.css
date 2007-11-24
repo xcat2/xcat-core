@@ -1,0 +1,9 @@
+/* Styles specific to the groups.php page */
+
+#disclaimer {
+ font-weight: bold;
+ font-size: 9pt;
+ color: red;
+ text-align: center;
+ margin: 5px;
+}
