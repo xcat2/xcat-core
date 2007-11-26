@@ -144,7 +144,7 @@ sub nextdestiny {
     }
     my $ref =  $chaintab->getNodeAttribs($node,[qw(currstate currchain chain)]);
     unless ($ref->{chain}) {
-      syslog ("currchain local1|err","ERROR: node requested destiny update, no path in chain.currchain");
+      syslog ("local1|err","ERROR: node requested destiny update, no path in chain.currchain");
       $chaintab->close;
       return; #Can't possibly do anything intelligent..
     }
