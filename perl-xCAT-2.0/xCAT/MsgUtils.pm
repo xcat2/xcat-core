@@ -125,9 +125,9 @@ sub message
 
     # Process the arguments
     shift;    # get rid of the class name
-    my $sevcode = shift;
-    my $msg     = shift;
-    my $call_back     = shift;  # optional 
+    my $sevcode   = shift;
+    my $msg       = shift;
+    my $call_back = shift;    # optional
 
     # Parse the severity code
     my $i           = 1;
@@ -135,10 +135,10 @@ sub message
     my $sev         = substr($sevcode, 0, 1);
 
     # should be I, E, V, T
-    if ($sev eq 'T')    # do not put timestamp
+    if ($sev eq 'T')          # do not put timestamp
     {
-        $notimestamp = 1;    # no timestamp
-        $i           = 2;    # logically shift everything by 1 char
+        $notimestamp = 1;     # no timestamp
+        $i           = 2;     # logically shift everything by 1 char
         $sev = substr($sevcode, 1, 1);    # now should be either I,E,V
     }
 
@@ -169,18 +169,14 @@ sub message
     # turned on and there is no logging.
     if (($sev eq 'V' && $::VERBOSE) || ($sev ne 'V'))
     {
-        if ($::DSH_API)
-        {
-            $::DSH_API_MESSAGE = $::DSH_API_MESSAGE . $msg;
+        if ($call_back)
+        {    # callback routine provided
+            $call_back->($msg);
         }
         else
         {
-			if ($call_back)  {   # callback routine provided
-				$call_back->($msg);
-			} else {
-              print $stdouterrf $msg;    # print the message
-            
-            }
+            print $stdouterrf $msg;    # print the message
+
         }
     }
     return 0;
@@ -269,7 +265,7 @@ sub start_logging
     # create the log directory if it's not already there
     if (!-d $::XCATLOG)
     {
-	    mkdir($::XCATLOG, 0755);
+        mkdir($::XCATLOG, 0755);
     }
 
     # open the log file
