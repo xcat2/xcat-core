@@ -6,24 +6,47 @@
 #     definitions
 #
 #####################################################
+
 package xCAT_plugin::DBobjectdefs;
+
 use xCAT::NodeRange;
 use xCAT::Schema;
+use xCAT::DBobjUtils;
 use Data::Dumper;
 use Getopt::Long;
+use xCAT::MsgUtils;
 
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+$Getopt::Long::ignorecase = 0;
 
-# calculate the following sets of attr values for each object definition
-#    (where appropriate)
-# - order of precedence: CLIATTRS overrides FILEATTRS
+#
+# Globals
+#
+
 %::CLIATTRS;      # attr=values provided on the command line
-%::FILEATTRS;     # attr=values provided in a file
-%::FINALATTRS;    # actual attr=values that are used to define the object
+%::FILEATTRS;     # attr=values provided in an input file
+%::FINALATTRS;    # final set of attr=values that are used to set
+                  #	the object
 
-@::objects;       # list of object names to define
-$::noderange;     # noderange from command line
+%::objfilehash;   #  hash of objects/types based of "-f" option
+                  #	(list in file)
+
+%::WhereHash;     # hash of attr=val from "-w" option
+@::AttrList;      # list of attrs from "-i" option
+
+# object type lists
+@::clobjtypes;      # list of object types derived from the command line.
+@::fileobjtypes;    # list of object types from input file ("-x" or "-z")
+
+#  object name lists
+@::clobjnames;      # list of object names derived from the command line
+@::fileobjnames;    # list of object names from an input file
+@::objfilelist;     # list of object names from the "-f" option
+@::allobjnames;     # combined list
+
+@::noderange;       # list of nodes derived from command line
 
 #------------------------------------------------------------------------------
 
@@ -32,11 +55,11 @@ $::noderange;     # noderange from command line
 This program module file supports the management of the xCAT data object 
 definitions.
 
-Supported xCAT data object commands/subroutines:
-     defmk - create xCAT data object definitions.
-     defls - list xCAT data object definitions.
-     defch - change xCAT data object definitions.
-     defrm - remove xCAT data object definitions.
+Supported xCAT data object commands:
+     mkdef - create xCAT data object definitions.
+     lsdef - list xCAT data object definitions.
+     chdef - change xCAT data object definitions.
+     rmdef - remove xCAT data object definitions.
 
 If adding to this file, please take a moment to ensure that:
 
@@ -71,10 +94,10 @@ If adding to this file, please take a moment to ensure that:
 sub handled_commands
 {
     return {
-            defmk => "DBobjectdefs",
-            defls => "DBobjectdefs",
-            defch => "DBobjectdefs",
-            defrm => "DBobjectdefs"
+            mkdef => "DBobjectdefs",
+            lsdef => "DBobjectdefs",
+            chdef => "DBobjectdefs",
+            rmdef => "DBobjectdefs"
             };
 }
 
@@ -108,33 +131,33 @@ sub process_request
 
     my $ret;
     my $msg;
-    my %rsp = ();
 
     # globals used by all subroutines.
-    $::command = $::request->{command}->[0];
-    $::args    = $::request->{arg};
+    $::command  = $::request->{command}->[0];
+    $::args     = $::request->{arg};
+    $::filedata = $::request->{stdin}->[0];
 
     # figure out which cmd and call the subroutine to process
-    if ($::command eq "defmk")
+    if ($::command eq "mkdef")
     {
         ($ret, $msg) = &defmk;
     }
-    elsif ($::command eq "defls")
+    elsif ($::command eq "lsdef")
     {
         ($ret, $msg) = &defls;
     }
-    elsif ($::command eq "defch")
+    elsif ($::command eq "chdef")
     {
         ($ret, $msg) = &defch;
     }
-    elsif ($::command eq "defrm")
+    elsif ($::command eq "rmdef")
     {
         ($ret, $msg) = &defrm;
     }
 
     if ($msg)
     {
-        my %rsp = ();
+        my $rsp;
         $rsp->{data}->[0] = $msg;
         $::callback->($rsp);
     }
@@ -168,253 +191,485 @@ sub process_request
 
 sub processArgs
 {
-    $gotattrs = 0;
+    my $gotattrs = 0;
 
     @ARGV = @{$::args};
 
     # parse the options - include any option from all 4 cmds
     if (
         !GetOptions(
-                    'a=s'       => \$::opt_a,
+                    'all|a'     => \$::opt_a,
                     'dynamic|d' => \$::opt_d,
-                    'f=s'       => \$::opt_f,
+                    'f|force'   => \$::opt_f,
                     'i=s'       => \$::opt_i,
                     'help|h'    => \$::opt_h,
                     'long|l'    => \$::opt_l,
                     'm|minus'   => \$::opt_m,
                     'o=s'       => \$::opt_o,
-                    'r|relace'  => \$::opt_r,
+                    'p|plus'    => \$::opt_p,
                     't=s'       => \$::opt_t,
                     'verbose|V' => \$::opt_V,
                     'version|v' => \$::opt_v,
                     'w=s'       => \$::opt_w,
-                    'x=s'       => \$::opt_x,
-                    'z=s'       => \$::opt_z
+                    'x|xml'     => \$::opt_x,
+                    'z|stanza'  => \$::opt_z
         )
       )
     {
-        return 1;
+
+        # return 2;
     }
 
-    # put attr=val operands in ATTRS hash
+    #  opt_x not yet supported
+    if ($::opt_x)
+    {
+
+        my $rsp;
+        $rsp->{data}->[0] =
+          "The \'-x\' (XML format) option is not yet implemented.";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        return 2;
+    }
+
+    # can get object names in many ways - easier to keep track
+    $::objectsfrom_args = 0;
+    $::objectsfrom_opto = 0;
+    $::objectsfrom_optt = 0;
+    $::objectsfrom_opta = 0;
+    $::objectsfrom_nr   = 0;
+    $::objectsfrom_file = 0;
+
+    #
+    # process @ARGV
+    #
+
+    #  - put attr=val operands in ATTRS hash
     while (my $a = shift(@ARGV))
     {
 
-        #print "arg= $a\n";
-
         if (!($a =~ /=/))
         {
-            @::noderange = &noderange($a, 0);
+
+            # the first arg could be a noderange or a list of args
+            if (($::opt_t) && ($::opt_t ne 'node'))
+            {
+
+                # if we know the type isn't "node" then set the object list
+                @::clobjnames = split(',', $a);
+                $::objectsfrom_args = 1;
+            }
+            elsif (!$::opt_t || ($::opt_t eq 'node'))
+            {
+
+                # if the type was not provided or it is "node"
+                #	then set noderange
+                @::noderange = &noderange($a, 0);
+            }
+
         }
         else
         {
 
             # if it has an "=" sign its an attr=val - we hope
-            my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S+.*)$/;
+            #   - this will handle "attr= "
+            my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
             if (!defined($attr) || !defined($value))
             {
-                print "bad attr=val pair - $a\n";
+                my $rsp;
+                $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 3;
             }
 
             $gotattrs = 1;
 
-            my $found = 0;
-
-            # replace the following with check based on schema.pm
-
-            #foreach my $va (@::VALID_ATTRS)
-            #{
-            #    if (($attr =~ /^$va$/i) && !$found)
-            #    {
-            #        $::ATTRS{$va} = $value;
-            #        $found = 1;
-            #    }
-            #}
-
             # put attr=val in hash
             $::ATTRS{$attr} = $value;
 
-            #print "attr=$attr, val= $::ATTRS{$attr} \n";
-            $found = 1;
-
-            if (!$found)
-            {
-                print "$attr - is not a valid attribute!\n";
-            }
         }
     }
 
     # Option -h for Help
-    if (defined($::opt_h))
+    # if user specifies "-t" & "-h" they want a list of valid attrs
+    if (defined($::opt_h) && !defined($::opt_t))
     {
-        return 1;
+        return 2;
     }
 
     # Option -v for version - do we need this???
     if (defined($::opt_v))
     {
-        my %rsp;
+        my $rsp;
         $rsp->{data}->[0] = "$::command - version 1.0";
-        $::callback->($rsp);
-        return 0;
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        return 1;    # no usage - just exit
     }
 
     # Option -V for verbose output
     if (defined($::opt_V))
     {
         $::verbose = 1;
-        print "set verbose mode\n";
+        $::VERBOSE = 1;
     }
+
+    #
+    # process the input file - if provided
+    #
+    if ($::filedata)
+    {
+
+        my $rc = xCAT::DBobjUtils->readFileInput($::filedata);
+
+        if ($rc)
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "Could not process file input data.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            return 1;
+        }
+
+        #   - %::FILEATTRS{fileobjname}{attr}=val
+        # set @::fileobjtypes, @::fileobjnames, %::FILEATTRS
+
+        $::objectsfrom_file = 1;
+    }
+
+    #
+    #  determine the object types
+    #
 
     # could have comma seperated list of types
     if ($::opt_t)
     {
+        my @tmptypes;
 
-        # make a list
-        # - is this a valid type? - check schema !!
-        #    note: if type is used with file then just do that type even
-        #   if there are others in the file
         if ($::opt_t =~ /,/)
         {
 
             # can't have mult types when using attr=val
             if ($gotattrs)
             {
-                print
-                  "error - can't have multiple type with attr=value pairs.\n";
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "Cannot combine multiple types with \'att=val\' pairs on the command line.\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 3;
             }
             else
             {
-                @::clobjtypes = split(',', $::opt_t);
+                @tmptypes = split(',', $::opt_t);
             }
         }
         else
         {
-            push(@::clobjtypes, $::opt_t);
+            push(@tmptypes, $::opt_t);
+        }
+
+        # check for valid types
+        my @xdeftypes;
+        foreach my $k (keys %{xCAT::Schema::defspec})
+        {
+            push(@xdeftypes, $k);
+        }
+
+        foreach my $t (@tmptypes)
+        {
+            if (!grep(/$t/, @xdeftypes))
+            {
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "Type \'$t\' is not a valid xCAT object type.\n";
+                $rsp->{data}->[1] = "Skipping to the next type.\n";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+            else
+            {
+                chomp $t;
+                push(@::clobjtypes, $t);
+            }
         }
     }
 
-    # if there is no other input for object names then we need to
-    #	find all the object names for the specified types
-    if (
-        $::opt_t
-        && !(
-                $::opt_o
-             || $::opt_f
-             || $::opt_x
-             || $::opt_z
-             || $::opt_a
-             || @::noderange
-        )
-      )
+
+    # must have object type(s) - default if not provided
+    if (!@::clobjtypes && !@::fileobjtypes && !$::opt_a && !$::opt_t)
     {
+
+        # make the default type = 'node' if not specified
+        push(@::clobjtypes, 'node');
+        my $rsp;
+        $rsp->{data}->[0] = "Assuming an object type of \'node\'.\n";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+    }
+
+    # if user specifies "-t" & "-h" they want valid type or attrs info
+    if ($::opt_h && $::opt_t)
+    {
+
+        # give the list of attr names for each type specified
         foreach my $t (@::clobjtypes)
         {
+            if ($t eq 'site')
+            {
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "\nThere can only be one site definition. The name of the site definition is \'clustersite\'.  This definiton consists of an unlimited list of user-defined attributes and values. Some specific attribute values are required to support xCAT features.  See the xCAT documentation for more information.\n";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                next;
 
-            #  look up all objects of this type in the DB ???
+            }
+            my $rsp;
+            $rsp->{data}->[0] =
+              "\nThe valid attribute names for object type \'$t\' are:\n\n";
 
-            # add them to the list of objects
-            #push(@::clobjnames, $);
+            # get the data type  definition from Schema.pm
+            my $datatype = $xCAT::Schema::defspec{$t};
+
+            # get the objkey for this type object (ex. objkey = 'node')
+            my $objkey = $datatype->{'objkey'};
+
+            $rsp->{data}->[1] = "Attribute          Description\n";
+
+            my @alreadydone;    # the same attr may appear more then once
+            foreach $this_attr (sort @{$datatype->{'attrs'}})
+            {
+                my $attr = $this_attr->{attr_name};
+                my $desc = $this_attr->{description};
+
+                # if (($attr ne $objkey) && !grep(/^$attr$/, @alreadydone))
+                if (!grep(/^$attr$/, @alreadydone))
+                {
+                    push(@attrlist, "$attr\t\t- $desc\n");
+                }
+                push(@alreadydone, $attr);
+
+            }
+            my $n = 2;
+            foreach my $l (sort @attrlist)
+            {
+                $rsp->{data}->[$n] = "$l";
+                $n++;
+            }
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
 
         }
 
+        return 1;
     }
+
+    #
+    #  determine the object names
+    #
 
     # -  get object names from the -o option or the noderange
     if ($::opt_o)
     {
-        print "object = $::opt_o\n";
 
-        # make a list
-        if ($::opt_o =~ /,/)
+        $::objectsfrom_opto = 1;
+
+        # special handling for site table !!!!!
+        if (($::opt_t eq 'site') && ($::opt_o ne 'clustersite'))
         {
-            @::clobjnames = split(',', $::opt_o);
+            push(@::clobjnames, 'clustersite');
+			my $rsp;  
+            $rsp->{data}->[0] ="Only one site definition is supported.";
+			$rsp->{data}->[1] = "Setting the name of the site definition to \'clustersite\'.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);	
+
+        }
+        elsif ($::opt_t eq 'node')
+        {
+            @::clobjnames = &noderange($::opt_o, 0);
         }
         else
         {
-            push(@::clobjnames, $::opt_o);
+
+            # make a list
+            if ($::opt_o =~ /,/)
+            {
+                @::clobjnames = split(',', $::opt_o);
+            }
+            else
+            {
+                push(@::clobjnames, $::opt_o);
+            }
         }
     }
-    elsif (@::noderange && (grep(/node/, @::clobjtypes)))
+    elsif (@::noderange && (@::clobjtypes[0] eq 'node'))
     {
 
         # if there's no object list and the type is node then the
-        # 	noderange list is assumed to be the object names list
-        @::clobjnames = @::noderange;
+        #   noderange list is assumed to be the object names list
+        @::clobjnames     = @::noderange;
+        $::objectsfrom_nr = 1;
     }
 
-    # - does input file exist etc. - read input file - stanza
-    # 	- add support for XML files later!
-
-    # check for stanza file
-    if ($::opt_z)
+    # special case for site table!!!!!!!!!!!!!!
+    if (($::opt_t eq 'site') && !$::opt_o)
     {
-        print "filename = $::opt_z\n";
-
-        if (!-e $::opt_z)
-        {
-            print "Error: the file \'$::opt_z\' does not exist!\n";
-            print "Errors occurred when processing the command line args.\n";
-            return 2;
-        }
-        else
-        {
-
-            # process the file
-            # create hash of objects/attrs etc. %::FILEATTRS
-            # &readstanzafile();
-            #	- %::FILEATTRS{fileobjname}{attr}=val
-            # set @::fileobjtypes, @::fileobjnames, %::FILEATTRS
-        }
+		my $rsp;   
+        $rsp->{data}->[0] ="Setting the name of the site definition to \'clustersite\'.";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        push(@::clobjnames, 'clustersite');
+        $::objectsfrom_opto = 1;
     }
 
-    # check for object list file
-    if ($::opt_f)
+    # if there is no other input for object names then we need to
+    #	find all the object names for the specified types
+    if ($::opt_t
+        && !(   $::opt_o
+             || $::filedata
+             || $::opt_a
+             || @::noderange
+             || @::clobjnames))
     {
-        print "obj list filename = $::opt_f\n";
+        my @tmplist;
 
-        # read the file and cp the name into @::objfilelist
+        # also ne chdef ????????
+        if ($::command ne 'mkdef')
+        {
 
+            $::objectsfrom_optt = 1;
+
+            # could have multiple type
+            foreach my $t (@::clobjtypes)
+            {
+
+                # special case for site table !!!!
+                if ($t eq 'site')
+                {
+                    push(@tmplist, 'clustersite');
+
+                }
+                else
+                {
+
+                    #  look up all objects of this type in the DB ???
+                    @tmplist = xCAT::DBobjUtils->getObjectsOfType($t);
+
+                    unless (@tmplist)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] =
+                          "Could not get objects of type \'$t\'.\n";
+                        $rsp->{data}->[1] = "Skipping to the next type.\n";
+                        xCAT::MsgUtils->message("I", $rsp, $::callback);
+                        next;
+                    }
+                }
+
+                # add objname and type to hash and global list
+                foreach my $o (@tmplist)
+                {
+                    push(@::clobjnames, $o);
+                    $::ObjTypeHash{$o} = $t;
+                }
+            }
+        }
     }
+
 
     # can't have -a with other obj sources
     if ($::opt_a
-        && ($::opt_o || $::opt_f || $::opt_x || $::opt_z || @::noderange))
+        && ($::opt_o || $::filedata || @::noderange))
     {
 
-        # error
-        # usage
+        my $rsp;
+        $rsp->{data}->[0] =
+          "Cannot use \'-a\' with \'-o\', a noderange or file input.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 3;
     }
 
     #  if -a then get a list of all DB objects
     if ($::opt_a)
     {
-        print "all objects \n";
 
-        # get a list of all objects defined in the DB
-        # @::clobjnames = whatever
+        my @tmplist;
 
-    }
+        # for every type of data object get the list of defined objects
+        foreach my $t (keys %{xCAT::Schema::defspec})
+        {
 
-    # must have object type(s) -
-    if (!@::clobjtypes && !@::fileobjtypes)
-    {
-        print "Error - must specify object type on command line or in file!\n";
-        return 2;
+            $::objectsfrom_opta = 1;
+
+            my @tmplist;
+            @tmplist = xCAT::DBobjUtils->getObjectsOfType($t);
+
+            # add objname and type to hash and global list
+            if (scalar(@tmplist) > 0)
+            {
+                foreach my $o (@tmplist)
+                {
+                    push(@::clobjnames, $o);
+                    $::AllObjTypeHash{$o} = $t;
+                }
+            }
+        }
     }
 
     # must have object name(s) -
     if (!@::clobjnames && !@::fileobjnames)
     {
-        print "Error - must specify object name on command line or in file!\n";
-        return 2;
+        my $rsp;
+        $rsp->{data}->[0] =
+          "Could not determine what object definitions to remove.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 3;
     }
 
-    # combine object name from file with obj names from cmd line ??
+    # combine object name all object names provided
     @::allobjnames = @::clobjnames;
     if (@::fileobjnames)
     {
+
+        # add list from stanza or xml file
         push @::allobjnames, @::fileobjnames;
+    }
+    elsif (@::objfilelist)
+    {
+
+        # add list from "-f" file option
+        push @::allobjnames, @::objfilelist;
+    }
+
+    #  check for the -w option
+    if ($::opt_w)
+    {
+        my @tmpWhereList = split(',', $::opt_w);
+        foreach my $w (@tmpWhereList)
+        {
+            if ($w =~ /=/)
+            {
+                my ($a, $v) = $w =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+                if (!defined($a) || !defined($v))
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    return 3;
+                }
+
+                $::WhereHash{$a} = $v;
+
+            }
+        }
+    }
+
+    #  check for the -i option
+    if ($::opt_i && ($::command ne 'lsdef'))
+    {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "The \'-i\' option is only valid for the lsdef command.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 3;
+    }
+
+    #  just make a global list of the attr names provided
+    if ($::opt_i)
+    {
+        @::AttrList = split(',', $::opt_i);
     }
 
     return 0;
@@ -424,7 +679,7 @@ sub processArgs
 
 =head3   defmk
 
-        Support for the xCAT defmk command.
+        Support for the xCAT mkdef command.
 
         Arguments:
         Returns:
@@ -446,180 +701,436 @@ sub processArgs
 
 sub defmk
 {
-    my $lookup_key;
-    my $lookup_value;
-    my $lookup_table;
-    my $lookup_attr;
-    my $lookup_type;
-    my $lookup_data;
+
+    @::allobjnames = [];
+
+    my $rc    = 0;
+    my $error = 0;
 
     # process the command line
-    my $rc = &processArgs;
+    $rc = &processArgs;
     if ($rc != 0)
     {
 
-        # rc: 0 - ok, 1 - help, 2 - error
-        &defmk_usage;
+        # rc: 0 - ok, 1 - return, 2 - help, 3 - error
+        if ($rc != 1)
+        {
+            &defmk_usage;
+        }
         return ($rc - 1);
     }
 
-    #  !!! can only have one type on cmd line when defining objects!!!
-    #  if # elements in @::clobjtypes is > 1 then error!
+    # check options unique to these commands
+    if ($::opt_p || $::opt_m)
+    {
 
-    #	set $objtype & fill in cmd line hash
-    if (%::ATTRS)
+        # error
+        my $rsp;
+        $rsp->{data}->[0] =
+          "The \'-p\' and \'-m\' options are not valid for the mkdef command.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        &defmk_usage;
+        return 1;
+    }
+
+    if ($::opt_t && ($::opt_a || $::opt_z || $::opt_x))
+    {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "Cannot combine \'-t\' and \'-a\', \'-z\', or \'-x\' options.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        &defmk_usage;
+        return 1;
+    }
+
+    # check to make sure we have a list of objects to work with
+    if (!@::allobjnames)
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "No object names were provided.\n";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        &defmk_usage;
+        return 1;
+    }
+
+    # set $objtype & fill in cmd line hash
+    if (%::ATTRS || ($::opt_t eq "group"))
     {
 
         # if attr=val on cmd line then could only have one type
-        $::objtype = $::opt_t;
+        $::objtype = @::clobjtypes[0];
 
         #
         #  set cli attrs for each object definition
         #
-        if (&setCLIattrs != 0)
+        foreach my $objname (@::clobjnames)
         {
-            print "Could not set command line values for object definitions!\n";
-            return 1;
+
+            #  set the objtype attr - if provided
+            if ($::objtype)
+            {
+                $::CLIATTRS{$objname}{objtype} = $::objtype;
+            }
+
+            # get the data type definition from Schema.pm
+            my $datatype = $xCAT::Schema::defspec{$::objtype};
+            my @list;
+            foreach my $this_attr (sort @{$datatype->{'attrs'}})
+            {
+                my $a = $this_attr->{attr_name};
+                push(@list, $a);
+            }
+
+            # set the attrs from the attr=val pairs
+            foreach my $attr (keys %::ATTRS)
+            {
+                if (!grep(/$attr/, @list) && ($::objtype ne 'site'))
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "\'$attr\' is not a valid attribute name for for an object type of \'$::objtype\'.\n";
+                    $rsp->{data}->[1] = "Skipping to the next attribute.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                    next;
+                }
+                else
+                {
+                    $::CLIATTRS{$objname}{$attr} = $::ATTRS{$attr};
+                }
+            }    # end - foreach attr
+
         }
     }
 
     #
     #   Pull all the pieces together for the final hash
+    #		- combines the command line attrs and input file attrs if provided
     #
     if (&setFINALattrs != 0)
     {
-        print "Could not determine attribute values for object definitions!\n";
-        return 1;
+        $error = 1;
     }
 
-    #
-    #  OK - create the tables in the xCAT database
-    #
-    foreach my $objname (@::allobjnames)
+    # we need a list of objects that are
+    #	already defined for each type.
+    foreach my $t (@::finalTypeList)
     {
 
-        print
-          "defmk: object name = $objname, type= $::FINALATTRS{$objname}{objtype}
-\n";
-
-        my $type = $::FINALATTRS{$objname}{objtype};
-
-        # get the object type decription from Schema.pm
-        my $datatype = $xCAT::Schema::defspec{$type};
-
-        #  this is the list of valid attr names for this type object
-        my @validattrs = keys %{$datatype->{'attrs'}};
-
-        #print "validattrs= \'@validattrs\'\n";
-
-        # if type is osimage, site, network, dynamic group then all attrs
-        #  	go in the same table
-        # 	- just need to check for valid attrs then write to table
-        #	- the node type is the only one that needs the special
-        #		processing below
-        if (($type eq 'site') || ($type eq 'network') || ($type eq 'osimage'))
+        # special case for site table !!!!!!!!!!!!!!!!!!!!
+        if ($t eq 'site')
+        {
+            @{$objTypeLists{$t}} = 'clustersite';
+        }
+        else
         {
 
-            next;
+            @{$objTypeLists{$t}} = xCAT::DBobjUtils->getObjectsOfType($t);
         }
-
-        if (($type eq 'group') && $::opt_d)
-        {
-
-            #  if it's a dynamic group it all goes in the group table
-
-            next;
-        }
-
-        #  for other object types we need to figure out what table to
-        #		store each attr
-        foreach my $attr (keys %{$::FINALATTRS{$objname}})
-        {
-            if ($attr eq "objtype")
-            {
-
-                # objtype not stored in object definition
-                next;
-            }
-
-            print "attr= $attr , val = $::FINALATTRS{$objname}{$attr}\n";
-
-            # if valid attr for this type then add to def
-            if (!grep(/^$attr$/, @validattrs))
-            {
-                print
-                  "\'$attr\' is not a valid attribute for type \'$type\'.\n";
-                print "Skipping to the next attribute.\n";
-                next;
-            }
-
-            # check the defspec to see where this attr goes
-            my @this_attr_array = $datatype->{'attrs'}->{$attr};
-
-            foreach (@this_attr_array)
-            {
-
-                # ex. this_attr='node'
-                my $this_attr = $_->[0];
-
-                # the table might depend on the value of the attr
-                #	- like if 'mgtmethod=mp'
-                if (exists($this_attr->{only_if}))
-                {
-                    my ($check_attr, $check_value) =
-                      split('\=', $this_attr->{only_if});
-
-                    # if my attr value for the attr to check doesn't
-                    #  	match this then try the next one
-                    # ex. say I want to set hdwctrlpoint, the table
-                    #	will depend on the mgtmethod attr - so I need
-                    #   to find the 'only_if' that matches the value
-                    #   specified for that attr
-                    #print "attr=$check_attr, myval= $::FINALATTRS{$objname}{$check_attr}\n";
-
-                    next
-                      if $::FINALATTRS{$objname}{$check_attr} ne $check_value;
-                }
-
-                #  OK - get the info needed to add to the DB table
-
-                # ex. 'nodelist.node', 'attr:node'
-                ($lookup_key, $lookup_value) =
-                  split('\=', $this_attr->{access_tabentry});
-
-                # ex. 'nodelist', 'node'
-                ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
-
-                # ex. 'attr', 'node'
-                ($lookup_type, $lookup_data) = split('\:', $lookup_value);
-
-            }
-
-            print
-              "lookup_table=$lookup_table, lookup_attr=$lookup_attr, lookup_type=$lookup_type\n";
-
-            # write the attr to the DB table
-            #	- future - may want to gather all attrs for each table
-            #		- maybe reduce DB calls
-
-        }
-        print "\n";
-
     }
 
-    return 0;
+    foreach my $obj (keys %::FINALATTRS)
+    {
+
+        my $type = $::FINALATTRS{$obj}{objtype};
+
+        # check to make sure we have type
+        if (!$type)
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "No type was provided for object \'$obj\'.\n";
+            $rsp->{data}->[1] = "Skipping to the next object.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            next;
+        }
+
+        # ndebug mk
+
+        # if object already exists
+        if (grep(/$obj/, @{$objTypeLists{$type}}))
+        {
+            if ($::opt_f)
+            {
+
+                # remove the old object
+                $objhash{$obj} = $type;
+                if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
+                {
+                    $error = 1;
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Could not remove the definition for \'$obj\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                }
+            }
+            else
+            {
+
+                #  won't remove the old one unless the force option is used
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "\nA definition for \'$obj\' already exists.\n";
+                $rsp->{data}->[1] =
+                  "To remove the old definition and replace it with \na new definition use the force \'-f\' option.\n";
+                $rsp->{data}->[2] =
+                  "To change the existing definition use the \'chdef\' command.\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $error = 1;
+                next;
+
+            }
+
+        }
+
+        # need to handle group definitions - special!
+        if ($type eq 'group')
+        {
+
+            my @memberlist;
+
+            # if the group type was not set then set it
+            if (!$::FINALATTRS{$obj}{grouptype})
+            {
+                if ($::opt_d)
+                {
+                    $::FINALATTRS{$obj}{grouptype} = 'dynamic';
+                    $::FINALATTRS{$obj}{members}   = 'dynamic';
+                }
+                else
+                {
+                    $::FINALATTRS{$obj}{grouptype} = 'static';
+                }
+            }
+
+            # if dynamic and wherevals not set then set to opt_w
+            if ($::FINALATTRS{$obj}{grouptype} eq 'dynamic')
+            {
+                if (!$::FINALATTRS{$obj}{wherevals})
+                {
+                    if ($::opt_w)
+                    {
+                        $::FINALATTRS{$obj}{wherevals} = $::opt_w;
+                    }
+                    else
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] =
+                          "The \'where\' attributes and values were not provided for dynamic group \'$obj\'.\n";
+                        $rsp->{data}->[1] = "Skipping to the next group.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        next;
+                    }
+                }
+            }
+
+            # if static group then figure out memberlist
+            if ($::FINALATTRS{$obj}{grouptype} eq 'static')
+            {
+                if ($::opt_w && $::FINALATTRS{$obj}{members})
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Cannot use a list of members together with the \'-w\' option.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    return 1;
+                }
+
+                if ($::FINALATTRS{$obj}{members})
+                {
+                    @memberlist = &noderange($::FINALATTRS{$obj}{members}, 0);
+
+                    #  don't list all the nodes in the group table
+                    #	set the value to static and we'll figure out the list
+                    # 	by looking in the nodelist table
+                    $::FINALATTRS{$obj}{members} = 'static';
+
+                }
+                else
+                {
+                    if ($::opt_w)
+                    {
+                        $::FINALATTRS{$obj}{members} = 'static';
+
+                        #  get a list of nodes whose attr values match the
+                        #   "where" values and make that the memberlist of
+                        #   the group.
+
+                        # get a list of all node nodes
+                        my @tmplist =
+                          xCAT::DBobjUtils->getObjectsOfType('node');
+
+                        # create a hash of obj names and types
+                        foreach my $n (@tmplist)
+                        {
+                            $objhash{$n} = 'node';
+                        }
+
+                        # get all the attrs for these nodes
+                        my %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+
+                        # see which ones match the where values
+                        foreach my $objname (keys %myhash)
+                        {
+
+                            #  all the "where" attrs must match the object attrs
+                            my $addlist = 1;
+
+                            foreach my $testattr (keys %::WhereHash)
+                            {
+
+                                if ($myhash{$objname}{$testattr} ne
+                                    $::WhereHash{$testattr})
+                                {
+
+                                    # don't disply
+                                    $addlist = 0;
+                                    break;
+                                }
+                            }
+
+                            if ($addlist)
+                            {
+                                push(@memberlist, $objname);
+
+                            }
+                        }
+
+                    }
+                    else
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] =
+                          "Cannot determine a member list for group \'$objname\'.\n";
+                        xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    }
+                }
+
+                #  need to add group name to all members in nodelist table
+                my $tab =
+                  xCAT::Table->new('nodelist', -create => 1, -autocommit => 0);
+
+                my $newgroups;
+                foreach my $n (@memberlist)
+                {
+
+                    #  add this group name to the node entry in
+                    #		the nodelist table
+                    $nodehash{$n}{groups} = $obj;
+
+                    # get the current value
+                    my $grps = $tab->getNodeAttribs($n, ['groups']);
+
+                    # if it's not already in the "groups" list then add it
+                    my @tmpgrps = split(/,/, $grps->{'groups'});
+
+                    if (!grep(/^$obj$/, @tmpgrps))
+                    {
+                        if ($grps and $grps->{'groups'})
+                        {
+                            $newgroups = "$grps->{'groups'},$obj";
+
+                        }
+                        else
+                        {
+                            $newgroups = $obj;
+                        }
+                    }
+
+                    #  add this group name to the node entry in
+                    #       the nodelist table
+                    if ($newgroups)
+                    {
+                        $tab->setNodeAttribs($n, {groups => $newgroups});
+                    }
+
+                }
+
+                $tab->commit;
+            }
+        }    # end - if group type
+
+        if (($type eq "node") && $::FINALATTRS{$obj}{groups})
+        {
+
+            my @grouplist;
+            @grouplist = split(/,/, $::FINALATTRS{$obj}{groups});
+
+            foreach my $g (@grouplist)
+            {
+                $GroupHash{$g}{objtype}   = "group";
+                $GroupHash{$g}{grouptype} = "static";
+                $GroupHash{$g}{members}   = "static";
+            }
+            if (xCAT::DBobjUtils->setobjdefs(\%GroupHash) != 0)
+            {
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "Could not write data to the xCAT database.\n";
+
+                # xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $error = 1;
+            }
+        }
+    }
+
+    #
+    #  write each object into the tables in the xCAT database
+    #
+
+    if (xCAT::DBobjUtils->setobjdefs(\%::FINALATTRS) != 0)
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "Could not write data to the xCAT database.\n";
+
+        #		xCAT::MsgUtils->message("E", $rsp, $::callback);
+        $error = 1;
+    }
+
+    if ($error)
+    {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "One or more errors occured when attempting to create or modify xCAT \nobject definitions.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 1;
+    }
+    else
+    {
+        if ($::verbose)
+        {
+
+            #  give results
+            my $rsp;
+            $rsp->{data}->[0] =
+              "The database was updated for the following objects:\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+
+            my $n = 1;
+            foreach my $o (sort(keys %::FINALATTRS))
+            {
+                $rsp->{data}->[$n] = "$o\n";
+                $n++;
+            }
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
+        else
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
+              "Object definitions have been created or modified.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
+        return 0;
+    }
 }
 
 #----------------------------------------------------------------------------
 
-=head3   setCLIattrs
+=head3   defch
 
-		get list of object names to define
-		create hash w/cmd line attrs
-       		  %::CLIATTRS{objname}{attr}=val
+        Support for the xCAT chdef command.
 
         Arguments:
-
         Returns:
                 0 - OK
                 1 - error
@@ -630,30 +1141,610 @@ sub defmk
         Example:
 
         Comments:
+			Object names to create are derived from 
+				-o, -t, w, -z, -x, or noderange!
+			Attr=val pairs come from cmd line args or -z/-x files
 =cut
 
 #-----------------------------------------------------------------------------
 
-sub setCLIattrs
+sub defch
 {
 
-    foreach my $objname (@::clobjnames)
+    @::allobjnames = [];
+
+    my $rc    = 0;
+    my $error = 0;
+
+    # process the command line
+    $rc = &processArgs;
+    if ($rc != 0)
     {
 
-        #  set the objtype attr - if provided
-        if ($::objtype)
+        # rc: 0 - ok, 1 - return, 2 - help, 3 - error
+        if ($rc != 1)
         {
-            $::CLIATTRS{$objname}{objtype} = $::objtype;
+            &defch_usage;
         }
+        return ($rc - 1);
+    }
 
-        # set the attrs from the attr=val pairs
-        foreach my $attr (keys %::ATTRS)
+    #
+    # check options unique to this command
+    #
+    if ($::opt_f)
+    {
+
+        # error
+        my $rsp;
+        $rsp->{data}->[0] =
+          "The \'-f\' option is not valid for the chdef command.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        &defch_usage;
+        return 1;
+    }
+
+    if ($::opt_t && ($::opt_a || $::opt_z || $::opt_x))
+    {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "Cannot combine \'-t\' and \'-a\', \'-z\', or \'-x\' options.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        &defch_usage;
+        return 1;
+    }
+
+    # check to make sure we have a list of objects to work with
+    if (!@::allobjnames)
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "No object names were provided.\n";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        &defch_usage;
+        return 1;
+    }
+
+    # set $objtype & fill in cmd line hash
+    if (%::ATTRS || ($::opt_t eq "group"))
+    {
+
+        # if attr=val on cmd line then could only have one type
+        $::objtype = @::clobjtypes[0];
+
+        #
+        #  set cli attrs for each object definition
+        #
+        foreach my $objname (@::clobjnames)
         {
-            $::CLIATTRS{$objname}{$attr} = $::ATTRS{$attr};
+
+            #  set the objtype attr - if provided
+            if ($::objtype)
+            {
+                chomp $::objtype;
+                $::CLIATTRS{$objname}{objtype} = $::objtype;
+            }
+
+            # get the data type definition from Schema.pm
+            my $datatype = $xCAT::Schema::defspec{$::objtype};
+            my @list;
+            foreach my $this_attr (sort @{$datatype->{'attrs'}})
+            {
+                my $a = $this_attr->{attr_name};
+                push(@list, $a);
+            }
+
+            # set the attrs from the attr=val pairs
+            foreach my $attr (keys %::ATTRS)
+            {
+                if (!grep(/$attr/, @list) && ($::objtype ne 'site'))
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "\'$attr\' is not a valid attribute name for for an object type of \'$::objtype\'.\n";
+                    $rsp->{data}->[1] = "Skipping to the next attribute.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                    next;
+                }
+                else
+                {
+                    $::CLIATTRS{$objname}{$attr} = $::ATTRS{$attr};
+                }
+            }
+
         }
     }
 
-    return 0;
+    #
+    #   Pull all the pieces together for the final hash
+    #		- combines the command line attrs and input file attrs if provided
+    #
+    if (&setFINALattrs != 0)
+    {
+        $error = 1;
+    }
+
+    # we need a list of objects that are
+    #   already defined for each type.
+    foreach my $t (@::finalTypeList)
+    {
+
+        # special case for site table !!!!!!!!!!!!!!!!!!!!
+        if ($t eq 'site')
+        {
+            @{$objTypeLists{$t}} = 'clustersite';
+        }
+        else
+        {
+            @{$objTypeLists{$t}} = xCAT::DBobjUtils->getObjectsOfType($t);
+        }
+    }
+
+    foreach my $obj (keys %::FINALATTRS)
+    {
+
+        my $isDefined = 0;
+        my $type      = $::FINALATTRS{$obj}{objtype};
+
+        # check to make sure we have type
+        if (!$type)
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "No type was provided for object \'$obj\'.\n";
+            $rsp->{data}->[1] = "Skipping to the next object.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            next;
+        }
+
+        if (grep(/$obj/, @{$objTypeLists{$type}}))
+        {
+            $isDefined = 1;
+        }
+
+        if (!isDefined && $::opt_m)
+        {
+
+            #error - cannot remove items from an object that does not exist.
+            my $rsp;
+            $rsp->{data}->[0] =
+              "The \'-m\' option is not valid since the \'$obj\' definition does not exist.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            next;
+        }
+
+        #
+        # need to handle group definitions - special!
+        #	- may need to update the node definitions for the group members
+        #
+        if ($type eq 'group')
+        {
+            my %grphash;
+            my @memberlist;
+
+            # what kind of group is this? - static or dynamic
+            my $grptype;
+            if ($isDefined)
+            {
+                $objhash{$obj} = $type;
+                %grphash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+                if (!defined(%grphash))
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Could not get xCAT object definitions.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    return 1;
+
+                }
+                $grptype = $grphash{$obj}{grouptype};
+
+            }
+            else
+            {    #not defined
+                if ($::FINALATTRS{$obj}{grouptype})
+                {
+                    $grptype = $::FINALATTRS{$obj}{grouptype};
+                }
+                elsif ($::opt_d)
+                {
+                    $grptype = 'dynamic';
+                }
+                else
+                {
+                    $grptype = 'static';
+                }
+            }
+
+            # make sure wherevals was set - if info provided
+            if (!$::FINALATTRS{$obj}{wherevals})
+            {
+                if ($::opt_w)
+                {
+                    $::FINALATTRS{$obj}{wherevals} = $::opt_w;
+                }
+            }
+
+            #  get the @memberlist for static group
+            #	- if provided - to use below
+            if ($grptype eq 'static')
+            {
+
+                # check for bad cmd line options
+                if ($::opt_w && $::FINALATTRS{$obj}{members})
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Cannot use a list of members together with the \'-w\' option.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                    next;
+                }
+
+                if ($::FINALATTRS{$obj}{members})
+                {
+                    @memberlist = &noderange($::FINALATTRS{$obj}{members}, 0);
+
+                    #  don't list all the nodes in the group table
+                    #   set the value to static and we figure out the list
+                    #   by looking in the nodelist table
+                    $::FINALATTRS{$obj}{members} = 'static';
+
+                }
+                elsif ($::FINALATTRS{$obj}{wherevals})
+                {
+                    $::FINALATTRS{$obj}{members} = 'static';
+
+                    #  get a list of nodes whose attr values match the
+                    #   "where" values and make that the memberlist of
+                    #   the group.
+
+                    # get a list of all node nodes
+                    my @tmplist = xCAT::DBobjUtils->getObjectsOfType('node');
+
+                    # create a hash of obj names and types
+                    foreach my $n (@tmplist)
+                    {
+                        $objhash{$n} = 'node';
+                    }
+
+                    # get all the attrs for these nodes
+                    my %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+
+                    # get a list of attr=val pairs
+                    my @tmpWhereList =
+                      split(',', $::FINALATTRS{$obj}{wherevals});
+
+                    # create an attr-val hash
+                    foreach my $w (@tmpWhereList)
+                    {
+                        if ($w =~ /=/)
+                        {
+                            my ($a, $v) = $w =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+                            if (!defined($a) || !defined($v))
+                            {
+                                my $rsp;
+                                $rsp->{data}->[0] =
+                                  "Incorrect \'attr=val\' pair - $a\n";
+                                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                                return 3;
+                            }
+                            $::WhereHash{$a} = $v;
+                        }
+                    }
+
+                    # see which ones match the where values
+                    foreach my $objname (keys %myhash)
+                    {
+
+                        #  all the "where" attrs must match the object attrs
+                        my $addlist = 1;
+
+                        foreach my $testattr (keys %::WhereHash)
+                        {
+
+                            if ($myhash{$objname}{$testattr} ne
+                                $::WhereHash{$testattr})
+                            {
+
+                                # don't disply
+                                $addlist = 0;
+                                break;
+                            }
+                        }
+
+                        if ($addlist)
+                        {
+                            push(@memberlist, $objname);
+
+                        }
+                    }
+
+                }
+                else
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Cannot determine a member list forgroup \'$objname\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                }
+
+            }    # end - get memberlist for static group
+
+            if (!$isDefined)
+            {
+
+                # if the group type was not set then set it
+                if (!$::FINALATTRS{$obj}{grouptype})
+                {
+                    if ($::opt_d)
+                    {
+                        $::FINALATTRS{$obj}{grouptype} = 'dynamic';
+                        $::FINALATTRS{$obj}{members}   = 'dynamic';
+                        if (!$::FINALATTRS{$obj}{wherevals})
+                        {
+                            my $rsp;
+                            $rsp->{data}->[0] =
+                              "The \'where\' attributes and values were not provided for dynamic group \'$obj\'.\n";
+                            $rsp->{data}->[1] = "Skipping to the next group.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $::callback);
+                            $error = 1;
+                            next;
+                        }
+                    }
+                    else
+                    {
+                        $::FINALATTRS{$obj}{grouptype} = 'static';
+                    }
+                }
+
+                # if this is a static group
+                #	then update the "groups" attr of each member node
+                if ($::FINALATTRS{$obj}{grouptype} eq 'static')
+                {
+
+                    # for each node in memberlist add this group
+                    # name to the groups attr of the node
+                    my %membhash;
+                    foreach $n (@memberlist)
+                    {
+                        $membhash{$n}{groups} = $obj;
+                    }
+                    $::plus_option  = 1;
+                    $::minus_option = 0;
+                    if (xCAT::DBobjUtils->setobjdefs(\%membhash) != 0)
+                    {
+                        $error = 1;
+                    }
+                    $::plus_option = 0;
+
+                }
+
+            }
+            else
+            {    # group is defined
+
+                # if a list of members is provided then update the node entries
+                #   note: the members attr of the group def will be set
+                #	to static
+                if (@memberlist)
+                {
+
+                    #  options supported
+                    if ($::opt_m)
+                    {    # removing these members
+
+                        # for each node in memberlist - remove this group
+                        #  from the groups attr
+                        my %membhash;
+                        foreach $n (@memberlist)
+                        {
+                            $membhash{$n}{groups}  = $obj;
+                            $membhash{$n}{objtype} = 'node';
+                        }
+
+                        $::plus_option  = 0;
+                        $::minus_option = 1;
+                        if (xCAT::DBobjUtils->setobjdefs(\%membhash) != 0)
+                        {
+                            $error = 1;
+                        }
+                        $::minus_option = 0;
+
+                    }
+                    elsif ($::opt_p)
+                    {    #adding these new members
+                            # for each node in memberlist add this group
+                            # name to the groups attr
+                        my %membhash;
+                        foreach $n (@memberlist)
+                        {
+                            $membhash{$n}{groups}  = $obj;
+                            $membhash{$n}{objtype} = 'node';
+                        }
+                        $::plus_option  = 1;
+                        $::minus_option = 0;
+                        if (xCAT::DBobjUtils->setobjdefs(\%membhash) != 0)
+                        {
+                            $error = 1;
+                        }
+                        $::plus_option = 0;
+
+                    }
+                    else
+                    {    # replace the members list altogether
+
+                        # this is the default for the chdef command
+
+                        # get the current members list
+
+                        my $list =
+                          xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
+                        my @currentlist = split(',', $list);
+
+                        # for each node in currentlist - remove group name
+                        #	from groups attr
+
+                        my %membhash;
+                        foreach $n (@currentlist)
+                        {
+                            $membhash{$n}{groups}  = $obj;
+                            $membhash{$n}{objtype} = 'node';
+                        }
+
+                        $::plus_option  = 0;
+                        $::minus_option = 1;
+
+
+                        if (xCAT::DBobjUtils->setobjdefs(\%membhash) != 0)
+                        {
+                            $error = 1;
+                        }
+                        $::minus_option = 0;
+
+                        # for each node in memberlist add this group
+                        # name to the groups attr
+
+                        my %membhash;
+                        foreach $n (@memberlist)
+                        {
+                            $membhash{$n}{groups}  = $obj;
+                            $membhash{$n}{objtype} = 'node';
+                        }
+                        $::plus_option  = 1;
+                        $::minus_option = 0;
+
+
+                        if (xCAT::DBobjUtils->setobjdefs(\%membhash) != 0)
+                        {
+                            $error = 1;
+                        }
+                        $::plus_option = 0;
+
+                    }
+
+                }    # end - if memberlist
+
+            }    # end - if group is defined
+
+        }    # end - if group type
+
+        #
+        #  Need special handling for node objects that have the
+        #	groups attr set - may need to create group defs
+        #
+        if (($type eq "node") && $::FINALATTRS{$obj}{groups})
+        {
+
+            # get the list of groups in the "groups" attr
+            my @grouplist;
+            @grouplist = split(/,/, $::FINALATTRS{$obj}{groups});
+
+            # get the list of all defined group objects
+
+            @definedgroups = xCAT::DBobjUtils->getObjectsOfType(group);
+
+            # if we're creating the node or we're adding to or replacing
+            #	the "groups" attr then check if the group
+            # 	defs exist and create them if they don't
+            if (!$isDefined || !$::opt_m)
+            {
+
+                #  we either replace, add or take away from the "groups"
+                #		list
+                #  if not taking away then we must be adding or replacing
+                foreach my $g (@grouplist)
+                {
+                    if (!grep(/^$g$/, @definedgroups))
+                    {
+
+                        # define it
+                        $GroupHash{$g}{objtype}   = "group";
+                        $GroupHash{$g}{grouptype} = "static";
+                        $GroupHash{$g}{members}   = "static";
+                    }
+                }
+                if (defined(%GroupHash))
+                {
+
+                    if (xCAT::DBobjUtils->setobjdefs(\%GroupHash) != 0)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] =
+                          "Could not write data to the xCAT database.\n";
+
+                        # xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        $error = 1;
+                    }
+                }
+            }
+
+        }    # end - if type = node
+    }    # end - for each object to update
+
+    #
+    #  write each object into the tables in the xCAT database
+    #
+
+    # set update option
+    $::plus_option  = 0;
+    $::minus_option = 0;
+    if ($::opt_p)
+    {
+        $::plus_option = 1;
+    }
+    elsif ($::opt_m)
+    {
+        $::minus_option = 1;
+    }
+
+    if (xCAT::DBobjUtils->setobjdefs(\%::FINALATTRS) != 0)
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "Could not write data to the xCAT database.\n";
+
+        #		xCAT::MsgUtils->message("E", $rsp, $::callback);
+        $error = 1;
+    }
+
+    if ($error)
+    {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "One or more errors occured when attempting to create or modify xCAT \nobject definitions.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 1;
+    }
+    else
+    {
+        if ($::verbose)
+        {
+
+            #  give results
+            my $rsp;
+            $rsp->{data}->[0] =
+              "The database was updated for the following objects:\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+
+            my $n = 1;
+            foreach my $o (sort(keys %::FINALATTRS))
+            {
+                $rsp->{data}->[$n] = "$o\n";
+                $n++;
+            }
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
+        else
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
+              "Object definitions have been created or modified.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
+        return 0;
+    }
 }
 
 #----------------------------------------------------------------------------
@@ -681,6 +1772,8 @@ sub setCLIattrs
 sub setFINALattrs
 {
 
+    my $error = 0;
+
     # set the final hash based on the info from the input file
     if (@::fileobjnames)
     {
@@ -688,170 +1781,85 @@ sub setFINALattrs
         {
 
             #  check if this object is one of the type specified
-            if (grep(/$::FILEATTRS{$objname}{objtype}/, @::clobtypes))
+            if (@::clobtypes)
+            {
+                if (!grep(/$::FILEATTRS{$objname}{objtype}/, @::clobtypes))
+                {
+                    next;
+                }
+
+            }
+
+            # get the data type definition from Schema.pm
+            my $datatype =
+              $xCAT::Schema::defspec{$::FILEATTRS{$objname}{objtype}};
+            my @list;
+            foreach my $this_attr (sort @{$datatype->{'attrs'}})
+            {
+                my $a = $this_attr->{attr_name};
+                push(@list, $a);
+            }
+            push(@list, "objtype");
+
+            # if so then add it to the final hash
+            foreach my $attr (keys %{$::FILEATTRS{$objname}})
             {
 
-                # if so then add it to the final hash
-                foreach my $attr (keys %{$::FILEATTRS{$objname}})
+                # see if valid attr
+                if (!grep(/$attr/, @list)
+                    && ($::FILEATTRS{$objname}{objtype} ne 'site'))
+                {
+
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "\'$attr\' is not a valid attribute name for for an object type of \'$::objtype\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                    next;
+                }
+                else
                 {
                     $::FINALATTRS{$objname}{$attr} =
                       $::FILEATTRS{$objname}{$attr};
                 }
+
             }
-
         }
-
     }
 
     # set the final hash based on the info from the cmd line hash
+    @::finalTypeList = ();
+
     foreach my $objname (@::clobjnames)
     {
         foreach my $attr (keys %{$::CLIATTRS{$objname}})
         {
+
             $::FINALATTRS{$objname}{$attr} = $::CLIATTRS{$objname}{$attr};
+            if ($attr eq 'objtype')
+            {
+                if (
+                    !grep(/^$::FINALATTRS{$objname}{objtype}/, @::finalTypeList)
+                  )
+                {
+                    my $type = $::FINALATTRS{$objname}{objtype};
+                    chomp $type;
+                    push @::finalTypeList, $type;
+                }
+
+            }
+
         }
     }
 
-    return 0;
-}
-
-#----------------------------------------------------------------------------
-
-=head3   defch
-
-        Support for the xCAT defch command.
-
-        Arguments:
-                
-        Returns:
-                0 - OK
-                1 - error
-        Globals:
-               
-        Error:
-
-        Example:
-
-        Comments:
-			Object names to change are derived from 
-				-o, -t, w, -z, -x, or noderange!
-			Attrs may be set, added to, replaced(-r), or be 
-				partially rewmoved (-m)
-=cut
-
-#-----------------------------------------------------------------------------
-
-sub defch
-{
-
-    # process the command line
-    my $rc = &processArgs;
-    if ($rc != 0)
+    if ($error)
     {
-
-        # rc: 0 - ok, 1 - help, 2 - error
-        &defch_usage;
-        return ($rc - 1);
-    }
-
-    #
-    #  set cli attrs for each object definition
-    #
-    if (%::ATTRS)    # if we had any attr=val on the cmd line
-    {
-        if (&setCLIattrs != 0)
-        {
-            print "Could not set command line values for object definitions!\n";
-            return 1;
-        }
-
-    }
-
-    #
-    #   Pull all the pieces together for the final hash
-    #		- from cmd line and/or file
-    #
-    if (&setFINALattrs != 0)
-    {
-        print "Could not determine attribute values for object definitions!\n";
         return 1;
     }
-
-    #
-    # get the current object definitions from DB!!
-    #	could have multiple types, objects and attrs
-    #	want to get hash of attr values for each object
-    #
-    foreach my $objname (@::allobjnames)
+    else
     {
-
-        # get values for this object & attrs
-        my @attrlist = keys %{$::FINALATTRS{$objname}};
-        print "get these attrs for object \'$objname\': @attrlist\n";
-
-        # add the info to the DBdefs hash
-        foreach my $attr (@attrlist)
-        {
-
-            #		if ($val) {
-            #			$DBdefs{$objname}{$attr}=val
-            #		}
-        }
+        return 0;
     }
-
-    # now go throught our objects
-    foreach my $objname (@::allobjnames)
-    {
-        my @attrval;
-
-        #  is this a valid object name
-        #??  if (!grep(/$objname/, @::DBobjnames)  error - msg - next
-
-        # go through the new attrs for this object
-        foreach my $attr (keys %{$::FINALATTRS{$objname}})
-        {
-            if ($::opt_r)
-            {
-
-                #   - just set/replace the attribute
-                push(@attrval, "$attr=$::FINALATTRS{$objname}{$attr}");
-            }
-            elsif ($::opt_m)
-            {
-
-                # if value is a list then remove the specified attrs from it
-                #    TBD
-            }
-            else
-            {
-
-                # default behavior
-                #  either set it - if blank
-                #  or add it to attr list - if already set
-                if ($DBdefs{$objname}{$attr})
-                {
-
-                    # add the new attr to the old attrs - comma seperated
-                    my $val =
-                        $DBdefs{$objname}{$attr} . ","
-                      . $::FINALATTRS{$objname}{$attr};
-                    push(@attrval, $val);
-                }
-                else
-                {
-
-                    # - just set it
-                    push(@attrval, "$attr=$::FINALATTRS{$objname}{$attr}");
-                }
-            }
-        }
-
-        #  OK - change the tables in the xCAT database
-        #   - write %NEWDEFS to the DB
-        print "set: $objname, @attrval\n";
-    }
-
-    return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -865,7 +1873,7 @@ sub defch
                 0 - OK
                 1 - error
         Globals:
-             
+
         Error:
 
         Example:
@@ -882,68 +1890,544 @@ sub defch
 sub defls
 {
     my $long = 0;
-    my %DBhash;
+    my %myhash;
+    my %objhash;
 
     my @objectlist;
+    @::allobjnames;
+
+    my $numtypes = 0;
 
     # process the command line
     my $rc = &processArgs;
     if ($rc != 0)
     {
 
-        # rc: 0 - ok, 1 - help, 2 - error
-        &defls_usage;
+        # rc: 0 - ok, 1 - return, 2 - help, 3 - error
+        if ($rc != 1)
+        {
+            &defls_usage;
+        }
         return ($rc - 1);
     }
 
-    if ($::opt_l)
+    # do we want just the object names or all the attr=val
+    if ($::opt_l || @::noderange || $::opt_i)
     {
-        $long = 1;
+
+        # assume we want the the details - not just the names
+        # 	- if provided object names or noderange
+        $long++;
+
     }
 
-    # get a list of all the object names to display  -> $objnames
+    #
+    #	put together a hash with the list of objects and the associated types
+    #  		- need to figure out which objects to look up
+    #
 
-    #  object names provided
-    # convert -o to list - @objectlist
-    # if a, t, w, or noderange then error - cannot be combined
-    # ?  assume long?? $long = 1;
-    #  use noderange as $objnames
-    # convert noderange to list - @objectlist
-    # if a, t, w, or o then error
-    # ?  assume long?? $long = 1;
-    #  if all - get list of all objects
-    # get list from DB - for each type check for names
-    # if o, t, w, or noderange then error
-    #  assume want names only  - unless opt_l
-    #  if types  - get all objs of that type
-    # get list of all object names of these types
-    # if a, o, w, or noderange then error
-    #  assume want names only  - unless opt_l
-    #  use where values to gather names of objects
-    #	- need to check all object names - could be time consuming!
-    #   - make local hash - also use it below
-    # if a, t, o, or noderange then error
-    #  assume want names only - unless opt_l
+    # if a set of objects was provided on the cmd line then there can
+    #	be only one type value
+    if ($::objectsfrom_opto || $::objectsfrom_nr || $::objectsfrom_args)
+    {
+        my $type = @::clobjtypes[0];
 
-    # get complete object defs - if need attrs - use @objectlist
-    # if not already done then
-    # if ($::opt_i || $long = 1; || $::opt_w)
-    # foreach my $obj (@objnames)
-    # get object definition from DB
-    # put in hash - %DBhash{$objname}{$attr}
+        $numtypes = 1;
 
-    #  for each object
+        foreach my $obj (sort @::clobjnames)
+        {
+            $objhash{$obj} = $type;
 
-    # if (!($::opt_i)) - just display long or short info
-    #if ( $::opt_l) -  display details of obj def
-    # else - just diplay names
+        }
 
-    # else if (%DBhash{$objname}{$attr} =~ /$::opt_i/)
-    # if the attr is one of the ones I want then add it to the
-    #	output hash
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+        if (!defined(%myhash))
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "Could not get xCAT object definitions.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
 
-    # display and/or write to output file
+        }
 
+    }
+
+    #  if just provided type list then find all objects of these types
+    if ($::objectsfrom_optt)
+    {
+        %objhash = %::ObjTypeHash;
+
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+        if (!defined(%myhash))
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "Could not get xCAT object definitions.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
+        }
+    }
+
+    # if specify all
+    if ($::opt_a)
+    {
+
+        # could be modified by type
+        if ($::opt_t)
+        {
+
+            # get all objects matching type list
+            # Get all object in this type list
+            foreach my $t (@::clobjtypes)
+            {
+                @tmplist = xCAT::DBobjUtils->getObjectsOfType($t);
+
+                if (scalar(@tmplist) > 1)
+                {
+                    foreach my $obj (@tmplist)
+                    {
+
+                        $objhash{$obj} = $t;
+                    }
+                }
+                else
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Could not get objects of type \'$type\'.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                }
+            }
+
+            %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+            if (!defined(%myhash))
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Could not get xCAT object definitions.\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
+            }
+
+        }
+        else
+        {
+
+            %myhash = xCAT::DBobjUtils->getobjdefs(\%::AllObjTypeHash);
+            if (!defined(%myhash))
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Could not get xCAT object definitions.\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
+            }
+
+        }
+        foreach my $t (keys %{xCAT::Schema::defspec})
+        {
+            push(@::clobjtypes, $t);
+        }
+    }
+
+    if (!defined(%myhash))
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "Could not find any objects to display.\n";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        return 0;
+    }
+
+    # the list of objects may be limited by the "-w" option
+    # see which objects have attr/val that match the where values
+    #		- if provided
+    if ($::opt_w)
+    {
+        foreach my $obj (sort (keys %myhash))
+        {
+
+            #  all the "where" attrs must match the object attrs
+            my $dodisplay = 1;
+
+            foreach my $testattr (keys %::WhereHash)
+            {
+                if ($myhash{$obj}{$testattr} ne $::WhereHash{$testattr})
+                {
+
+                    # don't disply
+                    $dodisplay = 0;
+                    break;
+                }
+            }
+            if ($dodisplay)
+            {
+                push(@displayObjList, $obj);
+            }
+        }
+    }
+
+    #
+    # output in specified format
+    #
+
+    my @foundobjlist;
+
+    if ($::opt_z)
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "# <xCAT data object stanza file>";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+    }
+
+    # group the objects by type to make the output easier to read
+    my $numobjects = 0;    # keep track of how many object we want to display
+    foreach my $type (@::clobjtypes)
+    {
+
+        my %defhash;
+
+        foreach my $obj (keys %myhash)
+        {
+            if ($obj)
+            {
+                $numobjects++;
+                if ($myhash{$obj}{'objtype'} eq $type)
+                {
+                    $defhash{$obj} = $myhash{$obj};
+
+                }
+            }
+        }
+
+        if ($numobjects == 0)
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
+              "Could not find any object definitions to display.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            return 0;
+        }
+
+        foreach my $obj (keys %defhash)
+        {
+
+            unless ($obj)
+            {
+                next;
+            }
+
+            # special handling for site table - for now!!!!!!!
+            if ($defhash{$obj}{'objtype'} ne 'site')
+            {
+                my @tmplist =
+                  xCAT::DBobjUtils->getObjectsOfType($defhash{$obj}{'objtype'});
+
+                unless (@tmplist)
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Could not find any objects of type \'$defhash{$obj}{'objtype'}\'.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    next;
+                }
+
+                if (!grep(/$obj/, @tmplist))
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Could not find an object named \'$obj\' of type \'$defhash{$obj}{'objtype'}\'.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    next;
+                }
+            }    # end - if not site table
+
+###################
+            # special handling for site table - for now !!!!!!!
+######################
+
+            my @attrlist;
+            if ($defhash{$obj}{'objtype'} eq 'site')
+            {
+
+                foreach my $a (keys %{$defhash{$obj}})
+                {
+
+                    push(@attrlist, $a);
+
+                }
+            }
+            else
+            {
+
+                # get the list of all attrs for this type object
+                # get the data type  definition from Schema.pm
+                my $datatype =
+                  $xCAT::Schema::defspec{$defhash{$obj}{'objtype'}};
+                foreach $this_attr (@{$datatype->{'attrs'}})
+                {
+                    push(@attrlist, $this_attr->{attr_name});
+                }
+            }
+
+
+            if ($::opt_x)
+            {
+
+                # do output in XML format
+            }
+            else
+            {
+
+                #  standard output or stanza format
+
+                if ($::opt_w)
+                {
+
+                    #  just display objects that match -w
+                    if (grep /^$obj$/, @displayObjList)
+                    {
+
+                        # display data
+                        # do we want the short or long output?
+                        if ($long)
+                        {
+                            if ($::opt_z)
+                            {
+                                my $rsp;
+                                $rsp->{data}->[0] = "\n$obj:";
+                                $rsp->{data}->[1] =
+                                  "    objtype=$defhash{$obj}{'objtype'}";
+                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            }
+                            else
+                            {
+                                if ($#::clobjtypes > 0)
+                                {
+                                    my $rsp;
+                                    $rsp->{data}->[0] =
+                                      "Object name: $obj  ($defhash{$obj}{'objtype'})";
+                                    xCAT::MsgUtils->message("I", $rsp,
+                                                            $::callback);
+                                }
+                                else
+                                {
+                                    my $rsp;
+                                    $rsp->{data}->[0] = "Object name: $obj";
+                                    xCAT::MsgUtils->message("I", $rsp,
+                                                            $::callback);
+                                }
+
+                            }
+
+                            foreach my $showattr (sort @attrlist)
+                            {
+                                if ($showattr eq 'objtype')
+                                {
+                                    next;
+                                }
+
+                                if ($myhash{$obj}{$showattr})
+                                {
+                                    my $rsp;
+                                    $rsp->{data}->[0] =
+                                      "    $showattr=$defhash{$obj}{$showattr}";
+                                    xCAT::MsgUtils->message("I", $rsp,
+                                                            $::callback);
+                                }
+
+                                #                            else
+                                #                            {
+                                #                                pr "    $showattr=\n";
+                                #                            }
+                            }
+                        }
+                        else
+                        {
+
+                            # just give names of objects
+                            if ($::opt_z)
+                            {
+                                my $rsp;
+                                $rsp->{data}->[0] = "\n$obj:";
+                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            }
+                            else
+                            {
+                                my $rsp;
+                                $rsp->{data}->[0] = "$obj";
+                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            }
+                        }
+                    }
+
+                }
+                else
+                {
+
+                    # not -w
+                    # display all data
+                    # do we want the short or long output?
+                    if ($long)
+                    {
+                        if ($::opt_z)
+                        {
+                            my $rsp;
+                            $rsp->{data}->[0] = "\n$obj:";
+                            $rsp->{data}->[1] =
+                              "    objtype=$defhash{$obj}{'objtype'}";
+                            xCAT::MsgUtils->message("I", $rsp, $::callback);
+                        }
+                        else
+                        {
+                            if ($#::clobjtypes > 0)
+                            {
+                                my $rsp;
+                                $rsp->{data}->[0] =
+                                  "\nObject name: $obj  ($defhash{$obj}{'objtype'})";
+                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            }
+                            else
+                            {
+                                my $rsp;
+                                $rsp->{data}->[0] = "\nObject name: $obj";
+                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            }
+                        }
+
+                        foreach my $showattr (sort @attrlist)
+                        {
+                            if ($showattr eq 'objtype')
+                            {
+                                next;
+                            }
+
+                            my $attrval;
+                            if ($defhash{$obj}{$showattr})
+                            {
+                                $attrval = $defhash{$obj}{$showattr};
+                            }
+                            else
+                            {
+                                $attrval = " ";
+                            }
+
+                            # if an attr list was provided then just display those
+                            if ($::opt_i)
+                            {
+                                if (grep (/^$showattr$/, @::AttrList))
+                                {
+                                    if (   ($obj eq 'group')
+                                        && ($showattr eq 'members'))
+                                    {
+                                        my $memberlist =
+                                          xCAT::DBobjUtils->getGroupMembers(
+                                                                     $obj,
+                                                                     \%defhash);
+                                        my $rsp;
+                                        $rsp->{data}->[0] =
+                                          "    $showattr=$memberlist";
+                                        xCAT::MsgUtils->message("I", $rsp,
+                                                                $::callback);
+                                    }
+                                    else
+                                    {
+
+                                        # since they asked for this attr
+                                        #   show it even if not set
+                                        my $rsp;
+                                        $rsp->{data}->[0] =
+                                          "    $showattr=$attrval";
+                                        xCAT::MsgUtils->message("I", $rsp,
+                                                                $::callback);
+                                    }
+                                }
+                            }
+                            else
+                            {
+
+                                if (   ($defhash{$obj}{'objtype'} eq 'group')
+                                    && ($showattr eq 'members'))
+
+                                {
+                                    my $memberlist =
+                                      xCAT::DBobjUtils->getGroupMembers($obj,
+                                                                     \%defhash);
+                                    my $rsp;
+                                    $rsp->{data}->[0] =
+                                      "    $showattr=$memberlist";
+                                    xCAT::MsgUtils->message("I", $rsp,
+                                                            $::callback);
+                                }
+                                else
+                                {
+
+                                    # don't print unless set
+                                    if ($attrval ne " ")
+                                    {
+                                        my $rsp;
+                                        $rsp->{data}->[0] =
+                                          "    $showattr=$attrval";
+                                        xCAT::MsgUtils->message("I", $rsp,
+                                                                $::callback);
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                    else
+                    {
+
+                        if ($::opt_a)
+                        {
+                            if ($::opt_z)
+                            {
+                                my $rsp;
+                                $rsp->{data}->[0] = "\n$obj:";
+                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            }
+                            else
+                            {
+
+                                # give the type also
+                                my $rsp;
+                                $rsp->{data}->[0] =
+                                  "$obj ($::AllObjTypeHash{$obj})";
+                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            }
+                        }
+                        else
+                        {
+
+                            # just give the name
+                            if ($::opt_z)
+                            {
+                                my $rsp;
+                                $rsp->{data}->[0] = "\n$obj:";
+                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            }
+                            else
+                            {
+                                if ($#::clobjtypes > 0)
+                                {
+                                    my $rsp;
+                                    $rsp->{data}->[0] =
+                                      "$obj  ($defhash{$obj}{'objtype'})";
+                                    xCAT::MsgUtils->message("I", $rsp,
+                                                            $::callback);
+
+                                }
+                                else
+                                {
+                                    my $rsp;
+                                    $rsp->{data}->[0] = "$obj";
+                                    xCAT::MsgUtils->message("I", $rsp,
+                                                            $::callback);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     return 0;
 }
 
@@ -973,48 +2457,249 @@ sub defls
 sub defrm
 {
 
+    my %objhash;
+    my $error = 0;
+    my %rmhash;
+    my %myhash;
+
     # process the command line
     my $rc = &processArgs;
     if ($rc != 0)
     {
 
-        # rc: 0 - ok, 1 - help, 2 - error
-        &defrm_usage;
+        # rc: 0 - ok, 1 - return, 2 - help, 3 - error
+        if ($rc != 1)
+        {
+            &defrm_usage;
+        }
         return ($rc - 1);
     }
 
-    # if list of objects provided in a file then add them
-    if (@::objfilelist)
+    if ($::opt_a && !$::opt_f)
     {
-        push(@::allobjnames, @::objfilelist);
+        my $rsp;
+        $rsp->{data}->[0] =
+          "You must use the \'-f\' option when using the \'-a\' option.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        &defrm_usage;
+        return 1;
     }
 
-    # foreach objname
-    foreach my $objname (@::allobjnames)
+    #
+    #  build a hash of object names and their types
+    #
+
+    # the list of objects to remove could have come from: the arg list,
+    #	opt_o, a noderange, opt_t, or opt_a. (rmdef doesn't take file
+    #	input)
+
+    # if a set of objects was specifically provided on the cmd line then
+    #	there can only be one type value
+    if ($::objectsfrom_opto || $::objectsfrom_nr || $::objectsfrom_args)
     {
+        my $type = @::clobjtypes[0];
 
-        #	remove object
-        #if ($::FINALATTRS{$objname}{objtype} eq "group")
-        #   if (defined($::opt_d))
-        #       print "make dynamic groups\n";
-        #       next;
-
-        # if type= site -> remove site table
-        # if type=network -> remove entry in network table
-        # if node -> remove node entries in all node tables
-        # if group
-        #	- if dynamic -> remove entry from group table
-        #	- if static -> remove group name entries from relevant tables
+        foreach my $obj (sort @::clobjnames)
+        {
+            $objhash{$obj} = $type;
+        }
     }
 
-    #  what happens to group if all nodes removed???
-    #	? - if remove nodes then check for empty groups to clean up??
-    #  if (@::objtypes =~ /node/)
-    #		- get all group member lists
-    #		- if member list is empty
-    #			- remove group - ie. remove group name entry in all DB tables??
+    # if we derived a list of objects from a list of types
+    if ($::objectsfrom_optt)
+    {
+        %objhash = %::ObjTypeHash;
+    }
 
-    return 0;
+    # if we derived the list of objects from the "all" option
+    if ($::objectsfrom_opta)
+    {
+        %objhash = %::AllObjTypeHash;
+    }
+
+    # handle the "-w" value - if provided
+    # the list of objects may be limited by the "-w" option
+    # see which objects have attr/val that match the where values
+    #       - if provided
+    #  !!!!! don't support -w for now - gets way too complicated with groups!!!!
+    if ($::opt_w)
+    {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "The \'-w\' option is not supported for the rmdef command.";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        $error = 1;
+        return 1;
+    }
+    if (0)
+    {
+
+        # need to get object defs from DB
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+        if (!defined(%myhash))
+        {
+            $error = 1;
+        }
+
+        foreach my $obj (sort (keys %objhash))
+        {
+            foreach my $testattr (keys %::WhereHash)
+            {
+                if ($myhash{$obj}{$testattr} eq $::WhereHash{$testattr})
+                {
+
+                    # add this object to the remove hash
+                    $rmhash{$obj} = $objhash{$obj};
+                }
+            }
+
+        }
+        %objhash = %rmhash;
+    }
+
+    # if the object to remove is a group then the "groups" attr of
+    #	the memberlist nodes must be updated.
+
+    my $numobjects = 0;
+    foreach my $obj (keys %objhash)
+    {
+        $numobjects++;
+
+        if ($objhash{$obj} eq 'group')
+        {
+
+            # get the group object definition
+            $ghash{$obj} = 'group';
+            %grphash = xCAT::DBobjUtils->getobjdefs(\%ghash);
+            if (!defined(%grphash))
+            {
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "Could not get xCAT object definition for \'$obj\'.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                next;
+            }
+
+            # get the members list
+            my $memberlist = xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
+            my @members = split(',', $memberlist);
+
+            # foreach member node of the group
+            my %nodehash;
+            my %nhash;
+            my @gprslist;
+            foreach my $m (@members)
+            {
+
+                # need to update the "groups" attr of the node def
+
+                # get the def of this node
+                $nhash{$m} = 'node';
+                %nodehash = xCAT::DBobjUtils->getobjdefs(\%nhash);
+                if (!defined(%nodehash))
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Could not get xCAT object definition for \'$m\'.";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    next;
+                }
+
+                # split the "groups" to get a list
+                @gprslist = split(',', $nodehash{$m}{groups});
+
+                # make a new "groups" list for the node without the
+                #  	group that is being removed
+                my $first = 1;
+                my $newgrps;
+                foreach my $grp (@gprslist)
+                {
+                    chomp($grp);
+                    if ($grp eq $obj)
+                    {
+                        next;
+                    }
+                    else
+                    {
+
+                        # set new groups list for node
+                        if (!$first)
+                        {
+                            $newgrps .= ",";
+                        }
+                        $newgrps .= $grp;
+                        $first = 0;
+
+                    }
+                }
+
+                # make the change to %nodehash
+                $nodehash{$m}{groups} = $newgrps;
+            }
+
+            # set the new node attr values
+            if (xCAT::DBobjUtils->setobjdefs(\%nodehash) != 0)
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Could not write data to xCAT database.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $error = 1;
+            }
+        }
+    }
+
+    # remove the objects
+    if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
+    {
+        $error = 1;
+    }
+
+    if ($error)
+    {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "One or more errors occured when attempting to remove xCAT object definitions.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 1;
+    }
+    else
+    {
+        if ($numobjects > 0)
+        {
+            if ($::verbose)
+            {
+
+                #  give results
+                my $rsp;
+                $rsp->{data}->[0] = "The following objects were removed:";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+
+                my $n = 1;
+                foreach my $o (sort(keys %objhash))
+                {
+                    $rsp->{data}->[$n] = "$o";
+                    $n++;
+                }
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+            else
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Object definitions have been removed.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+        }
+        else
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
+              "No objects have been removed from the xCAT database.";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
+        return 0;
+
+    }
+
 }
 
 #----------------------------------------------------------------------------
@@ -1037,17 +2722,32 @@ sub defrm
 # subroutines to display the usage
 sub defmk_usage
 {
-    my %rsp;
+    my $rsp;
     $rsp->{data}->[0] =
-      "\nUsage: defmk - create xCAT data object definitions.\n";
-    $rsp->{data}->[1] =
-      "  defmk [-h | --help ] [-V | --verbose] [-t <object types>]";
+      "\nUsage: mkdef - Create xCAT data object definitions.\n";
+    $rsp->{data}->[1] = "  mkdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] =
-      "      [-o <object names>] [-z <stanza file>] [-x <xml file>]";
+      "  mkdef [-V | --verbose] [-t object-types] [-o object-names] [-z|--stanza ]";
     $rsp->{data}->[3] =
-      "      [-w attr=val,[attr=val...]][-d | --dynamic] <noderange>";
-    $rsp->{data}->[4] = "      attr=val [attr=val...]\n";
-    $::callback->($rsp);
+      "      [-x|--xml ] [-d | --dynamic] [-w attr=val,[attr=val...]]";
+    $rsp->{data}->[4] =
+      "      [-f | --force] [noderange] [attr=val [attr=val...]]\n";
+    $rsp->{data}->[5] =
+      "\nThe following data object types are supported by xCAT.\n";
+    my $n = 6;
+
+    foreach my $t (sort(keys %{xCAT::Schema::defspec}))
+    {
+        $rsp->{data}->[$n] = "$t";
+        $n++;
+    }
+    $rsp->{data}->[$n] =
+      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $n++;
+    $rsp->{data}->[$n] =
+      "get a list of valid attribute names for each object type.\n";
+    xCAT::MsgUtils->message("I", $rsp, $::callback);
+    return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -1069,17 +2769,32 @@ sub defmk_usage
 
 sub defch_usage
 {
-    my %rsp;
+    my $rsp;
     $rsp->{data}->[0] =
-      "\nUsage: defch - change xCAT data object definitions.\n";
-    $rsp->{data}->[1] =
-      "  defch [-h | --help ] [-V | --verbose] [-t <object types>]";
+      "\nUsage: chdef - Change xCAT data object definitions.\n";
+    $rsp->{data}->[1] = "  chdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] =
-      "    [-o <object names>] [-z <stanza file>] [-x <xml file>]";
+      "  chdef [-V | --verbose] [-t object-types] [-o object-names] [-d | --dynamic]";
     $rsp->{data}->[3] =
-      "    [-m | --minus] [-r | --replace] [-w attr=val,[attr=val...] ]";
-    $rsp->{data}->[4] = "    <noderange> attr=val [attr=val...]\n";
-    $::callback->($rsp);
+      "    [-z | --stanza] [-x | --xml] [-m | --minus] [-p | --plus]";
+    $rsp->{data}->[4] =
+      "    [-w attr=val,[attr=val...] ] [noderange] [attr=val [attr=val...]]\n";
+    $rsp->{data}->[5] =
+      "\nThe following data object types are supported by xCAT.\n";
+    my $n = 6;
+
+    foreach my $t (sort(keys %{xCAT::Schema::defspec}))
+    {
+        $rsp->{data}->[$n] = "$t";
+        $n++;
+    }
+    $rsp->{data}->[$n] =
+      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $n++;
+    $rsp->{data}->[$n] =
+      "get a list of valid attribute names for each object type.\n";
+    xCAT::MsgUtils->message("I", $rsp, $::callback);
+    return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -1101,16 +2816,31 @@ sub defch_usage
 
 sub defls_usage
 {
-    my %rsp;
-    $rsp->{data}->[0] = "\nUsage: defls - list xCAT data object definitions.\n";
-    $rsp->{data}->[1] =
-      "  defls [-h | --help ] [-V | --verbose] [ -l | --long] [-a | --all]";
+    my $rsp;
+    $rsp->{data}->[0] = "\nUsage: lsdef - List xCAT data object definitions.\n";
+    $rsp->{data}->[1] = "  lsdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] =
-      "    [-t <object types>] [-o <object names>] [-z <stanza file>]";
+      "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
     $rsp->{data}->[3] =
-      "    [-x <xml file>] [-i attr-list] [-w attr=val,[attr=val...] ]";
-    $rsp->{data}->[4] = "    <noderange>\n";
-    $::callback->($rsp);
+      "    [ -l | --long] [-a | --all] [-z | --stanza ] [-x | --xml ]";
+    $rsp->{data}->[4] =
+      "    [-i attr-list] [-w attr=val,[attr=val...]] [noderange]\n";
+    $rsp->{data}->[5] =
+      "\nThe following data object types are supported by xCAT.\n";
+    my $n = 6;
+
+    foreach my $t (sort(keys %{xCAT::Schema::defspec}))
+    {
+        $rsp->{data}->[$n] = "$t";
+        $n++;
+    }
+    $rsp->{data}->[$n] =
+      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $n++;
+    $rsp->{data}->[$n] =
+      "get a list of valid attribute names for each object type.\n";
+    xCAT::MsgUtils->message("I", $rsp, $::callback);
+    return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -1132,14 +2862,31 @@ sub defls_usage
 
 sub defrm_usage
 {
-    my %rsp;
+    my $rsp;
     $rsp->{data}->[0] =
-      "\nUsage: defrm - remove xCAT data object definitions.\n";
-    $rsp->{data}->[1] = "  defrm [-h | --help ] [-V | --verbose] [-a | --all]";
+      "\nUsage: rmdef - Remove xCAT data object definitions.\n";
+    $rsp->{data}->[1] = "  rmdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] =
-      "    [-t <object types>] [-o <object names>] [-f <object list file>]";
-    $rsp->{data}->[3] = "    [-w attr=val,[attr=val...] <noderange>\n";
-    $::callback->($rsp);
+      "  rmdef [-V | --verbose] [-t object-types] [-a | --all] [-f | --force]";
+    $rsp->{data}->[3] =
+      "    [-o object-names] [-w attr=val,[attr=val...] [noderange]\n";
+    $rsp->{data}->[4] =
+      "\nThe following data object types are supported by xCAT.\n";
+    my $n = 5;
+
+    foreach my $t (sort(keys %{xCAT::Schema::defspec}))
+    {
+        $rsp->{data}->[$n] = "$t";
+        $n++;
+    }
+    $rsp->{data}->[$n] =
+      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $n++;
+    $rsp->{data}->[$n] =
+      "get a list of valid attribute names for each object type.\n";
+    xCAT::MsgUtils->message("I", $rsp, $::callback);
+    return 0;
 }
 
 1;
+
