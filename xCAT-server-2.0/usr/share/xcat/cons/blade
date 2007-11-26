@@ -37,8 +37,10 @@ if ($mpatab) {
     if ($dba->{password}) { $password = $dba->password; }
   }
 }
-my $pathtochild= dirname($scriptname). "/";
-exec $pathtochild."blade.expect $mm $slot $username $password";
+sleep 5;
+exec "ssh -t $username"."@"."$mm console -o -T blade[$slot]";
+#my $pathtochild= dirname($scriptname). "/";
+#exec $pathtochild."blade.expect $mm $slot $username $password";
   
 
 
