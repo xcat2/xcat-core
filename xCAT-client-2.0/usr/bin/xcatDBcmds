@@ -2,6 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 use File::Basename;
+use xCAT::MsgUtils;
 use xCAT::Client submit_request;
 
 my $bname = basename($0);
@@ -11,14 +12,13 @@ my $bname = basename($0);
 #
 #   xcatDBcmds
 #
-#	Handles xCAT DB object management commands: 
-#		xdefmk, xdefch, xdefls, & xdefrm. 
+#	Build hash and submit request
 #
-#	Builds hash and submits request.
+#	Handles: mkdef, chdef, lsdef, rmdef commands
 #
-#       Note: The subroutines that implement these commands
-#               are in /usr/lib/xcat/plugins/DBobjectdefs.pm
-#               on the xCAT management node.
+#	Note: The subroutines that implement these commands
+#		are in /usr/lib/xcat/plugins/DBobjectdefs.pm
+#		on the xCAT management node
 #
 #########################################
 
@@ -39,8 +39,14 @@ else
     exit 1;
 }
 
-print "The command \'$cmdref->{command}->[0]\' is not yet available.\n";
-exit 0;
+# get info from files piped in as stdin
+if (-p STDIN) {
+  my $data;
+  while ( <STDIN> ) {
+    $data.=$_;
+  }
+  $cmdref->{stdin}->[0]=$data;
+}
 
 # add all the cmd line args to the hash - to pass to the plugin subroutine
 foreach (@ARGV)
@@ -48,7 +54,19 @@ foreach (@ARGV)
     push(@{$cmdref->{arg}}, $_);
 }
 
-if (!($bname =~ /xdefmk/))
+# Is it necessary to pass the node range through the client-server path ?? 
+#
+#   !!!!! 
+#
+# BUT - also want to pass in a list of object definitions that are 
+#	not noderanges
+#  
+#   
+#   In any case - this doesn't work for mkdef & chdef because we may be 
+#	creating the node definition for the first time
+#
+#if (!($bname =~ /mkdef/))
+if (0)
 {
 
     #
@@ -68,7 +86,7 @@ if (!($bname =~ /xdefmk/))
         !GetOptions(
                     'all|a'     => \$::opt_a,
                     'dynamic|d' => \$::opt_d,
-                    'f=s'       => \$::opt_f,
+                    'f|force'   => \$::opt_f,
                     'i=s'       => \$::opt_i,
                     'help|h'    => \$::opt_h,
                     'long|l'    => \$::opt_l,
@@ -79,8 +97,8 @@ if (!($bname =~ /xdefmk/))
                     'verbose|V' => \$::opt_V,
                     'version|v' => \$::opt_v,
                     'w=s'       => \$::opt_w,
-                    'x=s'       => \$::opt_x,
-                    'z=s'       => \$::opt_z
+                    'x|xml'     => \$::opt_x,
+                    'z|stanza'  => \$::opt_z
         )
       )
     {
@@ -92,16 +110,17 @@ if (!($bname =~ /xdefmk/))
     my $arg = shift(@ARGV);
     if (!($arg =~ /=/))
     {
-        $cmdref->{noderange}->[0] = $arg;
+		# only set the noderange if it was a type of node or the type 
+		#	wasn't specified.
+		if (!$::opt_t || ($::opt_t eq 'node')) {
+       		$cmdref->{noderange}->[0] = $arg;
+		}
 
-        #  could check if valid noderange at this point???
     }
 
 }
 
 xCAT::Client::submit_request($cmdref, \&handle_response);
-
-print "\n";
 
 exit 0;
 
