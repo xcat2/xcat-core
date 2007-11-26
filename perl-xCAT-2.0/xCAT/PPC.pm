@@ -170,7 +170,7 @@ sub preprocess_nodes {
     if (( $request->{command} eq "rscan" ) or
         ( $request->{hwtype} eq "fsp" )) {
 
-        my $tab = ($request->{hwtype} eq "fsp") ? "ppcDirect" : "ppchcp"; 
+        my $tab = ($request->{hwtype} eq "fsp") ? "ppcdirect" : "ppchcp"; 
         my $db  = xCAT::Table->new( $tab );
 
         if ( !defined( $db )) {

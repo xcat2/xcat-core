@@ -140,7 +140,7 @@ sub credentials {
     my %db = (
         hmc => "ppchcp",
         ivm => "ppchcp",
-        fsp => "ppcDirect"
+        fsp => "ppcdirect"
     );
 
     ###########################################
