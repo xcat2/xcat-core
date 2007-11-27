@@ -60,13 +60,18 @@ sub mkinstall {
     xCAT::Template->subvars("/usr/share/xcat/install/sles/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
     mkpath "/install/postscripts/";
     xCAT::Postage->writescript($node,"/install/postscripts/".$node);
-    if (-r "/install/$os/$arch/1/boot/$arch/loader/linux"
-      and -r  "/install/$os/$arch/1/boot/$arch/loader/initrd") {
+    if (($arch =~ /x86/ and -r "/install/$os/$arch/1/boot/$arch/loader/linux"
+      and -r  "/install/$os/$arch/1/boot/$arch/loader/initrd") or 
+      ($arch =~ /ppc/ and -r "/install/$os/$arch/1/suseboot/inst64")) {
       #TODO: driver slipstream, targetted for network.
       unless ($doneimgs{"$os|$arch"}) {
           mkpath("/tftpboot/xcat/$os/$arch");
-          copy("/install/$os/$arch/1/boot/$arch/loader/linux","/tftpboot/xcat/$os/$arch/");
-          copy("/install/$os/$arch/1/boot/$arch/loader/initrd","/tftpboot/xcat/$os/$arch/");
+          if ($arch =~ /x86/) {
+            copy("/install/$os/$arch/1/boot/$arch/loader/linux","/tftpboot/xcat/$os/$arch/");
+            copy("/install/$os/$arch/1/boot/$arch/loader/initrd","/tftpboot/xcat/$os/$arch/");
+          } elsif ($arch =~ /ppc/) {
+              copy("/install/$os/$arch/1/suseboot/inst64","/tftpboot/xcat/$os/$arch");
+          }
           $doneimgs{"$os|$arch"}=1;
       }
       #We have a shot...
@@ -99,11 +104,22 @@ sub mkinstall {
         }
       }
       
-      $restab->setNodeAttribs($node,{
-        kernel=>"xcat/$os/$arch/linux",
-        initrd=>"xcat/$os/$arch/initrd",
-        kcmdline=>$kcmdline
-      });
+      if ($arch =~ /x86/) {
+          $restab->setNodeAttribs($node,{
+            kernel=>"xcat/$os/$arch/linux",
+            initrd=>"xcat/$os/$arch/initrd",
+            kcmdline=>$kcmdline
+        });
+      } elsif ($arch =~ /ppc/) {
+          $restab->setNodeAttribs($node,{
+            kernel=>"xcat/$os/$arch/inst64",
+            initrd=>"",
+            kcmdline=>$kcmdline
+        });
+      }
+
+    } else {
+        $callback->({error=>["Failed to detect copycd configured install source at /install/$os/$arch"],errorcode=>[1]});
     }
   }
 }
