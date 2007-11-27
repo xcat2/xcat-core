@@ -41,7 +41,12 @@ mkdir -p $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context
 mkdir -p $RPM_BUILD_ROOT/usr/lib/xcat/monitoring/samples
 
 
+%ifos linux
 cp -a usr/share/xcat/install/* $RPM_BUILD_ROOT/usr/share/xcat/install/
+%else
+cp -hpR usr/share/xcat/install/* $RPM_BUILD_ROOT/usr/share/xcat/install/
+%endif
+
 cp usr/sbin/* $RPM_BUILD_ROOT/usr/sbin
 chmod 755 $RPM_BUILD_ROOT/usr/sbin/*
 
