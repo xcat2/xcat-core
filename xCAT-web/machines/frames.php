@@ -1,9 +1,8 @@
 <?php
 /* session_start(); */
-$TOPDIR = '.';
-require_once "$TOPDIR/functions.php";
-insertHeader('xCAT Rack Node List', $TOPDIR, '', '');
-insertNav('nodes', $TOPDIR);
+$TOPDIR = '..';
+require_once "$TOPDIR/lib/functions.php";
+insertHeader('xCAT Frame Node List', NULL, NULL, array('machines','frames'));
 if (isAIX()) { $aixDisabled = 'disabled'; }
 ?>
 

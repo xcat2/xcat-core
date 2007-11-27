@@ -16,20 +16,18 @@ echo "<div id=content align=center>\n";
 insertButtons(array(
 	array(
 		'Attributes',
-		'Create Like',
 		'Create Group',
 		'Ping',
 		//'Updatenode',
 		'Run Cmd',
-		'Copy Files'
+		'Copy Files',
+		'Sync Files'
 	),
 	array(
 		//'Soft Maint',
 		'HW Ctrl',
 		'RSA/MM/FSP',
-		'Install',
-		'Perf Mon',
-		//'Webmin',
+		'Deploy',
 		'Diagnose',
 		'Remove'
 	),

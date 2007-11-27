@@ -2,19 +2,17 @@
 /*------------------------------------------------------------------------------
   Produce the page for running commands on the nodes of the cluster
 ------------------------------------------------------------------------------*/
-$TOPDIR = '.';
+$TOPDIR = '..';
 $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
 setcookie("history", "date;hello.sh", $expire_time);
 
-require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
+require_once "$TOPDIR/lib/functions.php";
+require_once("$TOPDIR/lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
-require_once "$TOPDIR/functions.php";
-//require_once "$TOPDIR/nav.php";
+insertHeader('Run Commands on Nodes', array('themes/default.css'),
+			array('javascripts/prototype.js', 'javascripts/effect.js', 'javascripts/window.js'),
+			array('machines','dsh'));
 
-insertHeader('Run commands on xCAT nodes', array('themes/default.css'),
-			array('javascripts/prototype.js', 'javascripts/effect.js', 'javascripts/window.js'));
-insertNav('dsh');
-if (isAIX()) { $aixDisabled = 'disabled'; }
 ?>
 <div id=content>
 <FORM NAME="dsh_options" onsubmit="checkEmpty();">
@@ -28,9 +26,8 @@ if (isAIX()) { $aixDisabled = 'disabled'; }
   	  	<SELECT name=nodegrps id=nodegrpsCboBox class=middle>
   	  	<OPTION value="">Choose ...</OPTION>
   	  	<?php
-  	  	$xcmdr = new XCATCommandRunner();
-  	  	$nodegroups = $xcmdr->getAllGroupNames();
-		foreach ($nodegroups as $key => $group) {
+  	  	$nodegroups = getGroups();
+		foreach ($nodegroups as $group) {
 				//if($group == $currentGroup) { $selected = 'selected'; } else { $selected = ''; }
 				echo "<OPTION value='$group' $selected>$group</OPTION>\n";
 		}
@@ -38,15 +35,15 @@ if (isAIX()) { $aixDisabled = 'disabled'; }
    		</SELECT>
 
    		<?php }else{ ?>
-   		<font class="BlueBack">Run Command on node:</font>
+   		<font class="BlueBack">Run Command on Node:</font>
    		<SELECT name=nodegrps id=nodegrpsCboBox class=middle>
   	  	<OPTION value="">Choose ...</OPTION>
   	  	<?php
-  	  	$xcmdr = new XCATCommandRunner();
-  	  	$nodegroups = $xcmdr->getAllGroupNames();
-		foreach ($nodegroups as $key => $group) {
-				//if($group == $currentGroup) { $selected = 'selected'; } else { $selected = ''; }
-				echo "<OPTION value='$group' $selected>$group</OPTION>\n";
+  	  	$nodes = getNodes(NULL, NULL);
+		foreach ($nodes as $n) {
+				$nodename = $n['hostname'];
+				//if($nodename == $currentGroup) { $selected = 'selected'; } else { $selected = ''; }
+				echo "<OPTION value='$nodename' $selected>$nodename</OPTION>\n";
 		}
 		?>
    		</SELECT>
@@ -164,30 +161,5 @@ if (isAIX()) { $aixDisabled = 'disabled'; }
 <div>
 <script type="text/javascript" src="js_xcat/event.js"> </script>
 <script type="text/javascript" src="js_xcat/ui.js"> </script>
-<SCRIPT language="JavaScript">
-<!--
-// in CSM perl script this portion used to be javascript to get
-// and set cookies, now php has handled it
-
-window.onload = function(){window.document.dsh_options.runCmdButton_top.focus()};
-function _setvars(){
-	var form = window.document.dsh_options;
-	form.command.value = form.history.value;
-}
-function checkEmpty(){
-	var form = window.document.dsh_options;
-	var cmd = form.command.value;
-	if (cmd.length == 0)
-	  {
-	    alert('Enter a command before pressing the Run Cmd button.');
-	    return false;
-	  }
-	else { return true; }
-}
-
-XCATEvent.doRunCmdButton();
-
--->
-</SCRIPT>
 </BODY>
 </HTML>

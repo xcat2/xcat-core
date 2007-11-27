@@ -1,8 +1,9 @@
 #headingTable {
 	margin: 0 20px 10px 20px;
-	/* background: #FFF url(../images/top.jpg) repeat-x top; */
-	background-color: #002432;
+	/* background-color: #002432; */
 }
+
+.TopMiddle { background: #FFF url(../images/top.jpg) repeat-x top; }
 
 /*
 #top {
@@ -13,64 +14,85 @@
 	background-color: #002432;
 	height: 65px;
 }
+
+#topleft {
+	background: transparent url(../images/topl.jpg) no-repeat left;
+	height: 81px;
+}
+#topright {
+	background: transparent url(../images/topr.jpg) no-repeat right;
+	float: right;
+	height: 81px;
+	width: 18px;
+}
 */
 
 #xcatImage {
 	/* float: left; */
-	margin: 5px;
+	margin: 10px 8px 5px 0px;
+	/* height: 30px;   todo: create a smaller icon instead of scaling this on the fly */
 	}
 
-.MenuRow {
+.MenuRowBottom {   /* this is to help with the white border around the current menu items */
 	border-left: 2px solid white;
 	border-right: 2px solid white;
 }
 
-#mainNav {
+#mainNav {   /* the UL the contains the LIs of one row of menu items */
 	/* position: absolute;
 	float: left; */
 	list-style: none;
 	margin: 0px;
+	padding: 0px;
 }
 
-#mainNav li {
-	float: left;
-	font: .8em Verdana, Arial, Sans-Serif;
-	line-height: 2.5em;
+#mainNav li {      /* each menu item */
+	/* float: left; */
+	/* Start: cross-browser inline-block */
+	display: -moz-inline-stack;		/* firefox specific */
+	display: inline-block;		/* the right way (standards compliant browsers) */
+	zoom: 1;			/* internet explorer specific */
+	*display: inline;	/* internet explorer specific */
+	/* End: cross-browser inline-block */
+	line-height: 2.15em;  /*2.5em;*/
 	font-weight: bold;
 	/* border: 1px solid white; */
 }
 
-.CurrentMenuItem {
+#mainNav p  {   /* the LIs that are currently selected */
   display: block;
-  padding: 0 2em;
+  padding: 0 2em;  /*2em;*/
+  margin: 0px;
   background: #09334b;
   color: #fafafa;
 }
 
-.CurrentMenuItemTop {
+.CurrentMenuItemTop {   /* additional style for the current LI in the top menu row */
 	border-left: 2px solid white;
 	border-top: 2px solid white;
 	border-right: 2px solid white;
 	/* border-bottom: 2px solid #09334b; */
 }
 
-.MenuItemTop { border-bottom: 2px solid white; }
-.MenuItem { /* border-bottom: 2px solid #002432; */ }
+.MenuItemTop {    /* the non-current LIs in the top row */
+	/* border-top: 2px solid black; */
+	border-bottom: 2px solid white;
+	}
 
-#mainNav a {
+#mainNav a {       /* the non-current menu items */
   display: block;
-  float: left; /* IE/Mac 5.2 Fix */
-  padding: 0 2em;
+  /* float: left; IE/Mac 5.2 Fix */
+  padding: 0 2em;  /*2em;*/
   text-decoration: none;
   color: #a1a1a1;
   border-left: 1px solid #273942;
   cursor: pointer;
 }
 
-/* IE/Win 5.x Fix */
+/* IE/Win 5.x Fix
 * html #mainNav a {
   width: 1px;
-}
+} */
 
 #mainNav a:hover {
   background: #09334b;
@@ -102,21 +124,24 @@ div#content {
 .ContentForm { margin: 10px 2px 15px 2px; }
 
 BODY {
-	font-size : 10pt;
-	font-family : Arial;
 	margin: 0;
 	padding: 10px;
-	background: url(../images/background.gif) repeat-y;
-	/* background: black; */
+	font: .8em Verdana, Arial, Sans-Serif;
+	/*
+	font-size : 10pt;
+	font-family : Arial;
 	font: normal 12px Tahoma, Verdana, Arial, Helvetica, Sans-Serif;
 	line-height: 1.6em;
-	color: white;  /* #333; */
+	background: url(../images/background.gif) repeat-y;
+	background: black;
+	color: white;  #333;
+	*/
 }
 
 INPUT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 SELECT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
-TABLE {font-size : 10pt; font-family : Arial;}
+/* TABLE {font-size : 10pt; font-family : Arial;} */
 /* pre { padding: 0px; margin: 0px; } */
 
 .TableHeader { color: black; background-color : #fffdb0; font-weight : bold; font-size : 9pt; white-space: nowrap; }
@@ -148,6 +173,8 @@ TABLE {font-size : 10pt; font-family : Arial;}
 .NoPadding { padding: 0px; margin: 0px; border: 0px none white; }
 .Hidden { visibility : hidden ;}
 .Txtfld {font-size : 8pt; font-family : sans-serif; font-weight : bold;}
+.NotDone { font-weight: bold; font-size: 11pt; color: red; text-align: center; margin: 5px; }
+
 
 /*
 .but {

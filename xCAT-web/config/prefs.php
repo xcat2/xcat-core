@@ -1,13 +1,11 @@
 <?php
-/*------------------------------------------------------------------------------
-  Include files, insert header and menu bar
-------------------------------------------------------------------------------*/
 
-require_once "$TOPDIR/functions.php";	//NOTE: it is essential to include this file before include top.php and nav.php
+// Allow the user to set preferences for this web interface
 
-insertHeader('Preferences', NULL, NULL);
-insertNav('prefs');
-if (isAIX()) { $aixDisabled = 'disabled'; }
+$TOPDIR = '..';
+require_once "$TOPDIR/lib/functions.php";
+
+insertHeader('Preferences', NULL, NULL, array('config','prefs'));
 ?>
 <FORM NAME="prefs">
 <TABLE class="inner_table" cellspacing=0 cellpadding=5>
@@ -30,7 +28,6 @@ if (isAIX()) { $aixDisabled = 'disabled'; }
 </TD>
 </TR>
 </TABLE>
-<script type="text/javascript" src="function.js"> </script>
 <SCRIPT language="JavaScript">
 <!--
 

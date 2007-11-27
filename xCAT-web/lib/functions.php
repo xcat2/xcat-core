@@ -60,16 +60,17 @@ if ($javascripts) {
 echo "</head><body>\n";
 echo <<<EOS
 <table id=headingTable border=0 cellspacing=0 cellpadding=0>
-<tr>
-    <td><img id=xcatImage src='$TOPDIR/images/xCAT_icon.gif'></td>
-    <td width='100%'>
+<tr valign=top>
+    <td><img src='$TOPDIR/images/topl.jpg'></td>
+    <td class=TopMiddle><img id=xcatImage src='$TOPDIR/images/xCAT_icon-l.gif' height=40px></td>
+    <td class=TopMiddle width='100%'>
 
 EOS;
 //echo "<div id=top><img id=xcatImage src='$TOPDIR/images/xCAT_icon.gif'><div id=menuDiv>\n";
 
 insertMenus($currents);
 
-echo "</td></tr></table>\n";
+echo "</td><td><img src='$TOPDIR/images/topr.jpg'></td></tr></table>\n";
 //echo "</div></div>\n";     // end the top div
 }  // end insertHeader
 
@@ -81,19 +82,54 @@ function insertMenus($currents) {
 	echo "<table border=0 cellspacing=0 cellpadding=0>\n";
 
 	insertMenuRow($currents[0], 1, array(
-		'machines' => array('Machines', "$TOPDIR/machines/frames.php"),
-		'jobs' => array('Jobs', "$TOPDIR/jobs/jobs.php"),
-		'deploy' => array('Deploy', "$TOPDIR/deploy/images.php"),
+		'machines' => array('Machines', "$TOPDIR/machines/groups.php"),
+		'jobs' => array('Jobs', "$TOPDIR/jobs/overview.php"),
+		'deploy' => array('Deploy', "$TOPDIR/deploy/osimages.php"),
 		'config' => array('Configuration', "$TOPDIR/config/site.php"),
 		'support' => array('Support', "$TOPDIR/support/diagnose.php")
 	));
 	if ($currents[0] == 'machines') {
 		insertMenuRow($currents[1], 0, array(
-			'lab' => array('Lab Floor', "$TOPDIR/views/lab.php"),
-			'frames' => array('Frames', "$TOPDIR/views/frames.php"),
-			'groups' => array('Groups', "$TOPDIR/views/groups.php"),
-			'nodes' => array('Nodes', "$TOPDIR/views/nodes.php"),
-			'layout' => array('Layout', "$TOPDIR/views/layout.php")
+			'lab' => array('Lab Floor', "$TOPDIR/machines/lab.php"),
+			'frames' => array('Frames', "$TOPDIR/machines/frames.php"),
+			'groups' => array('Groups', "$TOPDIR/machines/groups.php"),
+			'nodes' => array('Nodes', "$TOPDIR/machines/nodes.php"),
+			'layout' => array('Layout', "$TOPDIR/machines/layout.php")
+		));
+	}
+	elseif ($currents[0] == 'jobs') {
+		insertMenuRow($currents[1], 0, array(
+			'overview' => array('Overview', "$TOPDIR/jobs/overview.php"),
+			//todo:  Vallard fill in rest
+		));
+	}
+	elseif ($currents[0] == 'deploy') {
+		insertMenuRow($currents[1], 0, array(
+			'osimages' => array('OS Images', "$TOPDIR/deploy/osimages.php"),
+			'prepare' => array('Prepare', "$TOPDIR/deploy/prepare.php"),
+			'deploy' => array('Deploy', "$TOPDIR/deploy/deploy.php"),
+			'monitor' => array('Monitor', "$TOPDIR/deploy/monitor.php"),
+		));
+	}
+	elseif ($currents[0] == 'config') {
+		insertMenuRow($currents[1], 0, array(
+			'prefs' => array('Preferences', "$TOPDIR/config/prefs.php"),
+			'site' => array('Cluster Settings', "$TOPDIR/config/site.php"),
+			'mgmtnode' => array('Mgmt Node', "$TOPDIR/config/mgmtnode.php"),
+			'monitor' => array('Monitor Setup', "$TOPDIR/config/monitor.php"),
+			'eventlog' => array('Event Log', "$TOPDIR/config/eventlog.php"),
+		));
+	}
+	elseif ($currents[0] == 'support') {
+		insertMenuRow($currents[1], 0, array(
+			'diagnose' => array('Diagnose', "$TOPDIR/support/diagnose.php"),
+			'update' => array('Update', "$TOPDIR/support/update.php"),
+			'howtos' => array('HowTos', "$TOPDIR/support/howtos.php"),
+			'manpages' => array('Man Pages', "$TOPDIR/support/manpages.php"),
+			'maillist' => array('Mail List', "http://xcat.org/mailman/listinfo/xcat-user"),
+			'wiki' => array('Wiki', "http://xcat.wiki.sourceforge.net/"),
+			'suggest' => array('Suggestions', "$TOPDIR/support/suggest.php"),
+			'about' => array('About', "$TOPDIR/support/about.php"),
 		));
 	}
 	echo "</table>\n";
@@ -104,9 +140,9 @@ function insertMenus($currents) {
 function insertMenuRow($current, $isTop, $items) {
 	global $TOPDIR;
 	//$img = "$TOPDIR/images/h3bg_new.gif";
-	$menuRowClass = $isTop ? '' : 'class=MenuRow';
-	$menuItemClass = $isTop ? 'class=MenuItemTop' : 'class=MenuItem';
-	$currentClass = $isTop ? 'CurrentMenuItemTop' : '';
+	$menuRowClass = $isTop ? '' : 'class=MenuRowBottom';
+	$menuItemClass = $isTop ? 'class=MenuItemTop' : '';
+	$currentClass = $isTop ? 'class=CurrentMenuItemTop' : '';
 
 	//echo "<TABLE class=MenuTable id=mainNav cellpadding=0 cellspacing=0 border=0><tr>\n";
 	//echo "<div class=$menuRowClass><ul id=mainNav>\n";
@@ -115,10 +151,10 @@ function insertMenuRow($current, $isTop, $items) {
 	foreach ($items as $key => $link) {
 		if ($key == $current){
 			//echo "<TD><a id=$key href='$link[1]'>$link[0]</a></TD>\n";
-			echo "<li class='CurrentMenuItem $currentClass'>$link[0]</li>\n";
+			echo "<li><p $currentClass>$link[0]</p></li>";
 		} else {
 			//echo "<TD><a class=NavItem id=$key href='$link[1]'>$link[0]</a></TD>\n";
-			echo "<li><a $menuItemClass id=$key href='$link[1]'>$link[0]</a></li>\n";
+			echo "<li><a $menuItemClass id=$key href='$link[1]'>$link[0]</a></li>";
 		}
 	}
 
@@ -395,9 +431,13 @@ function getNodes($group, $noderange) { //------------------------------------
 }
 
 
-// Returns the node groups defined in the cluster.  Not finished.
+// Returns the node groups defined in the cluster.
 function getGroups() {
-	return array('AllNodes','group1','group2');
+	$groups = array();
+	$output = array();
+	runcmd("/bin/sudo listattr", 2, $output);
+	foreach ($output as $grp) { $groups[] = $grp; }
+	return $groups;
 }
 
 
@@ -453,5 +493,7 @@ function insertButtons ($buttonsets) { //------------------------------------
 	}
 }
 
+
+function insertNotDoneYet() { echo "<p class=NotDone>This page is not done yet.</p>\n"; }
 
 ?>
