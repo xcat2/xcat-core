@@ -51,7 +51,7 @@ chmod 644 $RPM_BUILD_ROOT/usr/share/xcat/ca/*
 cp usr/share/xcat/scripts/* $RPM_BUILD_ROOT/usr/share/xcat/scripts
 cp usr/share/xcat/cons/* $RPM_BUILD_ROOT/usr/share/xcat/cons
 chmod 755 $RPM_BUILD_ROOT/usr/share/xcat/cons/*
-ln -sf $RPM_BUILD_ROOT/usr/share/xcat/cons/hmc $RPM_BUILD_ROOT/usr/share/xcat/cons/ivm
+ln -sf /usr/share/xcat/cons/hmc $RPM_BUILD_ROOT/usr/share/xcat/cons/ivm
 
 cp usr/lib/xcat/plugins/* $RPM_BUILD_ROOT/usr/lib/xcat/plugins
 chmod 644 $RPM_BUILD_ROOT/usr/lib/xcat/plugins/*
