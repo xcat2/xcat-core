@@ -70,10 +70,10 @@ ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/sbin/makenetworks
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/sbin/copycds
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/bin/regnotif
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/bin/unregnotif
-ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/xdefmk
-ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/xdefch
-ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/xdefls
-ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/xdefrm
+ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/mkdef
+ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/chdef
+ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/lsdef
+ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/rmdef
 ln -sf /usr/bin/xdsh $RPM_BUILD_ROOT/usr/bin/xdcp
 
 %clean
