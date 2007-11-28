@@ -693,7 +693,6 @@ sub setAttribs
     #notify the interested parties
     if ($notif == 1)
     {
-
         #create new data ref
         my %new_notif_data = %keypairs;
         foreach (keys %$elems)
@@ -705,6 +704,106 @@ sub setAttribs
     }
     return 0;
 }
+
+#--------------------------------------------------------------------------
+
+=head3 setAttribsWhere 
+
+    Description:
+       This function sets the attributes for the rows selected by the where clause.
+    Arguments:
+         Where clause.
+	 Hash reference of column-value pairs to set
+    Returns:
+         None    
+    Globals:        
+    Error:        
+    Example:
+       my $tab = xCAT::Table->new( 'ppc', -create=>1, -autocommit=>1 );
+	   $updates{'type'}    = lc($type);
+	   $updates{'id'}      = $lparid;
+	   $updates{'hcp'}     = $server;
+	   $updates{'profile'} = $prof;
+	   $updates{'frame'}   = $frame;
+	   $updates{'mtms'}    = "$model*$serial";
+	   $tab->setAttribs( "node in ('node1', 'node2', 'node3')", \%updates );
+    Comments:
+        none
+=cut
+#--------------------------------------------------------------------------------
+sub setAttribsWhere
+{
+    #Takes three arguments:
+    #-Where clause
+    #-Hash reference of column-value pairs to set
+    my $self     = shift;
+    my $where_clause = shift;
+    my $elems = shift;
+    my $cols  = "";
+    my @bind  = ();
+    my $action;
+    my @notif_data;
+    my $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE " . $where_clause;
+    my @qargs   = ();
+    my $query = $self->{dbh}->prepare($qstring);
+    $query->execute(@qargs);
+
+    #get the first row
+    my $data = $query->fetchrow_arrayref();
+    if (defined $data){  $action = "u";}
+    else { return (0, "no rows selected."); }
+
+    #prepare the notification data
+    my $notif =
+      xCAT::NotifHandler->needToNotify($self->{tabname}, $action);
+    if ($notif == 1)
+    {
+      #put the column names at the very front
+      push(@notif_data, $query->{NAME});
+
+      #copy the data out because fetchall_arrayref overrides the data.
+      my @first_row = @$data;
+      push(@notif_data, \@first_row);
+      #get the rest of the rows
+      my $temp_data = $query->fetchall_arrayref();
+      foreach (@$temp_data) {
+        push(@notif_data, $_);
+      }
+    }
+
+    $query->finish();
+
+    #update the rows
+    for my $col (keys %$elems)
+    {
+      $cols = $cols . $col . " = ?,";
+      push @bind, (($$elems{$col} =~ /NULL/) ? undef: $$elems{$col});
+    }
+    chop($cols);
+    my $cmd = "UPDATE " . $self->{tabname} . " set $cols where " . $where_clause;
+    my $sth = $self->{dbh}->prepare($cmd);
+    my $err = $sth->execute(@bind);
+    if (not defined($err))
+    {
+      return (undef, $sth->errstr);
+    }
+
+    #notify the interested parties
+    if ($notif == 1)
+    {
+      #create new data ref
+      my %new_notif_data = ();
+      foreach (keys %$elems)
+      {
+        $new_notif_data{$_} = $$elems{$_};
+      }
+      xCAT::NotifHandler->notify($action, $self->{tabname},
+                                 \@notif_data, \%new_notif_data);
+    }
+    return 0;
+}
+
+
 
 #--------------------------------------------------------------------------
 
@@ -1249,7 +1348,7 @@ sub delEntries
         
     Example:
         $table = xCAT::Table->new('passwd');
-		$tmp=$table->getAttribs({'key'=>'ipmi'},['username','password'];
+		@tmp=$table->getAttribs({'key'=>'ipmi'},('username','password');
     Comments:
         none
 

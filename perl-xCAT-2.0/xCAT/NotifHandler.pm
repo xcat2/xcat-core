@@ -11,7 +11,8 @@ use File::Basename qw(fileparse);
 #                }
 #   }
 %notif;
-$masterpid=$$;
+$masterpid;
+
 1;
 
 #-------------------------------------------------------------------------------
@@ -42,11 +43,12 @@ sub setup
     $masterpid=shift;
   }
   refreshNotification();
-  $SIG{USR1}=\&handleNotifSigal;
+  
+  $SIG{USR1}=\&handleNotifSignal;
 }
 
 #--------------------------------------------------------------------------------
-=head3  handleNotifSigal
+=head3  handleNotifSignal
       It is called when the signal is received. It then update the cache with the
       latest data in the notification table.
     Arguments:
@@ -55,9 +57,9 @@ sub setup
       none
 =cut
 #-------------------------------------------------------------------------------
-sub handleNotifSigal {
+sub handleNotifSignal {
    refreshNotification();
-   $SIG{USR1}=\&handleNotifSigal;
+   $SIG{USR1}=\&handleNotifSignal;
 }
 
 #--------------------------------------------------------------------------------
@@ -70,7 +72,9 @@ sub handleNotifSigal {
 =cut
 #-------------------------------------------------------------------------------
 sub sendNotifSignal {
-  kill('USR1', $masterpid);
+  if ($masterpid) {
+    kill('USR1', $masterpid);
+  }
 }
 
 

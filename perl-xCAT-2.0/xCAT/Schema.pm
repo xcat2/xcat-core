@@ -58,7 +58,7 @@ package xCAT::Schema;
     keys => [qw(node)],
   },
   noderes => {
-    cols => [qw(node servicenode netboot tftpserver nfsserver kernel initrd kcmdline nfsdir serialport installnic primarynic xcatmaster current_osimage next_osimage comments disable)],
+    cols => [qw(node servicenode netboot tftpserver nfsserver monserver kernel initrd kcmdline nfsdir serialport installnic primarynic xcatmaster current_osimage next_osimage comments disable)],
     keys => [qw(node)],
   },
   networks => {
@@ -78,7 +78,7 @@ package xCAT::Schema;
     keys => [qw(node switch port)]
   },
   nodelist => {
-    cols => [qw(node nodetype groups comments disable)],
+    cols => [qw(node nodetype groups status comments disable)],
     keys => [qw(node)],
   },
   site => {
@@ -105,6 +105,11 @@ package xCAT::Schema;
     cols => [qw(filename tables tableops comments disable)],
     keys => [qw(filename)],
     required => [qw(tables filename)]
+  },
+  monitoring => {
+    cols => [qw(pname nodestatmon comments disable)],
+    keys => [qw(pname)],
+    required => [qw(pname)]
   }
   );
 
