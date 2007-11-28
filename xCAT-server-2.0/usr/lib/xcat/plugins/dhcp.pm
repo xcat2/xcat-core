@@ -3,6 +3,9 @@ package xCAT_plugin::dhcp;
 use xCAT::Table;
 use Data::Dumper;
 use MIME::Base64;
+use Getopt::Long;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
 use Socket;
 use Sys::Syslog;
 use IPC::Open2;
@@ -11,6 +14,8 @@ my @dhcpconf; #Hold DHCP config file contents to be written back.
 my @nrn; # To hold output of netstat -rn to be consulted throughout process
 my $domain;
 my $omshell;
+my $statements; #Hold custom statements to be slipped into host declarations
+my $callback;
 
 
 sub handled_commands {
@@ -83,6 +88,9 @@ sub addnode {
   print $omshell "set hardware-address = ".$ent->{mac}."\n";
   print $omshell "set hardware-type = 1\n";
   print $omshell "set ip-address = $ip\n";
+  if ($statements) {
+      print $omshell "set statements = \"$statements\"\n";
+   }
   print $omshell "create\n";
   unless (grep /#definition for host $node/,@dhcpconf) {
     push @dhcpconf,"#definition for host $node can be found in the dhcpd.leases file\n";
@@ -90,7 +98,7 @@ sub addnode {
 }
 sub process_request {
   my $req = shift;
-  my $callback = shift;
+  $callback = shift;
   my $sitetab = xCAT::Table->new('site');
   my %activenics;
   my $querynics=1;
@@ -156,6 +164,14 @@ sub process_request {
     addnic($_);
   }
   if ($req->{node}) {
+    @ARGV = @{$req->{arg}};
+    $statements="";
+    GetOptions(
+       's|statements=s' => \$statements
+    );
+
+        
+        
     my $passtab = xCAT::Table->new('passwd');
     my $ent;
     ($ent) = $passtab->getAttribs({key=>"omapi"},qw(username password));
