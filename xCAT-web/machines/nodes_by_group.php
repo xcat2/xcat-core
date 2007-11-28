@@ -1,6 +1,7 @@
 <?php
-require_once("lib/GroupNodeTable.class.php");
-require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
+$TOPDIR = '..';
+require_once("$TOPDIR/lib/GroupNodeTable.class.php");
+require_once("$TOPDIR/lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
 $nodeGroupName = @$_REQUEST["nodeGroupName"];
 

@@ -89,12 +89,12 @@ XCATui.toggleSection = function(nodeGroupName) {
 	if(!tableObj.style.display || tableObj.style.display == 'inline') {
 		 // the inner table is currently visible
 		tableObj.style.display = 'none';
-		imageTag.src = "./images/plus-sign.gif";
+		imageTag.src = "../images/plus-sign.gif";
 		expandSpanObj.title = "Click to expand section";
 	} else {
 		// the inner table is currently invisible
 		tableObj.style.display = 'inline';
-		imageTag.src = "./images/minus-sign.gif";
+		imageTag.src = "../images/minus-sign.gif";
 		expandSpanObj.title = "Click to collapse section";
 	}
 
@@ -109,7 +109,7 @@ XCATui.getFailureSpanHTML = function(nodeGroupName) {
 
 XCATui.getLoadingSpanHTML = function(nodeGroupName) {
 	var spanId = "nodegroup_" + nodeGroupName + "_loading";
-	var html = '<span id="' + spanId + '" style="padding-left: 0.5em; display: none;"><img alt="Loading ..." src="./images/ajax-loader.gif" />Loading ...</span>';
+	var html = '<span id="' + spanId + '" style="padding-left: 0.5em; display: none;"><img alt="Loading ..." src="../images/ajax-loader.gif" />Loading ...</span>';
 	return html;
 }
 
@@ -150,24 +150,24 @@ XCATui.updateNodeList = function(nodeGroupName) {
 	var imageId = tableId + '-im';
 	var expandSpanId = "img_gr_" + nodeGroupName;
 
-	var tableObj = $(tableId);
+	var tableObj = document.getElementById(tableId);   //$(tableId);
 
 	if(null == tableObj) {
 		alert('Error: section ' + tableId + ' not found.');
 		return false;
 	}
 
-	var imageTag = $(imageId);
-	var expandSpanObj = $(expandSpanId);
+	var imageTag = document.getElementById(imageId);   //$(imageId);
+	var expandSpanObj = document.getElementById(expandSpanId);   //$(expandSpanId);
 
 	if(!tableObj.style.display || tableObj.style.display == 'inline') {// currently visible
 
 		tableObj.style.display = 'none';
-		imageTag.src = "./images/plus-sign.gif";
+		imageTag.src = "../images/plus-sign.gif";
 		expandSpanObj.title = "Click to expand section";
 
 	} else { //currently invisible
-		imageTag.src = "./images/minus-sign.gif";
+		imageTag.src = "../images/minus-sign.gif";
 		expandSpanObj.title = "Click to collapse section";
 
 		var target = "div_" + nodeGroupName;
@@ -178,6 +178,7 @@ XCATui.updateNodeList = function(nodeGroupName) {
 
 		//var URL = "webservice.php?method=getXCATNodeRows&nodeGroupName=" + encodeURIComponent(nodeGroupName);
 
+		alert('About to call Ajax.Updater');
 		new Ajax.Updater(target, URL, {
 			method: 'post', parameters: pars,
 			onCreate: function() { XCATui.updateNodeListLoading(nodeGroupName) }, // Needs Prototype 1.5.1
@@ -187,6 +188,7 @@ XCATui.updateNodeList = function(nodeGroupName) {
 
 		// the inner table is currently invisible
 		tableObj.style.display = 'inline';
+		alert('Back from Ajax.Updater');
 
 	}
 

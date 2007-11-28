@@ -2,7 +2,8 @@
 /**
  * Produces HTML for use in the interface.
  */
-//require_once("config.php");
+if (!$TOPDIR) { $TOPDIR = '..'; }
+require_once "$TOPDIR/lib/functions.php";
 
 class GroupNodeTable {
 

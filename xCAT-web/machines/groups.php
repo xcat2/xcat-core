@@ -9,7 +9,7 @@ if (isAIX()) { $aixDisabled = 'disabled'; }
 require_once("$TOPDIR/lib/GroupNodeTable.class.php");
 require_once("$TOPDIR/lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
-insertHeader('Groups', array('groups.css'), NULL, array('machines','groups'));
+insertHeader('Groups', array('groups.css'), array("$TOPDIR/js_xcat/ui.js","$TOPDIR/js/prototype.js"), array('machines','groups'));
 
 echo "<div id=content align=center>\n";
 
