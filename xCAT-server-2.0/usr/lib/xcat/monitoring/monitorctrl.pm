@@ -1,0 +1,946 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+package xCAT_monitoring::monitorctrl;
+
+use Sys::Hostname;
+use xCAT::NodeRange;
+use xCAT::Table;
+use xCAT::MsgUtils;
+use xCAT::Utils;
+use xCAT::Client;
+require("/usr/lib/xcat/plugins/notification.pm");
+
+#the list store the names of the monitoring products and the file name and module names.
+#the names are stored in the "pname" column of the monitoring table. 
+#the format is: (productname=>[filename, modulename], ...)
+%PRODUCT_LIST;
+
+#stores the module name and the method that is used for the node status monitoring
+#for xCAT.
+$NODESTAT_MON_NAME;
+$masterpid;
+
+1;
+
+#-------------------------------------------------------------------------------
+=head1  xCAT_monitoring:monitorctrl
+=head2    Package Description
+  xCAT monitoring control  module. This module is the center for the xCAT
+  monitoring support. It interacts with xctad and the monitoring plug-in modules
+  for the 3rd party monitoring products. 
+=cut
+#-------------------------------------------------------------------------------
+
+
+
+
+#--------------------------------------------------------------------------------
+=head3    start
+      It is called by the xcatd when xcatd gets started.
+      It gets a list of monitoring product names from the "monitoring" 
+      table and caches the monitoring plug-in module names
+      with this info. It gets a list of nodes in the xcat cluster and,
+      in tern, calls the start() function of all the monitoring
+      plug-in modules. It registers for nodelist
+      tble changes. It queries each monitoring plug-in modules
+      to see whether they can feed node status info to xcat or not.
+      If some of them can, this function will set up the necessary
+      timers (for pull mode) or callback mechanism (for callback mode)
+      in order to get the node status from them.
+    Arguments:
+        none
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub start {
+  #print "\nmonitorctrl::start called\n";
+  $masterpid=shift;
+  if ($masterpid =~ /xCAT_monitoring::monitorctrl/) {
+    $masterpid=shift;
+  }
+  
+  #print "masterpid=$masterpid\n";
+  # get the product list from the monitoring table
+  refreshProductList();
+
+  #setup signal 
+  $SIG{USR2}=\&handleMonSignal;
+
+  #start monitoring for all the registered productes in the minitoring table.
+  #better span a process so that it will not block the xcatd.
+  my $pid;
+  if ($pid=fork()) {#parent process 
+    #print "parent done\n";
+    return 0;
+  }
+  elsif (defined($pid)) { #child process
+    my %ret = startMonitoring(());
+    if ($NODESTAT_MON_NAME) {
+      my @ret2 = startNodeStatusMonitoring($NODESTAT_MON_NAME);
+      $ret{"Node status monitoring with $NODESTAT_MON_NAME"}=\@ret2;
+    }
+    # TODO: somehow, we should log the return status here
+    if (%ret) {
+      foreach(keys(%ret)) {
+        my $retstat=$ret{$_}; 
+        print "$_: @$retstat\n";
+      }
+    }
+
+    #register for nodelist table changes if not already registered
+    my $tab = xCAT::Table->new('notification');
+    my $regged=0;
+    if ($tab) {
+      (my $ref) = $tab->getAttribs({filename => qw(/usr/lib/xcat/monitoring/monitorctrl.pm)}, tables);
+      if ($ref and $ref->{tables}) {
+         $regged=1;
+      }
+      $tab->close();
+    }
+
+    if (!$regged) {
+      xCAT_plugin::notification::regNotification([qw(/usr/lib/xcat/monitoring/monitorctrl.pm nodelist,monitoring -o a,u,d)]);
+    }
+
+    #print "child done\n";
+    exit 0;
+  }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3  handleSignal
+      It is called the signal is received. It then update the cache with the
+      latest data in the monitoring table and start/stop the products for monitoring
+      accordingly.
+    Arguments:
+      none.
+    Returns:
+      none
+=cut
+#-------------------------------------------------------------------------------
+sub handleMonSignal {
+  #print "handleMonSignal called masterpid=$masterpid\n";
+  #save the old cache values
+  my @old_products=keys(%PRODUCT_LIST);
+  my $old_nodestatmon=$NODESTAT_MON_NAME;
+  
+  #get new cache values, it also loads the newly added modules
+  refreshProductList();
+
+  #check what have changed 
+  my %summary;
+  foreach (@old_products) { $summary{$_}=-1;}
+  foreach (keys %PRODUCT_LIST) { $summary{$_}++;}
+
+  #start/stop products accordingly
+  my %ret=();
+  foreach (keys %summary) {
+    if ($summary{$_}==-1) { #product deleted
+      %ret=stopMonitoring(($_));
+    } elsif ($summary{$_}==1) { #product added
+      my %ret1=startMonitoring(($_));
+      %ret=(%ret, %ret1);
+    }
+  }
+
+  #handle node status monitoring changes
+  if ($old_nodestatmon ne $NODESTAT_MON_NAME) {
+    if ($old_nodestatmon) {
+      my @ret3=stopNodeStatusMonitoring($old_nodestatmon);
+      $ret{"Stop node status monitoring with $old_nodestatmon"}=\@ret3;
+    }
+    if ($NODESTAT_MON_NAME) {
+      my @ret4=startNodeStatusMonitoring($NODESTAT_MON_NAME);
+      $ret{"Start node status monitoring with $NODESTAT_MON_NAME"}=\@ret4;
+    }
+  }
+
+  #setup the signal again  
+  $SIG{USR2}=\&handleMonSignal;
+
+  #TODO: log status
+  foreach(keys(%ret)) {
+    my $retstat=$ret{$_}; 
+    print "$_: @$retstat\n";
+  } 
+}
+
+
+#-------------------------------------------------------------------------------
+
+=head3  sendMonSignal
+      It is called by any module that has made changes to the monitoring table.
+    Arguments:
+      none.
+    Returns:
+      none
+=cut
+#-------------------------------------------------------------------------------
+sub sendMonSignal {
+  #print "sendMonSignal masterpid=$masterpid\n";
+  if ($masterpid) {
+    kill('USR2', $masterpid);
+  } else {
+    sub handle_response {return;}
+    my $cmdref;
+    $cmdref->{command}->[0]="updatemon";
+    xCAT::Client::submit_request($cmdref,\&handle_response);
+  }
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3    stop
+      It is called by the xcatd when xcatd stops. It 
+      in tern calls the stop() function of each monitoring
+      plug-in modules, stops all the timers for pulling the
+      node status and unregisters for the nodelist  
+      tables changes. 
+    Arguments:
+        none
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub stop {
+  #print "\nmonitorctrl::stop called\n";
+
+  %ret=stopMonitoring(());
+  if ($NODESTAT_MON_NAME) {
+    my @ret2 = stopNodeStatusMonitoring($NODESTAT_MON_NAME);
+    $ret{"Stop node status monitoring with $NODESTAT_MON_NAME"}=\@ret2;
+  }
+
+  xCAT_plugin::notification::unregNotification([qw(/usr/lib/xcat/monitoring/monitorctrl.pm)]);
+
+  if (%ret) {
+    foreach(keys(%ret)) {
+      $retstat=$ret{$_};
+      print "$_: @$retstat\n";
+    }
+  }
+
+  return 0;
+}
+
+#--------------------------------------------------------------------------------
+=head3    startMonitoring
+      It takes a list of monitoring product short names as an input and start
+      the monitoring process for them.
+    Arguments:
+       product_names -- an array of product names to be started. If non is specified, 
+         all the products registered in the monitoring table, under the "monitoring" key,
+         will be used.  
+    Returns:
+        A hash table keyed by the product names. The value is an array pointer 
+        pointer to a return code and  message pair. For example:
+        {RMC=>[0, ""], Ganglia=>[1, "something is wrong"]}
+
+=cut
+#--------------------------------------------------------------------------------
+sub startMonitoring {
+  @product_names=@_;
+  #print "\nmonitorctrl::startMonitoring called with @product_names\n";
+
+  if (@product_names == 0) {
+     @product_names=keys(%PRODUCT_LIST);    
+  }
+
+  my $monservers;
+  if (@product_names > 0) {
+    #get a list of monitoring servers and the nodes they are responsible for monitoring. 
+    $monservers=getMonHierarchy();
+    #foreach (keys(%$monservers)) {
+    #  print "  monitoring server: $_\n";
+    #  my $mon_nodes=$monservers->{$_};
+    #  print "    nodes: @$mon_nodes\n";
+    #}
+  }
+
+  my %ret=();
+  foreach(@product_names) {
+    my $aRef=$PRODUCT_LIST{$_};
+    if ($aRef) {
+      my $module_name=$aRef->[1];
+
+      #initialize and start monitoring
+      my @ret1 = ${$module_name."::"}{start}->($monservers);
+      $ret{$_}=\@ret1;
+    } else {
+       $ret{$_}=[1, "Monitoring plug-in module for $_ cannot be found."];
+    }
+  }
+
+
+  return %ret;
+}
+
+
+#--------------------------------------------------------------------------------
+=head3    startNodeStatusMonitoring
+      It starts the given product for node status monitoring. 
+      If no product is specified, use the one in the monitoring table.
+    Arguments:
+       product_name -- a product name to be started for node status monitoring.
+        If none is specified, use the one in the monitoring table that has the
+        "nodestatmon" column set to be "1", or "Yes".
+    Returns:
+        (return_code, error_message)
+
+=cut
+#--------------------------------------------------------------------------------
+sub startNodeStatusMonitoring {
+  my $pname=shift;
+  if ($pname =~ /xCAT_plugin::monitorctrl/) {
+    $pname=shift;
+  }
+
+  if (!$pname) {$pname=$NODESTAT_MON_NAME;}
+
+  if ($pname) {
+    my $aRef=$PRODUCT_LIST{$pname};
+    if ($aRef) {
+      my $module_name=$aRef->[1];
+      my $method = ${$module_name."::"}{supportNodeStatusMon}->();
+      # return value 0 means not support. 1 means yes. 
+      if ($method > 0) {
+        #start nodes tatus monitoring
+        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->(getMonHierarchy()); 
+        return @ret2;
+      }         
+      else {
+	return (1, "$pname does not support node status monitoring.");
+      }
+    }
+    else {
+      return (1, "The monitoring plug-in module for $pname cannot be found.");
+    }
+  }
+  else {
+    return (0, "No product is specified for node status monitoring.");
+  }
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3    stopMonitoring
+      It takes a list of monitoring product short names as an input and stop
+      the monitoring process for them.
+    Arguments:
+       product_names -- an array of product names to be stopped. If non is specified,
+         all the products registered in the monitoring table, under "monitoring" key,
+         will be stopped.
+    Returns:
+        A hash table keyed by the product names. The value is ann array pointer
+        pointer to a return code and  message pair. For example:
+        {RMC=>[0, ""], Ganglia=>[1, "something is wrong"]}
+
+=cut
+#--------------------------------------------------------------------------------
+sub stopMonitoring {
+  @product_names=@_;
+  #print "\nmonitorctrl::stopMonitoring called with @product_names\n";
+
+  if (@product_names == 0) {
+     @product_names=keys(%PRODUCT_LIST);
+  }
+
+  my %ret=();
+
+  #stop each product from monitoring the xcat cluster
+  my $count=0;
+  foreach(@product_names) {
+    my $aRef=$PRODUCT_LIST{$_};
+
+    if ($aRef) {
+      $module_name=$aRef->[1];
+    }
+    else {
+      my $file_name="/usr/lib/xcat/monitoring/" . lc($_) . "mon.pm";
+      $module_name="xCAT_monitoring::" . lc($_) . "mon";
+      #load the module in memory
+      require $file_name;      
+    }      
+    #stop monitoring
+    my @ret2 = ${$module_name."::"}{stop}->();
+    $ret{$_}=\@ret2;
+  }
+
+  return %ret;
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3    stopNodeStatusMonitoring
+      It stops the given product for node status monitoring. 
+      If no product is specified, use the one in the monitoring table.
+    Arguments:
+       product_name -- a product name to be stoped for node status monitoring.
+        If none is specified, use the one in the monitoring table that has the
+        "nodestatmon" column set to be "1", or "Yes".
+    Returns:
+        (return_code, error_message)
+
+=cut
+#--------------------------------------------------------------------------------
+sub stopNodeStatusMonitoring {
+  my $pname=shift;
+  if ($pname =~ /xCAT_plugin::monitorctrl/) {
+    $pname=shift;
+  }
+
+  if (!$pname) {$pname=$NODESTAT_MON_NAME;}
+
+  if ($pname) {
+    my $module_name;
+    if (exists($PRODUCT_LIST{$pname})) {
+      my $aRef = $PRODUCT_LIST{$pname};
+      $module_name=$aRef->[1];
+    } else {
+      my $file_name="/usr/lib/xcat/monitoring/" . lc($pname) . "mon.pm";
+      $module_name="xCAT_monitoring::" . lc($pname) . "mon";
+      #load the module in memory
+      require $file_name;      
+    }
+    
+    my @ret2 = ${$module_name."::"}{stopNodeStatusMon}->(); 
+    return @ret2;
+  }
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3    processTableChanges
+      It is called by the NotifHander module
+      when the nodelist or the monitoring tables get changed. If a
+      node is added or removed from the nodelist table, this
+      function will inform all the monitoring plug-in modules. If a product
+      is added or removed from the monitoring table. this function will start
+      or stop product for monitoing the xCAT cluster.  
+    Arguments:
+      action - table action. It can be d for rows deleted, a for rows added
+                    or u for rows updated.
+      tablename - string. The name of the DB table whose data has been changed.
+      old_data - an array reference of the old row data that has been changed.
+           The first element is an array reference that contains the column names.
+           The rest of the elelments are also array references each contains
+           attribute values of a row.
+           It is set when the action is u or d.
+      new_data - a hash refernce of new row data; only changed values are present
+           in the hash.  It is keyed by column names.
+           It is set when the action is u or a.
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processTableChanges {
+  my $action=shift;
+  if ($action =~ /xCAT_plugin::monitorctrl/) {
+    $action=shift;
+  }
+  my $tablename=shift;
+  my $old_data=shift;
+  my $new_data=shift;
+
+  if ($tablename eq "nodelist") {
+    processNodelistTableChanges($action, $tablename, $old_data, $new_data);
+  } else {
+    processMonitoringTableChanges($action, $tablename, $old_data, $new_data);
+  }
+}
+
+ 
+#--------------------------------------------------------------------------------
+=head3    processNodelistTableChanges
+      It is called when the nodelist table gets changed. 
+      When node is added or removed from the nodelist table, this 
+      function will inform all the monitoring plug-in modules.
+    Arguments:
+      See processTableChanges.  
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processNodelistTableChanges {
+  my $action=shift;
+  if ($action =~ /xCAT_plugin::monitorctrl/) {
+    $action=shift;
+  }
+  #print "monitorctrl::processNodelistTableChanges action=$action\n";
+
+  if ($action eq "u") {   
+    return 0;
+  }
+
+  if (!$masterpid) { refreshProductList();}
+  if (keys(%PRODUCT_LIST) ==0) { return 0; }
+
+  my $tablename=shift;
+  my $old_data=shift;
+  my $new_data=shift;
+  
+  #foreach (keys %$new_data) {
+  #  print "new_data{$_}=$new_data->{$_}\n";
+  #}
+
+  #for (my $j=0; $j<@$old_data; ++$j) {
+  #  my $tmp=$old_data->[$j];
+  #  print "old_data[". $j . "]= @$tmp \n";
+  #}
+
+  my @nodenames=();
+  if ($action eq "a") {
+    if ($new_data) {
+      my $nodetype='';
+      my $groups='';
+      if (exists($new_data->{nodetype})) {$nodetype=$new_data->{nodetype};}
+      if (exists($new_data->{groups})) {$groups=$new_data->{groups};}      
+      push(@nodenames, [$new_data->{node}, $nodetype, $groups]);
+      my $hierarchy=getMonServerWithInfo(\@nodenames);
+
+      #call each product to add the nodes into the monitoring domain
+      foreach(keys(%PRODUCT_LIST)) {
+        my $aRef=$PRODUCT_LIST{$_};
+        my $module_name=$aRef->[1];
+        #print "moduel_name=$module_name\n";
+        ${$module_name."::"}{addNodes}->($hierarchy, 1);
+      }
+    }
+  }
+  elsif ($action eq "d") {
+    #find out the index of "node" column
+    if ($old_data->[0]) {
+      $colnames=$old_data->[0];
+      my $node_i=-1;
+      my $nodetype_i=-1;
+      my $groups_i=-1;
+      for ($i=0; $i<@$colnames; ++$i) {
+        if ($colnames->[$i] eq "node") {
+          $node_i=$i;
+        } elsif ($colnames->[$i] eq "nodetype") {
+          $nodetype_i=$i;
+        }  elsif ($colnames->[$i] eq "groups") {
+          $groups_i=$i;
+        }  
+      }
+      
+      for (my $j=1; $j<@$old_data; ++$j) {
+        push(@nodenames, [$old_data->[$j]->[$node_i], $old_data->[$j]->[$nodetype_i], $old_data->[$j]->[$groups_i]]);
+      }
+
+      if (@nodenames > 0) {
+        #print "monitorctrl:  nodenames=@nodenames\n";
+        my $hierarchy=getMonServerWithInfo(\@nodenames);        
+
+        #call each product to remove the nodes into the monitoring domain
+        foreach(keys(%PRODUCT_LIST)) {
+          my $aRef=$PRODUCT_LIST{$_};
+          my $module_name=$aRef->[1];
+          ${$module_name."::"}{removeNodes}->($hierarchy, 1); 
+        }
+      }
+    }
+  } 
+  
+  return 0;
+} 
+
+
+#--------------------------------------------------------------------------------
+=head3    processMonitoringTableChanges
+      It is called when the monitoring table gets changed.
+      When a product is added to or removed from the monitoring table, this
+      function will start the product to monitor the xCAT cluster or stop the product
+      from monitoring the xCAT cluster accordingly. 
+    Arguments:
+      See processTableChanges.
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processMonitoringTableChanges {
+
+  #print "monitorctrl::procesMonitoringTableChanges \n";
+
+  sendMonSignal();
+  return 0;
+}
+
+
+#--------------------------------------------------------------------------------
+=head3    processNodeStatusChanges
+      This is the callback routine passed as a parameter to the startNodeStatusMon()
+      function of the monitoring plug-ins. This routine will be called by a 
+      selected  monitoring plug-in module to feed the node status back to xcat.
+      (callback mode). This function will update the status column of the
+      nodelist table with the new node status.
+    Arguments:
+       status -- a hash pointer of the node status. A key is a status string. The value is 
+                an array pointer of nodes that have the same status.
+                for example: {active=>["node1", "node1"], inactive=>["node5","node100"]}
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processNodeStatusChanges {
+  #print "monitorctrl::processNodeStatusChanges called\n";
+  my $temp=shift;
+  if ($temp =~ /xCAT_plugin::monitorctrl/) {
+    $temp=shift;
+  }
+
+  my %status_hash=%$temp;
+
+  my $tab = xCAT::Table->new('nodelist',-create=>0,-autocommit=>1);
+  my %updates;
+  if ($tab) {
+    foreach (keys %status_hash) {
+      my $nodes=$status_hash{$_};
+      if (@$nodes > 0) {
+        $updates{'status'} = $_;
+        my $where_clause="node in ('" . join("','", @$nodes) . "')";
+        $tab->setAttribsWhere($where_clause, \%updates );
+      }
+    }
+  } 
+  else {
+    xCAT::MsgUtils->message("E", "Could not read the nodelist table\n");
+  }
+
+  return 0;
+}
+
+#--------------------------------------------------------------------------------
+=head3    getNodeStatus
+      This function goes to the xCAT nodelist table to retrieve the saved node status.
+    Arguments:
+       none.
+    Returns:
+       a hash that has the node status. The format is: 
+          {active=>[node1, node3,...], unreachable=>[node4, node2...], unknown=>[node8, node101...]}
+=cut
+#--------------------------------------------------------------------------------
+sub getNodeStatus {
+  %status=();
+  my @inactive_nodes=();
+  my @active_nodes=();
+  my @unknown_nodes=();
+  my $table=xCAT::Table->new("nodelist", -create =>0);
+  if ($table) {
+    my @tmp1=$table->getAllAttribs(('node','status'));
+    if (defined(@tmp1) && (@tmp1 > 0)) {
+      foreach(@tmp1) {
+        my $node=$_->{node};
+        my $status=$_->{status};
+        if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
+        elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
+        else { push(@unknown_nodes, $node);}
+      }
+    }
+  }
+
+  $status{$::STATUS_ACTIVE}=\@active_nodes;
+  $status{$::STATUS_INACTIVE}=\@inactive_nodes;
+  $status{unknown}=\@unknown_nodes;
+  return %status;
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3    refreshProductList
+      This function goes to the monitoring table to get the product names 
+      and stores the value into the PRODUCT_LIST cache. The cache also stores
+      the monitoring plugin module name and file name for each product. This function
+      also load the modules in. 
+ 
+    Arguments:
+        none
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub refreshProductList {
+  #print "monitorctrl::refreshProductList called\n";
+  #flush the cache
+  %PRODUCT_LIST=();
+  $NODESTAT_MON_NAME="";
+
+  #get the monitoring product list from the monitoring table
+  my $table=xCAT::Table->new("monitoring", -create =>1);
+  if ($table) {
+    my @tmp1=$table->getAllAttribs(('pname','nodestatmon'));
+    if (defined(@tmp1) && (@tmp1 > 0)) {
+      foreach(@tmp1) {
+        my $pname=$_->{pname};
+
+        #get the node status monitoring product name
+        my $nodestatmon=$_->{nodestatmon};
+        if ((!$NODESTAT_MON_NAME) && ($nodestatmon =~ /1|Yes|yes|YES|Y|y/)) {
+           $NODESTAT_MON_NAME=$pname;
+        }
+
+        #find out the monitoring plugin file and module name for the product
+        $file_name="/usr/lib/xcat/monitoring/" . lc($pname) . "mon.pm";
+        $module_name="xCAT_monitoring::" . lc($pname) . "mon";
+        #load the module in memory
+        require $file_name;
+     
+        my @a=($file_name, $module_name);
+        $PRODUCT_LIST{$pname}=\@a;
+      } 
+    }
+  }
+
+  #print "Monitoring PRODUCT_LIST:\n";
+  foreach (keys(%PRODUCT_LIST)) {
+    my $aRef=$PRODUCT_LIST{$_};
+    #print "  $_:@$aRef\n"; 
+  }
+  #print "NODESTAT_MON_NAME=$NODESTAT_MON_NAME\n";
+  return 0;
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3    getMonHierarchy
+      It gets the monnitoring server node for all the nodes within nodelist table.
+      The "monserver" attribute is used from the noderes table. If "monserver" is not defined
+      for a node, "xcatmaster" is used. If none is defined, use the local host.
+    Arguments:
+      None.
+    Returns:
+      A hash reference keyed by the monitoring server nodes and each value is a ref to
+      an array of [nodes, nodetype] arrays  monitored by the server. So the format is:
+      {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}     
+=cut
+#--------------------------------------------------------------------------------
+sub getMonHierarchy {
+  my $ret={};
+  
+  #get all from nodelist table and noderes table
+  my $table=xCAT::Table->new("nodelist", -create =>0);
+  my @tmp1=$table->getAllAttribs(('node','nodetype', 'groups'));
+
+  my $table2=xCAT::Table->new("noderes", -create =>0);  
+  my @tmp2=$table2->getAllAttribs(('node','monserver', 'xcatmaster'));
+  
+  #get monserver for each node. use "monserver" attribute from noderes table, if not
+  #defined, use "xcatmaster". otherwise, use loca lhost. 
+  my $host=hostname();
+  if (defined(@tmp1) && (@tmp1 > 0)) {
+    if (defined(@tmp2) && (@tmp2 > 0)) {
+      foreach(@tmp1) {
+        my $node=$_->{node};
+        my $groups=$_->{groups};
+        my $nodetype=$_->{nodetype};
+        my @group_array=();
+        if ($groups) {
+          @group_array=split(/,/, $groups);
+        }
+        my $monserver=$host;
+        foreach(@tmp2) {
+          my $node2=$_->{node};
+          if (($node2 eq $node) || (grep {$_ eq $node2} @group_array)) {
+             if ($_->{monserver}) {
+               $monserver=$_->{monserver};
+             }
+             elsif ($_->{xcatmaster}) {
+               $monserver=$_->{xcatmaster};
+             }
+          } 
+        }
+        if (exists($ret->{$monserver})) {
+          my $pa=$ret->{$monserver};
+          push(@$pa, [$node, $nodetype]);
+        }
+        else {
+          $ret->{$monserver}=[[$node, $nodetype]];
+        }
+      }
+    }
+    else {
+      #no entried in noderes table, use local host as the monserver for all the nodes
+      my $nodes=[];
+      foreach(@tmp1) {
+        push(@$nodes, [$_->{node}, $nodetype]);
+      }
+      $ret->{$host}=$nodes;
+    }  
+  }
+  $table->close();
+  $table2->close();
+  return $ret;
+}
+
+#--------------------------------------------------------------------------------
+=head3    getMonServerWithInfo
+      It gets the monnitoring server node for each of the nodes from the input. 
+      The "monserver" attribute is used from the noderes table. If "monserver" is not defined
+      for a node, "xcatmaster" is used. If none is defined, use the local host as the
+      the monitoring server. The difference of this function from the getMonServer function
+      is that the input of the nodes have 'node', 'nodetype' and 'groups' info. 
+      The other one just has  'node'. The
+      names. 
+    Arguments:
+      nodes: An array ref. Each element is of the format: [node, nodetype, groups]
+    Returns:
+      A hash reference keyed by the monitoring server nodes and each value is a ref to
+      an array of [nodes, nodetype] arrays  monitored by the server. So the format is:
+      {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}
+=cut
+#--------------------------------------------------------------------------------
+sub getMonServerWithInfo {
+  my $p_input=shift;
+  my @in_nodes=@$p_input;
+
+  my $ret={};
+
+  #print "getMonServerWithInfo called with @in_nodes\n";
+  #get all from the noderes table
+  my $table2=xCAT::Table->new("noderes", -create =>0);
+  my @tmp2=$table2->getAllAttribs(('node','monserver', 'xcatmaster'));
+  my $host=hostname();
+  
+  foreach (@in_nodes) {
+    my $node=$_->[0];
+    my $nodetype=$_->[1];
+    my $groups=$_->[2];
+    my @group_array=();
+    if ($groups) {
+      @group_array=split(/,/, $groups);
+    }
+
+    my $monserver=$host;
+    if (defined(@tmp2) && (@tmp2 > 0)) {
+      foreach(@tmp2) {
+        my $node2=$_->{node};
+        if (($node2 eq $node) || (grep {$_ eq $node2} @group_array)) {
+           if ($_->{monserver}) {
+             $monserver=$_->{monserver};
+           }
+           elsif ($_->{xcatmaster}) {
+             $monserver=$_->{xcatmaster};
+           }
+        }
+      }
+    } 
+    if (exists($ret->{$monserver})) {
+      my $pa=$ret->{$monserver};
+      push(@$pa, [$node, $nodetype]);
+    }
+    else {
+      $ret->{$monserver}=[[$node, $nodetype]];
+    }
+  }    
+  
+  $table2->close();
+  return $ret;
+}
+
+
+#--------------------------------------------------------------------------------
+=head3    getMonServer
+      It gets the monnitoring server node for each of the nodes from the input.
+      The "monserver" attribute is used from the noderes table. If "monserver" is not defined
+      for a node, "xcatmaster" is used. If none is defined, use the local host as the
+      the monitoring server.
+    Arguments:
+      nodes: An array ref of nodes.
+    Returns:
+      A hash reference keyed by the monitoring server nodes and each value is a ref to
+      an array of [nodes, nodetype] arrays  monitored by the server. So the format is:
+      {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}
+=cut
+#--------------------------------------------------------------------------------
+sub getMonServer {
+  my $p_input=shift;
+  my @in_nodes=@$p_input;
+
+  my $ret={};
+  #get all from nodelist table and noderes table
+  my $table=xCAT::Table->new("nodelist", -create =>0);
+  my $table2=xCAT::Table->new("noderes", -create =>0);
+  my @tmp2=$table2->getAllAttribs(('node','monserver', 'xcatmaster'));
+  my $host=hostname();
+  
+  foreach (@in_nodes) {
+    my @tmp1=$table->getAttribs({'node'=>$_}, ('node', 'nodetype', 'groups'));
+
+    if (defined(@tmp1) && (@tmp1 > 0)) {
+      my $node=$_;
+      my $groups=$tmp1[0]->{groups};
+      my $nodetype=$tmp1[0]->{nodetype};
+      my @group_array=();
+      if ($groups) {
+        @group_array=split(/,/, $groups);
+      }
+
+      my $monserver=$host;
+      if (defined(@tmp2) && (@tmp2 > 0)) {
+        foreach(@tmp2) {
+          my $node2=$_->{node};
+          if (($node2 eq $node) || (grep {$_ eq $node2} @group_array)) {
+             if ($_->{monserver}) {
+               $monserver=$_->{monserver};
+             }
+             elsif ($_->{xcatmaster}) {
+               $monserver=$_->{xcatmaster};
+             }
+          }
+        }
+      } 
+
+      if (exists($ret->{$monserver})) {
+        my $pa=$ret->{$monserver};
+        push(@$pa, [$node, $nodetype]);
+      }
+      else {
+        $ret->{$monserver}=[ [$node,$nodetype] ];
+      }
+    }    
+  }
+  $table->close();
+  $table2->close();
+  return $ret;
+}
+
+
+
+
+#--------------------------------------------------------------------------------
+=head3    nodeStatMonName
+      This function returns the current product name that is assigned for monitroing
+      the node status for xCAT cluster.  
+     Arguments:
+        none
+    Returns:
+        productname.
+=cut
+#--------------------------------------------------------------------------------
+sub nodeStatMonName {
+  return $NODESTAT_MON_NAME;
+}
+
+
+
+
+
+
+
+
+
