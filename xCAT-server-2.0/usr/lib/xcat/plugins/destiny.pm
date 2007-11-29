@@ -45,6 +45,7 @@ sub setdestiny {
   my $chaintab = xCAT::Table->new('chain');
   my @nodes=@{$req->{node}};
   my $state = $req->{arg}->[0];
+  my %nstates;
   if ($state eq "next") {
     return nextdestiny();
   } elsif ($state =~ /^install$/ or $state eq "install" or $state eq "netboot") {
@@ -54,15 +55,16 @@ sub setdestiny {
     if ($errored) { return; }
     my $nodetype = xCAT::Table->new('nodetype');
     foreach (@{$req->{node}}) {
+      $nstates{$_} = $state; #local copy of state variable for mod
       my $ntent = $nodetype->getNodeAttribs($_,[qw(os arch profile)]);
       if ($ntent and $ntent->{os}) {
-        $state .= " ".$ntent->{os};
+        $nstates{$_} .= " ".$ntent->{os};
       }
       if ($ntent and $ntent->{arch}) {
-        $state .= "-".$ntent->{arch};
+        $nstates{$_} .= "-".$ntent->{arch};
       }
       if ($ntent and $ntent->{profile}) {
-        $state .= "-".$ntent->{profile};
+        $nstates{$_} .= "-".$ntent->{profile};
       }
       unless ($state =~ /^netboot/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
     }
@@ -105,7 +107,11 @@ sub setdestiny {
       return;
   }
   foreach (@nodes) {
-    $chaintab->setNodeAttribs($_,{currstate=>$state});
+    my $lstate = $state;
+    if ($nstates{$_}) {
+        $lstate = $nstates{$_};
+    } 
+    $chaintab->setNodeAttribs($_,{currstate=>$lstate});
   }
   return getdestiny();
 }
