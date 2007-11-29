@@ -7,7 +7,8 @@ use xCAT::GlobalDef;
 require("/usr/lib/xcat/monitoring/monitorctrl.pm");
 #################################################################
 # This script is used as a cron job by the xCAT monitoring plug-in
-# to monitor the node status
+# to monitor the node status. To activate it, simply do
+# chtab pname=xCAT monitoring.nodestatmon=Y
 ################################################################## 
 
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);

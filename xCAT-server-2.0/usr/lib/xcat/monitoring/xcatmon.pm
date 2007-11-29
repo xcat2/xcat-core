@@ -8,16 +8,14 @@ package xCAT_monitoring::xcatmon;
 use xCAT::GlobalDef;
 use xCAT::Utils;
 
-#caches the current node status. (serve1=>{active=>[node1,node3...], unreachable=>[node2, node4..]},....)
-
-$flag;
 
 1;
 #-------------------------------------------------------------------------------
 =head1  xCAT_monitoring:xcatmon  
 =head2    Package Description
    This is a xCAT monitoring plugin. The only thing that this plug-in does is 
-   the node monitoring. 
+   the node monitoring. To activate it simply do the following command:
+      chtab pname=xCAT monitoring.nodestatmon=Y
 =cut
 #-------------------------------------------------------------------------------
 
