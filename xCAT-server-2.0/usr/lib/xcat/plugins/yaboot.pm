@@ -6,6 +6,7 @@ use Socket;
 
 my $request;
 my $callback;
+my $sub_req;
 my $dhcpconf = "/etc/dhcpd.conf";
 my $tftpdir = "/tftpboot";
 #my $dhcpver = 3;
@@ -73,8 +74,13 @@ sub setstate {
   #print $pcfg "LABEL xCAT\n";
   my $chaintab = xCAT::Table->new('chain');
   my $stref = $chaintab->getNodeAttribs($node,['currstate']);
+    $sub_req->({command=>['makedhcp'],
+           node=>[$node]},$callback);
   if ($stref and $stref->{currstate} eq "boot") {
     #TODO use omapi to set the filename so no netboot is attempted?
+    $sub_req->({command=>['makedhcp'],
+           node=>[$node],
+            arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
     print $pcfg "bye\n";
     close($pcfg);
   } elsif ($kern and $kern->{kernel}) {
@@ -124,7 +130,7 @@ sub pass_along {
 sub process_request {
   $request = shift;
   $callback = shift;
-  my $sub_req = shift;
+  $sub_req = shift;
   my @args;
   my @nodes;
   if (ref($request->{node})) {
