@@ -35,7 +35,6 @@ my %lssyscfg = (
   bpa    =>"lssyscfg -r frame -e %s -F %s",
   bpas   =>"lssyscfg -r frame -F %s",
   prof   =>"lssyscfg -r prof -m %s --filter lpar_ids=%s",
-  cprof  =>"lssyscfg -r prof -m %s",
   cage   =>"lssyscfg -r cage -e %s -F %s"
 );
 
