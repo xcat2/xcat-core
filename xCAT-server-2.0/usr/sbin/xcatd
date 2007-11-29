@@ -15,6 +15,9 @@ use Getopt::Long;
 use Sys::Syslog;
 use xCAT::NotifHandler;
 
+require("/usr/lib/xcat/monitoring/monitorctrl.pm");
+
+
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -255,6 +258,9 @@ closelog();
 #setup signal in NotifHandler so that the cache can be updated
 xCAT::NotifHandler::setup($$);
 
+#start the monitoring process
+xCAT_monitoring::monitorctrl::start($$);
+
 my $peername;
 until ($quit) {
   next unless my $connection=$listener->accept;
@@ -292,6 +298,8 @@ until ($quit) {
 }
 $listener->close;
 
+#stop the monitoring process
+xCAT_monitoring::monitorctrl::stop($$);
 
 my $parent_fd;
 my %resps;
