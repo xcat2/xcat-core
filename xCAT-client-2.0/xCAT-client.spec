@@ -70,6 +70,9 @@ ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/sbin/makenetworks
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/sbin/copycds
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/bin/regnotif
 ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/bin/unregnotif
+ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/bin/startmon
+ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/bin/stopmon
+ln -sf /usr/bin/xcatclientnnr $RPM_BUILD_ROOT/usr/bin/updatemon
 ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/mkdef
 ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/chdef
 ln -sf /usr/bin/xcatDBcmds $RPM_BUILD_ROOT/usr/bin/lsdef
