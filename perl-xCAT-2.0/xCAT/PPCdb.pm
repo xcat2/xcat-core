@@ -7,7 +7,7 @@ use xCAT::Table;
 
 
 ##########################################################################
-# Adds an LPAR to the xCAT databases
+# Adds a node to the xCAT databases
 ##########################################################################
 sub add_ppc {
 
@@ -22,7 +22,7 @@ sub add_ppc {
     foreach ( @tabs ) {
         $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
         if ( !$db{$_} ) {
-            return;
+            return( "Error opening '$_'" );
         }
     }
     ###################################
@@ -98,6 +98,7 @@ sub add_ppc {
            $db{$_}->commit;
         }
     }
+    return undef;
 }
 
 
@@ -118,7 +119,7 @@ sub add_ppch {
     ###################################
     my $tab = xCAT::Table->new( 'ppch', -create=>1, -autocommit=>0 );
     if ( !$tab ) {
-        return;
+        return( "Error opening 'ppch'" );
     }
     $k->{hcp}      = $name;
     $u->{username} = $uid;
@@ -126,8 +127,35 @@ sub add_ppch {
 
     $tab->setAttribs( $k, $u );
     $tab->commit;
-
+    return undef;
 }
+
+
+##########################################################################
+# Removes a node from the xCAT databases
+##########################################################################
+sub rm_ppc {
+
+    my $node = shift;
+    my @tabs = qw(ppc nodehm nodelist);
+
+    foreach ( @tabs ) {
+        ###################################
+        # Open table
+        ###################################
+        my $tab = xCAT::Table->new($_);
+
+        if ( !$tab ) {
+            return( "Error opening '$_'" );
+        }
+        ###############################
+        # Remove entry
+        ###############################
+        $tab->delEntries( {'node'=>$node} );
+    }
+    return undef;
+}
+
 
 
 ##########################################################################
@@ -176,4 +204,5 @@ sub credentials {
 
 
 1;
+
 
