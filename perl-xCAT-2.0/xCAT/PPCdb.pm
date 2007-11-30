@@ -38,7 +38,6 @@ sub add_ppc {
             $profile,
             $parent,
             $ips ) = split /,/;
-
          
         ###############################
         # Update ppc table
@@ -159,6 +158,75 @@ sub rm_ppc {
 
 
 ##########################################################################
+# Adds a Management-Module or RSA to the appropriate tables
+##########################################################################
+sub add_systemX {
+
+    my $type = shift;
+    my $data = shift;
+    my @tabs = qw(mpa mp nodehm nodelist);
+    my %db   = ();
+
+    ###################################
+    # Open database needed
+    ###################################
+    foreach ( @tabs ) {
+        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
+        if ( !$db{$_} ) {
+            return( "Error opening '$_'" );
+        }
+    }
+    ###################################
+    # Update mpa table
+    ###################################
+    my ($k1,$u1);
+    my $name = @$data[4];
+
+    ####################################
+    # N/A Values
+    ####################################
+    my $uid = undef;
+    my $pw  = undef;
+
+    $k1->{mpa}      = $name;
+    $u1->{username} = $uid;
+    $u1->{password} = $pw;
+    $db{mpa}->setAttribs( $k1, $u1 );
+    $db{mpa}->commit;
+
+    ###################################
+    # Update mp table
+    ###################################
+    my ($k2,$u2);
+    $k2->{node} = $name;
+    $u2->{mpa}  = $name;
+    $u2->{id}   = "0";
+    $db{mp}->setAttribs( $k2, $u2 );
+    $db{mp}->commit;
+
+    ###################################
+    # Update nodehm table
+    ###################################
+    my ($k3,$u3);
+    $k3->{node} = $name;
+    $u3->{mgt}  = "blade";
+    $db{nodehm}->setAttribs( $k3, $u3 );
+    $db{nodehm}->commit;
+
+    ###################################
+    # Update nodelist table
+    ###################################
+    my ($k4,$u4);
+    $k4->{node}   = $name;
+    $u4->{groups} = lc($type).",all";
+    $db{nodelist}->setAttribs( $k4, $u4 );
+    $db{nodelist}->commit;
+
+}
+
+
+
+##########################################################################
 # Get userids and passwords from tables
 ##########################################################################
 sub credentials {
@@ -204,5 +272,6 @@ sub credentials {
 
 
 1;
+
 
 
