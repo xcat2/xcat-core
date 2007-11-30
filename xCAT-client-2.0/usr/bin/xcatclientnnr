@@ -15,7 +15,7 @@ if($bname =~ /xcatclientnnr/) {
   printf("Bad usage\n");
   exit(1);
 }
-exec("/usr/bin/xcatclient $cmd NO_NODE_RANGE @ARGV 2>&1");
+exec("xcatclient $cmd NO_NODE_RANGE @ARGV 2>&1");
 #if (system("/usr/bin/xcatclient $cmd NO_NODE_RANGE @ARGV 2>&1") != 0) {
 #  print "$cmd failed: $?\n";
 #}
