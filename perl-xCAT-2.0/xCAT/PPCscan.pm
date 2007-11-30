@@ -316,7 +316,7 @@ sub enumerate {
             # Save LPAR information
             #####################################
             push @values, join( ",",
-              "lpar",$name,$lparid,$serial,$model,$server,$prof,$fsp,$ips );
+              "lpar",$name,$lparid,$model,$serial,$server,$prof,$fsp,$ips );
         }
     }
     return( \@values );
