@@ -555,8 +555,15 @@ sub runcmd {
     my $request = shift;
     my $cmd     = $request->{command};
     my $method  = $request->{method};
+    my $hwtype  = $request->{hwtype};
     my $modname = $modules{$cmd};
-    
+
+    ######################################
+    # Command not supported
+    ######################################
+    if ( !defined( $modname )) {
+        return( ["$cmd not a supported command by $hwtype method"] );
+    }   
     ######################################
     # Load specific module
     ######################################
