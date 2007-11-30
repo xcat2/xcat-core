@@ -4,7 +4,7 @@ package xCAT_plugin::monctrlcmds;
 use xCAT::NodeRange;
 use xCAT::Table;
 use xCAT::MsgUtils;
-require("/usr/lib/xcat/monitoring/monitorctrl.pm");
+require($::XCATPREFIX."/lib/xcat/monitoring/monitorctrl.pm");
 
 1;
 

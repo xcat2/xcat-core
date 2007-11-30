@@ -5,7 +5,7 @@ package xCAT_monitoring::xcatmon;
 #use xCAT::NodeRange;
 #use Socket;
 #use xCAT::Utils;
-use xCAT::GlobalDef;
+#use xCAT::GlobalDef;
 use xCAT::Utils;
 
 

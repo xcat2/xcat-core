@@ -8,7 +8,7 @@ Source: xCAT-server-2.0.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
-Prefix: %{_prefix}
+Prefix: /usr
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
 # AIX will build with an arch of "ppc"
@@ -31,51 +31,52 @@ xCAT-server provides the core server and configuration management components of 
 %build
 %install
 rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/usr/sbin
-mkdir -p $RPM_BUILD_ROOT/usr/share/xcat/install
-mkdir -p $RPM_BUILD_ROOT/usr/share/xcat/ca
-mkdir -p $RPM_BUILD_ROOT/usr/share/xcat/scripts
-mkdir -p $RPM_BUILD_ROOT/usr/share/xcat/cons
-mkdir -p $RPM_BUILD_ROOT/usr/lib/xcat/plugins
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/xcat/plugins
 mkdir -p $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context
-mkdir -p $RPM_BUILD_ROOT/usr/lib/xcat/monitoring/samples
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/samples
 
 
 %ifos linux
-cp -a usr/share/xcat/install/* $RPM_BUILD_ROOT/usr/share/xcat/install/
+cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 %else
-cp -hpR usr/share/xcat/install/* $RPM_BUILD_ROOT/usr/share/xcat/install/
+cp -hpR share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 %endif
 
-cp usr/sbin/* $RPM_BUILD_ROOT/usr/sbin
-chmod 755 $RPM_BUILD_ROOT/usr/sbin/*
+cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 
-cp usr/share/xcat/ca/* $RPM_BUILD_ROOT/usr/share/xcat/ca
-chmod 644 $RPM_BUILD_ROOT/usr/share/xcat/ca/*
+cp share/xcat/ca/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca/*
 
-cp usr/share/xcat/scripts/* $RPM_BUILD_ROOT/usr/share/xcat/scripts
-cp usr/share/xcat/cons/* $RPM_BUILD_ROOT/usr/share/xcat/cons
-chmod 755 $RPM_BUILD_ROOT/usr/share/xcat/cons/*
-ln -sf /usr/share/xcat/cons/hmc $RPM_BUILD_ROOT/usr/share/xcat/cons/ivm
+cp share/xcat/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
+cp share/xcat/cons/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/*
+ln -sf /%{prefix}/share/xcat/cons/hmc $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/ivm
 
-cp usr/lib/xcat/plugins/* $RPM_BUILD_ROOT/usr/lib/xcat/plugins
-chmod 644 $RPM_BUILD_ROOT/usr/lib/xcat/plugins/*
+cp lib/xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/xcat/plugins
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/plugins/*
 
-cp usr/lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context
+cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context
 chmod 644 $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context/*
 
-cp -r usr/lib/xcat/monitoring/* $RPM_BUILD_ROOT/usr/lib/xcat/monitoring
-chmod 644 $RPM_BUILD_ROOT/usr/lib/xcat/monitoring/*
+cp -r lib/xcat/monitoring/* $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/*
 
-chmod 755 $RPM_BUILD_ROOT/usr/lib/xcat/monitoring/samples
-#cp usr/lib/xcat/monitoring/samples/* $RPM_BUILD_ROOT/usr/lib/xcat/monitoring/samples
-chmod 644 $RPM_BUILD_ROOT/usr/lib/xcat/monitoring/samples/*
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/samples
+#cp lib/xcat/monitoring/samples/* $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/samples
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/samples/*
 
-cp usr/lib/xcat/shfunctions $RPM_BUILD_ROOT/usr/lib/xcat
-chmod 644 $RPM_BUILD_ROOT/usr/lib/xcat/shfunctions
-mkdir -p $RPM_BUILD_ROOT/etc/xcat
+cp lib/xcat/shfunctions $RPM_BUILD_ROOT/%{prefix}/lib/xcat
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/shfunctions
 mkdir -p $RPM_BUILD_ROOT/etc/init.d
 cp etc/init.d/xcatd $RPM_BUILD_ROOT/etc/init.d
+#TODO: the next has to me moved to postscript, to detect /etc/xcat vs /etc/opt/xcat
+mkdir -p $RPM_BUILD_ROOT/etc/xcat
 cp etc/xcat/postscripts.rules $RPM_BUILD_ROOT/etc/xcat/
 
 
@@ -86,19 +87,15 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %doc README
 %doc LICENSE.html
-/usr/sbin/*
-/usr/share/xcat/install
-/usr/share/xcat/ca/*
-/usr/share/xcat/scripts/*
-/usr/share/xcat/cons/*
-/usr/lib/xcat/plugins/*
-/usr/lib/xcat/monitoring
-/usr/lib/xcat/shfunctions
+%{prefix}
 /opt/csm
 /etc/xcat
 /etc/init.d/xcatd
 
 %changelog
+* Fri Nov 20 2007 - Jarrod Johnson <jbjohnso@us.ibm.com>
+- Changes for relocatible rpm.
+
 * Wed May 2 2007 - Norm Nott <nott@us.ibm.com>
 - Made changes to make this work on AIX
 

@@ -53,23 +53,23 @@ sub mkinstall {
     my $arch = $ent->{arch};
     my $profile = $ent->{profile};
     unless (
-        -r "/usr/share/xcat/install/sles/$profile.tmpl" or
-        -r "/usr/share/xcat/install/sles/$profile.$arch.tmpl" or
-        -r "/usr/share/xcat/install/sles/$profile.$os.tmpl" or
-        -r "/usr/share/xcat/install/sles/$profile.$os.$arch.tmpl"
+        -r $::XCATPREFIX."/share/xcat/install/sles/$profile.tmpl" or
+        -r $::XCATPREFIX."/share/xcat/install/sles/$profile.$arch.tmpl" or
+        -r $::XCATPREFIX."/share/xcat/install/sles/$profile.$os.tmpl" or
+        -r $::XCATPREFIX."/share/xcat/install/sles/$profile.$os.$arch.tmpl"
         ) {
       $callback->({error=>["No AutoYaST template exists for ".$ent->{profile}],errorcode=>[1]});
       next;
     }
     #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
-    if (-r "/usr/share/xcat/install/sles/$profile.$os.$arch.tmpl") {
-        xCAT::Template->subvars("/usr/share/xcat/install/sles/$profile.$os.$arch.tmpl","/install/autoinst/$node",$node);
-    } elsif (-r "/usr/share/xcat/install/sles/$profile.$arch.tmpl") {
-        xCAT::Template->subvars("/usr/share/xcat/install/sles/$profile.$arch.tmpl","/install/autoinst/$node",$node);
-    } elsif (-r "/usr/share/xcat/install/sles/$profile.$os.tmpl") {
-        xCAT::Template->subvars("/usr/share/xcat/install/sles/$profile.$os.tmpl","/install/autoinst/$node",$node);
-    } elsif (-r "/usr/share/xcat/install/sles/$profile.tmpl") {
-        xCAT::Template->subvars("/usr/share/xcat/install/sles/$profile.tmpl","/install/autoinst/$node",$node);
+    if (-r $::XCATPREFIX."/share/xcat/install/sles/$profile.$os.$arch.tmpl") {
+        xCAT::Template->subvars($::XCATPREFIX."/share/xcat/install/sles/$profile.$os.$arch.tmpl","/install/autoinst/$node",$node);
+    } elsif (-r $::XCATPREFIX."/share/xcat/install/sles/$profile.$arch.tmpl") {
+        xCAT::Template->subvars($::XCATPREFIX."/share/xcat/install/sles/$profile.$arch.tmpl","/install/autoinst/$node",$node);
+    } elsif (-r $::XCATPREFIX."/share/xcat/install/sles/$profile.$os.tmpl") {
+        xCAT::Template->subvars($::XCATPREFIX."/share/xcat/install/sles/$profile.$os.tmpl","/install/autoinst/$node",$node);
+    } elsif (-r $::XCATPREFIX."/share/xcat/install/sles/$profile.tmpl") {
+        xCAT::Template->subvars($::XCATPREFIX."/share/xcat/install/sles/$profile.tmpl","/install/autoinst/$node",$node);
     }
     mkpath "/install/postscripts/";
     xCAT::Postage->writescript($node,"/install/postscripts/".$node);

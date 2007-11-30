@@ -174,7 +174,7 @@ sub donodeent {
     push @$content," port ".$cfgent->{termport}.";\n";
   } else { #a script method...
     push @$content,"  type exec;\n";
-    push @$content,"  exec /usr/share/xcat/cons/".$cmeth." ".$node.";\n"
+    push @$content,"  exec ".$::XCATPREFIX."/share/xcat/cons/".$cmeth." ".$node.";\n"
   }
   push @$content,"}\n";
   push @$content,"#xCAT END $node CONS\n";

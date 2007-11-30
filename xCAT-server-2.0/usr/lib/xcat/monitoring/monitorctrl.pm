@@ -8,7 +8,7 @@ use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::Client;
-require("/usr/lib/xcat/plugins/notification.pm");
+require($::XCATPREFIX."/lib/xcat/plugins/notification.pm");
 
 #the list store the names of the monitoring products and the file name and module names.
 #the names are stored in the "pname" column of the monitoring table. 

@@ -15,7 +15,6 @@ use Getopt::Long;
 use Sys::Syslog;
 use xCAT::NotifHandler;
 
-require("/usr/lib/xcat/monitoring/monitorctrl.pm");
 
 
 Getopt::Long::Configure("bundling");
@@ -30,7 +29,6 @@ GetOptions(
   'pidfile|p=s' => \$pidfile
 );
 
-my $plugins_dir='/usr/lib/xcat/plugins';
 my $quit = 0;
 my $port;
 my $sport;
@@ -40,6 +38,7 @@ my $sitetab=xCAT::Table->new('site');
 unless ($sitetab) {
     print ("ERROR: Unable to open basic site table for configuration\n");
 }
+$::XCATPREFIX = '/usr';
 my ($tmp) = $sitetab->getAttribs({'key'=>'xcatdport'},'value');
 unless ($tmp) {
   die "ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001";
@@ -47,8 +46,14 @@ unless ($tmp) {
 $port = $tmp->{value};
 $sport = $tmp->{value}+1;
 
+($tmp) = $sitetab->getAttribs({'key'=>'xcatprefix'},'value');
+if ($tmp and $tmp->{value}) {
+    $::XCATPREFIX = $tmp->{value};
+}
+require($::XCATPREFIX."/lib/xcat/monitoring/monitorctrl.pm");
+my $plugins_dir=$::XCATPREFIX.'/lib/xcat/plugins';
 ($tmp) = $sitetab->getAttribs({'key'=>'xcatconfdir'},'value');
-$xcatdir = ($tmp ? $tmp->{value} : "/etc/xcat");
+$xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 
 my $progname;
 $SIG{PIPE} = sub { die "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)" };
