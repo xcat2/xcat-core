@@ -40,7 +40,7 @@ sub parse_args {
         return( [ $_[0],
             "rscan -h",
             "rscan -v|--version",
-            "rscan [-V|--verbose] noderange [-w][-x]",
+            "rscan [-V|--verbose] noderange [-w][-x|-z]",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
             "    -V   verbose output",
