@@ -3,6 +3,7 @@
 package xCAT::Client;
 use xCAT::NodeRange;
 use xCAT::Utils;
+use xCAT::Table;
 
 use IO::Socket::SSL;
 if (xCAT::Utils->isLinux()) {
@@ -19,7 +20,7 @@ use XML::Simple;
 use Data::Dumper;
 use Storable qw(dclone);
 my $xcathost='localhost:3001';
-my $plugins_dir='/usr/lib/xcat/plugins';
+my $plugins_dir;
 my %resps;
 1;
 
@@ -61,6 +62,7 @@ sub submit_request {
   my $request = shift;
   my $callback = shift;
 
+
 # If XCATBYPASS is set, invoke the plugin process_request method directly
 # without going through the socket connection to the xcatd daemon
   if ($ENV{XCATBYPASS}) {
@@ -73,6 +75,17 @@ sub submit_request {
           scan_plugins();
        }
     } else {
+       # figure out default plugins dir
+       my $sitetab=xCAT::Table->new('site');
+       unless ($sitetab) {
+         print ("ERROR: Unable to open basic site table for configuration\n");
+       }
+       $::XCATPREFIX = '/usr';
+       my ($tmp) = $sitetab->getAttribs({'key'=>'xcatprefix'},'value');
+       if ($tmp and $tmp->{value}) {
+         $::XCATPREFIX = $tmp->{value};
+       }
+       $plugins_dir=$::XCATPREFIX.'/lib/xcat/plugins';
        scan_plugins();
     }
 
