@@ -1,13 +1,21 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-use Socket;
-use Socket6;
+use xCAT::Utils;
+
+use IO::Socket::SSL;
+if (xCAT::Utils->isLinux()) {
+        eval { require Socket6 };
+        eval { require IO::Socket::INET6 };
+        eval { require IO::Socket::SSL::inet6 };
+} else {
+		eval { require Socket };
+        eval { require IO::Socket::INET };
+}
+
 use IO::Socket;
 use IO::Handle;
 use IO::Select;
-use IO::Socket::INET6;
-use IO::Socket::SSL qw(inet6);
 use XML::Simple;
 use xCAT::Table;
 use Data::Dumper;
