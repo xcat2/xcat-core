@@ -2,9 +2,19 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Client;
 use xCAT::NodeRange;
-use IO::Socket::INET6;
-use Socket6;
-use IO::Socket::SSL qw(inet6);
+use xCAT::Utils;
+
+use IO::Socket::SSL;
+if (xCAT::Utils->isLinux()) {
+        eval { require Socket6 };
+        eval { require IO::Socket::INET6 };
+        eval { require IO::Socket::SSL::inet6 };
+} else {
+
+        eval { require Socket };
+        eval { require IO::Socket::INET };
+}
+
 use XML::Simple;
 use Data::Dumper;
 use Storable qw(dclone);
