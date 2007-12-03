@@ -32,20 +32,24 @@ echo <<<EOS
 
 EOS;
 
-/* These are only needed for popup windows, so only need it for specific pages like dsh
-<script src="js_xcat/event.js" type="text/javascript"> </script>
-<script src="js_xcat/ui.js" type="text/javascript"> </script>
-<link href="css/xcattop.css" rel="stylesheet">
-<link href="css/xcat.css" rel="stylesheet">
-<link href="css/clickTree.css" rel="stylesheet">
-<script src="js/windows.js" type="text/javascript"></script>
-<script src="js/clickTree.js" type="text/javascript"></script>
-<script src="js/prototype.js" type="text/javascript"></script>
-<script src="js/scriptaculous.js" type="text/javascript"></script>
-<script src="js/xcat.js" type="text/javascript"></script>
-<script src="js/effect.js" type="text/javascript"> </script>
-<link href="themes/default.css" rel="stylesheet" type="text/css"/>
-*/
+// These are only needed for popup windows, so only need it for specific pages like groups & dsh
+//echo "<script src='$TOPDIR/js_xcat/event.js' type='text/javascript'> </script>\n";
+//echo "<script src='$TOPDIR/lib/GroupNodeTableUpdater.js' type='text/javascript'> </script>\n";
+
+//echo "<script src='$TOPDIR/js/prototype.js' type='text/javascript'></script>\n";
+//echo "<script src='$TOPDIR/js/scriptaculous.js?load=effects' type='text/javascript'></script>\n";
+//echo "<script src='$TOPDIR/js/effects.js' type='text/javascript'> </script>\n";
+
+//echo "<script src='$TOPDIR/js/window.js' type='text/javascript'></script>\n";
+//echo "<link href='$TOPDIR/themes/default.css' rel='stylesheet' type='text/css'/>\n";
+
+//echo "<link href='$TOPDIR/css/xcattop.css' rel='stylesheet'>\n";
+//echo "<link href='$TOPDIR/css/xcat.css' rel='stylesheet'>\n";
+
+//echo "<script src='$TOPDIR/js/windows.js' type='text/javascript'></script>\n";
+//echo "<script src='$TOPDIR/js/clickTree.js' type='text/javascript'></script>\n";
+//echo "<link href='$TOPDIR/css/clickTree.css' rel='stylesheet'>\n";
+
 
 if ($stylesheets) {
 	foreach ($stylesheets as $s) {
@@ -419,13 +423,28 @@ function getPref($key) { //------------------------------------
 }
 
 
-// Returns a list of some or all of the nodes in the cluster.  Pass in either a group name or node range,
-// or NULL for each to get all nodes.  Not finished.
-function getNodes($group, $noderange) { //------------------------------------
+// Returns a list of some or all of the nodes in the cluster and some of their attributes.
+// Pass in a node range (or NULL to get all nodes) and an array of attribute names (or NULL for none).
+// Returns an array where each key is the node name and each value is an array of attr/value pairs.
+function getNodes($noderange, $attrs) {
 	//my ($hostname, $type, $osname, $distro, $version, $mode, $status, $conport, $hcp, $nodeid, $pmethod, $location, $comment) = split(/:\|:/, $na);
-	for ($i = 1; $i <= 10; $i++) {
-		$nodes[] = array('hostname'=>"node$i.cluster.com", 'type'=>'x3655', 'osname'=>'Linux', 'distro'=>'RedHat', 'version'=>'4.5', 'status'=>1,
-						'conport'=>$i, 'hcp'=>"node$i-bmc.cluster.com", 'nodeid'=>'', 'pmethod'=>'bmc', 'location'=>"frame=1 u=$", 'comment'=>'');
+	//$nodes[] = array('hostname'=>"node$i.cluster.com", 'type'=>'x3655', 'osname'=>'Linux', 'distro'=>'RedHat', 'version'=>'4.5', 'status'=>1, 'conport'=>$i, 'hcp'=>"node$i-bmc.cluster.com", 'nodeid'=>'', 'pmethod'=>'bmc', 'location'=>"frame=1 u=$", 'comment'=>'');
+	$nodes = array();
+	foreach ($attrs as $a) {
+		$output = array();
+		//echo "<p>/bin/sudo nodels $noderange $a</p>\n";
+		runcmd("/bin/sudo nodels $noderange $a", 2, $output);
+		foreach ($output as $line) {
+			$vals = preg_split('/: */', $line);   // vals[0] will be the node name
+			if (!$nodes[$vals[0]]) { $nodes[$vals[0]] = array(); }
+			$attributes = & $nodes[$vals[0]];
+			if ($a == 'type') {
+				$types = preg_split('/-/', $vals[1]);
+				$attributes['osversion'] = $types[0];
+				$attributes['arch'] = $types[1];
+				$attributes['type'] = $types[2];
+			}
+		}
 	}
 	return $nodes;
 }

@@ -7,9 +7,10 @@ require_once "$TOPDIR/lib/functions.php";
 if (isAIX()) { $aixDisabled = 'disabled'; }
 
 require_once("$TOPDIR/lib/GroupNodeTable.class.php");
-require_once("$TOPDIR/lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
 
-insertHeader('Groups', array('groups.css'), array("$TOPDIR/js_xcat/ui.js","$TOPDIR/js/prototype.js"), array('machines','groups'));
+insertHeader('Groups', array('groups.css'),
+	array("$TOPDIR/lib/GroupNodeTableUpdater.js","$TOPDIR/js/prototype.js","$TOPDIR/js/scriptaculous.js?load=effects"),
+	array('machines','groups'));
 
 echo "<div id=content align=center>\n";
 

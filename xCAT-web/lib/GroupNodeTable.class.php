@@ -20,6 +20,7 @@ echo <<<EOS
 	<td width="88" align=left><input type="checkbox" name="chk_node_all" id="chk_node_all">Groups</td>
 	<td>HW Type</td><td>OS</td><td>Mode</td><td>Status</td><td>HW Ctrl Pt</td><td>Comment</td>
 </tr>
+
 EOS;
 	return;
 }
@@ -44,7 +45,7 @@ $plusgif = "$TOPDIR/images/plus-sign.gif";
 <span
 	title="$exTxt"
 	id="img_gr_$nodeGroupName"
-	onclick="XCATui.updateNodeList('$nodeGroupName')"
+	onclick="GroupNodeTableUpdater.updateNodeList('$nodeGroupName')"
 	ondblclick="toggleSection(this,'div_$nodeGroupName')">
 	<img src="$plusgif" id="div_$nodeGroupName-im" name="div_$nodeGroupName-im">
 EOS;
@@ -71,66 +72,52 @@ echo <<<EOE
 	<td>&nbsp;</td>
 	<td>&nbsp;</td>
 	</tr>
-	<tr style="display:none"><td colspan=7><div id=div_$nodeGroupName style="display:none"></div></td></tr>
+	<tr><td colspan=7><div id=div_$nodeGroupName style="display:none"></div></td></tr>
 EOE;
 return;
 }
 
 // This is used by nodes_by_group.php
 	/**
-	 * @param XCATNodeGroup	nodeGroup	The node group for which we want to generate the html.
+	 * @param An array of node groups, each of which contains an array of attr/value pairs
 	 * returns the table that contains all the nodes information of that group
 	 */
-function getNodeGroupSection($nodeGroup) {
-		$imagedir = 'images';
-		$right_arrow_gif = $imagedir . "/grey_arrow_r.gif";
-		$left_arrow_gif = $imagedir . "/grey_arrow_l.gif";
+function getNodeGroupSection($group, $nodes) {
+	global $TOPDIR;
+	$imagedir = "$TOPDIR/images";
+	$right_arrow_gif = $imagedir . "/grey_arrow_r.gif";
+	$left_arrow_gif = $imagedir . "/grey_arrow_l.gif";
 
-		$html .= <<<EOS
-		<table id="
-EOS;
-		$html .= $nodeGroup->getName();
-		$html .= <<<EOS
-				" width='100%' cellpadding=0 cellspacing=1 border=0>
-EOS;
+	$html .= "<table id='$group' width='100%' cellpadding=0 cellspacing=1 border=0>\n";
 
-		$nodes = $nodeGroup->getNodes();
+	foreach($nodes as $nodeName => $attrs) {
+		$html .= GroupNodeTable::getNodeTableRow($nodeName, $attrs);
+	}
 
-		foreach($nodes as $nodeName => $node) {
-			$html .= GroupNodeTable::getNodeTableRow($node);
-		}
-
-		$html .= "<TR bgcolor=\"#FFFF66\"><TD colspan=9 align=\"right\"><image src=\"$left_arrow_gif\" alt=\"Previous page\">&nbsp;&nbsp;&nbsp;&nbsp;<image src=\"$right_arrow_gif\" alt=\"Next page\">&nbsp;&nbsp;</TD></TR>";
-		$html .= <<<EOS
-		</table>
-EOS;
+	$html .= "<TR bgcolor='#FFFF66'><TD colspan=9 align=right><image src='$left_arrow_gif' alt='Previous page'>&nbsp;&nbsp;&nbsp;&nbsp;<image src='$right_arrow_gif' alt='Next page'>&nbsp;&nbsp;</TD></TR>\n";
+	$html .= "</table>\n";
 
 	return $html;
 }
 
 	/**
-	 * @param XCATNode	node	The node for which we want to generate the html.
+	 * @param The node for which we want to generate the html.
 	 */
-function getNodeTableRow($node) {
+function getNodeTableRow($nodeName, $attrs) {
+	$html = "<tr bgcolor='#FFFF66' class=indent>\n" .
+			"<td width=89><input type=checkbox name='node_$nodeName' >$nodeName</td>\n" .
+			"<td width=38><div align=center>" . $attrs['arch'] . "</div></td>\n" .
+			"<td width=22><div align=center>" . $attrs['osversion'] . "</div></td>\n" .
+			"<td width=43><div align=center>" . $attrs['mode'] . "</div></td>\n";
 
-		$imagedir = 'images';
+	$stat = 'unknown';   //todo: implement
+	$img_string = '<img src="' . getStatusImage($stat) . '">';
 
-		//echo $node->getName();
-		$html = "<tr bgcolor=\"#FFFF66\" class=\"indent\">
-				<td width=89><input type=\"checkbox\" name=\"node_" .$node->getName(). "\" />" .$node->getName(). "</td>" .
-				"<td width=38><div align=center>" . $node->getHwType(). "</div></td>".
-				"<td width=22><div align=center>" . $node->getOs(). "</div></td>".
-				"<td width=43><div align=center>" . $node->getMode(). "</div></td>";
+	$html .= "<td width=43><div align=center>" . $img_string . "</div></td>".
+			"<td width=85><div align=center>" . $attrs['power'] . "</div></td>".
+			"<td width=71><div align=center>" . $attrs['comment'] . "</div></td></tr>";
 
-		$stat = $node->getStatus();
-		$img_string = '<img src="' . getStatusImage($stat) . '">';
-
-		$html .= "<td width=43><div align=center>" . $img_string . "</div></td>".
-				"<td width=85><div align=center>" . $node->getHwCtrlPt(). "</div></td>".
-				"<td width=71><div align=center>" . $node->getComment(). "</div></td></tr>";
-
-EOS;
-		return $html;
+	return $html;
 	}
 
 /**

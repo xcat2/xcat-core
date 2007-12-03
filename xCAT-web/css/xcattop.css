@@ -1,15 +1,16 @@
 .grid {
 	background: #fff;
 	border: 1px solid #eee;
+	/* width: <?php echo $this->boxWidth ?>px; */
 	text-align: center;
 	height: 400px;
 	padding: 2px 2px 2px 2px;
 	margin: 2px 40px 2px 2px;
-	
+
 }
 
 .offLineNode {
-	background: #aaa;	
+	background: #aaa;
 	color: #444;
 	width: 80px;
 	height: 20px;
@@ -22,7 +23,7 @@
 }
 
 .pingableNode {
-	background: #66CC99;	
+	background: #66CC99;
 	color: #444;
 	width: 80px;
 	height: 20px;
@@ -91,9 +92,9 @@
 	position: relative;
 	left: 0px;
 	top: 100px;
-	
-	
-} 
+
+
+}
 
 #boxNavPrev {
 	position: absolute;
