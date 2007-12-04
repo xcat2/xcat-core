@@ -22,12 +22,12 @@ See <a href="https://sourceforge.net/projects/xcat">xCAT on SourceForge</a>. Tha
 approximately priority order:</p>
 
 <ul>
-  <li>Update the spec file for this web interface to have all the necessary post installation scripts.</li>
-  <li>One button update of this web interface from the internet.</li>
-  <li>Restructure the files in lib/XCAT and js_xcat to make them simpler.</li>
-  <li>Have the task pane save the current task in the cookie and have each page set the current task.</li>
-  <li>Do frame view and rack layout pages.</li>
-  <li>Do several of the buttons within the machines views:
+  <li>Update the spec file for this web interface to have all the necessary post installation scripts (Bruce)</li>
+  <li>One button update of this web interface from the internet (Bruce)</li>
+  <li>Improve the look of associating the top menu with the 2nd menu (Quyen)</li>
+  <li>Have the task pane save the current task in the cookie and have each page set the current task (Bruce)</li>
+  <li>Do frame view and rack layout pages (Bruce)</li>
+  <li>Do several of the buttons within the machines views (Bruce):
   <ul>
     <li>Attributes</li>
     <li>Ping</li>
@@ -37,9 +37,9 @@ approximately priority order:</p>
     <li>Diagnose</li>
   </ul>
   </li>
-  <li>Do RMC configuration pages</li>
-  <li>Do Cluster Settings (site table) page</li>
-  <li>Start set up cluster wizard page.</li>
+  <li>Do RMC configuration pages (Bruce)</li>
+  <li>Do Cluster Settings (site table) page (Bruce)</li>
+  <li>Start cluster wizard page (Bruce)</li>
   <li>Do a summary page that lists # of bad nodes, # of jobs, etc.</li>
 </ul>
 

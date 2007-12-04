@@ -1,29 +1,26 @@
 <?php
 /**
- * Action file for running dsh/psh and output the results to the screen
+ * Action file for running xdsh/psh and output the results to the screen
  */
 
-/*------------------------------------------------------------------------------
-  HTTP Headers: headers, cookies, ...
--------------------------------------------------------------------------------*/
+$TOPDIR = '..';
+require_once "$TOPDIR/lib/functions.php";
+
+
+// HTTP Headers: headers, cookies, ...
 header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // date in the past
 header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT"); // always modified
 header("Cache-Control: no-store, no-cache, must-revalidate"); // HTTP/1.1
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache"); // HTTP/1.0
 
-/*
- * Store commands into Cookie
- */
+// Store commands into Cookie
 //setcookie("history","");
 $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
 ?>
 
 <FORM>
 <?php
-require_once("lib/XCAT/XCATCommand/XCATCommandRunner.class.php");
-
-require_once "$TOPDIR/functions.php";
 
 //echo "history:" . $_COOKIE["history"];
 
@@ -48,14 +45,14 @@ require_once "$TOPDIR/functions.php";
 		 if ($group == "")	$nodegrps = "blade7";	// For now, use blade7 as test node
 
 		 if ($psh == "off"){ //using dsh
-			$command = $SYSTEMROOT . "/dsh ";
-			$copy_cmd = $SYSTEMROOT . "/dcp ";
+			$command = "xdsh ";
+			$copy_cmd = "xdcp ";
 			if ($group == "") $node_group = "-n " . $nodegrps;
 			else $node_group = "-N " . $group;
 
 		 }else{
-		 	$command = $XCATROOT . "/psh ";
-			$copy_cmd = $XCATROOT . "/prcp ";
+		 	$command = "psh ";
+			$copy_cmd = "prcp ";
 			if ($group == "") $node_group = $nodegrps;
 			else $node_group = $group;
 		 }
@@ -66,9 +63,9 @@ require_once "$TOPDIR/functions.php";
 		if ($verify == "on")  $options .= "-v ";
 		if ($monitor == "on")  $options .= "-m ";
 
-		echo "<p>Command executed: ". $cmd ."</br></p>";
+		//echo "<p>Command: ". $cmd ."</p>";
 
-		$exp_cmd = "export DSH_CONTEXT=XCAT XCATROOT=/opt/xcat; ";
+		//$exp_cmd = "export DSH_CONTEXT=XCAT XCATROOT=/opt/xcat; ";
 
 		if ($copy == "on"){		//using dcp/prcp
 
@@ -79,38 +76,36 @@ require_once "$TOPDIR/functions.php";
 			$source = "/opt/xcat/bin/" . $script; //copy from
 			$target = "/tmp";	//copy to
 			if ($psh == "off"){
-				$copy_cmd = $exp_cmd . "sudo " . $copy_cmd . $node_group . " " . $source . " " . $target;
+				$copy_cmd = $exp_cmd . $copy_cmd . $node_group . " " . $source . " " . $target;
 			}else{
-				$copy_cmd = "sudo " . $copy_cmd . $source . " " . $node_group . ":" . $target;
+				$copy_cmd = $copy_cmd . $source . " " . $node_group . ":" . $target;
 			}
 			runcmd($copy_cmd,1, $outp);
 
 			if ($psh != "on"){
-				$command_string = $exp_cmd . "sudo ". $command. $node_group . " /tmp/" . $cmd;
+				$command_string = $exp_cmd . $command. $node_group . " /tmp/" . $cmd;
 			}else{
-				$command_string = "sudo " . $command . $node_group . " /tmp/" . $cmd;
+				$command_string = $command . $node_group . " /tmp/" . $cmd;
 			}
 
 		}
 		else{
 			if ($psh != "on"){
-				$command_string = $exp_cmd . "sudo ". $command. $node_group . " " . $cmd;
+				$command_string = $exp_cmd . $command. $node_group . " " . $cmd;
 			}else{
-				$command_string = "sudo " . $command . $node_group . " " . $cmd;
+				$command_string = $command . $node_group . " " . $cmd;
 			}
 		}
 
-		//using dshbak to format the output
-		$command_string .= " | $SYSTEMROOT/dshbak ";
+		if ($collapse == "on")  $command_string .= " | dshbak -c";
 
-		if ($collapse == "on")  $command_string .= "-c ";
-
-		echo " Full command (for TEST purpose): " . $command_string . "</br>";
-		echo "<p><b>Command Ouput:</b></br></p>"; //output will be returned from the runcmd function call
+		echo "<p><b>Command:  $command_string</b></p>";
+		//echo "<p><b>Command Ouput:</b></br></p>"; //output will be returned from the runcmd function call
 
 		//run the script
+		$output = array();
 		if ($ret_code == "on"){
-			$rc = runcmd($command_string,0, $outp);	//mode 0
+			$rc = runcmd($command_string, 0, $output);	//mode 0
 			if ($rc == 0){
 				foreach ($outp as $key => $val){
 					echo $val. "</br>";
@@ -118,12 +113,10 @@ require_once "$TOPDIR/functions.php";
 			}
 
 		}else{
-			//$rc = runcmd($command_string,1, $outp);	//streaming mode  COMMENTED AS BY SOME WAY THIS DOESN'T WORK YET
-			$rc = runcmd($command_string,0, $outp);	//mode 0
+			//$rc = runcmd($command_string,1, $outp);	//streaming mode - DOES NOT WORK YET
+			$rc = runcmd($command_string, 0, $output);	//mode 0
 			if ($rc == 0){
-				foreach ($outp as $key => $val){
-					echo $val. "</br>";
-				}
+				foreach ($output as $line){ echo "$line<br>"; }
 			}
 		}
 

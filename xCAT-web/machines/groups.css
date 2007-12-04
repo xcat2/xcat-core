@@ -7,3 +7,7 @@
  text-align: center;
  margin: 5px;
 }
+
+.GroupNodeTable { margin-left: 10px; }
+.GroupNodeTableHeader { color: black; background-color : #FFFF66; font-weight : bold; white-space: nowrap; }
+.GroupNodeTableRow { color: black; background-color : #FFFF66; white-space: nowrap; }

@@ -146,6 +146,7 @@ TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; fo
 
 .TableHeader { color: black; background-color : #fffdb0; font-weight : bold; font-size : 9pt; white-space: nowrap; }
 .TableRow { color: black; background-color : #b3c2d9; font-size : 9pt; white-space: nowrap; } /* #d8dff1 */
+.FormTable { color: black; background-color : #CCCCCC; }
 .Info {color : blue;}
 .Error {font-weight : bold; color : red;}
 .Trace {color: gray;  padding: 0px; margin: 0px;}

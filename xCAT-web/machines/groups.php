@@ -57,7 +57,7 @@ insertButtons(array(
 
 echo '<form name="nodelist" class=ContentForm>';
 
-/* $output = array(); runcmd("/bin/sudo listattr", 2, $output); foreach ($output as $line) { echo "<p>line=$line</p>"; } */
+/* $output = array(); runcmd("listattr", 2, $output); foreach ($output as $line) { echo "<p>line=$line</p>"; } */
 
 GroupNodeTable::insertGroupTableHeader();
 

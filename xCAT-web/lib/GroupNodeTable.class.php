@@ -18,7 +18,7 @@ echo <<<EOS
 <table border="0" cellspacing="1" cellpadding=1>
 <tr class=TableHeader>
 	<td width="88" align=left><input type="checkbox" name="chk_node_all" id="chk_node_all">Groups</td>
-	<td>HW Type</td><td>OS</td><td>Mode</td><td>Status</td><td>HW Ctrl Pt</td><td>Comment</td>
+	<td>Status</td><td>Comment</td>
 </tr>
 
 EOS;
@@ -60,19 +60,15 @@ function insertGroupTableRow($nodeGroupName, $status) {
 $img_string = getStatusImage(GroupNodeTable::determineStatus($status));
 
 //echo '<tr bgcolor="#FFCC00"><td align=left>';
-echo '<tr class=TableRow><td align=left>';
+echo '<tr class=TableRow><td align=left width=140>';
 echo GroupNodeTable::getToggleString($nodeGroupName);
 echo <<<EOE
 	<input type="checkbox" name="chk_node_group_$nodeGroupName"  id="chk_node_group_$nodeGroupName"><b>$nodeGroupName</b></span>
 	</td>
-	<td>&nbsp;</td>
-	<td>&nbsp;</td>
-	<td>&nbsp;</td>
-	<td><img src="$img_string"></td>
-	<td>&nbsp;</td>
+	<td align=center><img src="$img_string"></td>
 	<td>&nbsp;</td>
 	</tr>
-	<tr><td colspan=7><div id=div_$nodeGroupName style="display:none"></div></td></tr>
+	<tr><td colspan=3><div id=div_$nodeGroupName style="display:none"></div></td></tr>
 EOE;
 return;
 }
@@ -88,13 +84,14 @@ function getNodeGroupSection($group, $nodes) {
 	$right_arrow_gif = $imagedir . "/grey_arrow_r.gif";
 	$left_arrow_gif = $imagedir . "/grey_arrow_l.gif";
 
-	$html .= "<table id='$group' width='100%' cellpadding=0 cellspacing=1 border=0>\n";
+	$html .= "<table id='$group' class=GroupNodeTable width='100%' cellpadding=0 cellspacing=1 border=0>\n";
+	$html .= "<TR class=GroupNodeTableHeader><TD>Node Name</TD><TD>Arch</TD><TD>OS</TD><TD>Mode</TD><TD>Status</TD><TD>Power Method</TD><TD>Comment</TD></TR>\n";
 
 	foreach($nodes as $nodeName => $attrs) {
 		$html .= GroupNodeTable::getNodeTableRow($nodeName, $attrs);
 	}
 
-	$html .= "<TR bgcolor='#FFFF66'><TD colspan=9 align=right><image src='$left_arrow_gif' alt='Previous page'>&nbsp;&nbsp;&nbsp;&nbsp;<image src='$right_arrow_gif' alt='Next page'>&nbsp;&nbsp;</TD></TR>\n";
+	$html .= "<TR class=GroupNodeTableRow><TD colspan=9 align=right><image src='$left_arrow_gif' alt='Previous page'>&nbsp;&nbsp;&nbsp;&nbsp;<image src='$right_arrow_gif' alt='Next page'>&nbsp;&nbsp;</TD></TR>\n";
 	$html .= "</table>\n";
 
 	return $html;
@@ -104,18 +101,18 @@ function getNodeGroupSection($group, $nodes) {
 	 * @param The node for which we want to generate the html.
 	 */
 function getNodeTableRow($nodeName, $attrs) {
-	$html = "<tr bgcolor='#FFFF66' class=indent>\n" .
-			"<td width=89><input type=checkbox name='node_$nodeName' >$nodeName</td>\n" .
-			"<td width=38><div align=center>" . $attrs['arch'] . "</div></td>\n" .
-			"<td width=22><div align=center>" . $attrs['osversion'] . "</div></td>\n" .
-			"<td width=43><div align=center>" . $attrs['mode'] . "</div></td>\n";
+	$html = "<tr class=GroupNodeTableRow>\n" .
+			"<td align=left><input type=checkbox name='node_$nodeName' >$nodeName</td>\n" .
+			"<td>" . $attrs['arch'] . "</td>\n" .
+			"<td>" . $attrs['osversion'] . "</td>\n" .
+			"<td>" . $attrs['mode'] . "</td>\n";
 
 	$stat = 'unknown';   //todo: implement
 	$img_string = '<img src="' . getStatusImage($stat) . '">';
 
-	$html .= "<td width=43><div align=center>" . $img_string . "</div></td>".
-			"<td width=85><div align=center>" . $attrs['power'] . "</div></td>".
-			"<td width=71><div align=center>" . $attrs['comment'] . "</div></td></tr>";
+	$html .= "<td>" . $img_string . "</td>".
+			"<td>" . $attrs['power'] . "</td>".
+			"<td>" . $attrs['comment'] . "</td></tr>";
 
 	return $html;
 	}

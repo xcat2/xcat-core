@@ -33,7 +33,6 @@ echo <<<EOS
 EOS;
 
 // These are only needed for popup windows, so only need it for specific pages like groups & dsh
-//echo "<script src='$TOPDIR/js_xcat/event.js' type='text/javascript'> </script>\n";
 //echo "<script src='$TOPDIR/lib/GroupNodeTableUpdater.js' type='text/javascript'> </script>\n";
 
 //echo "<script src='$TOPDIR/js/prototype.js' type='text/javascript'></script>\n";
@@ -45,10 +44,6 @@ EOS;
 
 //echo "<link href='$TOPDIR/css/xcattop.css' rel='stylesheet'>\n";
 //echo "<link href='$TOPDIR/css/xcat.css' rel='stylesheet'>\n";
-
-//echo "<script src='$TOPDIR/js/windows.js' type='text/javascript'></script>\n";
-//echo "<script src='$TOPDIR/js/clickTree.js' type='text/javascript'></script>\n";
-//echo "<link href='$TOPDIR/css/clickTree.css' rel='stylesheet'>\n";
 
 
 if ($stylesheets) {
@@ -186,8 +181,8 @@ function insertMenuRow($current, $isTop, $items) {
 function runcmd ($cmd, $mode, &$output, $options=NULL){
 
 	//Set error output to the same source as standard output (on Linux)
-	if (strstr($cmd,'2>&1') == FALSE && !$options["NoRedirectStdErr"])
-		$cmd .= ' 2>&1';
+	if (strstr($cmd,'2>&1') == FALSE && !$options["NoRedirectStdErr"]) { $cmd .= ' 2>&1'; }
+	$cmd = "/bin/sudo $cmd";      //todo: change this when move to xcat 2
 
 	$ret_stat = "";
 	$arr_output = NULL;
@@ -235,9 +230,9 @@ function dumpGlobals() { //------------------------------------
 # Returns true if the given rpm file is already installed at this version or higher.
 function isInstalled($rpmfile) { //------------------------------------
 	$aixrpmopt = isAIX() ? '--ignoreos' : '';
-	$lang = isWindows() ? '' : 'LANG=C';
+	$lang = isWindows() ? '' : 'LANG=C';    //todo: add this back in
 	$out = array();
-	$rc = runcmd("$lang /bin/rpm -U $aixrpmopt --test $rpmfile", 2, $out);
+	$rc = runcmd("rpm -U $aixrpmopt --test $rpmfile", 2, $out);
 	# The rc is not reliable in this case because it will be 1 if it is already installed
 	# of if there is some other problem like a dependency is not satisfied.  So we parse the
 	# output instead.
@@ -432,8 +427,8 @@ function getNodes($noderange, $attrs) {
 	$nodes = array();
 	foreach ($attrs as $a) {
 		$output = array();
-		//echo "<p>/bin/sudo nodels $noderange $a</p>\n";
-		runcmd("/bin/sudo nodels $noderange $a", 2, $output);
+		//echo "<p>nodels $noderange $a</p>\n";
+		runcmd("nodels $noderange $a", 2, $output);
 		foreach ($output as $line) {
 			$vals = preg_split('/: */', $line);   // vals[0] will be the node name
 			if (!$nodes[$vals[0]]) { $nodes[$vals[0]] = array(); }
@@ -454,7 +449,7 @@ function getNodes($noderange, $attrs) {
 function getGroups() {
 	$groups = array();
 	$output = array();
-	runcmd("/bin/sudo listattr", 2, $output);
+	runcmd("listattr", 2, $output);
 	foreach ($output as $grp) { $groups[] = $grp; }
 	return $groups;
 }
@@ -465,7 +460,7 @@ function getGroups() {
 function getGroupStatus() {
 	$groups = array();
 	$output = array();
-	runcmd("/bin/sudo grpattr", 2, $output);
+	runcmd("grpattr", 2, $output);
 	foreach ($output as $line) {
 		//echo "<p>line=$line</p>";
 		$vals = preg_split('/: */', $line);
