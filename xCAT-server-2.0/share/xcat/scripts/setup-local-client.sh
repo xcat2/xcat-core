@@ -17,18 +17,10 @@ else
  USERHOME=`grep ^$1 /etc/passwd | cut -d: -f6`
 fi
 
-# the home dir for root is "/" on AIX 
-#  - need to avoid "//.xcat" below
-#  -  should probably redo the logic below at some point
-if test $USERHOME = /
-then
-  USERHOME=
-fi
-
 XCATCADIR=$XCATDIR/ca
 
 if [ -e $USERHOME/.xcat ]; then
-  exit 0
+# exit 0
   echo -n "$USERHOME/.xcat already exists, delete and start over (y/n)?"
   read ANSWER
   if [ "$ANSWER" != "y" ]; then
