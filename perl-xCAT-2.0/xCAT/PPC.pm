@@ -78,6 +78,16 @@ sub process_command {
     my $callback = $request->{callback};
     my $start;
 
+    #######################################
+    # Get max processes to fork
+    #######################################
+    my $sitetab = xCAT::Table->new('site');
+    if ( defined( $sitetab )) {
+        my ($ent) = $sitetab->getAttribs({'key'=>'syspmaxp'},'value');
+        if ( defined($ent) ) { 
+            $maxp = $ent->{value}; 
+        }
+    }
     if ( exists( $request->{verbose} )) {
         $start = Time::HiRes::gettimeofday();
     }
@@ -637,4 +647,5 @@ sub process_request {
 
 
 1;
+
 
