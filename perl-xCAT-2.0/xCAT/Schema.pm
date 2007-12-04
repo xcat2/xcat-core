@@ -1,6 +1,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Schema;
 
+#  When making additions or deletions to this file please be sure to
+#       modify BOTH the tabspec and defspec definitions.  This includes
+#       adding descriptions for any new attributes.
+
 #Note that the SQL is far from imaginative.  Fact of the matter is that
 #certain SQL backends don't ascribe meaning to the data types anyway.
 #New format, not sql statements, but info enough to describe xcat tables
@@ -159,6 +163,7 @@ package xCAT::Schema;
   site =>    { attrs => [], attrhash => {}, objkey => 'master' },
 #site =>    { attrs => [], attrhash => {}, objkey => 'sitename' },
   policy => { attrs => [], attrhash => {}, objkey => 'priority' },
+  monitoring => { attrs => [], attrhash => {}, objkey => 'pname' },
   notification => { attrs => [], attrhash => {}, objkey => 'filename' }
 );
   
@@ -594,3 +599,20 @@ package xCAT::Schema;
                  access_tabentry => 'notification.filename=attr:filename',
                  description => 'User comment.'},
 	 );
+	 
+@{$defspec{monitoring}->{'attrs'}} = (
+        {attr_name => 'pname',
+                 tabentry => 'monitoring.pname',
+                 access_tabentry => 'monitoring.pname=attr:pname',
+                 description => 'The product short name of the 3rd party monitor
+ing software.'},
+        {attr_name => 'nodestatmon',
+                 tabentry => 'monitoring.nodestatmon',
+                 access_tabentry => 'monitoring.pname=attr:pname',
+                 description => 'Specifies if the product is used to feed the no
+de status to the xCAT cluster.'},
+        {attr_name => 'comments',
+                 tabentry => 'monitoring.comments',
+                 access_tabentry => 'monitoring.pname=attr:pname',
+                 description => 'User comment.'},
+);
