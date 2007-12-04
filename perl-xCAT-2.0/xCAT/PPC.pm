@@ -83,7 +83,7 @@ sub process_command {
     #######################################
     my $sitetab = xCAT::Table->new('site');
     if ( defined( $sitetab )) {
-        my ($ent) = $sitetab->getAttribs({'key'=>'syspmaxp'},'value');
+        my ($ent) = $sitetab->getAttribs({'key'=>'ppcmaxp'},'value');
         if ( defined($ent) ) { 
             $maxp = $ent->{value}; 
         }
