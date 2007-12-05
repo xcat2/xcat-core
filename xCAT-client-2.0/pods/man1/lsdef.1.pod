@@ -1,0 +1,103 @@
+=head1 NAME
+ 
+B<lsdef> - Use this command to list xCAT data object definitions.
+ 
+=head1 SYNOPSIS
+
+I<lsdef [-h | --help ] [-t object-types]>   
+
+I<lsdef [-V | --verbose] [ -l | --long] [-a | --all] [-t object-types] >
+I<[-o object-names] [-z | --stanza] [-x | --xml] [-i attr-list]>
+I<[-w attr=val,[attr=val...] [noderange]>
+
+=head1 DESCRIPTION
+
+This command is used to display xCAT object definitions which are stored 
+in the xCAT database.
+
+
+=head1 OPTIONS
+
+B<-a | --all>          Display all definitions.
+
+B<-h|--help>           Display usage message.
+
+B<-i  attr-list>       Comma separated list of attribute names to display.
+
+B<-l | --long>         List the complete object definition.  (The default for some options is to give only a list of object names.)
+
+B<noderange>           A set of comma delimited node names and/or group names.
+See the "noderange" man page for details on supported formats.
+
+B<-o object-names>     A set of comma delimited object names.
+
+B<-t object-types>     A set of comma delimited object types. Use the help option to get a list of valid objects.
+
+B<-V|--verbose>        Verbose mode.
+
+B<-w attr=val,[attr=val...]>    A comma-separated list of attributes and values that can be used to select items to display. Use the help option to get a list of valid attributes.
+
+B<-x | --xml>         Display output in XML format.
+
+B<-z | --stanza>      Display output in stanza format.
+ 
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To get a list of all object names.
+
+I<lsdef -a> 
+
+2. To get a list of all the network definitions.
+
+I<lsdef -t network>
+
+3. To get a complete listing of all network definitions.
+
+I<lsdef -l -t network >
+
+4. To list the whole xCAT database and write it to a stanza file. (backup database)
+
+I<< lsdef -a -l -z > mydbstanzafile >>
+
+5. To list the MAC and install adapter name for each node.
+
+I<lsdef -t node -i mac,installnic>
+
+6. To list an osimage definition named "aix53J".
+
+I<lsdef -t osimage -l -o aix53J> 
+
+7. To list all adapter definitions for node "clstrn03".
+
+I<lsdef -t adapter -w nodename=clstrn03>
+
+8. To list all the attributes of the group "servicenodes".
+
+I<lsdef -l -t group -o servicenodes>
+
+9. To list all the attributes of the nodes that are members of the group "servicenodes".
+
+I<lsdef -t node -l servicenodes>
+
+10. To list all nodes that have a service node called "FMS01".
+
+I<lsdef -t node -w nfsserver=FMS01>
+
+=head1 FILES
+ 
+/usr/sbin/lsdef
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+=head1 SEE ALSO
+
+See the mkdef, chdef and rmdef commands.
