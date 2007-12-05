@@ -1,0 +1,87 @@
+=head1 NAME
+ 
+B<xcat2nim> - Use this command to create AIX NIM definitions from xCAT object definitions.
+ 
+=head1 SYNOPSIS
+ 
+I<xcat2nim [-h | --help ]>
+
+I<xcat2nim [-V | --verbose] [-a | --all] [-t object-types] [-o object-names]> 
+I<[-f | --force] [noderange] [attr=val [attr=val...]] >
+
+=head1 DESCRIPTION
+
+The xcat2nim command uses xCAT node and group object definitions to create or update corresponding NIM machine and group definitions.
+
+The xCAT definitions must be created and the NIM master must be installed and configured before running this command. 
+
+xcat2nim uses xCAT database information, command line input, and default values to run the appropriate NIM commands to create the NIM definitions.
+
+The default behavior is to create new NIM definitions but not apply updates to existing definitions.  If you use wish to update existing NIM definitions then you must use the force option.
+
+=head1 OPTIONS
+
+B<-a |--all>             Create NIM definitions corresponding to all xCAT node and group definitions.
+
+B<attr=val [attr=val ...]>  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line.  The attribute names must correspond to the attributes supported by the relevant NIM commands.  When providing attr=val pairs on the command line you must not specify more than one object type.
+
+B<-f |--force>           Use the force option to update existing NIM definitions. 
+
+B<-h |--help>            Display usage message.
+
+B<noderange>             A set of comma delimited node names and/or group names. (must be the first parameter) See the "noderange" man page for details on supported formats.
+
+B<-o object-names>       A set of comma delimited xCAT object names. 
+
+B<-t object-types>       A set of comma delimited xCAT object types. Supported types include: node and group.
+
+Supported types include: node and group.
+
+B<-V |--verbose>         Verbose mode.
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1.  Convert all xCAT node and group definitions to NIM machine and group definitions.
+
+I<xcat2nim -a>
+
+2. To create NIM machine definitions for all xCAT node definitions.
+
+I<xcat2nim -t node> 
+
+3. To create a NIM machine definition corresponding to the xCAT clstrn01 node definition.
+
+I<xcat2nim -t node clstrn01>
+
+4. To create a NIM machine group definition corresponding to the xCAT aix61nodes group definition.
+
+I<xcat2nim -t group aix61nodes>
+
+5.  Convert all node definitions in the xCAT group AIXNodes to NIM machine definitions.
+
+I<xcat2nim -t node AIXNodes>
+
+4.  To create NIM machine definitions for each node that is a member of the xCAT lpar_grp group and specify attribute values that will be applied to each definition.  (In this example the name of the NIM primary network is master_net.)
+
+I<xcat2nim -t node lpar_grp machinetype=standalone netboot_kernel=mp network_name=master_net cable_type="N/A">
+
+=head1 FILES
+ 
+/usr/sbin/xcat2nim
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+=head1 SEE ALSO
+
+See the xCAT mkdef command for details on how to create the xCAT node and group object definitions. 
+ 
