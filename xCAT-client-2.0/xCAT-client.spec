@@ -31,11 +31,17 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
+cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
+chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man1/*
+cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5
+chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
 
 #cp usr/share/xcat/scripts/setup-local-client.sh $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
 #chmod 755 $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
