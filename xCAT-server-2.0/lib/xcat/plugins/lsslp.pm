@@ -67,7 +67,7 @@ my %exattr = (
 
 my $verbose    = 0;
 my %ip_addr    = ();
-my @slp_result = ();
+my %slp_result = ();
 my %opt        = ();
 
 
@@ -98,6 +98,7 @@ sub send_msg {
 
         $output{data} = \@_;
         print $out freeze( [\%output] );
+        print $out "\nENDOFFREEZE6sK4ci\n";
     }
     #################################################
     # Called from parent - invoke callback directly
@@ -231,6 +232,8 @@ sub parse_args {
 ##########################################################################
 sub validate_ip {
 
+    my $request = shift;
+
     ###########################################
     # Option -b specified - validate entries 
     ###########################################
@@ -257,7 +260,7 @@ sub validate_ip {
     # Option -b not specified - determine IPs 
     ###########################################
     else {
-        my $result = ifconfig();
+        my $result = ifconfig( $request );
 
         ###########################
         # Command failed 
@@ -286,9 +289,10 @@ sub isAIX {
 # Determine adapters available for broadcast
 ##########################################################################
 sub ifconfig {
-
-    my $cmd    = "ifconfig -a";
-    my $result = `$cmd`;
+    
+    my $request = shift;
+    my $cmd     = "ifconfig -a";
+    my $result  = `$cmd`;
 
     ######################################
     # Error running command
@@ -298,8 +302,8 @@ sub ifconfig {
     }
 
     if ( $verbose ) {
-        trace( $cmd );
-        trace( "Broadcast Interfaces:" );
+        trace( $request, $cmd );
+        trace( $request, "Broadcast Interfaces:" );
     }
     if ( isAIX()) {
         ##############################################################
@@ -361,10 +365,10 @@ sub ifconfig {
     }
     if ( $verbose ) {
         foreach ( keys %ip_addr ) {
-            trace( "\t\t$_\tUP,BROADCAST" );
+            trace( $request, "\t\t$_\tUP,BROADCAST" );
         }
         if ( (keys %ip_addr) == 0 ) {
-            trace( "$cmd\n$result" );
+            trace( $request, "$cmd\n$result" );
         }
     }
     return([0]);
@@ -376,15 +380,13 @@ sub ifconfig {
 ##########################################################################
 sub trace {
 
-    if ( $verbose ) {
-        my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
-            localtime( time );
-    
-        my $msg = sprintf "%02d:%02d:%02d %5d %s\n",
-            $hour,$min,$sec, $$, $_[0];
+    my $request = shift;
+    my $msg     = shift;
 
-        print STDERR $msg;
-        #send_msg( $msg );
+    if ( $verbose ) {
+        my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
+        my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
+        send_msg( $request, $msg );
     }
 } 
 
@@ -466,7 +468,7 @@ sub invoke_cmd {
         ####################################
         if ( !defined( $sockaddr )) {
             if ( $verbose ) {
-                trace( "Cannot convert '$addr' to dot-notation\n" );           
+                trace( $request, "Cannot convert '$addr' to dot-notation" );           
             }
             next;
         }
@@ -476,17 +478,17 @@ sub invoke_cmd {
         if ( defined( $result )) {
             shift(@$result);
             my $data = @$result[0];
-            push @$values, "URL: $url\n@$data\n";
+            $values->{"URL: $url\n@$data\n"} = 1;
         }
     }
     ########################################
     # Pass result array back to parent 
     ########################################
-    unshift @$values, "FORMAT_DATA";
-
+    my @results = ("FORMATDATA6sK4ci", $values );
     my $out = $request->{pipe};
-    print $out freeze( $values );
 
+    print $out freeze( \@results );
+    print $out "\nENDOFFREEZE6sK4ci\n";
 }
 
 
@@ -502,7 +504,7 @@ sub runslp {
     my $max      = shift;
     my $converge = shift;
     my $slpcmd   = SLP_COMMAND;
-    my @result   = ();
+    my %result   = ();
     my %unicast  = ();
 
     foreach my $type ( @$services ) {
@@ -522,8 +524,8 @@ sub runslp {
         }
         while ( $try++ < $max ) {
             if ( $verbose ) {
-                trace( $cmd );
-                trace( "Attempt $try of $max\t( $ip\t$type )" );
+                trace( $request, $cmd );
+                trace( $request, "Attempt $try of $max\t( $ip\t$type )" );
             }
             ###########################################
             # Serialize broadcasts out each adapter 
@@ -546,7 +548,7 @@ sub runslp {
             ###############################
             if ( !$rsp ) {
                if ( $verbose ) {
-                    trace( ">>>>>> No Response" );
+                    trace( $request, ">>>>>> No Response" );
                 }
                 next;
             }
@@ -582,35 +584,28 @@ sub runslp {
             foreach ( split /\n{2,}/,$rsp ) {
                 if ( $_ =~ s/(\d+)\n(\d+)\n(\d+)\n// ) {
                     if ( $verbose ) {
-                        trace( "SrvRqst Response ($1)($2)($3)" );
-                        trace( "$_\n" );
+                        trace( $request, "SrvRqst Response ($1)($2)($3)" );
+                        trace( $request, "$_\n" );
                     }
                     ###################################
-                    # Has "ATTR" field 
+                    # Response has "ATTR" field 
                     ###################################
                     if ( /ATTR: /  ) {
-                        push @result, $_;
+                        $result{$_} = 1;
                     }
                     ###################################
-                    # No "ATTR" have to unicast
+                    # No "ATTR" - have to unicast
                     ###################################
                     elsif ( /.*URL: (.*)/ ) {
                         $unicast{$1} = $1;
                     }
                 } elsif ( $verbose ) {
-                    print STDERR "DISCARDING: $_\n";
+                    trace( $request, "DISCARDING: $_" );
                 }
             }
         }
-        #######################################
-        # Remove duplicates from retries
-        #######################################
-        if ( @result ) {
-            my @dup = @result;
-            @result = do{ my %dupe; grep !$dupe{$_}++, @dup };
-        }
     }
-    return( [\%unicast,\@result] );
+    return( [\%unicast,\%result] );
 }
 
 
@@ -628,7 +623,7 @@ sub format_output {
     ###########################################
     # Parse responses and add to hash
     ###########################################
-    my $outhash = parse_responses( $values, \$length );
+    my $outhash = parse_responses( $request, $values, \$length );
 
     ###########################################
     # No responses 
@@ -703,7 +698,8 @@ sub format_output {
 ##########################################################################
 sub gethost_from_url {
 
-    my $url = shift;
+    my $request = shift;
+    my $url     = shift;
 
     ######################################################################
     # Extract the IP from the URL. Generally, the URL
@@ -716,7 +712,7 @@ sub gethost_from_url {
         my $packed = inet_aton( $1 );
         if ( length( $packed ) != 4 ) {
             if ( $verbose ) {
-                trace( "Invalid IP address in URL: $1" );
+                trace( $request, "Invalid IP address in URL: $1" );
             }
             return undef;
         }
@@ -740,7 +736,7 @@ sub gethost_from_url {
     ###########################################
     if ( !($url =~ /service:.*:\/\/(.*)/  )) {
         if ( $verbose ) {
-            trace( "Invalid URL: $_[0]" );
+            trace( $request, "Invalid URL: $_[0]" );
         }
         return undef;
     }
@@ -791,8 +787,10 @@ sub gethost_from_url {
 #########################################################################
 sub parse_responses {
 
+    my $request = shift;
     my $values  = shift;
     my $length  = shift;
+
     my %outhash = ();
     my @attr    = (
        "type",
@@ -812,7 +810,7 @@ sub parse_responses {
         ###########################################
         if ( $rsp !~ /\(type=([\w\-\.,]+)\)/ ) {
             if ( $verbose ) {
-                trace( "(type) attribute not found: $rsp\n" );
+                trace( $request, "(type) attribute not found: $rsp" );
             }
             next;
         }
@@ -826,7 +824,7 @@ sub parse_responses {
         ###########################################
         if ( !exists($service_slp{$type} )) {
             if ( $verbose ) {
-                trace( "Discarding unsupported type: $type" );
+                trace( $request, "Discarding unsupported type: $type" );
             }
             next;
         }
@@ -875,7 +873,7 @@ sub parse_responses {
         $rsp =~ /.*URL: (.*)\nATTR: +(.*)/;
 
         if ( !defined($host) ) {
-            $host = gethost_from_url( $1 );
+            $host = gethost_from_url( $request, $1 );
             if ( !defined( $host )) {
                 next;
             }
@@ -1144,12 +1142,12 @@ sub slp_query {
         #########################################
         my $tm  = localtime( time );
         my $msg = "\n--------  $tm\nTime     PID";
-        trace( $msg );
+        trace( $request, $msg );
     }
     #############################################
     # Get/validate broadcast IPs
     #############################################
-    my $result = validate_ip();
+    my $result = validate_ip( $request );
     my $Rc = shift(@$result);
 
     if ( $Rc ) {
@@ -1179,17 +1177,18 @@ sub slp_query {
     while ( $children > 0 ) {
         child_response( $callback, $fds );
     }
+    while (child_response($callback,$fds)) {}
 
     if ( $verbose ) {
         my $elapsed = Time::HiRes::gettimeofday() - $start;
-        trace( sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed )); 
+        my $msg = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
+        trace( $request, $msg ); 
     }
     #############################################
     # Combined responses from all children 
     #############################################
-    my @dup = @slp_result;
-    @slp_result = do{ my %dupe; grep !$dupe{$_}++, @dup };
-    format_output( $request, \@slp_result );
+    my @all_results = keys %slp_result;
+    format_output( $request, \@all_results );
     return(0);
 }
 
@@ -1204,31 +1203,39 @@ sub child_response {
     my @ready_fds = $fds->can_read(1);
 
     foreach my $rfh (@ready_fds) {
-        my $rsp;
+        my $data;
 
         #################################
-        # Read from child
+        # Read from child process
         #################################
-        while ( <$rfh> ) {
-            $rsp.=$_;
-        }
-        my $responses = thaw($rsp);
+        if ( $data = <$rfh> ) {
+            while ($data !~ /ENDOFFREEZE6sK4ci/) {
+                $data .= <$rfh>;
+            }
+            my $responses = thaw($data);
 
-        #################################
-        # Command results
-        #################################
-        if ( @$responses[0] =~ /^FORMAT_DATA$/ ) {
-            shift @$responses;
-            push @slp_result, @$responses;
-         }
-         else {
+            #############################
+            # Command results
+            #############################
+            if ( @$responses[0] =~ /^FORMATDATA6sK4ci$/ ) {
+                shift @$responses;
+
+                foreach ( keys %$responses ) {
+                    $slp_result{$_} = 1;
+                }
+                next;
+            }
             #############################
             # Message or verbose trace
             #############################
             foreach ( @$responses ) {
                 $callback->( $_ );
             }
+            next;
         }
+        #################################
+        # Done - close handle 
+        #################################
         $fds->remove($rfh);
         close($rfh);
     }
@@ -1266,3 +1273,4 @@ sub process_request {
 
 
 1;
+
