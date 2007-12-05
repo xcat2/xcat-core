@@ -1,0 +1,89 @@
+=head1 NAME
+ 
+B<chdef> - Change xCAT data object definitions.
+ 
+=head1 SYNOPSIS
+ 
+I<chdef [-h | --help ] [-t object-types]>
+
+I<chdef [-V | --verbose] [-t object-types] [-o object-names]> 
+I<[-z | --stanza ] [-x | --xml ] [-w  attr=val,[attr=val...]]>
+I<[noderange] [attr=val [attr=val...]] >
+
+=head1 DESCRIPTION
+
+This command is used to change xCAT object definitions which are stored in the xCAT database.  The default is to replace any existing attribute value with the one specified on the command line. The command will also create a new definition if one doesn't exist.
+
+=head1 OPTIONS
+
+B<attr=val [attr=val ...]>  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. Use the help option to get a list of valid attributes for each object type. 
+
+B<-h |--help>            Display usage message.
+
+B<-m |--minus>           If the value of the attribute is a list then this option may be used to remove one or more items from the list.
+
+B<noderange>             A set of comma delimited node names and/or group names. (must be the first parameter) See the "noderange" man page for details on supported formats.
+
+B<-o object-names>       A set of comma delimited object names.
+
+B<-p |--plus>            This option will add the specified values to the existing value of the attribute.  It will create a comma-separated list of values.
+
+B<-t object-types>       A set of comma delimited object types.  Use the help option to get a list of valid object types.
+
+B<-V |--verbose>         Verbose mode.
+
+B<-w attr=val,[attr=val...]>       A comma-separated list of attributes and values that can be used to select objects. Use the help option to get a list of validattributes for each object type.
+
+B<-x | --xml>            Indicates that the file being piped to the command is in XML format.
+
+B<-z | --stanza>         Indicates that the file being piped to the command is in stanza format.
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To change a site definition.
+
+I<chdef -t site -o clustersite rsh=/bin/rsh rcp=/bin/rcp installdir=/xcatinstall>
+
+2. To change a basic node definition.
+
+I<chdef -t node -o node01 groups="all,aix">
+
+(The group definitions are also created if they don't already exist.) 
+
+3. To add another group to the "groups" attribute in the previous example.
+
+I<chdef -p -t node -o node01 groups="compute">
+
+4. To remove the "all" group from the "groups" attribute in the previous example.
+
+I<chdef -m -t node -o node01 groups="all">
+
+5. To replace the current "groups" attribute value of "node01".
+
+I<chdef -t node -o node01 groups="linux">
+
+6. To add "node01" to the "memberslist" attribute of a group definition called "LinuxNodes".
+
+I<chdef -p -t group -o LinuxNodes memberlist="node01">
+
+
+=head1 FILES
+ 
+/usr/sbin/chdef
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+=head1 SEE ALSO
+
+See the mkdef, lsdef and rmdef commands.
+ 
