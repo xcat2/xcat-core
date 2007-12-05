@@ -17,7 +17,7 @@ package xCAT::Schema;
     cols => [qw(node hcp id profile parent comments disable)],
     keys => [qw(node)],
   },
-  ppcDirect => {
+  ppcdirect => {
     cols => [qw(hcp username password comments disable)],
     keys => [qw(hcp)],
   },
