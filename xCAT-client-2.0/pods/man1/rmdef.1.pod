@@ -1,0 +1,74 @@
+=head1 NAME
+ 
+B<rmdef> - Use this command to remove xCAT data object definitions.
+ 
+=head1 SYNOPSIS
+
+I<rmdef [-h | --help ] [-t object-types]>
+
+I<rmdef  [-V | --verbose] [-a | --all] [-t object-types] [-o object-names]>
+I<[-f | --force] [noderange]>
+
+=head1 DESCRIPTION
+
+This command is used to remove xCAT object definitions that are stored in the xCAT database.
+
+=head1 OPTIONS
+
+B<-a | --all>          Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option.
+
+B<-f|--force>          Use this with the all option as an extra indicator that ALL definitions are to be removed. 
+
+B<-h|--help>           Display a usage message.
+
+B<noderange>           A set of comma delimited node names and/or group names. See the "noderange" man page for details on supported formats.
+
+B<-o object-names>     A set of comma delimited object names.
+
+B<-t object-types>     A set of comma delimited object types. 
+
+B<-V|--verbose>        Verbose mode.
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+
+=head1 EXAMPLES
+
+1. To completely clear the xCAT database.
+
+I<rmdef -f -a>
+
+2. To remove a range of node definitions.
+
+I<rmdef -t node node1-node4>
+
+5. To remove all node and group definitions.
+
+I<rmdef -t node,group>
+
+6. To remove all node definitions for the nodes contained in the group bpcnodes.
+
+I<rmdef -t node -o bpcnodes>
+
+7. To remove the group called bpcnodes.
+
+I<rmdef -t group -o bpcnodes>
+
+(This will also update the values of the "groups" attribute of the member nodes.)
+
+=head1 FILES
+
+/usr/sbin/rmdef
+ 
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+=head1 SEE ALSO
+
+See the mkdef, chdef and lsdef commands.
