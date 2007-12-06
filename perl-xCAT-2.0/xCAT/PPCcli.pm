@@ -185,6 +185,7 @@ sub connect {
     #    Server hostname
     #    UserId
     #    Password
+    #    Redirected STDERR/STDOUT
     ##########################################
     if ( $success ) {
         return( $ssh,
