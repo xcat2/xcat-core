@@ -510,8 +510,24 @@ sub invoke_cmd {
     # Direct-attached FSP handler 
     ########################################
     if ( $hwtype eq "fsp" ) {
-        my $result = xCAT::PPCfsp::handler( $host, $request );
+        my @exp = xCAT::PPCfsp::connect( $request, $host );
 
+        ####################################
+        # Error connecting 
+        ####################################
+        if ( ref($exp[0]) ne "LWP::UserAgent" ) {
+            send_msg( $request, $exp[0] );
+            return;
+        }
+        my $result = xCAT::PPCfsp::handler( $host, $request, \@exp );
+
+        ####################################
+        # Output verbose Perl::LWP 
+        ####################################
+        if ( $verbose ) {
+            my $lwp_log = $exp[3];
+            send_msg( $request, $$lwp_log );
+        }
         my $out = $request->{pipe};
         print $out freeze( $result );
         print $out "\nENDOFFREEZE6sK4ci\n";
@@ -543,17 +559,17 @@ sub invoke_cmd {
     my $result = runcmd( $request, $nodes, \@exp );
 
     ########################################
+    # Close connection to remote server
+    ########################################
+    xCAT::PPCcli::disconnect( \@exp );
+
+    ########################################
     # Output verbose Expect 
     ########################################
     if ( $verbose ) {
         my $expect_log = $exp[6];
         send_msg( $request, $$expect_log );
     }
-    ########################################
-    # Close connection to remote server
-    ########################################
-    xCAT::PPCcli::disconnect( \@exp );
-
     ########################################
     # Return error
     ######################################## 
