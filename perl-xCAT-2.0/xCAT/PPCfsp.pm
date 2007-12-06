@@ -32,41 +32,12 @@ sub handler {
 
     my $server  = shift;
     my $request = shift;
-    my $command = $request->{command};
-    my $verbose = $request->{verbose};
-    my $method  = $request->{method};
-    my $start;
+    my $exp     = shift;
 
-    ##################################
-    # Check command 
-    ##################################
-    if ( !exists( $cmds{$command}{$method} )) {
-        my %output;
-        $output{node}->[0]->{name}->[0] = $server;
-        $output{node}->[0]->{data}->[0]->{contents}->[0]= "Unsupported command";
-        return( [\%output] );
-    }
-    ##################################
-    # Start timer 
-    ##################################
-    if ( $verbose ) {
-        $start = Time::HiRes::gettimeofday();
-    }
-    ##################################
-    # Connect to remote FSP 
-    ##################################
-    my @exp = xCAT::PPCfsp::connect( $server, $verbose );
-
-    if ( ref($exp[0]) ne "LWP::UserAgent" ) {
-        my %output;
-        $output{node}->[0]->{name}->[0] = $server;
-        $output{node}->[0]->{data}->[0]->{contents}->[0] = $exp[0];
-        return( [\%output] );
-    }
     ##################################
     # Process FSP command 
     ##################################
-    my $result = process_cmd( \@exp, $request );
+    my $result = process_cmd( $exp, $request );
 
     my %output;
     $output{node}->[0]->{name}->[0] = $server;
@@ -75,16 +46,8 @@ sub handler {
     ##################################
     # Disconnect from FSP 
     ##################################
-    xCAT::PPCfsp::disconnect( \@exp );
+    xCAT::PPCfsp::disconnect( $exp );
 
-    ##################################
-    # Record Total time 
-    ##################################
-    if ( $verbose ) {
-        my $elapsed = Time::HiRes::gettimeofday() - $start;
-        my $total   = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
-        print STDERR $total;
-    }
     return( [\%output] );
 
 }
@@ -95,14 +58,33 @@ sub handler {
 ##########################################################################
 sub connect {
 
+    my $request = shift;
     my $server  = shift;
-    my $verbose = shift;
+    my $command = $request->{command};
+    my $verbose = $request->{verbose};
+    my $method  = $request->{method};
+    my $lwp_log;
 
+    ##################################
+    # Check command
+    ##################################
+    if ( !exists( $cmds{$command}{$method} )) {
+        return( "$server: Unsupported command" );
+    }
     ##################################
     # Get userid/password 
     ##################################
     my @cred = xCAT::PPCdb::credentials( $server, "fsp" );
 
+    ##################################
+    # Redirect STDERR to variable 
+    ##################################
+    if ( $verbose ) {
+        close STDERR;
+        if ( !open( STDERR, '>', \$lwp_log )) {
+             return( "Unable to redirect STDERR: $!" );
+        }
+    }
     ##################################
     # Turn on tracing
     ##################################
@@ -142,7 +124,7 @@ sub connect {
     # Logon failed
     ##################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( $lwp_log.$res->status_line );
     }
     ##################################
     # To minimize number of GET/POSTs,
@@ -159,10 +141,12 @@ sub connect {
         #    UserAgent 
         #    Server hostname
         #    UserId
+        #    Redirected STDERR/STDOUT
         ##############################
-       return( $ua,
+        return( $ua,
                 $server,
-                $cred[0] );
+                $cred[0],
+                \$lwp_log );
     }
     ##############################
     # Logon error 
@@ -170,7 +154,7 @@ sub connect {
     $res = $ua->get( $url );
 
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( $lwp_log.$res->status_line );
     }
     ##############################
     # Check for specific failures
@@ -181,10 +165,10 @@ sub connect {
     );
     foreach ( @error ) {
         if ( $res->content =~ /$_/i ) {
-            return( $_ );
+            return( $lwp_log.$_ );
         }
     }
-    return( "Logon failure" );
+    return( $lwp_log."Logon failure" );
 
 }
 
@@ -403,8 +387,7 @@ sub reset {
     # Return error
     ##################################
     if ( !$res->is_success()) {
-        print STDERR $res->status_line();
-        return;
+        return( $res->status_line );
     }
     if ( $res->content =~ 
         /(This feature is only available when the system is powered on)/ ) {
@@ -566,3 +549,4 @@ sub all_clear {
 
 
 1;
+
