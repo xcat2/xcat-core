@@ -54,6 +54,7 @@ sub send_msg {
 
         $output{data} = \@_;
         print $out freeze( [\%output] );
+        print $out "\nENDOFFREEZE6sK4ci\n";
     }
     #################################################
     # Called from parent - invoke callback directly
@@ -123,9 +124,24 @@ sub process_command {
     } 
     if ( exists( $request->{verbose} )) {
         my $elapsed = Time::HiRes::gettimeofday() - $start;
-        printf STDERR "Total Elapsed Time: %.3f sec\n", $elapsed;
+        my $msg = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
+        trace( $request, $msg );
     }
     return(0);
+}
+
+
+##########################################################################
+# Verbose mode (-V)
+##########################################################################
+sub trace {
+
+    my $request = shift;
+    my $msg     = shift;
+
+    my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
+    my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
+    send_msg( $request, $msg );
 }
 
 
@@ -142,21 +158,24 @@ sub child_response {
         my $data;
 
         #################################
-        # Read from child
+        # Read from child process
         #################################
-        while (<$rfh>) {
-            $data.= $_;
+        if ( $data = <$rfh> ) {
+            while ($data !~ /ENDOFFREEZE6sK4ci/) {
+                $data .= <$rfh>;
+            }
+            my $responses = thaw($data);
+            foreach ( @$responses ) {
+                $callback->( $_ );
+            }
+            next;
         }
         #################################
-        # Command results
+        # Done - close handle
         #################################
-        my $responses = thaw($data);
-        foreach (@$responses) {
-            $callback->($_);
-        }
         $fds->remove($rfh);
         close($rfh);
-    } 
+    }
 } 
 
 
@@ -495,6 +514,7 @@ sub invoke_cmd {
 
         my $out = $request->{pipe};
         print $out freeze( $result );
+        print $out "\nENDOFFREEZE6sK4ci\n";
         return;
     }
     ########################################
@@ -523,6 +543,13 @@ sub invoke_cmd {
     my $result = runcmd( $request, $nodes, \@exp );
 
     ########################################
+    # Output verbose Expect 
+    ########################################
+    if ( $verbose ) {
+        my $expect_log = $exp[6];
+        send_msg( $request, $$expect_log );
+    }
+    ########################################
     # Close connection to remote server
     ########################################
     xCAT::PPCcli::disconnect( \@exp );
@@ -537,10 +564,11 @@ sub invoke_cmd {
     ########################################
     # Send result back to parent process
     ########################################
-    if ( @$result[0] eq "FORMATTED_DATA" ) {
+    if ( @$result[0] eq "FORMATDATA6sK4ci" ) {
         shift(@$result);
         my $out = $request->{pipe};
         print $out freeze( [@$result] );
+        print $out "\nENDOFFREEZE6sK4ci\n";
         return;
     }
     ########################################
@@ -554,6 +582,7 @@ sub invoke_cmd {
     }
     my $out = $request->{pipe};
     print $out freeze( [@outhash] );
+    print $out "\nENDOFFREEZE6sK4ci\n";
 }
 
 
@@ -647,5 +676,6 @@ sub process_request {
 
 
 1;
+
 
 
