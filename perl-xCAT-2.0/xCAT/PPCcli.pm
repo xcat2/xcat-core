@@ -136,7 +136,7 @@ sub connect {
     }
 
     unless ( $ssh->spawn( "ssh", $parameters )) {
-        return( "Unable to spawn ssh connection to server" );
+        return( $expect_log."Unable to spawn ssh connection to server" );
     }
     ##################################################
     # -re $continue
@@ -174,7 +174,7 @@ sub connect {
     ##########################################
     if ( defined( $result[1] )) {
         $ssh->hard_close();
-        return( expect_error(@result) );
+        return( $expect_log.expect_error(@result) );
     }
     ##########################################
     # Successful logon....
@@ -199,7 +199,7 @@ sub connect {
     # Failed logon - kill ssh process
     ##########################################
     $ssh->hard_close();
-    return( "Invalid userid/password" );
+    return( $expect_log."Invalid userid/password" );
 }
 
 
