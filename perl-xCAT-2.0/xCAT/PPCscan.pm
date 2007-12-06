@@ -522,7 +522,7 @@ sub rscan {
     # Success 
     ###################################
     my $result = format_output( $request, $exp, $values );
-    unshift @$result, "FORMATTED_DATA";
+    unshift @$result, "FORMATDATA6sK4ci";
     return( $result );
 
 }
@@ -530,3 +530,4 @@ sub rscan {
 
 
 1;
+
