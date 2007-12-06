@@ -74,6 +74,7 @@ sub connect {
     my $timeout    = 10;
     my $success    = 0;
     my $pwd_sent   = 0;
+    my $expect_log;
 
     ##################################################
     # Shell prompt regexp based on HW Type 
@@ -83,7 +84,7 @@ sub connect {
         ivm => "\\\$ \$"
     );
     ##################################################
-    # Get userid/password based on Hardware Conrol Pt 
+    # Get userid/password  
     ##################################################
     my @cred = xCAT::PPCdb::credentials( $server, $hwtype );
 
@@ -106,19 +107,34 @@ sub connect {
     $ssh->slave->stty(qw(sane -echo));
 
     ##################################################
-    # exp_internal(1) sets exp_internal debugging.
-    # This is similar in nature to its Tcl counterpart
+    # exp_internal(1) sets exp_internal debugging  
+    # to STDERR.  
+    ##################################################
+    $ssh->exp_internal( $verbose );
+
+    ##################################################
+    # Redirect STDERR to variable 
     ##################################################
     if ( $verbose ) {
-        $ssh->exp_internal(1);
+        close STDERR;
+        if ( !open( STDERR, '>', \$expect_log )) {
+             return( "Unable to redirect STDERR: $!" );
+        }
     }
     ##################################################
-    # log_stdout(0) disables logging to STDOUT. This
-    # corresponds to the Tcl log_user variable.
+    # log_stdout(0) disables logging to STDOUT. 
+    # This corresponds to the Tcl log_user variable. 
     ##################################################
-    if ( !$verbose ) {
-        $ssh->log_stdout(0);
+    $ssh->log_stdout( $verbose );
+
+    ##################################################
+    # Redirect STDOUT to variable 
+    ##################################################
+    close STDOUT;
+    if ( !open( STDOUT, '>', \$expect_log )) {
+         return( "Unable to redirect STDOUT: $!" );
     }
+
     unless ( $ssh->spawn( "ssh", $parameters )) {
         return( "Unable to spawn ssh connection to server" );
     }
@@ -176,7 +192,8 @@ sub connect {
                 $hwtype,
                 $server,
                 $cred[0],
-                $cred[1] );
+                $cred[1],
+                \$expect_log );
     }
     ##########################################
     # Failed logon - kill ssh process
@@ -805,3 +822,4 @@ sub power_cmd {
 
 
 1;
+
