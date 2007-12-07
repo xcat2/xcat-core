@@ -504,8 +504,9 @@ sub invoke_cmd {
     my $hwtype  = $request->{hwtype};
     my $verbose = $request->{verbose};
     my @exp;
+    my $verbose_log;
     my @outhash;
-
+   
     ########################################
     # Direct-attached FSP handler 
     ########################################
@@ -525,15 +526,20 @@ sub invoke_cmd {
         # Output verbose Perl::LWP 
         ####################################
         if ( $verbose ) {
-            my $lwp_log = $exp[3];
-            send_msg( $request, $$lwp_log );
+            $verbose_log = $exp[3];
+
+            my %output;
+            $output{data} = [$$verbose_log];
+            unshift @$result, \%output;
         }
         my $out = $request->{pipe};
         print $out freeze( $result );
         print $out "\nENDOFFREEZE6sK4ci\n";
         return;
     }
+
     ########################################
+    # HMC and IVM-managed handler
     # Connect to list of remote servers
     ########################################
     foreach ( split /,/, $host ) {
@@ -564,26 +570,34 @@ sub invoke_cmd {
     xCAT::PPCcli::disconnect( \@exp );
 
     ########################################
-    # Output verbose Expect 
+    # Get verbose Expect output
     ########################################
     if ( $verbose ) {
-        my $expect_log = $exp[6];
-        send_msg( $request, $$expect_log );
+        $verbose_log = $exp[6];
     }
     ########################################
     # Return error
     ######################################## 
     if ( ref($result) ne 'ARRAY' ) {
-        send_msg( $request, $result );
+        send_msg( $request, $$verbose_log.$result );
         return;
+    }
+    ########################################
+    # Prepend verbose output 
+    ########################################
+    if ( defined( $verbose_log )) {
+        my %output;
+        $output{data} = [$$verbose_log];
+        push @outhash, \%output;
     }
     ########################################
     # Send result back to parent process
     ########################################
     if ( @$result[0] eq "FORMATDATA6sK4ci" ) {
-        shift(@$result);
         my $out = $request->{pipe};
-        print $out freeze( [@$result] );
+
+        push @outhash, @$result[1];
+        print $out freeze( [@outhash] );
         print $out "\nENDOFFREEZE6sK4ci\n";
         return;
     }
