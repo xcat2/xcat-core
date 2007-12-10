@@ -14,7 +14,6 @@ use Storable qw(freeze thaw);
 use IO::Select;
 use IO::Handle;
 
-
 sub handled_commands {
   return {
     findme => 'blade',
@@ -63,12 +62,12 @@ my $blower1speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.1';#blower2speed
 my $blower1stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.10';#blower1State
 my $blower2stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.11';#blower2State
 my $blower2speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.2';#blower2speed
-
 my $mmoname = '1.3.6.1.4.1.2.3.51.2.22.4.3';#chassisName
 my $mmotype = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.1';#bladeCenterVpdMachineType
 my $mmomodel = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.2';#bladeCenterVpdMachineModel
 my $mmoserial = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.3';#bladeCenterSerialNumber
 my $bladeoname = '1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.6';#bladeName
+my $bladeomodel = '1.3.6.1.4.1.2.3.51.2.2.21.4.1.1.12';#bladeModel
 
 my @macoids = (
   '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.2', #bladeMACAddress1Vpd
@@ -477,7 +476,13 @@ sub rscan {
     foreach (1..14) {
         my $tmp = $session->get([$bladexistsoid.".$_"]);
         if ( $tmp eq 1 ) {
-            my $model = $session->get([$blademtmoid,$_]);
+            my $type = $session->get([$blademtmoid,$_]);
+            if ($session->{ErrorStr}) {
+                return (1,$session->{ErrorStr});
+            }
+            $type =~ s/Not available/null/;
+
+            my $model = $session->get([$bladeomodel,$_]);
             if ($session->{ErrorStr}) {
                 return (1,$session->{ErrorStr});
             }
@@ -493,7 +498,7 @@ sub rscan {
             if ($session->{ErrorStr}) {
                 return (1,$session->{ErrorStr});
             }
-            push @values, join( ",", "blade", $name, $_, $model, $serial, "");
+            push @values, join( ",", "blade", $name, $_, "$type-$model", $serial, "");
             my $length  = length( $name );
             $max = ($length > $max) ? $length : $max;
         }
