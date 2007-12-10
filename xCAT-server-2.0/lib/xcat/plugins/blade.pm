@@ -18,6 +18,7 @@ use IO::Handle;
 sub handled_commands {
   return {
     findme => 'blade',
+    rscan => 'nodehm:mgt',
     rpower => 'nodehm:power,mgt',
     rvitals => 'nodehm:vitals,mgt',
     rinv => 'nodehm:inv,mgt',
@@ -33,6 +34,7 @@ my %usage = (
     "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
     "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
     "rbootseq" => "Usage: rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...",
+    "rscan" => "Usage: rscan <noderange> [-w][-x|-z]"
 );
 my %macmap; #Store responses from rinv for discovery
 my $mmprimoid = '1.3.6.1.4.1.2.3.51.2.22.5.1.1.4';#mmPrimary
@@ -61,6 +63,12 @@ my $blower1speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.1';#blower2speed
 my $blower1stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.10';#blower1State
 my $blower2stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.11';#blower2State
 my $blower2speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.2';#blower2speed
+
+my $mmoname = '1.3.6.1.4.1.2.3.51.2.22.4.3';#chassisName
+my $mmotype = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.1';#bladeCenterVpdMachineType
+my $mmomodel = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.2';#bladeCenterVpdMachineModel
+my $mmoserial = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.3';#bladeCenterSerialNumber
+my $bladeoname = '1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.6';#bladeName
 
 my @macoids = (
   '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.2', #bladeMACAddress1Vpd
@@ -131,6 +139,14 @@ my %bootnumbers = (
   'flash' => 11,
   'usb' => 11
 );
+
+my @rscan_header = (
+  ["type",          "%-8s" ],
+  ["name",          "" ],
+  ["id",            "%-8s" ],
+  ["type-model",    "%-12s" ],
+  ["serial-number", "%-15s" ],
+  ["address",       "%s\n" ]);
 
 my $session;
 my $slot;
@@ -351,9 +367,9 @@ sub vitals {
    my @vitems;
    foreach (@_) {
      if ($_ eq 'all') {
-	push @vitems,qw(temp,wattage,voltage,fan,summary);
+ push @vitems,qw(temp,wattage,voltage,fan,summary);
      } else {
-	push @vitems,split( /,/,$_);
+ push @vitems,split( /,/,$_);
      }
    }
    my $tmp;
@@ -390,22 +406,22 @@ sub vitals {
      push @output,"Fan Pack 4:  $tmp";
    }
    if (grep /volt/,@vitems) {
-	for my $idx (15..40) {
-	   $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
+ for my $idx (15..40) {
+    $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
            unless ($tmp =~ /Not Readable/) {
              $tmp =~ s/ = /:/;
              push @output,"$tmp";
            }
-	}
+ }
     }
 
    if (grep /temp/,@vitems) {
       $tmp=$session->get(["1.3.6.1.4.1.2.3.51.2.2.1.5.1.0"]);
       push (@output,"Ambient: $tmp");
       for my $idx (6..20) {
-	if ($idx eq 11) {
-		next;
-	}
+ if ($idx eq 11) {
+  next;
+ }
         $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.3.1.$idx.$slot"]);
         unless ($tmp =~ /Not Readable/) {
           $tmp =~ s/ = /:/;
@@ -420,8 +436,175 @@ sub vitals {
    }
    return(0,@output);
 }
-	
+ 
+sub rscan {
+
+    my $subcommand = shift;
+    my @values;
+    my $result;
+    my %opt;
+
+    @ARGV = $subcommand;
+    use Getopt::Long;
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure( "bundling" );
+
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version w x z) )){
+        return( usage() );
+    }
+    if ( exists($opt{x}) and exists($opt{z}) ) {
+        return (1,"-x and -z are mutually exclusive" );
+    } 
+    my $mmname = $session->get([$mmoname,0]);
+    if ($session->{ErrorStr}) {
+        return (1,$session->{ErrorStr});
+    }
+    my $mmtype = $session->get([$mmotype,0]);
+    if ($session->{ErrorStr}) {
+        return (1,$session->{ErrorStr});
+    }
+    my $mmmodel = $session->get([$mmomodel,0]);
+    if ($session->{ErrorStr}) {
+        return (1,$session->{ErrorStr});
+    }
+    my $mmserial = $session->get([$mmoserial,0]);
+    if ($session->{ErrorStr}) {
+        return (1,$session->{ErrorStr});
+    }
+    push @values, join( ",", "mm", $mmname, 0, "$mmtype-$mmmodel", $mmserial, $mpa);
+    my $max = length( $mmname );
+
+    foreach (1..14) {
+        my $tmp = $session->get([$bladexistsoid.".$_"]);
+        if ( $tmp eq 1 ) {
+            my $model = $session->get([$blademtmoid,$_]);
+            if ($session->{ErrorStr}) {
+                return (1,$session->{ErrorStr});
+            }
+            $model =~ s/Not available/null/;
+
+            my $serial = $session->get([$bladeserialoid,$_]);
+            if ($session->{ErrorStr}) {
+                return (1,$session->{ErrorStr});
+            }
+            $serial =~ s/Not available/null/;
+
+            my $name = $session->get([$bladeoname,$_]);
+            if ($session->{ErrorStr}) {
+                return (1,$session->{ErrorStr});
+            }
+            push @values, join( ",", "blade", $name, $_, $model, $serial, "");
+            my $length  = length( $name );
+            $max = ($length > $max) ? $length : $max;
+        }
+    }
+    my $format = sprintf "%%-%ds", ($max + 2 );
+    $rscan_header[1][1] = $format;
+
+    if ( exists( $opt{x} )) {
+       $result = rscan_xml( \@values ); 
+    } 
+    elsif ( exists( $opt{z} )) {
+       $result = rscan_schema( \@values ); 
+    } 
+    else {
+        foreach ( @rscan_header ) {
+            $result .= sprintf @$_[1], @$_[0];
+        }
+        foreach ( @values ) {
+            my @data = split /,/;
+            my $i = 0;
+
+            foreach ( @rscan_header ) {
+                $result .= sprintf @$_[1], $data[$i++];
+            }
+        }
+    }
+    if ( !exists( $opt{w} )) {
+        return(0,$result);
+    }
+    my @tabs = qw(mp nodehm nodelist);
+    my %db   = ();
+
+    foreach ( @tabs ) {
+        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
+        if ( !$db{$_} ) {
+            return( 1,"Error opening '$_'" );
+        }
+    }
+    foreach ( @values ) {
+        my @data = split /,/;
+        my $name = $data[1];
   
+        my ($k1,$u1);
+        $k1->{node} = $name;
+        $u1->{mpa}  = $mpa;
+        $u1->{id}   = $data[2];
+        $db{mp}->setAttribs( $k1, $u1 );
+        $db{mp}{commit} = 1;
+
+        my ($k2,$u2);
+        $k2->{node} = $name;
+        $u2->{mgt}  = "blade";
+        $db{nodehm}->setAttribs( $k2, $u2 );
+        $db{nodehm}{commit} = 1;
+
+        my ($k3,$u3);
+        $k3->{node}   = $name;
+        $u3->{groups} = "blade,all";
+        $db{nodelist}->setAttribs( $k3, $u3 );
+        $db{nodelist}{commit} = 1;
+    }
+    foreach ( @tabs ) {
+        if ( exists( $db{$_}{commit} )) {
+           $db{$_}->commit;
+        }
+    }
+    return (0,$result);
+}
+
+sub rscan_xml {
+
+    my $values = shift;
+    my $xml;
+
+    foreach ( @$values ) {
+      my @data = split /,/;
+      my $i = 0;
+
+      my $href = {
+          Node => { }
+      };
+      foreach ( @rscan_header ) {
+        $href->{Node}->{@$_[0]} = $data[$i++];
+      }
+      $xml.= XMLout($href,
+                     NoAttr   => 1,
+                     KeyAttr  => [],
+                     RootName => undef );
+    }
+    return( $xml );
+}
+sub rscan_schema {
+
+    my $values = shift;
+    my $result;
+
+    foreach ( @$values ) {
+      my @data = split /,/;
+      my $i = 0;
+      $result .= "$data[1]:\n\tobjtype=node\n";
+
+      foreach ( @rscan_header ) {
+        if ( @$_[0] eq "name" ) {
+          next;
+        }
+        $result .= "\t@$_[0]=$data[$i++]\n";
+      }
+    }
+    return( $result );
+}
+ 
 sub inv {
   my @invitems;
   my $data;
@@ -597,7 +780,7 @@ sub bladecmd {
   my @args = @_;
   my $error;
 
-	
+ 
   if ($slot > 0) {
     my $tmp = $session->get([$bladexistsoid.".$slot"]);
     if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
@@ -617,6 +800,8 @@ sub bladecmd {
     return inv(@args);
   } elsif ($command eq "reventlog") {
     return eventlog(@args);
+  } elsif ($command eq "rscan") {
+    return rscan(@args);
   }
   
   return (1,"$command not a supported command by blade method");
@@ -630,6 +815,7 @@ sub process_request {
   my $noderange = $request->{node};
   my $command = $request->{command}->[0];
   my @exargs;
+
   unless ($noderange or $command eq "findme") {
       if ($usage{$command}) {
           $callback->({data=>$usage{$command}});
@@ -826,10 +1012,15 @@ sub dompa {
           $output{node}->[0]->{data}->[0]->{desc}->[0]=$desc;
         }
       }
-      $text =~ s/^\s+//;
-      $text =~ s/\s+$//;
-      $output{node}->[0]->{name}->[0]=$node;
-      $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+      if ( $command eq "rscan" ) { 
+        $output{data} = [$_];
+      }
+      else {
+        $text =~ s/^\s+//;
+        $text =~ s/\s+$//;
+        $output{node}->[0]->{name}->[0]=$node;
+        $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+      }
       print $out freeze([\%output]);
       print $out "\nENDOFFREEZE6sK4ci\n";
     }
@@ -839,4 +1030,5 @@ sub dompa {
 }
     
 1;
+
 
