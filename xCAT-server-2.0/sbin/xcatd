@@ -96,7 +96,7 @@ sub do_installm_service {
                                      ReuseAddr => 1,
                                      Listen => 64);
   unless ($socket) {
-    syslog("local1|err","xcatd unable to open install monitor services on $sport");
+    syslog("local4|err","xcatd unable to open install monitor services on $sport");
     die;
   }
   until ($quit) {
@@ -144,9 +144,9 @@ sub do_installm_service {
     };
     if ($@) {
       if ($@ =~ /XCATTIMEOUT/) {
-        syslog("local1|err","xcatd installmonitor timed out talking to $node");
+        syslog("local4|err","xcatd installmonitor timed out talking to $node");
       } else {
-        syslog("local1|err","xcatd: possible BUG encountered by xCAT install monitor service: ".$@);
+        syslog("local4|err","xcatd: possible BUG encountered by xCAT install monitor service: ".$@);
       }
     }
   }
@@ -164,7 +164,7 @@ sub do_udp_service { #This function opens up a UDP port
   my $socket = IO::Socket::INET6->new(LocalPort => $port,
                                      Proto     => 'udp',
                                      Domain => AF_INET);
-  openlog("xCAT UDP",'','local1');
+  openlog("xCAT UDP",'','local4');
   unless ($socket) {
     syslog("err","xCAT UDP service unable to open port $port: $!");
     closelog();
@@ -192,7 +192,7 @@ sub do_udp_service { #This function opens up a UDP port
       }
     };
     if ($@) {
-      syslog("local1|err","xcatd: possible BUG encountered by xCAT UDP service: ".$@);
+      syslog("local4|err","xcatd: possible BUG encountered by xCAT UDP service: ".$@);
     }
   }
 }
@@ -249,7 +249,7 @@ unless ($pid) {
   exit(0);
 }
 $$progname="xcatd: SSL listener";
-openlog("xCAT SSL","","local1");
+openlog("xCAT SSL","","local4");
 my $listener = IO::Socket::SSL->new(
     LocalPort => $port,
     Listen => 64,
@@ -608,9 +608,9 @@ sub service_connection {
   };
   if ($@) { # The eval statement caught a program bug..
     unless ($@ =~ /^SIGPIPE/) {
-        syslog("local1|err","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
+        syslog("local4|err","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
     } else {
-        syslog("local1|info","xcatd: Unexpected client disconnect");
+        syslog("local4|info","xcatd: Unexpected client disconnect");
     }
   }
   alarm(0);
