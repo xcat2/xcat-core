@@ -8,7 +8,7 @@ Source: perl-xCAT-2.0.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
-Prefix: %{_prefix}
+Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %ifos linux
 BuildArch: noarch
@@ -21,41 +21,39 @@ Provides perl xCAT libraries for core functionality.  Required for all xCAT inst
 Includes xCAT::Table, xCAT::NodeRange, among others.
 
 %prep
-%setup -q -n perl-xCAT-%{version}
-
+%setup -q
 %build
-perl Makefile.PL
-%{__make} %{?mflags}
-
 %install
-%{__make} install DESTDIR=$RPM_BUILD_ROOT %{?mflags_install}
-test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT/%{_datadir} ||:
-test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT/%{_libdir}/perl5/5* ||:
 
-find %{buildroot} -name "perllocal.pod" \
-    -o -name ".packlist"                \
-    -o -name "*.bs"                     \
-    |xargs -i rm -f {}
+rm -rf $RPM_BUILD_ROOT
 
-#  ndebug - this seems to break the AIX build - need to investigate
-%ifos linux
-find %{buildroot}%{_prefix}             \
-    -type d -depth                      \
-    -exec rmdir {} \; 2>/dev/null
-%endif
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
 
-find $RPM_BUILD_ROOT -type f | sed -e "s@$RPM_BUILD_ROOT@/@" > files.list
+cp -r xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data/*
+
+cp xCAT2.0.doc $RPM_BUILD_ROOT/%{prefix}/share/doc
+cp xCAT2.0.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
+
+cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
+cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT/*
 
 %clean
-test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
+rm -rf $RPM_BUILD_ROOT
 
-%files -f files.list
+#find $RPM_BUILD_ROOT -type f | sed -e "s@$RPM_BUILD_ROOT@/@" > files.list
+
+%files
 %defattr(-, root, root)
-%doc LICENSE.html
-%doc README 
-%doc xCAT2.0.doc 
-%doc xCAT2.0.pdf
-
+#%doc LICENSE.html
+#%doc README 
+#%doc xCAT2.0.doc 
+#%doc xCAT2.0.pdf
+%{prefix}
 
 %changelog
 * Wed May 2 2007 - Norm Nott nott@us.ibm.com

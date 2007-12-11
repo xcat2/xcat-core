@@ -21,7 +21,7 @@ else
    		pkg="packages"
 	fi
 
-	tar czvf xCAT-server-2.0.tar.gz xCAT-server-2.0;
+	tar  --exclude .svn -czvf xCAT-server-2.0.tar.gz xCAT-server-2.0;
 	rm /usr/src/$pkg/RPMS/noarch/xCAT-server-2.0*rpm
 	rpmbuild -ta xCAT-server-2.0.tar.gz ;
 	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-server-2.0*rpm

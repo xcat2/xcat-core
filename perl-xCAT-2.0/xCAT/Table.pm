@@ -7,6 +7,11 @@
 #but going for prototype
 #class xcattable
 package xCAT::Table;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 
 use DBI;
 

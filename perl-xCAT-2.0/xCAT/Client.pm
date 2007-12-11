@@ -1,6 +1,11 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Client;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 use xCAT::NodeRange;
 use xCAT::Utils;
 use xCAT::Table;
@@ -35,7 +40,7 @@ my %resps;
 #   in those directories will be loaded in as plugins (for duplicate 
 #   commands, last one in wins). If it is set to any other value 
 #   (e.g. "yes", "default", whatever string you want) the default plugin 
-#   directory /usr/lib/xcat/plugins will be used.
+#   directory /opt/xcat/lib/perl/xCAT_plugin will be used.
 #
 # Input:
 #    Request hash - A hash ref containing the input command and args to be
@@ -80,12 +85,7 @@ sub submit_request {
        unless ($sitetab) {
          print ("ERROR: Unable to open basic site table for configuration\n");
        }
-       $::XCATPREFIX = '/usr';
-       my ($tmp) = $sitetab->getAttribs({'key'=>'xcatprefix'},'value');
-       if ($tmp and $tmp->{value}) {
-         $::XCATPREFIX = $tmp->{value};
-       }
-       $plugins_dir=$::XCATPREFIX.'/lib/xcat/plugins';
+       $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
        scan_plugins();
     }
 

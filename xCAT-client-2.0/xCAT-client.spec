@@ -8,7 +8,7 @@ Source: xCAT-client-2.0.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
-Prefix: /usr
+Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
 # AIX will build with an arch of "ppc"
@@ -33,6 +33,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
@@ -42,6 +43,9 @@ cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man1/*
 cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
+cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
+cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
 
 #cp usr/share/xcat/scripts/setup-local-client.sh $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
 #chmod 755 $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
@@ -90,8 +94,8 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
-%doc README
-%doc LICENSE.html
+#%doc README
+#%doc LICENSE.html
 %{prefix}
 
 %changelog
@@ -100,4 +104,25 @@ rm -rf $RPM_BUILD_ROOT
 
 * Tue Feb 20 2007 Jarrod Johnson <jbjohnso@us.ibm.com>
 - Start core rpm for 1.3 work
+
+%post 
+%ifos linux
+echo "XCATROOT=$XCATROOT
+PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
+MANPATH=\$MANPATH:\$XCATROOT/share/man
+export XCATROOT PATH MANPATH" >/etc/profile.d/xcat.sh
+
+echo "setenv XCATROOT \"$XCATROOT\"
+setenv PATH \${PATH}:\${XCATROOT}/bin:\${XCATROOT}/sbin
+setenv MANPATH \${MANPATH}:\${XCATROOT}/share/man" >/etc/profile.d/xcat.csh
+chmod 755 /etc/profile.d/xcat.*
+%endif
+
+%preun
+%ifos linux
+if [ $1 == 0 ]; then  #This means only on -e
+rm /etc/profile.d/xcat.*
+unset XCATROOT
+fi
+%endif
 

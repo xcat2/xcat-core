@@ -1,6 +1,12 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::NotifHandler;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 use File::Basename qw(fileparse);
 
 #%notif is a cache that holds the info from the "notification" table.
@@ -294,8 +300,8 @@ sub notify {
       if ($pid=fork()) { }
       elsif (defined($pid)) {
         if (($path eq "") || ($path eq ".\/")) {
-          #default path is /usr/lib/xcat/monitoring/ if there is no path specified
-          require "/usr/lib/xcat/monitoring/".$modname.".pm";
+          #default path is /opt/xcat/lib/perl/xCAT_monitoring/ if there is no path specified
+          require "$::XCATROOT/lib/perl/xCAT_monitoring/".$modname.".pm";
         } else {
           require $_;
         }
