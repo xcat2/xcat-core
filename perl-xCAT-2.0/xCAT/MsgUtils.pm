@@ -4,18 +4,13 @@
 package xCAT::MsgUtils;
 
 use strict;
-
+use Sys::Syslog;
 use locale;
 use Socket;
 use File::Path;
 
-my $msgs;
-my $distro;
-
-$::XCATLOG = "/var/log/xcat";
-$::NOK     = -1;
-$::OK      = 0;
-umask(0022);    #  This sets umask for all files so that group and world only
+$::NOK = -1;
+$::OK  = 0;
 
 #--------------------------------------------------------------------------------
 
@@ -46,71 +41,136 @@ This program module file, supports the xcat messaging and logging
 
 #--------------------------------------------------------------------------------
 
-=head1    Subroutines by Functional Group
+=head1    Subroutines 
 
 =cut
 
 =head3    message
 
-    Display a msg  stdout, stderr, or a log file. 
+    Display a msg  STDOUT,STDERR or return to callback function. 
 	If callback routine is provide, the message will be returned to the callback
-	routine and logged, if logging is requested.
-	This function is primarily meant for commands and other code that is sending
-    output directly to the user.  Even the log is really a capture of this
-    interactive output. 
+	routine.
 
+	If callback routime is not provide, the message is displayed to STDOUT or
+	STDERR.
+
+     
     Arguments:
         The arguments of the message() function are:
 
-			if $::VERBOSE is set, the message will be displayed.
-
-            If $::LOG_FILE_HANDLE is set, the message goes to both 
-			the screen and that log file.  (Verbose msgs will be sent to 
-			the log file even if $::VERBOSE is not set.)   
-			A timestamp will automatically be put in front on any message
-			that is logged unless the T option is specified.
             
-			if address of the call_back is provided,
-			then the message will be returned
-			   as data to the call_back routine.
+			If address of the callback is provided,
+			then the message will be returned either 
+			as data to the client's callback routine or to the
+			xcat daemon or Client.pm ( bypass) for display/logging.
+			See flags below.  
 
-         - The  argument is the message to be displayed/logged.
+			If address of the callback is not provide, then
+			the message will be displayed to STDERR or STDOUT or 
+			added to SYSLOG.  See flags below.
+
+			For compatibility with existing code, the message routine will
+			move the data into the appropriate callback structure, if required.
+			See example below, if the input to the message routine
+			has the "data" structure  filled in for an error message, then 
+			the message routine will move the $rsp->{data}->[0] to 
+			$rsp->{error}->[0]. This will allow xcatd/Client.pm will process
+			all but "data" messages.
+
+			The current client code should not have to change. 
+
+		      my %rsp;
+		         $rsp->{data}->[0] = "Job did not run. \n";
+	             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+               Here the message routine will move $rsp->{data}->[0] to
+			   $rsp->{error}->[0], to match the "E"message code.
+			   Note the message
+			   routine will only check for the data to either exist in 
+			   $rsp->{error}->[0] already, or to exist in $rsp->{data}->[0]. 
+ 
+            Here's the meaning of the 1st character, if a callback specified:
+
+                D - DATA this is returned to the client callback routine 
+                E - error this is displayed/logged by daemon/Client.pm.  
+                I - informational this is displayed/logged by daemon/Client.pm.
+                S - Message will be logged to syslog ( severe error) 
+					 syslog  facily (local4) and priority (err) will be used.
+					 See /etc/syslog.conf file for the destination of the
+					 messages.
+                     Note S can be combined with other flags for example
+					 SE logs message to syslog to also display the
+					 message by daemon/ Client.pm. 
+                V - verbose.  This flag is not valid, the calling routine
+				should check for verbose mode before calling the message
+				routine and only use the I flag for the message.
+				If V flag is detected, it will be changed to an I flag.  
+                W - warning this is displayed/logged by daemon/Client.pm.  
 
 
-            Here's the meaning of the 1st character:
-                I - informational  goes to stdout
-                E - error.  This type of message will be sent to stderr.
-                V - verbose.  This message should only be displayed, 
-				if $::VERBOSE is set.
-                T - Do not log timestamp, 
+            Here's the meaning of the 1st character, if no callback specified:
 
-            If $::LOG_FILE_HANDLE is set, the message goes to both 
-			the screen and that log file.  (Verbose msgs will be sent to 
-			the log file even if $::VERBOSE is not set.)   
-			A timestamp will automatically be put in front on any message
-			that is logged.
-			Optionally a T can be put before any of the above characters
-			"not" put  a timestamp on 
-			before the message when it is logged.
-			Note: T must be the first character. 
-
+                D - DATA  goes to STDOUT 
+                E - error.  This type of message will be sent to STDERR.
+                I - informational  goes to STDOUT 
+                S - Message will be logged to syslog ( severe error) 
+                     Note S can be combined with other flags for example
+					 SE logs message to syslog and is sent to STDERR. 
+                V - verbose.  This flag is not valid, the calling routine
+				should check for verbose mode before calling the message
+				routine and only use the I flag for the message.
+				If V flag is detected, it will be changed to an I flag.  
+                W - warning goes to STDOUT.  
 
     Returns:
         none
 
     Error:
-        _none
+        none
 
     Example:
+
+    Use with no callback 
         xCAT::MsgUtils->message('E', "Operation $value1 failed\n");
-    Use of T flag
-		xCAT::MsgUtils->message('TI', "Operation $value1 failed\n");
-    Use of callback 
-		xCAT::MsgUtils->message('I', $rsp,$call_back);
-		   where $rsp is a data response structure for the callback function
+        xCAT::MsgUtils->message('S', "Host $host not responding\n");
+        xCAT::MsgUtils->message('SI', "Host $host not responding\n");
+
+    Use with callback 
+		my %rsp;
+		$rsp->{data}->[0] = "Job did not run. \n";
+	    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+		my %rsp;
+		$rsp->{error}->[0] = "No hosts in node list\n";
+	    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+
+		my %rsp;
+		$rsp->{info}->[0] = "No hosts in node list\n";
+	    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+
+
+		my %rsp;
+		$rsp->{warning}->[0] = "No hosts in node list\n";
+	    xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
+
+		my %rsp;
+		$rsp->{error}->[0] = "Host not responding\n";
+	    xCAT::MsgUtils->message("S", $rsp, $::CALLBACK);
+
+
+		my %rsp;
+		$rsp->{error}->[0] = "Host not responding\n";
+	    xCAT::MsgUtils->message("SE", $rsp, $::CALLBACK);
+
+		my %rsp;
+		$rsp->{info}->[0] = "Host not responding\n";
+	    xCAT::MsgUtils->message("SI", $rsp, $::CALLBACK);
 
 
     Comments:
+      
+
     Returns:
         none
 
@@ -125,226 +185,88 @@ sub message
 
     # Process the arguments
     shift;    # get rid of the class name
-    my $sevcode   = shift;
-    my $msg       = shift;
+    my $sev       = shift;
+    my $rsp       = shift;
     my $call_back = shift;    # optional
 
-    # Parse the severity code
-    my $i           = 1;
-    my $notimestamp = 0;
-    my $sev         = substr($sevcode, 0, 1);
-
-    # should be I, E, V, T
-    if ($sev eq 'T')          # do not put timestamp
-    {
-        $notimestamp = 1;     # no timestamp
-        $i           = 2;     # logically shift everything by 1 char
-        $sev = substr($sevcode, 1, 1);    # now should be either I,E,V
-    }
+    # should be I, D, E, S, W
+    #  or S(I, D, E, S, W)
 
     my $stdouterrf = \*STDOUT;
     my $stdouterrd = '';
-    if (my $sev =~ /[E]/)
+    if ($sev =~ /[E]/)
     {
         $stdouterrf = \*STDERR;
         $stdouterrd = '1>&2';
     }
 
-    if (defined($::LOG_FILE_HANDLE))
-    {
-
-        if ($notimestamp == 0)
-        {    # print a timestamp
-            my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
-              localtime(time);
-            my $time = $hour . ":" . $min . ":" . $sec . " ";
-            print $::LOG_FILE_HANDLE $time;
-            print $::LOG_FILE_HANDLE " ";
-        }
-        print $::LOG_FILE_HANDLE $msg;
+    if ($sev eq 'V')
+    {    # verbose should have been handled in calling routine
+        $sev = "I";
+    }
+    if ($sev eq 'SV')
+    {    # verbose should have been handled in calling routine
+        $sev = "SI";
     }
 
-    # if V option and $::VERBOSE set or not V option then display
-    # Note Verbose messages, will be thrown away if verbose is not
-    # turned on and there is no logging.
-    if (($sev eq 'V' && $::VERBOSE) || ($sev ne 'V'))
-    {
-        if ($call_back)
-        {    # callback routine provided
-            $call_back->($msg);
-        }
-        else
+    # check that correct structure is filled in
+    # and move to correct structure. If the data is not in the
+    # structure corresponding to the $sev,  then look for it in "data"
+    if ($call_back)
+    {    # callback routine provided
+        if (($sev eq 'I') || ($sev eq 'SI'))
         {
-            print $stdouterrf $msg;    # print the message
+            if (!($rsp->{info}->[0]))    # no info data
+            {                            # no error data
+                $rsp->{info}->[0] = $rsp->{data}->[0];
+
+                # $rsp->{data}->[0] = "";
+            }
+        }
+        if (($sev eq 'E') || ($sev eq 'S') || ($sev eq 'SE'))
+        {
+            if (!($rsp->{error}->[0]))    # no error data
+            {                             # no error data
+                $rsp->{error}->[0] = $rsp->{data}->[0];
+
+                #       $rsp->{data}->[0]  = "";
+            }
+        }
+        if (($sev eq 'W') || ($sev eq 'SW'))
+        {
+            if (!($rsp->{warning}->[0]))    # no warning data
+            {                               # no error data
+                $rsp->{warning}->[0] = $rsp->{data}->[0];
+
+                #       $rsp->{data}->[0]    = "";
+            }
+        }
+
+        if ($sev ne 'S')
+        {                                   # not just syslog
+            $call_back->($rsp); # send message to daemon/Client.pm unless
+                                # data structure which is output by the commands
+                                # callback routine.
+        }
+    }
+    else                        # no callback provided
+    {
+        if ($sev ne 'S')        # syslog only
+        {
+            print $stdouterrf $rsp;    # print the message
 
         }
+    }
+    if ($sev =~ /[S]/)
+    {
+
+        # need to syslog , the message
+        openlog("xCAT", '', 'local4');
+
+        syslog("err", $rsp);
+        closelog();
     }
     return 0;
-}
-
-#--------------------------------------------------------------------------------
-
-=head2    Message Logging Routines
-
-=cut
-
-#--------------------------------------------------------------------------------
-
-#--------------------------------------------------------------------------------
-
-=head3    backup_logfile
-
-        Backup the current logfile. Move logfile to logfile.1. Shift all other logfiles
-        (logfile.[1-3]) up one number. The original logfile.4 is removed as in a FIFO.   
-
-        Arguments:
-                $logFileName
-        Returns:
-                $::OK
-        Error:
-                undefined
-        Example:
-                xCAT::MsgUtils->backup_logfile($logfile);
-        Comments:
-                Never used outside of ServerUtils.
-
-=cut
-
-#--------------------------------------------------------------------------------
-
-sub backup_logfile
-{
-    my ($class, $logfile) = @_;
-
-    my ($logfile1) = $logfile . ".1";
-    my ($logfile2) = $logfile . ".2";
-    my ($logfile3) = $logfile . ".3";
-    my ($logfile4) = $logfile . ".4";
-
-    if (-f $logfile)
-    {
-        rename($logfile3, $logfile4) if (-f $logfile3);
-        rename($logfile2, $logfile3) if (-f $logfile2);
-        rename($logfile1, $logfile2) if (-f $logfile1);
-        rename($logfile,  $logfile1);
-    }
-    return $::OK;
-}
-
-#--------------------------------------------------------------------------------
-
-=head3 start_logging
-
-        Start logging messages to a logfile. Return the log file handle so it
-        can be used to close the file when done logging.
-
-        Arguments:
-                $logFile
-        Returns:
-                $::LOG_FILE_HANDLE
-        Globals:
-                $::LOG_FILE_HANDLE
-                $::XCATLOG
-        Error:
-                $::NOK
-        Example:
-                xCAT::MsgUtils->start_logging($cfmupdatenode.log);
-        Comments:
-                Common method for logging script runtime output.
-
-=cut
-
-#--------------------------------------------------------------------------------
-
-sub start_logging
-{
-    my ($class, $logfile) = @_;
-    my ($cmd, $rc);
-    xCAT::MsgUtils->backup_logfile($logfile);
-
-    # create the log directory if it's not already there
-    if (!-d $::XCATLOG)
-    {
-        mkdir($::XCATLOG, 0755);
-    }
-
-    # open the log file
-    unless (open(LOGFILE, ">>$logfile"))
-    {
-
-        # Cannot open file
-        xCAT::MsgUtils->message("E", "Cannot open file: $logfile.\n");
-        return $::NOK;
-    }
-
-    $::LOG_FILE_HANDLE = \*LOGFILE;
-
-    # Print the date to the top of the logfile
-    my $sdate = localtime(time);
-    chomp $sdate;
-    my $program = xCAT::Utils->programName();
-    xCAT::MsgUtils->message(
-        "TV",
-        "#--------------------------------------------------------------------------#\n"
-        );
-    xCAT::MsgUtils->message("TV", "$program: Logging Started:$sdate\n");
-    xCAT::MsgUtils->message("TV", "Input: $::command_line\n");
-    xCAT::MsgUtils->message(
-        "TV",
-        "#--------------------------------------------------------------------------#\n"
-        );
-
-    return ($::LOG_FILE_HANDLE);
-}
-
-#--------------------------------------------------------------------------------
-
-=head3 stop_logging
-
-        Turn off message logging close file. Routine expects to have a file handle
-        passed in via the global $::LOG_FILE_HANDLE.
-
-        Arguments:
-               
-        Returns:
-                $::OK
-        Globals:
-                $::LOG_FILE_HANDLE
-        Error:
-                none
-        Example:
-                xCAT::MsgUtils->stop_logging($cfmupdatenode.log);
-        Comments:
-                closes the logfile and undefines $::LOG_FILE_HANDLE
-                even on error.
-
-=cut
-
-#--------------------------------------------------------------------------------
-
-sub stop_logging
-{
-    my ($class) = @_;
-    if (defined($::LOG_FILE_HANDLE))
-    {
-
-        my $sdate = localtime(time);
-        chomp $sdate;
-        my $program = xCAT::Utils->programName();
-        xCAT::MsgUtils->message(
-            "TV",
-            "#--------------------------------------------------------------------------#\n"
-            );
-        xCAT::MsgUtils->message("TV", "$program: Logging Stopped: $sdate\n");
-        xCAT::MsgUtils->message(
-            "TV",
-            "#--------------------------------------------------------------------------#\n"
-            );
-
-        close($::LOG_FILE_HANDLE);
-        undef $::LOG_FILE_HANDLE;
-    }
-    return $::OK;
 }
 
 1;
