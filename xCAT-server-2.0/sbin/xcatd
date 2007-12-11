@@ -1,6 +1,10 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
 
 use IO::Socket::SSL;
@@ -22,7 +26,7 @@ use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog;
 use xCAT::NotifHandler;
-
+use xCAT_monitoring::monitorctrl;
 
 
 Getopt::Long::Configure("bundling");
@@ -46,7 +50,7 @@ my $sitetab=xCAT::Table->new('site');
 unless ($sitetab) {
     print ("ERROR: Unable to open basic site table for configuration\n");
 }
-$::XCATPREFIX = '/usr';
+
 my ($tmp) = $sitetab->getAttribs({'key'=>'xcatdport'},'value');
 unless ($tmp) {
   die "ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001";
@@ -54,12 +58,8 @@ unless ($tmp) {
 $port = $tmp->{value};
 $sport = $tmp->{value}+1;
 
-($tmp) = $sitetab->getAttribs({'key'=>'xcatprefix'},'value');
-if ($tmp and $tmp->{value}) {
-    $::XCATPREFIX = $tmp->{value};
-}
-require($::XCATPREFIX."/lib/xcat/monitoring/monitorctrl.pm");
-my $plugins_dir=$::XCATPREFIX.'/lib/xcat/plugins';
+
+my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
 ($tmp) = $sitetab->getAttribs({'key'=>'xcatconfdir'},'value');
 $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 

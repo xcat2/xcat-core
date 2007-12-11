@@ -15,7 +15,7 @@ package xCAT_monitoring::templatemon;
    name to the monitoring table use chtab command. For example:
       chtab productname=XXX monitoring.nodestatmon=1 (0r 0). 
    Then change the package name from xCAT_monitoring::templatemon to xCAT_monitoring::xxxmon.
-   Change the file name to xxxmon.pm and copy the file to /usr/lib/xcat/monitoring/
+   Change the file name to xxxmon.pm and copy the file to /opt/xcat/lib/perl/xCAT_monitoring/
    directory.  
 =cut
 #-------------------------------------------------------------------------------

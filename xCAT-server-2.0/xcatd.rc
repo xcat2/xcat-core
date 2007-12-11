@@ -47,19 +47,27 @@ else
 fi
 
 case $1 in
+restart)
+  $0 stop
+  $0 start
+  ;;
 status)
   $STATUS
   ;;
 stop)
-  echo -n "Stopping xCATD"
+  echo -n "Stopping xCATd "
   $STATUS >& /dev/null
   if [ "$?" != "0" ]; then
-    echo -n "xCATd not running, not stopping"
+    echo -n "xCATd not running, not stopping "
     $LOG_WARNING
     exit 1
   fi
   kill -TERM -`cat /var/run/xcatd.pid`
-  usleep 100000
+  let i=0;
+  while $STATUS >& /dev/null && [ $i -lt 15 ]; do 
+    usleep 100000
+    let i=i+1
+  done
   $STATUS >& /dev/null
   if [ "$?" == "0" ]; then
     kill -KILL -`cat /var/run/xcatd.pid`
@@ -76,11 +84,13 @@ stop)
 start)
   $STATUS >& /dev/null
   if [ "$?" == "0" ]; then
-    echo -n "xCATd already running"
+    echo -n "xCATd already running "
     $LOG_WARNING
     exit
   fi
-  echo -n "Starting xCATd"
+  echo -n "Starting xCATd "
+  xcatroot=`head -n1 /etc/profile.d/xcat.sh`
+  export $xcatroot
   xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 esac

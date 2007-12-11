@@ -1,10 +1,13 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use xCAT::GlobalDef;
 use xCAT::Table;
-#use xCAT::GlobalDef;
-
-require("/usr/lib/xcat/monitoring/monitorctrl.pm");
+use xCAT_monitoring::monitorctrl;
 #################################################################
 # This script is used as a cron job by the xCAT monitoring plug-in
 # to monitor the node status. To activate it, simply do
@@ -21,9 +24,9 @@ my %nodes_status_old=xCAT_monitoring::monitorctrl::getNodeStatus();
 my $tmp_node_active=$nodes_status_old{$::STATUS_ACTIVE};
 my $tmp_node_inactive=$nodes_status_old{$::STATUS_INACTIVE};
 my $tmp_node_unknown=$nodes_status_old{unknown};
-#print "active nodes: @$tmp_node_active\n";
-#print "inactive nodes: @$tmp_node_inactive\n";
-#print "unknown nodes: @$tmp_node_unknown\n";
+print "active nodes: @$tmp_node_active\n";
+print "inactive nodes: @$tmp_node_inactive\n";
+print "unknown nodes: @$tmp_node_unknown\n";
 
 #get current node status
 my %nodes_status_new1=();

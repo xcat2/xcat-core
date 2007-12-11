@@ -1,7 +1,11 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_monitoring::xcatmon;
-
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 #use xCAT::NodeRange;
 #use Socket;
 #use xCAT::Utils;
@@ -93,7 +97,7 @@ sub supportNodeStatusMon {
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
   #print "xcatmon.startNodeStatusMon\n";
-  my $newentry="*/1 * * * * /usr/sbin/xcatnodemon >> /var/log/xcatmon.log";
+  my $newentry="*/3 * * * * $::XCATROOT/sbin/xcatnodemon >> /var/log/xcatmon.log";
   my ($code, $msg)=xCAT::Utils::add_cron_job($newentry);
   if ($code==0) { return (0, "started"); }
   else {  return ($code, $msg); }
@@ -114,7 +118,7 @@ sub startNodeStatusMon {
 sub stopNodeStatusMon {
   #TODO: turn off the node status monitoring. 
   
-  my $job="/usr/sbin/xcatnodemon";
+  my $job="$::XCATROOT/sbin/xcatnodemon";
   my ($code, $msg)=xCAT::Utils::remove_cron_job($job);
   if ($code==0) { return (0, "stopped"); }
   else {  return ($code, $msg); }

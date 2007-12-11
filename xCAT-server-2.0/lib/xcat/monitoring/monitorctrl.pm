@@ -1,6 +1,11 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_monitoring::monitorctrl;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 
 use Sys::Hostname;
 use xCAT::NodeRange;
@@ -8,7 +13,7 @@ use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::Client;
-require($::XCATPREFIX."/lib/xcat/plugins/notification.pm");
+use xCAT_plugin::notification;
 
 #the list store the names of the monitoring products and the file name and module names.
 #the names are stored in the "pname" column of the monitoring table. 
@@ -93,7 +98,7 @@ sub start {
     my $tab = xCAT::Table->new('notification');
     my $regged=0;
     if ($tab) {
-      (my $ref) = $tab->getAttribs({filename => qw(/usr/lib/xcat/monitoring/monitorctrl.pm)}, tables);
+      (my $ref) = $tab->getAttribs({filename => qw(monitorctrl.pm)}, tables);
       if ($ref and $ref->{tables}) {
          $regged=1;
       }
@@ -101,7 +106,7 @@ sub start {
     }
 
     if (!$regged) {
-      xCAT_plugin::notification::regNotification([qw(/usr/lib/xcat/monitoring/monitorctrl.pm nodelist,monitoring -o a,u,d)]);
+      xCAT_plugin::notification::regNotification([qw(monitorctrl.pm nodelist,monitoring -o a,u,d)]);
     }
 
     #print "child done\n";
@@ -216,7 +221,7 @@ sub stop {
     $ret{"Stop node status monitoring with $NODESTAT_MON_NAME"}=\@ret2;
   }
 
-  xCAT_plugin::notification::unregNotification([qw(/usr/lib/xcat/monitoring/monitorctrl.pm)]);
+  xCAT_plugin::notification::unregNotification([qw(monitorctrl.pm)]);
 
   if (%ret) {
     foreach(keys(%ret)) {
@@ -362,7 +367,7 @@ sub stopMonitoring {
       $module_name=$aRef->[1];
     }
     else {
-      my $file_name="/usr/lib/xcat/monitoring/" . lc($_) . "mon.pm";
+      my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($_) . "mon.pm";
       $module_name="xCAT_monitoring::" . lc($_) . "mon";
       #load the module in memory
       require $file_name;      
@@ -404,7 +409,7 @@ sub stopNodeStatusMonitoring {
       my $aRef = $PRODUCT_LIST{$pname};
       $module_name=$aRef->[1];
     } else {
-      my $file_name="/usr/lib/xcat/monitoring/" . lc($pname) . "mon.pm";
+      my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($pname) . "mon.pm";
       $module_name="xCAT_monitoring::" . lc($pname) . "mon";
       #load the module in memory
       require $file_name;      
@@ -694,7 +699,7 @@ sub refreshProductList {
         }
 
         #find out the monitoring plugin file and module name for the product
-        $file_name="/usr/lib/xcat/monitoring/" . lc($pname) . "mon.pm";
+        $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($pname) . "mon.pm";
         $module_name="xCAT_monitoring::" . lc($pname) . "mon";
         #load the module in memory
         require $file_name;

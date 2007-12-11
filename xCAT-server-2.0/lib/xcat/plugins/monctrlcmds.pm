@@ -1,10 +1,16 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::monctrlcmds;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 use xCAT::NodeRange;
 use xCAT::Table;
 use xCAT::MsgUtils;
-require($::XCATPREFIX."/lib/xcat/monitoring/monitorctrl.pm");
+use xCAT_monitoring::monitorctrl;
 
 1;
 

@@ -8,7 +8,7 @@ Source: xCAT-server-2.0.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
-Prefix: /usr
+Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
 # AIX will build with an arch of "ppc"
@@ -36,9 +36,9 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
-mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/xcat/plugins
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 mkdir -p $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context
-mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/samples
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
 
 
 %ifos linux
@@ -58,35 +58,39 @@ cp share/xcat/cons/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/*
 ln -sf /%{prefix}/share/xcat/cons/hmc $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/ivm
 
-cp lib/xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/xcat/plugins
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/plugins/*
+cp lib/xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
 
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context
 chmod 644 $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context/*
 
-cp -r lib/xcat/monitoring/* $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/*
+cp -r lib/xcat/monitoring/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/*
 
-chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/samples
-#cp lib/xcat/monitoring/samples/* $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/samples
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/monitoring/samples/*
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples/*
 
-cp lib/xcat/shfunctions $RPM_BUILD_ROOT/%{prefix}/lib/xcat
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/xcat/shfunctions
+cp lib/xcat/shfunctions $RPM_BUILD_ROOT/%{prefix}/lib
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/shfunctions
 mkdir -p $RPM_BUILD_ROOT/etc/init.d
 cp etc/init.d/xcatd $RPM_BUILD_ROOT/etc/init.d
 #TODO: the next has to me moved to postscript, to detect /etc/xcat vs /etc/opt/xcat
 mkdir -p $RPM_BUILD_ROOT/etc/xcat
 cp etc/xcat/postscripts.rules $RPM_BUILD_ROOT/etc/xcat/
 
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
+cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
+cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server/*
+echo $RPM_BUILD_ROOT %{prefix}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
-%doc README
-%doc LICENSE.html
+#%doc README
+#%doc LICENSE.html
 %{prefix}
 /opt/csm
 /etc/xcat
@@ -105,8 +109,8 @@ rm -rf $RPM_BUILD_ROOT
 * Tue Feb 20 2007 Jarrod Johnson <jbjohnso@us.ibm.com>
 - Start core rpm for 1.3 work
 
-%post
-
+%post 
+ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
 if [ -x /usr/lib/lsb/install_initd ]; then
   /usr/lib/lsb/install_initd /etc/init.d/xcatd
 elif [ -x /sbin/chkconfig ]; then
@@ -122,12 +126,13 @@ fi
 if [ $1 == 0 ]; then  #This means only on -e
   /etc/init.d/xcatd stop
   if [ -x /usr/lib/lsb/remove_initd ]; then
-      /usr/lib/lsb/install_initd /etc/init.d/xcatd
+      /usr/lib/lsb/remove_initd /etc/init.d/xcatd
   elif [ -x /sbin/chkconfig ]; then
     /sbin/chkconfig --del xcatd
   fi
+  rm -f /usr/sbin/xcatd  #remove the symbolic  
 fi
-  
+
 
 
 
