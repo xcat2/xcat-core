@@ -122,7 +122,6 @@ chmod 755 /etc/profile.d/xcat.*
 %ifos linux
 if [ $1 == 0 ]; then  #This means only on -e
 rm /etc/profile.d/xcat.*
-unset XCATROOT
 fi
 %endif
 

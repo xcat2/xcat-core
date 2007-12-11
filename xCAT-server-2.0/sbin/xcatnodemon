@@ -14,8 +14,8 @@ use xCAT_monitoring::monitorctrl;
 # chtab pname=xCAT monitoring.nodestatmon=Y
 ################################################################## 
 
-($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
-printf "%2d-%02d-%04d %02d:%02d:%02d: xcatnodemon started.\n", $mon+1,$mday,$year+1900,$hour,$min,$sec;
+#($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+#printf "%2d-%02d-%04d %02d:%02d:%02d: xcatnodemon started.\n", $mon+1,$mday,$year+1900,$hour,$min,$sec;
 
 #get saved node status from the nodelist table 
 my %nodes_status_old=xCAT_monitoring::monitorctrl::getNodeStatus();
@@ -43,8 +43,8 @@ my $changed4=$nodes_status_new3{$::STATUS_ACTIVE};
 my @changed_active=(@$changed2, @$changed4);
 my @changed_inactive=(@$changed1, @$changed3);
 
-print "  switch to active:   @changed_active\n";
-print "  switch to inactive: @changed_inactive\n";
+#print "  switch to active:   @changed_active\n";
+#print "  switch to inactive: @changed_inactive\n";
 
 my %node_status=();
 if (@changed_active>0) {
@@ -59,8 +59,8 @@ if (keys(%node_status) > 0) {
   xCAT_monitoring::monitorctrl::processNodeStatusChanges(\%node_status);
 }
 
-($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
-printf "%2d-%02d-%04d %02d:%02d:%02d: xcatnodemon finished.\n\n", $mon+1,$mday,$year+1900,$hour,$min,$sec;
+#($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+#printf "%2d-%02d-%04d %02d:%02d:%02d: xcatnodemon finished.\n\n", $mon+1,$mday,$year+1900,$hour,$min,$sec;
 
 
 
