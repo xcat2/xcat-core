@@ -4,6 +4,7 @@ package xCAT::PPCfsp;
 use strict;
 use LWP;
 use HTTP::Cookies;
+use HTML::Form;
 
 
 ##########################################
@@ -457,16 +458,30 @@ sub clear {
     my $server  = @$exp[1];
  
     ##################################
-    # Send Clear command 
+    # Get Error/Event Logs URL 
     ##################################
-    my $url = "https://$server/cgi-bin/cgi";
-    my $res = $ua->post( $url,
-         [form   => $form,
-          submit => "Clear all error/event log entries" ]
-    );
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
+
     ##################################
     # Return error
     ##################################
+    if ( !$res->is_success() ) {
+        return( $res->status_line );
+    }
+    my $form = HTML::Form->parse( $res );
+
+    ##################################
+    # Return error
+    ##################################
+    if ( !defined( $form )) {
+        return( "No Error/Event Logs form found" );
+    }
+    ##################################
+    # Send Clear to JavaScript 
+    ##################################
+    my $request = $form->click( 'clear' );
+    $res = $ua->request( $request );
+
     if ( !$res->is_success() ) {
         return( $res->status_line );
     }
@@ -549,4 +564,5 @@ sub all_clear {
 
 
 1;
+
 
