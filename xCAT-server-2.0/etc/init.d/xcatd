@@ -89,6 +89,8 @@ start)
     exit
   fi
   echo -n "Starting xCATd "
+  xcatroot=`head -n1 /etc/profile.d/xcat.sh`
+  export $xcatroot
   xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 esac
