@@ -1,40 +1,27 @@
 var CommandWindow = {};
 
 CommandWindow.updateCommandResult = function() {
-	var commandQueryId = "commandQuery";
-	var copyChkBoxId = "copyChkBox";
-	var nodenameHiddenTxtId = "nodename";
-	var nodegrpsCboBoxId = "nodegrpsCboBox";
-	var pshChkBoxId = "pshChkBox";
+	//todo:  add commandQueryObj.value to the history select box
 
-	var serialChkBoxId = "serialChkBox";
-	var verifyChkBoxId = "verifyChkBox";
-	var fanoutTxtBoxId = "fanoutTxtBox";
-	var userIDTxtBoxId = "userIDTxtBox";
-	var rshellTxtBoxId = "rshellTxtBox";
-	var rshellTxtBoxId = "rshellTxtBox";
-	var monitorChkBoxId = "monitorChkBox";
-	var ret_codeChkBoxId = "ret_codeChkBox";
+	var commandQueryObj = $('commandQuery');
+	var copyChkBoxObj = $('copyChkBox');
+	var nodelistTxtObj = $('nodeList');
+	var nodegrpsCboBoxObj = $('nodegrpsCboBox');
+	var pshChkBoxObj = $('pshChkBox');
 
-	var copyChkBoxObj = $(copyChkBoxId);
-	var commandQueryObj = $(commandQueryId);
-	var nodenameHiddenTxtObj = $(nodenameHiddenTxtId);
-	var nodegrpsCboBoxObj = $(nodegrpsCboBoxId);
-	var pshChkBoxObj = $(pshChkBoxId);
-
-	var serialChkBoxObj = $(serialChkBoxId);
-	var verifyChkBoxObj = $(verifyChkBoxId);
-	var fanoutTxtBoxObj = $(fanoutTxtBoxId);
-	var userIDTxtBoxObj = $(userIDTxtBoxId);
-	var rshellTxtBoxObj = $(rshellTxtBoxId);
-	var monitorChkBoxObj = $(monitorChkBoxId);
-	var ret_codeChkBoxObj = $(ret_codeChkBoxId);
+	var serialChkBoxObj = $('serialChkBox');
+	var verifyChkBoxObj = $('verifyChkBox');
+	var fanoutTxtBoxObj = $('fanoutTxtBox');
+	var userIDTxtBoxObj = $('userIDTxtBox');
+	var rshellTxtBoxObj = $('rshellTxtBox');
+	var monitorChkBoxObj = $('monitorChkBox');
+	var ret_codeChkBoxObj = $('ret_codeChkBox');
 
 	// Do AJAX call and get HTML here.
 	var url = "dsh_action.php";
 	var postPara = "command=" + encodeURIComponent(commandQueryObj.value);
-	postPara += "&node=" + encodeURIComponent(nodenameHiddenTxtObj.value);
-	postPara += "&nodegrps=" + encodeURIComponent(nodegrpsCboBoxObj.options[nodegrpsCboBoxObj.selectedIndex].value);
+	if (nodelistTxtObj) { postPara += "&node=" + encodeURIComponent(nodelistTxtObj.value); }
+	if (nodegrpsCboBoxObj) { postPara += "&nodegrps=" + encodeURIComponent(nodegrpsCboBoxObj.options[nodegrpsCboBoxObj.selectedIndex].value); }
 	if (copyChkBoxObj.checked == true)	postPara += "&copy=on";	else postPara += "&copy=off";
 	if (pshChkBoxObj.checked == true)	postPara += "&psh=on";	else postPara += "&psh=off";
 	if (serialChkBoxObj.checked == true)	postPara += "&serial=on"; else postPara += "&serial=off";

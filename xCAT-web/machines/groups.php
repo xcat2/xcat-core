@@ -14,24 +14,23 @@ insertHeader('Groups', array('groups.css'),
 
 echo "<div id=content align=center>\n";
 
-insertButtons(array(
-	array(
-		'Attributes',
-		'Create Group',
-		'Ping',
+insertButtons(
+		array('label' => 'Attributes', 'onclick' => ''),
+		array('label' => 'Create Group', 'onclick' => ''),
+		array('label' => 'Ping', 'onclick' => ''),
 		//'Updatenode',
-		'Run Cmd',
-		'Copy Files',
-		'Sync Files'
-	),
-	array(
+		array('label' => 'Run Cmd', 'onclick' => ''),
+		array('label' => 'Copy Files', 'onclick' => ''),
+		array('label' => 'Sync Files', 'onclick' => '')
+	);
+insertButtons(
 		//'Soft Maint',
-		'HW Ctrl',
-		'RSA/MM/FSP',
-		'Deploy',
-		'Diagnose',
-		'Remove'
-	),
+		array('label' => 'HW Ctrl', 'onclick' => ''),
+		array('label' => 'RSA/MM/FSP', 'onclick' => ''),
+		array('label' => 'Deploy', 'onclick' => ''),
+		array('label' => 'Diagnose', 'onclick' => ''),
+		array('label' => 'Remove', 'onclick' => '')
+	);
 	/*
 	array(
 		'name=propButton value="Attributes"',
@@ -53,7 +52,6 @@ insertButtons(array(
 		'name=removeButton value="Remove"'
 	),
 	*/
-));
 
 echo '<form name="nodelist" class=ContentForm>';
 

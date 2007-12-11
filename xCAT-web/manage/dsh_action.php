@@ -7,22 +7,24 @@ $TOPDIR = '..';
 require_once "$TOPDIR/lib/functions.php";
 
 
-// HTTP Headers: headers, cookies, ...
+// HTTP Headers to tell the browser to always update, never cache this page
+// so the History combo box always update the new commands added whenever the page is reloaded
 header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // date in the past
 header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT"); // always modified
 header("Cache-Control: no-store, no-cache, must-revalidate"); // HTTP/1.1
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache"); // HTTP/1.0
 
-// Store commands into Cookie
-//setcookie("history","");
+// Store command into history cookie, if it is not already there
 $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
-?>
+if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['history'])) {
+	// this command is already in the history, so do not need to add it
+} else {
+	$i = isset($_COOKIE['history']) ? count($_COOKIE['history']) : 0;
+	setcookie("history[$i]", $_REQUEST['command'], $expire_time);
+}
 
-<FORM>
-<?php
-
-//echo "history:" . $_COOKIE["history"];
+//print_r($_COOKIE);
 
 	//get the command and the options
 	$cmd = @$_REQUEST["command"];
@@ -42,18 +44,18 @@ $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
 	$ret_code = @$_REQUEST["ret_code"];
 
 
-		 if ($group == "")	$nodegrps = "blade7";	// For now, use blade7 as test node
+		 //if ($group == "")	$nodegrps = "blade7";	// For now, use blade7 as test node
 
 		 if ($psh == "off"){ //using dsh
 			$command = "xdsh ";
 			$copy_cmd = "xdcp ";
-			if ($group == "") $node_group = "-n " . $nodegrps;
+			if ($group == "") $node_group = "-n " . $node;
 			else $node_group = "-N " . $group;
 
 		 }else{
 		 	$command = "psh ";
 			$copy_cmd = "prcp ";
-			if ($group == "") $node_group = $nodegrps;
+			if ($group == "") $node_group = $node;
 			else $node_group = $group;
 		 }
 
@@ -107,9 +109,7 @@ $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
 		if ($ret_code == "on"){
 			$rc = runcmd($command_string, 0, $output);	//mode 0
 			if ($rc == 0){
-				foreach ($outp as $key => $val){
-					echo $val. "</br>";
-				}
+				foreach ($output as $line){ echo "$line<br>"; }
 			}
 
 		}else{
@@ -194,7 +194,3 @@ $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
 	}*/
 
 ?>
-</FORM>
-
-
-

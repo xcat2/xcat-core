@@ -25,7 +25,6 @@ approximately priority order:</p>
   <li>Update the spec file for this web interface to have all the necessary post installation scripts (Bruce)</li>
   <li>One button update of this web interface from the internet (Bruce)</li>
   <li>Improve the look of associating the top menu with the 2nd menu (Quyen)</li>
-  <li>Have the task pane save the current task in the cookie and have each page set the current task (Bruce)</li>
   <li>Do frame view and rack layout pages (Bruce)</li>
   <li>Do several of the buttons within the machines views (Bruce):
   <ul>

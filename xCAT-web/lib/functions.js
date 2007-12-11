@@ -1,17 +1,21 @@
 // Javascript functions that most pages need.
 // Note: this is included by all pages, so only put functions in this file that most/all pages need.
 
-function setCookies(form)
-{
-var value = (form.rack.checked?1:0) + '&' + form.nodegrps.value + '&' + form.nodeRange.value;
-setCookie('mainpage', value);
+function setCookie(name, value, path) {
+value = escape(value);    // this is needed if value contains spaces, semicolons, or commas
+document.cookie = name + '=' + value
+				+ ';expires=' + (new Date("December 31, 2023")).toGMTString()
+				+ ';path=' + path;
 }
 
-function setCookie(name, value)
-{
-value = escape(value);
-value = value.replace(/\+/g, '%2B'); // The un_urlize() function in webmin works slightly differently than javascript escape()
-document.cookie = name + '=' + value + ';expires=' + (new Date("December 31, 2023")).toGMTString();
+// Return a hash of the cookie names and values
+function getCookies() {
+//alert('"'+document.cookie+'"');
+var cookies = document.cookie.split(/; */);
+//alert(cookies[0]);
+var cookret = new Object();   // this is the return value
+for (i in cookies) { var pair = cookies[i].split('='); cookret[pair[0]] = unescape(pair[1]); }
+return cookret;
 }
 
 function selectAll(element, objectName)

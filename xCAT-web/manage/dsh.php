@@ -4,72 +4,66 @@
 ------------------------------------------------------------------------------*/
 $TOPDIR = '..';
 $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
-setcookie("history", "date;hello.sh", $expire_time);
+//setcookie('history[]', "date;hello.sh", $expire_time);
 
 require_once "$TOPDIR/lib/functions.php";
 
 insertHeader('Run Commands on Nodes', array("$TOPDIR/themes/default.css"),
 			array("$TOPDIR/lib/CommandWindow.js", "$TOPDIR/js/prototype.js", "$TOPDIR/js/scriptaculous.js?load=effects", "$TOPDIR/js/window.js"),
-			array('machines','dsh'));
+			array('manage','dsh'));
 
-?>
+echo <<<EOS
 <div id=content>
 <FORM NAME="dsh_options" onsubmit="checkEmpty();">
-<input type="hidden" id="nodename" value=<?php echo @$_REQUEST["noderange"] ?> >
 <TABLE class="inner_table" cellspacing=0 cellpadding=5>
   <TBODY>
-  	<TR>
-  	  <TD colspan="3">
-		<?php if (@$_REQUEST["noderange"] == ""){ ?>
-  	  	<font class="BlueBack">Run Command on Group:</font>
-  	  	<SELECT name=nodegrps id=nodegrpsCboBox class=middle>
-  	  	<OPTION value="">Choose ...</OPTION>
-  	  	<?php
-  	  	$nodegroups = getGroups();
-		foreach ($nodegroups as $group) {
-				//if($group == $currentGroup) { $selected = 'selected'; } else { $selected = ''; }
-				echo "<OPTION value='$group' $selected>$group</OPTION>\n";
-		}
-		?>
-   		</SELECT>
+  	<TR><TD colspan=3>
+EOS;
 
-   		<?php }else{ ?>
-   		<font class="BlueBack">Run Command on: </font><?php echo @$_REQUEST["noderange"];  } ?>
-  	  </TD>
-  	</TR>
-	<TR>
-	  <TD colspan="3">
+if (isset($_REQUEST['noderange'])) {
+	echo "<B><FONT size='+1'>Run Command on: </FONT></B>";
+	if (strlen($_REQUEST['noderange']) > 70) {
+		echo "<TEXTAREA rows=1 cols=70 readonly name=nodeList class=middle>" . $_REQUEST['noderange'] . "</TEXTAREA>\n";
+	} else {
+		echo "<INPUT size=70 type=text name=nodeList id=nodeList class=middle value='" . $_REQUEST['noderange'] . "'>\n";
+	}
+} else { echo "<B><FONT size='+1'>Run Command on a Group of Nodes</FONT></B>\n"; }
+
+echo <<<EOS2
+  	</TD></TR>
+	<TR><TD colspan=3>
 		<P>Select a previous command from the history, or enter the command and options below. Then click on Run Cmd.</P>
-	  </TD>
-	</TR>
-    <TR>
-      <TD colspan="3"><p>
-		<INPUT type="button" id="runCmdButton" name="runCmdButton" value="Run Cmd" class=middle onclick="CommandWindow.updateCommandResult()"></p>
-      </TD>
-    </TR>
-    <TR>
-      <TD colspan="3"><font class="BlueBack">Command History:</font>
-      <SELECT name="history" onChange="_setvars();" class="middle">
+	</TD></TR>
+    <TR><TD colspan=3>
+EOS2;
+//		<INPUT type="button" id="runCmdButton" name="runCmdButton" value="Run Cmd" class=middle onclick="CommandWindow.updateCommandResult()">
+insertButtons(array('label' => 'Run Cmd', 'onclick' => 'CommandWindow.updateCommandResult()'));
+echo "</TD></TR>\n";
+
+if (!isset($_REQUEST['noderange'])) {
+	echo "<TR class=FormTable><TD colspan=3>Run Command on Group:<SELECT name=nodegrps id=nodegrpsCboBox class=middle><OPTION value=''>Choose ...</OPTION>\n";
+  	$nodegroups = getGroups();
+	foreach ($nodegroups as $group) {
+		//if($group == $currentGroup) { $selected = 'selected'; } else { $selected = ''; }
+		echo "<OPTION value='$group' $selected>$group</OPTION>\n";
+		}
+	echo "</SELECT></td></tr>\n";
+}
+
+?>
+    <TR class=FormTable>
+      <TD colspan=3>Command:&nbsp;
+       <INPUT size=80 type=text name=command id=commandQuery class=middle onchange='CommandWindow.updateCommandResult()'>
+       History:
+      <SELECT name=history onChange="_setvars();" class=middle>
       <OPTION value="">Choose ...</OPTION>
       <?php
-		$string = @$_COOKIE["history"];
-		echo $token = strtok($string, ';');
-		echo "<option value=\"" . $token . "\">" . $token . "</option>";
-
-		while (FALSE !== ($token = strtok(';'))) {
-   			echo "<option value=\"" . $token . "\">" . $token . "</option>";
+		if (isset($_COOKIE['history'])) {
+			foreach ($_COOKIE['history'] as $value) { echo "<option value='$value'>$value</option>\n"; }
 		}
 	 ?>
      </SELECT>
- 	  &nbsp; &nbsp;Selecting one of these commands will fill in the fields below.
- 	  </TD>
-    </TR>
-    <TR>
-      <TD colspan="3"><div id="commandResult"></div></TD>
-    </TR>
-    <TR class=FormTable>
-      <TD colspan="3">Command:&nbsp;
-      <INPUT size="80" type="text" name="command" id="commandQuery" class="middle"></TD>
+      </TD>
     </TR>
     <TR class=FormTable>
       <TD colspan="3" nowrap><INPUT type="checkbox" name="copy_script" id="copyChkBox">
@@ -143,7 +137,7 @@ insertHeader('Run Commands on Nodes', array("$TOPDIR/themes/default.css"),
 // in CSM perl script this portion used to be javascript to get
 // and set cookies, now php has handled it
 
-window.onload = function(){window.document.dsh_options.runCmdButton.focus()};
+//window.onload = function(){window.document.dsh_options.runCmdButton.focus()};
 function _setvars(){
 	var form = window.document.dsh_options;
 	form.command.value = form.history.value;
