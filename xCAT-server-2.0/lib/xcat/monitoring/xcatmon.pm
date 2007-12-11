@@ -97,7 +97,7 @@ sub supportNodeStatusMon {
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
   #print "xcatmon.startNodeStatusMon\n";
-  my $newentry="*/3 * * * * $::XCATROOT/sbin/xcatnodemon";
+  my $newentry="*/3 * * * * XCATROOT=$::XCATROOT $::XCATROOT/sbin/xcatnodemon";
   my ($code, $msg)=xCAT::Utils::add_cron_job($newentry);
   if ($code==0) { return (0, "started"); }
   else {  return ($code, $msg); }
