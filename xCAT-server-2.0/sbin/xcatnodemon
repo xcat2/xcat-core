@@ -24,9 +24,9 @@ my %nodes_status_old=xCAT_monitoring::monitorctrl::getNodeStatus();
 my $tmp_node_active=$nodes_status_old{$::STATUS_ACTIVE};
 my $tmp_node_inactive=$nodes_status_old{$::STATUS_INACTIVE};
 my $tmp_node_unknown=$nodes_status_old{unknown};
-print "active nodes: @$tmp_node_active\n";
-print "inactive nodes: @$tmp_node_inactive\n";
-print "unknown nodes: @$tmp_node_unknown\n";
+#print "active nodes: @$tmp_node_active\n";
+#print "inactive nodes: @$tmp_node_inactive\n";
+#print "unknown nodes: @$tmp_node_unknown\n";
 
 #get current node status
 my %nodes_status_new1=();

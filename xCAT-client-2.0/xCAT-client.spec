@@ -107,12 +107,12 @@ rm -rf $RPM_BUILD_ROOT
 
 %post 
 %ifos linux
-echo "XCATROOT=$XCATROOT
+echo "XCATROOT=$RPM_INSTALL_PREFIX0
 PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
 MANPATH=\$MANPATH:\$XCATROOT/share/man
 export XCATROOT PATH MANPATH" >/etc/profile.d/xcat.sh
 
-echo "setenv XCATROOT \"$XCATROOT\"
+echo "setenv XCATROOT \"$RPM_INSTALL_PREFIX0\"
 setenv PATH \${PATH}:\${XCATROOT}/bin:\${XCATROOT}/sbin
 setenv MANPATH \${MANPATH}:\${XCATROOT}/share/man" >/etc/profile.d/xcat.csh
 chmod 755 /etc/profile.d/xcat.*
