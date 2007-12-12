@@ -1,8 +1,14 @@
+#!/bin/sh
+if [ -f /etc/redhat-release ]
+then
+   pkg="redhat"
+else
+   pkg="packages"
+fi
 cd `dirname $0`
 tar --exclude .svn -czvf xcat-nbrootoverlay.tar.gz -C overlay/  .
-cp *.gz /usr/src/redhat/SOURCES
-cp xcat-core-nbroot.spec /usr/src/redhat/SPECS
-rm xcat-nbrootoverlay.tar.gz
-rpmbuild -ba /usr/src/redhat/SPECS/xcat-core-nbroot.spec --target $1
+mv -f *.gz /usr/src/$pkg/SOURCES
+cp xcat-core-nbroot.spec /usr/src/$pkg/SOURCES
+rpmbuild -ba xcat-core-nbroot.spec --target $1
 cd -
 

@@ -1,8 +1,16 @@
+#!/bin/sh
+if [ -f /etc/redhat-release ]
+then
+   pkg="redhat"
+else
+   pkg="packages"
+fi
 cd `dirname $0`
 tar --exclude .svn -czvf postscripts.tar.gz  postscripts LICENSE.html
 tar --exclude .svn -czvf templates.tar.gz templates
-mv -f *.gz /usr/src/redhat/SOURCES
-cp xcat.conf /usr/src/redhat/SOURCES
+mv -f *.gz /usr/src/$pkg/SOURCES
+cp xcat.conf /usr/src/$pkg/SOURCES
+rm /usr/src/$pkg/RPMS/noarch/xCAT-2.0*rpm
 rpmbuild -ba xCAT.spec 
 cd -
 
