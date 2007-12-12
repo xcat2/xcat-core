@@ -37,7 +37,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
-mkdir -p $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context
+mkdir -p $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
 
 
@@ -61,8 +61,8 @@ ln -sf /%{prefix}/share/xcat/cons/hmc $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/
 cp lib/xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
 
-cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context
-chmod 644 $RPM_BUILD_ROOT/opt/csm/pm/dsh/Context/*
+cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
+chmod 644 $RPM_BUILD_ROOT/opt/xcat/xdsh/Context/*
 
 cp -r lib/xcat/monitoring/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/*
