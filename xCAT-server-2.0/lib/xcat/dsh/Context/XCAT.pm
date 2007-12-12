@@ -2,11 +2,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package XCAT;
-use base DSHContext;
 use Socket;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-
+use base xCAT::DSHContext;
 # Define remote shell globals from xCAT
 
 our $XCAT_RSH_CMD;
