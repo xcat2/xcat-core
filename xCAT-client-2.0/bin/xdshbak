@@ -1,0 +1,376 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################################
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use xCAT::MsgUtils;
+use xCAT::DSHCLI;
+use locale;
+use Getopt::Std;
+#####################################################################
+#                                                                   #
+# Module: xdshbak                                                   #
+#                                                                   #
+#-------------------------------------------------------------------#
+#                                                                   #
+# Description: Filters output from multiple nodes by listing        #
+#              each distinct set of lines only once, or formats     #
+#              output from multiple nodes preceded by the hostname  #
+#                                                                   #
+# Inputs:                                                           #
+#  -c : list distinct output only once                              #
+#                                                                   #
+# Ouputs:                                                           #
+#       Filtered output                                             #
+#                                                                   #
+# Syntax (example):                                                 #
+#       dsh -w host1,host2 -vi ls | xdshbak                         #
+#                                                                   #
+# External Ref: None                                                #
+#                                                                   #
+# Internal Ref: None                                                #
+#                                                                   #
+#####################################################################
+
+#-----------------------------------------------------------------------------
+#
+# Main line code. First, error checking.
+#
+#-----------------------------------------------------------------------------
+
+$::dsh_command = 'xdshbak';
+
+#
+# Process the command line...
+#
+if (!getopts('cxh'))
+{    # Gather options; if errors
+    &d_syntax;
+    exit(-1);
+}
+
+if ($::opt_h)
+{
+    &d_syntax;
+    exit(0);
+}
+
+if ($::opt_c && $::opt_x)
+{
+    &d_syntax;
+    exit(-1);
+}    # these 2 options are mutually exclusive
+
+if ($::opt_c)
+{
+    $compress++;
+}
+
+#
+# Read stdin until eof. If compaction is not specified, create an array
+# of the following data structures, one element per host:
+#
+# hostname: line1.line2...linen
+#
+# newlines are left in.
+#
+# If compaction is specified, create a binary tree with one element per
+# distinct hostname output. Associated with each tree element is an
+# string of hostnames. Each of these hostnames had output corresponding
+# to the line1.sepchar.line2.sepchar.....linen element in the tree.
+#
+#
+# Input is hostname: line
+#
+# Assumption is made that all lines have this format - if not, they are
+# ignored, or the hostname may be invalid
+#
+
+select(STDOUT);
+$| = 1;
+
+LINE:
+while (<STDIN>)
+{
+
+    #
+    # feedback on lines processed
+    #
+    $num_lines++;
+    if ($::opt_x) { $num_lines % 100 == 0 && print STDOUT "."; }
+    else { $num_lines % 1000 == 0 && print STDOUT "."; }
+
+    #
+    # error message from dsh
+    #
+    if (/dsh.*5025-/)
+    {
+        print $_;
+        next LINE;
+    }
+    if (/: /)
+    {
+        @fields = split(': ', $_);
+        $hn     = shift(@fields);
+        $ln     = join(': ', @fields);
+        if (!defined($cur_hn))
+        {
+            $cur_hn = $hn;
+            push(@hs, $hn);
+            $long_ln = $ln;
+            next LINE;
+        }
+        if ($hn eq $cur_hn)
+        {
+            $long_ln = $long_ln . $ln;
+            next LINE;
+        }
+        else
+        {
+            if ($compress)
+            {
+                if ($long_ln eq $prev_ln)
+                {
+                    $hdr{$prev_index} = $hdr{$prev_index} . ":" . $cur_hn;
+                }
+                else
+                {
+                    $prev_index = &insert_tree($cur_hn, $long_ln);
+                    $prev_ln = $long_ln;
+                }
+                $long_ln = $ln;
+                $cur_hn  = $hn;
+                push(@hs, $hn);
+            }
+            else
+            {
+                $ls{$cur_hn} = $long_ln;
+                $long_ln     = $ln;
+                $cur_hn      = $hn;
+                push(@hs, $hn);
+            }
+        }
+    }
+}
+
+#
+# If compression specified:
+# Print the lines for each set of hosts with identical output preceded
+# by the hostnames in [ hostname - hostname ] format.
+# The hostnames are not sorted.
+#
+#
+# If compression not specified:
+# Print the lines for each host preceded by an underlined host name
+# The hostnames are sorted alphabetically
+#
+
+$num_lines > 999 && print STDOUT "\n";
+if ($compress)
+{
+    if ($long_ln eq $prev_ln)
+    {
+        $hdr{$prev_index} = $hdr{$prev_index} . ":" . $cur_hn;
+    }
+    else
+    {
+        &insert_tree($cur_hn, $long_ln);
+    }
+    &print_tree;
+}
+else
+{
+    $ls{$cur_hn} = $long_ln;
+    &print_list;
+}
+
+#-----------------------------------------------------------------------------
+#
+# d_syntax
+#
+# Display help info
+#
+#-----------------------------------------------------------------------------
+
+sub d_syntax
+{
+    my $usage1 = "Usage: xdshbak   [-c | -x | -h] \n";
+    my $usage2 =
+      "-c : compresses the output by listng unique output only once.\n";
+    my $usage3 = "-h : help  \n";
+    my $usage4 =
+      "-x : omit extra header output for each node.  Can not be used with -c. \n";
+    my $usage = $usage1 .= $usage2 .= $usage3 .= $usage4;
+    xCAT::MsgUtils->message("I", $usage);
+
+}
+
+#-----------------------------------------------------------------------------
+#
+# print_list
+#
+# Print the host output, by sorted host, in the following format:
+#
+# HOST: hostname
+# --------------
+# line
+# line
+#
+# Two global data structures are used. @hs is an array of all the
+# hostnames found. %ls{} is an associative array of (concatenated)
+# lines, indexed on hostnames.
+#
+#-----------------------------------------------------------------------------
+sub print_list
+{
+
+    local (@lines, $numhosts, $hn_string, $l_string);
+
+    foreach $hostname (sort @hs)
+    {
+        if (!$::opt_x) { ($num_hosts >= 1) && print "\n"; }
+        $num_hosts++;
+
+        if ($::opt_x) { print "$hostname: $ls{$hostname}"; }
+        else
+        {
+
+            #$hn_string = `$SPMSG DSH $MSGCAT  INFO510 'HOST: %1\$s\n' $hostname`;
+            xCAT::MsgUtils->message("I", "HOST:$hostname\n");
+
+            printf '%.' . (6 + length($hostname)) . "s\n",
+              '---------------------------------------------------------------';
+            print "$ls{$hostname}";
+        }
+    }
+}
+
+#-----------------------------------------------------------------------------
+#
+# display_wc
+#
+# Display the hostnames returning output.
+#
+#-----------------------------------------------------------------------------
+
+sub display_wc
+{
+
+    local ($i);
+    $i = 0;
+    while ($i <= $#wc - 1)
+    {
+        print "$wc[$i], ";
+        $i++;
+    }
+    print "$wc[$#wc]\n";
+}
+
+#-----------------------------------------------------------------------------
+#
+# print_tree
+#
+# Print the host output, in the following format:
+#
+# HOSTS --------------------------------------
+# hostname  hostname hostname
+# --------------------------------------------
+# line
+# line
+#
+
+#-----------------------------------------------------------------------------
+sub print_tree
+{
+
+    local ($num_hosts, $hn_string, $pager);
+
+    foreach my $index (@indices)
+    {
+        ($num_hosts >= 1) && print "\n";
+        $num_hosts++;
+        @wc = split(/:/, $hdr{$index});
+        @wc = sort(@wc);
+
+        #system "$SPMSG DSH $MSGCAT  INFO511 'HOSTS '";
+        xCAT::MsgUtils->message("I", "HOSTS:");
+
+        print
+          "-------------------------------------------------------------------------\n";
+        &display_wc;
+        print
+          "-------------------------------------------------------------------------------\n";
+        print $str{$index};
+    }
+}
+
+#-----------------------------------------------------------------------------
+#
+# insert_tree
+#
+# This routine implements a binary search tree for keeping previously
+# found strings, to keep the number of string comparisons from
+# growing exponentially by host.
+#
+# This routine creates the following data structures:
+#
+# 1. An array of characters strings , @indices[0..n], that contains the indices
+#    into the binary search tree array for the strings. These array is
+#    in the order of the strings coming in.
+#    The indices are used as the key to the associative arrays, %str and %hdr.
+#
+#    The character strings for indices are of the form "p" to designate
+#    the parent  and "l" for left children  and "r" for the  right children.
+#    The indices are concatenated together to form a character string.
+#    Therefore the binary tree node "pl" designates the  left subtree
+#    of the parent.The character string "plr" denotes the right subtree
+#    node of the  left subtree of the  parent. A node that is at a depth
+#    of 10  would be represented by a unique 10 character string.
+#
+# 2. An associative array of strings, %strs{characters},
+#    consisting of all the output to be displayed. Each element is
+#    all the distinct output from a host or set of hosts with lines
+#    concatenated together and separated with $sepchar.
+# 3. An associative array of strings, %hdrs{characters}, consisting of the
+#    header strings to be output prior to each set of distinct output
+#    lines. These strings are of the form: hostname:hostname
+#
+#
+#-----------------------------------------------------------------------------
+sub insert_tree
+{
+
+    local ($h, $l, $i) = @_;
+    local ($no_match);
+
+    $i = "p";    # start binary search at parent which is the root of the tree
+
+    while (1)
+    {
+        if (!defined($str{$i}))
+        {        # found no match, insert new
+            $str{$i} = $l;
+            $hdr{$i} = $h;
+            push(@indices, $i);
+            return $i;
+        }
+        $no_match = ($l cmp $str{$i});
+        if (!$no_match)
+        {        # found match, update host hdr
+            $hdr{$i} = $hdr{$i} . ":" . $h;
+            return $i;
+        }
+        elsif ($no_match == -1)
+        {        # keep looking
+            $i = $i . "l";    # concatenate "l" for the left subtree
+        }
+        else
+        {
+            $i = $i . "r";    # concatenate "r" for the right subtree
+        }
+    }
+}
+
