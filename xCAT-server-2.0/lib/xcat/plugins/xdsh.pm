@@ -17,7 +17,8 @@ use xCAT::Table;
 use xCAT::Utils;
 
 use xCAT::MsgUtils;
-
+use Getopt::Long;
+require xCAT::DSHCLI;
 1;
 
 #-------------------------------------------------------
@@ -55,32 +56,44 @@ sub process_request
     my $nodes    = $request->{node};
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
+    my $envs     = $request->{env};
     my %rsp;
-    $::DSH = "/opt/csm/bin/dsh";
-    $::DCP = "/opt/csm/bin/dcp";
 
-    # check that dsh is installed
-    if (!-e $::DSH)
+    # get Environment Variables
+    my $outref = [];
+    foreach my $envar (@{$request->{env}})
     {
-        $rsp->{data}->[0] =
-          "dsh is not installed. Cannot process the command\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+        my $cmd = "export ";
+        $cmd .= $envar;
+        $cmd .= ";";
+        @$outref = `$cmd`;
+        if ($? > 0)
+        {
+            my %rsp;
+            $rsp->{data}->[0] = "Error running command: $cmd\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
 
+        }
+    }
+    if ($command eq "xdsh")
+    {
+        xdsh($nodes, $args, $callback, $command, $request->{noderange}->[0]);
     }
     else
     {
-
-        if (($command eq "xdsh") || ($command eq "xdcp"))
+        if ($command eq "xdcp")
         {
-            return
-              xdsh($nodes, $args, $callback, $command,
-                   $request->{noderange}->[0]);
+            xdcp($nodes, $args, $callback, $command,
+                 $request->{noderange}->[0]);
         }
         else
-        {    # error
+        {
+            my %rsp;
             $rsp->{data}->[0] =
               "Unknown command $command.  Cannot process the command\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
         }
     }
 }
@@ -89,7 +102,7 @@ sub process_request
 
 =head3  xdsh 
 
-   Builds and runs the dsh or dcp command 
+   Parses Builds and runs the dsh  
 
 
 =cut
@@ -97,66 +110,55 @@ sub process_request
 #-------------------------------------------------------
 sub xdsh
 {
-    my $nodes     = shift;
-    my $args      = shift;
-    my $callback  = shift;
-    my $command   = shift;
-    my $noderange = shift;
+    my ($nodes, $args, $callback, $command, $noderange) = @_;
 
-    #
-    # set XCAT Context
-    #
-    $ENV{DSH_CONTEXT} = "XCAT";
-
-    #
-    #  if nodes, Put nodes in a file so we do
-    #  not risk hitting a command line
-    #  limit
-    my $node_file;
-    if ($nodes)
-    {
-        $node_file = xCAT::Utils->make_node_list_file($nodes);
-        $ENV{'DSH_LIST'} = $node_file;    # export the file for dsh
-    }
-
-    #
-    # call dsh or dcp
-    #
-
-    my $dsh_dcp_command = "";
+    # parse dsh input
+    @local_results =
+      xCAT::DSHCLI->parse_and_run_dsh($nodes,   $args, $callback,
+                                      $command, $noderange);
     my %rsp;
-    if ($command eq "xdsh")
-    {
-        $dsh_dcp_command = $::DSH;
-    }
-    else
-    {
-        $dsh_dcp_command = $::DCP;
-    }
-    $dsh_dcp_command .= " ";
-
-    foreach my $arg (@$args)
-    {    # add arguments
-        $dsh_dcp_command .= $arg;    # last argument must be command to run
-        $dsh_dcp_command .= " ";
-    }
-    $dsh_dcp_command .= "2>&1";
-    my @local_results = `$dsh_dcp_command`;    #  run the dsh command
-    my $rc            = $? >> 8;
-    my $i             = 0;
-    chop @local_results;
+    my $i = 0;
+    ##  process return data
     foreach my $line (@local_results)
     {
         $rsp->{data}->[$i] = $line;
         $i++;
     }
 
-    #$rsp->{data}->[$i] = "Return Code = $rc\n";
-    xCAT::Utils->close_delete_file($::NODE_LIST_FILE, $node_file);
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
-    #xCAT::MsgUtils->message("I", $rsp);
-    #$callback->($rsp);
+    return 0;
+}
+
+#-------------------------------------------------------
+
+=head3  xdcp 
+
+   Parses, Builds and runs the dcp command 
+
+
+=cut
+
+#-------------------------------------------------------
+sub xdcp
+{
+    my ($nodes, $args, $callback, $command, $noderange) = @_;
+
+    # parse dcp input
+    @local_results =
+      xCAT::DSHCLI->parse_and_run_dcp($nodes,   $args, $callback,
+                                      $command, $noderange);
+    my %rsp;
+    my $i = 0;
+    ##  process return data
+    foreach my $line (@local_results)
+    {
+        $rsp->{data}->[$i] = $line;
+        $i++;
+    }
+
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+
     return 0;
 }
 
