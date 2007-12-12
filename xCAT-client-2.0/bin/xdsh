@@ -11,6 +11,7 @@ use File::Basename;
 use Data::Dumper;
 use Getopt::Long;
 use xCAT::MsgUtils;
+use xCAT::DSHCLI;
 use xCAT::Client submit_request;
 my $bname = basename($0);
 
@@ -22,86 +23,105 @@ This program is the client interface for xdsh/xdcp.
 
 
    xdsh/xdcp command
-   This is the client interface for the xdsh/xdcp command
-   Call parse_args to verify input
+
+   This is the interface to for xdsh/xdsp
+   The command can run in client/server mode (default) or in bypass mode
+   where it does not use the xcat daemon xcatd.    
+   Bypass mode is useful, when executing the command on the Management Server
+   and in particular if you want to run as a non-root id.  
+   Call parse_args to verify mode (client/server or  bypass)
+	   and whether to use Env Variables 
    Build hash and submit request
-   Note: xdsh/xdcp (dsh/dcp for xCAT) only supports a subset of the options
-		 supported by dsh/dcp.   See help and man page of each command for the
-		 differences.
+   See man page for options
+
 =cut
 
 #-----------------------------------------------------------------------------
 # Main
 
-#$ENV{XCATBYPASS} = "yes";   # set bypass mode
 my $rc = 0;
-
-# check for help and Environment Variables
-if ($bname eq "xdsh")
-{
-    &parse_args_xdsh;
-}
-else
-{    # xdcp
-    &parse_args_xdcp;
-}
 
 # report unsupported dsh exports
 &check_invalid_exports;
 
 my $cmdref;
+my $arg;
+my @SaveARGV = @ARGV;
 $cmdref->{command}->[0] = $bname;    # save my command name
+my $arg = shift(@SaveARGV);
 
-my $arg = shift(@ARGV);
-while ($arg =~ /^-/)
+if ($arg =~ /^-/)                    # no noderange
 {
-    push(@{$cmdref->{arg}}, $arg);    # save command arguments
-    $arg = shift(@ARGV);
+    push @{$cmdref->{arg}}, $arg;
+    foreach (@SAVEARGV)
+    {
+        push(@{$cmdref->{arg}}, $_);
+    }
+    @ARGV = @{$cmdref->{arg}};       # save just the argument to parse
 }
-$cmdref->{noderange}->[0] = $arg;     # save nodes
-
-#
-# add flgs for all the valid dsh/dcp Env Variable set
-#
-# The first ones are common to dsh/dcp
-# if nodes from file and none on the command line
-if ($ENV{'DSH_NODE_RSH'})
+else
 {
-    my $value = $ENV{'DSH_NODE_RSH'};
-    push(@{$cmdref->{arg}}, "-r $value ");
-
+    $cmdref->{noderange}->[0] = $arg;    # save noderange
+    @ARGV = @SaveARGV;                   # noderange removed for parsing
 }
-if ($ENV{'DSH_NODE_OPTS'})
-{
-    my $value = $ENV{'DSH_NODE_OPTS'};
-    push(@{$cmdref->{arg}}, "-o $value ");
 
-}
-if ($ENV{'DSH_FANOUT'})
-{
-    my $value = $ENV{'DSH_FANOUT'};
-    push(@{$cmdref->{arg}}, "-f $value ");
-
-}
-if ($ENV{'DSH_TIMEOUT'})
-{
-    my $value = $ENV{'DSH_TIMEOUT'};
-    push(@{$cmdref->{arg}}, "-t $value ");
-
-}
+# check for help, bypass, other client flags
 if ($bname eq "xdsh")
 {
-    if ($ENV{'DSH_REPORT'})
+    &parse_args_xdsh;
+}
+else
+{                                        # xdcp
+    &parse_args_xdcp;
+}
+
+foreach (@SaveARGV)
+{
+    push(@{$cmdref->{arg}}, $_);
+}
+
+#  add environment variables, if they have not already been assigned with
+#  command line flags
+if (!($::NODE_RSH))
+{
+    if ($ENV{'DSH_NODE_RSH'})
     {
-        my $value = $ENV{'DSH_REPORT'};
-        push(@{$cmdref->{arg}}, "--report $value ");
+        push(@{$cmdref->{env}}, "DSH_NODE_RSH=$ENV{'DSH_NODE_RSH'}");
 
     }
 }
-## set XCAT Context always ##
-push(@{$cmdref->{arg}}, "-C XCAT");
+if (!($::NODE_OPTS))
+{
+    if ($ENV{'DSH_NODE_OPTS'})
+    {
+        push(@{$cmdref->{env}}, "DSH_NODE_OPTS=$ENV{'DSH_NODE_OPTS'}");
 
-foreach (@ARGV) { push(@{$cmdref->{arg}}, $_); }
+    }
+}
+if (!($::FANOUT))
+{
+    if ($ENV{'DSH_FANOUT'})
+    {
+        push(@{$cmdref->{env}}, "DSH_FANOUT=$ENV{'DSH_FANOUT'}");
+
+    }
+}
+if (!($::TIMEOUT))
+{
+    if ($ENV{'DSH_TIMEOUT'})
+    {
+        push(@{$cmdref->{env}}, "DSH_TIMEOUT=$ENV{'DSH_TIMEOUT'}");
+
+    }
+}
+if (!($::CONTEXT_SET))
+{
+
+    if ($ENV{'DSH_CONTEXT'})
+    {
+        push(@{$cmdref->{env}}, "DSH_CONTEXT=$ENV{'DSH_CONTEXT'}");
+    }
+}
 
 xCAT::Client::submit_request($cmdref, \&handle_response);
 exit $rc;
@@ -112,77 +132,92 @@ exit $rc;
   
   Parses for dsh input
   Check if the command  ask for help and display usage
+  Need to check only for the -X flag
+  Need to check -B flag to determine mode 
+
 =cut
 
 #-----------------------------------------------------------------------------
 sub parse_args_xdsh
 {
 
-    my $usagemsg1 =
-      " xdsh -h \n xdsh -q \n xdsh -v \n xdsh [noderange] [group]\n";
-    my $usagemsg2 =
-      "      [-C context] [-c] [-e] [-E environment_file] [-f fanout]\n";
-    my $usagemsg3 =
-      "      [-F output_file] [-i] [-l user_ID] [-L] [--log log_file]\n";
-    my $usagemsg4 = "      [-m] [-o options] [-Q] [-r remote_shell] \n";
-    my $usagemsg5 =
-      "      [-s] [-S ksh | csh] [-t timeout] [-T] [-X environment variables] [-v] [-z]\n";
-    my $usagemsg6 =
-      "      [--report report_path] [--report-name report_name]\n";
-    my $usagemsg7 = "      [command_list]\n";
-    my $usagemsg8 = "Note:Context is always set to XCAT\n";
-    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg5 .= $usagemsg6 .= $usagemsg7;
-
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
-
+    my %options = ();
     if (
         !GetOptions(
-            'e|execute'                                => \$::EXECUTE,
-            'f|fanout=i'                               => \$::FANOUT,
-            'h|help'                                   => \$::HELP,
-            'i|notify'                                 => \$::NOTIFY,
-            'l|user=s'                                 => \$::USER,
-            'm|monitor'                                => \$::MONITOR,
-            'o|node-options=s'                         => \$::NODEOPTS,
-            'q|show-config'                            => \$::SHOWCFG,
-            'r|node-rsh=s'                             => \$::NODERSH,
-            's|stream'                                 => \$::STREAM,
-            't|timeout=i'                              => \$::TIMEOUT,
-            'v|verify'                                 => \$::VERIFY,
-            'z|exit-status'                            => \$::EXITSTAT,
-            'E|environment=s'                          => \$::ENV,
-            'F|output-file=s'                          => \$::OUTPUTFILE,
-            'I|ignore-sig|ignoresig=s'                 => \$::IGNORESIG,
-            'L|no-locale'                              => \$::NOLOCALE,
-            'Q|silent'                                 => \$::SILENT,
-            'S|syntax=s'                               => \$::SYNTAX,
-            'T|trace'                                  => \$::TRACE,
-            'V|version'                                => \$::VERSION,
-            'command-name|commandName=s'               => \$::COMMANDNAME,
-            'command-description|commandDescription=s' => \$::COMMANDDES,
-            'log=s'                                    => \$::LOG,
-            'report=s'                                 => \$::REPORT,
-            'R|reports=s'                              => \$::REPORTS,
-            'report-name|reportName=s'                 => \$::REPORTNAME,
-            'W|noFileWriting'                          => \$::NOFILEWRITE,
+            'e|execute'                => \$options{'execute'},
+            'f|fanout=i'               => \$options{'fanout'},
+            'h|help'                   => \$options{'help'},
+            'l|user=s'                 => \$options{'user'},
+            'm|monitor'                => \$options{'monitor'},
+            'o|node-options=s'         => \$options{'node-options'},
+            'q|show-config'            => \$options{'show-config'},
+            'r|node-rsh=s'             => \$options{'node-rsh'},
+            's|stream'                 => \$options{'streaming'},
+            't|timeout=i'              => \$options{'timeout'},
+            'v|verify'                 => \$options{'verify'},
+            'z|exit-status'            => \$options{'exit-status'},
+            'B|bypass'                 => \$options{'bypass'},
+            'C|context=s'              => \$options{'context'},
+            'E|environment=s'          => \$options{'environment'},
+            'I|ignore-sig|ignoresig=s' => \$options{'ignore-signal'},
+            'L|no-locale'              => \$options{'no-locale'},
+            'Q|silent'                 => \$options{'silent'},
+            'S|syntax=s'               => \$options{'syntax'},
+            'T|trace'                  => \$options{'trace'},
+            'V|version'                => \$options{'version'},
 
-            'w|wcoll=s' => \$::WCOLL,
-            'X:s'       => \$::IGNORENV
+            'command-name|commandName=s' => \$options{'command-name'},
+            'command-description|commandDescription=s' =>
+              \$options{'command-description'},
+            'X:s' => \$options{'ignore_env'}
 
         )
       )
     {
-        xCAT::MsgUtils->message("I", "$usagemsg");
+
+        xCAT::DSHCLI->usage_dsh;
         exit 1;
     }
-
-    if ($::HELP)
+    if ($options{'help'})
     {
-        xCAT::MsgUtils->message("I", "$usagemsg");
+        xCAT::DSHCLI->usage_dsh;
         exit 0;
+    }
+    if ($options{'bypass'})
+    {
+        $ENV{XCATBYPASS} = "yes";    # bypass xcatd
+    }
+    if ($options{'version'})
+    {
+        xCAT::MsgUtils->message("I", "Version 2.0\n");
+        exit 0;
+    }
+    if ($options{'node-rsh'})        # if set on command line, use it
+    {
+        $::NODE_RSH = 1;
+    }
+    if ($options{'node-opts'})       # if set on command line, use it
+    {
+        $::NODE_OPTS = 1;
+    }
+    if ($options{'fanout'})          # if set on command line, use it
+    {
+        $::FANOUT = 1;
+    }
+    if ($options{'timeout'})         # if set on command line, use it
+    {
+        $::TIMEOUT = 1;
+    }
+    if ($options{'context'})         # if a context is specified, use it
+    {
+        $::CONTEXT_SET = 1;
+    }
+    if (defined $options{'ignore_env'})
+    {
+        xCAT::DSHCLI->ignoreEnv($options{'ignore_env'});
     }
 
 }
@@ -193,58 +228,61 @@ sub parse_args_xdsh
   
   Parses for dcp input
   Check if the command  ask for help and display usage
+  Need to check -X flag to determine how to set Environment Variables
+  Need to check -B flag to determine mode 
+
 =cut
 
 #-----------------------------------------------------------------------------
 sub parse_args_xdcp
 {
-    my $usagemsg1 =
-      " xdcp -h \n xdcp -q \n xdcp -v \n xdcp [noderange] [group]\n";
-    my $usagemsg2 = "      [-C context] [-c] [-f fanout] [-l user_ID]\n";
-    my $usagemsg3 =
-      "      [-o options] [-s] [-p] [-P] [-Q] [-r node_remote_copy]\n";
-    my $usagemsg4 =
-      "      [-R] [-t timeout] [-T] [-X environment variables] [-v] \n";
-    my $usagemsg5 = "      source_file... target_path\n";
-    my $usagemsg6 = "Note:Context is always set to XCAT\n";
-    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg5 .= $usagemsg6;
 
+    my %options = ();
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
 
     if (
         !GetOptions(
-            'f|fanout=i'       => \$::FANOUT,
-            'h|help'           => \$::HELP,
-            'l|user=s'         => \$::USER,
-            'o|node-options=s' => \$::NODEOPTS,
-            'p|preserver'      => \$::PRESERVE,
-            'q|show-config'    => \$::SHOWCFG,
-            'r|c|node-rcp=s'   => \$::NODERCP,
-            's'                => \$::RSYNC,
-            't|timeout=i'      => \$::TIMEOUT,
-            'v|verify'         => \$::VERIFY,
-            'Q|silent'         => \$::SILENT,
-            'P|pull'           => \$::PULL,
-            'R|recursive'      => \$::RECURSIVE,
-            'T|trace'          => \$::TRACE,
-            'V|version'        => \$::VERSION,
-            'w|wcoll=s'        => \$::WCOLL,
-            'X:s'              => \$::IGNORENV
-
+                    'f|fanout=i'       => \$options{'fanout'},
+                    'h|help'           => \$options{'help'},
+                    'l|user=s'         => \$options{'user'},
+                    'n|nodes=s'        => \$options{'nodes'},
+                    'o|node-options=s' => \$options{'node-options'},
+                    'q|show-config'    => \$options{'show-config'},
+                    'p|preserve'       => \$options{'preserve'},
+                    'r|c|node-rcp=s'   => \$options{'node-rcp'},
+                    's'                => \$options{'rsync'},
+                    't|timeout=i'      => \$options{'timeout'},
+                    'v|verify'         => \$options{'verify'},
+                    'B|bypass'         => \$options{'bypass'},
+                    'C|context=s'      => \$options{'context'},
+                    'Q|silent'         => \$options{'silent'},
+                    'P|pull'           => \$options{'pull'},
+                    'R|recursive'      => \$options{'recursive'},
+                    'T|trace'          => \$options{'trace'},
+                    'V|version'        => \$options{'version'},
+                    'X:s'              => \$options{'ignore_env'}
         )
       )
     {
-        xCAT::MsgUtils->message("I", "$usagemsg");
+        xCAT::DSHCLI->usage_dcp;
         exit 1;
     }
-
-    if ($::HELP)
+    if ($options{'help'})
     {
-        xCAT::MsgUtils->message("I", "$usagemsg");
+        xCAT::DSHCLI->usage_dcp;
         exit 0;
+    }
+    if ($options{'version'})
+    {
+        xCAT::MsgUtils->message("I", "Version 2.0");
+        exit 0;
+    }
+
+    if ($::BYPASS)
+    {
+        $ENV{XCATBYPASS} = "yes";    # bypass xcatd
     }
 }
 
@@ -263,13 +301,19 @@ sub check_invalid_exports
     #  Check for unsupported Environment Variables
     #  DSH_DEVICE_LIST, DSH_DEVICE_OPTS, DSH_DEVICE_RCP,DSH_DEVICE_RSH,
     #   DSH_NODEGROUP_PATH
+    #  For support Env Variables tell them to use the command line flag
     ##
     if ($ENV{'DSH_NODE_LIST'})
     {
         xCAT::MsgUtils->message(
-            "I",
-            "DSH_NODE_LIST is set but is not supported. It will be ignored.\n"
-            );
+              "I",
+              "DSH_NODE_LIST is set but is not supported. It will be ignored.\n"
+              );
+    }
+    if ($ENV{'WCOLL'})
+    {
+        xCAT::MsgUtils->message("I",
+                    "WCOLL is set but is not supported. It will be ignored.\n");
     }
     if ($ENV{'DSH_DEVICE_LIST'})
     {
@@ -310,6 +354,11 @@ sub check_invalid_exports
     {
         xCAT::MsgUtils->message("I",
                " RSYNC_RSH is set but is not supported. It will be ignored.\n");
+    }
+    if ($ENV{'DSH_REPORT'})
+    {
+        xCAT::MsgUtils->message("I",
+              " DSH_REPORT is set but is not supported. It will be ignored.\n");
     }
 }
 
@@ -378,6 +427,15 @@ sub check_invalid_exports
 sub handle_response
 {
     my $rsp = shift;
+
+    # Handle {node} structure
+    if ($rsp->{errorcode})
+    {
+        foreach my $ecode (@{$rsp->{errorcode}})
+        {
+            $exitcode |= $ecode;
+        }
+    }
 
     # Handle {node} structure
     if ($rsp->{node})
