@@ -92,7 +92,6 @@ rm -rf $RPM_BUILD_ROOT
 #%doc README
 #%doc LICENSE.html
 %{prefix}
-/opt/csm
 /etc/xcat
 /etc/init.d/xcatd
 
