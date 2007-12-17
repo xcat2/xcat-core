@@ -27,7 +27,7 @@ use Getopt::Std;
 #       Filtered output                                             #
 #                                                                   #
 # Syntax (example):                                                 #
-#       dsh -w host1,host2 -vi ls | xdshbak                         #
+#       xdsh host1,host2 -vi ls | xdshbak                           #
 #                                                                   #
 # External Ref: None                                                #
 #                                                                   #
@@ -103,14 +103,6 @@ while (<STDIN>)
     if ($::opt_x) { $num_lines % 100 == 0 && print STDOUT "."; }
     else { $num_lines % 1000 == 0 && print STDOUT "."; }
 
-    #
-    # error message from dsh
-    #
-    if (/dsh.*5025-/)
-    {
-        print $_;
-        next LINE;
-    }
     if (/: /)
     {
         @fields = split(': ', $_);
