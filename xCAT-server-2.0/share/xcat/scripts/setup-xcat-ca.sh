@@ -1,5 +1,8 @@
 #XCATDIR=`gettab key=xcatconfdir site.value`
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+if [ -z "$XCATROOT" ]; then
+  XCATROOT=/opt/xcat
+fi
 if [ -z "$XCATDIR" ]; then
   XCATDIR=/etc/xcat
 fi
@@ -23,8 +26,8 @@ if [ -e $XCATDIR/ca ]; then
 else
   mkdir -p $XCATDIR/ca
 fi
-sed -e "s@##XCATCADIR##@$XCATCADIR@" /usr/share/xcat/ca/openssl.cnf.tmpl > $XCATCADIR/openssl.cnf
-cp /usr/share/xcat/ca/Makefile $XCATCADIR/
+sed -e "s@##XCATCADIR##@$XCATCADIR@" $XCATROOT/share/xcat/ca/openssl.cnf.tmpl > $XCATCADIR/openssl.cnf
+cp $XCATROOT/share/xcat/ca/Makefile $XCATCADIR/
 cd $XCATCADIR
 make init
 openssl req -nodes -config openssl.cnf -days 2650 -x509 -newkey rsa:2048 -out ca-cert.pem -outform PEM -subj /CN="$CNA"
