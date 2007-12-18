@@ -1,5 +1,11 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 use xCAT::Table;
 use File::Basename;
 my $scriptname = $0;
@@ -33,8 +39,8 @@ $slot = $dba->{id};
 if ($mpatab) {
   ($dba) = $mpatab->getAttribs({mpa=>$mm},qw(username password));
   if ($dba) {
-    if ($dba->{username}) { $username = $dba->username; }
-    if ($dba->{password}) { $password = $dba->password; }
+    if ($dba->{username}) { $username = $dba->{username}; }
+    if ($dba->{password}) { $password = $dba->{password}; }
   }
 }
 sleep 5;
