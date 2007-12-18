@@ -13,7 +13,7 @@ if ($::opt_h) { usage(0); }
 #$::VERBOSE = $::opt_v;
 
 # Get the status of each node and save in a hash
-my @ns = runcmd("/opt/xcat/bin/nodestat '/[A-Za-z].*'");
+my @ns = runcmd("nodestat '/.*'");
 my %nodestat;
 foreach my $line (@ns) {
 	my ($node, $stat) = split(/[:\s]+/, $line);
@@ -24,7 +24,7 @@ if ($::opt_v) { foreach my $n (keys %nodestat) { print "$n: $nodestat{$n}\n"; } 
 
 # Get the list of nodes/groups and aggregate the status of the group using the status of each node
 #TODO: this must be changed for xcat 2.0
-my @nodelist = runcmd("egrep '^[A-Za-z]' /opt/xcat/etc/nodelist.tab");
+my @nodelist = runcmd("egrep '^[A-Za-z]' $ENV{XCATROOT}/etc/nodelist.tab");
 verbose("Found ", scalar(@nodelist), " items in nodelist.tab\n");
 my %groups;
 foreach my $line (@nodelist) {

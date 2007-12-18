@@ -38,19 +38,6 @@ echo <<<EOS
 
 EOS;
 
-// These are only needed for popup windows, so only need it for specific pages like groups & dsh
-//echo "<script src='$TOPDIR/lib/GroupNodeTableUpdater.js' type='text/javascript'> </script>\n";
-
-//echo "<script src='$TOPDIR/js/prototype.js' type='text/javascript'></script>\n";
-//echo "<script src='$TOPDIR/js/scriptaculous.js?load=effects' type='text/javascript'></script>\n";
-//echo "<script src='$TOPDIR/js/effects.js' type='text/javascript'> </script>\n";
-
-//echo "<script src='$TOPDIR/js/window.js' type='text/javascript'></script>\n";
-//echo "<link href='$TOPDIR/themes/default.css' rel='stylesheet' type='text/css'/>\n";
-
-//echo "<link href='$TOPDIR/css/xcattop.css' rel='stylesheet'>\n";
-//echo "<link href='$TOPDIR/css/xcat.css' rel='stylesheet'>\n";
-
 
 if ($stylesheets) {
 	foreach ($stylesheets as $s) {
@@ -218,7 +205,7 @@ function runcmd ($cmd, $mode, &$output, $options=NULL){
 	//Set error output to the same source as standard output (on Linux)
 	if (strstr($cmd,'2>&1') == FALSE && !$options["NoRedirectStdErr"]) { $cmd .= ' 2>&1'; }
 
-	if (!isSupported('ClientServer')) { $cmd = "/bin/sudo $cmd"; }
+	if (!isSupported('ClientServer')) { $cmd = "/usr/bin/sudo $cmd"; }
 	//todo: add support for xcat 2
 
 	$ret_stat = "";

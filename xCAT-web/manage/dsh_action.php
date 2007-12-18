@@ -17,7 +17,9 @@ header("Pragma: no-cache"); // HTTP/1.0
 
 // Store command into history cookie, if it is not already there
 $expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
-if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['history'])) {
+//echo "<p>{$_REQUEST['command']},"; foreach ($_COOKIE['history'] as $h) { echo "$h,"; }; echo "</p>\n";
+//echo "<p>" . isset($_COOKIE['history']) . ',' . array_search($_REQUEST['command'], $_COOKIE['history']) . "</p>\n";
+if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['history'])!==FALSE) {
 	// this command is already in the history, so do not need to add it
 } else {
 	$i = isset($_COOKIE['history']) ? count($_COOKIE['history']) : 0;

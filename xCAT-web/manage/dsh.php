@@ -53,7 +53,7 @@ if (!isset($_REQUEST['noderange'])) {
 ?>
     <TR class=FormTable>
       <TD colspan=3>Command:&nbsp;
-       <INPUT size=80 type=text name=command id=commandQuery class=middle onchange='CommandWindow.updateCommandResult()'>
+       <INPUT size=80 type=text name=command id=commandQuery class=middle> <!-- onchange='CommandWindow.updateCommandResult()' -->
        History:
       <SELECT name=history onChange="_setvars();" class=middle>
       <OPTION value="">Choose ...</OPTION>

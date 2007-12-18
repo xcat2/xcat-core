@@ -55,8 +55,6 @@ insertButtons(
 
 echo '<form name="nodelist" class=ContentForm>';
 
-/* $output = array(); runcmd("listattr", 2, $output); foreach ($output as $line) { echo "<p>line=$line</p>"; } */
-
 GroupNodeTable::insertGroupTableHeader();
 
 // Get the names and status of the groups
