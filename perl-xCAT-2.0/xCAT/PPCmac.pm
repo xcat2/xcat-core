@@ -28,6 +28,7 @@ sub parse_args {
             "getmacs [-V|--verbose] noderange [-S server -G gateway -C client]",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
+            "    -c   colon seperated output",
             "    -C   IP of the partition",
             "    -G   Gateway IP of the partition specified",
             "    -S   Server IP to ping", 
@@ -49,7 +50,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version C=s G=s S=s) )) { 
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version C=s G=s S=s c) )) { 
         return( usage() );
     }
     ####################################
@@ -108,17 +109,19 @@ sub parse_args {
 ##########################################################################
 sub validate_ip {
 
-    foreach my $ip (@_) {
+    foreach (@_) {
+        my $ip = $_;
+
         ###################################
         # Length is 4 for IPv4 addresses
         ###################################
         my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
         if ( scalar(@octets) != 4 ) {
-            return( [1,"Invalid IP address: $ip"] );
+            return( [1,"Invalid IP address1: $ip"] );
         }
         foreach my $octet ( @octets ) {
             if (( $octet < 0 ) or ( $octet > 255 )) {
-                return( [1,"Invalid IP address: $ip"] );
+                return( [1,"Invalid IP address2: $ip"] );
             }
         }
     }
@@ -136,8 +139,85 @@ sub ivm_getmacs {
     my $d       = shift;
     my $exp     = shift; 
     my $name    = shift;
+    my $opt     = $request->{opt};
+    my $id      = @$d[0];
+    my $profile = @$d[1];
+    my $fsp     = @$d[2];
+    my $hcp     = @$d[3];
+    my $ssh     = @$exp[0];
+    my $userid  = @$exp[4];
+    my $pw      = @$exp[5];
+    my $cmd     = "/usr/sbin/lpar_netboot";
+    my $result;
 
-    return( [[RC_ERROR,"Not Implemented"]] );
+    #######################################
+    # Disconnect Expect session 
+    #######################################
+    xCAT::PPCcli::disconnect( $exp );
+
+    #######################################
+    # Check command installed 
+    #######################################
+    if ( !-x $cmd ) {
+        return( [RC_ERROR,"Command not installed: $cmd"] );
+    }
+    #######################################
+    # Create random temporary userid/pw 
+    # file between 1000000 and 2000000
+    #######################################
+    my $random = int( rand(1000001)) + 1000000;
+    my $fname = "/tmp/xCAT-$hcp-$random";
+
+    unless ( open( CRED, ">$fname" )) {
+        return( [RC_ERROR,"Error creating temporary password file '$fname'"]);
+    }
+    print CRED "$userid $pw\n";
+    close( CRED );
+
+    #######################################
+    # Turn on verbose and debugging 
+    #######################################
+    if ( exists($request->{verbose}) ) {
+        $cmd.= " -v -x";
+    }
+    #######################################
+    # Colon seperated output 
+    #######################################
+    if ( exists($opt->{c}) ) {
+        $cmd.= " -c";
+    }
+    #######################################
+    # Network specified (-D ping test)
+    #######################################
+    if ( exists( $opt->{S} )) { 
+        $cmd.= " -D -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C}";
+    } 
+    #######################################
+    # Add command options 
+    #######################################
+    $cmd.= " -t ent -f -M -n \"$name\" \"$profile\" \"$fsp\" $id $hcp $fname";
+
+    #######################################
+    # Execute command 
+    #######################################
+    if ( !open( OUTPUT, "$cmd 2>&1 |")) {
+        return( [RC_ERROR,"$cmd fork error: $!"] );
+    }
+    #######################################
+    # Get command output 
+    #######################################
+    while ( <OUTPUT> ) {
+        $result.=$_;
+    }
+    close OUTPUT;
+
+    #######################################
+    # If command did not, remove file  
+    #######################################
+    if ( -r $fname ) {
+        unlink( $fname );
+    }
+    return( [SUCCESS,$result] );
 }
 
 
@@ -150,9 +230,10 @@ sub getmacs {
     my $request = shift;
     my $d       = shift;
     my $exp     = shift;
-    my $opt     = $request->{opt}; 
+    my $opt     = $request->{opt};
     my $hwtype  = @$exp[2];
     my @output;
+    my $result;
 
     #########################################
     # Get node data 
@@ -172,31 +253,36 @@ sub getmacs {
     # addresses. 
     #########################################
     if ( $hwtype eq "ivm" ) {
-        return( ivm_getmacs( $request, $d, $exp, $name ));
+        $result = ivm_getmacs( $request, $d, $exp, $name );
     }
-    my $result = xCAT::PPCcli::lpar_netboot( 
-                           $exp, 
+    else {
+        $result = xCAT::PPCcli::lpar_netboot( 
+                           $exp,
+                           $request->{verbose},
                            $name,
                            $d,
-                           $opt->{S},
-                           $opt->{G},
-                           $opt->{C} );
-
+                           $opt );
+    }
     my $Rc = shift(@$result);
     
+    ##################################
+    # Form string from array results 
+    ##################################
+    if ( exists($request->{verbose}) ) {
+        return( [[$name,join( '', @$result )]] );
+    }
     ##################################
     # Return error
     ##################################
     if ( $Rc != SUCCESS ) {
-        return( [[$name,@$result]] );
+        return( [[$name,join( '', @$result )]] );
     }
     ##################################
-    # Success - verbose output 
+    # Split results into array
     ##################################
-    my $data = join( '',@$result );
-
-    if ( exists($request->{verbose}) ) {
-        return( [[$name,$data]] );
+    if ( $hwtype eq "ivm" ) {
+        my $data = @$result[0];
+        @$result = split /\n/, $data;    
     }
     ##################################
     # lpar_netboot returns:
@@ -211,13 +297,16 @@ sub getmacs {
     # Type\t Location Code\t MAC Address\t Full Path Name\t
     # Ping Result\t Device Type\r\nent U9117.MMA.10F6F3D-V5-C3-T1
     # 1e0e122a930d /vdevice/l-lan@30000003  virtual\r\n
+    #
+    # Note that "Device Type" above appears  
+    # with some versions of lpar_netboot  
+    # and not with others.
     #####################################
-    $data =~ /Device Type(.*)/;
     my $values;
-       
-    foreach ( split /\r\n/, $1 ) {
-        if ( /ent ([^\s]+) ([^\s]+)/ ) {
-            $values.= "$1:".uc($2);
+   
+    foreach ( @$result ) {
+        if ( /^#\s*Type|^ent/ ) {
+            $values.= "\n$_";
         }
     }
     return( [[$name,$values]] );
@@ -225,3 +314,4 @@ sub getmacs {
 
 
 1;
+
