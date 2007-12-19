@@ -3044,9 +3044,9 @@ sub verify_targets
         my @no_response = ();
         my %rsp;
         $rsp->{data}->[0] =
-          "TRACE:Verifying remaining targets with dping command.\n";
+          "TRACE:Verifying remaining targets with pping command.\n";
         $dsh_trace && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        @no_response = xCAT::DSHCore->dping_hostnames(@ping_list);
+        @no_response = xCAT::DSHCore->pping_hostnames(@ping_list);
 
         foreach $hostname (@no_response)
         {
