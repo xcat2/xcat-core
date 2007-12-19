@@ -232,7 +232,6 @@ sub getmacs {
     my $exp     = shift;
     my $opt     = $request->{opt};
     my $hwtype  = @$exp[2];
-    my @output;
     my $result;
 
     #########################################
@@ -303,11 +302,8 @@ sub getmacs {
     # and not with others.
     #####################################
     my $values;
-   
     foreach ( @$result ) {
-        if ( /^#\s*Type|^ent/ ) {
-            $values.= "\n$_";
-        }
+        $values.= "\n$_";
     }
     return( [[$name,$values]] );
 }
