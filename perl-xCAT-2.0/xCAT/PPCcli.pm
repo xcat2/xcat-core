@@ -573,9 +573,9 @@ sub lpar_netboot {
     my $name    = shift;
     my $d       = shift;
     my $opt     = shift;
-    my $mac     = shift;
     my $timeout = 300;
     my $cmd     = "lpar_netboot -t ent -f";
+    my $mac; 
 
     #####################################
     # Verbose output 
@@ -592,7 +592,8 @@ sub lpar_netboot {
     #####################################
     # Get MAC-address or network boot
     #####################################
-    $cmd.= (defined( $mac )) ? " -m $mac" : " -M -n";
+    $mac = $opt->{m};
+    $cmd.= ( defined( $mac )) ? " -m $mac" : " -M -n";
    
     #####################################
     # Command only supported on LPARs
