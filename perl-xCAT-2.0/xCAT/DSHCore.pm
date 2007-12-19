@@ -687,9 +687,9 @@ sub resolve_hostnames
 #---------------------------------------------------------------------------
 
 =head3
-        dping_hostnames
+        pping_hostnames
 
-        Executes dping on a given list of hostnames and returns a list of those
+        Executes pping on a given list of hostnames and returns a list of those
         hostnames that did not respond
 
         Arguments:
@@ -705,7 +705,7 @@ sub resolve_hostnames
                 None
 
         Example:
-                @bad_hosts = xCAT::DSHCore->dping_hostnames(@host_list);
+                @bad_hosts = xCAT::DSHCore->pping_hostnames(@host_list);
 
         Comments:
 
@@ -713,13 +713,13 @@ sub resolve_hostnames
 
 #---------------------------------------------------------------------------
 
-sub dping_hostnames
+sub pping_hostnames
 {
     my ($class, @hostnames) = @_;
 
     my $hostname_list = join ",", @hostnames;
     my @output =
-      xCAT::Utils->runcmd("/opt/csm/bin/dping -H $hostname_list", -1);
+      xCAT::Utils->runcmd("pping -H $hostname_list", -1);
 
     my @no_response = ();
     foreach $line (@output)
