@@ -117,6 +117,7 @@ sub connect {
     ##################################################
     if ( $verbose ) {
         close STDERR;
+
         if ( !open( STDERR, '>', \$expect_log )) {
              return( "Unable to redirect STDERR: $!" );
         }
@@ -131,6 +132,7 @@ sub connect {
     # Redirect STDOUT to variable 
     ##################################################
     close STDOUT;
+
     if ( !open( STDOUT, '>', \$expect_log )) {
          return( "Unable to redirect STDOUT: $!" );
     }
@@ -212,9 +214,11 @@ sub disconnect {
     my $exp = shift;
     my $ssh = @$exp[0];
 
-    $ssh->send( "exit\r" );
-    $ssh->hard_close();
-
+    if ( defined( $ssh )) {
+        $ssh->send( "exit\r" );
+        $ssh->hard_close();
+        @$exp[0] = undef;
+    }
 }
 
 
@@ -565,15 +569,26 @@ sub lshwres {
 sub lpar_netboot {
 
     my $exp     = shift;
+    my $verbose = shift;
     my $name    = shift;
     my $d       = shift;
-    my $server  = shift;
-    my $gateway = shift;
-    my $client  = shift;
+    my $opt     = shift;
     my $mac     = shift;
     my $timeout = 300;
-    my $cmd     = "lpar_netboot -t ent";
+    my $cmd     = "lpar_netboot -t ent -f";
 
+    #####################################
+    # Verbose output 
+    #####################################
+    if ( $verbose ) {
+        $cmd.= " -x -v";
+    }
+    #####################################
+    # Colon seperated output 
+    #####################################
+    if ( exists( $opt->{c} )) {
+        $cmd.= " -c";
+    }
     #####################################
     # Get MAC-address or network boot
     #####################################
@@ -588,9 +603,9 @@ sub lpar_netboot {
     #####################################
     # Network specified (-D ping test)
     #####################################
-    if ( defined( $server )) {
+    if ( exists( $opt->{S} )) {
         $cmd.= (!defined( $mac )) ? " -D" : "";
-        $cmd.= " -s auto -d auto -S $server -G $gateway -C $client";
+        $cmd.= " -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C}";
     }
     #####################################
     # Add lpar name, profile, CEC name 
@@ -823,4 +838,5 @@ sub power_cmd {
 
 
 1;
+
 
