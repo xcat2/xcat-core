@@ -90,6 +90,14 @@ if (!($::NODE_RSH))
 
     }
 }
+if (!($cmdref->{noderange}->[0]))    # if no node range defined
+{
+    if ($ENV{'DSH_LIST'})            # if file of nodes input
+    {
+        push(@{$cmdref->{env}}, "DSH_LIST=$ENV{'DSH_LIST'}");
+
+    }
+}
 if (!($::NODE_OPTS))
 {
     if ($ENV{'DSH_NODE_OPTS'})
