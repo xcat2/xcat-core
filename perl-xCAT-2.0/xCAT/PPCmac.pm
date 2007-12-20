@@ -25,7 +25,7 @@ sub parse_args {
         return( [ $_[0],
             "getmacs -h|--help",
             "getmacs -v|--version",
-            "getmacs [-V|--verbose] noderange [-S server -G gateway -C client]",
+            "getmacs [-V|--verbose] noderange [-c][-S server -G gateway -C client]",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
             "    -c   colon seperated output",
@@ -286,24 +286,24 @@ sub getmacs {
     ##################################
     # lpar_netboot returns:
     #
-    # Connecting to lpar4\r\n
-    # Connected\r\n
-    # Checking for power off.\r\n
-    # Power off complete.\r\n
-    # Power on lpar4 to Open Firmware.\r\n
-    # Power on complete.\r\n
-    # Getting adapter location codes.\r\n
-    # Type\t Location Code\t MAC Address\t Full Path Name\t
-    # Ping Result\t Device Type\r\nent U9117.MMA.10F6F3D-V5-C3-T1
-    # 1e0e122a930d /vdevice/l-lan@30000003  virtual\r\n
+    #  # Connecting to lpar4\n
+    #  # Connected\n
+    #  # Checking for power off.\n
+    #  # Power off complete.\n
+    #  # Power on lpar4 to Open Firmware.\n
+    #  # Power on complete.\n
+    #  # Getting adapter location codes.\n
+    #  # Type\t Location Code\t MAC Address\t Full Path Name\tPing Result\n
+    #    ent U9117.MMA.10F6F3D-V5-C3-T1 1e0e122a930d /vdevice/l-lan@30000003
     #
-    # Note that "Device Type" above appears  
-    # with some versions of lpar_netboot  
-    # and not with others.
     #####################################
     my $values;
     foreach ( @$result ) {
-        $values.= "\n$_";
+        if ( /^#\s*Type/ ) {
+            $values.= "\n$_\n";
+        } elsif ( /^[^#]/ ) {
+            $values.= "$_\n";
+        }
     }
     return( [[$name,$values]] );
 }
