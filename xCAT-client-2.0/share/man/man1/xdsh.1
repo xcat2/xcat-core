@@ -19,7 +19,7 @@ xdsh Command
 [\fB-B\fR \fIbypass\fR]
 [\fB-C\fR \fIcontext\fR] [\fB-e\fR]
 [\fB-E\fR \fIenvironment_file\fR] [\fB-f\fR\fIfanout\fR]
-[\fB-i\fR] [\fB-L\fR] [\fB-l\fR \fIuser_ID\fR] 
+[\fB-i\fR] [\fB-K\fR] [\fB-L\fR] [\fB-l\fR \fIuser_ID\fR] 
 [\fB-m\fR] [\fB-o\fR \fInode_options\fR] 
 [\fB-Q\fR] [\fB-r\fR \fInode_remote_shell\fR]
 [\fB-s\fR] [\fB-S\fR \fBcsh\fR | \fBksh\fR] [\fB-t\fR \fItimeout\fR]
@@ -336,6 +336,13 @@ default fanout value of \fB64\fR is used.
 .RE
 .RS +9
 Displays usage information.
+.RE
+.RS +3
+\fB-K | --ssh-setup  
+\fR
+.RE
+.RS +9
+Request to setup SSH for the input node list.
 .RE
 .RS +3
 \fB-l | --user \fIuser_ID\fR
