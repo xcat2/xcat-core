@@ -128,6 +128,89 @@ sub validate_ip {
 }
 
 
+##########################################################################
+# IVM rnetboot 
+##########################################################################
+sub ivm_rnetboot {
+
+    my $request = shift;
+    my $d       = shift;
+    my $exp     = shift;
+    my $name    = shift;
+    my $opt     = $request->{opt};
+    my $id      = @$d[0];
+    my $profile = @$d[1];
+    my $fsp     = @$d[2];
+    my $hcp     = @$d[3];
+    my $ssh     = @$exp[0];
+    my $userid  = @$exp[4];
+    my $pw      = @$exp[5];
+    my $cmd     = "/usr/sbin/lpar_netboot";
+    my $result;
+
+    #######################################
+    # Disconnect Expect session
+    #######################################
+    xCAT::PPCcli::disconnect( $exp );
+
+    #######################################
+    # Check command installed
+    #######################################
+    if ( !-x $cmd ) {
+        return( [RC_ERROR,"Command not installed: $cmd"] );
+    }
+    #######################################
+    # Create random temporary userid/pw
+    # file between 1000000 and 2000000
+    #######################################
+    my $random = int( rand(1000001)) + 1000000;
+    my $fname = "/tmp/xCAT-$hcp-$random";
+
+    unless ( open( CRED, ">$fname" )) {
+        return( [RC_ERROR,"Error creating temporary password file '$fname'"]);
+    }
+    print CRED "$userid $pw\n";
+    close( CRED );
+
+    #######################################
+    # Turn on verbose and debugging
+    #######################################
+    if ( exists($request->{verbose}) ) {
+        $cmd.= " -v -x";
+    }
+    #######################################
+    # Network specified
+    #######################################
+    $cmd.= " -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C}";
+   
+    #######################################
+    # Add command options
+    #######################################
+    $cmd.= " -t ent -f \"$name\" \"$profile\" \"$fsp\" $id $hcp $fname";
+
+    #######################################
+    # Execute command
+    #######################################
+    if ( !open( OUTPUT, "$cmd 2>&1 |")) {
+        return( [RC_ERROR,"$cmd fork error: $!"] );
+    }
+    #######################################
+    # Get command output
+    #######################################
+    while ( <OUTPUT> ) {
+        $result.=$_;
+    }
+    close OUTPUT;
+
+    #######################################
+    # If command did not, remove file
+    #######################################
+    if ( -r $fname ) {
+        unlink( $fname );
+    }
+    return( [SUCCESS,$result] );
+}
+
 
 ##########################################################################
 # Get LPAR MAC addresses
@@ -139,7 +222,7 @@ sub rnetboot {
     my $exp     = shift; 
     my $hwtype  = @$exp[2];
     my $opt     = $request->{opt};
-    my @output;
+    my $result;
 
     #####################################
     # Get node data 
@@ -153,18 +236,63 @@ sub rnetboot {
     if ( $type !~ /^lpar$/ ) {
         return( [[$name,"Not supported"]] );
     }
-    my $result = xCAT::PPCcli::lpar_netboot( 
-                           $exp, 
+    #########################################
+    # IVM does not have lpar_netboot command
+    # so we have to manually perform boot. 
+    #########################################
+    if ( $hwtype eq "ivm" ) {
+        $result = ivm_rnetboot( $request, $d, $exp, $name );
+    }
+    else {
+        $result = xCAT::PPCcli::lpar_netboot( 
+                           $exp,
+                           $request->{verbose}, 
                            $name,
                            $d,
-                           $opt->{S},
-                           $opt->{G},
-                           $opt->{C},
-                           $opt->{m} );
-
+                           $opt );
+    }
     my $Rc = shift(@$result);
-    return( [[$name,@$result[0]]] );
+
+    ##################################
+    # Form string from array results
+    ##################################
+    if ( exists($request->{verbose}) ) {
+        return( [[$name,join( '', @$result )]] );
+    }
+    ##################################
+    # Return error
+    ##################################
+    if ( $Rc != SUCCESS ) {
+        return( [[$name,join( '', @$result )]] );
+    }
+    ##################################
+    # Split results into array
+    ##################################
+    if ( $hwtype eq "ivm" ) {
+        my $data = @$result[0];
+        @$result = split /\n/, $data;
+    }
+    ##################################
+    # lpar_netboot returns:
+    #
+    #  # Connecting to p6vios
+    #  # Connected
+    #  # Checking for power off.
+    #  # Power off complete.
+    #  # Power on p6vios to Open Firmware.
+    #  # Power on complete.
+    #  # Network booting install adapter.
+    # 
+    #####################################
+    my $values;
+    foreach ( @$result ) {
+        if ( /^[^#]/ ) {
+            $values.= "$_\n";
+        }
+    }
+    return( [[$name,$values]] );
 }
 
 
 1;
+
