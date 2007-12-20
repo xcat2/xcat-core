@@ -1340,16 +1340,20 @@ sub buffer_output
             delete $$outfh_targets{$user_target};
 
             if (++$$targets_active{$user_target} == 3)
-            
-             {
+
+            {
                 my $exit_code;
-                my $pid=waitpid($$forked_process{$user_target}[0], 0);
-                if ( $pid == -1 ) {  # no child waiting ignore
-                   my %rsp;
-                   $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.\n";
-                   $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                } else {   # check return code
-                   $exit_code = $? >> 8;
+                my $pid = waitpid($$forked_process{$user_target}[0], 0);
+                if ($pid == -1)
+                {    # no child waiting ignore
+                    my %rsp;
+                    $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.\n";
+                    $$options{'monitor'}
+                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
+                else
+                {    # check return code
+                    $exit_code = $? >> 8;
                 }
                 if (scalar(@{$$output_buffers{$user_target}}) == 1)
                 {
@@ -1467,13 +1471,17 @@ sub buffer_error
             if (++$$targets_active{$user_target} == 3)
             {
                 my $exit_code;
-                my $pid=waitpid($$forked_process{$user_target}[0], 0);
-                if ( $pid == -1 ) { # no child waiting
-                   my %rsp;
-                   $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.\n";
-                   $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                } else {   # check return code
-                   $exit_code = $? >> 8;
+                my $pid = waitpid($$forked_process{$user_target}[0], 0);
+                if ($pid == -1)
+                {    # no child waiting
+                    my %rsp;
+                    $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.\n";
+                    $$options{'monitor'}
+                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
+                else
+                {    # check return code
+                    $exit_code = $? >> 8;
                 }
 
                 if (scalar(@{$$output_buffers{$user_target}}) == 1)
@@ -1585,13 +1593,17 @@ sub stream_output
             if (++$$targets_active{$user_target} == 3)
             {
                 my $exit_code;
-                my $pid=waitpid($$forked_process{$user_target}[0], 0);
-                if ( $pid == -1 ) { # no child waiting
-                   my %rsp;
-                   $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.\n";
-                   $$options{'monitor'} &&  xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                } else {   # check return code
-                   $exit_code = $? >> 8;
+                my $pid = waitpid($$forked_process{$user_target}[0], 0);
+                if ($pid == -1)
+                {    # no child waiting
+                    my %rsp;
+                    $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.\n";
+                    $$options{'monitor'}
+                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
+                else
+                {    # check return code
+                    $exit_code = $? >> 8;
                 }
 
                 my $target_rc = $$target_properties{'target-rc'};
@@ -1755,13 +1767,17 @@ sub stream_error
             if (++$$targets_active{$user_target} == 3)
             {
                 my $exit_code;
-                my $pid=waitpid($$forked_process{$user_target}[0], 0);
-                if ( $pid == -1 ) {  # no child waiting
-                   my %rsp;
-                   $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.\n";
-                   $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                } else {   # check return code
-                   $exit_code = $? >> 8;
+                my $pid = waitpid($$forked_process{$user_target}[0], 0);
+                if ($pid == -1)
+                {    # no child waiting
+                    my %rsp;
+                    $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.\n";
+                    $$options{'monitor'}
+                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
+                else
+                {    # check return code
+                    $exit_code = $? >> 8;
                 }
 
                 my $target_rc = $$target_properties{'target-rc'};
@@ -3526,7 +3542,7 @@ sub usage_dsh
       " xdsh -h \n xdsh -q \n xdsh -v \n xdsh [noderange] [group]\n";
     my $usagemsg2 =
       "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file] [-f fanout]\n";
-    my $usagemsg3 = "      [-l user_ID] [-L] ";
+    my $usagemsg3 = "      [-l user_ID] [-L] [-K ssh setup] ";
     my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell] \n";
     my $usagemsg5 =
       "      [-s] [-S ksh | csh] [-t timeout] [-T] [-X environment variables] [-v] [-z]\n";
@@ -3583,7 +3599,13 @@ sub parse_and_run_dsh
 
     @ARGV       = @{$args};    # get arguments
     $::CALLBACK = $callback;
-
+    if ($ENV{'XCATROOT'})
+    {
+       $::XCATROOT = $ENV{'XCATROOT'};  # setup xcatroot home directory
+    } else {
+       $::XCATROOT = "/opt/xcat";
+    }
+    
     # parse the arguments
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
@@ -3617,6 +3639,7 @@ sub parse_and_run_dsh
             'C|context=s'              => \$options{'context'},
             'E|environment=s'          => \$options{'environment'},
             'I|ignore-sig|ignoresig=s' => \$options{'ignore-signal'},
+            'K|keysetup'               => \$options{'ssh-setup'},
             'L|no-locale'              => \$options{'no-locale'},
             'Q|silent'                 => \$options{'silent'},
             'S|syntax=s'               => \$options{'syntax'},
@@ -3669,6 +3692,14 @@ sub parse_and_run_dsh
     # build arguments
 
     $options{'command'} = join ' ', @ARGV;
+
+    # -K option just sets up the ssh keys on the nodes and exits
+    if (defined $options{'ssh-setup'})
+    {
+        my $rc      = xCAT::Utils->setupSSH($noderange);
+        my @results = "return code = $rc";
+        return (@results);
+    }
 
     #
     # Execute the dsh api
@@ -3768,7 +3799,12 @@ sub parse_and_run_dcp
     my ($class, $nodes, $args, $callback, $command, $noderange) = @_;
     @ARGV       = @{$args};    # get arguments
     $::CALLBACK = $callback;
-
+    if ($ENV{'XCATROOT'})
+    {
+       $::XCATROOT = $ENV{'XCATROOT'};  # setup xcatroot home directory
+    } else {
+       $::XCATROOT = "/opt/xcat";
+    }
     # parse the arguments
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
