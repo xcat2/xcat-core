@@ -171,6 +171,7 @@ sub parse_args_xdsh
             'C|context=s'              => \$options{'context'},
             'E|environment=s'          => \$options{'environment'},
             'I|ignore-sig|ignoresig=s' => \$options{'ignore-signal'},
+            'K|keysetup'               => \$options{'ssh-setup'},
             'L|no-locale'              => \$options{'no-locale'},
             'Q|silent'                 => \$options{'silent'},
             'S|syntax=s'               => \$options{'syntax'},
