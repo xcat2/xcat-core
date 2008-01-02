@@ -1,0 +1,2793 @@
+#!/usr/bin/expect --
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+log_user 0 
+set stm 1
+
+#
+# PROCEDURE
+#
+# Declare procedure to write status/error messages
+# We do it this way so that if /var is full (or some other error occurs)
+# we can trap it in a common section of code.
+#
+proc nc_msg { msg } {
+    global verbose
+
+    if { $verbose == 1 } {
+        send_user $msg
+    }
+}
+
+#
+# PROCEDURE
+#
+proc read_credentials {} {
+
+    global filename
+    global userid
+    global passwd
+
+    if [catch { open $filename "r" } fhandle ] {
+        send_user "Error opening temporary password file\n"
+        exit 1
+    }
+    ###############################################
+    # Read the password from the file,
+    # then close and immediately delete it
+    ###############################################
+    set buf [ read $fhandle ]
+    set cred ""
+    close $fhandle
+    exec rm $filename
+
+    if { ![regexp {([^ ]+ [^ ]+)\n} $buf match cred ]} {
+        send_user "Error parsing temporary password file\n"
+        exit 1
+    }
+    set userid [ lindex $cred 0 ]
+    set passwd [ lindex $cred 1 ]
+}
+
+#
+# PROCEDURE
+#
+# Define the procedure to connect to the IVM
+#
+proc connect {} {
+
+    global hcp
+    global ssh_spawn_id
+    global prompt
+    global userid
+    global passwd
+
+    if [ catch { spawn ssh $userid@$hcp} ssh_pid ] {
+        send_user "Unable to spawn ssh connection to $hcp\n"
+        exit 1
+    }
+    set ssh_spawn_id $spawn_id
+    set timeout 10
+    set pwd_sent 0
+    #
+    # Look for password prompt, and reply
+    #
+    expect {
+        -i $ssh_spawn_id \
+        -re $prompt {
+
+        }
+        -re "continue connecting (yes/no)?" {
+            send -i $ssh_spawn_id "yes\r"
+            expect_continue
+        }
+        -re "assword: $" {
+             if { $pwd_sent != 1 } {
+                 set pwd_sent 1
+                 send -i $ssh_spawn_id "$passwd\r"
+                 exp_continue
+             }
+             send_user "Incorrect login\n"
+             exit 1
+        }
+        timeout {
+            send_user "Timeout waiting for password prompt\n"
+            exit 1
+        }
+        eof {
+            send_user "ssh connection terminated unexpectedly\n"
+            exit 1
+        }
+    }
+}
+
+
+#
+# PROCEDURE
+#
+# Procedure to run the lssyscfg command
+# test its return code and capture its output 
+#
+proc run_lssyscfg {} {
+    global PROGRAM
+    global ssh_spawn_id
+    global env
+    global manage
+    global msg
+    global node
+    global profile
+    global rc
+    global prompt
+
+    set timeout 10
+    send -i $ssh_spawn_id "lssyscfg -r lpar -m \"$manage\" --filter lpar_names=\"$node\" -F state; echo Rc=\$\?\r";
+
+    expect {
+        -i $ssh_spawn_id \
+        -re "\r\n(.*)\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+            set rc $expect_out(2,string)
+            set msg $expect_out(1,string)
+        }
+        timeout {
+            send_user "Timeout waiting for command prompt\n"
+            exit 1
+        }
+        eof {
+           send_user "ssh connection to terminated unexpectedly\n"
+           exit 1
+       }
+    }
+   
+    if { $rc } {
+        send_user "Unable to determine machine state Rc = $rc\n"
+        nc_msg "$PROGRAM Status: error from lssyscfg command\n"
+
+        send_user "Error : $msg\n"
+        exit 1
+    }
+}
+
+#
+# PROCEDURE
+#
+# Declare procedure to write usage message and exit
+#
+proc usage {} {
+    global PROGRAM
+
+    send_user "Usage: Install partition \
+            \n\t$PROGRAM \[-v\] \[-x\] \[-f\] \[-A -D | \[-D\] | \[-D\] -m macaddress\] -t ent -s speed -d duplex \
+            \n\t\t-S server -G gateway -C client hostname profile managed_system lparid remote_host password_filename\
+            \n \
+            \nUsage: Return macaddress \
+            \n\t$PROGRAM -M -n \[-v\] -t ent \[-f] \[-x] \[-D -s speed -d duplex -S server -G gateway -C client\] hostname profile managed_system lparid remote_host password_file\
+            \n \
+            \n\t-n\tDo not boot partition \
+            \n\t-t\tSpecifies network type ent \
+            \n\t-D\tPerform ping test, use adapter that successfully ping the server \
+            \n\t-s\tNetwork adapter speed \
+            \n\t-d\tNetwork adapter duplex \
+            \n\t-S\tServer IP address \
+            \n\t-G\tGateway IP address \
+            \n\t-C\tClient IP address \
+            \n\t-m\tMAC Address \
+            \n\t-v\tVerbose output \
+            \n\t-x\tDebug output \
+            \n\t-f\tForce close virtual terminal session \
+            \n\t-M\tDiscovery ethernet adapter mac address and location code \
+            \n\t--help\tPrints this help\n"
+    exit 1
+}
+
+#
+# PROCEDURE
+#
+# Check command line arguments
+#
+proc ck_args {} {
+    global adap_speed
+    global adap_duplex
+    global client_ip
+    global server_ip
+    global gateway_ip
+    global node
+    global manage
+    global profile
+    global hcp 
+    global lparid 
+    global PROGRAM
+    global discover_macaddr
+    global extra_args
+    global macaddress
+    global phys_loc
+    global discover_all
+    global discovery
+    global noboot
+    global filename
+
+    if { $discovery && ( $adap_speed == "" || $adap_duplex == "" ) } {
+        send_user "Speed and duplex required\n"
+        usage 
+    }
+
+    if { $discovery && $client_ip == "" } {
+        send_user "Client IP is required\n"
+        usage
+    }
+
+    if { $discovery && $server_ip == "" } { 
+        send_user "Server IP is required\n"
+        usage
+    }
+
+    if { $discovery && $gateway_ip == "" } {
+        send_user "Gateway IP is required\n"
+        usage
+    }
+
+    if { $node == "" } {
+        send_user "Node is required\n"
+        usage
+    } else {
+        nc_msg "$PROGRAM Status: node $node\n"
+    }
+
+    if { $manage == "" } {
+        send_user "Managed system is required\n"
+        usage
+    } else {
+        nc_msg "$PROGRAM Status: managed system $manage\n"
+    }
+
+    if { $filename == "" } {
+        send_user "userid/password filename is required\n"
+        usage
+    }
+    if { $hcp == "" } {
+        send_user "Hardware control point address is required\n"
+        usage
+    } else {
+        nc_msg "$PROGRAM Status: Hardware control point $hcp\n"
+    }
+    if { $lparid == "" } {
+        send_user "LPAR Id is required\n"
+        usage
+    } else {
+        nc_msg "$PROGRAM Status: LPAR Id is $lparid\n"
+    }
+    if { $profile == "" } {
+        send_user "Profile is required\n"
+        usage
+    } else {
+        nc_msg "$PROGRAM Status: profile $profile\n"
+    }
+
+    if { $discover_macaddr && $extra_args != "" } {
+        send_user "Can not specify -M and -g flags together.\n"
+	usage
+    }
+
+    if { $discover_macaddr && ( $macaddress != "" || $phys_loc != "" ) } {
+	send_user "Can not specify -M and -l or -m flags together.\n"
+        usage
+    }
+
+    if { $macaddress != "" && $phys_loc != "" } {
+        send_user "Can not specify -l and -m flags together.\n"
+        usage
+    }
+
+    if { $discover_all && ( $macaddress != "" || $phys_loc != "" ) } {
+        send_user "Can not specify -A and -m or -l flags together.\n"
+        usage
+    }
+   
+    if { $discover_all && !$discovery && !$noboot } {
+        send_user "Flag -A must be specify with flag -D for booting.\n"
+        usage
+    }
+
+    if { $discover_macaddr && $discovery && 
+         ( $server_ip == "" || $gateway_ip == "" || $client_ip == "" || $adap_speed == "" || $adap_duplex == "" ) } {
+        send_user "Flag -M with -D require arguments for -C, -S, -G, -s and -d.\n"
+        usage
+    }
+   
+    if { $discover_macaddr && !$discovery && 
+         ( $server_ip != "" || $gateway_ip != "" || $client_ip != "" || $adap_speed != "" || $adap_duplex != "" ) } {
+        send_user "Flag -M with arguments for -C, -S, -G, -s and -d require -D flag.\n"
+        usage
+    }
+
+    if { $discover_macaddr && !$noboot } {
+        send_user "-M flag requires -n.\n"
+        usage
+    }
+
+    if { [regexp "(\[ ]+)-" $node ] } {
+        send_user "Error : $node\n"
+        send_user "Node is required\n"
+        exit 1
+    }
+
+    if { [regexp "(\[ ]+)-" $manage ] } {
+        send_user "Error : $managed\n"
+        send_user "Managed system is required\n"
+        exit 1
+    }
+
+    if { [regexp "(\[ ]+)-" $profile ] } {
+        send_user "Error : $profile\n"
+        send_user "Profile is required\n"
+        exit 1
+    }
+}
+
+#
+# PROCEDURE
+# 
+# Declare procedure to send commands slowly. This is needed because
+# some bytes are missed by the service processor when sent at top speed. 
+# The sleep was needed because a command was sent sometimes before the 
+# results of the previous command had been received.
+#
+# The Open Firmware is constrained on how quickly it can process input streams.
+# The following code causes expect to send 10 characters and then wait 1 second
+# before sending another 10 bytes.
+#
+proc send_command {} {
+
+    global command 
+    global spawn_id_rconsole
+
+    # sleep so that any error messages from previous command are cleared up
+    exec sleep 1
+    send -i $spawn_id_rconsole -- $command
+}
+
+#
+# PROCEDURE
+#
+# Declare procedure to parse the full device tree that is displayed as a result
+# of an ls command. The information needed is the phandle and full device name
+# of a supported network card found in the device tree. The phandle is used in
+# other procedures to get and change properties of the network card. The full
+# device name is used to network boot from the network adapter.
+# 
+proc get_phandle {} {
+
+    global spawn_id_rconsole
+    global expect_out
+    global phandle_array
+    global full_path_name_array
+    global rc
+    global command
+    global adapter_found
+    global adap_type
+    global dev_count
+    global dev_pat
+    global dev_type
+    global PROGRAM
+    global NODENAME
+
+    nc_msg "$PROGRAM Status: Starting to get full device name and phandle\n"
+
+    # This is the first procedure entered after getting to the ok prompt. On entry
+    # the current device is not root. The command 'dev /' is sent to get to the
+    # root of the device tree. There is no output from the dev command. The expected
+    # output is the ok prompt ('>').
+    #
+    # The pwd command can be used to determine what the current device is. 
+    #
+    set timeout 30     ;# shouldn't take long
+ 
+    nc_msg "$PROGRAM Status: sending dev / command\n"
+    set command  "dev /\r"
+    send_command
+    expect {
+        -i $spawn_id_rconsole
+        -re ">" {
+            nc_msg "$PROGRAM Status: at root\n"
+        }
+        -re "]" {
+            send_user "Unexpected prompt\n"
+            set rc 1
+            return
+        }
+        timeout {
+            send_user "Timeout\n"
+            set rc 1
+            return
+        }
+        eof {
+            send_user "Cannot connect to $NODENAME\n"
+            set rc 1
+            return
+        }
+    }
+
+    # Next, the 'ls' command is sent. The result is a display of the entire 
+    # device tree. The code then looks at the 
+    # output from the ls command one line at a time, trying to match it with the
+    # regexp pattern in dev_pat, an array that contains all the supported network
+    # adapters. When found, the adapter type, the phandle and path name are saved 
+    # in array variables. 
+    #
+    # The complicated part is that the full path name may be spread over more than
+    # one line. Each line contains information about a node. If the supported 
+    # network adapter is found on an nth level node, the full path name is the
+    # concatenation of the node information from the 0th level to the nth level.
+    # Hence, the path name from each level of the device tree needs to be saved.
+    #
+    # The pattern "\n(\[^\r]*)\r" is worth a second look. It took
+    # many hours of debug and reading the expect book to get it right. When more
+    # than one line of data is returned to expect at once, it is tricky getting
+    # exactly one line of data to look at. This pattern works because it looks
+    # for a newline(\n), any character other than a carriage return(\[^\r]*), and
+    # then for a carriage return. This causes expect to match a single line.
+    # If (.*) is used instead of (\[^\r]*), multiple lines are matched. (that was
+    # attempt number 1)         
+    #
+    # Once a single line is found, it tries to determine what level in the device
+    # tree this line is.  
+    # searching through subsequent lines and subsequent levels until an 
+    # adapter is found.  
+    # The level of the current line, which
+    # is calculated based on the assumption of "Level = (Leading Spaces - 1)/2".
+    # Leading Spaces is the number of spaces between the first colon ':' and the
+    # first non-space character of each line.
+    #
+    # Using the -d flag helped a lot in finding the correct pattern.  
+    #
+    nc_msg "$PROGRAM Status: sending ls command\n"
+    set command  "ls\r"   
+    send_command
+
+    set adapter_found 0
+    set done 0
+
+    set timeout 60     ;# shouldn't take more than a few minutes
+    while { ! $done } {
+        # this expect call isolates single lines
+        # This code uses the tcl regexp to parse the single line 
+        # isolated by expect. 
+        #
+        # When the ok prompt ('>') is matched, this indicates the end of
+        # the ls output, at which point the done variable is set, to break
+        # out of the loop.
+        #
+        # All other lines are ignored.
+        #  
+        expect {
+            -re "(\n)(\[^\r]*)(\r)" {
+                if { [regexp "\n(\[^\r]*):(\[ ]+)/(\[^\r]*)\r" $expect_out(0,string) x1 x2 x3 x4] } {
+
+                    # Each level is inspected for a match
+                    set level [expr ([string length $x3]-1)/2]
+                    set path($level) $x4
+                    for {set j 0} {$j < $dev_count} {incr j 1} {
+                        if {[regexp $dev_pat($j) $x4]} {
+                            incr adapter_found 1
+                            for {set i 0} {$i <= $level} {incr i 1} {
+                                append full_path_name_array($adapter_found) "/$path($i)"
+                            }
+                            set phandle_array($adapter_found) $x2
+                            set adap_type($adapter_found) $dev_type($j) 
+                            break
+                        }
+                    }
+                }
+            } 
+            -re ">" {
+                set done 1
+            }
+            timeout {
+                send_user "Timeout isolating single line of ls output\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+        }
+    }
+    # Did we find one or more adapters?
+    if { $adapter_found > 0 } {
+        set rc 0
+    } else {
+        send_user "No network adapters found\n"
+        set rc -1
+    }
+}
+
+
+#
+# PROCEDURE
+#
+# Declare procedure to obtain the list of valid adapter connector properties
+# from the adapter card.  Connector types can be rj45, sc, 9pin, aui,
+# bnc, or mic.  Speeds can be 10, 100, or 1000.  Duplex can be half or
+# full.  This procedure will use the "supported-network-types"
+# argument to the get-package-property command to get the list of
+# properties for the given adapter.
+#
+
+proc get_adap_prop { phandle } {
+
+    global rc
+    global spawn_id_rconsole
+    global expect_out
+    global command
+    global adap_prop_list
+    global PROGRAM
+    global NODENAME
+
+    set adap_prop_list {}
+    set rc 0
+    set timeout 60
+    set state 0
+    nc_msg "$PROGRAM Status: get_adap_prop start\n"
+
+    # state 0, stack count 0
+    set done(0) 0
+    set cmd(0) "\" supported-network-types\" $phandle get-package-property\r"
+    set msg(0) "$PROGRAM Status: rc and all supported network types now on stack\n"
+    set pattern(0) "(.*)3 >(.*)"
+    set newstate(0) 1
+
+    # state 1, return code and string on stack
+    set done(1) 0
+    set cmd(1) ".\r"
+    set msg(1) "$PROGRAM Status: All supported network types now on stack\n"
+    set pattern(1) "(.*)2 >(.*)"
+    set newstate(1) 2
+
+    # state 2, data ready to decode
+    set done(2) 0
+    set cmd(2) "decode-string\r"
+    set msg(2) "$PROGRAM Status: supported network type isolated on stack\n"
+    set pattern(2) "(.*)ok(.*)4 >(.*)"
+    set newstate(2) 3
+
+    # state 3, decoded string on stack
+    set done(3) 0
+    set cmd(3) "dump\r"
+    set msg(3) "$PROGRAM Status: supported network type off stack\n"
+    set pattern(3) ".*:.*:(.*):.*:.*:(.*):.*(2 >)(.*)"
+    set newstate(3) 4
+
+    # state 4, need to check for more data to decode
+    set done(4) 0
+    set cmd(4) ".s\r"
+    set msg(4) "$PROGRAM Status: checking for more supported network types\n"
+    set pattern(4) ".s (\[0-9a-f]* )(.*)>"
+    set newstate(4) 5
+
+    # state 5, done decoding string, clear stack
+    set done(5) 0
+    set cmd(5) ".\r"
+    set msg(5) "$PROGRAM Status: one entry on stack cleared\n"
+    set pattern(5) "(.*)ok(.*)1 >(.*)"
+    set newstate(5) 6
+
+    # state 6, finish clearing stack, choose correct adapter type
+    set done(6) 0
+    set cmd(6) ".\r"
+    set msg(6) "$PROGRAM Status: finished clearing stack\n"
+    set pattern(6) "(.*)ok(.*)0 >(.*)"
+    set newstate(6) 7
+
+    # state 7, done
+    set done(7) 1
+
+    while { $done($state) == 0 } {
+        nc_msg "$PROGRAM Status: command is $cmd($state)\n"
+        set command $cmd($state)
+        send_command
+        expect {
+            -i $spawn_id_rconsole
+            -re $pattern($state) {
+                nc_msg $msg($state)
+                set state $newstate($state)
+
+                # After state 3, the network type is parsed and the connector
+                # type extracted.  If the type hasn't been found, add it to
+                # the list of supported connector types.
+                if { $state == 4 } {
+                    set nw_type $expect_out(1,string)$expect_out(2,string)
+
+                    #  Build the adapter properties from the string
+                    regexp .*,(.*),(.*),(.*) $nw_type dummy nw_speed nw_conn nw_duplex
+                    set adap_prop "$nw_speed,$nw_conn,$nw_duplex"
+                    nc_msg "$PROGRAM Status: Adapter properties are $adap_prop\n"
+
+                    # if it's not in the list, add it, otherwise continue
+                    if { [ lsearch adap_prop_list $adap_prop ] == -1 } {
+                        lappend adap_prop_list $adap_prop
+                        nc_msg "$PROGRAM Status: Adding adapter properties to list\n"
+                    }
+                }
+
+                # After state 4, a test is done to see if all of the supported
+                # network types have been decoded. If they have been, the
+                # state variable is left alone. if not, the state variable is
+                # set to 2, causing a loop back to the step where the
+                # decode-string command is sent.
+                if { $state == 5 } {
+                    if { [ string index $expect_out(2,string) 0] != 0 } {
+                        set state 2
+                   }
+                }
+
+            }
+            -re "]" {
+                send_user "Unexpected prompt\n"
+                set rc 1
+                return
+            }
+            -re "(.*)DEFAULT(.*)" {
+                send_user "Default catch error\n"
+                set rc 1
+                return
+            }
+            timeout {
+                send_user "Timeout\n"
+                nc_msg "timeout state is $state\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+        }
+    }
+    set rc 0
+    return
+}
+
+#
+# PROCEDURE
+#
+# Declare procedure to obtain the ethernet or mac address property from the    
+# ethernet card.
+# 
+# 3 commands lines containing a total of 6 commands are used.
+#
+# The get-package-property command is an example of a command
+# that takes it's arguments off the stack and puts the results back onto the 
+# stack. Because of this, the arguments for the get-package-property command
+# are in front of the command verb.
+#
+#
+# The only reason this procedure is implemented in a loop is to avoid coding
+# 3 expect commands. 
+
+proc get_mac_addr { phandle } {
+
+    global rc
+    global spawn_id_rconsole
+    global expect_out
+    global command     
+    global PROGRAM
+    global NODENAME
+
+    set rc 0
+    nc_msg "$PROGRAM Status: get_mac_addr start\n"
+
+    # cmd(0) could have been sent as 3 commands. " mac-address" (tcl forces
+    # the use of \") is the first command on this line. The result of entering
+    # " mac-address" is that 2 stack entries are created, and address and a length.
+    #
+    # The next command in cmd(0) is the phandle with no quotes. This results in
+    # one stack entry because the phandle is an address.
+    # 
+    # the third command in cmd(0) is get-package-property. After this command, there
+    # are 3 stack entries (return code, address and length of mac-address).
+    # state 0, stack count 0, send command
+    set done(0) 0
+    set cmd(0) "\" local-mac-address\" $phandle get-package-property\r"
+    set msg(0) "$PROGRAM Status: return code and mac-address now on stack\n"
+    set pattern(0) "(.*)3 >(.*)"
+    set newstate(0) 1
+
+    # cmd(1) is a dot (.). This is a stack manipulation command that removes one 
+    # thing from the stack. pattern(1) is looking for a prompt with the 2 indicating
+    # that there are 2 things left on the stack.
+    # state 1, return code and mac-address on stack
+    set done(1) 0
+    set cmd(1) ".\r"
+    set msg(1) "$PROGRAM Status: mac-address now on stack\n"
+    set pattern(1) "(.*)2 >(.*)"
+    set newstate(1) 2
+
+    # cmd(2) is the dump command. This takes an address and a length off the stack
+    # and displays the contents of that storage in ascii and hex. The long pattern
+    # puts the hex into the variable expect_out(3,string). The tcl verb 'join' is 
+    # used to eliminate the spaces put in by the dump command.
+    # state 2, mac-address on stack
+    set done(2) 0
+    set cmd(2) "dump\r"
+    set msg(2) "$PROGRAM Status: mac-address displayed, stack empty\n"
+    set pattern(2) "(.*)(: )(.*)( :)(.*)(: ok)"
+    set newstate(2) 3
+
+    # state 3, all done
+    set done(3) 1
+
+    set state 0
+    set timeout 60     ;# shouldn't take long
+    while { $done($state) == 0 } {
+        nc_msg "$PROGRAM Status: command is $cmd($state)\n"
+        set command $cmd($state)
+        send_command
+        expect {
+            -i $spawn_id_rconsole
+            -re $pattern($state) {
+                nc_msg $msg($state)  
+                set state $newstate($state)
+            }
+            "1 > " {
+                if { $state == 0 } {
+                    # An error occurred while obtaining the mac address.  Log the error,
+                    # but don't quit nodecond.  instead, return NA for the address
+                    #
+                    set command ".\r"
+                    send_command
+                    expect {
+                        -i $spawn_id_rconsole
+                        -re "(-*\[0-9\]*)  ok(.*)0 >(.*)" {
+                            set mac_rc $expect_out(1,string)
+                            nc_msg "$PROGRAM Status: Error getting MAC address for phandle=$phandle. RC=$mac_rc.\n"
+                            send_user "# Could not obtain MAC address; setting MAX to NA\n" 
+                            set rc 0
+                            set mac_address "NA"
+                            return $mac_address
+                        }
+                        timeout {
+                            send_user "Timeout\n"
+                            nc_msg "timeout state is $state\n"
+                            set rc 1
+                            return
+                        }
+                        eof {
+                            send_user "Cannot connect to $NODENAME\n"
+                            set rc 1
+                            return
+                        }
+                    }
+                }
+            }
+            -re "]" {
+                send_user "Unexpected prompt\n"
+                set rc 1
+                return
+            }
+            -re "(.*)DEFAULT(.*)" {
+                send_user "Default catch error\n"
+                set rc 1
+                return
+            }
+            timeout {
+                send_user "Timeout\n"
+                nc_msg "timeout state is $state\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+        }
+    }
+    # if the state is 0, 1, or 2, an error occurred and the join will fail
+    if { $state == 3 } {
+        set mac_address [ join $expect_out(3,string) "" ]
+        set rc 0
+        return $mac_address
+    } else {
+        set rc -1
+    }
+}
+
+#
+# PROCEDURE
+#
+# Declare procedure to obtain the list of ethernet adapters, their physical
+# location codes and MAC addresses.
+# 
+# The get-package-property command is an example of a command
+# that takes it's arguments off the stack and puts the results back onto the 
+# stack. Because of this, the arguments for the get-package-property command
+# are in front of the command verb.
+#
+# The only reason this procedure is implemented in a loop is to avoid coding
+# 3 expect commands. 
+
+proc get_adaptr_loc { phandle } {
+
+    global rc
+    global spawn_id_rconsole
+    global expect_out
+    global command     
+    global PROGRAM
+    global NODENAME
+    global list_disk
+
+    set rc 0
+    nc_msg "$PROGRAM Status: get_adaptr_loc start\n"
+
+    # cmd(0) could have been sent as 3 commands. " ibm,loc-code" (tcl forces
+    # the use of \") is the first command on this line. The result of entering
+    # " ibm,loc-code" is that 2 stack entries are created, and address and a length.
+    #
+    # The next command in cmd(0) is the phandle with no quotes. This results in
+    # one stack entry because the phandle is an address.
+    # 
+    # the third command in cmd(0) is get-package-property. After this command, there
+    # are 3 stack entries (return code, address and length of mac-address).
+    # state 0, stack count 0, send command
+    set done(0) 0
+    set cmd(0) "\" ibm,loc-code\" $phandle get-package-property\r"
+    set msg(0) "$PROGRAM Status: return code and loc-code now on stack\n"
+    set pattern(0) "(.*)3 >(.*)"
+    set newstate(0) 1
+
+    # cmd(1) is a dot (.). This is a stack manipulation command that removes one 
+    # thing from the stack. pattern(1) is looking for a prompt with the 2 indicating
+    # that there are 2 things left on the stack.
+    # state 1, return code and loc-code on stack
+    set done(1) 0
+    set cmd(1) ".\r"
+    set msg(1) "$PROGRAM Status: loc-code now on stack\n"
+    set pattern(1) "(.*)2 >(.*)"
+    set newstate(1) 2
+
+    # state 2, loc-code on stack
+    set done(2) 0
+    set cmd(2) "dump\r"
+    set msg(2) "$PROGRAM Status: loc-code displayed, stack empty\n"
+    set pattern(2) "(.*)(: )(.*)( :)(.*)(\.: ok)"
+    set newstate(2) 3
+
+    # state 3, all done
+    set done(3) 1
+
+    set state 0
+    set timeout 60    ;# shouldn't take long
+    while { $done($state) == 0 } {
+        nc_msg "$PROGRAM Status: command is $cmd($state)\n"
+        set command $cmd($state)
+        send_command
+        expect {
+            -i $spawn_id_rconsole
+            -re $pattern($state) {
+                nc_msg $msg($state)  
+                set state $newstate($state)
+            }
+            "1 > " {
+                if { $state == 0 } {
+                    set command ".\r"
+                    send_command
+                    expect {
+                        -i $spawn_id_rconsole
+                        -re "(-*\[0-9\]*)  ok(.*)0 >(.*)" {
+                            set loc_rc $expect_out(1,string)
+                            if { $list_disk != 1 } {
+                                send_user "Error getting adapter physical location.\n"
+                            }
+                            nc_msg "$PROGRAM Status: Error getting physical location for phandle=$phandle. RC=$loc_rc.\n"
+                            set rc 1
+                            return
+                        }
+                        timeout {
+                            send_user "Timeout\n"
+                            set rc 1
+                            return
+                        }
+                        eof {
+                            send_user "Cannot connect to $NODENAME\n"
+                            set rc 1
+                            return
+                        }
+                    }
+                }
+            }
+            -re "]" {
+                send_user "Unexpected prompt\n"
+                set rc 1
+                return
+            }
+            -re "(.*)DEFAULT(.*)" {
+                send_user "Default catch error\n"
+                set rc 1
+                return
+            }
+            timeout {
+                send_user "Timeout\n"
+                nc_msg "$PROGRAM Status: timeout state is $state\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+        }
+    }
+    if { $state == 3 } {
+        set rc 0
+        if { [regexp "(.*)(: )(.*)( :)(.*)(:)" $expect_out(1,string) v1 v2 v3 v4 v5 v6 ] } {
+            return $v6$expect_out(5,string)
+        } else {
+            return $expect_out(5,string)
+        }
+    } else {
+        set rc -1
+    }
+}
+
+#
+# PROCEDURE
+#
+# Declare procedure to ping the given server through the specified LAN adapter.
+# The procedure will return 0 if the ping is successful, and 1 if the ping
+# was unsuccessful.  The global rc variable will be set if there's an error.
+#
+
+proc ping_server { full_path_name phandle } {
+
+    global spawn_id_rconsole
+    global expect_out
+    global server_ip
+    global client_ip
+    global gateway_ip
+    global list_type
+    global list_disk
+    global adap_speed
+    global adap_duplex
+    global command
+    global adap_prop_list
+    global rc
+    global PROGRAM
+    global NODENAME
+    global env
+
+    nc_msg "$PROGRAM Status: ping_server start\n"
+
+    if {[info exists env(FIRMWARE_DUMP)]} {
+        Firmware_Dump $full_path_name $phandle
+    }
+
+    set j 0
+    set tty_do_ping 0
+    set stack_level 0
+    set properties_matched 0
+    set adap_conn ""
+    set speed_list {}
+    set duplex_list {}
+    set adap_conn_list {}
+
+    # If the adapter type chosen is ethernet, need to set the speed and duplex
+    # of the adapter before we perform the ping.  If token ring or fddi,
+    # this is not required, so begin with state 2.
+    # 
+    # cmd(0) sets the given adapter as active, to allow setting of speed
+    # and duplex
+    #
+    # cmd(1) writes the settings to the current adapter
+    #
+    # cmd(2) selects the /packages/net node as the active package to access the
+    # ping command.
+    #
+    # The next command in cmd(3) is the ping command. This places the return code
+    # on the stack. A return code of 0 indicates success.
+    #
+    # state 0, set the current adapter
+    set done(0) 0
+    set cmd(0) "dev $full_path_name\r"
+    set msg(0) "$PROGRAM Status: selected $full_path_name as the active adapter\n"
+    set pattern(0) "(.*)0 >(.*)"
+    set newstate(0) 1
+
+    # state 1, send property command to set selected type
+    set done(1) 0
+    set cmd(1) "\" ethernet,$adap_speed,$adap_conn,$adap_duplex\" encode-string \" chosen-network-type\" property\r"
+    set msg(1) "$PROGRAM Status: chosen network type set\n"
+    set pattern(1) "(.*)0 >(.*)"
+    set newstate(1) 2
+
+    # state 2, activate /packages/net
+    set done(2) 0
+    set cmd(2) "dev /packages/net\r"
+    set msg(2) "$PROGRAM Status: selected the /packages/net node as the active package\n"
+    set pattern(2) "(.*)ok(.*)0 >(.*)"
+    set newstate(2) 3
+
+    # state 3, ping the server
+    set done(3) 0
+    set msg(3) "$PROGRAM Status: ping return code now on stack\n"
+    set newstate(3) 4
+    set cmd(3) "ping $full_path_name:$server_ip,$client_ip,$gateway_ip\r"
+    set pattern(3) "(.*)ok(.*)0 >(.*)"
+    
+    # state 4, all done
+    set done(4) 0
+    set cmd(4) "0 to my-self\r"
+    set msg(4) "$PROGRAM Status: resetting pointer\n"
+    set pattern(4) "(.*)ok(.*)0 >(.*)"
+    set newstate(4) 5
+    
+    # state 5, all done
+    set done(5) 1
+
+    # for ping, only need to set speed and duplex for ethernet adapters
+    #
+    if { $list_type == "ent" } {
+        set state 0
+
+        # Get the list of properties for this adapter
+        #
+        get_adap_prop $phandle
+        if { $rc != 0 } {
+            exit 1
+        }
+
+        if { [ llength $adap_prop_list ] == 0 } {
+            send_user "No properties found for adapter '$full_path_name'\n"
+            set rc 0
+            return 1
+        }
+
+        # Now need to verify that the network params we were passed are valid for
+        # the given adapter
+        #
+        foreach prop $adap_prop_list {
+            regexp (.*),(.*),(.*) $prop dummy a_speed a_conn a_duplex
+            if { ( $a_speed == $adap_speed ) && ( $a_duplex == $adap_duplex ) } {
+                set properties_matched 1
+                if { [ lsearch $adap_conn_list $a_conn ] == -1 } {
+                    lappend adap_conn_list $a_conn
+                }
+            }
+        }
+
+        set i [ llength $adap_conn_list ]
+
+        if { $properties_matched == 0 } {
+            send_user "'$adap_speed/$adap_duplex' settings are not supported on this adapter\n"
+            set rc 0
+            return 1
+        }
+    } else {
+        set state 2
+    }
+
+    set timeout 300
+    while { $done($state) == 0 } {
+        nc_msg "$PROGRAM Status: command is $cmd($state)\n"
+        set command $cmd($state)
+
+        send_command
+
+        expect {
+            -i $spawn_id_rconsole
+            -re $pattern($state) {
+                nc_msg $msg($state)
+                set state $newstate($state)
+
+                if { $state == 1 } {
+                    set adap_conn [ lindex $adap_conn_list $j ]
+                    set cmd(1) "\" ethernet,$adap_speed,$adap_conn,$adap_duplex\" encode-string \" chosen-network-type\" property\r"
+                    nc_msg "$PROGRAM Status: Trying connector type $adap_conn\n"
+                    incr j 1
+                }
+
+		if { ( ($tty_do_ping == 1) && ($state == 4) ) || ($tty_do_ping != 1) && ($state == 3) } {
+                    set ping_debug $expect_out(buffer)
+                }
+
+                if { ( ($tty_do_ping == 1) && ($state == 5) ) || ($tty_do_ping != 1) && ($state == 4) } {
+                    if { ($tty_do_ping == 1) && ($state == 5) } {
+                        set ping_rc $expect_out(1,string)
+                        set stack_level $expect_out(3,string)
+                    } elseif { ($state == 4) && ($tty_do_ping != 1) && ([regexp "PING SUCCESS" $expect_out(buffer)]) } {
+                        set ping_rc 0
+                    } elseif { [regexp "unknown word" $expect_out(buffer)] } {
+                        nc_msg "$PROGRAM Status: try tty-do-ping.\n"
+                        set ping_rc 1
+                        set tty_do_ping 1
+                        set state 3 
+                        set cmd(3) "\" $full_path_name:$client_ip,$server_ip,$gateway_ip\" tty-do-ping\r"
+                        set pattern(3) "(.*)ok(.*)(\[1-2\]) >(.*)"
+                                    
+                        # state 4, get the return code off the stack
+                        set done(4) 0
+                        set cmd(4) ".\r"
+                        set msg(4) "$PROGRAM Status: return code displayed, stack empty\n"
+                        set pattern(4) "(\[0-9\]*)  ok(.*)(\[0-1\]) >(.*)"
+                        set newstate(4) 5
+                                    
+                        # this command is used to work around a default catch problem in open
+                        # firmware.  Without it, a default catch occurs if we try to set
+                        # adapter properties again after a ping
+                        #           
+                        # state 5, reset pointer
+                        set done(5) 0
+                        set cmd(5) "0 to my-self\r"
+                        set msg(5) "$PROGRAM Status: resetting pointer\n" 
+                        set pattern(5) "(.*)ok(.*)0 >(.*)"
+                        set newstate(5) 6 
+                                
+                        # state 6, all done
+                        set done(6) 1
+                    } else {
+                        set ping_rc 1
+                    }
+
+                    if { $ping_rc == 0 } {
+                        if { $list_disk != 1 } {
+                            send_user "# $full_path_name ping successful.\n"
+                        }
+                    } elseif { $ping_rc ==  1 } {
+                        if { $list_disk != 1 } {
+                            send_user "# $full_path_name ping unsuccessful.\n"
+                        }
+			nc_msg "# $full_path_name ping unsuccessful.\n"
+                        nc_msg "$ping_debug\n"
+
+                        # An unsuccessful return may leave another item on the stack to
+                        # be removed.  Check for it, and remove if necessary
+                        while { $stack_level != 0 } {
+                            set command ".\r"
+                            send_command
+                            expect {
+                                -i $spawn_id_rconsole
+                                -re "(\[0-9\]*)  ok(.*)(\[0-1\]) >(.*)" {
+                                    set stack_level $expect_out(3,string)
+                                    nc_msg "$PROGRAM Status: stack_level is <$stack_level>\n"
+                                }
+                                -re "]" {
+                                    send_user "Unexpected prompt\n"
+                                    set rc 1
+                                    return
+                                }
+                                -re "(.*)DEFAULT(.*)" {
+                                    send_user "Default catch error\n"
+                                    set 1
+                                    return
+                                }
+                                timeout {
+                                    send_user "Timeout\n"
+                                    set 1
+                                    return
+                                }
+                                eof {
+                                    send_user "Cannot connect to $NODENAME\n"
+                                    set 1
+                                    return
+                                }
+                            }
+                        }
+                        # Check if there are any more adapter connector types
+                        # to try
+                        #
+                        if { ( $list_type == "ent" ) && ( $j < $i ) } {
+                            set adap_conn [ lindex $adap_conn_list $j ]
+                            nc_msg "$PROGRAM Status: Trying connector type $adap_conn\n"
+                            incr j 1
+
+                            # Need to work around a default catch problem in open
+                            # firmware by sending a "0 to my-self" instruction
+                            # following the ping.  To make sure this happens in
+                            # this rare case where we have an adapter with multiple connectors,
+                            # we have to force the instruction into the 0th slot in
+                            # the array.  This is OK, since we only set the current
+                            # adapter once, upon entering this procedure.
+                            #
+                            set done(0) 0
+                            set cmd(0) "0 to my-self\r"
+                            set msg(0) "$PROGRAM Status: resetting pointer\n"
+                            set pattern(0) "(.*)ok(.*)0 >(.*)"
+                            set newstate(0) 1
+
+                            set state 0
+                        }
+                    } else {
+                        send_user "Unexpected ping return code\n"
+                        set rc 1
+                        return
+                    }
+                }
+            }
+            -re "]" {
+                send_user "Unexpected prompt\n"
+                set rc 1
+                return
+            }
+            -re "(.*)DEFAULT(.*)" {
+                send_user "Default catch error\n"
+                set rc 1
+                return
+            }
+            timeout {
+                send_user "Timeout\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+        }
+    }
+    set rc 0
+    return $ping_rc
+}
+
+#   
+# PROCEDURE
+#
+proc get_disk_info_sms {} {
+    global rc
+    global expect_out
+    global spawn_id_rconsole
+    global command
+    global PROGRAM
+    global NODENAME
+    global phandle_array
+    global full_path_name_array
+    global adapter_found
+    global adap_type
+    global sms_dev_array_loc
+    global sms_dev_array_name
+    global sms_dev_array_os
+    global sms_dev_array_os_ver
+    global colon
+    global list_physical
+
+    # state 0, get SMS screen
+    set done(0) 0
+    regexp "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Select Boot Options(\r)" $expect_out(2,string) x0 x1 x2 command
+    set cmd(0) "$command\r"
+    set msg(0) "$PROGRAM Status: sending return to repaint SMS screen\n"
+    set pattern(0)  "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Select Install(.*)Boot(.*)Device(\r)"
+    set newstate(0) 1
+
+    # state 1, get Select Boot Options
+    set done(1) 0
+    set msg(1) "$PROGRAM Status: Select Boot Options\n"
+    set pattern(1) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Hard Drive(\r)"
+    set newstate(1) 2
+    
+    # state 2, Select Install/Boot Device
+    set done(2) 0
+    set msg(2) "$PROGRAM Status: Select Install/Boot Device\n"
+    set pattern(2) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)List All Devices(\r)"
+    set newstate(2) 3
+
+    # state 3, List All Devices
+    set done(3) 0
+    set msg(3) "$PROGRAM Status: Hard Drive\n"
+    set pattern(3) "Select Device(\r)"
+    set newstate(3) 4
+
+    # state 4, activate /packages/net
+    set done(4) 0
+    set cmd(4) "M"
+    set msg(4) "$PROGRAM Status: Getting disk information.\n" 
+    set pattern(4) "(.*)Navigation key(.*)"
+    set newstate(4) 5
+
+    # state 5, activate /packages/net
+    set done(5) 0
+    set cmd(5) "0\r"
+    set msg(5) "$PROGRAM Status: Getting to SMS Main Menu.\n"
+    set pattern(5) "(.*)Exit SMS(.*)Prompt?(.*)"
+    set newstate(5) 6
+
+    # state 6, activate /packages/net
+    set done(6) 0
+    set cmd(6) "Y"
+    set msg(6) "$PROGRAM Status: Exiting SMS.\n"
+    set pattern(6) "(.*)ok(.*)0 >(.*)"
+    set newstate(6) 7
+
+    # state 7, all done
+    set done(7) 1
+
+    set timeout 30
+    set state 0
+    while { $done($state) == 0 } {
+	nc_msg "$PROGRAM Status: command is $cmd($state)\n"
+	set command $cmd($state)
+        send_command
+        expect {
+            -i $spawn_id_rconsole
+            -re $pattern($state) {
+		if { $state == 3 } {
+		    set statedone 0
+   		    set sms_dev_count 1 
+		    set timeout 10     ;# shouldn't take more than a few second
+		    while { ! $statedone } {
+		        expect {  
+		            -re "(\n)(\[^\r]*)(\r)" {
+				    if { [regexp "(\[0-9]+\.)(\[ ]+)(\[0-9|\-])(\[ ]+)(.*)" $expect_out(2,string) x0 x1 x2 x3 x4 x5] } { 
+					set dev_name $x5
+                                        if { [regexp "(.*) (.*) (.*) (.*) (.*) (\[(])(.*) (.*)(\[)])" $dev_name x0 x1 x2 x3 x4 x5 x6 x7 x8] } {
+                                            set dev_name $x1
+                                            set dev_size $x2
+                                            set dev_os $x7
+                                            set dev_os_ver $x8
+					} else {
+					    set dev_os ""
+					    set dev_os_ver ""
+					}
+				    }
+
+			            if { [regexp "loc=(.*)" $expect_out(2,string) x0 x1] } {
+					set dev_loc $x1
+					if { [regexp "(.*) (\[)])" $dev_loc x0 x1] } {
+					    set dev_loc $x1
+					}
+				    } else {
+				        set dev_loc ""
+				    }
+
+				    if { $dev_loc != "" } {
+					set sms_dev_array_name($sms_dev_count) "$dev_name"
+					set sms_dev_array_loc($sms_dev_count) "$dev_loc"
+					set sms_dev_array_os($sms_dev_count) "$dev_os"
+					set sms_dev_array_os_ver($sms_dev_count) "$dev_os_ver"
+					incr sms_dev_count
+				    }
+		            }
+		            -re "Navigation key:" {
+		                set statedone 1 
+		            }
+		            timeout { 
+		                send_user "Timeout isolating single line of ls output\n"
+		                set rc 1
+		                return
+		            }
+		            eof {
+		                send_user "Cannot connect to $NODENAME\n"
+		                set rc 1
+		                return
+		            }
+		        }
+		    } 
+		}
+
+                set state $newstate($state)
+                if { ($state != 4) && ($state != 5) && ($state != 6) } {
+			set cmd($state) "$expect_out(3,string)\r"
+		}
+            }
+            timeout {
+                send_user "Timeout\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+	}
+    }
+}
+
+
+#   
+# PROCEDURE
+#
+proc get_disk_info {} {
+    global rc
+    global expect_out
+    global spawn_id_rconsole
+    global command
+    global PROGRAM
+    global NODENAME
+    global phandle_array
+    global full_path_name_array
+    global adapter_found
+    global adap_type
+    global disk_count
+    global disk_array_size
+    global disk_array_loc
+    global disk_array_path
+    global disk_array_devtype
+    global sms_dev_array_loc            
+    global sms_dev_array_name
+    global sms_dev_array_os
+    global sms_dev_array_os_ver         
+    global colon
+    global list_physical
+
+    nc_msg "$PROGRAM Status: get_disk_info start\n"
+
+    nc_msg "$PROGRAM Status: sending dev /packages/gui command\n"
+    set command  "dev /packages/gui\r"
+    send_command
+    expect {
+        -i $spawn_id_rconsole 
+        -re "(.*)ok(.*)0 >(.*)" {
+            nc_msg "$PROGRAM Status: at root\n"
+        }
+        -re "]" {
+            send_user "Unexpected prompt\n"
+            set rc 1
+            return
+        } 
+        timeout {
+            send_user "Timeout\n"
+            set rc 1
+            return
+        }
+        eof {
+            send_user "Cannot connect to $NODENAME\n"
+            set rc 1
+            return
+        }
+    }
+
+    nc_msg "$PROGRAM Status: sending display_boot_devices #DISK command\n"
+    set command "display_boot_devices #ALL\r"
+    send_command 
+	
+    set done 0
+    set timeout 30
+    set disk_count 1
+    set rc 0
+
+    while { ! $done } {
+        expect {
+            -i $spawn_id_rconsole
+            -re "(\n)(\[^\r]*)(\r)" {
+                if { [regexp "SCSI (\[0-9]+) MB Harddisk (.*)loc=(.*)\[)]" $expect_out(2,string) x0 x1 x2 x3] } {
+                    set disk_array_size($disk_count) "$x1"
+                    set disk_array_loc($disk_count)  [string trimright "$x3"]
+                    set disk_array_path($disk_count) ""
+                    incr disk_count 
+                }
+            }
+            -re "0 >" {
+                nc_msg "$PROGRAM Status: at root\n"
+                set done 1
+            }
+            timeout {
+                send_user "Timeout\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+        }
+    }
+
+    set disk_count [array size disk_array_path]    
+    for {set i 1} {$i <= $disk_count} {incr i 1} {
+	set phandle_count [array size phandle_array]
+	for { set j 1 } { $j <= $phandle_count } { incr j 1 } {
+            set loc_code [get_adaptr_loc $phandle_array($j)]
+            if { [string first "$loc_code" "$disk_array_loc($i)"] != -1 } {
+                set disk_array_path($i) $full_path_name_array($j)
+                break
+            }
+	}
+
+        if { [string first "vdevice" "$disk_array_path($i)"] != -1 } {
+            set disk_array_devtype($i) "virtual"
+        } else {
+            set disk_array_devtype($i) "physical"
+        }
+
+	set disk_array_os($i) ""
+        set disk_array_os_ver($i) ""
+
+        set sms_dev_count [array size sms_dev_array_loc]
+        for { set j 1 } { $j <= $sms_dev_count } { incr j 1 } {
+            if { [string first "$sms_dev_array_loc($j)" "$disk_array_loc($i)"] != -1 } {
+                 set disk_array_os($i) $sms_dev_array_os($j)
+                 set disk_array_os_ver($i) $sms_dev_array_os_ver($j)
+            }
+        }
+
+	if { $colon } {
+                send_user "disk\:$disk_array_loc($i)\:\:$disk_array_path($i)\:\:$disk_array_devtype($i)\:$disk_array_size($i)\:$disk_array_os($i)\:$disk_array_os_ver($i)\:\n"
+	} else {
+		send_user "disk $disk_array_loc($i) $disk_array_path($i) $disk_array_devtype($i) $disk_array_size($i) $disk_array_os($i) $disk_array_os_ver($i)\n"
+	}
+    }
+}
+
+###################################################################
+#
+# PROCEDURE
+#
+# Declare procedure to boot the system from the selected ethernet card.    
+# 
+# This routine does the following:
+# 1. Initiates the boot across the network. (state 0 or 1)
+# 
+# state 99 is normal exit and state -1 is error exit.
+###################################################################
+proc boot_network {} {
+    global rc
+    global spawn_id_rconsole
+    global full_path_name
+    global command
+    global speed
+    global duplex
+    global chosen_adap_type
+    global server_ip
+    global client_ip
+    global gateway_ip
+    global extra_args
+    global PROGRAM
+    global NODENAME
+    set rc 0
+    set i 0
+
+    nc_msg "$PROGRAM Status: boot_network start\n"
+
+    ###################################################################
+    # Variables associated with each of the commands sent by this routine
+    # are defined below.
+    #
+    # The done variable is flag that is set to 1 to break out of the loop
+    #
+    # The cmd variable is the command to be sent to the chrp interface.
+    #     In one case it set in the special processing code because the 
+    #     ihandle is not available then this code is executes.
+    #
+    # The msg variable contains the message sent after a successful pattern match
+    #
+    # The pattern variable is the pattern passed to expect 
+    #
+    # The newstate variable indicates what command is to be issued next
+    ###################################################################
+
+    # If the install adapter is Ethernet or Token Ring, set the speed and 
+    # duplex during boot.
+    # state 0, stack count 0
+    set done(0) 0
+#   set cmd(0) "boot $full_path_name:speed=$speed,duplex=$duplex,bootp,0.0.0.0,,0.0.0.0,0.0.0.0\r"
+    set cmd(0) "boot $full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip $extra_args\r"
+    set msg(0) "$PROGRAM Status: network boot initiated\n"
+    set pattern(0) "BOOTP"
+    set newstate(0) 99
+
+    # If the install adapter is FDDI, don't set the speed and duplex
+    # state 1
+    set done(1) 0
+#   set cmd(1) "boot $full_path_name:bootp,0.0.0.0,,0.0.0.0,0.0.0.0\r"
+    set cmd(1) "boot $full_path_name:bootp,$server_ip,,$client_ip,$gateway_ip\r"
+    set msg(1) "$PROGRAM Status: network boot initiated\n"
+    set pattern(1) "BOOTP"
+    set newstate(1) 99
+
+    # state 99, all done
+    set done(99) 1
+
+    # state -1, all done
+    set done(-1) 1
+
+    ##############################################################################
+    # This is the expect code.        
+    # First, the initial state is set to 0.
+    # Then, in a loop, 
+    #    the done flag is checked,
+    #    the command is sent to the chrp interface
+    #    expect listens with the pattern 
+    #    
+    ##############################################################################
+    if { $chosen_adap_type ==  "fddi" } {
+        set state 1
+    } else {
+        if { $speed == "" || $duplex == "" } {
+            send_user "Cannot set speed or duplex for network boot\n"
+            set rc 1
+            return
+        }
+        set state 0
+    }
+
+    set timeout 30     ;# shouldn't take long
+    while { $done($state) == 0 } {
+        nc_msg "$PROGRAM Status: command is $cmd($state)\n"
+        set command $cmd($state)
+        send_command
+        expect {
+            -i $spawn_id_rconsole
+            -re $pattern($state) {
+                nc_msg $msg($state)
+                set state $newstate($state)
+            }
+            -re "]" {
+                send_user "Unexpected prompt\n"
+                set rc 1
+                return
+            }
+            -re "(.*)DEFAULT(.*)" {
+                send_user "Default catch error\n"
+                set rc 1
+                return
+            }
+            timeout {
+                send_user "Timeout\n"
+                nc_msg "timeout state is $state\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+        }
+    }
+}
+
+#
+# PROCEDURE
+#
+#
+proc Boot {} {
+    global rc
+    global expect_out
+    global spawn_id_rconsole
+    global PROGRAM
+    global NODENAME
+
+    set rc 0
+
+    nc_msg "$PROGRAM Status: waiting for the boot image to boot up.\n"
+
+    set timeout 1200      ;# could take a while depending on configuration
+
+    # check for bootp response error
+    expect {
+        -i $spawn_id_rconsole 
+        -re "RESTART-CMD" {
+            # If we see a "problem doing RESTART-CMD" message, we re-hit the OPEN-DEV
+            # issue after firmware rebooted itself and we need to retry the netboot once more
+	    send_user "The network boot ended in an error.\n"
+            send_user "Error : $RESTART-CMD\n"
+            set rc 5
+            return
+        }
+        -re {!([0-9A-F]+)} {
+            send_user "The network boot ended in an error.\n"
+            nc_msg $expect_out(buffer)
+            set rc 1
+            return
+        }
+        -ex {--------------------------------} {
+            send_user "# Network boot proceeding, exiting.\n"
+        }
+        timeout {
+            set mins [expr ($timeout/60)]
+            send_user "Timeout waiting for the boot image to boot up. \
+                  \n$PROGRAM waited '$mins' minutes for the boot image to boot. \
+                  \nEither the boot up has taken longer than expected or \
+                  \nthere is a problem with system boot.  Check the boot \
+                  \nof the node to determine if there is a problem.\n"
+            nc_msg $expect_out(buffer)
+            set rc 1
+            return
+        }                                                                       
+        eof {                                                                   
+            send_user "Port closed waiting for boot image to boot.\n"                               
+            set rc 1                                                            
+            return                                                              
+        }                                                                       
+    }
+}
+
+###################################################################
+#
+# PROCEDURE
+#
+# Create multiple open-dev function in Open Firmware to try open
+# a device.  The original problem is a firmware issue which fails
+# to open a device.  This procedure will create multiple sub
+# function in firmware to circumvent the problem.
+#
+###################################################################
+proc multiple_open-dev {} {
+    global rc
+    global expect_out
+    global spawn_id_rconsole
+    global PROGRAM
+    global NODENAME
+    global command
+    global env
+
+    set command  "dev /packages/net \r"
+    send_command
+
+    set command  "FALSE value OPEN-DEV_DEBUG \r"
+    send_command
+
+    if {[info exists env(OPEN_DEV_DEBUG)]} {
+       set command "TRUE to OPEN-DEV_DEBUG \r"
+       send_command
+    }
+
+    set command  ": new-open-dev ( str len -- true|false ) \
+                  open-dev_debug if cr .\" NEW-OPEN-DEV: Entering, Device : \" 2dup type cr then \
+                  { _str _len ; _n } \
+                  0 -> _n \
+                  get-msecs dup d# 60000 + ( start timeout ) \
+                  begin \
+                     ( start timeout ) get-msecs over > if \
+                        open-dev_debug if \
+                           ( start timeout ) drop get-msecs swap - \
+                           cr .\" FAILED TO OPEN DEVICE\" \
+                           cr .\" NUMBER OF TRIES \" _n .d \
+                           cr .\" TIME ELAPSED \" ( time ) .d .\"  MSECONDS\" cr \
+                        else \
+                           ( start timout ) 2drop \
+                        then \
+                        false exit \
+                     else \
+                        true \
+                     then \
+                     while \
+                        ( start timeout ) \
+                        _n 1 + -> _n \
+                        _str _len open-dev ( ihandle|false ) ?dup if \
+                        -rot ( ihandle start timeout ) \
+                        open-dev_debug if \
+                           ( start timeout ) drop get-msecs swap - \
+                           cr .\" SUCCESSFULLY OPENED DEVICE\" \
+                           cr .\" NUMBER OF TRIES \" _n .d \
+                           cr .\" TIME ELAPSED \" ( time ) .d .\" MSECONDS\" cr \
+                        else \
+                           ( start timeout ) 2drop \
+                        then \
+                        ( ihandle ) exit \
+                 then \
+                 ( start timeout ) \
+                 repeat \
+                 ; \r"
+    send_command
+
+    set command " patch new-open-dev open-dev net-ping \r"
+    send_command
+
+    set timeout 30
+    expect {
+        -i $spawn_id_rconsole
+        -re ">" {
+            nc_msg "$PROGRAM Status: at End of multiple_open-dev \n"
+        }
+        -re "]" {
+            send_user "Unexpected prompt\n"
+            set rc 1
+            return
+        }
+        timeout {
+            send_user "Timeout\n"
+            set rc 1
+            return
+        }
+        eof {
+            send_user "Cannot connect to $NODENAME\n"
+            set rc 1
+            return
+        }
+   }
+}
+
+###################################################################
+#  
+# PROCEDURE
+#  
+# Declare procedure to get additional firmware debug statement.
+#  
+###################################################################
+proc Firmware_Dump { device_path phandle } {
+    global rc
+    global expect_out
+    global spawn_id_rconsole
+    global PROGRAM
+    global NODENAME
+    global command
+
+    nc_msg "$PROGRAM Status: Firmware_Dump start\n"
+
+    # state 0
+    set done(0) 0
+    set cmd(0) "dev /packages/obp-tftp\r"
+    set msg(0) "$PROGRAM Status: selected /packages/obp_tftp\n"
+    set pattern(0) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(0) 1
+
+    # state 1
+    set done(1) 0
+    set cmd(1) ": testing1 .\" OBP-TFTP entry\" cr init-nvram-adptr-parms ;\r"
+    set msg(1) "$PROGRAM Status: running test - OBP-TFTP entry\n"
+    set pattern(1) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(1) 2
+
+    # state 2
+    set done(2) 0
+    set cmd(2) ": testing2 .\" OBP-TFTP exit, TRUE\" cr true ;\r"
+    set msg(2) "$PROGRAM Status: running test - OBP-TFTP exit\n"
+    set pattern(2) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(2) 3
+
+    # state 3
+    set done(3) 0
+    set cmd(3) "patch testing1 init-nvram-adptr-parms open\r"
+    set msg(3) "$PROGRAM Status: running test - patch testing1\n"
+    set pattern(3) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(3) 4
+
+    # state 4
+    set done(4) 0
+    set cmd(4) "patch testing2 true open\r"
+    set msg(4) "$PROGRAM Status: running test - patch testing2\n"
+    set pattern(4) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(4) 5
+
+    # state 5
+    set done(5) 0
+    set cmd(5) "dev $device_path\r"
+    set msg(5) "$PROGRAM Status: running test - dev $device_path\n"
+    set pattern(5) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(5) 6
+
+    # state 6
+    set done(6) 0
+    set cmd(6) "true to debug-init\r"
+    set msg(6) "$PROGRAM Status: running test - true to debug-init\n"
+    set pattern(6) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(6) 7
+
+    # state 7
+    set done(7) 0
+    set cmd(7) "true to debug-error\r"
+    set msg(7) "$PROGRAM Status: running test - true to debug-error\n"
+    set pattern(7) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(7) 8
+
+    # state 8
+    set done(8) 0
+    set cmd(8) "$phandle to active-package\r"
+    set msg(8) "$PROGRAM Status: running $phandle to active-package\n"
+    set pattern(8) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(8) 9
+
+    # state 9
+    set done(9) 0
+    set cmd(9) ".properties\r"
+    set msg(9) "$PROGRAM Status: running .properies\n"
+    set pattern(9) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(9) 10
+
+    # state 10
+    set done(10) 0
+    set cmd(10) "clear\r"
+    set msg(10) "$PROGRAM Status: running clear\n"
+    set pattern(10) "(.*)ok(.*)(\[0-9]) >(.*)"
+    set newstate(10) 11
+
+    # state 11, all done
+    set done(11) 1
+
+    set state 0
+    set timeout 30    ;# shouldn't take long
+    while { $done($state) == 0 } {
+        set command $cmd($state)
+        nc_msg "$PROGRAM Status: command is $cmd($state)\n"
+        send_command
+        expect {
+            -i $spawn_id_rconsole
+            -re $pattern($state) {
+                nc_msg $msg($state)
+                set state $newstate($state)
+            }
+            -re "]" {
+                send_user "Unexpected prompt\n"
+                set rc 1
+                return
+            }
+            -re "(.*)DEFAULT(.*)" {
+                send_user "Default catch error\n"
+                set rc 1
+                return
+            }
+            timeout {
+                send_user "Timeout\n"
+                nc_msg "$PROGRAM Status: timeout state is $state\n"
+                set rc 1
+                return
+            }
+            eof {
+                send_user "Cannot connect to $NODENAME\n"
+                set rc 1
+                return
+            }
+        }
+    }
+}
+
+#
+# Signal handling stuff
+#
+trap {
+    global PROGRAM
+
+    set signal SIG[trap -name]
+
+    send_user "Received signal named '$signal'\n"
+    exit 3
+} {INT HUP QUIT TERM}
+
+
+
+
+
+#
+# Main MAIN main
+#
+set BINPATH "/opt/hsc/bin"
+set PROGRAM "lpar_netboot"
+
+set noboot 0        ;# default is to boot
+set Boot_timeout 3000
+
+global expect_out
+global loc_code
+
+# Flags and initial variable
+set discovery 0
+set discover_all 0
+set hdr_printed 0
+set verbose 0
+set discover_macaddr 0
+set rc 0
+set debug_flag 0
+set rmvterm_flag 0
+set immed_flag 0
+set list_physical 0
+set list_disk 0
+set colon 0
+set choice 0
+set full_path_name ""
+set adap_speed ""
+set adap_duplex ""
+set client_ip ""
+set server_ip ""
+set gateway_ip ""
+set extra_args ""
+set macaddress ""
+set phys_loc ""
+set userid ""
+set passwd ""
+set prompt "\\\$ \$"
+set ssh_spawn_id 0
+
+# List supported network adapters here.  dev_pat is an array of regexp patterns
+# the script searches for in the device tree listing.  dev_type is the type
+# of device displayed in the output.
+set dev_pat(0) "ethernet"
+set dev_type(0) "ent"
+set dev_pat(1) "token-ring"
+set dev_type(1) "tok"
+set dev_pat(2) "fddi"
+set dev_type(2) "fddi"
+set dev_count [array size dev_pat]
+
+#
+# Log the process id
+#
+set proc_id [ eval pid ]
+nc_msg "$PROGRAM Status: process id is $proc_id\n"
+
+#
+#
+# Process command line options and parameters
+#
+#
+while { [llength $argv] > 0} {
+    set flag [lindex $argv 0]
+    switch -glob -- $flag {
+
+        "-A" { set discover_all 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "-C" { set client_ip [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-D" { set discovery 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "-G" { set gateway_ip [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-P" { set list_physical 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "-M" { set discover_macaddr 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "-S" { set server_ip [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-c" { set colon 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "-d" { set adap_duplex [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-f" { set rmvterm_flag 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "-g" { set extra_args [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-i" { set immed_flag 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "-l" { set phys_loc [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-m" { set macaddress [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-n" { set noboot 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "-s" { set adap_speed [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-t" { set list_type [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+
+               #
+               # Validate the argument
+               #
+               set dev_type_found 0
+               foreach dev [array names dev_type] {
+                   if {$dev_type($dev) == $list_type} {
+                       set dev_type_found 1
+                       break
+                   }
+               }
+
+               if {$dev_type_found == 0 } {
+                  send_user "'$list_type' is not a valid adapter choice\n"
+                  exit 1
+               }
+             }
+
+        "-v" { set verbose 1
+               set argv [lrange $argv 1 end]
+             }
+
+	"-x" { set debug_flag 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "--disk" {
+               set list_disk 1
+               set argv [lrange $argv 1 end]
+             }
+
+        "--help" {
+                usage
+             }
+
+        "-*" { send_user "Illegal option: $flag\n"
+               usage
+             }
+
+        default {break}
+    }
+}
+
+if { [llength $argv] < 1 } {
+    send_user "Missing parameter\n"
+    usage
+}
+
+set arg0 [lindex $argv 0]
+set arg1 [lindex $argv 1]
+
+if { [llength $argv] > 6 } {
+    send_user "Extraneous parameter(s)\n"
+    usage
+}
+if { $list_physical == 0 } {
+    set dev_pat(3) "l-lan"
+    set dev_type(3) "ent"
+    set dev_count [array size dev_pat]
+} else {
+    set dev_pat(3) ""
+    set dev_type(3) "" 
+    set dev_count [array size dev_pat]
+}
+
+if { $list_disk == 1 } {
+    set dev_pat(4) "scsi"
+    set dev_type(4) "disk"
+    #set dev_pat(5) "fibre-channel"
+    #set dev_type(5) "disk"
+ 
+    set dev_count [array size dev_pat]
+}
+
+set node [lindex $argv 0]
+set profile [lindex $argv 1]
+set manage [lindex $argv 2]
+set lparid [lindex $argv 3]
+set hcp [lindex $argv 4]
+set filename [lindex $argv 5]
+
+
+if {$dev_type_found}    { nc_msg "$PROGRAM Status: List only $list_type adapters\n"               }
+if {$noboot}            { nc_msg "$PROGRAM Status: -n (no boot) flag detected\n"                  }
+if {$discovery}         { nc_msg "$PROGRAM Status: -D (discovery) flag detected\n"                }
+if {$discover_all}      { nc_msg "$PROGRAM Status: -A (discover all) flag detected\n"             }
+if {$verbose}           { nc_msg "$PROGRAM Status: -v (verbose debug) flag detected\n"            }
+if {$discover_macaddr}  { nc_msg "$PROGRAM Status: -M (discover mac address) flag detected\n"     }
+if {$immed_flag}        { nc_msg "$PROGRAM Status: -i (force immediate shutdown) flag detected\n" }
+if {$list_physical}     { nc_msg "$PROGRAM Status: -P (list only phsical network) flag detected\n"}
+if {$colon}             { nc_msg "$PROGRAM Status: -c (list colon separated ) flag detected\n"    }
+
+if {$debug_flag}        { 
+    nc_msg "$PROGRAM Status: -d (debug) flag detected\n" 
+    exp_internal 1
+    log_user 1
+}
+
+if {$discovery && $adap_speed != ""}  { nc_msg "$PROGRAM Status: using adapter speed of $adap_speed\n"        }
+if {$discovery && $adap_duplex != ""} { nc_msg "$PROGRAM Status: using adapter duplex of $adap_duplex\n"      }
+if {$discovery && $server_ip != ""}   { nc_msg "$PROGRAM Status: using server IP address of $server_ip\n"     }
+if {$discovery && $client_ip != ""}   { nc_msg "$PROGRAM Status: using client IP address of $client_ip\n"     }
+if {$discovery && $gateway_ip != ""}  { nc_msg "$PROGRAM Status: using gateway IP address of $gateway_ip\n"   }
+if {$discovery && $macaddress != ""}  { nc_msg "$PROGRAM Status: using macaddress of $macaddress\n"           }
+if {$discovery && $phys_loc != ""}    { nc_msg "$PROGRAM Status: using physical location code of $phys_loc\n" }
+set NODENAME $node
+
+ck_args
+
+if {$extra_args != "" }  { nc_msg "$PROGRAM Status: extra arguments sent to booting: $extra_args\n" }
+
+if { ! $noboot } {
+    set hdw_addr ""
+    set speed $adap_speed
+    set duplex $adap_duplex
+}
+
+# Get userid and password
+read_credentials
+
+#
+# Connect to the remote server
+#
+nc_msg "$PROGRAM Status: connecting to $hcp\n"
+connect
+
+if {$rmvterm_flag} {
+    nc_msg "$PROGRAM Status: -f (force close virtual session) flag detected\n"
+    set cmd "rmvt -id $lparid"
+    send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
+
+    expect {
+        -i $ssh_spawn_id \
+        -re "\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+            set rc $expect_out(1,string)
+        }
+        timeout {
+            send_user "Timeout waiting for command prompt\n"
+            exit 1
+        }
+        eof {
+           send_user "ssh connection to terminated unexpectedly\n"
+           exit 1
+       }
+    }
+    if { $rc } {
+        nc_msg "$PROGRAM Status: warning: error from rmvterm command\n"
+        send_user "Error : $msg\n"
+    }
+}
+
+#
+# open the S1 serial port
+#
+nc_msg "$PROGRAM Status: open port\n"
+
+if [ catch { spawn ssh $userid@$hcp} rsconole_pid ] {
+    send_user "Unable to spawn console ssh connection to $hcp\n"
+    exit 1
+}
+
+set spawn_id_rconsole $spawn_id
+nc_msg "$PROGRAM Status: spawn_id is $spawn_id\n"
+
+set timeout 10
+set pwd_sent 0
+send_user "# Connecting to $NODENAME\n"
+ 
+#
+# Look for password prompt, and reply
+#
+expect {
+    -i $spawn_id_rconsole \
+    -re $prompt {
+
+    }
+    -re "continue connecting (yes/no)?" {
+        send -i $spawn_id_rconsole "yes\r"
+        expect_continue
+    }
+    -re "assword: $" {
+         if { $pwd_sent != 1 } {
+             set pwd_sent 1
+             send -i $spawn_id_rconsole "$passwd\r"
+             exp_continue
+         }
+         send_user "Incorrect login\n"
+         exit 1
+    }
+    timeout {
+        send_user "Timeout waiting for password prompt\n"
+        exit 1
+    }
+    eof {
+        send_user "ssh connection terminated unexpectedly\n"
+        exit 1
+    }
+}
+
+set timeout 2 
+send -i $spawn_id_rconsole "mkvt -id $lparid\r"
+
+expect {
+    -i $spawn_id_rconsole \
+    "Virtual terminal is already connected." {
+         send_user "$expect_out(0,string)\n"
+         exit 1
+    }
+    "Virtual terminal device not found." {
+         send_user "$expect_out(0,string)\n"
+         exit 1
+    }
+}
+
+send_user "# Connected\n" 
+send_user "# Checking for power off.\n"
+
+run_lssyscfg
+if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activated"] == 0) } {
+    send_user "# Power off complete.\n"
+} else { 
+
+    #
+    # power off the node
+    #
+    send_user "# Power off the node.\n"
+    set cmd "0"
+
+    if { $immed_flag } {
+        set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" --immed -n \"$node\""
+    } else {
+        set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
+    }
+    set timeout 10
+    send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
+
+    expect {
+        -i $ssh_spawn_id \
+        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+            set rc $expect_out(2,string)
+            set msg $expect_out(1,string)
+        }
+        -re "\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+            set rc $expect_out(1,string)
+        }
+        timeout {
+            send_user "Timeout waiting for command prompt\n"
+            exit 1
+        }
+        eof {
+           send_user "ssh connection to terminated unexpectedly\n"
+           exit 1
+       }
+    }
+
+    if { $rc } {
+        send_user "Cannot power off $NODENAME\n"
+        nc_msg "$PROGRAM Status: error from chsysstate command\n"
+        send_user "Error : $msg\n"
+        exit 1
+    }
+
+    send_user "# Wait for power off.\n"
+
+    #   
+    # chsysstate will return a successful result if it was able to pass the power
+    # command from the IVM to the node, but the node may not be powered off yet.  Need
+    # to query to make sure the node is off before we continue
+    #   
+    set done 0
+    set query_count 0
+    while { ! $done } {
+        run_lssyscfg 
+   
+        #
+        # separate the nodename from the query status
+        #
+        if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activated"] == 0) } {
+            send_user "# Power off complete.\n"
+            set done 1
+            continue
+        }
+
+        incr query_count 
+        if { $query_count > 300 } {
+            send_user "Timed out waiting for power off of $NODENAME\n"
+            nc_msg "$PROGRAM Status: error from lssyscfg command : \"$msg\"\n"
+            exit 1
+        }
+
+        sleep 1
+    }
+}
+
+if { $list_disk == 1 } {
+    nc_msg "$PROGRAM Status: Power on to SMS.\n"
+    set rc [catch {eval exec $BINPATH/chsysstate -r lpar -o on -b sms -m \"$manage\" -n \"$node\" -f \"$profile\"} msg]
+
+} else {
+    send_user "# Power on $NODENAME to Open Firmware.\n"
+    set timeout 10
+    send -i $ssh_spawn_id "chsysstate -r lpar -o on -b of -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
+
+    expect {
+        -i $ssh_spawn_id \
+        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+            set rc $expect_out(2,string)
+            set msg $expect_out(1,string)
+        }
+        -re "\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+            set rc $expect_out(1,string)
+        }
+        timeout {
+            send_user "Timeout waiting for command prompt\n"
+            exit 1
+        }
+        eof {
+           send_user "ssh connection to terminated unexpectedly\n"
+           exit 1
+       }
+    }
+}
+
+nc_msg "$PROGRAM Status: wait for power on\n"
+
+if { $rc } {
+    send_user "Cannot power on $NODENAME\n"
+    nc_msg "$PROGRAM Status: error from chsysstate command\n"
+    send_user "Error : $msg\n"
+    exit 1
+}
+
+#
+# Verify node is powered on before continuing
+#
+set done 0
+set query_count 0
+while { ! $done } {
+    run_lssyscfg
+
+    #
+    # separate the nodename from the query status
+    #
+    if { ([string compare "$msg" "Open Firmware"] == 0) || ([string compare "$msg" "Open firmware"] == 0) } {
+        send_user "# Power on complete.\n"
+        set done 1
+        continue
+    }
+    incr query_count
+
+    if { $query_count > 300 } {
+        send_user "Timed out waiting for power on of $NODENAME\n"
+        nc_msg "$PROGRAM Status: error from lssyscfg command : \"$msg\" \n"
+        exit 1
+    }
+
+    sleep 1
+}
+
+set done 0
+set timeout 120
+nc_msg "$PROGRAM Status: Check for active console.\n"
+while { ! $done } {
+    expect {  
+        -i $spawn_id_rconsole
+        -re "(.*)\[SCSI|scsi\](.*)0 >" {
+            nc_msg "$PROGRAM Status: active console\n"
+            set done 1
+        }
+        -re "PowerPC Firmware(.*)SMS(.*)" {
+            nc_msg "$PROGRAM Status: SMS active console\n"
+            set done 1
+        } 
+        -re "To select this console as the active console press 0" {
+            nc_msg "$PROGRAM Status: selecting active console\n"
+            exec sleep 1
+            send -i $spawn_id_rconsole "0";
+        }
+        -re "Press 0 to select this console.*as the active console" {
+            nc_msg "$PROGRAM Status: selecting active console\n"
+            exec sleep 1
+            send -i $spawn_id_rconsole "0";
+        }
+        -re "(.*)elect this consol(.*)" {
+            nc_msg "$PROGRAM Status: selecting active console\n"
+            exec sleep 1
+            send -i $spawn_id_rconsole "0";
+        }
+        timeout {
+            send_user "Timeout; exiting\n"
+            exit 1
+        }
+        eof {
+            send_user "Cannot connect to $NODENAME\n"
+            exit 1
+        }
+    }
+}
+
+
+if { $list_disk == 1 } {
+    get_disk_info_sms
+}
+
+global phandle
+
+# 
+# Call get_phandle to gather information for all the supported network adapters
+# in the device tree.
+#
+get_phandle
+
+if { $rc } {
+    send_user "Unable to obtain network adapter information.  Quitting.\n"
+    exit 1
+}
+
+# Call multiple_open-dev to circumvent firmware OPEN-DEV failure
+multiple_open-dev
+if { $rc } {
+    nc_msg "Unable to create multiple_open-dev.\n"
+    send_user "Unable to obtain network adapter information.  Quitting.\n"
+    exit 1
+}
+
+if { $discovery } {
+    send_user "# Client IP address is $client_ip\n"
+    send_user "# Server IP address is $server_ip\n"
+    send_user "# Gateway IP address is $gateway_ip\n"
+}
+
+if { $noboot } { # Display information for all supported adapters
+    send_user "# Getting adapter location codes.\n"
+
+    if {[info exists list_type]} {
+        set match_pat $list_type
+    } else {
+        set match_pat ".*"  ;# match anything
+    }
+
+    if { $discover_all } { 
+        for {set i 1} {$i <= $adapter_found} {incr i 1} {
+            if {[regexp $match_pat $adap_type($i)] != 0 } {
+                set ping_result ""
+                if { $discovery } {
+                    set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+                    nc_msg "$PROGRAM Status: ping_server returns $ping_rc\n"
+                    if { $ping_rc != 0 } {
+                        set ping_result "unsuccessful"
+		    } else {
+			set ping_result "successful"
+                    }
+                }
+
+                set mac_address [get_mac_addr $phandle_array($i)]
+                set loc_code [get_adaptr_loc $phandle_array($i)]
+
+                if { $hdr_printed == 0 } {
+                    if { $colon } {
+                        send_user "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:\n"
+                    } else {
+                        send_user "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\n"
+		    }
+                    set hdr_printed 1
+                }
+
+		
+                if { [string first "vdevice" "$full_path_name_array($i)"] != -1 } {
+                    set device_type "virtual"
+                } else {
+                    set device_type "physical"
+                }
+
+                if { $colon } {
+                    send_user "$adap_type($i)\:$loc_code\:$mac_address\:$full_path_name_array($i)\:$ping_result\:$device_type\:\:\:\:\n"
+                } else {
+                    send_user "$adap_type($i) $loc_code $mac_address $full_path_name_array($i) $ping_result $device_type\n"
+                }
+            }
+        }
+
+        if { $list_disk == 1 } {
+            get_disk_info
+	}
+        
+    } else {
+        for {set i 1} {$i <= $adapter_found} {incr i 1} {
+	    if {[regexp $match_pat $adap_type($i)] != 0 } {
+                set ping_result "" 
+                if { $discovery } {
+                    set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+                    nc_msg "$PROGRAM Status: ping_server returns $ping_rc\n"
+                    if { $ping_rc != 0 } {
+                        set ping_result "unsuccessful"
+		    } else {
+			set ping_result "successful"
+                    }
+                }
+                set mac_address [get_mac_addr $phandle_array($i)]
+                set loc_code [get_adaptr_loc $phandle_array($i)]
+                if { [string first "vdevice" "$full_path_name_array($i)"] != -1 } {
+                    set device_type "virtual"
+                } else {
+                    set device_type "physical"
+                }
+
+		if { $colon } {
+		    send_user "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:\n"
+                    send_user "$adap_type($i)\:$loc_code\:$mac_address\:$full_path_name_array($i)\:$ping_result\:$device_type\:\:\:\:\n"
+	        } else {
+                    send_user "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\n"
+                    send_user "$adap_type($i) $loc_code $mac_address $full_path_name_array($i) $ping_result $device_type\n"
+		}
+                break;
+            }
+        }
+
+        if { $list_disk == 1 } {
+            get_disk_info
+        }
+    }
+
+    nc_msg "$PROGRAM Status: power off the node after noboot == 1\n"
+    set cmd "0"
+
+    if { $immed_flag } {
+        set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" --immed -n \"$node\""
+    } else {
+        set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
+    }
+    set timeout 10
+    send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
+
+    expect {
+        -i $ssh_spawn_id \
+        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+            set rc $expect_out(2,string)
+            set msg $expect_out(1,string)
+        }
+        -re "\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+            set rc $expect_out(1,string)
+        }
+        timeout {
+            send_user "Timeout waiting for command prompt\n"
+            exit 1
+        }
+        eof {
+           send_user "ssh connection to terminated unexpectedly\n"
+           exit 1
+       }
+    }
+    
+    if { $rc } {
+        send_user "Cannot power off $NODENAME\n"
+        nc_msg "$PROGRAM Status: error from chsysstate command\n"
+        send_user "Error : $msg\n"
+        exit 1
+    }
+} else {  # Do a network boot
+
+    # Loop throught the adapters and perform a ping test to discover an
+    # adapter that pings successfully, then use that adapter to network boot.
+    if { $discover_all == 1 } {
+        for {set i 1} {$i <= $adapter_found} {incr i 1} {
+            set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+
+            # if ping was successful, then use that adapter for lpar_netboot
+            if { $ping_rc == 0 } {
+                set phandle $phandle_array($i)
+                set full_path_name $full_path_name_array($i)
+                set chosen_adap_type $adap_type($i)
+
+                break
+            } 
+        }
+    } elseif { $macaddress != "" } {
+        set match 0
+	for {set i 1} {$i <= $adapter_found} {incr i 1} {
+            set mac_address [get_mac_addr $phandle_array($i)]
+            if { [string compare -nocase "$mac_address" "$macaddress"] == 0 } {
+                if { $discovery == 1 } {
+                    set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+                    if { $ping_rc != 0 } {
+                        send_user "Unable to boot network adapter.\n"
+                        exit 1
+                    }
+                }
+                set phandle $phandle_array($i)
+                set full_path_name $full_path_name_array($i)
+                set chosen_adap_type $adap_type($i)
+                set match 1
+                break
+            }
+        }
+        if { !$match } {
+            send_user "Can not find mac address '$macaddress'\n"
+            exit 1
+        }
+    } elseif { $phys_loc != "" } {
+        set match 0
+        for {set i 1} {$i <= $adapter_found} {incr i 1} {
+            set loc_code [get_adaptr_loc $phandle_array($i)]
+            if { [string first "$phys_loc" "$loc_code"] != -1 } {
+                if { $discovery == 1 } {
+                    set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+                    if { $ping_rc != 0 } {
+                        send_user "Unable to boot network adapter.\n"
+                        exit 1
+                    }
+                }
+                set phandle $phandle_array($i)
+                set full_path_name $full_path_name_array($i)
+                set chosen_adap_type $adap_type($i)
+                set match 1
+                break
+            }
+        }
+        if { !$match } {
+            send_user "Can not find physical location '$phys_loc'\n"
+            exit 1
+	}
+    } else {
+        #
+        # Use the first ethernet adapter in the
+        # device tree.
+        #
+        for {set i 1} {$i <= $adapter_found} {incr i 1} {
+            if { $adap_type($i) == $list_type } {
+                if { $discovery == 1 } {
+                    set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+                    if { $ping_rc != 0 } {
+                        exit 1
+                    }
+                }
+                set phandle $phandle_array($i)
+                set full_path_name $full_path_name_array($i)
+                set chosen_adap_type $adap_type($i)
+                break
+            }
+        }
+    }
+
+    if { $full_path_name == "" } {
+        send_user "Unable to boot network adapter.\n"
+        exit 1
+    } else {
+        send_user "# Network booting install adapter.\n"
+        boot_network
+    }
+
+    if { $rc == 0 } {
+        send_user "# bootp sent over network.\n"
+
+        Boot
+    } else {
+        nc_msg "return code $rc from boot_network\n"
+    }
+
+    if { $rc == 5} {
+        # Need to retry network boot because of intermittant network failure 
+        # after partition reboot.  Force partition to stop at Open Firmware prompt.
+        expect {
+            -i $spawn_id_rconsole
+            -re "keyboard" {
+                set command "8"
+                send_command
+                sleep 10
+            }
+            timeout {
+                send_user "Timeout; exiting\n"
+                exit 1
+            }
+	    send_user "# Network booting install adapter.\n"
+	    nc_msg "Retrying network-boot from RESTART-CMD error.\n"
+            set done 0
+            while { ! $done } {
+                boot_network
+                if { $rc == 0 } {
+                    set done 1
+                } else {
+                    # try again in 10 seconds
+                    sleep 10
+                }
+            }
+        }
+        send_user "# bootp sent over network.\n"
+        Boot
+    }
+}
+
+#
+# mission accomplished, beam me up scotty.
+#
+if { (!$noboot) && ( $rc == 0 ) } { 
+    send_user "# Finished.\n" 
+} else {
+    set done 0
+    set query_count 0
+    while { ! $done } {
+        run_lssyscfg
+                                                                     
+        #                                                            
+        # separate the nodename from the query status                
+        #                                                            
+        if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activated"] == 0) } { 
+            set done 1                                               
+        }                                                            
+
+        incr query_count                                             
+        if { $query_count > 60 } {                                  
+            set done 1                                                   
+        }                                                            
+                                                                     
+        sleep 1                                                      
+    }                                                                
+}
+
+exit $rc
