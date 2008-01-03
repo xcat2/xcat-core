@@ -298,6 +298,7 @@ until ($quit) {
         $domain = $tmp->{value};
     }
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET6);
+    unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr,AF_INET); }
     $peerhost =~ s/\.$domain\.*$//;
     $peerhost =~ s/-eth\d*$//;
     $peerhost =~ s/-myri\d*$//;

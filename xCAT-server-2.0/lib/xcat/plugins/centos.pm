@@ -188,12 +188,12 @@ sub mkinstall {
     my $os = $ent->{os};
     my $arch = $ent->{arch};
     my $profile = $ent->{profile};
-    unless (-r $::XCATPREFIX."/share/xcat/install/centos/".$ent->{profile}.".tmpl") {
+    unless (-r $::XCATROOT."/share/xcat/install/centos/".$ent->{profile}.".tmpl") {
       $callback->({error=>["No kickstart template exists for ".$ent->{profile}],errorcode=>[1]});
       next;
     }
     #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
-    xCAT::Template->subvars($::XCATPREFIX."/share/xcat/install/centos/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
+    xCAT::Template->subvars($::XCATROOT."/share/xcat/install/centos/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
     mkpath "/install/postscripts/";
     xCAT::Postage->writescript($node,"/install/postscripts/".$node);
     if (-r "/install/$os/$arch/images/pxeboot/vmlinuz" 

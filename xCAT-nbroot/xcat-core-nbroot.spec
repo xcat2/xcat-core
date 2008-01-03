@@ -46,6 +46,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/usr/share/xcat/netboot/%{tarch}/nbroot
 cd $RPM_BUILD_ROOT/usr/share/xcat/netboot/%{tarch}/nbroot
 tar zxvf %{SOURCE1}
+chmod 755 etc/S40network bin/getdestiny bin/getdestiny.awk bin/getipmi bin/getipmi.awk
 cd -
 
 
