@@ -38,7 +38,7 @@ sub parse_args {
     #############################################
     local *usage = sub {
         return( [ $_[0],
-            "rscan -h",
+            "rscan -h|--help",
             "rscan -v|--version",
             "rscan [-V|--verbose] noderange [-w][-x|-z]",
             "    -h   writes usage information to standard output",
