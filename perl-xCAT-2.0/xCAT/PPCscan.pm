@@ -355,10 +355,10 @@ sub format_output {
         $result = format_xml( $values );
     }
     ###########################################
-    # -z flag for schema format
+    # -z flag for stanza format
     ###########################################
     elsif ( exists( $opt->{z} )) {
-        $result = format_schema( $values );
+        $result = format_stanza( $values );
     }
     else {
         #######################################
@@ -408,9 +408,9 @@ sub format_output {
 
 
 ##########################################################################
-# Schema formatting
+# Stanza formatting
 ##########################################################################
-sub format_schema {
+sub format_stanza {
 
     my $values = shift;
     my $result;
