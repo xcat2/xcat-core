@@ -510,7 +510,7 @@ sub rscan {
        $result = rscan_xml( \@values ); 
     } 
     elsif ( exists( $opt{z} )) {
-       $result = rscan_schema( \@values ); 
+       $result = rscan_stanza( \@values ); 
     } 
     else {
         foreach ( @rscan_header ) {
@@ -590,7 +590,7 @@ sub rscan_xml {
     }
     return( $xml );
 }
-sub rscan_schema {
+sub rscan_stanza {
 
     my $values = shift;
     my $result;
@@ -601,10 +601,10 @@ sub rscan_schema {
       $result .= "$data[1]:\n\tobjtype=node\n";
 
       foreach ( @rscan_header ) {
-        if ( @$_[0] eq "name" ) {
-          next;
+        if ( @$_[0] ne "name" ) {
+          $result .= "\t@$_[0]=$data[$i++]\n";      
         }
-        $result .= "\t@$_[0]=$data[$i++]\n";
+        $i++;
       }
     }
     return( $result );
@@ -1007,20 +1007,21 @@ sub dompa {
     my @output_hashes;
     foreach(@output) {
       my %output;
-      (my $desc,my $text) = split (/:/,$_,2);
-      unless ($text) {
-        $text=$desc;
-      } else {
-        $desc =~ s/^\s+//;
-        $desc =~ s/\s+$//;
-        if ($desc) {
-          $output{node}->[0]->{data}->[0]->{desc}->[0]=$desc;
-        }
-      }
+      
       if ( $command eq "rscan" ) { 
         $output{data} = [$_];
       }
       else {
+        (my $desc,my $text) = split (/:/,$_,2);
+        unless ($text) {
+          $text=$desc;
+        } else {
+          $desc =~ s/^\s+//;
+          $desc =~ s/\s+$//;
+          if ($desc) {
+            $output{node}->[0]->{data}->[0]->{desc}->[0]=$desc;
+          }
+        }
         $text =~ s/^\s+//;
         $text =~ s/\s+$//;
         $output{node}->[0]->{name}->[0]=$node;
