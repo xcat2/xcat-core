@@ -656,10 +656,10 @@ sub format_output {
         return;
     }
     ###########################################
-    # -z flag for schema format
+    # -z flag for stanza format
     ###########################################
     if ( exists( $opt{z} )) {
-        send_msg( $request, format_schema( $outhash ));
+        send_msg( $request, format_stanza( $outhash ));
         return;
     }
 
@@ -1008,9 +1008,9 @@ sub xCATdB {
 
 
 ##########################################################################
-# Schema formatting 
+# Stanza formatting 
 ##########################################################################
-sub format_schema {
+sub format_stanza {
 
     my $outhash = shift;
     my $text;
