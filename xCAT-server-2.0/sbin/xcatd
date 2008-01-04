@@ -91,10 +91,20 @@ sub daemonize {
 my %cmd_handlers;
 sub do_installm_service { 
   #This function servers as a handler for messages from installing nodes
-  my $socket = IO::Socket::INET6->new(LocalPort=>$sport,
+
+my $socket;
+if (xCAT::Utils->isLinux()) {
+  $socket = IO::Socket::INET6->new(LocalPort=>$sport,
                                      Proto    => 'tcp',
                                      ReuseAddr => 1,
                                      Listen => 64);
+} else {
+	 $socket = IO::Socket::INET->new(LocalPort=>$sport,
+                                     Proto    => 'tcp',
+                                     ReuseAddr => 1,
+                                     Listen => 64);
+}
+
   unless ($socket) {
     syslog("local4|err","xcatd unable to open install monitor services on $sport");
     die;
@@ -103,7 +113,14 @@ sub do_installm_service {
     $SIG{ALRM} = sub { die "XCATTIMEOUT"; }; 
     my $conn;
     next unless $conn = $socket->accept;
-    my @clients = gethostbyaddr($conn->peeraddr,AF_INET6);
+
+my @clients;
+if (xCAT::Utils->isLinux()) {
+    @clients = gethostbyaddr($conn->peeraddr,AF_INET6);
+} else {
+    @clients = gethostbyaddr($conn->peeraddr,AF_INET);
+}
+
     my $validclient=0;
     my $node;
     foreach my $client (@clients) {
@@ -161,9 +178,18 @@ sub do_udp_service { #This function opens up a UDP port
   #Also, this throttles to handle one message at a time, so no forking either
   #Explicitly, to handle whatever operations nodes periodically send during discover state
   #Could be used for heartbeating and such as desired
-  my $socket = IO::Socket::INET6->new(LocalPort => $port,
+
+my $socket;
+if (xCAT::Utils->isLinux()) {
+  $socket = IO::Socket::INET6->new(LocalPort => $port,
                                      Proto     => 'udp',
                                      Domain => AF_INET);
+} else {
+  $socket = IO::Socket::INET->new(LocalPort => $port,
+                                     Proto     => 'udp',
+                                     Domain => AF_INET);
+}
+
   openlog("xCAT UDP",'','local4');
   unless ($socket) {
     syslog("err","xCAT UDP service unable to open port $port: $!");
@@ -297,7 +323,14 @@ until ($quit) {
     if (defined $tmp->{value}) {
         $domain = $tmp->{value};
     }
+
+if (xCAT::Utils->isLinux()) {
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET6);
+} else {
+    $peerhost = gethostbyaddr($connection->peeraddr,AF_INET);
+}
+
+
     unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr,AF_INET); }
     $peerhost =~ s/\.$domain\.*$//;
     $peerhost =~ s/-eth\d*$//;
