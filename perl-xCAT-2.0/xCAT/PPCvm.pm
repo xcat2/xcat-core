@@ -710,7 +710,7 @@ sub list {
                 $lpars[0] = "$lpar,$lparid";
             }
             ####################################
-            # This is a CEC - remove all LPARs
+            # This is a CEC
             ####################################
             else {
                 my $filter = "name,lpar_id";
