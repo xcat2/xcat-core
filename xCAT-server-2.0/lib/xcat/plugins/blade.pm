@@ -59,9 +59,13 @@ my $bladediagdateoid = '1.3.6.1.4.1.2.3.51.2.2.21.5.2.1.8';#bladeDiagsVpdDate
 my $eventlogoid = '1.3.6.1.4.1.2.3.51.2.3.4.2.1.2';#readEventLogString
 my $clearlogoid = '.1.3.6.1.4.1.2.3.51.2.3.4.3';#clearEventLog
 my $blower1speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.1';#blower2speed
+my $blower2speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.2';#blower2speed
+my $blower3speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.3';#blower2speed
+my $blower4speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.4';#blower2speed
 my $blower1stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.10';#blower1State
 my $blower2stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.11';#blower2State
-my $blower2speedoid = '.1.3.6.1.4.1.2.3.51.2.2.3.2';#blower2speed
+my $blower3stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.12';#blower2State
+my $blower4stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.13';#blower2State
 my $mmoname = '1.3.6.1.4.1.2.3.51.2.22.4.3';#chassisName
 my $mmotype = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.1';#bladeCenterVpdMachineType
 my $mmomodel = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.2';#bladeCenterVpdMachineModel
@@ -395,6 +399,10 @@ sub vitals {
      push @output,"Blower 1:  $tmp";
      $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.2.0']);
      push @output,"Blower 2:  $tmp";
+     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.3.0']);
+     if ($tmp and $tmp !~ /NOSUCHINSTANCE/) { push @output,"Blower 3:  $tmp"; }
+     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.4.0']);
+     if ($tmp and $tmp !~ /NOSUCHINSTANCE/) { push @output,"Blower 4:  $tmp"; }
      $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.1']);
      push @output,"Fan Pack 1:  $tmp";
      $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.2']);
@@ -407,7 +415,7 @@ sub vitals {
    if (grep /volt/,@vitems) {
  for my $idx (15..40) {
     $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
-           unless ($tmp =~ /Not Readable/) {
+           unless ((not $tmp) or $tmp =~ /Not Readable/) {
              $tmp =~ s/ = /:/;
              push @output,"$tmp";
            }
