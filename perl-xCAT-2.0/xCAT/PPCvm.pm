@@ -133,9 +133,9 @@ sub mkvm_parse_args {
             "mkvm -h|--help",
             "mkvm -v|--version",
             "mkvm [-V|--verbose] singlenode -i id -n name",
-            "mkvm [-V|--verbose] srccec -c destcec",
+            "mkvm [-V|--verbose] src_fsp -c dest_fsp",
             "    -h   writes usage information to standard output",
-            "    -c   copy lpars from srccec to destcec on single HMC",
+            "    -c   copy partitions from src_fsp to dest_fsp on single HMC",
             "    -i   new partition numeric id",
             "    -n   new partition name",
             "    -v   displays command version",
@@ -804,7 +804,7 @@ sub create {
             if ( exists( $opt->{c} )) {
                 my $result = clone( $exp, $lpar, $opt->{c}, $d );
                 foreach ( @$result ) {  
-                    push @values, [$lpar, $_];
+                    push @values, [$opt->{c}, $_];
                 }
                 next; 
             }
