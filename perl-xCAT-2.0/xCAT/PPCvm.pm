@@ -666,6 +666,16 @@ sub modify {
             # Change configuration
             ###############################
             my $cfg = strip_profile( $cfgdata, $hwtype );
+            
+            ###############################
+            # Additional changes 
+            ###############################
+            $cfg =~ s/,*lpar_env=[^,]+|$//;
+            
+            if ( $hwtype eq "hmc" ) {
+                $cfg =~ s/,*all_resources=[^,]+|$//;
+                $cfg =~ s/,*lpar_id=[^,]+|$//;          
+            }
             my $result = xCAT::PPCcli::chsyscfg( $exp, $d, $cfg );
             my $Rc = shift(@$result);
 
