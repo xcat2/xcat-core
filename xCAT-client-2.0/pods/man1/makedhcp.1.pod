@@ -1,0 +1,52 @@
+=head1 NAME
+
+B<makedhcp> -Creates new dhcp configuration files and updates live dhcp configuration using omapi.
+ 
+=head1 SYNOPSIS
+ 
+I<makedhcp [h|--help]>
+
+I<makedhcp [-n]>
+
+I<makedhcp noderange [-s statements]>
+
+
+=head1 DESCRIPTION
+
+The makedhcp  command with the -n option will create a dhcpd.conf file to allow xCAT to manage the DHCP configuration, including certain general parameters such as a dynamic range and omapi configuration.  With a noderange, makedhcp will inject configuration data pertinent to the specified nodes that immediately takes effect without a reset.
+
+=head1 OPTIONS
+
+
+
+B<-h>          Display usage message.
+
+B<-n>          Create a new dhcpd.conf file. 
+
+B<-s>          For the input noderange, the argument will be interpreted like dhcpd.conf text. 
+
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. The following example, will cause dhcp on the next request to set root-path appropriately for only node5.  Note some characters (e.g. ") must be doubly escaped (once for the shell, and once for the OMAPI layer). 
+
+I<makedhcp node5 -s 'option root-path  \"172.16.0.1:/install/freebsd6.2/x86_64\";'> 
+
+
+
+=head1 FILES
+ 
+/opt/xcat/bin/mkdhcp
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+

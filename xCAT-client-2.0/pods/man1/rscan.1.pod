@@ -1,0 +1,152 @@
+=head1 NAME
+ 
+B<rscan> - Collects node information from one or more hardware control points.
+ 
+=head1 SYNOPSIS
+ 
+I<rscan [-h|--help]>
+
+I<rscan  [-v|--version]>
+
+I<rscan [-V|--verbose] noderange [-w][-x|-z]>
+
+
+=head1 DESCRIPTION
+
+The rscan command lists hardware information for each node managed by the hardware control points specified in noderange.
+
+Note that the first line of the output always contains information about the hardware control point itself. When using the rscan command to generate output for HMC or IVM hardware control points, note that FSPs and BPAs are included in the output.
+									
+
+
+=head1 OPTIONS
+
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+B<-V>          Verbose output. 
+
+B<-w>          Writes output to xCAT database. 
+
+B<-x>          XML format. 
+
+B<-z>          Stanza formated output. 
+
+
+=head1 RETURN VALUE
+
+  0 The command completed successfully.
+
+  1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To list all nodes managed by HMC hmc01 in tabular format, enter: 
+
+I<rscan hmc01> 
+
+
+Output is similar to:
+
+  type    name          		id       type-model   serial-number  address
+
+  hmc     hmc01              	          7310-C05      10F426A         hmc01
+  fsp     Server-9117-MMA-SN10F6F3D       9117-MMA      10F6F3D        3.3.3.197
+  lpar     lpar3                     		 4          9117-MMA     10F6F3D
+  lpar     lpar2                     	 	 3          9117-MMA     10F6F3D
+  lpar     lpar1                    	 	 2          9117-MMA     10F6F3D
+  lpar     p6vios                   	 	 1          9117-MMA     10F6F3D
+
+
+2.To list all nodes managed by IVM ivm02 in XML format and write the output to the xCAT database, enter: 
+
+I<rscan ivm02 -x -w>
+
+
+ Output is similar to:
+
+  <Node>
+   <address>ivm02</address>
+   <id></id>
+   <name>ivm02</name>
+   <serial-number>10B7D1G</serial-number>
+   <type>ivm</type>
+   <type-model>9133-55A</type-model>
+ </Node>
+
+ <Node>
+   <address>3.3.3.91</address>
+   <id></id>
+   <name>Server-9133-55A-SN10B7D1G</name>
+   <serial-number>10B7D1G</serial-number>
+   <type>fsp</type>
+   <type-model>9133-55A</type-model>
+ </Node>
+
+  <Node>
+    <address></address>
+    <id>1</id>
+    <name>10-B7D1G</name>
+	<serial-number>10B7D1G</serial-number>
+	<type>lpar</type>
+	<type-model>9133-55A</type-model>
+  </Node>
+
+  <Node>
+   <address></address> 
+   <id>2</id>
+   <name>lp2</name>
+   <serial-number>10B7D1G</serial-number>
+   <type>lpar</type>
+   <type-model>9133-55A</type-model>
+  </Node>
+
+
+
+3. To list all nodes managed by Management Module mm03 in stanza format and write the output to the xCAT database, enter:
+
+
+I <rscan mm03 -z -w>
+
+ <Output is similar to:
+
+   SN#IBM:
+    objtype=node
+    type=mm
+    id=0
+	type-model=8852-22Z
+	serial-number=23A4328
+	address=mm01
+
+   blade1:
+	objtype=node
+	type=blade
+	id=1
+	type-model=8853-SWZ
+	serial-number=23AD188
+	address=
+   blade2:
+	objtype=node
+	type=blade
+	id=3
+	type-model=7971-6AZ
+	serial-number=23A0052
+	address=
+
+
+
+
+=head1 FILES
+ 
+/opt/xcat/bin/rscan
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+ 
