@@ -3,7 +3,7 @@
 package xCAT_monitoring::xcatmon;
 BEGIN
 {
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 #use xCAT::NodeRange;

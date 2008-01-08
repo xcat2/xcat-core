@@ -370,7 +370,16 @@ sub stopMonitoring {
       my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($_) . "mon.pm";
       $module_name="xCAT_monitoring::" . lc($_) . "mon";
       #load the module in memory
-      require $file_name;      
+      eval {require($file_name)};
+      if ($@) {   
+        my @ret3=(1, "The file $file_name cannot be located or has compiling errors.\n"); 
+        $ret{$_}=\@ret3;
+        next;
+      }
+      else {
+        my @a=($file_name, $module_name);
+        $PRODUCT_LIST{$pname}=\@a;
+      }
     }      
     #stop monitoring
     my @ret2 = ${$module_name."::"}{stop}->();
@@ -412,7 +421,14 @@ sub stopNodeStatusMonitoring {
       my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($pname) . "mon.pm";
       $module_name="xCAT_monitoring::" . lc($pname) . "mon";
       #load the module in memory
-      require $file_name;      
+      eval {require($file_name)};
+      if ($@) {   
+        return (1, "The file $file_name cannot be located or has compiling errors.\n"); 
+      }
+      else {
+        my @a=($file_name, $module_name);
+        $PRODUCT_LIST{$pname}=\@a;
+      }
     }
     
     my @ret2 = ${$module_name."::"}{stopNodeStatusMon}->(); 
@@ -702,10 +718,14 @@ sub refreshProductList {
         $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($pname) . "mon.pm";
         $module_name="xCAT_monitoring::" . lc($pname) . "mon";
         #load the module in memory
-        require $file_name;
-     
-        my @a=($file_name, $module_name);
-        $PRODUCT_LIST{$pname}=\@a;
+        eval {require($file_name)};
+        if ($@) {   
+          print "The file $file_name cannot be located or has compiling errors.\n"; 
+        }
+        else {
+          my @a=($file_name, $module_name);
+          $PRODUCT_LIST{$pname}=\@a;
+        }
       } 
     }
   }

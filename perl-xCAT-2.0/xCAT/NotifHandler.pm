@@ -296,16 +296,23 @@ sub notify {
     my ($modname, $path, $suffix) = fileparse($_, ".pm");
      # print "modname=$modname, path=$path, suffix=$suffix\n";
     if ($suffix =~ /.pm/) { #it is a perl module
-      my $pid;
+      my $pid; 
       if ($pid=fork()) { }
       elsif (defined($pid)) {
+	my $fname;
         if (($path eq "") || ($path eq ".\/")) {
           #default path is /opt/xcat/lib/perl/xCAT_monitoring/ if there is no path specified
-          require "$::XCATROOT/lib/perl/xCAT_monitoring/".$modname.".pm";
+          $fname = "$::XCATROOT/lib/perl/xCAT_monitoring/".$modname.".pm";
         } else {
-          require $_;
+          $fname = $_;
         }
-        ${"xCAT_monitoring::".$modname."::"}{processTableChanges}->($action, $tablename, $old_data, $new_data);
+        eval {require($fname)};
+        if ($@) {   
+          print "The file $fname cannot be located or has compiling errors.\n";          
+        }
+        else {
+          ${"xCAT_monitoring::".$modname."::"}{processTableChanges}->($action, $tablename, $old_data, $new_data);
+        }
         exit 0;
       }
     }
