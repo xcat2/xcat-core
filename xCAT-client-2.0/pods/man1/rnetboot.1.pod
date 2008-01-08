@@ -1,0 +1,33 @@
+
+=head1 NAME
+
+B<rnetboot> -Will force an unattended network install for a range of nodes (diskless) Front end to nodeset noderange netboot; rpower noderange boot.
+
+=head1 SYNOPSIS
+
+B<rnetboot>
+I<noderange>
+
+B<rnetboot>
+[B<-h>|B<--help>]
+
+B<rnetboot>
+[B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+B<rnetboot>Will force an unattended network install for a range of nodes (diskless) Front end to nodeset noderange netboot; rpower noderange boot.  
+
+
+=head1 EXAMPLES
+
+
+  rnetboot 1,3
+  rnetboot 14-56,70-203
+  rnetboot 1,3,14-56,70-203
+  rnetboot all,-129-256
+
+
+
+

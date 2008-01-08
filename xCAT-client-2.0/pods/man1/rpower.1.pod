@@ -1,0 +1,113 @@
+=head1 NAME
+
+rpower - remote power control
+
+=head1 SYNOPSIS
+
+B<rpower>
+I<noderange>
+B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>
+
+B<rpower>
+[B<-h>|B<--help>]
+
+B<rpower>
+[B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+I<rpower> controls the power for a single or range of nodes.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<on>
+
+Turn power on.
+
+=item B<off>
+
+Turn power off.
+
+=item B<stat>|B<state>
+
+Print the current power state/status.
+
+=item B<reset>
+
+Send a hard reset.
+
+=item B<boot>
+
+If off, then power on.
+If on, then hard reset.
+The option is recommended over B<cycle>.
+
+=item B<cycle>
+
+Power off, then on.
+
+=item B<-h>, B<--help>
+
+Help.
+Prints out a brief help message.
+
+=item B<-v>, B<--version>
+
+Version.
+Display the version number.
+
+=back
+
+=head1 ENVIRONMENT
+
+=over 4
+
+
+=back
+
+
+=back
+
+=head1 EXAMPLES
+
+=begin roff
+
+\fIrpower node4,node5 stat\fR
+
+node4: on
+.br
+node5: off
+
+\fIrpower node5 on\fR
+
+node5: on
+
+=end roff
+
+=begin html
+<TT><EM>rpower node5 on</EM></TT>
+<br>
+<br>
+<TT>node4: on</TT>
+<br>
+<TT>node5: off</TT>
+<br>
+<br>
+<TT><EM>rpower node5 on</EM></TT>
+<br>
+<br>
+<TT>node5: on</TT>
+
+=end html
+
+
+=head1 FILES
+ 
+/opt/xcat/bin/rpower
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.

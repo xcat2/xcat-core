@@ -1,0 +1,32 @@
+
+=head1 NAME
+
+B<getmacs> - Collect mac addresses. 
+
+=head1 SYNOPSIS
+
+B<getmacs>
+I<noderange>
+
+B<getmacs>
+[B<-h>|B<--help>]
+
+B<getmacs>
+[B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+Collects MAC addresses of the input noderange.  
+
+=head1 EXAMPLES 
+
+
+ getmacs 1,3 
+ getmacs 14-56,70-203 
+ getmacs 1,3,14-56,70-203 
+ getmacs all,-129-256 
+
+
+
+
