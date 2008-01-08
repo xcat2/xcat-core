@@ -1,0 +1,56 @@
+=head1 NAME
+ 
+B<chvm> - Changes HMC- and IVM-managed partition profiles.  
+ 
+=head1 SYNOPSIS
+ 
+I<chvm [-h| --help]>
+
+I<chvm  [-v| --version]>
+
+
+I<chvm [-V| --verbose] noderange>
+
+
+=head1 DESCRIPTION
+
+The chvm command modifies the partition profile for the partitions specified in noderange. A partitions current profile can be read using lsvm, modified, and piped into the chvm command.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+B<-V>          Verbose output. 
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To change the partition profile for lpar4 using the configuration data in the file /tmp/lparfile, enter: 
+
+I<cat /tmp/lparfile | chvm lpar4> 
+
+Output is similar to:
+
+lpar4: Success
+
+
+=head1 FILES
+ 
+/opt/xcat/bin/chvm
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+ 

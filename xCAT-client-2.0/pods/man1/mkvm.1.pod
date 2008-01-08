@@ -1,0 +1,72 @@
+=head1 NAME
+ 
+B<mkvm> - Creates HMC- and IVM-managed partitions.  
+ 
+=head1 SYNOPSIS
+ 
+I<mkvm [-h| --help]>
+
+I<mkvm  [-v| --version]>
+
+I<mkvm [-V| --verbose] singlenode -i id -n name>
+
+I<mkvm [-V| --verbose] src_fsp -c dest_fsp>
+
+
+=head1 DESCRIPTION
+
+The mkvm command creates a new partition with the same profile/resources as the partition specified by singlenode. The -i and -n flags specify the numeric partition number and name of the newly created partition, respectively. The second form of this command duplicates all the partitions associated with src_fsp to dest_fsp. Note that src_dest and dest_fsp must be associated with the same HMC. Newly created partitions are automatically added to the xCAT database.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-c>          Copy partitions from src_fsp to dest_fsp on single HMC 
+
+B<-i>          New partition numeric id 
+
+B<-n>          New partition name 
+
+B<-v>          Command Version. 
+
+B<-V>          Verbose output. 
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To create a new partition lpar5 based on the profile/resources of lpar4, enter:  
+
+I<mkvm lpar4 -i 5 -n lpar5> 
+
+Output is similar to:
+
+lpar5: Success
+
+
+
+2. To duplicate all the partitions associated with fsp01 on fsp02, enter:  
+
+I<mkvm fsp01 .c fsp02> 
+
+Output is similar to:
+
+fsp02: Success
+
+=head1 FILES
+ 
+/opt/xcat/bin/mkvm
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+ 

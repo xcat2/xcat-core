@@ -1,0 +1,66 @@
+=head1 NAME
+ 
+B<rmvm> - Removes HMC- and IVM-managed partitions.  
+ 
+=head1 SYNOPSIS
+ 
+I<rmvm [-h| --help]>
+
+I<rmvm  [-v| --version]>
+
+
+I<rmvm [-V| --verbose] noderange>
+
+
+=head1 DESCRIPTION
+
+The rmvm command removes the partitions specified in noderange. If noderange is an FSP, all the partitions associated with that FSP will be removed. Note that removed partitions are automatically removed from the xCAT database. For IVM-managed systems, care must be taken to not remove the VIOS partition, or all the associated partitions will be removed as well.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+B<-V>          Verbose output. 
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To remove the partition lpar3, enter: 
+
+I<rmvm lpar3> 
+
+Output is similar to:
+
+lpar3: Success
+
+2. To remove all the partitions associated with FSP fsp01, enter:
+
+I<rmvm fsp01>
+
+Output is similar to:
+
+ lpar1: Success
+ lpar2: Success
+ lpar3: Success
+
+
+=head1 FILES
+ 
+/opt/xcat/bin/rmvm
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+ 
