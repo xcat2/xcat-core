@@ -5,6 +5,7 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
+use Cwd;
 use IO::Socket::SSL;
 use IO::Socket::INET;
 use File::Basename;
@@ -27,6 +28,7 @@ if($bname =~ /xcatclient/) {
   printf("Bad usage\n");
   exit(1);
 }
+$cmdref->{cwd}->[0] = cwd();
 
 if (-p STDIN) {
   my $data;

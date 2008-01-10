@@ -32,9 +32,6 @@ sub docfheaders {
     push @$content,"  sslcredentials /etc/xcat/cert/server-cred.pem;\n";
     push @$content,"}\n";
   }
-}
-
-  }
   unless (grep(/^default full/,@meat)) {
     push @$content,"default full { rw *; }\n";
   }

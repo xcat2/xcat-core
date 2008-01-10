@@ -43,8 +43,11 @@ sub process_request {
     return;
   }
   foreach (@args) {
+    unless (/^\//) { #If not an absolute path, concatenate with client specified cwd
+	s/^/$request->{cwd}->[0]\//;
+    }
     unless (-r $_ and -f $_) {
-      $callback->({error=>"copycds currently only understands FULL path to iso files, $_ not processed"});
+      $callback->({error=>"The management server was unable to find/read $_, ensure that file exists on the server at specified location"});
       return;
     }
     mkdir "/mnt/xcat";
