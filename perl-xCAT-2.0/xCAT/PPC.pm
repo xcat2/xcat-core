@@ -636,8 +636,9 @@ sub runcmd {
     ######################################
     # Load specific module
     ######################################
-    unless ( eval "require $modname" ) {
-        return( ["Can't locate $modname"] );
+    eval "require $modname";
+    if ( $@ ) {
+        return( [$@] );
     }
     ######################################
     # Invoke  method 
