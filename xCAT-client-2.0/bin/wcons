@@ -1,0 +1,12 @@
+#!/bin/sh
+#A placeholder wcons, a fuller port from 1.3 is needed
+if [ -z "$DISPLAY" ]; then
+	echo '$DISPLAY  not set'
+	exit 1
+fi
+NODES=`nodels $1`
+MYDIR=`dirname $0`
+for n in $NODES
+do
+	xterm -rv -name wcons -T $n -n $n -e $MYDIR/rcons $n &
+done

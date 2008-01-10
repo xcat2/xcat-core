@@ -1,0 +1,16 @@
+#!/bin/sh
+CONSERVER=`nodels $1 nodehm.conserver`
+if [ -z $CONSERVER ]; then
+	CONSERVER=$XCATHOST
+fi
+if [ -z $CONSERVER ]; then
+	CONSERVER=localhost
+fi
+if [ ! -f $HOME/.consolerc ]; then
+	echo 'config * {' > $HOME/.consolerc
+	echo "	sslauthority $HOME/.xcat/ca.pem;" >> $HOME/.consolerc
+	echo "	sslcredentials $HOME/.xcat/client-cred.pem;" >> $HOME/.consolerc
+	echo '}' >> $HOME/.consolerc
+fi
+	
+exec console -M $CONSERVER $1

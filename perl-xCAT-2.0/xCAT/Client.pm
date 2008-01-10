@@ -112,7 +112,7 @@ sub submit_request {
     SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
     SSL_use_cert => 1,
     );
-  die "Connection failure: $!\n" unless ($client);
+  die "Connection failure: $@\n" unless ($client);
   my $msg=XMLout($request,RootName=>xcatrequest,NoAttr=>1,KeyAttr=>[]);
   print $client $msg;
   my $response;
