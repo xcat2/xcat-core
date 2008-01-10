@@ -6,6 +6,7 @@ fi
 if [ -z "$1" ]; then
   echo "Usage: $0 servername"
 fi
+umask 0077
 CNA=$*
 
 XCATCADIR=$XCATDIR/ca
@@ -38,6 +39,8 @@ if [ -f `hostname`.cert ]; then
 fi
 
 cp `hostname`.cert $XCATDIR/cert/server-cert.pem
+#Put key and cert in a single file for the likes of conserver
+cat $XCATDIR/cert/server-cert.pem $XCATDIR/cert/server-key.pem > $XCATDIR/cert/server-cred.pem 
 cp ca-cert.pem $XCATDIR/cert/ca.pem
 cd -
 

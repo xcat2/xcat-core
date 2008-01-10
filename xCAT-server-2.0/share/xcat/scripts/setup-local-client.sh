@@ -1,5 +1,6 @@
 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+umask 0077 #nothing make by this script should be readable by group or others
 
 
 if [ -z "$XCATDIR" ]; then
@@ -47,6 +48,8 @@ if [ -f root.cert ]; then
 fi
 
 cp root.cert $USERHOME/.xcat/client-cert.pem
+#Unify certificate and key in one file, console command at least expects it
+cat $USERHOME/.xcat/client-cert.pem $USERHOME/.xcat/client-key.pem > $USERHOME/.xcat/client-cred.pem
 cp ca-cert.pem $USERHOME/.xcat/ca.pem
 chown -R $1 $USERHOME/.xcat
 find $USERHOME/.xcat -type f -exec chmod 600 {} \;
