@@ -6,6 +6,9 @@ fi
 if [ -z $CONSERVER ]; then
 	CONSERVER=localhost
 fi
+#NOTE: IPv6 is not good with the below if going by IP, needs more sophisticated
+#parsing
+CONSERVER=`echo $CONSERVER|cut -d: -f 1`
 if [ ! -f $HOME/.consolerc ]; then
 	echo 'config * {' > $HOME/.consolerc
 	echo "	sslauthority $HOME/.xcat/ca.pem;" >> $HOME/.consolerc
