@@ -11,6 +11,8 @@ fi
 CONSERVER=`echo $CONSERVER|cut -d: -f 1`
 if [ ! -f $HOME/.consolerc ]; then
 	echo 'config * {' > $HOME/.consolerc
+	echo "	port 782;" >> $HOME/.consolerc
+	echo "	sslenabled yes;" >> $HOME/.consolerc
 	echo "	sslauthority $HOME/.xcat/ca.pem;" >> $HOME/.consolerc
 	echo "	sslcredentials $HOME/.xcat/client-cred.pem;" >> $HOME/.consolerc
 	echo '}' >> $HOME/.consolerc
