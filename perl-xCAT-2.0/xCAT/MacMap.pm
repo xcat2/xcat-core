@@ -84,6 +84,7 @@ sub find_mac {
 # and returns undef if unable to find the node, and the nodename otherwise
   my $self = shift;
   my $mac = shift;
+  my $cachedonly = shift;
 # For now HARDCODE (TODO, configurable?) a cache as stale after five minutes
 # Also, if things are changed in the config, our cache could be wrong, 
 # invalidate on switch table write?
@@ -91,12 +92,16 @@ sub find_mac {
     my $reftbl = 0;
     foreach (keys %{$self->{mactable}}) {
       if ((lc($mac) ne $_) and ($self->{mactable}->{lc($mac)} eq $self->{mactable}->{$_})) {
-        $reftbl = 1;
-        #The cache indicates confusion, flush it..
+        #$reftbl = 1;
+        #Delete *possibly* stale data, without being heavy handed..
+        delete $self->{mactable}->{$_};
       }
     }
     unless ($reftbl) { return $self->{mactable}->{lc($mac)};}
   }
+  #If requesting a cache only check or the cache is a mere 20 seconds old
+  #don't bother querying switches
+  if ($cachedonly or ($self->{timestamp} > (time() - 20))) { return undef; }
   $self->refresh_table; #not cached or stale cache, refresh
   if ($self->{mactable}->{lc($mac)}) {
     return $self->{mactable}->{lc($mac)};

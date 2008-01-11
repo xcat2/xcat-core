@@ -53,9 +53,10 @@ sub process_request {
   #now, notify the node to continue life
   my $sock = new IO::Socket::INET (
           PeerAddr => $ip,
-                  PeerPort => '3001',
-                          Proto => 'tcp'
-                                  );
+          PeerPort => '3001',
+          Timeout => '1',
+          Proto => 'tcp'
+    );
     unless ($sock) { syslog("err","Failed to notify $ip that it's actually $node."); return; } #Give up if the node won't hear of it.
     print $sock "restart";
     close($sock);

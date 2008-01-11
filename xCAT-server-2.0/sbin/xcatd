@@ -180,6 +180,7 @@ sub do_udp_service { #This function opens up a UDP port
   #Could be used for heartbeating and such as desired
 
 my $socket;
+   my $select = new IO::Select;
 if (xCAT::Utils->isLinux()) {
   $socket = IO::Socket::INET6->new(LocalPort => $port,
                                      Proto     => 'udp',
@@ -190,6 +191,7 @@ if (xCAT::Utils->isLinux()) {
                                      Domain => AF_INET);
 }
 
+  $select->add($socket);
   openlog("xCAT UDP",'','local4');
   unless ($socket) {
     syslog("err","xCAT UDP service unable to open port $port: $!");
@@ -201,9 +203,19 @@ if (xCAT::Utils->isLinux()) {
   my $sport;
   my $client;
   my $peerhost;
+  my %packets;
   until ($quit) {
-    eval { while ($part = $socket->recv($data,1500)) {
-        ($sport,$client) = sockaddr_in($part);
+    eval { 
+	while (1) {	
+        until ($select->can_read(5)) {} #Wait for data
+	while ($select->can_read(0)) { #Pull all buffer data that can be pulled
+	   $part = $socket->recv($data,1500);
+           ($sport,$client) = sockaddr_in($part);
+           $packets{inet_ntoa($client)} = [$part,$data];
+	}
+      foreach my $pkey (keys %packets) {
+        ($sport,$client) = sockaddr_in($packets{$pkey}->[0]);
+        $data=$packets{$pkey}->[1];
         $peerhost=gethostbyaddr($client,AF_INET)."\n";
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme")) {
@@ -211,11 +223,25 @@ if (xCAT::Utils->isLinux()) {
           $req->{'!xcat_clientip'}=inet_ntoa($client);
           $req->{'!xcat_clientport'}=$sport;
           if (defined($cmd_handlers{"findme"})) {
+            $req->{cacheonly}->[0] = 1;
             plugin_command($req,undef,\&convey_response);
+  	    if ($req->{cacheonly}->[0]) {
+		delete $req->{cacheonly};
+                plugin_command($req,undef,\&convey_response);
+	    }
           }
         }
         if ($quit) { last; }
+        while ($select->can_read(0)) { #grab any incoming requests during run
+	   $part = $socket->recv($data,1500);
+           ($sport,$client) = sockaddr_in($part);
+           $packets{inet_ntoa($client)} = [$part,$data];
+	}
+        #Some of those 'future' packets might be stale dupes of this packet, so...
+	delete $packets{$pkey}; #Delete any duplicates of current packet
       }
+      if ($quit) { last; }
+    }
     };
     if ($@) {
       syslog("local4|err","xcatd: possible BUG encountered by xCAT UDP service: ".$@);

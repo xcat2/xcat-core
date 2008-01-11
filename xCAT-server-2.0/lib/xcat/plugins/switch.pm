@@ -31,7 +31,7 @@ sub process_request {
  unless ($mac) {
    return;
  }
- my $node = $macmap->find_mac($mac);
+ my $node = $macmap->find_mac($mac,$req->{cacheonly}->[0]);
  if ($node) {
   my $mactab = xCAT::Table->new('mac',-create=>1);
   $mactab->setNodeAttribs($node,{mac=>$mac});

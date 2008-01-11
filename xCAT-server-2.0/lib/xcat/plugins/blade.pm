@@ -884,7 +884,8 @@ sub process_request {
     }
     unless ($mac) { return };
 
-    unless ($macmap{$mac}) { 
+    #Only refresh the the cache when the request permits and no useful answer
+    unless ($request->{cacheonly}->[0] or $macmap{$mac}) { 
       process_request(\%invreq,\&fillresps);
     }
     unless ($macmap{$mac}) { 
