@@ -28,6 +28,7 @@ sub docfheaders {
   my @meat = grep(!/^#/,@$content);
   unless (grep(/^config \* {/,@meat)) {
     push @$content,"config * {\n";
+    push @$content,"  sslrequired yes;\n";
     push @$content,"  sslauthority /etc/xcat/ca/ca-cert.pem;\n";
     push @$content,"  sslcredentials /etc/xcat/cert/server-cred.pem;\n";
     push @$content,"}\n";
