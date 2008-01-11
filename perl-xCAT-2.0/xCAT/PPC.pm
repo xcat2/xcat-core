@@ -25,7 +25,8 @@ my %modules = (
   chvm      => "xCAT::PPCvm",
   rnetboot  => "xCAT::PPCboot",
   getmacs   => "xCAT::PPCmac",
-  reventlog => "xCAT::PPClog"
+  reventlog => "xCAT::PPClog",
+  rfsp      => "xCAT::PPCfsp"
 );
 
 ##########################################
