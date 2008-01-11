@@ -60,12 +60,6 @@ sub parse_args {
         return( usage() );
     }
     ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
-    }
-    ####################################
     # Check for "-" with no option
     ####################################
     if ( grep(/^-$/, @ARGV )) {
