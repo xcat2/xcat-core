@@ -2,6 +2,7 @@
 
 package xCAT::PPCfsp;
 use strict;
+use Getopt::Long;
 use LWP;
 use HTTP::Cookies;
 use HTML::Form;
@@ -12,17 +13,105 @@ use HTML::Form;
 ##########################################
 my %cmds = ( 
   rpower => {
-     state     => ["Power On/Off System", \&state],
-     on        => ["Power On/Off System", \&on],
-     off       => ["Power On/Off System", \&off],
-     reset     => ["System Reboot",       \&reset], 
-     boot      => ["Power On/Off System", \&boot] }, 
+     state     => ["Power On/Off System",    \&state],
+     on        => ["Power On/Off System",    \&on],
+     off       => ["Power On/Off System",    \&off],
+     reset     => ["System Reboot",          \&reset], 
+     boot      => ["Power On/Off System",    \&boot] }, 
   reventlog => { 
-     all       => ["Error/Event Logs",    \&all],
-     all_clear => ["Error/Event Logs",    \&all_clear],
-     entries   => ["Error/Event Logs",    \&entries],
-     clear     => ["Error/Event Logs",    \&clear] }
+     all       => ["Error/Event Logs",       \&all],
+     all_clear => ["Error/Event Logs",       \&all_clear],
+     entries   => ["Error/Event Logs",       \&entries],
+     clear     => ["Error/Event Logs",       \&clear] },
+  rfsp => {
+     sysdump   => ["System Dump",            \&sysdump],
+     spdump    => ["Service Processor Dump", \&spdump] },
 );
+
+
+
+##########################################################################
+# Parse the command line for options and operands
+##########################################################################
+sub parse_args {
+
+    my $request = shift;
+    my $args    = $request->{arg};
+    my @rfsp    = keys %{$cmds{rfsp}};
+    my %opt     = ();
+    my @VERSION = qw( 2.0 );
+
+    #############################################
+    # Responds with usage statement
+    #############################################
+    local *usage = sub {
+        return( [ $_[0],
+            "rfsp -h|--help",
+            "rfsp -v|--version",
+            "rfsp [-V|--verbose] noderange " . join( '|', @rfsp ),
+            "    -h   writes usage information to standard output",
+            "    -v   displays command version",
+            "    -V   verbose output" ]);
+    };
+    #############################################
+    # Process command-line arguments
+    #############################################
+    if ( !defined( $args )) {
+        return(usage( "No command specified" ));
+    }
+    #############################################
+    # Checks case in GetOptions, allows opts
+    # to be grouped (e.g. -vx), and terminates
+    # at the first unrecognized option.
+    #############################################
+    @ARGV = @$args;
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure( "bundling" );
+
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
+        return( usage() );
+    }
+    ####################################
+    # Option -v for version
+    ####################################
+    if ( exists( $opt{v} )) {
+        return( \@VERSION );
+    }
+    ####################################
+    # Option -h for Help
+    ####################################
+    if ( exists( $opt{h} )) {
+        return( usage() );
+    }
+    ####################################
+    # Option -v for version
+    ####################################
+    if ( exists( $opt{v} )) {
+        return( \@VERSION );
+    }
+    ####################################
+    # Check for "-" with no option
+    ####################################
+    if ( grep(/^-$/, @ARGV )) {
+        return(usage( "Missing option: -" ));
+    }
+    ####################################
+    # Unsupported commands
+    ####################################
+    my ($cmd) = grep(/^$ARGV[0]$/, @rfsp );
+    if ( !defined( $cmd )) {
+        return(usage( "Invalid command: $ARGV[0]" ));
+    }
+    ####################################
+    # Check for an extra argument
+    ####################################
+    shift @ARGV;
+    if ( defined( $ARGV[0] )) {
+        return(usage( "Invalid Argument: $ARGV[0]" ));
+    }
+    $request->{method} = $cmd;
+    return( \%opt );
+}
 
 
 
@@ -48,9 +137,7 @@ sub handler {
     # Disconnect from FSP 
     ##################################
     xCAT::PPCfsp::disconnect( $exp );
-
     return( [\%output] );
-
 }
 
 
@@ -221,8 +308,7 @@ sub process_cmd {
     # same across FSP models/firmware
     # versions.
     ##################################
-    my $url = "https://$server/cgi-bin/cgi";
-    my $res = $ua->post( $url,
+    my $res = $ua->post( "https://$server/cgi-bin/cgi",
          [form => "2",
           e    => "1" ]
     );
@@ -508,8 +594,7 @@ sub entries {
     ##################################
     # Get log entries
     ##################################
-    my $url = "https://$server/cgi-bin/cgi?form=$form";
-    my $res = $ua->get( $url );
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
   
     ##################################
     # Return error
@@ -541,6 +626,87 @@ sub entries {
         }
     }
     return( $result );
+}
+
+
+##########################################################################
+# Performs a Service Processor Dump
+##########################################################################
+sub spdump {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $form    = shift;
+    my $menu    = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+    my $dump_setting = 1;
+
+    ######################################
+    # Get Dump URL
+    ######################################
+    my $url = "https://$server/cgi-bin/cgi?form=$form";
+    my $res = $ua->get( $url );
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( $res->status_line );
+    }
+    ######################################
+    # Dump disabled - enable it 
+    ######################################
+    if ( $res->content =~ /<option selected value='0'>Disabled/ ) {
+        $res = $ua->post( "https://$server/cgi-bin/cgi",
+            [form  => $form,
+             bdmp  => "1",
+             save  => "Save settings" ]
+        );
+        ##################################
+        # Return error
+        ##################################
+        if ( !$res->is_success() ) {
+            return( $res->status_line );
+        }
+        if ( $res->content !~ /Operation completed successfully/ ) {
+            return( "Error enabling dump setting" );
+        }
+        ##################################
+        # Get Dump URL again
+        ##################################
+        $res = $ua->get( $url );
+
+        if ( !$res->is_success() ) {
+            return( $res->status_line );
+        }
+        ##################################
+        # Restore setting after dump 
+        ##################################
+        $dump_setting = 0;
+    }
+    if ( $res->content !~ /(Save settings and initiate dump)/ ) {
+        return( "'$1' button not found" );
+    }
+    ######################################
+    # We will lose conection after dump 
+    ######################################
+    $ua->timeout(5);
+
+    ######################################
+    # Send dump command 
+    ######################################
+    $res = $ua->post( "https://$server/cgi-bin/cgi",
+         [form => $form,
+          bdmp => $dump_setting,
+          dump => "Save settings and initiate dump"]
+    );
+    if ( !$res->is_success() ) {
+        if ( $res->code ne "500" ) {
+            return( $res->status_line );
+        }
+    }
+    return( "Success" );
 }
 
 
