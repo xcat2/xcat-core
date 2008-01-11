@@ -49,16 +49,16 @@ sub parse_args {
         return( usage() );
     }
     ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
-    }
-    ####################################
     # Option -h for Help
     ####################################
     if ( exists( $opt{h} )) {
         return( usage() );
+    }
+    ####################################
+    # Option -v for version
+    ####################################
+    if ( exists( $opt{v} )) {
+        return( \@VERSION );
     }
     ####################################
     # Check for "-" with no option
