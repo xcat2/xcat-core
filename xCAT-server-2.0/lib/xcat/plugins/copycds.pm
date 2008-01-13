@@ -51,7 +51,7 @@ sub process_request {
       return;
     }
     mkdir "/mnt/xcat";
-    if (system("mount -o loop $_ /mnt/xcat")) {
+    if (system("mount -o loop,ro $_ /mnt/xcat")) {
       $callback->({error=>"copycds was unable to examine $_ as an install image"});
       return;
     }
