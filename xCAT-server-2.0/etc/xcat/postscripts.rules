@@ -130,12 +130,12 @@ OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
 }
 
 # Setup rsh/ssh.
-OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.*  or OSVER=fedora.* {
 	remoteshell
 }
 
 # Enable sysctl
-OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* or OSVER=fedora.* {
 	enablesysreq
 }
 
