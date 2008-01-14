@@ -36,11 +36,11 @@ sub process_request {
   my $mactab = xCAT::Table->new('mac',-create=>1);
   $mactab->setNodeAttribs($node,{mac=>$mac});
   $mactab->close();
-  my %request = (
-    command => ['makedhcp'],
-    node => [$node]
-  );
-  $doreq->(\%request);
+  #my %request = (
+  #  command => ['makedhcp'],
+  #  node => [$node]
+  #);
+  #$doreq->(\%request);
   $req->{command}=['discovered'];
   $req->{noderange} = [$node];
   $doreq->($req); 

@@ -118,7 +118,7 @@ sub refresh_table {
   else { #Would warn here.. 
   }
   my %checked_pairs;
-  my @entries = $self->{switchtab}->getAllNodeAttribs(['port','switch']);
+  my @entries = $self->{switchtab}->getAllNodeAttribs(['node','port','switch']);
   #Build hash of switch port names per switch
   $self->{switches} = {};
   foreach $entry (@entries) {

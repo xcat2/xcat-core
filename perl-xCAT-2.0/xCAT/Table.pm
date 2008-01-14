@@ -7,6 +7,7 @@
 #but going for prototype
 #class xcattable
 package xCAT::Table;
+use Sys::Syslog;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -842,30 +843,33 @@ sub getNodeAttribs
     my $self    = shift;
     my $node    = shift;
     my @attribs = @{shift()};
-    my ($data, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
+    my $datum;
+    my @data = $self->getNodeAttribs_nosub($node, \@attribs);
+    #my ($datum, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
     if ($extra) { return undef; }    # return (undef,"Ambiguous query"); }
-    defined($data)
+    defined($data[0])
       || return undef;    #(undef,"No matching entry found in configuration");
     my $attrib;
+    foreach $datum (@data) {
     foreach $attrib (@attribs)
     {
 
-        if ($data->{$attrib} =~ /^\/.*\/.*\//)
+        if ($datum->{$attrib} =~ /^\/.*\/.*\//)
         {
-            my $exp = substr($data->{$attrib}, 1);
+            my $exp = substr($datum->{$attrib}, 1);
             chop $exp;
             my @parts = split('/', $exp, 2);
             $node =~ s/$parts[0]/$parts[1]/;
-            $data->{$attrib} = $node;
+            $datum->{$attrib} = $node;
         }
-        elsif ($data->{$attrib} =~ /^\|.*\|.*\|$/)
+        elsif ($datum->{$attrib} =~ /^\|.*\|.*\|$/)
         {
 
             #Perform arithmetic and only arithmetic operations in bracketed issues on the right.
             #Tricky part:  don't allow potentially dangerous code, only eval if
             #to-be-evaled expression is only made up of ()\d+-/%$
             #Futher paranoia?  use Safe module to make sure I'm good
-            my $exp = substr($data->{$attrib}, 1);
+            my $exp = substr($datum->{$attrib}, 1);
             chop $exp;
             my @parts = split('\|', $exp, 2);
             my $curr;
@@ -894,13 +898,14 @@ sub getNodeAttribs
                 ($curr, $next, $prev) =
                   extract_bracketed($retval, '()', qr/[^()]*/);
             }
-            $data->{$attrib} = $retval;
+            $datum->{$attrib} = $retval;
 
             #print Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
             #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
         }
     }
-    return $data;
+    }
+    return wantarray ? @data : $data[0];
 }
 
 #--------------------------------------------------------------------------
@@ -930,21 +935,26 @@ sub getNodeAttribs_nosub
     my $self   = shift;
     my $node   = shift;
     my $attref = shift;
-    my $data;
-    my $tent;
+    my @data;
+    my $datum;
+    my @tents;
     my $return = 0;
-    foreach (@$attref)
-    {
-        ($tent) = $self->getNodeAttribs_nosub_returnany($node, [$_]);
+    @tents = $self->getNodeAttribs_nosub_returnany($node, $attref);
+    foreach my $tent (@tents) {
+      $datum={};
+      foreach (@$attref)
+      {
         if ($tent and defined($tent->{$_}))
         {
-            $return = 1;
-            $data->{$_} = $tent->{$_};
+           $return = 1;
+           $datum->{$_} = $tent->{$_};
         }
+      }
+      push(@data,$datum);
     }
     if ($return)
     {
-        return $data;
+        return wantarray ? @data : $data[0];
     }
     else
     {
@@ -979,9 +989,11 @@ sub getNodeAttribs_nosub_returnany
     my $self    = shift;
     my $node    = shift;
     my @attribs = @{shift()};
+    my @results;
 
     #my $recurse = ((scalar(@_) == 1) ?  shift : 1);
-    my ($data, $extra) = $self->getAttribs({node => $node}, @attribs);
+    @results = $self->getAttribs({node => $node}, @attribs);
+    my $data = $results[0];
     if (!defined($data))
     {
         my ($nodeghash) =
@@ -994,11 +1006,14 @@ sub getNodeAttribs_nosub_returnany
         my $group;
         foreach $group (@nodegroups)
         {
-            ($data, $extra) = $self->getAttribs({node => $group}, @attribs);
+            @results = $self->getAttribs({node => $group}, @attribs);
+	    $data = $results[0];
             if ($data != undef)
             {
-                if ($data->{node}) { $data->{node} = $node; }
-                return ($data, $extra);
+                foreach (@results) {
+                   if ($_->{node}) { $_->{node} = $node; }
+                };
+                return @results;
             }
         }
     }
@@ -1006,7 +1021,7 @@ sub getNodeAttribs_nosub_returnany
     {
 
         #Don't need to 'correct' node attribute, considering result of the if that governs this code block?
-        return ($data, $extra);
+        return @results;
     }
     return undef;    #Made it here, config has no good answer
 }
@@ -1172,14 +1187,17 @@ sub getAllNodeAttribs
                 #    $attrs->{$_}=$attr->{$_};
                 #  }
                 #} else {
-                $attrs =
+                my @attrs =
                   $self->getNodeAttribs($_, $attribq)
                   ;    #Logic moves to getNodeAttribs
                        #}
                  #populate node attribute by default, this sort of expansion essentially requires it.
-                $attrs->{node} = $_;
+                #$attrs->{node} = $_;
+		foreach my $att (@attrs) {
+			$att->{node} = $_;
+		}
                 $donenodes{$_} = 1;
-                push @results, $attrs;    #$self->getNodeAttribs($_,@attribs);
+                push @results, @attrs;    #$self->getNodeAttribs($_,@attribs);
             }
         }
     }

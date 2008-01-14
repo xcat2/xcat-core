@@ -894,11 +894,11 @@ sub process_request {
     my $mactab = xCAT::Table->new('mac',-create=>1);
     $mactab->setNodeAttribs($macmap{$mac},{mac=>$mac});
     $mactab->close();
-    my %request = (
-      command => ['makedhcp'],
-      node => [$macmap{$mac}]
-      );
-    $doreq->(\%request);
+    #my %request = (
+    #  command => ['makedhcp'],
+    #  node => [$macmap{$mac}]
+    #  );
+    #$doreq->(\%request);
     $request->{command}=['discovered'];
     $request->{noderange} = [$macmap{$mac}];
     $doreq->($request);

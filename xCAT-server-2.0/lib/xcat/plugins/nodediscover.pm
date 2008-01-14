@@ -84,6 +84,7 @@ sub handled_commands {
 sub process_request {
   my $request = shift;
   my $callback = shift;
+  my $doreq = shift;
   my $node = $request->{node}->[0];
   my $ip = $request->{'!xcat_clientip'};
   openlog("xCAT node discovery",'','local0');
@@ -121,6 +122,11 @@ sub process_request {
        }
     }
     $mactab->setNodeAttribs($node,{mac=>$macstring});
+    my %request = (
+       command => ['makedhcp'],
+       node => [$node]
+    );
+    $doreq->(\%request);
   }
   #TODO: mac table?  on the one hand, 'the' definitive interface was determined earlier...
   #Delete the state it was in to make it traverse destiny once agoin
