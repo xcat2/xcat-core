@@ -3602,8 +3602,10 @@ sub parse_and_run_dsh
     if ($ENV{'XCATROOT'})
     {
        $::XCATROOT = $ENV{'XCATROOT'};  # setup xcatroot home directory
-    } else {
+    } elsif (-d '/opt/xcat') {
        $::XCATROOT = "/opt/xcat";
+    } else {
+       $::XCATROOT = "/usr";
     }
     
     # parse the arguments
