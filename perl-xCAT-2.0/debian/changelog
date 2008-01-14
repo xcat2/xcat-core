@@ -1,0 +1,7 @@
+perl-xcat (2.0-1) experimental; urgency=low
+
+  * Converted from .rpm format to .deb
+
+ -- Andy Wray <wray95u@ufred>  Thu, 10 Jan 2008 16:49:11 -0500
+
+- Made changes to make this work on AIX

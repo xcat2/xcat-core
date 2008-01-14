@@ -1,0 +1,12 @@
+Source: perl-xcat
+Section: admin
+Priority: extra
+Maintainer: Andy Wray <andywray@us.ibm.com>
+Build-Depends: debhelper (>= 5), dpatch
+
+Package: perl-xcat
+Architecture: all
+Depends: ${perl:Depends}, libdbi-perl, libexpect-perl, libsnmp-perl, libxml-simple-perl, libio-socket-ssl-perl, libio-socket-inet6-perl, libwww-perl
+Description: xCAT perl libraries
+ Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
+ Includes xCAT::Table, xCAT::NodeRange, among others.
