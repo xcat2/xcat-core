@@ -57,45 +57,54 @@ sub addnode {
   my $ent;
   my $mactab = xCAT::Table->new('mac');
   unless ($mactab) { return; } #TODO: report error sanely
-  $ent = $mactab->getNodeAttribs($node,[qw(mac interface)]);
+  $ent = $mactab->getNodeAttribs($node,[qw(mac)]);
   unless ($ent and $ent->{mac}) {
     return; #TODO: sane error
   }
-  my $inetn = inet_aton($node);
-  unless ($inetn) {
-    syslog("local1|err","xCAT DHCP plugin unable to resolve IP for $node");
-    return;
-  }
-  my $ip = inet_ntoa(inet_aton($node));;
-  print "Setting $node ($ip) to ".$ent->{mac}."\n";
-  print $omshell "new host\n";
-  print $omshell "set name = \"$node\"\n"; #Find and destroy conflict name
-  print $omshell "open\n";
-  print $omshell "remove\n";
-  print $omshell "close\n";
-  print $omshell "new host\n";
-  print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
-  print $omshell "open\n";
-  print $omshell "remove\n";
-  print $omshell "close\n";
-  print $omshell "new host\n";
-  print $omshell "set hardware-address = ".$ent->{mac}."\n"; #find and destroy mac conflict
-  print $omshell "open\n";
-  print $omshell "remove\n";
-  print $omshell "close\n";
-  print $omshell "new host\n";
-  print $omshell "set name = \"$node\"\n";
-  print $omshell "set hardware-address = ".$ent->{mac}."\n";
-  print $omshell "set hardware-type = 1\n";
-  print $omshell "set ip-address = $ip\n";
-  if ($statements) {
-      print $omshell "set statements = \"$statements\"\n";
+  my @macs = split(/\|/,$ent->{mac});
+  my $mace;
+  foreach $mace (@macs) {
+	my $mac;
+	my $hname;
+	($mac,$hname) = split (/!/,$mace);	
+	unless ($hname) { $hname = $node; } #Default to hostname equal to nodename
+        unless ($mac) { next; } #Skip corrupt format
+  	my $inetn = inet_aton($hname);
+  	unless ($inetn) {
+    		syslog("local1|err","xCAT DHCP plugin unable to resolve IP for $hname (for $node)");
+    		return;
+  	}
+        my $ip = inet_ntoa(inet_aton($hname));;
+  	print "Setting $node ($hname|$ip) to ".$ent->{mac}."\n";
+  	print $omshell "new host\n";
+  	print $omshell "set name = \"$hname\"\n"; #Find and destroy conflict name
+  	print $omshell "open\n";
+  	print $omshell "remove\n";
+  	print $omshell "close\n";
+  	print $omshell "new host\n";
+  	print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
+  	print $omshell "open\n";
+  	print $omshell "remove\n";
+  	print $omshell "close\n";
+  	print $omshell "new host\n";
+  	print $omshell "set hardware-address = ".$mac."\n"; #find and destroy mac conflict
+  	print $omshell "open\n";
+  	print $omshell "remove\n";
+  	print $omshell "close\n";
+  	print $omshell "new host\n";
+  	print $omshell "set name = \"$hname\"\n";
+  	print $omshell "set hardware-address = ".$mac."\n";
+  	print $omshell "set hardware-type = 1\n";
+  	print $omshell "set ip-address = $ip\n";
+  	if ($statements) {
+  	    print $omshell "set statements = \"$statements\"\n";
+  	 }
+  	print $omshell "create\n";
+  	unless (grep /#definition for host $node aka host $hname/,@dhcpconf) {
+  	  push @dhcpconf,"#definition for host $node aka host $hname can be found in the dhcpd.leases file\n";
+  	}
    }
-  print $omshell "create\n";
-  unless (grep /#definition for host $node/,@dhcpconf) {
-    push @dhcpconf,"#definition for host $node can be found in the dhcpd.leases file\n";
-  }
-}
+}	
 sub process_request {
   my $req = shift;
   $callback = shift;

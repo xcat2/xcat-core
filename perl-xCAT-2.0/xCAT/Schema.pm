@@ -67,7 +67,7 @@ package xCAT::Schema;
     keys => [qw(node)],
   },
   networks => {
-    cols => [qw(netname net mask gateway dhcpserver tftpserver nameservers dynamicrange comments disable)],
+    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers dynamicrange nodehostname comments disable)],
     keys => [qw(net mask)]
   },
   osimage  => {

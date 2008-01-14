@@ -55,7 +55,8 @@ while :; do
       for i in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1 "|" $5}'`; do 
         IFACE=`echo $i|awk -F'|' '{print $1}'`
         DRIVER=`ethtool -i $IFACE|grep ^driver|awk '{print $2}'`
-        echo "<mac>$DRIVER|$i</mac>"
+        ADDRESS=`ip address show dev $IFACE|grep 'inet '|awk '{print $2}'`
+        echo "<mac>$DRIVER|$i|$ADDRESS</mac>"
       done
       modprobe ipmi_devintf
       if modprobe ipmi_si; then

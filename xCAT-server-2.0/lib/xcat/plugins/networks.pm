@@ -35,12 +35,14 @@ sub process_request {
   foreach (@rtable) { #should be the lines to think about, do something with U, and something else with UG
     my $net;
     my $mask;
+    my $mgtifname;
     my $gw;
     my @ent = split /\s+/,$_;
     if ($ent[3] eq 'U') {
       $net = $ent[0];
       $mask = $ent[2];
-      $nettab->setAttribs({'net'=>$net},{'mask'=>$mask});
+      $mgtifname = $ent[7];
+      $nettab->setAttribs({'net'=>$net},{'mask'=>$mask,'mgtifname'=>$mgtifname});
       my $tent = $nettab->getAttribs({'net'=>$net},nameservers);
       unless ($tent and $tent->{nameservers}) {
         my $text = join ',',@nameservers;
