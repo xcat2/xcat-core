@@ -11,9 +11,9 @@ package xCAT_monitoring::templatemon;
 #-------------------------------------------------------------------------------
 =head1  xCAT_monitoring:templatemon  
 =head2    Package Description
-   This is a xCAT monitoring plugin template. To use it, first register the product
+   This is a xCAT monitoring plugin template. To use it, first register the plug-in
    name to the monitoring table use chtab command. For example:
-      chtab productname=XXX monitoring.nodestatmon=1 (0r 0). 
+      chtab name=xxxmon monitoring.nodestatmon=1 (0r 0). 
    Then change the package name from xCAT_monitoring::templatemon to xCAT_monitoring::xxxmon.
    Change the file name to xxxmon.pm and copy the file to /opt/xcat/lib/perl/xCAT_monitoring/
    directory.  

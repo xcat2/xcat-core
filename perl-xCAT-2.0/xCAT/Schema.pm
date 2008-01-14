@@ -112,9 +112,9 @@ package xCAT::Schema;
     required => [qw(tables filename)]
   },
   monitoring => {
-    cols => [qw(pname nodestatmon comments disable)],
-    keys => [qw(pname)],
-    required => [qw(pname)]
+    cols => [qw(name nodestatmon comments disable)],
+    keys => [qw(name)],
+    required => [qw(name)]
   }
   );
 
@@ -164,7 +164,7 @@ package xCAT::Schema;
   site =>    { attrs => [], attrhash => {}, objkey => 'master' },
 #site =>    { attrs => [], attrhash => {}, objkey => 'sitename' },
   policy => { attrs => [], attrhash => {}, objkey => 'priority' },
-  monitoring => { attrs => [], attrhash => {}, objkey => 'pname' },
+  monitoring => { attrs => [], attrhash => {}, objkey => 'name' },
   notification => { attrs => [], attrhash => {}, objkey => 'filename' }
 );
   
@@ -846,18 +846,17 @@ package xCAT::Schema;
 #     monitoring table    # 
 ###########################
 @{$defspec{monitoring}->{'attrs'}} = (
-        {attr_name => 'pname',
-                 tabentry => 'monitoring.pname',
-                 access_tabentry => 'monitoring.pname=attr:pname',
-                 description => 'The product short name of the 3rd party monitor
-ing software.'},
+        {attr_name => 'name',
+                 tabentry => 'monitoring.name',
+                 access_tabentry => 'monitoring.name=attr:name',
+                 description => 'The module name of the mornitoring plug-in.'},
         {attr_name => 'nodestatmon',
                  tabentry => 'monitoring.nodestatmon',
-                 access_tabentry => 'monitoring.pname=attr:pname',
-                 description => 'Specifies if the product is used to feed the node status to the xCAT cluster.  Any one of the following values indicates "yes":  y, Y, yes, Yes, YES, 1.  Any other value or blank (default), indicates "no". '},
+                 access_tabentry => 'monitoring.name=attr:name',
+                 description => 'Specifies if the monitoring plug-in is used to feed the node status to the xCAT cluster.  Any one of the following values indicates "yes":  y, Y, yes, Yes, YES, 1.  Any other value or blank (default), indicates "no". '},
         {attr_name => 'comments',
                  tabentry => 'monitoring.comments',
-                 access_tabentry => 'monitoring.pname=attr:pname',
+                 access_tabentry => 'monitoring.name=attr:name',
                  description => 'User comment.'},
 );
 

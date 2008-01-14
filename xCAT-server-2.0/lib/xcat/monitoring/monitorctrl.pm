@@ -3,7 +3,7 @@
 package xCAT_monitoring::monitorctrl;
 BEGIN
 {
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 
@@ -15,9 +15,9 @@ use xCAT::Utils;
 use xCAT::Client;
 use xCAT_plugin::notification;
 
-#the list store the names of the monitoring products and the file name and module names.
-#the names are stored in the "pname" column of the monitoring table. 
-#the format is: (productname=>[filename, modulename], ...)
+#the list store the names of the monitoring plug-in and the file name and module names.
+#the names are stored in the "name" column of the monitoring table. 
+#the format is: (name=>[filename, modulename], ...)
 %PRODUCT_LIST;
 
 #stores the module name and the method that is used for the node status monitoring
@@ -42,9 +42,8 @@ $masterpid;
 #--------------------------------------------------------------------------------
 =head3    start
       It is called by the xcatd when xcatd gets started.
-      It gets a list of monitoring product names from the "monitoring" 
-      table and caches the monitoring plug-in module names
-      with this info. It gets a list of nodes in the xcat cluster and,
+      It gets a list of monitoring plugin module names from the "monitoring" 
+      table. It gets a list of nodes in the xcat cluster and,
       in tern, calls the start() function of all the monitoring
       plug-in modules. It registers for nodelist
       tble changes. It queries each monitoring plug-in modules
@@ -67,13 +66,13 @@ sub start {
   }
   
   #print "masterpid=$masterpid\n";
-  # get the product list from the monitoring table
+  # get the plug-in list from the monitoring table
   refreshProductList();
 
   #setup signal 
   $SIG{USR2}=\&handleMonSignal;
 
-  #start monitoring for all the registered productes in the minitoring table.
+  #start monitoring for all the registered plug-ins in the monitoring table.
   #better span a process so that it will not block the xcatd.
   my $pid;
   if ($pid=fork()) {#parent process 
@@ -118,7 +117,7 @@ sub start {
 
 =head3  handleSignal
       It is called the signal is received. It then update the cache with the
-      latest data in the monitoring table and start/stop the products for monitoring
+      latest data in the monitoring table and start/stop the plug-ins for monitoring
       accordingly.
     Arguments:
       none.
@@ -140,12 +139,12 @@ sub handleMonSignal {
   foreach (@old_products) { $summary{$_}=-1;}
   foreach (keys %PRODUCT_LIST) { $summary{$_}++;}
 
-  #start/stop products accordingly
+  #start/stop plug-ins accordingly
   my %ret=();
   foreach (keys %summary) {
-    if ($summary{$_}==-1) { #product deleted
+    if ($summary{$_}==-1) { #plug-in deleted
       %ret=stopMonitoring(($_));
-    } elsif ($summary{$_}==1) { #product added
+    } elsif ($summary{$_}==1) { #plug-in added
       my %ret1=startMonitoring(($_));
       %ret=(%ret, %ret1);
     }
@@ -235,16 +234,15 @@ sub stop {
 
 #--------------------------------------------------------------------------------
 =head3    startMonitoring
-      It takes a list of monitoring product short names as an input and start
+      It takes a list of monitoring plug-in names as an input and start
       the monitoring process for them.
     Arguments:
-       product_names -- an array of product names to be started. If non is specified, 
-         all the products registered in the monitoring table, under the "monitoring" key,
-         will be used.  
+       names -- an array of monitoring plug-in module names to be started. If non is specified, 
+         all the plug-in modules registered in the monitoring table will be used.  
     Returns:
-        A hash table keyed by the product names. The value is an array pointer 
+        A hash table keyed by the plug-in names. The value is an array pointer 
         pointer to a return code and  message pair. For example:
-        {RMC=>[0, ""], Ganglia=>[1, "something is wrong"]}
+        {rmcmon=>[0, ""], gangliamin=>[1, "something is wrong"]}
 
 =cut
 #--------------------------------------------------------------------------------
@@ -288,10 +286,10 @@ sub startMonitoring {
 
 #--------------------------------------------------------------------------------
 =head3    startNodeStatusMonitoring
-      It starts the given product for node status monitoring. 
+      It starts the given plug-in for node status monitoring. 
       If no product is specified, use the one in the monitoring table.
     Arguments:
-       product_name -- a product name to be started for node status monitoring.
+       name -- name of the mornitoring plug-in module to be started for node status monitoring.
         If none is specified, use the one in the monitoring table that has the
         "nodestatmon" column set to be "1", or "Yes".
     Returns:
@@ -327,7 +325,7 @@ sub startNodeStatusMonitoring {
     }
   }
   else {
-    return (0, "No product is specified for node status monitoring.");
+    return (0, "No plug-in is specified for node status monitoring.");
   }
 }
 
@@ -335,16 +333,15 @@ sub startNodeStatusMonitoring {
 
 #--------------------------------------------------------------------------------
 =head3    stopMonitoring
-      It takes a list of monitoring product short names as an input and stop
+      It takes a list of monitoring plug-in names as an input and stop
       the monitoring process for them.
     Arguments:
-       product_names -- an array of product names to be stopped. If non is specified,
-         all the products registered in the monitoring table, under "monitoring" key,
-         will be stopped.
+       names -- an array of monitoring plug-in names to be stopped. If non is specified,
+         all the plug-ins registered in the monitoring table will be stopped.
     Returns:
-        A hash table keyed by the product names. The value is ann array pointer
+        A hash table keyed by the plug-in names. The value is ann array pointer
         pointer to a return code and  message pair. For example:
-        {RMC=>[0, ""], Ganglia=>[1, "something is wrong"]}
+        {rmcmon=>[0, ""], gangliamon=>[1, "something is wrong"]}
 
 =cut
 #--------------------------------------------------------------------------------
@@ -358,7 +355,7 @@ sub stopMonitoring {
 
   my %ret=();
 
-  #stop each product from monitoring the xcat cluster
+  #stop each plug-in from monitoring the xcat cluster
   my $count=0;
   foreach(@product_names) {
     my $aRef=$PRODUCT_LIST{$_};
@@ -367,8 +364,8 @@ sub stopMonitoring {
       $module_name=$aRef->[1];
     }
     else {
-      my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($_) . "mon.pm";
-      $module_name="xCAT_monitoring::" . lc($_) . "mon";
+      my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$_.pm";
+      $module_name="xCAT_monitoring::$_";
       #load the module in memory
       eval {require($file_name)};
       if ($@) {   
@@ -393,10 +390,10 @@ sub stopMonitoring {
 
 #--------------------------------------------------------------------------------
 =head3    stopNodeStatusMonitoring
-      It stops the given product for node status monitoring. 
-      If no product is specified, use the one in the monitoring table.
+      It stops the given plug-in for node status monitoring. 
+      If no plug-in is specified, use the one in the monitoring table.
     Arguments:
-       product_name -- a product name to be stoped for node status monitoring.
+       name -- name of the monitoring plu-in module to be stoped for node status monitoring.
         If none is specified, use the one in the monitoring table that has the
         "nodestatmon" column set to be "1", or "Yes".
     Returns:
@@ -418,8 +415,8 @@ sub stopNodeStatusMonitoring {
       my $aRef = $PRODUCT_LIST{$pname};
       $module_name=$aRef->[1];
     } else {
-      my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($pname) . "mon.pm";
-      $module_name="xCAT_monitoring::" . lc($pname) . "mon";
+      my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+      $module_name="xCAT_monitoring::$pname";
       #load the module in memory
       eval {require($file_name)};
       if ($@) {   
@@ -443,9 +440,9 @@ sub stopNodeStatusMonitoring {
       It is called by the NotifHander module
       when the nodelist or the monitoring tables get changed. If a
       node is added or removed from the nodelist table, this
-      function will inform all the monitoring plug-in modules. If a product
+      function will inform all the monitoring plug-in modules. If a plug-in
       is added or removed from the monitoring table. this function will start
-      or stop product for monitoing the xCAT cluster.  
+      or stop the plug-in for monitoing the xCAT cluster.  
     Arguments:
       action - table action. It can be d for rows deleted, a for rows added
                     or u for rows updated.
@@ -529,7 +526,7 @@ sub processNodelistTableChanges {
       push(@nodenames, [$new_data->{node}, $nodetype, $groups]);
       my $hierarchy=getMonServerWithInfo(\@nodenames);
 
-      #call each product to add the nodes into the monitoring domain
+      #call each plug-in to add the nodes into the monitoring domain
       foreach(keys(%PRODUCT_LIST)) {
         my $aRef=$PRODUCT_LIST{$_};
         my $module_name=$aRef->[1];
@@ -563,7 +560,7 @@ sub processNodelistTableChanges {
         #print "monitorctrl:  nodenames=@nodenames\n";
         my $hierarchy=getMonServerWithInfo(\@nodenames);        
 
-        #call each product to remove the nodes into the monitoring domain
+        #call each plug-in to remove the nodes into the monitoring domain
         foreach(keys(%PRODUCT_LIST)) {
           my $aRef=$PRODUCT_LIST{$_};
           my $module_name=$aRef->[1];
@@ -580,8 +577,8 @@ sub processNodelistTableChanges {
 #--------------------------------------------------------------------------------
 =head3    processMonitoringTableChanges
       It is called when the monitoring table gets changed.
-      When a product is added to or removed from the monitoring table, this
-      function will start the product to monitor the xCAT cluster or stop the product
+      When a plug-in is added to or removed from the monitoring table, this
+      function will start the plug-in to monitor the xCAT cluster or stop the plug-in
       from monitoring the xCAT cluster accordingly. 
     Arguments:
       See processTableChanges.
@@ -682,9 +679,9 @@ sub getNodeStatus {
 
 #--------------------------------------------------------------------------------
 =head3    refreshProductList
-      This function goes to the monitoring table to get the product names 
+      This function goes to the monitoring table to get the plug-in names 
       and stores the value into the PRODUCT_LIST cache. The cache also stores
-      the monitoring plugin module name and file name for each product. This function
+      the monitoring plugin module name and file name for each plug-in. This function
       also load the modules in. 
  
     Arguments:
@@ -700,23 +697,23 @@ sub refreshProductList {
   %PRODUCT_LIST=();
   $NODESTAT_MON_NAME="";
 
-  #get the monitoring product list from the monitoring table
+  #get the monitoring plug-in list from the monitoring table
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my @tmp1=$table->getAllAttribs(('pname','nodestatmon'));
+    my @tmp1=$table->getAllAttribs(('name','nodestatmon'));
     if (defined(@tmp1) && (@tmp1 > 0)) {
       foreach(@tmp1) {
-        my $pname=$_->{pname};
+        my $pname=$_->{name};
 
-        #get the node status monitoring product name
+        #get the node status monitoring plug-in name
         my $nodestatmon=$_->{nodestatmon};
         if ((!$NODESTAT_MON_NAME) && ($nodestatmon =~ /1|Yes|yes|YES|Y|y/)) {
            $NODESTAT_MON_NAME=$pname;
         }
 
         #find out the monitoring plugin file and module name for the product
-        $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/" . lc($pname) . "mon.pm";
-        $module_name="xCAT_monitoring::" . lc($pname) . "mon";
+        $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+        $module_name="xCAT_monitoring::" . $pname;
         #load the module in memory
         eval {require($file_name)};
         if ($@) {   
@@ -949,12 +946,12 @@ sub getMonServer {
 
 #--------------------------------------------------------------------------------
 =head3    nodeStatMonName
-      This function returns the current product name that is assigned for monitroing
+      This function returns the current monitoring plug-in name that is assigned for monitroing
       the node status for xCAT cluster.  
      Arguments:
         none
     Returns:
-        productname.
+        plug-in name.
 =cut
 #--------------------------------------------------------------------------------
 sub nodeStatMonName {
