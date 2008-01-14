@@ -131,8 +131,16 @@ sub handleMonSignal {
   my @old_products=keys(%PRODUCT_LIST);
   my $old_nodestatmon=$NODESTAT_MON_NAME;
   
+  #print "old_products=@old_products.\n";
+  #print "old_nodestatmon=$old_nodestatmon.\n";
   #get new cache values, it also loads the newly added modules
   refreshProductList();
+
+  #my @new_products=keys(%PRODUCT_LIST);
+  #my $new_nodestatmon=$NODESTAT_MON_NAME;
+  #print "new_products=@new_products.\n";
+  #print "new_nodestatmon=$new_nodestatmon.\n";
+
 
   #check what have changed 
   my %summary;
@@ -143,8 +151,10 @@ sub handleMonSignal {
   my %ret=();
   foreach (keys %summary) {
     if ($summary{$_}==-1) { #plug-in deleted
+	print "got here stop $_.\n";
       %ret=stopMonitoring(($_));
     } elsif ($summary{$_}==1) { #plug-in added
+      print "got here start $_.\n";
       my %ret1=startMonitoring(($_));
       %ret=(%ret, %ret1);
     }
@@ -169,7 +179,7 @@ sub handleMonSignal {
   foreach(keys(%ret)) {
     my $retstat=$ret{$_}; 
     print "$_: @$retstat\n";
-  } 
+  }
 }
 
 
@@ -275,7 +285,7 @@ sub startMonitoring {
       my @ret1 = ${$module_name."::"}{start}->($monservers);
       $ret{$_}=\@ret1;
     } else {
-       $ret{$_}=[1, "Monitoring plug-in module for $_ cannot be found."];
+       $ret{$_}=[1, "Monitoring plug-in module $_ is not registered."];
     }
   }
 
@@ -321,7 +331,7 @@ sub startNodeStatusMonitoring {
       }
     }
     else {
-      return (1, "The monitoring plug-in module for $pname cannot be found.");
+      return (1, "The monitoring plug-in module $pname is not registered.");
     }
   }
   else {
@@ -373,10 +383,10 @@ sub stopMonitoring {
         $ret{$_}=\@ret3;
         next;
       }
-      else {
-        my @a=($file_name, $module_name);
-        $PRODUCT_LIST{$pname}=\@a;
-      }
+      #else {
+      #  my @a=($file_name, $module_name);
+      #  $PRODUCT_LIST{$pname}=\@a;
+      #}
     }      
     #stop monitoring
     my @ret2 = ${$module_name."::"}{stop}->();
@@ -422,10 +432,10 @@ sub stopNodeStatusMonitoring {
       if ($@) {   
         return (1, "The file $file_name cannot be located or has compiling errors.\n"); 
       }
-      else {
-        my @a=($file_name, $module_name);
-        $PRODUCT_LIST{$pname}=\@a;
-      }
+      #else {
+      #  my @a=($file_name, $module_name);
+      #  $PRODUCT_LIST{$pname}=\@a;
+      #}
     }
     
     my @ret2 = ${$module_name."::"}{stopNodeStatusMon}->(); 
@@ -713,7 +723,7 @@ sub refreshProductList {
 
         #find out the monitoring plugin file and module name for the product
         $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
-        $module_name="xCAT_monitoring::" . $pname;
+        $module_name="xCAT_monitoring::$pname";
         #load the module in memory
         eval {require($file_name)};
         if ($@) {   

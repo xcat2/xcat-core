@@ -849,7 +849,7 @@ package xCAT::Schema;
         {attr_name => 'name',
                  tabentry => 'monitoring.name',
                  access_tabentry => 'monitoring.name=attr:name',
-                 description => 'The module name of the mornitoring plug-in.'},
+                 description => 'The name of the mornitoring plug-in module.'},
         {attr_name => 'nodestatmon',
                  tabentry => 'monitoring.nodestatmon',
                  access_tabentry => 'monitoring.name=attr:name',
