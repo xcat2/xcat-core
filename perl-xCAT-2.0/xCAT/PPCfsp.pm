@@ -24,6 +24,7 @@ my %cmds = (
      entries   => ["Error/Event Logs",       \&entries],
      clear     => ["Error/Event Logs",       \&clear] },
   rfsp => {
+     iocap     => ["I/O Adapter Enlarged Capacity", \&iocap],
      autopower => ["Auto Power Restart",     \&autopower],
      sysdump   => ["System Dump",            \&sysdump],
      spdump    => ["Service Processor Dump", \&spdump] },
@@ -49,11 +50,12 @@ sub parse_args {
         return( [ $_[0],
             "rfsp -h|--help",
             "rfsp -v|--version",
-            "rfsp [-V|--verbose] noderange -a [enable|disable]|".join('|',@rsp),
+            "rfsp [-V|--verbose] noderange -a [enable|disable]|-i [enable|disable]|".join('|',@rsp),
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
             "    -V   verbose output",
-            "    -a   set/get auto power restart option" ]);
+            "    -a   set/get auto power restart option",
+            "    -i   set/get I/O adapter enlarged capacity" ]);
     };
     #############################################
     # Process command-line arguments
@@ -71,7 +73,7 @@ sub parse_args {
     Getopt::Long::Configure( "bundling" );
     $request->{method} = undef;
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version a) )) {
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version a i) )) {
         return( usage() );
     }
     ####################################
@@ -93,22 +95,38 @@ sub parse_args {
         return(usage( "Missing option: -" ));
     }
     ####################################
-    # Option -a for Auto Power Restart
+    # Option -a for Auto Power Restart 
     ####################################
     if ( exists( $opt{a} )) {
-        $request->{method} = "autopower";     
-
+        $request->{method} = "autopower"     
+    }
+    ####################################
+    # Option -i for I/O adapter capacity 
+    ####################################
+    if ( exists( $opt{i} )) {
+        $request->{method} = "iocap"     
+    }
+    ####################################
+    # Mutually exclusive arguments 
+    ####################################
+    if (exists( $opt{a} ) && exists( $opt{i} )) {
+        return( usage() );
+    } 
+    ####################################
+    # Set options command  
+    ####################################
+    if ( defined( $request->{method} )) { 
         if ( defined( $ARGV[0] )) {
             if ( $ARGV[0] !~ /^enable|disable$/ ) {
-                return(usage( "Invalid -a flag argument: $ARGV[0]" ));
+                return(usage( "Invalid flag argument: $ARGV[0]" ));
             }
             $request->{op} = $ARGV[0];     
         }
     }
     ####################################
-    # Unsupported commands
+    # Check for unsupported commands
     ####################################
-    if ( !defined( $request->{method} )) { 
+    else {
         my ($cmd) = grep(/^$ARGV[0]$/, @rsp );
         if ( !defined( $cmd )) {
             return(usage( "Invalid command: $ARGV[0]" ));
@@ -637,22 +655,41 @@ sub entries {
 }
 
 
+
+
 ##########################################################################
-# Gets/Sets Auto Power Restart option
+# Gets/Sets I/O Adapter Enlarged Capacity
 ##########################################################################
+sub iocap {
+    return( option( @_,"pe" ));
+}
+
+
+##########################################################################
+# Gets/Sets Auto Power Restart 
+##########################################################
 sub autopower {
+    return( option( @_,"apor" ));
+}
+
+
+##########################################################################
+# Gets/Sets options 
+##########################################################################
+sub option {
 
     my $exp     = shift;
     my $request = shift;
     my $form    = shift;
     my $menu    = shift;
+    my $option  = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
     my $op      = $request->{op};
     my $url     = "https://$server/cgi-bin/cgi?form=$form";
 
     ######################################
-    # Get Auto Power Restart 
+    # Get option URL
     ######################################
     if ( !defined( $op )) {
         my $res = $ua->get( $url );
@@ -669,12 +706,12 @@ sub autopower {
         return( "Unknown" );
     }
     ######################################
-    # Set Auto Power Restart 
+    # Set option
     ######################################
     my $res = $ua->post( "https://$server/cgi-bin/cgi",
-        [form   => $form,
-         apor   => ($op eq "disable") ? "0" : "1",
-         submit => "Save settings" ]
+        [form    => $form,
+         $option => ($op eq "disable") ? "0" : "1",
+         submit  => "Save settings" ]
     );
     ######################################
     # Return error
@@ -683,7 +720,7 @@ sub autopower {
         return( $res->status_line );
     }
     if ( $res->content !~ /Operation completed successfully/ ) {
-        return( "Error setting Auto Power Restart" );
+        return( "Error setting option" );
     }
     return( "Success" );
 }
