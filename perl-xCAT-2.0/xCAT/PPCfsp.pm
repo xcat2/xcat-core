@@ -24,6 +24,7 @@ my %cmds = (
      entries   => ["Error/Event Logs",       \&entries],
      clear     => ["Error/Event Logs",       \&clear] },
   rfsp => {
+     autopower => ["Auto Power Restart",     \&autopower],
      sysdump   => ["System Dump",            \&sysdump],
      spdump    => ["Service Processor Dump", \&spdump] },
 );
@@ -37,7 +38,7 @@ sub parse_args {
 
     my $request = shift;
     my $args    = $request->{arg};
-    my @rfsp    = keys %{$cmds{rfsp}};
+    my @rsp     = qw(spdump sysdump);
     my %opt     = ();
     my @VERSION = qw( 2.0 );
 
@@ -48,10 +49,11 @@ sub parse_args {
         return( [ $_[0],
             "rfsp -h|--help",
             "rfsp -v|--version",
-            "rfsp [-V|--verbose] noderange " . join( '|', @rfsp ),
+            "rfsp [-V|--verbose] noderange -a [enable|disable]|".join('|',@rsp),
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
-            "    -V   verbose output" ]);
+            "    -V   verbose output",
+            "    -a   set/get auto power restart option" ]);
     };
     #############################################
     # Process command-line arguments
@@ -67,8 +69,9 @@ sub parse_args {
     @ARGV = @$args;
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
+    $request->{method} = undef;
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version a) )) {
         return( usage() );
     }
     ####################################
@@ -90,11 +93,27 @@ sub parse_args {
         return(usage( "Missing option: -" ));
     }
     ####################################
+    # Option -a for Auto Power Restart
+    ####################################
+    if ( exists( $opt{a} )) {
+        $request->{method} = "autopower";     
+
+        if ( defined( $ARGV[0] )) {
+            if ( $ARGV[0] !~ /^enable|disable$/ ) {
+                return(usage( "Invalid -a flag argument: $ARGV[0]" ));
+            }
+            $request->{op} = $ARGV[0];     
+        }
+    }
+    ####################################
     # Unsupported commands
     ####################################
-    my ($cmd) = grep(/^$ARGV[0]$/, @rfsp );
-    if ( !defined( $cmd )) {
-        return(usage( "Invalid command: $ARGV[0]" ));
+    if ( !defined( $request->{method} )) { 
+        my ($cmd) = grep(/^$ARGV[0]$/, @rsp );
+        if ( !defined( $cmd )) {
+            return(usage( "Invalid command: $ARGV[0]" ));
+        }
+        $request->{method} = $cmd;
     }
     ####################################
     # Check for an extra argument
@@ -103,7 +122,6 @@ sub parse_args {
     if ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
     }
-    $request->{method} = $cmd;
     return( \%opt );
 }
 
@@ -131,7 +149,9 @@ sub handler {
     # Disconnect from FSP 
     ##################################
     xCAT::PPCfsp::disconnect( $exp );
+
     return( [\%output] );
+
 }
 
 
@@ -241,14 +261,8 @@ sub connect {
     ##############################
     # Check for specific failures
     ##############################
-    my @error = ( 
-        "Invalid user ID or password",
-        "Too many users"
-    );
-    foreach ( @error ) {
-        if ( $res->content =~ /$_/i ) {
-            return( $lwp_log.$_ );
-        }
+    if ( $res->content =~ /(Invalid user ID or password|Too many users)/ ) {
+        return( $lwp_log.$1 );
     }
     return( $lwp_log."Logon failure" );
 
@@ -620,6 +634,58 @@ sub entries {
         }
     }
     return( $result );
+}
+
+
+##########################################################################
+# Gets/Sets Auto Power Restart option
+##########################################################################
+sub autopower {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $form    = shift;
+    my $menu    = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+    my $op      = $request->{op};
+    my $url     = "https://$server/cgi-bin/cgi?form=$form";
+
+    ######################################
+    # Get Auto Power Restart 
+    ######################################
+    if ( !defined( $op )) {
+        my $res = $ua->get( $url );
+
+        ##################################
+        # Return error
+        ##################################
+        if ( !$res->is_success() ) {
+            return( $res->status_line );
+        }
+        if ( $res->content =~ /<option selected value='\d+'>(Enabled|Disabled)</ ) {
+            return( $1 );
+        }
+        return( "Unknown" );
+    }
+    ######################################
+    # Set Auto Power Restart 
+    ######################################
+    my $res = $ua->post( "https://$server/cgi-bin/cgi",
+        [form   => $form,
+         apor   => ($op eq "disable") ? "0" : "1",
+         submit => "Save settings" ]
+    );
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( $res->status_line );
+    }
+    if ( $res->content !~ /Operation completed successfully/ ) {
+        return( "Error setting Auto Power Restart" );
+    }
+    return( "Success" );
 }
 
 
