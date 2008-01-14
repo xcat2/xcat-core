@@ -28,6 +28,31 @@ sub delnode {
   my $node = shift;
   my $inetn = inet_aton($node);
 
+  my $mactab = xCAT::Table->new('mac');
+  if ($mactab) { $ent = $mactab->getNodeAttribs($node,[qw(mac)]); }
+  if ($ent and $ent->{mac}) {
+  my @macs = split(/\|/,$ent->{mac});
+  my $mace;
+  foreach $mace (@macs) {
+	my $mac;
+	my $hname;
+	($mac,$hname) = split (/!/,$mace);	
+  	print $omshell "new host\n";
+  	print $omshell "set name = \"$hname\"\n"; #Find and destroy conflict name
+  	print $omshell "open\n";
+  	print $omshell "remove\n";
+  	print $omshell "close\n";
+  	if ($inetn) {
+  	  my $ip = inet_ntoa(inet_aton($hname));;
+  	  unless ($ip) { return; }
+  	  print $omshell "new host\n";
+  	  print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
+  	  print $omshell "open\n";
+  	  print $omshell "remove\n";
+  	  print $omshell "close\n";
+  	}
+  }
+  }
   print $omshell "new host\n";
   print $omshell "set name = \"$node\"\n"; #Find and destroy conflict name
   print $omshell "open\n";
@@ -75,7 +100,7 @@ sub addnode {
     		return;
   	}
         my $ip = inet_ntoa(inet_aton($hname));;
-  	print "Setting $node ($hname|$ip) to ".$ent->{mac}."\n";
+  	syslog("local4|err","Setting $node ($hname|$ip) to ".$mac);
   	print $omshell "new host\n";
   	print $omshell "set name = \"$hname\"\n"; #Find and destroy conflict name
   	print $omshell "open\n";
