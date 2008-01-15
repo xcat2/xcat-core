@@ -125,6 +125,7 @@ sub addnode {
   	    print $omshell "set statements = \"$statements\"\n";
   	 }
   	print $omshell "create\n";
+  	print $omshell "close\n";
   	unless (grep /#definition for host $node aka host $hname/,@dhcpconf) {
   	  push @dhcpconf,"#definition for host $node aka host $hname can be found in the dhcpd.leases file\n";
   	}
