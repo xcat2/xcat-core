@@ -36,6 +36,7 @@ my %usage = (
     "rscan" => "Usage: rscan <noderange> [-w][-x|-z]"
 );
 my %macmap; #Store responses from rinv for discovery
+my $macmaptimestamp; #reflect freshness of cache
 my $mmprimoid = '1.3.6.1.4.1.2.3.51.2.22.5.1.1.4';#mmPrimary
 my $beaconoid = '1.3.6.1.4.1.2.3.51.2.2.8.2.1.1.11'; #ledBladeIdentity
 my $powerstatoid = '1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.4';#bladePowerState
@@ -885,7 +886,13 @@ sub process_request {
     unless ($mac) { return };
 
     #Only refresh the the cache when the request permits and no useful answer
-    unless ($request->{cacheonly}->[0] or $macmap{$mac}) { 
+    if ($macmaptimestamp < (time() - 300)) { #after five minutes, invalidate cache
+       %macmap = ();
+    }
+    
+    unless ($request->{cacheonly}->[0] or $macmap{$mac} or $macmaptimestamp > (time() - 20)) { #do not refresh cache if requested not to, if it has an entry, or is recent
+      %macmap = ();
+      $macmaptimestamp=time();
       process_request(\%invreq,\&fillresps);
     }
     unless ($macmap{$mac}) { 

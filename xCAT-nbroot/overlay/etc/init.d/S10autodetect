@@ -79,3 +79,5 @@ if [ -d /proc/device-tree/lhea* ]; then
             done
 fi
 
+#Give 10 seconds for things to quiesce.
+sleep 10
