@@ -21,6 +21,26 @@ sub handled_commands {
 # Process request from xCat daemon
 ##########################################################################
 sub process_request {
+
+    #######################################################
+    # IO::Socket::SSL apparently does not work with LWP.pm
+    # When used, POST/GETs return immediately with:
+    #     500 Can't connect to <nodename>:443 (Timeout)
+    #
+    # Net::HTTPS, used by LWP::Protocol::https::Socket,
+    # uses either IO::Socket::SSL or Net::SSL. It chooses
+    # by looking to see if $IO::Socket::SSL::VERSION
+    # is defined (i.e. the module's already loaded) and
+    # uses that if so. If not, it first tries Net::SSL,
+    # then IO::Socket::SSL only if that cannot be loaded.
+    #######################################################
+    eval { require Net::SSL };
+    if ( $@ ) {
+        my $callback = $_[1];
+        $callback->( {data=>[$@]} );
+        return(1);
+    }
+    $IO::Socket::SSL::VERSION = undef;
     xCAT::PPC::process_request(__PACKAGE__,@_);
 }
 
