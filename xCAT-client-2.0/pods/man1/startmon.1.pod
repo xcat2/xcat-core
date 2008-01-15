@@ -1,0 +1,62 @@
+=head1 NAME
+ 
+B<startmon> - Starts a list of plug-in modules  to monitor the xCAT cluster.
+
+  
+ 
+=head1 SYNOPSIS
+ 
+I<startmon [-h| --help]>
+
+I<startmon  [-v| --version]>
+
+
+I<startmon I<name>[,I<name>...]>
+
+
+=head1 DESCRIPTION
+
+This command is used to manually start a list of monitoring plug-in modules to monitor the xCAT cluster.  A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. The plug-in modules must have been registered in the xCAT I<monitoring> database table. A registered plug-in module is usually automatically started by xCAT when xcatd starts or when it is first registered.  
+This command is used only when the user stopped it manually using the I<stopmon> command and would like to restart it again.       
+
+=head1 Parameters
+
+I<name> is the name of the monitoring plug-in module in the monitoring table.
+
+=head1 OPTIONS
+
+
+B<-h | -help>          Display usage message.
+
+B<-v | -version >      Command Version. 
+
+B<-V | -verbose>       Verbose output. 
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To start gangliamon plug-in module (which interacts with Ganglia monitoring software)to monitor xCAT cluster, enter:
+
+  startmon gangliamon
+
+Please note that gangliamon  must have been registered in the xCAT I<monitoring> table. For a list of registered the monitoring software, use command tabdump monitoring. Refer to "monitoring plug-in infrastructure" in xCAT documents on how to register a 3rd party software to monitor xCAT cluster. 
+
+=head1 FILES 
+ 
+/opt/xcat/bin/startmon
+
+
+=head1 NOTES
+
+See stopmon
+
+This command is part of the xCAT software product.
+
+
+ 
