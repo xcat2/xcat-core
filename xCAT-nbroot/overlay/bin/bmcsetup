@@ -26,3 +26,18 @@ ipmitool user set password 2 $BMCPW
 echo "Set up following user table: "
 ipmitool user list 1
 
+
+echo "Enabling Channel 1: "
+ipmitool raw 0x6 0x40 0x1 0x42 0x44
+ipmitool raw 0x6 0x40 0x1 0x82 0x84
+
+echo "Enabling ARP responses: "
+ipmitool lan set 1 arp respond on
+
+echo "Enabling IPMI v 1.5 MD5 LAN access:"
+ipmitool lan set 1 auth admin md5
+
+echo "Enabling IPMI v 2.0 LAN access:"
+ipmitool lan set 1 cipher_privs uuaaXXXXXXXXXXX
+
+
