@@ -189,6 +189,9 @@ ALL {
 	updateflag.awk $MASTER 3002
 }
 
+NODERANGE=iscsi {
+	uploadboot
+}
 # hardcode networking
 #OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
 #	hardnis

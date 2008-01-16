@@ -45,6 +45,8 @@ sub writescript {
   }
   print $script "MASTER=".$master."\n";
   print $script "export MASTER\n";
+  print $script "NODE=$node\n";
+  print $script "export NODE\n";
   my $et = $typetab->getNodeAttribs($node,['os','arch']);
   unless ($et and $et->{'os'} and $et->{'arch'}) {
     die "No os/arch setting in nodetype table for $node";

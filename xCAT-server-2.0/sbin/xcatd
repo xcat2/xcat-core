@@ -6,6 +6,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
+use File::Path;
 
 use IO::Socket::SSL;
 if (xCAT::Utils->isLinux()) {
@@ -135,6 +136,7 @@ if (xCAT::Utils->isLinux()) {
         close($conn);
         next;
     }
+	my $tftpdir = "/tftpboot/";
     eval {
       alarm(2);
       print $conn "ready\n";
@@ -154,7 +156,40 @@ if (xCAT::Utils->isLinux()) {
             plugin_command(\%request,undef,\&convey_response);
             exit(0);
           }
-        }
+        } elsif ($text =~ /^unlocktftpdir/) { #TODO: only nodes in install state should be allowed
+            close($conn);
+            mkpath("$tftpdir/xcat/$node");
+	    chmod 01777,"$tftpdir/xcat/$node";
+	    chmod 0666,glob("$tftpdir/xcat/$node/*");
+	} elsif ($text =~ /locktftpdir/) {
+	    chmod 0755,"$tftpdir/xcat/$node";
+	    chmod 0644,glob("$tftpdir/xcat/$node/*");
+	} elsif ($text =~ /^setnetboot/) { 
+	    $text =~ s/^setnetboot\s+//;
+	    my $kname;
+	    my $iname;
+	    my $kcmdline;
+	    ($kname,$iname,$kcmdline) = split(/\s+/,$text,3);
+	    chomp($kcmdline);
+	    my $noderestab = xCAT::Table->new('noderes',-create=>1);
+	    $noderestab->setNodeAttribs($node,{kernel=>"xcat/$node/$kname",initrd=>"xcat/$node/$iname",kcmdline=>$kcmdline});
+	    my $chaintab = xCAT::Table->new('chain',-create=>1);
+	    $chaintab->setNodeAttribs($node,{currstate=>'netboot',currchain=>'netboot'});
+	    $noderestab->close;
+	    $chaintab->close;
+	    undef $noderestab;
+	    undef $chaintab;
+	    my %request = (
+	       command => [ 'nodeset' ],
+	       node => [ $node ],
+	       arg => [ 'enact' ],
+	    );
+          my $pid=fork();
+          unless ($pid) { #fork off the nodeset and potential slowness
+            plugin_command(\%request,undef,\&convey_response);
+            exit(0);
+          }
+	}
         alarm(2);
       }
       alarm(0);

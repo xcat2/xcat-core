@@ -39,7 +39,6 @@ iscsi --ipaddr #TABLE:iscsi:$NODE:server# --user "#TABLE:iscsi:$NODE:userid#" --
 #/boot really significant for this sort of setup nowadays?
 part None --fstype "PPC PReP Boot" --size 8
 part /boot --size 50 --fstype ext3
-part swap --size 1024 
 part / --size 1 --grow --fstype ext3
 
 #RAID 0 /scr for performance
