@@ -190,7 +190,7 @@ sub tabrestore {
         my $offset=1;
         my $nextchar;
         my $ent = "";
-        while (not $ent) {
+        while ($ent eq "") {
           $offset = index($line,'"',$offset);
           $offset++;
           if ($offset <=0) {
