@@ -189,8 +189,8 @@ sub tabrestore {
         }
         my $offset=1;
         my $nextchar;
-        my $ent = "";
-        while ($ent eq "") {
+        my $ent;
+        while (not defined $ent) {
           $offset = index($line,'"',$offset);
           $offset++;
           if ($offset <=0) {
