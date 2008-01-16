@@ -98,6 +98,10 @@ package xCAT::Schema;
     cols => [qw(key username password comments disable)],
     keys => [qw(key)]
   },
+  postscripts => {
+    cols => [qw(node postscripts)],
+    keys => [qw(node)],
+  },
   ipmi => {
     cols => [qw(node bmc username password comments disable )],
     keys => [qw(node)]
@@ -202,6 +206,14 @@ package xCAT::Schema;
                  tabentry => 'hosts.hostnames',
                  access_tabentry => 'hosts.node=attr:node',
 		description => 'Hostname aliases added to /etc/hosts for this node.'},
+####################
+# postscripts table# 
+####################
+        {attr_name => 'postscripts',
+                 tabentry => 'postscripts.postscripts',
+                 access_tabentry => 'postscripts.node=attr:node',
+		description => 'The list of post install scripts .'},
+####################
 ####################
 #  noderes table   # 
 ####################
