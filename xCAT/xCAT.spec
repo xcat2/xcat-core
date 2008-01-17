@@ -9,15 +9,22 @@ Packager: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
-BuildArch: noarch
+#BuildArch: noarch
 Source1: xcat.conf
 Source2: postscripts.tar.gz
 Source3: templates.tar.gz
 
 Provides: xCAT = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite perl-xCAT xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 tftp-server dhcp httpd nfs-utils expect conserver fping bind
+
+Requires: xCAT-server xCAT-client perl-DBD-SQLite perl-xCAT 
+%ifos linux
+Requires: tftp-server dhcp httpd nfs-utils expect conserver fping bind
+%endif
+%ifarch i386 i586 i686 x86 x86_64
+Requires: xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 
 Requires: ipmitool >= 1.8.9
-#Requires: xCAT-server xCAT-client perl-xCAT 
+%endif
+
 %description
 xCAT is a server management package intended for at-scale management, including
 hardware management and software management.
@@ -43,9 +50,6 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 %post
-if [ -f /etc/profile.d/xcat.sh ]; then
-    . /etc/profile.d/xcat.sh
-fi
 if [ ! -f /install/postscripts/hostkeys/ssh_host_key ]; then 
     echo Generating SSH1 RSA Key...
     /usr/bin/ssh-keygen -t rsa1 -f /install/postscripts/hostkeys/ssh_host_key -C '' -N ''
@@ -101,7 +105,9 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     #Zap the almost certainly wrong pxelinux.cfg file
     rm /tftpboot/pxelinux.cfg/default
     XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
-    $RPM_INSTALL_PREFIX0/sbin/mknb x86_64
+    if [ -x $RPM_INSTALL_PREFIX0/sbin/mknb ]; then
+       $RPM_INSTALL_PREFIX0/sbin/mknb x86_64
+    fi
     $RPM_INSTALL_PREFIX0/sbin/makenetworks
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=nameservers site.value=`grep nameserver /etc/resolv.conf|awk '{printf $2 ","}'|sed -e s/,$//`
     service httpd restart
