@@ -1,16 +1,36 @@
 #!/bin/sh
-if [ -f /etc/redhat-release ]
-then
-   pkg="redhat"
-else
-   pkg="packages"
-fi
-cd `dirname $0`
-tar --exclude .svn -czvf postscripts.tar.gz  postscripts LICENSE.html
-tar --exclude .svn -czvf templates.tar.gz templates
-mv -f *.gz /usr/src/$pkg/SOURCES
-cp xcat.conf /usr/src/$pkg/SOURCES
-rm /usr/src/$pkg/RPMS/*/xCAT-2.0*rpm
-rpmbuild -ba xCAT.spec 
-cd -
 
+OSNAME=$(uname)
+
+if [ "$OSNAME" = "AIX" ]
+then
+
+ 	cd `dirname $0`
+	echo '.svn' > /tmp/xcat-excludes
+    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/postscripts.tar  postscripts LICENSE.html
+    gzip /opt/freeware/src/packages/SOURCES/postscripts.tar
+    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/templates.tar templates
+    gzip /opt/freeware/src/packages/SOURCES/templates.tar
+    #cd ./xCAT-server-2.0
+    rm -f /opt/freeware/src/packages/SRPMS/xCAT-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-2.0*rpm
+    rpm -ba xCAT.spec
+    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-2.0*rpm
+	cd -
+
+else
+
+	if [ -f /etc/redhat-release ]
+	then
+		pkg="redhat"
+	else
+		pkg="packages"
+	fi
+
+	cd `dirname $0`
+	tar --exclude .svn -czvf /usr/src/$pkg/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
+	tar --exclude .svn -czvf /usr/src/$pkg/SOURCES/templates.tar.gz templates
+	cp xcat.conf /usr/src/$pkg/SOURCES
+	rm -f /usr/src/$pkg/SRPMS/xCAT-2.0*rpm /usr/src/$pkg/RPMS/*/xCAT-2.0*rpm
+	rpmbuild -ba xCAT.spec
+	cd -
+fi
