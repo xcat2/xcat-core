@@ -1,0 +1,132 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# Use v4 compatability mode, so ldconfig gets added to maint scripts.
+export DH_COMPAT=4
+
+PACKAGE=$(shell dh_listpackages)
+TMPDIR  =       $(CURDIR)/debian/$(PACKAGE)
+DOCSDIR =       $(TMPDIR)/usr/share/doc/$(PACKAGE)
+INSTALL =       install
+
+	
+
+build:
+	dh_testdir
+
+clean:
+	dh_testdir
+	dh_testroot
+	dh_clean -d
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k -d
+	$(INSTALL) -D bin/getnodecfg			$(TMPDIR)/usr/bin/getnodecfg
+	$(INSTALL) -D bin/pping				$(TMPDIR)/usr/bin/pping
+	$(INSTALL) -D bin/psh				$(TMPDIR)/usr/bin/psh
+	$(INSTALL) -D bin/rcons				$(TMPDIR)/usr/bin/rcons
+	$(INSTALL) -D bin/wcons				$(TMPDIR)/usr/bin/wcons
+	$(INSTALL) -D bin/xcatclient			$(TMPDIR)/usr/bin/xcatclient
+	$(INSTALL) -D bin/xcatclientnnr			$(TMPDIR)/usr/bin/xcatclientnnr
+	$(INSTALL) -D bin/xcatDBcmds			$(TMPDIR)/usr/bin/xcatDBcmds
+	$(INSTALL) -D bin/xcoll				$(TMPDIR)/usr/bin/xcoll
+	$(INSTALL) -D bin/xdsh				$(TMPDIR)/usr/bin/xdsh
+	$(INSTALL) -D bin/xdshbak			$(TMPDIR)/usr/bin/xdshbak
+	$(INSTALL) -D sbin/tabedit			$(TMPDIR)/usr/sbin/tabedit
+	$(INSTALL) -D sbin/tabrestore			$(TMPDIR)/usr/sbin/tabrestore
+	$(INSTALL) -D share/man/man1/chdef.1		$(TMPDIR)/usr/share/man/man1/chdef.1
+	$(INSTALL) -D share/man/man1/chvm.1		$(TMPDIR)/usr/share/man/man1/chvm.1
+	$(INSTALL) -D share/man/man1/lsdef.1		$(TMPDIR)/usr/share/man/man1/lsdef.1
+	$(INSTALL) -D share/man/man1/lsslp.1		$(TMPDIR)/usr/share/man/man1/lsslp.1
+	$(INSTALL) -D share/man/man1/lsvm.1		$(TMPDIR)/usr/share/man/man1/lsvm.1
+	$(INSTALL) -D share/man/man1/makedhcp.1		$(TMPDIR)/usr/share/man/man1/makedhcp.1
+	$(INSTALL) -D share/man/man1/mkdef.1		$(TMPDIR)/usr/share/man/man1/mkdef.1
+	$(INSTALL) -D share/man/man1/mkvm.1		$(TMPDIR)/usr/share/man/man1/mkvm.1
+	$(INSTALL) -D share/man/man1/nodels.1		$(TMPDIR)/usr/share/man/man1/nodels.1
+	$(INSTALL) -D share/man/man1/regnotif.1		$(TMPDIR)/usr/share/man/man1/regnotif.1
+	$(INSTALL) -D share/man/man1/reventlog.1	$(TMPDIR)/usr/share/man/man1/reventlog.1
+	$(INSTALL) -D share/man/man1/rinv.1		$(TMPDIR)/usr/share/man/man1/rinv.1
+	$(INSTALL) -D share/man/man1/rmdef.1		$(TMPDIR)/usr/share/man/man1/rmdef.1
+	$(INSTALL) -D share/man/man1/rmvm.1		$(TMPDIR)/usr/share/man/man1/rmvm.1
+	$(INSTALL) -D share/man/man1/rnetboot.1		$(TMPDIR)/usr/share/man/man1/rnetboot.1
+	$(INSTALL) -D share/man/man1/rpower.1		$(TMPDIR)/usr/share/man/man1/rpower.1
+	$(INSTALL) -D share/man/man1/rscan.1		$(TMPDIR)/usr/share/man/man1/rscan.1
+	$(INSTALL) -D share/man/man1/rvitals.1		$(TMPDIR)/usr/share/man/man1/rvitals.1
+	$(INSTALL) -D share/man/man1/startmon.1		$(TMPDIR)/usr/share/man/man1/startmon.1
+	$(INSTALL) -D share/man/man1/stopmon.1		$(TMPDIR)/usr/share/man/man1/stopmon.1
+	$(INSTALL) -D share/man/man1/unregnotif.1	$(TMPDIR)/usr/share/man/man1/unregnotif.1
+	$(INSTALL) -D share/man/man1/xcat2nim.1		$(TMPDIR)/usr/share/man/man1/xcat2nim.1
+	$(INSTALL) -D share/man/man1/xdsh.1		$(TMPDIR)/usr/share/man/man1/xdsh.1
+	$(INSTALL) -D share/man/man1/xdshbak.1		$(TMPDIR)/usr/share/man/man1/xdshbak.1
+	$(INSTALL) -D share/man/man3/noderange.3	$(TMPDIR)/usr/share/man/man3/noderange.3
+	$(INSTALL) -D share/man/man5/xcatstanzafile.5	$(TMPDIR)/usr/share/man/man5/xcatstanzafile.5
+	$(INSTALL) -D share/man/man8/getmacs.8		$(TMPDIR)/usr/share/man/man8/getmacs.8
+	$(INSTALL) -D LICENSE.html                      $(TMPDIR)/usr/share/doc/$(PACKAGE)/LICENSE.html
+	$(INSTALL) -D README                            $(TMPDIR)/usr/share/doc/$(PACKAGE)/README
+	mkdir -p $(TMPDIR)/usr/share/xcat
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rpower
+	ln -sf $(TMPDIR)/usr/binxcatclient		$(TMPDIR)/usr/bin/rscan
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/sbin/makedhcp
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/sbin/makehosts
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/sbin/nodeset
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/sbin/makeconservercf
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rbeacon
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rvitals
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rinv
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rspreset
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rsetboot
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rbootseq
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/reventlog
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/nodels
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/nodech
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/noderm
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rnetboot
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/getmacs
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/mkvm
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rmvm
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/lsvm
+	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/chvm
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/lsslp
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/tabdump
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/makedns
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/gettab
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/nodeadd
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/makenetworks
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/copycds
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/regnotif
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/unregnotif
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/startmon
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/stopmon
+	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/updatemon
+	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/mkdef
+	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/chdef
+	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/lsdef
+	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/rmdef
+	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/xcat2nim
+	ln -sf $(TMPDIR)/usr/bin/xdsh			$(TMPDIR)/usr/bin/xdcp
+
+
+binary-indep: build install
+
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installdirs
+	dh_installdocs
+	dh_installchangelogs
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_makeshlibs
+	dh_installdeb
+	dh_perl bin sbin
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install

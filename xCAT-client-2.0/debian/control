@@ -1,0 +1,10 @@
+Source: xcat-client
+Section: admin
+Priority: extra
+Maintainer: Andy Wray <andywray@us.ibm.com>
+
+Package: xcat-client
+Architecture: all
+Depends: perl-xcat, conserver-client (>=8.1.16-2)
+Description: Core executables and data of the xCAT management project
+ xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.

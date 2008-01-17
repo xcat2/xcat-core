@@ -1,0 +1,15 @@
+Copyright: EPL
+
+Information from the binary package:
+Name        : xCAT-client                  Relocations: /opt/xcat 
+Version     : 2.0                               Vendor: IBM Corp.
+Release     : snap200801100447              Build Date: Thu 10 Jan 2008 04:47:09 AM EST
+Install Date: (not installed)               Build Host: mgt.cluster
+Group       : Applications/System           Source RPM: xCAT-client-2.0-snap200801100447.src.rpm
+Size        : 203154                           License: EPL
+Signature   : (none)
+Packager    : IBM Corp.
+Summary     : Core executables and data of the xCAT management project
+Description :
+xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.
+
