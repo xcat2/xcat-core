@@ -5,11 +5,11 @@ OSNAME=$(uname)
 if [ "$OSNAME" = "AIX" ]
 then
 
-    tar -cvf xCAT-client-2.0.tar xCAT-client-2.0
-    gzip xCAT-client-2.0.tar
-    cp  xCAT-client-2.0.tar.gz /opt/freeware/src/packages/SOURCES
+ 	echo '.svn' > /tmp/xcat-excludes
+    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/xCAT-client-2.0.tar xCAT-client-2.0
+    gzip /opt/freeware/src/packages/SOURCES/xCAT-client-2.0.tar
     cd ./xCAT-client-2.0
-    rm /opt/freeware/src/packages/RPMS/ppc/xCAT-client-2.0*rpm
+    rm -f /opt/freeware/src/packages/SRPMS/xCAT-client-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-client-2.0*rpm
     rpm -ba xCAT-client.spec
     #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-client-2.0*rpm
 
@@ -22,8 +22,8 @@ else
    		pkg="packages"
 	fi
 
-	tar  --exclude .svn -czvf xCAT-client-2.0.tar.gz xCAT-client-2.0;
-	rm /usr/src/$pkg/RPMS/noarch/xCAT-client-2.0*rpm
-	rpmbuild -ta xCAT-client-2.0.tar.gz ;
+	tar  --exclude .svn -czvf /usr/src/$pkg/SOURCES/xCAT-client-2.0.tar.gz xCAT-client-2.0;
+	rm -f /usr/src/$pkg/SRPMS/xCAT-client-2.0*rpm /usr/src/$pkg/RPMS/noarch/xCAT-client-2.0*rpm
+	rpmbuild -ta /usr/src/$pkg/SOURCES/xCAT-client-2.0.tar.gz ;
 	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-client-2.0*rpm
 fi

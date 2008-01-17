@@ -4,13 +4,14 @@ OSNAME=$(uname)
 
 if [ "$OSNAME" = "AIX" ]
 then
-        tar -cvf xCAT-server-2.0.tar xCAT-server-2.0
-        gzip xCAT-server-2.0.tar
-        cp  xCAT-server-2.0.tar.gz /opt/freeware/src/packages/SOURCES
-        cd ./xCAT-server-2.0
-        rm /opt/freeware/src/packages/RPMS/ppc/xCAT-server-2.0*rpm
-        rpm -ba xCAT-server.spec
-        #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-server-2.0*rpm
+
+	echo '.svn' > /tmp/xcat-excludes
+    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/xCAT-server-2.0.tar xCAT-server-2.0
+    gzip /opt/freeware/src/packages/SOURCES/xCAT-server-2.0.tar
+    cd ./xCAT-server-2.0
+    rm -f /opt/freeware/src/packages/SRPMS/xCAT-server-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-server-2.0*rpm
+    rpm -ba xCAT-server.spec
+    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-server-2.0*rpm
 
 else
 
@@ -21,8 +22,8 @@ else
    		pkg="packages"
 	fi
 
-	tar  --exclude .svn -czvf xCAT-server-2.0.tar.gz xCAT-server-2.0;
-	rm /usr/src/$pkg/RPMS/noarch/xCAT-server-2.0*rpm
-	rpmbuild -ta xCAT-server-2.0.tar.gz ;
+	tar  --exclude .svn -czvf /usr/src/$pkg/SOURCES/xCAT-server-2.0.tar.gz xCAT-server-2.0;
+	rm -f /usr/src/$pkg/SRPMS/xCAT-server-2.0*rpm /usr/src/$pkg/RPMS/noarch/xCAT-server-2.0*rpm
+	rpmbuild -ta /usr/src/$pkg/SOURCES/xCAT-server-2.0.tar.gz ;
 	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-server-2.0*rpm
 fi

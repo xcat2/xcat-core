@@ -51,12 +51,12 @@ if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['h
 		 if ($psh == "off"){ //using dsh
 			$command = "xdsh ";
 			$copy_cmd = "xdcp ";
-			if ($group == "") $node_group = "-n " . $node;
-			else $node_group = "-N " . $group;
+			if ($group == "") $node_group = /* "-n " . */ $node;
+			else $node_group = /* "-N " . */ $group;
 
 		 }else{
 		 	$command = "psh ";
-			$copy_cmd = "prcp ";
+			$copy_cmd = "pscp ";
 			if ($group == "") $node_group = $node;
 			else $node_group = $group;
 		 }

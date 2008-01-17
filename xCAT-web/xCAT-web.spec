@@ -38,7 +38,7 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/web/*
 %files
 %defattr(-,root,root)
 # %defattr( 555, root, root, 755 )
-%{prefix}
+%{prefix}/web
 
 
 %post
@@ -50,26 +50,32 @@ then
   if [ -e "/etc/redhat-release" ]; then
   	apachedaemon='httpd'
   	apacheuser='apache'
-  else
+
+	# todo: change this when switch to xcat 2
+	echo "Updating apache userid to allow logins..."
+	cp /etc/passwd /etc/passwd.orig
+	perl -e 'while (<>) { s,^apache:(.*):/sbin/nologin$,apache:$1:/bin/bash,; print $_; }' /etc/passwd.orig >/etc/passwd
+  else    # SuSE
   	apachedaemon='apache2'
   	apacheuser='wwwrun'
   fi
 
   # Update the apache config
+  echo "Updating $apachedaemon configuration for xCAT..."
   /bin/rm -f /etc/$apachedaemon/conf.d/xcat.conf
-  /bin/ln -s /opt/xcat/web/etc/apache2/conf.d/xcat.conf /etc/$apachedaemon/conf.d/xcat.conf
+  /bin/ln -s %{prefix}/web/etc/apache2/conf.d/xcat.conf /etc/$apachedaemon/conf.d/xcat.conf
   /etc/init.d/$apachedaemon reload
 
-  # Config sudo - todo: change this when switch to xcat 2
-  if ! egrep "^$apacheuser ALL=\(ALL\) NOPASSWD:ALL" /etc/sudoers; then
+  # Link to the grpattr cmd.  Todo: remove this when it is in base xcat
+  /bin/rm -f %{prefix}/bin/grpattr
+  mkdir -p %{prefix}/bin
+  /bin/ln -s %{prefix}/web/cmds/grpattr %{prefix}/bin/grpattr
+
+  # Config sudo.  Todo: change this when switch to xcat 2
+  if ! egrep -q "^$apacheuser ALL=\(ALL\) NOPASSWD:ALL" /etc/sudoers; then
+  	echo "Configuring sudo for $apacheuser..."
   	echo "$apacheuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
   fi
-
-  #cp /etc/webmin/webmin.acl /etc/webmin/webmin.acl.orig
-  #perl -e 'while (<>) { if (/^root:/ && !/\bcsm\b/) {s/$/ csm/;} print $_; }' /etc/webmin/webmin.acl.orig >/etc/webmin/webmin.acl
-  #if [ `uname` = "Linux" ]; then
-  # 	kill -1 `cat /var/webmin/miniserv.pid`
-  #fi
 fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]        # initial install, or upgrade and this is the newer rpm
@@ -82,11 +88,32 @@ fi
 
 if [ "$1" = 0 ]         # final rpm being removed
 then
-  # Remove link to the apache conf file
   if [ -e "/etc/redhat-release" ]; then
-  	/bin/rm -f /etc/httpd/conf.d/xcat.conf
-  else
-  	/bin/rm -f /etc/apache2/conf.d/xcat.conf
+  	apachedaemon='httpd'
+  	apacheuser='apache'
+
+	# Undo change we made to passwd file.  Todo: change this when switch to xcat 2
+	echo "Undoing apache userid login..."
+	cp /etc/passwd /etc/passwd.tmp
+	perl -e 'while (<>) { s,^apache:(.*):/bin/bash$,apache:$1:/sbin/nologin,; print $_; }' /etc/passwd.tmp >/etc/passwd
+  else    # SuSE
+  	apachedaemon='apache2'
+  	apacheuser='wwwrun'
   fi
+
+  # Remove links made during the post install script
+  echo "Undoing $apachedaemon configuration for xCAT..."
+  /bin/rm -f /etc/$apachedaemon/conf.d/xcat.conf
+  /etc/init.d/$apachedaemon reload
+  /bin/rm -f %{prefix}/bin/grpattr
+
+  # Remove change we made to sudoers config.  Todo: remove this when switch to xcat 2
+  if egrep -q "^$apacheuser ALL=\(ALL\) NOPASSWD:ALL" /etc/sudoers; then
+  	echo "Undoing sudo configuration for $apacheuser..."
+  	cp -f /etc/sudoers /etc/sudoers.tmp
+  	egrep -v "^$apacheuser ALL=\(ALL\) NOPASSWD:ALL" /etc/sudoers.tmp > /etc/sudoers
+  	rm -f /etc/sudoers.tmp
+  fi
+
 fi
 

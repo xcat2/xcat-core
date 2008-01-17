@@ -71,55 +71,55 @@ if (!isset($_REQUEST['noderange'])) {
       	to /tmp on the nodes and executed from there.)</TD>
     </TR>
     <TR class=FormTable>
-      <TD colspan="3" nowrap><INPUT type="checkbox" name="run_psh" id="pshChkBox">
-		Use parallel shell (psh) command instead of xdsh.</TD>
+      <TD colspan="3" nowrap><INPUT type="checkbox" name="run_psh" id="pshChkBox" checked readonly>
+		Use parallel shell (psh) command instead of xdsh.  Currently this option must be used, and the options below (associated with xdsh) are disabled.</TD>
     </TR>
     <TR class=FormTable>
       <TD colspan="3"><B>Options:</TD>
     </TR>
     <TR class=FormTable>
       <TD width="37"></TD>
-      <TD width="210" valign="top" nowrap><INPUT type="checkbox" name="serial" id="serialChkBox" checked>Streaming mode</TD>
+      <TD width="210" valign="top" nowrap><INPUT type="checkbox" name="serial" id="serialChkBox" disabled>Streaming mode</TD>
       <TD width="500">Specifies that output is returned as it becomes available from each target, instead of waiting for the command to be completed on a target before returning output from that target.</TD>
     </TR>
     <TR class=FormTable>
       <TD></TD>
-      <TD valign="top" nowrap><INPUT type="checkbox" name="monitor" id="monitorChkBox">Monitor</TD>
+      <TD valign="top" nowrap><INPUT type="checkbox" name="monitor" id="monitorChkBox" disabled>Monitor</TD>
       <TD>Prints starting and completion messages for each node.  Useful with Streaming mode.</TD>
     </TR>
     <TR class=FormTable>
       <TD></TD>
-      <TD valign="top" nowrap><INPUT type="checkbox" name="verify" id="verifyChkBox">Verify</TD>
+      <TD valign="top" nowrap><INPUT type="checkbox" name="verify" id="verifyChkBox" disabled>Verify</TD>
       <TD>Verifies that nodes are responding before sending the command to them.</TD>
     </TR>
     <TR class=FormTable>
       <TD></TD>
-      <TD valign="top" nowrap><INPUT type="checkbox" name="collapse" id="collapseChkBox">Collaspe Identical Output</TD>
+      <TD valign="top" nowrap><INPUT type="checkbox" name="collapse" id="collapseChkBox" disabled>Collaspe Identical Output</TD>
       <TD>Automatically pipe the xdsh output into xdshbak which will only display output once for all the nodes that display identical output.  See the xdshbak man page for more info.</TD>
     </TR>
     <TR class=FormTable>
       <TD></TD>
-      <TD valign="top" nowrap>Fanout:<INPUT type="text" name="fanout" id="fanoutTxtBox"></TD>
+      <TD valign="top" nowrap>Fanout: <INPUT type="text" name="fanout" id="fanoutTxtBox" disabled></TD>
       <TD>The maximum number of nodes the command should be run on concurrently. When the command finishes on 1 of the nodes, it will be started on an additional node (the default is 64).</TD>
     </TR>
     <TR class=FormTable>
       <TD></TD>
-      <TD valign="top" nowrap>UserID:<INPUT type="text" name="userID" id="userIDTxtBox"></TD>
+      <TD valign="top" nowrap>UserID: <INPUT type="text" name="userID" id="userIDTxtBox" disabled></TD>
       <TD>The user id to use to run the command on the nodes.</TD>
     </TR>
     <TR class=FormTable>
       <TD></TD>
-      <TD valign="top" nowrap>Remote Shell:<INPUT type="text" name="rshell" id="rshellTxtBox"></TD>
+      <TD valign="top" nowrap>Remote Shell: <INPUT type="text" name="rshell" id="rshellTxtBox" disabled></TD>
       <TD>The remote shell program to use to run the command on the nodes. The default is /usr/bin/ssh.</TD>
     </TR>
     <TR class=FormTable>
       <TD></TD>
-      <TD valign="top" nowrap>Shell Options:<INPUT type="txt" name="shell_opt" id="shell_optTxtBox"></TD>
+      <TD valign="top" nowrap>Shell Options: <INPUT type="txt" name="shell_opt" id="shell_optTxtBox" disabled></TD>
       <TD>Options to pass to the remote shell being used.</TD>
     </TR>
     <TR class=FormTable>
       <TD></TD>
-      <TD valign="top" nowrap><INPUT type="checkbox" name="ret_code" id="ret_codeChkBox">Code Return</TD>
+      <TD valign="top" nowrap><INPUT type="checkbox" name="ret_code" id="ret_codeChkBox" disabled>Return Code</TD>
       <TD>Prints the return code of the (last) command that was run remotely on each node. The return code is appended at the end of the output for each node.</TD>
     </TR>
     <TR><TD colspan="3">
