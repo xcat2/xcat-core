@@ -34,13 +34,13 @@ sub process_request {
     # uses that if so. If not, it first tries Net::SSL,
     # then IO::Socket::SSL only if that cannot be loaded.
     #######################################################
+    $IO::Socket::SSL::VERSION = undef;
     eval { require Net::SSL };
     if ( $@ ) {
         my $callback = $_[1];
         $callback->( {data=>[$@]} );
         return(1);
     }
-    $IO::Socket::SSL::VERSION = undef;
     xCAT::PPC::process_request(__PACKAGE__,@_);
 }
 
