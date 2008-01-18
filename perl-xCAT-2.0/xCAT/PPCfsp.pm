@@ -6,6 +6,7 @@ use Getopt::Long;
 use LWP;
 use HTTP::Cookies;
 use HTML::Form;
+use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 
 
 ##########################################
@@ -13,21 +14,23 @@ use HTML::Form;
 ##########################################
 my %cmds = ( 
   rpower => {
-     state     => ["Power On/Off System",    \&state],
-     on        => ["Power On/Off System",    \&on],
-     off       => ["Power On/Off System",    \&off],
-     reset     => ["System Reboot",          \&reset], 
-     boot      => ["Power On/Off System",    \&boot] }, 
+     state        => ["Power On/Off System",    \&state],
+     on           => ["Power On/Off System",    \&on],
+     off          => ["Power On/Off System",    \&off],
+     reset        => ["System Reboot",          \&reset], 
+     boot         => ["Power On/Off System",    \&boot] }, 
   reventlog => { 
-     all       => ["Error/Event Logs",       \&all],
-     all_clear => ["Error/Event Logs",       \&all_clear],
-     entries   => ["Error/Event Logs",       \&entries],
-     clear     => ["Error/Event Logs",       \&clear] },
+     all          => ["Error/Event Logs",       \&all],
+     all_clear    => ["Error/Event Logs",       \&all_clear],
+     entries      => ["Error/Event Logs",       \&entries],
+     clear        => ["Error/Event Logs",       \&clear] },
   rfsp => {
-     iocap     => ["I/O Adapter Enlarged Capacity", \&iocap],
-     autopower => ["Auto Power Restart",     \&autopower],
-     sysdump   => ["System Dump",            \&sysdump],
-     spdump    => ["Service Processor Dump", \&spdump] },
+     iocap        => ["I/O Adapter Enlarged Capacity", \&iocap],
+     time         => ["Time Of Day",            \&time], 
+     date         => ["Time Of Day",            \&date], 
+     autopower    => ["Auto Power Restart",     \&autopower],
+     sysdump      => ["System Dump",            \&sysdump],
+     spdump       => ["Service Processor Dump", \&spdump] },
 );
 
 
@@ -39,9 +42,18 @@ sub parse_args {
 
     my $request = shift;
     my $args    = $request->{arg};
-    my @rsp     = qw(spdump sysdump);
+    my @rsp     = keys %{$cmds{rfsp}};
+    my $cmd     = join('|',@rsp);
     my %opt     = ();
     my @VERSION = qw( 2.0 );
+ 
+    #############################################
+    # Modify usage statement 
+    #############################################
+    $cmd =~ s/time/time [hh:mm:ss]/;
+    $cmd =~ s/date/date [mm-dd-yyy]/;
+    $cmd =~ s/autopower/autopower [enable|disable]/;
+    $cmd =~ s/iocap/iocap [enable|disable]/;
 
     #############################################
     # Responds with usage statement
@@ -50,12 +62,10 @@ sub parse_args {
         return( [ $_[0],
             "rfsp -h|--help",
             "rfsp -v|--version",
-            "rfsp [-V|--verbose] noderange -a [enable|disable]|-i [enable|disable]|".join('|',@rsp),
+            "rfsp [-V|--verbose] noderange ". $cmd,
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
-            "    -V   verbose output",
-            "    -a   set/get auto power restart option",
-            "    -i   set/get I/O adapter enlarged capacity" ]);
+            "    -V   verbose output"] );
     };
     #############################################
     # Process command-line arguments
@@ -73,7 +83,7 @@ sub parse_args {
     Getopt::Long::Configure( "bundling" );
     $request->{method} = undef;
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version a i) )) {
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
         return( usage() );
     }
     ####################################
@@ -95,44 +105,44 @@ sub parse_args {
         return(usage( "Missing option: -" ));
     }
     ####################################
-    # Option -a for Auto Power Restart 
-    ####################################
-    if ( exists( $opt{a} )) {
-        $request->{method} = "autopower"     
-    }
-    ####################################
-    # Option -i for I/O adapter capacity 
-    ####################################
-    if ( exists( $opt{i} )) {
-        $request->{method} = "iocap"     
-    }
-    ####################################
-    # Mutually exclusive arguments 
-    ####################################
-    if (exists( $opt{a} ) && exists( $opt{i} )) {
-        return( usage() );
-    } 
-    ####################################
-    # Set options command  
-    ####################################
-    if ( defined( $request->{method} )) { 
-        if ( defined( $ARGV[0] )) {
-            if ( $ARGV[0] !~ /^enable|disable$/ ) {
-                return(usage( "Invalid flag argument: $ARGV[0]" ));
-            }
-            $request->{op} = $ARGV[0];     
-        }
-    }
-    ####################################
     # Check for unsupported commands
     ####################################
-    else {
+    if ( !defined( $request->{method} )) { 
         my ($cmd) = grep(/^$ARGV[0]$/, @rsp );
         if ( !defined( $cmd )) {
             return(usage( "Invalid command: $ARGV[0]" ));
         }
         $request->{method} = $cmd;
     }
+    ####################################
+    # Check command arguments 
+    ####################################
+    if ( $request->{method} =~ /^date|time|iocap|autopower$/ ) {
+        shift @ARGV;
+
+        if ( defined( $ARGV[0] )) {
+            if ( $request->{method} =~ /^time$/ ) { 
+                if ( $ARGV[0] !~ 
+                   /^([0-1]?[0-9]|2[0-3]):(0?[0-9]|[1-5][0-9]):(0?[0-9]|[1-5][0-9])$/ ) {
+                    return( usage("Invalid time format '$ARGV[0]'") ); 
+                }
+                $request->{op} = "$1-$2-$3";
+            }
+            if ( $request->{method} =~ /^date$/ ) { 
+                if ( $ARGV[0] !~ 
+                  /^(0?[1-9]|1[012])-(0?[1-9]|[12][0-9]|3[01])-(20[0-9]{2})$/){
+                    return( usage("Invalid date format '$ARGV[0]'") ); 
+                }
+                $request->{op} = "$1-$2-$3";
+            }
+            if ( $request->{method} =~ /^autopower|iocap$/ ) { 
+                if ( $ARGV[0] !~ /^enable|disable$/ ) {
+                    return( usage("Invalid argument '$ARGV[0]'") ); 
+                }
+                $request->{op} = $ARGV[0];
+            }
+        }
+    } 
     ####################################
     # Check for an extra argument
     ####################################
@@ -634,14 +644,14 @@ sub entries {
     # Prepend header
     ##################################
     $result = (@entries) ?
-        "#Log ID   Time                 Failing subsystem           Severity             SRC\n" :
+        "\n#Log ID   Time                 Failing subsystem           Severity             SRC\n" :
         "No entries";
      
     ##################################
     # Parse log entries 
     ##################################
     foreach ( @entries ) {
-        if ( /tabindex=[\d]+><\/td><td>(.*)<\/td><td / ) {
+        if ( /tabindex=\d+><\/td><td>(.*)<\/td><td / ) {
             my $values = $1;
             $values =~ s/<\/td><td>/  /g;
             $result.= "$values\n";
@@ -654,6 +664,182 @@ sub entries {
     return( $result );
 }
 
+
+##########################################################################
+# Gets/Sets system time of day 
+##########################################################################
+sub time {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $form    = shift;
+    my $menu    = shift;
+    my $option  = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+
+    ##############################
+    # Send command 
+    ##############################
+    my $result = xCAT::PPCfsp::tod( $exp, $request, $form ); 
+    my $Rc = shift(@$result);
+
+    ##############################
+    # Return error
+    ##############################
+    if ( $Rc != SUCCESS ) {
+        return( @$result[0] );
+    }
+    ##############################
+    # Get time
+    ##############################
+    if ( !defined( $request->{op} )) {
+        @$result[0] =~ /(\d+) (\d+) (\d+) $/; 
+        return( "$1:$2:$3 UTC" );
+    }
+    ##############################
+    # Set time 
+    ##############################
+    my @t   = split / /, @$result[0];
+    my @new = split /-/, $request->{op};
+    splice( @t,3,3,@new );
+
+    ##############################
+    # Send command 
+    ##############################
+    my $result = xCAT::PPCfsp::tod( $exp, $request, $form, \@t ); 
+    my $Rc = shift(@$result);
+
+    return( @$result[0] );
+}
+
+
+##########################################################################
+# Gets/Sets system date 
+##########################################################################
+sub date {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $form    = shift;
+    my $menu    = shift;
+    my $option  = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+
+    ##############################
+    # Send command 
+    ##############################
+    my $result = xCAT::PPCfsp::tod( $exp, $request, $form ); 
+    my $Rc = shift(@$result);
+
+    ##############################
+    # Return error
+    ##############################
+    if ( $Rc != SUCCESS ) {
+        return( @$result[0] );
+    }
+    ##############################
+    # Get date
+    ##############################
+    if ( !defined( $request->{op} )) {
+       @$result[0] =~ /^(\d+) (\d+) (\d+)/; 
+       return( "$1-$2-$3" );
+    }
+    ##############################
+    # Set date
+    ##############################
+    my @t   = split / /, @$result[0];
+    my @new = split /-/, $request->{op};
+    splice( @t,0,3,@new ); 
+
+    ##############################
+    # Send command
+    ##############################
+    my $result = xCAT::PPCfsp::tod( $exp, $request, $form, \@t );
+    my $Rc = shift(@$result);
+
+    return( @$result[0] );
+}
+
+
+##########################################################################
+# Gets/Sets system time/date 
+##########################################################################
+sub tod {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $form    = shift;
+    my $d       = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+
+    ######################################
+    # Get time/date 
+    ######################################
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
+
+    ##################################
+    # Return error
+    ##################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    if ( $res->content =~ /(only when the system is powered off)/ ) {
+        return( [RC_ERROR,$1] );
+    }
+    ######################################
+    # Get time/date fields  
+    ######################################
+    my $result;
+    my @regex = (
+        "name='omo' value='(\\d+)'",
+        "name='od' value='(\\d+)'",
+        "name='oy' value='(\\d+)'",
+        "name='oh' value='(\\d+)'",
+        "name='omi' value='(\\d+)'",
+        "name='os' value='(\\d+)'",
+    );
+    foreach ( @regex ) {
+        if ( $res->content !~ /$_/ ) {
+            return( [RC_ERROR,"Error getting time of day"] );
+        }
+        $result.= "$1 ";
+    }
+    ######################################
+    # Return time/date 
+    ######################################
+    if ( !defined( $d )) {
+        return( [SUCCESS,$result] );
+    }
+    ######################################
+    # Set time/date 
+    ######################################
+    my $res = $ua->post( "https://$server/cgi-bin/cgi",
+        [ form   => $form,
+          mo     => @$d[0],
+          d      => @$d[1],
+          y      => @$d[2],
+          h      => @$d[3],
+          mi     => @$d[4],
+          s      => @$d[5],
+          submit => "Save settings" ]
+    );
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    if ( $res->content =~ /(not allowed when the system is powered on)/ ) {
+        return( [RC_ERROR,$1] );
+    } 
+    if ( $res->content =~ /(Invalid entry)/ ) {
+        return( [RC_ERROR,$1] );
+    } 
+    return( [SUCCESS,"Success"] );
+}
 
 
 
@@ -686,24 +872,23 @@ sub option {
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
     my $op      = $request->{op};
-    my $url     = "https://$server/cgi-bin/cgi?form=$form";
 
     ######################################
     # Get option URL
     ######################################
     if ( !defined( $op )) {
-        my $res = $ua->get( $url );
+        my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
 
         ##################################
-        # Return error
+        # Return errors
         ##################################
         if ( !$res->is_success() ) {
             return( $res->status_line );
         }
-        if ( $res->content =~ /<option selected value='\d+'>(Enabled|Disabled)</ ) {
-            return( $1 );
+        if ( $res->content !~ /selected value='\d+'>(Enabled|Disabled)</ ) {
+            return( "Unknown" );
         }
-        return( "Unknown" );
+        return($1);
     }
     ######################################
     # Set option
@@ -756,9 +941,9 @@ sub spdump {
     ######################################
     if ( $res->content =~ /<option selected value='0'>Disabled/ ) {
         $res = $ua->post( "https://$server/cgi-bin/cgi",
-            [form  => $form,
-             bdmp  => "1",
-             save  => "Save settings" ]
+            [ form  => $form,
+              bdmp  => "1",
+              save  => "Save settings" ]
         );
         ##################################
         # Return error
