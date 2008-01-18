@@ -59,7 +59,8 @@ sub handled_commands {
     addattr => "tabutils",
     delattr => "tabutils",
     chtype => "tabutils",
-    nr => "tabutils"
+    nr => "tabutils",
+    tabgrep => "tabutils"
   }
 }
 
@@ -130,6 +131,8 @@ sub process_request {
     return tabdump($args,$callback);
   } elsif ($command eq "gettab") {
       return gettab($request,$callback);
+  } elsif ($command eq "tabgrep") {
+      return tabgrep($nodes,$callback);
   } else {
     print "$command not implemented yet\n";
     return (1,"$command not written yet");
@@ -446,6 +449,23 @@ sub chnode {
   }
 }
 
+sub tabgrep {
+  my $node=shift;
+  my @tablist;
+  my $callback=shift;
+
+  foreach (keys %{xCAT::Schema::tabspec}) {
+    if (grep /^node$/,@{$xCAT::Schema::tabspec{$_}->{cols}}) {
+      push @tablist,$_; 
+    }
+  }
+  foreach (@tablist) {
+    my $tab=xCAT::Table->new($_);
+    if ($tab->getNodeAttribs($node->[0],["node"])) {
+			$callback->({data=>[$_]});
+		}
+	}
+}
 
     
 
