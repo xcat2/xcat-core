@@ -96,16 +96,21 @@ sub process_request {
 
 #--------------------------------------------------------------------------------
 =head3   startmon
-        This function starts the given products for monitoring the xCAT cluster. 
+        This function registers the given monitoring plug-in to the 'monitoring' table.
+        xCAT will invoke the monitoring plug-in to start the 3rd party software, which
+        this plug-in connects to, to monitor the xCAT cluster. 
     Arguments:
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        [product_name[,product_name]...]        
+        name [-n|--nodestatmon]        
         where
-          product_name is the name of the monitoring product short name. 
-          For example: Ganglia. The specified products will be started 
-          for monitoring the xCAT cluster. 
+          name is the monitoring plug-in name. For example: rmcmon. 
+              The specified plug-in will be registered and invoked 
+              for monitoring the xCAT cluster.
+          -n|--nodestatmon  indicates that this plug-in will be used for feeding the node liveness
+              status to the xCAT nodelist table.  If not specified, the plug-in will not be used 
+              for feeding node status to xCAT. 
     Returns:
         0 for success. The output is returned through the callback pointer.
         1. for unsuccess. The error messages are returns through the callback pointer.
@@ -122,9 +127,9 @@ sub startmon {
   {
     my %rsp;
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  startmon [product_name[,product_name]...]";
+    $rsp->{data}->[1]= "  startmon name [-n|--nodestatmon]";
     $rsp->{data}->[2]= "  startmon [-h|--help|-v|--version]";
-    $rsp->{data}->[3]= "     product_name is the name of the monitoring product registered in the monitoring table.";
+    $rsp->{data}->[3]= "     name is the name of the monitoring plug-in to be registered and invoked.";
     $callback->($rsp);
   }
   
@@ -133,7 +138,8 @@ sub startmon {
   # parse the options
   if(!GetOptions(
       'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION,))
+      'v|version'  => \$::VERSION,
+      'n|nodestatmon'  => \$::NODESTATMON))
   {
     &startmon_usage;
     return;
@@ -154,54 +160,94 @@ sub startmon {
     return;
   }
 
-  my @product_names;
+  #my @product_names;
+  my $pname;
   if (@ARGV < 1)
   {
     &startmon_usage;
     return;
   }
   else {
-    @product_names=split(/,/, $ARGV[0]);
-  }
-
-  my %ret = xCAT_monitoring::monitorctrl::startMonitoring(@product_names);
-  
-  my %rsp;
-  $rsp->{data}->[0]= "starting @product_names";
-  my $i=1;
-  foreach (keys %ret) {
-    my $ret_array=$ret{$_};
-    $rsp->{data}->[$i++]= "$_: $ret_array->[1]";
-  }
-
-  my $nodestatmon=xCAT_monitoring::monitorctrl::nodeStatMonName();
-  if ($nodestatmon) {
-    foreach (@product_names) {
-      if ($_ eq $nodestatmon) { 
-	my ($code, $msg)=xCAT_monitoring::monitorctrl::startNodeStatusMonitoring($nodestatmon);
-        $rsp->{data}->[$i++]="node status monitoring with $nodestatmon: $msg"; 
+    #@product_names=split(/,/, $ARGV[0]);
+    $pname=$ARGV[0];
+    $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+      if (!-e $file_name) {
+        my %rsp;
+        $rsp->{data}->[0]="File $file_name does not exist.";
+        $callback->($rsp);
+        return 1;
+      }  else {
+        #load the module in memory
+        eval {require($file_name)};
+        if ($@) {   
+          my %rsp;
+          $rsp->{data}->[0]="The file $file_name has compiling errors:\n$@\n";
+          $callback->($rsp);
+          return 1;  
+        }      
       }
-    }
   }
 
-  $rsp->{data}->[$i++]="done.";
-  $callback->($rsp);
+  #my %ret = xCAT_monitoring::monitorctrl::startMonitoring(@product_names);
   
+  #my %rsp;
+  #$rsp->{data}->[0]= "starting @product_names";
+  #my $i=1;
+  #foreach (keys %ret) {
+  #  my $ret_array=$ret{$_};
+  #  $rsp->{data}->[$i++]= "$_: $ret_array->[1]";
+  #}
+
+  #my $nodestatmon=xCAT_monitoring::monitorctrl::nodeStatMonName();
+  #if ($nodestatmon) {
+  #  foreach (@product_names) {
+  #    if ($_ eq $nodestatmon) { 
+  #	my ($code, $msg)=xCAT_monitoring::monitorctrl::startNodeStatusMonitoring($nodestatmon);
+  #      $rsp->{data}->[$i++]="node status monitoring with $nodestatmon: $msg"; 
+  #    }
+  #  }
+  #}
+
+  my $table=xCAT::Table->new("monitoring", -create => 1,-autocommit => 1);
+  if ($table) {
+    (my $ref) = $table->getAttribs({name => $pname}, name);
+    if ($ref and $ref->{name}) {
+      my %rsp;
+      $rsp->{data}->[0]="$pname is already registered in the monitoring table.";
+      $callback->($rsp);
+    }
+    else {
+      my %key_col = (name=>$pname);
+      my $nstat='N';
+      if ($::NODESTATMON) {
+	$nstat='Y';
+      }
+      my %tb_cols=(nodestatmon=>$nstat);
+      $table->setAttribs(\%key_col, \%tb_cols);
+    }   
+  }
+
+  my %rsp1;
+  $rsp1->{data}->[0]="done.";
+  $callback->($rsp1);
+
   return;
 }
 
 #--------------------------------------------------------------------------------
 =head3   stopmon
-        This function stops the given products for monitoring the xCAT cluster.
+        This function unregisters the given monitoring plug-in from the 'monitoring' table.
+        xCAT will ask the monitoring plug-in to stop the 3rd party software, which
+        this plug-in connects to, to monitor the xCAT cluster. 
     Arguments:
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        [product_name[,product_name]...]
+        name
         where
-          product_name is the name of the monitoring product short name.
-          For example: Ganglia. The specified products will be stoped
-          for monitoring the xCAT cluster. 
+          name is the monitoring plug-in name. For example: rmcmon. 
+              The specified plug-in will be un-registered and stoped  
+              for monitoring the xCAT cluster. 
     Returns:
         0 for success. The output is returned through the callback pointer.
         1. for unsuccess. The error messages are returns through the callback pointer.
@@ -218,9 +264,9 @@ sub stopmon {
   {
     my %rsp;
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  stopmon [product_name[,product_name]...]";
+    $rsp->{data}->[1]= "  stopmon name";
     $rsp->{data}->[2]= "  stopmon [-h|--help|-v|--version]";
-    $rsp->{data}->[3]= "      product_name is the name of the monitoring product registered in the montoring table.";
+    $rsp->{data}->[3]= "      name is the name of the monitoring plug-in registered in the monitoring table.";
     $callback->($rsp);
   }
 
@@ -250,36 +296,53 @@ sub stopmon {
   }
 
 
-  my @product_names;
+  #my @product_names;
+  my $pname;
   if (@ARGV < 1)
   {
-    &startmon_usage;
+    &stopmon_usage;
     return;
   }
   else {
-    @product_names=split(/,/, $ARGV[0]);
+    #@product_names=split(/,/, $ARGV[0]);
+    $pname=$ARGV[0];
   }
 
-  my %ret = xCAT_monitoring::monitorctrl::stopMonitoring(@product_names);
-  my %rsp;
-  $rsp->{data}->[0]= "stopping @product_names";
-  my $i=1;
-  foreach (keys %ret) {
-    my $ret_array=$ret{$_};
-    $rsp->{data}->[$i++]= "$_: $ret_array->[1]";
-  }
+  #my %ret = xCAT_monitoring::monitorctrl::stopMonitoring(@product_names);
+  #my %rsp;
+  #$rsp->{data}->[0]= "stopping @product_names";
+  #my $i=1;
+  #foreach (keys %ret) {
+  #  my $ret_array=$ret{$_};
+  #  $rsp->{data}->[$i++]= "$_: $ret_array->[1]";
+  #}
 
-  my $nodestatmon=xCAT_monitoring::monitorctrl::nodeStatMonName();
-  if ($nodestatmon) {
-    foreach (@product_names) {
-      if ($_ eq $nodestatmon) { 
-	my ($code, $msg)=xCAT_monitoring::monitorctrl::stopNodeStatusMonitoring($nodestatmon);
-        $rsp->{data}->[$i++]="node status monitoring with $nodestatmon: $msg"; 
-      }
+  #my $nodestatmon=xCAT_monitoring::monitorctrl::nodeStatMonName();
+  #if ($nodestatmon) {
+  #  foreach (@product_names) {
+  #    if ($_ eq $nodestatmon) { 
+  #	my ($code, $msg)=xCAT_monitoring::monitorctrl::stopNodeStatusMonitoring($nodestatmon);
+  #      $rsp->{data}->[$i++]="node status monitoring with $nodestatmon: $msg"; 
+  #    }
+  #  }
+  #}
+  my $table=xCAT::Table->new("monitoring", -create => 1,-autocommit => 1);
+  if ($table) {
+    (my $ref) = $table->getAttribs({name => $pname}, name);
+    if ($ref and $ref->{name}) {
+      my %key_col = (name=>$pname);
+      $table->delEntries(\%key_col);
     }
+    else {
+      my %rsp;
+      $rsp->{data}->[0]="$pname is not registered in the monitoring table.";
+      $callback->($rsp);
+    }   
   }
-  $rsp->{data}->[$i++]="done.";
-  $callback->($rsp);
+
+  my %rsp1;
+  $rsp1->{data}->[0]="done.";
+  $callback->($rsp1);
   
   return;
 }
