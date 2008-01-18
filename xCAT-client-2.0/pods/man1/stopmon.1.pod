@@ -1,6 +1,6 @@
 =head1 NAME
  
-B<stopmon> -  stops a list of monitoring plug-in modules to monitor the xCAT cluster.
+B<stopmon> -  Stops a monitoring plug-in module to monitor the xCAT cluster.
 
  
 =head1 SYNOPSIS
@@ -10,16 +10,16 @@ I<stopmon [-h| --help]>
 I<stopmon  [-v| --version]>
 
 
-I<stopmon name[,name...]>
+I<stopmon name>
 
 
 =head1 DESCRIPTION
 
-This command is used to manually stop a list of monitoring plug-in modules to monitor the xCAT cluster. A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. The plug-in modules must have been registered in the xCAT I<monitoring> database table.  The registered plug-in modules is usually automatically started by xCAT when xcatd starts or when it is first registered.       
+This command is used to unregister a monitoring plug-in module from the I<monitoring> table. A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. Once unregistered, xCAT will ask the monitoring plug-in to stop the 3rd party software to monitor the xCAT cluster.       
 
 =head1 Parameters
 
-I<name> name is the name of the monitoring plug-in module in the monitoring table. 
+I<name> is the name of the monitoring plug-in module in the I<monitoring> table. 
 
 =head1 OPTIONS
 
@@ -39,11 +39,12 @@ B<-V | -verbose>       Verbose output.
 
 =head1 EXAMPLES
 
-1.To stop gangliamon plug-in module (which interacts with Ganglia monitoring software) and rmcmon plug-in module (which interacts with RMC) to monitor xCAT cluster, enter:
+1.To stop gangliamon plug-in module (which interacts with Ganglia monitoring software) to monitor the xCAT cluster, enter:
 
-  stopmon gangliamon,rmcmon
+  stopmon gangliamon
 
-Please note that gangliamon and rmcmon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<tabdump monitoring>. Refer to "monitoring plug-in infrastructure" in xCAT documents on how to register a monitoring plug-in module to monitor xCAT cluster. 
+Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<tabdump monitoring>. 
+
 
 
 =head1 FILES 
