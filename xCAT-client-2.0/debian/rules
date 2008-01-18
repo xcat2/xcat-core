@@ -67,48 +67,47 @@ install: build
 	$(INSTALL) -D share/man/man8/getmacs.8		$(TMPDIR)/usr/share/man/man8/getmacs.8
 	$(INSTALL) -D LICENSE.html                      $(TMPDIR)/usr/share/doc/$(PACKAGE)/LICENSE.html
 	$(INSTALL) -D README                            $(TMPDIR)/usr/share/doc/$(PACKAGE)/README
-	mkdir -p $(TMPDIR)/usr/share/xcat
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rpower
-	ln -sf $(TMPDIR)/usr/binxcatclient		$(TMPDIR)/usr/bin/rscan
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/sbin/makedhcp
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/sbin/makehosts
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/sbin/nodeset
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/sbin/makeconservercf
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rbeacon
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rvitals
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rinv
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rspreset
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rsetboot
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rbootseq
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/reventlog
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/nodels
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/nodech
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/noderm
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rnetboot
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/getmacs
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/mkvm
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/rmvm
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/lsvm
-	ln -sf $(TMPDIR)/usr/bin/xcatclient		$(TMPDIR)/usr/bin/chvm
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/lsslp
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/tabdump
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/makedns
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/gettab
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/nodeadd
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/makenetworks
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/sbin/copycds
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/regnotif
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/unregnotif
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/startmon
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/stopmon
-	ln -sf $(TMPDIR)/usr/bin/xcatclientnnr		$(TMPDIR)/usr/bin/updatemon
-	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/mkdef
-	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/chdef
-	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/lsdef
-	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/rmdef
-	ln -sf $(TMPDIR)/usr/bin/xcatDBcmds		$(TMPDIR)/usr/bin/xcat2nim
-	ln -sf $(TMPDIR)/usr/bin/xdsh			$(TMPDIR)/usr/bin/xdcp
-
+	mkdir -p $(TMPDIR)/usr/share/xcat/scripts
+	dh_link usr/bin/xcatclient usr/bin/rpower
+	dh_link usr/bin/xcatclient usr/bin/rscan
+	dh_link usr/bin/xcatclient usr/sbin/makedhcp
+	dh_link usr/bin/xcatclient usr/sbin/makehosts
+	dh_link usr/bin/xcatclient usr/sbin/nodeset
+	dh_link usr/bin/xcatclient usr/sbin/makeconservercf
+	dh_link usr/bin/xcatclient usr/bin/rbeacon
+	dh_link usr/bin/xcatclient usr/bin/rvitals
+	dh_link usr/bin/xcatclient usr/bin/rinv
+	dh_link usr/bin/xcatclient usr/bin/rspreset
+	dh_link usr/bin/xcatclient usr/bin/rsetboot
+	dh_link usr/bin/xcatclient usr/bin/rbootseq
+	dh_link usr/bin/xcatclient usr/bin/reventlog
+	dh_link usr/bin/xcatclient usr/bin/nodels
+	dh_link usr/bin/xcatclient usr/bin/nodech
+	dh_link usr/bin/xcatclient usr/bin/noderm
+	dh_link usr/bin/xcatclient usr/bin/rnetboot
+	dh_link usr/bin/xcatclient usr/bin/getmacs
+	dh_link usr/bin/xcatclient usr/bin/mkvm
+	dh_link usr/bin/xcatclient usr/bin/rmvm
+	dh_link usr/bin/xcatclient usr/bin/lsvm
+	dh_link usr/bin/xcatclient usr/bin/chvm
+	dh_link usr/bin/xcatclientnnr usr/bin/lsslp
+	dh_link usr/bin/xcatclientnnr usr/sbin/tabdump
+	dh_link usr/bin/xcatclientnnr usr/sbin/makedns
+	dh_link usr/bin/xcatclientnnr usr/bin/gettab
+	dh_link usr/bin/xcatclientnnr usr/sbin/nodeadd
+	dh_link usr/bin/xcatclientnnr usr/sbin/makenetworks
+	dh_link usr/bin/xcatclientnnr usr/sbin/copycds
+	dh_link usr/bin/xcatclientnnr usr/bin/regnotif
+	dh_link usr/bin/xcatclientnnr usr/bin/unregnotif
+	dh_link usr/bin/xcatclientnnr usr/bin/startmon
+	dh_link usr/bin/xcatclientnnr usr/bin/stopmon
+	dh_link usr/bin/xcatclientnnr usr/bin/updatemon
+	dh_link usr/bin/xcatDBcmds usr/bin/mkdef
+	dh_link usr/bin/xcatDBcmds usr/bin/chdef
+	dh_link usr/bin/xcatDBcmds usr/bin/lsdef
+	dh_link usr/bin/xcatDBcmds usr/bin/rmdef
+	dh_link usr/bin/xcatDBcmds usr/bin/xcat2nim
+	dh_link usr/bin/xdsh usr/bin/xdcp
 
 binary-indep: build install
 
