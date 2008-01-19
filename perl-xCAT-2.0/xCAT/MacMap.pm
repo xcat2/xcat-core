@@ -122,8 +122,12 @@ sub refresh_table {
   #Build hash of switch port names per switch
   $self->{switches} = {};
   foreach $entry (@entries) {
-    $self->{switches}->{$entry->{switch}}->{$entry->{port}}=$entry->{node};
-  }
+    if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
+    	$self->{switches}->{$entry->{switch}}->{$entry->{port}}=$entry->{node};
+    } else {
+        syslog("local4|err","xCAT Table error:".$entry->{node}."Has missing or invalid switch.switch and/or switch.port fields");
+    }
+  } 
   my $children = 0;
   my $inputs = new IO::Select;
   $SIG{CHLD}= sub { while(waitpid(-1,WNOHANG) > 0) { $children-- } };
