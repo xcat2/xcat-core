@@ -87,6 +87,10 @@ sub process_request {
     }
     unless (grep /^-n$/,@args) {
         my $nettab = xCAT::Table->new('networks');
+	unless ($nettab) {
+	  $callback->({error=>"Unable to open networks table, has makenetworks been run?"});
+	  return;
+	}
         foreach (@{$nettab->getAllEntries()}) {
             push @args,"-n";
             push @args,$_->{net}.":".$_->{mask}

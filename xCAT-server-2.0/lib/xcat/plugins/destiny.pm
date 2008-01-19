@@ -59,13 +59,14 @@ sub setdestiny {
       my $ntent = $nodetype->getNodeAttribs($_,[qw(os arch profile)]);
       if ($ntent and $ntent->{os}) {
         $nstates{$_} .= " ".$ntent->{os};
-      }
+      } else { $errored =1; $callback->({error=>"nodetype.os not defined for $_"}); }
       if ($ntent and $ntent->{arch}) {
         $nstates{$_} .= "-".$ntent->{arch};
-      }
+      } else { $errored =1; $callback->({error=>"nodetype.arch not defined for $_"}); }
       if ($ntent and $ntent->{profile}) {
         $nstates{$_} .= "-".$ntent->{profile};
-      }
+      } else { $errored =1; $callback->({error=>"nodetype.profile not defined for $_"}); }
+      if ($errored) {return;}
       unless ($state =~ /^netboot/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
     }
   } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/) {

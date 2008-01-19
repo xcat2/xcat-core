@@ -93,7 +93,7 @@ sub mkinstall {
       my $ent = $restab->getNodeAttribs($node,['nfsserver','serialport','primarynic','installnic']);
       my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
       unless ($ent and $ent->{nfsserver}) {
-        $callback->({error=>["No server for $node defined"],errorcode=>[1]});
+        $callback->({error=>["No noderes.nfsserver for $node defined"],errorcode=>[1]});
         next;
       }
       my $kcmdline="autoyast=http://".$ent->{nfsserver}."/install/autoinst/".$node." install=http://".$ent->{nfsserver}."/install/$os/$arch/1";

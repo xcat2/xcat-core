@@ -212,7 +212,7 @@ sub mkinstall {
       my $ent = $restab->getNodeAttribs($node,['nfsserver','serialport','primarynic','installnic']);
       my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
       unless ($ent and $ent->{nfsserver}) {
-        $callback->({error=>["No noderes.nfsserver defined for ".$ent->{profile}],errorcode=>[1]});
+        $callback->({error=>["No noderes.nfsserver defined for ".$node],errorcode=>[1]});
         next;
       }
       my $kcmdline="nofb utf8 ks=http://".$ent->{nfsserver}."/install/autoinst/".$node;
