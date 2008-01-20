@@ -167,6 +167,8 @@ sub new
     }
 
     my $class = ref($proto) || $proto;
+    my $dbuser="";
+    my $dbpass="";
 
     my $xcatcfg = (defined $ENV{'XCATCFG'} ? $ENV{'XCATCFG'} : '');
     if ($xcatcfg =~ /^$/)
@@ -206,12 +208,15 @@ sub new
         my $path = $1;
         $self->{connstring} = "dbi:CSV:f_dir=" . $path;
     }
-    else
+    else #Generic DBI
     {
-        return undef;
+       ($self->{connstring},$dbuser,$dbpass) = split(/\|/,$xcatcfg);
+       $self->{connstring} =~ s/^dbi://;
+       $self->{connstring} =~ s/^/dbi:/;
+        #return undef;
     }
     $self->{dbh} =
-      DBI->connect($self->{connstring}, "", "", {AutoCommit => $autocommit});
+      DBI->connect($self->{connstring}, $dbuser, $dbpass, {AutoCommit => $autocommit});
     if ($xcatcfg =~ /^SQLite:/)
     {
         my $dbexistq =
@@ -249,7 +254,28 @@ sub new
                               $xCAT::Schema::tabspec{$self->{tabname}});
             $self->{dbh}->do($str);
         }
-    }
+    } else { #generic DBI
+       my $tbexistq = $self->{dbh}->table_info('','',$self->{tabname},'TABLE');
+	my $found = 0;
+       while (my $data = $tbexistq->fetchrow_hashref) {
+	if ($data->{'TABLE_NAME'} eq $self->{tabname}) {
+		$found = 1;
+		last;
+	}
+	}
+	unless ($found) {
+	    unless ($create)
+	    {
+	       return undef;
+	    }
+	    my $str =
+	       buildcreatestmt($self->{tabname},
+	                       $xCAT::Schema::tabspec{$self->{tabname}});
+	    $self->{dbh}->do($str);
+	}
+     }
+
+	
     updateschema($self);
     if ($self->{tabname} eq 'nodelist')
     {
@@ -293,6 +319,7 @@ sub updateschema
 
     #This determines alter table statements required..
     my $self = shift;
+    my @columns;
     if ($self->{backend_type} eq 'sqlite')
     {
         my $dbexistq =
@@ -306,7 +333,6 @@ sub updateschema
         $cstmt =~ s/.*\(//;
         $cstmt =~ s/\)$//;
         my @entries = split /,/, $cstmt;
-        my @columns;
         foreach (@entries)
         {
             unless (/\(/)
@@ -317,6 +343,15 @@ sub updateschema
                 push @columns, $colname;
             }
         }
+    } else { #Attempt generic dbi..
+       my $sth = $self->{dbh}->column_info('','',$self->{tabname},'');
+       while (my $cd = $sth->fetchrow_hashref) {
+           push @columns,$cd->{'COLUMN_NAME'};
+       }
+	foreach (@columns) { #Column names may end up quoted by database engin
+		s/"//g;
+	}
+    }
 
         #Now @columns reflects the *actual* columns in the database
         my $dcol;
@@ -331,7 +366,6 @@ sub updateschema
                 $self->{dbh}->do($stmt);
             }
         }
-    }
 }
 
 #--------------------------------------------------------------------------
