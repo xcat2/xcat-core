@@ -64,6 +64,7 @@ my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
 ($tmp) = $sitetab->getAttribs({'key'=>'xcatconfdir'},'value');
 $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 
+$sitetab->close;
 my $progname;
 $SIG{PIPE} = sub { die "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)" };
 sub daemonize {
@@ -242,7 +243,7 @@ if (xCAT::Utils->isLinux()) {
   until ($quit) {
     eval { 
 	while (1) {	
-        until ($select->can_read(5)) {} #Wait for data
+        until ($select->can_read(5)) {if ($quit) { last; }} #Wait for data
 	while ($select->can_read(0)) { #Pull all buffer data that can be pulled
 	   $part = $socket->recv($data,1500);
            ($sport,$client) = sockaddr_in($part);
@@ -380,10 +381,12 @@ until ($quit) {
     } else {
       $peername=undef;
     }
+    $sitetab=xCAT::Table->new('site');
     my ($tmp) = $sitetab->getAttribs({'key'=>'domain'},'value');
     if (defined $tmp->{value}) {
         $domain = $tmp->{value};
     }
+    $sitetab->close;
 
 if (xCAT::Utils->isLinux()) {
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET6);
@@ -487,6 +490,7 @@ sub plugin_command {
             }
           }
         }
+	$hdlrtable->close;
       } else {
         unless (@nodes) {
           $handler_hash{$hdlspec} = 1;
@@ -762,6 +766,7 @@ sub validate {
     return 0;
   }
   my @policies = $policytable->getTable;
+  $policytable->close;
   my $rule;
   foreach $rule (@policies) {
     if ($rule->{name} and $rule->{name} ne '*') {

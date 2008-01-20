@@ -315,7 +315,6 @@ sub chnode {
   my $args=shift;
   my $callback=shift;
   my $addmode=shift;
-  print $addmode;
   if ($addmode) {
     my $idx=0;
     foreach my $arg (@$args) {
@@ -438,7 +437,11 @@ sub chnode {
             }
           }
           if (keys %uhsh) {
-            $tabhdl->setNodeAttribs($node,\%uhsh);
+		
+            my @rc = $tabhdl->setNodeAttribs($node,\%uhsh);
+            if (not defined($rc[0])) {
+               $callback->({error=>"DB error ".$rc[1]});
+            }
           }
         }
       }

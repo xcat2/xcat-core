@@ -258,7 +258,7 @@ sub new
        my $tbexistq = $self->{dbh}->table_info('','',$self->{tabname},'TABLE');
 	my $found = 0;
        while (my $data = $tbexistq->fetchrow_hashref) {
-	if ($data->{'TABLE_NAME'} eq $self->{tabname}) {
+	if ($data->{'TABLE_NAME'} =~ /^\"?$self->{tabname}\"?\z/) {
 		$found = 1;
 		last;
 	}
@@ -697,6 +697,7 @@ sub setAttribs
         {
             return (undef, $sth->errstr);
         }
+	$sth->finish;
     }
     else
     {
@@ -728,6 +729,7 @@ sub setAttribs
         {
             return (undef, $sth->errstr);
         }
+	$sth->finish;
     }
 
     #notify the interested parties
@@ -840,6 +842,7 @@ sub setAttribsWhere
       xCAT::NotifHandler->notify($action, $self->{tabname},
                                  \@notif_data, \%new_notif_data);
     }
+    $sth->finish;
     return 0;
 }
 
@@ -1142,7 +1145,7 @@ sub getAllAttribsWhere
                 . $self->{tabname}
                 . ' WHERE ('
                 . $whereclause
-                . ") and (disable is NULL or disable in ('0','no','NO','no'))");
+                . ") and (\"disable\" is NULL or \"disable\" in ('0','no','NO','no'))");
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
     {
@@ -1199,7 +1202,7 @@ sub getAllNodeAttribs
     my $query =
       $self->{dbh}->prepare('SELECT node FROM '
               . $self->{tabname}
-              . " WHERE disable is NULL or disable in ('','0','no','NO','no')");
+              . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
     {
@@ -1275,7 +1278,7 @@ sub getAllAttribs
     my $query   =
       $self->{dbh}->prepare('SELECT * FROM '
               . $self->{tabname}
-              . " WHERE disable is NULL or disable in ('','0','no','NO','no')");
+              . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
     {
@@ -1434,7 +1437,7 @@ sub getAttribs
 
         if ($keypairs{$_})
         {
-            $statement .= $_ . " = ? and ";
+            $statement .= "\"".$_ . "\" = ? and ";
             if (ref($keypairs{$_}))
             {    #correct for XML process mangling if occurred
                 push @exeargs, $keypairs{$_}->[0];
@@ -1449,7 +1452,7 @@ sub getAttribs
             $statement .= "$_ is NULL and ";
         }
     }
-    $statement .= "(disable is NULL or disable in ('0','no','NO','No','nO'))";
+    $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";
     my $query = $self->{dbh}->prepare($statement);
     $query->execute(@exeargs);
     my $data;
@@ -1625,7 +1628,7 @@ sub open
 sub DESTROY
 {
     my $self = shift;
-    if ($self->{dbh}) { $self->{dbh}->disconnect(); }
+    if ($self->{dbh}) { $self->{dbh}->disconnect(); undef $self->{dbh};}
     undef $self->{nodelist};    #Could be circular
 }
 
