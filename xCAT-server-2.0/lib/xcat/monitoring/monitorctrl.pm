@@ -151,10 +151,10 @@ sub handleMonSignal {
   my %ret=();
   foreach (keys %summary) {
     if ($summary{$_}==-1) { #plug-in deleted
-	print "got here stop $_.\n";
+	#print "got here stop $_.\n";
       %ret=stopMonitoring(($_));
     } elsif ($summary{$_}==1) { #plug-in added
-      print "got here start $_.\n";
+      #print "got here start $_.\n";
       my %ret1=startMonitoring(($_));
       %ret=(%ret, %ret1);
     }
