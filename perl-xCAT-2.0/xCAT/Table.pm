@@ -706,15 +706,19 @@ sub setAttribs
         $action = "a";
         @bind   = ();
         $cols   = "";
+	my %newpairs;
+	#first, merge the two structures to a single hash
         foreach (keys %keypairs)
         {
-            $cols .= $_ . ",";
-            push @bind, $keypairs{$_};
-        }
+	    $newpairs{$_} = $keypairs{$_};
+	}
         for my $col (keys %$elems)
         {
-            $cols = $cols . $col . ",";
-            push @bind, $$elems{$col};
+	    $newpairs{$col} = $$elems{$col};
+        }
+	foreach (keys %newpairs) {
+            $cols .= $_ . ",";
+            push @bind, $newpairs{$_};
         }
         chop($cols);
         my $qstring = 'INSERT INTO ' . $self->{tabname} . " ($cols) VALUES (";
