@@ -949,7 +949,7 @@ sub process_request {
     pipe $cfd, $pfd;
     $cfd->autoflush(1);
     $pfd->autoflush(1);
-    my $cpid = xCAT::Utils->fork;
+    my $cpid = xCAT::Utils->xfork;
     unless (defined($cpid)) { die "Fork error"; }
     unless ($cpid) {
       close($cfd);
