@@ -5,6 +5,7 @@ use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
 use xCAT::NodeRange;
+use DBI;
 
 #--------------------------------------------------------------------------------
 
@@ -93,6 +94,35 @@ sub isAIX
     if ($^O =~ /^aix/i) { return 1; }
     else { return 0; }
 }
+
+#-------------------------------------------------------------------------------
+
+=head3	tfork
+	forks, safely coping with open database handles
+	Argumens:
+		none
+	Returns:
+		same as fork
+=cut
+sub tfork {
+	my $rc=fork;
+	unless (defined($rc)) {
+		return $rc;
+	}
+	unless ($rc) {
+          my %drivers = DBI->installed_drivers;
+          foreach my $drh (values %drivers) {
+            foreach (@{$drh->{ChildHandles}}) {
+                $_->{InactiveDestroy} = 1;
+            }
+            foreach (@{$drh->{ChildHandles}}) {
+                undef $_;
+            }
+	  }
+        }
+	return $rc;
+}
+	
 
 #-------------------------------------------------------------------------------
 

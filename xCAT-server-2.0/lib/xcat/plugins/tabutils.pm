@@ -467,7 +467,9 @@ sub tabgrep {
     if ($tab->getNodeAttribs($node->[0],["node"])) {
 			$callback->({data=>[$_]});
 		}
+     $tab->close;
 	}
+
 }
 
     

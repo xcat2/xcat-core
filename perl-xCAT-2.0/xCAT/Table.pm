@@ -1628,7 +1628,8 @@ sub open
 sub DESTROY
 {
     my $self = shift;
-    if ($self->{dbh}) { $self->{dbh}->disconnect(); undef $self->{dbh};}
+    undef $self->{dbh};
+    #if ($self->{dbh}) { $self->{dbh}->disconnect(); undef $self->{dbh};}
     undef $self->{nodelist};    #Could be circular
 }
 

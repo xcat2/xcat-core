@@ -75,7 +75,7 @@ sub start {
   #start monitoring for all the registered plug-ins in the monitoring table.
   #better span a process so that it will not block the xcatd.
   my $pid;
-  if ($pid=fork()) {#parent process 
+  if ($pid=xCAT::Utils->xfork()) {#parent process 
     #print "parent done\n";
     return 0;
   }
@@ -647,6 +647,7 @@ sub processNodeStatusChanges {
     xCAT::MsgUtils->message("E", "Could not read the nodelist table\n");
   }
 
+  $tab->close;
   return 0;
 }
 

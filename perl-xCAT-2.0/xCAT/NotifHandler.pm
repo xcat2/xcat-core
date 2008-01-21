@@ -8,6 +8,8 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 use File::Basename qw(fileparse);
+use xCAT::Utils;
+use Data::Dumper;
 
 #%notif is a cache that holds the info from the "notification" table.
 #the format of it is:
@@ -156,7 +158,7 @@ sub refreshNotification
         } #end foreach
 
       } #end foreach(@row_array)
-    }end if (@row_array)
+    }#end if (@row_array)
   } #end if ($table)
 
   return 1;
@@ -297,7 +299,7 @@ sub notify {
      # print "modname=$modname, path=$path, suffix=$suffix\n";
     if ($suffix =~ /.pm/) { #it is a perl module
       my $pid; 
-      if ($pid=fork()) { }
+      if ($pid=xCAT::Utils->xfork()) { }
       elsif (defined($pid)) {
 	my $fname;
         if (($path eq "") || ($path eq ".\/")) {
@@ -318,7 +320,7 @@ sub notify {
     }
     else { #it is a command
       my $pid;
-      if ($pid=fork()) { }
+      if ($pid=xCAT::Utils->xfork()) { }
       elsif (defined($pid)) {
         # print "command=$_\n";
         if (open(CMD, "|$_")) {
