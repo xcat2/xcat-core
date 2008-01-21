@@ -47,7 +47,7 @@ sub fork_no_output
 
     my $pid;
 
-    if ($pid = fork)
+    if ($pid = xCAT::Utils->xfork)
     {
 
     }

@@ -2,6 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::MacMap;
 use xCAT::Table;
+use xCAT::Utils;
 use IO::Select;
 use IO::Handle;
 use Sys::Syslog;
@@ -140,7 +141,7 @@ sub refresh_table {
     $child->autoflush(1);
     $parent->autoflush(1);
     $children++;
-    $cpid = fork;
+    $cpid = xCAT::Utils->xfork;
     unless (defined $cpid) { die "Cannot fork" };
     if ($cpid == 0) {
       close($child);

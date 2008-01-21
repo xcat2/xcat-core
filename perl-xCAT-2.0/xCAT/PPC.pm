@@ -3,6 +3,7 @@
 package xCAT::PPC;
 use strict;
 use xCAT::Table;
+use xCAT::Utils;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use Time::HiRes qw(gettimeofday);
@@ -464,7 +465,7 @@ sub fork_cmd {
     my $parent;
     my $child;
     pipe $parent, $child;
-    my $pid = fork;
+    my $pid = xCAT::Utils->xfork;
 
     if ( !defined($pid) ) {
         ###################################

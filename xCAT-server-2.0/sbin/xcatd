@@ -71,7 +71,7 @@ sub daemonize {
   chdir('/');
   umask 0;
   my $pid;
-  defined($pid = fork) or die "Can't fork: $!";
+  defined($pid = xCAT::Utils->xfork) or die "Can't fork: $!";
   if ($pid) {
     if ($pidfile) {
       open(PFILE, '>', $pidfile);
@@ -152,7 +152,7 @@ if (xCAT::Utils->isLinux()) {
             arg => [ 'next' ],
             );
           close($conn);
-          my $pid=fork();
+          my $pid=xCAT::Utils->xfork();
           unless ($pid) { #fork off the nodeset and potential slowness
             plugin_command(\%request,undef,\&convey_response);
             exit(0);
@@ -185,7 +185,7 @@ if (xCAT::Utils->isLinux()) {
 	       node => [ $node ],
 	       arg => [ 'enact' ],
 	    );
-          my $pid=fork();
+          my $pid=xCAT::Utils->xfork();
           unless ($pid) { #fork off the nodeset and potential slowness
             plugin_command(\%request,undef,\&convey_response);
             exit(0);
@@ -322,14 +322,14 @@ daemonize;
 $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {} };
 $SIG{TERM} = $SIG{INT} = sub { printf("Asked to quit...\n"); $quit++ };
   
-my $pid = fork;
+my $pid = xCAT::Utils->xfork;
 defined $pid or die "Unable to fork for UDP/TCP";
 unless ($pid) {
   $$progname="xcatd: UDP listener";
   do_udp_service;
   exit(0);
 }
-$pid = fork;
+$pid = xCAT::Utils->xfork;
 defined $pid or die "Unable to fork installmonitor";
 unless ($pid) {
   $$progname="xcatd: install monitor";
@@ -365,7 +365,7 @@ xCAT_monitoring::monitorctrl::start($$);
 my $peername;
 until ($quit) {
   next unless my $connection=$listener->accept;
-  my $child = fork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
+  my $child = xCAT::Utils->xfork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
   
   unless (defined $child) {
     die "xCATd cannot fork";
@@ -521,7 +521,7 @@ sub plugin_command {
         #pipe($pfd,$cfd);
         $parent_fd->autoflush(1);
         $pfd->autoflush(1);
-        $child = fork;
+        $child = xCAT::Utils->xfork;
       } else {
         $child = 0;
       }

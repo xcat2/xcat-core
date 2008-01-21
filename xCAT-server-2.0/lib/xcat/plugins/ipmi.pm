@@ -7,6 +7,7 @@ $xcat_plugins{ipmi}="this";
 package xCAT_plugin::ipmi;
 
 use Storable qw(store_fd retrieve_fd thaw freeze);
+use xCAT::Utils;
 
 require Exporter;
 @ISA = qw(Exporter);
@@ -558,7 +559,7 @@ sub ipmicmd {
 
 			mkfifo("/tmp/.sol.$pid",0666);
 
-			my $child = fork();
+			my $child = xCAT::Utils->xfork();
 			if(!defined $child) {
 				die;
 			}

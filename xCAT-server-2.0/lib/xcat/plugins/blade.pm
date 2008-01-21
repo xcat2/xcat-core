@@ -3,6 +3,7 @@
 package xCAT_plugin::blade;
 #use Net::SNMP qw(:snmp INTEGER);
 use xCAT::Table;
+use xCAT::Utils;
 use IO::Socket;
 use SNMP;
 use strict;
@@ -948,7 +949,7 @@ sub process_request {
     pipe $cfd, $pfd;
     $cfd->autoflush(1);
     $pfd->autoflush(1);
-    my $cpid = fork;
+    my $cpid = xCAT::Utils->fork;
     unless (defined($cpid)) { die "Fork error"; }
     unless ($cpid) {
       close($cfd);

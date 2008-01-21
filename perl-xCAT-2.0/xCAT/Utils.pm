@@ -97,14 +97,14 @@ sub isAIX
 
 #-------------------------------------------------------------------------------
 
-=head3	tfork
+=head3	xfork
 	forks, safely coping with open database handles
 	Argumens:
 		none
 	Returns:
 		same as fork
 =cut
-sub tfork {
+sub xfork {
 	my $rc=fork;
 	unless (defined($rc)) {
 		return $rc;
