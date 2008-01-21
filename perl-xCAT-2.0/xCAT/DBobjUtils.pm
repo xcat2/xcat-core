@@ -253,7 +253,7 @@ sub getobjdefs
                 # Get the attr values from the DB tables
                 #
 
-                if ($type eq 'node')
+                if ($lookup_attr eq 'node')
                 {
 
                     my $thistable;
