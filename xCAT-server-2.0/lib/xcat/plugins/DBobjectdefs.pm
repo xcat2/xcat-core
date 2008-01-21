@@ -431,6 +431,7 @@ sub processArgs
             $rsp->{data}->[1] = "Attribute          Description\n";
 
             my @alreadydone;    # the same attr may appear more then once
+            my $outstr = "";
             foreach $this_attr (sort @{$datatype->{'attrs'}})
             {
                 my $attr = $this_attr->{attr_name};
@@ -438,20 +439,14 @@ sub processArgs
 
                 # if (($attr ne $objkey) && !grep(/^$attr$/, @alreadydone))
                 if (!grep(/^$attr$/, @alreadydone))
-                {
-                    push(@attrlist, "$attr\t\t- $desc\n");
+                {   
+                    $outstr .= "$attr\n\t\t- $desc\n\n";
                 }
                 push(@alreadydone, $attr);
-
             }
-            my $n = 2;
-            foreach my $l (sort @attrlist)
-            {
-                $rsp->{data}->[$n] = "$l";
-                $n++;
-            }
+            
+            $rsp->{data}->[2] = $outstr;
             xCAT::MsgUtils->message("I", $rsp, $::callback);
-
         }
 
         return 1;
