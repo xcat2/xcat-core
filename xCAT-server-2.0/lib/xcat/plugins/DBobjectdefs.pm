@@ -194,6 +194,10 @@ sub processArgs
     my $gotattrs = 0;
 
     @ARGV = @{$::args};
+    
+    if (scalar(@ARGV) <= 0) {
+        return 2;
+    }
 
     # parse the options - include any option from all 4 cmds
     if (
