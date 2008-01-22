@@ -523,7 +523,7 @@ sub nodels {
   # Version
   if ($VERSION) { 
     my %rsp;
-    $rsp->{data}->[0]= "1.3";
+    $rsp->{data}->[0]= "2.0";
     $callback->($rsp);
     return;
   }
