@@ -109,6 +109,7 @@ rm -rf $RPM_BUILD_ROOT
 - Start core rpm for 1.3 work
 
 %post 
+%ifos linux
 ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
 if [ -x /usr/lib/lsb/install_initd ]; then
   /usr/lib/lsb/install_initd /etc/init.d/xcatd
@@ -120,8 +121,10 @@ fi
 if [ "$1" = "2" ]; then #only on upgrade...
     /etc/init.d/xcatd restart
 fi
+%endif
 
 %preun
+%ifos linux
 if [ $1 == 0 ]; then  #This means only on -e
   /etc/init.d/xcatd stop
   if [ -x /usr/lib/lsb/remove_initd ]; then
@@ -131,6 +134,7 @@ if [ $1 == 0 ]; then  #This means only on -e
   fi
   rm -f /usr/sbin/xcatd  #remove the symbolic  
 fi
+%endif
 
 
 
