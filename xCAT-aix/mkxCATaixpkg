@@ -1,7 +1,0 @@
-tar -cvf postscripts.tar.gz  ../xCAT/postscripts ../xCAT/LICENSE.html
-tar -cvf templates.tar.gz ../xCAT/templates
-mv -f *.gz /opt/freeware/src/packages/SOURCES
-cp  ../xCAT/xcat.conf /opt/freeware/src/packages/SOURCES
-rpm -ba xCAT.spec 
-cd -
-
