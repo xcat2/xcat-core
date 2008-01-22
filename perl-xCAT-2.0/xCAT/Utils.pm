@@ -956,4 +956,47 @@ sub cpSSHFiles
     }
     return (0);
 }
+#-------------------------------------------------------------------------------
+
+=head3    isServiceNode
+	checks for the /etc/xCATSN.cfg file and if it exists
+	reads the MasterNodename:port. Caches the MasterNodename:port.
+	in the  %::XCATMasterPort defined in the caller.
+    
+    Arguments:
+        none
+    Returns:
+        MasterHostName:port, if it is a service node 
+        return -1 - if not a service node 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+	     %::XCATMasterPort defined in the caller.
+         $return=(xCAT::Utils->isServiceNode()) 
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub isServiceNode
+{
+    my $value;
+    if (!(-e "/etc/xCATSN.cfg"))
+    {
+        return -1;
+    }
+    if (exists($::XCATMasterPort{$value}))
+    {    # already hash'd it
+        return $::XCATMasterPort{$value};
+    }
+
+    else
+    {    # read the file
+        $::XCATMasterPort{$value} = `cat /etc/xCATSN.cfg`;
+		chomp $::XCATMasterPort{$value};
+        return $::XCATMasterPort{$value};
+    }
+}
 1;
