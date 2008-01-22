@@ -1,0 +1,539 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#####################################################
+#
+# This is script is called during the initial installation of xCAT
+#    It can also be called directly to redo the xcat configuration
+#
+#####################################################
+
+BEGIN
+{
+	$::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+	$::XCATDIR = $ENV{'XCATDIR'} ? $ENV{'XCATDIR'} : '/etc/xcat';
+}
+
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
+use Getopt::Long;
+use xCAT::MsgUtils;
+use Socket;
+
+$::progname = "xcatconfig";
+
+Getopt::Long::Configure("bundling") ;
+$Getopt::Long::ignorecase=0;
+
+# parse the options
+if(!GetOptions(
+      'f|force'   => \$::FORCE,
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION,))
+{
+  &usage;
+  exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($::HELP) {
+	&usage;
+	exit(0);
+}
+
+# display the version statement if -v or --verison is specified
+if ($::VERSION)
+{
+  xCAT::MsgUtils->message('I',  "$::progname: version 1.0\n");
+  exit(0);
+}
+
+$::osname=`uname`;
+chomp $::osname;
+
+if ($::osname eq 'AIX') {
+	$::arch=`uname -p`;
+	$::root = "";
+} else {
+	$::arch=`uname -m`;
+	$::root = "/root";
+}
+chomp $::arch;
+chomp $::root;
+
+#
+# Generate ssh keys 
+#
+if ( (! -f "/install/postscripts/hostkeys/ssh_host_key") || $::FORCE){
+
+	#  create /install/postscripts/.ssh if needed
+	if ( ! -d "/install/postscripts/hostkeys" ) {
+		my $cmd = "mkdir -p /install/postscripts/hostkeys";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC  != 0)
+		{
+			xCAT::MsgUtils->message('E', "Could not create /install/postscripts/hostkeys directory.\n");
+		} else {
+			xCAT::MsgUtils->message('I', "Created /install/postscripts/hostkeys directory.\n");
+		}
+	}
+
+	if ($::FORCE){
+		# remove the old keys
+		my $cmd = "rm /install/postscripts/hostkeys/ssh_host*";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC  != 0)
+		{
+			xCAT::MsgUtils->message('E', "Could not remove ssh keys from /install/postscripts/hostkeys directory.\n");
+		} else {
+			xCAT::MsgUtils->message('I', "Removed ssh keys from /install/postscripts/hostkeys directory.\n");
+		}
+	}
+
+	xCAT::MsgUtils->message('I', "Generating SSH1 RSA Key...\n");
+	my $cmd = "/usr/bin/ssh-keygen -t rsa1 -f /install/postscripts/hostkeys/ssh_host_key -C '' -N ''";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "Could not generate SSH1 RSA key.\n");
+	} 
+
+	xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...\n");
+	my $cmd = "/usr/bin/ssh-keygen -t rsa -f /install/postscripts/hostkeys/ssh_host_rsa_key -C '' -N ''";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+		xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.\n");
+    } 
+
+	xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...\n");
+	my $cmd = "/usr/bin/ssh-keygen -t dsa -f /install/postscripts/hostkeys/ssh_host_dsa_key -C '' -N ''";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not generate SSH2 DSA key.\n");
+    }
+}
+
+#
+# create .ssh dir if needed  
+#
+my $sshdir = "$::root/.ssh";
+if ( ! -d $sshdir ) {
+	my $cmd = "mkdir -m 700 -p $sshdir";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "Could not create $sshdir directory.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "Created $sshdir directory.\n");
+	}
+}
+
+#
+# create or modify the -/.ssh/config file
+#
+my $cfgfile = "$::root/.ssh/config";
+if (( -f $cfgfile ) || $::FORCE) {
+	# it exists - so see if it needs to be updated  - ???????? check!!!
+#	xCAT::MsgUtils->message('I', "Checking for \'StrictHostKeyChecking no\' in $cfgfile.\n");
+	my $cmd = "cat $cfgfile | grep 'StrictHostKeyChecking no'";
+	my $outref = xCAT::Utils->runcmd("$cmd", -1);
+	if ($::RUNCMD_RC  != 0) {
+		# ok - then add this entry
+		my $cmd = "echo StrictHostKeyChecking no >> $cfgfile; chmod  600 $cfgfile";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC  != 0)
+		{
+			xCAT::MsgUtils->message('E', "Could not update the $cfgfile file.\n");
+		} else {
+        	xCAT::MsgUtils->message('I', "Added updates to the $cfgfile file.\n");
+		}
+	}
+} else {
+	# file doesn't exist so just create it
+	my $cmd = "echo StrictHostKeyChecking no > $cfgfile; chmod  600 $cfgfile";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "Could not update the $cfgfile file.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "Added updates to the $cfgfile file.\n");
+	}
+}
+
+#
+#  create /install/postscripts/.ssh if needed  
+#
+if ( ! -d "/install/postscripts/.ssh" ) {
+    my $cmd = "mkdir -p /install/postscripts/.ssh";
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not create /install/postscripts/.ssh directory.\n");
+    } else {
+        xCAT::MsgUtils->message('I', "Created /install/postscripts/.ssh directory.\n");
+    }
+}
+
+#
+#  Generate id_rsa.pub 
+#
+my $pubfile = "$::root/.ssh/id_rsa.pub";
+my $rsafile = "$::root/.ssh/id_rsa";
+if (( ! -r $pubfile ) || $::FORCE) {
+
+	if ($::FORCE){
+        # remove the old file
+        my $cmd = "rm $::root/.ssh/id_rsa*";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC  != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not remove id_rsa files from $::root/.ssh directory.\n");
+        } else {
+            xCAT::MsgUtils->message('I', "Removed id_rsa files from $::root/.ssh directory.\n");
+        }
+    }
+
+	my $cmd = "/usr/bin/ssh-keygen -t rsa -q -b 2048 -N '' -f $rsafile";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "Could not generate $pubfile.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "Generated $pubfile.\n");
+		# copy it 
+		my $cmd = "cp $pubfile /install/postscripts/.ssh/authorized_keys";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    	if ($::RUNCMD_RC  != 0)
+    	{
+			xCAT::MsgUtils->message('E', "Could not copy $pubfile to /install/postscripts/.ssh/authorized_keys.\n");
+		} else {
+			xCAT::MsgUtils->message('I', "Copied $pubfile to /install/postscripts/.ssh/authorized_keys.\n");
+		}
+	}
+}
+
+#
+# create /var/log/consoles if needed 
+#
+if ( ! -d "/var/log/consoles" ) {
+	my $cmd = "mkdir -p /var/log/consoles";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "Could not create /var/log/consoles directory.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "Created /var/log/consoles directory.\n");
+	}
+}
+
+# some Linux-only config
+if ($::osname eq 'Linux') {
+
+	my $changed_exports=0;
+
+	#
+	#  add tftpboot to /etc/exports - if needed
+	#
+
+	my $cmd = "cat /etc/exports | grep '/tftpboot'";
+	my $outref = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+
+		# ok - then add this entry
+		#SECURITY: this has potential for sharing private host/user keys
+        my $cmd = "echo '/tftpboot *(rw,root_squash,sync)' >> /etc/exports";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC  != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not update the /etc/exports file.\n");
+        } else {
+            xCAT::MsgUtils->message('I', "Added /tftpboot to the /etc/exports file.\n");
+			$changed_exports++;
+        }
+	}
+
+	#
+    #  add /install to /etc/exports - if needed
+    #
+
+    my $cmd = "cat /etc/exports | grep '/install'";
+    my $outref = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+        # ok - then add this entry
+        #SECURITY: this has potential for sharing private host/user keys
+        my $cmd = "echo '/install *(ro,no_root_squash,sync)' >> /etc/exports";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC  != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not update the /etc/exports file.\n");
+        } else {
+            xCAT::MsgUtils->message('I', "Added /install to the /etc/exports file.\n");
+			$changed_exports++;
+        }
+    }
+
+	if ($changed_exports) {
+		# restart nfs
+		my $cmd = "service nfs restart";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+
+		my $cmd = "chkconfig nfs on";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC  != 0)
+        {
+			xCAT::MsgUtils->message('E', "Could not enable NFS.\n");
+		} else {
+            xCAT::MsgUtils->message('I', "NFS has been restarted.\n");
+		}
+	}
+} # - some Linux-only config
+
+#
+# create basic site definition 
+#
+my $hname = `hostname`;
+chomp $hname;
+
+# some values common to both AIX & Linux
+my $xcatport = "3001";
+my $xcatiport = "3002";
+my $installdir = "/install";
+
+my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
+my $master = inet_ntoa($addrs[0]);
+
+# set value based on OS
+my ($domain, $timezone);
+if ($::osname eq 'AIX') {
+	($domain = $hname) =~ s/^.*?\.//;
+	$timezone = $ENV{'TZ'};
+
+} else {
+    $domain = `hostname -d`;
+	my $tz;
+	if ( -f "/etc/redhat-release") {
+		# on Redhat look for "ZONE"
+		$tz = `grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`;
+	} else {
+		# on SuSE look for "TIMEZONE"
+		$tz = `grep ^TIMEZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`;
+	}
+    $timezone = $tz;
+}
+
+chomp $timezone;
+chomp $master;
+chomp $domain;
+
+# create basic site definition
+if (( ! -r "/etc/xcat/site.sqlite" ) || $::FORCE){
+	my $chtabcmds;
+	$chtabcmds = "chtab key=xcatdport site.value=$xcatport;";
+	$chtabcmds .= "chtab key=xcatiport site.value=$xcatiport;";
+	$chtabcmds .= "chtab key=installdir site.value=$installdir;";
+	$chtabcmds .= "chtab key=master site.value=$master;";
+	$chtabcmds .= "chtab key=domain site.value=$domain;";
+	$chtabcmds .= "chtab key=timezone site.value=$timezone";
+
+    my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not create site definition.\n");
+    } else {
+        xCAT::MsgUtils->message('I', "Updated cluster site definition.\n");
+    }
+}
+
+# create basic policy definition.
+if (( ! -r "/etc/xcat/policy.sqlite" ) || $::FORCE) {
+	my $chtabcmds;
+	if ($::osname eq 'AIX' ) {
+    	$chtabcmds = "chtab priority=1 policy.name=root policy.rule=allow";
+	} else {
+		$chtabcmds = "chtab priority=1 policy.name=root policy.rule=allow;";
+		$chtabcmds .= "chtab priority=2 policy.commands=getbmcconfig policy.rule=allow;";
+		$chtabcmds .= "chtab priority=3 policy.commands=nextdestiny policy.rule=allow;";
+		$chtabcmds .= "chtab priority=4 policy.commands=getdestiny policy.rule=allow";
+	}
+    my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not create policy definition.\n");
+    } else {
+        xCAT::MsgUtils->message('I', "Created policy definition.\n");
+    }
+}
+
+#
+#  set up the certificates for xcatd 
+#
+if (( ! -d "/etc/xcat/ca" ) || $::FORCE) {
+
+	xCAT::MsgUtils->message('I', "Running $::XCATROOT/share/xcat/scripts/setup-xcat-ca.sh.\n");
+	my $cmd = "yes | $::XCATROOT/share/xcat/scripts/setup-xcat-ca.sh 'xCAT CA'";
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not create xCAT certificate in /etc/xcat/ca.\n");
+    } else {
+        xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
+    }
+
+}
+
+if (( ! -d "/etc/xcat/cert" ) || $::FORCE) {
+
+	xCAT::MsgUtils->message('I', "Running $::XCATROOT/share/xcat/scripts/setup-server-cert.sh.\n");
+	my $cmd = "yes | $::XCATROOT/share/xcat/scripts/setup-server-cert.sh `hostname`";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not create xCAT certificate in /etc/xcat/cert.\n");
+    } else {
+        xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
+    }
+}
+
+if ( ( ! -r "$::root/.xcat/client-key.pem") || $::FORCE){
+
+	xCAT::MsgUtils->message('I', "Running $::XCATROOT/share/xcat/scripts/setup-local-client.sh.\n");
+	my $cmd = "yes | $::XCATROOT/share/xcat/scripts/setup-local-client.sh root";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not create xCAT certificate in /.xcat/client-key.pem.\n");
+    } else {
+        xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
+    }
+}
+
+#
+# if this is a re-config then stop the xcatd processes
+#
+if ($::FORCE) {
+	my @xpids = xCAT::Utils->runcmd("ps -ef\|grep \"xcatd\"", 0);
+	xCAT::MsgUtils->message('I', "Stopping xcatd processes....\n");
+	foreach $ps (@xpids)
+	{
+
+		$ps =~ s/^\s+//;    # strip any leading spaces
+		my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
+		# if $ps contains "grep" then it's not one of the daemon processes
+		if ( $ps !~/grep/)
+		{
+#	    	print "pid=$pid\n";
+			xCAT::Utils->runcmd("kill -9 $pid", 0);
+			if ($::RUNCMD_RC  != 0)
+			{
+				xCAT::MsgUtils->message('E', "Could not stop xcatd process $pid.\n");
+			}
+		}
+	}
+}
+
+#
+#  start xcatd
+#
+xCAT::MsgUtils->message('I', "Starting xcatd.....\n");
+my $xcmd;
+if ($::osname eq 'AIX') {
+	$xcmd = "xcatd &";
+} else {
+	$xcmd = "/etc/init.d/xcatd start";
+}
+
+my $outref = xCAT::Utils->runcmd("$xcmd", 0);
+if ($::RUNCMD_RC  != 0)
+{
+	xCAT::MsgUtils->message('E', "Could not start xcatd.\n");
+} 
+
+# more - Linux-only config
+if ($::osname eq 'Linux') {
+
+	#Zap the almost certainly wrong pxelinux.cfg file
+	if ( -f "/tftpboot/pxelinux.cfg/default") {
+		$cmd = "rm /tftpboot/pxelinux.cfg/default";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC  != 0)
+		{
+    		xCAT::MsgUtils->message('E', "Could not remove /tftpboot/pxelinux.cfg/default\n");
+		} else {
+			xCAT::MsgUtils->message('I', "Removed /tftpboot/pxelinux.cfg/default.\n");
+		}
+	}
+
+	# run mknb
+	if ($::arch eq "x86_64") {
+   		my $cmd = "$::XCATROOT/sbin/mknb x86_64";
+   		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+   		if ($::RUNCMD_RC  != 0)
+   		{
+			xCAT::MsgUtils->message('E', "The mknb command returned error: $::RUNCMD_RC.\n");
+		} else {
+			xCAT::MsgUtils->message('I', "The mknb command was run with no error.\n");
+		}
+	}
+
+	# run makenetworks 
+	my $cmd = "$::XCATROOT/sbin/makenetworks";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "The makenetworks command returned error: $::RUNCMD_RC.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "The makenetworks command was run with no error.\n")
+	}
+
+	# set the nameserver in the site table
+	my @names = xCAT::Utils->runcmd("grep nameserver /etc/resolv.conf | cut -d' ' -f 2", 0);
+	my $ns = join(',',@names);
+	my $cmd = "chtab key=nameservers site.value=$ns";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "The chtab command returned error: $::RUNCMD_RC.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "Updated the site definition with the value of the nameserver.\n");
+	}
+
+	# restart httpd
+	my $cmd = "service httpd restart";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "Could not restart httpd.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "httpd has been restarted.\n");
+	}
+
+	# enable httpd
+	my $cmd = "chkconfig httpd on";
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC  != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not enable httpd.\n");
+    } else {
+        xCAT::MsgUtils->message('I', "httpd has been enabled.\n");
+    }
+
+	my $linux_note= "xCAT is now installed, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.\n";
+	xCAT::MsgUtils->message('I', $linux_note);
+
+} #End - more - Linux-only config
+
+exit;
+
+#####################################
+#  subroutines
+#####################################
+
+sub usage {
+	xCAT::MsgUtils->message('I', "Usage:\n");
+	xCAT::MsgUtils->message('I', "xcatconfig - Performs basic xCAT configuration on an xCAT management node.\n\n");
+	xCAT::MsgUtils->message('I', "	xcatconfig [-h|--help] [-f|--force]\n\n");
+}
