@@ -15,11 +15,12 @@ Source2: postscripts.tar.gz
 Source3: templates.tar.gz
 
 Provides: xCAT = %{version}
-
 Requires: xCAT-server xCAT-client perl-DBD-SQLite perl-xCAT 
+
 %ifos linux
 Requires: tftp-server dhcp httpd nfs-utils expect conserver fping bind
 %endif
+
 %ifarch i386 i586 i686 x86 x86_64
 Requires: xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 
 Requires: ipmitool >= 1.8.9
@@ -30,17 +31,44 @@ xCAT is a server management package intended for at-scale management, including
 hardware management and software management.
 
 %prep
+%ifos linux
 tar zxvf %{SOURCE2}
+%else
+rm -rf postscripts
+cp %{SOURCE2} /opt/freeware/src/packages/BUILD
+gunzip postscripts.tar.gz 
+tar -xvf postscripts.tar
+%endif
+
 %build
+
 %install
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d/
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/
+
+%ifos linux
 tar zxvf %{SOURCE3}
+%else
+cp %{SOURCE3} $RPM_BUILD_ROOT/%{prefix}/share/xcat
+gunzip templates.tar.gz 
+tar -xvf templates.tar
+rm templates.tar
+%endif
+
 cd -
 cd $RPM_BUILD_ROOT/install
+
+%ifos linux
 tar zxvf %{SOURCE2}
+%else
+cp %{SOURCE2} $RPM_BUILD_ROOT/install
+gunzip postscripts.tar.gz
+tar -xvf postscripts.tar
+rm postscripts.tar
+%endif
+
 rm LICENSE.html
 mkdir -p postscripts/hostkeys
 cd -
@@ -50,6 +78,9 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 %post
+%ifnos linux
+$RPM_INSTALL_PREFIX0/sbin/xcatconfig
+%else
 if [ ! -f /install/postscripts/hostkeys/ssh_host_key ]; then 
     echo Generating SSH1 RSA Key...
     /usr/bin/ssh-keygen -t rsa1 -f /install/postscripts/hostkeys/ssh_host_key -C '' -N ''
@@ -116,6 +147,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     echo "Then, run makedhcp -n to create a new dhcpd.configuration file, and /etc/init.d/dhcpd restart"
     echo "Either examine sample configuration templates, or write your own, or specify a value per node with nodeadd or tabedit."
 fi
+%endif
 
 %clean
 
