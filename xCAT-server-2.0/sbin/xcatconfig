@@ -68,7 +68,7 @@ if ( (! -f "/install/postscripts/hostkeys/ssh_host_key") || $::FORCE){
 
 	#  create /install/postscripts/.ssh if needed
 	if ( ! -d "/install/postscripts/hostkeys" ) {
-		my $cmd = "mkdir -p /install/postscripts/hostkeys";
+		my $cmd = "/bin/mkdir -p /install/postscripts/hostkeys";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
 		if ($::RUNCMD_RC  != 0)
 		{
@@ -80,7 +80,7 @@ if ( (! -f "/install/postscripts/hostkeys/ssh_host_key") || $::FORCE){
 
 	if ($::FORCE){
 		# remove the old keys
-		my $cmd = "rm /install/postscripts/hostkeys/ssh_host*";
+		my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host*";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
 		if ($::RUNCMD_RC  != 0)
 		{
@@ -120,7 +120,7 @@ if ( (! -f "/install/postscripts/hostkeys/ssh_host_key") || $::FORCE){
 #
 my $sshdir = "$::root/.ssh";
 if ( ! -d $sshdir ) {
-	my $cmd = "mkdir -m 700 -p $sshdir";
+	my $cmd = "/bin/mkdir -m 700 -p $sshdir";
 	my $outref = xCAT::Utils->runcmd("$cmd", 0);
 	if ($::RUNCMD_RC  != 0)
 	{
@@ -137,11 +137,11 @@ my $cfgfile = "$::root/.ssh/config";
 if (( -f $cfgfile ) || $::FORCE) {
 	# it exists - so see if it needs to be updated  - ???????? check!!!
 #	xCAT::MsgUtils->message('I', "Checking for \'StrictHostKeyChecking no\' in $cfgfile.\n");
-	my $cmd = "cat $cfgfile | grep 'StrictHostKeyChecking no'";
+	my $cmd = "/bin/cat $cfgfile | grep 'StrictHostKeyChecking no'";
 	my $outref = xCAT::Utils->runcmd("$cmd", -1);
 	if ($::RUNCMD_RC  != 0) {
 		# ok - then add this entry
-		my $cmd = "echo StrictHostKeyChecking no >> $cfgfile; chmod  600 $cfgfile";
+		my $cmd = "/bin/echo StrictHostKeyChecking no >> $cfgfile; chmod  600 $cfgfile";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
 		if ($::RUNCMD_RC  != 0)
 		{
@@ -152,7 +152,7 @@ if (( -f $cfgfile ) || $::FORCE) {
 	}
 } else {
 	# file doesn't exist so just create it
-	my $cmd = "echo StrictHostKeyChecking no > $cfgfile; chmod  600 $cfgfile";
+	my $cmd = "/bin/echo StrictHostKeyChecking no > $cfgfile; chmod  600 $cfgfile";
 	my $outref = xCAT::Utils->runcmd("$cmd", 0);
 	if ($::RUNCMD_RC  != 0)
 	{
@@ -166,7 +166,7 @@ if (( -f $cfgfile ) || $::FORCE) {
 #  create /install/postscripts/.ssh if needed  
 #
 if ( ! -d "/install/postscripts/.ssh" ) {
-    my $cmd = "mkdir -p /install/postscripts/.ssh";
+    my $cmd = "/bin/mkdir -p /install/postscripts/.ssh";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC  != 0)
     {
@@ -185,7 +185,7 @@ if (( ! -r $pubfile ) || $::FORCE) {
 
 	if ($::FORCE){
         # remove the old file
-        my $cmd = "rm $::root/.ssh/id_rsa*";
+        my $cmd = "/bin/rm $::root/.ssh/id_rsa*";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC  != 0)
         {
@@ -203,7 +203,7 @@ if (( ! -r $pubfile ) || $::FORCE) {
 	} else {
 		xCAT::MsgUtils->message('I', "Generated $pubfile.\n");
 		# copy it 
-		my $cmd = "cp $pubfile /install/postscripts/.ssh/authorized_keys";
+		my $cmd = "/bin/cp $pubfile /install/postscripts/.ssh/authorized_keys";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
     	if ($::RUNCMD_RC  != 0)
     	{
@@ -218,7 +218,7 @@ if (( ! -r $pubfile ) || $::FORCE) {
 # create /var/log/consoles if needed 
 #
 if ( ! -d "/var/log/consoles" ) {
-	my $cmd = "mkdir -p /var/log/consoles";
+	my $cmd = "/bin/mkdir -p /var/log/consoles";
 	my $outref = xCAT::Utils->runcmd("$cmd", 0);
 	if ($::RUNCMD_RC  != 0)
 	{
@@ -237,14 +237,14 @@ if ($::osname eq 'Linux') {
 	#  add tftpboot to /etc/exports - if needed
 	#
 
-	my $cmd = "cat /etc/exports | grep '/tftpboot'";
+	my $cmd = "/bin/cat /etc/exports | grep '/tftpboot'";
 	my $outref = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC  != 0)
     {
 
 		# ok - then add this entry
 		#SECURITY: this has potential for sharing private host/user keys
-        my $cmd = "echo '/tftpboot *(rw,root_squash,sync)' >> /etc/exports";
+        my $cmd = "/bin/echo '/tftpboot *(rw,root_squash,sync)' >> /etc/exports";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC  != 0)
         {
@@ -259,13 +259,13 @@ if ($::osname eq 'Linux') {
     #  add /install to /etc/exports - if needed
     #
 
-    my $cmd = "cat /etc/exports | grep '/install'";
+    my $cmd = "/bin/cat /etc/exports | grep '/install'";
     my $outref = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC  != 0)
     {
         # ok - then add this entry
         #SECURITY: this has potential for sharing private host/user keys
-        my $cmd = "echo '/install *(ro,no_root_squash,sync)' >> /etc/exports";
+        my $cmd = "/bin/echo '/install *(ro,no_root_squash,sync)' >> /etc/exports";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC  != 0)
         {
@@ -278,10 +278,10 @@ if ($::osname eq 'Linux') {
 
 	if ($changed_exports) {
 		# restart nfs
-		my $cmd = "service nfs restart";
+		my $cmd = "/sbin/service nfs restart";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
 
-		my $cmd = "chkconfig nfs on";
+		my $cmd = "/sbin/chkconfig nfs on";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
 		if ($::RUNCMD_RC  != 0)
         {
@@ -332,12 +332,12 @@ chomp $domain;
 # create basic site definition
 if (( ! -r "/etc/xcat/site.sqlite" ) || $::FORCE){
 	my $chtabcmds;
-	$chtabcmds = "chtab key=xcatdport site.value=$xcatport;";
-	$chtabcmds .= "chtab key=xcatiport site.value=$xcatiport;";
-	$chtabcmds .= "chtab key=installdir site.value=$installdir;";
-	$chtabcmds .= "chtab key=master site.value=$master;";
-	$chtabcmds .= "chtab key=domain site.value=$domain;";
-	$chtabcmds .= "chtab key=timezone site.value=$timezone";
+	$chtabcmds = "$::XCATROOT/sbin/chtab key=xcatdport site.value=$xcatport;";
+	$chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatiport site.value=$xcatiport;";
+	$chtabcmds .= "$::XCATROOT/sbin/chtab key=installdir site.value=$installdir;";
+	$chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
+	$chtabcmds .= "$::XCATROOT/sbin/chtab key=domain site.value=$domain;";
+	$chtabcmds .= "$::XCATROOT/sbin/chtab key=timezone site.value=$timezone";
 
     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
     if ($::RUNCMD_RC  != 0)
@@ -352,12 +352,12 @@ if (( ! -r "/etc/xcat/site.sqlite" ) || $::FORCE){
 if (( ! -r "/etc/xcat/policy.sqlite" ) || $::FORCE) {
 	my $chtabcmds;
 	if ($::osname eq 'AIX' ) {
-    	$chtabcmds = "chtab priority=1 policy.name=root policy.rule=allow";
+    	$chtabcmds = "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow";
 	} else {
-		$chtabcmds = "chtab priority=1 policy.name=root policy.rule=allow;";
-		$chtabcmds .= "chtab priority=2 policy.commands=getbmcconfig policy.rule=allow;";
-		$chtabcmds .= "chtab priority=3 policy.commands=nextdestiny policy.rule=allow;";
-		$chtabcmds .= "chtab priority=4 policy.commands=getdestiny policy.rule=allow";
+		$chtabcmds = "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=2 policy.commands=getbmcconfig policy.rule=allow;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=3 policy.commands=nextdestiny policy.rule=allow;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=4 policy.commands=getdestiny policy.rule=allow";
 	}
     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
     if ($::RUNCMD_RC  != 0)
@@ -426,7 +426,8 @@ if ($::FORCE) {
 		if ( $ps !~/grep/)
 		{
 #	    	print "pid=$pid\n";
-			xCAT::Utils->runcmd("kill -9 $pid", 0);
+			my $cmd = "/bin/kill -9 $pid";
+			xCAT::Utils->runcmd($cmd, 0);
 			if ($::RUNCMD_RC  != 0)
 			{
 				xCAT::MsgUtils->message('E', "Could not stop xcatd process $pid.\n");
@@ -441,7 +442,7 @@ if ($::FORCE) {
 xCAT::MsgUtils->message('I', "Starting xcatd.....\n");
 my $xcmd;
 if ($::osname eq 'AIX') {
-	$xcmd = "xcatd &";
+	$xcmd = "$::XCATROOT/sbin/xcatd &";
 } else {
 	$xcmd = "/etc/init.d/xcatd start";
 }
@@ -457,7 +458,7 @@ if ($::osname eq 'Linux') {
 
 	#Zap the almost certainly wrong pxelinux.cfg file
 	if ( -f "/tftpboot/pxelinux.cfg/default") {
-		$cmd = "rm /tftpboot/pxelinux.cfg/default";
+		$cmd = "/bin/rm /tftpboot/pxelinux.cfg/default";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
 		if ($::RUNCMD_RC  != 0)
 		{
@@ -490,9 +491,9 @@ if ($::osname eq 'Linux') {
 	}
 
 	# set the nameserver in the site table
-	my @names = xCAT::Utils->runcmd("grep nameserver /etc/resolv.conf | cut -d' ' -f 2", 0);
+	my @names = xCAT::Utils->runcmd("/bin/grep nameserver /etc/resolv.conf | cut -d' ' -f 2", 0);
 	my $ns = join(',',@names);
-	my $cmd = "chtab key=nameservers site.value=$ns";
+	my $cmd = "$::XCATROOT/sbin/chtab key=nameservers site.value=$ns";
 	my $outref = xCAT::Utils->runcmd("$cmd", 0);
 	if ($::RUNCMD_RC  != 0)
 	{
@@ -502,7 +503,7 @@ if ($::osname eq 'Linux') {
 	}
 
 	# restart httpd
-	my $cmd = "service httpd restart";
+	my $cmd = "/sbin/service httpd restart";
 	my $outref = xCAT::Utils->runcmd("$cmd", 0);
 	if ($::RUNCMD_RC  != 0)
 	{
@@ -512,7 +513,7 @@ if ($::osname eq 'Linux') {
 	}
 
 	# enable httpd
-	my $cmd = "chkconfig httpd on";
+	my $cmd = "/sbin/chkconfig httpd on";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC  != 0)
     {
