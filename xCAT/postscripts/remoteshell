@@ -3,7 +3,12 @@
 #egan@us.ibm.com
 #(C)IBM Corp
 #
-my $homedir = $::ENV{'HOME'};
+my $homedir ;
+if ($^O =~ /^aix/i) {  # AIX 
+   $homedir="/";
+} else {  #  LINUX
+   $homedir="/root";
+}
 if (-r "/etc/ssh/sshd_config")
 {    # readable
 
