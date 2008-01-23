@@ -56,7 +56,7 @@ package xCAT::Schema;
   },
   mac => {
     cols => [qw(node interface mac comments disable)],
-    keys => [qw(node interface)],
+    keys => [qw(node)],
   },
   chain => {
     cols => [qw(node currstate currchain chain ondiscover comments disable)],

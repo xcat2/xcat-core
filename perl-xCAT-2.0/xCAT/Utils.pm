@@ -110,15 +110,11 @@ sub xfork {
 		return $rc;
 	}
 	unless ($rc) {
-          my %drivers = DBI->installed_drivers;
-          foreach my $drh (values %drivers) {
-            foreach (@{$drh->{ChildHandles}}) {
-                $_->{InactiveDestroy} = 1;
-            }
-            foreach (@{$drh->{ChildHandles}}) {
-                undef $_;
-            }
-	  }
+          #my %drivers = DBI->installed_drivers;
+          foreach (values %{$::XCAT_DBHS}) { #@{$drh->{ChildHandles}}) {
+              $_->{InactiveDestroy} = 1;
+	      undef $_;
+          }
         }
 	return $rc;
 }

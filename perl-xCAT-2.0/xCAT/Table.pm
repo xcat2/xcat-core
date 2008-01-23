@@ -159,16 +159,16 @@ sub new
     $self->{colnames} = \@{$self->{schema}->{cols}};
     my %otherargs  = @_;
     my $create     = $otherargs{'-create'};      #(scalar(@_) == 1 ? shift : 0);
-    my $autocommit = $otherargs{'-autocommit'};
+    $self->{autocommit} = $otherargs{'-autocommit'};
 
-    unless (defined($autocommit))
+    unless (defined($self->{autocommit}))
     {
-        $autocommit = 1;
+        $self->{autocommit} = 1;
     }
 
     my $class = ref($proto) || $proto;
-    my $dbuser="";
-    my $dbpass="";
+    $self->{dbuser}="";
+    $self->{dbpass}="";
 
     my $xcatcfg = (defined $ENV{'XCATCFG'} ? $ENV{'XCATCFG'} : '');
     if ($xcatcfg =~ /^$/)
@@ -210,13 +210,18 @@ sub new
     }
     else #Generic DBI
     {
-       ($self->{connstring},$dbuser,$dbpass) = split(/\|/,$xcatcfg);
+       ($self->{connstring},$self->{dbuser},$self->{dbpass}) = split(/\|/,$xcatcfg);
        $self->{connstring} =~ s/^dbi://;
        $self->{connstring} =~ s/^/dbi:/;
         #return undef;
     }
-    $self->{dbh} =
-      DBI->connect($self->{connstring}, $dbuser, $dbpass, {AutoCommit => $autocommit});
+    unless ($::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}) { #= $self->{tabname};
+      $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}} = 
+        DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $self->{autocommit}});
+     }
+
+    $self->{dbh} = $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}};
+      #DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $autocommit});
     if ($xcatcfg =~ /^SQLite:/)
     {
         my $dbexistq =
@@ -1570,8 +1575,8 @@ sub getTable
 sub close
 {
     my $self = shift;
-    if ($self->{dbh}) { $self->{dbh}->disconnect(); }
-    undef $self->{dbh};
+    #if ($self->{dbh}) { $self->{dbh}->disconnect(); }
+    #undef $self->{dbh};
     if ($self->{tabname} eq 'nodelist') {
        undef $self->{nodelist};
     } else {
@@ -1632,6 +1637,7 @@ sub open
 sub DESTROY
 {
     my $self = shift;
+    $self->{dbh} = '';
     undef $self->{dbh};
     #if ($self->{dbh}) { $self->{dbh}->disconnect(); undef $self->{dbh};}
     undef $self->{nodelist};    #Could be circular
