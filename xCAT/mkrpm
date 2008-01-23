@@ -5,17 +5,24 @@ OSNAME=$(uname)
 if [ "$OSNAME" = "AIX" ]
 then
 
- 	cd `dirname $0`
-	echo '.svn' > /tmp/xcat-excludes
+    cd `dirname $0`
+    echo '.svn' > /tmp/xcat-excludes
+
     tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/postscripts.tar  postscripts LICENSE.html
     gzip /opt/freeware/src/packages/SOURCES/postscripts.tar
+
     tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/templates.tar templates
     gzip /opt/freeware/src/packages/SOURCES/templates.tar
-    #cd ./xCAT-server-2.0
+
+    cp xcat.conf /opt/freeware/src/packages/SOURCES
+
     rm -f /opt/freeware/src/packages/SRPMS/xCAT-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-2.0*rpm
+
     rpm -ba xCAT.spec
+
+    # don't install
     #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-2.0*rpm
-	cd -
+    cd -
 
 else
 
