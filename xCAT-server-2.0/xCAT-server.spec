@@ -61,6 +61,14 @@ ln -sf /%{prefix}/share/xcat/cons/hmc $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/
 cp lib/xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
 
+# For now, don't ship these plugins - to avoid AIX dependency on SNMP.
+%ifnos linux
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
+%endif
+
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
 chmod 644 $RPM_BUILD_ROOT/opt/xcat/xdsh/Context/*
 
