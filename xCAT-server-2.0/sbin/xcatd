@@ -535,7 +535,8 @@ sub plugin_command {
           $req->{node}=\@nodes;
         }
         no strict  "refs";
-        ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+	dispatch_request($req,$callback,$modname);
+        #${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
         $$progname=$oldprogname;
         if ($sock) { 
           close($parent_fd);
@@ -560,6 +561,14 @@ sub plugin_command {
   if ($sock) { print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); }
 }
 
+
+sub dispatch_request {
+  my $req = shift;
+  my $callback = shift;
+  my $modname = shift;
+  no strict  "refs";
+  ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+}
 
 sub do_request {
   my $req = shift;
