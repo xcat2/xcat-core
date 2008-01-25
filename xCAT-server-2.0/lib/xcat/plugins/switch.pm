@@ -18,7 +18,7 @@ sub process_request {
  my $req = shift;
  my $cb = shift;
  my $doreq = shift;
- my $ip = $req->{'!xcat_clientip'};
+ my $ip = $req->{'_xcat_clientip'};
  my $mac = '';
  my $arptable = `/sbin/arp -n`;
  my @arpents = split /\n/,$arptable;

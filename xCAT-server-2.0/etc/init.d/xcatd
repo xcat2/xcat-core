@@ -11,6 +11,9 @@
 # Short-Description: xCATd
 # Description: xCAT management service
 ### END INIT INFO
+if [ -r /etc/sysconfig/xcat ]; then
+	. /etc/sysconfig/xcat
+fi
 
 
 MStatus()

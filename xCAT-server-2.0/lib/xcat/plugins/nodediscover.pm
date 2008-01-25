@@ -86,7 +86,7 @@ sub process_request {
   my $callback = shift;
   my $doreq = shift;
   my $node = $request->{node}->[0];
-  my $ip = $request->{'!xcat_clientip'};
+  my $ip = $request->{'_xcat_clientip'};
   openlog("xCAT node discovery",'','local0');
   #First, fill in tables with data fields..
   if (defined($request->{mtm}) or defined($request->{serial})) {

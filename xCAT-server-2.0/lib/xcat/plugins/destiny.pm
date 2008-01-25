@@ -129,11 +129,11 @@ sub nextdestiny {
     #TODO: service third party getdestiny..
   } else { #client asking to move along its own chain
     #TODO: SECURITY with this, any one on a node could advance the chain, for node, need to think of some strategy to deal with...
-    unless ($request->{'!xcat_clienthost'}->[0]) {
+    unless ($request->{'_xcat_clienthost'}->[0]) {
       #ERROR? malformed request
       return; #nothing to do here...
     }
-    my $node = $request->{'!xcat_clienthost'}->[0];
+    my $node = $request->{'_xcat_clienthost'}->[0];
     ($node) = noderange($node);
     unless ($node) {
       #not a node, don't trust it
@@ -186,11 +186,11 @@ sub getdestiny {
       @nodes = ($request->{node});
     }
   } else { # a client asking for it's own destiny.
-    unless ($request->{'!xcat_clienthost'}->[0]) {
+    unless ($request->{'_xcat_clienthost'}->[0]) {
       $callback->({destiny=>[ 'discover' ]});
       return;
     }
-    my ($node) = noderange($request->{'!xcat_clienthost'}->[0]);
+    my ($node) = noderange($request->{'_xcat_clienthost'}->[0]);
     unless ($node) { # it had a valid hostname, but isn't a node
       $callback->({destiny=>[ 'discover' ]}); 
       return;

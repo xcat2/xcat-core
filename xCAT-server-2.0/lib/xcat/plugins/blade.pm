@@ -875,7 +875,7 @@ sub process_request {
     $invreq{arg} = ['mac'];
     $invreq{command} = ['rinv'];
     my $mac;
-    my $ip = $request->{'!xcat_clientip'};
+    my $ip = $request->{'_xcat_clientip'};
     my $arptable = `/sbin/arp -n`;
     my @arpents = split /\n/,$arptable;
     foreach  (@arpents) {

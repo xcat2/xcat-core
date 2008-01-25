@@ -7,6 +7,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
 use File::Path;
+use xCAT::Client submit_request;
 
 use IO::Socket::SSL;
 if (xCAT::Utils->isLinux()) {
@@ -255,9 +256,9 @@ if (xCAT::Utils->isLinux()) {
         $peerhost=gethostbyaddr($client,AF_INET)."\n";
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme")) {
-          $req->{'!xcat_clienthost'}=gethostbyaddr($client,AF_INET)."\n";
-          $req->{'!xcat_clientip'}=inet_ntoa($client);
-          $req->{'!xcat_clientport'}=$sport;
+          $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET)."\n";
+          $req->{'_xcat_clientip'}=inet_ntoa($client);
+          $req->{'_xcat_clientport'}=$sport;
           if (defined($cmd_handlers{"findme"})) {
             $req->{cacheonly}->[0] = 1;
             plugin_command($req,undef,\&convey_response);
@@ -566,10 +567,60 @@ sub dispatch_request {
   my $req = shift;
   my $callback = shift;
   my $modname = shift;
+  my $reqs = [];
   no strict  "refs";
-  ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+
+  #Hierarchy support.  Originally, the default scope for noderange commands was
+  #going to be the servicenode associated unless overriden.
+  #However, assume for example that you have blades and a blade is the service node
+  #rpower being executed by the servicenode for one of its subnodes would have to
+  #reach it's own management module.  This has the potential to be non-trivial for some quite possible network configurations.
+  #Since plugins may commonly experience this, a preprocess_request implementation
+  #will for now be required for a command to be scaled through service nodes
+  #If the plugin offers a preprocess method, use it to set the request array
+  if (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request})) {
+    $reqs = ${"xCAT_plugin::".$modname."::"}{preprocess_request}->($req);
+  } else { #otherwise, pass it in without hierarchy support
+    $reqs = [$req];
+  }
+
+  #TODO: calls to dispatch must be parallelized
+  foreach (@{$reqs}) {
+     if ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'})) {
+	my $oldenv = $ENV{XCATHOST};
+        $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );
+        eval {
+        undef $_->{'_xcatdest'};
+        xCAT::Client::submit_request($_,$callback,$xcatdir."/cert/server-key.pem",$xcatdir."/cert/server-cert.pem",$xcatdir."/cert/ca.pem"); 
+        };
+        if ($@) {
+	   $callback->({error=>["Error dispatching command to ".$ENV{XCATHOST}.""],errorcode=>[1]}); 
+	   syslog("local4|err","Error dispatching request: ".$@);
+	}
+        $ENV{XCATHOST} = $oldenv;
+     } else {
+        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$callback,\&do_request);
+     }
+  }
 }
 
+sub thishostisnot {
+  my $comparison = shift;
+  my @ips = split /\n/,`/sbin/ip addr`;
+  my $comp=inet_aton($comparison);
+  foreach (@ips) { 
+    if (/^\s*inet/) {
+	my @ents = split(/\s+/);
+	my $ip=$ents[2];
+	$ip =~ s/\/.*//;
+	if (inet_aton($ip) eq $comp) { 
+	  return 0;
+	}
+	#print Dumper(inet_aton($ip));
+    }
+  }
+  return 1;
+}
 sub do_request {
   my $req = shift;
   my $second = shift;
@@ -627,7 +678,6 @@ sub convey_response {
   }
   print $parent_fd XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
   <$parent_fd>; #Block until parent acks data
-  #print "woo";
 #  KeyAttr => [], NoAttr => 1)
 }
 
@@ -672,9 +722,9 @@ sub service_connection {
         #printf $request."\n";
         $request="";
         if (validate($peername,$peerhost,$req)) {
-          $req->{'!xcat_authname'} = [$peername];
-          $req->{'!xcat_clienthost'} = [$peerhost];
-          $req->{'!xcat_clientport'}= [$peerport];
+          $req->{'_xcat_authname'} = [$peername];
+          $req->{'_xcat_clienthost'} = [$peerhost];
+          $req->{'_xcat_clientport'}= [$peerport];
           $$progname="xCATd SSL: ".$req->{command}->[0]." for ".($peername ? $peername ."@".$peerhost : $peerhost);
           if ($cmd_handlers{$req->{command}->[0]}) {
             return plugin_command($req,$sock,\&convey_response);

@@ -66,6 +66,12 @@ my %resps;
 sub submit_request {
   my $request = shift;
   my $callback = shift;
+  my $keyfile = shift;
+  my $certfile = shift;
+  my $cafile = shift;
+  unless ($keyfile) { $keyfile = $ENV{HOME}."/.xcat/client-key.pem"; }
+  unless ($certfile) { $certfile = $ENV{HOME}."/.xcat/client-cert.pem"; }
+  unless ($cafile) { $cafile  = $ENV{HOME}."/.xcat/ca.pem"; }
 
 
 # If XCATBYPASS is set, invoke the plugin process_request method directly
@@ -107,12 +113,12 @@ sub submit_request {
   }
   my $client = IO::Socket::SSL->new(
     PeerAddr => $xcathost,
-    SSL_key_file => $ENV{HOME}."/.xcat/client-key.pem",
-    SSL_cert_file => $ENV{HOME}."/.xcat/client-cert.pem",
-    SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
+    SSL_key_file => $keyfile,
+    SSL_cert_file => $certfile,
+    SSL_ca_file => $cafile,
     SSL_use_cert => 1,
     );
-  die "Connection failure: $@\n" unless ($client);
+  die "Connection failure: $@ (SSL Timeout may mean the credentials in ~/.xcat are incorrect)\n" unless ($client);
   my $msg=XMLout($request,RootName=>xcatrequest,NoAttr=>1,KeyAttr=>[]);
   print $client $msg;
   my $response;

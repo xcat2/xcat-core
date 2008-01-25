@@ -51,7 +51,7 @@ sub net_parms {
 sub process_request  {
   my $request = shift;
   my $callback = shift;
-  my $node = $request->{'!xcat_clienthost'}->[0];
+  my $node = $request->{'_xcat_clienthost'}->[0];
   my $sitetable = xCAT::Table->new('site');
   my $ipmitable = xCAT::Table->new('ipmi');
   my $passtable = xCAT::Table->new('passwd');
