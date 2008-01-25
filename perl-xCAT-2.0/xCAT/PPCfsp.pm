@@ -590,8 +590,12 @@ sub clear {
     if ( !$res->is_success() ) {
         return( $res->status_line );
     }
-    my $form = HTML::Form->parse( $res );
-
+    ##################################
+    # Clear all error/event log entries:
+    # Are you sure? (OK/Cancel)
+    ##################################
+    my $form = HTML::Form->parse( $res->content, $res->base );
+ 
     ##################################
     # Return error
     ##################################
