@@ -562,10 +562,16 @@ sub plugin_command {
   if ($sock) { print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); }
 }
 
-
+my $dispatch_cb;
+sub dispatch_callback {
+   my $rsp = shift;
+   delete $rsp->{serverdone};
+   $dispatch_cb->($rsp);
+}
 sub dispatch_request {
   my $req = shift;
-  my $callback = shift;
+  $dispatch_cb = shift;
+
   my $modname = shift;
   my $reqs = [];
   no strict  "refs";
@@ -591,15 +597,15 @@ sub dispatch_request {
         $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );
         eval {
         undef $_->{'_xcatdest'};
-        xCAT::Client::submit_request($_,$callback,$xcatdir."/cert/server-key.pem",$xcatdir."/cert/server-cert.pem",$xcatdir."/cert/ca.pem"); 
+        xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-key.pem",$xcatdir."/cert/server-cert.pem",$xcatdir."/cert/ca.pem"); 
         };
         if ($@) {
-	   $callback->({error=>["Error dispatching command to ".$ENV{XCATHOST}.""],errorcode=>[1]}); 
+	   $dispatch_cb->({error=>["Error dispatching command to ".$ENV{XCATHOST}.""],errorcode=>[1]}); 
 	   syslog("local4|err","Error dispatching request: ".$@);
 	}
         $ENV{XCATHOST} = $oldenv;
      } else {
-        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$callback,\&do_request);
+        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
      }
   }
 }

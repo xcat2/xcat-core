@@ -4316,6 +4316,40 @@ sub loadsdrcache {
 }
 
 
+sub preprocess_request { 
+  my $request = shift;
+  my @requests;
+  my %servicenodehash;
+  my %noservicenodehash;
+  my $nrtab = xCAT::Table->new('noderes');
+  foreach my $node (@{$request->{node}}) {
+     my $tent  = $nrtab->getNodeAttribs($node,['servicenode']);
+     if ($tent and $tent->{servicenode}) {
+       $servicenodehash{$tent->{servicenode}}->{$node} = 1;
+     } else {
+       $noservicenodehash{$node} = 1;
+      }
+   }
+   foreach my $smaster (keys %servicenodehash) {
+  	   my $reqcopy = {%$request};
+	   $reqcopy->{'_xcatdest'} = $smaster;
+	   $reqcopy->{node} = [ keys %{$servicenodehash{$smaster}} ];
+	   push @requests,$reqcopy;
+   }
+   my $reqcopy = {%$request};
+   $reqcopy->{node} = [ keys %noservicenodehash ];
+   if ($reqcopy->{node}) {
+      push @requests,$reqcopy;
+   }
+   return \@requests;
+}
+    
+     
+
+     
+
+
+   
 sub process_request {
     my $request = shift;
     my $callback = shift;
