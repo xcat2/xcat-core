@@ -132,6 +132,55 @@ sub addnode {
   	}
    }
 }	
+sub thishostisnot {
+  my $comparison = shift;
+  my @ips = split /\n/,`/sbin/ip addr`;
+  my $comp=inet_aton($comparison);
+  foreach (@ips) { 
+    if (/^\s*inet/) {
+	my @ents = split(/\s+/);
+	my $ip=$ents[2];
+	$ip =~ s/\/.*//;
+	if (inet_aton($ip) eq $comp) { 
+	  return 0;
+	}
+	#print Dumper(inet_aton($ip));
+    }
+  }
+  return 1;
+}
+sub preprocess_request {
+   my $req = shift;
+   $callback = shift;
+   if ($req->{_xcatdest}) { return [$req]; } #Exit if the packet has been preprocessed in its history
+   my @requests = ({%$req}); #Start with a straight copy to reflect local instance
+   my $sitetab = xCAT::Table->new('site');
+   (my $ent) = $sitetab->getAttribs({key=>'xcatservers'},'value');
+   $sitetab->close;
+   if ($ent and $ent->{value}) {
+      foreach (split /,/,$ent->{value}) {
+         if (thishostisnot($_)) {
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $_;
+            push @requests,$reqcopy;
+         }
+      }
+   }
+   if (scalar(@requests) > 1) { #hierarchy detected, enforce more rigorous sanity
+      my $ntab = xCAT::Table->new('networks');
+      if ($ntab) {
+         foreach (@{$ntab->getAllEntries()}) {
+            if ($_->{dynamicrange} and not $_->{dhcpserver}) {
+               $callback->({error=>["In a hierachy, network entries with a dynamic range must be explicit in the dhcpserver field"],errorcode=>[1]});
+               return [];
+            }
+         }
+      }
+   }
+
+   return \@requests;
+}
+
 sub process_request {
   my $req = shift;
   $callback = shift;
@@ -265,21 +314,33 @@ sub addnet {
     my $tftp;
     my $range;
     if ($nettab) {
-      my ($ent) = $nettab->getAttribs({net=>$net,mask=>$mask},qw(tftpserver nameservers gateway dynamicrange));
+      my ($ent) = $nettab->getAttribs({net=>$net,mask=>$mask},qw(tftpserver nameservers gateway dynamicrange dhcpserver));
       if ($ent and $ent->{nameservers}) {
         $nameservers = $ent->{nameservers};
+      } else {
+         $callback->({warning=>["No $net specific entry for nameservers, and dhcp plugin not sourcing from site yet (TODO)"]});
       }
       if ($ent and $ent->{tftpserver}) {
         $tftp = $ent->{tftpserver};
+      } else {
+         $callback->({warning=>["No tftp server designated for $net, systems attempting to netboot from this network may fail"]});
       }
       if ($ent and $ent->{gateway}) {
         $gateway = $ent->{gateway};
       }
       if ($ent and $ent->{dynamicrange}) {
-        $range = $ent->{dynamicrange};
-        $range =~ s/[,-]/ /g;
+        unless ($ent->{dhcpserver} and thishostisnot($ent->{dhcpserver}))  { #If specific, only one dhcp server gets a dynamic range
+         $range = $ent->{dynamicrange};
+         $range =~ s/[,-]/ /g;
+        }
+      } else {
+         $callback->({warning=>["No dynamic range specified for $net, unknown systems on this network will not receive an address"]});
       }
+    } else {
+       $callback->({error=>["Unable to open networks table, please run makenetworks"],errorcode=>[1]});
+       return 1;
     }
+
     my @netent;
     @netent = (
       "  subnet $net netmask $mask {\n",
@@ -361,9 +422,15 @@ sub newconfig {
   push @dhcpconf,"omapi-port 7911;\n"; #Enable omapi...
   push @dhcpconf,"key xcat_key {\n";
   push @dhcpconf,"  algorithm hmac-md5;\n";
+  (my $passent) = $passtab->getAttribs({key=>omapi,username=>'xcat_key'},'password');
   my $secret = encode_base64(genpassword(32)); #Random from set of  62^32 
   chomp $secret;
-  $passtab->setAttribs({key=>omapi},{username=>'xcat_key',password=>$secret});
+  if ($passent->{password}) { $secret = $passent->{password}; } else {
+     $callback->({data=>["The dhcp server must be restarted for OMAPI function to work"]});
+     $passtab->setAttribs({key=>omapi},{username=>'xcat_key',password=>$secret});
+  }
+
+
   push @dhcpconf,"  secret \"".$secret."\";\n";
   push @dhcpconf,"};\n";
   push @dhcpconf,"omapi-key xcat_key;\n";

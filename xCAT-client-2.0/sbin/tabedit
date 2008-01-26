@@ -9,9 +9,12 @@ function cexit {
 trap cexit 2 15
 
 TABLE=$1
-if [ -z "$EDITOR" ]; then
-  echo "Define EDITOR environment variable before running this command"
-  exit 1
+if [ -z "$TABEDITOR" ]; then
+  TABEDITOR=$EDITOR
+fi
+if [ -z "$TABEDITOR" ]; then
+  #echo "WARNING: Define TABEDITOR or EDITOR environment variable before running this command"
+  TABEDITOR=vi
 fi
 if [ -z "$TABLE" ]; then
     echo "Usage: tabedit <tablename>";
@@ -24,7 +27,7 @@ SUM=`md5sum /tmp/tabedit.$$/$1.csv`
 EXIT=0
 while [ $EXIT -eq 0 ]; do
   cd /tmp/tabedit.$$
-  "$EDITOR" $1.csv
+  "$TABEDITOR" $1.csv
   cd -
   NEWSUM=`md5sum /tmp/tabedit.$$/$1.csv`
   if [ "$NEWSUM" == "$SUM" ]; then
