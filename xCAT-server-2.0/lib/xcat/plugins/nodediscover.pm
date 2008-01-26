@@ -37,6 +37,7 @@ sub gethosttag {
    my $defn="";
    my @netents = @{$nettab->getAllEntries()};
    my $pass;
+   #TODO: mgtifname field will get trounced in hierarchical setup, use a live check to match accurately
    foreach $pass (1,2) { #two passes to allow for mgtifname matching
      foreach (@netents) {
       if ($_->{net} eq $netn or ($mgtifname and $mgtifname eq $_->{mgtifname})) {

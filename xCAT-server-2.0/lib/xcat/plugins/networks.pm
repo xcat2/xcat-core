@@ -3,6 +3,7 @@ package xCAT_plugin::networks;
 use xCAT::Table;
 use Data::Dumper;
 use Sys::Syslog;
+use Socket;
 
 
 sub handled_commands {
@@ -11,7 +12,43 @@ sub handled_commands {
   }
 }
   
+sub preprocess_request {
+   my $req = shift;
+   my $cb = shift;
+   if ($req->{_xcatdest}) { return [$req]; } #exit if preprocessed
+   my @requests = ({%$req}); #first element is local instance
+   my $sitetab = xCAT::Table->new('site');
+   (my $ent) = $sitetab->getAttribs({key=>'xcatservers'},'value');
+   $sitetab->close;
+   if ($ent and $ent->{value}) {
+      foreach (split /,/,$ent->{value}) {
+         if (thishostisnot($_)) {
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $_;
+            push @requests,$reqcopy;
+         }
+      }
+   }
+   return \@requests;
+}
 
+sub thishostisnot {
+  my $comparison = shift;
+  my @ips = split /\n/,`/sbin/ip addr`;
+  my $comp=inet_aton($comparison);
+  foreach (@ips) { 
+    if (/^\s*inet/) {
+	my @ents = split(/\s+/);
+	my $ip=$ents[2];
+	$ip =~ s/\/.*//;
+	if (inet_aton($ip) eq $comp) { 
+	  return 0;
+	}
+	#print Dumper(inet_aton($ip));
+    }
+  }
+  return 1;
+}
 sub process_request {
   my $nettab = xCAT::Table->new('networks',-create=>1,-autocommit=>0);
   my @rtable = split /\n/,`/bin/netstat -rn`;
@@ -43,7 +80,7 @@ sub process_request {
       $mask = $ent[2];
       $mgtifname = $ent[7];
       $nettab->setAttribs({'net'=>$net},{'mask'=>$mask,'mgtifname'=>$mgtifname});
-      my $tent = $nettab->getAttribs({'net'=>$net},nameservers);
+      my $tent = $nettab->getAttribs({'net'=>$net},'nameservers');
       unless ($tent and $tent->{nameservers}) {
         my $text = join ',',@nameservers;
         $nettab->setAttribs({'net'=>$net},{nameservers=>$text});
