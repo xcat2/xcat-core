@@ -24,6 +24,44 @@ sub handled_commands {
   }
 }
   
+sub preprocess_request {
+   my $req = shift;
+   my $callback = shift;
+  if ($req->{command}->[0] eq 'copycd') {  #don't farm out copycd
+     return [$req];
+  }
+  my %localnodehash;
+  my %dispatchhash;
+  my $nrtab = xCAT::Table->new('noderes');
+  foreach my $node (@{$req->{node}}) {
+     my $nodeserver;
+     my $tent = $nrtab->getNodeAttribs($node,['tftpserver']);
+     if ($tent) { $nodeserver = $tent->{tftpserver} }
+     unless ($tent and $tent->{tftpserver}) {
+        $tent = $nrtab->getNodeAttribs($node,['servicenode']);
+        if ($tent) { $nodeserver = $tent->{servicenode} }
+     }
+     if ($nodeserver) {
+        $dispatchhash{$nodeserver}->{$node} = 1;
+     } else {
+        $localnodehash{$node} = 1;
+     }
+  }
+  my @requests;
+  my $reqc = {%$req};
+  $reqc->{node} = [ keys %localnodehash ];
+  if (scalar(@{$reqc->{node}})) { push @requests,$reqc }
+
+  foreach my $dtarg (keys %dispatchhash) { #iterate dispatch targets
+     my $reqcopy = {%$req}; #deep copy
+     $reqcopy->{'_xcatdest'} = $dtarg;
+     $reqcopy->{node} = [ keys %{$dispatchhash{$dtarg}}];
+     push @requests,$reqcopy;
+  }
+  return \@requests;
+}
+     
+
 sub process_request {
   my $request = shift;
   my $callback = shift;
@@ -53,7 +91,6 @@ sub mknetboot {
     my $installroot;
     if ($sitetab) { 
         (my $ref) = $sitetab->getAttribs({key=>installdir},value);
-        print Dumper($ref);
         if ($ref and $ref->{value}) {
             $installroot = $ref->{value};
         }
@@ -268,7 +305,6 @@ sub copycd {
   my $sitetab = xCAT::Table->new('site');
   if ($sitetab) { 
     (my $ref) = $sitetab->getAttribs({key=>installdir},value);
-    print Dumper($ref);
     if ($ref and $ref->{value}) {
       $installroot = $ref->{value};
     }

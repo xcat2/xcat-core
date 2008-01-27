@@ -40,8 +40,10 @@ use Storable qw(dclone);
 use POSIX qw(WNOHANG setsid);
 use strict;
 my $pidfile;
+my $foreground;
 GetOptions(
-  'pidfile|p=s' => \$pidfile
+  'pidfile|p=s' => \$pidfile,
+  'foreground|f' => \$foreground
 );
 
 my $quit = 0;
@@ -321,7 +323,9 @@ sub scan_plugins {
   }
 }
 scan_plugins;
-daemonize;
+unless ($foreground) {
+   daemonize;
+}
 $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {} };
 $SIG{TERM} = $SIG{INT} = sub { printf("Asked to quit...\n"); $quit++ };
   
@@ -518,11 +522,12 @@ sub plugin_command {
       require $plugins_dir."/".$modname.".pm";
       $children++;
       my $pfd; #will be referenced for inter-process messaging.
+      my $parfd; #not causing a problem that I discern yet, but theoretically
       my $child;
       if ($sock) { #If $sock not passed in, don't fork..
-        socketpair($pfd, $parent_fd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+        socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
         #pipe($pfd,$cfd);
-        $parent_fd->autoflush(1);
+        $parfd->autoflush(1);
         $pfd->autoflush(1);
         $child = xCAT::Utils->xfork;
       } else {
@@ -530,6 +535,7 @@ sub plugin_command {
       }
       unless (defined $child) { die "Fork failed"; }
       if ($child == 0) {
+        $parent_fd = $parfd;
         my $oldprogname=$$progname;
         $$progname=$oldprogname.": $modname instance";
         if ($sock) { close $pfd; }
@@ -546,7 +552,7 @@ sub plugin_command {
           exit(0);
         } 
       } else {
-        close $parent_fd;
+        close $parfd;
         $check_fds->add($pfd);
       }
     }
@@ -583,7 +589,7 @@ sub dispatch_callback {
 
 sub relay_dispatch {
    my $fds = shift;
-   my @ready_ins = $fds->can_read(0);
+   my @ready_ins = $fds->can_read(0.2);
    foreach my $rin (@ready_ins) {
       my $data;
       if ($data = <$rin>) {
@@ -626,13 +632,13 @@ sub dispatch_request {
 
   my $childrn=0;
   $SIG{CHLD} = sub {while (waitpid(-1, WNOHANG) > 0) { $childrn--; } };
-   #TODO: calls to dispatch must be parallelized
    foreach (@{$reqs}) {
     my $pfd;
+    my $parfd; #use a private variable so it won't trounce itself recursively
     my $child;
     delete $_->{noderange};
-    socketpair($pfd, $dispatch_parentfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
-    $dispatch_parentfd->autoflush(1);
+    socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+    $parfd->autoflush(1);
     $pfd->autoflush(1);
     $child = xCAT::Utils->xfork;
     if ($child) {
@@ -643,6 +649,7 @@ sub dispatch_request {
     unless (defined $child) {
        $dispatch_cb->({error=>['Fork failure dispatching request'],errorcode=>[1]});
     }
+    $dispatch_parentfd = $parfd;
      if ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'})) {
         $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );
         eval {
