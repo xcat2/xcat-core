@@ -1,0 +1,128 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use IO::Socket::SSL;
+use XML::Simple;
+use Data::Dumper;
+use IO::Handle;
+use IO::Select;
+use xCAT::Utils;
+use Getopt::Long;
+use POSIX qw(:signal_h :errno_h :sys_wait_h);
+my $interface;
+Getopt::Long::Configure("require_order");
+GetOptions(
+  "interface=s" => \$interface,
+  );
+my %nodehdl;
+my $xcathost='localhost:3001';
+if ($ENV{XCATHOST}) {
+          $xcathost=$ENV{XCATHOST};
+}
+
+my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
+unless (@ARGV) {
+    print "Usage: pscp [-i <suffix] filename <noderange>:<destination>\n";
+}
+(my $noderange,my $destloc) = split(/:/,$ARGV[1]);
+my $client = IO::Socket::SSL->new(
+                PeerAddr=>$xcathost,
+                SSL_key_file=>$ENV{HOME}."/.xcat/client-key.pem",
+                SSL_cert_file=>$ENV{HOME}."/.xcat/client-cert.pem",
+                SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
+                SSL_use_cert => 1,
+                #SSL_verify_mode => 1,
+             );
+die "Connection failure: $!\n" unless ($client);
+my %cmdref = (command => 'noderange', noderange => $noderange);
+$SIG{ALRM} = sub { die "No response getting noderange" };
+alarm(15);
+print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+alarm(15);
+my $response="";
+my @nodes=();
+while (<$client>) {
+  alarm(0);
+  $response .= $_;
+  if ($response =~ m/<\/xcatresponse>/) {
+    $rsp=XMLin($response, ForceArray => ['node']);
+    $response='';
+    if ($rsp->{warning}) {
+      printf "Warning: ".$rsp->{warning}."\n";
+    }
+    if ($rsp->{error}) {
+      die ("ERROR: ".$rsp->{error}."\n");
+    } elsif ($rsp->{node}) {
+      @nodes=@{$rsp->{node}};
+    }
+    if ($rsp->{serverdone}) {
+      last;
+    }
+  }
+}
+close($client);
+my $children = 0;
+my $inputs = new IO::Select;
+$SIG{CHLD} = \&reaper;
+sub reaper { 
+   while (($pid = waitpid(-1,WNOHANG)) > 0) { 
+      $children--; 
+   }
+   if ($children and $pid == -1) {  #for whatever reason, rsync processes slip by frequently
+      $children = 0;
+   }
+   $SIG{CHLD} = \&reaper;
+}
+   
+
+if ($interface) {
+  foreach (@nodes) {
+    s/$/-$interface/;
+  }
+}
+foreach (@nodes) {
+  my $node=$_;
+  while ($children > $pshmaxp) { processoutput($inputs); }
+  my $child;
+  $children++;
+  scpnode(\$child,$node,@ARGV[0],$destloc);
+  $inputs->add($child);
+  $nodehdl{$child} = $node;
+}
+while ($children) {
+  processoutput($inputs);
+}
+while (processoutput($inputs)) {};
+exit(0);
+
+sub processoutput { #This way, one arbiter handles output, no interrupting
+  my $inputs = shift;
+  my @readyins = $inputs->can_read(1);
+  my $rc = @readyins;
+  my $readyh;
+  foreach $readyh (@readyins) {
+    my $line = <$readyh>;
+    unless ($line) {
+      $inputs->remove($readyh);
+      print $nodehdl{$readyh}.": done\n";
+      close($readyh);
+      next;
+    }
+    chomp($line);
+    print $nodehdl{$readyh}.": ".$line."\n";
+  }
+  return $rc;
+}
+sub scpnode {
+  my $out = shift;
+  my $node = shift;
+  my $in;
+  #my $args = join(" ",@_);
+  my $file = shift;
+  my $dest = shift;
+  open($$out,"rsync -az $file $node:$dest 2>&1 |");
+}
