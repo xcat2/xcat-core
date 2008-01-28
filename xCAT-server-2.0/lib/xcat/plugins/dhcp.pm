@@ -86,7 +86,7 @@ sub addnode {
      my $ent;
      $ent = $nrtab->getNodeAttribs($node,['tftpserver']);
      if ($ent and $ent->{tftpserver}) {
-        $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{tftpserver})).'";'.$statements;
+        $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{tftpserver})).'\";'.$statements;
      } else {
         $ent = $nrtab->getNodeAttribs($node,['servicenode']);
         if ($ent and $ent->{servicenode}) {

@@ -1011,6 +1011,9 @@ sub dompa {
                     Timeout=>1200000, #Beacon, for one, takes a bit over a second to return
                     PrivPass => $mpahash->{$mpa}->{password});
   if ($session->{ErrorStr}) { return 1,$session->{ErrorStr}; }
+  unless ($session) {
+     return 1,"General error establishing SNMP communication";
+  }
   my $tmp = $session->get([$mmprimoid.".1"]);
   if ($session->{ErrorStr}) { print $session->{ErrorStr}; }
   $activemm = ($tmp ? 1 : 2);

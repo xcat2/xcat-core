@@ -2,6 +2,7 @@
 package xCAT_plugin::fedora;
 use Storable qw(dclone);
 use Sys::Syslog;
+use DBI;
 use xCAT::Table;
 use xCAT::Template;
 use xCAT::Postage;
@@ -292,6 +293,7 @@ sub mkinstall {
         kcmdline=>$kcmdline
       });
     } else {
+      print "$arch is arch and /install/$os/$arch/images/pxeboot/vmlinuz and /install/$os/$arch/images/pxeboot/initrd.img\n";
         $callback->({error=>["Install image not found in /install/$os/$arch"],errorcode=>[1]});
     }
   }
@@ -368,8 +370,68 @@ sub copycd {
   my $omask=umask 0022;
   mkpath("$installroot/$distname/$arch");
   umask $omask;
-  my $rc = system("cd $path; find . | cpio -dump $installroot/$distname/$arch");
+  #my $rc = system("cd $path; find . | cpio -dump $installroot/$distname/$arch");
+  my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
   chmod 0755,"$installroot/$distname/$arch";
+  my $repomdfile;
+  my $primaryxml;
+  my @xmlines;
+  my $oldsha=`/usr/bin/sha1sum $installroot/$distname/$arch/repodata/primary.xml.gz`;
+  my $olddbsha=`/usr/bin/sha1sum $installroot/$distname/$arch/repodata/primary.sqlite.bz2`;
+  $oldsha =~ s/\s.*//;
+  chomp($oldsha);
+  $olddbsha =~ s/\s.*//;
+  chomp($olddbsha);
+  unlink("$installroot/$distname/$arch/repodata/primary.sqlite");
+  unlink("$installroot/$distname/$arch/repodata/primary.xml");
+  system("/usr/bin/bunzip2  $installroot/$distname/$arch/repodata/primary.sqlite.bz2");
+  system("/bin/gunzip  $installroot/$distname/$arch/repodata/primary.xml.gz");
+  my $oldopensha=`/usr/bin/sha1sum $installroot/$distname/$arch/repodata/primary.xml`;
+  $oldopensha =~ s/\s+.*//;
+  chomp($oldopensha);
+  my $olddbopensha=`/usr/bin/sha1sum $installroot/$distname/$arch/repodata/primary.sqlite`;
+  $olddbopensha =~ s/\s+.*//;
+  chomp($olddbopensha);
+  my $pdbh = DBI->connect("dbi:SQLite:$installroot/$distname/$arch/repodata/primary.sqlite","","",{AutoCommit=>1});
+  $pdbh->do('UPDATE "packages" SET "location_base" = NULL');
+  $pdbh->disconnect;
+  open($primaryxml,"+<$installroot/$distname/$arch/repodata/primary.xml");
+  while (<$primaryxml>) {
+     s!xml:base="media://[^"]*"!!g;
+     push @xmlines,$_;
+  }
+  seek($primaryxml,0,0);
+  print $primaryxml (@xmlines);
+  truncate($primaryxml,tell($primaryxml));
+  @xmlines=();
+  close($primaryxml);
+  my $newopensha=`/usr/bin/sha1sum $installroot/$distname/$arch/repodata/primary.xml`;
+  my $newdbopensha=`/usr/bin/sha1sum $installroot/$distname/$arch/repodata/primary.sqlite`;
+  system("/bin/gzip $installroot/$distname/$arch/repodata/primary.xml");
+  system("/usr/bin/bzip2 $installroot/$distname/$arch/repodata/primary.sqlite");
+  my $newsha=`/usr/bin/sha1sum $installroot/$distname/$arch/repodata/primary.xml.gz`;
+  my $newdbsha=`/usr/bin/sha1sum $installroot/$distname/$arch/repodata/primary.sqlite.bz2`;
+  $newopensha =~ s/\s.*//;
+  $newdbopensha =~ s/\s.*//;
+  $newsha =~ s/\s.*//;
+  $newdbsha =~ s/\s.*//;
+  chomp($newopensha);
+  chomp($newdbopensha);
+  chomp($newsha);
+  chomp($newdbsha);
+  open($primaryxml,"+<$installroot/$distname/$arch/repodata/repomd.xml");
+  while (<$primaryxml>) { 
+     s!xml:base="media://[^"]*"!!g;
+     s!$oldsha!$newsha!g;
+     s!$oldopensha!$newopensha!g;
+     s!$olddbsha!$newdbsha!g;
+     s!$olddbopensha!$newdbopensha!g;
+     push @xmlines,$_;
+  }
+  seek($primaryxml,0,0);
+  print $primaryxml (@xmlines);
+  truncate($primaryxml,tell($primaryxml));
+  close($primaryxml);
   if ($rc != 0) {
     $callback->({error=>"Media copy operation failed, status $rc"});
   } else {
