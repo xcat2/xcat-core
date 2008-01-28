@@ -81,11 +81,28 @@ sub addnode {
 #up the lease file the way we would want anyway.
   my $node = shift;
   my $ent;
+  my $nrtab = xCAT::Table->new('noderes');
+  if ($nrtab) {
+     my $ent;
+     $ent = $nrtab->getNodeAttribs($node,['tftpserver']);
+     if ($ent and $ent->{tftpserver}) {
+        $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{tftpserver})).'";'.$statements;
+     } else {
+        $ent = $nrtab->getNodeAttribs($node,['servicenode']);
+        if ($ent and $ent->{servicenode}) {
+         $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{servicenode})).'\";'.$statements;
+        }
+     }
+  }
   my $mactab = xCAT::Table->new('mac');
-  unless ($mactab) { return; } #TODO: report error sanely
+  unless ($mactab) { 
+     $callback->({error=>["Unable to open mac table, it may not exist yet"],errorcode=>[1]});
+     return; 
+  } 
   $ent = $mactab->getNodeAttribs($node,[qw(mac)]);
   unless ($ent and $ent->{mac}) {
-    return; #TODO: sane error
+    $callback->({error=>["Unable to find mac address for $node"],errorcode=>[1]});
+    return; 
   }
   my @macs = split(/\|/,$ent->{mac});
   my $mace;
@@ -125,6 +142,7 @@ sub addnode {
   	if ($statements) {
   	    print $omshell "set statements = \"$statements\"\n";
   	 }
+
   	print $omshell "create\n";
   	print $omshell "close\n";
   	unless (grep /#definition for host $node aka host $hname/,@dhcpconf) {
