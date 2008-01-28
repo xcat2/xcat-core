@@ -37,7 +37,7 @@ sub delnode {
 	my $mac;
 	my $hname;
 	($mac,$hname) = split (/!/,$mace);	
-	unless ($hmame) { $hmame = $node; }
+	unless ($hname) { $hname = $node; }
   	print $omshell "new host\n";
   	print $omshell "set name = \"$hname\"\n"; #Find and destroy conflict name
   	print $omshell "open\n";
