@@ -59,18 +59,12 @@ defined by specifying a default context for unqualified target names (See
 .PP
 A target is a node where a remote command will be
 executed. Node targets are specified inputting the 
-\fInode_list\fR or \fInodegroups\fR, or the
-\fBDSH_NODE_LIST\fR environment variable. 
+\fInode_list\fR or \fInodegroups\fR.
 .PP
 If the local host is included as part of the targets, the
 \fIcommand_list\fR is executed directly on the local host and not through
 the configured remote shell, unless a \fIuser_ID\fR is specified for
 execution with the local host (see \fBRemote user\fR).
-.PP
-The \fBDSH_NODE_LIST\fR environment
-variable specify the file listing the target nodes. The file
-format is one target per line. Blank lines and comment lines beginning
-with \fB#\fR are ignored.
 .PP
 Node targets can also be specified using node
 ranges as supported by xCAT. If the same
@@ -533,13 +527,6 @@ Specifies the fanout value. This variable is overridden by the
 \fB-f\fR flag.
 .RE
 .RS +3
-\fBDSH_NODE_LIST
-\fR
-.RE
-.RS +9
-Specifies a file containing a list of node targets. 
-.RE
-.RS +3
 \fBDSH_NODE_OPTS
 \fR
 .RE
@@ -635,10 +622,6 @@ xdsh node1,node2 "ps"
 .HP 3
 2. To run the \fBps\fR command on each node target listed in the
 \fBmyhosts\fR file, enter: 
-.sp
-.nf
-DSH_NODE_LIST=./myhosts; xdsh ps
-.fi
 .sp
 .HP 3
 3. To execute the commands contained in \fBmyfile\fR in the XCAT 
