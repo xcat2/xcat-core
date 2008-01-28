@@ -207,7 +207,7 @@ sub getobjdefs
                 my $attr = $this_attr->{attr_name};
 
                 # skip the key attr  ???
-                if ($attr eq $objkey)
+				if ($attr eq $objkey)
                 {
                     next;
                 }
@@ -225,7 +225,6 @@ sub getobjdefs
 
                     # if the object value is not the value we need
                     #   to match then try the next only_if value
-                    # ndebug
                     next
                       if (
                         !grep(/$check_value/, $objhash{$objname}{$check_attr}));
@@ -294,8 +293,7 @@ sub getobjdefs
                         #       attr val is defined
                         if (ref($ent) and defined $ent->{$tabattr})
                         {
-                            $objhash{$objname}{$attr} = $ent->{$tabattr};
-
+                           	$objhash{$objname}{$attr} = $ent->{$tabattr};
                         }
                         $thistable->commit;
 
@@ -307,7 +305,6 @@ sub getobjdefs
                 {
 
                     # look up attr values
-
                     my @rows = xCAT::DBobjUtils->getDBtable($lookup_table);
                     if (defined(@rows))
                     {
@@ -315,10 +312,11 @@ sub getobjdefs
                         foreach (@rows)
                         {
 
-                            if ($_->{$objkey} eq $objname)
+
+                            if ($_->{$lookup_attr} eq $objname)
                             {
 
-                                $objhash{$objname}{$attr} = $_->{$tabattr};
+                                	$objhash{$objname}{$attr} = $_->{$tabattr};
                             }
                         }
                     }
