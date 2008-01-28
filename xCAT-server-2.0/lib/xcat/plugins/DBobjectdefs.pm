@@ -843,8 +843,6 @@ sub defmk
             next;
         }
 
-        # ndebug mk
-
         # if object already exists
         if (grep(/$obj/, @{$objTypeLists{$type}}))
         {
@@ -2159,9 +2157,13 @@ sub defls
                 # get the data type  definition from Schema.pm
                 my $datatype =
                   $xCAT::Schema::defspec{$defhash{$obj}{'objtype'}};
+				my @alreadydone;
                 foreach $this_attr (@{$datatype->{'attrs'}})
                 {
-                    push(@attrlist, $this_attr->{attr_name});
+					if (!grep(/^$this_attr->{attr_name}$/, @alreadydone)) {
+                    	push(@attrlist, $this_attr->{attr_name});
+					}
+					push(@alreadydone, $this_attr->{attr_name});
                 }
             }
 
