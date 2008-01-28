@@ -90,14 +90,6 @@ if (!($::NODE_RSH))
 
     }
 }
-if (!($cmdref->{noderange}->[0]))    # if no node range defined
-{
-    if ($ENV{'DSH_LIST'})            # if file of nodes input
-    {
-        push(@{$cmdref->{env}}, "DSH_LIST=$ENV{'DSH_LIST'}");
-
-    }
-}
 if (!($::NODE_OPTS))
 {
     if ($ENV{'DSH_NODE_OPTS'})
@@ -312,6 +304,14 @@ sub check_invalid_exports
     #   DSH_NODEGROUP_PATH
     #  For support Env Variables tell them to use the command line flag
     ##
+    if ($ENV{'DSH_LIST'})            # if file of nodes input
+    {
+        xCAT::MsgUtils->message(
+              "I",
+              "DSH_LIST is set but is not supported. It will be ignored.\n"
+              );
+
+    }
     if ($ENV{'DSH_NODE_LIST'})
     {
         xCAT::MsgUtils->message(
