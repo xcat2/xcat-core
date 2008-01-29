@@ -73,6 +73,7 @@ sub setdestiny {
     my $noderes=xCAT::Table->new('noderes');
     my $nodetype = xCAT::Table->new('nodetype');
     my $sitetab = xCAT::Table->new('site');
+    my $nodehm = xCAT::Table->new('nodehm');
     (my $portent) = $sitetab->getAttribs({key=>'xcatdport'},'value');
     (my $mastent) = $sitetab->getAttribs({key=>'master'},'value');
     foreach (@nodes) {
@@ -84,12 +85,29 @@ sub setdestiny {
       my $arch = $ent->{arch};
       my $ent = $noderes->getNodeAttribs($_,[qw(xcatmaster)]);
       my $master;
+      my $kcmdline;
       if ($mastent and $mastent->{value}) {
           $master = $mastent->{value};
       }
       if ($ent and $ent->{xcatmaster}) {
           $master = $ent->{xcatmaster};
       }
+      $ent = $noderes->getNodeAttribs($_,['serialport']);
+      if ($ent and defined($ent->{serialport})) {
+         $kcmdline = "console=ttyS".$ent->{serialport};
+         $ent = $nodehm->getNodeAttribs($_,['serialspeed']);
+         unless ($ent and defined($ent->{serialspeed})) {
+            $callback->({error=>["Serial port defined in noderes, but no nodehm.serialspeed set for $_"],errorcode=>[1]});
+            return;
+         }
+         $kcmdline .= ",".$ent->{serialspeed};
+         $ent = $nodehm->getNodeAttribs($_,['serialflow']);
+         if ($ent and ($ent->{serialflow} eq 'hard' or $ent->{serialflow} eq 'rtscts')) {
+            $kcmdline .= "n8r";
+         }
+         $kcmdline .= " ";
+      }
+
       unless ($master) {
           $callback->({error=>["No master in site table nor noderes table for $_"],errorcode=>[1]});
           return;
@@ -100,7 +118,7 @@ sub setdestiny {
       }
       $noderes->setNodeAttribs($_,{kernel => "xcat/nbk.$arch",
                                    initrd => "xcat/nbfs.$arch.gz",
-                                   kcmdline => "xcatd=$master:$xcatdport"});
+                                   kcmdline => $kcmdline."xcatd=$master:$xcatdport"});
     }
     $nodetype->close;
   } elsif (!($state eq "boot")) { 
