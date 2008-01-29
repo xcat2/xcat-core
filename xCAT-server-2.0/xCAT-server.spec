@@ -33,6 +33,7 @@ xCAT-server provides the core server and configuration management components of 
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
@@ -43,8 +44,10 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
 
 %ifos linux
 cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
+cp -a share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
 %else
 cp -hpR share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
+cp -hpR share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
 %endif
 
 cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin

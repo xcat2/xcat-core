@@ -105,13 +105,15 @@ sub mknetboot {
         my $osver = $ent->{os};
         my $arch = $ent->{arch};
         my $profile = $ent->{profile};
-        unless (-r "/$installroot/netboot/$osver/$arch/$profile/kernel" and -r "$installroot/netboot/$osver/$arch/$profile/rootimg.gz") {
-            makenetboot($osver,$arch,$profile,$installroot,$callback);
-            mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-            copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-            copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        }
-        unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/rootimg.gz") {
+        unless (-r "/$installroot/netboot/$osver/$arch/$profile/kernel") {
+           $callback->({error=>["No imageroot found, run genimage.pl -o $osver -p $profile on a system of type $arch"],errorcode=>[1]});
+           next;
+         }
+         packimage($osver,$arch,$profile,$installroot,$callback);
+         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+         copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+         copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+         unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/rootimg.gz") {
             mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
@@ -142,7 +144,7 @@ sub mknetboot {
         });
     }
 }
-sub makenetboot {
+sub packimage {
     my $osver = shift;
     my $arch = shift;
     my $profile = shift;
@@ -152,51 +154,32 @@ sub makenetboot {
         $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
         return;
     }
-    my $srcdir = "/$installroot/$osver/$arch/Server";
-    unless ( -d $srcdir."/repodata" ) {
-        $callback->({error=>["copycds has not been run for $osver/$arch (/$installroot/$osver/$arch/Server/repodata not found"],errorcode=>[1]});
-        return;
-    }
-    my $yumconf;
-    open($yumconf,">","/tmp/mknetboot.$$.yum.conf");
-    print $yumconf "[$osver-$arch]\nname=$osver-$arch\nbaseurl=file:///$srcdir\ngpgcheck=0\n";
-    close($yumconf);
-    system("yum -y -c /tmp/mknetboot.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* --enablerepo=$osver-$arch install bash dhclient kernel openssh-server openssh-clients dhcpv6_client vim-minimal");
-    my $cfgfile;
-    open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/fstab");
-    print $cfgfile "devpts  /dev/pts    devpts  gid=5,mode=620 0 0\n";
-    print $cfgfile "tmpfs   /dev/shm    tmpfs   defaults    0 0\n";
-    print $cfgfile "proc    /proc   proc    defaults    0 0\n";
-    print $cfgfile "sysfs   /sys    sysfs   defaults    0 0\n";
-    close($cfgfile);
-    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network");
-    print $cfgfile "NETWORKING=yes\n";
-    close($cfgfile);
-    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network-scripts/ifcfg-eth0");
-    print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=eth0\n";
-    close($cfgfile);
-    open ($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network-scripts/ifcfg-eth1");
-    print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=eth1\n";
-    close($cfgfile);
-    link("$installroot/netboot/$osver/$arch/$profile/rootimg/sbin/init","$installroot/netboot/$osver/$arch/$profile/rootimg/init");
-    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
-    if (-d "$installroot/postscripts/hostkeys") {
-        for my $key (<$installroot/postscripts/hostkeys/*key>) {
-            copy ($key,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/");
-        }
-        chmod 0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/*key>;
-    }
-    if (-d "/$installroot/postscripts/.ssh") {
-        mkpath("/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh");
-        chmod(0700,"/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/");
-        for my $file (</$installroot/postscripts/.ssh/*>) {
-            copy ($file,"/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/");
-        }
-        chmod(0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/*>);
-    }
     my $oldpath=cwd;
+    my $exlistloc;
+    if (-r "$::XCATROOT/share/xcat/netboot/fedora/$profile.$osver.$arch.exlist") {
+       $exlistloc = "$::XCATROOT/share/xcat/netboot/fedora/$profile.$osver.$arch.exlist";
+    } elsif (-r "$::XCATROOT/share/xcat/netboot/fedora/$profile.$arch.exlist") {
+       $exlistloc = "$::XCATROOT/share/xcat/netboot/fedora/$profile.$arch.exlist";
+    } elsif (-r "$::XCATROOT/share/xcat/netboot/fedora/$profile.$osver.exlist") {
+       $exlistloc = "$::XCATROOT/share/xcat/netboot/fedora/$profile.$osver.exlist";
+    } elsif (-r "$::XCATROOT/share/xcat/netboot/fedora/$profile.exlist") {
+       $exlistloc = "$::XCATROOT/share/xcat/netboot/fedora/$profile.exlist";
+    } else {
+       $callback->({error=>["Unable to finde file exclusion list under $::XCATROOT/share/xcat/netboot/fedora/ for $profile/$arch/$osver"],errorcode=>[1]});
+       next;
+    }
+    my $exlist;
+    open($exlist,"<",$exlistloc);
+    my $excludestr = "find . ";
+    while (<$exlist>) {
+       chomp $_;
+       $excludestr .= "'!' -wholename '".$_."' -a ";
+    }
+    close($exlist);
+    $excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
     chdir("$installroot/netboot/$osver/$arch/$profile/rootimg");
-    system("find . '!' -wholename './usr/share/man*' -a '!' -wholename './usr/share/locale*' -a '!' -wholename './usr/share/i18n*' -a '!' -wholename './var/cache/yum*' -a '!' -wholename './usr/share/doc*' -a '!' -wholename './usr/lib/locale*' -a '!' -wholename './boot*' |cpio -H newc -o | gzip -c - > ../rootimg.gz");
+    system($excludestr);
+    print $excludestr. " ". $oldpath."\n";
     chdir($oldpath);
 }
 sub mkinstall {
