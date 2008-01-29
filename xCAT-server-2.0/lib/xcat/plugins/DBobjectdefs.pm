@@ -402,8 +402,11 @@ sub processArgs
         # make the default type = 'node' if not specified
         push(@::clobjtypes, 'node');
         my $rsp;
-        $rsp->{data}->[0] = "Assuming an object type of \'node\'.\n";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
+		if ( !$::opt_z && !$::opt_x) {
+			# don't want this msg in stanza or xml output
+        	$rsp->{data}->[0] = "Assuming an object type of \'node\'.\n";
+        	xCAT::MsgUtils->message("I", $rsp, $::callback);
+		}
     }
 
     # if user specifies "-t" & "-h" they want valid type or attrs info
