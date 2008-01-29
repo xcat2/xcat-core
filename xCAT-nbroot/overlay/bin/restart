@@ -4,4 +4,4 @@ rm /restart
 killall -12 udhcpc;killall -10 udhcpc
 sleep 5
 /etc/init.d/S11stunnel #redo stunnel config
-/etc/init.d/S99xcat
+exec /etc/init.d/S99xcat.sh

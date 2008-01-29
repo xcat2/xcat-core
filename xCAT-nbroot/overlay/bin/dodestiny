@@ -27,7 +27,7 @@ while :; do
   fi
   if [ $DESTINY == "shell" ]; then
     echo "Server notified us to stay in shell state, stopping destiny requests"
-    exit
+    while :; do /bin/sh; done #exit
   fi
   if [ $DESTINY == "discover" ]; then
     echo "MAC discovery begins"

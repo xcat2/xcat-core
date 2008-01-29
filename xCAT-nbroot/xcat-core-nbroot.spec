@@ -13,6 +13,7 @@ BuildArch: noarch
 %define name	xCAT-nbroot-core-%{tarch}
 Release: snap%(date +"%Y%m%d%H%M")
 AutoReq: false
+Prefix: /opt/xcat
 AutoProv: false
 
 
@@ -43,8 +44,8 @@ All files included are as they were downloadable on 4/7/2007
 
 %Install
 rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/usr/share/xcat/netboot/%{tarch}/nbroot
-cd $RPM_BUILD_ROOT/usr/share/xcat/netboot/%{tarch}/nbroot
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/%{tarch}/nbroot
+cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/%{tarch}/nbroot
 tar zxvf %{SOURCE1}
 chmod 755 etc/init.d/S40network bin/getdestiny bin/getdestiny.awk bin/getipmi bin/getipmi.awk
 cd -

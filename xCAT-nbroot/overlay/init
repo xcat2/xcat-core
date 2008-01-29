@@ -1,0 +1,36 @@
+#!/bin/sh
+PATH=/sbin:/bin:/usr/bin:/usr/sbin
+export PATH
+/bin/mount -t proc none /proc
+/bin/mount -t sysfs none /sys
+/bin/mount -t tmpfs -o size=64k,mode=0755 none /dev
+/bin/mkdir /dev/pts
+/bin/mount -t devpts devpts /dev/pts
+/bin/echo /sbin/mdev > /proc/sys/kernel/hotplug
+/sbin/mdev -s
+/bin/mount -o remount,rw /
+/bin/mount -a
+/bin/hostname -F /etc/hostname
+/sbin/ifconfig lo 127.0.0.1 up
+/sbin/route add -net 127.0.0.0 netmask 255.0.0.0 lo
+# now run any rc scripts
+for i in /etc/init.d/S??* ;do
+
+     # Ignore dangling symlinks (if any).
+     [ ! -f "$i" ] && continue
+
+     case "$i" in
+	*.sh)
+	    # Source shell script for speed.
+	    (
+		trap - INT QUIT TSTP
+		set start
+		. $i
+	    )
+	    ;;
+	*)
+	    # No sh extension, so fork subprocess.
+	    $i start
+	    ;;
+    esac
+done

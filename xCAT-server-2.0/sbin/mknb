@@ -4,7 +4,7 @@ if [ $# -ne 1 ];  then
   echo "Usage: mknb <arch>"
   exit 1
 fi
-if [ ! -d /usr/share/xcat/netboot/$1 ]; then 
+if [ ! -d /opt/xcat/share/xcat/netboot/$1 ]; then 
   echo "Unsupported architecture: $1"
   exit 1
 fi
@@ -14,7 +14,7 @@ if [ ! -r ~/.ssh/id_rsa.pub ]; then
   #exit 1
 fi
 mkdir -p /tmp/mknb.$$
-cp -a /usr/share/xcat/netboot/$1/nbroot/* /tmp/mknb.$$/
+cp -a /opt/xcat/share/xcat/netboot/$1/nbroot/* /tmp/mknb.$$/
 mkdir -p /tmp/mknb.$$/root/.ssh
 cp ~/.ssh/id_rsa.pub /tmp/mknb.$$/root/.ssh/authorized_keys
 if [ -f /install/postscripts/hostkeys/ssh_host_key ]; then
