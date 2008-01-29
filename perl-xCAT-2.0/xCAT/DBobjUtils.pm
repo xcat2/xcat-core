@@ -294,6 +294,7 @@ sub getobjdefs
                         if (ref($ent) and defined $ent->{$tabattr})
                         {
                            	$objhash{$objname}{$attr} = $ent->{$tabattr};
+
                         }
                         $thistable->commit;
 
@@ -647,7 +648,7 @@ sub setobjdefs
 
                     # need to check the attrs we are setting for the object
                     #   as well as the attrs for this object that may be
-                    #   already set in DB
+                   #   already set in DB
                     if (
                         (!grep(/$check_value/, $objhash{$objname}{$check_attr}))
                         && (
@@ -656,11 +657,6 @@ sub setobjdefs
                         )
                       )
                     {
-                        my %rsp;
-                        $rsp->{data}->[0] =
-                          "Could not set \'$attr_name\' for \'$objname\'.";
-                        xCAT::MsgUtils->message("I", $rsp, $::callback);
-                        $ret = 1;
                         next;
 
                     }
