@@ -32,7 +32,7 @@ set empty ""
 if { [info exists env(DSH_REMOTE_CMD)] } {
    set remoteshell $env(DSH_REMOTE_CMD)
 } else {
-   set remoteshell "/bin/ssh"
+   set remoteshell "/usr/bin/ssh"
 }
 if { [info exists env(XCATROOT)] } {
 	set xcatroot $env(XCATROOT)
