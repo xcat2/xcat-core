@@ -731,7 +731,7 @@ sub setupSSH
     {
         $::REMOTESHELL_EXPECT = "/opt/xcat/sbin/remoteshell.expect";
     }
-    $::REMOTE_SHELL = "/bin/ssh";
+    $::REMOTE_SHELL = "/usr/bin/ssh";
 
     # make the directory to hold keys to transfer to the nodes
     if (!-d $SSHdir)
