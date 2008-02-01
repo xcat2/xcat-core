@@ -373,7 +373,7 @@ if (( ! -r "/etc/xcat/policy.sqlite" ) || $::FORCE) {
 #
 if (( ! -d "/etc/xcat/ca" ) || $::FORCE) {
 	xCAT::MsgUtils->message('I', "\nSetting up basic certificates.  Respond with a \'y\' when prompted.\n\n");
-	my $cmd = "$::XCATROOT/share/xcat/scripts/setup-xcat-ca.sh 'xCAT CA'";
+	my $cmd = "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-xcat-ca.sh 'xCAT CA'";
 	xCAT::MsgUtils->message('I', "Running $cmd\n");
 	my $rc  = system($cmd);
 	if ($rc >> 8)
@@ -386,7 +386,7 @@ if (( ! -d "/etc/xcat/ca" ) || $::FORCE) {
 
 if (( ! -d "/etc/xcat/cert" ) || $::FORCE) {
 
-	my $cmd = "$::XCATROOT/share/xcat/scripts/setup-server-cert.sh $hname";
+	my $cmd = "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-server-cert.sh $hname";
 	xCAT::MsgUtils->message('I', "Running $cmd\n");
 	my $rc  = system($cmd);
     if ($rc >> 8)
@@ -399,7 +399,7 @@ if (( ! -d "/etc/xcat/cert" ) || $::FORCE) {
 
 if ( ( ! -r "$::root/.xcat/client-key.pem") || $::FORCE){
 
-	my $cmd = "$::XCATROOT/share/xcat/scripts/setup-local-client.sh root";
+	my $cmd = "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-local-client.sh root";
 	xCAT::MsgUtils->message('I', "Running $cmd\n");
 	my $rc  = system($cmd);
     if ($rc >> 8)
