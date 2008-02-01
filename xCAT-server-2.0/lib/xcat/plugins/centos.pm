@@ -325,6 +325,7 @@ sub copycd {
   umask $omask;
   my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
   chmod 0755,"$installroot/$distname/$arch";
+  xCAT::Yum->localize_yumrepo($installroot,$distname,$arch);
   if ($rc != 0) {
     $callback->({error=>"Media copy operation failed, status $rc"});
   } else {
