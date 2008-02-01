@@ -3706,6 +3706,13 @@ sub parse_and_run_dsh
         my @results = "return code = $rc";
         return (@results);
     }
+    if (!(@ARGV))
+    {    #  no args , an error
+        my %rsp;
+        $rsp->{data}->[0] = "No command argument provided\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return;
+    }
 
     #
     # Execute the dsh api
