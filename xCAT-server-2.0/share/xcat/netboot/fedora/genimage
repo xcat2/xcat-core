@@ -76,6 +76,12 @@ sub getlibs {
 	my @libs = split/\n/,$liblist;
 	my @return;
 	foreach (@libs) {
+      unless (/=>/) {
+         (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
+         $lib =~ s/^\///;
+         $libhash{$lib}=1;
+         next;
+      }
 		(my $temp1,my $temp2) = split />/,$_,2;
 		(my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
 		unless ($temp1 =~ /\//) {
@@ -92,7 +98,9 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/usr/bin");
 	mkpath("/tmp/xcatinitrd.$$/usr/sbin");
 	mkpath("/tmp/xcatinitrd.$$/usr/lib");
+	mkpath("/tmp/xcatinitrd.$$/usr/lib64");
 	mkpath("/tmp/xcatinitrd.$$/lib/firmware");
+	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
 	mkpath("/tmp/xcatinitrd.$$/proc");
 	mkpath("/tmp/xcatinitrd.$$/sys");
 	mkpath("/tmp/xcatinitrd.$$/dev/mapper");
@@ -170,7 +178,7 @@ sub mkinitrd {
    close($inifile);
 	chmod(0755,"/tmp/xcatinitrd.$$/init");
 	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
-   @filestoadd=("lib/ld.so.1");
+   @filestoadd=();
    foreach ("sbin/nash","sbin/busybox.anaconda","sbin/rmmod") {
       getlibs($_);
       push @filestoadd,$_;
