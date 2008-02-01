@@ -76,7 +76,9 @@ sub process_request {
     return mkinstall($request,$callback,$doreq);
   } elsif ($request->{command}->[0] eq 'mknetboot') {
     return mknetboot($request,$callback,$doreq);
-  }
+  } elsif ($request->{command}->[0] eq 'packimage') {
+         packimage($request,$callback,$doreq);
+  } #$osver,$arch,$profile,$installroot,$callback);
 }
 
 sub mknetboot {
@@ -89,6 +91,11 @@ sub mknetboot {
     my @nodes = @{$req->{node}};
     my $ostab = xCAT::Table->new('nodetype');
     my $sitetab = xCAT::Table->new('site');
+    (my $sent) = $sitetab->getAttribs({key=>master},value);
+    my $imgsrv;
+    if ($sent and $sent->{value}) {
+       $imgsrv = $sent->{value};
+    }
     my $installroot;
     if ($sitetab) { 
         (my $ref) = $sitetab->getAttribs({key=>installdir},value);
@@ -105,27 +112,37 @@ sub mknetboot {
         my $osver = $ent->{os};
         my $arch = $ent->{arch};
         my $profile = $ent->{profile};
-        unless (-r "/$installroot/netboot/$osver/$arch/$profile/kernel") {
-           $callback->({error=>["No imageroot found, run genimage.pl -o $osver -p $profile on a system of type $arch"],errorcode=>[1]});
-           next;
-         }
-         packimage($osver,$arch,$profile,$installroot,$callback);
-         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-         copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-         copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-         unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/rootimg.gz") {
-            mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-            copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-            copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        }
-        unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/rootimg.gz") {
-            $callback->({error=>["Netboot image creation failed for $node"],errorcode=>[1]});
+         #packimage($osver,$arch,$profile,$installroot,$callback);
+         unless (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.gz" and
+         -r "/$installroot/netboot/$osver/$arch/$profile/kernel" and
+         -r  "/$installroot/netboot/$osver/$arch/$profile/initrd.gz") {
+            $callback->({error=>["No packed image for platform $osver, architecture $arch, profile $profile, please run packimage -o $osver -p $profile -a $arch"],errorcode=>[1]});
             next;
+         }
+         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+         #TODO: only copy if newer..
+         copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+         copy("/$installroot/netboot/$osver/$arch/$profile/initrd.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+         #copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+         unless (-r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd.gz") {
+            $callback->({error=>["Copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed"],errorcode=>[1]});
+            next;
+            #mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            #copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            #copy("/$installroot/netboot/$osver/$arch/$profile/rootimg.gz","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
         }
         my $restab = xCAT::Table->new('noderes');
         my $hmtab = xCAT::Table->new('nodehm');
         my $ent = $restab->getNodeAttribs($node,['serialport','primarynic']);
-        my $kcmdline;
+        my $ient = $restab->getNodeAttribs($node,['servicenode']);
+        if ($ient and $ient->{servicenode}) {
+           $imgsrv = $ient->{servicenode};
+        }
+        unless ($imgsrv) {
+           $callback->({error=>["Unable to determine image server for $node"]});
+           next;
+        }
+        my $kcmdline = "imgurl=$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.gz ";
         if (defined $ent->{serialport}) {
             my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
             unless ($sent->{serialspeed}) {
@@ -139,48 +156,10 @@ sub mknetboot {
         }
         $restab->setNodeAttribs($node,{
            kernel=>"xcat/netboot/$osver/$arch/$profile/kernel",
-           initrd=>"xcat/netboot/$osver/$arch/$profile/rootimg.gz",
+           initrd=>"xcat/netboot/$osver/$arch/$profile/initrd.gz",
            kcmdline=>$kcmdline
         });
     }
-}
-sub packimage {
-    my $osver = shift;
-    my $arch = shift;
-    my $profile = shift;
-    my $installroot = shift;
-    my $callback = shift;
-    unless ($installroot) {
-        $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
-        return;
-    }
-    my $oldpath=cwd;
-    my $exlistloc;
-    if (-r "$::XCATROOT/share/xcat/netboot/fedora/$profile.$osver.$arch.exlist") {
-       $exlistloc = "$::XCATROOT/share/xcat/netboot/fedora/$profile.$osver.$arch.exlist";
-    } elsif (-r "$::XCATROOT/share/xcat/netboot/fedora/$profile.$arch.exlist") {
-       $exlistloc = "$::XCATROOT/share/xcat/netboot/fedora/$profile.$arch.exlist";
-    } elsif (-r "$::XCATROOT/share/xcat/netboot/fedora/$profile.$osver.exlist") {
-       $exlistloc = "$::XCATROOT/share/xcat/netboot/fedora/$profile.$osver.exlist";
-    } elsif (-r "$::XCATROOT/share/xcat/netboot/fedora/$profile.exlist") {
-       $exlistloc = "$::XCATROOT/share/xcat/netboot/fedora/$profile.exlist";
-    } else {
-       $callback->({error=>["Unable to finde file exclusion list under $::XCATROOT/share/xcat/netboot/fedora/ for $profile/$arch/$osver"],errorcode=>[1]});
-       next;
-    }
-    my $exlist;
-    open($exlist,"<",$exlistloc);
-    my $excludestr = "find . ";
-    while (<$exlist>) {
-       chomp $_;
-       $excludestr .= "'!' -wholename '".$_."' -a ";
-    }
-    close($exlist);
-    $excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
-    chdir("$installroot/netboot/$osver/$arch/$profile/rootimg");
-    system($excludestr);
-    print $excludestr. " ". $oldpath."\n";
-    chdir($oldpath);
 }
 sub mkinstall {
   my $request = shift;

@@ -1,0 +1,7 @@
+bash
+glibc.ppc64
+dhclient 
+kernel.ppc64
+busybox-anaconda
+openssh-server
+openssh-clients
