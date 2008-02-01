@@ -23,7 +23,7 @@ while :; do
         echo "Retrying destiny retrieval"
         usleep 300000
     done
-    exec $0
+    exec /bin/dodestiny
   fi
   if [ $DESTINY == "shell" ]; then
     echo "Server notified us to stay in shell state, stopping destiny requests"
