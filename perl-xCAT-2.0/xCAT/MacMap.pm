@@ -74,8 +74,6 @@ sub new {
   my $proto = shift;
   my $class = ref($proto) || $proto;
 
-  $self->{switchtab} = xCAT::Table->new('switch', -create => 1);
-  $self->{sitetab} = xCAT::Table->new('site');
   bless ($self, $class);
   return $self;
 }
@@ -111,8 +109,10 @@ sub find_mac {
 }
 
 sub refresh_table {
-  $self->{mactable}={};
   my $self = shift;
+  $self->{mactable}={};
+  $self->{switchtab} = xCAT::Table->new('switch', -create => 1);
+  $self->{sitetab} = xCAT::Table->new('site');
   my $community = "public";
   my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
   if ($tmp and $tmp->{value}) { $community = $tmp->{value} }

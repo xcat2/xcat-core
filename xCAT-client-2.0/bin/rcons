@@ -1,9 +1,9 @@
 #!/bin/sh
 CONSERVER=`nodels $1 nodehm.conserver`
-if [ -z $CONSERVER ]; then
+if [ -z "$CONSERVER" ]; then
 	CONSERVER=$XCATHOST
 fi
-if [ -z $CONSERVER ]; then
+if [ -z "$CONSERVER" ]; then
 	CONSERVER=localhost
 fi
 #NOTE: IPv6 is not good with the below if going by IP, needs more sophisticated
