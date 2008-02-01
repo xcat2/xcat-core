@@ -3601,13 +3601,17 @@ sub parse_and_run_dsh
     $::CALLBACK = $callback;
     if ($ENV{'XCATROOT'})
     {
-       $::XCATROOT = $ENV{'XCATROOT'};  # setup xcatroot home directory
-    } elsif (-d '/opt/xcat') {
-       $::XCATROOT = "/opt/xcat";
-    } else {
-       $::XCATROOT = "/usr";
+        $::XCATROOT = $ENV{'XCATROOT'};    # setup xcatroot home directory
     }
-    
+    elsif (-d '/opt/xcat')
+    {
+        $::XCATROOT = "/opt/xcat";
+    }
+    else
+    {
+        $::XCATROOT = "/usr";
+    }
+
     # parse the arguments
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
@@ -3688,8 +3692,8 @@ sub parse_and_run_dsh
 
     #
     # build list of nodes
-
-    $options{'nodes'} = $noderange;
+    my @nodelist = @$nodes;
+    $options{'nodes'} = join(',', @nodelist);
 
     # build arguments
 
@@ -3803,10 +3807,13 @@ sub parse_and_run_dcp
     $::CALLBACK = $callback;
     if ($ENV{'XCATROOT'})
     {
-       $::XCATROOT = $ENV{'XCATROOT'};  # setup xcatroot home directory
-    } else {
-       $::XCATROOT = "/opt/xcat";
+        $::XCATROOT = $ENV{'XCATROOT'};    # setup xcatroot home directory
     }
+    else
+    {
+        $::XCATROOT = "/opt/xcat";
+    }
+
     # parse the arguments
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
@@ -3938,8 +3945,8 @@ sub parse_and_run_dcp
 
     #
     # build list of nodes
-
-    $options{'nodes'} = $noderange;
+    my @nodelist = @$nodes;
+    $options{'nodes'} = join(',', @nodelist);
 
     # Execute the dcp api
     my @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
