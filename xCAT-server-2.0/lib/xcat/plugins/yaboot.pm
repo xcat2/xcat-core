@@ -109,6 +109,7 @@ sub setstate {
   }
   my @ipa=split(/\./,$ip);
   my $pname = sprintf("%02x%02x%02x%02x",@ipa);
+  unlink($tftpdir."/etc/".$pname);
   link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
 }
   

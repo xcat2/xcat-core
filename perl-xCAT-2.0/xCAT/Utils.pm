@@ -2,6 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Utils;
 use xCAT::Table;
+use Socket;
 use xCAT::Schema;
 use Data::Dumper;
 use xCAT::NodeRange;
@@ -994,5 +995,56 @@ sub isServiceNode
 		chomp $::XCATMasterPort{$value};
         return $::XCATMasterPort{$value};
     }
+}
+
+sub nodeonmynet {
+   my $nodetocheck = shift;
+   if (scalar(@_)) {
+      $nodetocheck = shift;
+   }
+   my $nodeip = inet_ntoa(inet_aton($nodetocheck));
+   unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/) {
+      return 0; #Not supporting IYv6 here IPV6TODO
+   }
+   my $noden = unpack("N",inet_aton($nodeip));
+   my @nets = split /\n/,`/sbin/ip route`;
+   foreach (@nets) {
+      my @elems = split /\s+/;
+      unless ($elems[1] =~ /dev/) {
+         next;
+      }
+      (my $curnet,my $maskbits) = split /\//,$elems[0];
+      my $curmask = 2**$maskbits-1<<(32-$maskbits);
+      my $curn = unpack("N",inet_aton($curnet));
+      if (($noden & $curmask) == $curn) {
+         return 1;
+      }
+   }
+   return 0;
+}
+      
+
+
+
+sub thishostisnot {
+  my $comparison = shift;
+  if (scalar(@_)) {
+     $comparison = shift;
+  }
+
+  my @ips = split /\n/,`/sbin/ip addr`;
+  my $comp=inet_aton($comparison);
+  foreach (@ips) { 
+    if (/^\s*inet/) {
+	my @ents = split(/\s+/);
+	my $ip=$ents[2];
+	$ip =~ s/\/.*//;
+	if (inet_aton($ip) eq $comp) { 
+	  return 0;
+	}
+	#print Dumper(inet_aton($ip));
+    }
+  }
+  return 1;
 }
 1;

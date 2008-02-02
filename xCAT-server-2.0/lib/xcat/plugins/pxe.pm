@@ -71,7 +71,7 @@ sub setstate {
   }
   print $pcfg "DEFAULT xCAT\n";
   print $pcfg "LABEL xCAT\n";
-  my $chaintab = xCAT::Table->new('chain');
+  $chaintab = xCAT::Table->new('chain');
   my $stref = $chaintab->getNodeAttribs($node,['currstate']);
   if ($stref and $stref->{currstate} eq "boot") {
     print $pcfg "LOCALBOOT 0\n";
@@ -107,6 +107,7 @@ sub setstate {
   }
   my @ipa=split(/\./,$ip);
   my $pname = sprintf("%02X%02X%02X%02X",@ipa);
+  unlink($tftpdir."/pxelinux.cfg/".$pname);
   link($tftpdir."/pxelinux.cfg/".$node,$tftpdir."/pxelinux.cfg/".$pname);
 }
   
@@ -126,37 +127,56 @@ sub pass_along {
 
 sub preprocess_request {
    my $req = shift;
-   my $callback = shift;
-  my %localnodehash;
-  my %dispatchhash;
-  my $nrtab = xCAT::Table->new('noderes');
-  foreach my $node (@{$req->{node}}) {
-     my $nodeserver;
-     my $tent = $nrtab->getNodeAttribs($node,['tftpserver']);
-     if ($tent) { $nodeserver = $tent->{tftpserver} }
-     unless ($tent and $tent->{tftpserver}) {
-        $tent = $nrtab->getNodeAttribs($node,['servicenode']);
-        if ($tent) { $nodeserver = $tent->{servicenode} }
-     }
-     if ($nodeserver) {
-        $dispatchhash{$nodeserver}->{$node} = 1;
-     } else {
-        $localnodehash{$node} = 1;
-     }
-  }
-  my @requests;
-  my $reqc = {%$req};
-  $reqc->{node} = [ keys %localnodehash ];
-  if (scalar(@{$reqc->{node}})) { push @requests,$reqc }
-
-  foreach my $dtarg (keys %dispatchhash) { #iterate dispatch targets
-     my $reqcopy = {%$req}; #deep copy
-     $reqcopy->{'_xcatdest'} = $dtarg;
-     $reqcopy->{node} = [ keys %{$dispatchhash{$dtarg}}];
-     push @requests,$reqcopy;
-  }
-  return \@requests;
+   $callback = shift;
+   if ($req->{_xcatdest}) { return [$req]; } #Exit if the packet has been preprocessed in its history
+   my @requests = ({%$req}); #Start with a straight copy to reflect local instance
+   my $sitetab = xCAT::Table->new('site');
+   (my $ent) = $sitetab->getAttribs({key=>'xcatservers'},'value');
+   $sitetab->close;
+   if ($ent and $ent->{value}) {
+      foreach (split /,/,$ent->{value}) {
+         if (xCAT::Utils->thishostisnot($_)) {
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $_;
+            push @requests,$reqcopy;
+         }
+      }
+   }
+   return \@requests;
 }
+#sub preprocess_request {
+#   my $req = shift;
+#   my $callback = shift;
+#  my %localnodehash;
+#  my %dispatchhash;
+#  my $nrtab = xCAT::Table->new('noderes');
+#  foreach my $node (@{$req->{node}}) {
+#     my $nodeserver;
+#     my $tent = $nrtab->getNodeAttribs($node,['tftpserver']);
+#     if ($tent) { $nodeserver = $tent->{tftpserver} }
+#     unless ($tent and $tent->{tftpserver}) {
+#        $tent = $nrtab->getNodeAttribs($node,['servicenode']);
+#        if ($tent) { $nodeserver = $tent->{servicenode} }
+#     }
+#     if ($nodeserver) {
+#        $dispatchhash{$nodeserver}->{$node} = 1;
+#     } else {
+#        $localnodehash{$node} = 1;
+#     }
+#  }
+#  my @requests;
+#  my $reqc = {%$req};
+#  $reqc->{node} = [ keys %localnodehash ];
+#  if (scalar(@{$reqc->{node}})) { push @requests,$reqc }
+#
+#  foreach my $dtarg (keys %dispatchhash) { #iterate dispatch targets
+#     my $reqcopy = {%$req}; #deep copy
+#     $reqcopy->{'_xcatdest'} = $dtarg;
+#     $reqcopy->{node} = [ keys %{$dispatchhash{$dtarg}}];
+#     push @requests,$reqcopy;
+#  }
+#  return \@requests;
+#}
 
 sub process_request {
   $request = shift;
@@ -164,17 +184,25 @@ sub process_request {
   my $sub_req = shift;
   my @args;
   my @nodes;
+  my @rnodes;
   if (ref($request->{node})) {
-    @nodes = @{$request->{node}};
+    @rnodes = @{$request->{node}};
   } else {
-    if ($request->{node}) { @nodes = ($request->{node}); }
+    if ($request->{node}) { @rnodes = ($request->{node}); }
   }
-  unless (@nodes) {
+  unless (@rnodes) {
       if ($usage{$request->{command}->[0]}) {
           $callback->({data=>$usage{$request->{command}->[0]}});
       }
       return;
   }
+  @nodes = ();
+  foreach (@rnodes) {
+     if (xCAT::Utils->nodeonmynet($_)) {
+        push @nodes,$_;
+     }
+  }
+
       
   if (ref($request->{arg})) {
     @args=@{$request->{arg}};

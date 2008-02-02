@@ -87,12 +87,12 @@ sub addnode {
      $ent = $nrtab->getNodeAttribs($node,['tftpserver']);
      if ($ent and $ent->{tftpserver}) {
         $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{tftpserver})).'\";'.$statements;
-     } else {
-        $ent = $nrtab->getNodeAttribs($node,['servicenode']);
-        if ($ent and $ent->{servicenode}) {
-         $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{servicenode})).'\";'.$statements;
-        }
-     }
+     } #else {
+       # $ent = $nrtab->getNodeAttribs($node,['servicenode']);
+       # if ($ent and $ent->{servicenode}) {
+       #  $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{servicenode})).'\";'.$statements;
+       # }
+     #}
   }
   my $mactab = xCAT::Table->new('mac');
   unless ($mactab) { 
@@ -340,8 +340,6 @@ sub addnet {
       }
       if ($ent and $ent->{tftpserver}) {
         $tftp = $ent->{tftpserver};
-      } else {
-         $callback->({warning=>["No tftp server designated for $net, systems attempting to netboot from this network may fail"]});
       }
       if ($ent and $ent->{gateway}) {
         $gateway = $ent->{gateway};
