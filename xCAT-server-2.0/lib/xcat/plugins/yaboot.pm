@@ -2,6 +2,7 @@
 package xCAT_plugin::yaboot;
 use Data::Dumper;
 use Sys::Syslog;
+use xCAT::Scope;
 use Socket;
 
 my $request;
@@ -127,39 +128,42 @@ sub pass_along {
 
   
 sub preprocess_request {
-   my $req = shift;
-   my $callback = shift;
-  my %localnodehash;
-  my %dispatchhash;
-  my $nrtab = xCAT::Table->new('noderes');
-  foreach my $node (@{$req->{node}}) {
-     my $nodeserver;
-     my $tent = $nrtab->getNodeAttribs($node,['tftpserver']);
-     if ($tent) { $nodeserver = $tent->{tftpserver} }
-     unless ($tent and $tent->{tftpserver}) {
-        $tent = $nrtab->getNodeAttribs($node,['servicenode']);
-        if ($tent) { $nodeserver = $tent->{servicenode} }
-     }
-     if ($nodeserver) {
-        $dispatchhash{$nodeserver}->{$node} = 1;
-     } else {
-        $localnodehash{$node} = 1;
-     }
-  }
-  my @requests;
-  my $reqc = {%$req};
-  $reqc->{node} = [ keys %localnodehash ];
-  if (scalar(@{$reqc->{node}})) { push @requests,$reqc }
-
-  foreach my $dtarg (keys %dispatchhash) { #iterate dispatch targets
-     my $reqcopy = {%$req}; #deep copy
-     $reqcopy->{'_xcatdest'} = $dtarg;
-     $reqcopy->{node} = [ keys %{$dispatchhash{$dtarg}}];
-     push @requests,$reqcopy;
-  }
-  return \@requests;
+   return xCAT::Scope->get_broadcast_scope(@_);
 }
-
+#sub preprocess_request {
+#   my $req = shift;
+#   my $callback = shift;
+#  my %localnodehash;
+#  my %dispatchhash;
+#  my $nrtab = xCAT::Table->new('noderes');
+#  foreach my $node (@{$req->{node}}) {
+#     my $nodeserver;
+#     my $tent = $nrtab->getNodeAttribs($node,['tftpserver']);
+#     if ($tent) { $nodeserver = $tent->{tftpserver} }
+#     unless ($tent and $tent->{tftpserver}) {
+#        $tent = $nrtab->getNodeAttribs($node,['servicenode']);
+#        if ($tent) { $nodeserver = $tent->{servicenode} }
+#     }
+#     if ($nodeserver) {
+#        $dispatchhash{$nodeserver}->{$node} = 1;
+#     } else {
+#        $localnodehash{$node} = 1;
+#     }
+#  }
+#  my @requests;
+#  my $reqc = {%$req};
+#  $reqc->{node} = [ keys %localnodehash ];
+#  if (scalar(@{$reqc->{node}})) { push @requests,$reqc }
+#
+#  foreach my $dtarg (keys %dispatchhash) { #iterate dispatch targets
+#     my $reqcopy = {%$req}; #deep copy
+#     $reqcopy->{'_xcatdest'} = $dtarg;
+#     $reqcopy->{node} = [ keys %{$dispatchhash{$dtarg}}];
+#     push @requests,$reqcopy;
+#  }
+#  return \@requests;
+#}
+#
 
 
 sub process_request {
@@ -168,18 +172,25 @@ sub process_request {
   $sub_req = shift;
   my @args;
   my @nodes;
+  my @rnodes;
   if (ref($request->{node})) {
-    @nodes = @{$request->{node}};
+    @rnodes = @{$request->{node}};
   } else {
-    if ($request->{node}) { @nodes = ($request->{node}); }
+    if ($request->{node}) { @rnodes = ($request->{node}); }
   }
-  unless (@nodes) {
+  unless (@rnodes) {
       if ($usage{$request->{command}->[0]}) {
           $callback->({data=>$usage{$request->{command}->[0]}});
       }
       return;
   }
-      
+  @nodes = ();
+  foreach (@rnodes) {
+     if (xCAT::Utils->nodeonmynet($_)) {
+        push @nodes,$_;
+     }
+  }
+
   if (ref($request->{arg})) {
     @args=@{$request->{arg}};
   } else {
