@@ -31,7 +31,7 @@ package xCAT::Schema;
     keys => [qw(node)],
   },
   iscsi => {
-    cols => [qw(node server target userid passwd comments disable)],
+    cols => [qw(node server target file userid passwd comments disable)],
     keys => [qw(node)],
   },
   vpd => {
