@@ -105,21 +105,26 @@ sub isAIX
 	Returns:
 		same as fork
 =cut
-sub xfork {
-	my $rc=fork;
-	unless (defined($rc)) {
-		return $rc;
-	}
-	unless ($rc) {
-          #my %drivers = DBI->installed_drivers;
-          foreach (values %{$::XCAT_DBHS}) { #@{$drh->{ChildHandles}}) {
-              $_->{InactiveDestroy} = 1;
-	      undef $_;
-          }
+
+sub xfork
+{
+    my $rc = fork;
+    unless (defined($rc))
+    {
+        return $rc;
+    }
+    unless ($rc)
+    {
+
+        #my %drivers = DBI->installed_drivers;
+        foreach (values %{$::XCAT_DBHS})
+        {    #@{$drh->{ChildHandles}}) {
+            $_->{InactiveDestroy} = 1;
+            undef $_;
         }
-	return $rc;
+    }
+    return $rc;
 }
-	
 
 #-------------------------------------------------------------------------------
 
@@ -587,9 +592,10 @@ sub runcmd
     {
         if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
 
-    } 
-    if ($::VERBOSE) {
-       xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+    }
+    if ($::VERBOSE)
+    {
+        xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
     }
     my $outref = [];
     @$outref = `$cmd`;
@@ -953,6 +959,7 @@ sub cpSSHFiles
     }
     return (0);
 }
+
 #-------------------------------------------------------------------------------
 
 =head3    isServiceNode
@@ -992,59 +999,199 @@ sub isServiceNode
     else
     {    # read the file
         $::XCATMasterPort{$value} = `cat /etc/xCATSN.cfg`;
-		chomp $::XCATMasterPort{$value};
+        chomp $::XCATMasterPort{$value};
         return $::XCATMasterPort{$value};
     }
 }
 
-sub nodeonmynet {
-   my $nodetocheck = shift;
-   if (scalar(@_)) {
-      $nodetocheck = shift;
-   }
-   my $nodeip = inet_ntoa(inet_aton($nodetocheck));
-   unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/) {
-      return 0; #Not supporting IYv6 here IPV6TODO
-   }
-   my $noden = unpack("N",inet_aton($nodeip));
-   my @nets = split /\n/,`/sbin/ip route`;
-   foreach (@nets) {
-      my @elems = split /\s+/;
-      unless ($elems[1] =~ /dev/) {
-         next;
-      }
-      (my $curnet,my $maskbits) = split /\//,$elems[0];
-      my $curmask = 2**$maskbits-1<<(32-$maskbits);
-      my $curn = unpack("N",inet_aton($curnet));
-      if (($noden & $curmask) == $curn) {
-         return 1;
-      }
-   }
-   return 0;
-}
-      
+#-------------------------------------------------------------------------------
 
+=head3 nodeonmynet 
+    returns 
+    Arguments:
+        none
+    Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
 
+#-------------------------------------------------------------------------------
 
-sub thishostisnot {
-  my $comparison = shift;
-  if (scalar(@_)) {
-     $comparison = shift;
-  }
-
-  my @ips = split /\n/,`/sbin/ip addr`;
-  my $comp=inet_aton($comparison);
-  foreach (@ips) { 
-    if (/^\s*inet/) {
-	my @ents = split(/\s+/);
-	my $ip=$ents[2];
-	$ip =~ s/\/.*//;
-	if (inet_aton($ip) eq $comp) { 
-	  return 0;
-	}
-	#print Dumper(inet_aton($ip));
+sub nodeonmynet
+{
+    my $nodetocheck = shift;
+    if (scalar(@_))
+    {
+        $nodetocheck = shift;
     }
-  }
-  return 1;
+    my $nodeip = inet_ntoa(inet_aton($nodetocheck));
+    unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
+    {
+        return 0;    #Not supporting IYv6 here IPV6TODO
+    }
+    my $noden = unpack("N", inet_aton($nodeip));
+    my @nets = split /\n/, `/sbin/ip route`;
+    foreach (@nets)
+    {
+        my @elems = split /\s+/;
+        unless ($elems[1] =~ /dev/)
+        {
+            next;
+        }
+        (my $curnet, my $maskbits) = split /\//, $elems[0];
+        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
+        my $curn = unpack("N", inet_aton($curnet));
+        if (($noden & $curmask) == $curn)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   thishostisnot 
+    returns 
+    Arguments:
+        none
+    Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub thishostisnot
+{
+    my $comparison = shift;
+    if (scalar(@_))
+    {
+        $comparison = shift;
+    }
+
+    my @ips = split /\n/, `/sbin/ip addr`;
+    my $comp = inet_aton($comparison);
+    foreach (@ips)
+    {
+        if (/^\s*inet/)
+        {
+            my @ents = split(/\s+/);
+            my $ip   = $ents[2];
+            $ip =~ s/\/.*//;
+            if (inet_aton($ip) eq $comp)
+            {
+                return 0;
+            }
+
+            #print Dumper(inet_aton($ip));
+        }
+    }
+    return 1;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   GetMasterNodeName 
+        Reads the database for the Master node name for the input node
+    Arguments:
+		 Node
+    Returns:
+        MasterHostName 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         $master=(xCAT::Utils->GetMasterNodeName($node)) 
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub GetMasterNodeName
+{
+    my ($class, $node) = @_;
+    my $master;
+    my $noderestab = xCAT::Table->new('noderes');
+    my $typetab    = xCAT::Table->new('nodetype');
+    unless ($noderestab and $typetab)
+    {
+        xCAT::MsgUtils->message('S',
+                                "Unable to open noderes or nodetype table.\n");
+        return 1;
+    }
+    my $sitetab = xCAT::Table->new('site');
+    (my $et) = $sitetab->getAttribs({key => "master"}, 'value');
+    if ($et and $et->{value})
+    {
+        $master = $et->{value};
+    }
+    $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
+    if ($et and $et->{'xcatmaster'})
+    {
+        $master = $et->{'xcatmaster'};
+    }
+    unless ($master)
+    {
+        xCAT::MsgUtils->message('S', "Unable to identify master for $node.\n");
+        return 1;
+    }
+
+    return $master;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   GetNodeOSARCH 
+        Reads the database for the OS and Arch of the input Node
+    Arguments:
+		 Node
+    Returns:
+        $et->{'os'}
+		$et->{'arch'}
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         $master=(xCAT::Utils->GetNodeOSARCH($node)) 
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub GetNodeOSARCH
+{
+    my ($class, $node) = @_;
+
+    my $noderestab = xCAT::Table->new('noderes');
+    my $typetab    = xCAT::Table->new('nodetype');
+    unless ($noderestab and $typetab)
+    {
+        xCAT::MsgUtils->message('S',
+                                "Unable to open noderes or nodetype table.\n");
+        return 1;
+    }
+    my $et = $typetab->getNodeAttribs($node, ['os', 'arch']);
+    unless ($et and $et->{'os'} and $et->{'arch'})
+    {
+        xCAT::MsgUtils->message('S',
+                           "No os/arch setting in nodetype table for $node.\n");
+        return 1;
+    }
+
+    return $et;
+
 }
 1;
