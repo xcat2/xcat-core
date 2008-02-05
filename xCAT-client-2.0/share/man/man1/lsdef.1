@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "LSDEF.1 1"
-.TH LSDEF.1 1 "2007-11-30" "perl v5.8.2" "User Contributed Perl Documentation"
+.TH LSDEF.1 1 "2008-02-05" "perl v5.8.2" "User Contributed Perl Documentation"
 .SH "NAME"
 \&\fBlsdef\fR \- Use this command to list xCAT data object definitions.
 .SH "SYNOPSIS"
@@ -215,7 +215,10 @@ See the \*(L"noderange\*(R" man page for details on supported formats.
 \&\fIlsdef \-t node \-w nfsserver=FMS01\fR
 .SH "FILES"
 .IX Header "FILES"
-/usr/sbin/lsdef
+$XCATROOT/bin/lsdef
+.PP
+(The \s-1XCATROOT\s0 environment variable is set when xCAT is installed. The
+default value is \*(L"/opt/xcat\*(R".)
 .SH "NOTES"
 .IX Header "NOTES"
 This command is part of the xCAT software product.
