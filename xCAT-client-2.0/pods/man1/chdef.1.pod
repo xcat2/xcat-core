@@ -75,7 +75,10 @@ I<chdef -p -t group -o LinuxNodes memberlist="node01">
 
 =head1 FILES
  
-/usr/sbin/chdef
+$XCATROOT/bin/chdef
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
 
 
 =head1 NOTES
