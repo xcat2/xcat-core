@@ -1,50 +1,35 @@
-#!/usr/bin/perl
+#!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #egan@us.ibm.com
 #(C)IBM Corp
 #
-my $homedir ;
-if ($^O =~ /^aix/i) {  # AIX 
-   $homedir="/";
-} else {  #  LINUX
-   $homedir="/root";
-}
-if (-r "/etc/ssh/sshd_config")
-{    # readable
 
-    my $msg = "Install: setup /etc/ssh/sshd_config";
-    `logger -t xcat $msg`;
-    `cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG`;
-     # get rid of X11Forwarding setting
-    `perl -pi -e 's/^.*X11Forwarding.*\n//g' /etc/ssh/sshd_config`;  
-     # get rid of KeyRegenerationInterval setting
-    `perl -pi -e 's/^.*KeyRegenerationInterval.*\n//g' /etc/ssh/sshd_config`;  
-     # get rid of MaxStartup setting
-    `perl -pi -e 's/^.*MaxStartups.*\n//g' /etc/ssh/sshd_config`;  
-     # get rid of PasswordAuthentication setting
-    `perl -pi -e 's/^.*PasswordAuthentication.*\n//g' /etc/ssh/sshd_config`;  
-    `echo "KeyRegenerationInterval 0" >>/etc/ssh/sshd_config`;
-    `echo "X11Forwarding yes" >>/etc/ssh/sshd_config`;
-    `echo "MaxStartups 1024" >>/etc/ssh/sshd_config`;
-    `echo "PasswordAuthentication no" >>/etc/ssh/sshd_config`;
-}
+if [ -r /etc/ssh/sshd_config ]
+then
+	logger -t xcat "Install: setup /etc/ssh/sshd_config"
+	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
+	perl -pi -e 's/^X11Forwarding .*$/X11Forwarding yes/' /etc/ssh/sshd_config
+	perl -pi -e 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
+	perl -pi -e 's/(.*MaxStartups.*)/#\1/' /etc/ssh/sshd_config
+	echo "MaxStartups 1024" >>/etc/ssh/sshd_config
+	echo "PasswordAuthentication no" >>/etc/ssh/sshd_config
+fi
 
-if (-d "/xcatpost/.ssh")
-{    # directory
-    my $msg = "Install: setup root .ssh";
-    `logger -t xcat $msg`;
-    chdir("/xcatpost/.ssh");
-    mkdir("$homedir/.ssh", 700);
-    `cp -f /xcatpost/ssh/* $homedir/.ssh`;
-     my $cmd="chmod 600 $homedir/.ssh/*";
-    `$cmd`;
-}
-if (-d "/xcatpost/hostkeys")
-{
-    my $msg = "Install: using server provided host key for convenience.";
-    `logger -t xcat $msg`;
-    `cp /xcatpost/hostkeys/*_key /etc/ssh/`;
-}
+if [ -d /xcatpost/.ssh ]
+then
+	logger -t xcat "Install: setup root .ssh"
+	cd /xcatpost/.ssh
+	mkdir -p /root/.ssh
+	cp -f * /root/.ssh
+	chmod 700 /root/.ssh
+	chmod 600 /root/.ssh/*
+fi
+if [ -d /xcatpost/hostkeys ]
+then
+	logger -t xcat "Install: using server provided host key for convenience."
+	cp /xcatpost/hostkeys/*_key /etc/ssh/
+fi
 
-exit 0;
+
+exit 0
 
