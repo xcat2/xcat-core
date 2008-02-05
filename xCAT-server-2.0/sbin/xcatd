@@ -158,11 +158,12 @@ if (xCAT::Utils->isLinux()) {
             arg => [ 'next' ],
             );
           close($conn);
-          my $pid=xCAT::Utils->xfork();
-          unless ($pid) { #fork off the nodeset and potential slowness
+          #node should be blocked, race condition may occur otherwise
+          #my $pid=xCAT::Utils->xfork();
+          #unless ($pid) { #fork off the nodeset and potential slowness
             plugin_command(\%request,undef,\&convey_response);
-            exit(0);
-          }
+          #  exit(0);
+          #}
         } elsif ($text =~ /^unlocktftpdir/) { #TODO: only nodes in install state should be allowed
             close($conn);
             mkpath("$tftpdir/xcat/$node");
@@ -579,6 +580,9 @@ my $dispatch_cb;
 my $dispatch_parentfd;
 sub dispatch_callback {
    my $rspo = shift;
+   unless ($rspo) {
+      return;
+   }
    my $rsp = {%$rspo}; # deep copy
    delete $rsp->{serverdone};
    unless (%$rsp) { return; }
