@@ -76,7 +76,10 @@ I<mkdef -t node node1,node2,node3 power=hmc groups="all,aix" >
 
 =head1 FILES
  
-/usr/sbin/mkdef
+$XCATROOT/bin/mkdef
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
 
 
 =head1 NOTES
