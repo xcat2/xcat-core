@@ -87,7 +87,10 @@ I<xcat2nim -t group -r -o AIXnodes>
 
 =head1 FILES
  
-/usr/sbin/xcat2nim
+$XCATROOT/bin/xcat2nim
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
 
 
 =head1 NOTES
