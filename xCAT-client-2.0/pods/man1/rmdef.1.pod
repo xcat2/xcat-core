@@ -62,7 +62,10 @@ I<rmdef -t group -o bpcnodes>
 
 =head1 FILES
 
-/usr/sbin/rmdef
+$XCATROOT/bin/rmdef
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
  
 
 =head1 NOTES
