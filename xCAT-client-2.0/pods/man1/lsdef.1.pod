@@ -91,7 +91,10 @@ I<lsdef -t node -w nfsserver=FMS01>
 
 =head1 FILES
  
-/usr/sbin/lsdef
+$XCATROOT/bin/lsdef
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
 
 
 =head1 NOTES
