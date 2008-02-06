@@ -13,7 +13,7 @@ sub parse_args {
     my $request   = shift;
     my $args      = $request->{arg};
     my %opt       = ();
-    my @reventlog = qw(clear all all_clear);
+    my @reventlog = qw(clear all);
     my @VERSION   = qw( 2.0 );
     my $cmd;
 
@@ -24,11 +24,10 @@ sub parse_args {
         return( [ $_[0],
             "reventlog -h|--help",
             "reventlog -v|--version",
-            "reventlog [-V|--verbose] noderange " . join( '|', @reventlog ),
+            "reventlog [-V|--verbose] noderange " . join( '|', @reventlog )."|<number of entries to retrieve>",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
-            "    -V   verbose output",
-            "    -e   Reads number of entries specified, starting with first"])
+            "    -V   verbose output"])
     };
     #############################################
     # Process command-line arguments
@@ -45,7 +44,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version e=s) )) {
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
         return( usage() );
     }
     ####################################
@@ -67,24 +66,22 @@ sub parse_args {
         return(usage( "Missing option: -" ));
     }
     ####################################
-    # Check for non-zero integer 
+    # Unsupported commands
     ####################################
-    if ( exists( $opt{e} )) {
-        if ( $opt{e} !~ /^[1-9]{1}$|^[1-9]{1}[0-9]+$/ ) {
-            return(usage( "Invalid entry: $opt{e}" ));
-        } 
-        $cmd = "entries";
-    }
-    else { 
+    ($cmd) = grep(/^$ARGV[0]$/, @reventlog );
+    if ( !defined( $cmd )) {
+
         ################################
-        # Unsupported commands
+        # Check for non-zero integer 
         ################################
-        ($cmd) = grep(/^$ARGV[0]$/, @reventlog );
-        if ( !defined( $cmd )) {
+        if ( $ARGV[0] !~ /^[1-9]{1}$|^[1-9]{1}[0-9]+$/ ) {
             return(usage( "Invalid command: $ARGV[0]" ));
         }
-        shift @ARGV;
+        $cmd = "entries";
+        $opt{e} = $ARGV[0];
     }
+    shift @ARGV;
+   
     ####################################
     # Check for an extra argument
     ####################################
@@ -101,3 +98,4 @@ sub parse_args {
 
 
 1;
+
