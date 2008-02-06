@@ -21,7 +21,6 @@ my %cmds = (
      boot         => ["Power On/Off System",    \&boot] }, 
   reventlog => { 
      all          => ["Error/Event Logs",       \&all],
-     all_clear    => ["Error/Event Logs",       \&all_clear],
      entries      => ["Error/Event Logs",       \&entries],
      clear        => ["Error/Event Logs",       \&clear] },
   rfsp => {
@@ -627,7 +626,7 @@ sub entries {
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
     my $opt     = $request->{opt};
-    my $count   = (exists($opt->{e})) ? $opt->{e} : 9999;
+    my $count   = (exists($opt->{e})) ? $opt->{e} : -1;
     my $result;
     my $i = 1;
 
@@ -1001,17 +1000,6 @@ sub spdump {
 ##########################################################################
 sub all {
     return( entries(@_) );
-}
-
-
-##########################################################################
-# Gets all Error/Event Logs entries then clears the logs
-##########################################################################
-sub all_clear {
-
-    my $result = entries( @_ );
-    clear( @_);
-    return( $result );
 }
 
 
