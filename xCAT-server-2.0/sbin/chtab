@@ -50,7 +50,7 @@ if ($::HELP) { &usage; exit(0);}
 # display the version statement if -v or --verison is specified
 if ($::VERSION)
 {
-  print "chtab version 1.0\n";
+  print "chtab version 2.0\n";
   exit(0);
 }
 
