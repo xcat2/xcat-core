@@ -1,0 +1,66 @@
+=head1 NAME
+ 
+B<nodels> -Lists the nodes in the noderange.
+ 
+=head1 SYNOPSIS
+ 
+I<nodels [-h| --help]>
+
+I<nodels  [-v| --version]>
+
+
+I<nodels [-V| --verbose] noderange>
+
+
+=head1 DESCRIPTION
+ The nodels command lists the nodes in the input node range. If no noderange is provided, then all nodes are listed.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+B<-V>          Verbose output. 
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To list all defined nodes, enter: 
+
+I<nodels> 
+
+Output is similar to:
+   node1
+   node2
+   node3
+
+2.To list nodes in noderange ppc, enter:
+
+I<nodels ppc>
+
+Output is similar to:
+
+   ppcnode1
+   ppcnode2
+   ppcnode3
+
+
+=head1 FILES
+ 
+/opt/xcat/bin/nodels
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+ 

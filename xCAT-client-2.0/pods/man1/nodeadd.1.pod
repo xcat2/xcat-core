@@ -1,0 +1,65 @@
+=head1 NAME
+ 
+B<nodeadd> -Adds nodes to the cluster.
+ 
+=head1 SYNOPSIS
+ 
+I<nodeadd [-h| --help]>
+
+I<nodeadd  [noderange] nodelist.groups= [groupname] >
+
+I<nodeadd  [noderange] [table.column=value, table.column=value] > 
+
+
+=head1 DESCRIPTION
+
+ The nodeadd command adds the node from the input node range. At least one groupname must be supplied
+
+ nodeadd also supports  some short cut tags:
+	  groups  is equivalent to table.column = nodelist.groups
+	 	for example:nodeadd blade1-blade8  groups=all,compuTe
+
+      mgt is equivalent to table.column = nodehm.mgt
+		for example:nodeadd blade7  mgt=blade
+	  switch is equivalent to table.colum=  switch.switch
+		for example:nodeadd blade8  switch=switch1
+
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+B<-V>          Verbose output. 
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To add nodes in noderange  node1-node4 with group all: 
+
+I<nodeadd  node1-node4 groups=all > 
+	
+2. To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5: 
+
+I<nodeadd  node1-node4 nodetype.os=rhel5> 
+
+
+=head1 FILES
+ 
+/opt/xcat/bin/nodeadd
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+See nodels,nodech,noderange
+
+ 

@@ -1,0 +1,54 @@
+=head1 NAME
+ 
+B<nodech> -Changes node attributes in the database.
+ 
+=head1 SYNOPSIS
+ 
+I<nodech [-h| --help]>
+
+
+I<nodech  [noderange] [table.column=value, table.column=value] > 
+
+
+=head1 DESCRIPTION
+
+ The nodech command changes the attribute value in the input table.column for the input node range.
+
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To change the group name nodes in noderange node1-node4: 
+
+I<nodech  node1-node4 nodelist.groups=compute > 
+	
+2. To change nodes in noderange  node1-node4 to os=rhel5 in nodetype table: 
+
+I<nodech  node1-node4 nodetype.os=rhel5> 
+
+
+=head1 FILES
+ 
+/opt/xcat/bin/nodech
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+See nodels,nodeadd,noderange
+
+ 
