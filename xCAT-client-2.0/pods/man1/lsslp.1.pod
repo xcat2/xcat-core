@@ -1,6 +1,6 @@
 =head1 NAME
  
-B<lsslp> - Queries selected networked services configuration information.
+B<lsslp> - Queries selected networked services information within the same subnet.
  
 =head1 SYNOPSIS
  
@@ -9,13 +9,14 @@ I<lsslp [-h| --help]>
 I<lsslp  [-v| --version]>
 
 
-I<lsslp [-V| --verbose] [-b ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP| HMC]>
+I<lsslp [-V| --verbose] [-b ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]>
 
 
 =head1 DESCRIPTION
 
 The lsslp command queries selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific broadcast address is not specified using the -b flag, the broadcast is performed out all broadcast enabled network adapters. The optional -r, -x, and -z flags format the output.
 
+NOTE: SLP broadcast requests will propagate only within the subnet of the network adapter broadcast IPs specified by the -b flag. If the -b flag is not specified, the SLP broadcast is sent to all network adapter IPs enabled for broadcast.
 
 =head1 OPTIONS
 
@@ -53,13 +54,13 @@ I<lsslp -s HMC>
 
 Output is similar to:
 
-device type-model serial-number ip-addresses
+device type-model serial-number ip-addresses                    hostname
 
-HMC    7310CR2    103F55A        1.1.1.115 2.2.2.164 3.3.3.102
+HMC    7310CR2    103F55A        1.1.1.115 2.2.2.164 3.3.3.102  hmc01
 
-HMC    7310CR2    105369A        3.3.3.103 2.2.2.103 1.1.1.163
+HMC    7310CR2    105369A        3.3.3.103 2.2.2.103 1.1.1.163  hmc02
 
-HMC    7310CR3    KPHHK24       3.3.3.154 2.2.2.110 1.1.1.154
+HMC    7310CR3    KPHHK24        3.3.3.154 2.2.2.110 1.1.1.154  hmc03
 
 
 2. list all discovered FSP service types in raw response format on subnet 30.0.0.255, enter:
@@ -95,11 +96,11 @@ I<lsslp -s MM -z -w>
   Output is similar to:
 
   mm01:
-	 objtype=node
-	 device=MM
-	 type-model=86772XX
-	 serial-number=78AG034
-	 ip-addresses=1.1.1.19
+  objtype=node
+  device=MM
+  type-model=86772XX
+  serial-number=78AG034
+  ip-addresses=1.1.1.19
 
 
 
@@ -115,3 +116,4 @@ This command is part of the xCAT software product.
 
 
  
+
