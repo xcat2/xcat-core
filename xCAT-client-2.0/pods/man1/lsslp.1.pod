@@ -6,7 +6,7 @@ B<lsslp> - Queries selected networked services information within the same subne
  
 I<lsslp [-h| --help]>
 
-I<lsslp  [-v| --version]>
+I<lsslp [-v| --version]>
 
 
 I<lsslp [-V| --verbose] [-b ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]>
@@ -65,7 +65,7 @@ HMC    7310CR3    KPHHK24        3.3.3.154 2.2.2.110 1.1.1.154  hmc03
 
 2. list all discovered FSP service types in raw response format on subnet 30.0.0.255, enter:
 
-I< lsslp -b 3.0.0.255 -s FSP -r>
+I<lsslp -b 3.0.0.255 -s FSP -r>
 
 Output is similar to:
 
@@ -77,9 +77,10 @@ Output is similar to:
 
 3. To list all discovered MM service types in XML format and write the output to the xCAT database, enter:
 
-I <lsslp -s MM -x -w>
+I<lsslp -s MM -x -w>
 
- <Output is similar to:
+Output is similar to:
+
   <Node>
   <device>MM</device>
   <hostname>mm01</hostname>
@@ -93,7 +94,7 @@ I <lsslp -s MM -x -w>
 
 I<lsslp -s MM -z -w>
 
-  Output is similar to:
+Output is similar to:
 
   mm01:
   objtype=node
