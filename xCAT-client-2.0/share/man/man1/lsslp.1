@@ -136,7 +136,7 @@
 .IX Header "SYNOPSIS"
 \&\fIlsslp [\-h| \-\-help]\fR
 .PP
-\&\fIlsslp  [\-v| \-\-version]\fR
+\&\fIlsslp [\-v| \-\-version]\fR
 .PP
 \&\fIlsslp [\-V| \-\-verbose] [\-b ip[,ip..]][\-w][\-r|\-x|\-z][\-s BPA|MM|IVM|RSA|FSP|HMC]\fR
 .SH "DESCRIPTION"
@@ -186,7 +186,7 @@ device type-model serial-number ip-addresses                    hostname
 .PP
 2. list all discovered \s-1FSP\s0 service types in raw response format on subnet 30.0.0.255, enter:
 .PP
-\&\fI lsslp \-b 3.0.0.255 \-s \s-1FSP\s0 \-r\fR
+\&\fIlsslp \-b 3.0.0.255 \-s \s-1FSP\s0 \-r\fR
 .PP
 Output is similar to:
 .PP
@@ -196,10 +196,11 @@ Output is similar to:
 .PP
 3. To list all discovered \s-1MM\s0 service types in \s-1XML\s0 format and write the output to the xCAT database, enter:
 .PP
-I <lsslp \-s \s-1MM\s0 \-x \-w>
+\&\fIlsslp \-s \s-1MM\s0 \-x \-w\fR
 .PP
-.Vb 8
-\& <Output is similar to:
+Output is similar to:
+.PP
+.Vb 7
 \&  <Node>
 \&  <device>MM</device>
 \&  <hostname>mm01</hostname>
@@ -213,9 +214,7 @@ I <lsslp \-s \s-1MM\s0 \-x \-w>
 .PP
 \&\fIlsslp \-s \s-1MM\s0 \-z \-w\fR
 .PP
-.Vb 1
-\&  Output is similar to:
-.Ve
+Output is similar to:
 .PP
 .Vb 6
 \&  mm01:
