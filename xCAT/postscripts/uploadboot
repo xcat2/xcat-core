@@ -25,4 +25,4 @@ cp $INITRD /servboot/$INAME
 umount /servboot
 `dirname $0`/locktftpdir.awk $MASTER 3002
 rmdir /servboot
-`dirname $0`/setnetboot.awk $MASTER 3002 $KNAME $INAME "$KCMDLINE"
+`dirname $0`/setiscsiparms.awk $MASTER 3002 $KNAME $INAME "$KCMDLINE"

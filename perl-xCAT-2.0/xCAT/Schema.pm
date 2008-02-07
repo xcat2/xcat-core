@@ -31,7 +31,7 @@ package xCAT::Schema;
     keys => [qw(node)],
   },
   iscsi => {
-    cols => [qw(node server target file userid passwd comments disable)],
+    cols => [qw(node server target file userid passwd kernel kcmdline initrd comments disable)],
     keys => [qw(node)],
   },
   vpd => {
@@ -79,7 +79,7 @@ package xCAT::Schema;
 	keys => [qw(groupname)]
   },
   switch =>  {
-    cols => [qw(node switch vlan port comments disable)],
+    cols => [qw(node switch port vlan comments disable)],
     keys => [qw(node switch port)]
   },
   nodelist => {

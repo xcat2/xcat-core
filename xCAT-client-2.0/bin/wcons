@@ -1,12 +1,41 @@
-#!/bin/sh
+#!/usr/bin/env perl
 #A placeholder wcons, a fuller port from 1.3 is needed
-if [ -z "$DISPLAY" ]; then
-	echo '$DISPLAY  not set'
-	exit 1
-fi
-NODES=`nodels $1`
-MYDIR=`dirname $0`
-for n in $NODES
-do
-	xterm -rv -name wcons -T $n -n $n -e $MYDIR/rcons $n &
-done
+use Getopt::Long qw(:config getopt_compat);
+use File::Basename;
+use Data::Dumper;
+unless ($ENV{DISPLAY}) {
+	print '$DISPLAY  not set';
+	exit 1;
+}
+my $mydir = dirname($0);
+my $sb;
+my $tilefact;
+my $font;
+GetOptions(
+   'sb' => \$sb,
+   'tile|t:i' => \$tilefact,
+   'font|f=s' => \$font
+);
+my $nodes=`nodels $ARGV[0]`;
+my @nodes = split /\n/,$nodes;
+my $firstnode = shift @nodes;
+if (defined($tilefact)) {
+   system("xterm -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e $mydir/rcons $firstnode &");
+   sleep(1);
+   my $xinfo = `xwininfo -name $firstnode`
+} else {
+   system("xterm -name $firstnode -title $firstnode -n $firstnode -e $mydir/rcons $firstnode &");
+
+}
+foreach (@nodes) {
+   system("xterm -name $_ -title $_ -n $_ -e $mydir/rcons $_ &");
+}
+
+
+#print Dumper(\@ARGV);
+
+#MYDIR=`dirname $0`
+#for n in $NODES
+#do
+#	xterm -name wcons -T $n -n $n -e $MYDIR/rcons $n &
+#done

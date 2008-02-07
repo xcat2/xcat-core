@@ -2,6 +2,7 @@
 package xCAT_plugin::destiny;
 use xCAT::NodeRange;
 use Data::Dumper;
+use xCAT::Utils;
 use Sys::Syslog;
 use strict;
 
@@ -48,6 +49,24 @@ sub setdestiny {
   my %nstates;
   if ($state eq "next") {
     return nextdestiny();
+  } elsif ($state eq "iscsiboot") {
+     my $iscsitab=xCAT::Table->new('iscsi');
+     unless ($iscsitab) {
+        $callback->({error=>"Unable to open iscsi table to get iscsiboot parameters",errorcode=>[1]});
+     }
+     my $noderestab = xCAT::Table->new('noderes');
+     foreach (@{$req->{node}}) {
+      my $ient = $iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
+      unless ($ient and $ient->{kernel}) {
+         $callback->({error=>"$_: No iscsi boot data available",errorcode=>[1]});
+         next;
+      }
+      my $hash;
+      $hash->{kernel} = $ient->{kernel};
+      if ($ient->{initrd}) { $hash->{initrd} = $ient->{initrd} }
+      if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
+      $noderestab->setNodeAttribs($_,$hash);
+     }
   } elsif ($state =~ /^install$/ or $state eq "install" or $state eq "netboot") {
     chomp($state);
     $subreq->({command=>["mk$state"],
@@ -255,6 +274,8 @@ sub getdestiny {
         $response{imgserver}=$nrent->{xcatmaster};
     } elsif (defined($sent->{value})) {
         $response{imgserver}=$sent->{value};
+    } else {
+       $response{imgserver} = xCAT::Utils->my_ip_facing($node);
     }
     
     $callback->({node=>[\%response]});

@@ -165,15 +165,15 @@ if (xCAT::Utils->isLinux()) {
           #  exit(0);
           #}
         } elsif ($text =~ /^unlocktftpdir/) { #TODO: only nodes in install state should be allowed
-            close($conn);
-            mkpath("$tftpdir/xcat/$node");
+       mkpath("$tftpdir/xcat/$node");
 	    chmod 01777,"$tftpdir/xcat/$node";
 	    chmod 0666,glob("$tftpdir/xcat/$node/*");
+       close($conn);
 	} elsif ($text =~ /locktftpdir/) {
 	    chmod 0755,"$tftpdir/xcat/$node";
 	    chmod 0644,glob("$tftpdir/xcat/$node/*");
-	} elsif ($text =~ /^setnetboot/) { 
-	    $text =~ s/^setnetboot\s+//;
+	} elsif ($text =~ /^setiscsiparms/) { 
+	    $text =~ s/^setiscsiparms\s+//;
 	    my $kname;
 	    my $iname;
 	    my $kcmdline;
@@ -181,8 +181,10 @@ if (xCAT::Utils->isLinux()) {
 	    chomp($kcmdline);
 	    my $noderestab = xCAT::Table->new('noderes',-create=>1);
 	    $noderestab->setNodeAttribs($node,{kernel=>"xcat/$node/$kname",initrd=>"xcat/$node/$iname",kcmdline=>$kcmdline});
+       my $iscsitab = xCAT::Table->new('iscsi',-create=>1);
+	    $iscsitab->setNodeAttribs($node,{kernel=>"xcat/$node/$kname",initrd=>"xcat/$node/$iname",kcmdline=>$kcmdline});
 	    my $chaintab = xCAT::Table->new('chain',-create=>1);
-	    $chaintab->setNodeAttribs($node,{currstate=>'netboot',currchain=>'netboot'});
+	    $chaintab->setNodeAttribs($node,{currstate=>'iscsiboot',currchain=>'netboot'});
 	    $noderestab->close;
 	    $chaintab->close;
 	    undef $noderestab;
