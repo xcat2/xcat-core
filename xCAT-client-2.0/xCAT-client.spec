@@ -32,7 +32,9 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man3
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man8
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
@@ -41,8 +43,12 @@ cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man1/*
+cp share/man/man3/* $RPM_BUILD_ROOT/%{prefix}/share/man/man3
+chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man3/*
 cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
+cp share/man/man8/* $RPM_BUILD_ROOT/%{prefix}/share/man/man8
+chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
