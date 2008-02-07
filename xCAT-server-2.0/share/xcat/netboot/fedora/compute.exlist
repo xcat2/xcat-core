@@ -9,4 +9,5 @@
 ./usr/share/info*
 ./usr/share/omf*
 ./usr/lib/locale*
+./usr/lib/perl5*
 ./boot*

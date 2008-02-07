@@ -114,7 +114,12 @@ sub mknetboot {
         my $arch = $ent->{arch};
         my $profile = $ent->{profile};
          #packimage($osver,$arch,$profile,$installroot,$callback);
-         unless (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.gz" and
+         my $suffix = 'gz';
+         if (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.sfs") {
+            $suffix = 'sfs';
+         }
+         unless ((-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.gz" or
+         -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.sfs") and
          -r "/$installroot/netboot/$osver/$arch/$profile/kernel" and
          -r  "/$installroot/netboot/$osver/$arch/$profile/initrd.gz") {
             $callback->({error=>["No packed image for platform $osver, architecture $arch, profile $profile, please run packimage -o $osver -p $profile -a $arch"],errorcode=>[1]});
@@ -143,7 +148,7 @@ sub mknetboot {
            $callback->({error=>["Unable to determine image server for $node"]});
            next;
         }
-        my $kcmdline = "imgurl=$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.gz ";
+        my $kcmdline = "imgurl=http://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.$suffix ";
         if (defined $ent->{serialport}) {
             my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
             unless ($sent->{serialspeed}) {

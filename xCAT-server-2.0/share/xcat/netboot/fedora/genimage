@@ -16,6 +16,7 @@ my %libhash;
 my @filestoadd;
 my $profile;
 my $osver;
+my $pathtofiles=dirname($0);
 GetOptions(
    #'a=s' => \$architecture,
    'p=s' => \$profile,
@@ -48,14 +49,26 @@ unless ( -d $srcdir."/repodata" ) {
    print "Need $installroot/$osver/$arch/repodata available from a system that has ran copycds on $osver $arch";
    exit 1;
 }
-my $pathtofiles=dirname($0);
 my $yumconfig;
 open($yumconfig,">","/tmp/genimage.$$.yum.conf");
 print $yumconfig "[$osver-$arch]\nname=$osver-$arch\nbaseurl=file://$srcdir\ngpgpcheck=0\n";
 close($yumconfig);
 my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* --enablerepo=$osver-$arch install ";
 mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
-open($yumconfig,"<","$pathtofiles/$profile.pkglist");
+my $pkglist;
+if (-r "$pathtofiles/$profile.$osver.$arch.pkglist") {
+   $pkglist = "$pathtofiles/$profile.$osver.$arch.pkglist";
+} elsif (-r "$pathtofiles/$profile.$arch.pkglist") {
+   $pkglist = "$pathtofiles/$profile.$arch.pkglist";
+} elsif (-r "$pathtofiles/$profile.$osver.pkglist") {
+   $pkglist = "$pathtofiles/$profile.$osver.pkglist";
+} elsif (-r "$pathtofiles/$profile.$arch.pkglist") {
+   $pkglist = "$pathtofiles/$profile.pkglist";
+} else {
+   print "Unable to find package list for $profile!";
+   return 1;
+}
+open($yumconfig,"<","$pkglist");
 while (<$yumconfig>) {
    chomp;
    $yumcmd .= $_ . " ";
@@ -149,13 +162,28 @@ sub mkinitrd {
    print $inifile "cd /\n";
    print $inifile "for i in `cat /proc/cmdline`; do\n";
    print $inifile "   KEY=`echo \$i |awk -F= '{print \$1}'`\n";
-   print $inifile "   if [ \"\$KEY\" = 'imgurl' ]; then\n";
-   print $inifile "      wget http://`echo \$i | awk -F= '{print \$2}'`\n";
+   print $inifile "   if [ \"\$KEY\" == 'imgurl' ]; then\n";
+   print $inifile "      VALUE=`echo \$i |awk -F= '{print \$2}'`\n";
+   print $inifile "      if [ \"http\" == \"`echo \$VALUE|awk -F: '{print \$1}'`\" ]; then\n";
+   print $inifile "        wget \$VALUE\n";
+   print $inifile "     fi\n";
    print $inifile "   fi\n";
    print $inifile "done\n";
-   print $inifile "mount -t tmpfs rootfs /sysroot\n";
-   print $inifile "cd /sysroot\n";
-   print $inifile "if [ ! -r /rootimg.gz ]; then\n";
+   print $inifile "if [ -r /rootimg.sfs ]; then\n";
+   print $inifile "  echo Setting up squashfs with ram overlay\n";
+   print $inifile "  mknod /dev/loop0 b 7 0\n";
+   print $inifile "  mkdir -p /ro\n";
+   print $inifile "  mkdir -p /rw\n";
+   print $inifile "  mount -t squashfs /rootimg.sfs /ro\n";
+   print $inifile "  mount -t tmpfs rw /rw\n";
+   print $inifile "  mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot\n";
+   print $inifile "elif [ -r /rootimg.gz ]; then\n";
+   print $inifile "  mount -t tmpfs rootfs /sysroot\n";
+   print $inifile "  cd /sysroot\n";
+   print $inifile "  echo -n \"Extracting root filesystem:\"\n";
+   print $inifile "  zcat /rootimg.gz |cpio -idum\n";
+   print $inifile "  echo Done";
+   print $inifile "else\n";
    print $inifile "  echo -n Failed to download image, panicing in 5...\n";
    print $inifile "  for i in 4 3 2 1 0; do\n";
    print $inifile "    /bin/sleep 1\n";
@@ -164,9 +192,6 @@ sub mkinitrd {
    print $inifile "  echo\n";
    print $inifile "  exit\n";
    print $inifile "fi\n";
-   print $inifile "echo -n \"Extracting root filesystem:\"\n";
-   print $inifile "zcat /rootimg.gz |cpio -idum\n";
-   print $inifile "echo Done";
    print $inifile "cd /\n";
    print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-eth0.leases\n";
    print $inifile "mknod /sysroot/dev/console c 5 1\n";
@@ -179,6 +204,11 @@ sub mkinitrd {
 	chmod(0755,"/tmp/xcatinitrd.$$/init");
 	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
    @filestoadd=();
+   foreach (@ndrivers) {
+      if (-f "$pathtofiles/$_") {
+         push @filestoadd,[$_,"lib/$_"];
+      }
+   }
    foreach ("sbin/nash","sbin/busybox.anaconda","sbin/rmmod") {
       getlibs($_);
       push @filestoadd,$_;
@@ -187,10 +217,18 @@ sub mkinitrd {
    find(\&isnetdriver, <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/*>);
    foreach (@filestoadd) {
       if (ref($_)) {
-         copy("$installroot/netboot/$osver/$arch/$profile/rootimg/".$_->[0],"/tmp/xcatinitrd.$$/".$_->[1]);
+         my $srcpath = "$installroot/netboot/$osver/$arch/$profile/rootimg/".$_->[0];
+         if (-f "$pathtofiles/".$_->[0]) {
+            $srcpath="$pathtofiles/".$_->[0];
+         }
+         copy($srcpath,"/tmp/xcatinitrd.$$/".$_->[1]);
          chmod 0755,"/tmp/xcatinitrd.$$/".$_->[1];
       } else {
-         copy("$installroot/netboot/$osver/$arch/$profile/rootimg/$_","/tmp/xcatinitrd.$$/$_");
+         my $srcpath = "$installroot/netboot/$osver/$arch/$profile/rootimg/$_";
+         if (-f "$pathtofiles/$_") {
+            $srcpatch = "$pathtofiles/$_";
+         }
+         copy("$srcpath","/tmp/xcatinitrd.$$/$_");
          chmod 0755,"/tmp/xcatinitrd.$$/".$_;
       }
    }

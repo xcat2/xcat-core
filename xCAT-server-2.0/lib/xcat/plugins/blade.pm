@@ -23,6 +23,7 @@ sub handled_commands {
     rvitals => 'nodehm:vitals,mgt',
     rinv => 'nodehm:inv,mgt',
     rbeacon => 'nodehm:beacon,mgt',
+    rspreset => 'nodehm:mgt',
     rbootseq => 'nodehm:bootseq,mgt',
     reventlog => 'nodehm:eventlog,mgt',
   };
@@ -186,14 +187,17 @@ sub resetmp {
   my $data;
   my $stat;
   my $rc;
-  $data = $session->set($mpresetoid.".$slot", 1);
+  #$data = $session->set($mpresetoid.".$slot", 1);
+  $data = $session->set(new SNMP::Varbind([".".$mpresetoid,$slot,1,'INTEGER']));
+  unless ($data) { return (1,$session->{ErrorStr}); }
+  return (0,"mpreset");
   #if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-  if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-  if ($data->{$mpresetoid.".$slot"} == 1) {
-    return (0, "mpreset");
-  } else {
-    return (1,"error");
-  }
+  #if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+  #if ($data->{$mpresetoid.".$slot"} == 1) {
+  #  return (0, "mpreset");
+  #} else {
+  #  return (1,"error");
+  #}
 }
 
 sub walkelog {
@@ -1008,7 +1012,7 @@ sub dompa {
                     SecLevel => 'authPriv',
                     UseNumeric => 1,
                     Retries => 2, # Give up sooner to make commands go smoother
-                    Timeout=>1200000, #Beacon, for one, takes a bit over a second to return
+                    Timeout=>1300000, #Beacon, for one, takes a bit over a second to return
                     PrivPass => $mpahash->{$mpa}->{password});
   if ($session->{ErrorStr}) { return 1,$session->{ErrorStr}; }
   unless ($session) {
