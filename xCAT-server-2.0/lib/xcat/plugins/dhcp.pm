@@ -9,6 +9,7 @@ Getopt::Long::Configure("pass_through");
 use Socket;
 use Sys::Syslog;
 use IPC::Open2;
+use xCAT::Utils;
 
 my @dhcpconf; #Hold DHCP config file contents to be written back.
 my @nrn; # To hold output of netstat -rn to be consulted throughout process
@@ -87,7 +88,13 @@ sub addnode {
      $ent = $nrtab->getNodeAttribs($node,['tftpserver']);
      if ($ent and $ent->{tftpserver}) {
         $statements = 'next-server '.inet_ntoa(inet_aton($ent->{tftpserver})).';'.$statements;
-     } #else {
+     } else {
+        my $nxtsrv = xCAT::Utils->my_ip_facing($node);
+        if ($nxtsrv) {
+           $statements = "next-server $nxtsrv;$statements";
+        }
+     }
+     #else {
        # $ent = $nrtab->getNodeAttribs($node,['servicenode']);
        # if ($ent and $ent->{servicenode}) {
        #  $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{servicenode})).'\";'.$statements;
@@ -150,23 +157,6 @@ sub addnode {
   	}
    }
 }	
-sub thishostisnot {
-  my $comparison = shift;
-  my @ips = split /\n/,`/sbin/ip addr`;
-  my $comp=inet_aton($comparison);
-  foreach (@ips) { 
-    if (/^\s*inet/) {
-	my @ents = split(/\s+/);
-	my $ip=$ents[2];
-	$ip =~ s/\/.*//;
-	if (inet_aton($ip) eq $comp) { 
-	  return 0;
-	}
-	#print Dumper(inet_aton($ip));
-    }
-  }
-  return 1;
-}
 sub preprocess_request {
    my $req = shift;
    $callback = shift;
@@ -177,7 +167,7 @@ sub preprocess_request {
    $sitetab->close;
    if ($ent and $ent->{value}) {
       foreach (split /,/,$ent->{value}) {
-         if (thishostisnot($_)) {
+         if (xCAT::Utils->thishostisnot($_)) {
             my $reqcopy = {%$req};
             $reqcopy->{'_xcatdest'} = $_;
             push @requests,$reqcopy;
@@ -289,6 +279,9 @@ sub process_request {
       if (grep /^-d$/,@{$req->{arg}}) {
         delnode $_;
       } else { 
+        unless (xCAT::Utils->nodeonmynet($_)) {
+         next;
+        }
         addnode $_;
       }
     }
@@ -340,12 +333,14 @@ sub addnet {
       }
       if ($ent and $ent->{tftpserver}) {
         $tftp = $ent->{tftpserver};
+      } else { #presume myself to be it, dhcp no longer does this for us
+         $tftp = xCAT::Utils->my_ip_facing($net);
       }
       if ($ent and $ent->{gateway}) {
         $gateway = $ent->{gateway};
       }
       if ($ent and $ent->{dynamicrange}) {
-        unless ($ent->{dhcpserver} and thishostisnot($ent->{dhcpserver}))  { #If specific, only one dhcp server gets a dynamic range
+        unless ($ent->{dhcpserver} and xCAT::Utils->thishostisnot($ent->{dhcpserver}))  { #If specific, only one dhcp server gets a dynamic range
          $range = $ent->{dynamicrange};
          $range =~ s/[,-]/ /g;
         }

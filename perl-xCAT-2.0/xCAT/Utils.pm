@@ -993,6 +993,31 @@ sub isServiceNode
 	}
 }
 
+sub my_ip_facing {
+   my $peer = shift;
+   if (@_) {
+      $peer = shift;
+   }
+   my $noden = unpack("N", inet_aton($peer));
+   my @nets = split /\n/, `/sbin/ip addr`;
+   foreach (@nets)
+   {
+       my @elems = split /\s+/;
+       unless (/^\s*inet\s/)
+       {
+           next;
+       }
+       (my $curnet, my $maskbits) = split /\//, $elems[2];
+       my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
+       my $curn = unpack("N", inet_aton($curnet));
+       if (($noden & $curmask) == ($curn & $curmask))
+       {
+           return $curnet;
+       }
+   }
+   return undef;
+}
+
 #-------------------------------------------------------------------------------
 
 =head3 nodeonmynet 
