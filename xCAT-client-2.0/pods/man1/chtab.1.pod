@@ -39,17 +39,22 @@ B<-d>          Delete option.
 1. To add a node=node1 to the nodelist table with groups=all: 
 
 I<chtab  node=node1 nodelist.groups=all > 
+
+2. To add a keyword (tftpdir) and value (/tftpboot) to the site table: 
+
+I<chtab  key=tftpdir site.value=/tftpboot > 
 	
-2. To add node1 to the  nodetype table with os=rhel5: 
+	
+3. To add node1 to the  nodetype table with os=rhel5: 
 
 I<chtab  node=node1 nodetype.os=rhel5> 
 	
 	
-3. To change node1 in nodetype table setting os=sles: 
+4. To change node1 in nodetype table setting os=sles: 
 	
 I<chtab  node=node1 nodetype.os=sles> 
 
-4. To delete node1 from nodetype table: 
+5. To delete node1 from nodetype table: 
 
 I<chtab -d node=node1 nodetype> 
 
