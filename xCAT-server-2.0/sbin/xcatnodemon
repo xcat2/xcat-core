@@ -83,7 +83,7 @@ sub pingNodeStatus {
     #get all the active nodes
     #TODO how to decide the path of fping. how about AIX, does it support fping?
     my $nodes= join(' ', @mon_nodes);
-    my $temp=`/usr/sbin/fping -a $nodes 2> /dev/null`;
+    my $temp=`fping -a $nodes 2> /dev/null`;
     chomp($temp);
     @active_nodes=split(/\n/, $temp);
 
