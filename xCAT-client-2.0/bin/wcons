@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #A placeholder wcons, a fuller port from 1.3 is needed
-use Getopt::Long qw(:config getopt_compat);
+use Getopt::Long qw(:config getopt_compat pass_through);
 use File::Basename;
 use Data::Dumper;
 use strict;
@@ -11,14 +11,15 @@ unless ($ENV{DISPLAY}) {
 my $mydir = dirname($0);
 my $sb;
 my $tilefact;
-my $font;
+my $font = "5x7";
 GetOptions(
-   'sb' => \$sb,
+   #'sb' => \$sb,
    'tile|t:i' => \$tilefact,
-   'font|f=s' => \$font
+   #'font|f=s' => \$font
 );
-my $nodes=`nodels $ARGV[0]`;
-my $conservers=`nodels $ARGV[0] nodehm.conserver`;
+my $nodes=`nodels $ARGV[$#ARGV]`;
+my $conservers=`nodels $ARGV[$#ARGV] nodehm.conserver`;
+pop @ARGV;
 my @conservers=split /\n/,$conservers;
 my %conservers;
 foreach (@conservers) {
@@ -70,7 +71,7 @@ if (defined($tilefact)) {
    }
 
 
-   system("xterm -fn 5x7 -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode ".$conservers{$firstnode}."\" &");
+   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode ".$conservers{$firstnode}."\" &");
    sleep(2); #Give time for window manager to figure out everything
    my $xinfo = `xwininfo -name $firstnode`;
    my @xinfl = split(/\n/,$xinfo);
@@ -106,7 +107,7 @@ if (defined($tilefact)) {
       $currx=0;
    }
 } else {
-   system("xterm -fn 5x7 -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode ".$conservers{$firstnode}."\" &");
+   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode ".$conservers{$firstnode}."\" &");
 
 }
 my $geometry="";
@@ -119,13 +120,13 @@ foreach (@nodes) {
       if ($currx >= ($tilefact * $window_width)) {
          $currx=0;
          $curry+=$window_height;
-         if ($curry > $screenheight) {
+         if (($curry+$window_height) > $screenheight) {
             $curry = $panel_pad; #+$top_pad;
          }
       }
    }
 
-   system("xterm -fn 5x7 -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & $mydir/rcons $_ ".$conservers{$_}."\" &");
+   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & $mydir/rcons $_ ".$conservers{$_}."\" &");
 }
 
 
@@ -134,5 +135,5 @@ foreach (@nodes) {
 #MYDIR=`dirname $0`
 #for n in $NODES
 #do
-#	xterm -fn 5x7 -name wcons -T $n -n $n -e $MYDIR/rcons $n &
+#	xterm -bg black -fg white ".join(" ",@ARGV)." -name wcons -T $n -n $n -e $MYDIR/rcons $n &
 #done
