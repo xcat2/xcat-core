@@ -1,0 +1,22 @@
+#!/bin/sh
+if [ -z "$1" ]
+then
+        if kill $(ps auxww | grep "$DISPLAY" | grep rcons | grep -v grep | awk '{print $2}') >/dev/null 2>&1
+        then
+                exit 0
+        else
+                echo "\n${MYNAME}: no wcons windows on $DISPLAY\n"
+                exit 1
+        fi
+else
+        for i in $(nodels $1)
+        do
+                if kill $(ps auxww | grep "$DISPLAY" | grep rcons | egrep "\b$i\b" | grep -v grep | awk '{print $2}') >/dev/null 2>&1
+                then
+                        :
+                else
+                        echo "${MYNAME}: no $i wcons window on $DISPLAY"
+                fi
+        done
+fi
+
