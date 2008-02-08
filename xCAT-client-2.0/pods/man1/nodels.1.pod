@@ -1,28 +1,28 @@
 =head1 NAME
- 
-B<nodels> -Lists the nodes in the noderange.
- 
+
+B<nodels> - lists the nodes in the noderange.
+
 =head1 SYNOPSIS
- 
+
 I<nodels [-h| --help]>
 
 I<nodels  [-v| --version]>
-
 
 I<nodels [-V| --verbose] noderange>
 
 
 =head1 DESCRIPTION
- The nodels command lists the nodes in the input node range. If no noderange is provided, then all nodes are listed.
+
+ The nodels command lists the nodes specified in the node range. If no noderange is provided, then all nodes are listed.
 
 =head1 OPTIONS
 
 
 B<-h>          Display usage message.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-V>          Verbose output. 
+B<-V>          Verbose output.
 
 
 =head1 RETURN VALUE
@@ -33,9 +33,9 @@ B<-V>          Verbose output.
 
 =head1 EXAMPLES
 
-1. To list all defined nodes, enter: 
+1. To list all defined nodes, enter:
 
-I<nodels> 
+I<nodels>
 
 Output is similar to:
    node1
@@ -54,7 +54,7 @@ Output is similar to:
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/nodels
 
 
@@ -63,4 +63,4 @@ Output is similar to:
 This command is part of the xCAT software product.
 
 
- 
+

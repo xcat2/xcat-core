@@ -11,7 +11,7 @@ our @EXPORT = qw(noderange nodesmissed);
 
 my $missingnodes=[];
 my $nodelist; #=xCAT::Table->new('nodelist',-create =>1);
-my $nodeprefix = "node";
+#my $nodeprefix = "node";
 
 
 sub subnodes (\@@) {
@@ -30,23 +30,26 @@ sub expandatom {
 	my $atom = shift;
 	my $verify = (scalar(@_) == 1 ? shift : 1);
         my @nodes= ();
+    #TODO: these env vars need to get passed by the client to xcatd
 	my $nprefix=(defined ($ENV{'XCAT_NODE_PREFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : 'node');
-	my $nsuffix=(defined ($ENV{'XCAT_NODE_SUFFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : '');
-	if ($nodelist->getAttribs({node=>$atom},'node')) {
-		#The atom is a plain old nodename
+	my $nsuffix=(defined ($ENV{'XCAT_NODE_SUFFIX'}) ? $ENV{'XCAT_NODE_SUFFIX'} : '');
+	if ($nodelist->getAttribs({node=>$atom},'node')) {		#The atom is a plain old nodename
 		return ($atom);
 	}
-    if ($atom =~ /^\(.*\)$/) {
+    if ($atom =~ /^\(.*\)$/) {     # handle parentheses by recursively calling noderange()
       $atom =~ s/^\((.*)\)$/$1/;
       return noderange($atom);
     }
+
+    # Try to match groups?
 	foreach($nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'node','groups')) {
 		my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
 		if (grep { $_ eq "$atom" } @groups ) {
 			push @nodes,$_->{node};
 		}
 	}
-	if ($atom =~ m/^[0-9]+\z/) {
+
+	if ($atom =~ m/^[0-9]+\z/) {    # if only numbers, then add the prefix
 		my $nodename=$nprefix.$atom.$nsuffix;
 		return expandatom($nodename,$verify);
 	}
@@ -54,7 +57,22 @@ sub expandatom {
 	if ($nodelen > 0) {
 		return @nodes;
 	}
-	if ($atom =~ m/(.*)\[(.*)\](.*)/) { #bracket range
+
+	if ($atom =~ m/^\//) { # A regular expression
+        unless ($verify) { # If not in verify mode, regex makes zero possible sense
+          return ($atom);
+        }
+		#TODO: check against all groups
+		$atom = substr($atom,1);
+		foreach ($nodelist->getAllAttribs('node')) {
+			if ($_->{node} =~ m/^${atom}$/) {
+				push(@nodes,$_->{node});
+			}
+		}
+		return(@nodes);
+	}
+
+	if ($atom =~ m/(.*)\[(.*)\](.*)/) { # square bracket range
 	#for the time being, we are only going to consider one [] per atom
 	#xcat 1.2 does no better
 		my @subelems = split(/([\,\-\:])/,$2);
@@ -69,7 +87,8 @@ sub expandatom {
 		}
 		return @nodes;
 	}
-	if ($atom =~ m/\+/) {#process + operator
+
+	if ($atom =~ m/\+/) {  # process the + operator
 		$atom =~ m/^([^0-9]*)([0-9]+)([^\+]*)\+([0-9]+)/;
 		my $pref=$1;
 		my $startnum=$2;
@@ -89,7 +108,8 @@ sub expandatom {
 		}
 		return (@nodes);
 	}
-    if ($atom =~ m/[-:]/) {#process - range operator
+
+    if ($atom =~ m/[-:]/) { # process the minus range operator
       my $left;
       my $right;
       if ($atom =~ m/:/) {
@@ -99,7 +119,7 @@ sub expandatom {
         if (($count % 2)==0) { #can't understand even numbers of - in range context
           if ($verify) {
             push @$missingnodes,$atom;
-            return (); 
+            return ();
           } else { #but we might not really be in range context, if noverify
             return  ($atom);
           }
@@ -122,7 +142,7 @@ sub expandatom {
           return  ($atom);
         }
       }
-      my $prefix = ""; 
+      my $prefix = "";
       my $suffix = "";
       foreach (0..$#leftarr) {
         my $idx = $_;
@@ -131,7 +151,7 @@ sub expandatom {
             my $prefix = join('',@leftarr[0..($idx-1)]); #Make a prefix of the pre-validated parts
             my $luffix; #However, the remainder must still be validated to be the same
             my $ruffix;
-            if ($idx eq $#leftarr) { 
+            if ($idx eq $#leftarr) {
               $luffix="";
               $ruffix="";
             } else {
@@ -159,7 +179,7 @@ sub expandatom {
           } else {
             return ($atom);
           }
-        } 
+        }
         $prefix .= $leftarr[$idx]; #If here, it means that the pieces were the same, but more to come
       }
       #I cannot conceive how the code could possibly be here, but whatever it is, it must be questionable
@@ -169,22 +189,8 @@ sub expandatom {
       } else { #Not in verify mode, just have to guess it's meant to be a nodename
         return  ($atom);
       }
-	} 
-		
-	
-	if ($atom =~ m/^\//) { #A regex
-        unless ($verify) { #If not in verify mode, regex makes zero possible sense
-          return ($atom);
-        }
-		#TODO: check against all groups
-		$atom = substr($atom,1);
-		foreach ($nodelist->getAllAttribs('node')) {
-			if ($_->{node} =~ m/^${atom}$/) {
-				push(@nodes,$_->{node});
-			}
-		}
-		return(@nodes);
-	} 
+	}
+
     push @$missingnodes,$atom;
 	if ($verify) {
 		return ();
@@ -205,14 +211,15 @@ sub noderange {
   my %delnodes = ();
   my $op = ",";
   #my @elems = split(/(,(?![^[]*?])|@)/,$range); #, or @ but ignore , within []
-  my @elems = split(/(,(?![^[]*?])(?![^\(]*?\))|@(?![^\(]*?\)))/,$range); #, or @ but ignore , within []
+  my @elems = split(/(,(?![^[]*?])(?![^\(]*?\))|@(?![^\(]*?\)))/,$range);  # comma or @ but ignore comma within []
 
   while (my $atom = shift @elems) {
-    if ($atom =~ /^-/) {
+    if ($atom =~ /^-/) {           # if this is an exclusion, strip off the minus, but remember it
       $atom = substr($atom,1);
       $op = $op."-";
     }
-    if ($atom =~ /^\^(.*)$/) {
+
+    if ($atom =~ /^\^(.*)$/) {    # get a list of nodes from a file
       open(NRF,$1);
       while (<NRF>) {
         my $line=$_;
@@ -229,24 +236,29 @@ sub noderange {
       close(NRF);
       next;
     }
-    my %newset = map { $_ =>1 } expandatom($atom,$verify);
-    if ($op =~ /@/) {
+
+    my %newset = map { $_ =>1 } expandatom($atom,$verify);    # expand the atom and make each entry in the resulting array a key in newset
+
+    if ($op =~ /@/) {       # compute the intersection of the current atom and the node list we have received before this
       foreach (keys %nodes) {
         unless ($newset{$_}) {
           delete $nodes{$_};
         }
       }
-    } elsif ($op =~ /,-/) {
+    } elsif ($op =~ /,-/) {        # add the nodes from this atom to the exclude list
 		foreach (keys %newset) {
 			$delnodes{$_}=1; #delay removal to end
 		}
-	} else {
+	} else {          # add the nodes from this atom to the total node list
 		foreach (keys %newset) {
 			$nodes{$_}=1;
 		}
 	}
 	$op = shift @elems;
-    }
+
+    }    # end of main while loop
+
+    # Now remove all the exclusion nodes
     foreach (keys %nodes) {
 		if ($delnodes{$_}) {
 			delete $nodes{$_};
@@ -254,7 +266,7 @@ sub noderange {
     }
     undef $nodelist;
     return sort (keys %nodes);
-    
+
 }
 
 
@@ -300,7 +312,7 @@ A node plus offset (this increments the first number found in nodename):
 
 node1+199
 
-And most of the above substituting groupnames.  
+And most of the above substituting groupnames.
 3C
 3C
 
@@ -316,10 +328,6 @@ Jarrod Johnson (jbjohnso@us.ibm.com)
 =head1 COPYRIGHT
 
 Copyright 2007 IBM Corp.  All rights reserved.
-
-TODO: What license is this?
-
-
 
 
 =cut

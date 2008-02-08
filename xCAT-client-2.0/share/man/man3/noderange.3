@@ -21,10 +21,13 @@ node14-node56,node70-node203,group1-group10
 node1,node2,node8,node20,node14-node56,node70-node203
 .br
 
+node[14-56]
+.br
+
 all,-node129-node256,-frame01-frame03
 .br
 
-@node.*
+/node.*
 .br
 
 ^/tmp/nodes
@@ -36,61 +39,79 @@ node10+5
 10-15,-13
 .br
 
+group1@group2
+.br
+
 .br
 .SH DESCRIPTION
 .B noderange
-is a function 
-that a single
-operation may be applied to a range of nodes often in parallel.
+is a syntax that can be used in most xCAT commands to conveniently
+specify a list of nodes.  The result is that the command will
+be applied to a range of nodes, often in parallel.
 
 .B noderange
-lists can be an individual node and/or group:
+is a comma-separate list.  Each token (text between commas) in the list can be any
+of the forms listed below:
+
+Individual node or group:
 
 .I node01
 .br
 .I group1
 .br
 
-a range of nodes and/or groups:
+A range of nodes or groups:
 
 .I node01-node10
+(equivalent to: node01,node02,node03,...node10)
 .br
 .I group1-group3
+(equivalent to: group1,group2,group3)
 .br
 
-a regular expression match of nodes and/or groups:
+A regular expression match of nodes or groups:
 
-.I @node[345].*
+.I /node[345].*
+(will match any nodes that start with node3, node4, or node5)
 .br
-.I @group[12].*
-.br
-
-an incremented range of nodes:
-
-.I node10+5
+.I /group[12].*
+(will match any groups that start with group1 or group2)
 .br
 
-a file containing noderanges of nodes and/or groups:
+An incremented range of nodes:
+
+.I node10+3
+(equivalent to: node10,node11,node12,node13)
+.br
+
+The full path of a file containing noderanges of nodes or groups:
 
 .I ^/tmp/nodelist
 .br
 
-a node shorthand range of nodes:
+A node shorthand range of nodes:
 
 .I 10-20
+(if prefix is 'node', equivalent to: node10,node11,node12,...node20)
 .br
-.I 10+5
+.I 10+3
+(if prefix is 'node', equivalent to: node10,node11,node12,node13)
 .br
 
-or any combination:
+Or any combination:
 
-.I node01-node30,node40,^/tmp/nodes,@node[13].*,2-10,node50+5
+.I node01-node30,node40,^/tmp/nodes,/node[13].*,2-10,node50+5
 .br
 
 Any individual
 .B noderange
 may be prefixed with an exclusion operator
 (default -) with the exception of the file operator (default ^).
+
+The intersection operator @ calculates the intersection of the left and right sides:
+
+.I group1@group2
+(will result in the list of nodes group1 and group2 have in common)
 
 Any combination or multiple combinations of inclusive
 and exclusive ranges of nodes and groups is legal.  There
@@ -122,7 +143,7 @@ In plain english a node or group is in
 if starting from the begining there are one or more
 alpha characters of any case and any number of - in any
 combination, followed by
-one or more numbers, then optionally followed by one 
+one or more numbers, then optionally followed by one
 alpha character of any case or the - followed by any
 combination of case mixed alphanumerics and the -.
 
@@ -140,8 +161,8 @@ E.g. If using a
 of
 .I node1a-node9a
 with a
-.BR nodelist.tab (5)
-only listing
+.B nodelist
+table only listing
 .I node1a
 through
 .IR node5a ,
@@ -149,16 +170,16 @@ through
 will enumerate then validate and return a proper
 range.  If using a node range of
 .I aa-az
-with
-.BR nodelist.tab (5)
-only listing
+with a
+.B nodelist
+table only listing
 .I aa
 through
 .IR ay,
 .B noderange
 will fail to return any values.
 
-Example
+Example of
 \fIxCAT Node Format\fR
 node/group names:
 
@@ -183,7 +204,7 @@ unit34rack01		unit		34		rack01
 pos0134			pos		0134
 .br
 
-Example non-\fIxCAT Node Format\fR
+Example of non-\fIxCAT Node Format\fR
 node/group names, but still valid:
 
 aa
@@ -196,7 +217,9 @@ red
 .br
 
 
-First
+The supported
+.B noderange
+syntaxes are checked for, and processed, in a specific order.  First
 .B noderange
 checks for the multiple range operator (default ,).  Each range is
 also processed by
@@ -204,7 +227,7 @@ also processed by
 
 Next
 .B noderange
-checks for the file operator (default ^).  If the file exists
+checks for the file operator (default ^).  If the file exists (must be a full path name)
 each line will be processed as a
 .BR noderange .
 Lines starting
@@ -236,7 +259,7 @@ node03
 .br
 node10-node20
 .br
-@group[456].*
+/group[456].*
 .br
 -node50
 .br
@@ -246,40 +269,32 @@ Next
 checks for the exclusion operator (default -) then continues.
 This operator supports nodes and groups.
 .B noderange
-is smart and will not confuse the exclusion or range
+will not confuse the exclusion or range
 operators with the
 - character in names.
 
 Next
 .B noderange
-checks for the for the regular expression operator (default @).
-Regular expressions offer the most flexibility.  If you are
-interested in learing regex read the book
-\fIMastering Regular Expressions\fR.
-This operator supports nodes and groups.
-
-Next
-.B noderange
 checks for a numeric only range (e.g. 10-20, 5+3, or just 10), then uses
 .I $XCAT_NODE_PREFIX
-and
+(default is 'node') and
 .I $XCAT_NODE_SUFFIX
 (optional)
 as the defaults to complete the node names.
-.I $XCAT_NODE_PREFIX
-must be defined to use noderange
-shorthand.  If you use padded node names (e.g. node001, node002, etc...)
-then you must specify
-.I $XCAT_NODE_PADDING
-or the default of
-.I 1
-will be used.  E.g. if you use node names node001, node002, etc..., then
-.I $XCAT_NODE_PADDING
-should be set to
-.IR 3 .
+.B nodeRange
+tries to be intelligent about detecting padding, so you can specify 'node001-node200'
+and it will add the proper number of zeroes to make all numbers 3 digits.
 Noderange shorthand supports nodes only.  Noderange shorthand can
 be mixed with all other operators except regex.  i.e.  exclusion,
 increment, range, and file may be used.
+
+Next
+.B noderange
+checks for the for the regular expression operator (default /).
+Regular expressions offer the most flexibility.  If you are
+interested in learning regex read the book
+\fIMastering Regular Expressions\fR.
+This operator supports nodes and groups.
 
 Next
 .B noderange
@@ -293,7 +308,7 @@ e.g.
 .I node10+5
 
 would yield node10 plus the next
-.I 4
+.I 5
 nodes.
 
 This action is performed using two different methods.
@@ -301,13 +316,13 @@ If
 .I valid_node_name
 is in
 \fIxCAT Node Format\fR
-then the range is enumerated to one less than
+then the range is enumerated to
 .IR number_of_sequential_nodes .
 If not in
 \fIxCAT Node Format\fR
 then a sorted
-.BR nodelist.tab (5)
-is used to return the node range.
+.B nodelist
+table is used to return the node range.
 This operator supports nodes only.
 
 Next
@@ -319,11 +334,11 @@ Next
 checks for the range operator (default -).  Ranges are
 performed first by validating that both the start
 and end nodes or groups defining the range exist and if
-so the range is returned based on the content of
-.BR nodelist.tab (5),
-.BR nodetype.tab (5),
+so the range is returned based on the content of the
+.B nodelist
 and
-.BR nodemodel.tab (5).
+.B nodetype
+tables.
 If the start and end nodes or groups
 defined in the range do not exist,
 .I and
@@ -334,7 +349,7 @@ if both the prefix and suffix match,
 then the range is enumerated and each node/group
 validated.  Only valid nodes/groups will be returned.
 .B noderange
-is smart and will not confuse the exclusion or range
+will not confuse the exclusion or range
 operators with the
 - character in names.
 
@@ -358,9 +373,9 @@ will only be listed once.
 .I all,-node5-node10
 
 Generates a list of all nodes (assuming all is a group)
-listed in
-.BR nodelist.tab (5)
-less node5 through node10.
+listed in the
+.B nodelist
+table less node5 through node10.
 
 .I node1-node10,-node3-node5,node4
 
@@ -374,9 +389,9 @@ Generates a list of nodes 1 through 10 less nodes 3 and 5.
 
 .I -node17-node32,all
 
-Generates a list of all (assuming 'all' is a group) nodes in
-.BR nodelist.tab (5)
-less 17 through 32.
+Generates a list of all (assuming 'all' is a group) nodes in the
+.B nodelist
+table less 17 through 32.
 
 .I node1-node128,user1-user4
 
@@ -390,7 +405,7 @@ rack2, and rack3 are defined), less nodes 100 through
 200, less nodes in the storage group.  Note that
 node150 is listed but is excluded.
 
-.I @node[23].*
+.I /node[23].*
 
 Generates a list of nodes matching the regex
 .IR node[23].* .
@@ -399,4 +414,4 @@ or nothing.  E.g. node2, node3, node20, node30, node21234 all match.
 
 .SH "NOTES"
 .IX Header "NOTES"
-This command is part of the xCAT software product.
+This command is part of the xCAT software.

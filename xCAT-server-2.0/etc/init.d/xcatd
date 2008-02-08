@@ -67,7 +67,7 @@ stop)
   fi
   kill -TERM -`cat /var/run/xcatd.pid`
   let i=0;
-  while $STATUS >& /dev/null && [ $i -lt 15 ]; do 
+  while $STATUS >& /dev/null && [ $i -lt 15 ]; do
     usleep 100000
     let i=i+1
   done
@@ -92,8 +92,13 @@ start)
     exit
   fi
   echo -n "Starting xCATd "
-  xcatroot=`head -n1 /etc/profile.d/xcat.sh`
-  export $xcatroot
+  #xcatroot=`head -n1 /etc/profile.d/xcat.sh`
+  #export $xcatroot
+  # When this script is invoked via the service cmd on RH, it doesn't have PATH
+  # set either, so we run our profile entry to get everything set up properly.
+  if [ -r /etc/profile.d/xcat.sh ]; then
+	. /etc/profile.d/xcat.sh
+  fi
   xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 esac

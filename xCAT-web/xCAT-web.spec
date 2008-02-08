@@ -62,8 +62,8 @@ then
 
   # Update the apache config
   echo "Updating $apachedaemon configuration for xCAT..."
-  /bin/rm -f /etc/$apachedaemon/conf.d/xcat.conf
-  /bin/ln -s %{prefix}/web/etc/apache2/conf.d/xcat.conf /etc/$apachedaemon/conf.d/xcat.conf
+  /bin/rm -f /etc/$apachedaemon/conf.d/xcat-web.conf
+  /bin/ln -s %{prefix}/web/etc/apache2/conf.d/xcat-web.conf /etc/$apachedaemon/conf.d/xcat-web.conf
   /etc/init.d/$apachedaemon reload
 
   # Link to the grpattr cmd.  Todo: remove this when it is in base xcat
@@ -76,6 +76,10 @@ then
   	echo "Configuring sudo for $apacheuser..."
   	echo "$apacheuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
   fi
+  # Authorize the apacheuser to xcatd
+  # echo -e "y\ny\ny" | %{prefix}/share/xcat/scripts/setup-local-client.sh $apacheuser
+  # XCATROOT=%{prefix} %{prefix}/sbin/chtab priority=5 policy.name=$apacheuser policy.rule=allow
+
 fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]        # initial install, or upgrade and this is the newer rpm
@@ -103,7 +107,7 @@ then
 
   # Remove links made during the post install script
   echo "Undoing $apachedaemon configuration for xCAT..."
-  /bin/rm -f /etc/$apachedaemon/conf.d/xcat.conf
+  /bin/rm -f /etc/$apachedaemon/conf.d/xcat-web.conf
   /etc/init.d/$apachedaemon reload
   /bin/rm -f %{prefix}/bin/grpattr
 
