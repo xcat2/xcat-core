@@ -2,7 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 use IO::Socket::SSL;
@@ -17,19 +17,26 @@ my $interface;
 Getopt::Long::Configure("require_order");
 GetOptions(
   "interface=s" => \$interface,
+  "nonodecheck" => \$::NONODECHECK,  #does not check the noderange, in this case, noderange need to be a list of nodes.
   );
 my %nodehdl;
 my $xcathost='localhost:3001';
 if ($ENV{XCATHOST}) {
-          $xcathost=$ENV{XCATHOST};
+  $xcathost=$ENV{XCATHOST};
 }
 
 my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
 unless (@ARGV) {
-    print "Usage: psh [-i <suffix] <noderange> <command>\n";
+  print "Usage: psh [-i <suffix] <noderange> <command>\n";
 }
 my $noderange = $ARGV[0];
-my $client = IO::Socket::SSL->new(
+my @nodes=();
+
+if ($::NONODECHECK) {
+  @nodes=split(/,/, $noderange);
+}
+else {
+  my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=>$ENV{HOME}."/.xcat/client-key.pem",
                 SSL_cert_file=>$ENV{HOME}."/.xcat/client-cert.pem",
@@ -37,37 +44,39 @@ my $client = IO::Socket::SSL->new(
                 SSL_use_cert => 1,
                 #SSL_verify_mode => 1,
              );
-die "Connection failure: $!\n" unless ($client);
-my %cmdref = (command => 'noderange', noderange => $noderange);
-$SIG{ALRM} = sub { die "No response getting noderange" };
-alarm(15);
-print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
-alarm(15);
-my $response="";
-my @nodes=();
-while (<$client>) {
-  alarm(0);
-  $response .= $_;
-  if ($response =~ m/<\/xcatresponse>/) {
-    $rsp=XMLin($response, ForceArray => ['node']);
-    $response='';
-    if ($rsp->{warning}) {
-      printf "Warning: ".$rsp->{warning}."\n";
-    }
-    if ($rsp->{error}) {
-      die ("ERROR: ".$rsp->{error}."\n");
-    } elsif ($rsp->{node}) {
-      @nodes=@{$rsp->{node}};
-    }
-    if ($rsp->{serverdone}) {
-      last;
+  die "Connection failure: $!\n" unless ($client);
+  my %cmdref = (command => 'noderange', noderange => $noderange);
+  $SIG{ALRM} = sub { die "No response getting noderange" };
+  alarm(15);
+  print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+  alarm(15);
+  my $response="";
+  while (<$client>) {
+    alarm(0);
+    $response .= $_;
+    if ($response =~ m/<\/xcatresponse>/) {
+      $rsp=XMLin($response, ForceArray => ['node']);
+      $response='';
+      if ($rsp->{warning}) {
+        printf "Warning: ".$rsp->{warning}."\n";
+      }
+      if ($rsp->{error}) {
+        die ("ERROR: ".$rsp->{error}."\n");
+      } elsif ($rsp->{node}) {
+        @nodes=@{$rsp->{node}};
+      }
+      if ($rsp->{serverdone}) {
+        last;
+      }
     }
   }
+  close($client);
 }
-close($client);
+
 my $children = 0;
 my $inputs = new IO::Select;
 $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
+
 if ($interface) {
   foreach (@nodes) {
     s/$/-$interface/;
@@ -110,5 +119,7 @@ sub sshnode {
   my $node = shift;
   my $in;
   my $args = join(" ",@_);
+  #print "ssh -o BatchMode=yes $node " . xCAT::Utils->quote($args) . " 2>&1 |\n";
   open($$out,"ssh -o BatchMode=yes $node " . xCAT::Utils->quote($args) . " 2>&1 |");
 }
+
