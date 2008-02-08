@@ -18,7 +18,27 @@ GetOptions(
    'font|f=s' => \$font
 );
 my $nodes=`nodels $ARGV[0]`;
+my $conservers=`nodels $ARGV[0] nodehm.conserver`;
+my @conservers=split /\n/,$conservers;
+my %conservers;
+foreach (@conservers) {
+   (my $nd,my $col,my $val) = split /:/,$_,3;
+   $conservers{$nd}=$val;
+}
 my @nodes = split /\n/,$nodes;
+foreach (@nodes) {
+   if ($conservers{$_}) {
+      next;
+   }
+   if ($ENV{XCATHOST}) {
+      $conservers{$_} = $ENV{XCATHOST};
+      $conservers{$_} =~ s/:.*//;
+      next;
+   }
+   $conservers{$_} = 'localhost';
+}
+   
+
 my $firstnode = shift @nodes;
 my $currx;
 my $curry;
@@ -50,7 +70,7 @@ if (defined($tilefact)) {
    }
 
 
-   system("xterm -fn 5x7 -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode\" &");
+   system("xterm -fn 5x7 -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode ".$conservers{$firstnode}."\" &");
    sleep(2); #Give time for window manager to figure out everything
    my $xinfo = `xwininfo -name $firstnode`;
    my @xinfl = split(/\n/,$xinfo);
@@ -86,7 +106,7 @@ if (defined($tilefact)) {
       $currx=0;
    }
 } else {
-   system("xterm -fn 5x7 -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode\" &");
+   system("xterm -fn 5x7 -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode ".$conservers{$firstnode}."\" &");
 
 }
 my $geometry="";
@@ -105,7 +125,7 @@ foreach (@nodes) {
       }
    }
 
-   system("xterm -fn 5x7 -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & $mydir/rcons $_\" &");
+   system("xterm -fn 5x7 -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & $mydir/rcons $_ ".$conservers{$_}."\" &");
 }
 
 

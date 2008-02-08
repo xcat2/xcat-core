@@ -1,5 +1,8 @@
 #!/bin/sh
-CONSERVER=`nodels $1 nodehm.conserver`
+CONSERVER=$2
+if [ -z "$CONSERVER" ]; then
+   CONSERVER=`nodels $1 nodehm.conserver`
+fi
 if [ -z "$CONSERVER" ]; then
 	CONSERVER=$XCATHOST
 fi
