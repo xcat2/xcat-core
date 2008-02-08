@@ -4,11 +4,14 @@ version='2.0'
 
 if [ "$OSNAME" = "AIX" ]
 then
-	echo '.svn' > /tmp/xcat-excludes
-    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/xCAT-rmc.tar xCAT-rmc
-    gzip /opt/freeware/src/packages/SOURCES/xCAT-rmc.tar
-    cd ./xCAT-rmc
+    source=$PWD
+    cd /opt/freeware/src/packages/SOURCES
+    rm -f xCAT-rmc-$version; ln -s $source/xCAT-rmc xCAT-rmc-$version
     rm -f /opt/freeware/src/packages/SRPMS/xCAT-rmc*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc*rpm
+    echo '.svn' > /tmp/xcat-excludes
+    tar -X /tmp/xcat-excludes -cvf xCAT-rmc-$version.tar xCAT-rmc-$version
+    gzip /opt/freeware/src/packages/SOURCES/xCAT-rmc-$version.tar
+    cd $source/xCAT-rmc
     rpm -ba xCAT-rmc.spec
     #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc*rpm
 
