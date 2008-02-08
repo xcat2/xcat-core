@@ -17,6 +17,10 @@ GetOptions(
    'tile|t:i' => \$tilefact,
    #'font|f=s' => \$font
 );
+unless ($ARGV[$#ARGV]) {
+   print "Usage: wcons <options> <noderange>\n";
+   exit 1;
+}
 my $nodes=`nodels $ARGV[$#ARGV]`;
 my $conservers=`nodels $ARGV[$#ARGV] nodehm.conserver`;
 pop @ARGV;
