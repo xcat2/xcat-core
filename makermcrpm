@@ -1,0 +1,33 @@
+#!/bin/ksh
+OSNAME=$(uname)
+version='2.0'
+
+if [ "$OSNAME" = "AIX" ]
+then
+	echo '.svn' > /tmp/xcat-excludes
+    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/xCAT-rmc.tar xCAT-rmc
+    gzip /opt/freeware/src/packages/SOURCES/xCAT-rmc.tar
+    cd ./xCAT-rmc
+    rm -f /opt/freeware/src/packages/SRPMS/xCAT-rmc*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc*rpm
+    rpm -ba xCAT-rmc.spec
+    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc*rpm
+
+else
+	if [ -f /etc/redhat-release ]
+	then
+   		pkg="redhat"
+	else
+   		pkg="packages"
+	fi
+	source=$PWD
+
+	# Trying to avoid having the version # (2.0) on the xCAT-rmc dir name in svn
+	set -x
+	cd /usr/src/$pkg/SOURCES
+	rm -f xCAT-rmc-$version; ln -s $source/xCAT-rmc xCAT-rmc-$version   # have to make tar think it is in xCAT-rmc-2.0
+	rm -f xCAT-rmc-$version.tar.gz
+	tar -czhf xCAT-rmc-$version.tar.gz --exclude=.svn --exclude=.project xCAT-rmc-$version
+	rm -f /usr/src/$pkg/SRPMS/xCAT-rmc-$version*rpm /usr/src/$pkg/RPMS/noarch/xCAT-rmc-$version*rpm
+	rpmbuild -ta xCAT-rmc-$version.tar.gz
+	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-rmc-$version*rpm
+fi

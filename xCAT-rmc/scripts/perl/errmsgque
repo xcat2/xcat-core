@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl/xCAT_monitoring/rmc";
+
+use strict;
+use locale;
+
+use Getopt::Std;
+use IPC::SysV qw(IPC_STAT S_IRWXU IPC_PRIVATE IPC_CREAT S_IRUSR S_IWUSR );
+use IPC::Msg;
+use NodeUtils;
+
+my $m = ord('xcat_rmc');
+my $key = IPC::SysV::ftok("/var/adm/ras/errlog", $m);
+
+my $msg = new IPC::Msg($key, IPC_CREAT|S_IRUSR|S_IWUSR );
+my $message =  join " ", @ARGV;
+my $stat = $msg->stat;
+my $qcurrentlen = $$stat[5];
+if ($qcurrentlen >= 10000) {
+  if (!-d "/var/opt/xcat_rmc_err_mon/") {
+    my $cmd = "mkdir -p \"/var/opt/xcat_rmc_err_mon\"";
+    NodeUtils->runcmd($cmd, -1);	
+  }
+  open(FILE, ">>/var/opt/xcat_rmc_err_mon/errmsgqueerr.log");
+  my $sdate = `/bin/date`;
+  chomp $sdate;
+  print FILE "$sdate:\n";
+  print FILE "Can not write the message to queue because the queue is almost full, the message content is: $message\n\n\n";
+  close FILE;
+  exit 0;
+}
+$msg->snd(1, "$message");
+
+exit 0;
