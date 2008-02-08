@@ -25,11 +25,12 @@ my $curry;
 my $wmxo;
 my $wmyo;
 my $currx;
-my $curry;
 my $screenwidth;
 my $screenheight;
 my $window_width;
 my $window_height;
+my $panel_pad=0;
+my $top_pad;
 if (defined($tilefact)) {
    my $rootinf = `xwininfo -root`;
    foreach (split /\n/,$rootinf) {
@@ -39,19 +40,28 @@ if (defined($tilefact)) {
          $screenheight=$1;
       }
    }
-   system("xterm -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode\" &");
+   $rootinf = `xwininfo -name "Top Panel"`;
+   foreach (split /\n/,$rootinf) {
+      if (/-geometry\s+([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)/) {
+         if ($1 > 640 and $2 < 480 and $3 == 0 and $4 == 0) { 
+            $panel_pad=$2;
+         }
+      }
+   }
+
+
+   system("xterm -fn 5x7 -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode\" &");
    sleep(2); #Give time for window manager to figure out everything
    my $xinfo = `xwininfo -name $firstnode`;
    my @xinfl = split(/\n/,$xinfo);
    my $side_pad;
-   my $top_pad;
    my $wmxo;
    my $wmyo;
    foreach (@xinfl) {
       if (/.*Absolute upper-left X:\s*([0-9]*).*/) {
          $side_pad = $1;
       } elsif (/.*Absolute upper-left Y:\s*([0-9]*).*/) {
-         $top_pad = $1;
+         $top_pad = $1-$panel_pad;
       } elsif (/.*Width:\s*([0-9]*).*/) {
          $window_width = $1;
       } elsif (/.*Height:\s*([0-9]*).*/) {
@@ -66,16 +76,17 @@ if (defined($tilefact)) {
    $screenwidth-=$wmxo; #Subtract a factor that 1.3 did, not sure why precisely
    $screenheight-=$wmyo;
    $currx=$window_width;
-   $curry=0;
+   $curry=$panel_pad; #+$top_pad;
    my $maxcol = int($screenwidth/$window_width);
    unless ($tilefact or $tilefact > $maxcol) {
       $tilefact=$maxcol;
    }
    if ($tilefact==1) {
       $curry+=$window_height;
+      $currx=0;
    }
 } else {
-   system("xterm -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode\" &");
+   system("xterm -fn 5x7 -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode\" &");
 
 }
 my $geometry="";
@@ -89,12 +100,12 @@ foreach (@nodes) {
          $currx=0;
          $curry+=$window_height;
          if ($curry > $screenheight) {
-            $curry = 0;
+            $curry = $panel_pad; #+$top_pad;
          }
       }
    }
 
-   system("xterm -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & $mydir/rcons $_\" &");
+   system("xterm -fn 5x7 -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & $mydir/rcons $_\" &");
 }
 
 
@@ -103,5 +114,5 @@ foreach (@nodes) {
 #MYDIR=`dirname $0`
 #for n in $NODES
 #do
-#	xterm -name wcons -T $n -n $n -e $MYDIR/rcons $n &
+#	xterm -fn 5x7 -name wcons -T $n -n $n -e $MYDIR/rcons $n &
 #done
