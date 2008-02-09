@@ -21,7 +21,7 @@ my $interface;
 GetOptions("interface=s" => \$interface);
 my $xcathost='localhost:3001';
 if ($ENV{XCATHOST}) {
-          $xcathost=$ENV{XCATHOST};
+  $xcathost=$ENV{XCATHOST};
 }
 
 unless (@ARGV) {
@@ -74,6 +74,14 @@ if ($interface) {
   }
 }
 
-exec "fping ".join(' ',@nodes). " 2> /dev/null";
-
+#exec "fping ".join(' ',@nodes). " 2> /dev/null";
+open (FPING, "fping ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open fping pipe: $!");
+while (<FPING>) {
+  if ($_ =~ /is unreachable/) {
+    s/ is unreachable/: noping/;
+  } elsif ($_ =~ /is alive/) {
+    s/ is alive/: ping/;
+  }
+  print $_;
+}
 
