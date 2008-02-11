@@ -110,7 +110,7 @@ sub process_command {
 
     foreach ( @$nodes ) {
         while ( $children > $maxp ) {
-            sleep(0.1);
+            Time::HiRes::sleep(0.1);
         }
         my $pipe = fork_cmd( @$_[0], @$_[1], $request );
         if ( $pipe ) {
