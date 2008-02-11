@@ -225,9 +225,7 @@ sub getobjdefs
 
                     # if the object value is not the value we need
                     #   to match then try the next only_if value
-                    next
-                      if (
-                        !grep(/$check_value/, $objhash{$objname}{$check_attr}));
+					next if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) );
                 }
 
                 #  OK - get the info needed to access the DB table
@@ -649,13 +647,8 @@ sub setobjdefs
                     # need to check the attrs we are setting for the object
                     #   as well as the attrs for this object that may be
                    #   already set in DB
-                    if (
-                        (!grep(/$check_value/, $objhash{$objname}{$check_attr}))
-                        && (
-                            !grep(/$check_value/,
-                                  $DBattrvals{$objname}{$check_attr})
-                        )
-                      )
+
+					if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr}  =~ /\b$check_value\b/) )
                     {
                         next;
 
@@ -898,11 +891,7 @@ sub rmobjdefs
                     # if the object attr value to check is not the value we need
                     #   to match then try the next "only_if" value
                     #   next if $DBattrvals{$objname}{$check_attr} ne $check_value;
-                    next
-                      if (
-                          !grep(/$check_value/,
-                                $DBattrvals{$objname}{$check_attr})
-                      )
+					next if ( !($DBattrvals{$objname}{$check_attr} =~ /\b$check_value\b/) );
 
                 }
 
