@@ -36,7 +36,7 @@ sub process_request {
       "method|m=s" => \$method
       );
    my $distname = $osver;
-   $distname =~ s/\d+$//;
+   $distname =~ s/[0-9\.]+$//;
     unless ($installroot) {
         $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
         return;
