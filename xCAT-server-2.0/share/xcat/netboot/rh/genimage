@@ -18,6 +18,12 @@ my @filestoadd;
 my $profile;
 my $osver;
 my $pathtofiles=dirname($0);
+my $name = basename($0);
+my $onlyinitrd=0;
+if ($name =~ /geninitrd/) {
+   $onlyinitrd=1;
+}
+
 GetOptions(
    #'a=s' => \$architecture,
    'p=s' => \$profile,
@@ -57,7 +63,6 @@ my $yumconfig;
 open($yumconfig,">","/tmp/genimage.$$.yum.conf");
 my $repnum=0;
 foreach $srcdir (@yumdirs) {
-   print $srcdir;
    print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
    $repnum += 1;
 }
@@ -88,14 +93,16 @@ while (<$yumconfig>) {
    $yumcmd .= $_ . " ";
 }
 $yumcmd =~ s/ $/\n/;
-my $rc = system($yumcmd);
-if ($rc) { 
-   print "yum invocation failed\n";
-   exit 1;
+unless ($onlyinitrd) {
+   my $rc = system($yumcmd);
+   if ($rc) { 
+      print "yum invocation failed\n";
+      exit 1;
+   }
+   postscripts(); #run 'postscripts'
 }
-mkinitrd();
-postscripts(); #run 'postscripts'
 unlink "/tmp/genimage.$$.yum.conf";
+mkinitrd();
 
 sub getlibs {
 	my $file = shift;
