@@ -171,41 +171,14 @@ package xCAT::Schema;
   monitoring => { attrs => [], attrhash => {}, objkey => 'name' },
   notification => { attrs => [], attrhash => {}, objkey => 'filename' }
 );
-  
-####################
-#  nodelist table  # 
-####################
-@{$defspec{node}->{'attrs'}} = (
-		{attr_name => 'node',
-                 tabentry => 'nodelist.node',
-				access_tabentry => 'nodelist.node=attr:node',
-				description => 'The name of this node definition.'},
-###
-# TODO:  need to implement nodelist.nodetype as a comma-separated list.
-#        right now, all references to attr:nodetype are for single values.
-#        will need to globally change the def to make this work...
-###
-        {attr_name => 'nodetype',
-                 tabentry => 'nodelist.nodetype',
-                 access_tabentry => 'nodelist.node=attr:node',
-                 description => 'Specifies a comma-separated list of node type values. (Valid values: osi, hmc, fsp, blade, vm, lpar, ivm, bpa, mm, rsa, switch'},
-	{attr_name => 'groups',
-                 tabentry => 'nodelist.groups',
-                 access_tabentry => 'nodelist.node=attr:node',
-                 description => 'Comma separated list of groups this node belongs to.'},
-        #  Note:  moved nodelist.comments to end of node data definition so
-        #         it shows up last in attribute listings
-####################
-#  hosts table     # 
-####################
-        {attr_name => 'ip',
-                 tabentry => 'hosts.ip',
-                 access_tabentry => 'hosts.node=attr:node',
-		description => 'The IP address for this node.'},
-        {attr_name => 'hostnames',
-                 tabentry => 'hosts.hostnames',
-                 access_tabentry => 'hosts.node=attr:node',
-		description => 'Hostname aliases added to /etc/hosts for this node.'},
+
+
+###############
+#   @nodeattrs ia a list of node attrs that can be used for 
+#		BOTH node and group definitions
+##############
+
+my @nodeattrs = (
 ####################
 # postscripts table# 
 ####################
@@ -213,7 +186,6 @@ package xCAT::Schema;
                  tabentry => 'postscripts.postscripts',
                  access_tabentry => 'postscripts.node=attr:node',
 		description => 'The list of post install scripts .'},
-####################
 ####################
 #  noderes table   # 
 ####################
@@ -581,16 +553,54 @@ package xCAT::Schema;
         {attr_name => 'room',
                  tabentry => 'nodepos.room',
                  access_tabentry => 'nodepos.node=attr:node',
-		description => 'Physical location information (customer use only).'},
-######################
-#  nodelist.comments #
-#  (moved down here so it shows up last in attr listings) #
-######################
+		description => 'Physical location information (customer use only).'});
+
+
+####################
+#  node definition  - nodelist & hosts table parts #
+####################
+@{$defspec{node}->{'attrs'}} = (
+####################
+#  nodelist table  #
+####################
+        {attr_name => 'node',
+                 tabentry => 'nodelist.node',
+                 access_tabentry => 'nodelist.node=attr:node',
+                 description => 'The name of this node definition .'},
+        {attr_name => 'nodetype',
+                 tabentry => 'nodelist.nodetype',
+                 access_tabentry => 'nodelist.node=attr:node',
+                 description => 'Specifies a comma-separated list of node type values. (Valid values: osi, hmc, fsp, blade, vm, lpar, ivm, bpa, mm, rsa, switch)'},
+###
+# TODO:  need to implement nodelist.nodetype as a comma-separated list.
+#        right now, all references to attr:nodetype are for single values.
+#        will need to globally change the def to make this work...
+##
+        {attr_name => 'groups',
+                 tabentry => 'nodelist.groups',
+                 access_tabentry => 'nodelist.node=attr:node',
+                 description => 'Comma separated list of groups this node belongs to.'},
+####################
+#  hosts table    #
+####################
+        {attr_name => 'ip',
+                 tabentry => 'hosts.ip',
+                 access_tabentry => 'hosts.node=attr:node',
+                description => 'The IP address for this node.'},
+        {attr_name => 'hostnames',
+                 tabentry => 'hosts.hostnames',
+                 access_tabentry => 'hosts.node=attr:node',
+                description => 'Hostname aliases added to /etc/hosts for this no
+de.'},
 	{attr_name => 'usercomment',
                  tabentry => 'nodelist.comments',
                  access_tabentry => 'nodelist.node=attr:node',
                 description => 'User comment.'},
              );
+
+# add on the node attrs from other tables
+push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
+
              
 #########################
 #  osimage data object  #
@@ -755,10 +765,10 @@ package xCAT::Schema;
                  tabentry => 'nodegroup.groupname',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
                  description => 'The name of this xCAT group object definition.'},
-        {attr_name => 'grouptype',
-                 tabentry => 'nodegroup.grouptype',
-                 access_tabentry => 'nodegroup.groupname=attr:groupname',
-                 description => 'The type of xCAT group - either "static" or "dynamic".'},
+	{attr_name => 'grouptype',
+      		 tabentry => 'nodegroup.grouptype',
+		 access_tabentry => 'nodegroup.groupname=attr:groupname',
+		 description => 'The type of xCAT group - either static or dynamic.'},
         {attr_name => 'members',
                  tabentry => 'nodegroup.members',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
@@ -778,6 +788,9 @@ package xCAT::Schema;
 #                need to figure out the perl dereferencing to make that work.
 ###
 			);
+
+# add on the generic node attrs
+push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
 
 #######################
 #  policy data object #
