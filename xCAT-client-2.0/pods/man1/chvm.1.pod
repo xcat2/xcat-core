@@ -6,7 +6,7 @@ B<chvm> - Changes HMC- and IVM-managed partition profiles.
  
 I<chvm [-h| --help]>
 
-I<chvm  [-v| --version]>
+I<chvm [-v| --version]>
 
 
 I<chvm [-V| --verbose] noderange>
@@ -54,3 +54,4 @@ This command is part of the xCAT software product.
 
 
  
+
