@@ -147,7 +147,7 @@ sub ivm_getmacs {
     my $ssh     = @$exp[0];
     my $userid  = @$exp[4];
     my $pw      = @$exp[5];
-    my $cmd     = "/sbin/lpar_netboot.expect";
+    my $cmd     = "/opt/xcat/sbin/lpar_netboot.expect";
     my $result;
 
     #######################################
