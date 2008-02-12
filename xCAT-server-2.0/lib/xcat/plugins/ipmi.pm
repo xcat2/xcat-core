@@ -300,6 +300,53 @@ struct FRU => {
 	value				=> '$',
 };
 
+sub translate_sensor {
+   my $reading = shift;
+   my $sdr = shift;
+   my $unitdesc;
+   my $value;
+   my $lformat;
+   my $per;
+   $unitdesc = $units{$sdr->sensor_units_2};
+   $value = (($sdr->M * $reading) + ($sdr->B * (10**$sdr->B_exp))) * (10**$sdr->R_exp);
+   if($sdr->linearization == 0) {
+      $reading = $value;
+      if($value == int($value)) {
+         $lformat = "%-30s%8d%-20s";
+      } else {
+         $lformat = "%-30s%8.3f%-20s";
+      }
+   } elsif($sdr->linearization == 7) {
+      if($value > 0) {
+         $reading = 1/$value;
+      } else {
+         $reading = 0;
+      }
+      $lformat = "%-30s%8d %-20s";
+   } else {
+      $reading = "RAW($sdr->linearization) $reading";
+   }
+   if($sdr->sensor_units_1 & 1) {
+      $per = "% ";
+   }
+   if($unitdesc eq "Watts") {
+      my $f = ($reading * 3.413);
+      $unitdesc = "Watts (" . int($f + .5) . " BTUs/hr)";
+      #$f = ($reading * 0.00134);
+      #$unitdesc .= " $f horsepower)";
+   }
+   if($unitdesc eq "C") {
+      my $f = ($reading * 9/5) + 32;
+      $unitdesc = "C (" . int($f + .5) . " F)";
+   }
+   if($unitdesc eq "F") {
+      my $c = ($reading - 32) * 5/9;
+      $unitdesc = "F (" . int($c + .5) . " C)";
+   }
+   return "$value $unitdesc";
+}
+
+
 sub ipmiinit {
 	my $ipmimaxp = 80;
 	my $ipmitimeout = 3;
@@ -2517,6 +2564,14 @@ sub eventlog {
 #		}
 		if(defined $sdr_hash{$key}) {
 			$sensor_desc = $sdr_hash{$key}->id_string;
+         if ($sdr_hash{$key}->event_type_code == 1) {
+            if (($event_data_1 & 0b11000000) == 0b01000000) {
+               $sensor_desc .= " reading ".translate_sensor($event_data_2,$sdr_hash{$key});
+               if (($event_data_1 & 0b00110000) == 0b00010000) {
+                  $sensor_desc .= " with threshold " . translate_sensor($event_data_3,$sdr_hash{$key});
+               }
+            }
+         }
 		}
 
 		$text = "$text ($sensor_desc)";
@@ -2713,7 +2768,7 @@ sub getaddsensorevent {
 				0x0a => "No video device detected",
 				0x0b => "Firmware (BIOS) ROM corruption detected",
 				0x0c => "CPU voltage mismatch",
-				0x0d => "CPU speed mitching failure",
+				0x0d => "CPU speed matching failure",
 			);
 			$text = $extra{$event_data_2};
 		}
@@ -3288,6 +3343,7 @@ sub initsdr {
 		$sdr->entity_id($sdr_data[9]);
 		$sdr->entity_instance($sdr_data[10]);
 		$sdr->sensor_type($sdr_data[13]);
+		$sdr->event_type_code($sdr_data[14]);
 		$sdr->sensor_units_1($sdr_data[21]);
 		$sdr->sensor_units_2($sdr_data[22]);
 		$sdr->sensor_units_3($sdr_data[23]);
