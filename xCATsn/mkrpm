@@ -1,0 +1,38 @@
+#!/bin/sh
+
+OSNAME=$(uname)
+
+if [ "$OSNAME" = "AIX" ]
+then
+
+    cd `dirname $0`
+    echo '.svn' > /tmp/xcat-excludes
+
+    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/license.tar LICENSE.html
+    gzip /opt/freeware/src/packages/SOURCES/license.tar
+
+    cp xcat.conf /opt/freeware/src/packages/SOURCES
+    rm -f /opt/freeware/src/packages/SRPMS/xCATsn-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/xCATsn-2.0*rpm
+
+    rpm -ba xCATsn.spec
+
+    # don't install
+    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCATsn-2.0*rpm
+    cd -
+
+else
+
+	if [ -f /etc/redhat-release ]
+	then
+		pkg="redhat"
+	else
+		pkg="packages"
+	fi
+
+	cd `dirname $0`
+	tar --exclude .svn -czvf /usr/src/$pkg/SOURCES/license.tar.gz LICENSE.html
+	cp xcat.conf /usr/src/$pkg/SOURCES
+	rm -f /usr/src/$pkg/SRPMS/xCATsn-2.0*rpm /usr/src/$pkg/RPMS/*/xCATsn-2.0*rpm
+	rpmbuild -ba xCATsn.spec
+	cd -
+fi
