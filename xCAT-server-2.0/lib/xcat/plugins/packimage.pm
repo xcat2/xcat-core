@@ -36,7 +36,13 @@ sub process_request {
       "method|m=s" => \$method
       );
    my $distname = $osver;
-   $distname =~ s/[0-9\.]+$//;
+   until (-r  "$::XCATROOT/share/xcat/netboot/$distname/" or not $distname) {
+      chop($distname);
+   }
+   unless ($distname) {
+      $callback->({error=>["Unable to find $::XCATROOT/share/xcat/netboot directory for $osver"],errorcode=>[1]});
+      return;
+   }
     unless ($installroot) {
         $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
         return;

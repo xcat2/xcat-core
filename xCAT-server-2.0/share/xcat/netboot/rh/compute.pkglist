@@ -1,0 +1,6 @@
+bash 
+dhclient 
+kernel 
+openssh-server 
+openssh-clients
+busybox-anaconda
