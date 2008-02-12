@@ -1,6 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::centos;
 use Storable qw(dclone);
+use xCAT::Utils;
 use Sys::Syslog;
 use xCAT::Table;
 use Cwd;
@@ -104,7 +105,7 @@ sub mknetboot {
         my $hmtab = xCAT::Table->new('nodehm');
         my $ent = $restab->getNodeAttribs($node,['serialport','primarynic']);
         my $ient = $restab->getNodeAttribs($node,['servicenode']);
-        my $ipfn = my_ip_facing($node);
+        my $ipfn = xCAT::Utils->my_ip_facing($node);
         if ($ient and $ient->{servicenode}) { #Servicenode attribute overrides
            $imgsrv = $ient=>{servicenode};
         } elsif ($ipfn) {
