@@ -181,8 +181,12 @@ sub mkinitrd {
    print $inifile "  mount -t tmpfs rootfs /sysroot\n";
    print $inifile "  cd /sysroot\n";
    print $inifile "  echo -n \"Extracting root filesystem:\"\n";
+   print $inifile "  if [ -x /bin/cpio ]; then\n";
+   print $inifile "  zcat /rootimg.gz |/bin/cpio -idum\n";
+   print $inifile "  else\n";
    print $inifile "  zcat /rootimg.gz |cpio -idum\n";
-   print $inifile "  echo Done";
+   print $inifile "  fi\n";
+   print $inifile "  echo Done\n";
    print $inifile "else\n";
    print $inifile "  echo -n Failed to download image, panicing in 5...\n";
    print $inifile "  for i in 4 3 2 1 0; do\n";
