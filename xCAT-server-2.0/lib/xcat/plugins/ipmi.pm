@@ -2381,7 +2381,8 @@ sub eventlog {
 		if($error) {
 			$rc = 1;
 			$text = $error;
-			return($rc,$text);
+         push(@output,$text);
+			return($rc,@output);
 		}
 
 		$code = $returnd[36-$authoffset];
@@ -2401,7 +2402,8 @@ sub eventlog {
 			if(!$text) {
 				$text = sprintf("unknown response %02x",$code);
 			}
-			return($rc,$text);
+         push(@output,$text);
+			return($rc,@output);
 		}
 
 		my $next_rec_ls = $returnd[37-$authoffset];
