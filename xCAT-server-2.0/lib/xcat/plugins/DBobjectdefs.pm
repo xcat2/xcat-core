@@ -439,15 +439,21 @@ sub processArgs
 
             my @alreadydone;    # the same attr may appear more then once
             my $outstr = "";
-            foreach $this_attr (sort @{$datatype->{'attrs'}})
+
+            foreach $this_attr (@{$datatype->{'attrs'}})
             {
                 my $attr = $this_attr->{attr_name};
                 my $desc = $this_attr->{description};
 
-                # if (($attr ne $objkey) && !grep(/^$attr$/, @alreadydone))
+				# could display the table that the attr is in 
+				# however some attrs are in more than one table!!!
+				my ($tab, $junk) = split('\.', $this_attr->{tabentry});
+
                 if (!grep(/^$attr$/, @alreadydone))
                 {   
-                    $outstr .= "$attr\n\t\t- $desc\n\n";
+                #    $outstr .= "$attr\n\t\t- $desc \n\t\t(Table: $tab)\n\n";
+					$outstr .= "$attr\n\t\t- $desc\n\n";
+			
                 }
                 push(@alreadydone, $attr);
             }
@@ -1000,7 +1006,7 @@ sub defmk
                     {
                         my $rsp;
                         $rsp->{data}->[0] =
-                          "Cannot determine a member list for group \'$objname\'.\n";
+                          "Cannot determine a member list for group \'$obj\'.\n";
                         xCAT::MsgUtils->message("I", $rsp, $::callback);
                     }
                 }
@@ -1339,7 +1345,6 @@ sub defch
 
                 }
                 $grptype = $grphash{$obj}{grouptype};
-
             }
             else
             {    #not defined
@@ -1385,7 +1390,6 @@ sub defch
                 if ($::FINALATTRS{$obj}{members})
                 {
                     @memberlist = &noderange($::FINALATTRS{$obj}{members}, 0);
-
                     #  don't list all the nodes in the group table
                     #   set the value to static and we figure out the list
                     #   by looking in the nodelist table
@@ -1461,14 +1465,6 @@ sub defch
                         }
                     }
 
-                }
-                else
-                {
-                    my $rsp;
-                    $rsp->{data}->[0] =
-                      "Cannot determine a member list forgroup \'$objname\'.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    $error = 1;
                 }
 
             }    # end - get memberlist for static group
