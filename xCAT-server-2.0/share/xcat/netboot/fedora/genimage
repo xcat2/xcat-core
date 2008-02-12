@@ -62,7 +62,7 @@ if (-r "$pathtofiles/$profile.$osver.$arch.pkglist") {
    $pkglist = "$pathtofiles/$profile.$arch.pkglist";
 } elsif (-r "$pathtofiles/$profile.$osver.pkglist") {
    $pkglist = "$pathtofiles/$profile.$osver.pkglist";
-} elsif (-r "$pathtofiles/$profile.$arch.pkglist") {
+} elsif (-r "$pathtofiles/$profile.pkglist") {
    $pkglist = "$pathtofiles/$profile.pkglist";
 } else {
    print "Unable to find package list for $profile!";
