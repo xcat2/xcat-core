@@ -127,12 +127,18 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     if [ ! -d /etc/xcat/ca ]; then 
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-xcat-ca.sh "xCAT CA"
     fi
+    mkdir /install/postscripts/ca
+    cp -r /etc/xcat/ca/* /install/postscripts/ca
     if [ ! -d /etc/xcat/cert ]; then 
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-server-cert.sh `hostname`
     fi
+    mkdir /install/postscripts/cert
+    cp -r /etc/xcat/cert/* /install/postscripts/cert
     if [ ! -r /root/.xcat/client-key.pem ]; then
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-local-client.sh root
     fi
+    mkdir /install/postscripts/.xcat
+    cp -r /root/.xcat/* /install/postscripts/.xcat
     #Zap the almost certainly wrong pxelinux.cfg file
     rm /tftpboot/pxelinux.cfg/default
     XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
