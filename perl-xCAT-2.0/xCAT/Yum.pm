@@ -9,7 +9,6 @@ sub localize_yumrepo {
    my $dosqlite = 0;
   my $repomdfile;
   my $primaryxml;
-  my @xmlines;
   my $dirlocation = "$installroot/$distname/$arch/";
   find(\&check_tofix,$dirlocation);
 }
@@ -22,6 +21,8 @@ sub fix_directory {
   my $dirlocation = shift;
   my $oldsha=`/usr/bin/sha1sum $dirlocation/primary.xml.gz`;
   my $olddbsha; 
+  my @xmlines;
+  @xmlines = ();
   $oldsha =~ s/\s.*//;
   chomp($oldsha);
   unlink("$dirlocation/primary.xml");
@@ -82,6 +83,7 @@ sub fix_directory {
   print $primaryxml (@xmlines);
   truncate($primaryxml,tell($primaryxml));
   close($primaryxml);
+  @xmlines=();
 }
 
 
