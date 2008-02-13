@@ -21,7 +21,6 @@ my @header = (
     ["address",       "%s\n" ]);
 
 
-
 ##########################################################################
 # Parse the command line for options and operands
 ##########################################################################
@@ -334,6 +333,7 @@ sub format_output {
     my $values  = shift;
     my $opt     = $request->{opt};
     my %output  = ();
+    my $hwtype  = @$exp[2];
     my $max_length = 0;
     my $result;
 
@@ -341,7 +341,6 @@ sub format_output {
     # -w flag for write to xCat database
     ###########################################
     if ( exists( $opt->{w} )) {
-        my $hwtype = @$exp[2];
         my $server = @$exp[3];
         my $uid    = @$exp[4];
         my $pw     = @$exp[5];
@@ -358,7 +357,7 @@ sub format_output {
     # -z flag for stanza format
     ###########################################
     elsif ( exists( $opt->{z} )) {
-        $result = format_stanza( $values );
+        $result = format_stanza( $hwtype, $values );
     }
     else {
         #######################################
@@ -412,11 +411,24 @@ sub format_output {
 ##########################################################################
 sub format_stanza {
 
+    my $hwtype = shift;
     my $values = shift;
     my $result;
+    my @attribs = qw(nodetype name id model serial hcp profile parent groups mgt);
+    my %nodetype = (
+        fsp  => "fsp",
+        bpa  => "bpa",
+        lpar => "lpar,osi"
+    );
+
+    #####################################
+    # Skip hardware control point 
+    #####################################
+    shift(@$values);
 
     foreach ( @$values ) {
         my @data = split /,/;
+        my $type = $data[0];
         my $i = 0;
 
         #################################
@@ -427,22 +439,23 @@ sub format_stanza {
         #################################
         # Add each attribute
         #################################
-        foreach ( @header ) {
+        foreach ( @attribs ) {
             my $d = $data[$i++];
 
-            if ( @$_[0] eq "name" ) {
+            if ( /^name$/ ) {
                 next;
+            } elsif ( /^nodetype$/ ) {
+                $d = $nodetype{$d}; 
+            } elsif ( /^groups$/ ) {
+                $d = "$hwtype,all";
+            } elsif ( /^mgt$/ ) {
+                $d = $hwtype;
+            } elsif ( /^model|serial$/ ) {
+                if ( $type eq "lpar" ) {
+                    $d = undef;                    
+                }     
             }
-            #############################
-            # Use IPs instead of
-            # hardware control address
-            #############################
-            if ( @$_[0] eq "address" ) {
-                if ( $data[0] !~ /^hmc|ivm$/ ) {
-                    $d = $data[8];                   
-                }
-            }
-            $result .= "\t@$_[0]=$d\n";
+            $result .= "\t$_=$d\n";
         }
     }
     return( $result );
@@ -530,4 +543,5 @@ sub rscan {
 
 
 1;
+
 
