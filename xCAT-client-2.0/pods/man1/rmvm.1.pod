@@ -6,7 +6,7 @@ B<rmvm> - Removes HMC- and IVM-managed partitions.
  
 I<rmvm [-h| --help]>
 
-I<rmvm  [-v| --version]>
+I<rmvm [-v| --version]>
 
 
 I<rmvm [-V| --verbose] noderange>
@@ -14,7 +14,7 @@ I<rmvm [-V| --verbose] noderange>
 
 =head1 DESCRIPTION
 
-The rmvm command removes the partitions specified in noderange. If noderange is an FSP, all the partitions associated with that FSP will be removed. Note that removed partitions are automatically removed from the xCAT database. For IVM-managed systems, care must be taken to not remove the VIOS partition, or all the associated partitions will be removed as well.
+The rmvm command removes the partitions specified in noderange. If noderange is an CEC, all the partitions associated with that CEC will be removed. Note that removed partitions are automatically removed from the xCAT database. For IVM-managed systems, care must be taken to not remove the VIOS partition, or all the associated partitions will be removed as well.
 
 =head1 OPTIONS
 
@@ -42,9 +42,9 @@ Output is similar to:
 
 lpar3: Success
 
-2. To remove all the partitions associated with FSP fsp01, enter:
+2. To remove all the partitions associated with CEC cec01, enter:
 
-I<rmvm fsp01>
+I<rmvm cec01>
 
 Output is similar to:
 
@@ -64,3 +64,4 @@ This command is part of the xCAT software product.
 
 
  
+
