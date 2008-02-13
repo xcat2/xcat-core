@@ -1,0 +1,92 @@
+=head1 NAME
+ 
+B<getmacs> - Collects node MAC address.  
+ 
+=head1 SYNOPSIS
+ 
+I<getmacs [-h| --help]>
+
+I<getmacs [-v| --version]>
+
+I<getmacs [-V| --verbose] noderange> [-c][-S server -G gateway -C client] 
+
+
+=head1 DESCRIPTION
+
+The getmacs command collects MAC address from a single or range of nodes.
+
+=head1 OPTIONS
+
+B<-c>          Colon seperated output.
+
+B<-C>          IP address of the partition.
+
+B<-G>          Gateway IP address of the partition specified with the -C option.
+
+B<-h>          Display usage message.
+
+B<-S>          The IP address of the machine to ping.  
+
+B<-v>          Command Version. 
+
+B<-V>          Verbose output. 
+
+
+=head1 RETURN VALUE
+
+  0 The command completed successfully.
+   
+  1 An error has occurred.
+
+
+=head1 EXAMPLES
+
+1. To retrieve the MAC address for the HMC-managed partition lpar4, enter: 
+
+I<getmacs lpar4> 
+
+Output is similar to:
+
+lpar4: 
+
+#Type  Location Code   MAC Address      Full Path Name  Ping Result
+
+ent U9133.55A.10B7D1G-V12-C4-T1 8ee2245cf004 /vdevice/l-lan@30000004  virtual
+
+
+
+2. To retrieve the MAC address for the HMC-managed partition lpar4 and display trhe result in colon-seperated format, enter: 
+
+I<getmacs lpar4 -c> 
+
+Output is similar to:
+
+lpar4: 
+
+#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:
+
+ent:U9133.55A.10B7D1G-V12-C4-T1:8ee2245cf004:/vdevice/l-lan@30000004::virtual::::
+
+
+
+3. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result in colon-seperated format, enter: 
+
+I<getmacs lpar4 -c -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234>
+
+#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:
+
+ent:U9133.55A.10B7D1G-V12-C4-T1:8ee2245cf004:/vdevice/l-lan@30000004:successful:virtual::::
+
+=head1 FILES
+ 
+/opt/xcat/bin/getmac
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+ 
+
+
