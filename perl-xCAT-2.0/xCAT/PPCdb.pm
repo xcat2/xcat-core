@@ -59,7 +59,7 @@ sub add_ppc {
             my %nodetype = ( 
                  fsp  => "fsp",
                  bpa  => "bpa",
-                 lpar => "osi"
+                 lpar => "lpar,osi"
             );
             $k1->{node}     = $name;
             $u1->{groups}   = lc($hwtype).",all";
