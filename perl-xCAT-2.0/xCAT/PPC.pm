@@ -336,11 +336,12 @@ sub resolve {
     #################################
     # Check for valid "type"
     #################################
-    if ( $ent->{nodetype} !~ /^fsp|bpa|osi$/ ) { 
+    my @types = split /,/, $ent->{nodetype};
+    my ($type) = grep( /^fsp|bpa|osi|lpar$/, @types );
+
+    if ( !defined( $type )) {
         return( "Invalid node type: $ent->{nodetype}" );
     }
-    my $type = $ent->{nodetype};
-
     #################################
     # Get attributes 
     #################################
@@ -352,7 +353,7 @@ sub resolve {
     #################################
     # Special lpar processing 
     #################################
-    if ( $type =~ /^osi$/ ) {
+    if ( $type =~ /^lpar|osi$/ ) {
         $att->{bpa}  = 0;
         $att->{type} = "lpar";
         $att->{node} = $att->{parent};
@@ -709,6 +710,7 @@ sub process_request {
 
 
 1;
+
 
 
 
