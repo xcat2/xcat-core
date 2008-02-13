@@ -117,7 +117,6 @@ sub connect {
     ##################################################
     if ( $verbose ) {
         close STDERR;
-
         if ( !open( STDERR, '>', \$expect_log )) {
              return( "Unable to redirect STDERR: $!" );
         }
@@ -131,12 +130,12 @@ sub connect {
     ##################################################
     # Redirect STDOUT to variable 
     ##################################################
-    close STDOUT;
-
-    if ( !open( STDOUT, '>', \$expect_log )) {
-         return( "Unable to redirect STDOUT: $!" );
-    }
-
+    if ( $verbose ) {
+        close STDOUT;
+        if ( !open( STDOUT, '>', \$expect_log )) {
+             return( "Unable to redirect STDOUT: $!" );
+        }
+    }       
     unless ( $ssh->spawn( "ssh", $parameters )) {
         return( $expect_log."Unable to spawn ssh connection to server" );
     }
