@@ -127,7 +127,8 @@ sub getlibs {
 }
 
 sub mkinitrd {
-	mkpath("/tmp/xcatinitrd.$$/bin");
+   mkpath("/tmp/xcatinitrd.$$/bin");
+   rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
 	symlink("bin","/tmp/xcatinitrd.$$/sbin");
 	mkpath("/tmp/xcatinitrd.$$/usr/bin");
 	mkpath("/tmp/xcatinitrd.$$/usr/sbin");
