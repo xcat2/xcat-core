@@ -6,23 +6,23 @@ B<mkvm> - Creates HMC- and IVM-managed partitions.
  
 I<mkvm [-h| --help]>
 
-I<mkvm  [-v| --version]>
+I<mkvm [-v| --version]>
 
 I<mkvm [-V| --verbose] singlenode -i id -n name>
 
-I<mkvm [-V| --verbose] src_fsp -c dest_fsp>
+I<mkvm [-V| --verbose] src_cec -c dest_cec>
 
 
 =head1 DESCRIPTION
 
-The mkvm command creates a new partition with the same profile/resources as the partition specified by singlenode. The -i and -n flags specify the numeric partition number and name of the newly created partition, respectively. The second form of this command duplicates all the partitions associated with src_fsp to dest_fsp. Note that src_dest and dest_fsp must be associated with the same HMC. Newly created partitions are automatically added to the xCAT database.
+The mkvm command creates a new partition with the same profile/resources as the partition specified by singlenode. The -i and -n flags specify the numeric partition number and name of the newly created partition, respectively. The second form of this command duplicates all the partitions associated with src_cec to dest_cec. Note that src_dest and dest_cec must be associated with the same HMC. Newly created partitions are automatically added to the xCAT database.
 
 =head1 OPTIONS
 
 
 B<-h>          Display usage message.
 
-B<-c>          Copy partitions from src_fsp to dest_fsp on single HMC 
+B<-c>          Copy partitions from src_cec to dest_cec on single HMC 
 
 B<-i>          New partition numeric id 
 
@@ -51,13 +51,13 @@ lpar5: Success
 
 
 
-2. To duplicate all the partitions associated with fsp01 on fsp02, enter:  
+2. To duplicate all the partitions associated with cec01 on cec02, enter:  
 
-I<mkvm fsp01 .c fsp02> 
+I<mkvm cec01 -c cec02> 
 
 Output is similar to:
 
-fsp02: Success
+cec01: Success
 
 =head1 FILES
  
@@ -70,3 +70,4 @@ This command is part of the xCAT software product.
 
 
  
+
