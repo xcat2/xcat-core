@@ -14,6 +14,7 @@ use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use IO::Select;
 use IO::Handle;
+use Time::HiRes qw(gettimeofday);
 
 sub handled_commands {
   return {
@@ -29,7 +30,7 @@ sub handled_commands {
   };
 }
 my %usage = (
-    "rpower" => "Usage: rpower <noderange> [on|off|reset|stat|boot]",
+    "rpower" => "Usage: rpower <noderange> [-d][on|off|reset|stat|boot]",
     "rbeacon" => "Usage: rbeacon <noderange> [on|off|stat]",
     "rvitals" => "Usage: rvitals <noderange> [all|temp|voltage|fanspeed|power|leds]",
     "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
@@ -826,6 +827,93 @@ sub bladecmd {
   return (1,"$command not a supported command by blade method");
 }
 
+sub handle_depend {
+  my $request = shift;
+  my $callback = shift;
+  my $doreq = shift;
+  my $dep = shift;
+  my %node = ();
+    
+  # send all dependencies (along w/ those dependent on nothing)
+  $request->{node} = [keys %$dep];
+  process_request($request,$callback,$doreq);
+  my $start = Time::HiRes::gettimeofday();
+    
+  # build list of dependent nodes w/delays
+  while(my ($name,$h) = each(%$dep) ) {
+    foreach ( keys %$h ) { 
+      if ( $h->{$_} =~ /(^\d+$)/ ) {
+        $node{$_} = $1/1000.0;
+      }
+    }
+  }
+  # send each dependent node as its delay expires
+  while (%node) {
+    my @noderange = ();
+    my $delay = 0.1;
+    my $elapsed = Time::HiRes::gettimeofday()-$start;
+
+    # sort in ascending delay order
+    foreach (sort {$node{$a} <=> $node{$b}} keys %node) {
+      if ($elapsed < $node{$_}) {
+        $delay = $node{$_}-$elapsed;
+        last;
+      }
+      push @noderange,$_;
+      delete $node{$_};
+    }
+    if (@noderange) {
+      %mpahash = ();
+      $request->{node} = \@noderange;
+      process_request($request,$callback,$doreq);
+    }
+    # millisecond sleep
+    Time::HiRes::sleep($delay);
+  }
+  return 0;
+}
+
+
+sub build_depend {
+  my $noderange = shift;
+  my $exargs = shift;
+  my $depstab  = xCAT::Table->new('deps');
+  my %dp    = ();
+  my %no_dp = ();
+
+  if (!defined($depstab)) {
+    return(\%dp);
+  }
+  foreach my $node (@$noderange) {
+    my $delay = 0;
+    my $dep;
+    my $cmd;
+
+    my $ent=$depstab->getNodeAttribs($node,[qw(nodedep msdelay cmd)]);
+    if (defined($ent->{nodedep})) { $dep=$ent->{nodedep}; }
+    if (defined($ent->{cmd}))     { $cmd=$ent->{cmd}; }
+    if (defined($ent->{msdelay})) { $delay=$ent->{msdelay}; }
+
+    if (!defined($dep)) {
+      $no_dp{$node} = 1;
+    }
+    elsif ($cmd eq @$exargs[0]) {
+      foreach (split /,/,$dep ) {
+        $dp{$_}{$node} = $delay;
+      }
+    }
+    # if there are dependencies, add any non-dependent nodes
+    if (scalar(%dp)) {
+      foreach (keys %no_dp) {
+        if (!exists( $dp{$_} )) {
+          $dp{$_}{$_} = -1;
+        }
+      }
+    }
+  }
+  return( \%dp );
+}
+
 
 sub process_request { 
   my $request = shift;
@@ -846,6 +934,20 @@ sub process_request {
     @exargs = @{$request->{arg}};
   } else {
     @exargs = ($request->{arg});
+  }
+
+  if ($command eq "rpower" and grep(/^on|off|boot|reset$/, @exargs)) {
+    if (grep /^-d$/, @exargs) {
+      # handles 1 level of dependencies only
+      @{$request->{arg}} = grep(!/^-d$/, @{$request->{arg}});
+      @exargs = @{$request->{arg}};
+
+      my $dep = build_depend($noderange,\@exargs);
+      if (scalar(%$dep)) {
+        handle_depend( $request, $callback, $doreq, $dep );
+        return 0;
+      }
+    }
   }
   my $bladeuser = 'USERID';
   my $bladepass = 'PASSW0RD';
@@ -1060,5 +1162,6 @@ sub dompa {
 }
     
 1;
+
 
 
