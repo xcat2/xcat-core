@@ -478,12 +478,6 @@ sub x2n
         return ($rc - 1);
     }
 
-#ndebug
-my $rsp;
-$rsp->{data}->[0] = "$::command - Not yet ready for prime time!";
-xCAT::MsgUtils->message("I", $rsp, $::callback);
-return 0;
-
 	# get the local short host name
     ($::local_host = `hostname`) =~ s/\..*$//;
 
@@ -501,47 +495,39 @@ return 0;
 	foreach my $objname (keys %::objhash)
 	{
 
-#print "x2n: objname=$objname\n";
-
-
 		# list the NIM object definition - if there is one
 		if ($::opt_l || $::opt_d) {
 			if (&rm_or_list_nim_object($objname)) {
             	# the routine failed
+				$error++;
 				next;
 			}
         }
 
-# ndebug
-exit;
-
 		# create a NIM machine definition
 		if ($::objtype{$objname} eq 'node') {
-			my $rc = mkclientdef($objname);
-			if ($rc = 1) {
+			if (mkclientdef($objname)) {
                 # could not create client definition
+				$error++;
             }
 			next;
 		}
 
 		# create a NIM group definition
 		if ($::objtype{$objname} eq 'group') {
-			my $rc = mkgrpdef($objname);
-			if ($rc = 1) {
+			if (mkgrpdef($objname)) {
 				# could not create group definition
+				$error++;
 			}
 			next;
 		}
 	}	
 
-return 0;
-
-
     if ($error)
     {
         my $rsp;
         $rsp->{data}->[0] =
-          "One or more errors occured when attempting to create or modify xCAT \nobject definitions.\n";
+          "One or more errors occured when creating or modify NIM definitions.\n";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
@@ -553,7 +539,7 @@ return 0;
             #  give results
             my $rsp;
             $rsp->{data}->[0] =
-              "The database was updated for the following objects:\n";
+              "The following definitions were created:\n";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             my $n = 1;
@@ -568,7 +554,7 @@ return 0;
         {
             my $rsp;
             $rsp->{data}->[0] =
-              "Object definitions have been created or modified.\n";
+              "Definitions have been created or modified.\n";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
         return 0;
@@ -604,6 +590,7 @@ sub mkclientdef
 	# get the name of the nim master
     #  ???? assume node short hostname is unique in xCAT cluster????
     my $nim_master = &getNIMmaster($object);
+
     if (!defined($nim_master)) {
         my $rsp;
         $rsp->{data}->[0] = "Could not find the NIM master for node \'$node\'.\n";
@@ -627,7 +614,7 @@ sub mkclientdef
         return 0;
 
     } else {
-        # either create or update the group def
+        # either create or update the def
 
 		# process the args and add defaults etc.
     	foreach my $attr (keys %::ATTRS) {
@@ -664,6 +651,14 @@ sub mkclientdef
 
 			# only support Ethernet for management interfaces
 			$adaptertype = "ent";
+
+			if (!$::objhash{$node}{'mac'})
+			{
+				my $rsp;
+            	$rsp->{data}->[0] = "Missing the MAC for node \'$node\'.\n";
+            	xCAT::MsgUtils->message("E", $rsp, $::callback);
+            	return 1;
+			}
 			
 			$ifattr="-a if1=\'$net_name $shorthost $::objhash{$node}{'mac'} $adaptertype\'";
 		}
@@ -681,11 +676,15 @@ sub mkclientdef
 
 		# put together the correct NIM command
 		my $cmd;
+
+
 		if ($::client_exists) {
 			$cmd = "nim -F -o change $nim_args $shorthost";
 		} else {
 			$cmd = "nim -o define $nim_type $nim_args $shorthost";
 		}
+
+#print "cmd=\'$cmd\'\n";
 
 		# may need to use dsh if it is a remote server
 		my $nimcmd;
@@ -696,7 +695,7 @@ sub mkclientdef
 		}
 
 		# run the cmd
-    	#my $output = xCAT::Utils->runcmd("$nimcmd", -1);
+    	my $output = xCAT::Utils->runcmd("$nimcmd", -1);
     	if ($::RUNCMD_RC  != 0)
     	{
         	my $rsp;
