@@ -27,19 +27,20 @@ use Storable qw(dclone);
 my $xcathost='localhost:3001';
 my $plugins_dir;
 my %resps;
+my $EXITCODE;     # save the bitmask of all exit codes returned by calls to handle_response()
 1;
 
 
 #################################
 # submit_request will take an xCAT command and pass it to the xCAT
 #   server for execution.
-# 
+#
 # If the XCATBYPASS env var is set, the connection to the server/daemon
 #   will be bypassed and the plugin will be called directly.  If it is
-#   set to one or more directories (separated by ":"), all perl modules 
-#   in those directories will be loaded in as plugins (for duplicate 
-#   commands, last one in wins). If it is set to any other value 
-#   (e.g. "yes", "default", whatever string you want) the default plugin 
+#   set to one or more directories (separated by ":"), all perl modules
+#   in those directories will be loaded in as plugins (for duplicate
+#   commands, last one in wins). If it is set to any other value
+#   (e.g. "yes", "default", whatever string you want) the default plugin
 #   directory /opt/xcat/lib/perl/xCAT_plugin will be used.
 #
 # Input:
@@ -54,12 +55,12 @@ my %resps;
 #          }
 #    Callback - A subroutine ref that will be called to process the output
 #       from the plugin.
-#     
+#
 # NOTE:  The request hash will get converted to XML when passed to the
 #        xcatd daemon, and will get converted back to a hash before being
 #        passed to the plugin.  The XMLin ForceArray option is used to
 #        force all XML constructs to be arrays so that the plugin code
-#        and callback routines can access the data consistently.  
+#        and callback routines can access the data consistently.
 #        The input request and the response hash created by the plugin should
 #        always create hashes with array values.
 #################################
@@ -72,6 +73,7 @@ sub submit_request {
   unless ($keyfile) { $keyfile = $ENV{HOME}."/.xcat/client-key.pem"; }
   unless ($certfile) { $certfile = $ENV{HOME}."/.xcat/client-cert.pem"; }
   unless ($cafile) { $cafile  = $ENV{HOME}."/.xcat/ca.pem"; }
+  $xCAT::Client::EXITCODE = 0;    # clear out exit code before invoking the plugin
 
 
 # If XCATBYPASS is set, invoke the plugin process_request method directly
@@ -128,12 +130,6 @@ sub submit_request {
     if ($response =~ m/<\/xcatresponse>/) {
       $rsp = XMLin($response,SuppressEmpty=>undef,ForceArray=>1);
       $response='';
-      if ($rsp->{warning}) {
-        printf ("Warning: ".$rsp->{warning}->[0]."\n");
-      }
-      if ($rsp->{error}) {
-        printf "Error: ". $rsp->{error}->[0]."\n";
-      }
       $callback->($rsp);
       if ($rsp->{serverdone}) {
         last;
@@ -143,10 +139,10 @@ sub submit_request {
 
 ###################################
 # scan_plugins
-#    will load all plugin perl modules and build a list of supported 
+#    will load all plugin perl modules and build a list of supported
 #    commands
 #
-# NOTE:  This is copied from xcatd (last merge 10/3/07).  
+# NOTE:  This is copied from xcatd (last merge 10/3/07).
 #        Will eventually move to using common source....
 ###################################
 sub scan_plugins {
@@ -184,9 +180,9 @@ sub scan_plugins {
 
 ###################################
 # plugin_command
-#    will invoke the correct plugin 
+#    will invoke the correct plugin
 #
-# NOTE:  This is copied from xcatd (last merge 10/3/07).  
+# NOTE:  This is copied from xcatd (last merge 10/3/07).
 #        Will eventually move to using common source....
 ###################################
 sub plugin_command {
@@ -333,7 +329,7 @@ sub plugin_command {
 # do_request
 #    called from a plugin to execute another xCAT plugin command internally
 #
-# NOTE:  This is copied from xcatd (last merge 10/3/07).  
+# NOTE:  This is copied from xcatd (last merge 10/3/07).
 #        Will eventually move to using common source....
 ###################################
 sub do_request {
@@ -402,7 +398,160 @@ sub build_response {
 
 
 
-}
+}    # end of submit_request()
+
+
+
+##########################################
+# handle_response is a default callback that can be passed into submit_response()
+# It is invoked repeatedly by submit_response() to print out the data returned by
+# the plugin.
+#
+# The normal flow is:
+#	-> client cmd (e.g. nodels, which is just a link to xcatclient)
+#		-> xcatclient
+#			-> submit_request()
+#				-> send xml request to xcatd
+#					-> xcatd
+#						-> process_request() of the plugin
+#						<- plugin callback
+#					<- xcatd
+#				<- xcatd sends xml response to client
+#			<- submit_request() read response
+#		<- handle_response() prints responses and saves exit codes
+#	<- xcatclient gets exit code and exits
+#
+# But in XCATBYPASS mode, the flow is:
+#	-> client cmd (e.g. nodels, which is just a link to xcatclient)
+#		-> xcatclient
+#			-> submit_request()
+#				-> process_request() of the plugin
+#		<- handle_response() prints responses and saves exit codes
+#	<- xcatclient gets exit code and exits
+#
+# Format of the response hash:
+#  {data => [ 'data str1', 'data str2', '...' ] }
+#
+#    Results are printed as:
+#       data str1
+#       data str2
+#
+# or:
+#  {data => [ {desc => [ 'desc1' ],
+#              contents => [ 'contents1' ] },
+#             {desc => [ 'desc2 ],
+#              contents => [ 'contents2' ] }
+#                :
+#            ] }
+#    NOTE:  In this format, only the data array can have more than one
+#           element. All other arrays are assumed to be a single element.
+#    Results are printed as:
+#       desc1: contents1
+#       desc2: contents2
+#
+# or:
+#  {node => [ {name => ['node1'],
+#              data => [ {desc => [ 'node1 desc' ],
+#                         contents => [ 'node1 contents' ] } ] },
+#             {name => ['node2'],
+#              data => [ {desc => [ 'node2 desc' ],
+#                         contents => [ 'node2 contents' ] } ] },
+#                :
+#             ] }
+#    NOTE:  Only the node array can have more than one element.
+#           All other arrays are assumed to be a single element.
+#
+#    This was generated from the corresponding XML:
+#    <xcatrequest>
+#      <node>
+#        <name>node1</name>
+#        <data>
+#          <desc>node1 desc</desc>
+#          <contents>node1 contents</contents>
+#        </data>
+#      </node>
+#      <node>
+#        <name>node2</name>
+#        <data>
+#          <desc>node2 desc</desc>
+#          <contents>node2 contents</contents>
+#        </data>
+#      </node>
+#    </xcatrequest>
+#
+#   Results are printed as:
+#      node_name: desc: contents
+##########################################
+sub handle_response {
+  my $rsp = shift;
+  # Handle errors
+  if ($rsp->{errorcode}) {
+    if (ref($rsp->{errorcode}) eq 'ARRAY') { foreach my $ecode (@{$rsp->{errorcode}}) { $xCAT::Client::EXITCODE |= $ecode; } }
+    else { $xCAT::Client::EXITCODE |= $rsp->{errorcode}; }   # assume it is a non-reference scalar
+  }
+  if ($rsp->{warning}) {
+  	if (ref($rsp->{warning}) eq 'ARRAY') { print ("Warning: " . $rsp->{warning}->[0] . "\n"); }
+  	else { print ("Warning: ".$rsp->{warning}."\n"); }
+  }
+  if ($rsp->{error}) {
+  	if (ref($rsp->{error}) eq 'ARRAY') { print ("Error: " . $rsp->{error}->[0] . "\n"); }
+  	else { print ("Error: ".$rsp->{error}."\n"); }
+  }
+
+  # Handle {node} structure
+  if ($rsp->{node}) {
+    my $nodes=($rsp->{node});
+    my $node;
+    foreach $node (@$nodes) {
+      my $desc=$node->{name}->[0];
+      if ($node->{errorcode}) {
+        if (ref($node->{errorcode}) eq 'ARRAY') { foreach my $ecode (@{$node->{errorcode}}) { $xCAT::Client::EXITCODE |= $ecode; } }
+    	else { $xCAT::Client::EXITCODE |= $node->{errorcode}; }   # assume it is a non-reference scalar
+      }
+      if ($node->{data}) {
+         if (ref(\($node->{data}->[0])) eq 'SCALAR') {
+            $desc=$desc.": ".$node->{data}->[0];
+         } else {
+            if ($node->{data}->[0]->{desc}) {
+              $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
+            }
+            if ($node->{data}->[0]->{contents}) {
+        $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
+            }
+         }
+      }
+      if ($desc) {
+         print "$desc\n";
+      }
+    }
+  }
+
+  # Handle {data} structure with no nodes
+  if ($rsp->{data}) {
+    my $data=($rsp->{data});
+    my $data_entry;
+    foreach $data_entry (@$data) {
+      my $desc;
+         if (ref(\($data_entry)) eq 'SCALAR') {
+            $desc=$data_entry;
+         } else {
+            if ($data_entry->{desc}) {
+              $desc=$data_entry->{desc}->[0];
+            }
+            if ($data_entry->{contents}) {
+               if ($desc) {
+           $desc="$desc: ".$data_entry->{contents}->[0];
+               } else {
+           $desc=$data_entry->{contents}->[0];
+            }
+         }
+      }
+      if ($desc) {
+         print "$desc\n";
+      }
+    }
+  }
+}      # end of handle_response
 
 
 

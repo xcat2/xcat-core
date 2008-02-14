@@ -1,25 +1,32 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Used as a standard client cmd that can be used for xcat cmds that do not have
+# noderange as an argument.  See xcatclient for additional documentation.
+
+# To use this, sym link your cmd name to this script.
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+use lib "$::XCATROOT/lib/perl";
+use Cwd;
 use File::Basename;
+use xCAT::Client;
 
-#######################################
-# It handles the commands without noderanges.
-#######################################
 my $bname = basename($0);
-my $cmd;
-if($bname =~ /xcatclientnnr/) {
-  $cmd = shift @ARGV;
-} elsif ($bname =~/^(.*$)/) {
-  $cmd = $1;
-} else {
-  printf("Bad usage\n");
-  exit(1);
-}
-exec("xcatclient $cmd NO_NODE_RANGE @ARGV 2>&1");
-#if (system("/usr/bin/xcatclient $cmd NO_NODE_RANGE @ARGV 2>&1") != 0) {
-#  print "$cmd failed: $?\n";
-#}
+my $cmdref;
+if ($bname =~ /xcatclientnnr/) { $cmdref->{command}->[0]=shift @ARGV; }  # xcatclientnnr was invoked directly and the 1st arg is cmd name that is used to locate the plugin
+else { $cmdref->{command}->[0] = $bname; }        # the cmd was sym linked to xcatclientnnr
+$cmdref->{cwd}->[0] = cwd();
 
-#exit;
+if (-p STDIN) {
+  my $data;
+  while ( <STDIN> ) { $data.=$_; }
+  $cmdref->{stdin}->[0]=$data;
+}
+
+push (@{$cmdref->{arg}}, @ARGV);
+
+xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
+exit $xCAT::Client::EXITCODE;
 
 

@@ -4,31 +4,13 @@
 #  xCAT plugin package to handle various commands that work with the
 #     xCAT tables
 #
-#   Supported commands:
-#         nodeadd
-#         nodels
-#         nodech
-#         tabdump
-#         tabrestore
-#         noderm
-#   To be implemented:
-#         gettab
-#         chtab
-#         tabls
-#         getnodecfg (?? this doesn't seem much different from gettab)
-#         nr
-#   These were xCAT 1.2 commands.  Are they still useful in xCAT 1.3?
-#         addattr
-#         delattr
-#         chtype
-#
 #####################################################
 package xCAT_plugin::tabutils;
 use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
 use xCAT::NodeRange;
-use xCAT::Schema;    #noderm will need to build list of tables..
+use xCAT::Schema;
 
 #use Getopt::Long qw(GetOptionsFromArray);
 
@@ -51,17 +33,17 @@ sub handled_commands
             gettab     => "tabutils",
             tabdump    => "tabutils",
             tabrestore => "tabutils",
-            tabch      => "tabutils",
+            tabch      => "tabutils",     # not implemented yet
             nodech     => "tabutils",
             nodeadd    => "tabutils",
             noderm     => "tabutils",
-            tabls      => "tabutils",
+            tabls      => "tabutils",     # not implemented yet
             nodels     => "tabutils",
-            getnodecfg => "tabutils",
-            addattr    => "tabutils",
-            delattr    => "tabutils",
-            chtype     => "tabutils",
-            nr         => "tabutils",
+            getnodecfg => "tabutils",     # not implemented yet (?? this doesn't seem much different from gettab)
+            addattr    => "tabutils",     # not implemented yet
+            delattr    => "tabutils",     # not implemented yet
+            chtype     => "tabutils",     # not implemented yet
+            nr         => "tabutils",     # not implemented yet
             tabgrep    => "tabutils"
             };
 }
@@ -72,45 +54,15 @@ my %usage = (
     nodeadd =>
       "Usage: nodeadd <noderange> [table.column=value] [table.column=value] ...",
     noderm  => "Usage: noderm <noderange>",
-    tabdump =>
-      "Usage: tabdump <tablename>\n   where <tablename> is one of the following:\n     "
-      . join("\n     ", keys %xCAT::Schema::tabspec),
-    tabrestore => "Usage: tabrestore <tablename>.csv",
+    # the usage for tabdump is in the tabdump function
+    #tabdump => "Usage: tabdump <tablename>\n   where <tablename> is one of the following:\n     " . join("\n     ", keys %xCAT::Schema::tabspec),
+    # the usage for tabrestore is in the tabrestore client cmd
+    #tabrestore => "Usage: tabrestore <tablename>.csv",
     );
 
 #####################################################
 # Process the command
 #####################################################
-sub gettab
-{
-    my $req      = shift;
-    my $callback = shift;
-    my $keyspec  = shift @{$req->{arg}};
-    my @keypairs = split /,/, $keyspec;
-    my %keyhash;
-    foreach (@keypairs)
-    {
-        (my $key, my $value) = split /=/, $_;
-        $keyhash{$key} = $value;
-    }
-    my %tabhash;
-    foreach my $tabvalue (@{$req->{arg}})
-    {
-        (my $table, my $column) = split /\./, $tabvalue;
-        $tabhash{$table}->{$column} = 1;
-    }
-    foreach my $tabn (keys %tabhash)
-    {
-        my $tab = xCAT::Table->new($tabn);
-        (my $ent) = $tab->getAttribs(\%keyhash, keys %{$tabhash{$tabn}});
-        foreach my $coln (keys %{$tabhash{$tabn}})
-        {
-            $callback->({data => ["$tabn.$coln:" . $ent->{$coln}]});
-        }
-        $tab->close;
-    }
-}
-
 sub process_request
 {
     use Getopt::Long;
@@ -141,11 +93,11 @@ sub process_request
     }
     elsif ($command eq "nodeadd" or $command eq "addnode")
     {
-        return chnode($nodes, $args, $callback, 1);
+        return nodech($nodes, $args, $callback, 1);
     }
-    elsif ($command eq "nodech" or $command eq "chnode")
+    elsif ($command eq "nodech" or $command eq "nodech")
     {
-        return chnode($nodes, $args, $callback, 0);
+        return nodech($nodes, $args, $callback, 0);
     }
     elsif ($command eq "tabrestore")
     {
@@ -169,6 +121,36 @@ sub process_request
         return (1, "$command not written yet");
     }
 
+}
+
+sub gettab
+{
+    my $req      = shift;
+    my $callback = shift;
+    my $keyspec  = shift @{$req->{arg}};
+    my @keypairs = split /,/, $keyspec;
+    my %keyhash;
+    foreach (@keypairs)
+    {
+        (my $key, my $value) = split /=/, $_;
+        $keyhash{$key} = $value;
+    }
+    my %tabhash;
+    foreach my $tabvalue (@{$req->{arg}})
+    {
+        (my $table, my $column) = split /\./, $tabvalue;
+        $tabhash{$table}->{$column} = 1;
+    }
+    foreach my $tabn (keys %tabhash)
+    {
+        my $tab = xCAT::Table->new($tabn);
+        (my $ent) = $tab->getAttribs(\%keyhash, keys %{$tabhash{$tabn}});
+        foreach my $coln (keys %{$tabhash{$tabn}})
+        {
+            $callback->({data => ["$tabn.$coln:" . $ent->{$coln}]});
+        }
+        $tab->close;
+    }
 }
 
 sub noderm
@@ -219,11 +201,12 @@ sub noderm
             push @tablist, $_;
         }
     }
-    chnode($nodes, \@tablist, $cb, 0);
+    nodech($nodes, \@tablist, $cb, 0);
 }
 
 sub tabrestore
 {
+    # the usage for tabrestore is in the tabrestore client cmd
 
     #request->{data} is an array of CSV formatted lines
     my $request    = shift;
@@ -231,9 +214,8 @@ sub tabrestore
     my $table      = $request->{table}->[0];
     my $linenumber = 1;
     my $tab        = xCAT::Table->new($table, -create => 1, -autocommit => 0);
-    unless ($tab)
-    {
-        $cb->({error => "Unable to open $table"});
+    unless ($tab) {
+        $cb->({error => "Unable to open $table",errorcode=>4});
         return;
     }
     $tab->delEntries();    #Yes, delete *all* entries
@@ -269,8 +251,7 @@ sub tabrestore
                         {
                          error =>
                            "CSV missing opening \" for record with \" characters on line $linenumber, character "
-                           . index($origline, $line)
-                           . ": $origline"
+                           . index($origline, $line) . ": $origline", errorcode=>4
                         }
                         );
                     next LINE;
@@ -291,8 +272,7 @@ sub tabrestore
                             {
                              error =>
                                "CSV unmatched \" in record on line $linenumber, character "
-                               . index($origline, $line)
-                               . ": $origline"
+                               . index($origline, $line) . ": $origline", errorcode=>4
                             }
                             );
                         next LINE;
@@ -317,8 +297,7 @@ sub tabrestore
                             {
                              error =>
                                "CSV unescaped \" in record on line $linenumber, character "
-                               . index($origline, $line)
-                               . ": $origline"
+                               . index($origline, $line) . ": $origline", errorcode=>4
                             }
                             );
                         $rollback = 1;
@@ -335,12 +314,7 @@ sub tabrestore
         if ($line)
         {
             $rollback = 1;
-            $cb->(
-                  {
-                   error =>
-                     "Too many fields on line $linenumber: $origline | $line"
-                  }
-                  );
+            $cb->({error => "Too many fields on line $linenumber: $origline | $line", errorcode=>4});
             next LINE;
         }
 
@@ -349,14 +323,7 @@ sub tabrestore
         if (not defined($rc[0]))
         {
             $rollback = 1;
-            $cb->(
-                  {
-                       error => "DB error "
-                     . $rc[1]
-                     . " with line $linenumber: "
-                     . $origline
-                  }
-                  );
+            $cb->({error => "DB error " . $rc[1] . " with line $linenumber: " . $origline, errorcode=>4});
         }
     }
     if ($rollback)
@@ -374,69 +341,79 @@ sub tabrestore
 
 sub tabdump
 {
-
-    #TODO: need to return header for not-yet existing, but schemad tabs
-    #TODO: schema defined column order.
     my $args  = shift;
     my $cb    = shift;
     my $table = "";
-    foreach (@$args)
-    {
-        unless (/^-/)
-        {
-            if ($table)
-            {
-                return 1;    #TODO: Error, usage
-            }
-            $table = $_;
-        }
+    my $HELP;
+
+    sub tabdump_usage {
+    	my $exitcode = shift @_;
+        my %rsp;
+        push @{$rsp{data}}, "Usage: tabdump [table]";
+        push @{$rsp{data}}, "       tabdump [-?|-h|--help]";
+        if ($exitcode) { $rsp{errorcode} = $exitcode; }
+        $cb->(\%rsp);
     }
-    my $tabh = xCAT::Table->new($table);
+
+	# Process arguments
+    @ARGV = @{$args};
+    if (!GetOptions('h|?|help'  => \$HELP)) { tabdump_usage(1); return; }
+
+    if ($HELP) { tabdump_usage(0); return; }
+    if (scalar(@ARGV)>1) { tabdump_usage(1); return; }
+
     my %rsp;
+    # If no arguments given, we display a list of the tables
+    if (!scalar(@ARGV)) {
+    	push @{$rsp{data}}, keys %xCAT::Schema::tabspec;
+        $cb->(\%rsp);
+    	return;
+    }
+
+    $table = $ARGV[0];
+    my $tabh = xCAT::Table->new($table);
+
+    sub tabdump_header {
+        my $header = "#" . join(",", @_);
+        push @{$rsp{data}}, $header;
+    }
+
+    # If the table does not exist yet (because its never been written to),
+    # at least show the header (the column names)
     unless ($tabh)
     {
         if (defined($xCAT::Schema::tabspec{$table}))
         {
-            my $header = join ",", @{$xCAT::Schema::tabspec{$table}->{cols}};
-            $header = "#" . $header;
-            push @{$rsp{data}}, $header;
-            $cb->(\%rsp);
+        	tabdump_header(@{$xCAT::Schema::tabspec{$table}->{cols}});
+        	$cb->(\%rsp);
             return;
         }
-        $cb->({error => "No such table: $table"});
+        $cb->({error => "No such table: $table",errorcode=>1});
         return 1;
     }
+
     my $recs = $tabh->getAllEntries();
     my $rec;
-    my $firstline = 1;
-    unless (@$recs)
+    unless (@$recs)        # table exists, but is empty.  Show header.
     {
         if (defined($xCAT::Schema::tabspec{$table}))
         {
-            my $header = join ",", @{$xCAT::Schema::tabspec{$table}->{cols}};
-            $header = "#" . $header;
-            push @{$rsp{data}}, $header;
-            $cb->(\%rsp);
+        	tabdump_header(@{$xCAT::Schema::tabspec{$table}->{cols}});
+        	$cb->(\%rsp);
             return;
         }
     }
 
+	# Display all the rows of the table in the order of the columns in the schema
+    tabdump_header(@{$tabh->{colnames}});
     foreach $rec (@$recs)
     {
         my $line = '';
-        if ($firstline)
-        {
-            $firstline = 0;
-            $line      = join ",", @{$tabh->{colnames}};
-            $line      = "#" . $line;
-            push @{$rsp{data}}, $line;
-            $line = '';
-        }
         foreach (@{$tabh->{colnames}})
         {
-            $rec->{$_} =~ s/"/""/g;
             if (defined $rec->{$_})
             {
+            	$rec->{$_} =~ s/"/""/g;
                 $line = $line . '"' . $rec->{$_} . '",';
             }
             else
@@ -444,14 +421,14 @@ sub tabdump
                 $line .= ',';
             }
         }
-        $line =~ s/,$//;
+        $line =~ s/,$//;    # remove the extra comma at the end
         $line = $line . $lineappend;
         push @{$rsp{data}}, $line;
     }
     $cb->(\%rsp);
 }
 
-sub chnode
+sub nodech
 {
     my $nodes    = shift;
     my $args     = shift;

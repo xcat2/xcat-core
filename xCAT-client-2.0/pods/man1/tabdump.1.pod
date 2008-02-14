@@ -1,0 +1,45 @@
+=head1 NAME
+
+B<tabdump> - display a database table in csv format.
+
+=head1 SYNOPSIS
+
+I<tabdump [table]>
+
+I<tabdump [? | -h | --help]>
+
+=head1 DESCRIPTION
+
+The tabdump command displays the header and all the rows of the specified table in csv format.
+Only one table can be specified.  If no table is specified, the list of existing
+tables will be displayed.
+
+=head1 OPTIONS
+
+B<-?|-h|--help>          Display usage message.
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To display the contents of the site table:
+
+I<tabdump site>
+
+2. To see what tables exist in the xCAT database:
+
+I<tabdump>
+
+=head1 FILES
+
+/opt/xcat/sbin/tabdump
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
