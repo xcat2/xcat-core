@@ -4,6 +4,7 @@ package xCAT::PPCdb;
 use strict;
 use Getopt::Long;
 use xCAT::Table;
+use xCAT::GlobalDef;
 
 
 ##########################################################################
@@ -57,9 +58,9 @@ sub add_ppc {
             ###########################
             my ($k1,$u1);
             my %nodetype = ( 
-                 fsp  => "fsp",
-                 bpa  => "bpa",
-                 lpar => "lpar,osi"
+                 fsp  => $::NODETYPE_FSP,
+                 bpa  => $::NODETYPE_BPA,
+                 lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI"
             );
             $k1->{node}     = $name;
             $u1->{groups}   = lc($hwtype).",all";
@@ -272,6 +273,7 @@ sub credentials {
 
 
 1;
+
 
 
 
