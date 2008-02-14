@@ -24,8 +24,7 @@ use constant {
     SERVICE_HMC      => "hardware-management-console",
     SERVICE_IVM      => "integrated-virtualization-manager",
     SERVICE_MM       => "management-module",
-    SERVICE_RSA      => "remote-supervisor-adapter",
-    SLP_COMMAND      => "/usr/sbin/slp_query"
+    SERVICE_RSA      => "remote-supervisor-adapter"
 };
 
 #######################################
@@ -277,15 +276,6 @@ sub validate_ip {
 
 
 ##########################################################################
-# Returns True if running on AIX OS
-##########################################################################
-sub isAIX {
-    return( $^O =~ /^aix/i );
-}
-
-
-
-##########################################################################
 # Determine adapters available for broadcast
 ##########################################################################
 sub ifconfig {
@@ -305,7 +295,7 @@ sub ifconfig {
         trace( $request, $cmd );
         trace( $request, "Broadcast Interfaces:" );
     }
-    if ( isAIX()) {
+    if (xCAT::Utils->isAIX()) {
         ##############################################################
         # Should look like this for AIX:
         # en0: flags=4e080863,80<UP,BROADCAST,NOTRAILERS,RUNNING,
@@ -396,6 +386,7 @@ sub trace {
 ##########################################################################
 sub fork_cmd {
 
+    my $slpcmd   = shift;
     my $request  = shift;
     my $ip       = shift;
     my $services = shift;
@@ -422,7 +413,7 @@ sub fork_cmd {
         close( $parent );
         $request->{pipe} = $child;
 
-        invoke_cmd( $ip, $services, $request );
+        invoke_cmd( $slpcmd, $ip, $services, $request );
         exit(0);
     }
     else {
@@ -442,6 +433,7 @@ sub fork_cmd {
 ##########################################################################
 sub invoke_cmd {
 
+    my $slpcmd   = shift;
     my $ip       = shift;
     my $services = shift;
     my $request  = shift;
@@ -449,7 +441,7 @@ sub invoke_cmd {
     my $tries    = 5;
     my $values;
 
-    my $result = runslp( $ip, $services, $request, $tries, $converge );
+    my $result = runslp( $slpcmd, $ip, $services, $request, $tries, $converge );
     if ( !defined( $result )) {
         return;
     }
@@ -473,7 +465,7 @@ sub invoke_cmd {
             next;
         }
         $addr = inet_ntoa( $sockaddr );
-        my $result = runslp( $addr, [$service], $request, 1 );
+        my $result = runslp( $slpcmd, $addr, [$service], $request, 1 );
 
         if ( defined( $result )) {
             shift(@$result);
@@ -498,12 +490,12 @@ sub invoke_cmd {
 ##########################################################################
 sub runslp {
 
+    my $slpcmd   = shift;
     my $ip       = shift;
     my $services = shift;
     my $request  = shift;
     my $max      = shift;
     my $converge = shift;
-    my $slpcmd   = SLP_COMMAND;
     my %result   = ();
     my %unicast  = ();
 
@@ -1116,8 +1108,8 @@ sub format_xml {
 sub slp_query {
 
     my $request  = shift;
-    my $slpcmd   = SLP_COMMAND;
     my $callback = $request->{callback};
+    my $slpcmd   = "/usr/sbin/slp_query";
     my $start;
     my @services = (
         HARDWARE_SERVICE,
@@ -1165,7 +1157,7 @@ sub slp_query {
     my $fds = new IO::Select;
     
     foreach ( keys %ip_addr ) {
-        my $pipe = fork_cmd( $request, $_, \@services );
+        my $pipe = fork_cmd( $slpcmd, $request, $_, \@services );
         if ( $pipe ) {
             $fds->add( $pipe );
             $children++;
@@ -1273,4 +1265,5 @@ sub process_request {
 
 
 1;
+
 
