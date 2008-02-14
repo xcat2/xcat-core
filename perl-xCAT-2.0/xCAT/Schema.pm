@@ -580,6 +580,10 @@ my @nodeattrs = (
                  tabentry => 'nodelist.groups',
                  access_tabentry => 'nodelist.node=attr:node',
                  description => 'Comma separated list of groups this node belongs to.'},
+	{attr_name => 'status',
+                 tabentry => 'nodelist.status',
+                 access_tabentry => 'nodelist.node=attr:node',
+                 description => 'Current status of the node. Default value is "defined". Valid values include defined, booting, installing, active, off etc.'},
 ####################
 #  hosts table    #
 ####################
