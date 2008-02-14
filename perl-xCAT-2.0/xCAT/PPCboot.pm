@@ -145,13 +145,19 @@ sub ivm_rnetboot {
     my $ssh     = @$exp[0];
     my $userid  = @$exp[4];
     my $pw      = @$exp[5];
-    my $cmd     = "/opt/xcat/sbin/lpar_netboot.expect";
+    my $cmd;
     my $result;
 
     #######################################
     # Disconnect Expect session
     #######################################
     xCAT::PPCcli::disconnect( $exp );
+    
+    #######################################
+    # Find Expect script 
+    #######################################
+    $cmd = ($::XCATROOT) ? "$::XCATROOT/sbin/" : "/opt/xcat/sbin/";
+    $cmd .= "lpar_netboot.expect"; 
 
     #######################################
     # Check command installed
