@@ -7,6 +7,7 @@ use Socket;
 use XML::Simple;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCdb;
+use xCAT::GlobalDef;
 
 
 ##############################################
@@ -416,9 +417,9 @@ sub format_stanza {
     my $result;
     my @attribs = qw(nodetype name id model serial hcp profile parent groups mgt);
     my %nodetype = (
-        fsp  => "fsp",
-        bpa  => "bpa",
-        lpar => "lpar,osi"
+        fsp  => $::NODETYPE_FSP,
+        bpa  => $::NODETYPE_BPA,
+        lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI"
     );
 
     #####################################
@@ -543,5 +544,6 @@ sub rscan {
 
 
 1;
+
 
 
