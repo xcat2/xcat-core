@@ -10,6 +10,10 @@ package xCAT::Schema;
 #certain SQL backends don't ascribe meaning to the data types anyway.
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
+  deps => {
+    cols => [qw(node nodedep msdelay cmd comments disable)],
+    keys => [qw(node)],
+  },
   ppchcp => {
     cols => [qw(hcp username password comments disable)],
     keys => [qw(hcp)],
