@@ -10,6 +10,7 @@ use Time::HiRes qw(gettimeofday);
 use IO::Select;
 use xCAT::PPCcli;
 use xCAT::PPCfsp;   
+use xCAT::GlobalDef;
 
 
 ##########################################
@@ -336,8 +337,9 @@ sub resolve {
     #################################
     # Check for valid "type"
     #################################
-    my @types = split /,/, $ent->{nodetype};
-    my ($type) = grep( /^fsp|bpa|osi|lpar$/, @types );
+    my ($type) = grep( 
+        /^$::NODETYPE_LPAR|$::NODETYPE_OSI|$::NODETYPE_BPA|$::NODETYPE_FSP$/, 
+        split /,/, $ent->{nodetype} );
 
     if ( !defined( $type )) {
         return( "Invalid node type: $ent->{nodetype}" );
@@ -353,7 +355,7 @@ sub resolve {
     #################################
     # Special lpar processing 
     #################################
-    if ( $type =~ /^lpar|osi$/ ) {
+    if ( $type =~ /^$::NODETYPE_OSI|$::NODETYPE_LPAR$/ ) {
         $att->{bpa}  = 0;
         $att->{type} = "lpar";
         $att->{node} = $att->{parent};
@@ -395,7 +397,7 @@ sub resolve {
     #################################
     # Optional and N/A fields 
     #################################
-    elsif ( $type =~ /^fsp$/ ) {
+    elsif ( $type =~ /^$::NODETYPE_FSP$/ ) {
         $att->{profile} = 0;
         $att->{id}      = 0;
         $att->{fsp}     = 0;
@@ -404,7 +406,7 @@ sub resolve {
         $att->{parent}  = exists($att->{parent}) ? $att->{parent} : 0;
         $att->{bpa}     = $att->{parent};
     }
-    elsif ( $type =~ /^bpa$/ ) {
+    elsif ( $type =~ /^$NODETYPE::BPA$/ ) {
         $att->{profile} = 0;
         $att->{id}      = 0;
         $att->{bpa}     = 0;
@@ -710,6 +712,7 @@ sub process_request {
 
 
 1;
+
 
 
 
