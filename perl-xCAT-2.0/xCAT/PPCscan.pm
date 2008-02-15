@@ -21,6 +21,13 @@ my @header = (
     ["serial-number", "%-15s" ],
     ["address",       "%s\n" ]);
 
+my @attribs = qw(nodetype name id model serial hcp profile parent groups mgt);
+my %nodetype = (
+    fsp  => $::NODETYPE_FSP,
+    bpa  => $::NODETYPE_BPA,
+    lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI"
+);
+
 
 ##########################################################################
 # Parse the command line for options and operands
@@ -352,7 +359,7 @@ sub format_output {
     # -x flag for xml format
     ###########################################
     if ( exists( $opt->{x} )) {
-        $result = format_xml( $values );
+        $result = format_xml( $hwtype, $values );
     }
     ###########################################
     # -z flag for stanza format
@@ -415,12 +422,6 @@ sub format_stanza {
     my $hwtype = shift;
     my $values = shift;
     my $result;
-    my @attribs = qw(nodetype name id model serial hcp profile parent groups mgt);
-    my %nodetype = (
-        fsp  => $::NODETYPE_FSP,
-        bpa  => $::NODETYPE_BPA,
-        lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI"
-    );
 
     #####################################
     # Skip hardware control point 
@@ -468,14 +469,21 @@ sub format_stanza {
 ##########################################################################
 sub format_xml {
 
+    my $hwtype = shift;
     my $values = shift;
     my $xml;
+
+    #####################################
+    # Skip hardware control point 
+    #####################################
+    shift(@$values);
 
     #####################################
     # Create XML formatted attributes
     #####################################
     foreach ( @$values ) {
         my @data = split /,/;
+        my $type = $data[0];
         my $i = 0;
 
         #################################
@@ -487,19 +495,23 @@ sub format_xml {
         #################################
         # Add each attribute 
         #################################
-        foreach ( @header ) {
+        foreach ( @attribs ) {
             my $d = $data[$i++];
 
-            #############################
-            # Use IPs instead of
-            # hardware control address
-            #############################
-            if ( @$_[0] eq "address" ) {
-                if ( $data[0] !~ /^hmc|ivm$/ ) {
-                    $d = $data[8];                   
+            if ( /^name$/ ) {
+                next;
+            } elsif ( /^nodetype$/ ) {
+                $d = $nodetype{$d};
+            } elsif ( /^groups$/ ) {
+                $d = "$hwtype,all";
+            } elsif ( /^mgt$/ ) {
+                $d = $hwtype;
+            } elsif ( /^model|serial$/ ) {
+                if ( $type eq "lpar" ) {
+                    $d = undef;
                 }
             }
-            $href->{Node}->{@$_[0]} = $d;
+            $href->{Node}->{$_} = $d;
         }
         #################################
         # XML encoding
@@ -544,6 +556,7 @@ sub rscan {
 
 
 1;
+
 
 
 
