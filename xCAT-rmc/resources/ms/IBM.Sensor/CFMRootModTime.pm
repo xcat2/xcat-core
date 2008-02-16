@@ -6,7 +6,7 @@ BEGIN
 
 $RES::Sensor{'CFMRootModTime'} = {
 	Name => q(CFMRootModTime),
-	Command => "$::XCATROOT/lib/perl/xCAT_monitoring/rmc/mtime /cfmroot",
+	Command => "$::XCATROOT/sbin/rmcmon/mtime /cfmroot",
 	UserName => q(root),
 	RefreshInterval => q(60),
 };

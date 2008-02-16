@@ -6,7 +6,7 @@ BEGIN
 
 $RES::Sensor{'ErrorLogSensor'} = {
 	Name => q(ErrorLogSensor),
-	Command => "$::XCATROOT/lib/perl/xCAT_monitoring/rmc/monerrorlog",
+	Command => "$::XCATROOT/sbin/rmcmon/monerrorlog",
 	UserName => q(root),
 	RefreshInterval => q(60),
 	ControlFlags => q(4),

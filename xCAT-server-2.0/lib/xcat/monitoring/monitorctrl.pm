@@ -14,6 +14,7 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::Client;
 use xCAT_plugin::notification;
+use xCAT_monitoring::montbhandler;
 
 #the list store the names of the monitoring plug-in and the file name and module names.
 #the names are stored in the "name" column of the monitoring table. 
@@ -72,6 +73,9 @@ sub start {
   #setup signal 
   $SIG{USR2}=\&handleMonSignal;
 
+  xCAT_monitoring::montbhandler->regMonitoringNotif();
+
+
   #start monitoring for all the registered plug-ins in the monitoring table.
   #better span a process so that it will not block the xcatd.
   my $pid;
@@ -92,24 +96,72 @@ sub start {
         print "$_: @$retstat\n";
       }
     }
-
-    #register for nodelist table changes if not already registered
-    my $tab = xCAT::Table->new('notification');
-    my $regged=0;
-    if ($tab) {
-      (my $ref) = $tab->getAttribs({filename => qw(monitorctrl.pm)}, tables);
-      if ($ref and $ref->{tables}) {
-         $regged=1;
-      }
-      $tab->close();
+    
+    if (keys(%PRODUCT_LIST) > 0) {
+      regNodelistNotif();
     }
-
-    if (!$regged) {
-      xCAT_plugin::notification::regNotification([qw(monitorctrl.pm nodelist,monitoring -o a,u,d)]);
+    else {
+      unregNodelistNotif();
     }
 
     #print "child done\n";
     exit 0;
+  }
+}
+
+
+#--------------------------------------------------------------------------------
+=head3    regNodelistNotif
+      It registers this module in the notification table to watch for changes in 
+      the nodelist table.
+    Arguments:
+        none
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub regNodelistNotif {
+
+  #register for nodelist table changes if not already registered
+  my $tab = xCAT::Table->new('notification');
+  my $regged=0;
+  if ($tab) {
+    (my $ref) = $tab->getAttribs({filename => qw(monitorctrl.pm)}, tables);
+    if ($ref and $ref->{tables}) {
+       $regged=1;
+    }
+    $tab->close();
+  }
+
+  if (!$regged) {
+    xCAT_plugin::notification::regNotification([qw(monitorctrl.pm nodelist -o a,d)]);
+  }
+}
+
+#--------------------------------------------------------------------------------
+=head3    unregNodelistNotif
+      It un-registers this module in the notification table.
+    Arguments:
+        none
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub unregNodelistNotif {
+  my $tab = xCAT::Table->new('notification');
+  my $regged=0;
+  if ($tab) {
+    (my $ref) = $tab->getAttribs({filename => qw(monitorctrl.pm)}, tables);
+    if ($ref and $ref->{tables}) {
+       $regged=1;
+    }
+    $tab->close();
+  }
+
+  if ($regged) {
+    xCAT_plugin::notification::unregNotification([qw(monitorctrl.pm)]);
   }
 }
 
@@ -172,6 +224,16 @@ sub handleMonSignal {
     }
   }
 
+  #registers or unregusters this module in the notification table for changes in
+  # the nodelist and monitoring tables. 
+  if (keys(%PRODUCT_LIST) > 0) {
+    regNodelistNotif();
+  } 
+  else {
+    unregNodelistNotif();
+  }
+
+
   #setup the signal again  
   $SIG{USR2}=\&handleMonSignal;
 
@@ -230,7 +292,8 @@ sub stop {
     $ret{"Stop node status monitoring with $NODESTAT_MON_NAME"}=\@ret2;
   }
 
-  xCAT_plugin::notification::unregNotification([qw(monitorctrl.pm)]);
+  xCAT_monitoring::montbhandler->unregMonitoringNotif();
+  unregNodelistNotif();
 
   if (%ret) {
     foreach(keys(%ret)) {
@@ -309,7 +372,7 @@ sub startMonitoring {
 #--------------------------------------------------------------------------------
 sub startNodeStatusMonitoring {
   my $pname=shift;
-  if ($pname =~ /xCAT_plugin::monitorctrl/) {
+  if ($pname =~ /xCAT_monitoring::monitorctrl/) {
     $pname=shift;
   }
 
@@ -413,7 +476,7 @@ sub stopMonitoring {
 #--------------------------------------------------------------------------------
 sub stopNodeStatusMonitoring {
   my $pname=shift;
-  if ($pname =~ /xCAT_plugin::monitorctrl/) {
+  if ($pname =~ /xCAT_monitoring::monitorctrl/) {
     $pname=shift;
   }
 
@@ -472,18 +535,15 @@ sub stopNodeStatusMonitoring {
 #--------------------------------------------------------------------------------
 sub processTableChanges {
   my $action=shift;
-  if ($action =~ /xCAT_plugin::monitorctrl/) {
+  if ($action =~ /xCAT_monitoring::monitorctrl/) {
     $action=shift;
   }
   my $tablename=shift;
   my $old_data=shift;
   my $new_data=shift;
 
-  if ($tablename eq "nodelist") {
-    processNodelistTableChanges($action, $tablename, $old_data, $new_data);
-  } else {
-    processMonitoringTableChanges($action, $tablename, $old_data, $new_data);
-  }
+  processNodelistTableChanges($action, $tablename, $old_data, $new_data);
+
 }
 
  
@@ -501,7 +561,7 @@ sub processTableChanges {
 #--------------------------------------------------------------------------------
 sub processNodelistTableChanges {
   my $action=shift;
-  if ($action =~ /xCAT_plugin::monitorctrl/) {
+  if ($action =~ /xCAT_monitoring::monitorctrl/) {
     $action=shift;
   }
   #print "monitorctrl::processNodelistTableChanges action=$action\n";
@@ -530,10 +590,10 @@ sub processNodelistTableChanges {
   if ($action eq "a") {
     if ($new_data) {
       my $nodetype='';
-      my $groups='';
+      my $status='';
       if (exists($new_data->{nodetype})) {$nodetype=$new_data->{nodetype};}
-      if (exists($new_data->{groups})) {$groups=$new_data->{groups};}      
-      push(@nodenames, [$new_data->{node}, $nodetype, $groups]);
+      if (exists($new_data->{status})) {$status=$new_data->{status};}      
+      push(@nodenames, [$new_data->{node}, $nodetype, $status]);
       my $hierarchy=getMonServerWithInfo(\@nodenames);
 
       #call each plug-in to add the nodes into the monitoring domain
@@ -551,19 +611,19 @@ sub processNodelistTableChanges {
       $colnames=$old_data->[0];
       my $node_i=-1;
       my $nodetype_i=-1;
-      my $groups_i=-1;
+      my $status_i=-1;
       for ($i=0; $i<@$colnames; ++$i) {
         if ($colnames->[$i] eq "node") {
           $node_i=$i;
         } elsif ($colnames->[$i] eq "nodetype") {
           $nodetype_i=$i;
-        }  elsif ($colnames->[$i] eq "groups") {
-          $groups_i=$i;
+        }  elsif ($colnames->[$i] eq "status") {
+          $status_i=$i;
         }  
       }
       
       for (my $j=1; $j<@$old_data; ++$j) {
-        push(@nodenames, [$old_data->[$j]->[$node_i], $old_data->[$j]->[$nodetype_i], $old_data->[$j]->[$groups_i]]);
+        push(@nodenames, [$old_data->[$j]->[$node_i], $old_data->[$j]->[$nodetype_i], $old_data->[$j]->[$status_i]]);
       }
 
       if (@nodenames > 0) {
@@ -608,9 +668,8 @@ sub processMonitoringTableChanges {
 
 #--------------------------------------------------------------------------------
 =head3    processNodeStatusChanges
-      This is the callback routine passed as a parameter to the startNodeStatusMon()
-      function of the monitoring plug-ins. This routine will be called by a 
-      selected  monitoring plug-in module to feed the node status back to xcat.
+      This routine will be called by 
+      monitoring plug-in modules to feed the node status back to xcat.
       (callback mode). This function will update the status column of the
       nodelist table with the new node status.
     Arguments:
@@ -625,7 +684,7 @@ sub processMonitoringTableChanges {
 sub processNodeStatusChanges {
   #print "monitorctrl::processNodeStatusChanges called\n";
   my $temp=shift;
-  if ($temp =~ /xCAT_plugin::monitorctrl/) {
+  if ($temp =~ /xCAT_monitoring::monitorctrl/) {
     $temp=shift;
   }
 
@@ -753,13 +812,13 @@ sub refreshProductList {
 =head3    getMonHierarchy
       It gets the monnitoring server node for all the nodes within nodelist table.
       The "monserver" attribute is used from the noderes table. If "monserver" is not defined
-      for a node, "xcatmaster" is used. If none is defined, use the local host.
+      for a node, "servicenode" is used. If none is defined, use the local host.
     Arguments:
       None.
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
-      an array of [nodes, nodetype] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}     
+      an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
+      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}     
 =cut
 #--------------------------------------------------------------------------------
 sub getMonHierarchy {
@@ -767,53 +826,33 @@ sub getMonHierarchy {
   
   #get all from nodelist table and noderes table
   my $table=xCAT::Table->new("nodelist", -create =>0);
-  my @tmp1=$table->getAllAttribs(('node','nodetype', 'groups'));
+  my @tmp1=$table->getAllAttribs(('node','nodetype', 'status'));
 
   my $table2=xCAT::Table->new("noderes", -create =>0);  
-  my @tmp2=$table2->getAllAttribs(('node','monserver', 'xcatmaster'));
   
   #get monserver for each node. use "monserver" attribute from noderes table, if not
-  #defined, use "xcatmaster". otherwise, use loca lhost. 
+  #defined, use "servicenode". otherwise, use loca lhost. 
   my $host=hostname();
   if (defined(@tmp1) && (@tmp1 > 0)) {
-    if (defined(@tmp2) && (@tmp2 > 0)) {
-      foreach(@tmp1) {
-        my $node=$_->{node};
-        my $groups=$_->{groups};
-        my $nodetype=$_->{nodetype};
-        my @group_array=();
-        if ($groups) {
-          @group_array=split(/,/, $groups);
-        }
-        my $monserver=$host;
-        foreach(@tmp2) {
-          my $node2=$_->{node};
-          if (($node2 eq $node) || (grep {$_ eq $node2} @group_array)) {
-             if ($_->{monserver}) {
-               $monserver=$_->{monserver};
-             }
-             elsif ($_->{xcatmaster}) {
-               $monserver=$_->{xcatmaster};
-             }
-          } 
-        }
-        if (exists($ret->{$monserver})) {
-          my $pa=$ret->{$monserver};
-          push(@$pa, [$node, $nodetype]);
-        }
-        else {
-          $ret->{$monserver}=[[$node, $nodetype]];
-        }
+    foreach(@tmp1) {
+      my $node=$_->{node};
+      my $status=$_->{status};
+      my $nodetype=$_->{nodetype};
+      my $monserver=$host;
+      my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
+      if (defined($tmp2) && ($tmp2)) {
+	if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
+        elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
+      }
+
+      if (exists($ret->{$monserver})) {
+        my $pa=$ret->{$monserver};
+        push(@$pa, [$node, $nodetype, $status]);
+      }
+      else {
+        $ret->{$monserver}=[[$node, $nodetype, $status]];
       }
     }
-    else {
-      #no entried in noderes table, use local host as the monserver for all the nodes
-      my $nodes=[];
-      foreach(@tmp1) {
-        push(@$nodes, [$_->{node}, $nodetype]);
-      }
-      $ret->{$host}=$nodes;
-    }  
   }
   $table->close();
   $table2->close();
@@ -824,17 +863,17 @@ sub getMonHierarchy {
 =head3    getMonServerWithInfo
       It gets the monnitoring server node for each of the nodes from the input. 
       The "monserver" attribute is used from the noderes table. If "monserver" is not defined
-      for a node, "xcatmaster" is used. If none is defined, use the local host as the
+      for a node, "servicenode" is used. If none is defined, use the local host as the
       the monitoring server. The difference of this function from the getMonServer function
-      is that the input of the nodes have 'node', 'nodetype' and 'groups' info. 
+      is that the input of the nodes have 'node', 'nodetype' and 'status' info. 
       The other one just has  'node'. The
       names. 
     Arguments:
-      nodes: An array ref. Each element is of the format: [node, nodetype, groups]
+      nodes: An array ref. Each element is of the format: [node, nodetype, status]
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
-      an array of [nodes, nodetype] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}
+      an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
+      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}
 =cut
 #--------------------------------------------------------------------------------
 sub getMonServerWithInfo {
@@ -846,32 +885,21 @@ sub getMonServerWithInfo {
   #print "getMonServerWithInfo called with @in_nodes\n";
   #get all from the noderes table
   my $table2=xCAT::Table->new("noderes", -create =>0);
-  my @tmp2=$table2->getAllAttribs(('node','monserver', 'xcatmaster'));
   my $host=hostname();
   
   foreach (@in_nodes) {
     my $node=$_->[0];
     my $nodetype=$_->[1];
-    my $groups=$_->[2];
-    my @group_array=();
-    if ($groups) {
-      @group_array=split(/,/, $groups);
-    }
+    my $status=$_->[2];
 
     my $monserver=$host;
-    if (defined(@tmp2) && (@tmp2 > 0)) {
-      foreach(@tmp2) {
-        my $node2=$_->{node};
-        if (($node2 eq $node) || (grep {$_ eq $node2} @group_array)) {
-           if ($_->{monserver}) {
-             $monserver=$_->{monserver};
-           }
-           elsif ($_->{xcatmaster}) {
-             $monserver=$_->{xcatmaster};
-           }
-        }
-      }
-    } 
+    my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
+    if (defined($tmp2) && ($tmp2)) {
+      if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
+      elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
+    }
+
+
     if (exists($ret->{$monserver})) {
       my $pa=$ret->{$monserver};
       push(@$pa, [$node, $nodetype]);
@@ -890,14 +918,14 @@ sub getMonServerWithInfo {
 =head3    getMonServer
       It gets the monnitoring server node for each of the nodes from the input.
       The "monserver" attribute is used from the noderes table. If "monserver" is not defined
-      for a node, "xcatmaster" is used. If none is defined, use the local host as the
+      for a node, "servicenode" is used. If none is defined, use the local host as the
       the monitoring server.
     Arguments:
       nodes: An array ref of nodes.
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
-      an array of [nodes, nodetype] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}
+      an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
+      {monserver1=>[['node1', 'osi', active'], ['node2', 'switch', booting']...], ...}
 =cut
 #--------------------------------------------------------------------------------
 sub getMonServer {
@@ -908,42 +936,29 @@ sub getMonServer {
   #get all from nodelist table and noderes table
   my $table=xCAT::Table->new("nodelist", -create =>0);
   my $table2=xCAT::Table->new("noderes", -create =>0);
-  my @tmp2=$table2->getAllAttribs(('node','monserver', 'xcatmaster'));
   my $host=hostname();
   
   foreach (@in_nodes) {
-    my @tmp1=$table->getAttribs({'node'=>$_}, ('node', 'nodetype', 'groups'));
+    my @tmp1=$table->getAttribs({'node'=>$_}, ('node', 'nodetype', 'status'));
 
     if (defined(@tmp1) && (@tmp1 > 0)) {
       my $node=$_;
-      my $groups=$tmp1[0]->{groups};
+      my $status=$tmp1[0]->{status};
       my $nodetype=$tmp1[0]->{nodetype};
-      my @group_array=();
-      if ($groups) {
-        @group_array=split(/,/, $groups);
-      }
 
       my $monserver=$host;
-      if (defined(@tmp2) && (@tmp2 > 0)) {
-        foreach(@tmp2) {
-          my $node2=$_->{node};
-          if (($node2 eq $node) || (grep {$_ eq $node2} @group_array)) {
-             if ($_->{monserver}) {
-               $monserver=$_->{monserver};
-             }
-             elsif ($_->{xcatmaster}) {
-               $monserver=$_->{xcatmaster};
-             }
-          }
-        }
-      } 
+      my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
+      if (defined($tmp2) && ($tmp2)) {
+        if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
+        elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
+      }
 
       if (exists($ret->{$monserver})) {
         my $pa=$ret->{$monserver};
-        push(@$pa, [$node, $nodetype]);
+        push(@$pa, [$node, $nodetype, $status]);
       }
       else {
-        $ret->{$monserver}=[ [$node,$nodetype] ];
+        $ret->{$monserver}=[ [$node,$nodetype, $status] ];
       }
     }    
   }

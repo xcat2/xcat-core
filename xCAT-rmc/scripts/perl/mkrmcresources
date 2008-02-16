@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
 #-------------------------------------------------------------------------------
 =head1  mkrmcresources
 =head2 mkrmcresources is used to predefine RMC conditions, responses, associations,
@@ -15,18 +16,279 @@
          of packaging files, script run after install or from the command line.   
 =cut
 #-------------------------------------------------------------------------------
-BEGIN
-{
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-}
-use lib "$::XCATROOT/lib/perl/xCAT_monitoring/rmc";
 
 use Getopt::Long;
-use NodeUtils;
 
 
 $Getopt::Long::ignorecase = 0;    #Checks case in GetOptions
 Getopt::Long::Configure("bundling");    #allows short command line options to be grouped (e.g. -av)
+
+#--------------------------------------------------------------------------------
+=head3    quote
+    Quote a string, taking into account embedded quotes.  This function is most
+    useful when passing string through the shell to another cmd.  It handles one
+    level of embedded double quotes, single quotes, and dollar signs.
+    Arguments:
+        string to quote
+    Returns:
+        quoted string
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+#--------------------------------------------------------------------------------
+sub quote
+{
+  my ($str) = @_;
+
+  # if the value has imbedded double quotes, use single quotes.  If it also has
+  # single quotes, escape the double quotes.
+  if (!($str =~ /\"/))    # no embedded double quotes
+  {
+    $str =~ s/\$/\\\$/sg;    # escape the dollar signs
+    $str =~ s/\`/\\\`/sg;
+    $str = qq("$str");
+  }
+  elsif (!($str =~ /\'/))
+  {
+    $str = qq('$str');
+  }       # no embedded single quotes
+  else    # has both embedded double and single quotes
+  {
+    # Escape the double quotes.  (Escaping single quotes does not seem to work
+    # in the shells.)
+    $str =~ s/\"/\\\"/sg;    #" this comment helps formating
+    $str =~ s/\$/\\\$/sg;    # escape the dollar signs
+    $str =~ s/\`/\\\`/sg;
+    $str = qq("$str");
+  }
+}
+
+
+#--------------------------------------------------------------------------------
+=head3    filterRmcApiOutput
+    filter RMC Api Output
+    Arguments:
+        RMC command
+        Output reference
+    Returns:
+        none
+    Globals:
+        none
+    Error:
+        none
+    Example:
+          filterRmcApiOutput($cmd, $outref);
+    Comments:
+        The error msgs from the RPM -api cmds are pretty messy.
+        This routine cleans them up a little bit.
+=cut
+#--------------------------------------------------------------------------------
+sub filterRmcApiOutput
+{
+  my ($cmd, $outref) = @_;
+  if ($::VERBOSE || !($cmd =~ m|^/usr/bin/\S+-api |))  {
+    return;
+  }    # give as much info as possible, if verbose
+
+  # Figure out the output delimiter
+  my ($d) = $cmd =~ / -D\s+(\S+)/;
+  if (length($d))  {
+    $d =~ s/^(\'|\")(.*)(\"|\')$/$2/;    # remove any surrounding quotes
+    # escape any chars perl pattern matching would intepret as special chars
+    $d =~ s/([\|\^\*\+\?\.])/\\$1/g;
+  }
+  else
+  {
+    $d = '::';
+  }    # this is the default output delimiter for the -api cmds
+  $$outref[0] =~ s/^ERROR${d}.*${d}.*${d}.*${d}.*${d}//;
+}
+
+sub isHMC
+{
+  my $hmcfile = "/opt/hsc/data/hmcType.properties";
+  if (-e $hmcfile) { return 1; }
+  else { return 0; }
+}
+
+#--------------------------------------------------------------------------------
+=head3    runcmd
+    Run the given cmd and return the output in an array (already chopped).  Alternatively,
+    if this function is used in a scalar context, the output is joined into a single string
+    with the newlines separating the lines.  
+    Arguments:
+        command, exitcode and reference to output
+    Returns:
+        see below
+    Error:
+        Normally, if there is an error running the cmd, it will display the error msg
+        and exit with the cmds exit code, unless exitcode is given one of the
+        following values:
+             0:     display error msg, DO NOT exit on error, but set
+                $::RUNCMD_RC to the exit code.
+            -1:     DO NOT display error msg and DO NOT exit on error, but set
+                $::RUNCMD_RC to the exit code.
+            -2:    DO the default behavior (display error msg and exit with cmds
+                exit code.
+        number > 0:    Display error msg and exit with the given code
+    Example:
+        my $outref =  runcmd($cmd, -2, 1);     
+    Comments:
+        If refoutput is true, then the output will be returned as a reference to
+        an array for efficiency.
+=cut
+#--------------------------------------------------------------------------------
+sub runcmd
+{
+  my ($cmd, $exitcode, $refoutput) = @_;
+  $::RUNCMD_RC = 0;
+  if (!$::NO_STDERR_REDIRECT) { 
+    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
+  }
+  my $outref = [];
+  @$outref = `$cmd`;
+  if ($?)
+  {
+    $::RUNCMD_RC = $? >> 8;
+    my $displayerror = 1;
+    my $rc;
+    if (defined($exitcode) && length($exitcode) && $exitcode != -2)
+    {
+      if ($exitcode > 0)
+      {
+	$rc = $exitcode;
+      }    # if not zero, exit with specified code
+      elsif ($exitcode <= 0)
+      {
+	$rc = '';    # if zero or negative, do not exit
+	if ($exitcode < 0) { $displayerror = 0; }
+      }
+    }
+    else
+    {
+      $rc = $::RUNCMD_RC;
+    }    # if exitcode not specified, use cmd exit code
+    if ($displayerror)
+    {
+      my $errmsg = '';
+      if (($^O =~ /^linux/i) && $::RUNCMD_RC == 139)
+      {
+        $errmsg = "Segmentation fault  $errmsg";
+      }
+      else
+      {
+        # The error msgs from the -api cmds are pretty messy.  Clean them up a little.
+        filterRmcApiOutput($cmd, $outref);
+        $errmsg = join('', @$outref);
+        chomp $errmsg;
+      }
+      print "Exit code $::RUNCMD_RC from command: $cmd\nError message from cmd: $errmsg\n"
+    }
+  }
+  if ($refoutput)
+  {
+    chomp(@$outref);
+    return $outref;
+  }
+  elsif (wantarray)
+  {
+    chomp(@$outref);
+    return @$outref;
+  }
+  else
+  {
+    my $line = join('', @$outref);
+    chomp $line;
+    return $line;
+  }
+}
+
+#--------------------------------------------------------------------------------
+=head3    runrmccmd
+    Runs an RMC commmand
+    Arguments:
+        $rmccmd, $resclass, $options, $select, $exitcode, $nodelist_ref
+    Returns:
+        the output from  runcmd($cmd, -2, 1)
+        as a ref to the output array.
+    Error:
+        none
+    Example:
+         my $outref =runrmccmd('lsrsrc-api', "-i -D ':|:'", $where);
+    Comments:
+        When $nodelist_ref is not null, break it up into smaller slices
+		and run RMC commands seperately for each slice. 
+		Otherwise just run RMC commands with the arguments passed in.
+=cut
+#--------------------------------------------------------------------------------
+sub runrmccmd
+{
+  my ($rmccmd, $options, $select, $exitcode, $nodelist_ref) = @_;
+
+  my @nodelist;
+  my $return_ref = [];
+
+  if (!defined($exitcode))
+  {
+    $exitcode = -2;
+  }
+	
+  if(! grep /usr\/bin/, $rmccmd)
+  {
+    # add absolute path
+    $rmccmd = "/usr/bin/$rmccmd";
+  }
+
+  if ($nodelist_ref)
+  {
+    # check whether to break up nodelist for better scalability.
+    @nodelist = @$nodelist_ref;
+    my $divide = 500;    # max number of nodes for each division
+    my @sublist;
+    my @newarray;
+    my ($start_index, $end_index, $nodestring);
+
+    my $count = 0;
+    my $times = int(scalar(@nodelist) / $divide);
+    while ($count <= $times)
+    {
+      $start_index = $count * $divide;
+      $end_index   =
+         ((scalar(@nodelist) - 1) < (($count + 1) * $divide - 1))
+          ? (scalar(@nodelist) - 1)
+          : (($count + 1) * $divide - 1);
+      @sublist  = @nodelist[$start_index .. $end_index];
+      @newarray = ();
+      foreach my $node (@sublist)
+      {
+        my @vals = split ',|\s', $node;
+        push @newarray, @vals;
+      }
+      $nodestring = join("','", @newarray);
+
+      # replace the pattern in select string with the broken up node string
+      my $select_new = $select;
+      $select_new =~ s/XXX/$nodestring/;
+      my $cmd = "$rmccmd $options $select_new";
+      my $outref = runcmd($cmd, $exitcode, 1);
+      push @$return_ref, @$outref;
+      $count++;
+    }
+  }
+  else
+  {
+    my $cmd = "$rmccmd $options $select";
+    $return_ref =  runcmd($cmd, $exitcode, 1);
+  }
+
+  # returns a reference to the output array
+  return $return_ref;
+}
 
 #--------------------------------------------------------------------------------
 =head3    queryResources
@@ -47,7 +309,7 @@ sub queryResources
     {
       #special case: run lscondresp because Associations do not have names
       #cant run lsrsrc because Assoctation also does not store names of resources (just handles)
-      my @condresp = NodeUtils->runcmd("LANG=C /usr/bin/lscondresp");
+      my @condresp = runcmd("LANG=C /usr/bin/lscondresp");
       my $class    = $res;
       $class =~ s/^IBM\.//;
       splice @condresp, 0,
@@ -76,7 +338,7 @@ sub queryResources
     }
   }
 
-  my $output = NodeUtils->runrmccmd("lsrsrc-api", "-i -m -n -D ':|:'", $where);
+  my $output = runrmccmd("lsrsrc-api", "-i -m -n -D ':|:'", $where);
   foreach my $line (@$output)
   {
     my @array = split(/:\|:/, $line);
@@ -260,7 +522,7 @@ sub createResources
         foreach my $attr (keys %{$cre{$resource}})
         {
           my $value = $cre{$resource}{$attr};
-          $string .= "${attr}::" . NodeUtils->quote($value) . "::";
+          $string .= "${attr}::" . quote($value) . "::";
         }
         if (($sensorflg == 1) && ($::INSTALL))
         {
@@ -279,7 +541,7 @@ sub createResources
             #my $cmd = "/usr/bin/mkrsrc-api $string";
             #print "running $cmd\n";
             #system($cmd);
-            NodeUtils->runrmccmd("mkrsrc-api", "", $string);
+            runrmccmd("mkrsrc-api", "", $string);
             $string  = "";
             $counter = 0;
           }
@@ -292,12 +554,12 @@ sub createResources
     #my $cmd = "/usr/bin/mkrsrc-api $string";
     #print "running $cmd\n";
     #system($cmd);
-    NodeUtils->runrmccmd("mkrsrc-api", "", $string);
+    runrmccmd("mkrsrc-api", "", $string);
   }
   foreach my $cmd (@assoc_cmds)
   {
     #need to make associations after conds and resps have been made
-    NodeUtils->runcmd("$cmd");
+    runcmd("$cmd");
   }
 }
 
@@ -324,15 +586,15 @@ sub changeResources
         my ($cond, $resp) = split ":_:", $resource;
         if ($cre{$resource}{'ActiveFlag'} == 1)
         {
-           NodeUtils->runcmd("/usr/bin/startcondresp $cond $resp");
+           runcmd("/usr/bin/startcondresp $cond $resp");
           if ($cre{$resource}{'Locked'} == 1)
           {
-             NodeUtils->runcmd( "/usr/bin/startcondresp -L $cond $resp");
+             runcmd( "/usr/bin/startcondresp -L $cond $resp");
           }
         }
         else
         {    #not active
-          NodeUtils->runcmd("/usr/bin/mkcondresp $cond $resp");
+          runcmd("/usr/bin/mkcondresp $cond $resp");
           #no need to lock stopped associations
         }
       }
@@ -345,7 +607,7 @@ sub changeResources
         foreach my $attr (keys %{$cha{$resource}})
         {
           my $value = $cha{$resource}{$attr};
-          $string .= "${attr}::" . NodeUtils->quote($value) . "::";
+          $string .= "${attr}::" . quote($value) . "::";
         }
       }
       if (@unlock)
@@ -362,10 +624,10 @@ sub changeResources
        # here
 
   if ($ustring =~ m/\w+/) {
-    NodeUtils->runrmccmd("chrsrc-api", "", $ustring, undef, \@unlock);
+    runrmccmd("chrsrc-api", "", $ustring, undef, \@unlock);
   }
   if ($string =~ m/\w+/) {
-    NodeUtils->runrmccmd("chrsrc-api", "", $string, undef, \@unlock);
+    runrmccmd("chrsrc-api", "", $string, undef, \@unlock);
   }
 }
 
@@ -383,7 +645,7 @@ sub writeAllFiles
   print "classes=@classes, basedir=$basedir"; 
   foreach my $class (@classes)
   {
-    my $output = NodeUtils->runrmccmd("lsrsrc-api", "-i", "-s ${class}::::Name");
+    my $output = runrmccmd("lsrsrc-api", "-i", "-s ${class}::::Name");
     foreach my $line (@$output)
     {
       &writeFile("${class}::$line", $basedir);
@@ -418,13 +680,13 @@ sub writeFile
   my $file = "$basedir/$class/$resourcefilename.pm";
   my $where  = qq/"Name IN ('XXX')"/;
   my $string = " -s ${class}::${where}::*p0x0002";
-  my $output =  NodeUtils->runrmccmd("lsrsrc-api", "-i -n -D ':|:'",
+  my $output =  runrmccmd("lsrsrc-api", "-i -n -D ':|:'",
                          $string, undef, $resource);
   $string = " -s ${class}::${where}::*p0x0008";
-  my $optional = NodeUtils->runrmccmd("lsrsrc-api", "-i -n -D ':|:'",
+  my $optional = runrmccmd("lsrsrc-api", "-i -n -D ':|:'",
                            $string, undef, $resource);
 
-  #my @output =  NodeUtils->runcmd("/usr/bin/lsrsrc -s $where $class");
+  #my @output =  runcmd("/usr/bin/lsrsrc -s $where $class");
   #uses lsrsrc instead of lsrsrc-api because format is almost right (just needs a few mods)
 
   my $fh;
@@ -530,7 +792,7 @@ if (
 }
 
 if ($::HELP) { &usage; exit; }
-if (NodeUtils->isHMC() && ($ENV{'DC_ENVIRONMENT'} ne 1))
+if (isHMC() && ($ENV{'DC_ENVIRONMENT'} ne 1))
 {
   print "mkresources is not supported on HMC.\n";
 }

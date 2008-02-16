@@ -9,11 +9,11 @@
         checks for errors. 
 =cut
 #------------------------------------------------------------------------------
+
 BEGIN
 {
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
-use lib "$::XCATROOT/lib/perl/xCAT_monitoring/rmc";
 
 use strict;
 use locale;
@@ -21,7 +21,174 @@ use locale;
 use Getopt::Std;
 use IPC::SysV qw(IPC_STAT S_IRWXU IPC_PRIVATE IPC_CREAT S_IRUSR S_IWUSR );
 use IPC::Msg;
-use NodeUtils;
+
+#--------------------------------------------------------------------------------
+=head3    runcmd
+    Run the given cmd and return the output in an array (already chopped).  Alternatively,
+    if this function is used in a scalar context, the output is joined into a single string
+    with the newlines separating the lines.  
+    Arguments:
+        command, exitcode and reference to output
+    Returns:
+        see below
+    Error:
+        Normally, if there is an error running the cmd, it will display the error msg
+        and exit with the cmds exit code, unless exitcode is given one of the
+        following values:
+             0:     display error msg, DO NOT exit on error, but set
+                $::RUNCMD_RC to the exit code.
+            -1:     DO NOT display error msg and DO NOT exit on error, but set
+                $::RUNCMD_RC to the exit code.
+            -2:    DO the default behavior (display error msg and exit with cmds
+                exit code.
+        number > 0:    Display error msg and exit with the given code
+    Example:
+        my $outref =  runcmd($cmd, -2, 1);     
+    Comments:
+        If refoutput is true, then the output will be returned as a reference to
+        an array for efficiency.
+=cut
+#--------------------------------------------------------------------------------
+sub runcmd
+{
+  my ($cmd, $exitcode, $refoutput) = @_;
+  $::RUNCMD_RC = 0;
+  if (!$::NO_STDERR_REDIRECT) { 
+    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
+  }
+  my $outref = [];
+  @$outref = `$cmd`;
+  if ($?)
+  {
+    $::RUNCMD_RC = $? >> 8;
+    my $displayerror = 1;
+    my $rc;
+    if (defined($exitcode) && length($exitcode) && $exitcode != -2)
+    {
+      if ($exitcode > 0)
+      {
+	$rc = $exitcode;
+      }    # if not zero, exit with specified code
+      elsif ($exitcode <= 0)
+      {
+	$rc = '';    # if zero or negative, do not exit
+	if ($exitcode < 0) { $displayerror = 0; }
+      }
+    }
+    else
+    {
+      $rc = $::RUNCMD_RC;
+    }    # if exitcode not specified, use cmd exit code
+    if ($displayerror)
+    {
+      my $errmsg = '';
+      if (($^O =~ /^linux/i) && $::RUNCMD_RC == 139)
+      {
+        $errmsg = "Segmentation fault  $errmsg";
+      }
+      else
+      {
+        # The error msgs from the -api cmds are pretty messy.  Clean them up a little.
+        filterRmcApiOutput($cmd, $outref);
+        $errmsg = join('', @$outref);
+        chomp $errmsg;
+      }
+      print "Exit code $::RUNCMD_RC from command: $cmd\nError message from cmd: $errmsg\n"
+    }
+  }
+  if ($refoutput)
+  {
+    chomp(@$outref);
+    return $outref;
+  }
+  elsif (wantarray)
+  {
+    chomp(@$outref);
+    return @$outref;
+  }
+  else
+  {
+    my $line = join('', @$outref);
+    chomp $line;
+    return $line;
+  }
+}
+
+#--------------------------------------------------------------------------------
+=head3    filterRmcApiOutput
+    filter RMC Api Output
+    Arguments:
+        RMC command
+        Output reference
+    Returns:
+        none
+    Globals:
+        none
+    Error:
+        none
+    Example:
+          filterRmcApiOutput($cmd, $outref);
+    Comments:
+        The error msgs from the RPM -api cmds are pretty messy.
+        This routine cleans them up a little bit.
+=cut
+#--------------------------------------------------------------------------------
+sub filterRmcApiOutput
+{
+  my ($cmd, $outref) = @_;
+  if ($::VERBOSE || !($cmd =~ m|^/usr/bin/\S+-api |))  {
+    return;
+  }    # give as much info as possible, if verbose
+
+  # Figure out the output delimiter
+  my ($d) = $cmd =~ / -D\s+(\S+)/;
+  if (length($d))  {
+    $d =~ s/^(\'|\")(.*)(\"|\')$/$2/;    # remove any surrounding quotes
+    # escape any chars perl pattern matching would intepret as special chars
+    $d =~ s/([\|\^\*\+\?\.])/\\$1/g;
+  }
+  else
+  {
+    $d = '::';
+  }    # this is the default output delimiter for the -api cmds
+  $$outref[0] =~ s/^ERROR${d}.*${d}.*${d}.*${d}.*${d}//;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  touchFile
+    Arguments: $filename, $donotExit
+    Returns: non zero return code indicates error
+    Example:  touchFile("/var/opt/xcat/touch");
+=cut
+
+#--------------------------------------------------------------------------------
+sub touchFile
+{
+  my ($filename, $donotExit) = @_;
+  my $fh;
+  my $rc = 0;
+  if (!-e $filename)  {   
+    #if the file doesn't exist we need to open and close it
+    open($fh, ">>$filename") or $rc++;
+    if ($rc > 0 && !$donotExit)    {
+      print "Touch of file $filename failed with: $!\n";
+      return $rc;
+    }
+    close($fh) or $rc++;
+  }
+  else  { 
+    #if the file does exist we can just utime it (see the perlfunc man page entry on utime)
+    my $now = time;
+    utime($now, $now, $filename);
+  }
+  if ($rc > 0 && !$donotExit)  {
+      print "Touch of file $filename failed with: $!\n";
+    return $rc;
+  }
+  return 0;
+}
+
 
 #do nothing on Linux when stopping.
 if (($ENV{'SENSOR_MonitorStatus'} eq '2') && ($^O =~ /^linux/i)) {
@@ -48,7 +215,7 @@ if (!-d $vardir) { mkdir($vardir); }
 
 sub isRMrunning{
   my $resMan = $_[0];
-  my @output = NodeUtils->runcmd("LANG=C /usr/bin/lssrc -s $resMan", -1);
+  my @output = runcmd("LANG=C /usr/bin/lssrc -s $resMan", -1);
   if ($::RUNCMD_RC) { return 0; }   # maybe we should try to catch real errors here
   my ($subsys, $group, $pid, $status) = split(' ', $output[1]);
   if (defined($status) && $status eq 'active') { 
@@ -61,16 +228,16 @@ sub isRMrunning{
 if (!-e $runfile){ 
   #first time
   if ($^O =~ /^linux/i) {
-    NodeUtils->runcmd("grep $dirname $syslogconf", -1);
+    runcmd("grep $dirname $syslogconf", -1);
     if ($::RUNCMD_RC == 1) {    #grep did not find dirname
       #update syslog.conf
       if (!-d $vardir) { mkdir($vardir); }
-      NodeUtils->runcmd("/usr/bin/mkfifo $fifo");
-      NodeUtils->runcmd("echo \"$embedinfo\" >> $syslogconf");
+      runcmd("/usr/bin/mkfifo $fifo");
+      runcmd("echo \"$embedinfo\" >> $syslogconf");
       my $cmd = service("syslog", "restart");
-      NodeUtils->runcmd($cmd);
+      runcmd($cmd);
     }
-    NodeUtils->touchFile($runfile);
+    touchFile($runfile);
   }
   elsif ($^O =~ /^aix/i) {
     open(ODM, ">$odmstanza") or die $!;
@@ -79,11 +246,11 @@ errnotify:
       en_pid = 0
       en_name = "xcat_rmc_errlog_sensor"
       en_persistenceflg = 1
-      en_method = "' . "$::XCATROOT/lib/perl/xCAT_monitoring/rmc/errmsgque" . ' sequence = $1 error_id = $2 class = $3 type = $4 alert_flags = $5 res_name = $6 res_type = $7 res_class = $8 label = $9"
+      en_method = "' . "$::XCATROOT/sbin/rmcmon/errmsgque" . ' sequence = $1 error_id = $2 class = $3 type = $4 alert_flags = $5 res_name = $6 res_type = $7 res_class = $8 label = $9"
 ';
     close ODM or die $!;
-    NodeUtils->runcmd("/usr/bin/odmadd $odmstanza");
-    NodeUtils->touchFile($runfile);
+    runcmd("/usr/bin/odmadd $odmstanza");
+    touchFile($runfile);
   }
   else {
     print "unknown platform\n";
@@ -117,7 +284,7 @@ if ($^O =~ /^linux/i) {
       chomp($line);
 
       #print "String=\"$line\"\n";
-      NodeUtils->runcmd(
+      runcmd(
 	"echo \"/usr/bin/refsensor ErrorLogSensor String=\'$line\' 1>/dev/null 2>/dev/null\" | at now",0);
   }
   close PIPE;
@@ -129,7 +296,7 @@ elsif ($^O =~ /^aix/i) {
     # set $ENV{'SENSOR_MonitorStatus'} to 2
     # should not do clean up when IBM.SensorRM is stopped
     if (&isRMrunning("IBM.SensorRM")) {
-      NodeUtils->runcmd("/bin/odmdelete -o errnotify -q \" en_name=xcat_rmc_errlog_sens\"", -1);
+      runcmd("/bin/odmdelete -o errnotify -q \" en_name=xcat_rmc_errlog_sens\"", -1);
       if (-e $runfile) {
         unlink($runfile);
       }
@@ -149,7 +316,7 @@ elsif ($^O =~ /^aix/i) {
       alarm 0;
     };
     if ($@ =~ /alarm/) { close PIPE; exit 0; }
-    NodeUtils->runcmd(
+    runcmd(
       "echo \"/usr/bin/refsensor ErrorLogSensor String=\'$buf\' 1>/dev/null 2>/dev/null\" | at now", 0);
   }
 
@@ -172,10 +339,10 @@ sub verify_atd
 {
   my $cmd;
   $cmd = service("atd", "status");
-  NodeUtils->runcmd($cmd, -1);
+  runcmd($cmd, -1);
   if ($::RUNCMD_RC) {
     $cmd = service("atd", "start");
-    NodeUtils->runcmd($cmd, -1);
+    runcmd($cmd, -1);
     if ($::RUNCMD_RC)   {
       print "Warning: atd has failed to start!\n";
     }
@@ -209,7 +376,7 @@ sub service
   my $SVCDIR = "/etc/init.d";
 
   #  On SLES, nfs server script is "nfsserver".
-  if (((-e "/etc/SuSE-release") || NodeUtils->isHMC()) && $service eq "nfs")  {
+  if (((-e "/etc/SuSE-release") || isHMC()) && $service eq "nfs")  {
     $service = "nfsserver";
   }
   if (-f $SVCCLI)  {
@@ -219,6 +386,13 @@ sub service
     $cmd = "$SVCDIR/$service $svcarg";
   }
   return $cmd;
+}
+
+sub isHMC
+{
+  my $hmcfile = "/opt/hsc/data/hmcType.properties";
+  if (-e $hmcfile) { return 1; }
+  else { return 0; }
 }
 
 exit 0;

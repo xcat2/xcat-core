@@ -7,11 +7,12 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 use xCAT::NodeRange;
+use Sys::Hostname;
 use Socket;
 use xCAT::Utils;
 use xCAT::GlobalDef;
 
-print "xCAT_monitoring::rmcmon loaded\n";
+#print "xCAT_monitoring::rmcmon loaded\n";
 
 1;
 #-------------------------------------------------------------------------------
@@ -34,9 +35,9 @@ print "xCAT_monitoring::rmcmon loaded\n";
       in the xCAT cluster.
     Arguments:
       monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype] arrays  
+         and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}   
+           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
     Returns:
       (return code, message)      
 =cut
@@ -141,9 +142,9 @@ sub supportNodeStatusMon {
 
     Arguments:
       monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype] arrays  
+         and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}   
+           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
     Returns:
         (return code, message)
 
@@ -178,9 +179,9 @@ sub stopNodeStatusMon {
       This function gdds the nodes into the RMC cluster.
     Arguments:
       nodes --nodes to be added. It is a  hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype] arrays  monitored 
+        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
         by the server. So the format is:
-          {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...} 
+          {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
       verbose -- verbose mode. 1 for yes, 0 for no.
     Returns:
        none
@@ -193,16 +194,23 @@ sub addNodes {
   }
   my $VERBOSE=shift;
 
-  if ($VERBOSE) { print "rmcmon::addNodes called $noderef=$noderef\n"};
+  #if ($VERBOSE) { print "rmcmon::addNodes called $noderef=$noderef\n"};
+
+  my $ms_host_name=hostname();
+  chomp($ms_host_name);
 
   foreach (keys(%$noderef)) {
     my $server=$_;
-    if ($VERBOSE) { print "  monitoring server: $server\n";}
+    #if ($VERBOSE) { print "  monitoring server: $server\n";}
+
+    if ($server ne $ms_host_name) {
+      next; #only handle the nodes which has this node as the monitor server
+    } 
 
     #check if rsct is installed and running
     if (! -e "/usr/bin/lsrsrc") {
-      print "RSCT is not is not installed.\n";
-      next;
+      print "RSCT is not installed.\n";
+      return 1;
     }
     my $result=`/usr/bin/lssrc -s ctrmc`;
     if ($result !~ /active/) {
@@ -210,46 +218,61 @@ sub addNodes {
       $result=`startsrc -s ctrmc`;
       if ($?) {
         print "rmc deamon cannot be started\n";
-        next;
+        return 1;
       }
     }
 
     #enable remote client connection
     `/usr/bin/rmcctrl -p`;
 
-    #get ms node id, hostname, ip etc
-    #TODO: currently one server which is where xcatd is. later changes to use server for hierachy
-    my $ms_node_id=`head -n 1 /var/ct/cfg/ct_node_id`;
-    chomp($ms_node_id);
-    my $ms_host_name=`hostname`;
-    chomp($ms_host_name);
-    my ($ms_name,$ms_aliases,$ms_addrtype,$ms_length,@ms_addrs) = gethostbyname($ms_host_name);
-    chomp($ms_name);
-
-    my $ms_ipaddresses="{";
-    foreach (@ms_addrs) {
-      $ms_ipaddresses .= '"' .inet_ntoa($_) . '",';
-    }
-    chop($ms_ipaddresses);
-    $ms_ipaddresses .= "}";
+    #ms node id, hostname, ip defs
+    my $ms_node_id;
+    my $ms_name,$ms_aliases,$ms_addrtype,$ms_length,@ms_addrs;
+    my $ms_ipaddresses;
 
     #if ($VERBOSE) {
     #  print "    ms_host_name=$ms_host_name, ms_nam=$ms_name, ms_aliases=$ms_aliases, ms_ip_addr=$ms_ipaddresses, ms_node_id=$ms_node_id\n";
     #}
 
     my $mon_nodes=$noderef->{$_};
+    my $first_time=1;
     foreach(@$mon_nodes) {
       my $node_pair=$_;
       my $node=$node_pair->[0];
       my $nodetype=$node_pair->[1]; 
       if ((!$nodetype) || ($nodetype =~ /$::NODETYPE_OSI/)) {
         #RMC deals only with osi type. empty type is treated as osi type
+        #check if the node has already defined
+        $result=`lsrsrc-api -s IBM.MngNode::"Name=\\\"\"$node\\\"\"" 2>&1`;
+        if ($? == 0) { #resource has already defined
+	  next;
+        }
 
-        #TODO: check if the node is installed and ready for configuring monitor
+        #TODO: check all nodes at the same time or use the 'status' value in the node
         `fping -a $node 2> /dev/null`;
         if ($?) {
 	  print "Cannot add the node $node into the RMC domian. The node is inactive.\n";
 	  next;
+        }
+
+        if ($first_time) {
+	  $first_time=0;
+
+          #enable remote client connection
+          `/usr/bin/rmcctrl -p`;
+
+          #get ms node id, hostname, ip etc
+          $ms_node_id=`head -n 1 /var/ct/cfg/ct_node_id`;
+          chomp($ms_node_id);
+          ($ms_name,$ms_aliases,$ms_addrtype,$ms_length,@ms_addrs) = gethostbyname($ms_host_name);
+          chomp($ms_name);
+
+          $ms_ipaddresses="{";
+          foreach (@ms_addrs) {
+            $ms_ipaddresses .= '"' .inet_ntoa($_) . '",';
+          }
+          chop($ms_ipaddresses);
+          $ms_ipaddresses .= "}";
         }
 
         #get info for the node
@@ -269,18 +292,22 @@ sub addNodes {
         #}
 
         # define resource in IBM.MngNode class on server
-        $result=`mkrsrc-api IBM.MngNode::Name::"$node"::KeyToken::"$node"::IPAddresses::"$mn_ipaddresses"::NodeID::0x$mn_node_id`;
-        print "define resource in IBM.MngNode class result=$result\n"; 
+        $result=`mkrsrc-api IBM.MngNode::Name::"$node"::KeyToken::"$node"::IPAddresses::"$mn_ipaddresses"::NodeID::0x$mn_node_id 2>&1`;
+        if ($?) {
+          print "define resource in IBM.MngNode class result=$result\n"; 
+        }
 
         #copy the configuration script and run it locally
-        $result=`scp $::XCATROOT/lib/perl/xCAT_monitoring/rmc/configrmcnode $node:/tmp`;
-        if ($resul>0) {
+        $result=`scp $::XCATROOT/sbin/rmcmon/configrmcnode $node:/tmp 2>&1`;
+        if ($?) {
           print "rmcmon:addNodes: cannot copy the file configrmcnode to node $node\n";
           next;
         }
 
-        $result=`psh $node /tmp/configrmcnode -a $node $ms_host_name $ms_ipaddresses 0x$ms_node_id`;
-        print "$result\n";
+        $result=`psh $node /tmp/configrmcnode -a $node $ms_host_name $ms_ipaddresses 0x$ms_node_id 2>&1`;
+        if ($?) {
+          print "$result\n";
+        }
       } 
     }
   }
@@ -294,9 +321,9 @@ sub addNodes {
       This function removes the nodes from the RMC cluster.
     Arguments:
       nodes --nodes to be removed. It is a hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype] arrays  monitored 
+        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
         by the server. So the format is:
-        {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...} 
+        {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
       verbose -- verbose mode. 1 for yes, 0 for no.
     Returns:
        none
@@ -309,48 +336,53 @@ sub removeNodes {
   }
   my $VERBOSE=shift;
 
-  #if ($VERBOSE) { print "rmcmon::removeNodes called $noderef=$noderef\n"};
+  #if ($VERBOSE) { print "rmcmon::removeNodes called\n"};
 
+  my $local_host_name=hostname();
+  chomp($local_host_name);
   foreach (keys(%$noderef)) {
     $server=$_;
-    #print "  monitoring server: $server\n";
+    #print "  monitoring server: $server local_host_name=$local_host_name\n";
+    #only handle the nodes which has this node as the monitor server
+    if ($server ne $local_host_name) {next; } 
 
     my $mon_nodes=$noderef->{$_};
     foreach(@$mon_nodes) {
       my $node_pair=$_;
       my $node=$node_pair->[0];
       my $nodetype=$node_pair->[1]; 
-      #if ($VERBOSE) { print "    node=$node, nodetype=$nodetype\n"; }
       if ((!$nodetype) || ($nodetype =~ /$::NODETYPE_OSI/)) {
         #RMC deals only with osi type. empty type is treated as osi type
 
-        #TODO: check if the node is installed and ready for configuring monitor
-        `fping -a $node 2> /dev/null`;
-        if ($?) {
-	  print "Cannot remove node $node from the RMC domian. The node is inactive.\n";
+
+        #remove resource in IBM.MngNode class on server
+        my $result=`rmrsrc-api -s IBM.MngNode::"Name=\\\"\"$node\\\"\"" 2>&1`;
+	if ($?) { print "remove resource in IBM.MngNode class result=$result\n"; }
+        if ($result =~ m/2612-023/) { #resource not found
 	  next;
         }
 
-        #remove resource in IBM.MngNode class on server
-        my $result=`rmrsrc-api -s IBM.MngNode::"Name=\\\"\"$node\\\"\""`;
-	if ($VERBOSE) { print "remove resource in IBM.MngNode class result=$result\n"; }
+        # TODO: check all the nodes together or use the 'status' value
+        #if the node is inactive, forget it
+        `fping -a $node 2> /dev/null`;
+        if ($?) {
+	  next;
+        }
 
         #copy the configuration script and run it locally
-        $result=`scp $::XCATROOT/lib/perl/xCAT_monitoring/rmc/configrmcnode $node:/tmp`;
-        if ($resul>0) {
+        $result=`scp $::XCATROOT/sbin/rmcmon/configrmcnode $node:/tmp 2>&1 `;
+        if ($?) {
           print "rmcmon:removeNodes: cannot copy the file configrmcnode to node $node\n";
           next;
         }
 
-        $result=`psh --nonodecheck $node /tmp/configrmcnode -d $node`;
-        print "$result\n";
+        $result=`psh --nonodecheck $node /tmp/configrmcnode -d $node 2>&1`;
+        if ($?) {
+          print "$result\n";
+        }
       }           
     }
   }
 
-
   return 0;
-
 }
-
-
