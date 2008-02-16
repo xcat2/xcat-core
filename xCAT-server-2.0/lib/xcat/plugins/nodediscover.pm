@@ -79,7 +79,8 @@ sub gethosttag {
 
 sub handled_commands {
   return {
-    discovered => 'chain:ondiscover',
+    #discovered => 'chain:ondiscover',
+    discovered => 'nodediscover',
   };
 }
 sub process_request {
