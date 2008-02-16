@@ -7,7 +7,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use xCAT::GlobalDef;
 use xCAT::Table;
-use xCAT_monitoring::monitorctrl;
+use xCAT_monitoring::xcatmon;
 #################################################################
 # This script is used as a cron job by the xCAT monitoring plug-in
 # to monitor the node status. To activate it, simply do
@@ -18,7 +18,7 @@ use xCAT_monitoring::monitorctrl;
 #printf "%2d-%02d-%04d %02d:%02d:%02d: xcatnodemon started.\n", $mon+1,$mday,$year+1900,$hour,$min,$sec;
 
 #get saved node status from the nodelist table 
-my %nodes_status_old=xCAT_monitoring::monitorctrl::getNodeStatus();
+my %nodes_status_old=xCAT_monitoring::xcatmon::getMonNodesStatus();
 
 #get a list of nodes
 my $tmp_node_active=$nodes_status_old{$::STATUS_ACTIVE};
@@ -56,7 +56,7 @@ if (@changed_inactive>0) {
 
 #only set the node status for the changed ones
 if (keys(%node_status) > 0) {
-  xCAT_monitoring::monitorctrl::processNodeStatusChanges(\%node_status);
+  xCAT_monitoring::xcatmon::processNodeStatusChanges(\%node_status);
 }
 
 #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);

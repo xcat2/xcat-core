@@ -6,11 +6,10 @@ BEGIN
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
-#use xCAT::NodeRange;
-#use Socket;
-#use xCAT::Utils;
-#use xCAT::GlobalDef;
 use xCAT::Utils;
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
+use Sys::Hostname;
 
 
 1;
@@ -29,9 +28,9 @@ use xCAT::Utils;
       when xcatd starts.  
     Arguments:
       monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype] arrays  
+         and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}   
+           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
     Returns:
       (return code, message)      
 =cut
@@ -87,9 +86,9 @@ sub supportNodeStatusMon {
     to xCAT.  
     Arguments:
       monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype] arrays  
+         and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...}   
+           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
     Returns:
         (return code, message)
 
@@ -132,9 +131,9 @@ sub stopNodeStatusMon {
       to the xCAT cluster. It should add the nodes into the product for monitoring.
     Arguments:
       nodes --nodes to be added. It is a  hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype] arrays  monitored 
+        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
         by the server. So the format is:
-          {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...} 
+          {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
     Returns:
        none
 =cut
@@ -143,7 +142,6 @@ sub addNodes {
 
   #print "xcatmon:addNodes called\n";
  
-  #TODO: include the nodes into the product for monitoring. 
   return;
 }
 
@@ -164,8 +162,66 @@ sub removeNodes {
 
   #print "xcatmon:removeNodes called\n";
 
-  #TODO: remove the nodes from the product for monitoring.
   return;
 }
 
 
+#--------------------------------------------------------------------------------
+=head3    getMonNodesStatus
+      This function goes to the xCAT nodelist table to retrieve the saved node status
+      for all the node that are managed by local nodes.
+    Arguments:
+       none.
+    Returns:
+       a hash that has the node status. The format is: 
+          {active=>[node1, node3,...], unreachable=>[node4, node2...], unknown=>[node8, node101...]}
+=cut
+#--------------------------------------------------------------------------------
+sub getMonNodesStatus {
+  %status=();
+  my @inactive_nodes=();
+  my @active_nodes=();
+  my @unknown_nodes=();
+
+  my $monservers=xCAT_monitoring::monitorctrl->getMonHierarchy();
+
+  my $host=hostname();
+  my $monnodes=$monservers->{$host};
+  if (($monnodes) && (@$monnodes >0)) {
+    foreach(@$monnodes) {
+      my $node=$_->[0];
+      my $status=$_->[2];
+      if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
+      elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
+      else { push(@unknown_nodes, $node);}
+    }
+  }
+
+  $status{$::STATUS_ACTIVE}=\@active_nodes;
+  $status{$::STATUS_INACTIVE}=\@inactive_nodes;
+  $status{unknown}=\@unknown_nodes;
+
+  return %status;
+}
+
+
+#--------------------------------------------------------------------------------
+=head3    processNodeStatusChanges
+      This function will update the status column of the
+      nodelist table with the new node status.
+    Arguments:
+       status -- a hash pointer of the node status. A key is a status string. The value is 
+                an array pointer of nodes that have the same status.
+                for example: {active=>["node1", "node1"], inactive=>["node5","node100"]}
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processNodeStatusChanges {
+  my $temp=shift;
+  if ($temp =~ /xCAT_plugin::xcatmon/) {
+    $temp=shift;
+  }
+  return xCAT_monitoring::monitorctrl->processNodeStatusChanges($temp);
+}
