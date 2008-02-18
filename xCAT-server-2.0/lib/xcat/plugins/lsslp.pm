@@ -87,6 +87,7 @@ sub handled_commands {
 sub send_msg {
 
     my $request = shift;
+    my $ecode   = shift;
     my %output;
 
     #################################################
@@ -95,6 +96,7 @@ sub send_msg {
     if ( exists( $request->{pipe} )) {
         my $out = $request->{pipe};
 
+        $output{errorcode} = $ecode;
         $output{data} = \@_;
         print $out freeze( [\%output] );
         print $out "\nENDOFFREEZE6sK4ci\n";
@@ -105,6 +107,7 @@ sub send_msg {
     elsif ( exists( $request->{callback} )) {
         my $callback = $request->{callback};
 
+        $output{errorcode} = $ecode;
         $output{data} = \@_;
         $callback->( \%output );
     }
@@ -147,7 +150,7 @@ sub parse_args {
           "    -w   writes output to xCat database.",
           "    -x   xml formatted output.",
           "    -z   stanza formatted output." );
-        send_msg( $request, @msg );
+        send_msg( $request, 1, @msg );
     };
     #############################################
     # No command-line arguments - use defaults
@@ -182,7 +185,7 @@ sub parse_args {
     # Option -v for version
     #############################################
     if ( exists( $opt{v} )) {
-        send_msg( $request, \@VERSION );
+        send_msg( $request, 0, \@VERSION );
         return(1);
     }
     #############################################
@@ -376,7 +379,7 @@ sub trace {
     if ( $verbose ) {
         my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
         my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
-        send_msg( $request, $msg );
+        send_msg( $request, 0, $msg );
     }
 } 
 
@@ -403,7 +406,7 @@ sub fork_cmd {
         ###################################
         # Fork error 
         ###################################
-        send_msg( $request, "Fork error: $!" );
+        send_msg( $request, 1, "Fork error: $!" );
         return undef;
     }
     elsif ( $pid == 0 ) {
@@ -523,7 +526,7 @@ sub runslp {
             # Serialize broadcasts out each adapter 
             ###########################################
             if ( !open( OUTPUT, "$cmd 2>&1 |")) {
-                send_msg( $request, "Fork error: $!" );
+                send_msg( $request, 1, "Fork error: $!" );
                 return undef;
             }
             ###############################
@@ -621,7 +624,7 @@ sub format_output {
     # No responses 
     ###########################################
     if (( keys %$outhash ) == 0 ){
-        send_msg( $request, "No responses" );
+        send_msg( $request, 0, "No responses" );
         return;   
     }
     ###########################################
@@ -637,21 +640,21 @@ sub format_output {
         foreach ( keys %$outhash ) {
             $result .= "@{ $outhash->{$_}}[5]\n";
         }
-        send_msg( $request, $result );
+        send_msg( $request, 0, $result );
         return;
     }
     ###########################################
     # -x flag for xml format
     ###########################################
     if ( exists( $opt{x} )) {
-        send_msg( $request, format_xml( $outhash ));
+        send_msg( $request, 0, format_xml( $outhash ));
         return;
     }
     ###########################################
     # -z flag for stanza format
     ###########################################
     if ( exists( $opt{z} )) {
-        send_msg( $request, format_stanza( $outhash ));
+        send_msg( $request, 0, format_stanza( $outhash ));
         return;
     }
 
@@ -681,7 +684,7 @@ sub format_output {
         }
         $result .= "\n";
     }
-    send_msg( $request, $result );
+    send_msg( $request, 0, $result );
 }
 
 
@@ -1117,7 +1120,7 @@ sub slp_query {
     );
 
     if ( !-x $slpcmd ) {
-        send_msg( $request, "Command not installed: $slpcmd" );
+        send_msg( $request, 1, "Command not installed: $slpcmd" );
         return(1);
     }
     #############################################
@@ -1143,7 +1146,7 @@ sub slp_query {
     my $Rc = shift(@$result);
 
     if ( $Rc ) {
-        send_msg( $request, @$result[0] );
+        send_msg( $request, 1, @$result[0] );
         return(1);
     }
     if ( $verbose ) {
@@ -1265,5 +1268,6 @@ sub process_request {
 
 
 1;
+
 
 
