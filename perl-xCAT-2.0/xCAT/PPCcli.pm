@@ -677,6 +677,14 @@ sub lshmc {
     my $vpd = join( ",", @$result );
 
     #####################################
+    # Power4 (and below) HMCs unsupported
+    #####################################
+    if ( $vpd =~ /\*RM V(\d+)/ ) {
+        if ( $1 <= 5 ) {
+            return( [RC_ERROR,"Command not supported on V$1 HMC"] );
+        }
+    }
+    #####################################
     # Type-Model may be in the formats:
     #  "eserver xSeries 336 -[7310CR3]-"
     #  "7310-CR4"
