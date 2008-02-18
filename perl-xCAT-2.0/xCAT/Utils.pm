@@ -1352,7 +1352,7 @@ sub isServiceReq
     my ($class, $nodename, $servicename) = @_;
 
     # check if service is already setup
-    `grep /etc/xCATSN $servicename`;
+    `grep $servicename /etc/xCATSN`;
     if ($? == 0)
     {    # service is already setup
         return 0;
