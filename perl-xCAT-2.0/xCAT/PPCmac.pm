@@ -201,7 +201,7 @@ sub ivm_getmacs {
     #######################################
     # Add command options 
     #######################################
-    $cmd.= " -t ent -f -M -n \"$name\" \"$profile\" \"$fsp\" $id $hcp $fname";
+    $cmd.= " -t ent -f -M -A -n \"$name\" \"$profile\" \"$fsp\" $id $hcp $fname";
 
     #######################################
     # Execute command 
