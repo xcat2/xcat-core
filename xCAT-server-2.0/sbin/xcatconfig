@@ -435,10 +435,10 @@ if ( ( ! -r "$::root/.xcat/client-key.pem") || $::FORCE){
 }
 
 #
-# if this is a re-config then stop the xcatd processes
+# if there are xcatd processes then stop them
 #
-if ($::FORCE) {
-	my @xpids = xCAT::Utils->runcmd("ps -ef\|grep \"xcatd\"", 0);
+my @xpids = xCAT::Utils->runcmd("ps -ef\|grep \"xcatd\"", 0);
+if ($#xpids  >= 1) { # will have at least "0" for the grep
 	xCAT::MsgUtils->message('I', "Stopping xcatd processes....\n");
 	foreach $ps (@xpids)
 	{
