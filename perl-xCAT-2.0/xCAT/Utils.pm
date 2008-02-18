@@ -963,7 +963,7 @@ sub cpSSHFiles
 #-------------------------------------------------------------------------------
 
 =head3    isServiceNode
-	checks for the /etc/xCATSN.cfg file 
+	checks for the /etc/xCATSN file 
     
     Arguments:
         none
@@ -985,46 +985,66 @@ sub cpSSHFiles
 sub isServiceNode
 {
     my $value;
-    if (-e "/etc/xCATSN.cfg")
+    if (-e "/etc/xCATSN")
     {
         return 1;
-    } else {
+    }
+    else
+    {
         return 0;
-	}
-}
-
-sub my_ip_facing {
-   my $peer = shift;
-   if (@_) {
-      $peer = shift;
-   }
-   my $noden = unpack("N", inet_aton($peer));
-   my @nets = split /\n/, `/sbin/ip addr`;
-   foreach (@nets)
-   {
-       my @elems = split /\s+/;
-       unless (/^\s*inet\s/)
-       {
-           next;
-       }
-       (my $curnet, my $maskbits) = split /\//, $elems[2];
-       my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
-       my $curn = unpack("N", inet_aton($curnet));
-       if (($noden & $curmask) == ($curn & $curmask))
-       {
-           return $curnet;
-       }
-   }
-   return undef;
+    }
 }
 
 #-------------------------------------------------------------------------------
 
-=head3 nodeonmynet 
-    returns 
+=head3   my_ip_facing    
+    
     Arguments:
         none
     Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_ip_facing
+{
+    my $peer = shift;
+    if (@_)
+    {
+        $peer = shift;
+    }
+    my $noden = unpack("N", inet_aton($peer));
+    my @nets = split /\n/, `/sbin/ip addr`;
+    foreach (@nets)
+    {
+        my @elems = split /\s+/;
+        unless (/^\s*inet\s/)
+        {
+            next;
+        }
+        (my $curnet, my $maskbits) = split /\//, $elems[2];
+        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
+        my $curn = unpack("N", inet_aton($curnet));
+        if (($noden & $curmask) == ($curn & $curmask))
+        {
+            return $curnet;
+        }
+    }
+    return undef;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 nodeonmynet - checks to see if node is on the network 
+    Arguments:
+       Node name 
+    Returns:  1 if node is on the network
     Globals:
         none
     Error:
@@ -1046,7 +1066,7 @@ sub nodeonmynet
     my $nodeip = inet_ntoa(inet_aton($nodetocheck));
     unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
     {
-        return 0;    #Not supporting IYv6 here IPV6TODO
+        return 0;    #Not supporting IPv6 here IPV6TODO
     }
     my $noden = unpack("N", inet_aton($nodeip));
     my @nets = split /\n/, `/sbin/ip route`;
@@ -1071,9 +1091,9 @@ sub nodeonmynet
 #-------------------------------------------------------------------------------
 
 =head3   thishostisnot 
-    returns 
+    returns  0 if host is not the same
     Arguments:
-        none
+       hostname 
     Returns:
     Globals:
         none
@@ -1206,6 +1226,143 @@ sub GetNodeOSARCH
     }
 
     return $et;
+
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 exportDBConfig 
+  
+  Reads the /etc/sysconfig/xcat file for the DB configuration and exports it
+  in $XCATCFG
+=cut
+
+#-----------------------------------------------------------------------------
+sub exportDBConfig
+{
+
+    # export the xcat database configuration
+    my $configfile = "/etc/sysconfig/xcat";
+    if (!($ENV{'XCATCFG'}))
+    {
+        if (-e ($configfile))
+        {
+            open(CFGFILE, "<$configfile")
+              or xCAT::MsgUtils->message('S',
+                                   "Cannot open $configfile for DB access. \n");
+            foreach my $line (<CFGFILE>)
+            {
+                if (grep /XCATCFG/, $line)
+                {
+                    my @cfg  = split /XCATCFG=/, $line;
+                    my @cfg2 = split /'/,        $cfg[1];
+                    chomp $cfg2[1];
+                    $ENV{'XCATCFG'} = $cfg2[1];
+                    close CFGFILE;
+                    last;
+                }
+            }
+            if (!($ENV{'XCATCFG'}))
+            {    # no db setup
+                xCAT::MsgUtils->message('SE',
+                      "/etc/sysconfig/xcat does not contain XCATCFG setup. \n");
+                return 1;
+            }
+
+        }
+    }
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 readSNInfo 
+  
+  Read resource, NFS server, Master node, OS an ARCH from the database
+  for the service node
+
+  Input: service nodename
+  Output: Masternode, OS and ARCH
+=cut
+
+#-----------------------------------------------------------------------------
+sub readSNInfo
+{
+    my ($class, $nodename) = @_;
+    my $rc = 0;
+    my $et;
+    my $masternode;
+    my $os;
+    my $arch;
+    $rc = xCAT::Utils->exportDBConfig();
+    if ($rc == 0)
+    {
+
+        if ($nodename)
+        {
+            $masternode = xCAT::Utils->GetMasterNodeName($nodename);
+            if (!($masternode))
+            {
+                xCAT::MsgUtils->message('S',
+                                       "Could not get Master for node $node\n");
+                return 1;
+            }
+
+            $et = xCAT::Utils->GetNodeOSARCH($nodename);
+            if (!($et->{'os'} || $et->{'arch'}))
+            {
+                xCAT::MsgUtils->message('S',
+                                        "Could not OS/ARCH for node $node\n");
+                return 1;
+            }
+        }
+        $et->{'master'} = $masternode;
+        return $et;
+    }
+    return $rc;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 isServiceReq 
+
+  Checks to see if the input service is already setup on the node by
+  checking the /etc/xCATSN file for the service name. This is put in the file
+  by the service.pm plugin (e.g tftp.pm,dns.pm,...)
+  It then:
+  Checks the database to see if the input Service should be setup on the
+  input service node
+  
+  Input: service nodename, service
+  Output: 
+        1 - setup service 
+        0 - do not setupservice 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::Utils->isServiceReq()) { blah; }
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub isServiceReq
+{
+    my ($class, $nodename, $servicename) = @_;
+
+    # check if service is already setup
+    `grep /etc/xCATSN $servicename`;
+    if ($? == 0)
+    {    # service is already setup
+        return 0;
+    }
+    else
+    {    # check the db to see if this service node is suppose to
+            # have this service
+
+        return 1;
+    }
 
 }
 1;
