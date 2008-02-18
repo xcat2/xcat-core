@@ -44,9 +44,10 @@ my %errmsg = (
 ##########################################################################
 # Invokes the callback with the specified message                    
 ##########################################################################
-sub send_emsg {
+sub send_msg {
 
     my $request = shift;
+    my $ecode   = shift;
     my %output;
 
     #################################################
@@ -55,7 +56,7 @@ sub send_emsg {
     if ( exists( $request->{pipe} )) {
         my $out = $request->{pipe};
 
-        $output{errorcode} = 1;
+        $output{errorcode} = $ecode;
         $output{data} = \@_;
         print $out freeze( [\%output] );
         print $out "\nENDOFFREEZE6sK4ci\n";
@@ -66,7 +67,7 @@ sub send_emsg {
     elsif ( exists( $request->{callback} )) {
         my $callback = $request->{callback};
 
-        $output{errorcode} = 1;
+        $output{errorcode} = $ecode;
         $output{data} = \@_;
         $callback->( \%output );
     }
@@ -213,7 +214,7 @@ sub preprocess_nodes {
         my $db  = xCAT::Table->new( $tab );
 
         if ( !defined( $db )) {
-            send_emsg( $request, sprintf( $errmsg{DB_UNDEF}, $tab )); 
+            send_msg( $request, 1, sprintf( $errmsg{DB_UNDEF}, $tab )); 
             return undef;
         } 
         ####################################
@@ -224,7 +225,7 @@ sub preprocess_nodes {
 
             if ( !defined( $ent )) {
                 my $msg = sprintf( "$_: $errmsg{NODE_UNDEF}", $tab );
-                send_emsg( $request, $msg );
+                send_msg( $request, 1, $msg );
                 next;
             }
             ################################
@@ -242,7 +243,7 @@ sub preprocess_nodes {
         $tabs{$_} = xCAT::Table->new($_);
 
         if ( !exists( $tabs{$_} )) { 
-            send_emsg( $request, sprintf( $errmsg{DB_UNDEF}, $_ )); 
+            send_msg( $request, 1, sprintf( $errmsg{DB_UNDEF}, $_ )); 
             return undef;
         }
     }
@@ -256,7 +257,7 @@ sub preprocess_nodes {
         # Error locating node attributes
         ######################################
         if ( ref($d) ne 'ARRAY' ) {
-            send_emsg( $request,"$node: $d");
+            send_msg( $request, 1, "$node: $d");
             next;
         }
         ######################################
@@ -481,7 +482,7 @@ sub fork_cmd {
         ###################################
         # Fork error
         ###################################
-        send_emsg( $request, "Fork error: $!" );
+        send_msg( $request, 1, "Fork error: $!" );
         return undef;
     }
     elsif ( $pid == 0 ) {
@@ -529,7 +530,7 @@ sub invoke_cmd {
         # Error connecting 
         ####################################
         if ( ref($exp[0]) ne "LWP::UserAgent" ) {
-            send_emsg( $request, $exp[0] );
+            send_msg( $request, 1, $exp[0] );
             return;
         }
         my $result = xCAT::PPCfsp::handler( $host, $request, \@exp );
@@ -568,7 +569,7 @@ sub invoke_cmd {
     # Error connecting 
     ########################################
     if ( ref($exp[0]) ne "Expect" ) {
-        send_emsg( $request, $exp[0] );
+        send_msg( $request, 1, $exp[0] );
         return;
     }
     ########################################
@@ -591,7 +592,7 @@ sub invoke_cmd {
     # Return error
     ######################################## 
     if ( ref($result) ne 'ARRAY' ) {
-        send_emsg( $request, $$verbose_log.$result );
+        send_msg( $request, 1, $$verbose_log.$result );
         return;
     }
     ########################################
@@ -699,7 +700,7 @@ sub process_request {
     # Return error
     ####################################
     if ( ref($opt) eq 'ARRAY' ) {
-        send_emsg( \%request, @$opt );
+        send_msg( \%request, 1, @$opt );
         return(1);
     }
     ####################################
@@ -719,6 +720,7 @@ sub process_request {
 
 
 1;
+
 
 
 
