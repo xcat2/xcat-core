@@ -143,8 +143,10 @@ sub processArgs
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
-                    'f|force'   => \$::opt_f,
                     'help|h'    => \$::opt_h,
+					'list|l'    => \$::opt_l,
+					'update|u'  => \$::opt_u,
+					'remove|r'  => \$::opt_r,
                     'o=s'       => \$::opt_o,
                     't=s'       => \$::opt_t,
                     'verbose|V' => \$::opt_V,
@@ -496,13 +498,13 @@ sub x2n
 	{
 
 		# list the NIM object definition - if there is one
-		if ($::opt_l || $::opt_d) {
-			if (&rm_or_list_nim_object($objname)) {
+		if ($::opt_l || $::opt_r) {
+			if (&rm_or_list_nim_object($objname, $::objtype{$objname})) {
             	# the routine failed
 				$error++;
 				next;
 			}
-        }
+        } else {
 
 		# create a NIM machine definition
 		if ($::objtype{$objname} eq 'node') {
@@ -521,13 +523,14 @@ sub x2n
 			}
 			next;
 		}
+		}
 	}	
 
     if ($error)
     {
         my $rsp;
         $rsp->{data}->[0] =
-          "One or more errors occured when creating or modify NIM definitions.\n";
+          "One or more errors occured.\n";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
@@ -537,9 +540,15 @@ sub x2n
         {
 
             #  give results
-            my $rsp;
-            $rsp->{data}->[0] =
-              "The following definitions were created:\n";
+			my $rsp;
+			if ($::opt_r) {
+				$rsp->{data}->[0] = "The following definitions were removed:\n";
+			} elsif ($::opt_u) {
+				$rsp->{data}->[0] = "The following definitions were updated:\n";
+			} elsif (!$::opt_l) {
+				$rsp->{data}->[0] = "The following definitions were created:\n";
+			}
+
             xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             my $n = 1;
@@ -552,10 +561,12 @@ sub x2n
         }
         else
         {
-            my $rsp;
-            $rsp->{data}->[0] =
-              "Definitions have been created or modified.\n";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
+			if (!$::opt_l) {
+            	my $rsp;
+            	$rsp->{data}->[0] =
+              	"NIM operations have completed successfully.\n";
+            	xCAT::MsgUtils->message("I", $rsp, $::callback);
+			}
         }
         return 0;
     }
@@ -611,7 +622,7 @@ sub mkclientdef
         my $rsp;
         $rsp->{data}->[0] = "The NIM client machine \'$node\' already exists.  Use the \'-u\' option to update an existing definition.\n";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
-        return 0;
+        return 1;
 
     } else {
         # either create or update the def
@@ -689,7 +700,7 @@ sub mkclientdef
 		# may need to use dsh if it is a remote server
 		my $nimcmd;
     	if ($nim_master ne $::local_host) {
-			$nimcmd = qq~dsh -n $instserv "$cmd 2>&1"~;
+			$nimcmd = qq~dsh -n $nim_master "$cmd 2>&1"~;
 		} else {
 			$nimcmd = qq~$cmd 2>&1~;
 		}
@@ -854,7 +865,7 @@ sub rm_or_list_nim_object
 				$cmd = qq~lsnim -l $object 2>/dev/null~;
 			}
 		
-			#$outref = xCAT::Utils->runcmd("$cmd", -1);
+			$outref = xCAT::Utils->runcmd("$cmd", -1);
         	if ($::RUNCMD_RC  != 0)
         	{
             	my $rsp;
@@ -865,9 +876,9 @@ sub rm_or_list_nim_object
 
 				#  display to NIM output
 				my $rsp;
-				$rsp->{data}->[0] = "NIM master: $master";
-				$rsp->{data}->[1] = "Client name: $object";
-        		$rsp->{data}->[2] = "$outref";
+		#		$rsp->{data}->[0] = "NIM master: $nim_master";
+		#		$rsp->{data}->[1] = "Client name: $object";
+        		$rsp->{data}->[0] = "$outref";
 				xCAT::MsgUtils->message("I", $rsp, $::callback);
 				return 0;
 			}
@@ -881,7 +892,7 @@ sub rm_or_list_nim_object
                 $cmd = qq~nim -o remove $object 2>/dev/null~;
             }
 
-			#$outref = xCAT::Utils->runcmd("$cmd", -1);
+			$outref = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC  != 0)
             {
                 my $rsp;
@@ -909,12 +920,12 @@ sub rm_or_list_nim_object
 			if ($::opt_l) {
 				# if the name of the master is not the local host then use dsh
         		if ($master ne $::local_host) {
-            		$cmd = qq~$::DSH -n $instserv "lsnim -l $object 2>/dev/null"~;
+            		$cmd = qq~$::DSH -n $master "lsnim -l $object 2>/dev/null"~;
         		} else {
             		$cmd = qq~lsnim -l $object 2>/dev/null~;
         		}
 			
-				#$outref = xCAT::Utils->runcmd("$cmd", -1);
+				$outref = xCAT::Utils->runcmd("$cmd", -1);
         		if ($::RUNCMD_RC  != 0)
         		{
             		my $rsp;
@@ -925,9 +936,9 @@ sub rm_or_list_nim_object
 
             		#  display NIM output
             		my $rsp;
-            		$rsp->{data}->[0] = "NIM master: $master";
-					$rsp->{data}->[1] = "Group name: $object";
-					$rsp->{data}->[2] = "$outref";
+           	# 		$rsp->{data}->[0] = "NIM master: $master";
+			#		$rsp->{data}->[1] = "Group name: $object";
+					$rsp->{data}->[0] = "$outref";
             		xCAT::MsgUtils->message("I", $rsp, $::callback);
             		return 0;
         		}
@@ -1118,7 +1129,7 @@ sub check_nim_group
             $cmd = qq~lsnim -c groups | cut -f1 -d' ' 2>/dev/null~;
         }
 
-		#@GroupList = xCAT::Utils->runcmd("$cmd", -1);
+		@GroupList = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
     	{
         	my $rsp;
@@ -1171,7 +1182,7 @@ sub check_nim_client
 			$cmd = qq~lsnim -c machines | cut -f1 -d' ' 2>/dev/null~;
 		}
 
-        #@ClientList = xCAT::Utils->runcmd("$cmd", -1);
+        @ClientList = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC  != 0)
         {
             my $rsp;
