@@ -44,7 +44,7 @@ my %errmsg = (
 ##########################################################################
 # Invokes the callback with the specified message                    
 ##########################################################################
-sub send_msg {
+sub send_emsg {
 
     my $request = shift;
     my %output;
@@ -55,6 +55,7 @@ sub send_msg {
     if ( exists( $request->{pipe} )) {
         my $out = $request->{pipe};
 
+        $output{errorcode} = 1;
         $output{data} = \@_;
         print $out freeze( [\%output] );
         print $out "\nENDOFFREEZE6sK4ci\n";
@@ -65,6 +66,7 @@ sub send_msg {
     elsif ( exists( $request->{callback} )) {
         my $callback = $request->{callback};
 
+        $output{errorcode} = 1;
         $output{data} = \@_;
         $callback->( \%output );
     }
@@ -124,11 +126,9 @@ sub process_command {
     #######################################
     while ( $children > 0 ) {
         child_response( $callback, $fds );
-    } 
+    }
     if ( exists( $request->{verbose} )) {
-        my $elapsed = Time::HiRes::gettimeofday() - $start;
-        my $msg = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
-        trace( $request, $msg );
+        trace( $request, $start );
     }
     return(0);
 }
@@ -140,11 +140,18 @@ sub process_command {
 sub trace {
 
     my $request = shift;
+    my $start   = shift;
     my $msg     = shift;
+    my %output;
 
+    my $elapsed = Time::HiRes::gettimeofday() - $start;
+    my $time    = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
     my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
-    my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
-    send_msg( $request, $msg );
+    my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$time;
+
+    my $callback = $request->{callback};
+    $output{data} = \@_;
+    $callback->( \%output );
 }
 
 
@@ -206,7 +213,7 @@ sub preprocess_nodes {
         my $db  = xCAT::Table->new( $tab );
 
         if ( !defined( $db )) {
-            send_msg( $request, sprintf( $errmsg{DB_UNDEF}, $tab )); 
+            send_emsg( $request, sprintf( $errmsg{DB_UNDEF}, $tab )); 
             return undef;
         } 
         ####################################
@@ -217,7 +224,7 @@ sub preprocess_nodes {
 
             if ( !defined( $ent )) {
                 my $msg = sprintf( "$_: $errmsg{NODE_UNDEF}", $tab );
-                send_msg( $request, $msg );
+                send_emsg( $request, $msg );
                 next;
             }
             ################################
@@ -235,7 +242,7 @@ sub preprocess_nodes {
         $tabs{$_} = xCAT::Table->new($_);
 
         if ( !exists( $tabs{$_} )) { 
-            send_msg( $request, sprintf( $errmsg{DB_UNDEF}, $_ )); 
+            send_emsg( $request, sprintf( $errmsg{DB_UNDEF}, $_ )); 
             return undef;
         }
     }
@@ -249,7 +256,7 @@ sub preprocess_nodes {
         # Error locating node attributes
         ######################################
         if ( ref($d) ne 'ARRAY' ) {
-            send_msg( $request,"$node: $d");
+            send_emsg( $request,"$node: $d");
             next;
         }
         ######################################
@@ -474,7 +481,7 @@ sub fork_cmd {
         ###################################
         # Fork error
         ###################################
-        send_msg( $request, "Fork error: $!" );
+        send_emsg( $request, "Fork error: $!" );
         return undef;
     }
     elsif ( $pid == 0 ) {
@@ -522,7 +529,7 @@ sub invoke_cmd {
         # Error connecting 
         ####################################
         if ( ref($exp[0]) ne "LWP::UserAgent" ) {
-            send_msg( $request, $exp[0] );
+            send_emsg( $request, $exp[0] );
             return;
         }
         my $result = xCAT::PPCfsp::handler( $host, $request, \@exp );
@@ -561,7 +568,7 @@ sub invoke_cmd {
     # Error connecting 
     ########################################
     if ( ref($exp[0]) ne "Expect" ) {
-        send_msg( $request, $exp[0] );
+        send_emsg( $request, $exp[0] );
         return;
     }
     ########################################
@@ -584,7 +591,7 @@ sub invoke_cmd {
     # Return error
     ######################################## 
     if ( ref($result) ne 'ARRAY' ) {
-        send_msg( $request, $$verbose_log.$result );
+        send_emsg( $request, $$verbose_log.$result );
         return;
     }
     ########################################
@@ -692,7 +699,7 @@ sub process_request {
     # Return error
     ####################################
     if ( ref($opt) eq 'ARRAY' ) {
-        send_msg( \%request, @$opt );
+        send_emsg( \%request, @$opt );
         return(1);
     }
     ####################################
@@ -712,6 +719,7 @@ sub process_request {
 
 
 1;
+
 
 
 
