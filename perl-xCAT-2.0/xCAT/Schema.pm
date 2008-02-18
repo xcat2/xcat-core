@@ -464,7 +464,7 @@ my @nodeattrs = (
                  access_tabentry => 'ppc.node=attr:node',
                 description => 'For LPARs: the LPAR numeric id; for FSPs: the cage number; for BPAs: the frame number.'},
 	{attr_name => profile,            
-                 only_if => 'nodetype=LPAR',              
+                 only_if => 'nodetype=lpar',              
                  tabentry => 'ppc.profile',           
                  access_tabentry => 'ppc.node=attr:node',              
                 description => 'The LPAR profile that will be used the next time the LPAR is powered on with rpower.'},
