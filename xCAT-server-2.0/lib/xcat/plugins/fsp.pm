@@ -38,7 +38,11 @@ sub process_request {
     eval { require Net::SSL };
     if ( $@ ) {
         my $callback = $_[1];
-        $callback->( {data=>[$@]} );
+        my %output;
+
+        $output{errorcode} = 1;
+        $output{data} = [$@];
+        $callback->( \%output );
         return(1);
     }
     xCAT::PPC::process_request(__PACKAGE__,@_);
