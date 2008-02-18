@@ -28,11 +28,16 @@ B<-?|-h|--help>          Display usage message.
 
 1. To display the contents of the site table:
 
-I<tabdump site>
+  tabdump site
 
 2. To see what tables exist in the xCAT database:
 
-I<tabdump>
+  tabdump
+
+3. To see what tables exist in the xCAT database:
+
+  mkdir -p /tmp/xcatdb.backup
+  for i in `tabdump`;do echo "Dumping $i..."; tabdump $i > /tmp/xcatdb.backup/$i.csv; done
 
 =head1 FILES
 
@@ -41,5 +46,3 @@ I<tabdump>
 =head1 NOTES
 
 This command is part of the xCAT software product.
-
-

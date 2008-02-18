@@ -32,12 +32,17 @@ B<-?|-h|--help>          Display usage message.
 
 1. To put rows into the mp table:
 
-I<tabrestore mp.csv>
+  tabrestore mp.csv
 
 The file mp.csv could contain something like:
 
-#node,mpa,id,comments,disable
-"blade","|\D+(\d+)|amm(($1-1)/14+1)|","|\D+(\d+)|(($1-1)%14+1)|",,
+  #node,mpa,id,comments,disable
+  "blade","|\D+(\d+)|amm(($1-1)/14+1)|","|\D+(\d+)|(($1-1)%14+1)|",,
+
+2. To restore database tables that were dumped with tabdump:
+
+  cd /tmp/xcatdb.backup
+  for i in *.csv;do echo "Restoring $i..."; tabrestore $i; done
 
 =head1 FILES
 
@@ -46,5 +51,3 @@ The file mp.csv could contain something like:
 =head1 NOTES
 
 This command is part of the xCAT software product.
-
-

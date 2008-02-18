@@ -1,7 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------
 
-=head1 
+=head1
   xCAT plugin package to handle xdsh
 
    Supported command:
@@ -23,7 +23,7 @@ require xCAT::DSHCLI;
 
 #-------------------------------------------------------
 
-=head3  handled_commands 
+=head3  handled_commands
 
 Return list of commands handled by this plugin
 
@@ -41,7 +41,7 @@ sub handled_commands
 
 #-------------------------------------------------------
 
-=head3  process_request 
+=head3  process_request
 
   Process the command
 
@@ -59,22 +59,10 @@ sub process_request
     my $envs     = $request->{env};
     my %rsp;
 
-    # get Environment Variables
-    my $outref = [];
-    foreach my $envar (@{$request->{env}})
-    {
-        my $cmd = "export ";
-        $cmd .= $envar;
-        $cmd .= ";";
-        @$outref = `$cmd`;
-        if ($? > 0)
-        {
-            my %rsp;
-            $rsp->{data}->[0] = "Error running command: $cmd\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-
-        }
+    # get the Environment Variables and set them in the current environment
+    foreach my $envar (@{$request->{env}}) {
+    	my ($var, $value) = split(/=/, $envar, 2);
+    	$ENV{$var} = $value;
     }
     if ($command eq "xdsh")
     {
@@ -91,18 +79,18 @@ sub process_request
         {
             my %rsp;
             $rsp->{data}->[0] =
-              "Unknown command $command.  Cannot process the command\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
+              "Unknown command $command.  Cannot process the command.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return;
         }
     }
 }
 
 #-------------------------------------------------------
 
-=head3  xdsh 
+=head3  xdsh
 
-   Parses Builds and runs the dsh  
+   Parses Builds and runs the dsh
 
 
 =cut
@@ -116,25 +104,18 @@ sub xdsh
     @local_results =
       xCAT::DSHCLI->parse_and_run_dsh($nodes,   $args, $callback,
                                       $command, $noderange);
-    my %rsp;
-    my $i = 0;
-    ##  process return data
-    foreach my $line (@local_results)
-    {
-        $rsp->{data}->[$i] = $line;
-        $i++;
-    }
+    push @{$rsp->{data}}, @local_results;
 
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
-    return 0;
+    return;
 }
 
 #-------------------------------------------------------
 
-=head3  xdcp 
+=head3  xdcp
 
-   Parses, Builds and runs the dcp command 
+   Parses, Builds and runs the dcp command
 
 
 =cut
@@ -159,6 +140,6 @@ sub xdcp
 
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
-    return 0;
+    return;
 }
 

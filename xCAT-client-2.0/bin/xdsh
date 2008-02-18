@@ -1,18 +1,17 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
+#  !/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
-use IO::Socket::SSL;
-use IO::Socket::INET;
 use File::Basename;
-use Data::Dumper;
+#use Data::Dumper;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::DSHCLI;
-use xCAT::Client submit_request;
+use xCAT::Client;
 my $bname = basename($0);
 
 #-----------------------------------------------------------------------------
@@ -26,11 +25,11 @@ This program is the client interface for xdsh/xdcp.
 
    This is the interface to for xdsh/xdsp
    The command can run in client/server mode (default) or in bypass mode
-   where it does not use the xcat daemon xcatd.    
+   where it does not use the xcat daemon xcatd.
    Bypass mode is useful, when executing the command on the Management Server
-   and in particular if you want to run as a non-root id.  
+   and in particular if you want to run as a non-root id.
    Call parse_args to verify mode (client/server or  bypass)
-	   and whether to use Env Variables 
+	   and whether to use Env Variables
    Build hash and submit request
    See man page for options
 
@@ -38,8 +37,6 @@ This program is the client interface for xdsh/xdcp.
 
 #-----------------------------------------------------------------------------
 # Main
-
-my $rc = 0;
 
 # report unsupported dsh exports
 &check_invalid_exports;
@@ -123,17 +120,17 @@ if (!($::CONTEXT_SET))
     }
 }
 
-xCAT::Client::submit_request($cmdref, \&handle_response);
-exit $rc;
+xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
+exit $xCAT::Client::EXITCODE;
 
 #-----------------------------------------------------------------------------
 
 =head3 parse_args_xdsh
-  
+
   Parses for dsh input
   Check if the command  ask for help and display usage
   Need to check only for the -X flag
-  Need to check -B flag to determine mode 
+  Need to check -B flag to determine mode
 
 =cut
 
@@ -187,7 +184,7 @@ sub parse_args_xdsh
         xCAT::DSHCLI->usage_dsh;
         exit 0;
     }
-    if ($options{'bypass'})
+    if ($options{'bypass'} || $options{'ssh-setup'})    # must force bypass mode for -K, so it can prompt user for node pw
     {
         $ENV{XCATBYPASS} = "yes";    # bypass xcatd
     }
@@ -226,11 +223,11 @@ sub parse_args_xdsh
 #-----------------------------------------------------------------------------
 
 =head3 parse_args_xdcp
-  
+
   Parses for dcp input
   Check if the command  ask for help and display usage
   Need to check -X flag to determine how to set Environment Variables
-  Need to check -B flag to determine mode 
+  Need to check -B flag to determine mode
 
 =cut
 
@@ -368,151 +365,5 @@ sub check_invalid_exports
     {
         xCAT::MsgUtils->message("I",
               " DSH_REPORT is set but is not supported. It will be ignored.\n");
-    }
-}
-
-#-----------------------------------------------------------------------------
-
-=head3 handle_response 
- handle_response is the callback that is
- invoked to print out the data returned by
- the plugin.
-
- Format of the response hash:
-  {data => [ 'data str1', 'data str2', '...' ] }
-
-    Results are printed as:
-       data str1
-       data str2
-
- or:
-  {data => [ {desc => [ 'desc1' ],
-              contents => [ 'contents1' ] },
-             {desc => [ 'desc2 ],
-              contents => [ 'contents2' ] }
-                :
-            ] }
-    NOTE:  In this format, only the data array can have more than one
-           element. All other arrays are assumed to be a single element.
-    Results are printed as:
-       desc1: contents1
-       desc2: contents2
-
- or:
-  {node => [ {name => ['node1'],
-              data => [ {desc => [ 'node1 desc' ],
-                         contents => [ 'node1 contents' ] } ] },
-             {name => ['node2'],
-              data => [ {desc => [ 'node2 desc' ],
-                         contents => [ 'node2 contents' ] } ] },
-                :
-             ] }
-    NOTE:  Only the node array can have more than one element.
-           All other arrays are assumed to be a single element.
-
-    This was generated from the corresponding HTML:
-    <xcatrequest>
-      <node>
-        <name>node1</name>
-        <data>
-          <desc>node1 desc</desc>
-          <contents>node1 contents</contents>
-        </data>
-      </node>
-      <node>
-        <name>node2</name>
-        <data>
-          <desc>node2 desc</desc>
-          <contents>node2 contents</contents>
-        </data>
-      </node>
-    </xcatrequest>
-
-   Results are printed as:
-      node_name: desc: contents
-=cut
-
-#-----------------------------------------------------------------------------
-sub handle_response
-{
-    my $rsp = shift;
-
-    # Handle {node} structure
-    if ($rsp->{errorcode})
-    {
-        foreach my $ecode (@{$rsp->{errorcode}})
-        {
-            $exitcode |= $ecode;
-        }
-    }
-
-    # Handle {node} structure
-    if ($rsp->{node})
-    {
-        my $nodes = ($rsp->{node});
-        my $node;
-        foreach $node (@$nodes)
-        {
-            my $desc = $node->{name}->[0];
-            if ($node->{data})
-            {
-                if (ref(\($node->{data}->[0])) eq 'SCALAR')
-                {
-                    $desc = $desc . ": " . $node->{data}->[0];
-                }
-                else
-                {
-                    if ($node->{data}->[0]->{desc})
-                    {
-                        $desc = $desc . ": " . $node->{data}->[0]->{desc}->[0];
-                    }
-                    if ($node->{data}->[0]->{contents})
-                    {
-                        $desc = "$desc: " . $node->{data}->[0]->{contents}->[0];
-                    }
-                }
-            }
-            if ($desc)
-            {
-                print "$desc\n";
-            }
-        }
-    }
-
-    # Handle {data} structure with no nodes
-    if ($rsp->{data})
-    {
-        my $data = ($rsp->{data});
-        my $data_entry;
-        foreach $data_entry (@$data)
-        {
-            my $desc;
-            if (ref(\($data_entry)) eq 'SCALAR')
-            {
-                $desc = $data_entry;
-            }
-            else
-            {
-                if ($data_entry->{desc})
-                {
-                    $desc = $data_entry->{desc}->[0];
-                }
-                if ($data_entry->{contents})
-                {
-                    if ($desc)
-                    {
-                        $desc = "$desc: " . $data_entry->{contents}->[0];
-                    }
-                    else
-                    {
-                        $desc = $data_entry->{contents}->[0];
-                    }
-                }
-            }
-            if ($desc)
-            {
-                print "$desc\n";
-            }
-        }
     }
 }

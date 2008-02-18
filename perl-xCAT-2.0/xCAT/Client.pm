@@ -484,22 +484,31 @@ sub build_response {
 ##########################################
 sub handle_response {
   my $rsp = shift;
+#print "in handle_response\n";
   # Handle errors
   if ($rsp->{errorcode}) {
     if (ref($rsp->{errorcode}) eq 'ARRAY') { foreach my $ecode (@{$rsp->{errorcode}}) { $xCAT::Client::EXITCODE |= $ecode; } }
     else { $xCAT::Client::EXITCODE |= $rsp->{errorcode}; }   # assume it is a non-reference scalar
   }
+  if ($rsp->{error}) {
+#print "printing error\n";
+  	if (ref($rsp->{error}) eq 'ARRAY') { foreach my $text (@{$rsp->{error}}) { print "Error: $text\n"; } }
+  	else { print ("Error: ".$rsp->{error}."\n"); }
+  }
   if ($rsp->{warning}) {
-  	if (ref($rsp->{warning}) eq 'ARRAY') { print ("Warning: " . $rsp->{warning}->[0] . "\n"); }
+#print "printing warning\n";
+  	if (ref($rsp->{warning}) eq 'ARRAY') { foreach my $text (@{$rsp->{warning}}) { print "Warning: $text\n"; } }
   	else { print ("Warning: ".$rsp->{warning}."\n"); }
   }
-  if ($rsp->{error}) {
-  	if (ref($rsp->{error}) eq 'ARRAY') { print ("Error: " . $rsp->{error}->[0] . "\n"); }
-  	else { print ("Error: ".$rsp->{error}."\n"); }
+  if ($rsp->{info}) {
+#print "printing info\n";
+  	if (ref($rsp->{info}) eq 'ARRAY') { foreach my $text (@{$rsp->{info}}) { print "$text\n"; } }
+  	else { print ($rsp->{info}."\n"); }
   }
 
   # Handle {node} structure
-  if ($rsp->{node}) {
+  if (scalar @{$rsp->{node}}) {
+#print "printing node\n";
     my $nodes=($rsp->{node});
     my $node;
     foreach $node (@$nodes) {
@@ -527,7 +536,8 @@ sub handle_response {
   }
 
   # Handle {data} structure with no nodes
-  if ($rsp->{data}) {
+  if (scalar @{$rsp->{data}}) {
+#print "printing data\n";
     my $data=($rsp->{data});
     my $data_entry;
     foreach $data_entry (@$data) {

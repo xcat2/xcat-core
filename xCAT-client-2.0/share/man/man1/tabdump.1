@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "TABDUMP.1 1"
-.TH TABDUMP.1 1 "2008-02-13" "perl v5.8.8" "User Contributed Perl Documentation"
+.TH TABDUMP.1 1 "2008-02-18" "perl v5.8.8" "User Contributed Perl Documentation"
 .SH "NAME"
 \&\fBtabdump\fR \- display a database table in csv format.
 .SH "SYNOPSIS"
@@ -154,11 +154,22 @@ tables will be displayed.
 .IX Header "EXAMPLES"
 1. To display the contents of the site table:
 .PP
-\&\fItabdump site\fR
+.Vb 1
+\&  tabdump site
+.Ve
 .PP
 2. To see what tables exist in the xCAT database:
 .PP
-\&\fItabdump\fR
+.Vb 1
+\&  tabdump
+.Ve
+.PP
+3. To see what tables exist in the xCAT database:
+.PP
+.Vb 2
+\&  mkdir -p /tmp/xcatdb.backup
+\&  for i in `tabdump`;do echo "Dumping $i..."; tabdump $i > /tmp/xcatdb.backup/$i.csv; done
+.Ve
 .SH "FILES"
 .IX Header "FILES"
 /opt/xcat/sbin/tabdump

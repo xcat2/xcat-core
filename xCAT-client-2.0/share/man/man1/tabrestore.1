@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "TABRESTORE.1 1"
-.TH TABRESTORE.1 1 "2008-02-14" "perl v5.8.8" "User Contributed Perl Documentation"
+.TH TABRESTORE.1 1 "2008-02-18" "perl v5.8.8" "User Contributed Perl Documentation"
 .SH "NAME"
 \&\fBtabrestore\fR \- replaces the contents of an xCAT database table with the contents in a csv file.
 .SH "SYNOPSIS"
@@ -158,12 +158,23 @@ into the xCAT database.
 .IX Header "EXAMPLES"
 1. To put rows into the mp table:
 .PP
-\&\fItabrestore mp.csv\fR
+.Vb 1
+\&  tabrestore mp.csv
+.Ve
 .PP
 The file mp.csv could contain something like:
 .PP
-#node,mpa,id,comments,disable
-\&\*(L"blade\*(R",\*(L"|\eD+(\ed+)|amm(($1\-1)/14+1)|\*(R",\*(L"|\eD+(\ed+)|(($1\-1)%14+1)|\*(R",,
+.Vb 2
+\&  #node,mpa,id,comments,disable
+\&  "blade","|\eD+(\ed+)|amm(($1-1)/14+1)|","|\eD+(\ed+)|(($1-1)%14+1)|",,
+.Ve
+.PP
+2. To restore database tables that were dumped with tabdump:
+.PP
+.Vb 2
+\&  cd /tmp/xcatdb.backup
+\&  for i in *.csv;do echo "Restoring $i..."; tabrestore $i; done
+.Ve
 .SH "FILES"
 .IX Header "FILES"
 /opt/xcat/sbin/tabrestore
