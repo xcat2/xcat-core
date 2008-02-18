@@ -369,19 +369,27 @@ if (( ! -r "/etc/xcat/policy.sqlite" ) || $::FORCE) {
 }
 
 # setup syslog
-cp /etc/syslog.conf /etc/syslog.conf.ORIG
-echo "*.debug   /var/log/localmessages" > /etc/test.tmp
-echo "*.crit   /var/log/localmessages" >> /etc/test.tmp
-cat /etc/test.tmp >> /etc/syslog.conf
-rm /etc/test.tmp
-touch /var/log/localmessages
-
+my $syslogcmds;
+$syslogcmds = "cp /etc/syslog.conf /etc/syslog.conf.ORIG;";
+$syslogcmds .= "echo '*.debug   /var/log/localmessages' > /etc/test.tmp;";
+$syslogcmds .= "echo '*.crit   /var/log/localmessages' >> /etc/test.tmp;";
+$syslogcmds .= "cat /etc/test.tmp >> /etc/syslog.conf;";
+$syslogcmds .= "rm /etc/test.tmp;";
+$syslogcmds .= "touch /var/log/localmessages;";
 if ($::osname eq 'AIX') {
-	stopsrc -s syslogd
-	startsrc -s syslogd
+	$syslogcmds .= "stopsrc -s syslogd;";
+	$syslogcmds .= "startsrc -s syslogd;";
 } else {
-	/etc/rc.d/init.d/syslog stop
-	/etc/rc.d/init.d/syslog start
+	$syslogcmds .= "/etc/rc.d/init.d/syslog stop;";
+	$syslogcmds .= "/etc/rc.d/init.d/syslog start;";
+}
+
+my $outref = xCAT::Utils->runcmd("$syslogcmds", 0);
+if ($::RUNCMD_RC  != 0)
+{
+    xCAT::MsgUtils->message('E', "Could not set up syslog.\n");
+} else {
+    xCAT::MsgUtils->message('I', "Started syslog daemon.\n");
 }
 
 #
