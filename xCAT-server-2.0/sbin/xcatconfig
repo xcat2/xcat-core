@@ -368,6 +368,22 @@ if (( ! -r "/etc/xcat/policy.sqlite" ) || $::FORCE) {
     }
 }
 
+# setup syslog
+cp /etc/syslog.conf /etc/syslog.conf.ORIG
+echo "*.debug   /var/log/localmessages" > /etc/test.tmp
+echo "*.crit   /var/log/localmessages" >> /etc/test.tmp
+cat /etc/test.tmp >> /etc/syslog.conf
+rm /etc/test.tmp
+touch /var/log/localmessages
+
+if ($::osname eq 'AIX') {
+	stopsrc -s syslogd
+	startsrc -s syslogd
+} else {
+	/etc/rc.d/init.d/syslog stop
+	/etc/rc.d/init.d/syslog start
+}
+
 #
 #  set up the certificates for xcatd 
 #
