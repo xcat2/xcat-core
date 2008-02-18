@@ -592,7 +592,7 @@ sub lpar_netboot {
     # Get MAC-address or network boot
     #####################################
     $mac = $opt->{m};
-    $cmd.= ( defined( $mac )) ? " -m $mac" : " -M -n";
+    $cmd.= ( defined( $mac )) ? " -m $mac" : " -M -A -n";
    
     #####################################
     # Command only supported on LPARs
