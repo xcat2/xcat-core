@@ -1332,11 +1332,16 @@ sub readSNInfo
   It then:
   Checks the database to see if the input Service should be setup on the
   input service node
+  Checks the noderes to see if this service node is a service node for any 
+  node in the table.  Any node that matches, it checks the service attribute
+  to see if this service node is the server, or if the attribute is blank, then
+  this service node is the server.
   
   Input: service nodename, service
   Output: 
         1 - setup service 
         0 - do not setupservice 
+		-1 - error
     Globals:
         none
     Error:
@@ -1349,20 +1354,43 @@ sub readSNInfo
 #-----------------------------------------------------------------------------
 sub isServiceReq
 {
-    my ($class, $nodename, $servicename) = @_;
+    my ($class, $servicenodename, $service) = @_;
 
     # check if service is already setup
-    `grep $servicename /etc/xCATSN`;
+    `grep $service /etc/xCATSN`;
     if ($? == 0)
     {    # service is already setup
         return 0;
     }
     else
     {    # check the db to see if this service node is suppose to
-            # have this service
+            # have this service setup
 
-        return 1;
+        # get all the nodes from nodelist table
+        #my $nodelisttab = xCAT::Table->new('nodelist');
+        #my @nodelist = xCAT::Utils->getAllNodesList;
+
+        # get handle to noderes table
+        my $noderestab = xCAT::Table->new('noderes');
+        unless ($noderestab)
+        {
+            xCAT::MsgUtils->message('S', "Unable to open noderes table.\n");
+            return -1;
+        }
+        my $whereclause = "servicenode like '$servicenodename'";
+        my @nodelist    =
+          $noderestab->getAllAttribsWhere($whereclause, 'node', $service);
+        foreach my $node (@nodelist)
+        {
+            if (($node->{$service} eq "sn1") || ($node->{$service} eq ""))
+            {
+                return 1;    # found a node using this server for the service
+            }
+        }
+
+        return 0;  # did not find a node using this service for this servicenode
     }
 
 }
+
 1;
