@@ -89,6 +89,11 @@ OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
 	syslog
 }
 
+# Setup servicenode 
+OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
+        servicenode 
+}
+
 # update/add packages
 OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
 	updaterpms nodeps
