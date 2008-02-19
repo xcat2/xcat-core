@@ -111,6 +111,7 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
     }
     chomp($line);
     print $nodehdl{$readyh}.": ".$line."\n";
+    IO::Handle::flush(stdout);
   }
   return $rc;
 }
