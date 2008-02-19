@@ -1,0 +1,129 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+
+#
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/x
+	cat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use File::Basename;
+use Getopt::Long;
+use xCAT::MsgUtils;
+use xCAT::Utils;
+my $bname = basename($0);
+
+#-----------------------------------------------------------------------------
+
+=head1   copycerts 
+
+ This updates the service node with files necessary to access the 
+ database on the MasterNode and restarts the xcat daemon
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+# if this is a service node
+#
+#  Copy Certificates, and config file to appropriate directories from mounted
+#
+if (xCAT::Utils->isServiceNode())
+{
+    &copyCertstoSN;
+}
+
+exit 0;
+
+#-----------------------------------------------------------------------------
+
+=head3 copyCertstoSN 
+  
+  Copy from the mounted /xcatpost/ directory to the MS /install/postscripts 
+  directory the /install/postscripts/ca  install/postscripts/cert and 
+  /install/postscripts/.xcat into the local file system.  These certificate are
+  needed for the postresql db setup for the service node to be able to access
+  the DB from the service node. 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub copyCertstoSN
+{
+    my $rc = 0;
+    if (-d "/xcatpost/.xcat")
+    {
+        if (!(-d "/root/.xcat"))
+        {
+            mkdir("/root/.xcat", 0600);
+        }
+        `cp /xcatpost/.xcat/* /root/.xcat`;
+    }
+    else
+    {
+        xCAT::MsgUtils->message('S',
+                                "/xcatpost/.xcat directory does not exist\n");
+        return 1;
+
+    }
+    if (-d "/xcatpost/ca")
+    {
+        if (!(-d "/etc/xcat"))
+        {
+            mkdir("/etc/xcat", 0755);
+        }
+        if (!(-d "/etc/xcat/ca"))
+        {
+            mkdir("/etc/xcat/ca", 0755);
+        }
+        `cp -r /xcatpost/ca/* /etc/xcat/ca`;
+    }
+    else
+    {
+        xCAT::MsgUtils->message('S', "/xcatpost/ca directory does not exist\n");
+        return 1;
+
+    }
+    if (-d "/xcatpost/cert")
+    {
+        if (!(-d "/etc/xcat"))
+        {
+            mkdir("/etc/xcat", 0755);
+        }
+        if (!(-d "/etc/xcat/cert"))
+        {
+            mkdir("/etc/xcat/cert", 0755);
+        }
+        `cp -r  /xcatpost/cert/* /etc/xcat/cert`;
+    }
+    else
+    {
+        xCAT::MsgUtils->message('S',
+                                "/xcatpost/cert directory does not exit\n");
+        return 1;
+
+    }
+    if (-d "/xcatpost/sysconfig")
+    {
+        `cp /xcatpost/sysconfig/xcat /etc/sysconfig`;
+        chmod 0600, "/etc/sysconfig/xcat";
+    }
+    else
+    {
+        xCAT::MsgUtils->message('S',
+                               "/xcatpost/sysconfig directory does not exit\n");
+        return 1;
+
+    }
+
+    #   TODO fix for SuSE  and AIX
+    `service postgresql restart`;
+    `service xcatd restart`;
+    return $rc;
+}
+
