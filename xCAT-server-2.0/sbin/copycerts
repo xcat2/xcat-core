@@ -24,6 +24,7 @@ my $bname = basename($0);
 
  This updates the service node with files necessary to access the 
  database on the MasterNode and restarts the xcat daemon
+ run from servicenode postinstall script
 
 =cut
 
