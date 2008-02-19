@@ -97,7 +97,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     if [ ! -r /root/.ssh/id_rsa.pub ]; then
         ssh-keygen -t rsa -q -b 2048 -N "" -f /root/.ssh/id_rsa
     fi
-    mkdir /install/postscripts/.ssh
+    mkdir -p /install/postscripts/.ssh
     cp /root/.ssh/id_rsa.pub /install/postscripts/.ssh/authorized_keys
 
     mkdir -p /var/log/consoles
@@ -127,17 +127,17 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     if [ ! -d /etc/xcat/ca ]; then 
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-xcat-ca.sh "xCAT CA"
     fi
-    mkdir /install/postscripts/ca
+    mkdir -p /install/postscripts/ca
     cp -r /etc/xcat/ca/* /install/postscripts/ca
     if [ ! -d /etc/xcat/cert ]; then 
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-server-cert.sh `hostname`
     fi
-    mkdir /install/postscripts/cert
+    mkdir -p /install/postscripts/cert
     cp -r /etc/xcat/cert/* /install/postscripts/cert
     if [ ! -r /root/.xcat/client-key.pem ]; then
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-local-client.sh root
     fi
-    mkdir /install/postscripts/.xcat
+    mkdir -p /install/postscripts/.xcat
     cp -r /root/.xcat/* /install/postscripts/.xcat
     #Zap the almost certainly wrong pxelinux.cfg file
     rm /tftpboot/pxelinux.cfg/default
