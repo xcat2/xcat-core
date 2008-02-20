@@ -482,6 +482,7 @@ sub x2n
 
 	# get the local short host name
     ($::local_host = `hostname`) =~ s/\..*$//;
+	chomp $::local_host;
 
 	# get all the attrs for these definitions
 	%::objhash = xCAT::DBobjUtils->getobjdefs(\%::objtype);
@@ -542,17 +543,17 @@ sub x2n
             #  give results
 			my $rsp;
 			if ($::opt_r) {
-				$rsp->{data}->[0] = "The following definitions were removed:\n";
+				$rsp->{data}->[0] = "The following definitions were removed:";
 			} elsif ($::opt_u) {
-				$rsp->{data}->[0] = "The following definitions were updated:\n";
+				$rsp->{data}->[0] = "The following definitions were updated:";
 			} elsif (!$::opt_l) {
-				$rsp->{data}->[0] = "The following definitions were created:\n";
+				$rsp->{data}->[0] = "The following definitions were created:";
 			}
 
             xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             my $n = 1;
-            foreach my $o (sort(keys %::FINALATTRS))
+			foreach my $o (sort(keys %::objhash))
             {
                 $rsp->{data}->[$n] = "$o\n";
                 $n++;
@@ -601,6 +602,7 @@ sub mkclientdef
 	# get the name of the nim master
     #  ???? assume node short hostname is unique in xCAT cluster????
     my $nim_master = &getNIMmaster($object);
+	chomp $nim_master;
 
     if (!defined($nim_master)) {
         my $rsp;
@@ -695,12 +697,10 @@ sub mkclientdef
 			$cmd = "nim -o define $nim_type $nim_args $shorthost";
 		}
 
-#print "cmd=\'$cmd\'\n";
-
 		# may need to use dsh if it is a remote server
 		my $nimcmd;
     	if ($nim_master ne $::local_host) {
-			$nimcmd = qq~dsh -n $nim_master "$cmd 2>&1"~;
+			$nimcmd = qq~xdsh $nim_master "$cmd 2>&1"~;
 		} else {
 			$nimcmd = qq~$cmd 2>&1~;
 		}
@@ -711,6 +711,10 @@ sub mkclientdef
     	{
         	my $rsp;
         	$rsp->{data}->[0] = "Could not create a NIM definition for \'$node\'.\n";
+			if ($::verbose)
+        	{
+				$rsp->{data}->[1] = "$output";
+			}
         	xCAT::MsgUtils->message("E", $rsp, $::callback);
         	return 1;
 		}
@@ -751,7 +755,7 @@ sub mkgrpdef
 	#   For example, the xCAT group "all" will have nodes that are managed
 	#  	by multiple NIM masters - so we will create a local group "all"
 	#	on each of those masters
-    %ServerList = &getMasterGroupLists($object);
+    %ServerList = &getMasterGroupLists($group);
 
 	foreach my $servname (keys %ServerList)
 	{
@@ -783,31 +787,42 @@ sub mkgrpdef
             	next;
         	}
 
+			#
+			#  The list may become quite long and not fit on one cmds line
+			#  so we do it one at a time for now - need to revisit this
+			#      (like do blocks at a time)
+			#
+			my $justadd=0;  # after the first define we just need to add
 			foreach my $memb (@members) {
 
 				($shorthost = $memb) =~ s/\..*$//;
 
 				# do we change or create
 				my $cmd;
-				if ($::grp_exists) {
+				if ($::grp_exists || $justadd) {
 					$cmd = "nim -o change -a add_member=$shorthost $group 2>&1";
 				} else {
 					$cmd = "nim -o define -t mac_group -a add_member=$shorthost $group 2>&1";
+					$justadd++;
 				}
 
 				# do we need dsh
 				my $nimcmd;
 				if ($servname ne $::local_host) {
-					$nimcmd = qq~dsh -n $servname "$cmd"~;
+					$nimcmd = qq~xdsh $servname "$cmd"~;
 				} else {
 					$nimcmd = $cmd;
 				}
 
-				#my @output = xCAT::Utils->runcmd("$cmd", -1);
+				my $output = xCAT::Utils->runcmd("$cmd", -1);
         		if ($::RUNCMD_RC  != 0)
         		{
             		my $rsp;
             		$rsp->{data}->[0] = "Could not create a NIM definition for \'$group\'.\n";
+					if ($::verbose)
+            		{
+						$rsp->{data}->[1] = "$output";
+					}
             		xCAT::MsgUtils->message("E", $rsp, $::callback);
             		return 1;
 				}
@@ -848,6 +863,7 @@ sub rm_or_list_nim_object
 		# get name of nim master
 		#  ???? assume node short hostname is unique in xCAT cluster????
 		$nim_master = &getNIMmaster($object);
+		chomp $nim_master;
 
 		if (!defined($nim_master)) {
 			my $rsp;
@@ -860,16 +876,20 @@ sub rm_or_list_nim_object
 
 			# if the name of the master is not the local host then use dsh
 			if ($nim_master ne $::local_host) {
-				$cmd = qq~dsh -n $nim_master "lsnim -l $object 2>/dev/null"~;
+				$cmd = qq~xdsh $nim_master "lsnim -l $object 2>/dev/null"~;
 			} else {
 				$cmd = qq~lsnim -l $object 2>/dev/null~;
 			}
 		
-			$outref = xCAT::Utils->runcmd("$cmd", -1);
+			my $outref = xCAT::Utils->runcmd("$cmd", -1);
         	if ($::RUNCMD_RC  != 0)
         	{
             	my $rsp;
             	$rsp->{data}->[0] = "Could not get the NIM definition for $object.\n";
+				if ($::verbose)
+                {
+					$rsp->{data}->[1] = "$outref";
+				}
             	xCAT::MsgUtils->message("E", $rsp, $::callback);
             	return 1;
         	} else {
@@ -886,8 +906,9 @@ sub rm_or_list_nim_object
 		} elsif ($::opt_r) {
 			# remove the object
 			# if the name of the master is not the local host then use dsh
+
             if ($nim_master ne $::local_host) {
-                $cmd = qq~$::DSH -n $nim_master "nim -o remove $object 2>/dev/null"~;
+                $cmd = qq~xdsh $nim_master "nim -o remove $object 2>/dev/null"~;
             } else {
                 $cmd = qq~nim -o remove $object 2>/dev/null~;
             }
@@ -897,6 +918,10 @@ sub rm_or_list_nim_object
             {
                 my $rsp;
                 $rsp->{data}->[0] = "Could not remove the NIM definition for \'$object\'.\n";
+				if ($::verbose)
+                {
+					$rsp->{data}->[1] = "$outref";
+				}
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 1;
             }
@@ -916,11 +941,12 @@ sub rm_or_list_nim_object
 			if ($servname) {
         		($master = $servname) =~ s/\..*$//;
     		}
+			chomp $master;
 
 			if ($::opt_l) {
 				# if the name of the master is not the local host then use dsh
         		if ($master ne $::local_host) {
-            		$cmd = qq~$::DSH -n $master "lsnim -l $object 2>/dev/null"~;
+            		$cmd = qq~xdsh $master "lsnim -l $object 2>/dev/null"~;
         		} else {
             		$cmd = qq~lsnim -l $object 2>/dev/null~;
         		}
@@ -930,6 +956,10 @@ sub rm_or_list_nim_object
         		{
             		my $rsp;
             		$rsp->{data}->[0] = "Could not list the NIM definition for \'$object\'.\n";
+					if ($::verbose)
+                    {
+						$rsp->{data}->[1] = "$outref";
+					}
             		xCAT::MsgUtils->message("E", $rsp, $::callback);
             		return 1;
         		} else {
@@ -945,16 +975,20 @@ sub rm_or_list_nim_object
 			} elsif ($::opt_r) {
 				# if the name of the master is not the local host then use dsh
                 if ($master ne $::local_host) {
-                    $cmd = qq~$::DSH -n $instserv "nim -o remove $object 2>/dev/null"~;
+                    $cmd = qq~xdsh $instserv "nim -o remove $object 2>/dev/null"~;
                 } else {
                     $cmd = qq~nim -o remove $object 2>/dev/null~;
                 }
 
-				#$outref = xCAT::Utils->runcmd("$cmd", -1);
+				$outref = xCAT::Utils->runcmd("$cmd", -1);
                 if ($::RUNCMD_RC  != 0)
                 {
                     my $rsp;
                     $rsp->{data}->[0] = "Could not remove the NIM definition for \'$object\'.\n";
+					if ($::verbose)
+                    {
+						$rsp->{data}->[1] = "$outref";
+					}
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     return 1;
                 }
@@ -1124,7 +1158,7 @@ sub check_nim_group
 		@GroupList = @{$::NIMGroupList{$servnode}};
 	} else {
 		if ($servnode ne $::local_host) {
-            $cmd = qq~dsh -n $servnode "lsnim -c groups | cut -f1 -d' ' 2>/dev/null"~;
+            $cmd = qq~xdsh $servnode "lsnim -c groups | cut -f1 -d' ' 2>/dev/null"~;
         } else {
             $cmd = qq~lsnim -c groups | cut -f1 -d' ' 2>/dev/null~;
         }
@@ -1177,7 +1211,7 @@ sub check_nim_client
         @ClientList = @{$::NIMclientList{$servnode}};
     } else {
 		if ($servnode ne $::local_host) {
-			$cmd = qq~dsh -n $servnode "lsnim -c machines | cut -f1 -d' ' 2>/dev/null"~;
+			$cmd = qq~xdsh $servnode "lsnim -c machines | cut -f1 -d' ' 2>/dev/null"~;
 		} else {
 			$cmd = qq~lsnim -c machines | cut -f1 -d' ' 2>/dev/null~;
 		}
