@@ -23,7 +23,7 @@ use xCAT_monitoring::montbhandler;
 
 #stores the module name and the method that is used for the node status monitoring
 #for xCAT.
-$NODESTAT_MON_NAME;
+$NODESTAT_MON_NAME; 
 $masterpid;
 
 1;
@@ -344,6 +344,7 @@ sub startMonitoring {
     if ($aRef) {
       my $module_name=$aRef->[1];
 
+      undef $SIG{CHLD};
       #initialize and start monitoring
       my @ret1 = ${$module_name."::"}{start}->($monservers);
       $ret{$_}=\@ret1;
@@ -382,6 +383,7 @@ sub startNodeStatusMonitoring {
     my $aRef=$PRODUCT_LIST{$pname};
     if ($aRef) {
       my $module_name=$aRef->[1];
+      undef $SIG{CHLD};
       my $method = ${$module_name."::"}{supportNodeStatusMon}->();
       # return value 0 means not support. 1 means yes. 
       if ($method > 0) {

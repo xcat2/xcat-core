@@ -37,9 +37,9 @@ if ($::ADD) {
   my $result=`/usr/bin/lssrc -s ctrmc`;
   if ($result !~ /active/) {
     #restart rmc daemon
-    $result=`startsrc -s ctrmc`;
+    $result=`startsrc -s ctrmc 2>&1`;
     if ($?) {
-      print "rmc deamon cannot be started\n";
+      print "rmc deamon cannot be started:$result\n";
       exit 1;
     }
   }
@@ -48,8 +48,10 @@ if ($::ADD) {
   `/usr/bin/rmcctrl -p; /usr/bin/refrsrc IBM.MCP`;
 
   #define resource in IBM.MCP class on node       
-  $result=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$ARGV[0]"::KeyToken::"$ARGV[1]"::IPAddresses::"$ARGV[2]"::NodeID::$ARGV[3]`;
-  print "define resource in IBM.MCP class result=$result\n"; 
+  $result=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$ARGV[0]"::KeyToken::"$ARGV[1]"::IPAddresses::"$ARGV[2]"::NodeID::$ARGV[3] 2>&1`;
+  if ($?) { print "define resource in IBM.MCP class result=$result\n"; } 
+
+  #TODO: create predefined sensors. How does the scipts get on the node? mount? come with image?
 
   exit 0
 }
@@ -61,8 +63,10 @@ if ($::DELETE) {
   } 
 
   #remove resource in IBM.MCP class on the node
-  my $result= `/usr/bin/rmrsrc-api -s IBM.MCP::"MNName=\\\"\"$ARGV[0]\\\"\""`;
-  print "remove resource in IBM.MCP class result=$result\n"; 
+  my $result= `/usr/bin/rmrsrc-api -s IBM.MCP::"MNName=\\\"\"$ARGV[0]\\\"\"" 2>&1`;
+  if ($?) { print "remove resource in IBM.MCP class result=$result\n"; }
+
+  #TODO: remove predefined sensors,
   
   exit 0;
 }
