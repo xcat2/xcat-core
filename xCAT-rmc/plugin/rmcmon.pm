@@ -358,7 +358,7 @@ sub addNodes_noChecking {
     if ($first_time) {
       $first_time=0;
       #get ms node id, hostname, ip etc
-      $ms_node_id=`head -n 1 /var/ct/cfg/ct_node_id`;
+      $ms_node_id=`/usr/sbin/rsct/bin/lsnodeid`;
       chomp($ms_node_id);
       ($ms_name,$ms_aliases,$ms_addrtype,$ms_length,@ms_addrs) = gethostbyname($ms_host_name);
       chomp($ms_name);
@@ -375,7 +375,7 @@ sub addNodes_noChecking {
     if($ms_host_name eq $node) {
       $mn_node_id=$ms_node_id;
     } else { 
-      $mn_node_id=`$::XCATROOT/bin/psh --nonodecheck $node "head -n 1 /var/ct/cfg/ct_node_id" 2>&1`;
+      $mn_node_id=`$::XCATROOT/bin/psh --nonodecheck $node /usr/sbin/rsct/bin/lsnodeid 2>&1`;
       if ($?) {
 	print "Cannot get NodeID for $node. $mn_node_id\n";
         next;
