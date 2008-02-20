@@ -52,8 +52,9 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
     fi
     if ! grep /install /etc/exports; then
         echo '/install *(ro,no_root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
-        service nfs restart
     fi
+    service nfs restart
+	chkconfig nfs on
 
 # makes it a service node
   touch /etc/xCATSN    
