@@ -3062,7 +3062,7 @@ sub vitals {
 						$unitdesc = "F (" . int($c + .5) . " C)";
 					}
 				}
-               $unitdesc.= sprintf(" %x",$sdr->sensor_type);
+            #$unitdesc.= sprintf(" %x",$sdr->sensor_type);
 				$text = sprintf($lformat,$sdr->id_string . ":",$reading,$per.$unitdesc);
 				push(@output,$text);
 			}
