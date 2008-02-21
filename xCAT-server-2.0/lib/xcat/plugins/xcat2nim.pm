@@ -143,7 +143,7 @@ sub processArgs
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
-                    'help|h'    => \$::opt_h,
+                    'help|h|?'    => \$::opt_h,
 					'list|l'    => \$::opt_l,
 					'update|u'  => \$::opt_u,
 					'remove|r'  => \$::opt_r,
