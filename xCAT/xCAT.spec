@@ -106,9 +106,10 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     fi
     if ! grep /install /etc/exports; then
         echo '/install *(ro,no_root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
-        service nfs restart
-	chkconfig nfs on
     fi
+    service nfs restart
+	chkconfig nfs on
+	exportfs -a
     if [ ! -r /etc/xcat/site.sqlite ]; then 
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=xcatdport site.value=3001
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=xcatiport site.value=3002
