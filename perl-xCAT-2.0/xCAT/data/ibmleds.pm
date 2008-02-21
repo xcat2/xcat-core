@@ -2,6 +2,9 @@
 #ibmleds,tab, mfg,prod_id,led_id,desc
 package xCAT::data::ibmleds;
 
+my %x3455_leds = (
+0x1 => 'Location'
+);
 my %x3755_leds = (
 0x0065=>'Dimm 6',
 0x0011=>'VRM',
@@ -53,7 +56,7 @@ my %x3755_leds = (
 0x0056=>'Fan 7',
 0x0063=>'Dimm 4',
 0x00b0=>'HTX',
-0x0001=>'LOCATION',
+0x0001=>'Location',
 0x000b=>'SEER',
 0x0013=>'DASD',
 0x00cb=>'Dimm 28',
@@ -86,4 +89,5 @@ my %x3755_leds = (
 
 %leds = (
   "2,14" => \%x3755_leds,
+  "2,20566" => \%x3455_leds
 );

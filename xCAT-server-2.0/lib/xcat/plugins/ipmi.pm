@@ -62,6 +62,7 @@ my $passwd;
 my $timeout;
 my $port;
 my $debug;
+my $ndebug = 0;
 my $sock;
 my @user;
 my @pass;
@@ -107,7 +108,7 @@ my %codes = (
 );
 
 my %units = (
-	0 => "unspecified",
+	0 => "", #"unspecified",
 	1 => "C",
 	2 => "F",
 	3 => "K",
@@ -2916,7 +2917,7 @@ sub checkleds {
 			if ($returnd[38-$authoffset] != 0) {
 				#It's on...
 				if ($returnd[42-$authoffset] == 4) {
-					push(@output,sprintf("LED 0x%02x%02x (%s) active to indicate BIOS detected error (or user requested LED activity)",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
+					push(@output,sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
 				}
 				elsif ($returnd[42-$authoffset] == 3) {
 					push(@output,sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
@@ -2967,10 +2968,13 @@ sub vitals {
 	my $value;
 	my $format = "%-30s%8s %-20s";
 	my $per = " ";
+   my $doall;
+   $doall=0;
 	$rc=0;
 
 	if($subcommand eq "all") {
-		@sensor_filters=(0x01,0x02,0x03,0x04);
+		@sensor_filters=(0x01); #,0x02,0x03,0x04);
+      $doall=1;
 	}
 	elsif($subcommand =~ /temp/) {
 		@sensor_filters=(0x01);
@@ -3010,7 +3014,7 @@ sub vitals {
 
 		foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
 			my $sdr = $sdr_hash{$key};
-			if($sdr->sensor_type == $filter && $sdr->rec_type == 0x01) {
+			if(($doall and not $sdr->sensor_type==0xed) or ($sdr->sensor_type == $filter && $sdr->rec_type == 0x01)) {
 				my $lformat = $format;
 
 				($rc,$reading) = readsensor($sdr->sensor_number);
@@ -3058,6 +3062,7 @@ sub vitals {
 						$unitdesc = "F (" . int($c + .5) . " C)";
 					}
 				}
+               $unitdesc.= sprintf(" %x",$sdr->sensor_type);
 				$text = sprintf($lformat,$sdr->id_string . ":",$reading,$per.$unitdesc);
 				push(@output,$text);
 			}
@@ -3423,9 +3428,11 @@ sub getsensorname
 
     if ($file eq "ibmleds") {
             if ($xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor}) {
-              return $xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor};
+              return $xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor}. " LED";
+            } elsif ($ndebug) {
+              return "Unknown $sensor/$mfgid/$prodid";
             } else {
-              return "";
+              return sprintf ("LED 0x%x",$sensor);
             }
     } else {
       return "";
