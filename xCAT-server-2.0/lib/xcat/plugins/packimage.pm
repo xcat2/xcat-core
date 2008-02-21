@@ -76,6 +76,8 @@ sub process_request {
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
       $excludestr =~ s!-a \z!|cpio -dump $temppath!; 
+    } else {
+       $callback->({error=>["Invalid method '$method' requested"],errorcode=>[1]});
     }
 
     if (! -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {

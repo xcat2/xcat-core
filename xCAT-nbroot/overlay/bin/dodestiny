@@ -97,6 +97,7 @@ while :; do
     $TARG
   fi
   if [ $DESTINY == "install" -o $DESTINY == "netboot" ]; then
+    reboot -f #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
     IMGSERVER=`grep imgserver /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
     INITRD=`grep initrd /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
     KERNEL=`grep kernel /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
@@ -107,7 +108,7 @@ while :; do
     for mod in `lsmod|awk '{print $1}'|grep -v Module`; do
         rmmod $mod
     done
-    kexec -f --append="$KCMD" --initrd=/tmp/initrd /tmp/kernel
+    #kexec -f --append="$KCMD" --initrd=/tmp/initrd /tmp/kernel
     reboot -f #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
   fi
   if [ $DEST == "runimage" ]; then
