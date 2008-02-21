@@ -96,7 +96,16 @@ sub supportNodeStatusMon {
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
   #print "xcatmon.startNodeStatusMon\n";
-  my $newentry="*/3 * * * * XCATROOT=$::XCATROOT $::XCATROOT/sbin/xcatnodemon";
+
+  #run the command first to update the status, 
+  my $cmd="$::XCATROOT/sbin/xcatnodemon";
+  $output=`$cmd 2>&1`;
+  if ($?) {
+    print "xcatmon: $output\n";
+  }
+
+  #create the cron job, it will run the command every 3 minutes.
+  my $newentry="*/3 * * * * XCATROOT=$::XCATROOT $cmd";
   my ($code, $msg)=xCAT::Utils::add_cron_job($newentry);
   if ($code==0) { return (0, "started"); }
   else {  return ($code, $msg); }
