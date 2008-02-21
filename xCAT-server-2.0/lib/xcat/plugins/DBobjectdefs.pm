@@ -206,7 +206,7 @@ sub processArgs
                     'dynamic|d' => \$::opt_d,
                     'f|force'   => \$::opt_f,
                     'i=s'       => \$::opt_i,
-                    'help|h'    => \$::opt_h,
+                    'help|h|?'    => \$::opt_h,
                     'long|l'    => \$::opt_l,
                     'm|minus'   => \$::opt_m,
                     'o=s'       => \$::opt_o,
