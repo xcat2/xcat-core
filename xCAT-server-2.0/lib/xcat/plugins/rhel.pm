@@ -100,7 +100,7 @@ sub mknetboot {
         my $ient = $restab->getNodeAttribs($node,['servicenode']);
         my $ipfn = xCAT::Utils->my_ip_facing($node);
         if ($ient and $ient->{servicenode}) { #Servicenode attribute overrides
-           $imgsrv = $ient=>{servicenode};
+           $imgsrv = $ient->{servicenode};
         } elsif ($ipfn) {
            $imgsrv = $ipfn; #guessing self is second best
         } # resort to master value in site table only if not local to node...
