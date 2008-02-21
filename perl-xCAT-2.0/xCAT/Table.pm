@@ -26,7 +26,7 @@ use xCAT::NotifHandler;
 
 #--------------------------------------------------------------------------------
 
-=head1 xCAT::Table 
+=head1 xCAT::Table
 
 xCAT::Table - Perl module for xCAT configuration access
 
@@ -68,13 +68,13 @@ xCAT::Table is released under an IBM license....
 
 #--------------------------------------------------------------------------
 
-=head2   Subroutines 
+=head2   Subroutines
 
 =cut
 
 #--------------------------------------------------------------------------
 
-=head3   buildcreatestmt 
+=head3   buildcreatestmt
 
     Description:  Build create table statement ( see new)
 
@@ -82,13 +82,13 @@ xCAT::Table is released under an IBM license....
                 Table name
 				Table schema ( hash of column names)
     Returns:
-                Table creation SQL 
+                Table creation SQL
     Globals:
-        
+
     Error:
-        
+
     Example:
-        
+
                 my $str =
                   buildcreatestmt($self->{tabname},
                                   $xCAT::Schema::tabspec{$self->{tabname}});
@@ -123,10 +123,10 @@ sub buildcreatestmt
 
 #--------------------------------------------------------------------------
 
-=head3   new 
+=head3   new
 
     Description: Constructor: Connects to  or Creates Database Table
- 
+
 
     Arguments:  Table name
                 0 = Connect to table
@@ -134,11 +134,11 @@ sub buildcreatestmt
     Returns:
                Hash: Database Handle, Statement Handle, nodelist
     Globals:
-        
+
     Error:
-        
+
     Example:
-       $nodelisttab = xCAT::Table->new("nodelist"); 
+       $nodelisttab = xCAT::Table->new("nodelist");
     Comments:
         none
 
@@ -157,6 +157,7 @@ sub new
     unless (defined($xCAT::Schema::tabspec{$self->{tabname}})) { return undef; }
     $self->{schema}   = $xCAT::Schema::tabspec{$self->{tabname}};
     $self->{colnames} = \@{$self->{schema}->{cols}};
+    $self->{descriptions} = \%{$self->{schema}->{descriptions}};
     my %otherargs  = @_;
     my $create     = $otherargs{'-create'};      #(scalar(@_) == 1 ? shift : 0);
     $self->{autocommit} = $otherargs{'-autocommit'};
@@ -216,7 +217,7 @@ sub new
         #return undef;
     }
     unless ($::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}) { #= $self->{tabname};
-      $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}} = 
+      $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}} =
         DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $self->{autocommit}});
      }
 
@@ -280,7 +281,7 @@ sub new
 	}
      }
 
-	
+
     updateschema($self);
     if ($self->{tabname} eq 'nodelist')
     {
@@ -296,23 +297,23 @@ sub new
 
 #--------------------------------------------------------------------------
 
-=head3  updateschema 
+=head3  updateschema
 
     Description: Alters table schema
 
     Arguments: Hash containing Database and Table Handle and schema
-        
+
     Returns: None
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
 		  $self->{tabname} = shift;
           $self->{schema}   = $xCAT::Schema::tabspec{$self->{tabname}};
           $self->{colnames} = \@{$self->{schema}->{cols}};
-          updateschema($self);        
+          updateschema($self);
     Comments:
         none
 
@@ -384,11 +385,11 @@ sub updateschema
                Node name
 			   Attribute hash
     Returns:
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
        my $mactab = xCAT::Table->new('mac',-create=>1);
 	   $mactab->setNodeAttribs($node,{mac=>$mac});
@@ -414,15 +415,15 @@ sub setNodeAttribs
     Description: Add new attributes input to the routine to the nodes
 
     Arguments:
-           Hash of new attributes          
+           Hash of new attributes
     Returns:
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
-        
+
     Comments:
         none
 
@@ -441,19 +442,19 @@ sub addNodeAttribs
 
     Description: add new attributes
 
-    Arguments: 
+    Arguments:
                Hash: Database Handle, Statement Handle, nodelist
                Key name
 		       Key value
 			   Hash reference of column-value pairs to set
     Returns:
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
-        
+
     Comments:
         none
 
@@ -513,22 +514,22 @@ sub addAttribs
 
 #--------------------------------------------------------------------------
 
-=head3 rollback 
+=head3 rollback
 
     Description:  rollback changes
 
     Arguments:
               Database Handle
     Returns:
-           none 
+           none
     Globals:
-        
+
     Error:
-        
+
     Example:
 
        my $tab = xCAT::Table->new($table,-create =>1,-autocommit=>0);
-	   $tab->rollback();	
+	   $tab->rollback();
 
     Comments:
         none
@@ -544,22 +545,22 @@ sub rollback
 
 #--------------------------------------------------------------------------
 
-=head3 commit 
+=head3 commit
 
     Description:
              Commit changes
     Arguments:
         Database Handle
     Returns:
-       none 
+       none
     Globals:
-        
+
     Error:
-        
+
     Example:
        my $tab = xCAT::Table->new($table,-create =>1,-autocommit=>0);
-	   $tab->commit();	
-        
+	   $tab->commit();
+
     Comments:
         none
 
@@ -574,7 +575,7 @@ sub commit
 
 #--------------------------------------------------------------------------
 
-=head3 setAttribs 
+=head3 setAttribs
 
     Description:
 
@@ -584,11 +585,11 @@ sub commit
 		 Hash reference of column-value pairs to set
 
     Returns:
-         None    
+         None
     Globals:
-        
+
     Error:
-        
+
     Example:
        my $tab = xCAT::Table->new( 'ppc', -create=>1, -autocommit=>0 );
 	   $keyhash{'node'}    = $name;
@@ -758,7 +759,7 @@ sub setAttribs
 
 #--------------------------------------------------------------------------
 
-=head3 setAttribsWhere 
+=head3 setAttribsWhere
 
     Description:
        This function sets the attributes for the rows selected by the where clause.
@@ -766,9 +767,9 @@ sub setAttribs
          Where clause.
 	 Hash reference of column-value pairs to set
     Returns:
-         None    
-    Globals:        
-    Error:        
+         None
+    Globals:
+    Error:
     Example:
        my $tab = xCAT::Table->new( 'ppc', -create=>1, -autocommit=>1 );
 	   $updates{'type'}    = lc($type);
@@ -859,24 +860,24 @@ sub setAttribsWhere
 
 #--------------------------------------------------------------------------
 
-=head3 getNodeAttribs 
+=head3 getNodeAttribs
 
-    Description: Retrieves the requested attribute 
+    Description: Retrieves the requested attribute
 
     Arguments:
             Table handle
 			Noderange
-	        Attribute type array	
+	        Attribute type array
     Returns:
-       
-			Attribute hash ( key attribute type) 
+
+			Attribute hash ( key attribute type)
     Globals:
-        
+
     Error:
-        
+
     Example:
            my $ostab = xCAT::Table->new('nodetype');
-		   my $ent = $ostab->getNodeAttribs($node,['profile','os','arch']);	
+		   my $ent = $ostab->getNodeAttribs($node,['profile','os','arch']);
 
     Comments:
         none
@@ -956,20 +957,20 @@ sub getNodeAttribs
 
 #--------------------------------------------------------------------------
 
-=head3 getNodeAttribs_nosub  
+=head3 getNodeAttribs_nosub
 
     Description:
 
     Arguments:
-        
+
     Returns:
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
-        
+
     Comments:
         none
 
@@ -1016,20 +1017,20 @@ sub getNodeAttribs_nosub
 
 #--------------------------------------------------------------------------
 
-=head3 getNodeAttribs_nosub_returnany  
+=head3 getNodeAttribs_nosub_returnany
 
     Description:
 
     Arguments:
-        
+
     Returns:
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
-        
+
     Comments:
         none
 
@@ -1080,23 +1081,23 @@ sub getNodeAttribs_nosub_returnany
 
 #--------------------------------------------------------------------------
 
-=head3 getAllEntries  
+=head3 getAllEntries
 
     Description:  Read entire table
 
     Arguments:
-           Table handle 
+           Table handle
     Returns:
-       Hash containing all rows in table  
+       Hash containing all rows in table
     Globals:
-        
+
     Error:
-        
+
     Example:
 
 	 my $tabh = xCAT::Table->new($table);
 	 my $recs=$tabh->getAllEntries();
-        
+
     Comments:
         none
 
@@ -1126,7 +1127,7 @@ sub getAllEntries
 
 #--------------------------------------------------------------------------
 
-=head3 getAllAttribsWhere  
+=head3 getAllAttribsWhere
 
     Description:  Get all attributes with "where" clause
 
@@ -1134,13 +1135,13 @@ sub getAllEntries
        Database Handle
        Where clause
     Returns:
-        Array of attributes     
+        Array of attributes
     Globals:
-        
+
     Error:
-        
+
     Example:
-    $nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'node','group'); 
+    $nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'node','group');
     Comments:
         none
 
@@ -1183,7 +1184,7 @@ sub getAllAttribsWhere
 
 #--------------------------------------------------------------------------
 
-=head3 getAllNodeAttribs   
+=head3 getAllNodeAttribs
 
     Description: Get all the node attributes values for the input table on the
 				 attribute list
@@ -1194,9 +1195,9 @@ sub getAllAttribsWhere
     Returns:
                  Array of attribute values
     Globals:
-        
+
     Error:
-        
+
     Example:
          my @entries = $self->{switchtab}->getAllNodeAttribs(['port','switch']);
     Comments:
@@ -1259,7 +1260,7 @@ sub getAllNodeAttribs
 
 #--------------------------------------------------------------------------
 
-=head3 getAllAttribs   
+=head3 getAllAttribs
 
     Description: Returns a list of records in the input table for the input
 				 list of attributes.
@@ -1270,9 +1271,9 @@ sub getAllNodeAttribs
     Returns:
         Array of attribute values
     Globals:
-        
+
     Error:
-        
+
     Example:
         $nodelisttab = xCAT::Table->new("nodelist");
 		my @attribs = ("node");
@@ -1316,7 +1317,7 @@ sub getAllAttribs
 
 #--------------------------------------------------------------------------
 
-=head3 delEntries    
+=head3 delEntries
 
     Description:  Delete table entries
 
@@ -1324,11 +1325,11 @@ sub getAllAttribs
                 Table Handle
                 Entry to delete
     Returns:
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
 	my $table=xCAT::Table->new("notification", -create => 1,-autocommit => 0);
 	my %key_col = (filename=>$fname);
@@ -1408,7 +1409,7 @@ sub delEntries
 
 #--------------------------------------------------------------------------
 
-=head3 getAttribs    
+=head3 getAttribs
 
     Description:
 
@@ -1416,11 +1417,11 @@ sub delEntries
                key
 			   List of attributes
     Returns:
-               Hash of requested attributes 
+               Hash of requested attributes
     Globals:
-        
+
     Error:
-        
+
     Example:
         $table = xCAT::Table->new('passwd');
 		@tmp=$table->getAttribs({'key'=>'ipmi'},('username','password');
@@ -1497,7 +1498,7 @@ sub getAttribs
 
 #--------------------------------------------------------------------------
 
-=head3 getTable    
+=head3 getTable
 
     Description:  Read entire Table
 
@@ -1505,11 +1506,11 @@ sub getAttribs
                 Table Handle
 
     Returns:
-                Array of table rows       
+                Array of table rows
     Globals:
-        
+
     Error:
-        
+
     Example:
                   my $table=xCAT::Table->new("notification", -create =>0);
 				  my @row_array= $table->getTable;
@@ -1556,18 +1557,18 @@ sub getTable
 
 #--------------------------------------------------------------------------
 
-=head3 close    
+=head3 close
 
     Description: Close out Table transaction
 
     Arguments:
-                Table Handle       
+                Table Handle
     Returns:
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
                   my $mactab = xCAT::Table->new('mac');
 				  $mactab->setNodeAttribs($macmap{$mac},{mac=>$mac});
@@ -1592,20 +1593,20 @@ sub close
 
 #--------------------------------------------------------------------------
 
-=head3 open    
+=head3 open
 
     Description: Connect to Database
 
     Arguments:
-           Empty Hash        
+           Empty Hash
     Returns:
-           Data Base Handle       
+           Data Base Handle
     Globals:
-        
+
     Error:
-        
+
     Example:
-        
+
     Comments:
         none
 
@@ -1620,20 +1621,20 @@ sub open
 
 #--------------------------------------------------------------------------
 
-=head3 DESTROY    
+=head3 DESTROY
 
     Description:  Disconnect from Database
 
     Arguments:
-              Database Handle     
+              Database Handle
     Returns:
-        
+
     Globals:
-        
+
     Error:
-        
+
     Example:
-        
+
     Comments:
         none
 
@@ -1647,6 +1648,34 @@ sub DESTROY
     undef $self->{dbh};
     #if ($self->{dbh}) { $self->{dbh}->disconnect(); undef $self->{dbh};}
     undef $self->{nodelist};    #Could be circular
+}
+
+
+=head3 getTableList
+	Description: Returns a list of the table names in the xCAT database.
+=cut
+sub getTableList { return keys %xCAT::Schema::tabspec; }
+
+
+=head3 getTableSchema
+	Description: Returns the db schema for the specified table.
+	Returns: A reference to a hash that contains the cols, keys, etc. for this table. (See Schema.pm for details.)
+=cut
+sub getTableSchema { return $xCAT::Schema::tabspec{$_[1]}; }
+
+
+=head3 getTableList
+	Description: Returns a summary description for each table.
+	Returns: A reference to a hash.  Each key is the table name.
+			Each value is the table description.
+=cut
+sub getDescriptions {
+	my $classname = shift;     # we ignore this because this function is static
+	# List each table name and the value for table_desc.
+	my $ret = {};
+	#my @a = keys %{$xCAT::Schema::tabspec{nodelist}};  print 'a=', @a, "\n";
+	foreach my $t (keys %xCAT::Schema::tabspec) { $ret->{$t} = $xCAT::Schema::tabspec{$t}->{table_desc}; }
+	return $ret;
 }
 
 1;

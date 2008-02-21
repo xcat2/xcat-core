@@ -8,7 +8,7 @@ use lib "$::XCATROOT/lib/perl";
 
 use File::Basename;
 use xCAT::MsgUtils;
-use xCAT::Client submit_request;
+use xCAT::Client;
 
 my $bname = basename($0);
 
@@ -25,7 +25,7 @@ my $bname = basename($0);
 #		are, for the most part, in:
 #			/opt/xcat/lib/perl/xCAT_plugin/DBobjectdefs.pm
 #			/opt/xcat/lib/perl/xCAT_plugin/xcat2nim.pm
-#			/opt/xcat/lib/perl/xCAT/DBobjUtils.pm 
+#			/opt/xcat/lib/perl/xCAT/DBobjUtils.pm
 #		-on the xCAT management node
 #
 #########################################

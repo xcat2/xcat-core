@@ -52,7 +52,7 @@ $Getopt::Long::ignorecase = 0;
 
 =head1    DBobjectdefs
 
-This program module file supports the management of the xCAT data object 
+This program module file supports the management of the xCAT data object
 definitions.
 
 Supported xCAT data object commands:
@@ -108,12 +108,12 @@ sub handled_commands
         Check for xCAT command and call the appropriate subroutine.
 
         Arguments:
-                
+
         Returns:
                 0 - OK
                 1 - error
         Globals:
-               
+
         Error:
 
         Example:
@@ -179,7 +179,7 @@ sub process_request
                 1 - just print usage
 				2 - error
         Globals:
-                
+
         Error:
 
         Example:
@@ -194,7 +194,7 @@ sub processArgs
     my $gotattrs = 0;
 
     @ARGV = @{$::args};
-    
+
     if (scalar(@ARGV) <= 0) {
         return 2;
     }
@@ -426,8 +426,7 @@ sub processArgs
 
             }
             my $rsp;
-            $rsp->{data}->[0] =
-              "\nThe valid attribute names for object type \'$t\' are:\n\n";
+            $rsp->{data}->[0] = "The valid attribute names for object type '$t' are:\n";
 
             # get the data type  definition from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$t};
@@ -444,20 +443,27 @@ sub processArgs
             {
                 my $attr = $this_attr->{attr_name};
                 my $desc = $this_attr->{description};
+                if (!defined($desc)) {     # description key not there, so go to the corresponding entry in tabspec to get the description
+                	my ($tab, $at) = split(/\./, $this_attr->{tabentry});
+                	my $schema = xCAT::Table->getTableSchema($tab);
+                	$desc = $schema->{descriptions}->{$at};
+                }
 
-				# could display the table that the attr is in 
+				# could display the table that the attr is in
 				# however some attrs are in more than one table!!!
-				my ($tab, $junk) = split('\.', $this_attr->{tabentry});
+				#my ($tab, $junk) = split('\.', $this_attr->{tabentry});
 
                 if (!grep(/^$attr$/, @alreadydone))
-                {   
+                {
                 #    $outstr .= "$attr\n\t\t- $desc \n\t\t(Table: $tab)\n\n";
-					$outstr .= "$attr\n\t\t- $desc\n\n";
-			
+					#$outstr .= "$attr\n\t\t- $desc\n\n";
+					my $space = (length($attr)<7 ? "\t\t" : "\t");
+					$outstr .= "$attr:$space$desc\n\n";
                 }
                 push(@alreadydone, $attr);
             }
-            
+
+			chop($outstr);  chop($outstr);
             $rsp->{data}->[2] = $outstr;
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
@@ -479,10 +485,10 @@ sub processArgs
         if (($::opt_t eq 'site') && ($::opt_o ne 'clustersite'))
         {
             push(@::clobjnames, 'clustersite');
-			my $rsp;  
+			my $rsp;
             $rsp->{data}->[0] ="Only one site definition is supported.";
 			$rsp->{data}->[1] = "Setting the name of the site definition to \'clustersite\'.\n";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);	
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
 
         }
         elsif ($::opt_t eq 'node')
@@ -515,7 +521,7 @@ sub processArgs
     # special case for site table!!!!!!!!!!!!!!
     if (($::opt_t eq 'site') && !$::opt_o)
     {
-		my $rsp;   
+		my $rsp;
         $rsp->{data}->[0] ="Setting the name of the site definition to \'clustersite\'.";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
         push(@::clobjnames, 'clustersite');
@@ -700,7 +706,7 @@ sub processArgs
         Example:
 
         Comments:
-			Object names to create are derived from 
+			Object names to create are derived from
 				-o, -t, w, -z, -x, or noderange!
 			Attr=val pairs come from cmd line args or -z/-x files
 =cut
@@ -1147,7 +1153,7 @@ sub defmk
         Example:
 
         Comments:
-			Object names to create are derived from 
+			Object names to create are derived from
 				-o, -t, w, -z, -x, or noderange!
 			Attr=val pairs come from cmd line args or -z/-x files
 =cut
@@ -1878,7 +1884,7 @@ sub setFINALattrs
 			Object names derived from -o, -t, w, -a or noderange!
             List of attrs to display is given by -i.
             Output goes to standard out or a stanza/xml file (-z or -x)
-		
+
 =cut
 
 #-----------------------------------------------------------------------------
@@ -2442,7 +2448,7 @@ sub defls
                 0 - OK
                 1 - error
         Globals:
-           
+
         Error:
 
         Example:

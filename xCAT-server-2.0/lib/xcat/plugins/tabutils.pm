@@ -345,11 +345,12 @@ sub tabdump
     my $cb    = shift;
     my $table = "";
     my $HELP;
+    my $DESC;
 
     sub tabdump_usage {
     	my $exitcode = shift @_;
         my %rsp;
-        push @{$rsp{data}}, "Usage: tabdump [table]";
+        push @{$rsp{data}}, "Usage: tabdump [-d] [table]";
         push @{$rsp{data}}, "       tabdump [-?|-h|--help]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
@@ -357,7 +358,7 @@ sub tabdump
 
 	# Process arguments
     @ARGV = @{$args};
-    if (!GetOptions('h|?|help'  => \$HELP)) { tabdump_usage(1); return; }
+    if (!GetOptions('h|?|help' => \$HELP, 'd' => \$DESC)) { tabdump_usage(1); return; }
 
     if ($HELP) { tabdump_usage(0); return; }
     if (scalar(@ARGV)>1) { tabdump_usage(1); return; }
@@ -365,12 +366,35 @@ sub tabdump
     my %rsp;
     # If no arguments given, we display a list of the tables
     if (!scalar(@ARGV)) {
-    	push @{$rsp{data}}, keys %xCAT::Schema::tabspec;
+    	if ($DESC) {  # display the description of each table
+    		my $tab = xCAT::Table->getDescriptions();
+    		foreach my $key (keys %$tab) {
+    			my $space = (length($key)<7 ? "\t\t" : "\t");
+    			push @{$rsp{data}}, "$key:$space".$tab->{$key}."\n";
+    		}
+    	}
+    	else { push @{$rsp{data}}, xCAT::Table->getTableList(); }   # if no descriptions, just display the list of table names
+    	@{$rsp{data}} = sort @{$rsp{data}};
+		if ($DESC && scalar(@{$rsp{data}})) { chop($rsp{data}->[scalar(@{$rsp{data}})-1]); }   # remove the final newline
         $cb->(\%rsp);
     	return;
     }
 
     $table = $ARGV[0];
+    if ($DESC) {     # only show the attribute descriptions, not the values
+    	my $schema = xCAT::Table->getTableSchema($table);
+    	if (!$schema) { $cb->({error => "table $table does not exist.",errorcode=>1}); return; }
+		my $desc = $schema->{descriptions};
+		foreach my $c (@{$schema->{cols}}) {
+			my $space = (length($c)<7 ? "\t\t" : "\t");
+			push @{$rsp{data}}, "$c:$space".$desc->{$c}."\n";
+		}
+		if (scalar(@{$rsp{data}})) { chop($rsp{data}->[scalar(@{$rsp{data}})-1]); }   # remove the final newline
+        $cb->(\%rsp);
+		return;
+    }
+
+
     my $tabh = xCAT::Table->new($table);
 
     sub tabdump_header {

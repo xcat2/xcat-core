@@ -10,121 +10,387 @@ package xCAT::Schema;
 #certain SQL backends don't ascribe meaning to the data types anyway.
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
-  deps => {
-    cols => [qw(node nodedep msdelay cmd comments disable)],
-    keys => [qw(node)],
-  },
-  ppchcp => {
-    cols => [qw(hcp username password comments disable)],
-    keys => [qw(hcp)],
-  },
-  ppc => {
-    cols => [qw(node hcp id profile parent comments disable)],
-    keys => [qw(node)],
-  },
-  ppcdirect => {
-    cols => [qw(hcp username password comments disable)],
-    keys => [qw(hcp)],
-  },
-  nodetype => {
-    cols => [qw(node os arch profile comments disable)],
-    keys => [qw(node)],
-  },
-  nodepos => {
-    cols => [qw(node rack u chassis slot room comments disable)],
-    keys => [qw(node)],
-  },
-  iscsi => {
-    cols => [qw(node server target file userid passwd kernel kcmdline initrd comments disable)],
-    keys => [qw(node)],
-  },
-  vpd => {
-    cols => [qw(node serial mtm comments disable)],
-    keys => [qw(node)],
-  },
-  nodehm => {
-    cols => [qw(node power mgt cons termserver termport conserver serialspeed serialflow getmac comments disable)],
-    keys => [qw(node)],
-  },
-  hosts => {
-    cols => [qw(node ip hostnames comments disable)],
-    keys => [qw(node)],
-  },
-  mp => {
-    cols => [qw(node mpa id comments disable)],
-    keys => [qw(node)],
-  },
-  mpa => {
-    cols => [qw(mpa username password comments disable)],
-    keys => [qw(mpa)],
-  },
-  mac => {
-    cols => [qw(node interface mac comments disable)],
-    keys => [qw(node)],
-  },
-  chain => {
+chain => {
     cols => [qw(node currstate currchain chain ondiscover comments disable)],
     keys => [qw(node)],
+    table_desc => 'Controls what operations are done (and it what order) when a node is discovered and deployed.',
+	descriptions => {
+		node => 'The node name or group name.',
+		currstate => 'The current chain state for this node.  Set by xCAT.',
+		currchain => 'The current execution chain for this node.  Set by xCAT.  Initialized from chain and updated as chain is executed.',
+		chain => 'A comma-delimited chain of actions to be performed automatically for this node. Valid values:  discover, boot or reboot, install or netboot, runcmd=<cmd>, runimage=<image>, shell, standby. (Default - same as no chain).  Example, for BMC machines use: runcmd=bmcsetup,standby.',
+		ondiscover => 'What to do when a new node is discovered.  Valid values: nodediscover, ??',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
   },
-  noderes => {
-    cols => [qw(node servicenode netboot tftpserver nfsserver monserver kernel initrd kcmdline nfsdir serialport installnic primarynic xcatmaster current_osimage next_osimage comments disable)],
+deps => {
+    cols => [qw(node nodedep msdelay cmd comments disable)],
     keys => [qw(node)],
+    table_desc => 'Describes dependencies some nodes have on others.  This can be used, e.g., by rpower -d to power nodes on or off in the correct order.',
+	descriptions => {
+		node => 'The node name or group name.',
+		nodedep => 'Comma-separated list of nodes it is dependent on.',
+		msdelay => 'How long to wait between operating on the dependent nodes and the primary nodes.',
+		cmd => 'Which xCAT command this dependency applies to.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
   },
-  networks => {
+hosts => {
+    cols => [qw(node ip hostnames comments disable)],
+    keys => [qw(node)],
+    table_desc => 'IP address and hostnames of nodes.  This info can be used to populate /etc/hosts or DNS.',
+	descriptions => {
+		node => 'The node name or group name.',
+		ip => 'The IP address of the node.',
+		hostnames => 'Hostname aliases added to /etc/hosts for this node.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+ipmi => {
+    cols => [qw(node bmc username password comments disable )],
+    keys => [qw(node)],
+    table_desc => 'Settings for nodes that are controlled by an on-board BMC via IPMI.',
+	descriptions => {
+		node => 'The node name or group name.',
+		bmc => 'The hostname of the BMC adapater.',
+		username => 'The BMC userid.  Default is ??',
+		password => 'The BMC password.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+iscsi => {
+    cols => [qw(node server target file userid passwd kernel kcmdline initrd comments disable)],
+    keys => [qw(node)],
+    table_desc => 'Contains settings that control how to boot a node from an iSCSI disk.',
+	descriptions => {
+		node => 'The node name or group name.',
+		server => 'The server containing the iscsi boot device for this node.',
+		target => '??The target of the iscsi disk used for the boot device for this node.',
+		file => '',
+		userid => 'The userid of the iscsi server containing the boot device for this node.',
+		passwd => 'The password for the iscsi server containing the boot device for this node.',
+		kernel => '',
+		kcmdline => '',
+		initrd => 'The initial ramdisk to use when network booting this node.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+mac => {
+    cols => [qw(node interface mac comments disable)],
+    keys => [qw(node)],
+    table_desc => "The MAC address of the node's install adapter.  Normally this table is populated by getmacs or node discovery, but you can also add entries to it manually.",
+	descriptions => {
+		node => 'The node name or group name.',
+		interface => 'The adapter interface name that will be used to install and manage the node. E.g. eth0 (for linux) or en0 (for AIX).)',
+		mac => 'The MAC address of the network adapter that will be used to install the node, e.g. 00:D0:A8:00:05:F3 .',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+monitoring => {
+    cols => [qw(name nodestatmon comments disable)],
+    keys => [qw(name)],
+    required => [qw(name)],
+    table_desc => 'Controls what external monitoring tools xCAT sets up and uses.',
+	descriptions => {
+		name => 'The name of the mornitoring plug-in module.  Location??',
+		nodestatmon => 'Specifies if the monitoring plug-in is used to feed the node status to the xCAT cluster.  Any one of the following values indicates "yes":  y, Y, yes, Yes, YES, 1.  Any other value or blank (default), indicates "no".',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+mp => {
+    cols => [qw(node mpa id comments disable)],
+    keys => [qw(node)],
+    table_desc => 'Contains the hardware control info specific to blades.  This table also refers to the mpa table, which contains info about each Management Module.',
+	descriptions => {
+		node => 'The blade node name or group name.',
+		mpa => 'The managment module used to control this blade.',
+		id => 'The slot number of this blade in the BladeCenter chassis.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+mpa => {
+    cols => [qw(mpa username password comments disable)],
+    keys => [qw(mpa)],
+    table_desc => 'Contains info about each Management Module and how to access it.',
+	descriptions => {
+		mpa => 'Hostname of the management module.',
+		username => 'Userid to use to access the management module.',
+		password => 'Password to use to access the management module.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+networks => {
     cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers dynamicrange nodehostname comments disable)],
-    keys => [qw(net mask)]
+    keys => [qw(net mask)],
+    table_desc => 'Describes the networks in the cluster and info necessary to set up nodes on that network.',
+	descriptions => {
+		netname => 'Name used to identify this network definition.',
+		net => 'The network address.',
+		mask => 'The network mask.',
+		mgtifname => '??',
+		gateway => 'The network gateway.',
+		dhcpserver => 'The DHCP server that is servicing this network.',
+		tftpserver => 'The TFTP server that is servicing this network.',
+		nameservers => 'The nameservers for this network.  Used in creating the DHCP network definition.',
+		dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.',
+		nodehostname => '??',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
   },
-  osimage  => {
-	cols => [qw(imagename osname osvers osdistro osarch comments disable)],
-	keys => [qw(imagename)]
-  },
-  nodegroup => {
+nodegroup => {
 	cols => [qw(groupname grouptype members wherevals comments disable)],
-	keys => [qw(groupname)]
+	keys => [qw(groupname)],
+    table_desc => 'Not supported yet!  Contains group definitions, whose membership is dynamic depending on characteristics of the node.',
+	descriptions => {
+		groupname => 'Name of the group.',
+		grouptype => '??',
+		members => '??',
+		wherevals => 'A list of comma-separated "attr=val" pairs that can be used to determine the members of a dynamic group.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
   },
-  switch =>  {
-    cols => [qw(node switch port vlan comments disable)],
-    keys => [qw(node switch port)]
+nodehm => {
+    cols => [qw(node power mgt cons termserver termport conserver serialspeed serialflow getmac comments disable)],
+    keys => [qw(node)],
+    table_desc => "Settings that control how each node's hardware is managed.  Typically, an additional table that is specific to the hardware type of the node contains additional info.  E.g. the ipmi, mp, and ppc tables.",
+	descriptions => {
+		node => 'The node name or group name.',
+		power => 'The power method. If not set, the mgt attribute will be used.  Valid values: ipmi, blade, hmc, ivm, fsp??.  If "ipmi", xCAT will search for this node in the ipmi table for more info.  If "blade", xCAT will search for this node in the mp table.  If "hmc", "ivm", or "fsp", xCAT will search for this node in the ppc table.',
+		mgt => 'The hardware management method.  Valid values: ipmi, blade, hmc, ivm, fsp.  See the power attribute for more details.',
+		cons => 'The console method. If not set, the mgt attribute will be used.  Valid values: cyclades, mrv, ??',
+		termserver => 'The hostname of the terminal server.',
+		termport => 'The port number on the terminal server that this node is connected to.',
+		conserver => 'Not used??',
+		serialspeed => 'The speed of the serial port for this node.  For SOL on blades, this is typically 19200.',
+		serialflow => "The flow value of the serial port for this node.  For SOL on blades, this is typically 'hard'.",
+		getmac => 'Not used??',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
   },
-  nodelist => {
+nodelist => {
     cols => [qw(node nodetype groups status comments disable)],
     keys => [qw(node)],
+    table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
+    descriptions => {
+    	node => 'The hostname of a node in the cluster.',
+    	nodetype => 'A comma-delimited list of characteristics of this node.  Valid values: blade, vm (virtual machine), lpar, osi (OS image), hmc, fsp, ivm, bpa, mm, rsa, switch.',
+    	groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group.",
+    	status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, discovering, installing, installed, alive, off.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+    },
   },
-  site => {
+nodepos => {
+    cols => [qw(node rack u chassis slot room comments disable)],
+    keys => [qw(node)],
+    table_desc => 'Contains info about the physical location of each node.  Currently, this info is not used by xCAT, and therefore can be in whatevery format you want.  It will likely be used in xCAT in the future.',
+	descriptions => {
+		node => 'The node name or group name.',
+		rack => 'The frame the node is in.',
+		u => 'The vertical position of the node in the frame',
+		chassis => 'The BladeCenter chassis the blade is in.',
+		slot => 'The slot number of the blade in the chassis.',
+		room => 'The room the node is in.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+noderes => {
+    cols => [qw(node servicenode netboot tftpserver nfsserver monserver kernel initrd kcmdline nfsdir serialport installnic primarynic xcatmaster current_osimage next_osimage comments disable)],
+    keys => [qw(node)],
+    table_desc => 'Resources and settings to use when installing nodes.',
+	descriptions => {
+		node => 'The node name or group name.',
+		servicenode => 'The node that provides most services for this node.  This is the default value if any of nfsserver, tftpserver, monserver, etc., are not set.',
+		netboot => 'The type of network booting supported by this node.  Valid values:  pxe, yaboot.',
+		tftpserver => 'The TFTP server for this node.',
+		nfsserver => 'The NFS server for this node.',
+		monserver => 'The monitoring aggregation point for this node.',
+		kernel => 'The linux kernel version to install on the node.',
+		initrd => 'The linux initial ramdisk image used to deploy the node.',
+		kcmdline => 'The kernel command line used to deploy the node.',
+		nfsdir => 'Not used??  The path that should be mounted from the NFS server.',
+		serialport => 'The serial port for this node.  For SOL on blades, this is typically 1.  For IPMI, this is typically 0.',
+		installnic => 'The network adapter on the node that will be used for OS deployment.  If not set, primarynic will be used.',
+		primarynic => 'The network adapter on the node that will be used for xCAT management.  Default is eth0.',
+		xcatmaster => 'The hostname of the xCAT management node as known from this node.',
+		current_osimage => 'Not used??  The name of the osimage data object that represents the OS image currently deployed on this node.',
+		next_osimage => 'Not used??  The name of the osimage data object that represents the OS image that will be installed on the node the next time it is deployed.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+nodetype => {
+    cols => [qw(node os arch profile comments disable)],
+    keys => [qw(node)],
+    table_desc => 'A few hardware and software characteristics of the nodes.',
+	descriptions => {
+		node => 'The node name or group name.',
+		os => 'The operating system deployed on this node.  Valid values: rh*, centos*, fedora*, sles* (where * is the version #).',
+		arch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
+		profile => 'The kickstart or autoyast template to use for OS deployment of this node.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+notification => {
+    cols => [qw(filename tables tableops comments disable)],
+    keys => [qw(filename)],
+    required => [qw(tables filename)],
+    table_desc => 'Contains registrations to be notified when a table in the xCAT database changes.  Users can add entries to have additional software notified of changes.',
+	descriptions => {
+		filename => 'A file that implements the callback routine when the monitored table changes.  Location and format??',
+		tables => 'The name of the xCAT database table to monitor.  More than 1??',
+		tableops => 'Specifies the table operation to monitor for. Valid values:  "d" (rows deleted), "a" (rows added), "u" (rows updated).',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+osimage  => {
+	cols => [qw(imagename osname osvers osdistro osarch comments disable)],
+	keys => [qw(imagename)],
+    table_desc => 'Not used yet!  All the info that specifies a particular operating system image that can be used on nodes.',
+	descriptions => {
+		imagename => '',
+		osname => '',
+		osvers => '',
+		osdistro => '',
+		osarch => '',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+passwd => {
+    cols => [qw(key username password comments disable)],
+    keys => [qw(key)],
+    table_desc => 'Contains default userids and passwords for xCAT to access cluster components.  Userids/passwords for specific cluster components can be overidden in other tables, e.g. mpa, ipmi, ppchcp, etc.',
+	descriptions => {
+		key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes??), omapi (DHCP).',
+		username => 'The default userid for this type of component',
+		password => 'The default password for this type of component',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+policy => {
+    cols => [qw(priority name host commands noderange parameters time rule comments disable)],
+    keys => [qw(priority)],
+    table_desc => 'Not fully implemented!  Controls who has authority to run specific xCAT operations.',
+	descriptions => {
+		priority => 'The priority value for this rule.  This value is used to identify this policy data object (i.e. this rule).',
+		name => 'The username that is allowed to perform the commands specified by this rule.  Default is "*" (all users).',
+		host => 'The host from which users may issue the commands specified by this rule.  Default is "*" (all hosts).',
+		commands => 'The list of commands that this rule applies to.  Default is "*" (all commands).',
+		noderange => 'The Noderange that this rule applies to.  Default is "*" (all nodes).',
+		parameters => 'Command parameters that this rule applies to.  Default??',
+		time => 'Time ranges that this command may be executed in.  Default is any time.',
+		rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept.  Either of these values will allow the user to run the commands.  Any other value will deny the user access to the commands.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+postscripts => {
+    cols => [qw(node postscripts comments disable)],
+    keys => [qw(node)],
+    table_desc => 'Not used yet!  The scripts that should be run on each node after installation or diskless boot.',
+	descriptions => {
+		node => 'The node name or group name.',
+		postscripts => 'Comma separated list of scripts that should be run on this node after installation or diskless boot.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+ppc => {
+    cols => [qw(node hcp id profile parent comments disable)],
+    keys => [qw(node)],
+    table_desc => 'List of system p hardware: HMCs, IVMs, FSPs, BPCs.',
+	descriptions => {
+		node => 'The node name or group name.',
+		hcp => 'The hardware control point for this node (HMC, IVM, or FSP).  If ',
+		id => 'For LPARs: the LPAR numeric id; for FSPs: the cage number; for BPAs: the frame number.',
+		profile => 'The LPAR profile that will be used the next time the LPAR is powered on with rpower.',
+		parent => 'For LPARs: the FSP/CEC; for FSPs: the BPA (if one exists).',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+ppcdirect => {
+    cols => [qw(hcp username password comments disable)],
+    keys => [qw(hcp)],
+    table_desc => 'Info necessary to use FSPs to control system p CECs.',
+	descriptions => {
+		hcp => 'Hostname of the FSP.',
+		username => 'Userid of the FSP.  Default is ??',
+		password => 'Password of the FSP.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+ppchcp => {
+    cols => [qw(hcp username password comments disable)],
+    keys => [qw(hcp)],
+    table_desc => 'Info necessary to use HMCs and IVMs as hardware control points for LPARs.',
+	descriptions => {
+		hcp => 'Hostname of the HMC or IVM.',
+		username => 'Userid of the HMC or IVM.  Default is hscroot for HMCs and padmin for IVMs??',
+		password => 'Password of the HMC or IVM.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+  },
+site => {
     cols => [qw(key value comments disable)],
-    keys => [qw(key)]
+    keys => [qw(key)],
+    table_desc => 'Global settings for the whole cluster.  This table is different from the other tables in that each attribute is just named in the key column, rather than having a separate column for each attribute.',
+	descriptions => {
+		key => 'Name of the attribute.  Valid values:  master (xCAT management node), xcatconfdir (default /etc/xcat), domain (DNS domain name used for the cluster), installdir (directory that holds the node deployment pkgs), xcatdport (port used by xcatd daemon??), xcatiport (??), timezone (e.g. America/New_York), nameservers (list of DNS servers for the cluster), rsh (path of remote shell command), rcp (path of remote copy command), blademaxp (max # of processes for blade hw ctrl), ppcmaxp (max # of processes for PPC hw ctrl), ipmimaxp, ipmitimeout, ipmiretries, ipmisdrcache, iscsidir, xcatservers (service nodes??), dhcpinterfaces (network interfaces DHCP should listen on??), forwarders (DNS forwarders??), genpasswords (generate BMC passwords??).',
+		value => 'The value of the attribute specified in the "key" column.',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
   },
 #  site => {
 #    cols => [qw(sitename domain master rsh rcp xcatdport installdir comments disable)],
 #    keys => [qw(sitename)]
 #  },
-  passwd => {
-    cols => [qw(key username password comments disable)],
-    keys => [qw(key)]
+switch =>  {
+    cols => [qw(node switch port vlan comments disable)],
+    keys => [qw(node switch port)],
+    table_desc => 'Contains what switch port numbers each node is connected to.',
+	descriptions => {
+		node => 'The node name or group name.',
+		switch => 'The switch hostname.',
+		port => 'The port number in the switch that this node is connected to.',
+		vlan => '??',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
   },
-  postscripts => {
-    cols => [qw(node postscripts)],
+vpd => {
+    cols => [qw(node serial mtm comments disable)],
     keys => [qw(node)],
+    table_desc => 'The Machine type, Model, and Serial numbers of each node.',
+	descriptions => {
+		node => 'The node name or group name.',
+		serial => 'The serial number of the node.',
+		mtm => 'The machine type and model number of the node.  E.g. 7984-6BU',
+    	comments => 'Any user-written notes.',
+    	disable => "Set to 'yes' or '1' to comment out this row.",
+	},
   },
-  ipmi => {
-    cols => [qw(node bmc username password comments disable )],
-    keys => [qw(node)]
-  },
-  policy => {
-    cols => [qw(priority name host commands noderange parameters time rule comments disable)],
-    keys => [qw(priority)]
-  },
-  notification => {
-    cols => [qw(filename tables tableops comments disable)],
-    keys => [qw(filename)],
-    required => [qw(tables filename)]
-  },
-  monitoring => {
-    cols => [qw(name nodestatmon comments disable)],
-    keys => [qw(name)],
-    required => [qw(name)]
-  }
-  );
+);        # end of tabspec definition
 
 
 
@@ -138,16 +404,16 @@ package xCAT::Schema;
 #
 #  Definition format:
 #    List of data object hashes:
-#       <dataobject_name> => 
-#          {attrs => 
+#       <dataobject_name> =>
+#          {attrs =>
 #             [ {attr_name => '<attribute_name>',
-#                only_if => '<attr>=<value>', 
+#                only_if => '<attr>=<value>',
 #                         # optional, used to define conditional attributes.
 #                         # <attr> is a previously resolved attribute from
 #                         # this data object.
-#                tabentry => '<table.attr>', 
+#                tabentry => '<table.attr>',
 #                         # where the data is stored in the database
-#                access_tabentry => '<table.attr>=<value>', 
+#                access_tabentry => '<table.attr>=<value>',
 #		 	  # how to look up tabentry.  For <value>,
 #                         # if "attr:<attrname>", use a previously resolved
 #                         #    attribute value from the data object
@@ -158,9 +424,9 @@ package xCAT::Schema;
 #                    ...
 #                } ],
 #           attrhash => {}, # internally generated hash of attrs array
-#                           # to allow code direct access to an attr def     
+#                           # to allow code direct access to an attr def
 #           objkey => 'attribute_name'  # key attribute for this data object
-#          }                                                     
+#          }
 #
 #
 ####################################################
@@ -178,25 +444,25 @@ package xCAT::Schema;
 
 
 ###############
-#   @nodeattrs ia a list of node attrs that can be used for 
+#   @nodeattrs ia a list of node attrs that can be used for
 #		BOTH node and group definitions
 ##############
 
 my @nodeattrs = (
 ####################
-# postscripts table# 
+# postscripts table#
 ####################
         {attr_name => 'postscripts',
                  tabentry => 'postscripts.postscripts',
                  access_tabentry => 'postscripts.node=attr:node',
-		description => 'The list of post install scripts .'},
+		},
 ####################
-#  noderes table   # 
+#  noderes table   #
 ####################
         {attr_name => 'xcatmaster',
                  tabentry => 'noderes.xcatmaster',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The hostname of the xCAT management node as known from this node.'},
+		},
 ###
 # TODO:  Need to check/update code to make sure it really uses servicenode as
 #        default if other server value not set
@@ -204,17 +470,17 @@ my @nodeattrs = (
         {attr_name => 'servicenode',
                  tabentry => 'noderes.servicenode',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The node that provides most services for this node.  This is the default value if nfsserver, tftpserver, monserver, etc., are not set.'},
+		},
         {attr_name => 'tftpserver',
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.tftpserver',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The TFTP server for this node.'},
+		},
         {attr_name => 'nfsserver',
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.nfsserver',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The NFS server for this node.'},
+		},
 ###
 # TODO:  Is noderes.nfsdir used anywhere?  Could not find any code references
 #        to this attribute.
@@ -223,175 +489,175 @@ my @nodeattrs = (
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.nfsdir',
                  access_tabentry => 'noderes.node=attr:node',
-		description => '???  not sure if this is used ??? '},
+		},
         {attr_name => 'monserver',
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.monserver',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The monitoring server for this node.'},
+		},
 	{attr_name => 'kernel',
                  tabentry => 'noderes.kernel',
                  access_tabentry => 'noderes.node=attr:node',
-                description => 'The linux kernel image used to deploy the node.'},
+                },
 	{attr_name => 'initrd',
                  tabentry => 'noderes.initrd',
                  access_tabentry => 'noderes.node=attr:node',
-                description => 'The linux initial ramdisk image used to deploy the node.'},
+                },
 	{attr_name => 'kcmdline',
                  tabentry => 'noderes.kcmdline',
                  access_tabentry => 'noderes.node=attr:node',
-                description => 'The kernel command line used to deploy the node..'},
+                },
         # Note that the serialport attr is actually defined down below
         # with the other serial*  attrs from the nodehm table
         #{attr_name => 'serialport',
         #         tabentry => 'noderes.serialport',
         #         access_tabentry => 'noderes.node=attr:node',
-        #	description => 'The serial port for this node.  For SOL on blades, this is typically 1.  For IPMI, this is typically 0.'},
+        #	},
         {attr_name => 'primarynic',
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.primarynic',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The network adapter on the node that will be used for xCAT management.  Default is eth0.'},
+		},
         {attr_name => 'installnic',
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.installnic',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The network adapter on the node that will be used for OS deployment.  If not set, the primarynic will be used.'},
+		},
         {attr_name => 'netboot',
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.netboot',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The type of network booting supported by this node.  Possible values are:  pxe, yaboot'},
+		},
         {attr_name => 'current_osimage',
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.current_osimage',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The name of the osimage data object that represents the OS image currently deployed to this node.  ??? Currently not used. ???'},
+		},
         {attr_name => 'next_osimage',
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.next_osimage',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The name of the osimage data object that represents the OS image that will be installed on the node the next time it is deployed.  ??? Currently not used. ???'},
+		},
 
 ######################
-#  nodetype table    # 
+#  nodetype table    #
 ######################
         {attr_name => 'arch',
                  tabentry => 'nodetype.arch',
                  access_tabentry => 'nodetype.node=attr:node',
-		description => 'Specifies the hardware architecture for this node.'},
+		},
 # TODO:  need to decide what to do with the os attr once the osimage stuff is
 #        implemented.  The nodetype.os attr may be moved to the osimage table.
         {attr_name => 'os',
                  only_if => 'nodetype=osi',
                  tabentry => 'nodetype.os',
                  access_tabentry => 'nodetype.node=attr:node',
-		description => 'Specifies the operating system for this node.'},
-# TODO:  need to decide what to do with the profile attr once the osimage 
+		},
+# TODO:  need to decide what to do with the profile attr once the osimage
 #        stuff is implemented.  May want to move this to the osimage table.
         {attr_name => 'profile',
                  only_if => 'nodetype=osi',
                  tabentry => 'nodetype.profile',
                  access_tabentry => 'nodetype.node=attr:node',
-		description => 'Specifies the template used for OS deployment of this node.'},
+		},
 ####################
-#  iscsi table     # 
+#  iscsi table     #
 ####################
-	{attr_name => iscsiserver,            
-                 only_if => 'nodetype=osi',              
-                 tabentry => 'iscsi.server',           
-                 access_tabentry => 'iscsi.node=attr:node',              
-                description => 'The server containing the iscsi boot device for this node.'},
-	{attr_name => iscsitarget,            
-                 only_if => 'nodetype=osi',              
-                 tabentry => 'iscsi.target',           
-                 access_tabentry => 'iscsi.node=attr:node',              
-                description => 'The target of the iscsi disk used for boot device for this node.'},
-	{attr_name => iscsiuserid,            
-                 only_if => 'nodetype=osi',              
-                 tabentry => 'iscsi.userid',           
-                 access_tabentry => 'iscsi.node=attr:node',              
-                description => 'The userid of the iscsi server containing the boot device for this node.'},
-	{attr_name => iscsipassword,            
-                 only_if => 'nodetype=osi',              
-                 tabentry => 'iscsi.passwd',           
-                 access_tabentry => 'iscsi.node=attr:node',              
-                description => 'The password for the iscsi server containing the boot device for this node.'},
+	{attr_name => iscsiserver,
+                 only_if => 'nodetype=osi',
+                 tabentry => 'iscsi.server',
+                 access_tabentry => 'iscsi.node=attr:node',
+                },
+	{attr_name => iscsitarget,
+                 only_if => 'nodetype=osi',
+                 tabentry => 'iscsi.target',
+                 access_tabentry => 'iscsi.node=attr:node',
+                },
+	{attr_name => iscsiuserid,
+                 only_if => 'nodetype=osi',
+                 tabentry => 'iscsi.userid',
+                 access_tabentry => 'iscsi.node=attr:node',
+                },
+	{attr_name => iscsipassword,
+                 only_if => 'nodetype=osi',
+                 tabentry => 'iscsi.passwd',
+                 access_tabentry => 'iscsi.node=attr:node',
+                },
 ####################
-#  nodehm table    # 
+#  nodehm table    #
 ####################
         {attr_name => 'mgt',
                  tabentry => 'nodehm.mgt',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => 'Specifies the hardware management method.  Valid methods are ipmi, blade, hmc, ivm, fsp.'},
+		},
         {attr_name => 'power',
                  tabentry => 'nodehm.power',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => 'Specifies the power method. If not set, the mgt attribute will be use.'},
+		},
         {attr_name => 'cons',
                  tabentry => 'nodehm.cons',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => 'Specifies the console method. If not set, the mgt attribute will be use.'},
+		},
         {attr_name => 'termserver',
                  tabentry => 'nodehm.termserver',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => 'The name of the terminal server.'},
+		},
         {attr_name => 'termport',
                  tabentry => 'nodehm.termport',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => 'The terminal port on the console server for this node.'},
+		},
 ###
 # TODO:  is nodehm.conserver used anywhere?  I couldn't find any code references
 ###
         {attr_name => 'conserver',
                  tabentry => 'nodehm.conserver',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => '???  not sure if this is used ???.'},
+		},
 ###
 # TODO:  is nodehm.getmac used anywhere?  I couldn't find any code references
 ###
         {attr_name => 'getmac',
                  tabentry => 'nodehm.getmac',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => '???  not sure if this is used ???.'},
+		},
         # Note that serialport is in the noderes table.  Keeping it here in
         # the defspec so that it gets listed with the other serial* attrs
         {attr_name => 'serialport',
                  tabentry => 'noderes.serialport',
                  access_tabentry => 'noderes.node=attr:node',
-		description => 'The serial port for this node.  For SOL on blades, this is typically 1.  For IPMI, this is typically 0.'},
+		},
         {attr_name => 'serialspeed',
                  tabentry => 'nodehm.serialspeed',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => 'The speed of the serial port for this node.  For SOL on blades, this is typically 19200. '},
+		},
         {attr_name => 'serialflow',
                  tabentry => 'nodehm.serialflow',
                  access_tabentry => 'nodehm.node=attr:node',
-		description => 'The flow value of the serial port for this node.  For SOL on blades, this is typically \"hard\".'},
+		},
 ##################
-#  vpd table     # 
+#  vpd table     #
 ##################
         {attr_name => 'serial',
                  tabentry => 'vpd.serial',
                  access_tabentry => 'vpd.node=attr:node',
-		description => 'Serial number.'},
+		},
         {attr_name => 'mtm',
                  tabentry => 'vpd.mtm',
                  access_tabentry => 'vpd.node=attr:node',
-		description => 'Machine type model.'},
+		},
 ##################
-#  mac table     # 
+#  mac table     #
 ##################
 	{attr_name => 'interface',
                  tabentry => 'mac.interface',
                  access_tabentry => 'mac.node=attr:node',
-                description => 'The Ethernet adapter interface name that will be used to install and manage the node. (For example, eth0 or en0.)'},
+                },
 	{attr_name => 'mac',
                  tabentry => 'mac.mac',
                  access_tabentry => 'mac.node=attr:node',
-                description => 'The machine address of the network adapter used for deployment.'},
+                },
 ##################
-#  chain table   # 
+#  chain table   #
 ##################
 ###
 # TODO:  Need user documentation from Jarrod on how to use chain, what each
@@ -400,7 +666,7 @@ my @nodeattrs = (
 	{attr_name => 'chain',
                  tabentry => 'chain.chain',
                  access_tabentry => 'chain.node=attr:node',
-                description => 'A comma-delimited chain of actions to be performed automatically for this node. Valid actions include:  discover, boot or reboot, install or netboot, runcmd=<cmd>, runimage=<image>, shell, standby (default - same as no chain) '},
+                },
 ###
 # TODO:  What is chain.ondiscover used for?  Could not find any code references
 #        to this table entry
@@ -408,156 +674,156 @@ my @nodeattrs = (
 	{attr_name => 'ondiscover',
                  tabentry => 'chain.ondiscover',
                  access_tabentry => 'chain.node=attr:node',
-                description => '?? not sure if this is used ???'},
+                },
 	{attr_name => 'currstate',
                  tabentry => 'chain.currstate',
                  access_tabentry => 'chain.node=attr:node',
-                description => 'The current chain state for this node.  Set by xCAT.'},
+                },
 	{attr_name => 'currchain',
                  tabentry => 'chain.currchain',
                  access_tabentry => 'chain.node=attr:node',
-                description => 'The current execution chain for this node.  Set by xCAT.  Initialized from chain and updated as chain is executed.'},
+                },
 ####################
-#  ppchcp table    # 
+#  ppchcp table    #
 ####################
-	{attr_name => username,            
-                 only_if => 'nodetype=ivm',              
-                 tabentry => 'ppchcp.username',           
-                 access_tabentry => 'ppchcp.hcp=attr:node',              
-                description => 'The IVM userid used for hardware control.'},
-	{attr_name => password,            
-                 only_if => 'nodetype=ivm',              
-                 tabentry => 'ppchcp.password',           
-                 access_tabentry => 'ppchcp.hcp=attr:node',              
-                description => 'The IVM password used for hardware control.'},
-	{attr_name => username,            
-                 only_if => 'nodetype=hmc',              
-                 tabentry => 'ppchcp.username',           
-                 access_tabentry => 'ppchcp.hcp=attr:node',              
-                description => 'The HMC userid used for hardware control.'},
-	{attr_name => password,            
-                 only_if => 'nodetype=hmc',              
-                 tabentry => 'ppchcp.password',           
-                 access_tabentry => 'ppchcp.hcp=attr:node',              
-                description => 'The HMC password used for hardware control.'},
+	{attr_name => username,
+                 only_if => 'nodetype=ivm',
+                 tabentry => 'ppchcp.username',
+                 access_tabentry => 'ppchcp.hcp=attr:node',
+                },
+	{attr_name => password,
+                 only_if => 'nodetype=ivm',
+                 tabentry => 'ppchcp.password',
+                 access_tabentry => 'ppchcp.hcp=attr:node',
+                },
+	{attr_name => username,
+                 only_if => 'nodetype=hmc',
+                 tabentry => 'ppchcp.username',
+                 access_tabentry => 'ppchcp.hcp=attr:node',
+                },
+	{attr_name => password,
+                 only_if => 'nodetype=hmc',
+                 tabentry => 'ppchcp.password',
+                 access_tabentry => 'ppchcp.hcp=attr:node',
+                },
 ####################
-#  ppc table       # 
+#  ppc table       #
 ####################
         {attr_name => hcp,
                  only_if => 'mgt=hmc',
                  tabentry => 'ppc.hcp',
                  access_tabentry => 'ppc.node=attr:node',
-		description => 'The host name or IP address of HMC that is the hardware control point for this node.'},
+		},
         {attr_name => hcp,
                  only_if => 'mgt=ivm',
                  tabentry => 'ppc.hcp',
                  access_tabentry => 'ppc.node=attr:node',
-		description => 'The host name or IP address of IVM that is the hardware control point for this node.'},
+		},
 	{attr_name => id,
                  only_if => 'mgt=hmc',
                  tabentry => 'ppc.id',
                  access_tabentry => 'ppc.node=attr:node',
-                description => 'For LPARs: the LPAR numeric id; for FSPs: the cage number; for BPAs: the frame number.'},
+                },
 	{attr_name => id,
                  only_if => 'mgt=ivm',
                  tabentry => 'ppc.id',
                  access_tabentry => 'ppc.node=attr:node',
-                description => 'For LPARs: the LPAR numeric id; for FSPs: the cage number; for BPAs: the frame number.'},
-	{attr_name => profile,            
-                 only_if => 'nodetype=lpar',              
-                 tabentry => 'ppc.profile',           
-                 access_tabentry => 'ppc.node=attr:node',              
-                description => 'The LPAR profile that will be used the next time the LPAR is powered on with rpower.'},
-	{attr_name => parent,            
-                 only_if => 'mgt=hmc',              
-                 tabentry => 'ppc.parent',           
-                 access_tabentry => 'ppc.node=attr:node',              
-                description => 'For LPARs: the FSP/CEC; for FSPs: the BPA (if one exists)'},
-	{attr_name => parent,            
-                 only_if => 'mgt=ivm',              
-                 tabentry => 'ppc.parent',           
-                 access_tabentry => 'ppc.node=attr:node',              
-                description => 'For LPARs: the FSP/CEC; for FSPs: the BPA (if one exists)'},
+                },
+	{attr_name => profile,
+                 only_if => 'nodetype=lpar',
+                 tabentry => 'ppc.profile',
+                 access_tabentry => 'ppc.node=attr:node',
+                },
+	{attr_name => parent,
+                 only_if => 'mgt=hmc',
+                 tabentry => 'ppc.parent',
+                 access_tabentry => 'ppc.node=attr:node',
+                },
+	{attr_name => parent,
+                 only_if => 'mgt=ivm',
+                 tabentry => 'ppc.parent',
+                 access_tabentry => 'ppc.node=attr:node',
+                },
 #######################
-#  ppcdirect table    # 
+#  ppcdirect table    #
 #######################
         {attr_name => username,
                  only_if => 'mgt=fsp',
                  tabentry => 'ppcdirect.username',
                  access_tabentry => 'ppcdirect.hcp=attr:node',
-		description => 'The FSP userid used for hardware control.'},
+		},
         {attr_name => password,
                  only_if => 'mgt=fsp',
                  tabentry => 'ppcdirect.password',
                  access_tabentry => 'ppcdirect.hcp=attr:node',
-		description => 'The FSP password used for hardware control.'},
+		},
 ##################
-#  ipmi table    # 
+#  ipmi table    #
 ##################
         {attr_name => bmc,
                  only_if => 'mgt=ipmi',
                  tabentry => 'ipmi.bmc',
                  access_tabentry => 'ipmi.node=attr:node',
-		description => 'The BMC IP address used for hardware control.'},
+		},
         {attr_name => bmcusername,
                  only_if => 'mgt=ipmi',
                  tabentry => 'ipmi.username',
                  access_tabentry => 'ipmi.node=attr:node',
-		description => 'The BMC userid used for hardware control.'},
+		},
         {attr_name => bmcpassword,
                  only_if => 'mgt=ipmi',
                  tabentry => 'ipmi.password',
                  access_tabentry => 'ipmi.node=attr:node',
-		description => 'The BMC password used for hardware control.'},
+		},
 ################
-#  mp table    # 
+#  mp table    #
 ################
         {attr_name => mpa,
                  only_if => 'mgt=blade',
                  tabentry => 'mp.mpa',
                  access_tabentry => 'mp.node=attr:node',
-		description => 'The managment module used for hardware control.'},
+		},
         {attr_name => id,
                  only_if => 'mgt=blade',
                  tabentry => 'mp.id',
                  access_tabentry => 'mp.node=attr:node',
-		description => 'The slot id in the managment module used for hardware control.'},
+		},
 #################
-#  mpa table    # 
+#  mpa table    #
 #################
         {attr_name => username,
                  only_if => 'nodetype=mm',
                  tabentry => 'mpa.username',
                  access_tabentry => 'mpa.mpa=attr:node',
-		description => 'The managment module userid.'},
+		},
         {attr_name => password,
                  only_if => 'nodetype=mm',
                  tabentry => 'mpa.password',
                  access_tabentry => 'mpa.mpa=attr:node',
-		description => 'The managment module password.'},
+		},
 ######################
-#  nodepos table     # 
+#  nodepos table     #
 ######################
         {attr_name => 'rack',
                  tabentry => 'nodepos.rack',
                  access_tabentry => 'nodepos.node=attr:node',
-		description => 'Physical location information (customer use only).'},
+		},
         {attr_name => 'unit',
                  tabentry => 'nodepos.u',
                  access_tabentry => 'nodepos.node=attr:node',
-		description => 'Physical location information (customer use only).'},
+		},
         {attr_name => 'chassis',
                  tabentry => 'nodepos.chassis',
                  access_tabentry => 'nodepos.node=attr:node',
-		description => 'Physical location information (customer use only).'},
+		},
         {attr_name => 'slot',
                  tabentry => 'nodepos.slot',
                  access_tabentry => 'nodepos.node=attr:node',
-		description => 'Physical location information (customer use only).'},
+		},
         {attr_name => 'room',
                  tabentry => 'nodepos.room',
                  access_tabentry => 'nodepos.node=attr:node',
-		description => 'Physical location information (customer use only).'});
+		});
 
 
 ####################
@@ -570,11 +836,11 @@ my @nodeattrs = (
         {attr_name => 'node',
                  tabentry => 'nodelist.node',
                  access_tabentry => 'nodelist.node=attr:node',
-                 description => 'The name of this node definition .'},
+			},
         {attr_name => 'nodetype',
                  tabentry => 'nodelist.nodetype',
                  access_tabentry => 'nodelist.node=attr:node',
-                 description => 'Specifies a comma-separated list of node type values. (Valid values: osi, hmc, fsp, blade, vm, lpar, ivm, bpa, mm, rsa, switch)'},
+			},
 ###
 # TODO:  need to implement nodelist.nodetype as a comma-separated list.
 #        right now, all references to attr:nodetype are for single values.
@@ -583,37 +849,36 @@ my @nodeattrs = (
         {attr_name => 'groups',
                  tabentry => 'nodelist.groups',
                  access_tabentry => 'nodelist.node=attr:node',
-                 description => 'Comma separated list of groups this node belongs to.'},
+             },
 	{attr_name => 'status',
                  tabentry => 'nodelist.status',
                  access_tabentry => 'nodelist.node=attr:node',
-                 description => 'Current status of the node. Default value is "defined". Valid values include defined, booting, installing, active, off etc.'},
+             },
 ####################
 #  hosts table    #
 ####################
         {attr_name => 'ip',
                  tabentry => 'hosts.ip',
                  access_tabentry => 'hosts.node=attr:node',
-                description => 'The IP address for this node.'},
+             },
         {attr_name => 'hostnames',
                  tabentry => 'hosts.hostnames',
                  access_tabentry => 'hosts.node=attr:node',
-                description => 'Hostname aliases added to /etc/hosts for this no
-de.'},
+             },
 	{attr_name => 'usercomment',
                  tabentry => 'nodelist.comments',
                  access_tabentry => 'nodelist.node=attr:node',
-                description => 'User comment.'},
-             );
+             },
+          );
 
 # add on the node attrs from other tables
 push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
 
-             
+
 #########################
 #  osimage data object  #
 #########################
-#     osimage table     # 
+#     osimage table     #
 #########################
 ###
 # TODO:  The osimage table is currently not used by any xCAT code.
@@ -624,38 +889,38 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'osimage.imagename',
                  access_tabentry => 'osimage.imagename=attr:imagename',
 #                 description => 'The name of this operating system image.'},
-                 description => '??? Currently not used by xCAT. ???'},
+                 },
 	{attr_name => 'osdistro',
                  tabentry => 'osimage.osdistro',
                  access_tabentry => 'osimage.imagename=attr:imagename',
 #                 description => 'The Linux distribution name to be deployed. The valid values are RedHat, and SLES.'},
-                 description => '??? Currently not used by xCAT. ???'},
+                 },
         {attr_name => 'osname',
                  tabentry => 'osimage.osname',
                  access_tabentry => 'osimage.imagename=attr:imagename',
 #                description => 'The name of the operating system to be deployed. The expected values are AIX or Linux.'},
-                 description => '??? Currently not used by xCAT. ???'},
+                 },
 	{attr_name => 'osvers',
                  tabentry => 'osimage.osvers',
                  access_tabentry => 'osimage.imagename=attr:imagename',
 #                 description => 'The operating system version to be deployed. The formats for the values are "version.release.mod" for AIX and "version" for Linux. (ex. AIX: "5.3.0", Linux: "5").'},
-                 description => '??? Currently not used by xCAT. ???'},
+                 },
 	{attr_name => 'osarch',
                  tabentry => 'osimage.osarch',
                  access_tabentry => 'osimage.imagename=attr:imagename',
 #                 description => 'The node machine architecture.'},
-                 description => '??? Currently not used by xCAT. ???'},
+                 },
 	{attr_name => 'usercomment',
                  tabentry => 'osimage.comments',
                  access_tabentry => 'osimage.imagename=attr:imagename',
 #                description => 'User comment.'},
-                 description => '??? Currently not used by xCAT. ???'},
+                 },
              );
-             
+
 #########################
 #  network data object  #
 #########################
-#     networks table    # 
+#     networks table    #
 #########################
 @{$defspec{network}->{'attrs'}} = (
 ###
@@ -665,45 +930,45 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
         {attr_name => 'netname',
                  tabentry => 'networks.netname',
                  access_tabentry => 'networks.netname=attr:netname',
-                 description => 'Name used to identify this network definition.'},
+                 },
         {attr_name => 'net',
                  tabentry => 'networks.net',
                  access_tabentry => 'networks.netname=attr:netname',
-		description => 'The network address.'},
+		},
         {attr_name => 'mask',
                  tabentry => 'networks.mask',
                  access_tabentry => 'networks.netname=attr:netname',
-		description => 'The network mask.'},
+		},
         {attr_name => 'gateway',
                  tabentry => 'networks.gateway',
                  access_tabentry => 'networks.netname=attr:netname',
-		description => 'Specifies the hostname or IP address of the network gateway.'},
+		},
         {attr_name => 'dhcpserver',
                  tabentry => 'networks.dhcpserver',
                  access_tabentry => 'networks.netname=attr:netname',
-		description => 'The DHCP server that is servicing this network.'},
+		},
         {attr_name => 'tftpserver',
                  tabentry => 'networks.tftpserver',
                  access_tabentry => 'networks.netname=attr:netname',
-		description => 'The TFTP server that is servicing this network.'},
+		},
         {attr_name => 'nameservers',
                  tabentry => 'networks.nameservers',
                  access_tabentry => 'networks.netname=attr:netname',
-		description => 'The nameservers for this network.  Used in creating the DHCP network definition.'},
+		},
         {attr_name => 'dynamicrange',
                  tabentry => 'networks.dynamicrange',
                  access_tabentry => 'networks.netname=attr:netname',
-		description => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.'},
+		},
 	{attr_name => 'usercomment',
                  tabentry => 'networks.comments',
                  access_tabentry => 'networks.netname=attr:netname',
-                description => 'User comment.'},
+                },
              );
 
 #####################
 #  site data object #
 #####################
-#     site table    # 
+#     site table    #
 #####################
 ##############
 # TODO:  need to figure out how to handle a key for the site table.
@@ -766,29 +1031,29 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
 #######################
 #  groups data object #
 #######################
-#     groups table    # 
+#     groups table    #
 #######################
 @{$defspec{group}->{'attrs'}} = (
         {attr_name => 'groupname',
                  tabentry => 'nodegroup.groupname',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
-                 description => 'The name of this xCAT group object definition.'},
+                 },
 	{attr_name => 'grouptype',
       		 tabentry => 'nodegroup.grouptype',
 		 access_tabentry => 'nodegroup.groupname=attr:groupname',
-		 description => 'The type of xCAT group - either static or dynamic.'},
+		 },
         {attr_name => 'members',
                  tabentry => 'nodegroup.members',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
-                 description => 'The list of members for this group.'},
+                 },
 	{attr_name => 'wherevals',
                  tabentry => 'nodegroup.wherevals',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
-                 description => 'A list of comma-separated "attr=val" pairs that can be used to determine the members of a dynamic group.'},
+                 },
 	{attr_name => 'usercomment',
                  tabentry => 'nodegroup.comments',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
-                description => 'User comment.'},
+                },
 
 ###
 # TODO:  Need to copy attrs that are common between nodes and static groups
@@ -803,94 +1068,94 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
 #######################
 #  policy data object #
 #######################
-#     policy table    # 
+#     policy table    #
 #######################
 @{$defspec{policy}->{'attrs'}} = (
 ###
 # TODO:  The policy validate subroutine in the xcatd daemon code does not
-#        sort the rules in the policy table in priority order before 
+#        sort the rules in the policy table in priority order before
 #        processing.  Talk to Jarrod - I think it should.
 ###
         {attr_name => 'priority',
                 tabentry => 'policy.priority',
                 access_tabentry => 'policy.priority=attr:priority',
-		description => 'The priority value for this rule.  This value is used to identify this policy data object (i.e. this rule).  ??? Priorities have not been implemented in the xCAT rule processing yet ???.'},
+		},
         {attr_name => 'name',
                  tabentry => 'policy.name',
                  access_tabentry => 'policy.priority=attr:priority',
-		description => 'The username that is allowed to perform the commands specified by this rule.  Default is "*" (all users).'},
+		},
         {attr_name => 'host',
                  tabentry => 'policy.host',
                  access_tabentry => 'policy.priority=attr:priority',
-		description => 'The host from which users may issue the commands specified by this rule.  Default is "*" (all hosts).'},
+		},
         {attr_name => 'commands',
                  tabentry => 'policy.commands',
                  access_tabentry => 'policy.priority=attr:priority',
-		description => 'The list of commands that this rule applies to.  Default is "*" (all commands).  ??? Command lists not implemented yet - only "*" or single command works ???.'},
+		},
         {attr_name => 'noderange',
                  tabentry => 'policy.noderange',
                  access_tabentry => 'policy.priority=attr:priority',
-		description => 'Noderange that this rule applies to.  ??? Not implemented yet ???.'},
+		},
         {attr_name => 'parameters',
                  tabentry => 'policy.parameters',
                  access_tabentry => 'policy.priority=attr:priority',
-		description => 'Command parameters that this rule applies to.  ??? Not implemented yet ???.'},
+		},
         {attr_name => 'time',
                  tabentry => 'policy.time',
                  access_tabentry => 'policy.priority=attr:priority',
-		description => 'Time ranges that this command may be executed in.  ??? Not implemented yet ???.'},
+		},
         {attr_name => 'rule',
                 tabentry => 'policy.rule',
 		access_tabentry => 'policy.priority=attr:priority' ,
-		description=> 'Specifies how this rule should be applied.  Valid values are: allow, accept.  Either of these values will allow the user to run the commands.  Any other value will deny the user access to the commands.'},
+		},
 	{attr_name => 'usercomment',
                  tabentry => 'policy.comments',
                  access_tabentry => 'policy.priority=attr:priority',
-                description => 'User comment.'},
+                },
              );
 
 #############################
 #  notification data object #
 #############################
-#     notification table    # 
+#     notification table    #
 #############################
 @{$defspec{notification}->{'attrs'}} = (
         {attr_name => 'filename',
                  tabentry => 'notification.filename',
                  access_tabentry => 'notification.filename=attr:filename',
-                 description => 'Specifies a file that implements the callback routine when the monitored table changes.'},
+                 },
         {attr_name => 'tables',
                  tabentry => 'notification.tables',
                  access_tabentry => 'notification.filename=attr:filename',
-                 description => 'The name of the xCAT database table to monitor.'},
+                 },
         {attr_name => 'tableops',
                  tabentry => 'notification.tableops',
                  access_tabentry => 'notification.filename=attr:filename',
-                 description => 'Specifies the table operation to monitor. It can be "d" for rows deleted, "a" for rows added or "u" for rows updated.'},
+                 },
         {attr_name => 'comments',
                  tabentry => 'notification.comments',
                  access_tabentry => 'notification.filename=attr:filename',
-                 description => 'User comment.'},
+                 },
          );
-		
+
 ###########################
 #  monitoring data object #
 ###########################
-#     monitoring table    # 
+#     monitoring table    #
 ###########################
 @{$defspec{monitoring}->{'attrs'}} = (
         {attr_name => 'name',
                  tabentry => 'monitoring.name',
                  access_tabentry => 'monitoring.name=attr:name',
-                 description => 'The name of the mornitoring plug-in module.'},
+                 },
         {attr_name => 'nodestatmon',
                  tabentry => 'monitoring.nodestatmon',
                  access_tabentry => 'monitoring.name=attr:name',
-                 description => 'Specifies if the monitoring plug-in is used to feed the node status to the xCAT cluster.  Any one of the following values indicates "yes":  y, Y, yes, Yes, YES, 1.  Any other value or blank (default), indicates "no". '},
+                 },
         {attr_name => 'comments',
                  tabentry => 'monitoring.comments',
                  access_tabentry => 'monitoring.name=attr:name',
-                 description => 'User comment.'},
+                 },
 );
 
 # Build a corresponding hash for the attribute names to make

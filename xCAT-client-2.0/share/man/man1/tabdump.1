@@ -129,22 +129,24 @@
 .\" ========================================================================
 .\"
 .IX Title "TABDUMP.1 1"
-.TH TABDUMP.1 1 "2008-02-18" "perl v5.8.8" "User Contributed Perl Documentation"
+.TH TABDUMP.1 1 "2008-02-20" "perl v5.8.8" "User Contributed Perl Documentation"
 .SH "NAME"
 \&\fBtabdump\fR \- display a database table in csv format.
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fItabdump [table]\fR
+\&\fItabdump [\-d] [table]\fR
 .PP
 \&\fItabdump [? | \-h | \-\-help]\fR
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
-The tabdump command displays the header and all the rows of the specified table in csv format.
+The tabdump command displays the header and all the rows of the specified table in \s-1CSV\s0 (comma separated values) format.
 Only one table can be specified.  If no table is specified, the list of existing
 tables will be displayed.
 .SH "OPTIONS"
 .IX Header "OPTIONS"
-\&\fB\-?|\-h|\-\-help\fR          Display usage message.
+\&\fB\-?|\-h|\-\-help\fR    Display usage message.
+.PP
+\&\fB\-d\fR              Show descriptions of the tables, instead of the contents of the tables.  If a table name is also specified, descriptions of the columns (attributes) of the table will be displayed.  Otherwise, a summary of each table will be displayed.
 .SH "RETURN VALUE"
 .IX Header "RETURN VALUE"
 0 The command completed successfully.
@@ -164,11 +166,23 @@ tables will be displayed.
 \&  tabdump
 .Ve
 .PP
-3. To see what tables exist in the xCAT database:
+3. To back up all the xCAT database tables:
 .PP
 .Vb 2
 \&  mkdir -p /tmp/xcatdb.backup
 \&  for i in `tabdump`;do echo "Dumping $i..."; tabdump $i > /tmp/xcatdb.backup/$i.csv; done
+.Ve
+.PP
+4. To display a summary description of each table:
+.PP
+.Vb 1
+\&  tabdump -d
+.Ve
+.PP
+5. To display a description of each column in the nodehm table:
+.PP
+.Vb 1
+\&  tabdump -d nodehm
 .Ve
 .SH "FILES"
 .IX Header "FILES"

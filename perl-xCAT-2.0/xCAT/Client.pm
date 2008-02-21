@@ -536,7 +536,7 @@ sub handle_response {
   }
 
   # Handle {data} structure with no nodes
-  if (scalar @{$rsp->{data}}) {
+  if ($rsp->{data}) {
 #print "printing data\n";
     my $data=($rsp->{data});
     my $data_entry;
@@ -556,9 +556,7 @@ sub handle_response {
             }
          }
       }
-      if ($desc) {
-         print "$desc\n";
-      }
+      if ($desc) { print "$desc\n"; }
     }
   }
 }      # end of handle_response

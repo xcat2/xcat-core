@@ -4,19 +4,21 @@ B<tabdump> - display a database table in csv format.
 
 =head1 SYNOPSIS
 
-I<tabdump [table]>
+I<tabdump [-d] [table]>
 
 I<tabdump [? | -h | --help]>
 
 =head1 DESCRIPTION
 
-The tabdump command displays the header and all the rows of the specified table in csv format.
+The tabdump command displays the header and all the rows of the specified table in CSV (comma separated values) format.
 Only one table can be specified.  If no table is specified, the list of existing
 tables will be displayed.
 
 =head1 OPTIONS
 
-B<-?|-h|--help>          Display usage message.
+B<-?|-h|--help>    Display usage message.
+
+B<-d>              Show descriptions of the tables, instead of the contents of the tables.  If a table name is also specified, descriptions of the columns (attributes) of the table will be displayed.  Otherwise, a summary of each table will be displayed.
 
 =head1 RETURN VALUE
 
@@ -34,10 +36,18 @@ B<-?|-h|--help>          Display usage message.
 
   tabdump
 
-3. To see what tables exist in the xCAT database:
+3. To back up all the xCAT database tables:
 
   mkdir -p /tmp/xcatdb.backup
   for i in `tabdump`;do echo "Dumping $i..."; tabdump $i > /tmp/xcatdb.backup/$i.csv; done
+
+4. To display a summary description of each table:
+
+  tabdump -d
+
+5. To display a description of each column in the nodehm table:
+
+  tabdump -d nodehm
 
 =head1 FILES
 
