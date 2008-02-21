@@ -1354,7 +1354,7 @@ sub readSNInfo
 #-----------------------------------------------------------------------------
 sub isServiceReq
 {
-    my ($class, $servicenodename, $service) = @_;
+    my ($class, $servicenodename, $service, $serviceip) = @_;
 
     # check if service is already setup
     `grep $service /etc/xCATSN`;
@@ -1365,32 +1365,82 @@ sub isServiceReq
     else
     {    # check the db to see if this service node is suppose to
             # have this service setup
-
-        # get all the nodes from nodelist table
-        #my $nodelisttab = xCAT::Table->new('nodelist');
-        #my @nodelist = xCAT::Utils->getAllNodesList;
-
-        # get handle to noderes table
-        my $noderestab = xCAT::Table->new('noderes');
-        unless ($noderestab)
+        if (($service eq "dhcpserver") || ($service eq "nameservers"))
         {
-            xCAT::MsgUtils->message('S', "Unable to open noderes table.\n");
-            return -1;
-        }
-        my $whereclause = "servicenode like '$servicenodename'";
-        my @nodelist    =
-          $noderestab->getAllAttribsWhere($whereclause, 'node', $service);
-        foreach my $node (@nodelist)
-        {
-            if (($node->{$service} eq "sn1") || ($node->{$service} eq ""))
+
+            # get handle to networks table
+            my $networkstab = xCAT::Table->new('networks');
+            unless ($networkstab)
             {
-                return 1;    # found a node using this server for the service
+                xCAT::MsgUtils->message('S',
+                                        "Unable to open networks table.\n");
+                return -1;
+            }
+            my $whereclause =
+              "$service like '$servicenodename' or $service like '$serviceip'";
+            my @netlist =
+              $networkstab->getAllAttribsWhere($whereclause, 'netname',
+                                               $service);
+            if (@netlist)
+            {
+                return 1;   # found an entry in the networks table for this node
+            }
+        }
+        else
+        {
+
+            # get handle to noderes table
+            my $noderestab = xCAT::Table->new('noderes');
+            unless ($noderestab)
+            {
+                xCAT::MsgUtils->message('S', "Unable to open noderes table.\n");
+                return -1;
+            }
+            my $whereclause =
+              "servicenode like '$servicenodename' or servicenode like '$serviceip'";
+            my @nodelist =
+              $noderestab->getAllAttribsWhere($whereclause, 'node', $service);
+            foreach my $node (@nodelist)
+            {
+                if (($node->{$service} eq $servicenodename) || ($node->{$service} eq $serviceip) || ($node->{$service} eq ""))
+                {
+                    return 1;   # found a node using this server for the service
+                }
             }
         }
 
         return 0;  # did not find a node using this service for this servicenode
     }
 
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 determinehostname  and ip address
+  
+  Used on the service node to figure out what hostname and ip address
+  the service node is in the database
+  Input: None   TODO IPV6
+  Output: nodename, ipaddress 
+=cut
+
+#-----------------------------------------------------------------------------
+sub determinehostname
+{
+    my $hostname;
+    my $hostnamecmd = "/bin/hostname";
+    my @thostname   = xCAT::Utils->runcmd($hostnamecmd);
+    if ($? != 0)
+    {    # could not get hostname
+        xCAT::MsgUtils->message("S", "Error $? from hostname command\n");
+        exit $?;
+    }
+    $hostname = $thostname[0];
+    my ($hcp, $aliases, $addtype, $length, @addrs) = gethostbyname($hostname);
+    my ($a, $b, $c, $d) = unpack('C4', $addrs[0]);
+    my $ipaddress = $a . "." . $b ."." . $c . "." . $d;
+    my @hostinfo = ($hostname, $ipaddress);
+    return @hostinfo;
 }
 
 1;
