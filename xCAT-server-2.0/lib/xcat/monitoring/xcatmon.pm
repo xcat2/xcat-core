@@ -30,7 +30,8 @@ use Sys::Hostname;
       monservers --A hash reference keyed by the monitoring server nodes 
          and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
+           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}
+      settings -- ping-interval=x,   x is in number of minutes   
     Returns:
       (return code, message)      
 =cut
@@ -89,26 +90,40 @@ sub supportNodeStatusMon {
          and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
            {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
+      settings -- ping-interval=x,   x is in number of minutes   
     Returns:
         (return code, message)
 
 =cut
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
+  my $temp=shift;
+  if ($temp =~ /xCAT_plugin::xcatmon/) {
+    $temp=shift;
+  }
+  my $setting=shift;
+
   #print "xcatmon.startNodeStatusMon\n";
 
   #run the command first to update the status, 
   my $cmd="$::XCATROOT/sbin/xcatnodemon";
-  $output=`$cmd 2>&1`;
-  if ($?) {
-    print "xcatmon: $output\n";
+  #$output=`$cmd 2>&1`;
+  #if ($?) {
+  #  print "xcatmon: $output\n";
+  #}
+  
+  #figure out the ping-intercal setting
+  my $value=3;
+  if ($setting) {
+    if ($setting =~ /ping-interval=(\d+)/) { $value= ($1>0) ? $1 : 3; }
   }
 
+ 
   #create the cron job, it will run the command every 3 minutes.
-  my $newentry="*/3 * * * * XCATROOT=$::XCATROOT $cmd";
+  my $newentry="*/$value * * * * XCATROOT=$::XCATROOT $cmd";
   my ($code, $msg)=xCAT::Utils::add_cron_job($newentry);
   if ($code==0) { return (0, "started"); }
-  else {  return ($code, $msg); }
+  else {  return ($code, $msg); } 
 }
 
 

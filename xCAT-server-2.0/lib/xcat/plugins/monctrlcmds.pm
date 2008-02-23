@@ -127,19 +127,21 @@ sub startmon {
   {
     my %rsp;
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  startmon name [-n|--nodestatmon]";
+    $rsp->{data}->[1]= "  startmon name [-n|--nodestatmon] [-s|--settings]";
     $rsp->{data}->[2]= "  startmon [-h|--help|-v|--version]";
     $rsp->{data}->[3]= "     name is the name of the monitoring plug-in to be registered and invoked.";
     $callback->($rsp);
   }
   
   @ARGV=@{$args};
+  my $settings;
 
   # parse the options
   if(!GetOptions(
       'h|help'     => \$::HELP,
       'v|version'  => \$::VERSION,
-      'n|nodestatmon'  => \$::NODESTATMON))
+      'n|nodestatmon'  => \$::NODESTATMON,
+      's|settings=s'  => \$settings))
   {
     &startmon_usage;
     return;
@@ -223,8 +225,12 @@ sub startmon {
 	$nstat='Y';
       }
       my %tb_cols=(nodestatmon=>$nstat);
+      if ($settings) {
+	$tb_cols{settings}=$settings;
+      }
       $table->setAttribs(\%key_col, \%tb_cols);
-    }   
+    }  
+    $table->close(); 
   }
 
   my %rsp1;

@@ -18,7 +18,7 @@ use xCAT_monitoring::montbhandler;
 
 #the list store the names of the monitoring plug-in and the file name and module names.
 #the names are stored in the "name" column of the monitoring table. 
-#the format is: (name=>[filename, modulename], ...)
+#the format is: (name=>[filename, modulename, settings], ...)
 %PRODUCT_LIST;
 
 #stores the module name and the method that is used for the node status monitoring
@@ -343,10 +343,11 @@ sub startMonitoring {
     my $aRef=$PRODUCT_LIST{$_};
     if ($aRef) {
       my $module_name=$aRef->[1];
+      my $settings=$aRef->[2];
 
       undef $SIG{CHLD};
       #initialize and start monitoring
-      my @ret1 = ${$module_name."::"}{start}->($monservers);
+      my @ret1 = ${$module_name."::"}{start}->($monservers, $settings);
       $ret{$_}=\@ret1;
     } else {
        $ret{$_}=[1, "Monitoring plug-in module $_ is not registered."];
@@ -383,12 +384,13 @@ sub startNodeStatusMonitoring {
     my $aRef=$PRODUCT_LIST{$pname};
     if ($aRef) {
       my $module_name=$aRef->[1];
+      my $settings=$aRef->[2];
       undef $SIG{CHLD};
       my $method = ${$module_name."::"}{supportNodeStatusMon}->();
       # return value 0 means not support. 1 means yes. 
       if ($method > 0) {
         #start nodes tatus monitoring
-        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->(getMonHierarchy()); 
+        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->(getMonHierarchy(), $settings); 
         return @ret2;
       }         
       else {
@@ -772,7 +774,7 @@ sub refreshProductList {
   #get the monitoring plug-in list from the monitoring table
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my @tmp1=$table->getAllAttribs(('name','nodestatmon'));
+    my @tmp1=$table->getAllAttribs(('name','nodestatmon', 'settings'));
     if (defined(@tmp1) && (@tmp1 > 0)) {
       foreach(@tmp1) {
         my $pname=$_->{name};
@@ -784,15 +786,16 @@ sub refreshProductList {
         }
 
         #find out the monitoring plugin file and module name for the product
-        $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
-        $module_name="xCAT_monitoring::$pname";
+        my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+        my $module_name="xCAT_monitoring::$pname";
+        my $settings=$_->{settings};
         #load the module in memory
         eval {require($file_name)};
         if ($@) {   
           print "The file $file_name cannot be located or has compiling errors.\n"; 
         }
         else {
-          my @a=($file_name, $module_name);
+          my @a=($file_name, $module_name, $settings);
           $PRODUCT_LIST{$pname}=\@a;
         }
       } 
