@@ -2,6 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Utils;
 use xCAT::Table;
+use POSIX qw(ceil);
 use Socket;
 use xCAT::Schema;
 use Data::Dumper;
@@ -995,6 +996,34 @@ sub isServiceNode
     }
 }
 
+sub my_hexnets
+{
+   my $rethash;
+    my @nets = split /\n/, `/sbin/ip addr`;
+    foreach (@nets)
+    {
+        my @elems = split /\s+/;
+        unless (/^\s*inet\s/)
+        {
+            next;
+        }
+        (my $curnet, my $maskbits) = split /\//, $elems[2];
+        my $bitstoeven = (4-($maskbits%4));
+        if ($bitstoeven eq 4) { $bitstoeven = 0; }
+        my $padbits = (32-($bitstoeven+$maskbits));
+        my $numchars = int(($maskbits + $bitstoeven)/4);
+        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
+        my $nown = unpack("N", inet_aton($curnet));
+        $nown = $nown & $curmask;
+        my $highn = $nown+((2**$bitstoeven-1)<<(32-$maskbits-$bitstoeven));
+        while ($nown <= $highn) {
+           my $nowhex = sprintf("%08x",$nown);
+           $rethash->{substr($nowhex,0,$numchars)} = $curnet;
+           $nown += 1<<(32-$maskbits-$bitstoeven);
+        }
+    }
+    return $rethash;
+}
 #-------------------------------------------------------------------------------
 
 =head3   my_ip_facing    
