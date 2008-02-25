@@ -78,6 +78,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 %post
+. /etc/profile.d/xcat.sh
 %ifnos linux
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig
 %else
