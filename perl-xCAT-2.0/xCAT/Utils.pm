@@ -1450,7 +1450,7 @@ sub isServiceReq
   
   Used on the service node to figure out what hostname and ip address
   the service node is in the database
-  Input: None   TODO IPV6
+  Input: None   
   Output: nodename, ipaddress 
 =cut
 
@@ -1467,8 +1467,7 @@ sub determinehostname
     }
     $hostname = $thostname[0];
     my ($hcp, $aliases, $addtype, $length, @addrs) = gethostbyname($hostname);
-    my ($a, $b, $c, $d) = unpack('C4', $addrs[0]);
-    my $ipaddress = $a . "." . $b . "." . $c . "." . $d;
+    my $ipaddress = inet_ntoa($addrs[0]);
     my @hostinfo = ($hostname, $ipaddress);
     return @hostinfo;
 }
