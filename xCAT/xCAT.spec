@@ -159,7 +159,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
        $RPM_INSTALL_PREFIX0/sbin/mknb x86_64
     fi
     $RPM_INSTALL_PREFIX0/sbin/makenetworks
-    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=nameservers site.value=`grep nameserver /etc/resolv.conf|awk '{printf $2 ","}'|sed -e s/,$//`
+    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=nameservers site.value=`sed -e 's/#.*//' /etc/resolv.conf|grep nameserver|awk '{printf $2 ","}'|sed -e s/,$//`
     service httpd restart
     chkconfig httpd on
     echo "xCAT is now installed, it is recommended to tabedit networks and set a dynamic ip address range on any networks where nodes are to be discovered"
