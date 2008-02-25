@@ -83,15 +83,16 @@ sub addnode {
   my $node = shift;
   my $ent;
   my $nrtab = xCAT::Table->new('noderes');
+  my $lstatements = $statements;
   if ($nrtab) {
      my $ent;
      $ent = $nrtab->getNodeAttribs($node,['tftpserver']);
      if ($ent and $ent->{tftpserver}) {
-        $statements = 'next-server '.inet_ntoa(inet_aton($ent->{tftpserver})).';'.$statements;
+        $lstatements = 'next-server '.inet_ntoa(inet_aton($ent->{tftpserver})).';'.$statements;
      } else {
         my $nxtsrv = xCAT::Utils->my_ip_facing($node);
         if ($nxtsrv) {
-           $statements = "next-server $nxtsrv;$statements";
+           $lstatements = "next-server $nxtsrv;$statements";
         }
      }
      #else {
@@ -146,8 +147,8 @@ sub addnode {
   	print $omshell "set hardware-address = ".$mac."\n";
   	print $omshell "set hardware-type = 1\n";
   	print $omshell "set ip-address = $ip\n";
-  	if ($statements) {
-  	    print $omshell "set statements = \"$statements\"\n";
+  	if ($lstatements) {
+  	    print $omshell "set statements = \"$lstatements\"\n";
   	 }
 
   	print $omshell "create\n";
