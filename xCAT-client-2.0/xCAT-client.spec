@@ -24,6 +24,15 @@ xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) 
 %prep
 %setup -q
 %build
+# /bin/pwd
+# /bin/ls
+# Convert pods to man pages, e.g.:  pod2man pods/man1/tabdump.1.pod share/man/man1/tabdump.1
+echo "Converting pod files to man pages..."
+for i in pods/*/*.pod; do
+  man=${i/pods/share\/man}
+  pod2man $i ${man%%.pod}
+done
+
 %install
 
 rm -rf $RPM_BUILD_ROOT
@@ -34,7 +43,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man3
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
-mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man8
+# mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man8
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
@@ -47,8 +56,8 @@ cp share/man/man3/* $RPM_BUILD_ROOT/%{prefix}/share/man/man3
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man3/*
 cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
-cp share/man/man8/* $RPM_BUILD_ROOT/%{prefix}/share/man/man8
-chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
+# cp share/man/man8/* $RPM_BUILD_ROOT/%{prefix}/share/man/man8
+# chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
@@ -116,7 +125,7 @@ rm -rf $RPM_BUILD_ROOT
 * Tue Feb 20 2007 Jarrod Johnson <jbjohnso@us.ibm.com>
 - Start core rpm for 1.3 work
 
-%post 
+%post
 %ifos linux
 echo "XCATROOT=$RPM_INSTALL_PREFIX0
 PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin

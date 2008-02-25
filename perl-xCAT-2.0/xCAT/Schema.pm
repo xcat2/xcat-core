@@ -100,9 +100,9 @@ monitoring => {
 	descriptions => {
 		name => "The name of the mornitoring plug-in module.  The plug-in must be put in $ENV{XCATROOT}/lib/perl/xCAT_monitoring/.  See the man page for startmon for details.",
 		nodestatmon => 'Specifies if the monitoring plug-in is used to feed the node status to the xCAT cluster.  Any one of the following values indicates "yes":  y, Y, yes, Yes, YES, 1.  Any other value or blank (default), indicates "no".',
-		settings => 'Specifies the plug-in specific settings. These setting will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. mon_interval=10,toggle=1',    	
-                comments => 'Any user-written notes.',
-    	        disable => "Set to 'yes' or '1' to comment out this row.",
+		settings => 'Specifies the plug-in specific settings. These setting will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. mon_interval=10,toggle=1',
+		comments => 'Any user-written notes.',
+		disable => "Set to 'yes' or '1' to comment out this row.",
 	},
   },
 mp => {
@@ -356,7 +356,31 @@ site => {
     keys => [qw(key)],
     table_desc => 'Global settings for the whole cluster.  This table is different from the other tables in that each attribute is just named in the key column, rather than having a separate column for each attribute.',
 	descriptions => {
-		key => 'Name of the attribute.  Valid values:  master (xCAT management node), xcatconfdir (default /etc/xcat), domain (DNS domain name used for the cluster), installdir (directory that holds the node deployment pkgs), xcatdport (port used by xcatd daemon for client/server communication), xcatiport (port used by xcatd to receive install status updates from nodes), timezone (e.g. America/New_York), nameservers (list of DNS servers for the cluster), rsh (path of remote shell command), rcp (path of remote copy command), blademaxp (max # of processes for blade hw ctrl), ppcmaxp (max # of processes for PPC hw ctrl), ipmimaxp, ipmitimeout, ipmiretries, ipmisdrcache, iscsidir, xcatservers (service nodes??), dhcpinterfaces (network interfaces DHCP should listen on??), forwarders (DNS forwarders??), genpasswords (generate BMC passwords??).',
+		key => "Name of the attribute.  Valid values:\n".
+			"\t master (xCAT management node)\n".
+			"\t xcatconfdir (default /etc/xcat)\n".
+			"\t domain (DNS domain name used for the cluster)\n".
+			"\t installdir (directory that holds the node deployment pkgs)\n".
+			"\t xcatdport (port used by xcatd daemon for client/server communication)\n".
+			"\t xcatiport (port used by xcatd to receive install status updates from nodes)\n".
+			"\t timezone (e.g. America/New_York)\n".
+			"\t nameservers (list of DNS servers for the cluster)\n".
+			"\t rsh (path of remote shell command)\n".
+			"\t rcp (path of remote copy command)\n".
+			"\t blademaxp (max # of processes for blade hw ctrl)\n".
+			"\t ppcmaxp (max # of processes for PPC hw ctrl)\n".
+			"\t ipmimaxp\n".
+			"\t ipmitimeout\n".
+			"\t ipmiretries\n".
+			"\t ipmisdrcache\n".
+			"\t iscsidir\n".
+			"\t xcatservers (service nodes??)\n".
+			"\t dhcpinterfaces (network interfaces DHCP should listen on??)\n".
+			"\t forwarders (DNS forwarders??)\n".
+			"\t genpasswords (generate BMC passwords??)\n".
+			"\t defserialport (default if not specified in noderes table)\n".
+			"\t defserialspeed (default if not specified in nodehm table)\n".
+			"\t defserialflow (default if not specified in nodehm table)",
 		value => 'The value of the attribute specified in the "key" column.',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",

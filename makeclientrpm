@@ -6,7 +6,7 @@ if [ "$OSNAME" = "AIX" ]
 then
 
  	echo '.svn' > /tmp/xcat-excludes
-    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/xCAT-client-2.0.tar xCAT-client-2.0
+    tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/xCAT-client-2.0.tar xCAT-client-2.0
     gzip /opt/freeware/src/packages/SOURCES/xCAT-client-2.0.tar
     cd ./xCAT-client-2.0
     rm -f /opt/freeware/src/packages/SRPMS/xCAT-client-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-client-2.0*rpm
@@ -22,7 +22,7 @@ else
    		pkg="packages"
 	fi
 
-	tar  --exclude .svn -czvf /usr/src/$pkg/SOURCES/xCAT-client-2.0.tar.gz xCAT-client-2.0;
+	tar  --exclude .svn -czf /usr/src/$pkg/SOURCES/xCAT-client-2.0.tar.gz xCAT-client-2.0;
 	rm -f /usr/src/$pkg/SRPMS/xCAT-client-2.0*rpm /usr/src/$pkg/RPMS/noarch/xCAT-client-2.0*rpm
 	rpmbuild -ta /usr/src/$pkg/SOURCES/xCAT-client-2.0.tar.gz ;
 	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-client-2.0*rpm

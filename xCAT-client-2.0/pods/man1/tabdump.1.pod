@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<tabdump> - display a database table in csv format.
+B<tabdump> - display a database table in CSV format.
 
 =head1 SYNOPSIS
 

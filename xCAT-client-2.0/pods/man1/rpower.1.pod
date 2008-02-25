@@ -68,8 +68,6 @@ Display the version number.
 =back
 
 
-=back
-
 =head1 EXAMPLES
 
 =begin roff
@@ -104,7 +102,7 @@ node5: on
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/rpower
 
 
