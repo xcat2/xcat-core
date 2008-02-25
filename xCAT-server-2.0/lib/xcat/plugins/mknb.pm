@@ -19,19 +19,19 @@ sub process_request {
    my $serialflow;
    my $xcatdport = 3001;
    if ($sitetab) {
-      my $portent = $sitetab->getAttribs({key=>'defserialport'});
+      my $portent = $sitetab->getAttribs({key=>'defserialport'},'value');
       if ($portent and defined($portent->{value})) {
          $serialport=$portent->{value};
       }
-      $portent = $sitetab->getAttribs({key=>'defserialspeed'});
+      $portent = $sitetab->getAttribs({key=>'defserialspeed'},'value');
       if ($portent and defined($portent->{value})) {
          $serialspeed=$portent->{value};
       }
-      $portent = $sitetab->getAttribs({key=>'defserialflow'});
+      $portent = $sitetab->getAttribs({key=>'defserialflow'},'value');
       if ($portent and defined($portent->{value})) {
          $serialflow=$portent->{value};
       }
-      $portent = $sitetab->getAttribs({key=>'xcatdport'});
+      $portent = $sitetab->getAttribs({key=>'xcatdport'},'value');
       if ($portent and defined($portent->{value})) {
          $xcatdport=$portent->{value};
       }
@@ -84,7 +84,7 @@ sub process_request {
    system ("rm -rf $temdir");
    my $hexnets = xCAT::Utils->my_hexnets();
    my $consolecmdline;
-   if ($serialport and $serialspeed) {
+   if (defined($serialport) and $serialspeed) {
        $consolecmdline = "console=ttyS$serialport,$serialspeed";
       if ($serialflow =~ /cts/ or $serialflow =~ /hard/) {
          $consolecmdline .= "n8r";
