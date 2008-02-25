@@ -2,7 +2,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Utils;
 use xCAT::Table;
-use POSIX qw(ceil);
 use Socket;
 use xCAT::Schema;
 use Data::Dumper;
@@ -996,34 +995,6 @@ sub isServiceNode
     }
 }
 
-sub my_hexnets
-{
-   my $rethash;
-    my @nets = split /\n/, `/sbin/ip addr`;
-    foreach (@nets)
-    {
-        my @elems = split /\s+/;
-        unless (/^\s*inet\s/)
-        {
-            next;
-        }
-        (my $curnet, my $maskbits) = split /\//, $elems[2];
-        my $bitstoeven = (4-($maskbits%4));
-        if ($bitstoeven eq 4) { $bitstoeven = 0; }
-        my $padbits = (32-($bitstoeven+$maskbits));
-        my $numchars = int(($maskbits + $bitstoeven)/4);
-        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
-        my $nown = unpack("N", inet_aton($curnet));
-        $nown = $nown & $curmask;
-        my $highn = $nown+((2**$bitstoeven-1)<<(32-$maskbits-$bitstoeven));
-        while ($nown <= $highn) {
-           my $nowhex = sprintf("%08x",$nown);
-           $rethash->{substr($nowhex,0,$numchars)} = $curnet;
-           $nown += 1<<(32-$maskbits-$bitstoeven);
-        }
-    }
-    return $rethash;
-}
 #-------------------------------------------------------------------------------
 
 =head3   my_ip_facing    
@@ -1237,7 +1208,6 @@ sub GetMasterNodeName
 sub GetNodeOSARCH
 {
     my ($class, $node) = @_;
-
     my $noderestab = xCAT::Table->new('noderes');
     my $typetab    = xCAT::Table->new('nodetype');
     unless ($noderestab and $typetab)
@@ -1333,7 +1303,7 @@ sub readSNInfo
             if (!($masternode))
             {
                 xCAT::MsgUtils->message('S',
-                                       "Could not get Master for node $node\n");
+                                   "Could not get Master for node $nodename\n");
                 return 1;
             }
 
@@ -1341,7 +1311,7 @@ sub readSNInfo
             if (!($et->{'os'} || $et->{'arch'}))
             {
                 xCAT::MsgUtils->message('S',
-                                        "Could not OS/ARCH for node $node\n");
+                                  "Could not get OS/ARCH for node $nodename\n");
                 return 1;
             }
         }
@@ -1431,7 +1401,9 @@ sub isServiceReq
               $noderestab->getAllAttribsWhere($whereclause, 'node', $service);
             foreach my $node (@nodelist)
             {
-                if (($node->{$service} eq $servicenodename) || ($node->{$service} eq $serviceip) || ($node->{$service} eq ""))
+                if (   ($node->{$service} eq $servicenodename)
+                    || ($node->{$service} eq $serviceip)
+                    || ($node->{$service} eq ""))
                 {
                     return 1;   # found a node using this server for the service
                 }
@@ -1467,9 +1439,38 @@ sub determinehostname
     $hostname = $thostname[0];
     my ($hcp, $aliases, $addtype, $length, @addrs) = gethostbyname($hostname);
     my ($a, $b, $c, $d) = unpack('C4', $addrs[0]);
-    my $ipaddress = $a . "." . $b ."." . $c . "." . $d;
+    my $ipaddress = $a . "." . $b . "." . $c . "." . $d;
     my @hostinfo = ($hostname, $ipaddress);
     return @hostinfo;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 update_xCATSN
+  Will add the input service string to /etc/xCATSN to indicate that
+  the service has been setup by the service node
+  Input: service (e.g. tftp, nfs,etc) 
+  Output: 0 = added, 1= already there
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub update_xCATSN
+{
+    my ($class, $service) = @_;
+    my $file = "/etc/xCATSN";
+    my $rc   = 0;
+    my $cmd  = " grep $service $file";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0)
+    {    # need to add
+        `echo $service  >> /etc/xCATSN`;
+    }
+    else
+    {
+        $rc = 1;
+    }
+    return $rc;
 }
 
 1;
