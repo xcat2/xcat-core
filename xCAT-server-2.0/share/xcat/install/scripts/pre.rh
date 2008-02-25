@@ -1,4 +1,4 @@
-if grep n8r /proc/cmdline >& /dev/null;
+if grep n8r /proc/cmdline > /dev/null 2>&1;
 then
   stty crtscts
 fi
