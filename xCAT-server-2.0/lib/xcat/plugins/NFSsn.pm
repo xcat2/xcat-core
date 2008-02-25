@@ -31,15 +31,15 @@ Call  setup_NFS
 sub handled_commands
 
 {
-    my $rc=0;
+    my $rc = 0;
     if (xCAT::Utils->isServiceNode())
     {
-        my @nodeinfo = xCAT::Utils->determinehostname;
+        my @nodeinfo   = xCAT::Utils->determinehostname;
         my $nodename   = $nodeinfo[0];
         my $nodeipaddr = $nodeinfo[1];
 
         # service needed on this Service Node
-        $rc=&setup_NFS($nodename);    # setup NFS
+        $rc = &setup_NFS($nodename);    # setup NFS
     }
     return $rc;
 }
@@ -56,32 +56,6 @@ sub handled_commands
 sub process_request
 {
     return;
-}
-
-#-----------------------------------------------------------------------------
-
-=head3 determine_hostname 
-
-    Figures out what my hostname is for the database read
-    Right now just using hostname command, probably need better way 
-
-=cut
-
-#-----------------------------------------------------------------------------
-sub determine_hostname
-{
-    my $hostname;
-    my $hostnamecmd = "/bin/hostname";
-    my @thostname   = xCAT::Utils->runcmd($hostnamecmd);
-    if ($? != 0)
-    {    # could not get hostname
-        xCAT::MsgUtils->message("S", "Error $? from hostname command\n");
-        exit $?;
-    }
-    $hostname = $thostname[0];
-    my ($hcp, $aliases, $addtype, $length, @addrs) = gethostbyname($hostname);
-    my ($a, $b , $c, $d) = unpack ('C4', $addrs[0]);
-    return $hostname;
 }
 
 #-----------------------------------------------------------------------------
@@ -168,7 +142,7 @@ sub setup_NFS
             if ($::RUNCMD_RC != 0)
             {        # error
                 xCAT::MsgUtils->message("S", "Error starting NFS");
-                return -1;
+                return 1;
             }
             my $cmd = "chkconfig nfs on";
             xCAT::Utils->runcmd($cmd, 0);
@@ -183,7 +157,7 @@ sub setup_NFS
             if ($::RUNCMD_RC != 0)
             {        # error
                 xCAT::MsgUtils->message("S", "exportfs -a failed");
-                return -1;
+                return 1;
             }
 
             # check to see if install and tftp directory already mounted
@@ -208,8 +182,8 @@ sub setup_NFS
                 {
 
                     # need to  mount the directory
-                    my  $cmd =
-                          " mount -o ro,nolock $master:$directory $directory";
+                    my $cmd =
+                      " mount -o ro,nolock $master:$directory $directory";
                     xCAT::Utils->runcmd($cmd, 0);
                     if ($::RUNCMD_RC != 0)
                     {    # error
@@ -229,6 +203,24 @@ sub setup_NFS
     else
     {                    # error reading Db
         $rc = 1;
+    }
+    if ($rc == 0)
+    {
+
+        #  update fstab so they will mount on reboot
+        $cmd = "grep $master:$tftpdir $tftpdir  /etc/fstab  ";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            `echo "$master:$tftpdir $tftpdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+        }
+        $cmd = "grep $master:$installdir $installdir  /etc/fstab  ";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            `echo "$master:$installdir $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+        }
+			xCAT::Utils->update_xCATSN("nfs");
     }
     return $rc;
 }
