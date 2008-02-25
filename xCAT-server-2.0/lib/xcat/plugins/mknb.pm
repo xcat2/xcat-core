@@ -73,6 +73,7 @@ sub process_request {
       copy("$installdir/postscripts/hostkeys/ssh_host_key","$tempdir/etc/ssh_host_key");
       copy("$installdir/postscripts/hostkeys/ssh_host_rsa_key","$tempdir/etc/ssh_host_rsa_key");
       copy("$installdir/postscripts/hostkeys/ssh_host_dsa_key","$tempdir/etc/ssh_host_dsa_key");
+      chmod(0600,<$tempdir/etc/ssh_*>);
    }
    unless (-r "$tempdir/etc/ssh_host_key") {
       system("ssh-keygen -t rsa1 -f $tempdir/etc/ssh_host_key -C '' -N ''");
