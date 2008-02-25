@@ -1,7 +1,7 @@
 package xCAT_plugin::nodestat;
 
 use Socket;
-use Data::Dumper;
+use IO::Handle;
 
 sub handled_commands {
    return { 
@@ -41,14 +41,11 @@ sub installer_query {
    my $addr = gethostbyname($node);
    my $sin = sockaddr_in($destport,$addr);
    connect($socket,$sin) || return 0;
-   print $socket "stat \r";
-   print "stat \r";
-   print "here we go\n";
+   print $socket "stat \n";
+   $socket->flush;
    while (<$socket>) { 
-      print $_."\n";
       $text.=$_;
    }
-   print "here we go\n";
    return $text;
    close($socket);
 }
@@ -61,7 +58,6 @@ sub process_request {
    my $request = shift;
    my $callback = shift;
    my @nodes = @{$request->{node}};
-   $callback->({data=>Dumper(\@nodes)});
    my $node;
    foreach $node (@nodes) {
       my %rsp;
