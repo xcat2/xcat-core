@@ -3,7 +3,6 @@ use File::Temp qw(tempdir);
 use xCAT::Utils;
 use File::Path;
 use File::Copy;
-use Data::Dumper;
 
 sub handled_commands {
    return { 
@@ -42,7 +41,7 @@ sub process_request {
    my $installdir = "/install";
    my $tftpdir = "/tftpboot";
    if (scalar(@{$request->{arg}}) != 1) {
-      $callback->({error=>Dumper($request)." Need to specifiy architecture (x86_64 or ppc64)"},{errorcode=>[1]});
+      $callback->({error=>"Need to specifiy architecture (x86_64 or ppc64)"},{errorcode=>[1]});
       return;
    }
    my $arch = $request->{arg}->[0];
