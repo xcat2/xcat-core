@@ -100,7 +100,7 @@ monitoring => {
 	descriptions => {
 		name => "The name of the mornitoring plug-in module.  The plug-in must be put in $ENV{XCATROOT}/lib/perl/xCAT_monitoring/.  See the man page for startmon for details.",
 		nodestatmon => 'Specifies if the monitoring plug-in is used to feed the node status to the xCAT cluster.  Any one of the following values indicates "yes":  y, Y, yes, Yes, YES, 1.  Any other value or blank (default), indicates "no".',
-		settings => 'Specifies the plug-in specific settings. These setting will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. mon_interval=10,toggle=1',
+		settings => 'Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. It is a comma separated item=value pairs. e.g. mon_interval=10,toggle=1',
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",
 	},

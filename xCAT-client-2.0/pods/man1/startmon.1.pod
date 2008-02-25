@@ -11,7 +11,7 @@ I<startmon [-h| --help]>
 I<startmon  [-v| --version]>
 
 
-I<startmon I<name> [-n|--nodestatmon]>
+I<startmon I<name> [-n|--nodestatmon] [-s|--settings item=value[,item=value]...]> 
 
 
 =head1 DESCRIPTION
@@ -26,9 +26,11 @@ I<name> is the name of the monitoring plug-in module. For example, if the the I<
 =head1 OPTIONS
 
 
-B<-n | -nodestatmon>   Indicate that this monitoring plug-in will be used for feeding the node liveness status to the xCAT I<nodelist> table. 
-
 B<-h | -help>          Display usage message.
+
+B<-n | -nodestatmon>   Indicate that this monitoring plug-in will be used for feeding the node liveness status to the xCAT I<nodelist> table.
+
+B<-s | -settings>     Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. mon_interval=10,toggle=1.
 
 B<-v | -version >      Command Version. 
 
@@ -50,6 +52,12 @@ B<-V | -verbose>       Verbose output.
 2. To start rmcmon plug-in module (which interacts with IBM's RSCT monitoring software) to monitor the xCAT cluster and have it feed the node liveness status to xCAT's I<nodelist> table, enter:
 
   startmon rmcmon -n
+
+3. To start xcatmon plug-in module to feed the node liveness status to xCAT's I<nodelist> table, enter:
+
+  startmon rmcmon -n -s ping-interval=2
+where 2 is the number of minutes between the pings.
+
 
 
 =head1 FILES 

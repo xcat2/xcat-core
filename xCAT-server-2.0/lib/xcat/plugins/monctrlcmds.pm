@@ -127,7 +127,7 @@ sub startmon {
   {
     my %rsp;
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  startmon name [-n|--nodestatmon] [-s|--settings]";
+    $rsp->{data}->[1]= "  startmon name [-n|--nodestatmon] [-s|--settings item=value[,item=value]...]";
     $rsp->{data}->[2]= "  startmon [-h|--help|-v|--version]";
     $rsp->{data}->[3]= "     name is the name of the monitoring plug-in to be registered and invoked.";
     $callback->($rsp);
