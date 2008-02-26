@@ -21,7 +21,8 @@ use Getopt::Long;
 =head3  handled_commands 
 
 Check to see if on a Service Node
-This will be setup all the time on Service Nodes
+Check database to see if this node is a NFS server
+   should be always
 Call  setup_NFS
 
 =cut
@@ -37,9 +38,18 @@ sub handled_commands
         my @nodeinfo   = xCAT::Utils->determinehostname;
         my $nodename   = $nodeinfo[0];
         my $nodeipaddr = $nodeinfo[1];
+        my $service    = "nfsserver";
+        $rc = xCAT::Utils->isServiceReq($nodename, $service, $nodeipaddr);
+        if ($rc == 1)
+        {
 
-        # service needed on this Service Node
-        $rc = &setup_NFS($nodename);    # setup NFS
+            # service needed on this Service Node
+            $rc = &setup_NFS($nodename);    # setup NFS
+            if ($rc == 0)
+            {
+                xCAT::Utils->update_xCATSN($service);
+            }
+        }
     }
     return $rc;
 }
@@ -220,7 +230,6 @@ sub setup_NFS
         {
             `echo "$master:$installdir $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
         }
-			xCAT::Utils->update_xCATSN("nfs");
     }
     return $rc;
 }

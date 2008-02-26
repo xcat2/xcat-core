@@ -29,7 +29,7 @@ Call  setup_DNS
 
 sub handled_commands
 {
-    my $rc=0;
+    my $rc = 0;
     if (xCAT::Utils->isServiceNode())
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
@@ -43,6 +43,10 @@ sub handled_commands
 
             # service needed on this Service Node
             $rc = &setup_DNS($nodename);    # setup DNS
+            if ($rc == 0)
+            {
+                xCAT::Utils->update_xCATSN($service);
+            }
         }
     }
     return $rc;
@@ -166,11 +170,10 @@ sub setup_DNS
             `cp /etc/named.conf /var/named/chroot/etc`;
             `chkconfig --level 345 named on`;
             `service named restart`;
-             xCAT::Utils->update_xCATSN("dns"); 
         }
     }
     else
-    {                                       # error reading DB
+    {    # error reading DB
         return 1;
     }
     return 0;

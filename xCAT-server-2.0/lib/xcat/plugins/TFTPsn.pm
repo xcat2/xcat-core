@@ -42,7 +42,11 @@ sub handled_commands
         {
 
             # service needed on this Service Node
-            $rc=&setup_TFTP($nodename);    # setup TFTP
+            $rc = &setup_TFTP($nodename);    # setup TFTP
+            if ($rc == 0)
+            {
+                xCAT::Utils->update_xCATSN($service);
+            }
         }
     }
     return $rc;
@@ -104,8 +108,7 @@ sub setup_TFTP
     if (xCAT::Utils->isLinux())
     {
 
-        # enable tftp 
-
+        # enable tftp
 
         my $cmd = "chkconfig tftp on";
         xCAT::Utils->runcmd($cmd, -1);
@@ -129,7 +132,6 @@ sub setup_TFTP
         # TBD AIX  tftp may already be enabled
 
     }
-	xCAT::Utils->update_xCATSN("tftp");
- return 0;
+    return 0;
 }
 1;

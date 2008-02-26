@@ -43,6 +43,10 @@ sub handled_commands
 
             # service needed on this Service Node
             $rc = &setup_DHCP($nodename);    # setup DHCP
+            if ($rc == 0)
+            {
+                xCAT::Utils->update_xCATSN($service);
+            }
         }
     }
     return $rc;
@@ -113,7 +117,6 @@ sub setup_DHCP
     {    # error reading Db
         $rc = 1;
     }
-    xCAT::Utils->update_xCATSN("dhcp");
     return $rc;
 }
 1;
