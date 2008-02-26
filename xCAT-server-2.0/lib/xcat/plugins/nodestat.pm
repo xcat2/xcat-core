@@ -46,6 +46,7 @@ sub installer_query {
    while (<$socket>) { 
       $text.=$_;
    }
+   $text =~ s/\n.*//;
    return $text;
    close($socket);
 }
