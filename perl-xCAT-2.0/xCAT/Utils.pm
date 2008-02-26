@@ -998,7 +998,7 @@ sub isServiceNode
 
 sub my_hexnets
 {
-   my $rethash;
+    my $rethash;
     my @nets = split /\n/, `/sbin/ip addr`;
     foreach (@nets)
     {
@@ -1008,22 +1008,26 @@ sub my_hexnets
             next;
         }
         (my $curnet, my $maskbits) = split /\//, $elems[2];
-        my $bitstoeven = (4-($maskbits%4));
+        my $bitstoeven = (4 - ($maskbits % 4));
         if ($bitstoeven eq 4) { $bitstoeven = 0; }
-        my $padbits = (32-($bitstoeven+$maskbits));
-        my $numchars = int(($maskbits + $bitstoeven)/4);
-        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
-        my $nown = unpack("N", inet_aton($curnet));
+        my $padbits  = (32 - ($bitstoeven + $maskbits));
+        my $numchars = int(($maskbits + $bitstoeven) / 4);
+        my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
+        my $nown     = unpack("N", inet_aton($curnet));
         $nown = $nown & $curmask;
-        my $highn = $nown+((2**$bitstoeven-1)<<(32-$maskbits-$bitstoeven));
-        while ($nown <= $highn) {
-           my $nowhex = sprintf("%08x",$nown);
-           $rethash->{substr($nowhex,0,$numchars)} = $curnet;
-           $nown += 1<<(32-$maskbits-$bitstoeven);
+        my $highn =
+          $nown + ((2**$bitstoeven - 1) << (32 - $maskbits - $bitstoeven));
+
+        while ($nown <= $highn)
+        {
+            my $nowhex = sprintf("%08x", $nown);
+            $rethash->{substr($nowhex, 0, $numchars)} = $curnet;
+            $nown += 1 << (32 - $maskbits - $bitstoeven);
         }
     }
     return $rethash;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3   my_ip_facing    
@@ -1416,30 +1420,62 @@ sub isServiceReq
         }
         else
         {
+            if ($service eq "cons")
+            {
 
-            # get handle to noderes table
-            my $noderestab = xCAT::Table->new('noderes');
-            unless ($noderestab)
-            {
-                xCAT::MsgUtils->message('S', "Unable to open noderes table.\n");
-                return -1;
-            }
-            my $whereclause =
-              "servicenode like '$servicenodename' or servicenode like '$serviceip'";
-            my @nodelist =
-              $noderestab->getAllAttribsWhere($whereclause, 'node', $service);
-            foreach my $node (@nodelist)
-            {
-                if (   ($node->{$service} eq $servicenodename)
-                    || ($node->{$service} eq $serviceip)
-                    || ($node->{$service} eq ""))
+                # get handle to nodehm table
+                my $nodehmtab = xCAT::Table->new('nodehm');
+                unless ($nodehmtab)
                 {
-                    return 1;   # found a node using this server for the service
+                    xCAT::MsgUtils->message('S',
+                                            "Unable to open nodehm table.\n");
+                    return -1;
+                }
+                my $whereclause =
+                  "node like '$servicenodename' or node like '$serviceip'";
+                my @nodelist =
+                  $nodehmtab->getAllAttribsWhere($whereclause, 'node',
+                                                 $service);
+                foreach my $node (@nodelist)
+                {
+                    if ($node->{$service} ne "")    # cons defined
+                    {
+                        return 1;    # found cons defined for this server
+                    }
+                }
+
+            }
+            else                     # other service TFTP,etc
+            {
+
+                # get handle to noderes table
+                my $noderestab = xCAT::Table->new('noderes');
+                unless ($noderestab)
+                {
+                    xCAT::MsgUtils->message('S',
+                                            "Unable to open noderes table.\n");
+                    return -1;
+                }
+                my $whereclause =
+                  "servicenode like '$servicenodename' or servicenode like '$serviceip'";
+                my @nodelist =
+                  $noderestab->getAllAttribsWhere($whereclause, 'node',
+                                                  $service);
+                foreach my $node (@nodelist)
+                {
+                    if (   ($node->{$service} eq $servicenodename)
+                        || ($node->{$service} eq $serviceip)
+                        || ($node->{$service} eq ""))
+                    {
+                        return
+                          1;    # found a node using this server for the service
+                    }
                 }
             }
-        }
 
-        return 0;  # did not find a node using this service for this servicenode
+            return
+              0;   # did not find a node using this service for this servicenode
+        }
     }
 
 }
