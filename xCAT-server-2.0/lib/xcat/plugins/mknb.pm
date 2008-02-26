@@ -94,6 +94,16 @@ sub process_request {
       } 
    }
    my $cfgfile;
+   if ($arch =~ /x86/) {
+      if (! -r "$tftpdir/pxelinux.0") {
+         unless (-r "/usr/lib/syslinux/pxelinux.0") {
+            $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
+            return;
+         }
+         copy("/usr/lib/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
+         chmod(0644,"$tftpdir/pxelinux.0");
+      }
+   }
    foreach (keys %{$hexnets}) {
       if ($arch =~ /x86/) {
          open($cfgfile,">","$tftpdir/pxelinux.cfg/".uc($_));
