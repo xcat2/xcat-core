@@ -996,10 +996,12 @@ sub getNodeAttribs_nosub
            $return = 1;
            $datum->{$_} = $tent->{$_};
         } else { #attempt to fill in gapped attributes
-           my $sent = $self->getNodeAttribs_nosub_returnany($node, [$_]);
-           if ($sent and defined($sent->{$_})) {
-              $return = 1;
-              $datum->{$_} = $sent->{$_};
+           unless (scalar(@$attref) <= 1) {
+             my $sent = $self->getNodeAttribs($node, [$_]);
+             if ($sent and defined($sent->{$_})) {
+                 $return = 1;
+                 $datum->{$_} = $sent->{$_};
+             }
            }
         }
       }
