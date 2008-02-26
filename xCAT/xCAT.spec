@@ -145,14 +145,16 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     rm /tftpboot/pxelinux.cfg/default
 
 	# setup syslog
-    cp /etc/syslog.conf /etc/syslog.conf.ORIG
-	echo "*.debug   /var/log/localmessages" > /etc/test.tmp
-	echo "*.crit   /var/log/localmessages" >> /etc/test.tmp
+	if [ ! -r /etc/syslog.conf.XCATORIG ]; then
+    cp /etc/syslog.conf /etc/syslog.conf.XCATORIG
+	echo "*.debug   /var/log/messages" > /etc/test.tmp
+	echo "*.crit   /var/log/messages" >> /etc/test.tmp
 	cat /etc/test.tmp >> /etc/syslog.conf
     rm /etc/test.tmp
-	touch /var/log/localmessages
+	touch /var/log/messages
 	/etc/rc.d/init.d/syslog stop
 	/etc/rc.d/init.d/syslog start
+    fi
 
     XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
     if [ -x $RPM_INSTALL_PREFIX0/sbin/mknb ]; then
