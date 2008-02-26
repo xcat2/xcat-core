@@ -266,7 +266,7 @@ sub credentials {
     my %logon = (
         hmc => ["hscroot","abc123"],
         ivm => ["padmin", "padmin"],
-        fsp => ["dev",    "FipSdev"]
+        fsp => ["admin",  "admin"]
     );
     return( @{$logon{$hwtype}}[0], @{$logon{$hwtype}}[1] );
 }
