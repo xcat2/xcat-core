@@ -584,6 +584,8 @@ sub setobjdefs
             push(@{$attrlist{$type}}, $entry->{'attr_name'});
         }
 
+my @attrprovided=();
+
         # check FINALATTRS to see if all the attrs are valid
         foreach my $attr (keys %{$objhash{$objname}})
         {
@@ -607,17 +609,25 @@ sub setobjdefs
                 }
                 next;
             }
+#ndebug1
+			push(@attrprovided, $attr); 
+
         }
 
         #   we need to figure out what table to
         #               store each attr
         #   And we must do this in the order given in defspec!!
+
+
+		my @setattrlist=();
+
         foreach $this_attr (@{$datatype->{'attrs'}})
         {
 
             my %keyhash;
             my %updates;
             my $attr_name = $this_attr->{attr_name};
+
 
             # if we have a value for this attribute then process it
             #   - otherwise go to the next attr
@@ -777,7 +787,6 @@ sub setobjdefs
                 }
 
                 # set the attr values in the DB
-                $thistable->setAttribs(\%keyhash, \%updates);
                 my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
                 if (!defined($rc))
                 {
@@ -791,17 +800,44 @@ r\'.";
                         xCAT::MsgUtils->message("I", $rsp, $::callback);
                     }
                     $ret = 1;
+					$thistable->commit;
                     next;
                 }
 
                 # $::settableref{$lookup_table} = $thistable;
+				
+				push(@setattrlist, $attr_name);
 
                 $thistable->commit;
 
             }
 
         }    # end - foreach attribute
+
+		#
+		#  check to see if all the attrs got set
+		#
+		# debug: print "attrprovided = @attrprovided, setattrlist = @setattrlist\n";
+
+		my @errlist;
+		foreach $a (@attrprovided)
+        {	
+			#  is this attr was not set then add it to the error list
+			if (!grep(/^$a$/, @setattrlist))
+			{			
+				push(@errlist, $a);
+				$ret = 2;
+			}
+
+		}
+		if ($ret == 2) {
+			my $rsp;
+			$rsp->{data}->[0] = "Could not set the following attributes for the \'$objname\' definition in the xCAT database: \'@errlist\'\n";
+			xCAT::MsgUtils->message("E", $rsp, $::callback);
+		}
+
     }    # end - foreach object
+
     return $ret;
 }
 
