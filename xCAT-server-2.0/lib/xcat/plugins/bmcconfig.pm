@@ -2,6 +2,7 @@
 package xCAT_plugin::bmcconfig;
 use Data::Dumper;
 use xCAT::Table;
+use Socket;
 
 sub handled_commands {
     return {
@@ -22,11 +23,7 @@ sub genpassword {
 
 sub net_parms {
   my $ip = shift;
-  if ($ip =~ /[A-Za-z]/) {
-    my $addr = (gethostbyname($ip))[4];
-    my @bytes = unpack("C4",$addr);
-    $ip = join(".",@bytes);
-  }
+  $ip = inet_ntoa(inet_aton($ip));
   my $nettab = xCAT::Table->new('networks');
   unless ($nettab) { return undef };
   my @nets = $nettab->getAllAttribs('net','mask','gateway');
@@ -44,6 +41,7 @@ sub net_parms {
       return ($ip,$mask,$gw);
     } 
   }
+  syslog("local1|err","xCAT BMC configuration error, no appropriate network for $ip found in networks, unable to determine netmask");
 }
 
   
