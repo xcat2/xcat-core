@@ -66,9 +66,9 @@ sub mknetboot {
        $imgsrv = $sent->{value};
     }
     my $installroot;
+    $installroot = "/install";
     if ($sitetab) { 
         (my $ref) = $sitetab->getAttribs({key=>installdir},value);
-        print Dumper($ref);
         if ($ref and $ref->{value}) {
             $installroot = $ref->{value};
         }

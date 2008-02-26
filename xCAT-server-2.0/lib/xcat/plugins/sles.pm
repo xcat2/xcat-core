@@ -142,6 +142,7 @@ sub copycd {
   my $callback = shift;
   my $doreq = shift;
   my $installroot;
+  $installroot="/install";
   my $sitetab = xCAT::Table->new('site');
   if ($sitetab) { 
     (my $ref) = $sitetab->getAttribs({key=>installdir},value);
