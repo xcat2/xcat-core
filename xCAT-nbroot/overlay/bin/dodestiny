@@ -15,7 +15,7 @@ while :; do
   DEST=`echo $DESTINY|awk -F= '{print $1}'` #No bash, no tricks
   TARG=`echo $DESTINY|awk -F= '{print $2}'` #No bash, no tricks
   DESTINY=`echo $DESTINY|awk '{print $1}'` #No bash, no tricks
-  if [ $DESTINY == "standby" ]; then
+  if [ "$DESTINY" == "standby" ]; then
     echo "Server notified us of standby condition, please check chain table".
     echo "Retrying destiny in 15 seconds"
     usleep 15000000 # something may be transiently wrong, check back in 15 seconds
@@ -25,11 +25,11 @@ while :; do
     done
     exec /bin/dodestiny
   fi
-  if [ $DESTINY == "shell" ]; then
+  if [ "$DESTINY" == "shell" ]; then
     echo "Server notified us to stay in shell state, stopping destiny requests"
     while :; do /bin/sh; done #exit
   fi
-  if [ $DESTINY == "discover" ]; then
+  if [ "$DESTINY" == "discover" ]; then
     echo "MAC discovery begins"
     minixcatd.awk &
     usleep 500000 #Mitigate occurrances of 'failed to notify node'
@@ -84,19 +84,19 @@ while :; do
     #Discovery complete, restart requested.
     exec /bin/restart
   fi
-  if [ $DESTINY == "reboot" -o $DESTINY == "boot" ]; then
+  if [ "$DESTINY" == "reboot" -o "$DESTINY" == "boot" ]; then
     while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
     reboot -f
   fi
-  if [ $DEST == "runcmd" ]; then
+  if [ "$DEST" == "runcmd" ]; then
     while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
     $TARG
   fi
-  if [ $DESTINY == "install" -o $DESTINY == "netboot" ]; then
+  if [ "$DESTINY" == "install" -o "$DESTINY" == "netboot" ]; then
     reboot -f #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
     IMGSERVER=`grep imgserver /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
     INITRD=`grep initrd /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
@@ -111,7 +111,7 @@ while :; do
     #kexec -f --append="$KCMD" --initrd=/tmp/initrd /tmp/kernel
     reboot -f #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
   fi
-  if [ $DEST == "runimage" ]; then
+  if [ "$DEST" == "runimage" ]; then
     mkdir /tmp/$TARG
     cd /tmp/$TARG
     wget $TARG
@@ -121,5 +121,10 @@ while :; do
     tar zxvf $TARG
     /tmp/$TARG/runme.sh
     cd -
+  fi
+  usleep 5000000 # something may be transiently wrong, check back in 5 seconds
+  getdestiny
+  if grep error /tmp/destiny; then
+      echo ERROR: see above
   fi
 done
