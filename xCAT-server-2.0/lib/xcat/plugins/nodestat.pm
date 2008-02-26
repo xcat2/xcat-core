@@ -2,6 +2,7 @@ package xCAT_plugin::nodestat;
 
 use Socket;
 use IO::Handle;
+my $stat;
 
 sub handled_commands {
    return { 
@@ -52,12 +53,16 @@ sub installer_query {
 }
 
 
-
+sub getstat {
+   my $response = shift;
+   $stat = $response->{node}->[0]->{data}->[0];
+}
 
 
 sub process_request {
    my $request = shift;
    my $callback = shift;
+   my $doreq = shift;
    my @nodes = @{$request->{node}};
    my $node;
    foreach $node (@nodes) {
@@ -82,7 +87,11 @@ sub process_request {
          $callback->({node=>[\%rsp]});
          next;
       } else {
-         $rsp{data} = [ 'ping' ];
+         $doreq->({command=>['nodeset'],
+                  node=>[$node],
+                  arg=>['stat']},
+                  \&getstat);
+         $rsp{data} = [ 'ping '.$stat ];
          $callback->({node=>[\%rsp]});
          next;
       }
