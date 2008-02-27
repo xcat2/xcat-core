@@ -64,7 +64,7 @@ I<cat defstanzafile | mkdef -z>
 
 5. To create a group definition called LinuxNodes containing the nodes clstrn01 and clstrn02.
 
-I<mkdef -t group -o LinuxNodes memberlist="clstrn01,clstrn02">
+I<mkdef -t group -o LinuxNodes members="clstrn01,clstrn02">
 
 6. To create a node definition for an FSP node using the attributes provided by the group fspnodes.
 
