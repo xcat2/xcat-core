@@ -219,13 +219,13 @@ sub mkinitrd {
    print $inifile "  exit\n";
    print $inifile "fi\n";
    print $inifile "cd /\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-eth0.leases\n";
+   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-$prinic.leases\n";
    print $inifile "mknod /sysroot/dev/console c 5 1\n";
    print $inifile "exec switch_root -c /dev/console /sysroot /sbin/init\n";
    close($inifile);
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/sbin/nash\n";
-   print $inifile "network --device eth0 --bootproto dhcp\n";
+   print $inifile "network --device $prinic --bootproto dhcp\n";
    close($inifile);
 	chmod(0755,"/tmp/xcatinitrd.$$/init");
 	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
