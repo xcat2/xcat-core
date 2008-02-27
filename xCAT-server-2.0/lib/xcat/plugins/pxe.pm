@@ -211,7 +211,7 @@ sub process_request {
      chmod(0644,"$tftpdir/pxelinux.0");
    }
    unless ( -r "$tftpdir/pxelinux.0" ) {
-      $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1])};
+      $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
       return;
    }
 
