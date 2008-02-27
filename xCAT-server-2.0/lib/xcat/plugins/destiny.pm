@@ -88,7 +88,7 @@ sub setdestiny {
       if ($errored) {return;}
       unless ($state =~ /^netboot/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
     }
-  } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/) {
+  } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
     my $noderes=xCAT::Table->new('noderes');
     my $nodetype = xCAT::Table->new('nodetype');
     my $sitetab = xCAT::Table->new('site');
