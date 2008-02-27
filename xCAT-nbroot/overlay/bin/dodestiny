@@ -112,14 +112,15 @@ while :; do
     reboot -f #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
   fi
   if [ "$DEST" == "runimage" ]; then
-    mkdir /tmp/$TARG
-    cd /tmp/$TARG
+    mkdir /tmp/`basename $TARG`
+    cd /tmp/`basename $TARG`
     wget $TARG
     while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
-    tar zxvf $TARG
-    /tmp/$TARG/runme.sh
+    tar zxvf `basename $TARG`
+    cd /tmp/`basename $TARG`
+    ./runme.sh
     cd -
   fi
   usleep 5000000 # something may be transiently wrong, check back in 5 seconds
