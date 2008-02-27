@@ -24,17 +24,21 @@ xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) 
 %prep
 %setup -q
 %build
-# /bin/pwd
-# /bin/ls
+# This phase is done in (for RH): /usr/src/redhat/BUILD/xCAT-client-2.0
+# All of the tarball source has been unpacked there and is in the same file structure
+# as it is in svn.
+
 # Convert pods to man pages, e.g.:  pod2man pods/man1/tabdump.1.pod share/man/man1/tabdump.1
-echo "Converting pod files to man pages..."
 for i in pods/*/*.pod; do
   man=${i/pods/share\/man}
-  pod2man $i ${man%%.pod}
+  mkdir -p ${man%/*}
+  pod2man $i ${man%.pod}
 done
 
 %install
-
+# The install phase puts all of the files in the paths they should be in when the rpm is
+# installed on a system.  The RPM_BUILD_ROOT is a simulated root file system and usually
+# has a value like: /var/tmp/xCAT-client-2.0-snap200802270932-root
 rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
@@ -50,6 +54,8 @@ cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
+
+# Most of these were built dynamically in the build phase
 cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man1/*
 cp share/man/man3/* $RPM_BUILD_ROOT/%{prefix}/share/man/man3
@@ -58,6 +64,7 @@ cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
 # cp share/man/man8/* $RPM_BUILD_ROOT/%{prefix}/share/man/man8
 # chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
+
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
@@ -65,6 +72,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
 #cp usr/share/xcat/scripts/setup-local-client.sh $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
 #chmod 755 $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
 
+# These links get made in the RPM_BUILD_ROOT/prefix area
 ln -sf xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rpower
 ln -sf xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rscan
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makedhcp
@@ -111,12 +119,14 @@ ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/xcat2nim
 ln -sf ../bin/xdsh $RPM_BUILD_ROOT/%{prefix}/bin/xdcp
 
 %clean
+# This step does not happen until *after* the %files packaging below
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
 #%doc README
 #%doc LICENSE.html
+# Just package everything that has been copied into RPM_BUILD_ROOT
 %{prefix}
 
 %changelog

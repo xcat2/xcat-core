@@ -1,0 +1,75 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Builds the xCAT database man pages from the descriptions that are contained
+# in Schema.pm.  This script is run during the build of the perl-xCAT rpm, but
+# is not packaged in the binary form of that rpm.
+
+# We assume that this script is run in the perl-xCAT-2.0 dir, so everything is
+# done relative to that.
+
+use lib '.';
+
+use xCAT::Schema;
+
+my $poddir = 'pods/man5';
+if (system("mkdir -p $poddir")) { die "Error: could not create $poddir.\n"; }
+my $tabspecref = \%xCAT::Schema::tabspec;
+
+# Build the man page for each table.
+foreach my $tablekey (keys %$tabspecref) {
+    my $table = $tabspecref->{$tablekey};
+    my $summary = $table->{table_desc};
+    my $colorder = $table->{cols};
+    my $descriptions = $table->{descriptions};
+    writemanpage("$poddir/$tablekey.5.pod", $tablekey, $summary, $colorder, $descriptions);
+}
+
+exit;
+
+
+# Create the man page for one table.
+sub writemanpage {
+	my $file = shift;       # relative path file name of the man page
+	my $tablename = shift;		# name of table
+	my $summary = shift;		# description of table
+	my $colorder = shift;		# the order in which the table attributes should be presented in
+	my $descriptions = shift;	# a hash containing the description of each attribute
+
+	open(FILE, ">$file") or die "Error: could not open $file for writing.\n";
+
+	print FILE <<"EOS1";
+=head1 NAME
+
+B<$tablename> - a table in the xCAT database.
+
+=head1 SYNOPSIS
+
+B<$tablename Attributes:>
+EOS1
+
+foreach my $a (@$colorder) { print FILE "  I<$a>\n"; }
+
+	print FILE <<"EOS2";
+
+=head1 DESCRIPTION
+
+$summary
+
+B<$tablename Attributes:>
+EOS2
+
+foreach my $a (@$colorder) {
+	my $d = $descriptions->{$a};
+	print FILE "\nI<$a> - $d\n";
+}
+
+	print FILE <<"EOS3";
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+EOS3
+
+	close FILE;
+}

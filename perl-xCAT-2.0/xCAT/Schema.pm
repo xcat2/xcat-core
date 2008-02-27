@@ -154,8 +154,8 @@ nodegroup => {
     table_desc => 'Not supported yet!  Contains group definitions, whose membership is dynamic depending on characteristics of the node.',
 	descriptions => {
 		groupname => 'Name of the group.',
-		grouptype => 'dynamic or static??',
-		members => 'Not used.  Will be deleted.  (The membership for static groups is stored in the nodelist table.)',
+		grouptype => 'The only current valid value is dynamic.  We will be looking at having the object def commands working with static group definitions in the nodelist table.',
+		members => 'The value of the attribute is not used, but the attribute is necessary as a place holder for the object def commands.  (The membership for static groups is stored in the nodelist table.)',
 		wherevals => 'A list of comma-separated "attr=val" pairs that can be used to determine the members of a dynamic group.',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",
@@ -167,7 +167,7 @@ nodehm => {
     table_desc => "Settings that control how each node's hardware is managed.  Typically, an additional table that is specific to the hardware type of the node contains additional info.  E.g. the ipmi, mp, and ppc tables.",
 	descriptions => {
 		node => 'The node name or group name.',
-		power => 'The method to use to control the power of the node. If not set, the mgt attribute will be used.  Valid values: ipmi, blade, hmc, ivm, fsp??.  If "ipmi", xCAT will search for this node in the ipmi table for more info.  If "blade", xCAT will search for this node in the mp table.  If "hmc", "ivm", or "fsp", xCAT will search for this node in the ppc table.',
+		power => 'The method to use to control the power of the node. If not set, the mgt attribute will be used.  Valid values: ipmi, blade, hmc, ivm, fsp.  If "ipmi", xCAT will search for this node in the ipmi table for more info.  If "blade", xCAT will search for this node in the mp table.  If "hmc", "ivm", or "fsp", xCAT will search for this node in the ppc table.',
 		mgt => 'The method to use to do general hardware management of the node.  This attribute is used as the default if poweer, cons, or getmac is not set.  Valid values: ipmi, blade, hmc, ivm, fsp.  See the power attribute for more details.',
 		cons => 'The console method. If not set, the mgt attribute will be used.  Valid values: cyclades, mrv, or the values valid for mgt??',
 		termserver => 'The hostname of the terminal server.',
@@ -278,7 +278,7 @@ passwd => {
     keys => [qw(key)],
     table_desc => 'Contains default userids and passwords for xCAT to access cluster components.  Userids/passwords for specific cluster components can be overidden in other tables, e.g. mpa, ipmi, ppchcp, etc.',
 	descriptions => {
-		key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes??), omapi (DHCP).',
+		key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes??), omapi (DHCP), hmc, ivm, fsp.',
 		username => 'The default userid for this type of component',
 		password => 'The default password for this type of component',
     	comments => 'Any user-written notes.',
@@ -333,8 +333,8 @@ ppcdirect => {
     table_desc => 'Info necessary to use FSPs to control system p CECs.',
 	descriptions => {
 		hcp => 'Hostname of the FSP.',
-		username => 'Userid of the FSP.  Default is ??',
-		password => 'Password of the FSP.',
+		username => 'Userid of the FSP.  If not filled in, xCAT will look in the passwd table for key=fsp.  If not in the passwd table, the default used is admin.',
+		password => 'Password of the FSP.  If not filled in, xCAT will look in the passwd table for key=fsp.  If not in the passwd table, the default used is admin.',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",
 	},
@@ -345,8 +345,8 @@ ppchcp => {
     table_desc => 'Info necessary to use HMCs and IVMs as hardware control points for LPARs.',
 	descriptions => {
 		hcp => 'Hostname of the HMC or IVM.',
-		username => 'Userid of the HMC or IVM.  Default is hscroot for HMCs and padmin for IVMs??',
-		password => 'Password of the HMC or IVM.',
+		username => 'Userid of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is hscroot for HMCs and padmin for IVMs.',
+		password => 'Password of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is abc123 for HMCs and padmin for IVMs.',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",
 	},
