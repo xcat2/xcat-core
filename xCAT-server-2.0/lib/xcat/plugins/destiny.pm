@@ -195,7 +195,7 @@ sub nextdestiny {
     unless ($ref->{currchain}) { #If no current chain, copy the default
       $ref->{currchain} = $ref->{chain};
     }
-    my @chain = split /[,:;]/,$ref->{currchain};
+    my @chain = split /[,;]/,$ref->{currchain};
 
     $ref->{currstate} = shift @chain;
     $ref->{currchain}=join(',',@chain);
