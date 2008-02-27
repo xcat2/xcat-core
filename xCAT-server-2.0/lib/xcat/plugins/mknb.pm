@@ -95,6 +95,8 @@ sub process_request {
    }
    my $cfgfile;
    if ($arch =~ /x86/) {
+      mkpath("$tftpdir/pxelinux.cfg");
+      chmod(0755,"$tftpdir/pxelinux.cfg");
       if (! -r "$tftpdir/pxelinux.0") {
          unless (-r "/usr/lib/syslinux/pxelinux.0") {
             $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
