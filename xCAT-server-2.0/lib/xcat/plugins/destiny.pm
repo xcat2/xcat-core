@@ -156,6 +156,10 @@ sub setdestiny {
 
 
 sub nextdestiny {
+  my $callnodeset=0;
+  if (scalar(@_)) {
+     $callnodeset=1;
+  }
   my @nodes;
   if ($request and $request->{node}) {
     if (ref($request->{node})) {
@@ -209,6 +213,11 @@ sub nextdestiny {
     $requ{arg}=[$ref->{currstate}];
     setdestiny(\%requ);
     getdestiny();
+  }
+  if ($callnodeset) {
+     $subreq->({command=>['nodeset'],
+               node=> \@nodes,
+               arg=>['enact']});
   }
 }
 
