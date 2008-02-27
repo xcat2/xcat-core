@@ -7,8 +7,9 @@ B<chdef> - Change xCAT data object definitions.
 I<chdef [-h | --help ] [-t object-types]>
 
 I<chdef [-V | --verbose] [-t object-types] [-o object-names]> 
-I<[-z | --stanza ] [-x | --xml ] [-w  attr=val,[attr=val...]]>
-I<[noderange] [attr=val [attr=val...]] >
+I<[-p |--plus] [-m |--minus] [-z | --stanza ] [-x | --xml ]> 
+I<[-w  attr=val,[attr=val...]] [noderange]>
+I<[attr=val [attr=val...]]>
 
 =head1 DESCRIPTION
 
