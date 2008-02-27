@@ -53,8 +53,9 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
     if ! grep /install /etc/exports; then
         echo '/install *(ro,no_root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
     fi
-    service nfs restart
 	chkconfig nfs on
+	/etc/rc.d/init.d/nfs stop
+	/etc/rc.d/init.d/nfs start
 
 # makes it a service node
   touch /etc/xCATSN    
@@ -77,8 +78,9 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 ###  Start the xcatd daemon
 
     XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
-    service httpd restart
     chkconfig httpd on
+	/etc/rc.d/init.d/httpd stop
+	/etc/rc.d/init.d/httpd start
     echo "xCATsn is now installed"
 fi
 
