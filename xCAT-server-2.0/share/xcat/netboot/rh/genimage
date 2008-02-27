@@ -23,6 +23,9 @@ my $onlyinitrd=0;
 if ($name =~ /geninitrd/) {
    $onlyinitrd=1;
 }
+my $rootlimit;
+my $tmplimit;
+
 
 GetOptions(
    #'a=s' => \$architecture,
@@ -30,7 +33,9 @@ GetOptions(
    'o=s' => \$osver,
    'n=s' => \$netdriver,
    'i=s' => \$prinic,
-   'r=s' => \$othernics
+   'r=s' => \$othernics,
+   'l=s' => \$rootlimit,
+   't=s' => \$tmplimit
 );
 unless ($osver and $profile and $netdriver and $prinic) {
    print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE>'."\n";
@@ -197,10 +202,18 @@ sub mkinitrd {
    print $inifile "  mkdir -p /ro\n";
    print $inifile "  mkdir -p /rw\n";
    print $inifile "  mount -t squashfs /rootimg.sfs /ro\n";
-   print $inifile "  mount -t tmpfs rw /rw\n";
+   if ($rootlimit) {
+      print $inifile "  mount -o size=$rootlimit -t tmpfs rw /rw\n";
+   } else {
+      print $inifile "  mount -t tmpfs rw /rw\n";
+   }
    print $inifile "  mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot\n";
    print $inifile "elif [ -r /rootimg.gz ]; then\n";
-   print $inifile "  mount -t tmpfs rootfs /sysroot\n";
+   if ($rootlimit) {
+      print $inifile "  mount -o size=$rootlimit -t tmpfs rootfs /sysroot\n";
+   } else {
+      print $inifile "  mount -t tmpfs rootfs /sysroot\n";
+   }
    print $inifile "  cd /sysroot\n";
    print $inifile "  echo -n \"Extracting root filesystem:\"\n";
    print $inifile "  if [ -x /bin/cpio ]; then\n";
@@ -316,6 +329,10 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "tmpfs   /dev/shm tmpfs    defaults       0 0\n";
    print $cfgfile "proc    /proc    proc     defaults       0 0\n";
    print $cfgfile "sysfs   /sys     sysfs    defaults       0 0\n";
+   if ($tmplimit) {
+      print $cfgfile "tmpfs   /tmp     tmpfs    defaults       0 0\n";
+      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults       0 0\n";
+   }
    close($cfgfile);
    open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network");
    print $cfgfile "NETWORKING=yes\n";
