@@ -117,7 +117,7 @@ sub setup_TFTP
             xCAT::MsgUtils->message("S", "Error running $cmd");
             return 1;
         }
-        my $cmd = "service xinetd restart";
+        my $cmd = "/etc/rc.d/init.d/xinetd restart";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {

@@ -145,20 +145,20 @@ sub setup_NFS
                     xCAT::MsgUtils->message("S", "Error exporting $tftpdir");
                 }
             }
-
-            # make sure nfs is started
-            my $cmd = "service nfs restart";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {        # error
-                xCAT::MsgUtils->message("S", "Error starting NFS");
-                return 1;
-            }
             my $cmd = "chkconfig nfs on";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {        # error
-                xCAT::MsgUtils->message("S", "Error chkconfig nfs on");
+                xCAT::MsgUtils->message("S", "Error on command:$cmd");
+            }
+
+            # make sure nfs is started
+            my $cmd = "/etc/rc.d/init.d/nfs restart";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {        # error
+                xCAT::MsgUtils->message("S", "Error on command: $cmd");
+                return 1;
             }
 
             # export the directories

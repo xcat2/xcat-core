@@ -101,20 +101,20 @@ sub setup_CONS
         {    # error
             xCAT::MsgUtils->message("S", "Error running $cmd");
         }
-
-        # start conserver
-        my $cmd = "service conserver restart";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {    # error
-            xCAT::MsgUtils->message("S", "Error starting Conserver");
-            return 1;
-        }
         my $cmd = "chkconfig conserver on";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {    # error
             xCAT::MsgUtils->message("S", "Error chkconfig conserver on");
+        }
+
+        # start conserver
+        my $cmd = "/etc/rc.d/init.d/conserver start";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+            xCAT::MsgUtils->message("S", "Error starting Conserver");
+            return 1;
         }
 
     }

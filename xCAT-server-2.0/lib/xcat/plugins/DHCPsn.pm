@@ -104,7 +104,14 @@ sub setup_DHCP
             xCAT::MsgUtils->message("S", "Error from $cmd, output=@output");
             return 1;
         }
-        $cmd = "service dhcpd restart";
+        $cmd = "chkconfig dhcpd on";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("S", "Error from $cmd");
+            return 1;
+        }
+        $cmd = "/etc/rc.d/init.d/dhcpd start";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
