@@ -449,7 +449,7 @@ sub format_stanza {
             } elsif ( /^nodetype$/ ) {
                 $d = $nodetype{$d}; 
             } elsif ( /^groups$/ ) {
-                $d = "$hwtype,all";
+                $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
             } elsif ( /^model|serial$/ ) {
@@ -503,7 +503,7 @@ sub format_xml {
             } elsif ( /^nodetype$/ ) {
                 $d = $nodetype{$d};
             } elsif ( /^groups$/ ) {
-                $d = "$hwtype,all";
+                $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
             } elsif ( /^model|serial$/ ) {
