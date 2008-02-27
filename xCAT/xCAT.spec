@@ -108,8 +108,9 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     if ! grep /install /etc/exports; then
         echo '/install *(ro,no_root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
     fi
-    service nfs restart
 	chkconfig nfs on
+	/etc/rc.d/init.d/nfs stop
+	/etc/rc.d/init.d/nfs start
 	exportfs -a
     if [ ! -r /etc/xcat/site.sqlite ]; then 
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=xcatdport site.value=3001
@@ -162,8 +163,9 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     fi
     $RPM_INSTALL_PREFIX0/sbin/makenetworks
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=nameservers site.value=`sed -e 's/#.*//' /etc/resolv.conf|grep nameserver|awk '{printf $2 ","}'|sed -e s/,$//`
-    service httpd restart
     chkconfig httpd on
+	/etc/rc.d/init.d/httpd stop
+	/etc/rc.d/init.d/httpd start
     echo "xCAT is now installed, it is recommended to tabedit networks and set a dynamic ip address range on any networks where nodes are to be discovered"
     echo "Then, run makedhcp -n to create a new dhcpd.configuration file, and /etc/init.d/dhcpd restart"
     echo "Either examine sample configuration templates, or write your own, or specify a value per node with nodeadd or tabedit."
