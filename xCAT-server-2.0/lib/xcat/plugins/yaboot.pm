@@ -108,10 +108,26 @@ sub setstate {
     syslog("local1|err","xCAT unable to resolve IP in yaboot plugin");
     return;
   }
-  my @ipa=split(/\./,$ip);
-  my $pname = sprintf("%02x%02x%02x%02x",@ipa);
-  unlink($tftpdir."/etc/".$pname);
-  link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
+  my $mactab = xCAT::Table->new('mac');
+  my %ipaddrs;
+  $ipaddrs{$ip} = 1;
+  if ($mactab) {
+     my $ment = $mactab->getNodeAttribs($node,['mac']);
+     if ($ment and $ment->{mac}) {
+        my @macs = split(/\|/,$ment->{mac});
+        foreach (@macs) {
+           if (/!(.*)/) {
+              $ipaddrs{inet_ntoa(inet_aton($1))} = 1;
+           }
+        }
+     }
+  }
+  foreach $ip (keys %ipaddrs) {
+   my @ipa=split(/\./,$ip);
+   my $pname = sprintf("%02x%02x%02x%02x",@ipa);
+   unlink($tftpdir."/etc/".$pname);
+   link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
+  }
 }
   
 

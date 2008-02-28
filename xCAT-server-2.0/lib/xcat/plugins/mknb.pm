@@ -117,10 +117,10 @@ sub process_request {
       } elsif ($arch =~ /ppc/) {
          open($cfgfile,">","$tftpdir/etc/".lc($_));
          print $cfgfile "timeout=5\n";
-         print $cfgfile "label=xcat\n";
-         print $cfgfile "image=xcat/nbk.$arch\n";
-         print $cfgfile "initrd=xcat/nbfs.$arch.gz\n";
-         print $cfgfile 'append="xcatd='.$hexnets->{$_}.":$xcatdport $consolecmdline\n";
+         print $cfgfile "   label=xcat\n";
+         print $cfgfile "   image=xcat/nbk.$arch\n";
+         print $cfgfile "   initrd=xcat/nbfs.$arch.gz\n";
+         print $cfgfile '   append="xcatd='.$hexnets->{$_}.":$xcatdport $consolecmdline\"\n";
          close($cfgfile);
       }
    }
