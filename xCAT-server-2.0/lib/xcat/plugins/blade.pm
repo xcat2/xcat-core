@@ -897,7 +897,7 @@ sub build_depend {
     if (!defined($dep)) {
       $no_dp{$node} = 1;
     }
-    elsif ($cmd eq @$exargs[0]) {
+    elsif ( grep(/^@$exargs[0]$/, split /,/, $cmd )) {
       foreach (split /,/,$dep ) {
         $dp{$_}{$node} = $delay;
       }
