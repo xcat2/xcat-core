@@ -1,0 +1,171 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use Sys::Syslog;
+use xCAT::Table;
+
+# admin needs to create a mail aliase called alerts
+# put "alerts: emailadd,emailaddr.." to /etc/aliases file
+# then run newaliases command
+my $MAILTO="alerts";
+
+my $message;
+my $briefmsg;
+my $pair;
+my $node1;
+my $info;
+my $severity_type;
+my $severity;
+
+
+my $host=<STDIN>;
+chomp($host);
+my $ip=<STDIN>;
+chomp($ip);
+
+while ($pair=<STDIN>) {
+  chomp($pair);
+  @a=split(/ /, $pair);
+  $oid=shift @a;
+  $value=join(' ', @a);
+
+  $message .= "    $oid=$value\n";
+  
+  #for BladeCenter MM traps, creat a brief message 
+  if ($oid =~ /BLADESPPALT-MIB::spTrapAppId/) {
+    $briefmsg .= "  App ID: $value\n";  
+  }
+  elsif (($oid =~ /BLADESPPALT-MIB::spTrapAppType/) && ($value)) {
+    $briefmsg .= "  Alert Type: $value\n";
+  } 
+  elsif ($oid =~ /BLADESPPALT-MIB::spTrapMsgText/) {
+    $briefmsg .= "  Message: $value\n";  
+  } 
+  elsif ($oid =~ /BLADESPPALT-MIB::spTrapBladeName/) {
+    my $temp="$value";
+    $temp =~ /^\"(.*)\"/;
+    if ($1) {
+      $briefmsg .= "  Blade Name: $value\n";
+      $node1=$1;
+    }
+  } 
+  elsif (($oid =~ /BLADESPPALT-MIB::spTrapSourceId/)) {
+    $briefmsg .= "  Error Source=$value\n";       
+  }   
+  elsif ($oid =~ /BLADESPPALT-MIB::spTrapPriority/) {
+    # Critical Alert(0), Major(1), Non-Critical Alert(2), System Alert(4), 
+    # Recovery Alert(8), Informational Only Alert(255)
+    if ($value==0) {
+      $severity="Critical Alert";
+      $severity_type="Critical";
+    } elsif ($value==1)  {
+      $severity="Major Alert";
+      $severity_type="Critical";
+    } elsif ($value==2)  {
+      $severity="Non-Critical Alert";
+      $severity_type="Warning";
+    } elsif ($value==4)  {
+      $severity="System Alert";
+      $severity_type="Warning";
+    } elsif ($value==8)  {
+      $severity="Recovery Alert";
+      $severity_type="Warning";
+    } elsif ($value==255)  {
+      $severity="Informational Alert";
+      $severity_type="Informational";
+    }
+  }  
+
+  # TODO: special handling for  IPMI and RSA 2 
+}
+
+if ($node1) {$info= getMoreInfo($node1);}
+
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+$datetime=sprintf "%2d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec;
+my $head="SNMP $severity received from $host($ip) on $datetime\n$briefmsg\n";
+my $middle="Trap details:\n$message\n";
+my $end;
+if ($info) {
+ $end ="Additonal Info from xCAT:\n$info\n";
+}
+
+#TODO: decide responses based on severity. settings in monitoring tb.
+#email the full message to the alerts aliase
+my $cmd="echo \'$head$middle$end\' \| mail -s \"$severity_type: Cluster SNMP Alert\!\" $MAILTO";
+`$cmd`;
+
+# TODO: log the the brief message from the Blad Center MM to the syslog. For other traps, log all.
+
+
+
+
+
+#--------------------------------------------------------------------------------
+=head3    getMoreInfo
+      This function returns the node module/type, serial number, position etc. 
+    Arguments:
+       node-- name of the node.
+    Returns:
+       A string with node info ready to display.
+=cut
+#--------------------------------------------------------------------------------
+sub getMoreInfo {
+  my $node=shift; 
+  my $pos,$vpd; 
+     
+  #get module name and serial number from the xCAT DB.
+  my $table=xCAT::Table->new("vpd", -create =>1);
+  if ($table) {
+    (my $ref) = $table->getAttribs({'node' => $node}, ('serial', 'mtm'));
+    if ($ref) {
+      if($ref->{mtm}) { $vpd .= "  Type/Mudule: ". $ref->{mtm} ."\n"; }
+      if($ref->{serial}) { $vpd .= "  Serial Number: ". $ref->{serial} ."\n";}
+    }
+    $table->close();
+  }
+
+  # get the info from rinv command if nothing in the vpd table
+  if (!$vpd) { 
+    my $result=`$XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`;
+     if ($? == 0) {#success
+        chomp($result);
+        my @b=split(/\n/, $result);
+        foreach (@b) {
+          s/^(.*)\:(.*)\:(.*)$/$2: $3/; 
+	  $vpd .= " $_\n";
+        }
+     }
+  }
+    
+
+  #get the position
+  my $table1=xCAT::Table->new("nodepos", -create =>1);
+  if ($table1) {
+    (my $ref1) = $table1->getAttribs({'node' => $node}, ('rack', 'u', 'chassis', 'slot',  'room'));
+    if ($ref1) {
+      if($ref1->{room}) { $pos .= "  Room: ". $ref1->{room} ."\n"; }
+      if($ref1->{rack}) { $pos .= "  Rack: ". $ref1->{rack} ."\n"; }
+      if($ref1->{u}) { $pos .= "  Vertial position: ". $ref1->{u} ."\n"; }
+      if($ref1->{chassis}) { $pos .= "  Chassis: ". $ref1->{chassis} ."\n"; }
+      if($ref1->{slot}) { $pos .= "  Slot: ". $ref1->{slot} ."\n"; }
+    }
+    $table1->close();
+  }
+
+  if (($pos) || ($vpd)) {
+    return "  Node: $node\n$vpd$pos";
+  } 
+ 
+  return "";
+}
+
+
+
+
+
+
