@@ -235,6 +235,15 @@ sub processArgs
         return 2;
     }
 
+	#  opt_d not yet supported
+    if ($::opt_d)
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "The \'-d\' option is not yet implemented.";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        return 2;
+    }
+
     # can get object names in many ways - easier to keep track
     $::objectsfrom_args = 0;
     $::objectsfrom_opto = 0;
@@ -989,9 +998,8 @@ sub defmk
 
                             foreach my $testattr (keys %::WhereHash)
                             {
+				if ( !($myhash{$objname}{$testattr} =~ /\b$::WhereHash{$testattr}\b/) )
 
-                                if ($myhash{$objname}{$testattr} ne
-                                    $::WhereHash{$testattr})
                                 {
 
                                     # don't disply
@@ -1058,31 +1066,11 @@ sub defmk
                 }
 
                 $tab->commit;
+
+
             }
         }    # end - if group type
 
-        if (($type eq "node") && $::FINALATTRS{$obj}{groups})
-        {
-
-            my @grouplist;
-            @grouplist = split(/,/, $::FINALATTRS{$obj}{groups});
-
-            foreach my $g (@grouplist)
-            {
-                $GroupHash{$g}{objtype}   = "group";
-                $GroupHash{$g}{grouptype} = "static";
-                $GroupHash{$g}{members}   = "static";
-            }
-            if (xCAT::DBobjUtils->setobjdefs(\%GroupHash) != 0)
-            {
-                my $rsp;
-                $rsp->{data}->[0] =
-                  "Could not write data to the xCAT database.\n";
-
-                # xCAT::MsgUtils->message("E", $rsp, $::callback);
-                $error = 1;
-            }
-        }
     }
 
     #
@@ -1167,6 +1155,7 @@ sub defch
 
     my $rc    = 0;
     my $error = 0;
+	my $firsttime = 1;
 
     # process the command line
     $rc = &processArgs;
@@ -1314,6 +1303,7 @@ sub defch
             $isDefined = 1;
         }
 
+
         if (!isDefined && $::opt_m)
         {
 
@@ -1350,7 +1340,9 @@ sub defch
                     return 1;
 
                 }
-                $grptype = $grphash{$obj}{grouptype};
+               # $grptype = $grphash{$obj}{grouptype};
+				# for now all groups are static
+				$grptype = 'static';
             }
             else
             {    #not defined
@@ -1512,6 +1504,7 @@ sub defch
                     my %membhash;
                     foreach $n (@memberlist)
                     {
+
                         $membhash{$n}{groups} = $obj;
                     }
                     $::plus_option  = 1;
@@ -1579,9 +1572,10 @@ sub defch
                     {    # replace the members list altogether
 
                         # this is the default for the chdef command
-
+				if ($firsttime) {
                         # get the current members list
 
+						$grphash{$obj}{'grouptype'} = "static";
                         my $list =
                           xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
                         my @currentlist = split(',', $list);
@@ -1604,6 +1598,8 @@ sub defch
                         {
                             $error = 1;
                         }
+					$firsttime=0;
+				} # end - first time
                         $::minus_option = 0;
 
                         # for each node in memberlist add this group
@@ -2027,7 +2023,7 @@ sub defls
         {
             push(@::clobjtypes, $t);
         }
-    }
+    } # end - if specify all
 
     if (!defined(%myhash))
     {
@@ -2080,6 +2076,7 @@ sub defls
 
     # group the objects by type to make the output easier to read
     my $numobjects = 0;    # keep track of how many object we want to display
+	# for each type
     foreach my $type (@::clobjtypes)
     {
 
@@ -2107,6 +2104,7 @@ sub defls
             return 0;
         }
 
+		# for each object
         foreach my $obj (keys %defhash)
         {
 
@@ -2115,7 +2113,7 @@ sub defls
                 next;
             }
 
-            # special handling for site table - for now!!!!!!!
+			# if anything but the site table do this
             if ($defhash{$obj}{'objtype'} ne 'site')
             {
                 my @tmplist =
@@ -2140,10 +2138,9 @@ sub defls
                 }
             }    # end - if not site table
 
-###################
+			#
             # special handling for site table - for now !!!!!!!
-######################
-
+			#
             my @attrlist;
             if ($defhash{$obj}{'objtype'} eq 'site')
             {
@@ -2176,13 +2173,12 @@ sub defls
             if ($::opt_x)
             {
 
-                # do output in XML format
+                # TBD - do output in XML format
             }
             else
             {
 
                 #  standard output or stanza format
-
                 if ($::opt_w)
                 {
 
@@ -2238,10 +2234,6 @@ sub defls
                                                             $::callback);
                                 }
 
-                                #                            else
-                                #                            {
-                                #                                pr "    $showattr=\n";
-                                #                            }
                             }
                         }
                         else
@@ -2305,7 +2297,7 @@ sub defls
                             }
 
                             my $attrval;
-                            if ($defhash{$obj}{$showattr})
+							if ( defined($defhash{$obj}{$showattr}))
                             {
                                 $attrval = $defhash{$obj}{$showattr};
                             }
@@ -2322,6 +2314,7 @@ sub defls
                                     if (   ($obj eq 'group')
                                         && ($showattr eq 'members'))
                                     {
+										$defhash{$obj}{'grouptype'} = "static";
                                         my $memberlist =
                                           xCAT::DBobjUtils->getGroupMembers(
                                                                      $obj,
@@ -2352,6 +2345,7 @@ sub defls
                                     && ($showattr eq 'members'))
 
                                 {
+									$defhash{$obj}{'grouptype'} = "static";
                                     my $memberlist =
                                       xCAT::DBobjUtils->getGroupMembers($obj,
                                                                      \%defhash);
@@ -2431,9 +2425,9 @@ sub defls
                         }
                     }
                 }
-            }
-        }
-    }
+            } # end - standard output or stanza format
+        } # end - for each object
+    } # end - for each type
     return 0;
 }
 
@@ -2587,6 +2581,8 @@ sub defrm
             }
 
             # get the members list
+			#  all groups are "static" for now
+			$grphash{$obj}{'grouptype'} = "static";
             my $memberlist = xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
             my @members = split(',', $memberlist);
 
