@@ -32,7 +32,7 @@ deps => {
 		node => 'The node name or group name.',
 		nodedep => 'Comma-separated list of nodes it is dependent on.',
 		msdelay => 'How long to wait between operating on the dependent nodes and the primary nodes.',
-		cmd => 'Which xCAT command this dependency applies to.',
+		cmd => 'Comma-seperated list of which operation this dependency applies to.',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",
 	},
