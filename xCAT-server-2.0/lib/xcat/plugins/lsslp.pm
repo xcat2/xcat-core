@@ -19,24 +19,30 @@ use constant {
     HARDWARE_SERVICE => "service:management-hardware.IBM",
     SOFTWARE_SERVICE => "service:management-software.IBM",
     WILDCARD_SERVICE => "service:management-*.IBM:",
-    SERVICE_CEC      => "cec-service-processor",
+    SERVICE_FSP      => "cec-service-processor",
     SERVICE_BPA      => "bulk-power-controller",
     SERVICE_HMC      => "hardware-management-console",
     SERVICE_IVM      => "integrated-virtualization-manager",
     SERVICE_MM       => "management-module",
-    SERVICE_RSA      => "remote-supervisor-adapter"
+    SERVICE_RSA      => "remote-supervisor-adapter",
+    TYPE_MM          => "MM",
+    TYPE_RSA         => "RSA",
+    TYPE_BPA         => "BPA",
+    TYPE_HMC         => "HMC",
+    TYPE_IVM         => "IVM",
+    TYPE_FSP         => "IVM",
 };
 
 #######################################
 # Globals
 #######################################
 my %service_slp = (
-    @{[ SERVICE_CEC ]} => "FSP",
-    @{[ SERVICE_BPA ]} => "BPA",
-    @{[ SERVICE_HMC ]} => "HMC",
-    @{[ SERVICE_IVM ]} => "IVM",
-    @{[ SERVICE_MM  ]} => "MM",
-    @{[ SERVICE_RSA ]} => "RSA" 
+    @{[ SERVICE_FSP ]} => TYPE_FSP,
+    @{[ SERVICE_BPA ]} => TYPE_BPA,
+    @{[ SERVICE_HMC ]} => TYPE_HMC,
+    @{[ SERVICE_IVM ]} => TYPE_IVM,
+    @{[ SERVICE_MM  ]} => TYPE_MM,
+    @{[ SERVICE_RSA ]} => TYPE_RSA 
 );
 
 #######################################
@@ -54,7 +60,7 @@ my @header = (
 # Hardware specific SLP attributes
 #######################################
 my %exattr = (
-  @{[ SERVICE_CEC ]} => [
+  @{[ SERVICE_FSP ]} => [
       "bpc-machinetype-model",
       "bpc-serial-number",
       "cage-number"
@@ -64,6 +70,19 @@ my %exattr = (
     ]
 );
 
+#######################################
+# Power methods 
+#######################################
+my %mgt = (
+    lc(TYPE_FSP) => "hmc",
+    lc(TYPE_HMC) => "hmc",
+    lc(TYPE_MM)  => "blade",
+    lc(TYPE_HMC) => "hmc",
+    lc(TYPE_IVM) => "ivm",
+    lc(TYPE_RSA) => "blade"   
+);
+
+my @attribs    = qw(nodetype model serial groups mgt mpa id);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -126,7 +145,7 @@ sub parse_args {
         HMC => SOFTWARE_SERVICE.":".SERVICE_HMC.":",
         IVM => SOFTWARE_SERVICE.":".SERVICE_IVM.":",
         BPA => HARDWARE_SERVICE.":".SERVICE_BPA,
-        FSP => HARDWARE_SERVICE.":".SERVICE_CEC,
+        FSP => HARDWARE_SERVICE.":".SERVICE_FSP,
         RSA => HARDWARE_SERVICE.":".SERVICE_RSA.":",
         MM  => HARDWARE_SERVICE.":".SERVICE_MM.":" 
     );
@@ -966,7 +985,7 @@ sub xCATdB {
                 $frame = "$bpc_model*$bpc_serial";
             }
             ########################################
-            # "Factory-default" CEC name format: 
+            # "Factory-default" FSP name format: 
             # Server-<type>-<model>-<serialnumber>
             # ie. Server-9117-MMA-SN10F6F3D
             #
@@ -1008,35 +1027,47 @@ sub xCATdB {
 sub format_stanza {
 
     my $outhash = shift;
-    my $text;
+    my $result;
 
     #####################################
-    # Remove hostname from header 
-    #####################################
-    pop @header;
-
-    #####################################
-    # Write attributes 
+    # Write attributes
     #####################################
     foreach ( keys %$outhash ) {
-        my @data = @{ $outhash->{$_}};
+        my @data = @{$outhash->{$_}};
+        my $type = lc($data[0]);
+        my $name = $data[4];
         my $i = 0;
 
         #################################
         # Node attributes
         #################################
-        $text.= "$data[4]:\n    objtype=node\n";
+        $result .= "$name:\n\tobjtype=node\n";
 
         #################################
-        # Display attributes 
+        # Add each attribute
         #################################
-        foreach ( @header ) {
-            $text.= "    @$_[0]=$data[$i++]\n";
+        foreach ( @attribs ) {
+            my $d = $data[$i++];
+
+            if ( /^device|ip-addresses|hostname$/ ) {
+                next;
+            } elsif ( /^nodetype$/ ) {
+                $d = $type;
+            } elsif ( /^groups$/ ) {
+                $d = "$type,all";
+            } elsif ( /^mgt$/ ) {
+                $d = $mgt{$type};
+            } elsif ( /^id|mpa$/ ) {
+                if ( $type =~ /^mm|rsa$/ ) {
+                    $d = (/^id$/) ? "0" : $name;
+                } else {
+                    next;
+                }
+            }
+            $result .= "\t$_=$d\n";
         }
-        $text.= "\n";
     }
-    return( $text );
-
+    return( $result );
 }
 
 
@@ -1046,14 +1077,16 @@ sub format_stanza {
 ##########################################################################
 sub format_xml {
  
-    my $outhash = shift; 
+    my $outhash = shift;
     my $xml;
 
     #####################################
-    # Create XML formatted attributes 
+    # Create XML formatted attributes
     #####################################
     foreach ( keys %$outhash ) {
         my @data = @{ $outhash->{$_}};
+        my $type = lc($data[0]);
+        my $name = $data[4];
         my $i = 0;
 
         #################################
@@ -1063,13 +1096,30 @@ sub format_xml {
             Node => { }
         };
         #################################
-        # Add each attribute 
+        # Add each attribute
         #################################
-        foreach ( @header ) {
-            $href->{"Node"}->{@$_[0]} = $data[$i++];
+        foreach ( @attribs ) {
+            my $d = $data[$i++];
+
+            if ( /^device|ip-addresses|hostname$/ ) {
+                next;
+            } elsif ( /^nodetype$/ ) {
+                $d = $type;
+            } elsif ( /^groups$/ ) {
+                $d = "$type,all";
+            } elsif ( /^mgt$/ ) {
+                $d = $mgt{$type};
+            } elsif ( /^id|mpa$/ ) {
+                if ( $type =~ /^mm|rsa$/ ) {
+                    $d = (/^id$/) ? "0" : $name;
+                } else {
+                    next;
+                }
+            }
+            $href->{Node}->{$_} = $d;
         }
         #################################
-        # XML encoding 
+        # XML encoding
         #################################
         $xml.= XMLout($href,
                      NoAttr   => 1,
@@ -1268,6 +1318,7 @@ sub process_request {
 
 
 1;
+
 
 
 
