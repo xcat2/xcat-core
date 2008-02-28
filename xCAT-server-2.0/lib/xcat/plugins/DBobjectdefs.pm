@@ -766,6 +766,17 @@ sub defmk
         return 1;
     }
 
+	# can't have -z with other obj sources
+	if ($::opt_z && ($::opt_o || @::noderange))
+	{
+		my $rsp;
+		$rsp->{data}->[0] = "Cannot use \'-z\' with \'-o\' or a noderange.";
+		$rsp->{data}->[1] = "Example of -z usage:\n\t\'cat stanzafile | mkdef -z\'\n";
+		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		&defmk_usage;
+		return 1;
+	}
+
     # check to make sure we have a list of objects to work with
     if (!@::allobjnames)
     {
@@ -1194,6 +1205,17 @@ sub defch
         &defch_usage;
         return 1;
     }
+
+	# can't have -z with other obj sources
+	if ($::opt_z && ($::opt_o || @::noderange))
+	{
+		my $rsp;
+		$rsp->{data}->[0] = "Cannot use \'-z\' with \'-o\' or a noderange.";
+		$rsp->{data}->[1] = "Example of -z usage:\n\t\'cat stanzafile | chdef -z\'\n";
+		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		&defch_usage;
+		return 1;
+	}
 
     # check to make sure we have a list of objects to work with
     if (!@::allobjnames)
