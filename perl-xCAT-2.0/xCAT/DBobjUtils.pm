@@ -91,6 +91,26 @@ sub getObjectsOfType
 
         }
 
+		# if this is type "group" we need to check the nodelist table
+		my @nodeGroupList=();
+		if ($type eq 'group')
+		{
+			my $table = "nodelist";
+			my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
+			foreach (@TableRowArray)
+			{
+				my @tmplist = split(',', $_->{'groups'});
+				push(@nodeGroupList, @tmplist);
+			}
+			foreach my $n (@nodeGroupList)
+			{
+				if (!grep(/^$n$/, @objlist) ) {
+					push(@objlist, $n);
+				}
+			}
+		}
+		
+
         @{$::saveObjList{$type}} = @objlist;
 
     }
@@ -130,16 +150,12 @@ sub getobjdefs
 
     %typehash = %$hash_ref;
 
-    @::foundTableList = ();
-
     foreach my $objname (sort (keys %typehash))
     {
-
         # need a special case for the site table - for now !!!!!
 
         if ($typehash{$objname} eq 'site')
         {
-
             my @TableRowArray = xCAT::DBobjUtils->getDBtable('site');
 
             if (defined(@TableRowArray))
@@ -166,172 +182,155 @@ sub getobjdefs
                  xCAT::MsgUtils->message("E", $rsp, $::callback);	
             }
             next;
-
         }
 
-        # see if we saved this from a previous call
-        if ($::saveObjHash{$objname})
+		# need to refresh each time!!
+		# one process may update a table multiple times 
+		#	& this will have to be updated between each time
+
+        # get data from DB
+        $type = $typehash{$objname};
+
+        # add the type to the hash for each object
+        $objhash{$objname}{'objtype'} = $type;
+
+        # get the object type decription from Schema.pm
+        my $datatype = $xCAT::Schema::defspec{$type};
+
+        # get the key to look for, for this object type
+        my $objkey = $datatype->{'objkey'};
+
+        #  get a list of valid attr names
+        #       for this type object
+        foreach my $entry (@{$datatype->{'attrs'}})
         {
-
-            # use the one we saved
-            $objhash{$objname} = $::saveObjHash{$objname};
-
+            push(@{$attrlist{$type}}, $entry->{'attr_name'});
         }
-        else
+
+        # go through the list of valid attrs
+        foreach $this_attr (@{$datatype->{'attrs'}})
         {
+            my $ent;
 
-            # get data from DB
-            $type = $typehash{$objname};
+            my $attr = $this_attr->{attr_name};
 
-            # add the type to the hash for each object
-            $objhash{$objname}{'objtype'} = $type;
-
-            # get the object type decription from Schema.pm
-            my $datatype = $xCAT::Schema::defspec{$type};
-
-            # get the key to look for, for this object type
-            my $objkey = $datatype->{'objkey'};
-
-            #  get a list of valid attr names
-            #       for this type object
-            foreach my $entry (@{$datatype->{'attrs'}})
+            # skip the key attr  ???
+			if ($attr eq $objkey)
             {
-                push(@{$attrlist{$type}}, $entry->{'attr_name'});
+                next;
             }
 
-            # go through the list of valid attrs
-            foreach $this_attr (@{$datatype->{'attrs'}})
+            # get table lookup info from Schema.pm
+            #  !!!! some tables depend on the value of certain attrs
+            #   we need to look up attrs in the correct order or we will
+            #   not be able to determine what tables to look
+            #	in for some attrs.
+
+            if (exists($this_attr->{only_if}))
             {
-                my $ent;
+                my ($check_attr, $check_value) = split('\=', $this_attr->{only_if});
 
-                my $attr = $this_attr->{attr_name};
+                # if the object value is not the value we need
+                #   to match then try the next only_if value
+				next if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) );
+            }
 
-                # skip the key attr  ???
-				if ($attr eq $objkey)
+            #  OK - get the info needed to access the DB table
+            #   - i.e. table name, key name, attr names
+
+            # need the actual table attr name corresponding
+            #   to the object attr name
+            #  ex. noderes.nfsdir
+            my ($tab, $tabattr) = split('\.', $this_attr->{tabentry});
+
+			# don't try to get static group attrs from the nodegroup table
+			# 	- don't support dynamic groups yet
+			#if (($tab eq "nodegroup")  && ($objhash{$objname}{grouptype} eq "static") ) {
+			if ($tab eq "nodegroup"){
+				next;
+			} 
+
+            # ex. 'nodelist.node', 'attr:node'
+            ($lookup_key, $lookup_value) = split('\=', $this_attr->{access_tabentry});
+
+            # ex. 'nodelist', 'node'
+            ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
+
+            # ex. 'attr', 'node'
+            ($lookup_type, $lookup_data) = split('\:', $lookup_value);
+
+            #
+            # Get the attr values from the DB tables
+            #
+
+            if ($lookup_attr eq 'node')
+            {
+                my $thistable;
+                my $needtocommit = 0;
+
+                if ($::gettableref{$lookup_table})
                 {
-                    next;
+                    # if we already opened this table use the reference
+                    $thistable = $::gettableref{$lookup_table};
                 }
-
-                # get table lookup info from Schema.pm
-                #  !!!! some tables depend on the value of certain attrs
-                #   we need to look up attrs in the correct order or we will
-                #   not be able to determine what tables to look
-                #	in for some attrs.
-
-                if (exists($this_attr->{only_if}))
+                else
                 {
-                    my ($check_attr, $check_value) =
-                      split('\=', $this_attr->{only_if});
-
-                    # if the object value is not the value we need
-                    #   to match then try the next only_if value
-					next if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) );
-                }
-
-                #  OK - get the info needed to access the DB table
-                #   - i.e. table name, key name, attr names
-
-                # need the actual table attr name corresponding
-                #   to the object attr name
-                #  ex. noderes.nfsdir
-                my ($tab, $tabattr) = split('\.', $this_attr->{tabentry});
-
-                # ex. 'nodelist.node', 'attr:node'
-                ($lookup_key, $lookup_value) =
-                  split('\=', $this_attr->{access_tabentry});
-
-                # ex. 'nodelist', 'node'
-                ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
-
-                # ex. 'attr', 'node'
-                ($lookup_type, $lookup_data) = split('\:', $lookup_value);
-
-                #
-                # Get the attr values from the DB tables
-                #
-
-                if ($lookup_attr eq 'node')
-                {
-
-                    my $thistable;
-                    my $needtocommit = 0;
-
-                    if ($::gettableref{$lookup_table})
-                    {
-
-                        # if we already opened this table use the reference
-                        $thistable = $::gettableref{$lookup_table};
-                    }
-                    else
-                    {
-
-                        # open the table
-                        $thistable =
+                    # open the table
+                    $thistable =
                           xCAT::Table->new(
                                            $lookup_table,
                                            -create     => 1,
                                            -autocommit => 0
                                            );
-                        if (!$thistable)
-                        {
-
-                            my %rsp;
-                            $rsp->{data}->[0] =
-                              "Could not get the \'$thistable\' table.";
-                            xCAT::MsgUtils->message("E", $rsp, $::callback);
-                            return undef;
-                        }
-
-                        # look up attr values
-                        my $ent;
-                        $ent = $thistable->getNodeAttribs($objname, [$tabattr]);
-
-                        #   create object hash $objhash{$objname}{$attr}
-                        #   - if the return is a reference and the
-                        #       attr val is defined
-                        if (ref($ent) and defined $ent->{$tabattr})
-                        {
-                           	$objhash{$objname}{$attr} = $ent->{$tabattr};
-
-                        }
-                        $thistable->commit;
-
-                        #	$::gettableref{$lookup_table} = $thistable;
-                    }
-
-                }
-                else
-                {
-
-                    # look up attr values
-                    my @rows = xCAT::DBobjUtils->getDBtable($lookup_table);
-                    if (defined(@rows))
-                    {
-
-                        foreach (@rows)
-                        {
-
-
-                            if ($_->{$lookup_attr} eq $objname)
-                            {
-
-                                	$objhash{$objname}{$attr} = $_->{$tabattr};
-                            }
-                        }
-                    }
-                    else
+                    if (!$thistable)
                     {
                         my %rsp;
                         $rsp->{data}->[0] =
-                          "Could not read the \'$lookup_table\' table from the xCAT database.";
+                              "Could not get the \'$thistable\' table.";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
                         return undef;
                     }
 
+                    # look up attr values
+                    my $ent;
+                    $ent = $thistable->getNodeAttribs($objname, [$tabattr]);
+
+                    #   create object hash $objhash{$objname}{$attr}
+                    #   - if the return is a reference and the
+                    #       attr val is defined
+                    if (ref($ent) and defined $ent->{$tabattr})
+					{
+                       	$objhash{$objname}{$attr} = $ent->{$tabattr};
+                    }
+                    $thistable->commit;
                 }
             }
-            $::saveObjHash{$objname} = $objhash{$objname};
+            else
+            {
+                # look up attr values
+                my @rows = xCAT::DBobjUtils->getDBtable($lookup_table);
+                if (defined(@rows))
+                {
+                    foreach (@rows)
+                    {
+                        if ($_->{$lookup_attr} eq $objname)
+                        {
+                           	$objhash{$objname}{$attr} = $_->{$tabattr};
+                        }
+                    }
+                }
+                else
+                {
+                    my %rsp;
+                    $rsp->{data}->[0] =
+                          "Could not read the \'$lookup_table\' table from the xCAT database.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    return undef;
+                }
+
+            }
         }
+        $::saveObjHash{$objname} = $objhash{$objname};
     }
     return %objhash;
 }
@@ -363,42 +362,23 @@ sub getDBtable
     my ($class, $table) = @_;
     my @rows = [];
 
-    # save this table info - in case this subr gets called multiple times
-    #if (exists($::TableHash{$table})) {
+	#  need to refresh each time - don't cache!
 
-    if (grep(/^$table$/, @::foundTableList))
+    # need to get info from DB
+    my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+    if (!$thistable)
     {
-
-        # already have this
-        @rows = @{$::TableHash{$table}};
-
+        my %rsp;
+        $rsp->{data}->[0] = "Could not get the \'$table\' table.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return undef;
     }
-    else
-    {
 
-        # need to get info from DB
-        my $thistable =
-          xCAT::Table->new($table, -create => 1, -autocommit => 0);
-        if (!$thistable)
-        {
-            my %rsp;
-            $rsp->{data}->[0] = "Could not get the \'$table\' table.";
-            xCAT::MsgUtils->message("E", $rsp, $::callback);
-            return undef;
-        }
+    @rows = $thistable->getTable;
 
-        @rows = $thistable->getTable;
+    #   !!!! this routine returns rows even if the table is empty!!!!!!
 
-        #   !!!! this routine returns rows even if the table is empty!!!!!!
-
-        #  keep track of the fact that we checked this table
-        #   - even if it's empty!
-        push(@::foundTableList, $thistable->{tabname});
-
-        @{$::TableHash{$table}} = @rows;
-
-        $thistable->commit;
-    }
+    $thistable->commit;
 
     if (defined(@rows))
     {
@@ -408,7 +388,6 @@ sub getDBtable
     {
         return undef;
     }
-
 }
 
 #----------------------------------------------------------------------------
@@ -450,6 +429,14 @@ sub setobjdefs
 
         # get attr=val that are set in the DB ??
         my $type = $objhash{$objname}{objtype};
+		# my $grouptype = $objhash{$objname}{grouptype};
+
+		#  don't add any group defs to the nodegroup table
+		#	- group info is stored in the nodelist table as part of
+		#		the node definition
+		if ($type eq "group") {
+			next;
+		}
 
         # handle the site table as a special case !!!!!
         if ($type eq 'site')
@@ -584,7 +571,7 @@ sub setobjdefs
             push(@{$attrlist{$type}}, $entry->{'attr_name'});
         }
 
-my @attrprovided=();
+		my @attrprovided=();
 
         # check FINALATTRS to see if all the attrs are valid
         foreach my $attr (keys %{$objhash{$objname}})
@@ -609,7 +596,6 @@ my @attrprovided=();
                 }
                 next;
             }
-#ndebug1
 			push(@attrprovided, $attr); 
 
         }
@@ -705,8 +691,13 @@ my @attrprovided=();
                 # add new to existing - at the end - comma separated
                 if (defined($DBattrvals{$objname}{$attr_name}))
                 {
-                    $val =
-                      "$DBattrvals{$objname}{$attr_name},$objhash{$objname}{$attr_name}";
+					# if it's not already in the list!
+					if (!($DBattrvals{$objname}{$attr_name} =~ /\b$objhash{$objname}{$attr_name}\b/) )
+					{
+                    	$val = "$DBattrvals{$objname}{$attr_name},$objhash{$objname}{$attr_name}";
+					} else {
+						$val = "$DBattrvals{$objname}{$attr_name}";
+					}
                 }
                 else
                 {
@@ -736,7 +727,7 @@ my @attrprovided=();
                         if (!grep(/^$i$/, @minusList))
                         {
 
-                            # set new groups list for node
+                            # set new list for node
                             if (!$first)
                             {
                                 $newlist .= ",";
@@ -758,7 +749,7 @@ my @attrprovided=();
             }
 
             # ex. nodetype = osi (attr=val or col = col value)
-            $updates{$::tabattr} = $val;
+            $updates{$::tabattr} = "$val";
 
             if (ref($::settableref{$lookup_table}))
             {
