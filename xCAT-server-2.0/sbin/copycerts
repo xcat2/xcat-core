@@ -52,22 +52,22 @@ exit 0;
 sub copyCertstoSN
 {
     my $rc = 0;
-    if (-d "/xcatpost/postscripts/.xcat")
+    if (-d "/xcatpost/.xcat")
     {
         if (!(-d "/root/.xcat"))
         {
             mkdir("/root/.xcat", 0600);
         }
-        `cp /xcatpost/postscripts/.xcat/* /root/.xcat`;
+        `cp /xcatpost/.xcat/* /root/.xcat`;
     }
     else
     {
         xCAT::MsgUtils->message('S',
-                                "/xcatpost/postscripts/.xcat directory does not exist\n");
+                                "/xcatpost/.xcat directory does not exist\n");
         return 1;
 
     }
-    if (-d "/xcatpost/postscripts/ca")
+    if (-d "/xcatpost/ca")
     {
         if (!(-d "/etc/xcat"))
         {
@@ -77,15 +77,15 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/ca", 0755);
         }
-        `cp -r /xcatpost/postscripts/ca/* /etc/xcat/ca`;
+        `cp -r /xcatpost/ca/* /etc/xcat/ca`;
     }
     else
     {
-        xCAT::MsgUtils->message('S', "/xcatpost/postscripts/ca directory does not exist\n");
+        xCAT::MsgUtils->message('S', "/xcatpost/ca directory does not exist\n");
         return 1;
 
     }
-    if (-d "/xcatpost/postscripts/cert")
+    if (-d "/xcatpost/cert")
     {
         if (!(-d "/etc/xcat"))
         {
@@ -95,24 +95,24 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/cert", 0755);
         }
-        `cp -r  /xcatpost/postscripts/cert/* /etc/xcat/cert`;
+        `cp -r  /xcatpost/cert/* /etc/xcat/cert`;
     }
     else
     {
         xCAT::MsgUtils->message('S',
-                                "/xcatpost/postscripts/cert directory does not exit\n");
+                                "/xcatpost/cert directory does not exit\n");
         return 1;
 
     }
-    if (-d "/xcatpost/postscripts/sysconfig")
+    if (-d "/xcatpost/sysconfig")
     {
-        `cp /xcatpost/postscripts/sysconfig/xcat /etc/sysconfig`;
+        `cp /xcatpost/sysconfig/xcat /etc/sysconfig`;
         chmod 0600, "/etc/sysconfig/xcat";
     }
     else
     {
         xCAT::MsgUtils->message('S',
-                               "/xcatpost/postscripts/sysconfig directory does not exit\n");
+                               "/xcatpost/sysconfig directory does not exit\n");
         return 1;
 
     }
