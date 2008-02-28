@@ -5,7 +5,6 @@
 
 #
 
-
 #-----------------------------------------------------------------------------
 
 =head1   servicenode 
@@ -17,15 +16,24 @@
 
 #-----------------------------------------------------------------------------
 
-# if this is a service node
 #
-#  Copy Certificates, and config file to apprpriate directories from mounted
+#  remove OpenIPMI-tools and tftp
+#  install xcat from /install/xcat
+#  Copy Certificates, and config file to apprpriate directories from /install
+#  and restart postgresql and xcatd
 #
-if (-e "/etc/xCATSN")
-{
-    `/opt/xcat/sbin/copycerts`;
-}
+my $msg = "Removing OpenIPMI-tools";
+`logger -t xcat $msg`;
+`rpm -e OpenIPMI-tools`;
+$msg = "Removing tftp";
+`logger -t xcat $msg`;
+`rpm -e tftp`;
+$msg = "Installing xCAT";
+`logger -t xcat $msg`;
+`rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm`;
+$msg = "copying certificates and restarting daemon";
+`logger -t xcat $msg`;
+`/opt/xcat/sbin/copycerts`;
 
 exit 0;
-
 
