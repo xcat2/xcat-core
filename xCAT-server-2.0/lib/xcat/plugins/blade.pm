@@ -737,6 +737,15 @@ sub power {
   my $subcommand = shift;
   my $data;
   my $stat;
+  unless ($slot > 0) {
+     if ($subcommand eq "reset" or $subcommand eq "boot") {
+        $data = $session->set(new SNMP::Varbind([".1.3.6.1.4.1.2.3.51.2.7.4",0,1,'INTEGER']));
+        unless ($data) { return (1,$session->{ErrorStr}); }
+        return (0,"reset");
+     } else {
+        return (1,"$subcommand unsupported on the management module");
+     }
+  }
   if ($subcommand eq "stat" or $subcommand eq "boot") {
     $data = $session->get([$powerstatoid.".".$slot]);
     if ($data == 1) {
