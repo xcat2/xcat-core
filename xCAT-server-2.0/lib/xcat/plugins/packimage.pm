@@ -93,7 +93,11 @@ sub process_request {
        } elsif ($arch =~ /ppc/) {
           $flags="-be";
        }
-       system("mksquashfs $temppath ../rootimg.sfs $flags");
+       my $rc = system("mksquashfs $temppath ../rootimg.sfs $flags");
+       if ($rc) {
+          $callback->({error=>["mksquashfs could not be run successfully"],errorcode=>[1]});
+          return;
+       }
        chmod(0644,"../rootimg.sfs");
     }
     chdir($oldpath);
