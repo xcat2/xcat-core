@@ -451,12 +451,18 @@ sub plugin_command {
     }
   }
   if (@nodes) { $req->{node} = \@nodes; }
+  my %unhandled_nodes;
+  foreach (@nodes) {
+      $unhandled_nodes{$_}=1;
+  }
+  my $useunhandled=0;
   if (defined($cmd_handlers{$req->{command}->[0]})) {
     my $hdlspec;
     foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
       $hdlspec =$_->[1];
       my $ownmod = $_->[0];
       if ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
+        $useunhandled=1;
         my $table;
         my $cols;
         ($table,$cols) = split(/:/,$hdlspec);
@@ -492,10 +498,12 @@ sub plugin_command {
               if ($colvals->{$col}) { #A pattern match style request.
                 if ($attribs->{$col} =~ /$colvals->{$col}/) {
                   $handler_hash{$ownmod}->{$node} = 1;
+                  delete $unhandled_nodes{$node};
                   last;
                 }
               } else {
                 $handler_hash{$attribs->{$col}}->{$node} = 1;
+                delete $unhandled_nodes{$node};
                 last;
               }
             }
@@ -513,6 +521,24 @@ sub plugin_command {
     }
   } else {
     return 1;  #TODO: error back that request has no known plugin for it
+  }
+  if ($useunhandled) { 
+   my $queuelist;
+   foreach (@{$cmd_handlers{$req->{command}->[0]}->[0]}) {
+     unless (/:/) {
+        next;
+     }
+     $queuelist .= "$_,";
+   }
+   $queuelist =~ s/,$//;
+   $queuelist =~ s/:/./g;
+   foreach (keys %unhandled_nodes) {
+      if ($sock) {
+         print $sock XMLout({node=>[{name=>[$_],data=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
+      } else {
+         $callback->({node=>[{name=>[$_],data=>['Unable to identify plugin for this command, check relevant tables'],errorcode=>[1]}]});
+      }
+     }
   }
   my $children=0;
   $SIG{CHLD} = sub {while (waitpid(-1, WNOHANG) > 0) { $children--; } };
