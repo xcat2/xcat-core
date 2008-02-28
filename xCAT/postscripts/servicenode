@@ -27,7 +27,7 @@ my $msg = "Removing OpenIPMI-tools";
 `rpm -e OpenIPMI-tools`;
 $msg = "Removing tftp";
 `logger -t xcat $msg`;
-`rpm -e tftp`;
+`rpm -e tftp-server`;
 $msg = "Installing xCAT";
 `logger -t xcat $msg`;
 `rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm`;
