@@ -5,12 +5,7 @@
 
 #
 
-BEGIN
-{
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/x
-	cat'
-      : '/usr';
-}
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
 use lib "$::XCATROOT/lib/perl";
 use File::Basename;
 use Getopt::Long;
@@ -57,22 +52,22 @@ exit 0;
 sub copyCertstoSN
 {
     my $rc = 0;
-    if (-d "/xcatpost/.xcat")
+    if (-d "/xcatpost/postscripts/.xcat")
     {
         if (!(-d "/root/.xcat"))
         {
             mkdir("/root/.xcat", 0600);
         }
-        `cp /xcatpost/.xcat/* /root/.xcat`;
+        `cp /xcatpost/postscripts/.xcat/* /root/.xcat`;
     }
     else
     {
         xCAT::MsgUtils->message('S',
-                                "/xcatpost/.xcat directory does not exist\n");
+                                "/xcatpost/postscripts/.xcat directory does not exist\n");
         return 1;
 
     }
-    if (-d "/xcatpost/ca")
+    if (-d "/xcatpost/postscripts/ca")
     {
         if (!(-d "/etc/xcat"))
         {
@@ -82,15 +77,15 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/ca", 0755);
         }
-        `cp -r /xcatpost/ca/* /etc/xcat/ca`;
+        `cp -r /xcatpost/postscripts/ca/* /etc/xcat/ca`;
     }
     else
     {
-        xCAT::MsgUtils->message('S', "/xcatpost/ca directory does not exist\n");
+        xCAT::MsgUtils->message('S', "/xcatpost/postscripts/ca directory does not exist\n");
         return 1;
 
     }
-    if (-d "/xcatpost/cert")
+    if (-d "/xcatpost/postscripts/cert")
     {
         if (!(-d "/etc/xcat"))
         {
@@ -100,24 +95,24 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/cert", 0755);
         }
-        `cp -r  /xcatpost/cert/* /etc/xcat/cert`;
+        `cp -r  /xcatpost/postscripts/cert/* /etc/xcat/cert`;
     }
     else
     {
         xCAT::MsgUtils->message('S',
-                                "/xcatpost/cert directory does not exit\n");
+                                "/xcatpost/postscripts/cert directory does not exit\n");
         return 1;
 
     }
-    if (-d "/xcatpost/sysconfig")
+    if (-d "/xcatpost/postscripts/sysconfig")
     {
-        `cp /xcatpost/sysconfig/xcat /etc/sysconfig`;
+        `cp /xcatpost/postscripts/sysconfig/xcat /etc/sysconfig`;
         chmod 0600, "/etc/sysconfig/xcat";
     }
     else
     {
         xCAT::MsgUtils->message('S',
-                               "/xcatpost/sysconfig directory does not exit\n");
+                               "/xcatpost/postscripts/sysconfig directory does not exit\n");
         return 1;
 
     }
