@@ -1358,6 +1358,9 @@ sub readSNInfo
 
 =head3 isServiceReq 
 
+ ####  note for now  this returns service required always###
+ ####  need to add ifconfig call to get all ip addresses for service node###
+
   Checks to see if the input service is already setup on the node by
   checking the /etc/xCATSN file for the service name. This is put in the file
   by the service.pm plugin (e.g tftp.pm,dns.pm,...)
@@ -1395,87 +1398,83 @@ sub isServiceReq
         return 0;
     }
     else
-    {    # check the db to see if this service node is suppose to
-            # have this service setup
-        if (($service eq "dhcpserver") || ($service eq "nameservers"))
+    {
+        return 1;    #  setup service
+    }
+    #  Need to obtain all ip addresses for service node to check
+	# before we do the below logic
+
+    # have this service setup
+    if (($service eq "dhcpserver") || ($service eq "nameservers"))
+    {
+
+        # get handle to networks table
+        my $networkstab = xCAT::Table->new('networks');
+        unless ($networkstab)
+        {
+            xCAT::MsgUtils->message('S', "Unable to open networks table.\n");
+            return -1;
+        }
+        my $whereclause =
+          "$service like '$servicenodename' or $service like '$serviceip'";
+        my @netlist =
+          $networkstab->getAllAttribsWhere($whereclause, 'netname', $service);
+        if (@netlist)
+        {
+            return 1;    # found an entry in the networks table for this node
+        }
+    }
+    else
+    {
+        if ($service eq "cons")
         {
 
-            # get handle to networks table
-            my $networkstab = xCAT::Table->new('networks');
-            unless ($networkstab)
+            # get handle to nodehm table
+            my $nodehmtab = xCAT::Table->new('nodehm');
+            unless ($nodehmtab)
             {
-                xCAT::MsgUtils->message('S',
-                                        "Unable to open networks table.\n");
+                xCAT::MsgUtils->message('S', "Unable to open nodehm table.\n");
                 return -1;
             }
             my $whereclause =
-              "$service like '$servicenodename' or $service like '$serviceip'";
-            my @netlist =
-              $networkstab->getAllAttribsWhere($whereclause, 'netname',
-                                               $service);
-            if (@netlist)
+              "node like '$servicenodename' or node like '$serviceip'";
+            my @nodelist =
+              $nodehmtab->getAllAttribsWhere($whereclause, 'node', $service);
+            foreach my $node (@nodelist)
             {
-                return 1;   # found an entry in the networks table for this node
+                if ($node->{$service} ne "")    # cons defined
+                {
+                    return 1;    # found cons defined for this server
+                }
             }
+
         }
-        else
+        else                     # other service TFTP,etc
         {
-            if ($service eq "cons")
+
+            # get handle to noderes table
+            my $noderestab = xCAT::Table->new('noderes');
+            unless ($noderestab)
             {
-
-                # get handle to nodehm table
-                my $nodehmtab = xCAT::Table->new('nodehm');
-                unless ($nodehmtab)
-                {
-                    xCAT::MsgUtils->message('S',
-                                            "Unable to open nodehm table.\n");
-                    return -1;
-                }
-                my $whereclause =
-                  "node like '$servicenodename' or node like '$serviceip'";
-                my @nodelist =
-                  $nodehmtab->getAllAttribsWhere($whereclause, 'node',
-                                                 $service);
-                foreach my $node (@nodelist)
-                {
-                    if ($node->{$service} ne "")    # cons defined
-                    {
-                        return 1;    # found cons defined for this server
-                    }
-                }
-
+                xCAT::MsgUtils->message('S', "Unable to open noderes table.\n");
+                return -1;
             }
-            else                     # other service TFTP,etc
+            my $whereclause =
+              "servicenode like '$servicenodename' or servicenode like '$serviceip'";
+            my @nodelist =
+              $noderestab->getAllAttribsWhere($whereclause, 'node', $service);
+            foreach my $node (@nodelist)
             {
-
-                # get handle to noderes table
-                my $noderestab = xCAT::Table->new('noderes');
-                unless ($noderestab)
+                if (   ($node->{$service} eq $servicenodename)
+                    || ($node->{$service} eq $serviceip)
+                    || ($node->{$service} eq ""))
                 {
-                    xCAT::MsgUtils->message('S',
-                                            "Unable to open noderes table.\n");
-                    return -1;
-                }
-                my $whereclause =
-                  "servicenode like '$servicenodename' or servicenode like '$serviceip'";
-                my @nodelist =
-                  $noderestab->getAllAttribsWhere($whereclause, 'node',
-                                                  $service);
-                foreach my $node (@nodelist)
-                {
-                    if (   ($node->{$service} eq $servicenodename)
-                        || ($node->{$service} eq $serviceip)
-                        || ($node->{$service} eq ""))
-                    {
-                        return
-                          1;    # found a node using this server for the service
-                    }
+                    return 1;   # found a node using this server for the service
                 }
             }
-
-            return
-              0;   # did not find a node using this service for this servicenode
         }
+
+        return 0;  # did not find a node using this service for this servicenode
     }
 
 }
