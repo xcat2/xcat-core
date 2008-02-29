@@ -391,14 +391,15 @@ site => {
 #    keys => [qw(sitename)]
 #  },
 switch =>  {
-    cols => [qw(node switch port vlan comments disable)],
+    cols => [qw(node switch port vlan interface comments disable)],
     keys => [qw(node switch port)],
     table_desc => 'Contains what switch port numbers each node is connected to.',
 	descriptions => {
 		node => 'The node name or group name.',
 		switch => 'The switch hostname.',
 		port => 'The port number in the switch that this node is connected to.',
-		vlan => 'Not used??',
+		vlan => 'xCAT currently does not make use of this field, however it may do so in the future.  For now, it can be used by administrators for their own purposes, but keep in mind some xCAT feature later may try to enforce this if set',
+		interface => 'The interface name from the node perspective.  This is not currently used by xCAT, but administrators may wish to use this for their own purposes',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",
 	},
