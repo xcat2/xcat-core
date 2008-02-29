@@ -35,7 +35,7 @@ if [ -f /lib/lsb/init-functions ]; then
   STATUS=MStatus
   LOG_SUCCESS=log_success_msg
   LOG_FAILURE=log_failure_msg
-  LOG_WARNING=log_warning_message
+  LOG_WARNING=log_warning_msg
 elif [ -f /etc/init.d/functions ]; then
   echo RH
   . /etc/init.d/functions

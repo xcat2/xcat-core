@@ -32,7 +32,8 @@ if [ -f /lib/lsb/init-functions ]; then
   STATUS=MStatus
   LOG_SUCCESS=log_success_msg
   LOG_FAILURE=log_failure_msg
-  LOG_WARNING=log_warning_message
+  #LOG_WARNING=log_warning_message
+  LOG_WARNING=passed
 elif [ -f /etc/init.d/functions ]; then
   echo RH
   . /etc/init.d/functions
@@ -59,7 +60,7 @@ stop)
   $STATUS >& /dev/null
   if [ "$?" != "0" ]; then
     echo -n "xCATd not running, not stopping "
-    #$LOG_WARNING
+    $LOG_WARNING
     exit 1
   fi
   kill -TERM -`cat /var/run/xcatd.pid`
