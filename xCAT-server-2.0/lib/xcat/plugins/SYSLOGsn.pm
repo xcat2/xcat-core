@@ -78,6 +78,7 @@ sub setup_SYSLOG
         {    # need to add
             ` echo "*.debug   /var/log/messages" >> /etc/syslog.conf`;
             `echo "*.crit   /var/log/messages" >> /etc/syslog.conf`;
+            `service syslog restart`;
         }
     }
 
