@@ -32,7 +32,7 @@ xCAT-server provides the core server and configuration management components of 
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
-mkdir -p $RPM_BUILD_ROOT/%{prefix}/rc.d
+#mkdir -p $RPM_BUILD_ROOT/%{prefix}/rc.d
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
@@ -53,8 +53,8 @@ cp -hpR share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
 
 cp -d sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
-cp rc.d/* $RPM_BUILD_ROOT/%{prefix}/rc.d
-chmod 755 $RPM_BUILD_ROOT/%{prefix}/rc.d/*
+#cp rc.d/* $RPM_BUILD_ROOT/%{prefix}/rc.d
+#chmod 755 $RPM_BUILD_ROOT/%{prefix}/rc.d/*
 
 cp share/xcat/ca/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca/*
