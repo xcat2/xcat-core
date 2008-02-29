@@ -59,7 +59,7 @@ stop)
   $STATUS >& /dev/null
   if [ "$?" != "0" ]; then
     echo -n "xCATd not running, not stopping "
-    $LOG_WARNING
+    #$LOG_WARNING
     exit 1
   fi
   kill -TERM -`cat /var/run/xcatd.pid`
