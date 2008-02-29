@@ -1,8 +1,9 @@
-This is the README for xCAT - Extreme Cluster Administration Toolkit, 
-Version 2.0 alpha release. xCAT is a toolkit for the deployment and administration of clusters. 
-xCAT 2.0 is offered OSS under a EPL license.
+xCAT - eXtreme Cluster Administration Toolkit
 
-See http://www.opensource.org/licenses/eclipse-1.0.php license details. 
+xCAT is a toolkit for the deployment and administration of clusters.
 
-The xCAT 2.0 code and documentation can be downloaded from http://xcat.org. 
-For support, go to http://xcat.org for instructions on joining the mailing list.
+For documentation on getting started with xCAT, see /opt/xcat/share/doc/xCAT2.0.pdf (on an installed system)
+or http://xcat.svn.sourceforge.net/svnroot/xcat/xcat-core/trunk/perl-xCAT-2.0/xCAT2.0.pdf .
+
+xCAT is made available as OSS under the EPL license:
+http://www.opensource.org/licenses/eclipse-1.0.php

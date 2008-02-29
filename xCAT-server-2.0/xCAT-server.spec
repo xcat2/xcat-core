@@ -94,16 +94,14 @@ cp etc/xcat/postscripts.rules $RPM_BUILD_ROOT/etc/xcat/
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
-cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server/*
-echo $RPM_BUILD_ROOT %{prefix}
+#echo $RPM_BUILD_ROOT %{prefix}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
-#%doc README
 #%doc LICENSE.html
 %{prefix}
 /etc/xcat
@@ -122,14 +120,14 @@ rm -rf $RPM_BUILD_ROOT
 * Tue Feb 20 2007 Jarrod Johnson <jbjohnso@us.ibm.com>
 - Start core rpm for 1.3 work
 
-%post 
+%post
 %ifos linux
 ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
 if [ -x /usr/lib/lsb/install_initd ]; then
   /usr/lib/lsb/install_initd /etc/init.d/xcatd
 elif [ -x /sbin/chkconfig ]; then
   /sbin/chkconfig --add xcatd
-else 
+else
   echo "Unable to register init scripts on this system"
 fi
 if [ "$1" = "2" ]; then #only on upgrade...
@@ -146,7 +144,7 @@ if [ $1 == 0 ]; then  #This means only on -e
   elif [ -x /sbin/chkconfig ]; then
     /sbin/chkconfig --del xcatd
   fi
-  rm -f /usr/sbin/xcatd  #remove the symbolic  
+  rm -f /usr/sbin/xcatd  #remove the symbolic
 fi
 %endif
 

@@ -57,8 +57,10 @@ cp xCAT2.0.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
 
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
-cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT/*
+
+cp README $RPM_BUILD_ROOT/%{prefix}
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/README
 
 # These were built dynamically in the build phase
 cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5

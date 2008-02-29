@@ -66,7 +66,6 @@ chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
 # chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
 
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
-cp README $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
 
 #cp usr/share/xcat/scripts/setup-local-client.sh $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
@@ -124,7 +123,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
-#%doc README
 #%doc LICENSE.html
 # Just package everything that has been copied into RPM_BUILD_ROOT
 %{prefix}
