@@ -267,38 +267,65 @@ sub rnetboot {
     }
     ##################################
     # Return error
+    # lpar_netboot returns (for example):
+    #  # Connecting to lpar1
+    #  # Connected
+    #  # Checking for power off.
+    #  # Power off the node
+    #  # Wait for power off.
+    #  # Power off complete.
+    #  # Power on lpar1 to Open Firmware.
+    #  # Power on complete.
+    #    lpar_netboot: can not find mac address 42DAB.
+    #
     ##################################
     if ( $Rc != SUCCESS ) {
+        if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
+            return( [[$name,$1]] );
+        }
         return( [[$name,join( '', @$result )]] );
     }
     ##################################
-    # Split results into array
+    # Split array into string
     ##################################
-    if ( $hwtype eq "ivm" ) {
-        my $data = @$result[0];
-        @$result = split /\n/, $data;
+    my $data = @$result[0];
+    if ( $hwtype eq "hmc" ) {
+        $data = join( '', @$result );
     }
     ##################################
     # lpar_netboot returns:
     #
-    #  # Connecting to p6vios
+    #  # Connecting to lpar1
     #  # Connected
-    #  # Checking for power off.
-    #  # Power off complete.
-    #  # Power on p6vios to Open Firmware.
-    #  # Power on complete.
-    #  # Network booting install adapter.
-    # 
+    #    ...
+    #  lpar_netboot Status: network boot initiated
+    #  # bootp sent over network.
+    #  lpar_netboot Status: waiting for the boot image to boot up.
+    #  # Network boot proceeding, lpar_netboot is exiting.
+    #  # Finished.
+    #
     #####################################
-    my $values;
-    foreach ( @$result ) {
-        if ( /^[^#]/ ) {
-            $values.= "$_\n";
-        }
+    if ( $data =~ /Finished/) {
+        return( [[$name,"Success"]] );
     }
-    return( [[$name,$values]] );
+    ##################################
+    # Can still be error w/ Rc=0:
+    #
+    #  # Connecting to lpar1
+    #  # Connected
+    #    ...
+    #  lpar_netboot Status: network boot initiated
+    #  # bootp sent over network.
+    #  lpar_netboot Status: waiting for the boot image to boot up.
+    #  lpar_netboot: bootp operation failed.
+    #
+    #####################################
+    if ( $data =~ /lpar_netboot: (.*)/ ) {
+        return( [[$name,$1]] );
+    }
+    return( [[$name,$data]] );
 }
-
+ 
 
 1;
 
