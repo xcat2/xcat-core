@@ -4,25 +4,38 @@ B<nodels> - lists the nodes in the noderange.
 
 =head1 SYNOPSIS
 
+I<nodels noderange [table.attribute | shortname] ...>
+
 I<nodels [-h| --help]>
 
 I<nodels  [-v| --version]>
 
-I<nodels [-V| --verbose] noderange>
-
 
 =head1 DESCRIPTION
 
- The nodels command lists the nodes specified in the node range. If no noderange is provided, then all nodes are listed.
+The nodels command lists the nodes specified in the node range. If no noderange is provided, then all nodes are listed.
+
+Additional attributes of the nodes will also be displayed if the table names and attribute names
+are specified after the noderange in the form:  I<table.attribute> .  A few shortcut names can
+also be used as aliases to common attributes:
+
+=over 4
+
+=item I<groups> - nodelist.groups
+
+=item I<tags> - nodelist.groups
+
+=item I<mgt> - nodehm.mgt
+
+=item I<switch> - switch.switch
+
+=back
 
 =head1 OPTIONS
-
 
 B<-h>          Display usage message.
 
 B<-v>          Command Version.
-
-B<-V>          Verbose output.
 
 
 =head1 RETURN VALUE
@@ -42,20 +55,42 @@ Output is similar to:
    node2
    node3
 
-2.To list nodes in noderange ppc, enter:
+2. To list nodes in noderange ppc, enter:
 
 I<nodels ppc>
 
 Output is similar to:
-
    ppcnode1
    ppcnode2
    ppcnode3
+
+3. To list the groups each node is part of:
+
+I<nodels all groups>
+
+Output is similar to:
+   node1: groups: all
+   node2: groups: all,storage
+   node3: groups: all,blade
+
+4. To list the groups each node is part of:
+
+I<nodels all nodehm.power>
+
+Output is similar to:
+   node1: nodehm.power: blade
+   node2: nodehm.power: ipmi
+   node3: nodehm.power: ipmi
 
 
 =head1 FILES
 
 /opt/xcat/bin/nodels
+
+
+=head1 SEE ALSO
+
+The B<noderange> man page.
 
 
 =head1 NOTES

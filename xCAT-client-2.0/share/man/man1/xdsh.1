@@ -19,21 +19,21 @@ xdsh Command
 [\fB-B\fR \fIbypass\fR]
 [\fB-C\fR \fIcontext\fR] [\fB-e\fR]
 [\fB-E\fR \fIenvironment_file\fR] [\fB-f\fR\fIfanout\fR]
-[\fB-i\fR] [\fB-K\fR] [\fB-L\fR] [\fB-l\fR \fIuser_ID\fR] 
-[\fB-m\fR] [\fB-o\fR \fInode_options\fR] 
+[\fB-i\fR] [\fB-K\fR] [\fB-L\fR] [\fB-l\fR \fIuser_ID\fR]
+[\fB-m\fR] [\fB-o\fR \fInode_options\fR]
 [\fB-Q\fR] [\fB-r\fR \fInode_remote_shell\fR]
 [\fB-s\fR] [\fB-S\fR \fBcsh\fR | \fBksh\fR] [\fB-t\fR \fItimeout\fR]
-[\fB-T\fR] [\fB-v\fR] [\fB-X\fR \fIenv_list\fR] [\fB-z\fR] 
+[\fB-T\fR] [\fB-v\fR] [\fB-X\fR \fIenv_list\fR] [\fB-z\fR]
 [\fIcommand_list\fR]
 .PP
 .PP
 \fBDescription
 \fR
 .PP
-The \fBxdsh\fR command runs commands concurrently on remote nodes. 
+The \fBxdsh\fR command runs commands concurrently on remote nodes.
 Targets can be selected from  multiple contexts.
-A context is a target database that contains the node definition. 
-The \fBxdsh\fR command issues a remote shell command for each 
+A context is a target database that contains the node definition.
+The \fBxdsh\fR command issues a remote shell command for each
 target specified, and returns the output from all targets,
  formatted so that command results from all nodes
 can be managed. \fB/usr/bin/rsh\fR is the model for the syntax and
@@ -58,7 +58,7 @@ defined by specifying a default context for unqualified target names (See
 \fBTARGET SPECIFICATION\fR:
 .PP
 A target is a node where a remote command will be
-executed. Node targets are specified inputting the 
+executed. Node targets are specified inputting the
 \fInode_list\fR or \fInodegroups\fR.
 .PP
 If the local host is included as part of the targets, the
@@ -79,10 +79,10 @@ or executing a local script using the \fB-e\fR
 flag.
 .PP
 The syntax for the \fIcommand_list\fR \fBxdsh\fR parameter is as
-follows: 
+follows:
 .sp
 .nf
-"\fIcommand\fR[; \fIcommand\fR]..."\ 
+"\fIcommand\fR[; \fIcommand\fR]..."\
 .fi
 .sp
 .PP
@@ -92,7 +92,7 @@ list are executed remotely, and that any special characters are interpreted
 correctly on the remote target. A script file on the local host can be
 executed on each of the remote targets by using the \fB-e\fR
 flag. If \fB-e\fR is specified, \fIcommand_list\fR is the
-script name and arguments to the script. For example: 
+script name and arguments to the script. For example:
 .sp
 .nf
 xdsh hostname -e [\fIflags\fR] \fIscript_filename\fR [\fIarguments\fR]...
@@ -108,8 +108,8 @@ including those that read from standard input.
 .PP
 \fBREMOTE USER\fR:
 .PP
-The \fIuser_ID\fR to use for a remote target can be specified 
-using the \fB-l\fR (lowercase L) flag. 
+The \fIuser_ID\fR to use for a remote target can be specified
+using the \fB-l\fR (lowercase L) flag.
 .PP
 \fBREMOTE SHELL COMMAND\fR:
 .PP
@@ -120,7 +120,7 @@ conforms to the IETF (Internet Engineering Task Force) Secure Remote Command
 Protocol can be used.
 .PP
 The remote shell is determined as follows, in order of
-precedence: 
+precedence:
 .RS +3
 .HP 3
 1. The \fB-r\fR flag.
@@ -134,7 +134,7 @@ precedence:
 .RE
 .PP
 The remote shell options are determined as follows, in
-order of precedence: 
+order of precedence:
 .RS +3
 .HP 3
 1. The \fB-o\fR flag.
@@ -154,7 +154,7 @@ When commands are executed on the remote target, the path used is
 determined by the \fBDSH_PATH\fR environment variable defined in the shell
 of the current user. If \fBDSH_PATH\fR is not set, the path used is
 the remote shell default path. For example, to set the local path for
-the remote targets, use: 
+the remote targets, use:
 .sp
 .nf
 DSH_PATH=$PATH
@@ -230,7 +230,7 @@ for more information.
 .PP
 A command can be run silently using the \fB-Q\fR flag; no
 output from each target's standard output or standard error is
-displayed. 
+displayed.
 .PP
 \fBSIGNALS\fR:
 .PP
@@ -268,7 +268,7 @@ syntax for the \fIcommand_list\fR parameter is as follows:
 \fR
 .RE
 .RS +9
-Specifies a list of node targets to include in the target list. 
+Specifies a list of node targets to include in the target list.
 .sp
 .RE
 .RS +3
@@ -332,11 +332,11 @@ default fanout value of \fB64\fR is used.
 Displays usage information.
 .RE
 .RS +3
-\fB-K | --ssh-setup  
+\fB-K | --ssh-setup
 \fR
 .RE
 .RS +9
-Request to setup SSH for the input node list.
+Set up the SSH keys for the specified node list.  Currently, this must be run on the management node in bypass mode (export XCATBYPASS=1).
 .RE
 .RS +3
 \fB-l | --user \fIuser_ID\fR
@@ -369,7 +369,7 @@ execution on each target.
 .RS +9
 Specifies options to pass to the remote shell command for node
 targets. The options must be specified within double quotation marks
-("") to distinguish them from \fBxdsh\fR options. 
+("") to distinguish them from \fBxdsh\fR options.
 The syntax for \fInode_options\fR
 .RE
 .RS +3
@@ -398,7 +398,7 @@ output.
 .RE
 .RS +9
 Specifies the full path of the remote shell command used for remote
-command execution on node targets. 
+command execution on node targets.
 .sp
 .nf
  [\fIcontext\fR:]\fIpath\fR[,[\fIcontext\fR:]\fIpath\fR]...
@@ -569,7 +569,7 @@ collected from all node group files in the path.
 .RS +9
 Sets the command path to use on the targets. If \fBDSH_PATH\fR
 is not set, the default path defined in the profile of the remote
-\fIuser_ID\fR is used. 
+\fIuser_ID\fR is used.
 .RE
 .RS +3
 \fBDSH_SYNTAX
@@ -613,7 +613,7 @@ remote environment and remote shell command are user-defined.
 .RS +3
 .HP 3
 1. To run the \fBps\fR command on node targets \fBnode1\fR and
-\fBnode2\fR, enter: 
+\fBnode2\fR, enter:
 .sp
 .nf
 xdsh node1,node2 "ps"
@@ -621,20 +621,20 @@ xdsh node1,node2 "ps"
 .sp
 .HP 3
 2. To run the \fBps\fR command on each node target listed in the
-\fBmyhosts\fR file, enter: 
+\fBmyhosts\fR file, enter:
 .sp
 .HP 3
-3. To execute the commands contained in \fBmyfile\fR in the XCAT 
+3. To execute the commands contained in \fBmyfile\fR in the XCAT
 \fBcontext\fR on several node targets,
 with a fanout of \fB1\fR,
-enter: 
+enter:
 .sp
 .nf
 xdsh node1,node2 -C XCAT -f 1 -e myfile
 .fi
 .sp
 .HP 3
-4. To run the ps command on node1 and ignore all the dsh environment 
+4. To run the ps command on node1 and ignore all the dsh environment
 variable except the DSH_NODE_OPTS, enter:
 .sp
 .nf
