@@ -27,8 +27,39 @@ chomp($host);
 my $ip=<STDIN>;
 chomp($ip);
 
-while ($pair=<STDIN>) {
-  chomp($pair);
+my $holder;
+my $begin=1;
+my $pair;
+
+while ($temp=<STDIN>) {
+  chomp($temp);
+  my $temp1=$temp; #save the one with quotes
+  $temp1 =~ s/\"//g;
+  my $c1=length($temp);
+  my $c2=length($temp1);
+  
+  
+  if (($c1-$c2)%2 == 0) { 
+    if ($begin==1) { # single line
+      $pair=$temp;
+    }
+    else { # middle multi-line
+      $pair .= " $temp";
+      next;  
+    }
+  } else { # multi line
+    if ($begin==1) {
+      $pair=$temp; #start of multi-line 
+      $begin=0;
+      next;
+    } else { 
+      $pair .= " $temp";  #end of multi-line
+      $begin=1;
+    }
+  }
+   
+  print "pair=$pair\n";
+
   @a=split(/ /, $pair);
   $oid=shift @a;
   $value=join(' ', @a);
@@ -39,7 +70,7 @@ while ($pair=<STDIN>) {
   if ($oid =~ /BLADESPPALT-MIB::spTrapAppId/) {
     $briefmsg .= "  App ID: $value\n";  
   }
-  elsif (($oid =~ /BLADESPPALT-MIB::spTrapAppType/) && ($value)) {
+  elsif ($oid =~ /BLADESPPALT-MIB::spTrapAppType/) {
     $briefmsg .= "  Alert Type: $value\n";
   } 
   elsif ($oid =~ /BLADESPPALT-MIB::spTrapMsgText/) {
@@ -78,9 +109,22 @@ while ($pair=<STDIN>) {
       $severity="Informational Alert";
       $severity_type="Informational";
     }
-  }  
-
-  # TODO: special handling for  IPMI and RSA 2 
+  } 
+ #elsif ($oid =~ /enterprises\.3183\.1\.1\.1/) { #IPMI starts here
+#      ;
+#  } elsif ($oid =~ /enterprises\.2\.6\.158\.1\.1\.3/) { #RSA starts here, TODO: get MIB, change here
+#    $briefmsg .= "  Node: $value\n";     
+#  } elsif ($oid =~ /enterprises\.2\.6\.158\.1\.1\.7/) {
+#    $briefmsg .= "  Message: $value\n"; 
+#  } elsif ($oid =~ /enterprises\.2\.6\.158\.1\.1\.5/) {
+#    $briefmsg .= "  Alert Type: $value\n";
+#  } elsif ($oid =~ /enterprises\.2\.6\.158\.2\.1\.1\.3/) {
+#    $briefmsg .= "  Node: $value\n"; 
+#  } elsif ($oid =~ /enterprises\.2\.6\.158\.2\.1\.1\.9/) {
+#    $briefmsg .= "  Message: $value\n"; 
+#  } elsif ($oid =~ /enterprises\.2\.6\.158\.2\.1\.1\.7/) {
+#    $briefmsg .= "  Alert Type: $value\n";
+#  }
 }
 
 if ($node1) {$info= getMoreInfo($node1);}
