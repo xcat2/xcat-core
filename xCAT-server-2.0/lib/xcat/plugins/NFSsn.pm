@@ -182,7 +182,7 @@ sub setup_NFS
                 {
                     my ($file_sys, $blocks, $used, $avail, $cap, $mount_point) =
                       split(' ', $line);
-                    if ($mount_point == $directory)
+                    if ($mount_point eq $directory)
                     {
                         $found = 1;
                         last;

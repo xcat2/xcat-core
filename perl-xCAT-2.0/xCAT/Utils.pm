@@ -1403,6 +1403,12 @@ sub isServiceReq
     }
     #  Need to obtain all ip addresses for service node to check
 	# before we do the below logic
+    $rc = xCAT::Utils->exportDBConfig(); # export DB env
+    if ($rc != 0) {
+            xCAT::MsgUtils->message('S', "Unable export DB environment.\n");
+            return -1;
+       
+    }
 
     # have this service setup
     if (($service eq "dhcpserver") || ($service eq "nameservers"))
@@ -1503,7 +1509,9 @@ sub determinehostname
     $hostname = $thostname[0];
     my ($hcp, $aliases, $addtype, $length, @addrs) = gethostbyname($hostname);
     my $ipaddress = inet_ntoa($addrs[0]);
-    my @hostinfo = ($hostname, $ipaddress);
+    # strip off domain, if there
+    my @shorthost=split(/\./,$hostname);
+    my @hostinfo = ($shorthost[0], $ipaddress);
     return @hostinfo;
 }
 
