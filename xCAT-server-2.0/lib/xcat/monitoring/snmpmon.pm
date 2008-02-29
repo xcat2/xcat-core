@@ -129,6 +129,7 @@ sub configSNMP {
   # then stop it and restart it again so that it reads our new
   # snmptrapd.conf configuration file. Then the process
   chomp(my $pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
+  print "pid=$pid here\n";
   if($pid){
     `/bin/kill -9 $pid`;
   }
@@ -177,14 +178,14 @@ sub stop {
     }
   }
 
-  # now check to see if the daemon is running.  If it is then we need to restart
+  # now check to see if the daemon is running.  If it is then we need to resart or stop?
   # it with the new snmptrapd.conf file that will not forward events to RMC.
-  my $pid="";
-  chomp($pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print $\2}'`);
+  chomp(my $pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
+  print "pid=$pid\n";
   if($pid){
     `/bin/kill -9 $pid`;
     # start it up again!
-    system("/usr/sbin/snmptrapd");
+    #system("/usr/sbin/snmptrapd");
   }
 
   return (0, "stopped");
