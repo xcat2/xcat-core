@@ -32,7 +32,7 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 
 # Convert pods to man pages, e.g.:  pod2man pods/man5/chain.5.pod share/man/man5/chain.1
 for i in pods/*/*.pod; do
-  man=${i/pods/share\/man}
+  man="share/man${i#pods}"         # the substitute form is not supported on aix:  ${i/pods/share\/man}
   mkdir -p ${man%/*}
   pod2man $i ${man%.pod}
 done

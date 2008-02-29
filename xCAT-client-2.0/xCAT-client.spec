@@ -30,7 +30,7 @@ xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) 
 
 # Convert pods to man pages, e.g.:  pod2man pods/man1/tabdump.1.pod share/man/man1/tabdump.1
 for i in pods/*/*.pod; do
-  man=${i/pods/share\/man}
+  man="share/man${i#pods}"         # the substitute form is not supported on aix:  ${i/pods/share\/man}
   mkdir -p ${man%/*}
   pod2man $i ${man%.pod}
 done

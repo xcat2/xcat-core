@@ -61,6 +61,7 @@ EOS2
 
 foreach my $a (@$colorder) {
 	my $d = $descriptions->{$a};
+	$d =~ s/\n/\n\n/;      # if there are newlines, double them so pod sees a blank line, otherwise pod will ignore them
 	print FILE "\nI<$a> - $d\n";
 }
 
