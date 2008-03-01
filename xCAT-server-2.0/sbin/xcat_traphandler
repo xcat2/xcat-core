@@ -7,6 +7,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use Sys::Syslog;
 use xCAT::Table;
+use xCAT_plugin::ipmi;
 
 # admin needs to create a mail aliase called alerts
 # put "alerts: emailadd,emailaddr.." to /etc/aliases file
@@ -21,16 +22,41 @@ my $info;
 my $severity_type;
 my $severity;
 
+# read host name
 my $host=<STDIN>; 
 chomp($host);
+
+# read the host ip
 my $ip=<STDIN>;
 chomp($ip);
+
+# read uptime
+my $uptimeline=<STDIN>;
+chomp($uptimeline);
+my  @a=split(/ /, $uptimeline);
+my  $oid=shift @a;
+my  $value=join(' ', @a);
+$message .= "    $oid=$value\n";
+
+# read trapid 
+my $trapidline=<STDIN>;
+chomp($trapidline);
+@a=split(/ /, $trapidline);
+$oid=shift @a;
+$value=join(' ', @a);
+$message .= "    $oid=$value\n";
+
+#for ipmi traps, the values is: SNMPv2-SMI::enterprises.3183.1.1.0.x, x is the ipmi trap id.
+$value =~ s/(SNMPv2-SMI::enterprises\.3183\.1\.1\.0\.)//g;
+my $trapid=$value; 
+
+#print "trapid=$trapid\n";
+
+
 
 my $holder;
 my $begin=1;
 my $pair;
-
-
 while ($temp=<STDIN>) {
   chomp($temp);
   my $temp1=$temp; #save the one with quotes
@@ -88,29 +114,52 @@ while ($temp=<STDIN>) {
   elsif ($oid =~ /BLADESPPALT-MIB::spTrapPriority|RSASPPALT-MIB::ibmSpTrapPriority/) {
     # Critical Alert(0), Major(1), Non-Critical Alert(2), System Alert(4), 
     # Recovery Alert(8), Informational Only Alert(255)
+    $severity_type="Warning";
     if ($value==0) {
       $severity="Critical Alert";
       $severity_type="Critical";
     } elsif ($value==1)  {
       $severity="Major Alert";
       $severity_type="Critical";
-    } elsif ($value==2)  {
-      $severity="Non-Critical Alert";
-      $severity_type="Warning";
-    } elsif ($value==4)  {
-      $severity="System Alert";
-      $severity_type="Warning";
-    } elsif ($value==8)  {
-      $severity="Recovery Alert";
-      $severity_type="Warning";
     } elsif ($value==255)  {
       $severity="Informational Alert";
       $severity_type="Informational";
     }
   } 
- #elsif ($oid =~ /enterprises\.3183\.1\.1\.1/) { #IPMI starts here
-#      ;
-#  } 
+  elsif ($oid =~ /enterprises\.3183\.1\.1\.1/) { #IPMI PRTs (traps)
+    $node1=$host;
+    $node1 =~ s/(-(eth|man)\d+)?(\..*)?$//;
+
+    $value =~ s/\"//g;
+    my @varray=split(/ /, $value);
+    #print "\n\n\ntrapid=$trapid\nhost=$host\npet=$value\n";
+    my $error = xCAT_plugin::ipmi->decodealert($trapid, $host, \@varray);
+    $briefmsg .= $error;
+    #print "error=$error\n";
+
+    #severity value from decodealert are: 
+    #LOG,INFORMATION,OK,CRITICAL,NON-RECOVERABLE,MONITOR and UNKNOWN-SEVERITY
+    $severity_type="Warning";
+    if ($error) {
+      @tempArray=split(/\:/, $error);  
+      $severity=$tempArray[0];
+      if ($severity eq "LOG") {
+        $severity_type="Informational";
+      } 
+      elsif($severity eq  "INFORMATION") {
+        $severity_type="Informational";
+      }
+      elsif($severity eq  "OK") {
+        $severity_type="Informational";
+      }
+      elsif($severity eq "CRITICAL") {
+        $severity_type="Critical";
+      }
+      elsif($severity eq "NON-RECOVERABLE") {
+        $severity_type="Critical";
+      }
+    } 
+  } 
 }
 
 if ($node1) {$info= getMoreInfo($node1);}

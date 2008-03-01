@@ -62,7 +62,6 @@ my $passwd;
 my $timeout;
 my $port;
 my $debug;
-my $ndebug = 0;
 my $sock;
 my @user;
 my @pass;
@@ -108,7 +107,7 @@ my %codes = (
 );
 
 my %units = (
-	0 => "", #"unspecified",
+	0 => "unspecified",
 	1 => "C",
 	2 => "F",
 	3 => "K",
@@ -2067,14 +2066,18 @@ sub fruwrite {
 
 sub decodealert {
 	my $trap = shift;
+  if ($trap =~ /xCAT_plugin::ipmi/) {
+    $trap=shift;
+  }
+        
 	my $node = shift;
 	my $pet = shift;
 	my $rc;
 	my $text;
 
-	($rc,$text) = initsdr();
+        ($rc,$text) = initsdr();
 	if($rc != 0) {
-		return($rc,$text);
+	   return($rc,$text);
 	}
 
 	my $type;
@@ -2152,6 +2155,7 @@ sub decodealert {
 		$sev = "UNKNOWN-SEVERITY:$sev";
 	}
 	$text = "$sev:";
+        #print "sev=$sev\n";
 
 	($rc,$type,$desc) = getsensorevent($sensor_type,$offset,"ipmisensorevents");
 	if($rc == 1) {
@@ -2159,6 +2163,8 @@ sub decodealert {
 		$desc = "Unknown Event $offset";
 		$rc = 0;
 	}
+
+        #print "type=$type, desc=$desc\n";
 
 	if($event_type <= 0x0c) {
 		my $gtype;
@@ -2183,6 +2189,7 @@ sub decodealert {
 	if($type eq $desc) {
 		$desc = "";
 	}
+        #print "type=$type, desc=$desc\n";
 
 	my $extra_info = getaddsensorevent($sensor_type,$offset,$event_data_1,$event_data_2,$event_data_3);
 	if($extra_info) {
@@ -2197,6 +2204,8 @@ sub decodealert {
 	$text = "$text $type,";
 	$text = "$text $desc";
 
+        #print "type=$type, desc=$desc\n";
+
 	my $key;
 	my $sensor_desc = sprintf("Sensor 0x%02x",$sensor_num);
 	foreach $key (keys %sdr_hash) {
@@ -2210,6 +2219,7 @@ sub decodealert {
 	}
 
 	$text = "$text ($sensor_desc)";
+        #print "sensor_sedc=$sensor_desc\n";
 
 	if($event_dir) {
 		$text = "$text - Recovered";
@@ -2917,7 +2927,7 @@ sub checkleds {
 			if ($returnd[38-$authoffset] != 0) {
 				#It's on...
 				if ($returnd[42-$authoffset] == 4) {
-					push(@output,sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
+					push(@output,sprintf("LED 0x%02x%02x (%s) active to indicate BIOS detected error (or user requested LED activity)",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
 				}
 				elsif ($returnd[42-$authoffset] == 3) {
 					push(@output,sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
@@ -2968,13 +2978,10 @@ sub vitals {
 	my $value;
 	my $format = "%-30s%8s %-20s";
 	my $per = " ";
-   my $doall;
-   $doall=0;
 	$rc=0;
 
 	if($subcommand eq "all") {
-		@sensor_filters=(0x01); #,0x02,0x03,0x04);
-      $doall=1;
+		@sensor_filters=(0x01,0x02,0x03,0x04);
 	}
 	elsif($subcommand =~ /temp/) {
 		@sensor_filters=(0x01);
@@ -3014,7 +3021,7 @@ sub vitals {
 
 		foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
 			my $sdr = $sdr_hash{$key};
-			if(($doall and not $sdr->sensor_type==0xed) or ($sdr->sensor_type == $filter && $sdr->rec_type == 0x01)) {
+			if($sdr->sensor_type == $filter && $sdr->rec_type == 0x01) {
 				my $lformat = $format;
 
 				($rc,$reading) = readsensor($sdr->sensor_number);
@@ -3062,7 +3069,6 @@ sub vitals {
 						$unitdesc = "F (" . int($c + .5) . " C)";
 					}
 				}
-            #$unitdesc.= sprintf(" %x",$sdr->sensor_type);
 				$text = sprintf($lformat,$sdr->id_string . ":",$reading,$per.$unitdesc);
 				push(@output,$text);
 			}
@@ -3428,11 +3434,9 @@ sub getsensorname
 
     if ($file eq "ibmleds") {
             if ($xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor}) {
-              return $xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor}. " LED";
-            } elsif ($ndebug) {
-              return "Unknown $sensor/$mfgid/$prodid";
+              return $xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor};
             } else {
-              return sprintf ("LED 0x%x",$sensor);
+              return "";
             }
     } else {
       return "";

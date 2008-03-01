@@ -8,6 +8,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use IO::File;
 
+
 print "xCAT_monitoring::snmpmon loaded\n";
 1;
 
@@ -36,6 +37,7 @@ print "xCAT_monitoring::snmpmon loaded\n";
 #--------------------------------------------------------------------------------
 sub start {
   print "snmpmon::start called\n";
+ 
 
   $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::snmpmon/) {

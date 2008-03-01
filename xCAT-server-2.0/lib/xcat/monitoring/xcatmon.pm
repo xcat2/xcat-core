@@ -98,7 +98,7 @@ sub supportNodeStatusMon {
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
   my $temp=shift;
-  if ($temp =~ /xCAT_plugin::xcatmon/) {
+  if ($temp =~ /xCAT_monitoring::xcatmon/) {
     $temp=shift;
   }
   my $setting=shift;
@@ -244,7 +244,7 @@ sub getMonNodesStatus {
 #--------------------------------------------------------------------------------
 sub processNodeStatusChanges {
   my $temp=shift;
-  if ($temp =~ /xCAT_plugin::xcatmon/) {
+  if ($temp =~ /xCAT_monitoring::xcatmon/) {
     $temp=shift;
   }
   return xCAT_monitoring::monitorctrl->processNodeStatusChanges($temp);
