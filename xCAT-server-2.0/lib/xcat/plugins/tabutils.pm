@@ -593,6 +593,10 @@ sub nodech
         {
             ($table, $column) = split('\.', $temp, 2);
         }
+        unless (grep /$column/,@{$xCAT::Schema::tabspec{$table}->{cols}}) {
+             $callback->({error=>"$table.$column not a valid table.column description",errorcode=>[1]});
+             return;
+        }
         $tables{$table}->{$column} = [$value, $op];
     }
     foreach $tab (keys %tables)
@@ -794,6 +798,10 @@ sub nodels
                 else
                 {
                     ($table, $column) = split('\.', $temp, 2);
+                }
+                unless (grep /$column/,@{$xCAT::Schema::tabspec{$table}->{cols}}) {
+                   $callback->({error=>"$table.$column not a valid table.column description",errorcode=>[1]});
+                   next;
                 }
                 unless (grep /^$column$/, @{$tables{$table}})
                 {
