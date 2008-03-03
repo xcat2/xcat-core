@@ -223,6 +223,10 @@ sub ivm_getmacs {
     if ( -r $fname ) {
         unlink( $fname );
     }
+    #######################################
+    # Get command exit code
+    #######################################
+    my $Rc = ( $? ) ? $? >> 8 : SUCCESS;
     return( [SUCCESS,$result] );
 }
 
