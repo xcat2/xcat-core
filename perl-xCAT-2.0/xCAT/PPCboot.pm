@@ -218,7 +218,7 @@ sub ivm_rnetboot {
     # Get command exit code
     #######################################
     my $Rc = ( $? ) ? $? >> 8 : SUCCESS;
-    return( [SUCCESS,$result] );
+    return( [$Rc,$result] );
 }
 
 
