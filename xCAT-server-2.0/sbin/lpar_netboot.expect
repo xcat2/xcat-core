@@ -29,7 +29,7 @@ proc read_credentials {} {
     global passwd
 
     if [catch { open $filename "r" } fhandle ] {
-        send_user "Error opening temporary password file\n"
+        send_user "$PROGRAM: Error opening temporary password file\n"
         exit 1
     }
     ###############################################
@@ -42,7 +42,7 @@ proc read_credentials {} {
     exec rm $filename
 
     if { ![regexp {([^ ]+ [^ ]+)\n} $buf match cred ]} {
-        send_user "Error parsing temporary password file\n"
+        send_user "$PROGRAM: Error parsing temporary password file\n"
         exit 1
     }
     set userid [ lindex $cred 0 ]
@@ -63,7 +63,7 @@ proc connect {} {
     global passwd
 
     if [ catch { spawn ssh $userid@$hcp} ssh_pid ] {
-        send_user "Unable to spawn ssh connection to $hcp\n"
+        send_user "$PROGRAM: Unable to spawn ssh connection to $hcp\n"
         exit 1
     }
     set ssh_spawn_id $spawn_id
@@ -87,15 +87,15 @@ proc connect {} {
                  send -i $ssh_spawn_id "$passwd\r"
                  exp_continue
              }
-             send_user "Incorrect login\n"
+             send_user "$PROGRAM: Incorrect login\n"
              exit 1
         }
         timeout {
-            send_user "Timeout waiting for password prompt\n"
+            send_user "$PROGRAM: Timeout waiting for password prompt\n"
             exit 1
         }
         eof {
-            send_user "ssh connection terminated unexpectedly\n"
+            send_user "$PROGRAM: ssh connection terminated unexpectedly\n"
             exit 1
         }
     }
@@ -109,6 +109,7 @@ proc connect {} {
 # test its return code and capture its output 
 #
 proc run_lssyscfg {} {
+    global DSPMSG
     global PROGRAM
     global ssh_spawn_id
     global env
@@ -129,17 +130,17 @@ proc run_lssyscfg {} {
             set msg $expect_out(1,string)
         }
         timeout {
-            send_user "Timeout waiting for command prompt\n"
+            send_user "$PROGRAM: Timeout waiting for command prompt\n"
             exit 1
         }
         eof {
-           send_user "ssh connection to terminated unexpectedly\n"
+           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
            exit 1
        }
     }
    
     if { $rc } {
-        send_user "Unable to determine machine state Rc = $rc\n"
+        send_user "$PROGRAM: Unable to determine machine state\n"
         nc_msg "$PROGRAM Status: error from lssyscfg command\n"
 
         send_user "Error : $msg\n"
@@ -206,119 +207,119 @@ proc ck_args {} {
     global filename
 
     if { $discovery && ( $adap_speed == "" || $adap_duplex == "" ) } {
-        send_user "Speed and duplex required\n"
+        send_user "$PROGRAM: Speed and duplex required\n"
         usage 
     }
 
     if { $discovery && $client_ip == "" } {
-        send_user "Client IP is required\n"
+        send_user "$PROGRAM: Client IP is required\n"
         usage
     }
 
     if { $discovery && $server_ip == "" } { 
-        send_user "Server IP is required\n"
+        send_user "$PROGRAM: Server IP is required\n"
         usage
     }
 
     if { $discovery && $gateway_ip == "" } {
-        send_user "Gateway IP is required\n"
+        send_user "$PROGRAM: Gateway IP is required\n"
         usage
     }
 
     if { $node == "" } {
-        send_user "Node is required\n"
+        send_user "$PROGRAM: Node is required\n"
         usage
     } else {
         nc_msg "$PROGRAM Status: node $node\n"
     }
 
     if { $manage == "" } {
-        send_user "Managed system is required\n"
+        send_user "$PROGRAM: Managed system is required\n"
         usage
     } else {
         nc_msg "$PROGRAM Status: managed system $manage\n"
     }
 
     if { $filename == "" } {
-        send_user "userid/password filename is required\n"
+        send_user "$PROGRAM: userid/password filename is required\n"
         usage
     }
     if { $hcp == "" } {
-        send_user "Hardware control point address is required\n"
+        send_user "$PROGRAM: Hardware control point address is required\n"
         usage
     } else {
         nc_msg "$PROGRAM Status: Hardware control point $hcp\n"
     }
     if { $lparid == "" } {
-        send_user "LPAR Id is required\n"
+        send_user "$PROGRAM: LPAR Id is required\n"
         usage
     } else {
         nc_msg "$PROGRAM Status: LPAR Id is $lparid\n"
     }
     if { $profile == "" } {
-        send_user "Profile is required\n"
+        send_user "$PROGRAM: Profile is required\n"
         usage
     } else {
         nc_msg "$PROGRAM Status: profile $profile\n"
     }
 
     if { $discover_macaddr && $extra_args != "" } {
-        send_user "Can not specify -M and -g flags together.\n"
+        send_user "$PROGRAM: Can not specify -M and -g flags together.\n"
 	usage
     }
 
     if { $discover_macaddr && ( $macaddress != "" || $phys_loc != "" ) } {
-	send_user "Can not specify -M and -l or -m flags together.\n"
+	send_user "$PROGRAM: Can not specify -M and -l or -m flags together.\n"
         usage
     }
 
     if { $macaddress != "" && $phys_loc != "" } {
-        send_user "Can not specify -l and -m flags together.\n"
+        send_user "$PROGRAM: Can not specify -l and -m flags together.\n"
         usage
     }
 
     if { $discover_all && ( $macaddress != "" || $phys_loc != "" ) } {
-        send_user "Can not specify -A and -m or -l flags together.\n"
+        send_user "$PROGRAM: Can not specify -A and -m or -l flags together.\n"
         usage
     }
    
     if { $discover_all && !$discovery && !$noboot } {
-        send_user "Flag -A must be specify with flag -D for booting.\n"
+        send_user "$PROGRAM: Flag -A must be specify with flag -D for booting.\n"
         usage
     }
 
     if { $discover_macaddr && $discovery && 
          ( $server_ip == "" || $gateway_ip == "" || $client_ip == "" || $adap_speed == "" || $adap_duplex == "" ) } {
-        send_user "Flag -M with -D require arguments for -C, -S, -G, -s and -d.\n"
+        send_user "$PROGRAM: Flag -M with -D require arguments for -C, -S, -G, -s and -d.\n"
         usage
     }
    
     if { $discover_macaddr && !$discovery && 
          ( $server_ip != "" || $gateway_ip != "" || $client_ip != "" || $adap_speed != "" || $adap_duplex != "" ) } {
-        send_user "Flag -M with arguments for -C, -S, -G, -s and -d require -D flag.\n"
+        send_user "$PROGRAM: Flag -M with arguments for -C, -S, -G, -s and -d require -D flag.\n"
         usage
     }
 
     if { $discover_macaddr && !$noboot } {
-        send_user "-M flag requires -n.\n"
+        send_user "$PROGRAM: -M flag requires -n.\n"
         usage
     }
 
     if { [regexp "(\[ ]+)-" $node ] } {
-        send_user "Error : $node\n"
-        send_user "Node is required\n"
+        send_user "$PROGRAM: Error : $node\n"
+        send_user "$PROGRAM: Node is required\n"
         exit 1
     }
 
     if { [regexp "(\[ ]+)-" $manage ] } {
-        send_user "Error : $managed\n"
-        send_user "Managed system is required\n"
+        send_user "$PROGRAM: Error : $managed\n"
+        send_user "$PROGRAM: Managed system is required\n"
         exit 1
     }
 
     if { [regexp "(\[ ]+)-" $profile ] } {
-        send_user "Error : $profile\n"
-        send_user "Profile is required\n"
+        send_user "$PROGRAM: Error : $profile\n"
+        send_user "$PROGRAM: Profile is required\n"
         exit 1
     }
 }
@@ -367,6 +368,7 @@ proc get_phandle {} {
     global dev_count
     global dev_pat
     global dev_type
+    global DSPMSG
     global PROGRAM
     global NODENAME
 
@@ -390,17 +392,17 @@ proc get_phandle {} {
             nc_msg "$PROGRAM Status: at root\n"
         }
         -re "]" {
-            send_user "Unexpected prompt\n"
+            send_user "$PROGRAM: Unexpected prompt\n"
             set rc 1
             return
         }
         timeout {
-            send_user "Timeout\n"
+            send_user "$PROGRAM: Timeout\n"
             set rc 1
             return
         }
         eof {
-            send_user "Cannot connect to $NODENAME\n"
+            send_user "$PROGRAM: Cannot connect to $NODENAME\n"
             set rc 1
             return
         }
@@ -482,12 +484,12 @@ proc get_phandle {} {
                 set done 1
             }
             timeout {
-                send_user "Timeout isolating single line of ls output\n"
+                send_user "$PROGRAM: Timeout isolating single line of ls output\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -497,7 +499,7 @@ proc get_phandle {} {
     if { $adapter_found > 0 } {
         set rc 0
     } else {
-        send_user "No network adapters found\n"
+        send_user "$PROGRAM: No network adapters found\n"
         set rc -1
     }
 }
@@ -623,23 +625,23 @@ proc get_adap_prop { phandle } {
 
             }
             -re "]" {
-                send_user "Unexpected prompt\n"
+                send_user "$PROGRAM: Unexpected prompt\n"
                 set rc 1
                 return
             }
             -re "(.*)DEFAULT(.*)" {
-                send_user "Default catch error\n"
+                send_user "$PROGRAM: Default catch error\n"
                 set rc 1
                 return
             }
             timeout {
-                send_user "Timeout\n"
+                send_user "$PROGRAM: Timeout\n"
                 nc_msg "timeout state is $state\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -748,13 +750,13 @@ proc get_mac_addr { phandle } {
                             return $mac_address
                         }
                         timeout {
-                            send_user "Timeout\n"
+                            send_user "$PROGRAM: Timeout\n"
                             nc_msg "timeout state is $state\n"
                             set rc 1
                             return
                         }
                         eof {
-                            send_user "Cannot connect to $NODENAME\n"
+                            send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                             set rc 1
                             return
                         }
@@ -762,23 +764,23 @@ proc get_mac_addr { phandle } {
                 }
             }
             -re "]" {
-                send_user "Unexpected prompt\n"
+                send_user "$PROGRAM: Unexpected prompt\n"
                 set rc 1
                 return
             }
             -re "(.*)DEFAULT(.*)" {
-                send_user "Default catch error\n"
+                send_user "$PROGRAM: Default catch error\n"
                 set rc 1
                 return
             }
             timeout {
-                send_user "Timeout\n"
+                send_user "$PROGRAM: Timeout\n"
                 nc_msg "timeout state is $state\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -878,19 +880,19 @@ proc get_adaptr_loc { phandle } {
                         -re "(-*\[0-9\]*)  ok(.*)0 >(.*)" {
                             set loc_rc $expect_out(1,string)
                             if { $list_disk != 1 } {
-                                send_user "Error getting adapter physical location.\n"
+                                send_user "$PROGRAM: Error getting adapter physical location.\n"
                             }
                             nc_msg "$PROGRAM Status: Error getting physical location for phandle=$phandle. RC=$loc_rc.\n"
                             set rc 1
                             return
                         }
                         timeout {
-                            send_user "Timeout\n"
+                            send_user "$PROGRAM: Timeout\n"
                             set rc 1
                             return
                         }
                         eof {
-                            send_user "Cannot connect to $NODENAME\n"
+                            send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                             set rc 1
                             return
                         }
@@ -898,23 +900,23 @@ proc get_adaptr_loc { phandle } {
                 }
             }
             -re "]" {
-                send_user "Unexpected prompt\n"
+                send_user "$PROGRAM: Unexpected prompt\n"
                 set rc 1
                 return
             }
             -re "(.*)DEFAULT(.*)" {
-                send_user "Default catch error\n"
+                send_user "$PROGRAM: Default catch error\n"
                 set rc 1
                 return
             }
             timeout {
-                send_user "Timeout\n"
+                send_user "$PROGRAM: Timeout\n"
                 nc_msg "$PROGRAM Status: timeout state is $state\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -1039,7 +1041,7 @@ proc ping_server { full_path_name phandle } {
         }
 
         if { [ llength $adap_prop_list ] == 0 } {
-            send_user "No properties found for adapter '$full_path_name'\n"
+            send_user "$PROGRAM: No properties found for adapter '$full_path_name'\n"
             set rc 0
             return 1
         }
@@ -1060,7 +1062,7 @@ proc ping_server { full_path_name phandle } {
         set i [ llength $adap_conn_list ]
 
         if { $properties_matched == 0 } {
-            send_user "'$adap_speed/$adap_duplex' settings are not supported on this adapter\n"
+            send_user "$PROGRAM: '$adap_speed/$adap_duplex' settings are not supported on this adapter\n"
             set rc 0
             return 1
         }
@@ -1153,22 +1155,22 @@ proc ping_server { full_path_name phandle } {
                                     nc_msg "$PROGRAM Status: stack_level is <$stack_level>\n"
                                 }
                                 -re "]" {
-                                    send_user "Unexpected prompt\n"
+                                    send_user "$PROGRAM: Unexpected prompt\n"
                                     set rc 1
                                     return
                                 }
                                 -re "(.*)DEFAULT(.*)" {
-                                    send_user "Default catch error\n"
+                                    send_user "$PROGRAM: Default catch error\n"
                                     set 1
                                     return
                                 }
                                 timeout {
-                                    send_user "Timeout\n"
+                                    send_user "$PROGRAM: Timeout\n"
                                     set 1
                                     return
                                 }
                                 eof {
-                                    send_user "Cannot connect to $NODENAME\n"
+                                    send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                                     set 1
                                     return
                                 }
@@ -1199,29 +1201,29 @@ proc ping_server { full_path_name phandle } {
                             set state 0
                         }
                     } else {
-                        send_user "Unexpected ping return code\n"
+                        send_user "$PROGRAM: Unexpected ping return code\n"
                         set rc 1
                         return
                     }
                 }
             }
             -re "]" {
-                send_user "Unexpected prompt\n"
+                send_user "$PROGRAM: Unexpected prompt\n"
                 set rc 1
                 return
             }
             -re "(.*)DEFAULT(.*)" {
-                send_user "Default catch error\n"
+                send_user "$PROGRAM: Default catch error\n"
                 set rc 1
                 return
             }
             timeout {
-                send_user "Timeout\n"
+                send_user "$PROGRAM: Timeout\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -1352,12 +1354,12 @@ proc get_disk_info_sms {} {
 		                set statedone 1 
 		            }
 		            timeout { 
-		                send_user "Timeout isolating single line of ls output\n"
+		                send_user "$PROGRAM: Timeout isolating single line of ls output\n"
 		                set rc 1
 		                return
 		            }
 		            eof {
-		                send_user "Cannot connect to $NODENAME\n"
+		                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
 		                set rc 1
 		                return
 		            }
@@ -1371,12 +1373,12 @@ proc get_disk_info_sms {} {
 		}
             }
             timeout {
-                send_user "Timeout\n"
+                send_user "$PROGRAM: Timeout\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -1422,17 +1424,17 @@ proc get_disk_info {} {
             nc_msg "$PROGRAM Status: at root\n"
         }
         -re "]" {
-            send_user "Unexpected prompt\n"
+            send_user "$PROGRAM: Unexpected prompt\n"
             set rc 1
             return
         } 
         timeout {
-            send_user "Timeout\n"
+            send_user "$PROGRAM: Timeout\n"
             set rc 1
             return
         }
         eof {
-            send_user "Cannot connect to $NODENAME\n"
+            send_user "$PROGRAM: Cannot connect to $NODENAME\n"
             set rc 1
             return
         }
@@ -1463,12 +1465,12 @@ proc get_disk_info {} {
                 set done 1
             }
             timeout {
-                send_user "Timeout\n"
+                send_user "$PROGRAM: Timeout\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -1596,7 +1598,7 @@ proc boot_network {} {
         set state 1
     } else {
         if { $speed == "" || $duplex == "" } {
-            send_user "Cannot set speed or duplex for network boot\n"
+            send_user "$PROGRAM: Cannot set speed or duplex for network boot\n"
             set rc 1
             return
         }
@@ -1615,23 +1617,23 @@ proc boot_network {} {
                 set state $newstate($state)
             }
             -re "]" {
-                send_user "Unexpected prompt\n"
+                send_user "$PROGRAM: Unexpected prompt\n"
                 set rc 1
                 return
             }
             -re "(.*)DEFAULT(.*)" {
-                send_user "Default catch error\n"
+                send_user "$PROGRAM: Default catch error\n"
                 set rc 1
                 return
             }
             timeout {
-                send_user "Timeout\n"
+                send_user "$PROGRAM: Timeout\n"
                 nc_msg "timeout state is $state\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -1662,23 +1664,23 @@ proc Boot {} {
         -re "RESTART-CMD" {
             # If we see a "problem doing RESTART-CMD" message, we re-hit the OPEN-DEV
             # issue after firmware rebooted itself and we need to retry the netboot once more
-	    send_user "The network boot ended in an error.\n"
-            send_user "Error : $RESTART-CMD\n"
+	        send_user "$PROGRAM: The network boot ended in an error.\n"
+            send_user "$PROGRAM: Error : $RESTART-CMD\n"
             set rc 5
             return
         }
         -re {!([0-9A-F]+)} {
-            send_user "The network boot ended in an error.\n"
+            send_user "$PROGRAM: The network boot ended in an error.\n"
             nc_msg $expect_out(buffer)
             set rc 1
             return
         }
         -ex {--------------------------------} {
-            send_user "# Network boot proceeding, exiting.\n"
+            send_user "$PROGRAM: # Network boot proceeding, exiting.\n"
         }
         timeout {
             set mins [expr ($timeout/60)]
-            send_user "Timeout waiting for the boot image to boot up. \
+            send_user "$PROGRAM: Timeout waiting for the boot image to boot up. \
                   \n$PROGRAM waited '$mins' minutes for the boot image to boot. \
                   \nEither the boot up has taken longer than expected or \
                   \nthere is a problem with system boot.  Check the boot \
@@ -1688,7 +1690,7 @@ proc Boot {} {
             return
         }                                                                       
         eof {                                                                   
-            send_user "Port closed waiting for boot image to boot.\n"                               
+            send_user "$PROGRAM: Port closed waiting for boot image to boot.\n"                               
             set rc 1                                                            
             return                                                              
         }                                                                       
@@ -1774,17 +1776,17 @@ proc multiple_open-dev {} {
             nc_msg "$PROGRAM Status: at End of multiple_open-dev \n"
         }
         -re "]" {
-            send_user "Unexpected prompt\n"
+            send_user "$PROGRAM: Unexpected prompt\n"
             set rc 1
             return
         }
         timeout {
-            send_user "Timeout\n"
+            send_user "$PROGRAM: Timeout\n"
             set rc 1
             return
         }
         eof {
-            send_user "Cannot connect to $NODENAME\n"
+            send_user "$PROGRAM: Cannot connect to $NODENAME\n"
             set rc 1
             return
         }
@@ -1901,23 +1903,23 @@ proc Firmware_Dump { device_path phandle } {
                 set state $newstate($state)
             }
             -re "]" {
-                send_user "Unexpected prompt\n"
+                send_user "$PROGRAM: Unexpected prompt\n"
                 set rc 1
                 return
             }
             -re "(.*)DEFAULT(.*)" {
-                send_user "Default catch error\n"
+                send_user "$PROGRAM: Default catch error\n"
                 set rc 1
                 return
             }
             timeout {
-                send_user "Timeout\n"
+                send_user "$PROGRAM: Timeout\n"
                 nc_msg "$PROGRAM Status: timeout state is $state\n"
                 set rc 1
                 return
             }
             eof {
-                send_user "Cannot connect to $NODENAME\n"
+                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
                 set rc 1
                 return
             }
@@ -1933,7 +1935,7 @@ trap {
 
     set signal SIG[trap -name]
 
-    send_user "Received signal named '$signal'\n"
+    send_user "$PROGRAM: Received signal named '$signal'\n"
     exit 3
 } {INT HUP QUIT TERM}
 
@@ -2086,7 +2088,7 @@ while { [llength $argv] > 0} {
                }
 
                if {$dev_type_found == 0 } {
-                  send_user "'$list_type' is not a valid adapter choice\n"
+                  send_user "$PROGRAM: '$list_type' is not a valid adapter choice\n"
                   exit 1
                }
              }
@@ -2108,7 +2110,7 @@ while { [llength $argv] > 0} {
                 usage
              }
 
-        "-*" { send_user "Illegal option: $flag\n"
+        "-*" { send_user "$PROGRAM: Illegal option: $flag\n"
                usage
              }
 
@@ -2117,7 +2119,7 @@ while { [llength $argv] > 0} {
 }
 
 if { [llength $argv] < 1 } {
-    send_user "Missing parameter\n"
+    send_user "$PROGRAM: Missing parameter\n"
     usage
 }
 
@@ -2125,7 +2127,7 @@ set arg0 [lindex $argv 0]
 set arg1 [lindex $argv 1]
 
 if { [llength $argv] > 6 } {
-    send_user "Extraneous parameter(s)\n"
+    send_user "$PROGRAM: Extraneous parameter(s)\n"
     usage
 }
 if { $list_physical == 0 } {
@@ -2210,17 +2212,17 @@ if {$rmvterm_flag} {
             set rc $expect_out(1,string)
         }
         timeout {
-            send_user "Timeout waiting for command prompt\n"
+            send_user "$PROGRAM: Timeout waiting for command prompt\n"
             exit 1
         }
         eof {
-           send_user "ssh connection to terminated unexpectedly\n"
+           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
            exit 1
        }
     }
     if { $rc } {
         nc_msg "$PROGRAM Status: warning: error from rmvterm command\n"
-        send_user "Error : $msg\n"
+        send_user "$PROGRAM: Error : $msg\n"
     }
 }
 
@@ -2230,7 +2232,7 @@ if {$rmvterm_flag} {
 nc_msg "$PROGRAM Status: open port\n"
 
 if [ catch { spawn ssh $userid@$hcp} rsconole_pid ] {
-    send_user "Unable to spawn console ssh connection to $hcp\n"
+    send_user "$PROGRAM: Unable to spawn console ssh connection to $hcp\n"
     exit 1
 }
 
@@ -2259,15 +2261,15 @@ expect {
              send -i $spawn_id_rconsole "$passwd\r"
              exp_continue
          }
-         send_user "Incorrect login\n"
+         send_user "$PROGRAM: Incorrect login\n"
          exit 1
     }
     timeout {
-        send_user "Timeout waiting for password prompt\n"
+        send_user "$PROGRAM: Timeout waiting for password prompt\n"
         exit 1
     }
     eof {
-        send_user "ssh connection terminated unexpectedly\n"
+        send_user "$PROGRAM: ssh connection terminated unexpectedly\n"
         exit 1
     }
 }
@@ -2278,11 +2280,11 @@ send -i $spawn_id_rconsole "mkvt -id $lparid\r"
 expect {
     -i $spawn_id_rconsole \
     "Virtual terminal is already connected." {
-         send_user "$expect_out(0,string)\n"
+         send_user "$PROGRAM: $expect_out(0,string)\n"
          exit 1
     }
     "Virtual terminal device not found." {
-         send_user "$expect_out(0,string)\n"
+         send_user "$PROGRAM: $expect_out(0,string)\n"
          exit 1
     }
 }
@@ -2319,19 +2321,19 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
             set rc $expect_out(1,string)
         }
         timeout {
-            send_user "Timeout waiting for command prompt\n"
+            send_user "$PROGRAM: Timeout waiting for command prompt\n"
             exit 1
         }
         eof {
-           send_user "ssh connection to terminated unexpectedly\n"
+           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
            exit 1
        }
     }
 
     if { $rc } {
-        send_user "Cannot power off $NODENAME\n"
+        send_user "$PROGRAM: Cannot power off $NODENAME\n"
         nc_msg "$PROGRAM Status: error from chsysstate command\n"
-        send_user "Error : $msg\n"
+        send_user "$PROGRAM: Error : $msg\n"
         exit 1
     }
 
@@ -2358,7 +2360,7 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
 
         incr query_count 
         if { $query_count > 300 } {
-            send_user "Timed out waiting for power off of $NODENAME\n"
+            send_user "$PROGRAM: Timed out waiting for power off of $NODENAME\n"
             nc_msg "$PROGRAM Status: error from lssyscfg command : \"$msg\"\n"
             exit 1
         }
@@ -2386,11 +2388,11 @@ if { $list_disk == 1 } {
             set rc $expect_out(1,string)
         }
         timeout {
-            send_user "Timeout waiting for command prompt\n"
+            send_user "$PROGRAM: Timeout waiting for command prompt\n"
             exit 1
         }
         eof {
-           send_user "ssh connection to terminated unexpectedly\n"
+           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
            exit 1
        }
     }
@@ -2399,9 +2401,9 @@ if { $list_disk == 1 } {
 nc_msg "$PROGRAM Status: wait for power on\n"
 
 if { $rc } {
-    send_user "Cannot power on $NODENAME\n"
+    send_user "$PROGRAM: Cannot power on $NODENAME\n"
     nc_msg "$PROGRAM Status: error from chsysstate command\n"
-    send_user "Error : $msg\n"
+    send_user "$PROGRAM: Error : $msg\n"
     exit 1
 }
 
@@ -2424,7 +2426,7 @@ while { ! $done } {
     incr query_count
 
     if { $query_count > 300 } {
-        send_user "Timed out waiting for power on of $NODENAME\n"
+        send_user "$PROGRAM: Timed out waiting for power on of $NODENAME\n"
         nc_msg "$PROGRAM Status: error from lssyscfg command : \"$msg\" \n"
         exit 1
     }
@@ -2462,11 +2464,11 @@ while { ! $done } {
             send -i $spawn_id_rconsole "0";
         }
         timeout {
-            send_user "Timeout; exiting\n"
+            send_user "$PROGRAM: Timeout; exiting\n"
             exit 1
         }
         eof {
-            send_user "Cannot connect to $NODENAME\n"
+            send_user "$PROGRAM: Cannot connect to $NODENAME\n"
             exit 1
         }
     }
@@ -2486,7 +2488,7 @@ global phandle
 get_phandle
 
 if { $rc } {
-    send_user "Unable to obtain network adapter information.  Quitting.\n"
+    send_user "$PROGRAM: Unable to obtain network adapter information.  Quitting.\n"
     exit 1
 }
 
@@ -2494,7 +2496,7 @@ if { $rc } {
 multiple_open-dev
 if { $rc } {
     nc_msg "Unable to create multiple_open-dev.\n"
-    send_user "Unable to obtain network adapter information.  Quitting.\n"
+    send_user "$PROGRAM: Unable to obtain network adapter information.  Quitting.\n"
     exit 1
 }
 
@@ -2616,19 +2618,19 @@ if { $noboot } { # Display information for all supported adapters
             set rc $expect_out(1,string)
         }
         timeout {
-            send_user "Timeout waiting for command prompt\n"
+            send_user "$PROGRAM: Timeout waiting for command prompt\n"
             exit 1
         }
         eof {
-           send_user "ssh connection to terminated unexpectedly\n"
+           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
            exit 1
        }
     }
     
     if { $rc } {
-        send_user "Cannot power off $NODENAME\n"
+        send_user "$PROGRAM: Cannot power off $NODENAME\n"
         nc_msg "$PROGRAM Status: error from chsysstate command\n"
-        send_user "Error : $msg\n"
+        send_user "$PROGRAM: Error : $msg\n"
         exit 1
     }
 } else {  # Do a network boot
@@ -2656,7 +2658,7 @@ if { $noboot } { # Display information for all supported adapters
                 if { $discovery == 1 } {
                     set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
                     if { $ping_rc != 0 } {
-                        send_user "Unable to boot network adapter.\n"
+                        send_user "$PROGRAM: Unable to boot network adapter.\n"
                         exit 1
                     }
                 }
@@ -2668,7 +2670,7 @@ if { $noboot } { # Display information for all supported adapters
             }
         }
         if { !$match } {
-            send_user "Can not find mac address '$macaddress'\n"
+            send_user "$PROGRAM: Can not find mac address '$macaddress'\n"
             exit 1
         }
     } elseif { $phys_loc != "" } {
@@ -2679,7 +2681,7 @@ if { $noboot } { # Display information for all supported adapters
                 if { $discovery == 1 } {
                     set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
                     if { $ping_rc != 0 } {
-                        send_user "Unable to boot network adapter.\n"
+                        send_user "$PROGRAM: Unable to boot network adapter.\n"
                         exit 1
                     }
                 }
@@ -2691,7 +2693,7 @@ if { $noboot } { # Display information for all supported adapters
             }
         }
         if { !$match } {
-            send_user "Can not find physical location '$phys_loc'\n"
+            send_user "$PROGRAM: Can not find physical location '$phys_loc'\n"
             exit 1
 	}
     } else {
@@ -2716,7 +2718,7 @@ if { $noboot } { # Display information for all supported adapters
     }
 
     if { $full_path_name == "" } {
-        send_user "Unable to boot network adapter.\n"
+        send_user "$PROGRAM: Unable to boot network adapter.\n"
         exit 1
     } else {
         send_user "# Network booting install adapter.\n"
@@ -2742,7 +2744,11 @@ if { $noboot } { # Display information for all supported adapters
                 sleep 10
             }
             timeout {
-                send_user "Timeout; exiting\n"
+                send_user "$PROGRAM: Timeout; exiting\n"
+                exit 1
+            }
+            eof {
+                send_user "$PROGRAM: cannot connect to $NODENAME"
                 exit 1
             }
 	    send_user "# Network booting install adapter.\n"
