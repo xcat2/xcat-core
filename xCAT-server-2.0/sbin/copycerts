@@ -5,7 +5,13 @@
 
 #
 
-BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
 use lib "$::XCATROOT/lib/perl";
 use File::Basename;
 use Getopt::Long;
@@ -58,7 +64,8 @@ sub copyCertstoSN
         {
             mkdir("/root/.xcat", 0600);
         }
-        `cp /xcatpost/.xcat/* /root/.xcat`;
+        `cp -rp /xcatpost/.xcat/* /root/.xcat`;
+        `chmod 0600 /root/.xcat/*`;
     }
     else
     {
@@ -77,7 +84,9 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/ca", 0755);
         }
-        `cp -r /xcatpost/ca/* /etc/xcat/ca`;
+        `cp -rp /xcatpost/ca/* /etc/xcat/ca`;
+        `chmod 0600 /etc/xcat/ca/*`;
+        `chmod 0600 /etc/xcat/ca/certs/*`;
     }
     else
     {
@@ -95,7 +104,8 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/cert", 0755);
         }
-        `cp -r  /xcatpost/cert/* /etc/xcat/cert`;
+        `cp -rp  /xcatpost/cert/* /etc/xcat/cert`;
+        `chmod 0600 /etc/xcat/cert/*`;
     }
     else
     {
@@ -107,7 +117,7 @@ sub copyCertstoSN
     if (-d "/xcatpost/sysconfig")
     {
         `cp /xcatpost/sysconfig/xcat /etc/sysconfig`;
-        chmod 0600, "/etc/sysconfig/xcat";
+        chmod 0700, "/etc/sysconfig/xcat";
     }
     else
     {
