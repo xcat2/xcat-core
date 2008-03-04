@@ -3,6 +3,7 @@ package xCAT_plugin::yaboot;
 use Data::Dumper;
 use Sys::Syslog;
 use xCAT::Scope;
+use File::Path;
 use Socket;
 
 my $request;
@@ -65,6 +66,9 @@ sub setstate {
   my $restab = xCAT::Table->new('noderes');
   my $kern = $restab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   my $pcfg;
+  unless (-d "$tftpdir/etc") {
+     mkpath("$tftpdir/etc");
+  }
   open($pcfg,'>',$tftpdir."/etc/".$node);
   my $chaintab = xCAT::Table->new('chain');
   my $cref=$chaintab->getNodeAttribs($node,['currstate']);
