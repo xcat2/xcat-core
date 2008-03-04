@@ -74,12 +74,17 @@ sub process_request {
    }
    foreach my $node (@nodes) {
       my $fileloc;
+      my %rsp;
+      %rsp=(name=>[$node]);
       my $iscsient = $iscsitab->getNodeAttribs($node,['file']);
       if ($iscsient and $iscsient->{file}) {
          $fileloc = $iscsient->{file};
       } else {
          unless ($iscsiprefix) {
-            $callback->({error=>["$node: Unable to identify file to back iSCSI LUN, no iscsidir in site table nor iscsi.file entry for node"],errorcode=>[1]});
+            $rsp{error}=["$node: Unable to identify file to back iSCSI LUN, no iscsidir in site table nor iscsi.file entry for node"];
+            $rsp{errorcode}=[1];
+            $callback->({node=>[\%rsp]});
+            %rsp=(name=>[$node]);
             next;
          }
          unless (-d $iscsiprefix) {
@@ -89,10 +94,16 @@ sub process_request {
          $iscsitab->setNodeAttribs($node,{file=>$fileloc});
       }
       unless (-f $fileloc) {
-         $callback->({data=>["Creating $fileloc ($lunsize MB)"]});
+         $rsp{name}=[$node];
+         $rsp{data}=["Creating $fileloc ($lunsize MB)"];
+         $callback->({node=>[\%rsp]});
+         %rsp=(name=>[$node]);
          my $rc = system("dd if=/dev/zero of=$fileloc bs=1M count=$lunsize");
          if ($rc) {
-            $callback->({error=>["$node: dd process exited with return code $rc"],errorcode=>[1]});
+            $rsp{error}=["dd process exited with return code $rc"];
+            $rsp{errorcode} = [1];
+            $callback->({node=>[\%rsp]}); 
+            %rsp=(name=>[$node]);
             next;
          }
       }
@@ -111,18 +122,30 @@ sub process_request {
       system("tgtadm --mode target --op delete --tid ".get_tid($node)." -T $targname");
       my $rc = system("tgtadm --mode target --op new --tid ".get_tid($node)." -T $targname");
       if ($rc) {
-         $callback->({error=>["$node: tgtadm --mode target --op new --tid ".get_tid($node)." -T $targname returned $rc"],errorcode=>[$rc]});
+         $rsp{error}=["tgtadm --mode target --op new --tid ".get_tid($node)." -T $targname returned $rc"];
+         $rsp{errorcode} = [1];
+         $callback->({node=>[\%rsp]}); 
+         %rsp=(name=>[$node]);
          next;
       }
       $rc = system("tgtadm --mode logicalunit --op new --tid ".get_tid($node)." --lun 1 --backing-store $fileloc --device-type disk");
       if ($rc) {
-         $callback->({error=>["$node: tgtadm returned $rc"],errorcode=>[$rc]});
+         $rsp{error}=["tgtadm --mode logicalunit --op new --tid ".get_tid($node)." --lun 1 --backing-store $fileloc returned $rc"];
+         $rsp{errorcode} = [1];
+         $callback->({node=>[\%rsp]}); 
+         %rsp=(name=>[$node]);
          next;
       }
       $rc = system("tgtadm --mode target --op bind --tid ".get_tid($node)." -I ".inet_ntoa(inet_aton($node)));
       if ($rc) {
-         $callback->({data=>"tgtadm --mode target --op bind --tid ".get_tid($node)."-I ".inet_ntoa(inet_aton($node))});
-         $callback->({error=>["$node: Error binding $node to iSCSI target"],errorcode=>[$rc]});
+         $rsp{error}=["tgtadm --mode target --op bind --tid ".get_tid($node)." -I ".inet_ntoa(inet_aton($node)) . " returned $rc"];
+         $rsp{errorcode} = [1];
+         $callback->({node=>[\%rsp]}); 
+         %rsp=(name=>[$node]);
+      } else {
+         $rsp{data}=["iSCSI LUN configured"];
+         $callback->({node=>[\%rsp]});
+         %rsp=(name=>[$node]);
       }
    }
 }

@@ -517,6 +517,9 @@ sub handle_response {
         if (ref($node->{errorcode}) eq 'ARRAY') { foreach my $ecode (@{$node->{errorcode}}) { $xCAT::Client::EXITCODE |= $ecode; } }
     	else { $xCAT::Client::EXITCODE |= $node->{errorcode}; }   # assume it is a non-reference scalar
       }
+      if ($node->{error}) {
+         $desc.=": Error: ".$node->{error}->[0];
+      }
       if ($node->{data}) {
          if (ref(\($node->{data}->[0])) eq 'SCALAR') {
             $desc=$desc.": ".$node->{data}->[0];
