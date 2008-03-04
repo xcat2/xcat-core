@@ -7,6 +7,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 use IO::File;
+use xCAT::Utils;
 
 
 print "xCAT_monitoring::snmpmon loaded\n";
@@ -37,12 +38,14 @@ print "xCAT_monitoring::snmpmon loaded\n";
 #--------------------------------------------------------------------------------
 sub start {
   print "snmpmon::start called\n";
- 
 
   $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::snmpmon/) {
     $noderef=shift;
   }
+
+  # do not turn it on on the service node
+  if (xCAT::Utils->isServiceNode()) { return (0, "");}
 
   # unless we are running on linux, exit.
   #unless($^O eq "linux"){      
@@ -163,6 +166,9 @@ sub configSNMP {
 #--------------------------------------------------------------------------------
 sub stop {
   print "snmpmon::stop called\n";
+
+  # do not turn it on on the service node
+  if (xCAT::Utils->isServiceNode()) { return (0, "");}
  
   if (-f "/usr/share/snmp/snmptrapd.conf.orig"){
     # copy back the old one
@@ -209,7 +215,6 @@ sub stop {
 =cut
 #--------------------------------------------------------------------------------
 sub supportNodeStatusMon {
-  print "snmpmon::supportNodeStatusMon called\n";
   return 0;
 }
 
@@ -232,7 +237,6 @@ sub supportNodeStatusMon {
 =cut
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
-  print "snmpmon::startNodeStatusMon called\n";
   return (1, "This function is not supported.");
 }
 
@@ -250,7 +254,6 @@ sub startNodeStatusMon {
 =cut
 #--------------------------------------------------------------------------------
 sub stopNodeStatusMon {
-  print "snmpmon::stopNodeStatusMon called\n";
   return (1, "This function is not supported.");
 }
 
@@ -269,12 +272,6 @@ sub stopNodeStatusMon {
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
-    $noderef=shift;
-  }
-  
-  print "snmpmon::addNodes get called\n";
     
   return 0;
 }
@@ -293,12 +290,6 @@ sub addNodes {
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes {
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
-    $noderef=shift;
-  }
-
-  print "snmpmon::removeNodes called\n";
 
   return 0;
 }
