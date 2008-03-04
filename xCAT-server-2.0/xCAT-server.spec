@@ -51,8 +51,14 @@ cp -hpR share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -hpR share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
 %endif
 
+%ifos linux
 cp -d sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
+%else
+cp -h sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
+chmod -h 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
+%endif
+
 #cp rc.d/* $RPM_BUILD_ROOT/%{prefix}/rc.d
 #chmod 755 $RPM_BUILD_ROOT/%{prefix}/rc.d/*
 
