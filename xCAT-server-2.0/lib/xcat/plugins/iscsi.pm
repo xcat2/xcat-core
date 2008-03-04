@@ -1,6 +1,7 @@
 package xCAT_plugin::iscsi;
 use xCAT::Table;
 use Socket;
+use File::Path;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -80,6 +81,9 @@ sub process_request {
          unless ($iscsiprefix) {
             $callback->({error=>["$node: Unable to identify file to back iSCSI LUN, no iscsidir in site table nor iscsi.file entry for node"],errorcode=>[1]});
             next;
+         }
+         unless (-d $iscsiprefix) {
+            mkpath $iscsiprefix;
          }
          $fileloc = "$iscsiprefix/$node";
          $iscsitab->setNodeAttribs($node,{file=>$fileloc});
