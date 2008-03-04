@@ -90,7 +90,7 @@ OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* {
 }
 
 # Setup servicenode 
-OSVER=sl[34].* or OSVER=centos.* or OSVER=rh.* or OSVER=sles.* or OSVER=suse.* or OSVER=fedora.* {
+NODERANGE=service {
         servicenode 
 }
 
