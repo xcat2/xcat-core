@@ -102,8 +102,16 @@ while :; do
     INITRD=`grep initrd /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
     KERNEL=`grep kernel /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
     KCMD=`grep kcmdline /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
-    wget http://$IMGSERVER/tftpboot/$KERNEL -O /tmp/kernel
-    wget http://$IMGSERVER/tftpboot/$INITRD -O /tmp/initrd
+    ERROR=`wget http://$IMGSERVER/tftpboot/$KERNEL -O /tmp/kernel 2>&1`
+    while [ $? == 1 ] && echo $ERROR|grep -v 416; do
+      sleep 10
+      ERROR=`wget -c http://$IMGSERVER/tftpboot/$KERNEL -O /tmp/kernel 2>&1`
+    done
+    ERROR=`wget -c http://$IMGSERVER/tftpboot/$INITRD -O /tmp/initrd 2>&1`
+    while [ $? == 1 ] && echo $ERROR|grep -v 416; do
+      sleep 10
+      ERROR=`wget -c http://$IMGSERVER/tftpboot/$INITRD -O /tmp/initrd 2>&1`
+    done
     #START getting ready for kexec
     for mod in `lsmod|awk '{print $1}'|grep -v Module`; do
         rmmod $mod
@@ -114,7 +122,11 @@ while :; do
   if [ "$DEST" == "runimage" ]; then
     mkdir /tmp/`basename $TARG`
     cd /tmp/`basename $TARG`
-    wget $TARG
+    ERROR=`wget $TARG`
+    while [ $? == 1 ] && echo $ERROR|grep -v 416; do
+      sleep 10
+      ERROR=`wget -c $TARG 2>&1`
+    done
     while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
