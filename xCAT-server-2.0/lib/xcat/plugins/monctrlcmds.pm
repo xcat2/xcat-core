@@ -224,7 +224,7 @@ sub startmon {
       if ($::NODESTATMON) {
 	$nstat='Y';
       }
-      my %tb_cols=(nodestatmon=>$nstat);
+      my %tb_cols=(nodestatmon=>$nstat, disable=>"0");
       if ($settings) {
 	$tb_cols{settings}=$settings;
       }
@@ -337,13 +337,15 @@ sub stopmon {
     (my $ref) = $table->getAttribs({name => $pname}, name);
     if ($ref and $ref->{name}) {
       my %key_col = (name=>$pname);
-      $table->delEntries(\%key_col);
-    }
+      my %tb_cols=(disable=>"1");
+      $table->setAttribs(\%key_col, \%tb_cols);
+    }  
     else {
       my %rsp;
-      $rsp->{data}->[0]="$pname is not registered in the monitoring table.";
+      $rsp->{data}->[0]="$pname was not registered or not enabled.";
       $callback->($rsp);
-    }   
+    }
+    $table->close();   
   }
 
   my %rsp1;

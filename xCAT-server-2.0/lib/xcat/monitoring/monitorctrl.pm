@@ -16,9 +16,9 @@ use xCAT::Client;
 use xCAT_plugin::notification;
 use xCAT_monitoring::montbhandler;
 
-#the list store the names of the monitoring plug-in and the file name and module names.
+#the list stores the names of the monitoring plug-in and the file name and module names.
 #the names are stored in the "name" column of the monitoring table. 
-#the format is: (name=>[filename, modulename, settings], ...)
+#the format is: (name=>[filename, modulename], ...)
 %PRODUCT_LIST;
 
 #stores the module name and the method that is used for the node status monitoring
@@ -343,11 +343,10 @@ sub startMonitoring {
     my $aRef=$PRODUCT_LIST{$_};
     if ($aRef) {
       my $module_name=$aRef->[1];
-      my $settings=$aRef->[2];
 
       undef $SIG{CHLD};
       #initialize and start monitoring
-      my @ret1 = ${$module_name."::"}{start}->($monservers, $settings);
+      my @ret1 = ${$module_name."::"}{start}->($monservers);
       $ret{$_}=\@ret1;
     } else {
        $ret{$_}=[1, "Monitoring plug-in module $_ is not registered."];
@@ -384,13 +383,12 @@ sub startNodeStatusMonitoring {
     my $aRef=$PRODUCT_LIST{$pname};
     if ($aRef) {
       my $module_name=$aRef->[1];
-      my $settings=$aRef->[2];
       undef $SIG{CHLD};
       my $method = ${$module_name."::"}{supportNodeStatusMon}->();
       # return value 0 means not support. 1 means yes. 
       if ($method > 0) {
         #start nodes tatus monitoring
-        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->(getMonHierarchy(), $settings); 
+        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->(getMonHierarchy()); 
         return @ret2;
       }         
       else {
@@ -662,10 +660,64 @@ sub processNodelistTableChanges {
 =cut
 #--------------------------------------------------------------------------------
 sub processMonitoringTableChanges {
-
   #print "monitorctrl::procesMonitoringTableChanges \n";
+  my $action=shift;
+  if ($action =~ /xCAT_monitoring::monitorctrl/) {
+    $action=shift;
+  }
+  my $tablename=shift;
 
-  sendMonSignal();
+  if ($tablename eq "monitoring") { sendMonSignal(); return 0; }
+
+  # if nothing is being monitored, do not care. 
+  if (!$masterpid) { refreshProductList();}
+  if (keys(%PRODUCT_LIST) ==0) { return 0; }
+
+  my $old_data=shift;
+  my $new_data=shift;
+  
+  #foreach (keys %$new_data) {
+  #  print "new_data{$_}=$new_data->{$_}\n";
+  #}
+
+  #for (my $j=0; $j<@$old_data; ++$j) {
+  #  my $tmp=$old_data->[$j];
+  #  print "old_data[". $j . "]= @$tmp \n";
+  #}
+
+  my %namelist=(); #contains the plugin names that get affected by the setting change
+  if ($action eq "a") {
+    if ($new_data) {
+      if (exists($new_data->{name})) {$namelist{$new_data->{name}}=1;}
+    }
+  }
+  elsif (($action eq "d") || (($action eq "u"))) {
+    #find out the index of "node" column
+    if ($old_data->[0]) {
+      $colnames=$old_data->[0];
+      my $name_i=-1;
+      for ($i=0; $i<@$colnames; ++$i) {
+        if ($colnames->[$i] eq "name") {
+          $name_i=$i;
+          last;
+        } 
+      }
+      
+      for (my $j=1; $j<@$old_data; ++$j) {
+        $namelist{$old_data->[$j]->[$name_i]}=1;
+      }
+    }
+  }
+
+  print "plugin module setting changed:" . keys(%namelist) . "\n";
+  foreach(keys %namelist) {
+    if (exists($PRODUCT_LIST{$_})) {
+      my $aRef=$PRODUCT_LIST{$_};
+      my $module_name=$aRef->[1];
+      ${$module_name."::"}{processSettingChanges}->();
+    }   
+  }
+
   return 0;
 }
 
@@ -774,7 +826,7 @@ sub refreshProductList {
   #get the monitoring plug-in list from the monitoring table
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my @tmp1=$table->getAllAttribs(('name','nodestatmon', 'settings'));
+    my @tmp1=$table->getAllAttribs(('name','nodestatmon'));
     if (defined(@tmp1) && (@tmp1 > 0)) {
       foreach(@tmp1) {
         my $pname=$_->{name};
@@ -788,14 +840,13 @@ sub refreshProductList {
         #find out the monitoring plugin file and module name for the product
         my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
         my $module_name="xCAT_monitoring::$pname";
-        my $settings=$_->{settings};
         #load the module in memory
         eval {require($file_name)};
         if ($@) {   
           print "The file $file_name cannot be located or has compiling errors.\n"; 
         }
         else {
-          my @a=($file_name, $module_name, $settings);
+          my @a=($file_name, $module_name);
           $PRODUCT_LIST{$pname}=\@a;
         }
       } 
@@ -811,6 +862,42 @@ sub refreshProductList {
   return 0;
 }
 
+
+
+#--------------------------------------------------------------------------------
+=head3    getPluginSettings
+      This function goes to the monsetting table to get the settings for a given
+      monitoring plug-in. 
+ 
+    Arguments:
+        name the name of the monitoring plug-in module. such as snmpmon, rmcmon etc. 
+    Returns:
+        A hash table containing the key and values of the settings.
+=cut
+#--------------------------------------------------------------------------------
+sub getPluginSettings {
+  my $name=shift;
+  if ($name =~ /xCAT_monitoring::monitorctrl/) {
+    $name=shift;
+  }
+ 
+  %settings=();
+
+  #get the monitoring plug-in list from the monitoring table
+  my $table=xCAT::Table->new("monsetting", -create =>1);
+  if ($table) {
+    my @tmp1=$table->getAllAttribsWhere("name in (\'$name\')", 'key','value');
+    if (defined(@tmp1) && (@tmp1 > 0)) {
+      foreach(@tmp1) {
+	if ($_->{key}) {
+	  $settings{$_->{key}}=$_->{value};
+        }
+      } 
+    }
+  }
+
+  return %settings;
+}
 
 
 #--------------------------------------------------------------------------------
@@ -988,6 +1075,7 @@ sub getMonServer {
 sub nodeStatMonName {
   return $NODESTAT_MON_NAME;
 }
+
 
 
 

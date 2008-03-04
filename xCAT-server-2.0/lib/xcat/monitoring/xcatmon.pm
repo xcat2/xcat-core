@@ -31,7 +31,6 @@ use Sys::Hostname;
          and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
            {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}
-      settings -- ping-interval=x,   x is in number of minutes   
     Returns:
       (return code, message)      
 =cut
@@ -90,7 +89,6 @@ sub supportNodeStatusMon {
          and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
            {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
-      settings -- ping-interval=x,   x is in number of minutes   
     Returns:
         (return code, message)
 
@@ -101,7 +99,6 @@ sub startNodeStatusMon {
   if ($temp =~ /xCAT_monitoring::xcatmon/) {
     $temp=shift;
   }
-  my $setting=shift;
 
   #print "xcatmon.startNodeStatusMon\n";
 
@@ -113,12 +110,16 @@ sub startNodeStatusMon {
   #}
   
   #figure out the ping-intercal setting
-  my $value=3;
-  if ($setting) {
-    if ($setting =~ /ping-interval=(\d+)/) { $value= ($1>0) ? $1 : 3; }
-  }
+  my $value=3; #default
+  my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("xcatmon");
 
- 
+  #print "settings for xcatmon:\n";
+  #foreach (keys(%settings)) {
+  #  print "key=$_, value=$settings{$_}\n";
+  #}
+  my $reading=$settings{'ping-interval'};
+  if ($reading>0) { $value=$reading;}
+   
   #create the cron job, it will run the command every 3 minutes.
   my $newentry="*/$value * * * * XCATROOT=$::XCATROOT $cmd";
   my ($code, $msg)=xCAT::Utils::add_cron_job($newentry);
@@ -248,4 +249,37 @@ sub processNodeStatusChanges {
     $temp=shift;
   }
   return xCAT_monitoring::monitorctrl->processNodeStatusChanges($temp);
+}
+
+#--------------------------------------------------------------------------------
+=head3    processSettingChanges
+      This function gets called when the setting for this monitoring plugin 
+      has been changed in the monsetting table.
+    Arguments:
+       none.
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processSettingChanges {
+  #restart the cron job
+  xCAT_monitoring::xcatmon->stopNodeStatusMon();
+  xCAT_monitoring::xcatmon->startNodeStatusMon();  
+}
+
+#--------------------------------------------------------------------------------
+=head3    getDiscription
+      This function returns the detailed description of the plugin inluding the
+     valid values for its settings in the mon setting tabel. 
+     Arguments:
+        none
+    Returns:
+        The description.
+=cut
+#--------------------------------------------------------------------------------
+sub getDescription {
+  return "xcatmon uses fping to report the node liveness status and update the nodelist.status column. Use command 'startmon xcatmon -n' to start monitoring. 
+  Settings:
+    ping-interval\t the number of minutes between each fping operation. The default value is 3.";
 }

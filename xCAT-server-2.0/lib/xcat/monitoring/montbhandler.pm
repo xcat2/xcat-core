@@ -54,7 +54,7 @@ sub regMonitoringNotif {
   }
 
   if (!$regged) {
-    xCAT_plugin::notification::regNotification([qw(montbhandler.pm monitoring -o a,u,d)]);
+    xCAT_plugin::notification::regNotification([qw(montbhandler.pm monitoring,monsetting -o a,u,d)]);
   }
 }
 

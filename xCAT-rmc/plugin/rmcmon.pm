@@ -527,3 +527,33 @@ sub removeNodes_noChecking {
 
   return 0;
 }
+
+#--------------------------------------------------------------------------------
+=head3    processSettingChanges
+      This function gets called when the setting for this monitoring plugin 
+      has been changed in the monsetting table.
+    Arguments:
+       none.
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processSettingChanges {
+}
+
+#--------------------------------------------------------------------------------
+=head3    getDiscription
+      This function returns the detailed description of the plugin inluding the
+     valid values for its settings in the monsetting tabel. 
+     Arguments:
+        none
+    Returns:
+        The description.
+=cut
+#--------------------------------------------------------------------------------
+sub getDescription {
+  return "rmcmon ..... 
+  Settings:
+    key:\t value.\n";
+}

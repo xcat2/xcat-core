@@ -36,7 +36,6 @@ package xCAT_monitoring::templatemon;
          and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
            {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
-      settings -- ping-interval=x,   x is in number of minutes   
     Returns:
       (return code, message)      
 =cut
@@ -46,7 +45,6 @@ sub start {
   if ($monservers =~ /xCAT_monitoring::templatemon/) {
     $monservers=shift;
   }
-  my $setting=shift;
 
   #demo how you can parse the input. you may commnet it out.
   my $monservers=shift;
@@ -116,7 +114,6 @@ sub supportNodeStatusMon {
          and each value is a ref to an array of [nodes, nodetype, status] arrays  
          monitored by the server. So the format is:
            {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
-      settings -- ping-interval=x,   x is in number of minutes   
     Returns:
         (return code, message)
 
@@ -127,7 +124,6 @@ sub startNodeStatusMon {
   if ($monservers =~ /xCAT_monitoring::templatemon/) {
     $monservers=shift;
   }
-  my $setting=shift;
 
   #demo how you can parse the input. you may commnet it out.
   my $monservers=shift;
@@ -229,3 +225,35 @@ sub removeNodes {
 }
 
 
+#--------------------------------------------------------------------------------
+=head3    processSettingChanges
+      This function gets called when the setting for this monitoring plugin 
+      has been changed in the monsetting table.
+    Arguments:
+       none.
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processSettingChanges {
+  #get latest settings for this plugin and do something about it
+  my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("xcatmon");
+  return 0;
+}
+
+#--------------------------------------------------------------------------------
+=head3    getDiscription
+      This function returns the detailed description of the plugin inluding the
+     valid values for its settings in the monsetting tabel. 
+     Arguments:
+        none
+    Returns:
+        The description.
+=cut
+#--------------------------------------------------------------------------------
+sub getDescription {
+  return "templatemon description goes here. 
+  Settings:
+    key: \texlaination. default value etc.\n";
+}

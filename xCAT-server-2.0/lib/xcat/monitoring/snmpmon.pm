@@ -294,3 +294,34 @@ sub removeNodes {
   return 0;
 }
 
+#--------------------------------------------------------------------------------
+=head3    processSettingChanges
+      This function gets called when the setting for this monitoring plugin 
+      has been changed in the monsetting table.
+    Arguments:
+       none.
+    Returns:
+        0 for successful.
+        non-0 for not successful.
+=cut
+#--------------------------------------------------------------------------------
+sub processSettingChanges {
+  return 0;
+}
+
+#--------------------------------------------------------------------------------
+=head3    getDiscription
+      This function returns the detailed description of the plugin inluding the
+     valid values for its settings in the monsetting tabel. 
+     Arguments:
+        none
+    Returns:
+        The description.
+=cut
+#--------------------------------------------------------------------------------
+sub getDescription {
+  return "snmpmon sets up the snmptrapd on the management server to receive SNMP traps for different nodes. It also sets the trap destination for Blade Center Managment Module, RSA II, IPMIs that are managed by the xCAT cluster. By default, the xCAT trap handler will log all events in the syslog and only email the critial and the warning events to the mail aliance called 'alerts'. You can use the settings to override the default behavior. Use command 'startmon snmpmon' to star monitoring and 'stopmon snmpmon' to stop it. The SNMP trap handler is disabled on the service node.  
+  Settings:
+    ignore:\t specifies the events that will be ignored. It's a comma separated pairs of oid=value. For example, BLADESPPALT-MIB::spTrapAppType=4,BLADESPPALT-MIB::spTrapAppType=4.
+    emailrsp:\t specifies the events that will get email notification.\n"
+}
