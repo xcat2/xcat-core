@@ -48,7 +48,7 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 
     mkdir -p /var/log/consoles
     if ! grep /tftpboot /etc/exports; then
-        echo '/tftpboot *(rw,root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
+        echo '/tftpboot *(ro,root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
     fi
     if ! grep /install /etc/exports; then
         echo '/install *(ro,no_root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
