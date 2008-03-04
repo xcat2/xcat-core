@@ -126,7 +126,7 @@ sub setup_NFS
             if ($::RUNCMD_RC != 0)
             {    # need to add to export list
                 my $cmd =
-                  "echo '$installdir *(rw,no_root_squash,sync)' >> /etc/exports";
+                  "echo '$installdir *(ro,no_root_squash,sync)' >> /etc/exports";
                 xCAT::Utils->runcmd($cmd, -1);
                 if ($::RUNCMD_RC != 0)
                 {    # error
@@ -138,7 +138,7 @@ sub setup_NFS
             if ($::RUNCMD_RC != 0)
             {        # need to add to export list
                 my $cmd =
-                  "echo '$tftpdir *(rw,root_squash,sync)' >> /etc/exports";
+                  "echo '$tftpdir *(ro,root_squash,sync)' >> /etc/exports";
                 xCAT::Utils->runcmd($cmd, -1);
                 if ($::RUNCMD_RC != 0)
                 {    # error
