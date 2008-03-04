@@ -126,7 +126,7 @@ sub setup_NFS
             if ($::RUNCMD_RC != 0)
             {    # need to add to export list
                 my $cmd =
-                  "echo '$installdir *(ro,no_root_squash,sync)' >> /etc/exports";
+                  "echo '$installdir *(rw,no_root_squash,sync)' >> /etc/exports";
                 xCAT::Utils->runcmd($cmd, -1);
                 if ($::RUNCMD_RC != 0)
                 {    # error
@@ -193,7 +193,7 @@ sub setup_NFS
 
                     # need to  mount the directory
                     my $cmd =
-                      " mount -o ro,nolock $master:$directory $directory";
+                      " mount -o rw,nolock $master:$directory $directory";
                     xCAT::Utils->runcmd($cmd, 0);
                     if ($::RUNCMD_RC != 0)
                     {    # error
