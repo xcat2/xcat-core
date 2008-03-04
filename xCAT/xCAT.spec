@@ -78,10 +78,12 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 %post
-. /etc/profile.d/xcat.sh
 %ifnos linux
+. /etc/profile
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig
 %else
+. /etc/profile.d/xcat.sh
+
 if [ ! -f /install/postscripts/hostkeys/ssh_host_key ]; then 
     echo Generating SSH1 RSA Key...
     /usr/bin/ssh-keygen -t rsa1 -f /install/postscripts/hostkeys/ssh_host_key -C '' -N ''
