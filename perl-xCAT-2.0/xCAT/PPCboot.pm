@@ -187,7 +187,7 @@ sub ivm_rnetboot {
     #######################################
     # Network specified
     #######################################
-    $cmd.= " -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C}";
+    $cmd.= " -s auto -d auto -m $opt->{m} -S $opt->{S} -G $opt->{G} -C $opt->{C}";
    
     #######################################
     # Add command options
@@ -217,7 +217,14 @@ sub ivm_rnetboot {
     #######################################
     # Get command exit code
     #######################################
-    my $Rc = ( $? ) ? $? >> 8 : SUCCESS;
+    my $Rc = SUCCESS;
+
+    foreach ( split /\n/, $result ) {
+        if ( /^lpar_netboot: / ) {
+            $Rc = RC_ERROR;
+            last;
+        }
+    }
     return( [$Rc,$result] );
 }
 
@@ -332,4 +339,5 @@ sub rnetboot {
  
 
 1;
+
 
