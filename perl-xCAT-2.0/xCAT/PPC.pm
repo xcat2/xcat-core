@@ -621,6 +621,7 @@ sub invoke_cmd {
         my %output;
         $output{node}->[0]->{name}->[0] = @$_[0];
         $output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];
+        $output{errorcode} = @$_[2];
         push @outhash, \%output;
     }
     my $out = $request->{pipe};
