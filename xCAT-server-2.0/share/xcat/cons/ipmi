@@ -5,6 +5,18 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+my $xcatcfg;
+open($xcatcfg,"<","/etc/sysconfig/xcat");
+while (<$xcatcfg>) {
+   if (/^\s*XCATCFG/) {
+      (my $jnk,$ENV{XCATCFG})=split /=/,$_,2;
+      chomp($ENV{XCATCFG});
+      $ENV{XCATCFG} =~ s/^'//;
+      $ENV{XCATCFG} =~ s/'$//;
+      last;
+   }
+}
+close($xcatcfg);
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 my $dba;
