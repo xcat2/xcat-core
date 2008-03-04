@@ -3,6 +3,7 @@ package xCAT_plugin::pxe;
 use Data::Dumper;
 use Sys::Syslog;
 use Socket;
+use File::Copy;
 
 my $request;
 my $callback;
