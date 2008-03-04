@@ -226,10 +226,17 @@ sub ivm_getmacs {
     #######################################
     # Get command exit code
     #######################################
-    my $Rc = ( $? ) ? $? >> 8 : SUCCESS;
-    return( [$Rc,$result] );
-}
+    my $Rc = SUCCESS;
 
+    foreach ( split /\n/, $result ) {
+        if ( /^lpar_netboot: / ) {
+            $Rc = RC_ERROR;
+            last;
+        }
+    }
+    return( [$Rc,$result] );
+ 
+}
 
 
 ##########################################################################
@@ -273,7 +280,7 @@ sub getmacs {
                            $opt );
     }
     my $Rc = shift(@$result);
-    
+   
     ##################################
     # Form string from array results 
     ##################################
@@ -284,6 +291,9 @@ sub getmacs {
     # Return error
     ##################################
     if ( $Rc != SUCCESS ) {
+        if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
+            return( [[$name,$1]] );
+        }
         return( [[$name,join( '', @$result )]] );
     }
     ##################################
@@ -309,9 +319,9 @@ sub getmacs {
     #####################################
     my $values;
     foreach ( @$result ) {
-        if ( /^#\s*Type/ ) {
+        if ( /^#\s?Type/ ) {
             $values.= "\n$_\n";
-        } elsif ( /^[^#]/ ) {
+        } elsif ( /^ent:?/ ) {
             $values.= "$_\n";
         }
     }
@@ -320,5 +330,6 @@ sub getmacs {
 
 
 1;
+
 
 
