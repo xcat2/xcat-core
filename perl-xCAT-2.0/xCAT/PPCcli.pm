@@ -382,7 +382,7 @@ sub chsysstate {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd, $timeout );
+    my $result = send_cmd( $exp, $cmd );
     return( $result );
 }
 
