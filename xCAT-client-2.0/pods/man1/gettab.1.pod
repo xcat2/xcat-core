@@ -1,0 +1,70 @@
+=head1 NAME
+
+B<gettab> - search through tables using keys and return attributes.
+
+=head1 SYNOPSIS
+
+B<gettab> I<key=value,...  table.attribute ...>
+
+B<gettab> [B<-?> | B<-h> | B<--help>]
+
+=head1 DESCRIPTION
+
+The gettab command uses the specified key values to search the specified tables.  For each matched
+row, the specified attributes are displayed.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
+=head1 EXAMPLES
+
+=over 2
+
+=item *
+
+To display node names that have B<mgt> set to B<blade> in the nodehm table:
+
+B<gettab> I<mgt=blade nodehm.node>
+
+The output would be similar to:
+     nodehm.node: blades
+
+=item *
+
+To display setting for B<master> (management node) in the site table:
+
+B<gettab> I<key=master site.value>
+
+The output would be similar to:
+     site.value: mgmtnode.cluster.com
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/gettab
+
+=head1 SEE ALSO
+
+nodels(1), chtab(1), tabdump(1)

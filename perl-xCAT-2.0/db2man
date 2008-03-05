@@ -11,12 +11,16 @@
 use lib '.';
 
 use xCAT::Schema;
+use xCAT::Table;
 
 my $poddir = 'pods/man5';
 if (system("mkdir -p $poddir")) { die "Error: could not create $poddir.\n"; }
-my $tabspecref = \%xCAT::Schema::tabspec;
+
+# Build the DB overview page.
+writesummarypage("$poddir/xcatdb.5.pod", xCAT::Table->getDescriptions()),
 
 # Build the man page for each table.
+my $tabspecref = \%xCAT::Schema::tabspec;
 foreach my $tablekey (keys %$tabspecref) {
     my $table = $tabspecref->{$tablekey};
     my $summary = $table->{table_desc};
@@ -26,6 +30,100 @@ foreach my $tablekey (keys %$tabspecref) {
 }
 
 exit;
+
+
+# Create the xcatdb man page that gives a summary description of each table.
+sub writesummarypage {
+	my $file = shift;       # relative path file name of the man page
+	my $descriptions = shift;	# a hash containing the description of each table
+
+	open(FILE, ">$file") or die "Error: could not open $file for writing.\n";
+
+	print FILE <<'EOS1';
+=head1 NAME
+
+An overview of the xCAT database.
+
+=head1 DESCRIPTION
+
+The xCAT database contains user settings for the cluster and information gathered from the cluster.
+It consists of a series of tables, which are described below.  To get more information about a
+particular table, run man for that table name.  The tables can be manipulated directly using the
+B<tabedit> or B<chtab> commands.  They can be viewed using B<nodels> or B<tabdump>.
+
+xCAT also supports regular expressions in the tables.  This enables one row to represent many
+rows.  For example, if you have many blades in your cluster and their hostnames have a regular
+pattern of blade1, blade2, etc., and your BladeCenter management modules also have a hostname
+pattern of amm1, amm2, etc., then your B<mp> table could be expressed by the following single row:
+
+  "blade","|\D+(\d+)|amm(($1-1)/14+1)|","|\D+(\d+)|(($1-1)%14+1)|",,
+
+Before you panic, let me explain each column:
+
+=over 4
+
+=item B<blade>
+
+This is a group name.  In this example, we are assuming that all of your blades belong to this
+group.  Each time the xCAT software accesses the B<mp> table to get the management module and slot number
+of a specific blade (e.g. B<blade20>), this row will match (because B<blade20> is in the B<blade> group).
+Once this row is matched for B<blade20>, then the processing described in the following items will take
+place.
+
+=item B<|\D+(\d+)|amm(($1-1)/14+1)|>
+
+This is a perl substitution pattern that will produce the value for the second column of the table (the
+management module hostname).
+The text B<\D+(\d+)> between the 1st two vertical bars is
+a regular expression that matches the node
+name that was searched for in this table (in this example B<blade20>).  The text that matches
+within the 1st set of parentheses is set to $1.  (If there was a 2nd set of parentheses, it would
+be set to $2, and so on.)  In our case, the \D+ matches the non-numeric part of the name
+(B<blade>) and the \d+ matches the numeric part (B<20>).  So $1 is set to B<20>.  The text B<amm(($1-1)/14+1)> between the
+2nd and 3rd vertical bars produces the string that should be used as the value
+for this column in a hypothetical row for blade20.  Since $1 is set to 20, the expression B<($1-1)/14+1> equals
+19/14 + 1, which equals 2.  Therefore the whole string is B<amm2>, which will be used as the hostname
+of the management module.
+
+=item B<|\D+(\d+)|(($1-1)%14+1)|>
+
+This item is similar to the one above.  This substituion pattern will produce the value for
+the 3rd column (the BladeCenter chassis slot number for this blade).  Because this row was
+the match for B<blade20>, the parentheses
+within the 1st set of vertical bars will set $1 to 20.  Since % means modulo division, the
+expression B<($1-1)%14+1> will evaluate to 6.
+
+=back
+
+See http://www.perl.com/doc/manual/html/pod/perlre.html for information on perl regular expressions.
+
+Because it can get confusing what attributes need to go in what tables, the xCAT database can also
+be viewed and edited as logical objects, instead of flat tables.  Run B<lsdef> to see the list of
+objects supported by xCAT.  Use B<mkdef>, B<chdef>, and B<rmdef> to create, change, and delete objects.
+When using these commands, the object attributes will be stored in the same tables, as if you edited
+the tables by hand.  The only difference is that the object commands take care of knowing which tables
+all of the information should go in.
+
+=head1 TABLES
+
+=over 2
+EOS1
+
+foreach my $table (sort keys %$descriptions) {
+	print FILE "\n=item I<$table>\n\n".$descriptions->{$table}."\n";
+}
+
+	print FILE <<"EOS3";
+
+=back
+
+=head1 SEE ALSO
+
+nodels(1), tabedit(1), chtab(1), tabdump(1), lsdef(1), mkdef(1), chdef(1), rmdef(1)
+EOS3
+
+	close FILE;
+}
 
 
 # Create the man page for one table.

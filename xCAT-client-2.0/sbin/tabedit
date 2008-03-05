@@ -1,5 +1,8 @@
 #!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Opens the specified table in the users editor and writes changes back to the db
+
 function cexit {
   if [ -d /tmp/tabedit.$$ ]; then
     rm -rf /tmp/tabedit.$$;
@@ -16,25 +19,36 @@ if [ -z "$TABEDITOR" ]; then
   #echo "WARNING: Define TABEDITOR or EDITOR environment variable before running this command"
   TABEDITOR=vi
 fi
-if [ -z "$TABLE" ]; then
+if [ -z "$TABLE" -o "$TABLE" = "-?" -o "$TABLE" = "-h" -o "$TABLE" = "--help" ]; then
     echo "Usage: tabedit <tablename>";
+    echo "       tabedit [-? | -h | --help]";
     exit 1
 fi
+
+# Dump the table to a temporary file
 mkdir -p /tmp/tabedit.$$/
-xcatclientnnr tabdump $1 > /tmp/tabedit.$$/$1.csv
-#use md5sum to check if it actually changes..
-SUM=`md5sum /tmp/tabedit.$$/$1.csv`
+xcatclientnnr tabdump $TABLE > /tmp/tabedit.$$/$TABLE.csv
+
+# Save the checksum to see if it actually changes..
+if [ `uname` = "AIX" ]; then
+	SUMPROGRAM=sum
+else
+	SUMPROGRAM=md5sum
+fi
+SUM=`$SUMPROGRAM /tmp/tabedit.$$/$TABLE.csv`
+
+# Edit the file, then check it
 EXIT=0
 while [ $EXIT -eq 0 ]; do
   cd /tmp/tabedit.$$
-  "$TABEDITOR" $1.csv
-  cd -
-  NEWSUM=`md5sum /tmp/tabedit.$$/$1.csv`
+  "$TABEDITOR" $TABLE.csv
+  cd - >/dev/null
+  NEWSUM=`$SUMPROGRAM /tmp/tabedit.$$/$TABLE.csv`
   if [ "$NEWSUM" == "$SUM" ]; then
     echo "No file modifications detected, not restoring."
     break;
   fi
-  if `dirname $0`/tabrestore /tmp/tabedit.$$/$1.csv; then
+  if `dirname $0`/tabrestore /tmp/tabedit.$$/$TABLE.csv; then
     break;
   else
     echo "Above errors occured, hit enter to edit, or ctrl-c to abort"

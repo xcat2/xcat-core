@@ -4,11 +4,11 @@ B<nodels> - lists the nodes in the noderange.
 
 =head1 SYNOPSIS
 
-I<nodels noderange [table.attribute | shortname] ...>
+B<nodels> [I<noderange>] [I<table.attribute> | I<shortname>] I<...>
 
-I<nodels [-h| --help]>
+B<nodels> [B<-?> | B<-h> | B<--help>]
 
-I<nodels  [-v| --version]>
+B<nodels> [B<-v> | B<--version>]
 
 
 =head1 DESCRIPTION
@@ -19,83 +19,123 @@ Additional attributes of the nodes will also be displayed if the table names and
 are specified after the noderange in the form:  I<table.attribute> .  A few shortcut names can
 also be used as aliases to common attributes:
 
-=over 4
+=over 10
 
-=item I<groups> - nodelist.groups
+=item I<groups>
 
-=item I<tags> - nodelist.groups
+nodelist.groups
 
-=item I<mgt> - nodehm.mgt
+=item I<tags>
 
-=item I<switch> - switch.switch
+nodelist.groups
+
+=item I<mgt>
+
+nodehm.mgt
+
+=item I<switch>
+
+switch.switch
 
 =back
 
+The nodels command with a specific node and one or more table.attribute parameters is a good substitute
+for grep'ing through the tab files, like was done in xCAT 1.x.  This is because nodels will translate
+any regular expression rows in the tables into their meaning for the specified node.  The tab* commands
+will not do this, instead they will just display the single regular expression row.
+
 =head1 OPTIONS
 
-B<-h>          Display usage message.
+=over 10
 
-B<-v>          Command Version.
+=item B<-?|-h|--help>
 
+Display usage message.
+
+=item B<-v>
+
+Command Version.
+
+=back
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 3
 
-1 An error has occurred.
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
 
 =head1 EXAMPLES
 
-1. To list all defined nodes, enter:
+=over 2
 
-I<nodels>
+=item *
+
+To list all defined nodes, enter:
+
+B<nodels>
 
 Output is similar to:
    node1
    node2
    node3
 
-2. To list nodes in noderange ppc, enter:
+=item *
 
-I<nodels ppc>
+To list nodes in node group ppc, enter:
+
+B<nodels> I<ppc>
 
 Output is similar to:
    ppcnode1
    ppcnode2
    ppcnode3
 
-3. To list the groups each node is part of:
+=item *
 
-I<nodels all groups>
+To list the groups each node is part of:
+
+B<nodels> I<all> I<groups>
 
 Output is similar to:
    node1: groups: all
    node2: groups: all,storage
    node3: groups: all,blade
 
-4. To list the groups each node is part of:
+=item *
 
-I<nodels all nodehm.power>
+To list the groups each node is part of:
+
+B<nodels> I<all> I<nodehm.power>
 
 Output is similar to:
    node1: nodehm.power: blade
    node2: nodehm.power: ipmi
    node3: nodehm.power: ipmi
 
+=item *
+
+To list the out-of-band mgt method for blade1:
+
+B<nodels> I<blade1> I<nodehm.mgt>
+
+Output is similar to:
+   blade1: nodehm.mgt: blade
+
+=back
 
 =head1 FILES
 
 /opt/xcat/bin/nodels
 
-
 =head1 SEE ALSO
 
-The B<noderange> man page.
-
-
-=head1 NOTES
-
-This command is part of the xCAT software product.
-
-
+noderange(5)
 

@@ -123,11 +123,31 @@ sub process_request
 
 }
 
+# Display particular attributes, using query strings.
 sub gettab
 {
     my $req      = shift;
     my $callback = shift;
-    my $keyspec  = shift @{$req->{arg}};
+    my $HELP;
+
+    sub gettab_usage {
+    	my $exitcode = shift @_;
+        my %rsp;
+        push @{$rsp{data}}, "Usage: gettab key=value,...  table.attribute ...";
+        push @{$rsp{data}}, "       gettab [-?|-h|--help]";
+        if ($exitcode) { $rsp{errorcode} = $exitcode; }
+        $callback->(\%rsp);
+    }
+
+	# Process arguments
+    @ARGV = @{$req->{arg}};
+    if (!GetOptions('h|?|help' => \$HELP)) { gettab_usage(1); return; }
+
+    if ($HELP) { gettab_usage(0); return; }
+    if (scalar(@ARGV)<2) { gettab_usage(1); return; }
+
+    # Get all the key/value pairs into a hash
+    my $keyspec  = shift @ARGV;
     my @keypairs = split /,/, $keyspec;
     my %keyhash;
     foreach (@keypairs)
@@ -135,19 +155,23 @@ sub gettab
         (my $key, my $value) = split /=/, $_;
         $keyhash{$key} = $value;
     }
+
+    # Group the columns asked for by table (so we can do 1 query per table)
     my %tabhash;
-    foreach my $tabvalue (@{$req->{arg}})
+    foreach my $tabvalue (@ARGV)
     {
         (my $table, my $column) = split /\./, $tabvalue;
         $tabhash{$table}->{$column} = 1;
     }
+
+    # Get the requested columns from each table
     foreach my $tabn (keys %tabhash)
     {
         my $tab = xCAT::Table->new($tabn);
         (my $ent) = $tab->getAttribs(\%keyhash, keys %{$tabhash{$tabn}});
         foreach my $coln (keys %{$tabhash{$tabn}})
         {
-            $callback->({data => ["$tabn.$coln:" . $ent->{$coln}]});
+            $callback->({data => ["$tabn.$coln: " . $ent->{$coln}]});
         }
         $tab->close;
     }
@@ -339,6 +363,7 @@ sub tabrestore
     }
 }
 
+# Display a list of tables, or a specific table in CSV format
 sub tabdump
 {
     my $args  = shift;
@@ -729,7 +754,7 @@ sub nodels
         $rsp->{data}->[0] = "Usage:";
         $rsp->{data}->[1] = "  nodels [-?|-h|--help] ";
         $rsp->{data}->[2] = "  nodels [-v|--version] ";
-        $rsp->{data}->[3] = "  nodels [noderange] ";
+        $rsp->{data}->[3] = "  nodels [noderange] [table.attribute | shortname] ...";
 #####  xcat 1.2 nodels usage:
         #     $rsp->{data}->[1]= "  nodels [noderange] [group|pos|type|rg|install|hm|all]";
         #     $rsp->{data}->[2]= " ";

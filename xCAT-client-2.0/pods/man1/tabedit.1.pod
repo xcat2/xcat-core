@@ -1,0 +1,72 @@
+=head1 NAME
+
+B<tabedit> - view an xCAT database table in an editor and make changes.
+
+=head1 SYNOPSIS
+
+B<tabedit> [I<table>]
+
+B<tabedit> [I<-?> | I<-h> | I<--help>]
+
+=head1 DESCRIPTION
+
+The tabedit command opens the specified table in the user's editor, allows them to edit any
+text, and then writes changes back to the database table.  The table is flattened into a CSV
+(comma separated values) format file before giving it to the editor.  After the editor is
+exited, the CSV file will be translated back into the database format.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
+
+=head1 ENVIRONMENT VARIABLES
+
+=over 4
+
+=item TABEDITOR
+
+The editor that should be used to edit the table, for example:  vi, vim, emacs, oocalc, pico, gnumeric, nano.
+If B<TABEDITOR> is not set, the value from B<EDITOR> will be used.  If B<EDITOR> is not set, it will
+default to vi.
+
+=back
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
+=head1 EXAMPLES
+
+=over 2
+
+=item *
+
+To edit the site table:
+
+  B<tabedit> I<site>
+
+=back
+
+=head1 FILES
+
+/opt/xcat/sbin/tabedit
+
+=head1 SEE ALSO
+
+tabrestore(1), tabdump(1), chtab(1)

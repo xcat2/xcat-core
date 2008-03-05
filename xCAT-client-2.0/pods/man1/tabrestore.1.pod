@@ -4,9 +4,9 @@ B<tabrestore> - replaces the contents of an xCAT database table with the content
 
 =head1 SYNOPSIS
 
-I<tabrestore table.csv>
+B<tabrestore> I<table.csv>
 
-I<tabrestore [? | -h | --help]>
+B<tabrestore> [I<-?> | I<-h> | I<--help>]
 
 =head1 DESCRIPTION
 
@@ -20,34 +20,56 @@ into the xCAT database.
 
 =head1 OPTIONS
 
-B<-?|-h|--help>          Display usage message.
+=over 10
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 3
 
-1 An error has occurred.
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
 
 =head1 EXAMPLES
 
-1. To put rows into the mp table:
+=over 2
 
-  tabrestore mp.csv
+=item *
+
+To put rows into the mp table:
+
+  B<tabrestore> I<mp.csv>
 
 The file mp.csv could contain something like:
 
   #node,mpa,id,comments,disable
   "blade","|\D+(\d+)|amm(($1-1)/14+1)|","|\D+(\d+)|(($1-1)%14+1)|",,
 
-2. To restore database tables that were dumped with tabdump:
+=item *
+
+To restore database tables that were dumped with tabdump:
 
   cd /tmp/xcatdb.backup
   for i in *.csv;do echo "Restoring $i..."; tabrestore $i; done
+
+=back
 
 =head1 FILES
 
 /opt/xcat/sbin/tabrestore
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
+tabdump(1), tabedit(1)
