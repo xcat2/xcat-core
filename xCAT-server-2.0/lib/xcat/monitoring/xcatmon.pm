@@ -279,7 +279,12 @@ sub processSettingChanges {
 =cut
 #--------------------------------------------------------------------------------
 sub getDescription {
-  return "xcatmon uses fping to report the node liveness status and update the nodelist.status column. Use command 'startmon xcatmon -n' to start monitoring. 
+  return 
+"  Description:
+    xcatmon uses fping to report the node liveness status and update the 
+    nodelist.status column. Use command 'startmon xcatmon -n' to start 
+    monitoring. 
   Settings:
-    ping-interval\t the number of minutes between each fping operation. The default value is 3.";
+    ping-interval:  the number of minutes between each fping operation. 
+        The default value is 3.";
 }

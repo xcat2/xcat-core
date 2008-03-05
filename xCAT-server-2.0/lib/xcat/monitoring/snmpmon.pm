@@ -320,8 +320,19 @@ sub processSettingChanges {
 =cut
 #--------------------------------------------------------------------------------
 sub getDescription {
-  return "snmpmon sets up the snmptrapd on the management server to receive SNMP traps for different nodes. It also sets the trap destination for Blade Center Managment Module, RSA II, IPMIs that are managed by the xCAT cluster. By default, the xCAT trap handler will log all events in the syslog and only email the critial and the warning events to the mail aliance called 'alerts'. You can use the settings to override the default behavior. Use command 'startmon snmpmon' to star monitoring and 'stopmon snmpmon' to stop it. The SNMP trap handler is disabled on the service node.  
+  return 
+"  Description:
+    snmpmon sets up the snmptrapd on the management server to receive SNMP
+    traps for different nodes. It also sets the trap destination for Blade 
+    Center Managment Module, RSA II, IPMIs that are managed by the xCAT cluster. 
+    By default, the xCAT trap handler will log all events in the syslog and only
+    email the critial and the warning events to the mail aliance called 'alerts'. 
+    You can use the settings to override the default behavior. Use command 
+    'startmon snmpmon' to star monitoring and 'stopmon snmpmon' to stop it. 
+    The SNMP trap handler is disabled on the service node.  
   Settings:
-    ignore:\t specifies the events that will be ignored. It's a comma separated pairs of oid=value. For example, BLADESPPALT-MIB::spTrapAppType=4,BLADESPPALT-MIB::spTrapAppType=4.
-    emailrsp:\t specifies the events that will get email notification.\n"
+    ignore:  specifies the events that will be ignored. It's a comma separated 
+        pairs of oid=value. For example, 
+        BLADESPPALT-MIB::spTrapAppType=4,BLADESPPALT-MIB::spTrapAppType=4.
+    emailrsp:  specifies the events that will get email notification.\n"
 }

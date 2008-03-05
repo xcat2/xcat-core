@@ -3,7 +3,7 @@
 package xCAT_plugin::monctrlcmds;
 BEGIN
 {
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 
@@ -38,6 +38,7 @@ sub handled_commands {
     startmon => "monctrlcmds",
     stopmon => "monctrlcmds",
     updatemon => "monctrlcmds",
+    lsmon => "monctrlcmds",
   }
 }
 
@@ -85,6 +86,15 @@ sub process_request {
   elsif ($command eq "updatemon") {
     xCAT_monitoring::monitorctrl::sendMonSignal();
   }
+  elsif ($command eq "lsmon") {
+    my ($ret, $msg) = lsmon($args, $callback);
+    if ($msg) {
+      my %rsp=();
+      $rsp->{data}->[0]= $msg;
+      $callback->($rsp);
+    }
+    return $ret;
+  }
   else {
     my %rsp=();
     $rsp->{data}->[0]= "unsupported command: $command.";
@@ -103,7 +113,7 @@ sub process_request {
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        name [-n|--nodestatmon]        
+        name [-n|--nodestatmon] [-s|--settings ...]        
         where
           name is the monitoring plug-in name. For example: rmcmon. 
               The specified plug-in will be registered and invoked 
@@ -111,6 +121,7 @@ sub process_request {
           -n|--nodestatmon  indicates that this plug-in will be used for feeding the node liveness
               status to the xCAT nodelist table.  If not specified, the plug-in will not be used 
               for feeding node status to xCAT. 
+          -s|--settings settings are used by the plug-in to customize it behavor.
     Returns:
         0 for success. The output is returned through the callback pointer.
         1. for unsuccess. The error messages are returns through the callback pointer.
@@ -127,9 +138,15 @@ sub startmon {
   {
     my %rsp;
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  startmon name [-n|--nodestatmon] [-s|--settings item=value[,item=value]...]";
+    $rsp->{data}->[1]= "  startmon name [-n|--nodestatmon] [-s|--settings settings]";
     $rsp->{data}->[2]= "  startmon [-h|--help|-v|--version]";
-    $rsp->{data}->[3]= "     name is the name of the monitoring plug-in to be registered and invoked.";
+    $rsp->{data}->[3]= "     name is the name of the monitoring plug-in module to be registered and invoked.";
+    $rsp->{data}->[4]= "       Use 'lsmon -a' command to list all the monitoring plug-in names.";
+    $rsp->{data}->[5]= "     settings is used by the monitoring plug-in to customize its behavior.";
+    $rsp->{data}->[6]= "       Format: [key1=value1],[key2=value2]... ";
+    $rsp->{data}->[7]= "       Please note that the square brackets are needed. ";
+    $rsp->{data}->[7]= "       Use 'lsmon name -d' command to look for the possible settings for a plug-in.";
+    $rsp->{data}->[8]= "  Example: startmon xcatmon -n -s [ping-interval=10]";
     $callback->($rsp);
   }
   
@@ -215,23 +232,36 @@ sub startmon {
     (my $ref) = $table->getAttribs({name => $pname}, name);
     if ($ref and $ref->{name}) {
       my %rsp;
-      $rsp->{data}->[0]="$pname is already registered in the monitoring table.";
+      $rsp->{data}->[0]="$pname has already been activated for monitoring.";
       $callback->($rsp);
     }
     else {
+      #update the monsetting table
+      if ($settings) {
+        my $table1=xCAT::Table->new("monsetting", -create => 1,-autocommit => 1);
+        my %key_col1 = (name=>$pname);
+        #parse the settings. Setting format: key="value",key="value"....
+        while ($settings =~ s/^\[([^\[\]\=]*)=([^\[\]]*)\](,)*//) {         
+          $key_col1{key}=$1; 
+	  $setting_hash{value}=$2;
+          $table1->setAttribs(\%key_col1, \%setting_hash);
+        }
+        $table1->close();
+      }
+
+      #update the monitoring table
       my %key_col = (name=>$pname);
       my $nstat='N';
       if ($::NODESTATMON) {
 	$nstat='Y';
       }
       my %tb_cols=(nodestatmon=>$nstat, disable=>"0");
-      if ($settings) {
-	$tb_cols{settings}=$settings;
-      }
       $table->setAttribs(\%key_col, \%tb_cols);
     }  
     $table->close(); 
   }
+
+      
 
   my %rsp1;
   $rsp1->{data}->[0]="done.";
@@ -272,7 +302,7 @@ sub stopmon {
     $rsp->{data}->[0]= "Usage:";
     $rsp->{data}->[1]= "  stopmon name";
     $rsp->{data}->[2]= "  stopmon [-h|--help|-v|--version]";
-    $rsp->{data}->[3]= "      name is the name of the monitoring plug-in registered in the monitoring table.";
+    $rsp->{data}->[3]= "      name is the name of the monitoring plug-in module registered in the monitoring table.";
     $callback->($rsp);
   }
 
@@ -342,7 +372,7 @@ sub stopmon {
     }  
     else {
       my %rsp;
-      $rsp->{data}->[0]="$pname was not registered or not enabled.";
+      $rsp->{data}->[0]="$pname was not registered or not activated.";
       $callback->($rsp);
     }
     $table->close();   
@@ -352,6 +382,153 @@ sub stopmon {
   $rsp1->{data}->[0]="done.";
   $callback->($rsp1);
   
+  return;
+}
+
+
+#--------------------------------------------------------------------------------
+=head3   lsmon
+        This function list the monitoring plug-in module names, status and description. 
+    Arguments:
+      callback - the pointer to the callback function.
+      args - The format of the args is:
+        [-h|--help|-v|--version] or
+        [name] [-a|all] [-d|--description]         
+    Returns:
+        0 for success. The output is returned through the callback pointer.
+        1. for unsuccess. The error messages are returns through the callback pointer.
+=cut
+#--------------------------------------------------------------------------------
+sub lsmon {
+  my $args=shift;
+  my $callback=shift;
+  my $VERSION;
+  my $HELP;
+
+  # subroutine to display the usage
+  sub lsmon_usage
+  {
+    my %rsp;
+    $rsp->{data}->[0]= "Usage:";
+    $rsp->{data}->[1]= "  lsmon name [-d|--description]";
+    $rsp->{data}->[2]= "  lsmon [-a|--all] [-d|--description]";
+    $rsp->{data}->[3]= "  lsmon [-h|--help|-v|--version]";
+    $rsp->{data}->[4]= "     name is the name of the monitoring plug-in module.";
+    $callback->($rsp);
+  }
+  
+  @ARGV=@{$args};
+
+  # parse the options
+  if(!GetOptions(
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION,
+      'a|all'  => \$::ALL,
+      'd|discription'  => \$::DESC))
+  {
+    &lsmon_usage;
+    return;
+  }
+
+  # display the usage if -h or --help is specified
+  if ($::HELP) { 
+    &lsmon_usage;
+    return;
+  }
+
+  # display the version statement if -v or --verison is specified
+  if ($::VERSION)
+  {
+    my %rsp;
+    $rsp->{data}->[0]= "lsmon version 1.0";
+    $callback->($rsp);
+    return;
+  }
+
+  my %names=();
+  my $plugin_dir="$::XCATROOT/lib/perl/xCAT_monitoring";
+  my $usetab=0;
+  if (@ARGV > 0)
+  {
+    $names{$ARGV[0]}=0;
+  }
+  else {
+    if ($::ALL) {
+      #get all the module names from /opt/xcat/lib/perl/XCAT_monitoring directory   
+      my @plugins=glob($plugin_dir."/*.pm");
+      foreach (@plugins) {
+        /.*\/([^\/]*).pm$/;
+        $names{$1}=0;
+      }
+      # remove 2 files that are not plug-ins
+      delete($names{monitorctrl});
+      delete($names{montbhandler});
+    }
+    else {
+      $usetab=1;
+    }
+  }
+
+  #get the list from the table
+  my $table=xCAT::Table->new("monitoring", -create =>1);
+  if ($table) {
+    my $tmp1=$table->getAllEntries();
+    if (defined($tmp1) && (@$tmp1 > 0)) {
+      foreach(@$tmp1) {
+        my $pname=$_->{name};
+        if (($usetab) || exists($names{$pname})) {
+          $names{$pname}=1;
+          my $monnode=0;
+          my $disable=1;
+          if ($_->{nodestatmon} =~ /1|Yes|yes|YES|Y|y/) { $monnode=1; }
+          if ($_->{disable} =~ /0|NO|No|no|N|n/) { $disable=0; }
+          my %rsp;
+          $rsp->{data}->[0]="$pname\t\t". 
+                             ($disable ? "not-monitored" : "monitored") . 
+                             ($monnode ? "\tnode-status-monitored" : "");
+          if ($::DESC) {
+            #find out the monitoring plugin file and module name for the product
+            my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+            my $module_name="xCAT_monitoring::$pname";
+            #load the module in memory
+            eval {require($file_name)};
+            if ($@) {   
+              $rsp->{data}->[1]="  Description:\n    not available. The file $file_name cannot be located or has compiling errors."; 
+            }
+            else {
+              $rsp->{data}->[1]=${$module_name."::"}{getDescription}->() . "\n";  
+	    }
+          }
+          $callback->($rsp);
+	}
+      } #foreach
+    }
+    $table->close();
+  }
+
+    
+  #now handle the ones that are not in the table
+  foreach(keys(%names)) {
+    my $pname=$_;
+    if ($names{$pname}==0) {
+      my %rsp;
+      $rsp->{data}->[0]="$pname\t\tnot-monitored";
+      if ($::DESC) {
+        #find out the monitoring plugin file and module name for the product
+        my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+        my $module_name="xCAT_monitoring::$pname";
+        #load the module in memory
+        eval {require($file_name)};
+        if ($@) {   
+          $rsp->{data}->[1]="  Description:\n    not available. The file $file_name cannot be located or has compiling errors."; 
+        }
+        else {
+          $rsp->{data}->[1]=${$module_name."::"}{getDescription}->(). "\n";  
+        }
+      }
+      $callback->($rsp);
+    }
+  }
   return;
 }
 

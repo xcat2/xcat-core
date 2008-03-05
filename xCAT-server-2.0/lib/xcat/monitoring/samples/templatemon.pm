@@ -253,7 +253,9 @@ sub processSettingChanges {
 =cut
 #--------------------------------------------------------------------------------
 sub getDescription {
-  return "templatemon description goes here. 
+  return 
+"  Description:
+    templatemon description goes here. 
   Settings:
-    key: \texlaination. default value etc.\n";
+    key:  exlaination. default value etc.\n";
 }

@@ -709,7 +709,7 @@ sub processMonitoringTableChanges {
     }
   }
 
-  print "plugin module setting changed:" . keys(%namelist) . "\n";
+  #print "plugin module setting changed:" . keys(%namelist) . "\n";
   foreach(keys %namelist) {
     if (exists($PRODUCT_LIST{$_})) {
       my $aRef=$PRODUCT_LIST{$_};

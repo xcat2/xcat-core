@@ -553,7 +553,9 @@ sub processSettingChanges {
 =cut
 #--------------------------------------------------------------------------------
 sub getDescription {
-  return "rmcmon ..... 
+  return 
+"  Description:
+    rmcmon ..... 
   Settings:
-    key:\t value.\n";
+    key:  value.\n";
 }
