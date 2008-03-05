@@ -12,10 +12,10 @@ fi
 CNA="$*"
 
 #  getent doesn't exist on AIX
-if [ -x getent ];then
+if [ -x /usr/bin/getent ];then
  USERHOME=`getent passwd $1|awk -F: '{print $6}'`
 else
- USERHOME=`grep ^$1 /etc/passwd | cut -d: -f6`
+ USERHOME=`grep ^$1: /etc/passwd | cut -d: -f6`
 fi
 
 XCATCADIR=$XCATDIR/ca
