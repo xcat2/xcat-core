@@ -362,14 +362,14 @@ sub bus {
             # Output error 
             #################################
             if ( $Rc != SUCCESS ) {
-                push @result, [$name,@$bus[0]];
+                push @result, [$name,@$bus[0],$Rc];
                 next;
             }
             #################################
             # Node not found 
             #################################
             if ( !exists( $data->{$name} )) {
-                push @result, [$name,"Node not found"];
+                push @result, [$name,"Node not found",1];
                 next;
             } 
             #################################
@@ -377,7 +377,7 @@ sub bus {
             #################################
             foreach ( @{$data->{$name}} ) {
                 s/,/:/;
-                push @result, [$name,$_];
+                push @result, [$name,$_,$Rc];
             }
         }
     }
@@ -422,14 +422,14 @@ sub vpd {
                 # Output error
                 #############################
                 if ( $Rc != SUCCESS ) {
-                    push @result, [$name,"@{$prefix{$_}}[0]: @$vpd[0]"];  
+                    push @result, [$name,"@{$prefix{$_}}[0]: @$vpd[0]",$Rc];  
                     next;
                 } 
                 #############################
                 # Output value 
                 #############################
                 my $value = "@{$prefix{$_}}[0]: $data->{$_}"; 
-                push @result, [$name,$value];   
+                push @result, [$name,$value,$Rc];   
             }
         }
     }
@@ -473,21 +473,21 @@ sub config {
                 #############################
                 if ( $Rc != SUCCESS ) {
                     my $value = sprintf( "$_", $data );
-                    push @result, [$name,$value];
+                    push @result, [$name,$value,$Rc];
                     next;
                 }
                 #############################
                 # Node not found
                 #############################
                 if (!exists( $data->{$name} )) {
-                    push @result, [$name,"Node not found"];
+                    push @result, [$name,"Node not found",1];
                     next;
                 }
                 #############################
                 # Output value
                 #############################
                 my $value = sprintf( $_, @{$data->{$name}}[$i++] );
-                push @result, [$name,$value];
+                push @result, [$name,$value,$Rc];
             }
         }
     }
@@ -525,3 +525,4 @@ sub all {
 
 
 1;
+
