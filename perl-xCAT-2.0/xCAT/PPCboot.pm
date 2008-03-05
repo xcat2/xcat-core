@@ -251,7 +251,7 @@ sub rnetboot {
     # Invalid target hardware 
     #####################################
     if ( $type !~ /^lpar$/ ) {
-        return( [[$name,"Not supported"]] );
+        return( [[$name,"Not supported",1]] );
     }
     #########################################
     # IVM does not have lpar_netboot command
@@ -274,7 +274,7 @@ sub rnetboot {
     # Form string from array results
     ##################################
     if ( exists($request->{verbose}) ) {
-        return( [[$name,join( '', @$result )]] );
+        return( [[$name,join( '', @$result ),$Rc]] );
     }
     ##################################
     # Return error
@@ -292,9 +292,9 @@ sub rnetboot {
     ##################################
     if ( $Rc != SUCCESS ) {
         if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
-            return( [[$name,$1]] );
+            return( [[$name,$1,$Rc]] );
         }
-        return( [[$name,join( '', @$result )]] );
+        return( [[$name,join( '', @$result ),$Rc]] );
     }
     ##################################
     # Split array into string
@@ -317,7 +317,7 @@ sub rnetboot {
     #
     #####################################
     if ( $data =~ /Finished/) {
-        return( [[$name,"Success"]] );
+        return( [[$name,"Success",$Rc]] );
     }
     ##################################
     # Can still be error w/ Rc=0:
@@ -332,12 +332,13 @@ sub rnetboot {
     #
     #####################################
     if ( $data =~ /lpar_netboot: (.*)/ ) {
-        return( [[$name,$1]] );
+        return( [[$name,$1,1]] );
     }
-    return( [[$name,$data]] );
+    return( [[$name,$data,1]] );
 }
  
 
 1;
+
 
 
