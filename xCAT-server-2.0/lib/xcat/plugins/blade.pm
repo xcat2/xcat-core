@@ -1126,7 +1126,13 @@ sub dompa {
                     Timeout=>1300000, #Beacon, for one, takes a bit over a second to return
                     PrivPass => $mpahash->{$mpa}->{password});
   if ($session->{ErrorStr}) { return 1,$session->{ErrorStr}; }
-  unless ($session) {
+  unless ($session and keys %$session) {
+     my %err=(node=>[]);
+     foreach (keys %{$mpahash{$mpa}->{nodes}}) {
+        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate with $mpa"],errorcode=>[1]});
+     }
+     print $out freeze([\%err]);
+     print $out "\nENDOFFREEZE6sK4ci\n";
      return 1,"General error establishing SNMP communication";
   }
   my $tmp = $session->get([$mmprimoid.".1"]);
