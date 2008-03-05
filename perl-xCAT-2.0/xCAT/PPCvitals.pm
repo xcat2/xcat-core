@@ -173,14 +173,14 @@ sub voltage {
             # No frame command on IVM 
             #################################
             if ( $hwtype eq "ivm" ) {
-                push @result, [$name,"$text Not available"];
+                push @result, [$name,"$text Not available",1];
                 next;
             }
             ################################# 
             # Voltages available in frame
             ################################# 
             if ( @$d[4] ne "bpa" ) {
-                push @result, [$name,"$text Only available for BPA"];
+                push @result, [$name,"$text Only available for BPA",1];
                 next;
             }
             my $volt = enumerate_volt( $exp, $d );
@@ -190,7 +190,7 @@ sub voltage {
             # Output error 
             #################################
             if ( $Rc != SUCCESS ) { 
-                push @result, [$name,"$text @$volt[0]"];
+                push @result, [$name,"$text @$volt[0]",$Rc];
                 next;
             }
             #################################
@@ -201,7 +201,7 @@ sub voltage {
 
             foreach ( @prefix ) {
                 my $value = sprintf($_, $values[$i++]);
-                push @result, [$name,$value];
+                push @result, [$name,$value,$Rc];
             } 
         }
     }
@@ -233,7 +233,7 @@ sub temp {
             # No frame commands for IVM 
             ################################# 
             if ( $hwtype eq "ivm" ) {
-                push @result, [$name,"$prefix Not available (No BPA)"];
+                push @result, [$name,"$prefix Not available (No BPA)",1];
                 next;
             }
             ################################# 
@@ -241,14 +241,14 @@ sub temp {
             ################################# 
             if ( @$d[4] !~ /^fsp|lpar$/ ) {
                 my $text = "$prefix Only available for CEC/LPAR";
-                push @result, [$name,$text];
+                push @result, [$name,$text,1];
                 next;
             }
             ################################# 
             # Error - No frame 
             #################################
             if ( $mtms eq "0" ) {
-                push @result, [$name,"$prefix Not available (No BPA)"];
+                push @result, [$name,"$prefix Not available (No BPA)",1];
                 next;
             }
             #################################
@@ -273,14 +273,14 @@ sub temp {
             # Output error
             #############################
             if ( $Rc != SUCCESS ) {
-                push @result, [$name,"$prefix $data"];
+                push @result, [$name,"$prefix $data",$Rc];
                 next;
             }
             #############################
             # CEC not in frame 
             #############################
             if ( !exists( $data->{$mtms} )) {
-                push @result, [$name,"$prefix CEC '$mtms' not found"];
+                push @result, [$name,"$prefix CEC '$mtms' not found",1];
                 next;
             }
             #############################
@@ -289,7 +289,7 @@ sub temp {
             my $cel   = $data->{$mtms};
             my $fah   = ($cel * 1.8) + 32;
             my $value = "$prefix $cel C ($fah F)";
-            push @result, [$name,$value];
+            push @result, [$name,$value,$Rc];
         }
     }
     return( \@result );
@@ -327,3 +327,4 @@ sub all {
 
 
 1;
+
