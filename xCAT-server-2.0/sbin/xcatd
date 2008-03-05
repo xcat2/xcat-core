@@ -440,7 +440,7 @@ sub plugin_command {
   my @nodes;
   if ($req->{node}) {
     @nodes = @{$req->{node}};
-  } elsif ($req->{noderange}) {
+  } elsif ($req->{noderange} and $req->{noderange}->[0]) {
     @nodes = noderange($req->{noderange}->[0]);
     if (nodesmissed) {
       my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',nodesmissed)};
