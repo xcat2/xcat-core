@@ -11,7 +11,7 @@ I<startmon [-h| --help]>
 I<startmon  [-v| --version]>
 
 
-I<startmon I<name> [-n|--nodestatmon] [-s|--settings item=value[,item=value]...]> 
+I<startmon I<name> [-n|--nodestatmon] [-s|--settings settings]> 
 
 
 =head1 DESCRIPTION
@@ -21,8 +21,10 @@ This command is used to register a monitoring plug-in module and invoke it to mo
 
 =head1 Parameters
 
-I<name> is the name of the monitoring plug-in module. For example, if the the I<name> is called I<xxx>, then the actual file name that the xcatd looks for is I</opt/xcat/lib/perl/xCAT_monitoring/xxx.pm>.  
-
+I<name> is the name of the monitoring plug-in module. For example, if the the I<name> is called I<xxx>, then the actual file name that the xcatd looks for is I</opt/xcat/lib/perl/xCAT_monitoring/xxx.pm>. Use I<lsmon -a> command to list all the monitoring plug-in modules that can be used. 
+ 
+I<settings> is the monitoring plug-in specific settings. It is used to customize the behavior of the plug-in or configure the 3rd party software. Format: I<[key-value],[key=value]...> Please note that the square brackets are needed here. Use I<lsmon name -d> command to look for the possbile setting keys for a plug-in module.
+  
 =head1 OPTIONS
 
 
@@ -30,7 +32,7 @@ B<-h | -help>          Display usage message.
 
 B<-n | -nodestatmon>   Indicate that this monitoring plug-in will be used for feeding the node liveness status to the xCAT I<nodelist> table.
 
-B<-s | -settings>     Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. mon_interval=10,toggle=1.
+B<-s | -settings>     Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. [mon_interval=10],[toggle=1].
 
 B<-v | -version >      Command Version. 
 
@@ -51,11 +53,11 @@ B<-V | -verbose>       Verbose output.
 
 2. To start rmcmon plug-in module (which interacts with IBM's RSCT monitoring software) to monitor the xCAT cluster and have it feed the node liveness status to xCAT's I<nodelist> table, enter:
 
-  startmon rmcmon -n
+  startmon rmcmon -n 
 
 3. To start xcatmon plug-in module to feed the node liveness status to xCAT's I<nodelist> table, enter:
 
-  startmon rmcmon -n -s ping-interval=2
+  startmon rmcmon -n -s [ping-interval=2]
 where 2 is the number of minutes between the pings.
 
 
@@ -67,7 +69,7 @@ where 2 is the number of minutes between the pings.
 
 =head1 NOTES
 
-See stopmon
+See stopmon lsmon
 
 This command is part of the xCAT software product.
 
