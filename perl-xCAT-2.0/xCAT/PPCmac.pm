@@ -261,7 +261,7 @@ sub getmacs {
     # Invalid target hardware 
     #########################################
     if ( $type ne "lpar" ) {
-        return( [[$name,"Node must be LPAR"]] );
+        return( [[$name,"Node must be LPAR",1]] );
     }
     #########################################
     # IVM does not have lpar_netboot command
@@ -285,16 +285,16 @@ sub getmacs {
     # Form string from array results 
     ##################################
     if ( exists($request->{verbose}) ) {
-        return( [[$name,join( '', @$result )]] );
+        return( [[$name,join( '', @$result ),$Rc]] );
     }
     ##################################
     # Return error
     ##################################
     if ( $Rc != SUCCESS ) {
         if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
-            return( [[$name,$1]] );
+            return( [[$name,$1,$Rc]] );
         }
-        return( [[$name,join( '', @$result )]] );
+        return( [[$name,join( '', @$result ),$Rc]] );
     }
     ##################################
     # Split results into array
@@ -325,7 +325,7 @@ sub getmacs {
             $values.= "$_\n";
         }
     }
-    return( [[$name,$values]] );
+    return( [[$name,$values,$Rc]] );
 }
 
 
