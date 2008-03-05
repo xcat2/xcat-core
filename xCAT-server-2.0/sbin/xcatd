@@ -449,6 +449,9 @@ sub plugin_command {
       }
       return ($rsp);
     }
+    unless (@nodes) {
+       $req->{emptynoderange} = [1];
+    }
   }
   if (@nodes) { $req->{node} = \@nodes; }
   my %unhandled_nodes;

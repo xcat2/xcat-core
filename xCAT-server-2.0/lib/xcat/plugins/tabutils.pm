@@ -85,7 +85,7 @@ sub process_request
 
     if ($command eq "nodels")
     {
-        return nodels($nodes, $args, $callback, $request->{noderange}->[0]);
+        return nodels($nodes, $args, $callback, $request->{emptynoderange}->[0]);
     }
     elsif ($command eq "noderm" or $command eq "rmnode")
     {
