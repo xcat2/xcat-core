@@ -397,13 +397,13 @@ sub clone {
     # Not supported on IVM 
     #####################################
     if ( $hwtype eq "ivm" ) {
-        return( ["Not supported for IVM"] );
+        return( [RC_ERROR,"Not supported for IVM"] );
     }
     #####################################
     # Source must be CEC 
     #####################################
     if ( $type ne "fsp" ) {
-        return( ["Node must be an FSP"] );
+        return( [RC_ERROR,"Node must be an FSP"] );
     }
     #####################################
     # Enumerate CECs
@@ -415,7 +415,7 @@ sub clone {
     # Return error
     #####################################
     if ( $Rc != SUCCESS ) {
-        return( [@$cecs[0]] );
+        return( [$Rc, @$cecs[0]] );
     }
     #####################################
     # Find source CEC 
@@ -430,7 +430,7 @@ sub clone {
     # Source CEC not found
     #####################################
     if ( !defined( $srccec )) {
-        return( ["Source CEC '$src' not found"] );
+        return( [RC_ERROR,"Source CEC '$src' not found"] );
     } 
     #####################################
     # Find destination CEC 
@@ -445,7 +445,7 @@ sub clone {
     # Destination CEC not found
     #####################################
     if ( !defined( $destcec )) {
-        return( ["Destination CEC '$dest' not found on '$server'"] );
+        return( [RC_ERROR,"Destination CEC '$dest' not found on '$server'"] );
     }
     
     #####################################
@@ -463,7 +463,7 @@ sub clone {
     # Return error
     #####################################
     if ( $Rc != SUCCESS  ) {
-        return( [@$result[0]] );
+        return( [$Rc, @$result[0]] );
     }
     #####################################
     # Get profile for each LPAR
@@ -486,7 +486,7 @@ sub clone {
         # Return error
         #################################
         if ( $Rc != SUCCESS ) {
-            return( [@$prof[0]] );
+            return( [$Rc, @$prof[0]] );
         }
         #################################
         # Save LPAR profile 
@@ -521,17 +521,17 @@ sub clone {
         if ( $Rc == SUCCESS ) {
             my $err = xCATdB( "mkvm", $srcd, $lparid, $name, $hwtype );
             if ( defined( $err )) {
-                push @values, $err; 
+                push @values, $err, 1; 
             } 
             next;
         }
         #################################
         # Error - Save error 
         #################################
-        push @values, @$result[0]; 
+        push @values, @$result[0], $Rc; 
     }
     if ( !scalar(@values) ) {
-        @values = qw(Success);
+        return( [SUCCESS,"Success"]);
     } 
     return( \@values );
 }
@@ -558,7 +558,7 @@ sub remove {
             # Must be CEC or LPAR
             ####################################
             if ( $type !~ /^lpar|fsp$/ ) {
-                push @values, [$lpar,"Node must be LPAR or CEC"];
+                push @values, [$lpar,"Node must be LPAR or CEC",1];
                 next;
             } 
             ####################################
@@ -583,7 +583,7 @@ sub remove {
                 # Expect error
                 ################################
                 if ( $Rc != SUCCESS  ) {
-                    push @values, [$lpar, @$result[0]];
+                    push @values, [$lpar, @$result[0], $Rc];
                     next;
                 }
                 ################################
@@ -617,11 +617,11 @@ sub remove {
                 if ( $Rc == SUCCESS ) {
                     my $err = xCATdB( "rmvm", $name );
                     if ( defined( $err )) {
-                        push @values, [$lpar,$err];
+                        push @values, [$lpar,$err,1];
                         next;
                     }
                 }
-                push @values, [$lpar,@$result[0]];
+                push @values, [$lpar,@$result[0],$Rc];
             }
         }
     }
@@ -653,7 +653,7 @@ sub modify {
 
     if ( $cfgdata !~ /^name=/ ) {
         my $text = "Invalid file format: must begin with 'name='";
-        return( [[$name,$text]] );
+        return( [[$name,$text,1]] );
     }
 
     #######################################
@@ -679,8 +679,7 @@ sub modify {
             my $result = xCAT::PPCcli::chsyscfg( $exp, $d, $cfg );
             my $Rc = shift(@$result);
 
-            push @values, [$lpar,@$result[0]];
-            return( [[$lpar,@$result[0]]] );
+            push @values, [$lpar,@$result[0],$Rc];
         }
     }
     return( \@values );
@@ -710,7 +709,7 @@ sub list {
             # Must be CEC or LPAR
             ####################################
             if ( $type !~ /^lpar|fsp$/ ) {
-                push @values, [$lpar,"Node must be LPAR or CEC"];
+                push @values, [$lpar,"Node must be LPAR or CEC",1];
                 next;
             }
             ####################################
@@ -735,7 +734,7 @@ sub list {
                 # Expect error
                 ################################
                 if ( $Rc != SUCCESS  ) {
-                    push @values, [$lpar, @$result[0]];
+                    push @values, [$lpar, @$result[0], $Rc];
                     next;
                 }
                 ################################
@@ -765,7 +764,7 @@ sub list {
                 # Return error
                 #################################
                 if ( $Rc != SUCCESS ) {
-                    push @values, [$lpar, @$prof[0]];
+                    push @values, [$lpar, @$prof[0], $Rc];
                     next;
                 }
                 #################################
@@ -773,7 +772,7 @@ sub list {
                 #################################
                 $profile .= "@$prof[0]\n\n";
             }                
-            push @values, [$lpar, $profile];
+            push @values, [$lpar, $profile, SUCCESS];
         }
     }
     return( \@values );
@@ -805,7 +804,7 @@ sub create {
             # Must be CEC or LPAR 
             #####################################
             if ( $type !~ /^lpar|fsp$/ ) {
-                push @values, [$lpar,"Node must be LPAR or CEC"];
+                push @values, [$lpar,"Node must be LPAR or CEC",1];
                 next; 
             }
             #####################################
@@ -814,7 +813,8 @@ sub create {
             if ( exists( $opt->{c} )) {
                 my $result = clone( $exp, $lpar, $opt->{c}, $d );
                 foreach ( @$result ) {  
-                    push @values, [$opt->{c}, $_];
+                    my $Rc = shift(@$_);
+                    push @values, [$opt->{c}, @$_[0], $Rc];
                 }
                 next; 
             }
@@ -832,7 +832,7 @@ sub create {
             # Return error
             #####################################
             if ( $Rc != SUCCESS ) {
-                push @values, [$lpar, @$prof[0]];
+                push @values, [$lpar, @$prof[0], $Rc];
                 next;
             } 
             #####################################
@@ -871,11 +871,11 @@ sub create {
             if ( $Rc == SUCCESS ) {
                 my $err = xCATdB( "mkvm", $name, $id, $d, $hwtype, $lpar );
                 if ( defined( $err )) {
-                    push @values, [$name,$err];
+                    push @values, [$name,$err,1];
                     next;
                 }
             }
-            push @values, [$name,@$result[0]];
+            push @values, [$name,@$result[0],$Rc];
         }
     }
     return( \@values );
@@ -1022,3 +1022,4 @@ sub lsvm {
 
 
 1;
+
