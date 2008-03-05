@@ -726,6 +726,7 @@ sub tabgrep
     foreach (@tablist)
     {
         my $tab = xCAT::Table->new($_);
+        unless ($tab) { next; }
         if ($tab and $tab->getNodeAttribs($node->[0], ["node"]))
         {
             $callback->({data => [$_]});
