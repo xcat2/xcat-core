@@ -542,11 +542,12 @@ sub rmvterm {
 ##########################################################################
 sub lshwres {
 
-    my $exp   = shift;
-    my $d     = shift;
-    my $mtms  = shift;
-    my $cmd   = "lshwres -r @$d[1] -m $mtms -F @$d[2]";
-    my $level = @$d[0];
+    my $exp     = shift;
+    my $d       = shift;
+    my $mtms    = shift;
+    my $cmd     = "lshwres -r @$d[1] -m $mtms -F @$d[2]";
+    my $level   = @$d[0];
+    my $timeout = 30;
  
     #####################################
     # level may be "sys" or "lpar" 
@@ -557,7 +558,7 @@ sub lshwres {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd );
+    my $result = send_cmd( $exp, $cmd, $timeout );
     return( $result );
 }
 
