@@ -71,7 +71,7 @@ sub connect {
     my $verbose    = shift;
     my $pwd_prompt = 'assword: $';
     my $continue   = 'continue connecting (yes/no)?';
-    my $timeout    = 10;
+    my $timeout    = 15;
     my $success    = 0;
     my $pwd_sent   = 0;
     my $expect_log;
@@ -379,11 +379,6 @@ sub chsysstate {
         $ssh->send( "$cmd\r" );
         return( [SUCCESS,"Success"] );
     }
-    #####################################
-    # Increase timeout for power command 
-    #####################################
-    my $timeout = 15; 
-
     #####################################
     # Send command
     #####################################
@@ -721,7 +716,7 @@ sub send_cmd {
     # Set default Expect timeout 
     ##########################################
     if ( !defined( $timeout )) {
-        $timeout = 10;
+        $timeout = 20;
     }
     ##########################################
     # Send command 
