@@ -209,10 +209,12 @@ sub enumerate {
                 $Rc = shift(@$cages);
 
                 #############################
-                # Return error 
+                # Skip...
+                # Frame in bad state 
                 #############################
                 if ( $Rc != SUCCESS ) {
-                    return( @$cages[0] );
+                    push @values, "# $mtms: ERROR @$cages[0]";
+                    next;
                 }
                 #############################
                 # Success 
@@ -306,6 +308,7 @@ sub enumerate {
         # CEC could be "Incomplete" state
         ####################################
         if ( $Rc == RC_ERROR ) {
+            push @values, "# $mtms: ERROR @$lpars[0]";
             next;
         }
         ####################################
@@ -353,7 +356,11 @@ sub format_output {
         my $uid    = @$exp[4];
         my $pw     = @$exp[5];
 
-        xCAT::PPCdb::add_ppc( $hwtype, $values );
+        #######################################
+        # Strip errors for results
+        #######################################
+        my @val = grep( !/^#.*: ERROR /, @$values );
+        xCAT::PPCdb::add_ppc( $hwtype, \@val );
     }
     ###########################################
     # -x flag for xml format
@@ -372,6 +379,12 @@ sub format_output {
         # Get longest name for formatting
         #######################################
         foreach ( @$values ) {
+            ###################################
+            # Skip error message
+            ###################################
+            if ( /^#.*: ERROR / ) {
+                next;
+            }
             /[^\,]+,([^\,]+),/;
             my $length  = length( $1 );
             $max_length = ($length > $max_length) ? $length : $max_length;
@@ -388,10 +401,18 @@ sub format_output {
         #######################################
         # Add node information
         #######################################
+        my @errmsg;
         foreach ( @$values ) {
             my @data = split /,/;
             my $i = 0;
 
+            ###################################
+            # Save error messages for last
+            ###################################
+            if ( /^#.*: ERROR / ) {
+                push @errmsg, $_;
+                next;
+            }
             foreach ( @header ) {
                 my $d = $data[$i++]; 
 
@@ -406,6 +427,12 @@ sub format_output {
                 }
                 $result .= sprintf( @$_[1], $d );
             }
+        }
+        #######################################
+        # Add any error messages 
+        #######################################
+        foreach ( @errmsg ) {
+            $result.= "\n$_";
         }
     }
     $output{data} = [$result];
@@ -433,6 +460,12 @@ sub format_stanza {
         my $type = $data[0];
         my $i = 0;
 
+        #################################
+        # Skip error message 
+        #################################
+        if ( /^#.*: ERROR / ) {
+            next;
+        }
         #################################
         # Node attributes
         #################################
@@ -486,6 +519,12 @@ sub format_xml {
         my $type = $data[0];
         my $i = 0;
 
+        #################################
+        # Skip error message
+        #################################
+        if ( /^#.*: ERROR / ) {
+            next;
+        }
         #################################
         # Initialize hash reference
         #################################
@@ -542,7 +581,7 @@ sub rscan {
     ###################################
     my $values = enumerate( $exp );
     if ( ref($values) ne 'ARRAY' ) {
-        return( [[$server,$values]] );
+        return( [[$server,$values,1]] );
     }
     ###################################
     # Success 
@@ -556,6 +595,7 @@ sub rscan {
 
 
 1;
+
 
 
 
