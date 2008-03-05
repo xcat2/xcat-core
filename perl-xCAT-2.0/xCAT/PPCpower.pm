@@ -182,14 +182,14 @@ sub powercmd_boot {
         # Output error
         ##################################
         if ( $Rc != SUCCESS ) {
-            push @output, [$name,$data];
+            push @output, [$name,$data,$Rc];
             next;
         }
         ##################################
         # Node not found 
         ##################################
         if ( !exists( $data->{$name} )) {
-            push @output, [$name,"Node not found"];
+            push @output, [$name,"Node not found",1];
             next;
         }
         ##################################
@@ -205,7 +205,7 @@ sub powercmd_boot {
                             $exp,
                             $op,
                             $d );
-        push @output, [$name,@$result[1]];
+        push @output, [$name,@$result[1],@$result[0]];
     }
     return( \@output );
 }
@@ -239,7 +239,7 @@ sub powercmd {
         ################################
         # Return result
         ################################
-        push @result, [$name,@$values[0]];
+        push @result, [$name,@$values[0],$Rc];
     }
     return( \@result );
 }
@@ -293,14 +293,14 @@ sub state {
             # Output error
             ##################################
             if ( $Rc != SUCCESS ) {
-                push @result, [$name, "$prefix$data"];
+                push @result, [$name, "$prefix$data",$Rc];
                 next;
             }
             ##################################
             # Node not found 
             ##################################
             if ( !exists( $data->{$name} )) {
-                push @result, [$name, $prefix."Node not found"];
+                push @result, [$name, $prefix."Node not found",1];
                 next;
             }
             ##################################
@@ -314,7 +314,7 @@ sub state {
             if ( defined( $convert )) {
                 $value = power_status( $value );
             }
-            push @result, [$name,"$prefix$value"];
+            push @result, [$name,"$prefix$value",$Rc];
         }
     }
     return( \@result );
@@ -323,3 +323,4 @@ sub state {
 
 
 1;
+
