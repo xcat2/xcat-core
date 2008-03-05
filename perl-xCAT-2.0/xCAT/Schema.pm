@@ -193,7 +193,7 @@ nodehm => {
 	},
   },
 nodelist => {
-    cols => [qw(node nodetype groups status comments disable)],
+    cols => [qw(node groups nodetype status comments disable)],
     keys => [qw(node)],
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
     descriptions => {
@@ -409,7 +409,7 @@ switch =>  {
 	descriptions => {
 		node => 'The node name or group name.',
 		switch => 'The switch hostname.',
-		port => 'The port number in the switch that this node is connected to.',
+		port => 'The port number in the switch that this node is connected to. On a simple 1U switch, an administrator can generally enter the number as printed next to the ports, and xCAT will understand switch representation differences.  On stacked switches or switches with line cards, administrators should usually use the CLI representation (i.e. 2/0/1 or 5/8).  One notable exception is stacked SMC 8848M switches, in which you must add 56 for the proceeding switch, then the port number.  For example, port 3 on the second switch in an SMC8848M stack would be 59',
 		vlan => 'xCAT currently does not make use of this field, however it may do so in the future.  For now, it can be used by administrators for their own purposes, but keep in mind some xCAT feature later may try to enforce this if set',
 		interface => 'The interface name from the node perspective.  This is not currently used by xCAT, but administrators may wish to use this for their own purposes',
     	comments => 'Any user-written notes.',
