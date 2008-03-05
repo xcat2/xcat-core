@@ -35,6 +35,7 @@ while :; do
     usleep 500000 #Mitigate occurrances of 'failed to notify node'
     while [ ! -r /restart ]; do
       ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1 "|" $5}'
+      sleep 1
       MTM="unknown"
       SERIAL="unknown"
       if [ -x /bin/vpddecode ]; then
