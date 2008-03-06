@@ -5,7 +5,7 @@ deconfig)
 	/sbin/ifconfig $interface 0.0.0.0
 	;;
 bound|renew)
-    echo $siaddr > /tmp/dhcpserver
+    echo $siaddr >> /tmp/dhcpserver
 	/sbin/ifconfig $interface $ip netmask $subnet
         if [ -n "$router" ] ; then
              echo "deleting routers"

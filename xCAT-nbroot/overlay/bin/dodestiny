@@ -77,7 +77,9 @@ while :; do
       then
         #if usleep succeeded, that means it wasn't killed and therefore, no answer yet
         killall udpcat.awk #reap hung ones
-        cat /tmp/discout | udpcat.awk `cat /tmp/dhcpserver` $XCATPORT &
+        for dhcps in `cat /tmp/dhcpserver`; do 
+         cat /tmp/discout | udpcat.awk $dhcps $XCATPORT &
+        done
         usleep 8000000
       fi
       killall udpcat.awk #reap hung ones
