@@ -95,35 +95,16 @@ sub enumerate_vpd {
     my $exp     = shift;
     my $mtms    = shift;
     my $hash    = shift;
-    my $filter  = shift;
-    my $cecname;
+    my $filter  = "type_model,serial_num";
     my @vpd;
 
     my ($name) = keys %{$hash->{$mtms}};
     my $type   = @{$hash->{$mtms}->{$name}}[4];
 
-    ######################################
-    # HMCs and IVMs 
-    ######################################
-    if ( $type =~ /^hmc|ivm$/ ) {
-        my $hcp = xCAT::PPCcli::lshmc( $exp );
-        my $Rc  = shift(@$hcp);
-
-        ##############################
-        # Return error
-        ##############################
-        if ( $Rc != SUCCESS ) {
-            return( [$Rc,@$hcp[0]] );
-        }
-        ##############################
-        # Success
-        ##############################
-        @vpd = split /,/, @$hcp[0];
-    }
-    ######################################
+    ##################################
     # BPAs  
-    ######################################
-    elsif ( $type =~ /^bpa$/ ) {
+    ##################################
+    if ( $type =~ /^bpa$/ ) {
         my $filter = "type_model,serial_num";
         my $frame  = xCAT::PPCcli::lssyscfg( $exp, $type, $mtms, $filter );
         my $Rc = shift(@$frame);
@@ -139,9 +120,9 @@ sub enumerate_vpd {
         ##############################
         @vpd = split /,/, @$frame[0];
     }
-    ######################################
+    ##################################
     # CECs and LPARs  
-    ######################################
+    ##################################
     else {
         ##############################
         # Send command for CEC only
@@ -181,11 +162,10 @@ sub enumerate_cfg {
     my @cmds    = (
         [ "sys", "proc", "installed_sys_proc_units" ],
         [ "sys", "mem",  "installed_sys_mem" ],
-        [ "lpar","proc", "lpar_name,curr_procs" ],
-        [ "lpar","mem",  "lpar_name,curr_mem" ]
+        [ "lpar","proc", "lpar_id,curr_procs" ],
+        [ "lpar","mem",  "lpar_id,curr_mem" ]
     );
-    my $cecname;
-
+    my $cec;
     my ($name) = keys %{$hash->{$mtms}};
     my $type   = @{$hash->{$mtms}->{$name}}[4];
 
@@ -200,14 +180,14 @@ sub enumerate_cfg {
     ######################################
     while (my ($name,$d) = each(%{$hash->{$mtms}}) ) { 
         if ( @$d[4] eq "fsp" ) {
-            $cecname = $name;
+            $cec = $name;
             last;
         }
     }
     ######################################
     # No CECs - Skip command for CEC
     ######################################
-    if ( !defined( $cecname )) {
+    if ( !defined( $cec )) {
         shift @cmds;
         shift @cmds;
     }
@@ -218,7 +198,7 @@ sub enumerate_cfg {
         pop @cmds;
         pop @cmds;
     }
-            
+           
     foreach my $cmd( @cmds ) {
         my $result = xCAT::PPCcli::lshwres( $exp, $cmd, $mtms ); 
         my $Rc = shift(@$result);
@@ -232,19 +212,18 @@ sub enumerate_cfg {
         ##################################
         # Success...
         # lshwres does not return CEC name
-        # For CEC commands, insert name 
         ##################################
         if ( @$cmd[0] eq "sys" ) {
             foreach ( @$result[0] ) {
-                s/(.*)/$cecname,$1/;
+                s/(.*)/0,$1/;
             }
         }
         ##################################
-        # Save by CEC/LPAR name 
+        # Save by CEC/LPAR id 
         ##################################
         foreach ( @$result ) {
-            my ($name,$value) = split /,/;
-            push @{$outhash{ $name }}, $value;
+            my ($id,$value) = split /,/;
+            push @{$outhash{$id}}, $value;
         }
     }
     return( [SUCCESS,\%outhash] );
@@ -259,16 +238,15 @@ sub enumerate_bus {
     my $exp     = shift;
     my $mtms    = shift;
     my $hash    = shift;
-    my $filter  = shift;
     my %outhash = ();
     my @res     = qw(lpar);
+    my $filter  = "drc_name,bus_id,description";
     my @cmds    = (
         undef, 
         "io --rsubtype slot", 
         $filter
     );
-    my $cecname;
-
+    my $cec;
     my ($name) = keys %{$hash->{$mtms}};
     my $type   = @{$hash->{$mtms}->{$name}}[4];
 
@@ -300,14 +278,14 @@ sub enumerate_bus {
     ##################################
     foreach ( keys %{$hash->{$mtms}} ) {
         if ( @{$hash->{$mtms}->{$_}}[4] eq "fsp" ) {
-            $cecname = $_;
+            $cec = $_;
             last;
         }
     }
     ##################################
-    # Get LPAR names
+    # Get LPAR ids 
     ##################################
-    my $lpars = xCAT::PPCcli::lssyscfg( $exp, "lpar", $mtms, "name" );
+    my $lpars = xCAT::PPCcli::lssyscfg( $exp, "lpar", $mtms, "lpar_id" );
     $Rc = shift(@$lpars);
 
     ##################################
@@ -317,16 +295,16 @@ sub enumerate_bus {
         return( [$Rc,@$lpars[0]] );
     }
     ##################################
-    # Save LPARs by name
+    # Save LPARs by id 
     ##################################
     foreach ( @$lpars ) {
         $outhash{$_} = \@bus;
     }
     ##################################
-    # Save CEC by name too
+    # Save CEC by id
     ##################################
-    if ( defined( $cecname )) {
-        $outhash{$cecname} = \@bus;
+    if ( defined( $cec )) {
+        $outhash{"0"} = \@bus;
     }
     return( [SUCCESS,\%outhash] );
 }
@@ -342,17 +320,22 @@ sub bus {
     my $hash    = shift;
     my $exp     = shift;
     my @result  = ();
-    my $filter  = "drc_name,bus_id,description";
 
     while (my ($mtms,$h) = each(%$hash) ) {
         #####################################
         # Get information for this CEC
         #####################################
-        my $bus = enumerate_bus( $exp, $mtms, $hash, $filter );
+        my $bus = enumerate_bus( $exp, $mtms, $hash );
         my $Rc = shift(@$bus);
         my $data = @$bus[0];
 
-        while (my ($name) = each(%$h) ) {
+        while (my ($name,$d) = each(%$h) ) {
+            ##################################
+            # Look up by lparid
+            ##################################
+            my $type = @$d[4];
+            my $id   = ($type=~/^fsp$/) ? 0 : @$d[0];
+
             #################################
             # Output header 
             #################################
@@ -368,14 +351,14 @@ sub bus {
             #################################
             # Node not found 
             #################################
-            if ( !exists( $data->{$name} )) {
+            if ( !exists( $data->{$id} )) {
                 push @result, [$name,"Node not found",1];
                 next;
             } 
             #################################
             # Output values 
             #################################
-            foreach ( @{$data->{$name}} ) {
+            foreach ( @{$data->{$id}} ) {
                 s/,/:/;
                 push @result, [$name,$_,$Rc];
             }
@@ -395,7 +378,6 @@ sub vpd {
     my $exp     = shift;
     my @cmds    = $request->{method};
     my @result  = ();
-    my $filter  = "type_model,serial_num";
     my %prefix  = (
        model  => ["Machine Type/Model",0],
        serial => ["Serial Number",     1]
@@ -412,7 +394,7 @@ sub vpd {
         #####################################
         # Get information for this CEC
         #####################################
-        my $vpd = enumerate_vpd( $exp, $mtms, $hash, $filter );
+        my $vpd = enumerate_vpd( $exp, $mtms, $hash );
         my $Rc = shift(@$vpd);
         my $data = @$vpd[0];
 
@@ -460,7 +442,13 @@ sub config {
         my $Rc = shift(@$cfg);
         my $data = @$cfg[0];
             
-        while (my ($name) = each(%$h) ) {
+        while (my ($name,$d) = each(%$h) ) {
+            ##################################
+            # Look up by lparid
+            ##################################
+            my $type = @$d[4];
+            my $id   = ($type=~/^fsp$/) ? 0 : @$d[0];
+
             #################################
             # Output header
             #################################
@@ -479,14 +467,14 @@ sub config {
                 #############################
                 # Node not found
                 #############################
-                if (!exists( $data->{$name} )) {
+                if (!exists( $data->{$id} )) {
                     push @result, [$name,"Node not found",1];
                     next;
                 }
                 #############################
                 # Output value
                 #############################
-                my $value = sprintf( $_, @{$data->{$name}}[$i++] );
+                my $value = sprintf( $_, @{$data->{$id}}[$i++] );
                 push @result, [$name,$value,$Rc];
             }
         }
