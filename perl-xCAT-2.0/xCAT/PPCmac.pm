@@ -250,18 +250,49 @@ sub getmacs {
     my $opt     = $request->{opt};
     my $hwtype  = @$exp[2];
     my $result;
+    my $node;
 
     #########################################
     # Get node data 
     #########################################
-    my $type = @$d[4];
-    my $name = @$d[6];
+    my $lparid = @$d[0];
+    my $mtms   = @$d[2];
+    my $type   = @$d[4];
+    my $name   = @$d[6];
 
     #########################################
     # Invalid target hardware 
     #########################################
     if ( $type ne "lpar" ) {
-        return( [[$name,"Node must be LPAR",1]] );
+        return( [[$name,"Node must be LPAR",RC_ERROR]] );
+    }
+    #########################################
+    # Get name known by HCP
+    #########################################
+    my $filter = "name,lpar_id";
+    my $values = xCAT::PPCcli::lssyscfg( $exp, $type, $mtms, $filter );
+    my $Rc = shift(@$values);
+
+    #########################################
+    # Return error
+    #########################################
+    if ( $Rc != SUCCESS ) {
+        return( [[$name,@$values[0],$Rc]] );
+    }
+    #########################################
+    # Find LPARs by lpar_id
+    #########################################
+    foreach ( @$values ) {
+        if ( /^(.*),$lparid$/ ) {
+            $node = $1;
+            last;
+        }
+    }
+    #########################################
+    # Node not found by lpar_id 
+    #########################################
+    if ( !defined( $node )) {
+        return( [[$name,"Node not found, lparid=$lparid",RC_ERROR]] );
     }
     #########################################
     # IVM does not have lpar_netboot command
@@ -269,13 +300,13 @@ sub getmacs {
     # addresses. 
     #########################################
     if ( $hwtype eq "ivm" ) {
-        $result = ivm_getmacs( $request, $d, $exp, $name );
+        $result = ivm_getmacs( $request, $d, $exp, $node );
     }
     else {
         $result = xCAT::PPCcli::lpar_netboot( 
                            $exp,
                            $request->{verbose},
-                           $name,
+                           $node,
                            $d,
                            $opt );
     }
@@ -330,6 +361,7 @@ sub getmacs {
 
 
 1;
+
 
 
 
