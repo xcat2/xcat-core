@@ -47,6 +47,11 @@ do
 		    modprobe $MOD
 		    udhcpc -i eth$nic -b
                     nic=$(($nic + 1))
+         let extrat=0
+         until ifconfig eth$nic|grep "inet addr" || [ $extrat == 30 ]; do
+             sleep 1
+             let extrat=extrat+1
+         done
                 fi
                 ;;
             scsi|raid)
@@ -68,6 +73,11 @@ if [ -d /proc/device-tree/vdevice/l-lan* ]; then
         for i in /sys/bus/vio/drivers/ibmveth/*/net*; do
     	    udhcpc -i eth$nic -b
             nic=$(($nic + 1))
+         let extrat=0
+         until ifconfig eth$nic|grep "inet addr" || [ $extrat == 30 ]; do
+             sleep 1
+             let extrat=extrat+1
+         done
 	done
 fi
 	
@@ -76,8 +86,13 @@ if [ -d /proc/device-tree/lhea* ]; then
             for i in /sys/bus/ibmebus/devices/port*; do
     		    udhcpc -i eth$nic -b
                 nic=$(($nic + 1))
+         let extrat=0
+         until ifconfig eth$nic|grep "inet addr" || [ $extrat == 30 ]; do
+             sleep 1
+             let extrat=extrat+1
+         done
             done
 fi
 
-#Give 10 seconds for things to quiesce.
-sleep 10
+#Give 5 seconds for things to quiesce.
+sleep 5
