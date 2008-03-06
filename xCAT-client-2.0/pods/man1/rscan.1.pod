@@ -68,74 +68,98 @@ I<rscan ivm02 -x -w>
 Output is similar to:
 
  <Node>
-   <address>ivm02</address>
-   <id></id>
-   <name>ivm02</name>
-   <serial-number>10B7D1G</serial-number>
-   <type>ivm</type>
-   <type-model>9133-55A</type-model>
+   <profile></profile>
+   <parent></parent>
+   <serial>10B7D1G</serial>
+   <model>9133-55A</model>
+   <node>Server-9133-55A-10B7D1G</node>
+   <mgt>ivm</mgt>
+   <nodetype>fsp</nodetype>
+   <hcp>ivm02</hcp>
+   <groups>fsp,all</groups>
+   <id>10</id>
  </Node>
 
  <Node>
-   <address>3.3.3.91</address>
-   <id></id>
-   <name>Server-9133-55A-SN10B7D1G</name>
-   <serial-number>10B7D1G</serial-number>
-   <type>fsp</type>
-   <type-model>9133-55A</type-model>
- </Node>
-
- <Node>
-   <address></address>
+   <profile>lpar01</profile>
+   <parent>Server-9133-55A-10B7D1G</parent>
+   <serial></serial>
+   <model></model>
+   <node>lpar01</node>
+   <mgt>ivm</mgt>
+   <nodetype>lpar,osi</nodetype>
+   <hcp>ivm02</hcp>
+   <groups>lpar,all</groups>
    <id>1</id>
-   <name>10-B7D1G</name>
-   <serial-number>10B7D1G</serial-number>
-   <type>lpar</type>
-   <type-model>9133-55A</type-model>
-  </Node>
-
  <Node>
-   <address></address> 
+
+ </Node>
+   <profile>lpar02</profile>
+   <parent>Server-9133-55A-10B7D1G</parent>
+   <serial></serial>
+   <model></model>
+   <node>lpar02</node>
+   <mgt>ivm</mgt>
+   <nodetype>lpar,osi</nodetype>
+   <hcp>ivm02</hcp>
+   <groups>lpar,all</groups>
    <id>2</id>
-   <name>lp2</name>
-   <serial-number>10B7D1G</serial-number>
-   <type>lpar</type>
-   <type-model>9133-55A</type-model>
-  </Node>
+ </Node>
 
 
+3. To list all nodes managed by HMC hmc02 in stanza format and write the output to the xCAT database, enter:
 
-3. To list all nodes managed by Management Module mm03 in stanza format and write the output to the xCAT database, enter:
-
-I<rscan mm03 -z -w>
+I<rscan hmc02 -z -w>
 
 Output is similar to:
 
-  SN#IBM:
+  Server-9458-100992001Y_B:
     objtype=node
-    type=mm
-    id=0
-    type-model=8852-22Z
-    serial-number=23A4328
-    address=mm01
+    nodetype=bpa
+    id=2
+    model=9458-100
+    serial=992001Y
+    hcp=hmc02
+    profile=
+    parent=
+    groups=bpa,all
+    mgt=hmc
 
-  blade1:
+  Server-9119-590-SN02C5F9E: 
     objtype=node
-    type=blade
+    type=fsp
+    id=10
+    model=9119-590
+    serial=02C5F9E
+    hcp=hmc02
+    profile=
+    parent=Server-9458-100992001Y_B
+    groups=fsp,all
+    mgt=hmc
+
+  lpar01:
+    objtype=node
+    nodetype=lpar,osi
     id=1
-    type-model=8853-SWZ
-    serial-number=23AD188
-    address=
+    model=
+    serial=
+    hcp=hmc02
+    profile=lpar01
+    parent=Server-9119-590-SN02C5F9E
+    groups=lpar,all
+    mgt=hmc
 
-  blade2:
+  lpar02:
     objtype=node
-    type=blade
-    id=3
-    type-model=7971-6AZ
-    serial-number=23A0052
-    address=
-
-
+    nodetype=lpar,osi
+    id=2
+    model=
+    serial=
+    hcp=hmc02
+    profile=lpar02
+    parent=Server-9119-590-SN02C5F9E
+    groups=lpar,all
+    mgt=hmc
 
 
 =head1 FILES
@@ -149,4 +173,5 @@ This command is part of the xCAT software product.
 
 
  
+
 
