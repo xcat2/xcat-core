@@ -414,7 +414,7 @@ sub resolve {
         $att->{parent}  = exists($att->{parent}) ? $att->{parent} : 0;
         $att->{bpa}     = $att->{parent};
     }
-    elsif ( $type =~ /^$NODETYPE::BPA$/ ) {
+    elsif ( $type =~ /^$::NODETYPE_BPA$/ ) {
         $att->{profile} = 0;
         $att->{id}      = 0;
         $att->{bpa}     = 0;
