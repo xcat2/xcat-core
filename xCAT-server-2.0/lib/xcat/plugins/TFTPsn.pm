@@ -34,23 +34,23 @@ sub handled_commands
     if (xCAT::Utils->isServiceNode())
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
-        my $nodename   = pop @nodeinfo; # get hostname
-        my @nodeipaddr = @nodeinfo;  # get ip addresses
+        my $nodename   = pop @nodeinfo;                    # get hostname
+        my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service    = "tftpserver";
 
         # check to see if service required
-        $rc = xCAT::Utils->isServiceReq($nodename, $service,\@nodeipaddr);
+        $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
         if ($rc != 1)    # service not required
         {
             return 0;
         }
-    }
-    $rc = &setup_TFTP($nodename);    # setup TFTP
-    if ($rc == 0)
-    {
-        if (xCAT::Utils->isServiceNode())
+        $rc = &setup_TFTP($nodename);    # setup TFTP
+        if ($rc == 0)
         {
-            xCAT::Utils->update_xCATSN($service);
+            if (xCAT::Utils->isServiceNode())
+            {
+                xCAT::Utils->update_xCATSN($service);
+            }
         }
     }
     return $rc;
