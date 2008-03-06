@@ -11,6 +11,7 @@ use Sys::Hostname;
 use Socket;
 use xCAT::Utils;
 use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
 
 #print "xCAT_monitoring::rmcmon loaded\n";
 1;
@@ -44,10 +45,7 @@ use xCAT::GlobalDef;
       monitored by RMC are in sync with the nodes currently
       in the xCAT cluster.
     Arguments:
-      monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype, status] arrays  
-         monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
+      None.
     Returns:
       (return code, message)      
 =cut
@@ -55,13 +53,7 @@ use xCAT::GlobalDef;
 sub start {
   print "rmcmon::start called\n";
 
-  $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::rmcmon/) {
-    $noderef=shift;
-  }
-
-  #TODO: get a list of monservers + nodes and compare them with RMC. remove/add 
-  # if necessary. 
+  my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
     
   #assume the server is the current node.
   #check if rsct is installed and running
@@ -237,10 +229,7 @@ sub supportNodeStatusMon {
     to monitor the node status changes.  
 
     Arguments:
-      monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype, status] arrays  
-         monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
+       None.
     Returns:
         (return code, message)
 

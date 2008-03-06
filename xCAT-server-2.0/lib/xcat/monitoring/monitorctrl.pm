@@ -327,16 +327,6 @@ sub startMonitoring {
      @product_names=keys(%PRODUCT_LIST);    
   }
 
-  my $monservers;
-  if (@product_names > 0) {
-    #get a list of monitoring servers and the nodes they are responsible for monitoring. 
-    $monservers=getMonHierarchy();
-    #foreach (keys(%$monservers)) {
-    #  print "  monitoring server: $_\n";
-    #  my $mon_nodes=$monservers->{$_};
-    #  print "    nodes: @$mon_nodes\n";
-    #}
-  }
 
   my %ret=();
   foreach(@product_names) {
@@ -346,7 +336,7 @@ sub startMonitoring {
 
       undef $SIG{CHLD};
       #initialize and start monitoring
-      my @ret1 = ${$module_name."::"}{start}->($monservers);
+      my @ret1 = ${$module_name."::"}{start}->();
       $ret{$_}=\@ret1;
     } else {
        $ret{$_}=[1, "Monitoring plug-in module $_ is not registered."];
@@ -388,7 +378,7 @@ sub startNodeStatusMonitoring {
       # return value 0 means not support. 1 means yes. 
       if ($method > 0) {
         #start nodes tatus monitoring
-        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->(getMonHierarchy()); 
+        my @ret2 = ${$module_name."::"}{startNodeStatusMon}->(); 
         return @ret2;
       }         
       else {

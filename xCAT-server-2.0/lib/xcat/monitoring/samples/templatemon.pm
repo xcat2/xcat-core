@@ -1,11 +1,14 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
 package xCAT_monitoring::templatemon;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 
-#use xCAT::NodeRange;
-#use Socket;
-#use xCAT::Utils;
-
+use xCAT_monitoring::monitorctrl;
 
 1;
 #-------------------------------------------------------------------------------
@@ -32,22 +35,15 @@ package xCAT_monitoring::templatemon;
       monitored by the product are in sync with the nodes currently
       in the xCAT cluster.
     Arguments:
-      monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype, status] arrays  
-         monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
+      None.
     Returns:
       (return code, message)      
 =cut
 #--------------------------------------------------------------------------------
 sub start {
-  my $monservers=shift;
-  if ($monservers =~ /xCAT_monitoring::templatemon/) {
-    $monservers=shift;
-  }
+  my $monservers=xCAT_monitoring::monitorctrl->getMonHierarchy();
 
   #demo how you can parse the input. you may commnet it out.
-  my $monservers=shift;
   foreach (keys(%$monservers)) {
     print "  monitoring server: $_\n";
     my $mon_nodes=$monservers->{$_};
@@ -120,13 +116,9 @@ sub supportNodeStatusMon {
 =cut
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
-  my $monservers=shift;
-  if ($monservers =~ /xCAT_monitoring::templatemon/) {
-    $monservers=shift;
-  }
+  my $monservers=xCAT_monitoring::monitorctrl->getMonHierarchy();
 
   #demo how you can parse the input. you may commnet it out.
-  my $monservers=shift;
   foreach (keys(%$monservers)) {
     print "  monitoring server: $_\n";
     my $mon_nodes=$monservers->{$_};

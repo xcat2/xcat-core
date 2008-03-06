@@ -27,10 +27,7 @@ use Sys::Hostname;
       This function gets called by the monitorctrl module
       when xcatd starts.  
     Arguments:
-      monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype, status] arrays  
-         monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}
+      None.
     Returns:
       (return code, message)      
 =cut
@@ -85,10 +82,7 @@ sub supportNodeStatusMon {
     the product to start monitoring the node status and feed them back
     to xCAT.  
     Arguments:
-      monservers --A hash reference keyed by the monitoring server nodes 
-         and each value is a ref to an array of [nodes, nodetype, status] arrays  
-         monitored by the server. So the format is:
-           {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}   
+      None.
     Returns:
         (return code, message)
 
