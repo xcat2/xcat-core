@@ -97,16 +97,18 @@ sub setup_CONS
 
         # make the consever 8 configuration file
         $cmd = "makeconservercf";
-        xCAT::Utils->runcmd($cmd, -1);
+        xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {    # error
             xCAT::MsgUtils->message("S", "Error running $cmd");
+            return 1;
         }
         my $cmd = "chkconfig conserver on";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {    # error
             xCAT::MsgUtils->message("S", "Error chkconfig conserver on");
+            return 1;
         }
 
         # start conserver
