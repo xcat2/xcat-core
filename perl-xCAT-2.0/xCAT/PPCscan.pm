@@ -21,7 +21,7 @@ my @header = (
     ["serial-number", "%-15s" ],
     ["address",       "%s\n" ]);
 
-my @attribs = qw(nodetype name id model serial hcp profile parent groups mgt);
+my @attribs = qw(nodetype node id model serial hcp profile parent groups mgt);
 my %nodetype = (
     fsp  => $::NODETYPE_FSP,
     bpa  => $::NODETYPE_BPA,
@@ -477,7 +477,7 @@ sub format_stanza {
         foreach ( @attribs ) {
             my $d = $data[$i++];
 
-            if ( /^name$/ ) {
+            if ( /^node$/ ) {
                 next;
             } elsif ( /^nodetype$/ ) {
                 $d = $nodetype{$d}; 
@@ -537,9 +537,7 @@ sub format_xml {
         foreach ( @attribs ) {
             my $d = $data[$i++];
 
-            if ( /^name$/ ) {
-                next;
-            } elsif ( /^nodetype$/ ) {
+            if ( /^nodetype$/ ) {
                 $d = $nodetype{$d};
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
@@ -595,6 +593,7 @@ sub rscan {
 
 
 1;
+
 
 
 
