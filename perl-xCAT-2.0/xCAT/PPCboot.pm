@@ -240,12 +240,15 @@ sub rnetboot {
     my $hwtype  = @$exp[2];
     my $opt     = $request->{opt};
     my $result;
+    my $node;
 
     #####################################
     # Get node data 
     #####################################
-    my $type = @$d[4];
-    my $name = @$d[6];
+    my $lparid = @$d[0];
+    my $mtms   = @$d[2];
+    my $type   = @$d[4];
+    my $name   = @$d[6];
 
     #####################################
     # Invalid target hardware 
@@ -254,17 +257,45 @@ sub rnetboot {
         return( [[$name,"Not supported",1]] );
     }
     #########################################
+    # Get name known by HCP
+    #########################################
+    my $filter = "name,lpar_id";
+    my $values = xCAT::PPCcli::lssyscfg( $exp, $type, $mtms, $filter );
+    my $Rc = shift(@$values);
+
+    #########################################
+    # Return error
+    #########################################
+    if ( $Rc != SUCCESS ) {
+        return( [[$name,@$values[0],$Rc]] );
+    }
+    #########################################
+    # Find LPARs by lpar_id
+    #########################################
+    foreach ( @$values ) {
+        if ( /^(.*),$lparid$/ ) {
+            $node = $1;
+            last;
+        }
+    }
+    #########################################
+    # Node not found by lpar_id
+    #########################################
+    if ( !defined( $node )) {
+        return( [[$name,"Node not found, lparid=$lparid",RC_ERROR]] );
+    }
+    #########################################
     # IVM does not have lpar_netboot command
     # so we have to manually perform boot. 
     #########################################
     if ( $hwtype eq "ivm" ) {
-        $result = ivm_rnetboot( $request, $d, $exp, $name );
+        $result = ivm_rnetboot( $request, $d, $exp, $node );
     }
     else {
         $result = xCAT::PPCcli::lpar_netboot( 
                            $exp,
                            $request->{verbose}, 
-                           $name,
+                           $node,
                            $d,
                            $opt );
     }
@@ -339,6 +370,7 @@ sub rnetboot {
  
 
 1;
+
 
 
 
