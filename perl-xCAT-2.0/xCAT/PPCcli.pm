@@ -21,7 +21,8 @@ use constant {
   SUCCESS      => 0,
   RC_ERROR     => 1,
   EXPECT_ERROR => 2,
-  NR_ERROR     => 3
+  NR_ERROR     => 3,
+  DEFAULT_TIMEOUT => 60
 };
 
 ##############################################
@@ -253,7 +254,6 @@ sub chsyscfg {
     my $exp     = shift;
     my $d       = shift;
     my $cfgdata = shift;
-    my $timeout = 60;
 
     #####################################
     # Command only support on LPARs 
@@ -269,7 +269,7 @@ sub chsyscfg {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd, $timeout );
+    my $result = send_cmd( $exp, $cmd );
     return( $result );
 }
 
@@ -282,7 +282,6 @@ sub mksyscfg {
     my $exp     = shift;
     my $d       = shift;
     my $cfgdata = shift;
-    my $timeout = 60;
 
     #####################################
     # Command only support on LPARs 
@@ -298,7 +297,7 @@ sub mksyscfg {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd, $timeout );
+    my $result = send_cmd( $exp, $cmd );
     return( $result );
 }
 
@@ -308,9 +307,8 @@ sub mksyscfg {
 ##########################################################################
 sub rmsyscfg {
 
-    my $exp     = shift;
-    my $d       = shift;
-    my $timeout = 60;
+    my $exp = shift;
+    my $d   = shift;
 
     #####################################
     # Command only supported on LPARs 
@@ -326,7 +324,7 @@ sub rmsyscfg {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd, $timeout );
+    my $result = send_cmd( $exp, $cmd );
     return( $result );
 }
 
@@ -537,12 +535,11 @@ sub rmvterm {
 ##########################################################################
 sub lshwres {
 
-    my $exp     = shift;
-    my $d       = shift;
-    my $mtms    = shift;
-    my $cmd     = "lshwres -r @$d[1] -m $mtms -F @$d[2]";
-    my $level   = @$d[0];
-    my $timeout = 30;
+    my $exp   = shift;
+    my $d     = shift;
+    my $mtms  = shift;
+    my $cmd   = "lshwres -r @$d[1] -m $mtms -F @$d[2]";
+    my $level = @$d[0];
  
     #####################################
     # level may be "sys" or "lpar" 
@@ -553,7 +550,7 @@ sub lshwres {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd, $timeout );
+    my $result = send_cmd( $exp, $cmd );
     return( $result );
 }
 
@@ -620,9 +617,8 @@ sub lpar_netboot {
 ##########################################################################
 sub lshmc {
 
-    my $exp     = shift;
-    my $hwtype  = @$exp[2];
-    my $timeout = 10;
+    my $exp    = shift;
+    my $hwtype = @$exp[2];
 
     #####################################
     # Format command based on HW Type
@@ -635,7 +631,7 @@ sub lshmc {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd{$hwtype}, $timeout );
+    my $result = send_cmd( $exp, $cmd{$hwtype} );
 
     #####################################
     # Return error
@@ -716,7 +712,7 @@ sub send_cmd {
     # Set default Expect timeout 
     ##########################################
     if ( !defined( $timeout )) {
-        $timeout = 20;
+        $timeout = DEFAULT_TIMEOUT;
     }
     ##########################################
     # Send command 
