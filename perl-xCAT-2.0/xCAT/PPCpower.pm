@@ -104,7 +104,6 @@ sub enumerate {
     my $exp     = shift;
     my $node    = shift;
     my $mtms    = shift;
-    my $filter  = shift;
     my %outhash = ();
     my %cmds    = (); 
 
@@ -112,22 +111,12 @@ sub enumerate {
     # Check for CEC/LPAR/BPAs in list
     ######################################
     while (my ($name,$d) = each(%$node) ) {
-        if ( @$d[4] =~ /^fsp|lpar|bpa$/ ) {
-            $cmds{@$d[4]} = 1;
-        }
+        my $type = @$d[4];
+        $cmds{$type} = ($type=~/^lpar$/) ? "state,lpar_id" : "state";
     }
-    ######################################
-    # Check for HMC/IVMs in list
-    ######################################
-    my ($name) = keys %$node;
-    my $type   = @{$node->{$name}}[4];
-
-    if ( $type =~ /^hmc|ivm$/ ) {
-        $outhash{$name} = "Running";
-    }
-
-    foreach ( keys %cmds ) {
-        my $values = xCAT::PPCcli::lssyscfg( $exp, $_, $mtms, $filter );
+    foreach my $type ( keys %cmds ) {
+        my $filter = $cmds{$type};
+        my $values = xCAT::PPCcli::lssyscfg( $exp, $type, $mtms, $filter );
         my $Rc = shift(@$values);
 
         ##################################
@@ -137,11 +126,18 @@ sub enumerate {
             return( [$Rc,@$values[0]] );
         }
         ##################################
-        # Save LPARs by name
+        # Save LPARs by id 
         ##################################
         foreach ( @$values ) {
-            my ($name,$state) = split /,/;
-            $outhash{ $name } = $state;
+            my ($state,$lparid) = split /,/;
+
+            ##############################
+            # No lparid for fsp/bpa     
+            ##############################
+            if ( $type =~ /^fsp|bpa$/ ) {
+                $lparid = $type;
+            }
+            $outhash{ $lparid } = $state;
         }
     }
     return( [SUCCESS,\%outhash] );
@@ -156,7 +152,6 @@ sub powercmd_boot {
     my $request = shift;
     my $hash    = shift;
     my $exp     = shift;
-    my $filter  = "name,state";
     my @output  = ();
 
     ######################################
@@ -173,11 +168,17 @@ sub powercmd_boot {
     ######################################
     # Build CEC/LPAR information hash
     ######################################
-    my $stat = enumerate( $exp, $hash, $mtms, $filter );
+    my $stat = enumerate( $exp, $hash, $mtms );
     my $Rc = shift(@$stat);
     my $data = @$stat[0];
 
     while (my ($name,$d) = each(%$hash) ) { 
+        ##################################
+        # Look up by lparid
+        ##################################
+        my $type = @$d[4];
+        my $id   = ($type=~/^fsp|bpa$/) ? $type : @$d[0];
+
         ##################################
         # Output error
         ##################################
@@ -188,14 +189,14 @@ sub powercmd_boot {
         ##################################
         # Node not found 
         ##################################
-        if ( !exists( $data->{$name} )) {
+        if ( !exists( $data->{$id} )) {
             push @output, [$name,"Node not found",1];
             next;
         }
         ##################################
         # Convert state to on/off
         ##################################
-        my $state = power_status($data->{$name});
+        my $state = power_status($data->{$id});
         my $op    = ($state =~ /^Off|Not Activated$/) ? "on" : "reset";
 
         ##############################
@@ -274,7 +275,6 @@ sub state {
     my $exp     = shift;
     my $prefix  = shift;
     my $convert = shift;
-    my $filter  = "name,state";
     my @result  = ();
 
     if ( !defined( $prefix )) {
@@ -284,11 +284,17 @@ sub state {
         ######################################
         # Build CEC/LPAR information hash
         ######################################
-        my $stat = enumerate( $exp, $h, $mtms, $filter );
+        my $stat = enumerate( $exp, $h, $mtms );
         my $Rc = shift(@$stat);
         my $data = @$stat[0];
     
         while (my ($name,$d) = each(%$h) ) {
+            ##################################
+            # Look up by lparid 
+            ##################################
+            my $type = @$d[4];
+            my $id   = ($type=~/^fsp|bpa$/) ? $type : @$d[0];
+            
             ##################################
             # Output error
             ##################################
@@ -299,14 +305,14 @@ sub state {
             ##################################
             # Node not found 
             ##################################
-            if ( !exists( $data->{$name} )) {
+            if ( !exists( $data->{$id} )) {
                 push @result, [$name, $prefix."Node not found",1];
                 next;
             }
             ##################################
             # Output value
             ##################################
-            my $value = $data->{$name};
+            my $value = $data->{$id};
 
             ##############################
             # Convert state to on/off 
