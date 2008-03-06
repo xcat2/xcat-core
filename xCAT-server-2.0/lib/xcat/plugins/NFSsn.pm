@@ -36,10 +36,10 @@ sub handled_commands
     if (xCAT::Utils->isServiceNode())
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
-        my $nodename   = $nodeinfo[0];
-        my $nodeipaddr = $nodeinfo[1];
+		my $nodename   = pop @nodeinfo; # get hostname
+		my @nodeipaddr = @nodeinfo;  # get ip addresses
         my $service    = "nfsserver";
-        $rc = xCAT::Utils->isServiceReq($nodename, $service, $nodeipaddr);
+        $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
         if ($rc == 1)
         {
 

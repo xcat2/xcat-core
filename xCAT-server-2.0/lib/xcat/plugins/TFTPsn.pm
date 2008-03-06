@@ -28,19 +28,18 @@ Call  setup_TFTP  (actually setting up atftp)
 
 sub handled_commands
 {
-    my @nodeinfo   = xCAT::Utils->determinehostname;
-    my $nodename   = $nodeinfo[0];
-    my $nodeipaddr = $nodeinfo[1];
-    my $service    = "tftpserver";
-    my $rc         = 0;
-    my $setupTFTP  = 1;
+    my $rc = 0;
 
     # setup atftp
     if (xCAT::Utils->isServiceNode())
     {
+        my @nodeinfo   = xCAT::Utils->determinehostname;
+        my $nodename   = pop @nodeinfo; # get hostname
+        my @nodeipaddr = @nodeinfo;  # get ip addresses
+        my $service    = "tftpserver";
 
         # check to see if service required
-        $rc = xCAT::Utils->isServiceReq($nodename, $service, $nodeipaddr);
+        $rc = xCAT::Utils->isServiceReq($nodename, $service,\@nodeipaddr);
         if ($rc != 1)    # service not required
         {
             return 0;

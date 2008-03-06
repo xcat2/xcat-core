@@ -1358,8 +1358,6 @@ sub readSNInfo
 
 =head3 isServiceReq 
 
- ####  note for now  this returns service required always###
- ####  need to add ifconfig call to get all ip addresses for service node###
 
   Checks to see if the input service is already setup on the node by
   checking the /etc/xCATSN file for the service name. This is put in the file
@@ -1372,7 +1370,7 @@ sub readSNInfo
   to see if this service node is the server, or if the attribute is blank, then
   this service node is the server.
   
-  Input: service nodename, service
+  Input: service nodename, service,ipaddres(s) of service node
   Output: 
         1 - setup service 
         0 - do not setupservice 
@@ -1382,7 +1380,7 @@ sub readSNInfo
     Error:
         none
     Example:
-         if (xCAT::Utils->isServiceReq()) { blah; }
+         if (xCAT::Utils->isServiceReq($servicenodename, $service, $serviceip) { blah; }
 
 =cut
 
@@ -1390,24 +1388,21 @@ sub readSNInfo
 sub isServiceReq
 {
     my ($class, $servicenodename, $service, $serviceip) = @_;
+    my @ips = @$serviceip;    # list of service node ip addresses
 
     # check if service is already setup
     `grep $service /etc/xCATSN`;
     if ($? == 0)
-    {    # service is already setup
+    {                         # service is already setup
         return 0;
     }
-    else
+
+    $rc = xCAT::Utils->exportDBConfig();    # export DB env
+    if ($rc != 0)
     {
-        return 1;    #  setup service
-    }
-    #  Need to obtain all ip addresses for service node to check
-	# before we do the below logic
-    $rc = xCAT::Utils->exportDBConfig(); # export DB env
-    if ($rc != 0) {
-            xCAT::MsgUtils->message('S', "Unable export DB environment.\n");
-            return -1;
-       
+        xCAT::MsgUtils->message('S', "Unable export DB environment.\n");
+        return -1;
+
     }
 
     # have this service setup
@@ -1421,13 +1416,17 @@ sub isServiceReq
             xCAT::MsgUtils->message('S', "Unable to open networks table.\n");
             return -1;
         }
-        my $whereclause =
-          "$service like '$servicenodename' or $service like '$serviceip'";
-        my @netlist =
-          $networkstab->getAllAttribsWhere($whereclause, 'netname', $service);
-        if (@netlist)
+        foreach $serviceip (@ips)
         {
-            return 1;    # found an entry in the networks table for this node
+            my $whereclause =
+              "$service like '$servicenodename' or $service like '$serviceip'";
+            my @netlist =
+              $networkstab->getAllAttribsWhere($whereclause, 'netname',
+                                               $service);
+            if (@netlist)
+            {
+                return 1;   # found an entry in the networks table for this node
+            }
         }
     }
     else
@@ -1442,20 +1441,24 @@ sub isServiceReq
                 xCAT::MsgUtils->message('S', "Unable to open nodehm table.\n");
                 return -1;
             }
-            my $whereclause =
-              "node like '$servicenodename' or node like '$serviceip'";
-            my @nodelist =
-              $nodehmtab->getAllAttribsWhere($whereclause, 'node', $service);
-            foreach my $node (@nodelist)
+            foreach $serviceip (@ips)
             {
-                if ($node->{$service} ne "")    # cons defined
+                my $whereclause =
+                  "node like '$servicenodename' or node like '$serviceip'";
+                my @nodelist =
+                  $nodehmtab->getAllAttribsWhere($whereclause, 'node',
+                                                 $service);
+                foreach my $node (@nodelist)
                 {
-                    return 1;    # found cons defined for this server
+                    if ($node->{$service} ne "")    # cons defined
+                    {
+                        return 1;    # found cons defined for this server
+                    }
                 }
             }
 
         }
-        else                     # other service TFTP,etc
+        else                         # other service TFTP,etc
         {
 
             # get handle to noderes table
@@ -1465,17 +1468,26 @@ sub isServiceReq
                 xCAT::MsgUtils->message('S', "Unable to open noderes table.\n");
                 return -1;
             }
-            my $whereclause =
-              "servicenode like '$servicenodename' or servicenode like '$serviceip'";
-            my @nodelist =
-              $noderestab->getAllAttribsWhere($whereclause, 'node', $service);
-            foreach my $node (@nodelist)
+            foreach $serviceip (@ips)
             {
-                if (   ($node->{$service} eq $servicenodename)
-                    || ($node->{$service} eq $serviceip)
-                    || ($node->{$service} eq ""))
+                my $whereclause =
+                  "servicenode like '$servicenodename' or servicenode like '$serviceip'";
+                my @nodelist =
+                  $noderestab->getAllAttribsWhere($whereclause, 'node',
+                                                  $service);
+                foreach my $node (@nodelist)
                 {
-                    return 1;   # found a node using this server for the service
+                    foreach $serviceip (@ips)
+                    {
+                        if (   ($node->{$service} eq $servicenodename)
+                            || ($node->{$service} eq $serviceip)
+                            || ($node->{$service} eq ""))
+                        {
+                            return
+                              1
+                              ; # found a node using this server for the service
+                        }
+                    }
                 }
             }
         }
@@ -1487,12 +1499,12 @@ sub isServiceReq
 
 #-----------------------------------------------------------------------------
 
-=head3 determinehostname  and ip address
+=head3 determinehostname  and ip address(s)
   
-  Used on the service node to figure out what hostname and ip address
+  Used on the service node to figure out what hostname and ip address(s)
   the service node is in the database
   Input: None   
-  Output: nodename, ipaddress 
+  Output: ipaddress(s),nodename 
 =cut
 
 #-----------------------------------------------------------------------------
@@ -1500,18 +1512,20 @@ sub determinehostname
 {
     my $hostname;
     my $hostnamecmd = "/bin/hostname";
-    my @thostname   = xCAT::Utils->runcmd($hostnamecmd);
-    if ($? != 0)
+    my @thostname = xCAT::Utils->runcmd($hostnamecmd, 0);
+    if ($::RUNCMD_RC != 0)
     {    # could not get hostname
-        xCAT::MsgUtils->message("S", "Error $? from hostname command\n");
-        exit $?;
+        xCAT::MsgUtils->message("S",
+                              "Error $::RUNCMD_RC from $hostnamecmd command\n");
+        exit $::RUNCMD_RC;
     }
     $hostname = $thostname[0];
-    my ($hcp, $aliases, $addtype, $length, @addrs) = gethostbyname($hostname);
-    my $ipaddress = inet_ntoa($addrs[0]);
+
     # strip off domain, if there
-    my @shorthost=split(/\./,$hostname);
-    my @hostinfo = ($shorthost[0], $ipaddress);
+    my @shorthost = split(/\./, $hostname);
+    my @ips       = xCAT::Utils->gethost_ips;
+    my @hostinfo  = (@ips, $shorthost[0]);
+
     return @hostinfo;
 }
 
@@ -1542,6 +1556,41 @@ sub update_xCATSN
         $rc = 1;
     }
     return $rc;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 gethost_ips 
+     Will use ifconfig to determine all possible ip addresses for the 
+	 host it is running on
+
+     input: 
+	 output: array of ipaddress(s)
+	 example:  @ips=xCAT::gethost_ips();
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub gethost_ips
+{
+    my ($class) = @_;
+    my $cmd;
+    my @ipaddress;
+    $cmd = "ifconfig" . " -a";
+    $cmd = $cmd . "| grep \"inet \"";
+    my @result = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("S", "Error from $cmd\n");
+        exit $::RUNCMD_RC;
+    }
+    foreach my $addr (@result)
+    {
+        my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
+        my @ip = split(":", $addr1);
+        push @ipaddress, $ip[1];
+    }
+    return @ipaddress;
 }
 
 1;
