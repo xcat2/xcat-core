@@ -1579,6 +1579,23 @@ return(2,"");
 
 		return(2,"");
 	}
+   my $serial = "unkown";
+   my $model = "unkown";
+
+   my $fru = FRU->new();
+	$fru->rec_type("serial");
+	$fru->desc("Serial Number");
+	$fru->value($serial);
+	$fru_hash{1} = $fru;
+
+	$fru = FRU->new();
+	$fru->rec_type("model");
+	$fru->desc("Model Number");
+	$fru->value($model);
+	$fru_hash{2} = $fru;
+
+	return(2,"");
+
 
 	return(1,"No OEM FRU Support");
 }
