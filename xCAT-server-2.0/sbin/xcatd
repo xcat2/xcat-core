@@ -8,6 +8,7 @@ use lib "$::XCATROOT/lib/perl";
 use Storable qw(freeze thaw);
 use xCAT::Utils;
 use File::Path;
+use Time::HiRes qw(sleep);
 use xCAT::Client submit_request;
 
 use IO::Socket::SSL;
@@ -629,7 +630,7 @@ sub dispatch_callback {
 
 sub relay_dispatch {
    my $fds = shift;
-   my @ready_ins = $fds->can_read(0.2);
+   my @ready_ins = $fds->can_read(1);
    foreach my $rin (@ready_ins) {
       my $data;
       if ($data = <$rin>) {
@@ -644,6 +645,7 @@ sub relay_dispatch {
          close($rin);
       }
    }
+   sleep (0.01); #Again, try not to overwhelm the system
    return scalar(@ready_ins);
 }
 
@@ -912,6 +914,7 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
       close($rfh);             
     }
   }
+  sleep (0.01); #This gets called in a loop a lot, this takes the edge off
   return $rc;
 }
 
