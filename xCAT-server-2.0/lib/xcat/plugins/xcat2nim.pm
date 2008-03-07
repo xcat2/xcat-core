@@ -18,7 +18,6 @@ use xCAT::MsgUtils;
 
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
-Getopt::Long::Configure("pass_through");
 $Getopt::Long::ignorecase = 0;
 
 #
