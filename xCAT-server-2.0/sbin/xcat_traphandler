@@ -10,6 +10,13 @@ use xCAT::Table;
 use xCAT_plugin::ipmi;
 use xCAT_monitoring::monitorctrl;
 
+#-------------------------------------------------------------------------------
+=head1  xcat_traphandler  
+=head2   Description
+  Script for SNMP trap handling. 
+
+=cut
+#-------------------------------------------------------------------------------
 # admin needs to create a mail aliase called alerts
 # put "alerts: emailadd,emailaddr.." to /etc/aliases file
 # then run newaliases command
@@ -129,13 +136,21 @@ while ($temp=<STDIN>) {
   elsif ($oid =~ /BLADESPPALT-MIB::spTrapPriority|RSASPPALT-MIB::ibmSpTrapPriority/) {
     # Critical Alert(0), Major(1), Non-Critical Alert(2), System Alert(4), 
     # Recovery Alert(8), Informational Only Alert(255)
-    $severity_type="Warning";
     if ($value==0) {
       $severity="Critical Alert";
       $severity_type="Critical";
     } elsif ($value==1)  {
       $severity="Major Alert";
       $severity_type="Critical";
+    } elsif ($value==2)  {
+      $severity="Non-Critical Alert";
+      $severity_type="Warning";
+    } elsif ($value==4)  {
+      $severity="System Alert";
+      $severity_type="Warning";
+    } elsif ($value==8)  {
+      $severity="Recovery Alert";
+      $severity_type="Informational";
     } elsif ($value==255)  {
       $severity="Informational Alert";
       $severity_type="Informational";
@@ -179,7 +194,7 @@ while ($temp=<STDIN>) {
   $message .= "    $oid=$value\n";
 
   #check agains the settings 
-  $value =~ s/^\"(.*)\"$/$1/; 
+  $value =~ s/\"//g;  
   checkWithOid($oid, $value);
   #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
   if ($IGNORE) { print "out\n"; exit 0;} 
@@ -195,9 +210,10 @@ if ((!$RUNCMD) && exists($hashR{severity_type})) { $RUNCMD=1; }
 #email 'alerts' aliase
 if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) {
   print "email\n"; 
-  ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
-  $datetime=sprintf "%2d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec;
-  my $head="SNMP $severity received from $host($ip) on $datetime\n$briefmsg\n";
+  #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+  #$datetime=sprintf "%2d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec;
+  #my $head="SNMP $severity received from $host($ip) on $datetime\n$briefmsg\n";
+  my $head="SNMP $severity received from $host($ip)\n$briefmsg\n";
   my $middle="Trap details:\n$message\n";
   my $end;
   if ($node1) {$info= getMoreInfo($node1);}
@@ -213,7 +229,7 @@ if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) {
 #log to syslog if needed. default is log all
 if ($LOG || (keys(%hashL)==0)) {
   print "log\n"; 
-  my $head="SNMP $severity received from $host($ip) on $datetime";
+  my $head="SNMP $severity received from $host($ip).";
   my $body;
   if ($briefmsg) { $body=$briefmsg;} 
   else { $body=$message; }

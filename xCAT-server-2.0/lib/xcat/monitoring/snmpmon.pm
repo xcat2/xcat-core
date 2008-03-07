@@ -10,7 +10,7 @@ use IO::File;
 use xCAT::Utils;
 
 
-print "xCAT_monitoring::snmpmon loaded\n";
+#print "xCAT_monitoring::snmpmon loaded\n";
 1;
 
 
@@ -346,6 +346,6 @@ sub getDescription {
 
     For example, you can have the following setting:
       email  CRITICAL,BLADESPPALT-MIB::pTrapPriority=4
-      This means send email for all the critical events, or the BladeCenter 
+      This means send email for all the critical events and the BladeCenter 
       system events.\n"  
 }
