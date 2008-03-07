@@ -5,8 +5,10 @@ package xCAT_plugin::DHCPsn;
 use xCAT::Table;
 
 use xCAT::Utils;
-
+use xCAT_plugin::dhcp;
 use xCAT::MsgUtils;
+
+use xCAT::Client;
 use Getopt::Long;
 
 #-------------------------------------------------------
@@ -33,8 +35,8 @@ sub handled_commands
     if (xCAT::Utils->isServiceNode())
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
-		my $nodename   = pop @nodeinfo; # get hostname
-		my @nodeipaddr = @nodeinfo;  # get ip addresses
+        my $nodename   = pop @nodeinfo;                    # get hostname
+        my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service    = "dhcpserver";
 
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
@@ -42,7 +44,7 @@ sub handled_commands
         {
 
             # service needed on this Service Node
-            $rc = &setup_DHCP($nodename);    # setup DHCP
+            $rc = &setup_DHCP($nodename);                  # setup DHCP
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
@@ -97,13 +99,15 @@ sub setup_DHCP
         {
             $XCATROOT = $ENV{'XCATROOT'};
         }
-        $cmd = "$XCATROOT/sbin/makedhcp -n";
-        @output = xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message("S", "Error from $cmd, output=@output");
-            return 1;
-        }
+        my $cmdref;
+        $cmdref->{command}->[0] = "makedhcp";
+        $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+        $cmdref->{arg}->[0]     = "-n";
+
+        my $modname = "dhcp";
+        ${"xCAT_plugin::" . $modname . "::"}{process_request}
+          ->($cmdref,\&xCAT::Client::handle_response);
+
         $cmd = "chkconfig dhcpd on";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
@@ -126,4 +130,5 @@ sub setup_DHCP
     }
     return $rc;
 }
+
 1;

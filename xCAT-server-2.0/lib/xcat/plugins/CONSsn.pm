@@ -5,7 +5,9 @@ package xCAT_plugin::CONSsn;
 use xCAT::Table;
 
 use xCAT::Utils;
+use xCAT_plugin::conserver;
 
+use xCAT::Client;
 use xCAT::MsgUtils;
 use Getopt::Long;
 
@@ -36,16 +38,16 @@ sub handled_commands
     if (xCAT::Utils->isServiceNode())
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
-		my $nodename   = pop @nodeinfo; # get hostname
-		my @nodeipaddr = @nodeinfo;  # get ip addresses
+        my $nodename   = pop @nodeinfo;                    # get hostname
+        my @nodeipaddr = @nodeinfo;                        # get ip addresses
 
-        my $service    = "cons";
+        my $service = "cons";
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
         if ($rc == 1)
         {
 
             # service needed on this Service Node
-            $rc = &setup_CONS($nodename);    # setup CONS
+            $rc = &setup_CONS($nodename);                  # setup CONS
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
@@ -96,13 +98,13 @@ sub setup_CONS
         $arch   = $retdata->{'arch'};
 
         # make the consever 8 configuration file
-        $cmd = "makeconservercf";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {    # error
-            xCAT::MsgUtils->message("S", "Error running $cmd");
-            return 1;
-        }
+        my $cmdref;
+        $cmdref->{command}->[0] = "makeconservercf";
+        $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+
+        my $modname = "conserver";
+        ${"xCAT_plugin::" . $modname . "::"}{process_request}
+          ->($cmdref,\&xCAT::Client::handle_response);
         my $cmd = "chkconfig conserver on";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -127,4 +129,5 @@ sub setup_CONS
     }
     return $rc;
 }
+
 1;
