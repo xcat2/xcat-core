@@ -38,6 +38,6 @@ echo "Enabling IPMI v 1.5 MD5 LAN access:"
 ipmitool lan set 1 auth admin md5
 
 echo "Enabling IPMI v 2.0 LAN access:"
-ipmitool lan set 1 cipher_privs uuaaXXXXXXXXXXX
+ipmitool lan set 1 cipher_privs uaaaXXXXXXXXXXX
 
 
