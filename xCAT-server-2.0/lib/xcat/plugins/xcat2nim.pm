@@ -105,7 +105,9 @@ sub process_request
         $rsp->{data}->[0] = $msg;
         $::callback->($rsp);
     }
-    return $ret;
+	if ($ret > 0) {
+		$rsp->{errorcode}->[0] = $ret;
+	}
 }
 
 #----------------------------------------------------------------------------
@@ -140,6 +142,7 @@ sub processArgs
     @ARGV = @{$::args};
 
     # parse the options 
+	Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
