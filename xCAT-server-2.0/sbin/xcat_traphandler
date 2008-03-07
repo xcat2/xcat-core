@@ -8,19 +8,32 @@ use lib "$::XCATROOT/lib/perl";
 use Sys::Syslog;
 use xCAT::Table;
 use xCAT_plugin::ipmi;
+use xCAT_monitoring::monitorctrl;
 
 # admin needs to create a mail aliase called alerts
 # put "alerts: emailadd,emailaddr.." to /etc/aliases file
 # then run newaliases command
 my $MAILTO="alerts";
 
-my $message;
-my $briefmsg;
+my $message, $briefmsg;
 my $pair;
 my $node1;
 my $info;
 my $severity_type;
 my $severity;
+
+#get settings
+$EMAIL=0, $LOG=0, $RUNCMD=0, $INGNORE=0;
+%hashI=(),%hashE=(),%hashL=(),%hashR=(); 
+my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("snmpmon");
+my $i=$settings{'ignore'};
+if ($i) { %hashI =parseSettings($i); }
+my $e=$settings{'email'};
+if ($e) { %hashE=parseSettings($e); }
+my $l=$settings{'log'};
+if ($l) { %hashL=parseSettings($l); }
+my $r=$settings{'runcmd'};
+if ($r) { %hashR=parseSettings($r); }
 
 # read host name
 my $host=<STDIN>; 
@@ -45,6 +58,9 @@ chomp($trapidline);
 $oid=shift @a;
 $value=join(' ', @a);
 $message .= "    $oid=$value\n";
+checkWithOid($oid, $value);
+#print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
+if ($IGNORE) { print "out\n";  exit 0;}
 
 #for ipmi traps, the values is: SNMPv2-SMI::enterprises.3183.1.1.0.x, x is the ipmi trap id.
 $value =~ s/(SNMPv2-SMI::enterprises\.3183\.1\.1\.0\.)//g;
@@ -88,7 +104,6 @@ while ($temp=<STDIN>) {
   $oid=shift @a;
   $value=join(' ', @a);
 
-  $message .= "    $oid=$value\n";
   
   #for BladeCenter MM traps and RSA II traps,  creat a brief message 
   if ($oid =~ /BLADESPPALT-MIB::spTrapAppId|RSASPPALT-MIB::ibmSpTrapAppId/) {
@@ -159,29 +174,68 @@ while ($temp=<STDIN>) {
         $severity_type="Critical";
       }
     } 
-  } 
+  }
+ 
+  $message .= "    $oid=$value\n";
+
+  #check agains the settings 
+  $value =~ s/^\"(.*)\"$/$1/; 
+  checkWithOid($oid, $value);
+  #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
+  if ($IGNORE) { print "out\n"; exit 0;} 
 }
 
-if ($node1) {$info= getMoreInfo($node1);}
+if (!$severity_type) { $severity_type="Warning"; }
+if ((!$IGNORE) && exists($hashI{$severity_type})) {  print "out\n"; exit 0; }
+if ((!$EMAIL) && exists($hashE{$severity_type})) { $EMAIL=1; }
+if ((!$LOG) && exists($hashL{$severity_type})) { $LOG=1; }
+if ((!$RUNCMD) && exists($hashR{severity_type})) { $RUNCMD=1; }
+#print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
 
-($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
-$datetime=sprintf "%2d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec;
-my $head="SNMP $severity received from $host($ip) on $datetime\n$briefmsg\n";
-my $middle="Trap details:\n$message\n";
-my $end;
-if ($info) {
- $end ="Additonal Info from xCAT:\n$info\n";
+#email 'alerts' aliase
+if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) {
+  print "email\n"; 
+  ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+  $datetime=sprintf "%2d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec;
+  my $head="SNMP $severity received from $host($ip) on $datetime\n$briefmsg\n";
+  my $middle="Trap details:\n$message\n";
+  my $end;
+  if ($node1) {$info= getMoreInfo($node1);}
+  if ($info) {
+   $end ="Additonal Info from xCAT:\n$info\n";
+  }  
+
+  #email the full message to the alerts aliase
+  my $cmd="echo \'$head$middle$end\' \| mail -s \"$severity_type: Cluster SNMP Alert\!\" $MAILTO";
+  `$cmd`;
 }
 
-#TODO: decide responses based on severity. settings in monitoring tb.
-#email the full message to the alerts aliase
-my $cmd="echo \'$head$middle$end\' \| mail -s \"$severity_type: Cluster SNMP Alert\!\" $MAILTO";
-`$cmd`;
+#log to syslog if needed. default is log all
+if ($LOG || (keys(%hashL)==0)) {
+  print "log\n"; 
+  my $head="SNMP $severity received from $host($ip) on $datetime";
+  my $body;
+  if ($briefmsg) { $body=$briefmsg;} 
+  else { $body=$message; }
 
-# TODO: log the the brief message from the Blad Center MM to the syslog. For other traps, log all.
+  openlog("xCATMon Event","","local4");  
+  if ($severity_type eq "Informational") {
+    syslog("local4|info", "$head\n$body\n");
+  } else {
+    syslog("local4|err", "$head\n$body\n");
+  }
+  closelog();
+}
 
-
-
+#run user defined commands if needed.
+if ($RUNCMD) {
+  print "runcmd\n"; 
+  my $scripts=$settings{'cmds'};
+  while ($scripts =~ s/^([^,]+)(,)*//) {
+     my $cmd="echo \'host=$host\nip=$ip\n$message\n\' \| $1";
+     `$cmd`;   
+  }
+}
 
 
 #--------------------------------------------------------------------------------
@@ -242,6 +296,74 @@ sub getMoreInfo {
  
   return "";
 }
+
+
+#--------------------------------------------------------------------------------
+=head3   parseSettings 
+      This function takes a setting string which looks like "key1=value1,key2=value2..."
+      and returns a hash (key1=>value1, key2=>value2...). 
+    Arguments:
+       setting  the setting string. 
+    Returns:
+       A hash. 
+=cut
+#--------------------------------------------------------------------------------
+sub parseSettings {
+  my $settings=shift;
+  my %ret=();
+  while (($settings =~ s/^(Informational|Warning|Critical|All|None)()(,)*//) ||
+         ($settings =~ s/^([^\=]+)=(\"[^\"]+\")(,)*//) || 
+         ($settings =~ s/^([^\=]+)=([^\"\,]+)(,)*//)) {
+    # print "$1=$2\n";
+    $ret{$1}=$2;
+  }
+
+  return %ret;
+}
+
+#--------------------------------------------------------------------------------
+=head3   checkWithOid 
+      This function checks the input strings with the setting to see what
+      actions need to be done for this event.  
+    Arguments:
+       oid       the oid string
+       value     the value string
+    Returns:
+       none. The variables $EMAIL, $LOG, $IGNORE and $RUNCMD may be changed.
+=cut
+#--------------------------------------------------------------------------------
+sub checkWithOid {
+  $o=shift;
+  $v=shift;
+
+  sub checking {
+    my $hashX=shift;
+    
+    if (exists($hashX->{'All'})) { return 1;  }     
+    if (exists($hashX->{'None'})) { return 0;  }     
+    if (exists($hashX->{$o}) && ($hashX->{$oid} eq $v)) {return 1; } 
+    return 0;
+  }
+
+  if ((!$IGNORE) && (keys(%hashI)>0)) {
+    $IGNORE=checking(\%hashI);
+    if ($IGNORE) { return;}
+  }
+
+  if ((!$EMAIL) && (keys(%hashE)>0)) {
+    $EMAIL=checking(\%hashE);
+  }
+
+  if ((!$LOG) && (keys(%hashL)>0)) {
+    $LOG=checking(\%hashL);
+  }
+
+  if ((!$RUNCMD) && (keys(%hashR)>0)) {
+    $RUNCMD=checking(\%hashR);
+  }
+}
+
+
 
 
 

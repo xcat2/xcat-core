@@ -318,15 +318,34 @@ sub getDescription {
 "  Description:
     snmpmon sets up the snmptrapd on the management server to receive SNMP
     traps for different nodes. It also sets the trap destination for Blade 
-    Center Managment Module, RSA II, IPMIs that are managed by the xCAT cluster. 
-    By default, the xCAT trap handler will log all events in the syslog and only
-    email the critial and the warning events to the mail aliance called 'alerts'. 
-    You can use the settings to override the default behavior. Use command 
-    'startmon snmpmon' to star monitoring and 'stopmon snmpmon' to stop it. 
-    The SNMP trap handler is disabled on the service node.  
+    Center Management Module, RSA II, IPMIs that are managed by the xCAT cluster. 
+    xCAT has categorized some events into different event priorities (critical, 
+    warning and informational) based on the MIBs we know such as MM, RSA II and 
+    IPMI. All the unknown events are categorized as 'warning'. By default, 
+    the xCAT trap handler will log all events into the syslog and only
+    email the critical and the warning events to the mail alias called 'alerts'. 
+    You can use the settings to override the default behavior.
+    Use command 'startmon snmpmon' to star monitoring and 'stopmon snmpmon' 
+    to stop it. 
   Settings:
     ignore:  specifies the events that will be ignored. It's a comma separated 
         pairs of oid=value. For example, 
         BLADESPPALT-MIB::spTrapAppType=4,BLADESPPALT-MIB::spTrapAppType=4.
-    emailrsp:  specifies the events that will get email notification.\n"
+    email:  specifies the events that will get email notification.
+    log:    specifies the events that will get logged.
+    runcmd: specifies the events that will be passed to the user defined scripts.
+    cmds:   specifies the command names that will be invoked for the events 
+            specified in the runcmd row.
+    
+    Special keywords for specifying events:
+      All -- all events.
+      None -- none of the events.
+      Critical -- all critical events.
+      Warning -- all warning events.
+      Informational -- all informational events.
+
+    For example, you can have the following setting:
+      email  CRITICAL,BLADESPPALT-MIB::pTrapPriority=4
+      This means send email for all the critical events, or the BladeCenter 
+      system events.\n"  
 }
