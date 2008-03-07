@@ -337,7 +337,13 @@ if (( ! -r "/etc/xcat/site.sqlite" ) || $::FORCE){
 	$chtabcmds .= "$::XCATROOT/sbin/chtab key=installdir site.value=$installdir;";
 	$chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
 	$chtabcmds .= "$::XCATROOT/sbin/chtab key=domain site.value=$domain;";
-	$chtabcmds .= "$::XCATROOT/sbin/chtab key=timezone site.value=$timezone";
+	if ($::osname eq 'Linux') {
+		$chtabcmds .= "$::XCATROOT/sbin/chtab key=timezone site.value=$timezone";
+	}
+	if ($::osname eq 'AIX') {
+		$chtabcmds .= "$::XCATROOT/sbin/chtab key=rsh site.value=/bin/rsh;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab key=rcp site.value=/bin/rcp;";
+	}
 
     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
     if ($::RUNCMD_RC  != 0)
