@@ -1,0 +1,9 @@
+for nic in `ifconfig -a|grep -B1 "inet addr"|awk '{print $1}'|grep -v inet|grep -v -- --|grep -v lo`; do
+   IPADDR=`ifconfig $nic |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}'`
+   NETMASK=`ifconfig $nic |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
+   sed -i s/BOOTPROTO=dhcp/BOOTPROTO=none/ /etc/sysconfig/network-scripts/ifcfg-$nic
+   echo IPADDR=$IPADDR >> /etc/sysconfig/network-scripts/ifcfg-$nic
+   echo NETMASK=$NETMASK >> /etc/sysconfig/network-scripts/ifcfg-$nic
+done
+sed -i "s/HOSTNAME.*/HOSTNAME=`hostname`/" /etc/sysconfig/network
+   
