@@ -18,7 +18,6 @@ use xCAT::MsgUtils;
 
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
-Getopt::Long::Configure("pass_through");
 $Getopt::Long::ignorecase = 0;
 
 #
@@ -161,7 +160,9 @@ sub process_request
         $rsp->{data}->[0] = $msg;
         $::callback->($rsp);
     }
-    return $ret;
+	if ($ret > 0) {
+		$rsp->{errorcode}->[0] = $ret;
+	}
 }
 
 #----------------------------------------------------------------------------
@@ -200,6 +201,7 @@ sub processArgs
     }
 
     # parse the options - include any option from all 4 cmds
+	Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
