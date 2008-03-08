@@ -12,7 +12,7 @@ use Data::Dumper;
 use xCAT::NodeRange;
 use xCAT::Schema;
 
-#use Getopt::Long qw(GetOptionsFromArray);
+use Getopt::Long;
 
 1;
 
@@ -48,40 +48,40 @@ sub handled_commands
             };
 }
 
-my %usage = (
-    nodech =>
-      "Usage: nodech <noderange> [table.column=value] [table.column=value] ...",
-    nodeadd =>
-      "Usage: nodeadd <noderange> [table.column=value] [table.column=value] ...",
-    noderm  => "Usage: noderm <noderange>",
+# Each cmd now returns its own usage inside its function
+#my %usage = (
+    #nodech => "Usage: nodech <noderange> [table.column=value] [table.column=value] ...",
+    #nodeadd => "Usage: nodeadd <noderange> [table.column=value] [table.column=value] ...",
+    #noderm  => "Usage: noderm <noderange>",
     # the usage for tabdump is in the tabdump function
     #tabdump => "Usage: tabdump <tablename>\n   where <tablename> is one of the following:\n     " . join("\n     ", keys %xCAT::Schema::tabspec),
     # the usage for tabrestore is in the tabrestore client cmd
     #tabrestore => "Usage: tabrestore <tablename>.csv",
-    );
+    #);
 
 #####################################################
 # Process the command
 #####################################################
 sub process_request
 {
-    use Getopt::Long;
+    #use Getopt::Long;
     Getopt::Long::Configure("bundling");
-    Getopt::Long::Configure("pass_through");
+    #Getopt::Long::Configure("pass_through");
+    Getopt::Long::Configure("no_pass_through");
 
     my $request  = shift;
     my $callback = shift;
     my $nodes    = $request->{node};
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
-    unless ($args or $nodes or $request->{data})
-    {
-        if ($usage{$command})
-        {
-            $callback->({data => [$usage{$command}]});
-            return;
-        }
-    }
+    #unless ($args or $nodes or $request->{data})
+    #{
+        #if ($usage{$command})
+        #{
+            #$callback->({data => [$usage{$command}]});
+            #return;
+        #}
+    #}
 
     if ($command eq "nodels")
     {
@@ -185,38 +185,32 @@ sub noderm
     my $VERSION;
     my $HELP;
 
-    sub noderm_usage
-    {
+    sub noderm_usage {
+    	my $exitcode = shift @_;
         my %rsp;
-        $rsp->{data}->[0] = "Usage:";
-        $rsp->{data}->[1] = "  noderm [noderange] ";
-        $cb->($rsp);
+        push @{$rsp{data}}, "Usage:";
+        push @{$rsp{data}}, "  noderm noderange";
+        push @{$rsp{data}}, "  noderm {-v|--version}";
+        push @{$rsp{data}}, "  noderm [-?|-h|--help]";
+        if ($exitcode) { $rsp{errorcode} = $exitcode; }
+        $cb->(\%rsp);
     }
 
     @ARGV = @{$args};
-    if (
-        !GetOptions('h|?|help'  => \$HELP,
-                    'v|version' => \$VERSION,)
-      )
-    {
-        &noderm_usage;
-    }
+    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) { noderm_usage(1); return; }
 
-    # Help
-    if ($HELP)
-    {
-        &noderm_usage;
-        return;
-    }
+    if ($HELP) { noderm_usage(0); return; }
 
-    # Version
-    if ($VERSION)
-    {
+    if ($VERSION) {
         my %rsp;
         $rsp->{data}->[0] = "2.0";
         $cb->($rsp);
         return;
     }
+
+    if (!$nodes) { noderm_usage(1); return; }
+
+    # Build the argument list for using the -d option of nodech to do our work for us
     my @tablist = ("-d");
     foreach (keys %{xCAT::Schema::tabspec})
     {
@@ -485,55 +479,60 @@ sub nodech
     my $addmode  = shift;
     my $VERSION;
     my $HELP;
+    my $deletemode;
 
     sub nodech_usage
     {
+    	my $exitcode = shift @_;
+    	my $addmode = shift @_;
+    	my $cmdname = $addmode ? 'nodeadd' : 'nodech';
         my %rsp;
-        $rsp->{data}->[0] = "Usage:";
-        $rsp->{data}->[1] = " nodech <noderange> [table.column=value] [table.column=value] ...\n ";
-        $callback->($rsp);
+        if ($addmode) {
+        	push @{$rsp{data}}, "Usage: $cmdname <noderange> groups=<groupnames> [table.column=value] [...]";
+        } else {
+        	push @{$rsp{data}}, "Usage: $cmdname <noderange> table.column=value [...]";
+        	push @{$rsp{data}}, "       $cmdname {-d | --delete} <noderange> <table> [...]";
+        }
+        push @{$rsp{data}}, "       $cmdname {-v | --version}";
+        push @{$rsp{data}}, "       $cmdname [-? | -h | --help]";
+        if ($exitcode) { $rsp{errorcode} = $exitcode; }
+        $callback->(\%rsp);
     }
 
     @ARGV = @{$args};
-    if (
-        !GetOptions('h|?|help'  => \$HELP,
-                    'v|version' => \$VERSION,)
-      )
-    {
-        &nodech_usage;
+    my %options = ('h|?|help'  => \$HELP, 'v|version' => \$VERSION);
+    if (!$addmode) { $options{'d|delete'} = \$deletemode; }
+    if (!GetOptions(%options)) {
+        nodech_usage(1, $addmode);
+        return;
     }
 
     # Help
-    if ($HELP)
-    {
-        &nodech_usage;
+    if ($HELP) {
+        nodech_usage(0, $addmode);
         return;
     }
 
     # Version
-    if ($VERSION)
-    {
+    if ($VERSION) {
         my %rsp;
         $rsp->{data}->[0] = "2.0";
         $callback->($rsp);
         return;
     }
+
+    # Note: the noderange comes through in $arg (and therefore @ARGV) for nodeadd,
+    # because it is linked to xcatclientnnr, since the nodes specified in the noderange
+    # do not exist yet.  The nodech cmd is linked to xcatclient, so its noderange is
+    # put in $nodes instead of $args.
+    if (scalar(@ARGV) < (1+$addmode)) { nodech_usage(1, $addmode);  return; }
+
     if ($addmode)
     {
-        my $idx = 0;
-        foreach my $arg (@$args)
-        {
-            unless ($arg =~ /^-/)
-            {
-                $nodes = [noderange($arg, 0)];
-                splice(@$args, $idx, 1);
-                last;
-            }
-            $idx++;
-        }
-        unless ($nodes)
-        {
-            $callback->({error => "No range to add detected\n"});
+    	my $nr = shift @ARGV;
+    	$nodes = [noderange($nr, 0)];
+        unless ($nodes) {
+            $callback->({error => "No noderange to add.\n",errorcode=>1});
             return;
         }
     }
@@ -542,51 +541,15 @@ sub nodech
     my $temp;
     my %tables;
     my $tab;
-    my $deletemode;
 
-    #No GetOptionsFromArray...
-    #GetOptionsFromArray($args,"d|delete" => \$deletemode);
     #print Dumper($deletemode);
-    foreach (@$args)
+    foreach (@ARGV)
     {
-        if (m/^-/)
-        {    #A quick and dirty option parser in lieu of lacking Getoptinos
-            if (m/^--/)
-            {
-                if (m/--delete/)
-                {
-                    $deletemode = 1;
-                    next;
-                }
-                else
-                {
-                    $callback->(
-                            {data => ["ERROR: Malformed argument $_ ignored"]});
-                    next;
-                }
-            }
-            else
-            {
-                if (m/^-d$/)
-                {
-                    $deletemode = 1;
-                    next;
-                }
-                else
-                {
-                    $callback->(
-                            {data => ["ERROR: Malformed argument $_ ignored"]});
-                    next;
-                }
-            }
-        }
-
         if ($deletemode)
         {
-            if (m/[=\.]/)
+            if (m/[=\.]/)   # in delete mode they can only specify tables names
             {
-                $callback->(
-                         {data => ["ERROR: . and = not valid in delete mode"]});
+                $callback->({error => [". and = not valid in delete mode."],errorcode=>1});
                 next;
             }
             $tables{$_} = 1;
@@ -594,7 +557,7 @@ sub nodech
         }
         unless (m/=/)
         {
-            $callback->({data => ["ERROR: Malformed argument $_ ignored"]});
+            $callback->({error => ["Malformed argument $_ ignored."],errorcode=>1});
             next;
         }
         ($temp, $value) = split('=', $_, 2);
@@ -622,7 +585,10 @@ sub nodech
              $callback->({error=>"$table.$column not a valid table.column description",errorcode=>[1]});
              return;
         }
-        $tables{$table}->{$column} = [$value, $op];
+
+        # Keep a list of the value/op pairs, in case there is more than 1 per table.column
+        #$tables{$table}->{$column} = [$value, $op];
+        push @{$tables{$table}->{$column}}, ($value, $op);
     }
     foreach $tab (keys %tables)
     {
@@ -641,60 +607,60 @@ sub nodech
                     #$tabhdl->setNodeAttribs($_,$tables{$tab});
                     my %uhsh;
                     my $node = $_;
-                    foreach (keys %{$tables{$tab}})
+                    foreach (keys %{$tables{$tab}})		# for each column specified for this table
                     {
-                        my $op  = $tables{$tab}->{$_}->[1];
-                        my $val = $tables{$tab}->{$_}->[0];
-                        my $key = $_;
-                        if ($op eq '=')
-                        {
-                            $uhsh{$key} = $val;
-                        }
-                        elsif ($op eq ',=')
-                        {    #splice assignment
-                            my $cent = $tabhdl->getNodeAttribs($node, [$key]);
-                            my $curval;
-                            if ($cent) { $curval = $cent->{$key}; }
-                            if ($curval)
-                            {
-                                my @vals = split(/,/, $curval);
-                                unless (grep /^$val$/, @vals)
-                                {
-                                    @vals = (@vals, $val);
-                                    my $newval = join(',', @vals);
-                                    $uhsh{$key} = $newval;
-                                }
-                            }
-                            else
-                            {
-                                $uhsh{$key} = $val;
-                            }
-                        }
-                        elsif ($op eq '^=')
-                        {
-                            my $cent = $tabhdl->getNodeAttribs($node, [$key]);
-                            my $curval;
-                            if ($cent) { $curval = $cent->{$key}; }
-                            if ($curval)
-                            {
-                                my @vals = split(/,/, $curval);
-                                if (grep /^$val$/, @vals)
-                                {    #only bother if there
-                                    @vals = grep(!/^$val$/, @vals);
-                                    my $newval = join(',', @vals);
-                                    $uhsh{$key} = $newval;
-                                }
-                            }    #else, what they asked for is the case alredy
+                        #my $op  = $tables{$tab}->{$_}->[1];
+                        #my $val = $tables{$tab}->{$_}->[0];
+                        my $valoppairs = $tables{$tab}->{$_};
+                        while (scalar(@$valoppairs)) {			# alternating list of value and op for this table.column
+                        	my $val = shift @$valoppairs;
+                        	my $op  = shift @$valoppairs;
+                        	my $key = $_;
+                        	if ($op eq '=') {
+                            	$uhsh{$key} = $val;
+                        	}
+                        	elsif ($op eq ',=') {    #splice assignment
+                        		my $curval = $uhsh{$key};    # in case it was already set
+                        		if (!defined($curval)) {
+                            		my $cent = $tabhdl->getNodeAttribs($node, [$key]);
+                            		if ($cent) { $curval = $cent->{$key}; }
+                        		}
+                            	if ($curval) {
+                                	my @vals = split(/,/, $curval);
+                                	unless (grep /^$val$/, @vals) {
+                                    	@vals = (@vals, $val);
+                                    	my $newval = join(',', @vals);
+                                    	$uhsh{$key} = $newval;
+                                	}
+                            	} else {
+                                	$uhsh{$key} = $val;
+                            	}
+                        	}
+                        	elsif ($op eq '^=') {
+                        		my $curval = $uhsh{$key};    # in case it was already set
+                        		if (!defined($curval)) {
+                            		my $cent = $tabhdl->getNodeAttribs($node, [$key]);
+                            		if ($cent) { $curval = $cent->{$key}; }
+                        		}
+                            	if ($curval) {
+                                	my @vals = split(/,/, $curval);
+                                	if (grep /^$val$/, @vals) {    #only bother if there
+                                    	@vals = grep(!/^$val$/, @vals);
+                                    	my $newval = join(',', @vals);
+                                    	$uhsh{$key} = $newval;
+                                	}
+                            	}    #else, what they asked for is the case alredy
+                        	}
+                        }		# end of while $valoppairs
+                    }		# end of foreach column specified for this table
 
-                        }
-                    }
                     if (keys %uhsh)
                     {
 
                         my @rc = $tabhdl->setNodeAttribs($node, \%uhsh);
                         if (not defined($rc[0]))
                         {
-                            $callback->({error => "DB error " . $rc[1]});
+                            $callback->({error => "DB error " . $rc[1],errorcode=>1});
                         }
                     }
                 }
@@ -704,7 +670,7 @@ sub nodech
         else
         {
             $callback->(
-                 {data => ["ERROR: Unable to open table $tab in configuration"]}
+                 {error => ["ERROR: Unable to open table $tab in configuration"],errorcode=>1}
                  );
         }
     }
@@ -751,11 +717,12 @@ sub nodels
 
     sub nodels_usage
     {
+    	my $exitcode = shift @_;
         my %rsp;
-        $rsp->{data}->[0] = "Usage:";
-        $rsp->{data}->[1] = "  nodels [-?|-h|--help] ";
-        $rsp->{data}->[2] = "  nodels [-v|--version] ";
-        $rsp->{data}->[3] = "  nodels [noderange] [table.attribute | shortname] ...";
+        push @{$rsp{data}}, "Usage:";
+        push @{$rsp{data}}, "  nodels [noderange] [table.attribute | shortname] [...]";
+        push @{$rsp{data}}, "  nodels {-v|--version}";
+        push @{$rsp{data}}, "  nodels [-?|-h|--help]";
 #####  xcat 1.2 nodels usage:
         #     $rsp->{data}->[1]= "  nodels [noderange] [group|pos|type|rg|install|hm|all]";
         #     $rsp->{data}->[2]= " ";
@@ -767,24 +734,15 @@ sub nodels
         #     $rsp->{data}->[8]= "  nodels [noderange] rg.{tftp|nfs_install|install_dir|serial}";
         #     $rsp->{data}->[9]= "                     rg.{usenis|install_roll|acct|gm|pbs}";
         #     $rsp->{data}->[10]="                     rg.{access|gpfs|netdevice|prinic|all}";
-        $callback->($rsp);
+        if ($exitcode) { $rsp{errorcode} = $exitcode; }
+        $callback->(\%rsp);
     }
 
     @ARGV = @{$args};
-    if (
-        !GetOptions('h|?|help'  => \$HELP,
-                    'v|version' => \$VERSION,)
-      )
-    {
-        &nodels_usage;
-    }
+    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION,) ) { nodels_usage(1); return; }
 
     # Help
-    if ($HELP)
-    {
-        &nodels_usage;
-        return;
-    }
+    if ($HELP) { nodels_usage(0); return; }
 
     # Version
     if ($VERSION)

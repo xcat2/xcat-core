@@ -1,54 +1,104 @@
 =head1 NAME
- 
-B<nodech> -Changes node attributes in the database.
- 
+
+B<nodech> - Changes nodes' attributes in the xCAT cluster database.
+
+
 =head1 SYNOPSIS
- 
-I<nodech [-h| --help]>
 
+B<nodech> I<noderange> I<table.column=value> [I<...>]
 
-I<nodech  [noderange] [table.column=value, table.column=value] > 
+B<nodech> {B<-d> | B<--delete>} I<noderange> I<table> [I<...>]
+
+B<nodech> {B<-v> | B<--version>}
+
+B<nodech> [B<-?> | B<-h> | B<--help>]
 
 
 =head1 DESCRIPTION
 
- The nodech command changes the attribute value in the input table.column for the input node range.
+The nodech command changes the specified attributes for the given nodes.  Normally, the given
+value will completely replace the current attribute value.  But if ",=" is used instead of "=",
+the specified value will be added to the attribute's comma separated list, if it is not already
+there.  If "^=" is used, the specified value will be removed from the attribute's comma separated list,
+if it is there.  You can also use "^=" and ",=" in the same command to essentially replace one item
+in the list with another.  (See the Examples section.)
+
+See the B<xcatdb> man page for an overview of each table.
+
+The nodech command also supports some short cut names as aliases to common attributes.  See the
+B<nodels> man page for details.
 
 
 =head1 OPTIONS
 
+=over 10
 
-B<-h>          Display usage message.
+=item B<-d|--delete>
 
-B<-v>          Command Version. 
+Delete the nodes' row in the specified tables.
 
+=item B<-v|--version>
+
+Command Version.
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
 
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 3
 
-1 An error has occurred.
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
 
 =head1 EXAMPLES
 
-1. To change the group name nodes in noderange node1-node4: 
+=over 2
 
-I<nodech  node1-node4 nodelist.groups=compute > 
-	
-2. To change nodes in noderange  node1-node4 to os=rhel5 in nodetype table: 
+=item *
 
-I<nodech  node1-node4 nodetype.os=rhel5> 
+To add nodes in noderange  node1-node4 with group all:
+
+B<  nodech> I<node1-node4 groups=all>
+
+=item *
+
+To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
+
+B<  nodech> I<node1-node4 groups=all,rhel5 nodetype.os=rhel5>
+
+=item *
+
+To add node1-node4 to group1:
+
+B<  nodech> I<node1-node4 groups,=group1>
+
+=item *
+
+To put node1-node4 in group2, instead of group1:
+
+B<  nodech> I<node1-node4 groups^=group1 groups,=group2>
+
+=back
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/nodech
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
-See nodels,nodeadd,noderange
-
- 
+nodels(1), nodeadd(1), noderange(5)

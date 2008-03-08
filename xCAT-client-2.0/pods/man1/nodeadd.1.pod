@@ -1,65 +1,83 @@
 =head1 NAME
- 
-B<nodeadd> -Adds nodes to the cluster.
- 
+
+B<nodeadd> - Adds nodes to the xCAT cluster database.
+
+
 =head1 SYNOPSIS
- 
-I<nodeadd [-h| --help]>
 
-I<nodeadd  [noderange] nodelist.groups= [groupname] >
+B<nodeadd> I<noderange> B<groups>=I<groupnames> [I<table.column=value>] [I<...>]
 
-I<nodeadd  [noderange] [table.column=value, table.column=value] > 
+B<nodeadd> {B<-v> | B<--version>}
+
+B<nodeadd> [B<-?> | B<-h> | B<--help>]
 
 
 =head1 DESCRIPTION
 
- The nodeadd command adds the node from the input node range. At least one groupname must be supplied
+The nodeadd command adds the nodes specified in noderange to the xCAT database.  It also stores
+the any additional attributes specified for these nodes.  At least one groupname must be supplied.
+You should also consider specifying attributes in at least the following tables:  B<nodehm>, B<noderes>,
+B<nodetype>.  See the man page for each of these for details.  Also see the B<xcatdb> man page for an
+overview of each table.
 
- nodeadd also supports  some short cut tags:
-	  groups  is equivalent to table.column = nodelist.groups
-	 	for example:nodeadd blade1-blade8  groups=all,compuTe
-
-      mgt is equivalent to table.column = nodehm.mgt
-		for example:nodeadd blade7  mgt=blade
-	  switch is equivalent to table.colum=  switch.switch
-		for example:nodeadd blade8  switch=switch1
+The nodeadd command also supports some short cut names as aliases to common attributes.  See the
+B<nodels> man page for details.
 
 
 =head1 OPTIONS
 
+=over 10
 
-B<-h>          Display usage message.
+=item B<-v|--version>
 
-B<-v>          Command Version. 
+Command Version.
 
-B<-V>          Verbose output. 
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
 
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 3
 
-1 An error has occurred.
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
 
 =head1 EXAMPLES
 
-1. To add nodes in noderange  node1-node4 with group all: 
+=over 2
 
-I<nodeadd  node1-node4 groups=all > 
-	
-2. To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5: 
+=item *
 
-I<nodeadd  node1-node4 nodetype.os=rhel5> 
+To add nodes in noderange  node1-node4 with group all:
+
+B<nodeadd> I<node1-node4 groups=all>
+
+=item *
+
+To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
+
+B<nodeadd> I<node1-node4 groups=all,rhel5 nodetype.os=rhel5>
+
+=back
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/nodeadd
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
-See nodels,nodech,noderange
-
- 
+nodels(1), nodech(1), noderange(5)

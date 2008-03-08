@@ -2,13 +2,14 @@
 
 B<nodels> - lists the nodes in the noderange.
 
+
 =head1 SYNOPSIS
 
-B<nodels> [I<noderange>] [I<table.attribute> | I<shortname>] I<...>
+B<nodels> [I<noderange>] [I<table.column> | I<shortname>] [I<...>]
+
+B<nodels> {B<-v> | B<--version>}
 
 B<nodels> [B<-?> | B<-h> | B<--help>]
-
-B<nodels> [B<-v> | B<--version>]
 
 
 =head1 DESCRIPTION
@@ -16,7 +17,7 @@ B<nodels> [B<-v> | B<--version>]
 The nodels command lists the nodes specified in the node range. If no noderange is provided, then all nodes are listed.
 
 Additional attributes of the nodes will also be displayed if the table names and attribute names
-are specified after the noderange in the form:  I<table.attribute> .  A few shortcut names can
+are specified after the noderange in the form:  I<table.column> .  A few shortcut names can
 also be used as aliases to common attributes:
 
 =over 10
@@ -44,19 +45,21 @@ for grep'ing through the tab files, like was done in xCAT 1.x.  This is because 
 any regular expression rows in the tables into their meaning for the specified node.  The tab* commands
 will not do this, instead they will just display the single regular expression row.
 
+
 =head1 OPTIONS
 
 =over 10
+
+=item B<-v|--version>
+
+Command Version.
 
 =item B<-?|-h|--help>
 
 Display usage message.
 
-=item B<-v>
-
-Command Version.
-
 =back
+
 
 =head1 RETURN VALUE
 
@@ -71,6 +74,7 @@ The command completed successfully.
 An error has occurred.
 
 =back
+
 
 =head1 EXAMPLES
 
@@ -131,9 +135,11 @@ Output is similar to:
 
 =back
 
+
 =head1 FILES
 
 /opt/xcat/bin/nodels
+
 
 =head1 SEE ALSO
 
