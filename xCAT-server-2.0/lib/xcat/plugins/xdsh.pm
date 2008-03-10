@@ -41,6 +41,36 @@ sub handled_commands
 
 #-------------------------------------------------------
 
+=head3  preprocess_request
+
+  Check and setup for hierarchy 
+
+=cut
+
+#-------------------------------------------------------
+sub preprocess_request {
+   my $req = shift;
+   my $cb = shift;
+   if ($req->{_xcatdest}) { return [$req]; } #exit if preprocessed
+   my @requests = ({%$req}); #first element is local instance
+   my $sitetab = xCAT::Table->new('site');
+   (my $ent) = $sitetab->getAttribs({key=>'xcatservers'},'value');
+   $sitetab->close;
+   if ($ent and $ent->{value}) {
+      foreach (split /,/,$ent->{value}) {
+         if (xCAT::Utils->thishostisnot($_)) {
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $_;
+            push @requests,$reqcopy;
+         }
+      }
+   }
+   return \@requests;
+}
+
+
+#-------------------------------------------------------
+
 =head3  process_request
 
   Process the command
@@ -99,6 +129,7 @@ sub process_request
 sub xdsh
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
+    #`touch /tmp/lissadebug`;
 
     # parse dsh input
     @local_results =
@@ -124,7 +155,7 @@ sub xdsh
 sub xdcp
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
-
+    #`touch /tmp/lissadebug`;
     # parse dcp input
     @local_results =
       xCAT::DSHCLI->parse_and_run_dcp($nodes,   $args, $callback,
