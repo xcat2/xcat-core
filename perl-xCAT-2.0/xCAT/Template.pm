@@ -9,6 +9,7 @@ use File::Path;
 use Data::Dumper;
 use Sys::Syslog;
 
+my $tmplerr;
 my $table;
 my $key;
 my $field;
@@ -25,12 +26,12 @@ sub subvars {
   $idir = dirname($inf);
   open($inh,"<",$inf);
   unless ($inh) {
-    return undef;
+    return "Unable to open $inf, aborting";
   }
   mkpath(dirname($outf));
   open($outh,">",$outf);
   unless($outh) {
-    return undef;
+    return "Unable to open $outf for writing/creation, aborting";
   }
   my $inc;
   #First load input into memory..
@@ -72,9 +73,13 @@ sub subvars {
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  if ($tmplerr) {
+     close ($outh);
+     return $tmplerr;
+   }
   print $outh $inc;
   close($outh);
-  return 1;
+  return 0;
 }
 sub includefile
 {
@@ -152,6 +157,13 @@ sub tabdb
 	my $key = shift;
 	my $field = shift;
     my $tabh = xCAT::Table->new($table);
+    unless ($tabh) {
+       $tmplerr="Unable to open table named $table";
+       if ($table =~ /\.tab/) {
+          $tmplerr .= " (.tab should not be specified as part of the table name in xCAT 2, as it seems to be the case here)";
+       }
+      return "";
+    }
     my $ent;
     if ($key eq "THISNODE" or $key eq '$NODE') {
       $ent = $tabh->getNodeAttribs($node,[$field]);
@@ -167,6 +179,7 @@ sub tabdb
     }
     $tabh->close;
     unless($ent and  defined($ent->{$field})) {
+      $tmplerr="Unable to find requested $field from $table in this context";
       return "";
       #return "#TABLEBAD:$table:field $field not found#";
     }

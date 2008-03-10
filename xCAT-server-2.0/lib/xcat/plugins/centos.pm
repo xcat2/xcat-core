@@ -158,7 +158,11 @@ sub mkinstall {
       next;
     }
     #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
-    xCAT::Template->subvars($::XCATROOT."/share/xcat/install/centos/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
+    my $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/centos/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
+    if ($tmperr) { 
+       $callback->({node=>[{name=>[$node],error=>[$tmperr],errorcode=>[1]}]}); 
+       next;
+    }
     mkpath "/install/postscripts/";
     xCAT::Postage->writescript($node,"/install/postscripts/".$node);
     if (-r "/install/$os/$arch/images/pxeboot/vmlinuz" 

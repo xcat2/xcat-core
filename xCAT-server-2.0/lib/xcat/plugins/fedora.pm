@@ -195,14 +195,24 @@ sub mkinstall {
     }
     #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
     
+    my $tmperr;
     if ( -r $::XCATROOT."/share/xcat/install/fedora/$profile.$os.$arch.tmpl" ) { 
-       xCAT::Template->subvars($::XCATROOT."/share/xcat/install/fedora/$profile.$os.$arch.tmpl","/install/autoinst/".$node,$node);
+       $tmperr=xCAT::Template->subvars($::XCATROOT."/share/xcat/install/fedora/$profile.$os.$arch.tmpl","/install/autoinst/".$node,$node);
     } elsif ( -r $::XCATROOT."/share/xcat/install/fedora/$profile.$arch.tmpl" ) { 
-       xCAT::Template->subvars($::XCATROOT."/share/xcat/install/fedora/$profile.$arch.tmpl","/install/autoinst/".$node,$node);
+       $tmperr=xCAT::Template->subvars($::XCATROOT."/share/xcat/install/fedora/$profile.$arch.tmpl","/install/autoinst/".$node,$node);
     } elsif ( -r $::XCATROOT."/share/xcat/install/fedora/$profile.$os.tmpl" ) { 
-       xCAT::Template->subvars($::XCATROOT."/share/xcat/install/fedora/$profile.$os.tmpl","/install/autoinst/".$node,$node);
+       $tmperr=xCAT::Template->subvars($::XCATROOT."/share/xcat/install/fedora/$profile.$os.tmpl","/install/autoinst/".$node,$node);
     } else {
-       xCAT::Template->subvars($::XCATROOT."/share/xcat/install/fedora/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
+       $tmperr=xCAT::Template->subvars($::XCATROOT."/share/xcat/install/fedora/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
+    }
+    if ($tmperr) {
+       $callback->({
+          node => [ {
+            name=> [ $node ],
+            error=> [ $tmperr ],
+            errorcode => [ 1 ]
+          } ]});
+       next;
     }
     mkpath "/install/postscripts/";
     xCAT::Postage->writescript($node,"/install/postscripts/".$node);
