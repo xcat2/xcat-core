@@ -13,13 +13,17 @@ use Thread qw(yield);
 use xCAT::Client submit_request;
 
 use IO::Socket::SSL;
-if (xCAT::Utils->isLinux()) {
-        eval { require Socket6 };
-        eval { require IO::Socket::INET6 };
-        eval { require IO::Socket::SSL::inet6 };
-} else {
-		eval { require Socket };
-        eval { require IO::Socket::INET };
+my $inet6support;
+$inet6support=eval { require Socket6 };
+if ($inet6support) {
+    $inet6support = eval { require IO::Socket::INET6 };
+}
+if ($inet6support) {
+   $inet6support = eval { require IO::Socket::SSL::inet6 };
+}
+unless ($inet6support) {
+  eval { require Socket };
+  eval { require IO::Socket::INET };
 }
 
 my $dispatch_requests = 1; # govern whether commands are dispatchable
@@ -103,7 +107,7 @@ sub do_installm_service {
   #This function servers as a handler for messages from installing nodes
 
 my $socket;
-if (xCAT::Utils->isLinux()) {
+if ($inet6support) {
   $socket = IO::Socket::INET6->new(LocalPort=>$sport,
                                      Proto    => 'tcp',
                                      ReuseAddr => 1,
@@ -125,7 +129,7 @@ if (xCAT::Utils->isLinux()) {
     next unless $conn = $socket->accept;
 
 my @clients;
-if (xCAT::Utils->isLinux()) {
+if ($inet6support) {
     @clients = gethostbyaddr($conn->peeraddr,AF_INET6);
 } else {
     @clients = gethostbyaddr($conn->peeraddr,AF_INET);
@@ -228,7 +232,7 @@ sub do_udp_service { #This function opens up a UDP port
    $dispatch_requests=0;
 my $socket;
    my $select = new IO::Select;
-if (xCAT::Utils->isLinux()) {
+if ($inet6support) {
   $socket = IO::Socket::INET6->new(LocalPort => $port,
                                      Proto     => 'udp',
                                      Domain => AF_INET);
@@ -401,7 +405,7 @@ until ($quit) {
     }
     $sitetab->close;
 
-if (xCAT::Utils->isLinux()) {
+if ($inet6support) {
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET6);
 } else {
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET);

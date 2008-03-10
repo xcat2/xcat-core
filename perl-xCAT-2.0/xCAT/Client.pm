@@ -10,15 +10,18 @@ use xCAT::NodeRange;
 use xCAT::Utils;
 use xCAT::Table;
 
+my $inet6support;
 use IO::Socket::SSL;
-if (xCAT::Utils->isLinux()) {
-        eval { require Socket6 };
-        eval { require IO::Socket::INET6 };
-        eval { require IO::Socket::SSL::inet6 };
-} else {
-
-        eval { require Socket };
-        eval { require IO::Socket::INET };
+$inet6support=eval { require Socket6 };
+if ($inet6support) {
+   $inet6support = eval { require IO::Socket::INET6 };
+}
+if ($inet6support) {
+   $inet6support = eval { require IO::Socket::SSL::inet6 };
+}
+unless ($inet6support) {
+  eval { require Socket };
+  eval { require IO::Socket::INET };
 }
 
 use XML::Simple;
