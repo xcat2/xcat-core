@@ -3,6 +3,7 @@
 package xCAT_plugin::blade;
 #use Net::SNMP qw(:snmp INTEGER);
 use xCAT::Table;
+use Thread qw(yield);
 use xCAT::Utils;
 use IO::Socket;
 use SNMP;
@@ -1101,6 +1102,7 @@ sub forward_data {
       close($rfh);
     }
   }
+  yield; #Try to avoid useless iterations as much as possible
   return $rc;
 }
 

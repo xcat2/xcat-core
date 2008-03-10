@@ -8,6 +8,7 @@ package xCAT_plugin::ipmi;
 
 use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
+use Thread qw(yield);
 
 require Exporter;
 @ISA = qw(Exporter);
@@ -4541,6 +4542,7 @@ sub forward_data { #unserialize data from pipe, chunk at a time, use magic to de
       close($rfh);
     }
   }
+  yield; #Avoid useless loop iterations by giving children a chance to fill pipes
   return $rc;
 }
 
