@@ -70,7 +70,7 @@ sub setstate {
      mkpath("$tftpdir/etc");
   }
   open($pcfg,'>',$tftpdir."/etc/".$node);
-  my $chaintab = xCAT::Table->new('chain');
+  my $chaintab = xCAT::Table->new('chain',-create=>1);
   my $cref=$chaintab->getNodeAttribs($node,['currstate']);
   if ($cref->{currstate}) {
     print $pcfg "#".$cref->{currstate}."\n";

@@ -20,6 +20,7 @@ use Time::HiRes qw(gettimeofday);
 sub handled_commands {
   return {
     findme => 'blade',
+    getmacs => 'nodehm:getmacs,mgt',
     rscan => 'nodehm:mgt',
     rpower => 'nodehm:power,mgt',
     rvitals => 'nodehm:vitals,mgt',
@@ -164,6 +165,7 @@ my $activemm;
 my %mpahash;
 my $mpa;
 my $allinchassis=0;
+my $curn;
 
 sub fillresps {
   my $response = shift;
@@ -626,6 +628,25 @@ sub rscan_stanza {
     return( $result );
 }
  
+sub getmacs {
+   (my $code,my $macs)=inv('mac');
+   if ($code==0) {
+      my @macs = split /\n/,$macs;
+      (my $macd,my $mac) = split (/:/,$macs[0],2);
+      $mac =~ s/\s+//g;
+      if ($macd =~ /mac address 1/i) {
+         my $mactab = xCAT::Table->new('mac',-create=>1);
+         $mactab->setNodeAttribs($curn,{mac=>$mac});
+         $mactab->close;
+         return 0,":mac.mac set to $mac";
+      } else {
+         return 1,"confusing situation";
+      }
+   } else {
+      return $code,$macs;
+   }
+}
+   
 sub inv {
   my @invitems;
   my $data;
@@ -826,6 +847,8 @@ sub bladecmd {
     return resetmp(@args);
   } elsif ($command eq "rbootseq") {
     return bootseq(@args);
+  } elsif ($command eq "getmacs") {
+    return getmacs(@args);
   } elsif ($command eq "rinv") {
     return inv(@args);
   } elsif ($command eq "reventlog") {
@@ -1146,6 +1169,7 @@ sub dompa {
     $mpahash{$mpa}->{nodes}->{$mpa}=-1;
   }
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
+    $curn = $node;
     my ($rc,@output) = bladecmd($mpa,$mpahash->{$mpa}->{nodes}->{$node},$command,@exargs);
     my @output_hashes;
     foreach(@output) {

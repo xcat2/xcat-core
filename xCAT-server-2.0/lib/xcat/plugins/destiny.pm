@@ -43,7 +43,7 @@ sub relay_response {
 
 sub setdestiny {
   my $req=shift;
-  my $chaintab = xCAT::Table->new('chain');
+  my $chaintab = xCAT::Table->new('chain',-create=>1);
   my @nodes=@{$req->{node}};
   my $state = $req->{arg}->[0];
   my %nstates;
