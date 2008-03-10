@@ -611,10 +611,10 @@ sub nodech
                     {
                         #my $op  = $tables{$tab}->{$_}->[1];
                         #my $val = $tables{$tab}->{$_}->[0];
-                        my $valoppairs = $tables{$tab}->{$_};
-                        while (scalar(@$valoppairs)) {			# alternating list of value and op for this table.column
-                        	my $val = shift @$valoppairs;
-                        	my $op  = shift @$valoppairs;
+                        my @valoppairs = @{$tables{$tab}->{$_}}; #Deep copy
+                        while (scalar(@valoppairs)) {			# alternating list of value and op for this table.column
+                        	my $val = shift @valoppairs;
+                        	my $op  = shift @valoppairs;
                         	my $key = $_;
                         	if ($op eq '=') {
                             	$uhsh{$key} = $val;
@@ -651,7 +651,7 @@ sub nodech
                                 	}
                             	}    #else, what they asked for is the case alredy
                         	}
-                        }		# end of while $valoppairs
+                        }		# end of while @valoppairs
                     }		# end of foreach column specified for this table
 
                     if (keys %uhsh)
