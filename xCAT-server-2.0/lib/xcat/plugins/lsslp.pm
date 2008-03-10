@@ -82,7 +82,7 @@ my %mgt = (
     lc(TYPE_RSA) => "blade"   
 );
 
-my @attribs    = qw(nodetype model serial groups mgt mpa id);
+my @attribs    = qw(nodetype model serial groups node mgt mpa id);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -1048,8 +1048,8 @@ sub format_stanza {
         #################################
         foreach ( @attribs ) {
             my $d = $data[$i++];
-
-            if ( /^device|ip-addresses|hostname$/ ) {
+                
+            if ( /^node$/ ) {
                 next;
             } elsif ( /^nodetype$/ ) {
                 $d = $type;
@@ -1101,9 +1101,7 @@ sub format_xml {
         foreach ( @attribs ) {
             my $d = $data[$i++];
 
-            if ( /^device|ip-addresses|hostname$/ ) {
-                next;
-            } elsif ( /^nodetype$/ ) {
+            if ( /^nodetype$/ ) {
                 $d = $type;
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
@@ -1318,6 +1316,7 @@ sub process_request {
 
 
 1;
+
 
 
 
