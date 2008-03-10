@@ -8,8 +8,7 @@ use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use Time::HiRes qw(gettimeofday);
 use IO::Select;
-use xCAT::PPCcli;
-use xCAT::PPCfsp;   
+use xCAT::PPCcli; 
 use xCAT::GlobalDef;
 
 
@@ -524,6 +523,15 @@ sub invoke_cmd {
     # Direct-attached FSP handler 
     ########################################
     if ( $hwtype eq "fsp" ) {
+    
+        ####################################
+        # Dynamically load FSP module
+        ####################################
+        eval { require xCAT::PPCfsp };
+        if ( $@ ) {
+            send_msg( $request, 1, $@ );
+            return;
+        }
         my @exp = xCAT::PPCfsp::connect( $request, $host );
 
         ####################################
