@@ -160,7 +160,7 @@ sub tabdb
     unless ($tabh) {
        $tmplerr="Unable to open table named $table";
        if ($table =~ /\.tab/) {
-          $tmplerr .= " (.tab should not be specified as part of the table name in xCAT 2, as it seems to be the case here)";
+          $tmplerr .= " (.tab should not be specified as part of the table name in xCAT 2, as seems to be the case here)";
        }
       return "";
     }
