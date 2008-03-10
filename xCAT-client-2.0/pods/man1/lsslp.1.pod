@@ -82,28 +82,52 @@ I<lsslp -s MM -x -w>
 Output is similar to:
 
   <Node>
-  <device>MM</device>
-  <hostname>mm01</hostname>
-  <ip-addresses>1.1.1.19</ip-addresses>
-  <serial-number>78AG034</serial-number>
-  <type-model>86772XX</type-model>
+    <groups>mm,all</groups>
+    <id>0</id>
+    <mgt>blade</mgt>
+    <model>86772XX</model>
+    <mpa>mm01</mpa>
+    <node>mm01</node>
+    <nodetype>mm</nodetype>
+    <serial>78AG034</serial>
   </Node>
 
 
-4. To list all discovered MM service types in stanza format and write the output to the xCAT database, enter:
+4. To list all discovered service types in stanza format and write the output to the xCAT database, enter:
 
-I<lsslp -s MM -z -w>
+I<lsslp -z -w>
 
 Output is similar to:
 
   mm01:
-  objtype=node
-  device=MM
-  type-model=86772XX
-  serial-number=78AG034
-  ip-addresses=1.1.1.19
+    objtype=node
+    nodetype=mm
+    model=86772XX
+    serial=78AG034
+    groups=mm,all
+    mgt=blade
+    mpa=mm01
+    id=0
 
+  hmc01:
+    objtype=node
+    nodetype=hmc
+    model=7310CR3
+    serial=KPHHK24
+    groups=hmc,all
+    mgt=hmc
+    mpa=
+    id=
 
+  fsp01:
+    objtype=node
+    nodetype=fsp
+    model=9110-51A
+    serial=1075EEF
+    groups=fsp,all
+    mgt=hmc
+    mpa=
+    id=
 
 
 =head1 FILES
@@ -117,4 +141,5 @@ This command is part of the xCAT software product.
 
 
  
+
 
