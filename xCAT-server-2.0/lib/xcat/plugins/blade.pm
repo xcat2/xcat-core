@@ -969,7 +969,7 @@ sub process_request {
     @exargs = ($request->{arg});
   }
 
-  if ($command eq "rpower" and grep(/^on|off|boot|reset$/, @exargs)) {
+  if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
     if (grep /^-d$/, @exargs) {
       # handles 1 level of dependencies only
       @{$request->{arg}} = grep(!/^-d$/, @{$request->{arg}});
