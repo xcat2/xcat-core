@@ -2,6 +2,7 @@ package xCAT_plugin::iscsi;
 use xCAT::Table;
 use Socket;
 use File::Path;
+use File::Basename;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -79,19 +80,29 @@ sub process_request {
       my $iscsient = $iscsitab->getNodeAttribs($node,['file']);
       if ($iscsient and $iscsient->{file}) {
          $fileloc = $iscsient->{file};
+         unless ($fileloc =~ /^\//) {
+            unless ($iscsiprefix) {
+               $rsp{error}=["$node: Unable to identify file to back iSCSI LUN, no iscsidir in site table and iscsi.file entry for node is a relative path"];
+               $rsp{errorcode}=[1];
+               $callback->({node=>[\%rsp]});
+               %rsp=(name=>[$node]);
+               next;
+            }
+            $fileloc.=$iscsient->{file};
+         }
       } else {
          unless ($iscsiprefix) {
-            $rsp{error}=["$node: Unable to identify file to back iSCSI LUN, no iscsidir in site table nor iscsi.file entry for node"];
+            $rsp{error}=["$node: Unable to identify file to back iSCSI LUN, no iscsidir in site table nor iscsi.file entry for node  (define at least either)"];
             $rsp{errorcode}=[1];
             $callback->({node=>[\%rsp]});
             %rsp=(name=>[$node]);
             next;
          }
-         unless (-d $iscsiprefix) {
-            mkpath $iscsiprefix;
-         }
          $fileloc = "$iscsiprefix/$node";
          $iscsitab->setNodeAttribs($node,{file=>$fileloc});
+      }
+      unless (-d dirname($fileloc)) {
+         mkpath dirname($fileloc);
       }
       unless (-f $fileloc) {
          $rsp{name}=[$node];
