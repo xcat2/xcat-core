@@ -88,7 +88,7 @@ sub process_request {
                %rsp=(name=>[$node]);
                next;
             }
-            $fileloc.=$iscsient->{file};
+            $fileloc=$iscsiprefix."/".$iscsient->{file};
          }
       } else {
          unless ($iscsiprefix) {
@@ -109,7 +109,7 @@ sub process_request {
          $rsp{data}=["Creating $fileloc ($lunsize MB)"];
          $callback->({node=>[\%rsp]});
          %rsp=(name=>[$node]);
-         my $rc = system("dd if=/dev/zero of=$fileloc bs=1M count=$lunsize");
+         my $rc = system("dd if=/dev/zero of=$fileloc bs=1M count=1 seek=$lunsize");
          if ($rc) {
             $rsp{error}=["dd process exited with return code $rc"];
             $rsp{errorcode} = [1];
@@ -134,6 +134,9 @@ sub process_request {
       my $rc = system("tgtadm --mode target --op new --tid ".get_tid($node)." -T $targname");
       if ($rc) {
          $rsp{error}=["tgtadm --mode target --op new --tid ".get_tid($node)." -T $targname returned $rc"];
+         if ($rc == 27392) {
+            push @{$rsp{error}},"This likely indicates the need to do /etc/init.d/tgtd start";
+         }
          $rsp{errorcode} = [1];
          $callback->({node=>[\%rsp]}); 
          %rsp=(name=>[$node]);
