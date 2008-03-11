@@ -15,7 +15,7 @@ use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use IO::Select;
 use IO::Handle;
-use Time::HiRes qw(gettimeofday);
+use Time::HiRes qw(gettimeofday sleep);
 
 sub handled_commands {
   return {
