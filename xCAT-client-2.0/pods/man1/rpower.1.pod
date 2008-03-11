@@ -6,7 +6,7 @@ rpower - remote power control
 
 B<rpower>
 I<noderange>
-B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>
+B<[-d]> B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>
 
 B<rpower>
 [B<-h>|B<--help>]
@@ -47,6 +47,11 @@ The option is recommended over B<cycle>.
 =item B<cycle>
 
 Power off, then on.
+
+=item B<-d>
+
+Use dependency table.
+Valid only with on|off|boot|reset|cycle and blade power method. 
 
 =item B<-h>, B<--help>
 
@@ -109,3 +114,4 @@ node5: on
 =head1 NOTES
 
 This command is part of the xCAT software product.
+
