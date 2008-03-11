@@ -65,6 +65,15 @@ chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
 # cp share/man/man8/* $RPM_BUILD_ROOT/%{prefix}/share/man/man8
 # chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
 
+%ifos linux
+cp share/doc/xCAT2.0.odt $RPM_BUILD_ROOT/%{prefix}/share/doc
+cp share/doc/xCAT2.0.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
+%else
+cp share/doc/xCAT2onAIX.odt $RPM_BUILD_ROOT/%{prefix}/share/doc
+cp share/doc/xCAT2onAIX.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
+%endif
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
+
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
 

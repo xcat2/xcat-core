@@ -52,15 +52,6 @@ cp -r xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data/*
 
-%ifos linux
-cp xCAT2.0.doc $RPM_BUILD_ROOT/%{prefix}/share/doc
-cp xCAT2.0.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
-%else
-cp xCAT2onAIX.doc $RPM_BUILD_ROOT/%{prefix}/share/doc
-cp xCAT2onAIX.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
-%endif
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
-
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT/*
 
@@ -81,8 +72,6 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-, root, root)
 #%doc LICENSE.html
 #%doc README
-#%doc xCAT2.0.doc
-#%doc xCAT2.0.pdf
 # Just package everything that has been copied into RPM_BUILD_ROOT
 %{prefix}
 
