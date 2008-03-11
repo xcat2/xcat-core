@@ -172,6 +172,16 @@ sub new
     $self->{dbpass}="";
 
     my $xcatcfg = (defined $ENV{'XCATCFG'} ? $ENV{'XCATCFG'} : '');
+    unless ($xcatcfg) {
+        if (-r "/etc/xcat/cfgloc") {
+           my $cfgl;
+           open($cfgl,"<","/etc/xcat/cfgloc");
+           $xcatcfg = <$cfgl>;
+           close($cfgl);
+           chomp($xcatcfg);
+           $ENV{'XCATCFG'}=$xcatcfg; #Store it in env to avoid many file reads
+        }
+    }
     if ($xcatcfg =~ /^$/)
     {
         if (-d "/opt/xcat/cfg")

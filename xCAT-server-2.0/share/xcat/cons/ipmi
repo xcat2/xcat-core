@@ -5,20 +5,9 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-my $xcatcfg;
-open($xcatcfg,"<","/etc/sysconfig/xcat");
-while (<$xcatcfg>) {
-   if (/^\s*XCATCFG/) {
-      (my $jnk,$ENV{XCATCFG})=split /=/,$_,2;
-      chomp($ENV{XCATCFG});
-      $ENV{XCATCFG} =~ s/^'//;
-      $ENV{XCATCFG} =~ s/'$//;
-      last;
-   }
-}
-close($xcatcfg);
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
+use xCAT::Util;
 my $dba;
 my $ipmitab = xCAT::Table->new('ipmi');
 unless ($ipmitab) { sleep 5; die "Unable to open IPMI table"; }
@@ -41,6 +30,7 @@ if ($dba) {
   if ($dba->{username}) { $username = $dba->{username}; }
   if ($dba->{password}) { $password = $dba->{password}; }
 }
+xCAT::Util::close_all_dbhs;
 system "ipmitool -I lanplus -U $username -P $password -H $bmc sol deactivate"; #Stop any active session
 exec "ipmitool -I lanplus -U $username -P $password -H $bmc sol activate";
   

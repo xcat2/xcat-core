@@ -127,6 +127,13 @@ sub xfork
     return $rc;
 }
 
+sub close_all_dbhs {
+  foreach (values %{$::XCAT_DBHS})
+  {    #@{$drh->{ChildHandles}}) {
+     $_->disconnect;
+     undef $_;
+  }
+}
 #-------------------------------------------------------------------------------
 
 =head3    isLinux
