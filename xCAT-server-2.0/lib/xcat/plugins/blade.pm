@@ -32,7 +32,7 @@ sub handled_commands {
   };
 }
 my %usage = (
-    "rpower" => "Usage: rpower <noderange> [-d][on|off|reset|stat|boot]",
+    "rpower" => "Usage: rpower <noderange> [--nodeps][on|off|reset|stat|boot]",
     "rbeacon" => "Usage: rbeacon <noderange> [on|off|stat]",
     "rvitals" => "Usage: rvitals <noderange> [all|temp|voltage|fanspeed|power|leds]",
     "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
@@ -869,7 +869,7 @@ sub handle_depend {
     
   # send all dependencies (along w/ those dependent on nothing)
   $request->{node} = [keys %$dep];
-  process_request($request,$callback,$doreq);
+  process_request($request,$callback,$doreq,1);
   my $start = Time::HiRes::gettimeofday();
     
   # build list of dependent nodes w/delays
@@ -898,7 +898,7 @@ sub handle_depend {
     if (@noderange) {
       %mpahash = ();
       $request->{node} = \@noderange;
-      process_request($request,$callback,$doreq);
+      process_request($request,$callback,$doreq,1);
     }
     # millisecond sleep
     Time::HiRes::sleep($delay);
@@ -952,6 +952,7 @@ sub process_request {
   my $request = shift;
   my $callback = shift;
   my $doreq = shift;
+  my $level = shift;
   my $noderange = $request->{node};
   my $command = $request->{command}->[0];
   my @exargs;
@@ -970,15 +971,14 @@ sub process_request {
   }
 
   if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
-    if (grep /^-d$/, @exargs) {
+    if (!grep /^--nodeps$/, @exargs) {
       # handles 1 level of dependencies only
-      @{$request->{arg}} = grep(!/^-d$/, @{$request->{arg}});
-      @exargs = @{$request->{arg}};
-
-      my $dep = build_depend($noderange,\@exargs);
-      if (scalar(%$dep)) {
-        handle_depend( $request, $callback, $doreq, $dep );
-        return 0;
+      if (!defined($level)) {
+        my $dep = build_depend($noderange,\@exargs);
+        if (scalar(%$dep)) {
+          handle_depend( $request, $callback, $doreq, $dep );
+          return 0;
+        } 
       }
     }
   }
@@ -1205,6 +1205,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
