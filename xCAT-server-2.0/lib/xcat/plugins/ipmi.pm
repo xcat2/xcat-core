@@ -4581,6 +4581,7 @@ sub donode {
     print $outfd freeze([\%output]);
     print $outfd "\nENDOFFREEZE6sK4ci\n";
   }	
+  yield;
   #my $msgtoparent=freeze(\@outhashes);
  # print $outfd $msgtoparent;
 }

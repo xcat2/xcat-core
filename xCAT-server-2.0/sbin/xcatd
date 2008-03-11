@@ -258,7 +258,7 @@ if ($inet6support) {
   until ($quit) {
     eval { 
 	while (1) {	
-        until ($select->can_read(5)) {if ($quit) { last; }} #Wait for data
+        until ($select->can_read(5)) { if ($quit) { last; }; yield; } #Wait for data
 	while ($select->can_read(0)) { #Pull all buffer data that can be pulled
 	   $part = $socket->recv($data,1500);
            ($sport,$client) = sockaddr_in($part);
@@ -629,6 +629,7 @@ sub dispatch_callback {
    } else {
       print $dispatch_parentfd freeze($rsp);
       print $dispatch_parentfd "\nENDOFFREEZE6sK6xa\n";
+      yield; #This has to happen before next line could possibly work anyway
       <$dispatch_parentfd>; #Block until parent acks data
    }
 }

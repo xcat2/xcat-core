@@ -1158,6 +1158,7 @@ sub dompa {
      }
      print $out freeze([\%err]);
      print $out "\nENDOFFREEZE6sK4ci\n";
+     yield;
      return 1,"General error establishing SNMP communication";
   }
   my $tmp = $session->get([$mmprimoid.".1"]);
@@ -1197,6 +1198,7 @@ sub dompa {
       print $out freeze([\%output]);
       print $out "\nENDOFFREEZE6sK4ci\n";
     }
+    yield;
   }
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";
