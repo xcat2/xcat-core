@@ -97,6 +97,7 @@ sub init_db
         if ($dbinfo)
         {
             `echo  "$dbinfo"  > /etc/xcat/cfgloc`;
+			 chmod 0600,"/etc/xcat/cfgloc";
         }
         else
         {
