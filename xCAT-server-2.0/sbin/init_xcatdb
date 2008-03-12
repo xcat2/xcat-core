@@ -61,13 +61,62 @@ sub init_db
               "chtab priority=3 policy.commands=nextdestiny policy.rule=allow",
               "chtab priority=4 policy.commands=getdestiny policy.rule=allow"
               );
-    foreach $cmd (@cmd)
-    {
-        my @output = xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
+    foreach $cmd (@cmd) {
+    
+       my @output = xCAT::Utils->runcmd($cmd, 0);
+       if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message("E", "Error from $cmd, @output");
+           xCAT::MsgUtils->message("E", "Error from $cmd, @output");
         }
+    }
+
+    # build /etc/xcat/cfgloc
+    my @cfg;
+    my $cfg2;
+    my $dbinfo;
+    my $configfile = "/etc/sysconfig/xcat";
+    if (-e ($configfile))
+    {
+        open(CFGFILE, "<$configfile")
+          or xCAT::MsgUtils->message(
+            'S',
+            "Cannot open $configfile for DB access. Please create using information in the xCAT 2.0 Cookbook ( Setting up postgresql) and rerun this script.\n"
+            );
+        foreach my $line (<CFGFILE>)
+        {
+            if (grep /XCATCFG/, $line)
+            {
+                @cfg  = split /XCATCFG=/, $line;
+                @cfg2 = split /'/,        $cfg[1];
+                chomp $cfg2[1];
+                $dbinfo = $cfg2[1];
+                close CFGFILE;
+                last;
+            }
+        }
+        if ($dbinfo)
+        {
+            `echo  "$dbinfo"  > /etc/xcat/cfgloc`;
+        }
+        else
+        {
+            xCAT::MsgUtils->message("E",
+                                    "The contents of $configfile is invalid\n");
+        }
+    }
+    else
+    {
+        xCAT::MsgUtils->message(
+             "E",
+             "$configfile does not exist, need to create and rerun the script\n"
+             );
+    }
+
+    $cmd = "service xcatd restart";
+    my @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", "Error from $cmd, @output");
     }
 
     return $rc;
