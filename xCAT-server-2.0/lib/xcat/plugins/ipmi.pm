@@ -20,6 +20,7 @@ require Exporter;
 sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt',
+    rspconfig => 'nodehm:mgt',
     rvitals => 'nodehm:vitals,mgt',
     rinv => 'nodehm:inv,mgt',
     rsetboot => 'nodehm:mgt',
@@ -688,7 +689,7 @@ sub ipmicmd {
 			($rc,@output) = getnetinfo($subcommand);
 		}
 	}
-	elsif($command eq "rsetnetinfo") {
+	elsif($command eq "rspconfig") {
 		($rc,@output) = setnetinfo($subcommand,@_);
 		if($rc == 0) {
 			($rc,@output) = getnetinfo($subcommand);
@@ -767,6 +768,8 @@ sub resetbmc {
 
 sub setnetinfo {
 	my $subcommand = shift;
+   my $argument;
+   ($subcommand,$argument) = split(/=/,$subcommand);
 	my @input = @_;
 
 	my $netfun = 0x30;
@@ -782,8 +785,18 @@ sub setnetinfo {
 		$subcommand = "snmpdest1";
 	}
 
-	if($subcommand eq "garp") {
-		my $halfsec = pop(@input) * 2;
+   unless(defined($argument)) { 
+      return 0;
+   }
+   if ($subcommand eq "alert" and $argument eq "on" or $argument =~ /^en/) {
+      $netfun = 0x10;
+      @cmd = (0x12,0x9,0x1,0x18,0x11,0x00);
+   } elsif ($subcommand eq "alert" and $argument eq "off" or $argument =~ /^dis/) {
+      $netfun = 0x10;
+      @cmd = (0x12,0x9,0x1,0x10,0x11,0x00);
+   }
+	elsif($subcommand eq "garp") {
+		my $halfsec = $argument * 2; #pop(@input) * 2;
 
 		if($halfsec > 255) {
 			$halfsec = 255;
@@ -795,7 +808,7 @@ sub setnetinfo {
 		@cmd = (0x01,$channel_number,0x0b,$halfsec);
 	}
 	elsif($subcommand =~ m/snmpdest(\d+)/ ) {
-		my $dstip = pop(@input);
+		my $dstip = $argument; #pop(@input);
 		my @dip = split /\./, $dstip;
 		@cmd = (0x01,$channel_number,0x13,$1,0x00,0x00,$dip[0],$dip[1],$dip[2],$dip[3],0,0,0,0,0,0);
 	}
@@ -812,7 +825,7 @@ sub setnetinfo {
 	#    @cmd = (0x12, $channel_number,0x09, 0x01, $act_number+16, 0x11,0x00);
 	#}
 	else {
-		return(1,"unsupported command setnetinfo $subcommand");
+		return(1,"configuration of $subcommand is not implemented currently");
 	}
 
 	$error = docmd(
@@ -826,13 +839,13 @@ sub setnetinfo {
 		$text = $error;
 	}
 	else {
-		if($subcommand eq "garp" or $subcommand =~ m/snmpdest\d+/) {
+		if($subcommand eq "garp" or $subcommand =~ m/snmpdest\d+/ or $subcommand eq "alert") {
 			$code = $returnd[36];
 
 			if($code == 0x00) {
 				$text = "ok";
 			}
-		}
+		} 
 
 		if(!$text) {
 			$rc = 1;
@@ -845,6 +858,7 @@ sub setnetinfo {
 
 sub getnetinfo {
 	my $subcommand = shift;
+   $subcommand =~ s/=.*//;
 
 	my $netfun = 0x30;
 	my @cmd;
@@ -859,7 +873,11 @@ sub getnetinfo {
 		$subcommand = "snmpdest1";
 	}
 
-	if($subcommand eq "garp") {
+   if ($subcommand eq "alert") {
+      $netfun = 0x10;
+      @cmd = (0x13,9,1,0);
+   }
+	elsif($subcommand eq "garp") {
 		@cmd = (0x02,$channel_number,0x0b,0x00,0x00);
 	}
 	elsif ($subcommand =~ m/^snmpdest(\d+)/ ) {
@@ -907,6 +925,13 @@ sub getnetinfo {
 				$text = $codes{$code};
 			}
 		}
+      elsif($subcommand eq "alert") {
+         if ($returnd[39] & 0x8) { 
+            $text = "Alerts: enabled";
+         } else {
+            $text = "Alerts: disabled";
+         }
+      }
 		elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
 			$text = sprintf("$format %d.%d.%d.%d",
 				"BMC SNMP Destination $1:",
