@@ -807,6 +807,17 @@ sub setnetinfo {
 
 		@cmd = (0x01,$channel_number,0x0b,$halfsec);
 	}
+   elsif($subcommand =~ m/community/ ) {
+      my $cindex = 0;
+      my @clist;
+      foreach (0..17) {
+         push @clist,0;
+      }
+      foreach (split //,$argument)  {
+         $clist[$cindex++]=ord($_);
+      }
+      @cmd = (1,$channel_number,0x10,@clist);
+   }
 	elsif($subcommand =~ m/snmpdest(\d+)/ ) {
 		my $dstip = $argument; #pop(@input);
 		my @dip = split /\./, $dstip;
@@ -839,7 +850,7 @@ sub setnetinfo {
 		$text = $error;
 	}
 	else {
-		if($subcommand eq "garp" or $subcommand =~ m/snmpdest\d+/ or $subcommand eq "alert") {
+		if($subcommand eq "garp" or $subcommand =~ m/snmpdest\d+/ or $subcommand eq "alert" or $subcommand =~ /community/) {
 			$code = $returnd[36];
 
 			if($code == 0x00) {
