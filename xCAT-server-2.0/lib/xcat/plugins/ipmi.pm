@@ -767,7 +767,7 @@ sub resetbmc {
 
 sub setnetinfo {
 	my $subcommand = shift;
-	my $input = shift;
+	my @input = @_;
 
 	my $netfun = 0x30;
 	my @cmd;
@@ -783,7 +783,7 @@ sub setnetinfo {
 	}
 
 	if($subcommand eq "garp") {
-		my $halfsec = pop(@$input) * 2;
+		my $halfsec = pop(@input) * 2;
 
 		if($halfsec > 255) {
 			$halfsec = 255;
@@ -795,10 +795,22 @@ sub setnetinfo {
 		@cmd = (0x01,$channel_number,0x0b,$halfsec);
 	}
 	elsif($subcommand =~ m/snmpdest(\d+)/ ) {
-		my $dstip = pop(@$input);
+		my $dstip = pop(@input);
 		my @dip = split /\./, $dstip;
 		@cmd = (0x01,$channel_number,0x13,$1,0x00,0x00,$dip[0],$dip[1],$dip[2],$dip[3],0,0,0,0,0,0);
 	}
+	#elsif($subcommand eq "alert" ) {
+	#    my $action=pop(@input);
+            #print "action=$action\n";
+        #    $netfun=0x28; #TODO: not right
+ 
+            # mapping alert action to number
+        #    my $act_number=8;   
+        #    if ($action eq "on") {$act_number=8;}  
+        #    elsif ($action eq "off") { $act_number=0;}  
+        #    else { return(1,"unsupported alert action $action");}    
+	#    @cmd = (0x12, $channel_number,0x09, 0x01, $act_number+16, 0x11,0x00);
+	#}
 	else {
 		return(1,"unsupported command setnetinfo $subcommand");
 	}
@@ -2084,19 +2096,23 @@ sub fruwrite {
 }
 
 sub decodealert {
-	my $trap = shift;
+  my $trap = shift;
+  my $skip_sdrinit=0;
   if ($trap =~ /xCAT_plugin::ipmi/) {
     $trap=shift;
+    $skip_sdrinit=1;
   }
 	my $node = shift;
-	my $pet = shift;
+	my @pet = @_;
 	my $rc;
 	my $text;
-
+    
+    if (!$skip_sdrinit) { 
 	($rc,$text) = initsdr();
 	if($rc != 0) {
 		return($rc,$text);
 	}
+    }
 
 	my $type;
 	my $desc;
@@ -2126,7 +2142,7 @@ sub decodealert {
 		printf("reserved:   %02xh\n",$reserved);
 	}
 
-	my @hex = (0,@$pet);
+	my @hex = (0,@pet);
 	my $pad = $hex[0];
 	my @uuid = @hex[1..16];
 	my @seqnum = @hex[17,18];
@@ -4509,7 +4525,7 @@ sub process_request {
       unless (defined $child) { die "Fork failed" };
 	  if ($child == 0) { 
         close($cfd);
-        donode($pfd,$_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>@exargs);
+        donode($pfd,$_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
         close($pfd);
 		exit(0);
 	  }
@@ -4557,7 +4573,8 @@ sub donode {
   my $command = shift;
   my %namedargs=@_;
   my $transid = $namedargs{-transid};
-  my @exargs=$namedargs{-args};
+  my $extra=$namedargs{-args};
+  my @exargs=@$extra;
   my ($rc,@output) = ipmicmd($bmcip,623,$user,$pass,$timeout,$retries,0,$command,@exargs);
   my @outhashes;
   foreach(@output) {

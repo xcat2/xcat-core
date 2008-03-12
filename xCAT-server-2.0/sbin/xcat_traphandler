@@ -9,6 +9,7 @@ use Sys::Syslog;
 use xCAT::Table;
 use xCAT_plugin::ipmi;
 use xCAT_monitoring::monitorctrl;
+use Socket;
 
 #-------------------------------------------------------------------------------
 =head1  xcat_traphandler  
@@ -45,10 +46,12 @@ if ($r) { %hashR=parseSettings($r); }
 # read host name
 my $host=<STDIN>; 
 chomp($host);
+print "host=$host\n";
 
 # read the host ip
 my $ip=<STDIN>;
 chomp($ip);
+print "ip=$ip\n";
 
 # read uptime
 my $uptimeline=<STDIN>;
@@ -160,12 +163,32 @@ while ($temp=<STDIN>) {
     $node1=$host;
     $node1 =~ s/(-(eth|man)\d+)?(\..*)?$//;
 
+    $ip1=$ip;
+    $ip1 =~ /(\d+\.\d+\.\d+\.\d+)/;
+    $ip1=$1;
+
+    # get the host name if it is unknown
+    if ($node1 =~/<UNKNOWN>/) {
+      my $iaddr = inet_aton("9.114.47.225");
+      my ($name) = gethostbyaddr($iaddr, AF_INET);
+      if ($name) {$node1=$name; $host=$name;}
+    }
+
+    #node1 is the bmc name, we need the node that bmc connects to to call xCAT
+    my $realnode;
+    my $ipmitab = xCAT::Table->new('ipmi');
+    if (defined($ipmitab)) {
+      ($tmp)=$ipmitab->getAttribs({'bmc'=>$node1},'node');
+       if (defined($tmp)) { $realnode=$tmp->{node}; }   
+    }
+    if ($realnode) {$node1=$realnode;}
+
+    # make the vlaue into a hex array for decoding
     $value =~ s/\"//g;
-    my @varray=split(/ /, $value);
-    #print "\n\n\ntrapid=$trapid\nhost=$host\npet=$value\n";
-    my $error = xCAT_plugin::ipmi->decodealert($trapid, $host, \@varray);
+    my @varray=split(/\s+/, $value);
+    foreach (@varray) { $_=hex($_); }
+    my $error = xCAT_plugin::ipmi->decodealert($trapid, $node1, @varray);
     $briefmsg .= $error;
-    #print "error=$error\n";
 
     #severity value from decodealert are: 
     #LOG,INFORMATION,OK,CRITICAL,NON-RECOVERABLE,MONITOR and UNKNOWN-SEVERITY
@@ -173,8 +196,8 @@ while ($temp=<STDIN>) {
     if ($error) {
       @tempArray=split(/\:/, $error);  
       $severity=$tempArray[0];
-      if ($severity eq "LOG") {
-        $severity_type="Informational";
+      if ($severity eq "LOG") {#in fact this is called "unspecifiled"
+        $severity_type="Warning";
       } 
       elsif($severity eq  "INFORMATION") {
         $severity_type="Informational";

@@ -42,7 +42,7 @@ sub start {
   }
 
   # do not turn it on on the service node
-  if (xCAT::Utils->isServiceNode()) { return (0, "");}
+  #if (xCAT::Utils->isServiceNode()) { return (0, "");}
 
   # unless we are running on linux, exit.
   #unless($^O eq "linux"){      
@@ -61,7 +61,69 @@ sub start {
     return (1, "net-snmp is not installed")
   }
 
+  #enable bmcs if any
+  configBMC(1);
+
+  #enable MMAs if any
+
   return (0, "started")
+}
+
+#--------------------------------------------------------------------------------
+=head3    configBMC
+      This function configures BMC to setup the snmp destination, enable/disable
+    PEF policy table entry number 1. 
+    Arguments:
+      actioon -- 1 enable PEF policy table. 0 disable PEF policy table.
+    Returns:
+      (return code, message)      
+=cut
+#--------------------------------------------------------------------------------
+sub configBMC {
+  my $action=shift;
+
+  #the ips of this node
+  my @hostinfo=xCAT::Utils->determinehostname();
+  #pop(@hostinfo); #remove the host name
+  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+
+  my $table=xCAT::Table->new("ipmi");
+  if ($table) {
+    my @tmp1=$table->getAllAttribs(('node','bmc','username', 'password'));
+    if (defined(@tmp1) && (@tmp1 > 0)) {
+      foreach(@tmp1) {
+        my $node=$_->{node};
+        print "node=$node\n";
+        
+        #get the master for node
+        my $master=xCAT::Utils->GetMasterNodeName($node);
+        print "master=$master\n";
+       
+        # handle its childen only
+	if ($iphash{$master}) {
+	  if ($action==1) { #enable
+            # set the snmp destination
+            # suppose all others like username, password, ip, gateway ip are set during the installation
+            my @dip = split /\./, $master;
+	    my $cmd="ipmitool -I lan -H $_->{bmc} -U $_->{username} -P $_->{password} raw 0x0c 0x01 0x01 0x13 0x01 0x00 0x00 $dip[0] $dip[1] $dip[2] $dip[3] 0x00 0x00 0x00 0x00 0x00 0x00";
+	    $result=`$cmd 2>&1`;
+            if ($?) { print "Setting snmp destination ip address for node $node: $result\n"; }
+            #enable PEF policy
+            $cmd="ipmitool -I lan -H $_->{bmc} -U $_->{username} -P $_->{password} raw 0x04 0x12 0x09 0x01 0x18 0x11 0x00";
+	    $result=`$cmd 2>&1`;
+            if ($?) { print "Enabling PEF policy for node $node: $result\n"; }
+	  } else { #disable 
+            #disable PEF policy
+	    my $cmd="ipmitool -I lan -H $_->{bmc} -U $_->{username} -P $_->{password} raw 0x04 0x12 0x09 0x01 0x10 0x11 0x00";
+	    $result=`$cmd 2>&1`;
+            if ($result) { print "Disabling PEF policy for node $node: $result\n"; }
+	  }          
+        }
+      } #foreach 
+    }
+  }
+
 }
 
 
@@ -131,7 +193,6 @@ sub configSNMP {
   # then stop it and restart it again so that it reads our new
   # snmptrapd.conf configuration file. Then the process
   chomp(my $pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
-  print "pid=$pid here\n";
   if($pid){
     `/bin/kill -9 $pid`;
   }
@@ -165,7 +226,10 @@ sub stop {
   print "snmpmon::stop called\n";
 
   # do not turn it on on the service node
-  if (xCAT::Utils->isServiceNode()) { return (0, "");}
+  #if (xCAT::Utils->isServiceNode()) { return (0, "");}
+
+  #disable BMC so that it stop senging alerts (PETs) to this node
+  configBMC(0);
  
   if (-f "/usr/share/snmp/snmptrapd.conf.orig"){
     # copy back the old one
