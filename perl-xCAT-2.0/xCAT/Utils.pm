@@ -1599,5 +1599,32 @@ sub gethost_ips
     }
     return @ipaddress;
 }
+#-----------------------------------------------------------------------------
 
+=head3 create_postscripts_tar
+	 
+     This routine will tar and compress the /install/postscripts directory
+	 and place in /install/autoinst/xcat_postscripts.Z
+
+     input: none 
+	 output: 
+	 example: $rc=xCAT::create_postscripts_tar();
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub create_postscripts_tar 
+{
+    my ($class) = @_;
+    my $cmd;
+	$cmd="cd /install/postscripts;tar -cjf /install/autoinst/xcatpost.tar.bz2 *";
+    my @result = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("S", "Error from $cmd\n");
+       return $::RUNCMD_RC;
+    }
+  return 0;
+
+}
 1;

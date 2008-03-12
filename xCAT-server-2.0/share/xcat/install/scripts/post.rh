@@ -26,6 +26,7 @@ hostname $HOSTNAME
 export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 mkdir -p /xcatpost
+cd /xcatpost
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
 for i in $(seq 1 20)
@@ -34,7 +35,8 @@ do
 	for i in $MASTER_IPS
 	do
 #		mount -r $i:$XCATROOT $XCATROOT
-		mount -o ro,nolock $i:/install/postscripts /xcatpost
+#		mount -o ro,nolock $i:/install/postscripts /xcatpost
+		wget http://$i/install/autoinst/xcatpost.tar.bz2
 		if [ "$?" = "0" ]
 		then
 			GOTIT=1
@@ -51,6 +53,7 @@ done
 #mount -r #XCATVAR:MASTER_IP#:$XCATROOT $XCATROOT
 #mount -o ro,nolock #XCATVAR:MASTER_IP#:$XCATROOT $XCATROOT
 #$XCATROOT/bin/postage
+tar -xvf xcatpost.tar.bz2
 /xcatpost/#TABLE:nodelist:THISNODE:node#
 cd /
 umount /xcatpost
