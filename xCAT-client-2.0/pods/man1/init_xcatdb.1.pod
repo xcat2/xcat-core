@@ -1,0 +1,43 @@
+=head1 NAME
+ 
+B<init_xcatdb> - Sets up the site table for a new xCAT database.
+ 
+=head1 SYNOPSIS
+ 
+I<init_xcatdb>
+
+
+=head1 DESCRIPTION
+
+This command is used to initiate the site table with values when setting up a new xCAT database. It also sets up the /etc/xcatloc file.  
+
+=head1 OPTIONS
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To setup default site definitions.
+
+I<init_xcatdb>
+
+
+=head1 FILES
+ 
+$XCATROOT/sbin/init_xcatdb
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+ 
