@@ -24,7 +24,7 @@ sub parse_args {
         return( [ $_[0],
             "reventlog -h|--help",
             "reventlog -v|--version",
-            "reventlog [-V|--verbose] noderange " . join( '|', @reventlog )."|<number of entries to retrieve>",
+            "reventlog [-V|--verbose] noderange " . join( '|', @reventlog )."|<number of entries>",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
             "    -V   verbose output"])
