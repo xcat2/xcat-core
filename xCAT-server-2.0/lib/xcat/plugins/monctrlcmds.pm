@@ -11,6 +11,7 @@ use xCAT::NodeRange;
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT_monitoring::monitorctrl;
+use xCAT::Utils;
 
 1;
 
@@ -132,6 +133,14 @@ sub startmon {
   my $callback=shift;
   my $VERSION;
   my $HELP;
+
+  if (xCAT::Utils->isServiceNode()) {
+    my %rsp=();
+    $rsp->{data}->[0]= "This command is not supported on a service node.";
+    $callback->($rsp);
+    return 0;
+  }
+
 
   # subroutine to display the usage
   sub startmon_usage
@@ -261,7 +270,25 @@ sub startmon {
     $table->close(); 
   }
 
-      
+  #tell the service node to start monitoring too
+  my $mon_hierachy=xCAT_monitoring::monitorctrl->getMonHierarchy();
+  my @mon_servers=keys(%$mon_hierachy); 
+  my @hostinfo=xCAT::Utils->determinehostname();
+  print "hostinfo=@hostinfo\n";
+  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+  foreach (@mon_servers) {
+    if (! $iphash{$_}) { #if it is not this node, meaning it is ms
+      my %rsp2;
+      $rsp2->{data}->[0]="sending request to $_...";
+      $callback->($rsp2);
+      my $result=`psh --nonodecheck $_ updatemon 2>1&`;     
+      if ($result) {
+        $rsp2->{data}->[0]="$result";
+        $callback->($rsp2);
+      }
+    } 
+  } 
 
   my %rsp1;
   $rsp1->{data}->[0]="done.";
@@ -294,6 +321,13 @@ sub stopmon {
   my $callback=shift;
   my $VERSION;
   my $HELP;
+
+  if (xCAT::Utils->isServiceNode()) {
+    my %rsp=();
+    $rsp->{data}->[0]= "This command is not supported on a service node.";
+    $callback->($rsp);
+    return 0;
+  }
 
   # subroutine to display the usage
   sub stopmon_usage
@@ -377,6 +411,25 @@ sub stopmon {
     }
     $table->close();   
   }
+
+  #tell all the service nodes to stop monitoring too
+  my $mon_hierachy=xCAT_monitoring::monitorctrl->getMonHierarchy();
+  my @mon_servers=keys(%$mon_hierachy); 
+  my @hostinfo=xCAT::Utils->determinehostname();
+  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+  foreach (@mon_servers) {
+    if (! $iphash{$_}) { #if it is not this node, meaning it is ms
+      my %rsp2;
+      $rsp2->{data}->[0]="sending request to $_...";
+      $callback->($rsp2);
+      my $result=`psh --nonodecheck $_ updatemon 2>1&`;     
+      if ($result) {
+        $rsp2->{data}->[0]="$result";
+        $callback->($rsp2);
+      }  
+    } 
+  } 
 
   my %rsp1;
   $rsp1->{data}->[0]="done.";
@@ -531,6 +584,16 @@ sub lsmon {
   }
   return;
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

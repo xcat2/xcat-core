@@ -239,7 +239,7 @@ if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) {
   my $head="SNMP $severity received from $host($ip)\n$briefmsg\n";
   my $middle="Trap details:\n$message\n";
   my $end;
-  if ($node1) {$info= getMoreInfo($node1);}
+  if ($node1) { $info= getMoreInfo($node1);}
   if ($info) {
    $end ="Additonal Info from xCAT:\n$info\n";
   }  
@@ -303,8 +303,8 @@ sub getMoreInfo {
 
   # get the info from rinv command if nothing in the vpd table
   if (!$vpd) { 
-    my $result=`$XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`;
-     if ($? == 0) {#success
+    my $result=`XCATBYPASS=Y $XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`;
+    if ($? == 0) {#success
         chomp($result);
         my @b=split(/\n/, $result);
         foreach (@b) {

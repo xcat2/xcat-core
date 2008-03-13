@@ -7,7 +7,6 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 
-use Sys::Hostname;
 use xCAT::NodeRange;
 use xCAT::Table;
 use xCAT::MsgUtils;
@@ -914,7 +913,8 @@ sub getMonHierarchy {
   
   #get monserver for each node. use "monserver" attribute from noderes table, if not
   #defined, use "servicenode". otherwise, use loca lhost. 
-  my $host=hostname();
+  my @hostinfo=xCAT::Utils->determinehostname();
+  my $host=pop(@hostinfo);
   if (defined(@tmp1) && (@tmp1 > 0)) {
     foreach(@tmp1) {
       my $node=$_->{node};
@@ -967,7 +967,8 @@ sub getMonServerWithInfo {
   #print "getMonServerWithInfo called with @in_nodes\n";
   #get all from the noderes table
   my $table2=xCAT::Table->new("noderes", -create =>0);
-  my $host=hostname();
+  my @hostinfo=xCAT::Utils->determinehostname();
+  my $host=pop(@hostinfo);
   
   foreach (@in_nodes) {
     my $node=$_->[0];
@@ -1018,7 +1019,8 @@ sub getMonServer {
   #get all from nodelist table and noderes table
   my $table=xCAT::Table->new("nodelist", -create =>0);
   my $table2=xCAT::Table->new("noderes", -create =>0);
-  my $host=hostname();
+  my @hostinfo=xCAT::Utils->determinehostname();
+  my $host=pop(@hostinfo);
   
   foreach (@in_nodes) {
     my @tmp1=$table->getAttribs({'node'=>$_}, ('node', 'nodetype', 'status'));
