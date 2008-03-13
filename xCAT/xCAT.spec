@@ -146,7 +146,8 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     cp -r /root/.xcat/* /install/postscripts/.xcat
     #Zap the almost certainly wrong pxelinux.cfg file
     rm /tftpboot/pxelinux.cfg/default
-
+    # make Management Server
+	touch /etc/xCATMS
 	# setup syslog
 	if [ ! -r /etc/syslog.conf.XCATORIG ]; then
     cp /etc/syslog.conf /etc/syslog.conf.XCATORIG

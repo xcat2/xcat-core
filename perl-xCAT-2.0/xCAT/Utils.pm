@@ -1002,7 +1002,57 @@ sub isServiceNode
         return 0;
     }
 }
+#-------------------------------------------------------------------------------
 
+=head3    isMS
+	checks for the /etc/xCATMS file , if it exists is a Management Server
+    
+    Arguments:
+        none
+    Returns:
+        1 - localHost is ServiceNode 
+        0 - localHost is not ServiceNode 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         $return=(xCAT::Utils->isMS()) 
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub isMS
+{
+    my $value;
+    if (-e "/etc/xCATMS")
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   my_hexnets    
+    
+    Arguments:
+        none
+    Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
 sub my_hexnets
 {
     my $rethash;
