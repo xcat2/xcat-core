@@ -84,16 +84,14 @@ sub addnode {
   my $ent;
   my $nrtab = xCAT::Table->new('noderes');
   my $lstatements = $statements;
+  my $guess_next_server=0;
   if ($nrtab) {
      my $ent;
      $ent = $nrtab->getNodeAttribs($node,['tftpserver']);
      if ($ent and $ent->{tftpserver}) {
         $lstatements = 'next-server '.inet_ntoa(inet_aton($ent->{tftpserver})).';'.$statements;
      } else {
-        my $nxtsrv = xCAT::Utils->my_ip_facing($node);
-        if ($nxtsrv) {
-           $lstatements = "next-server $nxtsrv;$statements";
-        }
+        $guess_next_server=1;
      }
      #else {
        # $ent = $nrtab->getNodeAttribs($node,['servicenode']);
@@ -101,6 +99,8 @@ sub addnode {
        #  $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{servicenode})).'\";'.$statements;
        # }
      #}
+  } else {
+     $guess_next_server=1;
   }
   my $mactab = xCAT::Table->new('mac');
   unless ($mactab) { 
@@ -126,6 +126,12 @@ sub addnode {
     		return;
   	}
         my $ip = inet_ntoa(inet_aton($hname));;
+   if ($guess_next_server) {
+        my $nxtsrv = xCAT::Utils->my_ip_facing($hname);
+        if ($nxtsrv) {
+           $lstatements = "next-server $nxtsrv;$statements";
+        }
+   }
   	syslog("local4|err","Setting $node ($hname|$ip) to ".$mac);
   	print $omshell "new host\n";
   	print $omshell "set name = \"$hname\"\n"; #Find and destroy conflict name
