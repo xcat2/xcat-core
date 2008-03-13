@@ -14,24 +14,26 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 ##########################################
 my %cmds = ( 
   rpower => {
-     state        => ["Power On/Off System",    \&state],
-     on           => ["Power On/Off System",    \&on],
-     off          => ["Power On/Off System",    \&off],
-     reset        => ["System Reboot",          \&reset], 
-     boot         => ["Power On/Off System",    \&boot] }, 
+     state         => ["Power On/Off System",           \&state],
+     powercmd      => ["Power On/Off System",           \&powercmd],
+     powercmd_boot => ["Power On/Off System",           \&boot], 
+     reset         => ["System Reboot",                 \&reset] }, 
   reventlog => { 
-     all          => ["Error/Event Logs",       \&all],
-     entries      => ["Error/Event Logs",       \&entries],
-     clear        => ["Error/Event Logs",       \&clear] },
+     all           => ["Error/Event Logs",              \&all],
+     all_clear     => ["Error/Event Logs",              \&all_clear],
+     entries       => ["Error/Event Logs",              \&entries],
+     clear         => ["Error/Event Logs",              \&clear] },
   rfsp => {
-     iocap        => ["I/O Adapter Enlarged Capacity", \&iocap],
-     time         => ["Time Of Day",            \&time], 
-     date         => ["Time Of Day",            \&date], 
-     autopower    => ["Auto Power Restart",     \&autopower],
-     sysdump      => ["System Dump",            \&sysdump],
-     spdump       => ["Service Processor Dump", \&spdump] },
+     memdecfg      => ["Memory Deconfiguration",        \&memdecfg],
+     decfg         => ["Deconfiguration Policies",      \&decfg],
+     procdecfg     => ["Processor Deconfiguration",     \&procdecfg],
+     iocap         => ["I/O Adapter Enlarged Capacity", \&iocap],
+     time          => ["Time Of Day",                   \&time], 
+     date          => ["Time Of Day",                   \&date], 
+     autopower     => ["Auto Power Restart",            \&autopower],
+     sysdump       => ["System Dump",                   \&sysdump],
+     spdump        => ["Service Processor Dump",        \&spdump] },
 );
-
 
 
 ##########################################################################
@@ -40,19 +42,26 @@ my %cmds = (
 sub parse_args {
 
     my $request = shift;
+    my $command = $request->{command};
+    my @rsp     = keys %{$cmds{$command}};
     my $args    = $request->{arg};
-    my @rsp     = keys %{$cmds{rfsp}};
-    my $cmd     = join('|',@rsp);
+    my $cmd     = join( '|',@rsp );
     my %opt     = ();
     my @VERSION = qw( 2.0 );
  
     #############################################
     # Modify usage statement 
     #############################################
-    $cmd =~ s/time/time [hh:mm:ss]/;
-    $cmd =~ s/date/date [mm-dd-yyy]/;
-    $cmd =~ s/autopower/autopower [enable|disable]/;
-    $cmd =~ s/iocap/iocap [enable|disable]/;
+    my $option = "configure|deconfigure";
+    $cmd =~ s/spdump/\n\t spdump/;
+    $cmd =~ s/sysdump/\n\t sysdump/;
+    $cmd =~ s/time/\n\t time [hh:mm:ss]/;
+    $cmd =~ s/date/\n\t date [mm-dd-yyyy]/;
+    $cmd =~ s/autopower/\n\t autopower [enable|disable]/;
+    $cmd =~ s/iocap/\n\t iocap [enable|disable]/;
+    $cmd =~ s/decfg/\n\t decfg [$option policy,...]/;
+    $cmd =~ s/memdecfg/\n\t memdecfg [$option unit=id (unit|bank)=all|id,...]/;
+    $cmd =~ s/procdecfg/\n\t procdecfg [$option unit=id all|id,...]/;
 
     #############################################
     # Responds with usage statement
@@ -116,29 +125,13 @@ sub parse_args {
     ####################################
     # Check command arguments 
     ####################################
-    if ( $request->{method} =~ /^date|time|iocap|autopower$/ ) {
+    if ( $request->{method} !~ /^sysdump|spdump$/ ) {
         shift @ARGV;
 
         if ( defined( $ARGV[0] )) {
-            if ( $request->{method} =~ /^time$/ ) { 
-                if ( $ARGV[0] !~ 
-                   /^([0-1]?[0-9]|2[0-3]):(0?[0-9]|[1-5][0-9]):(0?[0-9]|[1-5][0-9])$/ ) {
-                    return( usage("Invalid time format '$ARGV[0]'") ); 
-                }
-                $request->{op} = "$1-$2-$3";
-            }
-            if ( $request->{method} =~ /^date$/ ) { 
-                if ( $ARGV[0] !~ 
-                  /^(0?[1-9]|1[012])-(0?[1-9]|[12][0-9]|3[01])-(20[0-9]{2})$/){
-                    return( usage("Invalid date format '$ARGV[0]'") ); 
-                }
-                $request->{op} = "$1-$2-$3";
-            }
-            if ( $request->{method} =~ /^autopower|iocap$/ ) { 
-                if ( $ARGV[0] !~ /^enable|disable$/ ) {
-                    return( usage("Invalid argument '$ARGV[0]'") ); 
-                }
-                $request->{op} = $ARGV[0];
+            my $result = parse_option( $request );
+            if ( $result ) {
+                return( usage($result) );
             }
         }
     } 
@@ -150,6 +143,105 @@ sub parse_args {
         return(usage( "Invalid Argument: $ARGV[0]" ));
     }
     return( \%opt );
+}
+
+
+##########################################################################
+# Parse the command line optional arguments 
+##########################################################################
+sub parse_option {
+
+    my $request = shift;
+
+    ####################################
+    # Set/get time
+    ####################################
+    if ( $request->{method} =~ /^time$/ ) {
+        if ( $ARGV[0] !~
+          /^([0-1]?[0-9]|2[0-3]):(0?[0-9]|[1-5][0-9]):(0?[0-9]|[1-5][0-9])$/){
+            return( "Invalid time format '$ARGV[0]'" );
+        }
+        $request->{op} = "$1-$2-$3";
+    }
+    ####################################
+    # Set/get date 
+    ####################################
+    if ( $request->{method} =~ /^date$/ ) {
+        if ( $ARGV[0] !~
+          /^(0?[1-9]|1[012])-(0?[1-9]|[12][0-9]|3[01])-(20[0-9]{2})$/){
+            return( "Invalid date format '$ARGV[0]'" );
+        }
+        $request->{op} = "$1-$2-$3";
+    }
+    ####################################
+    # Set/get options
+    ####################################
+    if ( $request->{method} =~ /^autopower|iocap$/ ) {
+        if ( $ARGV[0] !~ /^enable|disable$/ ) {
+            return( "Invalid argument '$ARGV[0]'" );
+        }
+        $request->{op} = $ARGV[0];
+    }
+    ####################################
+    # Deconfiguration 
+    ####################################
+    if ( $request->{method} =~ /^procdecfg|memdecfg|decfg$/ ) {
+        if ( $ARGV[0] !~ /^configure|deconfigure$/ ) {
+            return( "Invalid argument '$ARGV[0]'" );
+        }
+        my $op = $ARGV[0];
+        shift @ARGV;
+
+        if ( !defined( $ARGV[0] )) {
+            return( "Missing argument to '$op'" );
+        }
+        ################################
+        # Processor deconfiguration 
+        ################################
+        if ( $request->{method} =~ /^procdecfg$/ ) {
+            if ( $ARGV[0] !~ /^(unit=\d+)$/ ) {
+                return( "Invalid argument '$ARGV[0]'" );
+            }
+            my $unit = $1;
+            shift @ARGV;
+
+            if ( !defined( $ARGV[0] )) {
+                return( "Missing argument 'id,...'" );
+            }
+            if ( $ARGV[0] !~ /^(all|[\d,]+)$/ ) {
+                return( "Invalid argument '$ARGV[0]'" );
+            }
+            $request->{op} = "$op $unit:ID=$1";
+        }
+        ################################
+        # Memory deconfiguration 
+        ################################
+        elsif ( $request->{method} =~ /^memdecfg$/ ) {
+            if ( $ARGV[0] !~ /^(unit=\d+)$/ ) {
+                return( "Invalid argument '$ARGV[0]'" );
+            }
+            my $unit = $1;
+            shift @ARGV;
+
+            if ( !defined( $ARGV[0] )) {
+                return( "Missing argument '(unit|bank)=id,...'" );
+            }
+            if ( $ARGV[0] !~ /^(unit=all|unit=[\d,]+|bank=all|bank=[\d,]+)$/ ){
+                return( "Invalid argument '$ARGV[0]'" );
+            }
+            $request->{op} = "$op $unit:$1";
+        }
+        ################################
+        # Dconfiguration policy 
+        ################################
+        elsif ( $request->{method} =~ /^decfg$/ ) {
+            if ( $ARGV[0] !~ /^([\w\/,]+)$/ ) {
+                return( "Invalid argument '$ARGV[0]'" );
+            }
+            $request->{op} = "$op $1";
+        }
+    }
+    return undef;
 }
 
 
@@ -167,10 +259,12 @@ sub handler {
     # Process FSP command 
     ##################################
     my $result = process_cmd( $exp, $request );
+    my $Rc = shift(@$result);
 
     my %output;
     $output{node}->[0]->{name}->[0] = $server;
-    $output{node}->[0]->{data}->[0]->{contents}->[0] = $result;
+    $output{node}->[0]->{data}->[0]->{contents}->[0] = @$result[0];
+    $output{errorcode} = $Rc;
 
     ##################################
     # Disconnect from FSP 
@@ -245,8 +339,7 @@ sub connect {
        [ user     => $cred[0],
          password => $cred[1],
          lang     => "0",
-         submit   => "Log in"
-       ]
+         submit   => "Log in" ]
     );
 
     ##################################
@@ -288,7 +381,7 @@ sub connect {
     ##############################
     # Check for specific failures
     ##############################
-    if ( $res->content =~ /(Invalid user ID or password|Too many users)/ ) {
+    if ( $res->content =~ /(Invalid user ID or password|Too many users)/i ) {
         return( $lwp_log.$1 );
     }
     return( $lwp_log."Logon failure" );
@@ -309,16 +402,16 @@ sub disconnect {
     ##################################
     # POST Logoff
     ##################################
-    my $res = $ua->post( 
-            "https://$server/cgi-bin/cgi?form=1",
-             [submit => "Log out"]);
-
+    my $res = $ua->post( "https://$server/cgi-bin/cgi?form=1", 
+                  [ submit => "Log out" ]
+    );
     ##################################
     # Logoff failed
     ##################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
+    return( [SUCCESS,"Success"] );
 }
 
 
@@ -344,14 +437,14 @@ sub process_cmd {
     # versions.
     ##################################
     my $res = $ua->post( "https://$server/cgi-bin/cgi",
-         [form => "2",
-          e    => "1" ]
+         [ form => "2",
+           e    => "1" ]
     );
     ##################################
     # Return error
     ##################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
     ##################################
     # Build hash of expanded menus
@@ -367,7 +460,7 @@ sub process_cmd {
     my $form = $menu{$cmds{$command}{$method}[0]};
 
     if ( !defined( $form )) {
-        return( "Cannot find '$cmds{$command}{$method}[0]' menu" );
+        return( [RC_ERROR,"Cannot find '$cmds{$command}{$method}[0]' menu"] );
     }
     ##################################
     # Run command 
@@ -384,105 +477,110 @@ sub state {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
-    my $menu    = shift;
+    my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
 
     ##################################
     # Get current power status 
     ##################################
-    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
 
     ##################################
     # Return error
     ##################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
     ##################################
     # Get power state
     ##################################
     if ( $res->content =~ /Current system power state: (.*)<br>/) {
-        return( $1 );
+        return( [SUCCESS,$1] );
     }
-    return( "unknown" );    
-}
-
-
-##########################################################################
-# Powers FSP On
-##########################################################################
-sub on {
-    return( power(@_,"on","on") );
-}
-
-
-##########################################################################
-# Powers FSP Off
-##########################################################################
-sub off {
-    return( power(@_,"off","of") );
+    return( [RC_ERROR,"unknown"] );    
 }
 
 
 ##########################################################################
 # Powers FSP On/Off
 ##########################################################################
-sub power {
+sub powercmd {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
-    my $menu    = shift;
-    my $state   = shift;
-    my $button  = shift;
-    my $command = $request->{command};
+    my $id      = shift;
+    my $op      = $request->{op};
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
 
     ##################################
-    # Send Power On command 
+    # Get Power On/Off System URL 
     ##################################
-    my $res = $ua->post( "https://$server/cgi-bin/cgi",
-         [form    => $form,
-          sp      => "255",  # System boot speed: Fast
-          is      => "1",    # Firmware boot side for the next boot: Temporary
-          om      => "4",    # System operating mode: Normal
-          ip      => "2",    # Boot to system server firmware: Running 
-          plt     => "3",    # System power off policy: Stay on 
-          $button => "Save settings and power $state"]
-    );
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
+
     ##################################
     # Return error
     ##################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
-    if ( $res->content =~ 
-            /(Powering on or off not allowed: invalid system state)/) {
-        
-        ##############################
-        # Check current power state
-        ##############################
-        my $state = xCAT::PPCfsp::state(
-                             $exp, 
-                             $request, 
-                             $menu->{$cmds{$command}{state}[0]},
-                             $menu );
+    ##################################
+    # Get current power state
+    ##################################
+    if ( $res->content !~ /Current system power state: (.*)<br>/) {
+        return( [RC_ERROR,"Unable to determine current power state"] );
+    }
+    my $state = $1;
 
-        if ( $state eq $state ) {
-            return( "Success" );
-        }
-        return( $1 );
+    ##################################
+    # Already in that state
+    ##################################
+    if ( $op =~ /^$state$/i ) {
+        return( [SUCCESS,"Success"] );
+    }
+    ##################################
+    # Get "Power On/Off System" form 
+    ##################################
+    my $form = HTML::Form->parse( $res->content, $res->base );
+
+    ##################################
+    # Return error
+    ##################################
+    if ( !defined( $form )) {
+        return( [RC_ERROR,"'Power On/Off System' form not found"] );
+    }
+    ##################################
+    # Get "Save and Submit" button
+    ##################################
+    my $button = ($op eq "on") ? "on" : "of"; 
+    my @inputs = $form->inputs();
+
+    if ( !grep( $_->{name} eq $button, @inputs )) {
+        return( [RC_ERROR,"Unable to power $op from state: $state"] );
+    } 
+    ##################################
+    # Send command 
+    ##################################
+    my $request = $form->click( $button );
+    $res = $ua->request( $request );
+
+    ##################################
+    # Return error
+    ##################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    if ( $res->content =~ /(not allowed.*\.)/ ) {
+        return( [RC_ERROR,$1] );
     }
     ##################################
     # Success 
     ##################################
     if ( $res->content =~ /(Operation completed successfully)/ ) {
-        return( $1 );
+        return( [SUCCESS,"Success"] );
     }
-    return( "Unknown error" );
+    return( [RC_ERROR,"Unknown error"] );
 }
 
 
@@ -493,8 +591,7 @@ sub reset {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
-    my $menu    = shift;
+    my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
 
@@ -502,26 +599,25 @@ sub reset {
     # Send Reset command 
     ##################################
     my $res = $ua->post( "https://$server/cgi-bin/cgi",
-         [form   => $form,
-          submit => "Continue" ]
+         [ form   => $id,
+           submit => "Continue" ]
     );
     ##################################
     # Return error
     ##################################
     if ( !$res->is_success()) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
-    if ( $res->content =~ 
-        /(This feature is only available when the system is powered on)/ ) {
-        return( $1 );
+    if ( $res->content =~ /(This feature is only available.*)/ ) { 
+        return( [RC_ERROR,$1] );
     }
     ##################################
     # Success
     ##################################
     if ( $res->content =~ /(Operation completed successfully)/ ) {
-        return( $1 );
+        return( [SUCCESS,"Success"] );
     }
-    return( "Unknown error" );
+    return( [RC_ERROR,"Unknown error"] );
 }
 
 
@@ -532,7 +628,7 @@ sub boot {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
+    my $id      = shift;
     my $menu    = shift;
     my $command = $request->{command};
 
@@ -544,24 +640,32 @@ sub boot {
                              $request, 
                              $menu->{$cmds{$command}{state}[0]},
                              $menu );
+    my $Rc = shift(@$state);
 
-    if ( $state !~ /^on|off$/ ) {
-        return( "Unable to boot in state: '$state'" );
+    ##################################
+    # Return error 
+    ##################################
+    if ( $Rc != SUCCESS ) {
+        return( [$Rc,@$state[0]] );
+    }
+    if ( @$state[0] !~ /^on|off$/i ) {
+        return( [RC_ERROR,"Unable to boot in state: '@$state[0]'"] );
     }
     ##################################
     # Get command 
     ##################################
-    my $method = ($state eq "on") ? "reset" : "off";
-
+    $request->{op} = "on"; 
+    my $method = ( $state =~ /^on$/i ) ? "reset" : "powercmd"; 
+  
     ##################################
     # Get command form id
     ##################################
-    $form = $menu->{$cmds{$command}{$method}[0]};
+    $id = $menu->{$cmds{$command}{$method}[0]};
 
     ##################################
     # Run command
     ##################################
-    my $result = $cmds{$method}[1]( $exp, $state, $form );
+    my $result = $cmds{$command}{$method}[1]( $exp, $request, $id );
     return( $result );    
 }
 
@@ -573,33 +677,32 @@ sub clear {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
-    my $menu    = shift;
+    my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
  
     ##################################
     # Get Error/Event Logs URL 
     ##################################
-    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
 
     ##################################
     # Return error
     ##################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
     ##################################
     # Clear all error/event log entries:
     # Are you sure? (OK/Cancel)
     ##################################
     my $form = HTML::Form->parse( $res->content, $res->base );
- 
+
     ##################################
     # Return error
     ##################################
     if ( !defined( $form )) {
-        return( "No Error/Event Logs form found" );
+        return( [RC_ERROR,"'Error/Event Logs' form not found"] );
     }
     ##################################
     # Send Clear to JavaScript 
@@ -608,9 +711,9 @@ sub clear {
     $res = $ua->request( $request );
 
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
-    return( "Success" );
+    return( [SUCCESS,"Success"] );
 }
 
 
@@ -621,25 +724,24 @@ sub entries {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
-    my $menu    = shift;
+    my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
     my $opt     = $request->{opt};
-    my $count   = (exists($opt->{e})) ? $opt->{e} : -1;
+    my $count   = (exists($opt->{e})) ? $opt->{e} : -1; 
     my $result;
     my $i = 1;
 
     ##################################
     # Get log entries
     ##################################
-    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
   
     ##################################
     # Return error
     ##################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
     my @entries = split /\n/, $res->content;
 
@@ -664,7 +766,7 @@ sub entries {
             }
         }
     }
-    return( $result );
+    return( [SUCCESS,$result] );
 }
 
 
@@ -675,30 +777,28 @@ sub time {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
-    my $menu    = shift;
-    my $option  = shift;
+    my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
 
     ##############################
     # Send command 
     ##############################
-    my $result = xCAT::PPCfsp::tod( $exp, $request, $form ); 
+    my $result = xCAT::PPCfsp::timeofday( $exp, $request, $id ); 
     my $Rc = shift(@$result);
 
     ##############################
     # Return error
     ##############################
     if ( $Rc != SUCCESS ) {
-        return( @$result[0] );
+        return( [$Rc,@$result[0]] );
     }
     ##############################
     # Get time
     ##############################
     if ( !defined( $request->{op} )) {
         @$result[0] =~ /(\d+) (\d+) (\d+) $/; 
-        return( "$1:$2:$3 UTC" );
+        return( [SUCCESS,sprintf( "%02d:%02d:%02d UTC",$1,$2,$3 )] );
     }
     ##############################
     # Set time 
@@ -710,10 +810,10 @@ sub time {
     ##############################
     # Send command 
     ##############################
-    my $result = xCAT::PPCfsp::tod( $exp, $request, $form, \@t ); 
+    my $result = xCAT::PPCfsp::timeofday( $exp, $request, $id, \@t ); 
     my $Rc = shift(@$result);
 
-    return( @$result[0] );
+    return( [$Rc,@$result[0]] );
 }
 
 
@@ -724,30 +824,28 @@ sub date {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
-    my $menu    = shift;
-    my $option  = shift;
+    my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
 
     ##############################
     # Send command 
     ##############################
-    my $result = xCAT::PPCfsp::tod( $exp, $request, $form ); 
+    my $result = xCAT::PPCfsp::timeofday( $exp, $request, $id ); 
     my $Rc = shift(@$result);
 
     ##############################
     # Return error
     ##############################
     if ( $Rc != SUCCESS ) {
-        return( @$result[0] );
+        return( [$Rc,@$result[0]] );
     }
     ##############################
     # Get date
     ##############################
     if ( !defined( $request->{op} )) {
        @$result[0] =~ /^(\d+) (\d+) (\d+)/; 
-       return( "$1-$2-$3" );
+       return( [SUCCESS,sprintf( "%2d-%02d-%4d",$1,$2,$3 )] );
     }
     ##############################
     # Set date
@@ -759,21 +857,21 @@ sub date {
     ##############################
     # Send command
     ##############################
-    my $result = xCAT::PPCfsp::tod( $exp, $request, $form, \@t );
+    my $result = xCAT::PPCfsp::timeofday( $exp, $request, $id, \@t );
     my $Rc = shift(@$result);
 
-    return( @$result[0] );
+    return( [$Rc,@$result[0]] );
 }
 
 
 ##########################################################################
 # Gets/Sets system time/date 
 ##########################################################################
-sub tod {
+sub timeofday {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
+    my $id      = shift;
     my $d       = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
@@ -781,7 +879,7 @@ sub tod {
     ######################################
     # Get time/date 
     ######################################
-    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
 
     ##################################
     # Return error
@@ -792,20 +890,25 @@ sub tod {
     if ( $res->content =~ /(only when the system is powered off)/ ) {
         return( [RC_ERROR,$1] );
     }
+    ##################################
+    # Get "Power On/Off System" form
+    ##################################
+    my $form = HTML::Form->parse( $res->content, $res->base );
+
+    ##################################
+    # Return error
+    ##################################
+    if ( !defined( $form )) {
+        return( [RC_ERROR,"'Power On/Off System' form not found"] );
+    }
     ######################################
     # Get time/date fields  
     ######################################
     my $result;
-    my @regex = (
-        "name='omo' value='(\\d+)'",
-        "name='od' value='(\\d+)'",
-        "name='oy' value='(\\d+)'",
-        "name='oh' value='(\\d+)'",
-        "name='omi' value='(\\d+)'",
-        "name='os' value='(\\d+)'",
-    );
-    foreach ( @regex ) {
-        if ( $res->content !~ /$_/ ) {
+    my @option = qw(omo od oy oh omi os);
+   
+    foreach ( @option ) {
+        if ( $res->content !~ /name='$_' value='(\d+)'/ ) {
             return( [RC_ERROR,"Error getting time of day"] );
         }
         $result.= "$1 ";
@@ -820,7 +923,7 @@ sub tod {
     # Set time/date 
     ######################################
     my $res = $ua->post( "https://$server/cgi-bin/cgi",
-        [ form   => $form,
+        [ form   => $id,
           mo     => @$d[0],
           d      => @$d[1],
           y      => @$d[2],
@@ -835,10 +938,7 @@ sub tod {
     if ( !$res->is_success() ) {
         return( [RC_ERROR,$res->status_line] );
     }
-    if ( $res->content =~ /(not allowed when the system is powered on)/ ) {
-        return( [RC_ERROR,$1] );
-    } 
-    if ( $res->content =~ /(Invalid entry)/ ) {
+    if ( $res->content =~ /(not allowed.*\.|Invalid entry)/ ) {
         return( [RC_ERROR,$1] );
     } 
     return( [SUCCESS,"Success"] );
@@ -869,7 +969,7 @@ sub option {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
+    my $id      = shift;
     my $menu    = shift;
     my $option  = shift;
     my $ua      = @$exp[0];
@@ -880,37 +980,665 @@ sub option {
     # Get option URL
     ######################################
     if ( !defined( $op )) {
-        my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$form" );
+        my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
 
         ##################################
         # Return errors
         ##################################
         if ( !$res->is_success() ) {
-            return( $res->status_line );
+            return( [RC_ERROR,$res->status_line] );
         }
-        if ( $res->content !~ /selected value='\d+'>(Enabled|Disabled)</ ) {
-            return( "Unknown" );
+        if ( $res->content !~ /selected value='\d+'>(\w+)</ ) {
+            return( [RC_ERROR,"Unknown"] );
         }
-        return($1);
+        return( [SUCCESS,$1] );
     }
     ######################################
     # Set option
     ######################################
     my $res = $ua->post( "https://$server/cgi-bin/cgi",
-        [form    => $form,
-         $option => ($op eq "disable") ? "0" : "1",
-         submit  => "Save settings" ]
+        [ form    => $id,
+          $option => ($op eq "disable") ? "0" : "1",
+          submit  => "Save settings" ]
     );
     ######################################
     # Return error
     ######################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
     if ( $res->content !~ /Operation completed successfully/ ) {
-        return( "Error setting option" );
+        return( [RC_ERROR,"Error setting option"] );
     }
-    return( "Success" );
+    return( [SUCCESS,"Success"] );
+}
+
+
+##########################################################################
+# Gets/Sets Memory Deconfiguration
+##########################################################################
+sub memdecfg {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+
+    ##################################
+    # Get settings
+    ##################################
+    if ( !defined( $request->{op} )) {
+        return( readdecfg( $exp, $request, $id ));
+    }
+    ##################################
+    # Set settings
+    ##################################
+    return( writedecfg( $exp, $request, $id ));
+}
+
+
+##########################################################################
+# Gets/Sets Processor Deconfiguration
+##########################################################################
+sub procdecfg {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+
+    ##################################
+    # Get settings
+    ##################################
+    if ( !defined( $request->{op} )) {
+        return( readdecfg( $exp, $request, $id ));
+    }
+    ##################################
+    # Set settings
+    ##################################
+    return( writedecfg( $exp, $request, $id ));
+}
+
+
+
+##########################################################################
+# Sets Deconfiguration settings
+##########################################################################
+sub writedecfg {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+
+    ######################################
+    # Command-line parameter specified 
+    ######################################
+    $request->{op} =~ /^(\w+) unit=(\d+):(.*)=(all|[\d,]+)$/; 
+    my $select = ($1 eq "configure") ? 0 : 1; 
+    my $state  = $1;
+    my $unit   = $2;
+    my $type   = $3;
+    my @ids    = split /,/, $4;
+
+    ######################################
+    # Get Deconfiguration URL
+    ######################################
+    my $url = "https://$server/cgi-bin/cgi?form=$id";
+    my $res = $ua->get( $url );
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    ######################################
+    # Find unit specified by user 
+    ######################################
+    my $html = $res->content;
+    my $value;
+
+    while ( $html =~
+       s/<input type=radio name=(\w+) value=(\w+)[^>]+><\/td><td>(\d+)<// ) {
+       if ( $unit eq $3 ) {
+           $value = $2;
+       }
+    }
+    if ( !defined( $value )) {
+        return( [RC_ERROR,"unit=$unit not found"] );
+    }
+    ######################################
+    # Get current settings
+    ######################################
+    my $form = HTML::Form->parse( $res->content, $res->base );
+    my @inputs = $form->inputs();
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !defined( $form )) {
+        return( [RC_ERROR,"'Deconfiguration' form not found"] );
+    }
+    ######################################
+    # Find radio button
+    ######################################
+    my ($radio) = grep($_->{type} eq "radio", @inputs );
+    if ( !defined( $radio )) {
+        return( [RC_ERROR,"Radio button not found"] );
+    }
+    ######################################
+    # Select radio button
+    ######################################
+    $radio->value( $value );
+
+    ######################################
+    # Send command
+    ######################################
+    my $request = $form->click( "submit" );
+    $res = $ua->request( $request );
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    ######################################
+    # Get current settings
+    ######################################
+    $form = HTML::Form->parse( $res->content, $res->base );
+    @inputs = $form->inputs();
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !defined( $form )) {
+        return( [RC_ERROR,"'Deconfiguration' form not found"] );
+    }
+    ######################################
+    # Get options 
+    ######################################
+    my %options = ();
+    my %key     = ();
+    my $setall  = 0;
+
+    foreach ( @inputs ) {
+        if ( $_->type eq "option" ) {
+            push @{$options{$_->name}}, $_->value;
+        }
+    }
+    my @units = split /<thead align=left><tr><th>/, $res->content;
+    shift(@units);
+    my $html;
+
+    ######################################
+    # Break into unit types 
+    ######################################
+    foreach ( @units ) {
+        /([\w\s]+)<\/th><th>/;
+        if ( $1 =~ /$type/i ) {
+            $html = $_;
+            last;
+        }
+    }
+    ######################################
+    # Look for unit type 
+    ######################################
+    if ( !defined( $html )) {
+        return( [RC_ERROR,"unit=$unit '$type' not found"] );
+    }
+    ######################################
+    # Set all IDs 
+    ######################################
+    if ( $ids[0] eq "all" ) {
+       @ids = ();
+       $setall = 1;
+    }
+    ######################################
+    # Associate 'option' name with ID 
+    ######################################
+    foreach ( keys %options ) {
+        if ( $html =~ /\n<tr><td>(\d+)<\/td><td>.*name='$_'/ ) {
+            if ( $setall ) {
+                push @ids, $1;
+            }
+            push @{$options{$_}}, $1;
+        }
+    }
+    ######################################
+    # Check if each specified ID exist 
+    ######################################
+    foreach ( @ids ) {
+        foreach my $name ( keys %options ) {
+            my $id = @{$options{$name}}[1];
+            
+            if ( $_ eq $id ) {
+                my $value = @{$options{$name}}[0];
+                $key{$id} = [$value,$name];
+            }
+        }
+    }
+    ######################################
+    # Check if ID exists 
+    ######################################
+    foreach ( @ids ) {
+        if ( !exists( $key{$_} )) {
+            return( [RC_ERROR,"unit=$unit $type=$_ not found"] );
+        }
+        my $value = @{$key{$_}}[0];
+        if ( $value == $select ) {
+           delete $key{$_};
+        }
+    }
+    ######################################
+    # Check in already in that state 
+    ######################################
+    if ( !scalar( keys %key )) {
+        return( [RC_ERROR,"All $type(s) specified already in '$state' state"] ); 
+    } 
+    ######################################
+    # Make changes to form  
+    ######################################
+    foreach ( keys %key ) {
+        my $name = @{$key{$_}}[1];
+        my ($button) = grep($_->{name} eq $name, @inputs );
+        if ( !defined( $button )) {
+            return( [RC_ERROR,"Option=$name not found"] );
+        }
+        $button->value( $select );
+    }
+    ##################################
+    # Send command
+    ##################################
+    my $request = $form->click( "submit" );
+    $res = $ua->request( $request );
+
+    ##################################
+    # Return error
+    ##################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    if ( $res->content =~ /\n(.*Operation not allowed.*\.)/ ) {
+        my $result = $1;
+        $result =~ s/<br><br>/\n/g;
+        return( [RC_ERROR,$result] ); 
+    }
+    return( [SUCCESS,"Success"] );       
+}
+
+
+##########################################################################
+# Gets Deconfiguration settings
+##########################################################################
+sub readdecfg {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+    my $result  = "\n";
+
+    ######################################
+    # Get Deconfiguration URL
+    ######################################
+    my $url = "https://$server/cgi-bin/cgi?form=$id";
+    my $res = $ua->get( $url );
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    ######################################
+    # Get current settings
+    ######################################
+    my $form = HTML::Form->parse( $res->content, $res->base );
+    my @inputs = $form->inputs();
+    my $html   = $res->content;
+    my $unit;
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !defined( $form )) {
+        return( [RC_ERROR,"'Deconfiguration' form not found"] );
+    }
+    ######################################
+    # Find radio button
+    ######################################
+    my ($radio) = grep($_->{type} eq "radio", @inputs );
+    if ( !defined( $radio )) {
+        return( [RC_ERROR,"Radio button not found"] ); 
+    }
+    ######################################
+    # Find unit identifier
+    ######################################
+    if ( $html =~ /<thead align=left><tr><th><\/th><th>([\w\s]+)</ ) {
+        $unit = $1;
+    }
+    foreach ( @{$radio->{menu}} ) {
+        ##################################
+        # Select radio button
+        ##################################
+        my $value = %$_->{value};
+        $radio->value( $value );
+
+        ##################################
+        # Send command
+        ##################################
+        my $request = $form->click( "submit" );
+        $res = $ua->request( $request );
+
+        ##################################
+        # Return error
+        ##################################
+        if ( !$res->is_success() ) {
+            return( [RC_ERROR,$res->status_line] );
+        }
+        $html = $res->content;
+
+        ##################################
+        # Find unit identifier
+        ##################################
+        if ( $html =~ /<p>([\w\s:]+)</ ) {
+            $result.= "$1\n";
+        }   
+        my @group = split /<thead align=left><tr><th>/, $res->content;
+        shift(@group);
+
+        foreach ( @group ) {
+            my @maxlen = ();
+            my @values = ();
+
+            ##############################
+            # Entry heading
+            ##############################
+            /(.*)<\/th><\/tr><\/thead>/;
+            my @heading = split /<\/th><th>/, $1;
+            pop(@heading);
+            pop(@heading);
+
+            foreach ( @heading ) {
+                push @maxlen, length($_);
+            }
+            ##############################
+            # Entry values
+            ##############################
+            foreach ( split /\n/ ) {
+                if ( s/^<tr><td>// ) {
+                    s/<br>/ /g;
+
+                    my $i = 0;
+                    my @d = split /<\/td><td>/;
+                    pop(@d);
+                    pop(@d);
+
+                    ######################
+                    # Length formatting
+                    ######################
+                    foreach ( @d ) {
+                        if ( length($_) > $maxlen[$i] ) {
+                            $maxlen[$i] = length($_);
+                        }
+                        $i++;
+                    }
+                    push @values, [@d];
+                }
+            }
+            ##############################
+            # Output header
+            ##############################
+            my $i = 0;
+            foreach ( @heading ) {
+                my $format = sprintf( "%%-%ds",$maxlen[$i++]+2 );
+                $result.= sprintf( $format, $_ );
+            }
+            $result.= "\n";
+
+            ##############################
+            # Output values
+            ##############################
+            foreach ( @values ) {
+                $i = 0;
+                foreach ( @$_ ) {
+                    my $format = sprintf( "%%-%ds",$maxlen[$i++]+2 );
+                    $result.= sprintf( $format, $_ );
+                }
+                $result.= "\n";
+            }
+            $result.= "\n";
+        }
+    }
+    return( [SUCCESS,$result] );
+}
+
+
+##########################################################################
+# Gets/sets Deconfiguration Policies
+##########################################################################
+sub decfg {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+
+    ######################################
+    # Get Deconfiguration Policy URL
+    ######################################
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    my %d    = ();
+    my $len  = 0;
+    my $i    = 0;
+    my $html = $res->content;
+    my $result;
+
+    while ( $html =~ s/<br>(.*:)\s+<// ) {
+        my $desc  = $1;
+        my $value = "unknown";
+        my $name;
+
+        ##################################
+        # Get values
+        ##################################
+        if ( $html =~ s/selected value='\d+'>(\w+)<// ) {
+            $value = $1;
+        }
+        ##################################
+        # Get name 
+        ##################################
+        if ( $html =~ s/select name='(\w+)'// ) {
+            $name = $1;
+        }
+        ##################################
+        # Save for formatting output 
+        ##################################
+        if ( length( $desc ) > $len ) {
+            $len = length( $desc );
+        }
+        $d{$desc} = [$value,$name];
+    }
+
+    ######################################
+    # Get Deconfiguration Policy
+    ######################################
+    if ( !defined( $request->{op} )) {
+        my $fmt = sprintf( "\n%%-%ds %%s",$len );
+
+        foreach ( keys %d ) {
+            $result.= sprintf( $fmt,$_,$d{$_}[0] );
+        }
+        return( [SUCCESS,$result] );
+    }
+    ######################################
+    # Set Deconfiguration Policy
+    ######################################
+    my ($op,$decfg) = split / /, $request->{op};
+    my @policy      = split /,/, $decfg;
+    my $state       = ($op eq "enable") ? 0 : 1;
+
+    ######################################
+    # Check for duplicate policies
+    ######################################
+    foreach my $name ( @policy ) {
+        if ( grep( /^$name$/, @policy ) > 1 ) {
+            return( [RC_ERROR,"Duplicate policy specified: $name"] );
+        }
+    }
+    ######################################
+    # Get Deconfiguration Policy form 
+    ######################################
+    my $form = HTML::Form->parse( $res->content, $res->base );
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !defined( $form )) {
+        return( [RC_ERROR,"'Deconfiguration Policies' form not found"] );
+    }
+    ######################################
+    # Get hidden inputs 
+    ######################################
+    my @inputs = $form->inputs();
+
+    my (@hidden) = grep( $_->{type} eq "hidden", @inputs );
+    if ( !defined( @hidden )) {
+        return( [RC_ERROR,"<input type='hidden'> not found"] );
+    }
+    ######################################
+    # Check for invalid policies
+    ######################################
+    foreach my $name ( @policy ) {
+        my @p = grep( $_->{value_name}=~/\b$name\b/i, @hidden );
+
+        if ( @p > 1 ) {
+            return( [RC_ERROR,"Ambiguous policy: $name"] );
+        } elsif ( !@p ) {
+            return( [RC_ERROR,"Invalid policy: $name"] );
+        }
+        my $value_name = $p[0]->{value_name};
+        $policy[$i++] = @{$d{$value_name}}[1]; 
+    }
+    ######################################
+    # Select option 
+    ######################################
+    foreach my $name ( @policy ) {
+        my ($in) = grep( $_->{name} eq $name, @inputs );
+        $in->value( $state );
+    }
+    ######################################
+    # Send command
+    ######################################
+    my $request = $form->click( "submit" );
+    $res = $ua->request( $request );
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    return( [SUCCESS,"Success"] );
+}
+
+
+##########################################################################
+# Performs a System Dump
+##########################################################################
+sub sysdump {
+
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+
+    ######################################
+    # Get Dump URL
+    ######################################
+    my $url = "https://$server/cgi-bin/cgi?form=$id";
+    my $res = $ua->get( $url );
+
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    ######################################
+    # Possible errors: 
+    # not allowed when a dump of this type exists.
+    # not allowed when system is powered off.
+    ######################################
+    if ( $res->content =~ /(not allowed.*\.)/ ) {
+        return( [RC_ERROR,$1] );
+    }
+    my @d;
+    my $html = $res->content;
+
+    ######################################
+    # Get current dump settings 
+    ######################################
+    foreach ( my $i=0; $i<3; $i++ ) {
+        if ( $html !~ s/selected value='(\d+)'// ) {
+            return( [RC_ERROR,"Error getting dump settings"] );
+        }
+        push @d, $1;
+    }
+    ######################################
+    # Send dump command
+    ######################################
+    $res = $ua->post( "https://$server/cgi-bin/cgi",
+         [ form     => $id,
+           policy   => $d[0],
+           content  => $d[1],
+           phyp     => $d[2],
+           page     => "1",
+           takedump => "Save settings and initiate dump" ]
+    );
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    ######################################
+    # Continue ? 
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    $res = $ua->post( "https://$server/cgi-bin/cgi",
+         [ form     => $id,
+           policy   => $d[0],
+           content  => $d[1],
+           phyp     => $d[2],
+           page     => "2",
+           takedump => "Save settings and initiate dump",
+           submit   => "Continue"]
+    );
+    ######################################
+    # Return error
+    ######################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    return( [SUCCESS,"Success"] );
 }
 
 
@@ -921,30 +1649,30 @@ sub spdump {
 
     my $exp     = shift;
     my $request = shift;
-    my $form    = shift;
-    my $menu    = shift;
+    my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
+    my $button  = "Save settings and initiate dump";
     my $dump_setting = 1;
 
     ######################################
     # Get Dump URL
     ######################################
-    my $url = "https://$server/cgi-bin/cgi?form=$form";
+    my $url = "https://$server/cgi-bin/cgi?form=$id";
     my $res = $ua->get( $url );
 
     ######################################
     # Return error
     ######################################
     if ( !$res->is_success() ) {
-        return( $res->status_line );
+        return( [RC_ERROR,$res->status_line] );
     }
     ######################################
     # Dump disabled - enable it 
     ######################################
-    if ( $res->content =~ /<option selected value='0'>Disabled/ ) {
+    if ( $res->content =~ /selected value='0'>Disabled/ ) {
         $res = $ua->post( "https://$server/cgi-bin/cgi",
-            [ form  => $form,
+            [ form  => $id,
               bdmp  => "1",
               save  => "Save settings" ]
         );
@@ -952,10 +1680,10 @@ sub spdump {
         # Return error
         ##################################
         if ( !$res->is_success() ) {
-            return( $res->status_line );
+            return( [RC_ERROR,$res->status_line] );
         }
         if ( $res->content !~ /Operation completed successfully/ ) {
-            return( "Error enabling dump setting" );
+            return( [RC_ERROR,"Error enabling dump setting"] );
         }
         ##################################
         # Get Dump URL again
@@ -963,15 +1691,15 @@ sub spdump {
         $res = $ua->get( $url );
 
         if ( !$res->is_success() ) {
-            return( $res->status_line );
+            return( [RC_ERROR,$res->status_line] );
         }
         ##################################
         # Restore setting after dump 
         ##################################
         $dump_setting = 0;
     }
-    if ( $res->content !~ /(Save settings and initiate dump)/ ) {
-        return( "'$1' button not found" );
+    if ( $res->content !~ /$button/ ) {
+        return( [RC_ERROR,"'$button' button not found"] );
     }
     ######################################
     # We will lose conection after dump 
@@ -982,16 +1710,19 @@ sub spdump {
     # Send dump command 
     ######################################
     $res = $ua->post( "https://$server/cgi-bin/cgi",
-         [form => $form,
-          bdmp => $dump_setting,
-          dump => "Save settings and initiate dump"]
+         [ form => $id,
+           bdmp => $dump_setting,
+           dump => "Save settings and initiate dump" ]
     );
+    ######################################
+    # Will lose connection on success -500 
+    ######################################
     if ( !$res->is_success() ) {
         if ( $res->code ne "500" ) {
-            return( $res->status_line );
+            return( [RC_ERROR,$res->status_line] );
         }
     }
-    return( "Success" );
+    return( [SUCCESS,"Success"] );
 }
 
 
@@ -1000,6 +1731,17 @@ sub spdump {
 ##########################################################################
 sub all {
     return( entries(@_) );
+}
+
+
+##########################################################################
+# Gets all Error/Event Logs entries then clears the logs
+##########################################################################
+sub all_clear {
+
+    my $result = entries( @_ );
+    clear( @_);
+    return( $result );
 }
 
 
