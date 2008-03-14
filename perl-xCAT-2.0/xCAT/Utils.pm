@@ -1667,7 +1667,7 @@ sub create_postscripts_tar
 {
     my ($class) = @_;
     my $cmd;
-	$cmd="cd /install/postscripts;tar -cjf /install/autoinst/xcatpost.tar.bz2 *";
+	$cmd="cd /install/postscripts;tar -cjf /install/autoinst/xcatpost.tar.bz2 * .ssh/*";
     my @result = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
