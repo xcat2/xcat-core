@@ -1,0 +1,47 @@
+=head1 Name
+
+B<wkill> - kill windowed remote consoles
+
+=head1 B<Synopsis>
+
+B<wkill> [I<noderange>]
+
+B<wkill> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head1 B<Description>
+
+B<wkill>  will  kill  the  wcons  windows on your $DISPLAY for a single or
+range or nodes or groups.
+
+B<wkill> was written because I'm too lazy to point and click off  64  windows.
+
+B<wkill>  will  only  kill  windows  on  your  display  and  for  only the
+L<noderange(3)> you specify.  If no L<noderange(3)> is  specified,  then  all
+wcons windows on your $DISPLAY will be killed.
+
+=head1 B<Options>
+
+=over 5
+
+=item B<-h>|B<--help>
+
+Print help.
+
+=item B<-v>|B<--version>
+
+Print version.
+
+=back
+
+
+=head1 B<Examples>
+
+B<wkill> I<node1-node5>
+
+=head1 B<Author>
+
+Egan Ford <egan@us.ibm.com>
+
+=head1 B<See> B<Also>
+
+L<noderange(3)>, L<wcons(1)>.

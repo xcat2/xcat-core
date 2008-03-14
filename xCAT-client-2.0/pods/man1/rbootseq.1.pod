@@ -1,0 +1,88 @@
+
+=head1 NAME
+
+B<rbootseq> - Sets the boot order for BladeCenter blades.
+
+=head1 SYNOPSIS
+
+B<rbootseq> I<noderange> {B<hd0>|B<hd1>|B<hd2>|B<hd3>|B<net>|B<iscsi>|B<iscsicrit>|B<cdrom>|B<usbflash>|B<floppy>|B<none>|B<list>|B<stat>}B<,>I<...>
+
+B<rbootseq> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+B<rbootseq> sets the boot sequence of the specified blades.  Up to four different medium can be listed, separated by commas.
+
+=head1 OPTIONS
+
+=over 7
+
+=item B<hd0>|B<harddisk0>|B<hd>|B<harddisk>
+
+The first hard disk.
+
+=item B<hd1>|B<harddisk1>
+
+The second hard disk.
+
+=item B<hd2>|B<harddisk2>
+
+The third hard disk.
+
+=item B<hd3>|B<harddisk3>
+
+The fourth hard disk.
+
+=item B<n>|B<net>|B<network>
+
+Boot over the network, using a PXE or BOOTP broadcast.
+
+=item B<iscsi>
+
+Boot to an iSCSI disk over the network.
+
+=item B<iscsicrit>
+
+??
+
+=item B<cd>|B<cdrom>
+
+The CD or DVD drive.
+
+=item B<usbflas>|B<usb>|B<flash>
+
+A USB flash drive.
+
+=item B<floppy>
+
+The floppy drive.
+
+=item B<none>
+
+If it gets to this part of the sequence, do not boot.  Can not be specified 1st, or before any real boot devices.
+
+=item B<list>|B<stat>
+
+Display the current boot sequence.
+
+=back
+
+=head1 EXAMPLES
+
+
+  rbootseq 1,3 c,f,n,hd0
+  rbootseq 14-56,70-203 c,f,n,hd0
+  rbootseq 1,3,14-56,70-203 c,f,n,hd0
+  rbootseq all,-129-256 c,f,n,hd0
+
+
+=head1 SEE ALSO
+
+rsetboot(1)
+
+=head1 AUTHOR
+
+Egan Ford E<lt>egan@us.ibm.comE<gt>
+
+

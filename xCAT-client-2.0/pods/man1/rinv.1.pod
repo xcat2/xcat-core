@@ -1,0 +1,100 @@
+=head1 Name
+
+B<rinv> - remote hardware inventory
+
+=head1 B<Synopsis>
+
+B<rinv> I<noderange> {B<pci>|B<config>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<deviceid>|B<guid>|B<firm>|B<diag>|B<bios>|B<mparom>|B<mac>|B<all>}
+
+B<rinv> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head1 B<Description>
+
+B<rinv>  retrieves  hardware  configuration  information from the on-board
+Service Processor for a single or range of nodes and groups.
+
+=head1 B<Options>
+
+=over 7
+
+=item B<pci>
+
+Retrieves PCI bus information.
+
+=item B<config>
+
+Retrieves number of processors, speed, total  memory,  and  DIMM
+locations.
+
+=item B<model>
+
+Retrieves model number.
+
+=item B<serial>
+
+Retrieves serial number.
+
+=item B<asset>
+
+Retrieves asset tag.  Usually it's the MAC address of eth0.
+
+=item B<vpd>
+
+Same as specifying model, serial, deviceid, and mprom.
+
+=item B<mprom>
+
+?
+
+=item B<deviceid>
+
+?
+
+=item B<guid>
+
+?
+
+=item B<all>
+
+All of the above.
+
+=item B<-h>|B<--help>
+
+Print help.
+
+=item B<-v>|B<--version>
+
+Print version.
+
+=back
+
+
+=head1 B<Examples>
+
+B<rinv> I<node5> I<all>
+
+ node5: Machine Type/Model 865431Z
+ node5: Serial Number 23C5030
+ node5: Asset Tag 00:06:29:1F:01:1A
+ node5: PCI Information
+ node5:  Bus  VendID  DevID    RevID  Description              Slot Pass/Fail
+ node5:  0    1166    0009     06     Host Bridge              0	PASS
+ node5:  0    1166    0009     06     Host Bridge              0	PASS
+ node5:  0    5333    8A22     04     VGA Compatible Controller0	PASS
+ node5:  0    8086    1229     08     Ethernet Controller      0	PASS
+ node5:  0    8086    1229     08     Ethernet Controller      0	PASS
+ node5:  0    1166    0200     50     ISA Bridge               0	PASS
+ node5:  0    1166    0211     00     IDE Controller           0	PASS
+ node5:  0    1166    0220     04     Universal Serial Bus     0	PASS
+ node5:  1    9005    008F     02     SCSI Bus Controller      0	PASS
+ node5:  1    14C1    8043     03     Unknown Device Type      2	PASS
+ node5: Machine Configuration Info
+ node5: Number of Processors:
+ node5: Processor Speed: 866 MHz
+ node5: Total Memory:	  512 MB
+ node5: Memory DIMM locations:  Slot(s)  3  4
+
+
+=head1 B<SEE ALSO>
+
+rpower(1)

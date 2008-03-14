@@ -1,22 +1,16 @@
 =head1 NAME
 
-rpower - remote power control
+B<rpower> - remote power control of nodes
 
 =head1 SYNOPSIS
 
-B<rpower>
-I<noderange>
-B<[--nodeps]> B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>
+B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>}
 
-B<rpower>
-[B<-h>|B<--help>]
-
-B<rpower>
-[B<-v>|B<--version>]
+B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-I<rpower> controls the power for a single or range of nodes.
+B<rpower> controls the power for a single or range of nodes,  via the out-of-band path.
 
 =head1 OPTIONS
 
@@ -42,7 +36,7 @@ Send a hard reset.
 
 If off, then power on.
 If on, then hard reset.
-The option is recommended over B<cycle>.
+This option is recommended over B<cycle>.
 
 =item B<cycle>
 
@@ -52,66 +46,39 @@ Power off, then on.
 
 Do not use dependency table (default is to use dependency table). Valid only with on|off|boot|reset|cycle for blade power method.
 
-=item B<-h>, B<--help>
+=item B<-h>|B<--help>
 
-Help.
-Prints out a brief help message.
+Prints out a brief usage message.
 
 =item B<-v>, B<--version>
 
-Version.
 Display the version number.
-
-=back
-
-=head1 ENVIRONMENT
-
-=over 4
-
 
 =back
 
 
 =head1 EXAMPLES
 
-=begin roff
+=over 3
 
-\fIrpower node4,node5 stat\fR
+=item *
 
-node4: on
-.br
-node5: off
+B<rpower> I<node4,node5 stat>
 
-\fIrpower node5 on\fR
+ node4: on
+ node5: off
 
-node5: on
+=item *
 
-=end roff
+B<rpower> I<node5 on>
 
-=begin html
-<TT><EM>rpower node5 on</EM></TT>
-<br>
-<br>
-<TT>node4: on</TT>
-<br>
-<TT>node5: off</TT>
-<br>
-<br>
-<TT><EM>rpower node5 on</EM></TT>
-<br>
-<br>
-<TT>node5: on</TT>
+ node5: on
 
-=end html
+=back
 
 
-=head1 FILES
+=head1 SEE ALSO
 
-/opt/xcat/bin/rpower
-
-
-=head1 NOTES
-
-This command is part of the xCAT software product.
+noderange(3), rcons(1), rinv(1), rvitals(1), rscan(1)
 
 

@@ -1,0 +1,33 @@
+
+=head1 NAME
+
+B<pcons> - Runs a command on the noderange using the out-of-band console.
+
+=head1 SYNOPSIS
+
+B<pcons> I<noderange> I<command>
+
+B<pcons>
+[B<-h>|B<--help>]
+
+B<pcons>
+[B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+Runs the a command to the noderange using the console.
+
+=head1 EXAMPLES
+
+
+  pcons 1,3 stat
+  pcons all,-129-256 stat
+
+
+
+=head1 AUTHOR
+
+Egan Ford E<lt>egan@us.ibm.comE<gt>
+
+

@@ -1,0 +1,63 @@
+=head1 B<NAME>
+
+B<xcoll> - Formats and consolidates the output of the B<psh> command.
+
+=head1 B<SYNOPSIS>
+
+B<xcoll>
+
+=head1 B<DESCRIPTION>
+
+The  B<xcoll> command formats and consolidates output from the B<psh> command. The B<xcoll>
+command takes, as input, lines in the following format:
+
+host_name: line of output from remote command
+
+The B<xcoll> command formats the lines as follows and writes them  to
+standard  output. Assume that the output from node3 and node4
+is identical:
+
+ ====================================
+ node1
+ ====================================
+ .
+ .
+ lines from psh for node1 with hostnames stripped off
+ .
+ .
+
+ ====================================
+ node2
+ ====================================
+ .
+ .
+ lines from psh for node2 with hostnames stripped off
+ .
+ .
+
+ ====================================
+ node3, node4
+ ====================================
+ .
+ .
+ lines from psh for node 3 with hostnames stripped off
+ .
+ .
+
+
+=head1 B<EXAMPLES>
+
+=over 3
+
+=item *
+
+To  display the results of a command issued on several nodes, in
+the format used in the Description, enter:
+
+B<psh> I<node1,node2,node3 cat /etc/passwd> | B<xcoll>
+
+=back
+
+=head1 B<SEE ALSO>
+
+psh(1), xdshbak(1)

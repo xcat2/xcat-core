@@ -1,0 +1,80 @@
+=head1 NAME
+
+B<rspconfig> - remote power control of nodes
+
+=head1 SYNOPSIS
+
+B<rspconfig> I<noderange> {B<alert>|B<snmpdest>|B<community>|B<garp>}
+
+B<rspconfig> I<noderange> B<alert>={B<on>|B<enable>|B<off>|B<disable>}
+
+B<rspconfig> I<noderange> B<snmpdest>=I<snmpmanager-IP>
+
+B<rspconfig> I<noderange> B<community>={B<public>|I<string>}
+
+B<rspconfig> I<noderange> B<garp>=I<time>
+
+B<rspconfig> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+B<rspconfig> configures various settings in the nodes' service processors.  If only a keyword is
+specified, without the B<=>, it displays the current value.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<alert>={I<on>|I<enable>|I<off>|I<disable>}
+
+Turn on or off SNMP alerts.
+
+=item B<snmpdest>=I<snmpmanager-IP>
+
+Set where the SNMP alerts should be sent to.
+
+=item B<community>={B<public>|I<string>}
+
+Set the SNMP commmunity value.
+
+=item B<garp>=I<time>
+
+Gratuitous ARP generation interval.
+
+=item B<-h>|B<--help>
+
+Prints out a brief usage message.
+
+=item B<-v>, B<--version>
+
+Display the version number.
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 3
+
+=item *
+
+To turn on SNMP alerts for node5:
+
+B<rspconfig> I<node5> B<alert>=B<on>
+
+ node5: Alerts: enabled
+
+=item *
+
+To display the destination setting for SNMP alerts for node4:
+
+B<rspconfig> I<node4 snmpdest>
+
+ node4: BMC SNMP Destination 1: 9.114.47.227
+
+=back
+
+
+=head1 SEE ALSO
+
+noderange(3), rpower(1), rcons(1), rinv(1), rvitals(1), rscan(1)

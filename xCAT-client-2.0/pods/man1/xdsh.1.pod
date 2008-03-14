@@ -1,0 +1,474 @@
+=head1 B<NAME>
+
+B<xdsh> - Concurrently runs commands on multiple nodes.
+
+=head1 B<SYNOPSIS>
+
+B<xdsh> I<noderange> [B<-B> I<bypass>] [B<-C> I<context>] [B<-e>] [B<-E> I<environment_file>]  [B<-f> I<fanout>]
+[B<-i>]  [B<-K>]  [B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
+I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
+[B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
+
+B<xdsh> [B<-h> | B<-V> | B<-q>]
+
+
+=head1 B<DESCRIPTION>
+
+The B<xdsh> command runs commands in parallel on remote  nodes.  The B<xdsh> command issues  a
+remote  shell command for each target specified, and returns the output
+from all targets,
+formatted so that command results  from  all  nodes  can  be  managed.
+The B<xdsh> command is an xCAT Distributed Shell Utility.
+
+B<TARGET CONTEXT>:
+
+The B<xdsh> command target context is the database  where  the  target  or
+target  group is defined. A default context can be configured using the
+B<-C> I<context> flag or the B<DSH_CONTEXT> environment variable. If neither are
+specified, the default context is B<XCAT>.
+
+A context is enabled for use with a DSH Utilities command by installing
+a context extension file in the B</opt/xcat/xdsh/Context>  directory.  The
+target  or target group context can be explicitly specified by qualify-
+ing a target name with a context name, or implicitly defined by  speci-
+fying  a  default  context  for  unqualified  target  names (See B<Target>
+B<lists>).
+
+B<TARGET> B<SPECIFICATION>:
+
+A target is a node where a remote command will be executed.  Node
+targets are specified inputting the I<node_list> or I<nodegroups>.
+
+If  the local host is included as part of the targets, the I<command_list>
+is executed directly on the local host and not through  the  configured
+remote  shell,  unless  a  I<user_ID>  is specified for execution with the
+local host (see B<Remote> B<user>).
+
+Node targets can also be specified using node ranges  as  supported  by
+xCAT.  If  the same target is specified more than once, the remote com-
+mand will only be executed once on the specified target.
+
+B<COMMAND> B<SPECIFICATION>:
+
+The commands to execute on the remote  targets  are  specified  by  the
+I<command_list>  B<xdsh>  parameter, or executing a local script using the B<-e>
+flag.
+
+The syntax for the I<command_list> B<xdsh> parameter is as follows:
+
+I<command>[; I<command>]...
+
+
+where I<command> is the command to run on the remote
+target. Quotation marks are required to ensure that all commands in the
+list are executed remotely, and that any special characters are interpreted
+correctly on the remote target. A script file on the local host can be
+executed on each of the remote targets by using the B<-e>
+flag. If B<-e> is specified, I<command_list> is the
+script name and arguments to the script. For example:
+
+xdsh hostname -e I<script_filename> [I<arguments>]...
+
+The I<script_filename> file is copied to a random  filename  in  the  B</tmp>
+directory on each remote target and then executed on the targets.
+
+The B<xdsh> command does not work with any interactive commands, including
+those that read from standard input.
+
+B<REMOTE> B<SHELL> B<COMMAND>:
+
+The  B<xdsh>  command  uses a configurable remote shell command to execute
+remote commands on the remote targets. Support is  explicitly  provided
+for  AIX  Remote  Shell and OpenSSH, but any secure remote command that
+conforms to the IETF (Internet Engineering Task  Force)  Secure  Remote
+Command Protocol can be used.
+
+The remote shell is determined as follows, in order of precedence:
+
+1. The B<-r> flag.
+
+2. The B<DSH_NODE_RSH> environment variable.
+
+3. The default node remote shell as defined by the target I<context>.
+
+4. The B</usr/bin/ssh> command.
+
+The  remote shell options are determined as follows, in order of prece-
+dence:
+
+1. The B<-o> flag.
+
+2. The B<DSH_NODE_OPTS> environment variable.
+
+B<REMOTE> B<SHELL> B<ENVIRONMENT>:
+
+The shell environment used on the remote target defaults to  the  shell
+defined for the I<user_ID> on the remote target.  The command
+syntax that B<xdsh> uses to form the remote commands can be specified using the  B<-S>
+flag. If B<-S> is not specified, the syntax defaults to B<sh> syntax.
+
+When  commands  are  executed  on  the  remote target, the path used is
+determined by the B<DSH_PATH> environment variable defined in the shell of
+the  current  user. If B<DSH_PATH> is not set, the path used is the remote
+shell default path. For example, to set the local path for  the  remote
+targets, use:
+
+DSH_PATH=$PATH
+
+The  B<-E> flag exports a local environment definition file to each remote
+target. Environment variables specified in this file are defined in the
+remote shell environment before the I<command_list> is executed.
+
+B<COMMAND> B<EXECUTION>:
+
+The  maximum  number  of concurrent remote shell command processes (the
+fanout) can be specified with the B<-f> flag or with the B<DSH_FANOUT>
+environment variable. The fanout is only restricted by the number of remote
+shell commands that can be run in parallel. You can experiment with the
+B<DSH_FANOUT>  value on your management server to see if higher values are
+appropriate.
+
+A timeout value for remote command execution can be specified with  the
+B<-t>  flag  or  with  the B<DSH_TIMEOUT> environment variable. If any remote
+target does not provide output to either standard  output  or  standard
+error  within  the  timeout  value,  B<xdsh> displays an error message and
+exits.
+
+If streaming mode is specified with the B<-s> flag, output is returned  as
+it  becomes available from each target, instead of waiting for the
+I<command_list> to complete on all targets before returning output. This  can
+improve performance but causes the output to be unsorted.
+
+The  B<-z> flag displays the exit code from the last command issued on the
+remote node in I<command_list>. Note that OpenSSH behaves differently;  it
+returns  the  exit status of the last remote command issued as its exit
+status. This affects the behavior of B<xdsh> and may require using the  B<-c>
+flag.  If  the  command  issued  on the remote node is run in the
+background, the exit status is not displayed.
+
+The B<-m> flag monitors execution of the B<xdsh> command by  printing  status
+messages to standard output. Each status message is preceded by B<dsh>.
+
+The B<-T> flag provides diagnostic trace information for the execution of
+the B<xdsh> command. Default settings and the actual remote shell commands
+executed on the remote targets are displayed.
+
+No error detection  or recovery mechanism is provided for remote
+targets. The B<xdsh> command output to standard error and standard output can
+be analyzed to determine the appropriate course of action.  In interac-
+tive mode, if a command cannot be executed  on  a  remote  target  (for
+example,  a  remote shell command resulting in a non-zero return code),
+subsequent commands are not sent to this node on this invocation of the
+B<xdsh> command unless the B<-c> flag is specified.
+
+B<COMMAND> B<OUTPUT>:
+
+The  B<xdsh>  command  waits  until complete output is available from each
+remote shell process and then displays that  output  before  initiating
+new  remote shell processes. This default behavior is overridden by the
+B<-s> flag.
+
+The B<xdsh> command output consists of standard error and standard  output
+from the remote commands. The B<xdsh> standard output is the standard
+output from the remote shell command. The B<xdsh> standard error is the
+standard  error  from the remote shell command.  Each line is prefixed with
+the host name of the node that produced the output. The  host  name  is
+followed  by  the  B<:>  character and a command output line. A filter for
+displaying identical outputs grouped by node  is  provided  separately.
+See the B<xdshbak> command for more information.
+
+A  command  can  be run silently using the B<-Q> flag; no output from each
+target's standard output or standard error is displayed.
+
+B<SIGNALS>:
+
+Signal 2 (INT), Signal 3 (QUIT), and Signal 15 (TERM) are propagated to
+the commands executing on the remote targets.
+
+Signal  19  (CONT),  Signal  17 (STOP), and Signal 18 (TSTP) default to
+B<xdsh>; the B<xdsh> command responds normally to these signals, but the
+signals  do  not have an effect on remotely executing commands. Other
+signals are caught by B<xdsh> and have their default effects on the B<xdsh>
+command; all current child processes, through propagation to remotely
+running commands, are terminated (SIGTERM).
+
+=head1 B<OPTIONS>
+
+=over 5
+
+=item B<-C>|B<--context> I<context>
+
+The default context to use when resolving target names. The
+I<context> value must correspond to a valid context  extension
+module  in  the B</opt/xcat/xdsh/Context> directory. For
+example, the B</opt/xcat/xdsh/Context/DSH.pm> file is  the  module
+for the B<DSH> context.
+
+=item B<-e>|B<--execute>
+
+Indicates  that I<command_list> specifies a local script
+filename and arguments to be executed on  the  remote  targets.
+The  script  file  is copied to the remote targets and then
+remotely   executed   with   the   given   arguments.   The
+B<DSH_NODE_RCP>  environment variables specify the remote copy
+command to use to copy the script file to node targets.
+
+=item B<-E>|B<--environment> I<environment_file>
+
+Specifies that the  I<environment_file>  contains  environment
+variable definitions to export to the target before
+executing the  I<command_list>.  The  B<DSH_NODE_RCP>  and  environment
+variables  specify the remote copy command to use to export
+the file to node targets.
+
+=item B<-f>|B<--fanout> I<fanout_value>
+
+Specifies a fanout value for the maximum number of  concur-
+rently  executing  remote shell processes. Serial execution
+can be specified by indicating a fanout value of B<1>.  If  B<-f>
+is not specified, a default fanout value of B<64> is used.
+
+=item B<-h>|B<--help>
+
+Displays usage information.
+
+=item B<-K>|B<--ssh-setup>
+
+Set  up  the  SSH  keys  for the specified node list.
+Currently, this must be run on the management node (not  on  a
+remote  client), because it forces itself into bypass mode.
+
+=item B<-l>|B<--user> I<user_ID>
+
+Specifies a remote user name to use for remote command exe-
+cution.
+
+=item B<-L>|B<--no-locale>
+
+Specifies to not export the locale definitions of the local
+host to the remote targets. Local host  locale  definitions
+are exported by default to each remote target.
+
+=item B<-m>|B<--monitor>
+
+Monitors  remote  shell execution by displaying status
+messages during execution on each target.
+
+=item B<-o>|B<--node-options> I<node_options>
+
+Specifies options to pass to the remote shell  command  for
+node  targets.  The options must be specified within double
+quotation marks ("") to distinguish them from B<xdsh> options.
+The syntax for I<node_options>
+
+=item B<-q>|B<--show-config>
+
+Displays the current environment settings for all DSH
+Utilities commands. This includes the values of all environment
+variables  and  settings  for  all  currently installed and
+valid contexts. Each setting is prefixed with  I<context>:  to
+identify the source context of the setting.
+
+=item B<-Q>|B<--silent>
+
+Specifies silent mode. No target output is written to stan-
+dard output or  standard  error.  Monitoring  messages  are
+written to standard output.
+
+=item B<-r>|B<--node-rsh> I<node_remote_shell>
+Specifies  the  full  path of the remote shell command used
+for remote command execution on node targets.
+
+=item B<-s>|B<--stream>
+
+Specifies that output is returned as it  becomes  available
+from  each  target, instead of waiting for the I<command_list>
+to be completed on a target before returning output.
+
+=item B<-S>|B<--syntax> B<csh>|B<ksh>
+
+Specifies the shell syntax to be used on the remote target.
+If not specified, the B<ksh> syntax is used.
+
+=item B<-t>|B<--timeout> I<timeout>
+
+Specifies the time, in seconds, to wait for output from any
+currently executing remote targets. If no output is
+available  from  any  target in the specified I<timeout>, B<xdsh>
+displays an error and terminates execution for the remote
+targets  that  failed to respond. If I<timeout> is not specified,
+B<xdsh> waits indefinitely to continue processing output  from
+all  remote  targets.  When specified with the B<-i> flag, the
+user is prompted for an additional timeout interval to wait
+for output.
+
+=item B<-T>|B<--trace>
+
+Enables trace mode. The B<xdsh> command prints diagnostic
+messages to standard output during execution to each target.
+
+=item B<-v>|B<--verify>
+
+Verifies each target before executing any  remote  commands
+on  the target. If a target is not responding, execution of
+remote commands for the target is canceled. When  specified
+with the B<-i> flag, the user is prompted to retry the
+verification request.
+
+=item B<-V>|B<--version>
+
+Displays the B<xdsh> command version information.
+
+=item B<-X> I<env_list>
+
+Ignore B<xdsh> environment variables. This option can take  an
+argument  which  is  a  comma separated list of environment
+variable names that should B<NOT> be ignored. If there  is  no
+argument  to  this  option,  or  the  argument  is an empty
+string, all B<xdsh> environment variables will be ignored.
+This option is useful when running B<xdsh> from within other
+scripts when you don't want the user's environment affecting
+the behavior of xdsh.
+
+=item B<-z>|B<--exit-status>
+
+Displays the exit status for  the  last  remotely  executed
+non-asynchronous  command  on  each  target. If the command
+issued on the remote node is run  in  the  background,  the
+exit status is not displayed.
+
+Exit  values  for  each remote shell execution are displayed in
+messages from the B<xdsh> command, if the remote  shell  exit  values  are
+non-zero.  A non-zero return code from a remote shell indicates that
+an error was encountered in the remote shell. This  return  code  is
+unrelated  to  the  exit  code  of the remotely issued command. If a
+remote shell encounters an error, execution of the remote command on
+that target is bypassed.
+
+The  B<xdsh>  command  exit  code  is B<0> if the command executed without
+errors and all remote shell commands finished with exit codes of  B<0>.
+If  internal  B<xdsh>  errors occur or the remote shell commands do not
+complete successfully, the B<xdsh> command exit value is  greater  than
+B<0>.  The exit value is increased by B<1> for each successive instance of
+an unsuccessful remote command execution.  If  the  remotely  issued
+command  is  run  in  the  background, the exit code of the remotely
+issued command is B<0>.
+
+=back
+
+
+=head1 B<Environment> B<Variables>
+
+=over 4
+
+=item B<DSH_CONTEXT>
+
+Specifies the default context to use  when  resolving
+targets. This variable is overridden by the B<-C> flag.
+
+=item B<DSH_ENVIRONMENT>
+
+Specifies a file that contains environment variable
+definitions to export to the target before executing  the  remote
+command. This variable is overridden by the B<-E> flag.
+
+=item B<DSH_FANOUT>
+
+Specifies  the fanout value. This variable is overridden by
+the B<-f> flag.
+
+=item B<DSH_NODE_OPTS>
+
+Specifies the options to use for the remote  shell  command
+with  node targets only. This variable is overridden by the
+B<-o> flag.
+
+=item B<DSH_NODE_RCP>
+
+Specifies the full path of the remote copy command  to  use
+to  copy  local scripts and local environment configuration
+files to node targets.
+
+=item B<DSH_NODE_RSH>
+
+Specifies the full path of the  remote  shell  to  use  for
+remote  command execution on node targets. This variable is
+overridden by the B<-r> flag.
+
+=item B<DSH_NODEGROUP_PATH>
+
+Specifies a colon-separated list of directories  that
+contain node group files for the B<DSH> context. When the B<-a> flag
+is specified in the B<DSH> context,  a  list  of  unique  node
+names is collected from all node group files in the path.
+
+=item B<DSH_PATH>
+
+Sets the command path to use on the targets. If B<DSH_PATH> is
+not set, the default path defined in  the  profile  of  the
+remote I<user_ID> is used.
+
+=item B<DSH_SYNTAX>
+
+Specifies the shell syntax to use on remote targets; B<ksh> or
+B<csh>. If not specified, the  B<ksh>  syntax  is  assumed.  This
+variable is overridden by the B<-S> flag.
+
+=item B<DSH_TIMEOUT>
+
+Specifies  the  time,  in  seconds, to wait for output from
+each remote target. This variable is overridden by  the  B<-t>
+flag.
+
+
+=head1 B<Security>
+
+The  B<xdsh>  command  has no security configuration requirements.  All
+remote command security requirements  -  configuration,
+authentication,  and authorization - are imposed by the underlying remote
+command configured for B<xdsh>. The command  assumes  that  authentication
+and  authorization  is  configured  between  the  local host and the
+remote targets. Interactive password prompting is not supported;  an
+error  is displayed and execution is bypassed for a remote target if
+password prompting occurs, or if either authorization or
+authentication  to  the  remote  target fails. Security configurations as they
+pertain to the remote environment and remote shell command are
+userdefined.
+
+
+=head1 B<Examples>
+
+=over 3
+
+=item *
+
+To run the B<ps> command on node targets B<node1> and B<node2>, enter:
+
+B<xdsh> I<node1,node2 ps>
+
+=item *
+
+To execute the commands contained in B<myfile> in the B<XCAT>
+context on several node targets, with a fanout of B<1>, enter:
+
+B<xdsh> I<node1,node2 -C XCAT -f 1 -e myfile>
+
+
+=item *
+
+To run the ps command on node1 and ignore all the dsh
+environment variable except the DSH_NODE_OPTS, enter:
+
+B<xdsh> I<node1 -X `DSH_NODE_OPTS' ps>
+
+=back
+
+=head1 B<Files>
+
+B</opt/xcat/xdsh/Context/>
+
+Location of the contexts available to use with  DSH  Utilities.
+
+=head1 B<SEE ALSO>
+
+xdshbak(1), noderange(3)

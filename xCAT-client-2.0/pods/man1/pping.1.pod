@@ -1,0 +1,56 @@
+
+=head1 NAME
+
+B<pping> - parallel ping.
+
+=head1 SYNOPSIS
+
+B<pping>  [B<-q>] [B<-s>] [B<-i> I<interface>] I<noderange>
+
+B<pping> [B<-h>|B<--help>]
+
+B<pping> {B<-v>|B<--version>}
+
+
+=head1 DESCRIPTION
+
+B<pping> is a utility used to ping list of nodes in parallel.See noderange(3).
+B<pping> will return an unsorted list of nodes with a ping or noping status.  The list is actually sorted by first ping, unless -s is specified.
+B<pping> front-ends ping and fping if available.
+
+This command does not support the xcatd client/server communication.  It must be run on the management node.
+
+=head1 OPTIONS
+
+B<-q> quiet, only show noping nodes
+
+B<-s> Ping serially
+
+B<-i interface> interface
+
+B<-h | help>  help
+
+B<-v | version> version
+
+
+=head1 EXAMPLES
+
+	pping all
+
+	blade7: ping
+	blade8: ping
+	blade9: ping
+	devmaster: ping
+	node4: ping
+	node2: noping
+
+	pping -q all
+
+	node2: noping
+
+
+=head1 AUTHOR
+
+Egan Ford E<lt>egan@us.ibm.comE<gt>
+
+

@@ -1,0 +1,66 @@
+=head1 Name
+
+B<reventlog> - retrieve or clear remote hardware event logs
+
+=head1 B<Synopsis>
+
+B<reventlog> I<noderange> {I<number-of-entries>|B<all>|B<clear>}
+
+B<reventlog> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head1 B<Description>
+
+B<reventlog>  can  display any number of remote hardware event log entries
+or clear them for a range of nodes.  Hardware  event
+logs are stored on each servers service processor.
+
+=head1 B<Options>
+
+=over 7
+
+=item I<number-of-entries>
+
+Retrieve the specified number of entries from the nodes' service processors.
+
+=item B<all>
+
+Retrieve all entries.
+
+=item B<clear>
+
+Clear event logs.
+
+=item B<-h>|B<--help>
+
+Print help.
+
+=item B<-v>|B<--version>
+
+Print version.
+
+=back
+
+
+=head1 B<Examples>
+
+B<reventlog> I<node4,node5> I<5>
+
+ node4: SERVPROC  I 09/06/00 15:23:33 Remote Login Successful User ID = USERID[00]
+ node4: SERVPROC I 09/06/00 15:23:32 System spn1 started a RS485 connection with us[00]
+ node4: SERVPROC I 09/06/00 15:22:35 RS485 connection to system spn1 has ended[00]
+ node4: SERVPROC I 09/06/00 15:22:32 Remote Login Successful User  ID  = USERID[00]
+ node4: SERVPROC I 09/06/00 15:22:31 System spn1 started a RS485 connection with us[00]
+ node5: SERVPROC I 09/06/00 15:22:32 Remote Login Successful User  ID  = USERID[00]
+ node5: SERVPROC I 09/06/00 15:22:31 System spn1 started a RS485 connection with us[00]
+ node5: SERVPROC I 09/06/00 15:21:34 RS485 connection to system spn1 has ended[00]
+ node5:  SERVPROC  I 09/06/00 15:21:30 Remote Login Successful User ID = USERID[00]
+ node5: SERVPROC I 09/06/00 15:21:29 System spn1 started a RS485 connection with us[00]
+
+B<reventlog> I<node4,node5> I<clear>
+
+ node4: clear
+ node5: clear
+
+=head1 B<SEE ALSO>
+
+rpower(1), startmon(1)

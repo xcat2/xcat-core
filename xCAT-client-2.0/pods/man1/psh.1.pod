@@ -1,0 +1,80 @@
+=head1 Name
+
+psh - parallel remote shell
+
+=head1 B<Synopsis>
+
+B<psh> [I<-s>] {I<noderange>|B<me>|I<pbs-job-id>} I<command>
+
+B<psh> {B<-h>|B<--help>|B<-v>|B<--version>}
+
+=head1 B<Description>
+
+B<psh> is a utility used to run a command across a list of nodes in parallel.
+
+B<ssh> must be set up to allow no prompting for B<psh> to work.
+
+Note:  this command does not support the xcatd client/server communication and therefore must be run on the management node.
+
+=head1 B<Options>
+
+=over 7
+
+=item B<-s>
+
+Issues the commands serially.
+
+=item B<noderange>
+
+See L<noderange(3)>.
+
+=item B<me>
+
+Run  against  nodes  owned  by "me" as listed by PBS's L<qstat(1B)>
+command.
+
+=item B<pbs>
+
+Run against nodes assigned to a  PBS  job  as  listed  by  PBS's
+L<qstat(1B)> command.
+
+=item B<command>
+
+Command  to  be run in parallel.  If no command is give then B<psh>
+enters interactive mode.  In interactive mode a  ">"  prompt  is
+displayed.   Any  command entered is executed in parallel to the
+nodes in the noderange. Use "exit" or "Ctrl-D" to end the interactive session.
+
+=item B<-h>|B<--help>
+
+Print help.
+
+=item B<-v>|B<--version>
+
+Print version.
+
+=back
+
+
+=head1 B<Examples>
+
+B<psh> I<node4-node6> I<uptime>
+
+node4: Sun Aug  5 17:42:06 MDT 2001
+node5: Sun Aug  5 17:42:06 MDT 2001
+node6: Sun Aug  5 17:42:06 MDT 2001
+
+B<psh> I<node1-node10> I<rm> I<-f> I</tmp/blah>
+
+B<psh> I<rack01> I<'rm> I<-f> I</tmp/*'>
+
+Notice the use of '' to forward shell expansion.  This is not necessary
+in interactive mode.
+
+=head1 B<Author>
+
+Egan Ford <egan@us.ibm.com>
+
+=head1 B<See> B<Also>
+
+L<noderange(3)>, L<pscp(1)>, L<pping(1)>, L<prsync(1)>

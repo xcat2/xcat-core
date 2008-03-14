@@ -1,0 +1,38 @@
+=head1 Name
+
+B<rspreset> - remote hardware inventory
+
+=head1 B<Synopsis>
+
+B<rspreset> I<noderange>
+
+B<rspreset> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head1 B<Description>
+
+B<rspreset> resets the service processors associated with the specified nodes.  It searches
+the B<nodehm> table and associated tables to find the service processors associated with the nodes.
+
+=head1 B<Options>
+
+=over 7
+
+=item B<-h>|B<--help>
+
+Print help.
+
+=item B<-v>|B<--version>
+
+Print version.
+
+=back
+
+
+=head1 B<Examples>
+
+B<rspreset> I<node5>
+
+
+=head1 B<SEE ALSO>
+
+rpower(1), nodehm(5)

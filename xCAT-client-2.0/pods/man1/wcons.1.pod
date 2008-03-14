@@ -1,0 +1,102 @@
+=head1 Name
+
+wcons - windowed remote console
+
+=head1 B<Synopsis>
+
+B<wcons>  [B<-t>|B<--tile>=I<n>] I<noderange>
+
+B<wcons> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head1 B<Description>
+
+B<wcons> provides access to the remote node serial console of a single  or
+range or nodes or groups.
+
+B<wcons>  is a simple front-end to rcons in an xterm session for each console.
+
+=head1 B<Options>
+
+=over 5
+
+=item B<-t>|B<--tile>=I<n>
+
+Tile B<wcons> windows from top left to bottom right.  If I<n> is spec-
+ified  then  tile  I<n> across.  If I<n> is not specified then tile to
+edge of screen.  If tiled B<wcons> windows reach bottom right, then
+the windows start at top left overlaying existing B<wcons> windows.
+
+=item B<-f>|B<--font>=I<font>
+
+B<Note:> this option is not supported yet!  Use Xwindows font I<font> for B<wcons> windows.
+B<wcons>  supports  the following font aliases:
+
+=over 25
+
+=item B<Alias>
+
+B<Font>
+
+=item I<verysmall>|I<vs>
+
+nil2
+
+=item I<small>|I<s>
+
+5x8
+
+=item I<medium>|I<med>|I<m>
+
+6x13
+
+=item I<large>|I<l>|I<big>|I<b>
+
+7x13
+
+=item I<verylarge>|I<vl>|I<verybig>|I<vb>
+
+10x20
+
+=back
+
+=item B<-h>|B<--help>
+
+Print help.
+
+=item B<-v>|B<--version>
+
+Print version.
+
+=back
+
+
+=head1 B<Files>
+
+B<nodehm> table -
+xCAT  node hardware management table.  See L<nodehm(5)> for further details.  This is used  to  determine  the  console  access
+method.
+
+=head1 B<Examples>
+
+B<wcons> I<node1-node5>
+
+B<wcons> B<--tile> B<--font>=I<nil2> I<all>
+
+B<wcons> B<-t> I<4> I<node1-node16>
+
+B<wcons> B<-f> I<vs> B<-t> I<4> I<node1-node4>
+
+=head1 B<Bugs>
+
+Tile mode assumes that the width of the left window border is also  the
+width  of  the  right  and  bottom window border.  Most window managers
+should not have a problem.  If you really need  support  for  a  screwy
+window manager let me know.
+
+=head1 B<Author>
+
+Egan Ford <egan@us.ibm.com>
+
+=head1 B<See> B<Also>
+
+L<noderange(3)>, L<rcons(1)>

@@ -1,0 +1,58 @@
+
+=head1 NAME
+
+B<rsetboot> - Sets the boot order for servers with BMC service processors.
+
+=head1 SYNOPSIS
+
+B<rsetboot> I<noderange> {B<hd>|B<net>|B<cd>|B<default>|B<stat>}
+
+B<rsetboot> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+B<rsetboot> sets the boot media to be used on the next boot of the specified nodes.
+
+=head1 OPTIONS
+
+=over 7
+
+=item B<hd>
+
+Boot from the hard disk.
+
+=item B<net>
+
+Boot over the network, using a PXE or BOOTP broadcast.
+
+=item B<cd>
+
+Boot from the CD or DVD drive.
+
+=item B<def>|B<default>
+
+Boot using the default set in BIOS.
+
+=item B<stat>
+
+Display the current boot setting.
+
+=back
+
+=head1 EXAMPLES
+
+  rsetboot 1,3 net
+  rsetboot 14-56,70-203 stat
+  rsetboot 1,3,14-56,70-203 default
+
+
+=head1 SEE ALSO
+
+rsetboot(1)
+
+=head1 AUTHOR
+
+Egan Ford E<lt>egan@us.ibm.comE<gt>
+
+

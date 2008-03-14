@@ -51,6 +51,23 @@ It consists of a series of tables, which are described below.  To get more infor
 particular table, run man for that table name.  The tables can be manipulated directly using the
 B<tabedit> or B<chtab> commands.  They can be viewed using B<nodels> or B<tabdump>.
 
+xCAT allows the use of different database applications, depending on the needs of your cluster.
+The default database is SQLite, which is a daemonless, zero-config database.  But you could instead
+choose to use something like postgresql for greater scalability and remote access in the
+hierarchical/service node case.  To use a different database or a different location, create
+the file /etc/xcat/cfgloc.  The first line of the file should contain something like one of the examples
+below:
+
+=over 4
+
+=item SQLite:/var/xcat/cfg
+
+=item Pg:dbname=xcat;host=<mgmtnode>|<pguserid>|<pgpasswd>
+
+where mgmtnode is the hostname of the management node adapter on the cluster side
+
+=back
+
 xCAT also supports regular expressions in the tables.  This enables one row to represent many
 rows.  For example, if you have many blades in your cluster and their hostnames have a regular
 pattern of blade1, blade2, etc., and your BladeCenter management modules also have a hostname
