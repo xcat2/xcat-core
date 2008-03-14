@@ -44,7 +44,7 @@ exit $rc;
 sub init_db
 {
     my $rc         = 0;
-    my @timezone   = `grep ZONE /etc/sysconfig/clock|cut -d= -f 2`;
+    my @timezone   = `grep ZONE= /etc/sysconfig/clock|cut -d= -f 2`;
     my $hostname   = `hostname`;
     my $masterhost = `getent hosts $hostname`;
     my ($masterip, $mastername) = split ' ', $masterhost;
