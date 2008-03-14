@@ -34,7 +34,7 @@ use xCAT::Utils;
 =cut
 #--------------------------------------------------------------------------------
 sub start {
-  print "snmpmon::start called\n";
+  #print "snmpmon::start called\n";
 
   $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::snmpmon/) {
@@ -81,49 +81,72 @@ sub start {
 #--------------------------------------------------------------------------------
 sub configBMC {
   my $action=shift;
+  my $isSV=xCAT::Utils->isServiceNode();
 
   #the ips of this node
   my @hostinfo=xCAT::Utils->determinehostname();
-  #pop(@hostinfo); #remove the host name
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
 
+  my $passtab = xCAT::Table->new('passwd');
+  my $ipmiuser;
+  my $ipmipass;
+  if ($passtab) {
+    ($tmp)=$passtab->getAttribs({'key'=>'ipmi'},'username','password');
+    if (defined($tmp)) { 
+     $ipmiuser = $tmp->{username};
+     $ipmipass = $tmp->{password};
+    }
+    $passtab->close();
+  }
+
+  my $nrtab = xCAT::Table->new('noderes');
   my $table=xCAT::Table->new("ipmi");
   if ($table) {
-    my @tmp1=$table->getAllAttribs(('node','bmc','username', 'password'));
+    my @tmp1=$table->getAllNodeAttribs(['node','bmc','username', 'password']);
     if (defined(@tmp1) && (@tmp1 > 0)) {
       foreach(@tmp1) {
         my $node=$_->{node};
-        print "node=$node\n";
+        my $bmc=$_->{bmc};
+        #print "node=$node, bmc=$bmc, username=$_->{username}, password=$_->{password}\n";
+
+        my $tent  = $nrtab->getNodeAttribs($node,['servicenode']);
+        if ($tent and $tent->{servicenode}) { #the node has service node
+          if (!$iphash{$tent->{servicenode}}) { next;} # handle its childen only 
+        } else { #the node does not have service node
+	  if ($isSV) { next; }
+        }
         
         #get the master for node
-        my $master=xCAT::Utils->GetMasterNodeName($node);
-        print "master=$master\n";
-       
-        # handle its childen only
-	if ($iphash{$master}) {
-	  if ($action==1) { #enable
-            # set the snmp destination
-            # suppose all others like username, password, ip, gateway ip are set during the installation
-            my @dip = split /\./, $master;
-	    my $cmd="ipmitool -I lan -H $_->{bmc} -U $_->{username} -P $_->{password} raw 0x0c 0x01 0x01 0x13 0x01 0x00 0x00 $dip[0] $dip[1] $dip[2] $dip[3] 0x00 0x00 0x00 0x00 0x00 0x00";
-	    $result=`$cmd 2>&1`;
-            if ($?) { print "Setting snmp destination ip address for node $node: $result\n"; }
-            #enable PEF policy
-            $cmd="ipmitool -I lan -H $_->{bmc} -U $_->{username} -P $_->{password} raw 0x04 0x12 0x09 0x01 0x18 0x11 0x00";
-	    $result=`$cmd 2>&1`;
-            if ($?) { print "Enabling PEF policy for node $node: $result\n"; }
-	  } else { #disable 
-            #disable PEF policy
-	    my $cmd="ipmitool -I lan -H $_->{bmc} -U $_->{username} -P $_->{password} raw 0x04 0x12 0x09 0x01 0x10 0x11 0x00";
-	    $result=`$cmd 2>&1`;
-            if ($result) { print "Disabling PEF policy for node $node: $result\n"; }
-	  }          
-        }
+        my $master=xCAT::Utils->GetMasterNodeName($node); #should we use $bmc?
+        #print "master=$master\n";
+        
+        my $nodeuser=$ipmiuser; if ($_->{username}) { $nodeuser=$_->{username};}
+        my $nodepass=$ipmipass; if ($_->{password}) { $nodepass=$_->{password};}
+        
+	if ($action==1) { #enable
+          # set the snmp destination
+          # suppose all others like username, password, ip, gateway ip are set during the installation
+          my @dip = split /\./, $master;
+	  my $cmd="ipmitool -I lan -H $bmc -U $nodeuser -P $nodepass raw 0x0c 0x01 0x01 0x13 0x01 0x00 0x00 $dip[0] $dip[1] $dip[2] $dip[3] 0x00 0x00 0x00 0x00 0x00 0x00";
+          #print "cmd=$cmd\n";
+	  $result=`$cmd 2>&1`;
+          if ($?) { print "Setting snmp destination ip address for node $node: $result\n"; }
+          #enable PEF policy
+          $cmd="ipmitool -I lan -H $_->{bmc} -U $nodeuser -P $nodepass raw 0x04 0x12 0x09 0x01 0x18 0x11 0x00";
+	  $result=`$cmd 2>&1`;
+          if ($?) { print "Enabling PEF policy for node $node: $result\n"; }
+        } else { #disable 
+          #disable PEF policy
+	  my $cmd="ipmitool -I lan -H $bmc -U $nodeuser  -P $nodepass raw 0x04 0x12 0x09 0x01 0x10 0x11 0x00";
+	  $result=`$cmd 2>&1`;
+          if ($result) { print "Disabling PEF policy for node $node: $result\n"; }
+        }          
       } #foreach 
     }
+    $table->close();
   }
-
+  $nrtab->close();
 }
 
 
@@ -223,7 +246,7 @@ sub configSNMP {
 =cut
 #--------------------------------------------------------------------------------
 sub stop {
-  print "snmpmon::stop called\n";
+  #print "snmpmon::stop called\n";
 
   # do not turn it on on the service node
   #if (xCAT::Utils->isServiceNode()) { return (0, "");}
@@ -250,7 +273,7 @@ sub stop {
   # now check to see if the daemon is running.  If it is then we need to resart or stop?
   # it with the new snmptrapd.conf file that will not forward events to RMC.
   chomp(my $pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
-  print "pid=$pid\n";
+  #print "pid=$pid\n";
   if($pid){
     `/bin/kill -9 $pid`;
     # start it up again!
