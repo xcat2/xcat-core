@@ -46,12 +46,10 @@ if ($r) { %hashR=parseSettings($r); }
 # read host name
 my $host=<STDIN>; 
 chomp($host);
-print "host=$host\n";
 
 # read the host ip
 my $ip=<STDIN>;
 chomp($ip);
-print "ip=$ip\n";
 
 # read uptime
 my $uptimeline=<STDIN>;
@@ -169,17 +167,27 @@ while ($temp=<STDIN>) {
 
     # get the host name if it is unknown
     if ($node1 =~/<UNKNOWN>/) {
-      my $iaddr = inet_aton("9.114.47.225");
+      my $iaddr = inet_aton($ip1);
       my ($name) = gethostbyaddr($iaddr, AF_INET);
-      if ($name) {$node1=$name; $host=$name;}
+      if ($name) {
+        $node1=$name; 
+        $host=$name;
+        @shorthost = split(/\./, $node1);
+        $node1=$shorthost[0];
+      }
     }
 
     #node1 is the bmc name, we need the node that bmc connects to to call xCAT
     my $realnode;
     my $ipmitab = xCAT::Table->new('ipmi');
     if (defined($ipmitab)) {
-      ($tmp)=$ipmitab->getAttribs({'bmc'=>$node1},'node');
-       if (defined($tmp)) { $realnode=$tmp->{node}; }   
+      my @tmp1=$ipmitab->getAllNodeAttribs(['node','bmc']);
+      if (defined(@tmp1) && (@tmp1 > 0)) {
+        foreach(@tmp1) {
+          if ($_->{bmc} eq $node1) { $realnode=$_->{node}; last;}
+        }        
+      }
+      $ipmitab->close();
     }
     if ($realnode) {$node1=$realnode;}
 
@@ -293,7 +301,7 @@ sub getMoreInfo {
   #get module name and serial number from the xCAT DB.
   my $table=xCAT::Table->new("vpd", -create =>1);
   if ($table) {
-    (my $ref) = $table->getAttribs({'node' => $node}, ('serial', 'mtm'));
+    my $ref = $table->getNodeAttribs($node, ['serial', 'mtm']);
     if ($ref) {
       if($ref->{mtm}) { $vpd .= "  Type/Mudule: ". $ref->{mtm} ."\n"; }
       if($ref->{serial}) { $vpd .= "  Serial Number: ". $ref->{serial} ."\n";}
@@ -303,7 +311,7 @@ sub getMoreInfo {
 
   # get the info from rinv command if nothing in the vpd table
   if (!$vpd) { 
-    my $result=`XCATBYPASS=Y $XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`;
+    my $result=`XCATBYPASS=Y $XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`; 
     if ($? == 0) {#success
         chomp($result);
         my @b=split(/\n/, $result);
@@ -318,7 +326,7 @@ sub getMoreInfo {
   #get the position
   my $table1=xCAT::Table->new("nodepos", -create =>1);
   if ($table1) {
-    (my $ref1) = $table1->getAttribs({'node' => $node}, ('rack', 'u', 'chassis', 'slot',  'room'));
+    my $ref1 = $table1->getNodeAttribs($node, ['rack', 'u', 'chassis', 'slot',  'room']);
     if ($ref1) {
       if($ref1->{room}) { $pos .= "  Room: ". $ref1->{room} ."\n"; }
       if($ref1->{rack}) { $pos .= "  Rack: ". $ref1->{rack} ."\n"; }
