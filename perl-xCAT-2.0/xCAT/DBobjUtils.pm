@@ -16,6 +16,9 @@ use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 
+#  IPv6 not yet implemented - need Socket6
+use Socket;
+
 #----------------------------------------------------------------------------
 
 =head3   getObjectsOfType
@@ -150,6 +153,8 @@ sub getobjdefs
 
     %typehash = %$hash_ref;
 
+	@::foundTableList = ();
+
     foreach my $objname (sort (keys %typehash))
     {
         # need a special case for the site table - for now !!!!!
@@ -184,9 +189,16 @@ sub getobjdefs
             next;
         }
 
-		# need to refresh each time!!
-		# one process may update a table multiple times 
-		#	& this will have to be updated between each time
+		# see if we saved this from a previous call
+		if ($::saveObjHash{$objname})
+		{
+
+			# use the one we saved
+			$objhash{$objname} = $::saveObjHash{$objname};
+
+		}
+		else
+		{
 
         # get data from DB
         $type = $typehash{$objname};
@@ -245,7 +257,7 @@ sub getobjdefs
 
 			# don't try to get static group attrs from the nodegroup table
 			# 	- don't support dynamic groups yet
-			#if (($tab eq "nodegroup")  && ($objhash{$objname}{grouptype} eq "static") ) {
+			#if (($tab eq "nodegroup")  && ($objhash{$objname}{grouptype} eq "static") ) 
 			if ($tab eq "nodegroup"){
 				next;
 			} 
@@ -331,6 +343,8 @@ sub getobjdefs
             }
         }
         $::saveObjHash{$objname} = $objhash{$objname};
+
+		} # end if not cached
     }
     return %objhash;
 }
@@ -362,31 +376,48 @@ sub getDBtable
     my ($class, $table) = @_;
     my @rows = [];
 
-	#  need to refresh each time - don't cache!
-
-    # need to get info from DB
-    my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
-    if (!$thistable)
+	# save this table info - in case this subr gets called multiple times
+    if (grep(/^$table$/, @::foundTableList))
     {
-        my %rsp;
-        $rsp->{data}->[0] = "Could not get the \'$table\' table.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
-        return undef;
-    }
 
-    @rows = $thistable->getTable;
+        # already have this
+        @rows = @{$::TableHash{$table}};
 
-    #   !!!! this routine returns rows even if the table is empty!!!!!!
-
-    $thistable->commit;
-
-    if (defined(@rows))
-    {
-        return @rows;
     }
     else
     {
-        return undef;
+
+    	# need to get info from DB
+    	my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+    	if (!$thistable)
+    	{
+        	my %rsp;
+        	$rsp->{data}->[0] = "Could not get the \'$table\' table.";
+        	xCAT::MsgUtils->message("E", $rsp, $::callback);
+        	return undef;
+    	}
+
+    	@rows = $thistable->getTable;
+
+    	#   !!!! this routine returns rows even if the table is empty!!!!!!
+
+		#  keep track of the fact that we checked this table
+        #   - even if it's empty!
+        push(@::foundTableList, $thistable->{tabname});
+
+        @{$::TableHash{$table}} = @rows;
+
+    	$thistable->commit;
+
+	} # end if not cached
+
+   	if (defined(@rows))
+   	{
+       	return @rows;
+   	}
+   	else
+   	{
+       	return undef;
     }
 }
 
@@ -429,7 +460,6 @@ sub setobjdefs
 
         # get attr=val that are set in the DB ??
         my $type = $objhash{$objname}{objtype};
-		# my $grouptype = $objhash{$objname}{grouptype};
 
 		#  don't add any group defs to the nodegroup table
 		#	- group info is stored in the nodelist table as part of
@@ -1262,6 +1292,104 @@ sub getGroupMembers
 
     }
     return $members;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   getNetwkInfo
+
+        Get the network info from the database for a list of nodes.
+
+        Arguments:
+        Returns:
+                undef
+                hash ref - ex. $nethash{nodename}{networks attr name} = value
+        Globals:
+        Error:
+        Example:
+
+                %nethash = xCAT::DBobjUtils->getNetwkInfo(\@targetnodes);
+
+		Comments:
+			      Not supporting IPv6 yet
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getNetwkInfo
+{
+	my ($class, $ref_nodes) = @_;
+	my @nodelist    = @$ref_nodes;
+
+	my %nethash;
+
+	# get the current list of network attrs (networks table columns)
+    my $datatype = $xCAT::Schema::defspec{'network'};
+	foreach my $a (@{$datatype->{'attrs'}}) {
+		my $attr = $a->{attr_name};
+		push(@attrnames, $attr);
+	}
+
+	# read the networks table
+	my @TableRowArray = xCAT::DBobjUtils->getDBtable('networks');
+	if (!defined(@TableRowArray))
+    {
+		return undef;
+	}
+
+	# for each node - get the network info
+	foreach my $node (@nodelist)
+    {
+
+		# get, check, split the node IP
+		my $IP = inet_ntoa(inet_aton($node));
+		chomp $IP;
+		unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
+		{
+    		next;    #Not supporting IPv6 yet
+		}
+		my ($ia, $ib, $ic, $id) = split('\.', $IP);
+
+		# check the entries of the networks table
+		# - if the bitwise AND of the IP and the netmask gives you 
+		#	the "net" name then that is the entry you want.
+		foreach (@TableRowArray) {
+			my $NM = $_->{'mask'};
+			my $net=$_->{'net'};
+			chomp $NM;
+			chomp $net;
+			my ($n1, $n2, $n3, $n4) = split('\.', $net);
+			my ($na, $nb, $nc, $nd) = split('\.', $NM);
+
+			# Convert to integers so the bitwise and (&) works correctly.
+			int $ia;
+			int $ib;
+			int $ic;
+			int $id;
+			int $na;
+			int $nb;
+			int $nc;
+			int $nd;
+			my $sa     = ($ia & $na);
+			my $sb     = ($ib & $nb);
+			my $sc     = ($ic & $nc);
+			my $sd     = ($id & $nd);
+
+			# if all the octals match then we have the right network
+			if ( ($n1 == $sa) && ($n2 ==$sb) && ($n3 == $sc) && ($n4 == $sd) ) {
+				# fill in the hash - 
+				foreach my $attr (@attrnames) {
+					if ( defined($_->{$attr}) ) {
+						$nethash{$node}{$attr} = $_->{$attr};
+					}
+				}
+				next;
+			}
+		}
+
+	} #end - for each node
+
+	return %nethash;
 }
 
 1;
