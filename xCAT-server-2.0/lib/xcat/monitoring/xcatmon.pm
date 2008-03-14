@@ -9,7 +9,7 @@ use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
-use Sys::Hostname;
+
 
 
 1;
@@ -115,7 +115,7 @@ sub startNodeStatusMon {
   if ($reading>0) { $value=$reading;}
    
   #create the cron job, it will run the command every 3 minutes.
-  my $newentry="*/$value * * * * XCATROOT=$::XCATROOT $cmd";
+  my $newentry="*/$value * * * * XCATROOT=$::XCATROOT PATH=$ENV{'PATH'} XCATCFG='$ENV{'XCATCFG'}' $cmd";
   my ($code, $msg)=xCAT::Utils::add_cron_job($newentry);
   if ($code==0) { return (0, "started"); }
   else {  return ($code, $msg); } 
@@ -203,11 +203,29 @@ sub getMonNodesStatus {
   my @unknown_nodes=();
 
   my $monservers=xCAT_monitoring::monitorctrl->getMonHierarchy();
-
-  my $host=hostname();
-  my $monnodes=$monservers->{$host};
-  if (($monnodes) && (@$monnodes >0)) {
-    foreach(@$monnodes) {
+  my $isSV=xCAT::Utils->isServiceNode(); 
+  
+  #on a service node or on ms, get the nodes that has local host as the server node
+  my $monnodes;
+  my @hostinfo=xCAT::Utils->determinehostname();
+  my %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+  foreach my $host (@hostinfo) {
+    $monnodes=$monservers->{$host};
+    if (($monnodes) && (@$monnodes >0)) { last;}
+  }     
+  foreach(@$monnodes) {
+    my $node=$_->[0];
+    my $status=$_->[2];
+    if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
+    elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
+    else { push(@unknown_nodes, $node);}
+  }
+ 
+  #on ms, add the ones that has no service nodes
+  if (!$isSV) { 
+    my $monnodes_ms=$monservers->{'noservicenode'};
+    foreach(@$monnodes_ms) {
       my $node=$_->[0];
       my $status=$_->[2];
       if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}

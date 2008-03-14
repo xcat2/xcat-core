@@ -899,7 +899,8 @@ sub getPluginSettings {
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}     
+      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
+      If there is no service node for a node, the key will be "noservicenode".    
 =cut
 #--------------------------------------------------------------------------------
 sub getMonHierarchy {
@@ -913,20 +914,19 @@ sub getMonHierarchy {
   
   #get monserver for each node. use "monserver" attribute from noderes table, if not
   #defined, use "servicenode". otherwise, use loca lhost. 
-  my @hostinfo=xCAT::Utils->determinehostname();
-  my $host=pop(@hostinfo);
   if (defined(@tmp1) && (@tmp1 > 0)) {
     foreach(@tmp1) {
       my $node=$_->{node};
       my $status=$_->{status};
       my $nodetype=$_->{nodetype};
-      my $monserver=$host;
+      my $monserver;
       my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
       if (defined($tmp2) && ($tmp2)) {
 	if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
         elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
       }
-
+      #print "node=$node, monserver=$monserver\n";
+      if (!$monserver) { $monserver="noservicenode"; }
       if (exists($ret->{$monserver})) {
         my $pa=$ret->{$monserver};
         push(@$pa, [$node, $nodetype, $status]);

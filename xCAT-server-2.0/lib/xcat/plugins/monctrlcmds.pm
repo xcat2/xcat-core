@@ -246,11 +246,11 @@ sub startmon {
     }
     else {
       #update the monsetting table
-      if ($settings) {
+      if ($settings) {  
         my $table1=xCAT::Table->new("monsetting", -create => 1,-autocommit => 1);
         my %key_col1 = (name=>$pname);
         #parse the settings. Setting format: key="value",key="value"....
-        while ($settings =~ s/^\[([^\[\]\=]*)=([^\[\]]*)\](,)*//) {         
+        while ($settings =~ s/^\[([^\[\]\=]*)=([^\[\]]*)\](,)*//) { 
           $key_col1{key}=$1; 
 	  $setting_hash{value}=$2;
           $table1->setAttribs(\%key_col1, \%setting_hash);
@@ -278,7 +278,7 @@ sub startmon {
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   foreach (@mon_servers) {
-    if (! $iphash{$_}) { #if it is not this node, meaning it is ms
+    if (! $iphash{$_} && ($_ ne "noservicenode")) { #if it is not this node, meaning it is ms
       my %rsp2;
       $rsp2->{data}->[0]="sending request to $_...";
       $callback->($rsp2);
@@ -419,7 +419,7 @@ sub stopmon {
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   foreach (@mon_servers) {
-    if (! $iphash{$_}) { #if it is not this node, meaning it is ms
+    if (! $iphash{$_} && ($_ ne "noservicenode")) { #if it is not this node, meaning it is ms
       my %rsp2;
       $rsp2->{data}->[0]="sending request to $_...";
       $callback->($rsp2);
