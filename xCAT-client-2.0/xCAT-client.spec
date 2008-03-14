@@ -47,7 +47,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man3
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
-# mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man8
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man8
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
@@ -62,8 +62,8 @@ cp share/man/man3/* $RPM_BUILD_ROOT/%{prefix}/share/man/man3
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man3/*
 cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
-# cp share/man/man8/* $RPM_BUILD_ROOT/%{prefix}/share/man/man8
-# chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
+cp share/man/man8/* $RPM_BUILD_ROOT/%{prefix}/share/man/man8
+chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
 
 %ifos linux
 cp share/doc/xCAT2.0.odt $RPM_BUILD_ROOT/%{prefix}/share/doc
