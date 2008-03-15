@@ -1,0 +1,306 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+
+#
+
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use File::Basename;
+use Getopt::Long;
+use xCAT::MsgUtils;
+use xCAT::Utils;
+use File::Copy;
+
+#-----------------------------------------------------------------------------
+
+=head1   updte_SNimage 
+
+   This routine updates the service node diskless install image with
+   the extra files it needs to support running the postgresql and xcatd
+   daemon on the service node.
+
+   Arguments:
+	  -n host ipaddress or name that can be used to scp, or blank for local host
+	  -p full path to diskless image to update
+	  -h help
+	  -v version
+
+   Returns:
+	   0 = success
+	   1 = error
+   Globals:
+	   none
+   Error:
+     none
+   Example:
+     updte_SNimage -n <hostipaddress/name> -i <path to image>
+     updte_SNimage -i <path to image>
+
+   Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+
+my $rc = 0;
+
+my $hostname;
+my $path;
+my $cpy;
+@hostpath = &getarg();
+$path     = pop @hostpath;
+my $hostname  = pop @hostpath;
+my $thostname = $hostname;
+if ($thostname eq "local")
+{    # local host
+    $cpy      = "cp";
+    $hostname = "";     # no hostname in the copy and use local cp
+    `unalias cp`;       # remove prompting
+}
+else
+{
+    $cpy = "scp";
+}
+
+# check to see  /etc/xcat/ca and /etc/xcat/cert directory exist
+# if not make them
+
+if ($thostname eq "local")
+{                        # local host
+    $cmd = "ls $path/etc/xcat/ca";
+}
+else
+{
+    $cmd = "ssh $hostname ls $path/etc/xcat/ca";
+}
+my @output = xCAT::Utils->runcmd($cmd, -1);
+if ($::RUNCMD_RC != 0)
+{
+    if ($thostname eq "local")
+    {                    # local host
+        $cmd = "mkdir $path/etc/xcat/ca";
+    }
+    else
+    {
+        $cmd = "ssh $hostname mkdir $path/etc/xcat/ca";
+    }
+    my @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", "Error from $cmd, @output");
+    }
+}
+if ($thostname eq "local")
+{    # local host
+    $cmd = "ls $path/etc/xcat/cert";
+}
+else
+{
+    $cmd = "ssh $hostname ls $path/etc/xcat/cert";
+}
+my @output = xCAT::Utils->runcmd($cmd, -1);
+if ($::RUNCMD_RC != 0)
+{
+    if ($thostname eq "local")
+    {    # local host
+        $cmd = "mkdir $path/etc/xcat/cert";
+    }
+    else
+    {
+        $cmd = "ssh $hostname mkdir $path/etc/xcat/cert";
+    }
+    my @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", "Error from $cmd, @output");
+    }
+}
+my $path1 = "$path/";
+$hostname .= ":";    
+
+# build each copy command
+# cp -p /etc/sysconfig/xcat $path/etc/sysconfig/xcat , if local or
+# scp -p /etc/sysconfig/xcat $hostname:$path/etc/sysconfig/xcat if remote
+my $filename  = " /etc/sysconfig/xcat ";
+my $filename2 = "etc/sysconfig/xcat ";
+my $copy1     = $cpy;
+$copy1 .= " -p ";
+$copy1 .= $filename;
+$copy1 .= $hostname;
+$copy1 .= $path1;
+$copy1 .= $filename2;
+
+# cp -p /etc/xcat/cfgloc $path/etc/xcat/cfgloc , if local or
+# scp -p /etc/xcat/cfgloc $hostname:$path/etc/xcat/cfgloc if remote
+$filename  = " /etc/xcat/cfgloc ";
+$filename2 = "etc/xcat/cfgloc ";
+my $copy2 = $cpy;
+$copy2 .= " -p ";
+$copy2 .= $filename;
+$copy2 .= $hostname;
+$copy2 .= $path1;
+$copy2 .= $filename2;
+
+# cp -p /root/.xcat/* $path/root/.xcat/. , if local or
+# scp -p /root/.xcat/* $hostname:$path/root/.xcat/. if remote
+$filename  = " /root/.xcat/* ";
+$filename2 = "root/.xcat/. ";
+my $copy3 = $cpy;
+$copy3 .= " -p ";
+$copy3 .= $filename;
+$copy3 .= $hostname;
+$copy3 .= $path1;
+$copy3 .= $filename2;
+
+# cp -p /etc/syslog $path/etc/syslog , if local or
+# scp -p /etc/syslog $hostname:$path/etc/syslog if remote
+$filename  = " /etc/syslog.conf ";
+$filename2 = "etc/syslog.conf ";
+my $copy4 = $cpy;
+$copy4 .= " -p ";
+$copy4 .= $filename;
+$copy4 .= $hostname;
+$copy4 .= $path1;
+$copy4 .= $filename2;
+
+# cp -rp /etc/xcat/ca/* $path/etc/xcat/ca/. , if local or
+# scp -rp /etc/xcat/ca/* $hostname:$path/etc/xcat/ca/. if remote
+$filename  = " /etc/xcat/ca/* ";
+$filename2 = "etc/xcat/ca/. ";
+my $copy5 = $cpy;
+$copy5 .= " -rp ";
+$copy5 .= $filename;
+$copy5 .= $hostname;
+$copy5 .= $path1;
+$copy5 .= $filename2;
+
+# cp -p /etc/xcat/cert/* $path/etc/xcat/cert/. , if local or
+# scp -p /etc/xcat/cert/* $hostname:$path/etc/xcat/cert/. if remote
+$filename  = " /etc/xcat/cert/* ";
+$filename2 = "etc/xcat/cert/. ";
+my $copy6 = $cpy;
+$copy6 .= " -p ";
+$copy6 .= $filename;
+$copy6 .= $hostname;
+$copy6 .= $path1;
+$copy6 .= $filename2;
+
+# cp -p /etc/profile.d/xcatsn.sh $path/etc/profile.d/xcatsn.sh , if local or
+# scp -p /etc/profile.d/xcatsn.sh $hostname:$path/etc/profile.d/xcatsn.sh if remote
+$filename  = " /etc/profile.d/xcatsn.sh ";
+$filename2 = "etc/profile.d/xcatsn.sh ";
+my $copy7 = $cpy;
+$copy7 .= " -p ";
+$copy7 .= $filename;
+$copy7 .= $hostname;
+$copy7 .= $path1;
+$copy7 .= $filename2;
+my @cmd = ($copy1, $copy2, $copy3, $copy4, $copy5, $copy6, $copy7);
+
+foreach $cmd (@cmd)
+{
+
+    my @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", "Error from $cmd, @output");
+    }
+}
+
+exit $rc;
+
+#-----------------------------------------------------------------------------
+
+=head2   getarg 
+
+  parses input 
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub getarg
+{
+
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+    my @output;
+    my %options = ();
+
+    if (
+        !GetOptions(
+            'h|help'    => \$options{'help'},
+            'n|node=s'  => \$options{'node'},
+            'p|path=s'  => \$options{'path'},
+            'v|version' => \$options{'version'}
+
+        )
+      )
+    {
+
+        &usage;
+        exit 1;
+    }
+    if ($options{'help'})
+    {
+        &usage;
+        exit 0;
+    }
+    if ($options{'version'})
+    {
+        xCAT::MsgUtils->message("I", "Version 2.0\n");
+        exit 0;
+    }
+
+    # must input hostname and path
+    if (!($options{'path'}))    # required
+    {
+        xCAT::MsgUtils->message("E", "-p path to image is required\n");
+        exit 1;
+    }
+    if ($options{'node'})
+    {
+        push @output, $options{'node'};
+    }
+    else
+    {
+        push @output, "local";
+    }
+    push @output, $options{'path'};
+
+    return @output;
+}
+
+#-----------------------------------------------------------------------------
+
+=head2   usage 
+
+  displays usages message 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub usage
+{
+    my $usage;
+    my $usage1 = " updte_SNimage -h \n updte_SNimage -v \n ";
+    my $usage2 = "updte_SNimage {-n hostname | hostip } [-p path to image] \n ";
+    my $usage3 =
+      "               -n hostname or ipadress where image is located \n ";
+    "                  if not input copies to local host. \n ";
+    my $usage4 = "               -p full path to image to update with  \n ";
+    my $usage5 = "                   service node files. \n ";
+    $usage .= $usage1 .= $usage2 .= $usage3 .= $usage4 .= $usage5;
+    xCAT::MsgUtils->message("I", $usage);
+    return 0;
+}
