@@ -1429,8 +1429,9 @@ sub readSNInfo
   
   Input: service nodename, service,ipaddres(s) of service node
   Output: 
+        0 - no service required 
         1 - setup service 
-        0 - do not setupservice 
+        2 - service is setup, just start the daemon 
 		-1 - error
     Globals:
         none
@@ -1446,12 +1447,12 @@ sub isServiceReq
 {
     my ($class, $servicenodename, $service, $serviceip) = @_;
     my @ips = @$serviceip;    # list of service node ip addresses
-
+    my $rc=0;
     # check if service is already setup
     `grep $service /etc/xCATSN`;
     if ($? == 0)
-    {                         # service is already setup
-        return 0;
+    {                         # service is already setup, just start daemon
+        return 2;
     }
 
     $rc = xCAT::Utils->exportDBConfig();    # export DB env
