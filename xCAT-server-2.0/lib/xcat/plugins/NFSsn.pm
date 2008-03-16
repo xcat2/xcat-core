@@ -36,18 +36,31 @@ sub handled_commands
     if (xCAT::Utils->isServiceNode())
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
-		my $nodename   = pop @nodeinfo; # get hostname
-		my @nodeipaddr = @nodeinfo;  # get ip addresses
+        my $nodename   = pop @nodeinfo;                    # get hostname
+        my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service    = "nfsserver";
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
         if ($rc == 1)
         {
 
             # service needed on this Service Node
-            $rc = &setup_NFS($nodename);    # setup NFS
+            $rc = &setup_NFS($nodename);                   # setup NFS
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
+            }
+        }
+        else
+        {
+            if ($rc == 2)
+            {    # just start the daemon
+                my $cmd = "service nfs start";
+                xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {    # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd");
+                    return 1;
+                }
             }
         }
     }
@@ -152,8 +165,17 @@ sub setup_NFS
                 xCAT::MsgUtils->message("S", "Error on command:$cmd");
             }
 
+            # make sure nfs is restarted
+            my $cmd = "service nfs stop";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {        # error
+                xCAT::MsgUtils->message("S", "Error on command: $cmd");
+                return 1;
+            }
+
             # make sure nfs is started
-            my $cmd = "/etc/rc.d/init.d/nfs restart";
+            my $cmd = "service nfs start";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {        # error

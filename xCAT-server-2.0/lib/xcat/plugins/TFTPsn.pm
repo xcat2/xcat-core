@@ -12,7 +12,7 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head1 
-  xCAT plugin package to setup of tftp
+  xCAT plugin package to setup of atftp on both service node and MS
 
 
 #-------------------------------------------------------
@@ -31,26 +31,14 @@ sub handled_commands
     my $rc = 0;
 
     # setup atftp
-    if (xCAT::Utils->isServiceNode())
-    {
-        my @nodeinfo   = xCAT::Utils->determinehostname;
-        my $nodename   = pop @nodeinfo;                    # get hostname
-        my @nodeipaddr = @nodeinfo;                        # get ip addresses
-        my $service    = "tftpserver";
+    my $service = "tftpserver";
 
-        # check to see if service required
-        $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
-        if ($rc != 1)    # service not required
+    $rc = &setup_TFTP();    # setup TFTP (ATFTP)
+    if ($rc == 0)
+    {
+        if (xCAT::Utils->isServiceNode())
         {
-            return 0;
-        }
-        $rc = &setup_TFTP($nodename);    # setup TFTP
-        if ($rc == 0)
-        {
-            if (xCAT::Utils->isServiceNode())
-            {
-                xCAT::Utils->update_xCATSN($service);
-            }
+            xCAT::Utils->update_xCATSN($service);
         }
     }
     return $rc;
@@ -99,24 +87,17 @@ sub setup_TFTP
     {
 
         # read DB for nodeinfo
-        my $retdata = xCAT::Utils->readSNInfo($nodename);
+        my @nodeinfo   = xCAT::Utils->determinehostname;
+        my $nodename   = pop @nodeinfo;                       # get hostname
+        my @nodeipaddr = @nodeinfo;                           # get ip addresses
+        my $retdata    = xCAT::Utils->readSNInfo($nodename);
         $master = $retdata->{'master'};
         $os     = $retdata->{'os'};
         $arch   = $retdata->{'arch'};
         if (!($arch))
-        {    # error
+        {                                                     # error
+            xCAT::MsgUtils->message("S", " Error reading service node arch.");
             return 1;
-        }
-    }
-    else
-    {        # on MS
-        if (-e "/etc/SuSE-release")
-        {
-            $os = "su";
-        }
-        else
-        {
-            $os = "rh";
         }
     }
 
@@ -124,11 +105,11 @@ sub setup_TFTP
     $cmd = "/usr/sbin/in.tftpd -V";
     my @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
-    {    # not installed
+    {                                                         # not installed
         xCAT::MsgUtils->message("S", "atftp is not installed");
         return 1;
     }
-    if ($output[0] =~ "atftp")    # it is atftp
+    if ($output[0] =~ "atftp")                                # it is atftp
     {
 
         # read tftp directory from database, if it exists
@@ -138,6 +119,8 @@ sub setup_TFTP
             $tftpdir = $tftpdir1[0];
         }
         mkdir($tftpdir);
+
+        # update fstab so that it will restart on reboot
         if (xCAT::Utils->isServiceNode())
         {
             $cmd =
@@ -150,41 +133,20 @@ sub setup_TFTP
             }
         }
 
-        if ($os =~ /su|sl/i)          # sles
+        # start atftp  for both MS and Service node
+
+        $cmd = "service tftpd stop";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
         {
-
-            # setup atftp
-
-            $cmd = "service tftpd restart";
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message("S", "Error from command:$cmd");
-                return 1;
-            }
+            xCAT::MsgUtils->message("S", "Error from command:$cmd");
         }
-        else
+        $cmd = "service tftpd start";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
         {
-            if ($os =~ /rh|fe/i)    # redhat/fedora
-            {
-
-                $cmd = "service tftpd restart";
-                xCAT::Utils->runcmd($cmd, -1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    xCAT::MsgUtils->message("S", "Error from command:$cmd");
-                    return 1;
-                }
-            }
-            else
-            {
-                if ($os =~ /AIX/i)
-                {
-
-                    # TBD AIX
-
-                }
-            }
+            xCAT::MsgUtils->message("S", "Error from command:$cmd");
+            return 1;
         }
     }
     else

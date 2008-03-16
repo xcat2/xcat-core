@@ -14,8 +14,7 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head1 
-  xCAT plugin package to setup of nfs and mount /install 
-  and /tfptboot
+  xCAT plugin package to setup  conserver
 
 
 #-------------------------------------------------------
@@ -51,6 +50,15 @@ sub handled_commands
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
+            }
+        }
+        else
+        {
+            if ($rc == 2)
+            {    # already setup, just start the daemon
+                    # start conserver
+                my $cmd = "/etc/rc.d/init.d/conserver start";
+                xCAT::Utils->runcmd($cmd, -1);
             }
         }
     }
@@ -104,7 +112,7 @@ sub setup_CONS
 
         my $modname = "conserver";
         ${"xCAT_plugin::" . $modname . "::"}{process_request}
-          ->($cmdref,\&xCAT::Client::handle_response);
+          ->($cmdref, \&xCAT::Client::handle_response);
         my $cmd = "chkconfig conserver on";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)

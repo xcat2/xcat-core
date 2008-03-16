@@ -33,8 +33,8 @@ sub handled_commands
     if (xCAT::Utils->isServiceNode())
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
-        my $nodename   = pop @nodeinfo; # get hostname
-        my @nodeipaddr = @nodeinfo;  # get ip addresses
+        my $nodename   = pop @nodeinfo;                    # get hostname
+        my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service    = "nameservers";
 
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
@@ -42,10 +42,18 @@ sub handled_commands
         {
 
             # service needed on this Service Node
-            $rc = &setup_DNS($nodename);    # setup DNS
+            $rc = &setup_DNS($nodename);                   # setup DNS
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
+            }
+        }
+        else
+        {
+            if ($rc == 2)
+            {    # service setup, just start the daemon
+                $cmd = "service named start";
+                xCAT::Utils->runcmd($cmd, -1);
             }
         }
     }
@@ -179,7 +187,14 @@ sub setup_DNS
             xCAT::MsgUtils->message("S", "Error from $cmd");
             return 1;
         }
-        $cmd = "/etc/rc.d/init.d/named restart";
+        $cmd = "service named stop";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("S", "Error from $cmd");
+            return 1;
+        }
+        $cmd = "service named start";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {

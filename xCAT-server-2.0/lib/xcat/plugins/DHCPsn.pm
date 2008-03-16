@@ -50,6 +50,16 @@ sub handled_commands
                 xCAT::Utils->update_xCATSN($service);
             }
         }
+        else
+        {
+
+            if ($rc == 2)
+            {    # setup, just start the daemon
+                $cmd = "/etc/rc.d/init.d/dhcpd start";
+                xCAT::Utils->runcmd($cmd, -1);
+
+            }
+        }
     }
     return $rc;
 }
@@ -106,7 +116,7 @@ sub setup_DHCP
 
         my $modname = "dhcp";
         ${"xCAT_plugin::" . $modname . "::"}{process_request}
-          ->($cmdref,\&xCAT::Client::handle_response);
+          ->($cmdref, \&xCAT::Client::handle_response);
 
         $cmd = "chkconfig dhcpd on";
         xCAT::Utils->runcmd($cmd, -1);
