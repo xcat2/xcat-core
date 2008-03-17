@@ -8,28 +8,115 @@
 # We assume that this script is run in the perl-xCAT-2.0 dir, so everything is
 # done relative to that.
 
+use strict;
 use lib '.';
 
 use xCAT::Schema;
 use xCAT::Table;
+use Pod::Man;
+use Pod::Html;
 
-my $poddir = 'pods/man5';
-if (system("mkdir -p $poddir")) { die "Error: could not create $poddir.\n"; }
+my $poddir = 'pods';
+my $mandir = 'share/man';
+my $htmldir = 'share/doc';
+
+my $poddir5 = 'pods/man5';
+if (system("mkdir -p $poddir5")) { die "Error: could not create $poddir5.\n"; }
 
 # Build the DB overview page.
-writesummarypage("$poddir/xcatdb.5.pod", xCAT::Table->getDescriptions()),
+print "Building PODs pages for the database tables...\n";
+writesummarypage("$poddir5/xcatdb.5.pod", xCAT::Table->getDescriptions()),
 
-# Build the man page for each table.
+# Build the pod man page for each table.
 my $tabspecref = \%xCAT::Schema::tabspec;
 foreach my $tablekey (keys %$tabspecref) {
     my $table = $tabspecref->{$tablekey};
     my $summary = $table->{table_desc};
     my $colorder = $table->{cols};
     my $descriptions = $table->{descriptions};
-    writemanpage("$poddir/$tablekey.5.pod", $tablekey, $summary, $colorder, $descriptions);
+    writepodmanpage("$poddir5/$tablekey.5.pod", $tablekey, $summary, $colorder, $descriptions);
+}
+
+my @pods = getPodList($poddir);
+#foreach (@pods) { print "$_\n"; } exit;
+
+# Build the man page for each pod.
+#mkdir($mandir) or die "Error: could not create $mandir.\n";
+print "Converting PODs to man pages...\n";
+foreach my $podfile (@pods) {
+    my $manfile = $podfile;
+    $manfile =~ s/^$poddir/$mandir/;      # change the beginning of the path
+    $manfile =~ s/\.pod$//;			# change the ending
+    my $mdir = $manfile;
+    $mdir =~ s|/[^/]*$||;			# get rid of the basename part
+	if (system("mkdir -p $mdir")) { die "Error: could not create $mdir.\n"; }
+	my ($section) = $podfile =~ /\.(\d+)\.pod$/;
+    convertpod2man($podfile, $manfile, $section);
+}
+
+# Build the html page for each pod.
+#mkdir($htmldir) or die "Error: could not create $htmldir.\n";
+print "Converting PODs to HTML pages...\n";
+foreach my $podfile (@pods) {
+    my $htmlfile = $podfile;
+    $htmlfile =~ s/^$poddir/$htmldir/;      # change the beginning of the path
+    $htmlfile =~ s/\.pod$/\.html/;			# change the ending
+    my $hdir = $htmlfile;
+    $hdir =~ s|/[^/]*$||;			# get rid of the basename part
+	if (system("mkdir -p $hdir")) { die "Error: could not create $hdir.\n"; }
+    convertpod2html($podfile, $htmlfile, $poddir, $htmldir);
 }
 
 exit;
+
+
+# Recursively get the list of pod man page files.
+sub getPodList {
+	my $poddir = shift;
+	my @files;
+
+	# 1st get toplevel dir listing
+	opendir(DIR, $poddir) or die "Error: could not read $poddir.\n";
+	my @topdir = grep !/^\./, readdir(DIR);
+	close(DIR);
+
+	# Now go thru each subdir (these are man1, man3, etc.)
+	foreach my $mandir (@topdir) {
+		opendir(DIR, "$poddir/$mandir") or die "Error: could not read $poddir/$mandir.\n";
+		my @dir = grep !/^\./, readdir(DIR);
+		close(DIR);
+		foreach my $file (@dir) {
+			push @files, "$poddir/$mandir/$file";
+		}
+	}
+	return sort @files;
+}
+
+
+# Create the html page for one pod.
+sub convertpod2html {
+	my ($podfile, $htmlfile, $poddir, $htmldir) = @_;
+
+	#TODO: use --css=<stylesheet> and --title=<pagetitle> to make the pages look better
+	pod2html($podfile,
+			"--outfile=$htmlfile",
+			"--podpath=man5",
+			"--podroot=$poddir",
+			"--htmldir=$htmldir",
+			"--recurse",
+			"--cachedir=/tmp",
+			);
+
+}
+
+
+# Create the man page for one pod.
+sub convertpod2man {
+	my ($podfile, $manfile, $section) = @_;
+
+	my $parser = Pod::Man->new(section => $section);
+    $parser->parse_from_file($podfile, $manfile);
+}
 
 
 # Create the xcatdb man page that gives a summary description of each table.
@@ -127,7 +214,7 @@ all of the information should go in.
 EOS1
 
 foreach my $table (sort keys %$descriptions) {
-	print FILE "\n=item I<$table>\n\n".$descriptions->{$table}."\n";
+	print FILE "\n=item L<$table(5)|$table.5>\n\n".$descriptions->{$table}."\n";
 }
 
 	print FILE <<"EOS3";
@@ -136,7 +223,7 @@ foreach my $table (sort keys %$descriptions) {
 
 =head1 SEE ALSO
 
-nodels(1), tabedit(1), chtab(1), tabdump(1), lsdef(1), mkdef(1), chdef(1), rmdef(1)
+B<nodels(1)>, B<chtab(8)>, B<tabdump(8)>, B<tabedit(8)>, B<lsdef(1)>, B<mkdef(1)>, B<chdef(1)>, B<rmdef(1)>
 EOS3
 
 	close FILE;
@@ -144,7 +231,7 @@ EOS3
 
 
 # Create the man page for one table.
-sub writemanpage {
+sub writepodmanpage {
 	my $file = shift;       # relative path file name of the man page
 	my $tablename = shift;		# name of table
 	my $summary = shift;		# description of table
@@ -171,20 +258,26 @@ foreach my $a (@$colorder) { print FILE "  I<$a>\n"; }
 
 $summary
 
-B<$tablename Attributes:>
+=head1 $tablename Attributes:
+
+=over 10
+
 EOS2
 
 foreach my $a (@$colorder) {
 	my $d = $descriptions->{$a};
 	$d =~ s/\n/\n\n/;      # if there are newlines, double them so pod sees a blank line, otherwise pod will ignore them
-	print FILE "\nI<$a> - $d\n";
+	#print FILE "\nB<$a> - $d\n";
+	print FILE "\n=item B<$a>\n\n$d\n";
 }
 
 	print FILE <<"EOS3";
 
-=head1 NOTES
+=back
 
-This command is part of the xCAT software product.
+=head1 SEE ALSO
+
+B<nodels(1)>, B<chtab(8)>, B<tabdump(8)>, B<tabedit(8)>
 EOS3
 
 	close FILE;

@@ -28,14 +28,15 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 # as it is in svn.
 
 # Build the pod version of the man pages for each DB table.  It puts them in the man5 subdir.
+# The convert the pods to man pages and html pages.
 ./db2man
 
 # Convert pods to man pages, e.g.:  pod2man pods/man5/chain.5.pod share/man/man5/chain.1
-for i in pods/*/*.pod; do
-  man="share/man${i#pods}"         # the substitute form is not supported on aix:  ${i/pods/share\/man}
-  mkdir -p ${man%/*}
-  pod2man $i ${man%.pod}
-done
+# for i in pods/*/*.pod; do
+#   man="share/man${i#pods}"         # the substitute form is not supported on aix:  ${i/pods/share\/man}
+#   mkdir -p ${man%/*}
+#   pod2man $i ${man%.pod}
+# done
 
 %install
 # The install phase puts all of the files in the paths they should be in when the rpm is
@@ -47,6 +48,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man5
 
 cp -r xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
@@ -60,7 +62,9 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/README
 
 # These were built dynamically in the build phase
 cp share/man/man5/* $RPM_BUILD_ROOT/%{prefix}/share/man/man5
-chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
+cp share/doc/man5/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man5
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man5/*
 
 %clean
 # This step does not happen until *after* the %files packaging below

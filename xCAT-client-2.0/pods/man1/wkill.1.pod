@@ -16,7 +16,7 @@ range or nodes or groups.
 B<wkill> was written because I'm too lazy to point and click off  64  windows.
 
 B<wkill>  will  only  kill  windows  on  your  display  and  for  only the
-L<noderange(3)> you specify.  If no L<noderange(3)> is  specified,  then  all
+L<noderange(3)|noderange.3> you specify.  If no L<noderange(3)|noderange.3> is  specified,  then  all
 wcons windows on your $DISPLAY will be killed.
 
 =head1 B<Options>
@@ -44,4 +44,4 @@ Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)>, L<wcons(1)>.
+L<noderange(3)|noderange.3>, L<wcons(1)|wcons.1>.

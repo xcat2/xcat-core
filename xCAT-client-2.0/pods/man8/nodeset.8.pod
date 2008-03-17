@@ -20,7 +20,7 @@ B<nodeset> [I<-h>|I<--help>|I<-v>|I<--version>]
 
 B<nodeset>  sets the next cold or warm boot state for a single or range of
 nodes or groups.  This tells xCAT what you want to happen the next time the
-nodes are booted up.  See  L<noderange(3)>.   B<nodeset>  accomplishes  this  by
+nodes are booted up.  See  L<noderange(3)|noderange.3>.   B<nodeset>  accomplishes  this  by
 changing  the network boot files.  Each xCAT node always boots from the
 network and downloads a boot file with instructions on what  action  to
 take next.
@@ -29,7 +29,7 @@ B<nodeset>  only supports PXELINUX, Etherboot, Etherboot/NBGRUB, and ELILO
 as network boot loaders.  B<nodeset> calls B<nodeset.pxe>, B<nodeset.eb>,  B<node->
 B<set.nbgrub>, and B<nodeset.elilo> to perform the updates.
 
-Assume that /tftpboot is the root for tftpd (set in L<site.tab(5)>).
+Assume that /tftpboot is the root for tftpd (set in B<site(5)>).
 
 B<nodeset.pxe> makes changes to /tftpboot/pxelinux.0/{node hex ip}
 
@@ -50,10 +50,10 @@ installation process remotely to set the boot state back to "boot".
 
 When B<nodeset> is called to set a node for an installation state, a NODE-
 TYPE-RESOURCE.BOOTTYPE  template  must  exist in /tftpboot/xcat (or the
-appropriate directory as defined in  L<site.tab(5)>),  where  NODETYPE  is
-defined  per  node  in L<nodetype.tab(5)>, RESOURCE is defined per node or
-group  in  L<noderes.tab(5)>,  and  BOOTTYPE  is  defined  per   node   in
-L<nodehm.tab(5)>.
+appropriate directory as defined in  B<site(5)>),  where  NODETYPE  is
+defined  per  node  in B<nodetype(5)>, RESOURCE is defined per node or
+group  in  B<noderes(5)>,  and  BOOTTYPE  is  defined  per   node   in
+B<nodehm(5)>.
 
 =head1 B<Options>
 
@@ -80,7 +80,7 @@ Instruct node to boot from network image stage2.  This  involves
 TFTP  downloading  a special prebuilt kernel, initrd, and kernel
 options used for MAC address collection.  For a new node this is
 the  default  action  and  cannot  be changed until a node entry
-exists in L<dhcpd.conf(5)>.  It is not necessary to explicitly  set
+exists in B<dhcpd.conf(5)>.  It is not necessary to explicitly  set
 stage2,  unless it is used for testing and development purposes.
 
 =item B<stage3>
@@ -102,7 +102,7 @@ tainance shell.  Only available for IA64 systems.
 Instruct node to boot from network into clone  mode.   In  clone
 mode  the node will poll the management node for nodes in clone-
 server mode, once a clone lock is  established  the  clone  node
-clones the cloneserver node.  Usually called from L<rclone(1)>.
+clones the cloneserver node.  Usually called from B<rclone(1)>.
 
 =item B<cloneserver>
 
@@ -119,7 +119,7 @@ create partition images.
 =item B<flash>=I<image>
 
 Instruct node to boot from network load  DOS  and  flash  I<image>.
-Usually called from L<rflash(1)>.
+Usually called from B<rflash(1)>.
 
 =item B<-h>|B<--help>
 
@@ -135,27 +135,27 @@ Print version.
 =head1 B<Files>
 
 B<nodehm> table -
-xCAT node hardware management file.  See L<nodehm(5)> for fur-
+xCAT node hardware management file.  See B<nodehm(5)> for fur-
 ther details.  This is used to determine the network boot  type:
 PXE, Etherboot, ELILO, or NA.
 
 B<noderes> table -
-xCAT  node  resources  file.   See  L<noderes(5)>  for  further
+xCAT  node  resources  file.   See  B<noderes(5)>  for  further
 details.  This is used to determine the node's resource group.
 
 B<nodetype> table -
-xCAT node installation type file.  See L<nodetype(5)> for  fur-
+xCAT node installation type file.  See B<nodetype(5)> for  fur-
 ther  details.   This is used to determine the node installation
 image type.
 
 B<site> table -
-xCAT main  configuration  file.   See  L<site(5)>  for  further
+xCAT main  configuration  file.   See  B<site(5)>  for  further
 details.   This  is  used  to determine the location of the TFTP
 root directory and the TFTP xCAT  subdirectory.   /tftpboot  and
 /tftpboot/xcat is the default.
 
 B</etc/dhcpd.conf> file -
-xCAT  dhcpd  configuration  file.  See L<dhcpd.conf(5)> for further
+xCAT  dhcpd  configuration  file.  See B<dhcpd.conf(5)> for further
 details.  This is used by B<nodeset> to determine if  a  node  will
 only  boot  stage2  because no statically assigned IP exists for
 that node.  Also used by nodeset.eb to set the  boot  state  for
@@ -178,5 +178,5 @@ Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)>,   L<nodels(1)>,   L<nodestat(1)>,   L<rinstall(1)>,
-L<rflash(1)>,  L<makedhcp(8)>
+L<noderange(3)|noderange.3>,   L<nodels(1)|nodels.1>,   L<nodestat(1)|nodestat.1>,   B<rinstall(1)>,
+B<rflash(1)>,  L<makedhcp(8)|makedhcp.8>

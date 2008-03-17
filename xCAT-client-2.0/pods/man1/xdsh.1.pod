@@ -420,6 +420,8 @@ Specifies  the  time,  in  seconds, to wait for output from
 each remote target. This variable is overridden by  the  B<-t>
 flag.
 
+=back
+
 
 =head1 B<Security>
 

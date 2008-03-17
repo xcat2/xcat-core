@@ -40,7 +40,7 @@ A space delimited list of directories to copy.
 
 =item B<noderange:destination>
 
-A L<noderange(3)> and destination directory.  The : is required.
+A L<noderange(3)|noderange.3> and destination directory.  The : is required.
 
 =item B<-h>|B<--help>
 
@@ -64,4 +64,4 @@ Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)>, L<pping(1)>, L<prsync(1)>, L<psh(1)>
+L<noderange(3)|noderange.3>, L<pping(1)|pping.1>, L<prsync(1)|prsync.1>, L<psh(1)|psh.1>

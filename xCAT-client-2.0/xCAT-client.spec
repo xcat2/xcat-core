@@ -29,11 +29,14 @@ xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) 
 # as it is in svn.
 
 # Convert pods to man pages, e.g.:  pod2man pods/man1/tabdump.1.pod share/man/man1/tabdump.1
-for i in pods/*/*.pod; do
-  man="share/man${i#pods}"         # the substitute form is not supported on aix:  ${i/pods/share\/man}
-  mkdir -p ${man%/*}
-  pod2man $i ${man%.pod}
-done
+# for i in pods/*/*.pod; do
+#   man="share/man${i#pods}"         # the substitute form is not supported on aix:  ${i/pods/share\/man}
+#   mkdir -p ${man%/*}
+#   pod2man $i ${man%.pod}
+# done
+
+# Convert pods to man pages and html pages
+./xpod2man
 
 %install
 # The install phase puts all of the files in the paths they should be in when the rpm is
@@ -49,13 +52,17 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man3
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man8
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man3
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man5
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man8
 
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 
-# Most of these were built dynamically in the build phase
+# These were built dynamically in the build phase
 cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man1/*
 cp share/man/man3/* $RPM_BUILD_ROOT/%{prefix}/share/man/man3
@@ -65,14 +72,24 @@ chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man5/*
 cp share/man/man8/* $RPM_BUILD_ROOT/%{prefix}/share/man/man8
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man8/*
 
-%ifos linux
-cp share/doc/xCAT2.0.odt $RPM_BUILD_ROOT/%{prefix}/share/doc
-cp share/doc/xCAT2.0.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
-%else
-cp share/doc/xCAT2onAIX.odt $RPM_BUILD_ROOT/%{prefix}/share/doc
-cp share/doc/xCAT2onAIX.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
-%endif
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
+# %ifos linux
+# cp share/doc/xCAT2.0.odt $RPM_BUILD_ROOT/%{prefix}/share/doc
+# cp share/doc/xCAT2.0.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
+# %else
+# cp share/doc/xCAT2onAIX.odt $RPM_BUILD_ROOT/%{prefix}/share/doc
+# cp share/doc/xCAT2onAIX.pdf $RPM_BUILD_ROOT/%{prefix}/share/doc
+# %endif
+cp -r share/doc/* $RPM_BUILD_ROOT/%{prefix}/share/doc
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
+# These were built dynamically during the build phase
+# cp share/doc/man1/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
+# cp share/doc/man3/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man3
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man3/*
+# cp share/doc/man5/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man5
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man5/*
+# cp share/doc/man8/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man8
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man8/*
 
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*

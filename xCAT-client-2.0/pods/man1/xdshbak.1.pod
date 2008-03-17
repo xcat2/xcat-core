@@ -83,6 +83,8 @@ more  compact  output,  but  xdshbak still sorts the output by
 node name for easier viewing.
 This option should not be used with B<-c>.
 
+=back
+
 
 =head1 B<EXAMPLES>
 

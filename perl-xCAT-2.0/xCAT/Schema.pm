@@ -369,30 +369,30 @@ site => {
     table_desc => 'Global settings for the whole cluster.  This table is different from the other tables in that each attribute is just named in the key column, rather than having a separate column for each attribute.',
 	descriptions => {
 		key => "Name of the attribute.  Valid values:\n".
-			"\t master (xCAT management node)\n".
-			"\t xcatconfdir (default /etc/xcat)\n".
-			"\t domain (DNS domain name used for the cluster)\n".
-			"\t installdir (directory that holds the node deployment pkgs)\n".
-			"\t xcatdport (port used by xcatd daemon for client/server communication)\n".
-			"\t xcatiport (port used by xcatd to receive install status updates from nodes)\n".
-			"\t timezone (e.g. America/New_York)\n".
-			"\t nameservers (list of DNS servers for the cluster)\n".
-			"\t rsh (path of remote shell command)\n".
-			"\t rcp (path of remote copy command)\n".
-			"\t blademaxp (max # of processes for blade hw ctrl)\n".
-			"\t ppcmaxp (max # of processes for PPC hw ctrl)\n".
-			"\t ipmimaxp\n".
-			"\t ipmitimeout\n".
-			"\t ipmiretries\n".
-			"\t ipmisdrcache\n".
-			"\t iscsidir\n".
-			"\t xcatservers (service nodes??)\n".
-			"\t dhcpinterfaces (network interfaces DHCP should listen on??)\n".
-			"\t forwarders (DNS forwarders??)\n".
-			"\t genpasswords (generate BMC passwords??)\n".
-			"\t defserialport (default if not specified in noderes table)\n".
-			"\t defserialspeed (default if not specified in nodehm table)\n".
-			"\t defserialflow (default if not specified in nodehm table)",
+			"  master (xCAT management node)\n".
+			"  xcatconfdir (default /etc/xcat)\n".
+			"  domain (DNS domain name used for the cluster)\n".
+			"  installdir (directory that holds the node deployment pkgs)\n".
+			"  xcatdport (port used by xcatd daemon for client/server communication)\n".
+			"  xcatiport (port used by xcatd to receive install status updates from nodes)\n".
+			"  timezone (e.g. America/New_York)\n".
+			"  nameservers (list of DNS servers for the cluster)\n".
+			"  rsh (path of remote shell command)\n".
+			"  rcp (path of remote copy command)\n".
+			"  blademaxp (max # of processes for blade hw ctrl)\n".
+			"  ppcmaxp (max # of processes for PPC hw ctrl)\n".
+			"  ipmimaxp\n".
+			"  ipmitimeout\n".
+			"  ipmiretries\n".
+			"  ipmisdrcache\n".
+			"  iscsidir\n".
+			"  xcatservers (service nodes??)\n".
+			"  dhcpinterfaces (network interfaces DHCP should listen on??)\n".
+			"  forwarders (DNS forwarders??)\n".
+			"  genpasswords (generate BMC passwords??)\n".
+			"  defserialport (default if not specified in noderes table)\n".
+			"  defserialspeed (default if not specified in nodehm table)\n".
+			"  defserialflow (default if not specified in nodehm table)",
 		value => 'The value of the attribute specified in the "key" column.',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",

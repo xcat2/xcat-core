@@ -11,7 +11,7 @@ B<nodestat> [I<-h>|I<--help>|I<-v>|I<--version>]
 =head1 B<Description>
 
 B<nodestat>  is  a  small  utility used to display the running status of a
-single or range of nodes or groups.  See L<noderange(3)>.
+single or range of nodes or groups.  See L<noderange(3)|noderange.3>.
 
 B<nodestat> will first check for pbs_mom, if that fails then B<nodestat> will
 check for snmpd, then ping.  If ping fails, then B<nodestat> returns "nop-
@@ -47,4 +47,4 @@ Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)>, L<nodels(1)>, L<nodeloc(1)>, L<nodeset(1)>
+L<noderange(3)|noderange.3>, L<nodels(1)|nodels.1>, L<nodeset(8)|nodeset.8>

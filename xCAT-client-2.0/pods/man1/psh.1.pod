@@ -26,17 +26,17 @@ Issues the commands serially.
 
 =item B<noderange>
 
-See L<noderange(3)>.
+See L<noderange(3)|noderange.3>.
 
 =item B<me>
 
-Run  against  nodes  owned  by "me" as listed by PBS's L<qstat(1B)>
+Run  against  nodes  owned  by "me" as listed by PBS's B<qstat(1B)>
 command.
 
 =item B<pbs>
 
 Run against nodes assigned to a  PBS  job  as  listed  by  PBS's
-L<qstat(1B)> command.
+B<qstat(1B)> command.
 
 =item B<command>
 
@@ -77,4 +77,4 @@ Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)>, L<pscp(1)>, L<pping(1)>, L<prsync(1)>
+L<noderange(3)|noderange.3>, L<pscp(1)|pscp.1>, L<pping(1)|pping.1>, L<prsync(1)|prsync.1>

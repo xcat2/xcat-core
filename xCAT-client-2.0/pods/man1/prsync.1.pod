@@ -26,7 +26,7 @@ B<prsync> is NOT multicast, but is parallel unicasts.
 
 =item B<rsyncopts>
 
-rsync options.  See L<rsync(1)>.
+rsync options.  See B<rsync(1)>.
 
 =item B<filename>
 
@@ -38,7 +38,7 @@ A space delimited list of directories to rsync.
 
 =item B<noderange:destination>
 
-A L<noderange(3)> and destination directory.  The : is required.
+A L<noderange(3)|noderange.3> and destination directory.  The : is required.
 
 =item B<-h>|B<--help>
 
@@ -71,4 +71,4 @@ Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)>, L<pscp(1)>, L<pping(1)>, L<psh(1)>
+L<noderange(3)|noderange.3>, L<pscp(1)|pscp.1>, L<pping(1)|pping.1>, L<psh(1)|psh.1>
