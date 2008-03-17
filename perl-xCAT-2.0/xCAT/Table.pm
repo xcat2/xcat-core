@@ -936,6 +936,10 @@ sub getNodeAttribs
             ($curr, $next, $prev) =
               extract_bracketed($retval, '()', qr/[^()]*/);
 
+            unless($curr) {
+               $retval = $node;
+               $retval =~ s/$parts[0]/$parts[1]/;
+            }
             while ($curr)
             {
 
@@ -955,7 +959,9 @@ sub getNodeAttribs
                 ($curr, $next, $prev) =
                   extract_bracketed($retval, '()', qr/[^()]*/);
             }
-            $datum->{$attrib} = $retval;
+            my $answval = $node;
+            $answval =~ s/$parts[0]/$retval/;
+            $datum->{$attrib} = $answval; #$retval;
 
             #print Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
             #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
