@@ -59,7 +59,7 @@ sub parse_args {
     $cmd =~ s/date/\n\t date [mm-dd-yyyy]/;
     $cmd =~ s/autopower/\n\t autopower [enable|disable]/;
     $cmd =~ s/iocap/\n\t iocap [enable|disable]/;
-    $cmd =~ s/decfg/\n\t decfg [$option policy,...]/;
+    $cmd =~ s/decfg/\n\t decfg [enable|disable policy,...]/;
     $cmd =~ s/memdecfg/\n\t memdecfg [$option unit=id (unit|bank)=all|id,...]/;
     $cmd =~ s/procdecfg/\n\t procdecfg [$option unit=id all|id,...]/;
 
@@ -70,7 +70,7 @@ sub parse_args {
         return( [ $_[0],
             "rfsp -h|--help",
             "rfsp -v|--version",
-            "rfsp [-V|--verbose] noderange ". $cmd,
+            "rfsp [-V|--verbose] noderange $cmd\n",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
             "    -V   verbose output"] );
@@ -177,16 +177,34 @@ sub parse_option {
     # Set/get options
     ####################################
     if ( $request->{method} =~ /^autopower|iocap$/ ) {
-        if ( $ARGV[0] !~ /^enable|disable$/ ) {
+        if ( $ARGV[0] !~ /^enable|disable$/i ) {
             return( "Invalid argument '$ARGV[0]'" );
         }
         $request->{op} = $ARGV[0];
     }
     ####################################
+    # Deconfiguration policy 
+    ####################################
+    if ( $request->{method} =~ /^decfg$/ ) {
+        if ( $ARGV[0] !~ /^enable|disable$/i ) {
+            return( "Invalid argument '$ARGV[0]'" );
+        }
+        my $op = $ARGV[0];
+        shift @ARGV;
+
+        if ( !defined( $ARGV[0] )) {
+            return( "Missing argument to '$op'" );
+        }
+        if ( $ARGV[0] !~ /^([\w\/,]+)$/ ) {
+            return( "Invalid argument '$ARGV[0]'" );
+        }
+        $request->{op} = "$op $1";
+    }
+    ####################################
     # Deconfiguration 
     ####################################
-    if ( $request->{method} =~ /^procdecfg|memdecfg|decfg$/ ) {
-        if ( $ARGV[0] !~ /^configure|deconfigure$/ ) {
+    if ( $request->{method} =~ /^procdecfg|memdecfg$/ ) {
+        if ( $ARGV[0] !~ /^configure|deconfigure$/i ) {
             return( "Invalid argument '$ARGV[0]'" );
         }
         my $op = $ARGV[0];
@@ -230,15 +248,6 @@ sub parse_option {
                 return( "Invalid argument '$ARGV[0]'" );
             }
             $request->{op} = "$op $unit:$1";
-        }
-        ################################
-        # Dconfiguration policy 
-        ################################
-        elsif ( $request->{method} =~ /^decfg$/ ) {
-            if ( $ARGV[0] !~ /^([\w\/,]+)$/ ) {
-                return( "Invalid argument '$ARGV[0]'" );
-            }
-            $request->{op} = "$op $1";
         }
     }
     return undef;
@@ -1078,11 +1087,11 @@ sub writedecfg {
     # Command-line parameter specified 
     ######################################
     $request->{op} =~ /^(\w+) unit=(\d+):(.*)=(all|[\d,]+)$/; 
-    my $select = ($1 eq "configure") ? 0 : 1; 
     my $state  = $1;
     my $unit   = $2;
     my $type   = $3;
     my @ids    = split /,/, $4;
+    my $select = ($state =~ /^configure$/i) ? 0 : 1; 
 
     ######################################
     # Get Deconfiguration URL
@@ -1490,7 +1499,7 @@ sub decfg {
     ######################################
     my ($op,$decfg) = split / /, $request->{op};
     my @policy      = split /,/, $decfg;
-    my $state       = ($op eq "enable") ? 0 : 1;
+    my $state       = ($op =~ /^enable$/i) ? 0 : 1;
 
     ######################################
     # Check for duplicate policies
@@ -1746,5 +1755,6 @@ sub all_clear {
 
 
 1;
+
 
 
