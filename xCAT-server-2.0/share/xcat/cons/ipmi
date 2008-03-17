@@ -31,7 +31,12 @@ if ($dba) {
   if ($dba->{password}) { $password = $dba->{password}; }
 }
 xCAT::Utils::close_all_dbhs;
-system "ipmitool -I lanplus -U $username -P $password -H $bmc sol deactivate"; #Stop any active session
-exec "ipmitool -I lanplus -U $username -P $password -H $bmc sol activate";
+my $isintel = system "ipmitool -I lanplus -U $username -P $password -H $bmc chassis status > /dev/null 2>&1";
+my $inteloption="";
+if ($isintel) {
+   $inteloption=" -o intelplus";
+}
+system "ipmitool -I lanplus$inteloption -U $username -P $password -H $bmc sol deactivate"; #Stop any active session
+exec "ipmitool -I lanplus$inteloption -U $username -P $password -H $bmc sol activate";
   
 
