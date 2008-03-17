@@ -785,11 +785,11 @@ sub power {
   if ($subcommand eq "on" or ($subcommand eq "boot" and $stat eq "off")) {
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
-    $stat = ($data ? "on" : "off");
+    $stat .= " " . ($data ? "on" : "off");
   } elsif ($subcommand eq "reset" or ($subcommand eq "boot" and $stat eq "on")) {
     $data = $session->set(new SNMP::Varbind([".".$powerresetoid,$slot ,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
-    $stat = "reset";
+    $stat = "on reset";
   }
   if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
   if ($stat) { return (0,$stat); }
