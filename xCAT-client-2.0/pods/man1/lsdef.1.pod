@@ -77,13 +77,13 @@ I<lsdef -t osimage -l -o aix53J>
 
 I<lsdef -t adapter -w nodename=clstrn03>
 
-8. To list all the attributes of the group "servicenodes".
+8. To list all the attributes of the group "service".
 
-I<lsdef -l -t group -o servicenodes>
+I<lsdef -l -t group -o service>
 
-9. To list all the attributes of the nodes that are members of the group "servicenodes".
+9. To list all the attributes of the nodes that are members of the group "service".
 
-I<lsdef -t node -l servicenodes>
+I<lsdef -t node -l service>
 
 10. To list all nodes that have a service node called "FMS01".
 
