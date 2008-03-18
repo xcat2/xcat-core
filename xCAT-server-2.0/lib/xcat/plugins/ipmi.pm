@@ -3464,7 +3464,9 @@ sub initsdr {
 			$sdr->B(comp2int(10,(($sdr_data[28] & 0b11000000) << 2) + $sdr_data[27]));
 			$sdr->R_exp(comp2int(4,($sdr_data[30] & 0b11110000) >> 4));
 			$sdr->B_exp(comp2int(4,$sdr_data[30] & 0b00001111));
-		}
+		} elsif ($sdr_type == 0x02) {
+		   $sdr->sensor_units_1($sdr_data[21]);
+      }
 
 		$sdr->id_string_type($sdr_data[48-$sdr_offset]);
 
