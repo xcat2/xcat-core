@@ -8,6 +8,7 @@ fi
 cd `dirname $0`
 tar --exclude .svn -czvf xcat-nbrootoverlay.tar.gz -C overlay/  .
 mv -f *.gz /usr/src/$pkg/SOURCES
+cp LICENSE.html /usr/src/$pkg/BUILD
 cp xcat-core-nbroot.spec /usr/src/$pkg/SOURCES
 rpmbuild -ba xcat-core-nbroot.spec --target $1
 cd -

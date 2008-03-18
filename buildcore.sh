@@ -55,7 +55,17 @@ if $GREP xCAT-nbroot ../coresvnup; then
    mv /usr/src/$pkg/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
    cd ..
 fi
-if $GREP "U    xCAT/" ../coresvnup; then
+if $GREP "U    xCATsn/" ../coresvnup || $GREP "A    xCATsn/" ../coresvnup; then
+   UPLOAD=1
+   cd xCATsn
+   ./mkrpm
+   rm -f $DESTDIR/xCATsn-2.0*rpm
+   rm -f $SRCDIR/xCATsn-2.0*rpm
+   mv /usr/src/$pkg/RPMS/*/xCATsn-2*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCATsn-2*rpm $SRCDIR
+   cd ..
+fi
+if $GREP "U    xCAT/" ../coresvnup || $GREP "A    xCAT/" ../coresvnup; then
    UPLOAD=1
    cd xCAT
    ./mkrpm
@@ -72,9 +82,10 @@ fi
 createrepo $DESTDIR
 createrepo $SRCDIR
 cd $DESTDIR/..
-export CFNAME=core-rpms-snap.`date +%Y.%m.%d`.tar.bz2
-export DFNAME=dep-rpms-snap.`date +%Y.%m.%d`.tar.bz2
-tar jcvf $CFNAME core-snap
+export CFNAME=core-rpms-snap.tar.bz2
+export DFNAME=dep-rpms-snap.tar.bz2
 #tar jcvf $DFNAME dep-snap
-scp $CFNAME jbjohnso@shell1.sf.net:/home/groups/x/xc/xcat/htdocs/yum/
-ssh jbjohnso@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/yum/; rm -rf core-snap; tar jxvf $CFNAME"
+#scp $CFNAME jbjohnso@shell1.sf.net:/home/groups/x/xc/xcat/htdocs/yum/
+rsync -av --delete core-snap jbjohnso@shell1.sf.net:/home/groups/x/xc/xcat/htdocs/yum/
+ssh jbjohnso@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/yum; tar jcvf $CFNAME core-snap"
+#ssh jbjohnso@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/yum/; rm -rf core-snap; tar jxvf $CFNAME"

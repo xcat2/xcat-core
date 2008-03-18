@@ -260,7 +260,7 @@ sub getdestiny {
       $ref->{currstate} = shift @chain;
       $chaintab->setNodeAttribs($node,{currstate=>$ref->{currstate}});
     }
-    my $noderestab = xCAT::Table->new('noderes'); #In case client decides to download images, get data out to it
+    my $noderestab = xCAT::Table->new('noderes',-create=>1); #In case client decides to download images, get data out to it
     my %response;
     $response{name}=[$node];
     $response{data}=[$ref->{currstate}];
