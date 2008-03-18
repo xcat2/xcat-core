@@ -1,0 +1,109 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use Getopt::Long;
+use xCAT::MsgUtils;
+use xCAT::Utils;
+
+#-----------------------------------------------------------------------------
+
+=head1  dumpxCATdb 
+
+
+
+ dumpxCATdb  -p <directory to place database dump> 
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+my $rc = 0;
+my $cmd;
+&parse_args;
+my @output = xCAT::Utils->runcmd("tabdump", 0);
+if ($::RUNCMD_RC != 0)
+{    # error
+    xCAT::MsgUtils->message("E",
+                            "Error running tabdump to get list of tables\n");
+    exit 1;
+}
+foreach my $table (@output)
+{
+    $cmd = "tabdump $table > $::PATH/$table.csv";
+    my @errout = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {    # error
+        xCAT::MsgUtils->message("E", "Error running $cmd, @errout\n");
+    }
+
+}
+exit $rc;
+
+#-----------------------------------------------------------------------------
+
+=head3 parse_args
+  
+  Parses for  input
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_args
+{
+    my $msg;
+    my $usagemsg;
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+    if (
+        !GetOptions(
+            'p|path=s'  => \$::PATH,
+            'h|help'    => \$::HELP,
+            'v|version' => \$::VERSION
+
+        )
+      )
+    {
+        $usagemsg =
+          " dumpxCATdb -h \n dumpxCATdb [-p] [path to dump directory]\n";
+        xCAT::MsgUtils->message("E", $usagemsg);
+        exit 1;
+    }
+    if ($::HELP)
+    {
+        $usagemsg =
+          " dumpxCATdb -h \n dumpxCATdb [-p] [path to dump directory]\n";
+        xCAT::MsgUtils->message("I", $usagemsg);
+        exit 0;
+    }
+    if ($::VERSION)
+    {
+        xCAT::MsgUtils->message("I", "Version 2.0\n");
+        exit 0;
+    }
+    if (!($::PATH))
+    {
+        my $msg = " -p with path to directory to hold db files.\n";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 1;
+    }
+	if (!( -e $::PATH)) {
+        my $msg = " Input path must exist \n";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 1;
+	}
+
+}
+

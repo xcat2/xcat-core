@@ -1,0 +1,119 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use Getopt::Long;
+use xCAT::MsgUtils;
+use xCAT::Utils;
+
+#-----------------------------------------------------------------------------
+
+=head1  restorexCATdb 
+
+
+
+ restorexCATdb  -p <directory containing db restore .csv files> 
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+my $rc = 0;
+
+&parse_args;
+
+# read all the *.csv files from the input directory and restore the database
+opendir DIRPATH, $::PATH;
+if ($? != 0)
+{
+    my $msg = " Unable to read directory $::PATH \n";
+    xCAT::MsgUtils->message("E", $msg);
+    exit 1;
+}
+my @files = readdir(DIRPATH);
+foreach my $table (@files)
+{
+    if ($table ne '.' and $table ne '..')
+    {
+        my $tablename = $::PATH;
+        $tablename .= "/";
+        $tablename .= $table;
+        $cmd = "tabrestore $tablename";
+        my @errout = xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+            xCAT::MsgUtils->message("E", "Error running $cmd, @errout\n");
+        }
+    }
+}
+closedir DIRPATH;
+exit $rc;
+
+#-----------------------------------------------------------------------------
+
+=head3 parse_args
+  
+  Parses for  input
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_args
+{
+    my $msg;
+    my $usagemsg;
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+    if (
+        !GetOptions(
+            'p|path=s'  => \$::PATH,
+            'h|help'    => \$::HELP,
+            'v|version' => \$::VERSION
+
+        )
+      )
+    {
+        $usagemsg =
+          " restorexCATdb -h \n restorexCATdb [-p] [path to restore .csv files]\n";
+        xCAT::MsgUtils->message("E", $usagemsg);
+        exit 1;
+    }
+    if ($::HELP)
+    {
+        $usagemsg =
+          " restorexCATdb -h \n restorexCATdb [-p] [path to restore .csv files]\n";
+        xCAT::MsgUtils->message("I", $usagemsg);
+        exit 0;
+    }
+    if ($::VERSION)
+    {
+        xCAT::MsgUtils->message("I", "Version 2.0\n");
+        exit 0;
+    }
+    if (!($::PATH))
+    {
+        my $msg = " -p with path to place dump files is required \n";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 1;
+    }
+    if (!(-e $::PATH))
+    {
+        my $msg = " Input path must exist \n";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 1;
+    }
+
+}
+

@@ -1,0 +1,54 @@
+=head1 NAME
+ 
+B<restorexCATdb> - restores the xCAT db tables .  
+ 
+=head1 SYNOPSIS
+ 
+I<restorexCATdb [-h| --help]>
+
+I<restorexCATdb  [-v| --version]>
+
+
+I<restorexCATdb[-p| --path]>
+
+
+=head1 DESCRIPTION
+
+The restorexCATdb command restores the xCAT database tables from the directory given by the -p flag. 
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+B<-p>          Path to the directory containing the database restore files. 
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To restore the xCAT database from the /tmp/db directory, enter: 
+
+I<restorexCATdb -p /tmp/db> 
+
+
+
+=head1 FILES
+ 
+/opt/xcat/sbin/restorexCATdb
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+See dumpxCATdb
+
+
+ 
