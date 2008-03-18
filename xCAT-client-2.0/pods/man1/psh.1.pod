@@ -4,7 +4,7 @@ psh - parallel remote shell
 
 =head1 B<Synopsis>
 
-B<psh> [I<-s>] {I<noderange>|B<me>|I<pbs-job-id>} I<command>
+B<psh> [B<-i> I<interface>] [B<-l> I<user>] I<noderange> I<command>
 
 B<psh> {B<-h>|B<--help>|B<-v>|B<--version>}
 
@@ -14,29 +14,28 @@ B<psh> is a utility used to run a command across a list of nodes in parallel.
 
 B<ssh> must be set up to allow no prompting for B<psh> to work.
 
-Note:  this command does not support the xcatd client/server communication and therefore must be run on the management node.
+Note:  this command does not run through xcatd like most xCAT commands do.
+This means you must either run it on the management node, or have a network connection between
+your machine and the nodes.
 
 =head1 B<Options>
 
 =over 7
 
-=item B<-s>
+=item B<-i> I<interface>
 
-Issues the commands serially.
+The NIC on the node that psh should communicate with.  For example, if I<interface> is B<eth1>,
+then psh will concatenate B<-eth1> to the end of every node name before ssh'ing to it.  This
+assumes those host names have been set up to resolve to the IP address of each of the eth1 NICs.
+
+=item B<-l> I<user>
+
+Log into the nodes as the specified username.  The default is to use the same username as you
+are running the psh command as.
 
 =item B<noderange>
 
 See L<noderange(3)|noderange.3>.
-
-=item B<me>
-
-Run  against  nodes  owned  by "me" as listed by PBS's B<qstat(1B)>
-command.
-
-=item B<pbs>
-
-Run against nodes assigned to a  PBS  job  as  listed  by  PBS's
-B<qstat(1B)> command.
 
 =item B<command>
 
@@ -49,27 +48,39 @@ nodes in the noderange. Use "exit" or "Ctrl-D" to end the interactive session.
 
 Print help.
 
-=item B<-v>|B<--version>
-
-Print version.
-
 =back
 
 
 =head1 B<Examples>
 
-B<psh> I<node4-node6> I<uptime>
+=over 3
 
-node4: Sun Aug  5 17:42:06 MDT 2001
-node5: Sun Aug  5 17:42:06 MDT 2001
-node6: Sun Aug  5 17:42:06 MDT 2001
+=item *
 
-B<psh> I<node1-node10> I<rm> I<-f> I</tmp/blah>
+Run uptime on 3 nodes:
 
-B<psh> I<rack01> I<'rm> I<-f> I</tmp/*'>
+ B<psh> I<node4-node6> I<uptime>
+
+ node4: Sun Aug  5 17:42:06 MDT 2001
+ node5: Sun Aug  5 17:42:06 MDT 2001
+ node6: Sun Aug  5 17:42:06 MDT 2001
+
+=item *
+
+Run a command on some BladeCenter management modules:
+
+B<psh> I<amm1-amm5> I<'info -T mm[1]'>
+
+=item *
+
+Remove the tmp files on the nodes in the 1st frame:
+
+B<psh> I<rack01> I<'rm -f /tmp/*'>
 
 Notice the use of '' to forward shell expansion.  This is not necessary
 in interactive mode.
+
+=back
 
 =head1 B<Author>
 

@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
@@ -14,11 +15,19 @@ use xCAT::Utils;
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;
+my $username;
+my $help;
 Getopt::Long::Configure("require_order");
-GetOptions(
-  "interface=s" => \$interface,
+Getopt::Long::Configure("no_pass_through");
+if (!GetOptions(
+  "i|interface=s" => \$interface,
+  'l|loginname=s' => \$username,
   "nonodecheck" => \$::NONODECHECK,  #does not check the noderange, in this case, noderange need to be a list of nodes.
-  );
+  'h|help' => \$help,
+  ) || $help || scalar(@ARGV)<2 ) {
+  print "Usage: psh [-i <interface>] [-l <user>] <noderange> <command>\n";
+  exit;
+}
 my %nodehdl;
 my $xcathost='localhost:3001';
 if ($ENV{XCATHOST}) {
@@ -26,9 +35,6 @@ if ($ENV{XCATHOST}) {
 }
 
 my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
-unless (@ARGV) {
-  print "Usage: psh [-i <suffix] <noderange> <command>\n";
-}
 my $noderange = $ARGV[0];
 my @nodes=();
 
@@ -87,7 +93,7 @@ foreach (@nodes) {
   while ($children > $pshmaxp) { processoutput($inputs); }
   my $child;
   $children++;
-  sshnode(\$child,$node,@ARGV[1 .. $#ARGV]);
+  sshnode(\$child,$node,$username,@ARGV[1 .. $#ARGV]);
   $inputs->add($child);
   $nodehdl{$child} = $node;
 }
@@ -118,9 +124,11 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
 sub sshnode {
   my $out = shift;
   my $node = shift;
+  my $username = shift;
+  if (length($username)) { $username = "-l $username"; }
   my $in;
   my $args = join(" ",@_);
-  #print "ssh -o BatchMode=yes $node " . xCAT::Utils->quote($args) . " 2>&1 |\n";
-  open($$out,"ssh -o BatchMode=yes $node " . xCAT::Utils->quote($args) . " 2>&1 |");
+  #print "ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |\n";
+  open($$out,"ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |");
 }
 
