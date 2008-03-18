@@ -117,6 +117,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     if [ ! -r /etc/xcat/site.sqlite ]; then 
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=xcatdport site.value=3001
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=xcatiport site.value=3002
+      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=tftpdir site.value=/tftpboot
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=master site.value=$(getent hosts `hostname`|awk '{print $1}')
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=domain site.value=$(hostname -d)
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=installdir site.value=/install
