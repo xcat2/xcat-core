@@ -1,0 +1,64 @@
+=head1 NAME
+
+B<updteSNimage> - Adds the needed Service Node configuration files to the install image.
+
+=head1 SYNOPSIS
+
+I<updteSNimage [-h | --help ]>
+
+I<updteSNimage [-v | --version]>
+
+I<updteSNimage {-n} [-p]>
+
+=head1 DESCRIPTION
+
+This command is used to add the Service Node configuration files to the install image. It will either copy them locally or scp them to a remote host.
+
+=head1 OPTIONS
+
+
+B<-h |--help>            Display usage message.
+
+B<-v |--version>         Display xCAT version.
+
+
+B<-n | --node>           A remote host name or ip address that contains the install image to be updated.
+
+
+B<-p |--path>            Path to the install image.
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To update the image on the local host.
+
+I<updteSNimage -p /install/netboot/fedora8/x86_64/test/rootimg>
+
+
+2. To update the image on a remote host.
+
+I<updteSNimage -n 9.112.45.6 -p /install/netboot/fedora8/x86_64/test/rootimg>
+
+
+=head1 FILES
+
+$XCATROOT/bin/chdef
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+When going to a remote host, the command uses scp.  It is best to have ssh keys setup so you will not be prompted for a password on each copy.
+
+
+
+
