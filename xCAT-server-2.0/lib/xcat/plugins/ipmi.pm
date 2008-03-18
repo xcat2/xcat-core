@@ -331,6 +331,22 @@ sub translate_sensor {
    }
    if($sdr->sensor_units_1 & 1) {
       $per = "% ";
+   } else {
+      $per = " ";
+   }
+   my $numformat = ($sdr->sensor_units_1 & 0b11000000) >> 6;
+   if ($numformat) {
+     if ($numformat eq 0b11)  {
+        #Not sure what to do.. leave it alone for now
+     } else {
+        if ($reading & 0b10000000) {
+          if ($numformat eq 0b01) {
+             $reading = 0-((~($reading&0b01111111))&0b1111111);
+          } elsif ($numformat eq 0b10) {
+             $reading = 0-(((~($reading&0b01111111))&0b1111111)+1);
+          }
+        }
+     }
    }
    if($unitdesc eq "Watts") {
       my $f = ($reading * 3.413);
@@ -346,7 +362,7 @@ sub translate_sensor {
       my $c = ($reading - 32) * 5/9;
       $unitdesc = "F (" . int($c + .5) . " C)";
    }
-   return "$value $unitdesc";
+   return "$reading $unitdesc";
 }
 
 
@@ -3120,7 +3136,23 @@ sub vitals {
 	
 					if($sdr->sensor_units_1 & 1) {
 						$per = "% ";
-					}
+					} else {
+                  $per = " ";
+               }
+               my $numformat = ($sdr->sensor_units_1 & 0b11000000) >> 6;
+               if ($numformat) {
+                  if ($numformat eq 0b11)  {
+                     #Not sure what to do here..
+                  } else {
+                     if ($reading & 0b10000000) {
+                        if ($numformat eq 0b01) {
+                           $reading = 0-((~($reading&0b01111111))&0b1111111);
+                        } elsif ($numformat eq 0b10) {
+                           $reading = 0-(((~($reading&0b01111111))&0b1111111)+1);
+                        }
+                     }
+                  }
+               }
 	
                     if($unitdesc eq "Watts") {
                         my $f = ($reading * 3.413);
@@ -3422,11 +3454,11 @@ sub initsdr {
 		$sdr->entity_instance($sdr_data[10]);
 		$sdr->sensor_type($sdr_data[13]);
 		$sdr->event_type_code($sdr_data[14]);
-		$sdr->sensor_units_1($sdr_data[21]);
 		$sdr->sensor_units_2($sdr_data[22]);
 		$sdr->sensor_units_3($sdr_data[23]);
 
 		if($sdr_type == 0x01) {
+		   $sdr->sensor_units_1($sdr_data[21]);
 			$sdr->linearization($sdr_data[24] & 0b01111111);
 			$sdr->M(comp2int(10,(($sdr_data[26] & 0b11000000) << 2) + $sdr_data[25]));
 			$sdr->B(comp2int(10,(($sdr_data[28] & 0b11000000) << 2) + $sdr_data[27]));
