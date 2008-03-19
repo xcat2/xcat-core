@@ -47,12 +47,6 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 if [ "$1" = "1" ]; then #Only if installing for the first time..
 
     mkdir -p /var/log/consoles
-    if ! grep /tftpboot /etc/exports; then
-        echo '/tftpboot *(ro,root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
-    fi
-    if ! grep /install /etc/exports; then
-        echo '/install *(rw,no_root_squash,sync)' >> /etc/exports #SECURITY: this has potential for sharing private host/user keys
-    fi
 	chkconfig nfs on
 	/etc/rc.d/init.d/nfs stop
 	/etc/rc.d/init.d/nfs start
