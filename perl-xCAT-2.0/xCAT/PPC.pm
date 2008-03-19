@@ -238,7 +238,7 @@ sub preprocess_nodes {
     ##########################################
     # Open databases needed
     ##########################################
-    foreach ( qw(ppc vpd nodelist) ) {
+    foreach ( qw(ppc vpd nodetype) ) {
         $tabs{$_} = xCAT::Table->new($_);
 
         if ( !exists( $tabs{$_} )) { 
@@ -331,15 +331,15 @@ sub resolve {
     #################################
     # Get node type 
     #################################
-    my ($ent) = $tabs->{nodelist}->getAttribs({'node'=>$node}, "nodetype" );
+    my ($ent) = $tabs->{nodetype}->getAttribs({'node'=>$node}, "nodetype" );
     if ( !defined( $ent )) {
-        return( sprintf( $errmsg{NODE_UNDEF}, "nodelist" )); 
+        return( sprintf( $errmsg{NODE_UNDEF}, "nodetype" )); 
     }
     #################################
     # Check for type
     #################################
     if ( !exists( $ent->{nodetype} )) {
-        return( sprintf( $errmsg{NO_ATTR}, $ent->{nodetype}, "nodelist" ));
+        return( sprintf( $errmsg{NO_ATTR}, $ent->{nodetype}, "nodetype" ));
     }
     #################################
     # Check for valid "type"
