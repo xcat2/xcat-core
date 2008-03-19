@@ -40,7 +40,7 @@ elif [ -f /etc/init.d/functions ]; then
   echo RH
   . /etc/init.d/functions
   START_DAEMON=daemon
-  STATUS=status
+  STATUS=MStatus
   LOG_SUCCESS=success
   LOG_FAILURE=failure
   LOG_WARNING=passed
