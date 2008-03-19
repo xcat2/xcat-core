@@ -12,7 +12,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 #BuildArch: noarch
 Source1: xcat.conf
 Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client  perl-xCAT 
+Requires: xCAT-server xCAT-client  perl-xCAT perl-XML-Parser 
 
 %ifos linux
 Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-DBD-Pg postgresql-server postgresql syslinux
