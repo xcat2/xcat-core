@@ -20,7 +20,7 @@ use File::Copy;
 
 #-----------------------------------------------------------------------------
 
-=head1   updteSNimage 
+=head1   updateSNimage 
 
    This routine updates the service node diskless install image with
    the extra files it needs to support running the postgresql and xcatd
@@ -40,8 +40,8 @@ use File::Copy;
    Error:
      none
    Example:
-     updteSNimage -n <hostipaddress/name> -i <path to image>
-     updteSNimage -i <path to image>
+     updateSNimage -n <hostipaddress/name> -i <path to image>
+     updateSNimage -i <path to image>
 
    Comments:
 
@@ -68,6 +68,7 @@ if ($thostname eq "local")
 else
 {
     $cpy = "scp";
+    $hostname .= ":";    
 }
 
 # check to see  /etc/xcat/ca and /etc/xcat/cert directory exist
@@ -123,9 +124,34 @@ if ($::RUNCMD_RC != 0)
         xCAT::MsgUtils->message("E", "Error from $cmd, @output");
     }
 }
+if ($thostname eq "local")
+{    # local host
+    $cmd = "ls $path/root/.xcat";
+}
+else
+{
+    $cmd = "ssh $hostname ls $path/root/.xcat";
+}
+my @output = xCAT::Utils->runcmd($cmd, -1);
+if ($::RUNCMD_RC != 0)
+{
+    if ($thostname eq "local")
+    {    # local host
+        $cmd = "mkdir $path/root/.xcat";
+    }
+    else
+    {
+        $cmd = "ssh $hostname mkdir $path/root/.xcat";
+    }
+    my @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", "Error from $cmd, @output");
+    }
+}
 my $path1 = "$path/";
-$hostname .= ":";    
-
+# build each copy command
+my $path1 = "$path/";
 # build each copy command
 # cp -p /etc/sysconfig/xcat $path/etc/sysconfig/xcat , if local or
 # scp -p /etc/sysconfig/xcat $hostname:$path/etc/sysconfig/xcat if remote
@@ -292,8 +318,8 @@ sub getarg
 sub usage
 {
     my $usage;
-    my $usage1 = " updteSNimage -h \n updteSNimage -v \n ";
-    my $usage2 = "updteSNimage {-n hostname | hostip } [-p path to image] \n ";
+    my $usage1 = " upadteSNimage -h \n updateSNimage -v \n ";
+    my $usage2 = "updateSNimage {-n hostname | hostip } [-p path to image] \n ";
     my $usage3 =
       "               -n hostname or ipadress where image is located \n ";
     "                  if not input copies to local host. \n ";
