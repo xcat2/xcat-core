@@ -4,7 +4,6 @@ OSNAME=$(uname)
 
 if [ "$OSNAME" = "AIX" ]
 then
-
     cd `dirname $0`
     echo '.svn' > /tmp/xcat-excludes
 
