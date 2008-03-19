@@ -24,13 +24,9 @@ sub parse_args {
         return( [ $_[0],
             "rnetboot -h|--help",
             "rnetboot -v|--version",
-            "rnetboot [-V|--verbose] noderange -S server -G gateway -C client -m MAC-address",
+            "rnetboot [-V|--verbose] noderange",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
-            "    -C   IP of the partition to network boot",
-            "    -G   Gateway IP of the partition specified",
-            "    -S   IP of the machine to retrieve network boot image", 
-            "    -m   MAC address of network adapter to use for network boot", 
             "    -V   verbose output" ]);
     };
     #############################################
@@ -48,8 +44,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, 
-              qw(h|help V|Verbose v|version C=s G=s S=s m=s ))) { 
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) { 
         return( usage() );
     }
     ####################################
@@ -76,55 +71,8 @@ sub parse_args {
     if ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
     }
-    ####################################
-    # Option -m required
-    ####################################
-    if ( !exists($opt{m}) ) {
-        return(usage( "Missing option: -m" ));    
-    }
-    ####################################
-    # Options -C -G -S required 
-    ####################################
-    foreach ( qw(C G S) ) {
-        if ( !exists($opt{$_}) ) {
-            return(usage( "Missing option: -$_" ));    
-        }
-    }
-    my $result = validate_ip( $opt{C}, $opt{G}, $opt{S} );
-    if ( @$result[0] ) {
-        return(usage( @$result[1] ));
-    } 
-    ####################################
-    # Set method to invoke 
-    ####################################
     $request->{method} = $cmd; 
     return( \%opt );
-}
-
-
-
-##########################################################################
-# Validate list of IPs
-##########################################################################
-sub validate_ip {
-
-    foreach (@_) {
-        my $ip = $_;
-
-        ###################################
-        # Length is 4 for IPv4 addresses
-        ###################################
-        my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-        if ( scalar(@octets) != 4 ) {
-            return( [1,"Invalid IP address: $ip"] );
-        }
-        foreach my $octet ( @octets ) {
-            if (( $octet < 0 ) or ( $octet > 255 )) {
-                return( [1,"Invalid IP address: $ip"] );
-            }
-        }
-    }
-    return([0]);
 }
 
 
@@ -137,11 +85,7 @@ sub ivm_rnetboot {
     my $d       = shift;
     my $exp     = shift;
     my $name    = shift;
-    my $opt     = $request->{opt};
-    my $id      = @$d[0];
-    my $profile = @$d[1];
-    my $fsp     = @$d[2];
-    my $hcp     = @$d[3];
+    my $opt     = shift;
     my $ssh     = @$exp[0];
     my $userid  = @$exp[4];
     my $pw      = @$exp[5];
@@ -153,6 +97,14 @@ sub ivm_rnetboot {
     #######################################
     xCAT::PPCcli::disconnect( $exp );
     
+    #######################################
+    # Get node data 
+    #######################################
+    my $id      = @$d[0];
+    my $profile = @$d[1];
+    my $fsp     = @$d[2];
+    my $hcp     = @$d[3];
+
     #######################################
     # Find Expect script 
     #######################################
@@ -238,7 +190,6 @@ sub rnetboot {
     my $d       = shift;
     my $exp     = shift; 
     my $hwtype  = @$exp[2];
-    my $opt     = $request->{opt};
     my $result;
     my $node;
 
@@ -249,12 +200,25 @@ sub rnetboot {
     my $mtms   = @$d[2];
     my $type   = @$d[4];
     my $name   = @$d[6];
+    my $o      = @$d[7]; 
 
+    #####################################
+    # Gateway (-G) 
+    # Server  (-S) 
+    # Client  (-C)
+    # mac     (-m)
+    #####################################
+    my %opt = (
+        G => $o->{gateway},
+        S => $o->{server},
+        C => $o->{client},
+        m => $o->{mac}
+    );
     #####################################
     # Invalid target hardware 
     #####################################
     if ( $type !~ /^lpar$/ ) {
-        return( [[$name,"Not supported",1]] );
+        return( [[$name,"Not supported",RC_ERROR]] );
     }
     #########################################
     # Get name known by HCP
@@ -289,7 +253,7 @@ sub rnetboot {
     # so we have to manually perform boot. 
     #########################################
     if ( $hwtype eq "ivm" ) {
-        $result = ivm_rnetboot( $request, $d, $exp, $node );
+        $result = ivm_rnetboot( $request, $d, $exp, $node, \%opt );
     }
     else {
         $result = xCAT::PPCcli::lpar_netboot( 
@@ -297,7 +261,7 @@ sub rnetboot {
                            $request->{verbose}, 
                            $node,
                            $d,
-                           $opt );
+                           \%opt );
     }
     my $Rc = shift(@$result);
 
@@ -350,7 +314,7 @@ sub rnetboot {
     if ( $data =~ /Finished/) {
         return( [[$name,"Success",$Rc]] );
     }
-    ##################################
+    #####################################
     # Can still be error w/ Rc=0:
     #
     #  # Connecting to lpar1
@@ -363,9 +327,9 @@ sub rnetboot {
     #
     #####################################
     if ( $data =~ /lpar_netboot: (.*)/ ) {
-        return( [[$name,$1,1]] );
+        return( [[$name,$1,RC_ERROR]] );
     }
-    return( [[$name,$data,1]] );
+    return( [[$name,$data,RC_ERROR]] );
 }
  
 
