@@ -4,6 +4,8 @@ nic=0
 hba=0
 
 MOD=""
+NICSTOWAIT=""
+echo "cat /etc/motd" >> /etc/profile
 
 #Load common usb drivers
 modprobe ohci-hcd
@@ -45,12 +47,9 @@ do
                     echo "alias myri0 $MOD" >>/etc/modprobe.conf
                 else
 		    modprobe $MOD
-		    udhcpc -i eth$nic -b
-         let extrat=0
-         until ifconfig eth$nic|grep "inet addr" || [ $extrat == 30 ]; do
-             sleep 1
-             let extrat=extrat+1
-         done
+          ifconfig eth$nic up
+		    udhcpc -i eth$nic -b &
+          NICSTOWAIT="$NICSTOWAIT eth$nic"
                     nic=$(($nic + 1))
                 fi
                 ;;
@@ -94,5 +93,24 @@ if [ -d /proc/device-tree/lhea* ]; then
             done
 fi
 
-#Give 5 seconds for things to quiesce.
-sleep 5
+let extrat=0
+until [ $extrat == 80 -o -z "$NICSTOWAIT" ]; do
+   sleep 1
+   let extrat=extrat+1
+   for nic in $NICSTOWAIT; do 
+      if ifconfig $nic|grep "inet addr"; then
+         NICSTOWAIT=`echo $NICSTOWAIT|sed -e s/$nic//`
+         if [ $extrat -gt 45 ]; then
+            echo "Warning: $nic took more than 45 seconds to receive DHCP reply, spanning-tree may not be configured well, examine switch configuration" >> /etc/motd
+         fi
+      elif [ $extrat == 15 ]; then
+            if ethtool $nic | grep "Link detected: no"; then
+               echo "$nic did not have any link when bringing up network" >> /etc/motd
+               NICSTOWAIT=`echo $NICSTOWAIT|sed -e s/$nic//`
+            fi
+      fi
+   done
+done
+if [ ! -z "$NICSTOWAIT" ]; then
+   echo "Warning: the following network devices appeared to be connected to networks, but received no DHCP response: $NICSTOWAIT"
+fi
