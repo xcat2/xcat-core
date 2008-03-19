@@ -1038,6 +1038,64 @@ sub isMS
 
 #-------------------------------------------------------------------------------
 
+=head3   classful_networks_for_net_and_mask
+    
+    Arguments:
+        network and mask
+    Returns:
+        a list of classful subnets that constitute the entire potentially classless arguments
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub classful_networks_for_net_and_mask 
+{
+    my $network = shift;
+    my $mask = shift;
+    my $given_mask = 0;
+    if ($mask =~/\./) {
+       $given_mask = 1;
+       my $masknumber = unpack("N",inet_aton($mask));
+       $mask=32;
+       while ($masknumber % 2) {
+          $masknumber = $masknumber >> 1;
+          $mask--;
+       }
+    }
+       
+    my @results;
+    my $bitstoeven = (8 - ($mask % 8));
+    if ($bitstoeven eq 8) { $bitstoeven = 0; }
+    my $resultmask = $mask + $bitstoeven;
+    if ($given_mask) {
+       $resultmask = inet_ntoa((2**$resultmask-1) << (32 -  $resultmask));
+    }
+    push @results,$resultmask;
+
+    my $padbits  = (32 - ($bitstoeven + $mask));
+    my $numchars = int(($mask + $bitstoeven) / 4);
+    my $curmask  = 2**$mask - 1 << (32 - $mask);
+    my $nown     = unpack("N", inet_aton($network));
+    $nown = $nown & $curmask;
+    my $highn = $nown + ((2**$bitstoeven - 1) << (32 - $mask - $bitstoeven));
+
+    while ($nown <= $highn)
+    {
+       push @results,inet_ntoa(pack("N",$nown));
+       #$rethash->{substr($nowhex, 0, $numchars)} = $network;
+       $nown += 1 << (32 - $mask - $bitstoeven);
+    }
+    return @results;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3   my_hexnets    
     
     Arguments:
