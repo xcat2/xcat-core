@@ -8,8 +8,10 @@ use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use Time::HiRes qw(gettimeofday);
 use IO::Select;
+use Socket;
 use xCAT::PPCcli; 
 use xCAT::GlobalDef;
+use xCAT::DBobjUtils;
 
 
 ##########################################
@@ -82,14 +84,14 @@ sub process_command {
     my $maxp     = 64;
     my %nodes    = ();
     my $callback = $request->{callback};
+    my $sitetab  = xCAT::Table->new( 'site' );
     my $start;
 
     #######################################
     # Get max processes to fork
     #######################################
-    my $sitetab = xCAT::Table->new('site');
     if ( defined( $sitetab )) {
-        my ($ent) = $sitetab->getAttribs({'key'=>'ppcmaxp'},'value');
+        my ($ent) = $sitetab->getAttribs({ key=>'ppcmaxp'},'value');
         if ( defined($ent) ) { 
             $maxp = $ent->{value}; 
         }
@@ -190,6 +192,45 @@ sub child_response {
 
 
 ##########################################################################
+# Finds attributes for given node is various databases
+##########################################################################
+sub resolve_hcp {
+
+    my $request   = shift;
+    my $noderange = shift;
+    my @nodegroup = ();
+    my $tab       = ($request->{hwtype} eq "fsp") ? "ppcdirect" : "ppchcp";
+    my $db        = xCAT::Table->new( $tab );
+
+    ####################################
+    # Database not defined 
+    ####################################
+    if ( !defined( $db )) {
+        send_msg( $request, 1, sprintf( $errmsg{DB_UNDEF}, $tab ));
+        return undef;
+    }
+    ####################################
+    # Process each node
+    ####################################
+    foreach ( @$noderange ) {
+        my ($ent) = $db->getAttribs( {hcp=>$_},"hcp" );
+
+        if ( !defined( $ent )) {
+            my $msg = sprintf( "$_: $errmsg{NODE_UNDEF}", $tab );
+            send_msg( $request, 1, $msg );
+            next;
+        }
+        ################################
+        # Save values
+        ################################
+        push @nodegroup,[$_];
+    }
+    return( \@nodegroup );
+
+}
+
+
+##########################################################################
 # Group nodes depending on command
 ##########################################################################
 sub preprocess_nodes {
@@ -200,6 +241,7 @@ sub preprocess_nodes {
     my %nodehash  = ();
     my @nodegroup = ();
     my %tabs      = ();
+    my $netwk;
 
     ########################################
     # Special cases
@@ -208,33 +250,18 @@ sub preprocess_nodes {
     ########################################
     if (( $request->{command} eq "rscan" ) or
         ( $request->{hwtype} eq "fsp" )) {
-
-        my $tab = ($request->{hwtype} eq "fsp") ? "ppcdirect" : "ppchcp"; 
-        my $db  = xCAT::Table->new( $tab );
-
-        if ( !defined( $db )) {
-            send_msg( $request, 1, sprintf( $errmsg{DB_UNDEF}, $tab )); 
-            return undef;
-        } 
-        ####################################
-        # Process each node
-        ####################################
-        foreach ( @$noderange ) {
-            my ($ent) = $db->getAttribs( {hcp=>$_},"hcp" );
-
-            if ( !defined( $ent )) {
-                my $msg = sprintf( "$_: $errmsg{NODE_UNDEF}", $tab );
-                send_msg( $request, 1, $msg );
-                next;
-            }
-            ################################
-            # Save values
-            ################################
-            push @nodegroup,[$_];
-        }
-        return( \@nodegroup );
+        my $result = resolve_hcp( $request, $noderange );
+        return( $result );
     }
-
+    ##########################################
+    # Special processing - rnetboot 
+    ##########################################
+    if ( $request->{command} eq "rnetboot" ) { 
+        $netwk = resolve_netwk( $request, $noderange );
+        if ( !defined( %$netwk )) {
+            return undef;
+        }
+    }
     ##########################################
     # Open databases needed
     ##########################################
@@ -282,6 +309,13 @@ sub preprocess_nodes {
             while (my ($mtms,$h) = each(%$hash) ) {
                 while (my ($lpar,$d) = each(%$h)) {
                     push @$d, $lpar;
+
+                    ##########################
+                    # Save network info
+                    ##########################
+                    if ( $method =~ /^rnetboot$/ ) {
+                        push @$d, $netwk->{$lpar}; 
+                    }
                     push @nodegroup,[$hcp,$d]; 
                 }
             }
@@ -316,9 +350,86 @@ sub preprocess_nodes {
 }
 
 
+##########################################################################
+# Finds attributes for given node is various databases 
+##########################################################################
+sub resolve_netwk {
+
+    my $request   = shift;
+    my $noderange = shift;
+    my %nethash   = xCAT::DBobjUtils->getNetwkInfo( $noderange );
+    my $tab       = xCAT::Table->new( 'mac' );
+    my %result    = ();
+
+    #####################################
+    # Network attributes undefined 
+    #####################################
+    if ( !defined( %nethash )) {
+        send_msg( $request,1,sprintf( $errmsg{NODE_UNDEF}, "networks" ));
+        return undef;
+    }
+    #####################################
+    # mac database undefined
+    #####################################
+    if ( !defined( $tab )) {
+        send_msg( $request, 1, sprintf( $errmsg{DB_UNDEF}, "mac" ));
+        return undef;
+    }
+
+    foreach ( @$noderange ) {
+        #################################
+        # Get gateway (-G)
+        #################################
+        if ( !exists( $nethash{$_} )) {
+            my $msg = sprintf( "$_: $errmsg{NODE_UNDEF}", "networks");
+            send_msg( $request, 1, $msg );
+            next;
+        }
+        if ( !exists( $nethash{$_}{gateway} )) {
+            my $msg = sprintf("$_: $errmsg{NO_ATTR}","gateway","networks");
+            send_msg( $request, 1, $msg );
+            next;
+        }
+        #################################
+        # Get server (-S)
+        #################################
+        my $server = xCAT::Utils->GetMasterNodeName( $_ );
+        if ( $server == 1 ) {
+            send_msg( $request, 1, "$_: Unable to identify master" );
+            next;
+        }
+        #################################
+        # Get mac-address (-m)
+        #################################
+        my ($ent) = $tab->getAttribs( {node=>$_}, "mac" );
+        if ( !defined($ent) ) {
+            my $msg = sprintf( "$_: $errmsg{NO_ATTR}","mac","mac");
+            send_msg( $request, 1, $msg );
+            next;
+        }
+        #################################
+        # Get client (-C)
+        #################################
+        my $packed_ip = gethostbyname( $_ );
+        if ( !defined( $packed_ip ) or $! ) {
+            send_msg( $request, 1, "$_: Cannot resolve '$_' $!" );
+            next;  
+        }
+        #################################
+        # Save results 
+        #################################
+        $result{$_}{gateway} = $nethash{$_}{gateway};
+        $result{$_}{server}  = $server;
+        $result{$_}{mac}     = $ent->{mac};
+        $result{$_}{client}  = inet_ntoa( $packed_ip );
+    }
+    return( \%result );
+}
+
+
 
 ##########################################################################
-# Findis attributes for given node is various databases 
+# Finds attributes for given node is various databases 
 ##########################################################################
 sub resolve {
 
