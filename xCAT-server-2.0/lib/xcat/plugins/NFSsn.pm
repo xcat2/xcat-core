@@ -133,31 +133,6 @@ sub setup_NFS
         if (xCAT::Utils->isLinux())
         {
 
-            # export /install and /tftpboot is not already there
-            $cmd = "grep $installdir /etc/exports";
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC != 0)
-            {    # need to add to export list
-                my $cmd =
-                  "echo '$installdir *(ro,no_root_squash,sync)' >> /etc/exports";
-                xCAT::Utils->runcmd($cmd, -1);
-                if ($::RUNCMD_RC != 0)
-                {    # error
-                    xCAT::MsgUtils->message("S", "Error exporting $installdir");
-                }
-            }
-            $cmd = "grep $tftpdir /etc/exports";
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC != 0)
-            {        # need to add to export list
-                my $cmd =
-                  "echo '$tftpdir *(ro,root_squash,sync)' >> /etc/exports";
-                xCAT::Utils->runcmd($cmd, -1);
-                if ($::RUNCMD_RC != 0)
-                {    # error
-                    xCAT::MsgUtils->message("S", "Error exporting $tftpdir");
-                }
-            }
             my $cmd = "chkconfig nfs on";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -183,14 +158,6 @@ sub setup_NFS
                 return 1;
             }
 
-            # export the directories
-            my $cmd = "exportfs -a";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {        # error
-                xCAT::MsgUtils->message("S", "exportfs -a failed");
-                return 1;
-            }
 
             # check to see if install and tftp directory already mounted
             # if not mount then
