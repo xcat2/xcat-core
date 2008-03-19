@@ -88,65 +88,68 @@ sub configBMC {
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
 
-  my $passtab = xCAT::Table->new('passwd');
-  my $ipmiuser;
-  my $ipmipass;
-  if ($passtab) {
-    ($tmp)=$passtab->getAttribs({'key'=>'ipmi'},'username','password');
-    if (defined($tmp)) { 
-     $ipmiuser = $tmp->{username};
-     $ipmipass = $tmp->{password};
-    }
-    $passtab->close();
-  }
-
+  
+  my %masterhash=();
+  my @node_a=();
   my $nrtab = xCAT::Table->new('noderes');
   my $table=xCAT::Table->new("ipmi");
   if ($table) {
-    my @tmp1=$table->getAllNodeAttribs(['node','bmc','username', 'password']);
+    my @tmp1=$table->getAllNodeAttribs(['node','bmc']);
     if (defined(@tmp1) && (@tmp1 > 0)) {
       foreach(@tmp1) {
         my $node=$_->{node};
         my $bmc=$_->{bmc};
-        #print "node=$node, bmc=$bmc, username=$_->{username}, password=$_->{password}\n";
+        
+        my $monserver;
+        my $tent  = $nrtab->getNodeAttribs($node,['monserver', 'servicenode']);
+        if ($tent) {
+	  if ($tent->{monserver}) {  $monserver=$tent->{monserver}; }
+          elsif ($tent->{servicenode})  {  $monserver=$tent->{servicenode}; }
+        } 
 
-        my $tent  = $nrtab->getNodeAttribs($node,['servicenode']);
-        if ($tent and $tent->{servicenode}) { #the node has service node
-          if (!$iphash{$tent->{servicenode}}) { next;} # handle its childen only 
-        } else { #the node does not have service node
-	  if ($isSV) { next; }
+        if ($monserver) { 
+          if (!$iphash{$monserver}) { next;} #skip if has sn but not localhost
+        } else { 
+          if ($isSV) { next; } #skip if does not have sn but localhost is a sn
         }
         
-        #get the master for node
-        my $master=xCAT::Utils->GetMasterNodeName($node); #should we use $bmc?
-        #print "master=$master\n";
-        
-        my $nodeuser=$ipmiuser; if ($_->{username}) { $nodeuser=$_->{username};}
-        my $nodepass=$ipmipass; if ($_->{password}) { $nodepass=$_->{password};}
-        
-	if ($action==1) { #enable
-          # set the snmp destination
-          # suppose all others like username, password, ip, gateway ip are set during the installation
-          my @dip = split /\./, $master;
-	  my $cmd="ipmitool -I lan -H $bmc -U $nodeuser -P $nodepass raw 0x0c 0x01 0x01 0x13 0x01 0x00 0x00 $dip[0] $dip[1] $dip[2] $dip[3] 0x00 0x00 0x00 0x00 0x00 0x00";
-          #print "cmd=$cmd\n";
-	  $result=`$cmd 2>&1`;
-          if ($?) { print "Setting snmp destination ip address for node $node: $result\n"; }
-          #enable PEF policy
-          $cmd="ipmitool -I lan -H $_->{bmc} -U $nodeuser -P $nodepass raw 0x04 0x12 0x09 0x01 0x18 0x11 0x00";
-	  $result=`$cmd 2>&1`;
-          if ($?) { print "Enabling PEF policy for node $node: $result\n"; }
-        } else { #disable 
-          #disable PEF policy
-	  my $cmd="ipmitool -I lan -H $bmc -U $nodeuser  -P $nodepass raw 0x04 0x12 0x09 0x01 0x10 0x11 0x00";
-	  $result=`$cmd 2>&1`;
-          if ($result) { print "Disabling PEF policy for node $node: $result\n"; }
-        }          
-      } #foreach 
+        push(@node_a, $node);
+
+        # find the master node and add the node in the hash
+        $master=xCAT::Utils->GetMasterNodeName($node); #should we use $bmc?
+        if(exists($masterhash{$master})) {
+	  my $ref=$masterhash{$master};
+          push(@$ref, $node); 
+	} else { $masterhash{$master}=[$node]; } 
+      } #foreach
     }
     $table->close();
   }
-  $nrtab->close();
+  $nrtab->close();       
+
+  if (@node_a==0){ return (0, "");} #nothing to handle
+
+  #now doing the real thing: enable PEF alert policy table
+  my $noderange=join(',',@node_a );
+  my $actionstring="en";
+  if ($action==0) {$actionstring="dis";}
+  my $result = `XCATBYPASS=Y rspconfig $noderange alert=$actionstring 2>&1`;
+  if ($?) {
+    print "Changeing SNMP PEF policy for $noderange:\n  $result\n";
+  } 
+
+  #setup the snmp destination
+  if ($action==1) {
+    foreach (keys(%masterhash)) {
+      my $ref2=$masterhash{$_};
+      if (@$ref2==0) { next;}
+      my $nr2=join(',', @$ref2);
+      my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$_ 2>&1`;
+      if ($?) {
+        print "Changing SNMP destination for $nr2:\n  $result2\n"; 
+      }
+    }
+  }
 }
 
 
@@ -273,7 +276,6 @@ sub stop {
   # now check to see if the daemon is running.  If it is then we need to resart or stop?
   # it with the new snmptrapd.conf file that will not forward events to RMC.
   chomp(my $pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
-  #print "pid=$pid\n";
   if($pid){
     `/bin/kill -9 $pid`;
     # start it up again!
@@ -436,3 +438,4 @@ sub getDescription {
       This means send email for all the critical events and the BladeCenter 
       system events.\n"  
 }
+
