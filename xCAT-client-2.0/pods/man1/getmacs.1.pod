@@ -8,7 +8,7 @@ I<getmacs [-h| --help]>
 
 I<getmacs [-v| --version]>
 
-I<getmacs [-V| --verbose] noderange> [-c][-S server -G gateway -C client] 
+I<getmacs [-V| --verbose] noderange> [-c][-w][-S server -G gateway -C client] 
 
 
 =head1 DESCRIPTION
@@ -30,6 +30,8 @@ B<-S>          The IP address of the machine to ping.
 B<-v>          Command Version. 
 
 B<-V>          Verbose output. 
+
+B<-w>          Writes first adapter MAC to the xCAT database. 
 
 
 =head1 RETURN VALUE
@@ -88,5 +90,6 @@ This command is part of the xCAT software product.
 
 
  
+
 
 
