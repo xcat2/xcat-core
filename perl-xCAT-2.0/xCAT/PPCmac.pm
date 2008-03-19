@@ -25,14 +25,15 @@ sub parse_args {
         return( [ $_[0],
             "getmacs -h|--help",
             "getmacs -v|--version",
-            "getmacs [-V|--verbose] noderange [-c][-S server -G gateway -C client]",
+            "getmacs [-V|--verbose] noderange [-c][-w][-S server -G gateway -C client]",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
             "    -c   colon seperated output",
             "    -C   IP of the partition",
             "    -G   Gateway IP of the partition specified",
             "    -S   Server IP to ping", 
-            "    -V   verbose output" ]);
+            "    -V   verbose output",
+            "    -w   writes first adapter MAC to the xCAT database"]);
     };
     #############################################
     # Process command-line arguments
@@ -50,7 +51,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version C=s G=s S=s c) )) { 
+    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s c w))) { 
         return( usage() );
     }
     ####################################
@@ -234,8 +235,10 @@ sub ivm_getmacs {
             last;
         }
     }
-    return( [$Rc,$result] );
- 
+    ######################################
+    # Split results into array
+    ######################################
+    return( [$Rc, split( /\n/, $result)] ); 
 }
 
 
@@ -249,6 +252,7 @@ sub getmacs {
     my $exp     = shift;
     my $opt     = $request->{opt};
     my $hwtype  = @$exp[2];
+    my $delim   = ( exists( $opt->{c} )) ? ":" : " ";
     my $result;
     my $node;
 
@@ -316,6 +320,11 @@ sub getmacs {
     # Form string from array results 
     ##################################
     if ( exists($request->{verbose}) ) {
+        if ( $Rc == SUCCESS ) {
+            if ( exists( $opt->{w} )) { 
+                writemac( $name, $delim, $result );
+            }
+        }
         return( [[$name,join( '', @$result ),$Rc]] );
     }
     ##################################
@@ -327,14 +336,7 @@ sub getmacs {
         }
         return( [[$name,join( '', @$result ),$Rc]] );
     }
-    ##################################
-    # Split results into array
-    ##################################
-    if ( $hwtype eq "ivm" ) {
-        my $data = @$result[0];
-        @$result = split /\n/, $data;    
-    }
-    ##################################
+    #####################################
     # lpar_netboot returns:
     #
     #  # Connecting to lpar4\n
@@ -349,18 +351,65 @@ sub getmacs {
     #
     #####################################
     my $values;
+
     foreach ( @$result ) {
         if ( /^#\s?Type/ ) {
             $values.= "\n$_\n";
-        } elsif ( /^ent:?/ ) {
+        } elsif ( /^ent$delim/ ) {
             $values.= "$_\n";
         }
+    }
+    #####################################
+    # Write first adapter MAC to database 
+    #####################################
+    if ( exists( $opt->{w} )) {
+        writemac( $name, $delim, $result );
     }
     return( [[$name,$values,$Rc]] );
 }
 
 
+##########################################################################
+# Writes the first adapter MAC to the database
+##########################################################################
+sub writemac {
+
+    my $name  = shift;
+    my $delim = shift;
+    my $data  = shift;
+    my $values;
+
+    #####################################
+    # Find first adapter
+    #####################################
+    foreach ( @$data ) {
+        if ( /^ent$delim/ ) {
+            $values = $_;
+        }
+    }
+    #####################################
+    # Get adapter mac
+    #####################################
+    my ($k,$u);
+    my @fields = split $delim, $values;
+    my $mac    = $fields[2];
+
+    #####################################
+    # Write adapter mac to database 
+    #####################################
+    my $tab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
+    if ( !$tab ) {
+        return( [[$name,"Error opening 'mac'",RC_ERROR]] );
+    }
+    $k->{node} = $name;
+    $u->{mac}  = $mac;
+    my $d = $tab->setAttribs( $k,$u );
+    return undef;
+}
+
+
 1;
+
 
 
 
