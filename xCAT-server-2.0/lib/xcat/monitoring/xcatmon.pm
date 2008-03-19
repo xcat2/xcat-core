@@ -115,7 +115,24 @@ sub startNodeStatusMon {
   if ($reading>0) { $value=$reading;}
    
   #create the cron job, it will run the command every 3 minutes.
-  my $newentry="*/$value * * * * XCATROOT=$::XCATROOT PATH=$ENV{'PATH'} XCATCFG='$ENV{'XCATCFG'}' $cmd";
+  my $newentry;
+  if (xCAT::Utils->isAIX()) {
+    #AIX does not support */value format, have to list them all.
+    my $minutes;
+    if ($value==1) { $minutes='*';}
+    elsif ($value<=30) {
+      my @temp_a=(0..59);
+      foreach (@temp_a) {
+        if (($_ % $value) == 0) { $minutes .= "$_,";}
+      }
+      chop($minutes);
+    } else {
+      $minutes="0";
+    }
+    $newentry="$minutes * * * * XCATROOT=$::XCATROOT PATH=$ENV{'PATH'} XCATCFG='$ENV{'XCATCFG'}' $cmd";
+  } else {
+    $newentry="*/$value * * * * XCATROOT=$::XCATROOT PATH=$ENV{'PATH'} XCATCFG='$ENV{'XCATCFG'}' $cmd";
+  }
   my ($code, $msg)=xCAT::Utils::add_cron_job($newentry);
   if ($code==0) { return (0, "started"); }
   else {  return ($code, $msg); } 
