@@ -193,13 +193,12 @@ nodehm => {
 	},
   },
 nodelist => {
-    cols => [qw(node groups nodetype status comments disable)],
+    cols => [qw(node groups status comments disable)],
     keys => [qw(node)],
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
     descriptions => {
     	node => 'The hostname of a node in the cluster.',
-    	nodetype => 'A comma-delimited list of characteristics of this node.  Valid values: blade, vm (virtual machine), lpar, osi (OS image), hmc, fsp, ivm, bpa, mm, rsa, switch.',
-    	groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group.  Suggested group names include: ipmi, blade, lpar, hmc, fsp, ivm, bpa, mm, rsa, switch, service, compute.  (Use as many as apply.)",
+    	groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group.",
     	status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, discovering, installing, installed, alive, off.',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",
@@ -246,7 +245,7 @@ noderes => {
 	},
   },
 nodetype => {
-    cols => [qw(node os arch profile comments disable)],
+    cols => [qw(node os arch profile nodetype comments disable)],
     keys => [qw(node)],
     table_desc => 'A few hardware and software characteristics of the nodes.',
 	descriptions => {
@@ -254,6 +253,7 @@ nodetype => {
 		os => 'The operating system deployed on this node.  Valid values: rh*, centos*, fedora*, sles* (where * is the version #).',
 		arch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
 		profile => 'The kickstart or autoyast template to use for OS deployment of this node.',
+		nodetype => 'A comma-delimited list of characteristics of this node.  Valid values: blade, vm (virtual machine), lpar, osi (OS image), hmc, fsp, ivm, bpa, mm, rsa, switch.',
     	comments => 'Any user-written notes.',
     	disable => "Set to 'yes' or '1' to comment out this row.",
 	},
@@ -485,8 +485,11 @@ vpd => {
 #   @nodeattrs ia a list of node attrs that can be used for
 #		BOTH node and group definitions
 ##############
-
 my @nodeattrs = (
+       {attr_name => 'nodetype',
+                 tabentry => 'nodetype.nodetype',
+                 access_tabentry => 'nodetype.node=attr:node',
+       },
 ####################
 # postscripts table#
 ####################
@@ -875,15 +878,6 @@ my @nodeattrs = (
                  tabentry => 'nodelist.node',
                  access_tabentry => 'nodelist.node=attr:node',
 			},
-        {attr_name => 'nodetype',
-                 tabentry => 'nodelist.nodetype',
-                 access_tabentry => 'nodelist.node=attr:node',
-			},
-###
-# TODO:  need to implement nodelist.nodetype as a comma-separated list.
-#        right now, all references to attr:nodetype are for single values.
-#        will need to globally change the def to make this work...
-##
         {attr_name => 'groups',
                  tabentry => 'nodelist.groups',
                  access_tabentry => 'nodelist.node=attr:node',
