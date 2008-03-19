@@ -8,29 +8,17 @@ I<rnetboot [-h| --help]>
 
 I<rnetboot [-v| --version]>
 
-
 I<rnetboot [-V| --verbose] noderange>
 
-B<The following options are valid for HMC- and IVM-managed nodes ONLY>
-
-I<rnetboot [-V| --verbose] noderange -S server -G gateway -C client -m MAC-address>
 
 =head1 DESCRIPTION
 
-The rnetboot command will force an unattended network install for a range of nodes (diskless) Front end to nodeset noderange netboot; rpower noderange boot.  
+The rnetboot command will force an unattended network install for a range of nodes.  
 
 =head1 OPTIONS
 
 
-B<-C>          IP address of the partition to network boot.
-
-B<-G>          Gateway IP address of the partition specified with the -C option.
-  
 B<-h>          Display usage message.
-
-B<-m>          MAC address of the network adapter to use for network boot.
-
-B<-S>          IP address of the machine from which to retrieve the network boot image during network boot.
 
 B<-v>          Command Version.
 
@@ -46,20 +34,11 @@ B<-V>          Verbose output.
 
 =head1 EXAMPLES
 
-
-1. To perform a ping test along with a network boot of partition lpar3 using the network adapter with a MAC address of 00:09:6b:dd:02:e8, enter:
-
-I<rnetboot lpar3 -m 00096bdd02e8 -S  9.3.6.49  -G  9.3.6.1  -C  9.3.6.234>
-
-Output is similar to:
-
-lpar3: Success
-
-2.
   rnetboot 1,3
   rnetboot 14-56,70-203
   rnetboot 1,3,14-56,70-203
   rnetboot all,-129-256
+
 
 
 
