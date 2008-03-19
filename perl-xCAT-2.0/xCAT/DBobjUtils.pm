@@ -255,13 +255,6 @@ sub getobjdefs
             #  ex. noderes.nfsdir
             my ($tab, $tabattr) = split('\.', $this_attr->{tabentry});
 
-			# don't try to get static group attrs from the nodegroup table
-			# 	- don't support dynamic groups yet
-			#if (($tab eq "nodegroup")  && ($objhash{$objname}{grouptype} eq "static") ) 
-			if ($tab eq "nodegroup"){
-				next;
-			} 
-
             # ex. 'nodelist.node', 'attr:node'
             ($lookup_key, $lookup_value) = split('\=', $this_attr->{access_tabentry});
 
@@ -460,13 +453,6 @@ sub setobjdefs
 
         # get attr=val that are set in the DB ??
         my $type = $objhash{$objname}{objtype};
-
-		#  don't add any group defs to the nodegroup table
-		#	- group info is stored in the nodelist table as part of
-		#		the node definition
-		if ($type eq "group") {
-			next;
-		}
 
         # handle the site table as a special case !!!!!
         if ($type eq 'site')
