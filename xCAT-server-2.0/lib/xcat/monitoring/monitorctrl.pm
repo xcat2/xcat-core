@@ -580,11 +580,9 @@ sub processNodelistTableChanges {
   my @nodenames=();
   if ($action eq "a") {
     if ($new_data) {
-      my $nodetype='';
       my $status='';
-      if (exists($new_data->{nodetype})) {$nodetype=$new_data->{nodetype};}
       if (exists($new_data->{status})) {$status=$new_data->{status};}      
-      push(@nodenames, [$new_data->{node}, $nodetype, $status]);
+      push(@nodenames, [$new_data->{node}, $status]);
       my $hierarchy=getMonServerWithInfo(\@nodenames);
 
       #call each plug-in to add the nodes into the monitoring domain
@@ -601,20 +599,17 @@ sub processNodelistTableChanges {
     if ($old_data->[0]) {
       $colnames=$old_data->[0];
       my $node_i=-1;
-      my $nodetype_i=-1;
       my $status_i=-1;
       for ($i=0; $i<@$colnames; ++$i) {
         if ($colnames->[$i] eq "node") {
           $node_i=$i;
-        } elsif ($colnames->[$i] eq "nodetype") {
-          $nodetype_i=$i;
         }  elsif ($colnames->[$i] eq "status") {
           $status_i=$i;
         }  
       }
       
       for (my $j=1; $j<@$old_data; ++$j) {
-        push(@nodenames, [$old_data->[$j]->[$node_i], $old_data->[$j]->[$nodetype_i], $old_data->[$j]->[$status_i]]);
+        push(@nodenames, [$old_data->[$j]->[$node_i], $old_data->[$j]->[$status_i]]);
       }
 
       if (@nodenames > 0) {
@@ -908,22 +903,38 @@ sub getMonHierarchy {
   
   #get all from nodelist table and noderes table
   my $table=xCAT::Table->new("nodelist", -create =>0);
-  my @tmp1=$table->getAllAttribs(('node','nodetype', 'status'));
+  my @tmp1=$table->getAllAttribs(('node','status'));
 
   my $table2=xCAT::Table->new("noderes", -create =>0);  
+  my @tmp2=$table2->getAllNodeAttribs(['node','monserver', 'servicenode']);
+  my %temp_hash2=();
+  foreach (@tmp2) {
+    $temp_hash2{$_->{node}}=$_;
+  }
+
+  my $table3=xCAT::Table->new("nodetype", -create =>0);
+  my @tmp3=$table3->getAllNodeAttribs(['node','nodetype']);
+  my %temp_hash3=();
+  foreach (@tmp3) {
+    $temp_hash3{$_->{node}}=$_;
+  }
   
-  #get monserver for each node. use "monserver" attribute from noderes table, if not
-  #defined, use "servicenode". otherwise, use loca lhost. 
   if (defined(@tmp1) && (@tmp1 > 0)) {
     foreach(@tmp1) {
       my $node=$_->{node};
       my $status=$_->{status};
-      my $nodetype=$_->{nodetype};
+
+      my $row3=$temp_hash3{$node};
+      my $nodetype="osi"; #default
+      if (defined($row3) && ($row3)) {
+        if ($row3->{nodetype}) { $nodetype=$row3->{nodetype}; }
+      }
+
       my $monserver;
-      my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
-      if (defined($tmp2) && ($tmp2)) {
-	if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
-        elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
+      my $row2=$temp_hash2{$node};
+      if (defined($row2) && ($row2)) {
+	if ($row2->{monserver}) {  $monserver=$row2->{monserver}; }
+        elsif ($row2->{servicenode})  {  $monserver=$row2->{servicenode}; }
       }
       #print "node=$node, monserver=$monserver\n";
       if (!$monserver) { $monserver="noservicenode"; }
@@ -938,6 +949,7 @@ sub getMonHierarchy {
   }
   $table->close();
   $table2->close();
+  $table3->close();
   return $ret;
 }
 
@@ -947,11 +959,11 @@ sub getMonHierarchy {
       The "monserver" attribute is used from the noderes table. If "monserver" is not defined
       for a node, "servicenode" is used. If none is defined, use the local host as the
       the monitoring server. The difference of this function from the getMonServer function
-      is that the input of the nodes have 'node', 'nodetype' and 'status' info. 
+      is that the input of the nodes have 'node' and 'status' info. 
       The other one just has  'node'. The
       names. 
     Arguments:
-      nodes: An array ref. Each element is of the format: [node, nodetype, status]
+      nodes: An array ref. Each element is of the format: [node, status]
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
@@ -967,13 +979,19 @@ sub getMonServerWithInfo {
   #print "getMonServerWithInfo called with @in_nodes\n";
   #get all from the noderes table
   my $table2=xCAT::Table->new("noderes", -create =>0);
+  my $table3=xCAT::Table->new("nodetype", -create =>0);
   my @hostinfo=xCAT::Utils->determinehostname();
   my $host=pop(@hostinfo);
   
   foreach (@in_nodes) {
     my $node=$_->[0];
-    my $nodetype=$_->[1];
     my $status=$_->[2];
+
+    my $tmp3=$table3->getNodeAttribs($node, ['nodetype']);
+    my $nodetype="osi"; #default
+    if (defined($tmp3) && ($tmp3)) {
+      if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
+    }
 
     my $monserver=$host;
     my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
@@ -985,14 +1003,15 @@ sub getMonServerWithInfo {
 
     if (exists($ret->{$monserver})) {
       my $pa=$ret->{$monserver};
-      push(@$pa, [$node, $nodetype]);
+      push(@$pa, [$node, $nodetype, $status]);
     }
     else {
-      $ret->{$monserver}=[[$node, $nodetype]];
+      $ret->{$monserver}=[[$node, $nodetype, $status]];
     }
   }    
   
   $table2->close();
+  $table3->close();
   return $ret;
 }
 
@@ -1019,16 +1038,22 @@ sub getMonServer {
   #get all from nodelist table and noderes table
   my $table=xCAT::Table->new("nodelist", -create =>0);
   my $table2=xCAT::Table->new("noderes", -create =>0);
+  my $table3=xCAT::Table->new("nodetype", -create =>0);
   my @hostinfo=xCAT::Utils->determinehostname();
   my $host=pop(@hostinfo);
   
   foreach (@in_nodes) {
-    my @tmp1=$table->getAttribs({'node'=>$_}, ('node', 'nodetype', 'status'));
+    my @tmp1=$table->getAttribs({'node'=>$_}, ('node', 'status'));
 
     if (defined(@tmp1) && (@tmp1 > 0)) {
       my $node=$_;
       my $status=$tmp1[0]->{status};
-      my $nodetype=$tmp1[0]->{nodetype};
+
+      my $tmp3=$table3->getNodeAttribs($node, ['nodetype']);
+      my $nodetype="osi"; #default
+      if (defined($tmp3) && ($tmp3)) {
+	if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
+      }
 
       my $monserver=$host;
       my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
@@ -1048,6 +1073,7 @@ sub getMonServer {
   }
   $table->close();
   $table2->close();
+  $table3->close();
   return $ret;
 }
 
@@ -1067,6 +1093,21 @@ sub getMonServer {
 sub nodeStatMonName {
   return $NODESTAT_MON_NAME;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
