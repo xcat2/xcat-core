@@ -1,14 +1,14 @@
 =head1 NAME
 
-B<updteSNimage> - Adds the needed Service Node configuration files to the install image.
+B<updateSNimage> - Adds the needed Service Node configuration files to the install image.
 
 =head1 SYNOPSIS
 
-I<updteSNimage [-h | --help ]>
+I<updateSNimage [-h | --help ]>
 
-I<updteSNimage [-v | --version]>
+I<updateSNimage [-v | --version]>
 
-I<updteSNimage {-n} [-p]>
+I<updateSNimage {-n} [-p]>
 
 =head1 DESCRIPTION
 
@@ -38,12 +38,12 @@ B<-p |--path>            Path to the install image.
 
 1. To update the image on the local host.
 
-I<updteSNimage -p /install/netboot/fedora8/x86_64/test/rootimg>
+I<updateSNimage -p /install/netboot/fedora8/x86_64/test/rootimg>
 
 
 2. To update the image on a remote host.
 
-I<updteSNimage -n 9.112.45.6 -p /install/netboot/fedora8/x86_64/test/rootimg>
+I<updateSNimage -n 9.112.45.6 -p /install/netboot/fedora8/x86_64/test/rootimg>
 
 
 =head1 FILES
