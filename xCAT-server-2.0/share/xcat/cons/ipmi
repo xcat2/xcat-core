@@ -8,6 +8,7 @@ $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 use xCAT::Utils;
+use Time::HiRes qw(sleep);
 my $dba;
 my $ipmitab = xCAT::Table->new('ipmi');
 unless ($ipmitab) { sleep 5; die "Unable to open IPMI table"; }
@@ -31,7 +32,9 @@ if ($dba) {
   if ($dba->{password}) { $password = $dba->{password}; }
 }
 xCAT::Utils::close_all_dbhs;
-my $isintel = system "ipmitool -I lanplus -U $username -P $password -H $bmc chassis status > /dev/null 2>&1";
+#my $isintel = system "ipmitool -I lanplus -U $username -P $password -H $bmc chassis status > /dev/null 2>&1";
+my $isintel = system "ipmitool -I lan -U $username -P $password -H $bmc mc info| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+$isintel = not $isintel;
 my $inteloption="";
 if ($isintel) {
    $inteloption=" -o intelplus";
