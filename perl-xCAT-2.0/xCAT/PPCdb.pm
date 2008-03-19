@@ -14,7 +14,7 @@ sub add_ppc {
 
     my $hwtype = shift;
     my $values = shift;
-    my @tabs   = qw(ppc vpd nodehm nodelist); 
+    my @tabs   = qw(ppc vpd nodehm nodelist nodetype); 
     my %db     = ();
 
     ###################################
@@ -57,16 +57,24 @@ sub add_ppc {
             # Update nodelist table
             ###########################
             my ($k1,$u1);
-            my %nodetype = ( 
+            $k1->{node}     = $name;
+            $u1->{groups}   = lc($hwtype).",all";
+            $db{nodelist}->setAttribs( $k1,$u1 );
+            $db{nodelist}{commit} = 1;
+
+			###########################
+            # Update nodetype table
+            ###########################
+			my ($k3,$u3);
+			my %nodetype = (
                  fsp  => $::NODETYPE_FSP,
                  bpa  => $::NODETYPE_BPA,
                  lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI"
             );
-            $k1->{node}     = $name;
-            $u1->{groups}   = lc($hwtype).",all";
-            $u1->{nodetype} = $nodetype{$type};   
-            $db{nodelist}->setAttribs( $k1,$u1 );
-            $db{nodelist}{commit} = 1;
+			$k3->{node}     = $name;
+			$u3->{nodetype} = $nodetype{$type};
+			$db{nodetype}->setAttribs( $k3,$u3 );
+            $db{nodetype}{commit} = 1;
 
             ###########################
             # Update nodehm table
