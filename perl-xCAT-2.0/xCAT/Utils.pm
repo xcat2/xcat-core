@@ -1063,7 +1063,7 @@ sub classful_networks_for_net_and_mask
        $given_mask = 1;
        my $masknumber = unpack("N",inet_aton($mask));
        $mask=32;
-       while ($masknumber % 2) {
+       until ($masknumber % 2) {
           $masknumber = $masknumber >> 1;
           $mask--;
        }
@@ -1074,7 +1074,7 @@ sub classful_networks_for_net_and_mask
     if ($bitstoeven eq 8) { $bitstoeven = 0; }
     my $resultmask = $mask + $bitstoeven;
     if ($given_mask) {
-       $resultmask = inet_ntoa((2**$resultmask-1) << (32 -  $resultmask));
+       $resultmask = inet_ntoa(pack("N",(2**$resultmask-1) << (32 -  $resultmask)));
     }
     push @results,$resultmask;
 
