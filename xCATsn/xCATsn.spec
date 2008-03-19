@@ -15,7 +15,7 @@ Provides: xCATsn = %{version}
 Requires: xCAT-server xCAT-client  perl-xCAT 
 
 %ifos linux
-Requires: tftp-server dhcp httpd nfs-utils expect conserver fping bind perl-DBD-Pg postgresql-server postgresql
+Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-DBD-Pg postgresql-server postgresql syslinux
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
