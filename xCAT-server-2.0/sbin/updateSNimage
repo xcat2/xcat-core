@@ -219,17 +219,7 @@ $copy6 .= $hostname;
 $copy6 .= $path1;
 $copy6 .= $filename2;
 
-# cp -p /etc/profile.d/xcatsn.sh $path/etc/profile.d/xcatsn.sh , if local or
-# scp -p /etc/profile.d/xcatsn.sh $hostname:$path/etc/profile.d/xcatsn.sh if remote
-$filename  = " /etc/profile.d/xcatsn.sh ";
-$filename2 = "etc/profile.d/xcatsn.sh ";
-my $copy7 = $cpy;
-$copy7 .= " -p ";
-$copy7 .= $filename;
-$copy7 .= $hostname;
-$copy7 .= $path1;
-$copy7 .= $filename2;
-my @cmd = ($copy1, $copy2, $copy3, $copy4, $copy5, $copy6, $copy7);
+my @cmd = ($copy1, $copy2, $copy3, $copy4, $copy5, $copy6);
 
 foreach $cmd (@cmd)
 {
