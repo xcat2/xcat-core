@@ -230,9 +230,6 @@ sub process_request {
   if (grep /-n/,@{$req->{arg}}) {
     if (-e "/etc/dhcpd.conf") {
       my $bakname = "/etc/dhcpd.conf.xcatbak";
-      while (-e $bakname) { #look for unused backup name..
-        $bakname .= "~";
-      }
       rename("/etc/dhcpd.conf",$bakname);
     }
   } else {
