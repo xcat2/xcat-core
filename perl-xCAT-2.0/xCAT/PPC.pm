@@ -436,7 +436,7 @@ sub resolve {
     my $request = shift;
     my $node    = shift;
     my $tabs    = shift;
-    my @attribs = qw(id profile parent hcp);
+    my @attribs = qw(id pprofile parent hcp);
     my @values  = ();
 
     #################################
@@ -516,22 +516,22 @@ sub resolve {
     # Optional and N/A fields 
     #################################
     elsif ( $type =~ /^$::NODETYPE_FSP$/ ) {
-        $att->{profile} = 0;
-        $att->{id}      = 0;
-        $att->{fsp}     = 0;
-        $att->{node}    = $node;
-        $att->{type}    = $type;
-        $att->{parent}  = exists($att->{parent}) ? $att->{parent} : 0;
-        $att->{bpa}     = $att->{parent};
+        $att->{pprofile} = 0;
+        $att->{id}       = 0;
+        $att->{fsp}      = 0;
+        $att->{node}     = $node;
+        $att->{type}     = $type;
+        $att->{parent}   = exists($att->{parent}) ? $att->{parent} : 0;
+        $att->{bpa}      = $att->{parent};
     }
     elsif ( $type =~ /^$::NODETYPE_BPA$/ ) {
-        $att->{profile} = 0;
-        $att->{id}      = 0;
-        $att->{bpa}     = 0;
-        $att->{parent}  = 0;
-        $att->{fsp}     = 0;
-        $att->{node}    = $node;
-        $att->{type}    = $type;
+        $att->{pprofile} = 0;
+        $att->{id}       = 0;
+        $att->{bpa}      = 0;
+        $att->{parent}   = 0;
+        $att->{fsp}      = 0;
+        $att->{node}     = $node;
+        $att->{type}     = $type;
     }
     #################################
     # Find MTMS in vpd database 
@@ -563,7 +563,7 @@ sub resolve {
     #################################
     # Build array of data 
     #################################
-    foreach ( qw(id profile fsp hcp type bpa) ) {
+    foreach ( qw(id pprofile fsp hcp type bpa) ) {
         push @values, $att->{$_};
     }
     return( \@values );
@@ -840,6 +840,7 @@ sub process_request {
 
 
 1;
+
 
 
 

@@ -21,7 +21,7 @@ my @header = (
     ["serial-number", "%-15s" ],
     ["address",       "%s\n" ]);
 
-my @attribs = qw(nodetype node id model serial hcp profile parent groups mgt);
+my @attribs = qw(nodetype node id model serial hcp pprofile parent groups mgt);
 my %nodetype = (
     fsp  => $::NODETYPE_FSP,
     bpa  => $::NODETYPE_BPA,
@@ -593,6 +593,7 @@ sub rscan {
 
 
 1;
+
 
 
 

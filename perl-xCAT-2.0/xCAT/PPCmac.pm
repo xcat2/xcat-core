@@ -136,18 +136,14 @@ sub validate_ip {
 ##########################################################################
 sub ivm_getmacs {
 
-    my $request = shift;
-    my $d       = shift;
-    my $exp     = shift; 
-    my $name    = shift;
-    my $opt     = $request->{opt};
-    my $id      = @$d[0];
-    my $profile = @$d[1];
-    my $fsp     = @$d[2];
-    my $hcp     = @$d[3];
-    my $ssh     = @$exp[0];
-    my $userid  = @$exp[4];
-    my $pw      = @$exp[5];
+    my $request  = shift;
+    my $d        = shift;
+    my $exp      = shift; 
+    my $name     = shift;
+    my $opt      = $request->{opt};
+    my $ssh      = @$exp[0];
+    my $userid   = @$exp[4];
+    my $pw       = @$exp[5];
     my $cmd;
     my $result;
 
@@ -155,6 +151,14 @@ sub ivm_getmacs {
     # Disconnect Expect session 
     #######################################
     xCAT::PPCcli::disconnect( $exp );
+
+    #######################################
+    # Get node data
+    #######################################
+    my $id       = @$d[0];
+    my $pprofile = @$d[1];
+    my $fsp      = @$d[2];
+    my $hcp      = @$d[3];
 
     #######################################
     # Find Expect script 
@@ -202,7 +206,7 @@ sub ivm_getmacs {
     #######################################
     # Add command options 
     #######################################
-    $cmd.= " -t ent -f -M -A -n \"$name\" \"$profile\" \"$fsp\" $id $hcp $fname";
+    $cmd.= " -t ent -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp $fname";
 
     #######################################
     # Execute command 
@@ -409,6 +413,9 @@ sub writemac {
 
 
 1;
+
+
+
 
 
 

@@ -36,7 +36,7 @@ sub add_ppc {
             $model,
             $serial,
             $server,
-            $profile,
+            $pprofile,
             $parent,
             $ips ) = split /,/;
          
@@ -45,11 +45,11 @@ sub add_ppc {
         ###############################
         if ( $type =~ /^fsp|bpa|lpar$/ ) {
             my ($k,$u);
-            $k->{node}    = $name;
-            $u->{hcp}     = $server;
-            $u->{id}      = $id;
-            $u->{profile} = $profile;
-            $u->{parent}  = $parent;
+            $k->{node}     = $name;
+            $u->{hcp}      = $server;
+            $u->{id}       = $id;
+            $u->{pprofile} = $pprofile;
+            $u->{parent}   = $parent;
             $db{ppc}->setAttribs( $k, $u );
             $db{ppc}{commit} = 1;
 
@@ -62,27 +62,27 @@ sub add_ppc {
             $db{nodelist}->setAttribs( $k1,$u1 );
             $db{nodelist}{commit} = 1;
 
-			###########################
+            ###########################
             # Update nodetype table
             ###########################
-			my ($k3,$u3);
-			my %nodetype = (
+            my ($k2,$u2);
+            my %nodetype = (
                  fsp  => $::NODETYPE_FSP,
                  bpa  => $::NODETYPE_BPA,
                  lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI"
             );
-			$k3->{node}     = $name;
-			$u3->{nodetype} = $nodetype{$type};
-			$db{nodetype}->setAttribs( $k3,$u3 );
+            $k2->{node}     = $name;
+            $u2->{nodetype} = $nodetype{$type};
+            $db{nodetype}->setAttribs( $k2,$u2 );
             $db{nodetype}{commit} = 1;
 
             ###########################
             # Update nodehm table
             ###########################
-            my ($k2,$u2);
-            $k2->{node} = $name;
-            $u2->{mgt}  = $hwtype;
-            $db{nodehm}->setAttribs( $k2,$u2 );
+            my ($k3,$u3);
+            $k3->{node} = $name;
+            $u3->{mgt}  = $hwtype;
+            $db{nodehm}->setAttribs( $k3,$u3 );
             $db{nodehm}{commit} = 1;
         }
         ###############################
@@ -281,6 +281,7 @@ sub credentials {
 
 
 1;
+
 
 
 

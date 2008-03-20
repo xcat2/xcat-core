@@ -725,7 +725,7 @@ sub list {
             my $lparid = @$d[0];
             my $mtms   = @$d[2];
             my $type   = @$d[4];
-            my $profile;
+            my $pprofile;
 
             ####################################
             # Must be CEC or LPAR
@@ -792,9 +792,9 @@ sub list {
                 #################################
                 # List LPAR profile
                 #################################
-                $profile .= "@$prof[0]\n\n";
+                $pprofile .= "@$prof[0]\n\n";
             }                
-            push @values, [$lpar, $profile, SUCCESS];
+            push @values, [$lpar, $pprofile, SUCCESS];
         }
     }
     return( \@values );
@@ -966,9 +966,9 @@ sub xCATdB {
     #######################################
     else {
         my ($model,$serial) = split /\*/,@$d[2]; 
-        my $profile = $name;
-        my $server  = @$d[3]; 
-        my $fsp     = @$d[2];
+        my $pprofile = $name;
+        my $server   = @$d[3]; 
+        my $fsp      = @$d[2];
 
         ###################################
         # Find FSP name in ppc database
@@ -1002,7 +1002,7 @@ sub xCATdB {
                 $model,
                 $serial,
                 $server,
-                $profile,
+                $pprofile,
                 $ent->{parent} ); 
         
         return( xCAT::PPCdb::add_ppc( $hwtype, [$values] )); 
@@ -1044,5 +1044,6 @@ sub lsvm {
 
 
 1;
+
 
 

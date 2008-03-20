@@ -100,10 +100,10 @@ sub ivm_rnetboot {
     #######################################
     # Get node data 
     #######################################
-    my $id      = @$d[0];
-    my $profile = @$d[1];
-    my $fsp     = @$d[2];
-    my $hcp     = @$d[3];
+    my $id       = @$d[0];
+    my $pprofile = @$d[1];
+    my $fsp      = @$d[2];
+    my $hcp      = @$d[3];
 
     #######################################
     # Find Expect script 
@@ -144,7 +144,7 @@ sub ivm_rnetboot {
     #######################################
     # Add command options
     #######################################
-    $cmd.= " -t ent -f \"$name\" \"$profile\" \"$fsp\" $id $hcp $fname";
+    $cmd.= " -t ent -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp $fname";
 
     #######################################
     # Execute command
@@ -334,6 +334,7 @@ sub rnetboot {
  
 
 1;
+
 
 
 
