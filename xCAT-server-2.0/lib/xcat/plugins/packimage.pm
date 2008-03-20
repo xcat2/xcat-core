@@ -33,8 +33,18 @@ sub process_request {
       "profile|p=s" => \$profile,
       "arch|a=s" => \$arch,
       "osver|o=s" => \$osver,
-      "method|m=s" => \$method
+      "method|m=s" => \$method,
+      "help|h" => \$help,
+      "version|v" => \$version
       );
+   if ($version) {
+      $callback->({info=>["Version 2.0"]});
+      return;
+   }
+   if ($help) {
+      $callback->({info=>["packimage -h \npackimage -v \npackimage [-p profile] [-a architecture] [-o OS] [-m method]\n"]});
+      return;
+   }
    my $distname = $osver;
    until (-r  "$::XCATROOT/share/xcat/netboot/$distname/" or not $distname) {
       chop($distname);

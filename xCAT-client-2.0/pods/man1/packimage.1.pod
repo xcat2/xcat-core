@@ -9,7 +9,7 @@ I<packimage [-h| --help]>
 I<packimage  [-v| --version]>
 
 
-I<packimage [-o OS] [ -p profile] [-a architecture]>
+I<packimage [-o OS] [ -p profile] [-a architecture] [-m method]>
 
 
 =head1 DESCRIPTION
@@ -32,6 +32,8 @@ B<-o>          Operating system (redora8, rhel5, sles10,etc)
 B<-p>          Profile (compute,service) 
 
 B<-a>          Architecture (ppc64,x86_64,etc) 
+
+B<-m>          Method (default cpio) 
 
 
 =head1 RETURN VALUE
