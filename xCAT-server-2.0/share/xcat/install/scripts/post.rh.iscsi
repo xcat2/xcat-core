@@ -51,6 +51,9 @@ do
 done
 tar -xvf xcatpost.tar.bz2
 /xcatpost/#TABLE:nodelist:THISNODE:node#
+export NODE=#TABLE:nodelist:THISNODE:node#
+export PATH=/xcatpost:$PATH
+uploadboot
 cd /
 rm -Rf /xcatpost
 exit 0
