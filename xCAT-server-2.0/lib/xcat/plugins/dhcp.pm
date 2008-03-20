@@ -227,7 +227,7 @@ sub process_request {
       $callback->({data=>["Usage: makedhcp <-n> <noderange>"]});
       return;
   }
-  if (grep /-n/,@{$req->{arg}}) {
+  if (grep /^-n$/,@{$req->{arg}}) {
     if (-e "/etc/dhcpd.conf") {
       my $bakname = "/etc/dhcpd.conf.xcatbak";
       rename("/etc/dhcpd.conf",$bakname);

@@ -1211,6 +1211,9 @@ sub nodeonmynet
     {
         $nodetocheck = shift;
     }
+    unless (inet_aton($nodetocheck)) {
+       return 0;
+    }
     my $nodeip = inet_ntoa(inet_aton($nodetocheck));
     unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
     {
