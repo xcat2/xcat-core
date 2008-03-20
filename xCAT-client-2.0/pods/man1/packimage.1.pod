@@ -1,0 +1,61 @@
+=head1 NAME
+ 
+B<packimage> - Builds the stateless image from the chroot file system.  
+ 
+=head1 SYNOPSIS
+ 
+I<packimage [-h| --help]>
+
+I<packimage  [-v| --version]>
+
+
+I<packimage [-o OS] [ -p profile] [-a architecture]>
+
+
+=head1 DESCRIPTION
+
+Builds the stateless image from the chroot file system.
+The install dir is setup by using "installdir" attribute set in the site table. 
+The nodetype table "profile" attribute for the node should reflect the profile of the install image. 
+
+This uses the package information from the /opt/xcat/share/xcat/netboot/[os] directory files for the profile input.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+B<-o>          Operating system (redora8, rhel5, sles10,etc) 
+
+B<-p>          Profile (compute,service) 
+
+B<-a>          Architecture (ppc64,x86_64,etc) 
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To pack a fedora8 image for a compute node architecture x86_64 and place it in the  /install/netboot/fedora8/x86_64/compute/rootimg directory enter: 
+
+I<packimage  -o fedora8 -p compute -a x86_64> 
+
+This would use the package information from the /opt/xcat/share/xcat/netboot/fedora/compute* files.
+
+=head1 FILES
+ 
+/opt/xcat/sbin/packimage
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+ 
