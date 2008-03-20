@@ -263,6 +263,15 @@ sub process_request {
   foreach (keys %activenics) {
     addnic($_);
   }
+  if (grep /^-a$/,@{$req->{arg}}) {
+     $req->{node} = [];
+     my $mactab = xCAT::Table->new('mac');
+     my @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
+     foreach (@entries) {
+        push @{$req->{node}},$_->{node};
+     }
+  }
+
   if ($req->{node}) {
     @ARGV = @{$req->{arg}};
     $statements="";
