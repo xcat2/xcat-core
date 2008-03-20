@@ -68,7 +68,7 @@ $value=join(' ', @a);
 $message .= "    $oid=$value\n";
 checkWithOid($oid, $value);
 #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
-if ($IGNORE) { print "out\n";  exit 0;}
+if ($IGNORE) { exit 0;}
 
 #for ipmi traps, the values is: SNMPv2-SMI::enterprises.3183.1.1.0.x, x is the ipmi trap id.
 $value =~ s/(SNMPv2-SMI::enterprises\.3183\.1\.1\.0\.)//g;
@@ -228,19 +228,18 @@ while ($temp=<STDIN>) {
   $value =~ s/\"//g;  
   checkWithOid($oid, $value);
   #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
-  if ($IGNORE) { print "out\n"; exit 0;} 
+  if ($IGNORE) { exit 0;} 
 }
 
 if (!$severity_type) { $severity_type="Warning"; }
-if ((!$IGNORE) && exists($hashI{$severity_type})) {  print "out\n"; exit 0; }
+if ((!$IGNORE) && exists($hashI{$severity_type})) { exit 0; }
 if ((!$EMAIL) && exists($hashE{$severity_type})) { $EMAIL=1; }
 if ((!$LOG) && exists($hashL{$severity_type})) { $LOG=1; }
 if ((!$RUNCMD) && exists($hashR{severity_type})) { $RUNCMD=1; }
 #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
 
 #email 'alerts' aliase
-if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) {
-  print "email\n"; 
+if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) { 
   #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
   #$datetime=sprintf "%2d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec;
   #my $head="SNMP $severity received from $host($ip) on $datetime\n$briefmsg\n";
@@ -259,7 +258,6 @@ if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) {
 
 #log to syslog if needed. default is log all
 if ($LOG || (keys(%hashL)==0)) {
-  print "log\n"; 
   my $head="SNMP $severity received from $host($ip).";
   my $body;
   if ($briefmsg) { $body=$briefmsg;} 
@@ -276,7 +274,6 @@ if ($LOG || (keys(%hashL)==0)) {
 
 #run user defined commands if needed.
 if ($RUNCMD) {
-  print "runcmd\n"; 
   my $scripts=$settings{'cmds'};
   while ($scripts =~ s/^([^,]+)(,)*//) {
      my $cmd="echo \'host=$host\nip=$ip\n$message\n\' \| $1";

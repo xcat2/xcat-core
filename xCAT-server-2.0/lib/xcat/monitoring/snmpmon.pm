@@ -8,6 +8,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use IO::File;
 use xCAT::Utils;
+use xCAT::MsgUtils;
 
 
 #print "xCAT_monitoring::snmpmon loaded\n";
@@ -135,7 +136,7 @@ sub configBMC {
   if ($action==0) {$actionstring="dis";}
   my $result = `XCATBYPASS=Y rspconfig $noderange alert=$actionstring 2>&1`;
   if ($?) {
-    print "Changeing SNMP PEF policy for $noderange:\n  $result\n";
+     xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for $noderange:\n  $result\n");
   } 
 
   #setup the snmp destination
@@ -146,7 +147,7 @@ sub configBMC {
       my $nr2=join(',', @$ref2);
       my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$_ 2>&1`;
       if ($?) {
-        print "Changing SNMP destination for $nr2:\n  $result2\n"; 
+         xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for $nr2:\n  $result2\n"); 
       }
     }
   }

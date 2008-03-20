@@ -274,7 +274,7 @@ sub startmon {
   my $mon_hierachy=xCAT_monitoring::monitorctrl->getMonHierarchy();
   my @mon_servers=keys(%$mon_hierachy); 
   my @hostinfo=xCAT::Utils->determinehostname();
-  print "hostinfo=@hostinfo\n";
+  #print "hostinfo=@hostinfo\n";
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   foreach (@mon_servers) {

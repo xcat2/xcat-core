@@ -25,6 +25,7 @@ use xCAT_monitoring::montbhandler;
 $NODESTAT_MON_NAME; 
 $masterpid;
 
+
 1;
 
 #-------------------------------------------------------------------------------
@@ -88,11 +89,11 @@ sub start {
       my @ret2 = startNodeStatusMonitoring($NODESTAT_MON_NAME);
       $ret{"Node status monitoring with $NODESTAT_MON_NAME"}=\@ret2;
     }
-    # TODO: somehow, we should log the return status here
     if (%ret) {
       foreach(keys(%ret)) {
         my $retstat=$ret{$_}; 
-        print "$_: @$retstat\n";
+        xCAT::MsgUtils->message('S', "[mon]: $_: @$retstat\n");
+        #print "$_: @$retstat\n";
       }
     }
     
@@ -236,10 +237,10 @@ sub handleMonSignal {
   #setup the signal again  
   $SIG{USR2}=\&handleMonSignal;
 
-  #TODO: log status
+  #log status
   foreach(keys(%ret)) {
     my $retstat=$ret{$_}; 
-    print "$_: @$retstat\n";
+    xCAT::MsgUtils->message('S', "[mon]: $_: @$retstat\n");
   }
 }
 
@@ -297,7 +298,8 @@ sub stop {
   if (%ret) {
     foreach(keys(%ret)) {
       $retstat=$ret{$_};
-      print "$_: @$retstat\n";
+      xCAT::MsgUtils->message('S',"[mon]: $_: @$retstat\n"); 
+     # print "$_: @$retstat\n";
     }
   }
 
@@ -827,7 +829,7 @@ sub refreshProductList {
         #load the module in memory
         eval {require($file_name)};
         if ($@) {   
-          print "The file $file_name cannot be located or has compiling errors.\n"; 
+          xCAT::MsgUtils->message('S', "[mon]: The file $file_name cannot be located or has compiling errors.\n"); 
         }
         else {
           my @a=($file_name, $module_name);
