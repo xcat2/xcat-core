@@ -360,6 +360,8 @@ sub addnet {
     }
 
     my @netent;
+    my $maskn = unpack("N",inet_aton($mask));
+    my $netn = unpack("N",inet_aton($net));
     @netent = (
       "  subnet $net netmask $mask {\n",
       "    max-lease-time 43200;\n",
@@ -367,7 +369,12 @@ sub addnet {
       "    default-lease-time 43200;\n"
       );
     if ($gateway) {
-      push @netent,"    option routers  $gateway;\n";
+      my $gaten = unpack("N",inet_aton($gateway));
+      if  (($gaten & $maskn) == ($maskn & $netn)) {
+         push @netent,"    option routers  $gateway;\n";
+      } else {
+       $callback->({error=>["Specified gateway $gateway is not valid for $net/$mask, must be on same network"],errorcode=>[1]});
+      }
     }
     if ($tftp) {
       push @netent,"    next-server  $tftp;\n";
