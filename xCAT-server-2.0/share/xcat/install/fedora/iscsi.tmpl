@@ -33,7 +33,7 @@ clearpart --all --initlabel
 #
 
 iscsiname #TABLE:nodelist:$NODE:node#
-iscsi --ipaddr #TABLE:iscsi:$NODE:server# --user "#TABLE:iscsi:$NODE:userid#" --password "#TABLE:iscsi:$NODE:passwd#"
+iscsi --ipaddr #TABLE:iscsi:$NODE:server# --user "#TABLEBLANKOKAY:iscsi:$NODE:userid#" --password "#TABLEBLANKOKAY:iscsi:$NODE:passwd#"
 
 #No RAID
 #/boot really significant for this sort of setup nowadays?

@@ -70,6 +70,7 @@ sub subvars {
   #ok, now do everything else..
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg;
+  $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -156,6 +157,7 @@ sub tabdb
 	my $table = shift;
 	my $key = shift;
 	my $field = shift;
+   my $blankok = shift;
     my $tabh = xCAT::Table->new($table);
     unless ($tabh) {
        $tmplerr="Unable to open table named $table";
@@ -179,7 +181,9 @@ sub tabdb
     }
     $tabh->close;
     unless($ent and  defined($ent->{$field})) {
-      $tmplerr="Unable to find requested $field from $table in this context";
+      unless ($blankok) {
+         $tmplerr="Unable to find requested $field from $table in this context";
+      }
       return "";
       #return "#TABLEBAD:$table:field $field not found#";
     }
