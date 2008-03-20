@@ -264,11 +264,20 @@ sub process_request {
     addnic($_);
   }
   if (grep /^-a$/,@{$req->{arg}}) {
-     $req->{node} = [];
-     my $mactab = xCAT::Table->new('mac');
-     my @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
-     foreach (@entries) {
-        push @{$req->{node}},$_->{node};
+     if (grep /-d$/,@{$req->{arg}}) {
+        $req->{node} = [];
+        my $nodelist = xCAT::Table->new('nodelist');
+        my @entries = ($nodelist->getAllNodeAttribs([qw(node)]));
+        foreach (@entries) {
+         push @{$req->{node}},$_->{node};
+        }
+     } else {
+      $req->{node} = [];
+      my $mactab = xCAT::Table->new('mac');
+      my @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
+      foreach (@entries) {
+           push @{$req->{node}},$_->{node};
+      }
      }
   }
 
