@@ -114,10 +114,16 @@ LINE: while(<HOSTS>){
     tr/A-Z/a-z/;	 # translate to lower case 
 
     ($data,$comment) = split('#', $_, 2);
-    ($addr, $names) = split(' ', $data, 2);
+    ($addr, $names) = split(/[ 	]+/, $data, 2);
     if ($names =~ /^[ \t]*$/) {
 	    #$callback->({data=>["Bad line in hosts file ignored '$_'"]});
 	    next LINE;
+    }
+    $addr =~ s/^[    ]*//;
+    $addr =~ s/[    ]*$//;
+    if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/) {
+       $callback->({data=>["Ignoring $addr (not a valid IPv4 address)"]});
+       next LINE;
     }
 
     # Match -e args
