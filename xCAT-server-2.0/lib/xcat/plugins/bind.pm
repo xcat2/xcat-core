@@ -116,7 +116,7 @@ LINE: while(<HOSTS>){
     ($data,$comment) = split('#', $_, 2);
     ($addr, $names) = split(' ', $data, 2);
     if ($names =~ /^[ \t]*$/) {
-	    $callback->({data=>["Bad line in hosts file ignored '$_'"]});
+	    #$callback->({data=>["Bad line in hosts file ignored '$_'"]});
 	    next LINE;
     }
 
@@ -142,7 +142,7 @@ LINE: while(<HOSTS>){
     # Check that the address is in the address list.
     $match = 'none';
     foreach $netpat (@Netpatterns){
-	$match = $netpat, last if ($addr =~ /^$netpat\./);
+	$match = $netpat, last if ($addr =~ /^$netpat\./ or $addr =~ /^$netpat$/);
     }
     next if ($match eq 'none');
 
