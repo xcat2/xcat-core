@@ -14,6 +14,7 @@ use IO::Select;
 use xCAT::Utils;
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
+use Thread qw(yield);
 my $interface;
 my $username;
 my $help;
@@ -109,16 +110,21 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
   my $rc = @readyins;
   my $readyh;
   foreach $readyh (@readyins) {
-    my $line = <$readyh>;
-    unless ($line) {
-      $inputs->remove($readyh);
-      close($readyh);
-      next;
-    }
-    chomp($line);
-    print $nodehdl{$readyh}.": ".$line."\n";
-    IO::Handle::flush(stdout);
+     my $cursel = new IO::Select;
+     $cursel->add($readyh);
+     while ($cursel->can_read(0)) {
+       my $line = <$readyh>;
+       unless ($line) {
+         $inputs->remove($readyh);
+         close($readyh);
+         next;
+       }
+       chomp($line);
+       print $nodehdl{$readyh}.": ".$line."\n";
+     }
   }
+  IO::Handle::flush(stdout);
+  yield; #Explicitly give all children a chance to refill any buffers
   return $rc;
 }
 sub sshnode {
