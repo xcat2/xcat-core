@@ -171,6 +171,7 @@ sub fillresps {
   my $response = shift;
   my $mac = $response->{node}->[0]->{data}->[0]->{contents}->[0];
   my $node = $response->{node}->[0]->{name}->[0];
+  $mac = uc($mac); #Make sure it is uppercase, the MM people seem to change their mind on this..
   $macmap{$mac} = $node;
   #$macmap{$response->{node}->[0]->{data}->{contents}->[0]}=$response->{node}->[0]->{name};
 }

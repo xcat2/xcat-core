@@ -1145,6 +1145,41 @@ sub my_hexnets
 
 #-------------------------------------------------------------------------------
 
+=head3   my_if_netmap
+   Arguments:
+      none
+   Returns:
+      hash of networks to interface names
+   Globals:
+      none
+   Error:
+      none
+   Comments:
+      none
+=cut
+#-------------------------------------------------------------------------------
+sub my_if_netmap {
+   if (scalar(@_)) { #called with the other syntax
+      $net = shift;
+   }
+   my @rtable = split /\n/,`netstat -rn`;
+   if ($?) {
+      return "Unable to run netstat, $?";
+   }
+   my %retmap;
+   foreach (@rtable) {
+      if (/^\D/) { next; } #skip headers
+      if (/^\S+\s+\S+\s+\S+\s+\S*G/) { next; } #Skip networks that require gateways to get to
+      /^(\S+)\s.*\s(\S+)$/;
+      $retmap{$1}=$2;
+   }
+   return \%retmap;
+}
+
+
+
+#-------------------------------------------------------------------------------
+
 =head3   my_ip_facing    
     
     Arguments:

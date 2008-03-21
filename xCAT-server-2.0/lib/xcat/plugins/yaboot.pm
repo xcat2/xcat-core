@@ -121,7 +121,9 @@ sub setstate {
         my @macs = split(/\|/,$ment->{mac});
         foreach (@macs) {
            if (/!(.*)/) {
-              $ipaddrs{inet_ntoa(inet_aton($1))} = 1;
+              if (inet_aton($1)) {
+               $ipaddrs{inet_ntoa(inet_aton($1))} = 1;
+              }
            }
         }
      }

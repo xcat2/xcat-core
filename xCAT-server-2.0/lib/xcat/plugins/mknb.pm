@@ -112,7 +112,7 @@ sub process_request {
          print $cfgfile "DEFAULT xCAT\n";
          print $cfgfile "  LABEL xCAT\n";
          print $cfgfile "  KERNEL xcat/nbk.$arch\n";
-         print $cfgfile "  APPEND initrd=xcat/nbfs.$arch.gz xcatd=".$hexnets->{$_}.":$xcatdport $consolecmdline\n";
+         print $cfgfile "  APPEND initrd=xcat/nbfs.$arch.gz quiet xcatd=".$hexnets->{$_}.":$xcatdport $consolecmdline\n";
          close($cfgfile);
       } elsif ($arch =~ /ppc/) {
          open($cfgfile,">","$tftpdir/etc/".lc($_));
@@ -120,7 +120,7 @@ sub process_request {
          print $cfgfile "   label=xcat\n";
          print $cfgfile "   image=xcat/nbk.$arch\n";
          print $cfgfile "   initrd=xcat/nbfs.$arch.gz\n";
-         print $cfgfile '   append="xcatd='.$hexnets->{$_}.":$xcatdport $consolecmdline\"\n";
+         print $cfgfile '   append="quiet xcatd='.$hexnets->{$_}.":$xcatdport $consolecmdline\"\n";
          close($cfgfile);
       }
    }

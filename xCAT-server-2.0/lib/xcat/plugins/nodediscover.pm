@@ -13,6 +13,7 @@ use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use IO::Select;
 use IO::Handle;
+use xCAT::Utils;
 use Sys::Syslog;
 
 
@@ -29,7 +30,9 @@ sub gethosttag {
    my $node = shift;
    my $netn = shift;
    my $ifname = shift;
-   my $mgtifname = "";
+   my $usednames = shift;
+   my %netmap = %{xCAT::Utils::my_if_netmap};
+   my $mgtifname = $netmap{$netn};
    my $secondpass = 0;
    my $name = "";
    my $defhost = inet_aton($node);
@@ -38,44 +41,40 @@ sub gethosttag {
    my @netents = @{$nettab->getAllEntries()};
    my $pass;
    #TODO: mgtifname field will get trounced in hierarchical setup, use a live check to match accurately
-   foreach $pass (1,2) { #two passes to allow for mgtifname matching
-     foreach (@netents) {
-      if ($_->{net} eq $netn or ($mgtifname and $mgtifname eq $_->{mgtifname})) {
-         $mgtifname = $_->{mgtifname}; #This flags the managementethernet for a second pass
-         if ($_->{nodehostname}) {
-	 	my $left;
-		my $right;
-		($left,$right) = split(/\//,$_->{nodehostname},2);
-		$name = $node;
-	 	$name =~ s/$left/$right/;
-		if ($name and inet_aton($name)) { 
-	          if ($netn eq $_->{net}) { return $name; } 
-		  #At this point, it could still be valid if block was entered due to mgtifname
-	   	  my $nnetn = inet_ntoa(pack("N",unpack("N",inet_aton($name)) & unpack("N",inet_aton($_->{mask}))));
-	          if ($nnetn eq $_->{net}) { return $name; }
-		}
-		$name=""; #Still here, this branch failed
-	}
-	$defn = inet_ntoa(pack("N",unpack("N",$defhost) & unpack("N",inet_aton($_->{mask}))));
-	if ($defn eq $_->{net}) { #the default nodename is on this network
-	   return $node;
-	}
-	my $tentativehost = $node . "-".$ifname;
-	my $tnh = inet_aton($tentativehost);
-	if ($tnh) {
-	   my $nnetn = inet_ntoa(pack("N",unpack("N",$tnh) & unpack("N",inet_aton($_->{mask}))));
-	   if ($nnetn eq $_->{net}) {
-	      return $tentativehost;
-	   }
-	}
+   foreach (@netents) {
+      if ($_->{net} eq $netn or ($mgtifname and $mgtifname eq $netmap{$_->{net}})) { #either is the network  or shares physical interface
+         if ($_->{nodehostname}) { #Check for a nodehostname rule in the table
+            my $left;
+            my $right;
+            ($left,$right) = split(/\//,$_->{nodehostname},2);
+            $name = $node;
+            $name =~ s/$left/$right/;
+            if ($name and inet_aton($name)) { 
+               if ($netn eq $_->{net} and not $usednames->{$name}) { return $name; } 
+               #At this point, it could still be valid if block was entered due to mgtifname
+               my $nnetn = inet_ntoa(pack("N",unpack("N",inet_aton($name)) & unpack("N",inet_aton($_->{mask}))));
+               if ($nnetn eq $_->{net} and not $usednames->{$name}) { return $name; }
+            }
+            $name=""; #Still here, this branch failed
+         }
+         $defn="";
+         if ($defhost) {
+            $defn = inet_ntoa(pack("N",unpack("N",$defhost) & unpack("N",inet_aton($_->{mask}))));
+         }
+         if ($defn eq $_->{net} and not $usednames->{$node}) { #the default nodename is on this network
+            return $node;
+         }
+         my $tentativehost = $node . "-".$ifname;
+         my $tnh = inet_aton($tentativehost);
+         if ($tnh) {
+            my $nnetn = inet_ntoa(pack("N",unpack("N",$tnh) & unpack("N",inet_aton($_->{mask}))));
+            if ($nnetn eq $_->{net} and not $usednames->{$tentativehost}) {
+               return $tentativehost;
+            }
+         }
       }
-     }
-    }
+   }
 }
-
-	
-
-
 
 sub handled_commands {
   return {
@@ -108,6 +107,7 @@ sub process_request {
     my $mactab = xCAT::Table->new("mac",-create=>1);
     my @ifinfo;
     my $macstring = "";
+    my %usednames;
     foreach (@{$request->{mac}}) {
        @ifinfo = split /\|/;
        if ($ifinfo[3]) {
@@ -116,10 +116,13 @@ sub process_request {
 	  	my $ipn = unpack("N",inet_aton($ip));
 		my $mask = 2**$netbits-1<<(32-$netbits);
 		my $netn = inet_ntoa(pack("N",$ipn & $mask));
-		my $hosttag = gethosttag($node,$netn,@ifinfo[1]);
+		my $hosttag = gethosttag($node,$netn,@ifinfo[1],\%usednames);
 		if ($hosttag) {
+         $usednames{$hosttag}=1;
 		   $macstring .= $ifinfo[2]."!".$hosttag."|";
-		}
+		} else {
+         $macstring .= $ifinfo[2]."!*NOIP*|";
+      }
 	  }
        }
     }

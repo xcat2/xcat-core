@@ -5,6 +5,7 @@ hba=0
 
 MOD=""
 NICSTOWAIT=""
+touch /etc/motd
 echo "cat /etc/motd" >> /etc/profile
 
 #Load common usb drivers

@@ -279,6 +279,12 @@ if ($inet6support) {
   	    if ($req->{cacheonly}->[0]) {
 		delete $req->{cacheonly};
                 plugin_command($req,undef,\&convey_response);
+           #if ($req) {
+           #   $req->{cacheonly}->[0] = 1;
+           #   $req->{checkallmacs}->[0] = 1;
+           #     plugin_command($req,undef,\&convey_response);
+           # }
+
 	    }
           }
         }

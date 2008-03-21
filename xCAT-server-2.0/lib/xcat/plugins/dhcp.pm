@@ -44,14 +44,25 @@ sub delnode {
   	print $omshell "open\n";
   	print $omshell "remove\n";
   	print $omshell "close\n";
+   if ($mac) {
+  	   print $omshell "new host\n";
+  	   print $omshell "set hardware-address = ".$mac."\n"; #find and destroy mac conflict
+  	   print $omshell "open\n";
+  	   print $omshell "remove\n";
+  	   print $omshell "close\n";
+   }
   	if ($inetn) {
-  	  my $ip = inet_ntoa(inet_aton($hname));;
-  	  unless ($ip) { return; }
-  	  print $omshell "new host\n";
-  	  print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
-  	  print $omshell "open\n";
-  	  print $omshell "remove\n";
-  	  print $omshell "close\n";
+  	  my $ip;
+     if (inet_aton($hname)) {
+      $ip = inet_ntoa(inet_aton($hname));;
+     }
+  	  if ($ip) { 
+  	   print $omshell "new host\n";
+  	   print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
+  	   print $omshell "open\n";
+  	   print $omshell "remove\n";
+  	   print $omshell "close\n";
+     }
   	}
   }
   }
@@ -117,16 +128,31 @@ sub addnode {
   foreach $mace (@macs) {
 	my $mac;
 	my $hname;
+   $hname = "";
 	($mac,$hname) = split (/!/,$mace);	
 	unless ($hname) { $hname = $node; } #Default to hostname equal to nodename
-        unless ($mac) { next; } #Skip corrupt format
-  	my $inetn = inet_aton($hname);
+   unless ($mac) { next; } #Skip corrupt format
+   my $inetn;
+   $inetn="";
+   if ($hname eq '*NOIP*')  {
+      $inetn = "DENIED";
+      $hname = $node."-noip".$mac;
+      $hname =~ s/://g;
+   } else {
+  	   $inetn = inet_aton($hname);
+   }
   	unless ($inetn) {
     		syslog("local1|err","xCAT DHCP plugin unable to resolve IP for $hname (for $node)");
     		return;
   	}
-        my $ip = inet_ntoa(inet_aton($hname));;
-   if ($guess_next_server) {
+        my $ip;
+        $ip="";
+        if ($inetn eq "DENIED") {
+           $ip = "DENIED";
+        } else {
+         $ip = inet_ntoa(inet_aton($hname));;
+        }
+   if ($guess_next_server and $ip ne "DENIED") {
         my $nxtsrv = xCAT::Utils->my_ip_facing($hname);
         if ($nxtsrv) {
            $lstatements = "next-server $nxtsrv;$statements";
@@ -152,10 +178,14 @@ sub addnode {
   	print $omshell "set name = \"$hname\"\n";
   	print $omshell "set hardware-address = ".$mac."\n";
   	print $omshell "set hardware-type = 1\n";
-  	print $omshell "set ip-address = $ip\n";
-  	if ($lstatements) {
-  	    print $omshell "set statements = \"$lstatements\"\n";
-  	 }
+   if ($ip eq "DENIED") { #Blacklist this mac to preclude confusion, give best shot at things working
+         print $omshell "set statements = \"deny booting;\"\n";
+   } else {
+      print $omshell "set ip-address = $ip\n";
+      if ($lstatements) {
+         print $omshell "set statements = \"$lstatements\"\n";
+      }
+   }
 
   	print $omshell "create\n";
   	print $omshell "close\n";

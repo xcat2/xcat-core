@@ -80,6 +80,19 @@ while :; do
         for dhcps in `cat /tmp/dhcpserver`; do 
          cat /tmp/discout | udpcat.awk $dhcps $XCATPORT &
         done
+        for nic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'`; do #also, bring down interfaces to make sure that we send from the 'right' nic
+         for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
+            ifconfig $dnic down
+         done
+         cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT & #can't figure out how to make a hung gawk behave..
+         for dhcps in `cat /tmp/dhcpserver`; do 
+            cat /tmp/discout | udpcat.awk $dhcps $XCATPORT &
+         done
+         for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
+            ifconfig $dnic up
+         done
+        done
+         
         usleep 8000000
       fi
       killall udpcat.awk #reap hung ones
