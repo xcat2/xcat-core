@@ -77,9 +77,6 @@ while :; do
       then
         #if usleep succeeded, that means it wasn't killed and therefore, no answer yet
         killall udpcat.awk #reap hung ones
-        for dhcps in `cat /tmp/dhcpserver`; do 
-         cat /tmp/discout | udpcat.awk $dhcps $XCATPORT &
-        done
         for nic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'`; do #also, bring down interfaces to make sure that we send from the 'right' nic
          for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
             ifconfig $dnic down
