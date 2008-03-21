@@ -1,17 +1,17 @@
 =head1 NAME
  
-B<startmon> - Starts a plug-in module to monitor the xCAT cluster.
+B<monstart> - Starts a plug-in module to monitor the xCAT cluster.
 
   
  
 =head1 SYNOPSIS
  
-I<startmon [-h| --help]>
+I<monstart [-h| --help]>
 
-I<startmon  [-v| --version]>
+I<monstart  [-v| --version]>
 
 
-I<startmon I<name> [-n|--nodestatmon] [-s|--settings settings]> 
+I<monstart I<name> [-n|--nodestatmon] [-s|--settings settings]> 
 
 
 =head1 DESCRIPTION
@@ -49,27 +49,27 @@ B<-V | -verbose>       Verbose output.
 
 1. To start gangliamon plug-in module (which interacts with Ganglia monitoring software) to monitor the xCAT cluster, enter:
 
-  startmon gangliamon
+  monstart gangliamon
 
 2. To start rmcmon plug-in module (which interacts with IBM's RSCT monitoring software) to monitor the xCAT cluster and have it feed the node liveness status to xCAT's I<nodelist> table, enter:
 
-  startmon rmcmon -n 
+  monstart rmcmon -n 
 
 3. To start xcatmon plug-in module to feed the node liveness status to xCAT's I<nodelist> table, enter:
 
-  startmon rmcmon -n -s [ping-interval=2]
+  monstart rmcmon -n -s [ping-interval=2]
 where 2 is the number of minutes between the pings.
 
 
 
 =head1 FILES 
  
-/opt/xcat/bin/startmon
+/opt/xcat/bin/monstart
 
 
 =head1 NOTES
 
-See stopmon lsmon
+See monstop monls
 
 This command is part of the xCAT software product.
 

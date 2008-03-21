@@ -155,32 +155,28 @@ sub stopNodeStatusMon {
       This function is called by the monitorctrl module when new nodes are added 
       to the xCAT cluster. It should add the nodes into the product for monitoring.
     Arguments:
-      nodes --nodes to be added. It is a  hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
-        by the server. So the format is:
-          {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'bboting']...], ...} 
+      nodes --nodes to be added. It is a pointer to an array with each element
+        being a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
-  $noderef=shit;
+  $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::templatemon/) {
     $noderef=shift;
   }
 
   #demo how you can parse the input. you may commnet it out.
-  foreach (keys(%$noderef)) {
-    print "  monitoring server: $_\n";
-    my $mon_nodes=$noderef->{$_};
-    foreach(@$mon_nodes) {
-      my $node_info=$_;
-      print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
-    }
+
+  foreach(@$noderef) {
+    my $node_info=$_;
+    print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
   }
- 
+   
   #TODO: include the nodes into the product for monitoring. 
-  return;
+  return (0, "0k");
 }
 
 #--------------------------------------------------------------------------------
@@ -188,32 +184,28 @@ sub addNodes {
       This function is called by the monitorctrl module when nodes are removed 
       from the xCAT cluster. It should remove the nodes from the product for monitoring.
     Arguments:
-      nodes --nodes to be removed. It is a hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
-        by the server. So the format is:
-        {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
+      nodes --nodes to be removed. It is a pointer to an array with each element
+        being a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes {
-  $noderef=shit;
+  $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::templatemon/) {
     $noderef=shift;
   }
 
   #demo how you can parse the input. you may commnet it out.
-  foreach (keys(%$noderef)) {
-    print "  monitoring server: $_\n";
-    my $mon_nodes=$noderef->{$_};
-    foreach(@$mon_nodes) {
-      my $node_info=$_;
-      print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
-    }
+  foreach(@$noderef) {
+    my $node_info=$_;
+    print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
   }
+ 
 
   #TODO: remove the nodes from the product for monitoring.
-  return;
+  return (0, "ok");
 }
 
 

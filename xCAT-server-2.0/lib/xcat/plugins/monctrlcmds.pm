@@ -36,10 +36,12 @@ use xCAT::Utils;
 #--------------------------------------------------------------------------------
 sub handled_commands {
   return {
-    startmon => "monctrlcmds",
-    stopmon => "monctrlcmds",
-    updatemon => "monctrlcmds",
-    lsmon => "monctrlcmds",
+    monstart => "monctrlcmds",
+    monstop => "monctrlcmds",
+    monupdate => "monctrlcmds",
+    monls => "monctrlcmds",
+    monaddnode => "monctrlcmds",
+    monrmnode => "monctrlcmds",
   }
 }
 
@@ -66,8 +68,8 @@ sub process_request {
   my $command = $request->{command}->[0];
   my $args=$request->{arg};
 
-  if ($command eq "startmon") {
-    my ($ret, $msg) = startmon($args, $callback);
+  if ($command eq "monstart") {
+    my ($ret, $msg) = monstart($args, $callback);
     if ($msg) {
       my %rsp=();
       $rsp->{dara}->[0]= $msg;
@@ -75,8 +77,8 @@ sub process_request {
     }
     return $ret;
   } 
-  elsif ($command eq "stopmon") {
-    my ($ret, $msg) = stopmon($args, $callback);
+  elsif ($command eq "monstop") {
+    my ($ret, $msg) = monstop($args, $callback);
     if ($msg) {
       my %rsp=();
       $rsp->{data}->[0]= $msg;
@@ -84,11 +86,29 @@ sub process_request {
     }
     return $ret;
   } 
-  elsif ($command eq "updatemon") {
+  elsif ($command eq "monupdate") {
     xCAT_monitoring::monitorctrl::sendMonSignal();
   }
-  elsif ($command eq "lsmon") {
-    my ($ret, $msg) = lsmon($args, $callback);
+  elsif ($command eq "monls") {
+    my ($ret, $msg) = monls($args, $callback);
+    if ($msg) {
+      my %rsp=();
+      $rsp->{data}->[0]= $msg;
+      $callback->($rsp);
+    }
+    return $ret;
+  }
+  elsif ($command eq "monaddnode") {
+    my ($ret, $msg) = monaddnode($args, $callback);
+    if ($msg) {
+      my %rsp=();
+      $rsp->{data}->[0]= $msg;
+      $callback->($rsp);
+    }
+    return $ret;
+  }
+  elsif ($command eq "monrmnode") {
+    my ($ret, $msg) = monrmnode($args, $callback);
     if ($msg) {
       my %rsp=();
       $rsp->{data}->[0]= $msg;
@@ -106,7 +126,7 @@ sub process_request {
 
 
 #--------------------------------------------------------------------------------
-=head3   startmon
+=head3   monstart
         This function registers the given monitoring plug-in to the 'monitoring' table.
         xCAT will invoke the monitoring plug-in to start the 3rd party software, which
         this plug-in connects to, to monitor the xCAT cluster. 
@@ -128,7 +148,7 @@ sub process_request {
         1. for unsuccess. The error messages are returns through the callback pointer.
 =cut
 #--------------------------------------------------------------------------------
-sub startmon {
+sub monstart {
   my $args=shift;
   my $callback=shift;
   my $VERSION;
@@ -143,19 +163,19 @@ sub startmon {
 
 
   # subroutine to display the usage
-  sub startmon_usage
+  sub monstart_usage
   {
     my %rsp;
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  startmon name [-n|--nodestatmon] [-s|--settings settings]";
-    $rsp->{data}->[2]= "  startmon [-h|--help|-v|--version]";
+    $rsp->{data}->[1]= "  monstart name [-n|--nodestatmon] [-s|--settings settings]";
+    $rsp->{data}->[2]= "  monstart [-h|--help|-v|--version]";
     $rsp->{data}->[3]= "     name is the name of the monitoring plug-in module to be registered and invoked.";
-    $rsp->{data}->[4]= "       Use 'lsmon -a' command to list all the monitoring plug-in names.";
+    $rsp->{data}->[4]= "       Use 'monls -a' command to list all the monitoring plug-in names.";
     $rsp->{data}->[5]= "     settings is used by the monitoring plug-in to customize its behavior.";
     $rsp->{data}->[6]= "       Format: [key1=value1],[key2=value2]... ";
     $rsp->{data}->[7]= "       Please note that the square brackets are needed. ";
-    $rsp->{data}->[7]= "       Use 'lsmon name -d' command to look for the possible settings for a plug-in.";
-    $rsp->{data}->[8]= "  Example: startmon xcatmon -n -s [ping-interval=10]";
+    $rsp->{data}->[7]= "       Use 'monls name -d' command to look for the possible settings for a plug-in.";
+    $rsp->{data}->[8]= "  Example: monstart xcatmon -n -s [ping-interval=10]";
     $callback->($rsp);
   }
   
@@ -169,13 +189,13 @@ sub startmon {
       'n|nodestatmon'  => \$::NODESTATMON,
       's|settings=s'  => \$settings))
   {
-    &startmon_usage;
+    &monstart_usage;
     return;
   }
 
   # display the usage if -h or --help is specified
   if ($::HELP) { 
-    &startmon_usage;
+    &monstart_usage;
     return;
   }
 
@@ -183,7 +203,7 @@ sub startmon {
   if ($::VERSION)
   {
     my %rsp;
-    $rsp->{data}->[0]= "startmon version 1.0";
+    $rsp->{data}->[0]= "monstart version 1.0";
     $callback->($rsp);
     return;
   }
@@ -192,7 +212,7 @@ sub startmon {
   my $pname;
   if (@ARGV < 1)
   {
-    &startmon_usage;
+    &monstart_usage;
     return;
   }
   else {
@@ -216,7 +236,7 @@ sub startmon {
       }
   }
 
-  #my %ret = xCAT_monitoring::monitorctrl::startMonitoring(@product_names);
+  #my %ret = xCAT_monitoring::monitorctrl::startmonitoring(@product_names);
   
   #my %rsp;
   #$rsp->{data}->[0]= "starting @product_names";
@@ -282,7 +302,7 @@ sub startmon {
       my %rsp2;
       $rsp2->{data}->[0]="sending request to $_...";
       $callback->($rsp2);
-      my $result=`psh --nonodecheck $_ updatemon 2>1&`;     
+      my $result=`psh --nonodecheck $_ monupdate 2>1&`;     
       if ($result) {
         $rsp2->{data}->[0]="$result";
         $callback->($rsp2);
@@ -298,7 +318,7 @@ sub startmon {
 }
 
 #--------------------------------------------------------------------------------
-=head3   stopmon
+=head3   monstop
         This function unregisters the given monitoring plug-in from the 'monitoring' table.
         xCAT will ask the monitoring plug-in to stop the 3rd party software, which
         this plug-in connects to, to monitor the xCAT cluster. 
@@ -316,7 +336,7 @@ sub startmon {
         1. for unsuccess. The error messages are returns through the callback pointer.
 =cut
 #--------------------------------------------------------------------------------
-sub stopmon {
+sub monstop {
   my $args=shift;
   my $callback=shift;
   my $VERSION;
@@ -330,12 +350,12 @@ sub stopmon {
   }
 
   # subroutine to display the usage
-  sub stopmon_usage
+  sub monstop_usage
   {
     my %rsp;
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  stopmon name";
-    $rsp->{data}->[2]= "  stopmon [-h|--help|-v|--version]";
+    $rsp->{data}->[1]= "  monstop name";
+    $rsp->{data}->[2]= "  monstop [-h|--help|-v|--version]";
     $rsp->{data}->[3]= "      name is the name of the monitoring plug-in module registered in the monitoring table.";
     $callback->($rsp);
   }
@@ -346,13 +366,13 @@ sub stopmon {
       'h|help'     => \$::HELP,
       'v|version'  => \$::VERSION,))
   {
-    &stopmon_usage;
+    &monstop_usage;
     return;
   }
 
   # display the usage if -h or --help is specified
   if ($::HELP) { 
-    &stopmon_usage;
+    &monstop_usage;
     return;
   }
 
@@ -360,7 +380,7 @@ sub stopmon {
   if ($::VERSION)
   {
     my %rsp;
-    $rsp->{data}->[0]= "stopmon version 1.0";
+    $rsp->{data}->[0]= "monstop version 1.0";
     $callback->($rsp);
     return;
   }
@@ -370,7 +390,7 @@ sub stopmon {
   my $pname;
   if (@ARGV < 1)
   {
-    &stopmon_usage;
+    &monstop_usage;
     return;
   }
   else {
@@ -423,7 +443,7 @@ sub stopmon {
       my %rsp2;
       $rsp2->{data}->[0]="sending request to $_...";
       $callback->($rsp2);
-      my $result=`psh --nonodecheck $_ updatemon 2>1&`;     
+      my $result=`psh --nonodecheck $_ monupdate 2>1&`;     
       if ($result) {
         $rsp2->{data}->[0]="$result";
         $callback->($rsp2);
@@ -440,7 +460,7 @@ sub stopmon {
 
 
 #--------------------------------------------------------------------------------
-=head3   lsmon
+=head3   monls
         This function list the monitoring plug-in module names, status and description. 
     Arguments:
       callback - the pointer to the callback function.
@@ -452,20 +472,20 @@ sub stopmon {
         1. for unsuccess. The error messages are returns through the callback pointer.
 =cut
 #--------------------------------------------------------------------------------
-sub lsmon {
+sub monls {
   my $args=shift;
   my $callback=shift;
   my $VERSION;
   my $HELP;
 
   # subroutine to display the usage
-  sub lsmon_usage
+  sub monls_usage
   {
     my %rsp;
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  lsmon name [-d|--description]";
-    $rsp->{data}->[2]= "  lsmon [-a|--all] [-d|--description]";
-    $rsp->{data}->[3]= "  lsmon [-h|--help|-v|--version]";
+    $rsp->{data}->[1]= "  monls name [-d|--description]";
+    $rsp->{data}->[2]= "  monls [-a|--all] [-d|--description]";
+    $rsp->{data}->[3]= "  monls [-h|--help|-v|--version]";
     $rsp->{data}->[4]= "     name is the name of the monitoring plug-in module.";
     $callback->($rsp);
   }
@@ -479,13 +499,13 @@ sub lsmon {
       'a|all'  => \$::ALL,
       'd|discription'  => \$::DESC))
   {
-    &lsmon_usage;
+    &monls_usage;
     return;
   }
 
   # display the usage if -h or --help is specified
   if ($::HELP) { 
-    &lsmon_usage;
+    &monls_usage;
     return;
   }
 
@@ -493,7 +513,7 @@ sub lsmon {
   if ($::VERSION)
   {
     my %rsp;
-    $rsp->{data}->[0]= "lsmon version 1.0";
+    $rsp->{data}->[0]= "monls version 1.0";
     $callback->($rsp);
     return;
   }
@@ -586,8 +606,184 @@ sub lsmon {
 }
 
 
+#--------------------------------------------------------------------------------
+=head3   monaddnode
+        This function informs all the active monitoring plug-ins to add the given
+     nodes to their monitoring domain 
+    Arguments:
+      callback - the pointer to the callback function.
+      args - The format of the args is:
+        [-h|--help|-v|--version] or
+        noderange
+    Returns:
+        0 for success. The output is returned through the callback pointer.
+        1. for unsuccess. The error messages are returns through the callback pointer.
+=cut
+#--------------------------------------------------------------------------------
+sub monaddnode {
+  my $args=shift;
+  my $callback=shift;
+  my $VERSION;
+  my $HELP;
+
+  # subroutine to display the usage
+  sub monaddnode_usage
+  {
+    my %rsp;
+    $rsp->{data}->[0]= "Usage:";
+    $rsp->{data}->[1]= "  monaddnode noderange";
+    $rsp->{data}->[2]= "  monaddnode [-h|--help|-v|--version]";
+    $rsp->{data}->[3]= "      noderange is a list of comma separated node or node group names.";
+    $callback->($rsp);
+  }
+
+  @ARGV=@{$args};
+  # parse the options
+  if(!GetOptions(
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION,))
+  {
+    &monaddnode_usage;
+    return;
+  }
+
+  # display the usage if -h or --help is specified
+  if ($::HELP) { 
+    &monaddnode_usage;
+    return;
+  }
+
+  # display the version statement if -v or --verison is specified
+  if ($::VERSION)
+  {
+    my %rsp;
+    $rsp->{data}->[0]= "monaddnode version 1.0";
+    $callback->($rsp);
+    return;
+  }
 
 
+  my $noderange;
+  if (@ARGV < 1)
+  {
+    &monaddnode_usage;
+    return;
+  }
+  else {
+    $noderange=$ARGV[0];
+  }
+
+  my @nodenames=noderange($noderange);
+  my @missed=nodesmissed();
+  if (@missed > 0) {
+    my %rsp1;
+    $rsp1->{data}->[0]="Invalide nodes:@missed";
+    $callback->($rsp1);
+    return;
+  }
+
+  my %ret=xCAT_monitoring::monitorctrl->addNodes(\@nodenames);
+
+  if (%ret) {
+    foreach(keys(%ret)) {
+      my $retstat=$ret{$_}; 
+      my %rsp1;
+      $rsp1->{data}->[0]="$_: @$retstat";
+      $callback->($rsp1);
+    }
+  }
+ 
+  return 0;
+
+
+}
+
+
+
+
+#--------------------------------------------------------------------------------
+=head3   monrmnode
+        This function informs all the active monitoring plug-ins to remove the given
+     nodes to their monitoring domain 
+    Arguments:
+      callback - the pointer to the callback function.
+      args - The format of the args is:
+        [-h|--help|-v|--version] or
+        noderange
+    Returns:
+        0 for success. The output is returned through the callback pointer.
+        1. for unsuccess. The error messages are returns through the callback pointer.
+=cut
+#--------------------------------------------------------------------------------
+sub monrmnode {
+  my $args=shift;
+  my $callback=shift;
+  my $VERSION;
+  my $HELP;
+
+  # subroutine to display the usage
+  sub monrmnode_usage
+  {
+    my %rsp;
+    $rsp->{data}->[0]= "Usage:";
+    $rsp->{data}->[1]= "  monrmnode noderange";
+    $rsp->{data}->[2]= "  monrmnode [-h|--help|-v|--version]";
+    $rsp->{data}->[3]= "      noderange is a list of comma separated node or node group names.";
+    $callback->($rsp);
+  }
+
+  @ARGV=@{$args};
+  # parse the options
+  if(!GetOptions(
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION,))
+  {
+    &monrmnode_usage;
+    return;
+  }
+
+  # display the usage if -h or --help is specified
+  if ($::HELP) { 
+    &monrmnode_usage;
+    return;
+  }
+
+  # display the version statement if -v or --verison is specified
+  if ($::VERSION)
+  {
+    my %rsp;
+    $rsp->{data}->[0]= "monrmnode version 1.0";
+    $callback->($rsp);
+    return;
+  }
+
+
+  my $noderange;
+  if (@ARGV < 1)
+  {
+    &monrmnode_usage;
+    return;
+  }
+  else {
+    $noderange=$ARGV[0];
+  }
+
+  my @nodenames=noderange($noderange, 0);
+  if (@nodenames==0) { return 0;}
+
+  my %ret=xCAT_monitoring::monitorctrl->removeNodes(\@nodenames);
+  if (%ret) {
+    foreach(keys(%ret)) {
+      my $retstat=$ret{$_}; 
+      my %rsp1;
+      $rsp1->{data}->[0]="$_: @$retstat";
+      $callback->($rsp1);
+    }
+  }
+ 
+  return 0;
+
+}
 
 
 

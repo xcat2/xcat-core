@@ -1,18 +1,18 @@
 =head1 NAME
  
-B<lsmon> - Lists monitoring plug-in modules that can be used to monitor the xCAT cluster.
+B<monls> - Lists monitoring plug-in modules that can be used to monitor the xCAT cluster.
 
   
  
 =head1 SYNOPSIS
  
-I<lsmon [-h| --help]>
+I<monls [-h| --help]>
 
-I<lsmon  [-v| --version]>
+I<monls  [-v| --version]>
 
-I<lsmon I<name> [-d|--description]> 
+I<monls I<name> [-d|--description]> 
 
-I<lsmon [-a|--all] [-d|--description]> 
+I<monls [-a|--all] [-d|--description]> 
 
 
 =head1 DESCRIPTION
@@ -49,7 +49,7 @@ B<-V | -verbose>       Verbose output.
 
 1. To list the status of all the monitoring plug-in modules from the I<monitoring> table, enter:
 
-  lsmon 
+  monls 
 
 The output looks like this:
   xcatmon         monitored       node-status-monitored
@@ -57,7 +57,7 @@ The output looks like this:
 
 2. To list the status of all the monitoring plug-in modules including the ones that are not in the monitoring table, enter
 
-  lsmon -a
+  monls -a
 
 The output looks like this:
   xcatmon         monitored       node-status-monitored
@@ -69,17 +69,17 @@ The output looks like this:
 
 3. To list the status and the desciption for I<snmpmon> module, enter:
 
-  lsmon snmpmon -d
+  monls snmpmon -d
 
 
 =head1 FILES 
  
-/opt/xcat/bin/lsmon
+/opt/xcat/bin/monls
 
 
 =head1 NOTES
 
-See stopmon startmon
+See monstart monstop
 
 This command is part of the xCAT software product.
 

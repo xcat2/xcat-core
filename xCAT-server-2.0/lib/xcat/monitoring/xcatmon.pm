@@ -166,19 +166,18 @@ sub stopNodeStatusMon {
       This function is called by the monitorctrl module when new nodes are added 
       to the xCAT cluster. It should add the nodes into the product for monitoring.
     Arguments:
-      nodes --nodes to be added. It is a  hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
-        by the server. So the format is:
-          {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
+      nodes --nodes to be added. It is a pointer to an array with each element
+        being a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
 
   #print "xcatmon:addNodes called\n";
  
-  return;
+  return (0, "ok");
 }
 
 #--------------------------------------------------------------------------------
@@ -186,19 +185,18 @@ sub addNodes {
       This function is called by the monitorctrl module when nodes are removed 
       from the xCAT cluster. It should remove the nodes from the product for monitoring.
     Arguments:
-      nodes --nodes to be removed. It is a hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype] arrays  monitored 
-        by the server. So the format is:
-        {monserver1=>[['node1', 'osi'], ['node2', 'switch']...], ...} 
+      nodes --nodes to be removed. It is a pointer to an array with each element
+        being a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes {
 
   #print "xcatmon:removeNodes called\n";
 
-  return;
+  return (0, "ok");
 }
 
 

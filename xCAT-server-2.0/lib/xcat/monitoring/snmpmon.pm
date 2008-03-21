@@ -346,36 +346,52 @@ sub stopNodeStatusMon {
 =head3    addNodes
       This function adds the nodes into the  SNMP domain.
     Arguments:
-      nodes --nodes to be added. It is a  hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
-        by the server. So the format is:
-          {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
-      verbose -- verbose mode. 1 for yes, 0 for no.
+      nodes --nodes to be added. It is a pointer to an array with each element
+        being a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
+  print "snmpmon::addNodes\n";
+  $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+    $noderef=shift;
+  }
+
+  foreach(@$noderef) {
+    my $node_info=$_;
+    print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
+  }
     
-  return 0;
+  return (0, "ok");
 }
 
 #--------------------------------------------------------------------------------
 =head3    removeNodes
       This function removes the nodes from the SNMP domain.
     Arguments:
-      nodes --nodes to be removed. It is a hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
-        by the server. So the format is:
-        {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
-      verbose -- verbose mode. 1 for yes, 0 for no.
+      nodes --nodes to be removed. It is a pointer to an array with each element
+        being a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes {
+    print "snmpmon::removeNodes\n";
+  $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+    $noderef=shift;
+  }
 
-  return 0;
+  foreach(@$noderef) {
+    my $node_info=$_;
+    print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
+  }
+    
+  return (0, "ok");
 }
 
 #--------------------------------------------------------------------------------

@@ -264,13 +264,11 @@ sub stopNodeStatusMon {
 =head3    addNodes
       This function adds the nodes into the RMC cluster.
     Arguments:
-      nodes --nodes to be added. It is a  hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
-        by the server. So the format is:
-          {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
-      verbose -- verbose mode. 1 for yes, 0 for no.
+      nodes --nodes to be added. It is a pointer to an array with each element
+        being a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
@@ -283,7 +281,7 @@ sub addNodes {
   
 
   my $ms_host_name=hostname();
-  my $mon_nodes=$noderef->{$ms_host_name};
+  my $mon_nodes=$noderef;
 
   my @nodes_to_add=();
   foreach(@$mon_nodes) {
@@ -316,7 +314,7 @@ sub addNodes {
     return addNodes_noChecking(@nodes_to_add);
   }
    
-  return 0;
+  return (0, "ok");
 }
 
 #--------------------------------------------------------------------------------
@@ -326,7 +324,7 @@ sub addNodes {
     Arguments:
       nodes --an array of nodes to be added. 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes_noChecking {
@@ -412,20 +410,18 @@ sub addNodes_noChecking {
     }
   } 
 
-  return 0;
+  return (0, "ok");
 }
 
 #--------------------------------------------------------------------------------
 =head3    removeNodes
       This function removes the nodes from the RMC cluster.
     Arguments:
-      nodes --nodes to be removed. It is a hash reference keyed by the monitoring server 
-        nodes and each value is a ref to an array of [nodes, nodetype, status] arrays  monitored 
-        by the server. So the format is:
-        {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
-      verbose -- verbose mode. 1 for yes, 0 for no.
+      nodes --nodes to be removed. It is a pointer to an array with each element
+        being a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
     Returns:
-       none
+       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes {
@@ -436,7 +432,7 @@ sub removeNodes {
 
   #print "rmcmon::removeNodes called\n";
   my $ms_host_name=hostname();
-  my $mon_nodes=$noderef->{$ms_host_name};
+  my $mon_nodes=$noderef;
 
   my @nodes_to_remove=();
 
@@ -454,7 +450,7 @@ sub removeNodes {
     return removeNodes_noChecking(@nodes_to_remove);
   }
 
-  return 0;
+  return (0, "ok");
 }
 
 
@@ -464,7 +460,7 @@ sub removeNodes {
     Arguments:
       nodes --an array of node names to be removed. 
     Returns:
-       none
+      (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes_noChecking {
@@ -515,7 +511,7 @@ sub removeNodes_noChecking {
     }
   }           
 
-  return 0;
+  return (0, "ok";
 }
 
 #--------------------------------------------------------------------------------

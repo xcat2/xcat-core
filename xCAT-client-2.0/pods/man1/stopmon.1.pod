@@ -1,16 +1,16 @@
 =head1 NAME
  
-B<stopmon> -  Stops a monitoring plug-in module to monitor the xCAT cluster.
+B<monstop> -  Stops a monitoring plug-in module to monitor the xCAT cluster.
 
  
 =head1 SYNOPSIS
  
-I<stopmon [-h| --help]>
+I<monstop [-h| --help]>
 
-I<stopmon  [-v| --version]>
+I<monstop  [-v| --version]>
 
 
-I<stopmon name>
+I<monstop name>
 
 
 =head1 DESCRIPTION
@@ -41,7 +41,7 @@ B<-V | -verbose>       Verbose output.
 
 1.To stop gangliamon plug-in module (which interacts with Ganglia monitoring software) to monitor the xCAT cluster, enter:
 
-  stopmon gangliamon
+  monstop gangliamon
 
 Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<tabdump monitoring>. 
 
@@ -49,12 +49,12 @@ Please note that gangliamon must have been registered in the xCAT I<monitoring> 
 
 =head1 FILES 
  
-/opt/xcat/bin/stopmon
+/opt/xcat/bin/monstop
 
 
 =head1 NOTES
 
-See startmon
+See monstart monls
 
 This command is part of the xCAT software product.
 

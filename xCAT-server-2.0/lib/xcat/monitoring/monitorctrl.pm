@@ -553,6 +553,9 @@ sub processTableChanges {
 =cut
 #--------------------------------------------------------------------------------
 sub processNodelistTableChanges {
+  #does not handle this function on a service node
+  if (xCAT::Utils->isServiceNode()) { return 0;}
+
   my $action=shift;
   if ($action =~ /xCAT_monitoring::monitorctrl/) {
     $action=shift;
@@ -585,15 +588,6 @@ sub processNodelistTableChanges {
       my $status='';
       if (exists($new_data->{status})) {$status=$new_data->{status};}      
       push(@nodenames, [$new_data->{node}, $status]);
-      my $hierarchy=getMonServerWithInfo(\@nodenames);
-
-      #call each plug-in to add the nodes into the monitoring domain
-      foreach(keys(%PRODUCT_LIST)) {
-        my $aRef=$PRODUCT_LIST{$_};
-        my $module_name=$aRef->[1];
-        #print "moduel_name=$module_name\n";
-        ${$module_name."::"}{addNodes}->($hierarchy, 1);
-      }
     }
   }
   elsif ($action eq "d") {
@@ -613,21 +607,47 @@ sub processNodelistTableChanges {
       for (my $j=1; $j<@$old_data; ++$j) {
         push(@nodenames, [$old_data->[$j]->[$node_i], $old_data->[$j]->[$status_i]]);
       }
+    }
+  }
+  else { return 0; }
 
-      if (@nodenames > 0) {
-        #print "monitorctrl:  nodenames=@nodenames\n";
-        my $hierarchy=getMonServerWithInfo(\@nodenames);        
+  if (@nodenames ==0) { return 0;}
 
-        #call each plug-in to remove the nodes into the monitoring domain
-        foreach(keys(%PRODUCT_LIST)) {
-          my $aRef=$PRODUCT_LIST{$_};
-          my $module_name=$aRef->[1];
-          ${$module_name."::"}{removeNodes}->($hierarchy, 1); 
-        }
+  print "monitorctrl:  nodenames=@nodenames\n";
+  my $hierarchy=getMonServerWithInfo(\@nodenames);        
+
+  #get all possible ip and hostname for the local host
+  my @hostinfo=xCAT::Utils->determinehostname();
+  my %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+
+  foreach (keys(%$hierarchy)) {
+    my $svname=$_;
+    my $mon_nodes=$hierarchy->{$svname};
+    if (($iphash{$svname}) || ($svname eq "noservicenode")) { #this is for ms
+      #call each plug-in to add the nodes into the monitoring domain
+      foreach(keys(%PRODUCT_LIST)) {
+        my $aRef=$PRODUCT_LIST{$_};
+        my $module_name=$aRef->[1]; 
+        #print "moduel_name=$module_name\n";
+        if ($action eq "a") {  ${$module_name."::"}{addNodes}->($mon_nodes);} 
+        else { ${$module_name."::"}{removeNodes}->($mon_nodes);} }
+    } else { #this is for a service node
+      #call each service node to handle it
+      my @noderange=();
+      foreach my $nodetemp (@$mon_nodes) {
+        push(@noderange, $nodetemp->[0]); 
+      }       
+      my $cmd;
+      if ($action eq "a") { $cmd="psh $svname XCATBYPASS=Y monaddnode " . join(',', @noderange); }
+      else { $cmd="psh $svname XCATBYPASS=Y monrmnode " . join(',', @noderange); }
+      my $result=`$cmd 2>&1`;
+      if ($?) {
+        xCAT::MsgUtils->message('S', "[mon]:$cmd result=$result\n"); 
       }
     }
-  } 
-  
+  }
+ 
   return 0;
 } 
 
@@ -745,7 +765,7 @@ sub processNodeStatusChanges {
     }
   } 
   else {
-    xCAT::MsgUtils->message("E", "Could not read the nodelist table\n");
+    xCAT::MsgUtils->message("S", "Could not read the nodelist table\n");
   }
 
   $tab->close;
@@ -970,10 +990,14 @@ sub getMonHierarchy {
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
       {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}
+      If there is no service node for a node, the key will be "noservicenode".  
 =cut
 #--------------------------------------------------------------------------------
 sub getMonServerWithInfo {
   my $p_input=shift;
+  if ($p_input =~ /xCAT_monitoring::monitorctrl/) {
+    $p_input=shift;
+  }
   my @in_nodes=@$p_input;
 
   my $ret={};
@@ -982,8 +1006,6 @@ sub getMonServerWithInfo {
   #get all from the noderes table
   my $table2=xCAT::Table->new("noderes", -create =>0);
   my $table3=xCAT::Table->new("nodetype", -create =>0);
-  my @hostinfo=xCAT::Utils->determinehostname();
-  my $host=pop(@hostinfo);
   
   foreach (@in_nodes) {
     my $node=$_->[0];
@@ -995,12 +1017,13 @@ sub getMonServerWithInfo {
       if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
     }
 
-    my $monserver=$host;
+    my $monserver;
     my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
     if (defined($tmp2) && ($tmp2)) {
       if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
       elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
     }
+    if (!$monserver) { $monserver="noservicenode"; }
 
 
     if (exists($ret->{$monserver})) {
@@ -1030,10 +1053,15 @@ sub getMonServerWithInfo {
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
       {monserver1=>[['node1', 'osi', active'], ['node2', 'switch', booting']...], ...}
+      If there is no service node for a node, the key will be "noservicenode".  
 =cut
 #--------------------------------------------------------------------------------
 sub getMonServer {
   my $p_input=shift;
+  if ($p_input =~ /xCAT_monitoring::monitorctrl/) {
+    $p_input=shift;
+  }
+
   my @in_nodes=@$p_input;
 
   my $ret={};
@@ -1041,8 +1069,6 @@ sub getMonServer {
   my $table=xCAT::Table->new("nodelist", -create =>0);
   my $table2=xCAT::Table->new("noderes", -create =>0);
   my $table3=xCAT::Table->new("nodetype", -create =>0);
-  my @hostinfo=xCAT::Utils->determinehostname();
-  my $host=pop(@hostinfo);
   
   foreach (@in_nodes) {
     my @tmp1=$table->getAttribs({'node'=>$_}, ('node', 'status'));
@@ -1057,12 +1083,13 @@ sub getMonServer {
 	if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
       }
 
-      my $monserver=$host;
+      my $monserver;
       my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
       if (defined($tmp2) && ($tmp2)) {
         if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
         elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
       }
+      if (!$monserver) { $monserver="noservicenode"; }
 
       if (exists($ret->{$monserver})) {
         my $pa=$ret->{$monserver};
@@ -1096,6 +1123,152 @@ sub nodeStatMonName {
   return $NODESTAT_MON_NAME;
 }
 
+
+#--------------------------------------------------------------------------------
+=head3    addNodes
+      This function informs all the active monitoring plug-ins to add the given
+     nodes to their monitoring domain. If the service node of the given nodes are
+     not the localhost, the request will be sent to the conresponding service nodes. 
+    Arguments:
+        noderange  a pointer to an array of node names
+    Returns:
+        ret a hash with plug-in name as the keys and the an arry of 
+        [return code, error message] as the values.
+=cut
+#--------------------------------------------------------------------------------
+sub addNodes {
+  my $p_input=shift;
+  if ($p_input =~ /xCAT_monitoring::monitorctrl/) {
+    $p_input=shift;
+  }
+
+  my %ret=();
+  my @nodenames=@$p_input;
+  if (@nodenames == 0) { return %ret; }
+
+  my $isSV=xCAT::Utils->isServiceNode();
+  my @hostinfo=xCAT::Utils->determinehostname();
+  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+
+  my $hierachy=xCAT_monitoring::monitorctrl->getMonServer(\@nodenames);
+  my @mon_servers=keys(%$hierachy); 
+
+  foreach (@mon_servers) {
+    my $svname=$_;
+    my $mon_nodes=$hierachy->{$svname};
+    if ($iphash{$_}) { 
+      #let all actvie modules to process it
+      foreach(keys(%PRODUCT_LIST)) {
+        my $aRef=$PRODUCT_LIST{$_};
+        my $module_name=$aRef->[1]; 
+        my @ret1=${$module_name."::"}{addNodes}->($mon_nodes); 
+        $ret{$svname}=\@ret1;
+        
+        #for service node, the error may not be get shown, log it
+        if (($isSV) && ($ret1[0] >0)) {
+	  xCAT::MsgUtils->message('S', "[mon]: $svname: $ret1[1]\n"); 
+        }
+      }
+    } elsif (!$isSV)  {
+      if ($svname eq "noservicenode") {
+        #let all actvie modules to process it
+        foreach(keys(%PRODUCT_LIST)) {
+          my $aRef=$PRODUCT_LIST{$_};
+          my $module_name=$aRef->[1]; 
+          my @ret1=${$module_name."::"}{addNodes}->($mon_nodes);
+          $ret{$svname}=\@ret1;
+        } 
+      } else {
+        #forward them to the service nodes
+        my @noderange=();
+        foreach my $nodetemp (@$mon_nodes) {
+          push(@noderange, $nodetemp->[0]); 
+        }   
+        my $cmd="psh $svname XCATBYPASS=Y monaddnode " . join(',', @noderange); 
+        my $result=`$cmd 2>&1`;
+        if ($?) {
+	  $ret{$svname}=[1, $result];
+        }          
+      }
+    }
+  }  
+
+  return %ret;
+}
+
+#--------------------------------------------------------------------------------
+=head3    removeNodes
+      This function informs all the active monitoring plug-ins to remove the given
+     nodes to their monitoring domain. If the service node of the given nodes are
+     not the localhost, the request will be sent to the conresponding service nodes. 
+    Arguments:
+        noderange  a pointer to an array of node names
+    Returns:
+        ret a hash with plug-in name as the keys and the an arry of 
+        [return code, error message] as the values.
+=cut
+#--------------------------------------------------------------------------------
+sub removeNodes {
+  my $p_input=shift;
+  if ($p_input =~ /xCAT_monitoring::monitorctrl/) {
+    $p_input=shift;
+  }
+
+  my %ret=();
+  my @nodenames=@$p_input;
+  if (@nodenames == 0) { return %ret; }
+
+  my $isSV=xCAT::Utils->isServiceNode();
+  my @hostinfo=xCAT::Utils->determinehostname();
+  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+
+  my $hierachy=xCAT_monitoring::monitorctrl->getMonServer(\@nodenames);
+  my @mon_servers=keys(%$hierachy); 
+
+  foreach (@mon_servers) {
+    my $svname=$_;
+    my $mon_nodes=$hierachy->{$svname};
+    if ($iphash{$_}) { 
+      #let all actvie modules to process it
+      foreach(keys(%PRODUCT_LIST)) {
+        my $aRef=$PRODUCT_LIST{$_};
+        my $module_name=$aRef->[1]; 
+        my @ret1=${$module_name."::"}{removeNodes}->($mon_nodes); 
+        $ret{$svname}=\@ret1;
+        
+        #for service node, the error may not be get shown, log it
+        if (($isSV) && ($ret1[0] >0)) {
+	  xCAT::MsgUtils->message('S', "[mon]: $svname: $ret1[1]\n"); 
+        }
+      }
+    } elsif (!$isSV)  {
+      if ($svname eq "noservicenode") {
+        #let all actvie modules to process it
+        foreach(keys(%PRODUCT_LIST)) {
+          my $aRef=$PRODUCT_LIST{$_};
+          my $module_name=$aRef->[1]; 
+          my @ret1=${$module_name."::"}{removeNodes}->($mon_nodes);
+          $ret{$svname}=\@ret1;
+        } 
+      } else {
+        #forward them to the service nodes
+        my @noderange=();
+        foreach my $nodetemp (@$mon_nodes) {
+          push(@noderange, $nodetemp->[0]); 
+        }   
+        my $cmd="psh $svname XCATBYPASS=Y monrmnode " . join(',', @noderange); 
+        my $result=`$cmd 2>&1`;
+        if ($?) {
+	  $ret{$svname}=[1, $result];
+        }          
+      }
+    }
+  }  
+
+  return %ret;
+}
 
 
 
