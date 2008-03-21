@@ -309,7 +309,7 @@ sub getDescription {
   return 
 "  Description:
     xcatmon uses fping to report the node liveness status and update the 
-    nodelist.status column. Use command 'startmon xcatmon -n' to start 
+    nodelist.status column. Use command 'monstart xcatmon -n' to start 
     monitoring. 
   Settings:
     ping-interval:  the number of minutes between each fping operation. 

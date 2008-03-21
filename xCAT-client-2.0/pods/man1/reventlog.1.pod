@@ -63,4 +63,4 @@ B<reventlog> I<node4,node5> I<clear>
 
 =head1 B<SEE ALSO>
 
-rpower(1), startmon(1)
+rpower(1), monstart(1)

@@ -56,8 +56,9 @@ install: build
 	$(INSTALL) -D share/man/man1/rpower.1		$(TMPDIR)/usr/share/man/man1/rpower.1
 	$(INSTALL) -D share/man/man1/rscan.1		$(TMPDIR)/usr/share/man/man1/rscan.1
 	$(INSTALL) -D share/man/man1/rvitals.1		$(TMPDIR)/usr/share/man/man1/rvitals.1
-	$(INSTALL) -D share/man/man1/startmon.1		$(TMPDIR)/usr/share/man/man1/startmon.1
-	$(INSTALL) -D share/man/man1/stopmon.1		$(TMPDIR)/usr/share/man/man1/stopmon.1
+	$(INSTALL) -D share/man/man1/monstart.1		$(TMPDIR)/usr/share/man/man1/monstart.1
+	$(INSTALL) -D share/man/man1/monstop.1		$(TMPDIR)/usr/share/man/man1/monstop.1
+	$(INSTALL) -D share/man/man1/monls.1		$(TMPDIR)/usr/share/man/man1/monls.1
 	$(INSTALL) -D share/man/man1/unregnotif.1	$(TMPDIR)/usr/share/man/man1/unregnotif.1
 	$(INSTALL) -D share/man/man1/xcat2nim.1		$(TMPDIR)/usr/share/man/man1/xcat2nim.1
 	$(INSTALL) -D share/man/man1/xdsh.1		$(TMPDIR)/usr/share/man/man1/xdsh.1
@@ -99,9 +100,12 @@ install: build
 	dh_link usr/bin/xcatclientnnr usr/sbin/copycds
 	dh_link usr/bin/xcatclientnnr usr/bin/regnotif
 	dh_link usr/bin/xcatclientnnr usr/bin/unregnotif
-	dh_link usr/bin/xcatclientnnr usr/bin/startmon
-	dh_link usr/bin/xcatclientnnr usr/bin/stopmon
-	dh_link usr/bin/xcatclientnnr usr/bin/updatemon
+	dh_link usr/bin/xcatclientnnr usr/bin/monstart
+	dh_link usr/bin/xcatclientnnr usr/bin/monstop
+	dh_link usr/bin/xcatclientnnr usr/bin/monls
+	dh_link usr/bin/xcatclientnnr usr/sbin/monupdate
+	dh_link usr/bin/xcatclientnnr usr/sbin/monaddnode
+	dh_link usr/bin/xcatclientnnr usr/sbin/monrmnode
 	dh_link usr/bin/xcatDBcmds usr/bin/mkdef
 	dh_link usr/bin/xcatDBcmds usr/bin/chdef
 	dh_link usr/bin/xcatDBcmds usr/bin/lsdef

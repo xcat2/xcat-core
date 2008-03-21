@@ -431,7 +431,7 @@ sub getDescription {
     the xCAT trap handler will log all events into the syslog and only
     email the critical and the warning events to the mail alias called 'alerts'. 
     You can use the settings to override the default behavior.
-    Use command 'startmon snmpmon' to star monitoring and 'stopmon snmpmon' 
+    Use command 'monstart snmpmon' to star monitoring and 'monstop snmpmon' 
     to stop it. 
   Settings:
     ignore:  specifies the events that will be ignored. It's a comma separated 
