@@ -12,6 +12,12 @@ echo "cat /etc/motd" >> /etc/profile
 modprobe ohci-hcd
 modprobe uhci-hcd
 modprobe ehci-hcd
+
+
+for d in /proc/sys/net/ipv4/conf/*; do 
+   echo 1 > $d/arp_filter
+   echo 1 > $d/arp_ignore
+done
 for i in $(lspci -n | awk '{print $1 "%" $3}')
 do
     PCI=$(echo $i | awk -F% '{print $1}')

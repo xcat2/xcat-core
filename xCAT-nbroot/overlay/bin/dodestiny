@@ -72,6 +72,7 @@ while :; do
         echo "<serial>$SERIAL</serial>"
       fi
       echo "</xcatrequest>" ) > /tmp/discout
+      ping -c 1 $XCATMASTER
       cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT & #can't figure out how to make a hung gawk behave..
       if usleep 8000000 #Give the preferred method 5 seconds to complete before resorting
       then
@@ -81,8 +82,10 @@ while :; do
          for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
             ifconfig $dnic down
          done
+         ping -c 1 $XCATMASTER
          cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT & #can't figure out how to make a hung gawk behave..
          for dhcps in `cat /tmp/dhcpserver`; do 
+            ping -c 1 $dhcps
             cat /tmp/discout | udpcat.awk $dhcps $XCATPORT &
          done
          for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
