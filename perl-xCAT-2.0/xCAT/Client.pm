@@ -25,6 +25,7 @@ unless ($inet6support) {
 }
 
 use XML::Simple;
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
 use Data::Dumper;
 use Storable qw(dclone);
 my $xcathost='localhost:3001';

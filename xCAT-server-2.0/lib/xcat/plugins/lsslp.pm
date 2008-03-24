@@ -9,6 +9,7 @@ use Storable qw(freeze thaw);
 use Time::HiRes qw(gettimeofday);
 use IO::Select;
 use XML::Simple;
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::PPCdb;
 
 

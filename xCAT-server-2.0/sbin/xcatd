@@ -31,6 +31,7 @@ use IO::Socket;
 use IO::Handle;
 use IO::Select;
 use XML::Simple;
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::Table;
 use Data::Dumper;
 use Getopt::Long;
