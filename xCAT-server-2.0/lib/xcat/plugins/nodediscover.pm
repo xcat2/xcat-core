@@ -32,7 +32,7 @@ sub gethosttag {
    my $netn = shift;
    my $ifname = shift;
    my $usednames = shift;
-   my %netmap = %{xCAT::Utils::my_if_netmap};
+   my %netmap = %{xCAT::Utils::my_if_netmap()};
    my $mgtifname = $netmap{$netn};
    my $secondpass = 0;
    my $name = "";
