@@ -613,7 +613,6 @@ sub processNodelistTableChanges {
 
   if (@nodenames ==0) { return 0;}
 
-  print "monitorctrl:  nodenames=@nodenames\n";
   my $hierarchy=getMonServerWithInfo(\@nodenames);        
 
   #get all possible ip and hostname for the local host
@@ -639,9 +638,11 @@ sub processNodelistTableChanges {
         push(@noderange, $nodetemp->[0]); 
       }       
       my $cmd;
-      if ($action eq "a") { $cmd="psh $svname XCATBYPASS=Y monaddnode " . join(',', @noderange); }
-      else { $cmd="psh $svname XCATBYPASS=Y monrmnode " . join(',', @noderange); }
+      if ($action eq "a") { $cmd="psh --nonodecheck $svname XCATBYPASS=Y monaddnode " . join(',', @noderange); }
+      else { $cmd="psh --nonodecheck $svname XCATBYPASS=Y monrmnode " . join(',', @noderange); }
+      #print "cmd=$cmd\n";
       my $result=`$cmd 2>&1`;
+      #print "result=$result\n";
       if ($?) {
         xCAT::MsgUtils->message('S', "[mon]:$cmd result=$result\n"); 
       }
@@ -1137,14 +1138,18 @@ sub nodeStatMonName {
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
+  my %ret=();
+  if (!$masterpid) { refreshProductList();}
+  if (keys(%PRODUCT_LIST) ==0) { return %ret; }
+
   my $p_input=shift;
   if ($p_input =~ /xCAT_monitoring::monitorctrl/) {
     $p_input=shift;
   }
 
-  my %ret=();
   my @nodenames=@$p_input;
   if (@nodenames == 0) { return %ret; }
+  #print "nodenames=@nodenames\n";
 
   my $isSV=xCAT::Utils->isServiceNode();
   my @hostinfo=xCAT::Utils->determinehostname();
@@ -1185,8 +1190,9 @@ sub addNodes {
         foreach my $nodetemp (@$mon_nodes) {
           push(@noderange, $nodetemp->[0]); 
         }   
-        my $cmd="psh $svname XCATBYPASS=Y monaddnode " . join(',', @noderange); 
+        my $cmd="psh --nonodecheck $svname XCATBYPASS=Y monaddnode " . join(',', @noderange); 
         my $result=`$cmd 2>&1`;
+        #print "result=$result\n";
         if ($?) {
 	  $ret{$svname}=[1, $result];
         }          
@@ -1210,12 +1216,15 @@ sub addNodes {
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes {
+  my %ret=();
+  if (!$masterpid) { refreshProductList();}
+  if (keys(%PRODUCT_LIST) ==0) { return %ret; }
+
   my $p_input=shift;
   if ($p_input =~ /xCAT_monitoring::monitorctrl/) {
     $p_input=shift;
   }
 
-  my %ret=();
   my @nodenames=@$p_input;
   if (@nodenames == 0) { return %ret; }
 
@@ -1258,8 +1267,9 @@ sub removeNodes {
         foreach my $nodetemp (@$mon_nodes) {
           push(@noderange, $nodetemp->[0]); 
         }   
-        my $cmd="psh $svname XCATBYPASS=Y monrmnode " . join(',', @noderange); 
+        my $cmd="psh --nonodecheck $svname XCATBYPASS=Y monrmnode " . join(',', @noderange); 
         my $result=`$cmd 2>&1`;
+        #print "result=$result\n";
         if ($?) {
 	  $ret{$svname}=[1, $result];
         }          
