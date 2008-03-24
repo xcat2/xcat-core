@@ -1336,7 +1336,7 @@ sub readdecfg {
         ##################################
         # Select radio button
         ##################################
-        my $value = %$_->{value};
+        my $value = ( ref($_) eq 'HASH' ) ? %$_->{value} : $_;
         $radio->value( $value );
 
         ##################################
