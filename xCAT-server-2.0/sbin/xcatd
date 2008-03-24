@@ -608,7 +608,8 @@ sub plugin_command {
     }
   }
   unless ($sock) { return $Main::resps };
-  while ($children > 0) {
+  #while ($children > 0) {
+  while ($check_fds->count > 0) { #this tracks end of useful data from children much more closely
     relay_fds($check_fds,$sock);
   }
   #while (relay_fds($check_fds,$sock)) {}
@@ -722,7 +723,8 @@ sub dispatch_request {
      }
      exit;
   }
- while ($childrn > 0) { relay_dispatch($child_fdset) }
+ #while ($childrn > 0) { relay_dispatch($child_fdset) }
+ while ($child_fdset->count > 0) { relay_dispatch($child_fdset) }
  while (relay_dispatch($child_fdset)) { } #Potentially useless drain.
 }
 

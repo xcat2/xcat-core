@@ -6,9 +6,11 @@ BEGIN
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
-use xCAT::NodeRange;
-use xCAT::Utils;
-use xCAT::Table;
+if ($ENV{XCATBYPASS}) {
+   require xCAT::NodeRange;
+   require xCAT::Utils;
+   require xCAT::Table;
+}
 
 my $inet6support;
 use IO::Socket::SSL;
