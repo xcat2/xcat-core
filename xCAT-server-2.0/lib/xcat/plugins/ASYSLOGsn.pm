@@ -79,18 +79,18 @@ sub setup_SYSLOG
         {    # need to add
             ` echo "*.debug   /var/log/messages" >> /etc/syslog.conf`;
             `echo "*.crit   /var/log/messages" >> /etc/syslog.conf`;
-            $cmd = "service syslog restart";
+        }
+        $cmd = "service syslog restart";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
+        {    # error try rsyslog
+            $cmd = "service rsyslog restart";
             xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0)
-            {    # error try rsyslog
-                $cmd = "service rsyslog restart";
-                xCAT::Utils->runcmd($cmd, -1);
-                if ($::RUNCMD_RC != 0)
-                {    # error  on both
-                    xCAT::MsgUtils->message("S",
+            {    # error  on both
+                xCAT::MsgUtils->message("S",
                                      "Error could not start syslog or rsyslog");
-                    return 1;
-                }
+                return 1;
             }
         }
     }
