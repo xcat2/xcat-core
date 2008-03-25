@@ -8,7 +8,6 @@ use IO::Handle;
 use Sys::Syslog;
 use Data::Dumper;
 use SNMP; 
-openlog("MacMap",'','local0');
 my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco equip
 #use IF-MIB (1.3.6.1.2.1.2) for all switches
 #   1.3.6.1.2.1.31.1.1 - ifXtable

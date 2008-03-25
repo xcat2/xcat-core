@@ -36,7 +36,8 @@ use xCAT::Table;
 use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog qw(:DEFAULT setlogsock);
-setlogsock([qw(native,tcp,udp,unix,stream)]);
+openlog("xcatd",,"local4");
+setlogsock(["native","tcp","udp","unix","stream"]);
 use xCAT::NotifHandler;
 use xCAT_monitoring::monitorctrl;
 
