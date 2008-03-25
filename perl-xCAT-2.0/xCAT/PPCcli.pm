@@ -43,10 +43,6 @@ my %lssyscfg = (
 # Power control supported formats 
 ##############################################
 my %powercmd = (
-  hmc  => {
-      reset =>"hmcshutdown -t now -r" },
-  ivm  => {
-      reset =>"reboot" },
   lpar => { 
       on    =>"chsysstate -r %s -m %s -o on -b norm --id %s -f %s",
       of    =>"chsysstate -r %s -m %s -o on --id %s -f %s -b of",
