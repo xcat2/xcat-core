@@ -76,6 +76,9 @@ if ($interface) {
 }
 
 #exec "fping ".join(' ',@nodes). " 2> /dev/null";
+unless (scalar(@nodes)) {
+   exit;
+}
 open (FPING, "fping ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open fping pipe: $!");
 while (<FPING>) {
   if ($_ =~ /is unreachable/) {
