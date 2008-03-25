@@ -38,6 +38,10 @@ else
 	tar --exclude .svn -czvf /usr/src/$pkg/SOURCES/templates.tar.gz templates
 	cp xcat.conf /usr/src/$pkg/SOURCES
 	rm -f /usr/src/$pkg/SRPMS/xCAT-2.0*rpm /usr/src/$pkg/RPMS/*/xCAT-2.0*rpm
-	rpmbuild -ba xCAT.spec
+   if [ ! -z "$1" ]; then
+	rpmbuild -ba xCAT.spec --target $1
+   else 
+	rpmbuild -ba xCAT.spec 
+   fi
 	cd -
 fi
