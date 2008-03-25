@@ -35,7 +35,8 @@ $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::Table;
 use Data::Dumper;
 use Getopt::Long;
-use Sys::Syslog;
+use Sys::Syslog qw(:DEFAULT setlogsock);
+setlogsock([qw(native,tcp,udp,unix,stream)]);
 use xCAT::NotifHandler;
 use xCAT_monitoring::monitorctrl;
 
@@ -340,6 +341,13 @@ sub scan_plugins {
   }
 }
 scan_plugins;
+eval {
+   syslog("local4|info","xCATd: service starting");
+};
+if ($@) {
+   print "ERROR: $@";
+   exit;
+}
 unless ($foreground) {
    daemonize;
 }

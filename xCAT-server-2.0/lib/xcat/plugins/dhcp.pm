@@ -216,7 +216,7 @@ sub preprocess_request {
       if ($ntab) {
          foreach (@{$ntab->getAllEntries()}) {
             if ($_->{dynamicrange} and not $_->{dhcpserver}) {
-               $callback->({error=>["In a hierachy, network entries with a dynamic range must be explicit in the dhcpserver field"],errorcode=>[1]});
+               $callback->({error=>["Hierarchy requested, therefore networks.dhcpserver must be set for net=".$_->{net}.""],errorcode=>[1]});
                return [];
             }
          }
