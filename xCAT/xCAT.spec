@@ -18,11 +18,11 @@ Provides: xCAT = %{version}
 Requires: xCAT-server xCAT-client perl-DBD-SQLite perl-XML-Parser 
 
 %ifos linux
-Requires: atftp dhcp httpd nfs-utils expect conserver fping bind syslinux
+Requires: atftp dhcp httpd nfs-utils expect conserver fping bind
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-Requires: xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 
+Requires: xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 syslinux
 Requires: ipmitool >= 1.8.9
 %endif
 
