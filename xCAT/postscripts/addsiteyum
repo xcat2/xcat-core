@@ -1,0 +1,7 @@
+#!/bin/sh
+for i in /install/postscripts/repos/$OSVER/$ARCH/*
+do
+   TARGFILE=`basename $i`
+   TARGFILE=`echo $TARGFILE|sed -e s/.tmpl$//`
+   sed -e s!#INSTSERVER#!$MASTER! $i > /etc/yum/repos.d/$TARGFILE
+done

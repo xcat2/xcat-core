@@ -1,16 +1,25 @@
 package xCAT::Yum;
 use DBI;
 use File::Find;
+use File::Spec;
+use File::Path;
+my $yumrepofile;
+my $distname;
+my $arch;
+my $installpfx;
 sub localize_yumrepo {
    my $self = shift;
    my $installroot = shift;
-   my $distname = shift;
-   my $arch = shift;
+   $distname = shift;
+   $arch = shift;
    my $dosqlite = 0;
   my $repomdfile;
   my $primaryxml;
-  my $dirlocation = "$installroot/$distname/$arch/";
-  find(\&check_tofix,$dirlocation);
+  $installpfx = "$installroot/$distname/$arch/";
+  mkpath("$installroot/postscripts/repos/$distname/$arch/");
+  open($yumrepofile,">","$installroot/postscripts/repos/$distname/$arch/mediarepo.tmpl");
+  find(\&check_tofix,$installpfx);
+  close($yumrepofile);
 }
 sub check_tofix {
    if (-d $File::Find::name and $File::Find::name =~ /\/repodata$/) {
@@ -19,6 +28,16 @@ sub check_tofix {
 }
 sub fix_directory { 
   my $dirlocation = shift;
+  my @dircomps = File::Spec->splitdir($dirlocation);
+  pop(@dircomps);
+  my $yumurl = File::Spec->catdir(@dircomps);
+  $yumurl =~ s!$installpfx!http://#INSTSERVER#/install/$distname/$arch/!;
+  my $reponame = $dircomps[$#dircomps];
+  print $yumrepofile "[$distname-$arch-$reponame]\n";
+  print $yumrepofile "name=xCAT configured yum repository for $distname/$arch/$reponame\n";
+  print $yumrepofile "baseurl=$yumurl\n";
+  print $yumrepofile "enabled=1\n";
+  print $yumrepofile "gpgcheck=0\n\n";
   my $oldsha=`/usr/bin/sha1sum $dirlocation/primary.xml.gz`;
   my $olddbsha; 
   my @xmlines;

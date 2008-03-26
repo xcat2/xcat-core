@@ -354,7 +354,7 @@ sub copycd
             {
                 my @parts    = split /\s+/, $prod;
                 my @subparts = split /-/,   $parts[2];
-                $distname = "sles" . $subparts[0];
+                unless ($distname) { $distname = "sles" . $subparts[0] };
             }
         }
     }
@@ -381,7 +381,8 @@ sub copycd
             $callback->(
                      {
                       error =>
-                        "Requested SLES architecture $arch, but media is $darch"
+                        ["Requested SLES architecture $arch, but media is $darch"],
+                        errorcode => [1]
                      }
                      );
             return;
