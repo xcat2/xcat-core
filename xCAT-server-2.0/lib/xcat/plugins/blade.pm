@@ -642,7 +642,7 @@ sub getmacs {
          $mactab->close;
          return 0,":mac.mac set to $mac";
       } else {
-         return 1,"confusing situation";
+         return 1,"Unable to retrieve MAC address from Management Module";
       }
    } else {
       return $code,$macs;
