@@ -98,11 +98,7 @@ sub setup_DNS
     }
     $cmd = "service named stop";
     xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message("S", "Error from $cmd");
-        return 1;
-    }
+
     $cmd = "service named start";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
