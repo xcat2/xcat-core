@@ -1,7 +1,14 @@
 #!/bin/sh
-for i in /install/postscripts/repos/$OSVER/$ARCH/*
+cd `dirname $0`
+if [ ! -d repos/$OSVER/$ARCH ];  then
+   exit;
+fi
+for i in repos/$OSVER/$ARCH/*
 do
+   if [ ! -r "$i" ]; then
+      continue
+   fi
    TARGFILE=`basename $i`
-   TARGFILE=`echo $TARGFILE|sed -e s/.tmpl$//`
-   sed -e s!#INSTSERVER#!$MASTER! $i > /etc/yum/repos.d/$TARGFILE
+   TARGFILE=`echo $TARGFILE|sed -e s/.tmpl$/.repo/`
+   sed -e s!#INSTSERVER#!$MASTER! $i > /etc/yum.repos.d/$TARGFILE
 done
