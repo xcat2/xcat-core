@@ -40,4 +40,7 @@ ipmitool lan set 1 auth admin md5
 echo "Enabling IPMI v 2.0 LAN access:"
 ipmitool lan set 1 cipher_privs uaaaXXXXXXXXXXX
 
+echo "Enabling SOL for channel 1"
+ipmitool raw 0xc 0x21 0x1 0x1 0x1
+
 
