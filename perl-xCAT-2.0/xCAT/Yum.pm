@@ -17,7 +17,7 @@ sub localize_yumrepo {
   my $primaryxml;
   $installpfx = "$installroot/$distname/$arch/";
   mkpath("$installroot/postscripts/repos/$distname/$arch/");
-  open($yumrepofile,">","$installroot/postscripts/repos/$distname/$arch/mediarepo.tmpl");
+  open($yumrepofile,">","$installroot/postscripts/repos/$distname/$arch/local-repository.tmpl");
   find(\&check_tofix,$installpfx);
   close($yumrepofile);
 }
@@ -33,7 +33,7 @@ sub fix_directory {
   my $yumurl = File::Spec->catdir(@dircomps);
   $yumurl =~ s!$installpfx!http://#INSTSERVER#/install/$distname/$arch/!;
   my $reponame = $dircomps[$#dircomps];
-  print $yumrepofile "[$distname-$arch-$reponame]\n";
+  print $yumrepofile "[local-$distname-$arch-$reponame]\n";
   print $yumrepofile "name=xCAT configured yum repository for $distname/$arch/$reponame\n";
   print $yumrepofile "baseurl=$yumurl\n";
   print $yumrepofile "enabled=1\n";
