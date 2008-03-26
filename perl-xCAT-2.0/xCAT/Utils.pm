@@ -107,6 +107,8 @@ sub isAIX
 		same as fork
 =cut
 
+#-------------------------------------------------------------------------------
+
 sub xfork
 {
     my $rc = fork;
@@ -127,13 +129,15 @@ sub xfork
     return $rc;
 }
 
-sub close_all_dbhs {
-  foreach (values %{$::XCAT_DBHS})
-  {    #@{$drh->{ChildHandles}}) {
-     $_->disconnect;
-     undef $_;
-  }
+sub close_all_dbhs
+{
+    foreach (values %{$::XCAT_DBHS})
+    {        #@{$drh->{ChildHandles}}) {
+        $_->disconnect;
+        undef $_;
+    }
 }
+
 #-------------------------------------------------------------------------------
 
 =head3    isLinux
@@ -1002,6 +1006,7 @@ sub isServiceNode
         return 0;
     }
 }
+
 #-------------------------------------------------------------------------------
 
 =head3    isMS
@@ -1054,29 +1059,33 @@ sub isMS
 =cut
 
 #-------------------------------------------------------------------------------
-sub classful_networks_for_net_and_mask 
+sub classful_networks_for_net_and_mask
 {
-    my $network = shift;
-    my $mask = shift;
+    my $network    = shift;
+    my $mask       = shift;
     my $given_mask = 0;
-    if ($mask =~/\./) {
-       $given_mask = 1;
-       my $masknumber = unpack("N",inet_aton($mask));
-       $mask=32;
-       until ($masknumber % 2) {
-          $masknumber = $masknumber >> 1;
-          $mask--;
-       }
+    if ($mask =~ /\./)
+    {
+        $given_mask = 1;
+        my $masknumber = unpack("N", inet_aton($mask));
+        $mask = 32;
+        until ($masknumber % 2)
+        {
+            $masknumber = $masknumber >> 1;
+            $mask--;
+        }
     }
-       
+
     my @results;
     my $bitstoeven = (8 - ($mask % 8));
     if ($bitstoeven eq 8) { $bitstoeven = 0; }
     my $resultmask = $mask + $bitstoeven;
-    if ($given_mask) {
-       $resultmask = inet_ntoa(pack("N",(2**$resultmask-1) << (32 -  $resultmask)));
+    if ($given_mask)
+    {
+        $resultmask =
+          inet_ntoa(pack("N", (2**$resultmask - 1) << (32 - $resultmask)));
     }
-    push @results,$resultmask;
+    push @results, $resultmask;
 
     my $padbits  = (32 - ($bitstoeven + $mask));
     my $numchars = int(($mask + $bitstoeven) / 4);
@@ -1087,9 +1096,10 @@ sub classful_networks_for_net_and_mask
 
     while ($nown <= $highn)
     {
-       push @results,inet_ntoa(pack("N",$nown));
-       #$rethash->{substr($nowhex, 0, $numchars)} = $network;
-       $nown += 1 << (32 - $mask - $bitstoeven);
+        push @results, inet_ntoa(pack("N", $nown));
+
+        #$rethash->{substr($nowhex, 0, $numchars)} = $network;
+        $nown += 1 << (32 - $mask - $bitstoeven);
     }
     return @results;
 }
@@ -1157,26 +1167,32 @@ sub my_hexnets
    Comments:
       none
 =cut
+
 #-------------------------------------------------------------------------------
-sub my_if_netmap {
-   if (scalar(@_)) { #called with the other syntax
-      $net = shift;
-   }
-   my @rtable = split /\n/,`netstat -rn`;
-   if ($?) {
-      return "Unable to run netstat, $?";
-   }
-   my %retmap;
-   foreach (@rtable) {
-      if (/^\D/) { next; } #skip headers
-      if (/^\S+\s+\S+\s+\S+\s+\S*G/) { next; } #Skip networks that require gateways to get to
-      /^(\S+)\s.*\s(\S+)$/;
-      $retmap{$1}=$2;
-   }
-   return \%retmap;
+sub my_if_netmap
+{
+    if (scalar(@_))
+    {    #called with the other syntax
+        $net = shift;
+    }
+    my @rtable = split /\n/, `netstat -rn`;
+    if ($?)
+    {
+        return "Unable to run netstat, $?";
+    }
+    my %retmap;
+    foreach (@rtable)
+    {
+        if (/^\D/) { next; }    #skip headers
+        if (/^\S+\s+\S+\s+\S+\s+\S*G/)
+        {
+            next;
+        }                       #Skip networks that require gateways to get to
+        /^(\S+)\s.*\s(\S+)$/;
+        $retmap{$1} = $2;
+    }
+    return \%retmap;
 }
-
-
 
 #-------------------------------------------------------------------------------
 
@@ -1246,8 +1262,9 @@ sub nodeonmynet
     {
         $nodetocheck = shift;
     }
-    unless (inet_aton($nodetocheck)) {
-       return 0;
+    unless (inet_aton($nodetocheck))
+    {
+        return 0;
     }
     my $nodeip = inet_ntoa(inet_aton($nodetocheck));
     unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
@@ -1543,7 +1560,8 @@ sub isServiceReq
 {
     my ($class, $servicenodename, $service, $serviceip) = @_;
     my @ips = @$serviceip;    # list of service node ip addresses
-    my $rc=0;
+    my $rc  = 0;
+
     # check if service is already setup
     `grep $service /etc/xCATSN`;
     if ($? == 0)
@@ -1746,6 +1764,7 @@ sub gethost_ips
     }
     return @ipaddress;
 }
+
 #-----------------------------------------------------------------------------
 
 =head3 create_postscripts_tar
@@ -1760,22 +1779,254 @@ sub gethost_ips
 =cut
 
 #-----------------------------------------------------------------------------
-sub create_postscripts_tar 
+sub create_postscripts_tar
 {
     my ($class) = @_;
     my $cmd;
-	if (!(-e  "/install/autoinst")) {
-	   mkdir ("/install/autoinst");
+    if (!(-e "/install/autoinst"))
+    {
+        mkdir("/install/autoinst");
     }
 
-	$cmd="cd /install/postscripts;tar -cjf /install/autoinst/xcatpost.tar.bz2 * .ssh/*";
+    $cmd =
+      "cd /install/postscripts;tar -cjf /install/autoinst/xcatpost.tar.bz2 * .ssh/*";
     my @result = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message("S", "Error from $cmd\n");
-       return $::RUNCMD_RC;
+        return $::RUNCMD_RC;
     }
-  return 0;
+    return 0;
 
 }
+
+#-----------------------------------------------------------------------------
+
+=head3 get_site_Master 
+
+     Reads the site table for the Master attribute and returns it.
+     input: none
+     output : value of site.Master attribute , blank is an error
+	 example: $Master =xCAT::get_site_Master();
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub get_site_Master
+{
+    my $Master;
+    my $sitetab = xCAT::Table->new('site');
+    (my $et) = $sitetab->getAttribs({key => "master"}, 'value');
+    if ($et and $et->{value})
+    {
+        $Master = $et->{value};
+    }
+    else
+    {
+        xCAT::MsgUtils->message('E',
+                           "Unable to read site table for Master attribute.\n");
+    }
+    return $Master;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 get_SN_akb_MS_or_Node 
+
+     Will get the Service node ( name or ipaddress) as known by the Management
+	 Server or NOde for the input nodename or ipadress of the node
+
+     input: list of nodenames and/or node ipaddresses
+			service name 
+			"MS" or "Node"  determines if you want the Service node as known
+			 by the MS  or by the node.
+
+		recognized service names: xcat,tftpserver,
+		nfsserver,conserver,monserver
+
+        service "xcat" is used by command like xdsh that need to know the
+		service node that will process the command but are not tied to a 
+		specific service like tftp
+
+		Todo:  Handle  dhcpserver and nameserver from the networks table
+
+	 output: A hash of arrays, the key is the service node pointing to 
+			 an array of nodes that are serviced by that service node 
+
+     Globals:
+        $::ERROR_RC 
+     Error:
+         $::ERROR_RC=0 no error $::ERROR_RC=1 error 
+
+	 example: $sn =xCAT::get_SN_for_MS(@nodes,$service,"MS");
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_SN_akb_MS_or_Node
+{
+    my ($class, $node, $service, $request) = @_;
+    my @node_list = @$node;
+    my $cmd;
+    my %snhash;
+    my $sn;
+    my $nodehmtab;
+    my $noderestab;
+    my $snattribute;
+    $::ERROR_RC = 0;
+
+	# determine if the request is for the service node as known by the MS 
+	# or the node
+
+    if ($request eq "MS")
+    {                      
+        $snattribute = "servicenode";
+    }
+    else
+    {                     
+        $snattribute = "xcatmaster";
+    }
+
+
+    my $master =
+      xCAT::Utils->get_site_Master();    # read the site table, master attrib
+
+    $noderestab = xCAT::Table->new('noderes');
+    unless ($noderestab)    # no noderes table, use default site.master
+    {
+        xCAT::MsgUtils->message('I',
+                         "Unable to open noderes table. Using site->Master.\n");
+        if ($master)        # use site Master value
+        {
+            foreach my $node (@node_list)
+            {               # no noderes table, all use site Master
+                push @{$snhash{$master}}, $node;
+            }
+        }
+        else
+        {
+            xCAT::MsgUtils->message('E', "Unable to read site Master value.\n");
+            $::ERROR_RC = 1;
+        }
+        return \%snhash;
+    }
+
+    if ($service eq "xcat")
+    {                       # find all service nodes for the nodes in the list
+        foreach my $node (@node_list)
+        {
+            $sn = $noderestab->getNodeAttribs($node, [$snattribute]);
+            if ($sn and $sn->{$snattribute})
+            {               # if service node defined
+                my $key = $sn->{$snattribute};
+                push @{$snhash{$key}}, $node;
+            }
+            else
+            {               # use site.master
+                push @{$snhash{$master}}, $node;
+            }
+        }
+        return \%snhash;
+
+    }
+    else
+    {
+        if (
+            ($service eq "tftpserver")    # all from noderes table
+            || ($service eq "nfsserver") || ($service eq "monserver")
+          )
+        {
+            foreach my $node (@node_list)
+            {
+                $sn =
+                  $noderestab->getNodeAttribs($node, [$service, $snattribute]);
+                if ($sn and $sn->{$service})
+                {
+                    my $key = $sn->{$service};
+                    push @{$snhash{$key}}, $node;
+                }
+                else
+                {
+                    if ($sn and $sn->{$snattribute})    # if it exists
+                    {
+                        my $key = $sn->{$snattribute};
+                        push @{$snhash{$key}}, $node;
+                    }
+                    else
+                    {                           # use site.master
+                        push @{$snhash{$master}}, $node;
+                    }
+                }
+            }
+            return \%snhash;
+
+        }
+        else
+        {
+            if ($service eq "conserver")
+            {
+
+                $nodehmtab = xCAT::Table->new('nodehm');
+                unless ($nodehmtab)    # no nodehm table default to site->master
+                {
+                    xCAT::MsgUtils->message('I',
+                                            "Unable to open nodehm table.\n");
+
+                    # use service node
+                    foreach my $node (@node_list)
+                    {
+                        $sn =
+                          $noderestab->getNodeAttribs($node, [$snattribute]);
+                        if ($sn)
+                        {
+                            my $key = $sn->{$snattribute};
+                            push @{$snhash{$key}}, $node;
+                        }
+                        else
+                        {    # no service node use master
+                            push @{$snhash{$master}}, $node;
+                        }
+                    }
+                    return \%snhash;
+                }
+
+                foreach my $node (@node_list)
+                {
+                    $sn = $nodehmtab->getNodeAttribs($node, ['conserver']);
+                    if ($sn->{'conserver'})
+                    {
+                        my $key = $sn->{'conserver'};
+                        push @{$snhash{$key}}, $node;
+                    }
+                    else
+                    {    # use service node
+                        $sn =
+                          $noderestab->getNodeAttribs($node, [$snattribute]);
+            if ($sn and $sn->{$snattribute})
+                        {
+                            my $key = $sn->{$snattribute};
+                            push @{$snhash{$key}}, $node;
+                        }
+                        else
+                        {    # no service node use master
+                            push @{$snhash{$master}}, $node;
+                        }
+                    }
+                }
+                return \%snhash;
+
+            }
+            else
+            {
+                xCAT::MsgUtils->message('E',
+                                        "Invalid service=$service input.\n");
+                $::ERROR_RC = 1;
+            }
+        }
+    }
+    return \%snhash;
+
+}
+
 1;
