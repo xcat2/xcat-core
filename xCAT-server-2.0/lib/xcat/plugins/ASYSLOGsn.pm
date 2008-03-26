@@ -88,7 +88,7 @@ sub setup_SYSLOG
             xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0)
             {    # error  on both
-                xCAT::MsgUtils->message("S",
+                xCAT::MsgUtils->message("E",
                                      "Error could not start syslog or rsyslog");
                 return 1;
             }
