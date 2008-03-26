@@ -109,6 +109,7 @@ sub process_request {
          $rsp{data}=["Creating $fileloc ($lunsize MB)"];
          $callback->({node=>[\%rsp]});
          %rsp=(name=>[$node]);
+         $lunsize -= 1;
          my $rc = system("dd if=/dev/zero of=$fileloc bs=1M count=1 seek=$lunsize");
          if ($rc) {
             $rsp{error}=["dd process exited with return code $rc"];
