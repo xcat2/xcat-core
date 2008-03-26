@@ -2945,7 +2945,7 @@ sub checkleds {
 	my $prod_id;
 	($rc,$text,$mfg_id,$prod_id) = getdevid();
 	if ($mfg_id != 2) {
-		return (0,"LED status only supported on IBM hardware");
+		return (0,"LED status not supported on this system");
 	}
 	
 	($rc,$text) = initsdr();
