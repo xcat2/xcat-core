@@ -146,7 +146,10 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     mkdir -p /install/postscripts/.xcat
     cp -r /root/.xcat/* /install/postscripts/.xcat
     #Zap the almost certainly wrong pxelinux.cfg file
-    rm /tftpboot/pxelinux.cfg/default
+	if [ -r  /tftpboot/pxelinux.cfg/default ]
+	then
+    	rm /tftpboot/pxelinux.cfg/default
+	fi
     # make Management Server
 	touch /etc/xCATMS
 	# setup syslog
@@ -163,7 +166,12 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
 
     XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
     if [ -x $RPM_INSTALL_PREFIX0/sbin/mknb ]; then
+%ifarch i386 i586 i686 x86 x86_64
        $RPM_INSTALL_PREFIX0/sbin/mknb x86_64
+%endif
+%ifarch ppc ppc64
+       $RPM_INSTALL_PREFIX0/sbin/mknb ppc64
+%endif
     fi
     $RPM_INSTALL_PREFIX0/sbin/makenetworks
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=nameservers site.value=`sed -e 's/#.*//' /etc/resolv.conf|grep nameserver|awk '{printf $2 ","}'|sed -e s/,$//`
