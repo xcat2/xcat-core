@@ -68,7 +68,7 @@ sub connect {
     my $verbose    = shift;
     my $pwd_prompt = 'assword: $';
     my $continue   = 'continue connecting (yes/no)?';
-    my $timeout    = 15;
+    my $timeout    = 30;
     my $success    = 0;
     my $pwd_sent   = 0;
     my $expect_log;
