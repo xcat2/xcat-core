@@ -1,0 +1,210 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use IO::Socket::SSL;
+use IO::Socket::INET;
+use File::Basename;
+use Data::Dumper;
+use Getopt::Long;
+use xCAT::MsgUtils;
+use xCAT::Client submit_request;
+my $bname = basename($0);
+
+#-----------------------------------------------------------------------------
+
+=head1   xCATWorld 
+
+This program is an example client program for xCAT
+which interfaces to the /opt/xcat/lib/perl/xcat_plugin/CATWorld.pm plugin 
+
+ xCATWorld <noderange>   
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+
+my $rc = 0;
+
+
+my $cmdref;
+my $arg;
+my @SaveARGV = @ARGV;
+$cmdref->{command}->[0] = $bname;    # save my command name
+my $arg = shift(@SaveARGV);
+
+if ($arg =~ /^-/)                    # no noderange
+{
+    push @{$cmdref->{arg}}, $arg;
+    foreach (@SAVEARGV)
+    {
+        push(@{$cmdref->{arg}}, $_);
+    }
+    @ARGV = @{$cmdref->{arg}};       # save just the argument to parse
+}
+else
+{
+    $cmdref->{noderange}->[0] = $arg;    # save noderange
+    @ARGV = @SaveARGV;                   # noderange removed for parsing
+}
+
+
+foreach (@SaveARGV)
+{
+    push(@{$cmdref->{arg}}, $_);
+}
+
+
+xCAT::Client::submit_request($cmdref, \&handle_response);
+exit $rc;
+
+
+#-----------------------------------------------------------------------------
+
+=head3 handle_response 
+ handle_response is the callback that is
+ invoked to print out the data returned by
+ the plugin.
+
+ Format of the response hash:
+  {data => [ 'data str1', 'data str2', '...' ] }
+
+    Results are printed as:
+       data str1
+       data str2
+
+ or:
+  {data => [ {desc => [ 'desc1' ],
+              contents => [ 'contents1' ] },
+             {desc => [ 'desc2 ],
+              contents => [ 'contents2' ] }
+                :
+            ] }
+    NOTE:  In this format, only the data array can have more than one
+           element. All other arrays are assumed to be a single element.
+    Results are printed as:
+       desc1: contents1
+       desc2: contents2
+
+ or:
+  {node => [ {name => ['node1'],
+              data => [ {desc => [ 'node1 desc' ],
+                         contents => [ 'node1 contents' ] } ] },
+             {name => ['node2'],
+              data => [ {desc => [ 'node2 desc' ],
+                         contents => [ 'node2 contents' ] } ] },
+                :
+             ] }
+    NOTE:  Only the node array can have more than one element.
+           All other arrays are assumed to be a single element.
+
+    This was generated from the corresponding HTML:
+    <xcatrequest>
+      <node>
+        <name>node1</name>
+        <data>
+          <desc>node1 desc</desc>
+          <contents>node1 contents</contents>
+        </data>
+      </node>
+      <node>
+        <name>node2</name>
+        <data>
+          <desc>node2 desc</desc>
+          <contents>node2 contents</contents>
+        </data>
+      </node>
+    </xcatrequest>
+
+   Results are printed as:
+      node_name: desc: contents
+=cut
+
+#-----------------------------------------------------------------------------
+sub handle_response
+{
+    my $rsp = shift;
+
+    # Handle {node} structure
+    if ($rsp->{errorcode})
+    {
+        foreach my $ecode (@{$rsp->{errorcode}})
+        {
+            $exitcode |= $ecode;
+        }
+    }
+
+    # Handle {node} structure
+    if ($rsp->{node})
+    {
+        my $nodes = ($rsp->{node});
+        my $node;
+        foreach $node (@$nodes)
+        {
+            my $desc = $node->{name}->[0];
+            if ($node->{data})
+            {
+                if (ref(\($node->{data}->[0])) eq 'SCALAR')
+                {
+                    $desc = $desc . ": " . $node->{data}->[0];
+                }
+                else
+                {
+                    if ($node->{data}->[0]->{desc})
+                    {
+                        $desc = $desc . ": " . $node->{data}->[0]->{desc}->[0];
+                    }
+                    if ($node->{data}->[0]->{contents})
+                    {
+                        $desc = "$desc: " . $node->{data}->[0]->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc)
+            {
+                print "$desc\n";
+            }
+        }
+    }
+
+    # Handle {data} structure with no nodes
+    if ($rsp->{info})
+    {
+        my $data = ($rsp->{info});
+        my $data_entry;
+        foreach $data_entry (@$data)
+        {
+            my $desc;
+            if (ref(\($data_entry)) eq 'SCALAR')
+            {
+                $desc = $data_entry;
+            }
+            else
+            {
+                if ($data_entry->{desc})
+                {
+                    $desc = $data_entry->{desc}->[0];
+                }
+                if ($data_entry->{contents})
+                {
+                    if ($desc)
+                    {
+                        $desc = "$desc: " . $data_entry->{contents}->[0];
+                    }
+                    else
+                    {
+                        $desc = $data_entry->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc)
+            {
+                print "$desc\n";
+            }
+        }
+    }
+}
