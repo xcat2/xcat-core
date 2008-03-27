@@ -196,7 +196,7 @@ sub plugin_command {
   my $sock = shift;
   my $callback = shift;
   my %handler_hash;
-#  use xCAT::NodeRange;
+  use xCAT::NodeRange;
   $Main::resps={};
   my @nodes;
   if ($req->{node}) {
