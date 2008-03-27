@@ -28,6 +28,7 @@ sub handled_commands {
     rinv => 'nodehm:inv,mgt',
     rbeacon => 'nodehm:beacon,mgt',
     rspreset => 'nodehm:mgt',
+    rspconfig => 'nodehm:mgt',
     rbootseq => 'nodehm:bootseq,mgt',
     reventlog => 'nodehm:eventlog,mgt',
   };
@@ -321,7 +322,140 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
   }
 }
 
+sub setoid {
+   my $oid = shift;
+   my $offset = shift;
+   my $value = shift;
+   my $type = shift;
+   unless ($type) { $type = 'INTEGER'; }
+   my $varbind = new SNMP::Varbind([$oid,$offset,$value,$type]);
+   my $data = $session->set($varbind);
+   if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+   return 0,$varbind;
+}
 
+sub enabledefaultalerts {
+   #Customizers: most oids are listed, and some commented out. uncomment if you want to get them
+   #deprecated options are in, but commented, will elect to use what the MM official strategy suggests
+   my @enabledalerts = (
+      #Deprecated '1.3.6.1.4.1.2.3.51.2.4.2.1.1', #critical temperature
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.1.2', #critical voltage
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.1.4', #critical blower
+      '1.3.6.1.4.1.2.3.51.2.4.2.1.5', #critical power
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.1.6', #critical Hard drive
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.1.7', #critical VRM
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.1.8', #critical switch module
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.1.9', #critical config
+      '1.3.6.1.4.1.2.3.51.2.4.2.1.10', #critical blade
+      '1.3.6.1.4.1.2.3.51.2.4.2.1.11', #critical IO
+      '1.3.6.1.4.1.2.3.51.2.4.2.1.12', #critical storage
+      '1.3.6.1.4.1.2.3.51.2.4.2.1.13', #critical chassis
+      '1.3.6.1.4.1.2.3.51.2.4.2.1.14', #critical fan
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.2.2', #warn single blower
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.2.3', #warn temp
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.2.4', #warn volt
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.2.6', #warn backup MM
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.2.7', #warn tray/KVM switch prob
+      '1.3.6.1.4.1.2.3.51.2.4.2.2.10', #warn log full
+      '1.3.6.1.4.1.2.3.51.2.4.2.2.15', #warn blade warning
+      '1.3.6.1.4.1.2.3.51.2.4.2.2.16', #warn io warning 
+      '1.3.6.1.4.1.2.3.51.2.4.2.2.17', #warn storage warning
+      '1.3.6.1.4.1.2.3.51.2.4.2.2.18', #warn power module
+      '1.3.6.1.4.1.2.3.51.2.4.2.2.19', #warn chassis
+      '1.3.6.1.4.1.2.3.51.2.4.2.2.20', #warn cooling 
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.3.4', #info power off
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.3.5', #info power on
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.3.8', #info PFA
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.10', #info inventory (insert/remove)
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.11', #info 75% events
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.12', #info net reconfig
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.3.13', #info throttling
+      #deprecated '1.3.6.1.4.1.2.3.51.2.4.2.3.14', #info power management
+      #annoying '1.3.6.1.4.1.2.3.51.2.4.2.3.15', #info login events
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.16', #info blade events
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.17', #info IO events
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.18', #info storage events
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.19', #info power module events
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.20', #info  chassis events
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.21', #info  blower event
+      '1.3.6.1.4.1.2.3.51.2.4.2.3.22', #info  power on/off
+      );
+   setoid('1.3.6.1.4.1.2.3.51.2.4.2.4',0,1);
+   foreach (@enabledalerts) {
+      setoid($_,0,1);
+   }
+}
+   
+
+
+
+
+
+my @cfgtext;
+sub mpaconfig {
+   #OIDs of interest:
+   #1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.4 snmpCommunityEntryCommunityIpAddress2
+   #snmpCommunityEntryCommunityName 1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2
+   #remoteAlerts 1.3.6.1.4.1.2.3.51.2.4.2
+   #remoteAlertIdEntryTextDescription 1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.4
+   #remoteAlertIdEntryStatus 1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.2 (0 invalid, 2 enable)
+   my $parameter;
+   my $value;
+   my $assignment;
+   my $returncode=0;
+   if ($didchassis) { return 0, @cfgtext } #"Chassis already configured for this command" }
+   @cfgtext=();
+   foreach $parameter (@_) {
+      $assignment = 0;
+      $value = undef;
+      if ($parameter =~ /=/) {
+         $assignment = 1;
+         ($parameter,$value) = split /=/,$parameter,2;
+      }
+      if ($parameter eq "snmpdest") {
+         $parameter = "snmpdest1";
+      }
+      if ($parameter =~ /snmpdest(\d+)/) {
+         if ($1 > 3) {
+            $returncode &= 1;
+            push(@cfgtext,"Only up to three snmp destinations may be defined");
+            next;
+         }
+         my $dstindex = $1;
+         if ($assignment) {
+            setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1",1,$value,'OCTET');
+         }
+         my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1.1"]);
+         push @cfgtext,"AMM SNMP Destination $1: $data";
+         next;
+      }
+      if ($parameter =~ /^alert/i) {
+         if ($assignment) {
+            if ($value =~ /^enable/i or $value =~ /^on$/i) {
+               setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.4',12,'xCAT configured SNMP','OCTET'); #Set a description so the MM doesn't flip out
+               setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.5',12,4); #Set Dest12 to SNMP
+               setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.2',12,2); #enable dest12
+               setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.1.3',0,0); #Enable SNMP traps
+               enabledefaultalerts();
+            } elsif ($value =~ /^disable/i or $value =~ /^off$/i) {
+               setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.2',12,0); #Disable alert dest 12
+               setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.1.3',0,1); #Disable SNMP traps period
+            }
+         }
+         my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.2.12']);
+         if ($data == 2) {
+            push @cfgtext,"Alerting: Enabled";
+            next;
+         } else {
+            push @cfgtext,"Alerting: Disabled";
+            next;
+         }
+      }
+   }
+   $didchassis=1;
+   return $returncode,@cfgtext;
+}
+   
 
 sub bootseq {
   my @args=@_;
@@ -847,6 +981,8 @@ sub bladecmd {
     return vitals(@args);
   } elsif ($command =~ /r[ms]preset/) {
     return resetmp(@args);
+  } elsif ($command eq "rspconfig") {
+    return mpaconfig(@args);
   } elsif ($command eq "rbootseq") {
     return bootseq(@args);
   } elsif ($command eq "getmacs") {
@@ -1094,7 +1230,7 @@ sub process_request {
     unless (defined($cpid)) { die "Fork error"; }
     unless ($cpid) {
       close($cfd);
-      dompa($pfd,$mpa,\%mpahash,$command,-args=>@exargs);
+      dompa($pfd,$mpa,\%mpahash,$command,-args=>\@exargs);
       exit(0);
     }
     close ($pfd);
@@ -1138,7 +1274,7 @@ sub dompa {
   my $mpahash = shift;
   my $command=shift;
   my %namedargs=@_;
-  my @exargs=$namedargs{-args};
+  my @exargs=@{$namedargs{-args}};
   my $node;
   $session = new SNMP::Session(
                     DestHost => $mpa,
