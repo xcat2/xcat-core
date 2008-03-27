@@ -17,12 +17,8 @@ elif [ -r /boot/grub/menu.lst ]; then
 	INITRD=`echo $INITRD|sed -e 's!//!/!g'`
 
 fi
-mkdir /servboot
 `dirname $0`/unlocktftpdir.awk $MASTER 3002
-mount -o nolock $MASTER:/tftpboot/xcat/$NODE /servboot
-cp $KERNEL /servboot/$KNAME
-cp $INITRD /servboot/$INAME
-umount /servboot
+tftp $MASTER -m binary -c put $KERNEL xcat/$NODE/$KNAME
+tftp $MASTER -m binary -c put $INITRD xcat/$NODE/$INAME
 `dirname $0`/locktftpdir.awk $MASTER 3002
-rmdir /servboot
 `dirname $0`/setiscsiparms.awk $MASTER 3002 $KNAME $INAME "$KCMDLINE"
