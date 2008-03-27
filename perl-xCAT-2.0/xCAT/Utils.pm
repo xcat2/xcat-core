@@ -1876,18 +1876,17 @@ sub get_SN_akb_MS_or_Node
     my $snattribute;
     $::ERROR_RC = 0;
 
-	# determine if the request is for the service node as known by the MS 
-	# or the node
+    # determine if the request is for the service node as known by the MS
+    # or the node
 
     if ($request eq "MS")
-    {                      
+    {
         $snattribute = "servicenode";
     }
-    else
-    {                     
+    else    # Node
+    {
         $snattribute = "xcatmaster";
     }
-
 
     my $master =
       xCAT::Utils->get_site_Master();    # read the site table, master attrib
@@ -1913,17 +1912,17 @@ sub get_SN_akb_MS_or_Node
     }
 
     if ($service eq "xcat")
-    {                       # find all service nodes for the nodes in the list
+    {    # find all service nodes for the nodes in the list
         foreach my $node (@node_list)
         {
             $sn = $noderestab->getNodeAttribs($node, [$snattribute]);
             if ($sn and $sn->{$snattribute})
-            {               # if service node defined
+            {    # if service node defined
                 my $key = $sn->{$snattribute};
                 push @{$snhash{$key}}, $node;
             }
             else
-            {               # use site.master
+            {    # use site.master
                 push @{$snhash{$master}}, $node;
             }
         }
@@ -1943,7 +1942,17 @@ sub get_SN_akb_MS_or_Node
                   $noderestab->getNodeAttribs($node, [$service, $snattribute]);
                 if ($sn and $sn->{$service})
                 {
-                    my $key = $sn->{$service};
+
+                    # see if both  MS and Node address in attribute
+                    my ($msattr, $nodeattr) = split ',', $sn->{$service};
+                    my $key = $msattr;
+                    if ($request eq "Node")
+                    {
+                        if ($nodeattr)    # override with Node, if it exists
+                        {
+                            $key = $nodeattr;
+                        }
+                    }
                     push @{$snhash{$key}}, $node;
                 }
                 else
@@ -1954,7 +1963,7 @@ sub get_SN_akb_MS_or_Node
                         push @{$snhash{$key}}, $node;
                     }
                     else
-                    {                           # use site.master
+                    {                                   # use site.master
                         push @{$snhash{$master}}, $node;
                     }
                 }
@@ -1991,25 +2000,36 @@ sub get_SN_akb_MS_or_Node
                     return \%snhash;
                 }
 
+                # can read the nodehm table
                 foreach my $node (@node_list)
                 {
                     $sn = $nodehmtab->getNodeAttribs($node, ['conserver']);
-                    if ($sn->{'conserver'})
+                    if ($sn and $sn->{'conserver'})
                     {
-                        my $key = $sn->{'conserver'};
+
+                        # see if both  MS and Node address in attribute
+                        my ($msattr, $nodeattr) = split ',', $sn->{'conserver'};
+                        my $key = $msattr;
+                        if ($request eq "Node")
+                        {
+                            if ($nodeattr)    # override with Node, if it exists
+                            {
+                                $key = $nodeattr;
+                            }
+                        }
                         push @{$snhash{$key}}, $node;
                     }
                     else
-                    {    # use service node
+                    {                         # use service node
                         $sn =
                           $noderestab->getNodeAttribs($node, [$snattribute]);
-            if ($sn and $sn->{$snattribute})
+                        if ($sn and $sn->{$snattribute})
                         {
                             my $key = $sn->{$snattribute};
                             push @{$snhash{$key}}, $node;
                         }
                         else
-                        {    # no service node use master
+                        {                     # no service node use master
                             push @{$snhash{$master}}, $node;
                         }
                     }
