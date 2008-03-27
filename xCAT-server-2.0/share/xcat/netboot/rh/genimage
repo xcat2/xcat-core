@@ -57,48 +57,48 @@ foreach (split /,/,$netdriver) {
 
 my $installroot = "/install";
 unless ($onlyinitrd) {
-my $srcdir = "$installroot/$osver/$arch";
-@yumdirs=();
-find(\&isyumdir, <$installroot/$osver/$arch/>);
-unless (scalar(@yumdirs)) {
-#unless ( -d $srcdir."/repodata" ) {
-   print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch";
-   exit 1;
-}
-my $yumconfig;
-open($yumconfig,">","/tmp/genimage.$$.yum.conf");
-my $repnum=0;
-foreach $srcdir (@yumdirs) {
-   print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
-   $repnum += 1;
-}
-$repnum-=1;
-close($yumconfig);
-my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* ";
-foreach (0..$repnum) {
-   $yumcmd .= "--enablerepo=$osver-$arch-$_ "
-}
-$yumcmd .= "install ";
-mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
-my $pkglist;
-if (-r "$pathtofiles/$profile.$osver.$arch.pkglist") {
-   $pkglist = "$pathtofiles/$profile.$osver.$arch.pkglist";
-} elsif (-r "$pathtofiles/$profile.$arch.pkglist") {
-   $pkglist = "$pathtofiles/$profile.$arch.pkglist";
-} elsif (-r "$pathtofiles/$profile.$osver.pkglist") {
-   $pkglist = "$pathtofiles/$profile.$osver.pkglist";
-} elsif (-r "$pathtofiles/$profile.pkglist") {
-   $pkglist = "$pathtofiles/$profile.pkglist";
-} else {
-   print "Unable to find package list for $profile!";
-   return 1;
-}
-open($yumconfig,"<","$pkglist");
-while (<$yumconfig>) {
-   chomp;
-   $yumcmd .= $_ . " ";
-}
-$yumcmd =~ s/ $/\n/;
+   my $srcdir = "$installroot/$osver/$arch";
+   @yumdirs=();
+   find(\&isyumdir, <$installroot/$osver/$arch/>);
+   unless (scalar(@yumdirs)) {
+   #unless ( -d $srcdir."/repodata" ) {
+      print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch";
+      exit 1;
+   }
+   my $yumconfig;
+   open($yumconfig,">","/tmp/genimage.$$.yum.conf");
+   my $repnum=0;
+   foreach $srcdir (@yumdirs) {
+      print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
+      $repnum += 1;
+   }
+   $repnum-=1;
+   close($yumconfig);
+   my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* ";
+   foreach (0..$repnum) {
+      $yumcmd .= "--enablerepo=$osver-$arch-$_ "
+   }
+   $yumcmd .= "install ";
+   mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
+   my $pkglist;
+   if (-r "$pathtofiles/$profile.$osver.$arch.pkglist") {
+      $pkglist = "$pathtofiles/$profile.$osver.$arch.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$arch.pkglist") {
+      $pkglist = "$pathtofiles/$profile.$arch.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$osver.pkglist") {
+      $pkglist = "$pathtofiles/$profile.$osver.pkglist";
+   } elsif (-r "$pathtofiles/$profile.pkglist") {
+      $pkglist = "$pathtofiles/$profile.pkglist";
+   } else {
+      print "Unable to find package list for $profile!";
+      return 1;
+   }
+   open($yumconfig,"<","$pkglist");
+   while (<$yumconfig>) {
+      chomp;
+      $yumcmd .= $_ . " ";
+   }
+   $yumcmd =~ s/ $/\n/;
    my $rc = system($yumcmd);
    if ($rc) { 
       print "yum invocation failed\n";
