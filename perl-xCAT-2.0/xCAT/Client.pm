@@ -4,12 +4,16 @@ package xCAT::Client;
 BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-}
-use lib "$::XCATROOT/lib/perl";
-if ($ENV{XCATBYPASS}) {
-   require xCAT::NodeRange;
-   require xCAT::Utils;
-   require xCAT::Table;
+   require lib;
+   lib->import("$::XCATROOT/lib/perl");
+   if ($ENV{XCATBYPASS}) {
+      require xCAT::NodeRange; 
+      xCAT::NodeRange->import;
+      require xCAT::Utils;
+      xCAT::Utils->import;
+      require xCAT::Table;
+      xCAT::Table->import;
+   }
 }
 
 my $inet6support;
@@ -196,7 +200,7 @@ sub plugin_command {
   my $sock = shift;
   my $callback = shift;
   my %handler_hash;
-  use xCAT::NodeRange;
+  #use xCAT::NodeRange;
   $Main::resps={};
   my @nodes;
   if ($req->{node}) {
