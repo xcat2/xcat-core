@@ -424,6 +424,7 @@ sub ipmicmd {
 
 	my $command = shift;
 	my $subcommand = shift;
+   my @leftovers = @_;
 
 	my $rc=0;
 	my $text="";
@@ -679,8 +680,9 @@ sub ipmicmd {
 		}
 	}
 	elsif($command eq "rgetnetinfo") {
+      my @subcommands = ($subcommand);
 		if($subcommand eq "all") {
-			my @subcommands = (
+			@subcommands = (
 				"ip",
 				"netmask",
 				"gateway",
@@ -691,6 +693,7 @@ sub ipmicmd {
 				"snmpdest4",
 				"community",
 			);
+
 			my @coutput;
 
 			foreach(@subcommands) {
@@ -706,10 +709,14 @@ sub ipmicmd {
 		}
 	}
 	elsif($command eq "rspconfig") {
-		($rc,@output) = setnetinfo($subcommand,@_);
-		if($rc == 0) {
-			($rc,@output) = getnetinfo($subcommand);
-		}
+      foreach ($subcommand,@_) {
+         my @coutput;
+		   ($rc,@coutput) = setnetinfo($_);
+		   if($rc == 0) {
+			   ($rc,@coutput) = getnetinfo($_);
+		   }
+         push(@output,@coutput);
+      }
 	}
 	elsif($command eq "sete325cli") {
 		($rc,@output) = sete325cli($subcommand);
@@ -954,14 +961,14 @@ sub getnetinfo {
 		}
       elsif($subcommand eq "alert") {
          if ($returnd[39] & 0x8) { 
-            $text = "Alerts: enabled";
+            $text = "SP Alerting: enabled";
          } else {
-            $text = "Alerts: disabled";
+            $text = "SP Alerting: disabled";
          }
       }
 		elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
 			$text = sprintf("$format %d.%d.%d.%d",
-				"BMC SNMP Destination $1:",
+				"SP SNMP Destination $1:",
 				$returnd[41],
 				$returnd[42],
 				$returnd[43],
@@ -1000,7 +1007,7 @@ sub getnetinfo {
 				$returnd[41]);
 		}
 		elsif ($subcommand eq "community") {
-			$text = sprintf("$format ","BMC SNMP Community:");
+			$text = sprintf("$format ","SP SNMP Community:");
 			my $l = 38;
 			while ($returnd[$l] ne 0) {
 				$l = $l + 1;

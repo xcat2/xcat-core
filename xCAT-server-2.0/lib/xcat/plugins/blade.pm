@@ -426,7 +426,7 @@ sub mpaconfig {
             setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1",1,$value,'OCTET');
          }
          my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1.1"]);
-         push @cfgtext,"AMM SNMP Destination $1: $data";
+         push @cfgtext,"SP SNMP Destination $1: $data";
          next;
       }
       if ($parameter =~ /^community/i) {
@@ -434,7 +434,7 @@ sub mpaconfig {
             setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1.1",0,$value,'OCTET');
          }
          my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1.1"]);
-         push @cfgtext,"AMM SNMP Community: $data";
+         push @cfgtext,"SP SNMP Community: $data";
          next;
       }
       if ($parameter =~ /^alert/i) {
@@ -452,10 +452,10 @@ sub mpaconfig {
          }
          my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.2.12']);
          if ($data == 2) {
-            push @cfgtext,"Alerting: Enabled";
+            push @cfgtext,"SP Alerting: enabled";
             next;
          } else {
-            push @cfgtext,"Alerting: Disabled";
+            push @cfgtext,"SP Alerting: disabled";
             next;
          }
       }
