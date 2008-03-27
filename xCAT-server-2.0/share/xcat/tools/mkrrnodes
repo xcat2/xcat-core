@@ -1,0 +1,124 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+
+use Getopt::Long;
+
+#-----------------------------------------------------------------------------
+
+=head1   mkrrnodes
+
+
+
+ mkrrnodes -C <cu letter> -R <startrange,endrange>     (add) 
+ mkrrnodes -d -C <cu letter> -R <startrange,endrange> (delete)
+ Build an nodelist entry that looks like this
+
+ "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,rack06","blade,osi",,,
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+
+my $rc = 0;
+
+&parse_args;
+my $cmd       = "";
+my @bladename;
+@bladename=("a","b","c");
+foreach my $CU (@::CU)
+{
+    foreach my $range (@::RANGE)
+    {
+        foreach my $blade (@bladename)
+        {
+            $cmd = "rr";
+            $cmd .= $CU;
+            $cmd .= $range;
+            $cmd .= "$blade";
+            $cmd .= " ";
+            if ($blade eq "a" ) {
+              
+              $cmd .= "groups=rr$CU$range,ls21,cu$CU,opteron,compute,tb";
+            } else {
+              if ($blade eq "b" ) {
+              $cmd .= "groups=rr$CU$range,qs22,cu$CU,cell,cell-b,compute,tb";
+               } else { # c
+              $cmd .= "groups=rr$CU$range,qs22,cu$CU,cell,cell-c,compute,tb";
+               
+              }
+            }
+            if ($CU eq "a" ) {
+              
+              $cmd .= ",rack05";
+            } else {
+               $cmd .= ",rack06";
+            }
+            $cmd .=" nodelist.nodetype=blade,osi";
+            if ($::DELETE) {
+              system("noderm $cmd");
+            } else {
+               system("nodeadd $cmd");
+            }
+            
+        }
+    }
+}
+exit $rc;
+
+#-----------------------------------------------------------------------------
+
+=head3 parse_args
+  
+  Parses for  input
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_args
+{
+
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+    if (
+        !GetOptions(
+            'C|CU=s'    => \$::CU,
+            'h|help'    => \$::HELP,
+            'd|delete'  => \$::DELETE,
+            'R|RANGE=s' => \$::RANGE
+
+        )
+      )
+    {
+        my $usagemsg =
+          " mkrrnodes -h \n mkrrnodes [-d] -C [a|b|...,r] -R [startrange,endrange]\n";
+        printf $usagemsg;
+        exit 1;
+    }
+    if ($::HELP)
+    {
+        my $usagemsg =
+          " mkrrnodes -h \n mkrrnodes [-d] -C [a|b|,...,r] -R [startrange,endrange]\n";
+        printf $usagemsg;
+        exit 0;
+    }
+    @::CU    = split(',', $::CU);
+  
+    my ($fNum,$eNum) = split(',', $::RANGE);
+    my $prefix;
+    foreach my $suffix ($fNum .. $eNum)
+    {
+                my $numOfZeros = (length($fNum) - length($suffix));
+                my $prefix     = '0' x $numOfZeros;
+                push @::RANGE, "$fRoot$prefix$suffix$fDomain";
+    }
+
+
+
+}
+
