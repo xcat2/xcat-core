@@ -4,7 +4,13 @@ B<makedhcp> - Creates new dhcp configuration files and updates live dhcp configu
 
 =head1 SYNOPSIS
 
-B<makedhcp [-n]>
+B<makedhcp> [-n]>
+
+B<makedhcp> [-a]
+
+B<makedhcp> [-a] [-d]
+
+B<makedhcp> [-d] I<noderange>
 
 B<makedhcp> I<noderange> [B<-s> I<statements>]
 
@@ -18,6 +24,10 @@ the DHCP configuration, including certain general parameters such as a dynamic r
 With a noderange, makedhcp will inject configuration data pertinent to the specified nodes that immediately
 takes effect without a reset.
 
+The B<makedhcp> command with the B<-a> option will create a dhcpd.leases file for all nodes.   If the B<-d> flag is used with the B<-a> flag then it will delete all nodes dhcp service host definitions. 
+
+The B<makedhcp>  B<-d> flag followed with a <noderange> will delete the dhcp server host definitons for the noderange.
+
 The B<makedhcp> command also uses the following attributes from the xCAT database:  B<site.xcatservers>,
 B<site.dhcpinterfaces>, B<site.domain>,
 B<networks.dynamicrange>, B<networks.dhcpserver>
@@ -28,6 +38,12 @@ B<networks.dynamicrange>, B<networks.dhcpserver>
 B<-h>          Display usage message.
 
 B<-n>          Create a new dhcpd.conf file.
+
+B<-a>          Define all nodes to the dhcp server.
+
+B<-a> <-d>     Delete all defined nodes to the dhcp server.
+
+B<-d> <noderange>     Delete all defined nodes in the noderange to the dhcp server.
 
 B<-s>          For the input noderange, the argument will be interpreted like dhcpd.conf text.
 
@@ -43,6 +59,15 @@ B<-s>          For the input noderange, the argument will be interpreted like dh
 1. The following example, will cause dhcp on the next request to set root-path appropriately for only node5.  Note some characters (e.g. ") must be doubly escaped (once for the shell, and once for the OMAPI layer).
 
 I<makedhcp node5 -s 'option root-path  \"172.16.0.1:/install/freebsd6.2/x86_64\";'>
+
+2. The following example, will update the dhcpd.conf file.
+
+I<makedhcp -n>
+
+
+2. The following example, will define all nodes to the dhcp server.
+
+I<makedhcp -a>
 
 
 =head1 NOTES
