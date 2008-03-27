@@ -429,6 +429,14 @@ sub mpaconfig {
          push @cfgtext,"AMM SNMP Destination $1: $data";
          next;
       }
+      if ($parameter =~ /^community/i) {
+         if ($assignment) {
+            setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1.1",0,$value,'OCTET');
+         }
+         my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1.1"]);
+         push @cfgtext,"AMM SNMP Community: $data";
+         next;
+      }
       if ($parameter =~ /^alert/i) {
          if ($assignment) {
             if ($value =~ /^enable/i or $value =~ /^on$/i) {
