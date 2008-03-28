@@ -21,7 +21,8 @@ $::NODETYPE_OSI="osi";
 $::NODETYPE_LPAR="lpar"; 
 $::NODETYPE_BPA="bpa"; 
 $::NODETYPE_FSP="fsp";
-
+$::NODETYPE_HMC="hmc";
+$::NODETYPE_IVM="ivm";
 
 # valid values for nodelist.status columns or other status 
 $::STATUS_ACTIVE="active";
