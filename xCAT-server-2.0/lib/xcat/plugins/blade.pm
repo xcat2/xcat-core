@@ -31,6 +31,7 @@ sub handled_commands {
     rspconfig => 'nodehm:mgt',
     rbootseq => 'nodehm:bootseq,mgt',
     reventlog => 'nodehm:eventlog,mgt',
+    switchblade => 'nodehm:mgt',
   };
 }
 my %usage = (
@@ -464,6 +465,46 @@ sub mpaconfig {
    return $returncode,@cfgtext;
 }
    
+
+sub switchblade {
+   #OIDS of interest:
+   #1.3.6.1.4.1.2.3.51.2.22.1.1 media tray ownership
+   #1.3.6.1.4.1.2.3.51.2.22.1.2 kvm ownership
+   my @args=@_;
+   my $data;
+   my @rettext;
+   my $domt=0;
+   my $dokvm=0;
+   my $targnum=$slot;
+   if ($args[1] =~ /^\d+$/) {
+      $targnum = $args[1];
+   }
+   if ($args[0] eq "list" or $args[0] eq "stat") {
+      $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.1.0"]);
+      push @rettext,"Media Tray slot: $data";
+      $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.1.0"]);
+      push @rettext,"KVM slot: $data";
+   } elsif ($args[0] eq "both") {
+      $domt=1;
+      $dokvm=1;
+   } elsif ($args[0] eq "mt" or $args[0] eq "media") {
+      $domt=1;
+   } elsif ($args[0] eq "kvm" or $args[0] eq "video") {
+      $dokvm=1;
+   }
+   if ($domt) {
+      setoid("1.3.6.1.4.1.2.3.51.2.22.1.1",0,$targnum);
+      $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.1.0"]);
+      push @rettext,"Media Tray slot: $data";
+   }
+   if ($dokvm) {
+      setoid("1.3.6.1.4.1.2.3.51.2.22.1.2",0,$targnum);
+      $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.1.0"]);
+      push @rettext,"KVM slot: $data";
+   }
+
+   return 0,@rettext;
+}
 
 sub bootseq {
   my @args=@_;
@@ -993,6 +1034,8 @@ sub bladecmd {
     return mpaconfig(@args);
   } elsif ($command eq "rbootseq") {
     return bootseq(@args);
+  } elsif ($command eq "switchblade") {
+     return switchblade(@args);
   } elsif ($command eq "getmacs") {
     return getmacs(@args);
   } elsif ($command eq "rinv") {
