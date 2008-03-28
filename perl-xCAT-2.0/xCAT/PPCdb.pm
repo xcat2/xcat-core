@@ -41,6 +41,23 @@ sub add_ppc {
             $ips ) = split /,/;
          
         ###############################
+        # Update nodetype table
+        ###############################
+        if ( $type =~ /^fsp|bpa|lpar|hmc|ivm$/ ) {
+            my ($k,$u);
+            my %nodetype = (
+                 fsp  => $::NODETYPE_FSP,
+                 bpa  => $::NODETYPE_BPA,
+                 lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
+                 hmc  => $::NODETYPE_HMC,
+                 ivm  => $::NODETYPE_IVM,
+            );
+            $k->{node}     = $name;
+            $u->{nodetype} = $nodetype{$type};
+            $db{nodetype}->setAttribs( $k,$u );
+            $db{nodetype}{commit} = 1;
+        }
+        ###############################
         # Update ppc table
         ###############################
         if ( $type =~ /^fsp|bpa|lpar$/ ) {
@@ -63,26 +80,12 @@ sub add_ppc {
             $db{nodelist}{commit} = 1;
 
             ###########################
-            # Update nodetype table
-            ###########################
-            my ($k2,$u2);
-            my %nodetype = (
-                 fsp  => $::NODETYPE_FSP,
-                 bpa  => $::NODETYPE_BPA,
-                 lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI"
-            );
-            $k2->{node}     = $name;
-            $u2->{nodetype} = $nodetype{$type};
-            $db{nodetype}->setAttribs( $k2,$u2 );
-            $db{nodetype}{commit} = 1;
-
-            ###########################
             # Update nodehm table
             ###########################
-            my ($k3,$u3);
-            $k3->{node} = $name;
-            $u3->{mgt}  = $hwtype;
-            $db{nodehm}->setAttribs( $k3,$u3 );
+            my ($k2,$u2);
+            $k2->{node} = $name;
+            $u2->{mgt}  = $hwtype;
+            $db{nodehm}->setAttribs( $k2,$u2 );
             $db{nodehm}{commit} = 1;
         }
         ###############################
@@ -281,6 +284,7 @@ sub credentials {
 
 
 1;
+
 
 
 
