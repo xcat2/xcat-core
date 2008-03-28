@@ -1859,7 +1859,7 @@ sub get_site_Master
      Error:
          $::ERROR_RC=0 no error $::ERROR_RC=1 error 
 
-	 example: $sn =xCAT::get_SN_for_MS(@nodes,$service,"MS");
+	 example: $sn =xCAT::Utils->get_SN_for_MS(@nodes,$service,"MS");
 
 =cut
 
