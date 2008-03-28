@@ -59,10 +59,9 @@ The file mp.csv could contain something like:
 
 =item *
 
-To restore database tables that were dumped with tabdump:
+To restore database tables that we dumped with dumpxCATdb:
 
-  cd /tmp/xcatdb.backup
-  for i in *.csv;do echo "Restoring $i..."; tabrestore $i; done
+restorexCATdb -p <restore directory:
 
 =back
 
@@ -72,4 +71,4 @@ To restore database tables that were dumped with tabdump:
 
 =head1 SEE ALSO
 
-tabdump(1), tabedit(1)
+tabdump(1), tabedit(1),dumpxCATdb(1)

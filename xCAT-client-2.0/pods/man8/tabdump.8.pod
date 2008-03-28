@@ -62,8 +62,7 @@ To see what tables exist in the xCAT database:
 
 To back up all the xCAT database tables:
 
-  mkdir -p /tmp/xcatdb.backup
-  for i in `tabdump`;do echo "Dumping $i..."; tabdump $i > /tmp/xcatdb.backup/$i.csv; done
+dumpxCATdb -p <backup directory>
 
 =item *
 
@@ -85,4 +84,4 @@ To display a description of each column in the nodehm table:
 
 =head1 SEE ALSO
 
-tabrestore(1), tabedit(1)
+tabrestore(1), tabedit(1), dumpxCATdb(1)
