@@ -157,16 +157,16 @@ my $path1 = "$path/";
 my $path1 = "$path/";
 
 # build each copy command
-# cp -p /etc/xcat/cfgloc $path/etc/xcat/cfgloc , if local or
-# scp -p /etc/xcat/cfgloc $hostname:$path/etc/xcat/cfgloc if remote
-my $filename  = " /etc/xcat/cfgloc ";
-my $filename2 = "etc/xcat/cfgloc ";
-my $copy1     = $cpy;
-$copy1 .= " -p ";
-$copy1 .= $filename;
-$copy1 .= $hostname;
-$copy1 .= $path1;
-$copy1 .= $filename2;
+# cp -p /etc/sysconfig/xcat $path/etc/sysconfig/xcat , if local or
+# scp -p /etc/sysconfig/xcat $hostname:$path/etc/sysconfig/xcat if remote
+#my $filename  = " /etc/sysconfig/xcat ";
+#my $filename2 = "etc/sysconfig/xcat ";
+#my $copy1     = $cpy;
+#$copy1 .= " -p ";
+#$copy1 .= $filename;
+#$copy1 .= $hostname;
+#$copy1 .= $path1;
+#$copy1 .= $filename2;
 
 # cp -p /etc/xcat/cfgloc $path/etc/xcat/cfgloc , if local or
 # scp -p /etc/xcat/cfgloc $hostname:$path/etc/xcat/cfgloc if remote
@@ -223,7 +223,8 @@ $copy6 .= $hostname;
 $copy6 .= $path1;
 $copy6 .= $filename2;
 
-my @cmd = ($copy1, $copy2, $copy3, $copy4, $copy5, $copy6);
+#my @cmd = ($copy1, $copy2, $copy3, $copy4, $copy5, $copy6);
+my @cmd = ($copy2, $copy3, $copy4, $copy5, $copy6);
 
 foreach $cmd (@cmd)
 {
