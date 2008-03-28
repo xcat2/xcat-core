@@ -123,14 +123,27 @@ sub submit_request {
   if ($ENV{XCATHOST}) {
     $xcathost=$ENV{XCATHOST};
   }
-  my $client = IO::Socket::SSL->new(
+  my $client;
+  if (-r $keyfile and -r $certfile and -r $cafile) {
+     $client = IO::Socket::SSL->new(
     PeerAddr => $xcathost,
     SSL_key_file => $keyfile,
     SSL_cert_file => $certfile,
     SSL_ca_file => $cafile,
     SSL_use_cert => 1,
     );
-  die "Connection failure: $@ (SSL Timeout may mean the credentials in ~/.xcat are incorrect)\n" unless ($client);
+  } else {
+     $client = IO::Socket::SSL->new(
+      PeerAddr => $xcathost
+     );
+   }
+  unless ($client) {
+     if ($@ =~ /SSL Timeout/) {
+        die "Connection failure: SSL Timeout or incorrect certificates in ~/.xcat";
+     } else {
+        die "Connection failure: $@"
+     }
+  }
   my $msg=XMLout($request,RootName=>xcatrequest,NoAttr=>1,KeyAttr=>[]);
   print $client $msg;
   my $response;

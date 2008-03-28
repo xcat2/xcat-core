@@ -978,10 +978,19 @@ sub validate {
       next unless ($request->{command}->[0] eq $rule->{commands});
     }
     if ($rule->{parameters} and $rule->{parameters} ne '*') {
-      next; #TODO: not ignore this field
+      my $parms;
+      if ($request->{arg}) {
+         $parms = join(' ',@{$request->{arg}});
+      } else {
+         $parms = "";
+      }
+      my $patt = $rule->{parameters};
+      unless ($parms =~ /$patt/) {
+         next;
+      }
     }
     if ($rule->{noderange} and $rule->{noderange} ne '*') {
-      next; #TODO: not ignore this field
+      #TODO: not ignore this field
     }
     # If we are still in, that means this rule is the first match and dictates behavior.
     if ($rule->{rule}) {
