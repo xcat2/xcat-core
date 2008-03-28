@@ -23,6 +23,8 @@ which interfaces to the /opt/xcat/lib/perl/xcat_plugin/CATWorld.pm plugin
 
  xCATWorld <noderange>   
 
+  see man xCATWorld
+
 =cut
 
 #-----------------------------------------------------------------------------
