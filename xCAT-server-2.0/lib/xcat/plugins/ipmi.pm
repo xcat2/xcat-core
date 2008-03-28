@@ -811,10 +811,10 @@ sub setnetinfo {
    unless(defined($argument)) { 
       return 0;
    }
-   if ($subcommand eq "alert" and $argument eq "on" or $argument =~ /^en/) {
+   if ($subcommand eq "alert" and $argument eq "on" or $argument =~ /^en/ or $argument =~ /^enable/) {
       $netfun = 0x10;
       @cmd = (0x12,0x9,0x1,0x18,0x11,0x00);
-   } elsif ($subcommand eq "alert" and $argument eq "off" or $argument =~ /^dis/) {
+   } elsif ($subcommand eq "alert" and $argument eq "off" or $argument =~ /^dis/ or $argument =~ /^disable/) {
       $netfun = 0x10;
       @cmd = (0x12,0x9,0x1,0x10,0x11,0x00);
    }

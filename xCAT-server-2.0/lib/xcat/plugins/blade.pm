@@ -425,6 +425,7 @@ sub mpaconfig {
          my $dstindex = $1;
          if ($assignment) {
             setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1",1,$value,'OCTET');
+            setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.6.1",1,2,'INTEGER'); #access type: read-write-traps
          }
          my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1.1"]);
          push @cfgtext,"SP SNMP Destination $1: $data";
@@ -440,13 +441,13 @@ sub mpaconfig {
       }
       if ($parameter =~ /^alert/i) {
          if ($assignment) {
-            if ($value =~ /^enable/i or $value =~ /^on$/i) {
+            if ($value =~ /^enable/i or $value =~ /^en/i or $value =~ /^on$/i) {
                setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.4',12,'xCAT configured SNMP','OCTET'); #Set a description so the MM doesn't flip out
                setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.5',12,4); #Set Dest12 to SNMP
                setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.2',12,2); #enable dest12
                setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.1.3',0,0); #Enable SNMP traps
                enabledefaultalerts();
-            } elsif ($value =~ /^disable/i or $value =~ /^off$/i) {
+            } elsif ($value =~ /^disable/i or $value =~ /^dis/i or $value =~ /^off$/i) {
                setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.2',12,0); #Disable alert dest 12
                setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.1.3',0,1); #Disable SNMP traps period
             }
@@ -1339,7 +1340,7 @@ sub dompa {
                     Retries => 2, # Give up sooner to make commands go smoother
                     Timeout=>1300000, #Beacon, for one, takes a bit over a second to return
                     PrivPass => $mpahash->{$mpa}->{password});
-  if ($session->{ErrorStr}) { return 1,$session->{ErrorStr}; }
+  if ($session->{ErrorStr}) {return 1,$session->{ErrorStr}; }
   unless ($session and keys %$session) {
      my %err=(node=>[]);
      foreach (keys %{$mpahash{$mpa}->{nodes}}) {
