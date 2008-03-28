@@ -363,9 +363,9 @@ sub create_fstab
         $fstabtemplate[3] = "#tmpfs      /dev/shm         tmpfs    rw 0 0\n";
         $fstabtemplate[4] = "compute_x86_64 /             tmpfs    rw 0 1\n";
         $fstabtemplate[5] =
-          "none        /tmp             tmpfs    defaults,size=10m 0 2\n";
+          "#none        /tmp             tmpfs    defaults,size=10m 0 2\n";
         $fstabtemplate[6] =
-          "none        /var/tmp         tmpfs    defaults,size=10m 0 2\n";
+          "#none        /var/tmp         tmpfs    defaults,size=10m 0 2\n";
 
         open(FSTABCFG, ">$file")
           or
