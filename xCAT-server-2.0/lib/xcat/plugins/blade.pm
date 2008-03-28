@@ -482,7 +482,7 @@ sub switchblade {
    if ($args[0] eq "list" or $args[0] eq "stat") {
       $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.1.0"]);
       push @rettext,"Media Tray slot: $data";
-      $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.1.0"]);
+      $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.2.0"]);
       push @rettext,"KVM slot: $data";
    } elsif ($args[0] eq "both") {
       $domt=1;
@@ -499,7 +499,7 @@ sub switchblade {
    }
    if ($dokvm) {
       setoid("1.3.6.1.4.1.2.3.51.2.22.1.2",0,$targnum);
-      $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.1.0"]);
+      $data = $session->get(["1.3.6.1.4.1.2.3.51.2.22.1.2.0"]);
       push @rettext,"KVM slot: $data";
    }
 
