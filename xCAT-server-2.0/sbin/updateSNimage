@@ -157,10 +157,10 @@ my $path1 = "$path/";
 my $path1 = "$path/";
 
 # build each copy command
-# cp -p /etc/sysconfig/xcat $path/etc/sysconfig/xcat , if local or
-# scp -p /etc/sysconfig/xcat $hostname:$path/etc/sysconfig/xcat if remote
-my $filename  = " /etc/sysconfig/xcat ";
-my $filename2 = "etc/sysconfig/xcat ";
+# cp -p /etc/xcat/cfgloc $path/etc/xcat/cfgloc , if local or
+# scp -p /etc/xcat/cfgloc $hostname:$path/etc/xcat/cfgloc if remote
+my $filename  = " /etc/xcat/cfgloc ";
+my $filename2 = "etc/xcat/cfgloc ";
 my $copy1     = $cpy;
 $copy1 .= " -p ";
 $copy1 .= $filename;
