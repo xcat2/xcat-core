@@ -53,13 +53,16 @@ sub process_request
     my $args     = $request->{arg};
     my $envs     = $request->{env};
     my %rsp;
-    my $i = 0;
+    my $i = 1;
     my @nodes=@$nodes; 
     # do your processing here
     # return info
+
+    $rsp->{data}->[0] = "Hello World! Your node list is:\n";
+    xCAT::MsgUtils->message("I", $rsp, $callback, 0);
     foreach $node (@nodes)
     {
-        $rsp->{data}->[$i] = "Hello $node\n";
+        $rsp->{data}->[$i] = "$node\n";
         $i++;
     }
     xCAT::MsgUtils->message("I", $rsp, $callback, 0);
