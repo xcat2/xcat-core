@@ -66,6 +66,7 @@ sub start {
   configBMC(1);
 
   #enable MMAs if any
+  configMPA(1);
 
   return (0, "started")
 }
@@ -82,12 +83,15 @@ sub start {
 #--------------------------------------------------------------------------------
 sub configBMC {
   my $action=shift;
-  my $isSV=xCAT::Utils->isServiceNode();
 
-  #the ips of this node
+  my $ret_text="";
+  my $ret_val=0;
+
+  #the identification of this node
   my @hostinfo=xCAT::Utils->determinehostname();
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
+  my $isSV=xCAT::Utils->isServiceNode();
 
   
   my %masterhash=();
@@ -128,7 +132,7 @@ sub configBMC {
   }
   $nrtab->close();       
 
-  if (@node_a==0){ return (0, "");} #nothing to handle
+  if (@node_a==0){ return ($ret_val, $ret_text);} #nothing to handle
 
   #now doing the real thing: enable PEF alert policy table
   my $noderange=join(',',@node_a );
@@ -136,7 +140,8 @@ sub configBMC {
   if ($action==0) {$actionstring="dis";}
   my $result = `XCATBYPASS=Y rspconfig $noderange alert=$actionstring 2>&1`;
   if ($?) {
-     xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for $noderange:\n  $result\n");
+     xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
+     $ret_tex .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
   } 
 
   #setup the snmp destination
@@ -147,12 +152,110 @@ sub configBMC {
       my $nr2=join(',', @$ref2);
       my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$_ 2>&1`;
       if ($?) {
-         xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for $nr2:\n  $result2\n"); 
+         xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
+	 $ret_tex .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
       }
     }
   }
+
+  return ($ret_val, $ret_text);
+  
 }
 
+
+#--------------------------------------------------------------------------------
+=head3    configMPA
+      This function configures Blade Center Management Module to setup the snmp destination, 
+      enable/disable remote alert notification. 
+    Arguments:
+      actioon -- 1 enable remote alert notification. 0 disable remote alert notification.
+    Returns:
+      (return code, message)      
+=cut
+#--------------------------------------------------------------------------------
+sub configMPA {
+  my $action=shift;
+
+  my $ret_val=0;
+  my $ret_text="";
+
+  #the identification of this node
+  my @hostinfo=xCAT::Utils->determinehostname();
+  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+  my $isSV=xCAT::Utils->isServiceNode();
+
+  my %mpa_hash=();
+  my %masterhash=();
+  my @node_a=();
+  my $nrtab = xCAT::Table->new('noderes');
+  my $table=xCAT::Table->new("mp");
+  if ($table) {
+    my @tmp1=$table->getAllNodeAttribs(['mpa']);
+    if (defined(@tmp1) && (@tmp1 > 0)) {
+      foreach(@tmp1) {
+        my $mpa=$_->{mpa};
+        
+        if ($mpa_hash{$mpa}) { next;} #already handled
+
+        $mpa_hash{$mpa}=1;
+        
+        my $monserver;
+        my $tent  = $nrtab->getNodeAttribs($mpa,['monserver', 'servicenode']);
+        if ($tent) {
+	  if ($tent->{monserver}) {  $monserver=$tent->{monserver}; }
+          elsif ($tent->{servicenode})  {  $monserver=$tent->{servicenode}; }
+        } 
+
+        if ($monserver) { 
+          if (!$iphash{$monserver}) { next;} #skip if has sn but not localhost
+        } else { 
+          if ($isSV) { next; } #skip if does not have sn but localhost is a sn
+        }
+        
+        push(@node_a, $mpa);
+
+        # find the master node and add the node in the hash
+        $master=xCAT::Utils->GetMasterNodeName($mpa); #should we use $bmc?
+        if(exists($masterhash{$master})) {
+	  my $ref=$masterhash{$master};
+          push(@$ref, $mpa); 
+	} else { $masterhash{$master}=[$mpa]; } 
+      } #foreach
+    }
+    $table->close();
+  }
+  $nrtab->close();       
+
+  if (@node_a==0){ return ($ret_val, $ret_text);} #nothing to handle
+
+  #now doing the real thing: enable PEF alert policy table
+  my $noderange=join(',',@node_a );
+  #print "noderange=@noderange\n";
+  my $actionstring="en";
+  if ($action==0) {$actionstring="dis";}
+  my $result = `XCATBYPASS=Y rspconfig $noderange alert=$actionstring 2>&1`;
+  if ($?) {
+     xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
+     $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
+  } 
+
+  #setup the snmp destination
+  if ($action==1) {
+    foreach (keys(%masterhash)) {
+      my $ref2=$masterhash{$_};
+      if (@$ref2==0) { next;}
+      my $nr2=join(',', @$ref2);
+      my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$_ 2>&1`;
+      if ($?) {
+         xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n");
+         $ret_text .= "Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n";  
+      }
+    }
+  }
+
+  return ($ret_val, $ret_text);
+}
 
 #--------------------------------------------------------------------------------
 =head3    configSNMP
@@ -254,6 +357,9 @@ sub stop {
 
   # do not turn it on on the service node
   #if (xCAT::Utils->isServiceNode()) { return (0, "");}
+
+  #disable MMAs if any
+  configMPA(0);
 
   #disable BMC so that it stop senging alerts (PETs) to this node
   configBMC(0);
