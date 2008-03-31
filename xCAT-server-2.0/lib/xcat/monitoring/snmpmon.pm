@@ -68,6 +68,9 @@ sub start {
   #enable MMAs if any
   configMPA(1);
 
+  #configure mail to enabling receiving mails from trap handler
+  configMail();
+
   return (0, "started")
 }
 
@@ -257,6 +260,7 @@ sub configMPA {
   return ($ret_val, $ret_text);
 }
 
+
 #--------------------------------------------------------------------------------
 =head3    configSNMP
       This function puts xcat_traphanlder into the snmptrapd.conf file and
@@ -339,6 +343,35 @@ sub configSNMP {
   }
 
   return (0, "started");
+}
+
+#--------------------------------------------------------------------------------
+=head3    configMail
+      This function adds a "alerts" mail aliase so that the mail notification 
+      from the trap handler can be received. It the alerts already exists, this 
+      function does nothing. 
+      TODO: configure mail servers on MS to forward mails to MS 
+    Arguments:
+      none
+    Returns:
+      (return code, message)      
+=cut
+#--------------------------------------------------------------------------------
+sub configMail {
+  #check if "alerts" is in the /etc/aliases file
+  if (-f "/etc/aliases"){ 
+    # if the file exists, check if alerts is in
+    `/bin/grep -e ^alerts /etc/aliases > /dev/null`;
+    if ($? ==0) { return (0, "") };
+  }
+  
+  #make a alerts aliase, forwarding the mail to the root of local host.
+  `echo "alerts:  root" >> /etc/aliases`; 
+
+  #make it effective
+  `newaliases`;
+
+  return (0, "");
 }
 
 
