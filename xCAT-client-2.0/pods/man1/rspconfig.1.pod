@@ -39,7 +39,7 @@ Set the SNMP commmunity value.
 
 =item B<garp>=I<time>
 
-Gratuitous ARP generation interval.
+Set Gratuitous ARP generation interval. The unit is number of 1/2 second.
 
 =item B<-h>|B<--help>
 
