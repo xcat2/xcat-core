@@ -15,10 +15,10 @@ Source2: postscripts.tar.gz
 Source3: templates.tar.gz
 
 Provides: xCAT = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite perl-XML-Parser 
+Requires: xCAT-server xCAT-client perl-DBD-SQLite 
 
 %ifos linux
-Requires: atftp dhcp httpd nfs-utils expect conserver fping bind
+Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-XML-Parser
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
