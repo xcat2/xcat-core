@@ -371,14 +371,10 @@ unless ($pid) {
 }
 $$progname="xcatd: SSL listener";
 openlog("xCAT SSL","","local4");
-my $listener = IO::Socket::SSL->new(
+my $listener = IO::Socket::INET->new(
     LocalPort => $port,
     Listen => 64,
     Reuse => 1,
-    SSL_key_file=>$xcatdir."/cert/server-key.pem",
-    SSL_cert_file=>$xcatdir."/cert/server-cert.pem",
-    SSL_ca_file=>$xcatdir."/cert/ca.pem",
-    SSL_verify_mode=> 1
     );
 
 unless ($listener) {
@@ -397,7 +393,8 @@ xCAT_monitoring::monitorctrl::start($$);
 
 my $peername;
 until ($quit) {
-  next unless my $connection=$listener->accept;
+  next unless my $cnnection=$listener->accept;
+  my $connection;
   my $child = xCAT::Utils->xfork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
   
   unless (defined $child) {
@@ -406,6 +403,13 @@ until ($quit) {
 
   if ($child == 0) {
     $listener->close;
+    $connection = IO::Socket::SSL->start_SSL($cnnection,
+    SSL_key_file=>$xcatdir."/cert/server-key.pem",
+    SSL_cert_file=>$xcatdir."/cert/server-cert.pem",
+    SSL_ca_file=>$xcatdir."/cert/ca.pem",
+    SSL_server=>1,
+    SSL_verify_mode=> 1
+    );
     my $peerhost=undef;
     my $peer=$connection->peer_certificate("owner");
     if ($peer) {
@@ -438,7 +442,7 @@ if ($inet6support) {
     service_connection($connection,$peername,$peerhost);
     exit(0);
   }
-  $connection->close(SSL_no_shutdown => 1); #Without no shutdown, you can guess what the client ends up thinking..
+  $cnnection->close();
 }
 $listener->close;
 
