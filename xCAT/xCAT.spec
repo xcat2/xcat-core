@@ -150,8 +150,8 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
 	then
     	rm /tftpboot/pxelinux.cfg/default
 	fi
-    # make Management Server
-	touch /etc/xCATMS
+    # make Management Node 
+	touch /etc/xCATMN
 	# setup syslog
 	if [ ! -r /etc/syslog.conf.XCATORIG ]; then
     cp /etc/syslog.conf /etc/syslog.conf.XCATORIG
