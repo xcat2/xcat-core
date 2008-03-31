@@ -1118,10 +1118,10 @@ sub build_depend {
     if (defined($ent->{cmd}))     { $cmd=$ent->{cmd}; }
     if (defined($ent->{msdelay})) { $delay=$ent->{msdelay}; }
 
-    if (!defined($dep)) {
+    if (!defined($dep) || !grep(/^@$exargs[0]$/, split /,/, $cmd )) {
       $no_dp{$node} = 1;
     }
-    elsif ( grep(/^@$exargs[0]$/, split /,/, $cmd )) {
+    else {
       foreach (split /,/,$dep ) {
         $dp{$_}{$node} = $delay;
       }
