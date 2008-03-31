@@ -2,6 +2,7 @@
 package xCAT_plugin::bmcconfig;
 use Data::Dumper;
 use xCAT::Table;
+use xCAT::MsgUtils;
 use Socket;
 
 sub handled_commands {
@@ -23,7 +24,12 @@ sub genpassword {
 
 sub net_parms {
   my $ip = shift;
-  $ip = inet_ntoa(inet_aton($ip));
+  if (inet_aton($ip)) {
+     $ip = inet_ntoa(inet_aton($ip));
+  } else {
+     xCAT::MsgUtils->message("S","Unable to resolve $ip");
+     return undef;
+  }
   my $nettab = xCAT::Table->new('networks');
   unless ($nettab) { return undef };
   my @nets = $nettab->getAllAttribs('net','mask','gateway');
@@ -41,7 +47,7 @@ sub net_parms {
       return ($ip,$mask,$gw);
     } 
   }
-  syslog("local1|err","xCAT BMC configuration error, no appropriate network for $ip found in networks, unable to determine netmask");
+  xCAT::MsgUtils->message("S","xCAT BMC configuration error, no appropriate network for $ip found in networks, unable to determine netmask");
 }
 
   
@@ -83,6 +89,11 @@ sub process_request  {
   }
   if ($tmphash->{username}) {
     $username = $tmphash->{username};
+  }
+  unless (defined $bmc) {
+     xCAT::MsgUtils->message('S',"Unable to identify bmc for $node, refusing to give config data");
+     $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
+     return 1;
   }
   (my $ip,my $mask,my $gw) = net_parms($bmc);
   my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
