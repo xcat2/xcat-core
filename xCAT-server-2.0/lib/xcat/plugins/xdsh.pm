@@ -48,26 +48,36 @@ sub handled_commands
 =cut
 
 #-------------------------------------------------------
-sub preprocess_request {
-   my $req = shift;
-   my $cb = shift;
-   if ($req->{_xcatdest}) { return [$req]; } #exit if preprocessed
-   my @requests = ({%$req}); #first element is local instance
-   my $sitetab = xCAT::Table->new('site');
-   (my $ent) = $sitetab->getAttribs({key=>'xcatservers'},'value');
-   $sitetab->close;
-   if ($ent and $ent->{value}) {
-      foreach (split /,/,$ent->{value}) {
-         if (xCAT::Utils->thishostisnot($_)) {
-            my $reqcopy = {%$req};
-            $reqcopy->{'_xcatdest'} = $_;
-            push @requests,$reqcopy;
-         }
-      }
-   }
-   return \@requests;
-}
+sub preprocess_request
+{
+    my $req = shift;
+    my $cb  = shift;
+    my %sn;
+    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    my @requests = ({%$req});      #first element is local instance
+    my @nodes    = $req->{node};
+    my $service  = "xcat";
 
+    # find service nodes for requested nodes
+    # build an individual request for each service node
+    $sn = xCAT::Utils->get_ServiceNode(@nodes, $service, "MN");
+
+    # build each request for each service node
+
+    foreach my $snkey (keys %$sn)
+    {
+
+        if (xCAT::Utils->thishostisnot($snkey))
+        {
+            my $reqcopy = {%$req};
+            $reqcopy->{node} = $sn->{$snkey};
+            $reqcopy->{'_xcatdest'} = $snkey;
+            push @requests, $reqcopy;
+
+        }
+    }
+    return \@requests;
+}
 
 #-------------------------------------------------------
 
@@ -90,9 +100,10 @@ sub process_request
     my %rsp;
 
     # get the Environment Variables and set them in the current environment
-    foreach my $envar (@{$request->{env}}) {
-    	my ($var, $value) = split(/=/, $envar, 2);
-    	$ENV{$var} = $value;
+    foreach my $envar (@{$request->{env}})
+    {
+        my ($var, $value) = split(/=/, $envar, 2);
+        $ENV{$var} = $value;
     }
     if ($command eq "xdsh")
     {
@@ -129,6 +140,7 @@ sub process_request
 sub xdsh
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
+
     #`touch /tmp/lissadebug`;
 
     # parse dsh input
@@ -155,6 +167,7 @@ sub xdsh
 sub xdcp
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
+
     #`touch /tmp/lissadebug`;
     # parse dcp input
     @local_results =
