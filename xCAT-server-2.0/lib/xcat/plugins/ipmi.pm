@@ -34,7 +34,8 @@ my %usage = (
     "rvitals" => "Usage: rvitals <noderange> [all|temp|wattage|voltage|fanspeed|power|leds]",
     "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
     "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
-    "rsetboot" => "Usage: rsetboot <noderange> [net|hd|cd|def|stat]"
+    "rsetboot" => "Usage: rsetboot <noderange> [net|hd|cd|def|stat]",
+    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]|garp[=<number of 1/2 second>]]"
 );
     
 

@@ -41,7 +41,8 @@ my %usage = (
     "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
     "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
     "rbootseq" => "Usage: rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...",
-    "rscan" => "Usage: rscan <noderange> [-w][-x|-z]"
+    "rscan" => "Usage: rscan <noderange> [-w][-x|-z]",
+    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]]"
 );
 my %macmap; #Store responses from rinv for discovery
 my $macmaptimestamp; #reflect freshness of cache
@@ -1146,7 +1147,6 @@ sub process_request {
   my $noderange = $request->{node};
   my $command = $request->{command}->[0];
   my @exargs;
-
   unless ($noderange or $command eq "findme") {
       if ($usage{$command}) {
           $callback->({data=>$usage{$command}});
