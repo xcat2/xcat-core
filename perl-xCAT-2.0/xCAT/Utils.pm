@@ -1832,7 +1832,7 @@ sub get_site_Master
 
 #-----------------------------------------------------------------------------
 
-=head3 get_SN_akb_MS_or_Node 
+=head3 get_ServiceNode 
 
      Will get the Service node ( name or ipaddress) as known by the Management
 	 Server or NOde for the input nodename or ipadress of the node
@@ -1859,12 +1859,12 @@ sub get_site_Master
      Error:
          $::ERROR_RC=0 no error $::ERROR_RC=1 error 
 
-	 example: $sn =xCAT::Utils->get_SN_for_MS(@nodes,$service,"MS");
+	 example: $sn =xCAT::Utils->get_ServiceNode(@nodes,$service,"MS");
 
 =cut
 
 #-----------------------------------------------------------------------------
-sub get_SN_akb_MS_or_Node
+sub get_ServiceNode
 {
     my ($class, $node, $service, $request) = @_;
     my @node_list = @$node;
