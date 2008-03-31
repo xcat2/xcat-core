@@ -1009,8 +1009,8 @@ sub isServiceNode
 
 #-------------------------------------------------------------------------------
 
-=head3    isMS
-	checks for the /etc/xCATMS file , if it exists is a Management Server
+=head3    isMN
+	checks for the /etc/xCATMN file , if it exists it is a Management Server
     
     Arguments:
         none
@@ -1022,16 +1022,16 @@ sub isServiceNode
     Error:
         none
     Example:
-         $return=(xCAT::Utils->isMS()) 
+         $return=(xCAT::Utils->isMN()) 
     Comments:
         none
 =cut
 
 #-------------------------------------------------------------------------------
-sub isMS
+sub isMN
 {
     my $value;
-    if (-e "/etc/xCATMS")
+    if (-e "/etc/xCATMN")
     {
         return 1;
     }
@@ -1839,8 +1839,8 @@ sub get_site_Master
 
      input: list of nodenames and/or node ipaddresses
 			service name 
-			"MS" or "Node"  determines if you want the Service node as known
-			 by the MS  or by the node.
+			"MN" or "Node"  determines if you want the Service node as known
+			 by the Management Node  or by the node.
 
 		recognized service names: xcat,tftpserver,
 		nfsserver,conserver,monserver
@@ -1859,7 +1859,7 @@ sub get_site_Master
      Error:
          $::ERROR_RC=0 no error $::ERROR_RC=1 error 
 
-	 example: $sn =xCAT::Utils->get_ServiceNode(@nodes,$service,"MS");
+	 example: $sn =xCAT::Utils->get_ServiceNode(@nodes,$service,"MN");
 
 =cut
 
@@ -1876,10 +1876,10 @@ sub get_ServiceNode
     my $snattribute;
     $::ERROR_RC = 0;
 
-    # determine if the request is for the service node as known by the MS
+    # determine if the request is for the service node as known by the MN
     # or the node
 
-    if ($request eq "MS")
+    if ($request eq "MN")
     {
         $snattribute = "servicenode";
     }
@@ -1943,7 +1943,7 @@ sub get_ServiceNode
                 if ($sn and $sn->{$service})
                 {
 
-                    # see if both  MS and Node address in attribute
+                    # see if both  MN and Node address in attribute
                     my ($msattr, $nodeattr) = split ',', $sn->{$service};
                     my $key = $msattr;
                     if ($request eq "Node")
@@ -2007,7 +2007,7 @@ sub get_ServiceNode
                     if ($sn and $sn->{'conserver'})
                     {
 
-                        # see if both  MS and Node address in attribute
+                        # see if both  MN and Node address in attribute
                         my ($msattr, $nodeattr) = split ',', $sn->{'conserver'};
                         my $key = $msattr;
                         if ($request eq "Node")
