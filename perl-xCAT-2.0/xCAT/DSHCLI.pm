@@ -2876,10 +2876,9 @@ sub resolve_nodes
     my ($class, $options, $resolved_targets, $unresolved_targets,
         $context_targets)
       = @_;
-
+    
     my @node_list = ();
-
-    my @node_list = $$options{'nodes'};
+    @node_list = split ',' , $$options{'nodes'};
 
     foreach $context_node (@node_list)
     {
