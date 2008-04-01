@@ -363,7 +363,7 @@ sub update_inittab
 
 	my $spotinittab = "$::spot_loc/lpp/bos/inst_root/etc/inittab";
 
-	my $entry = "xcat:2:wait:/opt/xcat/xcatAIXpost";
+	my $entry = "xcat:2:wait:/opt/xcat/xcatAIXpost\n";
 
 	unless (open(INITTAB, ">>$spotinittab")) {
 		print "Could not open $spotinittab for appending.\n";
