@@ -52,14 +52,14 @@ sub parse_args {
     #############################################
     # Modify usage statement 
     #############################################
-    my $option = "configure|deconfigure";
+    my $option = "{configure|deconfigure}";
     $cmd =~ s/spdump/\n\t spdump/;
     $cmd =~ s/sysdump/\n\t sysdump/;
     $cmd =~ s/time/\n\t time [hh:mm:ss]/;
     $cmd =~ s/date/\n\t date [mm-dd-yyyy]/;
     $cmd =~ s/autopower/\n\t autopower [enable|disable]/;
     $cmd =~ s/iocap/\n\t iocap [enable|disable]/;
-    $cmd =~ s/decfg/\n\t decfg [enable|disable policy,...]/;
+    $cmd =~ s/decfg/\n\t decfg [{enable|disable} policy,...]/;
     $cmd =~ s/memdecfg/\n\t memdecfg [$option unit=id (unit|bank)=all|id,...]/;
     $cmd =~ s/procdecfg/\n\t procdecfg [$option unit=id all|id,...]/;
 
