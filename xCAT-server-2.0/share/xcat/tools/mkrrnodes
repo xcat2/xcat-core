@@ -16,7 +16,7 @@ use Getopt::Long;
  mkrrnodes -d -C <cu letter> -R <startrange,endrange> (delete)
  Build an nodelist entry that looks like this
 
- "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,rack06","blade,osi",,,
+ "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,rack06",,,,
 
 
 =cut
@@ -58,7 +58,6 @@ foreach my $CU (@::CU)
             } else {
                $cmd .= ",rack06";
             }
-            $cmd .=" nodelist.nodetype=blade,osi";
             if ($::DELETE) {
               system("noderm $cmd");
             } else {
