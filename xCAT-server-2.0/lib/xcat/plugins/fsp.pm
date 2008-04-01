@@ -12,7 +12,7 @@ sub handled_commands {
   return {
       rpower    => 'nodehm:power,mgt',
       reventlog => 'nodehm:mgt',
-      rfsp      => 'nodehm:mgt'
+      rspconfig => 'nodehm:mgt'
   };
 }
 
