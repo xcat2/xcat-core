@@ -23,7 +23,7 @@ my %cmds = (
      all_clear     => ["Error/Event Logs",              \&all_clear],
      entries       => ["Error/Event Logs",              \&entries],
      clear         => ["Error/Event Logs",              \&clear] },
-  rfsp => {
+  rspconfig => {
      memdecfg      => ["Memory Deconfiguration",        \&memdecfg],
      decfg         => ["Deconfiguration Policies",      \&decfg],
      procdecfg     => ["Processor Deconfiguration",     \&procdecfg],
@@ -68,9 +68,9 @@ sub parse_args {
     #############################################
     local *usage = sub {
         return( [ $_[0],
-            "rfsp -h|--help",
-            "rfsp -v|--version",
-            "rfsp [-V|--verbose] noderange $cmd\n",
+            "rspconfig -h|--help",
+            "rspconfig -v|--version",
+            "rspconfig [-V|--verbose] noderange $cmd\n",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
             "    -V   verbose output"] );
