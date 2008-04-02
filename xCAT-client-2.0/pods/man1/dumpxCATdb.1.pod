@@ -1,15 +1,12 @@
 =head1 NAME
- 
-B<dumpxCATdb> - dumps the xCAT db tables .  
- 
+
+B<dumpxCATdb> - dumps the xCAT db tables .
+
 =head1 SYNOPSIS
- 
-I<dumpxCATdb [-h| --help]>
 
-I<dumpxCATdb  [-v| --version]>
+B<dumpxCATdb> [{B<-p>|B<--path>} I<path>]
 
-
-I<dumpxCATdb[-p| --path]>
+B<dumpxCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 
 =head1 DESCRIPTION
@@ -21,9 +18,9 @@ The dumpxCATdb command creates .csv files for all  xCAT database tables and puts
 
 B<-h>          Display usage message.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-p>          Path to the directory to dump the tables. 
+B<-p>          Path to the directory to dump the tables.
 
 
 =head1 RETURN VALUE
@@ -34,14 +31,14 @@ B<-p>          Path to the directory to dump the tables.
 
 =head1 EXAMPLES
 
-1. To dump the xCAT database into the /tmp/db directory, enter: 
+1. To dump the xCAT database into the /tmp/db directory, enter:
 
-I<dumpxCATdb -p /tmp/db> 
+B<dumpxCATdb -p /tmp/db>
 
 
 
 =head1 FILES
- 
+
 /opt/xcat/sbin/dumpxCATdb
 
 
@@ -51,4 +48,4 @@ This command is part of the xCAT software product.
 See restorexCATdb
 
 
- 
+

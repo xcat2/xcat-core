@@ -155,8 +155,37 @@ where mgmtnode is the hostname of the management node adapter on the cluster sid
 
 =back
 
-xCAT also supports regular expressions in the tables.  This enables one row to represent many
-rows.  For example, if you have many blades in your cluster and their hostnames have a regular
+The xCAT database spans a number of tables, some with records associated with particular nodes
+(such as nodelist and nodehm) and others that do not have a direct relationship with any given node.
+The tables not associated with a given node are straightforward, the data is stored and retrieved
+as-is from the database without interpretation, and without any generic inheritance
+(though some calling code may implement inheritance for specific fields, for example
+nodehm.power inheriting from nodehm.mgt).
+
+The tables with records typically retrieved by node name have some extra features to enable a more
+template-based style to be used:
+
+Any group name can be used in lieu of a node name in the node field, and that record will then
+be taken to be applicable to any node in that group.  If a field is requested for a specific node,
+and either a record doesn't exist specifically for that nodename or a record exists, but has no
+definition for the requested field, that node's groups are then used to search for
+records.  If multiple records could apply from two different groups, the precedence is
+the order the groups are specified in the nodelist table for that node.  This is nearly identical to
+most xCAT 1.x tab file conventions.  This is useful in tables such as noderes, where typical
+configurations have exactly the same field values for large sets of nodes.
+
+xCAT 2 extends the above to be made useful where a field will vary for every node with a given tag,
+but in ways that would be trivial to describe.  If a field is of the format /I<pattern>/I<replacement>/,
+it is taken to be a perl regular expression, to be performed on the nodename.  For example, the bmc field
+of the ipmi table might be B</\z/-bmc/> for a record with node=ipmi to specify that the BMC hostname is derived
+by appending B<-bmc> to the end of the nodename of every node in the ipmi group.
+
+As an extension to the above, a regular expression extended with arithmetic operators is available,
+by using the format |I<pattern>|I<replacement>|.  This behaves similarly to the above, but () enclosed parts
+in I<replacement> are taken to signify arithmetic operations and substituted in.  All operations are integer
+arithmetic, so 5/4 would come out as 1.  The typical perl positional variables are available in such expressions.
+
+For example, if you have many blades in your cluster and their hostnames have a regular
 pattern of blade1, blade2, etc., and your BladeCenter management modules also have a hostname
 pattern of amm1, amm2, etc., then your B<mp> table could be expressed by the following single row:
 
