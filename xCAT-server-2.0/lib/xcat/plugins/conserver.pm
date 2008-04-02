@@ -103,12 +103,25 @@ sub makeconservercf {
     }
   } else { #no nodes specified, do em all up
     zapcfg(\@filecontent); # strip all xCAT configured stuff from config
+    
+    # filter out node types without console support
+    my $typetab = xCAT::Table->new('nodetype');
+    my %type;
+
+    if ( defined($typetab)) {
+      my @ents = $typetab->getAllNodeAttribs([qw(node nodetype)]);
+      foreach (@ents) {
+        $type{$_->{node}}=$_->{nodetype};
+      }
+    }
     foreach (@cfgents) {
       if ($_->{termserver} and $termservers{$_->{termserver}}) {
         dotsent($_,\@filecontent);
         delete $termservers{$_->{termserver}}; #prevent needless cycles being burned
       }
-      donodeent($_,\@filecontent);
+      if ( $type{$_->{node}} !~ /fsp|bpa|hmc|ivm/ ) {
+        donodeent($_,\@filecontent);
+      }
     }
   }
   open $cfile,'>','/etc/conserver.cf';
