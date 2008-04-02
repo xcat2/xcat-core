@@ -1,10 +1,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::PPCcli;
-require Exporter;
-    @ISA = qw(Exporter);
-    @EXPORT_OK = qw(SUCCESS RC_ERROR EXPECT_ERROR NR_ERROR);  
 use strict;
+require Exporter;
+    our @ISA = qw(Exporter);
+    our @EXPORT_OK = qw(SUCCESS RC_ERROR EXPECT_ERROR NR_ERROR);  
 use xCAT::PPCdb;
 use Expect;
 
