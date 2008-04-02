@@ -29,7 +29,7 @@ my %modules = (
   rnetboot  => "xCAT::PPCboot",
   getmacs   => "xCAT::PPCmac",
   reventlog => "xCAT::PPClog",
-  rfsp      => "xCAT::PPCfsp"
+  rspconfig => "xCAT::PPCfsp"
 );
 
 ##########################################
@@ -385,10 +385,16 @@ sub resolve_netwk {
             send_msg( $request, 1, $msg );
             next;
         }
-        if ( !exists( $nethash{$_}{gateway} )) {
+        my $gateway = $nethash{$_}{gateway};
+        if ( !defined( $gateway )) {
             my $msg = sprintf("$_: $errmsg{NO_ATTR}","gateway","networks");
             send_msg( $request, 1, $msg );
             next;
+        }
+        my $gateway_ip = toIP( $gateway );
+        if ( !defined( $gateway_ip ) ) {
+            send_msg( $request, 1, "$_: Cannot resolve '$gateway'" );
+            next;  
         }
         #################################
         # Get server (-S)
@@ -397,6 +403,19 @@ sub resolve_netwk {
         if ( $server == 1 ) {
             send_msg( $request, 1, "$_: Unable to identify master" );
             next;
+        }
+        my $server_ip = toIP( $server );
+        if ( !defined( $server_ip ) ) {
+            send_msg( $request, 1, "$_: Cannot resolve '$server'" );
+            next;  
+        }
+        #################################
+        # Get client (-C)
+        #################################
+        my $client_ip = toIP( $_ ); 
+        if ( !defined( $client_ip ) ) {
+            send_msg( $request, 1, "$_: Cannot resolve '$_'" );
+            next;  
         }
         #################################
         # Get mac-address (-m)
@@ -408,22 +427,40 @@ sub resolve_netwk {
             next;
         }
         #################################
-        # Get client (-C)
-        #################################
-        my $packed_ip = gethostbyname( $_ );
-        if ( !defined( $packed_ip ) or $! ) {
-            send_msg( $request, 1, "$_: Cannot resolve '$_' $!" );
-            next;  
-        }
-        #################################
         # Save results 
         #################################
-        $result{$_}{gateway} = $nethash{$_}{gateway};
-        $result{$_}{server}  = $server;
+        $result{$_}{gateway} = $gateway_ip;
+        $result{$_}{server}  = $server_ip;
+        $result{$_}{client}  = $client_ip;
         $result{$_}{mac}     = $ent->{mac};
-        $result{$_}{client}  = inet_ntoa( $packed_ip );
     }
     return( \%result );
+}
+
+
+
+##########################################################################
+# Converts the specified hostname to an IP address
+##########################################################################
+sub toIP {
+
+  ################################
+  # Already in IP format 
+  ################################
+  if ( $_[0] !~ /[a-zA-Z]/g ) {
+      return( $_[0] );
+  }
+  ################################
+  # Convert to IP format 
+  ################################
+  my $raw_addr = (gethostbyname($_[0]))[4];
+  if ( !$raw_addr or $! ) {
+      return undef;
+  }
+  my @octets = unpack( "C4", $raw_addr );
+  my $ip = join( ".", @octets );
+  return( $ip );
+
 }
 
 
@@ -840,6 +877,7 @@ sub process_request {
 
 
 1;
+
 
 
 
