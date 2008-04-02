@@ -2049,4 +2049,20 @@ sub get_ServiceNode
 
 }
 
+
+# IPv4 function to convert hostname to IP address
+sub toIP {
+
+  if ($_[0] =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/) {
+    return([0,$_[0]]);
+  }
+  my $packed_ip = gethostbyname($_[0]);
+  if( !$packed_ip or $! ) {
+    return([1,"Cannot Resolve: $_[0]\n"]);
+  }
+  return([0,inet_ntoa($packed_ip)]);
+}
+
+
+
 1;
