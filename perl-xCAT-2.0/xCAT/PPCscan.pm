@@ -22,7 +22,7 @@ my @header = (
     ["serial-number", "%-15s" ],
     ["address",       "%s\n" ]);
 
-my @attribs = qw(nodetype node id model serial hcp pprofile parent groups mgt);
+my @attribs = qw(nodetype node id mtm serial hcp pprofile parent groups mgt);
 my %nodetype = (
     fsp  => $::NODETYPE_FSP,
     bpa  => $::NODETYPE_BPA,
@@ -486,7 +486,7 @@ sub format_stanza {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
-            } elsif ( /^model|serial$/ ) {
+            } elsif ( /^mtm|serial$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;                    
                 }     
@@ -544,7 +544,7 @@ sub format_xml {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
-            } elsif ( /^model|serial$/ ) {
+            } elsif ( /^mtm|serial$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;
                 }
