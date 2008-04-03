@@ -16,7 +16,7 @@ use Getopt::Long;
  mkrrnodes -d -C <cu letter> -R <startrange,endrange> (delete)
  Build an nodelist entry that looks like this
 
- "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,rack06",,,,
+ "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,all,rack06",,,,
 
 
 =cut
@@ -43,12 +43,12 @@ foreach my $CU (@::CU)
             $cmd .= " ";
             if ($blade eq "a" ) {
               
-              $cmd .= "groups=rr$CU$range,ls21,cu$CU,opteron,compute,tb";
+              $cmd .= "groups=rr$CU$range,ls21,cu$CU,opteron,compute,tb,all";
             } else {
               if ($blade eq "b" ) {
-              $cmd .= "groups=rr$CU$range,qs22,cu$CU,cell,cell-b,compute,tb";
+              $cmd .= "groups=rr$CU$range,qs22,cu$CU,cell,cell-b,compute,all,tb";
                } else { # c
-              $cmd .= "groups=rr$CU$range,qs22,cu$CU,cell,cell-c,compute,tb";
+              $cmd .= "groups=rr$CU$range,qs22,cu$CU,cell,cell-c,compute,all,tb";
                
               }
             }

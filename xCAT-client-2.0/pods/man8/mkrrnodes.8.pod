@@ -1,11 +1,11 @@
 =head1 NAME
 
-B<mkrrnodes> - Sample tool for adding or deleting many nodes in the xCAT cluster database.
+B<mkrrnodes> - Adds or deletes nodes in the xCAT cluster database.
 
 
 =head1 SYNOPSIS
 
-B<mkrrnodes> [B<-d> ]| [B<-C> I<a|b|,...,r>]  B<-R> I<startrange,endrange>
+B<mkrrnodes> [-d ]| [-C a|b|,...,r]  -R [startrange,endrange]
 
 
 B<mkrrnodes> [B<-h> | B<--help>]
@@ -13,36 +13,12 @@ B<mkrrnodes> [B<-h> | B<--help>]
 
 =head1 DESCRIPTION
 
-The B<mkrrnodes> command is a sample tool that adds or deletes (-d) nodes according to a specific
-naming convention.  You can input the connected unit name (CU, a subset of the cluster, usually in its own
-subnet and managed by an xCAT service node) using the -C flag, and you can input the start and end
-range using the -R flag. It will also automatically define required nodegroups.
-
-In this example tool, the node names will have the format:
-
-B<rr>I<x048y>
-
-where:
- x is a-z, indicating the CU name
- 048 is the node number within that CU
- y is a-c, indicating which of 3 blades within the "triblade" group it is
+The mkrrnodes add or delete (-d) the nodes requested by inputting the CU name (-C) flag and the start and end range (-R) flag.  It will also automatically define required nodegroups. 
 
 =head1 OPTIONS
 
 
 =over 10
-
-=item B<-C> I<char>
-
-A single letter designating which CU (connected unit).
-
-=item B<-R> I<start,end>
-
-The numeric start and end of the range of nodes to create.
-
-=item B<-d>
-
-Delete the nodes instead of adding them.
 
 =item B<-h|--help>
 
@@ -72,11 +48,11 @@ An error has occurred.
 
 =item *
 
-To build a nodelist entry like this "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,rack06",,,,:
+To build a nodelist entry like this "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,all,rack06",,,,:
 
 B<mkrrnodes> -C b -R 048,048
 
-To delete a nodelist entry like this "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,rack06",,,,:
+To delete a nodelist entry like this "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,all,rack06",,,,:
 
 B<mkrrnodes> -d -C b -R 048,048
 
