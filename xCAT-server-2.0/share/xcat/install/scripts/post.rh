@@ -49,7 +49,7 @@ do
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
 	sleep $RAND
 done
-tar -xvf xcatpost.tar.bz2
+tar -jxvf xcatpost.tar.bz2
 /xcatpost/#TABLE:nodelist:THISNODE:node#
 export NODE=#TABLE:nodelist:THISNODE:node#
 export PATH=/xcatpost:$PATH
