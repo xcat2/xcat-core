@@ -1,11 +1,11 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-package xCAT_plugin::centos;
+package xCAT_plugin::anaconda;
 use Storable qw(dclone);
-use xCAT::Utils;
 use Sys::Syslog;
 use xCAT::Table;
-use Cwd;
-use File::Copy;
+use xCAT::Utils;
+use xCAT::MsgUtils;
+use xCAT::Yum;
 use xCAT::Template;
 use xCAT::Postage;
 use Data::Dumper;
@@ -19,7 +19,14 @@ my %distnames = (
   "1176234647.982657" => "centos5",
   "1156364963.862322" => "centos4.4",
   "1178480581.024704" => "centos4.5",
-  "1195929648.203590" => "centos5.1"
+  "1195929648.203590" => "centos5.1",
+  "1195488871.805863" => "centos4.6",
+  "1195487524.127458" => "centos4.6",
+  "1170973598.629055" => "rhelc5",
+  "1170978545.752040" => "rhels5",
+  "1192660014.052098" => "rhels5.1",
+  "1192663619.181374" => "rhels5.1",
+  "1194015916.783841" => "fedora8",
   );
 my %numdiscs = (
   "1156364963.862322" => 4,
@@ -28,12 +35,57 @@ my %numdiscs = (
 
 sub handled_commands {
   return {
-    copycd => "centos",
-    mknetboot => "nodetype:os=centos.*",
-    mkinstall => "nodetype:os=centos.*",
-  }
+    copycd => "anaconda",
+    mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)",
+    mkinstall => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)",
+  };
 }
   
+sub preprocess_request
+{
+   my $req      = shift;
+   my $callback = shift;
+   if ($req->{command}->[0] eq 'copycd')
+   {    #don't farm out copycd
+      return [$req];
+   }
+   my %localnodehash;
+   my %dispatchhash;
+   my $nrtab = xCAT::Table->new('noderes');
+   foreach my $node (@{$req->{node}})
+   {
+      my $nodeserver;
+      my $tent = $nrtab->getNodeAttribs($node, ['tftpserver']);
+      if ($tent) { $nodeserver = $tent->{tftpserver} }
+      unless ($tent and $tent->{tftpserver})
+      {
+         $tent = $nrtab->getNodeAttribs($node, ['servicenode']);
+         if ($tent) { $nodeserver = $tent->{servicenode} }
+      }
+      if ($nodeserver)
+      {
+         $dispatchhash{$nodeserver}->{$node} = 1;
+      }
+      else
+      {
+         $localnodehash{$node} = 1;
+      }
+   }
+   my @requests;
+   my $reqc = {%$req};
+   $reqc->{node} = [keys %localnodehash];
+   if (scalar(@{$reqc->{node}})) { push @requests, $reqc }
+
+   foreach my $dtarg (keys %dispatchhash)
+   {    #iterate dispatch targets
+      my $reqcopy = {%$req};    #deep copy
+         $reqcopy->{'_xcatdest'} = $dtarg;
+      $reqcopy->{node} = [keys %{$dispatchhash{$dtarg}}];
+      push @requests, $reqcopy;
+   }
+   return \@requests;
+}
+
 sub process_request {
   my $request = shift;
   my $callback = shift;
@@ -60,13 +112,13 @@ sub mknetboot {
     my @nodes = @{$req->{node}};
     my $ostab = xCAT::Table->new('nodetype');
     my $sitetab = xCAT::Table->new('site');
+    my $installroot;
+    $installroot = "/install";
     (my $sent) = $sitetab->getAttribs({key=>master},value);
     my $imgsrv;
     if ($sent and $sent->{value}) {
        $imgsrv = $sent->{value};
     }
-    my $installroot;
-    $installroot = "/install";
     if ($sitetab) { 
         (my $ref) = $sitetab->getAttribs({key=>installdir},value);
         if ($ref and $ref->{value}) {
@@ -80,6 +132,15 @@ sub mknetboot {
             next;
         }
         my $osver = $ent->{os};
+        my $platform;
+        if ($osver =~ /rh.*/) {
+           $platform = "rh";
+        } elsif ($osver =~ /centos.*/) {
+           $platform = "centos";
+        } elsif ($osver =~ /fedora.*/) {
+           $platform = "fedora";
+        }
+           
         my $arch = $ent->{arch};
         my $profile = $ent->{profile};
         my $suffix = 'gz';
@@ -140,6 +201,8 @@ sub mkinstall {
   my $callback = shift;
   my $doreq = shift;
   my @nodes = @{$request->{node}};
+  my $installroot;
+  $installroot = "/install";
   my $node;
   my $ostab = xCAT::Table->new('nodetype');
   my %doneimgs;
@@ -153,25 +216,60 @@ sub mkinstall {
     my $os = $ent->{os};
     my $arch = $ent->{arch};
     my $profile = $ent->{profile};
-    unless (-r $::XCATROOT."/share/xcat/install/centos/".$ent->{profile}.".tmpl") {
-      $callback->({error=>["No kickstart template exists for ".$ent->{profile}],errorcode=>[1]});
+    my $platform;
+    if ($os =~ /rh.*/) {
+       $platform = "rh";
+    } elsif ($os =~ /centos.*/) {
+      $platform = "centos";
+    } elsif ($os =~ /fedora.*/) {
+      $platform = "fedora";
+    }
+    unless (-r $::XCATROOT."/share/xcat/install/$platform/$profile.tmpl"
+            or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$arch.tmpl"
+            or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$os.tmpl"
+            or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$os.$arch.tmpl"
+           ) {
+      $callback->({error=>["No $platform kickstart template exists for ".$ent->{profile}],errorcode=>[1]});
       next;
     }
     #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
-    my $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/centos/".$ent->{profile}.".tmpl","/install/autoinst/".$node,$node);
+    my $tmperr="Unable to find template in $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arc combination)";
+    if (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$os.$arch.tmpl") {
+       $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.$os.$arch.tmpl","/$installroot/autoinst/".$node,$node);
+    } elsif (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$arch.tmpl") {
+       $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.$arch.tmpl","/$installroot/autoinst/".$node,$node);
+    } elsif (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$os.tmpl") {
+       $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.$os.tmpl","/$installroot/autoinst/".$node,$node);
+    } elsif (-r $::XCATROOT."/share/xcat/install/$platform/$profile.tmpl") {
+       $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.tmpl","/$installroot/autoinst/".$node,$node);
+    }
     if ($tmperr) { 
        $callback->({node=>[{name=>[$node],error=>[$tmperr],errorcode=>[1]}]}); 
        next;
     }
     mkpath "/install/postscripts/";
     xCAT::Postage->writescript($node,"/install/postscripts/".$node);
-    if (-r "/install/$os/$arch/images/pxeboot/vmlinuz" 
-      and -r  "/install/$os/$arch/images/pxeboot/initrd.img") {
+    if (
+      ($arch =~ /x86/ 
+      and -r "/install/$os/$arch/images/pxeboot/vmlinuz" 
+      and -r  "/install/$os/$arch/images/pxeboot/initrd.img"
+      ) or ($arch =~ /ppc/ 
+         and -r "/install/$os/$arch/ppc/ppc64/vmlinuz" 
+         and -r "/install/$os/$arch/ppc/ppc64/ramdisk.image.gz"
+      )) {
       #TODO: driver slipstream, targetted for network.
       unless ($doneimgs{"$os|$arch"}) {
         mkpath("/tftpboot/xcat/$os/$arch");
-        copy("/install/$os/$arch/images/pxeboot/vmlinuz","/tftpboot/xcat/$os/$arch/");
-        copy("/install/$os/$arch/images/pxeboot/initrd.img","/tftpboot/xcat/$os/$arch/");
+        if ($arch =~ /x86/) {
+         copy("/install/$os/$arch/images/pxeboot/vmlinuz","/tftpboot/xcat/$os/$arch/");
+         copy("/install/$os/$arch/images/pxeboot/initrd.img","/tftpboot/xcat/$os/$arch/");
+        } elsif ( $arch =~ /ppc/ ) {
+            copy( "/install/$os/$arch/ppc/ppc64/vmlinuz","/tftpboot/xcat/$os/$arch/" );
+            copy("/install/$os/$arch/ppc/ppc64/ramdisk.image.gz","/tftpboot/xcat/$os/$arch/initrd.img");
+        } else {
+           $callback->({error=> ["Can not handle architecture $arch"], errorcode => [1]});
+           next;
+        }
         $doneimgs{"$os|$arch"}=1;
       }
       #We have a shot...
@@ -211,8 +309,12 @@ sub mkinstall {
         kcmdline=>$kcmdline
       });
     } else {
-      $callback->({error=>["Unable to find kernel and initrd for $os and $arch in install source /install/$os/$arch"],errorcode=>[1]});
+      $callback->({error=>["Install image not found in /install/$os/$arch"],errorcode=>[1]});
     }
+  }
+  my $rc = xCAT::Utils->create_postscripts_tar();
+  if ( $rc != 0 ) {
+     xCAT::MsgUtils->message( "S", "Error creating postscripts tar file." );
   }
 }
 
@@ -240,8 +342,8 @@ sub copycd {
     #this plugin needs $path...
     return;
   }
-  if ($distname and $distname !~ /^centos/) {
-    #If they say to call it something other than CentOS, give up?
+  if ($distname and $distname !~ /^centos/ and $distname !~ /^fedora/ and $distname !~ /^rh/) {
+    #If they say to call it something unidentifiable, give up?
     return;
   }
   unless (-r $path."/.discinfo") {
@@ -267,10 +369,22 @@ sub copycd {
     unless ($distname) {
       $distname = "centos5";
     }
+  } elsif ( $desc =~ /^Fedora 8$/ ) {
+     unless ($distname) {
+        $distname = "fedora8";
+     }
   } elsif ($desc =~ /^CentOS-4 .*/) {
     unless ($distname) {
       $distname = "centos4";
     }
+  } elsif ($desc =~ /^Red Hat Enterprise Linux Client 5$/ ) {
+     unless ($distname) {
+        $distname = "rhelc5";
+     }
+  } elsif ($desc =~ /^Red Hat Enterprise Linux Server 5$/ ) {
+     unless ($distname) {
+        $distname = "rhels5";
+     }
   }
 
   unless ($distname) {
@@ -281,9 +395,10 @@ sub copycd {
       $arch = $darch;
     }
     if ($arch and $arch ne $darch) {
-      $callback->({error=>"Requested CentOS architecture $arch, but media is $darch"});
+      $callback->({error=>"Requested distribution architecture $arch, but media is $darch"});
       return;
     }
+    if ( $arch =~ /ppc/ ) { $arch = "ppc64" }
   }
   %{$request} = (); #clear request we've got it.
 
@@ -292,6 +407,7 @@ sub copycd {
   mkpath("$installroot/$distname/$arch");
   umask $omask;
   my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
+  #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
   chmod 0755,"$installroot/$distname/$arch";
   xCAT::Yum->localize_yumrepo($installroot,$distname,$arch);
   if ($rc != 0) {
