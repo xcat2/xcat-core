@@ -43,4 +43,6 @@ ipmitool lan set 1 cipher_privs uaaaXXXXXXXXXXX
 echo "Enabling SOL for channel 1"
 ipmitool raw 0xc 0x21 0x1 0x1 0x1
 
+echo "Enabling SOL for user 2"
+ipmitool raw 6 0x4c 1 2 2 0 0 0
 
