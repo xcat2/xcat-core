@@ -15,7 +15,7 @@ sub localize_yumrepo {
    my $dosqlite = 0;
   my $repomdfile;
   my $primaryxml;
-  $installpfx = "$installroot/$distname/$arch/";
+  $installpfx = "$installroot/$distname/$arch";
   mkpath("$installroot/postscripts/repos/$distname/$arch/");
   open($yumrepofile,">","$installroot/postscripts/repos/$distname/$arch/local-repository.tmpl");
   find(\&check_tofix,$installpfx);
