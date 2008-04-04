@@ -134,9 +134,15 @@ sub mkinstall
         xCAT::Postage->writescript($node, "/install/postscripts/" . $node);
         if (
             (
-                 $arch =~ /x86/
+             $arch =~ /x86_64/
              and -r "/install/$os/$arch/1/boot/$arch/loader/linux"
              and -r "/install/$os/$arch/1/boot/$arch/loader/initrd"
+            )
+            or
+            (
+             $arch =~ /x86$/
+             and -r "/install/$os/$arch/1/boot/i386/loader/linux"
+             and -r "/install/$os/$arch/1/boot/i386/loader/initrd"
             )
             or ($arch =~ /ppc/ and -r "/install/$os/$arch/1/suseboot/inst64")
           )
@@ -146,11 +152,16 @@ sub mkinstall
             unless ($doneimgs{"$os|$arch"})
             {
                 mkpath("/tftpboot/xcat/$os/$arch");
-                if ($arch =~ /x86/)
+                if ($arch =~ /x86_64/)
                 {
                     copy("/install/$os/$arch/1/boot/$arch/loader/linux",
                          "/tftpboot/xcat/$os/$arch/");
                     copy("/install/$os/$arch/1/boot/$arch/loader/initrd",
+                         "/tftpboot/xcat/$os/$arch/");
+                } elsif ($arch =~ /x86/) {
+                    copy("/install/$os/$arch/1/boot/i386/loader/linux",
+                         "/tftpboot/xcat/$os/$arch/");
+                    copy("/install/$os/$arch/1/boot/i386/loader/initrd",
                          "/tftpboot/xcat/$os/$arch/");
                 }
                 elsif ($arch =~ /ppc/)
