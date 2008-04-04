@@ -188,7 +188,7 @@ sub donodeent {
   push @$content,"console $node {\n";
   #if ($cfgent->{cons} 
   my $cmeth=$cfgent->{cons};
-  print $cmeth."\n";
+  #print $cmeth."\n";
   if (grep(/^$cmeth$/,@cservers)) { 
     push @$content," include ".$cfgent->{termserver}.";\n";
     push @$content," port ".$cfgent->{termport}.";\n";
