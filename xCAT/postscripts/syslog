@@ -1,40 +1,141 @@
-#!/bin/ksh
+#!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-#egan@us.ibm.com
-#(C)IBM Corp
-#
 
-HARD_SYSLOG=$1
+#-------------------------------------------------------------------------------
+=head1  syslog 
+=head2  syslog command that setsup the syslogd for MS, SV and nodes.
+        On MS, it makes sure all the xCAT messages goes to /var/log/messages file,
+               it enables syslogd receving logs from remote machies. 
+        On MS, it sends all the messages to MS,
+               it enables syslogd receving logs from remote nodes. 
+        On node,  it sends all the messages its master.  
+        Input: none, it takes the following environment variables: 
+           OSVER: possible values are sles10, fedora8, redhat5, aix etc.   
+=cut
+#-------------------------------------------------------------------------------
 
-if [ -n "$HARD_SYSLOG" ]
-then
-	MASTER=$HARD_SYSLOG
-fi
+$master=$ENV{MASTER};
 
-mv -f /etc/syslog.conf /etc/syslog.conf.ORIG
-echo "*.*	@$(getent hosts $MASTER | awk '{print $1}')" >/etc/syslog.conf
+#find syslog configuration files
+my $conf_file="/etc/syslog.conf";
+my $sysconfig="/etc/sysconfig/syslog";
+my $param="SYSLOGD_OPTIONS";
+my $init="/etc/init.d/syslog";
+my $ng=0;
 
-case $OSVER in
-	sles[89]|suse8*|suse9*|suse10|ul*)
-		if grep 'SYSLOGD_PARAMS="-m0' /etc/sysconfig/syslog >/dev/null 2>&1
-		then
-			:
-		else
-			perl -pi -e 's/SYSLOGD_PARAMS="/SYSLOGD_PARAMS="-m0 /' /etc/sysconfig/syslog
-		fi
-		/etc/init.d/syslog restart
-		;;
-	rh*)
-		/etc/rc.d/init.d/syslog start
-		;;
-	sles10)
-		echo 'destination loghost { udp("10.64.0.1" port(514)); };' >> /etc/syslog-ng/syslog-ng.conf
-		echo 'log { source(src); destination(loghost); };' >> /etc/syslog-ng/syslog-ng.conf
-		/etc/init.d/syslog restart
-		;;
-esac
+if ($^O =~ /^aix/i) {
+  $sysconfig="";  #AIX does not have this file
+  $init="";
+}
+elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /fedora/i)) || (-f "/etc/fedora-release")) {
+  if (-e "/etc/rsyslog.conf") {
+    $conf_file="/etc/rsyslog.conf";
+    $sysconfig="/etc/sysconfig/rsyslog";
+    $init="/etc/init.d/rsyslog";
+  }
+} elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
+  #find out which syslog is used for SLES, syslog or syslog-ng
+  $result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`;
+  if ($result) {
+    if ($result =~ /syslog-ng/) {
+      $conf_file="/etc/syslog-ng/syslog-ng.conf";
+      $ng=1;
+    }
+  } 
+}
 
-logger -t xcat "Install: syslog setup"
+#handle sysconfig file to make remote loggling possible
+if (($sysconfig) && (-e $sysconfig)) { 
+  if (! -f "$sysconfig.XCATORIG") {
+    `cp -f $sysconfig $sysconfig.XCATORIG`;
+  }
+  open(FILE1, "<$sysconfig");
+  open(FILE2, ">$sysconfig.tmp");
+  while (readline(FILE1)) {
+    if (/^$param=/) {
+      if (-e "/etc/xCATMN") {
+        #on MN: make the syslogd be able to receive remote logs 
+	if ($_ !~ /-r/) { s/$param=\"/$param=\"-r /; }
+      } elsif (-e "/etc/xCATSN") {
+        #on SN: make the syslog be able to receive and forward remote logs
+	if ($_ !~ /-h/) { s/$param=\"/$param=\"-h /; }
+	if ($_ !~ /-r/) { s/$param=\"/$param=\"-r /; }
+      }
+      #turn off the time marker on all 
+      if ($_ !~ /-m0|-m 0/) { s/$param=\"/$param=\"-m 0 /; }
+    }
+    print FILE2 $_;
+  }
+  close(FILE1);
+  close(FILE2);
+  `mv -f $sysconfig.tmp $sysconfig`;   
+}
+
+#syslog-ng has different way of enabling log forwarding
+if (($ng) && (-e "/etc/xCATSN")) {
+  if (! -f "$conf_file.XCATORIG") {
+    `cp -f $conf_file $conf_file.XCATORIG`;
+  }
+  open(FILE1, "<$conf_file");
+  open(FILE2, ">$conf_file.tmp");
+  while (readline(FILE1)) {
+    s/\#udp\(ip\(\"0.0.0.0/udp\(ip\(\"0.0.0.0/;
+    print FILE2 $_;
+  }
+  close(FILE1);
+  close(FILE2);
+  `mv -f $conf_file.tmp $conf_file`;   
+} 
+
+#now handling where the logs go
+if (-e "/etc/xCATMN") {
+  #making sure all the messages goes to /var/log/messages
+  `touch  /var/log/messages`; #log file must exist first
+  if (!$ng) {
+    if (! -f "$conf_file.XCATORIG") {
+      `cp -f $conf_file $conf_file.XCATORIG`;
+    }
+    if ($^O =~ /aix/i) {
+      `echo "*.debug;*.crit;*.err;*.warning   /var/log/messages  rotate 1024K files 5" >> $conf_file`;
+    } else {
+      `echo "*.debug;*.crit;*.err;*.warning   /var/log/messages" >> $conf_file`;
+    }
+  }
+} else {
+  #now make the syslogd fowarding the messages to the the master
+  if ($ng) {
+    if (! -f "$conf_file.XCATORIG") {
+      `cp -f $conf_file $conf_file.XCATORIG`;
+    }
+    `echo "destination loghost { udp(\\\"$master\\\"); };" >> $conf_file`;
+    `echo 'log { source(src); destination(loghost); };' >> $conf_file`;
+   } else {
+    if (-f "$conf_file.XCATORIG") {  `rm -f $conf_file`; }
+    else {  `mv -f $conf_file $conf_file.XCATORIG`;  }
+    `echo "*.* \@$master" > $conf_file`;
+  }
+}
+
+#restart the syslog daemon to take the new conf file settings
+#print "init=$init\nconf_file=$conf_file\nsysconfig=$sysconfig\n";
+if ($^O =~ /aix/i) { `refresh -s syslogd`; }
+else {  `$init restart`; }
+
+#keep a record
+`logger -t xcat "Install: syslog setup"`;
 
 exit 0
+
+
+
+
+
+
+
+
+
+
+
+
+
 

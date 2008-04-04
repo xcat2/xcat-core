@@ -308,7 +308,7 @@ sub configSNMP {
       # now add the new traphandle commands:
       print FILE "traphandle default $::XCATROOT/sbin/xcat_traphandler\n";
 
-      close($handle);
+      close(FILE1);
       close(FILE);
       `mv -f /usr/share/snmp/snmptrapd.conf.tmp /usr/share/snmp/snmptrapd.conf`;
     }

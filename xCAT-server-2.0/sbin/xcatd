@@ -45,7 +45,6 @@ use xCAT_monitoring::monitorctrl;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
-
 use Storable qw(dclone);
 use POSIX qw(WNOHANG setsid);
 use strict;
@@ -55,6 +54,25 @@ GetOptions(
   'pidfile|p=s' => \$pidfile,
   'foreground|f' => \$foreground
 );
+
+
+#start syslog if it is not up
+if (xCAT::Utils->isLinux()) {
+  my $init_file="/etc/init.d/syslog";
+  if (-f "/etc/fedora-release") {
+    $init_file="/etc/init.d/rsyslog"; 
+  }
+  my $result=`$init_file status 2>&1`;
+  if ($result !~ /running/i) {
+    `$init_file start`;  
+  }
+} else {
+  my $result=`lssrc -s syslogd 2>&1`;
+  if ($result !~ /active/i) {
+    `startsrc -s syslogd`;  
+  }  
+}
+
 
 my $quit = 0;
 my $port;
