@@ -1,13 +1,13 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Utils;
-use xCAT::Table;
+require xCAT::Table;
 use POSIX qw(ceil);
 use Socket;
-use xCAT::Schema;
-use Data::Dumper;
-use xCAT::NodeRange;
-use DBI;
+require xCAT::Schema;
+require Data::Dumper;
+require xCAT::NodeRange;
+require DBI;
 
 #--------------------------------------------------------------------------------
 
@@ -168,7 +168,7 @@ sub isLinux
 
 =head3    make_node_list_file
 
-        Makes a node list file.  
+        Makes a node list file.
 
         Arguments:
                 (\@list_of_nodes) - reference to an arrary of nodes.
@@ -179,7 +179,7 @@ sub isLinux
         Error:
                 None documented
         Example:
-                xCAT::Utils->make_node_list_file(\@nodelist); 
+                xCAT::Utils->make_node_list_file(\@nodelist);
 
         Comments:
                 IMPORTANT:
@@ -245,13 +245,13 @@ for ($nI = 0 ; $nI < 8 ; $nI++)
 
 #-----------------------------------------------------------------------
 
-=head3    
+=head3
 close_delete_file.
 
 	Arguments:
 		file handle,filename
 	Returns:
-	    none	
+	    none
 	Globals:
 		none
 	Error:
@@ -274,13 +274,13 @@ sub close_delete_file
 
 #-----------------------------------------------------------------------
 
-=head3    
+=head3
  list_all_nodes
 
 	Arguments:
-      	
+
 	Returns:
-	    an array of all define nodes from the nodelist table	
+	    an array of all define nodes from the nodelist table
 	Globals:
 		none
 	Error:
@@ -316,13 +316,13 @@ sub list_all_nodes
 
 #-----------------------------------------------------------------------
 
-=head3    
+=head3
  list_all_nodegroups
 
 	Arguments:
-      	
+
 	Returns:
-	    an array of all define node groups from the nodelist table	
+	    an array of all define node groups from the nodelist table
 	Globals:
 		none
 	Error:
@@ -369,13 +369,13 @@ sub list_all_node_groups
 
 #-----------------------------------------------------------------------
 
-=head3    
+=head3
  list_nodes_in_nodegroup
 
 	Arguments:  nodegroup
-      	
+
 	Returns:
-	    an array of all define nodes in the node group 	
+	    an array of all define nodes in the node group
 
 	Globals:
 		none
@@ -393,19 +393,19 @@ sub list_nodes_in_nodegroups
 {
     my ($class, $group) = @_;
     $req->{noderange}->[0] = $group;
-    my @nodes = noderange($req->{noderange}->[0]);
+    my @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
     return @nodes;
 }
 
 #-----------------------------------------------------------------------
 
-=head3    
-  get_site_attribute 
+=head3
+  get_site_attribute
 
 	Arguments:
-      	
+
 	Returns:
-	    The value of the attribute requested from the site table	
+	    The value of the attribute requested from the site table
 	Globals:
 		none
 	Error:
@@ -443,11 +443,11 @@ sub get_site_attribute
 
 #-----------------------------------------------------------------------
 
-=head3    
+=head3
   add_cron_job
      This function adds a new cron job.
 	Arguments:
-      	    job--- string in the crontab job format. 
+      	    job--- string in the crontab job format.
 	Returns:
 	    (code, message)
 	Globals:
@@ -501,12 +501,12 @@ sub add_cron_job
 
 #-----------------------------------------------------------------------
 
-=head3    
+=head3
   remove_cron_job
      This function removes a new cron job.
 	Arguments:
-      	    job--- a substring that is contained in a crontab entry. 
-                  (use crontab -l to see all the job entries.) 
+      	    job--- a substring that is contained in a crontab entry.
+                  (use crontab -l to see all the job entries.)
 	Returns:
 	    (code, message)
 	Globals:
@@ -562,7 +562,7 @@ sub remove_cron_job
 
 =head3    runcmd
    Run the given cmd and return the output in an array (already chopped).
-   Alternately, if this function is used in a scalar context, the output 
+   Alternately, if this function is used in a scalar context, the output
    is joined into a single string with the newlines separating the lines.
 
    Arguments:
@@ -570,7 +570,7 @@ sub remove_cron_job
    Returns:
 	   see below
    Globals:
-	   $::RUNCMD_RC  , $::CALLBACK 
+	   $::RUNCMD_RC  , $::CALLBACK
    Error:
       Normally, if there is an error running the cmd,it will display the
 		error and exit with the cmds exit code, unless exitcode
@@ -713,18 +713,18 @@ sub getHomeDir
 
 #--------------------------------------------------------------------------------
 
-=head3   setupSSH 
+=head3   setupSSH
 
         Transfers the ssh keys to setup ssh to the input nodes.
 
         Arguments:
-               Array of nodes 
+               Array of nodes
         Returns:
-              
+
         Globals:
-              $::XCATROOT  ,  $::CALLBACK 
+              $::XCATROOT  ,  $::CALLBACK
         Error:
-             0=good,  1=error                
+             0=good,  1=error
         Example:
                 xCAT::Utils->setupSSH(@target_nodes);
         Comments:
@@ -765,7 +765,7 @@ sub setupSSH
     if ($::RUNCMD_RC != 0)
     {    # error
         my %rsp;
-        $rsp->{data}->[0] = "remoteshell.expect failed generating keys.\n";
+        $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
     }
@@ -793,7 +793,7 @@ umask(0077);
 if (! -d \"\$dest_dir\" ) {
     # create a local directory
     \$cmd = \"mkdir -p \$dest_dir\";
-    system(\"\$cmd\"); 
+    system(\"\$cmd\");
     chmod 0700, \$dest_dir;
 }
 `cat /tmp/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
@@ -821,7 +821,7 @@ rmdir(\"/tmp/.ssh\");";
     if ($rc)
     {
         my %rsp;
-        $rsp->{data}->[0] = "remoteshell.expect failed sending keys.\n";
+        $rsp->{data}->[0] = "remoteshell.expect failed sending keys.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
     }
@@ -847,14 +847,14 @@ rmdir(\"/tmp/.ssh\");";
         my $nstring = join ',', @badnodes;
         my %rsp;
         $rsp->{data}->[0] =
-          "SSH setup failed for the following nodes: $nstring.\n";
+          "SSH setup failed for the following nodes: $nstring.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return @badnodes;
     }
     else
     {
         my %rsp;
-        $rsp->{data}->[0] = "$::REMOTE_SHELL setup is complete.\n";
+        $rsp->{data}->[0] = "$::REMOTE_SHELL setup is complete.";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return 0;
     }
@@ -868,11 +868,11 @@ rmdir(\"/tmp/.ssh\");";
 		/install/postscripts/.ssh.
 
         Arguments:
-               directory path 
+               directory path
         Returns:
-                
+
         Globals:
-              $::CALLBACK 
+              $::CALLBACK
         Error:
 
         Example:
@@ -975,20 +975,20 @@ sub cpSSHFiles
 #-------------------------------------------------------------------------------
 
 =head3    isServiceNode
-	checks for the /etc/xCATSN file 
-    
+	checks for the /etc/xCATSN file
+
     Arguments:
         none
     Returns:
-        1 - localHost is ServiceNode 
-        0 - localHost is not ServiceNode 
+        1 - localHost is ServiceNode
+        0 - localHost is not ServiceNode
     Globals:
         none
     Error:
         none
     Example:
 	     %::XCATMasterPort defined in the caller.
-         $return=(xCAT::Utils->isServiceNode()) 
+         $return=(xCAT::Utils->isServiceNode())
     Comments:
         none
 =cut
@@ -1011,18 +1011,18 @@ sub isServiceNode
 
 =head3    isMN
 	checks for the /etc/xCATMN file , if it exists it is a Management Server
-    
+
     Arguments:
         none
     Returns:
-        1 - localHost is ServiceNode 
-        0 - localHost is not ServiceNode 
+        1 - localHost is ServiceNode
+        0 - localHost is not ServiceNode
     Globals:
         none
     Error:
         none
     Example:
-         $return=(xCAT::Utils->isMN()) 
+         $return=(xCAT::Utils->isMN())
     Comments:
         none
 =cut
@@ -1044,7 +1044,7 @@ sub isMN
 #-------------------------------------------------------------------------------
 
 =head3   classful_networks_for_net_and_mask
-    
+
     Arguments:
         network and mask
     Returns:
@@ -1106,8 +1106,8 @@ sub classful_networks_for_net_and_mask
 
 #-------------------------------------------------------------------------------
 
-=head3   my_hexnets    
-    
+=head3   my_hexnets
+
     Arguments:
         none
     Returns:
@@ -1196,8 +1196,8 @@ sub my_if_netmap
 
 #-------------------------------------------------------------------------------
 
-=head3   my_ip_facing    
-    
+=head3   my_ip_facing
+
     Arguments:
         none
     Returns:
@@ -1240,9 +1240,9 @@ sub my_ip_facing
 
 #-------------------------------------------------------------------------------
 
-=head3 nodeonmynet - checks to see if node is on the network 
+=head3 nodeonmynet - checks to see if node is on the network
     Arguments:
-       Node name 
+       Node name
     Returns:  1 if node is on the network
     Globals:
         none
@@ -1293,10 +1293,10 @@ sub nodeonmynet
 
 #-------------------------------------------------------------------------------
 
-=head3   thishostisnot 
+=head3   thishostisnot
     returns  0 if host is not the same
     Arguments:
-       hostname 
+       hostname
     Returns:
     Globals:
         none
@@ -1339,18 +1339,18 @@ sub thishostisnot
 
 #-------------------------------------------------------------------------------
 
-=head3   GetMasterNodeName 
+=head3   GetMasterNodeName
         Reads the database for the Master node name for the input node
     Arguments:
 		 Node
     Returns:
-        MasterHostName 
+        MasterHostName
     Globals:
         none
     Error:
         none
     Example:
-         $master=(xCAT::Utils->GetMasterNodeName($node)) 
+         $master=(xCAT::Utils->GetMasterNodeName($node))
     Comments:
         none
 =cut
@@ -1390,7 +1390,7 @@ sub GetMasterNodeName
 
 #-------------------------------------------------------------------------------
 
-=head3   GetNodeOSARCH 
+=head3   GetNodeOSARCH
         Reads the database for the OS and Arch of the input Node
     Arguments:
 		 Node
@@ -1402,7 +1402,7 @@ sub GetMasterNodeName
     Error:
         none
     Example:
-         $master=(xCAT::Utils->GetNodeOSARCH($node)) 
+         $master=(xCAT::Utils->GetNodeOSARCH($node))
     Comments:
         none
 =cut
@@ -1433,8 +1433,8 @@ sub GetNodeOSARCH
 
 #-----------------------------------------------------------------------------
 
-=head3 exportDBConfig 
-  
+=head3 exportDBConfig
+
   Reads the /etc/sysconfig/xcat file for the DB configuration and exports it
   in $XCATCFG
 =cut
@@ -1478,8 +1478,8 @@ sub exportDBConfig
 
 #-----------------------------------------------------------------------------
 
-=head3 readSNInfo 
-  
+=head3 readSNInfo
+
   Read resource, NFS server, Master node, OS an ARCH from the database
   for the service node
 
@@ -1526,7 +1526,7 @@ sub readSNInfo
 
 #-----------------------------------------------------------------------------
 
-=head3 isServiceReq 
+=head3 isServiceReq
 
 
   Checks to see if the input service is already setup on the node by
@@ -1535,16 +1535,16 @@ sub readSNInfo
   It then:
   Checks the database to see if the input Service should be setup on the
   input service node
-  Checks the noderes to see if this service node is a service node for any 
+  Checks the noderes to see if this service node is a service node for any
   node in the table.  Any node that matches, it checks the service attribute
   to see if this service node is the server, or if the attribute is blank, then
   this service node is the server.
-  
+
   Input: service nodename, service,ipaddres(s) of service node
-  Output: 
-        0 - no service required 
-        1 - setup service 
-        2 - service is setup, just start the daemon 
+  Output:
+        0 - no service required
+        1 - setup service
+        2 - service is setup, just start the daemon
 		-1 - error
     Globals:
         none
@@ -1672,11 +1672,11 @@ sub isServiceReq
 #-----------------------------------------------------------------------------
 
 =head3 determinehostname  and ip address(s)
-  
+
   Used on the service node to figure out what hostname and ip address(s)
   the service node is in the database
-  Input: None   
-  Output: ipaddress(s),nodename 
+  Input: None
+  Output: ipaddress(s),nodename
 =cut
 
 #-----------------------------------------------------------------------------
@@ -1706,7 +1706,7 @@ sub determinehostname
 =head3 update_xCATSN
   Will add the input service string to /etc/xCATSN to indicate that
   the service has been setup by the service node
-  Input: service (e.g. tftp, nfs,etc) 
+  Input: service (e.g. tftp, nfs,etc)
   Output: 0 = added, 1= already there
 
 =cut
@@ -1732,11 +1732,11 @@ sub update_xCATSN
 
 #-----------------------------------------------------------------------------
 
-=head3 gethost_ips 
-     Will use ifconfig to determine all possible ip addresses for the 
+=head3 gethost_ips
+     Will use ifconfig to determine all possible ip addresses for the
 	 host it is running on
 
-     input: 
+     input:
 	 output: array of ipaddress(s)
 	 example:  @ips=xCAT::gethost_ips();
 
@@ -1768,12 +1768,12 @@ sub gethost_ips
 #-----------------------------------------------------------------------------
 
 =head3 create_postscripts_tar
-	 
+
      This routine will tar and compress the /install/postscripts directory
 	 and place in /install/autoinst/xcat_postscripts.Z
 
-     input: none 
-	 output: 
+     input: none
+	 output:
 	 example: $rc=xCAT::create_postscripts_tar();
 
 =cut
@@ -1802,7 +1802,7 @@ sub create_postscripts_tar
 
 #-----------------------------------------------------------------------------
 
-=head3 get_site_Master 
+=head3 get_site_Master
 
      Reads the site table for the Master attribute and returns it.
      input: none
@@ -1832,13 +1832,13 @@ sub get_site_Master
 
 #-----------------------------------------------------------------------------
 
-=head3 get_ServiceNode 
+=head3 get_ServiceNode
 
      Will get the Service node ( name or ipaddress) as known by the Management
 	 Server or NOde for the input nodename or ipadress of the node
 
      input: list of nodenames and/or node ipaddresses
-			service name 
+			service name
 			"MN" or "Node"  determines if you want the Service node as known
 			 by the Management Node  or by the node.
 
@@ -1846,18 +1846,18 @@ sub get_site_Master
 		nfsserver,conserver,monserver
 
         service "xcat" is used by command like xdsh that need to know the
-		service node that will process the command but are not tied to a 
+		service node that will process the command but are not tied to a
 		specific service like tftp
 
 		Todo:  Handle  dhcpserver and nameserver from the networks table
 
-	 output: A hash of arrays, the key is the service node pointing to 
-			 an array of nodes that are serviced by that service node 
+	 output: A hash of arrays, the key is the service node pointing to
+			 an array of nodes that are serviced by that service node
 
      Globals:
-        $::ERROR_RC 
+        $::ERROR_RC
      Error:
-         $::ERROR_RC=0 no error $::ERROR_RC=1 error 
+         $::ERROR_RC=0 no error $::ERROR_RC=1 error
 
 	 example: $sn =xCAT::Utils->get_ServiceNode(@nodes,$service,"MN");
 

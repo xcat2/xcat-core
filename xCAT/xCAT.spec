@@ -15,7 +15,7 @@ Source2: postscripts.tar.gz
 Source3: templates.tar.gz
 
 Provides: xCAT = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite 
+Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
 Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-XML-Parser
@@ -32,12 +32,12 @@ hardware management and software management.
 
 %prep
 %ifos linux
-tar zxvf %{SOURCE2}
+tar zxf %{SOURCE2}
 %else
 rm -rf postscripts
 cp %{SOURCE2} /opt/freeware/src/packages/BUILD
-gunzip postscripts.tar.gz 
-tar -xvf postscripts.tar
+gunzip -f postscripts.tar.gz
+tar -xf postscripts.tar
 %endif
 
 %build
@@ -49,11 +49,11 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 
 %ifos linux
-tar zxvf %{SOURCE3}
+tar zxf %{SOURCE3}
 %else
 cp %{SOURCE3} $RPM_BUILD_ROOT/%{prefix}/share/xcat
-gunzip templates.tar.gz 
-tar -xvf templates.tar
+gunzip -f templates.tar.gz
+tar -xf templates.tar
 rm templates.tar
 %endif
 
@@ -61,11 +61,11 @@ cd -
 cd $RPM_BUILD_ROOT/install
 
 %ifos linux
-tar zxvf %{SOURCE2}
+tar zxf %{SOURCE2}
 %else
 cp %{SOURCE2} $RPM_BUILD_ROOT/install
-gunzip postscripts.tar.gz
-tar -xvf postscripts.tar
+gunzip -f postscripts.tar.gz
+tar -xf postscripts.tar
 rm postscripts.tar
 %endif
 
@@ -84,7 +84,7 @@ $RPM_INSTALL_PREFIX0/sbin/xcatconfig
 %else
 . /etc/profile.d/xcat.sh
 
-if [ ! -f /install/postscripts/hostkeys/ssh_host_key ]; then 
+if [ ! -f /install/postscripts/hostkeys/ssh_host_key ]; then
     echo Generating SSH1 RSA Key...
     /usr/bin/ssh-keygen -t rsa1 -f /install/postscripts/hostkeys/ssh_host_key -C '' -N ''
     echo Generating SSH2 RSA Key...
@@ -114,7 +114,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
 	/etc/rc.d/init.d/nfs stop
 	/etc/rc.d/init.d/nfs start
 	exportfs -a
-    if [ ! -r /etc/xcat/site.sqlite ]; then 
+    if [ ! -r /etc/xcat/site.sqlite ]; then
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=xcatdport site.value=3001
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=xcatiport site.value=3002
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=tftpdir site.value=/tftpboot
@@ -123,19 +123,19 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=installdir site.value=/install
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=timezone site.value=`grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`
     fi
-    if [ ! -r /etc/xcat/policy.sqlite ]; then 
+    if [ ! -r /etc/xcat/policy.sqlite ]; then
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab priority=1 policy.name=root policy.rule=allow
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab priority=2 policy.commands=getbmcconfig policy.rule=allow
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab priority=3 policy.commands=nextdestiny policy.rule=allow
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab priority=4 policy.commands=getdestiny policy.rule=allow
     fi
-    
-    if [ ! -d /etc/xcat/ca ]; then 
+
+    if [ ! -d /etc/xcat/ca ]; then
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-xcat-ca.sh "xCAT CA"
     fi
     mkdir -p /install/postscripts/ca
     cp -r /etc/xcat/ca/* /install/postscripts/ca
-    if [ ! -d /etc/xcat/cert ]; then 
+    if [ ! -d /etc/xcat/cert ]; then
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-server-cert.sh `hostname`
     fi
     mkdir -p /install/postscripts/cert
@@ -150,11 +150,11 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
 	then
     	rm /tftpboot/pxelinux.cfg/default
 	fi
-    # make Management Node 
+    # make Management Node
 	touch /etc/xCATMN
 	# setup syslog
         /install/postscripts/syslog
-    fi
+    #fi
 
     XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
     if [ -x $RPM_INSTALL_PREFIX0/sbin/mknb ]; then

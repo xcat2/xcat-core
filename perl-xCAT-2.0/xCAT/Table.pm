@@ -17,12 +17,12 @@ use lib "$::XCATROOT/lib/perl";
 use DBI;
 
 #use strict;
-use Data::Dumper;
+require Data::Dumper;
 use Scalar::Util qw/weaken/;
-use xCAT::Schema;
-use xCAT::NodeRange;
+require xCAT::Schema;
+require xCAT::NodeRange;
 use Text::Balanced qw(extract_bracketed);
-use xCAT::NotifHandler;
+require xCAT::NotifHandler;
 
 #--------------------------------------------------------------------------------
 
@@ -963,7 +963,7 @@ sub getNodeAttribs
             $answval =~ s/$parts[0]/$retval/;
             $datum->{$attrib} = $answval; #$retval;
 
-            #print Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
+            #print Data::Dumper::Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
             #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
         }
     }
@@ -1244,7 +1244,7 @@ sub getAllNodeAttribs
         unless ($data->{node} =~ /^$/ || !defined($data->{node}))
         {    #ignore records without node attrib, not possible?
             my @nodes =
-              noderange($data->{node})
+              xCAT::NodeRange::noderange($data->{node})
               ;    #expand node entry, to make groups expand
             foreach (@nodes)
             {

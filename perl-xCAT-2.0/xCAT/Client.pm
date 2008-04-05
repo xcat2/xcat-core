@@ -4,17 +4,11 @@ package xCAT::Client;
 BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-   require lib;
-   lib->import("$::XCATROOT/lib/perl");
-   if ($ENV{XCATBYPASS}) {
-      require xCAT::NodeRange; 
-      xCAT::NodeRange->import;
-      require xCAT::Utils;
-      xCAT::Utils->import;
-      require xCAT::Table;
-      xCAT::Table->import;
-   }
 }
+use lib "$::XCATROOT/lib/perl";
+require xCAT::NodeRange;
+require xCAT::Utils;
+require xCAT::Table;
 
 my $inet6support;
 use IO::Socket::SSL;
@@ -32,7 +26,7 @@ unless ($inet6support) {
 
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
-use Data::Dumper;
+require Data::Dumper;
 use Storable qw(dclone);
 my $xcathost='localhost:3001';
 my $plugins_dir;
@@ -219,10 +213,10 @@ sub plugin_command {
   if ($req->{node}) {
     @nodes = @{$req->{node}};
   } elsif ($req->{noderange}) {
-    @nodes = noderange($req->{noderange}->[0]);
-    if (nodesmissed) {
-#     my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',nodesmissed)};
-      print "Invalid nodes in noderange:".join(',',nodesmissed)."\n";
+    @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
+    if (xCAT::NodeRange::nodesmissed()) {
+#     my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',xCAT::NodeRange::nodesmissed)};
+      print "Invalid nodes in noderangex:".join(',',xCAT::NodeRange::nodesmissed())."\n";
 #     if ($sock) {
 #       print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
 #     }
@@ -372,10 +366,10 @@ sub do_request {
   if ($cmd_handlers{$req->{command}->[0]}) {
      return plugin_command($req,$sock,$rsphandler);
   } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
-     my @nodes = noderange($req->{noderange}->[0]);
+     my @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
      my %resp;
-     if (nodesmissed) {
-       $resp{warning}="Invalid nodes in noderange:".join ',',nodesmissed ."\n";
+     if (xCAT::NodeRange::nodesmissed()) {
+       $resp{warning}="Invalid nodes in noderange:".join ',',xCAT::NodeRange::nodesmissed() ."\n";
      }
      $resp{serverdone} = {};
      @{$resp{node}}=@nodes;

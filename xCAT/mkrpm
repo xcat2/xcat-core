@@ -8,11 +8,11 @@ then
     cd `dirname $0`
     echo '.svn' > /tmp/xcat-excludes
 
-    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/postscripts.tar  postscripts LICENSE.html
-    gzip /opt/freeware/src/packages/SOURCES/postscripts.tar
+    tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/postscripts.tar  postscripts LICENSE.html
+    gzip -f /opt/freeware/src/packages/SOURCES/postscripts.tar
 
-    tar -X /tmp/xcat-excludes -cvf /opt/freeware/src/packages/SOURCES/templates.tar templates
-    gzip /opt/freeware/src/packages/SOURCES/templates.tar
+    tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/templates.tar templates
+    gzip -f /opt/freeware/src/packages/SOURCES/templates.tar
 
     cp xcat.conf /opt/freeware/src/packages/SOURCES
 
@@ -34,14 +34,14 @@ else
 	fi
 
 	cd `dirname $0`
-	tar --exclude .svn -czvf /usr/src/$pkg/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
-	tar --exclude .svn -czvf /usr/src/$pkg/SOURCES/templates.tar.gz templates
+	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
+	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/templates.tar.gz templates
 	cp xcat.conf /usr/src/$pkg/SOURCES
 	rm -f /usr/src/$pkg/SRPMS/xCAT-2.0*rpm /usr/src/$pkg/RPMS/*/xCAT-2.0*rpm
    if [ ! -z "$1" ]; then
 	rpmbuild -ba xCAT.spec --target $1
-   else 
-	rpmbuild -ba xCAT.spec 
+   else
+	rpmbuild -ba xCAT.spec
    fi
 	cd -
 fi

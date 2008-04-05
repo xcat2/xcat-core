@@ -8,8 +8,8 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 use File::Basename qw(fileparse);
-use xCAT::Utils;
-use Data::Dumper;
+require xCAT::Utils;
+require Data::Dumper;
 
 #%notif is a cache that holds the info from the "notification" table.
 #the format of it is:
@@ -33,13 +33,13 @@ $masterpid;
 
 
 #--------------------------------------------------------------------------------
-=head3  setup 
+=head3  setup
       It is called by xcatd to get set the pid of the parent of all this object.
       Setup the signal to trap any changes in the notification table. It also
       initializes the cache with the current data in the notification table.
       table and store it into %notif variable.
     Arguments:
-      pid -- the process id of the caller. 
+      pid -- the process id of the caller.
     Returns:
       none
 =cut
@@ -51,7 +51,7 @@ sub setup
     $masterpid=shift;
   }
   refreshNotification();
-  
+
   $SIG{USR1}=\&handleNotifSignal;
 }
 
@@ -298,7 +298,7 @@ sub notify {
     my ($modname, $path, $suffix) = fileparse($_, ".pm");
      # print "modname=$modname, path=$path, suffix=$suffix\n";
     if ($suffix =~ /.pm/) { #it is a perl module
-      my $pid; 
+      my $pid;
       if ($pid=xCAT::Utils->xfork()) { }
       elsif (defined($pid)) {
 	my $fname;
@@ -309,8 +309,8 @@ sub notify {
           $fname = $_;
         }
         eval {require($fname)};
-        if ($@) {   
-          print "The file $fname cannot be located or has compiling errors.\n";          
+        if ($@) {
+          print "The file $fname cannot be located or has compiling errors.\n";
         }
         else {
           ${"xCAT_monitoring::".$modname."::"}{processTableChanges}->($action, $tablename, $old_data, $new_data);

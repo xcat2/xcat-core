@@ -10,7 +10,7 @@ then
     rm -f /opt/freeware/src/packages/SRPMS/xCAT-rmc*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc*rpm
     echo '.svn' > /tmp/xcat-excludes
     tar -X /tmp/xcat-excludes -cf xCAT-rmc-$version.tar xCAT-rmc-$version
-    gzip /opt/freeware/src/packages/SOURCES/xCAT-rmc-$version.tar
+    gzip -f /opt/freeware/src/packages/SOURCES/xCAT-rmc-$version.tar
     cd $source/xCAT-rmc
     rpm -ba xCAT-rmc.spec
     #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc*rpm

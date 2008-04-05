@@ -7,7 +7,7 @@ then
 
 	echo '.svn' > /tmp/xcat-excludes
     tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/xCAT-server-2.0.tar xCAT-server-2.0
-    gzip /opt/freeware/src/packages/SOURCES/xCAT-server-2.0.tar
+    gzip -f /opt/freeware/src/packages/SOURCES/xCAT-server-2.0.tar
     cd ./xCAT-server-2.0
     rm -f /opt/freeware/src/packages/SRPMS/xCAT-server-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-server-2.0*rpm
     rpm -ba xCAT-server.spec

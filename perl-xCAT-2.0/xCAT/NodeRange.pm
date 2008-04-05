@@ -1,7 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::NodeRange;
-use xCAT::Table;
-use Data::Dumper;
+require xCAT::Table;
+require Data::Dumper;
 require Exporter;
 use strict;
 

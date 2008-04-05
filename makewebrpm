@@ -7,7 +7,7 @@ if [ "$OSNAME" = "AIX" ]
 then
 	echo '.svn' > /tmp/xcat-excludes
     tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/xCAT-web.tar xCAT-web
-    gzip /opt/freeware/src/packages/SOURCES/xCAT-web.tar
+    gzip -f /opt/freeware/src/packages/SOURCES/xCAT-web.tar
     cd ./xCAT-web
     rm -f /opt/freeware/src/packages/SRPMS/xCAT-web*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-web*rpm
     rpm -ba xCAT-web.spec
