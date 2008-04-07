@@ -2717,13 +2717,13 @@ sub getoemevent {
 	my $record_type = shift;
 	my $mfg_id = shift;
 	my $sel_data = shift;
-	my $text="";
+	my $text=":";
 	if ($record_type < 0xE0 && $record_type > 0x2F) { #Should be timestampped, whatever it is
 		my $timestamp =  (@$sel_data[3] | @$sel_data[4]<<8 | @$sel_data[5]<<16 | @$sel_data[6]<<24)-$tfactor;
 		my ($seldate,$seltime) = timestamp2datetime($timestamp);
 		my @rest = @$sel_data[7..15];
 		if ($mfg_id==2) {
-			$text="$seldate $seltime IBM OEM Event-";
+			$text.="$seldate $seltime IBM OEM Event-";
 			if ($rest[3]==0 && $rest[4]==0 && $rest[7]==0) {
 				$text=$text."PCI Event/Error, details in next event"
 			} elsif ($rest[3]==1 && $rest[4]==0 && $rest[7]==0) {
@@ -2744,7 +2744,7 @@ sub getoemevent {
 				$text=$text."Unknown event ". phex(\@rest);
 			}
 		} else {
-		     $text = "$seldate $seltime " . sprintf("Unknown OEM SEL Type %02x:",$record_type) . phex(\@rest);
+		     $text .= "$seldate $seltime " . sprintf("Unknown OEM SEL Type %02x:",$record_type) . phex(\@rest);
 		}
 	} else { #Non-timestamped
 		my %memerrors = (
@@ -4677,7 +4677,9 @@ sub donode {
     } else {
       $desc =~ s/^\s+//;
       $desc =~ s/\s+$//;
-      $output{node}->[0]->{data}->[0]->{desc}->[0]=$desc;
+      if ($desc) {
+         $output{node}->[0]->{data}->[0]->{desc}->[0]=$desc;
+      }
     }
     $text =~ s/^\s+//;
     $text =~ s/\s+$//;
