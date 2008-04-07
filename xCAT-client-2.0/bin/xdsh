@@ -10,7 +10,7 @@ use File::Basename;
 use Getopt::Long;
 require xCAT::MsgUtils;
 require xCAT::DSHCLI;
-require xCAT::Client;
+#require xCAT::Client;     # delay the require of this until we know if -K was specified, because of XCATBYPASS mode
 my $bname = basename($0);
 
 #-----------------------------------------------------------------------------
@@ -119,6 +119,7 @@ if (!($::CONTEXT_SET))
     }
 }
 
+require xCAT::Client;
 xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
 

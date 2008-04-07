@@ -4,11 +4,14 @@ package xCAT::Client;
 BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+   require lib;
+   lib->import("$::XCATROOT/lib/perl");
+   if ($ENV{XCATBYPASS}) {
+      require xCAT::NodeRange;
+      require xCAT::Utils;
+      require xCAT::Table;
+   }
 }
-use lib "$::XCATROOT/lib/perl";
-require xCAT::NodeRange;
-require xCAT::Utils;
-require xCAT::Table;
 
 my $inet6support;
 use IO::Socket::SSL;
