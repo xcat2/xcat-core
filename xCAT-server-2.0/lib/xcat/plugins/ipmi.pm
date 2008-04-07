@@ -2590,7 +2590,10 @@ sub eventlog {
 			next;
 		}
 
-		my $timestamp = ($sel_data[3] | $sel_data[4]<<8 | $sel_data[5]<<16 | $sel_data[6]<<24)-$tfactor;
+		my $timestamp = ($sel_data[3] | $sel_data[4]<<8 | $sel_data[5]<<16 | $sel_data[6]<<24);
+      unless ($timestamp < 0x20000000) {
+         $timestamp -= $tfactor;
+      }
 		my ($seldate,$seltime) = timestamp2datetime($timestamp);
 #		$text = "$entry: $seldate $seltime";
 		$text = ":$seldate $seltime";
@@ -2719,7 +2722,10 @@ sub getoemevent {
 	my $sel_data = shift;
 	my $text=":";
 	if ($record_type < 0xE0 && $record_type > 0x2F) { #Should be timestampped, whatever it is
-		my $timestamp =  (@$sel_data[3] | @$sel_data[4]<<8 | @$sel_data[5]<<16 | @$sel_data[6]<<24)-$tfactor;
+		my $timestamp =  (@$sel_data[3] | @$sel_data[4]<<8 | @$sel_data[5]<<16 | @$sel_data[6]<<24);
+      unless ($timestamp < 0x20000000) {
+         $timestamp -= $tfactor;
+      }
 		my ($seldate,$seltime) = timestamp2datetime($timestamp);
 		my @rest = @$sel_data[7..15];
 		if ($mfg_id==2) {
@@ -4423,6 +4429,9 @@ sub comp2int {
 
 sub timestamp2datetime {
 	my $ts = shift;
+   if ($ts < 0x20000000) {
+      return "BMC Uptime",sprintf("%6d s",$ts);
+   }
 	my @t = localtime($ts);
 	my $time = strftime("%H:%M:%S",@t);
 	my $date = strftime("%m/%d/%Y",@t);
