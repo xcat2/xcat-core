@@ -21,4 +21,4 @@ if [ ! -f $HOME/.consolerc ]; then
 	echo '}' >> $HOME/.consolerc
 fi
 	
-exec console -M $CONSERVER $1
+exec console -f -M $CONSERVER $1
