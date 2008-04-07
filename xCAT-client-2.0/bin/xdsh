@@ -1,5 +1,4 @@
-#!/usr/bin/perl
-# !/usr/bin/env perl
+#!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
@@ -43,18 +42,24 @@ This program is the client interface for xdsh/xdcp.
 
 my $cmdref;
 my $arg;
+my @SaveARGV = @ARGV;
 $cmdref->{command}->[0] = $bname;    # save my command name
+my $arg = shift(@SaveARGV);
 
-# Pull out the 1st non-hyphen arg as the noderange
-for (my $i=0; $i<scalar(@ARGV); $i++) {
-	if ($ARGV[$i] !~ /^-/) {		# found the noderange
-		$cmdref->{noderange}->[0] = splice(@ARGV, $i, 1);		# removes and returns the noderange
-		last;
-	}
+if ($arg =~ /^-/)                    # no noderange
+{
+    push @{$cmdref->{arg}}, $arg;
+    foreach (@SAVEARGV)
+    {
+        push(@{$cmdref->{arg}}, $_);
+    }
+    @ARGV = @{$cmdref->{arg}};       # save just the argument to parse
 }
-
-# Put all the rest of the args in the structure
-push (@{$cmdref->{arg}}, @ARGV);
+else
+{
+    $cmdref->{noderange}->[0] = $arg;    # save noderange
+    @ARGV = @SaveARGV;                   # noderange removed for parsing
+}
 
 # check for help, bypass, other client flags
 if ($bname eq "xdsh")
@@ -64,6 +69,11 @@ if ($bname eq "xdsh")
 else
 {                                        # xdcp
     &parse_args_xdcp;
+}
+
+foreach (@SaveARGV)
+{
+    push(@{$cmdref->{arg}}, $_);
 }
 
 #  add environment variables, if they have not already been assigned with
