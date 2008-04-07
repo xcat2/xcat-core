@@ -2361,7 +2361,11 @@ sub eventlog {
       \@returnd
    );
    $tfactor = $returnd[40]<<24 | $returnd[39]<<16 | $returnd[38]<<8 | $returnd[37];
-   $tfactor -= time(); 
+   if ($tfactor > 0x20000000) {
+      $tfactor -= time(); 
+   } else {
+      $tfactor = 0;
+   }
       
 	@cmd=(0x40);
 	$error = docmd(
