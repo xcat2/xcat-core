@@ -509,12 +509,12 @@ sub handle_response {
   }
   if ($rsp->{error}) {
 #print "printing error\n";
-  	if (ref($rsp->{error}) eq 'ARRAY') { foreach my $text (@{$rsp->{error}}) { print "Error: $text\n"; } }
+  	if (ref($rsp->{error}) eq 'ARRAY') { foreach my $text (@{$rsp->{error}}) { print STDERR "Error: $text\n"; } }
   	else { print ("Error: ".$rsp->{error}."\n"); }
   }
   if ($rsp->{warning}) {
 #print "printing warning\n";
-  	if (ref($rsp->{warning}) eq 'ARRAY') { foreach my $text (@{$rsp->{warning}}) { print "Warning: $text\n"; } }
+  	if (ref($rsp->{warning}) eq 'ARRAY') { foreach my $text (@{$rsp->{warning}}) { print STDERR "Warning: $text\n"; } }
   	else { print ("Warning: ".$rsp->{warning}."\n"); }
   }
   if ($rsp->{info}) {
