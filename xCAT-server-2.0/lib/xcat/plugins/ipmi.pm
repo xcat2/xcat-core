@@ -9,6 +9,7 @@ package xCAT_plugin::ipmi;
 use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
 use Thread qw(yield);
+my $tfactor = 0;
 
 require Exporter;
 @ISA = qw(Exporter);
@@ -2349,6 +2350,19 @@ sub eventlog {
 		return(1,"unsupported command eventlog $subcommand");
 	}
 
+   #Here we set tfactor based on the delta between the BMC reported time and our
+   #time.  The IPMI spec says the BMC should return seconds since 1970 in local
+   #time, but the reality is the firmware pushing to the BMC has no context
+   #to know, so here we guess and adjust all timestamps based on delta between
+   #our now and the BMC's now
+   $error = docmd(
+      $netfun,
+      [0x48],
+      \@returnd
+   );
+   $tfactor = $returnd[40]<<24 | $returnd[39]<<16 | $returnd[38]<<8 | $returnd[37];
+   $tfactor -= time(); 
+      
 	@cmd=(0x40);
 	$error = docmd(
 		$netfun,
@@ -2576,7 +2590,7 @@ sub eventlog {
 			next;
 		}
 
-		my $timestamp = $sel_data[3] + $sel_data[4]*0x100 + $sel_data[5]*0x10000 + $sel_data[6]*0x1000000;
+		my $timestamp = ($sel_data[3] | $sel_data[4]<<8 | $sel_data[5]<<16 | $sel_data[6]<<24)-$tfactor;
 		my ($seldate,$seltime) = timestamp2datetime($timestamp);
 #		$text = "$entry: $seldate $seltime";
 		$text = ":$seldate $seltime";
@@ -2705,7 +2719,7 @@ sub getoemevent {
 	my $sel_data = shift;
 	my $text="";
 	if ($record_type < 0xE0 && $record_type > 0x2F) { #Should be timestampped, whatever it is
-		my $timestamp =  @$sel_data[3] + @$sel_data[4]*0x100 + @$sel_data[5]*0x10000 + @$sel_data[6]*0x1000000;
+		my $timestamp =  (@$sel_data[3] | @$sel_data[4]<<8 | @$sel_data[5]<<16 | @$sel_data[6]<<24)-$tfactor;
 		my ($seldate,$seltime) = timestamp2datetime($timestamp);
 		my @rest = @$sel_data[7..15];
 		if ($mfg_id==2) {
