@@ -12,11 +12,11 @@
 
 #-------------------------------------------------------
 package xCAT_plugin::xdsh;
-use xCAT::Table;
+require xCAT::Table;
 
-use xCAT::Utils;
+require xCAT::Utils;
 
-use xCAT::MsgUtils;
+require xCAT::MsgUtils;
 use Getopt::Long;
 require xCAT::DSHCLI;
 1;
@@ -54,7 +54,6 @@ sub preprocess_request
     my $cb  = shift;
     my %sn;
     if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
-    my @requests = ({%$req});      #first element is local instance
     my @nodes    = $req->{node};
     my $service  = "xcat";
 
@@ -67,14 +66,11 @@ sub preprocess_request
     foreach my $snkey (keys %$sn)
     {
 
-        if (xCAT::Utils->thishostisnot($snkey))
-        {
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;
             push @requests, $reqcopy;
 
-        }
     }
     return \@requests;
 }
