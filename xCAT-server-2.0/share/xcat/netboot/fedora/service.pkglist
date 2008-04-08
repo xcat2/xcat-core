@@ -14,3 +14,4 @@ nfs-utils
 dhcp
 bzip2
 rootfiles
+vixie-cron
