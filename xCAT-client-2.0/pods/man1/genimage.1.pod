@@ -1,0 +1,66 @@
+=head1 NAME
+ 
+B<genimage> - Generates a stateless image to be used for a diskless install.  
+ 
+=head1 SYNOPSIS
+ 
+I<genimage [-h| --help]>
+
+I<genimage  [-v| --version]>
+
+
+I<genimage [-i nodebootif] [ -n nodenetdrivers] [-r additional interfaces] [-o OS] [-p profile]>
+
+
+=head1 DESCRIPTION
+
+Generates the stateless image .
+The install dir is setup by using "installdir" attribute set in the site table. 
+The nodetype table "profile" attribute for the node should reflect the profile of the install image. 
+
+This uses the package information from the /opt/xcat/share/xcat/netboot/[os] directory files for the profile input.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version. 
+
+B<-o>          Operating system (fedora8, rhel5, sles10,etc) 
+
+B<-p>          Profile (compute,service) 
+
+B<-i>          Node Boot Interface (e.g. eth0) 
+
+B<-r>          Other Interface (e.g. eth0) 
+
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To generate a fedora8 image for a compute node architecture x86_64 and place it in the  /install/netboot/fedora8/x86_64/compute/rootimg directory. Change diretory to /opt/xcat/share/xcat/netboot/fedora and run: 
+
+I<genimage  -i eth0 -n tg3 -o fedora8 -p compute> 
+
+This would use the profile information from the /opt/xcat/share/xcat/netboot/fedora/compute* files.
+
+=head1 FILES
+ 
+/opt/xcat/share/xcat/netboot/<OS>/genimage
+
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+=head1 SEE ALSO
+
+packimage(1)
+

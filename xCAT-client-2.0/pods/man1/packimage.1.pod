@@ -1,6 +1,6 @@
 =head1 NAME
  
-B<packimage> - Builds the stateless image from the chroot file system.  
+B<packimage> - Packs the stateless image from the chroot file system.  
  
 =head1 SYNOPSIS
  
@@ -14,7 +14,8 @@ I<packimage [-o OS] [ -p profile] [-a architecture] [-m method]>
 
 =head1 DESCRIPTION
 
-Builds the stateless image from the chroot file system.
+Packs the stateless image from the chroot file system into a file system to be 
+sent to the node for a diskless install.
 The install dir is setup by using "installdir" attribute set in the site table. 
 The nodetype table "profile" attribute for the node should reflect the profile of the install image. 
 
@@ -27,7 +28,7 @@ B<-h>          Display usage message.
 
 B<-v>          Command Version. 
 
-B<-o>          Operating system (redora8, rhel5, sles10,etc) 
+B<-o>          Operating system (fedora8, rhel5, sles10,etc) 
 
 B<-p>          Profile (compute,service) 
 
@@ -59,5 +60,8 @@ This would use the package information from the /opt/xcat/share/xcat/netboot/fed
 
 This command is part of the xCAT software product.
 
+=head1 SEE ALSO
+
+genimage(1)
 
  
