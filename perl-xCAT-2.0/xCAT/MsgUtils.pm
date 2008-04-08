@@ -217,49 +217,74 @@ sub message
     #		should not just be check the 0th element.  2) a cmd may have both error
     #		text and data text.  3) this message() function should just take in a plain
     #		string and put it in the correct place based on the severity.
-    if ($call_back) {    # callback routine provided
-    	my $sevkey;
-    	if ($sev =~ /D/) { $sevkey = 'data'; }
-    	elsif ($sev =~ /I/) { $sevkey = 'info'; }
-    	elsif ($sev =~ /W/) { $sevkey = 'warning'; }
-    	elsif ($sev =~ /E/) {
-    		$sevkey = 'error';
-            if (!defined($exitcode)) { $exitcode = 1; }   # default to something non-zero
-    	}
-    	else { print "Internal Error: Invalid severity passed to MsgUtils::message().\n"; return 1; }
+    if ($call_back)
+    {    # callback routine provided
+        my $sevkey;
+        if    ($sev =~ /D/) { $sevkey = 'data'; }
+        elsif ($sev =~ /I/) { $sevkey = 'info'; }
+        elsif ($sev =~ /W/) { $sevkey = 'warning'; }
+        elsif ($sev =~ /E/)
+        {
+            $sevkey = 'error';
+            if (!defined($exitcode))
+            {
+                $exitcode = 1;
+            }    # default to something non-zero
+        }
+        else
+        {
+            print
+              "Internal Error: Invalid severity passed to MsgUtils::message().\n";
+            return 1;
+        }
 
-    	if ($sevkey ne 'data') {
-            if (!defined ($rsp->{$sevkey}) || !scalar(@{$rsp->{$sevkey}})) {   # did not pass the text in in the severity-specific field
-            	if (defined ($rsp->{data}) && scalar(@{$rsp->{data}})) {
-                	push @{$rsp->{$sevkey}}, @{$rsp->{data}};    # assume they passed in the text in the data field instead
-                	@{$rsp->{data}} = ();     # clear out the data field
-            	}
+        if ($sevkey ne 'data')
+        {
+            if (!defined($rsp->{$sevkey}) || !scalar(@{$rsp->{$sevkey}}))
+            {    # did not pass the text in in the severity-specific field
+                if (defined($rsp->{data}) && scalar(@{$rsp->{data}}))
+                {
+                    push @{$rsp->{$sevkey}},
+                      @{$rsp->{data}
+                      }; # assume they passed in the text in the data field instead
+                    @{$rsp->{data}} = ();    # clear out the data field
+                }
             }
-    	}
-    	if (!defined ($rsp->{$sevkey}) || !scalar(@{$rsp->{$sevkey}})) { return; }      # if still nothing in the array, there is nothing to print out
+        }
+        if (!defined($rsp->{$sevkey}) || !scalar(@{$rsp->{$sevkey}}))
+        {
+            return;
+        }    # if still nothing in the array, there is nothing to print out
 
-        if ($sev ne 'S') {     # if sev is anything but only-syslog, print the msg
-    		if ($exitcode) { push @{$rsp->{errorcode}}, $exitcode; }
-            $call_back->($rsp); # send message to daemon/Client.pm
-            @{$rsp->{$sevkey}} = ();         # clear out the rsp structure in case they use it again
-            @{$rsp->{data}} = ();
+        if ($sev ne 'S')
+        {    # if sev is anything but only-syslog, print the msg
+            if ($exitcode) { push @{$rsp->{errorcode}}, $exitcode; }
+            $call_back->($rsp);    # send message to daemon/Client.pm
+            @{$rsp->{$sevkey}} =
+              ();    # clear out the rsp structure in case they use it again
+            @{$rsp->{data}}      = ();
             @{$rsp->{errorcode}} = ();
         }
-	    # No need to support syslog writing when they specified a callback
+
+        # No need to support syslog writing when they specified a callback
     }
 
-    else                        # no callback provided
+    else             # no callback provided
     {
-        if ($sev ne 'S')        # it is not syslog only
+        if ($sev ne 'S')    # it is not syslog only
         {
             print $stdouterrf $rsp;    # print the message
         }
-	    if ($sev =~ /S/) {
-    		# If they want this msg to also go to syslog, do that now
-        	openlog("xCAT", '', 'local4');
-        	syslog("err", $rsp);
-        	closelog();
-    	}
+        if ($sev =~ /S/)
+        {
+
+            # If they want this msg to also go to syslog, do that now
+            eval {
+                openlog("xCAT", '', 'local4');
+                syslog("err", $rsp);
+                closelog();
+            };
+        }
     }
     return;
 }
