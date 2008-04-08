@@ -279,6 +279,9 @@ sub process_request {
   if ($querynics) { #Use netstat to determine activenics only when no site ent.
     foreach (@nrn) {
       my @ent = split /\s+/;
+      if ($ent[0] eq "169.254.0.0") {
+         next;
+      }
       if ($ent[7] =~ m/(ipoib|ib|vlan|bond|eth|myri|man|wlan)/) { #Mask out many types of interfaces, like xCAT 1.x
         $activenics{$ent[7]} = 1;
       }
@@ -341,6 +344,9 @@ sub process_request {
   }
   foreach (@nrn) {
     my @line = split /\s+/;
+    if ($ent[0] eq "169.254.0.0") {
+       next;
+    }
     if ($activenics{$line[7]} and $line[3] !~ /G/) {
       addnet($line[0],$line[2]);
     }
@@ -355,6 +361,9 @@ sub addnet {
   unless (grep /\} # $net\/$mask subnet_end/,@dhcpconf) {
     foreach (@nrn) { # search for relevant NIC
       my @ent = split /\s+/;
+      if ($ent[0] eq "169.254.0.0") {
+         next;
+      }
       if  ($ent[0] eq $net and $ent[2] eq $mask) {
         $nic=$ent[7];
       }
@@ -376,6 +385,8 @@ sub addnet {
     my $gateway;
     my $tftp;
     my $range;
+    my $myip;
+    $myip = xCAT::Utils->my_ip_facing($net);
     if ($nettab) {
       my ($ent) = $nettab->getAttribs({net=>$net,mask=>$mask},qw(tftpserver nameservers gateway dynamicrange dhcpserver));
       if ($ent and $ent->{nameservers}) {
@@ -386,7 +397,7 @@ sub addnet {
       if ($ent and $ent->{tftpserver}) {
         $tftp = $ent->{tftpserver};
       } else { #presume myself to be it, dhcp no longer does this for us
-         $tftp = xCAT::Utils->my_ip_facing($net);
+         $tftp = $myip;
       }
       if ($ent and $ent->{gateway}) {
         $gateway = $ent->{gateway};
@@ -424,6 +435,8 @@ sub addnet {
     if ($tftp) {
       push @netent,"    next-server  $tftp;\n";
     }
+    push @netent,"    option log-servers $myip;\n";
+    push @netent,"    option ntp-servers $myip;\n";
     push @netent,"    option domain-name \"$domain\";\n";
     if ($nameservers) {
       push @netent,"    option domain-name-servers  $nameservers;\n";
