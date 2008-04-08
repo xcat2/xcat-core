@@ -527,6 +527,7 @@ sub handle_response {
   }
 
   # Handle {node} structure
+  my $errflg=0;
   if (scalar @{$rsp->{node}}) {
 #print "printing node\n";
     my $nodes=($rsp->{node});
@@ -539,6 +540,7 @@ sub handle_response {
       }
       if ($node->{error}) {
          $desc.=": Error: ".$node->{error}->[0];
+		 $errflg=1;
       }
       if ($node->{data}) {
          if (ref(\($node->{data}->[0])) eq 'SCALAR') {
@@ -553,7 +555,11 @@ sub handle_response {
          }
       }
       if ($desc) {
-         print "$desc\n";
+		if ($errflg == 1) {
+		  print STDERR ("$desc\n");
+		} else {
+          print "$desc\n";
+        }
       }
     }
   }
