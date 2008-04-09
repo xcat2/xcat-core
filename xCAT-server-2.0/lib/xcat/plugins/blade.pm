@@ -1352,14 +1352,15 @@ sub telnetcmds {
   
   foreach my $cmd (@_) {
     if ($cmd =~ /=/) {
-      ($cmd,$value) = split /=/,$cmd;
-      if (grep(/^$cmd$/,@tcmds)) {
-        $handled{$cmd} = $value;
+      my ($command,$value) = split /=/,$cmd;
+      if (grep(/^$command$/,@tcmds)) {
+        $handled{$command} = $value;
         next;
-      } 
+      }
     }
     push @unhandled,$cmd;
   }
+
   if (!defined(%handled)) {
     return(@unhandled);
   }
