@@ -2,7 +2,8 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #Stunnel init for xcat:
 XCATDEST=""
-killall stunnel
+XCATPORT=3001
+killall stunnel > /dev/null 2>&1
 for parm in `cat /proc/cmdline`; do
 	key=`echo $parm|awk -F= '{print $1}'`
 	if [ "$key" == "xcatd" ]; then
@@ -13,14 +14,23 @@ done
 mkdir -p /etc/stunnel
 echo 'client=yes' > /etc/stunnel/stunnel.conf
 echo 'foreground=yes' >> /etc/stunnel/stunnel.conf
+echo 'output=/dev/null' >> /etc/stunnel/stunnel.conf
+#echo 'socket=a:SO_BINDTODEVICE=lo' >> /etc/stunnel/stunnel.conf
 echo 'verify=0' >> /etc/stunnel/stunnel.conf
-echo '[xcatds]' >> /etc/stunnel/stunnel.conf
-echo 'accept=301' >> /etc/stunnel/stunnel.conf
-echo 'connect='$XCATDEST >> /etc/stunnel/stunnel.conf
+if [ ! -z "$XCATDEST" ]; then 
+   echo '[xcatds]' >> /etc/stunnel/stunnel.conf
+   echo 'accept=301' >> /etc/stunnel/stunnel.conf
+   echo 'connect='$XCATDEST >> /etc/stunnel/stunnel.conf
+fi
 if [ -r /tmp/dhcpserver ]; then 
-    echo '[dhcps]' >> /etc/stunnel/stunnel.conf
-    echo 'accept=300' >> /etc/stunnel/stunnel.conf
-    echo 'connect='`cat /tmp/dhcpserver`':'$XCATPORT >> /etc/stunnel/stunnel.conf
+   let i=400;
+   for srv in `cat /tmp/dhcpserver`; do
+    echo "[xcatd$i]" >> /etc/stunnel/stunnel.conf
+    echo "accept=$i" >> /etc/stunnel/stunnel.conf
+    echo "connect="$srv":"$XCATPORT >> /etc/stunnel/stunnel.conf
+    let i=i+1
+   done
 fi
 mkdir -p /usr/var/run/stunnel
 stunnel &
+sleep 2

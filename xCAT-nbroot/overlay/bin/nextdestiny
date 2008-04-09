@@ -1,4 +1,10 @@
 #!/bin/sh
-if ! nextdestiny.awk 301; then
-    nextdestiny.awk 300;
+if ! nextdestiny.awk 301 > /dev/null 2>&1 ; then
+    let i=400
+    for srv in `cat /tmp/dhcpserver`; do
+        if nextdestiny.awk  $i > /dev/null 2>&1 ; then
+           exit
+         fi
+         let i=i+1
+    done
 fi

@@ -5,13 +5,12 @@ BEGIN {
 	listener = "/inet/tcp/" port "/0/0"
     quit = "no"
 	while (match(quit,"no")) {
-      print quit;
 		while (match(quit,"no") && (listener |& getline) > 0) {
 			if (match($0,"restart")) {
 				print "restarting bootstrap process" |& listener
                 quit="yes"
 				system("touch /restart")
-				system("killall usleep")
+				system("killall sleep")
 		        close(listener)
 			}
 		}

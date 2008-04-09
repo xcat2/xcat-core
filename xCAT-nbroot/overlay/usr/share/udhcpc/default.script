@@ -8,8 +8,7 @@ bound|renew)
     echo $siaddr >> /tmp/dhcpserver
 	/sbin/ifconfig $interface $ip netmask $subnet
         if [ -n "$router" ] ; then
-             echo "deleting routers"
-             while route del default gw 0.0.0.0 dev $interface ; do
+             while route del default gw 0.0.0.0 dev $interface > /dev/null 2>&1; do
                 :
                done
 
@@ -20,7 +19,6 @@ bound|renew)
         echo -n > /etc/resolv.conf
         [ -n "$domain" ] && echo search $domain >> /etc/resolv.conf
         for i in $dns ; do
-          echo adding dns $i
           echo nameserver $i >> /etc/resolv.conf
         done
 	;;

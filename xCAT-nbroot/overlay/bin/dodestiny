@@ -6,9 +6,11 @@ for parm in `cat /proc/cmdline`; do
     XCATDEST=`echo $parm|awk -F= '{print $2}'`
   fi
 done
-export XCATMASTER=`echo $XCATDEST | awk -F: '{print $1}'`
-export XCATPORT=`echo $XCATDEST | awk -F: '{print $2}'`
-
+export XCATPORT=3001
+if [ ! -z "$XCATDEST" ]; then 
+   export XCATMASTER=`echo $XCATDEST | awk -F: '{print $1}'`
+   export XCATPORT=`echo $XCATDEST | awk -F: '{print $2}'`
+fi
 
 while :; do
   DESTINY=`grep destiny /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
@@ -17,11 +19,13 @@ while :; do
   DESTINY=`echo $DESTINY|awk '{print $1}'` #No bash, no tricks
   if [ "$DESTINY" == "standby" ]; then
     echo "Server notified us of standby condition, please check chain table".
-    echo "Retrying destiny in 15 seconds"
-    usleep 15000000 # something may be transiently wrong, check back in 15 seconds
+    let STSLEEP=15+$RANDOM%15
+    echo "Retrying destiny in $STSLEEP seconds"
+    sleep $STSLEEP # something may be transiently wrong, check back in 15 seconds
     while ! getdestiny; do
         echo "Retrying destiny retrieval"
-        usleep 300000
+        let RTSLEEP=$RANDOM%5
+        sleep $RTSLEEP
     done
     exec /bin/dodestiny
   fi
@@ -32,12 +36,25 @@ while :; do
   if [ "$DESTINY" == "discover" ]; then
     echo "MAC discovery begins"
     minixcatd.awk &
-    usleep 500000 #Mitigate occurrances of 'failed to notify node'
+    sleep 1 #Mitigate occurrances of 'failed to notify node'
     while [ ! -r /restart ]; do
+      let myr=$RANDOM%10
+      sleep $myr #Stagger discovery requests from many nodes
       ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1 "|" $5}'
       sleep 1
       MTM="unknown"
       SERIAL="unknown"
+      ARCH="unknown"
+      if uname -m | grep i686 > /dev/null || uname -m | grep x86_64 > /dev/null; then
+         if grep ^flags /proc/cpuinfo |head -n 1|grep " lm " > /dev/null; then
+            ARCH=x86_64
+         else
+            ARCH=x86
+         fi
+      else
+         ARCH=`uname -m`
+      fi
+
       if [ -x /bin/vpddecode ]; then
         MTM=`(/bin/vpddecode|grep Type || echo "unknown unknown: unknown")|awk '{print $3}'`
         SERIAL=`(/bin/vpddecode|grep "Box Serial" || echo "unknown unknown unknown: unknown")|awk '{print $4}'`
@@ -52,7 +69,7 @@ while :; do
       (
       echo "<xcatrequest>"
       echo "<command>findme</command>"
-      echo "<arch>"`uname -m`"</arch>"
+      echo "<arch>$ARCH</arch>"
       for i in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1 "|" $5}'`; do 
         IFACE=`echo $i|awk -F'|' '{print $1}'`
         DRIVER=`ethtool -i $IFACE|grep ^driver|awk '{print $2}'`
@@ -72,30 +89,37 @@ while :; do
         echo "<serial>$SERIAL</serial>"
       fi
       echo "</xcatrequest>" ) > /tmp/discout
-      ping -c 1 $XCATMASTER
-      cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT & #can't figure out how to make a hung gawk behave..
-      if usleep 8000000 #Give the preferred method 5 seconds to complete before resorting
-      then
-        #if usleep succeeded, that means it wasn't killed and therefore, no answer yet
-        killall udpcat.awk #reap hung ones
-        for nic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'`; do #also, bring down interfaces to make sure that we send from the 'right' nic
-         for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
-            ifconfig $dnic down
-         done
+      if [ ! -z "$XCATMASTER" ]; then
          ping -c 1 $XCATMASTER
          cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT & #can't figure out how to make a hung gawk behave..
+      fi
+      if [ -z "$XCATMASTER" ] || sleep 8 > /dev/null 2>&1 #Give the preferred method 8 seconds to complete before resorting
+      then
+        #if sleep succeeded, that means it wasn't killed and therefore, no answer yet
+        killall udpcat.awk > /dev/null 2>&1 #reap hung ones
+        for nic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'`; do #also, bring down interfaces to make sure that we send from the 'right' nic
+         MYB=`ifconfig $nic|grep "Bcast"|awk '{print $3}'|awk -F: '{print $2}'`
+         for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
+            OTB=`ifconfig $dnic|grep "Bcast"|awk '{print $3}'|awk -F: '{print $2}'`
+            if [ "$OTB" == "$MYB" ]; then # if broadcasts match, down the other nic
+               ifconfig $dnic down
+            fi
+         done
+         if [ ! -z "$XCATMASTER" ]; then
+            (ping -c 1 $XCATMASTER
+            cat /tmp/discout | udpcat.awk $XCATMASTER $XCATPORT ) & #can't figure out how to make a hung gawk behave..
+         fi
          for dhcps in `cat /tmp/dhcpserver`; do 
-            ping -c 1 $dhcps
-            cat /tmp/discout | udpcat.awk $dhcps $XCATPORT &
+            ( ping -c 1 $dhcps
+            cat /tmp/discout | udpcat.awk $dhcps $XCATPORT )&
          done
          for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
             ifconfig $dnic up
          done
+         if ! sleep 5 > /dev/null 2>&1; then break; fi # give management server a chance to get to minixcatd.awk
         done
-         
-        usleep 8000000
       fi
-      killall udpcat.awk #reap hung ones
+      killall udpcat.awk > /dev/null 2>&1 #reap hung ones
     done
     #Discovery complete, restart requested.
     exec /bin/restart
@@ -151,7 +175,7 @@ while :; do
     ./runme.sh
     cd -
   fi
-  usleep 5000000 # something may be transiently wrong, check back in 5 seconds
+  sleep 5 # something may be transiently wrong, check back in 5 seconds
   getdestiny
   if grep error /tmp/destiny; then
       echo ERROR: see above
