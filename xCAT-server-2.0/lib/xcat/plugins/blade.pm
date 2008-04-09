@@ -17,6 +17,7 @@ use Storable qw(freeze thaw);
 use IO::Select;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
+use Net::Telnet;
 
 sub handled_commands {
   return {
@@ -42,7 +43,7 @@ my %usage = (
     "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
     "rbootseq" => "Usage: rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...",
     "rscan" => "Usage: rscan <noderange> [-w][-x|-z]",
-    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]]"
+    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]|sshcfg[=enable|disable]|snmpcfg[=enable|disable]]"
 );
 my %macmap; #Store responses from rinv for discovery
 my $macmaptimestamp; #reflect freshness of cache
@@ -401,18 +402,45 @@ sub mpaconfig {
    #remoteAlerts 1.3.6.1.4.1.2.3.51.2.4.2
    #remoteAlertIdEntryTextDescription 1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.4
    #remoteAlertIdEntryStatus 1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.2 (0 invalid, 2 enable)
+
+   my $mpa=shift;
+   my $user=shift;
+   my $pass=shift;
    my $parameter;
    my $value;
    my $assignment;
    my $returncode=0;
    if ($didchassis) { return 0, @cfgtext } #"Chassis already configured for this command" }
    @cfgtext=();
-   foreach $parameter (@_) {
+
+   my @args = telnetcmds($mpa,$user,$pass,@_);
+
+   foreach $parameter (@args) {
       $assignment = 0;
       $value = undef;
       if ($parameter =~ /=/) {
          $assignment = 1;
          ($parameter,$value) = split /=/,$parameter,2;
+      }
+      if ($parameter =~ /^snmpcfg$/i) {
+         my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.1.6',0]);
+         if ($data) {
+            push @cfgtext,"SNMP: enabled";
+         }
+         else {
+            push @cfgtext,"SNMP: disabled";
+         }
+         next;
+      }
+      if ($parameter =~ /^sshcfg$/i) {
+         my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.4.10',0]);
+         if ($data =~ /NOSUCHOBJECT/) {
+            push @cfgtext,"SSH: Not supported";
+         } elsif ($data) {
+            push @cfgtext,"SSH: enabled";
+         } else {
+            push @cfgtext,"SSH: disabled";
+         }
       }
       if ($parameter eq "snmpdest") {
          $parameter = "snmpdest1";
@@ -1012,8 +1040,8 @@ sub beacon {
 sub bladecmd {
   $mpa = shift;
   $slot = shift;
-  #my $user = shift;
-  #my $pass = shift;
+  my $user = shift;
+  my $pass = shift;
   my $command = shift;
   my @args = @_;
   my $error;
@@ -1033,7 +1061,7 @@ sub bladecmd {
   } elsif ($command =~ /r[ms]preset/) {
     return resetmp(@args);
   } elsif ($command eq "rspconfig") {
-    return mpaconfig(@args);
+    return mpaconfig($mpa,$user,$pass,@args);
   } elsif ($command eq "rbootseq") {
     return bootseq(@args);
   } elsif ($command eq "switchblade") {
@@ -1294,6 +1322,179 @@ sub process_request {
   while (forward_data($callback,$sub_fds)) {}
 }
 
+sub telnetcmds {
+
+  my $mpa=shift;
+  my $user=shift;
+  my $pass=shift;
+  my $value;
+  my @unhandled;
+  my %handled = ();
+  my @tcmds = qw(snmpcfg sshcfg);
+  
+  foreach my $cmd (@_) {
+    if ($cmd =~ /=/) {
+      ($cmd,$value) = split /=/,$cmd;
+      if (grep(/^$cmd$/,@tcmds)) {
+        $handled{$cmd} = $value;
+        next;
+      } 
+    }
+    push @unhandled,$cmd;
+  }
+  if (!defined(%handled)) {
+    return(@unhandled);
+  }
+  my $t = new Net::Telnet(
+                Timeout=>15, 
+                Errmode=>'return',
+                Prompt=>'/system> $/'
+  );
+  my $Rc = $t->open($mpa);
+  if ($Rc) {
+    $Rc = $t->login($user,$pass); 
+  }
+  if (!$Rc) {
+    push @cfgtext,$t->errmsg;
+    return(@unhandled);
+  }
+
+  foreach (keys %handled) {
+    if (/^snmpcfg/) {
+      my $result = snmpcfg($t,$handled{$_},$user,$pass);
+      push @cfgtext,"@$result";
+    }
+    elsif (/^sshcfg$/) {
+      my $result = sshcfg($t,$handled{$_},$user);
+      push @cfgtext,"@$result";
+    }
+  }
+  $t->close;
+  return(@unhandled);
+}
+
+
+sub snmpcfg {
+
+  my $t = shift;
+  my $value = shift;
+  my $uid = shift;
+  my $pass = shift;
+
+  # Query users on MM
+  my @data = $t->cmd("users -T system:mm[1]");
+  my ($user) = grep(/\d+\.\s+$uid/, @data);
+  if (!$user) {
+    return(["Cannot find user: '$uid' on MM"]);
+  }
+  $user =~ /^(\d+)./;
+  my $id = $1;
+  my $pp = ($value eq "enable") ? "des" : "none";
+ 
+  my $cmd= "users -$id -ap sha -at write -ppw $pass -pp $pp -T system:mm[1]";
+  my @data = $t->cmd($cmd);
+
+  if (grep(/OK/i,@data)) {
+    return(["SNMP $value: OK"]);
+  }
+  return(\@data);
+}
+
+
+sub sshcfg {
+
+  my $t = shift;
+  my $value = shift;
+  my $uid = shift;
+  my $fname = (xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/"."id_dsa.pub";
+
+  # Does MM support SSH
+  my @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
+
+  if (grep(/Error: Command not recognized/,@data)) {
+    return(["SSH supported on AMM with minimum firmware BPET32"]);
+  }
+  # Get firmware version on MM
+  @data = $t->cmd("update -a -T system:mm[1]");
+  my ($line) = grep(/Build ID:\s+\S+/, @data);
+
+  # Minumum firmware version BPET32 required for SSH
+  $line =~ /(\d+)/;
+  if ($1 < 32) {
+    return(["SSH supported on AMM with minimum firmware BPET32"]);
+  }
+
+  if ($value =~ /^disable$/) {
+    @data = $t->cmd("ports -sshe off -T system:mm[1]");
+    return(["OK"]);
+  }
+  # Get SSH key on Management Node
+  unless (open(RSAKEY,"<$fname")) {
+    return(["Error opening '$fname'"]);
+  }
+  my ($sshkey)=<RSAKEY>;
+  close(RSAKEY);
+
+  if ($sshkey !~ /\s+(\S+\@\S+$)/) {
+    return(["Cannot find userid\@host in '$fname'"]);
+  }
+  my $login = $1;
+
+  # Query users on MM
+  @data = $t->cmd("users -T system:mm[1]");
+  my ($user) = grep(/\d+\.\s+$uid/, @data);
+  if (!$user) {
+    return(["Cannot find user: '$uid' on MM"]);
+  }
+  $user =~ /^(\d+)./;
+  my $id = $1;
+
+  # Determine is key already exists on MM
+  @data = $t->cmd("users -$id -pk all -T system:mm[1]");
+
+  # Remove existing keys for this login
+  foreach (split(/Key\s+/,join('',@data))) {
+    if (/-cm\s+$login/) {
+      /^(\d+)/;
+      my $key = $1;
+      @data = $t->cmd("users -$id -pk -$key -remove -T system:mm[1]");
+    }
+  }
+  # Make sure SSH key is generated on MM
+  @data = $t->cmd("sshcfg -hk dsa -T system:mm[1]");
+
+  if (!grep(/ssh-dss/,@data)) {
+    @data = $t->cmd("sshcfg -hk gen -T system:mm[1]");
+    if (!grep(/^OK$/i, @data)) {
+      return(\@data);
+    }
+    # Wait for SSH key generation to complete
+    my $timeout = time+240;
+
+    while (1) {
+      if (time >= $timeout) {
+        return(["SSH key generation timeout"]);
+      }
+      sleep(15);
+      @data = $t->cmd("sshcfg -hk dsa -T system:mm[1]");
+      if (grep(/ssh-dss/,@data)) {
+        last;
+      }
+    }
+  }
+  # Transfer SSH key from Management Node to MM
+  $sshkey =~ s/@/\@/;
+  @data = $t->cmd("users -$id -pk -T system:mm[1] -add $sshkey");
+
+  if ($data[0]=~/Error/i) {
+    return([$data[0]]);
+  }
+  # Enable ssh on MM
+  @data = $t->cmd("ports -sshe on -T system:mm[1]");
+  return(["SSH $value: OK"]);
+}
+
+
 sub forward_data {
   my $callback = shift;
   my $fds = shift;
@@ -1361,7 +1562,7 @@ sub dompa {
   }
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;
-    my ($rc,@output) = bladecmd($mpa,$mpahash->{$mpa}->{nodes}->{$node},$command,@exargs);
+    my ($rc,@output) = bladecmd($mpa,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@exargs); 
     my @output_hashes;
     foreach(@output) {
       my %output;
@@ -1395,6 +1596,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
