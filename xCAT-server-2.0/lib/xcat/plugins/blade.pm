@@ -18,6 +18,7 @@ use IO::Select;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
 use Net::Telnet;
+use Getopt::Long;
 
 sub handled_commands {
   return {
@@ -671,178 +672,195 @@ sub vitals {
  
 sub rscan {
 
-    my $subcommand = shift;
-    my @values;
-    my $result;
-    my %opt;
+  my $args = shift;
+  my @values;
+  my $result;
+  my %opt;
 
-    @ARGV = $subcommand;
-    use Getopt::Long;
-    $Getopt::Long::ignorecase = 0;
-    Getopt::Long::Configure( "bundling" );
+  @ARGV = @$args;
+  $Getopt::Long::ignorecase = 0;
+  Getopt::Long::Configure("bundling");
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version w x z) )){
-        return( usage() );
-    }
-    if ( exists($opt{x}) and exists($opt{z}) ) {
-        return (1,"-x and -z are mutually exclusive" );
-    } 
-    my $mmname = $session->get([$mmoname,0]);
-    if ($session->{ErrorStr}) {
-        return (1,$session->{ErrorStr});
-    }
-    my $mmtype = $session->get([$mmotype,0]);
-    if ($session->{ErrorStr}) {
-        return (1,$session->{ErrorStr});
-    }
-    my $mmmodel = $session->get([$mmomodel,0]);
-    if ($session->{ErrorStr}) {
-        return (1,$session->{ErrorStr});
-    }
-    my $mmserial = $session->get([$mmoserial,0]);
-    if ($session->{ErrorStr}) {
-        return (1,$session->{ErrorStr});
-    }
-    push @values, join( ",", "mm", $mmname, 0, "$mmtype-$mmmodel", $mmserial, $mpa);
-    my $max = length( $mmname );
+  local *usage = sub {
+    return( join('',($_[0],
+        "rscan -h|--help\n",
+        "rscan -v|--version\n",
+        "rscan [-V|--verbose] noderange [-w][-x|-z]\n",
+        "    -h   writes usage information to standard output\n",
+        "    -v   displays command version\n",
+        "    -V   verbose output\n",
+        "    -w   writes output to xCat database\n",
+        "    -x   xml formatted output\n",
+        "    -z   stanza formatted output.\n")));
+  };
 
-    foreach (1..14) {
-        my $tmp = $session->get([$bladexistsoid.".$_"]);
-        if ( $tmp eq 1 ) {
-            my $type = $session->get([$blademtmoid,$_]);
-            if ($session->{ErrorStr}) {
-                return (1,$session->{ErrorStr});
-            }
-            $type =~ s/Not available/null/;
+  if ( !GetOptions(\%opt,qw(h|help V|Verbose v|version w x z))){
+    return(1,usage());
+  }
+  if (@ARGV) {
+    return(1,usage("Invalid argument: @ARGV\n"));
+  }
+  if (exists($opt{h})) {
+    return(1,usage());
+  }
+  if (exists($opt{x}) and exists($opt{z})) {
+    return(1,usage("-x and -z are mutually exclusive\n"));
+  } 
+  my $mmname = $session->get([$mmoname,0]);
+  if ($session->{ErrorStr}) {
+    return(1,$session->{ErrorStr});
+  }
+  my $mmtype = $session->get([$mmotype,0]);
+  if ($session->{ErrorStr}) {
+    return(1,$session->{ErrorStr});
+  }
+  my $mmmodel = $session->get([$mmomodel,0]);
+  if ($session->{ErrorStr}) {
+    return(1,$session->{ErrorStr});
+  }
+  my $mmserial = $session->get([$mmoserial,0]);
+  if ($session->{ErrorStr}) {
+    return(1,$session->{ErrorStr});
+  }
+  push @values,join(",","mm",$mmname,0,"$mmtype-$mmmodel",$mmserial,$mpa);
+  my $max = length($mmname);
 
-            my $model = $session->get([$bladeomodel,$_]);
-            if ($session->{ErrorStr}) {
-                return (1,$session->{ErrorStr});
-            }
-            $model =~ s/Not available/null/;
+  foreach (1..14) {
+    my $tmp = $session->get([$bladexistsoid.".$_"]);
+    if ($tmp eq 1) {
+      my $type = $session->get([$blademtmoid,$_]);
+      if ($session->{ErrorStr}) {
+        return(1,$session->{ErrorStr});
+      }
+      $type =~ s/Not available/null/;
 
-            my $serial = $session->get([$bladeserialoid,$_]);
-            if ($session->{ErrorStr}) {
-                return (1,$session->{ErrorStr});
-            }
-            $serial =~ s/Not available/null/;
+      my $model = $session->get([$bladeomodel,$_]);
+      if ($session->{ErrorStr}) {
+        return(1,$session->{ErrorStr});
+      }
+      $model =~ s/Not available/null/;
 
-            my $name = $session->get([$bladeoname,$_]);
-            if ($session->{ErrorStr}) {
-                return (1,$session->{ErrorStr});
-            }
-            push @values, join( ",", "blade", $name, $_, "$type-$model", $serial, "");
-            my $length  = length( $name );
-            $max = ($length > $max) ? $length : $max;
-        }
+      my $serial = $session->get([$bladeserialoid,$_]);
+      if ($session->{ErrorStr}) {
+        return(1,$session->{ErrorStr});
+      }
+      $serial =~ s/Not available/null/;
+
+      my $name = $session->get([$bladeoname,$_]);
+      if ($session->{ErrorStr}) {
+        return(1,$session->{ErrorStr});
+      }
+      push @values, join( ",","blade",$name,$_,"$type-$model",$serial,"");
+      my $length  = length($name);
+      $max = ($length > $max) ? $length : $max;
     }
-    my $format = sprintf "%%-%ds", ($max + 2 );
-    $rscan_header[1][1] = $format;
+  }
+  my $format = sprintf "%%-%ds",($max+2);
+  $rscan_header[1][1] = $format;
 
-    if ( exists( $opt{x} )) {
-       $result = rscan_xml( \@values ); 
-    } 
-    elsif ( exists( $opt{z} )) {
-       $result = rscan_stanza( \@values ); 
-    } 
-    else {
-        foreach ( @rscan_header ) {
-            $result .= sprintf @$_[1], @$_[0];
-        }
-        foreach ( @values ) {
-            my @data = split /,/;
-            my $i = 0;
+  if (exists($opt{x})) {
+    $result = rscan_xml(\@values); 
+  } 
+  elsif ( exists( $opt{z} )) {
+    $result = rscan_stanza( \@values ); 
+  } 
+  else {
+    foreach ( @rscan_header ) {
+      $result .= sprintf @$_[1],@$_[0];
+    }
+    foreach (@values ){
+      my @data = split /,/;
+      my $i = 0;
 
-            foreach ( @rscan_header ) {
-                $result .= sprintf @$_[1], $data[$i++];
-            }
-        }
+      foreach (@rscan_header) {
+        $result .= sprintf @$_[1],$data[$i++];
+      }
     }
-    if ( !exists( $opt{w} )) {
-        return(0,$result);
-    }
-    my @tabs = qw(mp nodehm nodelist);
-    my %db   = ();
+  }
+  if (!exists( $opt{w})) {
+    return(0,$result);
+  }
+  my @tabs = qw(mp nodehm nodelist);
+  my %db   = ();
 
-    foreach ( @tabs ) {
-        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
-        if ( !$db{$_} ) {
-            return( 1,"Error opening '$_'" );
-        }
+  foreach (@tabs) {
+    $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
+    if ( !$db{$_} ) {
+      return(1,"Error opening '$_'" );
     }
-    foreach ( @values ) {
-        my @data = split /,/;
-        my $name = $data[1];
+  }
+  foreach (@values) {
+    my @data = split /,/;
+    my $name = $data[1];
   
-        my ($k1,$u1);
-        $k1->{node} = $name;
-        $u1->{mpa}  = $mpa;
-        $u1->{id}   = $data[2];
-        $db{mp}->setAttribs( $k1, $u1 );
-        $db{mp}{commit} = 1;
+    my ($k1,$u1);
+    $k1->{node} = $name;
+    $u1->{mpa}  = $mpa;
+    $u1->{id}   = $data[2];
+    $db{mp}->setAttribs($k1,$u1);
+    $db{mp}{commit} = 1;
 
-        my ($k2,$u2);
-        $k2->{node} = $name;
-        $u2->{mgt}  = "blade";
-        $db{nodehm}->setAttribs( $k2, $u2 );
-        $db{nodehm}{commit} = 1;
+    my ($k2,$u2);
+    $k2->{node} = $name;
+    $u2->{mgt}  = "blade";
+    $db{nodehm}->setAttribs($k2,$u2);
+    $db{nodehm}{commit} = 1;
 
-        my ($k3,$u3);
-        $k3->{node}   = $name;
-        $u3->{groups} = "blade,all";
-        $db{nodelist}->setAttribs( $k3, $u3 );
-        $db{nodelist}{commit} = 1;
+    my ($k3,$u3);
+    $k3->{node}   = $name;
+    $u3->{groups} = "blade,all";
+    $db{nodelist}->setAttribs($k3,$u3);
+    $db{nodelist}{commit} = 1;
+  }
+  foreach ( @tabs ) {
+    if ( exists( $db{$_}{commit} )) {
+       $db{$_}->commit;
     }
-    foreach ( @tabs ) {
-        if ( exists( $db{$_}{commit} )) {
-           $db{$_}->commit;
-        }
-    }
-    return (0,$result);
+  }
+  return (0,$result);
 }
 
 sub rscan_xml {
 
-    my $values = shift;
-    my $xml;
+  my $values = shift;
+  my $xml;
 
-    foreach ( @$values ) {
-      my @data = split /,/;
-      my $i = 0;
+  foreach (@$values) {
+    my @data = split /,/;
+    my $i = 0;
 
-      my $href = {
-          Node => { }
-      };
-      foreach ( @rscan_header ) {
-        $href->{Node}->{@$_[0]} = $data[$i++];
-      }
-      $xml.= XMLout($href,
-                     NoAttr   => 1,
-                     KeyAttr  => [],
-                     RootName => undef );
+    my $href = {
+        Node => { }
+    };
+    foreach (@rscan_header) {
+      $href->{Node}->{@$_[0]} = $data[$i++];
     }
-    return( $xml );
+    $xml.= XMLout($href,NoAttr=>1,KeyAttr=>[],RootName=>undef);
+  }
+  return( $xml );
 }
+
+
 sub rscan_stanza {
 
-    my $values = shift;
-    my $result;
+  my $values = shift;
+  my $result;
 
-    foreach ( @$values ) {
-      my @data = split /,/;
-      my $i = 0;
-      $result .= "$data[1]:\n\tobjtype=node\n";
+  foreach (@$values) {
+    my @data = split /,/;
+    my $i = 0;
+    $result .= "$data[1]:\n\tobjtype=node\n";
 
-      foreach ( @rscan_header ) {
-        if ( @$_[0] ne "name" ) {
-          $result .= "\t@$_[0]=$data[$i++]\n";      
-        }
-        $i++;
+    foreach ( @rscan_header ) {
+      if ( @$_[0] ne "name" ) {
+        $result .= "\t@$_[0]=$data[$i++]\n";      
       }
+      $i++;
     }
-    return( $result );
+  }
+  return( $result );
 }
- 
+
 sub getmacs {
    (my $code,my $macs)=inv('mac');
    if ($code==0) {
@@ -1073,7 +1091,7 @@ sub bladecmd {
   } elsif ($command eq "reventlog") {
     return eventlog(@args);
   } elsif ($command eq "rscan") {
-    return rscan(@args);
+    return rscan(\@args);
   }
   
   return (1,"$command not a supported command by blade method");
@@ -1596,6 +1614,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
