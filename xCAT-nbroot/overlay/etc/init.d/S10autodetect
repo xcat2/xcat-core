@@ -109,9 +109,11 @@ until [ $extrat == 80 -o -z "$NICSTOWAIT" ]; do
          NICSTOWAIT=`echo $NICSTOWAIT|sed -e s/$nic//`
          if [ $extrat -gt 45 ]; then
             echo "Warning: $nic took more than 45 seconds to receive DHCP reply, spanning-tree may not be configured well, examine switch configuration" >> /etc/motd
+            echo "Warning: $nic took more than 45 seconds to receive DHCP reply, spanning-tree may not be configured well, examine switch configuration"
          fi
       elif [ $extrat == 15 ]; then
             if ethtool $nic | grep "Link detected: no"; then
+               echo "$nic did not have any link when bringing up network"
                echo "$nic did not have any link when bringing up network" >> /etc/motd
                NICSTOWAIT=`echo $NICSTOWAIT|sed -e s/$nic//`
             fi
@@ -119,5 +121,6 @@ until [ $extrat == 80 -o -z "$NICSTOWAIT" ]; do
    done
 done
 if [ ! -z "$NICSTOWAIT" ]; then
+   echo "Warning: the following network devices appeared to be connected to networks, but received no DHCP response: $NICSTOWAIT" >> /etc/motd
    echo "Warning: the following network devices appeared to be connected to networks, but received no DHCP response: $NICSTOWAIT"
 fi
