@@ -387,6 +387,7 @@ site => {
    "  ipmisdrcache\n".
    "  iscsidir\n".
    "  xcatservers (service nodes??)\n".
+   "  svloglocal (logs on the service node stay local or not. 1 or 0)\n".
    "  dhcpinterfaces (network interfaces DHCP should listen on??)\n".
    "  forwarders (DNS forwarders??)\n".
    "  genpasswords (generate BMC passwords??)\n".

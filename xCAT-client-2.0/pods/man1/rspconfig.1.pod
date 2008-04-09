@@ -6,6 +6,8 @@ B<rspconfig> - remote power control of nodes
 
 B<rspconfig> I<noderange> {B<alert>|B<snmpdest>|B<community>|B<garp>}
 
+B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<backupgateway>}
+
 B<rspconfig> I<noderange> B<alert>={B<on>|B<enable>|B<off>|B<disable>}
 
 B<rspconfig> I<noderange> B<snmpdest>=I<snmpmanager-IP>
@@ -29,17 +31,33 @@ specified, without the B<=>, it displays the current value.
 
 Turn on or off SNMP alerts.
 
-=item B<snmpdest>=I<snmpmanager-IP>
+=item B<backupgateway>
 
-Set where the SNMP alerts should be sent to.
+Get the BMC backup gateway ip address.
 
 =item B<community>={B<public>|I<string>}
 
-Set the SNMP commmunity value.
+Get or set the SNMP commmunity value. The default is I<public>.
 
 =item B<garp>=I<time>
 
-Set Gratuitous ARP generation interval. The unit is number of 1/2 second.
+Get or set Gratuitous ARP generation interval. The unit is number of 1/2 second.
+
+=item B<gateway>
+
+Get the BMC gateway ip address.
+
+=item B<ip>
+
+Get the BMC ip address.
+
+=item B<netmask>
+
+Get the BMC subnet mask.
+
+=item B<snmpdest>=I<snmpmanager-IP>
+
+Get or set where the SNMP alerts should be sent to.
 
 =item B<-h>|B<--help>
 

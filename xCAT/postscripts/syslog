@@ -88,7 +88,22 @@ if (($ng) && (-e "/etc/xCATSN")) {
 } 
 
 #now handling where the logs go
+my $goLocal=0;
 if (-e "/etc/xCATMN") {
+  $goLocal=1;
+} elsif (-e "/etc/xCATSN") {
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+  require "$::XCATROOT/lib/perl/xCAT/Table.pm";
+  my $sitetab = xCAT::Table->new('site');
+  if ($sitetab) {
+    (my $ref) = $sitetab->getAttribs({key => 'svloglocal'}, value);
+     if ($ref and $ref->{value})   {
+	 if ($ref->{value} == 1) { $goLocal=1;}
+     }
+  }
+}
+
+if ($goLocal) {
   #making sure all the messages goes to /var/log/messages
   `touch  /var/log/messages`; #log file must exist first
   if (!$ng) {
@@ -101,7 +116,7 @@ if (-e "/etc/xCATMN") {
       `echo "*.debug;*.crit;*.err;*.warning   /var/log/messages" >> $conf_file`;
     }
   }
-} else {
+}  else {
   #now make the syslogd fowarding the messages to the the master
   if ($ng) {
     if (! -f "$conf_file.XCATORIG") {
