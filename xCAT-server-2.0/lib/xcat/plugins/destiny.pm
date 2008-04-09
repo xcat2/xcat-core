@@ -104,7 +104,7 @@ sub setdestiny {
       my $arch = $ent->{arch};
       my $ent = $noderes->getNodeAttribs($_,[qw(xcatmaster)]);
       my $master;
-      my $kcmdline;
+      my $kcmdline = "quiet ";
       if ($mastent and $mastent->{value}) {
           $master = $mastent->{value};
       }
@@ -113,7 +113,7 @@ sub setdestiny {
       }
       $ent = $noderes->getNodeAttribs($_,['serialport']);
       if ($ent and defined($ent->{serialport})) {
-         $kcmdline = "console=ttyS".$ent->{serialport};
+         $kcmdline .= "console=ttyS".$ent->{serialport};
          $ent = $nodehm->getNodeAttribs($_,['serialspeed']);
          unless ($ent and defined($ent->{serialspeed})) {
             $callback->({error=>["Serial port defined in noderes, but no nodehm.serialspeed set for $_"],errorcode=>[1]});
