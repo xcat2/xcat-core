@@ -5,6 +5,7 @@ package xCAT_plugin::blade;
 use xCAT::Table;
 use Thread qw(yield);
 use xCAT::Utils;
+use xCAT::Usage;
 use IO::Socket;
 use SNMP;
 use strict;
@@ -36,16 +37,7 @@ sub handled_commands {
     switchblade => 'nodehm:mgt',
   };
 }
-my %usage = (
-    "rpower" => "Usage: rpower <noderange> [--nodeps][on|off|reset|stat|boot]",
-    "rbeacon" => "Usage: rbeacon <noderange> [on|off|stat]",
-    "rvitals" => "Usage: rvitals <noderange> [all|temp|voltage|fanspeed|power|leds]",
-    "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
-    "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
-    "rbootseq" => "Usage: rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...",
-    "rscan" => "Usage: rscan <noderange> [-w][-x|-z]",
-    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]|sshcfg[=enable|disable]|snmpcfg[=enable|disable]|build]"
-);
+
 my %macmap; #Store responses from rinv for discovery
 my $macmaptimestamp; #reflect freshness of cache
 my $mmprimoid = '1.3.6.1.4.1.2.3.51.2.22.5.1.1.4';#mmPrimary
@@ -1199,11 +1191,12 @@ sub process_request {
   my $command = $request->{command}->[0];
   my @exargs;
   unless ($noderange or $command eq "findme") {
-      if ($usage{$command}) {
-          $callback->({data=>$usage{$command}});
-          $request = {};
-      }
-      return;
+    my $usage_string=xCAT::Usage->getUsage($command);
+    if ($usage_string) {
+      $callback->({data=>$usage_string});
+      $request = {};
+    }
+    return;
   }
   if (ref($request->{arg})) {
     @exargs = @{$request->{arg}};

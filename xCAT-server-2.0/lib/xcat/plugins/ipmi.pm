@@ -8,6 +8,7 @@ package xCAT_plugin::ipmi;
 
 use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
+use xCAT::Usage;
 use Thread qw(yield);
 my $tfactor = 0;
 
@@ -29,16 +30,6 @@ sub handled_commands {
     reventlog => 'nodehm:eventlog,mgt',
   }
 }
-my %usage = (
-    "rpower" => "Usage: rpower <noderange> [on|off|reset|stat|boot]",
-    "rbeacon" => "Usage: rbeacon <noderange> [on|off|stat]",
-    "rvitals" => "Usage: rvitals <noderange> [all|temp|wattage|voltage|fanspeed|power|leds]",
-    "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
-    "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
-    "rsetboot" => "Usage: rsetboot <noderange> [net|hd|cd|def|stat]",
-    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]|garp[=<number of 1/2 second>]]"
-);
-    
 
     
 use strict;
@@ -51,6 +42,7 @@ use Class::Struct;
 use Digest::MD5 qw(md5);
 use POSIX qw(WNOHANG mkfifo strftime);
 use Fcntl qw(:flock);
+
 
 #local to module
 my @rmcp = (0x06,0x00,0xff,0x07);
@@ -4583,8 +4575,9 @@ sub process_request {
 	my $extrargs = $request->{arg};
     my @exargs=($request->{arg});
     unless ($noderange) {
-        if ($usage{$command}) {
-            $callback->({data=>$usage{$command}});
+        my $usage_string=xCAT::Usage->getUsage($command);
+        if ($usage_string) {
+            $callback->({data=>$usage_string});
             $request = {};
         }
         return;

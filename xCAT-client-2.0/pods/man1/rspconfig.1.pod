@@ -4,9 +4,7 @@ B<rspconfig> - remote power control of nodes
 
 =head1 SYNOPSIS
 
-B<rspconfig> I<noderange> {B<alert>|B<snmpdest>|B<community>|B<garp>}
-
-B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<backupgateway>}
+B<rspconfig> I<noderange> {B<alert>|B<snmpdest>|B<community>}
 
 B<rspconfig> I<noderange> B<alert>={B<on>|B<enable>|B<off>|B<disable>}
 
@@ -14,9 +12,21 @@ B<rspconfig> I<noderange> B<snmpdest>=I<snmpmanager-IP>
 
 B<rspconfig> I<noderange> B<community>={B<public>|I<string>}
 
-B<rspconfig> I<noderange> B<garp>=I<time>
-
 B<rspconfig> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head2 BMC specific:
+
+B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<backupgateway>|B<garp>}
+
+B<rspconfig> I<noderange> B<garp>={I<time>}
+       
+=head2 MPA specific:
+
+B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<build>}
+
+B<rspconfig> I<noderange> B<shcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
 
 =head1 DESCRIPTION
 
@@ -55,9 +65,17 @@ Get the BMC ip address.
 
 Get the BMC subnet mask.
 
+=item B<snmpcfg>={I<enable>|I<disable>}
+
+Enable or disable SNMP on MPA.
+
 =item B<snmpdest>=I<snmpmanager-IP>
 
 Get or set where the SNMP alerts should be sent to.
+
+=item B<sshcfg>={I<enable>|I<disable>}
+
+Enable or disable SSH on MPA.
 
 =item B<-h>|B<--help>
 
