@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# pbs		This script will start and stop the PBS daemons
+#
+# chkconfig: 345 85 85
+# description: PBS is a batch versitle batch system for SMPs and clusters
+#
+
+# Source the library functions
+. /etc/rc.d/init.d/functions
+
+# let see how we were called
+case "$1" in
+	start) 
+		chkconfig --list pbs_mom 2>&1 | grep :on >/dev/null 2>&1
+		test "$?" = "0" && /etc/rc.d/init.d/pbs_mom start
+		chkconfig --list pbs_sched 2>&1 | grep :on >/dev/null 2>&1
+		test "$?" = "0" && /etc/rc.d/init.d/pbs_sched start
+		chkconfig --list pbs_server 2>&1 | grep :on >/dev/null 2>&1
+		test "$?" = "0" && /etc/rc.d/init.d/pbs_server start
+		;;
+	stop)
+		/etc/rc.d/init.d/pbs_mom stop
+		/etc/rc.d/init.d/pbs_sched stop
+		/etc/rc.d/init.d/pbs_server stop
+		;;
+	status)
+		status pbs_server
+		status pbs_mom
+		status pbs_sched
+		;;
+	restart)
+		/etc/rc.d/init.d/pbs_mom stop
+		/etc/rc.d/init.d/pbs_sched stop
+		/etc/rc.d/init.d/pbs_server stop
+		chkconfig --list pbs_mom 2>&1 | grep :on >/dev/null 2>&1
+		test "$?" = "0" && /etc/rc.d/init.d/pbs_mom start
+		chkconfig --list pbs_sched 2>&1 | grep :on >/dev/null 2>&1
+		test "$?" = "0" && /etc/rc.d/init.d/pbs_sched start
+		chkconfig --list pbs_server 2>&1 | grep :on >/dev/null 2>&1
+		test "$?" = "0" && /etc/rc.d/init.d/pbs_server start
+		;;
+	*)
+		echo "Usage: pbs {start|stop|restart|status}"
+		exit 1
+esac

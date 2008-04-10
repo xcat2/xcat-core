@@ -1,0 +1,16 @@
+#!/usr/bin/perl
+#egan@us.ibm.com
+#v0.1
+
+$/ = '';
+
+open(STAT,"pbsnodes -a |") || die "pbsnodes error\n";
+while(<STAT>) {
+	my $node = /^([a-zA-Z0-9\-]+)\b$/im ? $1 : '';
+	my $state = / + state = (.*)$/im ? $1 : '';
+	my $np = / + np = (.*)$/im ? $1 : '';
+	my $jobs = / + jobs = (.*)$/im ? $1 : '';
+	push @results, "$node: $state\t$jobs\n";
+}
+
+print @results;

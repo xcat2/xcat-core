@@ -1,0 +1,55 @@
+#!/bin/sh
+#
+# pbs_mom	This script will start and stop the PBS Mom
+#
+# chkconfig: 345 85 85
+# description: PBS is a batch versitle batch system for SMPs and clusters
+#
+
+# Source the library functions
+. /etc/rc.d/init.d/functions
+
+BASE_PBS_PREFIX=/opt/torque
+
+ulimit -n 20000
+ulimit -i 20000
+chmod 777 /var/spool/pbs/spool /var/spool/pbs/undelivered
+chmod o+t /var/spool/pbs/spool /var/spool/pbs/undelivered
+
+ARCH=$(uname -m)
+AARCH="/$ARCH"
+
+if [ -d "$BASE_PBS_PREFIX$AARCH" ]
+then
+	PBS_PREFIX=$BASE_PBS_PREFIX$AARCH
+else
+	PBS_PREFIX=$BASE_PBS_PREFIX
+fi
+
+# let see how we were called
+case "$1" in
+	start) 
+		if [ -r /etc/security/access.conf.BOOT ]
+		then
+			cp -f /etc/security/access.conf.BOOT /etc/security/access.conf
+		fi
+		echo -n "Starting PBS Mom: "
+		daemon $PBS_PREFIX/sbin/pbs_mom -r
+		echo
+		;;
+	stop)
+		echo -n "Shutting down PBS Mom: "
+		killproc pbs_mom
+		echo
+		;;
+	status)
+		status pbs_mom
+		;;
+	restart)
+		$0 stop
+		$0 start
+		;;
+	*)
+		echo "Usage: pbs_mom {start|stop|restart|status}"
+		exit 1
+esac

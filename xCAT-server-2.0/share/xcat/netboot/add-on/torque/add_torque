@@ -1,0 +1,112 @@
+#!/bin/bash
+
+MYNAME=$(basename $0)
+
+function usage {
+	echo
+	echo "Usage: $MYNAME netboot_rootdir TORQUE_SERVER [Torque Prefix, e.g. /opt/torque] [arch, e.g. x86_64] [local|nfs]"
+	echo
+	echo "e.g."
+	echo
+	echo "$MYNAME /install/netboot/fedora8/x86_64/compute/rootimg $(hostname -s) /opt/torque x86_64 local"
+	echo
+}
+
+case "$#" in
+	5)
+		ROOTDIR=$1
+		TORQUESERVER=$2
+		TPRE=$3
+		TORQUEDIR=$3
+		TARCH=$4
+		XARCH=$4
+		LOCALNFS=$5
+		;;
+	*)
+		usage >&2
+		exit 1
+		;;
+esac
+
+if [ -z "$XCATROOT" ]
+then
+	echo "${MYNAME}: XCATROOT no defined" >&2
+	exit 1
+fi
+
+if [ ! -d $ROOTDIR ]
+then
+	echo "${MYNAME}: root image $ROOTDIR does not exist" >&2
+	exit 1
+fi
+
+if [ "$LOCALNFS" = "local" ]
+then
+	if [ ! -d "$TPRE/$TARCH/bin" ]
+	then
+		echo "${MYNAME}: cannot read $TPRE/$TARCH/bin" >&2
+		exit 1
+	fi
+	if [ ! -d "$TPRE/$TARCH/lib" ]
+	then
+		echo "${MYNAME}: cannot read $TPRE/$TARCH/lib" >&2
+		exit 1
+	fi
+	if [ ! -d "$TPRE/$TARCH/sbin" ]
+	then
+		echo "${MYNAME}: cannot read $TPRE/$TARCH/sbin" >&2
+		exit 1
+	fi
+
+	find $TPRE/$TARCH -print | cpio -v -dump $ROOTDIR
+
+	echo "$TPRE/$TARCH/lib" >$ROOTDIR/etc/ld.so.conf.d/torque.conf
+	chroot $ROOTDIR /sbin/ldconfig
+else
+	echo "$TPRE/$TARCH/lib" >$ROOTDIR/etc/ld.so.conf.d/torque.conf
+fi
+
+cd $ROOTDIR
+mkdir -p var/spool/pbs
+chmod 755 var var/spool var/spool/pbs
+cd var/spool/pbs
+mkdir -p aux checkpoint mom_logs mom_priv spool undelivered
+chmod 777 spool undelivered
+chmod o+t spool undelivered
+chmod 755 aux mom_logs
+chmod 751 mom_priv
+cd mom_priv
+mkdir -p jobs
+chmod 751 jobs
+cp -f $XCATROOT/share/xcat/netboot/add-on/torque/scripts/* .
+echo "\$logevent 0x1ff" >config
+echo "\$clienthost $TORQUESERVER" >>config
+chmod 644 config
+cd ..
+echo "PATH=/bin:/usr/bin" >pbs_environment
+echo "LANG=en_US" >>pbs_environment
+echo "$TORQUESERVER" >server_name
+chmod 644 pbs_environment server_name
+
+cd $ROOTDIR
+>etc/profile.d/torque.sh
+echo "export XARCH=\$(uname -m)" >>etc/profile.d/torque.sh
+echo "export PATH=\$PATH:$TORQUEDIR/\$XARCH/bin:$TORQUEDIR/\$XARCH/sbin" >>etc/profile.d/torque.sh
+echo "export PBS_DEFAULT=$TORQUESERVER" >>etc/profile.d/torque.sh
+chmod 755 etc/profile.d/torque.*
+
+if [ -r /etc/SuSE-release ]
+then
+	cp $XCATROOT/share/xcat/netboot/add-on/torque/pbs_mom.suse etc/init.d/pbs_mom
+	cp $XCATROOT/share/xcat/netboot/add-on/torque/pbs_mom.suse sbin/rcpbs_mom
+	perl -pi -e "s!/opt/torque!$TORQUEDIR!g" sbin/rcpbs_mom etc/init.d/pbs_mom
+else
+	cp $XCATROOT/share/xcat/netboot/add-on/torque/pbs_mom etc/rc.d/init.d/
+	perl -pi -e "s!/opt/torque!$TORQUEDIR!g" etc/rc.d/init.d/pbs_mom
+fi
+
+cd /tmp
+
+chroot $ROOTDIR /sbin/chkconfig --level 345 pbs_mom on
+chroot $ROOTDIR /sbin/chkconfig --list pbs_mom
+

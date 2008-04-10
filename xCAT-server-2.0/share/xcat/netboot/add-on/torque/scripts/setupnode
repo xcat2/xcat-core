@@ -1,0 +1,40 @@
+#!/bin/bash
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+USER=$1
+GROUP=$2
+PBS_JOBID=$3
+export LANG=C
+
+if [ -n "$USER" ]
+then
+	rm -f /tmp/pvm[dl].$(id -u $USER) 2>&1
+fi
+
+if [ -n "$PBS_JOBID" -a -n "$USER" -a -n "$GROUP" ]
+then
+	for i in /scr /nobackup /tmp
+	do
+		if [ -d $i ]
+		then
+			if [ -d $i/$PBS_JOBID ]
+			then
+				rm -rf $i/$PBS_JOBID 2>&1
+			fi
+			mkdir -p $i/$PBS_JOBID 2>&1
+			chown $USER.$GROUP $i/$PBS_JOBID 2>&1
+			chmod 700 $i/$PBS_JOBID
+		fi
+	done
+fi
+
+if [ -n "$USER" ]
+then
+	if [ "$USER" != "root" ]
+	then
+		perl -pi -e "s/:ALL$/ $USER:ALL/" /etc/security/access.conf
+	fi
+fi
+

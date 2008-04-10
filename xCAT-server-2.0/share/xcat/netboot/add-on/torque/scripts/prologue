@@ -1,0 +1,48 @@
+#!/bin/bash
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+DEBUG=""
+test -n "$DEBUG" && logger pro $(date)
+
+trap "exit 0" 1 2 3 15 20
+
+PBS_HOME=/var/spool/pbs
+PATH=$PBS_HOME/mom_priv:$PATH
+SETUP=$PBS_HOME/mom_priv/setupnode
+SETUP2=$PBS_HOME/mom_priv/setupnode2
+
+function printline
+{
+	for i in $(seq 1 40)
+	do
+		echo -n "-"
+	done
+	echo
+}
+
+printline
+echo "Begin PBS Prologue $(date) $(date +%s)"
+echo "Job ID:		$1"
+echo "Username:	$2"
+echo "Group:		$3"
+
+NODELIST=$(sort $PBS_HOME/aux/$1 | uniq)
+(echo -n "Nodes:		";echo $NODELIST) | fold -s
+NR=$(echo $NODELIST | tr ' ' ',')
+
+test -n "$DEBUG" && logger pro $(date)
+
+pbspsh $NR $SETUP $2 $3 $1 2>&1 | logger
+pbspsh $(head -1 $PBS_HOME/aux/$1) $SETUP2 $2 $3 $1 2>&1 | logger
+
+test -n "$DEBUG" && logger pro $(date)
+
+echo "End PBS Prologue $(date) $(date +%s)"
+printline
+
+#sleep 5
+
+exit 0
+

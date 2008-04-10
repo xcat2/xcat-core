@@ -1,0 +1,54 @@
+#!/bin/bash
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+trap "exit 0" 1 2 3 15 20
+
+sleep 5
+
+PBS_HOME=/var/spool/pbs
+PATH=$PBS_HOME/mom_priv:$PATH
+TAKEDOWN=$PBS_HOME/mom_priv/takedownnode
+TAKEDOWN2=$PBS_HOME/mom_priv/takedownnode2
+
+function printline
+{
+	for i in $(seq 1 40)
+	do
+		echo -n "-"
+	done
+	echo
+}
+
+printline
+echo "Begin PBS Epilogue $(date) $(date +%s)"
+echo "Job ID:		$1"
+echo "Username:	$2"
+echo "Group:		$3"
+echo "Job Name:	$4"
+echo "Session:	$5"
+echo "Limits:		$6"
+echo "Resources:	$7"
+echo "Queue:		$8"
+echo "Account:		$9"
+
+NODELIST=$(sort $PBS_HOME/aux/$1 | uniq)
+(echo -n "Nodes:	";echo $NODELIST) | fold -s
+NR=$(echo $NODELIST | tr ' ' ',')
+
+echo "Killing leftovers..."
+c=$(wc -l $PBS_HOME/aux/$1 | awk '{print $1}')
+if ((c > 1))
+then
+	pbspsh $NR $TAKEDOWN $2 $1 parallel 2>&1
+else
+	pbspsh $NR $TAKEDOWN $2 $1 batch 2>&1
+fi
+pbspsh $(head -1 $PBS_HOME/aux/$1) $TAKEDOWN2 $2 $1 batch 2>&1
+
+echo
+echo "End PBS Epilogue $(date) $(date +%s)"
+printline
+
+exit 0

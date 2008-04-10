@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# moab	This script will start and stop the MOAB Scheduler
+#
+# chkconfig: 345 86 84
+# description: moab
+#
+
+# Source the library functions
+. /etc/rc.d/init.d/functions
+
+MOAB_PREFIX=/opt/moab
+ARCH=$(uname -m)
+export LD_LIBRARY_PATH=/opt/torque/x86_64/lib
+
+# let see how we were called
+case "$1" in
+	start) 
+		echo -n "Starting MOAB Scheduler: "
+		if [ -r $MOAB_PREFIX/bin/moab ]
+		then
+			daemon $MOAB_PREFIX/bin/moab
+		elif [ -r $MOAB_PREFIX/sbin/moab ]
+		then
+			daemon $MOAB_PREFIX/sbin/moab
+		elif [ -r $MOAB_PREFIX/$ARCH/bin/moab ]
+		then
+			daemon $MOAB_PREFIX/$ARCH/bin/moab
+		elif [ -r $MOAB_PREFIX/$ARCH/sbin/moab ]
+		then
+			daemon $MOAB_PREFIX/$ARCH/sbin/moab
+		fi
+		echo
+		;;
+	stop)
+		echo -n "Shutting down MOAB Scheduler: "
+		killproc moab
+		echo
+		;;
+	status)
+		status moab
+		;;
+	restart)
+		$0 stop
+		$0 start
+		;;
+	*)
+		echo "Usage: moab {start|stop|restart|status}"
+		exit 1
+esac

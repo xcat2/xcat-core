@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# pbs_server	This script will start and stop the PBS Server
+#
+# chkconfig: 345 85 85
+# description: PBS is a batch versitle batch system for SMPs and clusters
+#
+
+# Source the library functions
+. /etc/rc.d/init.d/functions
+
+BASE_PBS_PREFIX=/opt/torque
+
+ARCH=$(uname -m)
+AARCH="/$ARCH"
+
+if [ -d "$BASE_PBS_PREFIX$AARCH" ]
+then
+	PBS_PREFIX=$BASE_PBS_PREFIX$AARCH
+else
+	PBS_PREFIX=$BASE_PBS_PREFIX
+fi
+
+PBS_HOME=/var/spool/pbs
+
+# let see how we were called
+case "$1" in
+	start) 
+		echo -n "Starting PBS Server: "
+		if [ -r $PBS_HOME/server_priv/serverdb ]
+		then
+			daemon $PBS_PREFIX/sbin/pbs_server
+		else
+			daemon $PBS_PREFIX/sbin/pbs_server -t create
+		fi
+		echo
+		;;
+	stop)
+		echo -n "Shutting down PBS Server: "
+#		killproc pbs_server
+		$PBS_PREFIX/bin/qterm -t quick
+		RETVAL=$?
+		[ $RETVAL -eq 0 ] && echo_success
+		echo
+		;;
+	status)
+		status pbs_server
+		;;
+	restart)
+		$0 stop
+		$0 start
+		;;
+	*)
+		echo "Usage: pbs_server {start|stop|restart|status}"
+		exit 1
+esac

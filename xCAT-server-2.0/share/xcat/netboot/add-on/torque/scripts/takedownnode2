@@ -1,0 +1,18 @@
+#!/bin/bash
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+USER=$1
+PBS_JOBID=$2
+TYPE=$3
+HN=$(hostname | awk -F. '{print $1}')
+
+for i in /gpfs* /scratch /net/scratch*
+do
+	if [ -d $i/$PBS_JOBID ]
+	then
+		rm -rf $i/$PBS_JOBID 2>&1
+	fi
+done
+

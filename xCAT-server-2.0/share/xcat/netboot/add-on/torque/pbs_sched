@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# pbs_sched	This script will start and stop the PBS Scheduler
+#
+# chkconfig: 345 85 85
+# description: PBS is a batch versitle batch system for SMPs and clusters
+#
+
+# Source the library functions
+. /etc/rc.d/init.d/functions
+
+BASE_PBS_PREFIX=/opt/torque
+
+ARCH=$(uname -m)
+AARCH="/$ARCH"
+
+if [ -d "$BASE_PBS_PREFIX$AARCH" ]
+then
+	PBS_PREFIX=$BASE_PBS_PREFIX$AARCH
+else
+	PBS_PREFIX=$BASE_PBS_PREFIX
+fi
+
+# let see how we were called
+case "$1" in
+	start) 
+		echo -n "Starting PBS Scheduler: "
+		daemon $PBS_PREFIX/sbin/pbs_sched
+		echo
+		;;
+	stop)
+		echo -n "Shutting down PBS Scheduler: "
+		killproc pbs_sched
+		echo
+		;;
+	status)
+		status pbs_sched
+		;;
+	restart)
+		$0 stop
+		$0 start
+		;;
+	*)
+		echo "Usage: pbs_sched {start|stop|restart|status}"
+		exit 1
+esac

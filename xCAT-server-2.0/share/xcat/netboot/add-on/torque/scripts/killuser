@@ -1,0 +1,35 @@
+#!/bin/bash
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+if [ "$1" = "root" ]
+then
+	echo "$0: cannot kill root!"
+	exit 1
+fi
+
+if [ -z "$1" ]
+then
+	echo "$0: kill who?"
+	exit 1
+fi
+
+HN=$(hostname)
+
+for i in $(ps aux | grep "^$1 " | grep -v grep | awk '{print $2}')
+do
+	if ps -p $i >/dev/null 2>&1
+	then
+		echo "killing $HN $i"
+		logger "killing $HN $i"
+		kill $i 2>&1
+	fi
+	if ps -p $i >/dev/null 2>&1
+	then
+		echo "KILLING $HN $i"
+		logger "KILLING $HN $i"
+		kill -9 $i 2>&1
+	fi
+done
+

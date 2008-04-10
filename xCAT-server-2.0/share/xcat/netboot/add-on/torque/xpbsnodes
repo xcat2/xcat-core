@@ -1,0 +1,57 @@
+#!/bin/bash
+#egan@us.ibm.com
+#(C)IBM Corp
+
+MYNAME=$(basename $0)
+
+function usage {
+	echo
+	echo "Usage: ${MYNAME} [noderange] [offline|clear|online|stat|state]"
+	echo
+}
+
+if [ "$#" != "2" ]
+then
+	usage >&2
+	exit 1
+fi
+
+which pbsnodes >/dev/null 2>&1
+if [ "$?" = "1" ]
+then
+	echo "\n${MYNAME}: pbsnodes not in path\n"
+	exit 1
+fi
+
+case "$2" in
+	"offline"|"off")
+		for i in $(nodels $1)
+		do
+			pbsnodes $i -o
+			echo "$i: offline"
+		done
+		;;
+	"clear"|"online"|"on")
+		for i in $(nodels $1)
+		do
+			pbsnodes $i -c
+			echo "$i: online"
+		done
+		;;
+	"stat"|"state")
+		EGREP="($(for i in $(nodels $1)
+			do
+				echo -n "$i|"
+			done | sed 's/.$//'))"
+		if [ "$EGREP" != "()" ]
+		then
+			pbsnodestat | egrep "^${EGREP}:"
+		fi
+		;;
+	*)
+		echo "\n${MYNAME}: Last arg must be offline|clear|stat\n" >&2
+		usage >&2
+		exit 1
+		;;
+esac
+

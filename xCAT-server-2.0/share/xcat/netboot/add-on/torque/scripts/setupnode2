@@ -1,0 +1,26 @@
+#!/bin/bash
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+USER=$1
+GROUP=$2
+PBS_JOBID=$3
+
+if [ -n "$PBS_JOBID" -a -n "$USER" -a -n "$GROUP" ]
+then
+	for i in /gpfs* /scratch /net/scratch*
+	do
+		if [ -d $i ]
+		then
+			if [ -d $i/$PBS_JOBID ]
+			then
+				rm -rf $i/$PBS_JOBID 2>&1
+			fi
+			mkdir -p $i/$PBS_JOBID 2>&1
+			chown $USER.$GROUP $i/$PBS_JOBID 2>&1
+			chmod 700 $i/$PBS_JOBID
+		fi
+	done
+fi
+

@@ -1,0 +1,91 @@
+#!/bin/bash
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+PBS_HOME=/var/spool/pbs
+PATH=$PBS_HOME/mom_priv:$PATH
+export LANG=C
+
+function showkids
+{
+	pstree -cp $1 | \
+		perl -pi -e 's/(\(|,)/\n/g' | \
+		egrep '^[0-9]+\)' | \
+		awk -F\) '{print $1}' | \
+		grep -v $1
+}
+
+function killkids
+{
+	for j in $(showkids $1)
+	do
+		if ps -p $j >/dev/null 2>&1
+		then
+			echo "$2 killing child PID $j PPID $1 PBS_JOBID $3"
+			logger "$2 killing child PID $j PPID $1 PBS_JOBID $3"
+			kill $j 2>&1
+		fi
+		if ps -p $j >/dev/null 2>&1
+		then
+			echo "$2 KILLING child PID $j PPID $1 PBS_JOBID $3"
+			logger "$2 KILLING child PID $j PPID $1 PBS_JOBID $3"
+			kill -9 $j 2>&1
+		fi
+	done
+}
+
+USER=$1
+PBS_JOBID=$2
+TYPE=$3
+HN=$(hostname | awk -F. '{print $1}')
+
+if [ "$TYPE" = "batch" ]
+then
+	if [ "$USER" != "root" ]
+	then
+		perl -pi -e "s/ $USER\b//" /etc/security/access.conf
+	fi
+
+	cd /proc
+	for i in $(
+		egrep -l "\bPBS_JOBID=$PBS_JOBID\b" [1-9]*/environ 2>/dev/null | \
+		awk -F/ '{print $1}'
+	)
+	do
+		killkids $i $HN $PBS_JOBID
+		logger "killkids $i $HN $PBS_JOBID"
+		if ps -p $i >/dev/null 2>&1
+		then
+			echo "$HN killing PID $i PBS_JOBID $PBS_JOBID"
+			logger "$HN killing PID $i PBS_JOBID $PBS_JOBID"
+			kill $i 2>&1
+		fi
+		if ps -p $i >/dev/null 2>&1
+		then
+			echo "$HN KILLING PID $i PBS_JOBID $PBS_JOBID"
+			logger "$HN KILLING PID $i PBS_JOBID $PBS_JOBID"
+			kill -9 $i 2>&1
+		fi
+	done
+fi
+
+if [ "$TYPE" = "parallel" ]
+then
+	if [ "$USER" != "root" ]
+	then
+		perl -pi -e "s/ $USER\b//g" /etc/security/access.conf
+		killuser $USER
+	fi
+fi
+
+for i in /scr /nobackup /tmp
+do
+	if [ -d $i/$PBS_JOBID ]
+	then
+		rm -rf $i/$PBS_JOBID 2>&1
+	fi
+done
+
+#rm -f /tmp/pvm[dl].$(id -u $USER) 2>&1
+
