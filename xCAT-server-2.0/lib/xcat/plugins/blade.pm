@@ -44,7 +44,7 @@ my %usage = (
     "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
     "rbootseq" => "Usage: rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...",
     "rscan" => "Usage: rscan <noderange> [-w][-x|-z]",
-    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]|sshcfg[=enable|disable]|snmpcfg[=enable|disable]]"
+    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]|sshcfg[=enable|disable]|snmpcfg[=enable|disable]|build]"
 );
 my %macmap; #Store responses from rinv for discovery
 my $macmaptimestamp; #reflect freshness of cache
@@ -422,6 +422,11 @@ sub mpaconfig {
       if ($parameter =~ /=/) {
          $assignment = 1;
          ($parameter,$value) = split /=/,$parameter,2;
+      }
+      if ($parameter =~ /^build$/) {
+        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.3',1]);
+        push @cfgtext,"Build ID: $data";
+        next;
       }
       if ($parameter =~ /^snmpcfg$/i) {
          my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.1.6',0]);
@@ -1615,6 +1620,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
