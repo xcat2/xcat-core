@@ -4577,7 +4577,7 @@ sub process_request {
     unless ($noderange) {
         my $usage_string=xCAT::Usage->getUsage($command);
         if ($usage_string) {
-            $callback->({data=>$usage_string});
+            $callback->({data=>[$usage_string]});
             $request = {};
         }
         return;

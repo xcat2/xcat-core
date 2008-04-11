@@ -1195,10 +1195,13 @@ sub process_request {
   my $noderange = $request->{node};
   my $command = $request->{command}->[0];
   my @exargs;
+  unless ($command) {
+     return; #Empty request
+  }
   unless ($noderange or $command eq "findme") {
     my $usage_string=xCAT::Usage->getUsage($command);
     if ($usage_string) {
-      $callback->({data=>$usage_string});
+      $callback->({data=>[$usage_string]});
       $request = {};
     }
     return;
