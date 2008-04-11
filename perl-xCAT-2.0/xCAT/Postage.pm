@@ -25,6 +25,17 @@ sub writescript {
     return undef;
   }
   #Some common variables...
+  my @scriptcontents = makescript($node);
+  foreach (@scriptcontents) {
+     print $script $_;
+  }
+  close($script);
+  chmod 0755,$scriptfile;
+}
+
+sub makescript {
+  $node = shift;
+  my @scriptd;
   my $noderestab=xCAT::Table->new('noderes');
   my $typetab=xCAT::Table->new('nodetype');
   unless ($noderestab and $typetab) {
@@ -47,19 +58,19 @@ sub writescript {
   unless ($master) {
       die "Unable to identify master for $node";
   }
-  print $script "MASTER=".$master."\n";
-  print $script "export MASTER\n";
-  print $script "NODE=$node\n";
-  print $script "export NODE\n";
+  push @scriptd, "MASTER=".$master."\n";
+  push @scriptd, "export MASTER\n";
+  push @scriptd, "NODE=$node\n";
+  push @scriptd, "export NODE\n";
   my $et = $typetab->getNodeAttribs($node,['os','arch']);
   unless ($et and $et->{'os'} and $et->{'arch'}) {
     die "No os/arch setting in nodetype table for $node";
   }
-  print $script "OSVER=".$et->{'os'}."\n";
-  print $script "ARCH=".$et->{'arch'}."\n";
-  print $script "export OSVER ARCH\n";
-  print $script 'PATH=`dirname $0`:$PATH'."\n";
-  print $script "export PATH\n";
+  push @scriptd, "OSVER=".$et->{'os'}."\n";
+  push @scriptd, "ARCH=".$et->{'arch'}."\n";
+  push @scriptd, "export OSVER ARCH\n";
+  push @scriptd, 'PATH=`dirname $0`:$PATH'."\n";
+  push @scriptd, "export PATH\n";
   $rulec="";
   my @scripts;
   my $inlist = 0;
@@ -123,10 +134,9 @@ sub writescript {
     }
   }
   foreach (@scripts) {
-    print $script $_."\n";
+    push @scriptd, $_."\n";
   }
-  close($script);
-  chmod 0755,$scriptfile;
+  return @scriptd;
 }
 
 #shamelessly brought forth from postrules.pl in xCAT 1.3
