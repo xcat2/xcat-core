@@ -5,6 +5,7 @@ package xCAT_plugin::blade;
 use xCAT::Table;
 use Thread qw(yield);
 use xCAT::Utils;
+use xCAT::Usage;
 use IO::Socket;
 use SNMP;
 use strict;
@@ -36,16 +37,7 @@ sub handled_commands {
     switchblade => 'nodehm:mgt',
   };
 }
-my %usage = (
-    "rpower" => "Usage: rpower <noderange> [--nodeps][on|off|reset|stat|boot]",
-    "rbeacon" => "Usage: rbeacon <noderange> [on|off|stat]",
-    "rvitals" => "Usage: rvitals <noderange> [all|temp|voltage|fanspeed|power|leds]",
-    "reventlog" => "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>]",
-    "rinv" => "Usage: rinv <noderange> [all|model|serial|vpd|mprom|deviceid|uuid]",
-    "rbootseq" => "Usage: rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...",
-    "rscan" => "Usage: rscan <noderange> [-w][-x|-z]",
-    "rspconfig" => "Usage: rspconfig <noderange> [snmpdest[=<dest ip address>]|alert[=on|off|en|dis|enable|disable]|community[=<string>]|sshcfg[=enable|disable]|snmpcfg[=enable|disable]|ntp[=ntp,ip,frequency,v3]]"
-);
+
 my %macmap; #Store responses from rinv for discovery
 my $macmaptimestamp; #reflect freshness of cache
 my $mmprimoid = '1.3.6.1.4.1.2.3.51.2.22.5.1.1.4';#mmPrimary
@@ -414,9 +406,11 @@ sub mpaconfig {
    if ($didchassis) { return 0, @cfgtext } #"Chassis already configured for this command" }
    @cfgtext=();
 
-   my @args = telnetcmds($mpa,$user,$pass,@_);
+   my $result = telnetcmds($mpa,$user,$pass,@_);
+   $returncode |= @$result[0];
+   my $args = @$result[1];
 
-   foreach $parameter (@args) {
+   foreach $parameter (@$args) {
       $assignment = 0;
       $value = undef;
       if ($parameter =~ /=/) {
@@ -425,32 +419,25 @@ sub mpaconfig {
       }
       if ($parameter =~ /^ntp$/) {
         my $result = ntp($value);
+        $returncode |= shift(@$result);
         push @cfgtext,@$result;
         next;
       }
-      if ($parameter =~ /^ifconfig$/i) {
-         if ($assignment) {
-           my ($ip,$gateway,$mask) = split /,/,$value;
-           if ($ip) {
-             my $junk = setoid('1.3.6.1.4.1.2.3.51.2.4.9.1.1.4',1,$ip,'OCTET');
-             print STDERR "IP ($ip) = ($junk)\n";
-           }
-           if ($gateway) {
-            my $junk=setoid('1.3.6.1.4.1.2.3.51.2.4.9.1.1.9',1,"1",'OCTET');
-             print STDERR "GATEWAY ($gateway) = ($junk)\n";
-           }
-           if ($mask) {
-             print STDERR "MASK ($mask)\n";
-           }
-           next;
-         }
-         my $ip   = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.4',0]);
-         my $gate = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.9',0]);
-         my $mask = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.14',0]);
-         push @cfgtext,"Host IP: $ip";
-         push @cfgtext,"Gateway IP: $gate";
-         push @cfgtext,"Subnet Mask: $mask";
-         next;
+      if ($parameter =~ /^network$/) {
+        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.4',0]);
+        push @cfgtext,"MM IP: $data";
+        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.3',0]);
+        push @cfgtext,"MM Hostname: $data";
+        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.9',0]);
+        push @cfgtext,"Gateway: $data";
+        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.14',0]);
+        push @cfgtext,"Subnet Mask: $data";
+        next;
+      }
+      if ($parameter =~ /^build$/) {
+        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.3',1]);
+        push @cfgtext,"Build ID: $data";
+        next;
       }
       if ($parameter =~ /^snmpcfg$/i) {
          my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.1.6',0]);
@@ -461,33 +448,6 @@ sub mpaconfig {
             push @cfgtext,"SNMP: disabled";
          }
          next;
-      }
-      if ($parameter =~ /^build$/) {
-        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.3',1]);
-        push @cfgtext,"Build ID: $data";
-        next;
-      }
-      if ($parameter =~ /^fuelg$/) {
-        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.2.10.6.1.1.3',1]);
-        push @cfgtext,"Power Policy Name: $data";
-        next;
-      }
-      if ($parameter =~ /^update$/i) {
-        if ($assignment) {
-          my ($ip,$pkt) = split /,/,$value;
-          my $data = setoid("1.3.6.1.4.1.2.3.51.2.22.9.1",0,0,'INTEGER');
-          $data = setoid("1.3.6.1.4.1.2.3.51.2.22.9.2",0,$ip,'OCTET');
-          $data = setoid("1.3.6.1.4.1.2.3.51.2.22.9.3",0,$pkt,'OCTET');
-          $data = setoid("1.3.6.1.4.1.2.3.51.2.22.9.4",0,1,'INTEGER');
-          next;
-        }
-        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.22.9.2',0]);
-        push @cfgtext,"Tftp Server: $data";
-        $data = $session->get(['1.3.6.1.4.1.2.3.51.2.22.9.3',0]);
-        push @cfgtext,"Firmware file: $data";
-        $data = $session->get(['1.3.6.1.4.1.2.3.51.2.22.9.5',0]);
-        push @cfgtext,"Update status: $data";
-        next;
       }
       if ($parameter =~ /^sshcfg$/i) {
          my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.4.10',0]);
@@ -504,7 +464,7 @@ sub mpaconfig {
       }
       if ($parameter =~ /snmpdest(\d+)/) {
          if ($1 > 3) {
-            $returncode &= 1;
+            $returncode |= 1;
             push(@cfgtext,"Only up to three snmp destinations may be defined");
             next;
          }
@@ -552,53 +512,6 @@ sub mpaconfig {
    return $returncode,@cfgtext;
 }
    
-
-sub ntp {
-
-  my $value = shift;
-  my @result;
-
-  my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.1',0]);
-  if ($data =~ /NOSUCHOBJECT/) {
-    return(["NTP Not supported"]);
-  }
-  if ($value) {
-    my ($ntp,$ip,$f,$v3) = split /,/,$value;
-    if ($ntp) {
-      my $d = ($ntp =~ /^enable$/i) ? 1 : 0;
-      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.1',0,$d,'INTEGER');
-      push @result,"NTP: $ntp";
-    }
-    if ($ip) { 
-      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.2',0,$ip,'OCTET');
-      push @result,"NTP Server: $ip";
-    }
-    if ($f) { 
-      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.3',0,$f,'INTEGER');
-      push @result,"NTP Frequency: $f";
-    }
-    if ($v3) {
-      my $d = ($v3 =~ /^enable$/i) ? 1 : 0;
-      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.7',0,$d,'INTEGER');
-      push @result,"NTP v3: $v3";
-    }
-    return(\@result);
-  }
-  my $d = (!$data) ? "disable" : "enable";
-  push @result,"NTP: $d";
-
-  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.2',0]);
-  push @result,"NTP Server: $data";
-
-  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.3',0]);
-  push @result,"NTP Frequency: $data (minutes)";
-
-  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.7',0]);
-  $d = (!$data) ? "disable" : "enabled";
-  push @result,"NTP v3: $d";
-  return(\@result);
-}
-
 
 sub switchblade {
    #OIDS of interest:
@@ -1296,12 +1209,16 @@ sub process_request {
   my $noderange = $request->{node};
   my $command = $request->{command}->[0];
   my @exargs;
+  unless ($command) {
+     return; #Empty request
+  }
   unless ($noderange or $command eq "findme") {
-      if ($usage{$command}) {
-          $callback->({data=>$usage{$command}});
-          $request = {};
-      }
-      return;
+    my $usage_string=xCAT::Usage->getUsage($command);
+    if ($usage_string) {
+      $callback->({data=>[$usage_string]});
+      $request = {};
+    }
+    return;
   }
   if (ref($request->{arg})) {
     @exargs = @{$request->{arg}};
@@ -1451,10 +1368,11 @@ sub telnetcmds {
   my $value;
   my @unhandled;
   my %handled = ();
-  my @tcmds = qw(snmpcfg sshcfg);
+  my $result;
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2);
   
   foreach my $cmd (@_) {
-    if ($cmd =~ /=/) {
+    if ($cmd =~ /^swnet|pd1|pd2|=/) {
       my ($command,$value) = split /=/,$cmd;
       if (grep(/^$command$/,@tcmds)) {
         $handled{$command} = $value;
@@ -1465,7 +1383,7 @@ sub telnetcmds {
   }
 
   if (!defined(%handled)) {
-    return(@unhandled);
+    return([0,\@unhandled]);
   }
   my $t = new Net::Telnet(
                 Timeout=>15, 
@@ -1478,23 +1396,130 @@ sub telnetcmds {
   }
   if (!$Rc) {
     push @cfgtext,$t->errmsg;
-    return(@unhandled);
+    return([1,\@unhandled]);
   }
+  $Rc = 0;
 
   foreach (keys %handled) {
     if (/^snmpcfg/) {
-      my $result = snmpcfg($t,$handled{$_},$user,$pass);
-      push @cfgtext,"@$result";
+      $result = snmpcfg($t,$handled{$_},$user,$pass);
+      $Rc |= shift(@$result);
+      push @cfgtext,@$result;
     }
     elsif (/^sshcfg$/) {
-      my $result = sshcfg($t,$handled{$_},$user);
-      push @cfgtext,"@$result";
+      $result = sshcfg($t,$handled{$_},$user);
+      $Rc |= shift(@$result);
+      push @cfgtext,@$result;
+    }
+    elsif (/^network$/) {
+      $result = network($t,$handled{$_});
+      $Rc |= shift(@$result);
+      push @cfgtext,@$result;
+    }     
+    elsif (/^swnet$/) {
+      $result = swnet($t,$handled{$_});
+      $Rc |= shift(@$result);
+      push @cfgtext,@$result;
+    }
+    elsif (/^pd1|pd2$/) {
+      $result = pd($t,$_,$handled{$_});
+      $Rc |= shift(@$result);
+      push @cfgtext,@$result;
     }
   }
   $t->close;
-  return(@unhandled);
+  return([$Rc,\@unhandled]);
 }
 
+
+sub pd {
+
+  my $t = shift;
+  my $pd = shift;
+  my $value = shift;
+  my @result;
+
+  if ($value) {
+    if ($value !~ /^nonred|redwoperf|redwperf$/) {
+      return([1,"Invalid power management (redwoperf|redwperf|nonred)"]); 
+    }
+    my @data = $t->cmd("fuelg $pd -os $value");
+    if (!grep(/OK/i,@data)) {
+      return([1,@data]);
+    }
+    return([0,"$pd: $value"]);
+  }
+  my @data = $t->cmd("fuelg");
+  my @pds = split /--------------/,join('',@data);
+  $pd =~ /pd(\d)/;
+
+  $pds[$1] =~ /Power Management Policy:\s+(.*)\n/;
+  return([0,$1]);
+}
+
+
+sub network {
+
+  my $t = shift;
+  my $value = shift;
+  my @result;
+  my $cmd = "ifconfig -eth0 -c static -r auto -d auto -m 1500 -T system:mm[1]";
+  my ($ip,$host,$gateway,$mask) = split /,/,$value;
+
+  if ($ip)     { $cmd.=" -i $ip"; }
+  if ($host)   { $cmd.=" -n $host"; }
+  if ($gateway){ $cmd.=" -g $gateway"; }
+  if ($mask)   { $cmd.=" -s $mask"; }
+   
+  my @data = $t->cmd($cmd);
+  @result = grep(/These configuration changes will become active/,@data);
+  if (!@result) {
+    return([1,@data]);
+  }
+  if ($ip)     { push @result,"MM IP: $ip"; }
+  if ($host)   { push @result,"MM Hostname: $host"; }
+  if ($gateway){ push @result,"Gateway: $gateway"; }
+  if ($mask)   { push @result,"Subnet Mask: $mask"; }
+  return([0,@result]);
+
+}
+
+
+sub swnet {
+
+  my $t = shift;
+  my $value = shift;
+  my @result;
+  my ($ip,$gateway,$mask);
+
+  if (!$value) {
+    my @data = $t->cmd("ifconfig -T system::switch[1]");
+    my $s = join('',@data);
+    if ($s =~ /-i\s+(\S+)/) { $ip = $1; }
+    if ($s =~ /-g\s+(\S+)/) { $gateway = $1; }
+    if ($s =~ /-s\s+(\S+)/) { $mask = $1; }
+  }
+  else {
+    my $cmd =
+       "ifconfig -em disabled -ep enabled -pip enabled -T system:switch[1]";
+    ($ip,$gateway,$mask) = split /,/,$value;
+
+    if ($ip)     { $cmd.=" -i $ip"; }
+    if ($gateway){ $cmd.=" -g $gateway"; }
+    if ($mask)   { $cmd.=" -s $mask"; }
+   
+    my @data = $t->cmd($cmd);
+    @result = grep(/OK/i,@data);
+    if (!@result) {
+      return([1,@data]);
+    }
+  }
+  if ($ip)     { push @result,"Switch IP: $ip"; }
+  if ($gateway){ push @result,"Gateway: $gateway"; }
+  if ($mask)   { push @result,"Subnet Mask: $mask"; }
+  return([0,@result]);
+
+}
 
 sub snmpcfg {
 
@@ -1503,23 +1528,26 @@ sub snmpcfg {
   my $uid = shift;
   my $pass = shift;
 
+  if ($value !~ /^enable|disable$/i) {
+    return([1,"Invalid argument '$value' (enable|disable)"]); 
+  }
   # Query users on MM
   my @data = $t->cmd("users -T system:mm[1]");
   my ($user) = grep(/\d+\.\s+$uid/, @data);
   if (!$user) {
-    return(["Cannot find user: '$uid' on MM"]);
+    return([1,"Cannot find user: '$uid' on MM"]);
   }
   $user =~ /^(\d+)./;
   my $id = $1;
-  my $pp = ($value eq "enable") ? "des" : "none";
+  my $pp = ($value =~ /^enable$/i) ? "des" : "none";
  
   my $cmd= "users -$id -ap sha -at write -ppw $pass -pp $pp -T system:mm[1]";
   my @data = $t->cmd($cmd);
 
   if (grep(/OK/i,@data)) {
-    return(["SNMP $value: OK"]);
+    return([0,"SNMP $value: OK"]);
   }
-  return(\@data);
+  return([1,@data]);
 }
 
 
@@ -1530,11 +1558,14 @@ sub sshcfg {
   my $uid = shift;
   my $fname = (xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/"."id_dsa.pub";
 
+  if ($value !~ /^enable|disable$/i) {
+    return([1,"Invalid argument '$value' (enable|disable)"]);
+  }
   # Does MM support SSH
   my @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
 
   if (grep(/Error: Command not recognized/,@data)) {
-    return(["SSH supported on AMM with minimum firmware BPET32"]);
+    return([1,"SSH supported on AMM with minimum firmware BPET32"]);
   }
   # Get firmware version on MM
   @data = $t->cmd("update -a -T system:mm[1]");
@@ -1543,22 +1574,22 @@ sub sshcfg {
   # Minumum firmware version BPET32 required for SSH
   $line =~ /(\d+)/;
   if ($1 < 32) {
-    return(["SSH supported on AMM with minimum firmware BPET32"]);
+    return([1,"SSH supported on AMM with minimum firmware BPET32"]);
   }
 
-  if ($value =~ /^disable$/) {
+  if ($value =~ /^disable$/i) {
     @data = $t->cmd("ports -sshe off -T system:mm[1]");
-    return(["OK"]);
+    return([0,"OK"]);
   }
   # Get SSH key on Management Node
   unless (open(RSAKEY,"<$fname")) {
-    return(["Error opening '$fname'"]);
+    return([1,"Error opening '$fname'"]);
   }
   my ($sshkey)=<RSAKEY>;
   close(RSAKEY);
 
   if ($sshkey !~ /\s+(\S+\@\S+$)/) {
-    return(["Cannot find userid\@host in '$fname'"]);
+    return([1,"Cannot find userid\@host in '$fname'"]);
   }
   my $login = $1;
 
@@ -1566,7 +1597,7 @@ sub sshcfg {
   @data = $t->cmd("users -T system:mm[1]");
   my ($user) = grep(/\d+\.\s+$uid/, @data);
   if (!$user) {
-    return(["Cannot find user: '$uid' on MM"]);
+    return([1,"Cannot find user: '$uid' on MM"]);
   }
   $user =~ /^(\d+)./;
   my $id = $1;
@@ -1588,14 +1619,14 @@ sub sshcfg {
   if (!grep(/ssh-dss/,@data)) {
     @data = $t->cmd("sshcfg -hk gen -T system:mm[1]");
     if (!grep(/^OK$/i, @data)) {
-      return(\@data);
+      return([1,@data]);
     }
     # Wait for SSH key generation to complete
     my $timeout = time+240;
 
     while (1) {
       if (time >= $timeout) {
-        return(["SSH key generation timeout"]);
+        return([1,"SSH key generation timeout"]);
       }
       sleep(15);
       @data = $t->cmd("sshcfg -hk dsa -T system:mm[1]");
@@ -1609,11 +1640,67 @@ sub sshcfg {
   @data = $t->cmd("users -$id -pk -T system:mm[1] -add $sshkey");
 
   if ($data[0]=~/Error/i) {
-    return([$data[0]]);
+    return([1,$data[0]]);
   }
   # Enable ssh on MM
   @data = $t->cmd("ports -sshe on -T system:mm[1]");
-  return(["SSH $value: OK"]);
+  return([0,"SSH $value: OK"]);
+}
+
+sub ntp {
+
+  my $value = shift;
+  my @result;
+
+  my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.1',0]);
+  if ($data =~ /NOSUCHOBJECT/) {
+    return([1,"NTP Not supported"]);
+  }
+  if ($value) {
+    my ($ntp,$ip,$f,$v3) = split /,/,$value;
+    if ($ntp) {
+      if ($ntp !~ /^enable|disable$/i) { 
+        return([1,"Invalid argument '$ntp' (enable|disable)"]);
+      }
+    }
+    if ($v3) {
+      if ($v3 !~ /^enable|disable$/i) {
+        return([1,"Invalid argument '$v3' (enable|disable)"]);
+      }
+    }
+    if ($ntp) {
+      my $d = ($ntp =~ /^enable$/i) ? 1 : 0;
+      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.1',0,$d,'INTEGER');
+      push @result,"NTP: $ntp";
+    }
+    if ($ip) {
+      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.2',0,$ip,'OCTET');
+      push @result,"NTP Server: $ip";
+    }
+    if ($f) {
+      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.3',0,$f,'INTEGER');
+      push @result,"NTP Frequency: $f";
+    }
+    if ($v3) {
+      my $d = ($v3 =~ /^enable$/i) ? 1 : 0;
+      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.7',0,$d,'INTEGER');
+      push @result,"NTP v3: $v3";
+    }
+    return([0,@result]);
+  }
+  my $d = (!$data) ? "disabled" : "enabled";
+  push @result,"NTP: $d";
+
+  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.2',0]);
+  push @result,"NTP Server: $data";
+
+  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.3',0]);
+  push @result,"NTP Frequency: $data (minutes)";
+
+  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.7',0]);
+  $d = (!$data) ? "disabled" : "enabled";
+  push @result,"NTP v3: $d";
+  return([0,@result]);
 }
 
 
@@ -1685,11 +1772,13 @@ sub dompa {
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;
     my ($rc,@output) = bladecmd($mpa,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@exargs); 
+
     my @output_hashes;
     foreach(@output) {
       my %output;
       
       if ( $command eq "rscan" ) { 
+        $output{errorcode}=$rc;
         $output{data} = [$_];
       }
       else {
@@ -1705,6 +1794,7 @@ sub dompa {
         }
         $text =~ s/^\s+//;
         $text =~ s/\s+$//;
+        $output{node}->[0]->{errorcode} = $rc;
         $output{node}->[0]->{name}->[0]=$node;
         $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
       }
@@ -1718,6 +1808,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
