@@ -53,6 +53,15 @@ my $pbsnodes            = "/usr/local/pbs/bin/pbsnodes";
 # we _are_ running it out of the source tree, assume we are just
 # testing it and enable warnings!
 BEGIN {
+    my $hascurses = eval {
+       require Curses;
+    };
+    unless ($hascurses) {
+       print "perl Curses required for pbstop\n";
+       exit 1;
+    }
+    import Curses;
+
     use vars qw/$use_perlPBS/;
     use ExtUtils::testlib;
 
@@ -71,7 +80,6 @@ if ( -d $INC[0] ) {
 
 use strict;
 use vars qw/$VERSION/;
-use Curses;
 
 
 $VERSION = "4.05";
