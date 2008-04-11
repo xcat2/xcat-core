@@ -283,7 +283,9 @@ if ($inet6support) {
 	while ($select->can_read(0)) { #Pull all buffer data that can be pulled
 	   $part = $socket->recv($data,1500);
            ($sport,$client) = sockaddr_in($part);
-           $packets{inet_ntoa($client)} = [$part,$data];
+           if ($sport < 1000) { #Only remember udp packets from privileged ports
+            $packets{inet_ntoa($client)} = [$part,$data];
+           }
 	}
       foreach my $pkey (keys %packets) {
         ($sport,$client) = sockaddr_in($packets{$pkey}->[0]);
@@ -291,7 +293,7 @@ if ($inet6support) {
         $peerhost=gethostbyaddr($client,AF_INET)."\n";
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme")) {
-          $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET)."\n";
+          $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET);
           $req->{'_xcat_clientip'}=inet_ntoa($client);
           $req->{'_xcat_clientport'}=$sport;
           if (defined($cmd_handlers{"findme"})) {
