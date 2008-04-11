@@ -415,6 +415,11 @@ sub mpaconfig {
          $assignment = 1;
          ($parameter,$value) = split /=/,$parameter,2;
       }
+      if ($parameter =~ /^ntp$/) {
+        my $result = ntp($value);
+        push @cfgtext,@$result;
+        next;
+      }
       if ($parameter =~ /^build$/) {
         my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.3',1]);
         push @cfgtext,"Build ID: $data";
@@ -1511,6 +1516,52 @@ sub sshcfg {
   return(["SSH $value: OK"]);
 }
 
+sub ntp {
+
+  my $value = shift;
+  my @result;
+
+  my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.1',0]);
+  if ($data =~ /NOSUCHOBJECT/) {
+    return(["NTP Not supported"]);
+  }
+  if ($value) {
+    my ($ntp,$ip,$f,$v3) = split /,/,$value;
+    if ($ntp) {
+      my $d = ($ntp =~ /^enable$/i) ? 1 : 0;
+      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.1',0,$d,'INTEGER');
+      push @result,"NTP: $ntp";
+    }
+    if ($ip) {
+      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.2',0,$ip,'OCTET');
+      push @result,"NTP Server: $ip";
+    }
+    if ($f) {
+      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.3',0,$f,'INTEGER');
+      push @result,"NTP Frequency: $f";
+    }
+    if ($v3) {
+      my $d = ($v3 =~ /^enable$/i) ? 1 : 0;
+      setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.8.7',0,$d,'INTEGER');
+      push @result,"NTP v3: $v3";
+    }
+    return(\@result);
+  }
+  my $d = (!$data) ? "disabled" : "enabled";
+  push @result,"NTP: $d";
+
+  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.2',0]);
+  push @result,"NTP Server: $data";
+
+  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.3',0]);
+  push @result,"NTP Frequency: $data (minutes)";
+
+  $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.8.7',0]);
+  $d = (!$data) ? "disabled" : "enabled";
+  push @result,"NTP v3: $d";
+  return(\@result);
+}
+
 
 sub forward_data {
   my $callback = shift;
@@ -1613,6 +1664,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
