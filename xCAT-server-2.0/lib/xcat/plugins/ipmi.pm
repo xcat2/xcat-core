@@ -23,11 +23,11 @@ sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt',
     rspconfig => 'nodehm:mgt',
-    rvitals => 'nodehm:vitals,mgt',
-    rinv => 'nodehm:inv,mgt',
+    rvitals => 'nodehm:mgt',
+    rinv => 'nodehm:mgt',
     rsetboot => 'nodehm:mgt',
-    rbeacon => 'nodehm:beacon,mgt',
-    reventlog => 'nodehm:eventlog,mgt',
+    rbeacon => 'nodehm:mgt',
+    reventlog => 'nodehm:mgt',
   }
 }
 
@@ -4535,9 +4535,34 @@ sub loadsdrcache {
 
 sub preprocess_request { 
   my $request = shift;
+  my $callback=shift;
   my @requests;
   my %servicenodehash;
   my %noservicenodehash;
+
+  my $noderange = $request->{node}; #Should be arrayref
+  my $command = $request->{command}->[0];
+  my $extrargs = $request->{arg};
+  my @exargs=($request->{arg});
+  if (ref($extrargs)) {
+    @exargs=@$extrargs;
+  }
+
+  my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+  if ($usage_string) {
+    $callback->({data=>$usage_string});
+    $request = {};
+    return;
+  }
+
+  if (!$noderange) {
+    $usage_string=xCAT::Usage->getUsage($command);
+    $callback->({data=>$usage_string});
+    $request = {};
+    return;
+  }   
+  
+
   my $nrtab = xCAT::Table->new('noderes');
   foreach my $node (@{$request->{node}}) {
      my $tent  = $nrtab->getNodeAttribs($node,['servicenode']);
@@ -4563,28 +4588,18 @@ sub preprocess_request {
     
      
 
-     
-
-
    
 sub process_request {
-    my $request = shift;
-    my $callback = shift;
-	my $noderange = $request->{node}; #Should be arrayref
-	my $command = $request->{command}->[0];
-	my $extrargs = $request->{arg};
-    my @exargs=($request->{arg});
-    unless ($noderange) {
-        my $usage_string=xCAT::Usage->getUsage($command);
-        if ($usage_string) {
-            $callback->({data=>[$usage_string]});
-            $request = {};
-        }
-        return;
-    }
-    if (ref($extrargs)) {
-      @exargs=@$extrargs;
-    }
+  my $request = shift;
+  my $callback = shift;
+  my $noderange = $request->{node}; #Should be arrayref
+  my $command = $request->{command}->[0];
+  my $extrargs = $request->{arg};
+  my @exargs=($request->{arg});
+  if (ref($extrargs)) {
+    @exargs=@$extrargs;
+  }
+
 	my $ipmiuser = 'USERID';
 	my $ipmipass = 'PASSW0RD';
 	my $ipmitrys = 3;

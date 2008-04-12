@@ -4,30 +4,23 @@ package xCAT::PPCboot;
 use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
-
+use xCAT::Usage;
 
 ##########################################################################
 # Parse the command line for options and operands 
 ##########################################################################
 sub parse_args {
-
     my $request = shift;
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
-    my @VERSION = qw( 2.0 );
 
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-        return( [ $_[0],
-            "rnetboot -h|--help",
-            "rnetboot -v|--version",
-            "rnetboot [-V|--verbose] noderange",
-            "    -h   writes usage information to standard output",
-            "    -v   displays command version",
-            "    -V   verbose output" ]);
+	my $usage_string=xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string]);
     };
     #############################################
     # Process command-line arguments
@@ -44,22 +37,10 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) { 
+    if ( !GetOptions( \%opt, qw(V|Verbose) )) { 
         return( usage() );
     }
-    ####################################
-    # Option -h for Help
-    ####################################
-    if ( exists( $opt{h} )) {
-        return( usage() );
-    }
-    ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
-    }
-    ####################################
+   ####################################
     # Check for "-" with no option
     ####################################
     if ( grep(/^-$/, @ARGV )) {

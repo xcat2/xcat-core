@@ -5,7 +5,7 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCpower;
-
+use xCAT::Usage;
 
 ##########################################################################
 # Parse the command line for options and operands
@@ -13,22 +13,17 @@ use xCAT::PPCpower;
 sub parse_args {
 
     my $request = shift;
+    my $command = $request->{command};
     my $args    = $request->{arg};
     my %opt     = ();
     my @rvitals = qw(temp voltage power state all);
-    my @VERSION = qw( 2.0 );
 
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-        return( [ $_[0],
-            "rvitals -h|--help",
-            "rvitals -v|--version",
-            "rvitals [-V|--verbose] noderange " . join( '|', @rvitals ),
-            "    -h   writes usage information to standard output",
-            "    -v   displays command version",
-            "    -V   verbose output" ]);
+	my $usage_string=xCAT::Usage->getUsage($command);
+        return( [ $_[0], $usage_string]);
     };
     #############################################
     # Process command-line arguments
@@ -45,20 +40,8 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
         return( usage() );
-    }
-    ####################################
-    # Option -h for Help
-    ####################################
-    if ( exists( $opt{h} )) {
-        return( usage() );
-    }
-    ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
     }
     ####################################
     # Check for "-" with no option

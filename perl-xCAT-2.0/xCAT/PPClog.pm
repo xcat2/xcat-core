@@ -3,6 +3,7 @@
 package xCAT::PPClog;
 use strict;
 use Getopt::Long;
+use xCAT::Usage;
 
 
 ##########################################################################
@@ -11,23 +12,18 @@ use Getopt::Long;
 sub parse_args {
 
     my $request   = shift;
+    my $command = $request->{command};
     my $args      = $request->{arg};
     my %opt       = ();
     my @reventlog = qw(clear all);
-    my @VERSION   = qw( 2.0 );
     my $cmd;
 
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-        return( [ $_[0],
-            "reventlog -h|--help",
-            "reventlog -v|--version",
-            "reventlog [-V|--verbose] noderange " . join( '|', @reventlog )."|<number of entries>",
-            "    -h   writes usage information to standard output",
-            "    -v   displays command version",
-            "    -V   verbose output"])
+	my $usage_string=xCAT::Usage->getUsage($command);
+        return( [ $_[0], $usage_string]);
     };
     #############################################
     # Process command-line arguments
@@ -44,20 +40,8 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
         return( usage() );
-    }
-    ####################################
-    # Option -h for Help
-    ####################################
-    if ( exists( $opt{h} )) {
-        return( usage() );
-    }
-    ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
     }
     ####################################
     # Check for "-" with no option

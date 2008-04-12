@@ -5,6 +5,7 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCdb;
+use xCAT::Usage;
 
 
 ##############################################
@@ -43,19 +44,13 @@ sub chvm_parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
-    my @VERSION = qw( 2.0 );
 
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-        return( [ $_[0], 
-            "chvm -h|--help",
-            "chvm -v|--version",
-            "chvm [-V|--verbose] noderange",
-            "    -h   writes usage information to standard output",
-            "    -v   displays command version",
-            "    -V   verbose output" ]);
+	my $usage_string=xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string]);
     };
     ####################################
     # Configuration file required 
@@ -79,20 +74,8 @@ sub chvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
         return( usage() );
-    }
-    ####################################
-    # Option -h for Help
-    ####################################
-    if ( exists( $opt{h} )) {
-        return( usage() );
-    }
-    ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
     }
     ####################################
     # Check for "-" with no option
@@ -123,23 +106,13 @@ sub mkvm_parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
-    my @VERSION = qw( 2.0 );
 
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-        return( [ $_[0], 
-            "mkvm -h|--help",
-            "mkvm -v|--version",
-            "mkvm [-V|--verbose] singlenode -i id -n name",
-            "mkvm [-V|--verbose] src_fsp -c dest_fsp",
-            "    -h   writes usage information to standard output",
-            "    -c   copy partitions from src_fsp to dest_fsp on single HMC",
-            "    -i   new partition numeric id",
-            "    -n   new partition name",
-            "    -v   displays command version",
-            "    -V   verbose output" ]);
+	my $usage_string=xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string]);
     };
     #############################################
     # Process command-line arguments
@@ -162,20 +135,8 @@ sub mkvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version i=s n=s c=s) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose i=s n=s c=s) )) {
         return( usage() );
-    }
-    ####################################
-    # Option -h for Help
-    ####################################
-    if ( exists( $opt{h} )) {
-        return( usage() );
-    }
-    ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
     }
     ####################################
     # Check for "-" with no option
@@ -230,19 +191,13 @@ sub rmvm_parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
-    my @VERSION = qw( 2.0 );
 
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub { 
-        return( [ $_[0],
-            "rmvm -h|--help",
-            "rmvm -v|--version",
-            "rmvm [-V|--verbose] noderange",
-            "    -h   writes usage information to standard output",
-            "    -v   displays command version",
-            "    -V   verbose output" ]);
+	my $usage_string=xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string]);
     };
     #############################################
     # Process command-line arguments
@@ -260,20 +215,8 @@ sub rmvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
         return( usage() );
-    }
-    ####################################
-    # Option -h for Help
-    ####################################
-    if ( exists( $opt{h} )) {
-        return( usage() );
-    }
-    ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
     }
     ####################################
     # Check for "-" with no option
@@ -304,19 +247,13 @@ sub lsvm_parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
-    my @VERSION = qw( 2.0 );
 
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-        return( [ $_[0],       
-            "lsvm -h|--help",
-            "lsvm -v|--version",
-            "lsvm [-V|--verbose] noderange",
-            "    -h   writes usage information to standard output",
-            "    -v   displays command version",
-            "    -V   verbose output" ]);
+	my $usage_string=xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string]);
     };
     #############################################
     # Process command-line arguments
@@ -334,20 +271,8 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
         return( usage() );
-    }
-    ####################################
-    # Option -h for Help
-    ####################################
-    if ( exists( $opt{h} )) {
-        return( usage() );
-    }
-    ####################################
-    # Option -v for version
-    ####################################
-    if ( exists( $opt{v} )) {
-        return( \@VERSION );
     }
     ####################################
     # Check for "-" with no option

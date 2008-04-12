@@ -4,6 +4,7 @@ package xCAT::PPC;
 use strict;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::Usage;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use Time::HiRes qw(gettimeofday);
@@ -835,6 +836,33 @@ sub process_request {
     # Get hwtype 
     ####################################
     $package =~ s/xCAT_plugin:://;
+ 
+
+    ####################################
+    # Prompt for usage if needed 
+    ####################################
+    my $noderange = $req->{node}; #Should be arrayref
+    my $command = $req->{command}->[0];
+    my $extrargs = $req->{arg};
+    my @exargs=($req->{arg});
+    if (ref($extrargs)) {
+      @exargs=@$extrargs;
+    }
+
+    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+    if ($usage_string) {
+      $callback->({data=>$usage_string});
+      $req = {};
+      return;
+    }
+
+    if (!$noderange) {
+      $usage_string=xCAT::Usage->getUsage($command);
+      $callback->({data=>$usage_string});
+      $req = {};
+      return;
+    }   
+
 
     ####################################
     # Build hash to pass around 

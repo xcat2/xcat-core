@@ -24,16 +24,16 @@ use Getopt::Long;
 sub handled_commands {
   return {
     findme => 'blade',
-    getmacs => 'nodehm:getmacs,mgt',
+    getmacs => 'nodehm:getmac,mgt',
     rscan => 'nodehm:mgt',
     rpower => 'nodehm:power,mgt',
-    rvitals => 'nodehm:vitals,mgt',
-    rinv => 'nodehm:inv,mgt',
-    rbeacon => 'nodehm:beacon,mgt',
+    rvitals => 'nodehm:mgt',
+    rinv => 'nodehm:mgt',
+    rbeacon => 'nodehm:mgt',
     rspreset => 'nodehm:mgt',
     rspconfig => 'nodehm:mgt',
-    rbootseq => 'nodehm:bootseq,mgt',
-    reventlog => 'nodehm:eventlog,mgt',
+    rbootseq => 'nodehm:mgt',
+    reventlog => 'nodehm:mgt',
     switchblade => 'nodehm:mgt',
   };
 }
@@ -698,26 +698,15 @@ sub rscan {
   Getopt::Long::Configure("bundling");
 
   local *usage = sub {
-    return( join('',($_[0],
-        "rscan -h|--help\n",
-        "rscan -v|--version\n",
-        "rscan [-V|--verbose] noderange [-w][-x|-z]\n",
-        "    -h   writes usage information to standard output\n",
-        "    -v   displays command version\n",
-        "    -V   verbose output\n",
-        "    -w   writes output to xCat database\n",
-        "    -x   xml formatted output\n",
-        "    -z   stanza formatted output.\n")));
+    my $usage_string=xCAT::Usage->getUsage("rscan");
+    return( join('',($_[0],$usage_string)));
   };
 
-  if ( !GetOptions(\%opt,qw(h|help V|Verbose v|version w x z))){
+  if ( !GetOptions(\%opt,qw(V|Verbose w x z))){
     return(1,usage());
   }
   if (@ARGV) {
     return(1,usage("Invalid argument: @ARGV\n"));
-  }
-  if (exists($opt{h})) {
-    return(1,usage());
   }
   if (exists($opt{x}) and exists($opt{z})) {
     return(1,usage("-x and -z are mutually exclusive\n"));
@@ -1212,18 +1201,27 @@ sub process_request {
   unless ($command) {
      return; #Empty request
   }
-  unless ($noderange or $command eq "findme") {
-    my $usage_string=xCAT::Usage->getUsage($command);
-    if ($usage_string) {
-      $callback->({data=>[$usage_string]});
-      $request = {};
-    }
-    return;
-  }
+
   if (ref($request->{arg})) {
     @exargs = @{$request->{arg}};
   } else {
     @exargs = ($request->{arg});
+  }
+
+  if ($command ne "findme") {
+    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+    if ($usage_string) {
+      $callback->({data=>$usage_string});
+      $request = {};
+      return;
+    }
+
+    if (!$noderange) {
+      $usage_string=xCAT::Usage->getUsage($command);
+      $callback->({data=>$usage_string});
+      $request = {};
+      return;
+    }   
   }
 
   if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
