@@ -426,7 +426,7 @@ sub get_site_attribute
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => $attr}, 'value');
+        (my $ref) = $sitetab->getAttribs({key => $attr}, value);
         if ($ref and $ref->{value})
         {
             $values = $ref->{value};
@@ -817,7 +817,7 @@ rmdir(\"/tmp/.ssh\");";
     # send the keys to the nodes
     #
     my $cmd = "$::REMOTESHELL_EXPECT -s $n_str";
-    $rc  = system("$cmd") >> 8;
+    my $rc  = system("$cmd") >> 8;
     if ($rc)
     {
         my %rsp;
@@ -1788,7 +1788,7 @@ sub create_postscripts_tar
         mkdir("/install/autoinst");
     }
 
-	$cmd = "cd /install/postscripts; tar -cf /install/autoinst/xcatpost.tar * .ssh/*; gzip /install/autoinst/xcatpost.tar";
+	$cmd = "cd /install/postscripts; tar -cf /install/autoinst/xcatpost.tar * .ssh/*; gzip -f /install/autoinst/xcatpost.tar";
     my @result = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
