@@ -130,8 +130,11 @@ sub mkinstall
                         );
             next;
         }
-        mkpath "/install/postscripts/";
-        xCAT::Postage->writescript($node, "/install/postscripts/" . $node);
+	
+		# create the node-specific post script
+		mkpath "/install/postscripts/";
+		xCAT::Postage->writescript($node, "/install/postscripts/" . $node, "install");
+
         if (
             (
              $arch =~ /x86_64/
