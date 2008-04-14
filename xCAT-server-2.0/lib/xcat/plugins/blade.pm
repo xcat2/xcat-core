@@ -19,6 +19,7 @@ use IO::Select;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
 use Net::Telnet;
+use xCAT::DBobjUtils;
 use Getopt::Long;
 
 sub handled_commands {
@@ -1410,7 +1411,7 @@ sub telnetcmds {
       push @cfgtext,@$result;
     }
     elsif (/^network$/) {
-      $result = network($t,$handled{$_});
+      $result = network($t,$handled{$_},$mpa);
       $Rc |= shift(@$result);
       push @cfgtext,@$result;
     }     
@@ -1460,17 +1461,47 @@ sub network {
 
   my $t = shift;
   my $value = shift;
-  my @result;
+  my $mpa = shift;
   my $cmd = "ifconfig -eth0 -c static -r auto -d auto -m 1500 -T system:mm[1]";
-  my ($ip,$host,$gateway,$mask) = split /,/,$value;
+  my ($ip,$host,$gateway,$mask);
+
+  if ($value) {
+    if ($value !~ /^xcat-table$/) {
+      ($ip,$host,$gateway,$mask) = split /,/,$value;
+      if (!$ip and !$host and !$gateway and !$mask) {
+        return([1,"No changes specified"]);
+      }
+    } 
+    else {
+      my %nethash = xCAT::DBobjUtils->getNetwkInfo($mpa);
+      my $gate = $nethash{$mpa}{gateway};
+      my $result;
+
+      if ($gate) {    
+        $result = toIP($gate);
+        if (@$result[0] == 0) {
+          $gateway = @$result[1];
+        }
+      }
+      $mask = $nethash{$mpa}{mask};
+      $host = $mpa;
+      $result = xCAT::Utils::toIP($mpa);
+      if (@$result[0] == 0) {
+        $ip = @$result[1];
+      }
+      if (!$ip and !$host and !$gateway and !$mask) {
+        return([1,"No network information found in database"]);
+      }
+    }
+  } 
 
   if ($ip)     { $cmd.=" -i $ip"; }
   if ($host)   { $cmd.=" -n $host"; }
   if ($gateway){ $cmd.=" -g $gateway"; }
   if ($mask)   { $cmd.=" -s $mask"; }
-   
+ 
   my @data = $t->cmd($cmd);
-  @result = grep(/These configuration changes will become active/,@data);
+  my @result = grep(/These configuration changes will become active/,@data);
   if (!@result) {
     return([1,@data]);
   }
@@ -1502,6 +1533,9 @@ sub swnet {
        "ifconfig -em disabled -ep enabled -pip enabled -T system:switch[1]";
     ($ip,$gateway,$mask) = split /,/,$value;
 
+    if (!$ip and !$gateway and !$mask) {
+      return([1,"No changes specified"]);
+    }
     if ($ip)     { $cmd.=" -i $ip"; }
     if ($gateway){ $cmd.=" -g $gateway"; }
     if ($mask)   { $cmd.=" -s $mask"; }
@@ -1656,6 +1690,7 @@ sub ntp {
   }
   if ($value) {
     my ($ntp,$ip,$f,$v3) = split /,/,$value;
+
     if ($ntp) {
       if ($ntp !~ /^enable|disable$/i) { 
         return([1,"Invalid argument '$ntp' (enable|disable)"]);
@@ -1665,6 +1700,9 @@ sub ntp {
       if ($v3 !~ /^enable|disable$/i) {
         return([1,"Invalid argument '$v3' (enable|disable)"]);
       }
+    }
+    if (!$ntp and !$ip and !$f and !$v3) {
+      return([1,"No changes specified"]);
     }
     if ($ntp) {
       my $d = ($ntp =~ /^enable$/i) ? 1 : 0;
@@ -1806,6 +1844,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
