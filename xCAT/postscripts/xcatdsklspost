@@ -1,0 +1,81 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#
+#   Generic xCAT post script for diskless nodes
+#
+#####################################################
+
+# get hostname
+my $shorthost = `hostname -s`;
+chomp $shorthost;
+
+# get platform
+my $osname = `uname`;
+chomp $osname;
+
+# get the postscript tar file from the server and unwrap it
+if ($osname eq "Linux") {
+	getLinuxpostfile();
+} else {
+	# TBD
+#	getAIXpostfile();
+}
+
+# check & run the postscript
+my $scriptname = "/xcatpost/".$shorthost;
+if (-f $scriptname)
+{
+	my $rc = system("$scriptname");
+    if ($rc >> 8)
+    {
+        print "Could not run $scriptname.\n";
+    }
+} else {
+	print "Could not find post script for $shorthost.\n";
+}
+
+exit 0;
+
+#####################################################
+#
+#   getLinuxpostfile
+#		Get the linux post scripts from the server
+#
+#####################################################
+sub  getLinuxpostfile {
+
+	# look in the dhcp leases file for the name of the server
+	my $dhclientfile="/var/lib/dhclient/dhclient-eth0.leases";
+
+	my @lines;
+	if (open(DHCLIENT, "<$dhclientfile")) {
+    	@lines = <DHCLIENT>;
+    	close(DHCLIENT);
+	} else {
+    	print "Could not open $dhclientfile.\n";
+    	return 1;
+	}
+
+	my $ip;  # IP of server
+	foreach my $l (@lines)
+	{
+    	if ($l =~ /dhcp-server-identifier/) {
+        	my ($junk, $junk2, $s) = split(" ", $l);
+        	($ip, $junk) =  split("\;", $s);
+#  	print "ip = $ip\n";
+    	}
+	}
+
+	# get postscripts tar file from the server
+	my $getcmd = "mkdir -p /xcatpost; cd /xcatpost; wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$ip/install/autoinst/xcatpost.tar.gz; gunzip xcatpost.tar.gz; tar -xvf xcatpost.tar";
+
+#print "getcmd= $getcmd\n";
+
+	my $rc = system("$getcmd");
+    if ($rc >> 8)
+    {
+		print "Could not get xcatpost.tar.bz2.\n";
+	}
+
+}
