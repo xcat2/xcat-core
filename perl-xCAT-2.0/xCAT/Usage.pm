@@ -61,7 +61,12 @@ my %usage = (
        rspconfig <noderange> [garp=<number of 1/2 second>]
    MPA specific:
        rspconfig <noderange> [sshcfg|snmpcfg|build]
-       rspconfig <noderange> [shcfg=<enable|disable>|snmpcfg=<enable|disable>]
+       rspconfig <noderange> [shcfg=<enable|disable>|snmpcfg=<enable|disable>|build|                             
+           pd1[=nonred|redwoperf|redwperf]|
+           pd2[=nonred|redwoperf|redwperf]|
+           network[=xcat-table|ip,host,gateway,mask]|
+           swnet[=ip,gateway,mask]|
+           ntp[=ntp,ip,frequency,v3]]
    PPC specific:
        rspconfig <noderange>  autopower [enable|disable]|
            decfg [{enable|disable} policy,...]|
