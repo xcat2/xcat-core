@@ -22,11 +22,21 @@ B<rspconfig> I<noderange> B<garp>={I<time>}
        
 =head2 MPA specific:
 
-B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<build>}
+B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<build>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>}
 
 B<rspconfig> I<noderange> B<shcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
+
+B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
+
+B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|xcat-table}
+
+B<rspconfig> I<noderange> B<swnet>={[B<ip>],[B<gateway>],[B<netmask>]}
+
+B<rspconfig> I<noderange> B<ntp>={[B<ntpenable>],[B<ntpserver>],[B<frequency>],[B<v3>]}
 
 =head1 DESCRIPTION
 
@@ -49,21 +59,65 @@ Get the BMC backup gateway ip address.
 
 Get or set the SNMP commmunity value. The default is I<public>.
 
+=item B<frequency>
+
+Sets the NTP update frequency (in minutes).
+
 =item B<garp>=I<time>
 
 Get or set Gratuitous ARP generation interval. The unit is number of 1/2 second.
 
 =item B<gateway>
 
-Get the BMC gateway ip address.
+The gateway ip address.
+
+=item B<host>
+
+The hostname.
 
 =item B<ip>
 
-Get the BMC ip address.
+The ip address.
 
 =item B<netmask>
 
-Get the BMC subnet mask.
+The subnet mask.
+
+=item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|xcat-table}
+
+Sets the MPA network parameters.
+
+=item B<nonred>
+
+Allows loss of redundancy.
+
+=item B<ntp>={[I<ntpenable>],[I<ntpserver>],[I<frequency>],[I<v3>]}
+
+Sets the MPA Network Time Protocol (NTP) parameters. 
+
+=item B<ntpenable>
+
+Enable or disable NTP (enable|disable).
+
+=item B<ntpserver>
+
+Sets NTP server IP address or name.
+
+=item B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
+
+Power Domain 1 - determines how an MPA responds to a loss of redundant power.
+
+=item B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
+
+Power Domain 2 - determines how an MPA responds to a loss of redundant power.
+
+=item B<redwoperf>
+
+Prevents components from turning on that will cause loss of power redundancy.
+
+=item B<redwperf>
+
+Power throttles components to maintain power redundancy and prevents components from turning on that will cause loss of power redundancy.
 
 =item B<snmpcfg>={I<enable>|I<disable>}
 
@@ -76,6 +130,18 @@ Get or set where the SNMP alerts should be sent to.
 =item B<sshcfg>={I<enable>|I<disable>}
 
 Enable or disable SSH on MPA.
+
+=item B<swnet>={[I<ip>],[I<gateway>],[I<netmask>]}
+
+Sets the Switch network parameters.
+
+=item B<v3>
+
+Enable or disable v3 authentication (enable|disable).
+
+=item B<xcat-table>
+
+Use xCAT database values.
 
 =item B<-h>|B<--help>
 
