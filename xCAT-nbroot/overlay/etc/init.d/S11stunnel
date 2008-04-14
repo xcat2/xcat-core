@@ -15,18 +15,17 @@ mkdir -p /etc/stunnel
 echo 'client=yes' > /etc/stunnel/stunnel.conf
 echo 'foreground=yes' >> /etc/stunnel/stunnel.conf
 echo 'output=/dev/null' >> /etc/stunnel/stunnel.conf
-#echo 'socket=a:SO_BINDTODEVICE=lo' >> /etc/stunnel/stunnel.conf
 echo 'verify=0' >> /etc/stunnel/stunnel.conf
 if [ ! -z "$XCATDEST" ]; then 
    echo '[xcatds]' >> /etc/stunnel/stunnel.conf
-   echo 'accept=301' >> /etc/stunnel/stunnel.conf
+   echo 'accept=127.0.0.1:301' >> /etc/stunnel/stunnel.conf
    echo 'connect='$XCATDEST >> /etc/stunnel/stunnel.conf
 fi
 if [ -r /tmp/dhcpserver ]; then 
    let i=400;
    for srv in `cat /tmp/dhcpserver`; do
     echo "[xcatd$i]" >> /etc/stunnel/stunnel.conf
-    echo "accept=$i" >> /etc/stunnel/stunnel.conf
+    echo "accept=127.0.0.1:$i" >> /etc/stunnel/stunnel.conf
     echo "connect="$srv":"$XCATPORT >> /etc/stunnel/stunnel.conf
     let i=i+1
    done
