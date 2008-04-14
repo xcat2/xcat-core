@@ -304,6 +304,7 @@ sub isnetdriver {
 
 sub postscripts { # TODO: customized postscripts
    generic_post();
+   copybootscript();
    if (-d "$installroot/postscripts/hostkeys") {
       for my $key (<$installroot/postscripts/hostkeys/*key>) {
          copy ($key,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/");
@@ -318,6 +319,7 @@ sub postscripts { # TODO: customized postscripts
       }
       chmod(0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/*>);
    }
+
 }
 
 sub generic_post { #This function is meant to leave the image in a state approximating a normal install
@@ -366,4 +368,48 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    #link("$installroot/netboot/$osver/$arch/$profile/rootimg/sbin/init","$installroot/netboot/$osver/$arch/$profile/rootimg/init");
    
    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+}
+
+###########################################################
+#
+#  copybootscript - copy the xCAT diskless init scripts to the image
+#
+#############################################################
+sub copybootscript {
+
+	if ( -f "$installroot/postscripts/xcatdsklspost") {
+
+		# copy the xCAT diskless post script to the image
+		mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/opt/xcat");	
+
+		copy ("$installroot/postscripts/xcatdsklspost", "$installroot/netboot/$osver/$arch/$profile/rootimg/opt/xcat/xcatdsklspost");
+
+		chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/opt/xcat/xcatdsklspost");
+
+	} else {
+		print "Could not find the script $installroot/postscripts/xcatdsklspost.\n";
+		return 1;
+    }
+
+	if ( -f "$installroot/postscripts/xcatpostinit") {
+
+		# copy the linux diskless init script to the image
+		#	- & set the permissions
+		copy ("$installroot/postscripts/xcatpostinit","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/xcatpostinit");
+
+        chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/xcatpostinit");
+
+		# run chkconfig
+		my $chkcmd = "chroot $installroot/netboot/$osver/$arch/$profile/rootimg chkconfig --add xcatpostinit";
+
+		my $rc = system($chkcmd);
+        if ($rc) {
+            print "Could not run the chkconfig command.\n";
+            return 1;
+    	}
+	} else {
+		print "Could not find the script $installroot/postscripts/xcatpostinit.\n";
+		return 1;
+	}
+	return 0;
 }
