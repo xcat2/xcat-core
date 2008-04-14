@@ -94,6 +94,7 @@ sub process_request {
   my $distname = undef;
   my $arch = undef;
   my $path = undef;
+
   if ($request->{command}->[0] eq 'copycd') { 
     return copycd($request,$callback,$doreq);
   } elsif ($request->{command}->[0] eq 'mkinstall') {
@@ -115,6 +116,7 @@ sub mknetboot {
     my $sitetab = xCAT::Table->new('site');
     my $installroot;
     $installroot = "/install";
+
     (my $sent) = $sitetab->getAttribs({key=>master},value);
     my $imgsrv;
     if ($sent and $sent->{value}) {
@@ -132,6 +134,7 @@ sub mknetboot {
             $callback->({error=>["Insufficient nodetype entry for $node"],errorcode=>[1]});
             next;
         }
+
         my $osver = $ent->{os};
         my $platform;
         if ($osver =~ /rh.*/) {
@@ -155,6 +158,11 @@ sub mknetboot {
                $callback->({error=>["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (i.e.  packimage -o $osver -p $profile -a $arch"],errorcode=>[1]});
                next;
         }
+
+		# create the node-specific post scripts
+		mkpath "/install/postscripts/";
+		xCAT::Postage->writescript($node,"/install/postscripts/".$node, "netboot");
+
         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
         #TODO: only copy if newer...
         copy("/$installroot/netboot/$osver/$arch/$profile/kernel","/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
@@ -195,6 +203,10 @@ sub mknetboot {
            kcmdline=>$kcmdline
         });
     }
+	my $rc = xCAT::Utils->create_postscripts_tar();
+	if ( $rc != 0 ) {
+		xCAT::MsgUtils->message( "S", "Error creating postscripts tar file." );
+	}
 }
 
 sub mkinstall {
@@ -204,6 +216,7 @@ sub mkinstall {
   my @nodes = @{$request->{node}};
   my $installroot;
   $installroot = "/install";
+
   my $node;
   my $ostab = xCAT::Table->new('nodetype');
   my %doneimgs;
@@ -248,8 +261,12 @@ sub mkinstall {
        $callback->({node=>[{name=>[$node],error=>[$tmperr],errorcode=>[1]}]}); 
        next;
     }
-    mkpath "/install/postscripts/";
-    xCAT::Postage->writescript($node,"/install/postscripts/".$node);
+
+	# create the node-specific post scripts
+	mkpath "/install/postscripts/";
+	xCAT::Postage->writescript($node,"/install/postscripts/".$node, "install");
+
+
     if (
       ($arch =~ /x86/ 
       and -r "/install/$os/$arch/images/pxeboot/vmlinuz" 
