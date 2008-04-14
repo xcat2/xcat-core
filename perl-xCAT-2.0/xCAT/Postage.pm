@@ -2,15 +2,179 @@
 package xCAT::Postage;
 use xCAT::Table;
 use xCAT::NodeRange;
+use xCAT::MsgUtils;
 use Data::Dumper;
-my $depsfile = "/etc/xcat/postscripts.dep";
-my $rulesfile = "/etc/xcat/postscripts.rules";
-my $rules;
-my $deps;
-my $rulec;
-my $node;
+
+#-------------------------------------------------------------------------------
+
+=head1    Postage
+
+=head2    xCAT post script support.
+
+This program module file is a set of utilities to support xCAT post scripts.
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+#----------------------------------------------------------------------------
+
+=head3   writescript
+
+        Create a node-specific post script for an xCAT node
+
+        Arguments:
+        Returns:
+				0 - All was successful.
+                1 - An error occured.
+        Globals:
+        Error:
+        Example:
+
+	xCAT::Postage->writescript($node, "/install/postscripts/" . $node, $state);
+
+		Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
 
 sub writescript {
+
+	if (scalar(@_) eq 4) { shift; } #Discard self 
+	my $node = shift;
+	my $scriptfile = shift;
+	my $nodesetstate = shift;  # install or netboot
+
+	my ($master, $ps, $os, $arch, $profile); 
+
+	unless (open(SCRIPT,">",$scriptfile)){
+		my $rsp;
+        push @{$rsp->{data}}, "Could not open $scriptfile for writing.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	#
+	# get attribute values from DB...
+	#
+	# get noderes, nodetype, & site tables
+	my $noderestab=xCAT::Table->new('noderes');
+	my $typetab=xCAT::Table->new('nodetype');
+	my $sitetab = xCAT::Table->new('site');
+	my $posttab = xCAT::Table->new('postscripts');
+
+	unless ($noderestab and $typetab and $sitetab) {
+		my $rsp;
+        push @{$rsp->{data}}, "Unable to open noderes or nodetype or site table.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+	}
+
+	# the master is either the site "master" or the noderes "servicenode"
+	#	or the  xcatmaster - in that order
+	(my $et) = $sitetab->getAttribs({key=>"master"},'value');
+	if ($et and $et->{value}) {
+		$master = $et->{value};
+	}
+
+	# get servicenode
+	$et = $noderestab->getNodeAttribs($node,['servicenode']);
+	if ($et and $et->{'servicenode'}) { 
+		$master = $et->{'servicenode'};
+	}
+
+	# get xcatmaster
+	$et = $noderestab->getNodeAttribs($node,['xcatmaster']);
+	if ($et and $et->{'xcatmaster'}) { 
+		$master = $et->{'xcatmaster'};
+	}
+
+	unless ($master) {
+        my $rsp;
+        push @{$rsp->{data}}, "Unable to identify master for $node.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	# get os & arch
+	my $et = $typetab->getNodeAttribs($node,['os','arch','profile']);
+	$os = $et->{'os'};
+	$arch = $et->{'arch'};
+	$profile = $et->{'profile'};
+
+	# get postscripts 
+	my $et = $posttab->getNodeAttribs($node, ['postscripts']);	
+	$ps = $et->{'postscripts'};
+
+	# get the xcatdefaults entry in the postscripts table
+	my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts');
+	$defscripts = $et->{'postscripts'};
+
+	#
+	# build the node-specific script
+	#
+
+#print "master=$master, node=$node, os = $os, postscripts= $ps\n";
+
+	print SCRIPT "MASTER=".$master."\n";
+	print SCRIPT "export MASTER\n";
+	print SCRIPT "NODE=$node\n";
+	print SCRIPT "export NODE\n";
+
+	if ($os) {
+		print SCRIPT "OSVER=".$os ."\n";
+		print SCRIPT "export OSVER\n";
+	}
+	if ($arch) {
+		print SCRIPT "ARCH=".$arch."\n";
+		print SCRIPT "export ARCH\n";
+	}
+	if ($profile) {
+		print SCRIPT "PROFILE=".$profile."\n";
+        print SCRIPT "export PROFILE\n";
+	}
+	if ($nodesetstate) {
+        print SCRIPT "NODESETSTATE=".$nodesetstate."\n";
+        print SCRIPT "export NODESETSTATE\n";
+    }
+	print SCRIPT 'PATH=`dirname $0`:$PATH'."\n";
+	print SCRIPT "export PATH\n";
+
+	if ($defscripts) {
+		foreach my $n (split(/,/, $defscripts)) {
+            print SCRIPT $n."\n";
+        }
+	}
+
+	if ($ps) {
+        foreach my $n (split(/,/, $ps)) {
+            print SCRIPT $n."\n";
+        }
+    }
+
+  	close(SCRIPT);
+	
+	my $cmd = "chmod 0755 $scriptfile";
+	my @result = xCAT::Utils->runcmd("$cmd", -1);
+	if ($::RUNCMD_RC  != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not run the chmod command.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	return 0;
+}
+
+
+##########################
+#  old code
+#############################
+
+
+sub old_writescript {
   if (scalar(@_) eq 3) { shift; } #Discard self 
   $node = shift;
   my $scriptfile = shift;
@@ -25,17 +189,6 @@ sub writescript {
     return undef;
   }
   #Some common variables...
-  my @scriptcontents = makescript($node);
-  foreach (@scriptcontents) {
-     print $script $_;
-  }
-  close($script);
-  chmod 0755,$scriptfile;
-}
-
-sub makescript {
-  $node = shift;
-  my @scriptd;
   my $noderestab=xCAT::Table->new('noderes');
   my $typetab=xCAT::Table->new('nodetype');
   unless ($noderestab and $typetab) {
@@ -58,19 +211,19 @@ sub makescript {
   unless ($master) {
       die "Unable to identify master for $node";
   }
-  push @scriptd, "MASTER=".$master."\n";
-  push @scriptd, "export MASTER\n";
-  push @scriptd, "NODE=$node\n";
-  push @scriptd, "export NODE\n";
+  print $script "MASTER=".$master."\n";
+  print $script "export MASTER\n";
+  print $script "NODE=$node\n";
+  print $script "export NODE\n";
   my $et = $typetab->getNodeAttribs($node,['os','arch']);
   unless ($et and $et->{'os'} and $et->{'arch'}) {
     die "No os/arch setting in nodetype table for $node";
   }
-  push @scriptd, "OSVER=".$et->{'os'}."\n";
-  push @scriptd, "ARCH=".$et->{'arch'}."\n";
-  push @scriptd, "export OSVER ARCH\n";
-  push @scriptd, 'PATH=`dirname $0`:$PATH'."\n";
-  push @scriptd, "export PATH\n";
+  print $script "OSVER=".$et->{'os'}."\n";
+  print $script "ARCH=".$et->{'arch'}."\n";
+  print $script "export OSVER ARCH\n";
+  print $script 'PATH=`dirname $0`:$PATH'."\n";
+  print $script "export PATH\n";
   $rulec="";
   my @scripts;
   my $inlist = 0;
@@ -134,9 +287,10 @@ sub makescript {
     }
   }
   foreach (@scripts) {
-    push @scriptd, $_."\n";
+    print $script $_."\n";
   }
-  return @scriptd;
+  close($script);
+  chmod 0755,$scriptfile;
 }
 
 #shamelessly brought forth from postrules.pl in xCAT 1.3
