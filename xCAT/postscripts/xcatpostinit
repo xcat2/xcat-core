@@ -1,0 +1,35 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# chkconfig: 345 84 59
+# description: service node postboot script hack
+# processname: xcatpostinit
+
+### BEGIN INIT INFO
+# Provides: xcatpostinit
+# Default-Start: 3 4 5
+# Default-stop: 0 1 2 6
+# Short-Description: xCATpost
+# Description: xCAT diskless post boot script
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+case $1 in
+restart)
+  $0 stop
+  $0 start
+  ;;
+status)
+  echo -n "xcatpostinit runs only at boot, runs additional post scripts"
+  ;;
+stop)
+  echo -n "nothing to stop "
+  ;;
+start)
+  # run /opt/xcat/xcatdsklspost
+  if [ -r /opt/xcat/xcatdsklspost ]; then
+    /opt/xcat/xcatdsklspost
+  fi
+  ;;
+esac
