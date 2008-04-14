@@ -141,7 +141,7 @@ sub submit_request {
         die "Connection failure: $@"
      }
   }
-  my $msg=XMLout($request,RootName=>xcatrequest,NoAttr=>1,KeyAttr=>[]);
+  my $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
   print $client $msg;
   my $response;
   my $rsp;
