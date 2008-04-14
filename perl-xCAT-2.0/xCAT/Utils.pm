@@ -426,7 +426,7 @@ sub get_site_attribute
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => $attr}, value);
+        (my $ref) = $sitetab->getAttribs({key => $attr}, 'value');
         if ($ref and $ref->{value})
         {
             $values = $ref->{value};
@@ -817,7 +817,7 @@ rmdir(\"/tmp/.ssh\");";
     # send the keys to the nodes
     #
     my $cmd = "$::REMOTESHELL_EXPECT -s $n_str";
-    my $rc  = system("$cmd") >> 8;
+    $rc  = system("$cmd") >> 8;
     if ($rc)
     {
         my %rsp;

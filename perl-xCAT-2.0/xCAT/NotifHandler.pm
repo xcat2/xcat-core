@@ -18,8 +18,8 @@ require Data::Dumper;
 #                'd'=>[filename,...]
 #                }
 #   }
-%notif;
-$masterpid;
+my %notif;
+my $masterpid;
 
 1;
 
@@ -213,7 +213,7 @@ sub dumpNotificationCache {
 =cut
 #-------------------------------------------------------------------------------
 sub needToNotify {
-  if (!defined %notif) {
+  if (!%notif) {
     # print "notif not defined\n";
     refreshNotification();
   }
