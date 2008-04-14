@@ -4,3 +4,4 @@ kernel
 openssh-server 
 openssh-clients
 busybox-anaconda
+wget
