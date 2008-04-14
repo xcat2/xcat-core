@@ -1,10 +1,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::PPCcli;
-use strict;
 require Exporter;
-    our @ISA = qw(Exporter);
-    our @EXPORT_OK = qw(SUCCESS RC_ERROR EXPECT_ERROR NR_ERROR);  
+    @ISA = qw(Exporter);
+    @EXPORT_OK = qw(SUCCESS RC_ERROR EXPECT_ERROR NR_ERROR);  
+use strict;
 use xCAT::PPCdb;
 use Expect;
 
@@ -21,8 +21,7 @@ use constant {
   SUCCESS      => 0,
   RC_ERROR     => 1,
   EXPECT_ERROR => 2,
-  NR_ERROR     => 3,
-  DEFAULT_TIMEOUT => 60
+  NR_ERROR     => 3
 };
 
 ##############################################
@@ -43,6 +42,10 @@ my %lssyscfg = (
 # Power control supported formats 
 ##############################################
 my %powercmd = (
+  hmc  => {
+      reset =>"hmcshutdown -t now -r" },
+  ivm  => {
+      reset =>"reboot" },
   lpar => { 
       on    =>"chsysstate -r %s -m %s -o on -b norm --id %s -f %s",
       of    =>"chsysstate -r %s -m %s -o on --id %s -f %s -b of",
@@ -68,7 +71,7 @@ sub connect {
     my $verbose    = shift;
     my $pwd_prompt = 'assword: $';
     my $continue   = 'continue connecting (yes/no)?';
-    my $timeout    = 30;
+    my $timeout    = 10;
     my $success    = 0;
     my $pwd_sent   = 0;
     my $expect_log;
@@ -114,6 +117,7 @@ sub connect {
     ##################################################
     if ( $verbose ) {
         close STDERR;
+
         if ( !open( STDERR, '>', \$expect_log )) {
              return( "Unable to redirect STDERR: $!" );
         }
@@ -127,12 +131,12 @@ sub connect {
     ##################################################
     # Redirect STDOUT to variable 
     ##################################################
-    if ( $verbose ) {
-        close STDOUT;
-        if ( !open( STDOUT, '>', \$expect_log )) {
-             return( "Unable to redirect STDOUT: $!" );
-        }
-    }       
+    close STDOUT;
+
+    if ( !open( STDOUT, '>', \$expect_log )) {
+         return( "Unable to redirect STDOUT: $!" );
+    }
+
     unless ( $ssh->spawn( "ssh", $parameters )) {
         return( $expect_log."Unable to spawn ssh connection to server" );
     }
@@ -250,6 +254,7 @@ sub chsyscfg {
     my $exp     = shift;
     my $d       = shift;
     my $cfgdata = shift;
+    my $timeout = 60;
 
     #####################################
     # Command only support on LPARs 
@@ -265,7 +270,7 @@ sub chsyscfg {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd );
+    my $result = send_cmd( $exp, $cmd, $timeout );
     return( $result );
 }
 
@@ -278,6 +283,7 @@ sub mksyscfg {
     my $exp     = shift;
     my $d       = shift;
     my $cfgdata = shift;
+    my $timeout = 60;
 
     #####################################
     # Command only support on LPARs 
@@ -293,7 +299,7 @@ sub mksyscfg {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd );
+    my $result = send_cmd( $exp, $cmd, $timeout );
     return( $result );
 }
 
@@ -303,8 +309,9 @@ sub mksyscfg {
 ##########################################################################
 sub rmsyscfg {
 
-    my $exp = shift;
-    my $d   = shift;
+    my $exp     = shift;
+    my $d       = shift;
+    my $timeout = 60;
 
     #####################################
     # Command only supported on LPARs 
@@ -320,7 +327,7 @@ sub rmsyscfg {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd );
+    my $result = send_cmd( $exp, $cmd, $timeout );
     return( $result );
 }
 
@@ -374,9 +381,14 @@ sub chsysstate {
         return( [SUCCESS,"Success"] );
     }
     #####################################
+    # Increase timeout for power command 
+    #####################################
+    my $timeout = 15; 
+
+    #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd );
+    my $result = send_cmd( $exp, $cmd, $timeout );
     return( $result );
 }
 
@@ -561,8 +573,9 @@ sub lpar_netboot {
     my $name    = shift;
     my $d       = shift;
     my $opt     = shift;
-    my $timeout = 600;
+    my $timeout = 300;
     my $cmd     = "lpar_netboot -t ent -f";
+    my $mac; 
 
     #####################################
     # Verbose output 
@@ -579,8 +592,8 @@ sub lpar_netboot {
     #####################################
     # Get MAC-address or network boot
     #####################################
-    my $mac = $opt->{m};
-    $cmd.= ( defined( $mac )) ? " -m $mac" : " -M -A -n";
+    $mac = $opt->{m};
+    $cmd.= ( defined( $mac )) ? " -m $mac" : " -M -n";
    
     #####################################
     # Command only supported on LPARs
@@ -613,8 +626,9 @@ sub lpar_netboot {
 ##########################################################################
 sub lshmc {
 
-    my $exp    = shift;
-    my $hwtype = @$exp[2];
+    my $exp     = shift;
+    my $hwtype  = @$exp[2];
+    my $timeout = 10;
 
     #####################################
     # Format command based on HW Type
@@ -627,7 +641,7 @@ sub lshmc {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd{$hwtype} );
+    my $result = send_cmd( $exp, $cmd{$hwtype}, $timeout );
 
     #####################################
     # Return error
@@ -663,14 +677,6 @@ sub lshmc {
     my @values;
     my $vpd = join( ",", @$result );
 
-    #####################################
-    # Power4 (and below) HMCs unsupported
-    #####################################
-    if ( $vpd =~ /\*RM V(\d+)/ ) {
-        if ( $1 <= 5 ) {
-            return( [RC_ERROR,"Command not supported on V$1 HMC"] );
-        }
-    }
     #####################################
     # Type-Model may be in the formats:
     #  "eserver xSeries 336 -[7310CR3]-"
@@ -708,7 +714,7 @@ sub send_cmd {
     # Set default Expect timeout 
     ##########################################
     if ( !defined( $timeout )) {
-        $timeout = DEFAULT_TIMEOUT;
+        $timeout = 10;
     }
     ##########################################
     # Send command 
