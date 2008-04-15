@@ -1942,6 +1942,24 @@ sub defls
         $long++;
 
     }
+    
+    # which attrs do we want?
+    # this is a temp hack to help scaling when you only 
+    #   want a list of nodes - needs to be fully implemented
+    if ($::opt_l || $::opt_w) {
+        # if long or -w then get all the attrs
+        $::ATTRLIST="all";
+    } elsif ($::opt_i) {
+        # is -i then just get the ones in the list
+        $::ATTRLIST=$::opt_i;
+    } elsif ( @::noderange || $::opt_o) {
+        # if they gave a list of objects then they must want more
+        #       than the object names!
+        $::ATTRLIST="all";
+    } else {
+        # otherwise just get a list of object names
+        $::ATTRLIST="none";
+    }
 
     #
     #	put together a hash with the list of objects and the associated types
