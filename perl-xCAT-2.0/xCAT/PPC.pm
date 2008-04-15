@@ -361,6 +361,7 @@ sub resolve_netwk {
     my %nethash   = xCAT::DBobjUtils->getNetwkInfo( $noderange );
     my $tab       = xCAT::Table->new( 'mac' );
     my %result    = ();
+    my $ip;
 
     #####################################
     # Network attributes undefined 
@@ -392,11 +393,13 @@ sub resolve_netwk {
             send_msg( $request, 1, $msg );
             next;
         }
-        my $gateway_ip = toIP( $gateway );
-        if ( !defined( $gateway_ip ) ) {
+        $ip = xCAT::Utils::toIP( $gateway );
+        if ( @$ip[0] != 0 ) {
             send_msg( $request, 1, "$_: Cannot resolve '$gateway'" );
             next;  
         }
+        my $gateway_ip = @$ip[1];
+
         #################################
         # Get server (-S)
         #################################
@@ -405,19 +408,23 @@ sub resolve_netwk {
             send_msg( $request, 1, "$_: Unable to identify master" );
             next;
         }
-        my $server_ip = toIP( $server );
-        if ( !defined( $server_ip ) ) {
+        $ip = toIP( $server );
+        if ( @$ip[0] != 0 ) {
             send_msg( $request, 1, "$_: Cannot resolve '$server'" );
             next;  
         }
+        my $server_ip = @$ip[1];
+
         #################################
         # Get client (-C)
         #################################
-        my $client_ip = toIP( $_ ); 
-        if ( !defined( $client_ip ) ) {
+        $ip = toIP( $_ ); 
+        if ( @$ip[0] != 0 ) {
             send_msg( $request, 1, "$_: Cannot resolve '$_'" );
             next;  
         }
+        my $client_ip = @$ip[1];
+ 
         #################################
         # Get mac-address (-m)
         #################################
@@ -437,33 +444,6 @@ sub resolve_netwk {
     }
     return( \%result );
 }
-
-
-
-##########################################################################
-# Converts the specified hostname to an IP address
-##########################################################################
-sub toIP {
-
-  ################################
-  # Already in IP format 
-  ################################
-  if ( $_[0] !~ /[a-zA-Z]/g ) {
-      return( $_[0] );
-  }
-  ################################
-  # Convert to IP format 
-  ################################
-  my $raw_addr = (gethostbyname($_[0]))[4];
-  if ( !$raw_addr or $! ) {
-      return undef;
-  }
-  my @octets = unpack( "C4", $raw_addr );
-  my $ip = join( ".", @octets );
-  return( $ip );
-
-}
-
 
 
 ##########################################################################
@@ -667,12 +647,12 @@ sub invoke_cmd {
     my @exp;
     my $verbose_log;
     my @outhash;
-   
+ 
     ########################################
     # Direct-attached FSP handler 
     ########################################
     if ( $hwtype eq "fsp" ) {
-    
+  
         ####################################
         # Dynamically load FSP module
         ####################################
@@ -836,7 +816,6 @@ sub process_request {
     # Get hwtype 
     ####################################
     $package =~ s/xCAT_plugin:://;
- 
 
     ####################################
     # Prompt for usage if needed 
@@ -855,15 +834,12 @@ sub process_request {
       $req = {};
       return;
     }
-
     if (!$noderange) {
       $usage_string=xCAT::Usage->getUsage($command);
       $callback->({data=>$usage_string});
       $req = {};
       return;
     }   
-
-
     ####################################
     # Build hash to pass around 
     ####################################
@@ -905,6 +881,7 @@ sub process_request {
 
 
 1;
+
 
 
 
