@@ -45,29 +45,14 @@ sub parse_args {
     my $command = $request->{command};
     my @rsp     = keys %{$cmds{$command}};
     my $args    = $request->{arg};
-    my $cmd     = join( '|',@rsp );
     my %opt     = ();
  
-    #############################################
-    # Modify usage statement 
-    #############################################
-    my $option = "{configure|deconfigure}";
-    $cmd =~ s/spdump/\n\t spdump/;
-    $cmd =~ s/sysdump/\n\t sysdump/;
-    $cmd =~ s/time/\n\t time [hh:mm:ss]/;
-    $cmd =~ s/date/\n\t date [mm-dd-yyyy]/;
-    $cmd =~ s/autopower/\n\t autopower [enable|disable]/;
-    $cmd =~ s/iocap/\n\t iocap [enable|disable]/;
-    $cmd =~ s/decfg/\n\t decfg [{enable|disable} policy,...]/;
-    $cmd =~ s/memdecfg/\n\t memdecfg [$option unit=id (unit|bank)=all|id,...]/;
-    $cmd =~ s/procdecfg/\n\t procdecfg [$option unit=id all|id,...]/;
-
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($command);
-        return( [ $_[0], $usage_string]);
+	    my $usage_string = xCAT::Usage->getUsage($command);
+        return( [$_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
