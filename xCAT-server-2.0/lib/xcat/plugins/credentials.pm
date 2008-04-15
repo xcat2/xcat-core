@@ -99,20 +99,28 @@ sub process_request
     my $tmpfile;
     my @filecontent;
     my $retdata;
+    my $tfilename;
     foreach (@params_to_return) {
        if (/ssh_root_key/) { 
           unless (-r "/root/.ssh/id_rsa") {
             push @{$rsp->{'error'}},"Unable to read root's private ssh key";
             next;
           }
-          open($tmpfile,"/root/.ssh/id_rsa");
-          @filecontent=<$tmpfile>;
-          close($tmpfile);
-          $retdata = "\n".join('',@filecontent);
-          push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$_]};
-          $retdata="";
-          @filecontent=();
+          $tfilename = "/root/.ssh/id_rsa";
+       } elsif (/xcat_root_cred/) {
+          unless (-r "/root/.xcat/client-cred.pem") {
+            push @{$rsp->{'error'}},"Unable to read root's private xCAT key";
+            next;
+          }
+          $tfilename = "/root/.xcat/client-cred.pem";
        }
+       open($tmpfile,$tfilename);
+       @filecontent=<$tmpfile>;
+       close($tmpfile);
+       $retdata = "\n".join('',@filecontent);
+       push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$_]};
+       $retdata="";
+       @filecontent=();
     }
     xCAT::MsgUtils->message("D", $rsp, $callback, 0);
     return;
