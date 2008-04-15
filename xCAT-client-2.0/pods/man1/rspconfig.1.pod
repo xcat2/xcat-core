@@ -55,13 +55,17 @@ Turn on or off SNMP alerts.
 
 Get the BMC backup gateway ip address.
 
+=item B<build>
+
+Get the MPA firmware build ID.
+
 =item B<community>={B<public>|I<string>}
 
 Get or set the SNMP commmunity value. The default is I<public>.
 
 =item B<frequency>
 
-Sets the NTP update frequency (in minutes).
+The NTP update frequency (in minutes).
 
 =item B<garp>=I<time>
 
@@ -85,7 +89,7 @@ The subnet mask.
 
 =item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|xcat-table}
 
-Sets the MPA network parameters.
+Get or set the MPA network parameters.
 
 =item B<nonred>
 
@@ -93,7 +97,7 @@ Allows loss of redundancy.
 
 =item B<ntp>={[I<ntpenable>],[I<ntpserver>],[I<frequency>],[I<v3>]}
 
-Sets the MPA Network Time Protocol (NTP) parameters. 
+Get or set the MPA Network Time Protocol (NTP) parameters. 
 
 =item B<ntpenable>
 
@@ -101,7 +105,7 @@ Enable or disable NTP (enable|disable).
 
 =item B<ntpserver>
 
-Sets NTP server IP address or name.
+Get or set NTP server IP address or name.
 
 =item B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
 
@@ -133,7 +137,7 @@ Enable or disable SSH on MPA.
 
 =item B<swnet>={[I<ip>],[I<gateway>],[I<netmask>]}
 
-Sets the Switch network parameters.
+Set the Switch network parameters.
 
 =item B<v3>
 
@@ -173,6 +177,60 @@ To display the destination setting for SNMP alerts for node4:
 B<rspconfig> I<node4 snmpdest>
 
  node4: BMC SNMP Destination 1: 9.114.47.227
+
+=item *
+
+To display the MPA network parameters for mm01:
+
+B<rspconfig> I<mm01 network>
+
+ mm01: MM IP: 192.168.1.47 
+ mm01: MM Hostname: MM001125C31F28 
+ mm01: Gateway: 192.168.1.254  
+ mm01: Subnet Mask: 255.255.255.224 
+
+=item *
+
+To change only the gateway parameter for the MPA network mm01:
+
+B<rspconfig> I<mm01 network=,,192.168.1.1,>
+
+ mm01: Gateway: 192.168.1.1  
+
+=item *
+
+To get the current power redundancy mode for power domain 1 on mm01:
+
+B<rspconfig> I<mm01 pd1>
+
+ mm01: Redundant without performance impact  
+
+=item *
+
+To change the current power redundancy mode for power domain 1 on mm01 to non-redundant:
+
+B<rspconfig> I<mm01 pd1=nonred>
+
+ mm01: nonred  
+
+=item *
+
+To enable NTP with an NTP server address of 192.168.1.1, an update frequency of 90 minutes, and with v3 authentication enabled on mm01:
+
+B<rspconfig> I<mm01 ntp=enable,192.168.1.1,90,enable>
+
+ mm01: NTP: disabled  
+ mm01: NTP Server: 192.168.1.1  
+ mm01: NTP: 90 (minutes)  
+ mm01: NTP: enabled  
+
+=item *
+
+To disable NTP v3 authentication only on mm01:
+
+B<rspconfig> I<mm01 ntp=,,,disable>
+
+ mm01: NTP v3: disabled  
 
 =back
 
