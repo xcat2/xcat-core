@@ -108,7 +108,7 @@ sub process_request
           open($tmpfile,"/root/.ssh/id_rsa");
           @filecontent=<$tmpfile>;
           close($tmpfile);
-          $retdata = join('',@filecontent);
+          $retdata = "\n".join('',@filecontent);
           push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$_]};
           $retdata="";
           @filecontent=();
