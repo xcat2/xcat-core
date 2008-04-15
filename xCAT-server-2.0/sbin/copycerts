@@ -133,7 +133,6 @@ sub copyCertstoSN
     }
     #   TODO fix for SuSE  and AIX
     `service xcatd restart`;
-    `service postgresql restart`;
     return $rc;
 }
 
