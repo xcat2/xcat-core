@@ -39,7 +39,7 @@ sub writescript {
   if (scalar(@_) eq 4) { shift; } #Discard self 
   my $node = shift;
   my $scriptfile = shift;
-  my $nodesetstate = shift;  # install or netboot
+  $::nodesetstate = shift;  # install or netboot
 
   my $script;
   open($script,">",$scriptfile);
@@ -119,8 +119,8 @@ sub makescript {
   push @scriptd, "export OSVER ARCH PROFILE\n";
   push @scriptd, 'PATH=`dirname $0`:$PATH'."\n";
   push @scriptd, "export PATH\n";
-  if ($nodesetstate) {
-	push @scriptd, "NODESETSTATE=".$nodesetstate."\n";
+  if ($::nodesetstate) {
+	push @scriptd, "NODESETSTATE=".$::nodesetstate."\n";
 	push @scriptd, "export NODESETSTATE\n";
   }
 
