@@ -127,7 +127,7 @@ sub copyCertstoSN
         {
             mkdir("/etc/sysconfig", 0755);
         }
-        `cp /xcatpost/etc/sysconfig/xcat /etc/sysconfig`;
+        `cp /xcatpost/etc/sysconfig/xcat /etc/sysconfig/xcat`;
         chmod 0700, "/etc/sysconfig/xcat";
     }
     else
