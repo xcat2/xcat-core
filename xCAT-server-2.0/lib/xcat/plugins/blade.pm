@@ -1225,21 +1225,19 @@ sub preprocess_request {
 
   #get the MMs for the nodes for the nodes in order to figure out which service nodes to send the requests to
   my $mptab = xCAT::Table->new("mp");
-  unless ($mptab) { return 2; }
-  my @all = $mptab->getAllNodeAttribs([qw(node, mpa)]);
+  unless ($mptab) { 
+    $callback->("Cannot open mp table");
+    $request = {};
+    return;
+  }
   my %mpa_hash=();
-  my %input_hash=();
-  foreach (@$noderange) { $input_hash{$_}=1;}
-  foreach (@all) {
-    if ($input_hash{$_->{node}}) {
-      push @{$mpa_hash{$_->{mpa}}}, $_->{node}; 
-      $input_hash{$_->{node}}=0;
-      next;
-    }
-    if ($input_hash{$_->{mpa}}) {
-      push @{$mpa_hash{$_->{mpa}}}, $_->{mpa}; 
-      $input_hash{$_->{mpa}}=0;
-      next;
+  foreach my $node (@$noderange) {
+    my $ent=$mptab->getNodeAttribs($node,['mpa']);
+    if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}}, $node;}
+    else { 
+      $callback->("no mpa defined for node $node");
+      $request = {};
+      return;
     }
   }
 
