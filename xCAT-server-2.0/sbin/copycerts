@@ -71,7 +71,6 @@ sub copyCertstoSN
     {
         xCAT::MsgUtils->message('S',
                                 "/xcatpost/.xcat directory does not exist\n");
-        return 1;
 
     }
     if (-d "/xcatpost/ca")
@@ -91,7 +90,6 @@ sub copyCertstoSN
     else
     {
         xCAT::MsgUtils->message('S', "/xcatpost/ca directory does not exist\n");
-        return 1;
 
     }
     if (-d "/xcatpost/cert")
@@ -111,21 +109,31 @@ sub copyCertstoSN
     {
         xCAT::MsgUtils->message('S',
                                 "/xcatpost/cert directory does not exit\n");
-        return 1;
 
     }
+    if (-d "/xcatpost/etc/xcat") {
     `cp /xcatpost/etc/xcat/cfgloc /etc/xcat/cfgloc`;
      chmod 0600, "/etc/xcat/cfgloc";
+    }
+    else
+    {
+        xCAT::MsgUtils->message('S',
+                                "/xcatpost/etc/xcat directory does not exit\n");
+
+    }
     if (-d "/xcatpost/etc/sysconfig")
     {
+        if (!(-d "/etc/sysconfig"))
+        {
+            mkdir("/etc/sysconfig", 0755);
+        }
         `cp /xcatpost/etc/sysconfig/xcat /etc/sysconfig`;
         chmod 0700, "/etc/sysconfig/xcat";
     }
     else
     {
         xCAT::MsgUtils->message('S',
-                               "/xcatpost/sysconfig directory does not exit\n");
-        return 1;
+                               "/xcatpost/etc/sysconfig directory does not exit\n");
 
     }
 
