@@ -154,6 +154,16 @@ sub getobjdefs
     %typehash = %$hash_ref;
 
 	@::foundTableList = ();
+	
+	if ($::ATTRLIST eq "none") {
+        # just return the list of obj names
+        foreach my $objname (sort (keys %typehash))
+        {
+            my $type = $typehash{$objname};
+            $objhash{$objname}{'objtype'} = $type;
+        }
+        return %objhash;
+    }
 
     foreach my $objname (sort (keys %typehash))
     {
