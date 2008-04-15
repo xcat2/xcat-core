@@ -263,13 +263,13 @@ if ($inet6support) {
                                      Domain => AF_INET);
 }
 
-  $select->add($socket);
   openlog("xCAT UDP",'','local4');
   unless ($socket) {
     syslog("err","xCAT UDP service unable to open port $port: $!");
     closelog();
     die "Unable to start UDP on $port";
   }
+  $select->add($socket);
   my $data;
   my $part;
   my $sport;
