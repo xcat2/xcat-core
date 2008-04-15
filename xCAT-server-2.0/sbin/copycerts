@@ -31,14 +31,7 @@ my $bname = basename($0);
 
 #-----------------------------------------------------------------------------
 
-# if this is a service node
-#
-#  Copy Certificates, and config file to appropriate directories from mounted
-#
-if (xCAT::Utils->isServiceNode())
-{
-    &copyCertstoSN;
-}
+&copyCertstoSN;
 
 exit 0;
 
@@ -58,6 +51,8 @@ exit 0;
 sub copyCertstoSN
 {
     my $rc = 0;
+    `touch /etc/xCATSN`;
+    `unalias cp`;
     if (-d "/xcatpost/.xcat")
     {
         if (!(-d "/root/.xcat"))
@@ -136,9 +131,9 @@ sub copyCertstoSN
                                "/xcatpost/etc/sysconfig directory does not exit\n");
 
     }
-
     #   TODO fix for SuSE  and AIX
     `service xcatd restart`;
+    `service postgresql restart`;
     return $rc;
 }
 
