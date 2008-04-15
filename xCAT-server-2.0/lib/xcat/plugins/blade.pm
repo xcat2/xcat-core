@@ -1232,13 +1232,15 @@ sub preprocess_request {
   }
   my %mpa_hash=();
   foreach my $node (@$noderange) {
-    my $ent=$mptab->getNodeAttribs($node,['mpa']);
-    if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}}, $node;}
+    my $ent=$mptab->getNodeAttribs($node,['mpa', 'id']);
+    if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
     else { 
       $callback->("no mpa defined for node $node");
       $request = {};
       return;
     }
+    if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
+    else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
   }
 
   # find service nodes for the MMs
@@ -1248,6 +1250,7 @@ sub preprocess_request {
   my $sn = xCAT::Utils->get_ServiceNode(\@mms, $service, "MN");
 
   # build each request for each service node
+  my @moreinfo=();
   foreach my $snkey (keys %$sn)
   {
     #print "snkey=$snkey\n";
@@ -1255,9 +1258,13 @@ sub preprocess_request {
     $reqcopy->{'_xcatdest'} = $snkey;
     my $mms1=$sn->{$snkey};
     my @nodes=();
-    foreach (@$mms1) { push @nodes, @{$mpa_hash{$_}};}
+    foreach (@$mms1) { 
+      push @nodes, @{$mpa_hash{$_}{nodes}};
+      push @moreinfo, "\[$_\]\[" . join(',',@{$mpa_hash{$_}{nodes}}) ."\]\[" . join(',',@{$mpa_hash{$_}{ids}}) . "\]";
+    }
     $reqcopy->{node} = \@nodes;
     #print "nodes=@nodes\n";
+    $reqcopy->{moreinfo}=\@moreinfo;
     push @requests, $reqcopy;
   }
   return \@requests;
@@ -1283,6 +1290,8 @@ sub process_request {
   } else {
     @exargs = ($request->{arg});
   }
+
+  my $moreinfo=$request->{moreinfo};
 
   if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
     if (!grep /^--nodeps$/, @exargs) {
@@ -1372,26 +1381,27 @@ sub process_request {
   my $children = 0;
   $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
   my $inputs = new IO::Select;;
-  foreach (@$noderange) {
-    my $node=$_;
+  foreach my $info (@$moreinfo) {
+    $info=~/^\[(.*)\]\[(.*)\]\[(.*)\]/;
+    my $mpa=$1;
+    my @nodes=split(',', $2);
+    my @ids=split(',', $3);
+    #print "mpa=$mpa, nodes=@nodes, ids=@ids\n";
     my $user=$bladeuser;
     my $pass=$bladepass;
-    my $nodeid;
-    my $mpa;
     my $ent;
-    if (defined($mptab)) {
-      $ent=$mptab->getNodeAttribs($node,['mpa','id']);
-      if (defined($ent->{mpa})) { $mpa=$ent->{mpa}; }
-      if (defined($ent->{id})) { $nodeid = $ent->{id}; }
-    }
     if (defined($mpatab)) {
       ($ent)=$mpatab->getAttribs({'mpa'=>$mpa},'username','password');
       if (defined($ent->{password})) { $pass = $ent->{password}; }
       if (defined($ent->{username})) { $user = $ent->{username}; }
     }
-    $mpahash{$mpa}->{nodes}->{$node}=$nodeid;
     $mpahash{$mpa}->{username} = $user;
     $mpahash{$mpa}->{password} = $pass;
+    for (my $i=0; $i<@nodes; $i++) {
+      my $node=$nodes[$i];;
+      my $nodeid=$ids[$i];
+      $mpahash{$mpa}->{nodes}->{$node}=$nodeid;
+    }
   }
   my $sub_fds = new IO::Select;
   foreach $mpa (sort (keys %mpahash)) {
