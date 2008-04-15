@@ -114,9 +114,11 @@ sub copyCertstoSN
         return 1;
 
     }
-    if (-d "/xcatpost/sysconfig")
+    `cp /xcatpost/etc/xcat/cfgloc /etc/xcat/cfgloc`;
+     chmod 0600, "/etc/xcat/cfgloc";
+    if (-d "/xcatpost/etc/sysconfig")
     {
-        `cp /xcatpost/sysconfig/xcat /etc/sysconfig`;
+        `cp /xcatpost/etc/sysconfig/xcat /etc/sysconfig`;
         chmod 0700, "/etc/sysconfig/xcat";
     }
     else
