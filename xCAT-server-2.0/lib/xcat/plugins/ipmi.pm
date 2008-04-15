@@ -4535,10 +4535,9 @@ sub loadsdrcache {
 
 sub preprocess_request { 
   my $request = shift;
+  if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
   my $callback=shift;
   my @requests;
-  my %servicenodehash;
-  my %noservicenodehash;
 
   my $noderange = $request->{node}; #Should be arrayref
   my $command = $request->{command}->[0];
@@ -4562,28 +4561,24 @@ sub preprocess_request {
     return;
   }   
   
+  #print "noderange=@$noderange\n";
 
-  my $nrtab = xCAT::Table->new('noderes');
-  foreach my $node (@{$request->{node}}) {
-     my $tent  = $nrtab->getNodeAttribs($node,['servicenode']);
-     if ($tent and $tent->{servicenode}) {
-       $servicenodehash{$tent->{servicenode}}->{$node} = 1;
-     } else {
-       $noservicenodehash{$node} = 1;
-      }
-   }
-   foreach my $smaster (keys %servicenodehash) {
-  	   my $reqcopy = {%$request};
-	   $reqcopy->{'_xcatdest'} = $smaster;
-	   $reqcopy->{node} = [ keys %{$servicenodehash{$smaster}} ];
-	   push @requests,$reqcopy;
-   }
-   my $reqcopy = {%$request};
-   $reqcopy->{node} = [ keys %noservicenodehash ];
-   if ($reqcopy->{node}) {
-      push @requests,$reqcopy;
-   }
-   return \@requests;
+  # find service nodes for requested nodes
+  # build an individual request for each service node
+  my $service  = "xcat";
+  my $sn = xCAT::Utils->get_ServiceNode($noderange, $service, "MN");
+
+  # build each request for each service node
+
+  foreach my $snkey (keys %$sn)
+  {
+    #print "snkey=$snkey\n";
+    my $reqcopy = {%$request};
+    $reqcopy->{node} = $sn->{$snkey};
+    $reqcopy->{'_xcatdest'} = $snkey;
+    push @requests, $reqcopy;
+  }
+  return \@requests;
 }
     
      
@@ -4599,7 +4594,6 @@ sub process_request {
   if (ref($extrargs)) {
     @exargs=@$extrargs;
   }
-
 	my $ipmiuser = 'USERID';
 	my $ipmipass = 'PASSW0RD';
 	my $ipmitrys = 3;

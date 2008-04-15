@@ -1836,7 +1836,7 @@ sub get_site_Master
      Will get the Service node ( name or ipaddress) as known by the Management
 	 Server or NOde for the input nodename or ipadress of the node
 
-     input: list of nodenames and/or node ipaddresses
+     input: list of nodenames and/or node ipaddresses (array ref)
 			service name
 			"MN" or "Node"  determines if you want the Service node as known
 			 by the Management Node  or by the node.
@@ -1850,7 +1850,7 @@ sub get_site_Master
 
 		Todo:  Handle  dhcpserver and nameserver from the networks table
 
-	 output: A hash of arrays, the key is the service node pointing to
+	 output: A hash ref of of arrays, the key is the service node pointing to
 			 an array of nodes that are serviced by that service node
 
      Globals:
@@ -1858,7 +1858,7 @@ sub get_site_Master
      Error:
          $::ERROR_RC=0 no error $::ERROR_RC=1 error
 
-	 example: $sn =xCAT::Utils->get_ServiceNode(@nodes,$service,"MN");
+	 example: $sn =xCAT::Utils->get_ServiceNode(\@nodes,$service,"MN");
 
 =cut
 

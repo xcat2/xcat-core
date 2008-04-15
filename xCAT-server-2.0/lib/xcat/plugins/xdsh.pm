@@ -54,18 +54,17 @@ sub preprocess_request
     my $cb  = shift;
     my %sn;
     if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
-    my @nodes    = $req->{node};
+    my $nodes    = $req->{node};
     my $service  = "xcat";
 
     # find service nodes for requested nodes
     # build an individual request for each service node
-    $sn = xCAT::Utils->get_ServiceNode(@nodes, $service, "MN");
+    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
 
     # build each request for each service node
 
     foreach my $snkey (keys %$sn)
     {
-
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;

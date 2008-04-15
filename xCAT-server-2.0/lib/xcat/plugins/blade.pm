@@ -1191,6 +1191,83 @@ sub build_depend {
 }
 
 
+
+sub preprocess_request { 
+  my $request = shift;
+  if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+  my $callback=shift;
+  my @requests;
+
+  #display usage statement if -h is present or no noderage is specified
+  my $noderange = $request->{node}; #Should be arrayref
+  my $command = $request->{command}->[0];
+  my $extrargs = $request->{arg};
+  my @exargs=($request->{arg});
+  if (ref($extrargs)) {
+    @exargs=@$extrargs;
+  }
+
+  my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+  if ($usage_string) {
+    $callback->({data=>$usage_string});
+    $request = {};
+    return;
+  }
+
+  if (!$noderange) {
+    $usage_string=xCAT::Usage->getUsage($command);
+    $callback->({data=>$usage_string});
+    $request = {};
+    return;
+  }   
+  
+  #print "noderange=@$noderange\n";
+
+  #get the MMs for the nodes for the nodes in order to figure out which service nodes to send the requests to
+  my $mptab = xCAT::Table->new("mp");
+  unless ($mptab) { return 2; }
+  my @all = $mptab->getAllNodeAttribs([qw(node, mpa)]);
+  my %mpa_hash=();
+  my %input_hash=();
+  foreach (@$noderange) { $input_hash{$_}=1;}
+  foreach (@all) {
+    if ($input_hash{$_->{node}}) {
+      push @{$mpa_hash{$_->{mpa}}}, $_->{node}; 
+      $input_hash{$_->{node}}=0;
+      next;
+    }
+    if ($input_hash{$_->{mpa}}) {
+      push @{$mpa_hash{$_->{mpa}}}, $_->{mpa}; 
+      $input_hash{$_->{mpa}}=0;
+      next;
+    }
+  }
+
+  # find service nodes for the MMs
+  # build an individual request for each service node
+  my $service  = "xcat";
+  my @mms=keys(%mpa_hash);
+  my $sn = xCAT::Utils->get_ServiceNode(\@mms, $service, "MN");
+
+  # build each request for each service node
+  foreach my $snkey (keys %$sn)
+  {
+    #print "snkey=$snkey\n";
+    my $reqcopy = {%$request};
+    $reqcopy->{'_xcatdest'} = $snkey;
+    my $mms1=$sn->{$snkey};
+    my @nodes=();
+    foreach (@$mms1) { push @nodes, @{$mpa_hash{$_}};}
+    $reqcopy->{node} = \@nodes;
+    #print "nodes=@nodes\n";
+    push @requests, $reqcopy;
+  }
+  return \@requests;
+}
+    
+     
+
+
 sub process_request { 
   my $request = shift;
   my $callback = shift;
@@ -1207,22 +1284,6 @@ sub process_request {
     @exargs = @{$request->{arg}};
   } else {
     @exargs = ($request->{arg});
-  }
-
-  if ($command ne "findme") {
-    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
-    if ($usage_string) {
-      $callback->({data=>$usage_string});
-      $request = {};
-      return;
-    }
-
-    if (!$noderange) {
-      $usage_string=xCAT::Usage->getUsage($command);
-      $callback->({data=>$usage_string});
-      $request = {};
-      return;
-    }   
   }
 
   if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {

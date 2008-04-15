@@ -58,6 +58,40 @@ sub getstat {
    $stat = $response->{node}->[0]->{data}->[0];
 }
 
+#-------------------------------------------------------
+
+=head3  preprocess_request
+
+  Check and setup for hierarchy 
+
+=cut
+
+#-------------------------------------------------------
+sub preprocess_request
+{
+    my $req = shift;
+    my $cb  = shift;
+    my %sn;
+    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    my $nodes    = $req->{node};
+    my $service  = "xcat";
+
+    # find service nodes for requested nodes
+    # build an individual request for each service node
+    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+
+    # build each request for each service node
+
+    foreach my $snkey (keys %$sn)
+    {
+            my $reqcopy = {%$req};
+            $reqcopy->{node} = $sn->{$snkey};
+            $reqcopy->{'_xcatdest'} = $snkey;
+            push @requests, $reqcopy;
+
+    }
+    return \@requests;
+}
 
 sub process_request {
    my $request = shift;
