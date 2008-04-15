@@ -52,6 +52,7 @@ sub copyCertstoSN
 {
     my $rc = 0;
     `touch /etc/xCATSN`;
+    `touch /tmp/lissatestxxx`;
     `unalias cp`;
     if (-d "/xcatpost/.xcat")
     {
