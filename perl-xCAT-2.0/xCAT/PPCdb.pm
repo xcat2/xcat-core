@@ -43,7 +43,7 @@ sub add_ppc {
         ###############################
         # Update nodetype table
         ###############################
-        if ( $type =~ /^fsp|bpa|lpar|hmc|ivm$/ ) {
+        if ( $type =~ /^(fsp|bpa|lpar|hmc|ivm)$/ ) {
             my ($k,$u);
             my %nodetype = (
                  fsp  => $::NODETYPE_FSP,
@@ -60,7 +60,7 @@ sub add_ppc {
         ###############################
         # Update ppc table
         ###############################
-        if ( $type =~ /^fsp|bpa|lpar$/ ) {
+        if ( $type =~ /^(fsp|bpa|lpar)$/ ) {
             my ($k,$u);
             $k->{node}     = $name;
             $u->{hcp}      = $server;
@@ -91,7 +91,7 @@ sub add_ppc {
         ###############################
         # Update vpd table
         ###############################
-        if ( $type =~ /^fsp|bpa$/ ) {
+        if ( $type =~ /^(fsp|bpa)$/ ) {
             my ($k,$u);
             $k->{node}   = $name;
             $u->{serial} = $serial;
