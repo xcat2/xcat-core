@@ -169,7 +169,7 @@ sub invoke_cmd {
     # Check for valid "type"
     #################################
     my @types = split /,/, $ent->{nodetype};
-    my ($type) = grep( /^lpar|osi$/, @types );
+    my ($type) = grep( /^(lpar|osi)$/, @types );
 
     if ( !defined( $type )) {
         return( "Invalid node type: $ent->{nodetype}" );
