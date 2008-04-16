@@ -954,7 +954,7 @@ sub xCATdB {
                lc($type),$name,$id,$model,$serial,$name,$prof,$frame,$ips );
             xCAT::PPCdb::add_ppc( $type, [$values] );
         }
-        elsif ( $type =~ /^HMC|IVM$/ ) {
+        elsif ( $type =~ /^(HMC|IVM)$/ ) {
             my $model  = @$data[1];
             my $serial = @$data[2];
             my $ips    = @$data[3];
@@ -1017,7 +1017,7 @@ sub xCATdB {
                $type,$name,$cageid,$model,$serial,$server,$prof,$frame,$ips );
             xCAT::PPCdb::add_ppc( "fsp", [$values] );
         }
-        elsif ( $type =~ /^RSA|MM$/ ) {
+        elsif ( $type =~ /^(RSA|MM)$/ ) {
             xCAT::PPCdb::add_systemX( $type, $data );
         }
     }
@@ -1060,8 +1060,8 @@ sub format_stanza {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $mgt{$type};
-            } elsif ( /^id|mpa$/ ) {
-                if ( $type =~ /^mm|rsa$/ ) {
+            } elsif ( /^(id|mpa)$/ ) {
+                if ( $type =~ /^(mm|rsa)$/ ) {
                     $d = (/^id$/) ? "0" : $name;
                 } else {
                     next;
@@ -1110,8 +1110,8 @@ sub format_xml {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $mgt{$type};
-            } elsif ( /^id|mpa$/ ) {
-                if ( $type =~ /^mm|rsa$/ ) {
+            } elsif ( /^(id|mpa)$/ ) {
+                if ( $type =~ /^(mm|rsa)$/ ) {
                     $d = (/^id$/) ? "0" : $name;
                 } else {
                     next;
