@@ -944,7 +944,7 @@ sub getNodeAttribs
             {
 
                 #my $next = $comps[0];
-                if ($curr =~ /^[\{\}()\-\+\/\%\*\$\d]+$/)
+                if ($curr =~ /^[\{\}()\-\+\/\%\*\$\d]+$/ or $curr =~ /^\(sprintf\(["%\dcsduoxefg]+,\s*[\{\}()\-\+\/\%\*\$\d]+\)\)$/ )
                 {
                     use integer
                       ; #We only allow integer operations, they are the ones that make sense for the application
