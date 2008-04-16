@@ -47,8 +47,8 @@ sub parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($cmd);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -404,7 +404,7 @@ sub format_output {
                 # hardware control address 
                 ###############################
                 if ( @$_[0] eq "address" ) {
-                    if ( $data[0] !~ /^hmc|ivm$/ ) {
+                    if ( $data[0] !~ /^(hmc|ivm)$/ ) {
                         $d = $data[8]; 
                     }
                 }
@@ -468,7 +468,7 @@ sub format_stanza {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
-            } elsif ( /^mtm|serial$/ ) {
+            } elsif ( /^(mtm|serial)$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;                    
                 }     
@@ -526,7 +526,7 @@ sub format_xml {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
-            } elsif ( /^mtm|serial$/ ) {
+            } elsif ( /^(mtm|serial)$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;
                 }
