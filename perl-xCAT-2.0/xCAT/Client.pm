@@ -28,7 +28,9 @@ unless ($inet6support) {
 }
 
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+if ($^O =~ /^linux/i) {
+	$XML::Simple::PREFERRED_PARSER='XML::Parser';
+}
 require Data::Dumper;
 use Storable qw(dclone);
 my $xcathost='localhost:3001';
