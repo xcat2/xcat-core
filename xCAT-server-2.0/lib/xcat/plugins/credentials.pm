@@ -113,6 +113,14 @@ sub process_request
             next;
           }
           $tfilename = "/root/.xcat/client-cred.pem";
+       } elsif (/xcat_cfgloc/) {
+          unless (-r "/etc/xcat/cfgloc") {
+            push @{$rsp->{'error'}},"Unable to read xCAT database location";
+            next;
+          }
+          $tfilename = "/etc/xcat/cfglog";
+       } else {
+          next;
        }
        open($tmpfile,$tfilename);
        @filecontent=<$tmpfile>;
