@@ -22,8 +22,8 @@ sub parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($command);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($command);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -222,7 +222,7 @@ sub temp {
             ################################# 
             # Temperatures not available 
             ################################# 
-            if ( @$d[4] !~ /^fsp|lpar$/ ) {
+            if ( @$d[4] !~ /^(fsp|lpar)$/ ) {
                 my $text = "$prefix Only available for CEC/LPAR";
                 push @result, [$name,$text,1];
                 next;
