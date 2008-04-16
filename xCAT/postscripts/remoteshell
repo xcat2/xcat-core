@@ -15,6 +15,11 @@ then
 	echo "PasswordAuthentication no" >>/etc/ssh/sshd_config
 fi
 
+if [ -r /etc/ssh/sshd_config ]
+then
+   echo "   StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+fi
+
 if [ -d /xcatpost/.ssh ]
 then
 	logger -t xcat "Install: setup root .ssh"
