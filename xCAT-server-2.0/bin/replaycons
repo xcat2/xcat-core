@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+use strict;
+
+my $file = shift;
+my $bps = shift;
+my $tail = shift || 0;
+
+if($bps eq "" || $file eq "") {
+	usage();
+	exit(1);
+}
+unless ($file =~ /\//) {
+   $file = "/var/log/consoles/$file";
+}
+
+my $cps = $bps / 8;
+my $ms = 1 / $cps;
+my $msc = 0;
+my $debug = 0;
+my @c;
+
+select(STDOUT);
+$| = 1;
+
+if($debug) {
+	print "BPS: $bps, CPS: $cps, MS: $ms\n";
+}
+
+if(!open(FILE,$file)) {
+	print "replaycon: cannot open $file\n";
+	exit(1);
+}
+
+if($tail > 0) {
+	seek(FILE,-$tail,2);
+}
+
+while(<FILE>) {
+	@c = split(//);
+	foreach(@c) {
+		print $_;
+		$msc += $ms;
+		if($msc > .1) {
+			select(undef, undef, undef, $msc);
+			$msc = 0;
+		}
+	}
+}
+
+close(FILE);
+
+exit(0);
+
+sub usage {
+	print "\nreplaycons: [node] [BPS] {tail}\n\n";
+	print "e.g.\n\n";
+	print "replaycons node5 19200\n";
+}
