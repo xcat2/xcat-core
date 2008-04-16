@@ -415,8 +415,8 @@ sub processArgs
         my $rsp;
 		if ( !$::opt_z && !$::opt_x) {
 			# don't want this msg in stanza or xml output
-        	$rsp->{data}->[0] = "Assuming an object type of \'node\'.\n";
-        	xCAT::MsgUtils->message("I", $rsp, $::callback);
+        	#$rsp->{data}->[0] = "Assuming an object type of \'node\'.\n";
+        	#xCAT::MsgUtils->message("I", $rsp, $::callback);
 		}
     }
 
