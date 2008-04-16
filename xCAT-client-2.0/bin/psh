@@ -8,7 +8,9 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use IO::Socket::SSL;
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+if ($^O =~ /^linux/i) {
+	$XML::Simple::PREFERRED_PARSER='XML::Parser';
+}
 use Data::Dumper;
 use IO::Handle;
 use IO::Select;
