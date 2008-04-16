@@ -22,8 +22,8 @@ sub parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($command);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($command);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -156,7 +156,7 @@ sub enumerate_cfg {
     ######################################
     # Invalid target hardware
     ######################################
-    if ( $type !~ /^fsp|lpar$/ ) {
+    if ( $type !~ /^(fsp|lpar)$/ ) {
         return( [RC_ERROR,"Information only available for CEC/LPAR"] );
     }
     ######################################
@@ -237,7 +237,7 @@ sub enumerate_bus {
     ##################################
     # Invalid target hardware 
     ##################################
-    if ( $type !~ /^fsp|lpar$/ ) {
+    if ( $type !~ /^(fsp|lpar)$/ ) {
         return( [RC_ERROR,"Bus information only available for CEC/LPAR"] );
     }
     ##################################
