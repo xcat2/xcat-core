@@ -23,6 +23,13 @@ sub handled_commands {
   } 
 }
 
+##########################################################################
+# Pre-process request from xCat daemon
+##########################################################################
+sub preprocess_request {
+    xCAT::PPC::preprocess_request(__PACKAGE__,@_);
+}
+
 
 ##########################################################################
 # Process request from xCat daemon

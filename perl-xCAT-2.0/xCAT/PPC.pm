@@ -802,6 +802,112 @@ sub runcmd {
 
 }
 
+##########################################################################
+# Pre-process request from xCat daemon. Send the request to the the service
+# nodes of the HCPs.
+##########################################################################
+sub preprocess_request {
+  my $package  = shift;
+  my $req      = shift;
+  if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+  my $callback = shift;
+  my @requests;
+
+  ####################################
+  # Get hwtype 
+  ####################################
+  $package =~ s/xCAT_plugin:://;
+
+  ####################################
+  # Prompt for usage if needed 
+  ####################################
+  my $noderange = $req->{node}; #Should be arrayref
+  my $command = $req->{command}->[0];
+  my $extrargs = $req->{arg};
+  my @exargs=($req->{arg});
+  if (ref($extrargs)) {
+    @exargs=@$extrargs;
+  }
+
+  my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+  if ($usage_string) {
+    $callback->({data=>$usage_string});
+    $req = {};
+    return;
+  }
+  if (!$noderange) {
+    $usage_string=xCAT::Usage->getUsage($command);
+    $callback->({data=>$usage_string});
+    $req = {};
+    return;
+  }   
+
+  ##################################################################
+  # get the HCPs for the LPARs in order to figure out which service 
+  # nodes to send the requests to
+  ###################################################################
+  my $hcptab_name = ($package eq "fsp") ? "ppcdirect" : "ppchcp";
+  my $hcptab  = xCAT::Table->new( $hcptab_name );
+  unless ($hcptab ) {
+    $callback->({data=>"Cannot open $hcptab_name table"});
+    $req = {};
+    return;
+  }
+  # Check if each node is hcp 
+  my %hcp_hash=();
+  my @missednodes=();
+  foreach ( @$noderange ) {
+    my ($ent) = $hcptab->getAttribs( {hcp=>$_},"hcp" );
+    if ( !defined( $ent )) {
+      push @missednodes, $_;
+      next;
+    }
+    push @{$hcp_hash{$_}{nodes}}, $_;
+  }
+  
+  #check if the left-over nodes are lpars
+  if (@missednodes > 0) {
+    my $ppctab = xCAT::Table->new("ppc");
+    unless ($ppctab) { 
+      $callback->({data=>"Cannot open ppc table"});
+      $req = {};
+      return;
+    }
+    foreach my $node (@missednodes) {
+      my $ent=$ppctab->getNodeAttribs($node,['hcp']);
+      if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
+      else { 
+        $callback->({data=>"The node $node is neither a hcp nor an lapr"});
+        $req = {};
+        return;
+      }
+    }
+  }
+
+  # find service nodes for the HCPs
+  # build an individual request for each service node
+  my $service  = "xcat";
+  my @hcps=keys(%hcp_hash);
+  my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
+
+  # build each request for each service node
+  foreach my $snkey (keys %$sn)
+  {
+    #print "snkey=$snkey\n";
+    my $reqcopy = {%$req};
+    $reqcopy->{'_xcatdest'} = $snkey;
+    my $hcps1=$sn->{$snkey};
+    my @nodes=();
+    foreach (@$hcps1) { 
+      push @nodes, @{$hcp_hash{$_}{nodes}};
+    }
+    $reqcopy->{node} = \@nodes;
+    #print "nodes=@nodes\n";
+    push @requests, $reqcopy;
+  }
+  return \@requests;
+}
+
 
 ##########################################################################
 # Process request from xCat daemon
@@ -817,29 +923,6 @@ sub process_request {
     ####################################
     $package =~ s/xCAT_plugin:://;
 
-    ####################################
-    # Prompt for usage if needed 
-    ####################################
-    my $noderange = $req->{node}; #Should be arrayref
-    my $command = $req->{command}->[0];
-    my $extrargs = $req->{arg};
-    my @exargs=($req->{arg});
-    if (ref($extrargs)) {
-      @exargs=@$extrargs;
-    }
-
-    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
-    if ($usage_string) {
-      $callback->({data=>$usage_string});
-      $req = {};
-      return;
-    }
-    if (!$noderange) {
-      $usage_string=xCAT::Usage->getUsage($command);
-      $callback->({data=>$usage_string});
-      $req = {};
-      return;
-    }   
     ####################################
     # Build hash to pass around 
     ####################################

@@ -16,11 +16,10 @@ sub handled_commands {
   };
 }
 
-
 ##########################################################################
-# Process request from xCat daemon
+# Pre-process request from xCat daemon
 ##########################################################################
-sub process_request {
+sub preprocess_request {
 
     #######################################################
     # IO::Socket::SSL apparently does not work with LWP.pm
@@ -45,6 +44,13 @@ sub process_request {
         $callback->( \%output );
         return(1);
     }
+    xCAT::PPC::preprocess_request(__PACKAGE__,@_);
+}
+
+##########################################################################
+# Process request from xCat daemon
+##########################################################################
+sub process_request {
     xCAT::PPC::process_request(__PACKAGE__,@_);
 }
 

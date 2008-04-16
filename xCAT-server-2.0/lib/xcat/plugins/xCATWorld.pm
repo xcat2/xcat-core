@@ -11,6 +11,7 @@
 
 #-------------------------------------------------------
 package xCAT_plugin::xCATWorld;
+use Sys::Hostname;
 use xCAT::Table;
 
 use xCAT::Utils;
@@ -36,6 +37,44 @@ sub handled_commands
 
 #-------------------------------------------------------
 
+=head3  preprocess_request
+
+  Check and setup for hierarchy 
+
+=cut
+
+#-------------------------------------------------------
+sub preprocess_request
+{
+    my $req = shift;
+    my $cb  = shift;
+    my %sn;
+    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    my $nodes    = $req->{node};
+    my $service  = "xcat";
+
+    # find service nodes for requested nodes
+    # build an individual request for each service node
+    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+
+    # build each request for each service node
+
+    foreach my $snkey (keys %$sn)
+    {
+	my $n=$sn->{$snkey};
+	print "snkey=$snkey, nodes=@$n\n";
+            my $reqcopy = {%$req};
+            $reqcopy->{node} = $sn->{$snkey};
+            $reqcopy->{'_xcatdest'} = $snkey;
+            push @requests, $reqcopy;
+
+    }
+    return \@requests;
+}
+
+
+#-------------------------------------------------------
+
 =head3  process_request
 
   Process the command
@@ -57,12 +96,13 @@ sub process_request
     my @nodes=@$nodes; 
     # do your processing here
     # return info
+    my $host=hostname();
 
-    $rsp->{data}->[0] = "Hello World! Your node list is:\n";
+    $rsp->{data}->[0] = "Hello World from $host! I can process the following nodes:";
     xCAT::MsgUtils->message("I", $rsp, $callback, 0);
     foreach $node (@nodes)
     {
-        $rsp->{data}->[$i] = "$node\n";
+        $rsp->{data}->[$i] = "$node";
         $i++;
     }
     xCAT::MsgUtils->message("I", $rsp, $callback, 0);
