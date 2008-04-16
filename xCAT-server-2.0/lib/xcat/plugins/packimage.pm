@@ -103,6 +103,11 @@ sub process_request {
        } elsif ($arch =~ /ppc/) {
           $flags="-be";
        }
+
+       if (! -x "/sbin/mksquashfs") {
+          $callback->({error=>["mksquashfs not found, squashfs-tools rpm should be installed on the management node"],errorcode=>[1]});
+          return;
+       }
        my $rc = system("mksquashfs $temppath ../rootimg.sfs $flags");
        if ($rc) {
           $callback->({error=>["mksquashfs could not be run successfully"],errorcode=>[1]});
