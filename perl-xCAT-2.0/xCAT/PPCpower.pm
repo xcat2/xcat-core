@@ -21,8 +21,8 @@ sub parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($command);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($command);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -117,7 +117,7 @@ sub enumerate {
             ##############################
             # No lparid for fsp/bpa     
             ##############################
-            if ( $type =~ /^fsp|bpa$/ ) {
+            if ( $type =~ /^(fsp|bpa)$/ ) {
                 $lparid = $type;
             }
             $outhash{ $lparid } = $state;
@@ -160,7 +160,7 @@ sub powercmd_boot {
         # Look up by lparid
         ##################################
         my $type = @$d[4];
-        my $id   = ($type=~/^fsp|bpa$/) ? $type : @$d[0];
+        my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
 
         ##################################
         # Output error
@@ -180,7 +180,7 @@ sub powercmd_boot {
         # Convert state to on/off
         ##################################
         my $state = power_status($data->{$id});
-        my $op    = ($state =~ /^Off|Not Activated$/) ? "on" : "reset";
+        my $op    = ($state =~ /^(Off|Not Activated)$/) ? "on" : "reset";
 
         ##############################
         # Send power command
@@ -276,7 +276,7 @@ sub state {
             # Look up by lparid 
             ##################################
             my $type = @$d[4];
-            my $id   = ($type=~/^fsp|bpa$/) ? $type : @$d[0];
+            my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
             
             ##################################
             # Output error
