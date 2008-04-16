@@ -374,7 +374,7 @@ sub chsysstate {
     #####################################
     # Special case - return immediately 
     #####################################
-    if ( $cmd =~ /^hmcshutdown|reboot/ ) {
+    if ( $cmd =~ /^reboot$/ ) {
         my $ssh = @$exp[0];
 
         $ssh->send( "$cmd\r" );
