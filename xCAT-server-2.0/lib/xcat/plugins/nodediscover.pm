@@ -8,7 +8,9 @@ use SNMP;
 use strict;
 
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+if ($^O =~ /^linux/i) {
+	$XML::Simple::PREFERRED_PARSER='XML::Parser';
+}
 use Data::Dumper;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
