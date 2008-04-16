@@ -22,8 +22,8 @@ sub parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($command);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($command);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -56,10 +56,10 @@ sub parse_args {
     if ( !defined( $cmd )) {
 
         ################################
-        # Check for non-zero integer 
+        # Check for non-zero integer
         ################################
-        if ( $ARGV[0] !~ /^[1-9]{1}$|^[1-9]{1}[0-9]+$/ ) {
-            return(usage( "Invalid command: $ARGV[0]" ));
+        if ( $ARGV[0] !~ /^([1-9]{1}|[1-9]{1}[0-9]+)$/ ) {
+            return(usage( "Invalid entry count: $ARGV[0]" ));
         }
         $cmd = "entries";
         $opt{e} = $ARGV[0];
