@@ -49,8 +49,8 @@ sub chvm_parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($cmd);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string] );
     };
     ####################################
     # Configuration file required 
@@ -111,8 +111,8 @@ sub mkvm_parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($cmd);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -148,7 +148,7 @@ sub mkvm_parse_args {
     # Check for non-zero integer 
     ####################################
     if ( exists( $opt{i} )) {
-        if ( $opt{i} !~ /^[1-9]{1}|[1-9]{1}[0-9]+$/ ) {
+        if ( $opt{i} !~ /^([1-9]{1}|[1-9]{1}[0-9]+)$/ ) {
             return(usage( "Invalid entry: $opt{i}" ));
 
         }
@@ -196,8 +196,8 @@ sub rmvm_parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub { 
-	my $usage_string=xCAT::Usage->getUsage($cmd);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -252,8 +252,8 @@ sub lsvm_parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($cmd);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -504,7 +504,7 @@ sub remove {
             ####################################
             # Must be CEC or LPAR
             ####################################
-            if ( $type !~ /^lpar|fsp$/ ) {
+            if ( $type !~ /^(lpar|fsp)$/ ) {
                 push @values, [$lpar, "Node must be LPAR or CEC", RC_ERROR];
                 next;
             } 
@@ -655,7 +655,7 @@ sub list {
             ####################################
             # Must be CEC or LPAR
             ####################################
-            if ( $type !~ /^lpar|fsp$/ ) {
+            if ( $type !~ /^(lpar|fsp)$/ ) {
                 push @values, [$lpar,"Node must be LPAR or CEC",RC_ERROR];
                 next;
             }
@@ -750,7 +750,7 @@ sub create {
             #####################################
             # Must be CEC or LPAR 
             #####################################
-            if ( $type !~ /^lpar|fsp$/ ) {
+            if ( $type !~ /^(lpar|fsp)$/ ) {
                 push @values, [$lpar,"Node must be LPAR or CEC",RC_ERROR];
                 next; 
             }
@@ -969,6 +969,7 @@ sub lsvm {
 
 
 1;
+
 
 
 
