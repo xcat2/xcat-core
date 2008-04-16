@@ -591,14 +591,14 @@ my @nodeattrs = (
 # TODO:  need to decide what to do with the os attr once the osimage stuff is
 #        implemented.  The nodetype.os attr may be moved to the osimage table.
         {attr_name => 'os',
-                 only_if => 'nodetype=osi',
+ #                only_if => 'nodetype=osi',
                  tabentry => 'nodetype.os',
                  access_tabentry => 'nodetype.node=attr:node',
   },
 # TODO:  need to decide what to do with the profile attr once the osimage
 #        stuff is implemented.  May want to move this to the osimage table.
         {attr_name => 'profile',
-                 only_if => 'nodetype=osi',
+  #               only_if => 'nodetype=osi',
                  tabentry => 'nodetype.profile',
                  access_tabentry => 'nodetype.node=attr:node',
   },
