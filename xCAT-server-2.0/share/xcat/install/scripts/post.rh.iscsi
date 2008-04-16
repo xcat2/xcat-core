@@ -35,7 +35,7 @@ do
 	GOTIT=0
 	for i in $MASTER_IPS
 	do
-		wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.bz2
+		wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.gz
 		if [ "$?" = "0" ]
 		then
 			GOTIT=1
@@ -49,7 +49,8 @@ do
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
 	sleep $RAND
 done
-tar -xvf xcatpost.tar.bz2
+gunzip xcatpost.tar.gz
+tar -xvf xcatpost.tar
 /xcatpost/#TABLE:nodelist:THISNODE:node#
 export NODE=#TABLE:nodelist:THISNODE:node#
 export PATH=/xcatpost:$PATH
