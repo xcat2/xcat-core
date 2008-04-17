@@ -1358,7 +1358,10 @@ sub process_request {
     unless ($request->{cacheonly}->[0] or $macmap{$mac} or $macmaptimestamp > (time() - 20)) { #do not refresh cache if requested not to, if it has an entry, or is recent
       %macmap = ();
       $macmaptimestamp=time();
-      process_request(\%invreq,\&fillresps);
+      foreach (@{preprocess_request(\%invreq,\&fillresps)}) {
+         %invreq = %$_;
+         process_request(\%invreq,\&fillresps);
+      }
     }
     unless ($macmap{$mac}) { 
       return 1; #failure
