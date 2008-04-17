@@ -4,13 +4,6 @@ package xCAT::Client;
 BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-   require lib;
-   lib->import("$::XCATROOT/lib/perl");
-   if ($ENV{XCATBYPASS}) {
-      require xCAT::NodeRange;
-      require xCAT::Utils;
-      require xCAT::Table;
-   }
 }
 
 my $inet6support;
@@ -89,6 +82,7 @@ sub submit_request {
 # without going through the socket connection to the xcatd daemon
   if ($ENV{XCATBYPASS}) {
    # Load plugins from either specified or default dir
+    require xCAT::Table;
     my %cmd_handlers;
     my @plugins_dirs = split('\:',$ENV{XCATBYPASS});
     if (-d $plugins_dirs[0]) {
@@ -212,7 +206,15 @@ sub plugin_command {
   my $sock = shift;
   my $callback = shift;
   my %handler_hash;
+
+  # We require these only in bypass mode to reduce start up time for the normal case
+  #use lib "$::XCATROOT/lib/perl";
   #use xCAT::NodeRange;
+  require lib;
+  lib->import("$::XCATROOT/lib/perl");
+  require xCAT::NodeRange;
+  require xCAT::Table;
+
   $Main::resps={};
   my @nodes;
   if ($req->{node}) {

@@ -1,4 +1,5 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
+# !/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
@@ -10,7 +11,7 @@ use File::Basename;
 use Getopt::Long;
 require xCAT::MsgUtils;
 require xCAT::DSHCLI;
-#require xCAT::Client;     # delay the require of this until we know if -K was specified, because of XCATBYPASS mode
+require xCAT::Client;
 my $bname = basename($0);
 
 #-----------------------------------------------------------------------------
@@ -119,7 +120,6 @@ if (!($::CONTEXT_SET))
     }
 }
 
-require xCAT::Client;
 xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
 
