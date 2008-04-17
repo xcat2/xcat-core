@@ -101,7 +101,7 @@ while :; do
          MYB=`ifconfig $nic|grep "Bcast"|awk '{print $3}'|awk -F: '{print $2}'`
          for dnic in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1}'|grep -v $nic`; do
             OTB=`ifconfig $dnic|grep "Bcast"|awk '{print $3}'|awk -F: '{print $2}'`
-            if [ "$OTB" == "$MYB" ]; then # if broadcasts match, down the other nic
+            if [ ! -z "$MYB" -a "$OTB" == "$MYB" ]; then # if broadcasts match, down the other nic
                ifconfig $dnic down
             fi
          done
