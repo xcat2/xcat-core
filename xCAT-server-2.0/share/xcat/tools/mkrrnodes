@@ -14,8 +14,8 @@ use Getopt::Long;
 
  mkrrnodes -C <cu letter> -R <startrange,endrange>     (add) 
  mkrrnodes -d -C <cu letter> -R <startrange,endrange> (delete)
- Build an nodelist entry that looks like this
 
+ Build an nodelist entry that looks like this
  "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,all,rack06",,,,
 
 
