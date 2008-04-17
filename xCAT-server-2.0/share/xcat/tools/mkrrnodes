@@ -30,12 +30,15 @@ my $rc = 0;
 my $cmd       = "";
 my @bladename;
 @bladename=("a","b","c");
+my $count=0;
+my $rackno="01";
 foreach my $CU (@::CU)
 {
     foreach my $range (@::RANGE)
     {
         foreach my $blade (@bladename)
         {
+            $rack="rack";
             $cmd = "rr";
             $cmd .= $CU;
             $cmd .= $range;
@@ -52,12 +55,19 @@ foreach my $CU (@::CU)
                
               }
             }
-            if ($CU eq "a" ) {
+            # calculate the rack number ( 12 triblades/rack)
+            if ($count < 36) {  # each 36 blades
+               $rack .= $rackno;
+               $count++;
+            } else { # increment to next rack
+               $rack="rack";
+               $rackno++;
+               $rack .= $rackno;
+               $count =0;
+            }     
               
-              $cmd .= ",rack05";
-            } else {
-               $cmd .= ",rack06";
-            }
+              $cmd .= ",";
+              $cmd .= $rack;
             if ($::DELETE) {
               system("noderm $cmd");
             } else {
