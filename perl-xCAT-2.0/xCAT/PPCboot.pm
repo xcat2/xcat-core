@@ -6,6 +6,7 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 
+
 ##########################################################################
 # Parse the command line for options and operands 
 ##########################################################################
@@ -19,8 +20,8 @@ sub parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($cmd);
-        return( [ $_[0], $usage_string]);
+        my $usage_string = xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -37,10 +38,10 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) { 
+    if ( !GetOptions( \%opt, qw(V|Verbose f) )) { 
         return( usage() );
     }
-   ####################################
+    ####################################
     # Check for "-" with no option
     ####################################
     if ( grep(/^-$/, @ARGV )) {
@@ -118,6 +119,12 @@ sub ivm_rnetboot {
         $cmd.= " -v -x";
     }
     #######################################
+    # Force LPAR shutdown
+    #######################################
+    if ( exists( $opt->{f} )) {
+        $cmd.= " -i";
+    }
+    #######################################
     # Network specified
     #######################################
     $cmd.= " -s auto -d auto -m $opt->{m} -S $opt->{S} -G $opt->{G} -C $opt->{C}";
@@ -169,7 +176,8 @@ sub rnetboot {
 
     my $request = shift;
     my $d       = shift;
-    my $exp     = shift; 
+    my $exp     = shift;
+    my $options = $request->{opt};
     my $hwtype  = @$exp[2];
     my $result;
     my $node;
@@ -195,6 +203,12 @@ sub rnetboot {
         C => $o->{client},
         m => $o->{mac}
     );
+    #####################################
+    # Force LPAR shutdown 
+    #####################################
+    if ( exists( $options->{f} )) { 
+        $opt{f} = 1;
+    }
     #####################################
     # Invalid target hardware 
     #####################################
@@ -315,6 +329,7 @@ sub rnetboot {
  
 
 1;
+
 
 
 
