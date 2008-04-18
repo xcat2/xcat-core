@@ -693,7 +693,10 @@ sub dispatch_callback {
       print $dispatch_parentfd freeze($rsp);
       print $dispatch_parentfd "\nENDOFFREEZE6sK6xa\n";
       yield; #This has to happen before next line could possibly work anyway
-      <$dispatch_parentfd>; #Block until parent acks data
+      my $parselect = new IO::Select;
+      $parselect->add($dispatch_parentfd);
+      $parselect->can_read(10); #block for up to 10 seconds before continuing
+      #<$dispatch_parentfd>; #Block until parent acks data
    }
 }
 
