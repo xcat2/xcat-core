@@ -16,7 +16,7 @@ use Getopt::Long;
 
 my %usage = (
     "rnetboot" => 
-"Usage: rnetboot <noderange> [-V|--verbose]
+"Usage: rnetboot <noderange> [-f][-V|--verbose]
        rnetboot [-h|--help|-v|--version]",
     "rpower" => 
 "Usage: rpower <noderange> [--nodeps][on|off|reset|stat|state|boot|of|cycle] [-V|--verbose]
