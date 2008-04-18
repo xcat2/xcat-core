@@ -13,7 +13,10 @@ use xCAT::MsgUtils;
 use xCAT_monitoring::monitorctrl;
 use xCAT::Utils;
 
+my $callback;
 1;
+
+
 
 #-------------------------------------------------------------------------------
 =head1  xCAT_plugin:monctrlcmds
@@ -64,12 +67,13 @@ sub process_request {
   $Getopt::Long::ignorecase=0;
   
   my $request = shift;
-  my $callback = shift;
+  $callback = shift;
   my $command = $request->{command}->[0];
   my $args=$request->{arg};
+  my $doreq = shift;
 
   if ($command eq "monstart") {
-    my ($ret, $msg) = monstart($args, $callback);
+    my ($ret, $msg) = monstart($args, $callback, $doreq);
     if ($msg) {
       my %rsp=();
       $rsp->{dara}->[0]= $msg;
@@ -78,7 +82,7 @@ sub process_request {
     return $ret;
   } 
   elsif ($command eq "monstop") {
-    my ($ret, $msg) = monstop($args, $callback);
+    my ($ret, $msg) = monstop($args, $callback, $doreq);
     if ($msg) {
       my %rsp=();
       $rsp->{data}->[0]= $msg;
@@ -124,6 +128,11 @@ sub process_request {
   }
 }
 
+sub take_answer {
+  my $resp = shift;
+  $callback->($resp);
+}
+
 
 #--------------------------------------------------------------------------------
 =head3   monstart
@@ -151,6 +160,7 @@ sub process_request {
 sub monstart {
   my $args=shift;
   my $callback=shift;
+  my $doreq = shift;
   my $VERSION;
   my $HELP;
 
@@ -302,11 +312,15 @@ sub monstart {
       my %rsp2;
       $rsp2->{data}->[0]="sending request to $_...";
       $callback->($rsp2);
-      my $result=`psh --nonodecheck $_ monupdate 2>1&`;     
-      if ($result) {
-        $rsp2->{data}->[0]="$result";
-        $callback->($rsp2);
-      }
+#      my $result=`psh --nonodecheck $_ monupdate 2>1&`;     
+#      if ($result) {
+#        $rsp2->{data}->[0]="$result";
+#        $callback->($rsp2);
+#      }
+      my %req=();
+      push @{$req{command}}, "monupdate";
+      $req{'_xcatdest'}=$_;
+      $doreq->(\%req,\&take_answer);
     } 
   } 
 
@@ -339,6 +353,7 @@ sub monstart {
 sub monstop {
   my $args=shift;
   my $callback=shift;
+  my $doreq = shift;
   my $VERSION;
   my $HELP;
 
@@ -443,11 +458,15 @@ sub monstop {
       my %rsp2;
       $rsp2->{data}->[0]="sending request to $_...";
       $callback->($rsp2);
-      my $result=`psh --nonodecheck $_ monupdate 2>1&`;     
-      if ($result) {
-        $rsp2->{data}->[0]="$result";
-        $callback->($rsp2);
-      }  
+      # my $result=`psh --nonodecheck $_ monupdate 2>1&`;     
+      # if ($result) {
+      #  $rsp2->{data}->[0]="$result";
+      #  $callback->($rsp2);
+      #}  
+      my %req=();
+      push @{$req{command}}, "monupdate";
+      $req{'_xcatdest'}=$_;
+      $doreq->(\%req,\&take_answer);
     } 
   } 
 
