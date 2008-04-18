@@ -375,7 +375,12 @@ unless ($foreground) {
    daemonize;
 }
 $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {} };
-$SIG{TERM} = $SIG{INT} = sub { printf("Asked to quit...\n"); $quit++ };
+$SIG{TERM} = $SIG{INT} = sub { 
+   printf("Asked to quit...\n"); 
+   $quit++;
+   $SIG{ALRM} = sub { die "Did not close out in time for 5 second grace period"; };
+   alarm(5);
+   };
   
 my $pid = xCAT::Utils->xfork;
 defined $pid or die "Unable to fork for UDP/TCP";
