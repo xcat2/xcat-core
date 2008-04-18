@@ -12,10 +12,17 @@ use xCAT::GlobalDef;
 ##########################################################################
 sub add_ppc {
 
-    my $hwtype = shift;
-    my $values = shift;
-    my @tabs   = qw(ppc vpd nodehm nodelist nodetype); 
-    my %db     = ();
+    my $hwtype   = shift;
+    my $values   = shift;
+    my @tabs     = qw(ppc vpd nodehm nodelist nodetype); 
+    my %db       = ();
+    my %nodetype = (
+        fsp  => $::NODETYPE_FSP,
+        bpa  => $::NODETYPE_BPA,
+        lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
+        hmc  => $::NODETYPE_HMC,
+        ivm  => $::NODETYPE_IVM,
+    );
 
     ###################################
     # Open database needed
@@ -45,13 +52,6 @@ sub add_ppc {
         ###############################
         if ( $type =~ /^(fsp|bpa|lpar|hmc|ivm)$/ ) {
             my ($k,$u);
-            my %nodetype = (
-                 fsp  => $::NODETYPE_FSP,
-                 bpa  => $::NODETYPE_BPA,
-                 lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
-                 hmc  => $::NODETYPE_HMC,
-                 ivm  => $::NODETYPE_IVM,
-            );
             $k->{node}     = $name;
             $u->{nodetype} = $nodetype{$type};
             $db{nodetype}->setAttribs( $k,$u );
@@ -75,7 +75,7 @@ sub add_ppc {
             ###########################
             my ($k1,$u1);
             $k1->{node}     = $name;
-            $u1->{groups}   = lc($hwtype).",all";
+            $u1->{groups}   = $nodetype{$type}.",all";
             $db{nodelist}->setAttribs( $k1,$u1 );
             $db{nodelist}{commit} = 1;
 
@@ -284,6 +284,7 @@ sub credentials {
 
 
 1;
+
 
 
 
