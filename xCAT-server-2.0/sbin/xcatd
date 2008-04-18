@@ -419,6 +419,7 @@ xCAT::NotifHandler::setup($$);
 xCAT_monitoring::monitorctrl::start($$);
 
 my $peername;
+my $ssltimeout;
 until ($quit) {
   next unless my $cnnection=$listener->accept;
   my $connection;
@@ -430,13 +431,27 @@ until ($quit) {
 
   if ($child == 0) {
     $listener->close;
-    $connection = IO::Socket::SSL->start_SSL($cnnection,
-    SSL_key_file=>$xcatdir."/cert/server-key.pem",
-    SSL_cert_file=>$xcatdir."/cert/server-cert.pem",
-    SSL_ca_file=>$xcatdir."/cert/ca.pem",
-    SSL_server=>1,
-    SSL_verify_mode=> 1
-    );
+
+    $SIG{ALRM} = sub { $ssltimeout = 1; die; }; 
+    eval {
+      alarm(10);
+      $connection = IO::Socket::SSL->start_SSL($cnnection,
+      SSL_key_file=>$xcatdir."/cert/server-key.pem",
+      SSL_cert_file=>$xcatdir."/cert/server-cert.pem",
+      SSL_ca_file=>$xcatdir."/cert/ca.pem",
+      SSL_server=>1,
+      SSL_verify_mode=> 1
+      );
+      alarm(0);
+    };
+    undef $SIG{ALRM};
+    if ($@) { #SSL failure
+       close($cnnection);
+       exit 0;
+    }
+    unless ($connection) {
+       exit 0;
+    }
     my $peerhost=undef;
     my $peer=$connection->peer_certificate("owner");
     if ($peer) {
