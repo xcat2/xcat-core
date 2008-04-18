@@ -128,7 +128,6 @@ sub send_msg {
     #################################################
     elsif ( exists( $request->{callback} )) {
         my $callback = $request->{callback};
-
         $output{errorcode} = $ecode;
         $output{data} = \@_;
         $callback->( \%output );
@@ -159,7 +158,7 @@ sub parse_args {
     # Responds with usage statement                   
     #############################################
     local *usage = sub {
-        my @msg = ( $_[0], 
+        my @msg = ( $_[0],
           "lsslp  -h|--help",
           "lsslp  -v]--version",
           "lsslp [-V|--verbose][-b ip[,ip..]][-w][-r|-x|-z][-s $types]",
@@ -171,7 +170,7 @@ sub parse_args {
           "    -V   verbose output.",
           "    -w   writes output to xCat database.",
           "    -x   xml formatted output.",
-          "    -z   stanza formatted output." );
+	  "    -z   stanza formatted output.");
         send_msg( $request, 1, @msg );
     };
     #############################################
@@ -207,7 +206,7 @@ sub parse_args {
     # Option -v for version
     #############################################
     if ( exists( $opt{v} )) {
-        send_msg( $request, 0, \@VERSION );
+        send_msg( $request, 0, @VERSION );
         return(1);
     }
     #############################################
@@ -1289,6 +1288,45 @@ sub child_response {
 
 
 
+#############################################################################
+# pre-process request from xCat daemon, send the request to the service nodes
+# as well.
+#############################################################################
+sub preprocess_request
+{
+    my $req = shift;
+    my $cb  = shift;
+    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+
+    ###########################################
+    # Parse command-line options
+    ###########################################
+    my %request;
+    $request{arg} = $req->{arg};
+    $request{callback} = $cb;
+    if ( parse_args( \%request )) {
+        return(1);
+    }
+
+    # find all the service nodes for xCAT cluster
+    # build an individual request for each service node
+    my $nrtab=xCAT::Table->new("noderes", -create =>0);  
+    my @all=$nrtab->getAllNodeAttribs(['servicenode']);
+    my %sv_hash=();
+    foreach (@all) {
+      if ($_->{servicenode}) {$sv_hash{$_->{servicenode}}=1;}
+    }
+    # build each request for each service node
+    my @requests=();
+    foreach my $sn (keys (%sv_hash)) {
+      my $reqcopy = {%$req};
+      $reqcopy->{'_xcatdest'} = $sn;
+      push @requests, $reqcopy;
+    }
+    return \@requests;
+}
+
+
 ##########################################################################
 # Process request from xCat daemon
 ##########################################################################
@@ -1304,12 +1342,6 @@ sub process_request {
     $request{arg}      = $req->{arg};
     $request{callback} = $callback;
 
-    ###########################################
-    # Parse command-line options
-    ###########################################
-    if ( parse_args( \%request )) {
-        return(1);
-    }
     ###########################################
     # Send remote command
     ###########################################
