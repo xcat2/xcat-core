@@ -81,7 +81,7 @@ sub preprocess_request
     $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
 
     # build each request for each service node
-
+    my @requests;
     foreach my $snkey (keys %$sn)
     {
             my $reqcopy = {%$req};
