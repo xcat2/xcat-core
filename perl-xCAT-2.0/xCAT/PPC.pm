@@ -408,7 +408,7 @@ sub resolve_netwk {
             send_msg( $request, 1, "$_: Unable to identify master" );
             next;
         }
-        $ip = toIP( $server );
+        $ip = xCAT::Utils::toIP( $server );
         if ( @$ip[0] != 0 ) {
             send_msg( $request, 1, "$_: Cannot resolve '$server'" );
             next;  
@@ -418,7 +418,7 @@ sub resolve_netwk {
         #################################
         # Get client (-C)
         #################################
-        $ip = toIP( $_ ); 
+        $ip = xCAT::Utils::toIP( $_ ); 
         if ( @$ip[0] != 0 ) {
             send_msg( $request, 1, "$_: Cannot resolve '$_'" );
             next;  
