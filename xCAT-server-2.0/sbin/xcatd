@@ -744,6 +744,9 @@ sub relay_dispatch {
             close($rin);
          }
       }
+      unless ($clientintr) {
+         next;
+      }
       $clientintr=XMLin($clientintr, SuppressEmpty=>undef,ForceArray=>1 );
       if ($clientintr->{abortcommand}->[0]) {
          foreach (keys %dispatched_children) {
@@ -996,10 +999,11 @@ sub service_connection {
     } 
   };
   if ($@) { # The eval statement caught a program bug..
-    unless ($@ =~ /^SIGPIPE/) {
-        syslog("local4|err","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
-    } else {
+    if ($@ =~ /^SIGPIPE/) {
         syslog("local4|info","xcatd: Unexpected client disconnect");
+    } elsif ($@ =~ /abort/) {
+    } else {
+        syslog("local4|err","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
     }
   }
   $SIG{ALRM}= sub { die "Failure shutting down" };
