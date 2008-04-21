@@ -11,6 +11,7 @@ use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
 use xCAT::Client submit_request;
+my $clientselect = new IO::Select;
 
 use IO::Socket::SSL;
 my $inet6support;
@@ -378,8 +379,8 @@ $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {} };
 $SIG{TERM} = $SIG{INT} = sub { 
    printf("Asked to quit...\n"); 
    $quit++;
-   $SIG{ALRM} = sub { die "Did not close out in time for 5 second grace period"; };
-   alarm(5);
+   $SIG{ALRM} = sub { exit 0; }; #die "Did not close out in time for 5 second grace period"; };
+   alarm(2);
    };
   
 my $pid = xCAT::Utils->xfork;
@@ -405,7 +406,7 @@ my $listener = IO::Socket::INET->new(
     );
 
 unless ($listener) {
-  kill $pid;
+  kill 2, $pid;
   syslog("err","xCAT service unable to open SSL services on $port: $!");
   closelog();
   die "ERROR:Unable to start xCAT service on port $port.";
@@ -452,6 +453,7 @@ until ($quit) {
     unless ($connection) {
        exit 0;
     }
+    $clientselect->add($connection);
     my $peerhost=undef;
     my $peer=$connection->peer_certificate("owner");
     if ($peer) {
@@ -664,7 +666,7 @@ sub plugin_command {
   }
   unless ($sock) { return $Main::resps };
   #while ($children > 0) {
-  while ($check_fds->count > 0) { #this tracks end of useful data from children much more closely
+  while (($children > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
     relay_fds($check_fds,$sock);
   }
   #while (relay_fds($check_fds,$sock)) {}
@@ -677,6 +679,7 @@ sub plugin_command {
 }
 
 my $dispatch_dnf=0;
+my %dispatched_children;
 my $dispatch_cb;
 my $dispatch_parentfd;
 sub dispatch_callback {
@@ -695,8 +698,16 @@ sub dispatch_callback {
       yield; #This has to happen before next line could possibly work anyway
       my $parselect = new IO::Select;
       $parselect->add($dispatch_parentfd);
-      $parselect->can_read(10); #block for up to 10 seconds before continuing
-      #<$dispatch_parentfd>; #Block until parent acks data
+      my $rsp;
+      if ($parselect->can_read(5)) { #block for up to 5 seconds before continuing
+         if ($rsp = <$dispatch_parentfd>) {
+            if ($rsp =~ /die/) {
+               exit 0;
+            }
+         } else {
+            $parselect->remove($dispatch_parentfd); #Block until parent acks data
+         }
+      }
    }
 }
 
@@ -710,13 +721,40 @@ sub relay_dispatch {
             $data .= <$rin>;
          }
          my $response = thaw($data);
-         print $rin "fin\n";
+         print $rin "dfin\n";
          $dispatch_cb->($response);
       } else {
          $fds->remove($rin);
          close($rin);
       }
    }
+   foreach my $rin ($clientselect->can_read(0)) {
+      my $subselect = new IO::Select;
+      $subselect->add($rin);
+      my $clientintr="";
+      my $subdata;
+      while ($subselect->can_read(1)) {
+         if ($subdata=<$rin>) {
+            $clientintr.=$subdata;
+         } else {
+            $subselect->remove($rin);
+            close($rin);
+         }
+      }
+      $clientintr=XMLin($clientintr, SuppressEmpty=>undef,ForceArray=>1 );
+      if ($clientintr->{abortcommand}->[0]) {
+         foreach my $cin ($fds->handles) {
+            foreach (keys %dispatched_children) {
+               kill 2, $_;
+            }
+            print $cin "die\n";
+            $fds->remove($cin);
+            close($cin);
+         }
+         die "Client abort requested";
+      }
+   }
+
    yield; #At this point, explicitly yield to other processes.  If children will have more data, this process would otherwise uselessly loop on data that never will be.  If children are all done, still no harm in waiting a short bit for a timeslice to come back
    return scalar(@ready_ins);
 }
@@ -746,7 +784,7 @@ sub dispatch_request {
    }
 
   my $childrn=0;
-  $SIG{CHLD} = sub {while (waitpid(-1, WNOHANG) > 0) { $childrn--; } };
+  $SIG{CHLD} = sub {my $cpid; while ($cpid =waitpid(-1, WNOHANG) > 0) { undef $dispatched_children{$cpid}; $childrn--; } };
    foreach (@{$reqs}) {
     my $pfd;
     my $parfd; #use a private variable so it won't trounce itself recursively
@@ -757,6 +795,7 @@ sub dispatch_request {
     $pfd->autoflush(1);
     $child = xCAT::Utils->xfork;
     if ($child) {
+       $dispatched_children{$child}=1;
        $child_fdset->add($pfd);
        $childrn++;
        next;
@@ -764,9 +803,10 @@ sub dispatch_request {
     unless (defined $child) {
        $dispatch_cb->({error=>['Fork failure dispatching request'],errorcode=>[1]});
     }
-    $dispatch_parentfd = $parfd;
+      $dispatch_parentfd = $parfd;
      if ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'})) {
         $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );
+        $$progname.=": connection to ".$ENV{XCATHOST};
         eval {
         undef $_->{'_xcatdest'};
         xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-key.pem",$xcatdir."/cert/server-cert.pem",$xcatdir."/cert/ca.pem"); 
@@ -776,13 +816,14 @@ sub dispatch_request {
 	   syslog("local4|err","Error dispatching request: ".$@);
 	}
      } else {
+        $$progname.=": locally executing";
         undef $SIG{CHLD};
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
      }
      exit;
   }
  #while ($childrn > 0) { relay_dispatch($child_fdset) }
- while ($child_fdset->count > 0) { relay_dispatch($child_fdset) }
+ while (($childrn > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset) }
  while (relay_dispatch($child_fdset)) { } #Potentially useless drain.
 }
 
@@ -859,7 +900,12 @@ sub convey_response {
     return;
   }
   print $parent_fd XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
-  <$parent_fd>; #Block until parent acks data
+  my $parsel = new IO::Select;
+  $parsel->add($parent_fd);
+  if ($parsel->can_read(5)) { #block up to five seconds for parent to ack
+     <parent_fd>;
+  }
+  #<$parent_fd>; #Block until parent acks data
 #  KeyAttr => [], NoAttr => 1)
 }
 
@@ -953,11 +999,12 @@ sub service_connection {
         syslog("local4|info","xcatd: Unexpected client disconnect");
     }
   }
-  alarm(0);
+  $SIG{ALRM}= sub { die "Failure shutting down" };
+  alarm(5);
   foreach (keys %tables) {
     $tables{$_}->commit;
   }
-  $sock->close;
+  $sock->close(SSL_fast_shutdown=>1);
   if ($timedout == 1) {
     printf ("Client timeout");
   }
@@ -981,7 +1028,7 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
       }
     }                       
     if ($line) { 
-      print $rfh "fin\n"; #Notify convey_response message done
+      print $rfh "nfin\n"; #Notify convey_response message done
     } else {
       $fds->remove($rfh);      
       close($rfh);             
