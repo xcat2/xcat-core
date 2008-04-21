@@ -46,12 +46,13 @@ sub parse_args {
     my @rsp     = keys %{$cmds{$command}};
     my $args    = $request->{arg};
     my %opt     = ();
+    my %cmds    = ();
  
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	    my $usage_string = xCAT::Usage->getUsage($command);
+        my $usage_string = xCAT::Usage->getUsage($command);
         return( [$_[0], $usage_string] );
     };
     #############################################
@@ -80,35 +81,36 @@ sub parse_args {
         return(usage( "Missing option: -" ));
     }
     ####################################
+    # Check for "=" with no argument 
+    ####################################
+    if (my ($c) = grep(/=$/, @ARGV )) {
+        return(usage( "Missing argument: $c" ));
+    }
+    ####################################
     # Check for unsupported commands
     ####################################
-    if ( !defined( $request->{method} )) { 
-        my ($cmd) = grep(/^$ARGV[0]$/, @rsp );
-        if ( !defined( $cmd )) {
-            return(usage( "Invalid command: $ARGV[0]" ));
+    foreach my $arg ( @ARGV ) {
+        my ($command,$value) = split( /=/, $arg );
+        if ( !grep( /^$command$/, @rsp )) {
+            return(usage( "Invalid command: $arg" ));
+        } 
+        if ( exists( $cmds{$command} )) {
+            return(usage( "Command multiple times: $command" ));
         }
-        $request->{method} = $cmd;
-    }
+        $cmds{$command} = $value;
+    } 
     ####################################
     # Check command arguments 
     ####################################
-    if ( $request->{method} !~ /^sysdump|spdump$/ ) {
-        shift @ARGV;
-
-        if ( defined( $ARGV[0] )) {
-            my $result = parse_option( $request );
+    foreach ( keys %cmds ) {
+        if ( $cmds{$_} ) {
+            my $result = parse_option( $request, $_, $cmds{$_} );
             if ( $result ) {
                 return( usage($result) );
             }
-        }
-    } 
-    ####################################
-    # Check for an extra argument
-    ####################################
-    shift @ARGV;
-    if ( defined( $ARGV[0] )) {
-        return(usage( "Invalid Argument: $ARGV[0]" ));
+        } 
     }
+    $request->{method} = \%cmds;
     return( \%opt );
 }
 
@@ -119,103 +121,58 @@ sub parse_args {
 sub parse_option {
 
     my $request = shift;
+    my $command = shift;
+    my $value   = shift;
 
     ####################################
     # Set/get time
     ####################################
-    if ( $request->{method} =~ /^time$/ ) {
-        if ( $ARGV[0] !~
+    if ( $command =~ /^time$/ ) {
+        if ( $value !~
           /^([0-1]?[0-9]|2[0-3]):(0?[0-9]|[1-5][0-9]):(0?[0-9]|[1-5][0-9])$/){
-            return( "Invalid time format '$ARGV[0]'" );
+            return( "Invalid time format '$value'" );
         }
-        $request->{op} = "$1-$2-$3";
     }
     ####################################
     # Set/get date 
     ####################################
-    if ( $request->{method} =~ /^date$/ ) {
-        if ( $ARGV[0] !~
+    if ( $command =~ /^date$/ ) {
+        if ( $value !~
           /^(0?[1-9]|1[012])-(0?[1-9]|[12][0-9]|3[01])-(20[0-9]{2})$/){
-            return( "Invalid date format '$ARGV[0]'" );
+            return( "Invalid date format '$value'" );
         }
-        $request->{op} = "$1-$2-$3";
     }
     ####################################
     # Set/get options
     ####################################
-    if ( $request->{method} =~ /^autopower|iocap$/ ) {
-        if ( $ARGV[0] !~ /^enable|disable$/i ) {
-            return( "Invalid argument '$ARGV[0]'" );
+    if ( $command =~ /^(autopower|iocap)$/ ) {
+        if ( $value !~ /^(enable|disable)$/i ) {
+            return( "Invalid argument '$value'" );
         }
-        $request->{op} = $ARGV[0];
     }
     ####################################
     # Deconfiguration policy 
     ####################################
-    if ( $request->{method} =~ /^decfg$/ ) {
-        if ( $ARGV[0] !~ /^enable|disable$/i ) {
-            return( "Invalid argument '$ARGV[0]'" );
+    if ( $command =~ /^decfg$/ ) {
+        if ( $value !~ /^(enable|disable):.*$/i ) {
+            return( "Invalid argument '$value'" );
         }
-        my $op = $ARGV[0];
-        shift @ARGV;
-
-        if ( !defined( $ARGV[0] )) {
-            return( "Missing argument to '$op'" );
-        }
-        if ( $ARGV[0] !~ /^([\w\/,]+)$/ ) {
-            return( "Invalid argument '$ARGV[0]'" );
-        }
-        $request->{op} = "$op $1";
     }
     ####################################
-    # Deconfiguration 
+    # Processor deconfiguration 
     ####################################
-    if ( $request->{method} =~ /^procdecfg|memdecfg$/ ) {
-        if ( $ARGV[0] !~ /^configure|deconfigure$/i ) {
-            return( "Invalid argument '$ARGV[0]'" );
+    if ( $command =~ /^procdecfg$/ ) {
+        if ( $value !~ /^(configure|deconfigure):\d+:(all|[\d,]+)$/i ) {
+            return( "Invalid argument '$value'" );
         }
-        my $op = $ARGV[0];
-        shift @ARGV;
-
-        if ( !defined( $ARGV[0] )) {
-            return( "Missing argument to '$op'" );
-        }
-        ################################
-        # Processor deconfiguration 
-        ################################
-        if ( $request->{method} =~ /^procdecfg$/ ) {
-            if ( $ARGV[0] !~ /^(unit=\d+)$/ ) {
-                return( "Invalid argument '$ARGV[0]'" );
-            }
-            my $unit = $1;
-            shift @ARGV;
-
-            if ( !defined( $ARGV[0] )) {
-                return( "Missing argument 'id,...'" );
-            }
-            if ( $ARGV[0] !~ /^(all|[\d,]+)$/ ) {
-                return( "Invalid argument '$ARGV[0]'" );
-            }
-            $request->{op} = "$op $unit:ID=$1";
-        }
-        ################################
-        # Memory deconfiguration 
-        ################################
-        elsif ( $request->{method} =~ /^memdecfg$/ ) {
-            if ( $ARGV[0] !~ /^(unit=\d+)$/ ) {
-                return( "Invalid argument '$ARGV[0]'" );
-            }
-            my $unit = $1;
-            shift @ARGV;
-
-            if ( !defined( $ARGV[0] )) {
-                return( "Missing argument '(unit|bank)=id,...'" );
-            }
-            if ( $ARGV[0] !~ /^(unit=all|unit=[\d,]+|bank=all|bank=[\d,]+)$/ ){
-                return( "Invalid argument '$ARGV[0]'" );
-            }
-            $request->{op} = "$op $unit:$1";
-        }
+    }
+    ################################
+    # Memory deconfiguration 
+    ################################
+    elsif ( $command =~ /^memdecfg$/ ) {
+       if ($value !~/^(configure|deconfigure):\d+:(unit|bank):(all|[\d,]+)$/i){
+           return( "Invalid argument '$value'" );
+       }
     }
     return undef;
 }
@@ -231,23 +188,30 @@ sub handler {
     my $request = shift;
     my $exp     = shift;
 
-    ##################################
+    #####################################
+    # Convert command to correct format
+    #####################################
+    if ( ref($request->{method}) ne "HASH" ) {
+        $request->{method} = [{$request->{method}=>undef}]; 
+    }
+    #####################################
     # Process FSP command 
-    ##################################
+    #####################################
+    my @outhash;
     my $result = process_cmd( $exp, $request );
-    my $Rc = shift(@$result);
 
-    my %output;
-    $output{node}->[0]->{name}->[0] = $server;
-    $output{node}->[0]->{data}->[0]->{contents}->[0] = @$result[0];
-    $output{errorcode} = $Rc;
-
-    ##################################
+    foreach ( @$result ) {
+        my %output;
+        $output{node}->[0]->{name}->[0] = $server;
+        $output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];
+        $output{errorcode} = @$_[0];
+        push @outhash, \%output;
+    }
+    #####################################
     # Disconnect from FSP 
-    ##################################
+    #####################################
     xCAT::PPCfsp::disconnect( $exp );
-
-    return( [\%output] );
+    return( \@outhash );
 
 }
 
@@ -259,17 +223,9 @@ sub connect {
 
     my $request = shift;
     my $server  = shift;
-    my $command = $request->{command};
     my $verbose = $request->{verbose};
-    my $method  = $request->{method};
     my $lwp_log;
 
-    ##################################
-    # Check command
-    ##################################
-    if ( !exists( $cmds{$command}{$method} )) {
-        return( "$server: Unsupported command" );
-    }
     ##################################
     # Get userid/password 
     ##################################
@@ -402,8 +358,9 @@ sub process_cmd {
     my $server  = @$exp[1];
     my $uid     = @$exp[2];
     my $command = $request->{command};   
-    my $method  = $request->{method};   
+    my $methods = $request->{method};   
     my %menu    = ();
+    my @result;
 
     ##################################
     # We have to expand the main
@@ -430,19 +387,21 @@ sub process_cmd {
             $menu{$2} = $1;
         }
     }
-    ##################################
-    # Get form id  
-    ##################################
-    my $form = $menu{$cmds{$command}{$method}[0]};
-
-    if ( !defined( $form )) {
-        return( [RC_ERROR,"Cannot find '$cmds{$command}{$method}[0]' menu"] );
+    foreach ( keys %$methods ) {
+        ##############################
+        # Get form id  
+        ##############################
+        my $form = $menu{$cmds{$command}{$_}[0]};
+        if ( !defined( $form )) {
+            return( [RC_ERROR,"Cannot find '$cmds{$command}{$_}[0]' menu"] );
+        }
+        ##################################
+        # Run command 
+        ##################################
+        my $res = $cmds{$command}{$_}[1]($exp, $request, $form, \%menu);
+        push @result, $res 
     }
-    ##################################
-    # Run command 
-    ##################################
-    my $result = $cmds{$command}{$method}[1]($exp, $request, $form, \%menu);
-    return( $result );
+    return( \@result );
 }
 
 
@@ -624,7 +583,7 @@ sub boot {
     if ( $Rc != SUCCESS ) {
         return( [$Rc,@$state[0]] );
     }
-    if ( @$state[0] !~ /^on|off$/i ) {
+    if ( @$state[0] !~ /^(on|off)$/i ) {
         return( [RC_ERROR,"Unable to boot in state: '@$state[0]'"] );
     }
     ##################################
@@ -756,6 +715,7 @@ sub time {
     my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
+    my $value   = $request->{method}{time};
 
     ##############################
     # Send command 
@@ -767,20 +727,20 @@ sub time {
     # Return error
     ##############################
     if ( $Rc != SUCCESS ) {
-        return( [$Rc,@$result[0]] );
+        return( [$Rc,"Time: @$result[0]"] );
     }
     ##############################
     # Get time
     ##############################
-    if ( !defined( $request->{op} )) {
+    if ( !defined( $value )) {
         @$result[0] =~ /(\d+) (\d+) (\d+) $/; 
-        return( [SUCCESS,sprintf( "%02d:%02d:%02d UTC",$1,$2,$3 )] );
+        return( [SUCCESS,sprintf( "Time: %02d:%02d:%02d UTC",$1,$2,$3 )] );
     }
     ##############################
     # Set time 
     ##############################
     my @t   = split / /, @$result[0];
-    my @new = split /-/, $request->{op};
+    my @new = split /:/, $value;
     splice( @t,3,3,@new );
 
     ##############################
@@ -788,8 +748,7 @@ sub time {
     ##############################
     my $result = xCAT::PPCfsp::timeofday( $exp, $request, $id, \@t ); 
     my $Rc = shift(@$result);
-
-    return( [$Rc,@$result[0]] );
+    return( [$Rc,"Time: @$result[0]"] );
 }
 
 
@@ -803,6 +762,7 @@ sub date {
     my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
+    my $value   = $request->{method}{date};
 
     ##############################
     # Send command 
@@ -814,20 +774,20 @@ sub date {
     # Return error
     ##############################
     if ( $Rc != SUCCESS ) {
-        return( [$Rc,@$result[0]] );
+        return( [$Rc,"Date: @$result[0]"] );
     }
     ##############################
     # Get date
     ##############################
-    if ( !defined( $request->{op} )) {
+    if ( !defined( $value )) {
        @$result[0] =~ /^(\d+) (\d+) (\d+)/; 
-       return( [SUCCESS,sprintf( "%2d-%02d-%4d",$1,$2,$3 )] );
+       return( [SUCCESS,sprintf( "Date: %02d-%02d-%4d",$1,$2,$3 )] );
     }
     ##############################
     # Set date
     ##############################
     my @t   = split / /, @$result[0];
-    my @new = split /-/, $request->{op};
+    my @new = split /-/, $value;
     splice( @t,0,3,@new ); 
 
     ##############################
@@ -836,7 +796,7 @@ sub date {
     my $result = xCAT::PPCfsp::timeofday( $exp, $request, $id, \@t );
     my $Rc = shift(@$result);
 
-    return( [$Rc,@$result[0]] );
+    return( [$Rc,"Date: @$result[0]"] );
 }
 
 
@@ -875,7 +835,7 @@ sub timeofday {
     # Return error
     ##################################
     if ( !defined( $form )) {
-        return( [RC_ERROR,"'Power On/Off System' form not found"] );
+        return( [RC_ERROR,"'Time Of Day' form not found"] );
     }
     ######################################
     # Get time/date fields  
@@ -921,12 +881,14 @@ sub timeofday {
 }
 
 
-
 ##########################################################################
 # Gets/Sets I/O Adapter Enlarged Capacity
 ##########################################################################
 sub iocap {
-    return( option( @_,"pe" ));
+
+    my $result = option( @_,"iocap" );
+    @$result[1] = "iocap: @$result[1]";
+    return( $result );
 }
 
 
@@ -934,7 +896,10 @@ sub iocap {
 # Gets/Sets Auto Power Restart 
 ##########################################################
 sub autopower {
-    return( option( @_,"apor" ));
+
+    my $result = option( @_,"autopower" );
+    @$result[1] = "autopower: @$result[1]";
+    return( $result );
 }
 
 
@@ -945,17 +910,18 @@ sub option {
 
     my $exp     = shift;
     my $request = shift;
-    my $id      = shift;
+    my $id      = shift;  
     my $menu    = shift;
-    my $option  = shift;
+    my $command = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
-    my $op      = $request->{op};
+    my $option  = ($command =~ /^iocap$/) ? "pe" : "apor";  
+    my $value   = $request->{method}{$command};
 
     ######################################
     # Get option URL
     ######################################
-    if ( !defined( $op )) {
+    if ( !defined( $value )) {
         my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
 
         ##################################
@@ -974,7 +940,7 @@ sub option {
     ######################################
     my $res = $ua->post( "https://$server/cgi-bin/cgi",
         [ form    => $id,
-          $option => ($op eq "disable") ? "0" : "1",
+          $option => ($value =~ /^disable$/i) ? "0" : "1",
           submit  => "Save settings" ]
     );
     ######################################
@@ -983,7 +949,7 @@ sub option {
     if ( !$res->is_success() ) {
         return( [RC_ERROR,$res->status_line] );
     }
-    if ( $res->content !~ /Operation completed successfully/ ) {
+    if ( $res->content !~ /Operation completed successfully/i ) {
         return( [RC_ERROR,"Error setting option"] );
     }
     return( [SUCCESS,"Success"] );
@@ -1000,17 +966,19 @@ sub memdecfg {
     my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
+    my $values  = $request->{method}{memdecfg};
 
     ##################################
     # Get settings
     ##################################
-    if ( !defined( $request->{op} )) {
+    if ( !defined( $values )) {
         return( readdecfg( $exp, $request, $id ));
     }
     ##################################
     # Set settings
     ##################################
-    return( writedecfg( $exp, $request, $id ));
+    $values =~ /^(configure|deconfigure):(\d+):(unit|bank):(all|[\d,]+)$/i;
+    return( writedecfg( $exp, $request, $id, $1, $2, $3, $4 ));
 }
 
 
@@ -1024,17 +992,19 @@ sub procdecfg {
     my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
+    my $values  = $request->{method}{procdecfg};
 
     ##################################
     # Get settings
     ##################################
-    if ( !defined( $request->{op} )) {
+    if ( !defined( $values )) {
         return( readdecfg( $exp, $request, $id ));
     }
     ##################################
     # Set settings
     ##################################
-    return( writedecfg( $exp, $request, $id ));
+    $values =~ /^(configure|deconfigure):(\d+):(all|[\d,]+)$/i;
+    return( writedecfg( $exp, $request, $id, $1, $2, "Processor ID",$3 ));
 }
 
 
@@ -1046,6 +1016,10 @@ sub writedecfg {
 
     my $exp     = shift;
     my $request = shift;
+    my $formid  = shift;
+    my $state   = shift;
+    my $unit    = shift;
+    my $type    = shift;
     my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
@@ -1053,17 +1027,13 @@ sub writedecfg {
     ######################################
     # Command-line parameter specified 
     ######################################
-    $request->{op} =~ /^(\w+) unit=(\d+):(.*)=(all|[\d,]+)$/; 
-    my $state  = $1;
-    my $unit   = $2;
-    my $type   = $3;
-    my @ids    = split /,/, $4;
+    my @ids    = split /,/, $id;
     my $select = ($state =~ /^configure$/i) ? 0 : 1; 
 
     ######################################
     # Get Deconfiguration URL
     ######################################
-    my $url = "https://$server/cgi-bin/cgi?form=$id";
+    my $url = "https://$server/cgi-bin/cgi?form=$formid";
     my $res = $ua->get( $url );
 
     ######################################
@@ -1085,7 +1055,7 @@ sub writedecfg {
        }
     }
     if ( !defined( $value )) {
-        return( [RC_ERROR,"unit=$unit not found"] );
+        return( [RC_ERROR,"Processing unit=$unit not found"] );
     }
     ######################################
     # Get current settings
@@ -1203,7 +1173,7 @@ sub writedecfg {
     ######################################
     foreach ( @ids ) {
         if ( !exists( $key{$_} )) {
-            return( [RC_ERROR,"unit=$unit $type=$_ not found"] );
+            return( [RC_ERROR,"Processing unit=$unit $type=$_ not found"] );
         }
         my $value = @{$key{$_}}[0];
         if ( $value == $select ) {
@@ -1214,7 +1184,7 @@ sub writedecfg {
     # Check in already in that state 
     ######################################
     if ( !scalar( keys %key )) {
-        return( [RC_ERROR,"All $type(s) specified already in '$state' state"] ); 
+        return( [RC_ERROR,"All $type(s) specified already in '$state' state"]); 
     } 
     ######################################
     # Make changes to form  
@@ -1406,6 +1376,7 @@ sub decfg {
     my $id      = shift;
     my $ua      = @$exp[0];
     my $server  = @$exp[1];
+    my $value   = $request->{method}{decfg};
 
     ######################################
     # Get Deconfiguration Policy URL
@@ -1453,19 +1424,18 @@ sub decfg {
     ######################################
     # Get Deconfiguration Policy
     ######################################
-    if ( !defined( $request->{op} )) {
-        my $fmt = sprintf( "\n%%-%ds %%s",$len );
-
+    if ( !defined( $value )) {
+        my $format = sprintf( "\n%%-%ds %%s",$len );
         foreach ( keys %d ) {
-            $result.= sprintf( $fmt,$_,$d{$_}[0] );
+            $result.= sprintf( $format,$_,$d{$_}[0] );
         }
         return( [SUCCESS,$result] );
     }
     ######################################
     # Set Deconfiguration Policy
     ######################################
-    my ($op,$decfg) = split / /, $request->{op};
-    my @policy      = split /,/, $decfg;
+    my ($op,$names) = split /:/, $value;
+    my @policy      = split /,/, $names;
     my $state       = ($op =~ /^enable$/i) ? 0 : 1;
 
     ######################################
@@ -1722,6 +1692,7 @@ sub all_clear {
 
 
 1;
+
 
 
 
