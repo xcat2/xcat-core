@@ -1483,31 +1483,13 @@ sub telnetcmds {
   $Rc = 0;
 
   foreach (keys %handled) {
-    if (/^snmpcfg/) {
-      $result = snmpcfg($t,$handled{$_},$user,$pass);
-      $Rc |= shift(@$result);
-      push @cfgtext,@$result;
-    }
-    elsif (/^sshcfg$/) {
-      $result = sshcfg($t,$handled{$_},$user);
-      $Rc |= shift(@$result);
-      push @cfgtext,@$result;
-    }
-    elsif (/^network$/) {
-      $result = network($t,$handled{$_},$mpa);
-      $Rc |= shift(@$result);
-      push @cfgtext,@$result;
-    }     
-    elsif (/^swnet$/) {
-      $result = swnet($t,$handled{$_});
-      $Rc |= shift(@$result);
-      push @cfgtext,@$result;
-    }
-    elsif (/^pd1|pd2$/) {
-      $result = pd($t,$_,$handled{$_});
-      $Rc |= shift(@$result);
-      push @cfgtext,@$result;
-    }
+    if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass); }
+    elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user); }
+    elsif (/^network$/) { $result = network($t,$handled{$_},$mpa); }
+    elsif (/^swnet$/)   { $result = swnet($t,$handled{$_}); }
+    elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
+    $Rc |= shift(@$result);
+    push @cfgtext,@$result;
   }
   $t->close;
   return([$Rc,\@unhandled]);
@@ -1546,56 +1528,59 @@ sub network {
   my $value = shift;
   my $mpa = shift;
   my $cmd = "ifconfig -eth0 -c static -r auto -d auto -m 1500 -T system:mm[1]";
-  my ($ip,$host,$gateway,$mask);
+  my ($ip,$gateway,$mask);
 
   if ($value) {
-    if ($value !~ /^xcat-table$/) {
-      ($ip,$host,$gateway,$mask) = split /,/,$value;
-      if (!$ip and !$host and !$gateway and !$mask) {
+    if ($value !~ /\*/) {
+      ($ip,$gateway,$mask) = split /,/,$value;
+      if (!$ip and !$gateway and !$mask) {
         return([1,"No changes specified"]);
       }
-    } 
+    }
     else {
-      my %nethash = xCAT::DBobjUtils->getNetwkInfo($mpa);
+      if ( $value !~ /^\*$/) {
+        return([1,"Invalid format: 'network=*'"]);
+      }
+      my %nethash = xCAT::DBobjUtils->getNetwkInfo([$mpa]);
       my $gate = $nethash{$mpa}{gateway};
       my $result;
-
-      if ($gate) {    
-        $result = toIP($gate);
+  
+      if ($gate) {
+        $result = xCAT::Utils::toIP($gate);
         if (@$result[0] == 0) {
           $gateway = @$result[1];
-        }
+        } 
       }
       $mask = $nethash{$mpa}{mask};
-      $host = $mpa;
-      $result = xCAT::Utils::toIP($mpa);
-      if (@$result[0] == 0) {
-        $ip = @$result[1];
-      }
-      if (!$ip and !$host and !$gateway and !$mask) {
-        return([1,"No network information found in database"]);
+      
+      my $hosttab = xCAT::Table->new( 'hosts' );
+      if ($hosttab) { 
+        my ($ent) = $hosttab->getAttribs({node=>$mpa},'ip');
+        if (defined($ent)) {
+          $ip = $ent->{ip};
+        }
+        $hosttab->close();
       }
     }
   } 
 
   if ($ip)     { $cmd.=" -i $ip"; }
-  if ($host)   { $cmd.=" -n $host"; }
+  if ($mpa)    { $cmd.=" -n $mpa"; }
   if ($gateway){ $cmd.=" -g $gateway"; }
   if ($mask)   { $cmd.=" -s $mask"; }
- 
+
   my @data = $t->cmd($cmd);
   my @result = grep(/These configuration changes will become active/,@data);
   if (!@result) {
     return([1,@data]);
   }
   if ($ip)     { push @result,"MM IP: $ip"; }
-  if ($host)   { push @result,"MM Hostname: $host"; }
+  if ($mpa)    { push @result,"MM Hostname: $mpa"; }
   if ($gateway){ push @result,"Gateway: $gateway"; }
   if ($mask)   { push @result,"Subnet Mask: $mask"; }
   return([0,@result]);
 
 }
-
 
 sub swnet {
 
