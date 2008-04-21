@@ -65,7 +65,7 @@ my %usage = (
            snmpcfg=<enable|disable>|                             
            pd1=<nonred|redwoperf|redwperf>|
            pd2=<nonred|redwoperf|redwperf>|
-           network=<xcat-table|ip,host,gateway,mask>|
+           network=<*|ip,gateway,mask>|
            swnet=<ip,gateway,mask>|
            ntp=<ntp,ip,frequency,v3>
    PPC specific:
