@@ -138,6 +138,7 @@ sub submit_request {
      }
   }
   my $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
+  $SIG{TERM} =  $SIG{INT} = sub { print $client XMLout({abortcommand=>1},RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]); exit 0; };
   print $client $msg;
   my $response;
   my $rsp;
