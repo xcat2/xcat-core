@@ -60,23 +60,23 @@ my %usage = (
        rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp]
        rspconfig <noderange> [garp=<number of 1/2 second>]
    MPA specific:
-       rspconfig <noderange> [sshcfg|snmpcfg|build]
-       rspconfig <noderange> [shcfg=<enable|disable>|snmpcfg=<enable|disable>|build|                             
-           pd1[=nonred|redwoperf|redwperf]|
-           pd2[=nonred|redwoperf|redwperf]|
-           network[=xcat-table|ip,host,gateway,mask]|
-           swnet[=ip,gateway,mask]|
-           ntp[=ntp,ip,frequency,v3]]
+       rspconfig <noderange> [sshcfg|snmpcfg|build|pd1|pd2|network|swnet|ntp]
+       rspconfig <noderange> [shcfg=<enable|disable>|
+           snmpcfg=<enable|disable>|                             
+           pd1=<nonred|redwoperf|redwperf>|
+           pd2=<nonred|redwoperf|redwperf>|
+           network=<xcat-table|ip,host,gateway,mask>|
+           swnet=<ip,gateway,mask>|
+           ntp=<ntp,ip,frequency,v3>
    PPC specific:
-       rspconfig <noderange>  autopower [enable|disable]|
-           decfg [{enable|disable} policy,...]|
-           spdump|
-           date [mm-dd-yyyy]|
-           time [hh:mm:ss]|
-           memdecfg [{configure|deconfigure} unit=id (unit|bank)=all|id,...]|
-           sysdump|
-           procdecfg [{configure|deconfigure} unit=id all|id,...]|
-           iocap [enable|disable]",
+       rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump]
+       rspconfig <noderange> autopower=<enable|disable>|
+           iocap=<enable|disable>|
+           decfg=<enable|disable>:<policy name>,...|
+           memdecfg=<configure|deconfigure>:<processing unit>:<bank|unit>:<bank/unit number>:id,...|
+           procdecfg=<configure|deconfigure>:<processing unit>:id,...|
+           date=<mm-dd-yyyy>|
+           time=<hh:mm:ss>",
     "getmacs" => 
 "Usage: 
    Common:
@@ -185,3 +185,4 @@ sub parseCommand {
 
   return "";
 }
+
