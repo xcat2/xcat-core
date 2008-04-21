@@ -4,7 +4,6 @@ package xCAT::PPCmac;
 use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
-use xCAT::Usage;
 
 
 
@@ -17,13 +16,24 @@ sub parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
+    my @VERSION = qw( 2.0 );
 
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
-	my $usage_string=xCAT::Usage->getUsage($cmd);
-        return( [ $_[0], $usage_string]);
+        return( [ $_[0],
+            "getmacs -h|--help",
+            "getmacs -v|--version",
+            "getmacs [-V|--verbose] noderange [-c][-w][-S server -G gateway -C client]",
+            "    -h   writes usage information to standard output",
+            "    -v   displays command version",
+            "    -c   colon seperated output",
+            "    -C   IP of the partition",
+            "    -G   Gateway IP of the partition specified",
+            "    -S   Server IP to ping", 
+            "    -V   verbose output",
+            "    -w   writes first adapter MAC to the xCAT database"]);
     };
     #############################################
     # Process command-line arguments
@@ -41,8 +51,20 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt,qw(V|Verbose C=s G=s S=s c w))) { 
+    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s c w))) { 
         return( usage() );
+    }
+    ####################################
+    # Option -h for Help
+    ####################################
+    if ( exists( $opt{h} )) {
+        return( usage() );
+    }
+    ####################################
+    # Option -v for version
+    ####################################
+    if ( exists( $opt{v} )) {
+        return( \@VERSION );
     }
     ####################################
     # Check for "-" with no option
