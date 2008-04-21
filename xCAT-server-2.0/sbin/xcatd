@@ -784,7 +784,7 @@ sub dispatch_request {
    }
 
   my $childrn=0;
-  $SIG{CHLD} = sub {my $cpid; while ($cpid =waitpid(-1, WNOHANG) > 0) { undef $dispatched_children{$cpid}; $childrn--; } };
+  $SIG{CHLD} = sub {my $cpid; while ($cpid =waitpid(-1, WNOHANG) > 0) { delete $dispatched_children{$cpid}; $childrn--; } };
    foreach (@{$reqs}) {
     my $pfd;
     my $parfd; #use a private variable so it won't trounce itself recursively

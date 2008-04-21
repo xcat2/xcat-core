@@ -9,6 +9,7 @@ use xCAT::Usage;
 use IO::Socket;
 use SNMP;
 use strict;
+my %mm_comm_pids;
 
 use XML::Simple;
 if ($^O =~ /^linux/i) {
@@ -1276,6 +1277,13 @@ sub preprocess_request {
 
 
 sub process_request { 
+  $SIG{INT} = $SIG{TERM} = sub { 
+     foreach (keys %mm_comm_pids) {
+        kill 2, $_;
+     }
+     exit 0;
+  };
+
   my $request = shift;
   my $callback = shift;
   my $doreq = shift;
@@ -1384,7 +1392,7 @@ sub process_request {
 
 
   my $children = 0;
-  $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
+  $SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { delete $mm_comm_pids{$cpid}; $children--; } };
   my $inputs = new IO::Select;;
   foreach my $info (@$moreinfo) {
     $info=~/^\[(.*)\]\[(.*)\]\[(.*)\]/;
@@ -1424,6 +1432,7 @@ sub process_request {
       dompa($pfd,$mpa,\%mpahash,$command,-args=>\@exargs);
       exit(0);
     }
+    $mm_comm_pids{$cpid} = 1;
     close ($pfd);
     $sub_fds->add($cfd);
   }
