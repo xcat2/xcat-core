@@ -14,6 +14,7 @@ use xCAT::Client submit_request;
 my $clientselect = new IO::Select;
 
 my %dispatched_children;
+my %plugin_children;
 use IO::Socket::SSL;
 my $inet6support;
 $inet6support=eval { require Socket6 };
@@ -618,7 +619,8 @@ sub plugin_command {
      }
   }
   my $children=0;
-  $SIG{CHLD} = sub {while (waitpid(-1, WNOHANG) > 0) { $children--; } };
+  %plugin_children=();
+  $SIG{CHLD} = sub {my $plugpid; while (($plugpid = waitpid(-1, WNOHANG)) > 0) { if ($plugin_children{$plugpid}) { delete $plugin_children{$plugpid}; $children--; } } };
   my $check_fds;
   if ($sock) { 
     $check_fds = new IO::Select;
@@ -663,6 +665,7 @@ sub plugin_command {
           exit(0);
         } 
       } else {
+        $plugin_children{$child}=1;
         close $parfd;
         $check_fds->add($pfd);
       }
@@ -766,6 +769,7 @@ sub relay_dispatch {
 }
 
 sub dispatch_request {
+   %dispatched_children=();
    my $req = shift;
    $dispatch_cb = shift;
 
@@ -782,7 +786,6 @@ sub dispatch_request {
    #Since plugins may commonly experience this, a preprocess_request implementation
    #will for now be required for a command to be scaled through service nodes
    #If the plugin offers a preprocess method, use it to set the request array
-   undef $SIG{CHLD};
    if (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request})) {
     $reqs = ${"xCAT_plugin::".$modname."::"}{preprocess_request}->($req,$dispatch_cb,\&do_request);
    } else { #otherwise, pass it in without hierarchy support
@@ -790,7 +793,7 @@ sub dispatch_request {
    }
 
   my $childrn=0;
-  $SIG{CHLD} = sub {my $cpid; while ($cpid =waitpid(-1, WNOHANG) > 0) { delete $dispatched_children{$cpid}; $childrn--; } };
+  $SIG{CHLD} = sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $childrn--; } } };
    foreach (@{$reqs}) {
     my $pfd;
     my $parfd; #use a private variable so it won't trounce itself recursively
@@ -801,14 +804,15 @@ sub dispatch_request {
     $pfd->autoflush(1);
     $child = xCAT::Utils->xfork;
     if ($child) {
+       $childrn++;
        $dispatched_children{$child}=1;
        $child_fdset->add($pfd);
-       $childrn++;
        next;
     }
     unless (defined $child) {
        $dispatch_cb->({error=>['Fork failure dispatching request'],errorcode=>[1]});
     }
+    undef $SIG{CHLD};
       $dispatch_parentfd = $parfd;
      if ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'})) {
         $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );

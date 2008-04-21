@@ -13,6 +13,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
+my $cpiopid;
 
 sub handled_commands
 {
@@ -409,10 +410,29 @@ sub copycd
     my $omask = umask 0022;
     mkpath("$installroot/$distname/$arch/$discnumber");
     umask $omask;
-    my $rc =
-      system(
-        "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/$discnumber/"
-        );
+    my $rc;
+    $SIG{INT} =  $SIG{TERM} = sub { if ($cpiopid) { kill 2, $cpiopid; exit 0; } };
+    my $kid;
+    chdir $path;
+    my $child = open($kid,"|-");
+    unless (defined $child) {
+      $callback->({error=>"Media copy operation fork failure"});
+      return;
+    }
+    if ($child) {
+       $cpiopid = $child;
+       my @finddata = `find .`;
+       for (@finddata) {
+          print $kid $_;
+       }
+       close($kid);
+       $rc = $?;
+    } else {
+       exec "nice -n 20 cpio -dump $installroot/$distname/$arch/$discnumber/";
+    }
+    #  system(
+    #    "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/$discnumber/"
+    #    );
     chmod 0755, "$installroot/$distname/$arch";
     chmod 0755, "$installroot/$distname/$arch/$discnumber";
 
