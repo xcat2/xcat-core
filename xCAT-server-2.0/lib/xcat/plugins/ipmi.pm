@@ -11,6 +11,7 @@ use xCAT::Utils;
 use xCAT::Usage;
 use Thread qw(yield);
 my $tfactor = 0;
+my %bmc_comm_pids;
 
 require Exporter;
 @ISA = qw(Exporter);
@@ -4534,6 +4535,12 @@ sub loadsdrcache {
 
 
 sub preprocess_request { 
+  $SIG{INT} = $SIG{TERM} = sub { 
+     foreach (keys %bmc_comm_pids) {
+        kill 2, $_;
+     }
+     exit 0;
+  };
   my $request = shift;
   if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
   my $callback=shift;
@@ -4638,7 +4645,7 @@ sub process_request {
         push @donargs,[$node,$nodeip,$nodeuser,$nodepass];
     }
     my $children = 0;
-    $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($kpid > 0) { $children--; } } while $kpid > 0; };
+    $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($kpid > 0) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
       while ($children > $ipmimaxp) { sleep (0.1); }
@@ -4646,7 +4653,7 @@ sub process_request {
       my $cfd;
       my $pfd;
       pipe $cfd, $pfd;
-	  my $child = fork();
+		my $child = xCAT::Utils->xfork();
       unless (defined $child) { die "Fork failed" };
 	  if ($child == 0) { 
         close($cfd);
@@ -4654,6 +4661,7 @@ sub process_request {
         close($pfd);
 		exit(0);
 	  }
+      $bmc_comm_pids{$child}=1;
       close ($pfd);
       $sub_fds->add($cfd)
 	}
