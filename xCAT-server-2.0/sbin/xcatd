@@ -13,6 +13,7 @@ use Thread qw(yield);
 use xCAT::Client submit_request;
 my $clientselect = new IO::Select;
 
+my %dispatched_children;
 use IO::Socket::SSL;
 my $inet6support;
 $inet6support=eval { require Socket6 };
@@ -379,6 +380,9 @@ $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {} };
 $SIG{TERM} = $SIG{INT} = sub { 
    printf("Asked to quit...\n"); 
    $quit++;
+   foreach (keys %dispatched_children) {
+      kill 2, $_;
+   }
    $SIG{ALRM} = sub { exit 0; }; #die "Did not close out in time for 5 second grace period"; };
    alarm(2);
    };
@@ -679,7 +683,6 @@ sub plugin_command {
 }
 
 my $dispatch_dnf=0;
-my %dispatched_children;
 my $dispatch_cb;
 my $dispatch_parentfd;
 sub dispatch_callback {
@@ -701,7 +704,7 @@ sub dispatch_callback {
       my $rsp;
       if ($parselect->can_read(5)) { #block for up to 5 seconds before continuing
          if ($rsp = <$dispatch_parentfd>) {
-            if ($rsp =~ /die/) {
+            if ($rsp =~ /die/ or $quit) {
                exit 0;
             }
          } else {
@@ -743,10 +746,10 @@ sub relay_dispatch {
       }
       $clientintr=XMLin($clientintr, SuppressEmpty=>undef,ForceArray=>1 );
       if ($clientintr->{abortcommand}->[0]) {
+         foreach (keys %dispatched_children) {
+            kill 2, $_;
+         }
          foreach my $cin ($fds->handles) {
-            foreach (keys %dispatched_children) {
-               kill 2, $_;
-            }
             print $cin "die\n";
             $fds->remove($cin);
             close($cin);

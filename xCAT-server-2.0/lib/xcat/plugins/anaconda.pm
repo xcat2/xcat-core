@@ -2,6 +2,8 @@
 package xCAT_plugin::anaconda;
 use Storable qw(dclone);
 use Sys::Syslog;
+use Thread qw(yield);
+use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
@@ -14,6 +16,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
+my $cpiopid;
 
 my %distnames = (
   "1176234647.982657" => "centos5",
@@ -424,7 +427,29 @@ sub copycd {
   my $omask=umask 0022;
   mkpath("$installroot/$distname/$arch");
   umask $omask;
-  my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
+  my $rc;
+  my $reaped=0;
+  $SIG{INT} =  $SIG{TERM} = sub { if ($cpiopid) { kill 2, $cpiopid; exit 0; } };
+  my $KID;
+  chdir $path;
+  my $child = open($KID,"|-");
+  unless (defined $child) {
+    $callback->({error=>"Media copy operation fork failure"});
+    return;
+  }
+  if ($child) {
+     $cpiopid = $child;
+     my @finddata = `find .`;
+     for (@finddata) {
+        print $KID $_;
+     }
+     close($KID);
+     $rc = $?;
+  } else {
+     nice 10;
+     exec "nice -n 20 cpio -dump $installroot/$distname/$arch";
+  }
+  #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
   #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
   chmod 0755,"$installroot/$distname/$arch";
   xCAT::Yum->localize_yumrepo($installroot,$distname,$arch);
