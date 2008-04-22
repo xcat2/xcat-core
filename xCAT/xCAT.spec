@@ -124,7 +124,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=timezone site.value=`grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`
     fi
     if [ ! -r /etc/xcat/postscripts.sqlite ]; then
-      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,updateflag.awk $MASTER 3002,remoteshell'
+      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell'
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab node=service postscripts.postscripts='servicenode'
     fi
     if [ ! -r /etc/xcat/policy.sqlite ]; then
