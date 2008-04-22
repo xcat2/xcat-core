@@ -1528,12 +1528,12 @@ sub network {
   my $value = shift;
   my $mpa = shift;
   my $cmd = "ifconfig -eth0 -c static -r auto -d auto -m 1500 -T system:mm[1]";
-  my ($ip,$gateway,$mask);
+  my ($ip,$host,$gateway,$mask);
 
   if ($value) {
     if ($value !~ /\*/) {
-      ($ip,$gateway,$mask) = split /,/,$value;
-      if (!$ip and !$gateway and !$mask) {
+      ($ip,$host,$gateway,$mask) = split /,/,$value;
+      if (!$ip and !$host and !$gateway and !$mask) {
         return([1,"No changes specified"]);
       }
     }
@@ -1543,18 +1543,19 @@ sub network {
       }
       my %nethash = xCAT::DBobjUtils->getNetwkInfo([$mpa]);
       my $gate = $nethash{$mpa}{gateway};
-      my $result;
-  
+      my $result; 
+
       if ($gate) {
         $result = xCAT::Utils::toIP($gate);
         if (@$result[0] == 0) {
           $gateway = @$result[1];
-        } 
+        }
       }
       $mask = $nethash{$mpa}{mask};
-      
+      $host = $mpa;
+
       my $hosttab = xCAT::Table->new( 'hosts' );
-      if ($hosttab) { 
+      if ($hosttab) {
         my ($ent) = $hosttab->getAttribs({node=>$mpa},'ip');
         if (defined($ent)) {
           $ip = $ent->{ip};
@@ -1562,10 +1563,10 @@ sub network {
         $hosttab->close();
       }
     }
-  } 
+  }
 
   if ($ip)     { $cmd.=" -i $ip"; }
-  if ($mpa)    { $cmd.=" -n $mpa"; }
+  if ($host)   { $cmd.=" -n $host"; }
   if ($gateway){ $cmd.=" -g $gateway"; }
   if ($mask)   { $cmd.=" -s $mask"; }
 
@@ -1575,12 +1576,13 @@ sub network {
     return([1,@data]);
   }
   if ($ip)     { push @result,"MM IP: $ip"; }
-  if ($mpa)    { push @result,"MM Hostname: $mpa"; }
+  if ($host)   { push @result,"MM Hostname: $host"; }
   if ($gateway){ push @result,"Gateway: $gateway"; }
   if ($mask)   { push @result,"Subnet Mask: $mask"; }
   return([0,@result]);
 
 }
+
 
 sub swnet {
 
