@@ -32,11 +32,37 @@ B<rspconfig> I<noderange> B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
 
 B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
 
-B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|xcat-table}
+B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
 
 B<rspconfig> I<noderange> B<swnet>={[B<ip>],[B<gateway>],[B<netmask>]}
 
 B<rspconfig> I<noderange> B<ntp>={[B<ntpenable>],[B<ntpserver>],[B<frequency>],[B<v3>]}
+
+=head2 PPC specific:
+
+B<rspconfig> I<noderange> {B<autopower>|B<iocap>|B<decfg>|B<memcfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>}
+
+B<rspconfig> I<noderange> B<shcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
+
+B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
+
+B<rspconfig> I<noderange> B<autopower>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<iocap>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B<time>={B<hh:mm:ss>}
+
+B<rspconfig> I<noderange> B<date>={B<mm:dd:yyyy>}
+
+B<rspconfig> I<noderange> B<decfg>={B<enable|disable>:B<policyname,...>}
+
+B<rspconfig> I<noderange> B<procdecfg>={B<configure|deconfigure>:B<processingunit>:B<id,...>}
+
+B<rspconfig> I<noderange> B<memdecfg>={B<configure|deconfigure>:B<processingunit>:B<unit|bank>:B<id,...>>}
 
 =head1 DESCRIPTION
 
@@ -51,6 +77,10 @@ specified, without the B<=>, it displays the current value.
 
 Turn on or off SNMP alerts.
 
+=item B<autopower>={I<enable>|I<disable>}
+
+Select the policy for auto power restart. If enabled, the system will boot automatically once power is restored after a power disturbance.
+
 =item B<backupgateway>
 
 Get the BMC backup gateway ip address.
@@ -62,6 +92,14 @@ Get the MPA firmware build ID.
 =item B<community>={B<public>|I<string>}
 
 Get or set the SNMP commmunity value. The default is I<public>.
+
+=item B<date>={I<mm:dd:yyy>}
+
+Enter the current date.
+
+=item B<decfg>={I<enable|disable>:I<policyname,...>}
+
+Enables or disables deconfiguration policies.
 
 =item B<frequency>
 
@@ -75,21 +113,25 @@ Get or set Gratuitous ARP generation interval. The unit is number of 1/2 second.
 
 The gateway ip address.
 
-=item B<host>
+=item B<iocap>={I<enable>|I<disable>}
 
-The hostname.
+Select the policy for I/O Adapter Enlarged Capacity. This option controls the size of PCI memory space allocated to each PCI slot.
 
 =item B<ip>
 
 The ip address.
 
+=item B<memdecfg>={I<configure|deconfigure>:I<processingunit>:I<unit|bank>:I<id,...>}
+
+Select whether each memory bank should be enabled or disabled. State changes take effect on the next platform boot.
+
 =item B<netmask>
 
 The subnet mask.
 
-=item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|xcat-table}
+=item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
-Get or set the MPA network parameters.
+Get or set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
 
 =item B<nonred>
 
@@ -115,6 +157,10 @@ Power Domain 1 - determines how an MPA responds to a loss of redundant power.
 
 Power Domain 2 - determines how an MPA responds to a loss of redundant power.
 
+=item B<procdecfg>={I<configure|deconfigure>:I<processingunit>:I<id,...>}
+
+Selects whether each processor should be enabled or disabled. State changes take effect on the next platform boot.
+
 =item B<redwoperf>
 
 Prevents components from turning on that will cause loss of power redundancy.
@@ -131,6 +177,10 @@ Enable or disable SNMP on MPA.
 
 Get or set where the SNMP alerts should be sent to.
 
+=item B<spdump>
+
+Performs a service processor dump. 
+
 =item B<sshcfg>={I<enable>|I<disable>}
 
 Enable or disable SSH on MPA.
@@ -139,13 +189,17 @@ Enable or disable SSH on MPA.
 
 Set the Switch network parameters.
 
+=item B<sysdump>
+
+Performs a system dump. 
+
+=item B<time>={I<hh:mm:ss>}
+
+Enter the current time in UTC (Coordinated Universal Time) format.
+
 =item B<v3>
 
 Enable or disable v3 authentication (enable|disable).
-
-=item B<xcat-table>
-
-Use xCAT database values.
 
 =item B<-h>|B<--help>
 
@@ -186,6 +240,17 @@ B<rspconfig> I<mm01 network>
 
  mm01: MM IP: 192.168.1.47 
  mm01: MM Hostname: MM001125C31F28 
+ mm01: Gateway: 192.168.1.254  
+ mm01: Subnet Mask: 255.255.255.224 
+
+=item *
+
+To change the MPA network parameters with the values in the xCAT database for mm01:
+
+B<rspconfig> I<mm01 network=*>
+
+ mm01: MM IP: 192.168.1.47 
+ mm01: MM Hostname: mm01 
  mm01: Gateway: 192.168.1.254  
  mm01: Subnet Mask: 255.255.255.224 
 
@@ -232,9 +297,34 @@ B<rspconfig> I<mm01 ntp=,,,disable>
 
  mm01: NTP v3: disabled  
 
+=item *
+
+To disable Predictive Failure and L2 Failure deconfiguration policies on mm01:
+
+B<rspconfig> I<mm01 decfg=disable:predictive,L3>
+
+ mm01: Success  
+
+=item *
+
+To deconfigure processors 4 and 5 of Processing Unit 0 on mm01:
+
+B<rspconfig> I<mm01 procedecfg=deconfigure:0:4,5>
+
+ mm01: Success  
+
+=item *
+
+To deconfigure memory bank 9 and 10 of Processing Unit 0 on mm01:
+
+B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
+
+ mm01: Success  
+
 =back
 
 
 =head1 SEE ALSO
 
 noderange(3), rpower(1), rcons(1), rinv(1), rvitals(1), rscan(1)
+
