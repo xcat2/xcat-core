@@ -85,8 +85,8 @@ sub process_request
 
 =head3 setup_NFS 
 
-    Sets up NFS services and mounts /install and /tftpboot 
-	on /install and /tftpboot from Master Node  
+    Sets up NFS services and mounts /install  
+	on /install from Master Node  
 
 =cut
 
@@ -95,8 +95,7 @@ sub setup_NFS
 {
     my ($nodename) = @_;
     my $rc         = 0;
-    my $tftpdir    = "/tftpboot";    # default
-    my $installdir = "/install";     # default
+    my $installdir = "/install";    # default
 
     # read DB for nodeinfo
     my $master;
@@ -104,7 +103,7 @@ sub setup_NFS
     my $arch;
     my $retdata = xCAT::Utils->readSNInfo($nodename);
     if ($retdata->{'arch'})
-    {                                # no error
+    {                               # no error
         $master = $retdata->{'master'};
         $os     = $retdata->{'os'};
         $arch   = $retdata->{'arch'};
@@ -120,99 +119,68 @@ sub setup_NFS
             mkdir($installdir);
         }
 
-        # read tftpdir directory from database, if it exists
-        my @tftpdir1 = xCAT::Utils->get_site_attribute("tftpdir");
-        if ($tftpdir1[0])
-        {
-            $tftpdir = $tftpdir1[0];
+        my $cmd = "chkconfig nfs on";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+            xCAT::MsgUtils->message("S", "Error on command:$cmd");
         }
-        if (!(-e $tftpdir))
-        {
-            mkdir($tftpdir);
+
+        # make sure nfs is restarted
+        my $cmd = "service nfs stop";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+            xCAT::MsgUtils->message("S", "Error on command: $cmd");
+            return 1;
         }
-        if (xCAT::Utils->isLinux())
+
+        # make sure nfs is started
+        my $cmd = "service nfs start";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+            xCAT::MsgUtils->message("S", "Error on command: $cmd");
+            return 1;
+        }
+
+        # check to see if install  already mounted
+        my $directory = $installdir;
+        $cmd = "df -P $directory";
+        my @output = xCAT::Utils->runcmd($cmd, -1);
+        my $found = 0;
+        foreach my $line (@output)
         {
-
-            my $cmd = "chkconfig nfs on";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {        # error
-                xCAT::MsgUtils->message("S", "Error on command:$cmd");
-            }
-
-            # make sure nfs is restarted
-            my $cmd = "service nfs stop";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {        # error
-                xCAT::MsgUtils->message("S", "Error on command: $cmd");
-                return 1;
-            }
-
-            # make sure nfs is started
-            my $cmd = "service nfs start";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {        # error
-                xCAT::MsgUtils->message("S", "Error on command: $cmd");
-                return 1;
-            }
-
-
-            # check to see if install and tftp directory already mounted
-            # if not mount then
-            my @dirs = ($installdir, $tftpdir);
-            foreach my $directory (@dirs)
+            my ($file_sys, $blocks, $used, $avail, $cap, $mount_point) =
+              split(' ', $line);
+            if ($mount_point eq $directory)
             {
-                $cmd = "df -P $directory";
-                my @output = xCAT::Utils->runcmd($cmd, -1);
-                my $found = 0;
-                foreach my $line (@output)
-                {
-                    my ($file_sys, $blocks, $used, $avail, $cap, $mount_point) =
-                      split(' ', $line);
-                    if ($mount_point eq $directory)
-                    {
-                        $found = 1;
-                        last;
-                    }
-                }
-                if ($found == 0)
-                {
-
-                    # need to  mount the directory
-                    my $cmd =
-                      " mount -o rw,nolock $master:$directory $directory";
-                    xCAT::Utils->runcmd($cmd, 0);
-                    if ($::RUNCMD_RC != 0)
-                    {    # error
-                        xCAT::MsgUtils->message("S", "Error $cmd");
-                    }
-                }
+                $found = 1;
+                last;
             }
+        }
+        if ($found == 0)
+        {
 
+            # need to  mount the directory
+            my $cmd = " mount -o rw,nolock $master:$directory $directory";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {    # error
+				 $rc=1;
+                xCAT::MsgUtils->message("S", "Error $cmd");
+            }
         }
-        else
-        {                #AIX TODO
-            xCAT::MsgUtils->message('S',
-                                    "AIX Service Node  not supported yet.\n");
-            $rc = 1;
-        }
+
     }
     else
-    {                    # error reading Db
+    {            # error reading Db
         $rc = 1;
     }
     if ($rc == 0)
     {
 
-        #  update fstab so they will mount on reboot
-        $cmd = "grep $master:$tftpdir $tftpdir  /etc/fstab  ";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)
-        {
-            `echo "$master:$tftpdir $tftpdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
-        }
+        # update fstab to mount on reboot
         $cmd = "grep $master:$installdir $installdir  /etc/fstab  ";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)

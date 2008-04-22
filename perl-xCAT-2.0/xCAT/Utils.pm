@@ -364,6 +364,7 @@ sub list_all_node_groups
     {
         xCAT::MsgUtils->message("E", " Could not read the nodelist table\n");
     }
+    $nodelisttab->close;
     return @distinctgroups;
 }
 
@@ -437,7 +438,7 @@ sub get_site_attribute
         xCAT::MsgUtils->message("E", " Could not read the site table\n");
 
     }
-
+    $sitetab->close;
     return $values;
 }
 
@@ -1366,6 +1367,8 @@ sub GetMasterNodeName
     {
         xCAT::MsgUtils->message('S',
                                 "Unable to open noderes or nodetype table.\n");
+        $noderestab->close;
+        $typetab->close;
         return 1;
     }
     my $sitetab = xCAT::Table->new('site');
@@ -1382,9 +1385,15 @@ sub GetMasterNodeName
     unless ($master)
     {
         xCAT::MsgUtils->message('S', "Unable to identify master for $node.\n");
+        $sitetab->close;
+        $noderestab->close;
+        $typetab->close;
         return 1;
     }
 
+    $sitetab->close;
+    $noderestab->close;
+    $typetab->close;
     return $master;
 }
 
@@ -1435,7 +1444,7 @@ sub GetNodeOSARCH
 
 =head3 exportDBConfig
 
-  Reads the /etc/sysconfig/xcat file for the DB configuration and exports it
+  Reads the /etc/xcat/cfgloc file for the DB configuration and exports it
   in $XCATCFG
 =cut
 
@@ -1444,7 +1453,7 @@ sub exportDBConfig
 {
 
     # export the xcat database configuration
-    my $configfile = "/etc/sysconfig/xcat";
+    my $configfile = "/etc/xcat/cfgloc";
     if (!($ENV{'XCATCFG'}))
     {
         if (-e ($configfile))
@@ -1454,21 +1463,12 @@ sub exportDBConfig
                                    "Cannot open $configfile for DB access. \n");
             foreach my $line (<CFGFILE>)
             {
-                if (grep /XCATCFG/, $line)
-                {
-                    my @cfg  = split /XCATCFG=/, $line;
-                    my @cfg2 = split /'/,        $cfg[1];
-                    chomp $cfg2[1];
-                    $ENV{'XCATCFG'} = $cfg2[1];
-                    close CFGFILE;
-                    last;
-                }
-            }
-            if (!($ENV{'XCATCFG'}))
-            {    # no db setup
-                xCAT::MsgUtils->message('SE',
-                      "/etc/sysconfig/xcat does not contain XCATCFG setup. \n");
-                return 1;
+                chop $line;
+                $exp .= $line;
+
+                $ENV{'XCATCFG'} = $exp;
+                close CFGFILE;
+                last;
             }
 
         }
@@ -1535,11 +1535,20 @@ sub readSNInfo
   It then:
   Checks the database to see if the input Service should be setup on the
   input service node
-  Checks the noderes to see if this service node is a service node for any
-  node in the table.  Any node that matches, it checks the service attribute
-  to see if this service node is the server, or if the attribute is blank, then
-  this service node is the server.
 
+  Checks the noderes to see if this service node is the tftserver,nfsserver for
+  and node in the table.
+  The checks are as follows:
+	 If this service node is the tftpserver or nfsserver, then set it up.
+	 If not then, if the tftpserver or nfsserver is blank then see if this
+	 service node is the xcatmaster,  if it is then setup the service.
+
+  Checks the networks table to see if the dhcpserver or nameserver(DNS)
+  should be setup.  If this
+  service node is the address for the dhcpserver or DNS then set it up.
+
+  Checks the nodehm table to see if conserver should be setup. If this service 
+  node is the conserver,  then set it up.
   Input: service nodename, service,ipaddres(s) of service node
   Output:
         0 - no service required
@@ -1559,7 +1568,7 @@ sub readSNInfo
 sub isServiceReq
 {
     my ($class, $servicenodename, $service, $serviceip) = @_;
-    my @ips = @$serviceip;    # list of service node ip addresses
+    my @ips = @$serviceip;    # list of service node ip addresses and names
     my $rc  = 0;
 
     # check if service is already setup
@@ -1586,17 +1595,18 @@ sub isServiceReq
         unless ($networkstab)
         {
             xCAT::MsgUtils->message('S', "Unable to open networks table.\n");
+            $networkstab->close;
             return -1;
         }
         foreach $serviceip (@ips)
         {
-            my $whereclause =
-              "$service like '$servicenodename' or $service like '$serviceip'";
-            my @netlist =
+            my $whereclause = "$service like '$serviceip'";
+            my @netlist     =
               $networkstab->getAllAttribsWhere($whereclause, 'netname',
                                                $service);
             if (@netlist)
             {
+                $networkstab->close;
                 return 1;   # found an entry in the networks table for this node
             }
         }
@@ -1611,19 +1621,20 @@ sub isServiceReq
             unless ($nodehmtab)
             {
                 xCAT::MsgUtils->message('S', "Unable to open nodehm table.\n");
+                $nodehmtab->close;
                 return -1;
             }
             foreach $serviceip (@ips)
             {
-                my $whereclause =
-                  "node like '$servicenodename' or node like '$serviceip'";
-                my @nodelist =
+                my $whereclause = "conserver like '$serviceip'";
+                my @nodelist    =
                   $nodehmtab->getAllAttribsWhere($whereclause, 'node',
                                                  $service);
                 foreach my $node (@nodelist)
                 {
                     if ($node->{$service} ne "")    # cons defined
                     {
+                        $nodehmtab->close;
                         return 1;    # found cons defined for this server
                     }
                 }
@@ -1638,28 +1649,35 @@ sub isServiceReq
             unless ($noderestab)
             {
                 xCAT::MsgUtils->message('S', "Unable to open noderes table.\n");
+                $noderestab->close;
                 return -1;
             }
             foreach $serviceip (@ips)
             {
+                my $whereclause = "$service like '$serviceip'";
+                my @nodelist    =
+                  $noderestab->getAllAttribsWhere($whereclause, 'node',
+                                                  $service);
+                if (@nodelist)
+                {
+                    $noderestab->close;
+                    return 1;    # found a match
+                }
+            }
+
+            # if did not find in service attribute, check xcatmaster, but
+            # service attribute must be blank
+            foreach $serviceip (@ips)
+            {
                 my $whereclause =
-                  "servicenode like '$servicenodename' or servicenode like '$serviceip'";
+                  "$service is NULL and xcatmaster like '$serviceip'";
                 my @nodelist =
                   $noderestab->getAllAttribsWhere($whereclause, 'node',
                                                   $service);
-                foreach my $node (@nodelist)
+                if (@nodelist)
                 {
-                    foreach $serviceip (@ips)
-                    {
-                        if (   ($node->{$service} eq $servicenodename)
-                            || ($node->{$service} eq $serviceip)
-                            || ($node->{$service} eq ""))
-                        {
-                            return
-                              1
-                              ; # found a node using this server for the service
-                        }
-                    }
+                    $noderestab->close;
+                    return 1;    # found a match
                 }
             }
         }
@@ -1674,7 +1692,7 @@ sub isServiceReq
 =head3 determinehostname  and ip address(s)
 
   Used on the service node to figure out what hostname and ip address(s)
-  the service node is in the database
+  are valid names and addresses 
   Input: None
   Output: ipaddress(s),nodename
 =cut
@@ -1734,10 +1752,10 @@ sub update_xCATSN
 
 =head3 gethost_ips
      Will use ifconfig to determine all possible ip addresses for the
-	 host it is running on
+	 host it is running on and then gethostbyaddr to get all possible hostnames
 
      input:
-	 output: array of ipaddress(s)
+	 output: array of ipaddress(s)  and hostnames
 	 example:  @ips=xCAT::gethost_ips();
 
 =cut
@@ -1762,6 +1780,18 @@ sub gethost_ips
         my @ip = split(":", $addr1);
         push @ipaddress, $ip[1];
     }
+    my @names = @ipaddress;
+    foreach my $ipaddr (@names)
+    {
+        my $packedaddr = inet_aton($ipaddr);
+        my $hostname = gethostbyaddr($packedaddr, AF_INET);
+        if ($hostname)
+        {
+            my @shorthost = split(/\./, $hostname);
+            push @ipaddress, $shorthost[0];
+        }
+    }
+
     return @ipaddress;
 }
 
@@ -1788,7 +1818,8 @@ sub create_postscripts_tar
         mkdir("/install/autoinst");
     }
 
-	$cmd = "cd /install/postscripts; tar -cf /install/autoinst/xcatpost.tar * .ssh/* .xcat/*; gzip -f /install/autoinst/xcatpost.tar";
+    $cmd =
+      "cd /install/postscripts; tar -cf /install/autoinst/xcatpost.tar * .ssh/* .xcat/*; gzip -f /install/autoinst/xcatpost.tar";
     my @result = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -1907,6 +1938,7 @@ sub get_ServiceNode
             xCAT::MsgUtils->message('E', "Unable to read site Master value.\n");
             $::ERROR_RC = 1;
         }
+        $noderestab->close;
         return \%snhash;
     }
 
@@ -1925,6 +1957,7 @@ sub get_ServiceNode
                 push @{$snhash{$master}}, $node;
             }
         }
+        $noderestab->close;
         return \%snhash;
 
     }
@@ -1967,6 +2000,7 @@ sub get_ServiceNode
                     }
                 }
             }
+            $noderestab->close;
             return \%snhash;
 
         }
@@ -1996,6 +2030,7 @@ sub get_ServiceNode
                             push @{$snhash{$master}}, $node;
                         }
                     }
+                    $nodehmtab->close;
                     return \%snhash;
                 }
 
@@ -2033,6 +2068,8 @@ sub get_ServiceNode
                         }
                     }
                 }
+                $noderestab->close;
+                $nodehmtab->close;
                 return \%snhash;
 
             }
@@ -2048,20 +2085,20 @@ sub get_ServiceNode
 
 }
 
-
 # IPv4 function to convert hostname to IP address
-sub toIP {
+sub toIP
+{
 
-  if ($_[0] =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/) {
-    return([0,$_[0]]);
-  }
-  my $packed_ip = gethostbyname($_[0]);
-  if( !$packed_ip or $! ) {
-    return([1,"Cannot Resolve: $_[0]\n"]);
-  }
-  return([0,inet_ntoa($packed_ip)]);
+    if ($_[0] =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/)
+    {
+        return ([0, $_[0]]);
+    }
+    my $packed_ip = gethostbyname($_[0]);
+    if (!$packed_ip or $!)
+    {
+        return ([1, "Cannot Resolve: $_[0]\n"]);
+    }
+    return ([0, inet_ntoa($packed_ip)]);
 }
-
-
 
 1;
