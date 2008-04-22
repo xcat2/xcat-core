@@ -58,6 +58,7 @@ export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
 uploadboot
+updateflag.awk $MASTER 3002
 cd /
 rm -Rf /xcatpost
 exit 0
