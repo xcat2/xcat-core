@@ -511,6 +511,8 @@ sub x2n
 
 		# create a NIM machine definition
 		if ($::objtype{$objname} eq 'node') {
+		    # need to set group type to either static or dynamic
+            $::objhash{$objname}{'grouptype'}='static';
 			if (mkclientdef($objname)) {
                 # could not create client definition
 				$error++;
@@ -1155,6 +1157,9 @@ sub check_nim_group
 {
 	my ($group, $servnode) = @_;
 	my ($cmd, @output);
+	
+	chomp $::local_host;
+    chomp $servnode;
 
 	if ( $::NIMGroupList{$servnode}) {
 		@GroupList = @{$::NIMGroupList{$servnode}};
