@@ -87,6 +87,7 @@ sub process_command {
     my $callback = $request->{callback};
     my $sitetab  = xCAT::Table->new( 'site' );
     my $start;
+    my $timeout;
 
     #######################################
     # Get max processes to fork
@@ -95,6 +96,10 @@ sub process_command {
         my ($ent) = $sitetab->getAttribs({ key=>'ppcmaxp'},'value');
         if ( defined($ent) ) { 
             $maxp = $ent->{value}; 
+        }
+        ($ent) = $sitetab->getAttribs({ key=>'ppctimeout'},'value');
+        if ( defined($ent) ) { 
+            $timeout = $ent->{value}; 
         }
     }
     if ( exists( $request->{verbose} )) {
@@ -118,7 +123,7 @@ sub process_command {
         while ( $children > $maxp ) {
             Time::HiRes::sleep(0.1);
         }
-        my $pipe = fork_cmd( @$_[0], @$_[1], $request );
+        my $pipe = fork_cmd( @$_[0], @$_[1], $request, $timeout );
         if ( $pipe ) {
             $fds->add( $pipe );
             $children++;
@@ -597,6 +602,7 @@ sub fork_cmd {
     my $host    = shift;
     my $nodes   = shift;
     my $request = shift;
+    my $timeout = shift;
 
     #######################################
     # Pipe childs output back to parent
@@ -620,7 +626,7 @@ sub fork_cmd {
         close( $parent );
         $request->{pipe} = $child;
 
-        invoke_cmd( $host, $nodes, $request );
+        invoke_cmd( $host, $nodes, $request, $timeout );
         exit(0);
     }
     else {
@@ -642,6 +648,7 @@ sub invoke_cmd {
     my $host    = shift;
     my $nodes   = shift;
     my $request = shift;
+    my $timeout = shift;
     my $hwtype  = $request->{hwtype};
     my $verbose = $request->{verbose};
     my @exp;
@@ -661,7 +668,7 @@ sub invoke_cmd {
             send_msg( $request, 1, $@ );
             return;
         }
-        my @exp = xCAT::PPCfsp::connect( $request, $host );
+        my @exp = xCAT::PPCfsp::connect( $request, $host, $timeout );
 
         ####################################
         # Error connecting 
@@ -693,7 +700,7 @@ sub invoke_cmd {
     # Connect to list of remote servers
     ########################################
     foreach ( split /,/, $host ) {
-        @exp = xCAT::PPCcli::connect( $hwtype, $_, $verbose );
+        @exp = xCAT::PPCcli::connect( $hwtype, $_, $verbose, $timeout );
 
         ####################################
         # Successfully connected 
@@ -964,6 +971,7 @@ sub process_request {
 
 
 1;
+
 
 
 
