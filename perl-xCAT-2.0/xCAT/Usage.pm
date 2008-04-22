@@ -65,9 +65,9 @@ my %usage = (
            snmpcfg=<enable|disable>|                             
            pd1=<nonred|redwoperf|redwperf>|
            pd2=<nonred|redwoperf|redwperf>|
-           network=<*|ip,gateway,mask>|
-           swnet=<ip,gateway,mask>|
-           ntp=<ntp,ip,frequency,v3>
+           network=<*|[ip],[host],[gateway],[netmask]>|
+           swnet=<[ip],[gateway],[netmask]>|
+           ntp=<[ntp],[ip],[frequency],[v3]>
    PPC specific:
        rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump]
        rspconfig <noderange> autopower=<enable|disable>|
