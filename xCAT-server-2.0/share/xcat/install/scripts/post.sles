@@ -53,6 +53,11 @@ echo $HOSTNAME
 /sbin/portmap
 export MASTER_IP=#XCATVAR:XCATMASTER#
 export MASTER_IPS=#XCATVAR:XCATMASTER#
+export MASTER="#XCATVAR:XCATMASTER#"
+
+#
+#  This script has not yet been updated to work with service nodes
+#
 mkdir -p /xcatpost
 for i in $(seq 1 20)
 do
@@ -73,6 +78,7 @@ do
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
 	sleep $RAND
 done
+updateflag.awk $MASTER 3002
 cd /
 /xcatpost/#TABLE:nodelist:$NODE:node#
 umount /xcatpost
