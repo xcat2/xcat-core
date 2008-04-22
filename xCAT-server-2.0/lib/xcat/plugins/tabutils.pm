@@ -778,11 +778,22 @@ sub nodels
                 if ($shortnames{$temp})
                 {
                     ($table, $column) = @{$shortnames{$temp}};
-                }
-                else
-                {
+                } elsif ($temp =~ /\./) {
                     ($table, $column) = split('\.', $temp, 2);
+                } elsif ($xCAT::Schema::tabspec{$temp}) {
+                   $table = $temp;
+                   foreach my $column (@{$xCAT::Schema::tabspec{$table}->{cols}}) {
+                      unless (grep /^$column$/, @{$tables{$table}}) {
+                        push @{$tables{$table}},[$column,"$temp.$column"];
+                      }
+                   }
+                   next;
+                } else {
+                   $callback->({error=>"$temp not a valid table.column description",errorcode=>[1]});
+                   next;
                 }
+
+
                 unless (grep /$column/,@{$xCAT::Schema::tabspec{$table}->{cols}}) {
                    $callback->({error=>"$table.$column not a valid table.column description",errorcode=>[1]});
                    next;
