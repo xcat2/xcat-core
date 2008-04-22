@@ -66,13 +66,19 @@ sub connect {
     my $hwtype     = shift;
     my $server     = shift;
     my $verbose    = shift;
+    my $timeout    = shift;
     my $pwd_prompt = 'assword: $';
     my $continue   = 'continue connecting (yes/no)?';
-    my $timeout    = 30;
     my $success    = 0;
     my $pwd_sent   = 0;
     my $expect_log;
 
+    ##################################################
+    # Use timeout from site table (if defined) 
+    ##################################################
+    if ( !defined( $timeout )) {
+        $timeout = DEFAULT_TIMEOUT; 
+    }
     ##################################################
     # Shell prompt regexp based on HW Type 
     ##################################################
@@ -184,6 +190,7 @@ sub connect {
     #    UserId
     #    Password
     #    Redirected STDERR/STDOUT
+    #    Connect/Command timeout
     ##########################################
     if ( $success ) {
         return( $ssh,
@@ -192,7 +199,8 @@ sub connect {
                 $server,
                 $cred[0],
                 $cred[1],
-                \$expect_log );
+                \$expect_log,
+                $timeout );
     }
     ##########################################
     # Failed logon - kill ssh process
@@ -748,10 +756,10 @@ sub send_cmd {
     my $prompt  = @$exp[1];
 
     ##########################################
-    # Set default Expect timeout 
+    # Use timeout from site table (if defined) 
     ##########################################
     if ( !defined( $timeout )) {
-        $timeout = DEFAULT_TIMEOUT;
+        $timeout = @$exp[7];
     }
     ##########################################
     # Send command 
@@ -876,6 +884,7 @@ sub power_cmd {
 
 
 1;
+
 
 
 
