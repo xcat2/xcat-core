@@ -22,6 +22,9 @@ my $sysconfig="/etc/sysconfig/syslog";
 my $param="SYSLOGD_OPTIONS";
 my $init="/etc/init.d/syslog";
 my $ng=0;
+my $isSN=0;
+
+if ($ENV{NTYPE} && ($ENV{NTYPE} =~ /service/i)) { $isSN=1; }
 
 if ($^O =~ /^aix/i) {
   $sysconfig="";  #AIX does not have this file
@@ -56,7 +59,7 @@ if (($sysconfig) && (-e $sysconfig)) {
       if (-e "/etc/xCATMN") {
         #on MN: make the syslogd be able to receive remote logs 
 	if ($_ !~ /-r/) { s/$param=\"/$param=\"-r /; }
-      } elsif (-e "/etc/xCATSN") {
+      } elsif ($isSN) {
         #on SN: make the syslog be able to receive and forward remote logs
 	if ($_ !~ /-h/) { s/$param=\"/$param=\"-h /; }
 	if ($_ !~ /-r/) { s/$param=\"/$param=\"-r /; }
@@ -72,7 +75,7 @@ if (($sysconfig) && (-e $sysconfig)) {
 }
 
 #syslog-ng has different way of enabling log forwarding
-if (($ng) && (-e "/etc/xCATSN")) {
+if (($ng) && ($isSN)) {
   if (! -f "$conf_file.XCATORIG") {
     `cp -f $conf_file $conf_file.XCATORIG`;
   }
@@ -91,7 +94,7 @@ if (($ng) && (-e "/etc/xCATSN")) {
 my $goLocal=0;
 if (-e "/etc/xCATMN") {
   $goLocal=1;
-} elsif (-e "/etc/xCATSN") {
+} elsif ($isSN) {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
   require "$::XCATROOT/lib/perl/xCAT/Table.pm";
   my $sitetab = xCAT::Table->new('site');
