@@ -2152,4 +2152,45 @@ sub isSN
     $nodelisttab->close;
     return 0;
 }
+
+#-----------------------------------------------------------------------------
+
+=head3 get_AllSN 
+ 
+    Returns an array of all service nodes 
+
+    Arguments:
+       none 
+    Returns:
+		array of Service Nodes or empty array, if none
+    Globals:
+        none
+    Error:
+        1 - error
+    Example:
+         @allSN=xCAT::Utils->get_AllSN
+    Comments:
+        none
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_AllSN
+{
+
+    # read the node from the nodelist table and see if it
+    # is a member of the service group
+    my @servicenodes;
+    my $nodelisttab = xCAT::Table->new('nodelist');
+    my $recs        = $nodelisttab->getAllEntries();
+    foreach (@$recs)
+    {
+        if (grep /service/, $_->{groups})
+        {    # in service group
+            push @servicenodes, $_->{node};
+        }
+    }
+    $nodelisttab->close;
+    return @servicenodes;
+}
 1;
