@@ -149,9 +149,9 @@ sub pass_along {
 
 
   
-sub preprocess_request {
-   return xCAT::Scope->get_broadcast_scope(@_);
-}
+#sub preprocess_request {
+#   return xCAT::Scope->get_broadcast_scope(@_);
+#}
 #sub preprocess_request {
 #   my $req = shift;
 #   my $callback = shift;
