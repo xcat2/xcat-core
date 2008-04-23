@@ -2,6 +2,7 @@ package xCAT_plugin::packimage;
 use xCAT::Table;
 use Getopt::Long;
 use File::Path;
+use File::Copy;
 use Cwd;
 use File::Temp;
 Getopt::Long::Configure("bundling");
@@ -79,6 +80,10 @@ sub process_request {
        $excludestr .= "'!' -wholename '".$_."' -a ";
     }
     close($exlist);
+
+	# add the xCAT post scripts to the image
+	copybootscript($installroot, $osver, $arch, $profile, $callback);
+
     $callback->({data=>["Packing contents of $installroot/netboot/$osver/$arch/$profile/rootimg"]});
     my $temppath;
     if ($method =~ /cpio/) {
@@ -103,11 +108,6 @@ sub process_request {
        } elsif ($arch =~ /ppc/) {
           $flags="-be";
        }
-
-       if (! -x "/sbin/mksquashfs") {
-          $callback->({error=>["mksquashfs not found, squashfs-tools rpm should be installed on the management node"],errorcode=>[1]});
-          return;
-       }
        my $rc = system("mksquashfs $temppath ../rootimg.sfs $flags");
        if ($rc) {
           $callback->({error=>["mksquashfs could not be run successfully"],errorcode=>[1]});
@@ -117,3 +117,61 @@ sub process_request {
     }
     chdir($oldpath);
 }
+
+###########################################################
+#
+#  copybootscript - copy the xCAT diskless init scripts to the image
+#
+#############################################################
+sub copybootscript {
+
+    my $installroot  = shift;
+    my $osver  = shift;
+    my $arch = shift;
+    my $profile = shift;
+    my $callback = shift;
+
+    if ( -f "$installroot/postscripts/xcatdsklspost") {
+
+        # copy the xCAT diskless post script to the image
+        mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/opt/xcat");  
+
+        copy ("$installroot/postscripts/xcatdsklspost", "$installroot/netboot/$osver/$arch/$profile/rootimg/opt/xcat/xcatdsklspost");
+
+        chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/opt/xcat/xcatdsklspost");
+
+    } else {
+
+	my $rsp;
+        push @{$rsp->{data}}, "Could not find the script $installroot/postscripts/xcatdsklspost.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	if ( -f "$installroot/postscripts/xcatpostinit") {
+
+        # copy the linux diskless init script to the image
+        #   - & set the permissions
+        copy ("$installroot/postscripts/xcatpostinit","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/xcatpostinit");
+
+        chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/xcatpostinit");
+
+        # run chkconfig
+        my $chkcmd = "chroot $installroot/netboot/$osver/$arch/$profile/rootimg chkconfig --add xcatpostinit";
+
+        my $rc = system($chkcmd);
+        if ($rc) {
+		my $rsp;
+        	push @{$rsp->{data}}, "Could not run the chkconfig command.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	return 1;
+        }
+    } else {
+	my $rsp;
+        push @{$rsp->{data}}, "Could not find the script $installroot/postscripts/xcatpostinit.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+	return 0;
+}
+
