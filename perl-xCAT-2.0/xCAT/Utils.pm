@@ -1865,7 +1865,7 @@ sub get_site_Master
 =head3 get_ServiceNode
 
      Will get the Service node ( name or ipaddress) as known by the Management
-	 Server or NOde for the input nodename or ipadress of the node
+	 Server or Node for the input nodename or ipadress of the node
 
      input: list of nodenames and/or node ipaddresses (array ref)
 			service name
@@ -2085,7 +2085,15 @@ sub get_ServiceNode
 
 }
 
-# IPv4 function to convert hostname to IP address
+#-----------------------------------------------------------------------------
+
+=head3 toIP 
+
+ IPv4 function to convert hostname to IP address
+
+=cut
+
+#-----------------------------------------------------------------------------
 sub toIP
 {
 
@@ -2101,4 +2109,47 @@ sub toIP
     return ([0, inet_ntoa($packed_ip)]);
 }
 
+#-----------------------------------------------------------------------------
+
+=head3 isSN 
+ 
+	Determines if the input node name is a service node
+
+    returns 1 if input host is a service node 
+    Arguments:
+       hostname 
+    Returns:
+        1 - is  Service Node
+        0 - is not a Service Node
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::Utils->isSN($nodename)) { blah; }
+    Comments:
+        none
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub isSN
+{
+    my ($class, $node) = @_;
+
+    # read the node from the nodelist table and see if it
+    # is a member of the service group
+    my $attr        = "groups";
+    my $nodelisttab = xCAT::Table->new('nodelist');
+    my $sn          = $nodelisttab->getNodeAttribs($node, [$attr]);
+    if ($sn)
+    {
+        if (grep /service/, $sn->{$attr})
+        {
+            return 1;
+        }
+    }
+    $nodelisttab->close;
+    return 0;
+}
 1;
