@@ -12,11 +12,11 @@ use Getopt::Long;
 
 
 
- mkrrnodes -C <cu letter> -R <startrange,endrange>     (add) 
+ mkrrnodes -C <cu letter> -L < start Rack number for CU> -R <startrange,endrange>     (add) 
  mkrrnodes -d -C <cu letter> -R <startrange,endrange> (delete)
-
  Build an nodelist entry that looks like this
- "rrb048c","rrb048,qs22,cub,cell,cell-c,compute,tb,all,rack06",,,,
+
+ "rrb048c","rrb048,qs22,cub,cell,cell-cub-c,cell-c,compute,tb,all,rack16",,,,
 
 
 =cut
@@ -27,53 +27,65 @@ use Getopt::Long;
 my $rc = 0;
 
 &parse_args;
-my $cmd       = "";
+my $cmd = "";
 my @bladename;
-@bladename=("a","b","c");
-my $count=0;
-my $rackno="01";
+@bladename = ("a", "b", "c");
 foreach my $CU (@::CU)
 {
     foreach my $range (@::RANGE)
     {
         foreach my $blade (@bladename)
         {
-            $rack="rack";
-            $cmd = "rr";
+            $rack = "rack";
+            $cmd  = "rr";
             $cmd .= $CU;
             $cmd .= $range;
             $cmd .= "$blade";
             $cmd .= " ";
-            if ($blade eq "a" ) {
-              
-              $cmd .= "groups=rr$CU$range,ls21,cu$CU,opteron,compute,tb,all";
-            } else {
-              if ($blade eq "b" ) {
-              $cmd .= "groups=rr$CU$range,qs22,cu$CU,cell,cell-b,compute,all,tb";
-               } else { # c
-              $cmd .= "groups=rr$CU$range,qs22,cu$CU,cell,cell-c,compute,all,tb";
-               
-              }
+            if ($blade eq "a")
+            {
+
+                $cmd .=
+                  "groups=rr$CU$range,ls21,cu$CU,opteron,opteron-cu$CU,compute,tb,all";
             }
+            else
+            {
+                if ($blade eq "b")
+                {
+                    $cmd .=
+                      "groups=rr$CU$range,qs22,cu$CU,cell,cell-b,cell-cu$CU-b,cell-cu$CU,compute,all,tb";
+                }
+                else
+                {    # c
+                    $cmd .=
+                      "groups=rr$CU$range,qs22,cu$CU,cell,cell-c,cell-cu$CU-c,cell-cu$CU,compute,all,tb";
+
+                }
+            }
+
             # calculate the rack number ( 12 triblades/rack)
-            if ($count < 36) {  # each 36 blades
-               $rack .= $rackno;
-               $count++;
-            } else { # increment to next rack
-               $rack="rack";
-               $rackno++;
-               $rack .= $rackno;
-               $count =0;
-            }     
-              
-              $cmd .= ",";
-              $cmd .= $rack;
-            if ($::DELETE) {
-              system("noderm $cmd");
-            } else {
-               system("nodeadd $cmd");
+            #  15 racks/CU
+            #  Rack number = (triblade# / 12) +1
+            my $count = $range / 12;
+            my ($rackno, $rem) = split '\.', $count;
+           
+            $rackno = $rackno + $::LOCATION;
+            if ($rackno <=9) {  # want rack0X
+               $rack .="0";
+            } 
+            $rack .= $rackno;
+
+            $cmd .= ",";
+            $cmd .= $rack;
+            if ($::DELETE)
+            {
+                system("noderm $cmd");
             }
-            
+            else
+            {
+                system("nodeadd $cmd");
+            }
+
         }
     }
 }
@@ -94,9 +106,12 @@ sub parse_args
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
+    my $usagemsg =
+          " mkrrnodes -h \n mkrrnodes [-d] -C [a|b|,...,r] -L [start rack number for CU] -R [startrange,endrange]\n";
     if (
         !GetOptions(
             'C|CU=s'    => \$::CU,
+            'L|LOC=s'   => \$::LOCATION,
             'h|help'    => \$::HELP,
             'd|delete'  => \$::DELETE,
             'R|RANGE=s' => \$::RANGE
@@ -104,30 +119,24 @@ sub parse_args
         )
       )
     {
-        my $usagemsg =
-          " mkrrnodes -h \n mkrrnodes [-d] -C [a|b|...,r] -R [startrange,endrange]\n";
         printf $usagemsg;
         exit 1;
     }
     if ($::HELP)
     {
-        my $usagemsg =
-          " mkrrnodes -h \n mkrrnodes [-d] -C [a|b|,...,r] -R [startrange,endrange]\n";
         printf $usagemsg;
         exit 0;
     }
-    @::CU    = split(',', $::CU);
-  
-    my ($fNum,$eNum) = split(',', $::RANGE);
+    @::CU = split(',', $::CU);
+
+    my ($fNum, $eNum) = split(',', $::RANGE);
     my $prefix;
     foreach my $suffix ($fNum .. $eNum)
     {
-                my $numOfZeros = (length($fNum) - length($suffix));
-                my $prefix     = '0' x $numOfZeros;
-                push @::RANGE, "$fRoot$prefix$suffix$fDomain";
+        my $numOfZeros = (length($fNum) - length($suffix));
+        my $prefix     = '0' x $numOfZeros;
+        push @::RANGE, "$fRoot$prefix$suffix$fDomain";
     }
-
-
 
 }
 
