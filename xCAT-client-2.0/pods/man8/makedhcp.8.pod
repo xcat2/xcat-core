@@ -28,7 +28,7 @@ The B<makedhcp> command with the B<-a> option will create a dhcpd.leases file fo
 
 The B<makedhcp>  B<-d> flag followed with a <noderange> will delete the dhcp server host definitons for the noderange.
 
-The B<makedhcp> command also uses the following attributes from the xCAT database:  B<site.xcatservers>,
+The B<makedhcp> command also uses the following attributes from the xCAT database:  
 B<site.dhcpinterfaces>, B<site.domain>,
 B<networks.dynamicrange>, B<networks.dhcpserver>
 
