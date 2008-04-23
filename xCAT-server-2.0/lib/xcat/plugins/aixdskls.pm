@@ -17,6 +17,7 @@ use Getopt::Long;
 use xCAT::MsgUtils;
 use strict;
 use Socket;
+use File::Path;
 
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
@@ -83,25 +84,24 @@ sub handled_commands
 sub process_request
 {
 
-    $::request  = shift;
-    $::callback = shift;
+    my $request  = shift;
+    my $callback = shift;
 
     my $ret;
     my $msg;
 
-    # globals used by all subroutines.
-    $::command  = $::request->{command}->[0];
-    $::args     = $::request->{arg};
-    $::filedata = $::request->{stdin}->[0];
+    my $command  = $request->{command}->[0];
+    $::args     = $request->{arg};
+    $::filedata = $request->{stdin}->[0];
 
     # figure out which cmd and call the subroutine to process
-    if ($::command eq "mkdsklsnode")
+    if ($command eq "mkdsklsnode")
     {
-        ($ret, $msg) = &dsklsnode;
+        ($ret, $msg) = &dsklsnode($callback);
     }
-    elsif ($::command eq "mkdsklsimage")
+    elsif ($command eq "mkdsklsimage")
     {
-        ($ret, $msg) = &dsklsimage;
+        ($ret, $msg) = &dsklsimage($callback);
     }
 
 	if ($ret > 0) {
@@ -115,7 +115,8 @@ sub process_request
 
 		$rsp->{errorcode}->[0] = $ret;
 		
-		xCAT::MsgUtils->message("E", $rsp, $::callback, $ret);
+		xCAT::MsgUtils->message("E", $rsp, $callback, $ret);
+
 	}
 
 	return 0;
@@ -145,6 +146,10 @@ sub process_request
 #-----------------------------------------------------------------------------
 sub dsklsimage
 {
+	my $callback = shift;
+
+	@ARGV = @{$::args};
+
 	# parse the options
 	Getopt::Long::Configure("no_pass_through");
 	if(!GetOptions(
@@ -156,13 +161,13 @@ sub dsklsimage
 		'v|version'  => \$::VERSION,))
 	{
 
-		&dsklsimage_usage;
+		&dsklsimage_usage($callback);
         return 1;
 	}
 
 	# display the usage if -h or --help is specified
     if ($::HELP) {
-        &dsklsimage_usage;
+        &dsklsimage_usage($callback);
         return 0;
     }
 
@@ -171,19 +176,19 @@ sub dsklsimage
     {
         my $rsp;
         push @{$rsp->{data}}, "mkdsklsimage version 2.0\n";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        xCAT::MsgUtils->message("I", $rsp, $callback);
         return 0;
     }
 
 	my $spot_name = shift @ARGV;
 	unless ($spot_name) {
-		&dsklsimage_usage;
+		&dsklsimage_usage($callback);
 		return 1;
 	}
 
 	# must have a source and a name
 	if (!$::opt_s || !defined($spot_name) ) {
-		&dsklsimage_usage;
+		&dsklsimage_usage($callback);
 		return 1;
 	}
 
@@ -197,7 +202,7 @@ sub dsklsimage
 	{
 		my $rsp;
         push @{$rsp->{data}}, "Could not get NIM resource definitions.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
 	}
 	elsif (grep(/^$spot_name$/, @output))
@@ -205,7 +210,7 @@ sub dsklsimage
 		$spot_exists=1;
 		my $rsp;
 		push @{$rsp->{data}}, "A NIM SPOT resource named \'$spot_name\' already exists.";
-		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
 
@@ -244,14 +249,14 @@ sub dsklsimage
 		# run the cmd
 		my $rsp;
 		push @{$rsp->{data}}, "Creating a NIM SPOT resource. This could take a while.\n";
-		xCAT::MsgUtils->message("I", $rsp, $::callback);
+		xCAT::MsgUtils->message("I", $rsp, $callback);
 
 		my $output = xCAT::Utils->runcmd("$mkcosi_cmd", -1);
 		if ($::RUNCMD_RC  != 0)
 		{
 			my $rsp;
 			push @{$rsp->{data}}, "Could not create a NIM definition for \'$spot_name\'.\n";
-			xCAT::MsgUtils->message("E", $rsp, $::callback);
+			xCAT::MsgUtils->message("E", $rsp, $callback);
 			return 1;
 		}
 
@@ -260,11 +265,11 @@ sub dsklsimage
 	#
 	#  Get the SPOT location ( path to ../usr)
 	#
-	$::spot_loc = &get_spot_loc($spot_name);
+	$::spot_loc = &get_spot_loc($spot_name, $callback);
 	if (!defined($::spot_loc) ) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not get the location of the SPOT/COSI named $::spot_loc.\n";
-		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
 
@@ -283,7 +288,7 @@ sub dsklsimage
 	} else {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not open $odmscript for writing.\n";
-		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
 	my $cmd = "chmod 444 $odmscript";
@@ -292,16 +297,16 @@ sub dsklsimage
 	{
 		my $rsp;
 		push @{$rsp->{data}}, "Could not run the chmod command.\n";
-		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
 
 	# Modify the rc.dd-boot script to set the ODM correctly
 	my $boot_file = "$::spot_loc/lib/boot/network/rc.dd_boot";
-	if (&update_dd_boot($boot_file) != 0) {
+	if (&update_dd_boot($boot_file, $callback) != 0) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not update the rc.dd_boot file in the SPOT.\n";
-		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
 
@@ -317,15 +322,15 @@ sub dsklsimage
 	{
 		my $rsp;
         push @{$rsp->{data}}, "Could not copy the xcatAIXpost script to the SPOT.\n";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }	
 
 	# add an entry to the /etc/inittab file in the COSI/SPOT
-	if (&update_inittab != 0) {
+	if (&update_inittab($callback) != 0) {
 		my $rsp;
         push @{$rsp->{data}}, "Could not update the /etc/inittab file in the SPOT.\n";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
 	}
 
@@ -335,7 +340,7 @@ sub dsklsimage
 	# - use lsnim or nim -o showres  ??
 	my $rsp;
 	push @{$rsp->{data}}, "A diskless image called $spot_name was created and updated.\n";
-	xCAT::MsgUtils->message("I", $rsp, $::callback);
+	xCAT::MsgUtils->message("I", $rsp, $callback);
 
 	return 0;
 
@@ -358,7 +363,7 @@ sub dsklsimage
 #------------------------------------------------------------------------
 sub update_inittab
 {
-
+	my $callback = shift;
     my ($cmd, $rc, $entry);
 
 	my $spotinittab = "$::spot_loc/lpp/bos/inst_root/etc/inittab";
@@ -366,7 +371,9 @@ sub update_inittab
 	my $entry = "xcat:2:wait:/opt/xcat/xcatAIXpost\n";
 
 	unless (open(INITTAB, ">>$spotinittab")) {
-		print "Could not open $spotinittab for appending.\n";
+		my $rsp;
+		push @{$rsp->{data}}, "Could not open $spotinittab for appending.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
 
@@ -399,14 +406,18 @@ sub update_inittab
 #-----------------------------------------------------------------------------
 sub get_spot_loc {
 
-	my ($spotname) = @_;
+	my $spotname = shift;
+	my $callback = shift;
 
 	my $cmd = "/usr/sbin/lsnim -l $spotname";
 
 	my @result = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC  != 0)
     {
-        print "Could not run lsnim command.\n";
+		my $rsp;
+        push @{$rsp->{data}}, "Could not run lsnim command.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
     }
 
 	foreach (@result){
@@ -444,7 +455,9 @@ sub get_spot_loc {
 #-----------------------------------------------------------------------------
 sub update_dd_boot {
 
-	my ($dd_boot_file) = @_;
+	my $dd_boot_file = shift;
+	my $callback = shift;
+
 	my @lines;
 	my $patch = qq~\n\t# xCAT support\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
 
@@ -453,14 +466,19 @@ sub update_dd_boot {
  	my $output = xCAT::Utils->runcmd("$cmd", -1);
 	if ($::RUNCMD_RC  != 0)
 	{
-		print "Could not copy $dd_boot_file.\n";
+		my $rsp;
+        push @{$rsp->{data}}, "Could not copy $dd_boot_file.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
 	}
 	
 	if ( open(DDBOOT, "<$dd_boot_file") ) {
 		@lines = <DDBOOT>;
 		close(DDBOOT);
 	} else {
-		print "Could not open $dd_boot_file for reading.\n";
+		my $rsp;
+        push @{$rsp->{data}}, "Could not open $dd_boot_file for reading.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
 
@@ -469,7 +487,10 @@ sub update_dd_boot {
 	my $output = xCAT::Utils->runcmd("$cmd", -1);
 	if ($::RUNCMD_RC  != 0)
     {
-        print "Could not remove original $dd_boot_file.\n";
+		my $rsp;
+        push @{$rsp->{data}}, "Could not remove original $dd_boot_file.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
     }
 
 	# Create a new one
@@ -490,12 +511,16 @@ sub update_dd_boot {
 		close(DDBOOT);
 
 	} else {
-        print "Could not open $dd_boot_file for writing.\n";
+		my $rsp;
+        push @{$rsp->{data}}, "Could not open $dd_boot_file for writing.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
     }
 
 	if ($::opt_V) {
-		print "Updated $dd_boot_file.\n";
+		my $rsp;
+        push @{$rsp->{data}}, "Updated $dd_boot_file.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 	return 0;
 }
@@ -522,6 +547,14 @@ sub update_dd_boot {
 #-----------------------------------------------------------------------------
 sub dsklsnode 
 {
+	my $callback = shift;
+
+	# some subroutines require a global callback var
+	#	- need to change to pass in the callback 
+	#	- just set global for now
+    $::callback=$callback;
+
+	@ARGV = @{$::args};
 
 	# parse the options
 	if(!GetOptions(
@@ -530,12 +563,12 @@ sub dsklsnode
 		'verbose|V' => \$::opt_V,
 		'v|version'  => \$::VERSION,))
 	{
-		&dsklsnode_usage;
+		&dsklsnode_usage($callback);
 		return 1;
 	}
 
 	if ($::HELP) {
-		&dsklsnode_usage;
+		&dsklsnode_usage($callback);
 		return 0;
 	}
 
@@ -544,7 +577,7 @@ sub dsklsnode
     {
         my $rsp;
         push @{$rsp->{data}}, "mkdsklsnode version 2.0\n";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        xCAT::MsgUtils->message("I", $rsp, $callback);
         return 0;
     }
 
@@ -564,23 +597,24 @@ sub dsklsnode
 		$objtype{$o} = 'node';
 	}
 
-	%objhash = xCAT::DBobjUtils->getobjdefs(\%objtype);
+	%objhash = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
 	if (!defined(%objhash))
 	{
 		my $rsp;
 		push @{$rsp->{data}}, "Could not get xCAT object definitions.\n";
-	    xCAT::MsgUtils->message("E", $rsp, $::callback);
+	    xCAT::MsgUtils->message("E", $rsp, $callback);
     	return 1;
 	}
 
-	#
-	#  Create config file for each node
-	#       - will contain list of scripts to run on node
-	#       - use postscripts.rules & postcripts dir
-	#
-
 	#Get the network info for each node
-	my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist);
+	my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist, $callback);
+	if (!defined(%nethash))
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get xCAT network definitions for one or more nodes.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
 
 	foreach my $node (keys %objhash)
 	{
@@ -597,12 +631,22 @@ sub dsklsnode
                 next;
         }
 
+		#
+		#  Create a unique post script for each node
+		#
+		mkpath "/install/postscripts/";
+		xCAT::Postage->writescript($node, "/install/postscripts/".$node, "netboot", $callback);
+
+		#
+		#  Run the AIX mkts cmd to define and initialize a diskless client
+		#
         my $cosi = $::opt_c;
 
         my $cmd = qq~mkts -i $IP -m $nethash{$node}{'mask'} -g $nethash{$node}{'gateway'} -c $cosi -l $shorthost 2>&1~;
 
-#ndebug
-# add - this could take a while!
+		my $rsp;
+		push @{$rsp->{data}}, "Creating NIM diskless node definitions. This could take a while.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
 
         my $output = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC  != 0)
@@ -612,7 +656,7 @@ sub dsklsnode
 			if ($::verbose) {
 				push @{$rsp->{data}}, "$output";
 	    	}
-			xCAT::MsgUtils->message("E", $rsp, $::callback);
+			xCAT::MsgUtils->message("E", $rsp, $callback);
 			return 1;
         }
 	}
@@ -638,6 +682,7 @@ sub dsklsnode
 
 sub dsklsnode_usage
 {
+	my $callback = shift;
 
 	my $rsp;
 	push @{$rsp->{data}}, "  mkdsklsnode - Create an AIX NIM diskless node using information from the xCAT database.\n";
@@ -645,7 +690,7 @@ sub dsklsnode_usage
 	push @{$rsp->{data}}, "\tmkdsklsnode [-h | --help ]";
 	push @{$rsp->{data}}, "or";
 	push @{$rsp->{data}}, "\tmkdsklsnode [-V] -c image_name noderange";
-	xCAT::MsgUtils->message("I", $rsp, $::callback);
+	xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
 #----------------------------------------------------------------------------
@@ -667,13 +712,15 @@ sub dsklsnode_usage
 
 sub dsklsimage_usage
 {
+	my $callback = shift;
+
 	my $rsp;
     push @{$rsp->{data}}, "  mkdsklsimage - Create an AIX NIM diskless image (SPOT/COSI).\n";
     push @{$rsp->{data}}, "  Usage: ";
     push @{$rsp->{data}}, "\tmkdsklsimage [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}}, "\tmkdsklsimage -s source [-l <location>] [-V] image_name\n";
-    xCAT::MsgUtils->message("I", $rsp, $::callback);
+    xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
 
