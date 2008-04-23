@@ -1,0 +1,71 @@
+#!/usr/bin/perl
+#
+#
+#  Used this script while testing the port of xCAT to AIX - might turn it
+#	into a real command some day.
+#
+#  Just want to save it for future reference - Norm - 4/22/2008
+#
+#-----------------------------------------------------------------------
+#
+# This script can be used to completely clean up an AIX xCAT management node
+#  so that it can be used to do a fresh install.
+# 
+# It will uninstall the xCAT RPMs and OSS prereq RPMs but doesn't remove
+#  the openssh and openssl installp packages.
+#
+# It will also remove some additional files/directories that were created by 
+#	xCAT.   
+#
+
+BEGIN
+{
+ $::XCATDIR = $ENV{'XCATDIR'} ? $ENV{'XCATDIR'} : '/etc/xcat';
+}
+
+print " Removing xCAT RPMs.\n";
+`rpm -e xCAT-2.0`;
+`rpm -e xCAT-server-2.0`;
+`rpm -e xCAT-client-2.0`;
+`rpm -e perl-xCAT-2.0`;
+
+print " Removing /install & /etc/xcat.\n";
+# rm /install dir
+`rm -rf /install`;
+
+# remove /etc/xcat
+`rm -rf $::XCATDIR`;
+
+print " Removing SSH keys (/.ssh) and xcatd certificates (/.xcat).\n";
+`rm -rf /.ssh`;
+`rm -rf /.xcat`;
+
+print " Removing OSS prerequisite software.\n";
+`rpm -e fping-2.2b1-1`;
+`rpm -e perl-Digest-MD5-2.36-1`;
+`rpm -e perl-Net_SSLeay.pm-1.30-1`;
+`rpm -e perl-IO-Socket-SSL-1.06-1`;
+`rpm -e perl-IO-Stty-.02-1`;
+`rpm -e perl-IO-Tty-1.07-1`;
+`rpm -e perl-Expect-1.21-1`;
+`rpm -e conserver-8.1.16-2`;
+`rpm -e expect-5.42.1-3`;
+`rpm -e tk-8.4.7-3`;
+`rpm -e tcl-8.4.7-3`;
+`rpm -e perl-DBD-SQLite-1.13-1`;
+`rpm -e perl-DBI-1.55-1`;
+
+print " Killing the xcatd processes.\n";
+my @xpids = `ps -ef\|grep \"xcatd\"`;
+foreach $ps (@xpids)
+{
+	$ps =~ s/^\s+//;    # strip any leading spaces
+	my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
+	# if $ps contains "grep" then it's not one of the daemon processes
+	if ( $ps !~/grep/)
+	{
+#      print "pid=$pid\n";
+		`/bin/kill -9 $pid`;
+	}
+}
+exit 0;
