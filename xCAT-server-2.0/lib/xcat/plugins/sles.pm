@@ -134,7 +134,7 @@ sub mkinstall
 	
 		# create the node-specific post script
 		mkpath "/install/postscripts/";
-		xCAT::Postage->writescript($node, "/install/postscripts/".$node, "install");
+		xCAT::Postage->writescript($node, "/install/postscripts/".$node, "install", $callback);
 
         if (
             (
