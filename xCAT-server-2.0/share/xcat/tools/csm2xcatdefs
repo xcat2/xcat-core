@@ -1,0 +1,246 @@
+#!/usr/bin/env perl
+#
+#  This was a first pass at a script that could be used to convert CSM 
+#	stanza files into xCAT stanza files.
+#
+#  Just want to save it for future reference -  Norm - 4/22/2008
+#   
+#-----------------------------------------------------------------------
+#
+
+use lib "/opt/xcat/lib/perl";
+use xCAT::DBobjUtils;
+use xCAT::Table;
+use xCAT::NodeRange;
+use Getopt::Long;
+
+use strict;
+
+use Socket;
+
+# options can be bundled up like -vV
+Getopt::Long::Configure("bundling") ;
+$Getopt::Long::ignorecase=0;
+
+# parse the options
+if(!GetOptions(
+	'h|help'     => \$::HELP,
+	'z=s'       => \$::opt_z,
+	'v|version'  => \$::VERSION,))
+{
+	&usage;
+	exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($::HELP) { &usage; exit(0);}
+
+# display the version statement if -v or --verison is specified
+if ($::VERSION)
+{
+  print "csm2xcatdefs version 2.0\n";
+  exit(0);
+}
+
+
+
+#
+# define the CSM to xCAT attr name equivalents
+#
+my %csm2xcat;    
+$csm2xcat{'InstallOSName'} = 'os';
+$csm2xcat{'ConsoleMethod'} = 'cons';
+$csm2xcat{'ManagementServer'} = 'xcatmaster';
+$csm2xcat{'InstallServerAKBNode'} = 'xcatmaster'; # ???
+$csm2xcat{'PowerMethod'} = 'power';
+$csm2xcat{'HWControlPoint'} = 'hcp';
+$csm2xcat{'HWType'} = 'mtm';
+$csm2xcat{'HWModel'} = 'mtm'; # ???
+$csm2xcat{'HWSerialNum'} = 'serial';
+$csm2xcat{'InstallAdapterMacaddr'} = 'mac';
+$csm2xcat{'InstallAdapterName'} = 'installnic';
+#    installnic, or primarynic or interface ????
+$csm2xcat{'InstallKernelVersion'} = 'kernel';
+$csm2xcat{'InstallPkgArchitecture'} = 'arch';
+$csm2xcat{'InstallServer'} = 'servicenode';
+$csm2xcat{'InstallTemplate'} = 'profile';
+$csm2xcat{'LParID'} = 'id';
+$csm2xcat{'Name'} = 'node';
+$csm2xcat{'UserComment'} = 'usercomment';
+$csm2xcat{'Status'} = 'status';
+
+#
+# read the CSM definitions from the CSM stanza file
+#
+my %csmdefs = getCSMdefs($::opt_z);
+
+#
+#  convert each CSM node def to the corresponding xCAT node def
+#
+#my %::xcatvals;
+foreach my $node (keys %csmdefs)
+{
+
+#print "node= $node\n";
+
+	foreach my $attr (keys %csm2xcat)
+	{
+		# if the CSM attr is defined 
+		#	and if there is a corresponding xCAT attr
+		if ( ($csmdefs{$node}{$attr}) ) {
+
+#print "\t$attr = $csmdefs{$node}{$attr}, xcat attr = $csm2xcat{$attr}\n";
+
+			# use short host name for xcat node name
+			my $shorthost;
+			($shorthost = $node) =~ s/\..*$//;
+			chomp $shorthost;
+
+			if ( ($attr eq 'HWType') || ($attr eq 'HWModel')) {
+            	if ( ( defined($csmdefs{$node}{'HWType'}) ) && ( defined($csmdefs{$node}{'HWModel'}) ) ) {
+
+					$::xcatvals{$shorthost}{$csm2xcat{$attr}}="$csmdefs{$node}{'HWType'}-$csmdefs{$node}{'HWModel'}";
+				}
+
+        	} else {
+
+				$::xcatvals{$shorthost}{$csm2xcat{$attr}}=$csmdefs{$node}{$attr};
+			}
+
+		}
+
+
+	} # end - for each attr
+
+} # END for each node
+
+#
+# display the xCAT info in stanza format
+#
+print "# <xCAT data object stanza file>\n";
+foreach my $node (keys %::xcatvals)
+{
+	print "$node:\n";
+
+	print "\tobjtype=node\n";
+	
+	foreach my $a (keys %{$::xcatvals{$node}} )
+	{
+		if ($a eq 'node') {
+			next;
+		}
+
+		if ( defined($::xcatvals{$node}{$a}) ) {
+			print "\t$a=$::xcatvals{$node}{$a}\n";
+		}
+
+	}
+
+}
+
+exit 0;
+
+sub usage {
+	print "Usage:\n";
+	print "To convert a CSM stanza file to an xCAT stanza file.\n\n";
+	print "\tcsm2xcatdefs -z <csm_stanza_file>\n\n";
+	print "Proceedure:\n";
+	print "\tCreate a CSM stanza file using the CSM lsnode command.\n";
+	print "\tRun the csm2xcatdefs command and redirect the output to \n";
+	print "\t   an xCAT stanza file.\n";
+	print "\tUse the xCAT stanza file as input to the xCAT mkdef command.\n\n";
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3    getCSMdefs
+
+
+          Read a CSM stanza file and populate the %::Nodes hash 
+			and the @::node_list array.
+
+		%csmdefs = getCSMdefs($stanzafile);
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getCSMdefs
+{
+	my ($nodedef_file) = @_;
+	my $n = -1;
+	my @lines;
+	my $line;
+	my $linenum =0;
+	my ($junk1, $junk2);
+	my ($attr, $val);
+	my %nodedefs;
+
+	unless (open(NODEDEF, "<$nodedef_file")) {
+		print "Could not open $nodedef_file.\n";
+	}
+
+	my $look_for_colon = 1;    # start with first line that has a colon
+
+    # parse the contents of the nodedef file
+    @lines = <NODEDEF>;
+    close(NODEDEF);
+
+    foreach $line (@lines)
+    {
+		$linenum++;
+        chomp $line;
+
+        (grep(/^\s*#/, $line)) && next;    # Skip comment lines
+
+        next if ($line =~ /^\s*$/);        # Next if empty blank line
+
+		if (grep(/:\s*$/, $line))
+        {    # see if it's a stanza name
+            $look_for_colon = 0;
+            ($::hostname, $junk1, $junk2) = split(/:/, $line);
+
+			$::hostname =~ s/^\s*//;    # Remove any leading whitespace
+            $::hostname =~ s/\s*$//;    # Remove any trailing whitespace
+            if ($::hostname eq "default")
+            {
+                next;
+            }
+
+			$nodedefs{$::hostname}{'Name'} = $::hostname;
+			$n++;
+
+		}
+		elsif ($line =~ /^\s*(\w+)\s*=\s*(.*)\s*/)
+        {
+            $attr = $1;
+            $val  = $2;
+            $attr =~ s/^\s*//;    # Remove any leading whitespace
+            $attr =~ s/\s*$//;    # Remove any trailing whitespace
+            $val  =~ s/^\s*//;
+            $val  =~ s/\s*$//;
+
+            # remove spaces and quotes so createnode won't get upset
+            $val =~ s/^\s*"\s*//;
+            $val =~ s/\s*"\s*$//;
+			
+			if ($::hostname eq "")
+            {
+				$look_for_colon++;
+                next;
+            }
+
+			$nodedefs{$::hostname}{$attr} = $val;
+		}
+        else
+        {
+
+            # error - invalid line in node definition file
+			$look_for_colon++;
+		}
+	}    # end parsing loop
+	
+
+	return %nodedefs;
+}
