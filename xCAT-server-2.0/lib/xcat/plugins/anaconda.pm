@@ -164,7 +164,7 @@ sub mknetboot {
 
 		# create the node-specific post scripts
 		mkpath "/install/postscripts/";
-		xCAT::Postage->writescript($node,"/install/postscripts/".$node, "netboot");
+		xCAT::Postage->writescript($node,"/install/postscripts/".$node, "netboot", $callback);
 
         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
         #TODO: only copy if newer...
@@ -267,7 +267,7 @@ sub mkinstall {
 
 	# create the node-specific post scripts
 	mkpath "/install/postscripts/";
-	xCAT::Postage->writescript($node,"/install/postscripts/".$node, "install");
+	xCAT::Postage->writescript($node,"/install/postscripts/".$node, "install", $callback);
 
 
     if (
