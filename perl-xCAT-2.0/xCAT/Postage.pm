@@ -93,10 +93,6 @@ sub makescript {
   if ($et and $et->{value}) {
       $master = $et->{value};
   }
-  $et = $noderestab->getNodeAttribs($node,['servicenode']);
-  if ($et and $et->{'servicenode'}) { 
-    $master = $et->{'servicenode'};
-  }
   $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
   if ($et and $et->{'xcatmaster'}) { 
     $master = $et->{'xcatmaster'};
