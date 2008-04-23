@@ -36,20 +36,31 @@ This program module file is a set of utilities to support xCAT post scripts.
 #-----------------------------------------------------------------------------
 
 sub writescript {
-  if (scalar(@_) eq 4) { shift; } #Discard self 
+  if (scalar(@_) eq 5) { shift; } #Discard self 
   my $node = shift;
   my $scriptfile = shift;
-  $::nodesetstate = shift;  # install or netboot
+  my $nodesetstate = shift;  # install or netboot
+  my $callback = shift;
 
   my $script;
   open($script,">",$scriptfile);
   unless ($scriptfile) {
-    return undef;
+	my %rsp;
+	push @{$rsp->{data}}, "Could not open $scriptfile for writing.\n";
+	xCAT::MsgUtils->message("E", $rsp, $callback);
+    return 1;
   }
   #Some common variables...
-  my @scriptcontents = makescript($node);
-  foreach (@scriptcontents) {
-     print $script $_;
+  my @scriptcontents = makescript($node, $nodesetstate, $callback);
+  if (!defined(@scriptcontents)) {
+	my %rsp;
+	push @{$rsp->{data}}, "Could not create node post script file for node \'$node\'.\n";
+	xCAT::MsgUtils->message("E", $rsp, $callback);
+	return 1;
+  } else {	
+  	foreach (@scriptcontents) {
+     	print $script $_;
+	}
   }
   close($script);
   chmod 0755,$scriptfile;
@@ -67,7 +78,7 @@ sub writescript {
         Error:
         Example:
 
-    xCAT::Postage->writescript($node, "/install/postscripts/" . $node, $state);
+    xCAT::Postage->makescript($node, $nodesetstate, $callback);
 
         Comments:
 
@@ -75,9 +86,11 @@ sub writescript {
 
 #-----------------------------------------------------------------------------
 sub makescript {
-  $node = shift;
-  my @scriptd;
+  my $node = shift;
+  my $nodesetstate = shift;  # install or netboot
+  my $callback = shift;
 
+  my @scriptd;
   my ($master, $ps, $os, $arch, $profile);
 
   my $noderestab=xCAT::Table->new('noderes');
@@ -85,7 +98,10 @@ sub makescript {
   my $posttab = xCAT::Table->new('postscripts');
 
   unless ($noderestab and $typetab and $posttab) {
-    die "Unable to open noderes or nodetype or site or postscripts table";
+	my %rsp;
+	push @{$rsp->{data}}, "Unable to open noderes or nodetype or postscripts table";
+	xCAT::MsgUtils->message("E", $rsp, $callback);
+	return undef;
   }
   my $master;
   my $sitetab = xCAT::Table->new('site');
@@ -98,7 +114,10 @@ sub makescript {
     $master = $et->{'xcatmaster'};
   }
   unless ($master) {
-      die "Unable to identify master for $node";
+	my %rsp;
+	push @{$rsp->{data}}, "Unable to identify master for $node.\n";
+	xCAT::MsgUtils->message("E", $rsp, $callback);
+	return undef;
   }
 
   push @scriptd, "MASTER=".$master."\n";
@@ -106,19 +125,41 @@ sub makescript {
   push @scriptd, "NODE=$node\n";
   push @scriptd, "export NODE\n";
   my $et = $typetab->getNodeAttribs($node,['os','arch','profile']);
-  unless ($et and $et->{'os'} and $et->{'arch'} and $et->{'profile'}) {
-    die "No os or arch or profile setting in nodetype table for $node";
+  if ($^O =~ /^linux/i) {
+	unless ($et and $et->{'os'} and $et->{'arch'}) {
+		my %rsp;
+		push @{$rsp->{data}}, "No os or arch setting in nodetype table for $node.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return undef;
+	}
   }
-  push @scriptd, "OSVER=".$et->{'os'}."\n";
-  push @scriptd, "ARCH=".$et->{'arch'}."\n";
-  push @scriptd, "PROFILE=".$et->{'profile'}."\n";
-  push @scriptd, "export OSVER ARCH PROFILE\n";
+  if ($et->{'os'}) {
+  	push @scriptd, "OSVER=".$et->{'os'}."\n";
+	push @scriptd, "export OSVER\n";
+  }
+  if ($et->{'arch'}) {
+	push @scriptd, "ARCH=".$et->{'arch'}."\n";
+	push @scriptd, "export ARCH\n";
+  }
+  if ($et->{'profile'}) {
+  	push @scriptd, "PROFILE=".$et->{'profile'}."\n";
+  	push @scriptd, "export PROFILE\n";
+  }
   push @scriptd, 'PATH=`dirname $0`:$PATH'."\n";
   push @scriptd, "export PATH\n";
-  if ($::nodesetstate) {
-	push @scriptd, "NODESETSTATE=".$::nodesetstate."\n";
+
+  if ($nodesetstate) {
+	push @scriptd, "NODESETSTATE=".$nodesetstate."\n";
 	push @scriptd, "export NODESETSTATE\n";
   }
+
+  # see if this is a service or compute node?         
+  if (xCAT::Utils->isSN($node) ) {
+	push @scriptd, "NTYPE=service\n";
+  } else {
+  	push @scriptd, "NTYPE=compute\n";
+  }
+  push @scriptd, "export NTYPE\n";
 
   # get the xcatdefaults entry in the postscripts table
   my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts');
