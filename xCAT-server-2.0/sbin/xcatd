@@ -13,7 +13,15 @@ use Thread qw(yield);
 use xCAT::Client submit_request;
 my $clientselect = new IO::Select;
 
-my %dispatched_children;
+sub xexit {
+   while (wait() != -1) {
+      yield;
+   }
+   exit @_;
+}
+my $dispatch_children=0;
+my %dispatched_children=();
+my $plugin_numchildren=0; 
 my %plugin_children;
 use IO::Socket::SSL;
 my $inet6support;
@@ -229,7 +237,7 @@ if ($inet6support) {
           my $pid=xCAT::Utils->xfork();
           unless ($pid) { #fork off the nodeset and potential slowness
             plugin_command(\%request,undef,\&convey_response);
-            exit(0);
+            xexit(0);
           }
 	}
         alarm(2);
@@ -372,19 +380,46 @@ eval {
 };
 if ($@) {
    print "ERROR: $@";
-   exit;
+   xexit;
 }
 unless ($foreground) {
    daemonize;
 }
-$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {} };
+
+my $CHILDPID=0; #Global for reapers
+sub generic_reaper {
+   while (waitpid(-1,WNOHANG > 0)) {}
+   $SIG{CHLD} = \&generic_reaper;
+}
+
+sub dispatch_reaper {
+  while (($CHILDPID =waitpid(-1, WNOHANG)) > 0) { 
+     if ($dispatched_children{$CHILDPID}) { 
+        delete $dispatched_children{$CHILDPID}; 
+        $dispatch_children--;
+     }
+  }
+  $SIG{CHLD} = \&dispatch_reaper;
+}
+
+sub plugin_reaper {
+   while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) { 
+      if ($plugin_children{$CHILDPID}) { 
+         delete $plugin_children{$CHILDPID}; 
+         $plugin_numchildren--; 
+      } 
+   } 
+  $SIG{CHLD} = \&plugin_reaper;
+}
+
+$SIG{CHLD} = \&generic_reaper;
 $SIG{TERM} = $SIG{INT} = sub { 
    printf("Asked to quit...\n"); 
    $quit++;
    foreach (keys %dispatched_children) {
       kill 2, $_;
    }
-   $SIG{ALRM} = sub { exit 0; }; #die "Did not close out in time for 5 second grace period"; };
+   $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 5 second grace period"; };
    alarm(2);
    };
   
@@ -393,14 +428,14 @@ defined $pid or die "Unable to fork for UDP/TCP";
 unless ($pid) {
   $$progname="xcatd: UDP listener";
   do_udp_service;
-  exit(0);
+  xexit(0);
 }
 $pid = xCAT::Utils->xfork;
 defined $pid or die "Unable to fork installmonitor";
 unless ($pid) {
   $$progname="xcatd: install monitor";
   do_installm_service;
-  exit(0);
+  xexit(0);
 }
 $$progname="xcatd: SSL listener";
 openlog("xCAT SSL","","local4");
@@ -453,10 +488,10 @@ until ($quit) {
     undef $SIG{ALRM};
     if ($@) { #SSL failure
        close($cnnection);
-       exit 0;
+       xexit 0;
     }
     unless ($connection) {
-       exit 0;
+       xexit 0;
     }
     $clientselect->add($connection);
     my $peerhost=undef;
@@ -489,7 +524,7 @@ if ($inet6support) {
     #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
     $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost);
     service_connection($connection,$peername,$peerhost);
-    exit(0);
+    xexit(0);
   }
   $cnnection->close();
 }
@@ -618,9 +653,9 @@ sub plugin_command {
       }
      }
   }
-  my $children=0;
+  $plugin_numchildren=0;
   %plugin_children=();
-  $SIG{CHLD} = sub {my $plugpid; while (($plugpid = waitpid(-1, WNOHANG)) > 0) { if ($plugin_children{$plugpid}) { delete $plugin_children{$plugpid}; $children--; } } };
+  $SIG{CHLD} = \&plugin_reaper; #sub {my $plugpid; while (($plugpid = waitpid(-1, WNOHANG)) > 0) { if ($plugin_children{$plugpid}) { delete $plugin_children{$plugpid}; $plugin_numchildren--; } } };
   my $check_fds;
   if ($sock) { 
     $check_fds = new IO::Select;
@@ -629,7 +664,7 @@ sub plugin_command {
     my $modname = $_;
     if (-r $plugins_dir."/".$modname.".pm") {
       require $plugins_dir."/".$modname.".pm";
-      $children++;
+      $plugin_numchildren++;
       my $pfd; #will be referenced for inter-process messaging.
       my $parfd; #not causing a problem that I discern yet, but theoretically
       my $child;
@@ -662,7 +697,7 @@ sub plugin_command {
         $$progname=$oldprogname;
         if ($sock) { 
           close($parent_fd);
-          exit(0);
+          xexit(0);
         } 
       } else {
         $plugin_children{$child}=1;
@@ -672,8 +707,7 @@ sub plugin_command {
     }
   }
   unless ($sock) { return $Main::resps };
-  #while ($children > 0) {
-  while (($children > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
+  while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
     relay_fds($check_fds,$sock);
   }
   #while (relay_fds($check_fds,$sock)) {}
@@ -708,7 +742,7 @@ sub dispatch_callback {
       if ($parselect->can_read(5)) { #block for up to 5 seconds before continuing
          if ($rsp = <$dispatch_parentfd>) {
             if ($rsp =~ /die/ or $quit) {
-               exit 0;
+               xexit 0;
             }
          } else {
             $parselect->remove($dispatch_parentfd); #Block until parent acks data
@@ -792,8 +826,8 @@ sub dispatch_request {
     $reqs = [$req];
    }
 
-  my $childrn=0;
-  $SIG{CHLD} = sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $childrn--; } } };
+  $dispatch_children=0;
+  $SIG{CHLD} = \&dispatch_reaper; #sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $dispatch_children--; } } };
    foreach (@{$reqs}) {
     my $pfd;
     my $parfd; #use a private variable so it won't trounce itself recursively
@@ -804,7 +838,7 @@ sub dispatch_request {
     $pfd->autoflush(1);
     $child = xCAT::Utils->xfork;
     if ($child) {
-       $childrn++;
+       $dispatch_children++;
        $dispatched_children{$child}=1;
        $child_fdset->add($pfd);
        next;
@@ -830,10 +864,9 @@ sub dispatch_request {
         undef $SIG{CHLD};
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
      }
-     exit;
+     xexit;
   }
- #while ($childrn > 0) { relay_dispatch($child_fdset) }
- while (($childrn > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset) }
+ while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset) }
  while (relay_dispatch($child_fdset)) { } #Potentially useless drain.
 }
 
