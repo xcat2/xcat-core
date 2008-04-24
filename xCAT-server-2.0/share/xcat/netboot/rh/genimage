@@ -4,6 +4,7 @@ use File::Path;
 use File::Copy;
 use File::Find;
 use Getopt::Long;
+#use strict;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -185,30 +186,57 @@ sub mkinitrd {
    foreach (@ndrivers) {
       print $inifile "insmod /lib/$_\n";
    }
-   print $inifile "netstart\n";
-   print $inifile "cd /\n";
-   print $inifile "for i in `cat /proc/cmdline`; do\n";
-   print $inifile "   KEY=`echo \$i |awk -F= '{print \$1}'`\n";
-   print $inifile "   if [ \"\$KEY\" == 'imgurl' ]; then\n";
-   print $inifile "      VALUE=`echo \$i |awk -F= '{print \$2}'`\n";
-   print $inifile "      if [ \"http\" == \"`echo \$VALUE|awk -F: '{print \$1}'`\" ]; then\n";
-   print $inifile "        wget \$VALUE\n";
-   print $inifile "     fi\n";
-   print $inifile "   fi\n";
-   print $inifile "done\n";
-   print $inifile "if [ -r /rootimg.sfs ]; then\n";
-   print $inifile "  echo Setting up squashfs with ram overlay\n";
-   print $inifile "  mknod /dev/loop0 b 7 0\n";
-   print $inifile "  mkdir -p /ro\n";
-   print $inifile "  mkdir -p /rw\n";
-   print $inifile "  mount -t squashfs /rootimg.sfs /ro\n";
-   if ($rootlimit) {
-      print $inifile "  mount -o size=$rootlimit -t tmpfs rw /rw\n";
-   } else {
-      print $inifile "  mount -t tmpfs rw /rw\n";
-   }
-   print $inifile "  mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot\n";
+   print $inifile <<EOMS;
+netstart
+cd /
+for i in `cat /proc/cmdline`; do
+   KEY=`echo \$i |awk -F= '{print \$1}'`
+   if [ "\$KEY" == 'imgurl' ]; then
+      VALUE=`echo \$i |awk -F= '{print \$2}'`
+      if [ "http" == "`echo \$VALUE|awk -F: '{print \$1}'`" ]; then
+        #NOTE needs FT retry code to scale
+        #NOTE: should prob have max count
+        FILENAME=`echo \$VALUE|awk -F/ '{print \$NF}'`
+        while [ ! -r "\$FILENAME" ]; do
+          echo Getting \$VALUE...
+          if ! wget \$VALUE; then
+            sleep 5 #should be random, exponential for scale
+            rm -f \$FILENAME
+          fi
+        done
+        NFS=0
+      fi
+      if [ "nfs" == "`echo \$VALUE|awk -F: '{print \$1}'`" ]; then
+        NFS=1
+        SERVER=`echo \$VALUE|awk -F/ '{print \$3}'`
+        ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=4;i<=NF;i++) printf "/%s",\$i}'`
+      fi
+   fi
+done
+if [ "\$NFS" = "1" ]; then
+  echo Setting up nfs with ram overlay.
+  mknod /dev/loop0 b 7 0
+  mkdir -p /ro
+  mkdir -p /rw
+  #NOTE: should prob have max count
+  while [ ! -d /ro/bin ]; do
+    echo mounting \$SERVER:\$ROOTDIR on /ro
+    mount.nfs \$SERVER:\$ROOTDIR /ro -r -n -o nolock
+    sleep 5 #should be random, exponential for scale
+  done
+  mount -t tmpfs rw /rw
+  mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot
+elif [ -r /rootimg.sfs ]; then
+  echo Setting up squashfs with ram overlay.
+  mknod /dev/loop0 b 7 0
+  mkdir -p /ro
+  mkdir -p /rw
+  mount -t squashfs /rootimg.sfs /ro
+  mount -t tmpfs rw /rw
+  mount -t aufs -o dirs=/rw:/ro mergedroot /sysroot
+EOMS
    print $inifile "elif [ -r /rootimg.gz ]; then\n";
+   print $inifile "echo Setting up RAM-root tmpfs.\n";
    if ($rootlimit) {
       print $inifile "  mount -o size=$rootlimit -t tmpfs rootfs /sysroot\n";
    } else {
@@ -229,6 +257,19 @@ sub mkinitrd {
    print $inifile "    echo -n \$i...\n";
    print $inifile "  done\n";
    print $inifile "  echo\n";
+ print $inifile <<EOMS;
+  echo "You're dead.  rpower nodename reset to play again.
+
+* Did you packimage with -m cpio, -m squashfs, or -m nfs?
+* If using -m squashfs did you include aufs.ko with geninitrd?
+  e.g.:  -n tg3,squashfs,aufs,loop
+* If using -m nfs did you export NFS and sync rootimg?  And
+  did you include the aufs and nfs modules in the proper order:
+  e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs
+
+"
+  sleep 5
+EOMS
    print $inifile "  exit\n";
    print $inifile "fi\n";
    print $inifile "cd /\n";
@@ -248,7 +289,7 @@ sub mkinitrd {
          push @filestoadd,[$_,"lib/$_"];
       }
    }
-   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod") {
+   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod","sbin/mount.nfs") {
       getlibs($_);
       push @filestoadd,$_;
    }
@@ -368,4 +409,3 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    
    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
 }
-
