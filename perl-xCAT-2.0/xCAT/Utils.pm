@@ -1881,7 +1881,7 @@ sub get_site_Master
 
 		Todo:  Handle  dhcpserver and nameserver from the networks table
 
-	 output: A hash ref of of arrays, the key is the service node pointing to
+	 output: A hash ref  of arrays, the key is the service node pointing to
 			 an array of nodes that are serviced by that service node
 
      Globals:
@@ -2155,7 +2155,7 @@ sub isSN
 
 #-----------------------------------------------------------------------------
 
-=head3 get_AllSN 
+=head3 getAllSN 
  
     Returns an array of all service nodes 
 
@@ -2175,7 +2175,7 @@ sub isSN
 =cut
 
 #-----------------------------------------------------------------------------
-sub get_AllSN
+sub getAllSN
 {
 
     # read the node from the nodelist table and see if it
@@ -2192,5 +2192,46 @@ sub get_AllSN
     }
     $nodelisttab->close;
     return @servicenodes;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 getSNandNodes 
+ 
+    Returns an hash-array of all service nodes and the nodes they service
+
+    Arguments:
+       none 
+    Returns:
+	 Service Nodes and the nodes they service or empty , if none
+    Globals:
+        none
+    Error:
+        1 - error
+    Example:
+        $sn=xCAT::Utils->getSNandNodes()
+    Comments:
+        none
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getSNandNodes
+{
+
+    # read all the nodes from the nodelist table
+    #  call get_ServiceNode to find which Service Node
+    # the node belongs to.
+    my %sn;
+    my @nodes;
+    my $nodelisttab = xCAT::Table->new('nodelist');
+    my $recs        = $nodelisttab->getAllEntries();
+    foreach (@$recs)
+    {
+        push @nodes, $_->{node};
+    }
+    $nodelisttab->close;
+    $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
+    return $sn;
 }
 1;
