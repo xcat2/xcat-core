@@ -1,0 +1,67 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Sample xCAT post script for configuring eth1 based on eth0 settings and
+# some conventions.  This scripts works for both diskfull installs and diskless boots.
+
+use Socket;
+
+# Take primary node name, add -eth1 and then reverse resolve to get what ip should be
+my $nic = 'eth1';
+my $hostname = "$ENV{NODE}-$nic";
+my $packed_ip = gethostbyname($hostname);
+if (!$packed_ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
+my $ip = inet_ntoa($packed_ip);
+
+#TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
+my $netmask = "255.255.0.0";
+my ($first, $second, $rest) = split(/\./, $ip);
+my $gateway = "$first.$second.255.254";
+
+# Write the info to the ifcfg file
+my $dir = "/etc/sysconfig/network-scripts";
+if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+print FILE "DEVICE=$nic\n";
+print FILE "BOOTPROTO=none\n";
+print FILE "IPADDR=$ip\n";
+print FILE "NETMASK=$netmask\n";
+print FILE "GATEWAY=$gateway\n";
+print FILE "ONBOOT=yes\n";
+close FILE;
+
+runcmd("$dir/ifup $nic");
+system("logger -t xcat 'configeth: successfully configured $nic.'");
+
+exit 0;
+
+sub runcmd {
+	my $cmd = shift @_;
+	$cmd .= ' 2>&1';
+	my @output = `$cmd`;
+	my $rc = $? >> 8;
+	if ($rc) {
+		system("logger -t xcat 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
+		exit $rc;
+	}
+}
+
+#$master=$ENV{MASTER};
+#if ($^O =~ /^aix/i) { }
+#elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /fedora/i)) || (-f "/etc/fedora-release")) { }
+#elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { }
+#$result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`;
+#`logger -t xcat "Install: syslog setup"`;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
