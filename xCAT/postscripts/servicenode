@@ -20,22 +20,39 @@
 #  remove OpenIPMI-tools and tftp
 #  install xcat from /install/xcat
 #  Copy Certificates, and config file to apprpriate directories from /install
-#  and restart postgresql and xcatd
-#
-my $msg = "Removing OpenIPMI-tools";
-`logger -t xcat $msg`;
-`rpm -e OpenIPMI-tools`;
-$msg = "Removing tftp";
-`logger -t xcat $msg`;
-`rpm -e tftp-server`;
-if ($ENV{'NODESETSTATE'} eq "install") {
-  $msg = "Installing xCAT";
- `logger -t xcat $msg`;
-  `rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm`;
-}
-$msg = "copying certificates and restarting daemon";
-`logger -t xcat $msg`;
-`/opt/xcat/sbin/copycerts`;
+#  and restart xcatd
+# MAIN
+my $rc=0;
+&runcmd("rpm -e OpenIPMI-tools");
 
-exit 0;
+&runcmd("rpm -e tftp-server");
+if ($ENV{'NODESETSTATE'} eq "install")
+{
+    $msg = "Installing xCAT";
+    `logger -t xcat $msg`;
+    &runcmd("rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm");
+}
+&runcmd("/opt/xcat/sbin/copycerts");
+
+#
+# run the command
+#
+sub runcmd
+{
+    my ($cmd) = @_;
+	my $rc;
+    $cmd .= ' 2>&1' ;
+    my $outref = [];
+    @$outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+            `logger -t xcat @$outref`;
+        }
+    }
+	return $rc;
+}
+exit $rc;
 
