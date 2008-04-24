@@ -57,6 +57,7 @@ export PATH=/xcatpost:$PATH
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
+iscsiadm -m discovery -t st -p #TABLE:iscsi:$NODE:server#
 uploadboot
 cd /
 rm -Rf /xcatpost
