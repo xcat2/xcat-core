@@ -7,6 +7,8 @@ B<nodels> - lists the nodes in the noderange.
 
 B<nodels> [I<noderange>] [I<table.column> | I<shortname>] [I<...>]
 
+B<nodels> [I<noderange>] [I<table>]
+
 B<nodels> {B<-v> | B<--version>}
 
 B<nodels> [B<-?> | B<-h> | B<--help>]
@@ -90,6 +92,22 @@ Output is similar to:
    node1
    node2
    node3
+
+=item *
+
+To list all defined attributes in a table for a node or noderange, enter:
+
+B<nodels> I<rra001a> I<noderes> 
+
+Output is similar to:
+   rra001a: noderes.primarynic: eth0
+   rra001a: noderes.xcatmaster: rra000
+   rra001a: noderes.installnic: eth0
+   rra001a: noderes.netboot: pxe
+   rra001a: noderes.serialport: 1
+   rra001a: noderes.servicenode: rra000
+   rra001a: noderes.node: rra001a
+
 
 =item *
 
