@@ -84,13 +84,22 @@ sub process_request {
 	# add the xCAT post scripts to the image
 	copybootscript($installroot, $osver, $arch, $profile, $callback);
 
-    $callback->({data=>["Packing contents of $installroot/netboot/$osver/$arch/$profile/rootimg"]});
+    my $verb = "Packing";
+    if ($method =~ /nfs/) {
+      $verb = "Preping";
+    }
+    $callback->({data=>["$verb contents of $installroot/netboot/$osver/$arch/$profile/rootimg"]});
+    if ($method =~ /nfs/) {
+      $callback->({data=>["\nNOTE: Contents of $installroot/netboot/$osver/$arch/$profile/rootimg\nMUST be available on all service and management nodes and NFS exported."]});
+    }
     my $temppath;
     if ($method =~ /cpio/) {
        $excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
       $excludestr =~ s!-a \z!|cpio -dump $temppath!; 
+    } elsif ($method =~ /nfs/) {
+       $excludestr = "touch ../rootimg.nfs";
     } else {
        $callback->({error=>["Invalid method '$method' requested"],errorcode=>[1]});
     }
