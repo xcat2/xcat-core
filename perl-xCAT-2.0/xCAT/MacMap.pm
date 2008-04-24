@@ -215,8 +215,22 @@ sub refresh_switch {
   #if ($error) { die $error; }
   unless ($session) { syslog("err","Failed to communicate with $switch"); return; }
   my $namemap = walkoid($session,'.1.3.6.1.2.1.31.1.1.1.1');
+  if ($namemap) {
+     my $ifnamesupport=0; #Assume broken ifnamesupport until proven good... (Nortel switch)
+     foreach (keys %{$namemap}) {
+        if ($namemap->{$_}) {
+           $ifnamesupport=1;
+           last;
+        }
+     }
+     unless ($ifnamesupport) {
+        $namemap=0;
+     }
+  }
+  unless ($namemap) { #Failback to ifDescr.  ifDescr is close, but not perfect on some switches
+     $namemap = walkoid($session,'.1.3.6.1.2.1.2.2.1.2');
+  }
   unless ($namemap) {
-#   walkoid errored...
     return;
   }
   #Above is valid without community string indexing, on cisco, we need it on the next one and onward
