@@ -1,8 +1,8 @@
 #!/bin/sh
 CONSERVER=$2
-#if [ -z "$CONSERVER" ]; then
-#   CONSERVER=`nodels $1 nodehm.conserver`
-#fi
+if [ -z "$CONSERVER" ]; then
+   CONSERVER=`nodels $1 nodehm.conserver|awk -F: '{print $3}'`
+fi
 if [ -z "$CONSERVER" ]; then
 	CONSERVER=$XCATHOST
 fi
