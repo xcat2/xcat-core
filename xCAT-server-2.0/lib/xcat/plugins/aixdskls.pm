@@ -210,8 +210,8 @@ sub dsklsimage
 		$spot_exists=1;
 		my $rsp;
 		push @{$rsp->{data}}, "A NIM SPOT resource named \'$spot_name\' already exists.";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		# return 1;
 	}
 
 	if (!$spot_exists) {
@@ -263,7 +263,7 @@ sub dsklsimage
 	} # end if spot doesn't exist
 
 	#
-	#  Get the SPOT location ( path to ../usr)
+	#  Get the SPOT location ( /../usr)
 	#
 	$::spot_loc = &get_spot_loc($spot_name, $callback);
 	if (!defined($::spot_loc) ) {
@@ -311,17 +311,17 @@ sub dsklsimage
 	}
 
 	#
-	# Copy the xcatAIXpost script to the SPOT/COSI and add an entry for it
+	# Copy the xcatdsklspost script to the SPOT/COSI and add an entry for it
 	#	to the /etc/inittab file
 	#
 
 	# copy the script
-	my $cpcmd = "mkdir -m 644 -p $::spot_loc/lpp/bos/inst_root/opt/xcat; cp $::XCATROOT/share/xcat/netboot/aix/xcatAIXpost $::spot_loc/lpp/bos/inst_root/opt/xcat/xcatAIXpost";
+	my $cpcmd = "mkdir -m 644 -p $::spot_loc/lpp/bos/inst_root/opt/xcat; cp /install/postscripts/xcatdsklspost $::spot_loc/lpp/bos/inst_root/opt/xcat/xcatdsklspost";
 	my @result = xCAT::Utils->runcmd("$cpcmd", -1);
 	if ($::RUNCMD_RC  != 0)
 	{
 		my $rsp;
-        push @{$rsp->{data}}, "Could not copy the xcatAIXpost script to the SPOT.\n";
+        push @{$rsp->{data}}, "Could not copy the xcatdsklspost script to the SPOT.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }	
@@ -350,7 +350,7 @@ sub dsklsimage
 #-------------------------------------------------------------------------
 
 =head3   update_inittab  
-		 - add an entry for xcatAIXpost to /etc/inittab    
+		 - add an entry for xcatdsklspost to /etc/inittab    
                                                                          
    Description:  This function updates the /etc/inittab file. 
                                                                          
@@ -368,7 +368,16 @@ sub update_inittab
 
 	my $spotinittab = "$::spot_loc/lpp/bos/inst_root/etc/inittab";
 
-	my $entry = "xcat:2:wait:/opt/xcat/xcatAIXpost\n";
+	my $entry = "xcat:2:wait:/opt/xcat/xcatdsklspost\n";
+	
+	# see if xcatdsklspost entry is already in the file
+    my $cmd = "cat $spotinittab | grep xcatdsklspost";
+    my @result = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC == 0)
+    {
+        # it's already there so return
+        return 0;
+    }
 
 	unless (open(INITTAB, ">>$spotinittab")) {
 		my $rsp;
