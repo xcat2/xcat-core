@@ -86,7 +86,7 @@ sub process_request {
 
     my $verb = "Packing";
     if ($method =~ /nfs/) {
-      $verb = "Preping";
+      $verb = "Prepping";
     }
     $callback->({data=>["$verb contents of $installroot/netboot/$osver/$arch/$profile/rootimg"]});
     if ($method =~ /nfs/) {
