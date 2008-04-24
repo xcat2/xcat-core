@@ -113,10 +113,16 @@ if ($goLocal) {
     if (! -f "$conf_file.XCATORIG") {
       `cp -f $conf_file $conf_file.XCATORIG`;
     }
-    if ($^O =~ /aix/i) {
-      `echo "*.debug;*.crit;*.err;*.warning   /var/log/messages  rotate 1024K files 5" >> $conf_file`;
-    } else {
-      `echo "*.debug;*.crit;*.err;*.warning   /var/log/messages" >> $conf_file`;
+    `grep "xCAT settings" $conf_file`;
+    if ($?) {
+      if ($^O =~ /aix/i) {
+        `echo "\# xCAT settings" >> $conf_file`;
+        `echo "*.debug;*.crit;*.err;*.warning   /var/log/messages  rotate 1024K files 5" >> $conf_file`;
+      } 
+      #else {
+      #  `echo "\# xCAT settings" >> $conf_file`;
+      #  `echo "*.debug;*.crit;*.err;*.warning   /var/log/messages" >> $conf_file`;
+      #}
     }
   }
 }  else {
@@ -125,11 +131,16 @@ if ($goLocal) {
     if (! -f "$conf_file.XCATORIG") {
       `cp -f $conf_file $conf_file.XCATORIG`;
     }
-    `echo "destination loghost { udp(\\\"$master\\\"); };" >> $conf_file`;
-    `echo 'log { source(src); destination(loghost); };' >> $conf_file`;
-   } else {
+    `grep "xCAT settings" $conf_file`;
+    if ($?) {
+      `echo "\# xCAT settings" >> $conf_file`;
+      `echo "destination loghost { udp(\\\"$master\\\"); };" >> $conf_file`;
+      `echo 'log { source(src); destination(loghost); };' >> $conf_file`;
+    }
+  } else {
     if (-f "$conf_file.XCATORIG") {  `rm -f $conf_file`; }
     else {  `mv -f $conf_file $conf_file.XCATORIG`;  }
+    `echo "\# xCAT settings" > $conf_file`;
     `echo "*.* \@$master" > $conf_file`;
   }
 }
