@@ -63,7 +63,7 @@ do
             scsi|raid)
                 echo "Found ($MOD) $DESC"
                 GOTHBA=1
-                modprobe $MOD
+                modprobe $MOD & #We background so that messed up SANs don't stop shell
                 modprobe sd_mod
                 modprobe scsi_mod
                 hba=$(($hba + 1))
