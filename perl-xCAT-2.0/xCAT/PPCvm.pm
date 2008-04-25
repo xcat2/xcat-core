@@ -740,92 +740,97 @@ sub create {
     my $opt     = $request->{opt};
     my @values  = ();
     my $result;
+    my $lpar;
+    my $d;
+    my $lparid;
+    my $mtms;
+    my $type;
 
-    while (my ($mtms,$h) = each(%$hash) ) {
-        while (my ($lpar,$d) = each(%$h) ) {
-            my $lparid = @$d[0];
-            my $mtms   = @$d[2];
-            my $type   = @$d[4];
-
-            #####################################
-            # Must be CEC or LPAR 
-            #####################################
-            if ( $type !~ /^(lpar|fsp)$/ ) {
-                push @values, [$lpar,"Node must be LPAR or CEC",RC_ERROR];
-                next; 
-            }
-            #####################################
-            # Clone all the LPARs on CEC 
-            #####################################
-            if ( exists( $opt->{c} )) {
-                my $result = clone( $exp, $lpar, $opt->{c}, $d );
-                foreach ( @$result ) { 
-                    my $Rc = shift(@$_);
-                    push @values, [$opt->{c}, @$_[0], $Rc];
-                }
-                next; 
-            }
-            #####################################
-            # Get source LPAR profile  
-            #####################################
-            my $prof = xCAT::PPCcli::lssyscfg(
-                                      $exp,
-                                      "prof",
-                                      $mtms,   
-                                      $lparid ); 
-            my $Rc = shift(@$prof);
-
-            #####################################
-            # Return error
-            #####################################
-            if ( $Rc != SUCCESS ) {
-                push @values, [$lpar, @$prof[0], $Rc];
-                next;
-            } 
-            #####################################
-            # Get command-line options 
-            #####################################
-            my $id   = $opt->{i};
-            my $name = $opt->{n};
-            my $cfgdata = @$prof[0];
-
-            #####################################
-            # Modify read-back profile. 
-            # See HMC or IVM mksyscfg man  
-            # page for valid attributes.
-            #
-            #####################################
-            if ( $hwtype eq "hmc" ) {
-                $cfgdata =~ s/^name=[^,]+|$/profile_name=$name/;
-                $cfgdata =~ s/lpar_name=[^,]+|$/name=$name/;
-                $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
-            }
-            elsif ( $hwtype eq "ivm" ) {
-                $cfgdata =~ s/^name=[^,]+|$/name=$name/;
-                $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
-            }
-            $cfgdata = strip_profile( $cfgdata, $hwtype );
-
-            #####################################
-            # Create new LPAR  
-            #####################################
-            $result = xCAT::PPCcli::mksyscfg( $exp, $d, $cfgdata ); 
-            $Rc = shift(@$result);
-
-            #####################################
-            # Add new LPAR to database 
-            #####################################
-            if ( $Rc == SUCCESS ) {
-                my $err = xCATdB( "mkvm", $name, $id, $d, $hwtype, $lpar );
-                if ( defined( $err )) {
-                    push @values, [$name,$err,RC_ERROR];
-                    next;
-                }
-            }
-            push @values, [$name,@$result[0],$Rc];
+    #####################################
+    # Get source node information
+    #####################################
+    while ( my ($cec,$h) = each(%$hash) ) {
+        while ( my ($name,$data) = each(%$h) ) {
+            $d      = $data;
+            $lparid = @$d[0];
+            $mtms   = @$d[2];
+            $type   = @$d[4];
+            $lpar   = $name;
         }
     }
-    return( \@values );
+    #####################################
+    # Must be CEC or LPAR 
+    #####################################
+    if ( $type !~ /^(lpar|fsp)$/ ) {
+        return( [[$lpar,"Node must be LPAR or CEC",RC_ERROR]] );
+    }
+    #####################################
+    # Clone all the LPARs on CEC 
+    #####################################
+    if ( exists( $opt->{c} )) {
+        my $result = clone( $exp, $lpar, $opt->{c}, $d );
+        foreach ( @$result ) { 
+            my $Rc = shift(@$_);
+            push @values, [$opt->{c}, @$_[0], $Rc];
+        }
+        return( \@values ); 
+    }
+    #####################################
+    # Get source LPAR profile  
+    #####################################
+    my $prof = xCAT::PPCcli::lssyscfg(
+                              $exp,
+                              "prof",
+                              $mtms,   
+                              $lparid ); 
+    my $Rc = shift(@$prof);
+
+    #####################################
+    # Return error
+    #####################################
+    if ( $Rc != SUCCESS ) {
+        return( [[$lpar, @$prof[0], $Rc]] );
+    } 
+    #####################################
+    # Get command-line options 
+    #####################################
+    my $id   = $opt->{i};
+    my $name = $opt->{n};
+    my $cfgdata = @$prof[0];
+
+    #####################################
+    # Modify read-back profile. 
+    # See HMC or IVM mksyscfg man  
+    # page for valid attributes.
+    #
+    #####################################
+    if ( $hwtype eq "hmc" ) {
+        $cfgdata =~ s/^name=[^,]+|$/profile_name=$name/;
+        $cfgdata =~ s/lpar_name=[^,]+|$/name=$name/;
+        $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
+    }
+    elsif ( $hwtype eq "ivm" ) {
+        $cfgdata =~ s/^name=[^,]+|$/name=$name/;
+        $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
+    }
+    $cfgdata = strip_profile( $cfgdata, $hwtype );
+
+    #####################################
+    # Create new LPAR  
+    #####################################
+    $result = xCAT::PPCcli::mksyscfg( $exp, $d, $cfgdata ); 
+    $Rc = shift(@$result);
+
+    #####################################
+    # Add new LPAR to database 
+    #####################################
+    if ( $Rc == SUCCESS ) {
+        my $err = xCATdB( "mkvm", $name, $id, $d, $hwtype, $lpar );
+        if ( defined( $err )) {
+            return( [[$name,$err,RC_ERROR]] );
+        }
+    }
+    return( [[$name,@$result[0],$Rc]] );
 }
 
 
@@ -969,6 +974,7 @@ sub lsvm {
 
 
 1;
+
 
 
 
