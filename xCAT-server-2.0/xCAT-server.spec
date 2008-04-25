@@ -143,7 +143,7 @@ elif [ -x /sbin/chkconfig ]; then
 else
   echo "Unable to register init scripts on this system"
 fi
-if [ "$1" = "2" ]; then #only on upgrade...
+if [ "$1" -gt "1" ]; then #only on upgrade...
     /etc/init.d/xcatd restart
 fi
 %endif
