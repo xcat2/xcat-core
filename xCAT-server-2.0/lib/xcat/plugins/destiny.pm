@@ -89,7 +89,8 @@ sub setdestiny {
       unless ($state =~ /^netboot/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
     }
   } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
-    my $noderes=xCAT::Table->new('noderes');
+    my $noderes=xCAT::Table->new('noderes',-create=>1);
+    my $bootparms=xCAT::Table->new('bootparams',-create=>1);
     my $nodetype = xCAT::Table->new('nodetype');
     my $sitetab = xCAT::Table->new('site');
     my $nodehm = xCAT::Table->new('nodehm');
@@ -111,16 +112,16 @@ sub setdestiny {
       if ($ent and $ent->{xcatmaster}) {
           $master = $ent->{xcatmaster};
       }
-      $ent = $noderes->getNodeAttribs($_,['serialport']);
+      $ent = $nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
       if ($ent and defined($ent->{serialport})) {
          $kcmdline .= "console=ttyS".$ent->{serialport};
-         $ent = $nodehm->getNodeAttribs($_,['serialspeed']);
+         #$ent = $nodehm->getNodeAttribs($_,['serialspeed']);
          unless ($ent and defined($ent->{serialspeed})) {
             $callback->({error=>["Serial port defined in noderes, but no nodehm.serialspeed set for $_"],errorcode=>[1]});
             return;
          }
          $kcmdline .= ",".$ent->{serialspeed};
-         $ent = $nodehm->getNodeAttribs($_,['serialflow']);
+         #$ent = $nodehm->getNodeAttribs($_,['serialflow']);
          if ($ent and ($ent->{serialflow} eq 'hard' or $ent->{serialflow} eq 'rtscts')) {
             $kcmdline .= "n8r";
          }
@@ -135,7 +136,7 @@ sub setdestiny {
       if ($portent and $portent->{value}) {
           $xcatdport = $portent->{value};
       }
-      $noderes->setNodeAttribs($_,{kernel => "xcat/nbk.$arch",
+      $bootparms->setNodeAttribs($_,{kernel => "xcat/nbk.$arch",
                                    initrd => "xcat/nbfs.$arch.gz",
                                    kcmdline => $kcmdline."xcatd=$master:$xcatdport"});
     }
@@ -266,16 +267,17 @@ sub getdestiny {
     $response{data}=[$ref->{currstate}];
     $response{destiny}=[$ref->{currstate}];
     my $sitetab= xCAT::Table->new('site');
-    my $nrent = $noderestab->getNodeAttribs($node,[qw(tftpserver kernel initrd kcmdline xcatmaster)]);
+    my $nrent = $noderestab->getNodeAttribs($node,[qw(tftpserver xcatmaster)]);
+    my $bpent = $noderestab->getNodeAttribs($node,[qw(kernel initrd kcmdline xcatmaster)]);
     (my $sent) = $sitetab->getAttribs({key=>'master'},'value');
-    if (defined $nrent->{kernel}) {
-        $response{kernel}=$nrent->{kernel};
+    if (defined $bpent->{kernel}) {
+        $response{kernel}=$bpent->{kernel};
     }
-    if (defined $nrent->{initrd}) {
-        $response{initrd}=$nrent->{initrd};
+    if (defined $bpent->{initrd}) {
+        $response{initrd}=$bpent->{initrd};
     }
-    if (defined $nrent->{kcmdline}) {
-        $response{kcmdline}=$nrent->{kcmdline};
+    if (defined $bpent->{kcmdline}) {
+        $response{kcmdline}=$bpent->{kcmdline};
     }
     if (defined $nrent->{tftpserver}) {
         $response{imgserver}=$nrent->{tftpserver};

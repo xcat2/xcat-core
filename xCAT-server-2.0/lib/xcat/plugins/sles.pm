@@ -178,17 +178,18 @@ sub mkinstall
 
             #We have a shot...
             my $restab = xCAT::Table->new('noderes');
+            my $bptab = xCAT::Table->new('bootparams');
             my $hmtab  = xCAT::Table->new('nodehm');
             my $ent    =
               $restab->getNodeAttribs(
                                       $node,
                                       [
-                                       'nfsserver',  'serialport',
+                                       'nfsserver', 
                                        'primarynic', 'installnic'
                                       ]
                                       );
             my $sent =
-              $hmtab->getNodeAttribs($node, ['serialspeed', 'serialflow']);
+              $hmtab->getNodeAttribs($node, ['serialport', 'serialspeed', 'serialflow']);
             unless ($ent and $ent->{nfsserver})
             {
                 $callback->(
@@ -221,7 +222,7 @@ sub mkinstall
             }
 
             #TODO: driver disk handling should in SLES case be a mod of the install source, nothing to see here
-            if (defined $ent->{serialport})
+            if (defined $sent->{serialport})
             {
                 unless ($sent->{serialspeed})
                 {
@@ -237,7 +238,7 @@ sub mkinstall
                 }
                 $kcmdline .=
                     " console=ttyS"
-                  . $ent->{serialport} . ","
+                  . $sent->{serialport} . ","
                   . $sent->{serialspeed};
                 if ($sent and ($sent->{serialflow} =~ /(ctsrts|cts|hard)/))
                 {
@@ -247,7 +248,7 @@ sub mkinstall
 
             if ($arch =~ /x86/)
             {
-                $restab->setNodeAttribs(
+                $bptab->setNodeAttribs(
                                         $node,
                                         {
                                          kernel   => "xcat/$os/$arch/linux",
@@ -258,7 +259,7 @@ sub mkinstall
             }
             elsif ($arch =~ /ppc/)
             {
-                $restab->setNodeAttribs(
+                $bptab->setNodeAttribs(
                                         $node,
                                         {
                                          kernel   => "xcat/$os/$arch/inst64",

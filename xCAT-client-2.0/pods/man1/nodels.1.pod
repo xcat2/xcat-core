@@ -104,7 +104,6 @@ Output is similar to:
    rra001a: noderes.xcatmaster: rra000
    rra001a: noderes.installnic: eth0
    rra001a: noderes.netboot: pxe
-   rra001a: noderes.serialport: 1
    rra001a: noderes.servicenode: rra000
    rra001a: noderes.node: rra001a
 

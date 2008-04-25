@@ -179,8 +179,10 @@ sub mknetboot {
            next;
         }
         my $restab = xCAT::Table->new('noderes');
+        my $bptab = xCAT::Table->new('bootparams');
         my $hmtab = xCAT::Table->new('nodehm');
-        my $ent = $restab->getNodeAttribs($node,['serialport','primarynic']);
+        my $ent = $restab->getNodeAttribs($node,['primarynic']);
+        my $sent = $hmtab->getNodeAttribs($node,['serialport','serialspeed','serialflow']);
         my $ient = $restab->getNodeAttribs($node,['servicenode']);
         my $ipfn = xCAT::Utils->my_ip_facing($node);
         if ($ient and $ient->{servicenode}) { #Servicenode attribute overrides
@@ -199,18 +201,18 @@ sub mknetboot {
         else {
           $kcmdline = "imgurl=http://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.$suffix ";
         }
-        if (defined $ent->{serialport}) {
-         my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
+        if (defined $sent->{serialport}) {
+         #my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
          unless ($sent->{serialspeed}) {
             $callback->({error=>["serialport defined, but no serialspeed for $node in nodehm table"],errorcode=>[1]});
             next;
          }
-         $kcmdline .= "console=ttyS".$ent->{serialport}.",".$sent->{serialspeed};
+         $kcmdline .= "console=ttyS".$sent->{serialport}.",".$sent->{serialspeed};
          if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/) {
             $kcmdline .= "n8r";
           }
         }
-        $restab->setNodeAttribs($node,{
+        $bptab->setNodeAttribs($node,{
            kernel=>"xcat/netboot/$osver/$arch/$profile/kernel",
            initrd=>"xcat/netboot/$osver/$arch/$profile/initrd.gz",
            kcmdline=>$kcmdline
@@ -305,9 +307,10 @@ sub mkinstall {
       }
       #We have a shot...
       my $restab = xCAT::Table->new('noderes');
+      my $bptab = xCAT::Table->new('bootparams');
       my $hmtab = xCAT::Table->new('nodehm');
-      my $ent = $restab->getNodeAttribs($node,['nfsserver','serialport','primarynic','installnic']);
-      my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
+      my $ent = $restab->getNodeAttribs($node,['nfsserver','primarynic','installnic']);
+      my $sent = $hmtab->getNodeAttribs($node,['serialport','serialspeed','serialflow']);
       unless ($ent and $ent->{nfsserver}) {
         $callback->({error=>["No noderes.nfsserver defined for ".$node],errorcode=>[1]});
         next;
@@ -322,19 +325,19 @@ sub mkinstall {
       }
 
       #TODO: dd=<url> for driver disks
-      if (defined($ent->{serialport})) {
+      if (defined($sent->{serialport})) {
         unless ($sent->{serialspeed}) {
           $callback->({error=>["serialport defined, but no serialspeed for $node in nodehm table"],errorcode=>[1]});
           next;
         }
-        $kcmdline.=" console=ttyS".$ent->{serialport}.",".$sent->{serialspeed};
+        $kcmdline.=" console=ttyS".$sent->{serialport}.",".$sent->{serialspeed};
         if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/) {
           $kcmdline .= "n8r";
         }
       }
       $kcmdline .= " noipv6";
       
-      $restab->setNodeAttribs($node,{
+      $bptab->setNodeAttribs($node,{
         kernel=>"xcat/$os/$arch/vmlinuz",
         initrd=>"xcat/$os/$arch/initrd.img",
         kcmdline=>$kcmdline

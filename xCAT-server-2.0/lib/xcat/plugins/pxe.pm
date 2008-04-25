@@ -61,8 +61,8 @@ sub setstate {
 
 =cut
   my $node = shift;
-  my $restab = xCAT::Table->new('noderes');
-  my $kern = $restab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
+  my $bptab = xCAT::Table->new('bootparams');
+  my $kern = $bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   my $pcfg;
   open($pcfg,'>',$tftpdir."/pxelinux.cfg/".$node);
   my $chaintab = xCAT::Table->new('chain');

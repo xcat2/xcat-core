@@ -219,15 +219,15 @@ if ($inet6support) {
 	    my $kcmdline;
 	    ($kname,$iname,$kcmdline) = split(/\s+/,$text,3);
 	    chomp($kcmdline);
-	    my $noderestab = xCAT::Table->new('noderes',-create=>1);
-	    $noderestab->setNodeAttribs($node,{kernel=>"xcat/$node/$kname",initrd=>"xcat/$node/$iname",kcmdline=>$kcmdline});
+	    my $bptab = xCAT::Table->new('bootparams',-create=>1);
+	    $bptab->setNodeAttribs($node,{kernel=>"xcat/$node/$kname",initrd=>"xcat/$node/$iname",kcmdline=>$kcmdline});
        my $iscsitab = xCAT::Table->new('iscsi',-create=>1);
 	    $iscsitab->setNodeAttribs($node,{kernel=>"xcat/$node/$kname",initrd=>"xcat/$node/$iname",kcmdline=>$kcmdline});
 	    my $chaintab = xCAT::Table->new('chain',-create=>1);
 	    $chaintab->setNodeAttribs($node,{currstate=>'iscsiboot',currchain=>'netboot'});
-	    $noderestab->close;
+	    $bptab->close;
 	    $chaintab->close;
-	    undef $noderestab;
+	    undef $bptab;
 	    undef $chaintab;
 	    my %request = (
 	       command => [ 'nodeset' ],
