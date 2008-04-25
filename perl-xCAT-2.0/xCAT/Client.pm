@@ -142,6 +142,7 @@ sub submit_request {
   print $client $msg;
   my $response;
   my $rsp;
+  my $cleanexit=0;
   while (<$client>) {
     $response .= $_;
     if ($response =~ m/<\/xcatresponse>/) {
@@ -149,9 +150,13 @@ sub submit_request {
       $response='';
       $callback->($rsp);
       if ($rsp->{serverdone}) {
+         $cleanexit=1;
         last;
       }
     }
+  }
+  unless ($cleanexit) {
+     print STDERR "ERROR/WARNING: communication with the xCAT server seems to have been ended prematurely\n";
   }
 
 ###################################

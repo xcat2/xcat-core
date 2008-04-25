@@ -947,7 +947,7 @@ sub convey_response {
   my $parsel = new IO::Select;
   $parsel->add($parent_fd);
   if ($parsel->can_read(5)) { #block up to five seconds for parent to ack
-     <parent_fd>;
+     <$parent_fd>;
   }
   #<$parent_fd>; #Block until parent acks data
 #  KeyAttr => [], NoAttr => 1)
