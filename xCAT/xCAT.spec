@@ -22,7 +22,7 @@ Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-XML-Parser
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-Requires: xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 syslinux
+Requires: xCAT-nbroot-oss-x86 xCAT-nbroot-core-x86 xCAT-nbkernel-x86 xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 syslinux
 Requires: ipmitool >= 1.8.9
 %endif
 
@@ -163,6 +163,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
     if [ -x $RPM_INSTALL_PREFIX0/sbin/mknb ]; then
 %ifarch i386 i586 i686 x86 x86_64
+       $RPM_INSTALL_PREFIX0/sbin/mknb x86
        $RPM_INSTALL_PREFIX0/sbin/mknb x86_64
 %endif
 %ifarch ppc ppc64

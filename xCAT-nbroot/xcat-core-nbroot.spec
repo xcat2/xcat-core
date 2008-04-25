@@ -51,6 +51,12 @@ chmod 755 etc/init.d/S40network bin/getdestiny bin/getdestiny.awk bin/getipmi bi
 cd -
 
 
+%post
+if [ "$1" == "2" ]; then #only on upgrade, as on install it's probably not going
+                         #to work...
+   . /etc/profile.d/xcat.sh
+   mknb %{tarch}
+fi
 
 %Files
 %defattr(-,root,root)

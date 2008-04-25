@@ -41,7 +41,7 @@ sub process_request {
    my $installdir = "/install";
    my $tftpdir = "/tftpboot";
    if (scalar(@{$request->{arg}}) != 1) {
-      $callback->({error=>"Need to specifiy architecture (x86_64 or ppc64)"},{errorcode=>[1]});
+      $callback->({error=>"Need to specifiy architecture (x86, x86_64 or ppc64)"},{errorcode=>[1]});
       return;
    }
    my $arch = $request->{arg}->[0];
@@ -106,8 +106,27 @@ sub process_request {
          chmod(0644,"$tftpdir/pxelinux.0");
       }
    }
+   my $dopxe=0;
    foreach (keys %{$hexnets}) {
-      if ($arch =~ /x86/) {
+      $dopxe=0;
+      if ($arch =~ /x86/) { #only do pxe if just x86 or x86_64 and no x86
+         if ($arch =~ /x86_64/) {
+            if (-r "$tftpdir/pxelinux.cfg/".uc($_)) {
+               my $pcfg;
+               open($pcfg,"<","$tftpdir/pxelinux.cfg/".uc($_));
+               my @pcfgcontents = <$pcfg>;
+               close($pcfg);
+               if (grep (/x86_64/,@pcfgcontents)) {
+                  $dopxe=1;
+               }
+            } else {
+               $dopxe=1;
+            }
+         } else {
+            $dopxe=1;
+         }
+      }
+      if ($dopxe) {
          open($cfgfile,">","$tftpdir/pxelinux.cfg/".uc($_));
          print $cfgfile "DEFAULT xCAT\n";
          print $cfgfile "  LABEL xCAT\n";
