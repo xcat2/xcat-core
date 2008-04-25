@@ -10,16 +10,17 @@ use xCAT::PPC;
 ##########################################################################
 sub handled_commands {
   return {
-      rpower   => 'nodehm:power,mgt',
-      rvitals  => 'nodehm:mgt',
-      rinv     => 'nodehm:mgt',
-      mkvm     => 'nodehm:mgt',
-      rmvm     => 'nodehm:mgt',
-      lsvm     => 'nodehm:mgt',
-      chvm     => 'nodehm:mgt',
-      rscan    => 'nodehm:mgt',
-      getmacs  => 'nodehm:mgt',
-      rnetboot => 'nodehm:mgt'
+      rpower    => 'nodehm:power,mgt',
+      rvitals   => 'nodehm:mgt',
+      rinv      => 'nodehm:mgt',
+      mkvm      => 'nodehm:mgt',
+      rmvm      => 'nodehm:mgt',
+      lsvm      => 'nodehm:mgt',
+      chvm      => 'nodehm:mgt',
+      rscan     => 'nodehm:mgt',
+      getmacs   => 'nodehm:mgt',
+      rnetboot  => 'nodehm:mgt',
+      rspconfig => 'nodehm:mgt'
   };
 }
 
