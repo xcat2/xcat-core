@@ -79,6 +79,43 @@ rm -rf $RPM_BUILD_ROOT
 # Just package everything that has been copied into RPM_BUILD_ROOT
 %{prefix}
 
+%post
+if [ "$1" -gt 1 ]; then #Ugrade only, restart daemon and migrate settings
+   if [ -x /etc/init.d/xcatd ]; then
+      . /etc/profile.d/xcat.sh
+      /etc/init.d/xcatd restart
+      #THE NEXT BIT SHOULD NOT BE RELEVANT TO RELEASE, IT SHOULD HELP A BETA INSTALL UPDATE GRACEFULLY
+      BOOTPCHECK=`tabdump bootparams|grep -v '^#node'`
+      if [ -z "$BOOTPCHECK" ]; then
+      echo -n "Old schema use detected, migrating settings, may take a while..."
+      for node in `nodels`; do
+         MIGSETTING=`nodels $node noderes.serialport|sed -e 's/^.*:.*:\s*//'`
+         nodech $node noderes.serialport=
+         if [ ! -z "$MIGSETTING" ]; then
+           nodech $node "nodehm.serialport=$MIGSETTING"
+         fi
+         MIGSETTING=`nodels $node noderes.kernel|sed -e 's/^.*:.*:\s*//'`
+         nodech $node noderes.kernel=
+         if [ ! -z "$MIGSETTING" ]; then
+           nodech $node "bootparams.kernel=$MIGSETTING"
+         fi
+         MIGSETTING=`nodels $node noderes.initrd|sed -e 's/^.*:.*:\s*//'`
+         nodech $node noderes.initrd=
+         if [ ! -z "$MIGSETTING" ]; then
+           nodech $node "bootparams.initrd=$MIGSETTING"
+         fi
+         MIGSETTING=`nodels $node noderes.kcmdline|sed -e 's/^.*:.*:\s*//'`
+         nodech $node noderes.kcmdline=
+         if [ ! -z "$MIGSETTING" ]; then
+           nodech $node "bootparams.kcmdline=$MIGSETTING"
+         fi
+      done
+      echo "Done"
+   fi
+   fi
+fi
+
+
 %changelog
 * Wed May 2 2007 - Norm Nott nott@us.ibm.com
 - Made changes to make this work on AIX
