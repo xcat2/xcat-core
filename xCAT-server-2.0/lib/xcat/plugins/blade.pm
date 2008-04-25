@@ -1658,7 +1658,7 @@ sub sshcfg {
   my $t = shift;
   my $value = shift;
   my $uid = shift;
-  my $fname = (xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/"."id_dsa.pub";
+  my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_dsa.pub";
 
   if ($value !~ /^enable|disable$/i) {
     return([1,"Invalid argument '$value' (enable|disable)"]);
