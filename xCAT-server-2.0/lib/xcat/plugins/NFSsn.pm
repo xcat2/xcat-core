@@ -40,7 +40,7 @@ sub handled_commands
         my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service    = "nfsserver";
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
-        if ($rc == 1)
+        if ($rc == 1 || $rc == 0)  # for now always mount install
         {
 
             # service needed on this Service Node
