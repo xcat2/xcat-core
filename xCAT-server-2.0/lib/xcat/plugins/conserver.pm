@@ -25,10 +25,6 @@ my $usage_string=
 my $version_string="Version 2.0";
 
 sub handled_commands {
-  # setup the conserver.cf when xcatd on the service node starts the first time
-  # make sure cnserver is up and running when xcatd starts on the service node 
-  enableConsOnSN();
-
   return {
     makeconservercf => "conserver"
   }
@@ -391,42 +387,6 @@ sub zapcfg {
   }
 }
 
-#--------------------------------------------------------------------------------
-=head3    enableConsOnSN
-      It configures the conserver on the service node if it is not configured yet.
-      It brings up the conserver daemon when xcatd starts.
-    Arguments:
-        none
-    Returns:
-        0 for successful.
-        non-0 for not successful.
-=cut
-#--------------------------------------------------------------------------------
-sub enableConsOnSN {
-  my $rc = 0;
-  if (xCAT::Utils->isServiceNode())  {
-    my @nodeinfo   = xCAT::Utils->determinehostname;
-    my $nodename   = pop @nodeinfo;                    # get hostname
-    my @nodeipaddr = @nodeinfo;                        # get ip addresses
-
-    my $service = "cons";
-    $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
-    if ($rc == 1)   {
-      # service needed on this Service Node
-      $rc = &setup_CONS($nodename);                  # setup CONS
-      if ($rc == 0)  {
-         xCAT::Utils->update_xCATSN($service);
-      }
-    }
-    else  {
-      if ($rc == 2)  {    # already setup, just start the daemon
-        # start conserver
-        my $cmd = "/etc/rc.d/init.d/conserver start";
-        xCAT::Utils->runcmd($cmd, -1);
-      }
-    }
-  }
-}
 
 1;
 
