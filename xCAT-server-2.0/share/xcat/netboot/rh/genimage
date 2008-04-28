@@ -221,11 +221,12 @@ if [ "\$NFS" = "1" ]; then
   #NOTE: should prob have max count
   while [ ! -d /ro/bin ]; do
     echo mounting \$SERVER:\$ROOTDIR on /ro
-    mount.nfs \$SERVER:\$ROOTDIR /ro -r -n -o nolock
+    mount.nfs \$SERVER:\$ROOTDIR /ro -r -n -o nolock,rsize=32768,udp,nfsvers=3,timeo=14
     sleep 5 #should be random, exponential for scale
   done
   mount -t tmpfs rw /rw
   mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot
+  cp /etc/resolv.conf /sysroot/etc/
 elif [ -r /rootimg.sfs ]; then
   echo Setting up squashfs with ram overlay.
   mknod /dev/loop0 b 7 0
