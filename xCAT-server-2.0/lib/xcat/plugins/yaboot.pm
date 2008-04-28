@@ -206,12 +206,13 @@ sub process_request {
       }
       return;
   }
-  @nodes = ();
-  foreach (@rnodes) {
-     if (xCAT::Utils->nodeonmynet($_)) {
-        push @nodes,$_;
-     }
-  }
+  @nodes = @rnodes;
+  #@nodes = ();
+  #foreach (@rnodes) {
+   #  if (xCAT::Utils->nodeonmynet($_)) {
+    #    push @nodes,$_;
+   #  }
+  #}
 
   if (ref($request->{arg})) {
     @args=@{$request->{arg}};
