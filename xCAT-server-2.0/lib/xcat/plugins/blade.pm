@@ -709,7 +709,7 @@ sub rscan {
   if ( !GetOptions(\%opt,qw(V|Verbose w x z))){
     return(1,usage());
   }
-  if (@ARGV) {
+  if ( defined(@ARGV[0]) ) {
     return(1,usage("Invalid argument: @ARGV\n"));
   }
   if (exists($opt{x}) and exists($opt{z})) {
