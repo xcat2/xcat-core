@@ -217,12 +217,13 @@ sub process_request {
       }
       return;
   }
-  @nodes = ();
-  foreach (@rnodes) {
-     if (xCAT::Utils->nodeonmynet($_)) {
-        push @nodes,$_;
-     }
-  }
+  @nodes = @rnodes;
+  #@nodes = ();
+  #foreach (@rnodes) {
+     #if (xCAT::Utils->nodeonmynet($_)) {
+     #   push @nodes,$_;
+     #}
+  #}
   if (! -r "$tftpdir/pxelinux.0") {
      unless (-r "/usr/lib/syslinux/pxelinux.0") {
        $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
