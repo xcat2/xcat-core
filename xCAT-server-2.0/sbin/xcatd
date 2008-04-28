@@ -14,7 +14,7 @@ use xCAT::Client submit_request;
 my $clientselect = new IO::Select;
 
 sub xexit {
-   while (wait() != -1) {
+   while (wait() > 0) {
       yield;
    }
    exit @_;
@@ -388,7 +388,9 @@ unless ($foreground) {
 
 my $CHILDPID=0; #Global for reapers
 sub generic_reaper {
-   while (waitpid(-1,WNOHANG > 0)) {}
+   while (waitpid(-1,WNOHANG) > 0) {
+      yield;
+   }
    $SIG{CHLD} = \&generic_reaper;
 }
 
