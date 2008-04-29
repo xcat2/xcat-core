@@ -15,11 +15,14 @@ sub handled_commands {
     copycds => "copycds",
   }
 }
+ 
+my $identified;
   
 sub take_answer {
 #TODO: Intelligently filter and decide things
   my $resp = shift;
   $callback->($resp);
+  $identified=1;
 }
 
 sub process_request {
@@ -28,6 +31,7 @@ sub process_request {
   my $doreq = shift;
   my $distname = undef;
   my $arch = undef;
+  $identified=0;
 
   @ARGV = @{$request->{arg}};
   GetOptions(
@@ -67,6 +71,9 @@ sub process_request {
     $doreq->($newreq,\&take_answer);
 
     system("umount /mnt/xcat");
+    unless ($identified) {
+       $callback->({error=>["copycds could not identify the ISO supplied, you may wish to try -n <osver>"],errorcode=>[1]});
+    }
   }
 }
 

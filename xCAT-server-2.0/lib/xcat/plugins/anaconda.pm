@@ -32,6 +32,7 @@ my %distnames = (
   "1192663619.181374" => "rhels5.1",
   "1194015916.783841" => "fedora8",
   "1194512200.047708" => "rhas4.6",
+  "1194512327.501046" => "rhas4.6",
   );
 my %numdiscs = (
   "1156364963.862322" => 4,
@@ -254,10 +255,22 @@ sub mkinstall {
     } elsif ($os =~ /fedora.*/) {
       $platform = "fedora";
     }
+    my $genos = $os;
+    $genos =~ s/\..*//;
+    if ($genos =~ /rh.s(\d*)/) {
+      unless (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$genos.$arch.tmpl"
+            or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$genos.tmpl") {
+         $genos = "rhel$1";
+      }
+    }
+
+
     unless (-r $::XCATROOT."/share/xcat/install/$platform/$profile.tmpl"
             or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$arch.tmpl"
             or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$os.tmpl"
+            or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$genos.tmpl"
             or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$os.$arch.tmpl"
+            or -r $::XCATROOT."/share/xcat/install/$platform/$profile.$genos.$arch.tmpl"
            ) {
       $callback->({error=>["No $platform kickstart template exists for ".$ent->{profile}],errorcode=>[1]});
       next;
@@ -266,10 +279,14 @@ sub mkinstall {
     my $tmperr="Unable to find template in $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arc combination)";
     if (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$os.$arch.tmpl") {
        $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.$os.$arch.tmpl","/$installroot/autoinst/".$node,$node);
+    } elsif (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$genos.$arch.tmpl") {
+       $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.$genos.$arch.tmpl","/$installroot/autoinst/".$node,$node);
     } elsif (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$arch.tmpl") {
        $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.$arch.tmpl","/$installroot/autoinst/".$node,$node);
     } elsif (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$os.tmpl") {
        $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.$os.tmpl","/$installroot/autoinst/".$node,$node);
+    } elsif (-r $::XCATROOT."/share/xcat/install/$platform/$profile.$genos.tmpl") {
+       $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.$genos.tmpl","/$installroot/autoinst/".$node,$node);
     } elsif (-r $::XCATROOT."/share/xcat/install/$platform/$profile.tmpl") {
        $tmperr = xCAT::Template->subvars($::XCATROOT."/share/xcat/install/$platform/$profile.tmpl","/$installroot/autoinst/".$node,$node);
     }
