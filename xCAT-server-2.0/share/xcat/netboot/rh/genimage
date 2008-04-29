@@ -66,7 +66,7 @@ unless ($onlyinitrd) {
    find(\&isyumdir, <$installroot/$osver/$arch/>);
    unless (scalar(@yumdirs)) {
    #unless ( -d $srcdir."/repodata" ) {
-      print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch";
+      print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch\n";
       exit 1;
    }
    my $yumconfig;
