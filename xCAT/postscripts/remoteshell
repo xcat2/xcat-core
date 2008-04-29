@@ -56,6 +56,8 @@ sleep 1
 umask 0077
 
 mkdir -p /root/.ssh/
+allowcred.awk &
+sleep 1
 getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
 if ! grep "PRIVATE KEY" /root/.ssh/id_rsa > /dev/null 2>&1 ; then
    rm /root/.ssh/id_rsa
