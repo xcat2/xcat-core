@@ -143,7 +143,7 @@ sub ok_with_node {
    #to assent to such requests before users can log in.  During postscripts
    #stage in stateful nodes and during the rc scripts of stateless boot
    my $select = new IO::Select;
-   sleep 0.5; # gawk script race condition might exist, try to lose just in case
+   #sleep 0.5; # gawk script race condition might exist, try to lose just in case
    my $sock = new IO::Socket::INET(PeerAddr=>$node,
                                      Proto => "tcp",
                                      PeerPort => shift);
