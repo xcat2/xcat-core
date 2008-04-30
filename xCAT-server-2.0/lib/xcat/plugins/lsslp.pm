@@ -34,6 +34,9 @@ use constant {
     TYPE_HMC         => "HMC",
     TYPE_IVM         => "IVM",
     TYPE_FSP         => "IVM",
+    IP_ADDRESSES     => 3,
+    TEXT             => 0,
+    FORMAT           => 1
 };
 
 #######################################
@@ -633,7 +636,7 @@ sub format_output {
 
     my $request = shift;
     my $values  = shift;
-    my $length  = 0;
+    my $length  = length( $header[IP_ADDRESSES][TEXT] );
     my $result;
 
     ###########################################
@@ -683,7 +686,7 @@ sub format_output {
     # Get longest IP for formatting purposes
     ###########################################
     my $format = sprintf "%%-%ds", ( $length + 2 );
-    $header[3][1] = $format;
+    $header[IP_ADDRESSES][FORMAT] = $format;
 
     ###########################################
     # Display header
