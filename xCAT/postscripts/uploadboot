@@ -18,7 +18,9 @@ elif [ -r /boot/grub/menu.lst ]; then
 
 fi
 `dirname $0`/unlocktftpdir.awk $MASTER 3002
-tftp $MASTER -m binary -c put $KERNEL xcat/$NODE/$KNAME
-tftp $MASTER -m binary -c put $INITRD xcat/$NODE/$INAME
+curl -T $KERNEL tftp://$MASTER/xcat/$NODE/$KNAME
+curl -T $INITRD tftp://$MASTER/xcat/$NODE/$INAME
+#tftp $MASTER -m binary -c put $KERNEL xcat/$NODE/$KNAME
+#tftp $MASTER -m binary -c put $INITRD xcat/$NODE/$INAME
 `dirname $0`/locktftpdir.awk $MASTER 3002
 `dirname $0`/setiscsiparms.awk $MASTER 3002 $KNAME $INAME "$KCMDLINE"
