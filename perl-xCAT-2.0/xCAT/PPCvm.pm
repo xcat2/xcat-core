@@ -6,6 +6,7 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCdb;
 use xCAT::Usage;
+use xCAT::NodeRange;
 
 
 ##############################################
@@ -172,6 +173,16 @@ sub mkvm_parse_args {
     ####################################
     if ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
+    }
+    ####################################
+    # Expand -n noderange
+    ####################################
+    if ( exists( $opt{n} )) {
+        my @noderange = xCAT::NodeRange::noderange( $opt{n},0 );
+        if ( !defined( @noderange )) {
+            return(usage( "Invalid noderange: '$opt{n}'" ));
+        }
+        $opt{n} = \@noderange;
     }
     ####################################
     # No operands - add command name 
@@ -795,42 +806,45 @@ sub create {
     # Get command-line options 
     #####################################
     my $id   = $opt->{i};
-    my $name = $opt->{n};
-    my $cfgdata = @$prof[0];
+    my $cfgdata = strip_profile( @$prof[0], $hwtype );
 
-    #####################################
-    # Modify read-back profile. 
-    # See HMC or IVM mksyscfg man  
-    # page for valid attributes.
-    #
-    #####################################
-    if ( $hwtype eq "hmc" ) {
-        $cfgdata =~ s/^name=[^,]+|$/profile_name=$name/;
-        $cfgdata =~ s/lpar_name=[^,]+|$/name=$name/;
-        $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
-    }
-    elsif ( $hwtype eq "ivm" ) {
-        $cfgdata =~ s/^name=[^,]+|$/name=$name/;
-        $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
-    }
-    $cfgdata = strip_profile( $cfgdata, $hwtype );
-
-    #####################################
-    # Create new LPAR  
-    #####################################
-    $result = xCAT::PPCcli::mksyscfg( $exp, $d, $cfgdata ); 
-    $Rc = shift(@$result);
-
-    #####################################
-    # Add new LPAR to database 
-    #####################################
-    if ( $Rc == SUCCESS ) {
-        my $err = xCATdB( "mkvm", $name, $id, $d, $hwtype, $lpar );
-        if ( defined( $err )) {
-            return( [[$name,$err,RC_ERROR]] );
+    foreach my $name ( @{$opt->{n}} ) {
+        #################################
+        # Modify read-back profile. 
+        # See HMC or IVM mksyscfg man  
+        # page for valid attributes.
+        #
+        #################################
+        if ( $hwtype eq "hmc" ) {
+            $cfgdata =~ s/^name=[^,]+|$/profile_name=$name/;
+            $cfgdata =~ s/lpar_name=[^,]+|$/name=$name/;
+            $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
         }
+        elsif ( $hwtype eq "ivm" ) {
+            $cfgdata =~ s/^name=[^,]+|$/name=$name/;
+            $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
+        }
+        #################################
+        # Create new LPAR  
+        #################################
+        $result = xCAT::PPCcli::mksyscfg( $exp, $d, $cfgdata ); 
+        $Rc = shift(@$result);
+
+        #################################
+        # Add new LPAR to database 
+        #################################
+        if ( $Rc == SUCCESS ) {
+            my $err = xCATdB( "mkvm", $name, $id, $d, $hwtype, $lpar );
+            if ( defined( $err )) {
+                push @values, [$name,$err,RC_ERROR];
+                $id++;
+                next;
+            }
+        }
+        push @values, [$name,@$result[0],$Rc];
+        $id++;
     }
-    return( [[$name,@$result[0],$Rc]] );
+    return( \@values );
 }
 
 
@@ -974,6 +988,7 @@ sub lsvm {
 
 
 1;
+
 
 
 
