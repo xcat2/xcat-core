@@ -1169,8 +1169,20 @@ sub slp_query {
         WILDCARD_SERVICE
     );
 
+    #############################################
+    # slp_query not installed   
+    #############################################
     if ( !-x $slpcmd ) {
         send_msg( $request, 1, "Command not installed: $slpcmd" );
+        return(1);
+    }
+    #############################################
+    # slp_query runnable - dependent on libstdc++ 
+    # Test for usage statement.
+    #############################################
+    my $output = `$slpcmd 2>&1`;
+    if ( $output !~ /slp_query --type=service-type-string/ ) {
+        send_msg( $request, 1, $output );
         return(1);
     }
     #############################################
