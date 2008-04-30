@@ -20,20 +20,33 @@ then
    echo "   StrictHostKeyChecking no" >> /etc/ssh/ssh_config
 fi
 
-if [ -d /xcatpost/.ssh ]
+if [ -d /xcatpost/_ssh ]
 then
 	logger -t xcat "Install: setup root .ssh"
-	cd /xcatpost/.ssh
+	cd /xcatpost/_ssh
 	mkdir -p /root/.ssh
 	cp -f * /root/.ssh
    cd -
 	chmod 700 /root/.ssh
 	chmod 600 /root/.ssh/*
 fi
+allowcred.awk &
+sleep 1
+
 if [ -d /xcatpost/hostkeys ]
 then
 	logger -t xcat "Install: using server provided host key for convenience."
 	cp /xcatpost/hostkeys/*_key /etc/ssh/
+fi
+getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
+chmod 600 /etc/ssh/ssh_host_dsa_key
+if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
+   rm /etc/ssh/ssh_host_dsa_key
+fi
+getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
+chmod 600 /etc/ssh/ssh_host_rsa_key
+if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
+   rm /etc/ssh/ssh_host_rsa_key
 fi
 
 
@@ -41,25 +54,12 @@ if [ ! -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
    exit 0
 fi
 
-echo client=yes > /etc/stunnel/stunnel.conf
-echo foreground=yes >> /etc/stunnel/stunnel.conf
-echo output=/dev/null >> /etc/stunnel/stunnel.conf
-echo verify=0 >> /etc/stunnel/stunnel.conf
-echo '[xcatd]' >> /etc/stunnel/stunnel.conf
-echo accept=400 >> /etc/stunnel/stunnel.conf
-echo connect=$MASTER:3001 >> /etc/stunnel/stunnel.conf
-
-stunnel &
-STUN_PID=$!
-sleep 1
 
 umask 0077
 
 mkdir -p /root/.ssh/
-allowcred.awk &
 sleep 1
 getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
 if ! grep "PRIVATE KEY" /root/.ssh/id_rsa > /dev/null 2>&1 ; then
    rm /root/.ssh/id_rsa
 fi
-kill $STUN_PID

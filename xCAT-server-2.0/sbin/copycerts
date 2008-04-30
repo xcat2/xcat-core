@@ -41,7 +41,7 @@ exit 0;
   
   Copy from the mounted /xcatpost/ directory to the MS /install/postscripts 
   directory the /install/postscripts/ca  install/postscripts/cert and 
-  /install/postscripts/.xcat into the local file system.  These certificate are
+  /install/postscripts/_xcat into the local file system.  These certificate are
   needed for the postresql db setup for the service node to be able to access
   the DB from the service node. 
 
@@ -54,19 +54,19 @@ sub copyCertstoSN
     `touch /etc/xCATSN`;
     `touch /tmp/lissatestxxx`;
     `unalias cp`;
-    if (-d "/xcatpost/.xcat")
+    if (-d "/xcatpost/_xcat")
     {
         if (!(-d "/root/.xcat"))
         {
             mkdir("/root/.xcat", 0600);
         }
-        `cp -rp /xcatpost/.xcat/* /root/.xcat`;
+        `cp -rp /xcatpost/_xcat/* /root/.xcat`;
         `chmod 0600 /root/.xcat/*`;
     }
     else
     {
         xCAT::MsgUtils->message('S',
-                                "/xcatpost/.xcat directory does not exist\n");
+                                "/xcatpost/_xcat directory does not exist\n");
 
     }
     if (-d "/xcatpost/ca")

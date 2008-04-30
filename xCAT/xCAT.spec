@@ -104,6 +104,12 @@ if [ ! -f /install/postscripts/hostkeys/ssh_host_key ]; then
     echo Generating SSH2 DSA Key...
     /usr/bin/ssh-keygen -t dsa -f /install/postscripts/hostkeys/ssh_host_dsa_key -C '' -N ''
 fi
+if [ -d /install/postscripts/.ssh ]; then
+   mv /install/postscripts/.ssh /install/postscripts/_ssh
+fi
+if [ -d /install/postscripts/.xcat ]; then
+   mv /install/postscripts/.xcat /install/postscripts/_xcat
+fi
 if [ "$1" = "1" ]; then #Only if installing for the fist time..
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
@@ -112,8 +118,8 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     if [ ! -r /root/.ssh/id_rsa.pub ]; then
         ssh-keygen -t rsa -q -b 2048 -N "" -f /root/.ssh/id_rsa
     fi
-    mkdir -p /install/postscripts/.ssh
-    cp /root/.ssh/id_rsa.pub /install/postscripts/.ssh/authorized_keys
+    mkdir -p /install/postscripts/_ssh
+    cp /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
 
     mkdir -p /var/log/consoles
     if ! grep /tftpboot /etc/exports; then
@@ -161,8 +167,8 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     if [ ! -r /root/.xcat/client-key.pem ]; then
       yes | $RPM_INSTALL_PREFIX0/share/xcat/scripts/setup-local-client.sh root
     fi
-    mkdir -p /install/postscripts/.xcat
-    cp -r /root/.xcat/* /install/postscripts/.xcat
+    mkdir -p /install/postscripts/_xcat
+    cp -r /root/.xcat/* /install/postscripts/_xcat
     #Zap the almost certainly wrong pxelinux.cfg file
 	if [ -r  /tftpboot/pxelinux.cfg/default ]
 	then

@@ -4,11 +4,12 @@ BEGIN {
         quit = "no"
 
 
-        while (match(quit,"no") && (listener |& getline) > 0) {
-                if (match($0,"CREDOKBYYOU?")) {
-                        print "CREDOKBYME" |& listener
-                        quit="yes"
-                }
-        }
-        close(listener)
+       while (match(quit,"no")) {
+         while ((listener |& getline) > 0) {
+                 if (match($0,"CREDOKBYYOU?")) {
+                         print "CREDOKBYME" |& listener
+                   }
+         }
+         close(listener)
+      }
 }

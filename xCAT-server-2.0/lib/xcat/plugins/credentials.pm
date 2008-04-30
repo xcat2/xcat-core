@@ -113,12 +113,22 @@ sub process_request
             next;
           }
           $tfilename = "/root/.xcat/client-cred.pem";
+       } elsif (/ssh_dsa_hostkey/) {
+          unless (-r "/install/postscripts/hostkeys/ssh_host_dsa_key") {
+             push @{$rsp->{'error'}},"Unable to read private DSA key from /install/postscripts/hostkeys";
+          }
+          $tfilename="/install/postscripts/hostkeys/ssh_host_dsa_key";
+       } elsif (/ssh_rsa_hostkey/) {
+          unless (-r "/install/postscripts/hostkeys/ssh_host_rsa_key") {
+             push @{$rsp->{'error'}},"Unable to read private RSA key from /install/postscripts/hostkeys";
+          }
+          $tfilename="/install/postscripts/hostkeys/ssh_host_rsa_key";
        } elsif (/xcat_cfgloc/) {
           unless (-r "/etc/xcat/cfgloc") {
             push @{$rsp->{'error'}},"Unable to read xCAT database location";
             next;
           }
-          $tfilename = "/etc/xcat/cfglog";
+          $tfilename = "/etc/xcat/cfgloc";
        } else {
           next;
        }
