@@ -18,7 +18,7 @@ Provides: xCAT = %{version}
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
-Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-XML-Parser
+Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-XML-Parser vsftpd
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
@@ -83,6 +83,18 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig
 %else
 . /etc/profile.d/xcat.sh
+
+if [ ! -d /var/ftp/install ]; then
+   mkdir -p /var/ftp/install
+   echo "/install                /var/ftp/install        none  bind,defaults 0 0" >> /etc/fstab
+   mount /var/ftp/install
+fi
+
+if [ ! -d /var/ftp/tftpboot ]; then 
+   mkdir -p /var/ftp/tftpboot
+   echo "/tftpboot   /var/ftp/tftpboot none bind,defaults 0 0" >> /etc/fstab
+   mount /var/ftp/tftpboot
+fi
 
 if [ ! -f /install/postscripts/hostkeys/ssh_host_key ]; then
     echo Generating SSH1 RSA Key...
@@ -175,6 +187,9 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     $RPM_INSTALL_PREFIX0/sbin/makenetworks
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=nameservers site.value=`sed -e 's/#.*//' /etc/resolv.conf|grep nameserver|awk '{printf $2 ","}'|sed -e s/,$//`
     chkconfig httpd on
+    chkconfig vsftpd on
+	/etc/rc.d/init.d/vsftpd stop
+	/etc/rc.d/init.d/vsftpd start
 	/etc/rc.d/init.d/httpd stop
 	/etc/rc.d/init.d/httpd start
     echo "xCAT is now installed, it is recommended to tabedit networks and set a dynamic ip address range on any networks where nodes are to be discovered"
