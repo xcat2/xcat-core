@@ -8,25 +8,25 @@ I<mkvm [-h| --help]>
 
 I<mkvm [-v| --version]>
 
-I<mkvm [-V| --verbose] singlenode -i id -n name>
+I<mkvm [-V| --verbose] singlenode -i id -n noderange>
 
-I<mkvm [-V| --verbose] src_cec -c dest_cec>
+I<mkvm [-V| --verbose] srccec -c destcec>
 
 
 =head1 DESCRIPTION
 
-The mkvm command creates a new partition with the same profile/resources as the partition specified by singlenode. The -i and -n flags specify the numeric partition number and name of the newly created partition, respectively. The second form of this command duplicates all the partitions associated with src_cec to dest_cec. Note that src_dest and dest_cec must be associated with the same HMC. Newly created partitions are automatically added to the xCAT database.
+The mkvm command creates new partition(s) with the same profile/resources as the partition specified by singlenode. The -i and -n flags specify the starting numeric partition number and the noderange for the newly created partitions, respectively. The second form of this command duplicates all the partitions associated with srccec to destcec. Note that srcdest and destcec must be associated with the same HMC. Newly created partitions are automatically added to the xCAT database.
 
 =head1 OPTIONS
 
 
 B<-h>          Display usage message.
 
-B<-c>          Copy partitions from src_cec to dest_cec on single HMC 
+B<-c>          Copy partitions from srccec to destcec on single HMC. 
 
-B<-i>          New partition numeric id 
+B<-i>          Starting numeric id of the newly created partitions. 
 
-B<-n>          New partition name 
+B<-n>          New partition name. 
 
 B<-v>          Command Version. 
 
@@ -50,8 +50,22 @@ Output is similar to:
 lpar5: Success
 
 
+2. To create new partitions lpar5-lpar8 based on the profile/resources of lpar4, enter:  
 
-2. To duplicate all the partitions associated with cec01 on cec02, enter:  
+I<mkvm lpar4 -i 5 -n lpar5-lpar8> 
+
+Output is similar to:
+
+lpar5: Success
+
+lpar6: Success
+
+lpar7: Success
+
+lpar8: Success
+
+
+3. To duplicate all the partitions associated with cec01 on cec02, enter:  
 
 I<mkvm cec01 -c cec02> 
 
@@ -70,4 +84,5 @@ This command is part of the xCAT software product.
 
 
  
+
 
