@@ -85,8 +85,8 @@ my %usage = (
    PPC specific:
        getmacs <noderange> [-c][-d][-S server -G gateway -C client]",
     "mkvm" => 
-"Usage: mkvm singlenode -i id -n name [-V|--verbose]
-       mkvm src_fsp -c dest_fsp [-V|--verbose]
+"Usage: mkvm singlenode -i id -n noderange [-V|--verbose]
+       mkvm srccec -c destcec [-V|--verbose]
        mkvm [-h|--help|-v|--version]",
     "lsvm" => 
 "Usage: lsvm <noderange> [-V|--verbose] 
