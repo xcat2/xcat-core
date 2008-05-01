@@ -83,6 +83,7 @@ sub process_command {
 
     my $request  = shift;
     my $maxp     = 64;
+    my $maxssh   = 10;
     my %nodes    = ();
     my $callback = $request->{callback};
     my $sitetab  = xCAT::Table->new( 'site' );
@@ -101,6 +102,10 @@ sub process_command {
         if ( defined($ent) ) { 
             $timeout = $ent->{value}; 
         }
+        ($ent) = $sitetab->getAttribs({ key=>'maxssh'},'value');
+        if ( defined($ent) ) {
+            $maxssh = $ent->{value};
+        }
     }
     if ( exists( $request->{verbose} )) {
         $start = Time::HiRes::gettimeofday();
@@ -118,11 +123,25 @@ sub process_command {
     my $children = 0;
     $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
     my $fds = new IO::Select;
-
+    my $hw;
+    my $sessions;
+    
     foreach ( @$nodes ) {
         while ( $children > $maxp ) {
             Time::HiRes::sleep(0.1);
         }
+        ###################################
+        # sleep between connects to same
+        # HMC/IVM so as not to overwelm it
+        ###################################
+        if ( $hw ne @$_[0] ) {
+            $sessions = 1;
+        } elsif ( $sessions++ >= $maxssh ) {
+            Time::HiRes::sleep(0.1);
+            $sessions = 1;
+        }
+        $hw = @$_[0];
+
         my $pipe = fork_cmd( @$_[0], @$_[1], $request, $timeout );
         if ( $pipe ) {
             $fds->add( $pipe );
