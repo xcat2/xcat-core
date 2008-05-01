@@ -6,9 +6,28 @@
 #
 #####################################################
 
+use File::Path;
+
+# since we don't have syslog set up yet we'll
+# just save msgs in a local log file
+$logdir = "/var/log/xcat";
+
+if (!-d $logdir) {
+	mkpath($logdir);
+}
+
+$::sdate = `/bin/date`;
+chomp $sdate;
+my $logfile = $logdir . "/xcat.log";
+
+# this log should not contain much so it might be ok to let it grow?
+# at least we'll have the errors preserved
+open(LOGFILE,">>",$logfile);
+$::LOG_FILE = \*LOGFILE;
+
 # get hostname
-my $shorthost = `hostname -s`;
-chomp $shorthost;
+$::shorthost = `hostname -s`;
+chomp $::shorthost;
 
 # get platform
 my $osname = `uname`;
@@ -16,24 +35,31 @@ chomp $osname;
 
 # get the postscript tar file from the server and unwrap it
 if ($osname eq "Linux") {
-	getLinuxpostfile();
+	if (&getLinuxpostfile() != 0 ) {
+		close($::LOG_FILE_HANDLE);
+        	exit 1;
+    	}
 } else {
-	# TBD
-#	getAIXpostfile();
+	if (&getAIXpostfile() != 0 ) {
+		close($::LOG_FILE_HANDLE);
+		exit 1;
+	}
 }
 
 # check & run the postscript
-my $scriptname = "/xcatpost/".$shorthost;
+my $scriptname = "/xcatpost/".$::shorthost;
 if (-f $scriptname)
 {
 	my $rc = system("$scriptname");
     if ($rc >> 8)
     {
-        print "Could not run $scriptname.\n";
+		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not run $scriptname.\n";
     }
 } else {
-	print "Could not find post script for $shorthost.\n";
+	print $::LOG_FILE "$::sdate  xcatdsklspost: Could not find post script for $::shorthost.\n";
 }
+
+close($::LOG_FILE_HANDLE);
 
 exit 0;
 
@@ -53,7 +79,7 @@ sub  getLinuxpostfile {
     	@lines = <DHCLIENT>;
     	close(DHCLIENT);
 	} else {
-    	print "Could not open $dhclientfile.\n";
+		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not open $dhclientfile.\n";
     	return 1;
 	}
 
@@ -63,19 +89,85 @@ sub  getLinuxpostfile {
     	if ($l =~ /dhcp-server-identifier/) {
         	my ($junk, $junk2, $s) = split(" ", $l);
         	($ip, $junk) =  split("\;", $s);
-#  	print "ip = $ip\n";
     	}
 	}
 
 	# get postscripts tar file from the server
 	my $getcmd = "mkdir -p /xcatpost; cd /xcatpost; wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$ip/install/autoinst/xcatpost.tar.gz; gunzip xcatpost.tar.gz; tar -xvf xcatpost.tar";
 
-#print "getcmd= $getcmd\n";
-
-	my $rc = system("$getcmd");
-    if ($rc >> 8)
+	if (&runcmd($getcmd) != 0)
     {
-		print "Could not get xcatpost.tar.bz2.\n";
+		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not get xcatpost.tar.gz.\n";
+		return 1;
+	}
+	return 0;
+}
+
+#####################################################
+#
+#   getAIXpostfile
+#               Get the AIX post scripts from the server
+#
+#####################################################
+sub  getAIXpostfile {
+
+	# get the name of my service node/NIM master from the /etc/niminfo file
+	if (-f "/etc/niminfo") {
+		my $cmd = "cat /etc/niminfo | grep 'NIM_NAME'";
+		&runcmd($cmd);
+		my $hnline = $::outref;
+		my $junk;
+		($junk, $::shorthost) = split(/=/, $hnline);
+		$::shorthost =~ s/^\s*//;    # delete leading white space
+		chomp $::shorthost;
+
+		$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
+		&runcmd($cmd);
+		my $SNline = $::outref;
+		($junk, $sn) =  split(/=/, $SNline);
+		$sn =~ s/^\s*//;    # delete leading white space
+		chomp $sn;
+
+	} else {
+		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not find /etc/niminfo file.\n";
+		return 1;	
 	}
 
+	# use tftp to get the tar file
+	my $getcmd="mkdir -p /xcatpost; cd /xcatpost; tftp -o xcatpost.tar.gz $sn /install/autoinst/xcatpost.tar.gz";
+	if (&runcmd($getcmd) != 0)
+	{
+		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not get xcatpost.tar.gz.\n";
+		return 1;
+	}
+
+	# unwrap the tar file
+	my $uncmd = "cd /xcatpost; gunzip xcatpost.tar.gz; tar -xvf xcatpost.tar";
+	if (&runcmd($uncmd) != 0)
+	{
+		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not extract from /xcatpost/xcatpost.tar.gz.\n";
+		return 1;
+	}
+	return 0;
+}
+
+#
+# run the command
+#
+sub runcmd
+{
+    my ($cmd) = @_;
+	my $rc=0;
+    $cmd .= ' 2>&1' ;
+    $::outref = [];
+    $::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+			print $::LOG_FILE "$::sdate  xcatdsklspost: $::outref\n";
+        }
+    }
+ return $rc;
 }
