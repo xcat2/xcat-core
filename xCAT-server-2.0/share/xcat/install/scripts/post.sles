@@ -58,15 +58,34 @@ export MASTER="#XCATVAR:XCATMASTER#"
 #
 #  This script has not yet been updated to work with service nodes
 #
-mkdir -p /xcatpost
 for i in $(seq 1 20)
 do
 	GOTIT=0
 	for i in $MASTER_IPS
 	do
-		mount -r $i:/install/postscripts /xcatpost
+		#mount -r $i:/install/postscripts /xcatpost
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/install/postscripts
 		if [ "$?" = "0" ]
 		then
+         mkdir -p /var/stunnel
+         if [ -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
+            echo client=yes > /etc/stunnel/stunnel.conf
+            echo foreground=no >> /etc/stunnel/stunnel.conf
+            echo output=/dev/null >> /etc/stunnel/stunnel.conf
+            echo verify=0 >> /etc/stunnel/stunnel.conf
+            echo '[xcatd]' >> /etc/stunnel/stunnel.conf
+            echo accept=400 >> /etc/stunnel/stunnel.conf
+            echo connect=$i:3001 >> /etc/stunnel/stunnel.conf
+
+            stunnel
+            STUN_PID=$!
+            sleep 1
+         fi
+         mv $i/install/postscripts /xcatpost
+         rm -rf $i
+         chmod +x /xcatpost/*
+         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+         chmod +x /tmp/mypostscript
 			GOTIT=1
 			break
 		fi
@@ -78,10 +97,15 @@ do
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
 	sleep $RAND
 done
+PATH=/xcatpost:$PATH
+export PATH
+/tmp/mypostscript
 updateflag.awk $MASTER 3002
 cd /
 /xcatpost/#TABLE:nodelist:$NODE:node#
-umount /xcatpost
+rm -Rf /xcatpost
+rm -f /tmp/mypostscript
+rm -f /etc/stunnel/stunnel.conf
 rmdir /xcatpost
 ]]>
 

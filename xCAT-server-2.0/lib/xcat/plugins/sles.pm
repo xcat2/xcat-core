@@ -132,9 +132,9 @@ sub mkinstall
             next;
         }
 	
-		# create the node-specific post script
-		mkpath "/install/postscripts/";
-		xCAT::Postage->writescript($node, "/install/postscripts/".$node, "install", $callback);
+		# create the node-specific post script DEPRECATED, don't do
+		#mkpath "/install/postscripts/";
+		#xCAT::Postage->writescript($node, "/install/postscripts/".$node, "install", $callback);
 
         if (
             (
@@ -282,11 +282,11 @@ sub mkinstall
                 );
         }
     }
-    my $rc = xCAT::Utils->create_postscripts_tar();
-    if ($rc != 0)
-    {
-        xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
-    }
+    #my $rc = xCAT::Utils->create_postscripts_tar();
+    #if ($rc != 0)
+    #{
+    #    xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
+    #}
 }
 
 sub copycd
