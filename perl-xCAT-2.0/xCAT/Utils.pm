@@ -1819,7 +1819,7 @@ sub create_postscripts_tar
     }
 
     $cmd =
-      "cd /install/postscripts; tar -cf /install/autoinst/xcatpost.tar * .ssh/* .xcat/*; gzip -f /install/autoinst/xcatpost.tar";
+      "cd /install/postscripts; tar -cf /install/autoinst/xcatpost.tar * .ssh/* _xcat/*; gzip -f /install/autoinst/xcatpost.tar";
     my @result = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
