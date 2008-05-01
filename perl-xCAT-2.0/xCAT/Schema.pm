@@ -442,6 +442,22 @@ vpd => {
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
+servicenode => {
+    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver comments disable)],
+    keys => [qw(node)],
+    table_desc => 'List of all Service Nodes and services that will be setup on the Service Node.',
+ descriptions => {
+  node => 'The hostname of the service node as known by the Management Node.',
+  nameserver => 'Do we setup DNS on this service node? Valid values:yes or 1, no or 0.',
+  dhcpserver => 'Do we setup DHCP on this service node? Valid values:yes or 1 or:<ifname>,<noderange>,<dynamicrange>, no or 0.',
+  tftpserver => 'Do we setup TFTP on this service node? Valid values:yes or 1, no or 0.',
+  nfsserver => 'Do we setup file services (HTTP,FTP,or NFS) on this service node? Valid values:yes or 1, no or 0.',
+  conserver => 'Do we setup Conserver on this service node? Valid values:yes or 1, no or 0.',
+  monserver => 'Is this a monitoring even collection point? Valid values:yes or 1, no or 0.',
+     comments => 'Any user-written notes.',
+     disable => "Set to 'yes' or '1' to comment out this row.",
+ },
+  },
 );        # end of tabspec definition
 
 
