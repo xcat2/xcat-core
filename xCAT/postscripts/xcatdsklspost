@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #
@@ -6,168 +6,41 @@
 #
 #####################################################
 
-use File::Path;
+if [ ! `uname` == Linux ]; then
+   MYDIR=`dirname $0`
+   exec $MYDIR/xcatdsklspost.aix
+   exit
+fi
 
-# since we don't have syslog set up yet we'll
-# just save msgs in a local log file
-$logdir = "/var/log/xcat";
+SIP=`grep dhcp-server-identifier /var/lib/dhclient/dhclient-eth0.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
 
-if (!-d $logdir) {
-	mkpath($logdir);
-}
-
-$::sdate = `/bin/date`;
-chomp $sdate;
-my $logfile = $logdir . "/xcat.log";
-
-# this log should not contain much so it might be ok to let it grow?
-# at least we'll have the errors preserved
-open(LOGFILE,">>",$logfile);
-$::LOG_FILE = \*LOGFILE;
-
-# get hostname
-$::shorthost = `hostname -s`;
-chomp $::shorthost;
-
-# get platform
-my $osname = `uname`;
-chomp $osname;
-
-# get the postscript tar file from the server and unwrap it
-if ($osname eq "Linux") {
-	if (&getLinuxpostfile() != 0 ) {
-		close($::LOG_FILE_HANDLE);
-        	exit 1;
-    	}
-} else {
-	if (&getAIXpostfile() != 0 ) {
-		close($::LOG_FILE_HANDLE);
-		exit 1;
-	}
-}
-
-# check & run the postscript
-my $scriptname = "/xcatpost/".$::shorthost;
-if (-f $scriptname)
-{
-	my $rc = system("$scriptname");
-    if ($rc >> 8)
-    {
-		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not run $scriptname.\n";
-    }
-} else {
-	print $::LOG_FILE "$::sdate  xcatdsklspost: Could not find post script for $::shorthost.\n";
-}
-
-close($::LOG_FILE_HANDLE);
-
-exit 0;
-
-#####################################################
-#
-#   getLinuxpostfile
-#		Get the linux post scripts from the server
-#
-#####################################################
-sub  getLinuxpostfile {
-
-	# look in the dhcp leases file for the name of the server
-	my $dhclientfile="/var/lib/dhclient/dhclient-eth0.leases";
-
-	my @lines;
-	if (open(DHCLIENT, "<$dhclientfile")) {
-    	@lines = <DHCLIENT>;
-    	close(DHCLIENT);
-	} else {
-		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not open $dhclientfile.\n";
-    	return 1;
-	}
-
-	my $ip;  # IP of server
-	foreach my $l (@lines)
-	{
-    	if ($l =~ /dhcp-server-identifier/) {
-        	my ($junk, $junk2, $s) = split(" ", $l);
-        	($ip, $junk) =  split("\;", $s);
-    	}
-	}
-
-	# get postscripts tar file from the server
-	my $getcmd = "mkdir -p /xcatpost; cd /xcatpost; wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$ip/install/autoinst/xcatpost.tar.gz; gunzip xcatpost.tar.gz; tar -xvf xcatpost.tar";
-
-	if (&runcmd($getcmd) != 0)
-    {
-		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not get xcatpost.tar.gz.\n";
-		return 1;
-	}
-	return 0;
-}
-
-#####################################################
-#
-#   getAIXpostfile
-#               Get the AIX post scripts from the server
-#
-#####################################################
-sub  getAIXpostfile {
-
-	# get the name of my service node/NIM master from the /etc/niminfo file
-	if (-f "/etc/niminfo") {
-		my $cmd = "cat /etc/niminfo | grep 'NIM_NAME'";
-		&runcmd($cmd);
-		my $hnline = $::outref;
-		my $junk;
-		($junk, $::shorthost) = split(/=/, $hnline);
-		$::shorthost =~ s/^\s*//;    # delete leading white space
-		chomp $::shorthost;
-
-		$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
-		&runcmd($cmd);
-		my $SNline = $::outref;
-		($junk, $sn) =  split(/=/, $SNline);
-		$sn =~ s/^\s*//;    # delete leading white space
-		chomp $sn;
-
-	} else {
-		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not find /etc/niminfo file.\n";
-		return 1;	
-	}
-
-	# use tftp to get the tar file
-	my $getcmd="mkdir -p /xcatpost; cd /xcatpost; tftp -o xcatpost.tar.gz $sn /install/autoinst/xcatpost.tar.gz";
-	if (&runcmd($getcmd) != 0)
-	{
-		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not get xcatpost.tar.gz.\n";
-		return 1;
-	}
-
-	# unwrap the tar file
-	my $uncmd = "cd /xcatpost; gunzip xcatpost.tar.gz; tar -xvf xcatpost.tar";
-	if (&runcmd($uncmd) != 0)
-	{
-		print $::LOG_FILE "$::sdate  xcatdsklspost: Could not extract from /xcatpost/xcatpost.tar.gz.\n";
-		return 1;
-	}
-	return 0;
-}
-
-#
-# run the command
-#
-sub runcmd
-{
-    my ($cmd) = @_;
-	my $rc=0;
-    $cmd .= ' 2>&1' ;
-    $::outref = [];
-    $::outref = `$cmd`;
-    if ($?)
-    {
-        $rc = $? >> 8;
-        if ($rc > 0)
-        {
-			print $::LOG_FILE "$::sdate  xcatdsklspost: $::outref\n";
-        }
-    }
- return $rc;
-}
+mkdir -p /etc/stunnel
+cat > /etc/stunnel/stunnel.conf << EOF
+client=yes
+foreground=no
+output=/dev/null
+verify=0
+[xcatd]
+accept=400
+EOF
+echo "connect=$SIP:3001" >> /etc/stunnel/stunnel.conf
+stunnel; 
+sleep 1; 
+mkdir -p /xcatpost; 
+mkdir /tmp/postage
+cd /tmp/postage
+wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/install/postscripts 2> /tmp/wget.log
+mv $SIP/install/postscripts/* /xcatpost; 
+rm -rf $SIP
+cd /xcatpost; 
+PATH=/xcatpost:$PATH
+export PATH
+chmod +x /xcatpost/*; 
+/xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
+chmod +x /tmp/mypostscript
+if [ -x /tmp/mypostscript ];then
+   /tmp/mypostscript
+fi
+rm -f /tmp/mypostscript
+killall stunnel
+rm -rf /etc/stunnel

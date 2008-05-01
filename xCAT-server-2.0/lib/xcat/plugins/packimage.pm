@@ -144,6 +144,7 @@ sub copybootscript {
     my $profile = shift;
     my $callback = shift;
 
+
     if ( -f "$installroot/postscripts/xcatdsklspost") {
 
         # copy the xCAT diskless post script to the image
@@ -159,6 +160,10 @@ sub copybootscript {
         push @{$rsp->{data}}, "Could not find the script $installroot/postscripts/xcatdsklspost.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
+    }
+    if ( -f "$installroot/postscripts/xcatdsklspost.aix") {
+       copy ("$installroot/postscripts/xcatdsklspost.aix", "$installroot/netboot/$osver/$arch/$profile/rootimg/opt/xcat/xcatdsklspost.aix");
+       chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/opt/xcat/xcatdsklspost.aix");
     }
 
 	if ( -f "$installroot/postscripts/xcatpostinit") {
