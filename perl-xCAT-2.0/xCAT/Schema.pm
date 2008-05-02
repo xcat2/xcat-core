@@ -10,6 +10,17 @@ package xCAT::Schema;
 #certain SQL backends don't ascribe meaning to the data types anyway.
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
+bootparams => {
+   cols => [qw(node kernel initrd kcmdline comments disable)],
+   keys => [qw(node)],
+   table_desc => 'Current boot settings to be sent to systems attempting network boot for deployment, stateless, or other reasons.  Mostly automatically manipulated by xCAT.',
+   descriptions => {
+      'node' => 'The node or group name',
+      'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
+      'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
+      'kcmdline' => 'Arguments to be passed to the kernel'
+   }
+},
 chain => {
     cols => [qw(node currstate currchain chain ondiscover comments disable)],
     keys => [qw(node)],
@@ -69,11 +80,11 @@ iscsi => {
  descriptions => {
   node => 'The node name or group name.',
   server => 'The server containing the iscsi boot device for this node.',
-  target => '??The target of the iscsi disk used for the boot device for this node.',
-  file => '??',
+  target => 'The iscsi disk used for the boot device for this node.  Filled in by xCAT.',
+  file => 'The path on the server of the OS image the node should boot from.',
   userid => 'The userid of the iscsi server containing the boot device for this node.',
   passwd => 'The password for the iscsi server containing the boot device for this node.',
-  kernel => 'The linux kernel version to use with iSCSI for this node.',
+  kernel => 'The path of the linux kernel to boot from.',
   kcmdline => 'The kernel command line to use with iSCSI for this node.',
   initrd => 'The initial ramdisk to use when network booting this node.',
      comments => 'Any user-written notes.',
@@ -149,11 +160,11 @@ networks => {
   netname => 'Name used to identify this network definition.',
   net => 'The network address.',
   mask => 'The network mask.',
-  mgtifname => 'Default ethernet interface name used by nodes on this network??',
+  mgtifname => 'Not currently used!  The interface name the dhcp server should listen on.',
   gateway => 'The network gateway.',
   dhcpserver => 'The DHCP server that is servicing this network.',
   tftpserver => 'The TFTP server that is servicing this network.',
-  nameservers => 'The nameservers for this network.  Used in creating the DHCP network definition.',
+  nameservers => 'The nameservers for this network.  Used in creating the DHCP network definition, and DNS configuration.',
   dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.',
   nodehostname => '??',
      comments => 'Any user-written notes.',
@@ -181,7 +192,7 @@ nodehm => {
   node => 'The node name or group name.',
   power => 'The method to use to control the power of the node. If not set, the mgt attribute will be used.  Valid values: ipmi, blade, hmc, ivm, fsp.  If "ipmi", xCAT will search for this node in the ipmi table for more info.  If "blade", xCAT will search for this node in the mp table.  If "hmc", "ivm", or "fsp", xCAT will search for this node in the ppc table.',
   mgt => 'The method to use to do general hardware management of the node.  This attribute is used as the default if power, cons, or getmac is not set.  Valid values: ipmi, blade, hmc, ivm, fsp.  See the power attribute for more details.',
-  cons => 'The console method. If not set, the mgt attribute will be used.  Valid values: cyclades, mrv, or the values valid for mgt??',
+  cons => 'The console method. If not set, conserver will not be configured for this node.  Valid values: cyclades, mrv, or the values valid for mgt??',
   termserver => 'The hostname of the terminal server.',
   termport => 'The port number on the terminal server that this node is connected to.',
   conserver => 'The hostname of the machine where the conserver daemon is running.  If not set, the default is the xCAT management node.',
@@ -220,17 +231,6 @@ nodepos => {
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
-bootparams => {
-   cols => [qw(node kernel initrd kcmdline comments disable)],
-   keys => [qw(node)],
-   table_desc => 'Current boot settings to be sent to systems attempting network boot for deployment, stateless, or other reasons.  Mostly automatically manipulated',
-   descriptions => {
-      'node' => 'The node or group name',
-      'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
-      'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
-      'kcmdline' => 'Arguments to be passed to the kernel'
-   }
-},
 noderes => {
     cols => [qw(node servicenode netboot tftpserver nfsserver monserver kernel initrd kcmdline nfsdir serialport installnic primarynic xcatmaster current_osimage next_osimage comments disable)],
     keys => [qw(node)],
@@ -246,8 +246,7 @@ noderes => {
   initrd => 'DEPRECATED, only here for migration to bootparams table',
   kcmdline => 'DEPRECATED, only here for migration to bootparams table',
   nfsdir => 'Not used??  The path that should be mounted from the NFS server.',
-  serialport => 'DEPRECATED, migrate to nodehm table',
-  #serialport => 'The serial port for this node.  For SOL on blades, this is typically 1.  For IPMI, this is typically 0.',
+  serialport => 'DEPRECATED!  Has been moved to the nodehm table',
   installnic => 'The network adapter on the node that will be used for OS deployment.  If not set, primarynic will be used.',
   primarynic => 'The network adapter on the node that will be used for xCAT management.  Default is eth0.',
   xcatmaster => 'The hostname of the xCAT service node (as known by this node).  This is the default value if nfsserver or tftpserver are not set.',
@@ -376,6 +375,24 @@ ppchcp => {
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
+servicenode => {
+    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver comments disable)],
+    keys => [qw(node)],
+    table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
+ descriptions => {
+  node => 'The hostname of the service node as known by the Management Node.',
+  nameserver => 'Do we set up DNS on this service node? Valid values:yes or 1, no or 0.',
+  dhcpserver => 'Do we set up DHCP on this service node? Valid values:yes or 1, no or 0  We may also support: <ifname>,<noderange>,<dynamicrange>, but this has not been decided yet.',
+  tftpserver => 'Do we set up TFTP on this service node? Valid values:yes or 1, no or 0.',
+  nfsserver => 'Do we set up file services (HTTP,FTP,or NFS) on this service node? Valid values:yes or 1, no or 0.',
+  conserver => 'Do we set up Conserver on this service node? Valid values:yes or 1, no or 0.',
+  monserver => 'Is this a monitoring even collection point? Valid values:yes or 1, no or 0.',
+  ldapserver => 'Do we set up ldap caching proxy on this service node? Valid values:yes or 1, no or 0.',
+  ntpserver => 'Do we set up and ntp server on this service node? Valid values:yes or 1, no or 0.',
+     comments => 'Any user-written notes.',
+     disable => "Set to 'yes' or '1' to comment out this row.",
+ },
+  },
 site => {
     cols => [qw(key value comments disable)],
     keys => [qw(key)],
@@ -399,10 +416,10 @@ site => {
    "  ipmiretries\n".
    "  ipmisdrcache\n".
    "  iscsidir\n".
-   "  xcatservers (service nodes??)\n".
+   "  xcatservers (Deprecated!  Will be replaced by the servicenode table.  List service nodes)\n".
    "  svloglocal (logs on the service node stay local or not. 1 or 0)\n".
-   "  dhcpinterfaces (network interfaces DHCP should listen on??)\n".
-   "  forwarders (DNS forwarders??)\n".
+   "  dhcpinterfaces (network interfaces DHCP should listen on.  We are thinking of also supporting: mn:eth1,eth2;sn1:bond0;sn2:bond0)\n".
+   "  forwarders (DNS servers at your site that can provide names outside of the cluster)\n".
    "  genpasswords (generate BMC passwords??)\n".
    "  defserialport (default if not specified in noderes table)\n".
    "  defserialspeed (default if not specified in nodehm table)\n".
@@ -438,22 +455,6 @@ vpd => {
   node => 'The node name or group name.',
   serial => 'The serial number of the node.',
   mtm => 'The machine type and model number of the node.  E.g. 7984-6BU',
-     comments => 'Any user-written notes.',
-     disable => "Set to 'yes' or '1' to comment out this row.",
- },
-  },
-servicenode => {
-    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver comments disable)],
-    keys => [qw(node)],
-    table_desc => 'List of all Service Nodes and services that will be setup on the Service Node.',
- descriptions => {
-  node => 'The hostname of the service node as known by the Management Node.',
-  nameserver => 'Do we setup DNS on this service node? Valid values:yes or 1, no or 0.',
-  dhcpserver => 'Do we setup DHCP on this service node? Valid values:yes or 1 or:<ifname>,<noderange>,<dynamicrange>, no or 0.',
-  tftpserver => 'Do we setup TFTP on this service node? Valid values:yes or 1, no or 0.',
-  nfsserver => 'Do we setup file services (HTTP,FTP,or NFS) on this service node? Valid values:yes or 1, no or 0.',
-  conserver => 'Do we setup Conserver on this service node? Valid values:yes or 1, no or 0.',
-  monserver => 'Is this a monitoring even collection point? Valid values:yes or 1, no or 0.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
