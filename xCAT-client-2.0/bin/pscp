@@ -13,6 +13,7 @@ if ($^O =~ /^linux/i) {
 use Data::Dumper;
 use IO::Handle;
 use IO::Select;
+use Threads qw(yield);
 use xCAT::Utils;
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
@@ -85,10 +86,11 @@ foreach (@nodes) {
   $inputs->add($child);
   $nodehdl{$child} = $node;
 }
-while ($children) {
+while ($inputs->count and $children) {
   processoutput($inputs);
 }
 while (processoutput($inputs)) {};
+wait;
 exit(0);
 
 sub processoutput { #This way, one arbiter handles output, no interrupting
@@ -107,6 +109,7 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
     chomp($line);
     print $nodehdl{$readyh}.": ".$line."\n";
   }
+  yield;
   return $rc;
 }
 sub scpnode {

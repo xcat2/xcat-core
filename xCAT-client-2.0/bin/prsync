@@ -14,6 +14,7 @@ use Data::Dumper;
 use IO::Handle;
 use IO::Select;
 use xCAT::Utils;
+use Threads qw(yield);
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;
@@ -96,10 +97,11 @@ foreach (@nodes) {
   $inputs->add($child);
   $nodehdl{$child} = $node;
 }
-while ($children) {
+while ($inputs->count and $children) {
   processoutput($inputs);
 }
 while (processoutput($inputs)) {};
+wait;
 exit(0);
 
 sub processoutput { #This way, one arbiter handles output, no interrupting
@@ -118,6 +120,7 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
     chomp($line);
     print $nodehdl{$readyh}.": ".$line."\n";
   }
+  yield;
   return $rc;
 }
 sub scpnode {
