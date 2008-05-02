@@ -239,18 +239,24 @@ sub resolve_hcp {
     ####################################
     # Process each node
     ####################################
-    foreach ( @$noderange ) {
-        my ($ent) = $db->getAttribs( {hcp=>$_},"hcp" );
+    foreach my $hcp ( @$noderange ) {
+        my ($ent) = $db->getAttribs( {hcp=>$hcp},"hcp" );
 
         if ( !defined( $ent )) {
-            my $msg = sprintf( "$_: $errmsg{NODE_UNDEF}", $tab );
+            my $msg = sprintf( "$hcp: $errmsg{NODE_UNDEF}", $tab );
             send_msg( $request, 1, $msg );
             next;
         }
         ################################
+        # Get userid and password 
+        ################################
+        my @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype} );
+        $request->{$hcp}{cred} = \@cred;
+
+        ################################
         # Save values
         ################################
-        push @nodegroup,[$_];
+        push @nodegroup,[$hcp];
     }
     return( \@nodegroup );
 
@@ -320,6 +326,13 @@ sub preprocess_nodes {
         my $mtms = @$d[2];
 
         $nodehash{$hcp}{$mtms}{$node} = $d;
+    } 
+    ##########################################
+    # Get userid and password
+    ##########################################
+    while (my ($hcp,$hash) = each(%nodehash) ) {   
+        my @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype} );
+        $request->{$hcp}{cred} = \@cred;
     } 
     ##########################################
     # Group the nodes - we will fork one 

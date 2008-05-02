@@ -5,7 +5,6 @@ use strict;
 require Exporter;
     our @ISA = qw(Exporter);
     our @EXPORT_OK = qw(SUCCESS RC_ERROR EXPECT_ERROR NR_ERROR);  
-use xCAT::PPCdb;
 use Expect;
 
 
@@ -91,12 +90,8 @@ sub connect {
     ##################################################
     # Get userid/password  
     ##################################################
-    my @cred = xCAT::PPCdb::credentials( $server, $hwtype );
-
-    ##################################################
-    # ssh to remote host
-    ##################################################
-    my $parameters = "$cred[0]\@$server";
+    my $cred = $req->{$server}{cred};
+    my $parameters = "@$cred[0]\@$server";
 
     ##################################################
     # Redirect STDERR to variable
@@ -131,7 +126,7 @@ sub connect {
     while ( $retry-- ) {
         my $success  = 0;
         my $pwd_sent = 0;
-        $expect_log = undef;
+        $expect_log  = undef;
 
         $ssh = new Expect;
 
@@ -172,7 +167,7 @@ sub connect {
             [ $pwd_prompt,
                sub {
                  if ( ++$pwd_sent == 1 ) {
-                   $ssh->send( "$cred[1]\r" );
+                   $ssh->send( "@$cred[1]\r" );
                    $ssh->exp_continue();
                  }
                } ],
@@ -206,8 +201,8 @@ sub connect {
                     $prompt{$hwtype},
                     $hwtype,
                     $server,
-                    $cred[0],
-                    $cred[1],
+                    @$cred[0],
+                    @$cred[1],
                     \$expect_log,
                     $timeout );
         }

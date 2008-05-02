@@ -9,6 +9,7 @@ use HTML::Form;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 
+
 ##########################################
 # Globals
 ##########################################
@@ -236,7 +237,7 @@ sub connect {
     ##################################
     # Get userid/password 
     ##################################
-    my @cred = xCAT::PPCdb::credentials( $server, "fsp" );
+    my $cred = $req->{$server}{cred};
 
     ##################################
     # Redirect STDERR to variable 
@@ -275,8 +276,8 @@ sub connect {
     # Submit logon
     ##################################
     my $res = $ua->post( $url,
-       [ user     => $cred[0],
-         password => $cred[1],
+       [ user     => @$cred[0],
+         password => @$cred[1],
          lang     => "0",
          submit   => "Log in" ]
     );
@@ -306,7 +307,7 @@ sub connect {
         ##############################
         return( $ua,
                 $server,
-                $cred[0],
+                @$cred[0],
                 \$lwp_log );
     }
     ##############################
