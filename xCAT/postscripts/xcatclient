@@ -1,0 +1,16 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+if [ ! -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
+   exit 0
+   fi
+   allowcred.awk &
+   CREDPID=$!
+   sleep 1
+   mkdir -p /root/.xcat
+   chmod 700 /root/.xcat
+   getcredentials.awk xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
+   chmod 600 /root/.xcat/client-cred.pem
