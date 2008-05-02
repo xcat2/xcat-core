@@ -221,11 +221,18 @@ sub handler {
 ##########################################################################
 sub connect {
 
-    my $request = shift;
+    my $req     = shift;
     my $server  = shift;
-    my $verbose = $request->{verbose};
+    my $verbose = $req->{verbose};
+    my $timeout = $req->{fsptimeout};
     my $lwp_log;
 
+    ##################################
+    # Use timeout from site table 
+    ##################################
+    if ( !$timeout ) {
+        $timeout = 30;
+    }
     ##################################
     # Get userid/password 
     ##################################
@@ -262,7 +269,7 @@ sub connect {
     ##################################
     my $url = "https://$server/cgi-bin/cgi?form=2";
     $ua->cookie_jar( $cookie );
-    $ua->timeout(30);
+    $ua->timeout( $timeout );
 
     ##################################
     # Submit logon
@@ -1692,6 +1699,7 @@ sub all_clear {
 
 
 1;
+
 
 
 
