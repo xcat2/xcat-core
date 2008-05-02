@@ -556,6 +556,7 @@ sub plugin_command {
     @nodes = noderange($req->{noderange}->[0]);
     if (nodesmissed) {
       my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',nodesmissed)};
+     $rsp->{serverdone} = {};
       if ($sock) {
         print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
       }

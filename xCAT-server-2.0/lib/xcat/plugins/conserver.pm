@@ -218,7 +218,7 @@ sub makeconservercf {
   # skip the one that does not have 'cons' defined, unless a serialport setting suggests otherwise
   my @cfgents=();
   foreach (@cfgents1) { 
-    if ($_->{cons} or defined($_->{'serialport'}) { push @cfgents, $_; } 
+    if ($_->{cons} or defined($_->{'serialport'})) { push @cfgents, $_; } 
   }
   
   # get the teminal servers and terminal port when cons is mrv or cyclades
