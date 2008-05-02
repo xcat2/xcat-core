@@ -857,7 +857,7 @@ sub dispatch_request {
         $$progname.=": connection to ".$ENV{XCATHOST};
         eval {
         undef $_->{'_xcatdest'};
-        xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-key.pem",$xcatdir."/cert/server-cert.pem",$xcatdir."/cert/ca.pem"); 
+        xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem"); 
         };
         if ($@) {
 	   dispatch_callback({error=>["Error dispatching command to ".$ENV{XCATHOST}.""],errorcode=>[1]}); 
