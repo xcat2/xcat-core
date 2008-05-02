@@ -107,7 +107,13 @@ sub process_request
             next;
           }
           $tfilename = "/root/.ssh/id_rsa";
-       } elsif (/xcat_root_cred/) {
+       } elsif (/xcat_server_cred/) {
+          unless (-r "/etc/xcat/cert/server-cred.pem") {
+            push @{$rsp->{'error'}},"Unable to read root's private xCAT key";
+            next;
+          }
+          $tfilename = "/etc/xcat/cert/server-cred.pem";
+       } elsif (/xcat_client_cred/ or /xcat_root_cred/) {
           unless (-r "/root/.xcat/client-cred.pem") {
             push @{$rsp->{'error'}},"Unable to read root's private xCAT key";
             next;
