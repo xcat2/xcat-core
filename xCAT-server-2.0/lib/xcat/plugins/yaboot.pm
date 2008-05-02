@@ -149,9 +149,18 @@ sub pass_along {
 
 
   
-#sub preprocess_request {
-#   return xCAT::Scope->get_broadcast_scope(@_);
-#}
+sub preprocess_request {
+   #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
+   #they specify no sharedtftp in site table
+   my $stab = xCAT::Table->new('site');
+   my $req = shift;
+   my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
+   if ($sent and ($sent->{value} == 0 or $ent->{value} =~ /no/i)) {
+      $req->{'_disparatetftp'}=[1];
+      return xCAT::Scope->get_broadcast_scope($req,@_);
+   }
+   return [$req];
+}
 #sub preprocess_request {
 #   my $req = shift;
 #   my $callback = shift;
@@ -206,13 +215,17 @@ sub process_request {
       }
       return;
   }
-  @nodes = @rnodes;
-  #@nodes = ();
-  #foreach (@rnodes) {
-   #  if (xCAT::Utils->nodeonmynet($_)) {
-    #    push @nodes,$_;
-   #  }
-  #}
+  #if not shared tftpdir, then filter, otherwise, set up everything
+  if ($req->{_disparatetftp}) { #reading hint from preprocess_command
+   @nodes = ();
+   foreach (@rnodes) {
+     if (xCAT::Utils->nodeonmynet($_)) {
+        push @nodes,$_;
+     }
+   }
+  } else {
+     @nodes = @rnodes;
+  }
 
   if (ref($request->{arg})) {
     @args=@{$request->{arg}};
