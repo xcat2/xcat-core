@@ -54,5 +54,7 @@ cp ca-cert.pem $USERHOME/.xcat/ca.pem
 chown -R $1 $USERHOME/.xcat
 find $USERHOME/.xcat -type f -exec chmod 600 {} \;
 find $USERHOME/.xcat -type d -exec chmod 700 {} \;
+chmod 644 $USERHOME/.xcat/ca.pem
+chmod 755 $USERHOME/.xcat
 cd -
 
