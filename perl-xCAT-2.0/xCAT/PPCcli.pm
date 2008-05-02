@@ -63,20 +63,22 @@ my %powercmd = (
 ##########################################################################
 sub connect {
 
+    my $req        = shift;
     my $hwtype     = shift;
     my $server     = shift;
-    my $verbose    = shift;
-    my $timeout    = shift;
     my $pwd_prompt = 'assword: $';
     my $continue   = 'continue connecting (yes/no)?';
-    my $success    = 0;
-    my $pwd_sent   = 0;
+    my $retry      = $req->{ppcretry};
+    my $timeout    = $req->{ppctimeout};
+    my $verbose    = $req->{verbose};
+    my $ssh;
     my $expect_log;
+    my $errmsg;
 
     ##################################################
     # Use timeout from site table (if defined) 
     ##################################################
-    if ( !defined( $timeout )) {
+    if ( !$timeout ) {
         $timeout = DEFAULT_TIMEOUT; 
     }
     ##################################################
@@ -95,28 +97,9 @@ sub connect {
     # ssh to remote host
     ##################################################
     my $parameters = "$cred[0]\@$server";
-    my $ssh = new Expect;
 
     ##################################################
-    # raw_pty() disables command echoing and CRLF
-    # translation and gives a more pipe-like behaviour.
-    # Note that this must be set before spawning
-    # the process. Unfortunately, this does not work
-    # with AIX (IVM). stty(qw(-echo)) will at least
-    # disable command echoing on all platforms but
-    # will not suppress CRLF translation.
-    ##################################################
-    #$ssh->raw_pty(1);
-    $ssh->slave->stty(qw(sane -echo));
-
-    ##################################################
-    # exp_internal(1) sets exp_internal debugging  
-    # to STDERR.  
-    ##################################################
-    $ssh->exp_internal( $verbose );
-
-    ##################################################
-    # Redirect STDERR to variable 
+    # Redirect STDERR to variable
     ##################################################
     if ( $verbose ) {
         close STDERR;
@@ -125,13 +108,7 @@ sub connect {
         }
     }
     ##################################################
-    # log_stdout(0) disables logging to STDOUT. 
-    # This corresponds to the Tcl log_user variable. 
-    ##################################################
-    $ssh->log_stdout( $verbose );
-
-    ##################################################
-    # Redirect STDOUT to variable 
+    # Redirect STDOUT to variable
     ##################################################
     if ( $verbose ) {
         close STDOUT;
@@ -139,74 +116,109 @@ sub connect {
              return( "Unable to redirect STDOUT: $!" );
         }
     }
-    unless ( $ssh->spawn( "ssh", $parameters )) {
-        return( $expect_log."Unable to spawn ssh connection to server" );
-    }
-    ##################################################
+    ######################################################
     # -re $continue
     #  "The authenticity of host can't be established
     #   RSA key fingerprint is ....
     #   Are you sure you want to continue connecting (yes/no)?"
     #
-    # -re pwd_prompt 
+    # -re pwd_prompt
     #   If the keys have already been transferred, we
     #   may already be at the command prompt without
     #   sending the password.
     #
-    ##################################################
-    my @result = $ssh->expect( $timeout,
-        [ $continue,
-           sub {
-             $ssh->send( "yes\r" );
-             $ssh->clear_accum();
-             $ssh->exp_continue();
-           } ],
-        [ $pwd_prompt, 
-           sub {
-             if ( ++$pwd_sent == 1 ) {
-               $ssh->send( "$cred[1]\r" );
-               $ssh->exp_continue();
-             }
-           } ],
-        [ $prompt{$hwtype},
-           sub {
-             $success = 1;
-           } ]
-    );
-    ##########################################
-    # Expect error
-    ##########################################
-    if ( defined( $result[1] )) {
+    ######################################################
+    while ( $retry-- ) {
+        my $success  = 0;
+        my $pwd_sent = 0;
+        $expect_log = undef;
+
+        $ssh = new Expect;
+
+        ##################################################
+        # raw_pty() disables command echoing and CRLF
+        # translation and gives a more pipe-like behaviour.
+        # Note that this must be set before spawning
+        # the process. Unfortunately, this does not work
+        # with AIX (IVM). stty(qw(-echo)) will at least
+        # disable command echoing on all platforms but
+        # will not suppress CRLF translation.
+        ##################################################
+        #$ssh->raw_pty(1);
+        $ssh->slave->stty(qw(sane -echo));
+
+        ##################################################
+        # exp_internal(1) sets exp_internal debugging
+        # to STDERR.
+        ##################################################
+        $ssh->exp_internal( $verbose );
+
+        ##################################################
+        # log_stdout(0) disables logging to STDOUT.
+        # This corresponds to the Tcl log_user variable.
+        ##################################################
+        $ssh->log_stdout( $verbose );
+
+        unless ( $ssh->spawn( "ssh", $parameters )) {
+            return( $expect_log."Unable to spawn ssh connection to server");
+        }
+        my @result = $ssh->expect( $timeout,
+            [ $continue,
+               sub {
+                 $ssh->send( "yes\r" );
+                 $ssh->clear_accum();
+                 $ssh->exp_continue();
+               } ],
+            [ $pwd_prompt,
+               sub {
+                 if ( ++$pwd_sent == 1 ) {
+                   $ssh->send( "$cred[1]\r" );
+                   $ssh->exp_continue();
+                 }
+               } ],
+            [ $prompt{$hwtype},
+               sub {
+                 $success = 1;
+               } ]
+        );
+        ##########################################
+        # Expect error - retry
+        ##########################################
+        if ( defined( $result[1] )) {
+            $errmsg = $expect_log.expect_error(@result);
+            sleep(1);
+            next;
+        }
+        ##########################################
+        # Successful logon....
+        # Return:
+        #    Expect
+        #    HW Shell Prompt regexp
+        #    HW Type (hmc/ivm)
+        #    Server hostname
+        #    UserId
+        #    Password
+        #    Redirected STDERR/STDOUT
+        #    Connect/Command timeout
+        ##########################################
+        if ( $success ) {
+            return( $ssh,
+                    $prompt{$hwtype},
+                    $hwtype,
+                    $server,
+                    $cred[0],
+                    $cred[1],
+                    \$expect_log,
+                    $timeout );
+        }
+        ##########################################
+        # Failed logon - kill ssh process
+        ##########################################
         $ssh->hard_close();
-        return( $expect_log.expect_error(@result) );
+        return( $expect_log."Invalid userid/password" );
     }
-    ##########################################
-    # Successful logon....
-    # Return:
-    #    Expect
-    #    HW Shell Prompt regexp
-    #    HW Type (hmc/ivm)
-    #    Server hostname
-    #    UserId
-    #    Password
-    #    Redirected STDERR/STDOUT
-    #    Connect/Command timeout
-    ##########################################
-    if ( $success ) {
-        return( $ssh,
-                $prompt{$hwtype},
-                $hwtype,
-                $server,
-                $cred[0],
-                $cred[1],
-                \$expect_log,
-                $timeout );
-    }
-    ##########################################
-    # Failed logon - kill ssh process
-    ##########################################
     $ssh->hard_close();
-    return( $expect_log."Invalid userid/password" );
+    return( $errmsg );
 }
 
 
@@ -884,6 +896,7 @@ sub power_cmd {
 
 
 1;
+
 
 
 
