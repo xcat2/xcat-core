@@ -89,17 +89,17 @@ sub preprocess_request {
   if ($noderange && @$noderange>0) {
     $allnodes=0;
     foreach my $node (@$noderange) {
-      my $ent=$hmtab->getNodeAttribs($node,['node', 'cons', 'conserver']);
+      my $ent=$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
       push @items,$ent; 
     }
   } else {
     $allnodes=1;
-    @items = $hmtab->getAllNodeAttribs(['node', 'cons', 'conserver']);
+    @items = $hmtab->getAllNodeAttribs(['node', 'serialport','cons', 'conserver']);
   }
 
   my @nodes=();
   foreach (@items) {
-    if ((!defined($_->{cons})) || ($_->{cons} eq "")) { next;} #skip if 'cons' is not defined for this node 
+    if (((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) { next;} #skip if 'cons' is not defined for this node, unless serialport suggests otherwise 
     if (defined($_->{conserver})) { push @{$cons_hash{$_->{conserver}}{nodes}}, $_->{node};}
     else { push @{$cons_hash{$master}{nodes}}, $_->{node};}
     push @nodes,$_->{node};
@@ -212,17 +212,18 @@ sub makeconservercf {
   #print "process_request nodes=@$nodes\n";
 
   my $hmtab = xCAT::Table->new('nodehm');
-  my @cfgents1 = $hmtab->getAllNodeAttribs(['cons','conserver']);
+  my @cfgents1 = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver']);
 #cfgents should now have all the nodes, so we can fill in our hashes one at a time.
 
-  # skip the one that does not have 'cons' defined
+  # skip the one that does not have 'cons' defined, unless a serialport setting suggests otherwise
   my @cfgents=();
-  foreach (@cfgents1) {
-    if ($_->{cons}) { push @cfgents, $_; } 
+  foreach (@cfgents1) { 
+    if ($_->{cons} or defined($_->{'serialport'}) { push @cfgents, $_; } 
   }
   
   # get the teminal servers and terminal port when cons is mrv or cyclades
   foreach (@cfgents) {
+     unless ($_->{cons}) {$_->{cons} = $_->{mgt};} #populate with fallback
     my $cmeth=$_->{cons};
     if (grep(/^$cmeth$/,@cservers)) { #terminal server, more attribs needed
       my $node = $_->{node};
