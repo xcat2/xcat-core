@@ -101,10 +101,11 @@ foreach (@nodes) {
   $inputs->add($child);
   $nodehdl{$child} = $node;
 }
-while ($children) {
+while ($inputs->count and $children) {
   processoutput($inputs);
 }
 while (processoutput($inputs)) {};
+wait;
 exit(0);
 
 sub processoutput { #This way, one arbiter handles output, no interrupting
