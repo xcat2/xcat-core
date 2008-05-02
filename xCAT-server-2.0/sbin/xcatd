@@ -479,8 +479,8 @@ until ($quit) {
     eval {
       alarm(10);
       $connection = IO::Socket::SSL->start_SSL($cnnection,
-      SSL_key_file=>$xcatdir."/cert/server-key.pem",
-      SSL_cert_file=>$xcatdir."/cert/server-cert.pem",
+      SSL_key_file=>$xcatdir."/cert/server-cred.pem",
+      SSL_cert_file=>$xcatdir."/cert/server-cred.pem",
       SSL_ca_file=>$xcatdir."/cert/ca.pem",
       SSL_server=>1,
       SSL_verify_mode=> 1
