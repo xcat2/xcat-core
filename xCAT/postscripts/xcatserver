@@ -16,3 +16,4 @@ if [ ! -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
    getcredentials.awk xcat_cfgloc | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cfgloc
    chmod 600 /etc/xcat/cfgloc
    cp _xcat/ca.pem /etc/xcat/cert/ca.pem
+   kill -9 $CREDPID
