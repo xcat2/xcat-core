@@ -143,9 +143,18 @@ sub pass_along {
 
 
 
-# Removing hierarchy,  command will be processed on the MN.
-# If hierachy is put back the code my change to use Utils->get_Servicenode
-# and not use xcatservers from the site table. 
+sub preprocess_request {
+   #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
+   #they specify no sharedtftp in site table
+   my $stab = xCAT::Table->new('site');
+   my $req = shift;
+   my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
+   if ($sent and ($sent->{value} == 0 or $ent->{value} =~ /no/i)) {
+      $req->{'_disparatetftp'}=[1];
+      return xCAT::Scope->get_broadcast_scope($req,@_);
+   }
+   return [$req];
+}
 #sub preprocess_request {
 #   my $req = shift;
 #   $callback = shift;
@@ -217,13 +226,18 @@ sub process_request {
       }
       return;
   }
-  @nodes = @rnodes;
-  #@nodes = ();
-  #foreach (@rnodes) {
-     #if (xCAT::Utils->nodeonmynet($_)) {
-     #   push @nodes,$_;
-     #}
-  #}
+  #if not shared, then help sync up
+  if ($req->{_disparatetftp}) { #reading hint from preprocess_command
+   @nodes = ();
+   foreach (@rnodes) {
+     if (xCAT::Utils->nodeonmynet($_)) {
+        push @nodes,$_;
+     }
+   }
+  } else {
+     @nodes = @rnodes;
+  }
+  
   if (! -r "$tftpdir/pxelinux.0") {
      unless (-r "/usr/lib/syslinux/pxelinux.0") {
        $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
