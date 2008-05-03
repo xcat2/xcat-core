@@ -11,10 +11,15 @@
 # Short-Description: xCATd
 # Description: xCAT management service
 ### END INIT INFO
+
+# This avoids the perl locale warnings
+if [ -z $LANG ] && [ -z $LC_ALL ]; then
+  export LANG=C
+fi
+
 if [ -r /etc/sysconfig/xcat ]; then
 	. /etc/sysconfig/xcat
 fi
-
 
 MStatus()
 {
@@ -37,7 +42,7 @@ if [ -f /lib/lsb/init-functions ]; then
   LOG_FAILURE=log_failure_msg
   LOG_WARNING=log_warning_msg
 elif [ -f /etc/init.d/functions ]; then
-  echo RH
+  #echo RH
   . /etc/init.d/functions
   START_DAEMON=daemon
   STATUS=MStatus
