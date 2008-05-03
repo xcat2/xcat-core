@@ -153,11 +153,12 @@ sub dsklsimage
 	# parse the options
 	Getopt::Long::Configure("no_pass_through");
 	if(!GetOptions(
+		'f|force'	=> \$::FORCE,
 		'h|help'     => \$::HELP,
 		's=s'       => \$::opt_s,
 		'l=s'       => \$::opt_l,
 		'S=s'       => \$::opt_S,
-		'verbose|V' => \$::opt_V,
+		'verbose|V' => \$::VERBOSE,
 		'v|version'  => \$::VERSION,))
 	{
 
@@ -181,22 +182,19 @@ sub dsklsimage
     }
 
 	my $spot_name = shift @ARGV;
-	unless ($spot_name) {
-		&dsklsimage_usage($callback);
-		return 1;
-	}
-
 	# must have a source and a name
 	if (!$::opt_s || !defined($spot_name) ) {
+		my $rsp;
+		push @{$rsp->{data}}, "The image source and image name are required.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
 		&dsklsimage_usage($callback);
 		return 1;
 	}
 
 	#
-	#  See if this NIM SPOT definition already exists
+	#  Get a list of the defined resources
 	#
-	my $spot_exists=0;
-	my $cmd = qq~lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+	my $cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
 	my @output = xCAT::Utils->runcmd("$cmd", -1);
 	if ($::RUNCMD_RC  != 0)
 	{
@@ -205,16 +203,79 @@ sub dsklsimage
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
 	}
-	elsif (grep(/^$spot_name$/, @output))
-	{
-		$spot_exists=1;
+
+	# if the source is not the name of an lpp_source then try to create one
+	# we will need the lpp_source to update the image
+	my $lppsrcname;
+	my $buildlpp=0;
+	if (-d $::opt_s) {
+		# this is a source directory
+		#    so see if we need to create a new lpp_source
+		#	make a name using the convention and check if it already exists
+		$lppsrcname= $spot_name . "_lpp";
+		if (grep(/^$lppsrcname$/, @output)) {
+			if ($::FORCE) {
+				# get rid of the old lpp_source
+				my $cmd = "/usr/sbin/nim -o remove $lppsrcname";
+				my $out = xCAT::Utils->runcmd("$cmd", -1);
+				if ($::RUNCMD_RC  != 0) {
+					my $rsp;
+					push @{$rsp->{data}}, "Could not run command \'$cmd\'. (rc = $::RUNCMD_RC)\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return 1;
+				}
+
+				# build a new one
+				$buildlpp = 1;
+			} else {
+				my $rsp;
+				push @{$rsp->{data}}, "The lpp_source (\'$lppsrcname\') for this COSI already exists. Use the force option to re-create it.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
+			}
+		} else {
+			$buildlpp = 1;
+		}
+	} else {
+		# if not a dir then should be an existing lpp_source
+		if (!(grep(/^$::opt_s$/, @output))) {
+			my $rsp;
+			push @{$rsp->{data}}, "\'$::opt_s\' is not a source directory or the name of a NIM lpp_source resource.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			&dsklsimage_usage($callback);
+			return 1;
+		} else {
+			# ok this is the lpp_source to use
+			$lppsrcname= $::opt_s
+		}
+	} 
+
+	# build an lpp_source if needed
+	if ($buildlpp) {
 		my $rsp;
-		push @{$rsp->{data}}, "A NIM SPOT resource named \'$spot_name\' already exists.";
+		push @{$rsp->{data}}, "Creating a NIM lpp_source resource called \'$lppsrcname\'.  This could take a while.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
-		# return 1;
+
+		my $cmd = "/usr/sbin/nim -o define -t lpp_source -a server=master -a location=/install/nim/lpp_source/$lppsrcname -a source=$::opt_s $lppsrcname";
+
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "Running: \'$cmd\'\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
+		my $output = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC  != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not run command \'$cmd\'. (rc = $::RUNCMD_RC)\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
 	}
 
-	if (!$spot_exists) {
+	# if the SPOT doesn't exist then create it
+	if (!(grep(/^$spot_name$/, @output)) || $::FORCE) {
 
 		#
 		# Create the SPOT/COSI
@@ -222,18 +283,18 @@ sub dsklsimage
 		my $mkcosi_cmd = "/usr/sbin/mkcosi ";
 
 		# do we want verbose output?
-		if ($::opt_V) {
+		if ($::VERBOSE) {
 			$mkcosi_cmd .= "-v ";
 		}
 
 		# source of images
-		$mkcosi_cmd .= "-s $::opt_s ";
+		$mkcosi_cmd .= "-s $lppsrcname ";
 
 		# where to put it - the default is /install
 		if ($::opt_l) {
 			$mkcosi_cmd .= "-l $::opt_l ";
 		} else {
-			$mkcosi_cmd .= "-l /install  ";
+			$mkcosi_cmd .= "-l /install/nim/spot  ";
 		}
 
 		# what server do we want this created on? 
@@ -251,6 +312,12 @@ sub dsklsimage
 		push @{$rsp->{data}}, "Creating a NIM SPOT resource. This could take a while.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 
+		if ($::VERBOSE) {
+            my $rsp;
+            push @{$rsp->{data}}, "Running: \'$mkcosi_cmd\'\n";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
 		my $output = xCAT::Utils->runcmd("$mkcosi_cmd", -1);
 		if ($::RUNCMD_RC  != 0)
 		{
@@ -260,10 +327,40 @@ sub dsklsimage
 			return 1;
 		}
 
-	} # end if spot doesn't exist
+	} # end - if spot doesn't exist
+	else {
+		my $rsp;
+		push @{$rsp->{data}}, "A SPOT called $spot_name already exists.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+
+	my $rsp;
+	push @{$rsp->{data}}, "Updating $spot_name.\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
 
 	#
-	#  Get the SPOT location ( /../usr)
+	#  add rpm.rte to the SPOT 
+	#	- it contains gunzip which is needed on the node
+	#	- assume the source for the spot also has the rpm.rte fileset
+	#
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Installing rpm.rte in the image.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+
+	my $cmd = "/usr/sbin/chcosi -i -s $::opt_s -f rpm.rte $spot_name";
+	my $output = xCAT::Utils->runcmd("$cmd", -1);
+	if ($::RUNCMD_RC  != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not run command \'$cmd\'. (rc = $::RUNCMD_RC)\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	#
+	#  Get the SPOT location ( path to ../usr)
 	#
 	$::spot_loc = &get_spot_loc($spot_name, $callback);
 	if (!defined($::spot_loc) ) {
@@ -277,9 +374,14 @@ sub dsklsimage
 	# Create ODMscript in the SPOT and modify the rc.dd-boot script
 	#	- need for rnetboot to work - handles default console setting
 	#
+	my $odmscript = "$::spot_loc/ODMscript";
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Adding $odmscript to the image.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
 
 	#  Create ODMscript script
-	my $odmscript = "$::spot_loc/ODMscript";
 	my $text = "CuAt:\n\tname = sys0\n\tattribute = syscons\n\tvalue = /dev/vty0\n\ttype = R\n\tgeneric =\n\trep = s\n\tnls_index = 0";
 
 	if ( open(ODMSCRIPT, ">$odmscript") ) {
@@ -314,9 +416,21 @@ sub dsklsimage
 	# Copy the xcatdsklspost script to the SPOT/COSI and add an entry for it
 	#	to the /etc/inittab file
 	#
+	if ($::VERBOSE) {
+		my $rsp;
+		push @{$rsp->{data}}, "Adding xcatdsklspost script to the image.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
 
 	# copy the script
 	my $cpcmd = "mkdir -m 644 -p $::spot_loc/lpp/bos/inst_root/opt/xcat; cp /install/postscripts/xcatdsklspost $::spot_loc/lpp/bos/inst_root/opt/xcat/xcatdsklspost";
+
+	if ($::VERBOSE) {
+		my $rsp;
+		push @{$rsp->{data}}, "Running: \'$cpcmd\'\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+
 	my @result = xCAT::Utils->runcmd("$cpcmd", -1);
 	if ($::RUNCMD_RC  != 0)
 	{
@@ -339,7 +453,7 @@ sub dsklsimage
 	#
 	# - use lsnim or nim -o showres  ??
 	my $rsp;
-	push @{$rsp->{data}}, "A diskless image called $spot_name was created and updated.\n";
+	push @{$rsp->{data}}, "A diskless image called $spot_name was created and/or updated.\n";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 
 	return 0;
@@ -369,14 +483,14 @@ sub update_inittab
 	my $spotinittab = "$::spot_loc/lpp/bos/inst_root/etc/inittab";
 
 	my $entry = "xcat:2:wait:/opt/xcat/xcatdsklspost\n";
-	
-	# see if xcatdsklspost entry is already in the file
-    my $cmd = "cat $spotinittab | grep xcatdsklspost";
-    my @result = xCAT::Utils->runcmd("$cmd", -1);
+
+	# see if xcatdsklspost is already in the file
+	my $cmd = "cat $spotinittab | grep xcatdsklspost";
+	my @result = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC == 0)
     {
-        # it's already there so return
-        return 0;
+		# it's already there so return
+		return 0;
     }
 
 	unless (open(INITTAB, ">>$spotinittab")) {
@@ -526,7 +640,7 @@ sub update_dd_boot {
 		return 1;
     }
 
-	if ($::opt_V) {
+	if ($::VERBOSE) {
 		my $rsp;
         push @{$rsp->{data}}, "Updated $dd_boot_file.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -567,9 +681,10 @@ sub dsklsnode
 
 	# parse the options
 	if(!GetOptions(
+		'f|force'	=> \$::FORCE,
 		'h|help'     => \$::HELP,
 		'c=s'       => \$::opt_c,
-		'verbose|V' => \$::opt_V,
+		'verbose|V' => \$::VERBOSE,
 		'v|version'  => \$::VERSION,))
 	{
 		&dsklsnode_usage($callback);
@@ -625,51 +740,166 @@ sub dsklsnode
 		return 1;
 	}
 
+	#
+    #  Get a list of the defined machines
+    #
+    my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/nu
+ll~;
+    my @machines = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get NIM machine definitions.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+	#
+    #  Get a list of the defined diskless machines
+    #
+    my $cmd = qq~/usr/sbin/lsnim -t diskless | /usr/bin/cut -f1 -d' ' 2>/dev/nu
+ll~;
+    my @dsklsnodes = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get NIM diskless definitions.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	my $error=0;
+
 	foreach my $node (keys %objhash)
 	{
-		# need short host name for NIM client defs
-		my $shorthost;
-		($shorthost = $node) =~ s/\..*$//;
+
+		# need short host name for NIM cmds
+        my $shorthost;
+        ($shorthost = $node) =~ s/\..*$//;
         chomp $shorthost;
 
-        # get, check the node IP
-        my $IP = inet_ntoa(inet_aton($node));
-        chomp $IP;
-        unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
-        {
-                next;
-        }
+		# does it already exist??
+		if (grep(/^$shorthost$/, @machines)) { # already defined
+			if ($::FORCE) {
+				# get rid of the old definition
+				if (grep(/^$shorthost$/, @dsklsnodes)) { 
+					# remove the diskless node - run rmts
+					my $rmtscmd = "rmts -f $shorthost";
+					my $output = xCAT::Utils->runcmd("$rmtscmd", -1);
+					if ($::RUNCMD_RC  != 0) {
+						my $rsp;
+						push @{$rsp->{data}}, "Could not remove $node.\n";
+						if ($::VERBOSE) {
+							push @{$rsp->{data}}, "$output";
+						}
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+						$error++;
+						next;
+					}
 
-		#
-		#  Create a unique post script for each node
-		#
-		mkpath "/install/postscripts/";
-		xCAT::Postage->writescript($node, "/install/postscripts/".$node, "netboot", $callback);
+				} else { # just remove the machine def
+					my $rmcmd = "nim -o remove $shorthost";
+					my $output = xCAT::Utils->runcmd("$rmcmd", -1);
+                    if ($::RUNCMD_RC  != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not remove $node.\n";
+                        if ($::VERBOSE) {
+                            push @{$rsp->{data}}, "$output";
+                        }
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                        next;
+                    }
 
-		#
-		#  Run the AIX mkts cmd to define and initialize a diskless client
-		#
-        my $cosi = $::opt_c;
+				}
+			} elsif ($::opt_w) {
+				# switch to the new image
+				# nim -Fo reset $node
+				# nim -Fo deallocate -a subclass=all $node
+				# nim -o dkls_init ..... $node
+				#	- does a sync_root
+				# TBD
+				next;
 
-        my $cmd = qq~mkts -i $IP -m $nethash{$node}{'mask'} -g $nethash{$node}{'gateway'} -c $cosi -l $shorthost 2>&1~;
+			} else {
+				my $rsp;
+				push @{$rsp->{data}}, "The node $node is already defined. Use the force option to re-create.";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+				next;
+			}
 
-		my $rsp;
-		push @{$rsp->{data}}, "Creating NIM diskless node definitions. This could take a while.\n";
-		xCAT::MsgUtils->message("I", $rsp, $callback);
 
-        my $output = xCAT::Utils->runcmd("$cmd", -1);
-        if ($::RUNCMD_RC  != 0)
-        {
+		} else {  # not defined - so define it!
+
+        	# get, check the node IP
+        	my $IP = inet_ntoa(inet_aton($node));
+        	chomp $IP;
+        	unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
+        	{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not get valid IP address for node $node.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+				next;
+        	}
+
+			#
+			#  Create a unique post script
+			#	- this routine should handle a noderange to be more efficient!
+			#
+			mkpath "/install/postscripts/";
+			xCAT::Postage->writescript($node, "/install/postscripts/".$node, "netboot", $callback);
+
+			#
+			#  Run the AIX mkts cmd to define and initialize a diskless client
+			#
+        	my $cosi = $::opt_c;
+        	my $cmd = qq~mkts -i $IP -m $nethash{$node}{'mask'} -g $nethash{$node}{'gateway'} -c $cosi -l $shorthost 2>&1~;
+
 			my $rsp;
-			push @{$rsp->{data}}, "Could not create a NIM definition for \'$node\'.\n";
-			if ($::verbose) {
-				push @{$rsp->{data}}, "$output";
-	    	}
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return 1;
-        }
+			push @{$rsp->{data}}, "Creating NIM diskless node definition. This could take a while.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+
+			if ($::VERBOSE) {
+            	my $rsp;
+            	push @{$rsp->{data}}, "Running: \'$cmd\'\n";
+            	xCAT::MsgUtils->message("I", $rsp, $callback);
+        	}
+
+        	my $output = xCAT::Utils->runcmd("$cmd", -1);
+        	if ($::RUNCMD_RC  != 0)
+        	{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not create a NIM definition for \'$node\'.\n";
+				if ($::VERBOSE) {
+					push @{$rsp->{data}}, "$output";
+	    		}
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+				next;
+        	}
+		}
 	}
-	return 0;
+
+	my $rc = xCAT::Utils->create_postscripts_tar();
+	if ( $rc != 0 ) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not create a post scripts tar file.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	if ($error) {
+		my $rsp;
+		push @{$rsp->{data}}, "One or more errors occurred when attempting to initialize AIX NIM diskless nodes.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	} else {
+		my $rsp;
+		push @{$rsp->{data}}, "AIX NIM diskless nodes were initialized.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		return 0;
+	}
 }
 
 #----------------------------------------------------------------------------
@@ -698,7 +928,7 @@ sub dsklsnode_usage
 	push @{$rsp->{data}}, "  Usage: ";
 	push @{$rsp->{data}}, "\tmkdsklsnode [-h | --help ]";
 	push @{$rsp->{data}}, "or";
-	push @{$rsp->{data}}, "\tmkdsklsnode [-V] -c image_name noderange";
+	push @{$rsp->{data}}, "\tmkdsklsnode [-V] [-f | --force] -c cosi_name noderange";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -726,9 +956,9 @@ sub dsklsimage_usage
 	my $rsp;
     push @{$rsp->{data}}, "  mkdsklsimage - Create an AIX NIM diskless image (SPOT/COSI).\n";
     push @{$rsp->{data}}, "  Usage: ";
-    push @{$rsp->{data}}, "\tmkdsklsimage [-h | --help ]";
+    push @{$rsp->{data}}, "\tmkdsklsimage [-h | --help]";
     push @{$rsp->{data}}, "or";
-    push @{$rsp->{data}}, "\tmkdsklsimage -s source [-l <location>] [-V] image_name\n";
+    push @{$rsp->{data}}, "\tmkdsklsimage [-V] [-f | --force] [-l <location>] -s <image_source> image_name\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }

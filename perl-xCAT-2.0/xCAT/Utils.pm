@@ -1826,8 +1826,31 @@ sub create_postscripts_tar
         xCAT::MsgUtils->message("S", "Error from $cmd\n");
         return $::RUNCMD_RC;
     }
-    return 0;
 
+
+	# for AIX add an entry to the /etc/tftpaccess.ctrl file so
+	#	we can tftp the tar file from the node
+	if (xCAT::Utils->isAIX()) { 
+		my $tftpctlfile = "/etc/tftpaccess.ctl";
+		my $entry = "allow:/install/autoinst/xcatpost.tar.gz";
+
+		# see if there is already an entry
+		my $cmd = "cat $tftpctlfile | grep xcatpost";
+		my @result = xCAT::Utils->runcmd("$cmd", -1);
+		if ($::RUNCMD_RC != 0)
+		{
+			# not found so add it
+			unless (open(TFTPFILE, ">>$tftpctlfile")) {
+				xCAT::MsgUtils->message("S", "Could not open $tftpctlfile.\n");
+        		return $::RUNCMD_RC;
+			}
+
+			print TFTPFILE $entry;
+
+			close (TFTPFILE);
+		}
+	}
+    return 0;
 }
 
 #-----------------------------------------------------------------------------
