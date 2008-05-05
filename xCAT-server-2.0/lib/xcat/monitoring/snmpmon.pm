@@ -272,41 +272,64 @@ sub configMPA {
 =cut
 #--------------------------------------------------------------------------------
 sub configSNMP {
+  my $isSN=xCAT::Utils->isServiceNode();
+  my $master=xCAT::Utils->get_site_Master();
   my $cmd;
-  # now move /usr/share/snmptrapd.conf to /usr/share/snmptrapd.conf.orig
+  # now move /usr/share/snmp/snmptrapd.conf to /usr/share/snmp/snmptrapd.conf.orig
   # if it exists.
   if (-f "/usr/share/snmp/snmptrapd.conf"){
   
-    # if the file exists and has references to xcat_traphandler then
-    # there is nothing that needs to be done.
-    `/bin/grep  xcat_traphandler /usr/share/snmp/snmptrapd.conf > /dev/null`;
+    # if the file exists and has references to xcat_traphandler in mn or 'forward' in sn
+    # then there is nothing that needs to be done.
+    if ($isSN) {
+      `/bin/grep "forward default $master" /usr/share/snmp/snmptrapd.conf > /dev/null`;
+    } else {
+      `/bin/grep  xcat_traphandler /usr/share/snmp/snmptrapd.conf > /dev/null`;
+    }
 
-    # if the return code is 1, then there is no xcat_traphandler
+    # if the return code is 1, then there is no xcat_traphandler, or 'forward'
     # references and we need to put them in.
     if($? >> 8){     
       # back up the original file.
       `/bin/cp -f /usr/share/snmp/snmptrapd.conf /usr/share/snmp/snmptrapd.conf.orig`;
 
-      # if the file exists and does not have  "authCommunity execute public" then add it.
+      # if the file exists and does not have  "authCommunity execute,net public" then add it.
       open(FILE1, "</usr/share/snmp/snmptrapd.conf");
       open(FILE, ">/usr/share/snmp/snmptrapd.conf.tmp");
       my $found=0;
+      my $forward_handled=0;
       while (readline(FILE1)) {
-	 if (/\s*authCommunity.*public/) {
-	   $found=1;
-           if (!/\s*authCommunity\s*.*execute.*public/) {
-             s/authCommunity\s*(.*)\s* public/authCommunity $1,execute public/;  #modify it to have execute if found
-	   }
-	 }
-	 print FILE $_;
-      }
+	if (/\s*authCommunity.*public/) {
+	  $found=1;
+          if (!/\s*authCommunity\s*.*execute.*public/) {
+            s/authCommunity\s*(.*)\s* public/authCommunity $1,execute public/;  #modify it to have 'execute' if found
+	  }
+          if (!/\s*authCommunity\s*.*net.*public/) {
+            s/authCommunity\s*(.*)\s* public/authCommunity $1,net public/;  #modify it to have 'net' if found
+	  }
+        } elsif (/\s*forward\s*default/) {
+	  if (($isSN) && (!/$master/)) {
+	    s/\s*forward/\#forward/; #comment out the old one
+            if (!$forward_handled) {
+              print FILE "forward default $master\n"; 
+              $forward_handle=1;
+            }
+          }
+        }
 
-      if (!$found) {
-        print FILE "authCommunity execute public\n"; #add new one if not found
+        print FILE $_;
+      } 
+      
+
+
+      if (!$found) { #add new one if not found
+        print FILE "authCommunity log,execute,net public\n"; 
       }
  
       # now add the new traphandle commands:
-      print FILE "traphandle default $::XCATROOT/sbin/xcat_traphandler\n";
+      if (!$isSN) {
+        print FILE "traphandle default $::XCATROOT/sbin/xcat_traphandler\n";
+      }
 
       close(FILE1);
       close(FILE);
@@ -316,8 +339,12 @@ sub configSNMP {
   else {     # The snmptrapd.conf file does not exists
     # create the file:
     open($handle, ">/usr/share/snmp/snmptrapd.conf");
-    print $handle "authCommunity execute public\n";
-    print $handle "traphandle default $::XCATROOT/sbin/xcat_traphandler\n";
+    print $handle "authCommunity log,execute,net public\n";
+    if ($isSN) {
+      print $handle "forward default $master\n"; #forward the trap from sn to mn
+    } else {
+      print $handle "traphandle default $::XCATROOT/sbin/xcat_traphandler\n";
+    }
     close($handle);
   }
 

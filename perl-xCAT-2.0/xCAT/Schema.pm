@@ -423,7 +423,8 @@ site => {
    "  genpasswords (generate BMC passwords??)\n".
    "  defserialport (default if not specified in noderes table)\n".
    "  defserialspeed (default if not specified in nodehm table)\n".
-   "  defserialflow (default if not specified in nodehm table)",
+   "  defserialflow (default if not specified in nodehm table)".
+   "  svloglocal (service node logs to the local host. default forwards to the managment node)",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
