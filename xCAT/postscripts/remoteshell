@@ -31,11 +31,11 @@ then
 	chmod 600 /root/.ssh/*
 fi
 
-if [ -d /xcatpost/hostkeys ]
-then
-	logger -t xcat "Install: using server provided host key for convenience."
-	cp /xcatpost/hostkeys/*_key /etc/ssh/
-fi
+#if [ -d /xcatpost/hostkeys ]
+#then
+#	logger -t xcat "Install: using server provided host key for convenience."
+#	cp /xcatpost/hostkeys/*_key /etc/ssh/
+#fi
 if [ ! -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
    exit 0
 fi
