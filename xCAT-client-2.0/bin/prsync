@@ -14,7 +14,7 @@ use Data::Dumper;
 use IO::Handle;
 use IO::Select;
 use xCAT::Utils;
-#use Threads qw(yield);
+use Thread qw(yield);
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;
