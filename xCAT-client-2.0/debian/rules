@@ -1,135 +1,67 @@
 #!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-# Use v4 compatability mode, so ldconfig gets added to maint scripts.
-export DH_COMPAT=4
+export DH_COMPAT=5
 
-PACKAGE=$(shell dh_listpackages)
-TMPDIR  =       $(CURDIR)/debian/$(PACKAGE)
-DOCSDIR =       $(TMPDIR)/usr/share/doc/$(PACKAGE)
-INSTALL =       install
-
-	
 
 build:
-	dh_testdir
+	./xpod2man
 
 clean:
 	dh_testdir
 	dh_testroot
 	dh_clean -d
 
-install: build
-	dh_testdir
-	dh_testroot
-	dh_clean -k -d
-	$(INSTALL) -D bin/getnodecfg			$(TMPDIR)/usr/bin/getnodecfg
-	$(INSTALL) -D bin/pping				$(TMPDIR)/usr/bin/pping
-	$(INSTALL) -D bin/psh				$(TMPDIR)/usr/bin/psh
-	$(INSTALL) -D bin/rcons				$(TMPDIR)/usr/bin/rcons
-	$(INSTALL) -D bin/wcons				$(TMPDIR)/usr/bin/wcons
-	$(INSTALL) -D bin/xcatclient			$(TMPDIR)/usr/bin/xcatclient
-	$(INSTALL) -D bin/xcatclientnnr			$(TMPDIR)/usr/bin/xcatclientnnr
-	$(INSTALL) -D bin/xcatDBcmds			$(TMPDIR)/usr/bin/xcatDBcmds
-	$(INSTALL) -D bin/xcoll				$(TMPDIR)/usr/bin/xcoll
-	$(INSTALL) -D bin/xdsh				$(TMPDIR)/usr/bin/xdsh
-	$(INSTALL) -D bin/xdshbak			$(TMPDIR)/usr/bin/xdshbak
-	$(INSTALL) -D sbin/tabedit			$(TMPDIR)/usr/sbin/tabedit
-	$(INSTALL) -D sbin/tabrestore			$(TMPDIR)/usr/sbin/tabrestore
-	$(INSTALL) -D share/man/man1/chdef.1		$(TMPDIR)/usr/share/man/man1/chdef.1
-	$(INSTALL) -D share/man/man1/chvm.1		$(TMPDIR)/usr/share/man/man1/chvm.1
-	$(INSTALL) -D share/man/man1/lsdef.1		$(TMPDIR)/usr/share/man/man1/lsdef.1
-	$(INSTALL) -D share/man/man1/lsslp.1		$(TMPDIR)/usr/share/man/man1/lsslp.1
-	$(INSTALL) -D share/man/man1/lsvm.1		$(TMPDIR)/usr/share/man/man1/lsvm.1
-	$(INSTALL) -D share/man/man1/makedhcp.1		$(TMPDIR)/usr/share/man/man1/makedhcp.1
-	$(INSTALL) -D share/man/man1/mkdef.1		$(TMPDIR)/usr/share/man/man1/mkdef.1
-	$(INSTALL) -D share/man/man1/mkvm.1		$(TMPDIR)/usr/share/man/man1/mkvm.1
-	$(INSTALL) -D share/man/man1/nodels.1		$(TMPDIR)/usr/share/man/man1/nodels.1
-	$(INSTALL) -D share/man/man1/regnotif.1		$(TMPDIR)/usr/share/man/man1/regnotif.1
-	$(INSTALL) -D share/man/man1/reventlog.1	$(TMPDIR)/usr/share/man/man1/reventlog.1
-	$(INSTALL) -D share/man/man1/rinv.1		$(TMPDIR)/usr/share/man/man1/rinv.1
-	$(INSTALL) -D share/man/man1/rmdef.1		$(TMPDIR)/usr/share/man/man1/rmdef.1
-	$(INSTALL) -D share/man/man1/rmvm.1		$(TMPDIR)/usr/share/man/man1/rmvm.1
-	$(INSTALL) -D share/man/man1/rnetboot.1		$(TMPDIR)/usr/share/man/man1/rnetboot.1
-	$(INSTALL) -D share/man/man1/rpower.1		$(TMPDIR)/usr/share/man/man1/rpower.1
-	$(INSTALL) -D share/man/man1/rscan.1		$(TMPDIR)/usr/share/man/man1/rscan.1
-	$(INSTALL) -D share/man/man1/rvitals.1		$(TMPDIR)/usr/share/man/man1/rvitals.1
-	$(INSTALL) -D share/man/man1/monstart.1		$(TMPDIR)/usr/share/man/man1/monstart.1
-	$(INSTALL) -D share/man/man1/monstop.1		$(TMPDIR)/usr/share/man/man1/monstop.1
-	$(INSTALL) -D share/man/man1/monls.1		$(TMPDIR)/usr/share/man/man1/monls.1
-	$(INSTALL) -D share/man/man1/unregnotif.1	$(TMPDIR)/usr/share/man/man1/unregnotif.1
-	$(INSTALL) -D share/man/man1/xcat2nim.1		$(TMPDIR)/usr/share/man/man1/xcat2nim.1
-	$(INSTALL) -D share/man/man1/xdsh.1		$(TMPDIR)/usr/share/man/man1/xdsh.1
-	$(INSTALL) -D share/man/man1/xdshbak.1		$(TMPDIR)/usr/share/man/man1/xdshbak.1
-	$(INSTALL) -D share/man/man3/noderange.3	$(TMPDIR)/usr/share/man/man3/noderange.3
-	$(INSTALL) -D share/man/man5/xcatstanzafile.5	$(TMPDIR)/usr/share/man/man5/xcatstanzafile.5
-	$(INSTALL) -D share/man/man8/getmacs.8		$(TMPDIR)/usr/share/man/man8/getmacs.8
-	$(INSTALL) -D LICENSE.html                      $(TMPDIR)/usr/share/doc/$(PACKAGE)/LICENSE.html
-	$(INSTALL) -D README                            $(TMPDIR)/usr/share/doc/$(PACKAGE)/README
-	mkdir -p $(TMPDIR)/usr/share/xcat/scripts
-	dh_link usr/bin/xcatclient usr/bin/rpower
-	dh_link usr/bin/xcatclient usr/bin/rscan
-	dh_link usr/bin/xcatclient usr/sbin/makedhcp
-	dh_link usr/bin/xcatclient usr/sbin/makehosts
-	dh_link usr/bin/xcatclient usr/sbin/nodeset
-	dh_link usr/bin/xcatclient usr/sbin/makeconservercf
-	dh_link usr/bin/xcatclient usr/bin/rbeacon
-	dh_link usr/bin/xcatclient usr/bin/rvitals
-	dh_link usr/bin/xcatclient usr/bin/rinv
-	dh_link usr/bin/xcatclient usr/bin/rspreset
-	dh_link usr/bin/xcatclient usr/bin/rsetboot
-	dh_link usr/bin/xcatclient usr/bin/rbootseq
-	dh_link usr/bin/xcatclient usr/bin/reventlog
-	dh_link usr/bin/xcatclient usr/bin/nodels
-	dh_link usr/bin/xcatclient usr/bin/nodech
-	dh_link usr/bin/xcatclient usr/bin/noderm
-	dh_link usr/bin/xcatclient usr/bin/rnetboot
-	dh_link usr/bin/xcatclient usr/bin/getmacs
-	dh_link usr/bin/xcatclient usr/bin/mkvm
-	dh_link usr/bin/xcatclient usr/bin/rmvm
-	dh_link usr/bin/xcatclient usr/bin/lsvm
-	dh_link usr/bin/xcatclient usr/bin/chvm
-	dh_link usr/bin/xcatclientnnr usr/bin/lsslp
-	dh_link usr/bin/xcatclientnnr usr/sbin/tabdump
-	dh_link usr/bin/xcatclientnnr usr/sbin/makedns
-	dh_link usr/bin/xcatclientnnr usr/bin/gettab
-	dh_link usr/bin/xcatclientnnr usr/sbin/nodeadd
-	dh_link usr/bin/xcatclientnnr usr/sbin/makenetworks
-	dh_link usr/bin/xcatclientnnr usr/sbin/copycds
-	dh_link usr/bin/xcatclientnnr usr/bin/regnotif
-	dh_link usr/bin/xcatclientnnr usr/bin/unregnotif
-	dh_link usr/bin/xcatclientnnr usr/bin/monstart
-	dh_link usr/bin/xcatclientnnr usr/bin/monstop
-	dh_link usr/bin/xcatclientnnr usr/bin/monls
-	dh_link usr/bin/xcatclientnnr usr/sbin/monupdate
-	dh_link usr/bin/xcatclientnnr usr/sbin/monaddnode
-	dh_link usr/bin/xcatclientnnr usr/sbin/monrmnode
-	dh_link usr/bin/xcatDBcmds usr/bin/mkdef
-	dh_link usr/bin/xcatDBcmds usr/bin/chdef
-	dh_link usr/bin/xcatDBcmds usr/bin/lsdef
-	dh_link usr/bin/xcatDBcmds usr/bin/rmdef
-	dh_link usr/bin/xcatDBcmds usr/bin/xcat2nim
-	dh_link usr/bin/xdsh usr/bin/xdcp
-
-binary-indep: build install
-
-binary-arch: build install
+install:
 	dh_testdir
 	dh_testroot
 	dh_installdirs
+	dh_install
+	dh_link
+
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch:
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs 
 	dh_installdocs
-	dh_installchangelogs
-	dh_strip
-	dh_compress
-	dh_fixperms
+#	dh_installexamples
+	dh_install
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_python
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+	dh_installman
+#	dh_link
+#	dh_strip
+#	dh_compress
+#	dh_fixperms
+	dh_perl
 	dh_makeshlibs
 	dh_installdeb
-	dh_perl bin sbin
+	dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
 
 binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install
+.PHONY: build clean binary-indep binary-arch binary install configure

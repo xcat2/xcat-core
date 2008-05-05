@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# debian doesn't like caps in package names
+[ -d perl-xcat-2.0 ] || cp -R perl-xCAT-2.0 perl-xcat-2.0
+cd perl-xcat-2.0
+#rm debian/files
+find . -name .svn | xargs rm -rf
+deps=$(../debperldepends)
+sed -e "s/###debian-depends###/$deps/" <debian/control.template >debian/control
+dpkg-buildpackage -b
+cd ..
+rm -rf perl-xcat-2.0
+

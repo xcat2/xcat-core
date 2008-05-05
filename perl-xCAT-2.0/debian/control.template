@@ -7,7 +7,7 @@ Standards-Version: 3.7.2
 
 Package: perl-xcat
 Architecture: any
-Depends: ${perl:Depends}, libio-socket-ssl-perl, libxml-simple-perl, libstorable-perl, libsys-syslog-perl, libsnmp-perl, libdbi-perl
+Depends: ${perl:Depends}, ###debian-depends###
 Description: xCAT perl libraries
  Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
  Includes xCAT::Table, xCAT::NodeRange, among others.

@@ -1,83 +1,67 @@
 #!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-# Use v4 compatability mode, so ldconfig gets added to maint scripts.
-#export DH_COMPAT=4
+export DH_COMPAT=5
 
-PACKAGE =       $(shell dh_listpackages)
-TMPDIR  =       $(CURDIR)/debian/$(PACKAGE)
-DOCSDIR =       $(TMPDIR)/usr/share/doc/$(PACKAGE)
-INSTALL =       install
 
 build:
 	dh_testdir
+	./db2man
 
 clean:
 	dh_testdir
 	dh_testroot
 	dh_clean -d
 
-install: build
-	dh_testdir
-	dh_testroot
-	dh_clean -k
-	$(INSTALL) -D xCAT/Client.pm			$(TMPDIR)/usr/lib/perl/xCAT/Client.pm
-	$(INSTALL) -D xCAT/DBobjUtils.pm		$(TMPDIR)/usr/lib/perl/xCAT/DBobjUtils.pm
-	$(INSTALL) -D xCAT/DSHCLI.pm			$(TMPDIR)/usr/lib/perl/xCAT/DSHCLI.pm
-	$(INSTALL) -D xCAT/DSHContext.pm		$(TMPDIR)/usr/lib/perl/xCAT/DSHContext.pm
-	$(INSTALL) -D xCAT/DSHCore.pm			$(TMPDIR)/usr/lib/perl/xCAT/DSHCore.pm
-	$(INSTALL) -D xCAT/DSHRemoteShell.pm		$(TMPDIR)/usr/lib/perl/xCAT/DSHRemoteShell.pm
-	$(INSTALL) -D xCAT/GlobalDef.pm			$(TMPDIR)/usr/lib/perl/xCAT/GlobalDef.pm
-	$(INSTALL) -D xCAT/MacMap.pm			$(TMPDIR)/usr/lib/perl/xCAT/MacMap.pm
-	$(INSTALL) -D xCAT/MsgUtils.pm			$(TMPDIR)/usr/lib/perl/xCAT/MsgUtils.pm
-	$(INSTALL) -D xCAT/NodeRange.pm			$(TMPDIR)/usr/lib/perl/xCAT/NodeRange.pm
-	$(INSTALL) -D xCAT/NotifHandler.pm		$(TMPDIR)/usr/lib/perl/xCAT/NotifHandler.pm
-	$(INSTALL) -D xCAT/Postage.pm			$(TMPDIR)/usr/lib/perl/xCAT/Postage.pm
-	$(INSTALL) -D xCAT/PPCboot.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCboot.pm
-	$(INSTALL) -D xCAT/PPCdb.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCdb.pm
-	$(INSTALL) -D xCAT/PPCfsp.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCfsp.pm
-	$(INSTALL) -D xCAT/PPCinv.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCinv.pm
-	$(INSTALL) -D xCAT/PPClog.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPClog.pm
-	$(INSTALL) -D xCAT/PPCmac.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCmac.pm
-	$(INSTALL) -D xCAT/PPC.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPC.pm
-	$(INSTALL) -D xCAT/PPCpower.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCpower.pm
-	$(INSTALL) -D xCAT/PPCscan.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCscan.pm
-	$(INSTALL) -D xCAT/PPCvitals.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCvitals.pm
-	$(INSTALL) -D xCAT/PPCvm.pm			$(TMPDIR)/usr/lib/perl/xCAT/PPCvm.pm
-	$(INSTALL) -D xCAT/RSH.pm			$(TMPDIR)/usr/lib/perl/xCAT/RSH.pm
-	$(INSTALL) -D xCAT/RSYNC.pm			$(TMPDIR)/usr/lib/perl/xCAT/RSYNC.pm
-	$(INSTALL) -D xCAT/Schema.pm			$(TMPDIR)/usr/lib/perl/xCAT/Schema.pm
-	$(INSTALL) -D xCAT/SSH.pm			$(TMPDIR)/usr/lib/perl/xCAT/SSH.pm
-	$(INSTALL) -D xCAT/Table.pm			$(TMPDIR)/usr/lib/perl/xCAT/Table.pm
-	$(INSTALL) -D xCAT/Template.pm			$(TMPDIR)/usr/lib/perl/xCAT/Template.pm
-	$(INSTALL) -D xCAT/Utils.pm			$(TMPDIR)/usr/lib/perl/xCAT/Utils.pm		
-	$(INSTALL) -D xCAT/data/ibmleds.pm		$(TMPDIR)/usr/lib/perl/xCAT/data/ibmleds.pm		
-	$(INSTALL) -D xCAT/data/ipmigenericevents.pm	$(TMPDIR)/usr/lib/perl/xCAT/data/ipmigenericevents.pm		
-	$(INSTALL) -D xCAT/data/ipmisensorevents.pm	$(TMPDIR)/usr/lib/perl/xCAT/data/ipmisensorevents.pm		
-	$(INSTALL) -D LICENSE.html			$(TMPDIR)/usr/share/doc/$(PACKAGE)/LICENSE.html
-	$(INSTALL) -D README				$(TMPDIR)/usr/share/doc/$(PACKAGE)/README
-	$(INSTALL) -D xCAT2.0.doc			$(TMPDIR)/usr/share/doc/$(PACKAGE)/xCAT2.0.doc
-	$(INSTALL) -D xCAT2.0.pdf			$(TMPDIR)/usr/share/doc/$(PACKAGE)/xCAT2.0.pdf
-
-binary-indep: build install
-
-binary-arch: build install
+install:
 	dh_testdir
 	dh_testroot
 	dh_installdirs
+	dh_install
+
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs 
 	dh_installdocs
-	dh_installchangelogs
-	dh_strip
-	dh_compress
-	dh_fixperms
+#	dh_installexamples
+	dh_install
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_python
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+	dh_installman
+#	dh_link
+#	dh_strip
+#	dh_compress
+#	dh_fixperms
+	dh_perl
 	dh_makeshlibs
 	dh_installdeb
-	dh_perl xCAT
+	dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
 
 binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install
+.PHONY: build clean binary-indep binary-arch binary install configure

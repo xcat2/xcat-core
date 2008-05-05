@@ -1,0 +1,36 @@
+#!/bin/sh
+
+found=""
+
+find . -name .svn -prune -o -type f \
+  | xargs grep -l '^#!.*perl' \
+  | xargs grep -hE '^\s*(use|require) ' \
+  | while read mod; do
+      pkg=$( awk '{ sub(";", "", $2);
+                    sub("::", "-", $2); 
+                    print $2 }' <<<"$mod" \
+               | tr '[:upper:]' '[:lower:]' )
+
+      if apt-cache show lib${pkg}-perl >/dev/null 2>&1; then
+
+        pkgname="lib${pkg}-perl"
+
+        case "$found" in
+          *$pkgname*) continue ;;
+          *) 
+            [ -n "$found" ] && echo -n ", "
+            echo -n "$pkgname"
+            found="$found $pkgname"
+          ;;
+        esac
+
+      elif perl <<<"$mod" >/dev/null 2>&1; then
+        continue
+      elif [ "$1" == "-w" ]; then
+        echo
+        echo "warning: $pkg not found and perl doesn't like \"$mod\"" >&2
+      fi
+    done
+echo
+
+# vim: set sts=2 sw=2 et:

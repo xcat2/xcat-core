@@ -1,7 +1,11 @@
-xcat-client (2.0-1) experimental; urgency=low
+xcat-client (2.0-2) testing; urgency=low
 
-  * Converted from .rpm format to .deb
+  * Testing re-release
+ 
+ -- Isaac Freeman <memotype@gmail.com>  Mon, 21 Apr 2008 15:20:37 -0400
 
- -- Andy Wray <wray95u@ufred>  Thu, 10 Jan 2008 16:15:54 -0500
+xcat-client (2.0-1) testing; urgency=low
 
-- Made changes to make this work on AIX
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Isaac Freeman <memotype@gmail.com>  Tue, 15 Apr 2008 17:12:26 -0400
