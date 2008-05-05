@@ -54,7 +54,7 @@ sub setdestiny {
      unless ($iscsitab) {
         $callback->({error=>"Unable to open iscsi table to get iscsiboot parameters",errorcode=>[1]});
      }
-     my $noderestab = xCAT::Table->new('noderes');
+     my $bptab = xCAT::Table->new('bootparams');
      foreach (@{$req->{node}}) {
       my $ient = $iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
       unless ($ient and $ient->{kernel}) {
@@ -65,7 +65,7 @@ sub setdestiny {
       $hash->{kernel} = $ient->{kernel};
       if ($ient->{initrd}) { $hash->{initrd} = $ient->{initrd} }
       if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
-      $noderestab->setNodeAttribs($_,$hash);
+      $bptab->setNodeAttribs($_,$hash);
      }
   } elsif ($state =~ /^install$/ or $state eq "install" or $state eq "netboot") {
     chomp($state);
