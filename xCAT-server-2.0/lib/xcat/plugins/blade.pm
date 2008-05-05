@@ -13,7 +13,7 @@ my %mm_comm_pids;
 
 use XML::Simple;
 if ($^O =~ /^linux/i) {
-	$XML::Simple::PREFERRED_PARSER='XML::Parser';
+ $XML::Simple::PREFERRED_PARSER='XML::Parser';
 }
 use Data::Dumper;
 use POSIX "WNOHANG";
@@ -1661,7 +1661,7 @@ sub sshcfg {
   my $t = shift;
   my $value = shift;
   my $uid = shift;
-  my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_dsa.pub";
+  my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
 
   if ($value !~ /^enable|disable$/i) {
     return([1,"Invalid argument '$value' (enable|disable)"]);
@@ -1719,9 +1719,9 @@ sub sshcfg {
     }
   }
   # Make sure SSH key is generated on MM
-  @data = $t->cmd("sshcfg -hk dsa -T system:mm[1]");
+  @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
 
-  if (!grep(/ssh-dss/,@data)) {
+  if (!grep(/ssh-rsa/,@data)) {
     @data = $t->cmd("sshcfg -hk gen -T system:mm[1]");
     if (!grep(/^OK$/i, @data)) {
       return([1,@data]);
@@ -1734,8 +1734,8 @@ sub sshcfg {
         return([1,"SSH key generation timeout"]);
       }
       sleep(15);
-      @data = $t->cmd("sshcfg -hk dsa -T system:mm[1]");
-      if (grep(/ssh-dss/,@data)) {
+      @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
+      if (grep(/ssh-rsa/,@data)) {
         last;
       }
     }
@@ -1917,6 +1917,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
