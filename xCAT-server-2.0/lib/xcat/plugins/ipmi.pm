@@ -2349,6 +2349,9 @@ sub eventlog {
 
 	($rc,$text,$mfg_id,$prod_id,$device_id) = getdevid();
 	$rc=0;
+   unless (defined($subcommand)) {
+      $subcommand = 'all';
+   }
 	if($subcommand eq "all") {
 		$num = 0x100 * 0x100;
 	}

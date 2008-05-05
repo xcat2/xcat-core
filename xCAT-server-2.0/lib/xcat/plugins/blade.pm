@@ -258,6 +258,9 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
   my $data;
   my @output;
   my $oid = $eventlogoid;
+  unless ($cmd) {
+   $cmd='all';
+  }
   if ($cmd eq 'all') {
     $cmd=65535; #no MM has this many logs possible, should be a good number
   }
