@@ -24,7 +24,7 @@ B<rspconfig> I<noderange> B<garp>={I<time>}
 
 B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<build>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>}
 
-B<rspconfig> I<noderange> B<shcfg>={B<enable>|B<disable>}
+B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
 
