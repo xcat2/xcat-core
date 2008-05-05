@@ -64,4 +64,7 @@ getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' 
 if ! grep "PRIVATE KEY" /root/.ssh/id_rsa > /dev/null 2>&1 ; then
    rm /root/.ssh/id_rsa
 fi
+if [ -r /root/.ssh/id_rsa ]; then
+   ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub
+fi
 kill -9 $CREDPID
