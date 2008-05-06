@@ -298,7 +298,7 @@ EOMS
          push @filestoadd,[$_,"lib/$_"];
       }
    }
-   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod","sbin/mount.nfs") {
+   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod","sbin/mount.nfs","lib64/libnss_dns.so.2") {
       getlibs($_);
       push @filestoadd,$_;
    }
