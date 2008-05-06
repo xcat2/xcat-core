@@ -1,4 +1,5 @@
 bash
+nfs-utils
 stunnel
 glibc.ppc64
 dhclient 
