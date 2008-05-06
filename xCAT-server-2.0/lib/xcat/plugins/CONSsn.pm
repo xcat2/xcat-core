@@ -40,7 +40,7 @@ sub handled_commands
         my $nodename   = pop @nodeinfo;                    # get hostname
         my @nodeipaddr = @nodeinfo;                        # get ip addresses
 
-        my $service = "cons";
+        my $service = "conserver";
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
         if ($rc == 1)
         {

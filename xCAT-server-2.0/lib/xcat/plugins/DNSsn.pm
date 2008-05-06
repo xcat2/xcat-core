@@ -35,7 +35,7 @@ sub handled_commands
         my @nodeinfo   = xCAT::Utils->determinehostname;
         my $nodename   = pop @nodeinfo;                    # get hostname
         my @nodeipaddr = @nodeinfo;                        # get ip addresses
-        my $service    = "nameservers";
+        my $service    = "nameserver";
 
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
         if ($rc == 1)

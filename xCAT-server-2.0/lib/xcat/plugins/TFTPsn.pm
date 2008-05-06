@@ -39,7 +39,7 @@ sub handled_commands
         my $service    = "tftpserver";
 
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
-        if ($rc == 1 || $rc == 0)  # for now always mount tftpboot
+        if ($rc == 1)  
         {
 
             $rc = &setup_TFTP();                           # setup TFTP (ATFTP)
