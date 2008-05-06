@@ -13,7 +13,7 @@ my %mm_comm_pids;
 
 use XML::Simple;
 if ($^O =~ /^linux/i) {
-	$XML::Simple::PREFERRED_PARSER='XML::Parser';
+ $XML::Simple::PREFERRED_PARSER='XML::Parser';
 }
 use Data::Dumper;
 use POSIX "WNOHANG";
@@ -1122,9 +1122,35 @@ sub handle_depend {
   $req{arg}     = [$request->{arg}]; 
   $req{command} = [$request->{command}->[0]];
 
-  foreach (@{preprocess_request(\%req,$callback)}) {
-     process_request(\%$_,$callback,$doreq,1);
+  #get the MMs for the nodes for the nodes
+  my $mptab = xCAT::Table->new("mp");
+  unless ($mptab) {
+    $callback->({data=>"Cannot open mp table"});
+    return;
   }
+  my %mpa_hash=();
+  foreach my $node (keys %$dep) {
+    my $ent=$mptab->getNodeAttribs($node,['mpa', 'id']);
+    if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
+    else {
+      $callback->({data=>"no mpa defined for node $node"});
+      return;
+    }
+    if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
+    else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";}
+  }
+
+  my @moreinfo=();
+  my $reqcopy = {%$request};
+  my @nodes=();
+  foreach (keys %mpa_hash) {
+    push @nodes, @{$mpa_hash{$_}{nodes}};
+    push @moreinfo, "\[$_\]\[" . join(',',@{$mpa_hash{$_}{nodes}}) ."\]\[" . join(',',@{$mpa_hash{$_}{ids}}) . "\]";
+  }
+  $reqcopy->{node} = \@nodes;
+  $reqcopy->{moreinfo}=\@moreinfo;
+  process_request($reqcopy,$callback,$doreq,1);
+
   my $start = Time::HiRes::gettimeofday();
     
   # build list of dependent nodes w/delays
@@ -1312,7 +1338,7 @@ sub process_request {
 
   my $moreinfo=$request->{moreinfo};
 
-  if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
+  if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle|stat$/, @exargs)) {
     if ( my ($index) = grep($exargs[$_]=~ /^--nodeps$/, 0..$#exargs )) {
       splice(@exargs, $index, 1);
     } else {
@@ -1925,6 +1951,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
