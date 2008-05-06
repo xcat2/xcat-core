@@ -78,6 +78,11 @@ unless ($onlyinitrd) {
    }
    $repnum-=1;
    close($yumconfig);
+   mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/etc";
+   my $fd;
+   open($fd,">>","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/fstab");
+   print $fd "#Dummy fstab for rpm postscripts to see\n";
+   close($fd);
    my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* ";
    foreach (0..$repnum) {
       $yumcmd .= "--enablerepo=$osver-$arch-$_ "
