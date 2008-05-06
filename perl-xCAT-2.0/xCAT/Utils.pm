@@ -1524,7 +1524,6 @@ sub readSNInfo
     return $rc;
 }
 
-
 #-----------------------------------------------------------------------------
 
 =head3 isServiceReq
@@ -1588,11 +1587,11 @@ sub isServiceReq
         {
             my $value = $node->{$service};
             $value =~ tr/a-z/A-Z/;    # convert to upper
-			# value 1 or yes or blank then we setup the service
+                 # value 1 or yes or blank then we setup the service
             if (($value == 1) || ($value eq "YES") || ($value eq ""))
             {
                 $servicenodetab->close;
-                return 1;             # found service required for the node
+                return 1;    # found service required for the node
             }
         }
     }
@@ -1741,29 +1740,31 @@ sub create_postscripts_tar
         return $::RUNCMD_RC;
     }
 
+    # for AIX add an entry to the /etc/tftpaccess.ctrl file so
+    #	we can tftp the tar file from the node
+    if (xCAT::Utils->isAIX())
+    {
+        my $tftpctlfile = "/etc/tftpaccess.ctl";
+        my $entry       = "allow:/install/autoinst/xcatpost.tar.gz";
 
-	# for AIX add an entry to the /etc/tftpaccess.ctrl file so
-	#	we can tftp the tar file from the node
-	if (xCAT::Utils->isAIX()) { 
-		my $tftpctlfile = "/etc/tftpaccess.ctl";
-		my $entry = "allow:/install/autoinst/xcatpost.tar.gz";
+        # see if there is already an entry
+        my $cmd = "cat $tftpctlfile | grep xcatpost";
+        my @result = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
 
-		# see if there is already an entry
-		my $cmd = "cat $tftpctlfile | grep xcatpost";
-		my @result = xCAT::Utils->runcmd("$cmd", -1);
-		if ($::RUNCMD_RC != 0)
-		{
-			# not found so add it
-			unless (open(TFTPFILE, ">>$tftpctlfile")) {
-				xCAT::MsgUtils->message("S", "Could not open $tftpctlfile.\n");
-        		return $::RUNCMD_RC;
-			}
+            # not found so add it
+            unless (open(TFTPFILE, ">>$tftpctlfile"))
+            {
+                xCAT::MsgUtils->message("S", "Could not open $tftpctlfile.\n");
+                return $::RUNCMD_RC;
+            }
 
-			print TFTPFILE $entry;
+            print TFTPFILE $entry;
 
-			close (TFTPFILE);
-		}
-	}
+            close(TFTPFILE);
+        }
+    }
     return 0;
 }
 
@@ -2046,7 +2047,6 @@ sub toIP
     return ([0, inet_ntoa($packed_ip)]);
 }
 
-
 #-----------------------------------------------------------------------------
 
 =head3 isSN 
@@ -2185,4 +2185,69 @@ sub getSNandNodes
     $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
     return $sn;
 }
+
+#-----------------------------------------------------------------------------
+
+=head3 getSNList 
+ 
+	Reads the servicenode table. Will return all the enalbed Service Nodes
+	that will setup the input Service ( e.g tftpserver,nameserver,etc)
+	If service is blank, then will return the list of all enabled Service
+	Nodes. 
+
+    Arguments:
+       Servicename ( xcat,tftpserver,dhcpserver,conserver,etc) 
+    Returns:
+	  Array of service node names 
+    Globals:
+        none
+    Error:
+        1 - error  
+    Example:
+         $sn= xCAT::Utils->getSNList($servicename) { blah; }
+         $sn= xCAT::Utils->getSNList() { blah; }
+    Comments:
+        none
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getSNList
+{
+    my ($class, $service) = @_;
+
+    # reads all nodes from the service node table
+    my @servicenodes;
+    my $servicenodetab = xCAT::Table->new('servicenode');
+    unless ($servicenodetab)    # no  servicenode table
+    {
+        xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
+        return 0;
+
+    }
+    my @attribs = ("node",$service);
+    @nodes = $servicenodetab->getAllAttribs(@attribs);
+    $servicenodetab->close;
+    foreach my $node (@nodes)
+    {
+        if ($service eq "")    # want all the service nodes
+        {
+            push @servicenodes, $node->{node};
+        }
+        else
+        {                          # looking for a particular service
+            my $value = $node->{$service};
+            $value =~ tr/a-z/A-Z/;    # convert to upper
+                 # value 1 or yes or blank then we setup the service
+            if (($value == 1) || ($value eq "YES") || ($value eq ""))
+            {
+                push @servicenodes, $node->{node};
+
+            }
+        }
+    }
+
+    return @servicenodes;
+}
+
 1;
