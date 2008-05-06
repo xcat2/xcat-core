@@ -12,7 +12,7 @@ my $tftpdir = "/tftpboot";
 #my $dhcpver = 3;
 
 my %usage = (
-    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup]",
+    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot]",
 );
 sub handled_commands {
   return {
