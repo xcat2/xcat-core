@@ -376,7 +376,7 @@ ppchcp => {
  },
   },
 servicenode => {
-    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver comments disable)],
+    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver comments disable)],
     keys => [qw(node)],
     table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
  descriptions => {
@@ -423,8 +423,7 @@ site => {
    "  genpasswords (generate BMC passwords??)\n".
    "  defserialport (default if not specified in noderes table)\n".
    "  defserialspeed (default if not specified in nodehm table)\n".
-   "  defserialflow (default if not specified in nodehm table)".
-   "  svloglocal (service node logs to the local host. default forwards to the managment node)",
+   "  defserialflow (default if not specified in nodehm table)",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
