@@ -13,8 +13,8 @@
 ### END INIT INFO
 
 # This avoids the perl locale warnings
-if [ -z $LANG ] && [ -z $LC_ALL ]; then
-  export LANG=C
+if [ -z $LC_ALL ]; then
+  export LC_ALL=C
 fi
 
 if [ -r /etc/sysconfig/xcat ]; then
