@@ -1524,32 +1524,17 @@ sub readSNInfo
     return $rc;
 }
 
+
 #-----------------------------------------------------------------------------
 
 =head3 isServiceReq
 
 
-  Checks to see if the input service is already setup on the node by
-  checking the /etc/xCATSN file for the service name. This is put in the file
-  by the service.pm plugin (e.g tftp.pm,dns.pm,...)
-  It then:
-  Checks the database to see if the input Service should be setup on the
+  Checks the service node table in the database to see 
+  if the input Service should be setup on the
   input service node
 
-  Checks the noderes to see if this service node is the tftserver,nfsserver for
-  and node in the table.
-  The checks are as follows:
-	 If this service node is the tftpserver or nfsserver, then set it up.
-	 If not then, if the tftpserver or nfsserver is blank then see if this
-	 service node is the xcatmaster,  if it is then setup the service.
-
-  Checks the networks table to see if the dhcpserver or nameserver(DNS)
-  should be setup.  If this
-  service node is the address for the dhcpserver or DNS then set it up.
-
-  Checks the nodehm table to see if conserver should be setup. If this service 
-  node is the conserver,  then set it up.
-  Input: service nodename, service,ipaddres(s) of service node
+  Input: service nodename, service,ipaddres(s) and hostnames of service node
   Output:
         0 - no service required
         1 - setup service
@@ -1572,11 +1557,11 @@ sub isServiceReq
     my $rc  = 0;
 
     # check if service is already setup
-    `grep $service /etc/xCATSN`;
-    if ($? == 0)
-    {                         # service is already setup, just start daemon
-        return 2;
-    }
+    #`grep $service /etc/xCATSN`;
+    #if ($? == 0)
+    #{                         # service is already setup, just start daemon
+    #    return 2;
+    #}
 
     $rc = xCAT::Utils->exportDBConfig();    # export DB env
     if ($rc != 0)
@@ -1586,104 +1571,33 @@ sub isServiceReq
 
     }
 
-    # have this service setup
-    if (($service eq "dhcpserver") || ($service eq "nameservers"))
+    # get handle to servicenode table
+    my $servicenodetab = xCAT::Table->new('servicenode');
+    unless ($servicenodetab)
     {
-
-        # get handle to networks table
-        my $networkstab = xCAT::Table->new('networks');
-        unless ($networkstab)
+        xCAT::MsgUtils->message('S', "Unable to open servicenode table.\n");
+        $servicenodetab->close;
+        return 0;    # do not setup anything
+    }
+    foreach $serviceip (@ips)
+    {
+        my $whereclause = "node like '$serviceip'";
+        my @nodelist    =
+          $servicenodetab->getAllAttribsWhere($whereclause, 'node', $service);
+        foreach my $node (@nodelist)
         {
-            xCAT::MsgUtils->message('S', "Unable to open networks table.\n");
-            $networkstab->close;
-            return -1;
-        }
-        foreach $serviceip (@ips)
-        {
-            my $whereclause = "$service like '$serviceip'";
-            my @netlist     =
-              $networkstab->getAllAttribsWhere($whereclause, 'netname',
-                                               $service);
-            if (@netlist)
+            my $value = $node->{$service};
+            $value =~ tr/a-z/A-Z/;    # convert to upper
+			# value 1 or yes or blank then we setup the service
+            if (($value == 1) || ($value eq "YES") || ($value eq ""))
             {
-                $networkstab->close;
-                return 1;   # found an entry in the networks table for this node
+                $servicenodetab->close;
+                return 1;             # found service required for the node
             }
         }
     }
-    else
-    {
-        if ($service eq "cons")
-        {
 
-            # get handle to nodehm table
-            my $nodehmtab = xCAT::Table->new('nodehm');
-            unless ($nodehmtab)
-            {
-                xCAT::MsgUtils->message('S', "Unable to open nodehm table.\n");
-                $nodehmtab->close;
-                return -1;
-            }
-            foreach $serviceip (@ips)
-            {
-                my $whereclause = "conserver like '$serviceip'";
-                my @nodelist    =
-                  $nodehmtab->getAllAttribsWhere($whereclause, 'node',
-                                                 $service);
-                foreach my $node (@nodelist)
-                {
-                    if ($node->{$service} ne "")    # cons defined
-                    {
-                        $nodehmtab->close;
-                        return 1;    # found cons defined for this server
-                    }
-                }
-            }
-
-        }
-        else                         # other service TFTP,etc
-        {
-
-            # get handle to noderes table
-            my $noderestab = xCAT::Table->new('noderes');
-            unless ($noderestab)
-            {
-                xCAT::MsgUtils->message('S', "Unable to open noderes table.\n");
-                $noderestab->close;
-                return -1;
-            }
-            foreach $serviceip (@ips)
-            {
-                my $whereclause = "$service like '$serviceip'";
-                my @nodelist    =
-                  $noderestab->getAllAttribsWhere($whereclause, 'node',
-                                                  $service);
-                if (@nodelist)
-                {
-                    $noderestab->close;
-                    return 1;    # found a match
-                }
-            }
-
-            # if did not find in service attribute, check xcatmaster, but
-            # service attribute must be blank
-            foreach $serviceip (@ips)
-            {
-                my $whereclause =
-                  "$service is NULL and xcatmaster like '$serviceip'";
-                my @nodelist =
-                  $noderestab->getAllAttribsWhere($whereclause, 'node',
-                                                  $service);
-                if (@nodelist)
-                {
-                    $noderestab->close;
-                    return 1;    # found a match
-                }
-            }
-        }
-
-        return 0;  # did not find a node using this service for this servicenode
-    }
+    return 0;    # did not find a node using this service for this servicenode
 
 }
 
@@ -2132,11 +2046,14 @@ sub toIP
     return ([0, inet_ntoa($packed_ip)]);
 }
 
+
 #-----------------------------------------------------------------------------
 
 =head3 isSN 
  
 	Determines if the input node name is a service node
+	Reads the servicenode table. nodename must be service node name as 
+	known by the Management node.
 
     returns 1 if input host is a service node 
     Arguments:
@@ -2160,19 +2077,26 @@ sub isSN
 {
     my ($class, $node) = @_;
 
-    # read the node from the nodelist table and see if it
-    # is a member of the service group
-    my $attr        = "groups";
-    my $nodelisttab = xCAT::Table->new('nodelist');
-    my $sn          = $nodelisttab->getNodeAttribs($node, [$attr]);
-    if ($sn)
+    # reads all nodes from the service node table
+    my @servicenodes;
+    my $servicenodetab = xCAT::Table->new('servicenode');
+    unless ($servicenodetab)    # no  servicenode table
     {
-        if (grep /service/, $sn->{$attr})
+        xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
+        return 0;
+
+    }
+    my @attribs = ("node");
+    @nodes = $servicenodetab->getAllAttribs(@attribs);
+    $servicenodetab->close;
+    foreach my $nodes (@nodes)
+    {
+        if ($node eq $nodes->{node})
         {
-            return 1;
+            return 1;    # match
         }
     }
-    $nodelisttab->close;
+
     return 0;
 }
 
@@ -2180,7 +2104,7 @@ sub isSN
 
 =head3 getAllSN 
  
-    Returns an array of all service nodes 
+    Returns an array of all service nodes from service node table 
 
     Arguments:
        none 
@@ -2201,22 +2125,26 @@ sub isSN
 sub getAllSN
 {
 
-    # read the node from the nodelist table and see if it
-    # is a member of the service group
+    # reads all nodes from the service node table
     my @servicenodes;
-    my $nodelisttab = xCAT::Table->new('nodelist');
-    my $recs        = $nodelisttab->getAllEntries();
+    my $servicenodetab = xCAT::Table->new('servicenode');
+    my $recs           = $servicenodetab->getAllEntries();
     foreach (@$recs)
     {
-        if (grep /service/, $_->{groups})
-        {    # in service group
-            push @servicenodes, $_->{node};
-        }
+        push @servicenodes, $_->{node};
     }
-    $nodelisttab->close;
+    $servicenodetab->close;
     return @servicenodes;
 }
 
+#-----------------------------------------------------------------------------
+
+=head3 getSNandNodes 
+ 
+    Returns an hash-array of all service nodes and the nodes they service
+
+    Arguments:
+       none 
 #-----------------------------------------------------------------------------
 
 =head3 getSNandNodes 
