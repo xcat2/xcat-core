@@ -56,40 +56,53 @@ sub preprocess_request
     {    #don't farm out copycd
         return [$req];
     }
+
+    my $stab = xCAT::Table->new('site');
+    my $sent;
+    ($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
+    unless (    $sent
+            and defined($sent->{value})
+            and ($sent->{value} =~ /no/i or $sent->{value} =~ /0/))
+    {
+
+        #unless requesting no sharedtftp, don't make hierarchical call
+        return [$req];
+    }
+
     my %localnodehash;
-    #my %dispatchhash;
-    #my $nrtab = xCAT::Table->new('noderes');
+    my %dispatchhash;
+    my $nrtab = xCAT::Table->new('noderes');
     foreach my $node (@{$req->{node}})
     {
-     #   my $nodeserver;
-     #   my $tent = $nrtab->getNodeAttribs($node, ['tftpserver']);
-     #   if ($tent) { $nodeserver = $tent->{tftpserver} }
-     #   unless ($tent and $tent->{tftpserver})
-     #   {
-      #      $tent = $nrtab->getNodeAttribs($node, ['servicenode']);
-      #      if ($tent) { $nodeserver = $tent->{servicenode} }
-      #  }
-      #  if ($nodeserver)
-      #  {
-      #      $dispatchhash{$nodeserver}->{$node} = 1;
-      #  }
-      #  else
-      #  {
-          $localnodehash{$node} = 1;
-      #  }
+        my $nodeserver;
+        my $tent = $nrtab->getNodeAttribs($node, ['tftpserver']);
+        if ($tent) { $nodeserver = $tent->{tftpserver} }
+        unless ($tent and $tent->{tftpserver})
+        {
+            $tent = $nrtab->getNodeAttribs($node, ['servicenode']);
+            if ($tent) { $nodeserver = $tent->{servicenode} }
+        }
+        if ($nodeserver)
+        {
+            $dispatchhash{$nodeserver}->{$node} = 1;
+        }
+        else
+        {
+            $localnodehash{$node} = 1;
+        }
     }
     my @requests;
     my $reqc = {%$req};
     $reqc->{node} = [keys %localnodehash];
     if (scalar(@{$reqc->{node}})) { push @requests, $reqc }
 
-    #foreach my $dtarg (keys %dispatchhash)
-    #{   #iterate dispatch targets
-    #   my $reqcopy = {%$req};    #deep copy
-    #   $reqcopy->{'_xcatdest'} = $dtarg;
-    #   $reqcopy->{node} = [keys %{$dispatchhash{$dtarg}}];
-    #   push @requests, $reqcopy;
-    #}
+    foreach my $dtarg (keys %dispatchhash)
+    {    #iterate dispatch targets
+        my $reqcopy = {%$req};    #deep copy
+        $reqcopy->{'_xcatdest'} = $dtarg;
+        $reqcopy->{node} = [keys %{$dispatchhash{$dtarg}}];
+        push @requests, $reqcopy;
+    }
     return \@requests;
 }
 
