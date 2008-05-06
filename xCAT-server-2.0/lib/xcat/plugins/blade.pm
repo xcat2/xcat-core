@@ -13,7 +13,7 @@ my %mm_comm_pids;
 
 use XML::Simple;
 if ($^O =~ /^linux/i) {
- $XML::Simple::PREFERRED_PARSER='XML::Parser';
+	$XML::Simple::PREFERRED_PARSER='XML::Parser';
 }
 use Data::Dumper;
 use POSIX "WNOHANG";
@@ -1114,11 +1114,17 @@ sub handle_depend {
   my $callback = shift;
   my $doreq = shift;
   my $dep = shift;
+  my %req;
   my %node = ();
     
   # send all dependencies (along w/ those dependent on nothing)
-  $request->{node} = [keys %$dep];
-  process_request($request,$callback,$doreq,1);
+  $req{node}    = [keys %$dep];
+  $req{arg}     = [$request->{arg}]; 
+  $req{command} = [$request->{command}->[0]];
+
+  foreach (@{preprocess_request(\%req,$callback)}) {
+     process_request(\%$_,$callback,$doreq,1);
+  }
   my $start = Time::HiRes::gettimeofday();
     
   # build list of dependent nodes w/delays
@@ -1307,7 +1313,9 @@ sub process_request {
   my $moreinfo=$request->{moreinfo};
 
   if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
-    if (!grep /^--nodeps$/, @exargs) {
+    if ( my ($index) = grep($exargs[$_]=~ /^--nodeps$/, 0..$#exargs )) {
+      splice(@exargs, $index, 1);
+    } else {
       # handles 1 level of dependencies only
       if (!defined($level)) {
         my $dep = build_depend($noderange,\@exargs);
@@ -1917,7 +1925,6 @@ sub dompa {
 }
     
 1;
-
 
 
 
