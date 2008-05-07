@@ -5,7 +5,7 @@ package xCAT::MsgUtils;
 
 use strict;
 use Sys::Syslog;
-use locale;
+#use locale;
 use Socket;
 use File::Path;
 

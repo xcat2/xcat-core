@@ -14,10 +14,10 @@ my %termservers; #list of noted termservers
 my $usage_string=
 "  makeconservercf noderange
   makeconservercf [-l|--local]
-  makeconservercf -h|--help 
+  makeconservercf -h|--help
   makeconservercf -v|--version
     -l|--local   The conserver gets set up only on the local host.
-                 The default goes down to all the conservers on 
+                 The default goes down to all the conservers on
                  the server nodes and set them up.
     -h|--help    Display this usage statement.
     -v|--version Display the version number.";
@@ -30,14 +30,14 @@ sub handled_commands {
   }
 }
 
-sub preprocess_request { 
+sub preprocess_request {
   my $request = shift;
   if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
   my $callback=shift;
   my @requests;
   my $noderange = $request->{node}; #Should be arrayref
 
-  #display usage statement if -h 
+  #display usage statement if -h
   my $extrargs = $request->{arg};
   my @exargs=($request->{arg});
   if (ref($extrargs)) {
@@ -59,12 +59,12 @@ sub preprocess_request {
     $request = {};
     return;
   }
-  if ($::HELP) {  
+  if ($::HELP) {
     $callback->({data=>$usage_string});
     $request = {};
     return;
   }
-  if ($::VERSION) { 
+  if ($::VERSION) {
     $callback->({data=>$version_string});
     $request = {};
     return;
@@ -76,7 +76,7 @@ sub preprocess_request {
       return;
     }
   }
- 
+
   # get site master
   my $master=xCAT::Utils->get_site_Master();
   if (!$master) { $master=hostname(); }
@@ -90,7 +90,7 @@ sub preprocess_request {
     $allnodes=0;
     foreach my $node (@$noderange) {
       my $ent=$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
-      push @items,$ent; 
+      push @items,$ent;
     }
   } else {
     $allnodes=1;
@@ -99,7 +99,7 @@ sub preprocess_request {
 
   my @nodes=();
   foreach (@items) {
-    if (((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) { next;} #skip if 'cons' is not defined for this node, unless serialport suggests otherwise 
+    if (((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) { next;} #skip if 'cons' is not defined for this node, unless serialport suggests otherwise
     if (defined($_->{conserver})) { push @{$cons_hash{$_->{conserver}}{nodes}}, $_->{node};}
     else { push @{$cons_hash{$master}{nodes}}, $_->{node};}
     push @nodes,$_->{node};
@@ -111,21 +111,21 @@ sub preprocess_request {
     $reqcopy->{'_xcatdest'} = $master;
     $reqcopy->{'_allnodes'} = $allnodes; # the original command comes with nodes or not
     if ($allnodes==1) { @nodes=(); }
-    $reqcopy->{node} = \@nodes; 
+    $reqcopy->{node} = \@nodes;
     push @requests, $reqcopy;
-    if ($::LOCAL) { return \@requests; } 
-  } 
- 
-  # send to SN 
+    if ($::LOCAL) { return \@requests; }
+  }
+
+  # send to SN
   foreach my $cons (keys %cons_hash) {
     #print "cons=$cons\n";
-    my $doit=0; 
+    my $doit=0;
     if ($isSN) {
       if (exists($iphash{$cons})) { $doit=1; }
     } else {
       if (!exists($iphash{$cons})) { $doit=1; }
     }
-    
+
     if ($doit) {
       my $reqcopy = {%$request};
       $reqcopy->{'_xcatdest'} = $cons;
@@ -135,7 +135,7 @@ sub preprocess_request {
       #print "node=@$no\n";
       push @requests, $reqcopy;
     }
-  } 
+  }
   return \@requests;
 }
 
@@ -217,10 +217,10 @@ sub makeconservercf {
 
   # skip the one that does not have 'cons' defined, unless a serialport setting suggests otherwise
   my @cfgents=();
-  foreach (@cfgents1) { 
-    if ($_->{cons} or defined($_->{'serialport'})) { push @cfgents, $_; } 
+  foreach (@cfgents1) {
+    if ($_->{cons} or defined($_->{'serialport'})) { push @cfgents, $_; }
   }
-  
+
   # get the teminal servers and terminal port when cons is mrv or cyclades
   foreach (@cfgents) {
      unless ($_->{cons}) {$_->{cons} = $_->{mgt};} #populate with fallback
@@ -252,7 +252,7 @@ sub makeconservercf {
     }
   } else { #no nodes specified, do em all up
     zapcfg(\@filecontent); # strip all xCAT configured stuff from config
-    
+
     # filter out node types without console support
     my $typetab = xCAT::Table->new('nodetype');
     my %type;
@@ -265,7 +265,7 @@ sub makeconservercf {
     }
     foreach (@cfgents) {
       my $keepdoing=0;
-      if ($isSN && $_->{conserver} && exists($iphash{$_->{conserver}}))  { 
+      if ($isSN && $_->{conserver} && exists($iphash{$_->{conserver}}))  {
         $keepdoing=1;  #only hanlde the nodes that use this SN as the conserver
       }
       if (!$isSN) { $keepdoing=1;} #handle all for MN
@@ -323,7 +323,7 @@ sub dotsent {
   push @$content,"  host $tserv;\n";
   push @$content,"}\n";
   push @$content,"#xCAT END $tserv TS\n";
-  
+
 }
 
 sub donodeent {
@@ -354,21 +354,22 @@ sub donodeent {
   }
   push @$content,"#xCAT BEGIN $node CONS\n";
   push @$content,"console $node {\n";
-  #if ($cfgent->{cons} 
+  #if ($cfgent->{cons}
   my $cmeth=$cfgent->{cons};
   #print $cmeth."\n";
-  if (grep(/^$cmeth$/,@cservers)) { 
+  if (grep(/^$cmeth$/,@cservers)) {
     push @$content," include ".$cfgent->{termserver}.";\n";
-    push @$content," port ".$cfgent->{termport}.";\n";   
+    push @$content," port ".$cfgent->{termport}.";\n";
     if ((!$isSN) && ($cfgent->{conserver})) { # let the master handle it
       push @$content,"  master ".$cfgent->{conserver}.";\n";
-    } 
+    }
   } else { #a script method...
     push @$content,"  type exec;\n";
     if ((!$isSN) && ($cfgent->{conserver})) { # let the master handle it
       push @$content,"  master ".$cfgent->{conserver}.";\n";
     } else { # handle it here
-      push @$content,"  exec ".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
+      my $locerror = $isSN ? "PERL_BADLANG=0 " : '';    # on service nodes, often LC_ALL is not set and perl complains
+      push @$content,"  exec $locerror".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
     }
   }
   push @$content,"}\n";
