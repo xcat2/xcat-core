@@ -52,7 +52,7 @@ sub handled_commands
         }
         else
         {
-            if ($rc == 2)
+            if ($rc == 2)  # this is probably no longer needed on Service Node
             {    # just start the daemon
                 my $cmd = "service nfs start";
                 xCAT::Utils->runcmd($cmd, 0);
@@ -101,6 +101,20 @@ sub setup_NFS
     my $master;
     my $os;
     my $arch;
+
+    # make sure vsftpd is started
+    my $cmd = "service vsftpd start";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {    # error
+         xCAT::MsgUtils->message("S", "Error on command: $cmd");
+    }
+    my $cmd = "chkconfig vsftpd on";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {    # error
+         xCAT::MsgUtils->message("S", "Error on command:$cmd");
+    }
     my $retdata = xCAT::Utils->readSNInfo($nodename);
     if ($retdata->{'arch'})
     {                               # no error
@@ -118,7 +132,8 @@ sub setup_NFS
         {
             mkdir($installdir);
         }
-
+        # the start of nfs is not really needed for the mount
+		# remove in the future
         my $cmd = "chkconfig nfs on";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
