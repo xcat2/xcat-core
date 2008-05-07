@@ -191,15 +191,17 @@ sub copybootscript {
         chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/xcatpostinit");
 
         # run chkconfig
-        my $chkcmd = "chroot $installroot/netboot/$osver/$arch/$profile/rootimg chkconfig --add xcatpostinit";
-
-        my $rc = system($chkcmd);
-        if ($rc) {
-		my $rsp;
-        	push @{$rsp->{data}}, "Could not run the chkconfig command.\n";
-        	xCAT::MsgUtils->message("E", $rsp, $callback);
-            	return 1;
-        }
+        #my $chkcmd = "chroot $installroot/netboot/$osver/$arch/$profile/rootimg chkconfig --add xcatpostinit";
+        symlink "/etc/init.d/xcatpostinit","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc3.d/S84xcatpostinit";
+        symlink "/etc/init.d/xcatpostinit","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc4.d/S84xcatpostinit";
+        symlink "/etc/init.d/xcatpostinit","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc5.d/S84xcatpostinit";
+        #my $rc = system($chkcmd);
+        #if ($rc) {
+		#my $rsp;
+      #  	push @{$rsp->{data}}, "Could not run the chkconfig command.\n";
+      #  	xCAT::MsgUtils->message("E", $rsp, $callback);
+      #      	return 1;
+      #  }
     } else {
 	my $rsp;
         push @{$rsp->{data}}, "Could not find the script $installroot/postscripts/xcatpostinit.\n";

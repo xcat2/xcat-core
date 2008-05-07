@@ -8,9 +8,9 @@ if [ -r /etc/ssh/sshd_config ]
 then
 	logger -t xcat "Install: setup /etc/ssh/sshd_config"
 	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
-	perl -pi -e 's/^X11Forwarding .*$/X11Forwarding yes/' /etc/ssh/sshd_config
-	perl -pi -e 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
-	perl -pi -e 's/(.*MaxStartups.*)/#\1/' /etc/ssh/sshd_config
+	sed -i 's/^X11Forwarding .*$/X11Forwarding yes/' /etc/ssh/sshd_config
+	sed -i 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
+	sed -i 's/\(.*MaxStartups.*\)/#\1/' /etc/ssh/sshd_config
 	echo "MaxStartups 1024" >>/etc/ssh/sshd_config
 	echo "PasswordAuthentication no" >>/etc/ssh/sshd_config
 fi
