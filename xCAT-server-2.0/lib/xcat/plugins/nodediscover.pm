@@ -114,6 +114,17 @@ sub process_request {
     } else {
       $typetab->setNodeAttribs($node,{arch=>$request->{arch}->[0]});
     }
+    my $currboot='';
+    my $nrtab = xCAT::Table->new('noderes'); #Attempt to check and set if wrong the netboot method on discovery, if admin omitted
+    (my $rent) = $nrtab->getNodeAttribs($node,'netboot');
+    if ($rent and $rent->{'netboot'}) {
+       $currboot=$rent->{'netboot'};
+    }
+    if ($request->{arch}->[0] =~ /x86/ and $currboot !~ /pxe/) {
+       $nrtab->setNodeAttribs($node,{netboot=>'pxe'});
+    } elsif ($request->{arch}->[0] =~ /ppc/ and $currboot  !~ /yaboot/) {
+       $nrtab->setNodeAttribs($node,{netboot=>'yaboot'});
+    }
   }
   if (defined($request->{mac})) {
     my $mactab = xCAT::Table->new("mac",-create=>1);
