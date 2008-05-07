@@ -84,7 +84,7 @@ sub process_request {
    }
    $callback->({data=>["Creating nbfs.$arch.gz in $tftpdir/xcat"]});
    system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/nbfs.$arch.gz");
-   system ("rm -rf $temdir");
+   system ("rm -rf $tempdir");
    my $hexnets = xCAT::Utils->my_hexnets();
    my $consolecmdline;
    if (defined($serialport) and $serialspeed) {
