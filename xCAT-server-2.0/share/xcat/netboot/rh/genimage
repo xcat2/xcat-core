@@ -413,6 +413,12 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       print $cfgfile $_;
    }
    close($cfgfile);
+   foreach (<$installroot/netboot/$osver/$arch/$profile/rootimg/etc/skel/.*>) {
+      if (basename($_) eq '.' or basename($_) eq '..') {
+         next;
+      }
+      copy $_,"$installroot/netboot/$osver/$arch/$profile/rootimg/root/";
+   }
    open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc3.d/S60gettyset");
    print $cfgfile "#!/bin/bash\n"; 
    print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
