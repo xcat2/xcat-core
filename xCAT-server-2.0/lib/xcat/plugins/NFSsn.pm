@@ -7,6 +7,7 @@ use xCAT::Table;
 use xCAT::Utils;
 
 use xCAT::MsgUtils;
+use File::Path;
 use Getopt::Long;
 
 #-------------------------------------------------------
@@ -103,6 +104,10 @@ sub setup_NFS
     my $arch;
 
     # make sure vsftpd is started
+    mkpath "/var/ftp/install";
+    mkpath "/var/ftp/tftpboot";
+    system "mount -o bind $installdir /var/ftp/install";
+    system "mount -o bind /tftpboot /var/ftp/tftpboot";
     my $cmd = "service vsftpd start";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)

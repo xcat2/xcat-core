@@ -102,6 +102,7 @@ sub process_request {
       $vpdtab->setNodeAttribs($node,{serial=>$request->{serial}->[0]});
     }
   }
+  my $nrtab;
   if (defined($request->{arch})) {
     #Set the architecture in nodetype.  If 32-bit only x86 or ppc detected, overwrite.  If x86_64, only set if either not set or not an x86 family
     my $typetab=xCAT::Table->new("nodetype",-create=>1);
@@ -115,7 +116,7 @@ sub process_request {
       $typetab->setNodeAttribs($node,{arch=>$request->{arch}->[0]});
     }
     my $currboot='';
-    my $nrtab = xCAT::Table->new('noderes'); #Attempt to check and set if wrong the netboot method on discovery, if admin omitted
+    $nrtab = xCAT::Table->new('noderes'); #Attempt to check and set if wrong the netboot method on discovery, if admin omitted
     (my $rent) = $nrtab->getNodeAttribs($node,'netboot');
     if ($rent and $rent->{'netboot'}) {
        $currboot=$rent->{'netboot'};
@@ -141,6 +142,10 @@ sub process_request {
 		my $netn = inet_ntoa(pack("N",$ipn & $mask));
 		my $hosttag = gethosttag($node,$netn,@ifinfo[1],\%usednames);
 		if ($hosttag) {
+         (my $rent) = $nrtab->getNodeAttribs($node,'primarynic');
+         unless ($rent and $rent->{primarynic}) { #if primarynic not set, set it to this nic
+            $nrtab->setNodeAttribs($node,{primarynic=>@ifinfo[1]});
+         }
          $usednames{$hosttag}=1;
 		   $macstring .= $ifinfo[2]."!".$hosttag."|";
 		} else {
