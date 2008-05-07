@@ -12,5 +12,12 @@ BEGIN {
 
         while (server |& getline) {
                 print $0
+                if (match($0,"<serverdone>")) {
+                  quit = "yes"
+                }
+                if (match($0,"</xcatresponse>") && match(quit,"yes")) {
+                  close(server)
+                  exit
+               }
         }
 }
