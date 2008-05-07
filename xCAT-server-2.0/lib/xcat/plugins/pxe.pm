@@ -136,8 +136,13 @@ my $errored = 0;
 sub pass_along { 
     my $resp = shift;
     $callback->($resp);
-    if ($resp and $resp->{errorcode} and $resp->{errorcode}->[0]) {
+    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
         $errored=1;
+    }
+    foreach (@{$resp->{node}}) {
+       if ($_->{error} or $_->{errorcode}) {
+          $errored=1;
+       }
     }
 }
 
