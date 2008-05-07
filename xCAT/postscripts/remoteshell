@@ -26,7 +26,7 @@ then
 	cd /xcatpost/_ssh
 	mkdir -p /root/.ssh
 	cp -f * /root/.ssh
-   cd -
+   cd - >/dev/null
 	chmod 700 /root/.ssh
 	chmod 600 /root/.ssh/*
 fi

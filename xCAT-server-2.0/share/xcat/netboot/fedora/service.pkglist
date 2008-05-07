@@ -1,8 +1,8 @@
-bash 
+bash
 stunnel
-dhclient 
-kernel 
-openssh-server 
+dhclient
+kernel
+openssh-server
 openssh-clients
 busybox-anaconda
 vi
@@ -17,3 +17,4 @@ bzip2
 rootfiles
 vixie-cron
 wget
+vsftpd
