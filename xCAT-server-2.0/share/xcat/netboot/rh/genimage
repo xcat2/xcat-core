@@ -298,9 +298,15 @@ EOMS
          push @filestoadd,[$_,"lib/$_"];
       }
    }
-   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod","sbin/mount.nfs","lib64/libnss_dns.so.2") {
+   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod","sbin/mount.nfs") {
       getlibs($_);
       push @filestoadd,$_;
+   }
+   if ($arch =~ /x86_64/) {
+      push @filestoadd,"lib64/libnss_dns.so.2";
+   }
+   else {
+      push @filestoadd,"lib/libnss_dns.so.2";
    }
    push @filestoadd,keys %libhash;
    find(\&isnetdriver, <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/*>);
