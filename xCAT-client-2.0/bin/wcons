@@ -22,6 +22,9 @@ unless ($ARGV[$#ARGV]) {
    exit 1;
 }
 my $nodes=`nodels $ARGV[$#ARGV]`;
+unless ($nodes) {
+   exit 1;
+}
 my $conservers=`nodels $ARGV[$#ARGV] nodehm.conserver`;
 pop @ARGV;
 my @conservers=split /\n/,$conservers;
@@ -45,6 +48,9 @@ foreach (@nodes) {
    
 
 my $firstnode = shift @nodes;
+unless ($firstnode) {
+   exit 1;
+}
 my $currx;
 my $curry;
 my $wmxo;
@@ -75,7 +81,7 @@ if (defined($tilefact)) {
    }
 
 
-   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode ".$conservers{$firstnode}."\" &");
+   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
    sleep(2); #Give time for window manager to figure out everything
    my $xinfo = `xwininfo -name $firstnode`;
    my @xinfl = split(/\n/,$xinfo);
@@ -111,7 +117,7 @@ if (defined($tilefact)) {
       $currx=0;
    }
 } else {
-   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & $mydir/rcons $firstnode ".$conservers{$firstnode}."\" &");
+   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 
 }
 my $geometry="";
@@ -130,7 +136,7 @@ foreach (@nodes) {
       }
    }
 
-   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & $mydir/rcons $_ ".$conservers{$_}."\" &");
+   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 }
 
 
