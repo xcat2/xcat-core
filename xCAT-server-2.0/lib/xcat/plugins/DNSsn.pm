@@ -86,7 +86,8 @@ sub process_request
 #-----------------------------------------------------------------------------
 sub setup_DNS
 {
-
+    # setup the named.conf file
+    `/opt/xcat/sbin/makenamed.conf`;
     # turn DNS on
 
     $cmd = "chkconfig named on";
