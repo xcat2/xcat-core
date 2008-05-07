@@ -5,6 +5,7 @@ use File::Path;
 use File::Copy;
 use Cwd;
 use File::Temp;
+use xCAT::Utils qw(genpassword);
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -83,6 +84,21 @@ sub process_request {
 
 	# add the xCAT post scripts to the image
 	copybootscript($installroot, $osver, $arch, $profile, $callback);
+   my $passtab = xCAT::Table->new('passwd');
+   if ($passtab) {
+      (my $pent) = $passtab->getAttribs({key=>'system',username=>'root'},'password');
+      if ($pent and defined ($pent->{password})) {
+         my $pass = $pent->{password};
+         my $shadow;
+         open($shadow,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/shadow");
+         unless ($pass =~ /^\$1\$/) {
+            $pass = crypt($pass,'$1$'.genpassword(8));
+         }
+         print $shadow "root:$pass:13880:0:99999:7:::\n";
+         close($shadow);
+      }
+   }
+
 
     my $verb = "Packing";
     if ($method =~ /nfs/) {

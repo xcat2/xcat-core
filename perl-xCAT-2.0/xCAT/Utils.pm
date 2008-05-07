@@ -8,6 +8,41 @@ require xCAT::Schema;
 require Data::Dumper;
 require xCAT::NodeRange;
 require DBI;
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw(genpassword);
+
+#--------------------------------------------------------------------------------
+=head3    genpassword
+    returns a random string of specified length or 8 if none given
+    Arguments:
+      length of string requested
+    Returns:
+      string of requested length or 8
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         my $salt = genpassword(8);
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub genpassword {
+#Generate a pseudo-random password of specified length
+     my $length = shift;
+     unless ($length) { $length = 8; }
+     my $password='';
+     my $characters= 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890';
+     srand; #have to reseed, rand is not rand otherwise
+     while (length($password) < $length) {
+           $password .= substr($characters,int(rand 63),1);
+    }
+    return $password;
+}
+
+
 
 #--------------------------------------------------------------------------------
 

@@ -397,6 +397,22 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n";
       close($cfgfile);
    }
+   open($cfgfile,">>","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/securetty");
+   print $cfgfile "ttyS0\n";
+   print $cfgfile "ttyS1\n";
+   close($cfgfile);
+   my @passwd;
+   open($cfgfile,"<","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/passwd");
+   @passwd = <$cfgfile>;
+   close($cfgfile);
+   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/passwd");
+   foreach (@passwd) {
+      if (/^root:/) {
+         s/^root:\*/root:x/
+      }
+      print $cfgfile $_;
+   }
+   close($cfgfile);
    open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc3.d/S60gettyset");
    print $cfgfile "#!/bin/bash\n"; 
    print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
