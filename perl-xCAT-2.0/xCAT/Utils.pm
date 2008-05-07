@@ -8,8 +8,20 @@ require xCAT::Schema;
 require Data::Dumper;
 require xCAT::NodeRange;
 require DBI;
+
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(genpassword);
+
+
+#--------------------------------------------------------------------------------
+
+=head1    xCAT::Utils
+
+=head2    Package Description
+
+This program module file, is a set of utilities used by xCAT commands.
+
+=cut
 
 #--------------------------------------------------------------------------------
 =head3    genpassword
@@ -44,15 +56,6 @@ sub genpassword {
 
 
 
-#--------------------------------------------------------------------------------
-
-=head1    xCAT::Utils
-
-=head2    Package Description
-
-This program module file, is a set of utilities used by xCAT commands.
-
-=cut
 
 #--------------------------------------------------------------------------------
 
@@ -1613,25 +1616,29 @@ sub isServiceReq
         $servicenodetab->close;
         return 0;    # do not setup anything
     }
-    foreach $serviceip (@ips)
+
+    # read all the nodes from the table
+    my @snodelist = $servicenodetab->getAllNodeAttribs([$service]);
+    $servicenodetab->close;
+    foreach $serviceip (@ips)    # check the table for this servicenode
     {
-        my $whereclause = "node like '$serviceip'";
-        my @nodelist    =
-          $servicenodetab->getAllAttribsWhere($whereclause, 'node', $service);
-        foreach my $node (@nodelist)
+        foreach my $node (@snodelist)
+
         {
-            my $value = $node->{$service};
-            $value =~ tr/a-z/A-Z/;    # convert to upper
-                 # value 1 or yes or blank then we setup the service
-            if (($value == 1) || ($value eq "YES") || ($value eq ""))
-            {
-                $servicenodetab->close;
-                return 1;    # found service required for the node
+            if ($node->{$service})
+            {                    # returns service, only if set
+                my $value = $node->{$service};
+                $value =~ tr/a-z/A-Z/;    # convert to upper
+                     # value 1 or yes  then we setup the service
+                if (($value == 1) || ($value eq "YES"))
+                {
+                    return 1;    # found service required for the node
+                }
             }
         }
     }
 
-    return 0;    # did not find a node using this service for this servicenode
+    return 0;    # servicenode is not required to setup this service
 
 }
 
@@ -2121,14 +2128,13 @@ sub isSN
         return 0;
 
     }
-    my @attribs = ("node");
-    @nodes = $servicenodetab->getAllAttribs(@attribs);
+    @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver']);
     $servicenodetab->close;
     foreach my $nodes (@nodes)
     {
         if ($node eq $nodes->{node})
         {
-            return 1;    # match
+            return 1;           # match
         }
     }
 
@@ -2163,10 +2169,17 @@ sub getAllSN
     # reads all nodes from the service node table
     my @servicenodes;
     my $servicenodetab = xCAT::Table->new('servicenode');
-    my $recs           = $servicenodetab->getAllEntries();
-    foreach (@$recs)
+    unless ($servicenodetab)    # no  servicenode table
     {
-        push @servicenodes, $_->{node};
+        xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
+        $servicenodetab->close;
+        return @servicenodes;
+
+    }
+    my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver']);
+    foreach my $nodes (@nodes)
+    {
+        push @servicenodes, $nodes->{node};
     }
     $servicenodetab->close;
     return @servicenodes;
@@ -2225,7 +2238,7 @@ sub getSNandNodes
 
 =head3 getSNList 
  
-	Reads the servicenode table. Will return all the enalbed Service Nodes
+	Reads the servicenode table. Will return all the enabled Service Nodes
 	that will setup the input Service ( e.g tftpserver,nameserver,etc)
 	If service is blank, then will return the list of all enabled Service
 	Nodes. 
@@ -2260,24 +2273,26 @@ sub getSNList
         return 0;
 
     }
-    my @attribs = ("node",$service);
-    @nodes = $servicenodetab->getAllAttribs(@attribs);
+    my @nodes = $servicenodetab->getAllNodeAttribs([$service]);
     $servicenodetab->close;
     foreach my $node (@nodes)
     {
-        if ($service eq "")    # want all the service nodes
+        if ($service eq "")     # want all the service nodes
         {
             push @servicenodes, $node->{node};
         }
         else
-        {                          # looking for a particular service
-            my $value = $node->{$service};
-            $value =~ tr/a-z/A-Z/;    # convert to upper
-                 # value 1 or yes or blank then we setup the service
-            if (($value == 1) || ($value eq "YES") || ($value eq ""))
-            {
-                push @servicenodes, $node->{node};
+        {                       # looking for a particular service
+            if ($node->{$service})
+            {                   # if null then do not add node
+                my $value = $node->{$service};
+                $value =~ tr/a-z/A-Z/;    # convert to upper
+                     # value 1 or yes or blank then we setup the service
+                if (($value == 1) || ($value eq "YES"))
+                {
+                    push @servicenodes, $node->{node};
 
+                }
             }
         }
     }
