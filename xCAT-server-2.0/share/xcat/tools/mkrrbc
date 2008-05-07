@@ -1,0 +1,151 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+
+use Getopt::Long;
+
+#-----------------------------------------------------------------------------
+
+=head1   mkrrbc
+
+Make node definitions for AMMs and Switches (one each per bladecenter)
+
+ mkrrbc -C <cu letter> -L < start Rack number for CU> -R <startrange,endrange>     (add) 
+ mkrrbc -d -C <cu letter> -R <startrange,endrange> (delete)
+
+./mkrrbc -C d -L 2 -R 1,60
+
+will run commands such as:
+   nodeadd bcd60 groups=mm,cud,rack16
+   nodeadd swd60 groups=nortel,switch,cud,rack16
+
+and build nodelist entries that looks like this:
+     "bcd60","mm,cud,rack16",,,
+     "swd60","nortel,switch,cud,rack16",,,
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+
+my $rc = 0;
+
+&parse_args;
+my $bccmd = "";
+my $swcmd = "";
+foreach my $CU (@::CU)
+{
+    foreach my $range (@::RANGE)
+    {
+          $nodeno = "";
+            if ($range <=9) {  # want rr0X
+               $nodeno .="0";
+            }
+            $nodeno .= $range;
+
+            $rack = "rack";
+            $bccmd  = "bc";
+            $swcmd = "sw";
+            $bccmd .= $CU;
+            $swcmd.= $CU;
+            $bccmd .= $nodeno;
+            $swcmd.= $nodeno;
+            $bccmd .= " ";
+            $swcmd.= " ";
+            $bccmd .=  "groups=mm,cu$CU";
+            $swcmd .= "groups=nortel,switch,cu$CU";
+
+            # calculate the rack number ( 4 AMMs/rack)
+            #  15 racks/CU
+            #  Rack number = (AMM# / 4) 
+            my $count = ($range-1) / 4;
+            my ($rackno, $rem) = split '\.', $count;
+           
+            $rackno = $rackno + $::LOCATION;
+            if ($rackno <=9) {  # want rack0X
+               $rack .="0";
+            } 
+            $rack .= $rackno;
+
+            $bccmd .= ",";
+            $bccmd .= $rack;
+            $swcmd .= ",";
+            $swcmd .= $rack;
+            
+            if ($::DELETE)
+            {
+                if ($::TEST) {
+                   print ("noderm $bccmd \n");
+                   print ("noderm $swcmd \n");
+                } else {
+                   system("noderm $bccmd");
+                   system("noderm $swcmd");
+                }
+            }
+            else
+            {
+                if ($::TEST) {
+                   print ("nodeadd $bccmd \n");
+                   print ("nodeadd $swcmd \n");
+                } else {
+                   system("nodeadd $bccmd");
+                   system("nodeadd $swcmd");
+                }
+            }
+
+    }
+}
+exit $rc;
+
+#-----------------------------------------------------------------------------
+
+=head3 parse_args
+  
+  Parses for  input
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_args
+{
+
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+    my $usagemsg =
+          " mkrrbc -h \n mkrrbc [-d] -C [a|b|,...,r] -L [start rack number for CU] -R [startrange,endrange] [-t|--test]\n";
+    if (
+        !GetOptions(
+            'C|CU=s'    => \$::CU,
+            'L|LOC=s'   => \$::LOCATION,
+            'h|help'    => \$::HELP,
+            'd|delete'  => \$::DELETE,
+            'R|RANGE=s' => \$::RANGE,
+            't|test'    => \$::TEST
+
+        )
+      )
+    {
+        printf $usagemsg;
+        exit 1;
+    }
+    if ($::HELP)
+    {
+        printf $usagemsg;
+        exit 0;
+    }
+    @::CU = split(',', $::CU);
+
+    my ($fNum, $eNum) = split(',', $::RANGE);
+    my $prefix;
+    foreach my $suffix ($fNum .. $eNum)
+    {
+        my $numOfZeros = (length($fNum) - length($suffix));
+        my $prefix     = '0' x $numOfZeros;
+        push @::RANGE, "$fRoot$prefix$suffix$fDomain";
+    }
+
+}
+
