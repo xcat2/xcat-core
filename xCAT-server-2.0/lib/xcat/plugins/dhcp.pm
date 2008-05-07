@@ -305,12 +305,25 @@ sub process_request
             ($href) = $sitetab->getAttribs({key => 'dhcpinterface'}, 'value');
         }
         if ($href and $href->{value})
+        #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
+        #depending on complexity of network wished to be described
         {
-            foreach (split /[,\s]+/, $href->{value})
-            {
-                $activenics{$_} = 1;
-                $querynics = 0;
-            }
+           my $dhcpinterfaces = $href->{value};
+           my $dhcpif;
+           foreach $dhcpif (split /;/,$dhcpinterfaces) {
+              if ($dhcpif =~ /\|/) {
+                 (my $host,$dhcpif) = split /\|/,$dhcpif;
+                 if (xCAT::Utils->thishostisnot($host)) {
+                    next;
+                 }
+              }
+              foreach (split /[,\s]+/, $dhcpif)
+              {
+                 $activenics{$_} = 1;
+                 $querynics = 0;
+              }
+           }
+           print Dumper(\%activenics);
         }
         ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
         unless ($href and $href->{value})
