@@ -136,7 +136,7 @@ foreach (@nodes) {
       }
    }
 
-   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
+   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $_ ".$conservers{$_}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 }
 
 
