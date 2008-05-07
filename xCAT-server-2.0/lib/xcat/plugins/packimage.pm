@@ -142,6 +142,11 @@ sub process_request {
           $callback->({error=>["mksquashfs could not be run successfully"],errorcode=>[1]});
           return;
        }
+       $rc = system("rm -rf $temppath");
+       if ($rc) {
+          $callback->({error=>["Failed to clean up temp space"],errorcode=>[1]});
+          return;
+       }
        chmod(0644,"../rootimg.sfs");
     }
     chdir($oldpath);
