@@ -323,7 +323,6 @@ sub process_request
                  $querynics = 0;
               }
            }
-           print Dumper(\%activenics);
         }
         ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
         unless ($href and $href->{value})
