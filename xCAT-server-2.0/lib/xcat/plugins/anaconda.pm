@@ -629,11 +629,11 @@ sub mkinstall
                     );
         }
     }
-    my $rc = xCAT::Utils->create_postscripts_tar();
-    if ($rc != 0)
-    {
-        xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
-    }
+    #my $rc = xCAT::Utils->create_postscripts_tar();
+    #if ($rc != 0)
+    #{
+    #    xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
+    #}
 }
 
 sub copycd
