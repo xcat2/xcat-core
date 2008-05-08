@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<mkrrbc> - Adds or deletes BladeCenter management module and switch nodes in the xCAT cluster database.
+B<mkrrbc> - Adds or deletes BladeCenter management module and switch node definitions in the xCAT cluster database.
 
 
 =head1 SYNOPSIS
@@ -8,12 +8,12 @@ B<mkrrbc> - Adds or deletes BladeCenter management module and switch nodes in th
 B<mkrrbc> [-d ]| [-C a|b|,...,r] -L [Start Rack number for CU] -R [startrange,endrange] [-t|--test]
 
 
-B<mkrrnodes> [B<-h> | B<--help>]
+B<mkrrbc> [B<-h> | B<--help>]
 
 
 =head1 DESCRIPTION
 
-The mkrrbc adds or deletes (-d) the BladeCenter management module and switch nodes requested by inputting the CU name (-C) flag and the start and end range (-R) flag.  It will also automatically define required nodegroups. 
+The mkrrbc adds or deletes (-d) the BladeCenter management module and switch node definitions requested by inputting the CU name (-C) flag and the start and end range (-R) flag.  It will also automatically define required nodegroups. 
 
 =head1 OPTIONS
 
@@ -52,11 +52,11 @@ An error has occurred.
 
 =item *
 
-To build a cluster unit of nodelist entries that include nodes like this:
+To build a cluster unit of nodelist table entries that include nodes like this:
      "bcd60","mm,cud,rack16",,,
      "swd60","nortel,switch,cud,rack16",,,
 
- B<mkrrbc>  -C d -L 2 -R 1,60
+B<mkrrbc>  -C d -L 2 -R 1,60
 
 
 To delete all the nodelist entries created in the previous step:
