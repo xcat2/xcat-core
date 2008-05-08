@@ -1,0 +1,13 @@
+#!/bin/sh
+# Accepts directories to build packages from on the commandline, but defaults
+# to building: perl-xCAT-2.0 and xCAT-client-2.0
+
+packages="${@:-perl-xCAT-2.0 xCAT-client-2.0}"
+
+for pkg in $packages; do
+  mkdir -p debs/$pkg
+  echo Building .dsc source package for $pkg
+  cd $pkg
+  svn-buildpackage --svn-ignore --svn-lintian --svn-move-to=../debs/$pkg
+  cd -
+done

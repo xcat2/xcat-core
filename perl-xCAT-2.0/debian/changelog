@@ -1,6 +1,6 @@
-perl-xcat (2.0-1) testing; urgency=low
+perl-xcat (2.0-1) lenny; urgency=low
 
-  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+  * Initial release 
 
- -- Isaac Freeman <memotype@gmail.com>  Fri, 18 Apr 2008 11:42:09 -0400
+ -- Isaac Freeman <ifreeman@us.ibm.com>  Thu, 08 May 2008 13:14:33 -0400
 

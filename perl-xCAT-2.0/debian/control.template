@@ -1,8 +1,8 @@
 Source: perl-xcat
 Section: libs
 Priority: extra
-Maintainer: Isaac Freeman <memotype@gmail.com>
-Build-Depends: debhelper (>= 5)
+Maintainer: Isaac Freeman <ifreeman@us.ibm.com>
+Build-Depends: debhelper (>= 5), libdbi-perl
 Standards-Version: 3.7.2
 
 Package: perl-xcat

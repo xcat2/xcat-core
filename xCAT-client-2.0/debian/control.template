@@ -1,7 +1,7 @@
 Source: xcat-client
 Section: admin
 Priority: extra
-Maintainer: Isaac Freeman <memotype@gmail.com>
+Maintainer: Isaac Freeman <ifreeman@us.ibm.com>
 Build-Depends: debhelper (>= 5)
 Standards-Version: 3.7.2
 

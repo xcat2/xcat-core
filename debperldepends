@@ -7,7 +7,7 @@ find . -name .svn -prune -o -type f \
   | xargs grep -hE '^\s*(use|require) ' \
   | while read mod; do
       pkg=$( awk '{ sub(";", "", $2);
-                    sub("::", "-", $2); 
+                    gsub("::", "-", $2); 
                     print $2 }' <<<"$mod" \
                | tr '[:upper:]' '[:lower:]' )
 
