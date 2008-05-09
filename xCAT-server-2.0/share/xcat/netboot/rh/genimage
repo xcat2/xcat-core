@@ -29,7 +29,8 @@ if ($name =~ /geninitrd/) {
 }
 my $rootlimit;
 my $tmplimit;
-
+my $kernelver = `uname -r`;
+my $basekernelver = $kernelver;
 
 GetOptions(
    #'a=s' => \$architecture,
@@ -39,10 +40,11 @@ GetOptions(
    'i=s' => \$prinic,
    'r=s' => \$othernics,
    'l=s' => \$rootlimit,
-   't=s' => \$tmplimit
+   't=s' => \$tmplimit,
+   'k=s' => \$kernelver
 );
 unless ($osver and $profile and $netdriver and $prinic) {
-   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE>'."\n";
+   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER>'."\n";
    print "Examples:\n";
    print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
@@ -141,8 +143,18 @@ sub getlibs {
 }
 
 sub mkinitrd {
-   mkpath("/tmp/xcatinitrd.$$/bin");
-   rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+	mkpath("/tmp/xcatinitrd.$$/bin");
+	if($basekernelver eq $kernelver) {
+		rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+	}
+	else {
+		if(-r "/boot/vmlinuz-$kernelver") {
+			copy("/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+		}
+		else {
+			die("Cannot read /boot/vmlinuz-$kernelver");
+		}
+	}
 	symlink("bin","/tmp/xcatinitrd.$$/sbin");
 	mkpath("/tmp/xcatinitrd.$$/usr/bin");
 	mkpath("/tmp/xcatinitrd.$$/usr/sbin");
@@ -317,7 +329,16 @@ EOMS
       push @filestoadd,"lib/libnss_dns.so.2";
    }
    push @filestoadd,keys %libhash;
-   find(\&isnetdriver, <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/*>);
+	if($basekernelver ne $kernelver) {
+		system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$basekernelver");
+		if(-d "/lib/modules/$kernelver") {
+			system("cd /lib/modules;cp -r $kernelver $installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/");
+		}
+		else {
+			die("Cannot read /lib/modules/$kernelver");
+		}
+	}
+   find(\&isnetdriver, <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$kernelver/*>);
    foreach (@filestoadd) {
       if (ref($_)) {
          my $srcpath = "$installroot/netboot/$osver/$arch/$profile/rootimg/".$_->[0];
