@@ -43,6 +43,7 @@ GetOptions(
    't=s' => \$tmplimit,
    'k=s' => \$kernelver
 );
+chomp($kernelver);
 unless ($osver and $profile and $netdriver and $prinic) {
    print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER>'."\n";
    print "Examples:\n";
