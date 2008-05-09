@@ -374,7 +374,7 @@ sub isyumdir {
 
 sub isnetdriver {
    foreach (@ndrivers) {
-      if ($File::Find::name =~ /$_/) {
+      if ($File::Find::name =~ /\/$_/) {
          my $filetoadd = $File::Find::name;
          $filetoadd =~ s!$installroot/netboot/$osver/$arch/$profile/rootimg/!!;
          push @filestoadd,[$filetoadd,"lib/$_"];
