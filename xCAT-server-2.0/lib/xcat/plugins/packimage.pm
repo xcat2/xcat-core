@@ -114,14 +114,15 @@ sub process_request {
        $callback->({error=>["$installroot/netboot/$osver/$arch/$profile/rootimg does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
        return;
     }
+    unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.gz");
+    unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.sfs");
+    unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.nfs");
     if ($method =~ /cpio/) {
        $excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
-       unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.gz");
        $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
       $excludestr =~ s!-a \z!|cpio -dump $temppath!; 
-      unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.sfs");
     } elsif ($method =~ /nfs/) {
        $excludestr = "touch ../rootimg.nfs";
     } else {
