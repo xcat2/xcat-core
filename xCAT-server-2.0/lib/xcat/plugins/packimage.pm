@@ -109,24 +109,30 @@ sub process_request {
       $callback->({data=>["\nNOTE: Contents of $installroot/netboot/$osver/$arch/$profile/rootimg\nMUST be available on all service and management nodes and NFS exported."]});
     }
     my $temppath;
+    my $oldumask;
+    if (! -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {
+       $callback->({error=>["$installroot/netboot/$osver/$arch/$profile/rootimg does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
+       return;
+    }
     if ($method =~ /cpio/) {
        $excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
+       unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.gz");
+       $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
       $excludestr =~ s!-a \z!|cpio -dump $temppath!; 
+      unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.sfs");
     } elsif ($method =~ /nfs/) {
        $excludestr = "touch ../rootimg.nfs";
     } else {
        $callback->({error=>["Invalid method '$method' requested"],errorcode=>[1]});
     }
-
-    if (! -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {
-       $callback->({error=>["$installroot/netboot/$osver/$arch/$profile/rootimg does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
-       return;
-    }
     chdir("$installroot/netboot/$osver/$arch/$profile/rootimg");
     system($excludestr);
-    if ($method =~ /squashfs/) {
+    if ($method =~ /cpio/) {
+        chmod 0644,"$installroot/netboot/$osver/$arch/$profile/rootimg.gz";
+        umask $oldmask;
+    } elsif ($method =~ /squashfs/) {
        my $flags;
        if ($arch =~ /x86/) {
           $flags="-le";
