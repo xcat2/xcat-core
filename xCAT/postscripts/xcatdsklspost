@@ -13,6 +13,15 @@ if [ ! `uname` == Linux ]; then
 fi
 
 SIP=`grep dhcp-server-identifier /var/lib/dhclient/dhclient-eth0.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
+if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
+    touch /var/lock/subsys/xcatmounts
+    echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
+    echo umount -l /ro >> /etc/rc6.d/K10xcatmounts
+    echo umount -l /rw >> /etc/rc6.d/K10xcatmounts
+    chmod 755 /etc/rc6.d/K10xcatmounts
+    ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
+fi
+
 
 mkdir -p /etc/stunnel
 cat > /etc/stunnel/stunnel.conf << EOF
