@@ -38,6 +38,8 @@ sub handled_commands
     mkpath "/var/ftp/tftpboot";
     system "mount -o bind $installdir /var/ftp/install";
     system "mount -o bind /tftpboot /var/ftp/tftpboot";
+    # make sure vsftpd is started
+    my $cmd = "service vsftpd start";
     if (xCAT::Utils->isServiceNode())
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
@@ -107,8 +109,6 @@ sub setup_NFS
     my $os;
     my $arch;
 
-    # make sure vsftpd is started
-    my $cmd = "service vsftpd start";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {    # error
