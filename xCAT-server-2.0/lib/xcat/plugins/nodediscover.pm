@@ -107,7 +107,7 @@ sub process_request {
     #Set the architecture in nodetype.  If 32-bit only x86 or ppc detected, overwrite.  If x86_64, only set if either not set or not an x86 family
     my $typetab=xCAT::Table->new("nodetype",-create=>1);
     if ($request->{arch}->[0] =~ /x86_64/) {
-      (my $nent) = $typetab->getNodeAttribs($node,'arch');
+      (my $nent) = $typetab->getNodeAttribs($node,['arch']);
       unless ($nent and ($nent->{arch} =~ /x86/)) { #If already an x86 variant, do not change
          $typetab->setNodeAttribs($node,{arch=>$request->{arch}->[0]});
          #this check is so that if an admin explicitly declares a node 'x86', the 64 bit capability is ignored
@@ -117,7 +117,7 @@ sub process_request {
     }
     my $currboot='';
     $nrtab = xCAT::Table->new('noderes'); #Attempt to check and set if wrong the netboot method on discovery, if admin omitted
-    (my $rent) = $nrtab->getNodeAttribs($node,'netboot');
+    (my $rent) = $nrtab->getNodeAttribs($node,['netboot']);
     if ($rent and $rent->{'netboot'}) {
        $currboot=$rent->{'netboot'};
     }
@@ -142,7 +142,7 @@ sub process_request {
 		my $netn = inet_ntoa(pack("N",$ipn & $mask));
 		my $hosttag = gethosttag($node,$netn,@ifinfo[1],\%usednames);
 		if ($hosttag) {
-         (my $rent) = $nrtab->getNodeAttribs($node,'primarynic','nfsserver');
+         (my $rent) = $nrtab->getNodeAttribs($node,['primarynic','nfsserver']);
          unless ($rent and $rent->{primarynic}) { #if primarynic not set, set it to this nic
             $nrtab->setNodeAttribs($node,{primarynic=>@ifinfo[1]});
          }
