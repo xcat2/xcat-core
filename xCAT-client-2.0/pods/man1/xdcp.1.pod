@@ -1,0 +1,366 @@
+=head1 B<NAME>
+
+B<xdcp> - Concurrently copies files to or from multiple nodes.
+
+=head1 B<SYNOPSIS>
+
+B<xdcp> I<noderange>  [B<-C> I<context>] [B<-f> I<fanout>]
+[B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>]
+[B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>]
+[B<-T>] [B<-v>] [B<-X> I<env_list>] sourcefile.... targetpath 
+
+B<xdcp> [B<-h> | B<-V> | B<-q>]
+
+
+=head1 B<DESCRIPTION>
+
+The B<xdcp> command concurrently copies files  to  or  from  remote  target
+nodes. The command issues a remote copy com-
+mand for each node or device specified. When files are  pulled  from  a
+target,  they  are  placed  into  the  target_path with the name of the
+remote node or device appended to  the  copied  source_file  name.  The
+/usr/bin/rcp command is the model for syntax and security.
+
+B<TARGET> B<SPECIFICATION>:
+
+Target specification is identical for the xdcp and xdsh commands. See the
+xdsh man page for details on specifying targets for the xdcp command.
+
+B<REMOTE> B<USER>:
+
+A  user_ID  can  be specified for the remote copy command.  Remote user
+specification is identical for the xdcp and xdsh commands.  See  the  xdsh
+command for more information.
+
+B<REMOTE> B<COMMAND> B<COPY>:
+The  B<xdcp>  command  uses  a  configurable remote copy command to execute
+remote copies on remote targets. Support is explicitly  provided  for
+Remote  Shell  rcp  command,  the  OpenSSH  scp  command  and  the
+/usr/bin/rsync command.
+
+For node targets, the remote copy command is determined by the  follow-
+ing order of precedence:
+
+
+1. The B<-r> flag.
+
+2. The B</usr/bin/scp> command.
+
+B<COMMAND> B<EXECUTIONS>
+The  maximum  number  of  concurrent remote copy command processes (the
+fanout) can be specified with the -f flag or the DSH_FANOUT environment
+variable.  The  fanout is only restricted by the number of remote shell
+commands that can be run in  parallel.  You  can  experiment  with  the
+DSH_FANOUT  value on your management server to see if higher values are
+appropriate.
+
+A timeout value for remote copy command execution can be specified with
+the  -t  flag or DSH_TIMEOUT environment variable. If any remote target
+does not respond within the timeout value, the xdcp command displays  an
+error message and exits.
+
+The  -T flag provides diagnostic trace information for dcp command exe-
+cution. Default settings and the actual remote copy commands  that  are
+executed to the remote targets are displayed.
+
+The  xdcp  command can be executed silently using the -Q flag; no target
+standard output or standard error is displayed.
+
+=head1 B<OPTIONS>
+
+=over 5
+
+=item B<sourcefile...>
+
+Specifies the complete path for the file to be  copied  to  or
+from  the  target.  Multiple files can be specified. When used
+with the -R flag, only a single directory  can  be  specified.
+When  used  with the -P flag, only a single file can be specified.
+
+=item B<targetpath>
+
+Specifies the complete path to copy one  or  more  source_file
+files  to on the target. If the -P flag is specified, the tar-
+get_path is the local host location for the copied files.  The
+remote file directory structure is recreated under target_path
+and  the  remote  target  name  is  appended  to  the   copied
+source_file name in the target_path directory.
+
+
+=item B<-C>|B<--context> I<context>
+
+The default context to use when resolving target names. The
+I<context> value must correspond to a valid context  extension
+module  in  the B</opt/xcat/xdsh/Context> directory. For
+example, the B</opt/xcat/xdsh/Context/DSH.pm> file is  the  module
+for the B<DSH> context.
+
+=item B<-f>|B<--fanout> I<fanout_value>
+
+Specifies a fanout value for the maximum number of  concur-
+rently  executing  remote shell processes. Serial execution
+can be specified by indicating a fanout value of B<1>.  If  B<-f>
+is not specified, a default fanout value of B<64> is used.
+
+=item B<-h>|B<--help>
+
+Displays usage information.
+
+
+Specifies a remote user name to use for remote command exe-
+cution.
+
+
+=item B<-o>|B<--node-options> I<node_options>
+
+Specifies options to pass to the remote shell  command  for
+node  targets.  The options must be specified within double
+quotation marks ("") to distinguish them from B<xdsh> options.
+
+=item B<-p>|B<--preserve>
+
+Preserves  the  source  file characteristics as implemented by
+the configured remote copy command.
+
+
+=item B<-P>|B<--pull>
+
+Pulls (copies) the files from the targets and places  them  in
+the  target_path  directory on the local host. The target_path
+must be a directory. Files pulled from  remote  machines  have
+._target  appended  to  the  file  name to distinguish between
+them. When the -P flag is used with the -R flag,  ._target  is
+appended to the directory. Only one file per invocation of the
+xdcp pull command can be pulled from the specified  targets.
+
+
+=item B<-q>|B<--show-config>
+
+Displays the current environment settings for all DSH
+Utilities commands. This includes the values of all environment
+variables  and  settings  for  all  currently installed and
+valid contexts. Each setting is prefixed with  I<context>:  to
+identify the source context of the setting.
+
+
+=item B<-r>|B<--node-rcp> I<node_remote_copy>
+
+Specifies  the  full  path of the remote copy command used
+for remote command execution on node targets.
+
+
+=item B<-R>|B<--recursive> I<recursive>
+
+Recursively  copies files from a local directory to the remote
+targets, or when specified with the -P flag, recursively pulls
+(copies)  files  from  a remote directory to the local host. A
+single source directory can be specified using the source_file
+parameter.
+
+=item B<-t>|B<--timeout> I<timeout>
+
+Specifies the time, in seconds, to wait for output from any
+currently executing remote targets. If no output is
+available  from  any  target in the specified I<timeout>, B<xdsh>
+displays an error and terminates execution for the remote
+targets  that  failed to respond. If I<timeout> is not specified,
+B<xdsh> waits indefinitely to continue processing output  from
+all  remote  targets.  When specified with the B<-i> flag, the
+user is prompted for an additional timeout interval to wait
+for output.
+
+=item B<-T>|B<--trace>
+
+Enables trace mode. The B<xdcp> command prints diagnostic
+messages to standard output during execution to each target.
+
+=item B<-v>|B<--verify>
+
+Verifies each target before executing any  remote  commands
+on  the target. If a target is not responding, execution of
+remote commands for the target is canceled. When  specified
+with the B<-i> flag, the user is prompted to retry the
+verification request.
+
+=item B<-V>|B<--version>
+
+Displays the B<xdcp> command version information.
+
+=back
+
+
+=head1 B<Environment> B<Variables>
+
+=over 4
+
+=item B<DSH_CONTEXT>
+
+Specifies the default context to use  when  resolving
+targets. This variable is overridden by the B<-C> flag.
+
+=item B<DSH_ENVIRONMENT>
+
+Specifies a file that contains environment variable
+definitions to export to the target before executing  the  remote
+command. This variable is overridden by the B<-E> flag.
+
+=item B<DSH_FANOUT>
+
+Specifies  the fanout value. This variable is overridden by
+the B<-f> flag.
+
+=item B<DSH_NODE_OPTS>
+
+Specifies the options to use for the remote  shell  command
+with  node targets only. This variable is overridden by the
+B<-o> flag.
+
+=item B<DSH_NODE_RCP>
+
+Specifies the full path of the remote copy command  to  use
+to  copy  local scripts and local environment configuration
+files to node targets.
+
+=item B<DSH_NODE_RSH>
+
+Specifies the full path of the  remote  shell  to  use  for
+remote  command execution on node targets. This variable is
+overridden by the B<-r> flag.
+
+=item B<DSH_NODEGROUP_PATH>
+
+Specifies a colon-separated list of directories  that
+contain node group files for the B<DSH> context. When the B<-a> flag
+is specified in the B<DSH> context,  a  list  of  unique  node
+names is collected from all node group files in the path.
+
+=item B<DSH_PATH>
+
+Sets the command path to use on the targets. If B<DSH_PATH> is
+not set, the default path defined in  the  profile  of  the
+remote I<user_ID> is used.
+
+=item B<DSH_SYNTAX>
+
+Specifies the shell syntax to use on remote targets; B<ksh> or
+B<csh>. If not specified, the  B<ksh>  syntax  is  assumed.  This
+variable is overridden by the B<-S> flag.
+
+=item B<DSH_TIMEOUT>
+
+Specifies  the  time,  in  seconds, to wait for output from
+each remote target. This variable is overridden by  the  B<-t>
+flag.
+
+=back
+
+
+=head1 B<Exit Status>
+
+Exit  values  for  each  remote copy command execution are displayed in
+messages from the xdcp command, if the remote copy command exit value is
+non-zero.  A  non-zero return code from a remote copy command indicates
+that an error was encountered during the remote copy. If a remote  copy
+command  encounters an error, execution of the remote copy on that tar-
+get is bypassed.
+
+The xdcp command exit code is 0 if  the  xdcp  command  executed  without
+errors  and  all remote copy commands finished with exit codes of 0. If
+internal xdcp errors occur or the remote copy commands do  not  complete
+successfully,  the xdcp  command exit value is greater than 0. The exit
+value is increased by 1 for each successive instance of an unsuccessful
+remote copy command execution.
+
+
+
+=head1 B<Security>
+
+The  B<xdcp>  command  has no security configuration requirements.  All
+remote command security requirements  -  configuration,
+authentication,  and authorization - are imposed by the underlying remote
+command configured for B<xdsh>. The command  assumes  that  authentication
+and  authorization  is  configured  between  the  local host and the
+remote targets. Interactive password prompting is not supported;  an
+error  is displayed and execution is bypassed for a remote target if
+password prompting occurs, or if either authorization or
+authentication  to  the  remote  target fails. Security configurations as they
+pertain to the remote environment and remote shell command are
+userdefined.
+
+
+=head1 B<Examples>
+
+=over 3
+
+=item *
+
+To  copy the /tmp/etc/hosts file from the local host to the /etc
+directory on node3, node4, node5, and to user gregb  on  node16,
+enter:
+
+B<xdcp>  I<node3-node5 gregb@node16 /tmp/etc/hosts /etc>
+
+
+=item *
+
+To copy the /etc/hosts file from all  nodes in the cluster
+to the /tmp/hosts.dir directory on the local host, enter:
+
+B<xdcp> I<all -P /etc/hosts /tmp/hosts.dir>
+
+A suffix specifying the name of the target is  appended  to  each
+file name. The contents of the /tmp/hosts.dir directory are similar to:
+
+hosts._node1   hosts._node4   hosts._node7
+hosts._node2   hosts._node5   hosts._node8
+hosts._node3   hosts._node6
+
+
+
+=item *
+
+To copy the directory /var/log/testlogdir  from  all  targets  in
+NodeGroup1 with a fanout of 12, and save each directory on  the  local
+host as /var/log._target, enter:
+
+B<xdcp> I<NodeGroup1 -f 12 -RP /var/log/testlogdir /var/log>
+
+=item *
+
+To copy  /localnode/smallfile and /tmp/bigfile to /tmp on node1
+using rsync, enter:
+
+I<RSYNC_RSH=/usr/bin/ssh; xdcp -r /usr/bin/rsync -o "-z" \
+node1 /localnode/smallfile /tmp/bigfile /tmp>
+
+This command uses rsync with the RSYNC_RSH  environment  variable
+and the -z flag on rsync.
+
+
+=item *
+
+To copy the /etc/hosts file from the local host to all the nodes
+in the cluster, enter:
+
+B<xdcp> I<all /etc/hosts /etc/hosts>
+
+
+=item *
+
+To copy the /etc/hosts  file  from  node1  and  node2  to the
+/tmp/hosts.dir directory on the local host, enter:
+
+B<xdcp> I<node1,node2 -P /etc/hosts /tmp/hosts.dir>
+
+
+=back
+
+=head1 B<Files>
+
+B</opt/xcat/xdsh/Context/>
+
+Location of the contexts available to use with  DSH  Utilities.
+
+=head1 B<SEE ALSO>
+
+xdsh(1), noderange(3)

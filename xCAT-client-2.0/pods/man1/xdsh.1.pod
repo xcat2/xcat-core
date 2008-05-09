@@ -5,7 +5,7 @@ B<xdsh> - Concurrently runs commands on multiple nodes.
 =head1 B<SYNOPSIS>
 
 B<xdsh> I<noderange> [B<-B> I<bypass>] [B<-C> I<context>] [B<-e>] [B<-E> I<environment_file>]  [B<-f> I<fanout>]
-[B<-i>]  [B<-K>]  [B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
+[B<-K>]  [B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
 [B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
 
@@ -259,7 +259,6 @@ messages during execution on each target.
 Specifies options to pass to the remote shell  command  for
 node  targets.  The options must be specified within double
 quotation marks ("") to distinguish them from B<xdsh> options.
-The syntax for I<node_options>
 
 =item B<-q>|B<--show-config>
 
