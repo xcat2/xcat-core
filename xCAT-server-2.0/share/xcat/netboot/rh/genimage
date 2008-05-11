@@ -246,6 +246,11 @@ if [ "\$NFS" = "1" ]; then
     sleep 5 #should be random, exponential for scale
   done
   mount -t tmpfs rw /rw
+  mkdir -p /rw/etc
+  mkdir -p /rw/var/lib/dhclient
+  cp /etc/resolv.conf /rw/etc/
+  cp /var/lib/dhclient/dhclient.leases /rw/var/lib/dhclient/dhclient-eth0.leases
+  cp /var/lib/dhclient/dhclient.leases /rw/var/lib/dhclient/dhclient-eth1.leases
   mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot
   mkdir -p /sysroot/ro
   mkdir -p /sysroot/rw
