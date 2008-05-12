@@ -83,6 +83,10 @@ sub process_request {
     close($exlist);
 
 	# add the xCAT post scripts to the image
+    if (! -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {
+       $callback->({error=>["$installroot/netboot/$osver/$arch/$profile/rootimg does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
+       return;
+    }
 	copybootscript($installroot, $osver, $arch, $profile, $callback);
    my $passtab = xCAT::Table->new('passwd');
    if ($passtab) {
@@ -104,7 +108,6 @@ sub process_request {
     if ($method =~ /nfs/) {
       $verb = "Prepping";
     }
-    $callback->({data=>["$verb contents of $installroot/netboot/$osver/$arch/$profile/rootimg"]});
     if ($method =~ /nfs/) {
       $callback->({data=>["\nNOTE: Contents of $installroot/netboot/$osver/$arch/$profile/rootimg\nMUST be available on all service and management nodes and NFS exported."]});
     }
@@ -114,6 +117,7 @@ sub process_request {
        $callback->({error=>["$installroot/netboot/$osver/$arch/$profile/rootimg does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
        return;
     }
+    $callback->({data=>["$verb contents of $installroot/netboot/$osver/$arch/$profile/rootimg"]});
     unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.gz");
     unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.sfs");
     unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.nfs");
