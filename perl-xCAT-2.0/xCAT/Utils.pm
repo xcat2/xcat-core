@@ -2298,5 +2298,41 @@ sub getSNList
 
     return @servicenodes;
 }
+#-------------------------------------------------------------------------------
+
+=head3    isMounted
+    Checks if the input directory is already mounted 
+    Arguments:
+       directory 
+    Returns:
+        1 - directory is mounted 
+        0 - directory is not mounted 
+    Globals:
+        none
+    Error:
+        -1 error
+    Example:
+         if (xCAT::Utils->isMounted($directory)) { blah; }
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub isMounted
+{
+    my ($class, $directory) = @_;
+    $cmd = "df -P $directory";
+    my @output = xCAT::Utils->runcmd($cmd, -1);
+    foreach my $line (@output)
+    {
+        my ($file_sys, $blocks, $used, $avail, $cap, $mount_point) =
+          split(' ', $line);
+        if ($mount_point eq $directory)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 1;
