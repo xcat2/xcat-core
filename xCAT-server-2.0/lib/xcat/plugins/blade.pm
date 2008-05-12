@@ -1113,44 +1113,31 @@ sub handle_depend {
   my $request = shift;
   my $callback = shift;
   my $doreq = shift;
-  my $dep = shift;
-  my %req;
+  my $dp = shift;
   my %node = ();
-    
+  my $dep = @$dp[0];
+  my $dep_hash = @$dp[1];
+ 
   # send all dependencies (along w/ those dependent on nothing)
-  $req{node}    = [keys %$dep];
-  $req{arg}     = [$request->{arg}]; 
-  $req{command} = [$request->{command}->[0]];
-
-  #get the MMs for the nodes for the nodes
-  my $mptab = xCAT::Table->new("mp");
-  unless ($mptab) {
-    $callback->({data=>"Cannot open mp table"});
-    return;
-  }
-  my %mpa_hash=();
-  foreach my $node (keys %$dep) {
-    my $ent=$mptab->getNodeAttribs($node,['mpa', 'id']);
-    if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
-    else {
-      $callback->({data=>"no mpa defined for node $node"});
-      return;
-    }
-    if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
-    else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";}
-  }
-
+  # build moreinfo for dependencies 
+  my %mpa_hash = ();
   my @moreinfo=();
   my $reqcopy = {%$request};
   my @nodes=();
+
+  foreach my $node (keys %$dep) {
+    my $mpa = @{$dep_hash->{$node}}[0];
+    push @{$mpa_hash{$mpa}{nodes}},$node;
+    push @{$mpa_hash{$mpa}{ids}},  @{$dep_hash->{$node}}[1];
+  }
   foreach (keys %mpa_hash) {
     push @nodes, @{$mpa_hash{$_}{nodes}};
     push @moreinfo, "\[$_\]\[" . join(',',@{$mpa_hash{$_}{nodes}}) ."\]\[" . join(',',@{$mpa_hash{$_}{ids}}) . "\]";
   }
   $reqcopy->{node} = \@nodes;
   $reqcopy->{moreinfo}=\@moreinfo;
-  process_request($reqcopy,$callback,$doreq,1);
-
+  process_request($reqcopy,$callback,$doreq,1); 
+ 
   my $start = Time::HiRes::gettimeofday();
     
   # build list of dependent nodes w/delays
@@ -1177,9 +1164,27 @@ sub handle_depend {
       delete $node{$_};
     }
     if (@noderange) {
+      %mpa_hash=();
+      foreach my $node (@noderange) {
+        my $mpa = @{$dep_hash->{$node}}[0];
+        push @{$mpa_hash{$mpa}{nodes}},$node;
+        push @{$mpa_hash{$mpa}{ids}},  @{$dep_hash->{$node}}[1];
+      }
+
+      @moreinfo=();
+      $reqcopy = {%$request};
+      @nodes=();
+
+      foreach (keys %mpa_hash) {
+        push @nodes, @{$mpa_hash{$_}{nodes}};
+        push @moreinfo, "\[$_\]\[" . join(',',@{$mpa_hash{$_}{nodes}}) ."\]\[" . join(',',@{$mpa_hash{$_}{ids}}) . "\]";
+      }
+      $reqcopy->{node} = \@nodes;
+      $reqcopy->{moreinfo}=\@moreinfo;
+
+      # clear global hash variable
       %mpahash = ();
-      $request->{node} = \@noderange;
-      process_request($request,$callback,$doreq,1);
+      process_request($reqcopy,$callback,$doreq,1);
     }
     # millisecond sleep
     Time::HiRes::sleep($delay);
@@ -1192,12 +1197,18 @@ sub build_depend {
   my $noderange = shift;
   my $exargs = shift;
   my $depstab  = xCAT::Table->new('deps');
+  my $mptab    = xCAT::Table->new('mp');
   my %dp    = ();
   my %no_dp = ();
+  my %mpa_hash;
 
   if (!defined($depstab)) {
     return(\%dp);
   }
+  unless ($mptab) {
+    return("Cannot open mp table");
+  }
+
   foreach my $node (@$noderange) {
     my $delay = 0;
     my $dep;
@@ -1212,20 +1223,47 @@ sub build_depend {
       $no_dp{$node} = 1;
     }
     else {
-      foreach (split /,/,$dep ) {
-        $dp{$_}{$node} = $delay;
+      foreach my $n (split /,/,$dep ) {
+        if ( !grep( /^$n$/, @$noderange )) {
+          return( "Missing dependency on command-line: $node -> $n" );
+        } elsif ( $n eq $node ) {
+          return( "Node dependent on itself: $n -> $node" );
+        } 
+        $dp{$n}{$node} = $delay;
       }
     }
-    # if there are dependencies, add any non-dependent nodes
-    if (scalar(%dp)) {
-      foreach (keys %no_dp) {
-        if (!exists( $dp{$_} )) {
-          $dp{$_}{$_} = -1;
+  }
+  # if there are dependencies, add any non-dependent nodes
+  if (scalar(%dp)) {
+    foreach (keys %no_dp) {
+      if (!exists( $dp{$_} )) {
+        $dp{$_}{$_} = -1;
+      }
+    }
+    # build hash of all nodes in preprocess_request() format
+    while(my ($name,$h) = each(%dp) ) {
+      my $ent=$mptab->getNodeAttribs($name,['mpa', 'id']);
+      if (!defined($ent->{mpa})) { 
+        return("no mpa defined for node $name");
+      }
+      my $id = (defined($ent->{id})) ? $ent->{id} : ""; 
+      push @{$mpa_hash{$name}},$ent->{mpa};
+      push @{$mpa_hash{$name}},$id;
+
+      foreach ( keys %$h ) {
+        if ( $h->{$_} =~ /(^\d+$)/ ) {
+          my $ent=$mptab->getNodeAttribs($_,['mpa', 'id']);
+          if (!defined($ent->{mpa})) { 
+            return("no mpa defined for node $_");
+          }
+          my $id = (defined($ent->{id})) ? $ent->{id} : ""; 
+          push @{$mpa_hash{$_}},$ent->{mpa};
+          push @{$mpa_hash{$_}},$id;
         }
       }
     }
   }
-  return( \%dp );
+  return( [\%dp,\%mpa_hash] );
 }
 
 
@@ -1329,7 +1367,6 @@ sub process_request {
   unless ($command) {
      return; #Empty request
   }
-
   if (ref($request->{arg})) {
     @exargs = @{$request->{arg}};
   } else {
@@ -1338,14 +1375,19 @@ sub process_request {
 
   my $moreinfo=$request->{moreinfo};
 
-  if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle|stat$/, @exargs)) {
+  if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
+
     if ( my ($index) = grep($exargs[$_]=~ /^--nodeps$/, 0..$#exargs )) {
       splice(@exargs, $index, 1);
     } else {
       # handles 1 level of dependencies only
       if (!defined($level)) {
         my $dep = build_depend($noderange,\@exargs);
-        if (scalar(%$dep)) {
+        if ( ref($dep) ne 'ARRAY' ) {
+          $callback->({data=>[$dep]});
+          return;
+        }
+        if (scalar(%{@$dep[0]})) {
           handle_depend( $request, $callback, $doreq, $dep );
           return 0;
         } 
@@ -1951,6 +1993,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
