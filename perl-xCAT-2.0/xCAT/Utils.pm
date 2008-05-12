@@ -1613,7 +1613,6 @@ sub isServiceReq
     unless ($servicenodetab)
     {
         xCAT::MsgUtils->message('S', "Unable to open servicenode table.\n");
-        $servicenodetab->close;
         return 0;    # do not setup anything
     }
 
