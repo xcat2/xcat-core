@@ -100,8 +100,7 @@ if [ -f /etc/xCATMN ]; then
   goLocal=1
 else 
   if [ $isSN -eq 1 ]; then
-     tmp=`tabdump site |grep svloglocal | awk -F , '{print $2}'`
-     if [[ $tmp = "0" ]]; then
+     if [[ $SVLOGLOCAL -eq 1 ]]; then
        goLocal=1  
      fi
   fi

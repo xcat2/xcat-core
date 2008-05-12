@@ -147,6 +147,13 @@ sub makescript {
   }
   push @scriptd, 'PATH=`dirname $0`:$PATH'."\n";
   push @scriptd, "export PATH\n";
+ 
+  my $stab = xCAT::Table->new('site');
+  my $sent = $stab->getAttribs({key=>'svloglocal'},'value');
+  if ($sent and $sent->{value}) {
+    push @scriptd, "SVLOGLOCAL=".$sent->{'value'}."\n";
+    push @scriptd, "export SVLOGLOCAL\n"; 
+  } 
 
   if ($nodesetstate) {
 	push @scriptd, "NODESETSTATE=".$nodesetstate."\n";
