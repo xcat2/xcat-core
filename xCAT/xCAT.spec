@@ -141,6 +141,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=master site.value=$(getent hosts `hostname`|awk '{print $1}')
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=domain site.value=$(hostname -d)
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=installdir site.value=/install
+      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=installoc site.value=/install
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=timezone site.value=`grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`
     fi
     if [ ! -r /etc/xcat/postscripts.sqlite ]; then
