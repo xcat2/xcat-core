@@ -404,6 +404,7 @@ site => {
    "  xcatconfdir (default /etc/xcat)\n".
    "  domain (DNS domain name used for the cluster)\n".
    "  installdir (directory that holds the node deployment pkgs)\n".
+   "  installoc (location of the installdir directory,format hostname:/path)\n".
    "  xcatdport (port used by xcatd daemon for client/server communication)\n".
    "  xcatiport (port used by xcatd to receive install status updates from nodes)\n".
    "  timezone (e.g. America/New_York)\n".
@@ -431,10 +432,6 @@ site => {
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
-#  site => {
-#    cols => [qw(sitename domain master rsh rcp xcatdport installdir comments disable)],
-#    keys => [qw(sitename)]
-#  },
 switch =>  {
     cols => [qw(node switch port vlan interface comments disable)],
     keys => [qw(node switch port)],
