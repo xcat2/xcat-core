@@ -376,7 +376,7 @@ ppchcp => {
  },
   },
 servicenode => {
-    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver comments disable)],
+    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver comments disable)],
     keys => [qw(node)],
     table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
  descriptions => {
@@ -389,6 +389,7 @@ servicenode => {
   monserver => 'Is this a monitoring event collection point? Valid values:yes or 1, no or 0.',
   ldapserver => 'Do we set up ldap caching proxy on this service node? Valid values:yes or 1, no or 0.',
   ntpserver => 'Do we set up and ntp server on this service node? Valid values:yes or 1, no or 0.',
+  ftpserver => 'Do we set up and ftp server on this service node? Valid values:yes or 1, no or 0.',
 
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
