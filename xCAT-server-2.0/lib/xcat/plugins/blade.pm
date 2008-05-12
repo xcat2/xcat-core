@@ -207,6 +207,18 @@ sub resetmp {
   #}
 }
 
+sub waitforack {
+    my $sock = shift;
+    my $select = new IO::Select;
+    $select->add($sock);
+    my $str;
+    if ($select->can_read(10)) { # Continue after 10 seconds, even if not acked...
+        if ($str = <$sock>) {
+        } else {
+           $select->remove($sock); #Block until parent acks data
+        }
+    }
+}
 sub walkelog {
   my $session = shift;
   my $oid = shift;
@@ -1501,7 +1513,7 @@ sub process_request {
     $children++;
     my $cfd;
     my $pfd;
-    pipe $cfd, $pfd;
+    socketpair($pfd, $cfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
     $cfd->autoflush(1);
     $pfd->autoflush(1);
     my $cpid = xCAT::Utils->xfork;
@@ -1515,7 +1527,7 @@ sub process_request {
     close ($pfd);
     $sub_fds->add($cfd);
   }
-  while ($children > 0) {
+  while ($sub_fds->count > 0 or $children > 0) {
     forward_data($callback,$sub_fds);
   }
   while (forward_data($callback,$sub_fds)) {}
@@ -1901,6 +1913,7 @@ sub forward_data {
       while ($data !~ /ENDOFFREEZE6sK4ci/) {
         $data .= <$rfh>;
       }
+      print $rfh "ACK\n";
       my $responses=thaw($data);
       foreach (@$responses) {
         $callback->($_);
@@ -1944,6 +1957,7 @@ sub dompa {
      print $out freeze([\%err]);
      print $out "\nENDOFFREEZE6sK4ci\n";
      yield;
+     waitforack($out);
      return 1,"General error establishing SNMP communication";
   }
   my $tmp = $session->get([$mmprimoid.".1"]);
@@ -1985,6 +1999,8 @@ sub dompa {
       }
       print $out freeze([\%output]);
       print $out "\nENDOFFREEZE6sK4ci\n";
+      yield;
+      waitforack($out);
     }
     yield;
   }

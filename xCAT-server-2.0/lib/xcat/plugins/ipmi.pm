@@ -298,6 +298,18 @@ struct FRU => {
 	value				=> '$',
 };
 
+sub waitforack {
+    my $sock = shift;
+    my $select = new IO::Select;
+    $select->add($sock);
+    my $str;
+    if ($select->can_read(10)) { # Continue after 10 seconds, even if not acked...
+        if ($str = <$sock>) {
+        } else {
+           $select->remove($sock); #Block until parent acks data
+        }
+    }
+}
 sub translate_sensor {
    my $reading = shift;
    my $sdr = shift;
@@ -4655,8 +4667,10 @@ sub process_request {
       $children++;
       my $cfd;
       my $pfd;
-      pipe $cfd, $pfd;
-		my $child = xCAT::Utils->xfork();
+      socketpair($pfd, $cfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+      $cfd->autoflush(1);
+      $pfd->autoflush(1);
+      my $child = xCAT::Utils->xfork();
       unless (defined $child) { die "Fork failed" };
 	  if ($child == 0) { 
         close($cfd);
@@ -4668,7 +4682,7 @@ sub process_request {
       close ($pfd);
       $sub_fds->add($cfd)
 	}
-    while ($children > 0) {
+    while ($sub_fds->count > 0 and $children > 0) {
       forward_data($callback,$sub_fds);
     }
     while (forward_data($callback,$sub_fds)) {} #Make sure they get drained, this probably is overkill but shouldn't hurt
@@ -4685,6 +4699,7 @@ sub forward_data { #unserialize data from pipe, chunk at a time, use magic to de
       while ($data !~ /ENDOFFREEZE6sK4ci/) {
         $data .= <$rfh>;
       }
+      print $rfh "ACK\n";
       my $responses=thaw($data);
       foreach (@$responses) {
         $callback->($_);
@@ -4735,6 +4750,8 @@ sub donode {
     #push @outhashes,\%output; #Save everything for the end, don't know how to be slicker with Storable and a pipe
     print $outfd freeze([\%output]);
     print $outfd "\nENDOFFREEZE6sK4ci\n";
+    yield;
+    waitforack($outfd);
   }	
   yield;
   #my $msgtoparent=freeze(\@outhashes);
