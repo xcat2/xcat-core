@@ -39,7 +39,7 @@ sub handled_commands
         my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service    = "ftpserver";
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
-        if ($rc == 0)
+        if ($rc == 1)
         {
 
             $rc = &setup_FTP();                   # setup vsftpd
@@ -121,9 +121,6 @@ sub setup_FTP
     
        xCAT::MsgUtils->message("S", "Error from command:$cmd");
     }
-    my $linkdir=$installdir;
-    $linkdir .=$installdir;
-    symlink $installdir, $linkdir;
 
     # restart tftp
 
