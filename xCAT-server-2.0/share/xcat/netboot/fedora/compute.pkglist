@@ -7,3 +7,5 @@ openssh-server
 openssh-clients
 busybox-anaconda
 wget
+ntp
+vi
