@@ -12,8 +12,8 @@ use Time::HiRes qw(sleep);
 use Thread qw(yield);
 use xCAT::Client submit_request;
 my $clientselect = new IO::Select;
-#my $sslclients = 0; #THROTTLE
-#my $maxsslclients = 16; #default
+my $sslclients = 0; #THROTTLE
+my $maxsslclients = 16; #default
 
 sub xexit {
    while (wait() > 0) {
@@ -472,13 +472,13 @@ xCAT_monitoring::monitorctrl::start($$);
 
 my $peername;
 my $ssltimeout;
-#$SIG{CHLD} = \&ssl_reaper; #THROTTLE
+$SIG{CHLD} = \&ssl_reaper; #THROTTLE
 until ($quit) {
   next unless my $cnnection=$listener->accept;
   my $connection;
-  #while ($sslclients > $maxsslclients) { #THROTTLE
-  #    yield;
-  #}
+  while ($sslclients > $maxsslclients) { #THROTTLE
+      yield;
+  }
   my $child = xCAT::Utils->xfork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
   
   unless (defined $child) {
@@ -486,7 +486,7 @@ until ($quit) {
   }
 
   if ($child == 0) {
-    #$SIG{CHLD} = \&generic_reaper; #THROTTLE
+    $SIG{CHLD} = \&generic_reaper; #THROTTLE
     $listener->close;
 
     $SIG{ALRM} = sub { $ssltimeout = 1; die; }; 
@@ -542,7 +542,7 @@ if ($inet6support) {
     service_connection($connection,$peername,$peerhost);
     xexit(0);
   }
-  #$sslclients++; #THROTTLE
+  $sslclients++; #THROTTLE
   $cnnection->close();
 }
 $listener->close;
