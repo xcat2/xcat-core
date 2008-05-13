@@ -12,7 +12,7 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head1 
-  xCAT plugin package to setup  atftp   service node 
+  xCAT plugin package to setup  atftp on a service node 
 
 
 #-------------------------------------------------------
@@ -41,8 +41,8 @@ sub handled_commands
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
         if ($rc == 1)
         {
-            
-            $rc = &setup_TFTP($nodename);                # setup TFTP (ATFTP)
+
+            $rc = &setup_TFTP($nodename);                  # setup TFTP (ATFTP)
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
@@ -105,12 +105,12 @@ sub setup_TFTP
     }
 
     # read DB for nodeinfo
-    my $retdata    = xCAT::Utils->readSNInfo($nodename);
+    my $retdata = xCAT::Utils->readSNInfo($nodename);
     $master = $retdata->{'master'};
     $os     = $retdata->{'os'};
     $arch   = $retdata->{'arch'};
     if (!($arch))
-    {                                                      # error
+    {    # error
         xCAT::MsgUtils->message("S", " Error reading service node arch.");
         return 1;
     }
@@ -119,20 +119,38 @@ sub setup_TFTP
     $cmd = "/usr/sbin/in.tftpd -V";
     my @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
-    {                                                      # not installed
+    {    # not installed
         xCAT::MsgUtils->message("S", "atftp is not installed");
         return 1;
     }
-    if ($output[0] =~ "atftp")                             # it is atftp
+    if ($output[0] =~ "atftp")    # it is atftp
     {
 
-        # read tftp directory from database, if it exists
+        # read tftpdir directory from database
         my @tftpdir1 = xCAT::Utils->get_site_attribute("tftpdir");
         if ($tftpdir1[0])
         {
             $tftpdir = $tftpdir1[0];
         }
-        mkdir($tftpdir);
+        if (!(-e $tftpdir))
+        {
+            mkdir($tftpdir);
+        }
+
+        # check to see if tftp directory already mounted
+        my $mounted = xCAT::Utils->isMounted($tftpdir);
+        if ($mounted == 0)    # not already mounted
+        {
+
+            # need to  mount the directory
+            my $cmd = " mount -o rw,nolock $master:$tftpdir $tftpdir";
+            system $cmd;
+            if ($? > 0)
+            {                 # error
+                $rc = 1;
+                xCAT::MsgUtils->message("S", "Error $cmd");
+            }
+        }
 
         # start atftp
 
@@ -156,32 +174,6 @@ sub setup_TFTP
         return 1;
     }
 
-    # read tftpdir directory from database, if it exists
-    my @tftpdir1 = xCAT::Utils->get_site_attribute("tftpdir");
-    if ($tftpdir1[0])
-    {
-        $tftpdir = $tftpdir1[0];
-    }
-    if (!(-e $tftpdir))
-    {
-        mkdir($tftpdir);
-    }
-
-    # check to see if tftp directory already mounted
-    # if not mount then
-    my $mounted = xCAT::Utils->isMounted($tftpdir);
-    if ($mounted == 0)    # not already mounted
-    {
-
-        # need to  mount the directory
-        my $cmd = " mount -o rw,nolock $master:$tftpdir $tftpdir";
-        system $cmd;
-        if ($? > 0)
-        {                 # error
-            $rc = 1;
-            xCAT::MsgUtils->message("S", "Error $cmd");
-        }
-    }
     if ($rc == 0)
     {
 
