@@ -2,18 +2,23 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
+    use Time::HiRes qw(sleep);
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    my $sleepint=int(rand(10));
+    print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
+    sleep $sleepint;
 }
 use lib "$::XCATROOT/lib/perl";
 
-use xCAT::Table;
-use xCAT::Utils;
-use File::Basename;
+require xCAT::Table;
+require xCAT::Utils;
+require File::Basename;
+import File::Basename;
 my $scriptname = $0;
 
 $mptab = xCAT::Table->new('mp');
 unless ($mptab) {
-  sleep 5; #Try not to overwhelm logfiles...
+  #sleep 5; #Try not to overwhelm logfiles...
   die "mp table must be configured";
 }
 $mpatab = xCAT::Table->new('mpa');
@@ -45,7 +50,7 @@ if ($mpatab) {
   }
 }
 xCAT::Utils::close_all_dbhs;
-sleep 5; #Slow start, I know, but with exec, can't return
+#sleep 5; #Slow start, I know, but with exec, can't return
 exec "ssh -t $username"."@"."$mm console -o -T blade[$slot]";
 #my $pathtochild= dirname($scriptname). "/";
 #exec $pathtochild."blade.expect $mm $slot $username $password";

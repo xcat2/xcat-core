@@ -2,16 +2,19 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
+    use Time::HiRes qw(sleep);
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    my $sleepint=int(rand(10));
+    print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
+    sleep $sleepint;
 }
 $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 use lib "$::XCATROOT/lib/perl";
-use xCAT::Table;
-use xCAT::Utils;
-use Time::HiRes qw(sleep);
+require xCAT::Table;
+require xCAT::Utils;
 my $dba;
 my $ipmitab = xCAT::Table->new('ipmi');
-unless ($ipmitab) { sleep 5; die "Unable to open IPMI table"; }
+unless ($ipmitab) { die "Unable to open IPMI table"; }
 my $passtab = xCAT::Table->new('passwd');
 my $username = 'USERID';
 my $password = 'PASSW0RD';
