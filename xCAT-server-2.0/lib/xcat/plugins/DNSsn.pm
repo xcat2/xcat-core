@@ -53,7 +53,13 @@ sub handled_commands
             if ($rc == 2)
             {    # service setup, just start the daemon
                 $cmd = "service named start";
-                xCAT::Utils->runcmd($cmd, -1);
+                system $cmd;
+                if ($? > 0)
+                {    # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd");
+                    return 1;
+                }
+ 
             }
         }
     }
@@ -91,22 +97,20 @@ sub setup_DNS
     # turn DNS on
 
     $cmd = "chkconfig named on";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)
+    system $cmd;
+    if ($? > 0)
     {
         xCAT::MsgUtils->message("S", "Error from $cmd");
         return 1;
     }
-    $cmd = "service named stop";
-    xCAT::Utils->runcmd($cmd, -1);
+    $cmd = "service named restart";
+    system $cmd;
+    if ($? > 0)
+    {
+        xCAT::MsgUtils->message("S", "Error from $cmd");
+        return 1;
+    }
 
-    $cmd = "service named start";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message("S", "Error from $cmd");
-        return 1;
-    }
 
     return 0;
 }
