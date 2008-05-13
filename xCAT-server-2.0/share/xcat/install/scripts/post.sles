@@ -64,7 +64,7 @@ do
 	for i in $MASTER_IPS
 	do
 		#mount -r $i:/install/postscripts /xcatpost
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/install/postscripts
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
 		if [ "$?" = "0" ]
 		then
          mkdir -p /var/stunnel
@@ -81,7 +81,7 @@ do
             STUN_PID=$!
             sleep 1
          fi
-         mv $i/install/postscripts /xcatpost
+         mv $i/postscripts /xcatpost
          rm -rf $i
          chmod +x /xcatpost/*
          /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript

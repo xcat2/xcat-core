@@ -34,7 +34,7 @@ do
 	GOTIT=0
 	for i in $MASTER_IPS
 	do
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/install/postscripts
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
 		#wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.gz
 		if [ "$?" = "0" ]
 		then
@@ -51,7 +51,7 @@ do
             STUN_PID=$!
             sleep 1
          fi
-         mv $i/install/postscripts /xcatpost
+         mv $i/postscripts /xcatpost
          rm -rf $i
          chmod +x /xcatpost/*
          /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
