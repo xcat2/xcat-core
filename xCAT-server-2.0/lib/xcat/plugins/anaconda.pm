@@ -151,6 +151,7 @@ sub mknetboot
             $installroot = $ref->{value};
         }
     }
+    my %donetftp=();
     foreach $node (@nodes)
     {
         my $ent = $ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
@@ -219,10 +220,13 @@ sub mknetboot
         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
 
         #TODO: only copy if newer...
+        unless ($donetftp{$osver,$arch,$profile}) {
         copy("/$installroot/netboot/$osver/$arch/$profile/kernel",
              "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
         copy("/$installroot/netboot/$osver/$arch/$profile/initrd.gz",
              "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            $donetftp{$osver,$arch,$profile} = 1;
+        }
         unless (    -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel"
                 and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd.gz")
         {
