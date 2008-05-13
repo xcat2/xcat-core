@@ -133,7 +133,7 @@ sub copyCertstoSN
 
     }
     #   TODO fix for SuSE  and AIX
-    `service xcatd restart`;
+#    `service xcatd restart`;
     return $rc;
 }
 

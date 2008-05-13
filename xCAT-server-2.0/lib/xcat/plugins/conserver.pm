@@ -35,7 +35,7 @@ sub preprocess_request {
   if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
   my $callback=shift;
   my @requests;
-  my $noderange = $request->{node}; #Should be arrayref
+  my $noderange = $request->{node}; #Should be arrayref 
 
   #display usage statement if -h
   my $extrargs = $request->{arg};
@@ -195,6 +195,8 @@ sub makeconservercf {
   %termservers = (); #clear hash of existing entries
   my $cb = shift;
   my $nodes = $req->{node};
+  my $svboot=0;
+  if (exists($req->{svboot})) { $svboot=1;}
   my $cfile;
   my @filecontent;
   open $cfile,'/etc/conserver.cf';
@@ -286,11 +288,14 @@ sub makeconservercf {
   }
   close $cfile;
 
-  #restart conserver daemon
-  my $cmd = "/etc/rc.d/init.d/conserver stop";
-  xCAT::Utils->runcmd($cmd, -1);
-  $cmd = "/etc/rc.d/init.d/conserver start";
-  xCAT::Utils->runcmd($cmd, -1);
+
+  if (!$svboot) {
+    #restart conserver daemon
+    my $cmd = "/etc/rc.d/init.d/conserver stop";
+    xCAT::Utils->runcmd($cmd, -1);
+    $cmd = "/etc/rc.d/init.d/conserver start";
+    xCAT::Utils->runcmd($cmd, -1);
+  }
 }
 
 sub dotsent {

@@ -109,10 +109,12 @@ sub setup_CONS
         my $cmdref;
         $cmdref->{command}->[0] = "makeconservercf";
         $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+        $cmdref->{svboot}->[0]  = "yes";
 
         my $modname = "conserver";
         ${"xCAT_plugin::" . $modname . "::"}{process_request}
           ->($cmdref, \&xCAT::Client::handle_response);
+
         my $cmd = "chkconfig conserver on";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -121,8 +123,17 @@ sub setup_CONS
             return 1;
         }
 
+        # stop conserver
+        my $cmd = "/etc/rc.d/init.d/conserver stop";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+            xCAT::MsgUtils->message("S", "Error stoping Conserver");
+        }
+
+
         # start conserver
-        my $cmd = "/etc/rc.d/init.d/conserver start";
+        $cmd = "/etc/rc.d/init.d/conserver start";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {    # error
