@@ -58,11 +58,7 @@ sub handled_commands
             {    # already setup, just start the daemon
                     # start conserver
                 my $cmd = "/etc/rc.d/init.d/conserver start";
-                system $cmd;
-                if ($? > 0) {
-                  xCAT::MsgUtils->message("S", "Error on command: $cmd");
-                  return 1;
-                }
+                xCAT::Utils->runcmd($cmd, -1);
             }
         }
     }
@@ -97,43 +93,59 @@ sub setup_CONS
     my ($nodename) = @_;
     my $rc = 0;
 
+    # read DB for nodeinfo
+    my $master;
+    my $os;
+    my $arch;
+    my $cmd;
+    my $retdata = xCAT::Utils->readSNInfo($nodename);
+    if ($retdata->{'arch'})
+    {    # no error
+        $master = $retdata->{'master'};
+        $os     = $retdata->{'os'};
+        $arch   = $retdata->{'arch'};
 
-    # make the consever 8 configuration file
-    my $cmdref;
-    $cmdref->{command}->[0] = "makeconservercf";
-    $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-    $cmdref->{svboot}->[0]  = "yes";
+        # make the consever 8 configuration file
+        my $cmdref;
+        $cmdref->{command}->[0] = "makeconservercf";
+        $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+        $cmdref->{svboot}->[0]  = "yes";
 
-    my $modname = "conserver";
-    ${"xCAT_plugin::" . $modname . "::"}{process_request}
+        my $modname = "conserver";
+        ${"xCAT_plugin::" . $modname . "::"}{process_request}
           ->($cmdref, \&xCAT::Client::handle_response);
 
-     my $cmd = "chkconfig conserver on";
-     system $cmd;
-     if ($? > 0) 
-     {    # error
-            xCAT::MsgUtils->message("S", "Error chkconfig conserver on");
-            return 1;
-     }
-
-     # stop conserver
-     my $cmd = "service conserver stop";
-     system $cmd;
-     if ($? > 0) 
-     {    # error
-            xCAT::MsgUtils->message("S", "Error stoping Conserver");
-     }
-
-
-        # start conserver
-        $cmd = "service conserver start";
-        system $cmd;
-        if ($? > 0) 
+        my $cmd = "chkconfig conserver on";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
         {    # error
-            xCAT::MsgUtils->message("S", "Error starting Conserver");
+            xCAT::MsgUtils->message("S", "Error chkconfig conserver on");
             return 1;
         }
 
+        # start conserver. conserver needs 2 CA files to start
+        my $ca_file1="/etc/xcat/ca/ca-cert.pem";
+        my $ca_file2="/etc/xcat/cert/server-cred.pem";
+        if (! -e $ca_file1) {
+	    print "conserver cannot be started because the file $ca_file1 cannot be found\n";
+        } elsif (! -e $ca_file2) {
+	    print "conserver cannot be started because the file $ca_file2 cannot be found\n";
+        } else {
+          my $cmd = "/etc/rc.d/init.d/conserver restart";
+          xCAT::Utils->runcmd($cmd, 0);
+          if ($::RUNCMD_RC != 0)
+          {    # error
+            xCAT::MsgUtils->message("S", "Error starting Conserver");
+            return 1;
+          } else {
+	    print "\nconserver started\n"; 
+          }
+       }
+    }
+    else
+    {        # error reading Db
+        $rc = 1;
+    }
     return $rc;
 }
 

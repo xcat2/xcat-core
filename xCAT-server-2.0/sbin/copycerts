@@ -52,15 +52,13 @@ sub copyCertstoSN
 {
     my $rc = 0;
     `touch /etc/xCATSN`;
-    `touch /tmp/lissatestxxx`;
-    `unalias cp`;
     if (-d "/xcatpost/_xcat")
     {
         if (!(-d "/root/.xcat"))
         {
             mkdir("/root/.xcat", 0600);
         }
-        `cp -rp /xcatpost/_xcat/* /root/.xcat`;
+        `cp -f -rp /xcatpost/_xcat/* /root/.xcat`;
         `chmod 0600 /root/.xcat/*`;
     }
     else
@@ -79,7 +77,7 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/ca", 0755);
         }
-        `cp -rp /xcatpost/ca/* /etc/xcat/ca`;
+        `cp -f -rp /xcatpost/ca/* /etc/xcat/ca`;
         `chmod 0600 /etc/xcat/ca/*`;
         `chmod 0600 /etc/xcat/ca/certs/*`;
     }
@@ -88,27 +86,8 @@ sub copyCertstoSN
         xCAT::MsgUtils->message('S', "/xcatpost/ca directory does not exist\n");
 
     }
-    if (-d "/xcatpost/cert")
-    {
-        if (!(-d "/etc/xcat"))
-        {
-            mkdir("/etc/xcat", 0755);
-        }
-        if (!(-d "/etc/xcat/cert"))
-        {
-            mkdir("/etc/xcat/cert", 0755);
-        }
-        `cp -rp  /xcatpost/cert/* /etc/xcat/cert`;
-        `chmod 0600 /etc/xcat/cert/*`;
-    }
-    else
-    {
-        xCAT::MsgUtils->message('S',
-                                "/xcatpost/cert directory does not exit\n");
-
-    }
     if (-d "/xcatpost/etc/xcat") {
-    `cp /xcatpost/etc/xcat/cfgloc /etc/xcat/cfgloc`;
+    `cp -f /xcatpost/etc/xcat/cfgloc /etc/xcat/cfgloc`;
      chmod 0600, "/etc/xcat/cfgloc";
     }
     else
@@ -117,23 +96,6 @@ sub copyCertstoSN
                                 "/xcatpost/etc/xcat directory does not exit\n");
 
     }
-    if (-d "/xcatpost/etc/sysconfig")
-    {
-        if (!(-d "/etc/sysconfig"))
-        {
-            mkdir("/etc/sysconfig", 0755);
-        }
-        `cp /xcatpost/etc/sysconfig/xcat /etc/sysconfig/xcat`;
-        chmod 0700, "/etc/sysconfig/xcat";
-    }
-    else
-    {
-        xCAT::MsgUtils->message('S',
-                               "/xcatpost/etc/sysconfig directory does not exit\n");
-
-    }
-    #   TODO fix for SuSE  and AIX
-#    `service xcatd restart`;
     return $rc;
 }
 
