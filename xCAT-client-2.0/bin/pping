@@ -34,8 +34,8 @@ unless (@ARGV) {
 my $noderange = $ARGV[0];
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
-                SSL_key_file=>$ENV{HOME}."/.xcat/client-key.pem",
-                SSL_cert_file=>$ENV{HOME}."/.xcat/client-cert.pem",
+                SSL_key_file=>$ENV{HOME}."/.xcat/client-cred.pem",
+                SSL_cert_file=>$ENV{HOME}."/.xcat/client-cred.pem",
                 SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
                 SSL_use_cert => 1,
                 #SSL_verify_mode => 1,
