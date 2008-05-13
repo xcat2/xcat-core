@@ -13,6 +13,13 @@ if [ ! -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
    mkdir -p /root/.xcat
    chmod 700 /root/.xcat
    getcredentials.awk xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
+   CONT=`cat /root/.xcat/client-cred.pem`
+   while [ -z "$CONT" ]; do
+    let SLI=$RANDOM%10+10
+    sleep $SLI
+    getcredentials.awk xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
+     CONT=`cat /root/.xcat/client-cred.pem`
+   done
    chmod 600 /root/.xcat/client-cred.pem
    cp _xcat/ca.pem /root/.xcat/ca.pem
    kill -9 $CREDPID

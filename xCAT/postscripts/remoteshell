@@ -43,11 +43,27 @@ allowcred.awk &
 CREDPID=$!
 sleep 1
 getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
+MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
+while [ -z "$MYCONT" ]; do
+    let SLI=$RANDOM%10
+    let SLI=SLI+10
+    sleep $SLI
+    getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
+    MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
+done
 chmod 600 /etc/ssh/ssh_host_dsa_key
 if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
    rm /etc/ssh/ssh_host_dsa_key
 fi
 getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
+MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
+while [ -z "$MYCONT" ]; do
+    let SLI=$RANDOM%10
+    let SLI=SLI+10
+    sleep $SLI
+    getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
+    MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
+done
 chmod 600 /etc/ssh/ssh_host_rsa_key
 if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
    rm /etc/ssh/ssh_host_rsa_key
@@ -61,6 +77,16 @@ umask 0077
 mkdir -p /root/.ssh/
 sleep 1
 getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
+MYCONT=`cat /root/.ssh/id_rsa`
+while [ -z "$MYCONT" ]; do
+    let SLI=$RANDOM%10
+    let SLI=SLI+10
+    sleep $SLI
+    getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
+    MYCONT=`cat /root/.ssh/id_rsa`
+done
+
+    
 if ! grep "PRIVATE KEY" /root/.ssh/id_rsa > /dev/null 2>&1 ; then
    rm /root/.ssh/id_rsa
 fi

@@ -11,6 +11,8 @@ if [ ! `uname` == Linux ]; then
    exec $MYDIR/xcatdsklspost.aix
    exit
 fi
+let SLI=$RANDOM%10
+sleep $SLI
 
 SIP=`grep dhcp-server-identifier /var/lib/dhclient/dhclient-eth0.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
 if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
@@ -48,6 +50,14 @@ PATH=/xcatpost:$PATH
 export PATH
 chmod +x /xcatpost/*; 
 /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
+MYCONT=`cat /tmp/mypostscript`
+while [ -z "$MYCONT" ]; do
+    let SLI=$RANDOM%10
+    let SLI=10+$SLI
+    sleep $SLI
+    /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
+    MYCONT=`cat /tmp/mypostscript`
+done
 chmod +x /tmp/mypostscript
 if [ -x /tmp/mypostscript ];then
    /tmp/mypostscript

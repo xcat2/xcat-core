@@ -1945,8 +1945,8 @@ sub dompa {
                     PrivProto => 'DES',
                     SecLevel => 'authPriv',
                     UseNumeric => 1,
-                    Retries => 2, # Give up sooner to make commands go smoother
-                    Timeout=>1300000, #Beacon, for one, takes a bit over a second to return
+                    Retries => 4, # Give up sooner to make commands go smoother
+                    Timeout=>1500000, #Beacon, for one, takes a bit over a second to return
                     PrivPass => $mpahash->{$mpa}->{password});
   if ($session->{ErrorStr}) {return 1,$session->{ErrorStr}; }
   unless ($session and keys %$session) {

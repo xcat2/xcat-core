@@ -85,6 +85,13 @@ do
          rm -rf $i
          chmod +x /xcatpost/*
          /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+         MYCONT=`cat /tmp/mypostscript`
+         while [ -z "$MYCONT" ]; do
+            let SLI=$RANDOM%10+10
+            sleep $SLI
+            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+            MYCONT=`cat /tmp/mypostscript`
+         done
          chmod +x /tmp/mypostscript
 			GOTIT=1
 			break

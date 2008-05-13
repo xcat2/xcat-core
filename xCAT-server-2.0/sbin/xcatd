@@ -477,7 +477,7 @@ until ($quit) {
   next unless my $cnnection=$listener->accept;
   my $connection;
   while ($sslclients > $maxsslclients) { #THROTTLE
-      yield;
+      sleep 0.1; #Keep processor utilization down
   }
   my $child = xCAT::Utils->xfork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
   
@@ -1063,7 +1063,7 @@ sub service_connection {
     }
   }
   $SIG{ALRM}= sub { die "Failure shutting down" };
-  alarm(5);
+  alarm(10);
   foreach (keys %tables) {
     $tables{$_}->commit;
   }
