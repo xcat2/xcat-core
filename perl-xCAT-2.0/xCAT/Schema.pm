@@ -409,7 +409,8 @@ site => {
    "  xcatdport (port used by xcatd daemon for client/server communication)\n".
    "  xcatiport (port used by xcatd to receive install status updates from nodes)\n".
    "  timezone (e.g. America/New_York)\n".
-   "  nameservers (list of DNS servers for the cluster)\n".
+   "  nameservers (comma delimited list of DNS servers for the cluster)\n".
+   "  ntpservers (comma delimited list of NTP servers for the cluster)\n".
    "  rsh (path of remote shell command)\n".
    "  rcp (path of remote copy command)\n".
    "  blademaxp (max # of processes for blade hw ctrl)\n".
