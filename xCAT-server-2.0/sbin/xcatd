@@ -396,12 +396,12 @@ sub generic_reaper {
    $SIG{CHLD} = \&generic_reaper;
 }
 
-#sub ssl_reaper {
-#   while (waitpid(-1,WNOHANG) > 0) {
-#      $sslclients--;
-#   }
-#   $SIG{CHLD} = \&ssl_reaper;
-#}
+sub ssl_reaper {
+   while (waitpid(-1,WNOHANG) > 0) {
+      $sslclients--;
+   }
+   $SIG{CHLD} = \&ssl_reaper;
+}
 
 sub dispatch_reaper {
   while (($CHILDPID =waitpid(-1, WNOHANG)) > 0) { 
