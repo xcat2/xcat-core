@@ -55,8 +55,15 @@ sub handled_commands
 
             if ($rc == 2)
             {    # setup, just start the daemon
-                $cmd = "/etc/rc.d/init.d/dhcpd start";
-                xCAT::Utils->runcmd($cmd, -1);
+                $cmd = " service dhcpd restart";
+                system $cmd;
+                if ($? > 0)
+                {    # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd");
+                    return 1;
+                }
+
+
 
             }
         }
@@ -92,61 +99,48 @@ sub setup_DHCP
     my ($nodename) = @_;
     my $rc = 0;
     my $cmd;
-    my @output;
 
-    # read DB for nodeinfo
-    my $retdata = xCAT::Utils->readSNInfo($nodename);
-    if ($retdata->{'arch'})
-    {    # no error
-        my $master = $retdata->{'master'};
-        my $os     = $retdata->{'os'};
-        my $arch   = $retdata->{'arch'};
 
-        # run makedhcp
-        $XCATROOT = "/opt/xcat";    # default
+     # run makedhcp
+     $XCATROOT = "/opt/xcat";    # default
 
-        if ($ENV{'XCATROOT'})
-        {
-            $XCATROOT = $ENV{'XCATROOT'};
-        }
-        my $cmdref;
-        $cmdref->{command}->[0] = "makedhcp";
-        $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-        $cmdref->{arg}->[0]     = "-n";
+     if ($ENV{'XCATROOT'})
+     {
+         $XCATROOT = $ENV{'XCATROOT'};
+     }
+     my $cmdref;
+     $cmdref->{command}->[0] = "makedhcp";
+     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+     $cmdref->{arg}->[0]     = "-n";
 
-        my $modname = "dhcp";
-        ${"xCAT_plugin::" . $modname . "::"}{process_request}
+     my $modname = "dhcp";
+     ${"xCAT_plugin::" . $modname . "::"}{process_request}
           ->($cmdref, \&xCAT::Client::handle_response);
 
 
-        $cmd = "chkconfig dhcpd on";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)
-        {
+     $cmd = "chkconfig dhcpd on";
+     system $cmd;
+     if ($? > 0)
+     {    # error
             xCAT::MsgUtils->message("S", "Error from $cmd");
             return 1;
-        }
-        $cmd = "/etc/rc.d/init.d/dhcpd start";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)
-        {
+     }
+     $cmd = "service dhcpd restart";
+     system $cmd;
+     if ($? > 0)
+     {
             xCAT::MsgUtils->message("S", "Error from $cmd");
             return 1;
-        }
-        $cmdref;
-        $cmdref->{command}->[0] = "makedhcp";
-        $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-        $cmdref->{arg}->[0]     = "-a";
+     }
+     $cmdref;
+     $cmdref->{command}->[0] = "makedhcp";
+     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+     $cmdref->{arg}->[0]     = "-a";
 
-        my $modname = "dhcp";
+     my $modname = "dhcp";
         ${"xCAT_plugin::" . $modname . "::"}{process_request}
           ->($cmdref, \&xCAT::Client::handle_response);
 
-    }
-    else
-    {    # error reading Db
-        $rc = 1;
-    }
     return $rc;
 }
 
