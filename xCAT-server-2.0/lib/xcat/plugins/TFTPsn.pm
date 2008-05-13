@@ -12,7 +12,7 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head1 
-  xCAT plugin package to setup of atftp   service node 
+  xCAT plugin package to setup  atftp   service node 
 
 
 #-------------------------------------------------------
@@ -20,6 +20,7 @@ use Getopt::Long;
 =head3  handled_commands 
 
 This runs on Service Node 
+Checks servicenode table tfpserver attribute
 Call  setup_TFTP  (actually setting up atftp)
 
 =cut
@@ -37,12 +38,11 @@ sub handled_commands
         my $nodename   = pop @nodeinfo;                    # get hostname
         my @nodeipaddr = @nodeinfo;                        # get ip addresses
         my $service    = "tftpserver";
-
         $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
-        if ($rc == 1)  
+        if ($rc == 1)
         {
-
-            $rc = &setup_TFTP();                           # setup TFTP (ATFTP)
+            
+            $rc = &setup_TFTP($nodename);                # setup TFTP (ATFTP)
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
@@ -53,8 +53,8 @@ sub handled_commands
             if ($rc == 2)
             {    # just start the daemon
                 my $cmd = "service tftpd start";
-                xCAT::Utils->runcmd($cmd, 0);
-                if ($::RUNCMD_RC != 0)
+                system $cmd;
+                if ($? > 0)
                 {    # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd");
                     return 1;
@@ -105,9 +105,6 @@ sub setup_TFTP
     }
 
     # read DB for nodeinfo
-    my @nodeinfo   = xCAT::Utils->determinehostname;
-    my $nodename   = pop @nodeinfo;                        # get hostname
-    my @nodeipaddr = @nodeinfo;                            # get ip addresses
     my $retdata    = xCAT::Utils->readSNInfo($nodename);
     $master = $retdata->{'master'};
     $os     = $retdata->{'os'};
@@ -140,14 +137,14 @@ sub setup_TFTP
         # start atftp
 
         $cmd = "service tftpd stop";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)
+        system $cmd;
+        if ($? > 0)
         {
             xCAT::MsgUtils->message("S", "Error from command:$cmd");
         }
         $cmd = "service tftpd start";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)
+        system $cmd;
+        if ($? > 0)
         {
             xCAT::MsgUtils->message("S", "Error from command:$cmd");
             return 1;
@@ -172,28 +169,15 @@ sub setup_TFTP
 
     # check to see if tftp directory already mounted
     # if not mount then
-    my $directory = $tftpdir;
-    $cmd = "df -P $directory";
-    my @output = xCAT::Utils->runcmd($cmd, -1);
-    my $found = 0;
-    foreach my $line (@output)
-    {
-        my ($file_sys, $blocks, $used, $avail, $cap, $mount_point) =
-          split(' ', $line);
-        if ($mount_point eq $directory)
-        {
-            $found = 1;
-            last;
-        }
-    }
-    if ($found == 0)
+    my $mounted = xCAT::Utils->isMounted($tftpdir);
+    if ($mounted == 0)    # not already mounted
     {
 
         # need to  mount the directory
-        my $cmd = " mount -o rw,nolock $master:$directory $directory";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {    # error
+        my $cmd = " mount -o rw,nolock $master:$tftpdir $tftpdir";
+        system $cmd;
+        if ($? > 0)
+        {                 # error
             $rc = 1;
             xCAT::MsgUtils->message("S", "Error $cmd");
         }
