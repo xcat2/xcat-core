@@ -9,9 +9,8 @@ require Data::Dumper;
 require xCAT::NodeRange;
 require DBI;
 
-our @ISA = qw(Exporter);
+our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw(genpassword);
-
 
 #--------------------------------------------------------------------------------
 
@@ -24,6 +23,7 @@ This program module file, is a set of utilities used by xCAT commands.
 =cut
 
 #--------------------------------------------------------------------------------
+
 =head3    genpassword
     returns a random string of specified length or 8 if none given
     Arguments:
@@ -41,21 +41,22 @@ This program module file, is a set of utilities used by xCAT commands.
 =cut
 
 #--------------------------------------------------------------------------------
-sub genpassword {
-#Generate a pseudo-random password of specified length
-     my $length = shift;
-     unless ($length) { $length = 8; }
-     my $password='';
-     my $characters= 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890';
-     srand; #have to reseed, rand is not rand otherwise
-     while (length($password) < $length) {
-           $password .= substr($characters,int(rand 63),1);
+sub genpassword
+{
+
+    #Generate a pseudo-random password of specified length
+    my $length = shift;
+    unless ($length) { $length = 8; }
+    my $password   = '';
+    my $characters =
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890';
+    srand;    #have to reseed, rand is not rand otherwise
+    while (length($password) < $length)
+    {
+        $password .= substr($characters, int(rand 63), 1);
     }
     return $password;
 }
-
-
-
 
 #--------------------------------------------------------------------------------
 
@@ -1624,14 +1625,17 @@ sub isServiceReq
         foreach my $node (@snodelist)
 
         {
-            if ($node->{$service})
-            {                    # returns service, only if set
-                my $value = $node->{$service};
-                $value =~ tr/a-z/A-Z/;    # convert to upper
-                     # value 1 or yes  then we setup the service
-                if (($value == 1) || ($value eq "YES"))
-                {
-                    return 1;    # found service required for the node
+            if ($serviceip eq $node->{'node'})
+            {                    # match table entry
+                if ($node->{$service})
+                {                # returns service, only if set
+                    my $value = $node->{$service};
+                    $value =~ tr/a-z/A-Z/;    # convert to upper
+                         # value 1 or yes  then we setup the service
+                    if (($value == 1) || ($value eq "YES"))
+                    {
+                        return 1;    # found service required for the node
+                    }
                 }
             }
         }
@@ -2298,6 +2302,7 @@ sub getSNList
 
     return @servicenodes;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3    isMounted
