@@ -30,3 +30,4 @@ perl-XML-Simple
 perl-Net-Telnet
 net-snmp-perl
 ntp
+rsync
