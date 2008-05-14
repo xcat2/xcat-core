@@ -899,7 +899,12 @@ sub getNodeAttribs
 {
     my $self    = shift;
     my $node    = shift;
-    my @attribs = @{shift()};
+    my @attribs;
+    if (ref $_[0]) {
+        @attribs = @{shift()};
+    } else {
+        @attribs = @_;
+    }
     my $datum;
     my @data = $self->getNodeAttribs_nosub($node, \@attribs);
     #my ($datum, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
@@ -1462,7 +1467,12 @@ sub getAttribs
     #my $key = shift;
     #my $keyval = shift;
     my %keypairs = %{shift()};
-    my @attribs  = @_;
+    my @attribs;
+    if (ref $_[0]) {
+        @attribs = @{shift()};
+    } else {
+        @attribs  = @_;
+    }
     my @return;
     my $statement = 'SELECT * FROM ' . $self->{tabname} . ' WHERE ';
     my @exeargs;
