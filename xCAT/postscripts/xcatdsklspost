@@ -14,7 +14,7 @@ fi
 let SLI=$RANDOM%10
 sleep $SLI
 
-SIP=`grep dhcp-server-identifier /var/lib/dhclient/dhclient-eth0.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
+SIP=`grep dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
 if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     touch /var/lock/subsys/xcatmounts
     echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
