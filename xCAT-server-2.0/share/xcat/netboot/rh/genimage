@@ -224,6 +224,8 @@ sub mkinitrd {
    }
    print $inifile <<EOMS;
 netstart
+ifconfig lo 127.0.0.1
+ifconfig lo up
 cd /
 for i in `cat /proc/cmdline`; do
    KEY=`echo \$i |awk -F= '{print \$1}'`
@@ -264,8 +266,7 @@ if [ "\$NFS" = "1" ]; then
   mkdir -p /rw/etc
   mkdir -p /rw/var/lib/dhclient
   cp /etc/resolv.conf /rw/etc/
-  cp /var/lib/dhclient/dhclient.leases /rw/var/lib/dhclient/dhclient-eth0.leases
-  cp /var/lib/dhclient/dhclient.leases /rw/var/lib/dhclient/dhclient-eth1.leases
+  cp /var/lib/dhclient/dhclient.leases /rw/var/lib/dhclient/dhclient-$prinic.leases
   mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot
   mkdir -p /sysroot/ro
   mkdir -p /sysroot/rw
@@ -324,6 +325,7 @@ EOMS
    print $inifile "fi\n";
    print $inifile "cd /\n";
    print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-$prinic.leases\n";
+   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/var/lib/dhclient/dhclient-$prinic.leases\n";
    print $inifile "mknod /sysroot/dev/console c 5 1\n";
    print $inifile "exec switch_root -c /dev/console /sysroot /sbin/init\n";
    close($inifile);
