@@ -36,7 +36,7 @@ fi
 #	logger -t xcat "Install: using server provided host key for convenience."
 #	cp /xcatpost/hostkeys/*_key /etc/ssh/
 #fi
-if [ ! -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
+if [ ! -x /usr/sbin/stunnel -a ! -x /usr/bin/stunnel ]; then #Stop if no stunnel to help the next bit
    exit 0
 fi
 allowcred.awk &
