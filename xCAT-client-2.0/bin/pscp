@@ -15,10 +15,9 @@ use IO::Handle;
 use IO::Select;
 use Thread qw(yield);
 use xCAT::Utils;
-use Getopt::Long;
+use Getopt::Long qw(:config pass_through require_order);
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;
-Getopt::Long::Configure("require_order");
 GetOptions(
   "interface=s" => \$interface,
   );
@@ -28,11 +27,27 @@ if ($ENV{XCATHOST}) {
           $xcathost=$ENV{XCATHOST};
 }
 
-my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
-unless (@ARGV) {
-    print "Usage: pscp [-i <suffix] filename <noderange>:<destination>\n";
+sub usage
+{
+  print "Usage: pscp [-i <suffix>] [scp options...] [filename]... <noderange>:<destination>\n";
+  exit 1;
 }
-(my $noderange,my $destloc) = split(/:/,$ARGV[1]);
+
+my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
+
+# Processing arguments
+usage unless @ARGV;
+my $dest = shift;
+my @scpargs;
+while (@ARGV)
+{
+  push @scpargs, $dest;
+  $dest = shift;
+}
+my $noderange, $destloc;
+if ($dest =~ /:/) { ($noderange, $destloc) = split(/:/, $dest); }
+else { usage(); }
+
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=>$ENV{HOME}."/.xcat/client-cred.pem",
@@ -82,7 +97,8 @@ foreach (@nodes) {
   while ($children > $pshmaxp) { processoutput($inputs); }
   my $child;
   $children++;
-  scpnode(\$child,$node,@ARGV[0],$destloc);
+  #scpnode(\$child,$node,@ARGV[0],$destloc);
+  scpnode(\$child,$node,\@scpargs,$destloc);
   $inputs->add($child);
   $nodehdl{$child} = $node;
 }
@@ -117,7 +133,11 @@ sub scpnode {
   my $node = shift;
   my $in;
   #my $args = join(" ",@_);
-  my $file = shift;
+  #my $file = shift;
+  my $scpargsr = shift;
+  my @scpargs = @{$scpargsr};
   my $dest = shift;
-  open($$out,"scp -o BatchMode=yes $file $node:$dest 2>&1 |");
+  open($$out, "scp -o BatchMode=yes @scpargs $node:$dest 2>&1 |");
 }
+
+# vim: set et sw=2 ts=2 sts=2:
