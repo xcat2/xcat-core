@@ -1,6 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Postage;
 use xCAT::Table;
+use xCAT::MsgUtils;
 use xCAT::NodeRange;
 use Data::Dumper;
 #-------------------------------------------------------------------------------
@@ -155,10 +156,10 @@ sub makescript {
     push @scriptd, "export SVLOGLOCAL\n"; 
   } 
 
-  if ($nodesetstate) {
-	push @scriptd, "NODESETSTATE=".$nodesetstate."\n";
-	push @scriptd, "export NODESETSTATE\n";
-  }
+  if (!$nodesetstate) { $nodesetstate=getnodesetstate($node);}
+  push @scriptd, "NODESETSTATE=".$nodesetstate."\n";
+  push @scriptd, "export NODESETSTATE\n";
+
 
   # see if this is a service or compute node?         
   if (xCAT::Utils->isSN($node) ) {
@@ -187,6 +188,56 @@ sub makescript {
   }
 
   return @scriptd;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   getnodesetstate
+
+        Determine the nodeset stat.
+=cut
+
+#-----------------------------------------------------------------------------
+sub getnodesetstate {
+  my $node=shift;
+  my $state="undefined";
+
+  #get boot type (pxe or yaboot)  for the node
+  my $noderestab=xCAT::Table->new('noderes',-create=>0);
+  my $ent=$noderestab->getNodeAttribs($node,[qw(netboot)]);
+  if ($ent->{netboot})  {
+    my $boottype=$ent->{netboot};
+
+    #get nodeset state from corresponding files
+    my $bootfilename;
+    if ($boottype eq "pxe") { $bootfilename="/tftpboot/pxelinux.cfg/$node";}
+    elsif ($boottype eq "yaboot") { $bootfilename="/tftpboot/etc/$node";}
+    else { $bootfilename="/tftpboot/pxelinux.cfg/$node"; }
+
+    if (-r $bootfilename) {
+      my $fhand;
+      open ($fhand, $bootfilename);
+      my $headline = <$fhand>;
+      close $fhand;
+      $headline =~ s/^#//;
+      chomp($headline);
+      @a=split(' ', $headline);
+      $state = $a[0];
+    } else {
+      xCAT::MsgUtils->message('S', "getpostscripts: file $bootfilename cannot be accessed.");
+    }
+  } else {
+    xCAT::MsgUtils->message('S', "getpostscripts: noderes.netboot for node $node not defined.");
+  }
+
+  #get the nodeset state from the chain table as a backup.
+  if ($state eq "undefined") {
+    my $chaintab = xCAT::Table->new('chain');
+    my $stref = $chaintab->getNodeAttribs($node,['currstate']);
+    if ($stref and $stref->{currstate}) { $state=$stref->{currstate}; }
+  }
+
+  return $state;
 }
 
 1;

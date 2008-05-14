@@ -41,7 +41,6 @@ sub handled_commands
 #-------------------------------------------------------
 sub process_request
 {
-
     my $request  = shift;
     my $callback = shift;
     my $nodes    = $request->{node};
@@ -57,14 +56,13 @@ sub process_request
     if ($request->{'_xcat_clienthost'}) {
       $client = $request->{'_xcat_clienthost'}->[0];
     }
+
     if ($client) { ($client) = noderange($client) };
     unless ($client) { #Not able to do identify the host in question
       return;
     }
-    my $state = $request->{scripttype}->[0];
-    unless ($state) {
-       return;
-    }
+    my $state;
+    if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
 
     my @scriptcontents = xCAT::Postage::makescript($client,$state,$callback);
     if (scalar(@scriptcontents)) {

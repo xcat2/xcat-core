@@ -6,7 +6,6 @@ BEGIN {
 
         print "<xcatrequest>" |& server
         print "   <command>getpostscript</command>" |& server
-        print "   <scripttype>install</scripttype>" |& server
         print "</xcatrequest>" |& server
 
         while (server |& getline) {
