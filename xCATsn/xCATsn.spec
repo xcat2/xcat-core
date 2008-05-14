@@ -53,19 +53,6 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 
 # makes it a service node
   touch /etc/xCATSN    
-# setup syslog
-#  if [ ! -r /etc/syslog.conf.XCATORIG ]; then
-#  cp /etc/syslog.conf /etc/syslog.conf.XCATORIG
-#  echo "*.debug   /var/log/messages" > /etc/test.tmp 
-#  echo "*.crit   /var/log/messages" >> /etc/test.tmp 
-#  cat /etc/test.tmp >> /etc/syslog.conf
-#  rm /etc/test.tmp
-
-#  touch /var/log/messages
-
-#  /etc/rc.d/init.d/syslog stop
-#  /etc/rc.d/init.d/syslog start
-#  fi
 
 
 
