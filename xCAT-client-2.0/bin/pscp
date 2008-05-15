@@ -29,7 +29,8 @@ if ($ENV{XCATHOST}) {
 
 sub usage
 {
-  print "Usage: pscp [-i <suffix>] [scp options...] [filename]... <noderange>:<destination>\n";
+  print $_[0];
+  print "Usage: pscp [-i <SUFFIX>] [SCP OPTIONS...] FILE... <NODERANGE>:<DESTINATION>\n";
   exit 1;
 }
 
@@ -46,7 +47,7 @@ while (@ARGV)
 }
 my $noderange, $destloc;
 if ($dest =~ /:/) { ($noderange, $destloc) = split(/:/, $dest); }
-else { usage(); }
+else { usage("No node range specified\n\n"); }
 
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
