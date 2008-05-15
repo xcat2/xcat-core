@@ -119,9 +119,11 @@ sub setup_NTPsn
         open(CFGFILE, ">$ntpcfg")
           or xCAT::MsgUtils->message('SE',
                                   "Cannot open $configfile for NTP update. \n");
+        print CFGFILE "server ";
         print CFGFILE $master;
         print CFGFILE "\n";
         print CFGFILE "driftfile /var/lib/ntp/drift\n";
+        print CFGFILE "restrict 127.0.0.1\n";
         close CFGFILE;
 
         $rc = &start_NTP();    # restart ntp
@@ -165,6 +167,7 @@ sub setup_NTPmn
                 print CFGFILE "\n";
             }
             print CFGFILE "driftfile /var/lib/ntp/drift\n";
+            print CFGFILE "restrict 127.0.0.1\n";
             close CFGFILE;
 
             $rc = &start_NTP();    # restart ntp
