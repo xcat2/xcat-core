@@ -73,18 +73,25 @@ sub setup_SSH
     my $configfile;
     my $cmd;
     my $configinfo;
+    my $sshdir;
+    my $cmd;
 
     # build the $HOMEROOT/.ssh/config
     if (xCAT::Utils->isLinux())
     {
         $configfile = "/root/.ssh/config";
+        $sshdir="/root/.ssh";
     }
     else
     {    #AIX
         $configfile = "/.ssh/config";
+        $sshdir="/.ssh";
+    }
+    if (!(-e $sshdir)){ # directory does not exits
+        mkdir($sshdir, 0700);
     }
     $configinfo = "StrictHostKeyChecking no";
-    my $cmd;
+    
     if (-e $configfile)
     {
         $cmd = "grep StrictHostKeyChecking $configfile";
