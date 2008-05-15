@@ -23,6 +23,7 @@ sub handled_commands {
 }
 
 sub check_dhcp {
+  return 1;
   #TODO: omapi magic to do things right
   my $node = shift;
   my $dhcpfile;
