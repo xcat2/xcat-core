@@ -48,7 +48,7 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg="$cmd returned rc=$rc\n";
+            my $msg="$cmd returned rc=$rc @$outref\n";
             `logger -t xcat $msg`;
         }
     }
