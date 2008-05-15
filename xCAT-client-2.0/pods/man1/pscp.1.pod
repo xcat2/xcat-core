@@ -4,10 +4,7 @@ B<pscp> - parallel remote copy
 
 =head1 B<Synopsis>
 
-B<pscp> I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
-
-B<pscp>  [B<-r>]  [I<filename>   I<filename>   I<...>]   [I<directory>  I<directory>  I<...>]
-I<noderange:destinationdirectory>
+B<pscp> [-i I<suffix>] [I<scp options> I<...>] I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
 
 B<pscp> {B<-h>|B<--help>|B<-v>|B<--version>}
 
@@ -26,17 +23,17 @@ B<pscp> is NOT multicast, but is parallel unicasts.
 
 =over 7
 
-=item B<-r>
+=item B<-i> I<suffix>
 
-Recursive copy through directories.
+Interfaces to be used.
+
+=item B<scp options>
+
+See B<scp(1)>
 
 =item B<filename>
 
-A space delimited list of files to copy.
-
-=item B<directory>
-
-A space delimited list of directories to copy.
+A space delimited list of files to copy. If B<-r> is passed as an scp option, directories may be specified as well.
 
 =item B<noderange:destination>
 
