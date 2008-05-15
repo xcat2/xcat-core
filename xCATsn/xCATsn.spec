@@ -46,10 +46,6 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 if [ "$1" = "1" ]; then #Only if installing for the first time..
 
-    mkdir -p /var/log/consoles
-	chkconfig nfs on
-	/etc/rc.d/init.d/nfs stop
-	/etc/rc.d/init.d/nfs start
 
 # makes it a service node
   touch /etc/xCATSN    
