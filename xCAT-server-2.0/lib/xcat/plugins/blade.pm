@@ -912,6 +912,9 @@ sub inv {
     push @invitems,split( /,/,$_);
   }
   my $item;
+  unless (scalar(@invitems)) {
+      @invitems = ("all");
+  }
   while (my $item = shift @invitems) {
     if ($item =~ /^all/) {
       push @invitems,(qw(mtm serial mac firm));

@@ -1454,6 +1454,9 @@ sub inv {
 		return($rc,$text);
 	}
 
+    unless ($subcommand) {
+        $subcommand = "all";
+    }
 	if($subcommand eq "all") {
 		@types = qw(model serial deviceid mprom guid);
 	}
@@ -1479,7 +1482,7 @@ sub inv {
 		@types = qw(guid);
 	}
 	else {
-		return(1,"unsupported command inv $subcommand");
+		return(1,"unsupported BMC inv argument $subcommand");
 	}
 
 	foreach(@types) {
