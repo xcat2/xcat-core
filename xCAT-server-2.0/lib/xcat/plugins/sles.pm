@@ -412,7 +412,11 @@ sub copycd
     mkpath("$installroot/$distname/$arch/$discnumber");
     umask $omask;
     my $rc;
-    $SIG{INT} =  $SIG{TERM} = sub { if ($cpiopid) { kill 2, $cpiopid; exit 0; } };
+    $SIG{INT} =  $SIG{TERM} = sub { if ($cpiopid) { kill 2, $cpiopid; exit 0; } 
+        if ($::CDMOUNTPATH) {
+            system("umount $::CDMOUNTPATH");
+        }
+    };
     my $kid;
     chdir $path;
     my $child = open($kid,"|-");

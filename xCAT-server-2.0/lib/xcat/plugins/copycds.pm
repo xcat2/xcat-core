@@ -32,6 +32,7 @@ sub process_request {
   my $distname = undef;
   my $arch = undef;
   $identified=0;
+  $::CDMOUNTPATH="/mnt/xcat";
 
   @ARGV = @{$request->{arg}};
   GetOptions(
@@ -69,6 +70,7 @@ sub process_request {
       push @{$newreq->{arg}},("-a",$arch);
     }
     $doreq->($newreq,\&take_answer);
+    $::CDMOUNTPATH="";
 
     system("umount /mnt/xcat");
     unless ($identified) {

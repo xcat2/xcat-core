@@ -771,6 +771,9 @@ sub copycd
     my $reaped = 0;
     $SIG{INT} = $SIG{TERM} = sub {
         if ($cpiopid) { kill 2, $cpiopid; exit 0; }
+        if ($::CDMOUNTPATH) {
+            system("umount $::CDMOUNTPATH");
+        }
     };
     my $KID;
     chdir $path;
