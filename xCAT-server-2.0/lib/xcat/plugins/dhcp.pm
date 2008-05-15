@@ -208,7 +208,7 @@ sub addnode
                 $lstatements = "next-server $nxtsrv;$statements";
             }
         }
-        syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
+        #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
         print $omshell "new host\n";
         print $omshell
           "set name = \"$hname\"\n";    #Find and destroy conflict name
