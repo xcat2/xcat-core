@@ -17,6 +17,7 @@ my $domain;
 my $omshell;
 my $statements;    #Hold custom statements to be slipped into host declarations
 my $callback;
+my $restartdhcp;
 
 sub handled_commands
 {
@@ -291,6 +292,7 @@ sub preprocess_request
 
 sub process_request
 {
+    $restartdhcp=0;
     my $req = shift;
     $callback = shift;
     my $sitetab = xCAT::Table->new('site');
@@ -362,6 +364,7 @@ sub process_request
         }
         unless ($dhcpconf[0] =~ /^#xCAT/)
         {    #Discard file if not xCAT originated, like 1.x did
+            $restartdhcp=1;
             @dhcpconf = ();
         }
     }
@@ -384,6 +387,7 @@ sub process_request
     }
     unless ($dhcpconf[0])
     {            #populate an empty config with some starter data...
+        $restartdhcp=1;
         newconfig();
     }
     foreach (keys %activenics)
@@ -465,6 +469,10 @@ sub process_request
         }
     }
     writeout();
+    if ($restartdhcp) {
+        system("/etc/init.d/dhcpd restart");
+        system("chkconfig dhcpd on");
+    }
 }
 
 sub addnet
@@ -472,8 +480,12 @@ sub addnet
     my $net  = shift;
     my $mask = shift;
     my $nic;
+    if ($net eq "169.254.0.0") {
+        return;
+    }
     unless (grep /\} # $net\/$mask subnet_end/, @dhcpconf)
     {
+        $restartdhcp=1;
         foreach (@nrn)
         {    # search for relevant NIC
             my @ent = split /\s+/;
@@ -633,6 +645,7 @@ sub addnic
     my $lastindex  = 0;
     unless (grep /} # $nic nic_end/, @dhcpconf)
     {    #add a section if not there
+        $restartdhcp=1;
         print "Adding NIC $nic\n";
         push @dhcpconf, "shared-network $nic {\n";
         push @dhcpconf, "\} # $nic nic_end\n";
