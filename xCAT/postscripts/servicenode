@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-#egan@us.ibm.com
 #(C)IBM Corp
 
 #
@@ -49,7 +48,8 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            `logger -t xcat @$outref`;
+            my $msg="$cmd returned rc=$rc\n";
+            `logger -t xcat $msg`;
         }
     }
 	return $rc;
