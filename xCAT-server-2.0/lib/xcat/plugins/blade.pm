@@ -418,6 +418,7 @@ sub mpaconfig {
    my $mpa=shift;
    my $user=shift;
    my $pass=shift;
+   my $nodeid=shift;
    my $parameter;
    my $value;
    my $assignment;
@@ -457,6 +458,14 @@ sub mpaconfig {
         my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.3',1]);
         push @cfgtext,"Build ID: $data";
         next;
+      }
+      if ($parameter eq "textid") {
+         if ($assignment) {
+             setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$nodeid,$value,'OCTET');
+         }
+         my $data = $session->get([$bladeoname,$nodeid]);
+         push @cfgtext,"textid: $data";
+         return $returncode,@cfgtext; 
       }
       if ($parameter =~ /^snmpcfg$/i) {
          my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.1.6',0]);
@@ -1106,7 +1115,7 @@ sub bladecmd {
   } elsif ($command =~ /r[ms]preset/) {
     return resetmp(@args);
   } elsif ($command eq "rspconfig") {
-    return mpaconfig($mpa,$user,$pass,@args);
+    return mpaconfig($mpa,$user,$pass,$slot,@args);
   } elsif ($command eq "rbootseq") {
     return bootseq(@args);
   } elsif ($command eq "switchblade") {
@@ -2041,6 +2050,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
