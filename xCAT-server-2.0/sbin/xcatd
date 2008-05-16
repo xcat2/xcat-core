@@ -756,15 +756,28 @@ sub dispatch_callback {
       yield; #This has to happen before next line could possibly work anyway
       my $parselect = new IO::Select;
       $parselect->add($dispatch_parentfd);
+      my $selbits = $parselect->bits;
       my $rsp;
-      if ($parselect->can_read(5)) { #block for up to 5 seconds before continuing
+      while (defined($selbits) && ($rsp = select($selbits,undef,undef,5))) { #block for up to 5 seconds before continuing
+         if ($quit) { # termination requested by a clean shutdown facility
+             xexit 0;
+         }
+         if ($rsp == 0) { #The select call failed to find any ready items
+             last;
+         }
+         if ($rsp < 0) { #A child exited or other signal event that made select skip out before suggesting succes
+             next;
+         }
          if ($rsp = <$dispatch_parentfd>) {
             if ($rsp =~ /die/ or $quit) {
                xexit 0;
             }
+            last;
          } else {
             $parselect->remove($dispatch_parentfd); #Block until parent acks data
          }
+         $selbits = $parselect->bits;
+         yield;
       }
    }
 }
@@ -968,13 +981,31 @@ sub convey_response {
     return;
   }
   print $parent_fd XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
+  yield; #parent must get timeslice anyway before an ack could possibly return
   my $parsel = new IO::Select;
   $parsel->add($parent_fd);
-  if ($parsel->can_read(5)) { #block up to five seconds for parent to ack
-     <$parent_fd>;
-  }
-  #<$parent_fd>; #Block until parent acks data
-#  KeyAttr => [], NoAttr => 1)
+  my $selbits = $parsel->bits;
+  my $rsp;
+  while ($selbits && ($rsp = select($selbits, undef, undef, 5))) { #block up to five seconds
+         if ($quit) {  # Obey quit flag
+             xexit 0;
+         }
+         if ($rsp == 0) { #This means the filedescriptor was removed
+             last;
+         }
+         if ($rsp < 0) { # A signal caused select to skip out, do-over
+             next;
+         }
+         #At this point, the only possibility is a positive return, meaning parent_fd requires attention of some sort
+         $rsp = <$parent_fd>;
+         if ($rsp) { #If data actually came in, last, otherwise, remove it from the IO::Select, but both should amount to the same thing
+             last;
+         } else {
+             $parsel->remove($parent_fd);
+         }
+    }
+    yield; #If still around, it means a peer process still hasn't gotten to us, so might as well yield
+    $selbits = $parsel->bits;
 }
 
 sub build_response {
