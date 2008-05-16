@@ -169,6 +169,7 @@ sub tabdb
     my $ent;
     if ($key eq "THISNODE" or $key eq '$NODE') {
       $ent = $tabh->getNodeAttribs($node,[$field]);
+      $key="node=$node";
     } else {
       my %kp;
       foreach (split /,/,$key) {
@@ -182,7 +183,7 @@ sub tabdb
     $tabh->close;
     unless($ent and  defined($ent->{$field})) {
       unless ($blankok) {
-         $tmplerr="Unable to find requested $field from $table in this context";
+         $tmplerr="Unable to find requested $field from $table, with $key";
       }
       return "";
       #return "#TABLEBAD:$table:field $field not found#";
