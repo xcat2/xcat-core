@@ -22,7 +22,7 @@ B<rspconfig> I<noderange> B<garp>={I<time>}
        
 =head2 MPA specific:
 
-B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<build>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>}
+B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<build>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>}
 
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
@@ -33,6 +33,8 @@ B<rspconfig> I<noderange> B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
 B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
 
 B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
+
+B<rspconfig> I<noderange> B<textid>={B<textid>}
 
 B<rspconfig> I<noderange> B<swnet>={[B<ip>],[B<gateway>],[B<netmask>]}
 
@@ -327,4 +329,5 @@ B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
 =head1 SEE ALSO
 
 noderange(3), rpower(1), rcons(1), rinv(1), rvitals(1), rscan(1)
+
 
