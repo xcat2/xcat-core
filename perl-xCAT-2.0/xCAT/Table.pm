@@ -1478,7 +1478,6 @@ sub getAttribs
     my @exeargs;
     foreach (keys %keypairs)
     {
-
         if ($keypairs{$_})
         {
             $statement .= "\"".$_ . "\" = ? and ";
@@ -1493,7 +1492,7 @@ sub getAttribs
         }
         else
         {
-            $statement .= "$_ is NULL and ";
+            $statement .= "\"$_\" is NULL and ";
         }
     }
     $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";

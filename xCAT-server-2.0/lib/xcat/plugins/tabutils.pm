@@ -153,6 +153,10 @@ sub gettab
     foreach (@keypairs)
     {
         (my $key, my $value) = split /=/, $_;
+        unless (defined $key) {
+            gettab_usage(1);
+            return;
+        }
         $keyhash{$key} = $value;
     }
 
@@ -164,6 +168,15 @@ sub gettab
         $tabhash{$table}->{$column} = 1;
     }
 
+    #Sanity check the key against all tables in question
+    foreach my $tabn (keys %tabhash) {
+        foreach my $kcheck (keys %keyhash) {
+            unless (grep /^$kcheck$/, @{$xCAT::Schema::tabspec{$tabn}->{cols}}) {
+                $callback->({error => ["Unkown key $kcheck to $tabn"],errorcode=>[1]});
+                return;
+            }
+        }
+    }
     # Get the requested columns from each table
     foreach my $tabn (keys %tabhash)
     {
