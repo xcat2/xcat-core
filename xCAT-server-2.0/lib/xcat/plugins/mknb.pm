@@ -50,10 +50,18 @@ sub process_request {
       return;
    }
    unless ( -r "/root/.ssh/id_rsa.pub" ) {
-      $callback->({data=>["Generating ssh private key for root"]});
-      my $rc=system('ssh-keygen -t rsa -q -b 2048 -N "" -f  /root/.ssh/id_rsa');
-      if ($rc) {
-         $callback->({error=>["Failure executing ssh-keygen for root"],errorcode=>[1]});
+      if (-r "/root/.ssh/id_rsa") {
+         $callback->({data=>["Extracting ssh public key from private key"]});
+         my $rc = system('ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub');
+         if ($rc) {
+            $callback->({error=>["Failure executing ssh-keygen for root"],errorcode=>[1]});
+         }
+      } else {
+        $callback->({data=>["Generating ssh private key for root"]});
+        my $rc=system('ssh-keygen -t rsa -q -b 2048 -N "" -f  /root/.ssh/id_rsa');
+        if ($rc) {
+           $callback->({error=>["Failure executing ssh-keygen for root"],errorcode=>[1]});
+        }
       }
    }
    my $tempdir = tempdir("mknb.$$.XXXXXX",TMPDIR=>1);
