@@ -1498,6 +1498,9 @@ sub getAttribs
     }
     $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";
     my $query = $self->{dbh}->prepare($statement);
+    unless (defined $query) {
+        return undef;
+    }
     $query->execute(@exeargs);
     my $data;
     while ($data = $query->fetchrow_hashref())
