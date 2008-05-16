@@ -162,8 +162,10 @@ sub gettab
 
     # Group the columns asked for by table (so we can do 1 query per table)
     my %tabhash;
+    my $terse = 2;
     foreach my $tabvalue (@ARGV)
     {
+        $terse--;
         (my $table, my $column) = split /\./, $tabvalue;
         $tabhash{$table}->{$column} = 1;
     }
@@ -184,7 +186,11 @@ sub gettab
         (my $ent) = $tab->getAttribs(\%keyhash, keys %{$tabhash{$tabn}});
         foreach my $coln (keys %{$tabhash{$tabn}})
         {
-            $callback->({data => ["$tabn.$coln: " . $ent->{$coln}]});
+            if ($terse) {
+                $callback->({data => ["" . $ent->{$coln}]});
+            } else {
+                $callback->({data => ["$tabn.$coln: " . $ent->{$coln}]});
+            }
         }
         $tab->close;
     }
@@ -774,6 +780,7 @@ sub nodels
     #     }
     #  }
     my $argc = @ARGV;
+    my $terse = 2;
 
     if (@$nodes > 0 or $noderange)
     { #Make sure that there are zero nodes *and* that a noderange wasn't requested
@@ -791,9 +798,12 @@ sub nodels
                 if ($shortnames{$temp})
                 {
                     ($table, $column) = @{$shortnames{$temp}};
+                    $terse--;
                 } elsif ($temp =~ /\./) {
                     ($table, $column) = split('\.', $temp, 2);
+                    $terse--;
                 } elsif ($xCAT::Schema::tabspec{$temp}) {
+                   $terse=0;
                    $table = $temp;
                    foreach my $column (@{$xCAT::Schema::tabspec{$table}->{cols}}) {
                       unless (grep /^$column$/, @{$tables{$table}}) {
@@ -839,7 +849,9 @@ sub nodels
                     foreach (keys %$rec)
                     {
                         my %datseg;
-                        $datseg{data}->[0]->{desc}     = [$labels{$_}];
+                        unless ($terse) {
+                            $datseg{data}->[0]->{desc}     = [$labels{$_}];
+                        }
                         $datseg{data}->[0]->{contents} = [$rec->{$_}];
                         $datseg{name} = [$node]; #{}->{contents} = [$rec->{$_}];
                         push @{$noderecs{$node}}, \%datseg;
