@@ -1341,13 +1341,13 @@ sub preprocess_request {
   my $sn = xCAT::Utils->get_ServiceNode(\@mms, $service, "MN");
 
   # build each request for each service node
-  my @moreinfo=();
   foreach my $snkey (keys %$sn)
   {
     #print "snkey=$snkey\n";
     my $reqcopy = {%$request};
     $reqcopy->{'_xcatdest'} = $snkey;
     my $mms1=$sn->{$snkey};
+    my @moreinfo=();
     my @nodes=();
     foreach (@$mms1) { 
       push @nodes, @{$mpa_hash{$_}{nodes}};
@@ -1362,7 +1362,34 @@ sub preprocess_request {
 }
     
      
+sub build_more_info{
+  my $noderange=shift;
+  my $callback=shift;
+  my $mptab = xCAT::Table->new("mp");
+  my @moreinfo=();
+  unless ($mptab) { 
+    $callback->({data=>"Cannot open mp table"});
+    return @moreinfo;
+  }
+  my %mpa_hash=();
+  foreach my $node (@$noderange) {
+    my $ent=$mptab->getNodeAttribs($node,['mpa', 'id']);
+    if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
+    else { 
+      $callback->({data=>"no mpa defined for node $node"});
+      return @moreinfo;;
+    }
+    if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
+    else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
+  }
 
+  foreach (keys %mpa_hash) {
+    push @moreinfo, "\[$_\]\[" . join(',',@{$mpa_hash{$_}{nodes}}) ."\]\[" . join(',',@{$mpa_hash{$_}{ids}}) . "\]";
+    
+  }
+
+  return \@moreinfo;
+}
 
 sub process_request { 
   $SIG{INT} = $SIG{TERM} = sub { 
@@ -1388,7 +1415,9 @@ sub process_request {
     @exargs = ($request->{arg});
   }
 
-  my $moreinfo=$request->{moreinfo};
+  my $moreinfo;
+  if ($request->{moreinfo}) { $moreinfo=$request->{moreinfo}; }
+  else {  $moreinfo=build_more_info($noderange,$callback);} 
 
   if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
 
