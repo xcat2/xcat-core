@@ -53,7 +53,8 @@ case "$1" in
 			exit $?
 		fi
 
-		echo "Universal Server: $SERVER"
+		echo
+		echo "         Universal Server: $SERVER"
 
 		echo -n "         Syslog: "
 		echo "*.* @$SERVER" >/etc/rsyslog.conf
