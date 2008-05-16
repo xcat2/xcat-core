@@ -45,7 +45,8 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 %post
 
 if [ "$1" = "1" ]; then #Only if installing for the first time..
-
+# so conserver will start
+ mkdir -p /var/log/consoles
 
 # makes it a service node
   touch /etc/xCATSN    
