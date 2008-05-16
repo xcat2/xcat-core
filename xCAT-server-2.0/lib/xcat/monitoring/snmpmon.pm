@@ -9,6 +9,7 @@ use lib "$::XCATROOT/lib/perl";
 use IO::File;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT_monitoring::monitorctrl;
 
 
 #print "xCAT_monitoring::snmpmon loaded\n";
@@ -92,14 +93,14 @@ sub configBMC {
 
   #the identification of this node
   my @hostinfo=xCAT::Utils->determinehostname();
+  my $isSV=xCAT::Utils->isServiceNode();
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
-  my $isSV=xCAT::Utils->isServiceNode();
+  if (!$isSV) { $iphash{'noservicenode'}=1;}
 
   
   my %masterhash=();
   my @node_a=();
-  my $nrtab = xCAT::Table->new('noderes');
   my $table=xCAT::Table->new("ipmi");
   if ($table) {
     my @tmp1=$table->getAllNodeAttribs(['node','bmc']);
@@ -108,12 +109,10 @@ sub configBMC {
         my $node=$_->{node};
         my $bmc=$_->{bmc};
         
-        my $monserver;
-        my $tent  = $nrtab->getNodeAttribs($node,['monserver', 'servicenode']);
-        if ($tent) {
-	  if ($tent->{monserver}) {  $monserver=$tent->{monserver}; }
-          elsif ($tent->{servicenode})  {  $monserver=$tent->{servicenode}; }
-        } 
+        my $pairs=xCAT_monitoring::monitorctrl->getNodeMonServerPair($node);
+        my @a_temp=split(',',$pairs); 
+        my $monserver=$a_temp[0];
+        my $master=$a_temp[1];
 
         if ($monserver) { 
           if (!$iphash{$monserver}) { next;} #skip if has sn but not localhost
@@ -124,7 +123,6 @@ sub configBMC {
         push(@node_a, $node);
 
         # find the master node and add the node in the hash
-        $master=xCAT::Utils->GetMasterNodeName($node); #should we use $bmc?
         if(exists($masterhash{$master})) {
 	  my $ref=$masterhash{$master};
           push(@$ref, $node); 
@@ -133,14 +131,15 @@ sub configBMC {
     }
     $table->close();
   }
-  $nrtab->close();       
 
   if (@node_a==0){ return ($ret_val, $ret_text);} #nothing to handle
+  #print "configBMC: node_a=@node_a\n";
 
   #now doing the real thing: enable PEF alert policy table
   my $noderange=join(',',@node_a );
   my $actionstring="en";
   if ($action==0) {$actionstring="dis";}
+  #print "XCATBYPASS=Y rspconfig $noderange alert=$actionstring\n";
   my $result = `XCATBYPASS=Y rspconfig $noderange alert=$actionstring 2>&1`;
   if ($?) {
      xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
@@ -153,10 +152,19 @@ sub configBMC {
       my $ref2=$masterhash{$_};
       if (@$ref2==0) { next;}
       my $nr2=join(',', @$ref2);
-      my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$_ 2>&1`;
-      if ($?) {
-         xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
-	 $ret_tex .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
+      my @tmp_a=xCAT::Utils::toIP($_);
+      my $ptmp=$tmp_a[0];
+      if ($ptmp->[0]>0) {
+         xCAT::MsgUtils->message('S', "[mon]: Converting to IP: $ptmp->[1]\n"); 
+	 $ret_val=1;
+         $ret_text .= "Converting to IP: $ptmp->[1]\n";
+      } else {
+        #print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
+        my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
+        if ($?) {
+          xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
+	  $ret_tex .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
+        }
       }
     }
   }
@@ -184,14 +192,14 @@ sub configMPA {
 
   #the identification of this node
   my @hostinfo=xCAT::Utils->determinehostname();
+  my $isSV=xCAT::Utils->isServiceNode();
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
-  my $isSV=xCAT::Utils->isServiceNode();
+  if (!$isSV) { $iphash{'noservicenode'}=1;}
 
   my %mpa_hash=();
   my %masterhash=();
   my @node_a=();
-  my $nrtab = xCAT::Table->new('noderes');
   my $table=xCAT::Table->new("mp");
   if ($table) {
     my @tmp1=$table->getAllNodeAttribs(['mpa']);
@@ -203,12 +211,10 @@ sub configMPA {
 
         $mpa_hash{$mpa}=1;
         
-        my $monserver;
-        my $tent  = $nrtab->getNodeAttribs($mpa,['monserver', 'servicenode']);
-        if ($tent) {
-	  if ($tent->{monserver}) {  $monserver=$tent->{monserver}; }
-          elsif ($tent->{servicenode})  {  $monserver=$tent->{servicenode}; }
-        } 
+        my $pairs=xCAT_monitoring::monitorctrl->getNodeMonServerPair($mpa);
+        my @a_temp=split(',',$pairs); 
+        my $monserver=$a_temp[0];
+        my $master=$a_temp[1];
 
         if ($monserver) { 
           if (!$iphash{$monserver}) { next;} #skip if has sn but not localhost
@@ -219,7 +225,6 @@ sub configMPA {
         push(@node_a, $mpa);
 
         # find the master node and add the node in the hash
-        $master=xCAT::Utils->GetMasterNodeName($mpa); #should we use $bmc?
         if(exists($masterhash{$master})) {
 	  my $ref=$masterhash{$master};
           push(@$ref, $mpa); 
@@ -228,15 +233,18 @@ sub configMPA {
     }
     $table->close();
   }
-  $nrtab->close();       
 
   if (@node_a==0){ return ($ret_val, $ret_text);} #nothing to handle
+  #print "configMPA: node_a=@node_a\n";
+
 
   #now doing the real thing: enable PEF alert policy table
   my $noderange=join(',',@node_a );
   #print "noderange=@noderange\n";
   my $actionstring="en";
   if ($action==0) {$actionstring="dis";}
+ 
+  #print "XCATBYPASS=Y rspconfig $noderange alert=$actionstring\n";
   my $result = `XCATBYPASS=Y rspconfig $noderange alert=$actionstring 2>&1`;
   if ($?) {
      xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
@@ -249,10 +257,19 @@ sub configMPA {
       my $ref2=$masterhash{$_};
       if (@$ref2==0) { next;}
       my $nr2=join(',', @$ref2);
-      my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$_ 2>&1`;
-      if ($?) {
-         xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n");
-         $ret_text .= "Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n";  
+      my @tmp_a=xCAT::Utils::toIP($_);
+      my $ptmp=$tmp_a[0];
+      if ($ptmp->[0]>0) {
+         xCAT::MsgUtils->message('S', "[mon]: Converting to IP: $ptmp->[1]\n"); 
+	 $ret_val=1;
+         $ret_text .= "Converting to IP: $ptmp->[1]\n";
+      } else {
+        #print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
+        my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
+        if ($?) {
+          xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n");
+          $ret_text .= "Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n";  
+        }
       }
     }
   }
@@ -520,7 +537,7 @@ sub stopNodeStatusMon {
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
-  print "snmpmon::addNodes\n";
+  #print "snmpmon::addNodes\n";
   $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::snmpmon/) {
     $noderef=shift;

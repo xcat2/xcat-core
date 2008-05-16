@@ -327,7 +327,7 @@ sub startMonitoring {
   if (@product_names == 0) {
      @product_names=keys(%PRODUCT_LIST);    
   }
-
+  #print "product_names=@product_names\n";
 
   my %ret=();
   foreach(@product_names) {
@@ -621,8 +621,9 @@ sub processNodelistTableChanges {
   foreach(@hostinfo) {$iphash{$_}=1;}
 
   foreach (keys(%$hierarchy)) {
-    my $svname=$_;
-    my $mon_nodes=$hierarchy->{$svname};
+    my @server_pair=split(',', $_); 
+    my $svname=$server_pair[0];
+    my $mon_nodes=$hierarchy->{$_};
     if (($iphash{$svname}) || ($svname eq "noservicenode")) { #this is for ms
       #call each plug-in to add the nodes into the monitoring domain
       foreach(keys(%PRODUCT_LIST)) {
@@ -638,8 +639,8 @@ sub processNodelistTableChanges {
         push(@noderange, $nodetemp->[0]); 
       }       
       my $cmd;
-      if ($action eq "a") { $cmd="psh --nonodecheck $svname XCATBYPASS=Y monaddnode " . join(',', @noderange); }
-      else { $cmd="psh --nonodecheck $svname XCATBYPASS=Y monrmnode " . join(',', @noderange); }
+      if ($action eq "a") { $cmd="psh --nonodecheck $svname monaddnode --local " . join(',', @noderange); }
+      else { $cmd="psh --nonodecheck $svname monrmnode --local " . join(',', @noderange); }
       #print "cmd=$cmd\n";
       my $result=`$cmd 2>&1`;
       #print "result=$result\n";
@@ -906,6 +907,48 @@ sub getPluginSettings {
   return %settings;
 }
 
+#--------------------------------------------------------------------------------
+=head3    getNodeMonServerPair
+      It gets the monserver and monmaster for a given node.
+    Arguments:
+      node.
+    Returns:
+      "monserver,monmaser" First one is the monitoring service node ip/hostname 
+      that faces the mn and the second one is the monitoring service node ip/hostname 
+      that faces the cn. 
+      The value of the first one can be "noservicenode" meaning that there is no service node 
+      for that node. In this case the second one is the site master. 
+=cut
+#--------------------------------------------------------------------------------
+sub getNodeMonServerPair {
+  my $node=shift;
+  if ($node =~ /xCAT_monitoring::monitorctrl/) { $node=shift; }
+
+  my $monserver;
+  my $monmaster;
+  my $table2=xCAT::Table->new("noderes", -create =>0);
+  my $pairs;
+  my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode', 'xcatmaster']);
+  if (defined($tmp2) && ($tmp2)) {
+    if ($tmp2->{monserver}) {  
+      $pairs=$tmp2->{monserver}; 
+      #when there is only one hostname specified in noderes.monserver, 
+      #both monserver and monmaster take the same hostname.
+      if ($pairs !~ /,/) { $pairs=$tmp2->{monserver}.','.$tmp2->{monserver}; } 
+    }
+   }
+
+  if (!$pairs) {
+    if ($tmp2->{servicenode}) {  $monserver=$tmp2->{servicenode}; }
+    if ($tmp2->{xcatmaster})  {  $monmaster=$tmp2->{xcatmaster}; } 
+    if (!$monserver) { $monserver="noservicenode"; }
+    if (!$monmaster) { $monmaster=xCAT::Utils->get_site_attribute('master'); }
+    $pairs="$monserver,$monmaster";
+  }
+  #print "node=$node, pairs=$pairs\n";
+  $table2->close();
+  return $pairs;
+}
 
 #--------------------------------------------------------------------------------
 =head3    getMonHierarchy
@@ -918,7 +961,10 @@ sub getPluginSettings {
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
       {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
-      If there is no service node for a node, the key will be "noservicenode".    
+      A key is a pair of hostnames with the first one being the service node ip/hostname 
+      that faces the mn and the second one being the service node ip/hostname that faces the cn. 
+      The value of the first one can be "noservicenode" meaning that there is no service node 
+      for that node. In this case the second one is the site master.  
 =cut
 #--------------------------------------------------------------------------------
 sub getMonHierarchy {
@@ -929,7 +975,7 @@ sub getMonHierarchy {
   my @tmp1=$table->getAllAttribs(('node','status'));
 
   my $table2=xCAT::Table->new("noderes", -create =>0);  
-  my @tmp2=$table2->getAllNodeAttribs(['node','monserver', 'servicenode']);
+  my @tmp2=$table2->getAllNodeAttribs(['node','monserver', 'servicenode', 'xcatmaster']);
   my %temp_hash2=();
   foreach (@tmp2) {
     $temp_hash2{$_->{node}}=$_;
@@ -941,6 +987,7 @@ sub getMonHierarchy {
   foreach (@tmp3) {
     $temp_hash3{$_->{node}}=$_;
   }
+  my $sitemaster=xCAT::Utils->get_site_attribute('master');
   
   if (defined(@tmp1) && (@tmp1 > 0)) {
     foreach(@tmp1) {
@@ -954,19 +1001,34 @@ sub getMonHierarchy {
       }
 
       my $monserver;
+      my $monmaster;
+      my $pairs;
       my $row2=$temp_hash2{$node};
       if (defined($row2) && ($row2)) {
-	if ($row2->{monserver}) {  $monserver=$row2->{monserver}; }
-        elsif ($row2->{servicenode})  {  $monserver=$row2->{servicenode}; }
+	if ($row2->{monserver}) {
+          $pairs=$row2->{monserver}; 
+          #when there is only one hostname specified in noderes.monserver, 
+          #both monserver and monmaster take the same hostname.
+          if ($pairs !~ /,/) { $pairs=$row2->{monserver}.','.$row2->{monserver}; } 
+        }
       }
-      #print "node=$node, monserver=$monserver\n";
-      if (!$monserver) { $monserver="noservicenode"; }
-      if (exists($ret->{$monserver})) {
-        my $pa=$ret->{$monserver};
+      
+      if (!$pairs) {
+        if ($row2->{servicenode}) {  $monserver=$row2->{servicenode}; }
+        if ($row2->{xcatmaster})  {  $monmaster=$row2->{xcatmaster}; } 
+        if (!$monserver) { $monserver="noservicenode"; }
+        if (!$monmaster) { $monmaster=$sitemaster; }
+        $pairs="$monserver,$monmaster";
+      }
+
+      #print "node=$node, pairs=$pairs\n";
+
+      if (exists($ret->{$pairs})) {
+        my $pa=$ret->{$pairs};
         push(@$pa, [$node, $nodetype, $status]);
       }
       else {
-        $ret->{$monserver}=[[$node, $nodetype, $status]];
+        $ret->{$pairs}=[[$node, $nodetype, $status]];
       }
     }
   }
@@ -990,8 +1052,11 @@ sub getMonHierarchy {
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...}
-      If there is no service node for a node, the key will be "noservicenode".  
+      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
+      A key is a pair of hostnames with the first one being the service node ip/hostname 
+      that faces the mn and the second one being the service node ip/hostname that faces the cn. 
+      The value of the first one can be "noservicenode" meaning that there is no service node 
+      for that node. In this case the second one is the site master.  
 =cut
 #--------------------------------------------------------------------------------
 sub getMonServerWithInfo {
@@ -1005,7 +1070,6 @@ sub getMonServerWithInfo {
 
   #print "getMonServerWithInfo called with @in_nodes\n";
   #get all from the noderes table
-  my $table2=xCAT::Table->new("noderes", -create =>0);
   my $table3=xCAT::Table->new("nodetype", -create =>0);
   
   foreach (@in_nodes) {
@@ -1018,25 +1082,17 @@ sub getMonServerWithInfo {
       if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
     }
 
-    my $monserver;
-    my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
-    if (defined($tmp2) && ($tmp2)) {
-      if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
-      elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
-    }
-    if (!$monserver) { $monserver="noservicenode"; }
+    my $pairs=getNodeMonServerPair($node);
 
-
-    if (exists($ret->{$monserver})) {
-      my $pa=$ret->{$monserver};
+    if (exists($ret->{$pairs})) {
+      my $pa=$ret->{$pairs};
       push(@$pa, [$node, $nodetype, $status]);
     }
     else {
-      $ret->{$monserver}=[[$node, $nodetype, $status]];
+      $ret->{$pairs}=[[$node, $nodetype, $status]];
     }
   }    
   
-  $table2->close();
   $table3->close();
   return $ret;
 }
@@ -1053,8 +1109,11 @@ sub getMonServerWithInfo {
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi', active'], ['node2', 'switch', booting']...], ...}
-      If there is no service node for a node, the key will be "noservicenode".  
+      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
+      A key is a pair of hostnames with the first one being the service node ip/hostname 
+      that faces the mn and the second one being the service node ip/hostname that faces the cn. 
+      The value of the first one can be "noservicenode" meaning that there is no service node 
+      for that node. In this case the second one is the site master.  
 =cut
 #--------------------------------------------------------------------------------
 sub getMonServer {
@@ -1068,7 +1127,6 @@ sub getMonServer {
   my $ret={};
   #get all from nodelist table and noderes table
   my $table=xCAT::Table->new("nodelist", -create =>0);
-  my $table2=xCAT::Table->new("noderes", -create =>0);
   my $table3=xCAT::Table->new("nodetype", -create =>0);
   
   foreach (@in_nodes) {
@@ -1084,25 +1142,19 @@ sub getMonServer {
 	if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
       }
 
-      my $monserver;
-      my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode']);
-      if (defined($tmp2) && ($tmp2)) {
-        if ($tmp2->{monserver}) {  $monserver=$tmp2->{monserver}; }
-        elsif ($tmp2->{servicenode})  {  $monserver=$tmp2->{servicenode}; }
-      }
-      if (!$monserver) { $monserver="noservicenode"; }
+      my $pairs=getNodeMonServerPair($node);
 
-      if (exists($ret->{$monserver})) {
-        my $pa=$ret->{$monserver};
+
+      if (exists($ret->{$pairs})) {
+        my $pa=$ret->{$pairs};
         push(@$pa, [$node, $nodetype, $status]);
       }
       else {
-        $ret->{$monserver}=[ [$node,$nodetype, $status] ];
+        $ret->{$pairs}=[[$node, $nodetype, $status]];
       }
     }    
   }
   $table->close();
-  $table2->close();
   $table3->close();
   return $ret;
 }
@@ -1124,6 +1176,77 @@ sub nodeStatMonName {
   return $NODESTAT_MON_NAME;
 }
 
+#--------------------------------------------------------------------------------
+=head3    pluginsAddNodes
+      This function informs all the local active monitoring plug-ins to add the given
+     nodes to their monitoring domain.  
+    Arguments:
+        noderange  a pointer to an array of node names
+    Returns:
+        ret a hash with plug-in name as the keys and the an arry of 
+        [return code, error message] as the values.
+=cut
+#--------------------------------------------------------------------------------
+sub pluginsAddNodes {
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::monitorctrl/) {
+    $noderef=shift;
+  }
+
+  my %ret=();
+  if (!$masterpid) { refreshProductList();}
+  if (keys(%PRODUCT_LIST) ==0) { return %ret; }
+
+  #let all actvie modules to process it
+  foreach(keys(%PRODUCT_LIST)) {
+    my $aRef=$PRODUCT_LIST{$_};
+    my $module_name=$aRef->[1]; 
+    my @ret1=${$module_name."::"}{addNodes}->($noderef); 
+    $ret{$_}=\@ret1;
+        
+    #for service node, the error may not be get shown, log it
+    if ($ret1[0] >0) {
+      xCAT::MsgUtils->message('S', "[mon]: $svname: $ret1[1]\n"); 
+    }
+  }
+
+  return %ret;
+}
+#--------------------------------------------------------------------------------
+=head3    pluginsRemoveNodes
+      This function informs all the local active monitoring plug-ins to remove the given
+     nodes to their monitoring domain.  
+    Arguments:
+        noderange  a pointer to an array of node names
+    Returns:
+        ret a hash with plug-in name as the keys and the an arry of 
+        [return code, error message] as the values.
+=cut
+#--------------------------------------------------------------------------------
+sub pluginsRemoveNodes {
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::monitorctrl/) {
+    $noderef=shift;
+  }
+
+  my %ret=();
+  if (!$masterpid) { refreshProductList();}
+  if (keys(%PRODUCT_LIST) ==0) { return %ret; }
+
+  #let all actvie modules to process it
+  foreach(keys(%PRODUCT_LIST)) {
+    my $aRef=$PRODUCT_LIST{$_};
+    my $module_name=$aRef->[1]; 
+    my @ret1=${$module_name."::"}{removeNodes}->($noderef); 
+    $ret{$_}=\@ret1;
+        
+    if (($ret1[0] >0)) {
+      xCAT::MsgUtils->message('S', "[mon]: $_: $ret1[1]\n"); 
+    }
+  }
+
+  return %ret;
+}
 
 #--------------------------------------------------------------------------------
 =head3    addNodes
@@ -1132,24 +1255,30 @@ sub nodeStatMonName {
      not the localhost, the request will be sent to the conresponding service nodes. 
     Arguments:
         noderange  a pointer to an array of node names
+        local      0 or 1, if set to 1, the nodes are only handled locally. No need
+            to find their service nodes.
     Returns:
         ret a hash with plug-in name as the keys and the an arry of 
         [return code, error message] as the values.
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
-  my %ret=();
-  if (!$masterpid) { refreshProductList();}
-  if (keys(%PRODUCT_LIST) ==0) { return %ret; }
-
   my $p_input=shift;
   if ($p_input =~ /xCAT_monitoring::monitorctrl/) {
     $p_input=shift;
   }
+  my $handle_local=shift;
+
+  my %ret=();
+
 
   my @nodenames=@$p_input;
   if (@nodenames == 0) { return %ret; }
   #print "nodenames=@nodenames\n";
+
+  if ($handle_local) {
+    return pluginsAddNodes($p_input);
+  }
 
   my $isSV=xCAT::Utils->isServiceNode();
   my @hostinfo=xCAT::Utils->determinehostname();
@@ -1160,37 +1289,34 @@ sub addNodes {
   my @mon_servers=keys(%$hierachy); 
 
   foreach (@mon_servers) {
-    my $svname=$_;
-    my $mon_nodes=$hierachy->{$svname};
+    #service node come in pairs, the first one is the monserver adapter that facing the mn,
+    # the second one is facing the cn. we use the first one here
+    my @server_pair=split(',', $_); 
+    my $svname=$server_pair[0];
+    my $mon_nodes=$hierachy->{$_};
     if ($iphash{$_}) { 
       #let all actvie modules to process it
-      foreach(keys(%PRODUCT_LIST)) {
-        my $aRef=$PRODUCT_LIST{$_};
-        my $module_name=$aRef->[1]; 
-        my @ret1=${$module_name."::"}{addNodes}->($mon_nodes); 
-        $ret{$svname}=\@ret1;
-        
-        #for service node, the error may not be get shown, log it
-        if (($isSV) && ($ret1[0] >0)) {
-	  xCAT::MsgUtils->message('S', "[mon]: $svname: $ret1[1]\n"); 
-        }
+      my %ret1=pluginsAddNodes($mon_nodes);
+      my @ret2=();
+      foreach(keys(%ret1)) {
+        push(@ret2, "$_ ".$ret1{$_}."\n");
       }
+      $ret{$svname}=\@ret2;
     } elsif (!$isSV)  {
       if ($svname eq "noservicenode") {
-        #let all actvie modules to process it
-        foreach(keys(%PRODUCT_LIST)) {
-          my $aRef=$PRODUCT_LIST{$_};
-          my $module_name=$aRef->[1]; 
-          my @ret1=${$module_name."::"}{addNodes}->($mon_nodes);
-          $ret{$svname}=\@ret1;
-        } 
+        my %ret1=pluginsAddNodes($mon_nodes);
+        my @ret2=();
+        foreach(keys(%ret1)) {
+          push(@ret2, "$_ ".$ret1{$_}."\n");
+        }
+        $ret{$svname}=\@ret2;
       } else {
         #forward them to the service nodes
         my @noderange=();
         foreach my $nodetemp (@$mon_nodes) {
           push(@noderange, $nodetemp->[0]); 
         }   
-        my $cmd="psh --nonodecheck $svname XCATBYPASS=Y monaddnode " . join(',', @noderange); 
+        my $cmd="psh --nonodecheck $svname monaddnode --local " . join(',', @noderange); 
         my $result=`$cmd 2>&1`;
         #print "result=$result\n";
         if ($?) {
@@ -1210,23 +1336,30 @@ sub addNodes {
      not the localhost, the request will be sent to the conresponding service nodes. 
     Arguments:
         noderange  a pointer to an array of node names
+        local      0 or 1, if set to 1, the nodes are only handled locally. No need
+            to find their service nodes.
     Returns:
         ret a hash with plug-in name as the keys and the an arry of 
         [return code, error message] as the values.
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes {
-  my %ret=();
-  if (!$masterpid) { refreshProductList();}
-  if (keys(%PRODUCT_LIST) ==0) { return %ret; }
-
   my $p_input=shift;
   if ($p_input =~ /xCAT_monitoring::monitorctrl/) {
     $p_input=shift;
   }
+  my $handle_local=shift;
+
+  my %ret=();
 
   my @nodenames=@$p_input;
   if (@nodenames == 0) { return %ret; }
+  #print "nodenames=@nodenames\n";
+
+  if ($handle_local) {
+    return pluginsRemoveNodes($p_input);
+  }
+
 
   my $isSV=xCAT::Utils->isServiceNode();
   my @hostinfo=xCAT::Utils->determinehostname();
@@ -1237,37 +1370,33 @@ sub removeNodes {
   my @mon_servers=keys(%$hierachy); 
 
   foreach (@mon_servers) {
-    my $svname=$_;
-    my $mon_nodes=$hierachy->{$svname};
+    my @server_pair=split(',', $_); 
+    my $svname=$server_pair[0];
+    my $mon_nodes=$hierachy->{$_};
     if ($iphash{$_}) { 
       #let all actvie modules to process it
-      foreach(keys(%PRODUCT_LIST)) {
-        my $aRef=$PRODUCT_LIST{$_};
-        my $module_name=$aRef->[1]; 
-        my @ret1=${$module_name."::"}{removeNodes}->($mon_nodes); 
-        $ret{$svname}=\@ret1;
-        
-        #for service node, the error may not be get shown, log it
-        if (($isSV) && ($ret1[0] >0)) {
-	  xCAT::MsgUtils->message('S', "[mon]: $svname: $ret1[1]\n"); 
-        }
+      my %ret1=pluginsRemoveNodes($mon_nodes);
+      my @ret2=();
+      foreach(keys(%ret1)) {
+        push(@ret2, "$_ ".$ret1{$_}."\n");
       }
+      $ret{$svname}=\@ret2;
     } elsif (!$isSV)  {
       if ($svname eq "noservicenode") {
         #let all actvie modules to process it
-        foreach(keys(%PRODUCT_LIST)) {
-          my $aRef=$PRODUCT_LIST{$_};
-          my $module_name=$aRef->[1]; 
-          my @ret1=${$module_name."::"}{removeNodes}->($mon_nodes);
-          $ret{$svname}=\@ret1;
-        } 
+        my %ret1=pluginsRemoveNodes($mon_nodes);
+        my @ret2=();
+        foreach(keys(%ret1)) {
+          push(@ret2, "$_ ".$ret1{$_}."\n");
+        }
+        $ret{$svname}=\@ret2;
       } else {
         #forward them to the service nodes
         my @noderange=();
         foreach my $nodetemp (@$mon_nodes) {
           push(@noderange, $nodetemp->[0]); 
         }   
-        my $cmd="psh --nonodecheck $svname XCATBYPASS=Y monrmnode " . join(',', @noderange); 
+        my $cmd="psh --nonodecheck $svname monrmnode --local " . join(',', @noderange); 
         my $result=`$cmd 2>&1`;
         #print "result=$result\n";
         if ($?) {

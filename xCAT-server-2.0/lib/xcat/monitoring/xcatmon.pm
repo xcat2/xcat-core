@@ -217,7 +217,8 @@ sub getMonNodesStatus {
   my @active_nodes=();
   my @unknown_nodes=();
 
-  my $monservers=xCAT_monitoring::monitorctrl->getMonHierarchy();
+  my $hierachy=xCAT_monitoring::monitorctrl->getMonHierarchy();
+  my @mon_servers=keys(%$hierachy); 
   my $isSV=xCAT::Utils->isServiceNode(); 
   
   #on a service node or on ms, get the nodes that has local host as the server node
@@ -225,10 +226,20 @@ sub getMonNodesStatus {
   my @hostinfo=xCAT::Utils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
-  foreach my $host (@hostinfo) {
-    $monnodes=$monservers->{$host};
-    if (($monnodes) && (@$monnodes >0)) { last;}
-  }     
+  #if this is mn, include the ones that has no service nodes
+  if (!$isSV) { $iphash{'noservicenode'}=1;}
+  
+
+  foreach(@mon_servers) {
+    #service node come in pairs, the first one is the monserver adapter that facing the mn,
+    # the second one is facing the cn. we use the first one here
+    my @server_pair=split(',', $_); 
+    my $sv=$server_pair[0];
+    if ($iphash{$sv}) {
+      $monnodes=$hierachy->{$_};
+    }
+  }
+     
   foreach(@$monnodes) {
     my $node=$_->[0];
     my $status=$_->[2];
@@ -237,18 +248,6 @@ sub getMonNodesStatus {
     else { push(@unknown_nodes, $node);}
   }
  
-  #on ms, add the ones that has no service nodes
-  if (!$isSV) { 
-    my $monnodes_ms=$monservers->{'noservicenode'};
-    foreach(@$monnodes_ms) {
-      my $node=$_->[0];
-      my $status=$_->[2];
-      if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
-      elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
-      else { push(@unknown_nodes, $node);}
-    }
-  }
-
   $status{$::STATUS_ACTIVE}=\@active_nodes;
   $status{$::STATUS_INACTIVE}=\@inactive_nodes;
   $status{unknown}=\@unknown_nodes;

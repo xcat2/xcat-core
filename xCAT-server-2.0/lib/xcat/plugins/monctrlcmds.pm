@@ -308,9 +308,13 @@ sub monstart {
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   foreach (@mon_servers) {
-    if (! $iphash{$_} && ($_ ne "noservicenode")) { #if it is not this node, meaning it is ms
+    #service node come in pairs, the first one is the monserver adapter that facing the mn,
+    # the second one is facing the cn. we use the first one here
+    my @server_pair=split(',', $_); 
+    my $sv=$server_pair[0];
+    if (! $iphash{$sv} && ($sv ne "noservicenode")) { #if it is not this node, meaning it is ms
       my %rsp2;
-      $rsp2->{data}->[0]="sending request to $_...";
+      $rsp2->{data}->[0]="sending request to $sv...";
       $callback->($rsp2);
 #      my $result=`psh --nonodecheck $_ monupdate 2>1&`;     
 #      if ($result) {
@@ -319,7 +323,7 @@ sub monstart {
 #      }
       my %req=();
       push @{$req{command}}, "monupdate";
-      $req{'_xcatdest'}=$_;
+      $req{'_xcatdest'}=$sv;
       $doreq->(\%req,\&take_answer);
     } 
   } 
@@ -454,9 +458,13 @@ sub monstop {
   %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   foreach (@mon_servers) {
-    if (! $iphash{$_} && ($_ ne "noservicenode")) { #if it is not this node, meaning it is ms
+    #service node come in pairs, the first one is the monserver adapter that facing the mn,
+    # the second one is facing the cn. we use the first one here
+    my @server_pair=split(',', $_); 
+    my $sv=$server_pair[0];
+    if (! $iphash{$sv} && ($sv ne "noservicenode")) { #if it is not this node, meaning it is ms
       my %rsp2;
-      $rsp2->{data}->[0]="sending request to $_...";
+      $rsp2->{data}->[0]="sending request to $sv...";
       $callback->($rsp2);
       # my $result=`psh --nonodecheck $_ monupdate 2>1&`;     
       # if ($result) {
@@ -465,7 +473,7 @@ sub monstop {
       #}  
       my %req=();
       push @{$req{command}}, "monupdate";
-      $req{'_xcatdest'}=$_;
+      $req{'_xcatdest'}=$sv;
       $doreq->(\%req,\&take_answer);
     } 
   } 
@@ -660,7 +668,10 @@ sub monaddnode {
   # parse the options
   if(!GetOptions(
       'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION,))
+      'v|version'  => \$::VERSION,
+      'local'  => \$::LOCAL,)) # this flag is used internally to indicate
+                                   # that there is no need to find the monserver for the nodes
+                                   # just handle them on the lccal host
   {
     &monaddnode_usage;
     return;
@@ -701,7 +712,7 @@ sub monaddnode {
     return;
   }
 
-  my %ret=xCAT_monitoring::monitorctrl->addNodes(\@nodenames);
+  my %ret=xCAT_monitoring::monitorctrl->addNodes(\@nodenames,$::LOCAL);
 
   if (%ret) {
     foreach(keys(%ret)) {
@@ -755,7 +766,11 @@ sub monrmnode {
   # parse the options
   if(!GetOptions(
       'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION,))
+      'v|version'  => \$::VERSION,
+      'local'  => \$::LOCAL,)) # this flag is used internally to indicate
+                                   # that there is no need to find the monserver for the nodes
+                                   # just handle them on the lccal host
+
   {
     &monrmnode_usage;
     return;
@@ -790,7 +805,7 @@ sub monrmnode {
   my @nodenames=noderange($noderange, 0);
   if (@nodenames==0) { return 0;}
 
-  my %ret=xCAT_monitoring::monitorctrl->removeNodes(\@nodenames);
+  my %ret=xCAT_monitoring::monitorctrl->removeNodes(\@nodenames, $::LOCAL);
   if (%ret) {
     foreach(keys(%ret)) {
       my $retstat=$ret{$_}; 

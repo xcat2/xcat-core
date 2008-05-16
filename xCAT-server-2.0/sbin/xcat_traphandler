@@ -159,7 +159,7 @@ while ($temp=<STDIN>) {
   } 
   elsif ($oid =~ /enterprises\.3183\.1\.1\.1/) { #IPMI PRTs (traps)
     $node1=$host;
-    $node1 =~ s/(-(eth|man)\d+)?(\..*)?$//;
+    #$node1 =~ s/(-(eth|man)\d+)?(\..*)?$//;
 
     $ip1=$ip;
     $ip1 =~ /(\d+\.\d+\.\d+\.\d+)/;
@@ -177,6 +177,7 @@ while ($temp=<STDIN>) {
       }
     }
 
+    #print "node1=$node1\n";
     #node1 is the bmc name, we need the node that bmc connects to to call xCAT
     my $realnode;
     my $ipmitab = xCAT::Table->new('ipmi');
@@ -190,10 +191,13 @@ while ($temp=<STDIN>) {
       $ipmitab->close();
     }
     if ($realnode) {$node1=$realnode;}
+    #print "node1=$node1\n";
+
 
     # make the vlaue into a hex array for decoding
     $value =~ s/\"//g;
     my @varray=split(/\s+/, $value);
+    #print "varray=@varray\n";
     foreach (@varray) { $_=hex($_); }
     my $error = xCAT_plugin::ipmi->decodealert($trapid, $node1, @varray);
     $briefmsg .= $error;
