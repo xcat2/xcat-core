@@ -164,7 +164,9 @@ sub mkinitrd {
 		rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
 	}
 	else {
-		if(-r "/boot/vmlinuz-$kernelver") {
+		if(-r "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/boot/vmlinuz-$kernelver") {
+			rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+        } elsif(-r "/boot/vmlinuz-$kernelver") {
 			copy("/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
 		}
 		else {
@@ -354,12 +356,14 @@ EOMS
    push @filestoadd,keys %libhash;
 	if($basekernelver ne $kernelver) {
 		system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$basekernelver");
-		if(-d "/lib/modules/$kernelver") {
-			system("cd /lib/modules;cp -r $kernelver $installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/");
-		}
-		else {
-			die("Cannot read /lib/modules/$kernelver");
-		}
+        unless (-d "$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$kernelver") {
+		    if(-d "/lib/modules/$kernelver") {
+		    	system("cd /lib/modules;cp -r $kernelver $installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/");
+		    }
+		    else {
+		    	die("Cannot read /lib/modules/$kernelver");
+		    }
+        }
 	}
    find(\&isnetdriver, <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$kernelver/*>);
    foreach (@filestoadd) {
