@@ -21,7 +21,7 @@ my %shortnames = (
                   groups => [qw(nodelist groups)],
                   tags   => [qw(nodelist groups)],
                   mgt    => [qw(nodehm mgt)],
-                  switch => [qw(switch switch)],
+                  #switch => [qw(switch switch)],
                   );
 
 #####################################################
