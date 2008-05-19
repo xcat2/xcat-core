@@ -1,0 +1,48 @@
+=head1 Name
+
+B<rinstall> - Begin installation on a noderange
+
+=head1 B<Synopsis>
+
+B<winstall> [I<-o>|I<--osver>] [I<-p>|I<--profile>] [I<-a>|I<--arch>] [I<noderange>]
+
+=head1 B<Description>
+
+B<winstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call nodeset to modify the network boot configuration, and rpower to begin a boot cycle.  It will then commence a wcons command to the 
+noderange for monitoring.
+
+=head1 B<Options>
+
+=over 7
+
+=item B<-o>|B<--osver>
+
+Specifies which os version to install.  If unspecified, the current table values are used.
+
+=item B<-p>|B<--profile>
+
+Specifies what profile should be used of the operating system.  If not specified the tables are used as is.
+
+
+=item B<-a>|B<--arch>
+
+Specifies what architecture of the OS to install.  Typically this is unneeded, but if provisioning betweer x86_64 and x86 frequently, this may be a useful flag.
+
+=head1 B<Examples>
+
+B<winstall> I<node1-node20>
+
+Install nodes 1 through 20, using configuration as is from tables.
+
+B<winstall> -o rhels5.1 -p compute I<node1-node20>
+
+Install nodes 1 through 20, forcing rhels5.1 and compute profile.
+
+
+=head1 B<Author>
+
+Jarrod B Johnson <jbjohnso@us.ibm.com>
+
+=head1 B<See> B<Also>
+
+L<noderange(3)|noderange.3>,   L<rinstall(8)|rinstall.8>, L<wcons(1)|wcons.1>

@@ -1,0 +1,50 @@
+#!/usr/bin/env perl 
+use strict;
+use Getopt::Long;
+use File::Basename;
+sub usage {
+    print basename($0)." usage:\n";
+    print " ".basename($0)." [-o|--osver [-p|--profile] [-a|--arch] [-c|--console] <noderange>\n"
+}
+
+my $OSVER;
+my $PROFILE;
+my $ARCH;
+my $CONSOLE;
+unless (GetOptions(
+    'o|osver=s' => \$OSVER,
+    'p|profile=s' => \$PROFILE,
+    'a|arch=s' => \$ARCH,
+    'c|console' => \$CONSOLE
+    )) {
+    usage;
+    exit 1;
+}
+my $noderange=join(',',@ARGV);
+my $nodechline = "";
+if ($OSVER) {
+    $nodechline = "nodetype.os=$OSVER";
+}
+if ($PROFILE) {
+    $nodechline .= " nodetype.profile=$PROFILE";
+}
+if ($ARCH) {
+    $nodechline .= " nodetype.arch=$ARCH";
+}
+
+my $rc;
+if ($nodechline) {
+    $rc=system("nodech $noderange $nodechline");
+}
+if ($rc) { die "nodech failure" };
+$rc=system("nodeset $noderange install");
+if ($rc) { die "nodeset failure" };
+$rc=system("rpower $noderange boot");
+if ($rc) { die "rpower failure" };
+if (basename($0) =~ /rinstall/) {
+    if ($CONSOLE) {
+        exec("rcons $noderange");
+    }
+} elsif (basename($0) =~ /winstall/) {
+    exec("wcons $noderange");
+}
