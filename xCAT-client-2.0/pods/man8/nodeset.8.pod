@@ -71,11 +71,6 @@ Print version.
 
 =head1 B<Files>
 
-B<nodehm> table -
-xCAT node hardware management file.  See B<nodehm(5)> for fur-
-ther details.  This is used to determine the network boot  type:
-pxe or yaboot
-
 B<noderes> table -
 xCAT  node  resources  file.   See  B<noderes(5)>  for  further
 details.
