@@ -4,7 +4,7 @@ B<gettab> - search through tables using keys and return attributes.
 
 =head1 SYNOPSIS
 
-B<gettab> I<key=value,...  table.attribute ...>
+B<gettab> [B<-H> | B<--with-fieldname>] I<key=value,...  table.attribute ...>
 
 B<gettab> [B<-?> | B<-h> | B<--help>]
 
@@ -16,6 +16,10 @@ row, the specified attributes are displayed.
 =head1 OPTIONS
 
 =over 10
+
+=item B<-H|--with-fieldname>
+
+Always display table.column description next to result
 
 =item B<-?|-h|--help>
 

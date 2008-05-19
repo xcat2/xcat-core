@@ -5,9 +5,9 @@ B<nodels> - lists the nodes in the noderange.
 
 =head1 SYNOPSIS
 
-B<nodels> [I<noderange>] [I<table.column> | I<shortname>] [I<...>]
+B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table.column> | I<shortname>] [I<...>]
 
-B<nodels> [I<noderange>] [I<table>]
+B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table>]
 
 B<nodels> {B<-v> | B<--version>}
 
@@ -55,6 +55,10 @@ will not do this, instead they will just display the single regular expression r
 =item B<-v|--version>
 
 Command Version.
+
+=item B<-H|--with-fieldname>
+
+Force display table name and column name context for each result
 
 =item B<-?|-h|--help>
 

@@ -129,11 +129,12 @@ sub gettab
     my $req      = shift;
     my $callback = shift;
     my $HELP;
+    my $NOTERSE;
 
     sub gettab_usage {
     	my $exitcode = shift @_;
         my %rsp;
-        push @{$rsp{data}}, "Usage: gettab key=value,...  table.attribute ...";
+        push @{$rsp{data}}, "Usage: gettab [-H|--with-fieldname] key=value,...  table.attribute ...";
         push @{$rsp{data}}, "       gettab [-?|-h|--help]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $callback->(\%rsp);
@@ -141,7 +142,7 @@ sub gettab
 
 	# Process arguments
     @ARGV = @{$req->{arg}};
-    if (!GetOptions('h|?|help' => \$HELP)) { gettab_usage(1); return; }
+    if (!GetOptions('h|?|help' => \$HELP,'H|with-fieldname' => \$NOTERSE)) { gettab_usage(1); return; }
 
     if ($HELP) { gettab_usage(0); return; }
     if (scalar(@ARGV)<2) { gettab_usage(1); return; }
@@ -163,6 +164,9 @@ sub gettab
     # Group the columns asked for by table (so we can do 1 query per table)
     my %tabhash;
     my $terse = 2;
+    if ($NOTERSE) {
+        $terse = 0;
+    }
     foreach my $tabvalue (@ARGV)
     {
         $terse--;
@@ -186,7 +190,7 @@ sub gettab
         (my $ent) = $tab->getAttribs(\%keyhash, keys %{$tabhash{$tabn}});
         foreach my $coln (keys %{$tabhash{$tabn}})
         {
-            if ($terse) {
+            if ($terse > 0) {
                 $callback->({data => ["" . $ent->{$coln}]});
             } else {
                 $callback->({data => ["$tabn.$coln: " . $ent->{$coln}]});
@@ -739,7 +743,7 @@ sub nodels
     	my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage:";
-        push @{$rsp{data}}, "  nodels [noderange] [table.attribute | shortname] [...]";
+        push @{$rsp{data}}, "  nodels [noderange] [-H|--with-fieldname] [table.attribute | shortname] [...]";
         push @{$rsp{data}}, "  nodels {-v|--version}";
         push @{$rsp{data}}, "  nodels [-?|-h|--help]";
 #####  xcat 1.2 nodels usage:
@@ -758,7 +762,8 @@ sub nodels
     }
 
     @ARGV = @{$args};
-    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION,) ) { nodels_usage(1); return; }
+    my $NOTERSE;
+    if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'v|version' => \$VERSION,) ) { nodels_usage(1); return; }
 
     # Help
     if ($HELP) { nodels_usage(0); return; }
@@ -781,6 +786,9 @@ sub nodels
     #  }
     my $argc = @ARGV;
     my $terse = 2;
+    if ($NOTERSE) {
+        $terse = 0;
+    }
 
     if (@$nodes > 0 or $noderange)
     { #Make sure that there are zero nodes *and* that a noderange wasn't requested
@@ -849,7 +857,7 @@ sub nodels
                     foreach (keys %$rec)
                     {
                         my %datseg;
-                        unless ($terse) {
+                        unless ($terse > 0) {
                             $datseg{data}->[0]->{desc}     = [$labels{$_}];
                         }
                         $datseg{data}->[0]->{contents} = [$rec->{$_}];
