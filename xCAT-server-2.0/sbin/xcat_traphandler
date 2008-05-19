@@ -70,9 +70,10 @@ checkWithOid($oid, $value);
 #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
 if ($IGNORE) { exit 0;}
 
-#for ipmi traps, the values is: SNMPv2-SMI::enterprises.3183.1.1.0.x, x is the ipmi trap id.
-$value =~ s/(SNMPv2-SMI::enterprises\.3183\.1\.1\.0\.)//g;
-my $trapid=$value; 
+#for ipmi traps, the values is: SNMPv2-SMI::enterprises.3183.1.1.0.x or
+# RFC1155-SMI::enterprises.3183.1.1.0.x, where x is the ipmi trap id.
+my $trapid; 
+if ($value =~ /enterprises\.3183\.1\.1\.0\.(.*)/) { $trapid=$1; }
 
 #print "trapid=$trapid\n";
 
