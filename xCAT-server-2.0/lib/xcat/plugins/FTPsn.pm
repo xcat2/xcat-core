@@ -29,6 +29,11 @@ Call  setup_TFTP  (actually setting up atftp)
 
 sub handled_commands
 {
+    # If called in XCATBYPASS mode, don't do any setup
+    if ($ENV{'XCATBYPASS'}) {
+       return 0;
+    }
+
     my $rc = 0;
 
     # setup vstftp

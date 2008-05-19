@@ -31,6 +31,11 @@ Call  setup_DHCP
 
 sub handled_commands
 {
+    # If called in XCATBYPASS mode, don't do any setup
+    if ($ENV{'XCATBYPASS'}) {
+       return 0;
+    }
+
     my $rc = 0;
     if (xCAT::Utils->isServiceNode())
     {
