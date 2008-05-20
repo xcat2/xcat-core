@@ -2269,12 +2269,11 @@ sub getSNList
 
     # reads all nodes from the service node table
     my @servicenodes;
-    my $servicenodetab = xCAT::Table->new('servicenode');
+    my $servicenodetab = xCAT::Table->new('servicenode',-create=>1);
     unless ($servicenodetab)    # no  servicenode table
     {
         xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
-        return 0;
-
+        return ();
     }
     my @nodes = $servicenodetab->getAllNodeAttribs([$service]);
     $servicenodetab->close;
