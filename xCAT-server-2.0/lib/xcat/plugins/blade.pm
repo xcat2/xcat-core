@@ -1239,7 +1239,7 @@ sub build_depend {
   my %mpa_hash;
 
   if (!defined($depstab)) {
-    return(\%dp);
+    return([\%dp]);
   }
   unless ($mptab) {
     return("Cannot open mp table");
