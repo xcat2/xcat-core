@@ -418,15 +418,17 @@ sub mpaconfig {
    my $mpa=shift;
    my $user=shift;
    my $pass=shift;
+   my $node=shift;
    my $nodeid=shift;
    my $parameter;
    my $value;
    my $assignment;
    my $returncode=0;
+   my $textid=0;
    if ($didchassis) { return 0, @cfgtext } #"Chassis already configured for this command" }
    @cfgtext=();
 
-   my $result = telnetcmds($mpa,$user,$pass,@_);
+   my $result = telnetcmds($mpa,$user,$pass,$nodeid,@_);
    $returncode |= @$result[0];
    my $args = @$result[1];
 
@@ -461,11 +463,18 @@ sub mpaconfig {
       }
       if ($parameter eq "textid") {
          if ($assignment) {
-             setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$nodeid,$value,'OCTET');
+           my $txtid = ($value =~ /^\*/) ? $node : $value;
+           setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$nodeid,$txtid,'OCTET');
          }
-         my $data = $session->get([$bladeoname,$nodeid]);
+         my $data;
+         if ($slot > 0) {
+           $data = $session->get([$bladeoname,$nodeid]);
+         }
+         else {
+           $data = $session->get([$mmoname,0]);
+         }
+         $textid = 1;
          push @cfgtext,"textid: $data";
-         return $returncode,@cfgtext; 
       }
       if ($parameter =~ /^snmpcfg$/i) {
          my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.1.6',0]);
@@ -536,7 +545,9 @@ sub mpaconfig {
          }
       }
    }
-   $didchassis=1;
+   unless ($textid) {
+     $didchassis=1;
+   }
    return $returncode,@cfgtext;
 }
    
@@ -1093,6 +1104,7 @@ sub beacon {
 
 sub bladecmd {
   $mpa = shift;
+  my $node = shift;
   $slot = shift;
   my $user = shift;
   my $pass = shift;
@@ -1115,7 +1127,7 @@ sub bladecmd {
   } elsif ($command =~ /r[ms]preset/) {
     return resetmp(@args);
   } elsif ($command eq "rspconfig") {
-    return mpaconfig($mpa,$user,$pass,$slot,@args);
+    return mpaconfig($mpa,$user,$pass,$node,$slot,@args);
   } elsif ($command eq "rbootseq") {
     return bootseq(@args);
   } elsif ($command eq "switchblade") {
@@ -1437,7 +1449,7 @@ sub process_request {
       if (!defined($level)) {
         my $dep = build_depend($noderange,\@exargs);
         if ( ref($dep) ne 'ARRAY' ) {
-          $callback->({data=>[$dep]});
+          $callback->({data=>[$dep],errorcode=>1});
           return;
         }
         if (scalar(%{@$dep[0]})) {
@@ -1445,6 +1457,14 @@ sub process_request {
           return 0;
         } 
       }
+    }
+  }
+  # only 1 node when changing textid to something other than '*'
+  if ($command eq "rspconfig" and grep(/^textid=[^*]/,@exargs)) {
+    if ( @$noderange > 1 ) {
+      $callback->({data=>["Single node required when changing textid"],
+                   errorcode=>1});
+      return;
     }
   }
   my $bladeuser = 'USERID';
@@ -1579,14 +1599,21 @@ sub telnetcmds {
   my $mpa=shift;
   my $user=shift;
   my $pass=shift;
+  my $nodeid=shift;
   my $value;
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2);
-  
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid);
+
+  # most of these commands should be able to be done
+  # through SNMP, but they produce various errors.
   foreach my $cmd (@_) {
     if ($cmd =~ /^swnet|pd1|pd2|=/) {
+      if (($cmd =~ /^textid/) and ($nodeid > 0)) {
+        push @unhandled,$cmd;
+        next;
+      }
       my ($command,$value) = split /=/,$cmd;
       if (grep(/^$command$/,@tcmds)) {
         $handled{$command} = $value;
@@ -1595,7 +1622,6 @@ sub telnetcmds {
     }
     push @unhandled,$cmd;
   }
-
   if (!defined(%handled)) {
     return([0,\@unhandled]);
   }
@@ -1620,11 +1646,27 @@ sub telnetcmds {
     elsif (/^network$/) { $result = network($t,$handled{$_},$mpa); }
     elsif (/^swnet$/)   { $result = swnet($t,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
+    elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_}); }
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
   }
   $t->close;
   return([$Rc,\@unhandled]);
+}
+
+
+sub mmtextid {
+
+  my $t = shift;
+  my $mpa = shift;
+  my $value = shift;
+
+  $value = ($value =~ /^\*/) ? $mpa : $value;
+  my @data = $t->cmd("config -name $value -T system:mm[1]");
+  if (!grep(/OK/i,@data)) {
+    return([1,@data]);
+  }
+  return([0,"textid: $value"]);
 }
 
 
@@ -2011,7 +2053,7 @@ sub dompa {
   }
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;
-    my ($rc,@output) = bladecmd($mpa,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@exargs); 
+    my ($rc,@output) = bladecmd($mpa,$node,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@exargs); 
 
     my @output_hashes;
     foreach(@output) {
@@ -2050,6 +2092,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
