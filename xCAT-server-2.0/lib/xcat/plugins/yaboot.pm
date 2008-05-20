@@ -64,7 +64,7 @@ sub setstate {
 
 =cut
   my $node = shift;
-  my $bptab = xCAT::Table->new('bootparams');
+  my $bptab = xCAT::Table->new('bootparams',-create=>1);
   my $kern = $bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   my $pcfg;
   unless (-d "$tftpdir/etc") {

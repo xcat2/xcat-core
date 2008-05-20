@@ -244,7 +244,7 @@ sub mknetboot
             next;
         }
         my $restab = xCAT::Table->new('noderes');
-        my $bptab  = xCAT::Table->new('bootparams');
+        my $bptab  = xCAT::Table->new('bootparams',-create=>1);
         my $hmtab  = xCAT::Table->new('nodehm');
         my $ent    = $restab->getNodeAttribs($node, ['primarynic']);
         my $sent   =
@@ -551,7 +551,7 @@ sub mkinstall
 
             #We have a shot...
             my $restab = xCAT::Table->new('noderes');
-            my $bptab  = xCAT::Table->new('bootparams');
+            my $bptab  = xCAT::Table->new('bootparams',-create=>1);
             my $hmtab  = xCAT::Table->new('nodehm');
             my $ent    =
               $restab->getNodeAttribs($node,
