@@ -53,21 +53,23 @@ my %usage = (
     "rspconfig" => 
 "Usage: 
    Common:
+       rspconfig [-h|--help|-v|--version]
+   BMC/MPA Common:
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]
-       rspconfig [-h|--help|-v|--version]
    BMC specific:
        rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp]
        rspconfig <noderange> [garp=<number of 1/2 second>]
    MPA specific:
-       rspconfig <noderange> [sshcfg|snmpcfg|build|pd1|pd2|network|swnet|ntp|textid]
-       rspconfig <noderange> [shcfg=<enable|disable>|
+       rspconfig <noderange>  [sshcfg|snmpcfg|build|pd1|pd2|network|swnet|ntp|textid]
+       rspconfig <singlenode> [textid=name]
+       rspconfig <noderange>  [shcfg=<enable|disable>|
            snmpcfg=<enable|disable>|                             
            pd1=<nonred|redwoperf|redwperf>|
            pd2=<nonred|redwoperf|redwperf>|
            network=<*|[ip],[host],[gateway],[netmask]>|
            swnet=<[ip],[gateway],[netmask]>|
-           textid=<textid>|
+           textid=<*>|
            ntp=<[ntp],[ip],[frequency],[v3]>
    PPC specific:
        rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump]
