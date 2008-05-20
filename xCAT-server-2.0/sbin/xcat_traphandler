@@ -237,7 +237,10 @@ while ($temp=<STDIN>) {
 }
 
 if (!$severity_type) { $severity_type="Warning"; }
-if ((!$IGNORE) && exists($hashI{$severity_type})) { exit 0; }
+if ((!$IGNORE) && exists($hashI{$severity_type})) { 
+  #print "ignore, exit\n"; 
+  exit 0; 
+}
 if ((!$EMAIL) && exists($hashE{$severity_type})) { $EMAIL=1; }
 if ((!$LOG) && exists($hashL{$severity_type})) { $LOG=1; }
 if ((!$RUNCMD) && exists($hashR{severity_type})) { $RUNCMD=1; }
@@ -379,12 +382,12 @@ sub parseSettings {
          ($settings =~ s/^([^\=]+)=(\"[^\"]+\")(,)*//) || 
          ($settings =~ s/^([^\=]+)=([^\"\,]+)(,)*//)) {
     #print "$1=$2\n";
-    if (exists($ret{$1})) {
-      my $pa=$ret{$1};
+    if (exists($ret{$1}{'eq'})) {
+      my $pa=$ret{$1}{eq};
       push(@$pa, $2);
     }
     else {
-      $ret{$1}=[$2];
+      $ret{$1}{'eq'}=[$2];
     }
   }
   return %ret;
@@ -409,9 +412,20 @@ sub checkWithOid {
     my $hashX=shift;
     
     if (exists($hashX->{'All'})) { return 1;  }     
-    if (exists($hashX->{'None'})) { return 0;  }     
+    if (exists($hashX->{'None'})) { return 0;  } 
+    
+    @a_oid=split('::', $o);
+    my $new_o=$o;
+    if (@a_oid == 2) { $new_o=$a_oid[1]; } 
+    print "o=$o, new_o=$new_o\n"; 
     if (exists($hashX->{$o})) {
-      $pa= $hashX->{$o};
+      my $pa= $hashX->{$o}{'eq'};
+      foreach(@$pa) {
+        if ($_ eq $v) {return 1; } 
+      }
+    }
+    if (exists($hashX->{$new_o})) {
+      my $pa= $hashX->{$new_o}{'eq'};
       foreach(@$pa) {
         if ($_ eq $v) {return 1; } 
       }
