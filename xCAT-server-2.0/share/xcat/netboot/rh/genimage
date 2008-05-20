@@ -33,6 +33,12 @@ my $installroot = "/install";
 my $kernelver = ""; #`uname -r`;
 my $basekernelver; # = $kernelver;
 
+sub xdie {
+   system("rm -rf /tmp/xcatinitrd.$$");
+   die @_;
+}
+
+$SIG{INT} = $SIG{TERM} = sub { xdie "Interrupted" };
 GetOptions(
    'a=s' => \$arch,
    'p=s' => \$profile,
@@ -170,7 +176,7 @@ sub mkinitrd {
 			copy("/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
 		}
 		else {
-			die("Cannot read /boot/vmlinuz-$kernelver");
+			xdie("Cannot read /boot/vmlinuz-$kernelver");
 		}
 	}
 	symlink("bin","/tmp/xcatinitrd.$$/sbin");
@@ -361,7 +367,7 @@ EOMS
 		    	system("cd /lib/modules;cp -r $kernelver $installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/");
 		    }
 		    else {
-		    	die("Cannot read /lib/modules/$kernelver");
+		    	xdie("Cannot read /lib/modules/$kernelver");
 		    }
         }
 	}
