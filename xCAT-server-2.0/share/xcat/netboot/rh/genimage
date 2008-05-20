@@ -164,7 +164,7 @@ sub mkinitrd {
 		rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
 	}
 	else {
-		if(-r "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/boot/vmlinuz-$kernelver") {
+		if(-r "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver") {
 			rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
         } elsif(-r "/boot/vmlinuz-$kernelver") {
 			copy("/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
