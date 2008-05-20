@@ -4,6 +4,10 @@ B<rspconfig> - remote power control of nodes
 
 =head1 SYNOPSIS
 
+B<rspconfig> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head2 BMC/MPA specific:
+
 B<rspconfig> I<noderange> {B<alert>|B<snmpdest>|B<community>}
 
 B<rspconfig> I<noderange> B<alert>={B<on>|B<enable>|B<off>|B<disable>}
@@ -11,8 +15,6 @@ B<rspconfig> I<noderange> B<alert>={B<on>|B<enable>|B<off>|B<disable>}
 B<rspconfig> I<noderange> B<snmpdest>=I<snmpmanager-IP>
 
 B<rspconfig> I<noderange> B<community>={B<public>|I<string>}
-
-B<rspconfig> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head2 BMC specific:
 
@@ -34,7 +36,7 @@ B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
 
 B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
 
-B<rspconfig> I<noderange> B<textid>={B<textid>}
+B<rspconfig> I<noderange> B<textid>={B<*|textid>}
 
 B<rspconfig> I<noderange> B<swnet>={[B<ip>],[B<gateway>],[B<netmask>]}
 
@@ -199,6 +201,10 @@ Performs a system dump.
 
 Enter the current time in UTC (Coordinated Universal Time) format.
 
+=item B<textid>={I<*|textid>}
+
+Set the blade or MPA textid. When using '*', the textid used is the node name specified on the command-line. Note that when specifying an actual textid, only a single node can be specified in the noderange.
+
 =item B<v3>
 
 Enable or disable v3 authentication (enable|disable).
@@ -329,5 +335,6 @@ B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
 =head1 SEE ALSO
 
 noderange(3), rpower(1), rcons(1), rinv(1), rvitals(1), rscan(1)
+
 
 
