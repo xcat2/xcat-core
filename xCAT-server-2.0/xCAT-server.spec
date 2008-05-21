@@ -144,14 +144,18 @@ else
   echo "Unable to register init scripts on this system"
 fi
 if [ "$1" -gt "1" ]; then #only on upgrade...
-    /etc/init.d/xcatd restart
+	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+    	/etc/init.d/xcatd restart
+    fi
 fi
 %endif
 
 %preun
 %ifos linux
 if [ $1 == 0 ]; then  #This means only on -e
-  /etc/init.d/xcatd stop
+	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+  		/etc/init.d/xcatd stop
+  	fi
   if [ -x /usr/lib/lsb/remove_initd ]; then
       /usr/lib/lsb/remove_initd /etc/init.d/xcatd
   elif [ -x /sbin/chkconfig ]; then

@@ -12,14 +12,14 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 #BuildArch: noarch
 Source1: xcat.conf
 Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client  perl-xCAT perl-XML-Parser 
+Requires: xCAT-server xCAT-client  perl-xCAT perl-XML-Parser
 
 %ifos linux
 Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-DBD-Pg postgresql-server postgresql syslinux
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-Requires: xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 
+Requires: xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64
 Requires: ipmitool >= 1.8.9
 %endif
 
@@ -49,17 +49,19 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
  mkdir -p /var/log/consoles
 
 # makes it a service node
-  touch /etc/xCATSN    
+  touch /etc/xCATSN
 
 
 
 
 ###  Start the xcatd daemon
 
-    XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
     chkconfig httpd on
-	/etc/rc.d/init.d/httpd stop
-	/etc/rc.d/init.d/httpd start
+    if (-f '/proc/cmdline') {      # this check avoids running these when being installed into a chroot image
+    	XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
+		/etc/rc.d/init.d/httpd stop
+		/etc/rc.d/init.d/httpd start
+	}
     echo "xCATsn is now installed"
 fi
 

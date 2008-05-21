@@ -170,11 +170,13 @@ rm -rf $RPM_BUILD_ROOT
 echo "XCATROOT=$RPM_INSTALL_PREFIX0
 PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
 MANPATH=\$MANPATH:\$XCATROOT/share/man
-export XCATROOT PATH MANPATH" >/etc/profile.d/xcat.sh
+export XCATROOT PATH MANPATH
+export PERL_BADLANG=0" >/etc/profile.d/xcat.sh
 
 echo "setenv XCATROOT \"$RPM_INSTALL_PREFIX0\"
 setenv PATH \${PATH}:\${XCATROOT}/bin:\${XCATROOT}/sbin
-setenv MANPATH \${MANPATH}:\${XCATROOT}/share/man" >/etc/profile.d/xcat.csh
+setenv MANPATH \${MANPATH}:\${XCATROOT}/share/man
+setenv PERL_BADLANG 0" >/etc/profile.d/xcat.csh
 chmod 755 /etc/profile.d/xcat.*
 
 %else
