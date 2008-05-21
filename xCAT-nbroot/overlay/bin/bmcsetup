@@ -46,3 +46,6 @@ ipmitool raw 0xc 0x21 0x1 0x1 0x1
 echo "Enabling SOL for user 2"
 ipmitool raw 6 0x4c 1 2 2 0 0 0
 
+echo "Lighting Identify Light"
+ipmitool raw 0 4 0xff
+
