@@ -7,5 +7,5 @@ openssh-server
 openssh-clients
 busybox-anaconda
 wget
-vi
+vim-minimal
 ntp

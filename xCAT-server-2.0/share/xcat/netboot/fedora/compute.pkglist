@@ -8,4 +8,4 @@ openssh-clients
 busybox-anaconda
 wget
 ntp
-vi
+vim-minimal

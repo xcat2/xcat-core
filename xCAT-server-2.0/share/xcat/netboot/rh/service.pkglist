@@ -5,11 +5,10 @@ kernel
 openssh-server
 openssh-clients
 busybox-anaconda
-vi
+vim-minimal
 rpm
 bind
 bind-utils
-atftp
 ksh
 nfs-utils
 dhcp
