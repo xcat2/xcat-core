@@ -13,16 +13,16 @@ use Getopt::Long;
 
 #-------------------------------------------------------
 
-=head1 
+=head1
   xCAT plugin package to setup  conserver
 
 
 #-------------------------------------------------------
 
-=head3  handled_commands 
+=head3  handled_commands
 
 Check to see if on a Service Node
-Check database to see if this node is going to have Conserver setup 
+Check database to see if this node is going to have Conserver setup
    should be always
 Call  setup_CONS
 
@@ -72,7 +72,7 @@ sub handled_commands
 
 #-------------------------------------------------------
 
-=head3  process_request 
+=head3  process_request
 
   Process the command
 
@@ -86,9 +86,9 @@ sub process_request
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_CONS 
+=head3 setup_CONS
 
-    Sets up Conserver 
+    Sets up Conserver
 
 =cut
 
@@ -137,13 +137,15 @@ sub setup_CONS
 	    print "conserver cannot be started because the file $ca_file2 cannot be found\n";
         } else {
           my $cmd = "/etc/rc.d/init.d/conserver restart";
-          xCAT::Utils->runcmd($cmd, 0);
+          my @out = xCAT::Utils->runcmd($cmd, 0);
           if ($::RUNCMD_RC != 0)
           {    # error
             xCAT::MsgUtils->message("S", "Error starting Conserver");
             return 1;
-          } else {
-	    print "\nconserver started\n"; 
+          } else {	# Zero rc, but with the service cmds that does not mean they succeeded
+          	my $output = join("\n", @out);
+          	if (length($output)) { print "\n$output\n"; }
+	    	else { print "\nconserver started\n"; }
           }
        }
     }
