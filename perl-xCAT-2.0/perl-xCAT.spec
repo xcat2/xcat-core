@@ -82,7 +82,7 @@ rm -rf $RPM_BUILD_ROOT
 %post
 %ifos linux
 if [ "$1" -gt 1 ]; then #Ugrade only, restart daemon and migrate settings
-   if [ -x /etc/init.d/xcatd ]; then
+   if [ -x /etc/init.d/xcatd ] && [ -f "/proc/cmdline" ]; then
       . /etc/profile.d/xcat.sh
       /etc/init.d/xcatd restart
       #THE NEXT BIT SHOULD NOT BE RELEVANT TO RELEASE, IT SHOULD HELP A BETA INSTALL UPDATE GRACEFULLY

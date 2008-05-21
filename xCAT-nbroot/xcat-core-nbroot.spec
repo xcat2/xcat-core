@@ -52,10 +52,11 @@ cd -
 
 
 %post
-if [ "$1" == "2" ]; then #only on upgrade, as on install it's probably not going
-                         #to work...
-   . /etc/profile.d/xcat.sh
-   mknb %{tarch}
+if [ "$1" == "2" ]; then #only on upgrade, as on install it's probably not going to work...
+	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+   		. /etc/profile.d/xcat.sh
+   		mknb %{tarch}
+   	fi
 fi
 
 %Files
