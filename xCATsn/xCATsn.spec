@@ -57,11 +57,11 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 ###  Start the xcatd daemon
 
     chkconfig httpd on
-    if (-f '/proc/cmdline') {      # this check avoids running these when being installed into a chroot image
+    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     	XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
 		/etc/rc.d/init.d/httpd stop
 		/etc/rc.d/init.d/httpd start
-	}
+	fi
     echo "xCATsn is now installed"
 fi
 
