@@ -6,20 +6,21 @@ use xCAT::Table;
 
 use xCAT::Utils;
 use File::Basename;
+use File::Path;
 use xCAT::MsgUtils;
 use Getopt::Long;
 
 #-------------------------------------------------------
 
-=head1 
-  xCAT plugin package to setup vstftp on a  service node 
+=head1
+  xCAT plugin package to setup vstftp on a  service node
 
 
 #-------------------------------------------------------
 
-=head3  handled_commands 
+=head3  handled_commands
 
-This runs on Service Node 
+This runs on Service Node
 Checks servicenode table ftpserver attribute
 Call  setup_TFTP  (actually setting up atftp)
 
@@ -74,7 +75,7 @@ sub handled_commands
 
 #-------------------------------------------------------
 
-=head3  process_request 
+=head3  process_request
 
   Process the command
 
@@ -88,9 +89,9 @@ sub process_request
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_FTP 
+=head3 setup_FTP
 
-    Sets up FTP services (vstftp) 
+    Sets up FTP services (vstftp)
 
 =cut
 
@@ -122,8 +123,8 @@ sub setup_FTP
     }
     $cmd = "usermod -d $installdir ftp";
     system $cmd;
-    if ($? > 0) { 
-    
+    if ($? > 0) {
+
        xCAT::MsgUtils->message("S", "Error from command:$cmd");
     }
 
