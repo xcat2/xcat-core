@@ -1338,7 +1338,7 @@ sub preprocess_request {
   #get the MMs for the nodes for the nodes in order to figure out which service nodes to send the requests to
   my $mptab = xCAT::Table->new("mp");
   unless ($mptab) { 
-    $callback->({data=>"Cannot open mp table"});
+    $callback->({data=>["Cannot open mp table"]});
     $request = {};
     return;
   }
@@ -1347,7 +1347,7 @@ sub preprocess_request {
     my $ent=$mptab->getNodeAttribs($node,['mpa', 'id']);
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
     else { 
-      $callback->({data=>"no mpa defined for node $node"});
+      $callback->({data=>["no mpa defined for node $node"]});
       $request = {};
       return;
     }
@@ -1389,7 +1389,7 @@ sub build_more_info{
   my $mptab = xCAT::Table->new("mp");
   my @moreinfo=();
   unless ($mptab) { 
-    $callback->({data=>"Cannot open mp table"});
+    $callback->({data=>["Cannot open mp table"]});
     return @moreinfo;
   }
   my %mpa_hash=();
@@ -1397,7 +1397,7 @@ sub build_more_info{
     my $ent=$mptab->getNodeAttribs($node,['mpa', 'id']);
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
     else { 
-      $callback->({data=>"no mpa defined for node $node"});
+      $callback->({data=>["no mpa defined for node $node"]});
       return @moreinfo;;
     }
     if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
