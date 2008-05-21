@@ -8,7 +8,7 @@ B<rinstall> [I<-o>|I<--osver>] [I<-p>|I<--profile>] [I<-a>|I<--arch>] [I<-c>|I<-
 
 =head1 B<Description>
 
-B<rinstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call nodeset to modify the network boot configuration, and rpower to begin a boot cycle.  If -c is specified, it will then become the 
+B<rinstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call nodeset to modify the network boot configuration, and rpower to begin a boot cycle.  If -c is specified, it will then become the
 text console of the node.  If wanting consoles on multiple nodes with a similar command, see L<winstall(8)|winstall.8>.
 
 =head1 B<Options>
@@ -32,6 +32,7 @@ Specifies what architecture of the OS to install.  Typically this is unneeded, b
 
 
 Requests that rinstall become rcons once the install commences.  This will only work if there is only one node in the noderange. See L<winstall(8)|winstall.8> for consoles on multiple systems.
+
 =back
 
 

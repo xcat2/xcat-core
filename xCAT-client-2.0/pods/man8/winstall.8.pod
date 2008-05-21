@@ -8,7 +8,7 @@ B<winstall> [I<-o>|I<--osver>] [I<-p>|I<--profile>] [I<-a>|I<--arch>] [I<noderan
 
 =head1 B<Description>
 
-B<winstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call nodeset to modify the network boot configuration, and rpower to begin a boot cycle.  It will then commence a wcons command to the 
+B<winstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call nodeset to modify the network boot configuration, and rpower to begin a boot cycle.  It will then commence a wcons command to the
 noderange for monitoring.
 
 =head1 B<Options>
@@ -27,6 +27,8 @@ Specifies what profile should be used of the operating system.  If not specified
 =item B<-a>|B<--arch>
 
 Specifies what architecture of the OS to install.  Typically this is unneeded, but if provisioning betweer x86_64 and x86 frequently, this may be a useful flag.
+
+=back
 
 =head1 B<Examples>
 
