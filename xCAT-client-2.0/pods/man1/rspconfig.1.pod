@@ -44,15 +44,7 @@ B<rspconfig> I<noderange> B<ntp>={[B<ntpenable>],[B<ntpserver>],[B<frequency>],[
 
 =head2 PPC specific:
 
-B<rspconfig> I<noderange> {B<autopower>|B<iocap>|B<decfg>|B<memcfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>}
-
-B<rspconfig> I<noderange> B<shcfg>={B<enable>|B<disable>}
-
-B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
-
-B<rspconfig> I<noderange> B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
-
-B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
+B<rspconfig> I<noderange> {B<autopower>|B<iocap>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>}
 
 B<rspconfig> I<noderange> B<autopower>={B<enable>|B<disable>}
 
