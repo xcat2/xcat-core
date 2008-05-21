@@ -166,7 +166,7 @@ sub connect {
                } ],
             [ $pwd_prompt,
                sub {
-                 if ( ++$pwd_sent == 1 ) {
+                 if ( ++$pwd_sent ) {
                    $ssh->send( "@$cred[1]\r" );
                    $ssh->exp_continue();
                  }
@@ -576,7 +576,7 @@ sub lpar_netboot {
     my $name    = shift;
     my $d       = shift;
     my $opt     = shift;
-    my $timeout = 600;
+    my $timeout = my $t = @$exp[7]*10;
     my $cmd     = "lpar_netboot -t ent -f";
     my $gateway = $opt->{G};
 
