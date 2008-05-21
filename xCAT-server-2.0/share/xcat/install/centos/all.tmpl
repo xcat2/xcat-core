@@ -9,10 +9,11 @@ network --bootproto dhcp
 # Where's the source?
 # nfs --server hostname.of.server or IP --dir /path/to/RH/CD/image
 #
-nfs --server #XCATVAR:INSTALL_NFS# --dir #XCATVAR:INSTALL_SRC_DIR#
+#nfs --server #XCATVAR:INSTALL_NFS# --dir #XCATVAR:INSTALL_SRC_DIR#
+url --url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
 
 #device ethernet e100
-keyboard "#TABLE:site.tab:keyboard:1#"
+keyboard "us"
 
 #
 # Clear the MBR
@@ -103,7 +104,7 @@ mouse none
 #timezone US/Mountain
 #timezone US/Central
 #timezone US/Eastern
-timezone --utc #TABLE:site.tab:timezone:1#
+timezone --utc "#TABLE:site:key=timezone:value#"
 
 #
 # Don't do X
@@ -126,7 +127,7 @@ key --skip
 #rootpw --iscrypted XaLGAVe1C41x2
 #rootpw XaLGAVe1C41x2 --iscrypted
 #rootpw #TABLE:passwd.tab:rootpw:1#
-rootpw --iscrypted #COMMAND:perl -e 'print crypt("#TABLE:passwd.tab:rootpw:1#","Xa") . "\n";'p#
+rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 
 #
 # NIS setup: auth --enablenis --nisdomain sensenet 
@@ -178,6 +179,6 @@ openssh-server
 util-linux
 compat-libstdc++-33
 %pre
-#COMMAND:genscript pre #ENV:OSVER# #ENV:ARCH##
+#INCLUDE:../scripts/pre.rh#
 %post
-#COMMAND:genscript post #ENV:OSVER# #ENV:ARCH##
+#INCLUDE:../scripts/post.rh#
