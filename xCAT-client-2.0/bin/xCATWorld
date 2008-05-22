@@ -134,6 +134,11 @@ sub handle_response
     # Handle {node} structure
     if ($rsp->{errorcode})
     {
+        if ($rsp->{error}) {
+            foreach my $etext (@{$rsp->{error}}) {
+                print ($etext."\n");
+            }
+        }
         foreach my $ecode (@{$rsp->{errorcode}})
         {
             $exitcode |= $ecode;
