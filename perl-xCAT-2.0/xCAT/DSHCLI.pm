@@ -3701,7 +3701,7 @@ sub parse_and_run_dsh
     # -K option just sets up the ssh keys on the nodes and exits
     if (defined $options{'ssh-setup'})
     {
-        my $rc      = xCAT::Utils->setupSSH($noderange);
+        my $rc      = xCAT::Utils->setupSSH(@nodelist);
         my @results = "return code = $rc";
         return (@results);
     }
