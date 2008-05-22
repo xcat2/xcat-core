@@ -20,6 +20,7 @@ unless ($inet6support) {
   eval { require IO::Socket::INET };
 }
 
+
 use XML::Simple;
 if ($^O =~ /^linux/i) {
 	$XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -164,8 +165,8 @@ sub submit_request {
 #    will load all plugin perl modules and build a list of supported
 #    commands
 #
-# NOTE:  This is copied from xcatd (last merge 10/3/07).
-#        Will eventually move to using common source....
+# NOTE:  This is copied from xcatd (last merge 5/21/08).
+# TODO:  Will eventually move to using common source....
 ###################################
 sub scan_plugins {
   my @plugins=glob($plugins_dir."/*.pm");
@@ -204,8 +205,8 @@ sub scan_plugins {
 # plugin_command
 #    will invoke the correct plugin
 #
-# NOTE:  This is copied from xcatd (last merge 10/3/07).
-#        Will eventually move to using common source....
+# NOTE:  This is copied from xcatd (last merge 5/21/08).
+# TODO:  Will eventually move to using common source....
 ###################################
 sub plugin_command {
   my $req = shift;
@@ -225,10 +226,11 @@ sub plugin_command {
   my @nodes;
   if ($req->{node}) {
     @nodes = @{$req->{node}};
-  } elsif ($req->{noderange}) {
+  } elsif ($req->{noderange} and $req->{noderange}->[0]) {
     @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
     if (xCAT::NodeRange::nodesmissed()) {
 #     my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',xCAT::NodeRange::nodesmissed)};
+      my $rsp->{serverdone} = {};
       print "Invalid nodes in noderangex:".join(',',xCAT::NodeRange::nodesmissed())."\n";
 #     if ($sock) {
 #       print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
@@ -236,14 +238,23 @@ sub plugin_command {
 #     return ($rsp);
       return 1;
     }
+    unless (@nodes) {
+       $req->{emptynoderange} = [1];
+    }
   }
   if (@nodes) { $req->{node} = \@nodes; }
+  my %unhandled_nodes;
+  foreach (@nodes) {
+      $unhandled_nodes{$_}=1;
+  }
+  my $useunhandled=0;
   if (defined($cmd_handlers{$req->{command}->[0]})) {
     my $hdlspec;
     foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
       $hdlspec =$_->[1];
       my $ownmod = $_->[0];
       if ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
+        $useunhandled=1;
         my $table;
         my $cols;
         ($table,$cols) = split(/:/,$hdlspec);
@@ -266,6 +277,9 @@ sub plugin_command {
           }
         }
 
+        unless (@nodes) { #register the plugin in the event of usage
+          $handler_hash{$ownmod} = 1;
+        }
         foreach $node (@nodes) {
           my $attribs = $hdlrtable->getNodeAttribs($node,\@columns);
           unless (defined($attribs)) { next; } #TODO: This really ought to craft an unsupported response for this request
@@ -275,15 +289,18 @@ sub plugin_command {
               if ($colvals->{$col}) { #A pattern match style request.
                 if ($attribs->{$col} =~ /$colvals->{$col}/) {
                   $handler_hash{$ownmod}->{$node} = 1;
+                  delete $unhandled_nodes{$node};
                   last;
                 }
               } else {
                 $handler_hash{$attribs->{$col}}->{$node} = 1;
+                delete $unhandled_nodes{$node};
                 last;
               }
             }
           }
         }
+        $hdlrtable->close;
       } else {
         unless (@nodes) {
           $handler_hash{$hdlspec} = 1;
@@ -297,10 +314,29 @@ sub plugin_command {
     print "$req->{command}->[0] xCAT command not found \n";
     return 1;  #TODO: error back that request has no known plugin for it
   }
+  if ($useunhandled) {
+   my $queuelist;
+   foreach (@{$cmd_handlers{$req->{command}->[0]}->[0]}) {
+     unless (/:/) {
+        next;
+     }
+     $queuelist .= "$_,";
+   }
+   $queuelist =~ s/,$//;
+   $queuelist =~ s/:/./g;
+   foreach (keys %unhandled_nodes) {
+#      if ($sock) {
+#         print $sock XMLout({node=>[{name=>[$_],data=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
+#      } else {
+         $callback->({node=>[{name=>[$_],data=>['Unable to identify plugin for this command, check relevant tables'],errorcode=>[1]}]});
+#      }
+     }
+  }
 
 ## FOR NOW, DON'T FORK CHILD PROCESS TO MAKE BYPASS SIMPLER AND EASIER TO DEBUG
-# my $children=0;
-# $SIG{CHLD} = sub {while (waitpid(-1, WNOHANG) > 0) { $children--; } };
+#  $plugin_numchildren=0;
+#  %plugin_children=();
+#  $SIG{CHLD} = \&plugin_reaper; #sub {my $plugpid; while (($plugpid = waitpid(-1, WNOHANG)) > 0) { if ($plugin_children{$plugpid}) { delete $plugin_children{$plugpid}; $plugin_numchildren--; } } };
 # my $check_fds;
 # if ($sock) {
 #   $check_fds = new IO::Select;
@@ -309,39 +345,50 @@ sub plugin_command {
     my $modname = $_;
     if (-r $plugins_dir."/".$modname.".pm") {
       require $plugins_dir."/".$modname.".pm";
-#     $children++;
+#     $plugin_numchildren++;
 #     my $pfd; #will be referenced for inter-process messaging.
+#     my $parfd; #not causing a problem that I discern yet, but theoretically
 #     my $child;
 #     if ($sock) { #If $sock not passed in, don't fork..
-#       socketpair($pfd, $parent_fd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+#       socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
 #       #pipe($pfd,$cfd);
-#       $parent_fd->autoflush(1);
+#       $parfd->autoflush(1);
 #       $pfd->autoflush(1);
-#       $child = fork;
+#       $child = xCAT::Utils->xfork;
 #     } else {
 #       $child = 0;
 #     }
 #     unless (defined $child) { die "Fork failed"; }
 #     if ($child == 0) {
+#       $parent_fd = $parfd;
+        my $oldprogname=$$progname;
+        $$progname=$oldprogname.": $modname instance";
 #       if ($sock) { close $pfd; }
         unless ($handler_hash{$_} == 1) {
           my @nodes = sort {($a =~ /(\d+)/)[0] <=> ($b =~ /(\d+)/)[0] || $a cmp $b } (keys %{$handler_hash{$_}});
           $req->{node}=\@nodes;
         }
         no strict  "refs";
-        ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+#       if ($dispatch_requests) {
+                dispatch_request($req,$callback,$modname);
+#       } else {
+#          undef $SIG{CHLD};
+#          ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+#       }
+        $$progname=$oldprogname;
 #       if ($sock) {
 #         close($parent_fd);
-#         exit(0);
+#         xexit(0);
 #       }
 #     } else {
-#       close $parent_fd;
+#       $plugin_children{$child}=1;
+#       close $parfd;
 #       $check_fds->add($pfd);
 #     }
     }
   }
   unless ($sock) { return $Main::resps };
-# while ($children > 0) {
+# while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
 #   relay_fds($check_fds,$sock);
 # }
 # #while (relay_fds($check_fds,$sock)) {}
@@ -355,11 +402,139 @@ sub plugin_command {
 
 
 
+
+###################################
+# dispatch_request
+#    dispatch the requested command
+#
+# NOTE:  This is copied from xcatd (last merge 5/21/08).
+#        All we really need from this subroutine is to call preprocess_request
+#        and to only run the command for nodes handled by the local server
+#        Will eventually move to using common source....
+###################################
+sub dispatch_request {
+#  %dispatched_children=();
+   my $req = shift;
+   $dispatch_cb = shift;
+
+   my $modname = shift;
+   my $reqs = [];
+#  my $child_fdset = new IO::Select;
+   no strict  "refs";
+
+   #Hierarchy support.  Originally, the default scope for noderange commands was
+   #going to be the servicenode associated unless overriden.
+   #However, assume for example that you have blades and a blade is the service node
+   #rpower being executed by the servicenode for one of its subnodes would have to
+   #reach it's own management module.  This has the potential to be non-trivial for some quite possible network configurations.
+   #Since plugins may commonly experience this, a preprocess_request implementation
+   #will for now be required for a command to be scaled through service nodes
+   #If the plugin offers a preprocess method, use it to set the request array
+   if (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request})) {
+    undef $SIG{CHLD};
+    $reqs = ${"xCAT_plugin::".$modname."::"}{preprocess_request}->($req,$dispatch_cb,\&do_request);
+   } else { #otherwise, pass it in without hierarchy support
+    $reqs = [$req];
+   }
+
+# $dispatch_children=0;
+# $SIG{CHLD} = \&dispatch_reaper; #sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $dispatch_children--; } } };
+   foreach (@{$reqs}) {
+#   my $pfd;
+#   my $parfd; #use a private variable so it won't trounce itself recursively
+#   my $child;
+    delete $_->{noderange};
+#----- added to Client.pm -----#
+    if ($_->{node}) {
+       $_->{noderange}->[0]=join(',',@{$_->{node}});
+    }
+#   socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+#   $parfd->autoflush(1);
+#   $pfd->autoflush(1);
+#   $child = xCAT::Utils->xfork;
+#   if ($child) {
+#      $dispatch_children++;
+#      $dispatched_children{$child}=1;
+#      $child_fdset->add($pfd);
+#      next;
+#   }
+#   unless (defined $child) {
+#      $dispatch_cb->({error=>['Fork failure dispatching request'],errorcode=>[1]});
+#   }
+#   undef $SIG{CHLD};
+#     $dispatch_parentfd = $parfd;
+     if ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'})) {
+#----- added to Client.pm -----#
+       $dispatch_cb->({warning=>['XCATBYPASS is set, skipping hierarchy call to '.$_->{'_xcatdest'}.'']});
+
+#       $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );
+#       $$progname.=": connection to ".$ENV{XCATHOST};
+#       eval {
+#       undef $_->{'_xcatdest'};
+#       xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem");
+#       };
+#       if ($@) {
+#          dispatch_callback({error=>["Error dispatching command to ".$ENV{XCATHOST}.""],errorcode=>[1]});
+#          syslog("local4|err","Error dispatching request: ".$@);
+#       }
+     } else {
+        $$progname.=": locally executing";
+        undef $SIG{CHLD};
+        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
+     }
+#    xexit;
+  }
+#while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset) }
+#while (relay_dispatch($child_fdset)) { } #Potentially useless drain.
+}
+
+
+
+
+###################################
+# thishostisnot
+#    does the requested IP belong to this local host? 
+#
+# NOTE:  This is copied from xcatd (last merge 5/21/08).
+#        Will eventually move to using common source....
+###################################
+sub thishostisnot {
+  my $comparison = shift;
+
+  # use "ip addr" for linux, since ifconfig
+  # doesn't list "ip addr add" aliases for linux
+  #
+  my $cmd = ($^O !~ /^aix/i) ? "/sbin/ip addr" : "ifconfig -a";
+  my @ips = split /\n/,`$cmd`;
+####
+# TODO:  AIX will hang on the inet_aton call if it gets passed an IPv6
+#        address, since we have not added INET6 support to AIX yet.
+#        The ifconfig -a output may contain an IPv6 address for localhost.
+#        This code should only get called if using hierarchy, which
+#        is also not supported for AIX yet.
+####
+  my $comp=IO::Socket::inet_aton($comparison);
+  foreach (@ips) {
+    if (/^\s*inet/) {
+      my @ents = split(/\s+/);
+      my $ip=$ents[2];
+      $ip =~ s/\/.*//;
+      if (IO::Socket::inet_aton($ip) eq $comp) {
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
+
+
+
 ###################################
 # do_request
 #    called from a plugin to execute another xCAT plugin command internally
 #
-# NOTE:  This is copied from xcatd (last merge 10/3/07).
+# NOTE:  This is copied from xcatd (last merge 5/21/08).
 #        Will eventually move to using common source....
 ###################################
 sub do_request {
