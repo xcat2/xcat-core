@@ -708,6 +708,9 @@ sub setAttribs
         }
         $cmd =~ s/ AND \z//;
         my $sth = $self->{dbh}->prepare($cmd);
+        unless ($sth) {
+            return (undef,"Error attempting requested DB operation");
+        }
         my $err = $sth->execute(@bind);
         if (not defined($err))
         {
