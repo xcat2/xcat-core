@@ -166,7 +166,7 @@ networks => {
   tftpserver => 'The TFTP server that is servicing this network.',
   nameservers => 'The nameservers for this network.  Used in creating the DHCP network definition, and DNS configuration.',
   dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.',
-  nodehostname => '??',
+  nodehostname => 'Not Used??',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -404,31 +404,30 @@ site => {
    "  master (xCAT management node)\n".
    "  xcatconfdir (default /etc/xcat)\n".
    "  domain (DNS domain name used for the cluster)\n".
-   "  installdir (directory that holds the node deployment pkgs)\n".
-   "  installoc (location of the installdir directory,format hostname:/path)\n".
+   "  installdir (the local directory name used to hold the node deployment pkgs)\n".
+   "  installloc (location to mount the installdir from in format hostname:/path)\n".
    "  xcatdport (port used by xcatd daemon for client/server communication)\n".
    "  xcatiport (port used by xcatd to receive install status updates from nodes)\n".
    "  timezone (e.g. America/New_York)\n".
-   "  nameservers (comma delimited list of DNS servers for the cluster)\n".
-   "  ntpservers (comma delimited list of NTP servers for the cluster)\n".
+   "  nameservers (comma delimited list of DNS servers for the cluster - often the mgmt node)\n".
+   "  ntpservers (comma delimited list of NTP servers for the cluster - often the mgmt node)\n".
    "  rsh (path of remote shell command)\n".
    "  rcp (path of remote copy command)\n".
    "  blademaxp (max # of processes for blade hw ctrl)\n".
    "  ppcmaxp (max # of processes for PPC hw ctrl)\n".
-   "  ipmimaxp\n".
-   "  ipmitimeout\n".
-   "  ipmiretries\n".
+   "  ipmimaxp (max # of processes for ipmi hw ctrl)\n".
+   "  ipmitimeout (the timeout to use when communicating with BMCs)\n".
+   "  ipmiretries (the # of retries to use when communicating with BMCs)\n".
    "  ipmisdrcache\n".
-   "  iscsidir\n".
+   "  iscsidir (the path to put the iscsi disks in on the mgmt node)\n".
    "  xcatservers (Deprecated!  Will be replaced by the servicenode table.  List service nodes)\n".
-   "  svloglocal (logs on the service node stay local or not. 1 or 0)\n".
-   "  dhcpinterfaces (network interfaces DHCP should listen on.  We are thinking of also supporting: mn:eth1,eth2;sn1:bond0;sn2:bond0)\n".
+   "  svloglocal (syslog on the service node does not get forwarded to the mgmt node - default is 0)\n".
+   "  dhcpinterfaces (network interfaces DHCP should listen on.  If same for all nodes, use simple comma-separated list of NICs.  Also support: mn|eth1,eth2;service|bond0;compute|eth0)\n".
    "  forwarders (DNS servers at your site that can provide names outside of the cluster)\n".
-   "  genpasswords (generate BMC passwords??)\n".
-   "  defserialport (default if not specified in noderes table)\n".
-   "  defserialspeed (default if not specified in nodehm table)\n".
-   "  defserialflow (default if not specified in nodehm table)".
-   "  svloglocal (service node logs to the local host. default forwards to the managment node)",
+   "  genpasswords (automatically generate random passwords for BMCs when configuring them)\n".
+   "  defserialport (default if not specified for the node in nodehm table)\n".
+   "  defserialspeed (default if not specified for the node in nodehm table)\n".
+   "  defserialflow (default if not specified for the node in nodehm table)\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",

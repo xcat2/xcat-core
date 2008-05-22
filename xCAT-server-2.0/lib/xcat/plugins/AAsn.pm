@@ -12,17 +12,17 @@ use Getopt::Long;
 
 #-------------------------------------------------------
 
-=head1 
-    
-  mounts /install if site->installoc set 
+=head1
+
+  mounts /install if site.installloc set
 
 
 #-------------------------------------------------------
 
-=head3  handled_commands 
+=head3  handled_commands
 
 Check to see if on a Service Node
-Call  mountInstall 
+Call  mountInstall
 
 =cut
 
@@ -57,7 +57,7 @@ sub handled_commands
 
 #-------------------------------------------------------
 
-=head3  process_request 
+=head3  process_request
 
   Process the command
 
@@ -71,10 +71,10 @@ sub process_request
 
 #-----------------------------------------------------------------------------
 
-=head3 mountInstall 
+=head3 mountInstall
 
-    if site->installoc attribute set  
-	  mount the install directory  
+    if site.installloc attribute set
+	  mount the install directory
 
 =cut
 
@@ -84,7 +84,7 @@ sub mountInstall
     my ($nodename) = @_;
     my $rc         = 0;
     my $installdir = "/install";    # default
-    my $installoc  = "/install";    # default
+    my $installloc  = "/install";    # default
 
     # read DB for nodeinfo
     my $master;
@@ -101,19 +101,19 @@ sub mountInstall
 
         # read install directory and install location from database,
         # if they exists
-        my @installocation= xCAT::Utils->get_site_attribute("installoc");
+        my @installlocation= xCAT::Utils->get_site_attribute("installloc");
         my $hostname;
         my $path;
-        if ($installocation[0])
+        if ($installlocation[0])
         {
-           if (grep /:/, $installocation[0]){ 
-              my ($hostname, $installoc) = split ":",$installocation[0];
+           if (grep /:/, $installlocation[0]){
+              my ($hostname, $installloc) = split ":",$installlocation[0];
               if ($hostname)
-              {    # hostname set in /installoc attribute
+              {    # hostname set in /installloc attribute
                   $master = $hostname;    # set name for mount
               }
             } else {
-              $installoc=$installocation[0];
+              $installloc=$installlocation[0];
             }
         }
         else
@@ -140,7 +140,7 @@ sub mountInstall
             {                                     # not mounted
 
                 # need to  mount the directory
-                my $cmd= "mount -o rw,nolock $master:$installoc $installdir";
+                my $cmd= "mount -o rw,nolock $master:$installloc $installdir";
                 system $cmd;
                 if ($? > 0)
                 {                                 # error
@@ -159,11 +159,11 @@ sub mountInstall
     {
 
         # update fstab to mount on reboot
-        $cmd = "grep $master:$installoc $installdir  /etc/fstab  ";
+        $cmd = "grep $master:$installloc $installdir  /etc/fstab  ";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
-            `echo "$master:$installoc $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+            `echo "$master:$installloc $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
         }
     }
     return $rc;
