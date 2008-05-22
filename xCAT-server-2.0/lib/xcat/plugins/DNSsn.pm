@@ -11,13 +11,13 @@ use Getopt::Long;
 
 #-------------------------------------------------------
 
-=head1 
-  xCAT plugin package to setup of DNS 
+=head1
+  xCAT plugin package to setup of DNS
 
 
 #-------------------------------------------------------
 
-=head3  handled_commands 
+=head3  handled_commands
 
 Check to see if on a Service Node
 Check database to see if this node is a DNS server
@@ -64,7 +64,7 @@ sub handled_commands
                     xCAT::MsgUtils->message("S", "Error on command: $cmd");
                     return 1;
                 }
- 
+
             }
         }
     }
@@ -73,7 +73,7 @@ sub handled_commands
 
 #-------------------------------------------------------
 
-=head3  process_request 
+=head3  process_request
 
   Process the command
 
@@ -87,9 +87,9 @@ sub process_request
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_DNS 
+=head3 setup_DNS
 
-    Sets up Domain Name service  
+    Sets up Domain Name service
 	http://www.adminschoice.com/docs/domain_name_service.htm#Introduction
 
 =cut
@@ -98,7 +98,7 @@ sub process_request
 sub setup_DNS
 {
     # setup the named.conf file
-    `/opt/xcat/sbin/makenamed.conf`;
+    system("/opt/xcat/sbin/makenamed.conf");
     # turn DNS on
 
     $cmd = "chkconfig named on";
