@@ -144,6 +144,11 @@ sub handle_response
             $exitcode |= $ecode;
         }
     }
+    if ($rsp->{warning}) {
+        foreach my $wtext (@{$rsp->{warning}}) {
+            print ($wtext."\n");
+        }
+    }
 
     # Handle {node} structure
     if ($rsp->{node})
