@@ -82,15 +82,5 @@ sub copyCertstoSN
         xCAT::MsgUtils->message('S', "/xcatpost/ca directory does not exist\n");
 
     }
-    if (-d "/xcatpost/etc/xcat") {
-    `cp -f /xcatpost/etc/xcat/cfgloc /etc/xcat/cfgloc`;
-     chmod 0600, "/etc/xcat/cfgloc";
-    }
-    else
-    {
-        xCAT::MsgUtils->message('S',
-                                "/xcatpost/etc/xcat directory does not exit\n");
-
-    }
     return $rc;
 }
