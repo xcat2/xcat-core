@@ -117,7 +117,7 @@ $SIG{PIPE} = sub { die "SIGPIPE $$progname encountered a broken pipe (probably C
 $progname = \$0;
 sub daemonize {
   chdir('/');
-  umask 0;
+  umask 0022;
   my $pid;
   defined($pid = xCAT::Utils->xfork) or die "Can't fork: $!";
   if ($pid) {
