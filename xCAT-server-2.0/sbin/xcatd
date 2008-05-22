@@ -472,8 +472,8 @@ xCAT_monitoring::monitorctrl::start($$);
 
 my $peername;
 my $ssltimeout;
-$SIG{CHLD} = \&ssl_reaper; #THROTTLE
 until ($quit) {
+  $SIG{CHLD} = \&ssl_reaper; #set here to ensure that signal handler is not corrupted during loop
   next unless my $cnnection=$listener->accept;
   my $connection;
   while ($sslclients > $maxsslclients) { #THROTTLE
