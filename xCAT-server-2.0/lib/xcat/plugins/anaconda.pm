@@ -363,11 +363,21 @@ sub mkinstall
     {
         my $osinst;
         my $ent = $ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
+        my @missingparms;
+        unless ($ent->{os}) {
+            push @missingparms,"nodetype.os";
+        }
+        unless ($ent->{arch}) {
+            push @missingparms,"nodetype.arch";
+        }
+        unless ($ent->{profile}) {
+            push @missingparms,"nodetype.profile";
+        }
         unless ($ent->{os} and $ent->{arch} and $ent->{profile})
         {
             $callback->(
                         {
-                         error => ["No profile defined in nodetype for $node"],
+                         error => ["Missing ".join(',',@missingparms)." for $node"],
                          errorcode => [1]
                         }
                         );
