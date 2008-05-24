@@ -1,0 +1,8 @@
+bash 
+nfs-utils
+stunnel
+dhcpcd 
+kernel-smp
+openssh
+busybox
+wget

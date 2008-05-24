@@ -2,6 +2,7 @@
 package xCAT_plugin::sles;
 use Storable qw(dclone);
 use Sys::Syslog;
+use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
@@ -294,6 +295,8 @@ sub copycd
     my $request  = shift;
     my $callback = shift;
     my $doreq    = shift;
+    my $distname = "";
+    my $detdistname = "";
     my $installroot;
     $installroot = "/install";
     my $sitetab = xCAT::Table->new('site');
@@ -370,6 +373,7 @@ sub copycd
             {
                 my @parts    = split /\s+/, $prod;
                 my @subparts = split /-/,   $parts[2];
+                $detdistname = "sles" . $subparts[0];
                 unless ($distname) { $distname = "sles" . $subparts[0] };
             }
         }
@@ -440,6 +444,41 @@ sub copycd
     #    );
     chmod 0755, "$installroot/$distname/$arch";
     chmod 0755, "$installroot/$distname/$arch/$discnumber";
+    if ($detdistname eq "sles10.2" and $discnumber eq "1") { #Go and correct inst_startup.ycp in the install root
+        my $tmnt = tempdir("xcat-sles.$$.XXXXXX",TMPDIR=>1);
+        my $tdir = tempdir("xcat-slesd.$$.XXXXXX",TMPDIR=>1);
+        my $startupfile;
+        my $ycparch = $arch;
+        if ($arch eq "x86") { 
+            $ycparch = "i386";
+        }
+        system("mount -o loop $installroot/$distname/$arch/$discnumber/boot/$ycparch/root $tmnt");
+        system("cd $tmnt;find . |cpio -dump $tdir");
+        system("umount $tmnt;rm $installroot/$distname/$arch/$discnumber/boot/$ycparch/root");
+        open($startupfile,"<","$tdir/usr/share/YaST2/clients/inst_startup.ycp");
+        my @ycpcontents = <$startupfile>;
+        my @newcontents;
+        my $writecont=1;
+        close($startupfile);
+        foreach (@ycpcontents) {
+            if (/No hard disks/) {
+                $writecont=0;
+            } elsif (/\}/) {
+                $writecont=1;
+            }
+            s/cancel/next/;
+            if ($writecont) {
+                push @newcontents, $_;
+            } 
+        }
+        open($startupfile,">","$tdir/usr/share/YaST2/clients/inst_startup.ycp");
+        foreach (@newcontents) {
+            print $startupfile $_;
+        }
+        close($startupfile);
+        system("cd $tdir;mkfs.cramfs . $installroot/$distname/$arch/$discnumber/boot/$ycparch/root");
+        system("rm -rf $tmnt $tdir");
+    }
 
     if ($rc != 0)
     {

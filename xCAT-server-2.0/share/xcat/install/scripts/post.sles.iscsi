@@ -1,0 +1,95 @@
+      <post-scripts config:type="list">
+        <script>
+          <filename>xcat.sh</filename>
+          <interpreter>shell</interpreter>
+          <source>
+
+<![CDATA[
+#!/bin/sh
+
+RAND=$(perl -e 'print int(rand(50)). "\n"')
+sleep $RAND
+jsi=0
+while [ $(hostname) == 'linux' ]
+do
+	if [ $jsi -gt 10 ]; then
+		logger "Slept too long!"
+		exit
+	fi
+	let jsi=jsi+1
+	sleep 1
+done
+echo "Slept $jsi seconds before hostname made sense."
+
+HOSTNAME=$(hostname -s)
+echo $HOSTNAME
+
+/sbin/portmap
+export MASTER_IP=#XCATVAR:XCATMASTER#
+export MASTER_IPS=#XCATVAR:XCATMASTER#
+export MASTER="#XCATVAR:XCATMASTER#"
+
+#
+#  This script has not yet been updated to work with service nodes
+#
+for i in $(seq 1 20)
+do
+	GOTIT=0
+	for i in $MASTER_IPS
+	do
+		#mount -r $i:/install/postscripts /xcatpost
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
+		if [ "$?" = "0" ]
+		then
+         mkdir -p /var/stunnel
+         if [ -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
+            echo client=yes > /etc/stunnel/stunnel.conf
+            echo foreground=no >> /etc/stunnel/stunnel.conf
+            echo output=/dev/null >> /etc/stunnel/stunnel.conf
+            echo verify=0 >> /etc/stunnel/stunnel.conf
+            echo '[xcatd]' >> /etc/stunnel/stunnel.conf
+            echo accept=400 >> /etc/stunnel/stunnel.conf
+            echo connect=$i:3001 >> /etc/stunnel/stunnel.conf
+
+            stunnel
+            STUN_PID=$!
+            sleep 1
+         fi
+         mv $i/postscripts /xcatpost
+         rm -rf $i
+         chmod +x /xcatpost/*
+         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+         MYCONT=`cat /tmp/mypostscript`
+         while [ -z "$MYCONT" ]; do
+            let SLI=$RANDOM%10+10
+            sleep $SLI
+            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+            MYCONT=`cat /tmp/mypostscript`
+         done
+         chmod +x /tmp/mypostscript
+			GOTIT=1
+			break
+		fi
+	done
+	if [ "$GOTIT" = "1" ]
+	then
+		break
+	fi
+	RAND=$(perl -e 'print int(rand(5)). "\n"')
+	sleep $RAND
+done
+PATH=/xcatpost:$PATH
+export PATH
+/tmp/mypostscript
+updateflag.awk $MASTER 3002
+cd /
+/xcatpost/#TABLE:nodelist:$NODE:node#
+rm -Rf /xcatpost
+rm -f /tmp/mypostscript
+rm -f /etc/stunnel/stunnel.conf
+rmdir /xcatpost
+]]>
+
+          </source>
+        </script>
+      </post-scripts>

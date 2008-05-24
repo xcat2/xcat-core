@@ -1,0 +1,112 @@
+      <chroot-scripts config:type="list">
+        <script>
+          <filename>boot.sh</filename>
+          <interpreter>shell</interpreter>
+          <chrooted config:type="boolean">true</chrooted>
+          <source>
+
+<![CDATA[
+#!/bin/sh
+
+AWK=`find / -name awk | head -1`
+#old awk /mounts/instsys/bin/awk -f
+
+cat >/tmp/locktftpdir.awk <<EOF
+#!$AWK -f
+BEGIN {
+	xcatdport = #TABLE:site:key=xcatiport:value#
+	xcatdhost = "#XCATVAR:XCATMASTER#"
+
+	ns = "/inet/tcp/0/" xcatdhost "/" xcatdport
+
+	 while(1) {
+                if((ns |& getline) > 0)
+                        print \$0 | "logger -t xcat"
+
+                if(\$0 == "ready")
+                        print "locktftpdir" |& ns
+                if(\$0 == "done")
+                        break
+        }
+	close(ns)
+
+	exit 0
+}
+EOF
+cat >/tmp/setiscsiparms.awk <<EOF
+#!$AWK -f
+BEGIN {
+	xcatdhost = ARGV[1]
+	xcatdport = ARGV[2]
+	kernel = ARGV[3]
+	initrd = ARGV[4]
+	kcmd = ARGV[5]
+	ns = "/inet/tcp/0/" ARGV[1] "/" xcatdport
+
+	while(1) {
+                if((ns |& getline) > 0)
+                        print \$0 | "logger -t xcat"
+
+                if(\$0 == "ready")
+                        print "setiscsiparms "kernel" "initrd" "kcmd |& ns
+                if(\$0 == "done")
+                        break
+	}
+	close(ns)
+	exit 0
+}
+EOF
+cat >/tmp/unlocktftpdir.awk <<EOF
+#!$AWK -f
+BEGIN {
+	xcatdport = #TABLE:site:key=xcatiport:value#
+	xcatdhost = "#XCATVAR:XCATMASTER#"
+
+	ns = "/inet/tcp/0/" xcatdhost "/" xcatdport
+
+	 while(1) {
+                if((ns |& getline) > 0)
+                        print \$0 | "logger -t xcat"
+
+                if(\$0 == "ready")
+                        print "unlocktftpdir" |& ns
+                if(\$0 == "done")
+                        break
+        }
+	close(ns)
+
+	exit 0
+}
+EOF
+
+chmod 755 /tmp/unlocktftpdir.awk
+chmod 755 /tmp/locktftpdir.awk
+chmod 755 /tmp/setiscsiparms.awk
+if [ -r /boot/etc/yaboot.conf ]; then
+	KNAME=`grep ^image /boot/etc/yaboot.conf|head -n 1|cut -d= -f 2|sed -e 's!^/!!'`
+	KERNEL=/boot/$KNAME
+	KERNEL=`echo $KERNEL|sed -e 's!//!/!g'`
+	INAME=`grep initrd /boot/etc/yaboot.conf|head -n 1|cut -d= -f 2|sed -e 's!^/!!'`
+	INITRD=/boot/$INAME
+	INITRD=`echo $INITRD|sed -e 's!//!/!g'`
+	KCMDLINE=`grep append= /boot/etc/yaboot.conf|head -n 1|cut -d= -f 2-`
+	KCMDLINE=`echo $KCMDLINE|sed -e 's! rhgb!!'|sed -e 's!"!!g'`
+elif [ -r /boot/grub/menu.lst ]; then
+	KNAME=`grep -v ^# /boot/grub/menu.lst|grep -v title|grep kernel|awk '{print $2}'|sed -e 's!/boot/!!'|head -n 1`
+	KERNEL=/boot/$KNAME
+	KCMDLINE=`grep -v ^# /boot/grub/menu.lst|grep -v title|grep kernel|sed -e 's!^.*kernel[[:space:]]\+[[:graph:]]\+[[:space:]]\+!!'|head -n 1`
+	INAME=`grep -v ^# /boot/grub/menu.lst|grep -v title|grep initrd|awk '{print $2}'|sed -e 's!/boot/!!'|head -n 1`
+	INITRD=/boot/$INAME
+	INITRD=`echo $INITRD|sed -e 's!//!/!g'`
+
+fi
+/tmp/unlocktftpdir.awk #XCATVAR:XCATMASTER# 3002
+curl -T $KERNEL tftp://#XCATVAR:XCATMASTER#/xcat/#TABLE:nodelist:$NODE:node#/$KNAME
+curl -T $INITRD tftp://#XCATVAR:XCATMASTER#/xcat/#TABLE:nodelist:$NODE:node#/$INAME
+/tmp/locktftpdir.awk #XCATVAR:XCATMASTER# 3002
+/tmp/setiscsiparms.awk #XCATVAR:XCATMASTER# 3002 $KNAME $INAME "$KCMDLINE"
+]]>
+
+          </source>
+        </script>
+      </chroot-scripts>
