@@ -739,7 +739,7 @@ sub plugin_command {
   if ($sock) { 
       my $clientpresence = new IO::Select; #The client may have gone away without confirmation, don't PIPE over this trivial thing
       $clientpresence->add($sock);
-      if ($clientpresence->can_write) {
+      if ($clientpresence->can_write(5)) {
           print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); 
       } 
   }
@@ -783,6 +783,7 @@ sub dispatch_callback {
             last;
          } else {
             $parselect->remove($dispatch_parentfd); #Block until parent acks data
+            last;
          }
          $selbits = $parselect->bits;
          yield;
@@ -1010,6 +1011,7 @@ sub convey_response {
              last;
          } else {
              $parsel->remove($parent_fd);
+             last;
          }
     }
     yield; #If still around, it means a peer process still hasn't gotten to us, so might as well yield
@@ -1107,7 +1109,7 @@ sub service_connection {
         syslog("local4|err","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
     }
   }
-  $SIG{ALRM}= sub { die "Failure shutting down" };
+  $SIG{ALRM}= sub { die "$$ failed shutting down" };
   alarm(10);
   foreach (keys %tables) {
     $tables{$_}->commit;
