@@ -218,7 +218,6 @@ sub nextdestiny {
     $requ{node}=[$node];
     $requ{arg}=[$ref->{currstate}];
     setdestiny(\%requ);
-    getdestiny();
   }
   if ($callnodeset) {
      $subreq->({command=>['nodeset'],
