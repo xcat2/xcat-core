@@ -736,7 +736,13 @@ sub plugin_command {
   if ($req->{transid}) {
     $done{transid}=$req->{transid}->[0];
   }
-  if ($sock) { print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); }
+  if ($sock) { 
+      my $clientpresence = new IO::Select; #The client may have gone away without confirmation, don't PIPE over this trivial thing
+      $clientpresence->add($sock);
+      if ($clientpresence->can_write) {
+          print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); 
+      } 
+  }
 }
 
 my $dispatch_dnf=0;
