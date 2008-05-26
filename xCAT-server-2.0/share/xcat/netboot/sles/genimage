@@ -83,6 +83,9 @@ foreach (split /,/,$netdriver) {
    }
    push @ndrivers,$_;
 }
+unless (grep /af_packet/,@ndrivers) {
+   unshift(@ndrivers,"af_packet.ko");
+}
 
 unless ($onlyinitrd) {
    my $srcdir = "$installroot/$osver/$arch/1";
@@ -171,6 +174,7 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/usr/lib64");
 	mkpath("/tmp/xcatinitrd.$$/lib/firmware");
 	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
+	mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
 	mkpath("/tmp/xcatinitrd.$$/proc");
 	mkpath("/tmp/xcatinitrd.$$/sys");
 	mkpath("/tmp/xcatinitrd.$$/dev/mapper");
@@ -179,9 +183,8 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/var/lib/dhclient");
 	my $inifile;
 	open($inifile,">","/tmp/xcatinitrd.$$/init");
-	print $inifile "#!/sbin/busybox.anaconda sh\n";
-	print $inifile "busybox.anaconda mount -t proc /proc /proc\n";
-	print $inifile "busybox.anaconda --install\n";
+	print $inifile "#!/bin/bash\n";
+	print $inifile "mount -t proc /proc /proc\n";
 	print $inifile "mount -t sysfs /sys /sys\n";
    print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
    print $inifile "mkdir /dev/pts\n";
@@ -217,8 +220,8 @@ sub mkinitrd {
    }
    print $inifile <<EOMS;
 netstart
-ifconfig lo 127.0.0.1
-ifconfig lo up
+ip addr add dev lo 127.0.0.1/8
+ip link set lo up
 cd /
 for i in `cat /proc/cmdline`; do
    KEY=`echo \$i |awk -F= '{print \$1}'`
@@ -252,7 +255,7 @@ if [ "\$NFS" = "1" ]; then
   #NOTE: should prob have max count
   while [ ! -d /ro/bin ]; do
     echo mounting \$SERVER:\$ROOTDIR on /ro
-    mount.nfs \$SERVER:\$ROOTDIR /ro -r -n -o nolock,rsize=32768,udp,nfsvers=3,timeo=14
+    mount \$SERVER:\$ROOTDIR /ro -r -n -o nolock,rsize=32768,udp,nfsvers=3,timeo=14
     sleep 5 #should be random, exponential for scale
   done
   mount -t tmpfs rw /rw
@@ -320,11 +323,11 @@ EOMS
    print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-$prinic.leases\n";
    print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/var/lib/dhclient/dhclient-$prinic.leases\n";
    print $inifile "mknod /sysroot/dev/console c 5 1\n";
-   print $inifile "exec switch_root -c /dev/console /sysroot /sbin/init\n";
+   print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console /sysroot /sbin/init\n";
    close($inifile);
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
-   print $inifile "#!/sbin/nash\n";
-   print $inifile "network --device $prinic --bootproto dhcp\n";
+   print $inifile "#!/bin/bash\n";
+   print $inifile "dhcpcd $prinic\n";
    close($inifile);
 	chmod(0755,"/tmp/xcatinitrd.$$/init");
 	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
@@ -334,7 +337,7 @@ EOMS
          push @filestoadd,[$_,"lib/$_"];
       }
    }
-   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod","sbin/mount.nfs") {
+   foreach ("bin/cpio","bin/sleep","usr/bin/strace","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init") {
       getlibs($_);
       push @filestoadd,$_;
    }
@@ -475,7 +478,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       }
       copy $_,"$installroot/netboot/$osver/$arch/$profile/rootimg/root/";
    }
-   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc3.d/S60gettyset");
+   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/gettyset");
    print $cfgfile "#!/bin/bash\n"; 
    print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
    print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
@@ -491,8 +494,17 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "  fi\n";
    print $cfgfile "done\n";
    close($cfgfile);
-   chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc3.d/S60gettyset");
+   chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/gettyset");
    #link("$installroot/netboot/$osver/$arch/$profile/rootimg/sbin/init","$installroot/netboot/$osver/$arch/$profile/rootimg/init");
-   
+   my $rc = system("grep sshd $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
+   if ($rc) {
+      system("sed -i '".'s/^\(TARGETS = .*\)$/\1 sshd/'."' $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
+      system("ln -s ../sshd $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/rc3.d/S20sshd");
+   }
+   my $rc = system("grep gettyset $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
+   if ($rc) {
+      system("sed -i '".'s/^\(TARGETS = .*\)$/\1 gettyset/'."' $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
+      system("ln -s ../gettyset $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/rc3.d/S60gettyset");
+   }
    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
 }
