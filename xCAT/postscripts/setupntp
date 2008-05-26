@@ -20,13 +20,6 @@ echo "server $master" >$conf_file
 mkdir -p /etc/ntp
 chown ntp /etc/ntp
 
-echo "driftfile /etc/ntp/drift
-multicastclient
-broadcastdelay	0.008
-authenticate no
-keys		/etc/ntp/keys
-trustedkey	65535
-requestkey	65535
-controlkey	65535" >>$conf_file
-
-
+echo "driftfile /var/lib/ntp/drift
+restrict 127.0.0.1
+authenticate no"  >>$conf_file
