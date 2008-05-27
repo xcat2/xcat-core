@@ -8,6 +8,7 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use Getopt::Long;
 use xCAT::Table;
+use xCAT::PPCdb;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 
 
@@ -212,10 +213,20 @@ sub invoke_cmd {
     my $lparid = $att->{id};
     my $type   = "lpar";
 
+    my %request = (
+        ppcretry => 1,
+        verbose  => $verbose
+    );
+    #################################
+    # Get userid and password 
+    #################################
+    my @cred = xCAT::PPCdb::credentials( $host, $hwtype );
+    $request{$host}{cred} = \@cred;
+
     #################################
     # Connect to the remote server
     #################################
-    my @exp = xCAT::PPCcli::connect( $hwtype, $host, $verbose );
+    my @exp = xCAT::PPCcli::connect( \%request, $hwtype, $host );
     if ( ref(@exp[0]) ne "Expect" ) {
         return( @exp[0] );
     }
@@ -244,6 +255,7 @@ if ( $result ne "0" ) {
     exit(1);
 }
 exit(0);
+
 
 
 
