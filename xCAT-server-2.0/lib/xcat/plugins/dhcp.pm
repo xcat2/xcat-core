@@ -240,8 +240,12 @@ sub addnode
             print $omshell "set ip-address = $ip\n";
             if ($lstatements)
             {
-                print $omshell "set statements = \"$lstatements\"\n";
+                $lstatements = 'send host-name \"'.$node.'\";'.$lstatements;
+
+            } else {
+                $lstatements = 'send host-name \"'.$node.'\";';
             }
+            print $omshell "set statements = \"$lstatements\"\n";
         }
 
         print $omshell "create\n";
