@@ -23,3 +23,7 @@ chown ntp /etc/ntp
 echo "driftfile /var/lib/ntp/drift
 restrict 127.0.0.1
 authenticate no"  >>$conf_file
+
+service ntpd stop 
+ntpdate $master
+service ntpd start 
