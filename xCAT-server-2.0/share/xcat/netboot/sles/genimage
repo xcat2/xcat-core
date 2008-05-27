@@ -173,6 +173,8 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/usr/lib");
 	mkpath("/tmp/xcatinitrd.$$/usr/lib64");
 	mkpath("/tmp/xcatinitrd.$$/lib/firmware");
+	mkpath("/tmp/xcatinitrd.$$/tmp");
+	mkpath("/tmp/xcatinitrd.$$/var/run");
 	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
 	mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
 	mkpath("/tmp/xcatinitrd.$$/proc");
@@ -319,12 +321,20 @@ EOMS
    print $inifile "cd /\n";
    print $inifile "cp /var/lib/dhcpcd/* /sysroot/var/lib/dhcpcd/\n";
    print $inifile "cp /etc/resolv.conf /sysroot/etc/\n";
+   print $inifile "cp /etc/HOSTNAME /sysroot/etc/\n";
    print $inifile "mknod /sysroot/dev/console c 5 1\n";
    print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console /sysroot /sbin/init\n";
    close($inifile);
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/bin/bash\n";
    print $inifile "dhcpcd $prinic\n";
+   print $inifile "echo -n 'search '> /etc/resolv.conf\n";
+   print $inifile "grep DOMAIN /var/lib/dhcpcd/*info|awk -F= '{print \$2}'|awk -F\\' '{print \$2}' >> /etc/resolv.conf\n";
+   print $inifile "grep HOSTNAME /var/lib/dhcpcd/*info|awk -F= '{print \$2}'|awk -F\\' '{print \$2}' >> /etc/HOSTNAME\n";
+   print $inifile "for names in `grep DNS /var/lib/dhcpcd/*info|awk -F= '{print \$2}'`; do\n";
+   print $inifile '   echo nameserver $names >> /etc/resolv.conf'."\n";
+   print $inifile "done\n";
+
    close($inifile);
 	chmod(0755,"/tmp/xcatinitrd.$$/init");
 	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
@@ -334,7 +344,7 @@ EOMS
          push @filestoadd,[$_,"lib/$_"];
       }
    }
-   foreach ("bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init") {
+   foreach ("usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init") {
       getlibs($_);
       push @filestoadd,$_;
    }
