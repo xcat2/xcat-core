@@ -20,8 +20,207 @@ sub handled_commands
 {
     return {
             copycd    => "sles",
+            mknetboot => "nodetype:os=sles.*",
             mkinstall => "nodetype:os=sles.*"
             };
+}
+
+sub mknetboot
+{
+    my $req      = shift;
+    my $callback = shift;
+    my $doreq    = shift;
+    my $tftpdir  = "/tftpboot";
+    my $nodes    = @{$request->{node}};
+    my @args     = @{$req->{arg}};
+    my @nodes    = @{$req->{node}};
+    my $ostab    = xCAT::Table->new('nodetype');
+    my $sitetab  = xCAT::Table->new('site');
+    my $installroot;
+    $installroot = "/install";
+
+    if ($sitetab)
+    {
+        (my $ref) = $sitetab->getAttribs({key => installdir}, value);
+        if ($ref and $ref->{value})
+        {
+            $installroot = $ref->{value};
+        }
+    }
+    my %donetftp=();
+    foreach $node (@nodes)
+    {
+        my $ent = $ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
+        unless ($ent->{os} and $ent->{arch} and $ent->{profile})
+        {
+            $callback->(
+                        {
+                         error     => ["Insufficient nodetype entry for $node"],
+                         errorcode => [1]
+                        }
+                        );
+            next;
+        }
+
+        my $osver = $ent->{os};
+        my $platform;
+        if ($osver =~ /sles.*/)
+        {
+            $platform = "sles";
+        }
+
+        my $arch    = $ent->{arch};
+        my $profile = $ent->{profile};
+        my $suffix  = 'gz';
+        if (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.sfs")
+        {
+            $suffix = 'sfs';
+        }
+        if (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.nfs")
+        {
+            $suffix = 'nfs';
+        }
+        unless (
+                (
+                    -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.gz"
+                 or -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.sfs"
+                 or -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.nfs"
+                )
+                and -r "/$installroot/netboot/$osver/$arch/$profile/kernel"
+                and -r "/$installroot/netboot/$osver/$arch/$profile/initrd.gz"
+          )
+        {
+            $callback->(
+                {
+                 error => [
+                     "No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (i.e.  packimage -o $osver -p $profile -a $arch"
+                 ],
+                 errorcode => [1]
+                }
+                );
+            next;
+        }
+
+        mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+
+        #TODO: only copy if newer...
+        unless ($donetftp{$osver,$arch,$profile}) {
+        copy("/$installroot/netboot/$osver/$arch/$profile/kernel",
+             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+        copy("/$installroot/netboot/$osver/$arch/$profile/initrd.gz",
+             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            $donetftp{$osver,$arch,$profile} = 1;
+        }
+        unless (    -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel"
+                and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd.gz")
+        {
+            $callback->(
+                {
+                 error => [
+                     "Copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed"
+                 ],
+                 errorcode => [1]
+                }
+                );
+            next;
+        }
+        my $restab = xCAT::Table->new('noderes');
+        my $bptab  = xCAT::Table->new('bootparams',-create=>1);
+        my $hmtab  = xCAT::Table->new('nodehm');
+        my $ent    = $restab->getNodeAttribs($node, ['primarynic']);
+        my $sent   =
+          $hmtab->getNodeAttribs($node,
+                                 ['serialport', 'serialspeed', 'serialflow']);
+
+        # determine image server, if tftpserver use it, else use xcatmaster
+        # else use site.Master, last resort use self
+        my $imgsrv;
+        my $ient;
+        $ient = $restab->getNodeAttribs($node, ['tftpserver']);
+        if ($ient and $ient->{tftpserver})
+        {
+            $imgsrv = $ient->{tftpserver};
+        }
+        else
+        {
+            $ient = $restab->getNodeAttribs($node, ['xcatmaster']);
+            if ($ient and $ient->{xcatmaster})
+            {
+                $imgsrv = $ient->{xcatmaster};
+            }
+            else
+            {
+                $ient = $sitetab->getAttribs({key => master}, value);
+                if ($ient and $ient->{value})
+                {
+                    $imgsrv = $ient->{value};
+                }
+                else
+                {
+                    my $ipfn = xCAT::Utils->my_ip_facing($node);
+                    if ($ipfn)
+                    {
+                        $imgsrv = $ipfn;    #guessing self is second best
+
+                    }
+                }
+            }
+        }
+        unless ($imgsrv)
+        {
+            $callback->(
+                {
+                 error => [
+                     "Unable to determine or reasonably guess the image server for $node"
+                 ],
+                 errorcode => [1]
+                }
+                );
+            next;
+        }
+        my $kcmdline;
+        if ($suffix eq "nfs")
+        {
+            $kcmdline =
+              "imgurl=nfs://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg ";
+        }
+        else
+        {
+            $kcmdline =
+              "imgurl=http://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.$suffix ";
+        }
+        if (defined $sent->{serialport})
+        {
+
+            #my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
+            unless ($sent->{serialspeed})
+            {
+                $callback->(
+                    {
+                     error => [
+                         "serialport defined, but no serialspeed for $node in nodehm table"
+                     ],
+                     errorcode => [1]
+                    }
+                    );
+                next;
+            }
+            $kcmdline .=
+              "console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+            if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
+            {
+                $kcmdline .= "n8r";
+            }
+        }
+        $bptab->setNodeAttribs(
+                      $node,
+                      {
+                       kernel => "xcat/netboot/$osver/$arch/$profile/kernel",
+                       initrd => "xcat/netboot/$osver/$arch/$profile/initrd.gz",
+                       kcmdline => $kcmdline
+                      }
+                      );
+    }
 }
 
 sub process_request
@@ -39,6 +238,10 @@ sub process_request
     elsif ($request->{command}->[0] eq 'mkinstall')
     {
         return mkinstall($request, $callback, $doreq);
+    }
+    elsif ($request->{command}->[0] eq 'mknetboot')
+    {
+        return mknetboot($request, $callback, $doreq);
     }
 }
 
