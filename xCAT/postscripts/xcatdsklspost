@@ -15,6 +15,11 @@ let SLI=$RANDOM%10
 sleep $SLI
 
 SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
+if [ -z "$SIP" ]; then
+    SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
+fi
+
+    
 if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     touch /var/lock/subsys/xcatmounts
     echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
@@ -26,6 +31,7 @@ fi
 
 
 mkdir -p /etc/stunnel
+mkdir -p /var/stunnel
 cat > /etc/stunnel/stunnel.conf << EOF
 client=yes
 foreground=no

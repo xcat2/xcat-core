@@ -4,5 +4,7 @@ stunnel
 dhcpcd 
 kernel-smp
 openssh
-busybox
+procps
+psmisc
+resmgr
 wget

@@ -180,7 +180,7 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/dev/mapper");
 	mkpath("/tmp/xcatinitrd.$$/sysroot");
 	mkpath("/tmp/xcatinitrd.$$/etc/ld.so.conf.d");
-	mkpath("/tmp/xcatinitrd.$$/var/lib/dhclient");
+	mkpath("/tmp/xcatinitrd.$$/var/lib/dhcpcd");
 	my $inifile;
 	open($inifile,">","/tmp/xcatinitrd.$$/init");
 	print $inifile "#!/bin/bash\n";
@@ -260,15 +260,12 @@ if [ "\$NFS" = "1" ]; then
   done
   mount -t tmpfs rw /rw
   mkdir -p /rw/etc
-  mkdir -p /rw/var/lib/dhclient
-  cp /etc/resolv.conf /rw/etc/
-  cp /var/lib/dhclient/dhclient.leases /rw/var/lib/dhclient/dhclient-$prinic.leases
+  mkdir -p /rw/var/lib/dhcpcd
   mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot
   mkdir -p /sysroot/ro
   mkdir -p /sysroot/rw
   mount --move /ro /sysroot/ro
   mount --move /rw /sysroot/rw
-  cp /etc/resolv.conf /sysroot/etc/
 elif [ -r /rootimg.sfs ]; then
   echo Setting up squashfs with ram overlay.
   mknod /dev/loop0 b 7 0
@@ -320,8 +317,8 @@ EOMS
    print $inifile "  exit\n";
    print $inifile "fi\n";
    print $inifile "cd /\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-$prinic.leases\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/var/lib/dhclient/dhclient-$prinic.leases\n";
+   print $inifile "cp /var/lib/dhcpcd/* /sysroot/var/lib/dhcpcd/\n";
+   print $inifile "cp /etc/resolv.conf /sysroot/etc/\n";
    print $inifile "mknod /sysroot/dev/console c 5 1\n";
    print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console /sysroot /sbin/init\n";
    close($inifile);
@@ -337,7 +334,7 @@ EOMS
          push @filestoadd,[$_,"lib/$_"];
       }
    }
-   foreach ("bin/cpio","bin/sleep","usr/bin/strace","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init") {
+   foreach ("bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init") {
       getlibs($_);
       push @filestoadd,$_;
    }

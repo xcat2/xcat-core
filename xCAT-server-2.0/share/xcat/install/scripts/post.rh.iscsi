@@ -85,6 +85,8 @@ export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
 iscsiadm -m discovery -t st -p #TABLE:iscsi:$NODE:server#
+sed -i 's/^serial/#serial/' /boot/grub/menu.lst
+sed -i 's/^terminal/#terminal/' /boot/grub/menu.lst
 uploadboot
 cd /
 rm -Rf /xcatpost
