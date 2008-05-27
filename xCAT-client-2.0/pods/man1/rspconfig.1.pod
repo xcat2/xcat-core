@@ -42,7 +42,7 @@ B<rspconfig> I<noderange> B<swnet>={[B<ip>],[B<gateway>],[B<netmask>]}
 
 B<rspconfig> I<noderange> B<ntp>={[B<ntpenable>],[B<ntpserver>],[B<frequency>],[B<v3>]}
 
-=head2 PPC specific:
+=head2 FSP specific:
 
 B<rspconfig> I<noderange> {B<autopower>|B<iocap>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>}
 
@@ -59,6 +59,12 @@ B<rspconfig> I<noderange> B<decfg>={B<enable|disable>:B<policyname,...>}
 B<rspconfig> I<noderange> B<procdecfg>={B<configure|deconfigure>:B<processingunit>:B<id,...>}
 
 B<rspconfig> I<noderange> B<memdecfg>={B<configure|deconfigure>:B<processingunit>:B<unit|bank>:B<id,...>>}
+
+=head2 PPC specific:
+
+B<rspconfig> I<noderange> {B<sshcfg>}
+
+B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
 =head1 DESCRIPTION
 
