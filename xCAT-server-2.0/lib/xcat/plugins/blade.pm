@@ -897,7 +897,7 @@ sub rscan_stanza {
 
     foreach ( @rscan_header ) {
       if ( @$_[0] ne "name" ) {
-        $result .= "\t@$_[0]=$data[$i++]\n";      
+        $result .= "\t@$_[0]=$data[$i]\n";      
       }
       $i++;
     }
