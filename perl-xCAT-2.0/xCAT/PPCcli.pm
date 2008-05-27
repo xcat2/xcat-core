@@ -660,9 +660,9 @@ sub lpar_netboot {
 ##########################################################################
 sub lshmc {
 
-    my $exp     = shift;
-    my $attr    = shift;
-    my $hwtype  = @$exp[2];
+    my $exp    = shift;
+    my $attr   = shift;
+    my $hwtype = @$exp[2];
 
     #####################################
     # Format command based on HW Type
@@ -749,6 +749,70 @@ sub lshmc {
 
 }
 
+
+##########################################################################
+# Updates authorized_keys2 file on the HMC/IVM
+##########################################################################
+sub mkauthkeys {
+
+    my $exp    = shift;
+    my $option = shift;
+    my $logon  = shift;
+    my $sshkey = shift;
+    my $ssh    = @$exp[0];
+    my $hwtype = @$exp[2];
+    my $userid = @$exp[4];
+
+    #########################################
+    # On IVM-based systems, the mkauthkeys 
+    # command does not exist, so we have to 
+    # include the generated key at 
+    # /home/<userid>/.ssh/authorized_keys2 
+    # manually.    
+    #########################################
+    if ( $hwtype =~ /^ivm$/ ) {
+        my @authkey; 
+        my $auth   = "/home/$userid/.ssh/authorized_keys2";
+        my $result = send_cmd( $exp, "cat $auth" );
+        my $Rc = shift(@$result);
+
+        #####################################
+        # Return error
+        #####################################
+        if ( $Rc != SUCCESS ) {
+            return( $result );
+        }
+        #####################################
+        # When adding, remove old keys first
+        #####################################
+        foreach ( @$result ) {
+            unless ( /= $logon$/ ) {
+                push @authkey, $_;
+            }
+        }
+        #####################################
+        # Add new key 
+        #####################################
+        if ( $option =~ /^enable$/i ) {
+            push @authkey, $sshkey;
+        }
+        #####################################
+        # Rewrite the key file 
+        #####################################
+        my $keys = join( "\n", @authkey );
+        $result = send_cmd( $exp,"echo \"$keys\" | tee $auth" );
+        return( $result );
+    }
+    #########################################
+    # When adding, remove old keys first
+    #########################################
+    my $result = send_cmd( $exp,"mkauthkeys --remove '$logon'" ); 
+        
+    if ( $option =~ /^enable$/i ) {
+        $result = send_cmd( $exp,"mkauthkeys --add '$sshkey'" ); 
+    }
+    return( $result );
+}
 
 
 ##########################################################################
@@ -891,6 +955,7 @@ sub power_cmd {
 
 
 1;
+
 
 
 
