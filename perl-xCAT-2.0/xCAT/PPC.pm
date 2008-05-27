@@ -30,7 +30,7 @@ my %modules = (
   rnetboot  => "xCAT::PPCboot",
   getmacs   => "xCAT::PPCmac",
   reventlog => "xCAT::PPClog",
-  rspconfig => "xCAT::PPCfsp"
+  rspconfig => "xCAT::PPCcfg"
 );
 
 ##########################################
@@ -281,7 +281,7 @@ sub preprocess_nodes {
     #   rscan - Nodes are hardware control pts 
     #   Direct-attached FSP 
     ########################################
-    if (( $request->{command} eq "rscan" ) or
+    if (( $request->{command} =~ /^(rscan|rspconfig)$/ ) or
         ( $request->{hwtype} eq "fsp" )) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
@@ -686,7 +686,7 @@ sub invoke_cmd {
     my @exp;
     my $verbose_log;
     my @outhash;
- 
+
     ########################################
     # Direct-attached FSP handler 
     ########################################
@@ -831,7 +831,7 @@ sub runcmd {
         return( [$@] );
     }
     ######################################
-    # Invoke  method 
+    # Invoke method 
     ######################################
     no strict 'refs';
     my $result = ${$modname."::"}{$method}->($request,@_);
