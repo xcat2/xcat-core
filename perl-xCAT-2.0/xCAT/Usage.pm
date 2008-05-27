@@ -63,7 +63,7 @@ my %usage = (
    MPA specific:
        rspconfig <noderange>  [sshcfg|snmpcfg|build|pd1|pd2|network|swnet|ntp|textid]
        rspconfig <singlenode> [textid=name]
-       rspconfig <noderange>  [shcfg=<enable|disable>|
+       rspconfig <noderange>  [sshcfg=<enable|disable>|
            snmpcfg=<enable|disable>|                             
            pd1=<nonred|redwoperf|redwperf>|
            pd2=<nonred|redwoperf|redwperf>|
@@ -71,7 +71,7 @@ my %usage = (
            swnet=<[ip],[gateway],[netmask]>|
            textid=<*>|
            ntp=<[ntp],[ip],[frequency],[v3]>
-   PPC specific:
+   FSP specific:
        rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump]
        rspconfig <noderange> autopower=<enable|disable>|
            iocap=<enable|disable>|
@@ -79,7 +79,10 @@ my %usage = (
            memdecfg=<configure|deconfigure>:<processing unit>:<bank|unit>:<bank/unit number>:id,...|
            procdecfg=<configure|deconfigure>:<processing unit>:id,...|
            date=<mm-dd-yyyy>|
-           time=<hh:mm:ss>",
+           time=<hh:mm:ss>
+   PPC specific:
+           rspconfig <noderange>  [sshcfg]
+           rspconfig <noderange>  [sshcfg=<enable|disable>]",
     "getmacs" => 
 "Usage: 
    Common:
