@@ -500,6 +500,8 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "     init q\n";
    print $cfgfile "  fi\n";
    print $cfgfile "done\n";
+   print $cfgfile "/etc/init.d/boot.localnet start\n";
+   print $cfgfile "/opt/xcat/xcatdsklspost\n";
    close($cfgfile);
    chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/gettyset");
    #link("$installroot/netboot/$osver/$arch/$profile/rootimg/sbin/init","$installroot/netboot/$osver/$arch/$profile/rootimg/init");
