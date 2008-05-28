@@ -1,40 +1,67 @@
 =head1 NAME
- 
-B<mkdef> - Use this command to create xCAT data object definitions.
- 
-=head1 SYNOPSIS
- 
-I<mkdef [-h | --help ] [-t object-types]>
 
-I<mkdef [-V | --verbose] [-t object-types] [-o object-names]> 
-I<[-z | --stanza ] [-x | --xml] [-f | --force] [-w  attr=val,[attr=val...]]>
-I<[noderange] [attr=val [attr=val...]] >
+B<mkdef> - Use this command to create xCAT data object definitions.
+
+=head1 SYNOPSIS
+
+B<mkdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
+
+B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
+[B<-z>|B<--stanza>] [B<-x>|B<--xml>] [B<-f>|B<--force>] [B<-w> I<attr>=I<val>,[I<attr>=I<val...>]]
+[I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
+
 
 =head1 DESCRIPTION
 
 This command is used to create xCAT object definitions which are stored in the xCAT database. If the definition already exists it will return an error message. The force option may be used to re-create a definition.  In this case the old definition will be remove and the new definition will be created.
 
+
 =head1 OPTIONS
 
-B<attr=val [attr=val ...]>  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. Use the help option to get a list of valid attributes for each object type. 
+=over 10
 
-B<-f |--force>           Use the force option to re-create object definitions. This option removes the old definition before creating the new one.
+=item I<attr=val [attr=val ...]>
 
-B<-h |--help>            Display usage message.
+Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. Use the help option to get a list of valid attributes for each object type.
 
-B<noderange>             A set of comma delimited node names and/or group names. (must be the first parameter) See the "noderange" man page for details on supported formats.
+=item B<-f|--force>
 
-B<-o object-names>       A set of comma delimited object names.
+Use the force option to re-create object definitions. This option removes the old definition before creating the new one.
 
-B<-t object-types>       A set of comma delimited object types.  Use the help option to get a list of valid object types.
+=item B<-h|--help>
 
-B<-V |--verbose>         Verbose mode.
+Display usage message.
 
-B<-w attr=val,[attr=val...]>       A comma-separated list of attributes and values that can be used to select objects. Use the help option to get a list of validattributes for each object type.
+=item I<noderange>
 
-B<-x | --xml>            Indicates that the file being piped to the command is in XML format.
+A set of comma delimited node names and/or group names. (must be the first parameter) See the "noderange" man page for details on supported formats.
 
-B<-z | --stanza>         Indicates that the file being piped to the command is in stanza format.
+=item B<-o> I<object-names>
+
+A set of comma delimited object names.
+
+=item B<-t> I<object-types>
+
+A set of comma delimited object types.  Use the help option to get a list of valid object types.
+
+=item B<-V|--verbose>
+
+Verbose mode.
+
+=item B<-w> I<attr=val,[attr=val...]>
+
+A comma-separated list of attributes and values that can be used to select objects. Use the help option to get a list of validattributes for each object type.
+
+=item B<-x|--xml>
+
+Indicates that the file being piped to the command is in XML format.
+
+=item B<-z|--stanza>
+
+Indicates that the file being piped to the command is in stanza format.
+
+=back
+
 
 =head1 RETURN VALUE
 
@@ -42,40 +69,60 @@ B<-z | --stanza>         Indicates that the file being piped to the command is i
 
 1 An error has occurred.
 
+
 =head1 EXAMPLES
 
-1. To create a site definition.
+=over 3
 
-I<mkdef -t site -o clustersite rsh=/bin/rsh rcp=/bin/rcp installdir=/xcatinstall>
+=item 1.
 
-2. To create a basic node definition.
+To create a site definition.
 
-I<mkdef -t node -o node01 groups="all,aix">
+ mkdef -t site -o clustersite rsh=/bin/rsh rcp=/bin/rcp installdir=/xcatinstall
 
-3. To re-create the current definition of "node01".
+=item 2.
 
-I<mkdef -f -t node -o node01  nodetype=osi groups="linux">
+To create a basic node definition.
 
-(The group definitions are also created if they don't already exist.) 
+ mkdef -t node -o node01 groups="all,aix"
 
-4. To create a set of different types of definitions based on information contained in a stanza file.
+=item 3.
 
-I<cat defstanzafile | mkdef -z>
+To re-create the current definition of "node01".
 
-5. To create a group definition called LinuxNodes containing the nodes clstrn01 and clstrn02.
+ mkdef -f -t node -o node01  nodetype=osi groups="linux"
 
-I<mkdef -t group -o LinuxNodes members="clstrn01,clstrn02">
+(The group definitions are also created if they don't already exist.)
 
-6. To create a node definition for an FSP node using the attributes provided by the group fspnodes.
+=item 4.
 
-I<mkdef -t node fspn1 groups=fspnodes nodetype=fsp>
+To create a set of different types of definitions based on information contained in a stanza file.
 
-7. To create node definitions for a set of node host names contained in the node range "node1,node2,node3"
+ cat defstanzafile | mkdef -z
 
-I<mkdef -t node node1,node2,node3 power=hmc groups="all,aix" >
+=item 5.
+
+To create a group definition called LinuxNodes containing the nodes clstrn01 and clstrn02.
+
+ mkdef -t group -o LinuxNodes members="clstrn01,clstrn02"
+
+=item 6.
+
+To create a node definition for an FSP node using the attributes provided by the group fspnodes.
+
+ mkdef -t node fspn1 groups=fspnodes nodetype=fsp
+
+=item 7.
+
+To create node definitions for a set of node host names contained in the node range "node1,node2,node3"
+
+ mkdef -t node node1,node2,node3 power=hmc groups="all,aix"
+
+=back
+
 
 =head1 FILES
- 
+
 $XCATROOT/bin/mkdef
 
 (The XCATROOT environment variable is set when xCAT is installed. The
@@ -89,5 +136,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-See the chdef, lsdef and rmdef commands.
- 
+See the chdef(1), lsdef(1), rmdef(1), and xcatstanzafile(5) commands.

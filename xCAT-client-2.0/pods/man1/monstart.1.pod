@@ -1,30 +1,30 @@
 =head1 NAME
- 
+
 B<monstart> - Starts a plug-in module to monitor the xCAT cluster.
 
-  
- 
+
+
 =head1 SYNOPSIS
- 
+
 I<monstart [-h| --help]>
 
 I<monstart  [-v| --version]>
 
 
-I<monstart I<name> [-n|--nodestatmon] [-s|--settings settings]> 
+I<monstart I<name> [-n|--nodestatmon] [-s|--settings settings]>
 
 
 =head1 DESCRIPTION
 
-This command is used to register a monitoring plug-in module and invoke it to monitor the xCAT cluster. A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. The plug-in module will be registered in the xCAT I<monitoring> database table. A registered plug-in module is automatically started by the I<xcatd>.  
-       
+This command is used to register a monitoring plug-in module and invoke it to monitor the xCAT cluster. A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. The plug-in module will be registered in the xCAT I<monitoring> database table. A registered plug-in module is automatically started by the I<xcatd>.
+
 
 =head1 Parameters
 
-I<name> is the name of the monitoring plug-in module. For example, if the the I<name> is called I<xxx>, then the actual file name that the xcatd looks for is I</opt/xcat/lib/perl/xCAT_monitoring/xxx.pm>. Use I<monls -a> command to list all the monitoring plug-in modules that can be used. 
- 
+I<name> is the name of the monitoring plug-in module. For example, if the the I<name> is called I<xxx>, then the actual file name that the xcatd looks for is I</opt/xcat/lib/perl/xCAT_monitoring/xxx.pm>. Use I<monls -a> command to list all the monitoring plug-in modules that can be used.
+
 I<settings> is the monitoring plug-in specific settings. It is used to customize the behavior of the plug-in or configure the 3rd party software. Format: I<[key-value],[key=value]...> Please note that the square brackets are needed here. Use I<monls name -d> command to look for the possbile setting keys for a plug-in module.
-  
+
 =head1 OPTIONS
 
 
@@ -34,9 +34,9 @@ B<-n | -nodestatmon>   Indicate that this monitoring plug-in will be used for fe
 
 B<-s | -settings>     Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. [mon_interval=10],[toggle=1].
 
-B<-v | -version >      Command Version. 
+B<-v | -version >      Command Version.
 
-B<-V | -verbose>       Verbose output. 
+B<-V | -verbose>       Verbose output.
 
 
 =head1 RETURN VALUE
@@ -53,17 +53,18 @@ B<-V | -verbose>       Verbose output.
 
 2. To start rmcmon plug-in module (which interacts with IBM's RSCT monitoring software) to monitor the xCAT cluster and have it feed the node liveness status to xCAT's I<nodelist> table, enter:
 
-  monstart rmcmon -n 
+  monstart rmcmon -n
 
 3. To start xcatmon plug-in module to feed the node liveness status to xCAT's I<nodelist> table, enter:
 
   monstart rmcmon -n -s [ping-interval=2]
+
 where 2 is the number of minutes between the pings.
 
 
 
-=head1 FILES 
- 
+=head1 FILES
+
 /opt/xcat/bin/monstart
 
 
@@ -74,4 +75,4 @@ See monstop monls
 This command is part of the xCAT software product.
 
 
- 
+

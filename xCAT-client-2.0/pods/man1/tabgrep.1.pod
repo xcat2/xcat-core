@@ -49,6 +49,7 @@ To display the tables that contain blade1:
 B<tabgrep> I<blade1>
 
 The output would be similar to:
+
      nodelist
      nodehm
      mp

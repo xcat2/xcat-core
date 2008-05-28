@@ -1,30 +1,30 @@
 =head1 NAME
- 
+
 B<monls> - Lists monitoring plug-in modules that can be used to monitor the xCAT cluster.
 
-  
- 
+
+
 =head1 SYNOPSIS
- 
+
 I<monls [-h| --help]>
 
 I<monls  [-v| --version]>
 
-I<monls I<name> [-d|--description]> 
+I<monls I<name> [-d|--description]>
 
-I<monls [-a|--all] [-d|--description]> 
+I<monls [-a|--all] [-d|--description]>
 
 
 =head1 DESCRIPTION
 
-This command is used to list the status, desctiption and the settings of one or all of the monitoring plug-in modules.  
-       
+This command is used to list the status, desctiption and the settings of one or all of the monitoring plug-in modules.
+
 
 =head1 Parameters
 
-I<name> is the name of the monitoring plug-in module.  
- 
-  
+I<name> is the name of the monitoring plug-in module.
+
+
 =head1 OPTIONS
 
 
@@ -34,9 +34,9 @@ B<-d | --description>  Display the description of the plug-in modules. The descr
 
 B<-h | --help>         Display usage message.
 
-B<-v | -version >      Command Version. 
+B<-v | -version >      Command Version.
 
-B<-V | -verbose>       Verbose output. 
+B<-V | -verbose>       Verbose output.
 
 
 =head1 RETURN VALUE
@@ -49,9 +49,10 @@ B<-V | -verbose>       Verbose output.
 
 1. To list the status of all the monitoring plug-in modules from the I<monitoring> table, enter:
 
-  monls 
+  monls
 
 The output looks like this:
+
   xcatmon         monitored       node-status-monitored
   snmpmon         not-monitored
 
@@ -60,20 +61,21 @@ The output looks like this:
   monls -a
 
 The output looks like this:
+
   xcatmon         monitored       node-status-monitored
   snmpmon         not-monitored
   gangliamon      not-monitored
   rmcmon          monitored
   nagiosmon       not-monitored
-  
+
 
 3. To list the status and the desciption for I<snmpmon> module, enter:
 
   monls snmpmon -d
 
 
-=head1 FILES 
- 
+=head1 FILES
+
 /opt/xcat/bin/monls
 
 
@@ -84,4 +86,4 @@ See monstart monstop
 This command is part of the xCAT software product.
 
 
- 
+

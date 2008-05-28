@@ -7,7 +7,7 @@ B<xdcp> - Concurrently copies files to or from multiple nodes.
 B<xdcp> I<noderange>  [B<-C> I<context>] [B<-f> I<fanout>]
 [B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>]
 [B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>]
-[B<-T>] [B<-v>] [B<-X> I<env_list>] sourcefile.... targetpath 
+[B<-T>] [B<-v>] [B<-X> I<env_list>] sourcefile.... targetpath
 
 B<xdcp> [B<-h> | B<-V> | B<-q>]
 
@@ -311,10 +311,9 @@ B<xdcp> I<all -P /etc/hosts /tmp/hosts.dir>
 A suffix specifying the name of the target is  appended  to  each
 file name. The contents of the /tmp/hosts.dir directory are similar to:
 
-hosts._node1   hosts._node4   hosts._node7
-hosts._node2   hosts._node5   hosts._node8
-hosts._node3   hosts._node6
-
+ hosts._node1   hosts._node4   hosts._node7
+ hosts._node2   hosts._node5   hosts._node8
+ hosts._node3   hosts._node6
 
 
 =item *

@@ -1,9 +1,9 @@
 =head1 NAME
- 
+
 B<lsslp> - Queries selected networked services information within the same subnet.
- 
+
 =head1 SYNOPSIS
- 
+
 I<lsslp [-h| --help]>
 
 I<lsslp [-v| --version]>
@@ -25,19 +25,19 @@ B<-b>          IP(s) the command will broadcast out.
 
 B<-h>          Display usage message.
 
-B<-r>          Raw slp response. 
+B<-r>          Raw slp response.
 
-B<-s>          Service type interested in discovering. 
+B<-s>          Service type interested in discovering.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-V>          Verbose output. 
+B<-V>          Verbose output.
 
-B<-w>          Writes output to xCAT database. 
+B<-w>          Writes output to xCAT database.
 
-B<-x>          XML format. 
+B<-x>          XML format.
 
-B<-z>          Stanza formated output. 
+B<-z>          Stanza formated output.
 
 
 =head1 RETURN VALUE
@@ -48,36 +48,32 @@ B<-z>          Stanza formated output.
 
 =head1 EXAMPLES
 
-1. To list all discovered HMC service types in tabular format, enter: 
+1. To list all discovered HMC service types in tabular format, enter:
 
-I<lsslp -s HMC> 
+ lsslp -s HMC
 
 Output is similar to:
 
-device type-model serial-number ip-addresses                    hostname
-
-HMC    7310CR2    103F55A        1.1.1.115 2.2.2.164 3.3.3.102  hmc01
-
-HMC    7310CR2    105369A        3.3.3.103 2.2.2.103 1.1.1.163  hmc02
-
-HMC    7310CR3    KPHHK24        3.3.3.154 2.2.2.110 1.1.1.154  hmc03
+ device type-model serial-number ip-addresses                    hostname
+ HMC    7310CR2    103F55A        1.1.1.115 2.2.2.164 3.3.3.102  hmc01
+ HMC    7310CR2    105369A        3.3.3.103 2.2.2.103 1.1.1.163  hmc02
+ HMC    7310CR3    KPHHK24        3.3.3.154 2.2.2.110 1.1.1.154  hmc03
 
 
 2. list all discovered FSP service types in raw response format on subnet 30.0.0.255, enter:
 
-I<lsslp -b 3.0.0.255 -s FSP -r>
+ lsslp -b 3.0.0.255 -s FSP -r
 
 Output is similar to:
 
-(type=cec-service-processor),(serial-number=10A3AEB),(machinetype-model=9117-570),(fru-serial-number=YL11C5338102),(hostname=),(frame-number=0),(cage-number=0),(ip-address=3.0.0.94,1.1.1.147),(web-url=https://3.0.0.94:473 ), (slot=1),(bpc-machinetype-model=0),(bpc-serial-number=0),(Image=fips240/b0630a_0623.240)
-
-(type=cec-service-processor),(serial-number=10A3E2B),(machinetype-model=9117-570),(fru-serial- number=YL11C5338250),(hostname=),(frame-number=0),(cage-number=0),(ip-address=3.0.0.95,1.1.1.147), (web-url=https://3.0.0.95:473 ),(slot=1),(bpc-machinetype-model=0),(bpc-serial-number=0),(Image=fips240/b0630a_0623.240)
+ (type=cec-service-processor),(serial-number=10A3AEB),(machinetype-model=9117-570),(fru-serial-number=YL11C5338102),(hostname=),(frame-number=0),(cage-number=0),(ip-address=3.0.0.94,1.1.1.147),(web-url=https://3.0.0.94:473 ), (slot=1),(bpc-machinetype-model=0),(bpc-serial-number=0),(Image=fips240/b0630a_0623.240)
+ (type=cec-service-processor),(serial-number=10A3E2B),(machinetype-model=9117-570),(fru-serial- number=YL11C5338250),(hostname=),(frame-number=0),(cage-number=0),(ip-address=3.0.0.95,1.1.1.147), (web-url=https://3.0.0.95:473 ),(slot=1),(bpc-machinetype-model=0),(bpc-serial-number=0),(Image=fips240/b0630a_0623.240)
 
 
 
 3. To list all discovered MM service types in XML format and write the output to the xCAT database, enter:
 
-I<lsslp -s MM -x -w>
+ lsslp -s MM -x -w
 
 Output is similar to:
 
@@ -95,7 +91,7 @@ Output is similar to:
 
 4. To list all discovered service types in stanza format and write the output to the xCAT database, enter:
 
-I<lsslp -z -w>
+ lsslp -z -w
 
 Output is similar to:
 
@@ -131,7 +127,7 @@ Output is similar to:
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/lsslp
 
 
@@ -140,6 +136,6 @@ Output is similar to:
 This command is part of the xCAT software product.
 
 
- 
+
 
 

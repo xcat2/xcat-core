@@ -1,15 +1,14 @@
 =head1 NAME
- 
-B<chdef> - Change xCAT data object definitions.
- 
-=head1 SYNOPSIS
- 
-I<chdef [-h | --help ] [-t object-types]>
 
-I<chdef [-V | --verbose] [-t object-types] [-o object-names]> 
-I<[-p |--plus] [-m |--minus] [-z | --stanza ] [-x | --xml ]> 
-I<[-w  attr=val,[attr=val...]] [noderange]>
-I<[attr=val [attr=val...]]>
+B<chdef> - Change xCAT data object definitions.
+
+=head1 SYNOPSIS
+
+B<chdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
+
+B<chdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
+[B<-p>|B<--plus>] [B<-m>|B<--minus>] [B<-z>|B<--stanza>] [B<-x>|B<--xml>]
+[B<-w> I<attr>=I<val>,[I<attr>=I<val...>]] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
 
 =head1 DESCRIPTION
 
@@ -17,27 +16,53 @@ This command is used to change xCAT object definitions which are stored in the x
 
 =head1 OPTIONS
 
-B<attr=val [attr=val ...]>  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. Use the help option to get a list of valid attributes for each object type. 
+=over 10
 
-B<-h |--help>            Display usage message.
+=item I<attr=val [attr=val ...]>
 
-B<-m |--minus>           If the value of the attribute is a list then this option may be used to remove one or more items from the list.
+Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. Use the help option to get a list of valid attributes for each object type.
 
-B<noderange>             A set of comma delimited node names and/or group names. (must be the first parameter) See the "noderange" man page for details on supported formats.
+=item B<-h|--help>
 
-B<-o object-names>       A set of comma delimited object names.
+Display usage message.
 
-B<-p |--plus>            This option will add the specified values to the existing value of the attribute.  It will create a comma-separated list of values.
+=item B<-m|--minus>
 
-B<-t object-types>       A set of comma delimited object types.  Use the help option to get a list of valid object types.
+If the value of the attribute is a list then this option may be used to remove one or more items from the list.
 
-B<-V |--verbose>         Verbose mode.
+=item I<noderange>
 
-B<-w attr=val,[attr=val...]>       A comma-separated list of attributes and values that can be used to select objects. Use the help option to get a list of validattributes for each object type.
+A set of comma delimited node names and/or group names. (must be the first parameter) See the "noderange" man page for details on supported formats.
 
-B<-x | --xml>            Indicates that the file being piped to the command is in XML format.
+=item B<-o> I<object-names>
 
-B<-z | --stanza>         Indicates that the file being piped to the command is in stanza format.
+A set of comma delimited object names.
+
+=item B<-p|--plus>
+
+This option will add the specified values to the existing value of the attribute.  It will create a comma-separated list of values.
+
+=item B<-t> I<object-types>
+
+A set of comma delimited object types.  Use the help option to get a list of valid object types.
+
+=item B<-V|--verbose>
+
+Verbose mode.
+
+=item B<-w> I<attr=val,[attr=val...]>
+
+A comma-separated list of attributes and values that can be used to select objects. Use the help option to get a list of validattributes for each object type.
+
+=item B<-x|--xml>
+
+Indicates that the file being piped to the command is in XML format.
+
+=item B<-z|--stanza>
+
+Indicates that the file being piped to the command is in stanza format.
+
+=back
 
 =head1 RETURN VALUE
 
@@ -47,35 +72,51 @@ B<-z | --stanza>         Indicates that the file being piped to the command is i
 
 =head1 EXAMPLES
 
-1. To change a site definition.
+=over 3
 
-I<chdef -t site -o clustersite rsh=/bin/rsh rcp=/bin/rcp installdir=/xcatinstall>
+=item 1.
 
-2. To change a basic node definition.
+To change a site definition.
 
-I<chdef -t node -o node01 groups="all,aix">
+ chdef -t site -o clustersite rsh=/bin/rsh rcp=/bin/rcp installdir=/xcatinstall
 
-(The group definitions are also created if they don't already exist.) 
+=item 2.
 
-3. To add another group to the "groups" attribute in the previous example.
+To change a basic node definition.
 
-I<chdef -p -t node -o node01 groups="compute">
+ chdef -t node -o node01 groups="all,aix"
 
-4. To remove the "all" group from the "groups" attribute in the previous example.
+(The group definitions are also created if they don't already exist.)
 
-I<chdef -m -t node -o node01 groups="all">
+=item 3.
 
-5. To replace the current "groups" attribute value of "node01".
+To add another group to the "groups" attribute in the previous example.
 
-I<chdef -t node -o node01 groups="linux">
+ chdef -p -t node -o node01 groups="compute"
 
-6. To add "node01" to the "memberslist" attribute of a group definition called "LinuxNodes".
+=item 4.
 
-I<chdef -p -t group -o LinuxNodes memberlist="node01">
+To remove the "all" group from the "groups" attribute in the previous example.
+
+ chdef -m -t node -o node01 groups="all"
+
+=item 5.
+
+To replace the current "groups" attribute value of "node01".
+
+ chdef -t node -o node01 groups="linux"
+
+=item 6.
+
+To add "node01" to the "memberslist" attribute of a group definition called "LinuxNodes".
+
+ chdef -p -t group -o LinuxNodes memberlist="node01"
+
+=back
 
 
 =head1 FILES
- 
+
 $XCATROOT/bin/chdef
 
 (The XCATROOT environment variable is set when xCAT is installed. The
@@ -89,5 +130,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-See the mkdef, lsdef and rmdef commands.
- 
+See the mkdef(1), lsdef(1), rmdef(1), and xcatstanzafile(5) commands.

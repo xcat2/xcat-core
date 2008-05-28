@@ -34,12 +34,12 @@ Print help.
 
 =head1 B<Examples>
 
-I<nodestat> I<gpfs>
+ nodestat gpfs
 
-node4   snmp
-node5   pbs
-node6   snmp
-node7   noping
+ node4   snmp
+ node5   pbs
+ node6   snmp
+ node7   noping
 
 =head1 B<Author>
 

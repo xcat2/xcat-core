@@ -90,9 +90,10 @@ An error has occurred.
 
 To list all defined nodes, enter:
 
-B<nodels>
+ nodels
 
 Output is similar to:
+
    node1
    node2
    node3
@@ -101,9 +102,10 @@ Output is similar to:
 
 To list all defined attributes in a table for a node or noderange, enter:
 
-B<nodels> I<rra001a> I<noderes> 
+ nodels rra001a noderes
 
 Output is similar to:
+
    rra001a: noderes.primarynic: eth0
    rra001a: noderes.xcatmaster: rra000
    rra001a: noderes.installnic: eth0
@@ -116,9 +118,10 @@ Output is similar to:
 
 To list nodes in node group ppc, enter:
 
-B<nodels> I<ppc>
+ nodels ppc
 
 Output is similar to:
+
    ppcnode1
    ppcnode2
    ppcnode3
@@ -127,9 +130,10 @@ Output is similar to:
 
 To list the groups each node is part of:
 
-B<nodels> I<all> I<groups>
+ nodels all groups
 
 Output is similar to:
+
    node1: groups: all
    node2: groups: all,storage
    node3: groups: all,blade
@@ -138,9 +142,10 @@ Output is similar to:
 
 To list the groups each node is part of:
 
-B<nodels> I<all> I<nodehm.power>
+ nodels all nodehm.power
 
 Output is similar to:
+
    node1: nodehm.power: blade
    node2: nodehm.power: ipmi
    node3: nodehm.power: ipmi
@@ -149,9 +154,10 @@ Output is similar to:
 
 To list the out-of-band mgt method for blade1:
 
-B<nodels> I<blade1> I<nodehm.mgt>
+ nodels blade1 nodehm.mgt
 
 Output is similar to:
+
    blade1: nodehm.mgt: blade
 
 =back

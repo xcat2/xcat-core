@@ -52,6 +52,7 @@ To display node names that have B<mgt> set to B<blade> in the nodehm table:
 B<gettab> I<mgt=blade nodehm.node>
 
 The output would be similar to:
+
      nodehm.node: blades
 
 =item *
@@ -61,6 +62,7 @@ To display setting for B<master> (management node) in the site table:
 B<gettab> I<key=master site.value>
 
 The output would be similar to:
+
      site.value: mgmtnode.cluster.com
 
 =back

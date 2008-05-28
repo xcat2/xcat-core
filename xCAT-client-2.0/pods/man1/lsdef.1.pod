@@ -1,96 +1,150 @@
 =head1 NAME
- 
+
 B<lsdef> - Use this command to list xCAT data object definitions.
- 
+
 =head1 SYNOPSIS
 
-I<lsdef [-h | --help ] [-t object-types]>   
+B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
-I<lsdef [-V | --verbose] [ -l | --long] [-a | --all] [-t object-types] >
-I<[-o object-names] [-z | --stanza] [-x | --xml] [-i attr-list]>
-I<[-w attr=val,[attr=val...] [noderange]>
+B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-a>|B<--all>] [B<-t> I<object-types>]
+[B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-x>|B<--xml>] [B<-i> I<attr-list>]
+[B<-w> I<attr>=I<val>,[I<attr>=I<val...>] [I<noderange>]
+
 
 =head1 DESCRIPTION
 
-This command is used to display xCAT object definitions which are stored 
+This command is used to display xCAT object definitions which are stored
 in the xCAT database.
 
 
 =head1 OPTIONS
 
-B<-a | --all>          Display all definitions.
+=over 10
 
-B<-h|--help>           Display usage message.
+=item B<-a|--all>
 
-B<-i  attr-list>       Comma separated list of attribute names to display.
+Display all definitions.
 
-B<-l | --long>         List the complete object definition.  (The default for some options is to give only a list of object names.)
+=item B<-h|--help>
 
-B<noderange>           A set of comma delimited node names and/or group names.
+Display usage message.
+
+=item B<-i> I<attr-list>
+
+Comma separated list of attribute names to display.
+
+=item B<-l|--long>
+
+List the complete object definition.  (The default for some options is to give only a list of object names.)
+
+=item I<noderange>
+
+A set of comma delimited node names and/or group names.
 See the "noderange" man page for details on supported formats.
 
-B<-o object-names>     A set of comma delimited object names.
+=item B<-o> I<object-names>
 
-B<-t object-types>     A set of comma delimited object types. Use the help option to get a list of valid objects.
+A set of comma delimited object names.
 
-B<-V|--verbose>        Verbose mode.
+=item B<-t> I<object-types>
 
-B<-w attr=val,[attr=val...]>    A comma-separated list of attributes and values that can be used to select items to display. Use the help option to get a list of valid attributes.
+A set of comma delimited object types. Use the help option to get a list of valid objects.
 
-B<-x | --xml>         Display output in XML format.
+=item B<-V|--verbose>
 
-B<-z | --stanza>      Display output in stanza format.
- 
+Verbose mode.
+
+=item B<-w> I<attr=val,[attr=val...]>
+
+A comma-separated list of attributes and values that can be used to select items to display. Use the help option to get a list of valid attributes.
+
+=item B<-x|--xml>
+
+Display output in XML format.
+
+=item B<-z|--stanza>
+
+Display output in stanza format.
+
+=back
+
+
 =head1 RETURN VALUE
 
 0 The command completed successfully.
 
 1 An error has occurred.
 
+
 =head1 EXAMPLES
 
-1. To get a list of all object names.
+=over 4
 
-I<lsdef -a> 
+=item 1.
 
-2. To get a list of all the network definitions.
+To get a list of all object names.
 
-I<lsdef -t network>
+ lsdef -a
 
-3. To get a complete listing of all network definitions.
+=item 2.
 
-I<lsdef -l -t network >
+To get a list of all the network definitions.
 
-4. To list the whole xCAT database and write it to a stanza file. (backup database)
+ lsdef -t network
 
-I<< lsdef -a -l -z > mydbstanzafile >>
+=item 3.
 
-5. To list the MAC and install adapter name for each node.
+To get a complete listing of all network definitions.
 
-I<lsdef -t node -i mac,installnic>
+ lsdef -l -t network
 
-6. To list an osimage definition named "aix53J".
+=item 4.
 
-I<lsdef -t osimage -l -o aix53J> 
+To list the whole xCAT database and write it to a stanza file. (backup database)
 
-7. To list all adapter definitions for node "clstrn03".
+ lsdef -a -l -z > mydbstanzafile
 
-I<lsdef -t adapter -w nodename=clstrn03>
+=item 5.
 
-8. To list all the attributes of the group "service".
+To list the MAC and install adapter name for each node.
 
-I<lsdef -l -t group -o service>
+ lsdef -t node -i mac,installnic
 
-9. To list all the attributes of the nodes that are members of the group "service".
+=item 6.
 
-I<lsdef -t node -l service>
+To list an osimage definition named "aix53J".
 
-10. To list all nodes that have a service node called "FMS01".
+ lsdef -t osimage -l -o aix53J
 
-I<lsdef -t node -w nfsserver=FMS01>
+=item 7.
+
+To list all adapter definitions for node "clstrn03".
+
+ lsdef -t adapter -w nodename=clstrn03
+
+=item 8.
+
+To list all the attributes of the group "service".
+
+ lsdef -l -t group -o service
+
+=item 9.
+
+To list all the attributes of the nodes that are members of the group "service".
+
+ lsdef -t node -l service
+
+=item 10.
+
+To list all nodes that have a service node called "FMS01".
+
+ lsdef -t node -w nfsserver=FMS01
+
+=back
+
 
 =head1 FILES
- 
+
 $XCATROOT/bin/lsdef
 
 (The XCATROOT environment variable is set when xCAT is installed. The
@@ -103,4 +157,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-See the mkdef, chdef and rmdef commands.
+See the mkdef(1), chdef(1), rmdef(1), and xcatstanzafile(5) commands.

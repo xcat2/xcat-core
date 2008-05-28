@@ -1,33 +1,54 @@
 =head1 NAME
- 
+
 B<rmdef> - Use this command to remove xCAT data object definitions.
- 
+
+
 =head1 SYNOPSIS
 
-I<rmdef [-h | --help ] [-t object-types]>
+B<rmdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
-I<rmdef  [-V | --verbose] [-a | --all] [-t object-types] [-o object-names]>
-I<[-f | --force] [noderange]>
+B<rmdef> [B<-V>|B<--verbose>] [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-o> I<object-names>]
+[B<-f>|B<--force>] [I<noderange>]
+
 
 =head1 DESCRIPTION
 
 This command is used to remove xCAT object definitions that are stored in the xCAT database.
 
+
 =head1 OPTIONS
 
-B<-a | --all>          Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option.
+=over 10
 
-B<-f|--force>          Use this with the all option as an extra indicator that ALL definitions are to be removed. 
+=item B<-a|--all>
 
-B<-h|--help>           Display a usage message.
+Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option.
 
-B<noderange>           A set of comma delimited node names and/or group names. See the "noderange" man page for details on supported formats.
+=item B<-f|--force>
 
-B<-o object-names>     A set of comma delimited object names.
+Use this with the all option as an extra indicator that ALL definitions are to be removed.
 
-B<-t object-types>     A set of comma delimited object types. 
+=item B<-h|--help>
 
-B<-V|--verbose>        Verbose mode.
+Display a usage message.
+
+=item I<noderange>
+
+A set of comma delimited node names and/or group names. See the "noderange" man page for details on supported formats.
+
+=item B<-o> I<object-names>
+
+A set of comma delimited object names.
+
+=item B<-t> I<object-types>
+
+A set of comma delimited object types.
+
+=item B<-V|--verbose>
+
+Verbose mode.
+
+=back
 
 =head1 RETURN VALUE
 
@@ -38,27 +59,31 @@ B<-V|--verbose>        Verbose mode.
 
 =head1 EXAMPLES
 
-1. To completely clear the xCAT database.
+=over 3
 
-I<rmdef -f -a>
+=item 1. To completely clear the xCAT database.
 
-2. To remove a range of node definitions.
+ rmdef -f -a
 
-I<rmdef -t node node1-node4>
+=item 2. To remove a range of node definitions.
 
-5. To remove all node and group definitions.
+ rmdef -t node node1-node4
 
-I<rmdef -t node,group>
+=item 3. To remove all node and group definitions.
 
-6. To remove all node definitions for the nodes contained in the group bpcnodes.
+ rmdef -t node,group
 
-I<rmdef -t node -o bpcnodes>
+=item 4. To remove all node definitions for the nodes contained in the group bpcnodes.
 
-7. To remove the group called bpcnodes.
+ rmdef -t node -o bpcnodes
 
-I<rmdef -t group -o bpcnodes>
+=item 5. To remove the group called bpcnodes.
+
+ rmdef -t group -o bpcnodes
 
 (This will also update the values of the "groups" attribute of the member nodes.)
+
+=back
 
 =head1 FILES
 
@@ -66,7 +91,7 @@ $XCATROOT/bin/rmdef
 
 (The XCATROOT environment variable is set when xCAT is installed. The
 default value is "/opt/xcat".)
- 
+
 
 =head1 NOTES
 
@@ -74,4 +99,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-See the mkdef, chdef and lsdef commands.
+See the mkdef(1), chdef(1), lsdef(1), and xcatstanzafile(5) commands.
