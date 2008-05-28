@@ -180,7 +180,7 @@ sub powercmd_boot {
         # Convert state to on/off
         ##################################
         my $state = power_status($data->{$id});
-        my $op    = ($state =~ /^(Off|Not Activated)$/) ? "on" : "reset";
+        my $op    = ($state =~ /^off$/) ? "on" : "reset";
 
         ##############################
         # Send power command
