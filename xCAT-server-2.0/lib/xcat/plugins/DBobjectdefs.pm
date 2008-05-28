@@ -2773,7 +2773,7 @@ sub defmk_usage
     $rsp->{data}->[2] =
       "  mkdef [-V | --verbose] [-t object-types] [-o object-names] [-z|--stanza ]";
     $rsp->{data}->[3] =
-      "      [-x|--xml ] [-d | --dynamic] [-w attr=val,[attr=val...]]";
+      "      [-d | --dynamic] [-w attr=val,[attr=val...]]";
     $rsp->{data}->[4] =
       "      [-f | --force] [noderange] [attr=val [attr=val...]]\n";
     $rsp->{data}->[5] =
@@ -2820,7 +2820,7 @@ sub defch_usage
     $rsp->{data}->[2] =
       "  chdef [-V | --verbose] [-t object-types] [-o object-names] [-d | --dynamic]";
     $rsp->{data}->[3] =
-      "    [-z | --stanza] [-x | --xml] [-m | --minus] [-p | --plus]";
+      "    [-z | --stanza] [-m | --minus] [-p | --plus]";
     $rsp->{data}->[4] =
       "    [-w attr=val,[attr=val...] ] [noderange] [attr=val [attr=val...]]\n";
     $rsp->{data}->[5] =
@@ -2866,7 +2866,7 @@ sub defls_usage
     $rsp->{data}->[2] =
       "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
     $rsp->{data}->[3] =
-      "    [ -l | --long] [-a | --all] [-z | --stanza ] [-x | --xml ]";
+      "    [ -l | --long] [-a | --all] [-z | --stanza ]";
     $rsp->{data}->[4] =
       "    [-i attr-list] [-w attr=val,[attr=val...]] [noderange]\n";
     $rsp->{data}->[5] =
