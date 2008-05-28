@@ -6,24 +6,61 @@
 #
 #---------------------------------------------------------------------------
 master=$MASTER
+setup=0
+sitemaster=$SITEMASTER
 conf_file="/etc/ntp.conf"
+conf_file_org="/etc/ntp.conf.org"
 conf_file_backup="/etc/ntp.conf.postbackup"
-# if backup does not exist, backup
-if [ !  -f $conf_file_backup ]; then
-   mv -f $conf_file $conf_file_backup
+logger -t xcat "Install: Setup NTP"
+# if master is the sitemaster, then use the ntpservers defined in the site
+# table, if they exist. If they don't exist, do not setup ntp
+# else use the master which should be a service node
+if [ "$master" ==  "$sitemaster" ]; then
+   
+  if [ $NTPSERVERS ]; then
+        if [ !  -f $conf_file_org ]; then
+          mv -f $conf_file $conf_file_org
+        else
+          mv -f $conf_file $conf_file_backup
+        fi
+	for i in $(echo $NTPSERVERS | tr ',' ' ')
+	do
+ 	   echo "server $i" >>$conf_file
+	   master=$i
+	done 
+  else
+        exit 0	
+
+  fi
+else
+   if [ !  -f $conf_file_org ]; then
+     mv -f $conf_file $conf_file_org
+   else
+     mv -f $conf_file $conf_file_backup
+   fi
+   echo "server $master" >$conf_file
+    
 fi
 
-logger -t xcat "Install: Setup NTP"
 
-echo "server $master" >$conf_file
-
-mkdir -p /etc/ntp
-chown ntp /etc/ntp
+mkdir -p /var/lib/ntp
+chown ntp /var/lib/ntp
 
 echo "driftfile /var/lib/ntp/drift
 restrict 127.0.0.1
 authenticate no"  >>$conf_file
 
+#service ntpd restart 
 service ntpd stop 
-ntpdate $master
+logger -t xcat "ntpdate -t5 $master "
+ntpdate -t5 $master 
+if [ "$?" != "0" ]
+        then
+            echo_failure
+            echo
+            echo "  ntpdate -t5 $master  failed"
+            exit $?
+fi
+
 service ntpd start 
+exit $? 

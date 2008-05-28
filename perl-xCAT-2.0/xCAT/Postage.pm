@@ -28,7 +28,7 @@ This program module file is a set of utilities to support xCAT post scripts.
         Error:
         Example:
 
-    xCAT::Postage->writescript($node, "/install/postscripts/" . $node, $state);
+    xCAT::Postage->writescript($node, "/install/postscripts/" . $node, $state,$callback);
 
         Comments:
 
@@ -104,14 +104,19 @@ sub makescript {
 	xCAT::MsgUtils->message("E", $rsp, $callback);
 	return undef;
   }
-  my $master;
+  # read the master node from the site table for the node  
+  my $master;   # may be the Management Node or Service Node
+  my $sitemaster; # Always the Management Node
   my $sitetab = xCAT::Table->new('site');
   (my $et) = $sitetab->getAttribs({key=>"master"},'value');
-  if ($et and $et->{value}) {
+  if ($et and defined($et->{value})) {
       $master = $et->{value};
+      $sitemaster = $et->{value};
+
   }
+  # if node has service node as master then override site master
   $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
-  if ($et and $et->{'xcatmaster'}) { 
+  if ($et and defined($et->{'xcatmaster'})) { 
     $master = $et->{'xcatmaster'};
   }
   unless ($master) {
@@ -121,10 +126,29 @@ sub makescript {
 	return undef;
   }
 
+  # read the ntpservers 
+  my $ntpservers;
+  (my $et) = $sitetab->getAttribs({key=>"ntpservers"},'value');
+  if ($et and defined($et->{value})) {
+      $ntpservers = $et->{value};
+
+  }
+  # set env variable $SITEMASTER for Management Node 
+  push @scriptd, "SITEMASTER=".$sitemaster."\n";
+  push @scriptd, "export SITEMASTER\n";
+
+  # set env variable $MASTER for master of node (MN or SN)
   push @scriptd, "MASTER=".$master."\n";
   push @scriptd, "export MASTER\n";
   push @scriptd, "NODE=$node\n";
   push @scriptd, "export NODE\n";
+
+  # if ntpservers exist, export $NTPSERVERS
+  if (defined($ntpservers)) {
+    push @scriptd, "NTPSERVERS=".$ntpservers."\n";
+    push @scriptd, "export NTPSERVERS\n";
+  }
+
   my $et = $typetab->getNodeAttribs($node,['os','arch','profile']);
   if ($^O =~ /^linux/i) {
 	unless ($et and $et->{'os'} and $et->{'arch'}) {
@@ -148,10 +172,8 @@ sub makescript {
   }
   push @scriptd, 'PATH=`dirname $0`:$PATH'."\n";
   push @scriptd, "export PATH\n";
- 
-  my $stab = xCAT::Table->new('site');
-  my $sent = $stab->getAttribs({key=>'svloglocal'},'value');
-  if ($sent and $sent->{value}) {
+  my $sent = $sitetab->getAttribs({key=>'svloglocal'},'value');
+  if ($sent and defined($sent->{value})) {
     push @scriptd, "SVLOGLOCAL=".$sent->{'value'}."\n";
     push @scriptd, "export SVLOGLOCAL\n"; 
   } 

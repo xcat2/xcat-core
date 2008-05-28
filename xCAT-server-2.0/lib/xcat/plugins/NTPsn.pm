@@ -16,8 +16,11 @@ use File::Path;
 #-------------------------------------------------------
 
 =head3  handled_commands 
+Note:   Right now all function is commented out.  May use in the future.
+Service Node and Compute Node NTP is setup by setupntp scripts
+Management Node is left to be setup by Admin
 
-This runs on Service Node 
+This runs on Service Node  and Management node to setup NTP
 Checks servicenode table ntpserver attribute
 Call  setup_NTP
 
@@ -33,41 +36,44 @@ sub handled_commands
     }
 
     my $rc = 0;
+	# Note all code is commented out now, setup done by setupntp 
+	# postinstall script for the SN and compute nodes.  Management Node
+	# is left up to the admin.  This may change in the future.
 
-    if (xCAT::Utils->isServiceNode())
-    {
-        my @nodeinfo   = xCAT::Utils->determinehostname;
-        my $nodename   = pop @nodeinfo;                    # get hostname
-        my @nodeipaddr = @nodeinfo;                        # get ip addresses
-        my $service    = "ntpserver";
-        $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
-        if ($rc == 1)
-        {
-            $rc = &setup_NTPsn($nodename);    #setup NTP on Service Node
-            if ($rc == 0)
-            {
-                xCAT::Utils->update_xCATSN($service);
-            }
-        }
-        else
-        {
-            if ($rc == 2)
-            {                                 # just start the daemon
-                my $cmd = "service ntpd restart";
-                system $cmd;
-                if ($? > 0)
-                {                             # error
-                    xCAT::MsgUtils->message("S", "Error on command: $cmd");
-                    return 1;
-                }
-            }
-        }
-    }
-    else
-    {                                         # Management Node
-        $rc = &setup_NTPmn();                 # setup NTP on Management Node
-
-    }
+#    if (xCAT::Utils->isServiceNode())
+#   {
+#        my @nodeinfo   = xCAT::Utils->determinehostname;
+#        my $nodename   = pop @nodeinfo;                    # get hostname
+#        my @nodeipaddr = @nodeinfo;                        # get ip addresses
+#        my $service    = "ntpserver";
+#        $rc = xCAT::Utils->isServiceReq($nodename, $service, \@nodeipaddr);
+#        if ($rc == 1)
+#        {
+#            $rc = &setup_NTPsn($nodename);    #setup NTP on Service Node
+#            if ($rc == 0)
+#            {
+#                xCAT::Utils->update_xCATSN($service);
+#            }
+#        }
+#        else
+#        {
+#            if ($rc == 2)
+#            {                                 # just start the daemon
+#                my $cmd = "service ntpd restart";
+#                system $cmd;
+#                if ($? > 0)
+#                {                             # error
+#                    xCAT::MsgUtils->message("S", "Error on command: $cmd");
+#                    return 1;
+#                }
+#            }
+#        }
+#    }
+#    else
+#    {                                         # Management Node
+#        $rc = &setup_NTPmn();                 # setup NTP on Management Node
+#
+#    }
     return $rc;
 }
 
