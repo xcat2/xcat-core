@@ -293,7 +293,7 @@ sub makeconservercf {
     #restart conserver daemon
     #my $cmd = "/etc/rc.d/init.d/conserver stop";
     #xCAT::Utils->runcmd($cmd, -1);
-    $cmd = "/etc/rc.d/init.d/conserver restart";
+    my $cmd = "/etc/rc.d/init.d/conserver restart";
     xCAT::Utils->runcmd($cmd, -1);
   }
 }
