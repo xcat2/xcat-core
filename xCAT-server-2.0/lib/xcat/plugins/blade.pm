@@ -151,6 +151,7 @@ my %bootnumbers = (
   'usb' => 11
 );
 
+my @rscan_attribs = qw(nodetype name id mtm serial mpa groups mgt);
 my @rscan_header = (
   ["type",          "%-8s" ],
   ["name",          "" ],
@@ -803,10 +804,10 @@ sub rscan {
   $rscan_header[1][1] = $format;
 
   if (exists($opt{x})) {
-    $result = rscan_xml(\@values); 
+    $result = rscan_xml($mpa,\@values); 
   } 
   elsif ( exists( $opt{z} )) {
-    $result = rscan_stanza( \@values ); 
+    $result = rscan_stanza($mpa,\@values); 
   } 
   else {
     foreach ( @rscan_header ) {
@@ -866,6 +867,7 @@ sub rscan {
 
 sub rscan_xml {
 
+  my $mpa = shift;
   my $values = shift;
   my $xml;
 
@@ -876,30 +878,55 @@ sub rscan_xml {
     my $href = {
         Node => { }
     };
-    foreach (@rscan_header) {
-      $href->{Node}->{@$_[0]} = $data[$i++];
+    foreach ( @rscan_attribs ) {
+        my $d = $data[$i++];
+        my $type = $data[0];
+
+        if ( /^name$/ ) {
+            next;
+        } elsif ( /^nodetype$/ ) {
+            $d = $type;
+        } elsif ( /^groups$/ ) {
+            $d = "$type,all";
+        } elsif ( /^mgt$/ ) {
+            $d = "blade";
+        } elsif ( /^mpa$/ ) {
+            $d = $mpa;
+        }
+        $href->{Node}->{$_} = $d;
     }
     $xml.= XMLout($href,NoAttr=>1,KeyAttr=>[],RootName=>undef);
   }
   return( $xml );
 }
 
-
 sub rscan_stanza {
-
+  
+  my $mpa = shift;
   my $values = shift;
   my $result;
-
+  
   foreach (@$values) {
     my @data = split /,/;
-    my $i = 0;
+    my $i = 0; 
+    my $type = $data[0];
     $result .= "$data[1]:\n\tobjtype=node\n";
 
-    foreach ( @rscan_header ) {
-      if ( @$_[0] ne "name" ) {
-        $result .= "\t@$_[0]=$data[$i]\n";      
-      }
-      $i++;
+    foreach ( @rscan_attribs ) {
+        my $d = $data[$i++];
+
+        if ( /^name$/ ) {
+            next; 
+        } elsif ( /^nodetype$/ ) {
+            $d = $type;
+        } elsif ( /^groups$/ ) {
+            $d = "$type,all";
+        } elsif ( /^mgt$/ ) {
+            $d = "blade"; 
+        } elsif ( /^mpa$/ ) {
+            $d = $mpa;
+        }
+        $result .= "\t$_=$d\n";
     }
   }
   return( $result );
