@@ -27,7 +27,8 @@ sub parse_args {
     # Process command-line arguments
     #############################################
     if ( !defined( $args )) {
-        return( usage() );
+        $request->{method} = $cmd;
+        return( \%opt );
     }
     #############################################
     # Checks case in GetOptions, allows opts
