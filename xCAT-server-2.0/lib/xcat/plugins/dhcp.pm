@@ -502,7 +502,7 @@ sub addnet
                 $nic = $ent[7];
             }
         }
-        print "Need to add $net $mask under $nic\n";
+        #print " add $net $mask under $nic\n";
         my $idx = 0;
         while ($idx <= $#dhcpconf)
         {
