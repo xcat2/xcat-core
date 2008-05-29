@@ -60,9 +60,15 @@ sub handled_commands
         else
         {
             if ($rc == 2)
-            {    # already setup, just start the daemon
+            {    
+                # already setup, just start the daemon
                     # start conserver
-                my $cmd = "/etc/rc.d/init.d/conserver start";
+                my $cmd;
+                if (-f "/var/run/conserver.pid") {
+                   $cmd = "/etc/rc.d/init.d/conserver restart";
+                } else {
+                   $cmd = "/etc/rc.d/init.d/conserver start";
+                }
                 xCAT::Utils->runcmd($cmd, -1);
             }
         }
@@ -136,27 +142,20 @@ sub setup_CONS
         } elsif (! -e $ca_file2) {
 	    print "conserver cannot be started because the file $ca_file2 cannot be found\n";
         } else {
-          my $cmd = "/etc/rc.d/init.d/conserver stop";
+          my $cmd;
+          if (-f "/var/run/conserver.pid") {
+            $cmd = "/etc/rc.d/init.d/conserver restart";
+          } else {
+            $cmd = "/etc/rc.d/init.d/conserver start";
+          }
           my @out = xCAT::Utils->runcmd($cmd, 0);
           if ($::RUNCMD_RC != 0)
           {    # error
-            xCAT::MsgUtils->message("S", "Error stopping conserver:".join("\n", @out));
+            xCAT::MsgUtils->message("S", "Error restarting conserver:".join("\n", @out));
           } else {	# Zero rc, but with the service cmds that does not mean they succeeded
-          	my $output = join("\n", @out);
-          	if (length($output)) { print "\n$output\n"; }
-	    	else { print "\nconserver stopped\n"; }
-          }
-       
-          $cmd = "/etc/rc.d/init.d/conserver start";
-          @out = xCAT::Utils->runcmd($cmd, 0);
-          if ($::RUNCMD_RC != 0)
-          {    # error
-            xCAT::MsgUtils->message("S", "Error starting conserver:".join("\n", @out));
-            return 1;
-          } else {      # Zero rc, but with the service cmds that does not mean they succeeded
-                my $output = join("\n", @out);
-                if (length($output)) { print "\n$output\n"; }
-                else { print "\nconserver started\n"; }
+            my $output = join("\n", @out);
+            if (length($output)) { print "\n$output\n"; }
+	    else { print "\nconserver restarted\n"; }
           }
        }
     }

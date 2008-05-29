@@ -291,9 +291,12 @@ sub makeconservercf {
 
   if (!$svboot) {
     #restart conserver daemon
-    #my $cmd = "/etc/rc.d/init.d/conserver stop";
-    #xCAT::Utils->runcmd($cmd, -1);
-    my $cmd = "/etc/rc.d/init.d/conserver restart";
+    my $cmd;
+    if (-f "/var/run/conserver.pid") {
+      $cmd = "/etc/rc.d/init.d/conserver restart";
+    } else {
+      $cmd = "/etc/rc.d/init.d/conserver start";
+    }
     xCAT::Utils->runcmd($cmd, -1);
   }
 }
