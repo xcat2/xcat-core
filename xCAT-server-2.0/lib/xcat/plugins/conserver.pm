@@ -22,7 +22,7 @@ my $usage_string=
     -h|--help    Display this usage statement.
     -v|--version Display the version number.";
 
-my $version_string="Version 2.0";
+my $version_string="Version 2.0"; 
 
 sub handled_commands {
   return {
@@ -368,12 +368,12 @@ sub donodeent {
   if (grep(/^$cmeth$/,@cservers)) {
     push @$content," include ".$cfgent->{termserver}.";\n";
     push @$content," port ".$cfgent->{termport}.";\n";
-    if ((!$isSN) && ($cfgent->{conserver})) { # let the master handle it
+    if ((!$isSN) && ($cfgent->{conserver}) && xCAT::Utils->thishostisnot($cfgent->{conserver})) { # let the master handle it
       push @$content,"  master ".$cfgent->{conserver}.";\n";
     }
   } else { #a script method...
     push @$content,"  type exec;\n";
-    if ((!$isSN) && ($cfgent->{conserver})) { # let the master handle it
+    if ((!$isSN) && ($cfgent->{conserver}) && xCAT::Utils->thishostisnot($cfgent->{conserver})) { # let the master handle it
       push @$content,"  master ".$cfgent->{conserver}.";\n";
     } else { # handle it here
       my $locerror = $isSN ? "PERL_BADLANG=0 " : '';    # on service nodes, often LC_ALL is not set and perl complains
