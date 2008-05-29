@@ -166,9 +166,11 @@ sub stopNodeStatusMon {
       This function is called by the monitorctrl module when new nodes are added 
       to the xCAT cluster. It should add the nodes into the product for monitoring.
     Arguments:
-      nodes --nodes to be added. It is a pointer to an array with each element
-        being a ref to an array of [nodes, nodetype, status]. For example: 
-          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
+      nodes --nodes to be added. It is a pointer to an array. If the next argument is
+       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'active'], ['node2', 'booting']..]. 
+       if the next argument is 0, each element is a node name to be added.
+      boolean -- 1, or 0. 
     Returns:
        (error code, error message)
 =cut
@@ -185,9 +187,11 @@ sub addNodes {
       This function is called by the monitorctrl module when nodes are removed 
       from the xCAT cluster. It should remove the nodes from the product for monitoring.
     Arguments:
-      nodes --nodes to be removed. It is a pointer to an array with each element
-        being a ref to an array of [nodes, nodetype, status]. For example: 
-          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
+      nodes --nodes to be added. It is a pointer to an array. If the next argument is
+       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'active'], ['node2', 'booting']..]. 
+       if the next argument is 0, each element is a node name to be added.
+      boolean -- 1, or 0. 
     Returns:
        (error code, error message)
 =cut

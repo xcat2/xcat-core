@@ -529,24 +529,30 @@ sub stopNodeStatusMon {
 =head3    addNodes
       This function adds the nodes into the  SNMP domain.
     Arguments:
-      nodes --nodes to be added. It is a pointer to an array with each element
-        being a ref to an array of [nodes, nodetype, status]. For example: 
-          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
+      nodes --nodes to be added. It is a pointer to an array. If the next argument is
+       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'active'], ['node2', 'booting']..]. 
+       if the next argument is 0, each element is a node name to be added.
+      boolean -- 1, or 0. 
     Returns:
        (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes {
-  #print "snmpmon::addNodes\n";
-  $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
-    $noderef=shift;
-  }
-
-  foreach(@$noderef) {
-    my $node_info=$_;
-    print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
-  }
+#  print "snmpmon::addNodes\n";
+#  $noderef=shift;
+#  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+#    $noderef=shift;
+#  }
+#  my $info=shift;
+#  if ($info) {
+#    foreach(@$noderef) {
+#      my $node_info=$_;
+#      print "    node=$node_info->[0], status=$node_info->[1]\n";
+#    }
+#  } else {
+#    print "noderef=@$noderef\n";
+#  }
     
   return (0, "ok");
 }
@@ -555,24 +561,30 @@ sub addNodes {
 =head3    removeNodes
       This function removes the nodes from the SNMP domain.
     Arguments:
-      nodes --nodes to be removed. It is a pointer to an array with each element
-        being a ref to an array of [nodes, nodetype, status]. For example: 
-          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
+      nodes --nodes to be added. It is a pointer to an array. If the next argument is
+       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'active'], ['node2', 'booting']..]. 
+       if the next argument is 0, each element is a node name to be added.
+      boolean -- 1, or 0. 
     Returns:
        (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes {
-    print "snmpmon::removeNodes\n";
-  $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
-    $noderef=shift;
-  }
-
-  foreach(@$noderef) {
-    my $node_info=$_;
-    print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
-  }
+#  print "snmpmon::removeNodes\n";
+#  $noderef=shift;
+#  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+#    $noderef=shift;
+#  }
+#  my $info=shift;
+#  if ($info) {
+#    foreach(@$noderef) {
+#      my $node_info=$_;
+#      print "    node=$node_info->[0], status=$node_info->[1]\n";
+#    }
+#  } else {
+#    print "noderef=@$noderef\n";
+#  }
     
   return (0, "ok");
 }

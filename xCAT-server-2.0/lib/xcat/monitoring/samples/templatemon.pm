@@ -155,9 +155,11 @@ sub stopNodeStatusMon {
       This function is called by the monitorctrl module when new nodes are added 
       to the xCAT cluster. It should add the nodes into the product for monitoring.
     Arguments:
-      nodes --nodes to be added. It is a pointer to an array with each element
-        being a ref to an array of [nodes, nodetype, status]. For example: 
-          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
+      nodes --nodes to be added. It is a pointer to an array. If the next argument is
+       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'active'], ['node2', 'booting']..]. 
+       if the next argument is 0, each element is a node name to be added.
+      boolean -- 1, or 0. 
     Returns:
        (error code, error message)
 =cut
@@ -169,11 +171,16 @@ sub addNodes {
   }
 
   #demo how you can parse the input. you may commnet it out.
-
-  foreach(@$noderef) {
-    my $node_info=$_;
-    print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
+  my $info=shift;
+  if ($info) {
+    foreach(@$noderef) {
+      my $node_info=$_;
+      print "    node=$node_info->[0], status=$node_info->[1]\n";
+    }
+  } else {
+    print "noderef=@$noderef\n";
   }
+
    
   #TODO: include the nodes into the product for monitoring. 
   return (0, "0k");
@@ -184,9 +191,11 @@ sub addNodes {
       This function is called by the monitorctrl module when nodes are removed 
       from the xCAT cluster. It should remove the nodes from the product for monitoring.
     Arguments:
-      nodes --nodes to be removed. It is a pointer to an array with each element
-        being a ref to an array of [nodes, nodetype, status]. For example: 
-          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
+      nodes --nodes to be added. It is a pointer to an array. If the next argument is
+       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'active'], ['node2', 'booting']..]. 
+       if the next argument is 0, each element is a node name to be added.
+      boolean -- 1, or 0. 
     Returns:
        (error code, error message)
 =cut
@@ -198,9 +207,14 @@ sub removeNodes {
   }
 
   #demo how you can parse the input. you may commnet it out.
-  foreach(@$noderef) {
-    my $node_info=$_;
-    print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
+  my $info=shift;
+  if ($info) {
+    foreach(@$noderef) {
+      my $node_info=$_;
+      print "    node=$node_info->[0], status=$node_info->[1]\n";
+    }
+  } else {
+    print "noderef=@$noderef\n";
   }
  
 
