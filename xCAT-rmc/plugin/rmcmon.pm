@@ -264,9 +264,11 @@ sub stopNodeStatusMon {
 =head3    addNodes
       This function adds the nodes into the RMC cluster.
     Arguments:
-      nodes --nodes to be added. It is a pointer to an array with each element
-        being a ref to an array of [nodes, nodetype, status]. For example: 
-          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
+      nodes --nodes to be added. It is a pointer to an array. If the next argument is
+       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'active'], ['node2', 'booting']..]. 
+       if the next argument is 0, each element is a node name to be added.
+      boolean -- 1, or 0. 
     Returns:
        (error code, error message)
 =cut
@@ -276,7 +278,7 @@ sub addNodes {
   if ($noderef =~ /xCAT_monitoring::rmcmon/) {
     $noderef=shift;
   }
-  
+  my $bWithInfo=shift;
   #print "rmcmon::addNodes get called\n";
   
 
@@ -417,9 +419,11 @@ sub addNodes_noChecking {
 =head3    removeNodes
       This function removes the nodes from the RMC cluster.
     Arguments:
-      nodes --nodes to be removed. It is a pointer to an array with each element
-        being a ref to an array of [nodes, nodetype, status]. For example: 
-          [['node1', 'osi', 'active'], ['node2', 'switch', 'booting']..] 
+      nodes --nodes to be added. It is a pointer to an array. If the next argument is
+       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+          [['node1', 'active'], ['node2', 'booting']..]. 
+       if the next argument is 0, each element is a node name to be added.
+      boolean -- 1, or 0. 
     Returns:
        (error code, error message)
 =cut
@@ -429,6 +433,7 @@ sub removeNodes {
   if ($noderef =~ /xCAT_monitoring::rmcmon/) {
     $noderef=shift;
   }
+  my $bWithInfo=shift;
 
   #print "rmcmon::removeNodes called\n";
   my $ms_host_name=hostname();
