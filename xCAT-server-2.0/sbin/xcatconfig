@@ -60,13 +60,103 @@ if ($::osname eq 'AIX') {
 }
 chomp $::arch;
 chomp $::root;
+# some Linux-only config
+#  (used to FTP postscripts to nodes)
+if ($::osname eq 'Linux') {
+    #  Locally mount /var/ftp/install over /install
+    if ( ! -d "/var/ftp/install" ) {
+		my $cmd = "/bin/mkdir -p /var/ftp/install";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC  != 0)
+		{
+			xCAT::MsgUtils->message('E', "Could not create /var/ftp/install directory.\n");
+		} else {
+			xCAT::MsgUtils->message('I', "Created /var/ftp/install directory.\n");
+		}
+    }
+
+	#
+	#  add /var/ftp/install to /etc/fstab and mount - if needed
+	#
+	my $changed_fstab=0;
+	my $cmd = "/bin/cat /etc/fstab | grep '/var/ftp/install'";
+	my $outref = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+		# ok - then add this entry
+        my $cmd = "/bin/echo '/install                /var/ftp/install        none  bind,defaults 0 0' >> /etc/fstab";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC  != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not update the /etc/fstab file.\n");
+        } else {
+            xCAT::MsgUtils->message('I', "Added /var/ftp/install to the /etc/fstab file.\n");
+			$changed_fstab++;
+        }
+    }
+	if ($changed_fstab) {
+		# mount /var/ftp/install
+		my $cmd = "mount /var/ftp/install";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC  != 0)
+        {
+			xCAT::MsgUtils->message('E', "Could not mount /var/ftp/install.\n");
+		} else {
+            xCAT::MsgUtils->message('I', "/var/ftp/install has been mounted over /install.\n");
+		}
+	}
+
+	#
+	#  add /var/ftp/tftpboot to /etc/fstab and mount - if needed
+	#
+	my $changed_fstab=0;
+	my $cmd = "/bin/cat /etc/fstab | grep '/var/ftp/tftpboot'";
+	my $outref = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+		# ok - then add this entry
+        my $cmd = "/bin/echo '/tftpboot                /var/ftp/tftpboot        none  bind,defaults 0 0' >> /etc/fstab";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC  != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not update the /etc/fstab file.\n");
+        } else {
+            xCAT::MsgUtils->message('I', "Added /var/ftp/tftpboot to the /etc/fstab file.\n");
+			$changed_fstab++;
+        }
+    }
+	if ($changed_fstab) {
+		# mount /var/ftp/tftpboot
+		my $cmd = "mount /var/ftp/tftpboot";
+		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC  != 0)
+        {
+			xCAT::MsgUtils->message('E', "Could not mount /var/ftp/tftpboot.\n");
+		} else {
+            xCAT::MsgUtils->message('I', "/var/ftp/tftpboot has been mounted over /tftpboot.\n");
+		}
+	}
+
+   # start vsftpd
+	my $cmd = "/sbin/chkconfig vsftpd on";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	my $cmd = "/etc/rc.d/init.d/vsftpd restart";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+    {
+		xCAT::MsgUtils->message('E', "Could not start VSFTPD.\n");
+	} else {
+        xCAT::MsgUtils->message('I', "VSFTPD has been restarted.\n");
+	}
+
+} # - some Linux-only config
 
 #
 # Generate ssh keys 
 #
 if ( (! -f "/install/postscripts/hostkeys/ssh_host_key") || $::FORCE){
 
-	#  create /install/postscripts/.ssh if needed
+	#  create /install/postscripts/hostkeys if needed
 	if ( ! -d "/install/postscripts/hostkeys" ) {
 		my $cmd = "/bin/mkdir -p /install/postscripts/hostkeys";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -113,10 +203,35 @@ if ( (! -f "/install/postscripts/hostkeys/ssh_host_key") || $::FORCE){
     {
         xCAT::MsgUtils->message('E', "Could not generate SSH2 DSA key.\n");
     }
+} else {
+    xCAT::MsgUtils->message('I', "/install/postscripts/hostkeys directory exists, no keys generated.  Use --force option to generate new keys.\n");
 }
 
 #
-# create .ssh dir if needed  
+# move old directories if they exist
+if (-d "/install/postscripts/.ssh") {
+	my $cmd = "/bin/mv /install/postscripts/.ssh /install/postscripts/_ssh";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "Could not move /install/postscripts/.ssh directory to /install/postscripts/_ssh.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "Moved /install/postscripts/.ssh directory to /install/postscripts/_ssh.\n");
+	}
+}
+if (-d "/install/postscripts/.xcat") {
+	my $cmd = "/bin/mv /install/postscripts/.xcat /install/postscripts/_xcat";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC  != 0)
+	{
+		xCAT::MsgUtils->message('E', "Could not move /install/postscripts/.xcat directory to /install/postscripts/_xcat.\n");
+	} else {
+		xCAT::MsgUtils->message('I', "Moved /install/postscripts/.xcat directory to /install/postscripts/_xcat.\n");
+	}
+}
+
+#
+# create /.ssh dir if needed  
 #
 my $sshdir = "$::root/.ssh";
 if ( ! -d $sshdir ) {
@@ -163,16 +278,16 @@ if (( -f $cfgfile ) || $::FORCE) {
 }
 
 #
-#  create /install/postscripts/.ssh if needed  
+#  create /install/postscripts/_ssh if needed  
 #
-if ( ! -d "/install/postscripts/.ssh" ) {
-    my $cmd = "/bin/mkdir -p /install/postscripts/.ssh";
+if ( ! -d "/install/postscripts/_ssh" ) {
+    my $cmd = "/bin/mkdir -p /install/postscripts/_ssh";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC  != 0)
     {
-        xCAT::MsgUtils->message('E', "Could not create /install/postscripts/.ssh directory.\n");
+        xCAT::MsgUtils->message('E', "Could not create /install/postscripts/_ssh directory.\n");
     } else {
-        xCAT::MsgUtils->message('I', "Created /install/postscripts/.ssh directory.\n");
+        xCAT::MsgUtils->message('I', "Created /install/postscripts/_ssh directory.\n");
     }
 }
 
@@ -203,13 +318,13 @@ if (( ! -r $pubfile ) || $::FORCE) {
 	} else {
 		xCAT::MsgUtils->message('I', "Generated $pubfile.\n");
 		# copy it 
-		my $cmd = "/bin/cp $pubfile /install/postscripts/.ssh/authorized_keys";
+		my $cmd = "/bin/cp $pubfile /install/postscripts/_ssh/authorized_keys";
 		my $outref = xCAT::Utils->runcmd("$cmd", 0);
     	if ($::RUNCMD_RC  != 0)
     	{
-			xCAT::MsgUtils->message('E', "Could not copy $pubfile to /install/postscripts/.ssh/authorized_keys.\n");
+			xCAT::MsgUtils->message('E', "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys.\n");
 		} else {
-			xCAT::MsgUtils->message('I', "Copied $pubfile to /install/postscripts/.ssh/authorized_keys.\n");
+			xCAT::MsgUtils->message('I', "Copied $pubfile to /install/postscripts/_ssh/authorized_keys.\n");
 		}
 	}
 }
@@ -301,6 +416,7 @@ chomp $hname;
 # some values common to both AIX & Linux
 my $xcatport = "3001";
 my $xcatiport = "3002";
+my $tftpdir = "/tftpboot";
 my $installdir = "/install";
 
 my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
@@ -311,7 +427,6 @@ my ($domain, $timezone);
 if ($::osname eq 'AIX') {
 	($domain = $hname) =~ s/^.*?\.//;
 	$timezone = $ENV{'TZ'};
-
 } else {
     $domain = `hostname -d`;
 	my $tz;
@@ -334,6 +449,7 @@ if (( ! -r "/etc/xcat/site.sqlite" ) || $::FORCE){
 	my $chtabcmds;
 	$chtabcmds = "$::XCATROOT/sbin/chtab key=xcatdport site.value=$xcatport;";
 	$chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatiport site.value=$xcatiport;";
+	$chtabcmds .= "$::XCATROOT/sbin/chtab key=tftpdir site.value=$tftpdir;";
 	$chtabcmds .= "$::XCATROOT/sbin/chtab key=installdir site.value=$installdir;";
 	$chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
 	$chtabcmds .= "$::XCATROOT/sbin/chtab key=domain site.value=$domain;";
@@ -356,7 +472,7 @@ if (( ! -r "/etc/xcat/site.sqlite" ) || $::FORCE){
 # create default postscript list in postscripts table
 if (( ! -r "/etc/xcat/postscripts.sqlite" ) || $::FORCE) {
     my $chtabcmds;
-    $chtabcmds = "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,updateflag.awk \$MASTER 3002,remoteshell';";
+    $chtabcmds = "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,,remoteshell';";
     $chtabcmds .= "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode';";
 
     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
@@ -372,12 +488,16 @@ if (( ! -r "/etc/xcat/postscripts.sqlite" ) || $::FORCE) {
 if (( ! -r "/etc/xcat/policy.sqlite" ) || $::FORCE) {
 	my $chtabcmds;
 	if ($::osname eq 'AIX' ) {
-    	$chtabcmds = "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow";
+    	$chtabcmds = "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow";
 	} else {
 		$chtabcmds = "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
 		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=2 policy.commands=getbmcconfig policy.rule=allow;";
 		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=3 policy.commands=nextdestiny policy.rule=allow;";
-		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=4 policy.commands=getdestiny policy.rule=allow";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=4 policy.commands=getdestiny policy.rule=allow;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow";
 	}
     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
     if ($::RUNCMD_RC  != 0)
@@ -391,31 +511,42 @@ if (( ! -r "/etc/xcat/policy.sqlite" ) || $::FORCE) {
 #
 # set up syslog
 #
-#  if backup file exists assume it's already set up
-if (( ! -r "/etc/syslog.conf.ORIG" ) || $::FORCE) {
-	my $syslogcmds;
-	$syslogcmds = "cp /etc/syslog.conf /etc/syslog.conf.ORIG;";
-	$syslogcmds .= "echo '*.debug   /var/log/localmessages' > /etc/test.tmp;";
-	$syslogcmds .= "echo '*.crit   /var/log/localmessages' >> /etc/test.tmp;";
-	$syslogcmds .= "cat /etc/test.tmp >> /etc/syslog.conf;";
-	$syslogcmds .= "rm /etc/test.tmp;";
-	$syslogcmds .= "touch /var/log/localmessages;";
-	if ($::osname eq 'AIX') {
-		$syslogcmds .= "stopsrc -s syslogd;";
-		$syslogcmds .= "startsrc -s syslogd;";
-	} else {
-		$syslogcmds .= "/etc/rc.d/init.d/syslog stop;";
-		$syslogcmds .= "/etc/rc.d/init.d/syslog start;";
-	}
-
-	my $outref = xCAT::Utils->runcmd("$syslogcmds", 0);
+# (use postscript to set up syslog -- leaving old code for now in case it
+#  did something differnt)
+	my $cmd = "/install/postscripts/syslog";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
 	if ($::RUNCMD_RC  != 0)
-	{
-    	xCAT::MsgUtils->message('E', "Could not set up syslog.\n");
+    {
+		xCAT::MsgUtils->message('E', "Could not set up syslog.\n");
 	} else {
-    	xCAT::MsgUtils->message('I', "Started syslog daemon.\n");
+           xCAT::MsgUtils->message('I', "syslog has been set up.\n");
 	}
-}
+#  <old syslog setup code -- delete after new code is well verified>
+#  if backup file exists assume it's already set up
+#if (( ! -r "/etc/syslog.conf.ORIG" ) || $::FORCE) {
+#	my $syslogcmds;
+#	$syslogcmds = "cp /etc/syslog.conf /etc/syslog.conf.ORIG;";
+#	$syslogcmds .= "echo '*.debug   /var/log/localmessages' > /etc/test.tmp;";
+#	$syslogcmds .= "echo '*.crit   /var/log/localmessages' >> /etc/test.tmp;";
+#	$syslogcmds .= "cat /etc/test.tmp >> /etc/syslog.conf;";
+#	$syslogcmds .= "rm /etc/test.tmp;";
+#	$syslogcmds .= "touch /var/log/localmessages;";
+#	if ($::osname eq 'AIX') {
+#		$syslogcmds .= "stopsrc -s syslogd;";
+#		$syslogcmds .= "startsrc -s syslogd;";
+#	} else {
+#		$syslogcmds .= "/etc/rc.d/init.d/syslog stop;";
+#		$syslogcmds .= "/etc/rc.d/init.d/syslog start;";
+#	}
+#
+#	my $outref = xCAT::Utils->runcmd("$syslogcmds", 0);
+#	if ($::RUNCMD_RC  != 0)
+#	{
+#    	xCAT::MsgUtils->message('E', "Could not set up syslog.\n");
+#	} else {
+#    	xCAT::MsgUtils->message('I', "Started syslog daemon.\n");
+#	}
+#}
 
 #
 #  set up the certificates for xcatd 
@@ -432,12 +563,30 @@ if (( ! -d "/etc/xcat/ca" ) || $::FORCE) {
         xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
     }
 }
+#  copy to postscript directory
+my $cmd = "/bin/rm -rf /install/postscripts/ca &2>/dev/null";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+my $cmd = "/bin/mkdir -p /install/postscripts/ca";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC  != 0)
+{
+	xCAT::MsgUtils->message('E', "Could not create /install/postscripts/ca directory.\n");
+} else {
+	xCAT::MsgUtils->message('I', "Created /install/postscripts/ca directory.\n");
+}
+my $cmd = "/bin/cp -r /etc/xcat/ca/* /install/postscripts/ca";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC  != 0)
+{
+	xCAT::MsgUtils->message('E', "Could not copy /etc/xcat/ca/* to  /install/postscripts/ca directory.\n");
+} else {
+	xCAT::MsgUtils->message('I', "Copied /etc/xcat/ca/* to /install/postscripts/ca directory.\n");
+}
 
 if (( ! -d "/etc/xcat/cert" ) || $::FORCE) {
-
-	my $cmd = "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-server-cert.sh $hname";
-	xCAT::MsgUtils->message('I', "Running $cmd\n");
-	my $rc  = system($cmd);
+    my $cmd = "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-server-cert.sh $hname";
+    xCAT::MsgUtils->message('I', "Running $cmd\n");
+    my $rc  = system($cmd);
     if ($rc >> 8)
     {
         xCAT::MsgUtils->message('E', "Could not create xCAT certificate in /etc/xcat/cert.\n");
@@ -445,6 +594,26 @@ if (( ! -d "/etc/xcat/cert" ) || $::FORCE) {
         xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
     }
 }
+#  copy to postscript directory
+my $cmd = "/bin/rm -rf /install/postscripts/cert &2>/dev/null";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+my $cmd = "/bin/mkdir -p /install/postscripts/cert";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC  != 0)
+{
+	xCAT::MsgUtils->message('E', "Could not create /install/postscripts/cert directory.\n");
+} else {
+	xCAT::MsgUtils->message('I', "Created /install/postscripts/cert directory.\n");
+}
+my $cmd = "/bin/cp -r /etc/xcat/cert/* /install/postscripts/cert";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC  != 0)
+{
+	xCAT::MsgUtils->message('E', "Could not copy /etc/xcat/cert/* to  /install/postscripts/cert directory.\n");
+} else {
+	xCAT::MsgUtils->message('I', "Copied /etc/xcat/cert/* to /install/postscripts/cert directory.\n");
+}
+
 
 if ( ( ! -r "$::root/.xcat/client-key.pem") || $::FORCE){
 
@@ -457,6 +626,35 @@ if ( ( ! -r "$::root/.xcat/client-key.pem") || $::FORCE){
     } else {
         xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
     }
+}
+#  copy to postscript directory
+my $cmd = "/bin/rm -rf /install/postscripts/_xcat &2>/dev/null";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+my $cmd = "/bin/mkdir -p /install/postscripts/_xcat";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC  != 0)
+{
+	xCAT::MsgUtils->message('E', "Could not create /install/postscripts/_xcat directory.\n");
+} else {
+	xCAT::MsgUtils->message('I', "Created /install/postscripts/_xcat directory.\n");
+}
+my $cmd = "/bin/cp -r $::root/.xcat/* /install/postscripts/_xcat";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC  != 0)
+{
+	xCAT::MsgUtils->message('E', "Could not copy $::root/.xcat/* to  /install/postscripts/_xcat directory.\n");
+} else {
+	xCAT::MsgUtils->message('I', "Copied $::root/.xcat/* to /install/postscripts/_xcat directory.\n");
+}
+
+# Make this system a management node
+my $cmd = "/bin/touch /etc/xCATMN";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC  != 0)
+{
+	xCAT::MsgUtils->message('E', "Could not create /etc/xCATMN file.\n");
+} else {
+	xCAT::MsgUtils->message('I', "Created /etc/xCATMN file.\n");
 }
 
 #
@@ -522,9 +720,19 @@ if ($::osname eq 'Linux') {
    		my $outref = xCAT::Utils->runcmd("$cmd", 0);
    		if ($::RUNCMD_RC  != 0)
    		{
-			xCAT::MsgUtils->message('E', "The mknb command returned error: $::RUNCMD_RC.\n");
+			xCAT::MsgUtils->message('E', "The mknb x86_64 command returned error: $::RUNCMD_RC.\n");
 		} else {
-			xCAT::MsgUtils->message('I', "The mknb command was run with no error.\n");
+			xCAT::MsgUtils->message('I', "The mknb x86_64 command was run with no error.\n");
+		}
+	}
+	if ($::arch eq "ppc64") {
+   		my $cmd = "$::XCATROOT/sbin/mknb ppc64";
+   		my $outref = xCAT::Utils->runcmd("$cmd", 0);
+   		if ($::RUNCMD_RC  != 0)
+   		{
+			xCAT::MsgUtils->message('E', "The mknb ppc64 command returned error: $::RUNCMD_RC.\n");
+		} else {
+			xCAT::MsgUtils->message('I', "The mknb ppc64 command was run with no error.\n");
 		}
 	}
 
@@ -551,7 +759,7 @@ if ($::osname eq 'Linux') {
 	}
 
 	# restart httpd
-	my $cmd = "/sbin/service httpd restart";
+	my $cmd = "/etc/rc.d/init.d/httpd stop; /etc/rc.d/init.d/httpd start";
 	my $outref = xCAT::Utils->runcmd("$cmd", 0);
 	if ($::RUNCMD_RC  != 0)
 	{
