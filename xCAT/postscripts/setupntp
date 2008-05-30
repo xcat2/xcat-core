@@ -58,7 +58,7 @@ if [ "$?" != "0" ]
             echo_failure
             echo
             echo "  ntpdate -t5 $master  failed"
-            exit $?
+            logger -t xcat "ntpdate -t5 $master failed"
 fi
 
 service ntpd start 
