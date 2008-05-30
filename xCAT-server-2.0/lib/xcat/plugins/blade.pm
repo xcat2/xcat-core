@@ -933,12 +933,29 @@ sub rscan_stanza {
 }
 
 sub getmacs {
-   (my $code,my $macs)=inv('mac');
+   (my $code,my @macs)=inv('mac');
+   my $midx=0;
+   my $nrtab = xCAT::Table->new('noderes');
+   if ($nrtab) {
+       my $nent = $nrtab->getNodeAttribs($curn,['primarynic','installnic']);
+       if ($nent) {
+           my $mkey;
+           if (defined $nent->{installnic}) { #Prefer the install nic
+               $mkey="installnic";
+           } elsif (defined $nent->{primarynic}) { #see if primary nic was set
+               $mkey="primarynic";
+           }
+           if ($mkey) {
+               $nent->{$mkey} =~ /(\d+)/;
+               $midx=$1;
+           }
+       }
+   }
    if ($code==0) {
-      my @macs = split /\n/,$macs;
-      (my $macd,my $mac) = split (/:/,$macs[0],2);
+      #my @macs = split /\n/,$macs;
+      (my $macd,my $mac) = split (/:/,$macs[$midx],2);
       $mac =~ s/\s+//g;
-      if ($macd =~ /mac address 1/i) {
+      if ($macd =~ /mac address \d/i) {
          my $mactab = xCAT::Table->new('mac',-create=>1);
          $mactab->setNodeAttribs($curn,{mac=>$mac});
          $mactab->close;
@@ -947,7 +964,7 @@ sub getmacs {
          return 1,"Unable to retrieve MAC address from Management Module";
       }
    } else {
-      return $code,$macs;
+      return $code,$macs[0];
    }
 }
    
