@@ -97,11 +97,13 @@ sub start {
       }
     }
     
-    if (keys(%PRODUCT_LIST) > 0) {
-      regNodelistNotif();
-    }
-    else {
-      unregNodelistNotif();
+    if (! xCAT::Utils->isServiceNode()) {
+      if (keys(%PRODUCT_LIST) > 0) {
+        regNodelistNotif();
+      }
+      else {
+        unregNodelistNotif();
+      }
     }
 
     #print "child done\n";
@@ -133,7 +135,6 @@ sub regNodelistNotif {
     }
     $tab->close();
   }
-
   if (!$regged) {
     xCAT_plugin::notification::regNotification([qw(monitorctrl.pm nodelist -o a,d)]);
   }
@@ -178,7 +179,7 @@ sub unregNodelistNotif {
 =cut
 #-------------------------------------------------------------------------------
 sub handleMonSignal {
-  #print "handleMonSignal called masterpid=$masterpid\n";
+  #print "monitorctrl handleMonSignal called masterpid=$masterpid\n";
   #save the old cache values
   my @old_products=keys(%PRODUCT_LIST);
   my $old_nodestatmon=$NODESTAT_MON_NAME;
@@ -226,13 +227,14 @@ sub handleMonSignal {
 
   #registers or unregusters this module in the notification table for changes in
   # the nodelist and monitoring tables. 
-  if (keys(%PRODUCT_LIST) > 0) {
-    regNodelistNotif();
-  } 
-  else {
-    unregNodelistNotif();
+  if (! xCAT::Utils->isServiceNode()) {
+    if (keys(%PRODUCT_LIST) > 0) {
+      regNodelistNotif();
+    } 
+    else {
+      unregNodelistNotif();
+    }
   }
-
 
   #setup the signal again  
   $SIG{USR2}=\&handleMonSignal;
@@ -256,7 +258,7 @@ sub handleMonSignal {
 =cut
 #-------------------------------------------------------------------------------
 sub sendMonSignal {
-  #print "sendMonSignal masterpid=$masterpid\n";
+  #print "monitorctrl sendMonSignal masterpid=$masterpid\n";
   if ($masterpid) {
     kill('USR2', $masterpid);
   } else {
@@ -293,7 +295,9 @@ sub stop {
   }
 
   xCAT_monitoring::montbhandler->unregMonitoringNotif();
-  unregNodelistNotif();
+  if (! xCAT::Utils->isServiceNode()) {
+    unregNodelistNotif();
+  }
 
   if (%ret) {
     foreach(keys(%ret)) {
