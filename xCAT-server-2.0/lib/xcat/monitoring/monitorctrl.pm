@@ -445,6 +445,7 @@ sub stopMonitoring {
       #}
     }      
     #stop monitoring
+    undef $SIG{CHLD};
     my @ret2 = ${$module_name."::"}{stop}->();
     $ret{$_}=\@ret2;
   }
