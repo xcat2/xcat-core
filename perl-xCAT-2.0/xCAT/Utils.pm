@@ -1921,7 +1921,6 @@ sub get_ServiceNode
             xCAT::MsgUtils->message('E', "Unable to read site Master value.\n");
             $::ERROR_RC = 1;
         }
-        $noderestab->close;
         return \%snhash;
     }
 
