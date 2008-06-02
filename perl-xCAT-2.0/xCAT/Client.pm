@@ -711,6 +711,13 @@ sub handle_response {
   	else { print ($rsp->{info}."\n"); }
   }
 
+  if ($rsp->{sinfo}) {
+  	if (ref($rsp->{sinfo}) eq 'ARRAY') { foreach my $text (@{$rsp->{sinfo}}) { print "$text\r"; $|++; } }
+  	else { print ($rsp->{sinfo}."\r"); $|++; }
+  }
+
+
+
   # Handle {node} structure
   my $errflg=0;
   if (scalar @{$rsp->{node}}) {
