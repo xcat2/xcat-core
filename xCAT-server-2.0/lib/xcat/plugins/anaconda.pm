@@ -793,6 +793,7 @@ sub copycd
     };
     my $KID;
     chdir $path;
+    my $numFiles = `find . -print | wc -l`;
     my $child = open($KID, "|-");
     unless (defined $child)
     {
@@ -813,7 +814,19 @@ sub copycd
     else
     {
         nice 10;
-        exec "nice -n 20 cpio -dump $installroot/$distname/$arch";
+        my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
+        open(PIPE, "$c 2>&1 |") || 
+           $callback->({error => "Media copy operation fork failure"}); 
+        my $copied = 0;
+        my ($percent, $fout);
+        while(<PIPE>){
+          next if /^cpio:/;
+          $percent = $copied / $numFiles;
+          $fout = sprintf "%0.2f%%", $percent * 100;
+          $callback->({sinfo => "$fout"});
+          ++$copied;
+        }	
+        exit;
     }
 
     #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
