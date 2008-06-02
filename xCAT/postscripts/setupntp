@@ -47,6 +47,7 @@ mkdir -p /var/lib/ntp
 chown ntp /var/lib/ntp
 
 echo "driftfile /var/lib/ntp/drift
+disable auth
 restrict 127.0.0.1" >>$conf_file
 
 #service ntpd restart 
