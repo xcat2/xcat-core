@@ -318,7 +318,7 @@ sub getmacs {
                            $d,
                            $opt );
     }
-    my $Rc = shift(@$result);
+    $Rc = shift(@$result);
    
     ##################################
     # Form string from array results 
@@ -354,13 +354,13 @@ sub getmacs {
     #    ent U9117.MMA.10F6F3D-V5-C3-T1 1e0e122a930d /vdevice/l-lan@30000003
     #
     #####################################
-    my $values;
+    my $data;
 
     foreach ( @$result ) {
         if ( /^#\s?Type/ ) {
-            $values.= "\n$_\n";
+            $data.= "\n$_\n";
         } elsif ( /^ent$delim/ ) {
-            $values.= "$_\n";
+            $data.= "$_\n";
         }
     }
     #####################################
@@ -369,7 +369,7 @@ sub getmacs {
     if ( exists( $opt->{w} )) {
         writemac( $name, $delim, $result );
     }
-    return( [[$name,$values,$Rc]] );
+    return( [[$name,$data,$Rc]] );
 }
 
 
@@ -381,36 +381,39 @@ sub writemac {
     my $name  = shift;
     my $delim = shift;
     my $data  = shift;
-    my $values;
+    my $value;
 
     #####################################
     # Find first adapter
     #####################################
     foreach ( @$data ) {
         if ( /^ent$delim/ ) {
-            $values = $_;
+            $value = $_;
+            last;
         }
+    }
+    #####################################
+    # MAC not found in output
+    #####################################
+    if ( !defined( $value )) {
+        return;
     }
     #####################################
     # Get adapter mac
     #####################################
-    my ($k,$u);
-    my @fields = split $delim, $values;
+    my @fields = split $delim, $value;
     my $mac    = $fields[2];
 
     #####################################
-    # Write adapter mac to database 
+    # Write adapter mac to database
     #####################################
-    my $tab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
-    if ( !$tab ) {
+    my $mactab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
+    if ( !$mactab ) {
         return( [[$name,"Error opening 'mac'",RC_ERROR]] );
     }
-    $k->{node} = $name;
-    $u->{mac}  = $mac;
-    my $d = $tab->setAttribs( $k,$u );
-    return undef;
+    $mactab->setNodeAttribs( $name,{mac=>$mac} );
+    $mactab->close();
 }
-
 
 1;
 
