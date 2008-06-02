@@ -2,6 +2,7 @@
 
 package xCAT::PPC;
 use strict;
+use lib "/opt/xcat/lib/perl";
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::Usage;
@@ -157,7 +158,9 @@ sub process_command {
         Time::HiRes::sleep(0.1);
     }
     if ( exists( $request->{verbose} )) {
-        trace( $request, $start );
+        my $elapsed = Time::HiRes::gettimeofday() - $start;
+        my $msg     = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
+        trace( $request, $msg );
     }
     return(0);
 }
@@ -169,18 +172,13 @@ sub process_command {
 sub trace {
 
     my $request = shift;
-    my $start   = shift;
-    my $msg     = shift;
-    my %output;
+    my $msg   = shift;
 
-    my $elapsed = Time::HiRes::gettimeofday() - $start;
-    my $time    = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
     my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
-    my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$time;
+    my $formatted = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
 
     my $callback = $request->{callback};
-    $output{data} = \@_;
-    $callback->( \%output );
+    $callback->( {data=>[$formatted]} );
 }
 
 
@@ -194,12 +192,12 @@ sub child_response {
     my @ready_fds = $fds->can_read(1);
 
     foreach my $rfh (@ready_fds) {
-        my $data;
+        my $data = <$rfh>;
 
         #################################
         # Read from child process
         #################################
-        if ( $data = <$rfh> ) {
+        if ( defined( $data )) {
             while ($data !~ /ENDOFFREEZE6sK4ci/) {
                 $data .= <$rfh>;
             }
@@ -405,7 +403,7 @@ sub resolve_netwk {
     #####################################
     # Network attributes undefined 
     #####################################
-    if ( !defined( %nethash )) {
+    if ( !%nethash ) {
         send_msg( $request,1,sprintf( $errmsg{NODE_UNDEF}, "networks" ));
         return undef;
     }
@@ -597,14 +595,14 @@ sub resolve {
     my ($vpd) = $tabs->{vpd}->getAttribs({node=>$att->{node}}, @attrs );
 
     if ( !defined( $vpd )) {
-        return( sprintf( $errmsg{NODE_UNDEF}, "vpd" )); 
+        return( sprintf( $errmsg{NODE_UNDEF}, "vpd: ($att->{node})" )); 
     }
     ################################
     # Verify both vpd attributes
     ################################
     foreach ( @attrs ) {
         if ( !exists( $vpd->{$_} )) {
-            return( sprintf( $errmsg{NO_ATTR}, $_, "vpd" ));
+            return( sprintf( $errmsg{NO_ATTR}, $_, "vpd: ($att->{node})" ));
         }
     }
     $att->{fsp} = "$vpd->{mtm}*$vpd->{serial}";
@@ -1004,6 +1002,7 @@ sub process_request {
 
 
 1;
+
 
 
 
