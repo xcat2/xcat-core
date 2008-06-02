@@ -1,6 +1,6 @@
 Summary: RMC monitoring plug-in for xCAT
 Name: xCAT-rmc
-Version: 2.0
+Version: 2.1
 Release: snap%(date +"%Y%m%d%H%M")
 License: EPL
 Group: System Environment/Libraries

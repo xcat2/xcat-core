@@ -1,6 +1,6 @@
 Summary: Server and configuration utilities of the xCAT management project
 Name: xCAT-server
-Version: 2.0
+Version: 2.1
 Release: snap%(date +"%Y%m%d%H%M")
 License: EPL
 Group: Applications/System
