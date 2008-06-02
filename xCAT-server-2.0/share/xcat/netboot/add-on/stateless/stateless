@@ -75,7 +75,7 @@ ARC=false" >/etc/sysconfig/clock
 driftfile /etc/ntp/drift
 multicastclient
 broadcastdelay 0.008
-authenticate no
+disable auth
 keys /etc/ntp/keys
 trustedkey 65535
 requestkey 65535
