@@ -379,7 +379,9 @@ sub process_request
         foreach (@nrn)
         {
             my @ent = split /\s+/;
-            if ($ent[0] eq "169.254.0.0")
+            my $firstoctet = $ent[0];
+            $firstoctet =~ s/^(\d+)\..*/$1/;
+            if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
             {
                 next;
             }
@@ -463,7 +465,9 @@ sub process_request
     foreach (@nrn)
     {
         my @line = split /\s+/;
-        if ($ent[0] eq "169.254.0.0")
+        my $firstoctet = $line[0]; 
+        $firstoctet =~ s/^(\d+)\..*/$1/;
+        if ($line[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
         {
             next;
         }
@@ -484,7 +488,9 @@ sub addnet
     my $net  = shift;
     my $mask = shift;
     my $nic;
-    if ($net eq "169.254.0.0") {
+    my $firstoctet = $net;
+    $firstoctet =~ s/^(\d+)\..*/$1/;
+    if ($net eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239)) {
         return;
     }
     unless (grep /\} # $net\/$mask subnet_end/, @dhcpconf)
@@ -493,7 +499,9 @@ sub addnet
         foreach (@nrn)
         {    # search for relevant NIC
             my @ent = split /\s+/;
-            if ($ent[0] eq "169.254.0.0")
+            $firstoctet = $ent[0];
+            $firstoctet =~ s/^(\d+)\..*/$1/;
+            if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
             {
                 next;
             }

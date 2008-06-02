@@ -58,7 +58,9 @@ sub process_request
         my $mgtifname;
         my $gw;
         my @ent = split /\s+/, $_;
-        if ($ent[0] eq "169.254.0.0")
+        my $firstoctet = $ent[0];
+        $firstoctet =~ s/^(\d+)\..*/$1/;
+        if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
         {
             next;
         }
