@@ -259,7 +259,7 @@ sub rnetboot {
                            $d,
                            \%opt );
     }
-    my $Rc = shift(@$result);
+    $Rc = shift(@$result);
 
     ##################################
     # Form string from array results
