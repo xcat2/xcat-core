@@ -362,8 +362,8 @@ sub powercmd {
     ##################################
     # Send command 
     ##################################
-    my $request = $form->click( $button );
-    $res = $ua->request( $request );
+    my $data = $form->click( $button );
+    $res = $ua->request( $data );
 
     ##################################
     # Return error
@@ -507,8 +507,8 @@ sub clear {
     ##################################
     # Send Clear to JavaScript 
     ##################################
-    my $request = $form->click( 'clear' );
-    $res = $ua->request( $request );
+    my $data = $form->click( 'clear' );
+    $res = $ua->request( $data );
 
     if ( !$res->is_success() ) {
         return( [RC_ERROR,$res->status_line] );
@@ -611,9 +611,9 @@ sub time {
     ##############################
     # Send command 
     ##############################
-    my $result = xCAT::PPCfsp::timeofday( $exp, $request, $id, \@t ); 
-    my $Rc = shift(@$result);
-    return( [$Rc,"Time: @$result[0]"] );
+    my $time = xCAT::PPCfsp::timeofday( $exp, $request, $id, \@t ); 
+    $Rc = shift(@$time);
+    return( [$Rc,"Time: @$time[0]"] );
 }
 
 
@@ -658,10 +658,9 @@ sub date {
     ##############################
     # Send command
     ##############################
-    my $result = xCAT::PPCfsp::timeofday( $exp, $request, $id, \@t );
-    my $Rc = shift(@$result);
-
-    return( [$Rc,"Date: @$result[0]"] );
+    my $date = xCAT::PPCfsp::timeofday( $exp, $request, $id, \@t );
+    $Rc = shift(@$date);
+    return( [$Rc,"Date: @$date[0]"] );
 }
 
 
@@ -723,7 +722,7 @@ sub timeofday {
     ######################################
     # Set time/date 
     ######################################
-    my $res = $ua->post( "https://$server/cgi-bin/cgi",
+    $res = $ua->post( "https://$server/cgi-bin/cgi",
         [ form   => $id,
           mo     => @$d[0],
           d      => @$d[1],
@@ -949,8 +948,8 @@ sub writedecfg {
     ######################################
     # Send command
     ######################################
-    my $request = $form->click( "submit" );
-    $res = $ua->request( $request );
+    my $data = $form->click( "submit" );
+    $res = $ua->request( $data );
 
     ######################################
     # Return error
@@ -984,7 +983,7 @@ sub writedecfg {
     }
     my @units = split /<thead align=left><tr><th>/, $res->content;
     shift(@units);
-    my $html;
+    $html = undef;
 
     ######################################
     # Break into unit types 
@@ -1065,8 +1064,8 @@ sub writedecfg {
     ##################################
     # Send command
     ##################################
-    my $request = $form->click( "submit" );
-    $res = $ua->request( $request );
+    $data = $form->click( "submit" );
+    $res = $ua->request( $data );
 
     ##################################
     # Return error
@@ -1138,7 +1137,7 @@ sub readdecfg {
         ##################################
         # Select radio button
         ##################################
-        my $value = ( ref($_) eq 'HASH' ) ? %$_->{value} : $_;
+        my $value = ( ref($_) eq 'HASH' ) ? %{$_->{value}} : $_;
         $radio->value( $value );
 
         ##################################
@@ -1328,7 +1327,7 @@ sub decfg {
     my @inputs = $form->inputs();
 
     my (@hidden) = grep( $_->{type} eq "hidden", @inputs );
-    if ( !defined( @hidden )) {
+    if ( !@hidden ) {
         return( [RC_ERROR,"<input type='hidden'> not found"] );
     }
     ######################################
@@ -1355,8 +1354,8 @@ sub decfg {
     ######################################
     # Send command
     ######################################
-    my $request = $form->click( "submit" );
-    $res = $ua->request( $request );
+    my $data = $form->click( "submit" );
+    $res = $ua->request( $data );
 
     ######################################
     # Return error
@@ -1557,6 +1556,7 @@ sub all_clear {
 
 
 1;
+
 
 
 
