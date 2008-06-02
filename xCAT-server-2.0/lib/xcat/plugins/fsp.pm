@@ -26,22 +26,20 @@ sub preprocess_request {
     # When used, POST/GETs return immediately with:
     #     500 Can't connect to <nodename>:443 (Timeout)
     #
-    # Net::HTTPS, used by LWP::Protocol::https::Socket,
+    # Net::HTTPS, which is used by LWP::Protocol::https::Socket,
     # uses either IO::Socket::SSL or Net::SSL. It chooses
     # by looking to see if $IO::Socket::SSL::VERSION
     # is defined (i.e. the module's already loaded) and
     # uses that if so. If not, it first tries Net::SSL,
     # then IO::Socket::SSL only if that cannot be loaded.
+    # So we should invalidate  IO::Socket::SSL here and
+    # load Net::SSL.
     #######################################################
     $IO::Socket::SSL::VERSION = undef;
     eval { require Net::SSL };
     if ( $@ ) {
         my $callback = $_[1];
-        my %output;
-
-        $output{errorcode} = 1;
-        $output{data} = [$@];
-        $callback->( \%output );
+        $callback->( {errorcode=>1,data=>[$@]} );
         return(1);
     }
     xCAT::PPC::preprocess_request(__PACKAGE__,@_);
