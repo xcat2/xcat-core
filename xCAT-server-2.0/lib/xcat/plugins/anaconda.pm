@@ -16,7 +16,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
-my $cpiopid;
+my @cpiopid;
 
 my %distnames = (
                  "1176234647.982657" => "centos5",
@@ -786,7 +786,9 @@ sub copycd
     my $rc;
     my $reaped = 0;
     $SIG{INT} = $SIG{TERM} = sub {
-        if ($cpiopid) { kill 2, $cpiopid; exit 0; }
+        foreach(@cpiopid){
+            kill 2, $_;
+        }
         if ($::CDMOUNTPATH) {
             system("umount $::CDMOUNTPATH");
         }
@@ -802,7 +804,7 @@ sub copycd
     }
     if ($child)
     {
-        $cpiopid = $child;
+        push @cpiopid, $child;
         my @finddata = `find .`;
         for (@finddata)
         {
@@ -815,8 +817,9 @@ sub copycd
     {
         nice 10;
         my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
-        open(PIPE, "$c 2>&1 |") || 
+        my $k2 = open(PIPE, "$c 2>&1 |") || 
            $callback->({error => "Media copy operation fork failure"}); 
+        push @cpiopid, $k2;
         my $copied = 0;
         my ($percent, $fout);
         while(<PIPE>){
