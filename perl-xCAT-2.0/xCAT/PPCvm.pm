@@ -179,7 +179,7 @@ sub mkvm_parse_args {
     ####################################
     if ( exists( $opt{n} )) {
         my @noderange = xCAT::NodeRange::noderange( $opt{n},0 );
-        if ( !defined( @noderange )) {
+        if ( !@noderange ) {
             return(usage( "Invalid noderange: '$opt{n}'" ));
         }
         $opt{n} = \@noderange;
@@ -409,7 +409,7 @@ sub clone {
     #####################################
     # Get all LPARs on source CEC 
     #####################################
-    my $filter = "name,lpar_id";
+    $filter = "name,lpar_id";
     my $result = xCAT::PPCcli::lssyscfg(
                                     $exp,
                                     "lpar",
@@ -988,6 +988,7 @@ sub lsvm {
 
 
 1;
+
 
 
 
