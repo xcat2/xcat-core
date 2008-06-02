@@ -378,6 +378,7 @@ EOMS
          if (-f "$pathtofiles/".$_->[0]) {
             $srcpath="$pathtofiles/".$_->[0];
          }
+         mkpath(dirname("/tmp/xcatinitrd.$$/".$_->[1]));
          copy($srcpath,"/tmp/xcatinitrd.$$/".$_->[1]);
          chmod 0755,"/tmp/xcatinitrd.$$/".$_->[1];
       } else {
@@ -385,6 +386,7 @@ EOMS
          if (-f "$pathtofiles/$_") {
             $srcpatch = "$pathtofiles/$_";
          }
+         mkpath(dirname("/tmp/xcatinitrd.$$/$_"));
          copy("$srcpath","/tmp/xcatinitrd.$$/$_");
          chmod 0755,"/tmp/xcatinitrd.$$/".$_;
       }
