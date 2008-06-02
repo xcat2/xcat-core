@@ -14,7 +14,8 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
-my $cpiopid;
+
+my @cpiopid;
 
 sub handled_commands
 {
@@ -619,20 +620,24 @@ sub copycd
     mkpath("$installroot/$distname/$arch/$discnumber");
     umask $omask;
     my $rc;
-    $SIG{INT} =  $SIG{TERM} = sub { if ($cpiopid) { kill 2, $cpiopid; exit 0; } 
-        if ($::CDMOUNTPATH) {
+    $SIG{INT} =  $SIG{TERM} = sub { 
+       foreach(@cpiopid){
+          kill 2, $_; 
+       }
+       if ($::CDMOUNTPATH) {
             system("umount $::CDMOUNTPATH");
-        }
+       }
     };
     my $kid;
     chdir $path;
+    my $numFiles = `find . -print | wc -l`;
     my $child = open($kid,"|-");
     unless (defined $child) {
       $callback->({error=>"Media copy operation fork failure"});
       return;
     }
     if ($child) {
-       $cpiopid = $child;
+       push @cpiopid,$child;
        my @finddata = `find .`;
        for (@finddata) {
           print $kid $_;
@@ -640,7 +645,20 @@ sub copycd
        close($kid);
        $rc = $?;
     } else {
-       exec "nice -n 20 cpio -dump $installroot/$distname/$arch/$discnumber/";
+        my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
+        my $k2 = open(PIPE, "$c 2>&1 |") ||
+           $callback->({error => "Media copy operation fork failure"});
+	push @cpiopid, $k2;
+        my $copied = 0;
+        my ($percent, $fout);
+        while(<PIPE>){
+          next if /^cpio:/;
+          $percent = $copied / $numFiles;
+          $fout = sprintf "%0.2f%%", $percent * 100;
+          $callback->({sinfo => "$fout"});
+          ++$copied;
+        }
+        exit;
     }
     #  system(
     #    "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/$discnumber/"
