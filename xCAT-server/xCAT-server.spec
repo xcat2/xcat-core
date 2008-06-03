@@ -4,7 +4,7 @@ Version: 2.1
 Release: snap%(date +"%Y%m%d%H%M")
 License: EPL
 Group: Applications/System
-Source: xCAT-server-2.0.tar.gz
+Source: xCAT-server-2.1.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
