@@ -21,7 +21,7 @@ Provides: xCAT-client = %{version}
 %description
 xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.
 
-%prep
+%prep -n xCAT-client
 %setup -q
 %build
 # This phase is done in (for RH): /usr/src/redhat/BUILD/xCAT-client-2.0
