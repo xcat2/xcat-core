@@ -874,6 +874,13 @@ sub parse_responses {
         if (( $type eq SERVICE_HMC ) or ( $type eq SERVICE_IVM )) {
             if ( $rsp =~ /\(name=([\w\-\.,]+)\)/ ) {
                 $host = $1;
+
+                ###################################
+                # Convert to short-hostname
+                ###################################
+                if ( $host =~ /([^\.]+)\./ ) {
+                    $host = $1;
+                }
             }
         }
         ###########################################
@@ -962,13 +969,7 @@ sub xCATdB {
             my $ips    = @$data[3];
             my $name   = @$data[4];
 
-            ########################################
-            # N/A Values
-            ########################################
-            my $uid = "";
-            my $pw  = "";
-
-            xCAT::PPCdb::add_ppch( $type, $uid, $pw, $name );
+            xCAT::PPCdb::add_ppchcp( $type, $data );
         }
         elsif ( $type =~ /^FSP$/ ) {
             ########################################
