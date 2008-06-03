@@ -2,19 +2,21 @@
 
 my $go=1;
 
-if (!@ARGV)
-{
-  print "No arguments given, assuming /dev/cdrom.\n";
-  push @ARGV, "/dev/cdrom";
-}
+my $file;
+my $opts = "";
 
-while ($go)
-{
+$file = pop @ARGV;
+if (!$file) {
+  print "No device given, assuming /dev/cdrom.\n";
+  $file = "/dev/cdrom";
+} 
+
+while ($go) {
   $go = 0;
-  system("copycds @ARGV");
+  #print "copycds $opts $file";
+  system("copycds $opts $file");
   print "Would you like to copy another CD (y/N)? ";
-  if (<STDIN> =~ /^y/i)
-  {
+  if (<STDIN> =~ /^y/i) {
     $go = 1;
     system("eject");
     print "Replace the CD and press enter.";

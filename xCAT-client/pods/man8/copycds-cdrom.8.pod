@@ -1,0 +1,31 @@
+
+=head1 NAME
+
+B<copycds-cdrom> - Client side wrapper for copycds supporting physical drives.
+
+=head1 SYNOPSIS
+
+B<copycds-cdrom> I<[copycds options]> I<[drive]>
+
+
+=head1 DESCRIPTION
+
+B<copycds-cdrom> is a wrapper scripts for copycds to copy from physical CD/DVD-ROM drives located on the management server.
+
+I<[copycds options]> are passed unmolested to copycds.
+
+If I<[drive]> is not specified, /dev/cdrom is assumed.
+
+The copycds command copies all contents of Distribution CDs or Service Pack CDs to the install directory as
+designated in the B<site> table attribute: B<installdir>.
+
+=head1 SEE ALSO
+
+copycds(8)
+
+
+=head1 AUTHOR
+
+Isaac Freeman E<lt>ifreeman@us.ibm.comE<gt>
+
+
