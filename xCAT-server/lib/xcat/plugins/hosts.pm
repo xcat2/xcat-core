@@ -46,12 +46,13 @@ sub process_request {
   if (grep /-n/,@{$req->{arg}}) {
     if (-e "/etc/hosts") {
       my $bakname = "/etc/hosts.xcatbak";
-      while (-e $bakname) { #look for unused backup name..
-        $bakname .= "~";
-      }
       rename("/etc/hosts",$bakname);
     }
   } else {
+    if (-e "/etc/hosts") {
+      my $bakname = "/etc/hosts.xcatbak";
+      copy("/etc/hosts",$bakname);
+    }
     open($rconf,"/etc/hosts"); # Read file into memory
     if ($rconf) {
       while (<$rconf>) {
