@@ -4,6 +4,7 @@ use Storable qw(dclone);
 use xCAT::Table;
 use Data::Dumper;
 use Getopt::Long;
+use File::Basename;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -49,15 +50,34 @@ sub process_request {
   }
   foreach (@args) {
     unless (/^\//) { #If not an absolute path, concatenate with client specified cwd
-	s/^/$request->{cwd}->[0]\//;
+      s/^/$request->{cwd}->[0]\//;
     }
-    unless (-r $_ and -f $_) {
-      $callback->({error=>"The management server was unable to find/read $_, ensure that file exists on the server at specified location"});
+
+    # /dev/cdrom is a symlink on some systems, we need to see if it points to a
+    # block device.
+    if (-l $_) { 
+      my $link = readlink($_);
+      if ($link =~ m{^/})
+        { $file = $link; }
+      else
+        { $file = dirname($_) . "/" . $link; }
+    }
+    else { $file = $_; }
+
+    my $mntopts;
+    if (-r $file and -b $file) # Block device?
+      { $mntopts = "-o ro"; }
+    elsif (-r $file and -f $file) 
+      { $mntopts = "-o ro,loop"; }
+    else {
+      $callback->({error=>"The management server was unable to find/read $file. Ensure that file exists on the server at the specified location."});
       return;
     }
+
     mkdir "/mnt/xcat";
-    if (system("mount -o loop,ro $_ /mnt/xcat")) {
-      $callback->({error=>"copycds was unable to examine $_ as an install image"});
+
+    if (system("mount $mntopts $file /mnt/xcat")) {
+      $callback->({error=>"copycds was unable to mount $file to /mnt/xcat."});
       return;
     }
     my $newreq = dclone($request);
@@ -80,3 +100,5 @@ sub process_request {
 }
 
 1;
+
+# vim: set ts=2 sts=2 sw=2 et ai:
