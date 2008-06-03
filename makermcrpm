@@ -1,6 +1,6 @@
 #!/bin/sh
 OSNAME=$(uname)
-version='2.0'
+version='2.1'
 
 if [ "$OSNAME" = "AIX" ]
 then
@@ -24,7 +24,7 @@ else
 	fi
 	source=$PWD
 
-	# Trying to avoid having the version # (2.0) on the xCAT-rmc dir name in svn
+	# Trying to avoid having the version  on the xCAT-rmc dir name in svn
 	set -x
 	cd /usr/src/$pkg/SOURCES
 	rm -f xCAT-rmc-$version; ln -s $source/xCAT-rmc xCAT-rmc-$version   # have to make tar think it is in xCAT-rmc-2.0

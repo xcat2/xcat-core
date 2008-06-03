@@ -6,12 +6,15 @@ VER="2.1"
 if [ "$OSNAME" = "AIX" ]
 then
 
-	echo '.svn' > /tmp/xcat-excludes
-	tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/perl-xCAT-$VER.tar perl-xCAT
-	gzip -f /opt/freeware/src/packages/SOURCES/perl-xCAT-$VER.tar
-	cd ./perl-xCAT
-	rm -f /opt/freeware/src/packages/SRPMS/perl-xCAT-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-$VER*rpm
-	rpm -ba perl-xCAT.spec
+        source=$PWD
+        cd /opt/freeware/src/packages/SOURCES
+        rm -f perl-xCAT-$VER; ln -s $source/perl-xCAT perl-xCAT-$VER
+        rm -f /opt/freeware/src/packages/SRPMS/perl-xCAT*rpm /opt/freeware/src/packages/RPMS/ppc/perl-xCAT*rpm
+        echo '.svn' > /tmp/xcat-excludes
+        tar -X /tmp/xcat-excludes -cf perl-xCAT-$VER.tar perl-xCAT-$VER
+        gzip -f /opt/freeware/src/packages/SOURCES/perl-xCAT-$VER.tar
+        cd $source/perl-xCAT
+        rpm -ba perl-xCAT.spec
 else
 	if [ -f /etc/redhat-release ]
 	then
@@ -19,8 +22,14 @@ else
 	else
    		pkg="packages"
 	fi
+	source=$PWD
 
-	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz perl-xCAT/;
+	# Trying to avoid having the version  on the perl-xCAT dir name in svn
+	set -x
+	cd /usr/src/$pkg/SOURCES
+	rm -f perl-xCAT-$VER; ln -s $source/perl-xCAT perl-xCAT-$VER   # have to make tar think it is in perl-xCAT-2.1
+	rm -f perl-xCAT-$VER.tar.gz
+	tar -czhf perl-xCAT-$VER.tar.gz --exclude=.svn --exclude=.project perl-xCAT-$VER
 	rm -f /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm
-	rpmbuild -ta /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz ;
+	rpmbuild -ta perl-xCAT-$VER.tar.gz
 fi

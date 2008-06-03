@@ -1,30 +1,35 @@
 #!/bin/sh
 
 OSNAME=$(uname)
-VER=2.1
+VER="2.1"
 
 if [ "$OSNAME" = "AIX" ]
 then
 
-	echo '.svn' > /tmp/xcat-excludes
-    tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/xCAT-server-$VER.tar xCAT-server
-    gzip -f /opt/freeware/src/packages/SOURCES/xCAT-server-$VER.tar
-    cd ./xCAT-server
-    rm -f /opt/freeware/src/packages/SRPMS/xCAT-server-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-server-$VER*rpm
-    rpm -ba xCAT-server.spec
-    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-server-$VER*rpm
-
+        source=$PWD
+        cd /opt/freeware/src/packages/SOURCES
+        rm -f xCAT-server-$VER; ln -s $source/xCAT-server xCAT-server-$VER
+        rm -f /opt/freeware/src/packages/SRPMS/xCAT-server*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-server*rpm
+        echo '.svn' > /tmp/xcat-excludes
+        tar -X /tmp/xcat-excludes -cf xCAT-server-$VER.tar xCAT-server-$VER
+        gzip -f /opt/freeware/src/packages/SOURCES/xCAT-server-$VER.tar
+        cd $source/xCAT-server
+        rpm -ba xCAT-server.spec
 else
-
 	if [ -f /etc/redhat-release ]
 	then
    		pkg="redhat"
 	else
    		pkg="packages"
 	fi
+	source=$PWD
 
-	tar  --exclude .svn -czf /usr/src/$pkg/SOURCES/xCAT-server-$VER.tar.gz xCAT-server;
+	# Trying to avoid having the version  on the xCAT-server dir name in svn
+	set -x
+	cd /usr/src/$pkg/SOURCES
+	rm -f xCAT-server-$VER; ln -s $source/xCAT-server xCAT-server-$VER   # have to make tar think it is in xCAT-server-2.1
+	rm -f xCAT-server-$VER.tar.gz
+	tar -czhf xCAT-server-$VER.tar.gz --exclude=.svn --exclude=.project xCAT-server-$VER
 	rm -f /usr/src/$pkg/SRPMS/xCAT-server-$VER*rpm /usr/src/$pkg/RPMS/noarch/xCAT-server-$VER*rpm
-	rpmbuild -ta /usr/src/$pkg/SOURCES/xCAT-server-$VER.tar.gz ;
-	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-server-$VER*rpm
+	rpmbuild -ta xCAT-server-$VER.tar.gz
 fi

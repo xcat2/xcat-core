@@ -1,6 +1,7 @@
 #!/bin/sh
 
 OSNAME=$(uname)
+VER=2.1
 
 if [ "$OSNAME" = "AIX" ]
 then
@@ -11,12 +12,12 @@ then
     gzip -f /opt/freeware/src/packages/SOURCES/license.tar
 
     cp xcat.conf /opt/freeware/src/packages/SOURCES
-    rm -f /opt/freeware/src/packages/SRPMS/xCATsn-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/xCATsn-2.0*rpm
+    rm -f /opt/freeware/src/packages/SRPMS/xCATsn-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCATsn-$VER*rpm
 
     rpm -ba xCATsn.spec
 
     # don't install
-    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCATsn-2.0*rpm
+    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCATsn-$VER*rpm
     cd -
 
 else
@@ -31,7 +32,7 @@ else
 	cd `dirname $0`
 	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/license.tar.gz LICENSE.html
 	cp xcat.conf /usr/src/$pkg/SOURCES
-	rm -f /usr/src/$pkg/SRPMS/xCATsn-2.0*rpm /usr/src/$pkg/RPMS/*/xCATsn-2.0*rpm
+	rm -f /usr/src/$pkg/SRPMS/xCATsn-$VER*rpm /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm
 	rpmbuild -ba xCATsn.spec
 	cd -
 fi
