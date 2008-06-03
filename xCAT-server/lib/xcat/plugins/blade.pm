@@ -1648,7 +1648,7 @@ sub telnetcmds {
   my @unhandled;
   my %handled = ();
   my $result;
-  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid);
+  my @tcmds = qw(snmpcfg sshcfg network swnet pd1 pd2 textid network_reset);
 
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
@@ -1680,9 +1680,10 @@ sub telnetcmds {
   }
   if (!$Rc) {
     push @cfgtext,$t->errmsg;
-    return([1,\@unhandled]);
+    return([1,\@unhandled,$t->errmsg]);
   }
   $Rc = 0;
+  my @data;
 
   foreach (keys %handled) {
     if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass); }
@@ -1691,11 +1692,13 @@ sub telnetcmds {
     elsif (/^swnet$/)   { $result = swnet($t,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
     elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_}); }
+    elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,1); }
+    push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
   }
   $t->close;
-  return([$Rc,\@unhandled]);
+  return([$Rc,\@unhandled,\@data]);
 }
 
 
@@ -1745,6 +1748,7 @@ sub network {
   my $t = shift;
   my $value = shift;
   my $mpa = shift;
+  my $reset = shift;
   my $cmd = "ifconfig -eth0 -c static -r auto -d auto -m 1500 -T system:mm[1]";
   my ($ip,$host,$gateway,$mask);
 
@@ -1797,6 +1801,10 @@ sub network {
   if ($host)   { push @result,"MM Hostname: $host"; }
   if ($gateway){ push @result,"Gateway: $gateway"; }
   if ($mask)   { push @result,"Subnet Mask: $mask"; }
+
+  if (defined($reset)) {
+      $t->cmd("reset -T system:mm[1]");
+  } 
   return([0,@result]);
 
 }
@@ -2136,6 +2144,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
