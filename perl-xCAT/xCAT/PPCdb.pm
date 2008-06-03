@@ -2,9 +2,28 @@
 
 package xCAT::PPCdb;
 use strict;
-use Getopt::Long;
 use xCAT::Table;
 use xCAT::GlobalDef;
+
+
+###########################################
+# Factory defaults
+###########################################
+my %logon = (
+    hmc => ["hscroot","abc123"],
+    ivm => ["padmin", "padmin"],
+    fsp => ["admin",  "admin"]
+);
+
+###########################################
+# Tables based on HW Type
+###########################################
+my %hcptab = (
+    hmc => "ppchcp",
+    ivm => "ppchcp",
+    fsp => "ppcdirect"
+);
+
 
 
 ##########################################################################
@@ -51,52 +70,41 @@ sub add_ppc {
         # Update nodetype table
         ###############################
         if ( $type =~ /^(fsp|bpa|lpar|hmc|ivm)$/ ) {
-            my ($k,$u);
-            $k->{node}     = $name;
-            $u->{nodetype} = $nodetype{$type};
-            $db{nodetype}->setAttribs( $k,$u );
+            $db{nodetype}->setNodeAttribs( $name,{nodetype=>$nodetype{$type}} );
             $db{nodetype}{commit} = 1;
         }
         ###############################
         # Update ppc table
         ###############################
         if ( $type =~ /^(fsp|bpa|lpar)$/ ) {
-            my ($k,$u);
-            $k->{node}     = $name;
-            $u->{hcp}      = $server;
-            $u->{id}       = $id;
-            $u->{pprofile} = $pprofile;
-            $u->{parent}   = $parent;
-            $db{ppc}->setAttribs( $k, $u );
+            $db{ppc}->setNodeAttribs( $name,
+               { hcp=>$server,
+                 id=>$id,
+                 pprofile=>$pprofile,
+                 parent=>$parent
+               }); 
             $db{ppc}{commit} = 1;
 
             ###########################
             # Update nodelist table
             ###########################
-            my ($k1,$u1);
-            $k1->{node}     = $name;
-            $u1->{groups}   = $nodetype{$type}.",all";
-            $db{nodelist}->setAttribs( $k1,$u1 );
+            updategroups( $name, $db{nodelist}, $hwtype );
             $db{nodelist}{commit} = 1;
 
             ###########################
             # Update nodehm table
             ###########################
-            my ($k2,$u2);
-            $k2->{node} = $name;
-            $u2->{mgt}  = $hwtype;
-            $db{nodehm}->setAttribs( $k2,$u2 );
+            $db{nodehm}->setNodeAttribs( $name, {mgt=>$hwtype} );
             $db{nodehm}{commit} = 1;
         }
         ###############################
         # Update vpd table
         ###############################
         if ( $type =~ /^(fsp|bpa)$/ ) {
-            my ($k,$u);
-            $k->{node}   = $name;
-            $u->{serial} = $serial;
-            $u->{mtm}    = $model;
-            $db{vpd}->setAttribs( $k,$u );
+            $db{vpd}->setNodeAttribs( $name, 
+                { mtm=>$model,
+                  serial=>$serial
+                 });
             $db{vpd}{commit} = 1;
         }
     }
@@ -114,30 +122,76 @@ sub add_ppc {
 
 
 ##########################################################################
-# Adds a hardware control point to the xCAT database
+# Updates the nodelist.groups attribute 
 ##########################################################################
-sub add_ppch {
+sub updategroups {
 
-    my $hwtype  = shift;
-    my $uid     = shift;
-    my $pw      = shift;
-    my $name    = shift;
-    my $k;
-    my $u;
+    my $name   = shift;
+    my $tab    = shift;
+    my $hwtype = shift;
 
-    ###################################
-    # Update HWCtrl Point table
-    ###################################
-    my $tab = xCAT::Table->new( 'ppch', -create=>1, -autocommit=>0 );
-    if ( !$tab ) {
-        return( "Error opening 'ppch'" );
+    ###############################
+    # Get current value 
+    ###############################
+    my ($ent) = $tab->getNodeAttribs( $name, ['groups'] );
+    my @list = ( lc($hwtype), "all" );
+
+    ###############################
+    # Keep any existing groups
+    ###############################
+    if ( defined($ent) and $ent->{groups} ) {
+        push @list, split( /,/, $ent->{groups} );
     }
-    $k->{hcp}      = $name;
-    $u->{username} = $uid;
-    $u->{password} = $pw;
+    ###############################
+    # Remove duplicates
+    ###############################
+    my %saw;
+    @saw{@list} = ();
+    @list = keys %saw;
 
-    $tab->setAttribs( $k, $u );
-    $tab->commit;
+    $tab->setNodeAttribs( $name, {groups=>join(",",@list)} );
+}
+
+
+##########################################################################
+# Adds an HMC/IVM to the xCAT database
+##########################################################################
+sub add_ppchcp {
+
+    my $hwtype = shift;
+    my $data   = shift;
+    my @tabs   = qw(ppchcp nodehm nodelist);
+    my %db     = ();
+    my $name   = @$data[4];
+
+    ###################################
+    # Open database needed
+    ###################################
+    foreach ( @tabs ) {
+        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>1 );
+        if ( !$db{$_} ) {
+            return( "Error opening '$_'" );
+        }
+    }
+    ###################################
+    # Update ppchcp table
+    ###################################
+    my ($ent) = $db{ppchcp}->getAttribs({ hcp=>$name},'hcp');
+    if ( !defined($ent) ) {
+        $db{ppchcp}->setAttribs( {hcp=>$name}, 
+            { username=>"",
+              password=>""
+            });
+    }
+    ###################################
+    # Update nodehm table
+    ###################################
+    $db{nodehm}->setNodeAttribs( $name, {mgt=>lc($hwtype)} );
+
+    ###################################
+    # Update nodelist table
+    ###################################
+    updategroups( $name, $db{nodelist}, $hwtype );
     return undef;
 }
 
@@ -155,7 +209,6 @@ sub rm_ppc {
         # Open table
         ###################################
         my $tab = xCAT::Table->new($_);
-
         if ( !$tab ) {
             return( "Error opening '$_'" );
         }
@@ -174,16 +227,17 @@ sub rm_ppc {
 ##########################################################################
 sub add_systemX {
 
-    my $type = shift;
-    my $data = shift;
-    my @tabs = qw(mpa mp nodehm nodelist);
-    my %db   = ();
+    my $hwtype = shift;
+    my $data   = shift;
+    my @tabs   = qw(mpa mp nodehm nodelist);
+    my %db     = ();
+    my $name   = @$data[4];
 
     ###################################
     # Open database needed
     ###################################
     foreach ( @tabs ) {
-        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
+        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>1 );
         if ( !$db{$_} ) {
             return( "Error opening '$_'" );
         }
@@ -191,49 +245,31 @@ sub add_systemX {
     ###################################
     # Update mpa table
     ###################################
-    my ($k1,$u1);
-    my $name = @$data[4];
-
-    ####################################
-    # N/A Values
-    ####################################
-    my $uid = undef;
-    my $pw  = undef;
-
-    $k1->{mpa}      = $name;
-    $u1->{username} = $uid;
-    $u1->{password} = $pw;
-    $db{mpa}->setAttribs( $k1, $u1 );
-    $db{mpa}->commit;
-
+    my ($ent) = $db{mpa}->getAttribs({ mpa=>$name},'mpa');
+    if ( !defined($ent) ) {
+        $db{mpa}->setAttribs( {mpa=>$name}, 
+            { username=>"",
+              password=>""
+            });
+    }
     ###################################
     # Update mp table
     ###################################
-    my ($k2,$u2);
-    $k2->{node} = $name;
-    $u2->{mpa}  = $name;
-    $u2->{id}   = "0";
-    $db{mp}->setAttribs( $k2, $u2 );
-    $db{mp}->commit;
+    $db{mp}->setNodeAttribs( $name,
+        { mpa=>$name,
+          id=>"0"
+        }); 
 
     ###################################
     # Update nodehm table
     ###################################
-    my ($k3,$u3);
-    $k3->{node} = $name;
-    $u3->{mgt}  = "blade";
-    $db{nodehm}->setAttribs( $k3, $u3 );
-    $db{nodehm}->commit;
+    $db{nodehm}->setNodeAttribs( $name, {mgt=>"blade"} );
 
     ###################################
     # Update nodelist table
     ###################################
-    my ($k4,$u4);
-    $k4->{node}   = $name;
-    $u4->{groups} = lc($type).",all";
-    $db{nodelist}->setAttribs( $k4, $u4 );
-    $db{nodelist}->commit;
-
+    updategroups( $name, $db{nodelist}, $hwtype );
+    return undef;
 }
 
 
@@ -245,45 +281,37 @@ sub credentials {
 
     my $server = shift;
     my $hwtype = shift;
-    my %db = (
-        hmc => "ppchcp",
-        ivm => "ppchcp",
-        fsp => "ppcdirect"
-    );
+    my $user   = @{$logon{$hwtype}}[0];
+    my $pass   = @{$logon{$hwtype}}[1];
 
     ###########################################
-    # Get userid/password based on HwCtrl Pt
+    # Check passwd tab
     ###########################################
-    my $tab = xCAT::Table->new( $db{$hwtype} );
+    my $tab = xCAT::Table->new( 'passwd' );
     if ( $tab ) {
-        my ($ent) = $tab->getAttribs({'hcp'=>$server},'username','password');
-        if ( defined( $ent ) ) {
-            return( $ent->{username},$ent->{password} );
+        my ($ent) = $tab->getAttribs( {key=>$hwtype}, qw(username password));
+        if ( $ent ) {
+            if (defined($ent->{password})) { $pass = $ent->{password}; }
+            if (defined($ent->{username})) { $user = $ent->{username}; }
         }
     }
-    ###########################################
-    # Get userid/password based on type
-    ###########################################
-    $tab = xCAT::Table->new( 'passwd' );
+    ##########################################
+    # Check table based on specific node 
+    ##########################################
+    $tab = xCAT::Table->new( $hcptab{$hwtype} );
     if ( $tab ) {
-        my ($ent) = $tab->getAttribs({'key'=>$hwtype},'username','password');
-        if ( defined( $ent ) ) {
-            return( $ent->{username},$ent->{password} );
+        my ($ent) = $tab->getAttribs( {hcp=>$server}, qw(username password));
+        if ( $ent ) {
+            if (defined($ent->{password})) { $pass = $ent->{password}; }
+            if (defined($ent->{username})) { $user = $ent->{username}; }
         }
     }
-    ###########################################
-    # Use factory defaults
-    ###########################################
-    my %logon = (
-        hmc => ["hscroot","abc123"],
-        ivm => ["padmin", "padmin"],
-        fsp => ["admin",  "admin"]
-    );
-    return( @{$logon{$hwtype}}[0], @{$logon{$hwtype}}[1] );
+    return( $user,$pass );
 }
 
 
 1;
+
 
 
 
