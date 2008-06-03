@@ -1,18 +1,17 @@
 #!/bin/sh
 
 OSNAME=$(uname)
+VER="2.1"
 
 if [ "$OSNAME" = "AIX" ]
 then
 
 	echo '.svn' > /tmp/xcat-excludes
-	tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/perl-xCAT-2.0.tar perl-xCAT-2.0
-	gzip -f /opt/freeware/src/packages/SOURCES/perl-xCAT-2.0.tar
-	cd ./perl-xCAT-2.0
-	rm -f /opt/freeware/src/packages/SRPMS/perl-xCAT-2.0*rpm /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-2.0*rpm
+	tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/perl-xCAT-$VER.tar perl-xCAT
+	gzip -f /opt/freeware/src/packages/SOURCES/perl-xCAT-$VER.tar
+	cd ./perl-xCAT
+	rm -f /opt/freeware/src/packages/SRPMS/perl-xCAT-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-$VER*rpm
 	rpm -ba perl-xCAT.spec
-	#rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-2.0*rpm
-
 else
 	if [ -f /etc/redhat-release ]
 	then
@@ -21,8 +20,7 @@ else
    		pkg="packages"
 	fi
 
-	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/perl-xCAT-2.0.tar.gz perl-xCAT-2.0/;
-	rm -f /usr/src/$pkg/SRPMS/perl-xCAT-2.0*rpm /usr/src/$pkg/RPMS/noarch/perl-xCAT-2.0*rpm
-	rpmbuild -ta /usr/src/$pkg/SOURCES/perl-xCAT-2.0.tar.gz ;
-	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/perl-xCAT-2.0*rpm
+	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz perl-xCAT/;
+	rm -f /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm
+	rpmbuild -ta /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz ;
 fi
