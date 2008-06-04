@@ -22,17 +22,8 @@ sub parse_args {
     # Responds with usage statement
     #############################################
     local *usage = sub {
-        return( [ $_[0],
-            "getmacs -h|--help",
-            "getmacs -v|--version",
-            "getmacs [-V|--verbose] noderange [-d][-S server -G gateway -C client]",
-            "    -h   writes usage information to standard output",
-            "    -v   displays command version",
-            "    -C   IP of the partition",
-            "    -G   Gateway IP of the partition specified",
-            "    -S   Server IP to ping", 
-            "    -V   verbose output",
-            "    -d   display MAC only. The default is to write the first adapter MAC to the xCAT database."]);
+        my $usage_string = xCAT::Usage->getUsage($cmd);
+        return( [ $_[0], $usage_string] );
     };
     #############################################
     # Process command-line arguments
@@ -434,6 +425,7 @@ sub writemac {
 }
 
 1;
+
 
 
 
