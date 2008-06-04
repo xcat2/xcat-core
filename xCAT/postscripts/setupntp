@@ -63,4 +63,5 @@ if [ "$?" != "0" ]
 fi
 
 service ntpd start 
+chkconfig --level 345 ntpd on
 exit $? 
