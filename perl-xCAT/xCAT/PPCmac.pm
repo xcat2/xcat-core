@@ -25,15 +25,14 @@ sub parse_args {
         return( [ $_[0],
             "getmacs -h|--help",
             "getmacs -v|--version",
-            "getmacs [-V|--verbose] noderange [-c][-w][-S server -G gateway -C client]",
+            "getmacs [-V|--verbose] noderange [-d][-S server -G gateway -C client]",
             "    -h   writes usage information to standard output",
             "    -v   displays command version",
-            "    -c   colon seperated output",
             "    -C   IP of the partition",
             "    -G   Gateway IP of the partition specified",
             "    -S   Server IP to ping", 
             "    -V   verbose output",
-            "    -w   writes first adapter MAC to the xCAT database"]);
+            "    -d   display MAC only. The default is to write the first adapter MAC to the xCAT database."]);
     };
     #############################################
     # Process command-line arguments
@@ -51,7 +50,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s c w))) { 
+    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s d))) { 
         return( usage() );
     }
     ####################################
@@ -192,12 +191,6 @@ sub ivm_getmacs {
         $cmd.= " -v -x";
     }
     #######################################
-    # Colon seperated output 
-    #######################################
-    if ( exists($opt->{c}) ) {
-        $cmd.= " -c";
-    }
-    #######################################
     # Network specified (-D ping test)
     #######################################
     if ( exists( $opt->{S} )) { 
@@ -256,7 +249,6 @@ sub getmacs {
     my $exp     = shift;
     my $opt     = $request->{opt};
     my $hwtype  = @$exp[2];
-    my $delim   = ( exists( $opt->{c} )) ? ":" : " ";
     my $result;
     my $node;
 
@@ -325,8 +317,8 @@ sub getmacs {
     ##################################
     if ( exists($request->{verbose}) ) {
         if ( $Rc == SUCCESS ) {
-            if ( exists( $opt->{w} )) { 
-                writemac( $name, $delim, $result );
+            if ( !exists( $opt->{d} )) { 
+                writemac( $name, $result );
             }
         }
         return( [[$name,join( '', @$result ),$Rc]] );
@@ -359,17 +351,43 @@ sub getmacs {
     foreach ( @$result ) {
         if ( /^#\s?Type/ ) {
             $data.= "\n$_\n";
-        } elsif ( /^ent$delim/ ) {
-            $data.= "$_\n";
+        } elsif ( /^ent\s+/ ) {
+            $data.= format_mac( $_ );
         }
     }
     #####################################
     # Write first adapter MAC to database 
     #####################################
-    if ( exists( $opt->{w} )) {
-        writemac( $name, $delim, $result );
+    if ( !exists( $opt->{d} )) {
+        writemac( $name, $result );
     }
     return( [[$name,$data,$Rc]] );
+}
+
+
+##########################################################################
+# Insert colons in MAC addresses for Linux only
+##########################################################################
+sub format_mac {
+
+    my $data = shift;
+
+    if ( !xCAT::Utils->isAIX() ) {
+        #####################################
+        # Get adapter mac
+        #####################################
+        $data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
+        my $mac  = $2;
+        my $save = $mac;
+
+        #################################
+        # Delineate MAC with colons 
+        #################################
+        $mac    =~ s/(\w{2})/$1:/g;
+        $mac    =~ s/:$//;
+        $data   =~ s/$save/$mac/;
+    }
+    return( "$data\n" );
 }
 
 
@@ -379,7 +397,6 @@ sub getmacs {
 sub writemac {
 
     my $name  = shift;
-    my $delim = shift;
     my $data  = shift;
     my $value;
 
@@ -387,7 +404,7 @@ sub writemac {
     # Find first adapter
     #####################################
     foreach ( @$data ) {
-        if ( /^ent$delim/ ) {
+        if ( /^ent\s+/ ) {
             $value = $_;
             last;
         }
@@ -401,7 +418,8 @@ sub writemac {
     #####################################
     # Get adapter mac
     #####################################
-    my @fields = split $delim, $value;
+    $value = format_mac( $value ); 
+    my @fields = split /\s+/, $value;
     my $mac    = $fields[2];
 
     #####################################
@@ -416,6 +434,7 @@ sub writemac {
 }
 
 1;
+
 
 
 
