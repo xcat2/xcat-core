@@ -89,7 +89,7 @@ my %usage = (
        getmacs <noderange> [-V|--verbose]
        getmacs [-h|--help|-v|--version]
    PPC specific:
-       getmacs <noderange> [-c][-d][-S server -G gateway -C client]",
+       getmacs <noderange> [-d][-S server -G gateway -C client]",
     "mkvm" => 
 "Usage: mkvm singlenode -i id -n noderange [-V|--verbose]
        mkvm srccec -c destcec [-V|--verbose]
