@@ -1,0 +1,49 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#---------------------------------------------------------------------------
+# setup LDAP client configuration on the compute nodes
+#
+#---------------------------------------------------------------------------
+
+if [ -r /etc/ldap.conf -a -r /etc/resolv.conf ]
+        then
+            echo -n "         LDAP: "
+
+            DC=$(
+                cat /etc/resolv.conf | \
+                egrep '(domain|search)' | \
+                head -1 | \
+                awk '{print $2}' | \
+                sed 's/\./,dc=/g' | \
+                sed 's/^/dc=/'
+            )
+
+            echo "uri ldap://$MASTER/
+  base $DC
+  timelimit 120
+  bind_timelimit 120
+  idle_timelimit 3600
+  nss_base_passwd ou=People,$DC
+  nss_base_shadow ou=People,$DC
+  nss_base_group  ou=Group,$DC
+  nss_initgroups_ignoreusers root,ldap,named,avahi,haldaemon,dbus,radvd,tomcat,radiusd,news,mailman,nscd
+  ssl no
+  tls_cacertdir /etc/openldap/cacerts
+  pam_password md5" >/etc/ldap.conf
+
+            echo "URI ldap://$MASTER
+  BASE $DC
+  TLS_CACERTDIR /etc/openldap/cacerts" >/etc/openldap/ldap.conf
+
+  cd /etc
+  cp nsswitch.conf nsswitch.conf.ORIG
+  sed -r 's/^((passwd|shadow|group):.*)/\1 ldap/' <nsswitch.conf.ORIG >nsswitch.conf
+
+  cd /etc/pam.d
+  cp system-auth system-auth.ORIG
+  sed -r 's/(account\s+required\s+pam_unix.so)/account     sufficient    pam_ldap.so\n\1/' <system-auth.ORIG >system-auth
+
+fi
+        exit 0
+
