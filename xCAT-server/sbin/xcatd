@@ -219,6 +219,7 @@ if ($inet6support) {
         foreach (@{$reply->{data}}) {
             print $conn $_;
         }
+        print $conn "#END OF SCRIPT\n";
         close($conn);
 	} elsif ($text =~ /^setiscsiparms/) { 
 	    $text =~ s/^setiscsiparms\s+//;
