@@ -27,7 +27,7 @@ Provides: xCAT-server = %{version}
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
 
 %prep -n xCAT-server
-%setup -q
+%setup -q -n xCAT-server
 %build
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -54,6 +54,7 @@ cp -hpR share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
 %endif
 
 %ifos linux
+pwd
 cp -d sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 cp -d bin/* $RPM_BUILD_ROOT/%{prefix}/bin
