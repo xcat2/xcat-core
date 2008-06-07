@@ -2,6 +2,7 @@ Summary: Metapackage for a common, default xCAT setup
 Name: xCAT
 Version: 2.1
 Release: snap%(date +"%Y%m%d%H%M")
+Epoch: 2
 License: EPL
 Group: Applications/System
 Vendor: IBM Corp.
