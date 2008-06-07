@@ -492,6 +492,9 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       }
       copy $_,"$installroot/netboot/$osver/$arch/$profile/rootimg/root/";
    }
+   unless (  -r <$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc3.d/S??network>) {
+       symlink  "/etc/init.d/network","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc3.d/S10network";
+   }
    open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/rc3.d/S60gettyset");
    print $cfgfile "#!/bin/bash\n"; 
    print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
@@ -503,8 +506,12 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
    print $cfgfile "        FLOWFLAG=\"-h\"\n";
    print $cfgfile "     fi\n";
-   print $cfgfile "     echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
-   print $cfgfile "     init q\n";
+   print $cfgfile "     if [ -x /sbin/initctl ]; then\n"; #Upstart style
+   print $cfgfile "        initctl emit --no-wait fedora.serial-console-available \$COTTY \$COSPEED\n";
+   print $cfgfile "     else\n";
+   print $cfgfile "       echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
+   print $cfgfile "        init q\n";
+   print $cfgfile "     fi\n";
    print $cfgfile "  fi\n";
    print $cfgfile "done\n";
    close($cfgfile);
