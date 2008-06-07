@@ -668,7 +668,30 @@ sub setobjdefs
 
                     # need to check the attrs we are setting for the object
                     #   as well as the attrs for this object that may be
-                   #   already set in DB
+                   	#   already set in DB
+
+					if ( !($objhash{$objname}{$check_attr})  && !($DBattrvals{$objname}{$check_attr}) ) {
+                        # if I didn't already check for this attr
+                        # if ($::VERBOSE) {
+                        my $rsp;
+                        if (!grep(/^$attr_name$/, @checkedattrs)) {
+                            push @{$rsp->{data}}, "Cannot set the \'$attr_name\' attribute unless a value is provided for \'$check_attr\'.\n";
+
+                            foreach my $tmp_attr (@{$datatype->{'attrs'}}) {
+                                my $attr = $tmp_attr->{attr_name};
+                                if ($attr eq $check_attr) {
+                                    my ($tab, $at) = split(/\./, $tmp_attr->{tabentry});
+                                    my $schema = xCAT::Table->getTableSchema($tab);
+                                    $desc = $schema->{descriptions}->{$at};
+                                    push @{$rsp->{data}}, "$check_attr => $desc\n";
+                                }
+                            }
+                        }
+						xCAT::MsgUtils->message("I", $rsp, $::callback);
+                       # }
+						push(@checkedattrs, $attr_name);
+                        next;
+                    }
 
 					if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr}  =~ /\b$check_value\b/) )
                     {
