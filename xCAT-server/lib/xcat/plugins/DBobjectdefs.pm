@@ -1846,6 +1846,11 @@ sub setFINALattrs
                 }
 
             }
+			# need to make sure the node attr is set otherwise nothing 
+			#	gets set in the nodelist table
+			if ($::FINALATTRS{$objname}{objtype} eq "node") {
+				$::FINALATTRS{$objname}{node} = $objname;
+			}
         }
     }
 
@@ -1871,6 +1876,11 @@ sub setFINALattrs
 
             }
 
+        }
+		# need to make sure the node attr is set otherwise nothing 
+		#   gets set in the nodelist table
+		if ($::FINALATTRS{$objname}{objtype} eq "node") {
+            $::FINALATTRS{$objname}{node} = $objname;
         }
     }
 
