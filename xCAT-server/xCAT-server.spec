@@ -19,10 +19,10 @@ BuildArch: noarch
 Requires: perl-IO-Socket-SSL perl-XML-Simple
 %endif
 
-Requires: perl-xCAT = %{version}
-Requires: xCAT-client  = %{version}
+Requires: perl-xCAT = %{epoch}:%{version}
+Requires: xCAT-client  = %{epoch}:%{version}
 
-Provides: xCAT-server = %{version}
+Provides: xCAT-server = %{epoch}:%{version}
 
 %description
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
