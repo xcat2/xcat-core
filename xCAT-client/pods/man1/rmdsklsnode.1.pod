@@ -1,0 +1,87 @@
+=head1 NAME
+ 
+B<rmdsklsnode> - Use this xCAT command to remove AIX/NIM diskless machine definitions. 
+
+=head1 SYNOPSIS
+
+B<rmdsklsnode [-h | --help ]>
+
+B<rmdsklsnode [-V] [-f|--force] [-i image_name] noderange> 
+
+=head1 DESCRIPTION
+
+Use this command to remove all NIM machine names that were created for the specified xCAT nodes. 
+
+The xCAT node definitions will not be removed.
+
+The default is to assume that the NIM machine names are the same as the xCAT node names.  If you had used the "-n" option when you created the NIM machine definitions with the mkdsklsnode command then the NIM machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used. 
+
+Use the xCAT rmdef command to remove xCAT node definitions.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-f |--force>
+
+Use the force option to stop and remove running nodes. This handles the situation where a NIM machine definition indicates that a node is still running even though it is not.  
+
+=item B<-h |--help>
+
+Display usage message.
+
+=item B<-i image_name>
+
+The name of an xCAT image definition.
+
+=item B<noderange>
+
+A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
+
+=item B<-V |--verbose>
+
+Verbose mode.
+
+=back
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0 
+
+The command completed successfully.
+
+=item 1 
+
+An error has occurred.
+
+=back
+
+=head1 EXAMPLES
+
+1) Remove the NIM machine definition for the xCAT node named "node01".
+
+B<mkdsklsnode node01>
+
+2) Remove the NIM machine definition for xCAT node "node02" and the image "61cosi". (i.e. NIM machine name "node02_61cosi".)
+
+B<mkdsklsnode -i 61cosi node02>
+
+3) Remove the NIM definitions for all xCAT nodes in the group "aixnodes". Remove the NIM definitions even if the NIM node state is set to "currently running".
+
+B<mkdsklsnode -f aixnodes>
+
+=head1 FILES
+
+/opt/xcat/bin/rmdsklsnode
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+=head1 SEE ALSO 
+
+mkdsklsnode(1) 
+
+

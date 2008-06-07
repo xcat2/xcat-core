@@ -1,0 +1,131 @@
+=head1 NAME
+ 
+B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless machines. 
+
+=head1 SYNOPSIS
+
+B<mkdsklsnode [-h|--help ]>
+
+B<mkdsklsnode [-V] [-f|--force] [-n|--newname] [-i osimage_name] noderange [attr=val [attr=val ...]]> 
+
+=head1 DESCRIPTION
+
+This xCAT command can be used to define and/or initialize AIX/NIM diskless machines. Once this step is completed the xCAT rnetboot command may be used to initiate a network boot of the nodes.
+	
+The command can be used to define and initialize a new NIM machine object or it may be used to reinitialize an existing machine to use a different operating system image.
+
+When creating a new NIM machine definition the default is to use the same name as the xCAT node name that is provided. 
+
+You can use the "-n" option of the mkdsklsnode command to create and initialize an alternate NIM machine definition for the same physical nodes. This option allows you to set up a new image to use when a node is next rebooted while the node is currently running.  This is possible because the NIM name for a machine definition does not have to be the hostname of the node.  This allows you to have multiple NIM machine definitions for the same physical node. The naming convention for the new NIM machine name is "<xcat_node_name>_<image_name>", (Ex. "node01_61spot"). Since all the NIM initialization can be done while the node is running the downtime for for the node is reduced to the time it takes to reboot. 
+
+You can use the force option to reinitialize a node if it already has resources allocated or it is in the wrong NIM state. This option will reset the NIM node and deallocate resources before reinititializing. Use this option with caution since reinitializing a node will stop the node if it is currently running.
+
+After the mkdsklsnode command completes you can use the lsnim command to check the NIM node definition to see if it is ready for booting the node. ("lsnim -l <nim_node_name>").
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<attr=val [attr=val ...]>
+
+Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
+val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands.
+
+Valid values:
+
+=over 3
+
+=item B<duplex>	
+
+Specifies the duplex setting (optional). Used when defining the NIM machine. Use this setting to configure the client's network interface. This value can be full or half. The default is full. (ex. "duplex=full")
+
+=item B<speed>	
+
+Specifies the speed setting (optional). Used when defining the NIM machine. This is the communication speed to use when configuring the client's network interface. This value can be 10, 100, or 1000. The default is 100. (ex. "speed=100")
+
+=item B<psize>	
+
+Specifies the size in Megabytes of the paging space for the diskless node.(optional) Used when initializing the NIM machine. The minimum and default size is 64 MB of paging space. (ex. "psize=64")
+
+=back
+
+=item B<-f |--force>
+
+Use the force option to reinitialize the NIM machines.  
+
+=item B<-h |--help>
+
+Display usage message.
+
+=item B<-i image_name>
+
+The name of an existing xCAT osimage definition. If this information is not provided on the command line the code checks the node definition for the value of the "profile" attribute. If the "-i" value is provided on the command line then that value will be used to set the "profile" attribute of the node definiions.
+
+=item B<-n|--newname>
+
+Create a new NIM machine object name for the xCAT node. Use the naming convention "<xcat_node_name>_<image_name>" for the new NIM machine definition.
+
+=item B<noderange>
+
+A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
+
+=item B<-V |--verbose>
+
+Verbose mode.
+
+=back
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0 
+
+The command completed successfully.
+
+=item 1 
+
+An error has occurred.
+
+=back
+
+=head1 EXAMPLES
+
+1) Initialize an xCAT node named "node01" as an AIX diskless machine.  The xCAT osimage named "61spot" should be used to boot the node.
+
+=over 5
+
+B<mkdsklsnode -i 61spot node01>
+
+=back
+
+2) Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "next_image" attribute of the xCAT node definitions.
+
+=over 5
+
+B<mkdsklsnode aixnodes>
+
+=back
+
+
+3) Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
+
+=over 5
+
+B<mkdsklsnode -n -i 61spot node02>
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/mkdsklsnode
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+=head1 SEE ALSO 
+
+rmdsklsnode(1) 
+
+

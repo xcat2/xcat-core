@@ -1,0 +1,69 @@
+=head1 NAME
+ 
+B<rmnimimage> - Use this xCAT command to remove an xCAT osimage definition and the associated NIM resources. 
+
+=head1 SYNOPSIS
+
+B<rmnimimage [-h | --help ]>
+
+B<rmnimimage [-V] osimage_name> 
+
+=head1 DESCRIPTION
+
+Use this xCAT command to remove all the AIX resource definitions included in the xCAT osimage definition as well as the xCAT image definition.
+
+This command will not remove NIM resources if they are currently allocated.  Remove NIM machines and deallocate resources before running this command.
+
+To list the contents of the xCAT image definition use the xCAT lsdef command ("lsdef -t osimage -l -o <osimage_name>").
+
+See the AIX NIM documentation for details on how to deallocate and remove unwanted NIM objects.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-h |--help>
+
+Display usage message.
+
+=item B<osimage_name>
+
+The name of the xCAT osimage definition.
+
+=item B<-V |--verbose>
+
+Verbose mode.
+
+=back
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0 
+
+The command completed successfully.
+
+=item 1 
+
+An error has occurred.
+
+=back
+
+=head1 EXAMPLES
+
+1) Remove all the NIM resources associated with the xCAT image definition named "53cosi".
+
+B<rmnimimage 53cosi>
+
+=head1 FILES
+
+/opt/xcat/bin/rmnimimage
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+=head1 SEE ALSO 
+
+mknimimage(1) 
