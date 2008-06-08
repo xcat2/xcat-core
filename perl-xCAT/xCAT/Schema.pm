@@ -264,7 +264,7 @@ nodetype => {
   node => 'The node name or group name.',
   os => 'The operating system deployed on this node.  Valid values: rh*, centos*, fedora*, sles* (where * is the version #).',
   arch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
-  profile => 'The kickstart or autoyast template to use for OS deployment of this node.',
+  profile => 'Either the name of an xCAT osimage definition or a pointer to a kickstart or autoyast template to use for OS deployment of this node.',
   nodetype => 'A comma-delimited list of characteristics of this node.  Valid values: blade, vm (virtual machine), lpar, osi (OS image), hmc, fsp, ivm, bpa, mm, rsa, switch.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -284,17 +284,18 @@ notification => {
  },
   },
 osimage  => {
- cols => [qw(imagename osname osvers osdistro osarch comments disable)],
+ cols => [qw(imagename imagetype osname osvers osdistro osarch comments disable)],
  keys => [qw(imagename)],
-    table_desc => 'Not used yet!  All the info that specifies a particular operating system image that can be used on nodes.',
+    table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
  descriptions => {
-  imagename => 'User given name of the OS image.',
-  osname => '',
-  osvers => '',
-  osdistro => '',
-  osarch => '',
-     comments => 'Any user-written notes.',
-     disable => "Set to 'yes' or '1' to comment out this row.",
+  imagename => 'User provided name of this xCAT OS image definition.',
+  imagetype => 'The type of operating system image this definition represents.',
+  osname => 'Operating system name- AIX or Linux.',
+  osvers => 'Not used.',
+  osdistro => 'Not used.',
+  osarch => 'Not used.',
+  comments => 'Any user-written notes.',
+  disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
 passwd => {
@@ -459,8 +460,28 @@ vpd => {
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
+nim  => {
+ cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group comments disable)],
+ keys => [qw(imagename)],
+    table_desc => 'All the info that specifies a particular AIX operating system image that can be used to deploy AIX nodes.',
+ descriptions => {
+  imagename => 'User provided name of this xCAT OS image definition.',
+  nimtype => 'The NIM client type- standalone, diskless, or dataless.',
+  lpp_source => 'The name of the NIM lpp_source resource.',
+  spot => 'The name of the NIM SPOT resource.',
+  root => 'The name of the NIM root resource.',
+  dump => 'The name of the NIM dump resource.',
+  paging => 'The name of the NIM paging resource.',
+  resolv_conf  => 'The name of the NIM resolv_conf resource.',
+  tmp => 'The name of the NIM tmp resource.',
+  home => 'The name of the NIM home resource.',
+  shared_home => 'The name of the NIM shared_home resource.',
+  res_group => 'The name of a NIM resource group.',
+  comments => 'Any user-written notes.',
+  disable => "Set to 'yes' or '1' to comment out this row.",
+ },
+  },
 );        # end of tabspec definition
-
 
 
 ####################################################
@@ -600,17 +621,6 @@ my @nodeattrs = (
                  tabentry => 'noderes.netboot',
                  access_tabentry => 'noderes.node=attr:node',
   },
-        {attr_name => 'current_osimage',
-                 only_if => 'nodetype=osi',
-                 tabentry => 'noderes.current_osimage',
-                 access_tabentry => 'noderes.node=attr:node',
-  },
-        {attr_name => 'next_osimage',
-                 only_if => 'nodetype=osi',
-                 tabentry => 'noderes.next_osimage',
-                 access_tabentry => 'noderes.node=attr:node',
-  },
-
 ######################
 #  nodetype table    #
 ######################
@@ -618,8 +628,6 @@ my @nodeattrs = (
                  tabentry => 'nodetype.arch',
                  access_tabentry => 'nodetype.node=attr:node',
   },
-# TODO:  need to decide what to do with the os attr once the osimage stuff is
-#        implemented.  The nodetype.os attr may be moved to the osimage table.
         {attr_name => 'os',
  #                only_if => 'nodetype=osi',
                  tabentry => 'nodetype.os',
@@ -934,46 +942,69 @@ my @nodeattrs = (
 # add on the node attrs from other tables
 push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
 
-
 #########################
 #  osimage data object  #
 #########################
-#     osimage table     #
-#########################
-###
-# TODO:  The osimage table is currently not used by any xCAT code.
-#        Need full implementation
-###
 @{$defspec{osimage}->{'attrs'}} = (
-        {attr_name => 'imagename',
+ {attr_name => 'imagename',
                  tabentry => 'osimage.imagename',
                  access_tabentry => 'osimage.imagename=attr:imagename',
-#                 description => 'The name of this operating system image.'},
                  },
- {attr_name => 'osdistro',
-                 tabentry => 'osimage.osdistro',
+ {attr_name => 'imagetype',
+                 tabentry => 'osimage.imagetype',
                  access_tabentry => 'osimage.imagename=attr:imagename',
-#                 description => 'The Linux distribution name to be deployed. The valid values are RedHat, and SLES.'},
                  },
-        {attr_name => 'osname',
+ {attr_name => 'nimtype',
+                 tabentry => 'nim.nimtype',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'osname',
                  tabentry => 'osimage.osname',
                  access_tabentry => 'osimage.imagename=attr:imagename',
-#                description => 'The name of the operating system to be deployed. The expected values are AIX or Linux.'},
                  },
- {attr_name => 'osvers',
-                 tabentry => 'osimage.osvers',
-                 access_tabentry => 'osimage.imagename=attr:imagename',
-#                 description => 'The operating system version to be deployed. The formats for the values are "version.release.mod" for AIX and "version" for Linux. (ex. AIX: "5.3.0", Linux: "5").'},
+ {attr_name => 'lpp_source',
+                 tabentry => 'nim.lpp_source',
+                 access_tabentry => 'nim.imagename=attr:imagename',
                  },
- {attr_name => 'osarch',
-                 tabentry => 'osimage.osarch',
-                 access_tabentry => 'osimage.imagename=attr:imagename',
-#                 description => 'The node machine architecture.'},
+ {attr_name => 'spot',
+                 tabentry => 'nim.spot',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'root',
+                 tabentry => 'nim.root',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'dump',
+                 tabentry => 'nim.dump',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'paging',
+                 tabentry => 'nim.paging',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'resolv_conf',
+                 tabentry => 'nim.resolv_conf_name',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'tmp',
+                 tabentry => 'nim.tmp',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'home',
+                 tabentry => 'nim.home',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'shared_home',
+                 tabentry => 'nim.shared_home',
+                 access_tabentry => 'nim.imagename=attr:imagename',
+                 },
+ {attr_name => 'res_group',
+                 tabentry => 'nim.res_group',
+                 access_tabentry => 'nim.imagename=attr:imagename',
                  },
  {attr_name => 'usercomment',
-                 tabentry => 'osimage.comments',
-                 access_tabentry => 'osimage.imagename=attr:imagename',
-#                description => 'User comment.'},
+                 tabentry => 'nim.comments',
+                 access_tabentry => 'nim.imagename=attr:imagename',
                  },
              );
 
