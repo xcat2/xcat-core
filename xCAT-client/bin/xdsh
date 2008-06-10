@@ -11,6 +11,7 @@ use File::Basename;
 use Getopt::Long;
 require xCAT::MsgUtils;
 require xCAT::DSHCLI;
+use xCAT::Utils;
 require xCAT::Client;
 my $bname = basename($0);
 
@@ -190,7 +191,9 @@ sub parse_args_xdsh
     }
     if ($options{'version'})
     {
-        xCAT::MsgUtils->message("I", "Version 2.0\n");
+        my $version = xCAT::Utils->Version();
+        xCAT::MsgUtils->message("I", $version);
+        #xCAT::Utils->isLinux();
         exit 0;
     }
     if ($options{'node-rsh'})        # if set on command line, use it
