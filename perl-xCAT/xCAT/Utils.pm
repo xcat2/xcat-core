@@ -205,6 +205,30 @@ sub isLinux
 
 #-------------------------------------------------------------------------------
 
+=head3   Version 
+    Arguments:
+        none
+    Returns:
+       xcat Version number 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         $version=xCAT::Utils->Version();
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub Version
+{
+    my $version = "Version 2.1\n"; 
+    return $version; 
+}
+
+#-------------------------------------------------------------------------------
+
 =head3    make_node_list_file
 
         Makes a node list file.
@@ -2337,5 +2361,24 @@ sub isMounted
     }
     return 0;
 }
+#-------------------------------------------------------------------------------
 
+=head3   Version 
+    Returns the Version of the release, to be used for the version flag on 
+    each command 
+    Arguments:
+        None 
+    Returns:
+        version number 
+    Globals:
+        none
+    Error:
+    Example:
+        my $version= xCAT::Version();
+#-------------------------------------------------------------------------------
+sub Version 
+{
+my $version="Version 2.1";
+    return $version;
+}
 1;
