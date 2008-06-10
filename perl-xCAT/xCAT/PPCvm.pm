@@ -456,13 +456,15 @@ sub clone {
     #####################################
     foreach my $cfg ( @cfgdata ) {
         $cfg =~ s/^name=([^,]+|$)/profile_name=$1/;
-        $cfg =~ s/lpar_name=/name=/;
-        $cfg = strip_profile( $cfg, $hwtype);
+        my $profile = $1;
+
+        $cfg =~ s/\blpar_name=([^,]+|$)/name=$1/;
         my $name = $1;
 
+        $cfg = strip_profile( $cfg, $hwtype);
         $cfg =~ /lpar_id=([^,]+)/;
         $lparid = $1;
-
+    
         #################################
         # Create new LPAR  
         #################################
@@ -477,10 +479,13 @@ sub clone {
         # Success - add LPAR to database 
         #################################
         if ( $Rc == SUCCESS ) {
-            my $err = xCATdB( "mkvm", $srcd, $lparid, $name, $hwtype );
+            my $newname = $dest."_".$name;
+            my $err = xCATdB( 
+               "mkvm", $newname, $profile, $lparid, $srcd, $hwtype, $name );
+
             if ( defined( $err )) {
-                push @values, [$err, RC_ERROR]; 
-            } 
+                push @values, [$err, RC_ERROR];
+            }
             next;
         }
         #################################
@@ -807,23 +812,27 @@ sub create {
     #####################################
     my $id   = $opt->{i};
     my $cfgdata = strip_profile( @$prof[0], $hwtype );
-
+    
+    #####################################
+    # Set profile name for all LPARs
+    #####################################
+    if ( $hwtype eq "hmc" ) {
+        $cfgdata =~ s/^name=([^,]+|$)/profile_name=$1/;
+        $profile = $1;
+        $cfgdata =~ s/lpar_name=/name=/;
+    }
+ 
     foreach my $name ( @{$opt->{n}} ) {
+
         #################################
-        # Modify read-back profile. 
-        # See HMC or IVM mksyscfg man  
+        # Modify read-back profile.
+        # See HMC or IVM mksyscfg man
         # page for valid attributes.
         #
         #################################
-        if ( $hwtype eq "hmc" ) {
-            $cfgdata =~ s/^name=[^,]+|$/profile_name=$name/;
-            $cfgdata =~ s/lpar_name=[^,]+|$/name=$name/;
-            $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
-        }
-        elsif ( $hwtype eq "ivm" ) {
-            $cfgdata =~ s/^name=[^,]+|$/name=$name/;
-            $cfgdata =~ s/lpar_id=[^,]+|$/lpar_id=$id/;
-        }
+        $cfgdata =~ s/\blpar_id=[^,]+|$/lpar_id=$id/;
+        $cfgdata =~ s/\bname=[^,]+|$/name=$name/;
+
         #################################
         # Create new LPAR  
         #################################
@@ -834,7 +843,7 @@ sub create {
         # Add new LPAR to database 
         #################################
         if ( $Rc == SUCCESS ) {
-            my $err = xCATdB( "mkvm", $name, $id, $d, $hwtype, $lpar );
+            my $err = xCATdB( "mkvm", $name, $profile, $id, $d, $hwtype, $lpar );
             if ( defined( $err )) {
                 push @values, [$name,$err,RC_ERROR];
                 $id++;
@@ -865,6 +874,7 @@ sub strip_profile {
         $cfgdata =~ s/,*\"virtual_serial_adapters=[^\"]+\"//;
         $cfgdata =~ s/,*electronic_err_reporting=[^,]+|$//;
         $cfgdata =~ s/,*shared_proc_pool_id=[^,]+|$//;
+        $cfgdata =~ s/,*lpar_proc_compat_mode=[^,]+|$//;
         $cfgdata =~ s/\"/\\"/g;
         $cfgdata =~ s/\n//g;
         return( $cfgdata );
@@ -894,6 +904,7 @@ sub xCATdB {
 
     my $cmd     = shift;
     my $name    = shift;
+    my $profile = shift;
     my $lparid  = shift;
     my $d       = shift;
     my $hwtype  = shift;
@@ -909,11 +920,13 @@ sub xCATdB {
     # Add entry 
     #######################################
     else {
-        my ($model,$serial) = split /\*/,@$d[2]; 
-        my $pprofile = $name;
-        my $server   = @$d[3]; 
+        if ( !defined( $profile )) {
+            $profile = $name;
+        }
+        my ($model,$serial) = split /\*/,@$d[2];
+        my $server   = @$d[3];
         my $fsp      = @$d[2];
-
+ 
         ###################################
         # Find FSP name in ppc database
         ###################################
@@ -946,7 +959,7 @@ sub xCATdB {
                 $model,
                 $serial,
                 $server,
-                $pprofile,
+                $profile,
                 $ent->{parent} ); 
         
         return( xCAT::PPCdb::add_ppc( $hwtype, [$values] )); 
