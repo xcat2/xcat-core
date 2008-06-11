@@ -761,6 +761,7 @@ sub create {
     my $lparid;
     my $mtms;
     my $type;
+    my $profile;
 
     #####################################
     # Get source node information
