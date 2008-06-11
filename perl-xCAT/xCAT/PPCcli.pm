@@ -270,7 +270,7 @@ sub chsyscfg {
     # Command only support on LPARs 
     #####################################
     if ( @$d[4] ne "lpar" ) {
-        return( [RC_ERROR,"Command not supported"] );
+        return( [RC_ERROR,"Command not supported on '@$d[4]'"] );
     }
     #####################################
     # Format command based on CEC name
@@ -298,7 +298,7 @@ sub mksyscfg {
     # Command only support on LPARs 
     #####################################
     if ( @$d[4] ne "lpar" ) {
-        return( [RC_ERROR,"Command not supported"] );
+        return( [RC_ERROR,"Command not supported on '@$d[4]'"] );
     }
     #####################################
     # Format command based on CEC name
@@ -325,7 +325,7 @@ sub rmsyscfg {
     # Command only supported on LPARs 
     #####################################
     if ( @$d[4] ne "lpar" ) {
-        return( [RC_ERROR,"Command not supported"] );
+        return( [RC_ERROR,"Command not supported on '@$d[4]'"] );
     }
     #####################################
     # Format command based on CEC name
@@ -445,7 +445,7 @@ sub mkvterm {
     ##########################################
     my $cmd = sprintf( $mkvt{$hwtype}, $lparid, $mtms );
     if ( $type ne "lpar" ) {
-        return( [RC_ERROR,"Command not supported"] );
+        return( [RC_ERROR,"Command not supported on '$type'"] );
     }
     ##########################################
     # For IVM, console sessions must explicitly
@@ -627,7 +627,7 @@ sub lpar_netboot {
     # Command only supported on LPARs
     #####################################
     if ( @$d[4] ne "lpar" ) {
-        return( [RC_ERROR,"Command not supported"] );
+        return( [RC_ERROR,"Command not supported on '@$d[4]'"] );
     }
     #####################################
     # Network specified (-D ping test)
@@ -810,6 +810,36 @@ sub mkauthkeys {
 
 
 ##########################################################################
+# List Licensed Internal Code levels on HMC for FSP/BPAs
+##########################################################################
+sub lslic {
+
+    my $exp = shift;
+    my $d   = shift;
+    my $cmd = "lslic ";
+
+    #####################################
+    # Command only support on CEC/BPAs
+    #####################################
+    if ( @$d[4] !~ /^(fsp|bpa)$/ ) {
+        return( [RC_ERROR,"Command not supported on '@$d[4]'"] );
+    }
+    #####################################
+    # Format command based on name
+    #####################################
+    $cmd.= (@$d[4] =~ /^fsp$/) ? "-t sys -m " : "-t power -e ";
+    $cmd.= @$d[2];
+
+    #####################################
+    # Send command
+    #####################################
+    my $result = send_cmd( $exp, $cmd );
+    return( $result );
+
+}
+
+
+##########################################################################
 # Sends command and waits for response 
 ##########################################################################
 sub send_cmd {
@@ -949,6 +979,7 @@ sub power_cmd {
 
 
 1;
+
 
 
 
