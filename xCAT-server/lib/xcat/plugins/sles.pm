@@ -645,7 +645,7 @@ sub copycd
        close($kid);
        $rc = $?;
     } else {
-        my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
+        my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch/$discnumber";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
            $callback->({error => "Media copy operation fork failure"});
 	push @cpiopid, $k2;
