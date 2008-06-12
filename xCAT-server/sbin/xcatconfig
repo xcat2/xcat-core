@@ -452,7 +452,7 @@ if ((!-r $pubfile) || $::FORCE)
                 );
         }
 
-        # allows node be able to scp to the MN
+        # allows node be able to scp to the MN  only for AIX
         my $cmd = "/bin/cat $pubfile >>  /.ssh/authorized_keys";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
@@ -632,7 +632,7 @@ if ((!-r "/etc/xcat/site.sqlite") || $::FORCE)
     if ($::osname eq 'AIX')
     {
         $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=remoteshell site.value=/bin/rsh;";
+          "$::XCATROOT/sbin/chtab key=useSSHonAIX site.value=no;";
     }
 
     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
@@ -646,12 +646,21 @@ if ((!-r "/etc/xcat/site.sqlite") || $::FORCE)
     }
 }
 
-# create default postscript list in postscripts table
+# create default postscript list in postscripts table 
 if ((!-r "/etc/xcat/postscripts.sqlite") || $::FORCE)
 {
     my $chtabcmds;
-    $chtabcmds =
-      "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,,remoteshell';";
+    if ($::osname eq 'AIX')
+    {
+       $chtabcmds =
+         "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,aixremoteshell';";
+    }
+    else
+    {
+       $chtabcmds =
+         "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell';";
+    }
+
     $chtabcmds .=
       "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode';";
 
