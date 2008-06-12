@@ -452,20 +452,23 @@ if ((!-r $pubfile) || $::FORCE)
                 );
         }
 
-        # allows node be able to scp to the MN  only for AIX
-        my $cmd = "/bin/cat $pubfile >>  /.ssh/authorized_keys";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
+       if ($::osname eq 'AIX')
+       {
+          # allows node be able to scp to the MN  only for AIX
+          my $cmd = "/bin/cat $pubfile >>  /.ssh/authorized_keys";
+          my $outref = xCAT::Utils->runcmd("$cmd", 0);
+          if ($::RUNCMD_RC != 0)
+          {
             xCAT::MsgUtils->message('E',
                           "Could not cat $pubfile to /.ssh/authorized_keys.\n");
-        }
-        else
-        {
+          }
+          else
+          {
             xCAT::MsgUtils->message('I',
                                   "Added $pubfile to /.ssh/authorized_keys.\n");
             chmod 0600, "/.ssh/authorized_keys";
-        }
+          }
+       }
     }
 }
 
