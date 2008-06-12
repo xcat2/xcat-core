@@ -1,0 +1,171 @@
+#!/usr/bin/env perl -w
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#
+#   xCAT post script for AIX nodes
+#
+#####################################################
+
+use File::Path;
+use IO::Socket;
+
+# since we don't have syslog set up yet we'll
+# just save msgs in a local log file
+$logdir = "/var/log/xcat";
+
+if (!-d $logdir) {
+	mkpath($logdir);
+}
+
+$::sdate = `/bin/date`;
+chomp $sdate;
+my $logfile = $logdir . "/xcat.log";
+
+# this log should not contain much so it might be ok to let it grow?
+# at least we'll have the errors preserved
+open(LOGFILE,">>",$logfile);
+$::LOG_FILE = \*LOGFILE;
+
+# get hostname
+$::shorthost = `hostname -s`;
+chomp $::shorthost;
+
+# get the name of my service node/NIM master from the /etc/niminfo file
+if (-f "/etc/niminfo") {
+    $cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
+    &runcmd($cmd);
+    my $SNline = $::outref;
+	my $junk;
+    ($junk, $servnode) =  split(/=/, $SNline);
+    $servnode =~ s/^\s*//;
+    chomp $servnode;
+
+} else {
+	print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
+    print $::LOG_FILE "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
+	close($::LOG_FILE);
+    exit 1;
+}
+
+# create the xcatpost dir
+my $cmd = "mkdir -p /xcatpost";
+if (&runcmd($cmd) != 0) {
+	print "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
+	print $::LOG_FILE "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
+	close($::LOG_FILE);
+	exit 1;
+}
+
+# get the contents of the /install/postscripts dir on the server
+my $rcpcmd = "rcp -r $servnode:/install/postscripts/* /xcatpost";
+if (&runcmd($rcpcmd) != 0) {
+	print "$::sdate xcataixpost: Could not rcp file from $servnode.\n";
+	print $::LOG_FILE "$::sdate xcataixpost: Could not rcp file from $servnode.\n";
+	close($::LOG_FILE);
+	exit 1;
+}
+
+# request the xCAT postscript for this particular node
+$scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
+if (&getmypost != 0) {
+	print "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
+	print $::LOG_FILE "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
+	close($::LOG_FILE);
+	exit 1;
+}
+
+# make sure all are executable
+my $chcmd = "chmod +x /xcatpost/*";
+if (&runcmd($chcmd) != 0) {
+	print "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
+	print $::LOG_FILE "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
+	close($::LOG_FILE);
+	exit 1;
+}
+
+# check & run the postscript
+if (-f $scriptname)
+{
+	my $rc = system("$scriptname");
+    if ($rc >> 8)
+    {
+		print "$::sdate  xcataixpost: Could not run $scriptname.\n";
+		print $::LOG_FILE "$::sdate  xcataixpost: Could not run $scriptname.\n";
+		close($::LOG_FILE);
+		exit 1;
+    }
+} else {
+	print "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
+	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
+	close($::LOG_FILE);
+    exit 1;
+}
+
+close($::LOG_FILE);
+
+exit 0;
+
+#####################################################
+#
+#   getmypost
+#               Get the xCAT post script info for this node
+#					and write it to a file 
+#
+#####################################################
+sub  getmypost {
+
+	my $port = "3002";
+	
+	my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servnode, PeerPort  => $port, );
+
+	unless ($remote) { 
+		print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+		print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+		return 1;
+	}
+
+	$remote->autoflush(1);
+	print $remote "getpostscript\n";
+
+	if (!open(POSTSCRIPT, ">$scriptname") ) {
+		print "$::sdate  xcataixpost: Could not open $scriptname.\n";
+		print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n";
+		return 1;
+	}
+
+	my $line;
+	while (defined ($line = <$remote>)) {
+		chomp $line;
+		if ( ($line eq "ready") || ($line eq "done")) {
+			next;
+		}
+		print POSTSCRIPT "$line\n";
+	}
+	close(POSTSCRIPT);
+	close $remote;
+	return 0;
+}
+
+#####################################################
+#
+# run the command
+#
+#####################################################
+sub runcmd
+{
+    my ($cmd) = @_;
+	my $rc=0;
+    $cmd .= ' 2>&1' ;
+    $::outref = [];
+    $::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+			print "$::sdate  xcataixpost: $::outref\n";
+			print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
+        }
+    }
+ return $rc;
+}
