@@ -134,26 +134,12 @@ sub makescript {
 
   }
 
-  # read the remoteshell attributes, if they exist 
-  # default to rsh on AIX and ssh on Linux
-  my $rsh;
-  my $rcp;
-  if (xCAT::Utils->isLinux()) {
-     $rsh = "/usr/bin/ssh";
-     $rcp = "/usr/bin/scp";
-  } else { #AIX
-     $rsh = "/bin/rsh";
-     $rcp = "/bin/rcp";
-  }
+  # read if setup ssh on AIX 
+  my $useSSHonAIX;
   # check for admin input
-  (my $et) = $sitetab->getAttribs({key=>"rsh"},'value');
+  (my $et) = $sitetab->getAttribs({key=>"useSSHonAIX"},'value');
   if ($et and defined($et->{value})) {
-      $rsh = $et->{value};
-
-  }
-  (my $et) = $sitetab->getAttribs({key=>"rcp"},'value');
-  if ($et and defined($et->{value})) {
-      $rcp = $et->{value};
+      $useSSHonAIX = $et->{value};
 
   }
   # set env variable $SITEMASTER for Management Node 
@@ -172,11 +158,9 @@ sub makescript {
     push @scriptd, "export NTPSERVERS\n";
   }
 
-  # export remote shell 
-  push @scriptd, "RSH=".$rsh."\n";
-  push @scriptd, "export RSH\n";
-  push @scriptd, "RCP=".$rcp."\n";
-  push @scriptd, "export RCP\n";
+  # export useSSHonAIX 
+  push @scriptd, "USESSHONAIX=".$useSSHonAIX."\n";
+  push @scriptd, "export USESSHONAIX\n";
 
   my $et = $typetab->getNodeAttribs($node,['os','arch','profile']);
   if ($^O =~ /^linux/i) {
