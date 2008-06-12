@@ -1040,6 +1040,72 @@ sub rmnimimage
 	return 0;
 }
 
+#-------------------------------------------------------------------------
+
+=head3   update_rhosts
+
+   Description
+         - add node entries to the /.rhosts file on the server
+			- AIX only
+
+   Arguments:    None.
+
+   Return Codes: 0 - All was successful.
+                 1 - An error occured.
+=cut
+
+#------------------------------------------------------------------------
+sub update_rhosts 
+{
+	my @nodelist = shift;
+	my $callback = shift;
+
+	my $rhostname ="/.rhosts";
+	my @addnodes;
+
+	# make a list of node entries to add
+	foreach my $node (@nodelist) {
+
+		# get the node IP for the file entry
+		# TODO - need IPv6 update
+		my $IP = inet_ntoa(inet_aton($node));
+		chomp $IP;
+		unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "Could not get valid IP address for node $node.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			next;
+		}
+
+		# is this node already in the file
+		my $entry = "$IP root";
+		my $cmd = "cat $rhostname | grep $IP";
+    	my @result = xCAT::Utils->runcmd("$cmd", -1);
+    	if ($::RUNCMD_RC == 0)
+    	{
+        	# it's already there so next
+        	next;
+    	}
+		push @addnodes, $entry;
+	}
+
+	if (defined(@addnodes)) {
+		# add the new entries to the file
+    	unless (open(RHOSTS, ">>$rhostname")) {
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not open $rhostname for appending.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return 1;
+    	}
+		foreach (@addnodes) {
+    		print RHOSTS $_ . "\n";
+		}
+
+    	close (RHOSTS);
+	}
+    return 0;
+}
 
 #-------------------------------------------------------------------------
 
@@ -1062,10 +1128,10 @@ sub update_inittab
 
 	my $spotinittab = "$::spot_loc/lpp/bos/inst_root/etc/inittab";
 
-	my $entry = "xcat:2:wait:/opt/xcat/xcatdsklspost\n";
+	my $entry = "xcat:2:wait:/opt/xcat/xcataixpost\n";
 
-	# see if xcatdsklspost is already in the file
-	my $cmd = "cat $spotinittab | grep xcatdsklspost";
+	# see if xcataixpost is already in the file
+	my $cmd = "cat $spotinittab | grep xcataixpost";
 	my @result = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC == 0)
     {
@@ -1139,7 +1205,7 @@ sub get_nim_attr_val {
 
 #----------------------------------------------------------------------------
 
-=head3  get_spot_loc
+=head3  get_res_loc
 
         Use the lsnim command to find the location of a spot resource.
 
@@ -1157,7 +1223,7 @@ sub get_nim_attr_val {
 =cut
 
 #-----------------------------------------------------------------------------
-sub get_spot_loc {
+sub get_res_loc {
 
 	my $spotname = shift;
 	my $callback = shift;
@@ -1184,6 +1250,128 @@ sub get_spot_loc {
 		}
 	}
 	return undef;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  enoughspace
+
+        See if the NIM root resource has enough space to initialize 
+			another node.  If not try to add space to the FS.
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+
+        Error:
+
+        Example:
+
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub enoughspace {
+
+	my $spotname = shift;
+	my $rootname = shift;
+    my $callback = shift;
+
+	#
+	#  how much space do we need for a root dir?
+	#
+
+    #  Get the SPOT location ( path to ../usr)
+    my $spot_loc = &get_res_loc($spotname, $callback);
+    if (!defined($spot_loc) ) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get the location of the SPOT/COSI named $spot_loc.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	# get the inst_root location
+	# ex. /install/nim/spot/61cosi/61cosi/usr/lpp/bos/inst_root
+	my $spot_root_loc = "$spot_loc/lpp/bos/inst_root";
+
+	# get the size of the SPOTs inst_root dir (ex. 50.45 MB)
+	#	 i.e. how much space is used/needed for a new root dir
+	my $ducmd = "/usr/bin/du -sm $spot_root_loc | /usr/bin/awk '{print \$1}'";
+
+	my $inst_root_size;
+	$inst_root_size = xCAT::Utils->runcmd("$ducmd", -1);
+	if ($::RUNCMD_RC  != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not run: \'$ducmd\'\n";
+		if ($::VERBOSE) {
+			push @{$rsp->{data}}, "$inst_root_size";
+		}
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	#
+	#  see how much free space we have in the root res location
+	#
+
+	#  Get the root res location 
+	#  ex. /export/nim/root
+    my $root_loc = &get_res_loc($rootname, $callback);
+    if (!defined($root_loc) ) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get the location of the SPOT/COSI named $root_loc.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	# get free space 
+	# ex. 1971.06 (Free MB)
+	my $dfcmd = qq~/usr/bin/df -m $root_loc | /usr/bin/awk '(NR==2){print \$3":"\$7}'~;
+
+	my $output;
+    $output = xCAT::Utils->runcmd("$dfcmd", -1);
+    if ($::RUNCMD_RC  != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not run: \'$dfcmd\'\n";
+        if ($::VERBOSE) {
+            push @{$rsp->{data}}, "$output";
+        }
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	my ($root_free_space, $FSname) = split(':', $output);
+
+#print "inst_root_size = $inst_root_size, root_free_space= $root_free_space FSname = \'$FSname\'\n";
+
+	#
+	#  see if we need to increase the size of the fs
+	#
+	if ( $inst_root_size >= $root_free_space) {
+		# try to increase the size of the root dir
+		my $addsize = $inst_root_size+10;
+		my $sizeattr = "-a size=+$addsize" . "M";
+		my $chcmd = "/usr/sbin/chfs $sizeattr $FSname";
+
+#print "chcmd = \'$chcmd\'\n";
+
+		my $output;
+		$output = xCAT::Utils->runcmd("$chcmd", -1);
+		if ($::RUNCMD_RC  != 0)
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "Could not run: \'$chcmd\'\n";
+			if ($::VERBOSE) {
+				push @{$rsp->{data}}, "$output";
+			}
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -1297,7 +1485,7 @@ sub updatespot {
 	#
 	#  Get the SPOT location ( path to ../usr)
 	#
-	$spot_loc = &get_spot_loc($spot_name, $callback);
+	$spot_loc = &get_res_loc($spot_name, $callback);
 	if (!defined($spot_loc) ) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not get the location of the SPOT/COSI named $spot_loc.\n";
@@ -1350,17 +1538,17 @@ sub updatespot {
 	}
 
 	#
-	# Copy the xcatdsklspost script to the SPOT/COSI and add an entry for it
+	# Copy the xcataixpost script to the SPOT/COSI and add an entry for it
 	#	to the /etc/inittab file
 	#
 	if ($::VERBOSE) {
 		my $rsp;
-		push @{$rsp->{data}}, "Adding xcatdsklspost script to the image.\n";
+		push @{$rsp->{data}}, "Adding xcataixpost script to the image.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
 	# copy the script
-	my $cpcmd = "mkdir -m 644 -p $spot_loc/lpp/bos/inst_root/opt/xcat; cp /install/postscripts/xcatdsklspost $spot_loc/lpp/bos/inst_root/opt/xcat/xcatdsklspost";
+	my $cpcmd = "mkdir -m 644 -p $spot_loc/lpp/bos/inst_root/opt/xcat; cp /install/postscripts/xcataixpost $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost";
 
 	if ($::VERBOSE) {
 		my $rsp;
@@ -1378,12 +1566,12 @@ sub updatespot {
     }	
 
 	# add an entry to the /etc/inittab file in the COSI/SPOT
-#	if (&update_inittab($callback) != 0) {
-#		my $rsp;
-#        push @{$rsp->{data}}, "Could not update the /etc/inittab file in the SPOT.\n";
-#        xCAT::MsgUtils->message("E", $rsp, $callback);
-#        return 1;
-#	}
+	if (&update_inittab($callback) != 0) {
+		my $rsp;
+        push @{$rsp->{data}}, "Could not update the /etc/inittab file in the SPOT.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+	}
 
 	return 0;
 }
@@ -1569,8 +1757,7 @@ sub mkdsklsnode
         }
     }
 
-	# get the node defs
-	# get all the attrs for these definitions
+	# get all the attrs for these node definitions
 	foreach my $o (@nodelist)
 	{
 		$objtype{$o} = 'node';
@@ -1595,7 +1782,7 @@ sub mkdsklsnode
 	}
 
 	#
-    #  Get a list of the defined machines
+    #  Get a list of the defined NIM machines
     #
 	my @machines = [];
     my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/nu
@@ -1616,9 +1803,6 @@ ll~;
 	my @nodesfailed;
 	foreach my $node (keys %objhash)
 	{
-
-#print "node = $node\n";
-
 		# get the image name to use for this node
 		# either from cmd line or node def
 		if ($::OSIMAGE){
@@ -1635,10 +1819,7 @@ ll~;
 			$error++;
 			next;
 		}
-
 		chomp $image_name;
-
-#print "image = $image_name\n";
 
 		# get the osimage definition
 		#  getobjdefs does caching
@@ -1655,13 +1836,13 @@ ll~;
 			next;
 		}
 
+		# set the NIM machine type
 		my $type="diskless";
 		if ($imagehash{$image_name}{nimtype} ) {
 			$type = $imagehash{$image_name}{nimtype};
 		}
 		chomp $type;
 		
-
 		# generate new NIM client name
 		my $nim_name;
 		if ($::NEWNAME) {
@@ -1676,170 +1857,123 @@ ll~;
 		}
 		chomp $nim_name;
 
-		# need short host name for NIM cmds ???
+		# need short host name for NIM cmds 
         my $nodeshorthost;
         ($nodeshorthost = $node) =~ s/\..*$//;
         chomp $nodeshorthost;
 
-#print "nim_name=$nim_name, nodeshorthost=$nodeshorthost, spot = $imagehash{$image_name}{spot}\n";
+		# 
+		#  define/initialize the new machine
+		#
 
+		# see if it's already defined
+		if (grep(/^$nim_name$/, @machines)) { 
+			if ($::FORCE) {
+				# get rid of the old definition
 
-# ndebug
-		if ($::SWITCH) { # just uninit 
-
-# ndebug
-print "Switch to a new image.  This could take a whaile.\n";
-
-			# uninitialize the node
-			my $resetcmd = "/usr/sbin/nim -Fo reset $nim_name";
-			my $output = xCAT::Utils->runcmd("$resetcmd", -1);
-			if ($::RUNCMD_RC  != 0) {
-				my $rsp;
-				push @{$rsp->{data}}, "Could not reset the existing NIM machine named \'$nim_name\'.\n";
-				if ($::VERBOSE) {
-					push @{$rsp->{data}}, "$output";
+				#  ???? - does remove alone do the deallocate??
+				my $rmcmd = "/usr/sbin/nim -Fo reset $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name;/usr/sbin/nim -Fo remove $nim_name";
+				my $output = xCAT::Utils->runcmd("$rmcmd", -1);
+				if ($::RUNCMD_RC  != 0) {
+					my $rsp;
+					push @{$rsp->{data}}, "Could not remove the existing NIM object named \'$nim_name\'.\n";
+					if ($::VERBOSE) {
+						push @{$rsp->{data}}, "$output";
+					}
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					push(@nodesfailed, $node);
+					next;
 				}
+
+			} else { # no force
+				my $rsp;
+				push @{$rsp->{data}}, "The node \'$node\' is already defined. Use the force option to remove and reinitialize.";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				push(@nodesfailed, $node);
+				$error++;
+				next;
+			}
+
+		} # end already defined
+
+       	# get, check the node IP
+		# TODO - need IPv6 update
+       	my $IP = inet_ntoa(inet_aton($node));
+       	chomp $IP;
+       	unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
+       	{
+			my $rsp;
+			push @{$rsp->{data}}, "Could not get valid IP address for node $node.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			$error++;
+			push(@nodesfailed, $node);
+			next;
+       	}
+
+		# check for required attrs
+		if (($type ne "standalone")) {
+			# mask, gateway, cosi, root, dump, paging
+			if (!$nethash{$node}{'mask'} || !$nethash{$node}{'gateway'} || !$imagehash{$image_name}{spot} || !$imagehash{$image_name}{root} || !$imagehash{$image_name}{dump}) {
+				my $rsp;
+           		push @{$rsp->{data}}, "Missing required information for node \'$node\'.\n";
+           		xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+           		push(@nodesfailed, $node);
+           		next;
+       		}
+		}
+
+		# diskless also needs a defined paging res
+		if ($type eq "diskless" ) {
+			if (!$imagehash{$image_name}{paging} ) {
+				my $rsp;
+				push @{$rsp->{data}}, "Missing required information for node \'$node\'.\n";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
 				$error++;
 				push(@nodesfailed, $node);
 				next;
 			}
+		}	
 
-			my $uncmd = "/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name";
-			my $output = xCAT::Utils->runcmd("$uncmd", -1);
-			if ($::RUNCMD_RC  != 0) {
-				my $rsp;
-				push @{$rsp->{data}}, "Could not deallocate NIM resources for the NIM machine named \'$nim_name\'.\n";
-				if ($::VERBOSE) {
-					push @{$rsp->{data}}, "$output";
-				}
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-				push(@nodesfailed, $node);
-				next;
-			}
+		# set some default values
+		my $speed="100";
+       	my $duplex="full";
+		if ($attrs{duplex}) {
+			$duplex=$attrs{duplex};
+		}
+		if ($attrs{speed}) {
+			$speed=$attrs{speed};
+		}
 
-		} else { # define new machine
+		# define the node 
+		my $defcmd = "/usr/sbin/nim -o define -t $type ";
+		$defcmd .= "-a if1='find_net $nodeshorthost 0' ";
+		$defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
+		$defcmd .= "-a net_definition='ent $nethash{$node}{'mask'} $nethash{$node}{'gateway'}' ";
+		$defcmd .= "-a net_settings1='$speed $duplex' ";
+		$defcmd .= "$nim_name  2>&1";
 
-			# 
-			# otherwise define/initialize the new machine
-			#
+		if ($::VERBOSE) {
+           	my $rsp;
+           	push @{$rsp->{data}}, "Creating NIM node definition.\n";
+           	push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
+           	xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 
-			# see if it's already defined
-			if (grep(/^$nim_name$/, @machines)) { 
-				if ($::FORCE) {
-					# get rid of the old definition
-
-					#  ???? - does remove alone do the deallocate??
-					my $rmcmd = "/usr/sbin/nim -Fo reset $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name;/usr/sbin/nim -Fo remove $nim_name";
-					my $output = xCAT::Utils->runcmd("$rmcmd", -1);
-					if ($::RUNCMD_RC  != 0) {
-						my $rsp;
-						push @{$rsp->{data}}, "Could not remove the existing NIM object named \'$nim_name\'.\n";
-						if ($::VERBOSE) {
-							push @{$rsp->{data}}, "$output";
-						}
-						xCAT::MsgUtils->message("E", $rsp, $callback);
-						$error++;
-						push(@nodesfailed, $node);
-						next;
-					}
-
-				} else { # no force
-					my $rsp;
-					push @{$rsp->{data}}, "The node \'$node\' is already defined. Use the force option to remove and reinitialize.";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					push(@nodesfailed, $node);
-					$error++;
-					next;
-				}
-
-			} else {  # not defined - so define it!
-
-        		# get, check the node IP
-				# TODO - need IPv6 update
-        		my $IP = inet_ntoa(inet_aton($node));
-        		chomp $IP;
-        		unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
-        		{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not get valid IP address for node $node.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-					push(@nodesfailed, $node);
-					next;
-        		}
-
-				# check for required attrs
-				if (($type ne "standalone")) {
-					# mask, gateway, cosi, root, dump, paging
-					if (!$nethash{$node}{'mask'} || !$nethash{$node}{'gateway'} || !$imagehash{$image_name}{spot} || !$imagehash{$image_name}{root} || !$imagehash{$image_name}{dump}) {
-						my $rsp;
-                		push @{$rsp->{data}}, "Missing required information for node \'$node\'.\n";
-                		xCAT::MsgUtils->message("E", $rsp, $callback);
-						$error++;
-                		push(@nodesfailed, $node);
-                		next;
-            		}
-				}
-
-				# diskless also needs a defined paging res
-				if ($type eq "diskless" ) {
-					if (!$imagehash{$image_name}{paging} ) {
-						my $rsp;
-						push @{$rsp->{data}}, "Missing required information for node \'$node\'.\n";
-						xCAT::MsgUtils->message("E", $rsp, $callback);
-						$error++;
-						push(@nodesfailed, $node);
-						next;
-					}
-				}	
-
-				# set some default values
-				my $speed="100";
-            	my $duplex="full";
-				if ($attrs{duplex}) {
-					$duplex=$attrs{duplex};
-				}
-				if ($attrs{speed}) {
-					$speed=$attrs{speed};
-				}
-
-				# increase size of root fs if needed???
-
-				# define the node 
-				my $defcmd = "/usr/sbin/nim -o define -t $type ";
-				$defcmd .= "-a if1='find_net $nodeshorthost 0' ";
-				$defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
-				$defcmd .= "-a net_definition='ent $nethash{$node}{'mask'} $nethash{$node}{'gateway'}' ";
-				$defcmd .= "-a net_settings1='$speed $duplex' ";
-				$defcmd .= "$nim_name  2>&1";
-
-				if ($::VERBOSE) {
-                	my $rsp;
-                	push @{$rsp->{data}}, "Creating NIM node definition.\n";
-                	push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
-                	xCAT::MsgUtils->message("I", $rsp, $callback);
-				}
-
-# ndebug
-#print "defcmd =\'$defcmd\'\n";
-
-            	my $output = xCAT::Utils->runcmd("$defcmd", -1);
-            	if ($::RUNCMD_RC  != 0)
-            	{
-                	my $rsp;
-                	push @{$rsp->{data}}, "Could not create a NIM definition for \'$nim_name\'.\n";
-                	if ($::VERBOSE) {
-                    	push @{$rsp->{data}}, "$output";
-                	}
-                	xCAT::MsgUtils->message("E", $rsp, $callback);
-                	$error++;
-                	push(@nodesfailed, $node);
-                	next;
-            	}
-			} 
-		} # end define new machine
+       	my $output = xCAT::Utils->runcmd("$defcmd", -1);
+       	if ($::RUNCMD_RC  != 0)
+       	{
+           	my $rsp;
+           	push @{$rsp->{data}}, "Could not create a NIM definition for \'$nim_name\'.\n";
+           	if ($::VERBOSE) {
+             	push @{$rsp->{data}}, "$output";
+           	}
+         	xCAT::MsgUtils->message("E", $rsp, $callback);
+           	$error++;
+           	push(@nodesfailed, $node);
+           	next;
+       	}
 
 		#
 		# initialize node
@@ -1869,6 +2003,16 @@ print "Switch to a new image.  This could take a whaile.\n";
 			$arg_string .= "-a shared_home=$imagehash{$image_name}{shared_home} ";
 		}
 
+		#
+		#  make sure we have enough space for the new node root dir
+		#
+		if (&enoughspace($imagehash{$image_name}{spot}, $imagehash{$image_name}{root}, $callback) != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not initialize node \'$node\'\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+
 		my $initcmd;
 		if ( $type eq "diskless") {
 			$initcmd="/usr/sbin/nim -o dkls_init $arg_string $nim_name 2>&1";
@@ -1883,8 +2027,6 @@ print "Switch to a new image.  This could take a whaile.\n";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
 	#	}
 
-# ndebug
-#print "initcmd = \'$initcmd\'\n";
        	my $output = xCAT::Utils->runcmd("$initcmd", -1);
        	if ($::RUNCMD_RC  != 0)
        	{
@@ -1904,6 +2046,7 @@ print "Switch to a new image.  This could take a whaile.\n";
 	my %nodeattrs;
 	if ($::OSIMAGE) {
 		foreach my $node (keys %objhash) {
+			chomp $node;
 			if (!grep(/^$node$/, @nodesfailed)) {
 				# change the node def if we were successful
 				$nodeattrs{$node}{profile} = $image_name;
@@ -1917,11 +2060,19 @@ print "Switch to a new image.  This could take a whaile.\n";
 		}
 	}
 
+	# update the .rhosts file on the server so the rcp from the node works
+	if (&update_rhosts(@nodelist, $callback) != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not update the /.rhosts file.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+		$error++;
+    }
+
 	if ($error) {
 		my $rsp;
 		push @{$rsp->{data}}, "One or more errors occurred when attempting to initialize AIX NIM diskless nodes.\n";
 
-		if ($::VERBOSE) {
+		if ($::VERBOSE && (defined(@nodesfailed))) {
 			push @{$rsp->{data}}, "The following node(s) could not be initialized.\n";
 			foreach my $n (@nodesfailed) {
 				push @{$rsp->{data}}, "$n";
