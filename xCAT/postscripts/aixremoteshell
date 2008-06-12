@@ -10,14 +10,14 @@
 
    This sets up the remote shell for rooton the AIX node,such that root can
    login using with no password. The default is /bin/rsh and
-   /bin/rcp but can be overriden by setting  the rsh and rcp attribute in the
-   site table to another remote shell such as /bin/ssh /bin/scp.
+   /bin/rcp but can be overriden by setting the useSSHonAIX attribute in the 
+   site table to yes, in which case we will use ssh/scp.
 =cut
 
 #-----------------------------------------------------------------------------
 
 #
-#  If rsh=rsh then
+#  If USESSHONAIX does not exist or is no or 0 then
 #     setup .rhosts on the node
 #  else (ssh)
 #     setup the ssh keys on the node
@@ -27,13 +27,9 @@
 use strict;
 my $rc = 0;
 
-# AIX default
-my $remoteshell = "/bin/rsh";
-my $remotecopy  = "/bin/rcp";
 
 # Override from site table
-$remoteshell = $ENV{'RSH'};
-$remotecopy  = $ENV{'RCP'};
+my $usesshonaix = $ENV{'USESSHONAIX'};
 my $master = $ENV{'MASTER'};
 my $node   = $ENV{'NODE'};
 my $msg;
@@ -43,25 +39,26 @@ my $username = "root";
 my @root = split ':', (`/bin/grep ^$username /etc/passwd 2>&1`);
 $home = $root[5];
 
-if (grep /rsh/, $remoteshell)
-{    # setting up rsh
-        # setup .rhosts if not already setup
+$usesshonaix =~ tr/a-z/A-Z/;    # convert to upper
+if ((! defined($usesshonaix)) || ($usesshonaix eq "0") || ($usesshonaix eq "NO"))
+{                               # setting up rsh
+                                # setup .rhosts if not already setup
     $cmd = "/bin/grep \"^$master root\" $home/.rhosts";
     `$cmd 2>&1`;
     my $rc = $? >> 8;
     if ($rc)
-    {    # if not found, then add entry in .rhosts
+    {                           # if not found, then add entry in .rhosts
         &runcmd("/bin/echo $master root >> $home/.rhosts");
         chmod 0600, "$home/.rhosts";
     }
 
 }
 else
-{        # setting up ssh
+{                               # setting up ssh
     my $sshdconfig = "/etc/ssh/sshd_config";
     my $sshconfig  = "/etc/ssh/ssh_config";
     if (-e $sshdconfig)
-    {    # ssh installed
+    {                           # ssh installed
         &runcmd("cp $sshdconfig $sshdconfig.ORIG");
         &runcmd("echo \"KeyRegenerationInterval 0\" >>$sshdconfig");
         &runcmd("echo \"X11Forwarding yes\" >>$sshdconfig");
@@ -71,13 +68,13 @@ else
         &runcmd("echo \"StrictHostKeyChecking no\" >>$sshconfig");
     }
     else
-    {    # ssh not installed
+    {                           # ssh not installed
         my $msg = "Failed to setup ssh on $node, ssh not installed. \n";
         `logger -t xcat $msg`;
         exit 1;
     }
     if (-e "/xcatpost/_ssh")
-    {    # ssh public key available
+    {                           # ssh public key available
         $rc = &runcmd("mkdir -p $home/.ssh");
         if ($rc == 0)
         {
@@ -87,7 +84,7 @@ else
         }
     }
     else
-    {    # ssh keys not available
+    {                           # ssh keys not available
         my $msg = "Failed to setup ssh on $node, ssh keys not available. \n";
         `logger -t xcat $msg`;
         exit 1;
