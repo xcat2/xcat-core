@@ -1656,7 +1656,7 @@ sub isServiceReq
                     my $value = $node->{$service};
                     $value =~ tr/a-z/A-Z/;    # convert to upper
                          # value 1 or yes  then we setup the service
-                    if (($value == 1) || ($value eq "YES"))
+                    if (($value eq "1") || ($value eq "YES"))
                     {
                         return 1;    # found service required for the node
                     }
