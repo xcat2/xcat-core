@@ -244,7 +244,8 @@ sub walkelog {
       if( ${_}->[2] =~ /NOSUCHINSTANCE/) {last;}
       $retmap->{$_->[1]}=$_->[2];
     }
-  } while ($varbind->[31] and $varbind->[31]->[2] != 'NOSUCHINSTANCE' and ($current < 600));
+    @bindlist=();
+  } while ($varbind->[31] and $varbind->[31]->[2] ne 'NOSUCHINSTANCE' and ($current < 2000));
 
   return $retmap;
   print "Count was $current\n";
