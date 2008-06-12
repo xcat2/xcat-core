@@ -412,8 +412,7 @@ site => {
    "  timezone (e.g. America/New_York)\n".
    "  nameservers (comma delimited list of DNS servers for the cluster - often the mgmt node)\n".
    "  ntpservers (comma delimited list of NTP servers for the cluster - often the mgmt node)\n".
-   "  rsh (path of remote shell command)\n".
-   "  rcp (path of remote copy command)\n".
+   "  useSSHonAIX (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX.\n".
    "  blademaxp (max # of processes for blade hw ctrl)\n".
    "  ppcmaxp (max # of processes for PPC hw ctrl)\n".
    "  ipmimaxp (max # of processes for ipmi hw ctrl)\n".
