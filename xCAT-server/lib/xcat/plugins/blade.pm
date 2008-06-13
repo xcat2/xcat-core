@@ -1273,7 +1273,6 @@ sub handle_depend {
   return 0;
 }
 
-
 sub build_depend {
   my $noderange = shift;
   my $exargs = shift;
@@ -1289,18 +1288,24 @@ sub build_depend {
   unless ($mptab) {
     return("Cannot open mp table");
   }
+  my @ent = $depstab->getAllNodeAttribs( [qw(node nodedep msdelay cmd)] );
+  if (!@ent) {
+    return([\%dp]);
+  }
 
   foreach my $node (@$noderange) {
     my $delay = 0;
     my $dep;
-    my $cmd;
 
-    my $ent=$depstab->getNodeAttribs($node,[qw(nodedep msdelay cmd)]);
-    if (defined($ent->{nodedep})) { $dep=$ent->{nodedep}; }
-    if (defined($ent->{cmd}))     { $cmd=$ent->{cmd}; }
-    if (defined($ent->{msdelay})) { $delay=$ent->{msdelay}; }
-
-    if (!defined($dep) || !grep(/^@$exargs[0]$/, split /,/, $cmd )) {
+    foreach my $h ( @ent ) {
+      if (( $h->{node} eq $node ) and
+          ( grep(/^@$exargs[0]$/, split /,/, $h->{cmd} ))) {
+           if (exists($h->{nodedep})) { $dep=$h->{nodedep}; }
+           if (exists($h->{msdelay})) { $delay=$h->{msdelay}; }
+           last;
+      }
+    }
+    if (!defined($dep)) {
       $no_dp{$node} = 1;
     }
     else {
@@ -1309,7 +1314,7 @@ sub build_depend {
           return( "Missing dependency on command-line: $node -> $n" );
         } elsif ( $n eq $node ) {
           return( "Node dependent on itself: $n -> $node" );
-        } 
+        }
         $dp{$n}{$node} = $delay;
       }
     }
@@ -1324,20 +1329,20 @@ sub build_depend {
     # build hash of all nodes in preprocess_request() format
     while(my ($name,$h) = each(%dp) ) {
       my $ent=$mptab->getNodeAttribs($name,['mpa', 'id']);
-      if (!defined($ent->{mpa})) { 
+      if (!defined($ent->{mpa})) {
         return("no mpa defined for node $name");
       }
-      my $id = (defined($ent->{id})) ? $ent->{id} : ""; 
+      my $id = (defined($ent->{id})) ? $ent->{id} : "";
       push @{$mpa_hash{$name}},$ent->{mpa};
       push @{$mpa_hash{$name}},$id;
 
       foreach ( keys %$h ) {
         if ( $h->{$_} =~ /(^\d+$)/ ) {
           my $ent=$mptab->getNodeAttribs($_,['mpa', 'id']);
-          if (!defined($ent->{mpa})) { 
+          if (!defined($ent->{mpa})) {
             return("no mpa defined for node $_");
           }
-          my $id = (defined($ent->{id})) ? $ent->{id} : ""; 
+          my $id = (defined($ent->{id})) ? $ent->{id} : "";
           push @{$mpa_hash{$_}},$ent->{mpa};
           push @{$mpa_hash{$_}},$id;
         }
@@ -1346,7 +1351,6 @@ sub build_depend {
   }
   return( [\%dp,\%mpa_hash] );
 }
-
 
 
 sub preprocess_request { 
