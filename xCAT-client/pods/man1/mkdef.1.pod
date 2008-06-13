@@ -7,7 +7,7 @@ B<mkdef> - Use this command to create xCAT data object definitions.
 B<mkdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
 B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
-[B<-z>|B<--stanza>] [B<-x>|B<--xml>] [B<-f>|B<--force>] [B<-w> I<attr>=I<val>,[I<attr>=I<val...>]]
+[B<-z>|B<--stanza>] [B<-f>|B<--force>] [B<-w> I<attr>=I<val>,[I<attr>=I<val...>]]
 [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
 
 
@@ -52,13 +52,9 @@ Verbose mode.
 
 A comma-separated list of attributes and values that can be used to select objects. Use the help option to get a list of validattributes for each object type.
 
-=item B<-x|--xml>
-
-Indicates that the file being piped to the command is in XML format.
-
 =item B<-z|--stanza>
 
-Indicates that the file being piped to the command is in stanza format.
+Indicates that the file being piped to the command is in stanza format.  See the xcatstanzafile man page for details on using xCAT stanza files.
 
 =back
 
