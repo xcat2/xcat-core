@@ -38,11 +38,6 @@ use xCAT_monitoring::monitorctrl;
 sub start {
   #print "snmpmon::start called\n";
 
-  $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
-    $noderef=shift;
-  }
-
   # do not turn it on on the service node
   #if (xCAT::Utils->isServiceNode()) { return (0, "");}
 
@@ -530,7 +525,7 @@ sub stopNodeStatusMon {
       This function adds the nodes into the  SNMP domain.
     Arguments:
       nodes --nodes to be added. It is a pointer to an array. If the next argument is
-       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+       1, each element is a ref to an array of [nodes, status]. For example: 
           [['node1', 'active'], ['node2', 'booting']..]. 
        if the next argument is 0, each element is a node name to be added.
       boolean -- 1, or 0. 
@@ -562,7 +557,7 @@ sub addNodes {
       This function removes the nodes from the SNMP domain.
     Arguments:
       nodes --nodes to be added. It is a pointer to an array. If the next argument is
-       1, each element is a ref to an array of [nodes, nodetype, status]. For example: 
+       1, each element is a ref to an array of [nodes, status]. For example: 
           [['node1', 'active'], ['node2', 'booting']..]. 
        if the next argument is 0, each element is a node name to be added.
       boolean -- 1, or 0. 
