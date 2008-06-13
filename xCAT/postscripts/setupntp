@@ -43,25 +43,44 @@ else
 fi
 
 
-mkdir -p /var/lib/ntp
-chown ntp /var/lib/ntp
+if [[ $OSTYPE = linux* ]]; then
+  mkdir -p /var/lib/ntp
+  chown ntp /var/lib/ntp
 
-echo "driftfile /var/lib/ntp/drift
+  echo "driftfile /var/lib/ntp/drift
 disable auth
 restrict 127.0.0.1" >>$conf_file
 
 #service ntpd restart 
-service ntpd stop 
-logger -t xcat "ntpdate -t5 $master "
-ntpdate -t5 $master 
-if [ "$?" != "0" ]
+  service ntpd stop 
+  logger -t xcat "ntpdate -t5 $master "
+  ntpdate -t5 $master 
+  if [ "$?" != "0" ]
         then
-            echo_failure
             echo
             echo "  ntpdate -t5 $master  failed"
             logger -t xcat "ntpdate -t5 $master failed"
-fi
+  fi
 
-service ntpd start 
-chkconfig --level 345 ntpd on
+  service ntpd start 
+  chkconfig --level 345 ntpd on
+else
+# stop and start AIX ntp
+  echo "driftfile /etc/ntp.drift
+tracefile /etc/ntp.trace
+disable auth
+broadcastclient
+restrict 127.0.0.1" >>$conf_file
+
+  stopsrc -s xntpd 
+  logger -t xcat "ntpdate -t5 $master "
+  ntpdate -t5 $master 
+  if [ "$?" != "0" ]
+        then
+            echo
+            echo "  ntpdate -t5 $master  failed "
+            logger -t xcat "ntpdate -t5 $master failed"
+  fi
+  startsrc -s xntpd 
+fi
 exit $? 
