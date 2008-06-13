@@ -140,7 +140,7 @@ sub start {
     }  
 
     #start condition-response assosciations 
-    my $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/ms 2>&1`;
+    my $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`;
     if ($?) {
       xCAT::MsgUtils->message('SI', "[mon]: Error when creating predefined resources on $localhostname:\n$result\n");
     }
