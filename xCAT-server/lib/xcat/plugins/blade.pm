@@ -1288,21 +1288,17 @@ sub build_depend {
   unless ($mptab) {
     return("Cannot open mp table");
   }
-  my @ent = $depstab->getAllNodeAttribs( [qw(node nodedep msdelay cmd)] );
-  if (!@ent) {
-    return([\%dp]);
-  }
 
   foreach my $node (@$noderange) {
     my $delay = 0;
     my $dep;
 
+    my @ent = $depstab->getNodeAttribs($node,[qw(nodedep msdelay cmd)]);
     foreach my $h ( @ent ) {
-      if (( $h->{node} eq $node ) and
-          ( grep(/^@$exargs[0]$/, split /,/, $h->{cmd} ))) {
-           if (exists($h->{nodedep})) { $dep=$h->{nodedep}; }
-           if (exists($h->{msdelay})) { $delay=$h->{msdelay}; }
-           last;
+        if ( grep(/^@$exargs[0]$/, split /,/, $h->{cmd} )) {
+          if (exists($h->{nodedep})) { $dep=$h->{nodedep}; }
+          if (exists($h->{msdelay})) { $delay=$h->{msdelay}; }
+          last;
       }
     }
     if (!defined($dep)) {
@@ -1313,7 +1309,7 @@ sub build_depend {
         if ( !grep( /^$n$/, @$noderange )) {
           return( "Missing dependency on command-line: $node -> $n" );
         } elsif ( $n eq $node ) {
-          return( "Node dependent on itself: $n -> $node" );
+          next;  # ignore multiple levels
         }
         $dp{$n}{$node} = $delay;
       }
