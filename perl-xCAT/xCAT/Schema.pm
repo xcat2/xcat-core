@@ -1,9 +1,13 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Schema;
 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#
 #  When making additions or deletions to this file please be sure to
 #       modify BOTH the tabspec and defspec definitions.  This includes
 #       adding descriptions for any new attributes.
+#
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 #Note that the SQL is far from imaginative.  Fact of the matter is that
@@ -620,6 +624,46 @@ my @nodeattrs = (
                  only_if => 'nodetype=osi',
                  tabentry => 'noderes.netboot',
                  access_tabentry => 'noderes.node=attr:node',
+  },
+######################
+#  servicenode table #
+######################
+	{attr_name => 'setupnameserver',
+                 tabentry => 'servicenode.nameserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setupdhcp',
+                 tabentry => 'servicenode.dhcpserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setuptftp',
+                 tabentry => 'servicenode.tftpserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setupnfs',
+                 tabentry => 'servicenode.nfsserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setupconserver',
+                 tabentry => 'servicenode.conserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+# - moserver not used yet
+#	{attr_name => 'setupmonserver',
+#                 tabentry => 'servicenode.monserver',
+#                 access_tabentry => 'servicenode.node=attr:node',
+#  },
+	{attr_name => 'setupldap',
+                 tabentry => 'servicenode.ldapserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setupntp',
+                 tabentry => 'servicenode.ntpserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setupftp',
+                 tabentry => 'servicenode.ftpserver',
+                 access_tabentry => 'servicenode.node=attr:node',
   },
 ######################
 #  nodetype table    #
