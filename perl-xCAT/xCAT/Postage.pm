@@ -4,6 +4,7 @@ use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
 use Data::Dumper;
+use strict;
 #-------------------------------------------------------------------------------
 
 =head1    Postage
@@ -42,7 +43,8 @@ sub writescript {
   my $scriptfile = shift;
   my $nodesetstate = shift;  # install or netboot
   my $callback = shift;
-
+  my $rsp;
+  my $requires;
   my $script;
   open($script,">",$scriptfile);
   unless ($scriptfile) {
@@ -95,72 +97,55 @@ sub makescript {
   my ($master, $ps, $os, $arch, $profile);
 
   my $noderestab=xCAT::Table->new('noderes');
-  my $typetab=xCAT::Table->new('nodetype');
+  my $typetab = xCAT::Table->new('nodetype');
   my $posttab = xCAT::Table->new('postscripts');
+  my $sitetab = xCAT::Table->new('site');
 
-  unless ($noderestab and $typetab and $posttab) {
-	my %rsp;
-	push @{$rsp->{data}}, "Unable to open noderes or nodetype or postscripts table";
+  my %rsp;
+  my $rsp;
+  my $master;
+  unless ( $sitetab and $noderestab and $typetab and $posttab) {
+	push @{$rsp->{data}}, "Unable to open site or noderes or nodetype or postscripts table";
 	xCAT::MsgUtils->message("E", $rsp, $callback);
 	return undef;
+  
   }
-  # read the master node from the site table for the node  
-  my $master;   # may be the Management Node or Service Node
-  my $sitemaster; # Always the Management Node
-  my $sitetab = xCAT::Table->new('site');
-  (my $et) = $sitetab->getAttribs({key=>"master"},'value');
-  if ($et and defined($et->{value})) {
-      $master = $et->{value};
-      $sitemaster = $et->{value};
-
+  # read all attributes for the site table and write an export
+  # for them in the post install file
+   my $recs        = $sitetab->getAllEntries();
+   my $attribute;
+   my $value;
+   my $masterset =0 ;
+   foreach (@$recs)  # export the attribute
+   {
+       $attribute =  $_->{key};
+       $attribute =~ tr/a-z/A-Z/;
+       $value =  $_->{value};
+       if ($attribute eq "MASTER" ) {
+         $masterset=1;
+         push @scriptd, "SITEMASTER=".$value."\n";
+         push @scriptd, "export SITEMASTER\n";
+         # if node has service node as master then override site master
+         my $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
+         if ($et and defined($et->{'xcatmaster'})) { 
+           $value = $et->{'xcatmaster'};
+         }
+         push @scriptd, "$attribute=".$value."\n";
+         push @scriptd, "export $attribute\n";
+ 
+       } else {   # not Master attribute
+           push @scriptd, "$attribute=".$value."\n";
+           push @scriptd, "export $attribute\n";
+       }
   }
-  # if node has service node as master then override site master
-  $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
-  if ($et and defined($et->{'xcatmaster'})) { 
-    $master = $et->{'xcatmaster'};
-  }
-  unless ($master) {
+  if ($masterset == 0) {
 	my %rsp;
 	push @{$rsp->{data}}, "Unable to identify master for $node.\n";
 	xCAT::MsgUtils->message("E", $rsp, $callback);
 	return undef;
-  }
+       
+   }
 
-  # read the ntpservers 
-  my $ntpservers;
-  (my $et) = $sitetab->getAttribs({key=>"ntpservers"},'value');
-  if ($et and defined($et->{value})) {
-      $ntpservers = $et->{value};
-
-  }
-
-  # read if setup ssh on AIX 
-  my $useSSHonAIX;
-  # check for admin input
-  (my $et) = $sitetab->getAttribs({key=>"useSSHonAIX"},'value');
-  if ($et and defined($et->{value})) {
-      $useSSHonAIX = $et->{value};
-
-  }
-  # set env variable $SITEMASTER for Management Node 
-  push @scriptd, "SITEMASTER=".$sitemaster."\n";
-  push @scriptd, "export SITEMASTER\n";
-
-  # set env variable $MASTER for master of node (MN or SN)
-  push @scriptd, "MASTER=".$master."\n";
-  push @scriptd, "export MASTER\n";
-  push @scriptd, "NODE=$node\n";
-  push @scriptd, "export NODE\n";
-
-  # if ntpservers exist, export $NTPSERVERS
-  if (defined($ntpservers)) {
-    push @scriptd, "NTPSERVERS=".$ntpservers."\n";
-    push @scriptd, "export NTPSERVERS\n";
-  }
-
-  # export useSSHonAIX 
-  push @scriptd, "USESSHONAIX=".$useSSHonAIX."\n";
-  push @scriptd, "export USESSHONAIX\n";
 
   my $et = $typetab->getNodeAttribs($node,['os','arch','profile']);
   if ($^O =~ /^linux/i) {
@@ -206,7 +191,7 @@ sub makescript {
 
   # get the xcatdefaults entry in the postscripts table
   my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts');
-  $defscripts = $et->{'postscripts'};
+  my $defscripts = $et->{'postscripts'};
   if ($defscripts) {
   	foreach my $n (split(/,/, $defscripts)) {
 		push @scriptd, $n."\n";
@@ -256,7 +241,7 @@ sub getnodesetstate {
       close $fhand;
       $headline =~ s/^#//;
       chomp($headline);
-      @a=split(' ', $headline);
+      my @a=split(' ', $headline);
       $state = $a[0];
     } else {
       xCAT::MsgUtils->message('S', "getpostscripts: file $bootfilename cannot be accessed.");
