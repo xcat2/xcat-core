@@ -105,7 +105,10 @@ my %usage = (
        chvm [-h|--help|-v|--version]",
     "rmvm" => 
 "Usage: rmvm <noderange> [-V|--verbose] 
-       rmvm [-h|--help|-v|--version]"
+       rmvm [-h|--help|-v|--version]",
+    "lsslp" =>
+"Usage: lsslp [-h|--help|-v|--version]
+       lsslp [-V|--verbose][-b ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]"
 );
 
 my %version = (
@@ -123,7 +126,8 @@ my %version = (
     "mkvm" => "Version 2.0",
     "lsvm" => "Version 2.0",
     "chvm" => "Version 2.0",
-    "rmvm" => "Version 2.0"
+    "rmvm" => "Version 2.0",
+    "lsslp" => "Version 2.0"
 );
 
 #--------------------------------------------------------------------------------
