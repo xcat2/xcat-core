@@ -869,13 +869,13 @@ sub preprocess_request {
 
   my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
   if ($usage_string) {
-    $callback->({data=>$usage_string});
+    $callback->({data=>[$usage_string]});
     $req = {};
     return;
   }
   if (!$noderange) {
     $usage_string=xCAT::Usage->getUsage($command);
-    $callback->({data=>$usage_string});
+    $callback->({data=>[$usage_string]});
     $req = {};
     return;
   }   
@@ -887,7 +887,7 @@ sub preprocess_request {
   my $hcptab_name = ($package eq "fsp") ? "ppcdirect" : "ppchcp";
   my $hcptab  = xCAT::Table->new( $hcptab_name );
   unless ($hcptab ) {
-    $callback->({data=>"Cannot open $hcptab_name table"});
+    $callback->({data=>["Cannot open $hcptab_name table"]});
     $req = {};
     return;
   }
@@ -907,7 +907,7 @@ sub preprocess_request {
   if (@missednodes > 0) {
     my $ppctab = xCAT::Table->new("ppc");
     unless ($ppctab) { 
-      $callback->({data=>"Cannot open ppc table"});
+      $callback->({data=>["Cannot open ppc table"]});
       $req = {};
       return;
     }
@@ -915,7 +915,7 @@ sub preprocess_request {
       my $ent=$ppctab->getNodeAttribs($node,['hcp']);
       if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
       else { 
-        $callback->({data=>"The node $node is neither a hcp nor an lapr"});
+        $callback->({data=>["The node $node is neither a hcp nor an lpar"]});
         $req = {};
         return;
       }
