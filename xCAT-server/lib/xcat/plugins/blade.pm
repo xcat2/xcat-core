@@ -971,6 +971,7 @@ sub getmacs {
       (my $macd,my $mac) = split (/:/,$macs[$midx],2);
       $mac =~ s/\s+//g;
       if ($macd =~ /mac address \d/i) {
+         $mac =~ s/\s*->.*$//;
          my $mactab = xCAT::Table->new('mac',-create=>1);
          $mactab->setNodeAttribs($curn,{mac=>$mac});
          $mactab->close;
