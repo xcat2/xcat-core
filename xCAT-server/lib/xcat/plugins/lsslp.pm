@@ -478,7 +478,6 @@ sub invoke_cmd {
     my $services = shift;
     my $converge = 1;
     my $tries    = 5;
-    my $values;
 
     ########################################
     # Telnet (rspconfig) command  
@@ -514,37 +513,42 @@ sub invoke_cmd {
     ########################################
     # SLP broadcast command  
     ########################################
-    my $result = runslp( $args, $ip, $services, $request, $tries, $converge );
-    if ( !defined( $result )) {
-        return;
-    }
+    my $result = runslp($args, $ip, $services, $request, $tries, $converge);
+    my $unicast = @$result[0];
+    my $values  = @$result[1];
+
     ########################################
     # May have to send additional unicasts  
     ########################################
-    my $unicast = shift(@$result);
-    $values  = @$result[0];
+    if ( keys (%$unicast) )  { 
+        foreach my $url ( keys %$unicast ) {
+            my ($service,$addr) = split "://", $url;
+            my $sockaddr = inet_aton( $addr );
 
-    foreach my $url ( keys %$unicast ) {
-        my ($service,$addr) = split "://", $url;
-        my $sockaddr = inet_aton( $addr );
-
-        ####################################
-        # Make sure can resolve if hostname  
-        ####################################
-        if ( !defined( $sockaddr )) {
-            if ( $verbose ) {
-                trace( $request, "Cannot convert '$addr' to dot-notation" );           
+            ####################################
+            # Make sure can resolve if hostname  
+            ####################################
+            if  ( !defined( $sockaddr )) {
+                if ( $verbose ) {
+                    trace( $request, "Cannot convert '$addr' to dot-notation" );           
+                }
+                next;
             }
-            next;
-        }
-        $addr = inet_ntoa( $sockaddr );
-        my $result = runslp( $args, $addr, [$service], $request, 1 );
+            $addr = inet_ntoa( $sockaddr );
+            $result = runslp( $args, $addr, [$service], $request, 1 );
+            my $data  = @$result[1];
+            my ($key) = keys %$data;
 
-        if ( defined( $result )) {
-            shift(@$result);
-            my $data = @$result[0];
-            $values->{"URL: $url\n@$data\n"} = 1;
+            if ( defined($key) ) {
+                $values->{"URL: $url\n$data->{$key}\n"} = 1;
+            }
         }
+    }
+    ########################################
+    # No valid responses received 
+    ########################################
+    if (( keys (%$values )) == 0 ) { 
+        return;
     }
     ########################################
     # Pass result array back to parent 
@@ -807,7 +811,7 @@ sub gethost_from_url {
     my $packed = inet_aton( $ip );
     if ( length( $packed ) != 4 ) {
         if ( $verbose ) {
-            trace( $request, "Invalid IP address in URL: $1" );
+            trace( $request, "Invalid IP address in URL: $ip" );
         }
         return undef;
     }
@@ -816,7 +820,7 @@ sub gethost_from_url {
     #######################################
     my $host = gethostbyaddr( $packed, AF_INET );
     if ( !$host or $! ) {
-        return( $1 );
+        return( $ip );
     }
     #######################################
     # Convert hostname to short-hostname
@@ -1352,12 +1356,12 @@ sub child_response {
     my @ready_fds = $fds->can_read(1);
 
     foreach my $rfh (@ready_fds) {
-        my $data;
+        my $data = <$rfh>;
 
         #################################
         # Read from child process
         #################################
-        if ( $data = <$rfh> ) {
+        if ( defined( $data )) {
             while ($data !~ /ENDOFFREEZE6sK4ci/) {
                 $data .= <$rfh>;
             }
@@ -1452,16 +1456,15 @@ sub switch_cmd {
     my $slp = shift;
     my %mm;
     my %slp;
-    my %nodes;
-    my @mpa;
+    my %hosts;
+    my @entries;
     my $hosttab  = xCAT::Table->new( 'hosts' );
     my $swtab    = xCAT::Table->new( 'switch' );
-    my $mpatab   = xCAT::Table->new( 'mpa' );
 
     ###########################################
     # No tables
     ###########################################
-    if ( !defined( $swtab or $hosttab or $mpatab )) {
+    if ( !defined($swtab) or !defined($hosttab) ) {
         return;
     }
     ###########################################
@@ -1475,30 +1478,27 @@ sub switch_cmd {
     ###########################################
     # No MMs in response
     ###########################################
-    if ( !defined( %slp )) {
+    if ( !%slp ) {
         return;
     }
     ###########################################
-    # Any MMs in switch table
+    # Any entries in switch table
     ###########################################
     foreach ( $swtab->getAllNodeAttribs([qw(node)]) ) {
-        my ($ent) = $mpatab->getAttribs({ mpa=>$_->{node}},'mpa');
-        if ( $ent ) {
-            push @mpa, $ent->{mpa};
-        }
+        push @entries, $_->{node};
     }
     ###########################################
-    # Any MMs in hosts table
+    # Any entries in hosts table
     ###########################################
     if ( $verbose ) {
-        trace( $req, "HOSTS TABLE:" );
+        trace( $req, "SWITCH/HOSTS TABLE:" );
     }
-    foreach ( @mpa ) { 
+    foreach ( @entries ) {
         my $ent = $hosttab->getNodeAttribs($_,[qw(ip)]);
         if ( !$ent ) {
             next;
         }
-        $nodes{$_} = $ent->{ip};
+        $hosts{$_} = $ent->{ip};
         if ( $verbose ) {
             trace( $req, "\t\t($_)->($ent->{ip})" );
         }
@@ -1506,7 +1506,7 @@ sub switch_cmd {
     ###########################################
     # No MMs in hosts/switch table 
     ###########################################
-    if ( !defined( %nodes )) {
+    if ( !%hosts ) {
         return;
     }
     ###########################################
@@ -1565,14 +1565,20 @@ sub switch_cmd {
         #######################################
         # In hosts table 
         #######################################
-        if ( defined( $nodes{$name} )) {
-	    $mm{$ip}->{args} = "$nodes{$name},$name";
+        if ( defined( $hosts{$name} )) {
+            if ( $ip eq $hosts{$name} ) {
+                if ( $verbose ) {
+                    trace( $req, "MM already set '$ip' - skipping" );
+                }
+                next;
+            }
+            $mm{$ip}->{args} = "$hosts{$name},$name";
         }
     }
     ###########################################
     # No MMs   
     ###########################################
-    if ( !defined( %mm )) {
+    if ( !%mm ) {
         if ( $verbose ) {
             trace( $req, "No ARP-Switch-SLP matches found" ); 
         }
@@ -1595,7 +1601,6 @@ sub rspconfig {
     my $request   = shift;
     my $mm        = shift;
     my $callback  = $request->{callback};
-    my $mpatab    = xCAT::Table->new('mpa');
     my $bladeuser = 'USERID';
     my $bladepass = 'PASSW0RD';
     my $start;
@@ -1761,7 +1766,7 @@ sub process_request {
     my %request;
     $request{arg}      = $req->{arg};
     $request{callback} = $callback;
-
+   
     ###########################################
     # Broadcast SLP
     ###########################################
@@ -1773,6 +1778,7 @@ sub process_request {
 
 
 1;
+
 
 
 
