@@ -158,7 +158,8 @@ sub send_msg {
 sub parse_args {
 
     my $request  = shift;
-    my @VERSION  = qw( 2.0 );
+    my $args     = $request->{arg};
+    my $cmd      = $request->{command};
     my %services = (
         HMC => SOFTWARE_SERVICE.":".SERVICE_HMC.":",
         IVM => SOFTWARE_SERVICE.":".SERVICE_IVM.":",
@@ -167,27 +168,12 @@ sub parse_args {
         RSA => HARDWARE_SERVICE.":".SERVICE_RSA.":",
         MM  => HARDWARE_SERVICE.":".SERVICE_MM.":" 
     );
-    my $types = join( "|", keys %services );
-    my $args  = $request->{arg};
-
     #############################################
-    # Responds with usage statement                   
+    # Responds with usage statement
     #############################################
     local *usage = sub {
-        my @msg = ( $_[0],
-          "lsslp  -h|--help",
-          "lsslp  -v]--version",
-          "lsslp [-V|--verbose][-b ip[,ip..]][-w][-r|-x|-z][-s $types]",
-          "    -b   IP(s) the command will broadcast out.",
-          "    -h   writes usage information to standard output.",
-          "    -r   raw slp response.",
-          "    -s   service type interested in discovering.",
-          "    -v   command version.",
-          "    -V   verbose output.",
-          "    -w   writes output to xCat database.",
-          "    -x   xml formatted output.",
-          "    -z   stanza formatted output.");
-        send_msg( $request, 1, @msg );
+        my $usage_string = xCAT::Usage->getUsage($cmd);
+        return( [$_[0], $usage_string] );
     };
     #############################################
     # No command-line arguments - use defaults
@@ -208,36 +194,19 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions(\%opt, qw(h|help V|Verbose v|version b=s x z w r s=s))) { 
-        usage();
-        return(1);
-    }
-    #############################################
-    # Option -h for Help
-    #############################################
-    if ( exists( $opt{h} )) {
-        usage();
-        return(1);
-    }
-    #############################################
-    # Option -v for version
-    #############################################
-    if ( exists( $opt{v} )) {
-        send_msg( $request, 0, @VERSION );
-        return(1);
+        return( usage() );
     }
     #############################################
     # Check for switch "-" with no option
     #############################################
     if ( grep(/^-$/, @ARGV )) {
-        usage( "Missing option: -" );
-        return(1);
+        return(usage( "Missing option: -" ));
     }
     #############################################
     # Check for an argument
     #############################################
     if ( defined( $ARGV[0] )) {
-        usage( "Invalid Argument: $ARGV[0]" );
-        return(1);
+        return(usage( "Invalid Argument: $ARGV[0]" ));
     }
     #############################################
     # Option -V for verbose output
@@ -249,16 +218,14 @@ sub parse_args {
     # Check for mutually-exclusive formatting 
     #############################################
     if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z})) > 1 ) {
-        usage();
-        return(1);
+        return( usage() );
     }
     #############################################
     # Check for unsupported service type 
     #############################################
     if ( exists( $opt{s} )) {
         if ( !exists( $services{$opt{s}} )) {
-            usage( "Invalid service: $opt{s}" );
-            return(1);
+            return(usage( "Invalid service: $opt{s}" ));
         }
         $request->{service} = $services{$opt{s}}; 
     }
@@ -1411,19 +1378,26 @@ sub child_response {
 sub preprocess_request {
 
     my $req = shift;
-    my $cb  = shift;
     if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    my $callback=shift;
+    my @requests;
 
-    ###########################################
-    # Parse command-line options
-    ###########################################
-    my %request;
-    $request{arg} = $req->{arg};
-    $request{callback} = $cb;
-    if ( parse_args( \%request )) {
-        return(1);
+    ####################################
+    # Prompt for usage if needed
+    ####################################
+    my $noderange = $req->{node}; #Should be arrayref
+    my $command = $req->{command}->[0];
+    my $extrargs = $req->{arg};
+    my @exargs=($req->{arg});
+    if (ref($extrargs)) {
+        @exargs=@$extrargs;
     }
-
+    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+    if ($usage_string) {
+        $callback->({data=>[$usage_string]});
+        $req = {};
+        return;
+    }
     ###########################################
     # find all the service nodes for xCAT cluster
     # build an individual request for each service node
@@ -1766,11 +1740,24 @@ sub process_request {
     my %request;
     $request{arg}      = $req->{arg};
     $request{callback} = $callback;
-   
+    $request{command}  = $req->{command}->[0];
+
+    ####################################
+    # Process command-specific options
+    ####################################
+    my $result = parse_args( \%request );
+    
+    ####################################
+    # Return error
+    ####################################
+    if ( ref($result) eq 'ARRAY' ) {
+        send_msg( \%request, 1, @$result );
+        return(1);
+    }   
     ###########################################
     # Broadcast SLP
     ###########################################
-    my $result = slp_query( \%request );
+    $result = slp_query( \%request );
 
     my $Rc = shift(@$result);
     return( $Rc );
@@ -1778,6 +1765,7 @@ sub process_request {
 
 
 1;
+
 
 
 
