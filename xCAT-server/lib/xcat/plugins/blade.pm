@@ -175,7 +175,21 @@ sub fillresps {
   my $mac = $response->{node}->[0]->{data}->[0]->{contents}->[0];
   my $node = $response->{node}->[0]->{name}->[0];
   $mac = uc($mac); #Make sure it is uppercase, the MM people seem to change their mind on this..
-  $macmap{$mac} = $node;
+  if ($mac =~ /->/) { #The new and 'improved' syntax for pBlades
+      $mac =~ /(\w+):(\w+):(\w+):(\w+):(\w+):(\w+)\s*->\s*(\w+):(\w+):(\w+):(\w+):(\w+):(\w+)/;
+      my $fmac=hex($3.$4.$5.$6);
+      my $lmac=hex($9.$10.$11.$12);
+      my $pfx = $1.$2;
+      foreach ($fmac..$lmac) {
+          my $key = $pfx.sprintf("%08x",$_);
+          $key =~ s/(\w{2})/$1:/g;
+          chop($key);
+          $key = uc($key);
+          $macmap{$key} = $node;
+      }
+  } else {
+    $macmap{$mac} = $node;
+  }
   #$macmap{$response->{node}->[0]->{data}->{contents}->[0]}=$response->{node}->[0]->{name};
 }
 sub isallchassis {
