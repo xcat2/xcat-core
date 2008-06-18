@@ -86,6 +86,7 @@ if (&runcmd($chcmd) != 0) {
 # check & run the postscript
 if (-f $scriptname)
 {
+	# TODO - change this to runcmd??
 	my $rc = system("$scriptname");
     if ($rc >> 8)
     {
