@@ -107,19 +107,10 @@ sub parse_args {
         usage( "No node specified" );
         return(1);
     }
-    $node = shift @ARGV;
-
-    #######################################
-    # Check for multiple nodes specified 
-    #######################################
-    my @nodes = split /-|,| /, $node;
-    if ( scalar(@nodes) > 1 ) {
-        usage( "multiple nodes specified" );
-        return(1);
-    }
     #######################################
     # Check for extra argument
     #######################################
+    $node = shift @ARGV;
     if ( defined( $ARGV[0] )) {
         usage( "Invalid Argument: $ARGV[0]" );
         return(1);
@@ -211,7 +202,7 @@ sub invoke_cmd {
     my $mtms   = "$vpd->{mtm}*$vpd->{serial}";
     my $host   = $att->{hcp};
     my $lparid = $att->{id};
-    my $type   = "lpar";
+    $type      = "lpar";
 
     my %request = (
         ppcretry => 1,
@@ -227,8 +218,8 @@ sub invoke_cmd {
     # Connect to the remote server
     #################################
     my @exp = xCAT::PPCcli::connect( \%request, $hwtype, $host );
-    if ( ref(@exp[0]) ne "Expect" ) {
-        return( @exp[0] );
+    if ( ref($exp[0]) ne "Expect" ) {
+        return( $exp[0] );
     }
     #################################
     # Open console connection 
