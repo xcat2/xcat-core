@@ -146,7 +146,9 @@ sub makescript {
        
    }
 
-
+  push @scriptd, "NODE=$node\n";
+  push @scriptd, "export NODE\n";
+ 
   my $et = $typetab->getNodeAttribs($node,['os','arch','profile']);
   if ($^O =~ /^linux/i) {
 	unless ($et and $et->{'os'} and $et->{'arch'}) {
