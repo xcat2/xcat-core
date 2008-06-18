@@ -457,7 +457,7 @@ ll~;
 	}
 
 	# update the .rhosts file on the server so the rcp from the node works
-    if (&update_rhosts(@nodelist, $callback) != 0) {
+    if (&update_rhosts(\@nodelist, $callback) != 0) {
         my $rsp;
         push @{$rsp->{data}}, "Could not update the /.rhosts file.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1424,14 +1424,14 @@ sub mkScriptRes
 #------------------------------------------------------------------------
 sub update_rhosts 
 {
-	my @nodelist = shift;
+	my $nodelist = shift;
 	my $callback = shift;
 
 	my $rhostname ="/.rhosts";
 	my @addnodes;
 
 	# make a list of node entries to add
-	foreach my $node (@nodelist) {
+	foreach my $node (@$nodelist) {
 
 		# get the node IP for the file entry
 		# TODO - need IPv6 update
@@ -2424,7 +2424,7 @@ ll~;
 	}
 
 	# update the .rhosts file on the server so the rcp from the node works
-	if (&update_rhosts(@nodelist, $callback) != 0) {
+	if (&update_rhosts(\@nodelist, $callback) != 0) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not update the /.rhosts file.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
