@@ -25,6 +25,16 @@ bootparams => {
       'kcmdline' => 'Arguments to be passed to the kernel'
    }
 },
+prodkey => {
+    cols => [qw(node product key comments disable)],
+    keys => [qw(node product)],
+    table_desc => 'Specify product keys for products that require them',
+    descriptions => {
+        node => "The node name or group name.",
+        product => "A string to identify the product (for OSes, the osname would be used, i.e. wink28",
+        key => "The product key relevant to the aforementioned node/group and product combination"
+    }
+},
 chain => {
     cols => [qw(node currstate currchain chain ondiscover comments disable)],
     keys => [qw(node)],
