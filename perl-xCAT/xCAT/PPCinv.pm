@@ -35,7 +35,7 @@ sub parse_args {
     my $command = $request->{command};
     my $args    = $request->{arg};
     my %opt     = ();
-    my @rinv    = qw(bus config model serial fw all);
+    my @rinv    = qw(bus config model serial firm all);
 
     #############################################
     # Responds with usage statement
@@ -392,7 +392,6 @@ sub vpd {
     if ( $cmds[0] eq "all" )  {
         @cmds = qw( model serial );
     }
-
     while (my ($mtms,$h) = each(%$hash) ) {
         #####################################
         # Get information for this CEC
@@ -463,9 +462,9 @@ sub firmware {
                     push @result, [$name,@$values[0],$Rc];
                     next;
                 }
-                push @result, [$name,"Activated Level = $1",$Rc]; 
-                push @result, [$name,"Permanent Level = $2",$Rc]; 
-                push @result, [$name,"Temporary Level = $3",$Rc]; 
+                push @result, [$name,"Activated Level: $1",$Rc]; 
+                push @result, [$name,"Permanent Level: $2",$Rc]; 
+                push @result, [$name,"Temporary Level: $3",$Rc]; 
                 next;
             }
             #####################################
@@ -473,7 +472,7 @@ sub firmware {
             #####################################
             foreach ( @licmap ) {  
                 if ( @$values[0] =~ /@$_[0]=(\w+)/ ) {
-                    push @result, [$name,"@$_[1] = $1",$Rc];
+                    push @result, [$name,"@$_[1]: $1",$Rc];
                 }
             }
         }
@@ -548,7 +547,7 @@ sub config {
 ##########################################################################
 # Returns firmware version 
 ##########################################################################
-sub fw {
+sub firm {
     return( firmware(@_) );
 }
 
@@ -565,7 +564,6 @@ sub serial {
 sub model {
     return( vpd(@_) );
 }
-
 
 ##########################################################################
 # Returns all inventory information
