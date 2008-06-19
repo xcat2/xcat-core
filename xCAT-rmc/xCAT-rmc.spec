@@ -15,13 +15,13 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 
-Requires: perl-xCAT = %{epoch}:%{version}
-Requires: xCAT-server  = %{epoch}:%{version}
+Requires: perl-xCAT >= %{epoch}:%{version}
+Requires: xCAT-server  >= %{epoch}:%{version}
 
 Provides: xCAT-rmc = %{version}
 
 %description
-Provides RMC monitoring plug-in module for xCAT, configuration scripts, predefined conditions, responses and sensors. 
+Provides RMC monitoring plug-in module for xCAT, configuration scripts, predefined conditions, responses and sensors.
 
 %prep
 %setup -q

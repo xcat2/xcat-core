@@ -412,6 +412,7 @@ site => {
    "  domain (DNS domain name used for the cluster)\n".
    "  installdir (the local directory name used to hold the node deployment pkgs)\n".
    "  installloc (location to mount the installdir from in format hostname:/path)\n".
+   "  sharedftp (set to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes)\n".
    "  xcatdport (port used by xcatd daemon for client/server communication)\n".
    "  xcatiport (port used by xcatd to receive install status updates from nodes)\n".
    "  timezone (e.g. America/New_York)\n".
