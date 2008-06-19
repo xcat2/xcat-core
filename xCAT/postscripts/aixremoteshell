@@ -27,20 +27,34 @@
 use strict;
 my $rc = 0;
 
-
 # Override from site table
 my $usesshonaix = $ENV{'USESSHONAIX'};
-my $master = $ENV{'MASTER'};
-my $node   = $ENV{'NODE'};
+my $master      = $ENV{'MASTER'};
+my $node        = $ENV{'NODE'};
 my $msg;
 my $home;
 my $cmd;
 my $username = "root";
 my @root = split ':', (`/bin/grep ^$username /etc/passwd 2>&1`);
 $home = $root[5];
+#  root home directory must be root system 
+$rc = &runcmd("chown root $home");
+if ($rc != 0)
+{
+   exit 1;
+}
+$rc = &runcmd("chgrp system $home");
+if ($rc != 0)
+{
+   exit 1;
+}
+if ($home eq "\/")
+{
+    $home = "";
+}
 
 $usesshonaix =~ tr/a-z/A-Z/;    # convert to upper
-if ((! defined($usesshonaix)) || ($usesshonaix eq "0") || ($usesshonaix eq "NO"))
+if ((!defined($usesshonaix)) || ($usesshonaix eq "0") || ($usesshonaix eq "NO"))
 {                               # setting up rsh
                                 # setup .rhosts if not already setup
     $cmd = "/bin/grep \"^$master root\" $home/.rhosts";
@@ -59,38 +73,47 @@ else
     my $sshconfig  = "/etc/ssh/ssh_config";
     if (-e $sshdconfig)
     {                           # ssh installed
-        &runcmd("cp $sshdconfig $sshdconfig.ORIG");
+        my $tmp="$sshdconfig.ORIG";
+        if (!(-e "$sshdconfig.ORIG"))
+        {
+            &runcmd("cp $sshdconfig $sshdconfig.ORIG");
+        }
         &runcmd("echo \"KeyRegenerationInterval 0\" >>$sshdconfig");
         &runcmd("echo \"X11Forwarding yes\" >>$sshdconfig");
         &runcmd("echo \"MaxStartups 1024\" >>$sshdconfig");
         &runcmd("echo \"PasswordAuthentication no\" >>$sshdconfig");
-        &runcmd("cp $sshconfig $sshconfig.ORIG");
+        if (!(-e "$sshconfig.ORIG"))
+        {
+            &runcmd("cp $sshconfig $sshconfig.ORIG");
+        }
         &runcmd("echo \"StrictHostKeyChecking no\" >>$sshconfig");
     }
     else
-    {                           # ssh not installed
+    {    # ssh not installed
         my $msg = "Failed to setup ssh on $node, ssh not installed. \n";
         `logger -t xcat $msg`;
         exit 1;
     }
     if (-e "/xcatpost/_ssh")
-    {                           # ssh public key available
+    {    # ssh public key available
         $rc = &runcmd("mkdir -p $home/.ssh");
         if ($rc == 0)
         {
-            &runcmd("cp -fp /xcatpost/_ssh/* $home/.ssh");
-            chmod 0700, "$home/.ssh";
-            chmod 0600, "$home/.ssh/*";
+            $rc = &runcmd("cp -fp /xcatpost/_ssh/* $home/.ssh");
+            if ($rc == 0)
+            {
+                #$rc = &runcmd("scp -p $master:$home/.ssh/id_* $home/.ssh");
+                $rc = &runcmd("chmod 0700 $home/.ssh");
+                $rc = &runcmd("chmod 0600 $home/.ssh/*");
+            }
         }
     }
     else
-    {                           # ssh keys not available
+    {    # ssh keys not available
         my $msg = "Failed to setup ssh on $node, ssh keys not available. \n";
         `logger -t xcat $msg`;
         exit 1;
     }
-    $rc = &runcmd("scp -p $master:$home/.ssh/id_* $home/.ssh");
-    chmod 0600, "$home/.ssh/*";
 }
 exit $rc;
 
@@ -111,6 +134,7 @@ sub runcmd
         {
             my $msg = "$cmd returned rc=$rc @$outref\n";
             `logger -t xcat $msg`;
+			print $msg;
         }
     }
     return $rc;
