@@ -908,7 +908,7 @@ sub dispatch_request {
         xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem"); 
         };
         if ($@) {
-	   dispatch_callback({error=>["Error dispatching command to ".$ENV{XCATHOST}.""],errorcode=>[1]}); 
+	   dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server"],errorcode=>[1]}); 
 	   syslog("local4|err","Error dispatching request: ".$@);
 	}
      } else {
