@@ -7,6 +7,25 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 
 
+##########################################
+# Maps HMC "lslic" attributes to text
+##########################################
+my @licmap = (
+    ["ecnumber",               "Release Level  "],
+    ["activated_level",        "Active Level   "],
+    ["installed_level",        "Installed Level"],
+    ["accepted_level",         "Accepted Level "],
+    ["curr_ecnumber_a",        "Release Level A"],
+    ["curr_level_a",           "Level A        "],
+    ["curr_ecnumber_b",        "Release Level B"],
+    ["curr_level_b",           "Level B        "],
+    ["curr_ecnumber_primary",  "Release Level Primary"],
+    ["curr_level_primary",     "Level Primary  "],
+    ["curr_ecnumber_secondary","Release Level Secondary"],
+    ["curr_level_secondary",   "Level Secondary"]
+);
+
+
 ##########################################################################
 # Parse the command line for options and operands 
 ##########################################################################
@@ -16,7 +35,7 @@ sub parse_args {
     my $command = $request->{command};
     my $args    = $request->{arg};
     my %opt     = ();
-    my @rinv    = qw(bus config model serial all);
+    my @rinv    = qw(bus config model serial fw all);
 
     #############################################
     # Responds with usage statement
@@ -403,6 +422,65 @@ sub vpd {
 }
 
 
+##########################################################################
+# Returns FSP/BPA firmware information
+##########################################################################
+sub firmware {
+
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $hwtype  = @$exp[2];
+    my @result;
+
+    while (my ($mtms,$h) = each(%$hash) ) {
+        while (my ($name,$d) = each(%$h) ) {
+
+            #####################################
+            # Command only supported on FSP/BPAs 
+            #####################################
+            if ( @$d[4] !~ /^(fsp|bpa)$/ ) {
+                push @result, 
+                    [$name,"Information only available for CEC/BPA",RC_ERROR];
+                next; 
+            }
+            my $values = xCAT::PPCcli::lslic( $exp, $d );
+            my $Rc = shift(@$values);
+    
+            #####################################
+            # Return error
+            #####################################
+            if ( $Rc != SUCCESS ) {
+                push @result, [$name,@$values[0],$Rc];
+                next; 
+            }
+            #####################################
+            # Success - format IVM results
+            #####################################
+            if ( $hwtype eq "ivm" ) {
+                if ( @$values[0] !~ 
+                      /^system:(\w+)\s+\(t\)\s+(\w+)\s+\(p\)\s+(\w+)\s+/ ) {
+                    push @result, [$name,@$values[0],$Rc];
+                    next;
+                }
+                push @result, [$name,"Activated Level = $1",$Rc]; 
+                push @result, [$name,"Permanent Level = $2",$Rc]; 
+                push @result, [$name,"Temporary Level = $3",$Rc]; 
+                next;
+            }
+            #####################################
+            # Format HMC results
+            #####################################
+            foreach ( @licmap ) {  
+                if ( @$values[0] =~ /@$_[0]=(\w+)/ ) {
+                    push @result, [$name,"@$_[1] = $1",$Rc];
+                }
+            }
+        }
+    }
+    return( \@result );
+}
+
 
 ##########################################################################
 # Returns memory/processor information 
@@ -468,6 +546,13 @@ sub config {
 
 
 ##########################################################################
+# Returns firmware version 
+##########################################################################
+sub fw {
+    return( firmware(@_) );
+}
+
+##########################################################################
 # Returns serial-number
 ##########################################################################
 sub serial {
@@ -490,11 +575,13 @@ sub all {
     my @result = ( 
         @{vpd(@_)}, 
         @{bus(@_)}, 
-        @{config(@_)} 
+        @{config(@_)},
+        @{firmware(@_)} 
     );       
     return( \@result );
 }
 
 
 1;
+
 
