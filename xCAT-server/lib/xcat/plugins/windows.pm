@@ -33,6 +33,8 @@ sub process_request
     my $distname = undef;
     my $arch     = undef;
     my $path     = undef;
+    my $installroot;
+    $installroot = "/install";
     if ($request->{command}->[0] eq 'copycd')
     {
         return copycd($request, $callback, $doreq);
@@ -78,7 +80,7 @@ sub mkinstall
             $callback->(
                       {
                        error =>
-                         ["No AutoYaST template exists for " . $ent->{profile}],
+                         ["No unattended template exists for " . $ent->{profile}],
                        errorcode => [1]
                       }
                       );
@@ -137,140 +139,23 @@ sub mkinstall
 		# create the node-specific post script DEPRECATED, don't do
 		#mkpath "/install/postscripts/";
 		#xCAT::Postage->writescript($node, "/install/postscripts/".$node, "install", $callback);
-
-        if (
-            (
-             $arch =~ /x86_64/
-             and -r "/install/$os/$arch/1/boot/$arch/loader/linux"
-             and -r "/install/$os/$arch/1/boot/$arch/loader/initrd"
-            )
-            or
-            (
-             $arch =~ /x86$/
-             and -r "/install/$os/$arch/1/boot/i386/loader/linux"
-             and -r "/install/$os/$arch/1/boot/i386/loader/initrd"
-            )
-            or ($arch =~ /ppc/ and -r "/install/$os/$arch/1/suseboot/inst64")
-          )
-        {
-
-            #TODO: driver slipstream, targetted for network.
-            unless ($doneimgs{"$os|$arch"})
-            {
-                mkpath("/tftpboot/xcat/$os/$arch");
-                if ($arch =~ /x86_64/)
-                {
-                    copy("/install/$os/$arch/1/boot/$arch/loader/linux",
-                         "/tftpboot/xcat/$os/$arch/");
-                    copy("/install/$os/$arch/1/boot/$arch/loader/initrd",
-                         "/tftpboot/xcat/$os/$arch/");
-                } elsif ($arch =~ /x86/) {
-                    copy("/install/$os/$arch/1/boot/i386/loader/linux",
-                         "/tftpboot/xcat/$os/$arch/");
-                    copy("/install/$os/$arch/1/boot/i386/loader/initrd",
-                         "/tftpboot/xcat/$os/$arch/");
-                }
-                elsif ($arch =~ /ppc/)
-                {
-                    copy("/install/$os/$arch/1/suseboot/inst64",
-                         "/tftpboot/xcat/$os/$arch");
-                }
-                $doneimgs{"$os|$arch"} = 1;
-            }
-
-            #We have a shot...
-            my $restab = xCAT::Table->new('noderes');
-            my $bptab = xCAT::Table->new('bootparams',-create=>1);
-            my $hmtab  = xCAT::Table->new('nodehm');
-            my $ent    =
-              $restab->getNodeAttribs(
-                                      $node,
-                                      [
-                                       'nfsserver', 
-                                       'primarynic', 'installnic'
-                                      ]
-                                      );
-            my $sent =
-              $hmtab->getNodeAttribs($node, ['serialport', 'serialspeed', 'serialflow']);
-            unless ($ent and $ent->{nfsserver})
-            {
-                $callback->(
-                           {
-                            error => ["No noderes.nfsserver for $node defined"],
-                            errorcode => [1]
-                           }
-                           );
-                next;
-            }
-            my $kcmdline =
-                "autoyast=http://"
-              . $ent->{nfsserver}
-              . "/install/autoinst/"
-              . $node
-              . " install=http://"
-              . $ent->{nfsserver}
-              . "/install/$os/$arch/1";
-            if ($ent->{installnic})
-            {
-                $kcmdline .= " netdevice=" . $ent->{installnic};
-            }
-            elsif ($ent->{primarynic})
-            {
-                $kcmdline .= " netdevice=" . $ent->{primarynic};
-            }
-            else
-            {
-                $kcmdline .= " netdevice=eth0";
-            }
-
-            #TODO: driver disk handling should in SLES case be a mod of the install source, nothing to see here
-            if (defined $sent->{serialport})
-            {
-                unless ($sent->{serialspeed})
-                {
-                    $callback->(
-                        {
-                         error => [
-                             "serialport defined, but no serialspeed for $node in nodehm table"
-                         ],
-                         errorcode => [1]
-                        }
-                        );
-                    next;
-                }
-                $kcmdline .=
-                    " console=ttyS"
-                  . $sent->{serialport} . ","
-                  . $sent->{serialspeed};
-                if ($sent and ($sent->{serialflow} =~ /(ctsrts|cts|hard)/))
-                {
-                    $kcmdline .= "n8r";
-                }
-            }
+        if (! -r "/tftpboot/Boot/pxeboot.0" ) {
+           $callback->(
+            {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
+            });
+        } elsif (-r $installroot."/$os/$arch/sources/install.wim") {
 
             if ($arch =~ /x86/)
             {
                 $bptab->setNodeAttribs(
                                         $node,
                                         {
-                                         kernel   => "xcat/$os/$arch/linux",
-                                         initrd   => "xcat/$os/$arch/initrd",
-                                         kcmdline => $kcmdline
-                                        }
-                                        );
-            }
-            elsif ($arch =~ /ppc/)
-            {
-                $bptab->setNodeAttribs(
-                                        $node,
-                                        {
-                                         kernel   => "xcat/$os/$arch/inst64",
+                                         kernel   => "Boot/pxeboot.0",
                                          initrd   => "",
-                                         kcmdline => $kcmdline
+                                         kcmdline => ""
                                         }
                                         );
             }
-
         }
         else
         {
@@ -284,11 +169,6 @@ sub mkinstall
                 );
         }
     }
-    #my $rc = xCAT::Utils->create_postscripts_tar();
-    #if ($rc != 0)
-    #{
-    #    xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
-    #}
 }
 
 sub copycd
