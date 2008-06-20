@@ -16,24 +16,24 @@ md c:\WinPE_%SUFFIX%\pxe\Boot\
 md c:\WinPE_%SUFFIX%\pxe\Boot\Fonts
 if exist "C:\Program Files\Windows AIK\Tools\PETools\%ARCH%\bootmgr" copy "C:\Program Files\Windows AIK\Tools\PETools\%ARCH%\boot\fonts\wgl4_boot.ttf" "c:\WinPE_%SUFFIX%\pxe\Boot\Fonts"
 if exist "C:\Program Files\Windows AIK\Tools\PETools\%ARCH%\Boot\boot.sdi" copy "C:\Program Files\Windows AIK\Tools\PETools\%ARCH%\boot\boot.sdi" "c:\WinPE_%SUFFIX%\pxe\Boot\boot.sdi"
-copy "c:\Program Files\Windows AIK\Tools\PETools\%ARCH%\winpe.wim" "c:\WinPE_%SUFFIX%\pxe\Boot\WinPE.wim"
+copy "c:\Program Files\Windows AIK\Tools\PETools\%ARCH%\winpe.wim" "c:\WinPE_%SUFFIX%\pxe\Boot\WinPE_%SUFFIX%.wim"
 
-bcdedit /createstore c:\WinPE_%SUFFIX%\pxe\Boot\BCD
-bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD  /create {ramdiskoptions} /d "Ramdisk options"
-bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD  /set {ramdiskoptions} ramdisksdidevice boot
-bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD  /set {ramdiskoptions} ramdisksdipath \Boot\boot.sdi
-for /f "Tokens=3" %%i in ('bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD /create /d "xCAT WinNB" /application osloader') do set GUID=%%i
-bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD  /set %GUID% systemroot \Windows
-bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD  /set %GUID% detecthal Yes
-bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD  /set %GUID% winpe Yes
-bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD  /set %GUID% osdevice ramdisk=[boot]\Boot\WinPE.wim,{ramdiskoptions}
-bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD  /set %GUID% device ramdisk=[boot]\Boot\WinPE.wim,{ramdiskoptions}
-bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD /create {bootmgr} /d "xCAT WinNB"
-bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD /set {bootmgr} timeout 1
-bcdedit /store c:\WinPE_%SUFFiX%\pxe\Boot\BCD /set {bootmgr} displayorder %GUID%
-bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD
+bcdedit /createstore c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%
+bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%  /create {ramdiskoptions} /d "Ramdisk options"
+bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%  /set {ramdiskoptions} ramdisksdidevice boot
+bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%  /set {ramdiskoptions} ramdisksdipath \Boot\boot.sdi
+for /f "Tokens=3" %%i in ('bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% /create /d "xCAT WinNB_%SUFFIX%" /application osloader') do set GUID=%%i
+bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%  /set %GUID% systemroot \Windows
+bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%  /set %GUID% detecthal Yes
+bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%  /set %GUID% winpe Yes
+bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%  /set %GUID% osdevice ramdisk=[boot]\Boot\WinPE_%SUFFIX%.wim,{ramdiskoptions}
+bcdedit /store C:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%  /set %GUID% device ramdisk=[boot]\Boot\WinPE_%SUFFIX%.wim,{ramdiskoptions}
+bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% /create {bootmgr} /d "xCAT WinNB_%SUFFIX%"
+bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% /set {bootmgr} timeout 1
+bcdedit /store c:\WinPE_%SUFFiX%\pxe\Boot\BCD.%SUFFIX% /set {bootmgr} displayorder %GUID%
+bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%
 
-"C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" /mountrw c:\WinPE_%SUFFIX%\pxe\Boot\winpe.wim 1 c:\WinPE_%SUFFIX%\rootfs
+"C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" /mountrw c:\WinPE_%SUFFIX%\pxe\Boot\winpe_%SUFFIX%.wim 1 c:\WinPE_%SUFFIX%\rootfs
 copy startnet.cmd c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\pxeboot.n12 c:\WinPE_%SUFFIX%\pxe\Boot\pxeboot.0
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\bootmgr.exe c:\WinPE_%SUFFIX%\pxe\

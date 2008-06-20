@@ -315,7 +315,7 @@ osimage  => {
   },
 passwd => {
     cols => [qw(key username password comments disable)],
-    keys => [qw(key)],
+    keys => [qw(key username)],
     table_desc => 'Contains default userids and passwords for xCAT to access cluster components.  In most cases, xCAT will also actually set the userid/password in the relevant component when it is being configured or installed.  Userids/passwords for specific cluster components can be overidden in other tables, e.g. mpa, ipmi, ppchcp, etc.',
  descriptions => {
   key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, fsp.',

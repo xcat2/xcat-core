@@ -5,6 +5,7 @@ use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
+use Socket;
 use xCAT::MsgUtils;
 use xCAT::Template;
 use xCAT::Postage;
@@ -21,7 +22,7 @@ sub handled_commands
 {
     return {
             copycd    => "windows",
-            #mkinstall => "nodetype:os=win.*"
+            mkinstall => "nodetype:os=win.*"
             };
 }
 
@@ -39,14 +40,16 @@ sub process_request
     {
         return copycd($request, $callback, $doreq);
     }
-#   elsif ($request->{command}->[0] eq 'mkinstall')
-#   {
-#       return mkinstall($request, $callback, $doreq);
-#   }
+   elsif ($request->{command}->[0] eq 'mkinstall')
+   {
+       return mkinstall($request, $callback, $doreq);
+   }
 }
 
 sub mkinstall
 {
+    my $installroot;
+    $installroot = "/install";
     my $request  = shift;
     my $callback = shift;
     my $doreq    = shift;
@@ -54,6 +57,7 @@ sub mkinstall
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my %doneimgs;
+    my $bptab = xCAT::Table->new('bootparams',-create=>1);
     foreach $node (@nodes)
     {
         my $osinst;
@@ -162,14 +166,34 @@ sub mkinstall
             $callback->(
                 {
                  error => [
-                     "Failed to detect copycd configured install source at /install/$os/$arch"
+                     "Failed to detect copycd configured install source at /$installroot/$os/$arch/sources/install.wim"
                  ],
                  errorcode => [1]
                 }
                 );
         }
+        my $shandle;
+        open($shandle,">","$installroot/autoinst/$node.cmd");
+        print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\$node /noreboot\r";
+        close($shandle);
+        foreach (getips($node)) {
+            link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd"
+            unlink "/tftpboot/Boot/BCD.$_";
+            if ($arch =~ /64/) {
+                link "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
+            } else {
+                link "/tftpboot/Boot/BCD.32","/tftpboot/Boot/BCD.$_";
+            }
+        }
     }
 }
+sub getips { #TODO: all the possible ip addresses
+    my $node = shift;
+    my $ip = inet_ntoa(inet_aton($node));;
+    return ($ip);
+}
+
+
 
 sub copycd
 {
@@ -214,9 +238,7 @@ sub copycd
         unless ($distname) {
             $distname = "win2k8";
         }
-        print "indeed";
     }
-    print "$path huh?\n";
     unless ($distname)
     {
         return;
