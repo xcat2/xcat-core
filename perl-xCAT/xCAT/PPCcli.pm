@@ -34,7 +34,7 @@ my %lssyscfg = (
   lpar   =>"lssyscfg -r lpar -m %s -F %s",
   bpa    =>"lssyscfg -r frame -e %s -F %s",
   bpas   =>"lssyscfg -r frame -F %s",
-  prof   =>"lssyscfg -r prof -m %s --filter lpar_ids=%s",
+  prof   =>"lssyscfg -r prof -m %s --filter %s",
   cage   =>"lssyscfg -r cage -e %s -F %s"
 );
 
@@ -291,6 +291,7 @@ sub chsyscfg {
 sub mksyscfg {
 
     my $exp     = shift;
+    my $res     = shift;
     my $d       = shift;
     my $cfgdata = shift;
 
@@ -303,7 +304,7 @@ sub mksyscfg {
     #####################################
     # Format command based on CEC name
     #####################################
-    my $cmd = "mksyscfg -r lpar -m @$d[2] -i \"$cfgdata\""; 
+    my $cmd = "mksyscfg -r $res -m @$d[2] -i \"$cfgdata\""; 
 
     #####################################
     # Send command
