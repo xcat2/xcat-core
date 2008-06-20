@@ -24,7 +24,7 @@ B<rspconfig> I<noderange> B<garp>={I<time>}
        
 =head2 MPA specific:
 
-B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<build>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>}
+B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>}
 
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
@@ -86,10 +86,6 @@ Select the policy for auto power restart. If enabled, the system will boot autom
 =item B<backupgateway>
 
 Get the BMC backup gateway ip address.
-
-=item B<build>
-
-Get the MPA firmware build ID.
 
 =item B<community>={B<public>|I<string>}
 
