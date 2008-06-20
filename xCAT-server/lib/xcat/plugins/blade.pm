@@ -472,11 +472,6 @@ sub mpaconfig {
         push @cfgtext,"Subnet Mask: $data";
         next;
       }
-      if ($parameter =~ /^build$/) {
-        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.3',1]);
-        push @cfgtext,"Build ID: $data";
-        next;
-      }
       if ($parameter eq "textid") {
          if ($assignment) {
            my $txtid = ($value =~ /^\*/) ? $node : $value;
