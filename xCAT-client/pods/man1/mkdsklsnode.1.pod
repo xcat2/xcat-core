@@ -99,7 +99,7 @@ B<mkdsklsnode -i 61spot node01>
 
 =back
 
-2) Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "next_image" attribute of the xCAT node definitions.
+2) Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "profile" attribute of the xCAT node definitions.
 
 =over 5
 
