@@ -118,7 +118,7 @@ sub start {
       elsif ($summary{$_}==-1) {push(@nodes_to_remove, $_);}      
     }
  
-      #add new nodes to the RMC cluster
+    #add new nodes to the RMC cluster
     #print "all nodes to add: @nodes_to_add\nall nodes to remove: @nodes_to_remove\n";  
     if (@nodes_to_add>0) { 
       my %nodes_status=xCAT_monitoring::rmcmon->pingNodeStatus(@nodes_to_add); 
@@ -139,8 +139,16 @@ sub start {
       removeNodes_noChecking(@nodes_to_remove);
     }  
 
-    #start condition-response assosciations 
-    my $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`;
+    #create conditions/responses/sensors on the service node or mn
+    my $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/sn 2>&1`;
+    if ($?) {
+      xCAT::MsgUtils->message('SI', "[mon]: Error when creating predefined resources on $localhostname:\n$result\n");
+    }   
+    if ($isSV) {
+      $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/node 2>&1`; 
+    } else  {
+      $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`; 
+    }      
     if ($?) {
       xCAT::MsgUtils->message('SI', "[mon]: Error when creating predefined resources on $localhostname:\n$result\n");
     }

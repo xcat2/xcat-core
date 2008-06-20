@@ -1,0 +1,100 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Script to demonstrate how to parse out the event info that comes from a
+# Condition that is watching another Condition in a hierarchical cluster environment.
+
+# To use this script, create a Response that invokes this script with email address as the input.
+# Then associate the Response with a Condition that is watching Conditions on other
+# nodes.  When the Conditions occur, this script will wall the relevant event information.
+
+# This info that is passed into this sample is structured as follows:
+#  EMS Condition/Event:
+#   $ENV{ERRM_COND_NAME}
+#   $ENV{ERRM_TYPEID}
+#     ...
+#   $ENV{ERRM_NODE_NAME} -->  SN
+#   $ENV{ERRM_RSRC_NAME} -->  SN Condition
+#   $ENV{ERRM_VALUE}     -->  SN Event:
+#                              $Occurred
+#                              $ErrNum
+#                                ...
+#                              $NodeName     -->  Leaf Node:
+#                              $ResourceName -->   Resource
+#                              $Attribute 1  -->    Attr 1
+#                              $Attribute 2  -->    Attr 2
+
+use strict;
+use Getopt::Std;
+use POSIX qw(strftime);
+
+my $user=shift;
+
+# Convert Severity and Type environment variables from integers to strings
+my @COND_SEVERITY = qw(Informational Warning Critical);
+my @TYPE = ('event', 'rearm event');
+my $severity=$COND_SEVERITY[$ENV{ERRM_COND_SEVERITYID}];
+my $type=$TYPE[$ENV{ERRM_TYPEID }];
+
+
+# Parse the ERRM_VALUE attribute, which will contain the EventOccurred structured data variable from the Condition class
+# The fields in this structured data variable are documented below where we parse them out.
+my $event = $ENV{ERRM_VALUE};
+$event =~ s/^\[(.*)\]$/$1/;              # SD variables have square brackets around them
+
+# This parse the LastEvent
+my (                     # split the SD into the following fields:
+	$Occurred,           # One if the condition has been triggered
+	$ErrNum,             # Non-zero if there was in error in the event registration
+	$ErrMsg,             # The string msg related to ErrNum
+	$EventFlags,         # Bit mask giving some additional info about the event
+	$EventTime,          # Time of event expressed in seconds since 1/1/1970
+	$EventTimeMicros,    # Number of microseconds past EventTime
+	$ResourceHandle,     # Binary address of the RMC resource that caused the condition to be triggered
+	$NodeName,           # The node on which the event occurred.  For conditions that use the management domain scope (4),
+	                     # this will be the leaf node.  For conditions that use the local scope (e.g. NodeReachability),
+	                     # this will be the FMS.
+	$NumAttrs,           # Number of attr values from the resource returned in this event
+	$NumAttrsInExpr,     # How many of the above were attributes in the event expression
+	$IndexForAttrs,      # The starting index of the array of values.  Until new fixed fields are added
+	                     # to LastEvent, this will be the element right after this one.
+	$AttrArray           # This list of attribute names, types, and values
+   ) = split(/,/, $event, 12);
+
+my @attrArray = split(/,/, $AttrArray);      # Note: parsing this way does not support SDs or SD Arrays that may be in this list
+
+my ($ResourceName, $valuesMsg);
+my $j = 0;      # index into attrArray
+for (my $i=0; $i<$NumAttrs; $i++) {
+  my $attrName = $attrArray[$j++];
+  my $attrType = $attrArray[$j++];          # Types <= 8 are "simple" types. Types > 8 are SDs and arrays.
+  my $attrValue = $attrArray[$j++];
+  if ($attrName eq '"Name"') { $ResourceName = $attrValue; }
+  $valuesMsg .= "  Attribute Value $i:  $attrName = $attrValue\n";
+}
+if (!length($ResourceName)) { $ResourceName = '(unknown)'; }
+
+my $msg;
+$msg .= "The following $TYPE[$ENV{ERRM_TYPEID}] occurred:\n";
+$msg .= " MN Condition:  $ENV{ERRM_COND_NAME}\n";
+$msg .= " SN:  $ENV{ERRM_NODE_NAME}\n";     # do we have to use $ERRM_NODE_NAMELIST here?
+$msg .= " SN Condition:  $ENV{ERRM_RSRC_NAME}\n";
+$msg .= " Node:  $NodeName\n";
+$msg .= " Resource Name:  $ResourceName\n";
+
+$msg .= " Event Time:  " . convertTime($EventTime) . "\n";
+if (length($valuesMsg)) {
+  $msg .= " Attributes that came in the event for condition $ENV{ERRM_RSRC_NAME} from node $NodeName for resource $ResourceName:\n";
+  $msg .= $valuesMsg;
+}
+# Skipped the following:  $ERRM_EXPR $ERRM_RSRC_CLASS_PNAME $ERRM_DATA_TYPE $ERRM_NODE_NAMELIST $ERRM_RSRC_TYPE
+`echo "$msg"| mail -s "$severity $type: $ENV{ERRM_COND_NAME}" $user`;
+
+exit;
+
+
+# convert time string
+sub convertTime {
+  my ($seconds, $micro) = split(/\./, $_[0]);
+  return strftime("%A %D %T", localtime($seconds));
+}
