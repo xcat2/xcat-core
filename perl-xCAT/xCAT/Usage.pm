@@ -64,7 +64,7 @@ my %usage = (
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
    MPA specific:
-       rspconfig <noderange>  [sshcfg|snmpcfg|build|pd1|pd2|network|swnet|ntp|textid]
+       rspconfig <noderange>  [sshcfg|snmpcfg|pd1|pd2|network|swnet|ntp|textid]
        rspconfig <singlenode> [textid=name]
        rspconfig <noderange>  [sshcfg=<enable|disable>|
            snmpcfg=<enable|disable>|                             
