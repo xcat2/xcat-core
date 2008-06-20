@@ -34,6 +34,7 @@ my @TYPE = ('Event', 'Rearm event');
 my $severity=$COND_SEVERITY[$ENV{ERRM_COND_SEVERITYID}];
 my $type=$TYPE[$ENV{ERRM_TYPEID }];
 
+my $where = join(' ', @ARGV);
 
 # Parse the ERRM_VALUE attribute, which will contain the EventOccurred structured data variable from the Condition class
 # The fields in this structured data variable are documented below where we parse them out.
@@ -73,25 +74,28 @@ for (my $i=0; $i<$NumAttrs; $i++) {
 if (!length($ResourceName)) { $ResourceName = '(unknown)'; }
 
 my $msg;
-$msg .= "$severity $type occurred at " . convertTime($EventTime) . ":\n";
+$msg .= "$severity $type occurred:\n";
 $msg .= "  MN Condition:  $ENV{ERRM_COND_NAME}\n";
-$msg .= "  SN:  $ENV{ERRM_NODE_NAME}\n";     # do we have to use $ERRM_NODE_NAMELIST here?
 $msg .= "  SN Condition:  $ENV{ERRM_RSRC_NAME}\n";
+$msg .= "  SN:  $ENV{ERRM_NODE_NAME}\n";     # do we have to use $ERRM_NODE_NAMELIST here?
 $msg .= "  Node:  $NodeName\n";
-$msg .= "  Resource Name:  $ResourceName\n";
+$msg .= "  Resource:  $ResourceName\n";
+$msg .= "  Time:  " . convertTime($EventTime) . " \n";
 if (length($valuesMsg)) {
   $msg .= "  Attributes:\n";
   $msg .= $valuesMsg;
 }
 
 # Skipped the following:  $ERRM_EXPR $ERRM_RSRC_CLASS_PNAME $ERRM_DATA_TYPE $ERRM_NODE_NAMELIST $ERRM_RSRC_TYPE
+#$str = escape_chars($str);
+my $rc = system(qq(echo "$msg" | write $where)) >> 8;
 
-open(CMD, "| wall") || die "Error:  can not start wall command.\n";
-print CMD $msg;
-close(CMD);
+exit $rc;
 
+#open(CMD, "| wall") || die "Error:  can not start wall command.\n";
+#print CMD $msg;
+#close(CMD);
 
-exit;
 
 
 # convert time string
@@ -99,3 +103,9 @@ sub convertTime {
   my ($seconds, $micro) = split(/\./, $_[0]);
   return strftime("%A %D %T", localtime($seconds));
 }
+
+
+
+
+
+
