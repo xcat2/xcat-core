@@ -441,7 +441,7 @@ sub addNodes_noChecking {
         next;
       }
 
-      $result=`$::XCATROOT/bin/psh --nonodecheck $node /tmp/configrmcnode -a $node $ms_host_name $ms_ipaddresses 0x$ms_node_id 2>&1`;
+      $result=`$::XCATROOT/bin/psh --nonodecheck $node NODE=$node MASTER_NAME=$ms_host_name MASTER_IPS=$ms_ipaddresses MASTER_NODEID=0x$ms_node_id /tmp/configrmcnode 1 2>&1`;
       if ($?) {
         xCAT::MsgUtils->message('SI',  "[mon]: $result\n");
       }
@@ -556,7 +556,7 @@ sub removeNodes_noChecking {
         next;
       }
 
-      $result=`$::XCATROOT/bin/psh --nonodecheck $node /tmp/configrmcnode -d $node 2>&1`;
+      $result=`$::XCATROOT/bin/psh --nonodecheck $node NODE=$node /tmp/configrmcnode -1 2>&1`;
       if ($?) {
         xCAT::MsgUtils->message('SI', "[mon]: $result\n");
       }

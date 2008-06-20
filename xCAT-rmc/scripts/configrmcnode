@@ -1,0 +1,57 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+use Getopt::Long;
+
+##########################################################################################
+# This script is used for RMC node configuration
+# usage:
+#  To add node to the cluster:
+#    NODE=nodename MASTER_NAME=msname \
+#    MASTER_IPS={"9.114.46.26","..."} MASTER_NODEID=0xfbb5ec1f64dd299c \
+#    configrmcnode 1    
+#  To remove node to the cluster 
+#    NODE=nodename configrmcnode -1
+########################################################################################## 
+ADD=$1;
+
+logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, MASTER_NAME=$MASTER_NAME, MASTER_IPS=$MASTER_IPS, MASTER_NODEID=$MASTER_NODEID"
+
+#check if rsct is installed and running
+if [ ! -e /usr/bin/lsrsrc ]; then  
+  logger xCAT "RMC setup on node $NODE: RSCT is not is not installed."
+  exit 1;
+fi
+  
+PID=`/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print $2}'`
+if [ !$PID ]; then
+  #restart rmc daemon
+  result=`startsrc -s ctrmc 2>&1`;
+  if [ $? -gt 0 ]; then
+    logger xCAT "RMC deamon cannot be started on node $NODE:$result"
+    exit 1;
+  fi
+fi
+
+#enable remote client connection
+/usr/bin/rmcctrl -p; /usr/bin/refrsrc IBM.MCP
+
+if [ $ADD -eq 1 ]; then
+  #define resource in IBM.MCP class on node       
+  result1=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$NODE"::KeyToken::"$MASTER_NAME"::IPAddresses::"$MASTER_IPS"::NodeID::$MASTER_NODEID 2>&1`
+  if [ $? -gt 0 ]; then
+    logger xCAT  "Define resource in IBM.MCP class on node $NODE. result=$result1" } 
+    exit 1
+  fi
+  #TODO: create predefined sensors
+else
+  #remove resource in IBM.MCP class on the node
+  result2= `/usr/bin/rmrsrc-api -s IBM.MCP::"MNName=\\\"\"$NODE\\\"\"" 2>&1`
+  if [ $? -gt 0 ]; then
+    logger xCAT "Remove resource in IBM.MCP class on noderesult=$result2"
+    exit 1
+  fi
+fi
+exit 0;
+
+

@@ -36,7 +36,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 cp plugin/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
 cp -r resources $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/rmc
 
-cp scripts/perl/* $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
+cp scripts/* $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon/*
 
 %clean
