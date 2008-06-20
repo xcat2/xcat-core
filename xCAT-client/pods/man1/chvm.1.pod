@@ -9,17 +9,19 @@ I<chvm [-h| --help]>
 I<chvm [-v| --version]>
 
 
-I<chvm [-V| --verbose] noderange>
+I<chvm [-V| --verbose] noderange [-p profile]>
 
 
 =head1 DESCRIPTION
 
-The chvm command modifies the partition profile for the partitions specified in noderange. A partitions current profile can be read using lsvm, modified, and piped into the chvm command.
+The chvm command modifies the partition profile for the partitions specified in noderange. A partitions current profile can be read using lsvm, modified, and piped into the chvm command, or changed with the -p flag.
 
 =head1 OPTIONS
 
 
 B<-h>          Display usage message.
+
+B<-p profile>  Name of an existing partition profile.
 
 B<-v>          Command Version. 
 
@@ -37,6 +39,14 @@ B<-V>          Verbose output.
 1. To change the partition profile for lpar4 using the configuration data in the file /tmp/lparfile, enter: 
 
 I<cat /tmp/lparfile | chvm lpar4> 
+
+Output is similar to:
+
+lpar4: Success
+
+2. To change the partition profile for lpar4 to the existing profile 'prof1', enter: 
+
+I<chvm lpar4 -p prof1> 
 
 Output is similar to:
 
