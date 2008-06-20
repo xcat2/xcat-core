@@ -58,6 +58,7 @@ sub mkinstall
     my $ostab = xCAT::Table->new('nodetype');
     my %doneimgs;
     my $bptab = xCAT::Table->new('bootparams',-create=>1);
+    my $hmtab = xCAT::Table->new('nodehm');
     foreach $node (@nodes)
     {
         my $osinst;
@@ -173,11 +174,37 @@ sub mkinstall
                 );
         }
         my $shandle;
+        my $sspeed;
+        my $sport;
+        if ($hmtab) {
+            my $sent = $hmtab->getNodeAttribs($node,"serialport","serialspeed");
+            if ($sent and defined($sent->{serialport}) and $sent->{serialspeed}) {
+                $sport = $sent->{serialport};
+                $sspeed = $sent->{serialspeed};
+            }
+        }
+
+
         open($shandle,">","$installroot/autoinst/$node.cmd");
-        print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\$node /noreboot\r";
+        if ($sspeed) {
+            $sport++;
+            print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\$node /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
+        } else {
+            print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\$node /noreboot\r\n";
+        }
+        #print $shandle "i:\\postscripts\
+        print $shandle "IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64\r\n";
+        print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
+        print $shandle "IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86\r\n";
+        print $shandle ":x86\r\n";
+        print $shandle "i:\\postscripts\\upflagx86 %XCATD% 3002 next\r\n";
+        print $shandle "GOTO END\r\n";
+        print $shandle ":x64\r\n";
+        print $shandle "i:\\postscripts\\upflagx64 %XCATD% 3002 next\r\n";
+        print $shandle ":END\r\n";
         close($shandle);
         foreach (getips($node)) {
-            link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd"
+            link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
             unlink "/tftpboot/Boot/BCD.$_";
             if ($arch =~ /64/) {
                 link "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
