@@ -53,12 +53,6 @@ sub chvm_parse_args {
         my $usage_string = xCAT::Usage->getUsage($cmd);
         return( [ $_[0], $usage_string] );
     };
-    ####################################
-    # Configuration file required 
-    ####################################
-    if ( !exists( $request->{stdin} ) ) {
-        return(usage( "Configuration file not specified" ));
-    }
     #############################################
     # Process command-line arguments
     #############################################
@@ -75,7 +69,7 @@ sub chvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose p=s) )) {
         return( usage() );
     }
     ####################################
@@ -89,6 +83,14 @@ sub chvm_parse_args {
     ####################################
     if ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
+    }
+    ####################################
+    # Configuration file required 
+    ####################################
+    if ( !exists( $opt{p} )) { 
+        if ( !defined( $request->{stdin} )) { 
+            return(usage( "Configuration file not specified" ));
+        }
     }
     ####################################
     # No operands - add command name 
@@ -436,7 +438,7 @@ sub clone {
                               $exp,
                               "prof",
                               $srccec,
-                              $id );
+                              "lpar_ids=$id" );
 
         $Rc = shift(@$prof); 
 
@@ -472,7 +474,7 @@ sub clone {
         $temp[0] = $lparid;
         $temp[2] = $destcec;
 
-        my $result = xCAT::PPCcli::mksyscfg( $exp, \@temp, $cfg ); 
+        my $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", \@temp, $cfg ); 
         $Rc = shift(@$result);
 
         #################################
@@ -592,6 +594,47 @@ sub remove {
 }
 
 
+##########################################################################
+# Finds the partition profile specified by examining all CECs
+##########################################################################
+sub getprofile {
+
+    my $exp  = shift; 
+    my $name = shift;
+
+    ###############################
+    # Get all CECs
+    ###############################
+    my $cecs = xCAT::PPCcli::lssyscfg( $exp, "fsps", "name" );
+
+    ###############################
+    # Return error
+    ###############################
+    if ( @$cecs[0] != NR_ERROR ) {
+        if ( @$cecs[0] != SUCCESS ) {
+            return( $cecs );
+        }
+        my $Rc = shift(@$cecs);
+
+        ###########################
+        # List profiles for CECs 
+        ###########################
+        foreach my $mtms ( @$cecs ) {
+            my $prof = xCAT::PPCcli::lssyscfg(
+                               $exp,
+                               "prof",
+                               $mtms,
+                               "profile_names=$name" );
+
+            my $Rc = shift(@$prof);
+            if ( $Rc == SUCCESS ) {
+                return( [SUCCESS,$mtms,@$prof[0]] );
+            }
+        }
+    }
+    return( [RC_ERROR,"The partition profile named '$name' was not found"] );
+}
+
 
 ##########################################################################
 # Changes the configuration of an existing partition 
@@ -603,9 +646,54 @@ sub modify {
     my $exp     = shift;
     my $hwtype  = @$exp[2];
     my $name    = @{$request->{node}}[0];
+    my $opt     = $request->{opt};
     my $cfgdata = $request->{stdin}; 
+    my $profile = $opt->{p};
     my @values;
 
+    #######################################
+    # -p flag, find profile specified
+    #######################################
+    if ( defined( $profile )) { 
+        my $prof = getprofile( $exp, $profile );
+
+        ###################################
+        # Return error
+        ###################################
+        my $Rc = shift(@$prof);
+        if ( $Rc != SUCCESS ) {
+            return( [[$name,@$prof,RC_ERROR]] );
+        }
+        $cfgdata = @$prof[1];
+        my $mtms = @$prof[0];
+
+        ###################################
+        # Check if LPAR profile exists 
+        ###################################
+        while (my ($cec,$h) = each(%$hash) ) {
+            while (my ($lpar,$d) = each(%$h) ) {
+
+                ###########################
+                # Get LPAR profiles 
+                ###########################
+                my $prof = xCAT::PPCcli::lssyscfg(
+                             $exp,
+                             "prof",
+                             $cec,
+                             "lpar_ids=@$d[0],profile_names=$profile" );
+                my $Rc = shift(@$prof);
+
+                ###########################
+                # Already has that profile 
+                ###########################
+                if ( $Rc == SUCCESS ) {
+                    push @values, [$lpar,"Success",$Rc];
+                    xCATdB( "chvm", $lpar, $profile );
+                    delete $h->{$lpar};  
+                }
+            }
+        }
+    }
     #######################################
     # Remove "node: " in case the
     # configuration file was created as
@@ -613,36 +701,53 @@ sub modify {
     #  "lpar9: name=lpar9, lpar_name=..." 
     #######################################
     $cfgdata =~ s/^[\w]+: //;
-
     if ( $cfgdata !~ /^name=/ ) {
         my $text = "Invalid file format: must begin with 'name='";
         return( [[$name,$text,RC_ERROR]] );
     }
+    my $cfg = strip_profile( $cfgdata, $hwtype );
+    $cfg =~ s/,*lpar_env=[^,]+|$//;
+    $cfg =~ s/,*all_resources=[^,]+|$//;
+    $cfg =~ s/,*lpar_name=[^,]+|$//;
 
     #######################################
     # Send change profile command
     #######################################
     while (my ($cec,$h) = each(%$hash) ) {
         while (my ($lpar,$d) = each(%$h) ) {
-
+ 
             ###############################
-            # Change configuration
+            # Only valid for LPARs 
             ###############################
-            my $cfg = strip_profile( $cfgdata, $hwtype );
-            
-            ###############################
-            # Additional changes 
-            ###############################
-            $cfg =~ s/,*lpar_env=[^,]+|$//;
-            
-            if ( $hwtype eq "hmc" ) {
-                $cfg =~ s/,*all_resources=[^,]+|$//;
-                $cfg =~ s/,*lpar_id=[^,]+|$//;          
+            if ( @$d[4] ne "lpar" ) {
+                push @values, [$lpar,"Command not supported on '@$d[4]'",RC_ERROR];
+                next;
             }
-            my $result = xCAT::PPCcli::chsyscfg( $exp, $d, $cfg );
-            my $Rc = shift(@$result);
+            ###############################
+            # Change LPAR Id 
+            ###############################
+            $cfg =~ s/lpar_id=[^,]+/lpar_id=@$d[0]/;          
+            
+            ###############################
+            # Send command 
+            ###############################
+            if ( defined( $profile )) {
+               my $result = xCAT::PPCcli::mksyscfg( $exp, "prof", $d, $cfg );
+               my $Rc = shift(@$result);
 
-            push @values, [$lpar,@$result[0],$Rc];
+               ############################
+               # Update database
+               ############################
+               if ( $Rc == SUCCESS ) {
+                   xCATdB( "chvm", $lpar, $profile );
+               }
+               push @values, [$lpar,@$result[0],$Rc];
+            }
+            else {
+               my $result = xCAT::PPCcli::chsyscfg( $exp, $d, $cfg );
+               my $Rc = shift(@$result);
+               push @values, [$lpar,@$result[0],$Rc];
+            }
         }
     }
     return( \@values );
@@ -720,7 +825,7 @@ sub list {
                                       $exp,
                                       "prof",
                                       $mtms,
-                                      $id );
+                                      "lpar_ids=$id" );
                 my $Rc = shift(@$prof);
 
                 #################################
@@ -837,7 +942,7 @@ sub create {
         #################################
         # Create new LPAR  
         #################################
-        $result = xCAT::PPCcli::mksyscfg( $exp, $d, $cfgdata ); 
+        $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", $d, $cfgdata ); 
         $Rc = shift(@$result);
 
         #################################
@@ -916,6 +1021,20 @@ sub xCATdB {
     #######################################
     if ( $cmd eq "rmvm" ) {
         return( xCAT::PPCdb::rm_ppc( $name )); 
+    }
+    #######################################
+    # Change entry 
+    #######################################
+    elsif ( $cmd eq "chvm" ) {
+        my $ppctab = xCAT::Table->new( "ppc", -create=>1, -autocommit=>1 );
+
+        ###################################
+        # Error opening ppc database
+        ###################################
+        if ( !defined( $ppctab )) {
+            return( "Error opening 'ppc' database" );
+        }
+        $ppctab->setNodeAttribs( $name, {pprofile=>$profile} );
     }
     #######################################
     # Add entry 
