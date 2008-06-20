@@ -7,5 +7,5 @@ for /f %%c in ('echo %XCATD%') do set XCATD=%%c
 net use i: \\%XCATD%\install
 for /f "delims=: tokens=2" %%c in ('ipconfig ^|find "IPv4 Address. . ."') do set NODEIP=%%c
 for /f %%c in ('echo %NODEIP%') do set NODEIP=%%c
-i:\autoinst\%NODEIP%
+call i:\autoinst\%NODEIP%.cmd
 wpeutil reboot
