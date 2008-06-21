@@ -10,6 +10,7 @@ use Socket;
 use Sys::Syslog;
 use IPC::Open2;
 use xCAT::Utils;
+use xCAT::NodeRange;
 
 my @dhcpconf; #Hold DHCP config file contents to be written back.
 my @nrn;      # To hold output of netstat -rn to be consulted throughout process
@@ -316,11 +317,15 @@ sub process_request
         {
            my $dhcpinterfaces = $href->{value};
            my $dhcpif;
-           foreach $dhcpif (split /;/,$dhcpinterfaces) {
+           INTF: foreach $dhcpif (split /;/,$dhcpinterfaces) {
               if ($dhcpif =~ /\|/) {
-                 (my $host,$dhcpif) = split /\|/,$dhcpif;
-                 if (xCAT::Utils->thishostisnot($host)) {
-                    next;
+                 
+                 (my $ngroup,$dhcpif) = split /\|/,$dhcpif;
+                 my $host;
+                 foreach $host (noderange($ngroup)) {
+                    if (xCAT::Utils->thishostisnot($host)) {
+                        next INTF;
+                    }
                  }
               }
               foreach (split /[,\s]+/, $dhcpif)
