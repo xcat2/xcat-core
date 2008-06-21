@@ -342,9 +342,9 @@ sub saveRMCNodeStatusToxCAT {
   #get all the node status from mn's children
   my $result;
   if ($node) {
-    $result=`lsrsrc-api -s IBM.MngNode::::Name::Status 2>&1`;
+    $result=`CT_MANAGEMENT_SCOPE=4 /usr/bin/lsrsrc-api -o IBM.MngNode::::$node::Name::Status 2>&1`;
   } else {
-    $result=`lsrsrc-api -s IBM.MngNode::::Name::Status 2>&1`;
+    $result=`CT_MANAGEMENT_SCOPE=1 /usr/bin/lsrsrc-api -s IBM.MngNode::::Name::Status 2>&1`;
   }
   if ($?) {
     $retcode=$?;

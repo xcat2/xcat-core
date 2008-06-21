@@ -4,6 +4,10 @@
 # This script is used by UpdatexCATNodeStatus event response to handle the node
 # status changes from the condition NodeReachability and NodeReachability_H
 
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
 
 use strict;
 use Getopt::Std;
@@ -53,15 +57,19 @@ if ($cond_name eq "NodeReachability") {
     if ($attrName eq '"Status"') { $status = $attrValue; }
   }
 } else {
-  print "this script does not handle condition $cond_name\n";
+  `logger xCAT  "[mon]: updatexcatnodestatus: This script does not handle condition $cond_name"`;
   exit 1;
 }
+my $status_string;
+if ($status == 1) { $status_string="active"; }
+else { $status_string="inactive"; }
 
-
-open(CMD, "| wall") || die "Error:  can not start wall command.\n";
-print CMD "node=$node status=$status\n";
-close(CMD);
-
+my $result=`$::XCATROOT/bin/nodech $node nodelist.status=$status_string 2>&1`;
+my $code=$?;
+if ($code) {
+  `logger xCAT "[mon]: Error saving node status ($node,$status_string) to xCAT:$result"`;
+  exit $code;
+}
 exit 0
 
 

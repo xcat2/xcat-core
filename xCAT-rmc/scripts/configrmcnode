@@ -39,9 +39,10 @@ if [ $ADD -eq 1 ]; then
   #define resource in IBM.MCP class on node       
   result1=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$NODE"::KeyToken::"$MASTER_NAME"::IPAddresses::"$MASTER_IPS"::NodeID::$MASTER_NODEID 2>&1`
   if [ $? -gt 0 ]; then
-    logger xCAT  "Define resource in IBM.MCP class on node $NODE. result=$result1" } 
+    logger xCAT  "Define resource in IBM.MCP class on node $NODE. result=$result1" 
     exit 1
   fi
+
   #TODO: create predefined sensors
 else
   #remove resource in IBM.MCP class on the node
