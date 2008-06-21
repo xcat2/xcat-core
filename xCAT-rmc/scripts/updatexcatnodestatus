@@ -1,0 +1,67 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# This script is used by UpdatexCATNodeStatus event response to handle the node
+# status changes from the condition NodeReachability and NodeReachability_H
+
+
+use strict;
+use Getopt::Std;
+use POSIX qw(strftime);
+
+my $cond_name=$ENV{ERRM_COND_NAME};
+my $node;
+my $status;
+
+if ($cond_name eq "NodeReachability") {
+  $node=$ENV{ERRM_RSRC_NAME};  
+  $status=$ENV{ERRM_VALUE};
+} elsif ($cond_name eq "NodeReachability_H")  {
+  # Parse the ERRM_VALUE attribute, which will contain the
+  # LastEvent structured data variable from the Condition class
+  # The fields in this structured data variable are documented below where we parse them out.
+  my $event = $ENV{ERRM_VALUE};
+  $event =~ s/^\[(.*)\]$/$1/;              # SD variables have square brackets around them
+
+  # This parse the LastEvent
+  my (                     # split the SD into the following fields:
+	$Occurred,           # One if the condition has been triggered
+	$ErrNum,             # Non-zero if there was in error in the event registration
+	$ErrMsg,             # The string msg related to ErrNum
+	$EventFlags,         # Bit mask giving some additional info about the event
+	$EventTime,          # Time of event expressed in seconds since 1/1/1970
+	$EventTimeMicros,    # Number of microseconds past EventTime
+	$ResourceHandle,     # Binary address of the RMC resource that caused the condition to be triggered
+	$NodeName,           # The node on which the event occurred.  For conditions that use the management domain scope (4),
+	                     # this will be the leaf node.  For conditions that use the local scope (e.g. NodeReachability),
+	                     # this will be the FMS.
+	$NumAttrs,           # Number of attr values from the resource returned in this event
+	$NumAttrsInExpr,     # How many of the above were attributes in the event expression
+	$IndexForAttrs,      # The starting index of the array of values.  Until new fixed fields are added
+	                     # to LastEvent, this will be the element right after this one.
+	$AttrArray           # This list of attribute names, types, and values
+     ) = split(/,/, $event, 12);
+
+  my @attrArray = split(/,/, $AttrArray);      # Note: parsing this way does not support SDs or SD Arrays that may be in this list
+
+  my $j = 0;      # index into attrArray
+  for (my $i=0; $i<$NumAttrs; $i++) {
+    my $attrName = $attrArray[$j++];
+    my $attrType = $attrArray[$j++];          # Types <= 8 are "simple" types. Types > 8 are SDs and arrays.
+    my $attrValue = $attrArray[$j++];
+    if ($attrName eq '"Name"') { $node = $attrValue; }
+    if ($attrName eq '"Status"') { $status = $attrValue; }
+  }
+} else {
+  print "this script does not handle condition $cond_name\n";
+  exit 1;
+}
+
+
+open(CMD, "| wall") || die "Error:  can not start wall command.\n";
+print CMD "node=$node status=$status\n";
+close(CMD);
+
+exit 0
+
+

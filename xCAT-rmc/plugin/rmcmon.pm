@@ -12,6 +12,7 @@ use Socket;
 use xCAT::Utils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
+use xCAT_monitoring::xcatmon;
 use xCAT::MsgUtils;
 
 #print "xCAT_monitoring::rmcmon loaded\n";
@@ -60,12 +61,13 @@ sub start {
   if (! -e "/usr/bin/lsrsrc") {
     return (1, "RSCT is not installed.\n");
   }
-  my $result=`/usr/bin/lssrc -s ctrmc`;   #TODO: change this
-  if ($result !~ /active/) {
+
+  chomp(my $pid= `/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
+  unless($pid){
     #restart rmc daemon
     $result=`startsrc -s ctrmc`;
     if ($?) {
-      return (1, "rmc deamon cannot be started\n");
+      return (1, "RMC deamon cannot be started\n");
     }
   }
 
@@ -255,8 +257,133 @@ sub supportNodeStatusMon {
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
   #print "rmcmon::startNodeStatusMon called\n";
-  return (0, "started");
+  my $retcode=0;
+  my $retmsg="started";
+  my $isSV=xCAT::Utils->isServiceNode();
+  if ($isSV) { return  ($retcode, $retmsg); } 
+
+  #get all the nodes status from IBM.MngNode class of local host and 
+  #the identification of this node
+  my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
+  my @hostinfo=xCAT::Utils->determinehostname();
+  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+  if (!$isSV) { $iphash{'noservicenode'}=1;}
+
+  my @servicenodes=();
+  my %status_hash=();
+  foreach my $key (keys (%$noderef)) {
+    my @key_a=split(',', $key);
+    if (! $iphash{$key_a[0]}) { push @servicenodes, $key_a[0]; } 
+    my $mon_nodes=$monservers->{$key};
+    foreach(@$mon_nodes) {
+      my $node_info=$_;
+      $status_hash{$node_info->[0]}=$node_info->[2];
+    }
+  }
+
+  #get nodestatus from RMC and update the xCAT DB
+  ($retcode, $retmsg) = saveRMCNodeStatusToxCAT(\%status_hash);
+  if ($retcode != 0) {
+    $retmsg="Error occurred while updating xCAT node status from RMC data.:$retmsg";
+    xCAT::MsgUtils->message('SI', "[mon]: $retmsg\n");
+  }
+  foreach (@servicenodes) {
+    ($retcode, $retmsg) = saveRMCNodeStatusToxCAT(\%status_hash, $_);
+    if ($retcode != 0) {
+      $retmsg="Error occurred while updating xCAT node status from RMC data from $_.:$retmsg";
+      xCAT::MsgUtils->message('SI', "[mon]: $retmsg\n");
+    }
+  }
+
+  #start monitoring the status of mn's immediate children
+  my $result=`startcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
+  if ($?) {
+    $retcode=$?;
+    $retmsg="Error start node status monitoring: $result";
+    xCAT::MsgUtils->message('SI', "[mon]: $retmsg\n");
+  }
+
+  #start monitoring the status of mn's grandchildren via their service nodes
+  $result=`startcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
+  if ($?) {
+    $retcode=$?;
+    $retmsg="Error start node status monitoring: $result";
+    xCAT::MsgUtils->message('SI', "[mon]: $retmsg\n");
+  }
+ 
+  return ($retcode, $retmsg);
 }
+
+
+#--------------------------------------------------------------------------------
+=head3   saveRMCNodeStatusToxCAT
+    This function gets RMC node status and save them to xCAT database
+
+    Arguments:
+        $oldstatus a pointer to a hash table that has the current node status
+        $node  the name of the service node to run RMC command from. If null, get from local host. 
+    Returns:
+        (return code, message)
+=cut
+#--------------------------------------------------------------------------------
+sub saveRMCNodeStatusToxCAT {
+  #print "rmcmon::saveRMCNodeStatusToxCAT called\n";
+  my $retcode=0;
+  my $retmsg="started";
+  my $statusref=shift;
+  if ($statusref =~ /xCAT_monitoring::rmcmon/) {
+    $statusref=shift;
+  }
+  my $node=shift;
+
+  %status_hash=%$statusref;
+
+  #get all the node status from mn's children
+  my $result;
+  if ($node) {
+    $result=`lsrsrc-api -s IBM.MngNode::::Name::Status 2>&1`;
+  } else {
+    $result=`lsrsrc-api -s IBM.MngNode::::Name::Status 2>&1`;
+  }
+  if ($?) {
+    $retcode=$?;
+    $retmsg=$result;
+    xCAT::MsgUtils->message('SI', "[mon]: Error getting node status from RMC: $result\n");
+    return ($retcode, $retmsg);
+  } else {
+    my @active_nodes=();
+    my @inactive_nodes=();
+    if ($result) {
+      my @lines=split('\n', $result);
+      #only save the ones that needs to change
+      foreach (@lines) {
+	@pairs=split('::', $_);
+        if ($pairs[1]==1) { 
+          if ($status_hash{$pairs[0]} ne $::STATUS_ACTIVE) { push @active_nodes,$pairs[0];} 
+        }
+        else { 
+          if ($status_hash{$pairs[0]} ne $::STATUS_INACTIVE) { push @inactive_nodes, $pairs[0];}
+        }  
+      } 
+    }
+  }
+
+  my %new_node_status=();
+  if (@active_nodes>0) {
+    $new_node_status{$::STATUS_ACTIVE}=\@active_nodes;
+  } 
+  if (@inactive_nodes>0) {
+    $new_node_status{$::STATUS_INACTIVE}=\@inactive_nodes;
+  }
+  #only set the node status for the changed ones
+  if (keys(%new_node_status) > 0) {
+    xCAT_monitoring::xcatmon::processNodeStatusChanges(\%new_node_status);
+  }  
+  return ($retcode, $retmsg);
+}
+
+
 
 
 #--------------------------------------------------------------------------------
@@ -273,7 +400,27 @@ sub startNodeStatusMon {
 #--------------------------------------------------------------------------------
 sub stopNodeStatusMon {
   #print "rmcmon::stopNodeStatusMon called\n";
-  return (0, "stopped");
+  my $retcode=0;
+  my $retmsg="stopped";
+  my $isSV=xCAT::Utils->isServiceNode();
+  if ($isSV) { return  ($retcode, $retmsg); }
+ 
+  #stop monitoring the status of mn's immediate children
+  my $result=`stopcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
+  if ($?) {
+    $retcode=$?;
+    $retmsg="Error stop node status monitoring: $result";
+    xCAT::MsgUtils->message('SI', "[mon]: $retmsg\n");
+  }
+
+  #stop monitoring the status of mn's grandchildren via their service nodes
+  $result=`stopcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
+  if ($?) {
+    $retcode=$?;
+    $retmsg="Error stop node status monitoring: $result";
+    xCAT::MsgUtils->message('SI', "[mon]: $retmsg\n");
+  }
+  return ($retcode, $retmsg);
 }
 
 
