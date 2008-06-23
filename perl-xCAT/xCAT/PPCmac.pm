@@ -41,7 +41,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s d))) { 
+    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s d f))) { 
         return( usage() );
     }
     ####################################
@@ -180,6 +180,12 @@ sub ivm_getmacs {
     #######################################
     if ( exists($request->{verbose}) ) {
         $cmd.= " -v -x";
+    }
+    #######################################
+    # Force LPAR shutdown
+    #######################################
+    if ( exists( $opt->{f} )) {
+        $cmd.= " -i";
     }
     #######################################
     # Network specified (-D ping test)
