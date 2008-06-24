@@ -34,14 +34,7 @@ MStatus()
   return $RVAL
 }
 
-if [ -f /lib/lsb/init-functions ]; then
-  . /lib/lsb/init-functions
-  START_DAEMON=start_daemon
-  STATUS=MStatus
-  LOG_SUCCESS=log_success_msg
-  LOG_FAILURE=log_failure_msg
-  LOG_WARNING=log_warning_msg
-elif [ -f /etc/init.d/functions ]; then
+if [ -f /etc/init.d/functions ]; then
   #echo RH
   . /etc/init.d/functions
   START_DAEMON=daemon
@@ -49,6 +42,13 @@ elif [ -f /etc/init.d/functions ]; then
   LOG_SUCCESS=success
   LOG_FAILURE=failure
   LOG_WARNING=passed
+elif [ -f /lib/lsb/init-functions ]; then
+  . /lib/lsb/init-functions
+  START_DAEMON=start_daemon
+  STATUS=MStatus
+  LOG_SUCCESS=log_success_msg
+  LOG_FAILURE=log_failure_msg
+  LOG_WARNING=log_warning_msg
 else
   echo "Error, don't know how to start on this platform"
   exit 1
