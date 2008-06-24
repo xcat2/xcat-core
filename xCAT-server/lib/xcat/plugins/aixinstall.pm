@@ -537,6 +537,7 @@ sub mknimimage
 	# parse the options
 	Getopt::Long::Configure("no_pass_through");
 	if(!GetOptions(
+		'b=s'		=> \$::SYSB,
 		'f|force'	=> \$::FORCE,
 		'h|help'     => \$::HELP,
 		's=s'       => \$::opt_s,
@@ -1573,10 +1574,10 @@ sub mk_mksysb
                 	return undef;
             	}
 
-			} elsif ($::opt_s) {
+			} elsif ($::opt_b) {
 
 				# def res with existing mksysb image
-				my $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$::opt_s $mksysb_name 2>&1";
+				my $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$::opt_b $mksysb_name 2>&1";
 				my $output = xCAT::Utils->runcmd("$mkcmd", -1);
 				if ($::RUNCMD_RC  != 0) {
 					my $rsp;
@@ -3135,7 +3136,7 @@ sub mknimimage_usage
     push @{$rsp->{data}}, "  Usage: ";
     push @{$rsp->{data}}, "\tmknimimage [-h | --help]";
     push @{$rsp->{data}}, "or";
-    push @{$rsp->{data}}, "\tmknimimage [-V] [-f|--force] [-l <location>] -s [image_source] \n\t\t[-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode]\n\t\tosimage_name [attr=val [attr=val ...]]\n";
+    push @{$rsp->{data}}, "\tmknimimage [-V] [-f|--force] [-l <location>] -s [image_source] \n\t\t[-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode]\n\t\t[-b mksysbfile] osimage_name [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
