@@ -6,7 +6,7 @@ B<mknimimage> - Use this xCAT command to create AIX image definitions.
 
 B<mknimimage [-h | --help ]>
 
-B<mknimimage [-V] [-f|--force] [-l location] [-s image_source] [-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode] osimage_name [attr=val [attr=val ...]]>
+B<mknimimage [-V] [-f|--force] [-l location] [-s image_source] [-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -14,7 +14,7 @@ This command may be used to create an AIX image.  It will create both an xCAT os
 
 This command will also install the NIM master software and configure NIM if needed.
 
-The naming convention for the NIM SPOT resource definition is to use the same name as the xCAT osimage.  The naming convention for any other resources that are create is"<osimage_name>_<resource_type>". (ex. "61image_lpp_source" )
+The naming convention for the NIM SPOT resource definition is to use the same name as the xCAT osimage.  The naming convention for any other NIM resources that are create is"<osimage_name>_<resource_type>". (ex. "61image_lpp_source" )
 
 The "-n" option can be used to create a mksysb image from an existing NIM client machine.   When creating an osimage definition you will have to specify the corresponding SPOT resource and any additional resources you need by using the "attr=val" option. You can also create the mksysb image manually using the "mksysb" command and then use the image as a source when creating the osimage definition.
 
@@ -35,6 +35,10 @@ To remove specific NIM resource definitons use the AIX nim command.
 =item B<attr=val [attr=val ...]>
 
 Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify additional or different resource names to use when creating the the xCAT osimage definition. The usage is: "<nim_resource_type>=<resource_name>". (ex. "root=myrootres")
+
+=item B<-b mksysbfile>
+
+Used to specify the location of a mksysb image to use when defining a NIM mksysb resource.
 
 =item B<-f|--force>
 
@@ -66,7 +70,7 @@ The NIM client machine to use to create a mksysb image.
 
 =item B<-s image_source>
 
-The source of software to use when creating the new NIM lpp_source resource. This could be a source directory, (ex. /dev/cd0), or a previously defined lpp_source resource name. This option may also be used to specify the location of a mksysb image to use when defining a NIM mksysb resource.
+The source of software to use when creating the new NIM lpp_source resource. This could be a source directory, (ex. /dev/cd0), or a previously defined lpp_source resource name. 
 
 =item B<-t nimtype>
 
@@ -112,7 +116,7 @@ This command will use node27 to create a mksysb backup image and use that to def
 
 4) Create an osimage definition using a mksysb image provided on the command line.
 
-B<mknimimage -m mksysb -s /tmp/backups/mysysbimage spot=myspot bosinst_data=mybdata>
+B<mknimimage -m mksysb -b /tmp/backups/mysysbimage spot=myspot bosinst_data=mybdata>
 
 This command defines a NIM mksysb resource using mysysbimage.   
 
