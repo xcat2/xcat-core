@@ -315,7 +315,8 @@ sub processArgs
     if (defined($::opt_v))
     {
         my $rsp;
-        $rsp->{data}->[0] = "$::command - version 1.0";
+		my $version=xCAT::Utils->Version();
+        push @{$rsp->{data}}, "$::command - $version\n";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
         return 1;    # no usage - just exit
     }
@@ -476,6 +477,12 @@ sub processArgs
 
 			chop($outstr);  chop($outstr);
             $rsp->{data}->[2] = $outstr;
+
+			# the monitoring table is  special
+			if ($t eq 'monitoring') {
+				$rsp->{data}->[3] = "\nYou can also include additional monitoring plug-in specific settings. These settings will be used by the monitoring plug-in to customize the behavior such as event filter, sample interval, responses etc.\n";
+			}
+			
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
 
@@ -820,7 +827,7 @@ sub defmk
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
-                if (!grep(/$attr/, @list) && ($::objtype ne 'site'))
+				if (!grep(/$attr/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
@@ -1261,7 +1268,7 @@ sub defch
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
-                if (!grep(/$attr/, @list) && ($::objtype ne 'site'))
+				if (!grep(/$attr/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
@@ -1828,8 +1835,7 @@ sub setFINALattrs
             {
 
                 # see if valid attr
-                if (!grep(/$attr/, @list)
-                    && ($::FILEATTRS{$objname}{objtype} ne 'site'))
+				if (!grep(/$attr/, @list) && ($::FILEATTRS{$objname}{objtype} ne 'site') && ($::FILEATTRS{$objname}{objtype} ne 'monitoring'))
                 {
 
                     my $rsp;
@@ -2194,7 +2200,7 @@ sub defls
             # special handling for site table - for now !!!!!!!
 			#
             my @attrlist;
-            if ($defhash{$obj}{'objtype'} eq 'site')
+            if (($defhash{$obj}{'objtype'} eq 'site') || ($defhash{$obj}{'objtype'} eq 'monitoring'))
             {
 
                 foreach my $a (keys %{$defhash{$obj}})

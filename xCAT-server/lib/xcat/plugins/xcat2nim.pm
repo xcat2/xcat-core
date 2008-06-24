@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/env perl -w
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #
@@ -15,6 +15,7 @@ use xCAT::DBobjUtils;
 use Data::Dumper;
 use Getopt::Long;
 use xCAT::MsgUtils;
+use strict;
 
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
@@ -90,6 +91,7 @@ sub process_request
 
     my $ret;
     my $msg;
+	my $rsp;
 
     # globals used by all subroutines.
     $::command  = $::request->{command}->[0];
@@ -100,7 +102,6 @@ sub process_request
 
     if ($msg)
     {
-        my $rsp;
         $rsp->{data}->[0] = $msg;
         $::callback->($rsp);
     }
@@ -139,6 +140,8 @@ sub processArgs
     my $gotattrs = 0;
 
     @ARGV = @{$::args};
+
+	my %ObjTypeHash;
 
     # parse the options 
 	Getopt::Long::Configure("no_pass_through");
@@ -228,7 +231,8 @@ sub processArgs
     if (defined($::opt_v))
     {
         my $rsp;
-        $rsp->{data}->[0] = "$::command - version 1.0";
+		my $version=xCAT::Utils->Version();
+        $rsp->{data}->[0] = "$::command - $version";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
         return 1;    # - just exit
     }
@@ -382,6 +386,7 @@ sub processArgs
     }
 
     #  if -a then get a list of all DB objects
+	my %AllObjTypeHash;
     if ($::opt_a)
     {
         my @tmplist;
@@ -603,9 +608,16 @@ sub mkclientdef
 	my $cabletype = undef;
 	my $ifattr = undef;
 
+	my %finalattrs;
+	my $shorthost;
+	my $net_name;
+	my $adaptertype;
+	my $nim_args;
+	my $nim_type;
+
 	# get the name of the nim master
     #  ???? assume node short hostname is unique in xCAT cluster????
-    my $nim_master = &getNIMmaster($object);
+    my $nim_master = &getNIMmaster($node);
 	chomp $nim_master;
 
     if (!defined($nim_master)) {
@@ -650,6 +662,7 @@ sub mkclientdef
 		}
 
 		# req a value for cable_type
+
 		if (!$cabletype) {
 			$cabletype="-a cable_type1=N/A ";
 		}
@@ -759,7 +772,7 @@ sub mkgrpdef
 	#   For example, the xCAT group "all" will have nodes that are managed
 	#  	by multiple NIM masters - so we will create a local group "all"
 	#	on each of those masters
-    %ServerList = &getMasterGroupLists($group);
+    my %ServerList = &getMasterGroupLists($group);
 
 	foreach my $servname (keys %ServerList)
 	{
@@ -799,6 +812,7 @@ sub mkgrpdef
 			my $justadd=0;  # after the first define we just need to add
 			foreach my $memb (@members) {
 
+				my $shorthost;
 				($shorthost = $memb) =~ s/\..*$//;
 
 				# do we change or create
@@ -878,6 +892,7 @@ sub rm_or_list_nim_object
 		
 		if ($::opt_l) {
 
+			my $cmd;
 			# if the name of the master is not the local host then use dsh
 			if ($nim_master ne $::local_host) {
 				$cmd = qq~xdsh $nim_master "lsnim -l $object 2>/dev/null"~;
@@ -911,13 +926,14 @@ sub rm_or_list_nim_object
 			# remove the object
 			# if the name of the master is not the local host then use dsh
 
+			my $cmd;
             if ($nim_master ne $::local_host) {
                 $cmd = qq~xdsh $nim_master "nim -o remove $object 2>/dev/null"~;
             } else {
                 $cmd = qq~nim -o remove $object 2>/dev/null~;
             }
 
-			$outref = xCAT::Utils->runcmd("$cmd", -1);
+			my $outref = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC  != 0)
             {
                 my $rsp;
@@ -935,18 +951,20 @@ sub rm_or_list_nim_object
 	if ($type eq 'group') {
 
 		# get members and determine all the different masters 
-		%servgroups = &getMasterGroupLists($object);
+		my %servgroups = &getMasterGroupLists($object);
 
 		# get the group definition from each master and 
 		# 	display it
 		foreach my $servname (keys %servgroups)
     	{
 			# make sure we have the short host name of the NIM master
+			my $master;
 			if ($servname) {
         		($master = $servname) =~ s/\..*$//;
     		}
 			chomp $master;
 
+			my $cmd;
 			if ($::opt_l) {
 				# if the name of the master is not the local host then use dsh
         		if ($master ne $::local_host) {
@@ -955,7 +973,7 @@ sub rm_or_list_nim_object
             		$cmd = qq~lsnim -l $object 2>/dev/null~;
         		}
 			
-				$outref = xCAT::Utils->runcmd("$cmd", -1);
+				my $outref = xCAT::Utils->runcmd("$cmd", -1);
         		if ($::RUNCMD_RC  != 0)
         		{
             		my $rsp;
@@ -979,12 +997,13 @@ sub rm_or_list_nim_object
 			} elsif ($::opt_r) {
 				# if the name of the master is not the local host then use dsh
                 if ($master ne $::local_host) {
-                    $cmd = qq~xdsh $instserv "nim -o remove $object 2>/dev/null"~;
+                   $cmd = qq~xdsh $master "nim -o remove $object 2>/dev/null"~;
+					
                 } else {
                     $cmd = qq~nim -o remove $object 2>/dev/null~;
                 }
 
-				$outref = xCAT::Utils->runcmd("$cmd", -1);
+				my $outref = xCAT::Utils->runcmd("$cmd", -1);
                 if ($::RUNCMD_RC  != 0)
                 {
                     my $rsp;
@@ -1079,6 +1098,9 @@ sub getMasterGroupLists
 
 	my $NimMaster;
 	my $thismaster;
+	my %membhash;
+	my %memberhash;
+	my %ServerList;
 
 	# get the members list
     my $memberlist = xCAT::DBobjUtils->getGroupMembers($group, \%::objhash);
@@ -1157,6 +1179,8 @@ sub check_nim_group
 {
 	my ($group, $servnode) = @_;
 	my ($cmd, @output);
+
+	my @GroupList;
 	
 	chomp $::local_host;
     chomp $servnode;
