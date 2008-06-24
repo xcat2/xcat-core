@@ -345,6 +345,45 @@ sub getobjdefs
 
             }
         }
+
+		if ($typehash{$objname} eq 'monitoring') {
+		
+        	# need a special case for the monitoring table
+			# 	- need to check the monsetting table for entries that contain
+			#	 the same name as the monitoring table entry.
+
+        	my @TableRowArray = xCAT::DBobjUtils->getDBtable('monsetting');
+
+        	if (defined(@TableRowArray))
+            {
+                my $foundinfo = 0;
+                foreach (@TableRowArray)
+                {
+
+					if ($_->{name} eq $objname ) {
+
+                    	if ($_->{key})
+                    	{
+                        	$foundinfo++;
+                        	$objhash{$objname}{$_->{key}} = $_->{value};
+                    	}
+					}
+                }
+                if ($foundinfo)
+                {
+                    $objhash{$objname}{'objtype'} = 'monitoring';
+                }
+            }
+            else
+            {
+				 my $rsp;
+                 $rsp->{data}->[0] ="Could not read the \'$objname\' object from the \'monsetting\' table.\n";
+                 xCAT::MsgUtils->message("E", $rsp, $::callback);	
+            }
+            next;
+
+		}
+
         $::saveObjHash{$objname} = $objhash{$objname};
 
 		} # end if not cached
@@ -464,6 +503,130 @@ sub setobjdefs
         # get attr=val that are set in the DB ??
         my $type = $objhash{$objname}{objtype};
 
+		# handle the site table as a special case !!!!!
+        if ($type eq 'monitoring')
+        {
+
+			my %DBattrvals;
+			# if plus or minus then need to know current settings
+			if ( ($::plus_option) || ($::minus_option) ) {
+            	my %DBhash;
+            	$DBhash{$objname} = $type;
+            	%DBattrvals = xCAT::DBobjUtils->getobjdefs(\%DBhash);
+			}
+
+			# Get the names of the attrs stored in monitoring table
+			# get the object type decription from Schema.pm
+        	my $datatype = $xCAT::Schema::defspec{$type};
+
+        	#  get a list of valid attr names
+        	#               for this type object
+        	my @attrlist;
+        	foreach my $entry (@{$datatype->{'attrs'}})
+        	{
+            	push(@attrlist, $entry->{'attr_name'});
+        	}
+
+			# open the tables (monitoring and monsetting)
+            my $montable = xCAT::Table->new('monitoring', -create => 1, -autocommit => 0);
+            if (!$montable)
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Could not set the \'$thistable\' table.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
+            }
+			# open the table
+            my $monsettable = xCAT::Table->new('monsetting', -create => 1, -autocommit => 0);
+            if (!$monsettable)
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Could not set the \'$thistable\' table.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
+            }
+
+			my %keyhash; 
+			my %updates;
+
+			foreach my $attr (keys %{$objhash{$objname}})
+            {
+                if ($attr eq 'objtype')
+                {
+                    next;
+                }
+
+				# determine the value if we have plus or minus
+				if ($::plus_option)
+                {
+                    # add new to existing - at the end - comma separated
+                    if (defined($DBattrvals{$objname}{$attr}))
+                    {
+                        $val =
+                          "$DBattrvals{$objname}{$attr},$objhash{$objname}{$attr}";
+                    }
+                    else
+                    {
+                        $val = "$objhash{$objname}{$attr}";
+                    }
+                }
+                elsif ($::minus_option)
+				{
+                    # remove the specified list of values from the current
+                    #   attr values.
+                    if ($DBattrvals{$objname}{$attr})
+                    {
+                        # get the list of attrs to remove
+                        @currentList = split(/,/, $DBattrvals{$objname}{$attr});
+                        @minusList   = split(/,/, $objhash{$objname}{$attr});
+
+                        # make a new list without the one specified
+                        my $first = 1;
+                        my $newlist;
+                        foreach my $i (sort @currentList)
+                        {
+                            chomp $i;
+                            if (!grep(/^$i$/, @minusList))
+                            {
+                                # set new groups list for node
+                                if (!$first)
+                                {
+                                    $newlist .= ",";
+                                }
+                                $newlist .= $i;
+                                $first = 0;
+                            }
+                        }
+                        $val = $newlist;
+                    }
+                }
+                else
+                {
+                    #just set the attr to what was provided! - replace
+                    $val = $objhash{$objname}{$attr};
+                }
+
+				if (grep(/^$attr$/, @attrlist)) {
+					# if the attr belong in the monitoring tabel
+					%keyhash=(name=>$objname);
+					%updates=($attr=>$val);
+					$montable->setAttribs(\%keyhash, \%updates);
+
+				} else {
+					# else it belongs in the monsetting table
+					$keyhash{name} = $objname;
+					$keyhash{key} = $attr;
+                	$updates{value} = $val;
+					$monsettable->setAttribs(\%keyhash, \%updates);
+				}
+			}
+
+			$montable->commit;
+			$monsettable->commit;
+
+			next;
+		}
+
         # handle the site table as a special case !!!!!
         if ($type eq 'site')
         {
@@ -552,23 +715,29 @@ sub setobjdefs
 
                 }
 
-                $updates{value} = $val;
+				if ( $val eq "") { # delete the line
 
-                $thistable->setAttribs(\%keyhash, \%updates);
-                my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
-                if (!defined($rc))
-                {
-                    if ($::verbose)
-                    {
-                        my %rsp;
-                        $rsp->{data}->[0] =
-                          "Could not set the \'$attr\' attribute of the \'$objname\' object in the xCAT database.\n";
-                        $rsp->{data}->[1] =
-                          "Error returned is \'$str->errstr\'.";
-                        xCAT::MsgUtils->message("I", $rsp, $::callback);
-                    }
-                    $ret = 1;
-                }
+					$thistable->delEntries(\%keyhash);
+
+				}  else { # change the attr
+
+                	$updates{value} = $val;
+
+                	my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
+                	if (!defined($rc))
+                	{
+                    	if ($::verbose)
+                    	{
+                        	my %rsp;
+                        	$rsp->{data}->[0] =
+                          	"Could not set the \'$attr\' attribute of the \'$objname\' object in the xCAT database.\n";
+                        	$rsp->{data}->[1] =
+                          	"Error returned is \'$str->errstr\'.";
+                        	xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    	}
+                    	$ret = 1;
+                	}
+				}
 
             }
 
