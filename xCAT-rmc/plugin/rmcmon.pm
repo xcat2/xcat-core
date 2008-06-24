@@ -18,14 +18,12 @@ use xCAT::MsgUtils;
 #print "xCAT_monitoring::rmcmon loaded\n";
 1;
 
-#now the RMC domain can automatically setup when xCAT starts. predefined conditions and sensor are defined on ms.
-#TODO: predefined responses
-#TODO: node status monitoring for xCAT.
+
 #TODO: script to define sensors on the nodes.
 #TODO: how to push the sensor scripts to nodes?
 #TODO: what to do when stop is called? stop all the associations or just the ones that were predefined? or leve them there?
 #TODO: do we need to stop all the RMC daemons when stop is called?
-#I will come back to work on these once I have SNMP stuff done. 
+#TODO: monitoring HMC with old RSCT and new RSCT
 
 #-------------------------------------------------------------------------------
 =head1  xCAT_monitoring:rmcmon  
@@ -52,7 +50,7 @@ use xCAT::MsgUtils;
 =cut
 #--------------------------------------------------------------------------------
 sub start {
-  print "rmcmon::start called\n";
+  #print "rmcmon::start called\n";
 
   my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
     
@@ -85,7 +83,7 @@ sub start {
   }
   chomp($result);
   my @rmc_nodes=split(/\n/, $result);
-  print "RMC defined nodes=@rmc_nodes\n";
+  #print "RMC defined nodes=@rmc_nodes\n";
 
   
   #the identification of this node
@@ -99,6 +97,7 @@ sub start {
     my @key_a=split(',', $key);
     if (! $iphash{$key_a[0]}) { next;}   
     my $mon_nodes=$noderef->{$key};
+    my $master=$key_a[1];
 
     #check what has changed 
     my %summary;
@@ -126,19 +125,19 @@ sub start {
       my %nodes_status=xCAT_monitoring::rmcmon->pingNodeStatus(@nodes_to_add); 
       my $active_nodes=$nodes_status{$::STATUS_ACTIVE};
       my $inactive_nodes=$nodes_status{$::STATUS_INACTIVE};
-      print "active nodes to add:@$active_nodes\ninactive nodes to add: @$inactive_nodes\n";
+      #print "active nodes to add:@$active_nodes\ninactive nodes to add: @$inactive_nodes\n";
       if (@$inactive_nodes>0) { 
         xCAT::MsgUtils->message('SI', "[mon]: The following nodes cannot be added to the RMC cluster because they are inactive:\n  @$inactive_nodes\n");
       }
       if (@$active_nodes>0) {
-        addNodes_noChecking(@$active_nodes);
+        addNodes_noChecking($active_nodes, $master);
       }
     }  
 
     #remove unwanted nodes to the RMC cluster
     if (@nodes_to_remove>0) {
-      print "nodes to remove @nodes_to_remove\n"; 
-      removeNodes_noChecking(@nodes_to_remove);
+      #print "nodes to remove @nodes_to_remove\n"; 
+      removeNodes_noChecking(\@nodes_to_remove, $master);
     }  
 
     #create conditions/responses/sensors on the service node or mn
@@ -425,6 +424,34 @@ sub stopNodeStatusMon {
 
 
 #--------------------------------------------------------------------------------
+=head3   getNodeID
+    This function gets the nodeif for the given node.
+
+    Arguments:
+        node
+    Returns:
+        node id for the given node
+=cut
+#--------------------------------------------------------------------------------
+sub getNodeID {
+  my $node=shift;
+  if ($node =~ /xCAT_monitoring::rmcmon/) {
+    $node=shift;
+  }
+  my $tab=xCAT::Table->new("mac", -create =>0);
+  my $tmp=$tab->getNodeAttribs($node, ['mac']);
+  if (defined($tmp) && ($tmp)) {
+    my $mac=$tmp->{mac};
+    $mac =~ s/://g;
+    $mac .= "0000";
+    $tab->close();
+    return $mac;  
+  }
+  $tab->close();
+  return undef;
+}
+
+#--------------------------------------------------------------------------------
 =head3    addNodes
       This function adds the nodes into the RMC cluster.
     Arguments:
@@ -440,67 +467,8 @@ sub stopNodeStatusMon {
 sub addNodes {
   return (0, "ok"); #not handle it now, wait when nodelist.status work is done
 
-
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::rmcmon/) {
-    $noderef=shift;
-  }
-  my $bWithInfo=shift;
-  #print "rmcmon::addNodes get called\n";
-  my $mon_nodes=$noderef;
-  
-
-  my @hostinfo=xCAT::Utils->determinehostname();
-  %iphash=();
-  foreach(@hostinfo) {$iphash{$_}=1;}
-
-  my @nodes_to_add=();
-  my $table3=xCAT::Table->new("nodetype", -create =>0);
-  foreach(@$mon_nodes) {
-    my $node_pair=$_;
-    my $node=$node_pair->[0];
-    my $status=$node_pair->[1];
-
-    #get node type
-    my $tmp3=$table3->getNodeAttribs($node, ['nodetype']);
-    my $nodetype="osi"; #default
-    if (defined($tmp3) && ($tmp3)) {
-      if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
-    }
-
-    if ($nodetype =~ /$::NODETYPE_OSI/) {
-      #RMC deals only with osi type. empty type is treated as osi type
-      #check if the node has already defined
-      $result=`lsrsrc-api -s IBM.MngNode::"Name=\\\"\"$node\\\"\"" 2>&1`;
-      if (($?) && ($result !~ /2612-023/)) { #2612-023 no resources found error
-	xCAT::MsgUtils->message('SI', "[mon]: $result\n");
-        next;
-      } 
-
-      #check if the node is active
-      my $active=0;
-      if (exists($iphash{$node})) { $active=1;} 
-      elsif ($status && ($status eq $::STATUS_ACTIVE)) { $active=1; }
-      else {
-        `fping -a $node 2> /dev/null`;
-	 if ($?==0) {$active=1; }
-      }
-      if (!$active) {
-        xCAT::MsgUtils->message('SI', "[mon]: Cannot add the node $node into the RMC domian. The node is inactive.\n");
-        next;
-      }
-
-      push(@nodes_to_add, $node); 
-    } 
-  }
-  $table3->close();
-
-  if (@nodes_to_add>0) {
-    return addNodes_noChecking(@nodes_to_add);
-  }
-   
-  return (0, "ok");
 }
+
 
 #--------------------------------------------------------------------------------
 =head3    addNodes_noChecking
@@ -513,9 +481,20 @@ sub addNodes {
 =cut
 #--------------------------------------------------------------------------------
 sub addNodes_noChecking {
- 
-  @mon_nodes = @_;
+  
+  my $pmon_nodes=shift;
+  if ($pmon_nodes =~ /xCAT_monitoring::rmcmon/) {
+    $pmon_nodes=shift;
+  }
+
+  my @mon_nodes = @$pmon_nodes;
+  my $master=shift;
+
   #print "rmcmon::addNodes_noChecking get called with @mon_nodes\n";
+  my @hostinfo=xCAT::Utils->determinehostname();
+  %iphash=();
+  foreach(@hostinfo) {$iphash{$_}=1;}
+
   my $ms_host_name=hostname();
 
   my $ms_node_id;
@@ -545,7 +524,7 @@ sub addNodes_noChecking {
     }
 
     #get info for the node
-    if($ms_host_name eq $node) {
+    if($iphash{$node}) {
       $mn_node_id=$ms_node_id;
     } else { 
       $mn_node_id=`$::XCATROOT/bin/psh --nonodecheck $node /usr/sbin/rsct/bin/lsnodeid 2>&1`;
@@ -575,8 +554,8 @@ sub addNodes_noChecking {
     }
 
     #copy the configuration script and run it locally
-    if($ms_host_name eq $node) {
-      $result=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$node"::KeyToken::"$ms_host_name"::IPAddresses::"$ms_ipaddresses"::NodeID::0x$ms_node_id`;      
+    if($iphash{$node}) {
+      $result=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$node"::KeyToken::"$master"::IPAddresses::"$ms_ipaddresses"::NodeID::0x$ms_node_id`;      
       if ($?) {
         xCAT::MsgUtils->message('SI', "[mon]: $result\n");
         next;
@@ -588,14 +567,14 @@ sub addNodes_noChecking {
         next;
       }
 
-      $result=`$::XCATROOT/bin/psh --nonodecheck $node NODE=$node MASTER_NAME=$ms_host_name MASTER_IPS=$ms_ipaddresses MASTER_NODEID=0x$ms_node_id /tmp/configrmcnode 1 2>&1`;
+      $result=`$::XCATROOT/bin/psh --nonodecheck $node NODE=$node MONSERVER=$master MS_NODEID=$ms_node_id /tmp/configrmcnode 1 2>&1`;
       if ($?) {
         xCAT::MsgUtils->message('SI',  "[mon]: $result\n");
       }
     }
   } 
 
-  return (0, "ok");
+  return (0, "ok"); 
 }
 
 #--------------------------------------------------------------------------------
@@ -614,42 +593,6 @@ sub addNodes_noChecking {
 sub removeNodes {
   return (0, "ok"); #not handle it now, wait when nodelist.status work is done
 
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::rmcmon/) {
-    $noderef=shift;
-  }
-  my $bWithInfo=shift;
-  my $mon_nodes=$noderef;
-
-  #print "rmcmon::removeNodes called\n";
-
-  my @nodes_to_remove=();
-
-  my $table3=xCAT::Table->new("nodetype", -create =>0);
-  foreach(@$mon_nodes) {
-    my $node_pair=$_;
-    my $node=$node_pair->[0]; 
-    my $status=$node_pair->[1]; 
-
-    #get node type
-    my $tmp3=$table3->getNodeAttribs($node, ['nodetype']);
-    my $nodetype="osi"; #default
-    if (defined($tmp3) && ($tmp3)) {
-      if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
-    }
-
-    if ((!$nodetype) || ($nodetype =~ /$::NODETYPE_OSI/)) {
-      #RMC deals only with osi type. empty type is treated as osi type
-      push(@nodes_to_remove, $node);
-    }
-  }
-  $table3->close();
-
-  if (@nodes_to_remove>0) {
-    return removeNodes_noChecking(@nodes_to_remove);
-  }
-
-  return (0, "ok");
 }
 
 
@@ -657,13 +600,19 @@ sub removeNodes {
 =head3    removeNodes_noChecking
       This function removes the nodes from the RMC cluster.
     Arguments:
-      nodes --an array of node names to be removed. 
+      nodes --a pointer to a array of node names to be removed. 
+     
     Returns:
       (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
 sub removeNodes_noChecking {
-  my @mon_nodes = @_;
+  my $pmon_nodes=shift;
+  if ($pmon_nodes =~ /xCAT_monitoring::rmcmon/) {
+    $pmon_nodes=shift;
+  }
+  my @mon_nodes = @$pmon_nodes;
+
   my $ms_host_name=hostname();
  
 
@@ -740,7 +689,18 @@ sub processSettingChanges {
 sub getDescription {
   return 
 "  Description:
-    rmcmon ..... 
+    rmcmon uses IBM's Resource Monitoring and Control (RMC) component 
+    of Reliable Scalable Cluster Technology (RSCT) to monitor the 
+    xCAT cluster. RMC has built-in resources such as CPU, memory, 
+    process, network, file system etc for monitoring. RMC can also be 
+    used to provide node liveness status monitoring for xCAT. RMC is 
+    good for threadhold monitoring. xCAT automatically sets up the 
+    monitoring domain for RMC during node deployment time. To start 
+    RMC monitoring, use
+      monstart rmcmon
+    or 
+      monstart rmcmon -n   (to include node status monitoring).
   Settings:
-    key:  value.\n";
+    none.\n";
 }
+

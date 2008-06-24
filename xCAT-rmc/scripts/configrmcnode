@@ -6,21 +6,40 @@
 # This script is used for RMC node configuration
 # usage:
 #  To add node to the cluster:
-#    NODE=nodename MASTER_NAME=msname \
-#    MASTER_IPS={"9.114.46.26","..."} MASTER_NODEID=0xfbb5ec1f64dd299c \
+#    NODE=nodename NODEID=fbb5ec1f64dd299c \
+#    MONSERVER=msname_or_ip MS_NODEID=fbb5ec1f64dd299c \
 #    configrmcnode 1    
 #  To remove node to the cluster 
 #    NODE=nodename configrmcnode -1
 ########################################################################################## 
 ADD=$1;
 
-logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, MASTER_NAME=$MASTER_NAME, MASTER_IPS=$MASTER_IPS, MASTER_NODEID=$MASTER_NODEID"
+logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONSERVER=$MONSERVER,MS_NODEID=$MS_NODEID"
 
 #check if rsct is installed and running
 if [ ! -e /usr/bin/lsrsrc ]; then  
   logger xCAT "RMC setup on node $NODE: RSCT is not is not installed."
   exit 1;
 fi
+
+#ask RMC take the new nodeid
+if [[ $NODEID != "" ]]; then
+  if [ -e /var/ct/cfg/ct_node_id ]; then
+    sed -i s/^[^\#].*$/$NODEID/ /var/ct/cfg/ct_node_id
+  else
+    echo $NODEID > /var/ct/cfg/ct_node_id 
+  fi
+  if [ -e /etc/ct_node_id ]; then
+    sed -i s/^[^\#].*$/$NODEID/ /etc/ct_node_id
+  else
+    echo $NODEID > /etc/ct_node_id
+  fi
+  result=`/usr/sbin/rsct/install/bin/recfgct -s 2>&1`
+  if [ $? -ne 0 ]; then
+    logger xCAT "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
+  fi
+fi
+
   
 PID=`/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print $2}'`
 if [ !$PID ]; then
@@ -32,12 +51,24 @@ if [ !$PID ]; then
   fi
 fi
 
-#enable remote client connection
-/usr/bin/rmcctrl -p; /usr/bin/refrsrc IBM.MCP
 
 if [ $ADD -eq 1 ]; then
+  #enable remote client connection
+  /usr/bin/rmcctrl -p; /usr/bin/refrsrc IBM.MCP
+
+  #get IP address of MS
+  ms_ip=$MONSERVER
+  result=`ping -c1 $$MONSERVER 2>&1`
+  if [ $? -eq 0 ]; then
+    index1=`expr index "$result" "\("`
+    index2=`expr index "$result" "\)"`
+    ms_ip=${result:$index1+1:$index2-$index1-2}
+  else
+    logger xCAT "RMC setup on node $NODE:$result"
+  fi
+
   #define resource in IBM.MCP class on node       
-  result1=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$NODE"::KeyToken::"$MASTER_NAME"::IPAddresses::"$MASTER_IPS"::NodeID::$MASTER_NODEID 2>&1`
+  result1=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$NODE"::KeyToken::"$MONSERVER"::IPAddresses::"{\"$ms_ip\"}"::NodeID::0x$MS_NODEID 2>&1`
   if [ $? -gt 0 ]; then
     logger xCAT  "Define resource in IBM.MCP class on node $NODE. result=$result1" 
     exit 1
