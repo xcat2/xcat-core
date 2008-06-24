@@ -904,7 +904,7 @@ sub create {
                               $exp,
                               "prof",
                               $mtms,   
-                              $lparid ); 
+                              "lpar_ids=$lparid" ); 
     my $Rc = shift(@$prof);
 
     #####################################
