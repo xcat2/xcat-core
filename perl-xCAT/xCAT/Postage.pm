@@ -191,6 +191,13 @@ sub makescript {
   }
   push @scriptd, "export NTYPE\n";
 
+  #get monitoring server and other configuration data for monitoring setup on nodes
+  my %mon_conf=xCAT_monitoring::monitorctrl->getNodeConfData($node);
+  foreach (keys(%mon_conf)) {
+    push @scriptd, "$_=" . $mon_conf{$_}. "\n";
+    push @scriptd, "export $_\n";
+  }
+
   # get the xcatdefaults entry in the postscripts table
   my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts');
   my $defscripts = $et->{'postscripts'};

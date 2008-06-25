@@ -452,6 +452,26 @@ sub getNodeID {
 }
 
 #--------------------------------------------------------------------------------
+=head3   getLocalNodeID
+    This function goes to RMC and gets the nodeid for the local host.
+
+    Arguments:
+        node
+    Returns:
+        node id for the local host.
+=cut
+#--------------------------------------------------------------------------------
+sub getLocalNodeID {
+  my $node_id=`/usr/sbin/rsct/bin/lsnodeid`;
+  if ($?==0) {
+    chomp($node_id);
+    return $node_id;
+  } else {
+    return undef;
+  }
+}
+
+#--------------------------------------------------------------------------------
 =head3    addNodes
       This function adds the nodes into the RMC cluster.
     Arguments:
@@ -702,5 +722,41 @@ sub getDescription {
       monstart rmcmon -n   (to include node status monitoring).
   Settings:
     none.\n";
+}
+
+#--------------------------------------------------------------------------------
+=head3    getNodeConfData
+      This function gets a list of configuration data that is needed by setting up
+    node monitoring.  These data-value pairs will be used as environmental variables 
+    on the given node.
+    Arguments:
+        node  
+        pointer to a hash that will take the data.
+    Returns:
+        none
+=cut
+#--------------------------------------------------------------------------------
+sub getNodeConfData {
+  #check if rsct is installed or not
+  if (! -e "/usr/bin/lsrsrc") {
+    return;
+  }
+
+  my $node=shift;
+  if ($node =~ /xCAT_monitoring::rmcmon/) {
+    $node=shift;
+  }
+  my $ref_ret=shift;
+
+  #get node ids for RMC monitoring
+  my $nodeid=xCAT_monitoring::rmcmon->getNodeID($node);
+  if (defined($nodeid)) {
+    $ref_ret->{NODEID}=$nodeid;
+  }
+  my $ms_nodeid=xCAT_monitoring::rmcmon->getLocalNodeID();
+  if (defined($ms_nodeid)) {
+    $ref_ret->{MS_NODEID}=$ms_nodeid;
+  }
+  return;
 }
 

@@ -15,6 +15,7 @@ use xCAT::Client;
 use xCAT_plugin::notification;
 use xCAT_monitoring::montbhandler;
 
+
 #the list stores the names of the monitoring plug-in and the file name and module names.
 #the names are stored in the "name" column of the monitoring table. 
 #the format is: (name=>[filename, modulename], ...)
@@ -1227,9 +1228,57 @@ sub removeNodes {
 }
 
 
+#--------------------------------------------------------------------------------
+=head3    getNodeConfData
+      This function goes to every monitoring plug-in module and returns a list of
+    configuration data that is needed by setting up node monitoring.  
+    These data-value pairs will be used as environmental variables 
+    on the given node.
+    Arguments:
+        node  
+    Returns:
+        ret a hash with enviromental variable name as the key.
+=cut
+#--------------------------------------------------------------------------------
+sub  getNodeConfData {
+  my $node=shift;
+  if ($node =~ /xCAT_monitoring::monitorctrl/) {
+    $node=shift;
+  }
 
+  %ret=();
+  #get monitoring server
+  my $pair=xCAT_monitoring::monitorctrl->getNodeMonServerPair($node);
+  my @pair_array=split(',', $pair);
+  my $monserver=$pair_array[1];
+  $ret{MONSERVER}=$monserver;
 
+  #get all the module names from /opt/xcat/lib/perl/XCAT_monitoring directory
+  my %names=();   
+  my @plugins=glob("$::XCATROOT/lib/perl/xCAT_monitoring/*.pm");
+  foreach (@plugins) {
+    /.*\/([^\/]*).pm$/;
+    $names{$1}=1;
+  }
+  # remove 2 files that are not plug-ins
+  delete($names{monitorctrl});
+  delete($names{montbhandler});
 
+  #get node conf data from each plug-in module
+  foreach my $pname (keys(%names)) {
+    my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+    my $module_name="xCAT_monitoring::$pname";
+    #load the module in memory
+    eval {require($file_name)};
+    if (!$@) {   
+      if (defined(${$module_name."::"}{getNodeConfData})) {
+        ${$module_name."::"}{getNodeConfData}->($node, \%ret);
+      }  
+    }
+  } 
+
+  return %ret;
+}
 
 
 
