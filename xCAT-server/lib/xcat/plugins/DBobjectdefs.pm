@@ -194,7 +194,11 @@ sub processArgs
 {
     my $gotattrs = 0;
 
-    @ARGV = @{$::args};
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        return 2;
+    }
 
     if (scalar(@ARGV) <= 0) {
         return 2;

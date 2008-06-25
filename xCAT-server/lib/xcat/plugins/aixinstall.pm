@@ -172,7 +172,12 @@ sub nimnodeset
 	#	- just set global for now
     $::callback=$callback;
 
-	@ARGV = @{$::args};
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &nimnodeset_usage($callback);
+		return 0;
+    }
 
 	# parse the options
 	if(!GetOptions(
@@ -532,7 +537,12 @@ sub mknimimage
 	my $root_name;
 	my $dump_name;
 
-	@ARGV = @{$::args};
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &mknimimage_usage($callback);
+        return 0;
+    }
 
 	# parse the options
 	Getopt::Long::Configure("no_pass_through");
@@ -1622,7 +1632,12 @@ sub rmnimimage
 {
 	my $callback = shift;
 
-    @ARGV = @{$::args};
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+		&rmnimimage_usage($callback);
+        return 0;
+    }	
 
     # parse the options
     Getopt::Long::Configure("no_pass_through");
@@ -2523,7 +2538,12 @@ sub mkdsklsnode
 	#	- just set global for now
     $::callback=$callback;
 
-	@ARGV = @{$::args};
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &mkdsklsnode_usage($callback);
+        return 0;
+    }
 
 	# parse the options
 	if(!GetOptions(
@@ -2948,7 +2968,12 @@ sub rmdsklsnode
     #   - just set global for now
     $::callback=$callback;
 
-    @ARGV = @{$::args};
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &rmdsklsnode_usage($callback);
+        return 0;
+    }
 
     # parse the options
     if(!GetOptions(

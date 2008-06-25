@@ -139,7 +139,11 @@ sub processArgs
 {
     my $gotattrs = 0;
 
-    @ARGV = @{$::args};
+	if (defined(@{$::args})) {
+    	@ARGV = @{$::args};
+	} else {
+		return 3;
+	}
 
 	my %ObjTypeHash;
 
