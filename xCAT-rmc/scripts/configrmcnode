@@ -62,7 +62,7 @@ if [ $ADD -eq 1 ]; then
 
   #get IP address of MS
   ms_ip=$MONSERVER
-  result=`ping -c1 $$MONSERVER 2>&1`
+  result=`ping -c1 $MONSERVER 2>&1`
   if [ $? -eq 0 ]; then
     index1=`expr index "$result" "\("`
     index2=`expr index "$result" "\)"`
