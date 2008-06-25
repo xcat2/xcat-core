@@ -338,6 +338,39 @@ ll~;
 			next;
 		}
 
+		# check if node is in ready state
+		my $shorthost;
+		($shorthost = $node) =~ s/\..*$//;
+        chomp $shorthost;
+		my $cstate = &get_nim_attr_val($shorthost, "Cstate", $callback);
+		if ( defined($cstate) && (!($cstate =~ /ready/)) ){
+			if ($::FORCE) {
+				# if it's not in a ready state then reset it
+				my $rcmd = "/usr/sbin/nim -Fo reset $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost";
+				my $output = xCAT::Utils->runcmd("$rcmd", -1);
+            	if ($::RUNCMD_RC  != 0) {
+                	my $rsp;
+                	push @{$rsp->{data}}, "Could not reset the existing NIM object named \'$shorthost\'.\n";
+                	if ($::VERBOSE) {
+                    	push @{$rsp->{data}}, "$output";
+                	}
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	$error++;
+                	push(@nodesfailed, $node);
+                	next;
+            	}
+			} else {
+
+				my $rsp;
+				push @{$rsp->{data}}, "The NIM machine named $shorthost is not in the ready state and cannot be initialized.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+                $error++;
+                push(@nodesfailed, $node);
+                next;
+
+			}
+		}
+
 		# set the NIM machine type
 		my $type="standalone";
 		if ($imagehash{$image_name}{nimtype} ) {
@@ -1976,7 +2009,7 @@ sub get_nim_attr_val {
 		chomp $attr;
 		$attr =~ s/\s*//g;  # remove blanks
 		chomp $value;
-		$value =~ s/\s*//g;  # remove blanks
+		$value =~ s/^\s*//;
 		if ($attr eq $attrname) {
 			return $value;
 		}
