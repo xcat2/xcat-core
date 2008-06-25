@@ -4,9 +4,9 @@ B<xcat2nim> - Use this command to create and manage AIX NIM definitions based on
  
 =head1 SYNOPSIS
  
-I<xcat2nim [-h | --help ]>
+I<xcat2nim [-h|--help ]>
 
-I<xcat2nim [-V | --verbose] [-a | --all] [-l | --list] [-u | --update] [-r | --remove] [-t object-types] [-o object-names] [noderange] [attr=val [attr=val...]] >
+I<xcat2nim [-V|--verbose] [-a|--all] [-l|--list] [-u|--update] [-f|--force] [-r|--remove] [-t object-types] [-o object-names] [noderange] [attr=val [attr=val...]] >
 
 =head1 DESCRIPTION
 
@@ -20,13 +20,15 @@ The default behavior is to create new NIM definitions but not apply updates to e
 
 =head1 OPTIONS
 
-B<-a |--all>             Create NIM definitions corresponding to all xCAT node and group definitions.
+B<-a|--all>             Create NIM definitions corresponding to all xCAT node and group definitions.
 
 B<attr=val [attr=val ...]>  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line.  The attribute names must correspond to the attributes supported by the relevant NIM commands.  When providing attr=val pairs on the command line you must not specify more than one object type.
 
-B<-h |--help>            Display the usage message.
+B<-f|--force>   	 The force option will remove the existing NIM definition and create a new one.
 
-B<-l | --list>		 List NIM definitions corresponding to xCAT definitions.
+B<-h|--help>            Display the usage message.
+
+B<-l|--list>		 List NIM definitions corresponding to xCAT definitions.
 
 B<noderange>             A set of comma delimited node names and/or group names, (must be the first parameter). See the "noderange" man page for details on supported formats.
 
@@ -34,11 +36,11 @@ B<-o object-names>       A set of comma delimited xCAT object names.
 
 B<-t object-types>       A set of comma delimited xCAT object types. Supported types include: node and group.
 
-B<-r | --remove>         Remove NIM definitions corresponding to xCAT definitions.
+B<-r|--remove>         Remove NIM definitions corresponding to xCAT definitions.
 
-B<-u | --update>         Update existing NIM definitions based on xCAT definitions. 
+B<-u|--update>         Update existing NIM definitions based on xCAT definitions. 
 
-B<-V |--verbose>         Verbose mode.
+B<-V|--verbose>         Verbose mode.
 
 =head1 RETURN VALUE
 
@@ -74,13 +76,17 @@ I<xcat2nim -t node -o lpar_grp machinetype=standalone netboot_kernel=mp cable_ty
 
 5. To update the NIM definition of node clstrn01 to have a "cable_type" of "bnc".
 
-I<xcat2nim -t node -o clstrn01 cable_type=bnc>
+I<xcat2nim -u -t node -o clstrn01 cable_type=bnc>
 
 6. To list the NIM definition for node clstrn02.
 
 I<xcat2nim -t node -l -o clstrn02>
 
-7. To remove the NIM definition for the group "AIXnodes".
+7. To re-create a NIM machine definiton and display verbose output.
+
+I<xcat2nim -V -t node -f clstrn05>
+
+8. To remove the NIM definition for the group "AIXnodes".
 
 I<xcat2nim -t group -r -o AIXnodes>
 
@@ -88,10 +94,6 @@ I<xcat2nim -t group -r -o AIXnodes>
 =head1 FILES
  
 $XCATROOT/bin/xcat2nim
-
-(The XCATROOT environment variable is set when xCAT is installed. The
-default value is "/opt/xcat".)
-
 
 =head1 NOTES
 
