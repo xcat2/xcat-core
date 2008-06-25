@@ -98,7 +98,7 @@ sub process_request
     $::args     = $::request->{arg};
     $::filedata = $::request->{stdin}->[0];
 
-   ($ret, $msg) = &x2n;
+   ($ret, $msg) = &x2n($::callback);
 
     if ($msg)
     {
@@ -148,6 +148,7 @@ sub processArgs
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
+					'f|force'	=> \$::FORCE,
                     'help|h|?'    => \$::opt_h,
 					'list|l'    => \$::opt_l,
 					'update|u'  => \$::opt_u,
@@ -470,6 +471,7 @@ sub processArgs
 
 sub x2n
 {
+	my $callback = shift;
 
     my $rc    = 0;
     my $error = 0;
@@ -518,7 +520,7 @@ sub x2n
 		if ($::objtype{$objname} eq 'node') {
 		    # need to set group type to either static or dynamic
             $::objhash{$objname}{'grouptype'}='static';
-			if (mkclientdef($objname)) {
+			if (mkclientdef($objname, $callback)) {
                 # could not create client definition
 				$error++;
             }
@@ -527,7 +529,7 @@ sub x2n
 
 		# create a NIM group definition
 		if ($::objtype{$objname} eq 'group') {
-			if (mkgrpdef($objname)) {
+			if (mkgrpdef($objname, $callback)) {
 				# could not create group definition
 				$error++;
 			}
@@ -604,7 +606,9 @@ sub x2n
 
 sub mkclientdef
 {
-	my ($node) = @_;
+	my $node = shift;
+	my $callback = shift;
+
 	my $cabletype = undef;
 	my $ifattr = undef;
 
@@ -634,108 +638,123 @@ sub mkclientdef
         return 1;
     }
 
+	# need short host name for NIM client defs
+	($shorthost = $node) =~ s/\..*$//;
+
 	# don't update an existing def unless they say so!
 	if ($::client_exists && !$::opt_u) {
 
-        my $rsp;
-        $rsp->{data}->[0] = "The NIM client machine \'$node\' already exists.  Use the \'-u\' option to update an existing definition.\n";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
-        return 1;
-
-    } else {
-        # either create or update the def
-
-		# process the args and add defaults etc.
-    	foreach my $attr (keys %::ATTRS) {
-	
-			if ( $attr =~ /^if/) {
-
-				$ifattr = "-a $attr=\'$::ATTRS{$attr}\'";
-
-			} elsif ( $attr =~ /^cable_type/) {
-				$cabletype="-a cable_type1=\'$::ATTRS{$attr}\'";
- 
-			} else {
-				# add to 
-				$finalattrs{$attr}=$::ATTRS{$attr};
-			}
-		}
-
-		# req a value for cable_type
-
-		if (!$cabletype) {
-			$cabletype="-a cable_type1=N/A ";
-		}
-
-		# need short host name for NIM client defs
-		($shorthost = $node) =~ s/\..*$//;
-
-		# req a value for "if1" interface def
-		if (!$ifattr) {
-			# then try to create the attr - required
-			if ($::objhash{$node}{'netname'}) {
-				$net_name=$::objhash{$node}{'netname'};
-			} else {
-				$net_name="find_net";
-			}
-
-			# only support Ethernet for management interfaces
-			$adaptertype = "ent";
-
-			if (!$::objhash{$node}{'mac'})
-			{
+		if ($::FORCE) {
+			# get rid of the old definition
+			my $rmcmd = "/usr/sbin/nim -Fo reset $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost;/usr/sbin/nim -Fo remove $shorthost";
+			my $output = xCAT::Utils->runcmd("$rmcmd", -1);
+			if ($::RUNCMD_RC  != 0) {
 				my $rsp;
-            	$rsp->{data}->[0] = "Missing the MAC for node \'$node\'.\n";
-            	xCAT::MsgUtils->message("E", $rsp, $::callback);
-            	return 1;
+				push @{$rsp->{data}}, "Could not remove the existing NIM object named \'$shorthost\'.\n";
+				if ($::VERBOSE) {
+					push @{$rsp->{data}}, "$output";
+				}
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
 			}
-			
-			$ifattr="-a if1=\'$net_name $shorthost $::objhash{$node}{'mac'} $adaptertype\'";
-		}
 
-		# only support standalone for now - will get this from node def in future
-		$nim_type = "-t standalone";
-
-		$nim_args = "$ifattr ";
-		$nim_args .= "$cabletype";
-
-		# add the rest of the attr=val to the command line
-		foreach my $a (keys %finalattrs) {
-			$nim_args .= " -a $a=\'$finalattrs{$a}\'";
-		}
-
-		# put together the correct NIM command
-		my $cmd;
-
-
-		if ($::client_exists) {
-			$cmd = "nim -F -o change $nim_args $shorthost";
-		} else {
-			$cmd = "nim -o define $nim_type $nim_args $shorthost";
-		}
-
-		# may need to use dsh if it is a remote server
-		my $nimcmd;
-    	if ($nim_master ne $::local_host) {
-			$nimcmd = qq~xdsh $nim_master "$cmd 2>&1"~;
-		} else {
-			$nimcmd = qq~$cmd 2>&1~;
-		}
-
-		# run the cmd
-    	my $output = xCAT::Utils->runcmd("$nimcmd", -1);
-    	if ($::RUNCMD_RC  != 0)
-    	{
+		} else { # no force
         	my $rsp;
-        	$rsp->{data}->[0] = "Could not create a NIM definition for \'$node\'.\n";
-			if ($::verbose)
-        	{
-				$rsp->{data}->[1] = "$output";
-			}
-        	xCAT::MsgUtils->message("E", $rsp, $::callback);
+        	$rsp->{data}->[0] = "The NIM client machine \'$shorthost\' already exists.  Use the \'-f\' option to remove and recreate or the \'-u\' option to update an existing definition.\n";
+        	xCAT::MsgUtils->message("I", $rsp, $::callback);
         	return 1;
 		}
-    }
+
+    } 
+
+    # either create or update the def
+
+	# process the args and add defaults etc.
+   	foreach my $attr (keys %::ATTRS) {
+	
+		if ( $attr =~ /^if/) {
+
+			$ifattr = "-a $attr=\'$::ATTRS{$attr}\'";
+
+		} elsif ( $attr =~ /^cable_type/) {
+			$cabletype="-a cable_type1=\'$::ATTRS{$attr}\'";
+ 
+		} else {
+			# add to 
+			$finalattrs{$attr}=$::ATTRS{$attr};
+		}
+	}
+
+	# req a value for cable_type
+
+	if (!$cabletype) {
+		$cabletype="-a cable_type1=N/A ";
+	}
+
+	# req a value for "if1" interface def
+	if (!$ifattr) {
+		# then try to create the attr - required
+		if ($::objhash{$node}{'netname'}) {
+			$net_name=$::objhash{$node}{'netname'};
+		} else {
+			$net_name="find_net";
+		}
+
+		# only support Ethernet for management interfaces
+		$adaptertype = "ent";
+
+		if (!$::objhash{$node}{'mac'})
+		{
+			my $rsp;
+           	$rsp->{data}->[0] = "Missing the MAC for node \'$node\'.\n";
+           	xCAT::MsgUtils->message("E", $rsp, $::callback);
+           	return 1;
+		}
+			
+		$ifattr="-a if1=\'$net_name $shorthost $::objhash{$node}{'mac'} $adaptertype\'";
+	}
+
+	# only support standalone for now - will get this from node def in future
+	$nim_type = "-t standalone";
+
+	$nim_args = "$ifattr ";
+	$nim_args .= "$cabletype";
+
+	# add the rest of the attr=val to the command line
+	foreach my $a (keys %finalattrs) {
+		$nim_args .= " -a $a=\'$finalattrs{$a}\'";
+	}
+
+	# put together the correct NIM command
+	my $cmd;
+
+	if ($::client_exists && $::opt_u) {
+		$cmd = "nim -F -o change $nim_args $shorthost";
+	} else {
+		$cmd = "nim -o define $nim_type $nim_args $shorthost";
+	}
+
+	# may need to use dsh if it is a remote server
+	my $nimcmd;
+   	if ($nim_master ne $::local_host) {
+		$nimcmd = qq~xdsh $nim_master "$cmd 2>&1"~;
+	} else {
+		$nimcmd = qq~$cmd 2>&1~;
+	}
+
+	# run the cmd
+   	my $output = xCAT::Utils->runcmd("$nimcmd", -1);
+   	if ($::RUNCMD_RC  != 0)
+   	{
+       	my $rsp;
+       	$rsp->{data}->[0] = "Could not create a NIM definition for \'$node\'.\n";
+		if ($::verbose)
+       	{
+			$rsp->{data}->[1] = "$output";
+		}
+       	xCAT::MsgUtils->message("E", $rsp, $::callback);
+       	return 1;
+	}
 
 	return 0;
 }
@@ -763,7 +782,9 @@ sub mkclientdef
 
 sub mkgrpdef
 {
-	my ($group) = @_;
+	my $group = shift;
+    my $callback = shift;
+
     my $cmd = undef;
 	my $servnode = undef; 
 	my $GrpSN = undef;
@@ -786,66 +807,83 @@ sub mkgrpdef
 
 		# don't update an existing def unless we're told 
 		if ($::grp_exists && !$::opt_u) {
-			my $rsp;
-       		$rsp->{data}->[0] = "The NIM group \'$group\' already exists.  Use the \'-u\' option to update an existing definition.\n";
-       		xCAT::MsgUtils->message("I", $rsp, $::callback);
-			return 0;
+			if ($::FORCE) {
+				# get rid of the old definition
 
-		} else {
-			# either create or update the group def on this master
-
-			# any list with more than 1024 members is an error
-        	#   - NIM can't handle that
-        	if ($#members > 1024) {
-            	my $rsp;
-            	$rsp->{data}->[0] =
-            		"Cannot create a NIM group definition with more than 1024 members - on \'$servname\'.";
-            	xCAT::MsgUtils->message("I", $rsp, $::callback);
-            	next;
-        	}
-
-			#
-			#  The list may become quite long and not fit on one cmds line
-			#  so we do it one at a time for now - need to revisit this
-			#      (like do blocks at a time)
-			#
-			my $justadd=0;  # after the first define we just need to add
-			foreach my $memb (@members) {
-
-				my $shorthost;
-				($shorthost = $memb) =~ s/\..*$//;
-
-				# do we change or create
-				my $cmd;
-				if ($::grp_exists || $justadd) {
-					$cmd = "nim -o change -a add_member=$shorthost $group 2>&1";
-				} else {
-					$cmd = "nim -o define -t mac_group -a add_member=$shorthost $group 2>&1";
-					$justadd++;
-				}
-
-				# do we need dsh
-				my $nimcmd;
-				if ($servname ne $::local_host) {
-					$nimcmd = qq~xdsh $servname "$cmd"~;
-				} else {
-					$nimcmd = $cmd;
-				}
-
-				my $output = xCAT::Utils->runcmd("$cmd", -1);
-        		if ($::RUNCMD_RC  != 0)
-        		{
-            		my $rsp;
-            		$rsp->{data}->[0] = "Could not create a NIM definition for \'$group\'.\n";
-					if ($::verbose)
-            		{
-						$rsp->{data}->[1] = "$output";
+				#  ???? - does remove alone do the deallocate??
+				my $rmcmd = "/usr/sbin/nim -Fo remove $group";
+				my $output = xCAT::Utils->runcmd("$rmcmd", -1);
+				if ($::RUNCMD_RC  != 0) {
+					my $rsp;
+					push @{$rsp->{data}}, "Could not remove the existing NIM group named \'$group\'.\n";
+					if ($::VERBOSE) {
+						push @{$rsp->{data}}, "$output";
 					}
-            		xCAT::MsgUtils->message("E", $rsp, $::callback);
-            		return 1;
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return 1;
 				}
+
+			} else { # no force
+				my $rsp;
+       			$rsp->{data}->[0] = "The NIM group \'$group\' already exists.  Use the \'-f\' option to remove and recreate or the \'-u\' option to update an existing definition.\n";
+       			xCAT::MsgUtils->message("I", $rsp, $::callback);
+				return 1;
 			}
+		} 
+
+		# either create or update the group def on this master
+
+		# any list with more than 1024 members is an error
+        #   - NIM can't handle that
+        if ($#members > 1024) {
+           	my $rsp;
+           	$rsp->{data}->[0] =
+           		"Cannot create a NIM group definition with more than 1024 members - on \'$servname\'.";
+           	xCAT::MsgUtils->message("I", $rsp, $::callback);
+           	next;
         }
+
+		#
+		#  The list may become quite long and not fit on one cmds line
+		#  so we do it one at a time for now - need to revisit this
+		#      (like do blocks at a time)
+		#
+		my $justadd=0;  # after the first define we just need to add
+		foreach my $memb (@members) {
+
+			my $shorthost;
+			($shorthost = $memb) =~ s/\..*$//;
+
+			# do we change or create
+			my $cmd;
+			if (($::grp_exists && $::opt_u)  || $justadd) {
+				$cmd = "nim -o change -a add_member=$shorthost $group 2>&1";
+			} else {
+				$cmd = "nim -o define -t mac_group -a add_member=$shorthost $group 2>&1";
+				$justadd++;
+			}
+
+			# do we need dsh
+			my $nimcmd;
+			if ($servname ne $::local_host) {
+				$nimcmd = qq~xdsh $servname "$cmd"~;
+			} else {
+				$nimcmd = $cmd;
+			}
+
+			my $output = xCAT::Utils->runcmd("$cmd", -1);
+        	if ($::RUNCMD_RC  != 0)
+        	{
+           		my $rsp;
+           		$rsp->{data}->[0] = "Could not create a NIM definition for \'$group\'.\n";
+				if ($::verbose)
+           		{
+					$rsp->{data}->[1] = "$output";
+				}
+           		xCAT::MsgUtils->message("E", $rsp, $::callback);
+           		return 1;
+			}
+		}
 	}
 
 	return 0;
@@ -1286,11 +1324,11 @@ sub xcat2nim_usage
     my $rsp;
     $rsp->{data}->[0] =
       "\nUsage: xcat2nim - Use this command to create and manage AIX NIM definitions based on xCAT object definitions.\n";
-    $rsp->{data}->[1] = "  xcat2nim [-h | --help ]\n";
+    $rsp->{data}->[1] = "  xcat2nim [-h|--help ]\n";
     $rsp->{data}->[2] =
-      "  xcat2nim [-V | --verbose] [-a | --all] [-l | --list] [-u | --update] ";
+      "  xcat2nim [-V|--verbose] [-a|--all] [-l|--list] [-u|--update] ";
 
-	$rsp->{data}->[3] ="    [-r | --remove] [-t object-types] [-o object-names]";
+	$rsp->{data}->[3] ="    [-f|--force] [-r|--remove] [-t object-types] [-o object-names]";
     $rsp->{data}->[4] =
       "    [noderange] [attr=val [attr=val...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
