@@ -274,7 +274,7 @@ sub startNodeStatusMon {
   foreach my $key (keys (%$noderef)) {
     my @key_a=split(',', $key);
     if (! $iphash{$key_a[0]}) { push @servicenodes, $key_a[0]; } 
-    my $mon_nodes=$monservers->{$key};
+    my $mon_nodes=$noderef->{$key};
     foreach(@$mon_nodes) {
       my $node_info=$_;
       $status_hash{$node_info->[0]}=$node_info->[2];
@@ -519,7 +519,11 @@ sub addNodes_noChecking {
 
   my $ms_node_id;
   my $mn_node_id;
-  my $ms_name,$ms_aliases,$ms_addrtype,$ms_length,@ms_addrs;
+  my $ms_name;
+  my $ms_aliases;
+  my $ms_addrtype;
+  my $ms_length;
+  my @ms_addrs;
   my $ms_ipaddresses;
 
   my $first_time=1;
@@ -760,3 +764,78 @@ sub getNodeConfData {
   return;
 }
 
+#--------------------------------------------------------------------------------
+=head3    configMaster4Nodes
+      This function configures the current the localhost to accept the given nodes 
+    into the monitoring domain.
+    Arguments:
+        noderef a pointer to an array of nodes.  
+    Returns:
+        (code, message)
+=cut
+#--------------------------------------------------------------------------------
+sub  configMaster4Nodes {
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::rmcmon/) {
+    $noderef=shift;
+  }
+  if (!$noderef) { return (0, "");}
+
+  #check if rsct is installed or not
+  if (! -e "/usr/bin/lsrsrc") {
+    return (0, "");
+  }
+  
+  #restart rmc daemon if it is not active
+  chomp(my $pid= `/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
+  unless($pid){
+    #restart rmc daemon
+    $result=`startsrc -s ctrmc`;
+    if ($?) {
+      return (1, "RMC deamon cannot be started\n");
+    }
+  }
+
+  my $message;
+  my $ret=0;
+  my $table3=xCAT::Table->new("nodetype", -create =>0);
+  foreach(@$noderef) {
+    my $node=$_;
+    
+    #check if the node is OSI, akip if not
+    my $tmp3=$table3->getNodeAttribs($node, ['nodetype']);
+    my $nodetype=$::NODETYPE_OSI; #default
+    if (defined($tmp3) && ($tmp3)) {
+      if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
+    }
+    if ($nodetype !~ /$::NODETYPE_OSI/) { next; } 
+    
+    #check if the node is already defined, skip if it is
+    $result=`/usr/bin/lsrsrc-api -s IBM.MngNode::"Name==\'$node\'"::Name 2>&1`;  
+    if ($?==0) { next;}
+
+    #get info for the node
+    my $mn_node_id=getNodeID($node);
+    my ($mn_name,$mn_aliases,$mn_addrtype,$mn_length,@mn_addrs) = gethostbyname($node);
+    chomp($mn_name);
+    my $mn_ipaddresses="{";
+    foreach (@mn_addrs) {
+      $mn_ipaddresses .= '"'.inet_ntoa($_) . '",';
+    }
+    chop($mn_ipaddresses);
+    $mn_ipaddresses .= "}";
+    #  print "    mn_name=$mn_name, mn_aliases=$mn_aliases,   mn_ipaddr=$mn_ipaddresses,  mn_node_id=$mn_node_id\n";          
+
+    # define resource in IBM.MngNode class on server
+    $result=`mkrsrc-api IBM.MngNode::Name::"$node"::KeyToken::"$node"::IPAddresses::"$mn_ipaddresses"::NodeID::0x$mn_node_id 2>&1`;
+    if ($?) {
+      $ret=$?;
+      $message .= "define resource in IBM.MngNode class result=$result\n";
+      xCAT::MsgUtils->message('S', "[mon]: $message");
+      next; 
+    }
+  }
+  if ( $table3) { $table3->close(); }
+ 
+  return ($ret, $message); 
+}

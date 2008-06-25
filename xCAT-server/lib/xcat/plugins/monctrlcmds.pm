@@ -45,8 +45,65 @@ sub handled_commands {
     monls => "monctrlcmds",
     monaddnode => "monctrlcmds",
     monrmnode => "monctrlcmds",
+    moncfgmaster => "monctrlcmds",
   }
 }
+
+#-------------------------------------------------------
+=head3  preprocess_request
+
+  Check and setup for hierarchy 
+
+=cut
+#-------------------------------------------------------
+sub preprocess_request
+{
+  my $req = shift;
+  my $cb  = shift;
+  my $command = $req->{command}->[0];
+  if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+
+  my @requests=();
+
+  if ($command ne "moncfgmaster") {
+    my $reqcopy = {%$req};
+    push @requests, $reqcopy;
+  } else {
+    my $nodes = $req->{node};
+    my $noderef=xCAT_monitoring::monitorctrl->getMonServer($nodes);
+
+    #the identification of this node
+    my @hostinfo=xCAT::Utils->determinehostname();
+    my $isSV=xCAT::Utils->isServiceNode();
+    %iphash=();
+    foreach(@hostinfo) {$iphash{$_}=1;}
+    if (!$isSV) { $iphash{'noservicenode'}=1;}
+
+    foreach my $key (keys (%$noderef)) {
+      my @key_a=split(',', $key);
+      my $mon_nodes=$noderef->{$key};
+      @nodes_to_add=();
+      if ($mon_nodes) {
+        foreach(@$mon_nodes) {
+          my $node=$_->[0];
+          push(@nodes_to_add, $node);
+        }     
+      }
+      if ($iphash{$key_a[0]}) { #current node is the master for the nodes
+        my $reqcopy = {%$req};
+        $reqcopy->{node}=\@nodes_to_add;
+        push @requests, $reqcopy;
+      } else { #push the request to the monitoring server
+        my $reqcopy = {%$req};
+        $reqcopy->{node}=\@nodes_to_add;
+        $reqcopy->{'_xcatdest'} = $key_a[0];
+        push @requests, $reqcopy;
+      }  
+    }
+  }
+  return \@requests;
+}
+
 
 #--------------------------------------------------------------------------------
 =head3   process_request
@@ -119,6 +176,23 @@ sub process_request {
       $callback->($rsp);
     }
     return $ret;
+  }
+  elsif ($command eq "moncfgmaster") {
+    my $nodes = $request->{node};
+    if ($nodes) {
+      my ($ret, $msg) = moncfgmaster($nodes, $callback);
+      if ($msg) {
+        my %rsp=();
+        $rsp->{data}->[0]= $msg;
+        $callback->($rsp);
+      }
+      return $ret;
+    } else {
+      my %rsp=();
+      $rsp->{data}->[0]= "This command requires noderange.";
+      $callback->($rsp);
+      return 1;
+    }
   }
   else {
     my %rsp=();
@@ -820,6 +894,32 @@ sub monrmnode {
 }
 
 
+
+#--------------------------------------------------------------------------------
+=head3  moncfgmaster 
+        This function goes asks the monitoring plug-ins to configure the local host
+     to include the given nodes into the monitoring domain. (The nodes configuration 
+     is done via post installation scripts during deployment process).
+    Arguments:
+      nodes  - a pointer to a array of nodes.
+      callback - the pointer to the callback function.
+    Returns:
+        0 for success. The output is returned through the callback pointer.
+        1. for unsuccess. The error messages are returns through the callback pointer.
+=cut
+#--------------------------------------------------------------------------------
+sub moncfgmaster {
+  my $noderef=shift;
+  my $callback=shift;
+  
+  my ($ret, $msg) = xCAT_monitoring::monitorctrl->configMaster4Nodes($noderef);
+  if ($ret) {
+    my %rsp1;
+    $rsp1->{data}->[0]="$msg";
+    $callback->($rsp1);
+  }  
+  return $ret;
+}
 
 
 

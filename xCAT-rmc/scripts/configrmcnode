@@ -12,7 +12,11 @@
 #  To remove node to the cluster 
 #    NODE=nodename configrmcnode -1
 ########################################################################################## 
-ADD=$1;
+if [ -n "$1" ]; then 
+  ADD=$1
+else
+  ADD=1
+fi
 
 logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONSERVER=$MONSERVER,MS_NODEID=$MS_NODEID"
 

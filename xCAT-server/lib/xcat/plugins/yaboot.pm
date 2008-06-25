@@ -160,6 +160,7 @@ sub preprocess_request {
    #they specify no sharedtftp in site table
    my $stab = xCAT::Table->new('site');
    my $req = shift;
+  
    my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    if ($sent and ($sent->{value} == 0 or $ent->{value} =~ /no/i)) {
       $req->{'_disparatetftp'}=[1];
@@ -207,6 +208,7 @@ sub process_request {
   $request = shift;
   $callback = shift;
   $sub_req = shift;
+
   my @args;
   my @nodes;
   my @rnodes;
@@ -221,6 +223,15 @@ sub process_request {
       }
       return;
   }
+
+  #give monitoring code a chance to prepare the master for the node deployment
+  my %new_request = (
+       command => ['moncfgmaster'],
+       node => \@rnodes
+    );
+  $sub_req->(\%new_request, \&pass_along);
+
+  #back to normal business
   #if not shared tftpdir, then filter, otherwise, set up everything
   if ($req->{_disparatetftp}) { #reading hint from preprocess_command
    @nodes = ();

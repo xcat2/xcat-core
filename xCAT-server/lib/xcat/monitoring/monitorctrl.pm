@@ -908,7 +908,7 @@ sub getNodeMonServerPair {
   my $table2=xCAT::Table->new("noderes", -create =>0);
   my $pairs;
   my $tmp2=$table2->getNodeAttribs($node, ['monserver', 'servicenode', 'xcatmaster']);
-  if (defined($tmp2) && ($tmp2)) {
+  if ($tmp2) {
     if ($tmp2->{monserver}) {  
       $pairs=$tmp2->{monserver}; 
       #when there is only one hostname specified in noderes.monserver, 
@@ -1279,6 +1279,73 @@ sub  getNodeConfData {
 
   return %ret;
 }
+
+
+
+#--------------------------------------------------------------------------------
+=head3    configMaster4Nodes
+      This function goes to every monitoring plug-in module and configures the current
+    the localhost to accept the given nodes into the monitoring domain.
+    Arguments:
+        noderef a pointer to an array of nodes.  
+    Returns:
+        (code, message)
+=cut
+#--------------------------------------------------------------------------------
+sub  configMaster4Nodes {
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::monitorctrl/) {
+    $noderef=shift;
+  }
+
+  #get all the module names from /opt/xcat/lib/perl/XCAT_monitoring directory
+  my %names=();   
+  my @plugins=glob("$::XCATROOT/lib/perl/xCAT_monitoring/*.pm");
+  foreach (@plugins) {
+    /.*\/([^\/]*).pm$/;
+    $names{$1}=1;
+  }
+  # remove 2 files that are not plug-ins
+  delete($names{monitorctrl});
+  delete($names{montbhandler});
+
+  #get node conf data from each plug-in module
+  my $message;
+  my $retcode=0;
+  foreach my $pname (keys(%names)) {
+    my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+    my $module_name="xCAT_monitoring::$pname";
+    #load the module in memory
+    eval {require($file_name)};
+    if (!$@) {   
+      if (defined(${$module_name."::"}{configMaster4Nodes})) {
+        my ($c, $m)=${$module_name."::"}{configMaster4Nodes}->($noderef);
+        if ($c) {$retcode=$c; $message .= "$pname: $m\n";}
+      }  
+    }
+  } 
+
+  return ($retcode, $message);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
