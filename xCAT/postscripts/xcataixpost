@@ -86,9 +86,7 @@ if (&runcmd($chcmd) != 0) {
 # check & run the postscript
 if (-f $scriptname)
 {
-	# TODO - change this to runcmd??
-	my $rc = system("$scriptname");
-    if ($rc >> 8)
+	if (&runcmd($scriptname) != 0)
     {
 		print "$::sdate  xcataixpost: Could not run $scriptname.\n";
 		print $::LOG_FILE "$::sdate  xcataixpost: Could not run $scriptname.\n";
