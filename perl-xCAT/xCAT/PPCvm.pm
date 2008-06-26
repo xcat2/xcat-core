@@ -727,7 +727,17 @@ sub modify {
             # Change LPAR Id 
             ###############################
             $cfg =~ s/lpar_id=[^,]+/lpar_id=@$d[0]/;          
-            
+
+            #################################
+            # Modify SCSI adapters
+            #################################
+            if ( exists( $opt->{p} )) { 
+                if ( $cfg =~ /virtual_scsi_adapters=(\w+)/ ) {
+                    if ( $1 !~ /^none$/i ) {
+                        $cfg = scsi_adapter( $cfg );
+                    }
+                }
+            }
             ###############################
             # Send command 
             ###############################
@@ -848,6 +858,42 @@ sub list {
 
 
 
+##########################################################################
+# Increments virtual scsi adapter in partition profile 
+##########################################################################
+sub scsi_adapter {
+
+    my $cfgdata = shift;
+
+    #########################################
+    # Increment SCSI adapters if present
+    #   15/server/6/1ae0-node1/11/1,
+    #   14/server/5/1ae0-ms04/12/1,
+    #   20/server/any//any/1 
+    # Increment 11 and 12 in example above.
+    #########################################
+    if ( $cfgdata =~ /(\"*virtual_scsi_adapters)/ ) {
+
+        #####################################
+        # If double-quoted, has comma-
+        # seperated list of adapters
+        #####################################
+        my $delim = ( $1 =~ /^\"/ ) ? "\\\\\"" : ","; 
+        $cfgdata  =~ /virtual_scsi_adapters=([^$delim]+)|$/;
+                                              
+        my @scsi = split ",", $1;
+        foreach ( @scsi ) {
+            if ( /(\w+)\/(\w+)$/ ) {
+                my $id = ($1 =~ /(\d+)/) ? $1+1 : $1;
+                s/(\w+)\/(\w+)$/$id\/$2/;
+            } 
+        }
+        my $adapters = "virtual_scsi_adapters=".join( ",", @scsi );
+        $cfgdata =~ s/virtual_scsi_adapters=[^$delim]+/$adapters/;
+    }
+    return( $cfgdata );
+}
+
 
 ##########################################################################
 # Creates/changes logical partitions 
@@ -914,10 +960,22 @@ sub create {
         return( [[$lpar, @$prof[0], $Rc]] );
     } 
     #####################################
-    # Get command-line options 
+    # Get source node pprofile attribute
+    #####################################
+    my $pprofile = @$d[1];
+
+    #####################################
+    # Find pprofile on source node
+    #####################################
+    my ($prof) = grep /^name=$pprofile\,/, @$prof;
+    if ( !$prof ) {
+        return( [[$lpar, "'pprofile=$pprofile' not found on '$lpar'", RC_ERROR]] );
+    }
+    #####################################
+    # Get command-line options
     #####################################
     my $id   = $opt->{i};
-    my $cfgdata = strip_profile( @$prof[0], $hwtype );
+    my $cfgdata = strip_profile( $prof, $hwtype );
     
     #####################################
     # Set profile name for all LPARs
@@ -927,7 +985,7 @@ sub create {
         $profile = $1;
         $cfgdata =~ s/lpar_name=/name=/;
     }
- 
+    
     foreach my $name ( @{$opt->{n}} ) {
 
         #################################
@@ -940,6 +998,14 @@ sub create {
         $cfgdata =~ s/\bname=[^,]+|$/name=$name/;
 
         #################################
+        # Modify SCSI adapters
+        #################################
+        if ( $cfgdata =~ /virtual_scsi_adapters=(\w+)/ ) {
+            if ( $1 !~ /^none$/i ) {
+                $cfgdata = scsi_adapter( $cfgdata );
+            }
+        }
+        #################################
         # Create new LPAR  
         #################################
         $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", $d, $cfgdata ); 
@@ -949,7 +1015,7 @@ sub create {
         # Add new LPAR to database 
         #################################
         if ( $Rc == SUCCESS ) {
-            my $err = xCATdB( "mkvm", $name, $profile, $id, $d, $hwtype, $lpar );
+            my $err = xCATdB( "mkvm", $name, $profile, $id, $d, $hwtype, $lpar);
             if ( defined( $err )) {
                 push @values, [$name,$err,RC_ERROR];
                 $id++;
@@ -995,7 +1061,6 @@ sub strip_profile {
     $cfgdata =~ s/,*all_resources=[^,]+|$//;
     $cfgdata =~ s/,*\"virtual_serial_adapters=[^\"]+\"//;
     $cfgdata =~ s/,*lpar_io_pool_ids=[^,]+|$//;
-    $cfgdata =~ s/,*virtual_scsi_adapters=[^,]+|$//;
     $cfgdata =~ s/,*conn_monitoring=[^,]+|$//;
     $cfgdata =~ s/,*power_ctrl_lpar_ids=[^,]+|$//;
     $cfgdata =~ s/\"/\\"/g;
@@ -1121,6 +1186,7 @@ sub lsvm {
 
 
 1;
+
 
 
 
