@@ -32,12 +32,16 @@ rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/rmc
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
+mkdir -p $RPM_BUILD_ROOT/install/postscripts
 
 cp plugin/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
 cp -r resources $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/rmc
 
 cp scripts/* $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon/*
+
+cp scripts/configrmcnode $RPM_BUILD_ROOT/install/postscripts
+chmod 755 $RPM_BUILD_ROOT/install/postscripts/configrmcnode
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -47,6 +51,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-, root, root)
 %{prefix}
+/install/postscripts
 
 %changelog
 
