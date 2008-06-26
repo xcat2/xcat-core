@@ -21,6 +21,17 @@ if [ -r /etc/sysconfig/xcat ]; then
 	. /etc/sysconfig/xcat
 fi
 
+RHSuccess()
+{
+    success
+    echo
+}
+
+RHFailure()
+{
+    failure
+    echo
+}
 MStatus()
 {
   ps ax|grep -v grep|grep xcatd: >& /dev/null
@@ -39,8 +50,8 @@ if [ -f /etc/init.d/functions ]; then
   . /etc/init.d/functions
   START_DAEMON=daemon
   STATUS=MStatus
-  LOG_SUCCESS=success
-  LOG_FAILURE=failure
+  LOG_SUCCESS=RHSuccess
+  LOG_FAILURE=RHFailure
   LOG_WARNING=passed
 elif [ -f /lib/lsb/init-functions ]; then
   . /lib/lsb/init-functions
