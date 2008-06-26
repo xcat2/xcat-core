@@ -36,6 +36,9 @@ my $dotxt = 0;
 my $dontdodomains = 0;
 my $Bootfile = "/etc/named.conf";
 my $DBDir = "/var/named/";
+unless (-d $DBDIR) {
+    $DBDir = " /var/lib/named";
+}
 my $Domain = "";
 my $Hostfile = "/etc/hosts";
 my $Commentfile = "";
