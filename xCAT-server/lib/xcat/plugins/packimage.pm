@@ -94,11 +94,19 @@ sub process_request {
       if ($pent and defined ($pent->{password})) {
          my $pass = $pent->{password};
          my $shadow;
+         open($shadow,"<","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/shadow");
+         my @shadents = <$shadow>;
+         close($shadow);
          open($shadow,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/shadow");
          unless ($pass =~ /^\$1\$/) {
             $pass = crypt($pass,'$1$'.genpassword(8));
          }
          print $shadow "root:$pass:13880:0:99999:7:::\n";
+         foreach (@shadents) {
+             unless (/^root:/) {
+                print $shadow "$_";
+             }
+         }
          close($shadow);
       }
    }
