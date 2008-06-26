@@ -169,6 +169,8 @@ my %mpahash;
 my $mpa;
 my $allinchassis=0;
 my $curn;
+my @cfgtext;
+
 
 sub fillresps {
   my $response = shift;
@@ -418,11 +420,6 @@ sub enabledefaultalerts {
 }
    
 
-
-
-
-
-my @cfgtext;
 sub mpaconfig {
    #OIDs of interest:
    #1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.4 snmpCommunityEntryCommunityIpAddress2
@@ -444,11 +441,7 @@ sub mpaconfig {
    if ($didchassis) { return 0, @cfgtext } #"Chassis already configured for this command" }
    @cfgtext=();
 
-   my $result = telnetcmds($mpa,$user,$pass,$nodeid,@_);
-   $returncode |= @$result[0];
-   my $args = @$result[1];
-
-   foreach $parameter (@$args) {
+   foreach $parameter (@_) {
       $assignment = 0;
       $value = undef;
       if ($parameter =~ /=/) {
@@ -1167,7 +1160,6 @@ sub bladecmd {
   my @args = @_;
   my $error;
 
- 
   if ($slot > 0) {
     my $tmp = $session->get([$bladexistsoid.".$slot"]);
     if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
@@ -1878,7 +1870,7 @@ sub snmpcfg {
   }
   $user =~ /^(\d+)./;
   my $id = $1;
-  my $pp = ($value =~ /^enable$/i) ? "des" : "none";
+  my $pp  = ($value =~ /^enable$/i) ? "des" : "none";
  
   my $cmd= "users -$id -ap sha -at write -ppw $pass -pp $pp -T system:mm[1]";
   my @data = $t->cmd($cmd);
@@ -2082,6 +2074,49 @@ sub dompa {
   my %namedargs=@_;
   my @exargs=@{$namedargs{-args}};
   my $node;
+  my $args = \@exargs;
+
+  # Handle telnet commands before SNMP
+  if ($command eq "rspconfig") { 
+    foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
+      @cfgtext=();
+      my $slot = $mpahash->{$mpa}->{nodes}->{$node};
+      my $user = $mpahash->{$mpa}->{username};
+      my $pass = $mpahash->{$mpa}->{password};
+  
+      my $result = telnetcmds($mpa,$user,$pass,$slot,@exargs);
+      my $rc |= @$result[0];
+      $args = @$result[1];
+
+      foreach(@cfgtext) {
+        my %output;
+        (my $desc,my $text) = split (/:/,$_,2);
+
+        unless ($text) {
+          $text=$desc;
+        } else {
+          $desc =~ s/^\s+//;
+          $desc =~ s/\s+$//;
+          if ($desc) {
+            $output{node}->[0]->{data}->[0]->{desc}->[0]=$desc;
+          }
+        }
+        $text =~ s/^\s+//;
+        $text =~ s/\s+$//;
+        $output{node}->[0]->{errorcode} = $rc;
+        $output{node}->[0]->{name}->[0]=$node;
+        $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+        
+        print $out freeze([\%output]);
+        print $out "\nENDOFFREEZE6sK4ci\n";
+      }
+    }
+  }
+  # Only telnet commands
+  unless ( @$args ) {
+    return;
+  }
+
   $session = new SNMP::Session(
                     DestHost => $mpa,
                     Version => '3',
@@ -2116,9 +2151,8 @@ sub dompa {
   }
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;
-    my ($rc,@output) = bladecmd($mpa,$node,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@exargs); 
+    my ($rc,@output) = bladecmd($mpa,$node,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@$args); 
 
-    my @output_hashes;
     foreach(@output) {
       my %output;
       
@@ -2155,6 +2189,7 @@ sub dompa {
 }
     
 1;
+
 
 
 
