@@ -91,7 +91,7 @@ sub process_request
 
     my $request  = shift;
     my $callback = shift;
-
+    my $sub_req = shift; 
     my $ret;
     my $msg;
 
@@ -102,7 +102,7 @@ sub process_request
     # figure out which cmd and call the subroutine to process
     if ($command eq "mkdsklsnode")
     {
-        ($ret, $msg) = &mkdsklsnode($callback);
+        ($ret, $msg) = &mkdsklsnode($callback, $sub_req);
     }
     elsif ($command eq "mknimimage")
     {
@@ -118,7 +118,7 @@ sub process_request
 	} 
 	elsif ($command eq "nimnodeset")
 	{
-		($ret, $msg) = &nimnodeset($callback);
+		($ret, $msg) = &nimnodeset($callback, $sub_req);
 	}
 
 
@@ -162,6 +162,7 @@ sub process_request
 sub nimnodeset
 {
     my $callback = shift;
+    my $sub_req = shift;
 
 	my $error=0;
 	my @nodesfailed;
@@ -254,7 +255,16 @@ sub nimnodeset
     	return 1;
 	}
 
-	#
+    ###################
+    #give monitoring code a chance to prepare the master for the node deployment
+    my %new_request = (
+       command => ['moncfgmaster'],
+       node => \@nodelist
+     );
+    $sub_req->(\%new_request, \&pass_along);
+    ###################
+
+    #
     #  Get a list of the defined NIM machines
     #
     my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/nu
@@ -456,6 +466,7 @@ ll~;
 		my $initcmd;
 		$initcmd="/usr/sbin/nim -o bos_inst $arg_string $nim_name 2>&1";
 
+
 		my $output = xCAT::Utils->runcmd("$initcmd", -1);
 		if ($::RUNCMD_RC  != 0)
 		{
@@ -483,6 +494,8 @@ ll~;
 				$nodeattrs{$node}{profile} = $image_name;
 			}
 		}
+
+
 		if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0) {
 			my $rsp;
 			push @{$rsp->{data}}, "Could not write data to the xCAT database.\n";
@@ -2561,6 +2574,7 @@ sub update_dd_boot {
 sub mkdsklsnode 
 {
 	my $callback = shift;
+        my $sub_req = shift;
 
 	my $error=0;
 	my @nodesfailed;
@@ -2659,7 +2673,16 @@ sub mkdsklsnode
 		return 1;
 	}
 
-	#
+    #################
+    #give monitoring code a chance to prepare the master for the node deployment
+    my %new_request = (
+       command => ['moncfgmaster'],
+       node => \@nodelist
+     );
+    $sub_req->(\%new_request, \&pass_along);
+    #################
+    
+    #
     #  Get a list of the defined NIM machines
     #
 	my @machines = [];

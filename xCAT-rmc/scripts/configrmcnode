@@ -26,6 +26,9 @@ if [ ! -e /usr/bin/lsrsrc ]; then
   exit 1;
 fi
 
+#stop rsct daemons
+/usr/sbin/rsct/bin/rmcctrl -z
+
 #ask RMC take the new nodeid
 if [[ $NODEID != "" ]]; then
   if [ -e /var/ct/cfg/ct_node_id ]; then
