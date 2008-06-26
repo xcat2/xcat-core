@@ -1,4 +1,3 @@
-%define epoch   0
 %define version	2.1
 %ifarch i386 i586 i686 x86
 %define tarch x86
@@ -12,7 +11,7 @@
 BuildArch: noarch
 %define name	xCAT-nbroot-core-%{tarch}
 Release: snap%(date +"%Y%m%d%H%M")
-Epoch: 2
+Epoch: 4
 AutoReq: false
 Prefix: /opt/xcat
 AutoProv: false
@@ -23,7 +22,6 @@ AutoProv: false
 
 
 Name:	 %{name}
-#Epoch:   %{epoch}
 Version: %{version}
 Group: System/Utilities
 License: EPL

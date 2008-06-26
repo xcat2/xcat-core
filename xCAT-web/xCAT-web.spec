@@ -2,7 +2,7 @@ Summary: Web Interface for xCAT
 Name: xCAT-web
 Version: 2.1
 Release: snap%(date +"%Y%m%d%H%M")
-Epoch: 2
+Epoch: 4
 
 License: EPL
 Group: Applications/System
