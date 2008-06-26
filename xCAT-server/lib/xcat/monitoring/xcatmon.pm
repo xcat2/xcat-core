@@ -242,14 +242,15 @@ sub getMonNodesStatus {
     if ($iphash{$sv}) {
       $monnodes=$hierachy->{$_};
     }
-  }
+  
      
-  foreach(@$monnodes) {
-    my $node=$_->[0];
-    my $status=$_->[2];
-    if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
-    elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
-    else { push(@unknown_nodes, $node);}
+    foreach(@$monnodes) {
+      my $node=$_->[0];
+      my $status=$_->[2];
+      if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
+      elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
+      else { push(@unknown_nodes, $node);}
+    }
   }
  
   $status{$::STATUS_ACTIVE}=\@active_nodes;
