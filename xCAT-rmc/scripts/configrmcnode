@@ -28,7 +28,6 @@ fi
 
 #ask RMC take the new nodeid
 if [[ $NODEID != "" ]]; then
-  /usr/sbin/rsct/bin/rmcctrl -z
   if [ -e /var/ct/cfg/ct_node_id ]; then
     sed -i s/^[^\#].*$/$NODEID/ /var/ct/cfg/ct_node_id
   else
@@ -67,7 +66,11 @@ if [ $ADD -eq 1 ]; then
   if [ $? -eq 0 ]; then
     index1=`expr index "$result" "\("`
     index2=`expr index "$result" "\)"`
-    ms_ip=${result:$index1+1:$index2-$index1-2}
+    #ms_ip=${result:$index1+1:$index2-$index1-2}
+    pos=`expr $index1 + 1`
+    length=`expr $index2 - $index1`
+    length=`expr $length - 2`
+    ms_ip=`expr substr "$result" $pos $length`
   else
     logger xCAT "RMC setup on node $NODE:$result"
   fi

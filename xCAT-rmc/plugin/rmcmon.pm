@@ -551,9 +551,13 @@ sub addNodes_noChecking {
     if($iphash{$node}) {
       $mn_node_id=$ms_node_id;
     } else { 
-      $mn_node_id=`$::XCATROOT/bin/psh --nonodecheck $node /usr/sbin/rsct/bin/lsnodeid 2>&1`;
+      if ($^O =~ /^linux/i) {
+        $mn_node_id=`$::XCATROOT/bin/psh --nonodecheck $node /usr/sbin/rsct/bin/lsnodeid 2>&1`;
+      } else {
+        $mn_node_id=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -t 30 /usr/sbin/rsct/bin/lsnodeid 2>&1`;
+      }
       if ($?) {
-	xCAT::MsgUtils->message('SI',  "[mon]: Cannot get NodeID for $node. $mn_node_id\n");
+	    xCAT::MsgUtils->message('SI',  "[mon]: Cannot get NodeID for $node. $mn_node_id\n");
         next;
       }
       if ($mn_node_id =~ s/.*([0-9 a-g]{16}).*/$1/s) {;}
@@ -585,13 +589,20 @@ sub addNodes_noChecking {
         next;
       }
     } else {
-      $result=`scp $::XCATROOT/sbin/rmcmon/configrmcnode $node:/tmp 2>&1`;
+      if ($^O =~ /^linux/i) {
+        $result=`scp $::XCATROOT/sbin/rmcmon/configrmcnode $node:/tmp 2>&1`;
+      } else {
+        $result=`XCATBYPASS=Y  $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1`;
+      }
       if ($?) {
         xCAT::MsgUtils->message('SI', "[mon]: rmcmon:addNodes: cannot copy the file configrmcnode to node $node\n");
         next;
       }
-
-      $result=`$::XCATROOT/bin/psh --nonodecheck $node NODE=$node MONSERVER=$master MS_NODEID=$ms_node_id /tmp/configrmcnode 1 2>&1`;
+      if ($^O =~ /^linux/i) {
+        $result=`$::XCATROOT/bin/psh --nonodecheck $node NODE=$node MONSERVER=$master MS_NODEID=$ms_node_id /tmp/configrmcnode 1 2>&1`;
+      } else {
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node NODE=$node MONSERVER=$master MS_NODEID=$ms_node_id /tmp/configrmcnode 1 2>&1`;
+      }
       if ($?) {
         xCAT::MsgUtils->message('SI',  "[mon]: $result\n");
       }
@@ -670,13 +681,21 @@ sub removeNodes_noChecking {
       }
     } else {
       #copy the configuration script and run it locally
-      $result=`scp $::XCATROOT/sbin/rmcmon/configrmcnode $node:/tmp 2>&1 `;
+      if ($^O =~ /^linux/i) {
+        $result=`scp $::XCATROOT/sbin/rmcmon/configrmcnode $node:/tmp 2>&1 `;
+      } else {
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1 `;
+      }
       if ($?) {
         xCAT::MsgUtils->message('SI', "[mon]: rmcmon:removeNodes: cannot copy the file configrmcnode to node $node\n");
         next;
       }
 
-      $result=`$::XCATROOT/bin/psh --nonodecheck $node NODE=$node /tmp/configrmcnode -1 2>&1`;
+      if ($^O =~ /^linux/i) {
+        $result=`$::XCATROOT/bin/psh --nonodecheck $node NODE=$node /tmp/configrmcnode -1 2>&1`;
+      } else {
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node NODE=$node /tmp/configrmcnode -1 2>&1`;
+      }
       if ($?) {
         xCAT::MsgUtils->message('SI', "[mon]: $result\n");
       }
