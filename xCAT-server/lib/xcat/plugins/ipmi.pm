@@ -537,7 +537,7 @@ sub ipmicmd {
 		}
 		elsif($subcommand eq "reset") {
 			($rc,$text) = power("reset");
-			$noclose = 1;
+			$noclose = 0;
 		}
 		elsif($subcommand eq "cycle") {
 			my $text2;
@@ -567,7 +567,7 @@ sub ipmicmd {
 			if($rc == 0) {
 				if($text eq "on") {
 					($rc,$text2) = power("reset");
-					$noclose = 1;
+					$noclose = 0;
 				}
 				elsif($text eq "off") {
 					($rc,$text2) = power("on");
