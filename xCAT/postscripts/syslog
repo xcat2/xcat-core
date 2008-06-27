@@ -118,7 +118,7 @@ if [ $goLocal -eq 1 ]; then
     if [ $? -gt 0 ]; then
       if [ $isLinux -eq 0 ]; then # aix
         echo "# xCAT settings" >> $conf_file
-        echo "*.debug;*.crit;*.err;*.warning   /var/log/messages  rotate 1024K files 5" >> $conf_file
+        echo "*.debug  /var/log/messages  rotate 1024K files 5" >> $conf_file
       fi
     fi
   fi
@@ -141,7 +141,11 @@ else
       mv -f $conf_file $conf_file.XCATORIG
     fi
     echo "# xCAT settings" > $conf_file
-    echo "*.* @$master" >> $conf_file
+    if [ $isLinux -eq 0 ]; then
+      echo "*.debug @$master" >> $conf_file
+    else
+      echo "*.* @$master" >> $conf_file
+    fi
   fi
 fi
 
