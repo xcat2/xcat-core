@@ -233,14 +233,6 @@ sub process_request {
       return;
   }
 
-  #give monitoring code a chance to prepare the master for the node deployment
-  my %new_request = (
-       command => ['moncfgmaster'],
-       node => \@rnodes
-    );
-  $sub_req->(\%new_request, \&pass_along);
-
-  #back to normal business
   #if not shared, then help sync up
   if ($req->{_disparatetftp}) { #reading hint from preprocess_command
    @nodes = ();
@@ -290,6 +282,16 @@ sub process_request {
       setstate($_);
     }
   }
+
+  ##################################
+  #give monitoring code a chance to prepare the master for the node deployment
+  my %new_request = (
+       command => ['moncfgmaster'],
+       node => \@rnodes
+    );
+  $sub_req->(\%new_request, \&pass_along);
+  ##################################
+
 }
 
 

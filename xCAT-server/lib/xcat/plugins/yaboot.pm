@@ -224,12 +224,6 @@ sub process_request {
       return;
   }
 
-  #give monitoring code a chance to prepare the master for the node deployment
-  my %new_request = (
-       command => ['moncfgmaster'],
-       node => \@rnodes
-    );
-  $sub_req->(\%new_request, \&pass_along);
 
   #back to normal business
   #if not shared tftpdir, then filter, otherwise, set up everything
@@ -267,6 +261,15 @@ sub process_request {
       setstate($_);
     }
   }
+
+  #####################################
+  # give monitoring code a chance to prepare the master for the node deployment
+  my %new_request = (
+       command => ['moncfgmaster'],
+       node => \@rnodes
+    );
+  $sub_req->(\%new_request, \&pass_along);
+  #####################################
 }
 
 

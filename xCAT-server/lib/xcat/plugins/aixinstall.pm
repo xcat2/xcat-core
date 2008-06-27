@@ -255,14 +255,6 @@ sub nimnodeset
     	return 1;
 	}
 
-    ###################
-    #give monitoring code a chance to prepare the master for the node deployment
-    my %new_request = (
-       command => ['moncfgmaster'],
-       node => \@nodelist
-     );
-    $sub_req->(\%new_request, \&pass_along);
-    ###################
 
     #
     #  Get a list of the defined NIM machines
@@ -529,6 +521,16 @@ ll~;
 		my $rsp;
 		push @{$rsp->{data}}, "AIX/NIM nodes were initialized.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
+                ###################
+                #give monitoring code a chance to prepare the master for the node deployment
+		#push @{$rsp->{data}}, "Initializing for the node monitoring.\n";
+		#xCAT::MsgUtils->message("I", $rsp, $callback);
+                my %new_request = (
+                command => ['moncfgmaster'],
+                node => \@nodelist
+                );
+                $sub_req->(\%new_request, \&pass_along);
+                ###################
 		return 0;
 	}
 	return 0;
@@ -2675,15 +2677,7 @@ sub mkdsklsnode
 		return 1;
 	}
 
-    #################
-    #give monitoring code a chance to prepare the master for the node deployment
-    my %new_request = (
-       command => ['moncfgmaster'],
-       node => \@nodelist
-     );
-    $sub_req->(\%new_request, \&pass_along);
-    #################
-    
+   
     #
     #  Get a list of the defined NIM machines
     #
@@ -2991,7 +2985,17 @@ if (0) {
 		my $rsp;
 		push @{$rsp->{data}}, "AIX/NIM diskless nodes were initialized.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
-		return 0;
+                #################
+                #give monitoring code a chance to prepare the master for the node deployment
+		#push @{$rsp->{data}}, "Initializing for the node monitoring.\n";
+		#xCAT::MsgUtils->message("I", $rsp, $callback);
+                my %new_request = (
+                command => ['moncfgmaster'],
+                node => \@nodelist
+                );
+                $sub_req->(\%new_request, \&pass_along);
+                #################
+ 		return 0;
 	}
 }
 

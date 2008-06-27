@@ -28,16 +28,24 @@ fi
 
 #ask RMC take the new nodeid
 if [[ $NODEID != "" ]]; then
+  #stop all rmc daemons
+  /usr/sbin/rsct/bin/rmcctrl -z
+
+  #get new nodeid into id files
   if [ -e /var/ct/cfg/ct_node_id ]; then
-    sed -i s/^[^\#].*$/$NODEID/ /var/ct/cfg/ct_node_id
+    sed s/^[^\#].*$/$NODEID/ /var/ct/cfg/ct_node_id > /tmp/id.tmp
   else
-    echo $NODEID > /var/ct/cfg/ct_node_id 
+    if [ -e /etc/ct_node_id ]; then
+      sed s/^[^\#].*$/$NODEID/ /etc/ct_node_id >  /tmp/id.tmp
+    else 
+      echo $NODEID > /tmp/id.tmp
+    fi
   fi
-  if [ -e /etc/ct_node_id ]; then
-    sed -i s/^[^\#].*$/$NODEID/ /etc/ct_node_id
-  else
-    echo $NODEID > /etc/ct_node_id
-  fi
+  cp /tmp/id.tmp /var/ct/cfg/ct_node_id
+  cp /tmp/id.tmp /etc/ct_node_id
+  rm /tmp/id.tmp
+
+  #reconfig RMC
   result=`/usr/sbin/rsct/install/bin/recfgct -s 2>&1`
   if [ $? -ne 0 ]; then
     logger xCAT "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
@@ -69,7 +77,7 @@ if [ $ADD -eq 1 ]; then
     #ms_ip=${result:$index1+1:$index2-$index1-2}
     pos=`expr $index1 + 1`
     length=`expr $index2 - $index1`
-    length=`expr $length - 2`
+    length=`expr $length - 1`
     ms_ip=`expr substr "$result" $pos $length`
   else
     logger xCAT "RMC setup on node $NODE:$result"
