@@ -246,17 +246,21 @@ sub process_request {
   }
   
   if (! -r "$tftpdir/pxelinux.0") {
-     unless (-r "/usr/lib/syslinux/pxelinux.0") {
+    unless (-r "/usr/lib/syslinux/pxelinux.0" or -r "/usr/share/syslinux/pxelinux.0") {
        $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
        return;
+    }
+    if (-r "/usr/lib/syslinux/pxelinux.0") {
+       copy("/usr/lib/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
+    } else {
+       copy("/usr/share/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
      }
-     copy("/usr/lib/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
      chmod(0644,"$tftpdir/pxelinux.0");
-   }
-   unless ( -r "$tftpdir/pxelinux.0" ) {
-      $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
-      return;
-   }
+  }
+  unless ( -r "$tftpdir/pxelinux.0" ) {
+     $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
+     return;
+  }
 
       
   if (ref($request->{arg})) {
