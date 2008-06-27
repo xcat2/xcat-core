@@ -2098,6 +2098,8 @@ sub chkFSspace {
     my $size = shift;
     my $callback = shift;
 
+# TODO - test this !!!
+
 	# get free space
     # ex. 1971.06 (Free MB)
     my $dfcmd = qq~/usr/bin/df -m $location | /usr/bin/awk '(NR==2){print \$3":"\$7}'~;
@@ -2116,7 +2118,7 @@ sub chkFSspace {
 
 	my ($free_space, $FSname) = split(':', $output);
 
-print "size = $size, free_space= $free_space FSname = \'$FSname\'\n";
+#print "size = $size, free_space= $free_space FSname = \'$FSname\'\n";
 
 	#
     #  see if we need to increase the size of the fs
@@ -2129,7 +2131,7 @@ print "size = $size, free_space= $free_space FSname = \'$FSname\'\n";
 		my $sizeattr = "-a size=+$addsize" . "M";
         my $chcmd = "/usr/sbin/chfs $sizeattr $FSname";
 
-print "chcmd = \'$chcmd\'\n";
+#print "chcmd = \'$chcmd\'\n";
 
         my $output;
         $output = xCAT::Utils->runcmd("$chcmd", -1);
@@ -2907,7 +2909,9 @@ ll~;
 		#
 		#  make sure we have enough space for the new node root dir
 		#
-		if (&enoughspace($imagehash{$image_name}{spot}, $imagehash{$image_name}{root}, $psize, $callback) != 0) {
+# TODO - test FS resize
+#		if (&enoughspace($imagehash{$image_name}{spot}, $imagehash{$image_name}{root}, $psize, $callback) != 0) {
+if (0) {
 			my $rsp;
 			push @{$rsp->{data}}, "Could not initialize node \'$node\'\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -2950,6 +2954,7 @@ ll~;
 			chomp $node;
 			if (!grep(/^$node$/, @nodesfailed)) {
 				# change the node def if we were successful
+				$nodeattrs{$node}{objtype} = 'node';
 				$nodeattrs{$node}{profile} = $image_name;
 			}
 		}
