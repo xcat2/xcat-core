@@ -2,7 +2,7 @@
 # Accepts directories to build packages from on the commandline, but defaults
 # to building: perl-xCAT-2.0 and xCAT-client-2.0
 
-packages="${@:-perl-xCAT-2.0 xCAT-client-2.0}"
+packages="${@:-perl-xCAT xCAT-client}"
 
 for pkg in $packages; do
   mkdir -p debs/$pkg

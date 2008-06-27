@@ -53,21 +53,23 @@ sub process_request {
       s/^/$request->{cwd}->[0]\//;
     }
 
-    # /dev/cdrom is a symlink on some systems, we need to see if it points to a
-    # block device.
+    # /dev/cdrom is a symlink on some systems. We need to be able to determine
+    # if the arg points to a block device.
     if (-l $_) { 
       my $link = readlink($_);
+
+      # Symlinks can be relative, i.e., "../../foo"
       if ($link =~ m{^/})
         { $file = $link; }
       else
-        { $file = dirname($_) . "/" . $link; }
+        { $file = dirname($_) . "/" . $link; } # Unix can handle "/foo/../bar"
     }
     else { $file = $_; }
 
     my $mntopts;
     if (-r $file and -b $file) # Block device?
       { $mntopts = "-o ro"; }
-    elsif (-r $file and -f $file) 
+    elsif (-r $file and -f $file) # Assume ISO file
       { $mntopts = "-o ro,loop"; }
     else {
       $callback->({error=>"The management server was unable to find/read $file. Ensure that file exists on the server at the specified location."});

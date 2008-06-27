@@ -1,3 +1,9 @@
+perl-xcat (2.0-2) testing; urgency=low
+
+  * post-release snap
+
+ -- Isaac Freeman <ifreeman@us.ibm.com>  Mon, 16 Jun 2008 15:35:15 -0400
+
 perl-xcat (2.0-1) lenny; urgency=low
 
   * Initial release 

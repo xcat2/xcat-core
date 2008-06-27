@@ -1,0 +1,143 @@
+<?xml version="1.0"?>
+<!DOCTYPE profile SYSTEM "/usr/share/YaST2/include/autoinstall/profile.dtd">
+<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+  <bootloader>
+    <write_bootloader config:type="boolean">true</write_bootloader>
+    <activate config:type="boolean">true</activate>
+    <kernel_parameters></kernel_parameters>
+    <lba_support config:type="boolean">false</lba_support>
+    <linear config:type="boolean">false</linear>
+    <location>mbr</location>
+
+    <global>
+      <activate>true</activate>
+      <boot_root>true</boot_root>
+      <default>XEN</default>
+      <timeout config:type="integer">8</timeout> 
+    </global>
+    <loader_type>grub</loader_type>
+    <sections config:type="list">
+      <section>
+	<append>resume=/dev/sda2 xencons=ttyS console=ttyS0,19200 splash=silent showopts</append>
+	<image>/boot/vmlinuz-xen</image>
+	<initrd>/boot/initrd-xen</initrd>
+	<lines_cache_id>0</lines_cache_id>
+	<name>XEN</name>
+	<original_name>xen</original_name>
+	<root>/dev/sda2</root>
+	<type>xen</type>
+	<xen>/boot/xen.gz</xen>
+	<xen_append>console=com1 com1=19200</xen_append>
+      </section>
+      <section>
+	<append>resume=/dev/hda1 console=ttyS0,19200 console=tty0 splash=silent showopts</append>
+	<image>/boot/vmlinuz</image>
+	<initial>1</initial>
+	<initrd>/boot/initrd</initrd>
+	<kernel>/boot/vmlinuz</kernel>
+	<lines_cache_id>1</lines_cache_id>
+	<name>SUSE Linux Enterprise Server 10</name>
+	<original_name>linux</original_name>
+	<root>/dev/hda2</root>
+	<type>image</type>
+      </section>
+      <section>
+	<append>showopts ide=nodma apm=off acpi=off noresume edd=off 3</append>
+	<kernel>/boot/vmlinuz</kernel>
+	<initrd>/boot/initrd</initrd>
+	<lines_cache_id>3</lines_cache_id>
+	<name>Failsafe -- SUSE Linux Enterprise Server 10</name>
+	<original_name>failsafe</original_name>
+	<root>/dev/hda2</root>
+	<type>image</type>
+	<vga>normal</vga>
+      </section>
+    </sections>
+  </bootloader>
+  <general>
+    <clock>
+      <hwclock>GMT</hwclock>
+      <timezone>#TABLE:site:key=timezone:value#</timezone>
+    </clock>
+    <keyboard>
+      <keymap>english-us</keymap>
+    </keyboard>
+    <language>en_US</language>
+    <mode>
+      <confirm config:type="boolean">false</confirm>
+      <forceboot config:type="boolean">false</forceboot>
+      <interactive_boot config:type="boolean">false</interactive_boot>
+      <reboot config:type="boolean">true</reboot>
+    </mode>
+    <mouse>
+      <id>non</id>
+    </mouse>
+  </general>
+  <partitioning config:type="list">
+    <drive>
+      <device>/dev/sda</device>
+      <initialize config:type="boolean">true</initialize>
+      <use>all</use>
+    </drive>
+  </partitioning>
+  <software>
+    <patterns config:type="list">
+      <pattern>base</pattern>
+      <pattern>x11</pattern>
+      <pattern>xen_server</pattern>
+      <pattern>xen_server-32bit</pattern>
+      <pattern>32bit</pattern>
+    </patterns>
+    <packages config:type="list">
+      <package>stunnel</package>
+      <package>xntp</package>
+      <package>rsync</package>
+      <package>xen</package>
+      <package>xen-libs</package>
+      <package>xen-tools</package>
+      <package>xen-tools-ioemu</package>
+      <package>kernel-xen</package>
+      <package>virt-manager</package>
+      <package>xen-kmp-kdump</package>
+      <package>xen-kmp-smp</package>
+    </packages>
+  </software>
+  <configure>
+    <users config:type="list">
+      <user>
+        <username>root</username>
+        <user_password>#CRYPT:passwd:key=system,username=root:password#</user_password>
+        <encrypted config:type="boolean">true</encrypted>
+        <forename/>
+        <surname/>
+      </user>
+    </users>
+    <networking>
+      <dhcp_options>
+        <dhclient_hostname_option>AUTO</dhclient_hostname_option>
+      </dhcp_options>
+      <dns>
+        <dhcp_hostname config:type="boolean">true</dhcp_hostname>
+        <dhcp_resolv config:type="boolean">true</dhcp_resolv>
+        <domain>local</domain>
+        <hostname>linux</hostname>
+      </dns>
+      <interfaces config:type="list">
+        <interface>
+          <bootproto>dhcp</bootproto>
+          <device>eth0</device>
+          <startmode>onboot</startmode>
+        </interface>
+      </interfaces>
+      <routing>
+        <ip_forward config:type="boolean">false</ip_forward>
+        <routes config:type="list"/>
+      </routing>
+    </networking>
+    <scripts>
+   #INCLUDE:../scripts/pre.sles#
+   #INCLUDE:../scripts/chroot.sles#
+   #INCLUDE:../scripts/post.sles#
+    </scripts>
+  </configure>
+</profile>
