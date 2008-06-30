@@ -18,7 +18,7 @@ my $cachethreshold=16; #How many nodes in 'getNodesAttribs' before switching to 
 use DBI;
 
 #use strict;
-require Data::Dumper;
+#use Data::Dumper;
 use Scalar::Util qw/weaken/;
 require xCAT::Schema;
 require xCAT::NodeRange;
@@ -909,13 +909,29 @@ sub getNodesAttribs {
     } else {
         @attribs = @_;
     }
+    if (scalar($nodelist) > $cachethreshold) {
+        $self->_build_cache(\@attribs);
+        $self->{_use_cache} = 1;
+        $self->{nodelist}->_build_cache(['node','groups']);
+        $self->{nodelist}->{_use_cache}=1;
+    }
     my $rethash;
     foreach (@$nodelist) {
         $rethash->{$_} = $self->getNodeAttribs($_,\@attribs);
     }
+    $self->{_use_cache} = 0;
+    $self->{nodelist}->{_use_cache} = 0;
     return $rethash;
 }
 
+sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
+    my $self = shift;
+    my $attriblist = shift;
+    push @$attriblist,'node';
+    my @tabcache = $self->getAllAttribs(@$attriblist);
+    $self->{_tablecache} = \@tabcache;
+    $self->{_cachestamp} = time;
+}
 #--------------------------------------------------------------------------
 
 =head3 getNodeAttribs
@@ -1522,6 +1538,39 @@ sub getAttribs
         @attribs  = @_;
     }
     my @return;
+    if ($self->{_use_cache}) {
+        my @results;
+        my $cacheline;
+        CACHELINE: foreach $cacheline (@{$self->{_tablecache}}) {
+            foreach (keys %keypairs) {
+                if (not $keypairs{$_} and $keypairs{$_} ne 0 and $cacheline->{$_}) {
+                    next CACHELINE;
+                }
+                unless ($keypairs{$_} eq $cacheline->{$_}) {
+                    next CACHELINE;
+                }
+            }
+            my $attrib;
+            my %rethash;
+            foreach $attrib (@attribs)
+            {
+                unless ($cacheline->{$attrib} =~ /^$/ || !defined($cacheline->{$attrib}))
+                {    #To undef fields in rows that may still be returned
+                    $rethash{$attrib} = $cacheline->{$attrib};
+                }
+            }
+            if (keys %rethash)
+            {
+                push @results, \%rethash;
+            }
+        }
+        if (@results)
+        {
+          return wantarray ? @results : $results[0];
+        }
+        return undef;
+    }
+    #print "Uncached access to ".$self->{tabname}."\n";
     my $statement = 'SELECT * FROM ' . $self->{tabname} . ' WHERE ';
     my @exeargs;
     foreach (keys %keypairs)

@@ -631,8 +631,9 @@ sub plugin_command {
         unless (@nodes) { #register the plugin in the event of usage
           $handler_hash{$ownmod} = 1;
         }
+        my $hdlrcache = $hdlrtable->getNodesAttribs(\@nodes,\@columns);
         foreach $node (@nodes) {
-          my $attribs = $hdlrtable->getNodeAttribs($node,\@columns);
+          my $attribs = $hdlrcache->{$node}; #$hdlrtable->getNodeAttribs($node,\@columns);
           unless (defined($attribs)) { next; } #TODO: This really ought to craft an unsupported response for this request
           foreach (@columns) {
             my $col=$_;
