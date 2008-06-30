@@ -13,6 +13,7 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
+my $cachethreshold=16; #How many nodes in 'getNodesAttribs' before switching to full DB retrieval
 
 use DBI;
 
@@ -870,6 +871,50 @@ sub setAttribsWhere
 }
 
 
+
+#--------------------------------------------------------------------------
+
+=head3 getNodesAttribs
+
+    Description: Retrieves the requested attributes for a node list
+
+    Arguments:
+            Table handle ('self')
+			List ref of nodes
+	        Attribute type array
+    Returns:
+
+			two layer hash reference (->{nodename}->{attrib} 
+    Globals:
+
+    Error:
+
+    Example:
+           my $ostab = xCAT::Table->new('nodetype');
+		   my $ent = $ostab->getNodesAttribs(\@nodes,['profile','os','arch']);
+           if ($ent) { print $ent->{n1}->{profile}
+
+    Comments:
+        Using this function will clue the table layer into the atomic nature of the request, and allow shortcuts to be taken as appropriate to fulfill the request at scale.
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub getNodesAttribs {
+    my $self = shift;
+    my $nodelist = shift;
+    my @attribs;
+    if (ref $_[0]) {
+        @attribs = @{shift()};
+    } else {
+        @attribs = @_;
+    }
+    my $rethash;
+    foreach (@$nodelist) {
+        $rethash->{$_} = $self->getNodeAttribs($_,\@attribs);
+    }
+    return $rethash;
+}
 
 #--------------------------------------------------------------------------
 
