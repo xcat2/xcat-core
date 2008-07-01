@@ -78,7 +78,7 @@ sub process_request {
     my $excludestr = "find . ";
     while (<$exlist>) {
        chomp $_;
-       $excludestr .= "'!' -wholename '".$_."' -a ";
+       $excludestr .= "'!' -path '".$_."' -a ";
     }
     close($exlist);
 
