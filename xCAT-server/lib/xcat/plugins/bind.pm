@@ -37,7 +37,7 @@ my $dontdodomains = 0;
 my $Bootfile = "/etc/named.conf";
 my $DBDir = "/var/named/";
 unless (-d $DBDir) {
-    $DBDir = " /var/lib/named";
+    $DBDir = " /var/lib/named/";
 }
 my $Domain = "";
 my $Hostfile = "/etc/hosts";
