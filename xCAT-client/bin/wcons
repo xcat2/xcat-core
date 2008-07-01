@@ -11,6 +11,7 @@ unless ($ENV{DISPLAY}) {
 my $mydir = dirname($0);
 my $sb;
 my $tilefact;
+my $xrm="-xrm xterm.mainMenu.*.font:fixed -xrm xterm.vtMenu.*.font:fixed -xrm xterm.fontMenu.*.font:fixed -xrm xterm -xrm xterm.vt100.font6:grvga.737";
 my $font = "5x7";
 GetOptions(
    #'sb' => \$sb,
@@ -81,7 +82,7 @@ if (defined($tilefact)) {
    }
 
 
-   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $firstnode -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
+   system("xterm $xrm -bg black -fg white ".join(" ",@ARGV)." -title $firstnode -n $firstnode -geometry +0+0 -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
    sleep(2); #Give time for window manager to figure out everything
    my $xinfo = `xwininfo -name $firstnode`;
    my @xinfl = split(/\n/,$xinfo);
@@ -117,7 +118,7 @@ if (defined($tilefact)) {
       $currx=0;
    }
 } else {
-   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $firstnode -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
+   system("xterm $xrm -bg black -fg white ".join(" ",@ARGV)." -title $firstnode -n $firstnode -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 
 }
 my $geometry="";
@@ -136,7 +137,7 @@ foreach (@nodes) {
       }
    }
 
-   system("xterm -bg black -fg white ".join(" ",@ARGV)." -name $_ -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $_ ".$conservers{$_}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
+   system("xterm $xrm -bg black -fg white ".join(" ",@ARGV)." -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $_ ".$conservers{$_}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 }
 
 
@@ -145,5 +146,5 @@ foreach (@nodes) {
 #MYDIR=`dirname $0`
 #for n in $NODES
 #do
-#	xterm -bg black -fg white ".join(" ",@ARGV)." -name wcons -T $n -n $n -e $MYDIR/rcons $n &
+#	xterm -bg black -fg white ".join(" ",@ARGV)." -T $n -n $n -e $MYDIR/rcons $n &
 #done
