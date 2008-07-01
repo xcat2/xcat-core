@@ -50,22 +50,6 @@ GetOptions(
    't=s' => \$tmplimit,
    'k=s' => \$kernelver
 );
-#Default to the first kernel found in the install image if nothing specified explicitly.
-#A more accurate guess than whatever the image build server happens to be running
-#If specified, that takes precedence.
-#if image has one, that is used
-#if all else fails, resort to uname -r like this script did before
-my @KVERS= <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/*>;
-if (scalar(@KVERS)) {
-    $basekernelver = basename($KVERS[0]);
-}
-unless ($basekernelver) {
-    $basekernelver = `uname -r`;
-}
-unless ($kernelver) {
-    $kernelver=$basekernelver;
-}
-chomp($kernelver);
 unless ($osver and $profile and $netdriver and $prinic) {
    print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER>'."\n";
    print "Examples:\n";
@@ -139,6 +123,22 @@ unless ($onlyinitrd) {
    }
    postscripts(); #run 'postscripts'
 }
+#Default to the first kernel found in the install image if nothing specified explicitly.
+#A more accurate guess than whatever the image build server happens to be running
+#If specified, that takes precedence.
+#if image has one, that is used
+#if all else fails, resort to uname -r like this script did before
+my @KVERS= <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/*>;
+if (scalar(@KVERS)) {
+    $basekernelver = basename($KVERS[0]);
+}
+unless ($basekernelver) {
+    $basekernelver = `uname -r`;
+}
+unless ($kernelver) {
+    $kernelver=$basekernelver;
+}
+chomp($kernelver);
 unlink "/tmp/genimage.$$.yum.conf";
 mkinitrd();
 
