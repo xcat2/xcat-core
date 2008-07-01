@@ -36,7 +36,7 @@ my $dotxt = 0;
 my $dontdodomains = 0;
 my $Bootfile = "/etc/named.conf";
 my $DBDir = "/var/named/";
-unless (-d $DBDIR) {
+unless (-d $DBDir) {
     $DBDir = " /var/lib/named";
 }
 my $Domain = "";
@@ -65,7 +65,7 @@ sub process_request {
     $request = shift;
     $callback = shift;
     $Host = hostname;
-    $Host =~ s/\..*//;       		
+    $Host =~ s/\..*//;
     my $sitetab = xCAT::Table->new('site');
     unless ($sitetab) {
         $callback->({error=>["No site table found"],errorcode=>[1]});
@@ -102,7 +102,7 @@ sub process_request {
 
 
 push(@bootmsgs_v4, "primary\t0.0.127.IN-ADDR.ARPA db.127.0.0\n");
-push(@bootmsgs_v8, 
+push(@bootmsgs_v8,
      qq|zone "0.0.127.IN-ADDR.ARPA" in {\n\ttype master;\n\tfile "db.127.0.0";\n\tnotify no;\n};\n\n|);
 
 &PARSEARGS(@args);
@@ -114,7 +114,7 @@ LINE: while(<HOSTS>){
     next if /^[ \t]*#/;  # skip comment lines
     next if /^$/;  	 # skip empty lines
     chop;                # remove the trailing newline
-    tr/A-Z/a-z/;	 # translate to lower case 
+    tr/A-Z/a-z/;	 # translate to lower case
 
     ($data,$comment) = split('#', $_, 2);
     ($addr, $names) = split(/[ 	]+/, $data, 2);
@@ -138,9 +138,9 @@ LINE: while(<HOSTS>){
     foreach $netpat (@cpats){
 	if (/\.$netpat/) {
 	    ($canonical, $aliases) = split(' ', $names, 2);
-	    $canonical =~ s/\.$netpat//; 
+	    $canonical =~ s/\.$netpat//;
 	    if($Cnames{$canonical} != 1){
-	        printf DOMAIN "%-20s IN  CNAME %s.%s.\n", 
+	        printf DOMAIN "%-20s IN  CNAME %s.%s.\n",
 		       $canonical, $canonical, $cpatrel{$netpat};
 		$Cnames{$canonical} = 1;
 	    }
@@ -164,15 +164,15 @@ LINE: while(<HOSTS>){
 
     # Print PTR records
     $file = $Netfiles{$match};
-    printf $file "%-30s\tIN  PTR   %s.%s.\n", 
+    printf $file "%-30s\tIN  PTR   %s.%s.\n",
 	   &REVERSE($addr), $canonical, $Domain;
 }
 
 #
 # Go through the list of canonical names.
 # If there is more than 1 address associated with the
-# name, it is a multi-homed host.  For each address 
-# look up the aliases since the aliases are associated 
+# name, it is a multi-homed host.  For each address
+# look up the aliases since the aliases are associated
 # with the address, not the canonical name.
 #
 foreach $canonical (keys %Hosts){
@@ -231,7 +231,7 @@ foreach $canonical (keys %Hosts){
 		    # in CNAME records or have A records.
 		    #
 		    if(($Cnames{$alias} != 1) && (!$Hosts{$alias})){
-			printf DOMAIN "%-20s IN  CNAME %s.%s.\n", 
+			printf DOMAIN "%-20s IN  CNAME %s.%s.\n",
 			       $alias, $canonical, $Domain;
 			$Cnames{$alias} = 1;
 		    } else {
@@ -289,7 +289,7 @@ foreach $n (@Networks) {
 sub DO_COMMENTS {
     local($canonical, @addrs) = @_;
     local(*F, @c, $c, $a, $comments);
-    
+
     if (!$Commentfileread) {
 	open(F, $Commentfile) || die "Unable to open file $Commentfile: $!";
 	$Commentfileread++;
@@ -300,7 +300,7 @@ sub DO_COMMENTS {
 	}
 	close(F);
     }
-    
+
     foreach $a (@addrs) {
 	$key = "$canonical-$a";
 	$comments .= " $Comments{$key}";
@@ -332,7 +332,7 @@ sub MX {
 	$key = "$canonical-$a";
 	$comments .= " $Comments{$key}";
     }
-    
+
     if ($comments !~ /\[no smtp\]/) {
         # Add WKS if requested
         if ($dowks) {
@@ -340,17 +340,17 @@ sub MX {
 	        printf DOMAIN "%-20s IN  WKS   %s TCP SMTP\n", $canonical, $a;
 	    }
         }
-	printf DOMAIN "%-20s IN  MX    %s %s.%s.\n", $canonical, $DefMxWeight, 
-	       $canonical, $Domain; 
+	printf DOMAIN "%-20s IN  MX    %s %s.%s.\n", $canonical, $DefMxWeight,
+	       $canonical, $Domain;
 	$first = 0;
     }
     if ($#Mx >= 0) {
 	foreach $a (@Mx) {
 	    if ($first) {
-		printf DOMAIN "%-20s IN  MX    %s\n", $canonical, $a; 
+		printf DOMAIN "%-20s IN  MX    %s\n", $canonical, $a;
 		$first = 0;
 	    } else {
-		printf DOMAIN "%-20s IN  MX    %s\n", "", $a; 
+		printf DOMAIN "%-20s IN  MX    %s\n", "", $a;
 	    }
 	}
     }
@@ -372,7 +372,7 @@ sub TXT {
     $comments =~ s/\[no smtp\]//g;
     $comments =~ s/^\s*//;
     $comments =~ s/\s*$//;
-    
+
     if ($comments ne "") {
 	printf DOMAIN "%s IN  TXT   \"%s\"\n", $canonical, $comments;
     }
@@ -533,7 +533,7 @@ sub FIXUP {
     open(BOOT, "> $Bootfile")  || die "can not open $Bootfile";
 
     #
-    # Write either the version 4 boot file directives or the 
+    # Write either the version 4 boot file directives or the
     # version 8 boot file directives.
     #
 
@@ -547,7 +547,7 @@ sub FIXUP {
             print BOOT "include\tspcl.boot\n";
         }
     } else {
-        print BOOT 
+        print BOOT
               qq|\noptions {\n\tdirectory "$DBDir";\n|;
          if (@forwarders) {
             print BOOT qq|\tforwarders {\n|;
@@ -587,7 +587,7 @@ sub FIXUP {
 	&MAKE_SOA($x1, $x2);
     }
     printf DOMAIN "%-20s IN  A     127.0.0.1\n", "localhost";
-    
+
     $file = "DB.127.0.0.1";
     &MAKE_SOA($DBDir."db.127.0.0", $file);
     my $nothing;
@@ -604,8 +604,8 @@ sub PARSEARGS {
     local(*F, $file, @newargs, @targs);
     local($sec,$min,$hour,$mday,$mon,$year,$rest);
     ($sec,$min,$hour,$mday,$mon,$year,$rest) = localtime(time);
-    $DateSerial = ($mday * 100) + 
-                  (($mon + 1) * 10000) + 
+    $DateSerial = ($mday * 100) +
+                  (($mon + 1) * 10000) +
                   (($year + 1900) * 1000000);
 
     $i = 0;
@@ -626,7 +626,7 @@ sub PARSEARGS {
 	    $Domainfile =~ s/\..*//;
 	    push(@makesoa, $DBDir."db.$Domainfile DOMAIN");
 	    push(@bootmsgs_v4, "primary\t$Domain db.$Domainfile\n");
-	    push(@bootmsgs_v8, 
+	    push(@bootmsgs_v8,
                qq|zone "$Domain" in {\n\ttype master;\n\tfile "db.$Domainfile";\n};\n\n|);
 
 	} elsif ($option eq "-f"){
@@ -698,7 +698,7 @@ sub PARSEARGS {
 		exit(1);
             }
 	    $tmp2 = $tmp1;
-	    $tmp2 =~ s/\./\\./g; 
+	    $tmp2 =~ s/\./\\./g;
 	    $cpatrel{$tmp2} = $tmp1;
 	    push(@cpats, $tmp2);
 
@@ -707,14 +707,14 @@ sub PARSEARGS {
 	    if ($tmp1 !~ /\./) {
 		$tmp1 .= ".$Domain";
 	    }
-	    $tmp1 =~ s/\./\\./g; 
+	    $tmp1 =~ s/\./\\./g;
 	    push(@elimpats, $tmp1);
 
 	} elsif ($option eq "-h"){
 	    $Host = $args[++$i];
 
 	} elsif ($option eq "-o"){
-	    if (   $args[++$i] !~ /^[:\d]*$/ 
+	    if (   $args[++$i] !~ /^[:\d]*$/
 		|| split(':', $args[$i]) != 4) {
 		syslog "local1|err","Improper format for -o ($args[$i]).\n";
 		syslog "local1|err","I give up ... sorry.\n";
@@ -744,7 +744,7 @@ sub PARSEARGS {
 
 	} elsif ($option eq "-N"){
 	    $Defsubnetmask = $args[++$i];
-	    if (   $Defsubnetmask !~ /^[.\d]*$/ 
+	    if (   $Defsubnetmask !~ /^[.\d]*$/
 		|| split('\.', $Defsubnetmask) != 4) {
 		syslog "local1|err","Improper subnet mask ($Defsubnetmask).\n";
 		syslog "local1|err","I give up ... sorry.\n";
@@ -766,13 +766,13 @@ sub PARSEARGS {
            }
         }
         $net =~ s/\.$//;
-        
+
 	    if ($subnetmask eq "") {
 		foreach $tmp1 (&SUBNETS($net, $Defsubnetmask)) {
 		    &BUILDNET($tmp1);
 		}
 	    } else {
-		if (   $subnetmask !~ /^[.\d]*$/ 
+		if (   $subnetmask !~ /^[.\d]*$/
 		    || split('\.', $subnetmask) != 4) {
 		    syslog "local1|err","Improper subnet mask ($subnetmask).\n";
 		    syslog "local1|err","I give up ... sorry.\n";
@@ -790,7 +790,7 @@ sub PARSEARGS {
 	}
 	$i++;
     }
-    
+
     if (!defined(@Networks) || $Domain eq "") {
 	syslog "local1|err","Must specify one -d and at least one -n.\n";
 	syslog "local1|err","I give up ... sorry.\n";
@@ -804,8 +804,8 @@ sub BUILDNET {
 
     push(@Networks, $net);
     #
-    # Create pattern to match against.  
-    # The dots must be changed to \. so they 
+    # Create pattern to match against.
+    # The dots must be changed to \. so they
     # aren't used as wildcards.
     #
     $netpat = $net;
@@ -824,7 +824,7 @@ sub BUILDNET {
     $revaddr = &REVERSE($net);
     chop($revaddr);   # remove trailing dot
     push(@bootmsgs_v4, "primary $revaddr db.$net\n");
-    push(@bootmsgs_v8, 
+    push(@bootmsgs_v8,
          qq|zone "$revaddr" in {\n\ttype master;\n\tfile "db.$net";\n};\n\n|);
 }
 
@@ -869,7 +869,7 @@ sub SUBNETS {
     if ($#ans == -1) {
 	push(@ans, $network);
     }
-    
+
     @ans;
 }
 
@@ -922,7 +922,7 @@ sub GEN_BOOT {
             }
         }
     }
-    
+
     #
     # Create a 2 boot files for a secondary (slave) servers.
     # One boot file doesn't save the zone data in a file.  The
@@ -982,12 +982,12 @@ sub GEN_BOOT {
         if($Version == 4) {
 	    print  F "directory\t$DBDir\n";
 	    print  F "primary\t\t0.0.127.IN-ADDR.ARPA    db.127.0.0\n";
-	    printf F "secondary\t%-23s $Bootsecsaveaddr db.%s\n", 
+	    printf F "secondary\t%-23s $Bootsecsaveaddr db.%s\n",
 	           $Domain, $Domainfile;
 	    foreach $n (@Networks) {
 	        $revaddr = &REVERSE($n);
 	        chop($revaddr);
-	        printf F "secondary\t%-23s $Bootsecsaveaddr db.%s\n", 
+	        printf F "secondary\t%-23s $Bootsecsaveaddr db.%s\n",
 		       $revaddr, $n;
 	    }
 	    print  F "cache\t\t.                       db.cache\n";
@@ -1021,7 +1021,7 @@ sub GEN_BOOT {
 	    foreach $n (@Networks) {
 	        $revaddr = &REVERSE($n);
 	        chop($revaddr);
-                print F 
+                print F
                  qq|zone "$revaddr" in {\n\ttype slave;\n\tfile "db.$n";\n\tmasters {|;
                 print F qq| $Bootsecsaveaddr; };\n};\n\n|;
             }
