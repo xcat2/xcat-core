@@ -2,6 +2,7 @@
 package xCAT_plugin::hosts;
 use xCAT::Table;
 use Data::Dumper;
+use File::Copy;
 
 my @hosts; #Hold /etc/hosts data to be written back
 
