@@ -4,7 +4,7 @@ wcons - windowed remote console
 
 =head1 B<Synopsis>
 
-B<wcons>  [B<-t>|B<--tile>=I<n>] I<noderange>
+B<wcons>  [B<-t>|B<--tile>=I<n>] [I<xterm-options>] I<noderange>
 
 B<wcons> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -26,39 +26,6 @@ ified  then  tile  I<n> across.  If I<n> is not specified then tile to
 edge of screen.  If tiled B<wcons> windows reach bottom right, then
 the windows start at top left overlaying existing B<wcons> windows.
 
-=item B<-f>|B<--font>=I<font>
-
-B<Note:> this option is not supported yet!  Use Xwindows font I<font> for B<wcons> windows.
-B<wcons>  supports  the following font aliases:
-
-=over 25
-
-=item B<Alias>
-
-B<Font>
-
-=item I<verysmall>|I<vs>
-
-nil2
-
-=item I<small>|I<s>
-
-5x8
-
-=item I<medium>|I<med>|I<m>
-
-6x13
-
-=item I<large>|I<l>|I<big>|I<b>
-
-7x13
-
-=item I<verylarge>|I<vl>|I<verybig>|I<vb>
-
-10x20
-
-=back
-
 =item B<-h>|B<--help>
 
 Print help.
@@ -66,6 +33,14 @@ Print help.
 =item B<-v>|B<--version>
 
 Print version.
+
+=item I<xterm options>
+
+See xterm(1). Any options other than those listed above are passed
+directly to xterm. B<Note:> when given multiple nodes, wcons will
+override B<-title> and tries to figure out optimal B<-geometry> 
+options for the xterms (however, B<-geometry> can still be
+specified).
 
 =back
 
@@ -99,4 +74,4 @@ Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)|noderange.3>, L<rcons(1)|rcons.1>
+L<noderange(3)|noderange.3>, L<rcons(1)|rcons.1>, xterm(1)
