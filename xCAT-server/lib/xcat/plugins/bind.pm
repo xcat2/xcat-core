@@ -36,9 +36,6 @@ my $dotxt = 0;
 my $dontdodomains = 0;
 my $Bootfile = "/etc/named.conf";
 my $DBDir = "/var/named/";
-unless (-d $DBDir) {
-    $DBDir = " /var/lib/named/";
-}
 my $Domain = "";
 my $Hostfile = "/etc/hosts";
 my $Commentfile = "";
@@ -64,6 +61,10 @@ my @forwarders;
 sub process_request {
     $request = shift;
     $callback = shift;
+    $DBDir = "/var/named/";
+    unless (-d $DBDir) {
+        $DBDir = " /var/lib/named/";
+    }
     $Host = hostname;
     $Host =~ s/\..*//;
     my $sitetab = xCAT::Table->new('site');
