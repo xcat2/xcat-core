@@ -63,7 +63,7 @@ sub process_request {
     $callback = shift;
     $DBDir = "/var/named/";
     unless (-d $DBDir) {
-        $DBDir = " /var/lib/named/";
+        $DBDir = "/var/lib/named/";
     }
     $Host = hostname;
     $Host =~ s/\..*//;
