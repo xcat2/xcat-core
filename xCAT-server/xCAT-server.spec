@@ -16,7 +16,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-Requires: perl-IO-Socket-SSL perl-XML-Simple
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-IO-Tty
 %endif
 
 Requires: perl-xCAT >= %{epoch}:%{version}
