@@ -910,9 +910,11 @@ sub getNodesAttribs {
         @attribs = @_;
     }
     if (scalar($nodelist) > $cachethreshold) {
+        $self->{_use_cache} = 0;
+        $self->{nodelist}->{_use_cache}=0;
         $self->_build_cache(\@attribs);
-        $self->{_use_cache} = 1;
         $self->{nodelist}->_build_cache(['node','groups']);
+        $self->{_use_cache} = 1;
         $self->{nodelist}->{_use_cache}=1;
     }
     my $rethash;
@@ -1308,6 +1310,7 @@ sub getAllNodeAttribs
               . $self->{tabname}
               . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
     $query->execute();
+    xCAT::NodeRange::retain_cache(1);
     while (my $data = $query->fetchrow_hashref())
     {
 
@@ -1316,6 +1319,7 @@ sub getAllNodeAttribs
             my @nodes =
               xCAT::NodeRange::noderange($data->{node})
               ;    #expand node entry, to make groups expand
+            my $localhash = $self->getNodesAttribs(\@nodes,$attribq);
             foreach (@nodes)
             {
                 if ($donenodes{$_}) { next; }
@@ -1329,7 +1333,7 @@ sub getAllNodeAttribs
                 #  }
                 #} else {
                 my @attrs =
-                  $self->getNodeAttribs($_, $attribq)
+                  @{$localhash->{$_}} #$self->getNodeAttribs($_, $attribq)
                   ;    #Logic moves to getNodeAttribs
                        #}
                  #populate node attribute by default, this sort of expansion essentially requires it.
@@ -1342,6 +1346,7 @@ sub getAllNodeAttribs
             }
         }
     }
+    xCAT::NodeRange::retain_cache(0);
     $query->finish();
     return @results;
 }
@@ -1379,6 +1384,30 @@ sub getAllAttribs
     my $self    = shift;
     my @attribs = @_;
     my @results = ();
+    if ($self->{_use_cache}) {
+        my @results;
+        my $cacheline;
+        CACHELINE: foreach $cacheline (@{$self->{_tablecache}}) {
+            my $attrib;
+            my %rethash;
+            foreach $attrib (@attribs)
+            {
+                unless ($cacheline->{$attrib} =~ /^$/ || !defined($cacheline->{$attrib}))
+                {    #To undef fields in rows that may still be returned
+                    $rethash{$attrib} = $cacheline->{$attrib};
+                }
+            }
+            if (keys %rethash)
+            {
+                push @results, \%rethash;
+            }
+        }
+        if (@results)
+        {
+          return @results; #return wantarray ? @results : $results[0];
+        }
+        return undef;
+    }
     my $query   =
       $self->{dbh}->prepare('SELECT * FROM '
               . $self->{tabname}

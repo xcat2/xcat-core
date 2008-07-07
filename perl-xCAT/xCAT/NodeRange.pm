@@ -1,7 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::NodeRange;
 require xCAT::Table;
-require Data::Dumper;
 require Exporter;
 use strict;
 
@@ -12,6 +11,8 @@ our @EXPORT = qw(noderange nodesmissed);
 my $missingnodes=[];
 my $nodelist; #=xCAT::Table->new('nodelist',-create =>1);
 #my $nodeprefix = "node";
+my @allnodeset;
+my $retaincache=0;
 
 
 sub subnodes (\@@) {
@@ -42,7 +43,7 @@ sub expandatom {
     }
 
     # Try to match groups?
-	foreach($nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'node','groups')) {
+	foreach($nodelist->getAllAttribs('node','groups')) {
 		my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
 		if (grep { $_ eq "$atom" } @groups ) {
 			push @nodes,$_->{node};
@@ -64,7 +65,10 @@ sub expandatom {
         }
 		#TODO: check against all groups
 		$atom = substr($atom,1);
-		foreach ($nodelist->getAllAttribs('node')) {
+        unless (scalar(@allnodeset)) {
+            @allnodeset = $nodelist->getAllAttribs('node');
+        }
+		foreach (@allnodeset) { #$nodelist->getAllAttribs('node')) {
 			if ($_->{node} =~ m/^${atom}$/) {
 				push(@nodes,$_->{node});
 			}
@@ -199,6 +203,10 @@ sub expandatom {
 	}
 }
 
+sub retain_cache { #A semi private operation to be used *ONLY* in the interesting Table<->NodeRange module interactions.
+    $retaincache=shift;
+}
+    
 sub noderange {
   $missingnodes=[];
   #We for now just do left to right operations
@@ -206,7 +214,12 @@ sub noderange {
   #answer not work
   my $range=shift;
   my $verify = (scalar(@_) == 1 ? shift : 1);
-  $nodelist =xCAT::Table->new('nodelist',-create =>1);
+  unless ($nodelist) { 
+    $nodelist =xCAT::Table->new('nodelist',-create =>1); 
+    $nodelist->{_use_cache} = 0; #TODO: a more proper external solution
+    $nodelist->_build_cache(['node','groups']);
+    $nodelist->{_use_cache} = 1; #TODO: a more proper external solution
+  }
   my %nodes = ();
   my %delnodes = ();
   my $op = ",";
@@ -264,7 +277,10 @@ sub noderange {
 			delete $nodes{$_};
 		}
     }
-    undef $nodelist;
+    unless ($retaincache) {
+        undef $nodelist;
+        @allnodeset=();
+    }
     return sort (keys %nodes);
 
 }

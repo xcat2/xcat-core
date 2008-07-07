@@ -88,8 +88,9 @@ sub preprocess_request {
   my $allnodes=1;
   if ($noderange && @$noderange>0) {
     $allnodes=0;
+    my $hmcache=$hmtab->getNodesAttribs(@$noderange,['node', 'serialport','cons', 'conserver']);
     foreach my $node (@$noderange) {
-      my $ent=$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
+      my $ent=$hmcache->{$node}->[0]; #$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
       push @items,$ent;
     }
   } else {
@@ -214,7 +215,14 @@ sub makeconservercf {
   #print "process_request nodes=@$nodes\n";
 
   my $hmtab = xCAT::Table->new('nodehm');
-  my @cfgents1 = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver']);
+  my @cfgents1;# = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
+  if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
+      @cfgents1 = $hmtab->getNodesAttribs($nodes,['cons','serialport','mgt','conserver','termserver','termport']);
+  } else {
+    @cfgents1 = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
+  }
+
+
 #cfgents should now have all the nodes, so we can fill in our hashes one at a time.
 
   # skip the one that does not have 'cons' defined, unless a serialport setting suggests otherwise
@@ -226,14 +234,14 @@ sub makeconservercf {
   # get the teminal servers and terminal port when cons is mrv or cyclades
   foreach (@cfgents) {
      unless ($_->{cons}) {$_->{cons} = $_->{mgt};} #populate with fallback
-    my $cmeth=$_->{cons};
-    if (grep(/^$cmeth$/,@cservers)) { #terminal server, more attribs needed
-      my $node = $_->{node};
-      my $tent = $hmtab->getNodeAttribs($node,["termserver","termport"]);
-      $_->{termserver} = $tent->{termserver};
-      $termservers{$tent->{termserver}} = 1;
-      $_->{termport}= $tent->{termport};
-    }
+    #my $cmeth=$_->{cons};
+    #if (grep(/^$cmeth$/,@cservers)) { #terminal server, more attribs needed
+    #  my $node = $_->{node};
+    #  my $tent = $hmtab->getNodeAttribs($node,["termserver","termport"]);
+    #  $_->{termserver} = $tent->{termserver};
+    #  $termservers{$tent->{termserver}} = 1;
+    #  $_->{termport}= $tent->{termport};
+    #}
   }
 
   # nodes defined, it is either on the service node or mkconserver is call with noderange on mn
