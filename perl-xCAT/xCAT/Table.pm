@@ -917,7 +917,8 @@ sub getNodesAttribs {
     }
     my $rethash;
     foreach (@$nodelist) {
-        $rethash->{$_} = $self->getNodeAttribs($_,\@attribs);
+        my @nodeentries=$self->getNodeAttribs($_,\@attribs);
+        $rethash->{$_} = \@nodeentries; #$self->getNodeAttribs($_,\@attribs);
     }
     $self->{_use_cache} = 0;
     $self->{nodelist}->{_use_cache} = 0;

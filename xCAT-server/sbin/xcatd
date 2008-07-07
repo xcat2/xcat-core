@@ -633,7 +633,7 @@ sub plugin_command {
         }
         my $hdlrcache = $hdlrtable->getNodesAttribs(\@nodes,\@columns);
         foreach $node (@nodes) {
-          my $attribs = $hdlrcache->{$node}; #$hdlrtable->getNodeAttribs($node,\@columns);
+          my $attribs = $hdlrcache->{$node}->[0]; #$hdlrtable->getNodeAttribs($node,\@columns);
           unless (defined($attribs)) { next; } #TODO: This really ought to craft an unsupported response for this request
           foreach (@columns) {
             my $col=$_;

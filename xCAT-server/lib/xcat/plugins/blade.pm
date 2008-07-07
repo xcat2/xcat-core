@@ -1296,7 +1296,7 @@ sub build_depend {
     my $delay = 0;
     my $dep;
 
-    my @ent = $depset->{$node}; #$depstab->getNodeAttribs($node,[qw(nodedep msdelay cmd)]);
+    my @ent = @{$depset->{$node}}; #$depstab->getNodeAttribs($node,[qw(nodedep msdelay cmd)]);
     foreach my $h ( @ent ) {
         if ( grep(/^@$exargs[0]$/, split /,/, $h->{cmd} )) {
           if (exists($h->{nodedep})) { $dep=$h->{nodedep}; }
@@ -1329,7 +1329,7 @@ sub build_depend {
     my @namelist = keys %dp;
     my $mphash = $mptab->getNodesAttribs(\@namelist,['mpa','id']);
     while(my ($name,$h) = each(%dp) ) {
-      my $ent=$mphash->{$name}; #$mptab->getNodeAttribs($name,['mpa', 'id']);
+      my $ent=$mphash->{$name}->[0]; #$mptab->getNodeAttribs($name,['mpa', 'id']);
       if (!defined($ent->{mpa})) {
         return("no mpa defined for node $name");
       }
@@ -1341,7 +1341,7 @@ sub build_depend {
       my $mpsubhash = $mptab->getNodesAttribs(\@namelist,['mpa','id']);
       foreach ( keys %$h ) {
         if ( $h->{$_} =~ /(^\d+$)/ ) {
-          my $ent=$mpsubhash->{$_}; #$mptab->getNodeAttribs($_,['mpa', 'id']);
+          my $ent=$mpsubhash->{$_}->[0]; #$mptab->getNodeAttribs($_,['mpa', 'id']);
           if (!defined($ent->{mpa})) {
             return("no mpa defined for node $_");
           }
@@ -1397,7 +1397,7 @@ sub preprocess_request {
   my %mpa_hash=();
   my $mptabhash = $mptab->getNodesAttribs($noderange,['mpa','id']);
   foreach my $node (@$noderange) {
-    my $ent=$mptabhash->{$node}; #$mptab->getNodeAttribs($node,['mpa', 'id']);
+    my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
     else { 
       $callback->({data=>["no mpa defined for node $node"]});
@@ -1448,7 +1448,7 @@ sub build_more_info{
   my %mpa_hash=();
   my $mptabhash = $mptab->getNodesAttribs($noderange,['mpa','id']);
   foreach my $node (@$noderange) {
-    my $ent=$mptabhash->{$node}; #$mptab->getNodeAttribs($node,['mpa', 'id']);
+    my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
     else { 
       $callback->({data=>["no mpa defined for node $node"]});
