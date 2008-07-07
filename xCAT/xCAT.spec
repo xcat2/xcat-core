@@ -2,7 +2,6 @@ Summary: Metapackage for a common, default xCAT setup
 Name: xCAT
 Version: 2.1
 Release: snap%(date +"%Y%m%d%H%M")
-Epoch: 4
 License: EPL
 Group: Applications/System
 Vendor: IBM Corp.
@@ -44,7 +43,14 @@ tar -xf postscripts.tar
 %build
 
 %install
-mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d/
+if grep -i suse /etc/issue >/dev/null 2>&1; then
+  apachedir=$RPM_BUILD_ROOT/etc/apache2/conf.d
+else
+  apachedir=$RPM_BUILD_ROOT/etc/httpd/conf.d
+fi
+
+mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
+mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/
@@ -73,6 +79,7 @@ rm postscripts.tar
 rm LICENSE.html
 mkdir -p postscripts/hostkeys
 cd -
+cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -84,6 +91,12 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig
 %else
 . /etc/profile.d/xcat.sh
+
+if grep -i suse /etc/issue >/dev/null 2>&1; then
+  apachename=apache2
+else
+  apachedir=httpd
+fi
 
 if [ ! -d /var/ftp/install ]; then
    mkdir -p /var/ftp/install
@@ -142,7 +155,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=master site.value=$(getent hosts `hostname`|awk '{print $1}')
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=domain site.value=$(hostname -d)
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=installdir site.value=/install
-      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=timezone site.value=`egrep '^(ZONE|TIMEZONE)' /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`
+      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=timezone site.value=`grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`
     fi
     if [ ! -r /etc/xcat/postscripts.sqlite ]; then
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell'
@@ -195,9 +208,9 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     fi
     $RPM_INSTALL_PREFIX0/sbin/makenetworks
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab key=nameservers site.value=`sed -e 's/#.*//' /etc/resolv.conf|grep nameserver|awk '{printf $2 ","}'|sed -e s/,$//`
-    chkconfig httpd on
-	/etc/rc.d/init.d/httpd stop
-	/etc/rc.d/init.d/httpd start
+    chkconfig $apachename on
+	/etc/rc.d/init.d/$apachename stop
+	/etc/rc.d/init.d/$apachename start
     echo "xCAT is now installed, it is recommended to tabedit networks and set a dynamic ip address range on any networks where nodes are to be discovered"
     echo "Then, run makedhcp -n to create a new dhcpd.configuration file, and /etc/init.d/dhcpd restart"
     echo "Either examine sample configuration templates, or write your own, or specify a value per node with nodeadd or tabedit."
@@ -209,5 +222,6 @@ fi
 %files
 %{prefix}
 /etc/httpd/conf.d/xcat.conf
+/etc/apache2/conf.d/xcat.conf
 /install/postscripts
 %defattr(-,root,root)
