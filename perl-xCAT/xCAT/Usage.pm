@@ -3,6 +3,7 @@
 
 package xCAT::Usage;
 use Getopt::Long;
+use xCAT::Utils;
 
 #-------------------------------------------------------------------------------
 =head1  xCAT::Usage
@@ -110,24 +111,24 @@ my %usage = (
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [-V|--verbose][-b ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]"
 );
-
+my $vers = xCAT::Utils->Version();
 my %version = (
-    "rnetboot" => "Version 2.0",
-    "rpower" => "Version 2.0",
-    "rbeacon" => "Version 2.0",
-    "rvitals" => "Version 2.0",
-    "reventlog" => "Version 2.0",
-    "rinv" => "Version 2.0",
-    "rsetboot" => "Version 2.0",
-    "rbootseq" => "Version 2.0",
-    "rscan" => "Version 2.0",
-    "rspconfig" => "Version 2.0",
-    "getmacs" => "Version 2.0",
-    "mkvm" => "Version 2.0",
-    "lsvm" => "Version 2.0",
-    "chvm" => "Version 2.0",
-    "rmvm" => "Version 2.0",
-    "lsslp" => "Version 2.0"
+    "rnetboot" => "$vers",
+    "rpower" => "$vers",
+    "rbeacon" => "$vers",
+    "rvitals" => "$vers",
+    "reventlog" => "$vers",
+    "rinv" => "$vers",
+    "rsetboot" => "$vers",
+    "rbootseq" => "$vers",
+    "rscan" => "$vers",
+    "rspconfig" => "$vers",
+    "getmacs" => "$vers",
+    "mkvm" => "$vers",
+    "lsvm" => "$vers",
+    "chvm" => "$vers",
+    "rmvm" => "$vers",
+    "lsslp" => "$vers"
 );
 
 #--------------------------------------------------------------------------------

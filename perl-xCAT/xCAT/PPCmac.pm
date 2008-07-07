@@ -16,7 +16,8 @@ sub parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
-    my @VERSION = qw( 2.0 );
+    my $vers = 
+    my @VERSION = qw( 2.1 );
 
     #############################################
     # Responds with usage statement

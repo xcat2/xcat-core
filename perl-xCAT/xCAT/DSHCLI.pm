@@ -3874,7 +3874,8 @@ sub parse_and_run_dcp
     if ($options{'version'})
     {
         my %rsp;
-        $rsp->{data}->[0] = "Version 2.0";
+        my $version = xCAT::Utils->Version();
+        $rsp->{data}->[0] = "$version";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         exit(0);
     }
