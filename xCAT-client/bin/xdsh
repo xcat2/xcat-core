@@ -193,7 +193,6 @@ sub parse_args_xdsh
     {
         my $version = xCAT::Utils->Version();
         xCAT::MsgUtils->message("I", $version);
-        #xCAT::Utils->isLinux();
         exit 0;
     }
     if ($options{'node-rsh'})        # if set on command line, use it
@@ -277,7 +276,8 @@ sub parse_args_xdcp
     }
     if ($options{'version'})
     {
-        xCAT::MsgUtils->message("I", "Version 2.0");
+        my $version = xCAT::Utils->Version();
+        xCAT::MsgUtils->message("I", $version);
         exit 0;
     }
 
