@@ -40,7 +40,8 @@ sub process_request {
       "version|v" => \$version
       );
    if ($version) {
-      $callback->({info=>["Version 2.0"]});
+      my $version = xCAT::Utils->Version(); 
+      $callback->({info=>[$version]});
       return;
    }
    if ($help) {

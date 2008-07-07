@@ -22,7 +22,7 @@ my $usage_string=
     -h|--help    Display this usage statement.
     -v|--version Display the version number.";
 
-my $version_string="Version 2.0"; 
+my $version_string=xCAT::Utils->Version(); 
 
 sub handled_commands {
   return {

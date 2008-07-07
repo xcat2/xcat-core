@@ -11,7 +11,7 @@ use xCAT::Schema;
 use Data::Dumper;
 use xCAT::NodeRange;
 use xCAT::Schema;
-
+use xCAT::Utils;
 use Getopt::Long;
 
 1;
@@ -226,7 +226,8 @@ sub noderm
 
     if ($VERSION) {
         my %rsp;
-        $rsp->{data}->[0] = "2.0";
+        my $version = xCAT::Utils->Version();
+        $rsp->{data}->[0] = "$version";
         $cb->($rsp);
         return;
     }
@@ -539,7 +540,8 @@ sub nodech
     # Version
     if ($VERSION) {
         my %rsp;
-        $rsp->{data}->[0] = "2.0";
+        my $version = xCAT::Utils->Version();
+        $rsp->{data}->[0] = "$version";
         $callback->($rsp);
         return;
     }
@@ -772,7 +774,8 @@ sub nodels
     if ($VERSION)
     {
         my %rsp;
-        $rsp->{data}->[0] = "2.0";
+        my $version = xCAT::Utils->Version();
+        $rsp->{data}->[0] = "$version";
         $callback->($rsp);
         return;
     }
