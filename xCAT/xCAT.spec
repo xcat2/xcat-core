@@ -43,7 +43,7 @@ tar -xf postscripts.tar
 %build
 
 %install
-if grep -i suse /etc/issue >/dev/null 2>&1; then
+if [ -e /etc/SuSE-release ]; then
   apachedir=$RPM_BUILD_ROOT/etc/apache2/conf.d
 else
   apachedir=$RPM_BUILD_ROOT/etc/httpd/conf.d
