@@ -602,7 +602,7 @@ sub mknimimage
 		'l=s'       => \$::opt_l,
 		'i=s'       => \$::opt_i,
 		't=s'		=> \$::NIMTYPE,
-		'm=s'		=> \$::NIMMETHOD,
+		'm=s'		=> \$::METHOD,
 		'n=s'		=> \$::MKSYSBNODE,
 		'verbose|V' => \$::VERBOSE,
 		'v|version'  => \$::VERSION,))
