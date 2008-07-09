@@ -669,7 +669,6 @@ sub mknimimage
     }
 
 	if ( ($::NIMTYPE eq "standalone") && $::OSIMAGE) {
-		# error - The "-i" option is only valid for diskless and dataless nodes
 		my $rsp;
 		push @{$rsp->{data}}, "The \'-i\' option is only valid for diskless and dataless nodes.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1195,11 +1194,20 @@ sub mk_lpp_source
                		return undef;
 				}
 			}
+			
+			my $loc;
+			if ($::opt_l) {
+				$loc = "$::opt_l/$lppsrcname";
+			} else {
+				$loc = "/install/nim/lpp_source/$lppsrcname";
+			}
 
-			# check the FS space needed
-            # if (&chkFSspace($loc, $size, $callback) != 0) {
-            # error
-            #}
+			# check the file system space needed ????
+			#  about 1500 MB for a basic lpp_source???
+			my $lppsize = 1500;
+            if (&chkFSspace($loc, $lppsize, $callback) != 0) {
+				return undef;
+            }
 
 			# build an lpp_source 
 			my $rsp;
@@ -1209,11 +1217,7 @@ sub mk_lpp_source
 			# make cmd
 			my $lpp_cmd = "/usr/sbin/nim -Fo define -t lpp_source -a server=master ";
 			# where to put it - the default is /install
-			if ($::opt_l) {
-				$lpp_cmd .= "-a location=$::opt_l/$lppsrcname ";
-			} else {
-				$lpp_cmd .= "-a location=/install/nim/lpp_source/$lppsrcname  ";
-			}
+			$lpp_cmd .= "-a location=$loc ";
 
 			$lpp_cmd .= "-a source=$::opt_s $lppsrcname";
 			my $output = xCAT::Utils->runcmd("$lpp_cmd", -1);
@@ -1334,21 +1338,28 @@ sub mk_spot
 				$cmd .= "-a source=$lppsrcname ";
 
 				# where to put it - the default is /install
+				my $loc;
 				if ($::opt_l) {
 					$cmd .= "-a location=$::opt_l ";
+					$loc = "$::opt_l";
 				} else {
 					$cmd .= "-a location=/install/nim/spot  ";
+					$loc = "/install/nim/spot";
 				}
 
-
-				# check FS size
-				# ck_fs ${file_system} 720896
-				# ck_fs /tftpboot 65536
-
-				# check the FS space needed
-                # if (&chkFSspace($loc, $size, $callback) != 0) {
-                # error
-                #}
+				# check the file system space needed 
+				#	500 MB for spot ?? 64MB for tftpboot???
+				my $spotsize = 500;
+                if (&chkFSspace($loc, $spotsize, $callback) != 0) {
+                	# error
+					return undef;
+                }
+				$loc = "/tftpboot";
+				my $tftpsize = 64;
+				if (&chkFSspace($loc, $tftpsize, $callback) != 0) {
+                    # error
+					return undef;
+                }
 
 				$cmd .= "$spot_name  2>&1";
 				# run the cmd
@@ -1608,10 +1619,13 @@ sub mk_mksysb
                 	return undef;
             	}
 
-				# check the FS space needed
-				# if (&chkFSspace($loc, $size, $callback) != 0) {
-				# error
-				#}
+				# check the file system space needed
+				# about 1800 MB for a mksysb image???
+				my $sysbsize = 1800;
+				if (&chkFSspace($loc, $sysbsize, $callback) != 0) {
+					# error
+					return undef;
+				}
 
 				my $rsp;
 				push @{$rsp->{data}}, "Creating a NIM mksysb resource called \'$mksysb_name\'.  This could take a while.\n";
@@ -1753,16 +1767,11 @@ sub rmnimimage
         return 1;
 	}
 
-	#
-    #  Get a list of the all nim resource types ???
-    #
-    # lsnim -P -c resources
-
 	my $rsp;
 	push @{$rsp->{data}}, "Removing NIM resource definitions. This could take a while!";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 
-	# foreach attr in imagedef
+	# foreach attr in the image def
 	my $error;
 	foreach my $attr (sort(keys %{$imagedef{$image_name}}))
     {
@@ -2120,7 +2129,7 @@ sub chkFSspace {
 
 	my ($free_space, $FSname) = split(':', $output);
 
-#print "size = $size, free_space= $free_space FSname = \'$FSname\'\n";
+#print "space needed = $size, free_space= $free_space FSname = \'$FSname\'\n";
 
 	#
     #  see if we need to increase the size of the fs
@@ -2128,7 +2137,7 @@ sub chkFSspace {
 	my $space_needed;
     if ( $size >= $free_space) {
 
-		$space_needed = ($size - $free_space);
+		$space_needed = int ($size - $free_space);
 		my $addsize = $space_needed+10;
 		my $sizeattr = "-a size=+$addsize" . "M";
         my $chcmd = "/usr/sbin/chfs $sizeattr $FSname";
@@ -2206,6 +2215,8 @@ sub enoughspace {
 	}
 
 	# size needed should be size of root plus size of paging space
+	#  - root and paging dirs are in the same FS
+	#  - also dump - but that doesn't work for diskless now
 	$inst_root_size += $pagingsize;
 
 	#
@@ -2240,14 +2251,14 @@ sub enoughspace {
 
 	my ($root_free_space, $FSname) = split(':', $output);
 
-#print "inst_root_size = $inst_root_size, root_free_space= $root_free_space FSname = \'$FSname\'\n";
+#print "enoughspace: inst_root_size = $inst_root_size, root_free_space= $root_free_space FSname = \'$FSname\'\n";
 
 	#
 	#  see if we need to increase the size of the fs
 	#
 	if ( $inst_root_size >= $root_free_space) {
 		# try to increase the size of the root dir
-		my $addsize = $inst_root_size+10;
+		my $addsize = int ($inst_root_size+10);
 		my $sizeattr = "-a size=+$addsize" . "M";
 		my $chcmd = "/usr/sbin/chfs $sizeattr $FSname";
 
@@ -2274,7 +2285,7 @@ sub enoughspace {
 
 =head3  mknimres
 
-        Update the SPOT resource.
+       Create a NIM resource
 
         Returns:
                 0 - OK
@@ -2904,8 +2915,7 @@ ll~;
 		#  make sure we have enough space for the new node root dir
 		#
 # TODO - test FS resize
-#		if (&enoughspace($imagehash{$image_name}{spot}, $imagehash{$image_name}{root}, $psize, $callback) != 0) {
-if (0) {
+		if (&enoughspace($imagehash{$image_name}{spot}, $imagehash{$image_name}{root}, $psize, $callback) != 0) {
 			my $rsp;
 			push @{$rsp->{data}}, "Could not initialize node \'$node\'\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
