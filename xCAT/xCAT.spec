@@ -43,12 +43,6 @@ tar -xf postscripts.tar
 %build
 
 %install
-if [ -e /etc/SuSE-release ]; then
-  apachedir=$RPM_BUILD_ROOT/etc/apache2/conf.d
-else
-  apachedir=$RPM_BUILD_ROOT/etc/httpd/conf.d
-fi
-
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
@@ -92,10 +86,11 @@ $RPM_INSTALL_PREFIX0/sbin/xcatconfig
 %else
 . /etc/profile.d/xcat.sh
 
-if grep -i suse /etc/issue >/dev/null 2>&1; then
+# ugly hack so we can have 1 RPM support both sles and rhel
+if [ -e /etc/SuSE-release ]; then
   apachename=apache2
 else
-  apachedir=httpd
+  apachename=httpd
 fi
 
 if [ ! -d /var/ftp/install ]; then
@@ -221,6 +216,7 @@ fi
 
 %files
 %{prefix}
+# one for sles, one for rhel. yes, it's ugly...
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
 /install/postscripts
