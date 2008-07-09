@@ -31,5 +31,5 @@ else
 	rm -f perl-xCAT-$VER.tar.gz
 	tar -czhf perl-xCAT-$VER.tar.gz --exclude=.svn --exclude=.project perl-xCAT-$VER
 	rm -f /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm
-	rpmbuild -ta perl-xCAT-$VER.tar.gz
+	rpmbuild -ta -vv perl-xCAT-$VER.tar.gz
 fi
