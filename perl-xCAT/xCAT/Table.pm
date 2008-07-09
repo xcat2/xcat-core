@@ -933,6 +933,13 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     push @$attriblist,'node';
     my @tabcache = $self->getAllAttribs(@$attriblist);
     $self->{_tablecache} = \@tabcache;
+    $self->{_nodecache}  = {};
+    if ($tabcache[0]->{node}) {
+        foreach(@tabcache) {
+            push @{$self->{_nodecache}->{$_->{node}}},$_;
+        }
+    }
+
     $self->{_cachestamp} = time;
 }
 #--------------------------------------------------------------------------
@@ -1571,27 +1578,45 @@ sub getAttribs
     if ($self->{_use_cache}) {
         my @results;
         my $cacheline;
-        CACHELINE: foreach $cacheline (@{$self->{_tablecache}}) {
-            foreach (keys %keypairs) {
-                if (not $keypairs{$_} and $keypairs{$_} ne 0 and $cacheline->{$_}) {
-                    next CACHELINE;
-                }
-                unless ($keypairs{$_} eq $cacheline->{$_}) {
-                    next CACHELINE;
-                }
+        if (scalar(keys %keypairs) == 1 and $keypairs{node}) { #99.9% of queries look like this, optimized case
+            foreach $cacheline (@{$self->{_nodecache}->{$keypairs{node}}}) {
+                my $attrib;
+                my %rethash;
+                foreach $attrib (@attribs)
+               {
+                   unless ($cacheline->{$attrib} =~ /^$/ || !defined($cacheline->{$attrib}))
+                 {    #To undef fields in rows that may still be returned
+                     $rethash{$attrib} = $cacheline->{$attrib};
+                 }
+               }
+               if (keys %rethash)
+             {
+                 push @results, \%rethash;
+             }
             }
-            my $attrib;
-            my %rethash;
-            foreach $attrib (@attribs)
-            {
-                unless ($cacheline->{$attrib} =~ /^$/ || !defined($cacheline->{$attrib}))
-                {    #To undef fields in rows that may still be returned
-                    $rethash{$attrib} = $cacheline->{$attrib};
+        } else { #SLOW WAY FOR GENERIC CASE
+            CACHELINE: foreach $cacheline (@{$self->{_tablecache}}) {
+                foreach (keys %keypairs) {
+                    if (not $keypairs{$_} and $keypairs{$_} ne 0 and $cacheline->{$_}) {
+                        next CACHELINE;
+                    }
+                    unless ($keypairs{$_} eq $cacheline->{$_}) {
+                        next CACHELINE;
+                    }
                 }
-            }
-            if (keys %rethash)
-            {
-                push @results, \%rethash;
+                my $attrib;
+                my %rethash;
+                foreach $attrib (@attribs)
+               {
+                   unless ($cacheline->{$attrib} =~ /^$/ || !defined($cacheline->{$attrib}))
+                 {    #To undef fields in rows that may still be returned
+                     $rethash{$attrib} = $cacheline->{$attrib};
+                 }
+               }
+               if (keys %rethash)
+             {
+                 push @results, \%rethash;
+             }
             }
         }
         if (@results)
