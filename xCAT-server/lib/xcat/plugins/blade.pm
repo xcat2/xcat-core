@@ -490,16 +490,6 @@ sub mpaconfig {
          }
          next;
       }
-      if ($parameter =~ /^sshcfg$/i) {
-         my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.4.10',0]);
-         if ($data =~ /NOSUCHOBJECT/) {
-            push @cfgtext,"SSH: Not supported";
-         } elsif ($data) {
-            push @cfgtext,"SSH: enabled";
-         } else {
-            push @cfgtext,"SSH: disabled";
-         }
-      }
       if ($parameter eq "snmpdest") {
          $parameter = "snmpdest1";
       }
@@ -1663,7 +1653,7 @@ sub telnetcmds {
   # most of these commands should be able to be done
   # through SNMP, but they produce various errors.
   foreach my $cmd (@_) {
-    if ($cmd =~ /^swnet|pd1|pd2|=/) {
+    if ($cmd =~ /^swnet|pd1|pd2|sshcfg|=/) {
       if (($cmd =~ /^textid/) and ($nodeid > 0)) {
         push @unhandled,$cmd;
         next;
@@ -1896,8 +1886,10 @@ sub sshcfg {
   my $uid = shift;
   my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
 
-  if ($value !~ /^enable|disable$/i) {
-    return([1,"Invalid argument '$value' (enable|disable)"]);
+  if ($value) {
+    if ($value !~ /^enable|disable$/i) {
+      return([1,"Invalid argument '$value' (enable|disable)"]);
+    }
   }
   # Does MM support SSH
   my @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
@@ -1915,10 +1907,6 @@ sub sshcfg {
     return([1,"SSH supported on AMM with minimum firmware BPET32"]);
   }
 
-  if ($value =~ /^disable$/i) {
-    @data = $t->cmd("ports -sshe off -T system:mm[1]");
-    return([0,"OK"]);
-  }
   # Get SSH key on Management Node
   unless (open(RSAKEY,"<$fname")) {
     return([1,"Error opening '$fname'"]);
@@ -1943,6 +1931,26 @@ sub sshcfg {
   # Determine is key already exists on MM
   @data = $t->cmd("users -$id -pk all -T system:mm[1]");
 
+  # Query if enabled/disabled
+  if (!$value) {
+    my @ddata = $t->cmd("sshcfg -T system:mm[1]");
+
+    if (my ($d) = grep(/^-cstatus\s+(\S+)$/,@ddata)) {
+      if ($d=~ /\s(\S+)$/) {
+        if ($1=~ /^disabled/i) {
+          return([0,"SSH: disabled"]);
+        }
+      }
+    }
+    # Find login 
+    foreach (split(/Key\s+/,join('',@data))) {
+      if (/-cm\s+$login/) {
+        return([0,"SSH: enabled"]);
+      }
+    }
+    return([0,"SSH: disabled"]);
+  }
+
   # Remove existing keys for this login
   foreach (split(/Key\s+/,join('',@data))) {
     if (/-cm\s+$login/) {
@@ -1951,6 +1959,13 @@ sub sshcfg {
       @data = $t->cmd("users -$id -pk -$key -remove -T system:mm[1]");
     }
   }
+  if ($value =~ /^disable$/i) {
+    if (!grep(/^OK$/i, @data)) {
+      return([1,"SSH Key not found on MM"]);
+    }
+    return([0,"disabled"]);
+  }
+
   # Make sure SSH key is generated on MM
   @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
 
@@ -1975,9 +1990,13 @@ sub sshcfg {
   }
   # Transfer SSH key from Management Node to MM
   $sshkey =~ s/@/\@/;
+  $t->cmd("users -$id -at set -T system:mm[1]");
   @data = $t->cmd("users -$id -pk -T system:mm[1] -add $sshkey");
 
   if ($data[0]=~/Error/i) {
+    if ($data[0]=~/Error writing data for option -add/i) {
+      return([1,"Maximum number of SSH keys reached for this chassis"]);
+    }
     return([1,$data[0]]);
   }
   # Enable ssh on MM
@@ -2116,6 +2135,8 @@ sub dompa {
         
         print $out freeze([\%output]);
         print $out "\nENDOFFREEZE6sK4ci\n";
+        yield;
+        waitforack($out);
       }
     }
   }
