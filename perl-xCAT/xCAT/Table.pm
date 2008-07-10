@@ -930,7 +930,9 @@ sub getNodesAttribs {
 sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     my $self = shift;
     my $attriblist = shift;
-    push @$attriblist,'node';
+    unless (grep /^node$/,@$attriblist) {
+        push @$attriblist,'node';
+    }
     my @tabcache = $self->getAllAttribs(@$attriblist);
     $self->{_tablecache} = \@tabcache;
     $self->{_nodecache}  = {};
@@ -1318,6 +1320,12 @@ sub getAllNodeAttribs
               . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
     $query->execute();
     xCAT::NodeRange::retain_cache(1);
+    $self->{_use_cache} = 0;
+    $self->{nodelist}->{_use_cache}=0;
+    $self->_build_cache($attribq);
+    $self->{nodelist}->_build_cache(['node','groups']);
+    $self->{_use_cache} = 1;
+    $self->{nodelist}->{_use_cache}=1;
     while (my $data = $query->fetchrow_hashref())
     {
 
@@ -1326,7 +1334,7 @@ sub getAllNodeAttribs
             my @nodes =
               xCAT::NodeRange::noderange($data->{node})
               ;    #expand node entry, to make groups expand
-            my $localhash = $self->getNodesAttribs(\@nodes,$attribq);
+            #my $localhash = $self->getNodesAttribs(\@nodes,$attribq); #NOTE:  This is stupid, rebuilds the cache for every entry, FIXME
             foreach (@nodes)
             {
                 if ($donenodes{$_}) { next; }
@@ -1340,7 +1348,7 @@ sub getAllNodeAttribs
                 #  }
                 #} else {
                 my @attrs =
-                  @{$localhash->{$_}} #$self->getNodeAttribs($_, $attribq)
+                  $self->getNodeAttribs($_, $attribq);#@{$localhash->{$_}} #$self->getNodeAttribs($_, $attribq)
                   ;    #Logic moves to getNodeAttribs
                        #}
                  #populate node attribute by default, this sort of expansion essentially requires it.
@@ -1353,6 +1361,8 @@ sub getAllNodeAttribs
             }
         }
     }
+    $self->{_use_cache} = 0;
+    $self->{nodelist}->{_use_cache} = 0;
     xCAT::NodeRange::retain_cache(0);
     $query->finish();
     return @results;
@@ -1389,6 +1399,7 @@ sub getAllAttribs
 
     #Takes a list of attributes, returns all records in the table.
     my $self    = shift;
+    #print "Being asked to dump ".$self->{tabname}."for something\n";
     my @attribs = @_;
     my @results = ();
     if ($self->{_use_cache}) {
