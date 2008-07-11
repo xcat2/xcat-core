@@ -7,6 +7,8 @@ use File::Path;
 use Socket;
 
 my $request;
+my %breaknetbootnodes;
+my %normalnodes;
 my $callback;
 my $sub_req;
 my $dhcpconf = "/etc/dhcpd.conf";
@@ -64,29 +66,33 @@ sub setstate {
 
 =cut
   my $node = shift;
-  my $bptab = xCAT::Table->new('bootparams',-create=>1);
-  my $kern = $bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
+  my %bphash = %{shift()};
+  my %chainhash = %{shift()};
+  my %machash = %{shift()};
+  my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   my $pcfg;
   unless (-d "$tftpdir/etc") {
      mkpath("$tftpdir/etc");
   }
   open($pcfg,'>',$tftpdir."/etc/".$node);
-  my $chaintab = xCAT::Table->new('chain',-create=>1);
-  my $cref=$chaintab->getNodeAttribs($node,['currstate']);
+  my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
   if ($cref->{currstate}) {
     print $pcfg "#".$cref->{currstate}."\n";
   }
   print $pcfg "timeout=5\n";
-  #print $pcfg "LABEL xCAT\n";
-  my $chaintab = xCAT::Table->new('chain');
-  my $stref = $chaintab->getNodeAttribs($node,['currstate']);
-    $sub_req->({command=>['makedhcp'],
-           node=>[$node]},$callback);
-  if ($stref and $stref->{currstate} eq "boot") {
-    #TODO use omapi to set the filename so no netboot is attempted?
-    $sub_req->({command=>['makedhcp'],
-           node=>[$node],
-            arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+  $normalnodes{$node}=1; #Assume a normal netboot (well, normal dhcp, 
+                        #which is normally with a valid 'filename' field,
+                        #but the typical ppc case will be 'special' makedhcp
+                        #to clear the filename field, so the logic is a little
+                        #opposite
+  #  $sub_req->({command=>['makedhcp'], #This is currently batched elswhere
+  #         node=>[$node]},$callback);  #It hopefully will perform correctly
+  if ($cref and $cref->{currstate} eq "boot") {
+    $breaknetbootnodes{$node}=1;
+    delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
+    #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
+    #       node=>[$node],
+    #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
     print $pcfg "bye\n";
     close($pcfg);
   } elsif ($kern and $kern->{kernel}) {
@@ -117,7 +123,7 @@ sub setstate {
   my %ipaddrs;
   $ipaddrs{$ip} = 1;
   if ($mactab) {
-     my $ment = $mactab->getNodeAttribs($node,['mac']);
+     my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
      if ($ment and $ment->{mac}) {
         my @macs = split(/\|/,$ment->{mac});
         foreach (@macs) {
@@ -208,6 +214,8 @@ sub process_request {
   $request = shift;
   $callback = shift;
   $sub_req = shift;
+  %breaknetbootnodes=();
+  %normalnnodes=();
 
   my @args;
   my @nodes;
@@ -249,18 +257,30 @@ sub process_request {
          arg=>[$args[0]]},\&pass_along);
   }
   if ($errored) { return; }
+  my $bptab=xCAT::Table->new('bootparams',-create=>1);
+  my $bphash = $bptab->getNodesAttribs(\@nodes,['kernel','initrd','kcmdline']);
+  my $chaintab=xCAT::Table->new('chaintab',-create=>1);
+  my $chainhash=$chaintab->getNodesAttribs(\@nodes,['currstate']);
+  my $mactab=xCAT::Table->new('mac',-create=>1);
+  my $machhash=$mactab->getNodesAttribs(\@nodes,['mac']);
+
   foreach (@nodes) {
     my %response;
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
       $response{node}->[0]->{data}->[0]= getstate($_);
       $callback->(\%response);
-    } elsif ($args[0] eq 'enact') {
-      setstate($_);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      setstate($_);
+      setstate($_,$bphash,$chainhash,$machash);
     }
   }
+  my @normalnodes = keys %normal
+  $sub_req->({command=>['makedhcp'],
+           node=>\@normalnodes},$callback);
+  my @breaknetboot=keys %breaknetbootnodes;
+  $sub_req->({command=>['makedhcp'],
+         node=>\@breaknetboot,
+         arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
 
   #####################################
   # give monitoring code a chance to prepare the master for the node deployment
