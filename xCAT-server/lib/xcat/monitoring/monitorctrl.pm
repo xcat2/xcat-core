@@ -1328,7 +1328,45 @@ sub  configMaster4Nodes {
   return ($retcode, $message);
 }
 
+#--------------------------------------------------------------------------------
+=head3  shouldConfigMaster  
+      This function goes to every monitoring plug-in module to check if 
+      anyone implements the configMaster4Nodes function. 
+    Arguments:
+        none 
+    Returns:
+        1, if any monitoring plug-in module implements the configMaster4Nodes fucntion.
+        0. if none.
+=cut
+#--------------------------------------------------------------------------------
+sub  shouldConfigMaster {
 
+  #get all the module names from /opt/xcat/lib/perl/XCAT_monitoring directory
+  my %names=();   
+  my @plugins=glob("$::XCATROOT/lib/perl/xCAT_monitoring/*.pm");
+  foreach (@plugins) {
+    /.*\/([^\/]*).pm$/;
+    $names{$1}=1;
+  }
+  # remove 2 files that are not plug-ins
+  delete($names{monitorctrl});
+  delete($names{montbhandler});
+
+  #get node conf data from each plug-in module
+  foreach my $pname (keys(%names)) {
+    my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+    my $module_name="xCAT_monitoring::$pname";
+    #load the module in memory
+    eval {require($file_name)};
+    if (!$@) {   
+      if (defined(${$module_name."::"}{configMaster4Nodes})) {
+        return 1;
+      }  
+    }
+  } 
+
+  return 0;
+}
 
 
 

@@ -69,6 +69,11 @@ sub preprocess_request
     my $reqcopy = {%$req};
     push @requests, $reqcopy;
   } else {
+    if (! xCAT_monitoring::monitorctrl->shouldConfigMaster()) { 
+      $req = {};
+      return;
+    }
+
     my $nodes = $req->{node};
     my $noderef=xCAT_monitoring::monitorctrl->getMonServer($nodes);
 
