@@ -9,7 +9,7 @@ use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::Yum;
 use xCAT::Template;
-use xCAT::Postage;
+#use xCAT::Postage;
 use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -160,9 +160,10 @@ sub mknetboot
         }
     }
     my %donetftp=();
+    my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile)])};
     foreach $node (@nodes)
     {
-        my $ent = $ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
+        my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
         unless ($ent->{os} and $ent->{arch} and $ent->{profile})
         {
             $callback->(
@@ -364,10 +365,20 @@ sub mkinstall
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my %doneimgs;
+    my $restab = xCAT::Table->new('noderes');
+    my $bptab  = xCAT::Table->new('bootparams',-create=>1);
+    my $hmtab  = xCAT::Table->new('nodehm');
+    my %osents = %{$ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch'])};
+    my %rents =
+              %{$restab->getNodesAttribs(\@nodes,
+                                     ['nfsserver', 'primarynic', 'installnic'])};
+    my %hents = 
+              %{$hmtab->getNodesAttribs(\@nodes,
+                                     ['serialport', 'serialspeed', 'serialflow'])};
     foreach $node (@nodes)
     {
         my $osinst;
-        my $ent = $ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
+        my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
         my @missingparms;
         unless ($ent->{os}) {
             push @missingparms,"nodetype.os";
@@ -565,19 +576,16 @@ sub mkinstall
             }
 
             #We have a shot...
-            my $restab = xCAT::Table->new('noderes');
-            my $bptab  = xCAT::Table->new('bootparams',-create=>1);
-            my $hmtab  = xCAT::Table->new('nodehm');
-            my $ent    =
-              $restab->getNodeAttribs($node,
-                                     ['nfsserver', 'primarynic', 'installnic']);
-            my $sent =
-              $hmtab->getNodeAttribs(
-                                     $node,
-                                     [
-                                      'serialport', 'serialspeed', 'serialflow'
-                                     ]
-                                     );
+            my $ent    = $rents{$node}->[0];
+#              $restab->getNodeAttribs($node,
+#                                     ['nfsserver', 'primarynic', 'installnic']);
+            my $sent = $hents{$node}->[0];
+#              $hmtab->getNodeAttribs(
+#                                     $node,
+#                                     [
+#                                      'serialport', 'serialspeed', 'serialflow'
+#                                     ]
+#                                     );
             unless ($ent and $ent->{nfsserver})
             {
                 $callback->(
