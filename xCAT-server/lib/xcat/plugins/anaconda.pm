@@ -80,14 +80,15 @@ sub preprocess_request
     my %localnodehash;
     my %dispatchhash;
     my $nrtab = xCAT::Table->new('noderes');
+    my $nrents = $nrtab->getNodesAttribs($req->{node},[qw(tftpserver servicenode)]);
     foreach my $node (@{$req->{node}})
     {
         my $nodeserver;
-        my $tent = $nrtab->getNodeAttribs($node, ['tftpserver']);
+        my $tent = $nrents->{$node}->[0]; #$nrtab->getNodeAttribs($node, ['tftpserver']);
         if ($tent) { $nodeserver = $tent->{tftpserver} }
         unless ($tent and $tent->{tftpserver})
         {
-            $tent = $nrtab->getNodeAttribs($node, ['servicenode']);
+            $tent = $nrents->{$node}->[0]; #$nrtab->getNodeAttribs($node, ['servicenode']);
             if ($tent) { $nodeserver = $tent->{servicenode} }
         }
         if ($nodeserver)
@@ -161,6 +162,13 @@ sub mknetboot
     }
     my %donetftp=();
     my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile)])};
+    my $restab = xCAT::Table->new('noderes');
+    my $bptab  = xCAT::Table->new('bootparams',-create=>1);
+    my $hmtab  = xCAT::Table->new('nodehm');
+    my $reshash    = $restab->getNodesAttribs(\@nodes, ['primarynic','tftpserver','xcatmaster']);
+    my $hmhash =
+          $hmtab->getNodesAttribs(\@nodes,
+                                 ['serialport', 'serialspeed', 'serialflow']);
     foreach $node (@nodes)
     {
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
@@ -249,26 +257,23 @@ sub mknetboot
                 );
             next;
         }
-        my $restab = xCAT::Table->new('noderes');
-        my $bptab  = xCAT::Table->new('bootparams',-create=>1);
-        my $hmtab  = xCAT::Table->new('nodehm');
-        my $ent    = $restab->getNodeAttribs($node, ['primarynic']);
-        my $sent   =
-          $hmtab->getNodeAttribs($node,
-                                 ['serialport', 'serialspeed', 'serialflow']);
+        my $ent    = $reshash->{$node}->[0];#$restab->getNodeAttribs($node, ['primarynic']);
+        my $sent   = $hmhash->{$node}->[0];
+#          $hmtab->getNodeAttribs($node,
+#                                 ['serialport', 'serialspeed', 'serialflow']);
 
         # determine image server, if tftpserver use it, else use xcatmaster
         # else use site.Master, last resort use self
         my $imgsrv;
         my $ient;
-        $ient = $restab->getNodeAttribs($node, ['tftpserver']);
+        $ient = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['tftpserver']);
         if ($ient and $ient->{tftpserver})
         {
             $imgsrv = $ient->{tftpserver};
         }
         else
         {
-            $ient = $restab->getNodeAttribs($node, ['xcatmaster']);
+            $ient = $reshash->{node}->[0]; #$restab->getNodeAttribs($node, ['xcatmaster']);
             if ($ient and $ient->{xcatmaster})
             {
                 $imgsrv = $ient->{xcatmaster};

@@ -62,20 +62,19 @@ sub setstate {
 
 =cut
   my $node = shift;
-  my $bptab = xCAT::Table->new('bootparams',-create=>1);
-  my $kern = $bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
+  my %bphash = %{shift()};
+  my %chainhash = %{shift()};
+  my %machash = %{shift()};
+  my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   my $pcfg;
   open($pcfg,'>',$tftpdir."/pxelinux.cfg/".$node);
-  my $chaintab = xCAT::Table->new('chain');
-  my $cref=$chaintab->getNodeAttribs($node,['currstate']);
+  my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
   if ($cref->{currstate}) {
     print $pcfg "#".$cref->{currstate}."\n";
   }
   print $pcfg "DEFAULT xCAT\n";
   print $pcfg "LABEL xCAT\n";
-  $chaintab = xCAT::Table->new('chain');
-  my $stref = $chaintab->getNodeAttribs($node,['currstate']);
-  if ($stref and $stref->{currstate} eq "boot") {
+  if ($cref and $cref->{currstate} eq "boot") {
     print $pcfg "LOCALBOOT 0\n";
     close($pcfg);
   } elsif ($kern and $kern->{kernel}) {
@@ -104,6 +103,10 @@ sub setstate {
   }
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
   my %ipaddrs;
+  unless (inet_aton($node)) {
+    syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+    return;
+  }
   my $ip = inet_ntoa(inet_aton($node));;
   unless ($ip) {
     syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
@@ -111,7 +114,7 @@ sub setstate {
   }
   $ipaddrs{$ip} = 1;
   if ($mactab) {
-     my $ment = $mactab->getNodeAttribs($node,['mac']);
+     my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
      if ($ment and $ment->{mac}) {
          my @macs = split(/\|/,$ment->{mac});
          foreach (@macs) {
@@ -274,16 +277,21 @@ sub process_request {
          arg=>[$args[0]]},\&pass_along);
   }
   if ($errored) { return; }
+  #Time to actually configure the nodes, first extract database data with the scalable calls
+  my $bptab = xCAT::Table->new('bootparams',-create=>1);
+  my $chaintab = xCAT::Table->new('chain');
+  my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
+  my %bphash = %{$bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline)])};
+  my %chainhash = %{$chaintab->getNodesAttribs(\@nodes,[qw(currstate)])};
+  my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
   foreach (@nodes) {
     my %response;
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
       $response{node}->[0]->{data}->[0]= getstate($_);
       $callback->(\%response);
-    } elsif ($args[0] eq 'enact') {
-      setstate($_);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      setstate($_);
+      setstate($_,\%bphash,\%chainhash,\%machash);
     }
   }
 

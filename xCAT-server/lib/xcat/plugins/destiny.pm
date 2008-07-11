@@ -11,6 +11,15 @@ my $callback;
 my $subreq;
 my $errored = 0;
 
+#DESTINY SCOPED GLOBALS
+my $chaintab;
+my $iscsitab;
+my $bptab;
+my $typetab;
+my $restab;
+my $sitetab;
+my $hmtab;
+
 sub handled_commands {
   return {
     setdestiny => "destiny",
@@ -48,7 +57,7 @@ sub relay_response {
 
 sub setdestiny {
   my $req=shift;
-  my $chaintab = xCAT::Table->new('chain',-create=>1);
+  $chaintab = xCAT::Table->new('chain',-create=>1);
   my @nodes=@{$req->{node}};
   my $state = $req->{arg}->[0];
   my %nstates;
@@ -59,9 +68,10 @@ sub setdestiny {
      unless ($iscsitab) {
         $callback->({error=>"Unable to open iscsi table to get iscsiboot parameters",errorcode=>[1]});
      }
-     my $bptab = xCAT::Table->new('bootparams');
+     my $bptab = xCAT::Table->new('bootparams',-create=>1);
+     my $ients = $iscsitab->getNodesAttribs($req->{node},[qw(kernel kcmdline initrd)]);
      foreach (@{$req->{node}}) {
-      my $ient = $iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
+      my $ient = $ients->{$_}->[0]; #$iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
       unless ($ient and $ient->{kernel}) {
          $callback->({error=>"$_: No iscsi boot data available",errorcode=>[1]});
          next;
@@ -78,9 +88,10 @@ sub setdestiny {
               node=>$req->{node}}, \&relay_response);
     if ($errored) { return; }
     my $nodetype = xCAT::Table->new('nodetype');
+    my $ntents = $nodetype->getNodesAttribs($req->{node},[qw(os arch profile)]);
     foreach (@{$req->{node}}) {
       $nstates{$_} = $state; #local copy of state variable for mod
-      my $ntent = $nodetype->getNodeAttribs($_,[qw(os arch profile)]);
+      my $ntent = $ntents->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(os arch profile)]);
       if ($ntent and $ntent->{os}) {
         $nstates{$_} .= " ".$ntent->{os};
       } else { $errored =1; $callback->({error=>"nodetype.os not defined for $_"}); }
@@ -94,21 +105,24 @@ sub setdestiny {
       unless ($state =~ /^netboot/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
     }
   } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
-    my $noderes=xCAT::Table->new('noderes',-create=>1);
+    $restab=xCAT::Table->new('noderes',-create=>1);
     my $bootparms=xCAT::Table->new('bootparams',-create=>1);
     my $nodetype = xCAT::Table->new('nodetype');
     my $sitetab = xCAT::Table->new('site');
     my $nodehm = xCAT::Table->new('nodehm');
+    my $hments = $nodehm->getNodesAttribs(\@nodes,['serialport','serialspeed','serialflow']);
     (my $portent) = $sitetab->getAttribs({key=>'xcatdport'},'value');
     (my $mastent) = $sitetab->getAttribs({key=>'master'},'value');
+    my $enthash = $nodetype->getNodesAttribs(\@nodes,[qw(arch)]);
+    my $resents = $restab->getNodeAttribs(\@nodes,[qw(xcatmaster)]);
     foreach (@nodes) {
-      my $ent = $nodetype->getNodeAttribs($_,[qw(arch)]);
+      my $ent = $enthash->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(arch)]);
       unless ($ent and $ent->{arch}) {
         $callback->({error=>["No archictecture defined in nodetype table for $_"],errorcode=>[1]});
         return;
       }
       my $arch = $ent->{arch};
-      my $ent = $noderes->getNodeAttribs($_,[qw(xcatmaster)]);
+      my $ent = $resents->{$_}->[0]; #$restab->getNodeAttribs($_,[qw(xcatmaster)]);
       my $master;
       my $kcmdline = "quiet ";
       if ($mastent and $mastent->{value}) {
@@ -117,7 +131,7 @@ sub setdestiny {
       if ($ent and $ent->{xcatmaster}) {
           $master = $ent->{xcatmaster};
       }
-      $ent = $nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
+      $ent = $hments->{$_}->[0]; #$nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
       if ($ent and defined($ent->{serialport})) {
          $kcmdline .= "console=ttyS".$ent->{serialport};
          #$ent = $nodehm->getNodeAttribs($_,['serialspeed']);
@@ -145,7 +159,6 @@ sub setdestiny {
                                    initrd => "xcat/nbfs.$arch.gz",
                                    kcmdline => $kcmdline."xcatd=$master:$xcatdport"});
     }
-    $nodetype->close;
   } elsif (!($state eq "boot")) { 
       $callback->({error=>["Unknown state $state requested"],errorcode=>[1]});
       return;
@@ -190,16 +203,16 @@ sub nextdestiny {
   }
 
   my $node;
+  $chaintab = xCAT::Table->new('chain');
+  my $chainents = $chaintab->getNodesAttribs(\@nodes,[qw(currstate currchain chain)]);
   foreach $node (@nodes) {
-    my $chaintab = xCAT::Table->new('chain');
     unless($chaintab) {
       syslog("local1|err","ERROR: $node requested destiny update, no chain table");
       return; #nothing to do...
     }
-    my $ref =  $chaintab->getNodeAttribs($node,[qw(currstate currchain chain)]);
+    my $ref =  $chainents->{$node}->[0]; #$chaintab->getNodeAttribs($node,[qw(currstate currchain chain)]);
     unless ($ref->{chain} or $ref->{currchain}) {
       syslog ("local1|err","ERROR: node requested destiny update, no path in chain.currchain");
-      $chaintab->close;
       return; #Can't possibly do anything intelligent..
     }
     unless ($ref->{currchain}) { #If no current chain, copy the default
@@ -213,7 +226,6 @@ sub nextdestiny {
       $ref->{currchain} = $ref->{currstate};
     }
     $chaintab->setNodeAttribs($node,$ref); #$ref is in a state to commit back to db
-    $chaintab->close;
     my %requ;
     $requ{node}=[$node];
     $requ{arg}=[$ref->{currstate}];
@@ -249,13 +261,20 @@ sub getdestiny {
     @nodes=($node);
   }
   my $node;
+  $restab = xCAT::Table->new('noderes');
+  my $chainents = $chaintab->getNodesAttribs(\@nodes,[qw(currstate chain)]);
+  my $nrents = $restab->getNodesAttribs(\@nodes,[qw(tftpserver xcatmaster)]);
+  $bptab = xCAT::Table->new('bootparams',-create=>1);
+  my $bpents = $bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline xcatmaster)]);
+  my $sitetab= xCAT::Table->new('site');
+  (my $sent) = $sitetab->getAttribs({key=>'master'},'value');
   foreach $node (@nodes) {
     my $chaintab = xCAT::Table->new('chain');
     unless ($chaintab) { #Without destiny, have the node wait with ssh hopefully open at least
       $callback->({node=>[{name=>[$node],data=>['standby'],destiny=>[ 'standby' ]}]});
       return;
     }
-    my $ref = $chaintab->getNodeAttribs($node,[qw(currstate chain)]);
+    my $ref = $chainents->{$node}->[0]; #$chaintab->getNodeAttribs($node,[qw(currstate chain)]);
     unless ($ref) {
       $callback->({node=>[{name=>[$node],data=>['standby'],destiny=>[ 'standby' ]}]});
       return;
@@ -265,15 +284,12 @@ sub getdestiny {
       $ref->{currstate} = shift @chain;
       $chaintab->setNodeAttribs($node,{currstate=>$ref->{currstate}});
     }
-    my $noderestab = xCAT::Table->new('noderes',-create=>1); #In case client decides to download images, get data out to it
     my %response;
     $response{name}=[$node];
     $response{data}=[$ref->{currstate}];
     $response{destiny}=[$ref->{currstate}];
-    my $sitetab= xCAT::Table->new('site');
-    my $nrent = $noderestab->getNodeAttribs($node,[qw(tftpserver xcatmaster)]);
-    my $bpent = $noderestab->getNodeAttribs($node,[qw(kernel initrd kcmdline xcatmaster)]);
-    (my $sent) = $sitetab->getAttribs({key=>'master'},'value');
+    my $nrent = $nrents->{$node}->[0]; #$noderestab->getNodeAttribs($node,[qw(tftpserver xcatmaster)]);
+    my $bpent = $bpents->{$node}->[0]; #$bptab->getNodeAttribs($node,[qw(kernel initrd kcmdline xcatmaster)]);
     if (defined $bpent->{kernel}) {
         $response{kernel}=$bpent->{kernel};
     }
