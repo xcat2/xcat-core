@@ -786,6 +786,7 @@ sub mknimimage
 		#
 		# spot resource
 		#
+
 		$spot_name=&mk_spot($lpp_source_name, $callback);
 		chomp $spot_name;
 		$newres{spot} = $spot_name;
@@ -1052,35 +1053,32 @@ sub mknimimage
 	# get resources from the original osimage if provided
 	if ($::opt_i) {
 
-        foreach my $type (keys %::imagedef) {
-            if (grep(/^$type$/, @::nimresources)) {
+		foreach my $type (keys %{$::imagedef{$::opt_i}}) {
+
+            if (grep(/^$::imagedef{$::opt_i}{$type}$/, @::nimresources)) {
                 # if this is a resource then add it to the new osimage
 				# ex. type=spot, name = myspot
-                $osimagedef{$::image_name}{$type}=$::imagedef{$type};
+                $osimagedef{$::image_name}{$type}=$::imagedef{$::opt_i}{$type};
             }
         }
+	}
 
-	} elsif (defined(%newres)) {
+	if (defined(%newres)) {
 
 		# overlay/add the resources defined above
 		foreach my $type (keys %newres) {
 			$osimagedef{$::image_name}{$type}=$newres{$type};
 		}
+	}
 
-	} elsif (defined(%::attrres)) {
+	if (defined(%::attrres)) {
 
-		# add any additional from the cmd line if provided
+		# add overlay/any additional from the cmd line if provided
 		foreach my $type (keys %::attrres) {
 			if (grep(/^$type$/, @::nimresources)) {
 				$osimagedef{$::image_name}{$type}=$::attrres{$type};
 			}
 		}
-
-	} else {
-		my $rsp;
-		push @{$rsp->{data}}, "Could not create a xCAT osimage definition.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
 	}
 
 	# create the osimage def
@@ -2129,8 +2127,6 @@ sub chkFSspace {
 
 	my ($free_space, $FSname) = split(':', $output);
 
-#print "space needed = $size, free_space= $free_space FSname = \'$FSname\'\n";
-
 	#
     #  see if we need to increase the size of the fs
     #
@@ -2141,8 +2137,6 @@ sub chkFSspace {
 		my $addsize = $space_needed+10;
 		my $sizeattr = "-a size=+$addsize" . "M";
         my $chcmd = "/usr/sbin/chfs $sizeattr $FSname";
-
-#print "chcmd = \'$chcmd\'\n";
 
         my $output;
         $output = xCAT::Utils->runcmd("$chcmd", -1);
@@ -2251,8 +2245,6 @@ sub enoughspace {
 
 	my ($root_free_space, $FSname) = split(':', $output);
 
-#print "enoughspace: inst_root_size = $inst_root_size, root_free_space= $root_free_space FSname = \'$FSname\'\n";
-
 	#
 	#  see if we need to increase the size of the fs
 	#
@@ -2261,8 +2253,6 @@ sub enoughspace {
 		my $addsize = int ($inst_root_size+10);
 		my $sizeattr = "-a size=+$addsize" . "M";
 		my $chcmd = "/usr/sbin/chfs $sizeattr $FSname";
-
-#print "chcmd = \'$chcmd\'\n";
 
 		my $output;
 		$output = xCAT::Utils->runcmd("$chcmd", -1);
@@ -3109,8 +3099,6 @@ sub rmdsklsnode
 		my $cmd = "nim -Fo reset $nodename";
 		my $output;
 
-#print "reset cmd= $cmd\n";
-
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
 		{
@@ -3127,8 +3115,6 @@ sub rmdsklsnode
 
 		$cmd = "nim -o deallocate -a subclass=all $nodename";
 
-#print "deall cmd= $cmd\n";
-
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
 		{
@@ -3144,8 +3130,6 @@ sub rmdsklsnode
 		}
 
 		$cmd = "nim -o remove $nodename";
-
-#print "remove cmd= $cmd\n";
 
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
