@@ -871,6 +871,32 @@ sub setAttribsWhere
 }
 
 
+#--------------------------------------------------------------------------
+=head3 setNodesAttribs
+
+    Description: Unconditionally assigns the requested values to tables for a list of nodes
+
+    Arguments:
+        'self' (implicit in OO style call)
+        Reference to a list of nodes (no noderanges, just nodes)
+        A hash of attributes to set, like in 'setNodeAttribs'
+
+    Returns:
+=cut
+#--------------------------------------------------------------------------
+sub setNodesAttribs {
+#This is currently a stub to be filled out with at scale enhancements.  It will be a touch more complex than getNodesAttribs, due to the notification
+#The three steps should be:
+#-Query table and divide nodes into list to update and list to insert
+#-Update intelligently with respect to scale
+#-Insert intelligently with respect to scale
+#Intelligently in this case means folding them to some degree.  Update where clauses will be longer, but must be capped to avoid exceeding SQL statement length restrictions on some DBs.  Restricting even all the way down to 256 could provide better than an order of magnitude better performance though
+    my $self = shift;
+    my $nodelist = shift
+    foreach  (@$nodelist) {
+        $self->setNodeAttribs($_,@_);
+    }
+}
 
 #--------------------------------------------------------------------------
 
