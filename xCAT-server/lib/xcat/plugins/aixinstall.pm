@@ -25,6 +25,7 @@ use File::Path;
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
+
 #------------------------------------------------------------------------------
 
 =head1    aixinstall
@@ -94,6 +95,8 @@ sub process_request
     my $sub_req = shift; 
     my $ret;
     my $msg;
+    
+    $::callback=$callback;
 
     my $command  = $request->{command}->[0];
     $::args     = $request->{arg};
@@ -139,6 +142,21 @@ sub process_request
 
 	return 0;
 }
+    
+my $errored = 0;
+sub pass_along { 
+    my $resp = shift;
+    $::callback->($resp);
+    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
+        $errored=1;
+    }
+    foreach (@{$resp->{node}}) {
+       if ($_->{error} or $_->{errorcode}) {
+          $errored=1;
+       }
+    }
+}
+
 
 #----------------------------------------------------------------------------
 
