@@ -88,7 +88,7 @@ my %idpxthermbytes = (  #Data to enact the profile quickly
 my %codes = (
 	0x00 => "Command Completed Normal",
 	0xC0 => "Node busy, command could not be processed",
-	0xC1 => "Invalid command",
+	0xC1 => "Invalid or unsupported command",
 	0xC2 => "Command invalid for given LUN",
 	0xC3 => "Timeout while processing command, response unavailable",
 	0xC4 => "Out of space, could not execute command",
@@ -799,7 +799,11 @@ sub resetbmc {
 		if (0 == $returnd[36]) {
 			$text = "BMC reset";
 		} else {
-			$text = sprintf("BMC Responded with code %d",$returnd[36]);
+            if ($codes{$returnd[36]}) {
+                $text = $codes{$returnd[36]};
+            } else {
+			    $text = sprintf("BMC Responded with code %d",$returnd[36]);
+            }
 		}
 	}
 	return($rc,$text);
