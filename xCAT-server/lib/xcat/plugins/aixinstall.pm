@@ -401,7 +401,7 @@ ll~;
 		# set the NIM install method (rte or mksysb)
         my $method="rte";
         if ($imagehash{$image_name}{nimmethod} ) {
-            $type = $imagehash{$image_name}{nimmethod};
+            $method = $imagehash{$image_name}{nimmethod};
         }
         chomp $method;
 		
