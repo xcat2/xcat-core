@@ -1162,6 +1162,7 @@ sub setboot {
         2 => 'Hard Drive',
         5 => 'CD/DVD',
         6 => 'BIOS Setup',
+        15 => 'Floppy'
     );
 
     #This disables the 60 second timer
@@ -1178,6 +1179,9 @@ sub setboot {
     }
     elsif ($subcommand eq "cd" ) {
         @cmd=(0x08,0x5,0x80,0x14,0x0,0x0,0x0);
+    }
+    elsif ($subcommand eq "floppy" ) {
+        @cmd=(0x08,0x5,0x80,0x3c,0x0,0x0,0x0);
     }
     elsif ($subcommand =~ m/^def/) {
         @cmd=(0x08,0x5,0x0,0x0,0x0,0x0,0x0);
