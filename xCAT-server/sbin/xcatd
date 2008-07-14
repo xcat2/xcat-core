@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use Carp;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -113,7 +114,7 @@ $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 
 $sitetab->close;
 my $progname;
-$SIG{PIPE} = sub { die "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)" };
+$SIG{PIPE} = sub { confess "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)" };
 $progname = \$0;
 sub daemonize {
   chdir('/');
@@ -1116,9 +1117,21 @@ sub service_connection {
   if ($@) { # The eval statement caught a program bug..
     if ($@ =~ /^SIGPIPE/) {
         syslog("local4|info","xcatd: Unexpected client disconnect");
-    } elsif ($@ =~ /abort/) {
+        if ($sock) {
+            eval {
+                print $sock XMLout({error=>"Generic PIPE error occurred.  $@"},RootName=>'xcatresponse',NoAttr=>1);
+            };
+        }
+    } elsif ($@ =~ /Client abort requested/) {
     } else {
+        my $errstr="A fatal error was encountered, the following information may help identify a bug: $@";
+        chomp($errstr);
         syslog("local4|err","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
+        if ($sock) {
+            eval {
+                print $sock XMLout({error=>$errstr},RootName=>'xcatresponse',NoAttr=>1);
+            };
+        }
     }
   }
   $SIG{ALRM}= sub { die "$$ failed shutting down" };
