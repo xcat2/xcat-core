@@ -13,6 +13,7 @@ my $nodelist; #=xCAT::Table->new('nodelist',-create =>1);
 #my $nodeprefix = "node";
 my @allnodeset;
 my $retaincache=0;
+my $recurselevel=0;
 
 
 sub subnodes (\@@) {
@@ -39,6 +40,7 @@ sub expandatom {
 	}
     if ($atom =~ /^\(.*\)$/) {     # handle parentheses by recursively calling noderange()
       $atom =~ s/^\((.*)\)$/$1/;
+      $recurselevel++;
       return noderange($atom);
     }
 
@@ -240,6 +242,7 @@ sub noderange {
           $line =~ m/^([^:	 ]*)/;
           my $newrange = $1;
           chomp($newrange);
+          $recurselevel++;
           my @filenodes = noderange($newrange);
           foreach (@filenodes) {
             $nodes{$_}=1;
@@ -277,9 +280,13 @@ sub noderange {
 			delete $nodes{$_};
 		}
     }
-    unless ($retaincache) {
-        undef $nodelist;
-        @allnodeset=();
+    if ($recurselevel) {
+        $recurselevel--;
+    } else {
+        unless ($retaincache) {
+            undef $nodelist;
+            @allnodeset=();
+        }
     }
     return sort (keys %nodes);
 
