@@ -274,7 +274,7 @@ sub process_request {
       setstate($_,$bphash,$chainhash,$machash);
     }
   }
-  my @normalnodes = keys %normal
+  my @normalnodes = keys %normal;
   $sub_req->({command=>['makedhcp'],
            node=>\@normalnodes},$callback);
   my @breaknetboot=keys %breaknetbootnodes;
