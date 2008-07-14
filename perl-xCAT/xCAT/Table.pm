@@ -892,7 +892,7 @@ sub setNodesAttribs {
 #-Insert intelligently with respect to scale
 #Intelligently in this case means folding them to some degree.  Update where clauses will be longer, but must be capped to avoid exceeding SQL statement length restrictions on some DBs.  Restricting even all the way down to 256 could provide better than an order of magnitude better performance though
     my $self = shift;
-    my $nodelist = shift
+    my $nodelist = shift;
     foreach  (@$nodelist) {
         $self->setNodeAttribs($_,@_);
     }
