@@ -131,6 +131,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
     fi
     mkdir -p /install/postscripts/_ssh
     cp /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+    chmod 644  /install/postscripts/_ssh/authorized_keys
 
     mkdir -p /var/log/consoles
     if ! grep /tftpboot /etc/exports; then

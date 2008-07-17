@@ -43,6 +43,10 @@ sub expandatom {
       $recurselevel++;
       return noderange($atom);
     }
+    if ($atom =~ /@/) {
+          $recurselevel++;
+          return noderange($atom);
+     }
 
     # Try to match groups?
 	foreach($nodelist->getAllAttribs('node','groups')) {
@@ -212,8 +216,6 @@ sub retain_cache { #A semi private operation to be used *ONLY* in the interestin
 sub noderange {
   $missingnodes=[];
   #We for now just do left to right operations
-  #TODO: Parentheses... A parenthetical group to the right of an intersection makes the obvious
-  #answer not work
   my $range=shift;
   my $verify = (scalar(@_) == 1 ? shift : 1);
   unless ($nodelist) { 
@@ -225,8 +227,10 @@ sub noderange {
   my %nodes = ();
   my %delnodes = ();
   my $op = ",";
-  #my @elems = split(/(,(?![^[]*?])|@)/,$range); #, or @ but ignore , within []
-  my @elems = split(/(,(?![^[]*?])(?![^\(]*?\))|@(?![^\(]*?\)))/,$range);  # comma or @ but ignore comma within []
+  my @elems = split(/(,(?![^[]*?])(?![^\(]*?\)))/,$range); # commas outside of [] or ()
+  if (scalar(@elems)==1) {
+      @elems = split(/(@(?![^\(]*?\)))/,$range);  # only split on @ when no , are present (inner recursion)
+  }
 
   while (my $atom = shift @elems) {
     if ($atom =~ /^-/) {           # if this is an exclusion, strip off the minus, but remember it
