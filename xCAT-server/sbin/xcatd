@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use strict;
+use warnings;
 use Carp;
 BEGIN
 {
@@ -11,7 +13,7 @@ use xCAT::Utils;
 use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
-use xCAT::Client submit_request;
+use xCAT::Client qw(submit_request);
 my $clientselect = new IO::Select;
 my $sslclients = 0; #THROTTLE
 my $maxsslclients = 16; #default
@@ -63,7 +65,6 @@ Getopt::Long::Configure("pass_through");
 
 use Storable qw(dclone);
 use POSIX qw(WNOHANG setsid);
-use strict;
 my $pidfile;
 my $foreground;
 GetOptions(
