@@ -21,7 +21,7 @@ Provides: perl(xCAT) = %{version}
 Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
 Includes xCAT::Table, xCAT::NodeRange, among others.
 
-%prep 
+%prep -n perl-xCAT
 %setup -q
 %build
 # This phase is done in (for RH): /usr/src/redhat/BUILD/perl-xCAT-2.0
