@@ -9,6 +9,7 @@ use xCAT::Usage;
 use IO::Socket;
 use SNMP;
 use strict;
+#use warnings;
 my %mm_comm_pids;
 
 use XML::Simple;
@@ -339,7 +340,6 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
     }
     return (0,@output);
   }
-  my $data;
   if ($cmd eq "clear") {
     unless (isallchassis) {
       return (1,"Cannot clear eventlogs except for entire chassis");
@@ -457,11 +457,11 @@ sub mpaconfig {
       if ($parameter =~ /^network$/) {
         my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.4',0]);
         push @cfgtext,"MM IP: $data";
-        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.3',0]);
+        $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.3',0]);
         push @cfgtext,"MM Hostname: $data";
-        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.9',0]);
+        $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.9',0]);
         push @cfgtext,"Gateway: $data";
-        my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.14',0]);
+        $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.14',0]);
         push @cfgtext,"Subnet Mask: $data";
         next;
       }
@@ -645,12 +645,11 @@ sub vitals {
    my @vitems;
    foreach (@_) {
      if ($_ eq 'all') {
- push @vitems,qw(temp,wattage,voltage,fan,summary);
+ push @vitems,qw(temp wattage voltage fan summary);
      } else {
  push @vitems,split( /,/,$_);
      }
    }
-   my $tmp;
    if (grep /watt/,@vitems) {
        if ($slot < 8) {
         $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.".($slot+16)]);
@@ -738,7 +737,7 @@ sub rscan {
   if ( !GetOptions(\%opt,qw(V|Verbose w x z))){
     return(1,usage());
   }
-  if ( defined(@ARGV[0]) ) {
+  if ( defined($ARGV[0]) ) {
     return(1,usage("Invalid argument: @ARGV\n"));
   }
   if (exists($opt{x}) and exists($opt{z})) {
@@ -1666,7 +1665,7 @@ sub telnetcmds {
     }
     push @unhandled,$cmd;
   }
-  if (!defined(%handled)) {
+  unless (%handled) {
     return([0,\@unhandled]);
   }
   my $t = new Net::Telnet(
@@ -1870,7 +1869,7 @@ sub snmpcfg {
   my $pp  = ($value =~ /^enable$/i) ? "des" : "none";
  
   my $cmd= "users -$id -ap sha -at write -ppw $pass -pp $pp -T system:mm[1]";
-  my @data = $t->cmd($cmd);
+  @data = $t->cmd($cmd);
 
   if (grep(/OK/i,@data)) {
     return([0,"SNMP $value: OK"]);
