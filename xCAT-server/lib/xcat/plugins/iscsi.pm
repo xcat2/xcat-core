@@ -1,4 +1,5 @@
 package xCAT_plugin::iscsi;
+use strict;
 use xCAT::Table;
 use Socket;
 use File::Path;
@@ -26,7 +27,7 @@ sub preprocess_request {
    my $callback = shift;
    my @requests = ();
    my %iscsiserverhash;
-   if ($req->{_xcatdest}) { return [$req]; }
+   if ($request->{_xcatdest}) { return [$request]; }
    my $iscsitab = xCAT::Table->new('iscsi');
    foreach my $node (@{$request->{node}}) {
       my $tent = $iscsitab->getNodeAttribs($node,['server']);
