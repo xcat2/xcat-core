@@ -847,25 +847,34 @@ sub nodels
 
                 #print Dumper($tables{$tab});
                 my $node;
+                my %labels;
+                foreach (@{$tables{$tab}})
+                {
+                    push @cols, $_->[0];
+                    $labels{$_->[0]} = $_->[1];
+                }
+                my $removenodecol=1;
+                if (grep /^node$/,@cols) {
+                    $removenodecol=0;
+                }
+                my $rechash=$tabh->getNodesAttribs($nodes,\@cols);
                 foreach $node (@$nodes)
                 {
                     my @cols;
-                    my %labels;
-                    foreach (@{$tables{$tab}})
-                    {
-                        push @cols, $_->[0];
-                        $labels{$_->[0]} = $_->[1];
-                    }
-                    my $rec = $tabh->getNodeAttribs($node, \@cols);
-                    foreach (keys %$rec)
-                    {
-                        my %datseg;
-                        unless ($terse > 0) {
-                            $datseg{data}->[0]->{desc}     = [$labels{$_}];
+                    my $recs = $rechash->{$node}; #$tabh->getNodeAttribs($node, \@cols);
+                    foreach my $rec (@$recs) {
+
+                        foreach (keys %$rec)
+                        {
+                          if ($_ eq "node" and $removenodecol) { next; }
+                         my %datseg;
+                         unless ($terse > 0) {
+                             $datseg{data}->[0]->{desc}     = [$labels{$_}];
+                         }
+                         $datseg{data}->[0]->{contents} = [$rec->{$_}];
+                         $datseg{name} = [$node]; #{}->{contents} = [$rec->{$_}];
+                         push @{$noderecs{$node}}, \%datseg;
                         }
-                        $datseg{data}->[0]->{contents} = [$rec->{$_}];
-                        $datseg{name} = [$node]; #{}->{contents} = [$rec->{$_}];
-                        push @{$noderecs{$node}}, \%datseg;
                     }
                 }
 
