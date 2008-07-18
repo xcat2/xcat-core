@@ -1,4 +1,5 @@
 package xCAT_plugin::mknb;
+use strict;
 use File::Temp qw(tempdir);
 use xCAT::Utils;
 use File::Path;

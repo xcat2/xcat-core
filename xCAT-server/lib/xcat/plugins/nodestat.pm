@@ -1,4 +1,6 @@
 package xCAT_plugin::nodestat;
+use strict;
+use warnings;
 
 use Socket;
 use IO::Handle;
@@ -78,7 +80,7 @@ sub preprocess_request
 
     # find service nodes for requested nodes
     # build an individual request for each service node
-    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+    my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
 
     # build each request for each service node
     my @requests;

@@ -3,8 +3,9 @@
 #modified by jbjohnso@us.ibm.com
 #(C)IBM Corp
 
-$xcat_plugins{ipmi}="this";
 package xCAT_plugin::ipmi;
+use strict;
+use warnings "all";
 
 use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
@@ -14,8 +15,8 @@ my $tfactor = 0;
 my %bmc_comm_pids;
 
 require Exporter;
-@ISA = qw(Exporter);
-@EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
 	ipmiinit
 	ipmicmd
 );
@@ -33,7 +34,6 @@ sub handled_commands {
 }
 
     
-use strict;
 use Data::Dumper;
 use POSIX "WNOHANG";
 use IO::Handle;
