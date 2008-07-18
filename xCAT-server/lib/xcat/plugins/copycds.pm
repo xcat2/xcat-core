@@ -1,5 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::copycds;
+use strict;
+use warnings;
 use Storable qw(dclone);
 use xCAT::Table;
 use Data::Dumper;
@@ -43,13 +45,14 @@ sub process_request {
     'a|arch=s' => \$arch
   );
   if ($arch and $arch =~ /i.86/) {
-    $arch = x86;
+    $arch = 'x86';
   }
   my @args = @ARGV; #copy ARGV
   unless ($#args >= 0) {
     $callback->({error=>"copycds needs at least one full path to ISO currently."});
     return;
   }
+  my $file;
   foreach (@args) {
     unless (/^\//) { #If not an absolute path, concatenate with client specified cwd
       s/^/$request->{cwd}->[0]\//;
@@ -97,7 +100,7 @@ sub process_request {
     $::CDMOUNTPATH="";
 
     chdir($existdir);
-    while (wait() > 0) { yield; } #Make sure all children exit before trying umount
+    while (wait() > 0) { yield(); } #Make sure all children exit before trying umount
     system("umount /mnt/xcat");
     unless ($identified) {
        $callback->({error=>["copycds could not identify the ISO supplied, you may wish to try -n <osver>"],errorcode=>[1]});
