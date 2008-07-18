@@ -20,6 +20,8 @@ my $omshell;
 my $statements;    #Hold custom statements to be slipped into host declarations
 my $callback;
 my $restartdhcp;
+my $nrhash;
+my $machash;
 
 sub handled_commands
 {
@@ -33,7 +35,7 @@ sub delnode
 
     my $mactab = xCAT::Table->new('mac');
     my $ent;
-    if ($mactab) { $ent = $mactab->getNodeAttribs($node, [qw(mac)]); }
+    if ($machash) { $ent = $machash->{$node}->[0]; }
     if ($ent and $ent->{mac})
     {
         my @macs = split(/\|/, $ent->{mac});
@@ -108,13 +110,12 @@ sub addnode
     #up the lease file the way we would want anyway.
     my $node = shift;
     my $ent;
-    my $nrtab             = xCAT::Table->new('noderes');
     my $lstatements       = $statements;
     my $guess_next_server = 0;
-    if ($nrtab)
+    if ($nrhash)
     {
         my $ent;
-        $ent = $nrtab->getNodeAttribs($node, ['tftpserver']);
+        $ent = $nrhash->{$node}->[0];
         if ($ent and $ent->{tftpserver})
         {
             $lstatements =
@@ -138,8 +139,7 @@ sub addnode
     {
         $guess_next_server = 1;
     }
-    my $mactab = xCAT::Table->new('mac');
-    unless ($mactab)
+    unless ($machash)
     {
         $callback->(
                    {
@@ -149,7 +149,7 @@ sub addnode
                    );
         return;
     }
-    $ent = $mactab->getNodeAttribs($node, [qw(mac)]);
+    $ent = $machash->{$node}->[0]; #tab->getNodeAttribs($node, [qw(mac)]);
     unless ($ent and $ent->{mac})
     {
         $callback->(
@@ -453,6 +453,10 @@ sub process_request
           . $ent->{username} . " \""
           . $ent->{password} . "\"\n";
         print $omshell "connect\n";
+        my $nrtab = xCAT::Table->new('noderes');
+        $nrhash = $nrtab->getNodesAttribs($req->{node}, ['tftpserver']);
+        my $mactab = xCAT::Table->new('mac');
+        $machash = $mactab->getNodesAttribs($req->{node},['mac']);
         foreach (@{$req->{node}})
         {
             if (grep /^-d$/, @{$req->{arg}})
