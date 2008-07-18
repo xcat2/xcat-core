@@ -4,7 +4,7 @@
 package xCAT::DSHContext;
 
 use locale;
-
+use strict;
 require xCAT::DSHCore;
 
 sub valid_context {

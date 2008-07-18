@@ -2,7 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::RSYNC;
-
+# cannot use strict
 use base xCAT::DSHRemoteShell;
 
 # Determine if OS is AIX or Linux

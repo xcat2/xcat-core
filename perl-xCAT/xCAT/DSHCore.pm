@@ -4,7 +4,7 @@
 package xCAT::DSHCore;
 
 use locale;
-
+use strict;
 use Socket;
 
 use xCAT::MsgUtils;
@@ -109,7 +109,7 @@ sub fork_no_output
 sub fork_output
 {
     my ($class, $fork_id, @command) = @_;
-
+no strict;
     my $pid;
     my %pipes = ();
 
@@ -152,6 +152,7 @@ sub fork_output
     }
 
     return ($pid, *$rout_fh, *$rerr_fh, *$wout_fh, *$werr_fh);
+use strict;
 }
 
 #---------------------------------------------------------------------------
@@ -186,14 +187,14 @@ sub fork_output
 
 sub ifconfig_inet
 {
-    @local_inet = ();
+    my @local_inet = ();
 
     if ($^O eq 'aix')
     {
         my @ip_address = ();
         my @output     = `/usr/sbin/ifconfig -a`;
 
-        foreach $line (@output)
+        foreach my $line (@output)
         {
             ($line =~ /inet ((\d{1,3}?\.){3}(\d){1,3})\s/o)
               && (push @local_inet, $1);
@@ -205,7 +206,7 @@ sub ifconfig_inet
         my @ip_address = ();
         my @output     = `/sbin/ifconfig -a`;
 
-        foreach $line (@output)
+        foreach my $line (@output)
         {
             ($line =~ /inet addr:((\d{1,3}?\.){3}(\d){1,3})\s/o)
               && (push @local_inet, $1);
@@ -317,7 +318,7 @@ sub pipe_handler
             my @output_files    = ();
             my @output_file_nos = ();
 
-            foreach $write_fh (@write_fhs)
+            foreach my $write_fh (@write_fhs)
             {
                 my $file_no = fileno($write_fh);
                 if (grep /$file_no/, @output_file_nos)
@@ -330,13 +331,13 @@ sub pipe_handler
 
             if (@output_files)
             {
-                foreach $output_file (@output_files)
+                foreach my $output_file (@output_files)
                 {
                     pop @write_fhs;
                     close $output_file
                       || print STDOUT
                       "dsh>  Error_file_closed $$target_properties{hostname} $output_file\n";
-                    my %rsp;
+                    my $rsp={};
                     $rsp->{data}->[0] =
                       "Error_file_closed $$target_properties{hostname $output_file}.\n";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -508,7 +509,7 @@ sub fping_hostnames
     my @output = `/usr/sbin/fping -B 1.0 -r 1 -t 50 -i 10 -p 50 @hostnames`;
 
     my @no_response = ();
-    foreach $line (@output)
+    foreach my $line (@output)
     {
         my ($hostname, $token, $status) = split ' ', $line;
         !(($token eq 'is') && ($status eq 'alive'))
@@ -558,7 +559,7 @@ sub ping_hostnames
     !$ping && return undef;
 
     my @no_response = ();
-    foreach $hostname (@hostnames)
+    foreach my $hostname (@hostnames)
     {
         (system("$ping -c 1 -w 1 $hostname > /dev/null 2>&1") != 0)
           && (push @no_response, $hostname);
@@ -606,10 +607,10 @@ sub resolve_hostnames
     my ($class, $options, $resolved_targets, $unresolved_targets,
         $context_targets, @target_list)
       = @_;
-
+    my @local_inet;
     scalar(@local_inet) || xCAT::DSHCore->ifconfig_inet;
 
-    foreach $context_user_target (@target_list)
+    foreach my $context_user_target (@target_list)
     {
         my ($context, $user_target) = split ':', $context_user_target;
         if (($context eq 'XCAT') && ($$options{'context'} eq 'DSH'))
@@ -617,7 +618,7 @@ sub resolve_hostnames
 
             # The XCAT context may not be specified for this node since DSH is the only
             # available context.
-            my %rsp;
+            my $rsp={};
             $rsp->{data}->[0] = "DSH is the only available context.\n";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             next;
@@ -722,7 +723,7 @@ sub pping_hostnames
       xCAT::Utils->runcmd("pping -H $hostname_list", -1);
 
     my @no_response = ();
-    foreach $line (@output)
+    foreach my $line (@output)
     {
         my ($hostname, $result) = split ':', $line;
         my ($token,    $status) = split ' ', $result;

@@ -6,7 +6,7 @@ package xCAT::DSHCLI;
 use File::Basename;
 
 use locale;
-
+#use strict;
 use File::Path;
 use POSIX;
 use Socket;
@@ -93,7 +93,7 @@ sub execute_dcp
 
     if (!scalar(%resolved_targets))
     {
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] = "No hosts in node list";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return ++$result;
@@ -110,7 +110,7 @@ sub execute_dcp
     #    )
     # )
     #{
-    #    my %rsp;
+    #    my $rsp ={};
     #    $rsp->{data}->[0] = " The DSH fanout value has exceeded the system file descriptor upper limit. Please either reduce the fanout value, or increase max file descriptor number by running ulimit.";
     #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
     #   return ++$result;
@@ -151,7 +151,7 @@ sub execute_dcp
         if ($fh_count == 0)
         {
             my @active_list = keys(%targets_active);
-            my %rsp;
+            my $rsp={};
             $rsp->{data}->[0] =
               " Timed out waiting for response from child processes for the following nodes.";
             $rsp->{data}->[1] = " @active_list";
@@ -189,7 +189,7 @@ sub execute_dcp
 
         my @targets_buffered_keys = sort keys(%targets_buffered);
 
-        foreach $user_target (@targets_buffered_keys)
+        foreach my $user_target (@targets_buffered_keys)
         {
             my $target_properties = $$resolved_targets{$user_target};
 
@@ -282,7 +282,7 @@ sub execute_dsh
 
     xCAT::DSHCLI->config_signals_dsh($options);
 
-    my %rsp;
+    my $rsp={};
     $rsp->{data}->[0] = "dsh>  Dsh_process_id $$";
     $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     $dsh_exec_state++;
@@ -290,7 +290,6 @@ sub execute_dsh
     my $result = xCAT::DSHCLI->config_dsh($options);
     $result && (return $result);
 
-    my %rsp;
     $rsp->{data}->[0] = "dsh>  Dsh_initialization_completed";
     $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     $dsh_exec_state++;
@@ -304,12 +303,12 @@ sub execute_dsh
                                   \%unresolved_targets, \%context_targets);
     my @canceled_targets = ();
     $dsh_target_status{'canceled'} = \@canceled_targets;
+    my $rsp={};
 
     if (scalar(%unresolved_targets))
     {
-        foreach $target (sort keys(%unresolved_targets))
+        foreach my $target (sort keys(%unresolved_targets))
         {
-            my %rsp;
             $rsp->{data}->[0] = "dsh>  Remote_command_cancelled $target";
             $$dsh_options{'monitor'}
               && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -318,7 +317,6 @@ sub execute_dsh
 
     if (!scalar(%resolved_targets))
     {
-        my %rsp;
         $rsp->{data}->[0] = " No hosts in node list";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return ++$result;
@@ -327,7 +325,6 @@ sub execute_dsh
 
     if ($$options{'verify'})
     {
-        my %rsp;
         $rsp->{data}->[0] = "dsh>  Dsh_verifying_hosts";
         $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         xCAT::DSHCLI->verify_targets($options, \%resolved_targets);
@@ -341,7 +338,6 @@ sub execute_dsh
     # )
     #)
     #{
-    #    my %rsp;
     #    $rsp->{data}->[0] = " The DSH fanout value has exceeded the system file descriptor upper limit. Please either reduce the fanout value, or increase max file descriptor number by running ulimit.";
     #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
     #   return ++$result;
@@ -396,16 +392,16 @@ sub execute_dsh
 sub _execute_dsh
 {
     my ($class, $options, $resolved_targets, $unresolved_targets,
-        $context_targets)
-      = @_;
+        $context_targets) = @_;
 
     my @output_files = ();
     !$$options{'silent'} && push @output_files, *STDOUT;
 
     my @error_files = ();
     !$$options{'silent'} && push @error_files, *STDERR;
-
-    my @targets_waiting = (sort keys(%$resolved_targets));
+    my @targets_waiting = ();
+    @targets_waiting = (sort keys(%$resolved_targets));
+    my @dsh_target_status = ();
     $dsh_target_status{'waiting'} = \@targets_waiting;
     my %targets_active = ();
     $dsh_target_status{'active'} = \%targets_active;
@@ -422,7 +418,8 @@ sub _execute_dsh
     my %forked_process = ();
     $dsh_forked_process = \%forked_process;
 
-    my %rsp;
+    my $rsp={};
+    my $result;
     $rsp->{data}->[0] = "dsh>  Dsh_remote_execution_started";
     $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     $dsh_exec_state++;
@@ -445,7 +442,6 @@ sub _execute_dsh
         if ($fh_count == 0)
         {
             my @active_list = keys(%targets_active);
-            my %rsp;
             $rsp->{data}->[0] =
               " Timed out waiting for response from child processes for the followint nodes. Terminating the child processes. ";
             $rsp->{data}->[1] = " @active_list";
@@ -513,7 +509,7 @@ sub _execute_dsh
 
         my @targets_buffered_keys = sort keys(%targets_buffered);
 
-        foreach $user_target (@targets_buffered_keys)
+        foreach my $user_target (@targets_buffered_keys)
         {
             my $target_properties = $$resolved_targets{$user_target};
 
@@ -548,16 +544,15 @@ sub _execute_dsh
 
             my $exit_code = $targets_buffered{$user_target}{'exit-code'};
             my $target_rc = $targets_buffered{$user_target}{'target-rc'};
+            my $rsp={};
 
             if ($exit_code != 0)
             {
 
-                my %rsp;
                 $rsp->{data}->[0] =
                   " $user_target remote Command return code = $exit_code.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
-                my %rsp;
                 $rsp->{data}->[0] = "dsh>  Remote_command_failed $user_target";
                 $$options{'monitor'}
                   && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -573,12 +568,10 @@ sub _execute_dsh
                 if ($target_rc != 0)
                 {
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       " $user_target remote Command return code = $$target_properties{'target-rc'}.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
@@ -592,11 +585,10 @@ sub _execute_dsh
                 elsif (!defined($target_rc) && !$dsh_cmd_background)
                 {
 
-                    my %rsp;
                     $rsp->{data}->[0] =
-                      " A return code for the command run on the host $isre_target was not received.";
+                      " A return code for the command run on the host $user_target was not received.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-                    my %rsp;
+                    my $rsp={};
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
@@ -609,7 +601,6 @@ sub _execute_dsh
 
                 else
                 {
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_successful $user_target";
                     $$options{'monitor'}
@@ -653,7 +644,7 @@ sub _execute_dsh
         scalar(@{$dsh_target_status{'canceled'}})
           && ($dsh_stats{'canceled-targets'} = $dsh_target_status{'canceled'});
     }
-    my %rsp;
+    my $rsp={};
     $rsp->{data}->[0] = "dsh>  Remote_command_execution_completed";
     $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
@@ -701,13 +692,14 @@ sub execute_dshservice
         }
     }
 
+    my $rsp={};
+    my $result;
     if ($$options{'query'})
     {
         xCAT::DSHCLI->config_default_context($options);
 
         if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
         {
-            my %rsp;
             $rsp->{data}->[0] = " Context: $$options{'context'} not valid.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
@@ -751,7 +743,7 @@ sub execute_dshservice
             foreach my $context (sort keys(%$dsh_defaults))
             {
                 my $context_defaults = $$dsh_defaults{$context};
-                foreach $key (sort keys(%$context_defaults))
+                foreach my $key (sort keys(%$context_defaults))
                 {
                     my $key_label = $key;
                     ($key eq 'RemoteShell')
@@ -774,7 +766,6 @@ sub execute_dshservice
         if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
         {
 
-            my %rsp;
             $rsp->{data}->[0] = " Context: $$options{'context'} not valid.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
@@ -786,7 +777,7 @@ sub execute_dshservice
         my @targets = (sort keys(%resolved_targets));
         push @targets, (sort keys(%unresolved_targets));
 
-        foreach $target (@targets)
+        foreach my $target (@targets)
         {
             print STDOUT "$target\n";
         }
@@ -952,7 +943,7 @@ sub fork_fanout_dcp
             }
         }
 
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] = " TRACE: Executing Command:@dcp_command";
         $dsh_trace
           && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
@@ -1089,10 +1080,10 @@ sub fork_fanout_dsh
 
             $rsh_config{'command'} = "$$options{'pre-command'}";
             my $tmp_env_file;
+            my $rsp={};
             if ($$options{'environment'})
             {
 
-                my %rsp;
                 $rsp->{data}->[0] = "TRACE: Environment option specified";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
                 my %env_rcp_config = ();
@@ -1125,7 +1116,6 @@ sub fork_fanout_dsh
                 my @env_rcp_command =
                   $rcp->remote_copy_command(\%env_rcp_config);
 
-                my %rsp;
                 $rsp->{data}->[0] =
                   "TRACE:Environment: Exporting File.@env_rcp_command ";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
@@ -1138,7 +1128,6 @@ sub fork_fanout_dsh
             if ($$options{'execute'})
             {
 
-                my %rsp;
                 $rsp->{data}->[0] = "TRACE: Execute option specified.";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
 
@@ -1175,7 +1164,6 @@ sub fork_fanout_dsh
                 my @exe_rcp_command =
                   $rcp->remote_copy_command(\%exe_rcp_config);
 
-                my %rsp;
                 $rsp->{data}->[0] =
                   "TRACE:Execute: Exporting File:@exe_rcp_command";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
@@ -1208,18 +1196,16 @@ sub fork_fanout_dsh
 
         my @process_info;
 
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] = "Command name: @dsh_command";
         $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
 
-        my %rsp;
         $rsp->{data}->[0] = "dsh>  Remote_command_started $user_target";
         $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
         @process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
         if ($process_info[0] == -2)
         {
-            my %rsp;
             $rsp->{data}->[0] =
               "$user_target could not execute this command $dsh_command[0] - $$options{'command'} ,  $! ";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -1230,7 +1216,6 @@ sub fork_fanout_dsh
         if ($process_info[0] == -4)
         {
 
-            my %rsp;
             $rsp->{data}->[0] = "Cannot redirect STDOUT, error= $!";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }
@@ -1238,7 +1223,6 @@ sub fork_fanout_dsh
         if ($process_info[0] == -5)
         {
 
-            my %rsp;
             $rsp->{data}->[0] = "Cannot redirect STDERR, error= $!";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }
@@ -1306,7 +1290,7 @@ sub buffer_output
       )
       = @_;
 
-    foreach $select_out_fh (@$select_out_fhs)
+    foreach my $select_out_fh (@$select_out_fhs)
     {
 
         my $user_target       = $$outfh_targets{$select_out_fh};
@@ -1346,7 +1330,7 @@ sub buffer_output
                 my $pid = waitpid($$forked_process{$user_target}[0], 0);
                 if ($pid == -1)
                 {    # no child waiting ignore
-                    my %rsp;
+                    my $rsp={};
                     $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.";
                     $$options{'monitor'}
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -1435,7 +1419,7 @@ sub buffer_error
       )
       = @_;
 
-    foreach $select_err_fh (@$select_err_fhs)
+    foreach my $select_err_fh (@$select_err_fhs)
     {
 
         my $user_target       = $$errfh_targets{$select_err_fh};
@@ -1474,7 +1458,7 @@ sub buffer_error
                 my $pid = waitpid($$forked_process{$user_target}[0], 0);
                 if ($pid == -1)
                 {    # no child waiting
-                    my %rsp;
+                    my $rsp={};
                     $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.";
                     $$options{'monitor'}
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -1561,7 +1545,7 @@ sub stream_output
       )
       = @_;
 
-    foreach $select_out_fh (@$select_out_fhs)
+    foreach my $select_out_fh (@$select_out_fhs)
     {
 
         my $user_target       = $$outfh_targets{$select_out_fh};
@@ -1590,13 +1574,13 @@ sub stream_output
             vec($$outfh_targets{'bitmap'}, fileno($output_fh), 1) = 0;
             delete $$outfh_targets{$user_target};
 
+            my $rsp={};
             if (++$$targets_active{$user_target} == 3)
             {
                 my $exit_code;
                 my $pid = waitpid($$forked_process{$user_target}[0], 0);
                 if ($pid == -1)
                 {    # no child waiting
-                    my %rsp;
                     $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.";
                     $$options{'monitor'}
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -1610,13 +1594,11 @@ sub stream_output
 
                 if ($exit_code != 0)
                 {
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "$user_target remote shell had error code: $exit_code";
                     !$$options{'silent'}
                       && (xCAT::MsgUtils->message("E", $rsp, $::CALLBACK));
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
@@ -1633,12 +1615,11 @@ sub stream_output
                     if ($target_rc != 0)
                     {
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           " $user_target remote Command had return code: $$target_properties{'target-rc'} ";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                        my %rsp;
+                        my $rsp={};
                         $rsp->{data}->[0] =
                           "dsh>  Remote_command_failed $user_target";
                         $$options{'monitor'}
@@ -1650,12 +1631,10 @@ sub stream_output
                     elsif (!defined($target_rc))
                     {
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           " $user_target a return code run on this host was not received. ";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           "dsh>  Remote_command_failed $user_target";
                         $$options{'monitor'}
@@ -1667,7 +1646,6 @@ sub stream_output
                     else
                     {
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           "dsh>  Remote_command_successful $user_target";
                         $$options{'monitor'}
@@ -1735,7 +1713,7 @@ sub stream_error
       )
       = @_;
 
-    foreach $select_err_fh (@$select_err_fhs)
+    foreach my $select_err_fh (@$select_err_fhs)
     {
 
         my $user_target       = $$errfh_targets{$select_err_fh};
@@ -1764,13 +1742,13 @@ sub stream_error
             vec($$errfh_targets{'bitmap'}, fileno($error_fh), 1) = 0;
             delete $$errfh_targets{$user_target};
 
+            my $rsp={};
             if (++$$targets_active{$user_target} == 3)
             {
                 my $exit_code;
                 my $pid = waitpid($$forked_process{$user_target}[0], 0);
                 if ($pid == -1)
                 {    # no child waiting
-                    my %rsp;
                     $rsp->{data}->[0] = "waitpid call PID=$pid. Ignore.";
                     $$options{'monitor'}
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -1784,13 +1762,11 @@ sub stream_error
 
                 if ($exit_code != 0)
                 {
-                    my %rsp;
                     $rsp->{data}->[0] =
                       " $user_target remote shell had exit code $exit_code.";
                     !$$options{'silent'}
                       && (xCAT::MsgUtils->message("E", $rsp, $::CALLBACK));
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
@@ -1807,12 +1783,10 @@ sub stream_error
                     if ($target_rc != 0)
                     {
 
-                        my %rsp;
-                        rsp->{data}->[0] =
+                        $rsp->{data}->[0] =
                           "$user_target remote command had return code $$target_properties{'target-rc'}";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           "dsh>  Remote_command_failed $user_target";
                         $$options{'monitor'}
@@ -1824,12 +1798,10 @@ sub stream_error
                     elsif (!defined($target_rc))
                     {
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           "A return code for the command run on $user_target was not received.";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           "dsh>  Remote_command_failed $user_target";
                         $$options{'monitor'}
@@ -1841,7 +1813,6 @@ sub stream_error
                     else
                     {
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           "dsh>  Remote_command_successful $user_target";
                         $$options{'monitor'}
@@ -1945,17 +1916,17 @@ sub config_dcp
     $dsh_trace && xCAT::DSHCLI->show_dsh_config($options);
 
     xCAT::DSHCLI->config_default_context($options);
+    my $rsp={};
 
     if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
     {
 
-        my %rsp;
         $rsp->{data}->[0] = "Invalid context specified:$$options{'context'}.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
     }
 
-    my %rsp;
+    my $rsp={};
     $rsp->{data}->[0] = "TRACE:Default context is $$options{'context'}.";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -1970,7 +1941,7 @@ sub config_dcp
         my %node_rcp        = ();
         my @remotecopy_list = split ',', $$options{'node-rcp'};
 
-        foreach $context_remotecopy (@remotecopy_list)
+        foreach my $context_remotecopy (@remotecopy_list)
         {
             my ($context, $remotecopy) = split ':', $context_remotecopy;
 
@@ -1979,7 +1950,7 @@ sub config_dcp
                 $remotecopy = $context;
                 scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
 
-                foreach $context (@dsh_valid_contexts)
+                foreach my $context (@dsh_valid_contexts)
                 {
                     !$node_rcp{$context}
                       && ($node_rcp{$context} = $remotecopy);
@@ -1997,14 +1968,13 @@ sub config_dcp
 
     $$options{'fanout'} = $$options{'fanout'} || $ENV{'DSH_FANOUT'} || 64;
 
-    my %rsp;
+    my $rsp={};
     $rsp->{data}->[0] = "TRACE:Fanout Value is $$options{'fanout'}.";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
     $$options{'timeout'} = $$options{'timeout'} || $ENV{'DSH_TIMEOUT'} || undef;
 
-    my %rsp;
     $rsp->{data}->[0] = "TRACE:Timeout Value is $$options{'timeout'}.";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -2039,7 +2009,7 @@ sub config_dcp
         my %node_options    = ();
         my @remoteopts_list = split ',', $$options{'node-options'};
 
-        foreach $context_remoteopts (@remoteopts_list)
+        foreach my $context_remoteopts (@remoteopts_list)
         {
             my ($context, $remoteopts) = split ':', $context_remoteopts;
 
@@ -2048,7 +2018,7 @@ sub config_dcp
                 $remoteopts = $context;
                 scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
 
-                foreach $context (@dsh_valid_contexts)
+                foreach my $context (@dsh_valid_contexts)
                 {
                     !$node_options{$context}
                       && ($node_options{$context} = $remoteopts);
@@ -2066,7 +2036,6 @@ sub config_dcp
 
     if ($$options{'pull'} && !(-d $$options{'target'}))
     {
-        my %rsp;
         $rsp->{data}->[0] =
           "Cannot copy to target $$options{'target'}. Directory does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -2125,7 +2094,7 @@ sub config_dsh
         scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
         push @{$dsh_stats{'valid-contexts'}}, @dsh_valid_contexts;
 
-        foreach $context (@dsh_valid_contexts)
+        foreach my $context (@dsh_valid_contexts)
         {
             $dsh_stats{'specified-targets'}{$context} = ();
             $dsh_stats{'specified-targets'}{$context}{'nodes'} = ();
@@ -2141,18 +2110,17 @@ sub config_dsh
 
     $dsh_trace && xCAT::DSHCLI->show_dsh_config;
 
+    my $rsp={};
     xCAT::DSHCLI->config_default_context($options);
     my $test = " $::CONTEXT_DIR$$options{'context'}.pm";
     if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
     {
 
-        my %rsp;
         $rsp->{data}->[0] = "Invalid context specified: $$options{'context'}";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
     }
 
-    my %rsp;
     $rsp->{data}->[0] = "TRACE:Default context is $$options{'context'}";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -2162,7 +2130,6 @@ sub config_dsh
           || $ENV{'DSH_REMOTE_CMD'}
           || undef);
 
-    my %rsp;
     $rsp->{data}->[0] = "TRACE:Node RSH is $$options{'node-rsh'}";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -2171,7 +2138,7 @@ sub config_dsh
 
     scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
 
-    foreach $context (@dsh_valid_contexts)
+    foreach my $context (@dsh_valid_contexts)
     {
         eval "require Context::$context";
         my $defaults = $context->context_defaults;
@@ -2188,7 +2155,7 @@ sub config_dsh
 
         my @remoteshell_list = split ',', $$options{'node-rsh'};
 
-        foreach $context_remoteshell (@remoteshell_list)
+        foreach my $context_remoteshell (@remoteshell_list)
         {
             my ($context, $remoteshell) = split ':', $context_remoteshell;
 
@@ -2213,7 +2180,6 @@ sub config_dsh
 
     if ($$options{'environment'} && (-z $$options{'environment'}))
     {
-        my %rsp;
         $rsp->{data}->[0] = "File: $$options{'environment'} is empty.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         $$options{'environment'} = undef;
@@ -2221,7 +2187,6 @@ sub config_dsh
 
     $$options{'fanout'} = $$options{'fanout'} || $ENV{'DSH_FANOUT'} || 64;
 
-    my %rsp;
     $rsp->{data}->[0] = "TRACE: Fanout value is $$options{'fanout'}.";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -2234,7 +2199,6 @@ sub config_dsh
             && ($$options{'syntax'} ne 'ksh'))
       )
     {
-        my %rsp;
         $rsp->{data}->[0] =
           "Incorrect argument \"$$options{'syntax'}\" specified on -S flag. ";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -2256,7 +2220,6 @@ sub config_dsh
 
     $$options{'timeout'} = $$options{'timeout'} || $ENV{'DSH_TIMEOUT'} || undef;
 
-    my %rsp;
     $rsp->{data}->[0] = "TRACE: Timeout value is $$options{'timeout'} ";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -2272,7 +2235,7 @@ sub config_dsh
         my @settings = ();
         !($$options{'syntax'} eq 'csh') && (push @settings, $env_set);
 
-        foreach $line (@output)
+        foreach my $line (@output)
         {
             $line =~ s/=/$env_assign/;
 
@@ -2352,7 +2315,7 @@ sub config_dsh
         my %node_options    = ();
         my @remoteopts_list = split ',', $$options{'node-options'};
 
-        foreach $context_remoteopts (@remoteopts_list)
+        foreach my $context_remoteopts (@remoteopts_list)
         {
             my ($context, $remoteopts) = split ':', $context_remoteopts;
 
@@ -2361,7 +2324,7 @@ sub config_dsh
                 $remoteopts = $context;
                 scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
 
-                foreach $context (@dsh_valid_contexts)
+                foreach my $context (@dsh_valid_contexts)
                 {
                     !$node_options{$context}
                       && ($node_options{$context} = $remoteopts);
@@ -2385,7 +2348,6 @@ sub config_dsh
         if (!(-e $exe_command[0]))
         {
 
-            my %rsp;
             $rsp->{data}->[0] = "File $exe_command[0] does not exist";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
@@ -2394,7 +2356,6 @@ sub config_dsh
         if (-z $exe_command[0])
         {
 
-            my %rsp;
             $rsp->{data}->[0] = "File $exe_command[0] is empty.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
@@ -2403,7 +2364,6 @@ sub config_dsh
         if (!(-x $exe_command[0]))
         {
 
-            my %rsp;
             $rsp->{data}->[0] = "File $exe_command[0] is not executable.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
@@ -2466,7 +2426,7 @@ sub config_signals_dsh
 
     my @ignore_signals = split /,/, $$options{'ignore-signal'};
 
-    foreach $signal (@ignore_signals)
+    foreach my $signal (@ignore_signals)
     {
 
         if (   ($signal ne 'STOP')
@@ -2520,9 +2480,9 @@ sub handle_signal_dsh
     my $DSH_STATE_REMOTE_EXEC_STARTED     = 4;
     my $DSH_STATE_REMOTE_EXEC_COMPLETE    = 5;
 
+    my $rsp={};
     if ($dsh_exec_state == $DSH_STATE_BEGIN)
     {
-        my %rsp;
         $rsp->{data}->[0] =
           "Command execution ended prematurely due to a previous error or stop request from the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -2531,7 +2491,6 @@ sub handle_signal_dsh
 
     elsif ($dsh_exec_state == $DSH_STATE_INIT_STARTED)
     {
-        my %rsp;
         $rsp->{data}->[0] =
           "Command execution ended prematurely due to a previous error or stop request from the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -2549,12 +2508,11 @@ sub handle_signal_dsh
 
         if (@{$dsh_target_status{'waiting'}})
         {
-            foreach $user_target (@{$dsh_target_status{'waiting'}})
+            foreach my $user_target (@{$dsh_target_status{'waiting'}})
             {
                 if ($fatal_error)
                 {
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -2563,7 +2521,6 @@ sub handle_signal_dsh
                 else
                 {
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_cancelled $user_target";
                     $$dsh_options{'monitor'}
@@ -2574,7 +2531,6 @@ sub handle_signal_dsh
             }
         }
 
-        my %rsp;
         $rsp->{data}->[0] =
           "Running the command on $user_target has been cancelled due to unrecoverable error or stop request by user.\nNo commands were executed on any host.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -2588,7 +2544,6 @@ sub handle_signal_dsh
             $dsh_stats{'canceled-targets'}   = $dsh_target_status{'canceled'};
         }
 
-        my %rsp;
         $rsp->{data}->[0] = "dsh>  Dsh_remote_execution_completed.";
         $$dsh_options{'monitor'}
           && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -2607,12 +2562,11 @@ sub handle_signal_dsh
 
         if (@{$dsh_target_status{'waiting'}})
         {
-            foreach $user_target (@{$dsh_target_status{'waiting'}})
+            foreach my $user_target (@{$dsh_target_status{'waiting'}})
             {
                 if ($fatal_error)
                 {
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "$user_target: running of the command on this host has been cancelled due to unrecoverable error.\n The command was never sent to the host.";
                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -2621,12 +2575,10 @@ sub handle_signal_dsh
                 else
                 {
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "$user_target: running of the command on this host has been cancelled due to unrecoverable error or stop request by user.\n The command was never sent to the host.";
                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_cancelled $user_target";
                     $$dsh_options{'monitor'}
@@ -2639,7 +2591,6 @@ sub handle_signal_dsh
 
         @{$dsh_target_status{'waiting'}} = ();
 
-        my %rsp;
         $rsp->{data}->[0] =
           "Command execution ended prematurely due to a previous unrecoverable error or stop by user.\n No commands were executed on any host.";
 
@@ -2652,7 +2603,6 @@ sub handle_signal_dsh
             $dsh_stats{'canceled-targets'}   = $dsh_target_status{'canceled'};
         }
 
-        my %rsp;
         $rsp->{data}->[0] = "dsh>  Dsh_remote_execution_completed";
         $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
@@ -2672,7 +2622,6 @@ sub handle_signal_dsh
 
         if (@targets_active_list)
         {
-            my %rsp;
             $rsp->{data}->[0] =
               "Caught SIG$signal - terminating the child processes.";
             !$$dsh_options{'stats'}
@@ -2689,14 +2638,13 @@ sub handle_signal_dsh
 
             $SIG{$signal} = 'DEFAULT';
 
-            foreach $user_target (@targets_active_list)
+            foreach my $user_target (@targets_active_list)
             {
                 if ($$dsh_options{'stats'})
                 {
                     if ($fatal_error)
                     {
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           "Running the command on $user_target has been interrupted due to unrecoverable error.  The command may not have completed successfully.";
                         xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
@@ -2705,7 +2653,6 @@ sub handle_signal_dsh
                     else
                     {
 
-                        my %rsp;
                         $rsp->{data}->[0] =
                           "Running the command on $user_target has been interrupted due to unrecoverable error or stop request by the user.  The command may not have completed successfully.";
                         xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
@@ -2723,12 +2670,11 @@ sub handle_signal_dsh
 
         if (@{$dsh_target_status{'waiting'}})
         {
-            foreach $user_target (@{$dsh_target_status{'waiting'}})
+            foreach my $user_target (@{$dsh_target_status{'waiting'}})
             {
                 if ($fatal_error)
                 {
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
                     xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
@@ -2737,12 +2683,10 @@ sub handle_signal_dsh
                 else
                 {
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "Running the command on $user_target has been cancelled due to unrecoverable error or stop request by the user.  The command was never sent to the host.";
                     xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
 
-                    my %rsp;
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_cancelled $user_target";
                     $$dsh_options{'monitor'}
@@ -2755,7 +2699,6 @@ sub handle_signal_dsh
 
         @{$dsh_target_status{'waiting'}} = ();
 
-        my %rsp;
         $rsp->{data}->[0] =
           "Command execution ended prematurely due to a previous unrecoverable error or stop request by the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -2780,7 +2723,6 @@ sub handle_signal_dsh
             $dsh_stats{'end-time'}   = localtime();
         }
 
-        my %rsp;
         $rsp->{data}->[0] =
           "Running the command  stopped due to unrecoverable error or stop request by the user.";
         xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
@@ -2790,7 +2732,6 @@ sub handle_signal_dsh
 
     else
     {
-        my %rsp;
         $rsp->{data}->[0] =
           "Running the command  stopped due to unrecoverable error or stop request by the user.";
         xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
@@ -2880,7 +2821,7 @@ sub resolve_nodes
     my @node_list = ();
     @node_list = split ',' , $$options{'nodes'};
 
-    foreach $context_node (@node_list)
+    foreach my $context_node (@node_list)
     {
         my ($context, $node) = split ':', $context_node;
         !$node
@@ -2942,20 +2883,20 @@ sub _resolve_nodes
     xCAT::DSHCore->removeExclude($resolved_targets, \%unresolved_nodes,
                                  $context_targets);
 
-    foreach $node (keys(%unresolved_nodes))
+    foreach my $node (keys(%unresolved_nodes))
     {
         my $node_properties = $unresolved_nodes{$node};
 
         $$node_properties{'type'} = 'node';
         $$unresolved_targets{$node} = $node_properties;
 
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] =
           "The specified node $node is not defined to the cluster.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
     }
 
-    foreach $user_node (keys(%resolved_nodes))
+    foreach my $user_node (keys(%resolved_nodes))
     {
         my $node_properties = $resolved_nodes{$user_node};
 
@@ -3001,16 +2942,17 @@ sub _resolve_nodes
 sub verify_targets
 {
     my ($class, $options, $resolved_targets) = @_;
-    foreach $user_target (keys(%$resolved_targets))
+    my @ping_list;
+    foreach my $user_target (keys(%$resolved_targets))
     {
         my $context  = $$resolved_targets{$user_target}{'context'};
         my $hostname = $$resolved_targets{$user_target}{'hostname'};
         eval "require Context::$context";
         my $mode = $context->verify_mode($hostname);
+        my $rsp={};
         if (($mode eq "Managed") && ($context->verify_target($hostname) == 1))
         {
             my $target = $context->verify_target();
-            my %rsp;
             $rsp->{data}->[0] = "TRACE:Verifying $hostname with $target.";
             $dsh_trace
               && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -3020,7 +2962,6 @@ sub verify_targets
             if ($context->verify_target($hostname) == 1)
             {
                 my $target = $context->verify_target();
-                my %rsp;
                 $rsp->{data}->[0] = "TRACE:Verifying $hostname with $target.";
                 $dsh_trace
                   && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -3028,12 +2969,10 @@ sub verify_targets
             }
             elsif ($context->verify_target($hostname) == 0)
             {
-                my %rsp;
                 $rsp->{data}->[0] =
                   "$user_target is not responding. No command will be issued to this host.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                my %rsp;
                 $rsp->{data}->[0] =
                   "dsh>  Remote_command_cancelled $user_target";
                 $$dsh_options{'monitor'}
@@ -3057,24 +2996,22 @@ sub verify_targets
     {
 
         my @no_response = ();
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] =
           "TRACE:Verifying remaining targets with pping command.";
         $dsh_trace && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         @no_response = xCAT::DSHCore->pping_hostnames(@ping_list);
 
-        foreach $hostname (@no_response)
+        foreach my $hostname (@no_response)
         {
             my @targets = grep /$hostname/, keys(%$resolved_targets);
 
-            foreach $user_target (@targets)
+            foreach my $user_target (@targets)
             {
-                my %rsp;
                 $rsp->{data}->[0] =
                   "$user_target is not responding. No command will be issued to this host.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                my %rsp;
                 $rsp->{data}->[0] =
                   "dsh>  Remote_command_cancelled $user_target";
                 $$dsh_options{'monitor'}
@@ -3124,7 +3061,7 @@ sub get_available_contexts
 
     chomp(@contexts);
 
-    foreach $context (@contexts)
+    foreach my $context (@contexts)
     {
         $context =~ s/\.pm$//;
 
@@ -3163,7 +3100,7 @@ sub get_dsh_config
     scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
 
     my %dsh_config = ();
-    foreach $context (@dsh_valid_contexts)
+    foreach my $context (@dsh_valid_contexts)
     {
         $dsh_config{$context} = $context->context_properties;
     }
@@ -3202,7 +3139,7 @@ sub get_dsh_defaults
     scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
 
     my %dsh_defaults = ();
-    foreach $context (@dsh_valid_contexts)
+    foreach my $context (@dsh_valid_contexts)
     {
         $dsh_defaults{$context} = $context->context_defaults;
     }
@@ -3244,7 +3181,7 @@ sub get_valid_contexts
     scalar(@dsh_available_contexts) || xCAT::DSHCLI->get_available_contexts;
     @dsh_valid_contexts = ();
 
-    foreach $context (@dsh_available_contexts)
+    foreach my $context (@dsh_available_contexts)
     {
         eval "require Context::$context";
         ($context->valid_context) && (push @dsh_valid_contexts, $context);
@@ -3363,7 +3300,7 @@ sub check_valid_options
         }
         if (@invalid_opts)
         {
-            my %rsp;
+            my $rsp={};
             my $badopts = join(',', @invalid_opts);
             $rsp->{data}->[0] = "Invalid options: $badopts";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -3403,7 +3340,8 @@ sub ignoreEnv
     my ($class, $envList) = @_;
     my @env_not_valid = ();
     my @env_to_save = split ',', $envList;
-    for my $env (@env_to_save)
+    my $env;
+    for $env (@env_to_save)
     {
         if (!grep /$env/, @dsh_valid_env)
         {
@@ -3413,12 +3351,12 @@ sub ignoreEnv
     if (scalar @env_not_valid > 0)
     {
         $env = join ",", @env_not_valid;
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] = "Invalid Environment Variable: $env";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         exit 1;
     }
-    for my $env (@dsh_valid_env)
+    for $env (@dsh_valid_env)
     {
         if (!grep /$env/, @env_to_save)
         {
@@ -3480,7 +3418,7 @@ sub isFdNumExceed
 
     if ($fdnum !~ /\s*\d+\s*/)                 #this should never happen
     {
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] = "Unsupport ulimit return code!";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         exit 1;
@@ -3553,7 +3491,7 @@ sub usage_dsh
 ###  end usage mesage
     if ($::CALLBACK)
     {
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] = $usagemsg;
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
@@ -3669,6 +3607,7 @@ sub parse_and_run_dsh
         exit 0;
     }
 
+    my $rsp={};
     if ($options{'show-config'})
     {
         xCAT::DSHCLI->show_dsh_config;
@@ -3677,7 +3616,6 @@ sub parse_and_run_dsh
     if ($options{'node-rsh'}
         && (!-f $options{'node-rsh'} || !-x $options{'node-rsh'}))
     {
-        my %rsp;
         $rsp->{data}->[0] =
           "Remote command: $options{'node-rcp'} does not exist or is not executable";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -3707,7 +3645,6 @@ sub parse_and_run_dsh
     }
     if (!(@ARGV))
     {    #  no args , an error
-        my %rsp;
         $rsp->{data}->[0] = "No command argument provided";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
@@ -3718,7 +3655,6 @@ sub parse_and_run_dsh
     my @results = xCAT::DSHCLI->runDsh_api(\%options, 0);
     if ($::RUNCMD_RC)
     {    # error from dsh
-        my %rsp;
         $rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
@@ -3767,7 +3703,7 @@ sub usage_dcp
 
     if ($::CALLBACK)
     {
-        my %rsp;
+        my $rsp={};
         $rsp->{data}->[0] = $usagemsg;
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
@@ -3860,6 +3796,7 @@ sub parse_and_run_dcp
         exit(1);
     }
 
+    my $rsp={};
     if ($options{'help'})
     {
         usage_dcp;
@@ -3873,7 +3810,6 @@ sub parse_and_run_dcp
 
     if ($options{'version'})
     {
-        my %rsp;
         my $version = xCAT::Utils->Version();
         $rsp->{data}->[0] = "$version";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -3892,7 +3828,6 @@ sub parse_and_run_dcp
     if ($options{'node-rcp'}
         && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
     {
-        my %rsp;
         $rsp->{data}->[0] =
           "Remote command: $options{'node-rcp'} does not exist or is not executable";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
@@ -3907,11 +3842,8 @@ sub parse_and_run_dcp
     {
         if (@ARGV < 1)
         {
-            my %rsp;
             $rsp->{data}->[0] = "Missing file arguments";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            $rsp->{data}->[0] = $usagemsg;
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             exit;
         }
 
@@ -3919,11 +3851,8 @@ sub parse_and_run_dcp
         {
             if ($options{'pull'})
             {
-                my %rsp;
                 $rsp->{data}->[0] = "Missing target_path";
-                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-                $rsp->{data}->[0] = $usagemsg;
-                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
                 exit;
             }
 
@@ -3936,7 +3865,6 @@ sub parse_and_run_dcp
 
         elsif ($options{'pull'} && (@ARGV > 2))
         {
-            my %rsp;
             $rsp->{data}->[0] =
               "Cannot pull more than one file from targets.";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
@@ -3959,7 +3887,6 @@ sub parse_and_run_dcp
     my @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
     if ($::RUNCMD_RC)
     {    # error from dcp
-        my %rsp;
         $rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
