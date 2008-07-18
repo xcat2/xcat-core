@@ -8,6 +8,8 @@
 # dnsallowq
 # mucking with sysconfig
 package xCAT_plugin::bind;
+use strict;
+#use warnings;
 use Sys::Hostname;
 use Cwd;
 use xCAT::Table;
@@ -58,9 +60,48 @@ my $Version = 8;
 my $request;
 my $callback;
 my @forwarders;
+
+#Declarations to alleviate use strict, since the code doesn't seem to be structured well enough to avoid it for these cases
+my $Bootsecsaveaddr;
+my $Bootsecaddr;
+my @Networks;
+my @bootmsgs_v4;
+my @bootmsgs_v8;
+my @elimpats;
+my @cpats;
+my @makesoa;
+my $Domainfile;
+my %cpatrel;
+my @Servers;
+my $Serial;
+my $Refresh;
+my @Mx;
+my $Expire;
+my %Hosts;
+my %Comments;
+my $Domainpattern;
+my @Netpatterns;
+my $Ttl;
+my $Retry;
+my %Cnames;
+my %CommentRRs;
+my $soa_warned;
+my %Aliases;
+my %Netfiles;
+
 sub process_request {
     $request = shift;
     $callback = shift;
+    %Netfiles=();
+    %Aliases=();
+    $soa_warned=0;
+    my $canonical;
+    my $aliases;
+    %Comments=();
+    %CommentRRs=();
+    %Cnames=();
+    %Hosts=();
+    @Netpatterns=();
     $DBDir = "/var/named/";
     unless (-d $DBDir) {
         $DBDir = "/var/lib/named/";
@@ -101,7 +142,6 @@ sub process_request {
         }
     }
 
-
 push(@bootmsgs_v4, "primary\t0.0.127.IN-ADDR.ARPA db.127.0.0\n");
 push(@bootmsgs_v8,
      qq|zone "0.0.127.IN-ADDR.ARPA" in {\n\ttype master;\n\tfile "db.127.0.0";\n\tnotify no;\n};\n\n|);
@@ -111,6 +151,10 @@ push(@bootmsgs_v8,
 
 open(HOSTS, $Hostfile) || die "can not open $Hostfile";
 
+my $data;
+my $comment;
+my $addr;
+my $names;
 LINE: while(<HOSTS>){
     next if /^[ \t]*#/;  # skip comment lines
     next if /^$/;  	 # skip empty lines
@@ -131,6 +175,7 @@ LINE: while(<HOSTS>){
     }
 
     # Match -e args
+    my $netpat;
     foreach $netpat (@elimpats){
 	    next LINE if (/[.\s]$netpat/);
     }
@@ -150,7 +195,7 @@ LINE: while(<HOSTS>){
     }
 
     # Check that the address is in the address list.
-    $match = 'none';
+    my $match = 'none';
     foreach $netpat (@Netpatterns){
 	$match = $netpat, last if ($addr =~ /^$netpat\./ or $addr =~ /^$netpat$/);
     }
@@ -164,7 +209,7 @@ LINE: while(<HOSTS>){
     $Comments{"$canonical-$addr"} = $comment;
 
     # Print PTR records
-    $file = $Netfiles{$match};
+    my $file = $Netfiles{$match};
     printf $file "%-30s\tIN  PTR   %s.%s.\n",
 	   &REVERSE($addr), $canonical, $Domain;
 }
@@ -177,9 +222,9 @@ LINE: while(<HOSTS>){
 # with the address, not the canonical name.
 #
 foreach $canonical (keys %Hosts){
-    @addrs = split(' ', $Hosts{$canonical});
-    $numaddrs = $#addrs + 1;
-    foreach $addr (@addrs) {
+    my @addrs = split(' ', $Hosts{$canonical});
+    my $numaddrs = $#addrs + 1;
+    foreach my $addr (@addrs) {
 	#
 	# Print address record for canonical name.
 	#
@@ -194,8 +239,9 @@ foreach $canonical (keys %Hosts){
 	# record for each alias.  If this is a single address
 	# host, print a cname record.
 	#
+    my $alias;
 	if ($doaliases) {
-	    @aliases = split(' ', $Aliases{$addr});
+	    my @aliases = split(' ', $Aliases{$addr});
 	    foreach $alias (@aliases){
 		#
 		# Skip over the alias if the alias and canonical
@@ -208,16 +254,16 @@ foreach $canonical (keys %Hosts){
 		    next;
 		}
 
-                $aliasforallnames = 0;
+                my $aliasforallnames = 0;
 		if($numaddrs > 1){
                     #
                     # If alias exists for *all* addresses of this host, we
                     # can use a CNAME instead of an address record.
                     #
-                    $aliasforallnames = 1;
-                    $xalias = $alias . " ";  # every alias ends with blank
-                    @xaddrs = split(' ', $Hosts{$canonical});
-                    foreach $xaddr (@xaddrs) {
+                    my $aliasforallnames = 1;
+                    my $xalias = $alias . " ";  # every alias ends with blank
+                    my @xaddrs = split(' ', $Hosts{$canonical});
+                    foreach my $xaddr (@xaddrs) {
                         if(!($Aliases{$xaddr} =~ /\b$xalias/)) {
                             $aliasforallnames = 0;
                         }
@@ -246,8 +292,9 @@ foreach $canonical (keys %Hosts){
                     # name from the alias list so we don't encounter
                     # it again for the next address of this host.
                     #
-                    $xalias = $alias . " ";  # every alias ends with blank
-                    @xaddrs = split(' ', $Hosts{$canonical});
+                    my $xalias = $alias . " ";  # every alias ends with blank
+                    my @xaddrs = split(' ', $Hosts{$canonical});
+                    my $xaddr;
                     foreach $xaddr (@xaddrs) {
                         $Aliases{$xaddr} =~ s/\b$xalias//;
                     }
@@ -270,6 +317,8 @@ foreach $canonical (keys %Hosts){
 if (-r "spcl.$Domainfile") {
     print DOMAIN "\$INCLUDE spcl.$Domainfile\n";
 }
+my $file;
+my $n;
 foreach $n (@Networks) {
     if (-r "spcl.$n") {
 	$file = "DB.$n";
@@ -288,20 +337,21 @@ foreach $n (@Networks) {
 # are found in the comment file (-C).
 #
 sub DO_COMMENTS {
-    local($canonical, @addrs) = @_;
-    local(*F, @c, $c, $a, $comments);
+    my ($canonical, @addrs) = @_;
+    my (@c, $c, $a, $comments);
 
     if (!$Commentfileread) {
 	open(F, $Commentfile) || die "Unable to open file $Commentfile: $!";
 	$Commentfileread++;
 	while (<F>) {
 	    chop;
-	    ($key, $c) = split(':', $_, 2);
+	    my ($key, $c) = split(':', $_, 2);
 	    $CommentRRs{$key} = $c;
 	}
 	close(F);
     }
 
+    my $key;
     foreach $a (@addrs) {
 	$key = "$canonical-$a";
 	$comments .= " $Comments{$key}";
@@ -320,8 +370,8 @@ sub DO_COMMENTS {
 # Generate MX record data
 #
 sub MX {
-    local($canonical, @addrs) = @_;
-    local($first, $a, $key, $comments);
+    my ($canonical, @addrs) = @_;
+    my ($first, $a, $key, $comments);
 
     if($Cnames{$canonical}){
 	syslog "local1|err","$canonical - can't create MX record because CNAME exists for name.\n";
@@ -363,8 +413,8 @@ sub MX {
 # Generate TXT record data
 #
 sub TXT {
-    local($canonical, @addrs) = @_;
-    local($a, $key, $comments);
+    my ($canonical, @addrs) = @_;
+    my ($a, $key, $comments);
 
     foreach $a (@addrs) {
 	$key = "$canonical-$a";
@@ -384,14 +434,15 @@ sub TXT {
 # Create the SOA record at the beginning of the file
 #
 sub MAKE_SOA {
-    local($fname, $file) = @_;
-    local($s);
+    my ($fname, $file) = @_;
+    my ($s);
 
     if ( -s $fname) {
 	open($file, "$fname") || die "Unable to open $fname: $!";
 	$_ = <$file>;
 	chop;
 	if (/\($/) {
+        my $junk;
 	    if (! $soa_warned) {
 		syslog "local1|err","Converting SOA format to new style.\n";
 		$soa_warned++;
@@ -418,15 +469,15 @@ sub MAKE_SOA {
 		if ($ForceSerial > 0) {
 		    $Serial = $ForceSerial;
 		} else {
-		    $Serial = ++@_[6];
+		    $Serial = ++$_[6];
                     if($UseDateInSerial && ($DateSerial > $Serial)){
                         $Serial = $DateSerial;
                     }
 		}
-		$Refresh = @_[7];
-		$Retry = @_[8];
-		$Expire = @_[9];
-		$Ttl = @_[10];
+		$Refresh = $_[7];
+		$Retry = $_[8];
+		$Expire = $_[9];
+		$Ttl = $_[10];
 	    } else {
 		syslog "local1|err","Improper format SOA in $fname.\n";
 		syslog "local1|err","I give up ... sorry.\n";
@@ -481,7 +532,7 @@ sub REVERSE {
 # Establish what we will be using for SOA records
 #
 sub FIXUP {
-    local($s);
+    my ($s);
 
     if ($Host =~ /\./) {
 	$RespHost = "$Host.";
@@ -505,7 +556,7 @@ sub FIXUP {
     $RespUser =~ s/\.\././g;			# Strip any ".."'s to "."
 
     # Clean up nameservers
-    if (!defined(@Servers)) {
+    if (!@Servers) {
 	syslog "local1|err","No -s option specified.  Assuming \"-s $Host.$Domain\"\n";
 	push(@Servers, "$Host.$Domain.");
     } else {
@@ -540,7 +591,7 @@ sub FIXUP {
 
     if($Version == 4) {
         print BOOT "\ndirectory $DBDir\n";
-        foreach $line (@bootmsgs_v4) {
+        foreach my $line (@bootmsgs_v4) {
 	    print BOOT $line;
         }
         print BOOT "cache\t. db.cache\n";
@@ -571,7 +622,7 @@ sub FIXUP {
             close(OPTIONS);
         }
         print BOOT qq|};\n\n|;
-        foreach $line (@bootmsgs_v8) {
+        foreach my $line (@bootmsgs_v8) {
 	    print BOOT $line;
         }
         unless (@forwarders) {
@@ -583,13 +634,15 @@ sub FIXUP {
     }
 
     # Go ahead and start creating files and making SOA's
-    foreach $i (@makesoa) {
+    my $x1;
+    my $x2;
+    foreach my $i (@makesoa) {
 	($x1, $x2) = split(' ', $i);
 	&MAKE_SOA($x1, $x2);
     }
     printf DOMAIN "%-20s IN  A     127.0.0.1\n", "localhost";
 
-    $file = "DB.127.0.0.1";
+    my $file = "DB.127.0.0.1";
     &MAKE_SOA($DBDir."db.127.0.0", $file);
     my $nothing;
     open($nothing,">>",$DBDir."db.cache");
@@ -600,10 +653,10 @@ sub FIXUP {
 
 
 sub PARSEARGS {
-    local(@args) = @_;
-    local($i, $net, $subnetmask, $option, $tmp1);
-    local(*F, $file, @newargs, @targs);
-    local($sec,$min,$hour,$mday,$mon,$year,$rest);
+    my (@args) = @_;
+    my ($i, $net, $subnetmask, $option, $tmp1);
+    my ($file, @newargs, @targs);
+    my ($sec,$min,$hour,$mday,$mon,$year,$rest);
     ($sec,$min,$hour,$mday,$mon,$year,$rest) = localtime(time);
     $DateSerial = ($mday * 100) +
                   (($mon + 1) * 10000) +
@@ -689,7 +742,7 @@ sub PARSEARGS {
 	    push(@Mx, $args[$i]);
 
 	} elsif ($option eq "-c"){
-	    $tmp1 = $args[++$i];
+	    my $tmp1 = $args[++$i];
 	    if ($tmp1 !~ /\./) {
 		$tmp1 .= ".$Domain";
 	    }
@@ -698,7 +751,7 @@ sub PARSEARGS {
 		syslog "local1|err","I give up ... sorry.\n";
 		exit(1);
             }
-	    $tmp2 = $tmp1;
+	    my $tmp2 = $tmp1;
 	    $tmp2 =~ s/\./\\./g;
 	    $cpatrel{$tmp2} = $tmp1;
 	    push(@cpats, $tmp2);
@@ -792,7 +845,7 @@ sub PARSEARGS {
 	$i++;
     }
 
-    if (!defined(@Networks) || $Domain eq "") {
+    if (!@Networks || $Domain eq "") {
 	syslog "local1|err","Must specify one -d and at least one -n.\n";
 	syslog "local1|err","I give up ... sorry.\n";
 	exit(1);
@@ -801,7 +854,7 @@ sub PARSEARGS {
 
 
 sub BUILDNET {
-    local($net) = @_;
+    my ($net) = @_;
 
     push(@Networks, $net);
     #
@@ -809,7 +862,7 @@ sub BUILDNET {
     # The dots must be changed to \. so they
     # aren't used as wildcards.
     #
-    $netpat = $net;
+    my $netpat = $net;
     $netpat =~ s/\./\\./g;
     push(@Netpatterns, $netpat);
 
@@ -817,12 +870,12 @@ sub BUILDNET {
     # Create db files for PTR records.
     # Save the file names in an array for future use.
     #
-    $netfile = "DB.$net";
+    my $netfile = "DB.$net";
     $Netfiles{$netpat} = $netfile;
     push(@makesoa, $DBDir."db.$net $netfile");
 
     # Add entry to the boot file.
-    $revaddr = &REVERSE($net);
+    my $revaddr = &REVERSE($net);
     chop($revaddr);   # remove trailing dot
     push(@bootmsgs_v4, "primary $revaddr db.$net\n");
     push(@bootmsgs_v8,
@@ -835,8 +888,8 @@ sub BUILDNET {
 # This was originally written for awk, not perl.
 #
 sub SUBNETS {
-    local($network, $mask) = @_;
-    local(@ans, @net, @mask, $buf, $number, $i, $j, $howmany);
+    my ($network, $mask) = @_;
+    my (@ans, @net, @mask, $buf, $number, $i, $j, $howmany);
 
     @net = split(/\./, $network);
     @mask = split(/\./, $mask);
@@ -876,7 +929,7 @@ sub SUBNETS {
 
 
 sub GEN_BOOT {
-    local(*F, $revaddr, $n);
+    my ($revaddr, $n);
 
     if (0) { #! -e "boot.cacheonly") { DISABLE THIS PART
         #
