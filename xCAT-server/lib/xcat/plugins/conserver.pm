@@ -1,6 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #TODO: delete entries not being refreshed if no noderange
 package xCAT_plugin::conserver;
+use strict;
 use xCAT::Table;
 use xCAT::Utils;
 use Getopt::Long;
