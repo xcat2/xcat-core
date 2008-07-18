@@ -2,11 +2,11 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package XCAT;
+use base xCAT::DSHContext;
+use strict;
 use Socket;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-use base xCAT::DSHContext;
-
 # Define remote shell globals from xCAT
 
 our $XCAT_RSH_CMD;
@@ -288,10 +288,8 @@ sub resolve_node
         get_xcat_remote_cmds
 
         Using xCAT native commands, store the remote command settings for
-        the remote shell and remote copy commands determined from the
-		site.tab file useSSHonAIX attribute. If the attribute is set to yes or 1
-		then we will setup and use ssh on AIX,  otherwise we use rsh. On Linux,
-		we always setup and use ssh.
+        the remote shell and remote copy commands as defined in xCAT 
+		site.tab file.
 
         Arguments:
         	None
@@ -317,22 +315,17 @@ sub resolve_node
 #-------------------------------------------------------------------------------
 sub get_xcat_remote_cmds
 {
-    if (xCAT::Utils::isLinux)
+    $XCAT_RSH_CMD = "/usr/bin/ssh";    # default
+    $XCAT_RCP_CMD = "/usr/bin/scp";    #default
+    my @remote_shell = xCAT::Utils->get_site_attribute("rsh");
+    if ($remote_shell[0])
     {
-        $XCAT_RSH_CMD = "/usr/bin/ssh";    # default
-        $XCAT_RCP_CMD = "/usr/bin/scp";    #default
+        $XCAT_RSH_CMD = $remote_shell[0];
     }
-    else
-    {                                      # AIX
-        $XCAT_RSH_CMD = "/bin/rsh";        # default
-        $XCAT_RCP_CMD = "/bin/rcp";        #default
-        my @usesshonaix = xCAT::Utils->get_site_attribute("useSSHonAIX");
-        $usesshonaix[0] =~ tr/a-z/A-Z/;    # convert to upper
-        if (($usesshonaix[0] eq "1") || ($usesshonaix[0] eq "YES"))
-        {                                  # use ssh/scp
-            $XCAT_RSH_CMD = "/bin/ssh";    # default
-            $XCAT_RCP_CMD = "/bin/scp";    #default
-        }
+    my @remote_copy = xCAT::Utils->get_site_attribute("rcp");
+    if ($remote_copy[0])
+    {
+        $XCAT_RCP_CMD = $remote_copy[0];
     }
 
 }
@@ -403,12 +396,13 @@ sub get_xcat_node_list
 #-------------------------------------------------------------------------------
 sub get_xcat_nodegroup_table
 {
-    $node_list = "";
+    my $node_list = "";
     my @nodegroups = xCAT::Utils->list_all_node_groups;
     for my $group (@nodegroups)
     {
         chomp($group);
         my @nodes = `nodels $group`;
+        my $node_list;
         while (@nodes)
         {
             my $nodename = shift @nodes;
