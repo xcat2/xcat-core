@@ -4,6 +4,7 @@ package xCAT::Utils;
 require xCAT::Table;
 use POSIX qw(ceil);
 use Socket;
+use strict;
 require xCAT::Schema;
 require Data::Dumper;
 require xCAT::NodeRange;
@@ -456,6 +457,7 @@ sub list_all_node_groups
 sub list_nodes_in_nodegroups
 {
     my ($class, $group) = @_;
+    my $req={};
     $req->{noderange}->[0] = $group;
     my @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
     return @nodes;
@@ -490,7 +492,7 @@ sub get_site_attribute
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => $attr}, value);
+        (my $ref) = $sitetab->getAttribs({key => $attr}, 'value');
         if ($ref and $ref->{value})
         {
             $values = $ref->{value};
@@ -528,7 +530,7 @@ sub get_site_attribute
 #------------------------------------------------------------------------
 sub add_cron_job
 {
-    $newentry = shift;
+    my $newentry = shift;
     if ($newentry =~ /xCAT::Utils/)
     {
         $newentry = shift;
@@ -588,7 +590,7 @@ sub add_cron_job
 #------------------------------------------------------------------------
 sub remove_cron_job
 {
-    $job = shift;
+    my $job = shift;
     if ($job =~ /xCAT::Utils/)
     {
         $job = shift;
@@ -698,6 +700,7 @@ sub runcmd
         }    # if exitcode not specified, use cmd exit code
         if ($displayerror)
         {
+            my $rsp={};
             my $errmsg = '';
             if (xCAT::Utils->isLinux() && $::RUNCMD_RC == 139)
             {
@@ -711,7 +714,6 @@ sub runcmd
             }
             if ($::CALLBACK)
             {
-                my %rsp;
                 $rsp->{data}->[0] =
                   "Command failed: $cmd. Error message: $errmsg.\n";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -825,10 +827,10 @@ sub setupSSH
     }
 
     # Generate the keys
+    my $rsp={};
     xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
     if ($::RUNCMD_RC != 0)
     {    # error
-        my %rsp;
         $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
@@ -838,7 +840,6 @@ sub setupSSH
     my $rc = xCAT::Utils->cpSSHFiles($SSHdir);
     if ($rc != 0)
     {    # error
-        my %rsp;
         $rsp->{data}->[0] = "Error running cpSSHFiles.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
@@ -884,7 +885,6 @@ rmdir(\"/tmp/.ssh\");";
     my $rc  = system("$cmd") >> 8;
     if ($rc)
     {
-        my %rsp;
         $rsp->{data}->[0] = "remoteshell.expect failed sending keys.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
@@ -909,7 +909,6 @@ rmdir(\"/tmp/.ssh\");";
     if (@badnodes)
     {
         my $nstring = join ',', @badnodes;
-        my %rsp;
         $rsp->{data}->[0] =
           "SSH setup failed for the following nodes: $nstring.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -917,7 +916,6 @@ rmdir(\"/tmp/.ssh\");";
     }
     else
     {
-        my %rsp;
         $rsp->{data}->[0] = "$::REMOTE_SHELL setup is complete.";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return 0;
@@ -953,9 +951,9 @@ sub cpSSHFiles
 {
     my ($class, $SSHdir) = @_;
     my ($cmd, $rc);
+    my $rsp={};
     if ($::VERBOSE)
     {
-        my %rsp;
         $rsp->{data}->[0] = "Copying SSH Keys";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
@@ -971,9 +969,9 @@ sub cpSSHFiles
     }
     $cmd = " cp $home/.ssh/identity.pub $authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
+    my $rsp={};
     if ($::RUNCMD_RC != 0)
     {
-        my %rsp;
         $rsp->{data}->[0] = "$cmd failed.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return (1);
@@ -983,7 +981,6 @@ sub cpSSHFiles
     {
         if ($::VERBOSE)
         {
-            my %rsp;
             $rsp->{data}->[0] = "$cmd succeeded.\n";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
@@ -993,7 +990,6 @@ sub cpSSHFiles
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        my %rsp;
         $rsp->{data}->[0] = "$cmd failed.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return (1);
@@ -1003,17 +999,16 @@ sub cpSSHFiles
     {
         if ($::VERBOSE)
         {
-            my %rsp;
             $rsp->{data}->[0] = "$cmd succeeded.\n";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
     }
 
+    my $rsp={};
     $cmd = "cat $home/.ssh/id_dsa.pub >> $authorized_keys2";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        my %rsp;
         $rsp->{data}->[0] = "$cmd failed.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return (1);
@@ -1023,7 +1018,6 @@ sub cpSSHFiles
     {
         if ($::VERBOSE)
         {
-            my %rsp;
             $rsp->{data}->[0] = "$cmd succeeded.\n";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
@@ -1235,6 +1229,7 @@ sub my_hexnets
 #-------------------------------------------------------------------------------
 sub my_if_netmap
 {
+    my $net;
     if (scalar(@_))
     {    #called with the other syntax
         $net = shift;
@@ -1527,7 +1522,7 @@ sub exportDBConfig
             foreach my $line (<CFGFILE>)
             {
                 chop $line;
-                $exp .= $line;
+                my $exp .= $line;
 
                 $ENV{'XCATCFG'} = $exp;
                 close CFGFILE;
@@ -2154,7 +2149,7 @@ sub isSN
         return 0;
 
     }
-    @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver']);
+    my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver']);
     $servicenodetab->close;
     foreach my $nodes (@nodes)
     {
@@ -2256,7 +2251,7 @@ sub getSNandNodes
         push @nodes, $_->{node};
     }
     $nodelisttab->close;
-    $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
+    my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
     return $sn;
 }
 
@@ -2348,7 +2343,7 @@ sub getSNList
 sub isMounted
 {
     my ($class, $directory) = @_;
-    $cmd = "df -P $directory";
+    my $cmd = "df -P $directory";
     my @output = xCAT::Utils->runcmd($cmd, -1);
     foreach my $line (@output)
     {
