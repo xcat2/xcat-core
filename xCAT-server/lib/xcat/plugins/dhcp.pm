@@ -1,5 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::dhcp;
+use strict;
 use xCAT::Table;
 use Data::Dumper;
 use MIME::Base64;
@@ -31,6 +32,7 @@ sub delnode
     my $inetn = inet_aton($node);
 
     my $mactab = xCAT::Table->new('mac');
+    my $ent;
     if ($mactab) { $ent = $mactab->getNodeAttribs($node, [qw(mac)]); }
     if ($ent and $ent->{mac})
     {
@@ -269,7 +271,7 @@ sub preprocess_request
     }    #Exit if the packet has been preprocessed in its history
     my @requests =
       ({%$req});    #Start with a straight copy to reflect local instance
-    my @sn = xCAT::Utils->getSNList(dhcpserver);
+    my @sn = xCAT::Utils->getSNList('dhcpserver');
     foreach my $s (@sn)
     {
         my $reqcopy = {%$req};
@@ -362,6 +364,7 @@ sub process_request
     }
     else
     {
+        my $rconf;
         open($rconf, "/etc/dhcpd.conf");    # Read file into memory
         if ($rconf)
         {
@@ -712,7 +715,7 @@ sub newconfig
     push @dhcpconf, "key xcat_key {\n";
     push @dhcpconf, "  algorithm hmac-md5;\n";
     (my $passent) =
-      $passtab->getAttribs({key => omapi, username => 'xcat_key'}, 'password');
+      $passtab->getAttribs({key => 'omapi', username => 'xcat_key'}, 'password');
     my $secret = encode_base64(genpassword(32));    #Random from set of  62^32
     chomp $secret;
     if ($passent->{password}) { $secret = $passent->{password}; }
@@ -724,7 +727,7 @@ sub newconfig
                 ["The dhcp server must be restarted for OMAPI function to work"]
              }
              );
-        $passtab->setAttribs({key => omapi},
+        $passtab->setAttribs({key => 'omapi'},
                              {username => 'xcat_key', password => $secret});
     }
 
