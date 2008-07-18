@@ -12,6 +12,7 @@
 
 #-------------------------------------------------------
 package xCAT_plugin::xdsh;
+use strict;
 require xCAT::Table;
 
 require xCAT::Utils;
@@ -53,9 +54,11 @@ sub preprocess_request
     my $req = shift;
     my $cb  = shift;
     my %sn;
+    my $sn;
     if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
     my $nodes    = $req->{node};
     my $service  = "xcat";
+    my @requests;
 
     # find service nodes for requested nodes
     # build an individual request for each service node
@@ -92,7 +95,7 @@ sub process_request
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
     my $envs     = $request->{env};
-    my %rsp;
+    my $rsp={} ;
 
     # get the Environment Variables and set them in the current environment
     foreach my $envar (@{$request->{env}})
@@ -113,7 +116,7 @@ sub process_request
         }
         else
         {
-            my %rsp;
+            my $rsp={};
             $rsp->{data}->[0] =
               "Unknown command $command.  Cannot process the command.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
@@ -136,10 +139,9 @@ sub xdsh
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
 
-    #`touch /tmp/lissadebug`;
-
+    my $rsp={};
     # parse dsh input
-    @local_results =
+    my @local_results =
       xCAT::DSHCLI->parse_and_run_dsh($nodes,   $args, $callback,
                                       $command, $noderange);
     push @{$rsp->{data}}, @local_results;
@@ -165,10 +167,10 @@ sub xdcp
 
     #`touch /tmp/lissadebug`;
     # parse dcp input
-    @local_results =
+    my @local_results =
       xCAT::DSHCLI->parse_and_run_dcp($nodes,   $args, $callback,
                                       $command, $noderange);
-    my %rsp;
+    my $rsp={};
     my $i = 0;
     ##  process return data
     foreach my $line (@local_results)
