@@ -6,6 +6,7 @@
 #
 #####################################################
 package xCAT_plugin::tabutils;
+use strict;
 use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
@@ -227,8 +228,8 @@ sub noderm
     if ($VERSION) {
         my %rsp;
         my $version = xCAT::Utils->Version();
-        $rsp->{data}->[0] = "$version";
-        $cb->($rsp);
+        $rsp{data}->[0] = "$version";
+        $cb->(\%rsp);
         return;
     }
 
@@ -489,7 +490,6 @@ sub tabdump
             }
         }
         $line =~ s/,$//;    # remove the extra comma at the end
-        $line = $line . $lineappend;
         push @{$rsp{data}}, $line;
     }
     $cb->(\%rsp);
@@ -541,8 +541,8 @@ sub nodech
     if ($VERSION) {
         my %rsp;
         my $version = xCAT::Utils->Version();
-        $rsp->{data}->[0] = "$version";
-        $callback->($rsp);
+        $rsp{data}->[0] = "$version";
+        $callback->(\%rsp);
         return;
     }
 
@@ -598,6 +598,7 @@ sub nodech
             chop($temp);
         }
 
+        my $table;
         if ($shortnames{$temp})
         {
             ($table, $column) = @{$shortnames{$temp}};
@@ -736,6 +737,9 @@ sub nodels
     my $args      = shift;
     my $callback  = shift;
     my $noderange = shift;
+    unless ($nodes) {
+        $nodes=[];
+    }
 
     my $VERSION;
     my $HELP;
@@ -763,7 +767,11 @@ sub nodels
         $callback->(\%rsp);
     }
 
-    @ARGV = @{$args};
+    if ($args) {
+        @ARGV = @{$args};
+    } else {
+        @ARGV=();
+    }
     my $NOTERSE;
     if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'v|version' => \$VERSION,) ) { nodels_usage(1); return; }
 
@@ -775,8 +783,8 @@ sub nodels
     {
         my %rsp;
         my $version = xCAT::Utils->Version();
-        $rsp->{data}->[0] = "$version";
-        $callback->($rsp);
+        $rsp{data}->[0] = "$version";
+        $callback->(\%rsp);
         return;
     }
 
@@ -797,7 +805,7 @@ sub nodels
     { #Make sure that there are zero nodes *and* that a noderange wasn't requested
                     # TODO - gather data for each node
                     #        for now just return the flattened list of nodes)
-        my %rsp;    #build up fewer requests, be less chatty
+        my $rsp;    #build up fewer requests, be less chatty
         if ($argc)
         {
             my %tables;
@@ -848,6 +856,7 @@ sub nodels
                 #print Dumper($tables{$tab});
                 my $node;
                 my %labels;
+                my @cols=();
                 foreach (@{$tables{$tab}})
                 {
                     push @cols, $_->[0];
@@ -910,7 +919,7 @@ sub nodels
             my @ents    = $nodelisttab->getAllAttribs(@attribs);
             foreach (@ents)
             {
-                my %rsp;
+                my $rsp;
                 if ($_->{node})
                 {
                     $rsp->{node}->[0]->{name}->[0] = ($_->{node});
