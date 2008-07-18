@@ -1,5 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::hosts;
+use strict;
+use warnings;
 use xCAT::Table;
 use Data::Dumper;
 use File::Copy;
@@ -54,6 +56,7 @@ sub process_request {
       my $bakname = "/etc/hosts.xcatbak";
       copy("/etc/hosts",$bakname);
     }
+    my $rconf;
     open($rconf,"/etc/hosts"); # Read file into memory
     if ($rconf) {
       while (<$rconf>) {
