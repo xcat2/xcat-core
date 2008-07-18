@@ -7,6 +7,7 @@
 #####################################################
 package xCAT_plugin::tabutils;
 use strict;
+use warnings;
 use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
@@ -132,21 +133,21 @@ sub gettab
     my $HELP;
     my $NOTERSE;
 
-    sub gettab_usage {
+    my $gettab_usage = sub {
     	my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage: gettab [-H|--with-fieldname] key=value,...  table.attribute ...";
         push @{$rsp{data}}, "       gettab [-?|-h|--help]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $callback->(\%rsp);
-    }
+    };
 
 	# Process arguments
     @ARGV = @{$req->{arg}};
-    if (!GetOptions('h|?|help' => \$HELP,'H|with-fieldname' => \$NOTERSE)) { gettab_usage(1); return; }
+    if (!GetOptions('h|?|help' => \$HELP,'H|with-fieldname' => \$NOTERSE)) { $gettab_usage->(1); return; }
 
-    if ($HELP) { gettab_usage(0); return; }
-    if (scalar(@ARGV)<2) { gettab_usage(1); return; }
+    if ($HELP) { $gettab_usage->(0); return; }
+    if (scalar(@ARGV)<2) { $gettab_usage->(1); return; }
 
     # Get all the key/value pairs into a hash
     my $keyspec  = shift @ARGV;
@@ -156,7 +157,7 @@ sub gettab
     {
         (my $key, my $value) = split /=/, $_;
         unless (defined $key) {
-            gettab_usage(1);
+            $gettab_usage->(1);
             return;
         }
         $keyhash{$key} = $value;
@@ -209,7 +210,7 @@ sub noderm
     my $VERSION;
     my $HELP;
 
-    sub noderm_usage {
+    my $noderm_usage = sub {
     	my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage:";
@@ -218,12 +219,12 @@ sub noderm
         push @{$rsp{data}}, "  noderm [-?|-h|--help]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
-    }
+    };
 
     @ARGV = @{$args};
-    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) { noderm_usage(1); return; }
+    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) { $noderm_usage->(1); return; }
 
-    if ($HELP) { noderm_usage(0); return; }
+    if ($HELP) { $noderm_usage->(0); return; }
 
     if ($VERSION) {
         my %rsp;
@@ -233,7 +234,7 @@ sub noderm
         return;
     }
 
-    if (!$nodes) { noderm_usage(1); return; }
+    if (!$nodes) { $noderm_usage->(1); return; }
 
     # Build the argument list for using the -d option of nodech to do our work for us
     my @tablist = ("-d");
@@ -391,21 +392,21 @@ sub tabdump
     my $HELP;
     my $DESC;
 
-    sub tabdump_usage {
+    my $tabdump_usage = sub {
     	my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage: tabdump [-d] [table]";
         push @{$rsp{data}}, "       tabdump [-?|-h|--help]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
-    }
+    };
 
 	# Process arguments
     @ARGV = @{$args};
-    if (!GetOptions('h|?|help' => \$HELP, 'd' => \$DESC)) { tabdump_usage(1); return; }
+    if (!GetOptions('h|?|help' => \$HELP, 'd' => \$DESC)) { $tabdump_usage->(1); return; }
 
-    if ($HELP) { tabdump_usage(0); return; }
-    if (scalar(@ARGV)>1) { tabdump_usage(1); return; }
+    if ($HELP) { $tabdump_usage->(0); return; }
+    if (scalar(@ARGV)>1) { $tabdump_usage->(1); return; }
 
     my %rsp;
     # If no arguments given, we display a list of the tables
@@ -441,10 +442,10 @@ sub tabdump
 
     my $tabh = xCAT::Table->new($table);
 
-    sub tabdump_header {
+    my $tabdump_header = sub {
         my $header = "#" . join(",", @_);
         push @{$rsp{data}}, $header;
-    }
+    };
 
     # If the table does not exist yet (because its never been written to),
     # at least show the header (the column names)
@@ -452,7 +453,7 @@ sub tabdump
     {
         if (defined($xCAT::Schema::tabspec{$table}))
         {
-        	tabdump_header(@{$xCAT::Schema::tabspec{$table}->{cols}});
+        	$tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
         	$cb->(\%rsp);
             return;
         }
@@ -466,14 +467,14 @@ sub tabdump
     {
         if (defined($xCAT::Schema::tabspec{$table}))
         {
-        	tabdump_header(@{$xCAT::Schema::tabspec{$table}->{cols}});
+        	$tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
         	$cb->(\%rsp);
             return;
         }
     }
 
 	# Display all the rows of the table in the order of the columns in the schema
-    tabdump_header(@{$tabh->{colnames}});
+    $tabdump_header->(@{$tabh->{colnames}});
     foreach $rec (@$recs)
     {
         my $line = '';
@@ -505,7 +506,7 @@ sub nodech
     my $HELP;
     my $deletemode;
 
-    sub nodech_usage
+    my $nodech_usage = sub
     {
     	my $exitcode = shift @_;
     	my $addmode = shift @_;
@@ -521,19 +522,19 @@ sub nodech
         push @{$rsp{data}}, "       $cmdname [-? | -h | --help]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $callback->(\%rsp);
-    }
+    };
 
     @ARGV = @{$args};
     my %options = ('h|?|help'  => \$HELP, 'v|version' => \$VERSION);
     if (!$addmode) { $options{'d|delete'} = \$deletemode; }
     if (!GetOptions(%options)) {
-        nodech_usage(1, $addmode);
+        $nodech_usage->(1, $addmode);
         return;
     }
 
     # Help
     if ($HELP) {
-        nodech_usage(0, $addmode);
+        $nodech_usage->(0, $addmode);
         return;
     }
 
@@ -550,7 +551,7 @@ sub nodech
     # because it is linked to xcatclientnnr, since the nodes specified in the noderange
     # do not exist yet.  The nodech cmd is linked to xcatclient, so its noderange is
     # put in $nodes instead of $args.
-    if (scalar(@ARGV) < (1+$addmode)) { nodech_usage(1, $addmode);  return; }
+    if (scalar(@ARGV) < (1+$addmode)) { $nodech_usage->(1, $addmode);  return; }
 
     if ($addmode)
     {
@@ -744,7 +745,7 @@ sub nodels
     my $VERSION;
     my $HELP;
 
-    sub nodels_usage
+    my $nodels_usage = sub 
     {
     	my $exitcode = shift @_;
         my %rsp;
@@ -765,7 +766,7 @@ sub nodels
         #     $rsp->{data}->[10]="                     rg.{access|gpfs|netdevice|prinic|all}";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $callback->(\%rsp);
-    }
+    };
 
     if ($args) {
         @ARGV = @{$args};
@@ -773,10 +774,10 @@ sub nodels
         @ARGV=();
     }
     my $NOTERSE;
-    if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'v|version' => \$VERSION,) ) { nodels_usage(1); return; }
+    if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'v|version' => \$VERSION,) ) { nodels_usage->(1); return; }
 
     # Help
-    if ($HELP) { nodels_usage(0); return; }
+    if ($HELP) { nodels_usage->(0); return; }
 
     # Version
     if ($VERSION)
