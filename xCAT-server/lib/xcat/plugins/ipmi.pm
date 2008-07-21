@@ -4753,7 +4753,7 @@ sub process_request {
     $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($kpid > 0) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
-      while ($children > $ipmimaxp) { sleep (0.1); }
+      while ($children > $ipmimaxp) { forward_data($callback,$sub_fds); }
       $children++;
       my $cfd;
       my $pfd;
