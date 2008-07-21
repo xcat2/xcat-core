@@ -18,8 +18,8 @@ use xCAT::PPCdb;
 # Perl::SNMP not working on AIX yet
 #######################################
 if ($^O =~ /^linux/i) {
-  eval { require xCAT::MacMap };
-  eval { require xCAT_plugin::blade };
+  require xCAT::MacMap;
+  require xCAT_plugin::blade;
 }
 
 
