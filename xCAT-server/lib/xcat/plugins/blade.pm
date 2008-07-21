@@ -1613,7 +1613,7 @@ sub process_request {
   }
   my $sub_fds = new IO::Select;
   foreach $mpa (sort (keys %mpahash)) {
-    while ($children > $blademaxp) { sleep (0.1); }
+    while ($children > $blademaxp) { forward_data($callback,$sub_fds); }
     $children++;
     my $cfd;
     my $pfd;
