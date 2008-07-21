@@ -1073,8 +1073,8 @@ sub isServiceNode
     Arguments:
         none
     Returns:
-        1 - localHost is ServiceNode
-        0 - localHost is not ServiceNode
+        1 - localHost is Management Node 
+        0 - localHost is not a Management Node 
     Globals:
         none
     Error:
