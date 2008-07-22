@@ -3,6 +3,7 @@
 
 package xCAT::RSH;
 # cannot use strict
+# cannot use strict
 use base xCAT::DSHRemoteShell;
 
 # Determine if OS is AIX or Linux

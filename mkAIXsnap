@@ -1,0 +1,107 @@
+#!/bin/sh
+
+# mkAIXsnap
+#
+# This script can be used to extract, build, tar, compress and upload 
+# the latest xCAT for AIX code.
+#	- this will be the latest development snapshot
+#	- the snapshot should be created as needed
+#       - this script should run in the ../xcat-core/trunk directory
+#         (ex. /u/ntest/svn/workspace/xcat/xcat-core/trunk)
+#
+#	- you will need SourceForge ssh access set up 
+#	  ( get the contents of .ssh/id_rsa.pub on your local machine 
+#	  and add it to .ssh/authorized_keys on shell1.sf.net in
+#	   your home dir,  ex.  /home/users/n/no/no/nott )
+#	- the tarball goes to:
+#	  /home/groups/x/xc/xcat/htdocs/aix/devel
+#	- the individual RPMs go to:
+#	  /home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
+#	- nothing will be added to the release download area
+#	- Since there is no release available for AIX yet 
+#	  each snap is complete
+#
+BLDTOP=`pwd`
+RPMDIR=$BLDTOP/aix-core-snap
+
+# upload to SourceForge ??
+UPLOAD=0
+if [ "$1" == "UPLOAD" -o "$1" == "upload" ]; then
+  UPLOAD=1 
+fi
+
+if [ -d $RPMDIR ]
+then
+  # clean it up 
+  rm -f $RPMDIR/instxcat
+  rm -f $RPMDIR/*.rpm
+  rm -f $RPMDIR/flist
+  rm -f $RPMDIR/*.gz
+else
+  mkdir -p $RPMDIR
+fi
+
+#
+# do an update from the trunk directory level
+#
+#svn update | tee $BLDTOP/coresvnup
+svn update
+
+# create a simple install script
+echo "# xCAT on AIX - install script" > $RPMDIR/instxcat
+
+#
+# build the RPMs
+#
+./makeperlxcatrpm
+mv /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-2.1*rpm $RPMDIR/
+echo "rpm -Uvh perl-xCAT-2.1*rpm" >> $RPMDIR/instxcat
+
+./makeclientrpm
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-client-2.1*rpm $RPMDIR/
+echo "rpm -Uvh xCAT-client-2.1*rpm" >> $RPMDIR/instxcat
+
+./makeserverrpm
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-server-2.1*rpm $RPMDIR/
+echo "rpm -Uvh xCAT-server-2.1*rpm" >> $RPMDIR/instxcat
+
+./makermcrpm
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc-2.1*rpm $RPMDIR/
+echo "rpm -Uvh xCAT-rmc-2.1*rpm" >> $RPMDIR/instxcat
+
+cd ./xCAT
+./mkrpm
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-2.1*rpm $RPMDIR/
+echo "rpm -Uvh xCAT-2.1*rpm" >> $RPMDIR/instxcat
+
+#
+# create the tar.gz file to upload
+#
+cd $RPMDIR
+chmod +x ./instxcat
+
+# add all the file names to flist
+echo "instxcat" > ./flist
+ls *.rpm >> ./flist
+
+#TIME=`date +%Y%m%d%H%M`
+tar -cvf core-aix-snap.tar -L flist
+gzip core-aix-snap.tar
+
+#
+# upload the tar file and RPMs to SourceForge
+#
+if [ $UPLOAD == 1 ]; then
+
+  # clear out the old files
+  ssh nott@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/aix/devel; rm -f *.gz; cd /home/groups/x/xc/xcat/htdocs/aix/devel/core-snap; rm -f *.rpm"
+
+  scp *.rpm nott@shell1.sf.net:/home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
+
+  scp core-aix-snap.tar.gz nott@shell1.sf.net:/home/groups/x/xc/xcat/htdocs/aix/devel
+
+# rsync -avP -e ssh core-aix-snap.tar.gz nott@frs.sourceforge.net:uploads/
+
+fi
+
+exit 0; 
