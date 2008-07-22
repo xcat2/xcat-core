@@ -262,6 +262,7 @@ sub getdestiny {
   }
   my $node;
   $restab = xCAT::Table->new('noderes');
+  my $chaintab = xCAT::Table->new('chain');
   my $chainents = $chaintab->getNodesAttribs(\@nodes,[qw(currstate chain)]);
   my $nrents = $restab->getNodesAttribs(\@nodes,[qw(tftpserver xcatmaster)]);
   $bptab = xCAT::Table->new('bootparams',-create=>1);
@@ -269,7 +270,6 @@ sub getdestiny {
   my $sitetab= xCAT::Table->new('site');
   (my $sent) = $sitetab->getAttribs({key=>'master'},'value');
   foreach $node (@nodes) {
-    my $chaintab = xCAT::Table->new('chain');
     unless ($chaintab) { #Without destiny, have the node wait with ssh hopefully open at least
       $callback->({node=>[{name=>[$node],data=>['standby'],destiny=>[ 'standby' ]}]});
       return;
