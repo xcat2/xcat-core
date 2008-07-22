@@ -3,6 +3,7 @@
 BEGIN {
         localport = ARGV[1]
         ns = "/inet/tcp/0/127.0.0.1/" localport
+        canexit = 0
 
         print "<xcatrequest>" |& ns
         print "<command>getbmcconfig</command>" |& ns
@@ -11,7 +12,9 @@ BEGIN {
         while (1) {
                 if ((ns |& getline) > 0) {
                         print $0 > "/tmp/ipmi.data"
-                        if ($0 == "</xcatresponse>") 
+                        if ($0 ~ /<\/serverdone>/)
+                            canexit = 1
+                        if (canexit == 1 && $0 == "</xcatresponse>")
                                 break
                 } else {
                    close(ns)
