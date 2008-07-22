@@ -108,6 +108,12 @@ To add "node01" to the "memberslist" attribute of a group definition called "Lin
 
  chdef -p -t group -o LinuxNodes memberlist="node01"
 
+=item 7.
+
+To update a set of definitions based on information contained in the stanza file mystanzafile.
+
+ cat mystanzafile | chdef -z
+
 =back
 
 
