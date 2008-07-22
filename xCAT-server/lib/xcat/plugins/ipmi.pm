@@ -4735,7 +4735,7 @@ sub process_request {
 
     #my @threads;
     my @donargs=();
-	my $ipmihash = ipmitab->getNodesAttribs($noderange,['bmc','username','password']) ;
+	my $ipmihash = $ipmitab->getNodesAttribs($noderange,['bmc','username','password']) ;
 	foreach(@$noderange) {
 		my $node=$_;
 		my $nodeuser=$ipmiuser;
