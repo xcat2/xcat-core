@@ -4735,6 +4735,7 @@ sub process_request {
 
     #my @threads;
     my @donargs=();
+	my $ipmihash = ipmitab->getNodesAttribs($noderange,['bmc','username','password']) ;
 	foreach(@$noderange) {
 		my $node=$_;
 		my $nodeuser=$ipmiuser;
@@ -4742,7 +4743,7 @@ sub process_request {
 		my $nodeip = $node;
 		my $ent;
 		if (defined($ipmitab)) {
-			$ent=$ipmitab->getNodeAttribs($node,['bmc','username','password']) ;
+			$ent=$ipmihash->{$node}->[0];
 			if (ref($ent) and defined $ent->{bmc}) { $nodeip = $ent->{bmc}; }
 			if (ref($ent) and defined $ent->{username}) { $nodeuser = $ent->{username}; }
 			if (ref($ent) and defined $ent->{password}) { $nodepass = $ent->{password}; }
