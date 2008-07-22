@@ -47,13 +47,23 @@ my $cmdref;
 my $arg;
 my @SaveARGV = @ARGV;
 $cmdref->{command}->[0] = $bname;    # save my command name
+# check for help, bypass, other client flags
+if ($bname eq "xdsh")
+{
+    &parse_args_xdsh;
+}
+else
+{                                        # xdcp
+    &parse_args_xdcp;
+}
+
 my $arg = shift(@SaveARGV);
 
 if ($arg =~ /^-/)                    # no noderange
 {
     xCAT::MsgUtils->message(
              "I",
-             "Node range not specified, see man page for syntax.\n"
+             "Node range not specified, see $bname man page for syntax.\n"
     );
     exit 1;
 }
@@ -68,16 +78,6 @@ else
        exit 1;
     }
     @ARGV = @SaveARGV;                   # noderange removed for parsing
-}
-
-# check for help, bypass, other client flags
-if ($bname eq "xdsh")
-{
-    &parse_args_xdsh;
-}
-else
-{                                        # xdcp
-    &parse_args_xdcp;
 }
 
 foreach (@SaveARGV)
