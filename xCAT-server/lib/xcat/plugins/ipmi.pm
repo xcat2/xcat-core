@@ -4335,7 +4335,7 @@ sub domsg {
 		#local $SIG{ALRM} = sub { $timedout = 1 and die };
 		#alarm($timeout);
 		my $received = $s->can_read($timeout);
-		if($received > 0) {
+		if($received and $received > 0) {
 			if ($sock->recv($recv,128)) {
 				if($recv) {
 					@response = unpack("C*",$recv);
