@@ -1109,7 +1109,7 @@ sub power {
   } elsif ($subcommand eq "reset" or ($subcommand eq "boot" and $stat eq "on")) {
     $data = $session->set(new SNMP::Varbind([".".$powerresetoid,$slot ,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
-    $stat = "on reset";
+    if ($subcommand eq "boot") { $stat = "on reset"; } else { $stat = "reset"; }
   } elsif (not $validsub) {
       return 1,"Unknown/Unsupported power command $subcommand";
   }
