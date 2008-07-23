@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 5), libdbi-perl
 Standards-Version: 3.7.2
 
 Package: perl-xcat
-Architecture: all
+Architecture: any
 Depends: ${perl:Depends}, libio-socket-ssl-perl, libxml-simple-perl, libstorable-perl, libsys-syslog-perl, libsnmp-perl, libdbi-perl 
 Description: xCAT perl libraries
  Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.

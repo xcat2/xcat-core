@@ -13,8 +13,6 @@ export DH_COMPAT=5
 
 
 build:
-	echo *** debian/rules build
-	echo -n ***
 	pwd
 	./xpod2man
 
@@ -24,8 +22,6 @@ clean:
 	dh_clean -d
 
 install:
-	echo *** debian/rules install
-	echo -n ***
 	pwd
 	dh_testdir
 	dh_testroot
@@ -40,8 +36,6 @@ binary-indep: build install
 
 # Build architecture-dependent files here.
 binary-arch:
-	echo *** debian/rules binary-arch
-	echo -n ***
 	pwd
 	dh_testdir
 	dh_testroot
