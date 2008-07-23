@@ -67,8 +67,9 @@ sub process_request {
   }
 
   if ($req->{node}) {
+    my $hostscache = $hoststab->getNodesAttribs($req->{node},[qw(ip node hostnames)]);
     foreach(@{$req->{node}}) {
-      my $ref = $hoststab->getNodeAttribs($_,[qw(ip node hostnames)]);
+      my $ref = $hostscache->{$_}->[0]; #$hoststab->getNodeAttribs($_,[qw(ip node hostnames)]);
       addnode $ref->{node},$ref->{ip},$ref->{hostnames};
     }
   } else {
