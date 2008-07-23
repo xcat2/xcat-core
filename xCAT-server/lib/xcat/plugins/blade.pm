@@ -1076,6 +1076,7 @@ sub power {
   my $subcommand = shift;
   my $data;
   my $stat;
+  my $validsub=0;
   unless ($slot > 0) {
      if ($subcommand eq "reset" or $subcommand eq "boot") {
         $data = $session->set(new SNMP::Varbind([".1.3.6.1.4.1.2.3.51.2.7.4",0,1,'INTEGER']));
@@ -1086,6 +1087,7 @@ sub power {
      }
   }
   if ($subcommand eq "stat" or $subcommand eq "boot") {
+    $validsub=1;
     $data = $session->get([$powerstatoid.".".$slot]);
     if ($data == 1) {
       $stat = "on";
@@ -1095,6 +1097,7 @@ sub power {
       $stat= "error";
     }
   } elsif ($subcommand eq "off") {
+    $validsub=1;
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,0,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
     $stat = "off";
@@ -1107,7 +1110,7 @@ sub power {
     $data = $session->set(new SNMP::Varbind([".".$powerresetoid,$slot ,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
     $stat = "on reset";
-  } else {
+  } elsif (not $validsub) {
       return 1,"Unknown/Unsupported power command $subcommand";
   }
   if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
