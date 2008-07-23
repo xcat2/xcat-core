@@ -259,7 +259,7 @@ sub process_request {
   if ($errored) { return; }
   my $bptab=xCAT::Table->new('bootparams',-create=>1);
   my $bphash = $bptab->getNodesAttribs(\@nodes,['kernel','initrd','kcmdline']);
-  my $chaintab=xCAT::Table->new('chaintab',-create=>1);
+  my $chaintab=xCAT::Table->new('chain',-create=>1);
   my $chainhash=$chaintab->getNodesAttribs(\@nodes,['currstate']);
   my $mactab=xCAT::Table->new('mac',-create=>1);
   my $machhash=$mactab->getNodesAttribs(\@nodes,['mac']);
