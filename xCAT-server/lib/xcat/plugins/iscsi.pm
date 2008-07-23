@@ -54,11 +54,13 @@ sub process_request {
       $callback->({error=>"/usr/sbin/tgtadm does not exist, iSCSI plugin currently requires it, please install scsi-target-utils package under CentOS, RHEL, or Fedora.  SLES support is not yet implemented",errorcode=>[1]});
       return;
    }
-   @ARGV=@{$request->{arg}};
    my $lunsize = 4096;
-   GetOptions(
-      "size|s=i" => \$lunsize,
-   );
+   if ($request->{arg)) {
+       @ARGV=@{$request->{arg}};
+    GetOptions(
+          "size|s=i" => \$lunsize,
+    );
+   }
    my $iscsitab = xCAT::Table->new('iscsi'); 
    my @nodes = @{$request->{node}};
    my $sitetab = xCAT::Table->new('site');
