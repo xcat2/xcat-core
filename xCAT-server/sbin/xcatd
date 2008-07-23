@@ -934,12 +934,15 @@ sub thishostisnot {
   my $cmd = ($^O !~ /^aix/i) ? "/sbin/ip addr" : "ifconfig -a";
   my @ips = split /\n/,`$cmd`;
   my $comp=inet_aton($comparison);
+  unless ($comp) {
+      return 1;
+  }
   foreach (@ips) {
     if (/^\s*inet/) {
       my @ents = split(/\s+/);
       my $ip=$ents[2];
       $ip =~ s/\/.*//;
-      if (inet_aton($ip) eq $comp) {
+      if (inet_aton($ip) and inet_aton($ip) eq $comp) {
         return 0;
       }
       #print Dumper(inet_aton($ip));
@@ -1196,7 +1199,7 @@ sub validate {
   foreach $rule (@policies) {
     if ($rule->{name} and $rule->{name} ne '*') {
       #TODO: more complex matching (lists, wildcards)
-      next unless ($peername eq $rule->{name});
+      next unless ($peername and $peername eq $rule->{name});
     }
     if ($rule->{time} and $rule->{time} ne '*') {
       #TODO: time ranges
