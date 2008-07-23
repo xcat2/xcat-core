@@ -1107,6 +1107,8 @@ sub power {
     $data = $session->set(new SNMP::Varbind([".".$powerresetoid,$slot ,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
     $stat = "on reset";
+  } else {
+      return 1,"Unknown/Unsupported power command $subcommand";
   }
   if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
   if ($stat) { return (0,$stat); }
