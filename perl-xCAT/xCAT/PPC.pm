@@ -497,15 +497,15 @@ sub resolve {
     #################################
     # Get node type 
     #################################
-    my ($ent) = $tabs->{nodetype}->getAttribs({'node'=>$node}, "nodetype" );
+    my $ent = $tabs->{nodetype}->getNodeAttribs($node,[qw(nodetype node)]);
     if ( !defined( $ent )) {
-        return( sprintf( $errmsg{NODE_UNDEF}, "nodetype" )); 
+        return( sprintf( $errmsg{NODE_UNDEF}, "nodetype" ));
     }
     #################################
     # Check for type
     #################################
     if ( !exists( $ent->{nodetype} )) {
-        return( sprintf( $errmsg{NO_ATTR}, $ent->{nodetype}, "nodetype" ));
+        return( sprintf( $errmsg{NO_ATTR}, "nodetype","nodetype" ));
     }
     #################################
     # Check for valid "type"
