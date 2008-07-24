@@ -41,7 +41,7 @@ use constant {
     TYPE_BPA         => "BPA",
     TYPE_HMC         => "HMC",
     TYPE_IVM         => "IVM",
-    TYPE_FSP         => "IVM",
+    TYPE_FSP         => "FSP",
     IP_ADDRESSES     => 3,
     TEXT             => 0,
     FORMAT           => 1,
