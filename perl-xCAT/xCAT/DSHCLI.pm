@@ -6,7 +6,7 @@ package xCAT::DSHCLI;
 use File::Basename;
 
 use locale;
-#use strict;
+use strict;
 use File::Path;
 use POSIX;
 use Socket;
@@ -191,7 +191,7 @@ sub execute_dcp
 
         foreach my $user_target (@targets_buffered_keys)
         {
-            my $target_properties = $$resolved_targets{$user_target};
+            my $target_properties = $resolved_targets{$user_target};
 
             if (!$$options{'silent'})
             {
@@ -632,7 +632,7 @@ sub _execute_dsh
           && ($dsh_stats{'successful-targets'} = \@targets_finished);
         if (scalar(@targets_failed))
         {
-            if (@$dsh_target_status{'failed'})
+            if (scalar(@{$dsh_target_status{'failed'}}))
             {
                 $dsh_stats{'failed-targets'} = $dsh_target_status{'failed'};
             }
@@ -1358,7 +1358,7 @@ sub buffer_output
                 $$targets_buffered{$user_target} = \%exit_status;
 
                 delete $$targets_active{$user_target};
-                delete $$pid_targets{$forked_process{$user_target[0]}};
+                delete $$pid_targets{$$forked_process{$user_target}[0]};
 
                 close $output_fh;
                 close $error_fh;
@@ -1487,7 +1487,7 @@ sub buffer_error
                 $$targets_buffered{$user_target} = \%exit_status;
 
                 delete $$targets_active{$user_target};
-                delete $$pid_targets{$forked_process{$user_target}[0]};
+                delete $$pid_targets{$$forked_process{$user_target}[0]};
 
                 close $output_fh;
                 close $error_fh;
@@ -1733,7 +1733,7 @@ sub stream_error
                                       $error_fh,
                                       4096,
                                       "$user_target: ",
-                                      $error_buffers{$user_target},
+                                      $$error_buffers{$user_target},
                                       @$error_files
                                       );
 
@@ -2532,7 +2532,7 @@ sub handle_signal_dsh
         }
 
         $rsp->{data}->[0] =
-          "Running the command on $user_target has been cancelled due to unrecoverable error or stop request by user.\nNo commands were executed on any host.";
+          "Running commands have been cancelled due to unrecoverable error or stop request by user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
         if ($$dsh_options{'stats'})
@@ -2604,7 +2604,7 @@ sub handle_signal_dsh
         }
 
         $rsp->{data}->[0] = "dsh>  Dsh_remote_execution_completed";
-        $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        $$dsh_options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
         exit(1);
     }
@@ -4232,7 +4232,7 @@ sub show_dsh_config
     foreach my $context (sort keys(%$dsh_config))
     {
         my $context_properties = $$dsh_config{$context};
-        foreach $key (sort keys(%$context_properties))
+        foreach my $key (sort keys(%$context_properties))
         {
             print STDOUT "$context:$key=$$context_properties{$key}\n";
 
