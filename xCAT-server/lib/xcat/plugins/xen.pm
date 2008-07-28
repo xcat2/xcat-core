@@ -30,6 +30,8 @@ use xCAT::DBobjUtils;
 use Getopt::Long;
 
 my $vmmaxp;
+my $mactab;
+my $machash;
 sub handled_commands {
   unless ($libvirtsupport) {
       return {};
@@ -87,9 +89,41 @@ sub getNodeUUID {
 }
 sub build_nicstruct {
     my $rethash;
-    $rethash->{type}='bridge';
-    $rethash->{mac}->{address}='78:45:41:54:00:01';
-    return [$rethash];
+    my $node = shift;
+    my @macs=();
+    if ($machash->{$node}->{mac}) {
+        my $macdata=$machash->{$node}->{mac};
+        foreach my $macaddr (split '|',$macdata) {
+            $macaddr =~ s/!.*//;
+            push @macs,$macaddr;
+        }
+    }
+    unless (scalar(@macs)) {
+        my $allbutmult = 65279; # & mask for bitwise clearing of the multicast bit of mac
+        my $localad=512; # | to set the bit for locally admnistered mac address
+        my $leading=int(rand(65535));
+        $leading=$leading|512;
+        $leading=$leading&65279;
+        my $n=inet_aton($node);
+        my $tail;
+        if ($n) {
+           $tail=unpack("N",$n);
+        }
+        unless ($tail) {
+            $tail=int(rand(4294967295));
+        }
+        my $macstr = sprintf("%04x%08x",$leading,$tail);
+        $macstr =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
+        push @macs,$macstr;
+    }
+    my @rethashes;
+    foreach (@macs) {
+        my $rethash;
+        $rethash->{type}='bridge';
+        $rethash->{mac}->{address}=$_;
+        push @rethashes,$rethash;
+    }
+    return \@rethashes;
 }
 sub build_xmldesc {
     my $node = shift;
@@ -106,8 +140,10 @@ sub build_xmldesc {
     $xtree{features}->{content}="\n";
     $xtree{devices}->{emulator}->{content}='/usr/lib64/xen/bin/qemu-dm';
     $xtree{devices}->{disk}=build_diskstruct();
-    $xtree{devices}->{interface}=build_nicstruct();
+    $xtree{devices}->{interface}=build_nicstruct($node);
     $xtree{devices}->{graphics}->{type}='vnc';
+    $xtree{devices}->{console}->{type}='pty';
+    $xtree{devices}->{console}->{target}->{port}='1';
     return XMLout(\%xtree);
 }
 
@@ -224,6 +260,8 @@ sub grab_table_data{
     return;
   }
   $vmhash = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','storage','memory','cpu','nics','bootorder','virtflags']);
+  $mactab = xCAT::Table->new("mac",-create=>1);
+  $machash = $mactab->getNodesAttribs($noderange,['mac']);
 }
 
 sub process_request { 
