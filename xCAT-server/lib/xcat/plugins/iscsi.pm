@@ -55,7 +55,7 @@ sub process_request {
       return;
    }
    my $lunsize = 4096;
-   if ($request->{arg)) {
+   if ($request->{arg}) {
        @ARGV=@{$request->{arg}};
     GetOptions(
           "size|s=i" => \$lunsize,
