@@ -14,6 +14,23 @@ package xCAT::Schema;
 #certain SQL backends don't ascribe meaning to the data types anyway.
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
+vm => {
+    cols => [qw(node host migrationdest storage memory cpus nics bootorder virtflags beacon comments disable)],
+    keys => [qw(node)],
+    table_desc => 'Virtualization parameters',
+    descriptions => {
+        'node' => 'The node or static group name',
+        'host' => 'The system that currently hosts the VM',
+        'migrationdest' => 'A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use',
+        'storage' => 'A list of storage files or devices to be used, pipe delimited.  i.e. /cluster/vm/<nodename>',
+        'memory' => 'Megabytes of memory the VM currently should be set to.',
+        'cpus' => 'Number of CPUs the node should see.',
+        'nics' => 'Network configuration parameters',
+        'bootorder' => 'Boot sequence (i.e. net,hd)',
+        'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot',
+        'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM."
+    }
+},
 bootparams => {
    cols => [qw(node kernel initrd kcmdline comments disable)],
    keys => [qw(node)],

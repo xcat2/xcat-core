@@ -23,6 +23,33 @@ This program module file, is a set of utilities used by xCAT commands.
 
 =cut
 
+#-------------------------------------------------------------
+=head3 genUUID
+    Returns an RFC 4122 compliant UUIDv4
+    Arguments:
+        none
+    Returns:
+        string representation of a UUDv4, 
+            for example: f16196d1-7534-41c1-a0ae-a9633b030583
+
+=cut
+#-------------------------------------------------------
+sub genUUID {
+    #UUIDv4 has 6 fixed bits and 122 random bits
+    #Though a UUID of this form is not guaranteed to be unique absolutely,
+    #the chances of a cluster the size of the entire internet generating 
+    #two identical UUIDs is 4 in 10 octillion. 
+    srand(); #Many note this as bad practice, however, forks are going on..
+    my $uuid;
+    $uuid=sprintf("%08x-%04x-4%03x-",int(rand(4294967295)),int(rand(65535)),int(rand(4095)));
+    my $num=32768;
+    $num = $num | int(rand(16383));
+    $uuid.=sprintf("%04x-%04x%08x",$num,int(rand(65535)),int(rand(4294967295)));
+    return $uuid;
+}
+
+
+            
 #--------------------------------------------------------------------------------
 
 =head3    genpassword
