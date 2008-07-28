@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Storable qw(dclone);
 use xCAT::Table;
+use Thread qw(yield);
 use Data::Dumper;
 use Getopt::Long;
 use File::Basename;
