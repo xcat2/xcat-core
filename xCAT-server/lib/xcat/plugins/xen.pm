@@ -158,16 +158,13 @@ sub preprocess_request {
   my $request = shift;
   if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
   my $callback=shift;
-  unless ($libvirtsupport) {
+  unless ($libvirtsupport) { #Try to see if conditions changed since last check (no xCATd restart for it to take effect)
+        $libvirtsupport = eval { require Sys::Virt; };
+  }
+  unless ($libvirtsupport) { #Still no Sys::Virt module
       $callback->({error=>"Sys::Virt perl module missing, unable to fulfill Xen plugin requirements",errorcode=>[42]});
       return [];
   }
-  $SIG{INT} = $SIG{TERM} = sub { 
-     foreach (keys %vm_comm_pids) {
-        kill 2, $_;
-     }
-     exit 0;
-  };
   my @requests;
 
   my $noderange = $request->{node}; #Should be arrayref
