@@ -31,6 +31,7 @@ use Getopt::Long;
 
 my $vmmaxp;
 my $mactab;
+my $nrtab;
 my $machash;
 sub handled_commands {
   unless ($libvirtsupport) {
@@ -80,7 +81,11 @@ sub build_oshash {
 
 sub build_diskstruct {
     my @returns;
-    push @returns,"/cluster2/vm/$node";
+    my $diskhash;
+    $diskhash->{type}='file';
+    $diskhash->{source}->{file}="/cluster2/vm/$node";
+    $diskhash->{target}->{dev}='hda';
+    push @returns,$diskhash;
     return \@returns;
 }
 sub getNodeUUID {
@@ -91,10 +96,11 @@ sub build_nicstruct {
     my $rethash;
     my $node = shift;
     my @macs=();
-    if ($machash->{$node}->{mac}) {
-        my $macdata=$machash->{$node}->{mac};
-        foreach my $macaddr (split '|',$macdata) {
-            $macaddr =~ s/!.*//;
+    print Dumper($machash);
+    if ($machash->{$node}->[0]->{mac}) {
+        my $macdata=$machash->{$node}->[0]->{mac};
+        foreach my $macaddr (split /\|/,$macdata) {
+            $macaddr =~ s/\!.*//;
             push @macs,$macaddr;
         }
     }
@@ -114,6 +120,9 @@ sub build_nicstruct {
         }
         my $macstr = sprintf("%04x%08x",$leading,$tail);
         $macstr =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
+        $mactab->setNodeAttribs($node,{mac=>$macstr});
+        $nrtab->setNodeAttribs($node,{netboot=>'pxe'});
+        $doreq->({command=>['makedhcp'],node=>[$node]});
         push @macs,$macstr;
     }
     my @rethashes;
@@ -144,7 +153,7 @@ sub build_xmldesc {
     $xtree{devices}->{graphics}->{type}='vnc';
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
-    return XMLout(\%xtree);
+    return XMLout(\%xtree,RootName=>"domain");
 }
 
 sub power {
@@ -152,6 +161,7 @@ sub power {
     if ($subcommand eq 'on') {
         my $xml=build_xmldesc($node);
         print $xml;
+        $hypconn->create_domain($xml);
     }
 }
 
@@ -261,6 +271,7 @@ sub grab_table_data{
   }
   $vmhash = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','storage','memory','cpu','nics','bootorder','virtflags']);
   $mactab = xCAT::Table->new("mac",-create=>1);
+  $nrtab= xCAT::Table->new("noderes",-create=>1);
   $machash = $mactab->getNodesAttribs($noderange,['mac']);
 }
 
