@@ -454,13 +454,16 @@ sub processArgs
             $rsp->{data}->[1] = "Attribute          Description\n";
 
             my @alreadydone;    # the same attr may appear more then once
+			my @attrlist;
             my $outstr = "";
 
             foreach my $this_attr (@{$datatype->{'attrs'}})
             {
                 my $attr = $this_attr->{attr_name};
                 my $desc = $this_attr->{description};
-                if (!defined($desc)) {     # description key not there, so go to the corresponding entry in tabspec to get the description
+                if (!defined($desc)) {     
+					# description key not there, so go to the corresponding 
+					#	entry in tabspec to get the description
                 	my ($tab, $at) = split(/\./, $this_attr->{tabentry});
                 	my $schema = xCAT::Table->getTableSchema($tab);
                 	$desc = $schema->{descriptions}->{$at};
@@ -472,15 +475,17 @@ sub processArgs
 
                 if (!grep(/^$attr$/, @alreadydone))
                 {
-                #    $outstr .= "$attr\n\t\t- $desc \n\t\t(Table: $tab)\n\n";
-					#$outstr .= "$attr\n\t\t- $desc\n\n";
 					my $space = (length($attr)<7 ? "\t\t" : "\t");
-					$outstr .= "$attr:$space$desc\n\n";
+					push(@attrlist, "$attr:$space$desc\n\n");
                 }
                 push(@alreadydone, $attr);
             }
 
-			chop($outstr);  chop($outstr);
+			# print the output in alphabetical order
+            foreach my $a (sort @attrlist) {
+                $outstr .= "$a";
+            }
+            chop($outstr);  chop($outstr);
             $rsp->{data}->[2] = $outstr;
 
 			# the monitoring table is  special
