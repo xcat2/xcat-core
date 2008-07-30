@@ -29,6 +29,7 @@ use Net::Telnet;
 use xCAT::DBobjUtils;
 use Getopt::Long;
 
+my %runningstates;
 my $vmmaxp;
 my $mactab;
 my $nrtab;
@@ -96,7 +97,6 @@ sub build_nicstruct {
     my $rethash;
     my $node = shift;
     my @macs=();
-    print Dumper($machash);
     if ($machash->{$node}->[0]->{mac}) {
         my $macdata=$machash->{$node}->[0]->{mac};
         foreach my $macaddr (split /\|/,$macdata) {
@@ -158,11 +158,30 @@ sub build_xmldesc {
 
 sub power {
     my $subcommand = shift;
+    my $dom;
     if ($subcommand eq 'on') {
         my $xml=build_xmldesc($node);
-        print $xml;
-        $hypconn->create_domain($xml);
+        eval { $dom=$hypconn->create_domain($xml); };
+    } elsif ($subcommand eq 'off') {
+        eval { $dom = $hypconn->get_domain_by_name($node); };
+        if ($dom) {
+            $dom->destroy();
+        }
+    } elsif ($subcommand eq 'stat') {
+        eval {
+        $dom = $hypconn->get_domain_by_name($node);
+        };
     }
+    my $vmstat;
+    if ($dom) {
+        $vmstat = $dom->get_info;
+    }
+    if ($vmstat and $runningstates{$vmstat->{state}}) {
+        return (0,"on");
+    } else {
+        return (0,"off");
+    }
+
 }
 
 
@@ -211,6 +230,8 @@ sub preprocess_request {
       $callback->({error=>"Sys::Virt perl module missing, unable to fulfill Xen plugin requirements",errorcode=>[42]});
       return [];
   }
+  require Sys::Virt::Domain;
+  %runningstates = (&Sys::Virt::Domain::STATE_NOSTATE=>1,&Sys::Virt::Domain::STATE_RUNNING=>1,&Sys::Virt::Domain::STATE_BLOCKED=>1);
   my @requests;
 
   my $noderange = $request->{node}; #Should be arrayref
@@ -418,7 +439,6 @@ sub dohyp {
      waitforack($out);
      return 1,"General error establishing libvirt communication";
   }
-  print Dumper(\%hyphash);
   foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})) {
     my ($rc,@output) = guestcmd($hyp,$node,$command,@$args); 
 
