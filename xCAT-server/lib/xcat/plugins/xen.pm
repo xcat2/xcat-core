@@ -200,7 +200,11 @@ sub power {
     if ($subcommand eq 'on') {
         unless ($dom) {
             my $xml=build_xmldesc($node);
+            my $errstr;
             eval { $dom=$hypconn->create_domain($xml); };
+
+            if ($@) { $errstr = $@; }
+            if ($errstr) { return (1,$errstr); }
             if ($dom) {
                 refresh_vm($dom);
             }
