@@ -10,10 +10,12 @@ use xCAT::Table;
 use XML::Simple qw(XMLout);
 use Thread qw(yield);
 use IO::Socket;
+use IO::Select;
 use SNMP;
 use strict;
 #use warnings;
 my %vm_comm_pids;
+my $vmhash;
 
 use XML::Simple;
 if ($^O =~ /^linux/i) {
@@ -40,6 +42,7 @@ sub handled_commands {
   }
   return {
     rpower => 'nodehm:power,mgt',
+    rmigrate => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
     #rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
@@ -161,12 +164,46 @@ sub refresh_vm {
     my $dom = shift;
 
     my $newxml=XMLin($dom->get_xml_description());
-    print Dumper($newxml);
     my $vncport=$newxml->{devices}->{graphics}->{port};
     my $stty=$newxml->{devices}->{console}->{tty};
     $vmtab->setNodeAttribs($node,{vncport=>$vncport,textconsole=>$stty});
-    print Dumper({vncport=>$vncport,textconsole=>$stty});
 }
+
+sub migrate {
+    my $node = shift();
+    my $targ = shift();
+    my $prevhyp;
+    my $target = "xen+ssh://".$targ;
+    my $currhyp="xen+ssh://";
+    if ($vmhash->{$node}->[0]->{host}) {
+        $prevhyp=$vmhash->{$node}->[0]->{host};
+        $currhyp.=$prevhyp;
+    } else {
+        return (1,Dumper($vmhash)."Unable to find current location of $node");
+    }
+    my $sock = IO::Socket::INET->new(Proto=>'udp');
+    my $ipa=inet_aton($node);
+    my $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
+    #serviced, we just want to trigger an arp query
+    my $rc=system("virsh -c $currhyp migrate --live $node $target");
+    system("arp -d $node"); #Make ethernet fabric take note of change
+    send($sock,"dummy",0,$pa); 
+    my $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ);
+    my $dom;
+    eval {
+     $dom = $newhypconn->get_domain_by_name($node);
+    };
+    $vmtab->setNodeAttribs($node,{host=>$targ});
+    if ($dom) {
+        refresh_vm($dom);
+    }
+    if ($rc) {
+        return (1,"Failed migration from $prevhyp to $targ");
+    } else {
+        return (0,"migrated to $targ");
+    }
+}
+
 
 sub getpowstate {
     my $dom = shift;
@@ -236,6 +273,8 @@ sub guestcmd {
   my $error;
   if ($command eq "rpower") {
     return power(@args);
+  } elsif ($command eq "rmigrate") {
+      return migrate($node,@args);
   }
 =cut
   } elsif ($command eq "rvitals") {
@@ -318,7 +357,6 @@ sub preprocess_request {
   }
   return \@requests;
 }
-my $vmhash;
     
 sub adopt {
 #TODO: adopt orphans into suitable homes if possible
