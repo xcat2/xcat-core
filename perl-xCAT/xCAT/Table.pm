@@ -1,10 +1,9 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-#Note that at the moment it only implements SQLite.  This will probably be extended.
-#Also, ugly perl errors/and warnings are not currently wrapped.  This probably will be cleaned
+#perl errors/and warnings are not currently wrapped.
+#  This probably will be cleaned
 #up
 #Some known weird behaviors
 #creating new sqlite db files when only requested to read non-existant table, easy to fix,
-#but going for prototype
 #class xcattable
 package xCAT::Table;
 use Sys::Syslog;
