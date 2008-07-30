@@ -43,6 +43,7 @@ sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
+    getvmcons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
     #rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
@@ -167,6 +168,27 @@ sub refresh_vm {
     my $vncport=$newxml->{devices}->{graphics}->{port};
     my $stty=$newxml->{devices}->{console}->{tty};
     $vmtab->setNodeAttribs($node,{vncport=>$vncport,textconsole=>$stty});
+    return {vncport=>$vncport,textconsole=>$stty};
+}
+
+sub getvmcons {
+    my $node = shift();
+    my $type = shift();
+    my $dom;
+    eval {
+     $dom = $hypconn->get_domain_by_name($node);
+    };
+    unless ($dom) {
+        return 1,"Unable to query running VM";
+    }
+    my $consdata=refresh_vm($dom);
+    my $hyper=$vmhash->{$node}->[0]->{host};
+    if ($type eq "text") {
+        return (0,'tty@'.$hyper.": ".$consdata->{textconsole});
+    } elsif ($type eq "vnc") {
+        print Dumper($consdata);
+        return (0,'ssh+vnc@'.$hyper.": ".$consdata->{vncport});
+    }
 }
 
 sub migrate {
@@ -275,6 +297,8 @@ sub guestcmd {
     return power(@args);
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
+  } elsif ($command eq "getvmcons") {
+      return getvmcons($node,@args);
   }
 =cut
   } elsif ($command eq "rvitals") {
