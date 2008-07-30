@@ -1018,7 +1018,7 @@ sub getNodeAttribs
     foreach $attrib (@attribs)
     {
 
-        if ($datum->{$attrib} =~ /^\/.*\/.*\//)
+        if ($datum->{$attrib} =~ /^\/.*\/.*\/$/)
         {
             my $exp = substr($datum->{$attrib}, 1);
             chop $exp;

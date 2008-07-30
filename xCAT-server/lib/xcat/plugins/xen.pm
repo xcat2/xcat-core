@@ -57,6 +57,7 @@ my $hyp;
 my $doreq;
 my %hyphash;
 my $node;
+my $vmtab;
 
 sub waitforack {
     my $sock = shift;
@@ -156,32 +157,70 @@ sub build_xmldesc {
     return XMLout(\%xtree,RootName=>"domain");
 }
 
-sub power {
-    my $subcommand = shift;
-    my $dom;
-    if ($subcommand eq 'on') {
-        my $xml=build_xmldesc($node);
-        eval { $dom=$hypconn->create_domain($xml); };
-    } elsif ($subcommand eq 'off') {
-        eval { $dom = $hypconn->get_domain_by_name($node); };
-        if ($dom) {
-            $dom->destroy();
-        }
-    } elsif ($subcommand eq 'stat') {
-        eval {
-        $dom = $hypconn->get_domain_by_name($node);
-        };
-    }
+sub refresh_vm {
+    my $dom = shift;
+
+    my $newxml=XMLin($dom->get_xml_description());
+    print Dumper($newxml);
+    my $vncport=$newxml->{devices}->{graphics}->{port};
+    my $stty=$newxml->{devices}->{console}->{tty};
+    $vmtab->setNodeAttribs($node,{vncport=>$vncport,textconsole=>$stty});
+    print Dumper({vncport=>$vncport,textconsole=>$stty});
+}
+
+sub getpowstate {
+    my $dom = shift;
     my $vmstat;
     if ($dom) {
         $vmstat = $dom->get_info;
     }
     if ($vmstat and $runningstates{$vmstat->{state}}) {
-        return (0,"on");
+        return "on";
     } else {
-        return (0,"off");
+        return "off";
+    }
+}
+
+sub power {
+    my $subcommand = shift;
+    my $retstring;
+    my $dom;
+    eval {
+     $dom = $hypconn->get_domain_by_name($node);
+    };
+    if ($subcommand eq "boot") {
+        my $currstate=getpowstate($dom);
+        $retstring=$currstate." ";
+        if ($currstate eq "off") {
+            $subcommand="on";
+        } elsif ($currstate eq "on") {
+            $subcommand="reset";
+        }
+    }
+    if ($subcommand eq 'on') {
+        unless ($dom) {
+            my $xml=build_xmldesc($node);
+            eval { $dom=$hypconn->create_domain($xml); };
+            if ($dom) {
+                refresh_vm($dom);
+            }
+        }
+    } elsif ($subcommand eq 'off') {
+        if ($dom) {
+            $dom->destroy();
+        }
+    } elsif ($subcommand eq 'softoff') {
+        if ($dom) {
+            $dom->shutdown();
+        }
+    } else { 
+        unless ($subcommand =~ /^stat/) {
+            return (1,"Unsupported power directive '$subcommand'");
+        }
     }
 
+    $retstring.=getpowstate($dom);
+    return (0,$retstring);
 }
 
 
@@ -285,7 +324,7 @@ sub adopt {
 sub grab_table_data{
   my $noderange=shift;
   my $callback=shift;
-  my $vmtab = xCAT::Table->new("vm");
+  $vmtab = xCAT::Table->new("vm");
   unless ($vmtab) { 
     $callback->({data=>["Cannot open vm table"]});
     return;

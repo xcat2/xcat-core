@@ -15,7 +15,7 @@ package xCAT::Schema;
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
 vm => {
-    cols => [qw(node host migrationdest storage memory cpus nics bootorder virtflags beacon comments disable)],
+    cols => [qw(node host migrationdest storage memory cpus nics bootorder virtflags vncport textconsole beacon comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
@@ -28,6 +28,8 @@ vm => {
         'nics' => 'Network configuration parameters',
         'bootorder' => 'Boot sequence (i.e. net,hd)',
         'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot',
+        'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
+        'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
         'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM."
     }
 },
