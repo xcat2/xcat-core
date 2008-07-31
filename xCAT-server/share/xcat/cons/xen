@@ -6,9 +6,10 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
     my $sleepint=int(rand(10));
     print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
-    #sleep $sleepint;
+    sleep $sleepint;
 }
 use lib "$::XCATROOT/lib/perl";
+$ENV{HOME}='/root/';
 require xCAT::Client;
 
 require File::Basename;
@@ -31,13 +32,11 @@ sub getans {
         $dsthost=~s/.*@//;
         $dstty = $rsp->{node}->[0]->{data}->[0]->{contents}->[0];
         $speed=$dstty;
-        print $speed;
         $dstty =~ s/@.*$//;
         $speed =~ s/^.*@//;
     }
 }
 xCAT::Client::submit_request($cmdref,\&getans);
-print "$dsthost $speed $dstty\n";
 exec "ssh -t $dsthost cu -s $speed -l $dstty";
 
 #my $pathtochild= dirname($scriptname). "/";
