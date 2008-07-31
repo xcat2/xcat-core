@@ -40,7 +40,9 @@ sub process_request {
   $::CDMOUNTPATH="/mnt/xcat";
   my $existdir = getcwd;
 
-  @ARGV = @{$request->{arg}};
+  if ($request->{arg}) {
+      @ARGV = @{$request->{arg}};
+  }
   GetOptions(
     'n|name|osver=s' => \$distname,
     'a|arch=s' => \$arch
