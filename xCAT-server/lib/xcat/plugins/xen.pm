@@ -16,6 +16,7 @@ use strict;
 #use warnings;
 my %vm_comm_pids;
 my $vmhash;
+my $hmhash;
 
 use XML::Simple;
 if ($^O =~ /^linux/i) {
@@ -61,6 +62,7 @@ my $hyp;
 my $doreq;
 my %hyphash;
 my $node;
+my $hmtab;
 my $vmtab;
 
 sub waitforack {
@@ -183,10 +185,14 @@ sub getvmcons {
     }
     my $consdata=refresh_vm($dom);
     my $hyper=$vmhash->{$node}->[0]->{host};
+
     if ($type eq "text") {
-        return (0,'tty@'.$hyper.": ".$consdata->{textconsole});
+        my $serialspeed;
+        if ($hmhash) {
+            $serialspeed=$hmhash->{$node}->[0]->{serialspeed};
+        }
+        return (0,'tty@'.$hyper.": ".$consdata->{textconsole}."@".$serialspeed);
     } elsif ($type eq "vnc") {
-        print Dumper($consdata);
         return (0,'ssh+vnc@'.$hyper.": ".$consdata->{vncport});
     }
 }
@@ -391,6 +397,10 @@ sub grab_table_data{
   my $noderange=shift;
   my $callback=shift;
   $vmtab = xCAT::Table->new("vm");
+  $hmtab = xCAT::Table->new("nodehm");
+  if ($hmtab) {
+      $hmhash  = $hmtab->getNodesAttribs($noderange,['serialspeed']);
+  }
   unless ($vmtab) { 
     $callback->({data=>["Cannot open vm table"]});
     return;

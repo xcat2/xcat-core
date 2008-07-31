@@ -1,0 +1,48 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+    use Time::HiRes qw(sleep);
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    my $sleepint=int(rand(10));
+    print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
+    #sleep $sleepint;
+}
+use lib "$::XCATROOT/lib/perl";
+require xCAT::Client;
+
+require File::Basename;
+import File::Basename;
+my $scriptname = $0;
+
+my $cmdref={
+    command=>"getvmcons",
+    arg=>"text",
+    noderange=>$ARGV[0]
+};
+use Data::Dumper;
+my $dsthost;
+my $dstty;
+my $speed;
+sub getans {
+    my $rsp = shift; 
+    if ($rsp->{node}) {
+        $dsthost = $rsp->{node}->[0]->{data}->[0]->{desc}->[0];
+        $dsthost=~s/.*@//;
+        $dstty = $rsp->{node}->[0]->{data}->[0]->{contents}->[0];
+        $speed=$dstty;
+        print $speed;
+        $dstty =~ s/@.*$//;
+        $speed =~ s/^.*@//;
+    }
+}
+xCAT::Client::submit_request($cmdref,\&getans);
+print "$dsthost $speed $dstty\n";
+exec "ssh -t $dsthost cu -s $speed -l $dstty";
+
+#my $pathtochild= dirname($scriptname). "/";
+#exec $pathtochild."blade.expect $mm $slot $username $password";
+  
+
+
+
