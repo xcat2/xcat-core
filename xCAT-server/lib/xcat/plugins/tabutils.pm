@@ -402,7 +402,9 @@ sub tabdump
     };
 
 	# Process arguments
-    @ARGV = @{$args};
+    if ($args) {
+        @ARGV = @{$args};
+    }
     if (!GetOptions('h|?|help' => \$HELP, 'd' => \$DESC)) { $tabdump_usage->(1); return; }
 
     if ($HELP) { $tabdump_usage->(0); return; }
