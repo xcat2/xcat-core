@@ -280,7 +280,7 @@ sub getobjdefs
             # Get the attr values from the DB tables
             #
 
-            if ($lookup_attr eq 'node')
+            if ($type eq 'node')
             {
                 my $thistable;
                 my $needtocommit = 0;
