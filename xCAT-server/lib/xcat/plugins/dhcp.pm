@@ -424,7 +424,11 @@ sub process_request
         {
             $req->{node} = [];
             my $mactab  = xCAT::Table->new('mac');
-            my @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
+
+            my @entries=();
+            if ($mactab) {
+                @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
+            }
             foreach (@entries)
             {
                 push @{$req->{node}}, $_->{node};
