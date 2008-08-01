@@ -144,18 +144,6 @@ sub process_request
 }
     
 my $errored = 0;
-sub pass_along { 
-    my $resp = shift;
-    $::callback->($resp);
-    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
-        $errored=1;
-    }
-    foreach (@{$resp->{node}}) {
-       if ($_->{error} or $_->{errorcode}) {
-          $errored=1;
-       }
-    }
-}
 
 
 #----------------------------------------------------------------------------
@@ -539,16 +527,7 @@ ll~;
 		my $rsp;
 		push @{$rsp->{data}}, "AIX/NIM nodes were initialized.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
-                ###################
-                #give monitoring code a chance to prepare the master for the node deployment
-		#push @{$rsp->{data}}, "Initializing for the node monitoring.\n";
-		#xCAT::MsgUtils->message("I", $rsp, $callback);
-                my %new_request = (
-                command => ['moncfgmaster'],
-                node => \@nodelist
-                );
-                $sub_req->(\%new_request, \&pass_along);
-                ###################
+
 		return 0;
 	}
 	return 0;
@@ -3003,16 +2982,7 @@ ll~;
 		my $rsp;
 		push @{$rsp->{data}}, "AIX/NIM diskless nodes were initialized.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
-                #################
-                #give monitoring code a chance to prepare the master for the node deployment
-		#push @{$rsp->{data}}, "Initializing for the node monitoring.\n";
-		#xCAT::MsgUtils->message("I", $rsp, $callback);
-                my %new_request = (
-                command => ['moncfgmaster'],
-                node => \@nodelist
-                );
-                $sub_req->(\%new_request, \&pass_along);
-                #################
+
  		return 0;
 	}
 }

@@ -56,7 +56,7 @@ if (@changed_inactive>0) {
 
 #only set the node status for the changed ones
 if (keys(%node_status) > 0) {
-  xCAT_monitoring::xcatmon::processNodeStatusChanges(\%node_status);
+  xCAT_monitoring::xcatmon::setNodeStatusAttributes(\%node_status);
 }
 
 #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);

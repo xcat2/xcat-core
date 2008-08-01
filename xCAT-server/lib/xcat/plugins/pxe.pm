@@ -295,15 +295,6 @@ sub process_request {
     }
   }
 
-  ##################################
-  #give monitoring code a chance to prepare the master for the node deployment
-  my %new_request = (
-       command => ['moncfgmaster'],
-       node => \@rnodes
-    );
-  $sub_req->(\%new_request, \&pass_along);
-  ##################################
-
 }
 
 

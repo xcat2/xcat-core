@@ -6,11 +6,12 @@ BEGIN
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
+use strict;
 use IO::File;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT_monitoring::monitorctrl;
-
+use Sys::Hostname;
 
 #print "xCAT_monitoring::snmpmon loaded\n";
 1;
@@ -27,61 +28,334 @@ use xCAT_monitoring::monitorctrl;
 
 #--------------------------------------------------------------------------------
 =head3    start
-      This function gets called by the monitorctrl module
-      when xcatd starts. 
+      This function gets called by the monitorctrl module when monstart command 
+     gets called and when xcatd starts.  
     Arguments:
-      None.
+       p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means both localhost and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message)      
+      (return code, message) 
+      if the callback is set, use callback to display the status and error. 
 =cut
 #--------------------------------------------------------------------------------
 sub start {
-  #print "snmpmon::start called\n";
+  print "snmpmon:start called\n";
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+    $noderef=shift;
+  }
+  my $scope=shift;
+  my $callback=shift;
 
-  # do not turn it on on the service node
-  #if (xCAT::Utils->isServiceNode()) { return (0, "");}
+  my $localhostname=hostname();
 
-  # unless we are running on linux, exit.
-  #unless($^O eq "linux"){      
-  #  exit;
-  # }
+  # get the PID of the currently running snmptrapd if it is running.
+  # then stop it and restart it again so that it reads our new
+  # snmptrapd.conf configuration file. Then the process
+  my $pid;
+  chomp($pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
+  if($pid){
+    `/bin/kill -9 $pid`;
+  }
+  # start it up again!
+  system("/usr/sbin/snmptrapd -m ALL");
+
+  # get the PID of the currently running snmpd if it is running.
+  # if it's running then we just leave.  Otherwise, if we don't get A PID, then we
+  # assume that it isn't running, and start it up again!
+  chomp($pid= `/bin/ps -ef | /bin/grep snmpd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
+  unless($pid){
+    # start it up!
+    system("/usr/sbin/snmpd");         
+  }
+
+  if ($scope) {
+    #enable alerts on the nodes
+    #enable bmcs if any
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: enabling SNMP alert on BMCs and MMs...";
+      $callback->($rsp);
+    }
+    configBMC(1, $noderef, $callback);
+
+    #enable MMAs if any
+    configMPA(1, $noderef, $callback);
+  }
+  
+  if ($callback) {
+    my $rsp={};
+    $rsp->{data}->[0]="$localhostname: started.";
+    $callback->($rsp);
+  }
+  
+  return (0, "started")
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3    stop
+      This function gets called by the monitorctrl module when monstop command gets called. 
+    Arguments:
+       p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means both monservers and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
+    Returns:
+      (return code, message) 
+      if the callback is set, use callback to display the status and error. 
+=cut
+#--------------------------------------------------------------------------------
+sub stop {
+  print "snmpmon:stop called\n";
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+    $noderef=shift;
+  }
+  my $scope=shift;
+  my $callback=shift;
+
+  my $localhostname=hostname();
+
+  if ($scope) {
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: disabling SNMP alert on BMCs and MMs...";
+      $callback->($rsp);
+    }
+    #disable MMAs if any
+    configMPA(0, $noderef, $callback);
+
+    #disable BMC so that it stop senging alerts (PETs) to this node
+    configBMC(0, $noderef, $callback);
+  }
+ 
+
+  # now check to see if the daemon is running.  If it is then we need to resart or stop?
+  # it with the new snmptrapd.conf file that will not forward events to RMC.
+  chomp(my $pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
+  if($pid){
+    `/bin/kill -9 $pid`;
+    # start it up again!
+    #system("/usr/sbin/snmptrapd");
+  }
+
+  if ($callback) {
+    my $rsp={};
+    $rsp->{data}->[0]="$localhostname: stopped.";
+    $callback->($rsp);
+  }
+
+  return (0, "stopped");
+}
+
+
+#--------------------------------------------------------------------------------
+=head3    supportNodeStatusMon
+    This function is called by the monitorctrl module to check
+    if SNMP can help monitoring and returning the node status.
+    SNMP does not support this function.
+    
+    Arguments:
+        none
+    Returns:
+         0  
+=cut
+#--------------------------------------------------------------------------------
+sub supportNodeStatusMon {
+  return 0;
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3   startNodeStatusMon
+    This function is called by the monitorctrl module when monstart gets called and
+    when xcatd starts. It starts monitoring the node status and feed them back
+    to xCAT.  
+    Arguments:
+       p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means loca lhost only.  
+                2 means both localhost and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
+    note: p_nodes and scope are ignored by this plugin.
+    Returns:
+      (return code, message) 
+      if the callback is set, use callback to display the status and error. 
+    This function is called by the monitorctrl module to tell
+=cut
+#--------------------------------------------------------------------------------
+sub startNodeStatusMon {
+  return (1, "This function is not supported.");
+}
+
+
+#--------------------------------------------------------------------------------
+=head3   stopNodeStatusMon
+    This function is called by the monitorctrl module when monstop command is issued.
+    It stops feeding the node status info back to xCAT. 
+    Arguments:
+       p_nodes -- a pointer to an arrays of nodes to stoped for monitoring. null means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means local host only. 
+                2 means both local host and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
+    note: p_nodes and scope are ignored by this plugin.
+    Returns:
+      (return code, message) 
+      if the callback is set, use callback to display the status and error. 
+=cut
+#--------------------------------------------------------------------------------
+sub stopNodeStatusMon {
+  return (1, "This function is not supported.");
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3    config
+      This function configures the cluster for the given nodes.  
+      This function is called when monconfig command is issued or when xcatd starts
+      on the service node. It will configure the cluster to include the given nodes within
+      the monitoring doamin. 
+    Arguments:
+       p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means localhost and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
+    Returns:
+       (error code, error message)
+=cut
+#--------------------------------------------------------------------------------
+sub config {
+  print "snmpmon:config called\n";
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+    $noderef=shift;
+  }
+  my $scope=shift;
+  my $callback=shift;
+
+  my $localhostname=hostname();
 
   # check supported snmp package
   my $cmd;
   my @snmpPkg = `/bin/rpm -qa | grep snmp`;
   my $pkginstalled = grep(/net-snmp/, @snmpPkg);
 
-  if ($pkginstalled) {
+  if (!$pkginstalled) {
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: net-snmp is not installed.";
+      $callback->($rsp);
+    }
+    return (1, "net-snmp is not installed")
+  } else {
     my ($ret, $err)=configSNMP();
     if ($ret != 0) { return ($ret, $err);}
-  } else {
-    return (1, "net-snmp is not installed")
   }
-
-  #enable bmcs if any
-  configBMC(1);
-
-  #enable MMAs if any
-  configMPA(1);
 
   #configure mail to enabling receiving mails from trap handler
   configMail();
 
-  return (0, "started")
+  if ($scope) {
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: setting up SNMP alert destination for BMCs and MMs ....";
+      $callback->($rsp);
+    }
+    #enable bmcs if any
+    configBMC(2, $noderef, $callback);
+
+    #enable MMAs if any
+    configMPA(2, $noderef, $callback);
+  }
+
+  if ($callback) {
+    my $rsp={};
+    $rsp->{data}->[0]="$localhostname: done.";
+    $callback->($rsp);
+  }
+
+  return (0, "")
 }
+
+#--------------------------------------------------------------------------------
+=head3    deconfig
+      This function de-configures the cluster for the given nodes.  
+      This function is called by the monitorctrl module when nodes are removed 
+      from the xCAT cluster. It should remove the nodes from the product for monitoring.
+    Arguments:
+       p_nodes -- a pointer to an arrays of nodes to be removed for monitoring. none means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means local host only. 
+                2 means both local host and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
+    Returns:
+       (error code, error message)
+=cut
+#--------------------------------------------------------------------------------
+sub deconfig {
+  print "snmpmon:deconfig called\n";
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+    $noderef=shift;
+  }
+  my $scope=shift;
+  my $callback=shift;
+  my $localhostname=hostname();
+
+  if (-f "/usr/share/snmp/snmptrapd.conf.orig"){
+    # copy back the old one
+    `mv -f /usr/share/snmp/snmptrapd.conf.orig /usr/share/snmp/snmptrapd.conf`;
+  } else {
+    if (-f "/usr/share/snmp/snmptrapd.conf"){ 
+
+      # if the file exists, delete all entries that have xcat_traphandler
+      my $cmd = "grep -v  xcat_traphandler /usr/share/snmp/snmptrapd.conf "; 
+      $cmd .= "> /usr/share/snmp/snmptrapd.conf.unconfig ";         
+      `$cmd`;     
+
+      # move it back to the snmptrapd.conf file.                     
+      `mv -f /usr/share/snmp/snmptrapd.conf.unconfig /usr/share/snmp/snmptrapd.conf`; 
+    }
+  }
+
+  if ($callback) {
+    my $rsp={};
+    $rsp->{data}->[0]="$localhostname: done.";
+    $callback->($rsp);
+  }
+
+  return (0, "");
+}
+
+
 
 #--------------------------------------------------------------------------------
 =head3    configBMC
       This function configures BMC to setup the snmp destination, enable/disable
     PEF policy table entry number 1. 
     Arguments:
-      actioon -- 1 enable PEF policy table. 0 disable PEF policy table.
+      actioon -- 0 disable alert. 1 enable alert. 2 setup snmp destination
+            
+      p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
+      callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
       (return code, message)      
 =cut
 #--------------------------------------------------------------------------------
 sub configBMC {
   my $action=shift;
+  my $noderef=shift;
+  my $callback=shift;
 
   my $ret_text="";
   my $ret_val=0;
@@ -89,22 +363,24 @@ sub configBMC {
   #the identification of this node
   my @hostinfo=xCAT::Utils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
-  %iphash=();
+  my  %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   if (!$isSV) { $iphash{'noservicenode'}=1;}
-
-  
+ 
+  my $pPairHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair($noderef, 0);
+    
   my %masterhash=();
   my @node_a=();
   my $table=xCAT::Table->new("ipmi");
   if ($table) {
     my @tmp1=$table->getAllNodeAttribs(['node','bmc']);
-    if (defined(@tmp1) && (@tmp1 > 0)) {
+    if (@tmp1 > 0) {
       foreach(@tmp1) {
         my $node=$_->{node};
         my $bmc=$_->{bmc};
+        if (! exists($pPairHash->{$node})) {next;}
         
-        my $pairs=xCAT_monitoring::monitorctrl->getNodeMonServerPair($node);
+        my $pairs=$pPairHash->{$node};
         my @a_temp=split(',',$pairs); 
         my $monserver=$a_temp[0];
         my $master=$a_temp[1];
@@ -132,17 +408,22 @@ sub configBMC {
 
   #now doing the real thing: enable PEF alert policy table
   my $noderange=join(',',@node_a );
-  my $actionstring="en";
-  if ($action==0) {$actionstring="dis";}
-  #print "XCATBYPASS=Y rspconfig $noderange alert=$actionstring\n";
-  my $result = `XCATBYPASS=Y rspconfig $noderange alert=$actionstring 2>&1`;
-  if ($?) {
-     xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
-     $ret_tex .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
-  } 
-
-  #setup the snmp destination
-  if ($action==1) {
+  if ($action==0) {
+    print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
+    my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
+    if ($?) {
+       xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
+       $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
+    } 
+  } elsif ($action==1) {
+    print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
+    my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
+    if ($?) {
+       xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
+       $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
+    } 
+  } else {
+    #setup the snmp destination
     foreach (keys(%masterhash)) {
       my $ref2=$masterhash{$_};
       if (@$ref2==0) { next;}
@@ -154,15 +435,23 @@ sub configBMC {
 	 $ret_val=1;
          $ret_text .= "Converting to IP: $ptmp->[1]\n";
       } else {
-        #print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
+        print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
         my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
         if ($?) {
           xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
-	  $ret_tex .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
+	  $ret_text .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
         }
       }
     }
   }
+
+  if ($callback) {
+    my $rsp={};
+    if ($ret_val) {
+      $rsp->{data}->[0]="$ret_text";
+    } 
+    $callback->($rsp);
+  } 
 
   return ($ret_val, $ret_text);
   
@@ -174,13 +463,18 @@ sub configBMC {
       This function configures Blade Center Management Module to setup the snmp destination, 
       enable/disable remote alert notification. 
     Arguments:
-      actioon -- 1 enable remote alert notification. 0 disable remote alert notification.
+      actioon -- 1 enable remote alert notification. 0 disable remote alert notification. 
+                 2 setting up snmp destination.
+      p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
+      callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
       (return code, message)      
 =cut
 #--------------------------------------------------------------------------------
 sub configMPA {
   my $action=shift;
+  my $noderef=shift;
+  my $callback=shift;
 
   my $ret_val=0;
   my $ret_text="";
@@ -188,25 +482,35 @@ sub configMPA {
   #the identification of this node
   my @hostinfo=xCAT::Utils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
-  %iphash=();
+  my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   if (!$isSV) { $iphash{'noservicenode'}=1;}
+
+  my $all=0;
+  my %nodehash=();
+  if ((!$noderef) || (@$noderef==0)) {$all=1;}
+  else {
+    foreach(@$noderef) { $nodehash{$_}=1;}
+  }
 
   my %mpa_hash=();
   my %masterhash=();
   my @node_a=();
   my $table=xCAT::Table->new("mp");
   if ($table) {
-    my @tmp1=$table->getAllNodeAttribs(['mpa']);
-    if (defined(@tmp1) && (@tmp1 > 0)) {
+    my @tmp1=$table->getAllNodeAttribs(['node','mpa']);
+    if (@tmp1 > 0) {
       foreach(@tmp1) {
+        my $node=$_->{node};
         my $mpa=$_->{mpa};
+        if ((!$all) && (!exists($nodehash{$node})) && (!exists($nodehash{$mpa}))) {next;}
         
         if ($mpa_hash{$mpa}) { next;} #already handled
 
         $mpa_hash{$mpa}=1;
         
-        my $pairs=xCAT_monitoring::monitorctrl->getNodeMonServerPair($mpa);
+        my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair([$mpa], 0);
+        my $pairs=$pHash->{$mpa}; 
         my @a_temp=split(',',$pairs); 
         my $monserver=$a_temp[0];
         my $master=$a_temp[1];
@@ -235,19 +539,22 @@ sub configMPA {
 
   #now doing the real thing: enable PEF alert policy table
   my $noderange=join(',',@node_a );
-  #print "noderange=@noderange\n";
-  my $actionstring="en";
-  if ($action==0) {$actionstring="dis";}
- 
-  #print "XCATBYPASS=Y rspconfig $noderange alert=$actionstring\n";
-  my $result = `XCATBYPASS=Y rspconfig $noderange alert=$actionstring 2>&1`;
-  if ($?) {
-     xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
-     $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
-  } 
-
-  #setup the snmp destination
-  if ($action==1) {
+  if ($action==0) {
+    print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
+    my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
+    if ($?) {
+       xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
+       $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
+    }
+  } elsif ($action==1)  {
+    print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
+    my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
+    if ($?) {
+       xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
+       $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
+    }
+  } else {
+    #setup the snmp destination
     foreach (keys(%masterhash)) {
       my $ref2=$masterhash{$_};
       if (@$ref2==0) { next;}
@@ -259,7 +566,7 @@ sub configMPA {
 	 $ret_val=1;
          $ret_text .= "Converting to IP: $ptmp->[1]\n";
       } else {
-        #print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
+        print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
         my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
         if ($?) {
           xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n");
@@ -268,6 +575,14 @@ sub configMPA {
       }
     }
   }
+
+  if ($callback) {
+    my $rsp={};
+    if ($ret_val) {
+      $rsp->{data}->[0]="$ret_text";
+    }
+    $callback->($rsp);
+  } 
 
   return ($ret_val, $ret_text);
 }
@@ -324,7 +639,7 @@ sub configSNMP {
 	    s/\s*forward/\#forward/; #comment out the old one
             if (!$forward_handled) {
               print FILE "forward default $master\n"; 
-              $forward_handle=1;
+              $forward_handled=1;
             }
           }
         }
@@ -350,6 +665,7 @@ sub configSNMP {
   }
   else {     # The snmptrapd.conf file does not exists
     # create the file:
+    my $handle = new IO::File;
     open($handle, ">/usr/share/snmp/snmptrapd.conf");
     print $handle "authCommunity log,execute,net public\n";
     if ($isSN) {
@@ -361,27 +677,7 @@ sub configSNMP {
   }
 
   # TODO: put the mib files to /usr/share/snmp/mibs
-
-  # get the PID of the currently running snmptrapd if it is running.
-  # then stop it and restart it again so that it reads our new
-  # snmptrapd.conf configuration file. Then the process
-  chomp(my $pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
-  if($pid){
-    `/bin/kill -9 $pid`;
-  }
-  # start it up again!
-  system("/usr/sbin/snmptrapd -m ALL");
-
-  # get the PID of the currently running snmpd if it is running.
-  # if it's running then we just leave.  Otherwise, if we don't get A PID, then we
-  # assume that it isn't running, and start it up again!
-  chomp(my $pid= `/bin/ps -ef | /bin/grep snmpd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
-  unless($pid){
-    # start it up again!
-    system("/usr/sbin/snmpd");         
-  }
-
-  return (0, "started");
+  return (0, "");
 }
 
 #--------------------------------------------------------------------------------
@@ -414,175 +710,7 @@ sub configMail {
 }
 
 
-#--------------------------------------------------------------------------------
-=head3    stop
-      This function gets called by the monitorctrl module when
-      xcatd stops.
-    Arguments:
-       none
-    Returns:
-       (return code, message)
-=cut
-#--------------------------------------------------------------------------------
-sub stop {
-  #print "snmpmon::stop called\n";
 
-  # do not turn it on on the service node
-  #if (xCAT::Utils->isServiceNode()) { return (0, "");}
-
-  #disable MMAs if any
-  configMPA(0);
-
-  #disable BMC so that it stop senging alerts (PETs) to this node
-  configBMC(0);
- 
-  if (-f "/usr/share/snmp/snmptrapd.conf.orig"){
-    # copy back the old one
-    `mv -f /usr/share/snmp/snmptrapd.conf.orig /usr/share/snmp/snmptrapd.conf`;
-  } else {
-    if (-f "/usr/share/snmp/snmptrapd.conf"){ 
-
-      # if the file exists, delete all entries that have xcat_traphandler
-      my $cmd = "grep -v  xcat_traphandler /usr/share/snmp/snmptrapd.conf "; 
-      $cmd .= "> /usr/share/snmp/snmptrapd.conf.unconfig ";         
-      `$cmd`;     
-
-      # move it back to the snmptrapd.conf file.                     
-      `mv -f /usr/share/snmp/snmptrapd.conf.unconfig /usr/share/snmp/snmptrapd.conf`; 
-    }
-  }
-
-  # now check to see if the daemon is running.  If it is then we need to resart or stop?
-  # it with the new snmptrapd.conf file that will not forward events to RMC.
-  chomp(my $pid= `/bin/ps -ef | /bin/grep snmptrapd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
-  if($pid){
-    `/bin/kill -9 $pid`;
-    # start it up again!
-    #system("/usr/sbin/snmptrapd");
-  }
-
-  return (0, "stopped");
-}
-
-
-
-
-#--------------------------------------------------------------------------------
-=head3    supportNodeStatusMon
-    This function is called by the monitorctrl module to check
-    if SNMP can help monitoring and returning the node status.
-    SNMP does not support this function.
-    
-    Arguments:
-        none
-    Returns:
-         1  
-=cut
-#--------------------------------------------------------------------------------
-sub supportNodeStatusMon {
-  return 0;
-}
-
-
-
-#--------------------------------------------------------------------------------
-=head3   startNodeStatusMon
-    This function is called by the monitorctrl module to tell
-    SNMP to start monitoring the node status and feed them back
-    to xCAT. SNMP does not have this support.
-
-    Arguments:
-       None.
-    Returns:
-        (return code, message)
-
-=cut
-#--------------------------------------------------------------------------------
-sub startNodeStatusMon {
-  return (1, "This function is not supported.");
-}
-
-
-#--------------------------------------------------------------------------------
-=head3   stopNodeStatusMon
-    This function is called by the monitorctrl module to tell
-    SNMP to stop feeding the node status info back to xCAT. 
-    SNMP does not support this function.
-
-    Arguments:
-        none
-    Returns:
-        (return code, message)
-=cut
-#--------------------------------------------------------------------------------
-sub stopNodeStatusMon {
-  return (1, "This function is not supported.");
-}
-
-
-#--------------------------------------------------------------------------------
-=head3    addNodes
-      This function adds the nodes into the  SNMP domain.
-    Arguments:
-      nodes --nodes to be added. It is a pointer to an array. If the next argument is
-       1, each element is a ref to an array of [nodes, status]. For example: 
-          [['node1', 'active'], ['node2', 'booting']..]. 
-       if the next argument is 0, each element is a node name to be added.
-      boolean -- 1, or 0. 
-    Returns:
-       (error code, error message)
-=cut
-#--------------------------------------------------------------------------------
-sub addNodes {
-#  print "snmpmon::addNodes\n";
-#  $noderef=shift;
-#  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
-#    $noderef=shift;
-#  }
-#  my $info=shift;
-#  if ($info) {
-#    foreach(@$noderef) {
-#      my $node_info=$_;
-#      print "    node=$node_info->[0], status=$node_info->[1]\n";
-#    }
-#  } else {
-#    print "noderef=@$noderef\n";
-#  }
-    
-  return (0, "ok");
-}
-
-#--------------------------------------------------------------------------------
-=head3    removeNodes
-      This function removes the nodes from the SNMP domain.
-    Arguments:
-      nodes --nodes to be added. It is a pointer to an array. If the next argument is
-       1, each element is a ref to an array of [nodes, status]. For example: 
-          [['node1', 'active'], ['node2', 'booting']..]. 
-       if the next argument is 0, each element is a node name to be added.
-      boolean -- 1, or 0. 
-    Returns:
-       (error code, error message)
-=cut
-#--------------------------------------------------------------------------------
-sub removeNodes {
-#  print "snmpmon::removeNodes\n";
-#  $noderef=shift;
-#  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
-#    $noderef=shift;
-#  }
-#  my $info=shift;
-#  if ($info) {
-#    foreach(@$noderef) {
-#      my $node_info=$_;
-#      print "    node=$node_info->[0], status=$node_info->[1]\n";
-#    }
-#  } else {
-#    print "noderef=@$noderef\n";
-#  }
-    
-  return (0, "ok");
-}
 
 #--------------------------------------------------------------------------------
 =head3    processSettingChanges
@@ -646,3 +774,101 @@ sub getDescription {
       system events.\n"  
 }
 
+#--------------------------------------------------------------------------------
+=head3    getNodesMonServers
+      This function checks the given nodes, if they are bmc/ipmi nodes, the monserver pairs of
+     the nodes will be returned. If the nodes are managed by MM, the monserver pairs of their
+     mpa will be returned.  
+     Arguments:
+       p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
+       callback -- the callback pointer for error and status displaying. It can be null.
+   Returns: 
+      A pointer to a hash table with monserver pairs as the key and an array
+                     pointer of nodes as the value. 
+                     For example: { "sv1,ma1"=>[node1,node2], "sv2,ma2"=>node3...}
+         The pair is in the format of "monserver,monmaser". First one is the monitoring service 
+      node ip/hostname that faces the mn and the second one is the monitoring service 
+      node ip/hostname that faces the cn. 
+      The value of the first one can be "noservicenode" meaning that there is no service node 
+      for that node. In this case the second one is the site master. 
+=cut
+#--------------------------------------------------------------------------------
+sub getNodesMonServers
+{
+  print "snmpmon:getNodesMonServer called\n";
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::snmpmon/) {
+    $noderef=shift;
+  }
+  my $callback=shift;
+
+  my $ret={};
+  my $localhostname=hostname();
+  my $pPairHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair($noderef, 0);
+
+  #check for blades, only returns the MPAs and their monservers
+  my %mpa_hash=();
+  my $table=xCAT::Table->new("mp");
+  if ($table) {
+    my @tmp1=$table->getAllNodeAttribs(['node','mpa']);
+    if (@tmp1 > 0) {
+      foreach(@tmp1) {
+        my $node=$_->{node};
+        my $mpa=$_->{mpa};
+        if ((!exists($pPairHash->{$node})) && (!exists($pPairHash->{$mpa}))) {next;} #not in input
+        
+        #if  (exists($pPairHash->{$node})) { delete($pPairHash->{$node}); }
+        if ($mpa_hash{$mpa}) { next;} #already handled
+
+        $mpa_hash{$mpa}=1;
+        
+        my $pairs;
+        if (exists($pPairHash->{$mpa})) { 
+          $pairs=$pPairHash->{$mpa}; 
+        } else {
+          my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair([$mpa], 0);
+          $pairs=$pHash->{$mpa};
+        }
+
+        if (exists($ret->{$pairs})) {
+          my $pa=$ret->{$pairs};
+          push(@$pa, $mpa);
+        }
+        else {
+          $ret->{$pairs}=[$mpa];
+        }
+
+        #if (exists($pPairHash->{$mpa}))) { delete($pPairHash->{$mpa}); } 
+      } #foreach
+    }
+    $table->close();
+  }
+
+
+  #check BMC/IPMI nodes   
+  $table=xCAT::Table->new("ipmi");
+  if ($table) {
+    my @tmp1=$table->getAllNodeAttribs(['node','bmc']);
+    if (@tmp1 > 0) {
+      foreach(@tmp1) {
+        my $node=$_->{node};
+        my $bmc=$_->{bmc};
+        if (! exists($pPairHash->{$node})) {next;}
+        my $pairs=$pPairHash->{$node};
+
+        if (exists($ret->{$pairs})) {
+          my $pa=$ret->{$pairs};
+          push(@$pa, $node);
+        }
+        else {
+          $ret->{$pairs}=[$node];
+        }
+
+        #delete($pPairHash->{$node});
+      } #foreach
+    }
+    $table->close();
+  }
+
+  return $ret;
+}

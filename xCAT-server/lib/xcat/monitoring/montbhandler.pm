@@ -46,7 +46,7 @@ sub regMonitoringNotif {
   my $tab = xCAT::Table->new('notification');
   my $regged=0;
   if ($tab) {
-    (my $ref) = $tab->getAttribs({filename => qw(montbhandler.pm)}, tables);
+    (my $ref) = $tab->getAttribs({filename => qw(montbhandler.pm)}, 'tables');
     if ($ref and $ref->{tables}) {
        $regged=1;
     }
@@ -54,7 +54,7 @@ sub regMonitoringNotif {
   }
 
   if (!$regged) {
-    xCAT_plugin::notification::regNotification([qw(montbhandler.pm monitoring,monsetting -o a,u,d)]);
+    xCAT_plugin::notification::regNotification([qw(montbhandler.pm monsetting -o a,u,d)]);
   }
 }
 

@@ -6,10 +6,11 @@ BEGIN
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
+use strict;
 use xCAT::Utils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
-
+use Sys::Hostname;
 
 
 1;
@@ -24,16 +25,23 @@ use xCAT_monitoring::monitorctrl;
 
 #--------------------------------------------------------------------------------
 =head3    start
-      This function gets called by the monitorctrl module
-      when xcatd starts.  
+      This function gets called by the monitorctrl module when monstart command 
+     gets called and when xcatd starts.  
+
     Arguments:
-      None.
+       p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means both monservers and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message)      
+      (return code, message) 
+      if the callback is set, use callback to display the status and error. 
+     
 =cut
 #--------------------------------------------------------------------------------
 sub start {
-  #print "xcatmon.start\n";
+  print "xcatmon.start\n";
 
   return (0, "started");
 }
@@ -42,15 +50,20 @@ sub start {
 
 #--------------------------------------------------------------------------------
 =head3    stop
-      This function gets called by the monitorctrl module when
-      xcatd stops. 
+      This function gets called by the monitorctrl module when monstop command gets called. 
     Arguments:
-       none
+       p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means both monservers and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-       (return code, message)
+      (return code, message) 
+      if the callback is set, use callback to display the status and error. 
 =cut
 #--------------------------------------------------------------------------------
 sub stop {
+  print "xcatmon.stop\n";
   
   return (0, "stopped");
 }
@@ -78,23 +91,30 @@ sub supportNodeStatusMon {
 
 #--------------------------------------------------------------------------------
 =head3   startNodeStatusMon
-    This function is called by the monitorctrl module to tell
-    the product to start monitoring the node status and feed them back
+    This function is called by the monitorctrl module when monstart gets called and
+    when xcatd starts. It starts monitoring the node status and feed them back
     to xCAT.  
     Arguments:
-      None.
+       p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only.  
+                2 means both monservers and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
+    note: p_nodes and scope are ignored by this plugin.
     Returns:
-        (return code, message)
-
+      (return code, message) 
+      if the callback is set, use callback to display the status and error. 
 =cut
 #--------------------------------------------------------------------------------
-sub startNodeStatusMon {
-  my $temp=shift;
-  if ($temp =~ /xCAT_monitoring::xcatmon/) {
-    $temp=shift;
+sub startNodeStatusMon
+{
+  print "xcatmon.startNodeStatusMon\n";
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::xcatmon/) {
+    $noderef=shift;
   }
-
-  #print "xcatmon.startNodeStatusMon\n";
+  my $scope=shift;
+  my $callback=shift;
 
   #run the command first to update the status, 
   my $cmd="$::XCATROOT/sbin/xcatnodemon";
@@ -134,71 +154,112 @@ sub startNodeStatusMon {
     $newentry="*/$value * * * * XCATROOT=$::XCATROOT PATH=$ENV{'PATH'} XCATCFG='$ENV{'XCATCFG'}' $cmd";
   }
   my ($code, $msg)=xCAT::Utils::add_cron_job($newentry);
-  if ($code==0) { return (0, "started"); }
-  else {  return ($code, $msg); } 
+  my $localhostname=hostname(); 
+  if ($code==0) { 
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: started. Refresh interval is $value minute(s).";
+      $callback->($rsp);
+    }
+    return (0, "started"); }
+  else {
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: $code  $msg";
+      $callback->($rsp);
+    }
+    return ($code, $msg); 
+  } 
 }
 
 
 #--------------------------------------------------------------------------------
 =head3   stopNodeStatusMon
-    This function is called by the monitorctrl module to tell
-    the product to stop feeding the node status info back to xCAT. 
-
+    This function is called by the monitorctrl module when monstop command is issued.
+    It stops feeding the node status info back to xCAT. 
     Arguments:
-        none
+       p_nodes -- a pointer to an arrays of nodes to stoped for monitoring. null means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means both monservers and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
+    note: p_nodes and scope are ignored by this plugin.
     Returns:
-        (return code, message)
+      (return code, message) 
+      if the callback is set, use callback to display the status and error. 
 =cut
 #--------------------------------------------------------------------------------
 sub stopNodeStatusMon {
-  #TODO: turn off the node status monitoring. 
+  print "xcatmon.stopNodeStatusMon\n";
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::xcatmon/) {
+    $noderef=shift;
+  }
+  my $scope=shift;
+  my $callback=shift;
   
   my $job="$::XCATROOT/sbin/xcatnodemon";
   my ($code, $msg)=xCAT::Utils::remove_cron_job($job);
-  if ($code==0) { return (0, "stopped"); }
-  else {  return ($code, $msg); }
-
+  my $localhostname=hostname(); 
+  if ($code==0) { 
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: stopped.";
+      $callback->($rsp);
+    }
+    return (0, "stopped"); }
+  else {
+    if ($callback) {
+      my $rsp={};
+      $rsp->{data}->[0]="$localhostname: $code  $msg";
+      $callback->($rsp);
+    }
+    return ($code, $msg); 
+  } 
 }
 
 
 #--------------------------------------------------------------------------------
-=head3    addNodes
-      This function is called by the monitorctrl module when new nodes are added 
-      to the xCAT cluster. It should add the nodes into the product for monitoring.
+=head3    config
+      This function configures the cluster for the given nodes.  
+      This function is called by when monconfig command is issued or when xcatd starts
+     on the service node. It will configure the cluster to include the given nodes within
+     the monitoring doamin. 
     Arguments:
-      nodes --nodes to be added. It is a pointer to an array. If the next argument is
-       1, each element is a ref to an array of [nodes, status]. For example: 
-          [['node1', 'active'], ['node2', 'booting']..]. 
-       if the next argument is 0, each element is a node name to be added.
-      boolean -- 1, or 0. 
+       p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means both monservers and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
-sub addNodes {
+sub config {
 
-  #print "xcatmon:addNodes called\n";
+  print "xcatmon:config called\n";
  
   return (0, "ok");
 }
 
 #--------------------------------------------------------------------------------
-=head3    removeNodes
+=head3    deconfig
+      This function de-configures the cluster for the given nodes.  
       This function is called by the monitorctrl module when nodes are removed 
       from the xCAT cluster. It should remove the nodes from the product for monitoring.
     Arguments:
-      nodes --nodes to be added. It is a pointer to an array. If the next argument is
-       1, each element is a ref to an array of [nodes, status]. For example: 
-          [['node1', 'active'], ['node2', 'booting']..]. 
-       if the next argument is 0, each element is a node name to be added.
-      boolean -- 1, or 0. 
+       p_nodes -- a pointer to an arrays of nodes to be removed for monitoring. none means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means both monservers and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
-sub removeNodes {
+sub deconfig {
 
-  #print "xcatmon:removeNodes called\n";
+  print "xcatmon:deconfig called\n";
 
   return (0, "ok");
 }
@@ -216,7 +277,7 @@ sub removeNodes {
 =cut
 #--------------------------------------------------------------------------------
 sub getMonNodesStatus {
-  %status=();
+  my %status=();
   my @inactive_nodes=();
   my @active_nodes=();
   my @unknown_nodes=();
@@ -262,9 +323,8 @@ sub getMonNodesStatus {
 
 
 #--------------------------------------------------------------------------------
-=head3    processNodeStatusChanges
-      This function will update the status column of the
-      nodelist table with the new node status.
+=head3    setNodeStatusAttributes
+      This function will update the status column of the nodelist table with the new node status.
     Arguments:
        status -- a hash pointer of the node status. A key is a status string. The value is 
                 an array pointer of nodes that have the same status.
@@ -274,12 +334,12 @@ sub getMonNodesStatus {
         non-0 for not successful.
 =cut
 #--------------------------------------------------------------------------------
-sub processNodeStatusChanges {
+sub setNodeStatusAttributes {
   my $temp=shift;
   if ($temp =~ /xCAT_monitoring::xcatmon/) {
     $temp=shift;
   }
-  return xCAT_monitoring::monitorctrl->processNodeStatusChanges($temp);
+  return xCAT_monitoring::monitorctrl->setNodeStatusAttributes($temp);
 }
 
 #--------------------------------------------------------------------------------
@@ -295,8 +355,8 @@ sub processNodeStatusChanges {
 #--------------------------------------------------------------------------------
 sub processSettingChanges {
   #restart the cron job
-  xCAT_monitoring::xcatmon->stopNodeStatusMon();
-  xCAT_monitoring::xcatmon->startNodeStatusMon();  
+  xCAT_monitoring::xcatmon->stopNodeStatusMon([], 0);
+  xCAT_monitoring::xcatmon->startNodeStatusMon([], 0);  
 }
 
 #--------------------------------------------------------------------------------

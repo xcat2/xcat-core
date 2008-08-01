@@ -282,14 +282,6 @@ sub process_request {
          node=>\@breaknetboot,
          arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
 
-  #####################################
-  # give monitoring code a chance to prepare the master for the node deployment
-  my %new_request = (
-       command => ['moncfgmaster'],
-       node => \@rnodes
-    );
-  $sub_req->(\%new_request, \&pass_along);
-  #####################################
 }
 
 
