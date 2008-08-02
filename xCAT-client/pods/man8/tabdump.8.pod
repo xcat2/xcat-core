@@ -84,4 +84,4 @@ To display a description of each column in the nodehm table:
 
 =head1 SEE ALSO
 
-tabrestore(1), tabedit(1), dumpxCATdb(1)
+L<tabrestore(8)|tabrestore.8>, L<tabedit(8)|tabedit.8>, L<dumpxCATdb(1)|dumpxCATdb.1>

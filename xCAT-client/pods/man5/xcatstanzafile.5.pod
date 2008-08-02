@@ -127,4 +127,4 @@ This file is part of xCAT software product.
 
 =head1 SEE ALSO
 
-See the mkdef(1), chdef(1), lsdef(1), and rmdef(1) commands.
+L<mkdef(1)|mkdef.1>, L<lsdef(1)|lsdef.1>, L<rmdef(1)|rmdef.1>, L<chdef(1)|chdef.1>

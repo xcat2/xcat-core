@@ -46,19 +46,3 @@ I<updateSNimage -p /install/netboot/fedora8/x86_64/test/rootimg>
 I<updateSNimage -n 9.112.45.6 -p /install/netboot/fedora8/x86_64/test/rootimg>
 
 
-=head1 FILES
-
-$XCATROOT/bin/chdef
-
-(The XCATROOT environment variable is set when xCAT is installed. The
-default value is "/opt/xcat".)
-
-
-=head1 NOTES
-
-This command is part of the xCAT software product.
-When going to a remote host, the command uses scp.  It is best to have ssh keys setup so you will not be prompted for a password on each copy.
-
-
-
-

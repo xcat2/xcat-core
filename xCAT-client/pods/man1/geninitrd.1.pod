@@ -1,30 +1,23 @@
 =head1 NAME
 
-B<genimage> - Generates a stateless image to be used for a diskless install.
+B<geninitrd> - Regenerates the initrd for a stateless image to be used for a diskless install.
 
 =head1 SYNOPSIS
 
-B<genimage> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>]
+B<geninitrd> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-k> I<kernel_version>]
 
-B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
+B<geninitrd> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 
 =head1 DESCRIPTION
 
-Generates a stateless image that can be used to boot xCAT nodes in a diskless mode.  The packages included
-(and excluded) in the image are specified by /opt/xcat/share/xcat/netboot/<OS>/<profile>.pkglist and
-/opt/xcat/share/xcat/netboot/<OS>/<profile>.exlist.  The generated image will be put in
-/install/netboot/<OS>/<arch>/<profile>.
+Regenerates the initrd that is part of a stateless image that is used to boot xCAT nodes in a diskless mode.
+The generated initrd will be put in /install/netboot/<OS>/<arch>/<profile>.
 
-The B<genimage> command must be run on a system that is the same architecture as the nodes it will be
+The B<geninitrd> command must be run on a system that is the same architecture as the nodes it will be
 used on.  If the management node is not the same architecture, copy the contents of
 /opt/xcat/share/xcat/netboot/<OS> to a system that is the proper architecture, and mount /install from
 the management node to that system.
-
-The B<genimage> command will run geninitrd automatically.  (You can run geninitrd yourself at a later time, if
-you want to rebuild the initrd.)  After your image is created, you can chroot to the
-image, install any additional software you would like, or make modifications to files, and then run
-B<packimage> to prepare the image for deployment.
 
 
 =head1 OPTIONS
@@ -55,20 +48,16 @@ is important.
 
 The maximum size allowed for the root file system in the image.  Specify in bytes, or can append k, m, or g.
 
-=item B<-r> I<additional_nics>
-
-Other network interfaces (e.g. eth1) in the image that should be configured via DHCP.
-
 =item B<-k> I<kernel_version>
 
 Use this flag if you want to use a specific version of the kernel in the image.  Defaults to the first kernel found
 in the install image.
 
-=item B<-v|--version>
+=item B<-v>
 
 Display version.
 
-=item B<-h|--help>
+=item B<-h>
 
 Display usage message.
 
@@ -88,22 +77,20 @@ Display usage message.
 
 =item 1.
 
-To generate a fedora8 image for a compute node architecture x86_64 and place it in the
+To regenerate the initrd for a fedora8 image for a compute node architecture x86_64 and place it in the
 /install/netboot/fedora8/x86_64/compute/rootimg directory:  change directory to
 /opt/xcat/share/xcat/netboot/fedora and run:
 
- genimage -i eth0 -n tg3,bnx2 -o fedora8 -p compute
-
-This would use the profile information from the /opt/xcat/share/xcat/netboot/fedora/compute* files.
+ geninitrd -i eth0 -n tg3,bnx2 -o fedora8 -p compute
 
 =back
 
 
 =head1 FILES
 
-/opt/xcat/share/xcat/netboot/<OS>/genimage
+/opt/xcat/share/xcat/netboot/<OS>/geninitrd
 
 
 =head1 SEE ALSO
 
-L<geninitrd(1)|geninitrd.1>, L<packimage(1)|packimage.1>
+L<genimage(1)|genimage.1>, L<packimage(1)|packimage.1>

@@ -21,7 +21,7 @@ B<rspconfig> I<noderange> B<community>={B<public>|I<string>}
 B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<backupgateway>|B<garp>}
 
 B<rspconfig> I<noderange> B<garp>={I<time>}
-       
+
 =head2 MPA specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>}
@@ -137,7 +137,7 @@ Allows loss of redundancy.
 
 =item B<ntp>={[I<ntpenable>],[I<ntpserver>],[I<frequency>],[I<v3>]}
 
-Get or set the MPA Network Time Protocol (NTP) parameters. 
+Get or set the MPA Network Time Protocol (NTP) parameters.
 
 =item B<ntpenable>
 
@@ -177,7 +177,7 @@ Get or set where the SNMP alerts should be sent to.
 
 =item B<spdump>
 
-Performs a service processor dump. 
+Performs a service processor dump.
 
 =item B<sshcfg>={I<enable>|I<disable>}
 
@@ -189,7 +189,7 @@ Set the Switch network parameters.
 
 =item B<sysdump>
 
-Performs a system dump. 
+Performs a system dump.
 
 =item B<time>={I<hh:mm:ss>}
 
@@ -240,10 +240,10 @@ To display the MPA network parameters for mm01:
 
 B<rspconfig> I<mm01 network>
 
- mm01: MM IP: 192.168.1.47 
- mm01: MM Hostname: MM001125C31F28 
- mm01: Gateway: 192.168.1.254  
- mm01: Subnet Mask: 255.255.255.224 
+ mm01: MM IP: 192.168.1.47
+ mm01: MM Hostname: MM001125C31F28
+ mm01: Gateway: 192.168.1.254
+ mm01: Subnet Mask: 255.255.255.224
 
 =item *
 
@@ -251,10 +251,10 @@ To change the MPA network parameters with the values in the xCAT database for mm
 
 B<rspconfig> I<mm01 network=*>
 
- mm01: MM IP: 192.168.1.47 
- mm01: MM Hostname: mm01 
- mm01: Gateway: 192.168.1.254  
- mm01: Subnet Mask: 255.255.255.224 
+ mm01: MM IP: 192.168.1.47
+ mm01: MM Hostname: mm01
+ mm01: Gateway: 192.168.1.254
+ mm01: Subnet Mask: 255.255.255.224
 
 =item *
 
@@ -262,7 +262,7 @@ To change only the gateway parameter for the MPA network mm01:
 
 B<rspconfig> I<mm01 network=,,192.168.1.1,>
 
- mm01: Gateway: 192.168.1.1  
+ mm01: Gateway: 192.168.1.1
 
 =item *
 
@@ -270,7 +270,7 @@ To get the current power redundancy mode for power domain 1 on mm01:
 
 B<rspconfig> I<mm01 pd1>
 
- mm01: Redundant without performance impact  
+ mm01: Redundant without performance impact
 
 =item *
 
@@ -278,7 +278,7 @@ To change the current power redundancy mode for power domain 1 on mm01 to non-re
 
 B<rspconfig> I<mm01 pd1=nonred>
 
- mm01: nonred  
+ mm01: nonred
 
 =item *
 
@@ -286,10 +286,10 @@ To enable NTP with an NTP server address of 192.168.1.1, an update frequency of 
 
 B<rspconfig> I<mm01 ntp=enable,192.168.1.1,90,enable>
 
- mm01: NTP: disabled  
- mm01: NTP Server: 192.168.1.1  
- mm01: NTP: 90 (minutes)  
- mm01: NTP: enabled  
+ mm01: NTP: disabled
+ mm01: NTP Server: 192.168.1.1
+ mm01: NTP: 90 (minutes)
+ mm01: NTP: enabled
 
 =item *
 
@@ -297,7 +297,7 @@ To disable NTP v3 authentication only on mm01:
 
 B<rspconfig> I<mm01 ntp=,,,disable>
 
- mm01: NTP v3: disabled  
+ mm01: NTP v3: disabled
 
 =item *
 
@@ -305,7 +305,7 @@ To disable Predictive Failure and L2 Failure deconfiguration policies on mm01:
 
 B<rspconfig> I<mm01 decfg=disable:predictive,L3>
 
- mm01: Success  
+ mm01: Success
 
 =item *
 
@@ -313,7 +313,7 @@ To deconfigure processors 4 and 5 of Processing Unit 0 on mm01:
 
 B<rspconfig> I<mm01 procedecfg=deconfigure:0:4,5>
 
- mm01: Success  
+ mm01: Success
 
 =item *
 
@@ -321,14 +321,14 @@ To deconfigure memory bank 9 and 10 of Processing Unit 0 on mm01:
 
 B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
 
- mm01: Success  
+ mm01: Success
 
 =back
 
 
 =head1 SEE ALSO
 
-noderange(3), rpower(1), rcons(1), rinv(1), rvitals(1), rscan(1)
+L<noderange(3)|noderange.3>, L<rpower(1)|rpower.1>, L<rcons(1)|rcons.1>, L<rinv(1)|rinv.1>, L<rvitals(1)|rvitals.1>, L<rscan(1)|rscan.1>
 
 
 

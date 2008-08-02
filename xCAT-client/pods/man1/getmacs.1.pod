@@ -1,14 +1,14 @@
 =head1 NAME
- 
-B<getmacs> - Collects node MAC address.  
- 
+
+B<getmacs> - Collects node MAC address.
+
 =head1 SYNOPSIS
- 
+
 I<getmacs [-h| --help]>
 
 I<getmacs [-v| --version]>
 
-I<getmacs [-V| --verbose] noderange> [-f][-d][-S server -G gateway -C client] 
+I<getmacs [-V| --verbose] noderange> [-f][-d][-S server -G gateway -C client]
 
 
 =head1 DESCRIPTION
@@ -20,7 +20,7 @@ Note than on AIX systems, the returned MAC address is not colon-seperated (for e
 
 B<-C>          IP address of the partition.
 
-B<-d>          Display MAC only. The default is to write the first adapter MAC to the xCAT database. 
+B<-d>          Display MAC only. The default is to write the first adapter MAC to the xCAT database.
 
 B<-f>          Force immediate shutdown of the partition.
 
@@ -28,29 +28,29 @@ B<-G>          Gateway IP address of the partition specified with the -C option.
 
 B<-h>          Display usage message.
 
-B<-S>          The IP address of the machine to ping.  
+B<-S>          The IP address of the machine to ping.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-V>          Verbose output. 
+B<-V>          Verbose output.
 
 
 =head1 RETURN VALUE
 
   0 The command completed successfully.
-   
+
   1 An error has occurred.
 
 
 =head1 EXAMPLES
 
-1. To retrieve the MAC address for the HMC-managed partition lpar4 and write the first adapter MAC to the xCAT database, enter: 
+1. To retrieve the MAC address for the HMC-managed partition lpar4 and write the first adapter MAC to the xCAT database, enter:
 
-I<getmacs lpar4> 
+I<getmacs lpar4>
 
 Output is similar to:
 
-lpar4: 
+lpar4:
 
 #Type  Location Code   MAC Address      Full Path Name  Ping Result
 
@@ -58,13 +58,13 @@ ent U9133.55A.10B7D1G-V12-C4-T1 8e:e2:24:5c:f0:04 /vdevice/l-lan@30000004  virtu
 
 
 
-2. To retrieve the MAC address for the HMC-managed partition lpar4 and display the result only, enter: 
+2. To retrieve the MAC address for the HMC-managed partition lpar4 and display the result only, enter:
 
-I<getmacs lpar4 -d> 
+I<getmacs lpar4 -d>
 
 Output is similar to:
 
-lpar4: 
+lpar4:
 
 #Type  Location Code   MAC Address      Full Path Name  Ping Result
 
@@ -72,7 +72,7 @@ ent U9133.55A.10B7D1G-V12-C4-T1 8ee2245cf004 /vdevice/l-lan@30000004 virtual
 
 
 
-3. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result only, enter: 
+3. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result only, enter:
 
 I<getmacs lpar4 -d -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234>
 
@@ -81,16 +81,14 @@ I<getmacs lpar4 -d -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234>
 ent U9133.55A.10B7D1G-V12-C4-T1 8e:e2:24:5c:f0:04 /vdevice/l-lan@30000004 successful virtual
 
 =head1 FILES
- 
-/opt/xcat/bin/getmac
+
+/opt/xcat/bin/getmacs
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
+L<makedhcp(8)|makedhcp.8>
 
-
- 
 
 
 

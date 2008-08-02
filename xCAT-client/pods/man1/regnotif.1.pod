@@ -1,10 +1,10 @@
 =head1 NAME
- 
+
 B<regnotif> - Registers a Perl module or a command that will get called when changes occur in the desired xCAT database tables.
-  
- 
+
+
 =head1 SYNOPSIS
- 
+
 I<regnotif [-h| --help]>
 
 I<regnotif  [-v| --version]>
@@ -20,19 +20,19 @@ This command is used to register a Perl module or a command to the xCAT notifica
 
 =head1 Parameters
 
-I<filename> is the full path name of the Perl module or command to be registered. 
-I<tablename> is the name of the table that the user is interested in. 
+I<filename> is the full path name of the Perl module or command to be registered.
+I<tablename> is the name of the table that the user is interested in.
 
 =head1 OPTIONS
 
 
 B<-h | -help>          Display usage message.
 
-B<-v | -version >      Command Version. 
+B<-v | -version >      Command Version.
 
-B<-V | -verbose>       Verbose output. 
+B<-V | -verbose>       Verbose output.
 
-B<-o | -operation>     specifies the database table actions that the user is interested in. It is a comma separated list. 'a' for row addition, 'd' for row deletion and 'u' for row update. 
+B<-o | -operation>     specifies the database table actions that the user is interested in. It is a comma separated list. 'a' for row addition, 'd' for row deletion and 'u' for row update.
 
 =head1 RETURN VALUE
 
@@ -45,21 +45,17 @@ B<-o | -operation>     specifies the database table actions that the user is int
 1. To register a Perl module that gets invoked when rows get added or deleted.  in the nodelist and the nodehm tables, enter:
 
  regnotif /opt/xcat/lib/perl/xCAT_monitoring/mycode.pm nodelist,nodhm -o a,d
-										   
+
 2. To register a command that gets invoked when rows get updated in the switch table, enter:
 
 regnotif /usr/bin/mycmd switch  -o u
 
 =head1 FILES
- 
+
 /opt/xcat/bin/regnotif
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-See unregnotif
+L<unregnotif(1)|unregnotif.1>
 
-This command is part of the xCAT software product.
-
-
- 

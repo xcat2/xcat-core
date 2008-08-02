@@ -260,4 +260,4 @@ E.g. node2, node3, node20, node30, node21234 all match.
 
 =head1 B<SEE ALSO>
 
-nodels(1)
+L<nodels(1)|nodels.1>

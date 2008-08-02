@@ -73,4 +73,4 @@ The output would be similar to:
 
 =head1 SEE ALSO
 
-nodels(1), chtab(1), tabdump(1)
+L<nodels(1)|nodels.1>, L<chtab(8)|chtab.8>, L<tabdump(8)|tabdump.8>

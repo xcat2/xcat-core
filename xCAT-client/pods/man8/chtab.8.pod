@@ -64,8 +64,6 @@ I<chtab -d node=node1 nodetype>
 /opt/xcat/bin/chtab
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
-
-
+L<tabdump(8)|tabdump.8>, L<tabedit(8)|tabedit.8>

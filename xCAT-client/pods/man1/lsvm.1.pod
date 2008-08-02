@@ -58,10 +58,9 @@ Output is similar to:
 /opt/xcat/bin/lsvm
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
-
+L<mkvm(1)|mkvm.1>, L<chvm(1)|chvm.1>, L<rmvm(1)|rmvm.1>
 
 
 

@@ -39,10 +39,6 @@ method.
 
 B<rcons> I<node5>
 
-=head1 B<Author>
-
-Egan Ford <egan@us.ibm.com>
-
 =head1 B<See> B<Also>
 
-B<rvid(1)>, L<wcons(1)|wcons.1>, B<wvid(1)>
+L<wcons(1)|wcons.1>

@@ -460,9 +460,9 @@ site => {
    "  dhcpinterfaces (network interfaces DHCP should listen on.  If same for all nodes, use simple comma-separated list of NICs.  Also support: mn|eth1,eth2;service|bond0;compute|eth0)\n".
    "  forwarders (DNS servers at your site that can provide names outside of the cluster)\n".
    "  genpasswords (automatically generate random passwords for BMCs when configuring them)\n".
-   "  defserialport (default if not specified for the node in nodehm table)\n".
-   "  defserialspeed (default if not specified for the node in nodehm table)\n".
-   "  defserialflow (default if not specified for the node in nodehm table)\n",
+   "  defserialport (default serial port - currently only used by mknb)\n".
+   "  defserialspeed (default serial speed - currently only used by mknb)\n".
+   "  defserialflow (default serial flow - currently only used by mknb)\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",

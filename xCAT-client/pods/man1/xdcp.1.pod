@@ -362,4 +362,4 @@ Location of the contexts available to use with  DSH  Utilities.
 
 =head1 B<SEE ALSO>
 
-xdsh(1), noderange(3)
+L<xdsh(1)|xdsh.1>, L<noderange(3)|noderange.3>

@@ -35,4 +35,4 @@ B<rspreset> I<node5>
 
 =head1 B<SEE ALSO>
 
-rpower(1), nodehm(5)
+L<rpower(1)|rpower.1>, nodehm(5)

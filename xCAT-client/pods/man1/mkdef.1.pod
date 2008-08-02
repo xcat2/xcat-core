@@ -132,4 +132,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-See the chdef(1), lsdef(1), rmdef(1), and xcatstanzafile(5) commands.
+L<chdef(1)|chdef.1>, L<lsdef(1)|lsdef.1>, L<rmdef(1)|rmdef.1>, L<xcatstanzafile(5)|xcatstanzafile.5>

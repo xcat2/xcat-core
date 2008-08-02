@@ -1,10 +1,10 @@
 =head1 NAME
- 
+
 B<monstop> -  Stops a monitoring plug-in module to monitor the xCAT cluster.
 
- 
+
 =head1 SYNOPSIS
- 
+
 I<monstop [-h| --help]>
 
 I<monstop  [-v| --version]>
@@ -15,20 +15,20 @@ I<monstop name>
 
 =head1 DESCRIPTION
 
-This command is used to unregister a monitoring plug-in module from the I<monitoring> table. A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. Once unregistered, xCAT will ask the monitoring plug-in to stop the 3rd party software to monitor the xCAT cluster.       
+This command is used to unregister a monitoring plug-in module from the I<monitoring> table. A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. Once unregistered, xCAT will ask the monitoring plug-in to stop the 3rd party software to monitor the xCAT cluster.
 
 =head1 Parameters
 
-I<name> is the name of the monitoring plug-in module in the I<monitoring> table. 
+I<name> is the name of the monitoring plug-in module in the I<monitoring> table.
 
 =head1 OPTIONS
 
 
 B<-h | -help>          Display usage message.
 
-B<-v | -version >      Command Version. 
+B<-v | -version >      Command Version.
 
-B<-V | -verbose>       Verbose output. 
+B<-V | -verbose>       Verbose output.
 
 
 =head1 RETURN VALUE
@@ -43,20 +43,18 @@ B<-V | -verbose>       Verbose output.
 
   monstop gangliamon
 
-Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<tabdump monitoring>. 
+Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<tabdump monitoring>.
 
 
 
-=head1 FILES 
- 
+=head1 FILES
+
 /opt/xcat/bin/monstop
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-See monstart monls
-
-This command is part of the xCAT software product.
+L<monstart(1)|monstart.1>, L<monls(1)|monls.1>
 
 
- 
+

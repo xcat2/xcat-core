@@ -71,4 +71,4 @@ restorexCATdb -p <restore directory:
 
 =head1 SEE ALSO
 
-tabdump(1), tabedit(1),dumpxCATdb(1)
+L<tabdump(8)|tabdump.8>, L<tabedit(8)|tabedit.8>, L<dumpxCATdb(1)|dumpxCATdb.1>

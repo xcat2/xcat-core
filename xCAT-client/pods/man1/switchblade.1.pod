@@ -1,0 +1,67 @@
+
+=head1 NAME
+
+B<switchblade> - reassign the BladeCenter media tray and/or KVM to the specified blade
+
+=head1 SYNOPSIS
+
+B<switchblade> I<MM> {B<list> | B<stat>}
+
+B<switchblade> I<node> {B<media> | B<mt> | B<kvm> | B<video> | B<both>} [I<slot_num>]
+
+B<switchblade> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+B<switchblade> assigns the BladeCenter media tray and/or KVM to the specified blade, so that they can be
+used with that blade.  If B<list> or B<stat> are specified instead, B<switchblade> will display the current
+assignment.  You can either specify a management module or a node (blade) to B<switchblade>.  If the latter,
+B<switchblade> will determine the management module of the node.
+
+=head1 OPTIONS
+
+=over 7
+
+=item B<list>|B<stat>
+
+Display which blade the media tray and KVM are currently assigned to.
+
+=item B<media>|B<mt>
+
+Assign the media tray to the specified blade.
+
+=item B<kvm>|B<video>
+
+Assign the KVM (video display) to the specified blade.
+
+=item B<both>
+
+Assign both the media tray and the KVM to the specified blade.
+
+=item I<slot_num>
+
+The slot # of the blade that the resources should be assigned to.  If not specified, it will use the slot
+# of the node specified.
+
+=back
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+Switch the media tray to be assigned to the blade in slot 4 (assume it is node4):
+
+ switchblade node4 media
+
+Output will be like:
+
+ Media Tray slot: 4
+
+=back
+
+=head1 SEE ALSO
+
+L<rbootseq(1)|rbootseq.1>

@@ -1,9 +1,9 @@
 =head1 NAME
- 
-B<packimage> - Packs the stateless image from the chroot file system.  
- 
+
+B<packimage> - Packs the stateless image from the chroot file system.
+
 =head1 SYNOPSIS
- 
+
 I<packimage [-h| --help]>
 
 I<packimage  [-v| --version]>
@@ -14,10 +14,10 @@ I<packimage [-o OS] [ -p profile] [-a architecture] [-m method]>
 
 =head1 DESCRIPTION
 
-Packs the stateless image from the chroot file system into a file system to be 
+Packs the stateless image from the chroot file system into a file system to be
 sent to the node for a diskless install.
-The install dir is setup by using "installdir" attribute set in the site table. 
-The nodetype table "profile" attribute for the node should reflect the profile of the install image. 
+The install dir is setup by using "installdir" attribute set in the site table.
+The nodetype table "profile" attribute for the node should reflect the profile of the install image.
 
 This uses the package information from the /opt/xcat/share/xcat/netboot/[os] directory files for the profile input.
 
@@ -26,15 +26,15 @@ This uses the package information from the /opt/xcat/share/xcat/netboot/[os] dir
 
 B<-h>          Display usage message.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-o>          Operating system (fedora8, rhel5, sles10,etc) 
+B<-o>          Operating system (fedora8, rhel5, sles10,etc)
 
-B<-p>          Profile (compute,service) 
+B<-p>          Profile (compute,service)
 
-B<-a>          Architecture (ppc64,x86_64,etc) 
+B<-a>          Architecture (ppc64,x86_64,etc)
 
-B<-m>          Method (default cpio) 
+B<-m>          Method (default cpio)
 
 
 =head1 RETURN VALUE
@@ -45,14 +45,14 @@ B<-m>          Method (default cpio)
 
 =head1 EXAMPLES
 
-1. To pack a fedora8 image for a compute node architecture x86_64 and place it in the  /install/netboot/fedora8/x86_64/compute/rootimg directory enter: 
+1. To pack a fedora8 image for a compute node architecture x86_64 and place it in the  /install/netboot/fedora8/x86_64/compute/rootimg directory enter:
 
-I<packimage  -o fedora8 -p compute -a x86_64> 
+I<packimage  -o fedora8 -p compute -a x86_64>
 
 This would use the package information from the /opt/xcat/share/xcat/netboot/fedora/compute* files.
 
 =head1 FILES
- 
+
 /opt/xcat/sbin/packimage
 
 
@@ -62,6 +62,6 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-genimage(1)
+L<genimage(1)|genimage.1>
 
- 
+

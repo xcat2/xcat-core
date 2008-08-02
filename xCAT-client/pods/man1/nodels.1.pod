@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<nodels> - lists the nodes in the noderange.
+B<nodels> - lists the nodes, and their attributes, from the xCAT database.
 
 
 =head1 SYNOPSIS
@@ -9,43 +9,41 @@ B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table.column> | I<shor
 
 B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table>]
 
-B<nodels> {B<-v> | B<--version>}
-
-B<nodels> [B<-?> | B<-h> | B<--help>]
+B<nodels> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
 
 =head1 DESCRIPTION
 
-The nodels command lists the nodes specified in the node range. If no noderange is provided, then all nodes are listed.
+The B<nodels> command lists the nodes specified in the node range. If no noderange is provided, then all nodes are listed.
 
 Additional attributes of the nodes will also be displayed if the table names and attribute names
 are specified after the noderange in the form:  I<table.column> .  A few shortcut names can
 also be used as aliases to common attributes:
 
-=over 10
+=over 15
 
-=item I<groups>
-
-nodelist.groups
-
-=item I<tags>
+=item B<groups>
 
 nodelist.groups
 
-=item I<mgt>
+=item B<tags>
+
+nodelist.groups
+
+=item B<mgt>
 
 nodehm.mgt
 
-=item I<switch>
+=item B<switch>
 
 switch.switch
 
 =back
 
-The nodels command with a specific node and one or more table.attribute parameters is a good substitute
-for grep'ing through the tab files, like was done in xCAT 1.x.  This is because nodels will translate
+The B<nodels> command with a specific node and one or more table.attribute parameters is a good substitute
+for grep'ing through the tab files, as was typically done in xCAT 1.x.  This is because nodels will translate
 any regular expression rows in the tables into their meaning for the specified node.  The tab* commands
-will not do this, instead they will just display the single regular expression row.
+will not do this, instead they will just display the regular expression row verbatim.
 
 
 =head1 OPTIONS
@@ -58,7 +56,7 @@ Command Version.
 
 =item B<-H|--with-fieldname>
 
-Force display table name and column name context for each result
+Force display of table name and column name context for each result
 
 =item B<-?|-h|--help>
 
@@ -84,9 +82,9 @@ An error has occurred.
 
 =head1 EXAMPLES
 
-=over 2
+=over 3
 
-=item *
+=item 1.
 
 To list all defined nodes, enter:
 
@@ -98,7 +96,7 @@ Output is similar to:
    node2
    node3
 
-=item *
+=item 2.
 
 To list all defined attributes in a table for a node or noderange, enter:
 
@@ -114,7 +112,7 @@ Output is similar to:
    rra001a: noderes.node: rra001a
 
 
-=item *
+=item 3.
 
 To list nodes in node group ppc, enter:
 
@@ -126,7 +124,7 @@ Output is similar to:
    ppcnode2
    ppcnode3
 
-=item *
+=item 4.
 
 To list the groups each node is part of:
 
@@ -138,7 +136,7 @@ Output is similar to:
    node2: groups: all,storage
    node3: groups: all,blade
 
-=item *
+=item 5.
 
 To list the groups each node is part of:
 
@@ -150,7 +148,7 @@ Output is similar to:
    node2: nodehm.power: ipmi
    node3: nodehm.power: ipmi
 
-=item *
+=item 6.
 
 To list the out-of-band mgt method for blade1:
 
@@ -170,5 +168,5 @@ Output is similar to:
 
 =head1 SEE ALSO
 
-noderange(5)
+L<noderange(3)|noderange.3>, L<tabdump(8)|tabdump.8>, L<lsdef(1)|lsdef.1>
 

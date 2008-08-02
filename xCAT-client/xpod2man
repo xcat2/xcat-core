@@ -15,6 +15,7 @@ use Pod::Html;
 my $poddir = 'pods';
 my $mandir = 'share/man';
 my $htmldir = 'share/doc';
+my $cachedir = '/tmp';
 
 my @pods = getPodList($poddir);
 #foreach (@pods) { print "$_\n"; } exit;
@@ -47,6 +48,8 @@ foreach my $podfile (@pods) {
 # Build the html page for each pod.
 #mkdir($htmldir) or die "Error: could not create $htmldir.\n";
 print "Converting PODs to HTML pages...\n";
+# have to clear the cache, because old entries can cause a problem
+unlink("$cachedir/pod2htmd.tmp", "$cachedir/pod2htmi.tmp");
 foreach my $podfile (@pods) {
     my $htmlfile = $podfile;
     $htmlfile =~ s/^$poddir/$htmldir/;      # change the beginning of the path
@@ -54,6 +57,7 @@ foreach my $podfile (@pods) {
     my $hdir = $htmlfile;
     $hdir =~ s|/[^/]*$||;			# get rid of the basename part
 	if (system("mkdir -p $hdir")) { die "Error: could not create $hdir.\n"; }
+    #print "$podfile, $htmlfile, $poddir, $htmldir\n";
     convertpod2html($podfile, $htmlfile, $poddir, $htmldir);
 }
 
@@ -67,13 +71,13 @@ sub getPodList {
 
 	# 1st get toplevel dir listing
 	opendir(DIR, $poddir) or die "Error: could not read $poddir.\n";
-	my @topdir = grep !/^\./, readdir(DIR);
+	my @topdir = grep !/^\./, readdir(DIR);		# /
 	close(DIR);
 
 	# Now go thru each subdir (these are man1, man3, etc.)
 	foreach my $mandir (@topdir) {
 		opendir(DIR, "$poddir/$mandir") or die "Error: could not read $poddir/$mandir.\n";
-		my @dir = grep !/^\./, readdir(DIR);
+		my @dir = grep !/^\./, readdir(DIR);		# /
 		close(DIR);
 		foreach my $file (@dir) {
 			push @files, "$poddir/$mandir/$file";
@@ -152,7 +156,7 @@ sub convertpod2html {
 			"--podroot=$poddir",
 			"--htmldir=$htmldir",
 			"--recurse",
-			"--cachedir=/tmp",
+			"--cachedir=$cachedir",
 			);
 
 }

@@ -21,7 +21,7 @@ designated in the B<site> table attribute: B<installdir>.
 
 =head1 SEE ALSO
 
-copycds(8)
+L<copycds(8)|copycds.8>
 
 
 =head1 AUTHOR

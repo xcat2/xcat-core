@@ -49,10 +49,4 @@ Display the current boot setting.
 
 =head1 SEE ALSO
 
-rsetboot(1)
-
-=head1 AUTHOR
-
-Egan Ford E<lt>egan@us.ibm.comE<gt>
-
-
+L<rbootseq(1)|rbootseq.1>

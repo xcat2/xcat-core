@@ -1,20 +1,20 @@
 =head1 NAME
- 
-B<rmdsklsnode> - Use this xCAT command to remove AIX/NIM diskless machine definitions. 
+
+B<rmdsklsnode> - Use this xCAT command to remove AIX/NIM diskless machine definitions.
 
 =head1 SYNOPSIS
 
 B<rmdsklsnode [-h | --help ]>
 
-B<rmdsklsnode [-V] [-f|--force] [-i image_name] noderange> 
+B<rmdsklsnode [-V] [-f|--force] [-i image_name] noderange>
 
 =head1 DESCRIPTION
 
-Use this command to remove all NIM machine names that were created for the specified xCAT nodes. 
+Use this command to remove all NIM machine names that were created for the specified xCAT nodes.
 
 The xCAT node definitions will not be removed.
 
-The default is to assume that the NIM machine names are the same as the xCAT node names.  If you had used the "-n" option when you created the NIM machine definitions with the mkdsklsnode command then the NIM machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used. 
+The default is to assume that the NIM machine names are the same as the xCAT node names.  If you had used the "-n" option when you created the NIM machine definitions with the mkdsklsnode command then the NIM machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used.
 
 Use the xCAT rmdef command to remove xCAT node definitions.
 
@@ -24,7 +24,7 @@ Use the xCAT rmdef command to remove xCAT node definitions.
 
 =item B<-f |--force>
 
-Use the force option to stop and remove running nodes. This handles the situation where a NIM machine definition indicates that a node is still running even though it is not.  
+Use the force option to stop and remove running nodes. This handles the situation where a NIM machine definition indicates that a node is still running even though it is not.
 
 =item B<-h |--help>
 
@@ -48,11 +48,11 @@ Verbose mode.
 
 =over 3
 
-=item 0 
+=item 0
 
 The command completed successfully.
 
-=item 1 
+=item 1
 
 An error has occurred.
 
@@ -80,8 +80,8 @@ B<mkdsklsnode -f aixnodes>
 
 This command is part of the xCAT software product.
 
-=head1 SEE ALSO 
+=head1 SEE ALSO
 
-mkdsklsnode(1) 
+L<mkdsklsnode(1)|mkdsklsnode.1>
 
 

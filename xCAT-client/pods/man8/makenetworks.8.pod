@@ -1,0 +1,33 @@
+=head1 NAME
+
+B<makenetworks> - populates the xCAT networks table, using network information from the local system
+
+=head1 SYNOPSIS
+
+B<makenetworks>
+
+
+=head1 DESCRIPTION
+
+The B<makenetworks> command is run by xCAT automatically, when xCAT is installed on the management node.
+It queries the network configuration of the management node and uses that information to populate the
+networks table in the xCAT database.  After that, you may want to update the networks table manually to,
+for example, disable the public network entry and add networks that service nodes are on that the management
+node can't see directly.
+
+You normally do not need to run the B<makenetworks> command yourself.  But if you want to reset the networks
+table to its original state, remove all the entries from it (using tabedit), and then run B<makenetworks>
+again.
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+
+=head1 SEE ALSO
+
+L<makedhcp(8)|makedhcp.8>
+

@@ -18,7 +18,7 @@ system p nodes.
 =head1 OPTIONS
 
 B<-f>          Force immediate shutdown of the partition.
-         
+
 B<-V>          Verbose output.
 
 B<-h>          Display usage message.
@@ -43,3 +43,7 @@ B<rnetboot 1,3,14-56,70-203>
 
 B<rnetboot all,-129-256>
 
+
+=head1 SEE ALSO
+
+L<nodeset(8)|nodeset.8>

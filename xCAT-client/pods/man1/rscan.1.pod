@@ -1,9 +1,9 @@
 =head1 NAME
- 
+
 B<rscan> - Collects node information from one or more hardware control points.
- 
+
 =head1 SYNOPSIS
- 
+
 I<rscan [-h|--help]>
 
 I<rscan [-v|--version]>
@@ -16,7 +16,7 @@ I<rscan [-V|--verbose] noderange [-w][-x|-z]>
 The rscan command lists hardware information for each node managed by the hardware control points specified in noderange.
 
 Note that the first line of the output always contains information about the hardware control point itself. When using the rscan command to generate output for HMC or IVM hardware control points, note that FSPs and BPAs are included in the output.
-         
+
 
 
 =head1 OPTIONS
@@ -25,15 +25,15 @@ Note that the first line of the output always contains information about the har
 
 B<-h>          Display usage message.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-V>          Verbose output. 
+B<-V>          Verbose output.
 
-B<-w>          Writes output to xCAT database. 
+B<-w>          Writes output to xCAT database.
 
-B<-x>          XML format. 
+B<-x>          XML format.
 
-B<-z>          Stanza formated output. 
+B<-z>          Stanza formated output.
 
 
 =head1 RETURN VALUE
@@ -44,9 +44,9 @@ B<-z>          Stanza formated output.
 
 =head1 EXAMPLES
 
-1. To list all nodes managed by HMC hmc01 in tabular format, enter: 
+1. To list all nodes managed by HMC hmc01 in tabular format, enter:
 
-I<rscan hmc01> 
+I<rscan hmc01>
 
 
 Output is similar to:
@@ -61,7 +61,7 @@ Output is similar to:
   lpar    p6vios                      1   9117-MMA    10F6F3D
 
 
-2. To list all nodes managed by IVM ivm02 in XML format and write the output to the xCAT database, enter: 
+2. To list all nodes managed by IVM ivm02 in XML format and write the output to the xCAT database, enter:
 
 I<rscan ivm02 -x -w>
 
@@ -125,7 +125,7 @@ Output is similar to:
     groups=bpa,all
     mgt=hmc
 
-  Server-9119-590-SN02C5F9E: 
+  Server-9119-590-SN02C5F9E:
     objtype=node
     type=fsp
     id=10
@@ -163,15 +163,12 @@ Output is similar to:
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/rscan
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
-
-
- 
+L<lsslp(1)|lsslp.1>
 
 

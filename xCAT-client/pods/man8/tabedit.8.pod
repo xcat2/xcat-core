@@ -69,4 +69,4 @@ To edit the site table:
 
 =head1 SEE ALSO
 
-tabrestore(1), tabdump(1), chtab(1)
+L<tabrestore(8)|tabrestore.8>, L<tabdump(8)|tabdump.8>, L<chtab(8)|chtab.8>

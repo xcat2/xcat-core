@@ -1,10 +1,10 @@
 =head1 NAME
- 
+
 B<noderm> -Removes the nodes in the noderange from all database table.
- 
+
 =head1 SYNOPSIS
- 
-I<noderm [-h| --help]>  
+
+I<noderm [-h| --help]>
 
 
 
@@ -13,7 +13,7 @@ I<noderm noderange>
 
 =head1 DESCRIPTION
 
- The noderm command removes the nodes in the input node range. 
+ The noderm command removes the nodes in the input node range.
 
 =head1 OPTIONS
 
@@ -30,19 +30,19 @@ B<-h>          Display usage message.
 
 =head1 EXAMPLES
 
-1. To remove the nodes in noderange node1-node4, enter: 
+1. To remove the nodes in noderange node1-node4, enter:
 
-I<noderm node1-node4> 
+I<noderm node1-node4>
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/noderm
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
+L<nodels(1)|nodels.1>, L<nodeadd(8)|nodeadd.8>, L<noderange(3)|noderange.3>
 
 
- 
+

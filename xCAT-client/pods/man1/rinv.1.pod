@@ -84,11 +84,13 @@ Print version.
 
 =head1 B<Examples>
 
+=over 4
+
 =item *
 
 To retrieve all information available from blade node4, enter:
 
-B<rinv> I<node5> I<all>
+ rinv node5 all
 
  node5: Machine Type/Model 865431Z
  node5: Serial Number 23C5030
@@ -115,12 +117,14 @@ B<rinv> I<node5> I<all>
 
 To retrieve 'config' information from the HMC-managed LPAR node3, enter:
 
-B<rinv> I<node3> I<config>
+ rinv node3 config
 
  node5: Machine Configuration Info
  node5: Number of Processors: 1
  node5: Total Memory (MB): 1024
 
-=head1 B<SEE ALSO>
+=back
 
-rpower(1)
+=head1 SEE ALSO
+
+L<rpower(1)|rpower.1>

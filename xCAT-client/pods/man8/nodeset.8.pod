@@ -41,7 +41,7 @@ Instruct network boot loader to be skipped, generally meaning boot to hard disk
 =item B<install>
 
 Prepare server for installing a node according to the table configuration.  This will
-typically mean an unattended install file is created (i.e. kickstart or autoyast), 
+typically mean an unattended install file is created (i.e. kickstart or autoyast),
 install resources will be verified in tftp and the bulk transfer method (http, ftp, or nfs for example), and the boot loader configuration file will be written.
 
 =item B<stat>
@@ -96,11 +96,7 @@ Install node5 with the compute62 image using resources from the compute
 resource group.
 
 
-=head1 B<Author>
-
-Egan Ford <egan@us.ibm.com>
-
 =head1 B<See> B<Also>
 
-L<noderange(3)|noderange.3>,   L<nodels(1)|nodels.1>,   L<nodestat(1)|nodestat.1>,   B<rinstall(1)>,
-B<rflash(1)>,  L<makedhcp(8)|makedhcp.8>
+L<noderange(3)|noderange.3>,   L<nodels(1)|nodels.1>,   L<nodestat(1)|nodestat.1>,   L<rinstall(8)|rinstall.8>,
+L<makedhcp(8)|makedhcp.8>

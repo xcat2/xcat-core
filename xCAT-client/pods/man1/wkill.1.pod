@@ -38,10 +38,7 @@ Print version.
 
 B<wkill> I<node1-node5>
 
-=head1 B<Author>
-
-Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)|noderange.3>, L<wcons(1)|wcons.1>.
+L<noderange(3)|noderange.3>, L<wcons(1)|wcons.1>

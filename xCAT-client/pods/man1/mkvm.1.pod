@@ -1,9 +1,9 @@
 =head1 NAME
- 
-B<mkvm> - Creates HMC- and IVM-managed partitions.  
- 
+
+B<mkvm> - Creates HMC- and IVM-managed partitions.
+
 =head1 SYNOPSIS
- 
+
 I<mkvm [-h| --help]>
 
 I<mkvm [-v| --version]>
@@ -22,15 +22,15 @@ The mkvm command creates new partition(s) with the same profile/resources as the
 
 B<-h>          Display usage message.
 
-B<-c>          Copy partitions from srccec to destcec on single HMC. 
+B<-c>          Copy partitions from srccec to destcec on single HMC.
 
-B<-i>          Starting numeric id of the newly created partitions. 
+B<-i>          Starting numeric id of the newly created partitions.
 
-B<-n>          New partition name. 
+B<-n>          New partition name.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-V>          Verbose output. 
+B<-V>          Verbose output.
 
 
 =head1 RETURN VALUE
@@ -41,18 +41,18 @@ B<-V>          Verbose output.
 
 =head1 EXAMPLES
 
-1. To create a new partition lpar5 based on the profile/resources of lpar4, enter:  
+1. To create a new partition lpar5 based on the profile/resources of lpar4, enter:
 
-I<mkvm lpar4 -i 5 -n lpar5> 
+I<mkvm lpar4 -i 5 -n lpar5>
 
 Output is similar to:
 
 lpar5: Success
 
 
-2. To create new partitions lpar5-lpar8 based on the profile/resources of lpar4, enter:  
+2. To create new partitions lpar5-lpar8 based on the profile/resources of lpar4, enter:
 
-I<mkvm lpar4 -i 5 -n lpar5-lpar8> 
+I<mkvm lpar4 -i 5 -n lpar5-lpar8>
 
 Output is similar to:
 
@@ -65,24 +65,23 @@ lpar7: Success
 lpar8: Success
 
 
-3. To duplicate all the partitions associated with cec01 on cec02, enter:  
+3. To duplicate all the partitions associated with cec01 on cec02, enter:
 
-I<mkvm cec01 -c cec02> 
+I<mkvm cec01 -c cec02>
 
 Output is similar to:
 
 cec01: Success
 
 =head1 FILES
- 
+
 /opt/xcat/bin/mkvm
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
+L<chvm(1)|chvm.1>, L<lsvm(1)|lsvm.1>, L<rmvm(1)|rmvm.1>
 
 
- 
 
 

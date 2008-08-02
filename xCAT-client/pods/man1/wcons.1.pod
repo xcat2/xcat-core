@@ -38,7 +38,7 @@ Print version.
 
 See xterm(1). Any options other than those listed above are passed
 directly to xterm. B<Note:> when given multiple nodes, wcons will
-override B<-title> and tries to figure out optimal B<-geometry> 
+override B<-title> and tries to figure out optimal B<-geometry>
 options for the xterms (however, B<-geometry> can still be
 specified).
 
@@ -67,10 +67,6 @@ Tile mode assumes that the width of the left window border is also  the
 width  of  the  right  and  bottom window border.  Most window managers
 should not have a problem.  If you really need  support  for  a  screwy
 window manager let me know.
-
-=head1 B<Author>
-
-Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 

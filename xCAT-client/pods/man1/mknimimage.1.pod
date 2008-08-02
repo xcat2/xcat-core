@@ -1,6 +1,6 @@
 =head1 NAME
- 
-B<mknimimage> - Use this xCAT command to create AIX image definitions. 
+
+B<mknimimage> - Use this xCAT command to create AIX image definitions.
 
 =head1 SYNOPSIS
 
@@ -10,7 +10,7 @@ B<mknimimage [-V] [-f|--force] [-l location] [-s image_source] [-i current_image
 
 =head1 DESCRIPTION
 
-This command may be used to create an AIX image.  It will create both an xCAT osimage definition and the corresponding NIM resource definitions. 
+This command may be used to create an AIX image.  It will create both an xCAT osimage definition and the corresponding NIM resource definitions.
 
 This command will also install the NIM master software and configure NIM if needed.
 
@@ -70,7 +70,7 @@ The NIM client machine to use to create a mksysb image.
 
 =item B<-s image_source>
 
-The source of software to use when creating the new NIM lpp_source resource. This could be a source directory, (ex. /dev/cd0), or a previously defined lpp_source resource name. 
+The source of software to use when creating the new NIM lpp_source resource. This could be a source directory, (ex. /dev/cd0), or a previously defined lpp_source resource name.
 
 =item B<-t nimtype>
 
@@ -86,11 +86,11 @@ Verbose mode.
 
 =over 3
 
-=item 0 
+=item 0
 
 The command completed successfully.
 
-=item 1 
+=item 1
 
 An error has occurred.
 
@@ -118,7 +118,7 @@ This command will use node27 to create a mksysb backup image and use that to def
 
 B<mknimimage -m mksysb -b /tmp/backups/mysysbimage spot=myspot bosinst_data=mybdata>
 
-This command defines a NIM mksysb resource using mysysbimage.   
+This command defines a NIM mksysb resource using mysysbimage.
 
 5) Create a diskless image called 61spot using the AIX product media.
 
@@ -141,8 +141,8 @@ B<mknimimage -t diskless -s 61cosi_lpp_source 611cosi tmp=mytmp home=myhome>
 
 This command is part of the xCAT software product.
 
-=head1 SEE ALSO 
+=head1 SEE ALSO
 
-rmnimimage(1) 
+L<rmnimimage(1)|rmnimimage.1>
 
 

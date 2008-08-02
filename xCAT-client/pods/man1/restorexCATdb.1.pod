@@ -42,10 +42,8 @@ B<restorexCATdb -p /tmp/db>
 /opt/xcat/sbin/restorexCATdb
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
-See dumpxCATdb
-
+L<dumpxCATdb(1)|dumpxCATdb.1>
 
 

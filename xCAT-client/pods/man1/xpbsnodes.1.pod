@@ -11,7 +11,7 @@ B<xpbsnodes> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 B<xpbsnodes> is a front-end to PBS pbsnode but uses xCAT's noderange to specify nodes.
- 
+
 =head1 OPTIONS
 
 
@@ -23,7 +23,7 @@ B<offline|off>      Take nodes offline.
 
 B<clear|online|on>  Take nodes online.
 
-B<stat|state>       Display PBS node state. 
+B<stat|state>       Display PBS node state.
 
 
 =head1 RETURN VALUE
@@ -45,10 +45,9 @@ B<stat|state>       Display PBS node state.
 /opt/torque/x86_64/bin/xpbsnodes
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
-See noderange, pbsnodes 
+L<noderange(3)|noderange.3>
 
 
 

@@ -61,6 +61,6 @@ B<reventlog> I<node4,node5> I<clear>
  node4: clear
  node5: clear
 
-=head1 B<SEE ALSO>
+=head1 SEE ALSO
 
-rpower(1), monstart(1)
+L<rpower(1)|rpower.1>, L<monstart(1)|monstart.1>

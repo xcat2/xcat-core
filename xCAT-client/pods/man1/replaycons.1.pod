@@ -1,0 +1,82 @@
+=head1 NAME
+
+B<replaycons> - replay the console output for a node
+
+
+=head1 SYNOPSIS
+
+B<replaycons> [I<node>] [I<bps>] [I<tail_amount>]
+
+B<replaycons> [B<-h> | B<--help> | B<-v> | B<--version>]
+
+
+=head1 DESCRIPTION
+
+The B<replaycons> command reads the console log stored by conserver for this node, and displays it
+in a way that simulates the original output of the console.  Using the I<bps> value, it will throttle
+the speed of the output play back.  (The conserver logs are stored in /var/log/consoles.)
+
+For now, replaycons must be run locally on the system on which the console log is stored.  This is normally
+that management node, but in a hierarchical cluster will usually be the service node.
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item I<bps>]
+
+The display rate to use to play back the console output.  Default is 19200.
+
+=item I<tail_amount>
+
+The place in the console log file to start play back, specified as the # of lines from the end.
+
+=item B<-v|--version>
+
+Command Version.
+
+=item B<-h|--help>
+
+Display usage message.
+
+=back
+
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To replay the console for node1 at the default rate, starting 2000 lines from the end:
+
+ replaycons 19200 2000
+
+=back
+
+
+=head1 FILES
+
+/opt/xcat/bin/replaycons
+
+
+=head1 SEE ALSO
+
+L<rcons(1)|rcons.1>
+

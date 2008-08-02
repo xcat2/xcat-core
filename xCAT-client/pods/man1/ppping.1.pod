@@ -45,8 +45,7 @@ B<-v | version> version
 
 
 
-=head1 AUTHOR
+=head1 SEE ALSO
 
-Egan Ford E<lt>egan@us.ibm.comE<gt>
-
+L<psh(1)|psh.1>, L<pping(1)|pping.1>
 

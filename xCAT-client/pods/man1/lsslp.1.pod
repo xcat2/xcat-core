@@ -131,9 +131,9 @@ Output is similar to:
 /opt/xcat/bin/lsslp
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
+L<rscan(1)|rscan.1>
 
 
 

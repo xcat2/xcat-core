@@ -101,4 +101,4 @@ B<  nodech> I<node1-node4 groups^=group1 groups,=group2>
 
 =head1 SEE ALSO
 
-nodels(1), nodeadd(1), noderange(5)
+L<nodels(1)|nodels.1>, L<nodeadd(8)|nodeadd.8>, L<noderange(3)|noderange.3>

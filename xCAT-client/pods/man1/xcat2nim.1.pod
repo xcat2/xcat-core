@@ -1,9 +1,9 @@
 =head1 NAME
- 
+
 B<xcat2nim> - Use this command to create and manage AIX NIM definitions based on xCAT object definitions.
- 
+
 =head1 SYNOPSIS
- 
+
 I<xcat2nim [-h|--help ]>
 
 I<xcat2nim [-V|--verbose] [-a|--all] [-l|--list] [-u|--update] [-f|--force] [-r|--remove] [-t object-types] [-o object-names] [noderange] [attr=val [attr=val...]] >
@@ -12,7 +12,7 @@ I<xcat2nim [-V|--verbose] [-a|--all] [-l|--list] [-u|--update] [-f|--force] [-r|
 
 The xcat2nim command uses xCAT node and group object definitions to create, update, list, or remove corresponding NIM machine and group definitions.
 
-The xCAT definitions must be created and the NIM master must be installed and configured before running this command. 
+The xCAT definitions must be created and the NIM master must be installed and configured before running this command.
 
 xcat2nim uses xCAT database information, command line input, and default values to run the appropriate NIM commands.
 
@@ -32,13 +32,13 @@ B<-l|--list>		 List NIM definitions corresponding to xCAT definitions.
 
 B<noderange>             A set of comma delimited node names and/or group names, (must be the first parameter). See the "noderange" man page for details on supported formats.
 
-B<-o object-names>       A set of comma delimited xCAT object names. 
+B<-o object-names>       A set of comma delimited xCAT object names.
 
 B<-t object-types>       A set of comma delimited xCAT object types. Supported types include: node and group.
 
 B<-r|--remove>         Remove NIM definitions corresponding to xCAT definitions.
 
-B<-u|--update>         Update existing NIM definitions based on xCAT definitions. 
+B<-u|--update>         Update existing NIM definitions based on xCAT definitions.
 
 B<-V|--verbose>         Verbose mode.
 
@@ -56,7 +56,7 @@ I<xcat2nim -a>
 
 2. To create NIM machine definitions for all xCAT node definitions.
 
-I<xcat2nim -t node> 
+I<xcat2nim -t node>
 
 3. To create a NIM machine definition corresponding to the xCAT clstrn01 node definition.
 
@@ -92,7 +92,7 @@ I<xcat2nim -t group -r -o AIXnodes>
 
 
 =head1 FILES
- 
+
 $XCATROOT/bin/xcat2nim
 
 =head1 NOTES
@@ -102,5 +102,5 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-See the xCAT mkdef command for details on how to create the xCAT node and group object definitions. 
- 
+L<mkdef(1)|mkdef.1>
+

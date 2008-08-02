@@ -17,11 +17,4 @@ designated in the B<site> table attribute: B<installdir>.
 
 =head1 SEE ALSO
 
-site(5)
-
-
-=head1 AUTHOR
-
-Egan Ford E<lt>egan@us.ibm.comE<gt>
-
-
+L<nodeset(8)|nodeset.8>, site(5), nodetype(5)

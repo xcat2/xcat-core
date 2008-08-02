@@ -1,0 +1,48 @@
+=head1 NAME
+
+B<setupiscsidev> - creates a LUN for a node to boot up with, using iSCSI
+
+=head1 SYNOPSIS
+
+B<setupiscsidev> [B<-s|--size>] I<noderange>
+
+B<setupiscsidev> [B<-h|--help|-v|--version>]
+
+
+=head1 DESCRIPTION
+
+The B<setupiscsidev> command will create a LUN on the management node (or service node) for each node
+specified.  The LUN device can then be used by the node as an iSCSI device so the node can boot diskless,
+stateful.
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-s|--size>
+
+The size of the LUN that should be created.  Default is 4096.
+
+=item B<-v|--version>
+
+Display version.
+
+=item B<-h|--help>
+
+Display usage message.
+
+=back
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+
+=head1 SEE ALSO
+
+L<nodeset(8)|nodeset.8>
+

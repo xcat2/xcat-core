@@ -1,9 +1,9 @@
 =head1 NAME
- 
-B<rmvm> - Removes HMC- and IVM-managed partitions.  
- 
+
+B<rmvm> - Removes HMC- and IVM-managed partitions.
+
 =head1 SYNOPSIS
- 
+
 I<rmvm [-h| --help]>
 
 I<rmvm [-v| --version]>
@@ -21,9 +21,9 @@ The rmvm command removes the partitions specified in noderange. If noderange is 
 
 B<-h>          Display usage message.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-V>          Verbose output. 
+B<-V>          Verbose output.
 
 
 =head1 RETURN VALUE
@@ -34,9 +34,9 @@ B<-V>          Verbose output.
 
 =head1 EXAMPLES
 
-1. To remove the partition lpar3, enter: 
+1. To remove the partition lpar3, enter:
 
-I<rmvm lpar3> 
+I<rmvm lpar3>
 
 Output is similar to:
 
@@ -54,14 +54,13 @@ Output is similar to:
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/rmvm
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
+L<mkvm(1)|mkvm.1>, L<lsvm(1)|lsvm.1>, L<chvm(1)|chvm.1>
 
 
- 
 

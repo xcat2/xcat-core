@@ -109,10 +109,5 @@ Subnet mask.  If not specified, all the netmasks from the B<networks> table are 
 
 =head1 SEE ALSO
 
-site(5)
-
-=head1 AUTHOR
-
-Egan Ford E<lt>egan@us.ibm.comE<gt>
-
+L<makehosts(8)|makehosts.8>
 

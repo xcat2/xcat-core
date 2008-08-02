@@ -153,4 +153,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-See the mkdef(1), chdef(1), rmdef(1), and xcatstanzafile(5) commands.
+L<mkdef(1)|mkdef.1>, L<chdef(1)|chdef.1>, L<rmdef(1)|rmdef.1>, L<xcatstanzafile(5)|xcatstanzafile.5>

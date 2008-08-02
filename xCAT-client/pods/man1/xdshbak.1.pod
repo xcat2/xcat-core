@@ -115,4 +115,4 @@ B<xdsh> I<host1,host2,host3 date> | B<xdshbak -x>
 
 =head1 B<SEE ALSO>
 
-xdsh(1), xcoll(1)
+L<xdsh(1)|xdsh.1>, L<xcoll(1)|xcoll.1>

@@ -57,4 +57,4 @@ Jarrod B Johnson <jbjohnso@us.ibm.com>
 
 =head1 B<See> B<Also>
 
-L<noderange(3)|noderange.3>,   L<winstall(8)|winstall.8>, L<rcons(1)|rcons.1>
+L<noderange(3)|noderange.3>, L<winstall(8)|winstall.8>, L<rcons(1)|rcons.1>

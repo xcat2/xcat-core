@@ -102,4 +102,4 @@ B<rvitals> I<node5> I<all>
 
 =head1 B<SEE ALSO>
 
-rpower(1), rinv(1)
+L<rpower(1)|rpower.1>, L<rinv(1)|rinv.1>

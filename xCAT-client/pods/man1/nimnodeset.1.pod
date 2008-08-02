@@ -1,12 +1,12 @@
 =head1 NAME
- 
-B<nimnodeset> - Use this xCAT command to initialize AIX/NIM standalone machines. 
+
+B<nimnodeset> - Use this xCAT command to initialize AIX/NIM standalone machines.
 
 =head1 SYNOPSIS
 
 B<nimnodeset [-h|--help ]>
 
-B<nimnodeset [-V] [-f|--force] [-i osimage_name] noderange [attr=val [attr=val ...]]> 
+B<nimnodeset [-V] [-f|--force] [-i osimage_name] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -33,7 +33,7 @@ val pairs must be specified last on the command line. These are used to specify 
 
 =item B<-f |--force>
 
-Use the force option to reinitialize the NIM machines.  
+Use the force option to reinitialize the NIM machines.
 
 =item B<-h |--help>
 
@@ -41,7 +41,7 @@ Display usage message.
 
 =item B<-i image_name>
 
-The name of an existing xCAT osimage definition. 
+The name of an existing xCAT osimage definition.
 
 =item B<noderange>
 
@@ -57,11 +57,11 @@ Verbose mode.
 
 =over 3
 
-=item 0 
+=item 0
 
 The command completed successfully.
 
-=item 1 
+=item 1
 
 An error has occurred.
 
@@ -102,8 +102,8 @@ B<nimnodeset -i 611image node02 installp_bundle=sshbundle>
 
 This command is part of the xCAT software product.
 
-=head1 SEE ALSO 
+=head1 SEE ALSO
 
-mknimimage(1), rnetboot(1) 
+L<mknimimage(1)|mknimimage.1>, L<rnetboot(1)|rnetboot.1>
 
 

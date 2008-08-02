@@ -79,11 +79,7 @@ The output looks like this:
 /opt/xcat/bin/monls
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-See monstart monstop
-
-This command is part of the xCAT software product.
-
-
+L<monstart(1)|monstart.1>, L<monstop(1)|monstop.1>
 

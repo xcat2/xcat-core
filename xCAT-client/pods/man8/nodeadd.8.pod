@@ -80,4 +80,4 @@ B<nodeadd> I<node1-node4 groups=all,rhel5 nodetype.os=rhel5>
 
 =head1 SEE ALSO
 
-nodels(1), nodech(1), noderange(5)
+L<nodels(1)|nodels.1>, L<nodech(1)|nodech.1>, L<noderange(3)|noderange.3>

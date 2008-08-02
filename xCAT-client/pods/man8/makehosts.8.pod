@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<makedns> - sets up /etc/hosts from the xCAT hosts table.
+B<makehosts> - sets up /etc/hosts from the xCAT hosts table.
 
 =head1 SYNOPSIS
 
@@ -8,13 +8,11 @@ B<makehosts> [B<-n>] [I<noderange>]
 
 B<makehosts> {B<-h>|B<--help>}
 
-
 =head1 DESCRIPTION
 
 B<makehosts> updates the /etc/hosts file based on entries in the hosts table in the xCAT database.
 If your node hostnames and IP addresses follow a regular pattern, you can use just a few regular expressions
 in the hosts table and then easily generate /etc/hosts using makehosts.
-
 
 =head1 OPTIONS
 
@@ -26,7 +24,6 @@ Completely replace the /etc/hosts file, losing any previous content.  If this op
 it will only replace the lines in the file that correspond to the nodes in the specified noderange.
 
 =back
-
 
 =head1 EXAMPLES
 
@@ -45,8 +42,4 @@ IP addresses of 1.2.3.1, 1.2.3.2, etc.
 
 =head1 SEE ALSO
 
-hosts(5)
-
-=head1 AUTHOR
-
-Egan Ford E<lt>egan@us.ibm.comE<gt>
+hosts(5), L<makedns(8)|makedns.8>

@@ -60,4 +60,4 @@ B<psh> I<node1,node2,node3 cat /etc/passwd> | B<xcoll>
 
 =head1 B<SEE ALSO>
 
-psh(1), xdshbak(1)
+L<psh(1)|psh.1>, L<xdshbak(1)|xdshbak.1>

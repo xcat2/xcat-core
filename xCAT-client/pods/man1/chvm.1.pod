@@ -1,9 +1,9 @@
 =head1 NAME
- 
-B<chvm> - Changes HMC- and IVM-managed partition profiles.  
- 
+
+B<chvm> - Changes HMC- and IVM-managed partition profiles.
+
 =head1 SYNOPSIS
- 
+
 I<chvm [-h| --help]>
 
 I<chvm [-v| --version]>
@@ -23,9 +23,9 @@ B<-h>          Display usage message.
 
 B<-p profile>  Name of an existing partition profile.
 
-B<-v>          Command Version. 
+B<-v>          Command Version.
 
-B<-V>          Verbose output. 
+B<-V>          Verbose output.
 
 
 =head1 RETURN VALUE
@@ -36,17 +36,17 @@ B<-V>          Verbose output.
 
 =head1 EXAMPLES
 
-1. To change the partition profile for lpar4 using the configuration data in the file /tmp/lparfile, enter: 
+1. To change the partition profile for lpar4 using the configuration data in the file /tmp/lparfile, enter:
 
-I<cat /tmp/lparfile | chvm lpar4> 
+I<cat /tmp/lparfile | chvm lpar4>
 
 Output is similar to:
 
 lpar4: Success
 
-2. To change the partition profile for lpar4 to the existing profile 'prof1', enter: 
+2. To change the partition profile for lpar4 to the existing profile 'prof1', enter:
 
-I<chvm lpar4 -p prof1> 
+I<chvm lpar4 -p prof1>
 
 Output is similar to:
 
@@ -54,14 +54,14 @@ lpar4: Success
 
 
 =head1 FILES
- 
+
 /opt/xcat/bin/chvm
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-This command is part of the xCAT software product.
+L<mkvm(1)|mkvm.1>, L<lsvm(1)|lsvm.1>, L<rmvm(1)|rmvm.1>
 
 
- 
+
 

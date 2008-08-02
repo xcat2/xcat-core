@@ -1,10 +1,10 @@
 =head1 NAME
- 
+
 B<unregnotif> - unregister a Perl module or a command that was watching for the changes of  the desired xCAT database tables.
-  
- 
+
+
 =head1 SYNOPSIS
- 
+
 I<unregnotif [-h| --help]>
 
 I<unregnotif  [-v| --version]>
@@ -15,21 +15,21 @@ I<unregnotif  I<filename>>
 
 =head1 DESCRIPTION
 
-This command is used to unregistered a Perl module or a command that was watching for the changes of the desired xCAT database tables. 
+This command is used to unregistered a Perl module or a command that was watching for the changes of the desired xCAT database tables.
 
 
 =head1 Parameters
 
-I<filename> is the full path name of the Perl module or command to be registered. 
+I<filename> is the full path name of the Perl module or command to be registered.
 
 =head1 OPTIONS
 
 
 B<-h | -help>          Display usage message.
 
-B<-v | -version >      Command Version. 
+B<-v | -version >      Command Version.
 
-B<-V | -verbose>       Verbose output. 
+B<-V | -verbose>       Verbose output.
 
 =head1 RETURN VALUE
 
@@ -41,22 +41,17 @@ B<-V | -verbose>       Verbose output.
 
 1. To unregistered a Perl module, enter:
 
-  unregnotif /opt/xcat/lib/perl/xCAT_monitoring/mycode.pm 
-							
+  unregnotif /opt/xcat/lib/perl/xCAT_monitoring/mycode.pm
+
 2. To register a command, enter:
 
-  unregnotif /usr/bin/mycmd 
+  unregnotif /usr/bin/mycmd
 
 =head1 FILES
- 
+
 /opt/xcat/bin/unregnotif
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-See regnotif
-
-This command is part of the xCAT software product.
-
-
- 
+L<regnotif(1)|regnotif.1>

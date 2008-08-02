@@ -68,11 +68,9 @@ where 2 is the number of minutes between the pings.
 /opt/xcat/bin/monstart
 
 
-=head1 NOTES
+=head1 SEE ALSO
 
-See monstop monls
-
-This command is part of the xCAT software product.
+L<monls(1)|monls.1>, L<monstop(1)|monstop.1>
 
 
 

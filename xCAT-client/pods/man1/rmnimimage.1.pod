@@ -1,12 +1,12 @@
 =head1 NAME
- 
-B<rmnimimage> - Use this xCAT command to remove an xCAT osimage definition and the associated NIM resources. 
+
+B<rmnimimage> - Use this xCAT command to remove an xCAT osimage definition and the associated NIM resources.
 
 =head1 SYNOPSIS
 
 B<rmnimimage [-h | --help ]>
 
-B<rmnimimage [-V] osimage_name> 
+B<rmnimimage [-V] osimage_name>
 
 =head1 DESCRIPTION
 
@@ -40,11 +40,11 @@ Verbose mode.
 
 =over 3
 
-=item 0 
+=item 0
 
 The command completed successfully.
 
-=item 1 
+=item 1
 
 An error has occurred.
 
@@ -64,6 +64,6 @@ B<rmnimimage 53cosi>
 
 This command is part of the xCAT software product.
 
-=head1 SEE ALSO 
+=head1 SEE ALSO
 
-mknimimage(1) 
+L<mknimimage(1)|mknimimage.1>

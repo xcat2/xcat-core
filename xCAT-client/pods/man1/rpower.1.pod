@@ -79,6 +79,6 @@ B<rpower> I<node5 on>
 
 =head1 SEE ALSO
 
-noderange(3), rcons(1), rinv(1), rvitals(1), rscan(1)
+L<noderange(3)|noderange.3>, L<rcons(1)|rcons.1>, L<rinv(1)|rinv.1>, L<rvitals(1)|rvitals.1>, L<rscan(1)|rscan.1>
 
 
