@@ -27,7 +27,7 @@ Provides: xCAT-server = %{epoch}:%{version}
 %description
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
 
-%prep -n xCAT-server
+%prep
 %setup -q -n xCAT-server
 %build
 %install
