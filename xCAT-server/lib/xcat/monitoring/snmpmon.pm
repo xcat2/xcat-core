@@ -412,6 +412,7 @@ sub configBMC {
     print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
     if ($?) {
+       $ret_val=1;
        xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
        $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
     } 
@@ -419,6 +420,7 @@ sub configBMC {
     print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
     if ($?) {
+       $ret_val=1;
        xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
        $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
     } 
@@ -438,6 +440,7 @@ sub configBMC {
         print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
         my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
         if ($?) {
+          $ret_val=1;
           xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
 	  $ret_text .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
         }
@@ -543,6 +546,7 @@ sub configMPA {
     print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
     if ($?) {
+       $ret_val=1;
        xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
        $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
     }
@@ -550,6 +554,7 @@ sub configMPA {
     print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
     if ($?) {
+       $ret_val=1;
        xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
        $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
     }
@@ -569,6 +574,7 @@ sub configMPA {
         print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
         my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
         if ($?) {
+          $ret_val=1;
           xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n");
           $ret_text .= "Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n";  
         }

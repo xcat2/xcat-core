@@ -337,21 +337,14 @@ sub getMoreInfo {
   #get the position
   my $table1=xCAT::Table->new("nodepos", -create =>1);
   if ($table1) {
-    my $ref1 = $table1->getNodeAttribs($node, ['rack', 'u', 'chassis', 'slot',  'room']);
-    $pos .= "  Room: ";
-    if (($ref1) && ($ref1->{room})) { $pos .= $ref1->{room}; }
-    $pos .= "\n";
-    $pos .= "  Rack: ";
-    if(($ref1) && ($ref1->{rack})) { $pos .= $ref1->{rack};}
-    $pos .= "\n";
-    $pos .= "  Unit: ";
-    if(($ref1) && ($ref1->{u})) { $pos .= $ref1->{u}; }
-    $pos .= "\n";
-    $pos .= "  Chassis: ";
-    if(($ref1) && ($ref1->{chassis})) { $pos .= $ref1->{chassis};}
-    $pos .= "\n";
-    $pos .= "  Slot: ";
-    if(($ref1) && ($ref1->{slot})) { $pos .= $ref1->{slot};}
+    my $ref1 = $table1->getNodeAttribs($node, ['rack', 'u', 'chassis', 'slot',  'room', 'comments']);
+    if (($ref1) && ($ref1->{room})) { $pos .= "  Room: " . $ref1->{room}. "\n"; }
+    if(($ref1) && ($ref1->{rack})) { $pos .= "  Rack: ". $ref1->{rack}. "\n";}
+    if(($ref1) && ($ref1->{u})) { $pos .= "  Unit: " . $ref1->{u} . "\n"; }
+    if(($ref1) && ($ref1->{chassis})) { $pos .= "  Chassis: " . $ref1->{chassis} . "\n";}
+    if(($ref1) && ($ref1->{slot})) { $pos .=  "  Slot: " . $ref1->{slot} . "\n";}
+    if(($ref1) && ($ref1->{comments})) { $pos .=  "  Comments: " . $ref1->{comments} . "\n";}
+
     $pos .= "\n";
 
     $table1->close();
