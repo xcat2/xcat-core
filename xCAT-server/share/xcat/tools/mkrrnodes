@@ -80,7 +80,7 @@ foreach my $CU (@::CU)
             # calculate the rack number ( 12 triblades/rack)
             #  15 racks/CU
             #  Rack number = (triblade# / 12) +1
-            my $count = $range / 12;
+            my $count = ($range -1) / 12;
             my ($rackno, $rem) = split '\.', $count;
            
             $rackno = $rackno + $::LOCATION;
