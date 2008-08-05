@@ -85,7 +85,23 @@ else {
 
 my $children = 0;
 my $inputs = new IO::Select;
-$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
+my %pids; # pid => node
+my %errored; # Keep a list of children with non-zero exit codes
+
+# This happens whenever a child dies; keeps track of non-zero exit codes.
+sub handle_chld {
+  my $pid;
+  do { 
+    my $pid = waitpid(-1,WNOHANG);
+    my $node = $pids{$pid};
+    my $exitc = $? >> 8;
+    if ($exitc) {
+      $errored{$node} = $exitc;
+    }
+    $children--;
+  } until ($pid <= 0);
+}
+$SIG{CHLD} = \&handle_chld;
 
 if ($interface) {
   foreach (@nodes) {
@@ -106,7 +122,14 @@ while ($inputs->count and $children) {
 }
 while (processoutput($inputs)) {};
 wait;
-exit(0);
+my $exitcode;
+if (keys %errored) {
+  $exitcode = 2;
+  while (my ($node, $exitc) = each(%errored)) {
+    print "*** ssh to node $node exited with error code $exitc.\n";
+  }
+}
+exit($exitcode);
 
 sub processoutput { #This way, one arbiter handles output, no interrupting
   my $inputs = shift;
@@ -114,18 +137,18 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
   my $rc = @readyins;
   my $readyh;
   foreach $readyh (@readyins) {
-     my $cursel = new IO::Select;
-     $cursel->add($readyh);
-     while ($cursel->can_read(0)) {
-       my $line = <$readyh>;
-       unless ($line) {
-         $inputs->remove($readyh);
-         close($readyh);
-         next;
-       }
-       chomp($line);
-       print $nodehdl{$readyh}.": ".$line."\n";
-     }
+    my $cursel = new IO::Select;
+    $cursel->add($readyh);
+    while ($cursel->can_read(0)) {
+      my $line = <$readyh>;
+      unless ($line) {
+        $inputs->remove($readyh);
+        close($readyh);
+        next;
+      }
+      chomp($line);
+      print $nodehdl{$readyh}.": ".$line."\n";
+    }
   }
   IO::Handle::flush(stdout);
   yield; #Explicitly give all children a chance to refill any buffers
@@ -139,6 +162,8 @@ sub sshnode {
   my $in;
   my $args = join(" ",@_);
   #print "ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |\n";
-  open($$out,"ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |");
+  my $pid = open($$out,"ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |");
+  $pids{$pid} = $node;
 }
 
+# vim: set et ts=2 sts=2 sw=2 :
