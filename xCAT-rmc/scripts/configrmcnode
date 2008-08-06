@@ -7,7 +7,7 @@
 # usage:
 #  To add node to the cluster:
 #    NODE=nodename NODEID=fbb5ec1f64dd299c \
-#    MONSERVER=msname_or_ip MS_NODEID=fbb5ec1f64dd299c \
+#    MONMASTER=msname_or_ip MS_NODEID=fbb5ec1f64dd299c \
 #    configrmcnode 1    
 #  To remove node to the cluster 
 #    NODE=nodename configrmcnode -1
@@ -18,46 +18,82 @@ else
   ADD=1
 fi
 
-logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONSERVER=$MONSERVER,MS_NODEID=$MS_NODEID"
+logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONMASTER=$MONMASTER,MS_NODEID=$MS_NODEID"
 
 #check if rsct is installed and running
 if [ ! -e /usr/bin/lsrsrc ]; then  
+  echo "RMC setup on node $NODE: RSCT is not is not installed."
   logger xCAT "RMC setup on node $NODE: RSCT is not is not installed."
   exit 1;
+fi
+ 
+#check if the resource is defined
+result=`/usr/bin/lsrsrc-api -s IBM.MCP::"NodeID=0x$MS_NODEID"::MNName 2>&1`
+if [ $? -gt 0 ]; then
+#  echo $result
+  p="2612-023" #resource not found
+  result1=`awk -v a="$result" -v b="$p" 'BEGIN{print index(a,b)}'`
+  if [ $result1 -gt 0 ]; then
+    if [ $ADD -eq -1 ]; then
+      exit 0; #resource already removed, do nothing
+    fi
+  else
+    echo "$result"
+    logger xCAT "$result"
+    exit 1
+  fi
+else
+  if [ $ADD -eq 1 ]; then
+    exit 0; #resource already defined, do nothing
+  fi
 fi
 
 #ask RMC take the new nodeid
 if [[ $NODEID != "" ]]; then
-  #stop all rmc daemons
-  /usr/sbin/rsct/bin/rmcctrl -z
-
-  #get new nodeid into id files
-  if [ -e /var/ct/cfg/ct_node_id ]; then
-    sed s/^[^\#].*$/$NODEID/ /var/ct/cfg/ct_node_id > /tmp/id.tmp
-  else
-    if [ -e /etc/ct_node_id ]; then
-      sed s/^[^\#].*$/$NODEID/ /etc/ct_node_id >  /tmp/id.tmp
+  oldid=`/usr/sbin/rsct/bin/lsnodeid`
+  oldidU=`echo "$oldid" | awk '{ print toupper($1) }'`
+  newidU=`echo "$NODEID" | awk '{ print toupper($1) }'`
+  if [ $oldidU != $newidU ]; then
+    if [ -e /usr/sbin/rsct/install/bin/recfgctnid ]; then
+      result=`/usr/sbin/rsct/install/bin/recfgctnid $NODEID 2>&1`
+      if [ $? -ne 0 ]; then
+        echo "Reset nodeid: $result" 
+        logger xCAT "Reset nodeid: $result" 
+      fi
     else 
-      echo $NODEID > /tmp/id.tmp
+      #stop all rmc daemons
+      /usr/sbin/rsct/bin/rmcctrl -z
+
+      #get new nodeid into id files
+      if [ -e /var/ct/cfg/ct_node_id ]; then
+        sed s/^[^\#].*$/$NODEID/ /var/ct/cfg/ct_node_id > /tmp/id.tmp
+      else
+        if [ -e /etc/ct_node_id ]; then
+          sed s/^[^\#].*$/$NODEID/ /etc/ct_node_id >  /tmp/id.tmp
+        else 
+          echo $NODEID > /tmp/id.tmp
+        fi
+      fi
+      cp /tmp/id.tmp /var/ct/cfg/ct_node_id
+      cp /tmp/id.tmp /etc/ct_node_id
+      rm /tmp/id.tmp
+
+      #reconfig RMC
+      result=`/usr/sbin/rsct/install/bin/recfgct -s 2>&1`
+      if [ $? -ne 0 ]; then
+        echo "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
+        logger xCAT "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
+      fi
     fi
   fi
-  cp /tmp/id.tmp /var/ct/cfg/ct_node_id
-  cp /tmp/id.tmp /etc/ct_node_id
-  rm /tmp/id.tmp
-
-  #reconfig RMC
-  result=`/usr/sbin/rsct/install/bin/recfgct -s 2>&1`
-  if [ $? -ne 0 ]; then
-    logger xCAT "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
-  fi
 fi
-
   
 PID=`/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print $2}'`
 if [ !$PID ]; then
   #restart rmc daemon
   result=`startsrc -s ctrmc 2>&1`;
   if [ $? -gt 0 ]; then
+    echo "RMC deamon cannot be started on node $NODE:$result"
     logger xCAT "RMC deamon cannot be started on node $NODE:$result"
     exit 1;
   fi
@@ -69,8 +105,8 @@ if [ $ADD -eq 1 ]; then
   /usr/bin/rmcctrl -p; /usr/bin/refrsrc IBM.MCP
 
   #get IP address of MS
-  ms_ip=$MONSERVER
-  result=`ping -c1 $MONSERVER 2>&1`
+  ms_ip=$MONMASTER
+  result=`ping -c1 $MONMASTER 2>&1`
   if [ $? -eq 0 ]; then
     index1=`expr index "$result" "\("`
     index2=`expr index "$result" "\)"`
@@ -80,12 +116,14 @@ if [ $ADD -eq 1 ]; then
     length=`expr $length - 1`
     ms_ip=`expr substr "$result" $pos $length`
   else
+    echo "RMC setup on node $NODE:$result" 
     logger xCAT "RMC setup on node $NODE:$result"
   fi
 
   #define resource in IBM.MCP class on node       
-  result1=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$NODE"::KeyToken::"$MONSERVER"::IPAddresses::"{\"$ms_ip\"}"::NodeID::0x$MS_NODEID 2>&1`
+  result1=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$NODE"::KeyToken::"$MONMASTER"::IPAddresses::"{\"$ms_ip\"}"::NodeID::0x$MS_NODEID 2>&1`
   if [ $? -gt 0 ]; then
+    echo "Define resource in IBM.MCP class on node $NODE. result=$result1" 
     logger xCAT  "Define resource in IBM.MCP class on node $NODE. result=$result1" 
     exit 1
   fi
@@ -93,8 +131,9 @@ if [ $ADD -eq 1 ]; then
   #TODO: create predefined sensors
 else
   #remove resource in IBM.MCP class on the node
-  result2= `/usr/bin/rmrsrc-api -s IBM.MCP::"MNName=\\\"\"$NODE\\\"\"" 2>&1`
+  result2=`/usr/bin/rmrsrc-api -s IBM.MCP::"NodeID=0x$MS_NODEID" 2>&1`
   if [ $? -gt 0 ]; then
+    echo "Remove resource in IBM.MCP class on noderesult=$result2"
     logger xCAT "Remove resource in IBM.MCP class on noderesult=$result2"
     exit 1
   fi

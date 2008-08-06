@@ -221,7 +221,7 @@ sub stopNodeStatusMon {
 #--------------------------------------------------------------------------------
 =head3    config
       This function configures the cluster for the given nodes.  
-      This function is called when monconfig command is issued or when xcatd starts
+      This function is called when moncfg command is issued or when xcatd starts
       on the service node. It will configure the cluster to include the given nodes within
       the monitoring doamin. 
     Arguments:
@@ -290,8 +290,8 @@ sub config {
 #--------------------------------------------------------------------------------
 =head3    deconfig
       This function de-configures the cluster for the given nodes.  
-      This function is called by the monitorctrl module when nodes are removed 
-      from the xCAT cluster. It should remove the nodes from the product for monitoring.
+      This function is called when mondecfg command is issued by the user. 
+      It should remove the given nodes from the product for monitoring.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be removed for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
@@ -412,7 +412,6 @@ sub configBMC {
     print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
     if ($?) {
-       $ret_val=1;
        xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
        $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
     } 
@@ -420,7 +419,6 @@ sub configBMC {
     print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
     if ($?) {
-       $ret_val=1;
        xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
        $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
     } 
@@ -440,7 +438,6 @@ sub configBMC {
         print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
         my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
         if ($?) {
-          $ret_val=1;
           xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
 	  $ret_text .= "Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n";
         }
@@ -546,7 +543,6 @@ sub configMPA {
     print "XCATBYPASS=Y rspconfig $noderange alert=dis\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=dis 2>&1`;
     if ($?) {
-       $ret_val=1;
        xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
        $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
     }
@@ -554,7 +550,6 @@ sub configMPA {
     print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
     my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
     if ($?) {
-       $ret_val=1;
        xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n");
        $ret_text .= "Changeing SNMP remote alert profile for Blade Center MM $noderange:\n  $result\n";
     }
@@ -574,7 +569,6 @@ sub configMPA {
         print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
         my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
         if ($?) {
-          $ret_val=1;
           xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n");
           $ret_text .= "Changing SNMP destination for Blade Center MM $nr2:\n  $result2\n";  
         }

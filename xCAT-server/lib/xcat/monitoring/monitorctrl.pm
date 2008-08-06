@@ -164,7 +164,6 @@ sub stop {
 =cut
 #-------------------------------------------------------------------------------
 sub handleMonSignal {
-  print "handleMonSignal: go there\n";
   refreshProductList();
 
   #setup the signal again  
@@ -973,7 +972,7 @@ sub getMonServerWithInfo {
       for a node, "servicenode" is used. If none is defined, use the local host as the
       the monitoring server.
     Arguments:
-      nodes: An array ref of nodes.
+      nodes: An array ref of nodes. an empty array means all.
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
@@ -990,20 +989,19 @@ sub getMonServer {
     $p_input=shift;
   }
 
-  my @in_nodes=@$p_input;
+  my @allnodes=@$p_input;
+  my $pPairHash=getNodeMonServerPair(\@allnodes, 0);
+  if (@allnodes==0) {
+    @allnodes= keys(%$pPairHash);
+  }
 
   my $ret={};
   #get all from nodelist table and noderes table
-  my @allnodes=();
-  foreach (@in_nodes) {
-    push(@allnodes, $_->[0]);
-  }
   my $table=xCAT::Table->new("nodelist", -create =>0);
   my $tabdata=$table->getNodesAttribs(\@allnodes,['node', 'status']);
   my $table3=xCAT::Table->new("nodetype", -create =>0);
   my $tabdata3=$table3->getNodesAttribs(\@allnodes,['nodetype']);
 
-  my $pPairHash=getNodeMonServerPair(\@allnodes, 0);
   
   foreach my $node (@allnodes) {
     my $tmp1=$tabdata->{$node}->[0];
