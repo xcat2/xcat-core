@@ -903,6 +903,9 @@ sub dispatch_request {
     }
     undef $SIG{CHLD};
       $dispatch_parentfd = $parfd;
+     if (ref($_->{'_xcatdest'}) eq 'ARRAY') {
+         $_->{'_xcatdest'} = $_->{'_xcatdest'}->[0];
+     }
      if ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'})) {
         $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );
         $$progname.=": connection to ".$ENV{XCATHOST};
