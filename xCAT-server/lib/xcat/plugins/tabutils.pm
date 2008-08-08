@@ -221,7 +221,9 @@ sub noderm
         $cb->(\%rsp);
     };
 
-    @ARGV = @{$args};
+    if ($args) {
+        @ARGV = @{$args};
+    }
     if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) { $noderm_usage->(1); return; }
 
     if ($HELP) { $noderm_usage->(0); return; }
