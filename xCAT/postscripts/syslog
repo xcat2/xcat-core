@@ -21,6 +21,43 @@ init="/etc/init.d/syslog"
 ng=0
 isSN=0
 isLinux=1
+isRsyslog=0
+isC3=0
+
+config_Rsyslog_C3()
+{
+  isReceiving=0
+  isLocal=$1
+  echo "isLocal=$isLocal 2=$2"
+
+  if [ -f /etc/xCATMN ] || [ -f /etc/xCATSN ]
+  then 
+    isReceiving=1
+  fi
+
+  if [ ! -f $2.XCATORIG ]; then
+    cp -f $2 $2.XCATORIG
+  fi
+
+  grep "xCAT settings" $conf_file
+  if [ $? -gt 0 ]; then
+  echo "# xCAT settings" >> $2
+    #enable to receive remote logging
+    if [ $isReceiving -eq 1 ]; then
+      sed -i 's/^\#\(\s\)*\$ModLoad\(\s\)*imudp.so/\$ModLoad imudp.so/' $2
+      sed -i 's/^\#\(\s\)*\$UDPServerRun/\$UDPServerRun/' $2
+    fi
+
+    #enable to send the logging to master
+    if [ $isLocal -eq 1 ]; then
+       touch  /var/log/messages  
+    else
+      sed -i 's/^\(\*\..*\)/\#\1/' $2  
+      sed -i 's/^\(news\|local7\|mail\|authpriv\|cron\|kern\)\./\#\1\./' $2  
+      echo "*.* @$master" >> $2
+    fi 
+  fi
+}
 
 #echo "NTYPE=$NTYPE,OSVER=$OSVER,OSTYPE=$OSTYPE"
 
@@ -34,6 +71,7 @@ if [[ $OSTYPE = linux* ]]; then
       conf_file="/etc/rsyslog.conf"
       sysconfig="/etc/sysconfig/rsyslog"
       init="/etc/init.d/rsyslog"
+      isRsyslog=1
     fi
   else 
     if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
@@ -53,36 +91,50 @@ fi
 #echo "isSN=$isSN, isLinux=$isLinux, ng=$ng"
 #echo "sysconfig=$sysconfig, confgile=$conf_file"
 
+
+
 #handle sysconfig file to make remote loggling possible 
 if [ $isLinux -eq 1 ] && [ -a $sysconfig ]; then 
   if [[ ! -f "$sysconfig.XCATORIG" ]]; then
     cp -f $sysconfig $sysconfig.XCATORIG
   fi
-  if [ -f /etc/xCATMN ]; then
-    #on MN: make the syslogd be able to receive remote logs 
-    awk  '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
+
+  #check if it is ryslog version 3, it has totally different settings in /etc/syslog.cong
+  if [ $isRsyslog -eq 1 ]; then
+    grep "SYSLOGD_OPTIONS" $sysconfig | grep -e "[\-c 3|\-c3]"
+    if [ $? -eq 0 ]; then
+      isC3=1
+    fi
+  fi
+  
+  #no need to change anything for rsyslog version 3 for /etc/sysconf/rsyslog
+  if [ $isC3 -eq 0 ]; then 
+    if [ -f /etc/xCATMN ]; then
+      #on MN: make the syslogd be able to receive remote logs 
+      awk  '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
             if ($0 !~ /-r/) {sub(/\"$/, " -r\"", $0)}
             if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
             print $0}
           else { print $0}}'  $sysconfig > $sysconfig.tmp 
-  else
-    if [ $isSN -eq 1 ]; then
-      #on SN: make the syslog be able to receive and forward remote logs
-      awk '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
+    else
+      if [ $isSN -eq 1 ]; then
+        #on SN: make the syslog be able to receive and forward remote logs
+        awk '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
               if ($0 !~ /-r/) {sub(/\"$/, " -r\"", $0)}
               if ($0 !~ /-h/) {sub(/\"$/, " -h\"", $0)}
               if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
               print $0}
             else { print $0}}'  $sysconfig > $sysconfig.tmp 
-    else
-      ##turn off the time marker on all 
-      awk '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
+      else
+        ##turn off the time marker on all 
+        awk '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
               if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
               print $0}
             else {print $0}}' $sysconfig > $sysconfig.tmp 
+      fi
     fi
+    mv -f $sysconfig.tmp $sysconfig   
   fi
-  mv -f $sysconfig.tmp $sysconfig   
 fi  
 
 
@@ -93,6 +145,8 @@ if [ $ng -eq 1 -a $isSN -eq 1 ]; then
   fi
   sed -i 's/#udp(ip("0.0.0.0/udp(ip("0.0.0.0/' $conf_file
 fi
+
+
 
 #now handling where the logs go
 goLocal=0;
@@ -106,45 +160,49 @@ else
   fi
 fi
 
-if [ $goLocal -eq 1 ]; then
-  #making sure all the messages goes to /var/log/messages
-  touch  /var/log/messages 
-  if [ $ng -eq 0 ]; then
-    if [ ! -f $conf_file.XCATORIG ]; then
-      cp -f $conf_file $conf_file.XCATORIG
-    fi
+if [ $isC3 -eq 1 ]; then 
+  config_Rsyslog_C3 $goLocal $conf_file
+else
+  if [ $goLocal -eq 1 ]; then
+    #making sure all the messages goes to /var/log/messages
+    touch  /var/log/messages 
+    if [ $ng -eq 0 ]; then
+      if [ ! -f $conf_file.XCATORIG ]; then
+        cp -f $conf_file $conf_file.XCATORIG
+      fi
 
-    grep "xCAT settings" $conf_file
-    if [ $? -gt 0 ]; then
-      if [ $isLinux -eq 0 ]; then # aix
-        echo "# xCAT settings" >> $conf_file
-        echo "*.debug  /var/log/messages  rotate 1024K files 5" >> $conf_file
+      grep "xCAT settings" $conf_file
+      if [ $? -gt 0 ]; then
+        if [ $isLinux -eq 0 ]; then # aix
+          echo "# xCAT settings" >> $conf_file
+          echo "*.debug   /var/log/messages  rotate 1024K files 5" >> $conf_file
+        fi
       fi
     fi
-  fi
-else 
-  #now make the syslogd fowarding the messages to the the master
-  if [ $ng -eq 1 ]; then
-    if [ ! -f $conf_file.XCATORIG ]; then
-      cp -f $conf_file $conf_file.XCATORIG
-    fi
-    grep "xCAT settings" $conf_file
-    if [ $? -gt 0 ]; then
-      echo "# xCAT settings" >> $conf_file
-      echo "destination loghost { udp(\"$master\"); };" >> $conf_file
-      echo 'log { source(src); destination(loghost); };' >> $conf_file
-    fi
   else 
-    if [ -f $conf_file.XCATORIG ]; then 
-      rm -f $conf_file 
+    #now make the syslogd fowarding the messages to the the master
+    if [ $ng -eq 1 ]; then
+      if [ ! -f $conf_file.XCATORIG ]; then
+        cp -f $conf_file $conf_file.XCATORIG
+      fi
+      grep "xCAT settings" $conf_file
+      if [ $? -gt 0 ]; then
+        echo "# xCAT settings" >> $conf_file
+        echo "destination loghost { udp(\"$master\"); };" >> $conf_file
+        echo 'log { source(src); destination(loghost); };' >> $conf_file
+      fi
     else 
-      mv -f $conf_file $conf_file.XCATORIG
-    fi
-    echo "# xCAT settings" > $conf_file
-    if [ $isLinux -eq 0 ]; then
-      echo "*.debug @$master" >> $conf_file
-    else
-      echo "*.* @$master" >> $conf_file
+      if [ -f $conf_file.XCATORIG ]; then 
+        rm -f $conf_file 
+      else 
+        mv -f $conf_file $conf_file.XCATORIG
+      fi
+      echo "# xCAT settings" > $conf_file
+      if [ $isLinux -eq 0 ]; then
+        echo "*.debug @$master" >> $conf_file
+      else
+        echo "*.* @$master" >> $conf_file
+      fi
     fi
   fi
 fi
