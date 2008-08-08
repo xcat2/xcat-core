@@ -8,20 +8,20 @@ use Getopt::Long;
 
 #-----------------------------------------------------------------------------
 
-=head1   mkrrnodes
+=head1   mkrtnodes
 
 Make node definitions for RR nodes
 
- mkrrnodes -C <cu letter> -L < start Rack number for CU> -R <startrange,endrange>     (add) 
- mkrrnodes -d -C <cu letter> -R <startrange,endrange> (delete)
+ mkrtnodes -C <cu letter> -L < start Rack number for CU> -R <startrange,endrange>     (add) 
+ mkrtnodes -d -C <cu letter> -R <startrange,endrange> (delete)
 
 example command:
-   mkrrnodes -C d -L 2 -R 1,180   ( 12 blades per rack)
+   mkrtnodes -C d -L 2 -R 1,180   ( 6 blades per rack)
 
  Builds some nodelist entries that look like this
-   "rrd171a","rrd171,ls21,cud,opteron,opteron-cud,compute,tb,all,rack16,bc57",,,
-   "rrd171b","rrd171,qs22,cud,cell,cell-b,cell-cud-b,cell-cud,compute,all,tb,rack16,bc57",,,
-   "rrd171c","rrd171,qs22,cud,cell,cell-c,cell-cud-c,cell-cud,compute,all,tb,rack16,bc57",,,
+   "rtd171a","rtd171,ls21,cud,opteron,opteron-cud,compute,tb,all,rack16,bc57",,,
+   "rtd171b","rtd171,qs22,cud,cell,cell-b,cell-cud-b,cell-cud,compute,all,tb,rack16,bc57",,,
+   "rtd171c","rtd171,qs22,cud,cell,cell-c,cell-cud-c,cell-cud,compute,all,tb,rack16,bc57",,,
 
 =cut
 
@@ -41,17 +41,17 @@ foreach my $CU (@::CU)
         foreach my $blade (@bladename)
         {
             my $nodeno = "";
-            if ($range <=9) {  # want rr00X
+            if ($range <=9) {  # want rt00X
                $nodeno .="0";
             } 
-            if ($range <=99) {  # want rr0XX
+            if ($range <=99) {  # want rt0XX
                $nodeno .="0";
             } 
             $nodeno .= $range;
 
             $rack = "rack";
             $bc   = "bc";
-            $cmd  = "rr";
+            $cmd  = "rt";
             $cmd .= $CU;
             $cmd .= $nodeno;
             $cmd .= "$blade";
@@ -60,27 +60,25 @@ foreach my $CU (@::CU)
             {
 
                 $cmd .=
-                  "groups=rr$CU$nodeno,ls21,cu$CU,opteron,opteron-cu$CU,compute,tb,all";
+                  "groups=rt$CU$nodeno,ls21,cu$CU,opteron,opteron-cu$CU,compute,tb,all";
             }
             else
             {
                 if ($blade eq "b")
                 {
                     $cmd .=
-                      "groups=rr$CU$nodeno,qs22,cu$CU,cell,cell-b,cell-cu$CU-b,cell-cu$CU,compute,all,tb";
+                      "groups=rt$CU$nodeno,qs22,cu$CU,cell,cell-b,cell-cu$CU-b,cell-cu$CU,compute,all,tb";
                 }
                 else
                 {    # c
                     $cmd .=
-                      "groups=rr$CU$nodeno,qs22,cu$CU,cell,cell-c,cell-cu$CU-c,cell-cu$CU,compute,all,tb";
+                      "groups=rt$CU$nodeno,qs22,cu$CU,cell,cell-c,cell-cu$CU-c,cell-cu$CU,compute,all,tb";
 
                 }
             }
 
-            # calculate the rack number ( 12 triblades/rack)
-            #  15 racks/CU
-            #  Rack number = (triblade# / 12) +1
-            my $count = ($range -1) / 12;
+            # calculate the rack number ( 6 triblades/rack)
+            my $count = ($range -1) / 6;
             my ($rackno, $rem) = split '\.', $count;
            
             $rackno = $rackno + $::LOCATION;
@@ -144,7 +142,7 @@ sub parse_args
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
     my $usagemsg =
-          " mkrrnodes -h \n mkrrnodes [-d] -C [a|b|,...,r] -L [start rack number for CU] -R [startrange,endrange] [-t|--test]\n";
+          " mkrtnodes -h \n mkrtnodes [-d] -C [a|b|,...,r] -L [start rack number for CU] -R [startrange,endrange] [-t|--test]\n";
     if (
         !GetOptions(
             'C|CU=s'    => \$::CU,
