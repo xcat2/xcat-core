@@ -280,9 +280,15 @@ sub message
 
             # If they want this msg to also go to syslog, do that now
             eval {
-                openlog("xCAT", '', 'local4');
-                syslog("err", $rsp);
-                closelog();
+                #openlog("xCAT", '', 'local4'); 
+                #syslog("err", $rsp);
+                #closelog();
+                # switched to logger due to hangs using Perl interface
+                # when syslog not running
+                `logger -p local4.err -t xcat $rsp`;
+                if ( $? != 0) {
+                  print $stdouterrf "Error using Syslog/n";  
+                }     
             };
         }
     }
