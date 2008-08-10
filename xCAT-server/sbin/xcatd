@@ -10,6 +10,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use Storable qw(freeze thaw);
 use xCAT::Utils;
+use xCAT::MsgUtils;
 use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
@@ -158,7 +159,7 @@ if ($inet6support) {
 }
 
   unless ($socket) {
-    syslog("local4|err","xcatd unable to open install monitor services on $sport");
+    xCAT::MsgUtils->message("S","xcatd unable to open install monitor services on $sport");
     die;
   }
   until ($quit) {
@@ -257,9 +258,9 @@ if ($inet6support) {
     };
     if ($@) {
       if ($@ =~ /XCATTIMEOUT/) {
-        syslog("local4|err","xcatd installmonitor timed out talking to $node");
+         xCAT::MsgUtils->message("S","xcatd installmonitor timed out talking to $node");
       } else {
-        syslog("local4|err","xcatd: possible BUG encountered by xCAT install monitor service: ".$@);
+         xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT install monitor service: ".$@);
       }
     }
   }
@@ -289,7 +290,7 @@ if ($inet6support) {
 
   openlog("xCAT UDP",'','local4');
   unless ($socket) {
-    syslog("err","xCAT UDP service unable to open port $port: $!");
+     xCAT::MsgUtils->message("S","xCAT UDP service unable to open port $port: $!");
     closelog();
     die "Unable to start UDP on $port";
   }
@@ -349,7 +350,7 @@ if ($inet6support) {
     }
     };
     if ($@) {
-      syslog("local4|err","xcatd: possible BUG encountered by xCAT UDP service: ".$@);
+       xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT UDP service: ".$@);
     }
     unless ($actualpid == $$) { #We should absolutely never be here, exponential growth from a plugin crash.
         exit 1;
@@ -391,7 +392,7 @@ sub scan_plugins {
 }
 scan_plugins;
 eval {
-   syslog("local4|info","xCATd: service starting");
+    xCAT::MsgUtils->message("S","xCATd: service starting");
 };
 if ($@) {
    print "ERROR: $@";
@@ -471,7 +472,7 @@ my $listener = IO::Socket::INET->new(
 
 unless ($listener) {
   kill 2, $pid;
-  syslog("err","xCAT service unable to open SSL services on $port: $!");
+   xCAT::MsgUtils->message("S","xCAT service unable to open SSL services on $port: $!");
   closelog();
   die "ERROR:Unable to start xCAT service on port $port.";
 }
@@ -916,7 +917,7 @@ sub dispatch_request {
         if ($@) {
             my $errstr=$@;
 	   dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server ($errstr)"],errorcode=>[1]}); 
-	   syslog("local4|err","Error dispatching request: ".$errstr);
+	    xCAT::MsgUtils->message("S","Error dispatching request: ".$errstr);
 	}
      } else {
         $$progname.=": locally executing";
@@ -1124,7 +1125,7 @@ sub service_connection {
   };
   if ($@) { # The eval statement caught a program bug..
     if ($@ =~ /^SIGPIPE/) {
-        syslog("local4|info","xcatd: Unexpected client disconnect");
+         xCAT::MsgUtils->message("S","xcatd: Unexpected client disconnect");
         if ($sock) {
             eval {
                 print $sock XMLout({error=>"Generic PIPE error occurred.  $@"},RootName=>'xcatresponse',NoAttr=>1);
@@ -1134,7 +1135,7 @@ sub service_connection {
     } else {
         my $errstr="A fatal error was encountered, the following information may help identify a bug: $@";
         chomp($errstr);
-        syslog("local4|err","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
+         xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
         if ($sock) {
             eval {
                 print $sock XMLout({error=>$errstr},RootName=>'xcatresponse',NoAttr=>1);
@@ -1194,7 +1195,7 @@ sub validate {
   my $request=shift;
   my $policytable = xCAT::Table->new('policy');
   unless ($policytable) {
-    syslog("err","Unable to open policy data, denying");
+     xCAT::MsgUtils->message("S","Unable to open policy data, denying");
     return 0;
   }
   my @policies = $policytable->getTable;
@@ -1236,21 +1237,21 @@ sub validate {
       if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
         my $logst = "xCAT: Allowing ".$request->{command}->[0];
         if ($peername) { $logst .= " for " . $peername };
-        syslog("authpriv|info",$logst);
+         xCAT::MsgUtils->message("S",$logst);
         return 1;
       } else {
         my $logst = "xCAT: Denying ".$request->{command}->[0];
         if ($peername) { $logst .= " for " . $peername };
-        syslog("authpriv|info",$logst);
+         xCAT::MsgUtils->message("S",$logst);
         return 0;
       }
     } else { #Shouldn't be possible....
-      syslog("err","Impossible line in xcatd reached");
+       xCAT::MsgUtils->message("S","Impossible line in xcatd reached");
       return 0;
     }
   }
   #Reached end of policy table, reject by default.
-  syslog("err","Request matched no policy rule: ".$request->{command}->[0]);
+   xCAT::MsgUtils->message("S","Request matched no policy rule: ".$request->{command}->[0]);
   return 0;
 }
 
