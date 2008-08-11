@@ -859,11 +859,22 @@ sub dispatch_request {
 
   $dispatch_children=0;
   $SIG{CHLD} = \&dispatch_reaper; #sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $dispatch_children--; } } };
+  my $onlyone=0;
+  if (scalar(@{$reqs}) == 1) {
+      $onlyone=1;
+  }
+
    foreach (@{$reqs}) {
     my $pfd;
     my $parfd; #use a private variable so it won't trounce itself recursively
     my $child;
     delete $_->{noderange};
+    if ($onlyone and not ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'}))) {
+        undef $SIG{CHLD};
+        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
+        return;
+    }
+
     socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
     $parfd->autoflush(1);
     $pfd->autoflush(1);
