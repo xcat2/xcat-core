@@ -2,7 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 use strict;
 use warnings;
-use Carp;
+use Carp qw(cluck confess);
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -116,7 +116,9 @@ $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 
 $sitetab->close;
 my $progname;
-$SIG{PIPE} = sub { confess "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)" };
+$SIG{PIPE} = sub { 
+    confess "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)"
+};
 $progname = \$0;
 sub daemonize {
   chdir('/');
@@ -442,6 +444,9 @@ $SIG{TERM} = $SIG{INT} = sub {
    printf("Asked to quit...\n"); 
    $quit++;
    foreach (keys %dispatched_children) {
+      kill 2, $_;
+   }
+   foreach (keys %plugin_children) {
       kill 2, $_;
    }
    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 5 second grace period"; };
@@ -823,36 +828,6 @@ sub relay_dispatch {
          close($rin);
       }
    }
-   foreach my $rin ($clientselect->can_read(0)) {
-      my $subselect = new IO::Select;
-      $subselect->add($rin);
-      my $clientintr="";
-      my $subdata;
-      while ($subselect->can_read(1)) {
-         if ($subdata=<$rin>) {
-            $clientintr.=$subdata;
-         } else {
-            $subselect->remove($rin);
-            close($rin);
-         }
-      }
-      unless ($clientintr) {
-         next;
-      }
-      $clientintr=XMLin($clientintr, SuppressEmpty=>undef,ForceArray=>1 );
-      if ($clientintr->{abortcommand}->[0]) {
-         foreach (keys %dispatched_children) {
-            kill 2, $_;
-         }
-         foreach my $cin ($fds->handles) {
-            print $cin "die\n";
-            $fds->remove($cin);
-            close($cin);
-         }
-         die "Client abort requested";
-      }
-   }
-
    yield; #At this point, explicitly yield to other processes.  If children will have more data, this process would otherwise uselessly loop on data that never will be.  If children are all done, still no harm in waiting a short bit for a timeslice to come back
    return scalar(@ready_ins);
 }
@@ -1157,6 +1132,7 @@ sub service_connection {
 sub relay_fds { #Relays file descriptors from pipes to children to the SSL socket
   my $fds = shift;
   my $sock = shift;
+  my $goneclient=0;
   unless ($sock) { return 0; }
   my $collate = ( scalar @_ > 0 ? shift  : 0);
   my @readyset = $fds->can_read(1);
@@ -1166,7 +1142,14 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
   foreach $rfh (@readyset) { #go through each child, extract a complete, atomic message
     my $line;
     while ($line = <$rfh>) { #Will break on complete </xcatresponse> messages, avoid interleave
-      print $sock $line; 
+      eval {
+        print $sock $line; 
+      };
+      if ($@ and $@ =~ /PIPE/) {
+          $goneclient=1;
+          print "Piped while writing to client\n";
+          last;
+      }
       if ($line =~ /<\/xcatresponse>/) {
         last;
       }
@@ -1178,7 +1161,41 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
       close($rfh);             
     }
   }
+   foreach my $rin ($clientselect->can_read(0)) {
+      my $subselect = new IO::Select;
+      $subselect->add($rin);
+      my $clientintr="";
+      my $subdata;
+      while ($subselect->can_read(1)) {
+         if ($subdata=<$rin>) {
+            $clientintr.=$subdata;
+         } else {
+            $subselect->remove($rin);
+            close($rin);
+         }
+      }
+      unless ($clientintr) {
+         next;
+      }
+      $clientintr=XMLin($clientintr, SuppressEmpty=>undef,ForceArray=>1 );
+      if ($clientintr->{abortcommand}->[0]) {
+          print "Aborting...";
+         foreach (keys %plugin_children) {
+            print "Sending INT to $_\n";
+            kill 2, $_;
+         }
+         foreach my $cin ($fds->handles) {
+            print $cin "die\n";
+            $fds->remove($cin);
+            close($cin);
+         }
+         die "Client abort requested";
+      }
+   }
   yield; #Give other processes, including children, explicit control, to avoid uselessly aggressive looping
+  if ($goneclient) {
+    die "SIGPIPE $$progname encountered a broken pipe (Sudden client disconnect)"
+  }
   return $rc;
 }
 
