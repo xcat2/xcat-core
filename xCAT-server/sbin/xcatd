@@ -520,7 +520,7 @@ until ($quit) {
       );
       alarm(0);
     };
-    undef $SIG{ALRM};
+    $SIG{ALRM}='DEFAULT';
     if ($@) { #SSL failure
        close($cnnection);
        xexit 0;
@@ -731,7 +731,7 @@ sub plugin_command {
         if ($dispatch_requests) { 
 	        dispatch_request($req,$callback,$modname);
         } else {
-           undef $SIG{CHLD};
+           $SIG{CHLD}='DEFAULT';
            ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
         }
         $$progname=$oldprogname;
@@ -851,7 +851,7 @@ sub dispatch_request {
    #will for now be required for a command to be scaled through service nodes
    #If the plugin offers a preprocess method, use it to set the request array
    if (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request})) {
-    undef $SIG{CHLD};
+    $SIG{CHLD}='DEFAULT';
     $reqs = ${"xCAT_plugin::".$modname."::"}{preprocess_request}->($req,$dispatch_cb,\&do_request);
    } else { #otherwise, pass it in without hierarchy support
     $reqs = [$req];
@@ -870,7 +870,7 @@ sub dispatch_request {
     my $child;
     delete $_->{noderange};
     if ($onlyone and not ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'}))) {
-        undef $SIG{CHLD};
+        $SIG{CHLD}='DEFAULT';
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
         return;
     }
@@ -888,7 +888,7 @@ sub dispatch_request {
     unless (defined $child) {
        $dispatch_cb->({error=>['Fork failure dispatching request'],errorcode=>[1]});
     }
-    undef $SIG{CHLD};
+    $SIG{CHLD}='DEFAULT';
       $dispatch_parentfd = $parfd;
      if (ref($_->{'_xcatdest'}) eq 'ARRAY') {
          $_->{'_xcatdest'} = $_->{'_xcatdest'}->[0];
@@ -907,7 +907,7 @@ sub dispatch_request {
 	}
      } else {
         $$progname.=": locally executing";
-        undef $SIG{CHLD};
+        $SIG{CHLD}='DEFAULT';
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
      }
      xexit;
