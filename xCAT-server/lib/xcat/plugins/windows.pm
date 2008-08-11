@@ -301,6 +301,7 @@ sub copycd
           kill 2, $_; 
        }
        if ($::CDMOUNTPATH) {
+            chdir("/");
             system("umount $::CDMOUNTPATH");
        }
     };
