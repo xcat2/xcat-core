@@ -287,7 +287,7 @@ sub message
                 # when syslog not running
                 `logger -p local4.err -t xcat $rsp`;
                 if ( $? != 0) {
-                  print $stdouterrf "Error using Syslog/n";  
+                  print $stdouterrf "Error using Syslog\n";  
                 }     
             };
         }
