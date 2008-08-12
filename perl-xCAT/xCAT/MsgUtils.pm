@@ -4,7 +4,7 @@
 package xCAT::MsgUtils;
 
 use strict;
-use Sys::Syslog;
+use Sys::Syslog qw (:DEFAULT setlogsock);
 #use locale;
 use Socket;
 use File::Path;
@@ -280,16 +280,15 @@ sub message
 
             # If they want this msg to also go to syslog, do that now
             eval {
-                #openlog("xCAT", '', 'local4'); 
-                #syslog("err", $rsp);
-                #closelog();
-                # switched to logger due to hangs using Perl interface
-                # when syslog not running
-                `logger -p local4.err -t xcat $rsp`;
-                if ( $? != 0) {
-                  print $stdouterrf "Error using Syslog\n";  
-                }     
+                openlog("xCAT", '', 'local4'); 
+                setlogsock(["tcp","unix","stream"]);
+                syslog("err", $rsp);
+                closelog();
             };
+            my $errstr = $@;
+            if ($errstr) {
+                print $stdouterrf "Unable to log $rsp to syslog because of $errstr\n";
+            }
         }
     }
     return;
