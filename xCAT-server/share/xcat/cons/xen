@@ -5,8 +5,8 @@ BEGIN
     use Time::HiRes qw(sleep);
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
     my $sleepint=int(rand(10));
-    print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
-    sleep $sleepint;
+    print "Opening console in ".(0.5*$sleepint)." seconds...\n";
+    sleep (0.5*$sleepint);
 }
 use lib "$::XCATROOT/lib/perl";
 $ENV{HOME}='/root/';
@@ -37,6 +37,11 @@ sub getans {
     }
 }
 xCAT::Client::submit_request($cmdref,\&getans);
+until ($dsthost and $speed and $dstty) {
+    print "console not ready";
+    sleep 5+int(rand(10));
+    xCAT::Client::submit_request($cmdref,\&getans);
+}
 exec "ssh -t $dsthost cu -s $speed -l $dstty";
 
 #my $pathtochild= dirname($scriptname). "/";
