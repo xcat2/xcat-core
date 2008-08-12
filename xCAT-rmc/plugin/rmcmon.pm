@@ -97,13 +97,7 @@ sub start {
     $result=`/usr/bin/lsrsrc-api -s IBM.MngNode::::Name 2>&1`;  
     if ($?) {
       if ($result !~ /2612-023/) {#2612-023 no resources found error
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $result.";
-          $callback->($rsp);
-        } else {
-          xCAT::MsgUtils->message('S', "[mon]: $result\n");
-        }
+        reportError( $result, $callback); 
         return (1,$result);
       }
       $result='';
@@ -116,13 +110,7 @@ sub start {
       my $nodestring=join(',', @rmc_nodes);
       $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring startsrc -s ctrmc 2>&1`;
       if (($result) && ($result !~ /0513-029/)) { #0513-029 multiple instance not supported.
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $result\n";
-          $callback->($rsp);
-        } else {
-          xCAT::MsgUtils->message('S', "[mon]: $result\n");
-        }
+        reportError( $result, $callback); 
       }
     }
   }
@@ -251,17 +239,12 @@ sub stop {
       }
 
       if (@nodes_to_stop > 0) {
-      my $nodestring=join(',', @nodes_to_stop);
-      #$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring stopsrc -s ctrmc 2>&1`;
-      $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring "/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{if (\\\$2>0) system(\\\"stopsrc -s ctrmc\\\")}' 2>&1"`;
+        my $nodestring=join(',', @nodes_to_stop);
+        #$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring stopsrc -s ctrmc 2>&1`;
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring "/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{if (\\\$2>0) system(\\\"stopsrc -s ctrmc\\\")}' 2>&1"`;
 
-      if (($result) && ($result !~ /0513-044/)){ #0513-0544 is normal value
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $result\n";
-          $callback->($rsp);
-        } else {
-          xCAT::MsgUtils->message('S', "[mon]: $result\n");
+        if (($result) && ($result !~ /0513-044/)){ #0513-0544 is normal value
+	  reportError($result, $callback);
         }
       }
     }
@@ -269,7 +252,6 @@ sub stop {
 
   return (0, "stopped");
 }
-
 
 
 #--------------------------------------------------------------------------------
@@ -345,29 +327,29 @@ sub config {
 
     #figure out what nodes to add
     my @nodes_to_add=();
+    my @hmc_nodes=();
     if ($mon_nodes) {
       foreach(@$mon_nodes) {
         my $node=$_->[0];
         my $nodetype=$_->[1];
-        if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/)) { 
-	  push(@nodes_to_add, $node);
-        }  
+        if ($nodetype){ 
+	  if ($nodetype =~ /$::NODETYPE_OSI/) { push(@nodes_to_add, $node); }
+	  elsif ($nodetype =~ /$::NODETYPE_HMC/) { push(@hmc_nodes, $node); }
+        } 
       }     
     }
 
     #add new nodes to the RMC cluster
-    addNodes(\@nodes_to_add, $master, $scope, $callback);
+    addNodes(\@nodes_to_add, $master, $scope, $callback, 0);
+    #add new HMC nodes to the RMC cluster
+    addNodes(\@hmc_nodes, $master, $scope, $callback, 1);
   }
 
   #create conditions/responses/sensors on the service node or mn
   my $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/sn 2>&1`;
   if ($?) {
     my $error= "Error when creating predefined resources on $localhostname:\n$result";
-    if ($callback) {
-      my $rsp={};
-      $rsp->{data}->[0]="$localhostname: $error.";
-      $callback->($rsp);
-    } else {   xCAT::MsgUtils->message('S', "[mon]: $error\n"); }
+    reportError($error, $callback);
   }   
   if ($isSV) {
     $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/node 2>&1`; 
@@ -376,11 +358,7 @@ sub config {
   }      
   if ($?) {
     my $error= "Error when creating predefined resources on $localhostname:\n$result";
-    if ($callback) {
-      my $rsp={};
-      $rsp->{data}->[0]="$localhostname: $error.";
-      $callback->($rsp);
-    } else { xCAT::MsgUtils->message('S', "[mon]: $error\n"); }
+    reportError($error, $callback);
   }
 }
 
@@ -425,18 +403,22 @@ sub deconfig {
 
     #figure out what nodes to remove
     my @nodes_to_rm=();
+    my @hmc_nodes=();
     if ($mon_nodes) {
       foreach(@$mon_nodes) {
         my $node=$_->[0];
         my $nodetype=$_->[1];
-        if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/)) { 
-	  push(@nodes_to_rm, $node);
+        if ($nodetype) {
+          if ($nodetype =~ /$::NODETYPE_OSI/) { push(@nodes_to_rm, $node);}
+	  elsif ($nodetype =~ /$::NODETYPE_HMC/) { push(@hmc_nodes, $node); }
         }  
       }     
     }
 
     #remove nodes from the RMC cluster
-    removeNodes(\@nodes_to_rm, $master, $scope, $callback);}
+    removeNodes(\@nodes_to_rm, $master, $scope, $callback, 0);
+    #remove HMC nodes from the RMC cluster
+    removeNodes(\@hmc_nodes, $master, $scope, $callback, 1);
   } 
 }
 
@@ -517,20 +499,12 @@ sub startNodeStatusMon {
   #get nodestatus from RMC and update the xCAT DB
   ($retcode, $retmsg) = saveRMCNodeStatusToxCAT(\%status_hash);
   if ($retcode != 0) {
-    if ($callback) {
-      my $rsp={};
-      $rsp->{data}->[0]="$localhostname: $retmsg.";
-      $callback->($rsp);
-    } else {   xCAT::MsgUtils->message('S', "[mon]: $retmsg\n"); }
+    reportError($retmsg, $callback);
   }
   foreach (@servicenodes) {
     ($retcode, $retmsg) = saveRMCNodeStatusToxCAT(\%status_hash, $_);
     if ($retcode != 0) {
-      if ($callback) {
-        my $rsp={};
-        $rsp->{data}->[0]="$localhostname: $retmsg.";
-        $callback->($rsp);
-      } else {   xCAT::MsgUtils->message('S', "[mon]: $retmsg\n"); }
+      reportError($retmsg, $callback);
     }
   }
 
@@ -539,11 +513,7 @@ sub startNodeStatusMon {
   if ($?) {
     $retcode=$?;
     $retmsg="Error start node status monitoring: $result";
-    if ($callback) {
-      my $rsp={};
-      $rsp->{data}->[0]="$localhostname: $retmsg.";
-      $callback->($rsp);
-    } else {   xCAT::MsgUtils->message('S', "[mon]: $retmsg\n"); }
+    reportError($retmsg, $callback);
   }
 
   #start monitoring the status of mn's grandchildren via their service nodes
@@ -551,11 +521,7 @@ sub startNodeStatusMon {
   if ($?) {
     $retcode=$?;
     $retmsg="Error start node status monitoring: $result";
-    if ($callback) {
-      my $rsp={};
-      $rsp->{data}->[0]="$localhostname: $retmsg.";
-      $callback->($rsp);
-    } else {   xCAT::MsgUtils->message('S', "[mon]: $retmsg\n"); }
+    reportError($retmsg, $callback);
   }
  
   return ($retcode, $retmsg);
@@ -669,11 +635,7 @@ sub stopNodeStatusMon {
   if ($?) {
     $retcode=$?;
     $retmsg="Error stop node status monitoring: $result";
-    if ($callback) {
-      my $rsp={};
-      $rsp->{data}->[0]="$localhostname: $retmsg.";
-      $callback->($rsp);
-    } else {   xCAT::MsgUtils->message('S', "[mon]: $retmsg\n"); }
+    reportError($retmsg, $callback);
   }
 
   #stop monitoring the status of mn's grandchildren via their service nodes
@@ -681,12 +643,8 @@ sub stopNodeStatusMon {
   if ($?) {
     $retcode=$?;
     $retmsg="Error stop node status monitoring: $result";
-    if ($callback) {
-      my $rsp={};
-      $rsp->{data}->[0]="$localhostname: $retmsg.";
-      $callback->($rsp);
-    } else {   xCAT::MsgUtils->message('S', "[mon]: $retmsg\n"); }
-  }
+    reportError($retmsg, $callback);
+   }
   return ($retcode, $retmsg);
 }
 
@@ -743,14 +701,17 @@ sub getLocalNodeID {
 =head3    getNodeInfo
       This function gets the nodeid, node ip addresses for the given node 
     Arguments:
-       node  
+       node
+       flag --- if 0 means normal nodes, if 1 means HMC.  
     Returns:
-       (nodeid, nodeip)
+       (nodeid, nodeip) if error, nodeid=-1 and nodeip is the error message
 =cut
 #--------------------------------------------------------------------------------
 sub getNodeInfo 
 {
   my $node=shift;
+  my $flag=shift;
+
   my @hostinfo=xCAT::Utils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
@@ -759,7 +720,17 @@ sub getNodeInfo
   if($iphash{$node}) {
     $node_id=getLocalNodeID();
   } else { 
-    $node_id=getNodeID($node);
+    if ($flag) { 
+      my $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot lsnodeid`;
+      if ($?) {
+	return (-1, $result);
+      } else {
+	chomp($result);
+        my @a=split(' ', $result);
+        $node_id=$a[1];
+      }
+    }
+    else { $node_id=getNodeID($node);} 
   }
 
   my ($name,$aliases,$addrtype,$length,@addrs) = gethostbyname($node);
@@ -773,8 +744,31 @@ sub getNodeInfo
 }
 
 #--------------------------------------------------------------------------------
+=head3    reportError
+      This function writes the error message to the callback, otherwise to syslog. 
+    Arguments:
+       error
+       callback 
+    Returns:
+       none
+=cut
+#--------------------------------------------------------------------------------
+sub reportError 
+{
+  my $error=shift;
+  my $callback=shift;
+  if ($callback) {
+    my $rsp={};
+    my $localhostname=hostname();
+    $rsp->{data}->[0]="$localhostname: $error";
+    $callback->($rsp);
+  } else { xCAT::MsgUtils->message('S', "[mon]: $error\n"); }
+  return;
+}
+
+#--------------------------------------------------------------------------------
 =head3    addNodes
-      This function gdds the nodes into the RMC cluster, it does not check the OSI type and
+      This function adds the nodes into the RMC cluster, it does not check the OSI type and
       if the node has already defined. 
     Arguments:
        nodes --an array of nodes to be added. 
@@ -783,6 +777,7 @@ sub getNodeInfo
                 0 means localhost only. 
                 2 means localhost and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
+       flag  -- 0 means normal node. 1 means HMC.
     Returns:
        (error code, error message)
 =cut
@@ -797,8 +792,9 @@ sub addNodes {
   my $master=shift;
   my $scope=shift;
   my $callback=shift;
+  my $flag=shift;
+  print "rmcmon.addNodes mon_nodes=@mon_nodes, flag=$flag\n";
 
-  #print "rmcmon::addNodes_noChecking get called with @mon_nodes\n";
   my @hostinfo=xCAT::Utils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
@@ -812,11 +808,7 @@ sub addNodes {
     #print "active nodes to add:@$active_nodes\ninactive nodes to add: @$inactive_nodes\n";
     if (@$inactive_nodes>0) { 
       my $error="The following nodes cannot be added to the RMC cluster because they are inactive:\n  @$inactive_nodes.";
-      if ($callback) {
-        my $rsp={};
-        $rsp->{data}->[0]="$localhostname: $error";
-        $callback->($rsp);
-      } else { xCAT::MsgUtils->message('S', "[mon]: $error\n"); }
+      reportError($error, $callback);
     }
   }
   my %inactiveHash=();
@@ -826,11 +818,7 @@ sub addNodes {
   my $result=`/usr/bin/lsrsrc-api -s IBM.MngNode::::Name 2>&1`;  
   if ($?) {
     if ($result !~ /2612-023/) {#2612-023 no resources found error
-      if ($callback) {
-        my $rsp={};
-        $rsp->{data}->[0]="$localhostname: $result.";
-        $callback->($rsp);
-      } else { xCAT::MsgUtils->message('S', "[mon]: $result\n"); }
+      reportError($result, $callback);
       return (1,$result);
     }
     $result='';
@@ -850,24 +838,30 @@ sub addNodes {
   my $first_time=1;
 
   foreach my $node(@mon_nodes) {
-    #get info for the node
-    ($mn_node_id, $mn_ipaddresses)=getNodeInfo($node);
+    my $mn_node_id_found=0;
     #get mn info
     if ($first_time) {
-      ($ms_node_id, $ms_ipaddresses)=getNodeInfo($ms_host_name);
+      ($ms_node_id, $ms_ipaddresses)=getNodeInfo($ms_host_name, 0);
       $first_time=0;
+      if ($ms_node_id == -1) {
+        reportError($ms_ipaddresses, $callback);
+        return (1, $ms_ipaddresses); 
+      }
     }
 
     if (!$rmcHash{$node}) {
+      #get info for the node
+      ($mn_node_id, $mn_ipaddresses)=getNodeInfo($node, $flag);
+      if ($mn_node_id == -1) {
+        reportError($mn_ipaddresses, $callback);
+        next; 
+      }
+      $mn_node_id_found=1;
+
       # define resource in IBM.MngNode class on server
       $result=`mkrsrc-api IBM.MngNode::Name::"$node"::KeyToken::"$node"::IPAddresses::"$mn_ipaddresses"::NodeID::0x$mn_node_id 2>&1`;
       if ($?) {
-        my $error= "define resource in IBM.MngNode class result=$result.";
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $error.";
-          $callback->($rsp);
-        } else { xCAT::MsgUtils->message('S', "[mon]: $error\n"); }
+        reportError("define resource in IBM.MngNode class result=$result.", $callback);
         next; 
       }
     }
@@ -879,31 +873,39 @@ sub addNodes {
     if($iphash{$node}) {
       $result=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$node"::KeyToken::"$master"::IPAddresses::"$ms_ipaddresses"::NodeID::0x$ms_node_id`;      
       if ($?) {
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $result.";
-          $callback->($rsp);
-        } else { xCAT::MsgUtils->message('S', "[mon]: $result\n");}
+        reportError($result, $callback);
         next;
       }
     } else {
-      $result=`XCATBYPASS=Y  $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1`;
-      if ($?) {
-	my $error="cannot copy the file configrmcnode to node $node";
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $error.";
-          $callback->($rsp);
-        } else { xCAT::MsgUtils->message('S', "[mon]: $error\n");}
-        next;
-      }
-      $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node NODE=$node NODEID=$mn_node_id MONMASTER=$master MS_NODEID=$ms_node_id /tmp/configrmcnode 1 2>&1`;
-      if ($?) {
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $result.";
-          $callback->($rsp);
-        } else { xCAT::MsgUtils->message('S', "[mon]: $result\n"); }
+      if ($flag) { #define MCP on HMC
+	  #print "hmccmd=XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot \"lsrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1\"\n";
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "lsrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1"`;
+        if ($?) {
+          if ($result !~ /2612-023/) {#2612-023 no resources found error
+            reportError($result, $callback);
+            next;
+	  } 
+        }
+        #print "hmccmd2=XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot \"mkrsrc-api IBM.MCP::MNName::\\\"$node\\\"::KeyToken::\\\"$master\\\"::IPAddresses::\\\"$ms_ipaddresses\\\"::NodeID::0x$ms_node_id 2>&1\"\n";
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "mkrsrc-api IBM.MCP::MNName::\\\"$node\\\"::KeyToken::\\\"$master\\\"::IPAddresses::\\\"$ms_ipaddresses\\\"::NodeID::0x$ms_node_id 2>&1"`;
+        if ($?) { reportError($result, $callback); }
+      } else { #normal nodes
+        #get info for the node
+	if (!$mn_node_id_found) {
+          ($mn_node_id, $mn_ipaddresses)=getNodeInfo($node, $flag);
+          if ($mn_node_id == -1) {
+            reportError($mn_ipaddresses, $callback);
+            next; 
+          }
+        }
+        $result=`XCATBYPASS=Y  $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1`;
+        if ($?) {
+	  my $error="cannot copy the file configrmcnode to node $node";
+          reportError("cannot copy the file configrmcnode to node $node.\n$result", $callback);
+          next;
+        }
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node NODE=$node NODEID=$mn_node_id MONMASTER=$master MS_NODEID=$ms_node_id /tmp/configrmcnode 1 2>&1`;
+        if ($?) { reportError($result, $callback);}
       }
     }
   } 
@@ -922,6 +924,7 @@ sub addNodes {
                 0 means localhost only. 
                 2 means localhost and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
+       flag  -- 0 means normal node. 1 means HMC.
     Returns:
       (error code, error message)
 =cut
@@ -935,6 +938,9 @@ sub removeNodes {
   my $master=shift;
   my $scope=shift;
   my $callback=shift;
+  my $flag=shift;
+
+  print "rmcmon.removeNodes mon_nodes=@mon_nodes, flag=$flag\n";
 
   my $localhostname=hostname();
   my $ms_host_name=$localhostname;
@@ -951,11 +957,7 @@ sub removeNodes {
     #print "active nodes to add:@$active_nodes\ninactive nodes to add: @$inactive_nodes\n";
     if (@$inactive_nodes>0) { 
       my $error="The following nodes cannot be removed from the RMC cluster because they are inactive:\n  @$inactive_nodes.";
-      if ($callback) {
-        my $rsp={};
-        $rsp->{data}->[0]="$localhostname: $error.";
-        $callback->($rsp);
-      } else { xCAT::MsgUtils->message('S', "[mon]: $error\n"); }
+      reportError($error, $callback);
     }
   }
   my %inactiveHash=();
@@ -965,11 +967,7 @@ sub removeNodes {
   my $result=`/usr/bin/lsrsrc-api -s IBM.MngNode::::Name 2>&1`;  
   if ($?) {
     if ($result !~ /2612-023/) {#2612-023 no resources found error
-      if ($callback) {
-        my $rsp={};
-        $rsp->{data}->[0]="$localhostname: $result.";
-        $callback->($rsp);
-      } else { xCAT::MsgUtils->message('S', "[mon]: $result\n");}
+      reportError($result, $callback);
       return (1,$result);
     }
     $result='';
@@ -989,12 +987,7 @@ sub removeNodes {
         if ($result =~ m/2612-023/) { #resource not found
          next;
         }
-        my $error="Remove resource in IBM.MngNode class result=$result.";
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $error";
-          $callback->($rsp);
-        } else { xCAT::MsgUtils->message('S', "[mon]: $error\n");}
+        reportError("Remove resource in IBM.MngNode class result=$result.", $callback);
       }
     }
 
@@ -1003,44 +996,41 @@ sub removeNodes {
 
     if ($ms_host_name eq $node) {
       $result= `/usr/bin/rmrsrc-api -s IBM.MCP::"MNName=\\\"\"$node\\\"\"" 2>&1`;
-      if ($?) {
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $result";
-          $callback->($rsp);
-        } else { xCAT::MsgUtils->message('S', "[mon]: $result\n");}
-      }
+      if ($?) { reportError($result, $callback); }
     } else {
-      #copy the configuration script and run it locally
-      $result=`XCATBYPASS=Y $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1 `;
-      if ($?) {
-	my $error="rmcmon:removeNodes: cannot copy the file configrmcnode to node $node.";
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $error";
-          $callback->($rsp);
-        } else { xCAT::MsgUtils->message('S', "[mon]: $error\n");}
-        next;
-      }
-
       #get mn info
       if ($first_time) {
         ($ms_node_id, $ms_ipaddresses)=getNodeInfo($ms_host_name);
         $first_time=0;
       }
-      $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node NODE=$node MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1`;
-      if ($?) {
-        if ($callback) {
-          my $rsp={};
-          $rsp->{data}->[0]="$localhostname: $result";
-          $callback->($rsp);
-        } else { xCAT::MsgUtils->message('S', "[mon]: $result\n");}
+
+      if ($flag) { #hmc nodes
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "lsrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1"`;
+        if ($?) {
+          if ($result !~ /2612-023/) {#2612-023 no resources found error
+            reportError($result, $callback); 
+	  } 
+	  next;
+        }
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "rmrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1"`;
+        if ($?) { reportError($result, $callback); }
+      } else { #normal nodes
+        #copy the configuration script and run it locally
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1 `;
+        if ($?) {
+          reportError("rmcmon:removeNodes: cannot copy the file configrmcnode to node $node.", $callback);
+          next;
+        }
+
+        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node NODE=$node MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1`;
+        if ($?) { reportError($result, $callback);  }
       }
     }
-  }           
+  }          
 
   return (0, "ok");
 }
+
 
 #--------------------------------------------------------------------------------
 =head3    processSettingChanges
@@ -1137,5 +1127,7 @@ sub getPostscripts {
   my $ret={};
   $ret->{xcatdefaults}="configrmcnode";
   return $ret;
-
 }
+
+
+
