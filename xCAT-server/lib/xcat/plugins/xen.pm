@@ -44,7 +44,7 @@ sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
-    getvmcons => 'nodehm:mgt',
+    getxencons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
     #rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
@@ -191,7 +191,11 @@ sub getvmcons {
         if ($hmhash) {
             $serialspeed=$hmhash->{$node}->[0]->{serialspeed};
         }
-        return (0,'tty@'.$hyper.": ".$consdata->{textconsole}."@".$serialspeed);
+        my $sconsparms = {node=>[{name=>[$node]}]};
+        $sconsparms->{node}->[0]->{sshhost}=[$hyper];
+        $sconsparms->{node}->[0]->{psuedotty}=[$consdata->{textconsole}];
+        $sconsparms->{node}->[0]->{baudrate}=[$serialspeed];
+        return (0,$sconsparms);
     } elsif ($type eq "vnc") {
         return (0,'ssh+vnc@'.$hyper.": ".$consdata->{vncport});
     }
@@ -303,7 +307,7 @@ sub guestcmd {
     return power(@args);
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
-  } elsif ($command eq "getvmcons") {
+  } elsif ($command eq "getxencons") {
       return getvmcons($node,@args);
   }
 =cut
@@ -559,6 +563,13 @@ sub dohyp {
 
     foreach(@output) {
       my %output;
+      if (ref($_)) {
+          print $out freeze([$_]);
+          print $out "\nENDOFFREEZE6sK4ci\n";
+          yield();
+          waitforack($out);
+          next;
+      }
       
       (my $desc,my $text) = split (/:/,$_,2);
       unless ($text) {

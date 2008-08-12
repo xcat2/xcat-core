@@ -17,7 +17,7 @@ import File::Basename;
 my $scriptname = $0;
 
 my $cmdref={
-    command=>"getvmcons",
+    command=>"getxencons",
     arg=>"text",
     noderange=>$ARGV[0]
 };
@@ -28,12 +28,9 @@ my $speed;
 sub getans {
     my $rsp = shift; 
     if ($rsp->{node}) {
-        $dsthost = $rsp->{node}->[0]->{data}->[0]->{desc}->[0];
-        $dsthost=~s/.*@//;
-        $dstty = $rsp->{node}->[0]->{data}->[0]->{contents}->[0];
-        $speed=$dstty;
-        $dstty =~ s/@.*$//;
-        $speed =~ s/^.*@//;
+        $dsthost = $rsp->{node}->[0]->{sshhost}->[0];
+        $dstty = $rsp->{node}->[0]->{psuedotty}->[0];
+        $speed = $rsp->{node}->[0]->{baudrate}->[0];
     }
 }
 xCAT::Client::submit_request($cmdref,\&getans);
