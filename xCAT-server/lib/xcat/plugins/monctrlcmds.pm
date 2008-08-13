@@ -562,11 +562,12 @@ sub monstop {
   my @nodes=split(',', $nodeinfo);
   print "monstop get called: pname=$pname\nnodestatmon=$nodestatmon\nnodeinfo=@nodes\nscope=$scope\n"; 
 
-  xCAT_monitoring::monitorctrl->stopMonitoring([$pname], \@nodes, $scope, $callback); 
-
   if ($nodestatmon) {
     xCAT_monitoring::monitorctrl->stopNodeStatusMonitoring($pname, \@nodes, $scope, $callback); 
   }
+
+  xCAT_monitoring::monitorctrl->stopMonitoring([$pname], \@nodes, $scope, $callback); 
+
   return;
 }
 

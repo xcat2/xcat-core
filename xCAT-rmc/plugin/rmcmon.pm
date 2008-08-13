@@ -340,9 +340,14 @@ sub config {
     }
 
     #add new nodes to the RMC cluster
-    addNodes(\@nodes_to_add, $master, $scope, $callback, 0);
+    if (@nodes_to_add> 0) {
+      addNodes(\@nodes_to_add, $master, $scope, $callback, 0);
+    }
+
     #add new HMC nodes to the RMC cluster
-    addNodes(\@hmc_nodes, $master, $scope, $callback, 1);
+    if (@hmc_nodes > 0) {
+      addNodes(\@hmc_nodes, $master, $scope, $callback, 1);
+    }
   }
 
   #create conditions/responses/sensors on the service node or mn
@@ -416,9 +421,14 @@ sub deconfig {
     }
 
     #remove nodes from the RMC cluster
-    removeNodes(\@nodes_to_rm, $master, $scope, $callback, 0);
+    if (@nodes_to_rm > 0) {
+      removeNodes(\@nodes_to_rm, $master, $scope, $callback, 0);
+    }
+
     #remove HMC nodes from the RMC cluster
-    removeNodes(\@hmc_nodes, $master, $scope, $callback, 1);
+    if (@hmc_nodes > 0) {
+      removeNodes(\@hmc_nodes, $master, $scope, $callback, 1);
+    }
   } 
 }
 
@@ -472,8 +482,6 @@ sub startNodeStatusMon {
 
 
   my $isSV=xCAT::Utils->isServiceNode();
-  if ($isSV) { return  ($retcode, $retmsg); } 
-
 
   #get all the nodes status from IBM.MngNode class of local host and 
   #the identification of this node
@@ -488,11 +496,15 @@ sub startNodeStatusMon {
   my %status_hash=();
   foreach my $key (keys (%$pPairHash)) {
     my @key_a=split(',', $key);
-    if (! $iphash{$key_a[0]}) { push @servicenodes, $key_a[0]; } 
-    my $mon_nodes=$noderef->{$key};
+    if (! $iphash{$key_a[0]}) { next; } 
+    my $mon_nodes=$pPairHash->{$key};
     foreach(@$mon_nodes) {
-      my $node_info=$_;
-      $status_hash{$node_info->[0]}=$node_info->[2];
+      my $nodetype=$_->[1];
+      if ($nodetype) {
+	if (($nodetype =~ /$::NODETYPE_OSI/)|| ($nodetype =~ /$::NODETYPE_HMC/)) {
+          $status_hash{$_->[0]}=$_->[2];
+        }
+      }  
     }
   }
 
@@ -501,27 +513,24 @@ sub startNodeStatusMon {
   if ($retcode != 0) {
     reportError($retmsg, $callback);
   }
-  foreach (@servicenodes) {
-    ($retcode, $retmsg) = saveRMCNodeStatusToxCAT(\%status_hash, $_);
-    if ($retcode != 0) {
+
+  
+  if (!$isSV) {
+    #start monitoring the status of mn's immediate children
+    my $result=`startcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
+    if ($?) {
+      $retcode=$?;
+      $retmsg="Error start node status monitoring: $result";
       reportError($retmsg, $callback);
     }
-  }
 
-  #start monitoring the status of mn's immediate children
-  my $result=`startcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
-  if ($?) {
-    $retcode=$?;
-    $retmsg="Error start node status monitoring: $result";
-    reportError($retmsg, $callback);
-  }
-
-  #start monitoring the status of mn's grandchildren via their service nodes
-  $result=`startcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
-  if ($?) {
-    $retcode=$?;
-    $retmsg="Error start node status monitoring: $result";
-    reportError($retmsg, $callback);
+    #start monitoring the status of mn's grandchildren via their service nodes
+    $result=`startcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
+    if ($?) {
+      $retcode=$?;
+      $retmsg="Error start node status monitoring: $result";
+      reportError($retmsg, $callback);
+    }
   }
  
   return ($retcode, $retmsg);
@@ -789,6 +798,8 @@ sub addNodes {
   }
 
   my @mon_nodes = @$pmon_nodes;
+  if (@mon_nodes==0) { return (0, "");}
+
   my $master=shift;
   my $scope=shift;
   my $callback=shift;
@@ -839,6 +850,7 @@ sub addNodes {
 
   foreach my $node(@mon_nodes) {
     my $mn_node_id_found=0;
+    my $hmc_ssh_enabled=0;
     #get mn info
     if ($first_time) {
       ($ms_node_id, $ms_ipaddresses)=getNodeInfo($ms_host_name, 0);
@@ -850,6 +862,17 @@ sub addNodes {
     }
 
     if (!$rmcHash{$node}) {
+      #enable ssh for HMC
+      if ($flag) {
+        my $result=`XCATBYPASS=Y $::XCATROOT/bin/rspconfig $node sshcfg=enable 2>&1`;
+        if ($?) {
+          my $error= "$result";
+          reportError($error, $callback);
+          next;
+        }     
+        $hmc_ssh_enabled=1;
+      }
+
       #get info for the node
       ($mn_node_id, $mn_ipaddresses)=getNodeInfo($node, $flag);
       if ($mn_node_id == -1) {
@@ -878,17 +901,27 @@ sub addNodes {
       }
     } else {
       if ($flag) { #define MCP on HMC
-	  #print "hmccmd=XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot \"lsrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1\"\n";
+	if (!$hmc_ssh_enabled) {
+          my $result=`XCATBYPASS=Y $::XCATROOT/bin/rspconfig $node sshcfg=enable 2>&1`;
+          if ($?) {
+            my $error= "$result";
+            reportError($error, $callback);
+            next;
+          }
+        }    
+        
+	#print "hmccmd=XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot \"lsrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1\"\n";
         $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "lsrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1"`;
         if ($?) {
           if ($result !~ /2612-023/) {#2612-023 no resources found error
             reportError($result, $callback);
             next;
-	  } 
+	  }  else {
+            #print "hmccmd2=XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot \"mkrsrc-api IBM.MCP::MNName::\\\"$node\\\"::KeyToken::\\\"$master\\\"::IPAddresses::\\\"$ms_ipaddresses\\\"::NodeID::0x$ms_node_id 2>&1\"\n";
+            $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "mkrsrc-api IBM.MCP::MNName::\\\"$node\\\"::KeyToken::\\\"$master\\\"::IPAddresses::\\\"$ms_ipaddresses\\\"::NodeID::0x$ms_node_id 2>&1"`;
+            if ($?) { reportError($result, $callback); }
+	  }
         }
-        #print "hmccmd2=XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot \"mkrsrc-api IBM.MCP::MNName::\\\"$node\\\"::KeyToken::\\\"$master\\\"::IPAddresses::\\\"$ms_ipaddresses\\\"::NodeID::0x$ms_node_id 2>&1\"\n";
-        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "mkrsrc-api IBM.MCP::MNName::\\\"$node\\\"::KeyToken::\\\"$master\\\"::IPAddresses::\\\"$ms_ipaddresses\\\"::NodeID::0x$ms_node_id 2>&1"`;
-        if ($?) { reportError($result, $callback); }
       } else { #normal nodes
         #get info for the node
 	if (!$mn_node_id_found) {
@@ -935,6 +968,8 @@ sub removeNodes {
     $pmon_nodes=shift;
   }
   my @mon_nodes = @$pmon_nodes;
+  if (@mon_nodes==0) { return (0, "");}
+
   my $master=shift;
   my $scope=shift;
   my $callback=shift;
@@ -1065,11 +1100,7 @@ sub getDescription {
     process, network, file system etc for monitoring. RMC can also be 
     used to provide node liveness status monitoring for xCAT. RMC is 
     good for threadhold monitoring. xCAT automatically sets up the 
-    monitoring domain for RMC during node deployment time. To start 
-    RMC monitoring, use
-      monstart rmcmon
-    or 
-      monstart rmcmon -n   (to include node status monitoring).
+    monitoring domain for RMC during node deployment time. 
   Settings:
     none.";
 }
