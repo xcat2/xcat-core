@@ -59,11 +59,11 @@ Print help.
 
 Run uptime on 3 nodes:
 
- B<psh> I<node4-node6> I<uptime>
+B<psh> I<node4-node6> I<uptime>
 
- node4: Sun Aug  5 17:42:06 MDT 2001
- node5: Sun Aug  5 17:42:06 MDT 2001
- node6: Sun Aug  5 17:42:06 MDT 2001
+node4: Sun Aug  5 17:42:06 MDT 2001
+node5: Sun Aug  5 17:42:06 MDT 2001
+node6: Sun Aug  5 17:42:06 MDT 2001
 
 =item *
 
