@@ -14,14 +14,12 @@ use xCAT::Utils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT::MsgUtils;
-
 #print "xCAT_monitoring::rmcmon loaded\n";
 1;
 
 
 #TODO: script to define sensors on the nodes.
 #TODO: how to push the sensor scripts to nodes?
-#TODO: what to do when stop is called? stop all the associations or just the ones that were predefined? or leve them there?
 #TODO: monitoring HMC with old RSCT and new RSCT
 
 #-------------------------------------------------------------------------------
@@ -90,7 +88,70 @@ sub start {
     `startsrc -s  IBM.MgmtDomainRM`;
   }
 
-  #TODO: start all associations if they are not started
+  #restore the association
+  if ($callback) { #this is the case when monstart is called, not the xcatd starts
+    #get all the current 
+    my %assocHash=();
+    my $result=`LANG=C /usr/bin/lscondresp -x -D:_:  2>&1`;
+    if ($?==0) {
+      chomp($result); 
+      my @tmp=split('\n', $result);
+      foreach my $line (@tmp) {
+	my @tmp1=split(':_:', $line);
+        if (@tmp1 < 4) { next; }
+        my $cond=$tmp1[0];
+        my $resp=$tmp1[1];
+        if ($tmp1[3] =~ /Not|not/) { $assocHash{"$cond:_:$resp"}=0; } 
+        else {$assocHash{"$cond:_:$resp"}=1;}
+      }
+    }
+
+    #start the associations that are saved in /var/log/rmcmon
+    my $isSV=xCAT::Utils->isServiceNode();
+    my $fname="/var/log/rmcmon";
+    if (! -f "$fname") { 
+      if ($isSV) { $fname="$::XCATROOT/lib/perl/xCAT_monitoring/rmc/pred_assoc_sn"; }
+      else { $fname="$::XCATROOT/lib/perl/xCAT_monitoring/rmc/pred_assoc_mn"; }
+    }
+    if (-f "$fname") {
+      if (open(FILE, "<$fname")) {
+        while (readline(FILE)) {
+          chomp($_); 
+	  my @tmp1=split(':_:', $_);
+          if (@tmp1 < 4) { next; }
+          my $cond=$tmp1[0];
+          my $resp=$tmp1[1];
+          if ($tmp1[3] !~ /Not|not/) { #active
+	    if ((!exists($assocHash{"$cond:_:$resp"})) || ($assocHash{"$cond:_:$resp"}==0)) {
+	      $result=`/usr/bin/startcondresp $cond $resp 2>&1`;
+              if ($?) {
+                my $rsp={};
+                $rsp->{data}->[0]="$localhostname: $result";
+                $callback->($rsp);
+	      }
+	    }
+	  } else { #inactive
+	    if (!exists($assocHash{"$cond:_:$resp"})) { 
+              $result=`/usr/bin/mkcondresp $cond $resp  2>&1`; 
+              if ($?) {
+                my $rsp={};
+                $rsp->{data}->[0]="$localhostname: $result";
+                $callback->($rsp);
+	      }
+            } elsif ($assocHash{"$cond:_:$resp"}==1) { 
+              $result=`/usr/bin/stopcondresp $cond $resp  2>&1`;
+              if ($?) {
+                my $rsp={};
+                $rsp->{data}->[0]="$localhostname: $result";
+                $callback->($rsp);
+	      }
+            }
+	  }
+        }
+        close(FILE);
+      } 
+    } 
+  } #if ($callback)
 
   if ($scope) {
     #get a list of managed nodes
@@ -168,11 +229,8 @@ sub pingNodeStatus {
 
 #--------------------------------------------------------------------------------
 =head3    stop
-      This function gets called by the monitorctrl module when
-      xcatd stops or when monstop command is issued by the user. 
-      It stops the monitoring on all nodes, stops
-      the daemons and does necessary cleanup process for the
-      RMC monitoring.
+      This function gets called when monstop command is issued by the user. 
+      It stops the monitoring on all nodes, stops the RMC daemons.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
@@ -195,10 +253,39 @@ sub stop {
 
   my $localhostname=hostname();
 
-  #TODO: stop condition-response associtations. 
+  
+
   my $result;
   chomp(my $pid= `/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
   if ($pid){
+    #save all the association in to /var/log/rmcmon
+    `rm -f /var/log/rmcmon`;
+    my $result=`LANG=C /usr/bin/lscondresp -x -D:_:  2>&1`;
+    if ($?==0) {
+      if (open(FILE, ">/var/log/rmcmon")) {
+        print FILE $result;
+        close(FILE);
+      }
+
+      #stop condition-response associtations
+      chomp($result); 
+      my @tmp=split('\n', $result);
+      foreach my $line (@tmp) {
+	my @tmp1=split(':_:', $line);
+        if (@tmp1 < 4) { next; }
+        if ($tmp1[3] !~ /Not|not/) {
+	  my $result=`/usr/bin/stopcondresp $tmp1[0] $tmp1[1]  2>&1`;
+          if ($?) {
+	    if ($callback) {
+              my $rsp={};
+              $rsp->{data}->[0]="$localhostname: $result";
+              $callback->($rsp);
+	    }
+	  }
+        }
+      } #foreach
+    } # if ($pid)
+  
     #restop the rmc daemon
     $result=`stopsrc -s ctrmc`;
     if ($?) {
