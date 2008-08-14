@@ -1,0 +1,44 @@
+#!/bin/sh
+#get IP address of MS
+ms_ip=$MONMASTER
+echo "hi is $ms_ip"
+result=`ping -c1 $MONMASTER 2>&1`
+ if [ $? -eq 0 ]; then
+   index1=`expr index "$result" "\("`
+   index2=`expr index "$result" "\)"`
+   #ms_ip=${result:$index1+1:$index2-$index1-2}
+   pos=`expr $index1 + 1`
+   length=`expr $index2 - $index1`
+   length=`expr $length - 1`
+   ms_ip=`expr substr "$result" $pos $length`
+   echo final is $ms_ip
+ else
+   logger xCAT "Gangliamon setup"
+ fi
+
+CLUSTER=\"$MONSERVER\"
+MASTER=$ms_ip
+#echo "The new IP is: $NEW_IP"
+#echo "I will replace now....
+gmond_conf="/etc/gmond.conf"
+ 
+     if [ -f  $gmond_conf ]; then
+       grep "xCAT gmond settings done" $gmond_conf
+         if [ $? -gt 0 ]; then
+           /bin/cp -f $gmond_conf /etc/gmond.conf.orig
+           sed -i 's/setuid = yes/setuid = no/1' $gmond_conf
+           sed -i 's/name = "unspecified"/name='$CLUSTER'/1' $gmond_conf
+           sed -e "1,40s/mcast_join = .*/host = $MASTER/" $gmond_conf > /etc/temp.conf
+           /bin/cp -f /etc/temp.conf $gmond_conf
+           sed -i 's/mcast_join/#/g' $gmond_conf
+           sed -i 's/bind/#/g' $gmond_conf
+           echo "# xCAT gmond settings done sh" >> $gmond_conf
+         fi
+     fi
+
+     if [ ! -f  $gmond_conf ]; then 
+       #  echo "file not found"
+       logger -t gmonfail "gmond configuration file not found"
+     fi
+
+exit 0 
