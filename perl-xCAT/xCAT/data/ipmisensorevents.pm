@@ -54,7 +54,7 @@ package xCAT::data::ipmisensorevents;
 "0Ch,02h"=>"Memory,Parity",
 "0Ch,03h"=>"Memory,Memory Scrub Failed (stuck bit)",
 "0Ch,04h"=>"Memory,Memory Device Disabled",
-"0Ch,05h"=>"Memory,Correctable ECC (loggin limit reached)",
+"0Ch,05h"=>"Memory,Correctable ECC (logging limit reached)",
 "0Dh,-"=>"Drive Slot,-",
 "0Eh,-"=>"POST Memory Resize,-",
 "0Fh,00h"=>"System Firmware Progress,POST Error",
