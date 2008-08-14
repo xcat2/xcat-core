@@ -9,6 +9,7 @@
 # mucking with sysconfig
 package xCAT_plugin::bind;
 use strict;
+no strict "refs"; #This code is as yet still very broken...
 #use warnings;
 use Sys::Hostname;
 use Cwd;
@@ -114,7 +115,7 @@ sub process_request {
         return;
     }
     my @args=();
-    if ($request->{$arg}) {
+    if ($request->{arg}) {
         @args = @{$request->{arg}};
     }
     (my $fent) = $sitetab->getAttribs({key=>'forwarders'},'value');
