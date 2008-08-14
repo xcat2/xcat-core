@@ -113,7 +113,10 @@ sub process_request {
         $callback->({error=>["No site table found"],errorcode=>[1]});
         return;
     }
-    my @args = @{$request->{arg}};
+    my @args=();
+    if ($request->{$arg}) {
+        @args = @{$request->{arg}};
+    }
     (my $fent) = $sitetab->getAttribs({key=>'forwarders'},'value');
     if ($fent and defined $fent->{value}) {
         @forwarders = split /[,:;]/,$fent->{value};
