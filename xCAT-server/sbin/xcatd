@@ -208,7 +208,7 @@ if ($inet6support) {
           #node should be blocked, race condition may occur otherwise
           #my $pid=xCAT::Utils->xfork();
           #unless ($pid) { #fork off the nodeset and potential slowness
-            plugin_command(\%request,undef,\&convey_response);
+            plugin_command(\%request,undef,\&build_response);
           #  exit(0);
           #}
         } elsif ($text =~ /^unlocktftpdir/) { #TODO: only nodes in install state should be allowed
@@ -220,7 +220,7 @@ if ($inet6support) {
 	    chmod 0755,"$tftpdir/xcat/$node";
 	    chmod 0644,glob("$tftpdir/xcat/$node/*");
 	} elsif ($text =~ /^getpostscript/) { 
-        my $reply  =plugin_command({command=>['getpostscript'],_xcat_clienthost=>[$node]},undef,\&convey_response);
+        my $reply  =plugin_command({command=>['getpostscript'],_xcat_clienthost=>[$node]},undef,\&build_response);
         foreach (@{$reply->{data}}) {
             print $conn $_;
         }
@@ -250,7 +250,7 @@ if ($inet6support) {
 	    );
           my $pid=xCAT::Utils->xfork();
           unless ($pid) { #fork off the nodeset and potential slowness
-            plugin_command(\%request,undef,\&convey_response);
+            plugin_command(\%request,undef,\&build_response);
             xexit(0);
           }
 	}
@@ -326,10 +326,10 @@ if ($inet6support) {
           $req->{'_xcat_clientport'}=$sport;
           if (defined($cmd_handlers{"findme"})) {
             $req->{cacheonly}->[0] = 1;
-            plugin_command($req,undef,\&convey_response);
+            plugin_command($req,undef,\&build_response);
   	    if ($req->{cacheonly}->[0]) {
 		delete $req->{cacheonly};
-                plugin_command($req,undef,\&convey_response);
+                plugin_command($req,undef,\&build_response);
            #if ($req) {
            #   $req->{cacheonly}->[0] = 1;
            #   $req->{checkallmacs}->[0] = 1;
@@ -719,7 +719,9 @@ sub plugin_command {
       }
       unless (defined $child) { die "Fork failed"; }
       if ($child == 0) {
-        $parent_fd = $parfd;
+        if ($parfd) {  #If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
+            $parent_fd = $parfd;
+        }
         my $oldprogname=$$progname;
         $$progname=$oldprogname.": $modname instance";
         if ($sock) { close $pfd; }
