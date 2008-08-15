@@ -1,0 +1,31 @@
+# Software needed for the xCAT on AIX Service Nodes
+
+# installp packages
+I:openssl.base
+I:openssl.license
+I:openssh.base
+I:openssh.license
+I:openssh.man.en_US
+I:openssh.msg.en_US
+I:openssh.msg.EN_US
+I:bos.sysmgt.nim.master
+
+# RPMs
+R:conserver-8.1.16-2.aix5.3.ppc.rpm
+R:expect-5.42.1-3.aix5.1.ppc.rpm
+R:fping-2.4b2_to-1.aix5.3.ppc.rpm
+R:perl-DBI-1.55-1.aix5.3.ppc.rpm
+R:perl-Digest-MD5-2.36-1.aix5.3.ppc.rpm
+R:perl-Expect-1.21-1.aix5.3.ppc.rpm
+R:perl-IO-Socket-SSL-1.06-1.aix5.3.ppc.rpm
+R:perl-IO-Stty-.02-1.aix5.3.ppc.rpm
+R:perl-IO-Tty-1.07-1.aix5.3.ppc.rpm
+R:perl-Net_SSLeay.pm-1.30-1.aix5.3.ppc.rpm
+R:tcl-8.4.7-3.aix5.1.ppc.rpm
+R:tk-8.4.7-3.aix5.1.ppc.rpm
+R:perl-xCAT-2.1*rpm
+R:xCAT-client-2.1*rpm
+R:xCAT-server-2.1*rpm
+R:perl-DBD-SQLite-1.13-1.aix5.3.ppc.rpm
+R:perl-DBD-mysql-4.007-1.aix5.3.ppc.rpm
+R:xcat-mysql-5.1-1.aix5.3.ppc.rpm
