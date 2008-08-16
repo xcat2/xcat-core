@@ -35,7 +35,7 @@ sub getans {
 }
 xCAT::Client::submit_request($cmdref,\&getans);
 until ($dsthost and $speed and $dstty) {
-    print "console not ready";
+    print "console not ready\n";
     sleep 5+int(rand(10));
     xCAT::Client::submit_request($cmdref,\&getans);
 }

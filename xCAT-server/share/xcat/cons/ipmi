@@ -10,31 +10,52 @@ BEGIN
 }
 $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 use lib "$::XCATROOT/lib/perl";
-require xCAT::Table;
-require xCAT::Utils;
-my $dba;
-my $ipmitab = xCAT::Table->new('ipmi');
-unless ($ipmitab) { die "Unable to open IPMI table"; }
-my $passtab = xCAT::Table->new('passwd');
+$ENV{HOME}='/root/';
+require xCAT::Client;
 my $username = 'USERID';
 my $password = 'PASSW0RD';
 my $node = $ARGV[0];
-my $bmc = $node;
-if ($passtab) {
-  ($dba) = $passtab->getAttribs({key=>'ipmi'},qw(username password));
-  if ($dba) {
-    if ($dba->{username}) { $username = $dba->{username}; }
-    if ($dba->{password}) { $password = $dba->{password}; }
-  }
+my $bmc;
+sub getans {
+    my $rsp = shift; 
+    if ($rsp->{node}) {
+        $bmc = $rsp->{node}->[0]->{bmcaddr}->[0];
+        $username = $rsp->{node}->[0]->{bmcuser}->[0];
+        $password = $rsp->{node}->[0]->{bmcpass}->[0];
+    }
 }
+my $cmdref={
+    command=>"getipmicons",
+    arg=>"text",
+    noderange=>$ARGV[0]
+};
+xCAT::Client::submit_request($cmdref,\&getans);
+until ($username and $password and $bmc) {
+    print "console not ready\n";
+    sleep 5+int(rand(10));
+    xCAT::Client::submit_request($cmdref,\&getans);
+}
+#require xCAT::Table;
+#require xCAT::Utils;
+#my $dba;
+#my $ipmitab = xCAT::Table->new('ipmi');
+#unless ($ipmitab) { die "Unable to open IPMI table"; }
+#my $passtab = xCAT::Table->new('passwd');
+#if ($passtab) {
+#  ($dba) = $passtab->getAttribs({key=>'ipmi'},qw(username password));
+#  if ($dba) {
+#    if ($dba->{username}) { $username = $dba->{username}; }
+#    if ($dba->{password}) { $password = $dba->{password}; }
+#  }
+#}
 
-$dba = $ipmitab->getNodeAttribs($ARGV[0],[qw(bmc username password)]);
-if ($dba) {
-  if ($dba->{bmc}) { $bmc = $dba->{bmc}; }
-  if ($dba->{username}) { $username = $dba->{username}; }
-  if ($dba->{password}) { $password = $dba->{password}; }
-}
-xCAT::Utils::close_all_dbhs;
+#$dba = $ipmitab->getNodeAttribs($ARGV[0],[qw(bmc username password)]);
+#if ($dba) {
+#  if ($dba->{bmc}) { $bmc = $dba->{bmc}; }
+#  if ($dba->{username}) { $username = $dba->{username}; }
+#  if ($dba->{password}) { $password = $dba->{password}; }
+#}
+#xCAT::Utils::close_all_dbhs;
 #my $isintel = system "ipmitool -I lanplus -U $username -P $password -H $bmc chassis status > /dev/null 2>&1";
 my $isintel = system "ipmitool -I lan -U $username -P $password -H $bmc mc info| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
 $isintel = not $isintel;

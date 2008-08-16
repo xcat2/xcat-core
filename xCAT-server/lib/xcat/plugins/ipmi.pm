@@ -24,6 +24,7 @@ our @EXPORT = qw(
 sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt',
+    getipmicons => 'ipmi',
     rspconfig => 'nodehm:mgt',
     rvitals => 'nodehm:mgt',
     rinv => 'nodehm:mgt',
@@ -4694,6 +4695,18 @@ sub preprocess_request {
 }
     
      
+sub getipmicons {
+    my $argr=shift;
+    #$argr is [$node,$nodeip,$nodeuser,$nodepass];
+    my $cb = shift;
+    my $ipmicons={node=>[{name=>[$argr->[0]]}]};
+    $ipmicons->{node}->[0]->{bmcaddr}->[0]=$argr->[1];
+    $ipmicons->{node}->[0]->{bmcuser}->[0]=$argr->[2];
+    $ipmicons->{node}->[0]->{bmcpass}->[0]=$argr->[3];
+    $cb->($ipmicons);
+}
+
+
 
    
 sub process_request {
@@ -4750,6 +4763,14 @@ sub process_request {
 		}
         push @donargs,[$node,$nodeip,$nodeuser,$nodepass];
     }
+    if ($request->{command}->[0] eq "getipmicons") {
+        foreach (@donargs) {
+            getipmicons($_,$callback);
+        }
+        return;
+    }
+
+
     my $children = 0;
     $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($kpid > 0) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
     my $sub_fds = new IO::Select;
