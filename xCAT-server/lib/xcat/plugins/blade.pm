@@ -32,6 +32,7 @@ sub handled_commands {
     getmacs => 'nodehm:getmac,mgt',
     rscan => 'nodehm:mgt',
     rpower => 'nodehm:power,mgt',
+    getbladecons => 'blade',
     rvitals => 'nodehm:mgt',
     rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
@@ -1350,6 +1351,60 @@ sub build_depend {
 }
 
 
+sub getbladecons {
+   my $noderange = shift;
+   my $callback=shift;
+   my $mpatab = xCAT::Table->new('mpa');
+   my $passtab = xCAT::Table->new('mpa');
+   my $tmp;
+   my $user="USERID";
+   if ($passtab) {
+     ($tmp)=$passtab->getAttribs({'key'=>'blade'},'username');
+     if (defined($tmp)) {
+       $user = $tmp->{username};
+     }
+   }
+   my %mpausers;
+   my %checkedmpas=();
+   my $mptab=xCAT::Table->new('mp');
+   my $mptabhash = $mptab->getNodesAttribs($noderange,['mpa','id']);
+   foreach my $node (@$noderange) {
+      my $rsp = {node=>[{name=>[$node]}]};
+      my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
+      if (defined($ent->{mpa})) { 
+          $rsp->{node}->[0]->{mm}->[0]=$ent->{mpa};
+          if (defined($checkedmpas{$ent->{$mpa}}) or not defined $mpatab) {
+            if (defined($mpausers{$ent->{mpa}})) {
+                $rsp->{node}->[0]->{username}=[$mpausers{$ent->{mpa}}];
+            } else {
+                $rsp->{node}->[0]->{username}=[$user];
+            }
+          } else {
+              $checkedmpas{$ent->{$mpa}}=1;
+              ($tmp)=$mpatab->getAttribs({'mpa'=>$mpa},'username');
+              if (defined($tmp) and defined $tmp->{username}) {
+                  $mpausers{$ent->{mpa}}=$tmp->{username};
+                  $rsp->{node}->[0]->{username}=[$tmp->{username}];
+              } else {
+                  $rsp->{node}->[0]->{username}=[$user];
+              }
+
+          }
+      } else { 
+          $rsp->{node}->[0]->{error}=["no mpa defined"];
+          $rsp->{node}->[0]->{errorcode}=[1];
+          $callback->($rsp);
+          next;
+      }
+      if (defined($ent->{id})) { 
+          $rsp->{node}->[0]->{slot}=$ent->{id};
+      } else { 
+          $rsp->{node}->[0]->{slot}="";
+      }
+      $callback->($rsp);
+   }
+}
+
 sub preprocess_request { 
   my $request = shift;
   if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
@@ -1390,6 +1445,12 @@ sub preprocess_request {
   }
   my %mpa_hash=();
   my $mptabhash = $mptab->getNodesAttribs($noderange,['mpa','id']);
+  if ($request->{command}->[0] eq "getbladecons") { #Can handle it here and now
+      getbladecons($noderange,$callback);
+      return [];
+  }
+
+
   foreach my $node (@$noderange) {
     my $ent=$mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
