@@ -1355,7 +1355,7 @@ sub getbladecons {
    my $noderange = shift;
    my $callback=shift;
    my $mpatab = xCAT::Table->new('mpa');
-   my $passtab = xCAT::Table->new('mpa');
+   my $passtab = xCAT::Table->new('passwd');
    my $tmp;
    my $user="USERID";
    if ($passtab) {
