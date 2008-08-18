@@ -172,8 +172,8 @@ sub start
 =head3    config
       This function configures the cluster for the given nodes. This function is called 
       when moncfg command is issued or when xcatd starts on the service node. It will 
-      configure the cluster to include the given nodes within the monitoring doamin. This 
-      calls to other functions called as confGmond and confGmetad which are used for configuring
+      configure the cluster to include the given nodes within the monitoring domain. This 
+      calls two other functions called as confGmond and confGmetad which are used for configuring
       the Gmond and Gmetad configuration files respectively.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
@@ -562,7 +562,7 @@ sub deconfig
 
 #--------------------------------------------------------------
 =head3    deconfGmond
-     This function is called by the deconfig() function. It configures the Gmetad
+     This function is called by the deconfig() function. It deconfigures the Gmetad
        configuration files for the given nodes
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
