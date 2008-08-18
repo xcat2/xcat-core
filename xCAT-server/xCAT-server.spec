@@ -112,8 +112,6 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server/*
 #echo $RPM_BUILD_ROOT %{prefix}
-#cp sbin/confGang /install/postscripts
-#chmod 755 /install/postscripts/confGang
 
 %clean
 rm -rf $RPM_BUILD_ROOT

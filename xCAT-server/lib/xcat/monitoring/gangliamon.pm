@@ -353,7 +353,7 @@ sub confGmond
               my $node = join(',',@children);
               print "the children are: $node \n";
               print "copying into CP node \n";
-              my $res_cp = `XCATBYPASS=Y $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/confGang /tmp 2>&1`;
+              my $res_cp = `XCATBYPASS=Y $::XCATROOT/bin/xdcp $node /install/postscripts/confGang /tmp 2>&1`;
               if($?)
                 { #openinf if ?
                   if($callback) 
