@@ -126,7 +126,7 @@ my $exitcode;
 if (keys %errored) {
   $exitcode = 2;
   while (my ($node, $exitc) = each(%errored)) {
-    print "*** ssh to node $node exited with error code $exitc.\n";
+    print stderr "$node: *** ssh exited with error code $exitc.\n";
   }
 }
 exit($exitcode);
