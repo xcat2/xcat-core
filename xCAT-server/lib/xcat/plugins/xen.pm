@@ -91,7 +91,7 @@ sub build_diskstruct {
     my @returns;
     my $diskhash;
     $diskhash->{type}='file';
-    $diskhash->{source}->{file}="/cluster2/vm/$node";
+    $diskhash->{source}->{file}="/vms/$node";
     $diskhash->{target}->{dev}='hda';
     push @returns,$diskhash;
     return \@returns;
@@ -141,6 +141,26 @@ sub build_nicstruct {
     }
     return \@rethashes;
 }
+sub getUnits {
+    my $amount = shift;
+    my $defunit = shift;
+    my $divisor=shift;
+    unless ($divisor) {
+        $divisor = 1;
+    }
+    if ($amount =~ /(\D)$/) { #If unitless, add unit
+        $defunit=$1;
+        chop $amount;
+    }
+    if ($defunit =~ /k/i) {
+        return $amount*1024/$divisor;
+    } elsif ($defunit =~ /m/i) {
+        return $amount*1048576/$divisor;
+    } elsif ($defunit =~ /g/i) {
+        return $amount*1073741824/$divisor;
+    } 
+}
+
 sub build_xmldesc {
     my $node = shift;
     my %xtree=();
@@ -148,7 +168,11 @@ sub build_xmldesc {
     $xtree{name}->{content}=$node;
     $xtree{uuid}->{content}=getNodeUUID($node);
     $xtree{os} = build_oshash();
-    $xtree{memory}->{content}=524288;
+    if (defined $vmhash->{$node}->[0]->{memory}) {
+        $xtree{memory}->{content}=getUnits($vmhash->{$node}->[0]->{memory},"M",1024);
+    } else {
+        $xtree{memory}->{content}=524288;
+    }
     $xtree{vcpu}->{content}=1;
     $xtree{features}->{pae}={};
     $xtree{features}->{acpi}={};
@@ -211,7 +235,7 @@ sub migrate {
         $prevhyp=$vmhash->{$node}->[0]->{host};
         $currhyp.=$prevhyp;
     } else {
-        return (1,Dumper($vmhash)."Unable to find current location of $node");
+        return (1,"Unable to find current location of $node");
     }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
@@ -273,6 +297,9 @@ sub power {
             eval { $dom=$hypconn->create_domain($xml); };
 
             if ($@) { $errstr = $@; }
+            if (ref $errstr) {
+                $errstr = ":".$errstr->{message};
+            }
             if ($errstr) { return (1,$errstr); }
             if ($dom) {
                 refresh_vm($dom);
