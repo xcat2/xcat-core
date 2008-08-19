@@ -22,7 +22,7 @@ use warnings;
 #-------------------------------------------------------------------------------
 =head1  xCAT_monitoring:gangliamon  
 =head2    Package Description
-  xCAT monitoring plugin package to handle RMC monitoring.
+  xCAT monitoring plugin package to handle Ganglia monitoring.
 =cut
 #-------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ sub start
             xCAT::MsgUtils->message('S', "[mon]: $res_gmond \n");
            }
  
-           return(1,"Ganglia Gmond not startedi successfully. \n");
+           return(1,"Ganglia Gmond not started successfully. \n");
         }
  
         print "starting gmetad locally \n";
