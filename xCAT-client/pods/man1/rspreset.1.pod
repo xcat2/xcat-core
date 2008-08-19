@@ -1,6 +1,6 @@
 =head1 Name
 
-B<rspreset> - remote hardware inventory
+B<rspreset> - resets the service processors associated with the specified nodes
 
 =head1 B<Synopsis>
 
@@ -11,7 +11,9 @@ B<rspreset> [B<-h>|B<--help>|B<-v>|B<--version>]
 =head1 B<Description>
 
 B<rspreset> resets the service processors associated with the specified nodes.  It searches
-the B<nodehm> table and associated tables to find the service processors associated with the nodes.
+the B<nodehm> table and associated tables to find the service processors associated with the nodes
+specified.  If the node is a BMC-based node, the node's BMC will be reset.  If the node is a blade,
+the blade's on board service processor will be reset.
 
 =head1 B<Options>
 
@@ -30,7 +32,15 @@ Print version.
 
 =head1 B<Examples>
 
-B<rspreset> I<node5>
+=over 3
+
+=item 1.
+
+Reset the service processor that controls node5:
+
+ rspreset node5
+
+=back
 
 
 =head1 B<SEE ALSO>

@@ -1,7 +1,7 @@
 
 =head1 NAME
 
-B<rsetboot> - Sets the boot order for servers with BMC service processors.
+B<rsetboot> - Sets the boot device to be used for BMC-based servers for the next boot only.
 
 =head1 SYNOPSIS
 
@@ -12,7 +12,9 @@ B<rsetboot> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-B<rsetboot> sets the boot media to be used on the next boot of the specified nodes.
+B<rsetboot> sets the boot media that should be used on the next boot of the specified nodes.  After the nodes are
+booted with the specified device (e.g. via L<rpower(1)|rpower.1>), the nodes will return to using the
+default boot device specified in the BIOS.  Currently this command is only supported for IPMI nodes.
 
 =head1 OPTIONS
 
@@ -42,9 +44,27 @@ Display the current boot setting.
 
 =head1 EXAMPLES
 
-  rsetboot 1,3 net
-  rsetboot 14-56,70-203 stat
-  rsetboot 1,3,14-56,70-203 default
+=over 3
+
+=item 1.
+
+Set nodes 1 and 3 to boot from the network on the next boot:
+
+ rsetboot node1,node3 net
+
+=item 2.
+
+Display the next-boot value for nodes 14-56 and 70-203:
+
+ rsetboot node[14-56],node[70-203] stat
+
+=item 3.
+
+Restore the next-boot value for these nodes back to their default set in the BIOS:
+
+ rsetboot node1,node3,node[14-56],node[70-203] default
+
+=back
 
 
 =head1 SEE ALSO

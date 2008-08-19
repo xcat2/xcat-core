@@ -6,151 +6,76 @@ B<noderange> - syntax for compactly expressing a list of node names
 
 I<Examples:>
 
-node1,node2,node8,node20,group1
+ node1,node2,node8,node20,group1
 
-node14-node56,node70-node203,group1-group10
+ node14-node56,node70-node203,group1-group10
 
-node1,node2,node8,node20,node14-node56,node70-node203
+ node1,node2,node8,node20,node14-node56,node70-node203
 
-node[14-56]
+ node[14-56]
 
-all,-node129-node256,-frame01-frame03
+ all,-node129-node256,-frame01-frame03
 
-/node.*
+ /node.*
 
-^/tmp/nodes
+ ^/tmp/nodes
 
-node10+5
+ node10+5
 
-10-15,-13
+ 10-15,-13
 
-group1@group2
+ group1@group2
 
 =head1 B<Description>
 
-B<noderange> is a syntax that can be used in most xCAT commands to conve-
-niently specify a list of nodes.  The result is that the  command  will
+B<noderange> is a syntax that can be used in most xCAT commands to
+conveniently specify a list of nodes.  The result is that the  command  will
 be applied to a range of nodes, often in parallel.
 
-B<noderange>  is  a comma-separated list.  Each token (text between commas)
+B<noderange> is a comma-separated list.  Each token (text between commas)
 in the list can be any of the forms listed below:
 
 Individual node or group:
 
-I<node01>
-I<group1>
+ node01
+ group1
 
 A range of nodes or groups:
 
-I<node01-node10> (equivalent to: node01,node02,node03,...node10)
-I<group1-group3> (equivalent to: group1,group2,group3)
+ node01-node10  (equivalent to: node01,node02,node03,...node10)
+ node[01-10]    (same as above)
+ node01:node10  (same as above)
+ node[01:10]    (same as above)
+ group1-group3  (equivalent to: group1,group2,group3)
+ (all the permutations supported above for nodes are also supported for groups)
 
-A regular expression match of nodes or groups:
-
-I</node[345].*>  (will match any nodes that start with  node3,  node4,  or
-node5)
-I</group[12].*>  (will match any groups that start with group1 or group2)
+B<nodeRange> tries to be intelligent about detecting padding, so
+you can specify "node001-node200" and it will add the proper number of
+zeroes to make all numbers 3 digits.
 
 An incremented range of nodes:
 
-I<node10+3> (equivalent to: node10,node11,node12,node13)
-
-The full path of a file containing noderanges of nodes or groups:
-
-I<^/tmp/nodelist>
+ node10+3  (equivalent to: node10,node11,node12,node13)
 
 A node shorthand range of nodes:
 
-I<10-20>      (if      prefix      is      `node',      equivalent     to:
-node10,node11,node12,...node20)
-I<10+3> (if prefix is `node', equivalent to: node10,node11,node12,node13)
+ 10-20   (equivalent to: node10,node11,node12,...node20)
+ 10+3    (equivalent to: node10,node11,node12,node13)
 
-Or any combination:
+Currently, the prefix that will be prepended for the above syntax is always "node".
+Eventually, the prefix and optional suffix will be settable via the environment variables
+XCAT_NODE_PREFIX and XCAT_NODE_SUFFIX, but currently this only works in bypass mode.
 
-I<node01-node30,node40,^/tmp/nodes,/node[13].*,2-10,node50+5>
+A regular expression match of nodes or groups:
 
-Any individual B<noderange> may be prefixed  with  an  exclusion  operator
-(default -) with the exception of the file operator (default ^).
+ /node[345].*   (will match any nodes that start with node3, node4, or node5)
+ /group[12].*   (will match any groups that start with group1 or group2)
 
-The intersection operator @ calculates the intersection of the left and
-right sides:
+The full path of a file containing noderanges of nodes or groups:
 
-I<group1@group2> (will result in the list of nodes group1 and group2  have
-in common)
+ ^/tmp/nodelist
 
-Any  combination  or  multiple  combinations of inclusive and exclusive
-ranges of nodes and groups is legal.  There is no precedence implied in
-the  order  of  the  arguments.   Exclusive ranges have precedence over
-inclusive.
-
-Nodes have precedence over groups.  If a node range match is made  then
-no group range match will be attempted.
-
-All node names are validated against the nodelist table.  Invalid nodes
-are ignored and return nothing.
-
-All group names are validated against the nodelist and nodetype  table.
-Invalid groups are ignored and return nothing.
-
-Throughout this man page the term I<xCAT> I<Node> I<Format> will be used.
-
-I<xCAT> I<Node> I<Format> is defined by the following regex:
-
-^([A-Za-z-]+)([0-9]+)(([A-Za-z-]+[A-Za-z0-9-]*)*)
-
-In  plain  english  a  node or group is in I<xCAT> I<Node> I<Format> if starting
-from the begining there are one or more alpha characters  of  any  case
-and  any  number  of - in any combination, followed by one or more num-
-bers, then optionally followed by one alpha character of  any  case  or
-the  -  followed by any combination of case mixed alphanumerics and the
--.
-
-B<noderange> supports node/group names in I<any> format.  I<xCAT> I<Node> I<Format> is
-B<not>  required,  however some node range methods used to determine range
-will not be used.  E.g. If using a B<noderange> of  I<node1a-node9a>  with  a
-B<nodelist>  table only listing I<node1a> through I<node5a>, B<noderange> will enu-
-merate then validate and return a proper range.  If using a node  range
-of  I<aa-az>  with  a B<nodelist> table only listing I<aa> through I<ay,> B<noderange>
-will fail to return any values.
-
-Example of I<xCAT> I<Node> I<Format> node/group names:
-
-B< nodename			prefix	number	suffix>
- node1			node		1
- node001			node		001
- node-001			node-	001
- node-foo-001-bar	node-foo-	001		-bar
- node-foo-1bar		node-foo-	1		bar
- foo1bar2			foo		1		bar2
- rack01unit34		rack		01		unit34
- unit34rack01		unit		34		rack01
- pos0134			pos		0134
-
-Example of non-I<xCAT> I<Node> I<Format> node/group names, but still valid:
-
-aa
-yellow
-red
-12foo
-
-
-The supported B<noderange> syntaxes are checked for, and processed,  in  a
-specific order.  First B<noderange> checks for the multiple range operator
-(default ,).  Each range is also processed by B<noderange>.
-
-Next B<noderange> checks for the file operator (default ^).  If  the  file
-exists  (must  be  a  full  path name) each line will be processed as a
-B<noderange>.  Lines starting with I<#> or the file operator (default ^)  are
-ignored.   Only  one  B<noderange>  per  line is read.  All characters are
-ignored after the first white space.
-
-e.g.
-
-^/tmp/nodes
-
-where
-
-cat /tmp/nodes outputs:
+where /tmp/nodelist can contain entries like:
 
  #my node list (this line ignored)
  ^/tmp/foo #ignored
@@ -161,102 +86,135 @@ cat /tmp/nodes outputs:
  /group[456].*
  -node50
 
-Next B<noderange> checks for the exclusion operator (default -) then  con-
-tinues.   This  operator supports nodes and groups.  B<noderange> will not
-confuse the exclusion or range operators with the - character in names.
+Node ranges can contain any combination:
 
-Next  B<noderange>  checks  for  a numeric only range (e.g. 10-20, 5+3, or
-just  10),  then  uses  I<$XCAT>B<_>I<NODE>B<_>I<PREFIX>  (default  is   `node')   and
-I<$XCAT>B<_>I<NODE>B<_>I<SUFFIX>  (optional)  as  the  defaults  to  complete the node
-names.  B<nodeRange> tries to be intelligent about detecting  padding,  so
-you  can specify `node001-node200' and it will add the proper number of
-zeroes to make all numbers  3  digits.   Noderange  shorthand  supports
-nodes  only.  Noderange shorthand can be mixed with all other operators
-except regex.  i.e.  exclusion, increment, range, and file may be used.
+ node01-node30,node40,^/tmp/nodes,/node[13].*,2-10,node50+5
 
-Next  B<noderange>  checks  for  the  for  the regular expression operator
-(default /).  Regular expressions offer the most flexibility.   If  you
-are  interested  in  learning  regex  read  the  book I<Mastering> I<Regular>
-I<Expressions>.  This operator supports nodes and groups.
+Any individual B<noderange> may be prefixed with an exclusion operator
+(default -) with the exception of the file operator (default ^).  This will cause
+that individual noderange to be subtracted from the total resulting list of nodes.
 
-Next B<noderange> checks for the increment  range  operator  (default  +).
-Increment range operator noderanges are in the format:
+The intersection operator @ calculates the intersection of the left and
+right sides:
 
-I<valid>B<_>I<node>B<_>I<name>B<+>I<number>B<_>I<of>B<_>I<sequential>B<_>I<nodes>
+ group1@group2   (will result in the list of nodes that group1 and group2 have in common)
 
-e.g.
+Any  combination  or  multiple  combinations of inclusive and exclusive
+ranges of nodes and groups is legal.  There is no precedence implied in
+the  order  of  the  arguments.   Exclusive ranges have precedence over
+inclusive.  Parentheses can be used to explicitly specify precendence of any operators.
 
-I<node10+5>
+Nodes have precedence over groups.  If a node range match is made then
+no group range match will be attempted.
 
-would yield node10 plus the next I<5> nodes.
+All node and group names are validated against the nodelist table.  Invalid names
+are ignored and return nothing.
 
-This   action   is   performed   using   two   different  methods.   If
-I<valid>B<_>I<node>B<_>I<name> is in I<xCAT> I<Node> I<Format> then the range is enumerated  to
-I<number>B<_>I<of>B<_>I<sequential>B<_>I<nodes>.   If  not in I<xCAT> I<Node> I<Format> then a sorted
-B<nodelist> table is used to return the node range.   This  operator  sup-
-ports nodes only.
+=head2 B<xCAT Node Name Format>
 
-Next B<noderange> checks for a single node name or group name.
+Throughout this man page the term B<xCAT Node Name Format> is used.
+B<xCAT Node Name Format> is defined by the following regex:
 
-Next  B<noderange>  checks for the range operator (default -).  Ranges are
-performed first by validating that both the  start  and  end  nodes  or
-groups  defining  the range exist and if so the range is returned based
-on the content of the B<nodelist> and B<nodetype> tables.  If the  start  and
-end  nodes or groups defined in the range do not exist, I<and> if both are
-in I<xCAT> I<Node> I<Format>, I<and> if both the prefix and suffix match, then  the
-range   is  enumerated  and  each  node/group  validated.   Only  valid
-nodes/groups will be returned.  B<noderange> will not confuse  the  exclu-
-sion or range operators with the - character in names.
+ ^([A-Za-z-]+)([0-9]+)(([A-Za-z-]+[A-Za-z0-9-]*)*)
 
-Last B<noderange> returns nothing if no match can be found.
+In  plain  English,  a  node or group name is in B<xCAT Node Name Format> if starting
+from the begining there are:
 
-B<noderange>  uses  the  smallest  integer  to  determine  padding.   e.g.
-I<node1-node10> will generate a list of nodes with numbers 1, 2, 3, 4,  5,
-6,  7,  8,  9,  10.  I<node001-node010> will generate a list of nodes with
-numbers 001, 002, 003, 004, 005, 006, 007, 008, 009, 010.
+=over 2
 
-Multiple instances of a node name are treated as  one  instance.   e.g.
-I<node1-node10,node4,node4,node4> will generate a list of nodes numbered 1
-through 10, the number 4 will only be listed once.
+=item *
+
+one or more alpha characters  of  any  case and  any  number  of "-" in any combination
+
+=item *
+
+followed by one or more numbers
+
+=item *
+
+then optionally followed by one alpha character of any case  or "-"
+
+=item *
+
+followed by any combination of case mixed alphanumerics and "-"
+
+=back
+
+B<noderange> supports node/group names in I<any> format.  B<xCAT Node Name Format> is
+B<not> required, however some node range methods used to determine range
+will not be used for non-conformant names.
+
+Example of B<xCAT Node Name Format> node/group names:
+
+ NODENAME           PREFIX      NUMBER   SUFFIX
+ node1              node        1
+ node001            node        001
+ node-001           node-       001
+ node-foo-001-bar   node-foo-   001      -bar
+ node-foo-1bar      node-foo-   1        bar
+ foo1bar2           foo         1        bar2
+ rack01unit34       rack        01       unit34
+ unit34rack01       unit        34       rack01
+ pos0134            pos         0134
+
 
 =head1 B<Examples>
 
-I<all,-node5-node10>
+=over 3
 
-Generates a list of all nodes (assuming all is a group) listed  in  the
-B<nodelist> table less node5 through node10.
+=item 1.
 
-I<node1-node10,-node3-node5,node4>
+Generates a list of all nodes (assuming all is a group) listed in the
+B<nodelist> table less node5 through node10:
+
+ all,-node5-node10
+
+=item 2.
 
 Generates  a  list  of  nodes 1 through 10 less nodes 3,4,5.  Note that
 node4 is listed twice, first in the range and then at the end.  Because
 exclusion has precedence node4 will be excluded.
 
-I<node1-node10,-node3,-node5>
+ node1-node10,-node3-node5,node4
+
+=item 3.
 
 Generates a list of nodes 1 through 10 less nodes 3 and 5.
 
-I<-node17-node32,all>
+ node1-node10,-node3,-node5
+
+=item 4.
 
 Generates  a  list  of  all  (assuming  `all'  is a group) nodes in the
 B<nodelist> table less 17 through 32.
 
-I<node1-node128,user1-user4>
+ -node17-node32,all
+
+=item 5.
 
 Generates a list of nodes 1 through 128, and user nodes 1 through 4.
 
-I<all,-rack1-rack3,-node100-node200,node150,-storage>
+ node1-node128,user1-user4
+
+=item 6.
 
 Generates a list of all nodes (assuming `all' is a group),  less  nodes
 in  groups rack1 through rack3 (assuming groups rack1, rack2, and rack3
 are defined), less nodes 100 through 200, less  nodes  in  the  storage
 group.  Note that node150 is listed but is excluded.
 
-I</node[23].*>
+ all,-rack1-rack3,-node100-node200,node150,-storage
+
+=item 7.
 
 Generates  a  list of nodes matching the regex I<node[23].*>.  That is all
 nodes that start with node2 or node3 and end in  anything  or  nothing.
 E.g. node2, node3, node20, node30, node21234 all match.
+
+ /node[23].*
+
+=back
+
 
 =head1 B<SEE ALSO>
 

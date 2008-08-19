@@ -1,6 +1,6 @@
 =head1 Name
 
-B<rcons> - remote console
+B<rcons> - remotely accesses the serial console of a node
 
 =head1 B<Synopsis>
 

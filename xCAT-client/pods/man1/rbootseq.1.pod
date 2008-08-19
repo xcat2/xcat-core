@@ -1,7 +1,7 @@
 
 =head1 NAME
 
-B<rbootseq> - Sets the boot order for BladeCenter blades.
+B<rbootseq> - Persistently sets the order of boot devices for BladeCenter blades.
 
 =head1 SYNOPSIS
 
@@ -12,7 +12,9 @@ B<rbootseq> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-B<rbootseq> sets the boot sequence of the specified blades.  Up to four different medium can be listed, separated by commas.
+B<rbootseq> sets the boot sequence (the order in which boot devices should be tried) for the specified blades.
+Up to four different medium/devices can be listed, separated by commas.  The boot sequence will remain
+in effect for these blades until set differently.
 
 =head1 OPTIONS
 
@@ -70,12 +72,16 @@ Display the current boot sequence.
 
 =head1 EXAMPLES
 
+=over 3
 
-  rbootseq 1,3 c,f,n,hd0
-  rbootseq 14-56,70-203 c,f,n,hd0
-  rbootseq 1,3,14-56,70-203 c,f,n,hd0
-  rbootseq all,-129-256 c,f,n,hd0
+=item 1.
 
+Set blades 14-56 and 70-203 to try to boot first from the CD drive, then the floppy drive, then
+the network, and finally from the 1st hard disk:
+
+ rbootseq blade[14-56],blade[70-203] c,f,n,hd0
+
+=back
 
 =head1 SEE ALSO
 

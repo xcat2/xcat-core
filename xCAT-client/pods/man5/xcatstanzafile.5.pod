@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<xcatstanzafile> - Describes the format of a stanza file that can be used with xCAT commands.
+B<xcatstanzafile> - Format of a stanza file that can be used with xCAT data object definition commands.
 
 =head1 DESCRIPTION
 

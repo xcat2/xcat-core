@@ -1,6 +1,6 @@
 =head1 Name
 
-B<rinstall> - Begin installation on a noderange
+B<winstall> - Begin installation on a noderange and display in wcons
 
 =head1 B<Synopsis>
 
