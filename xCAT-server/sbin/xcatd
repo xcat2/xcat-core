@@ -1267,11 +1267,13 @@ sub validate {
       if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
         my $logst = "xCAT: Allowing ".$request->{command}->[0];
         if ($peername) { $logst .= " for " . $peername };
+        if ($peerhost) { $logst .= " from " . $peerhost };
          xCAT::MsgUtils->message("S",$logst);
         return 1;
       } else {
         my $logst = "xCAT: Denying ".$request->{command}->[0];
         if ($peername) { $logst .= " for " . $peername };
+        if ($peerhost) { $logst .= " from " . $peerhost };
          xCAT::MsgUtils->message("S",$logst);
         return 0;
       }

@@ -10,6 +10,7 @@
 package xCAT_plugin::getpostscript;
 use xCAT::Postage;
 use xCAT::Utils;
+use xCAT::MsgUtils;
 use xCAT::NodeRange;
 
 1;
@@ -59,6 +60,7 @@ sub process_request
 
     if ($client) { ($client) = noderange($client) };
     unless ($client) { #Not able to do identify the host in question
+       xCAT::MsgUtils->message("S","Received getpostscript from $client, which couldn't be correlated to a node (domain mismatch?)");
       return;
     }
     my $state;
