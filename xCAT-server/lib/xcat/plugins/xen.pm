@@ -88,12 +88,22 @@ sub build_oshash {
 }
 
 sub build_diskstruct {
-    my @returns;
+    my @returns=();
     my $diskhash;
-    $diskhash->{type}='file';
-    $diskhash->{source}->{file}="/vms/$node";
-    $diskhash->{target}->{dev}='hda';
-    push @returns,$diskhash;
+    my $currdev;
+    my @suffixes=('a'..'z');
+    my $suffidx=0;
+    if (defined $vmhash->{$node}->[0]->{storage}) {
+        my $disklocs=$vmhash->{$node}->[0]->{storage};
+        my @locations=split /\|/,$disklocs;
+        foreach (@locations) {
+            $currdev='sd'.$suffixes[$suffidx++];
+            $diskhash->{type}='file';
+            $diskhash->{source}->{file}=$_; #"/vms/$node";
+            $diskhash->{target}->{dev}=$currdev;
+            push @returns,$diskhash;
+        }
+    }
     return \@returns;
 }
 sub getNodeUUID {
