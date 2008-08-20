@@ -1042,9 +1042,11 @@ sub getNodeAttribs
             ($curr, $next, $prev) =
               extract_bracketed($retval, '()', qr/[^()]*/);
 
-            unless($curr) {
+            unless($curr) { #If there were no paramaters to save, treat this one like a plain regex
                $retval = $node;
                $retval =~ s/$parts[0]/$parts[1]/;
+               $datum->{$attrib} = $retval;
+               next; #skip the redundancy that follows otherwise
             }
             while ($curr)
             {
@@ -1065,6 +1067,8 @@ sub getNodeAttribs
                 ($curr, $next, $prev) =
                   extract_bracketed($retval, '()', qr/[^()]*/);
             }
+            #At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
+            #must be applied in total
             my $answval = $node;
             $answval =~ s/$parts[0]/$retval/;
             $datum->{$attrib} = $answval; #$retval;
