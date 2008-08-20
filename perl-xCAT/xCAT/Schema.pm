@@ -7,6 +7,24 @@ package xCAT::Schema;
 #       modify BOTH the tabspec and defspec definitions.  This includes
 #       adding descriptions for any new attributes.
 #
+#  Make sure any new attributes are not SQL reserved words by checking
+#  on this site:http://www.petefreitag.com/tools/sql_reserved_words_checker/
+#
+#  Current SQL reserved words being used in this Schema with special 
+#  processing are the
+#  following:
+#   
+#Word     Table                   Databases that will not allow 
+# key      site,passwd,prodkey,monsetting      MySQL, DB2,SQL Server 2000
+# dump     nimimage                            SQL Server 2000 (microsoft)
+# power    nodehm                              SQL Server 2000
+# host     policy,ivm                          SQL Server Future Keywords
+# parameters  policy              DB2,SQL Server Future Keywords,ISO/ANSI,SQL99
+# time        policy              DB2,SQL Server Future Keywords,ISO/ANSI,SQL99
+# rule        policy              SQL Server 2000
+# value       site,monsetting     ODBC, DB2, SQL Server 
+#                                 Future Keywords,ISO/ANSI,SQL99
+#
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
