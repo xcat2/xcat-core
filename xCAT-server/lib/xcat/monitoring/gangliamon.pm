@@ -15,8 +15,6 @@ use xCAT_monitoring::monitorctrl;
 use xCAT::MsgUtils;
 use strict;
 use warnings;
-#start();
-#deconfig();
 1;
 
 #-------------------------------------------------------------------------------
@@ -211,8 +209,7 @@ sub config
                 0 means localhost only. 
                 2 means localhost and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
-    Returns:
-       (error code, error message)
+    Returns: none
 =cut
 #--------------------------------------------------------------
 
@@ -400,8 +397,7 @@ sub confGmond
                 0 means localhost only. 
                 2 means localhost and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
-    Returns:
-       (error code, error message)
+    Returns : none
 =cut
 #--------------------------------------------------------------
 
@@ -540,8 +536,7 @@ sub confGmetad
                 0 means local host only. 
                 2 means both local host and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
-    Returns:
-       (error code, error message)
+    Returns: none
 =cut 
 #--------------------------------------------------------------
 sub deconfig
@@ -570,8 +565,7 @@ sub deconfig
                 0 means localhost only. 
                 2 means localhost and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
-    Returns:
-       (error code, error message)
+    Returns:none
 =cut
 #--------------------------------------------------------------
 
@@ -670,8 +664,7 @@ sub deconfGmond
                 0 means localhost only. 
                 2 means localhost and nodes, 
        callback -- the callback pointer for error and status displaying. It can be null.
-    Returns:
-       (error code, error message)
+    Returns:none
 =cut
 #--------------------------------------------------------------
 
