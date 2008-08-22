@@ -1258,7 +1258,7 @@ sub readFileInput
             ($objectname, $junk2) = split(/:/, $l);
 
             # if $junk2 is defined or there's an = 
-            if (defined($junk2) || grep(/=/, $objectname))
+            if ($junk2 || grep(/=/, $objectname))
             {
 
                 # error - invalid header $line in node definition file
