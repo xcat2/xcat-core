@@ -412,6 +412,9 @@ ll~;
 
 		#  add any resources that are included in the osimage def
 		#		only take the attrs that are actual NIM resource types
+
+		# TODO - need to handle script & installp_bundle special
+		#	- there could be multiple instance of each
         foreach my $restype (sort(keys %{$imagehash{$image_name}})) {
             # restype is res type (spot, script etc.)
             # resname is the name of the resource (61spot etc.)
@@ -462,6 +465,7 @@ ll~;
 		}
 
 		my $initcmd;
+		# $initcmd="/usr/sbin/nim -o bos_inst $arg_string -a accept_licenses=yes $nim_name 2>&1";
 		$initcmd="/usr/sbin/nim -o bos_inst $arg_string $nim_name 2>&1";
 
 
@@ -1455,6 +1459,12 @@ sub mk_bosinst_data
 			$cmd .= "-a location=$loc/$bosinst_data_name  ";
 			$cmd .= "$bosinst_data_name  2>&1";
 
+			if ($::VERBOSE) {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$cmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+
 			my $output = xCAT::Utils->runcmd("$cmd", -1);
 			if ($::RUNCMD_RC  != 0) {
 				my $rsp;
@@ -1597,8 +1607,7 @@ sub mk_mksysb
             	if ($::opt_l) {
                 	$loc = $::opt_l;
             	} else {
-                #	$loc = "/install/nim/mksysb/$mksysb_name";
-					$loc = "/install/nim/mksysb";
+					$loc = "/install/nim/mksysb/$::image_name";
             	}
 
 				# create resource location for mksysb image
@@ -1641,10 +1650,17 @@ sub mk_mksysb
                 	return undef;
             	}
 
-			} elsif ($::opt_b) {
+			} elsif ($::SYSB) {
 
 				# def res with existing mksysb image
-				my $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$::opt_b $mksysb_name 2>&1";
+				my $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$::SYSB $mksysb_name 2>&1";
+
+				if ($::VERBOSE) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Running: \'$mkcmd\'\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+
 				my $output = xCAT::Utils->runcmd("$mkcmd", -1);
 				if ($::RUNCMD_RC  != 0) {
 					my $rsp;
