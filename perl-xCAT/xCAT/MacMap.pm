@@ -3,6 +3,7 @@
 package xCAT::MacMap;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::MsgUtils;
 use IO::Select;
 use IO::Handle;
 use Sys::Syslog;
@@ -125,7 +126,7 @@ sub refresh_table {
     if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
     	$self->{switches}->{$entry->{switch}}->{$entry->{port}}=$entry->{node};
     } else {
-        syslog("local4|err","xCAT Table error:".$entry->{node}."Has missing or invalid switch.switch and/or switch.port fields");
+        xCAT::MsgUtils->message("S","xCAT Table error:".$entry->{node}."Has missing or invalid switch.switch and/or switch.port fields");
     }
   } 
   my $children = 0;
@@ -183,7 +184,7 @@ sub walkoid {
   my $varbind = new SNMP::Varbind([$oid,'']);
   $session->getnext($varbind);
   if ($session->{ErrorStr}) {
-    syslog("local6|err","Error communicating with ".$session->{DestHost}.": ".$session->{ErrorStr});
+   xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": ".$session->{ErrorStr});
     return undef;
   }
   my $count=0;
@@ -213,7 +214,7 @@ sub refresh_switch {
                   UseNumeric => 1
              );
   #if ($error) { die $error; }
-  unless ($session) { syslog("err","Failed to communicate with $switch"); return; }
+  unless ($session) { xCAT::MsgUtils->message("S","Failed to communicate with $switch"); return; }
   my $namemap = walkoid($session,'.1.3.6.1.2.1.31.1.1.1.1');
   if ($namemap) {
      my $ifnamesupport=0; #Assume broken ifnamesupport until proven good... (Nortel switch)
