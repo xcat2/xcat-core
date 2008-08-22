@@ -11,35 +11,66 @@
  This updates the service node with files necessary to access the 
  database on the MasterNode and restarts the xcat daemon
 
+ On AIX systems this does the service node configuration.
+
 =cut
 
 #-----------------------------------------------------------------------------
 
-#
-#  remove OpenIPMI-tools and tftp
-#  install xcat from /install/xcat
-#  Copy Certificates, and config file to apprpriate directories from /install
-#  and restart xcatd
 # MAIN
+
 my $rc=0;
-&runcmd("rpm -e OpenIPMI-tools");
 
-&runcmd("rpm -e tftp-server");
-if ($ENV{'NODESETSTATE'} eq "install")
+$::osname = `uname`;
+chomp $::osname;
+
+$::sdate = `/bin/date`;
+chomp $::sdate;
+
+$::hname = `hostname`;
+chomp $::hname;
+
+if ($::osname eq 'AIX')
 {
-    $msg = "Installing xCAT";
-    `logger -t xcat $msg`;
-    &runcmd("rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm");
+	# AIX service node setup
+	$rc = &setupAIXsn;
+	if ( $rc != 0) {
+		my $msg="$::sdate  servicenode: One or more errors occurred when attempting to configure node $::hname as an xCAT service node.\n";
+		print "$msg\n";
+		`logger -t xcat $msg`;
+	}
+} 
+else
+{
+	# Linux setup
+	#  remove OpenIPMI-tools and tftp
+	#  install xcat from /install/xcat
+	#  Copy Certificates, and config file to apprpriate directories 
+	#  from /install and restart xcatd
+	&runcmd("rpm -e OpenIPMI-tools");
+
+	&runcmd("rpm -e tftp-server");
+	if ($ENV{'NODESETSTATE'} eq "install")
+	{
+    	$msg = "Installing xCAT";
+    	`logger -t xcat $msg`;
+    	&runcmd("rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm");
+	}
+	&runcmd("/opt/xcat/sbin/copycerts");
 }
-&runcmd("/opt/xcat/sbin/copycerts");
+
+exit $rc;
 
 #
-# run the command
+# Subroutines
 #
+
+# run the command
 sub runcmd
 {
     my ($cmd) = @_;
 	my $rc;
+
     $cmd .= ' 2>&1' ;
     my $outref = [];
     @$outref = `$cmd`;
@@ -54,5 +85,59 @@ sub runcmd
     }
 	return $rc;
 }
-exit $rc;
 
+# do AIX service node setup
+sub setupAIXsn
+{
+	my $error=0;
+
+	# so conserver will start
+	if (&runcmd("mkdir -p /var/log/consoles")!= 0) {
+		$error++;
+	}
+
+	# makes it a service node
+	if (&runcmd("touch /etc/xCATSN") != 0 ) {
+	    $error++;
+    }
+
+	# run updatepkg to update RPM's reflection of the software 
+	#	installed by installp - may already be done - but won't hurt!
+	if (&runcmd("/usr/sbin/updtvpkg") != 0) {
+	    $error++;
+    }
+
+	# call copycerts
+	if (&runcmd("/opt/xcat/sbin/copycerts") != 0) {
+	    $error++;
+    }
+
+	# start xcatd
+	if (&runcmd("/opt/xcat/sbin/xcatd &") != 0) {
+	    $error++;
+    }
+
+	# TODO - add xcatd as system service???
+	# mkssys -s xcatd -p /opt/xcat/sbin/xcatd -u 0 -K
+
+	# add xcatd to /etc/inittab???
+	$mkitab_cmd = 'mkitab "xcatd:2:once:/opt/xcat/sbin/xcatd > /dev/console 2>&1"';
+	# $mkitab_cmd = 'mkitab "xcatd:2:once:/usr/bin/startsrc -s xcatd > /dev/console 2>&1"';
+
+	if (&runcmd($mkitab_cmd) != 0) {
+	    $error++;
+    }
+
+	# do nim master setup - master fileset already installed
+	if (&runcmd("nim_master_setup -a mk_resource=no") != 0) {
+	    $error++;
+    }
+
+	# MySQL setup??? - no - do in separate post script
+
+	if ($error > 0) {
+		return $error;
+	}
+
+	return 0;
+}
