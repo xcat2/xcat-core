@@ -651,7 +651,7 @@ sub processArgs
     }
 
     # must have object name(s) -
-    if (!@::clobjnames && !@::fileobjnames)
+	if ((scalar(@::clobjnames) == 0) && (scalar(@::fileobjnames) == 0))
     {
         my $rsp;
         $rsp->{data}->[0] =
@@ -662,13 +662,13 @@ sub processArgs
 
     # combine object name all object names provided
     @::allobjnames = @::clobjnames;
-    if (@::fileobjnames)
+	if (scalar(@::fileobjnames) > 0)
     {
 
         # add list from stanza or xml file
         push @::allobjnames, @::fileobjnames;
     }
-    elsif (@::objfilelist)
+	elsif (scalar(@::objfilelist) > 0)
     {
 
         # add list from "-f" file option
@@ -2205,7 +2205,7 @@ sub defls
                     next;
                 }
 
-                if (!grep(/$obj/, @tmplist))
+                if (!grep(/^$obj$/, @tmplist))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
