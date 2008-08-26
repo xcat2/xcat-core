@@ -43,7 +43,7 @@ printf $hashref->{columname1};
 
 This module provides convenience methods that abstract the backend specific configuration to a common API.
 
-Currently implements the preferred SQLite backend, as well as a CSV backend, using their respective perl DBD modules.
+Currently implements the preferred SQLite backend, as well as a CSV backend, postgresql and MySQL, using their respective perl DBD modules.
 
 NOTES
 
@@ -104,8 +104,11 @@ sub buildcreatestmt
     my $col;
     foreach $col (@{$descr->{cols}})
     {
-        $retv .= "$col TEXT";
-
+        if (isAKey(\@{$descr->{keys}},$col)) {   # keys need defined length
+          $retv .= "\"$col\" VARCHAR(128)";
+        } else {
+          $retv .= "$col TEXT";
+        } 
         if (grep /^$col$/, @{$descr->{required}})
         {
             $retv .= " NOT NULL";
@@ -115,7 +118,7 @@ sub buildcreatestmt
     $retv .= "PRIMARY KEY (";
     foreach (@{$descr->{keys}})
     {
-        $retv .= "$_,";
+       $retv .= "\"$_\","
     }
     $retv =~ s/,$/)\n)/;
     return $retv;
@@ -360,7 +363,8 @@ sub updateschema
             }
         }
     } else { #Attempt generic dbi..
-       my $sth = $self->{dbh}->column_info('','',$self->{tabname},'');
+       #my $sth = $self->{dbh}->column_info('','',$self->{tabname},'');
+       my $sth = $self->{dbh}->column_info(undef,undef,$self->{tabname},'%'); 
        while (my $cd = $sth->fetchrow_hashref) {
            push @columns,$cd->{'COLUMN_NAME'};
        }
@@ -639,8 +643,10 @@ sub setAttribs
     my @qargs   = ();
     foreach (keys %keypairs)
     {
-        $qstring .= "$_ = ? AND ";
-        push @qargs, $keypairs{$_};
+        #$qstring .= "$_ = ? AND "; #mysql changes
+        #push @qargs, $keypairs{$_};
+        $qstring .= "\"$_\" = ? AND ";
+        push @qargs, "\"$keypairs{$_}\"";
     }
     $qstring =~ s/ AND \z//;
     my $query = $self->{dbh}->prepare($qstring);
@@ -736,7 +742,8 @@ sub setAttribs
 	    $newpairs{$col} = $$elems{$col};
         }
 	foreach (keys %newpairs) {
-            $cols .= $_ . ",";
+            #$cols .= $_ . ",";  # mysql changes
+            $cols .= "\"$_\"" . ",";
             push @bind, $newpairs{$_};
         }
         chop($cols);
@@ -1898,6 +1905,40 @@ sub getDescriptions {
 	#my @a = keys %{$xCAT::Schema::tabspec{nodelist}};  print 'a=', @a, "\n";
 	foreach my $t (keys %xCAT::Schema::tabspec) { $ret->{$t} = $xCAT::Schema::tabspec{$t}->{table_desc}; }
 	return $ret;
+}
+#--------------------------------------------------------------------------
+
+=head3  isAKey 
+
+    Description:  Checks to see if table field is a table key 
+
+    Arguments:
+               Table field 
+	       List of keys 
+    Returns:
+               1= is a key
+               0 = not a key 
+    Globals:
+
+    Error:
+
+    Example:
+              if(isaKey($key_list, $col));
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub isAKey 
+{
+    my ($keys,$col)  = @_;
+    my @key_list = @$keys;
+    foreach my $key (@key_list)
+    {
+       if ( $col eq $key) {   # it is a key
+         return 1;
+       } 
+    }
+    return 0;
 }
 
 1;
