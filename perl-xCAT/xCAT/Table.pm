@@ -646,7 +646,7 @@ sub setAttribs
         #$qstring .= "$_ = ? AND "; #mysql changes
         #push @qargs, $keypairs{$_};
         $qstring .= "\"$_\" = ? AND ";
-        push @qargs, "\"$keypairs{$_}\"";
+        push @qargs, $keypairs{$_};
     }
     $qstring =~ s/ AND \z//;
     my $query = $self->{dbh}->prepare($qstring);
