@@ -284,7 +284,7 @@ nodepos => {
  },
   },
 noderes => {
-    cols => [qw(node servicenode netboot tftpserver nfsserver monserver kernel initrd kcmdline nfsdir serialport installnic primarynic xcatmaster current_osimage next_osimage comments disable)],
+    cols => [qw(node servicenode netboot tftpserver nfsserver monserver kernel initrd kcmdline nfsdir serialport installnic primarynic cmdinterface xcatmaster current_osimage next_osimage comments disable)],
     keys => [qw(node)],
     table_desc => 'Resources and settings to use when installing nodes.',
  descriptions => {
@@ -301,6 +301,7 @@ noderes => {
   serialport => 'DEPRECATED!  Has been moved to the nodehm table',
   installnic => 'The network adapter on the node that will be used for OS deployment.  If not set, primarynic will be used.',
   primarynic => 'The network adapter on the node that will be used for xCAT management.  Default is eth0.',
+  cmdinterface => 'The interface name through which commands to a system should be issued.',
   xcatmaster => 'The hostname of the xCAT service node (as known by this node).  This is the default value if nfsserver or tftpserver are not set.',
   current_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image currently deployed on this node.',
   next_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image that will be installed on the node the next time it is deployed.',
