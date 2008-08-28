@@ -323,13 +323,21 @@ sub power {
         if ($dom) {
             $dom->shutdown();
         }
+    } elsif ($subcommand eq 'reset') {
+        if ($dom) {
+            $dom->reboot(1); #TODO: Sys::Virt *nor* libvirt have meaningful flags,
+                            #but require it
+            $retstring.="reset";
+        }
     } else { 
         unless ($subcommand =~ /^stat/) {
             return (1,"Unsupported power directive '$subcommand'");
         }
     }
 
-    $retstring.=getpowstate($dom);
+    unless ($retstring =~ /reset/) {
+        $retstring.=getpowstate($dom);
+    }
     return (0,$retstring);
 }
 
