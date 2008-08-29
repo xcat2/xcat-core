@@ -14,6 +14,7 @@ package xCAT_plugin::sinv;
 use strict;
 
 require xCAT::Utils;
+require xCAT::SINV;
 
 require xCAT::MsgUtils;
 use Getopt::Long;
