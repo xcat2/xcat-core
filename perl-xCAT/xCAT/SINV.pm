@@ -132,8 +132,8 @@ sub parse_and_run_sinv
         !GetOptions(
                     'h|help'     => \$options{'help'},
                     't|tc=s'     => \$options{'template_cnt'},
-                    'p|path=s'   => \$options{'template_path'},
-                    'r|tp=s'     => \$options{'remove_template'},
+                    'p|tp=s'     => \$options{'template_path'},
+                    'r|remove=s' => \$options{'remove_template'},
                     'o|output=s' => \$options{'output_file'},
                     's|seed=s'   => \$options{'seed_node'},
                     'c|cmd=s'    => \$options{'xdsh_cmd'},
@@ -229,9 +229,10 @@ sub parse_and_run_sinv
     my $templatecnt = $options{'template_cnt'};
     if (!$templatecnt)
     {
-        $rsp->{data}->[0] = "Missing template count on the command.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        exit 1;
+        #$rsp->{data}->[0] = "Missing template count on the command.\n";
+        #xCAT::MsgUtils->message("E", $rsp, $callback);
+        #exit 1;
+        $templatecnt = 1;    # default
     }
     chomp $templatecnt;
 
@@ -242,9 +243,10 @@ sub parse_and_run_sinv
     my $rmtemplate = $options{'remove_template'};
     if (!$rmtemplate)
     {
-        $rsp->{data}->[0] = "Remove template value missing.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        exit 1;
+        #$rsp->{data}->[0] = "Remove template value missing.\n";
+        #xCAT::MsgUtils->message("E", $rsp, $callback);
+        #exit 1;
+        $rmtemplate = "no";    #default
     }
     chomp $rmtemplate;
 
@@ -325,7 +327,7 @@ sub parse_and_run_sinv
 
     if ($seednode)
     {
-        my $dsh_command = "xdsh -n $seednode -v $cmd  > $templatepath";
+        my $dsh_command = "xdsh  $seednode -v $cmd  > $templatepath";
         my $rc          = system("$dsh_command");
         if ($rc != 0)
         {
@@ -346,7 +348,7 @@ sub parse_and_run_sinv
     #  Run the DSH command
     #
     my $nodelist    = $inputNodes[0];
-    my $tempfile    = "/tmp/checkcfg.$$";
+    my $tempfile    = "/tmp/sinv.$$";
     my $dsh_command = "xdsh ";
     $dsh_command .= $nodelist;
 
