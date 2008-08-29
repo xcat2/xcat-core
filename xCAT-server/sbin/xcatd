@@ -1231,7 +1231,7 @@ sub validate {
   my @policies = $policytable->getTable;
   $policytable->close;
   my $rule;
-  foreach $rule (@policies) {
+  RULE: foreach $rule (@policies) {
     if ($rule->{name} and $rule->{name} ne '*') {
       #TODO: more complex matching (lists, wildcards)
       next unless ($peername and $peername eq $rule->{name});
@@ -1260,7 +1260,33 @@ sub validate {
       }
     }
     if ($rule->{noderange} and $rule->{noderange} ne '*') {
-      #TODO: not ignore this field
+      my $matchall=0;
+      if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
+          $matchall=1;
+      }
+      if (defined $request->{noderange}->[0]) {
+        my @tmpn=noderange($request->{noderange}->[0]);
+        $request->{node}=\@tmpn;
+      }
+      unless (defined $request->{node}) {
+          next RULE;
+      }
+      my @reqnodes = @{$request->{node}};
+      my %matchnodes;
+      foreach (noderange($rule->{noderange})) {
+          $matchnodes{$_}=1;
+      }
+      REQN: foreach (@reqnodes) {
+          if (defined ($matchnodes{$_})) {
+              if ($matchall) {
+                  next REQN;
+              } else {
+                last REQN;
+              }
+          } elsif ($matchall) {
+                  next RULE;
+          }
+      }
     }
     # If we are still in, that means this rule is the first match and dictates behavior.
     if ($rule->{rule}) {
