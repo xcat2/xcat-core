@@ -88,12 +88,13 @@ sub usage
 {
 ## usage message
 
-    my $usagemsg1 = "sinv -h \nsinv -v \nsinv [noderange]\n";
+    my $usagemsg1 = "The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
+    my $usagemsg1a = "sinv -h \nsinv -v \nsinv [noderange]\n";
     my $usagemsg2 =
       "      [-o output file ] [-p template path] [-t template count]\n";
     my $usagemsg3 = "      [-r remove templates] [-s seednode]\n";
     my $usagemsg4 = "      [-c xdsh command  | -f xdsh command file] \n ";
-    my $usagemsg5 = "     [-V verbose] \n ";
+    my $usagemsg5 = "     [-V verbose] [-h usage]\n ";
     my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .= $usagemsg5;
 ###  end usage mesage
     if ($::CALLBACK)
