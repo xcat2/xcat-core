@@ -20,12 +20,13 @@ CLUSTER=\"$MONSERVER\"
 MASTER=$ms_ip
 #echo "The new IP is: $NEW_IP"
 #echo "I will replace now....
-gmond_conf="/etc/gmond.conf"
+gmond_conf="/etc/ganglia/gmond.conf"
+gmond_conf_old="/etc/gmond.conf"
  
      if [ -f  $gmond_conf ]; then
        grep "xCAT gmond settings done" $gmond_conf
          if [ $? -gt 0 ]; then
-           /bin/cp -f $gmond_conf /etc/gmond.conf.orig
+           /bin/cp -f $gmond_conf /etc/ganglia/gmond.conf.orig
            sed -i 's/setuid = yes/setuid = no/1' $gmond_conf
            sed -i 's/name = "unspecified"/name='$CLUSTER'/1' $gmond_conf
            sed -e "1,40s/mcast_join = .*/host = $MASTER/" $gmond_conf > /etc/temp.conf
@@ -35,6 +36,21 @@ gmond_conf="/etc/gmond.conf"
            echo "# xCAT gmond settings done sh" >> $gmond_conf
          fi
      fi
+ 
+    if [ -f $gmond_conf_old ]; then
+      grep "xCAT gmond settings done" $gmond_conf_old
+         if [ $? -gt 0 ]; then
+           /bin/cp -f $gmond_conf_old /etc/gmond.conf.orig
+           sed -i 's/setuid = yes/setuid = no/1' $gmond_conf_old
+           sed -i 's/name = "unspecified"/name='$CLUSTER'/1' $gmond_conf_old
+           sed -e "1,40s/mcast_join = .*/host = $MASTER/" $gmond_conf_old > /etc/temp.conf
+           /bin/cp -f /etc/temp.conf $gmond_conf_old
+           sed -i 's/mcast_join/#/g' $gmond_conf_old
+           sed -i 's/bind/#/g' $gmond_conf_old
+           echo "# xCAT gmond settings done sh_old" >> $gmond_conf_old
+         fi 
+    fi
+
 
      if [ ! -f  $gmond_conf ]; then 
        #  echo "file not found"
