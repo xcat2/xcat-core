@@ -653,6 +653,8 @@ sub addnet
         }
         push @netent, "    if option client-architecture = 00:00  { #x86\n";
         push @netent, "      filename \"pxelinux.0\";\n";
+        push @netent, "    else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
+        push @netent, "      filename \"pxelinux.0\";\n";
         push @netent,
           "    } else if option client-architecture = 00:02 { #ia64\n ";
         push @netent, "      filename \"elilo.efi\";\n";

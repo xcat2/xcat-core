@@ -97,7 +97,7 @@ sub build_diskstruct {
         my $disklocs=$vmhash->{$node}->[0]->{storage};
         my @locations=split /\|/,$disklocs;
         foreach (@locations) {
-            $currdev='sd'.$suffixes[$suffidx++];
+            $currdev='hd'.$suffixes[$suffidx++];
             $diskhash->{type}='file';
             $diskhash->{source}->{file}=$_; #"/vms/$node";
             $diskhash->{target}->{dev}=$currdev;
