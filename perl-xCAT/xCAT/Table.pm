@@ -354,11 +354,14 @@ sub updateschema
         my @entries = split /,/, $cstmt;
         foreach (@entries)
         {
+            s/VARCHAR\(\d+\)/TEXT/;
             unless (/\(/)
             {    #Filter out the PRIMARY KEY statement, but not if on a col
                 my $colname = $_;
                 $colname =~ s/^\s*(\S+)\s+.*\s*$/$1/
                   ; #I don't understand why it won't work otherwise for "    colname TEXT     "
+                $colname =~ s/^"//;
+                $colname =~ s/"$//;
                 push @columns, $colname;
             }
         }
