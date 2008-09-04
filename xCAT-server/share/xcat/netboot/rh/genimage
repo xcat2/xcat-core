@@ -281,7 +281,7 @@ if [ "\$NFS" = "1" ]; then
   mount --move /ro /sysroot/ro
   mount --move /rw /sysroot/rw
   cp /etc/resolv.conf /sysroot/etc/
-  echo xcatfs / aufs rw,_netdev 0 0 >> /rw/etc/fstab
+  echo xcatfs / aufs rw,_netdev 0 0 >> /sysroot/etc/fstab
 elif [ -r /rootimg.sfs ]; then
   echo Setting up squashfs with ram overlay.
   mknod /dev/loop0 b 7 0
