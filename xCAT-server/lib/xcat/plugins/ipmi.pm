@@ -3124,6 +3124,28 @@ sub getaddsensorevent {
 			$text =~ s/^, //;
 		}
 	}
+    if ($sensor_type == 0x1d && $offset == 0x07) {
+        my %causes = (
+            0 => "Unknown",
+            1 => "Chassis reset via User command to BMC",
+            2 => "Reset button",
+            3 => "Power button",
+            4 => "Watchdog action",
+            5 => "OEM",
+            6 => "AC Power apply force on",
+            7 => "Restore previous power state on AC",
+            8 => "PEF initiated reset",
+            9 => "PEF initiated power cycle",
+            10 => "Soft reboot",
+            11 => "RTC Wake",
+        );
+        if ($causes{$event_data_2 & 0xf}) {
+            $text = $causes{$event_data_2};
+        } else {
+            $text = "Unrecognized cause ".$event_data_2 & 0xf;
+        }
+        $text .= "via channel $event_data_3";
+    }
     if ($sensor_type == 0x21) {
         my %extra = (
             0 => "PCI slot",
@@ -3167,6 +3189,32 @@ sub getaddsensorevent {
         }
         $text =~ s/^, //;
     }
+    if ($sensor_type == 0x28) {
+        if ($offset == 0x4) {
+            $text = "Sensor $event_data_2";
+        } elsif ($offset == 0x5) {
+            $text = "";
+            my $logicalfru=0;
+            if ($event_data_2 & 128) {
+                $logicalfru=1;
+            }
+            my $intelligent=1;
+            if ($event_data_2 & 24) {
+                $text .= "LUN ".($event_data_2&24)>>3;
+            } else {
+                $intelligent=0;
+            }
+            if ($event_data_2 & 7) {
+                $text .= "Bus ID ".($event_data_2&7);
+            }
+            if ($logicalfru) {
+                $text .= "FRU ID ".$event_data_3;
+            } elsif (not $intelligent) {
+                $text .= "I2C addr ".$event_data_3>>1;
+            }
+        }
+    }
+
     if ($sensor_type == 0x2a) {
         $text = sprintf("Channel %d, User %d",$event_data_3&0x0f,$event_data_2&0x3f);
         if ($offset == 1) {
