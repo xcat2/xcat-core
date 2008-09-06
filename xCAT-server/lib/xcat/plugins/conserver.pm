@@ -253,9 +253,9 @@ sub makeconservercf {
       my $node = $_;
       foreach (@cfgents) {
         if ($_->{node} eq $node) {
-          if ($_->{termserver} and $termservers{$_->{termserver}}) {
+          if ($_->{termserver} and not $termservers{$_->{termserver}}) {
             dotsent($_,\@filecontent);
-            delete $termservers{$_->{termserver}}; #prevent needless cycles being burned
+            $termservers{$_->{termserver}}=1; #prevent needless cycles being burned
           }
           donodeent($_,\@filecontent);
         }
@@ -281,9 +281,9 @@ sub makeconservercf {
       }
       if (!$isSN) { $keepdoing=1;} #handle all for MN
       if ($keepdoing) {
-        if ($_->{termserver} and $termservers{$_->{termserver}}) {
+        if ($_->{termserver} and not $termservers{$_->{termserver}}) {
           dotsent($_,\@filecontent);
-          delete $termservers{$_->{termserver}}; #prevent needless cycles being burned
+          $termservers{$_->{termserver}}=1; #prevent needless cycles being burned
         }
         if ( $type{$_->{node}} !~ /fsp|bpa|hmc|ivm/ ) {
           donodeent($_,\@filecontent);
