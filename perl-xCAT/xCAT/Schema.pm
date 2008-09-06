@@ -309,6 +309,19 @@ noderes => {
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
+    switches => {
+        cols => [qw(switch snmpversion username password privacy auth comments disable)],
+        keys => [qw(switch)],
+        table_desc => 'Parameters to use when interrogating switches',
+        descriptions => {
+         switch => 'The hostname/address of the switch to which the settings apply',
+         snmpversion => 'The version to use to communicate with switch.  SNMPv1 is assumed by default.',
+         username => 'The username to use for SNMPv3 communication, ignored for SNMPv1',
+         password => 'The password or community string to use for SNMPv3 or SNMPv1 respectively.  Falls back to passwd table, and site snmpc value if using SNMPv1',
+         privacy => 'The privacy protocol to use for v3.  DES is assumed if v3 enabled, as it is the most readily available.',
+         auth => 'The authentication protocol to use for SNMPv3.  SHA is assumed if v3 enabled and this is unspecified',
+        },
+    },
 nodetype => {
     cols => [qw(node os arch profile nodetype comments disable)],
     keys => [qw(node)],
