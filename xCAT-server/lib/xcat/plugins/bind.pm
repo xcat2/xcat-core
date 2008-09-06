@@ -825,7 +825,11 @@ sub PARSEARGS {
         }
         $net =~ s/\.$//;
 
+        if (not $net) {
+            $callback->({error=>["Empty network found in networks table (i.e. ,,,,), This is almost certainly going to cause a problem..."],errorcode=>[1]});
+        }
 	    if ($subnetmask eq "") {
+            $callback->({error=>["$net has no defined netmask in the networks table, the result will probably be wrong"],errorcode=>[1]});
 		foreach $tmp1 (&SUBNETS($net, $Defsubnetmask)) {
 		    &BUILDNET($tmp1);
 		}
