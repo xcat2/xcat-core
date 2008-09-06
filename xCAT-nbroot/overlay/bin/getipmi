@@ -3,8 +3,22 @@ if ! getipmi.awk 301 > /dev/null 2>&1; then
     let i=400
     for srv in `cat /tmp/dhcpserver`; do
         if getipmi.awk  $i > /dev/null 2>&1 ; then
+           while  grep '<error>' /tmp/ipmi.data; do
+              echo "ERROR RETRIEVING BMC CONFIGURATION, CHECK SERVER LOGS AND TABLES!";
+              let sleepy=$RANDOM%60+60
+              echo "Retrying in $sleepy seconds"
+              sleep $sleepy
+              getipmi.awk $i
+           done
            exit
          fi
          let i=i+1
     done
 fi
+while  grep '<error>' /tmp/ipmi.data; do
+     echo "ERROR RETRIEVING BMC CONFIGURATION, CHECK SERVER LOGS AND TABLES!";
+     let sleepy=$RANDOM%60+60
+     echo "Retrying in $sleepy seconds"
+    sleep $sleepy
+    getipmi.awk 301
+done
