@@ -55,6 +55,9 @@ my $seqlun = 0x00;
 my @session_id = (0,0,0,0);
 my @challenge = (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 my @seqnum = (0,0,0,0);
+my $outfd; #File descriptor for children to send messages to parent
+my $currnode; #string to describe current node, presumably nodename
+my $globrc=0;
 my $userid;
 my $passwd;
 my $timeout;
@@ -2441,6 +2444,7 @@ sub eventlog {
 	my @output;
 	my $num;
 	my $entry;
+    my $skiptail=0;
 	my @sel;
 	#my $ipmisensoreventtab = "$ENV{XCATROOT}/lib/GUMI/ipmisensorevent.tab";
 	#my $ipmigenericeventtab = "$ENV{XCATROOT}/lib/GUMI/ipmigenericevent.tab";
@@ -2454,6 +2458,8 @@ sub eventlog {
       $subcommand = 'all';
    }
 	if($subcommand eq "all") {
+        $skiptail=1;
+
 		$num = 0x100 * 0x100;
 	}
 	elsif($subcommand eq "clear") {
@@ -2536,41 +2542,46 @@ sub eventlog {
 		return($rc,$text);
 	}
 
-	@cmd=(0x42);
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
+    my $res_id_ls=0;
+    my $res_id_ms=0;
+    if ($subcommand =~ /clear/) { #Don't bother with a reservation unless a clear is involved
+        #atomic SEL retrieval need not require it, so an event during retrieval will not kill reventlog effort off
+    	@cmd=(0x42);
+    	$error = docmd(
+    		$netfun,
+    		\@cmd,
+    		\@returnd
+    	);
+    
+    	if($error) {
+    		$rc = 1;
+    		$text = $error;
+    		return($rc,$text);
+    	}
+        
+    	$code = $returnd[36-$authoffset];
+    
+    	if($code == 0x00) {
+    	}
+    	elsif($code == 0x81) {
+    		$rc = 1;
+    		$text = "cannot execute command, SEL erase in progress";
+    	}
+    	else {
+    		$rc = 1;
+    		$text = $codes{$code};
+    	}
+    
+    	if($rc != 0) {
+    		if(!$text) {
+    			$text = sprintf("unknown response %02x",$code);
+    		}
+    		return($rc,$text);
+    	}
 
-	if($error) {
-		$rc = 1;
-		$text = $error;
-		return($rc,$text);
-	}
-
-	$code = $returnd[36-$authoffset];
-
-	if($code == 0x00) {
-	}
-	elsif($code == 0x81) {
-		$rc = 1;
-		$text = "cannot execute command, SEL erase in progress";
-	}
-	else {
-		$rc = 1;
-		$text = $codes{$code};
-	}
-
-	if($rc != 0) {
-		if(!$text) {
-			$text = sprintf("unknown response %02x",$code);
-		}
-		return($rc,$text);
-	}
-
-	my $res_id_ls = $returnd[37-$authoffset];
-	my $res_id_ms = $returnd[38-$authoffset];
+	    $res_id_ls = $returnd[37-$authoffset];
+    	$res_id_ms = $returnd[38-$authoffset];
+    }
 
 	if($subcommand eq "clear") {
 		@cmd=(0x47,$res_id_ls,$res_id_ms,0x43,0x4c,0x52,0xaa);
@@ -2659,7 +2670,11 @@ sub eventlog {
 		if($error) {
 			$rc = 1;
 			$text = $error;
-         push(@output,$text);
+            if ($skiptail) {
+                sendoutput($rc,$text);
+                return;
+            }
+            push(@output,$text);
 			return($rc,@output);
 		}
 
@@ -2680,7 +2695,11 @@ sub eventlog {
 			if(!$text) {
 				$text = sprintf("unknown response %02x",$code);
 			}
-         push(@output,$text);
+            if ($skiptail) {
+                sendoutput($rc,$text);
+                return;
+            }
+            push(@output,$text);
 			return($rc,@output);
 		}
 
@@ -2690,10 +2709,10 @@ sub eventlog {
 		@cmd=(0x43,$res_id_ls,$res_id_ms,$next_rec_ls,$next_rec_ms,0x00,0xFF);
 
 		$entry++;
-		if($debug) {
+        if ($debug) {
 			print "$entry: ";
 			hexdump(\@sel_data);
-		}
+        }
 
 		my $record_id = $sel_data[0] + $sel_data[1]*256;
 		my $record_type = $sel_data[2];
@@ -2702,7 +2721,11 @@ sub eventlog {
 		}
 		else {
 			$text=getoemevent($record_type,$mfg_id,\@sel_data);
-			push(@output,$text);
+            if ($skiptail) {
+                sendoutput($rc,$text);
+            } else {
+			    push(@output,$text);
+            }
 			if($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) {
 				last;
 			}
@@ -2710,8 +2733,8 @@ sub eventlog {
 		}
 
 		my $timestamp = ($sel_data[3] | $sel_data[4]<<8 | $sel_data[5]<<16 | $sel_data[6]<<24);
-      unless ($timestamp < 0x20000000) {
-         $timestamp -= $tfactor;
+      unless ($timestamp < 0x20000000) { #IPMI Spec says below this is effectively BMC uptime, not correctable
+         $timestamp -= $tfactor; #apply correction factor based on how off the current BMC clock is from management server
       }
 		my ($seldate,$seltime) = timestamp2datetime($timestamp);
 #		$text = "$entry: $seldate $seltime";
@@ -2814,7 +2837,11 @@ sub eventlog {
 			$text = "$text - Recovered";
 		}
 
-		push(@output,$text);
+        if ($skiptail) {
+            sendoutput($rc,$text);
+        } else {
+    		push(@output,$text);
+        }
 
 		if($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) {
 			last;
@@ -4826,8 +4853,9 @@ sub forward_data { #unserialize data from pipe, chunk at a time, use magic to de
 }
 
 sub donode {
-  my $outfd = shift;
+  $outfd = shift;
   my $node = shift;
+  $currnode=$node;
   my $bmcip = shift;
   my $user = shift;
   my $pass = shift;
@@ -4840,34 +4868,39 @@ sub donode {
   my @exargs=@$extra;
   my ($rc,@output) = ipmicmd($bmcip,623,$user,$pass,$timeout,$retries,0,$command,@exargs);
   my @outhashes;
-  foreach(@output) {
-    my %output;
-    (my $desc,my $text) = split(/:/,$_,2);
-    unless ($text) {
-      $text=$desc;
-    } else {
-      $desc =~ s/^\s+//;
-      $desc =~ s/\s+$//;
-      if ($desc) {
-         $output{node}->[0]->{data}->[0]->{desc}->[0]=$desc;
-      }
-    }
-    $text =~ s/^\s+//;
-    $text =~ s/\s+$//;
-    $output{node}->[0]->{name}->[0]=$node;
-    $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
-    if ($rc) {
-      $output{node}->[0]->{errorcode}=$rc;
-    }
-    #push @outhashes,\%output; #Save everything for the end, don't know how to be slicker with Storable and a pipe
-    print $outfd freeze([\%output]);
-    print $outfd "\nENDOFFREEZE6sK4ci\n";
-    yield;
-    waitforack($outfd);
-  }	
+  sendoutput($rc,@output);
   yield;
   #my $msgtoparent=freeze(\@outhashes);
  # print $outfd $msgtoparent;
+}
+
+sub sendoutput {
+    my $rc=shift;
+    foreach (@_) {
+        my %output;
+        (my $desc,my $text) = split(/:/,$_,2);
+        unless ($text) {
+          $text=$desc;
+        } else {
+          $desc =~ s/^\s+//;
+          $desc =~ s/\s+$//;
+          if ($desc) {
+             $output{node}->[0]->{data}->[0]->{desc}->[0]=$desc;
+          }
+        }
+        $text =~ s/^\s+//;
+        $text =~ s/\s+$//;
+        $output{node}->[0]->{name}->[0]=$currnode;
+        $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+        if ($rc) {
+          $output{node}->[0]->{errorcode}=[$rc];
+        }
+        #push @outhashes,\%output; #Save everything for the end, don't know how to be slicker with Storable and a pipe
+        print $outfd freeze([\%output]);
+        print $outfd "\nENDOFFREEZE6sK4ci\n";
+        yield;
+        waitforack($outfd);
+    }
 }
 
 1;
