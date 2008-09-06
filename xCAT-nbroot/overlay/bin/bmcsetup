@@ -1,10 +1,13 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+allowcred.awk &
+CREDPID=$!
 modprobe ipmi_si
 modprobe ipmi_devintf
 while ! getipmi
 do
     echo "Retrying retrieval of IPMI settings from server"
 done
+kill $CREDPID
 BMCIP=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCGW=`grep gateway /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
