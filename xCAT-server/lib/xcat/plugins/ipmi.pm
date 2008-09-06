@@ -2978,7 +2978,7 @@ sub getsensorevent
 	    return(0,$type,$desc);
        }
     }
-    return (0,"No Mappings found","No Mappings found");
+    return (0,"No Mappings found ($sensortype)","No Mappings found ($sensoroffset)");
 }
 
 sub getaddsensorevent {
