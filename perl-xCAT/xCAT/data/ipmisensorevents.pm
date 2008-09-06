@@ -65,7 +65,7 @@ package xCAT::data::ipmisensorevents;
 "10h,02h"=>"Event Logging Disabled,Log Area Reset/Cleared",
 "10h,03h"=>"Event Logging Disabled,All Event Logging Disabled",
 "10h,04h"=>"Event Logging Disabled,SEL Full",
-"10h,05h"=>"Event Logging Status,SEL nearing full",
+"10h,05h"=>"Event Logging Status,SEL",
 "11h,00h"=>"Watchdog 1,BIOS Watchdog Reset",
 "11h,01h"=>"Watchdog 1,OS Watchdog Reset",
 "11h,02h"=>"Watchdog 1,OS Watchdog Shut Down",

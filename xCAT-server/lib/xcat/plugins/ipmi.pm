@@ -3016,6 +3016,20 @@ sub getaddsensorevent {
 	my $event_data_3 = shift;
 	my $text = "";
 
+    if ($sensor_type == 0x08 && $offset == 6) {
+        my %extra = (
+            0x0 => "Vendor mismatch",
+            0x1 => "Revision mismatch",
+            0x2 => "Processor missing",
+            );
+        if ($extra{$event_data_3}) {
+            $text = $extra{$event_data_3};
+        }
+    }
+    if ($sensor_type == 0x0C) {
+        $text = sprintf ("Memory module %d",$event_data_3);
+    }
+
 	if($sensor_type == 0x0f) {
 		if($offset == 0x00) {
 			my %extra = (
@@ -3067,18 +3081,28 @@ sub getaddsensorevent {
 			$text = $extra{$event_data_2};
 		}
 	}
+    if ($sensor_type == 0x10) {
+        if ($offset == 0x0) {
+            $text = sprintf("Memory module %d",$event_data_2);
+        } elsif ($offset == 0x01) {
+            $text = "Disabled for ";
+            unless ($event_data_3 & 0x20) {
+                if ($event_data_3 & 0x10) {
+                    $text .= "assertions of";
+                } else {
+                    $text .= "deassertions of";
+                } 
+            }
+            $text .= sprintf ("type %02xh/offset %02xh",$event_data_2,$event_data_3&0x0F);
+        } elsif ($offset == 0x05) {
+            $text = "$event_data_3% full";
+        }
+    }
+            
 	if($sensor_type == 0x12) {
 		if($offset == 0x03) {
 		}
 		if($offset == 0x04) {
-			my %extra = (
-				0x00 => "Alert",
-				0x01 => "power off",
-				0x02 => "reset",
-				0x04 => "power cycle",
-				0x08 => "OEM action",
-				0x10 => "NMI",
-			);
 			if($event_data_2 & 0b00100000) {
 				$text = "$text, NMI";
 			}
@@ -3100,6 +3124,135 @@ sub getaddsensorevent {
 			$text =~ s/^, //;
 		}
 	}
+    if ($sensor_type == 0x21) {
+        my %extra = (
+            0 => "PCI slot",
+            1 => "Drive array",
+            2 => "External connector",
+            3 => "Docking port",
+            4 => "Other slot",
+            5 => "Sensor ID",
+            6 => "AdvncedTCA",
+            7 => "Memory slot",
+            8 => "FAN",
+            9 => "PCIe",
+            10 => "SCSI",
+            11 => "SATA/SAS",
+         );
+
+        $text=$extra{$event_data_2 & 127};
+        unless ($text) {
+            $text = "Unknown slot/conn type ".$event_data_2&127;
+        }
+        $text .= " $event_data_3";
+    }
+    if ($sensor_type == 0x23) {
+        my %extra = (
+            0x10 => "SMI",
+            0x20 => "NMI",
+            0x30 => "Messaging Interrupt",
+            0xF0 => "Unspecified",
+            0x01 => "BIOS FRB2",
+            0x02 => "BIOS/POST",
+            0x03 => "OS Load",
+            0x04 => "SMS/OS",
+            0x05 => "OEM",
+            0x0F => "Unspecified"
+        );
+        if ($extra{$event_data_2 & 0xF0}) {
+            $text = $extra{$event_data_2 & 0xF0};
+        }
+        if ($extra{$event_data_2 & 0x0F}) {
+            $text .= ", ".$extra{$event_data_2 & 0x0F};
+        }
+        $text =~ s/^, //;
+    }
+    if ($sensor_type == 0x2a) {
+        $text = sprintf("Channel %d, User %d",$event_data_3&0x0f,$event_data_2&0x3f);
+        if ($offset == 1) {
+            if (($event_data_3 & 207) == 1) {
+                $text .= " at user request";
+            } elsif (($event_data_3 & 207) == 2) {
+                $text .= " timed out";
+            } elsif (($event_data_3 & 207) == 3) {
+                $text .= " configuration change";
+            }
+        }
+    }
+    if ($sensor_type == 0x2b) {
+        my %extra = (
+            0x0 => "Unspecified",
+            0x1 => "BMC device ID",
+            0x2 => "BMC Firmware",
+            0x3 => "BMC Hardware",
+            0x4 => "BMC manufacturer",
+            0x5 => "IPMI Version",
+            0x6 => "BMC aux firmware ID",
+            0x7 => "BMC boot block",
+            0x8 => "Other BMC Firmware",
+            0x09 => "BIOS/EFI change",
+            0x0a => "SMBIOS change",
+            0x0b => "OS change",
+            0x0c => "OS Loader change",
+            0x0d => "Diagnostics change",
+            0x0e => "Management agent change",
+            0x0f => "Management software change",
+            0x10 => "Management middleware change",
+            0x11 => "FPGA/CPLD/PSoC change",
+            0x12 => "FRU change",
+            0x13 => "device addition/removal",
+            0x14 => "Equivalent replacement",
+            0x15 => "Newer replacement",
+            0x16 => "Older replacement",
+            0x17 => "DIP/Jumper change",
+        );
+        if ($extra{$event_data_2}) {
+            $text = $extra{$event_data_2};
+        } else {
+            $text = "Unknown version change type $event_data_2";
+        }
+    }
+    if ($sensor_type == 0x2c) {
+        my %extra = (
+            0 => "",
+            1 => "Software dictated",
+            2 => "Latch operated",
+            3 => "Hotswap buton pressed",
+            4 => "automatic operation",
+            5 => "Communication lost",
+            6 => "Communication lost locally",
+            7 => "Unexpected removal",
+            8 => "Operator intervention",
+            9 => "Unknwon IPMB address",
+            10 => "Unexpected deactivation",
+            0xf => "unknown",
+            );
+        if ($extra{$event_data_2>>4}) {
+              $text = $extra{$event_data_2>>4};
+          } else {
+              $text = "Unrecognized cause ".$event_data_2>>4;
+          }
+          my $prev_state=$event_data_2 & 0xf;
+          unless ($prev_state == $offset) {
+              my %oldstates = ( 
+                0 => "Not Installed",
+                1 => "Inactive",
+                2 => "Activation requested",
+                3 => "Activating",
+                4 => "Active",
+                5 => "Deactivation requested",
+                6 => "Deactivating",
+                7 => "Communication lost",
+            );
+            if ($oldstates{$prev_state}) {
+                $text .= "(was ".$oldstates{$prev_state}.")";
+            } else {
+                $text .= "(was in unrecognized state $prev_state)";
+            }
+          }
+    }
+
+
 
 	return($text);
 }
