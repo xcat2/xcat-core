@@ -74,11 +74,11 @@ sub process_request {
     }
     else { $file = $_; }
 
-    my $mntopts;
+    my $mntopts = "-t udf,iso9660"; #Prefer udf formate to iso when media supports both, like MS media
     if (-r $file and -b $file) # Block device?
-      { $mntopts = "-o ro"; }
+      { $mntopts .= " -o ro"; }
     elsif (-r $file and -f $file) # Assume ISO file
-      { $mntopts = "-o ro,loop"; }
+      { $mntopts .= " -o ro,loop"; }
     else {
       $callback->({error=>"The management server was unable to find/read $file. Ensure that file exists on the server at the specified location."});
       return;
