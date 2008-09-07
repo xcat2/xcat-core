@@ -500,6 +500,17 @@ sub tabdump
     $cb->(\%rsp);
 }
 
+sub getTableColumn {
+    my $string = shift;
+    if ($shortnames{$string}) {
+            return @{$shortnames{$string}};
+    }
+    unless ($string =~ /\./) {
+        return undef;
+    }
+    return split /\./,$string,2;
+}
+
 sub nodech
 {
     my $nodes    = shift;
@@ -570,6 +581,7 @@ sub nodech
     my $value;
     my $temp;
     my %tables;
+    my %criteria=();
     my $tab;
 
     #print Dumper($deletemode);
@@ -585,12 +597,47 @@ sub nodech
             $tables{$_} = 1;
             next;
         }
-        unless (m/=/)
+        unless (m/=/ or m/!~/)
         {
             $callback->({error => ["Malformed argument $_ ignored."],errorcode=>1});
             next;
         }
+        my $stable;
+        my $scolumn;
+        #Check for selection criteria
+        if (m/^[^=]*==/) {
+            ($temp,$value)=split /==/,$_,2;
+            ($stable,$scolumn)=getTableColumn($temp);
+            $criteria{$stable}->{$scolumn}=[$value,'match'];
+
+            next; #Is a selection criteria, not an assignment specification
+        } elsif (m/^[^=]*!=/) {
+            ($temp,$value)=split /!=/,$_,2;
+            ($stable,$scolumn)=getTableColumn($temp);
+            $criteria{$stable}->{$scolumn}=[$value,'natch'];
+            next; #Is a selection criteria, not an assignment specification
+        } elsif (m/^[^=]*=~/) {
+            ($temp,$value)=split /=~/,$_,2;
+            ($stable,$scolumn)=getTableColumn($temp);
+            $value =~ s/^\///;
+            $value =~ s/\/$//;
+            $criteria{$stable}->{$scolumn}=[$value,'regex'];
+            next; #Is a selection criteria, not an assignment specification
+        } elsif (m/^[^=]*!~/) {
+            ($temp,$value)=split /!~/,$_,2;
+            ($stable,$scolumn)=getTableColumn($temp);
+            $value =~ s/^\///;
+            $value =~ s/\/$//;
+            $criteria{$stable}->{$scolumn}=[$value,'negex'];
+            next; #Is a selection criteria, not an assignment specification
+        }
+        #Now definitely an assignment
+                        
         ($temp, $value) = split('=', $_, 2);
+        $value =~ s/^@//; #Allow the =@ operator to exist for an unambiguous assignmenet operator
+                          #So before, table.column==value meant set to =value, now it would be matching value
+                          #the new way would be table.column=@=value to be unambiguous
+                          #now a value like '@hi' would be set with table.column=@@hi
         my $op = '=';
         if ($temp =~ /,$/)
         {
@@ -620,6 +667,38 @@ sub nodech
         # Keep a list of the value/op pairs, in case there is more than 1 per table.column
         #$tables{$table}->{$column} = [$value, $op];
         push @{$tables{$table}->{$column}}, ($value, $op);
+    }
+    my %nodehash;
+    if (keys %criteria) {
+        foreach (@$nodes) {
+            $nodehash{$_}=1;
+        }
+    }
+    foreach $tab (keys %criteria) {
+        my $tabhdl = xCAT::Table->new($tab, -create => 1, -autocommit => 0);
+        my @columns=keys %{$criteria{$tab}};
+        my $tabhash = $tabhdl->getNodesAttribs($nodes,\@columns);
+        my $node;
+        my $col;
+        my $rec;
+        foreach $node (@$nodes) {
+            foreach $rec (@{$tabhash->{$node}}) {
+                foreach $col (@columns) {
+                    my $value=$criteria{$tab}->{$col}->[0];
+                    unless (defined $value) {
+                        $value = "";
+                    }
+                    my $matchtype=$criteria{$tab}->{$col}->[1];
+                    if ($matchtype eq 'match' and not ($rec->{$col} eq $value) or
+                        $matchtype eq 'natch' and ($rec->{$col} eq $value) or
+                        $matchtype eq 'regex' and ($rec->{$col} !~ /$value/) or
+                        $matchtype eq 'negex' and ($rec->{$col} =~ /$value/)) {
+                        delete $nodehash{$node};
+                    }
+                }
+            }
+        }
+        $nodes = [keys %nodehash];
     }
     foreach $tab (keys %tables)
     {
@@ -687,7 +766,6 @@ sub nodech
 
                     if (keys %uhsh)
                     {
-
                         my @rc = $tabhdl->setNodeAttribs($node, \%uhsh);
                         if (not defined($rc[0]))
                         {
