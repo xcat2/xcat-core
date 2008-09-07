@@ -16,7 +16,7 @@ my $cachethreshold=16; #How many nodes in 'getNodesAttribs' before switching to 
 
 use DBI;
 
-#use strict;
+use strict;
 #use Data::Dumper;
 use Scalar::Util qw/weaken/;
 require xCAT::Schema;
@@ -947,8 +947,19 @@ sub getNodesAttribs {
     if (scalar($nodelist) > $cachethreshold) {
         $self->{_use_cache} = 0;
         $self->{nodelist}->{_use_cache}=0;
-        $self->_build_cache(\@attribs);
-        $self->{nodelist}->_build_cache(['node','groups']);
+        if ($self->{tabname} eq 'nodelist') { #a sticky situation
+            my @locattribs=@attribs;
+            unless (grep(/^node$/,@locattribs)) {
+                push @locattribs,'node';
+            }
+            unless (grep(/^groups$/,@locattribs)) {
+                push @locattribs,'node';
+            }
+            $self->_build_cache(\@locattribs);
+        } else {
+            $self->_build_cache(\@attribs);
+            $self->{nodelist}->_build_cache(['node','groups']);
+        }
         $self->{_use_cache} = 1;
         $self->{nodelist}->{_use_cache}=1;
     }
@@ -1019,7 +1030,7 @@ sub getNodeAttribs
     my $datum;
     my @data = $self->getNodeAttribs_nosub($node, \@attribs);
     #my ($datum, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
-    if ($extra) { return undef; }    # return (undef,"Ambiguous query"); }
+    #if ($extra) { return undef; }    # return (undef,"Ambiguous query"); }
     defined($data[0])
       || return undef;    #(undef,"No matching entry found in configuration");
     my $attrib;
