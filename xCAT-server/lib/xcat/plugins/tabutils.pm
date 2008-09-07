@@ -827,6 +827,8 @@ sub nodels
                 }
                 elsif ($temp =~ /^[^=]*=~/) {
                     ($temp,$value) = split /=~/,$temp,2;
+                    $value =~ s/^\///;
+                    $value =~ s/\/$//;
                     $matchtype='regex';
                 }
                 elsif ($temp =~ /[^=]*==/) {
@@ -835,6 +837,8 @@ sub nodels
                 }
                 elsif ($temp =~ /[^=]*!~/) {
                     ($temp,$value) = split /!~/,$temp,2;
+                    $value =~ s/^\///;
+                    $value =~ s/\/$//;
                     $matchtype='negex';
                 }
                 if ($shortnames{$temp})
