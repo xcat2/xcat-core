@@ -4232,7 +4232,7 @@ sub getchanauthcap {
 	my @response;
 	my $code;
 
-	@data = ($rqsa,$seqlun,0x38,0x0e,0x04);
+	@data = ($rqsa,$seqlun,0x38,0x8e,0x04);
 	@rn = ($rssa,$netfun);
 	$length = (scalar @data)+4;
 	
@@ -4266,7 +4266,7 @@ sub getchanauthcap {
 
 	$channel_number=$response[21];
 
-	if($response[22] & 0b10000000) {
+	if($response[22] & 0b10000000 and $response[24] & 0b00000010) {
 		$ipmiv2=1;
 	}
 	if($response[22] & 0b00000100) {
