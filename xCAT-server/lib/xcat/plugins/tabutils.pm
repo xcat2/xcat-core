@@ -818,7 +818,25 @@ sub nodels
             {
                 my $table;
                 my $column;
+                my $value;
+                my $matchtype;
                 my $temp = $_;
+                if ($temp =~ /^[^=]*\!=/) {
+                    ($temp,$value) = split /!=/,$temp,2;
+                    $matchtype='natch';
+                }
+                elsif ($temp =~ /^[^=]*=~/) {
+                    ($temp,$value) = split /=~/,$temp,2;
+                    $matchtype='regex';
+                }
+                elsif ($temp =~ /[^=]*==/) {
+                    ($temp,$value) = split /==/,$temp,2;
+                    $matchtype='match';
+                }
+                elsif ($temp =~ /[^=]*!~/) {
+                    ($temp,$value) = split /!~/,$temp,2;
+                    $matchtype='negex';
+                }
                 if ($shortnames{$temp})
                 {
                     ($table, $column) = @{$shortnames{$temp}};
@@ -848,11 +866,14 @@ sub nodels
                 unless (grep /^$column$/, @{$tables{$table}})
                 {
                     push @{$tables{$table}},
-                      [$column, $temp];    #Mark this as something to get
+                      [$column, $temp,$value,$matchtype];    #Mark this as something to get
                 }
             }
             my $tab;
             my %noderecs;
+            my %filterednodes=();
+            my %mustdisplaynodes=();
+            my %forcedisplaykeys=();
             foreach $tab (keys %tables)
             {
                 my $tabh = xCAT::Table->new($tab);
@@ -861,11 +882,24 @@ sub nodels
                 #print Dumper($tables{$tab});
                 my $node;
                 my %labels;
+                my %values;
+                my %matchtypes;
                 my @cols=();
-                foreach (@{$tables{$tab}})
+                foreach (@{$tables{$tab}}) 
                 {
                     push @cols, $_->[0];
-                    $labels{$_->[0]} = $_->[1];
+                    $labels{$_->[0]} = $_->[1]; #Remember user supplied discreptions and use them
+                    if (not defined  $values{$_->[0]}) { #If selection criteria not previously specified
+                        $values{$_->[0]} = $_->[2];  #assign selection criteria
+                    } elsif (not defined $_->[2]) { #we already have selection criteria, but this field isn't that
+                        $forcedisplaykeys{$_->[0]}=1; #allow switch.switch=~switch switch.switch, for example
+                    } else { #User attempted multiple selection criteria on the same field, bail
+                        $callback->({error=>["Multiple selection critera for ".$labels{$_->[0]}]});
+                        return;
+                    }
+                    if (not defined $matchtypes{$_->[0]}) { 
+                        $matchtypes{$_->[0]} = $_->[3]; 
+                    }
                 }
                 my $removenodecol=1;
                 if (grep /^node$/,@cols) {
@@ -876,18 +910,57 @@ sub nodels
                 {
                     my @cols;
                     my $recs = $rechash->{$node}; #$tabh->getNodeAttribs($node, \@cols);
+                    my %satisfiedreqs=();
                     foreach my $rec (@$recs) {
 
                         foreach (keys %$rec)
                         {
                           if ($_ eq "node" and $removenodecol) { next; }
-                         my %datseg;
-                         unless ($terse > 0) {
-                             $datseg{data}->[0]->{desc}     = [$labels{$_}];
-                         }
-                         $datseg{data}->[0]->{contents} = [$rec->{$_}];
-                         $datseg{name} = [$node]; #{}->{contents} = [$rec->{$_}];
-                         push @{$noderecs{$node}}, \%datseg;
+                          $satisfiedreqs{$_}=1;
+                          my %datseg=();
+                          if (defined $values{$_}) {
+                              my $criteria=$values{$_}; #At least vim highlighting makes me worry about syntax in regex
+                              if ($matchtypes{$_} eq 'match' and not ($rec->{$_} eq $criteria) or
+                                  $matchtypes{$_} eq 'natch' and ($rec->{$_} eq $criteria) or
+                                  $matchtypes{$_} eq 'regex' and ($rec->{$_} !~ /$criteria/) or
+                                  $matchtypes{$_} eq 'negex' and ($rec->{$_} =~ /$criteria/)) {
+                              #unless ($rec->{$_} eq $values{$_}) { 
+                                  $filterednodes{$node}=1;
+                                  next; 
+                              }
+                              $mustdisplaynodes{$node}=1;
+                              unless ($forcedisplaykeys{$_}) { next; } #skip if only specified once on command line
+                          } 
+                          unless ($terse > 0) {
+                              $datseg{data}->[0]->{desc}     = [$labels{$_}];
+                          }
+                          $datseg{data}->[0]->{contents} = [$rec->{$_}];
+                          $datseg{name} = [$node]; #{}->{contents} = [$rec->{$_}];
+                          push @{$noderecs{$node}}, \%datseg;
+                        }
+                    }
+                    foreach (keys %labels) {
+                        unless (defined $satisfiedreqs{$_}) {
+                            my %dataseg;
+                            if (defined $values{$_}) {
+                                my $criteria = $values{$_};
+                              if ($matchtypes{$_} eq 'match' and not ("" eq $criteria) or
+                                  $matchtypes{$_} eq 'natch' and ("" eq $criteria) or
+                                  $matchtypes{$_} eq 'regex' and ("" !~ /$criteria/) or
+                                  $matchtypes{$_} eq 'negex' and ("" =~ /$criteria/)) {
+                              #unless ("" eq $values{$_}) { 
+                                  $filterednodes{$node}=1;
+                                  next; 
+                              }
+                              $mustdisplaynodes{$node}=1;
+                              unless ($forcedisplaykeys{$_}) { next; }
+                            } 
+                            $dataseg{name} = [ $node ];
+                            unless ($terse > 0) {
+                                $dataseg{data}->[0]->{desc} = [$labels{$_}];
+                            }
+                            $dataseg{data}->[0]->{contents} = [""];
+                            push @{$noderecs{$node}}, \%dataseg;
                         }
                     }
                 }
@@ -896,6 +969,15 @@ sub nodels
                 #$rsp->{node}->[0]->{data}->[0]->{contents}->[0] = $_;
                 $tabh->close();
                 undef $tabh;
+            }
+            foreach (keys %mustdisplaynodes) {
+                if ($filterednodes{$_} or defined $noderecs{$_}) {
+                    next;
+                }
+                $noderecs{$_}=[{name=>[$_]}];
+            }
+            foreach (keys %filterednodes) {
+                delete $noderecs{$_};
             }
             foreach (sort (keys %noderecs))
             {
