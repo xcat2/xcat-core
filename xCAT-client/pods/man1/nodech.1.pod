@@ -23,6 +23,12 @@ there.  If "^=" is used, the specified value will be removed from the attribute'
 if it is there.  You can also use "^=" and ",=" in the same command to essentially replace one item
 in the list with another.  (See the Examples section.)
 
+Additionally, as in nodels, boolean expressions can be used to further limit the scope of nodech from 
+the given noderange.  The operators supported are the same as nodels (=~, !~, ==, and !=).
+
+With these operators in mind, the unambiguous assignment operator is '=@'.  If you need, for example, to set
+the nodelist.comments to =foo, you would have to do I<nodech n1 nodelist.comments=@=foo>.
+
 See the B<xcatdb> man page for an overview of each table.
 
 The nodech command also supports some short cut names as aliases to common attributes.  See the
@@ -72,6 +78,12 @@ An error has occurred.
 To add nodes in noderange  node1-node4 with group all:
 
 B<  nodech> I<node1-node4 groups=all>
+
+=item *
+
+To put all nodes with nodepos.rack value of 2 into a group called rack2:
+
+B<  nodech> I<all> nodepos.rack==2 groups,=rack2
 
 =item *
 

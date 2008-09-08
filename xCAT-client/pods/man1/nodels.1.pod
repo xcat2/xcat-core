@@ -34,11 +34,30 @@ nodelist.groups
 
 nodehm.mgt
 
-=item B<switch>
+=back
 
-switch.switch
+nodels can also select based on table value criteria. The following operators are available: 
+
+=over 15
+
+=item B<==>
+
+Select nodes where the table.column value is exactly a certain value.
+
+=item B<!=>
+
+Select nodes where the table.column value is not a given specific value.
+
+=item B<=~>
+
+Select nodes where the table.column value matches a given regular expression.
+
+=item B<!~>
+
+Select nodes where the table.column value does not match a given regular expression.
 
 =back
+
 
 The B<nodels> command with a specific node and one or more table.attribute parameters is a good substitute
 for grep'ing through the tab files, as was typically done in xCAT 1.x.  This is because nodels will translate
@@ -156,7 +175,73 @@ To list the out-of-band mgt method for blade1:
 
 Output is similar to:
 
-   blade1: nodehm.mgt: blade
+   blade1: blade
+
+=item 7.
+
+Listing blades managed through an AMM named 'amm1'
+
+ nodels all mp.mpa==amm1
+
+Output is similar to:
+
+   blade1
+   blade10
+   blade11
+   blade12
+   blade13
+   blade2
+   blade3
+   blade4
+   blade5
+   blade6
+   blade7
+   blade8
+   blade9
+
+=item 8.
+
+Listing the switch.switch value for nodes in the second rack:
+
+ nodels all nodepos.rack==2 switch.switch
+
+Output is similar to:
+   n41: switch.switch: switch2
+   n42: switch.switch: switch2
+   n43: switch.switch: switch2
+   n44: switch.switch: switch2
+   n45: switch.switch: switch2
+   n46: switch.switch: switch2
+   n47: switch.switch: switch2
+   n55: switch.switch: switch2
+   n56: switch.switch: switch2
+   n57: switch.switch: switch2
+   n58: switch.switch: switch2
+   n59: switch.switch: switch2
+   n60: switch.switch: switch2
+
+=item 9.
+
+Listing the blade slot number for anything managed through a device with a name beginning with amm:
+
+ nodels all mp.mpa=~/^amm.*/ mp.id
+
+Output looks like:
+   blade1: mp.id: 1
+   blade10: mp.id: 10
+   blade11: mp.id: 11
+   blade12: mp.id: 12
+   blade13: mp.id: 13
+   blade2: mp.id: 2
+   blade3: mp.id: 3
+   blade4: mp.id: 4
+   blade5: mp.id: 5
+   blade6: mp.id: 6
+   blade7: mp.id: 7
+   blade8: mp.id: 8
+   blade9: mp.id: 9
+
+
 
 =back
 
