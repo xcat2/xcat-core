@@ -447,6 +447,8 @@ sub process_request
         ($ent) = $passtab->getAttribs({key => "omapi"}, qw(username password));
         unless ($ent->{username} and $ent->{password})
         {
+            $callback->({error=>["Unable to access omapi key from passwd table, add the key from dhcpd.conf or makedhcp -n to create a new one"],errorcode=>[1]});
+            syslog("local4|err","Unable to access omapi key from passwd table, unable to update DHCP configuration");
             return;
         }    # TODO sane err
              #Have nodes to update
