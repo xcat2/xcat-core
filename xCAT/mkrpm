@@ -8,6 +8,7 @@ then
 
     cd `dirname $0`
     echo '.svn' > /tmp/xcat-excludes
+    echo 'upflag' >> /tmp/xcat-excludes
 
     tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/postscripts.tar  postscripts LICENSE.html
     gzip -f /opt/freeware/src/packages/SOURCES/postscripts.tar
