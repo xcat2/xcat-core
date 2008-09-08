@@ -13,7 +13,6 @@ use warnings;
 use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
-use xCAT::NodeRange;
 use xCAT::Utils;
 use Getopt::Long;
 use xCAT::GlobalDef;
@@ -126,10 +125,10 @@ sub preprocess_updatenode {
     my $cb=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  updaenode [noderange [posts]]";
+    $rsp->{data}->[1]= "  updaenode <noderange> [posts]";
     $rsp->{data}->[2]= "  updaenode [-h|--help|-v|--version]";
-    $rsp->{data}->[3]= "     noderange is a list of nodes or groups. '\\\*' for all.";
-    $rsp->{data}->[4]= "     posts is a groups of postscript names separated by comma.";
+    $rsp->{data}->[3]= "     noderange is a list of nodes or groups.";
+    $rsp->{data}->[4]= "     posts is a comma separated list of postscript names.";
     $rsp->{data}->[5]= "     if omitted, all the postscripts will be run.";
     $cb->($rsp);
   }
@@ -166,34 +165,19 @@ sub preprocess_updatenode {
     return  \@requests;
   }
   
-  my @nodes;
+  my $nodes = $request->{node};
+  if (!$nodes) {
+    &updatenode_usage($callback);
+    return  \@requests;;
+  }
+
+  my @nodes=@$nodes; 
   my $postscripts;
-  my $bGetAll=0; 
-  if (@ARGV > 0) {
-    my $noderange=$ARGV[0];
-    if ($noderange eq '*') { $bGetAll=1;}
-    else {
-      @nodes = noderange($noderange);
-      if (nodesmissed) {
-        my $rsp={};
-        $rsp->{data}->[0]= "Invalid nodes in noderange:".join(',',nodesmissed);
-        $callback->($rsp);
-        return \@requests;
-      }
-    } 
-  } else { #get all nodes
-    $bGetAll=1;
-  }
-
-  if ($bGetAll) {
-    @nodes=getAllNodes($callback);
-  }
-
 
   if (@nodes == 0) { return \@requests; }
 
-  if (@ARGV > 1) {
-    $postscripts=$ARGV[1];
+  if (@ARGV > 0) {
+    $postscripts=$ARGV[0];
     my @posts=split(',',$postscripts);
     foreach (@posts) { 
       if ( ! -e "/install/postscripts/$_") {
@@ -205,23 +189,21 @@ sub preprocess_updatenode {
     }
   }
 
-  if (@nodes>0) {
-      # find service nodes for requested nodes
-      # build an individual request for each service node
-      my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
-      
-      # build each request for each service node
-      foreach my $snkey (keys %$sn)
-      {
-        my $reqcopy = {%$request};
-        $reqcopy->{nodes} = $sn->{$snkey};
-        $reqcopy->{'_xcatdest'} = $snkey;
-        $reqcopy->{postscripts} = [$postscripts];
-        push @requests, $reqcopy;
-      }
-      return \@requests;    
+  # find service nodes for requested nodes
+  # build an individual request for each service node
+  my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
+    
+  # build each request for each service node
+  foreach my $snkey (keys %$sn)
+  {
+    my $reqcopy = {%$request};
+    $reqcopy->{node} = $sn->{$snkey};
+    $reqcopy->{'_xcatdest'} = $snkey;
+    $reqcopy->{postscripts} = [$postscripts];
+    push @requests, $reqcopy;
   }
   return \@requests;    
+  
 }
 
 
@@ -242,11 +224,11 @@ sub updatenode {
   my $callback = shift;
   my $postscripts="";
   if (($request->{postscripts}) && ($request->{postscripts}->[0])) {  $postscripts=$request->{postscripts}->[0];}
-  my $nodes      =$request->{nodes};  
+  my $nodes      =$request->{node};  
   my $localhostname=hostname();
 
   my $nodestring=join(',', @$nodes);
-  #print "postscripts=$postscripts\n";
+  print "postscripts=$postscripts, nodestring=$nodestring\n";
 
   if ($nodestring) {
     my $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcatdsklspost $postscripts`;
@@ -259,64 +241,6 @@ sub updatenode {
   
 }
 
-#--------------------------------------------------------------------------------
-=head3   getAllNodes
-        This function gets all the nodes that has 'OSI' has nodetype.
-    Arguments:
-        callback
-    Returns:
-        an array of nodes
-=cut
-#-------------------------------------------------------------------------------- 
-sub getAllNodes 
-{ 
-  my $callback =shift;
-
-  my @nodes=();
- 
-  my $table=xCAT::Table->new("nodelist", -create =>0);
-  if (!$table) {
-    my $rsp={};
-    $rsp->{data}->[0]= "Cannot open the nodelist table.";
-    $callback->($rsp);
-    return @nodes;
-  }
-  my @tmp1=$table->getAllAttribs(('node'));
-
-  my $table3=xCAT::Table->new("nodetype", -create =>0);
-  if (!$table3) {
-    my $rsp={};
-    $rsp->{data}->[0]= "Cannot open the nodetype table.";
-    $callback->($rsp);
-    return @nodes;
-  }
-
-  my @tmp3=$table3->getAllNodeAttribs(['node','nodetype']);
-  my %temp_hash3=();
-  foreach (@tmp3) {
-    $temp_hash3{$_->{node}}=$_;
-  }
-  
-  if (@tmp1 > 0) {
-    foreach(@tmp1) {
-      my $node=$_->{node};
-      my $row3=$temp_hash3{$node};
-      my $nodetype=""; #default
-      if (defined($row3) && ($row3)) {
-        if ($row3->{nodetype}) { $nodetype=$row3->{nodetype}; }
-      }
-
-      #only handle the OSI nodetype
-      if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/)) { 
-	 push(@nodes, $node);
-      } 
-    }
-  }
-  $table->close();
-  $table3->close();
- 
-  return @nodes;
-}
 
 
 
