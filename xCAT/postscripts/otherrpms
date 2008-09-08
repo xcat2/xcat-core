@@ -1,0 +1,70 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+#-------------------------------------------------------------------------------
+#=head1  otherrpms
+#=head2  It gets the extra rpms and install/update them.
+#        The environment variable OTHERRPMS contains the rpms to be installed/updated.
+#        On MN, You need to:
+#        1. put rpms under /install/post/otherrpms/os/arch directory where 'os' and 'arch'
+#           can be found in the nodetype table.
+#        2. put the name of the packages to /opt/xcat/share/xcat/netboot(install)/platform
+#           directory. The file name is one of the following:
+#              profile.os.arch.otherrpms.pkglist  
+#              profile.os.otherrpms.pkglist   
+#              profile.arch.otherrpms.pkglist  
+#              profile.otherrpms.pkglist
+#   The install/deployment process will pick up the rpms and install them on the nodes. 
+#   However, if the nodes have already installed and up and running, you can run the following
+#   command to have the extra rpms installed:
+#       updatenode noderange otherrpms 
+#   
+#=cut
+#-------------------------------------------------------------------------------
+
+#echo "OTHERRPMS=$OTHERRPMS"
+if [[ -z "$OTHERRPMS" ]]; then 
+  echo "$0: no extra rpms to install"
+  exit 0
+fi
+
+SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
+if [ -z "$SIP" ]; then
+    SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
+fi
+mkdir -p /xcatpost/post/otherrpms; 
+mkdir -p /tmp/postage/
+rm -f -R /xcatpost/post/otherrpms/*
+rm -f -R /tmp/postage/*
+cd /tmp/postage
+
+for x in `echo "$OTHERRPMS" | tr "," "\n"`
+do
+  wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/post/otherrpms/$OSVER/$ARCH/$x-* 2> /tmp/wget.log  
+done
+
+mv $SIP/post/otherrpms/* /xcatpost/post/otherrpms; 
+rm -rf $SIP
+
+cd /xcatpost/post/otherrpms/$OSVER/$ARCH
+rpm -Uvh *
+
+exit 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

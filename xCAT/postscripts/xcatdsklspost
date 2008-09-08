@@ -19,6 +19,7 @@ if [ -z "$SIP" ]; then
     SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
 fi
 
+#echo "SIP=$SIP"
     
 if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     touch /var/lock/subsys/xcatmounts
@@ -36,6 +37,7 @@ cat > /etc/stunnel/stunnel.conf << EOF
 client=yes
 foreground=no
 output=/dev/null
+#output=/var/log/stunnel.log
 verify=0
 [xcatd]
 accept=400
@@ -44,7 +46,10 @@ echo "connect=$SIP:3001" >> /etc/stunnel/stunnel.conf
 stunnel; 
 sleep 1; 
 mkdir -p /xcatpost; 
-mkdir /tmp/postage
+mkdir -p /tmp/postage
+rm -R -f /xcatpost/*
+rm -R -f /tmp/postage/*
+
 cd /tmp/postage
 #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/install/postscripts 2> /tmp/wget.log
 wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
@@ -54,16 +59,30 @@ rm -rf $SIP
 cd /xcatpost; 
 PATH=/xcatpost:$PATH
 export PATH
-chmod +x /xcatpost/*; 
+chmod +x /xcatpost/*;
+echo "PATH=$PATH" 
 /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
 MYCONT=`cat /tmp/mypostscript`
+#echo "MYCONT=$MYCONT"
 while [ -z "$MYCONT" ]; do
     let SLI=$RANDOM%10
     let SLI=10+$SLI
     sleep $SLI
     /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
     MYCONT=`cat /tmp/mypostscript`
+#    echo "MYCONT=$MYCONT"
 done
+if [ $# -gt 0 ]; then
+  POSTS=$1
+  #remove all the postscripts
+  TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
+  echo "$TMP" > /tmp/mypostscript
+  #add requested postscripts in
+  echo "$POSTS" | tr "," "\n" >> /tmp/mypostscript
+fi
+#MYCONT=`cat /tmp/mypostscript`
+#echo "$MYCONT"
+
 chmod +x /tmp/mypostscript
 if [ -x /tmp/mypostscript ];then
    /tmp/mypostscript
@@ -71,3 +90,12 @@ fi
 rm -f /tmp/mypostscript
 killall stunnel
 rm -rf /etc/stunnel
+
+
+
+
+
+
+
+
+
