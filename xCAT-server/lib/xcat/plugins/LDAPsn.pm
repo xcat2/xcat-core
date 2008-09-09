@@ -12,7 +12,7 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head1 
-  xCAT plugin package to setup of LDAP on the ServiceNode 
+  xCAT plugin package to setup of LDAP on the Linux ServiceNode 
 
 
 #-------------------------------------------------------
@@ -33,7 +33,10 @@ sub handled_commands
     if ($ENV{'XCATBYPASS'}) {
        return 0;
     }
-
+    if (xCAT::Utils->isAIX()) { # do not run on AIX
+       return 0;
+    }
+ 
     my $rc = 0;
     if (xCAT::Utils->isServiceNode())
     {

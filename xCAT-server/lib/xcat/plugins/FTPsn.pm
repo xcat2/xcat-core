@@ -13,16 +13,16 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head1
-  xCAT plugin package to setup vstftp on a  service node
+  xCAT plugin package to setup vstftp on a  Linux service node
 
 
 #-------------------------------------------------------
 
 =head3  handled_commands
 
-This runs on Service Node
+This runs on Linux Service Node
 Checks servicenode table ftpserver attribute
-Call  setup_TFTP  (actually setting up atftp)
+Call  setup_TFTP  (actually setting up vstftp)
 
 =cut
 
@@ -32,6 +32,9 @@ sub handled_commands
 {
     # If called in XCATBYPASS mode, don't do any setup
     if ($ENV{'XCATBYPASS'}) {
+       return 0;
+    }
+    if (xCAT::Utils->isAIX()) { # do not run on AIX
        return 0;
     }
 

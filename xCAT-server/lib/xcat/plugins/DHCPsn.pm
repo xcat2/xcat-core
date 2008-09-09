@@ -21,7 +21,7 @@ use Getopt::Long;
 
 =head3  handled_commands 
 
-Check to see if on a Service Node
+Check to see if on a Linux Service Node
 Check database to see if this node is a DHCP server
 Call  setup_DHCP
 
@@ -33,6 +33,9 @@ sub handled_commands
 {
     # If called in XCATBYPASS mode, don't do any setup
     if ($ENV{'XCATBYPASS'}) {
+       return 0;
+    }
+    if (xCAT::Utils->isAIX()) { # do not run on AIX
        return 0;
     }
 

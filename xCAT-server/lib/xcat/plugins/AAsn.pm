@@ -15,7 +15,7 @@ use Getopt::Long;
 =head1
 
   mounts /install if site.installloc set
-
+  on a Linux Service Node
 
 #-------------------------------------------------------
 
@@ -35,6 +35,10 @@ sub handled_commands
     if ($ENV{'XCATBYPASS'}) {
        return 0;
     }
+    if (xCAT::Utils->isAIX()) { # do not run on AIX
+       return 0;
+    }
+
 
     my $rc = 0;
 
