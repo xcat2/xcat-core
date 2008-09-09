@@ -135,11 +135,16 @@ sub setstate {
         }
      }
   }
+  my $hassymlink = eval { symlink("",""); 1 };
   foreach $ip (keys %ipaddrs) {
    my @ipa=split(/\./,$ip);
    my $pname = sprintf("%02x%02x%02x%02x",@ipa);
    unlink($tftpdir."/etc/".$pname);
-   link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
+   if ($hassymlink) { 
+    symlink($node,$tftpdir."/etc/".$pname);
+   } else {
+    link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
+   }
   }
 }
   

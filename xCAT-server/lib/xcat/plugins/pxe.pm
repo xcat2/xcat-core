@@ -126,11 +126,16 @@ sub setstate {
          }
      }
   }
+  my $hassymlink = eval { symlink("",""); 1 };
   foreach $ip (keys %ipaddrs) {
    my @ipa=split(/\./,$ip);
    my $pname = sprintf("%02X%02X%02X%02X",@ipa);
    unlink($tftpdir."/pxelinux.cfg/".$pname);
-   link($tftpdir."/pxelinux.cfg/".$node,$tftpdir."/pxelinux.cfg/".$pname);
+   if ($hassymlink) { 
+    symlink($node,$tftpdir."/pxelinux.cfg/".$pname);
+   } else {
+    link($tftpdir."/pxelinux.cfg/".$node,$tftpdir."/pxelinux.cfg/".$pname);
+   }
   }
 }
   
