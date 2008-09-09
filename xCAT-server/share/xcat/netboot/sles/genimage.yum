@@ -90,6 +90,7 @@ unless (grep /af_packet/,@ndrivers) {
 
 unless ($onlyinitrd) {
    my $srcdir = "$installroot/$osver/$arch/1";
+   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch/1";
    find(\&isyumdir, <$srcdir/>);
    print Dumper(@yumdirs);
    unless (scalar(@yumdirs)) {
@@ -105,7 +106,10 @@ unless ($onlyinitrd) {
       $repnum += 1;
    }
    $repnum-=1;
+   #add the section for other packages
+   print $yumconfig "[$osver-$arch-otherpkgs]\nname=$osver-$arch-otherpkgs\nbaseurl=file://$srcdir_otherpkgs\ngpgpcheck=0\n\n";
    close($yumconfig);
+
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/etc";
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/dev";
    #system "mount -o bind /dev $installroot/netboot/$osver/$arch/$profile/rootimg/dev";
@@ -118,6 +122,7 @@ unless ($onlyinitrd) {
    $yumcmd .= "install ";
    mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
    #my $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -y ";
+
    my $pkglist;
    if (-r "$pathtofiles/$profile.$osver.$arch.pkglist") {
       $pkglist = "$pathtofiles/$profile.$osver.$arch.pkglist";
@@ -136,6 +141,29 @@ unless ($onlyinitrd) {
       chomp;
       $yumcmd .= $_ . " ";
    }
+   close($yumconfig);
+
+   #get otherpackage list into yum command
+   my $otherpkglist;
+   if (-r "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$arch.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$arch.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$osver.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$osver.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.otherpkgs.pkglist";
+   } 
+   if ($otherpkglist) {
+     open($yumconfig,"<","$otherpkglist");
+     while (<$yumconfig>) {
+        chomp;
+        $yumcmd .= $_ . " ";
+     }
+     close($yumconfig);
+   }
+
+
    $yumcmd =~ s/ $/\n/;
    my $rc = system($yumcmd);
    if ($rc) { 

@@ -661,7 +661,7 @@ if ((!-r "/etc/xcat/postscripts.sqlite") || $::FORCE)
     else
     {
        $chtabcmds =
-         "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell';";
+         "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,otherpkgs';";
     }
 
     $chtabcmds .=

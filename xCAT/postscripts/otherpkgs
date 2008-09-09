@@ -2,28 +2,28 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
-#=head1  otherrpms
+#=head1  otherpkgs
 #=head2  It gets the extra rpms and install/update them.
-#        The environment variable OTHERRPMS contains the rpms to be installed/updated.
+#        The environment variable OTHERPKGS contains the rpms to be installed/updated.
 #        On MN, You need to:
-#        1. put rpms under /install/post/otherrpms/os/arch directory where 'os' and 'arch'
+#        1. put rpms under /install/post/otherpkgs/os/arch directory where 'os' and 'arch'
 #           can be found in the nodetype table.
 #        2. put the name of the packages to /opt/xcat/share/xcat/netboot(install)/platform
 #           directory. The file name is one of the following:
-#              profile.os.arch.otherrpms.pkglist  
-#              profile.os.otherrpms.pkglist   
-#              profile.arch.otherrpms.pkglist  
-#              profile.otherrpms.pkglist
+#              profile.os.arch.otherpkgs.pkglist  
+#              profile.os.otherpkgs.pkglist   
+#              profile.arch.otherpkgs.pkglist  
+#              profile.otherpkgs.pkglist
 #   The install/deployment process will pick up the rpms and install them on the nodes. 
 #   However, if the nodes have already installed and up and running, you can run the following
 #   command to have the extra rpms installed:
-#       updatenode noderange otherrpms 
+#       updatenode noderange otherpkgs 
 #   
 #=cut
 #-------------------------------------------------------------------------------
 
-#echo "OTHERRPMS=$OTHERRPMS"
-if [[ -z "$OTHERRPMS" ]]; then 
+#echo "OTHERPKGS=$OTHERPKGS"
+if [[ -z "$OTHERPKGS" ]]; then 
   echo "$0: no extra rpms to install"
   exit 0
 fi
@@ -32,21 +32,21 @@ SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 
 if [ -z "$SIP" ]; then
     SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
 fi
-mkdir -p /xcatpost/post/otherrpms; 
+mkdir -p /xcatpost/post/otherpkgs; 
 mkdir -p /tmp/postage/
-rm -f -R /xcatpost/post/otherrpms/*
+rm -f -R /xcatpost/post/otherpkgs/*
 rm -f -R /tmp/postage/*
 cd /tmp/postage
 
-for x in `echo "$OTHERRPMS" | tr "," "\n"`
+for x in `echo "$OTHERPKGS" | tr "," "\n"`
 do
-  wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/post/otherrpms/$OSVER/$ARCH/$x-* 2> /tmp/wget.log  
+  wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/$x-* 2> /tmp/wget.log  
 done
 
-mv $SIP/post/otherrpms/* /xcatpost/post/otherrpms; 
+mv $SIP/post/otherpkgs/* /xcatpost/post/otherpkgs; 
 rm -rf $SIP
 
-cd /xcatpost/post/otherrpms/$OSVER/$ARCH
+cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
 rpm -Uvh *
 
 exit 0

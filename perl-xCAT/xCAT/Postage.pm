@@ -225,28 +225,28 @@ sub makescript {
     if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
     my $pathtofiles="$::XCATROOT/share/xcat/$stat/$platform";
     my $pkglist;
-    if (-r "$pathtofiles/$profile.$os.$arch.otherrpms.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$os.$arch.otherrpms.pkglist";
-    } elsif (-r "$pathtofiles/$profile.$arch.otherrpms.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$arch.otherrpms.pkglist";
-    } elsif (-r "$pathtofiles/$profile.$os.otherrpms.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$os.otherrpms.pkglist";
-    } elsif (-r "$pathtofiles/$profile.otherrpms.pkglist") {
-      $pkglist = "$pathtofiles/$profile.otherrpms.pkglist";
+    if (-r "$pathtofiles/$profile.$os.$arch.otherpkgs.pkglist") {
+      $pkglist = "$pathtofiles/$profile.$os.$arch.otherpkgs.pkglist";
+    } elsif (-r "$pathtofiles/$profile.$arch.otherpkgs.pkglist") {
+      $pkglist = "$pathtofiles/$profile.$arch.otherpkgs.pkglist";
+    } elsif (-r "$pathtofiles/$profile.$os.otherpkgs.pkglist") {
+      $pkglist = "$pathtofiles/$profile.$os.otherpkgs.pkglist";
+    } elsif (-r "$pathtofiles/$profile.otherpkgs.pkglist") {
+      $pkglist = "$pathtofiles/$profile.otherpkgs.pkglist";
     }
 
     if ($pkglist) {
-      my @otherrpms=();
+      my @otherpkgs=();
       if (open(FILE1, "<$pkglist")) {
         while (readline(FILE1)) {
 	  chomp($_);
-          push(@otherrpms,$_);
+          push(@otherpkgs,$_);
         }
         close(FILE1);
       } 
-      if ( @otherrpms > 0) { 
-        push @scriptd, "OTHERRPMS=". join(',',@otherrpms) . " \n";
-        push @scriptd, "export OTHERRPMS\n";
+      if ( @otherpkgs > 0) { 
+        push @scriptd, "OTHERPKGS=". join(',',@otherpkgs) . " \n";
+        push @scriptd, "export OTHERPKGS\n";
      }    
     }
   }
@@ -255,13 +255,11 @@ sub makescript {
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-start-here\n";
 
-  my $hasotherrpms=0;
   # get the xcatdefaults entry in the postscripts table
   my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts');
   my $defscripts = $et->{'postscripts'};
   if ($defscripts) {
   	foreach my $n (split(/,/, $defscripts)) {
-	    if ((!$hasotherrpms) && ($n eq "otherrpms")) { $hasotherrpms =1;}
 	    push @scriptd, $n."\n";
  	}
   }
@@ -271,12 +269,10 @@ sub makescript {
   $ps = $et->{'postscripts'};
   if ($ps) {
 	foreach my $n (split(/,/, $ps)) {
-	    if ((!$hasotherrpms) && ($n eq "otherrpms")) { $hasotherrpms =1;}
 		push @scriptd, $n."\n";
 	}
   }
 
-  if (!$hasotherrpms) { push @scriptd, "otherrpms\n";}
  
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-end-here\n";

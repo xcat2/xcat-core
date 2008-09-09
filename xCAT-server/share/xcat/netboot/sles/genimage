@@ -89,6 +89,7 @@ unless (grep /af_packet/,@ndrivers) {
 
 unless ($onlyinitrd) {
    my $srcdir = "$installroot/$osver/$arch/1";
+   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch/1";
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/etc";
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/dev";
    #system "mount -o bind /dev $installroot/netboot/$osver/$arch/$profile/rootimg/dev";
@@ -97,6 +98,7 @@ unless ($onlyinitrd) {
    print $fd "#Dummy fstab for rpm postscripts to see\n";
    close($fd);
    system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir");
+   system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir_otherpkgs");
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* ";
    #$yumcmd .= "install ";
    #mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
@@ -119,6 +121,28 @@ unless ($onlyinitrd) {
       chomp;
       $yumcmd .= $_ . " ";
    }
+   close($yumconfig);
+
+   #get otherpackage list into yum command
+   my $otherpkglist;
+   if (-r "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$arch.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$arch.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$osver.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$osver.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.otherpkgs.pkglist";
+   } 
+   if ($otherpkglist) {
+     open($yumconfig,"<","$otherpkglist");
+     while (<$yumconfig>) {
+        chomp;
+        $yumcmd .= $_ . " ";
+     }
+     close($yumconfig);
+   }
+
    $yumcmd =~ s/ $/\n/;
    my $rc = system($yumcmd);
    if ($rc) { 
