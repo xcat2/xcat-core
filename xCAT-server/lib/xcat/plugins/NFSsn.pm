@@ -13,8 +13,7 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head1 
-  xCAT plugin package to start nfs  
-
+  xCAT plugin package to start nfs  on the Linux of AIX Service Node
 
 #-------------------------------------------------------
 
@@ -59,7 +58,12 @@ sub handled_commands
         {
             if ($rc == 2)
             {    # just start the daemon
-                system "service nfs restart";
+                if (xCAT::Utils->isLinux()) { 
+                  system "service nfs restart";
+                } else {  # AIX
+                   system "stopsrc -s nfsd";
+                   system "startsrc -s nfsd";
+                }
                 if ($? > 0)
                 {    # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd");
@@ -89,7 +93,7 @@ sub process_request
 
 =head3 setup_NFS 
 
-    Sets up NFS services   
+    Sets up NFS services on Service Node for AIX and Linux   
 
 =cut
 
@@ -98,15 +102,21 @@ sub setup_NFS
 {
     my ($nodename) = @_;
     my $rc = 0;
-
-    system "chkconfig nfs on";
-    if ($? > 0)
-    {    # error
-        xCAT::MsgUtils->message("S", "Error on command:$cmd");
+    if (xCAT::Utils->isLinux()) { 
+      system "chkconfig nfs on";
+      if ($? > 0)
+      {    # error
+          xCAT::MsgUtils->message("S", "Error on command:$cmd");
+      }
     }
 
     # make sure nfs is restarted
-    system "service nfs restart";
+    if (xCAT::Utils->isLinux()) { 
+        system "service nfs restart";
+    } else {  # AIX
+        system "stopsrc -s nfsd";
+        system "startsrc -s nfsd";
+    }
     if ($? > 0)
     {
         xCAT::MsgUtils->message("S", "Error on command: $cmd");
