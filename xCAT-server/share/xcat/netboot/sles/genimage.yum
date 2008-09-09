@@ -90,7 +90,6 @@ unless (grep /af_packet/,@ndrivers) {
 
 unless ($onlyinitrd) {
    my $srcdir = "$installroot/$osver/$arch/1";
-   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch/1";
    find(\&isyumdir, <$srcdir/>);
    print Dumper(@yumdirs);
    unless (scalar(@yumdirs)) {
@@ -98,6 +97,11 @@ unless ($onlyinitrd) {
       print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch\n";
       exit 1;
    }
+
+   #this is for extra packages
+   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch/1";
+   my $pkgnames=get_extra_package_names();
+
    my $yumconfig;
    open($yumconfig,">","/tmp/genimage.$$.yum.conf");
    my $repnum=0;
@@ -107,7 +111,9 @@ unless ($onlyinitrd) {
    }
    $repnum-=1;
    #add the section for other packages
-   print $yumconfig "[$osver-$arch-otherpkgs]\nname=$osver-$arch-otherpkgs\nbaseurl=file://$srcdir_otherpkgs\ngpgpcheck=0\n\n";
+   if ($pkgnames) {
+     print $yumconfig "[$osver-$arch-otherpkgs]\nname=$osver-$arch-otherpkgs\nbaseurl=file://$srcdir_otherpkgs\ngpgpcheck=0\n\n";
+   }
    close($yumconfig);
 
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/etc";
@@ -143,26 +149,10 @@ unless ($onlyinitrd) {
    }
    close($yumconfig);
 
-   #get otherpackage list into yum command
-   my $otherpkglist;
-   if (-r "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist") {
-      $otherpkglist = "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist";
-   } elsif (-r "$pathtofiles/$profile.$arch.otherpkgs.pkglist") {
-      $otherpkglist = "$pathtofiles/$profile.$arch.otherpkgs.pkglist";
-   } elsif (-r "$pathtofiles/$profile.$osver.otherpkgs.pkglist") {
-      $otherpkglist = "$pathtofiles/$profile.$osver.otherpkgs.pkglist";
-   } elsif (-r "$pathtofiles/$profile.otherpkgs.pkglist") {
-      $otherpkglist = "$pathtofiles/$profile.otherpkgs.pkglist";
-   } 
-   if ($otherpkglist) {
-     open($yumconfig,"<","$otherpkglist");
-     while (<$yumconfig>) {
-        chomp;
-        $yumcmd .= $_ . " ";
-     }
-     close($yumconfig);
-   }
-
+   #append extra package names to yum command 
+   if ($pkgnames) {
+       $yumcmd .= " $pkgnames ";
+   }   
 
    $yumcmd =~ s/ $/\n/;
    my $rc = system($yumcmd);
@@ -423,7 +413,7 @@ EOMS
       } else {
          my $srcpath = "$installroot/netboot/$osver/$arch/$profile/rootimg/$_";
          if (-f "$pathtofiles/$_") {
-            $srcpatch = "$pathtofiles/$_";
+            $srcpath = "$pathtofiles/$_";
          }
          copy("$srcpath","/tmp/xcatinitrd.$$/$_");
          chmod 0755,"/tmp/xcatinitrd.$$/".$_;
@@ -561,4 +551,31 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       system("ln -s ../gettyset $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/rc3.d/S60gettyset");
    }
    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+}
+
+
+#get th extra package name
+sub get_extra_package_names {
+   my $otherpkglist;
+   my $pkgnames;
+   if (-r "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$arch.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$arch.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$osver.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.$osver.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.otherpkgs.pkglist") {
+      $otherpkglist = "$pathtofiles/$profile.otherpkgs.pkglist";
+   } 
+   if ($otherpkglist) {
+     my $pkgfile;
+     open($pkgfile,"<","$otherpkglist");
+     while (<$pkgfile>) {
+        chomp;
+        $pkgnames .= $_ . " ";
+     }
+     close($pkgfile);
+   }
+
+   return $pkgnames;
 }
