@@ -12,7 +12,7 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head1
-  xCAT plugin package to setup of DNS
+  xCAT plugin package to setup of DNS on Linux and AIX service nodes
 
 
 #-------------------------------------------------------
@@ -57,7 +57,13 @@ sub handled_commands
         {
             if ($rc == 2)
             {    # service setup, just start the daemon
-                $cmd = "service named start";
+                if (xCAT::Utils->isLinux()) {
+                  system "service named restart";
+                } else {  # AIX
+                   system "stopsrc -s named";
+                   system "startsrc -s named";
+                }
+
                 system $cmd;
                 if ($? > 0)
                 {    # error
@@ -101,15 +107,24 @@ sub setup_DNS
     system("/opt/xcat/sbin/makenamed.conf");
     # turn DNS on
 
-    $cmd = "chkconfig named on";
-    system $cmd;
-    if ($? > 0)
-    {
+    if (xCAT::Utils->isLinux()) {
+      $cmd = "chkconfig named on";
+      system $cmd;
+      if ($? > 0)
+      {
         xCAT::MsgUtils->message("S", "Error from $cmd");
         return 1;
+      }
     }
-    $cmd = "service named restart";
-    system $cmd;
+    if (xCAT::Utils->isLinux()) {
+      $cmd = "service named restart";
+      system $cmd;
+    } else {
+      $cmd = "stopsrc -s named";
+      system $cmd;
+      $cmd = "startsrc -s named";
+      system $cmd;
+    }
     if ($? > 0)
     {
         xCAT::MsgUtils->message("S", "Error from $cmd");
