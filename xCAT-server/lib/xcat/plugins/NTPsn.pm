@@ -10,7 +10,7 @@ use File::Path;
 #-------------------------------------------------------
 
 =head1 
-  xCAT plugin package to setup NTP on a  service node 
+  xCAT plugin package to setup NTP on a  Linux service node 
 
 
 #-------------------------------------------------------
