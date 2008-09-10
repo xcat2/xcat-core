@@ -386,6 +386,17 @@ ll~;
 		}
 		chomp $type;
 
+		if ( !($type =~ /standalone/) ) {
+            #error - only support standalone for now
+            #   - use mkdsklsnode for diskless/dataless nodes
+            my $rsp;
+            push @{$rsp->{data}}, "Use the mkdsklsnode command to initialize diskless/dataless nodes.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            $error++;
+            push(@nodesfailed, $node);
+            next;
+        }
+
 		# set the NIM install method (rte or mksysb)
         my $method="rte";
         if ($imagehash{$image_name}{nimmethod} ) {
@@ -687,7 +698,7 @@ sub mknimimage
 		# if its not installed then run
 		#   - takes 21 sec even when already configured
 		my $nimcmd = "nim_master_setup -a mk_resource=no -a device=$::opt_s";
-		my $nimout = xCAT::Utils->runcmd("$lsnimcmd", -1);
+		my $nimout = xCAT::Utils->runcmd("$nimcmd", -1);
 		if ($::RUNCMD_RC  != 0) {
 			my $rsp;
 			push @{$rsp->{data}}, "Could install and configure NIM.\n";
@@ -1200,6 +1211,19 @@ sub mk_lpp_source
 			} else {
 				$loc = "/install/nim/lpp_source/$lppsrcname";
 			}
+			
+			# create resource location 
+            my $cmd = "/usr/bin/mkdir -p $loc";
+            my $output = xCAT::Utils->runcmd("$cmd", -1);
+            if ($::RUNCMD_RC  != 0) {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not create $loc.\n";
+                if ($::VERBOSE) {
+                    push @{$rsp->{data}}, "$output\n";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return undef;
+            }
 
 			# check the file system space needed ????
 			#  about 1500 MB for a basic lpp_source???
@@ -1346,6 +1370,19 @@ sub mk_spot
 					$loc = "/install/nim/spot";
 				}
 
+				# create resource location
+                my $cmd = "/usr/bin/mkdir -p $loc";
+                my $output = xCAT::Utils->runcmd("$cmd", -1);
+                if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not create $loc.\n";
+                    if ($::VERBOSE) {
+                        push @{$rsp->{data}}, "$output\n";
+                    }
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return undef;
+                }
+
 				# check the file system space needed 
 				#	500 MB for spot ?? 64MB for tftpboot???
 				my $spotsize = 500;
@@ -1353,7 +1390,20 @@ sub mk_spot
                 	# error
 					return undef;
                 }
+
 				$loc = "/tftpboot";
+				# create resource location
+                my $cmd = "/usr/bin/mkdir -p $loc";
+                my $output = xCAT::Utils->runcmd("$cmd", -1);
+                if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not create $loc.\n";
+                    if ($::VERBOSE) {
+                        push @{$rsp->{data}}, "$output\n";
+                    }
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return undef;
+                }
 				my $tftpsize = 64;
 				if (&chkFSspace($loc, $tftpsize, $callback) != 0) {
                     # error
@@ -1429,8 +1479,8 @@ sub mk_bosinst_data
 
 			my $cmd = "mkdir -p $loc";
 
-           my $output = xCAT::Utils->runcmd("$cmd", -1);
-           if ($::RUNCMD_RC  != 0) {
+           	my $output = xCAT::Utils->runcmd("$cmd", -1);
+           	if ($::RUNCMD_RC  != 0) {
                 my $rsp;
                 push @{$rsp->{data}}, "Could not create a NIM definition for \'$bosinst_data_name\'.\n";
 				if ($::VERBOSE) {
@@ -2506,69 +2556,78 @@ sub update_dd_boot {
 	my $callback = shift;
 
 	my @lines;
-	my $patch = qq~\n\t# xCAT support\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
 
-	# back up the original file
-	my $cmd    = "cp -f $dd_boot_file $dd_boot_file.orig";
- 	my $output = xCAT::Utils->runcmd("$cmd", -1);
-	if ($::RUNCMD_RC  != 0)
-	{
-		my $rsp;
-        push @{$rsp->{data}}, "Could not copy $dd_boot_file.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-	}
-	
-	if ( open(DDBOOT, "<$dd_boot_file") ) {
-		@lines = <DDBOOT>;
-		close(DDBOOT);
-	} else {
-		my $rsp;
-        push @{$rsp->{data}}, "Could not open $dd_boot_file for reading.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
-	}
+	# see if orig file exists
+	if (-e $dd_boot_file) {
 
-	# remove the file
-	my $cmd    = "rm $dd_boot_file";
-	my $output = xCAT::Utils->runcmd("$cmd", -1);
-	if ($::RUNCMD_RC  != 0)
-    {
-		my $rsp;
-        push @{$rsp->{data}}, "Could not remove original $dd_boot_file.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
+		my $patch = qq~\n\t# xCAT support\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
 
-	# Create a new one
-	my $dontupdate=0;
-	if ( open(DDBOOT, ">$dd_boot_file") ) {
-		foreach my $l (@lines)
+		# back up the original file
+		my $cmd    = "cp -f $dd_boot_file $dd_boot_file.orig";
+ 		my $output = xCAT::Utils->runcmd("$cmd", -1);
+		if ($::RUNCMD_RC  != 0)
 		{
-			if ($l =~ /xCAT support/) {
-				$dontupdate=1;
-			}
-
-			if ( ($l =~ /0x620/) && (!$dontupdate) ){
-				# add the patch
-				print DDBOOT $patch;
-			}
-			print DDBOOT $l;
+			my $rsp;
+        	push @{$rsp->{data}}, "Could not copy $dd_boot_file.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return 1;
 		}
-		close(DDBOOT);
+	
+		if ( open(DDBOOT, "<$dd_boot_file") ) {
+			@lines = <DDBOOT>;
+			close(DDBOOT);
+		} else {
+			my $rsp;
+        	push @{$rsp->{data}}, "Could not open $dd_boot_file for reading.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
 
-	} else {
-		my $rsp;
-        push @{$rsp->{data}}, "Could not open $dd_boot_file for writing.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+		# remove the file
+		my $cmd    = "rm $dd_boot_file";
+		my $output = xCAT::Utils->runcmd("$cmd", -1);
+		if ($::RUNCMD_RC  != 0)
+    	{
+			my $rsp;
+        	push @{$rsp->{data}}, "Could not remove original $dd_boot_file.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return 1;
+    	}
+
+		# Create a new one
+		my $dontupdate=0;
+		if ( open(DDBOOT, ">$dd_boot_file") ) {
+			foreach my $l (@lines)
+			{
+				if ($l =~ /xCAT support/) {
+					$dontupdate=1;
+				}
+
+				if ( ($l =~ /0x620/) && (!$dontupdate) ){
+					# add the patch
+					print DDBOOT $patch;
+				}
+				print DDBOOT $l;
+			}
+			close(DDBOOT);
+
+		} else {
+			my $rsp;
+        	push @{$rsp->{data}}, "Could not open $dd_boot_file for writing.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+    	}
+
+		if ($::VERBOSE) {
+			my $rsp;
+        	push @{$rsp->{data}}, "Updated $dd_boot_file.\n";
+        	xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
+	} else {  # dd_boot file doesn't exist
 		return 1;
-    }
-
-	if ($::VERBOSE) {
-		my $rsp;
-        push @{$rsp->{data}}, "Updated $dd_boot_file.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
+
 	return 0;
 }
 
@@ -2592,7 +2651,7 @@ sub update_dd_boot {
 sub mkdsklsnode 
 {
 	my $callback = shift;
-        my $sub_req = shift;
+	my $sub_req = shift;
 
 	my $error=0;
 	my @nodesfailed;
@@ -2700,15 +2759,7 @@ sub mkdsklsnode
 ll~;
 
     @machines = xCAT::Utils->runcmd("$cmd", -1);
-# don't fail - maybe just don't have any defined!
-    #if ($::RUNCMD_RC  != 0)
-	if (0)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Could not get NIM machine definitions.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
+	# don't fail - maybe just don't have any defined!
 
 	my $error=0;
 	my @nodesfailed;
@@ -2753,6 +2804,16 @@ ll~;
 			$type = $imagehash{$image_name}{nimtype};
 		}
 		chomp $type;
+
+		if ( ($type =~ /standalone/) ) {
+            #error - only support diskless/dataless
+            my $rsp;
+            push @{$rsp->{data}}, "Use the nimnodeset command to initialize standalone type nodes.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            $error++;
+            push(@nodesfailed, $node);
+            next;
+        }
 		
 		# generate new NIM client name
 		my $nim_name;
