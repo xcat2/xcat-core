@@ -48,6 +48,14 @@ my %macmap; #Store responses from rinv for discovery
 my $macmaptimestamp; #reflect freshness of cache
 my $mmprimoid = '1.3.6.1.4.1.2.3.51.2.22.5.1.1.4';#mmPrimary
 my $beaconoid = '1.3.6.1.4.1.2.3.51.2.2.8.2.1.1.11'; #ledBladeIdentity
+my $erroroid = '1.3.6.1.4.1.2.3.51.2.2.8.2.1.1.7'; #ledBladeError
+my $infooid = '1.3.6.1.4.1.2.3.51.2.2.8.2.1.1.8'; #ledBladeInfo
+my $kvmoid = '1.3.6.1.4.1.2.3.51.2.2.8.2.1.1.9'; #ledBladeKVM
+my $mtoid = '1.3.6.1.4.1.2.3.51.2.2.8.2.1.1.10'; #ledBladeMT
+my $chassiserroroid = '1.3.6.1.4.1.2.3.51.2.2.8.1.1.0'; #ChassisLedError
+my $chassisinfooid = '1.3.6.1.4.1.2.3.51.2.2.8.1.2.0'; #ChassisLedInfo
+my $chassistempledoid = '1.3.6.1.4.1.2.3.51.2.2.8.1.3.0'; #ChassisLedTemperature
+my $chassisbeaconoid = '1.3.6.1.4.1.2.3.51.2.2.8.1.4.0'; #ChassisLedIdentity
 my $powerstatoid = '1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.4';#bladePowerState
 my $powerchangeoid = '1.3.6.1.4.1.2.3.51.2.22.1.6.1.1.7';#powerOnOffBlade
 my $powerresetoid = '1.3.6.1.4.1.2.3.51.2.22.1.6.1.1.8';#restartBlade
@@ -644,14 +652,44 @@ sub vitals {
    my @output;
    my $tmp;
    my @vitems;
-   foreach (@_) {
-     if ($_ eq 'all') {
- push @vitems,qw(temp wattage voltage fan summary);
-     } else {
- push @vitems,split( /,/,$_);
+
+   if ( $#_ == 0 && $_[0] eq '' ) { pop @_; push @_,"all" }	#-- default is all if no argument given
+
+   if ( defined $slot ) { 	#-- blade query
+     foreach (@_) {
+       if ($_ eq 'all') {
+         push @vitems,qw(temp voltage wattage summary);
+         push @vitems,qw(errorled beaconled infoled kvmled mtled);
+       } elsif ($_ =~ '^led') {
+         push @vitems,qw(errorled beaconled infoled kvmled mtled);
+       } else {
+         push @vitems,split( /,/,$_);
+       }
      }
-   }
-   if (grep /watt/,@vitems) {
+  } else {		#-- chassis query
+     foreach (@_) {
+       if ($_ eq 'all') {
+         push @vitems,qw(voltage wattage power summary);
+         push @vitems,qw(errorled beaconled infoled templed);
+         push @vitems,qw(fan blower);
+         push @vitems,qw(ammtemp ambient);
+       } elsif ($_ =~ '^led') {
+         push @vitems,qw(errorled beaconled infoled templed);
+       } elsif ($_ =~ '^cool') {
+         push @vitems,qw(fan blower);
+       } elsif ($_ =~ '^temp') {
+         push @vitems,qw(ammtemp ambient);
+       } else {
+         push @vitems,split( /,/,$_);
+       }
+     }
+  }
+
+  my $tmp;
+
+  if ( defined $slot ) {	#-- querying some blade
+
+    if (grep /watt/,@vitems) {
        if ($slot < 8) {
         $tmp = $session->get(["1.3.6.1.4.1.2.3.51.2.2.10.2.1.1.7.".($slot+16)]);
        } else {
@@ -662,60 +700,224 @@ sub vitals {
              $tmp = "$1 Watts (". int($tmp * 3.413+0.5)." BTUs/hr)";
          }
          $tmp =~ s/^/Power Usage:/;
-
-
          push @output,"$tmp";
        }
    }
        
-        
-   if (grep /fan/,@vitems or grep /blower/,@vitems) {
-     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.1.0']);
-     push @output,"Blower 1:  $tmp";
-     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.2.0']);
-     push @output,"Blower 2:  $tmp";
-     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.3.0']);
-     if ($tmp and $tmp !~ /NOSUCHINSTANCE/) { push @output,"Blower 3:  $tmp"; }
-     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.3.4.0']);
-     if ($tmp and $tmp !~ /NOSUCHINSTANCE/) { push @output,"Blower 4:  $tmp"; }
-     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.1']);
-     push @output,"Fan Pack 1:  $tmp";
-     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.2']);
-     push @output,"Fan Pack 2:  $tmp";
-     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.3']);
-     push @output,"Fan Pack 3:  $tmp";
-     $tmp=$session->get(['1.3.6.1.4.1.2.3.51.2.2.6.1.1.5.4']);
-     push @output,"Fan Pack 4:  $tmp";
-   }
-   if (grep /volt/,@vitems) {
- for my $idx (15..40) {
-    $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
-           unless ((not $tmp) or $tmp =~ /Not Readable/) {
-             $tmp =~ s/ = /:/;
-             push @output,"$tmp";
-           }
- }
+    if (grep /voltage/,@vitems) {
+      for my $idx (15..40) {
+       $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
+            unless ((not $tmp) or $tmp =~ /Not Readable/) {
+              $tmp =~ s/ = /:/;
+              push @output,"$tmp";
+            }
+      }
     }
 
-   if (grep /temp/,@vitems) {
-      $tmp=$session->get(["1.3.6.1.4.1.2.3.51.2.2.1.5.1.0"]);
-      push (@output,"Ambient: $tmp");
+    if (grep /temp/,@vitems) {
       for my $idx (6..20) {
- if ($idx eq 11) {
-  next;
- }
+        if ($idx eq 11) {
+          next;
+        }
         $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.3.1.$idx.$slot"]);
         unless ($tmp =~ /Not Readable/) {
           $tmp =~ s/ = /:/;
           push @output,"$tmp";
         }
       }
-   }
-   if (grep /summary/,@vitems) {
+    }
+
+    if (grep /summary/,@vitems) {
       $tmp="Status: ".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.3.'.$slot]);
       $tmp.=", ".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.4.'.$slot]);
       push @output,"$tmp";
+    }
+
+    if (grep /errorled/,@vitems) {
+      my $stat = $session->get([$erroroid.".".$slot]);
+      if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; }
+      $tmp="Error led: ".$stat;
+      push @output,"$tmp";
+    }
+ 
+    if (grep /beaconled/,@vitems) {
+      my $stat = $session->get([$beaconoid.".".$slot]);
+      if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; } 
+         elsif ($stat==2) { $stat = "blinking"; }
+      $tmp="Beacon led: ".$stat;
+      push @output,"$tmp";
+    }
+
+    if (grep /infoled/,@vitems) {
+      my $stat = $session->get([$infooid.".".$slot]);
+       if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; }
+      $tmp="Info led: ".$stat;
+      push @output,"$tmp";
+    }
+
+    if (grep /kvmled/,@vitems) {
+      my $stat = $session->get([$kvmoid.".".$slot]);
+      if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; } 
+         elsif ($stat==2) { $stat = "blinking"; }
+      $tmp="KVM led: ".$stat;
+      push @output,"$tmp";
+    }
+
+    if (grep /mtled/,@vitems) {
+      my $stat = $session->get([$mtoid.".".$slot]);
+      if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; } 
+        elsif ($stat==2) { $stat = "blinking"; }
+      $tmp="MT led: ".$stat;
+      push @output,"$tmp";
+    }
+
+  } else {	#-- chassis query
+
+   if (grep /blower/,@vitems) {
+     my $blowerbase = "1.3.6.1.4.1.2.3.51.2.2.3";
+     for ( my $i=1; $i<=4; $i++) {	#-- Blowers
+
+       my $speed = $session->get([$blowerbase.".".($i+0).".0"]);
+       my $state = $session->get([$blowerbase.".".($i+9).".0"]);
+       my $speedrpm = $session->get([$blowerbase.".".($i+19).".0"]);
+       my $cstate = $session->get([$blowerbase.".".($i+29).".0"]);
+
+       next if $state eq "NOSUCHINSTANCE";
+
+       if ($state==0) { $state = "unknown"; } 
+          elsif ($state==1) { $state = "good"; } 
+          elsif ($state==2) { $state = "warning"; }
+          elsif ($state==3) { $state = "bad"; }
+
+       if ($cstate==0) { $cstate = "operational"; } 
+          elsif ($cstate==1) { $cstate = "flashing"; } 
+          elsif ($cstate==2) { $cstate = "notPresent"; } 
+          elsif ($cstate==3) { $cstate = "communicationError"; } 
+          elsif ($cstate==255) { $cstate = "unknown"; } 
+
+       push @output,sprintf("Blower %d: state %s, speed %d%%, %d RPM, controller %s",$i,$state,$speed,$speedrpm,$cstate);
+     }
+
+  }
+
+   if (grep /fan/,@vitems) {
+
+     #-- power module fans OIDs
+     my $fanpackindex = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.1";
+     my $fanpackexists = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.2";
+     my $fanpackstate = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.3";
+     my $fanpackfancount = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.4";
+     my $fanpackavspeed = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.5";
+     my $fanpackavspeedrpm = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.6";
+     my $fanpackcstate = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.7";
+
+     for ( my $i=1; $i<=4; $i++) {	#-- Power module fan packs
+       my $ind = $session->get([$fanpackindex.".$i"]);
+       my $exists = $session->get([$fanpackexists.".$i"]);
+       my $state = $session->get([$fanpackstate.".$i"]);
+       my $fancount = $session->get([$fanpackfancount.".$i"]);
+       my $avspeed = $session->get([$fanpackavspeed.".$i"]);
+       my $avspeedrpm = $session->get([$fanpackavspeedrpm.".$i"]);
+       my $cstate = $session->get([$fanpackcstate.".$i"]);
+
+       $exists = $exists == 1?"present":"not present";
+       
+       if ($state==0) { $state = "unknown"; } 
+          elsif ($state==1) { $state = "good"; } 
+          elsif ($state==2) { $state = "warning"; }
+          elsif ($state==3) { $state = "bad"; }
+
+       if ($cstate==0) { $cstate = "operational"; } 
+          elsif ($cstate==1) { $cstate = "flashing"; } 
+          elsif ($cstate==2) { $cstate = "notPresent"; } 
+          elsif ($cstate==3) { $cstate = "communicationError"; } 
+          elsif ($cstate==255) { $cstate = "unknown"; } 
+
+       push @output,sprintf("Power fans %d: %s, state %s, %d fans, speed %d%%, %d RPM, controller %s",$ind,$exists,$state,$fancount,$avspeed,$avspeedrpm,$cstate);
+     }
    }
+
+     if (grep /volt/,@vitems) {
+       my $voltbase = "1.3.6.1.4.1.2.3.51.2.2.2.1";
+       my %voltlabels = ( 1=>"+5V", 2=>"+3.3V", 3=>"+12V", 5=>"-5V", 6=>"+2.5V", 8=>"+1.8V" );
+       foreach my $idx ( keys %voltlabels ) {
+        $tmp=$session->get(["$voltbase.$idx.0"]);
+             unless ((not $tmp) or $tmp =~ /Not Readable/) {
+               push @output,sprintf("Voltage %s: %s",$voltlabels{$idx},$tmp);
+             }
+       }
+     }
+
+     if (grep /ammtemp/,@vitems) {
+         $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.2.1.1.2.0"]);
+         push @output,sprintf("AMM temp: %s",$tmp) if $tmp !~ /NOSUCHINSTANCE/;
+      }
+
+     if (grep /ambient/,@vitems) {
+       my %oids = (
+        "Ambient 1",".1.3.6.1.4.1.2.3.51.2.2.1.5.1.0",
+        "Ambient 2",".1.3.6.1.4.1.2.3.51.2.2.1.5.2",	
+       );
+       foreach my $oid ( keys %oids ) {
+         $tmp=$session->get([$oids{$oid}]);
+         push @output,sprintf("%s: %s",$oid,$tmp) if $tmp !~ /NOSUCHINSTANCE/;
+       }
+      }
+
+     if (grep /watt/,@vitems) {
+         $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.2.10.5.1.2.0"]);
+         push @output,sprintf("Total power used: %s (%d BTUs/hr)",$tmp,int($tmp * 3.412+0.5)) if $tmp !~ /NOSUCHINSTANCE/;
+     }
+
+
+     if (grep /power/,@vitems) {
+         my %oids = (
+          "PD1",".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.3.1",
+          "PD2",".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.3.2",
+         );
+         foreach my $oid ( keys %oids ) {
+           $tmp=$session->get([$oids{$oid}]);
+           push @output,sprintf("%s: %s",$oid,$tmp) if $tmp !~ /NOSUCHINSTANCE/;
+         }
+      }
+
+
+   if (grep /errorled/,@vitems) {
+     my $stat = $session->get([$chassiserroroid]);
+     if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; }
+     $tmp="Error led: ".$stat;
+     push @output,"$tmp";
+   }
+
+   if (grep /infoled/,@vitems) {
+     my $stat = $session->get([$chassisinfooid]);
+     if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; }
+     $tmp="Info led: ".$stat;
+     push @output,"$tmp";
+   }
+
+   if (grep /templed/,@vitems) {
+     my $stat = $session->get([$chassistempledoid]);
+     if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; }
+     $tmp="Temp led: ".$stat;
+     push @output,"$tmp";
+   }
+
+   if (grep /beaconled/,@vitems) {
+     my $stat = $session->get([$chassisbeaconoid]);
+     if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; } 
+       elsif ($stat==2) { $stat = "blinking"; } elsif ($stat==3) { $stat = "not available"; }
+     $tmp="Beacon led: ".$stat;
+     push @output,"$tmp";
+   }
+
+   if (grep /summary/,@vitems) {
+      $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.2.7.1.0"]);
+      if ($tmp==0) { $tmp = "critical"; } elsif ($tmp==2) { $tmp = "nonCritical"; } 
+        elsif ($tmp==4) { $tmp = "systemLevel"; } elsif ($tmp==255) { $tmp = "normal"; }
+      push @output,"Status: $tmp";
+   }
+}
    return(0,@output);
 }
  
