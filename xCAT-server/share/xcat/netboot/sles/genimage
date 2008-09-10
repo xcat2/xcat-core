@@ -388,12 +388,20 @@ EOMS
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/bin/bash\n";
    print $inifile "dhcpcd $prinic\n";
-   print $inifile "echo -n 'search '> /etc/resolv.conf\n";
-   print $inifile "grep DOMAIN /var/lib/dhcpcd/*info|awk -F= '{print \$2}'|awk -F\\' '{print \$2}' >> /etc/resolv.conf\n";
-   print $inifile "grep HOSTNAME /var/lib/dhcpcd/*info|awk -F= '{print \$2}'|awk -F\\' '{print \$2}' >> /etc/HOSTNAME\n";
-   print $inifile "for names in `grep DNS /var/lib/dhcpcd/*info|awk -F= '{print \$2}'`; do\n";
-   print $inifile '   echo nameserver $names >> /etc/resolv.conf'."\n";
-   print $inifile "done\n";
+
+   #-- Bring other NICs up in /bin/netstart in initrd for NIC failover
+   foreach (split /,/,$othernics) {
+      if (/^$/) { next; }
+      print $inifile "dhcpcd $_\n";
+   }
+
+   print $inifile <<END;
+cat /var/lib/dhcpcd/*info | grep DOMAIN | uniq | awk -F= '{print \"search\",\$2}' | sed \"s/'//g\" >> /etc/resolv.conf
+cat /var/lib/dhcpcd/*info | grep HOSTNAME | uniq | awk -F= '{print \$2}'| sed \"s/'//g\" >> /etc/HOSTNAME
+for names in \$(cat /var/lib/dhcpcd/*info | grep DNS | uniq | awk -F= '{print \$2}' | sed 's/,/\\n/'); do
+  echo nameserver \$names >> /etc/resolv.conf
+done
+END
 
    close($inifile);
 	chmod(0755,"/tmp/xcatinitrd.$$/init");
@@ -404,7 +412,7 @@ EOMS
          push @filestoadd,[$_,"lib/$_"];
       }
    }
-   foreach ("usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init") {
+   foreach ("usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed") {
       getlibs($_);
       push @filestoadd,$_;
    }

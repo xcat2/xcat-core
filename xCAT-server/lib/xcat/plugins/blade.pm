@@ -928,6 +928,7 @@ sub rscan_stanza {
 sub getmacs {
    (my $code,my @macs)=inv('mac');
    my $midx=0;
+   my @midxary;
    my $nrtab = xCAT::Table->new('noderes');
    if ($nrtab) {
        my $nent = $nrtab->getNodeAttribs($curn,['primarynic','installnic']);
@@ -939,24 +940,36 @@ sub getmacs {
                $mkey="primarynic";
            }
            if ($mkey) {
-               $nent->{$mkey} =~ /(\d+)/;
-               $midx=$1;
+	     while ( $nent->{$mkey} =~ /(\d+)/g ) {
+	       push @midxary,$1;
+	     }
            }
        }
    }
    if ($code==0) {
       #my @macs = split /\n/,$macs;
-      (my $macd,my $mac) = split (/:/,$macs[$midx],2);
-      $mac =~ s/\s+//g;
-      if ($macd =~ /mac address \d/i) {
-         $mac =~ s/\s*->.*$//;
-         my $mactab = xCAT::Table->new('mac',-create=>1);
-         $mactab->setNodeAttribs($curn,{mac=>$mac});
-         $mactab->close;
-         return 0,":mac.mac set to $mac";
-      } else {
-         return 1,"Unable to retrieve MAC address from Management Module";
-      }
+    my @allmacs;
+    foreach my $midx ( @midxary) {
+       (my $macd,my $mac) = split (/:/,$macs[$midx],2);
+       $mac =~ s/\s+//g;
+       if ($macd =~ /mac address \d/i) {
+          $mac =~ s/\s*->.*$//;
+       } else {
+           return 1,"Unable to retrieve MAC address for interface $midx from Management Module";
+       }
+
+       if ( $#midxary == 0 ) { #-- backward compatibility mode - do not add host name to mac.mac if only one iface is used
+        push @allmacs,$mac;
+       } else {
+        push @allmacs,$mac."!".$curn."e".$midx;
+       }
+    }
+
+    my $macstring = join("|",@allmacs);
+    my $mactab = xCAT::Table->new('mac',-create=>1);
+    $mactab->setNodeAttribs($curn,{mac=>$macstring});
+    $mactab->close;
+    return 0,":mac.mac set to $macstring";
    } else {
       return $code,$macs[0];
    }
