@@ -61,6 +61,52 @@ sub handled_commands
            };
 }
 
+#-------------------------------------------------------
+
+=head3  preprocess_request
+
+  Check and setup for hierarchy
+
+=cut
+
+#-------------------------------------------------------
+sub preprocess_request
+{
+	my $req = shift;
+    my $cb  = shift;
+    my %sn;
+    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    my $nodes    = $req->{node};
+    my $service  = "xcat";
+	my @requests;
+
+	if ($nodes) {
+		# find service nodes for requested nodes
+    	# build an individual request for each service node
+    	my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+
+    	# build each request for each service node
+    	foreach my $snkey (keys %$sn)
+    	{
+    		my $n=$sn->{$snkey};
+            my $reqcopy = {%$req};
+            $reqcopy->{node} = $sn->{$snkey};
+            $reqcopy->{'_xcatdest'} = $snkey;
+            push @requests, $reqcopy;
+    	}
+
+	} else {
+		# process this request on the management node
+		# read the site table - master attrib
+        my $master = xCAT::Utils->get_site_Master();
+		my $reqcopy = {%$req};
+        $reqcopy->{'_xcatdest'} = $master;
+        push @requests, $reqcopy;
+	}
+
+    return \@requests;
+}
+
 #----------------------------------------------------------------------------
 
 =head3   process_request
