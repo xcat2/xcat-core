@@ -18,8 +18,8 @@ use xCAT::PPCdb;
 # Perl::SNMP not working on AIX yet
 #######################################
 if ($^O =~ /^linux/i) {
-  require xCAT::MacMap;
-  require xCAT_plugin::blade;
+  eval { require xCAT::MacMap };
+  eval { require xCAT_plugin::blade };
 }
 
 
@@ -29,19 +29,23 @@ if ($^O =~ /^linux/i) {
 use constant {
     HARDWARE_SERVICE => "service:management-hardware.IBM",
     SOFTWARE_SERVICE => "service:management-software.IBM",
-    WILDCARD_SERVICE => "service:management-*.IBM:",
+    WILDCARD_SERVICE => "service:management-*",
+    P6_SERVICE       => "service:management-hardware.IBM",
     SERVICE_FSP      => "cec-service-processor",
     SERVICE_BPA      => "bulk-power-controller",
     SERVICE_HMC      => "hardware-management-console",
     SERVICE_IVM      => "integrated-virtualization-manager",
     SERVICE_MM       => "management-module",
     SERVICE_RSA      => "remote-supervisor-adapter",
+    SERVICE_RSA2     => "remote-supervisor-adapter-2",
+    SLP_CONF         => "/usr/local/etc/slp.conf",
+    SLPTOOL          => "/usr/local/bin/slptool",
     TYPE_MM          => "MM",
     TYPE_RSA         => "RSA",
     TYPE_BPA         => "BPA",
     TYPE_HMC         => "HMC",
     TYPE_IVM         => "IVM",
-    TYPE_FSP         => "FSP",
+    TYPE_FSP         => "IVM",
     IP_ADDRESSES     => 3,
     TEXT             => 0,
     FORMAT           => 1,
@@ -53,16 +57,17 @@ use constant {
 # Globals
 #######################################
 my %service_slp = (
-    @{[ SERVICE_FSP ]} => TYPE_FSP,
-    @{[ SERVICE_BPA ]} => TYPE_BPA,
-    @{[ SERVICE_HMC ]} => TYPE_HMC,
-    @{[ SERVICE_IVM ]} => TYPE_IVM,
-    @{[ SERVICE_MM  ]} => TYPE_MM,
-    @{[ SERVICE_RSA ]} => TYPE_RSA 
+    @{[ SERVICE_FSP  ]} => TYPE_FSP,
+    @{[ SERVICE_BPA  ]} => TYPE_BPA,
+    @{[ SERVICE_HMC  ]} => TYPE_HMC,
+    @{[ SERVICE_IVM  ]} => TYPE_IVM,
+    @{[ SERVICE_MM   ]} => TYPE_MM,
+    @{[ SERVICE_RSA  ]} => TYPE_RSA, 
+    @{[ SERVICE_RSA2 ]} => TYPE_RSA 
 );
 
 #######################################
-# Basic SLP attributes
+# SLP display header
 #######################################
 my @header = (
     ["device",        "%-8s" ],
@@ -104,6 +109,9 @@ my %ip_addr    = ();
 my %slp_result = ();
 my %rsp_result = ();
 my %opt        = ();
+my $maxtries   = 1;
+my $openSLP    = 1;
+my @converge;
 my $macmap;
 
 
@@ -193,7 +201,8 @@ sub parse_args {
     #############################################
     # Process command-line flags
     #############################################
-    if (!GetOptions(\%opt, qw(h|help V|Verbose v|version b=s x z w r s=s))) { 
+    if (!GetOptions( \%opt,
+            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c))) { 
         return( usage() );
     }
     #############################################
@@ -203,9 +212,35 @@ sub parse_args {
         return(usage( "Missing option: -" ));
     }
     #############################################
+    # Set convergence 
+    #############################################
+    if ( exists( $opt{c} )) {
+ 
+        #################################
+        # Use values set in slp.conf
+        #################################
+        if ( !defined( $ARGV[0] )) {
+            @converge = (0); 
+        }
+        #################################
+        # Use new values 
+        #################################
+        else {
+            @converge = split /,/,$ARGV[0];
+            if ( scalar( @converge ) > 5 ) {
+                return(usage( "Convergence timeouts limited to 5 maximum" ));
+            }
+            foreach ( @converge ) { 
+                unless ( /^[1-9]{1}$|^[1-9]{1}[0-9]{1,4}$/) { 
+                    return(usage( "Invalid convergence timeout: $_" ));
+                }
+            }
+        }
+    } 
+    #############################################
     # Check for an argument
     #############################################
-    if ( defined( $ARGV[0] )) {
+    elsif ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
     }
     #############################################
@@ -219,6 +254,24 @@ sub parse_args {
     #############################################
     if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z})) > 1 ) {
         return( usage() );
+    }
+    #############################################
+    # Command tries 
+    #############################################
+    if ( exists( $opt{t} )) {
+       $maxtries = $opt{t};
+
+       if ( $maxtries !~ /^0?[1-5]$/ ) {
+           return( usage( "Invalid command tries (1-5)" ));
+       }
+    }
+    #############################################
+    # Select SLP command 
+    #############################################
+    if ( exists( $opt{e} )) {
+       if ( $opt{e} !~ /slptool/ ) {
+           $openSLP = 0;
+       }
     }
     #############################################
     # Check for unsupported service type 
@@ -241,65 +294,89 @@ sub validate_ip {
     my $request = shift;
 
     ###########################################
-    # Option -b specified - validate entries 
+    # Option -i not specified (no IPs specified)
     ###########################################
-    if ( exists( $opt{b} )) {
-        foreach ( split /,/, $opt{b} ) {
-            my $ip = $_;
+    if ( !exists( $opt{i} )) {
 
-            ###################################
-            # Length for IPv4 addresses
-            ###################################
-            my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-            if ( scalar(@octets) != 4 ) {
-                return( [1,"Invalid IP address: $ip"] );
-            }
-            foreach my $octet ( @octets ) {
-                if (( $octet < 0 ) or ( $octet > 255 )) {
-                    return( [1,"Invalid IP address: $ip"] );
-                 }
-            }
-            $ip_addr{$ip} = 1;
+        #######################################
+        # Determine interfaces
+        #######################################
+        my $ips = $openSLP ? 
+                  slptool_ifconfig( $request ) : slpquery_ifconfig( $request );
+
+        #######################################
+        # Command failed
+        #######################################
+        if ( @$ips[0] ) {
+            return( $ips );
         }
+        return( [0] );
     }
     ###########################################
-    # Option -b not specified - determine IPs 
+    # Option -i specified - validate entries 
     ###########################################
-    else {
-        my $result = ifconfig( $request );
+    foreach ( split /,/, $opt{i} ) {
+        my $ip = $_;
 
-        ###########################
-        # Command failed 
-        ###########################
-        if ( @$result[0] ) {
-            return( $result );
+        ###################################
+        # Length for IPv4 addresses
+        ###################################
+        my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+        if ( scalar(@octets) != 4 ) {
+            return( [1,"Invalid IP address: $ip"] );
         }
-        if ( (keys %ip_addr) == 0 ) {
-            return( [1,"No adapters configured for broadcast"] );
+        foreach my $octet ( @octets ) {
+            if (( $octet < 0 ) or ( $octet > 255 )) {
+                return( [1,"Invalid IP address: $ip"] );
+            }
         }
+        $ip_addr{$ip} = 1;
     }
     return( [0] );
 }
 
 
 ##########################################################################
-# Determine adapters available for broadcast
+# Verbose mode (-V)
 ##########################################################################
-sub ifconfig {
-    
+sub trace {
+
+    my $request = shift;
+    my $msg     = shift;
+
+    if ( $verbose ) {
+        my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
+        my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
+        send_msg( $request, 0, $msg );
+    }
+} 
+
+
+##########################################################################
+# Determine adapters available - slptool always uses adapter IP 
+##########################################################################
+sub slptool_ifconfig {
+
     my $request = shift;
     my $cmd     = "ifconfig -a";
     my $result  = `$cmd`;
+    my $mode    = "MULTICAST";
 
-    ######################################
+    #############################################
+    # Display broadcast IPs, but use adapter IP 
+    #############################################
+    if ( !exists( $opt{m} )) {
+        $mode = "BROADCAST";
+    }
+    #############################################
     # Error running command
-    ######################################
+    #############################################
     if ( !$result ) {
         return( [1, "Error running '$cmd': $!"] );
     }
     if ( $verbose ) {
         trace( $request, $cmd );
-        trace( $request, "Broadcast Interfaces:" );
+        trace( $request, "$mode Interfaces:" );
     }
     if (xCAT::Utils->isAIX()) {
         ##############################################################
@@ -313,16 +390,27 @@ sub ifconfig {
         ##############################################################
         my @adapter = split /\w+\d+:\s+flags=/, $result;
         foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK/ ) and 
-                   $_ =~ /UP(,|>)/ and 
-                   $_ =~ /BROADCAST/ ) {
-
+            if ( !($_ =~ /LOOPBACK/ ) and
+                   $_ =~ /UP(,|>)/ and
+                   $_ =~ /$mode/ ) {
                 my @ip = split /\n/;
-                foreach ( @ip ){
-                    if ( $_ =~ /^\s*inet\s+/ and 
-                         $_ =~ /broadcast\s+(\d+\.\d+\.\d+\.\d+)/ ) {
+                foreach ( @ip ) {
+                    if ( $mode eq "BROADCAST" ) {
+                        if ( $_ =~ /^\s*inet\s+/ and
+                             $_ =~ /broadcast\s+(\d+\.\d+\.\d+\.\d+)/ ) {
+
+                            if ( $verbose ) {
+                                trace( $request, "\t\t$1\tUP,$mode" );
+                            }
+                        }
+                    }
+                    if ( $_ =~ /^\s*inet\s*(\d+\.\d+\.\d+\.\d+)/ ) {
                         $ip_addr{$1} = 1;
-                    } 
+
+                        if ( exists( $opt{m} )) {
+                            trace( $request, "\t\t$1\tUP,$mode" );
+                        }         
+                    }
                 }
             }
         }
@@ -345,13 +433,118 @@ sub ifconfig {
         ##############################################################
         my @adapter= split /\n{2,}/, $result;
         foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK / ) and 
-                   $_ =~ /UP / and 
-                   $_ =~ /BROADCAST / ) {
+            if ( !($_ =~ /LOOPBACK / ) and
+                   $_ =~ /UP / and
+                   $_ =~ /$mode / ) {
 
                 my @ip = split /\n/;
                 foreach ( @ip ) {
-                    if ( $_ =~ /^\s*inet addr:/ and 
+                    if ( $mode eq "BROADCAST" ) {
+                        if ( $_ =~ /^\s*inet addr:/ and
+                             $_ =~ /Bcast:(\d+\.\d+\.\d+\.\d+)/ ) {
+
+                            if ( $verbose ) {
+                                trace( $request, "\t\t$1\tUP,$mode" );
+                            }
+                        }
+                    }
+                    if ( $_ =~ /^\s*inet addr:\s*(\d+\.\d+\.\d+\.\d+)/ ) {
+                        $ip_addr{$1} = 1;
+
+                        if ( exists( $opt{m} )) {
+                            trace( $request, "\t\t$1\tUP,$mode" );
+                        }         
+                    }
+                }
+            }
+        }
+    }
+    if ( (keys %ip_addr) == 0 ) {
+        return( [1,"No adapters configured for $mode"] );
+    }
+    #########################
+    # Log results
+    #########################
+    if ( $verbose ) {
+        if ( (keys %ip_addr) == 0 ) {
+            trace( $request, "$cmd\n$result" );
+        }
+    }
+    return([0]);
+}
+
+
+##########################################################################
+# Determine adapters available - slp_query always used broadcast IP 
+##########################################################################
+sub slpquery_ifconfig {
+
+    my $request = shift;
+    my $cmd     = "ifconfig -a";
+    my $result  = `$cmd`;
+    my $mode    = "BROADCAST";
+
+    ######################################
+    # Error running command
+    ######################################
+    if ( !$result ) {
+        return( [1, "Error running '$cmd': $!"] );
+    }
+    if ( $verbose ) {
+        trace( $request, $cmd );
+        trace( $request, "$mode Interfaces:" );
+    }
+    if (xCAT::Utils->isAIX()) {
+        ##############################################################
+        # Should look like this for AIX:
+        # en0: flags=4e080863,80<UP,BROADCAST,NOTRAILERS,RUNNING,
+        #      SIMPLEX,MULTICAST,GROUPRT,64BIT,PSEG,CHAIN>
+        #      inet 30.0.0.1    netmask 0xffffff00 broadcast 30.0.0.255
+        #      inet 192.168.2.1 netmask 0xffffff00 broadcast 192.168.2.255
+        # en1: ...
+        #
+        ##############################################################
+        my @adapter = split /\w+\d+:\s+flags=/, $result;
+        foreach ( @adapter ) {
+            if ( !($_ =~ /LOOPBACK/ ) and
+                   $_ =~ /UP(,|>)/ and
+                   $_ =~ /$mode/ ) {
+
+                my @ip = split /\n/;
+                foreach ( @ip ) {
+                    if ( $_ =~ /^\s*inet\s+/ and
+                         $_ =~ /broadcast\s+(\d+\.\d+\.\d+\.\d+)/ ) {
+                        $ip_addr{$1} = 1;
+                    }
+                }
+            }
+        }
+    }
+    else {
+        ##############################################################
+        # Should look like this for Linux:
+        # eth0 Link encap:Ethernet  HWaddr 00:02:55:7B:06:30
+        #      inet addr:9.114.154.193  Bcast:9.114.154.223
+        #      inet6 addr: fe80::202:55ff:fe7b:630/64 Scope:Link
+        #      UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+        #      RX packets:1280982 errors:0 dropped:0 overruns:0 frame:0
+        #      TX packets:3535776 errors:0 dropped:0 overruns:0 carrier:0
+        #      collisions:0 txqueuelen:1000
+        #      RX bytes:343489371 (327.5 MiB)  TX bytes:870969610 (830.6 MiB)
+        #      Base address:0x2600 Memory:fbfe0000-fc0000080
+        #
+        # eth1 ...
+        #
+        ##############################################################
+        my @adapter= split /\n{2,}/, $result;
+        foreach ( @adapter ) {
+            if ( !($_ =~ /LOOPBACK / ) and
+                   $_ =~ /UP / and
+                   $_ =~ /$mode / ) {
+
+                my @ip = split /\n/;
+                foreach ( @ip ) {
+                    if ( $_ =~ /^\s*inet addr:/ and
                          $_ =~ /Bcast:(\d+\.\d+\.\d+\.\d+)/ ) {
                         $ip_addr{$1} = 1;
                     }
@@ -359,6 +552,12 @@ sub ifconfig {
             }
         }
     }
+    if ( (keys %ip_addr) == 0 ) {
+        return( [1,"No adapters configured for $mode"] );
+    }
+    #########################
+    # Log results
+    #########################
     if ( $verbose ) {
         foreach ( keys %ip_addr ) {
             trace( $request, "\t\t$_\tUP,BROADCAST" );
@@ -372,23 +571,7 @@ sub ifconfig {
 
 
 ##########################################################################
-# Verbose mode (-V)
-##########################################################################
-sub trace {
-
-    my $request = shift;
-    my $msg     = shift;
-
-    if ( $verbose ) {
-        my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
-        my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
-        send_msg( $request, 0, $msg );
-    }
-} 
-
-
-##########################################################################
-# Forks a process to run the slp command (1 per broadcast adapter) 
+# Forks a process to run the slp command (1 per adapter) 
 ##########################################################################
 sub fork_cmd {
 
@@ -443,8 +626,6 @@ sub invoke_cmd {
     my $ip       = shift;
     my $args     = shift;
     my $services = shift;
-    my $converge = 1;
-    my $tries    = 5;
 
     ########################################
     # Telnet (rspconfig) command  
@@ -472,15 +653,16 @@ sub invoke_cmd {
         my @data = ("RSPCONFIG6sK4ci", $ip, @$result[0], @$result[2]);
         my $out = $request->{pipe};
 
+
         print $out freeze( \@data );
         print $out "\nENDOFFREEZE6sK4ci\n";
         return;
     }
 
     ########################################
-    # SLP broadcast command  
+    # SLP command  
     ########################################
-    my $result = runslp($args, $ip, $services, $request, $tries, $converge);
+    my $result  = runslp( $args, $ip, $services, $request );
     my $unicast = @$result[0];
     my $values  = @$result[1];
 
@@ -490,7 +672,13 @@ sub invoke_cmd {
     if ( keys (%$unicast) )  { 
         foreach my $url ( keys %$unicast ) {
             my ($service,$addr) = split "://", $url;
+
+            ####################################
+            # Strip off trailing ",lifetime"
+            ####################################
+            $addr =~ s/,*\d*$//;
             my $sockaddr = inet_aton( $addr );
+            $url =~ s/,*\d*$//;
 
             ####################################
             # Make sure can resolve if hostname  
@@ -502,12 +690,23 @@ sub invoke_cmd {
                 next;
             }
             $addr = inet_ntoa( $sockaddr );
-            $result = runslp( $args, $addr, [$service], $request, 1 );
-            my $data  = @$result[1];
-            my ($key) = keys %$data;
 
-            if ( defined($key) ) {
-                $values->{"URL: $url\n$data->{$key}\n"} = 1;
+            ####################################
+            # Select command format 
+            ####################################
+            if ( $openSLP ) {
+                $result = runslp( $args, $ip, [$url], $request, 1 );
+            } else {
+                $result = runslp( $args, $addr, [$service], $request, 1 );
+            }
+            my $data   = @$result[1];
+            my ($attr) = keys %$data;
+
+            ####################################
+            # Save results
+            ####################################
+            if ( defined($attr) ) {
+                $values->{"URL: $url\n$attr\n"} = 1;
             }
         }
     }
@@ -538,34 +737,42 @@ sub runslp {
     my $ip       = shift;
     my $services = shift;
     my $request  = shift;
-    my $max      = shift;
-    my $converge = shift;
+    my $attreq   = shift;
     my %result   = ();
     my %unicast  = ();
+    my $cmd;
 
     foreach my $type ( @$services ) {
         my $try = 0;
-        my $cmd = "$slpcmd --address=$ip --type=$type";
 
-        ###############################################
-        # If --converge is specified, slp_query will
-        # broadcast a service-request to the broadcast
-        # address specified by --address. If not
-        # specified, slp_query will unicast an attribute
-        # request to the URL specified by --type to  
-        # the remote target specified by --address.
-        ###############################################
-        if ( defined($converge) ) {
-            $cmd .= " --converge=$converge";
+        ###########################################
+        # OpenSLP - slptool command 
+        ###########################################
+        if ( $openSLP ) {
+            $cmd = $attreq ? 
+               "$slpcmd findattrsusingiflist $ip $type" : 
+               "$slpcmd findsrvsusingiflist $ip $type";
+        } 
+        ###########################################
+        # IBM SLP - slp_query command 
+        ###########################################
+        else {
+            $cmd = $attreq ? 
+               "$slpcmd --address=$ip --type=$type" : 
+               "$slpcmd --address=$ip --type=$type --converge=1"; 
         }
-        while ( $try++ < $max ) {
+
+        ###########################################
+        # Run the command 
+        ###########################################
+        while ( $try++ < $maxtries ) {
             if ( $verbose ) {
                 trace( $request, $cmd );
-                trace( $request, "Attempt $try of $max\t( $ip\t$type )" );
-            }
-            ###########################################
-            # Serialize broadcasts out each adapter 
-            ###########################################
+                trace( $request, "Attempt $try of $maxtries\t( $ip\t$type )" );
+            } 
+            #######################################
+            # Serialize transmits out each adapter 
+            #######################################
             if ( !open( OUTPUT, "$cmd 2>&1 |")) {
                 send_msg( $request, 1, "Fork error: $!" );
                 return undef;
@@ -583,59 +790,144 @@ sub runslp {
             # No replies
             ###############################
             if ( !$rsp ) {
-               if ( $verbose ) {
+                if ( $verbose ) {
                     trace( $request, ">>>>>> No Response" );
                 }
                 next;
             }
             ###########################################
-            # split into array of individual responses:
-            # 0
-            # 1
-            # 75
-            # URL: service:management-software.IBM...
-            # ATTR: (type=hardware-management-cons...
-            # (serial-number=KPHHK24),(name=c76v2h...
-            # 1ab1dd89ca8e0763e),(ip-address=192.1...
-            # 0CR3*KPHHK24),(web-management-interf...
-            # 2.ppd.pok.ibm.com:8443),(cimom-port=...
-            #
-            # 0
-            # 1
-            # 69
-            # URL: 
-            # ATTR:
-            # ...
-            #
             # For IVM, running AIX 53J (6/07) release,
             # there is an AIX SLP bug where IVM will 
-            # respond to SLP broadcasts with its URL
-            # only and not its attributes. An SLP
+            # respond to SLP service-requests with its 
+            # URL only and not its attributes. An SLP
             # unicast to the URL address is necessary  
             # to acquire the attributes. This was fixed 
             # in AIX 53L (11/07).
             #
             ###########################################
-            foreach ( split /\n{2,}/,$rsp ) {
-                if ( $_ =~ s/(\d+)\n(\d+)\n(\d+)\n// ) {
-                    if ( $verbose ) {
-                        trace( $request, "SrvRqst Response ($1)($2)($3)" );
-                        trace( $request, "$_\n" );
+
+            ###########################################
+            # OpenSLP response format:
+            #   service:management-software.IBM...
+            #   (type=hardware-management-cons...
+            #   (serial-number=KPHHK24),(name=c76v2h...
+            #   1ab1dd89ca8e0763e),(ip-address=192.1...
+            #   0CR3*KPHHK24),(web-management-interf...
+            #   2.ppd.pok.ibm.com:8443),(cimom-port=...
+            #   ...
+            ###########################################
+            if ( $openSLP ) {
+                my @data = split /\n/,$rsp;
+                my $length = scalar( @data );
+                my $i = 0;
+
+                while ($i < $length ) {
+                    ###################################
+                    # Service-Request response
+                    ###################################
+                    if ( $data[$i] =~ 
+                        /^service\:management-(software|hardware)\.IBM\:([^\:]+)/) {
+
+                        ###############################
+                        # Invalid service-type 
+                        ###############################
+                        if ( !exists( $service_slp{$2} )) {
+                            if ( $verbose ) {
+                                trace( $request, "DISCARDING: $data[$i]" );
+                            }
+                            $i++;
+                            next;
+                        } 
+                        my $url  = $data[$i++];
+                        my $attr = $data[$i];
+ 
+                        if ( $verbose ) {
+                            trace( $request, ">>>> SrvRqst Response" );
+                            trace( $request, "URL: $url" );
+                        }
+                        ###############################
+                        # No "ATTR" - have to unicast
+                        ###############################
+                        if ( $attr !~ /^(\(type=.*)$/ ) {
+                           $unicast{$url} = $url;
+                        }
+                        ###############################
+                        # Response has "ATTR" field 
+                        ###############################
+                        else {
+                            if ( $verbose ) {
+                                trace( $request, "ATTR: $attr\n" );
+                            }
+                            my $val = "URL: $url\nATTR: $attr";
+                            $result{$val} = 1;
+                            $i++;
+                        }
                     }
                     ###################################
-                    # Response has "ATTR" field 
+                    # Attribute-Request response
                     ###################################
-                    if ( /ATTR: /  ) {
-                        $result{$_} = 1;
+                    elsif ( $data[$i] =~ /(\(type=.*)$/ ) {
+                        my $attr = "ATTR: $data[$i++]";
+
+                        if ( $verbose ) {
+                            trace( $request, ">>>> AttrRqst Response" );
+                            trace( $request, $attr );
+                        }
+                        $result{$attr} = 1;
+                    } 
+                    ###################################
+                    # Unrecognized response
+                    ###################################
+                    else {
+                        if ( $verbose ) {
+                            trace( $request, "DISCARDING: $data[$i]" );
+                        }
+                        $i++;
                     }
-                    ###################################
-                    # No "ATTR" - have to unicast
-                    ###################################
-                    elsif ( /.*URL: (.*)/ ) {
-                        $unicast{$1} = $1;
+                }
+            } 
+            ###########################################
+            # IBM SLP response format:
+            #   0
+            #   1
+            #   75
+            #   URL: service:management-software.IBM...
+            #   ATTR: (type=hardware-management-cons...
+            #   (serial-number=KPHHK24),(name=c76v2h...
+            #   1ab1dd89ca8e0763e),(ip-address=192.1...
+            #   0CR3*KPHHK24),(web-management-interf...
+            #   2.ppd.pok.ibm.com:8443),(cimom-port=...
+            #
+            #   0
+            #   1
+            #   69
+            #   URL:...
+            #   ATTR:..
+            #   ..
+            ###########################################
+            else {
+                foreach ( split /\n{2,}/,$rsp ) {
+                    if ( $_ =~ s/(\d+)\n(\d+)\n(\d+)\n// ) {
+                        if ( $verbose ) {
+                            trace( $request, "SrvRqst Response ($1)($2)($3)" );
+                            trace( $request, "$_\n" );
+                        }
+                        ###############################
+                        # Response has "ATTR" field
+                        ###############################
+                        if ( /ATTR: /  ) {
+                            $result{$_} = 1;
+                        }
+                        ###############################
+                        # No "ATTR" - have to unicast
+                        ###############################
+                        elsif ( /.*URL: (.*)/ ) {
+                            $unicast{$1} = $1;
+                        }
+                    } 
+                    elsif ( $verbose ) {
+                        trace( $request, "DISCARDING: $_" );
                     }
-                } elsif ( $verbose ) {
-                    trace( $request, "DISCARDING: $_" );
                 }
             }
         }
@@ -652,7 +944,6 @@ sub format_output {
 
     my $request = shift;
     my $values  = shift;
-    my $rsp     = shift;
     my $length  = length( $header[IP_ADDRESSES][TEXT] );
     my $result;
 
@@ -812,12 +1103,39 @@ sub gethost_from_url {
 
 
 ##########################################################################
-# Example slp_query command "service-request" output. The following 
+# Example OpenSLP slptool "service-request" output. The following 
+# attributes can be returned in any order within an SLP response.
+#
+# service:management-hardware.IBM:management-module://192.20.154.19,48659
+# (type=management-module),(level=3),(serial-number= K10WM39916W),
+# (fru=73P9297     ),(name=WMN315724834),(ip-address=192.20.154.19),
+# (enclosure-serial-number=78AG034),(enclosure-fru=59P6609     ),
+# (enclosure-machinetype-model=86772XX),(status=0),(enclosure-uuid=
+#  \ff\e6\4f\0b\41\de\0d\11\d7\bd\be\b5\3c\ab\f0\46\04),
+# (web-url=http://192.20.154.19:80),(snmp-port=161),(slim-port=6090),
+# (ssh-port=22),(secure-slim-port=0),(secure-slim-port-enabled=false),
+# (firmware-image-info=BRET86P:16:01-29-08,BRBR82A:16:06-01-05),
+# (telnet-port=23),(slot=1),0
+#  ...
+#
+# Example OpenSLP slptool "attribute-request" output. The following 
+# attributes can be returned in any order within an SLP response.
+#
+# (type=integrated-virtualization-manager),(level=3),(machinetype-model=911051A),
+# (serial-number=1075ECF),(name=p510ivm.clusters.com)(ip-address=192.168.1.103),
+# (web-url=http://p510ivm.clusters.com/),(mtms=911051A*1075ECF),
+# (web-management-interface=TRUE),(secure-web-url=https://p510ivm.clusters.com/),
+# (cimom-port=5988),(secure-cimom-port=5989),(lparid=1)
+#  ...
+#
+#------------------------------------------------------------------------
+#
+# Example IBM SLP slp_query command "service-request" output. The following
 # attributes can be returned in any order within an SLP response.
 # Note: The leading 3 numbers preceeding the URL: and ATTR: fields
-# represent: 
-#        error code, 
-#        URL count, 
+# represent:
+#        error code,
+#        URL count,
 #        URL length, respectively.
 # 0
 # 1
@@ -834,7 +1152,7 @@ sub gethost_from_url {
 # 69
 # ...
 #
-# Example slp_query command "attribute-request" output. The following 
+# Example IBM SLP slp_query command "attribute-request" output. The following
 # attributes can be returned in any order within an SLP response.
 # Note: The leading 3 numbers preceeding the URL: and ATTR: fields
 # represent:
@@ -859,10 +1177,19 @@ sub parse_responses {
     my $length  = shift;
 
     my %outhash = ();
-    my @attr    = (
+    my @attrs   = (
        "type",
        "machinetype-model",
        "serial-number",
+       "ip-address" );
+
+    #######################################
+    # RSA/MM Attributes
+    #######################################
+    my @xattrs = (
+       "type",
+       "enclosure-machinetype-model",
+       "enclosure-serial-number",
        "ip-address" );
 
     foreach my $rsp ( @$values ) {
@@ -875,7 +1202,7 @@ sub parse_responses {
         ###########################################
         # service-type attribute not found 
         ###########################################
-        if ( $rsp !~ /\(type=([\w\-\.,]+)\)/ ) {
+        if ( $rsp !~ /\(type=([^\)]+)/ ) {
             if ( $verbose ) {
                 trace( $request, "(type) attribute not found: $rsp" );
             }
@@ -898,16 +1225,22 @@ sub parse_responses {
         ###########################################
         # RSA/MM - slightly different attributes
         ###########################################
-        if (( $type eq SERVICE_RSA ) or ( $type eq SERVICE_MM )) {
-            $attr[1] = "enclosure-machinetype-model";
-            $attr[2] = "enclosure-serial-number";
+        my $attr = \@attrs;
+        if (( $type eq SERVICE_RSA ) or ( $type eq SERVICE_RSA2 ) or 
+            ( $type eq SERVICE_MM )) {
+            $attr = \@xattrs;
         }
 
         ###########################################
         # Extract the attributes
         ###########################################
-        foreach ( @attr ) {
-            $rsp =~ /\($_=([\w\-\.,]+)\)/; 
+        foreach ( @$attr ) {
+            unless ( $rsp =~ /\($_=([^\)]+)/ ) {
+                if ( $verbose ) {
+                    trace( $request, "Attribute not found: [$_]->($rsp)" );
+                }
+                next;
+            }
             push @result, $1;
         }
         ###########################################
@@ -920,7 +1253,7 @@ sub parse_responses {
         #
         ###########################################
         if (( $type eq SERVICE_HMC ) or ( $type eq SERVICE_IVM )) {
-            if ( $rsp =~ /\(name=([\w\-\.,]+)\)/ ) {
+            if ( $rsp =~ /\(name=([^\)]+)/ ) {
                 $host = $1;
 
                 ###################################
@@ -933,9 +1266,6 @@ sub parse_responses {
         }
         ###########################################
         # Seperate ATTR and URL portions:
-        # 0
-        # 1
-        # 75
         # URL: service:management-software.IBM...
         # ATTR: (type=hardware-management-cons...
         # (serial-number=KPHHK24),(name=c76v2h...
@@ -969,7 +1299,13 @@ sub parse_responses {
             }
         }
         push @result, $host;
-        push @result, $2;
+
+        ###################################
+        # Strip off trailing ",lifetime"
+        ###################################
+        my $at = $2;
+        $at =~ s/,\d+$//;
+        push @result, $at;
 
         ###########################################
         # Strip commas from IP list
@@ -1194,79 +1530,229 @@ sub format_xml {
 
 
 ##########################################################################
-# OpenSLP is running on:
-#     p6 FSP
-#     p6 BPA
-# IBM SLP is running on:
-#     p5 FSP
-#     p5 BPA
+# OpenSLP running on:
+#     P6 FSP
+#     P6 BPA
+# IBM SLP running on:
+#     P5 FSP
+#     P5 BPA
 #     HMC
 #     MM
 #     RSA
 # AIX SLP
 #     IVM
 #
-# OpenSLP v. IBM SLP
-# (1) OpenSLP does not support wildcards (i.e. service:management-*.IBM: )
-# (2) OpenSLP does not support ':' at the end of services
-#     (i.e. service:management-hardware.IBM:). Unfortunately, IBM SLP
-#     requires it.
+# Notes:
+# IBM SLP requires trailing ':' (i.e. service:management-hardware.IBM:)
+# There is one exception to this rule when dealing with FSP
+# concrete" service types, it will work with/without the trailing ':'
+# (i.e. "service:management-hardware.IBM:cec-service-processor[:]")
 #
-# Given the above, to collect all the above service types, it is 
-# necesary to broadcast:
-# (1) service:management-*.IBM: for all IBM SLP hardware
-# (2) service:management-hardware.IBM for OpenSLP hardware (p6 FSP/BPA)
-#      (IBM SLP hardware will not respond since there is no trailing ":")
-# (3) IBM SLP does not require a trailing ':' with "cec-service-processor"
-#     concrete type only.
+# OpenSLP does not support ':' at the end of services
+# (i.e. service:management-hardware.IBM:). Unfortunately, IBM SLP
+# requires it.
 #
+# Given the above, to collect all the above service types, it is
+# necessary to multicast:
+# (1) "service:management-*" for all IBM SLP hardware
+# (2) "service:management-hardware.IBM" for OpenSLP hardware (P6 FSP/BPA)
+#      (IBM SLP hardware will not respond to this since there is no trailing ":")
+#
+# * One exception to the above rule is when using FSP concrete
+#   service type, it will work with/without the trailing ":"
+#   (i.e. "service:management-hardware.IBM:cec-service-processor[:]"
+#
+##########################################################################
+
+
+##########################################################################
+# Run IBM SLP version
 ##########################################################################
 sub slp_query {
 
     my $request  = shift;
     my $callback = $request->{callback};
-    my $slpcmd   = "/usr/sbin/slp_query";
-    my $start;
-    my @services = (
-        HARDWARE_SERVICE,
-        WILDCARD_SERVICE
-    );
+    my $cmd      = $opt{e};
 
     #############################################
-    # slp_query not installed   
+    # slp_query not installed
     #############################################
-    if ( !-x $slpcmd ) {
-        send_msg( $request, 1, "Command not installed: $slpcmd" );
+    if ( !-x $cmd ) {
+        send_msg( $request, 1, "Command not found: $cmd" );
         return( [RC_ERROR] );
     }
     #############################################
-    # slp_query runnable - dependent on libstdc++ 
+    # slp_query runnable - dependent on libstdc++
     # Test for usage statement.
     #############################################
-    my $output = `$slpcmd 2>&1`;
+    my $output = `$cmd 2>&1`;
     if ( $output !~ /slp_query --type=service-type-string/ ) {
         send_msg( $request, 1, $output );
         return( [RC_ERROR] );
     }
-    #############################################
+    my $result = runcmd( $request, $cmd );
+    return( $result );
+}
+
+
+##########################################################################
+# Run OpenSLP version
+##########################################################################
+sub slptool {
+
+    my $request = shift;
+    my $cmd     = SLPTOOL;
+    my $start;
+
+    #########################################
+    # slptool not installed   
+    #########################################
+    if ( !-x $cmd ) {
+        send_msg( $request, 1, "Command not found: $cmd" );
+        return( [RC_ERROR] );
+    }
+    #########################################
+    # slptool runnable - test for version 
+    #########################################
+    my $output = `$cmd -v 2>&1`;
+    if ( $output !~ /^slptool version = 1.2.1\nlibslp version = 1.2.1/ ) {
+        send_msg( $request, 1, "Incorrect 'slptool' command installed" );
+        return( [RC_ERROR] );
+    }
+    #########################################
+    # Select broadcast, convergence, etc 
+    #########################################
+    my $mode = selectmode( $request );
+    if ( defined($mode) ) {
+        return( $mode );
+    }
+    my $result = runcmd( $request, $cmd );
+    return( $result );
+}
+
+
+##########################################################################
+# Select OpenSLP slptool broadcast convergence, etc 
+##########################################################################
+sub selectmode {
+
+    my $request = shift;
+    my $fname   = SLP_CONF;
+    my $mode;
+    my $maxtimeout;
+    my $converge;
+
+    ##################################
+    # Select convergence  
+    ##################################
+    if ( exists( $opt{c} )) {
+        $converge = join( ',',@converge );
+
+        ##############################
+        # Maximum timeout
+        ##############################
+        foreach ( @converge ) {
+            $maxtimeout += $_;
+        }
+    }
+    ##################################
+    # Select multicast or broadcast  
+    ##################################
+    if ( !exists( $opt{m} )) {
+        $mode = "true";    
+    }
+
+    ##################################
+    # slp.conf attributes  
+    ##################################
+    my %attr = (
+        "net.slp.multicastTimeouts"    => $converge,
+        "net.slp.isBroadcastOnly"      => $mode,
+        "net.slp.multicastMaximumWait" => $maxtimeout 
+    );
+
+    if ( $verbose ) {
+        my $msg = !defined($mode) ? "Multicasting SLP...":"Broadcasting SLP...";
+        trace( $request, $msg );
+    }
+    ##################################
+    # Open/read slp.conf  
+    ##################################
+    unless ( open( CONF, $fname )) {
+        send_msg( $request, 1, "Error opening: '$fname'" );
+        return( [RC_ERROR] );
+    }
+    my @raw_data = <CONF>;
+    close( CONF );
+
+    ##################################
+    # Find attribute
+    ##################################
+    foreach my $name ( keys %attr ) {
+        my $found = 0;
+
+        foreach ( @raw_data ) {
+            if ( /^;*$name\s*=/ ) {
+                if ( !defined( $attr{$name} )) {
+                    s/^;*($name\s*=\s*[\w,]+)/;$1/;
+                } elsif ( $attr{$name} == 0 ) {
+                    s/^;*($name\s*=\s*[\w,]+)/$1/;
+                } else {
+                    s/^;*$name\s*=\s*[\w,]+/$name = $attr{$name}/;
+                }
+                $found = 1;
+                last;
+            }
+        }
+        if ( !$found ) {
+            send_msg( $request, 1, "'$name' not found in '$fname'" );
+            return( [RC_ERROR] );
+        }
+    }
+    ##################################
+    # Rewrite file contents 
+    ##################################
+    unless ( open( CONF, "+>$fname" )) {
+        send_msg( $request, 1, "Error opening: '$fname'" );
+        return( [RC_ERROR] );
+    }
+    print CONF @raw_data;
+    close( CONF );
+    return undef;
+}
+
+
+##########################################################################
+# Run the SLP command 
+##########################################################################
+sub runcmd {
+
+    my $request  = shift;
+    my $cmd      = shift;
+    my $services = shift;
+    my $callback = $request->{callback};
+    my @services = ( WILDCARD_SERVICE, P6_SERVICE );
+    my $start;
+
+    ###########################################
     # Query specific service; otherwise, 
     # query all hardware/software services
-    #############################################
+    ###########################################
     if ( exists( $opt{s} )) {
         @services = $request->{service};
     }
 
     if ( $verbose ) {
-        #########################################
+        #######################################
         # Write header for trace
-        #########################################
+        #######################################
         my $tm  = localtime( time );
         my $msg = "\n--------  $tm\nTime     PID";
         trace( $request, $msg );
     }
-    #############################################
+    ###########################################
     # Get/validate broadcast IPs
-    #############################################
+    ###########################################
     my $result = validate_ip( $request );
     my $Rc = shift(@$result);
 
@@ -1277,23 +1763,23 @@ sub slp_query {
     if ( $verbose ) {
         $start = Time::HiRes::gettimeofday(); 
     }
-    #############################################
-    # Fork one process per broadcast adapter 
-    #############################################
+    ###########################################
+    # Fork one process per adapter 
+    ###########################################
     my $children = 0;
     $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
     my $fds = new IO::Select;
     
     foreach ( keys %ip_addr ) {
-        my $pipe = fork_cmd( $request, $_, $slpcmd, \@services );
+        my $pipe = fork_cmd( $request, $_, $cmd, \@services );
         if ( $pipe ) {
             $fds->add( $pipe );
             $children++;
         }
     }
-    #############################################
+    ###########################################
     # Process slp responses from children 
-    #############################################
+    ###########################################
     while ( $children > 0 ) {
         child_response( $callback, $fds );
     }
@@ -1304,9 +1790,9 @@ sub slp_query {
         my $msg = sprintf( "Total SLP Time: %.3f sec\n", $elapsed );
         trace( $request, $msg ); 
     }
-    #############################################
+    ###########################################
     # Combined responses from all children 
-    #############################################
+    ###########################################
     my @all_results = keys %slp_result;
     format_output( $request, \@all_results );
     return( [SUCCESS,\@all_results] );
@@ -1411,13 +1897,13 @@ sub preprocess_request {
     ###########################################
     # build each request for each service node
     ###########################################
-    my @requests=();
+    my @result = ();
     foreach my $sn (keys (%sv_hash)) {
       my $reqcopy = {%$req};
       $reqcopy->{_xcatdest} = $sn;
-      push @requests, $reqcopy;
+      push @result, $reqcopy;
     }
-    return \@requests;
+    return \@result;
 }
 
 
@@ -1755,11 +2241,11 @@ sub process_request {
         return(1);
     }   
     ###########################################
-    # Broadcast SLP
+    # SLP service-request - select program
     ###########################################
-    $result = slp_query( \%request );
+    $result = $openSLP ? slptool( \%request ) : slp_query( \%request );
+    my $Rc  = shift(@$result);
 
-    my $Rc = shift(@$result);
     return( $Rc );
 }
 
