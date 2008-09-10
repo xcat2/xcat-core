@@ -296,6 +296,23 @@ sub mknetboot
                 }
             }
         }
+
+       # Has to be tested...
+       #
+       # Try to insert special idiom {xcatmaster} to bootparams table if the above
+       # value resolves to the same value as {xcatmaster}.
+       # This allows avoiding xcatmaster hostname where possible, thus allowing
+       # to keep database very clean and minimize needed changes in db
+       # when moving xcat to another node.
+       #-- test whether special construction '{xcatmater}' is supported in Table.pm
+       $sitetab->setAttribs( {'key' => 'testkey'}, {'value' => '{xcatmaster}'} );
+       my $testvalue = $sitetab->getAttribs({key => "testkey"}, 'value');
+       #-- now "testkey" will _NOT_ contain '{xcatmaster}' if special substitutions are supported
+       if ( $testvalue->{"value"} eq $imgsrv ) { #-- xCAT supports interpolation of '{xcatmaster}'
+         $imgsrv = '{xcatmaster}';
+       }
+       $sitetab->delEntries( {'key' => 'testkey'} );   #-- clean up
+
         unless ($imgsrv)
         {
             $callback->(
