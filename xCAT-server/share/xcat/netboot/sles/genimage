@@ -38,6 +38,21 @@ sub xdie {
    die @_;
 }
 
+#-- fetch current version form CVS (overwrite locally changed versions)
+# if (opendir(CVS,"$pathtofiles/CVS")){
+#   close CVS;
+#   my $cvsout = qx/cd $pathtofiles; cvs update -C 2>&1/;
+#   chomp $cvsout;
+#   if ( $cvsout ne "cvs update: Updating ." ) {
+#     print "Difference of local copy from CVS detected\n";
+#     print $cvsout,"\n";
+#     print "Trying to re-run $name\n";
+#     print("$pathtofiles/$name ",join(" ",@ARGV),"\n");
+#     exec("$pathtofiles/$name",@ARGV);
+#   }
+# }
+
+
 $SIG{INT} = $SIG{TERM} = sub { xdie "Interrupted" };
 GetOptions(
    'a=s' => \$arch,
