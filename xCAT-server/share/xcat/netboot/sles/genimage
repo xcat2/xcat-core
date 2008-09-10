@@ -110,6 +110,19 @@ unless ($onlyinitrd) {
      system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir_otherpkgs");
    }
 
+   #-- add custom repositories to the image
+   if (-r "$pathtofiles/$profile.repolist") {
+     $repolist = "$pathtofiles/$profile.repolist";
+     print "Reading custom repositories\n";
+     open($repoconfig,"<","$repolist");
+     while (<$repoconfig>) {
+       chomp;
+       next if /^\s*#/;
+       ($repotype,$repourl,$repoalias) = split m/\|/;
+       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa -t $repotype $repourl $repoalias");
+     }
+   }
+
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* ";
    #$yumcmd .= "install ";
    #mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");

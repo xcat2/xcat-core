@@ -1,0 +1,10 @@
+#-- 
+#-- This file contains list of custom repositories (directory with rpms).
+#-- Repositories will be added to the image before package installation.
+#-- This makes possible to automatically install (by defining in {profile}.pkglist)
+#-- packages that are not contained in standard distribution repository
+#-- 
+#-- File format:
+#Type|URL|name
+#-- example:
+#Plaindir|file:/install/sles10sp2/x86_64/custom|custom
