@@ -10,6 +10,8 @@ use File::Basename;
 use xCAT::MsgUtils;
 use xCAT::Client;
 
+use Getopt::Std;
+
 my $bname = basename($0);
 
 #########################################
@@ -19,14 +21,15 @@ my $bname = basename($0);
 #
 #	Build hash and submit request
 #
-#	Handles: mkdef, chdef, lsdef, rmdef, and xcat2nim commands
+#	Handles: mkdef, chdef, lsdef, rmdef, mknimimage, rmnimimage,
+#		nimnodeset, mkdsklsnode, rmdsklsnode, and xcat2nim commands
 #
 #	Note: The subroutines that implement these commands
 #		are, for the most part, in:
 #			/opt/xcat/lib/perl/xCAT_plugin/DBobjectdefs.pm
 #			/opt/xcat/lib/perl/xCAT_plugin/xcat2nim.pm
+#			/opt/xcat/lib/perl/xCAT_plugin/aixinstall.pm
 #			/opt/xcat/lib/perl/xCAT/DBobjUtils.pm
-#		-on the xCAT management node
 #
 #########################################
 
@@ -57,9 +60,24 @@ if (-p STDIN) {
 }
 
 # add all the cmd line args to the hash - to pass to the plugin subroutine
-foreach (@ARGV)
+foreach my $a (@ARGV)
 {
-    push(@{$cmdref->{arg}}, $_);
+    push(@{$cmdref->{arg}}, $a);
+}
+
+# For some commands we need to set the noderange value
+# - don't want to depend on the order of args so need to pick
+#   the operand that doesn't have an "=" sign ( ie. attr=val format)
+my @checkcmds = ("nimnodeset", "mkdsklsnode", "rmdsklsnode", "xcat2nim");
+if (grep(/^$bname$/, @checkcmds) ) { 
+	# strip off all options
+	getopts('ab:fh?i:l:urs:m:no:t:vV');
+	# check the operands for a noderange
+	while (my $a = shift(@ARGV)) {
+		if (!($a =~ /=/)) {
+			$cmdref->{noderange}->[0]=$a;
+		}
+	}
 }
 
 xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
