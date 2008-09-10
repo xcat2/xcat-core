@@ -150,6 +150,16 @@ unless ($onlyinitrd) {
    postscripts(); #run 'postscripts'
 }
 unlink "/tmp/genimage.$$.yum.conf";
+
+#-- run postinstall script
+if (-x "$pathtofiles/$profile.postinstall") {
+   my $rc = system("$pathtofiles/$profile.postinstall","$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
+   if ($rc) {
+      print "postinstall script failed\n";
+      exit 1;
+   }
+}
+
 mkinitrd();
 
 sub getlibs {
