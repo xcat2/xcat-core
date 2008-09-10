@@ -29,7 +29,7 @@ After the nimnodeset command completes you can use the lsnim command to check th
 =item B<attr=val [attr=val ...]>
 
 Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
-val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands, ("nim -o bos_inst ...").  See the NIM documentation for valid "nim" command line options.
+val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands, ("nim -o bos_inst ...").  See the NIM documentation for valid "nim" command line options. Note that you may specify multiple "script" and "installp_bundle" values by using a comma seperated list. (ex. "script=ascript,bscript").
 
 =item B<-f |--force>
 
@@ -86,11 +86,11 @@ B<nimnodeset aixnodes>
 =back
 
 
-3) Initialize an xCAT node called "node02".  Include an installp_bundle resource that is not included in the osimage definition. This assumes the NIM installp_bundle resource has already been created.
+3) Initialize an xCAT node called "node02".  Include installp_bundle resources that are not included in the osimage definition. This assumes the NIM installp_bundle resources have already been created.
 
 =over 5
 
-B<nimnodeset -i 611image node02 installp_bundle=sshbundle>
+B<nimnodeset -i 611image node02 installp_bundle=sshbundle,addswbundle>
 
 =back
 

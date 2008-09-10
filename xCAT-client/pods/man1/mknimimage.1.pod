@@ -34,7 +34,7 @@ To remove specific NIM resource definitons use the AIX nim command.
 
 =item B<attr=val [attr=val ...]>
 
-Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify additional or different resource names to use when creating the the xCAT osimage definition. The usage is: "<nim_resource_type>=<resource_name>". (ex. "root=myrootres")
+Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify additional or different resource names to use when creating the the xCAT osimage definition. The usage is: "<nim_resource_type>=<resource_name>". (ex. "root=myrootres")  Note that you may specify multiple "script" and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript").
 
 =item B<-b mksysbfile>
 
@@ -104,9 +104,9 @@ B<mknimimage -s /dev/cd0 61image>
 
 2) Create an osimage definition that includes some additional NIM resources.
 
-B<mknimimage -s /dev/cd0 61image installp_bundle=mybndlres>
+B<mknimimage -s /dev/cd0 61image installp_bundle=mybndlres,addswbnd>
 
-This command will create lpp_source, spot, bosinst_data, and resolve_conf resources using the source specified by the "-s" option.  The installp_bundle information will also be included in the osimage definition.  The mybndlres resource must be created before using this osimage definition to install a node.
+This command will create lpp_source, spot, bosinst_data, and resolve_conf resources using the source specified by the "-s" option.  The installp_bundle information will also be included in the osimage definition.  The mybndlres and addswbnd resources must be created before using this osimage definition to install a node.
 
 3) Create an osimage definition that includes a mksysb image and related resources.
 
