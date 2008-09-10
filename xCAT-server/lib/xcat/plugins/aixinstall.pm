@@ -418,14 +418,13 @@ ll~;
 		}
 
 		# figure out what resources and options to pass to NIM "bos_inst"
-		#  first set %cmdargs to osimage info then set to %attrs info
+		#  first set %cmdargs to osimage info then set to cmd line %attrs info
 		#  TODO - what about resource groups????
 
 		#  add any resources that are included in the osimage def
 		#		only take the attrs that are actual NIM resource types
-
-		# TODO - need to handle script & installp_bundle special
-		#	- there could be multiple instance of each
+		my $script_string="";
+        my $bnd_string="";
         foreach my $restype (sort(keys %{$imagehash{$image_name}})) {
             # restype is res type (spot, script etc.)
             # resname is the name of the resource (61spot etc.)
@@ -435,8 +434,22 @@ ll~;
 			#	to the list of args
             if (grep(/^$restype$/, @nimrestypes)) {
                 if ($resname) {
-                    # ex. attr=spot resname=61spot "
-					$cmdargs{$restype} = $resname;
+					# handle multiple script & installp_bundles
+                    if ( $restype eq 'script') {
+                        foreach (split /,/,$resname) {
+                            chomp $_;
+                            $script_string .= "-a script=$_ ";
+                        }
+                    } elsif ( $restype eq 'installp_bundle') {
+                        foreach (split /,/,$resname) {
+                            chomp $_;
+                            $bnd_string .= "-a installp_bundle=$_ ";
+                        }
+
+                    } else {
+                        # ex. attr=spot resname=61spot
+                        $cmdargs{$restype} = $resname;
+                    }
                 }
             }
         }
@@ -445,8 +458,25 @@ ll~;
 		if (defined(%attrs)) {
 			foreach my $attr (keys %attrs) {
 				# assume each attr corresponds to a valid
-				#	"nim -o bos_inst" attr
-				$cmdargs{$attr} = $attrs{$attr};
+                #   "nim -o bos_inst" attr
+                # handle multiple script & installp_bundles
+                if ( $attr eq 'script') {
+                    $script_string = "";
+                    foreach (split /,/,$attrs{$attr}) {
+                        chomp $_;
+                        $script_string .= "-a script=$_ ";
+                    }
+                } elsif ( $attr eq 'installp_bundle'){
+                    $bnd_string="";
+                    foreach (split /,/,$attrs{$attr}) {
+                        chomp $_;
+                        $bnd_string .= "-a installp_bundle=$_ ";
+                    }
+
+                } else {
+                    # ex. attr=spot resname=61spot
+                    $cmdargs{$attr} = $attrs{$attr};
+                }
 			}
 		}
 
@@ -469,16 +499,27 @@ ll~;
 			$cmdargs{boot_client} = "no";
 		}
 
+		# set accept_licenses
+        if (!defined($cmdargs{accept_licenses})) {
+            $cmdargs{accept_licenses} = "yes";
+        }
+
 		# create the cmd line args
 		my $arg_string=" ";
 		foreach my $attr (keys %cmdargs) {
 			$arg_string .= "-a $attr=$cmdargs{$attr} ";
 		}
 
-		my $initcmd;
-		# $initcmd="/usr/sbin/nim -o bos_inst $arg_string -a accept_licenses=yes $nim_name 2>&1";
-		$initcmd="/usr/sbin/nim -o bos_inst $arg_string $nim_name 2>&1";
+		if ($script_string) {
+            $arg_string .= "$script_string";
+        }
 
+        if ($bnd_string) {
+            $arg_string .= "$bnd_string";
+        }
+
+		my $initcmd;
+		$initcmd="/usr/sbin/nim -o bos_inst $arg_string $nim_name 2>&1";
 
 		my $output = xCAT::Utils->runcmd("$initcmd", -1);
 		if ($::RUNCMD_RC  != 0)
