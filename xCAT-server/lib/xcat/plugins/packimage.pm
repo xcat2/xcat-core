@@ -79,6 +79,8 @@ sub process_request {
     my $excludestr = "find . ";
     while (<$exlist>) {
        chomp $_;
+       s/\s*#.*//;      #-- remove comments 
+       next if /^\s*$/; #-- skip empty lines
        $excludestr .= "'!' -path '".$_."' -a ";
     }
     close($exlist);

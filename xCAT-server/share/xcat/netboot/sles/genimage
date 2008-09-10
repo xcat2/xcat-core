@@ -129,7 +129,9 @@ unless ($onlyinitrd) {
    }
    open($yumconfig,"<","$pkglist");
    while (<$yumconfig>) {
-      chomp;
+      chomp; 
+      s/\s*#.*//;      #-- remove comments 
+      next if /^\s*$/; #-- skip empty lines
       $yumcmd .= $_ . " ";
    }
    close($yumconfig);
