@@ -1,0 +1,30 @@
+#!/bin/sh
+#--
+#-- this script is run after all packages from $profile.pkglist are installed
+#-- 
+#-- it gets these arguments:
+#-- 
+#-- $1 = install root (chroot directory for profile)
+#-- $2 = OS version
+#-- $3 = architecture
+#-- $4 = profile name
+#-- $5 = work dir (where genimage is located)
+#-- 
+#-- 
+installroot=$1
+osver=$2
+arch=$3
+profile=$4
+workdir=$5
+
+#-- Example how /etc/fstab can be automatically generated during image generation:
+#cat <<END >$installroot/etc/fstab
+#proc            /proc    proc   rw 0 0
+#sysfs           /sys     sysfs  rw 0 0
+#devpts          /dev/pts devpts rw,gid=5,mode=620 0 0
+#${profile}_${arch}      /        tmpfs  rw 0 1
+#none            /tmp     tmpfs  defaults,size=10m 0 2
+#none            /var/tmp tmpfs  defaults,size=10m 0 2
+#END
+
+
