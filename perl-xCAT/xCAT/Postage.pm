@@ -212,6 +212,7 @@ sub makescript {
   }
 
   #get packge names for extra rpms
+  my $stat="install";
   if ($profile) {
     my $platform="rh";
     if ($os) {
@@ -221,7 +222,6 @@ sub makescript {
       elsif ($os =~ /sles.*/) { $platform = "sles"; }
       elsif ($os =~ /aix.*/) { $platform = "aix"; }
     }
-    my $stat="install";
     if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
     my $pathtofiles="$::XCATROOT/share/xcat/$stat/$platform";
     my $pkglist;
@@ -259,18 +259,20 @@ sub makescript {
   my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts');
   my $defscripts = $et->{'postscripts'};
   if ($defscripts) {
-  	foreach my $n (split(/,/, $defscripts)) {
-	    push @scriptd, $n."\n";
- 	}
+    foreach my $n (split(/,/, $defscripts)) {
+      if (($n eq "otherpkgs") && ($stat eq "netboot")) { next; }  #skip 'otherpkgs' for diskless case     
+      push @scriptd, $n."\n";
+    }
   }
 
   # get postscripts
   my $et = $posttab->getNodeAttribs($node, ['postscripts']);
   $ps = $et->{'postscripts'};
   if ($ps) {
-	foreach my $n (split(/,/, $ps)) {
-		push @scriptd, $n."\n";
-	}
+    foreach my $n (split(/,/, $ps)) {
+      if (($n eq "otherpkgs") && ($stat eq "netboot")) { next; }  #skip 'otherpkgs' for diskless case
+      push @scriptd, $n."\n";
+    }
   }
 
  
