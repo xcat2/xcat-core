@@ -187,6 +187,17 @@ sub docfheaders {
     push @$content,"  timestamp 1hab;\n";
     push @$content,"  include full;\n";
     push @$content,"  master localhost;\n";
+
+    #-- if option "conserverondemand" in site table is set to yes
+    #-- then start all consoles on demand
+    #-- this helps eliminate many ssh connections to blade AMM
+    #-- which seems to kill AMMs occasionally
+    my $sitetab  = xCAT::Table->new('site');
+    my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
+    if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+      push @$content,"  options ondemand;\n";
+    }
+
     push @$content,"}\n";
   }
 
