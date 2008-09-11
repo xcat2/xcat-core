@@ -247,7 +247,12 @@ sub makescript {
       if ( @otherpkgs > 0) { 
         push @scriptd, "OTHERPKGS=". join(',',@otherpkgs) . " \n";
         push @scriptd, "export OTHERPKGS\n";
-     }    
+
+        if (-r "/install/post/otherpkgs/$os/$arch/repodata/repomd.xml") {
+          push @scriptd, "OTHERPKGS_HASREPO=1\n";
+          push @scriptd, "export OTHERPKGS_HASREPO\n";
+        }
+      }    
     }
   }
   
@@ -260,7 +265,8 @@ sub makescript {
   my $defscripts = $et->{'postscripts'};
   if ($defscripts) {
     foreach my $n (split(/,/, $defscripts)) {
-      if (($n eq "otherpkgs") && ($stat eq "netboot")) { next; }  #skip 'otherpkgs' for diskless case     
+      #skip 'otherpkgs' for diskless case because it is handled by genimage   
+      if (($n eq "otherpkgs") && ($stat eq "netboot")) { next; }  
       push @scriptd, $n."\n";
     }
   }
@@ -270,7 +276,8 @@ sub makescript {
   $ps = $et->{'postscripts'};
   if ($ps) {
     foreach my $n (split(/,/, $ps)) {
-      if (($n eq "otherpkgs") && ($stat eq "netboot")) { next; }  #skip 'otherpkgs' for diskless case
+      #skip 'otherpkgs' for diskless case because it is handled by genimage   
+      if (($n eq "otherpkgs") && ($stat eq "netboot")) { next; }  
       push @scriptd, $n."\n";
     }
   }

@@ -86,7 +86,18 @@ if (&runcmd($chcmd) != 0) {
 # check & run the postscript
 if (-f $scriptname)
 {
-	if (&runcmd($scriptname) != 0)
+    if (@ARGV>0) {
+      my $scripts=$ARGV[0];
+      my $POSTS=join('\n', split(',', $scripts));
+      #print "scripts=$scripts\n";
+      #remove all the postscripts
+      my $TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" $scriptname`;
+      `echo "$TMP" > $scriptname`;
+      #add requested postscripts in
+      `echo "$POSTS" | tr "," "\n" >> $scriptname`;
+   }
+
+    if (&runcmd($scriptname) != 0)
     {
 		print "$::sdate  xcataixpost: Could not run $scriptname.\n";
 		print $::LOG_FILE "$::sdate  xcataixpost: Could not run $scriptname.\n";

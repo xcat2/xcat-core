@@ -28,26 +28,127 @@ if [[ -z "$OTHERPKGS" ]]; then
   exit 0
 fi
 
-SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
-if [ -z "$SIP" ]; then
+if [[ $OSTYPE = linux* ]]; then
+  #find out the server
+  SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
+  if [ -z "$SIP" ]; then
     SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
+  fi
+
+  if [[ $OTHERPKGS_HASREPO -eq 1 ]]; then
+    rpm -q yum
+    if [ $? -eq 0 ]; then 
+      #use yum
+      REPOFILE="/tmp/xCAT-otherpkgs.repo"
+      echo "[xcat-otherpkgs]" > $REPOFILE
+      echo "name=xcat-otherpkgs" >> $REPOFILE
+      echo "baseurl=ftp://$SIP/post/otherpkgs/$OSVER/$ARCH" >> $REPOFILE
+      echo "enabled=1" >> $REPOFILE
+      echo "gpgcheck=0" >> $REPOFILE
+      #clean meta data to make possible for update
+      yum -c $REPOFILE clean metadata
+
+      INSTALLPKGS=""
+      UPDATEPKGS=""
+      #check if the packges are installed already
+      for x in `echo "$OTHERPKGS" | tr "," "\n"`
+      do
+        rpm -q $x
+        if [ $? -eq 0 ]; then
+          UPDATEPKGS="$UPDATEPKGS $x"  
+        else
+          INSTALLPKGS="$INSTALLPKGS $x"  
+        fi  
+      done      
+
+      #update packages
+      if [[ ! -z $UPDATEPKGS ]]; then
+        echo "yum -c $REPOFILE -y update $UPDATEPKGS"
+        result=`yum -c $REPOFILE -y update $UPDATEPKGS 2>&1`
+        if [ $? -ne 0 ]; then 
+          echo "$result"
+          logger "otherpkgs: $result"
+        fi
+        exit 0
+      fi      
+
+      #install packages
+      if [[ ! -z $INSTALLPKGS ]]; then
+        echo "yum -c $REPOFILE -y install $INSTALLPKGS"
+        result=`yum -c $REPOFILE -y install $INSTALLPKGS 2>&1`
+        if [ $? -ne 0 ]; then 
+          echo "$result"
+          logger "otherpkgs: $result"
+        fi
+        exit 0
+      fi      
+    fi
+  
+
+    #try zypper  --- TODO: get a SLES cluster and test
+    #rpm -q zypper
+    #if [ $? -eq 0 ]; then 
+      #use zypper
+      #zypper sa ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1
+
+      #install
+      #PKGS=`echo "$OTHERPKGS" | tr "," " "`
+      #zypper install -y $PKGS
+      #exit 0
+    #fi
+  fi
+
+  #if it is not handled by the above code, we will use wget to handle it
+  mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH; 
+  rm -f -R /xcatpost/post/otherpkgs/*
+  mkdir -p /tmp/postage/
+  rm -f -R /tmp/postage/*
+  cd /tmp/postage
+
+  for x in `echo "$OTHERPKGS" | tr "," "\n"`
+  do
+    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/$x-* 2> /tmp/wget.log  
+  done
+
+  mv $SIP/post/otherpkgs/* /xcatpost/post/otherpkgs; 
+  rm -rf $SIP
+
+  cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
+  result=`rpm -Uvh * 2>&1`
+  echo "$result"
+  if [ $? -ne 0 ]; then 
+    logger "otherpkgs $result"
+  fi
+  exit 0
+else #AIX
+  mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH
+  rm -f -R /xcatpost/post/otherpkgs/$OSVER/$ARCH/*
+
+  # get the name of my service node/NIM master from the /etc/niminfo file
+  if [ -f "/etc/niminfo" ]; then
+    servnode=`grep NIM_MASTER_HOSTNAME /etc/niminfo|tr "=" " "|awk {'print $3'}`
+    echo "servnode=$servnode"
+  else 
+    echo "Could not find /etc/niminfo file"
+    logger "otherpkgs: Could not find /etc/niminfo file" 
+    exit 1
+  fi
+
+  for x in `echo "$OTHERPKGS" | tr "," "\n"`
+  do
+    result=`rcp -r $servnode:/install/post/otherpkgs/$OSVER/$ARCH/$x* /xcatpost/post/otherpkgs/$OSVER/$ARCH/.`
+    if [ $? -ne 0 ]; then 
+      echo "$result"
+      logger "otherpkgs: $result"
+    fi
+  done
+
+  #on AIX use geninstall
+  PKGS=`echo "$OTHERPKGS" | tr "," " "`
+  cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
+  geninstall -I aX -Y -d /xcatpost/post/otherpkgs/$OSVER/$ARCH $PKGS
+  exit 1
 fi
-mkdir -p /xcatpost/post/otherpkgs; 
-mkdir -p /tmp/postage/
-rm -f -R /xcatpost/post/otherpkgs/*
-rm -f -R /tmp/postage/*
-cd /tmp/postage
-
-for x in `echo "$OTHERPKGS" | tr "," "\n"`
-do
-  wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/$x-* 2> /tmp/wget.log  
-done
-
-mv $SIP/post/otherpkgs/* /xcatpost/post/otherpkgs; 
-rm -rf $SIP
-
-cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
-rpm -Uvh *
 
 exit 0
 

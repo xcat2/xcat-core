@@ -125,8 +125,8 @@ sub preprocess_updatenode {
     my $cb=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  updaenode <noderange> [posts]";
-    $rsp->{data}->[2]= "  updaenode [-h|--help|-v|--version]";
+    $rsp->{data}->[1]= "  updatenode <noderange> [posts]";
+    $rsp->{data}->[2]= "  updatenode [-h|--help|-v|--version]";
     $rsp->{data}->[3]= "     noderange is a list of nodes or groups.";
     $rsp->{data}->[4]= "     posts is a comma separated list of postscript names.";
     $rsp->{data}->[5]= "     if omitted, all the postscripts will be run.";
@@ -231,7 +231,13 @@ sub updatenode {
   print "postscripts=$postscripts, nodestring=$nodestring\n";
 
   if ($nodestring) {
-    my $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcatdsklspost $postscripts`;
+    my $output;
+    if (xCAT::Utils->isLinux()) {
+      $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcatdsklspost $postscripts 2>&1`;
+    }
+    else {
+      $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcataixpost $postscripts 2>&1`;
+    }
     my $rsp={};
     $rsp->{data}->[0]= "$output\n";
     $callback->($rsp);
