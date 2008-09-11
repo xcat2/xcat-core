@@ -1736,7 +1736,7 @@ sub getAttribs
 		 $exp =~ /^{hostname}$/ && do { $out = qx/hostname/; chomp $out; $expfound = 1; };
 		 $exp =~ /^{xcatmaster}$/ && do {
 		   my $ostab = xCAT::Table->new('site');
-		   $out = $ostab->getAttribs({key=>"master"},'value');
+		   my $out = $ostab->getAttribs({key=>"master"},'value');
 		   if ($out and $out->{value}) {
 		     $out = $out->{'value'}; $expfound = 1;
 		   }
