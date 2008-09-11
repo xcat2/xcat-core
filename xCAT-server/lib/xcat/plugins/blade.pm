@@ -1963,15 +1963,27 @@ sub telnetcmds {
     return([1,\@unhandled,$t->errmsg]);
   }
   $Rc = 0;
-  my @data;
+  my $mm;
+  my @data = $t->cmd("list -l 2");
+  foreach (@data) {
+    if (/(mm\[\d+\])\s+primary/) {
+      $mm = $1;
+      last;
+    }
+  }
+  if (!defined($mm)) {
+    push @cfgtext,"Cannot find primary MM";
+    return([1,\@unhandled]);
+  }
+  @data = ();
 
   foreach (keys %handled) {
-    if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass); }
-    elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user); }
-    elsif (/^network$/) { $result = network($t,$handled{$_},$mpa); }
+    if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm); }
+    elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user,$mm); }
+    elsif (/^network$/) { $result = network($t,$handled{$_},$mpa,$mm); }
     elsif (/^swnet$/)   { $result = swnet($t,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
-    elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_}); }
+    elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,1); }
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
@@ -1987,9 +1999,10 @@ sub mmtextid {
   my $t = shift;
   my $mpa = shift;
   my $value = shift;
+  my $mm = shift;
 
   $value = ($value =~ /^\*/) ? $mpa : $value;
-  my @data = $t->cmd("config -name $value -T system:mm[1]");
+  my @data = $t->cmd("config -name $value -T system:$mm");
   if (!grep(/OK/i,@data)) {
     return([1,@data]);
   }
@@ -2029,7 +2042,8 @@ sub network {
   my $value = shift;
   my $mpa = shift;
   my $reset = shift;
-  my $cmd = "ifconfig -eth0 -c static -r auto -d auto -m 1500 -T system:mm[1]";
+  my $mm = shift;
+  my $cmd = "ifconfig -eth0 -c static -r auto -d auto -m 1500 -T system:$mm";
   my ($ip,$host,$gateway,$mask);
 
   if ($value) {
@@ -2083,7 +2097,7 @@ sub network {
   if ($mask)   { push @result,"Subnet Mask: $mask"; }
 
   if (defined($reset)) {
-      $t->cmd("reset -T system:mm[1]");
+      $t->cmd("reset -T system:$mm");
   } 
   return([0,@result]);
 
@@ -2135,12 +2149,13 @@ sub snmpcfg {
   my $value = shift;
   my $uid = shift;
   my $pass = shift;
+  my $mm = shift;
 
   if ($value !~ /^enable|disable$/i) {
     return([1,"Invalid argument '$value' (enable|disable)"]); 
   }
   # Query users on MM
-  my @data = $t->cmd("users -T system:mm[1]");
+  my @data = $t->cmd("users -T system:$mm");
   my ($user) = grep(/\d+\.\s+$uid/, @data);
   if (!$user) {
     return([1,"Cannot find user: '$uid' on MM"]);
@@ -2149,7 +2164,7 @@ sub snmpcfg {
   my $id = $1;
   my $pp  = ($value =~ /^enable$/i) ? "des" : "none";
  
-  my $cmd= "users -$id -ap sha -at write -ppw $pass -pp $pp -T system:mm[1]";
+  my $cmd= "users -$id -ap sha -at write -ppw $pass -pp $pp -T system:$mm";
   @data = $t->cmd($cmd);
 
   if (grep(/OK/i,@data)) {
@@ -2164,6 +2179,7 @@ sub sshcfg {
   my $t = shift;
   my $value = shift;
   my $uid = shift;
+  my $mm = shift;
   my $fname = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
 
   if ($value) {
@@ -2172,13 +2188,13 @@ sub sshcfg {
     }
   }
   # Does MM support SSH
-  my @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
+  my @data = $t->cmd("sshcfg -hk rsa -T system:$mm");
 
   if (grep(/Error: Command not recognized/,@data)) {
     return([1,"SSH supported on AMM with minimum firmware BPET32"]);
   }
   # Get firmware version on MM
-  @data = $t->cmd("update -a -T system:mm[1]");
+  @data = $t->cmd("update -a -T system:$mm");
   my ($line) = grep(/Build ID:\s+\S+/, @data);
 
   # Minumum firmware version BPET32 required for SSH
@@ -2200,7 +2216,7 @@ sub sshcfg {
   my $login = $1;
 
   # Query users on MM
-  @data = $t->cmd("users -T system:mm[1]");
+  @data = $t->cmd("users -T system:$mm");
   my ($user) = grep(/\d+\.\s+$uid/, @data);
   if (!$user) {
     return([1,"Cannot find user: '$uid' on MM"]);
@@ -2209,11 +2225,11 @@ sub sshcfg {
   my $id = $1;
 
   # Determine is key already exists on MM
-  @data = $t->cmd("users -$id -pk all -T system:mm[1]");
+  @data = $t->cmd("users -$id -pk all -T system:$mm");
 
   # Query if enabled/disabled
   if (!$value) {
-    my @ddata = $t->cmd("sshcfg -T system:mm[1]");
+    my @ddata = $t->cmd("sshcfg -T system:$mm");
 
     if (my ($d) = grep(/^-cstatus\s+(\S+)$/,@ddata)) {
       if ($d=~ /\s(\S+)$/) {
@@ -2236,7 +2252,7 @@ sub sshcfg {
     if (/-cm\s+$login/) {
       /^(\d+)/;
       my $key = $1;
-      @data = $t->cmd("users -$id -pk -$key -remove -T system:mm[1]");
+      @data = $t->cmd("users -$id -pk -$key -remove -T system:$mm");
     }
   }
   if ($value =~ /^disable$/i) {
@@ -2247,10 +2263,10 @@ sub sshcfg {
   }
 
   # Make sure SSH key is generated on MM
-  @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
+  @data = $t->cmd("sshcfg -hk rsa -T system:$mm");
 
   if (!grep(/ssh-rsa/,@data)) {
-    @data = $t->cmd("sshcfg -hk gen -T system:mm[1]");
+    @data = $t->cmd("sshcfg -hk gen -T system:$mm");
     if (!grep(/^OK$/i, @data)) {
       return([1,@data]);
     }
@@ -2262,7 +2278,7 @@ sub sshcfg {
         return([1,"SSH key generation timeout"]);
       }
       sleep(15);
-      @data = $t->cmd("sshcfg -hk rsa -T system:mm[1]");
+      @data = $t->cmd("sshcfg -hk rsa -T system:$mm");
       if (grep(/ssh-rsa/,@data)) {
         last;
       }
@@ -2270,8 +2286,8 @@ sub sshcfg {
   }
   # Transfer SSH key from Management Node to MM
   $sshkey =~ s/@/\@/;
-  $t->cmd("users -$id -at set -T system:mm[1]");
-  @data = $t->cmd("users -$id -pk -T system:mm[1] -add $sshkey");
+  $t->cmd("users -$id -at set -T system:$mm");
+  @data = $t->cmd("users -$id -pk -T system:$mm -add $sshkey");
 
   if ($data[0]=~/Error/i) {
     if ($data[0]=~/Error writing data for option -add/i) {
@@ -2280,7 +2296,7 @@ sub sshcfg {
     return([1,$data[0]]);
   }
   # Enable ssh on MM
-  @data = $t->cmd("ports -sshe on -T system:mm[1]");
+  @data = $t->cmd("ports -sshe on -T system:$mm");
   return([0,"SSH $value: OK"]);
 }
 
