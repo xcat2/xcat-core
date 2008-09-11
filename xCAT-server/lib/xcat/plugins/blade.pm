@@ -655,7 +655,7 @@ sub vitals {
 
    if ( $#_ == 0 && $_[0] eq '' ) { pop @_; push @_,"all" }	#-- default is all if no argument given
 
-   if ( defined $slot ) { 	#-- blade query
+   if ( defined $slot and $slot > 0 ) { 	#-- blade query
      foreach (@_) {
        if ($_ eq 'all') {
          push @vitems,qw(temp voltage wattage summary);
