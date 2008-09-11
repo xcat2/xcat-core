@@ -289,7 +289,10 @@ sub resolve_node
 
         Using xCAT native commands, store the remote command settings for
         the remote shell and remote copy commands as defined in xCAT 
-		site.tab file.
+		site table .
+        if no site table (rsh, rcp attribute)  definition,  then 
+          on Linux use ssh    
+          on AIX, check for ssh and use it is installed, otherwise use rsh
 
         Arguments:
         	None
@@ -315,8 +318,19 @@ sub resolve_node
 #-------------------------------------------------------------------------------
 sub get_xcat_remote_cmds
 {
-    $XCAT_RSH_CMD = "/usr/bin/ssh";    # default
-    $XCAT_RCP_CMD = "/usr/bin/scp";    #default
+    if (xCAT::Utils->isLinux()) { 
+      $XCAT_RSH_CMD = "/usr/bin/ssh";    # use ssh
+      $XCAT_RCP_CMD = "/usr/bin/scp"; 
+    } else { # AIX
+      if (-e "/usr/bin/ssh")  {         # ssh is installed
+        $XCAT_RSH_CMD = "/usr/bin/ssh";    # use ssh 
+        $XCAT_RCP_CMD = "/usr/bin/scp"; 
+      } else {
+        $XCAT_RSH_CMD = "/usr/bin/rsh";    # no ssh, use rsh
+        $XCAT_RCP_CMD = "/usr/bin/rcp"; 
+      }
+    }
+    # override with site table settings, if they exist 
     my @remote_shell = xCAT::Utils->get_site_attribute("rsh");
     if ($remote_shell[0])
     {
