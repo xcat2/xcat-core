@@ -687,7 +687,7 @@ sub vitals {
 
   my $tmp;
 
-  if ( defined $slot ) {	#-- querying some blade
+  if ( defined $slot and $slot > 0) {	#-- querying some blade
 
     if (grep /watt/,@vitems) {
        if ($slot < 8) {
