@@ -97,7 +97,7 @@ if (-f $scriptname)
       `echo "$POSTS" | tr "," "\n" >> $scriptname`;
    }
 
-    if (&runcmd($scriptname) != 0)
+    if (&runcmd("cd /xcatpost;$scriptname") != 0)
     {
 		print "$::sdate  xcataixpost: Could not run $scriptname.\n";
 		print $::LOG_FILE "$::sdate  xcataixpost: Could not run $scriptname.\n";

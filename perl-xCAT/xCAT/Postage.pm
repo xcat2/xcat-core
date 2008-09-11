@@ -223,17 +223,8 @@ sub makescript {
       elsif ($os =~ /aix.*/) { $platform = "aix"; }
     }
     if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
-    my $pathtofiles="$::XCATROOT/share/xcat/$stat/$platform";
-    my $pkglist;
-    if (-r "$pathtofiles/$profile.$os.$arch.otherpkgs.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$os.$arch.otherpkgs.pkglist";
-    } elsif (-r "$pathtofiles/$profile.$arch.otherpkgs.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$arch.otherpkgs.pkglist";
-    } elsif (-r "$pathtofiles/$profile.$os.otherpkgs.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$os.otherpkgs.pkglist";
-    } elsif (-r "$pathtofiles/$profile.otherpkgs.pkglist") {
-      $pkglist = "$pathtofiles/$profile.otherpkgs.pkglist";
-    }
+    my $pkglist=get_otherpkg_file_name("/install/custom/$stat/$platform", $profile,  $os, $arch);
+    if (!$pkglist) { $pkglist=get_otherpkg_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
 
     if ($pkglist) {
       my @otherpkgs=();
@@ -265,8 +256,6 @@ sub makescript {
   my $defscripts = $et->{'postscripts'};
   if ($defscripts) {
     foreach my $n (split(/,/, $defscripts)) {
-      #skip 'otherpkgs' for diskless case because it is handled by genimage   
-      if (($n eq "otherpkgs") && ($stat eq "netboot")) { next; }  
       push @scriptd, $n."\n";
     }
   }
@@ -276,8 +265,6 @@ sub makescript {
   $ps = $et->{'postscripts'};
   if ($ps) {
     foreach my $n (split(/,/, $ps)) {
-      #skip 'otherpkgs' for diskless case because it is handled by genimage   
-      if (($n eq "otherpkgs") && ($stat eq "netboot")) { next; }  
       push @scriptd, $n."\n";
     }
   }
@@ -337,6 +324,24 @@ sub getnodesetstate {
   }
 
   return $state;
+}
+
+sub  get_otherpkg_file_name {
+  my $pathtofiles=shift;
+  my $profile=shift;
+  my $os=shift;
+  my $arch=shift;
+  if (-r "$pathtofiles/$profile.$os.$arch.otherpkgs.pkglist") {
+     return "$pathtofiles/$profile.$os.$arch.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$arch.otherpkgs.pkglist") {
+     return "$pathtofiles/$profile.$arch.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.$os.otherpkgs.pkglist") {
+     return "$pathtofiles/$profile.$os.otherpkgs.pkglist";
+   } elsif (-r "$pathtofiles/$profile.otherpkgs.pkglist") {
+     return "$pathtofiles/$profile.otherpkgs.pkglist";
+   }
+   
+   return "";
 }
 
 1;

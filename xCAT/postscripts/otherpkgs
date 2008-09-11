@@ -146,8 +146,13 @@ else #AIX
   #on AIX use geninstall
   PKGS=`echo "$OTHERPKGS" | tr "," " "`
   cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
-  geninstall -I aX -Y -d /xcatpost/post/otherpkgs/$OSVER/$ARCH $PKGS
-  exit 1
+  result=`geninstall -I aX -Y -d /xcatpost/post/otherpkgs/$OSVER/$ARCH $PKGS 2>&1`
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    echo "$result"
+    logger "otherpkgs: $result"
+  fi
+  exit $rc
 fi
 
 exit 0

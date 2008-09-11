@@ -4,6 +4,7 @@ use File::Path;
 use File::Copy;
 use File::Find;
 use Getopt::Long;
+use Cwd qw(realpath);
 #use strict;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -22,6 +23,7 @@ my @filestoadd;
 my $profile;
 my $osver;
 my $pathtofiles=dirname($0);
+my $fullpath=realpath($pathtofiles);
 my $name = basename($0);
 my $onlyinitrd=0;
 if ($name =~ /geninitrd/) {
@@ -32,6 +34,8 @@ my $tmplimit;
 my $installroot = "/install";
 my $kernelver = ""; #`uname -r`;
 my $basekernelver; # = $kernelver;
+my $customdir=$fullpath;
+$customdir =~ s/.*share\/xcat/$installroot\/custom/;
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -142,19 +146,18 @@ unless ($onlyinitrd) {
    #$yumcmd .= "install ";
    #mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
    my $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -y ";
-   my $pkglist;
-   if (-r "$pathtofiles/$profile.$osver.$arch.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$osver.$arch.pkglist";
-   } elsif (-r "$pathtofiles/$profile.$arch.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$arch.pkglist";
-   } elsif (-r "$pathtofiles/$profile.$osver.pkglist") {
-      $pkglist = "$pathtofiles/$profile.$osver.pkglist";
-   } elsif (-r "$pathtofiles/$profile.pkglist") {
-      $pkglist = "$pathtofiles/$profile.pkglist";
-   } else {
+
+   my $pkglist= get_pkglist_file_name($customdir);
+   if (!$pkglist) {
+     $pkglist= get_pkglist_file_name($pathtofiles);
+   } 
+   #print "pkglist=$pkglist\n";
+
+   if (!$pkglist) {
       print "Unable to find package list for $profile!";
       return 1;
    }
+
    open($yumconfig,"<","$pkglist");
    while (<$yumconfig>) {
       chomp; 
@@ -408,9 +411,11 @@ END
 	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
    @filestoadd=();
    foreach (@ndrivers) {
-      if (-f "$pathtofiles/$_") {
+     if (-f "$customdir/$_") {
          push @filestoadd,[$_,"lib/$_"];
-      }
+     } elsif (-f "$pathtofiles/$_") {
+         push @filestoadd,[$_,"lib/$_"];
+     }
    }
    foreach ("usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed") {
       getlibs($_);
@@ -437,15 +442,21 @@ END
    find(\&isnetdriver, <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$kernelver/*>);
    foreach (@filestoadd) {
       if (ref($_)) {
+         #print "$_->[0], $_->[1]\n";
          my $srcpath = "$installroot/netboot/$osver/$arch/$profile/rootimg/".$_->[0];
-         if (-f "$pathtofiles/".$_->[0]) {
+         if (-f "$customdir/".$_->[0]) {
+            $srcpath="$customdir/".$_->[0];
+         } elsif (-f "$pathtofiles/".$_->[0]) {
             $srcpath="$pathtofiles/".$_->[0];
          }
          copy($srcpath,"/tmp/xcatinitrd.$$/".$_->[1]);
          chmod 0755,"/tmp/xcatinitrd.$$/".$_->[1];
       } else {
+         #print "$_\n";
          my $srcpath = "$installroot/netboot/$osver/$arch/$profile/rootimg/$_";
-         if (-f "$pathtofiles/$_") {
+         if (-f "$customdir/$_") {
+            $srcpath = "$customdir/$_";
+         } elsif (-f "$pathtofiles/$_") {
             $srcpath = "$pathtofiles/$_";
          }
          copy("$srcpath","/tmp/xcatinitrd.$$/$_");
@@ -588,17 +599,10 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 
 #get th extra package name
 sub get_extra_package_names {
-   my $otherpkglist;
+   my $otherpkglist=get_extra_pkglist_file_name($customdir);
+   if (!$otherpkglist) { $otherpkglist=get_extra_pkglist_file_name($pathtofiles); }
    my $pkgnames;
-   if (-r "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist") {
-      $otherpkglist = "$pathtofiles/$profile.$osver.$arch.otherpkgs.pkglist";
-   } elsif (-r "$pathtofiles/$profile.$arch.otherpkgs.pkglist") {
-      $otherpkglist = "$pathtofiles/$profile.$arch.otherpkgs.pkglist";
-   } elsif (-r "$pathtofiles/$profile.$osver.otherpkgs.pkglist") {
-      $otherpkglist = "$pathtofiles/$profile.$osver.otherpkgs.pkglist";
-   } elsif (-r "$pathtofiles/$profile.otherpkgs.pkglist") {
-      $otherpkglist = "$pathtofiles/$profile.otherpkgs.pkglist";
-   } 
+
    if ($otherpkglist) {
      my $pkgfile;
      open($pkgfile,"<","$otherpkglist");
@@ -611,3 +615,35 @@ sub get_extra_package_names {
 
    return $pkgnames;
 }
+
+sub get_extra_pkglist_file_name {
+   my $base=shift;
+   if (-r "$base/$profile.$osver.$arch.otherpkgs.pkglist") {
+      return  "$base/$profile.$osver.$arch.otherpkgs.pkglist";
+   } elsif (-r "$base/$profile.$arch.otherpkgs.pkglist") {
+      return "$base/$profile.$arch.otherpkgs.pkglist";
+   } elsif (-r "$base/$profile.$osver.otherpkgs.pkglist") {
+      return "$base/$profile.$osver.otherpkgs.pkglist";
+   } elsif (-r "$base/$profile.otherpkgs.pkglist") {
+      return "$base/$profile.otherpkgs.pkglist";
+   } 
+   return "";
+}
+
+sub get_pkglist_file_name {
+   my $base=shift;
+   if (-r "$base/$profile.$osver.$arch.pkglist") {
+      return "$base/$profile.$osver.$arch.pkglist";
+   } elsif (-r "$base/$profile.$arch.pkglist") {
+      return "$base/$profile.$arch.pkglist";
+   } elsif (-r "$base/$profile.$osver.pkglist") {
+      return "$base/$profile.$osver.pkglist";
+   } elsif (-r "$base/$profile.pkglist") {
+      return "$base/$profile.pkglist";
+   } 
+
+   return "";
+}
+
+
+
