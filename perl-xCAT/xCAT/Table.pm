@@ -1725,6 +1725,7 @@ sub getAttribs
             {    #To undef fields in rows that may still be returned
 
 	      my $wrkstr = $data->{$attrib};
+         my $out;
 	      while ($wrkstr =~ /(\{.*?\})/g) {
 		#-- this have to be thoroughly tested...
 		#-- special constructions in tables
@@ -1736,7 +1737,7 @@ sub getAttribs
 		 $exp =~ /^{hostname}$/ && do { $out = qx/hostname/; chomp $out; $expfound = 1; };
 		 $exp =~ /^{xcatmaster}$/ && do {
 		   my $ostab = xCAT::Table->new('site');
-		   my $out = $ostab->getAttribs({key=>"master"},'value');
+		   $out = $ostab->getAttribs({key=>"master"},'value');
 		   if ($out and $out->{value}) {
 		     $out = $out->{'value'}; $expfound = 1;
 		   }
