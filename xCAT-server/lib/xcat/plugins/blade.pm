@@ -704,14 +704,22 @@ sub vitals {
        }
    }
        
+    my @bindlist;
+    my $bindobj;
     if (grep /voltage/,@vitems) {
+      
       for my $idx (15..40) {
-       $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
-            unless ((not $tmp) or $tmp =~ /Not Readable/) {
+          push @bindlist,[".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx",$slot];
+      }
+      $bindobj= new SNMP::VarList(@bindlist);
+      $session->get($bindobj); #[".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
+      for my $tmp (@$bindobj) {
+            if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/) {
               $tmp =~ s/ = /:/;
-              push @output,"$tmp";
+              push @output,$tmp->[2];
             }
       }
+      @bindlist=();
     }
 
     if (grep /temp/,@vitems) {
@@ -719,10 +727,14 @@ sub vitals {
         if ($idx eq 11) {
           next;
         }
-        $tmp=$session->get([".1.3.6.1.4.1.2.3.51.2.22.1.5.3.1.$idx.$slot"]);
-        unless ($tmp =~ /Not Readable/) {
+        push @bindlist,[".1.3.6.1.4.1.2.3.51.2.22.1.5.3.1.$idx",$slot];
+      }
+      $bindobj= new SNMP::VarList(@bindlist);
+      $session->get($bindobj);
+      for my $tmp (@$bindobj) {
+        if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/) {
           $tmp =~ s/ = /:/;
-          push @output,"$tmp";
+          push @output,$tmp->[2];
         }
       }
     }
@@ -760,7 +772,7 @@ sub vitals {
       if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; } 
          elsif ($stat==2) { $stat = "blinking"; }
       $tmp="KVM led: ".$stat;
-      push @output,"$tmp";
+      push @output,$tmp;
     }
 
     if (grep /mtled/,@vitems) {
