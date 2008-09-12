@@ -19,7 +19,7 @@ sent to the node for a diskless install.
 The install dir is setup by using "installdir" attribute set in the site table.
 The nodetype table "profile" attribute for the node should reflect the profile of the install image.
 
-This uses the package information from the /opt/xcat/share/xcat/netboot/[os] directory files for the profile input.
+This uses the package information from the /opt/xcat/share/xcat/netboot/[os] directory files for the profile input. However, you can customize the information and store it under /install/custom/netboot/[os] directory. The customized information will be used if any. 
 
 =head1 OPTIONS
 
@@ -49,7 +49,7 @@ B<-m>          Method (default cpio)
 
 I<packimage  -o fedora8 -p compute -a x86_64>
 
-This would use the package information from the /opt/xcat/share/xcat/netboot/fedora/compute* files.
+This would use the package information from the /install/custom/netboot/fedora/compute* files first. If not found it uses /opt/xcat/share/xcat/netboot/fedora/compute* files.
 
 =head1 FILES
 

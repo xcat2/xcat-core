@@ -11,15 +11,14 @@ B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 =head1 DESCRIPTION
 
-Generates a stateless image that can be used to boot xCAT nodes in a diskless mode.  The packages included
+Generates a stateless image that can be used to boot xCAT nodes in a diskless mode.  The default packages included
 (and excluded) in the image are specified by /opt/xcat/share/xcat/netboot/<OS>/<profile>.pkglist and
-/opt/xcat/share/xcat/netboot/<OS>/<profile>.exlist.  The generated image will be put in
-/install/netboot/<OS>/<arch>/<profile>.
+/opt/xcat/share/xcat/netboot/<OS>/<profile>.exlist. Customized package lists can be specified under /install/custom/netboot/<OS> directory. The generated image will be put in /install/netboot/<OS>/<arch>/<profile>.
 
 The B<genimage> command must be run on a system that is the same architecture as the nodes it will be
 used on.  If the management node is not the same architecture, copy the contents of
 /opt/xcat/share/xcat/netboot/<OS> to a system that is the proper architecture, and mount /install from
-the management node to that system.
+the management node to that system. 
 
 The B<genimage> command will run geninitrd automatically.  (You can run geninitrd yourself at a later time, if
 you want to rebuild the initrd.)  After your image is created, you can chroot to the
