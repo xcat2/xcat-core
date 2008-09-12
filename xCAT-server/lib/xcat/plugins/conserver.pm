@@ -89,7 +89,7 @@ sub preprocess_request {
   my $allnodes=1;
   if ($noderange && @$noderange>0) {
     $allnodes=0;
-    my $hmcache=$hmtab->getNodesAttribs(@$noderange,['node', 'serialport','cons', 'conserver']);
+    my $hmcache=$hmtab->getNodesAttribs($noderange,['node', 'serialport','cons', 'conserver']);
     foreach my $node (@$noderange) {
       my $ent=$hmcache->{$node}->[0]; #$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
       push @items,$ent;
