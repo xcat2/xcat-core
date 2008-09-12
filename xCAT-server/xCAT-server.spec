@@ -147,9 +147,10 @@ else
   echo "Unable to register init scripts on this system"
 fi
 if [ "$1" -gt "1" ]; then #only on upgrade...
-	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-    	/etc/init.d/xcatd restart
-    fi
+  if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d #migration issue for monitoring
+    /etc/init.d/xcatd restart
+  fi
 fi
 %endif
 
