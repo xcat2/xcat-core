@@ -1,5 +1,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::windows;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 use Storable qw(dclone);
 use Sys::Syslog;
 use File::Temp qw/tempdir/;
@@ -76,11 +81,9 @@ sub mkinstall
         my $os      = $ent->{os};
         my $arch    = $ent->{arch};
         my $profile = $ent->{profile};
-        unless ( -r $::XCATROOT . "/share/xcat/install/windows/$profile.tmpl"
-              or -r $::XCATROOT . "/share/xcat/install/windows/$profile.$arch.tmpl"
-              or -r $::XCATROOT . "/share/xcat/install/windows/$profile.$os.tmpl"
-              or -r $::XCATROOT
-              . "/share/xcat/install/windows/$profile.$os.$arch.tmpl")
+        my $tmplfile=get_tmpl_file_name("$installroot/custom/install/windows", $profile, $os, $arch);
+        if (! $tmplfile) { $tmplfile=get_tmpl_file_name("$::XCATROOT/share/xcat/install/windows", $profile, $os, $arch); }
+        unless ( -r "$tmplfile")
         {
             $callback->(
                       {
@@ -94,37 +97,16 @@ sub mkinstall
 
         #Call the Template class to do substitution to produce an unattend.xml file in the autoinst dir
         my $tmperr;
-        if (-r $::XCATROOT . "/share/xcat/install/windows/$profile.$os.$arch.tmpl")
+        if (-r "$tmplfile")
         {
             $tmperr =
               xCAT::Template->subvars(
-                         $::XCATROOT
-                           . "/share/xcat/install/windows/$profile.$os.$arch.tmpl",
+                         $tmplfile,
                          "/install/autoinst/$node",
                          $node
                          );
         }
-        elsif (-r $::XCATROOT . "/share/xcat/install/windows/$profile.$arch.tmpl")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                   $::XCATROOT . "/share/xcat/install/windows/$profile.$arch.tmpl",
-                   "/install/autoinst/$node", $node);
-        }
-        elsif (-r $::XCATROOT . "/share/xcat/install/windows/$profile.$os.tmpl")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                     $::XCATROOT . "/share/xcat/install/windows/$profile.$os.tmpl",
-                     "/install/autoinst/$node", $node);
-        }
-        elsif (-r $::XCATROOT . "/share/xcat/install/windows/$profile.tmpl")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                         $::XCATROOT . "/share/xcat/install/windows/$profile.tmpl",
-                         "/install/autoinst/$node", $node);
-        }
+        
         if ($tmperr)
         {
             $callback->(
@@ -348,4 +330,34 @@ sub copycd
     }
 }
 
+sub get_tmpl_file_name {
+  my $base=shift;
+  my $profile=shift;
+  my $os=shift;
+  my $arch=shift;
+  if (-r   "$base/$profile.$os.$arch.tmpl") {
+    return "$base/$profile.$os.$arch.tmpl";
+  }
+  elsif (-r "$base/$profile.$arch.tmpl") {
+    return  "$base/$profile.$arch.tmpl";
+  }
+  elsif (-r "$base/$profile.$os.tmpl") {
+    return  "$base/$profile.$os.tmpl";
+  }
+  elsif (-r "$base/$profile.tmpl") {
+    return  "$base/$profile.tmpl";
+  }
+
+  return "";
+}
+
+
 1;
+
+
+
+
+
+
+
+

@@ -1,5 +1,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::anaconda;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 use Storable qw(dclone);
 use Sys::Syslog;
 use Thread qw(yield);
@@ -424,26 +429,18 @@ sub mkinstall
         $genos =~ s/\..*//;
         if ($genos =~ /rh.s(\d*)/)
         {
-            unless (-r $::XCATROOT
-                    . "/share/xcat/install/$platform/$profile.$genos.$arch.tmpl"
-                    or -r $::XCATROOT
-                    . "/share/xcat/install/$platform/$profile.$genos.tmpl")
+            unless (-r "$installroot/custom/install/$platform/$profile.$genos.$arch.tmpl"
+                 or -r "/install/custom/install/$platform/$profile.$genos.tmpl"
+                 or -r "$::XCATROOT/share/xcat/install/$platform/$profile.$genos.$arch.tmpl"
+                 or -r "$::XCATROOT/share/xcat/install/$platform/$profile.$genos.tmpl")
             {
                 $genos = "rhel$1";
             }
         }
-
-        unless (-r $::XCATROOT . "/share/xcat/install/$platform/$profile.tmpl"
-                or -r $::XCATROOT
-                . "/share/xcat/install/$platform/$profile.$arch.tmpl"
-                or -r $::XCATROOT
-                . "/share/xcat/install/$platform/$profile.$os.tmpl"
-                or -r $::XCATROOT
-                . "/share/xcat/install/$platform/$profile.$genos.tmpl"
-                or -r $::XCATROOT
-                . "/share/xcat/install/$platform/$profile.$os.$arch.tmpl"
-                or -r $::XCATROOT
-                . "/share/xcat/install/$platform/$profile.$genos.$arch.tmpl")
+      
+        my $tmplfile=get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+        if (! $tmplfile) { $tmplfile=get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
+        unless ( -r "$tmplfile")  
         {
             $callback->(
                         {
@@ -459,69 +456,17 @@ sub mkinstall
 
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr =
-          "Unable to find template in $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arc combination)";
-        if (-r $::XCATROOT
-            . "/share/xcat/install/$platform/$profile.$os.$arch.tmpl")
+          "Unable to find template in /install/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arch combination)";
+        if (-r "$tmplfile")
         {
             $tmperr =
               xCAT::Template->subvars(
-                    $::XCATROOT
-                      . "/share/xcat/install/$platform/$profile.$os.$arch.tmpl",
+                    $tmplfile,
                     "/$installroot/autoinst/" . $node,
                     $node
                     );
         }
-        elsif (-r $::XCATROOT
-               . "/share/xcat/install/$platform/$profile.$genos.$arch.tmpl")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                 $::XCATROOT
-                   . "/share/xcat/install/$platform/$profile.$genos.$arch.tmpl",
-                 "/$installroot/autoinst/" . $node,
-                 $node
-                 );
-        }
-        elsif (-r $::XCATROOT
-               . "/share/xcat/install/$platform/$profile.$arch.tmpl")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                        $::XCATROOT
-                          . "/share/xcat/install/$platform/$profile.$arch.tmpl",
-                        "/$installroot/autoinst/" . $node,
-                        $node
-                        );
-        }
-        elsif (
-             -r $::XCATROOT . "/share/xcat/install/$platform/$profile.$os.tmpl")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                          $::XCATROOT
-                            . "/share/xcat/install/$platform/$profile.$os.tmpl",
-                          "/$installroot/autoinst/" . $node,
-                          $node
-                          );
-        }
-        elsif (-r $::XCATROOT
-               . "/share/xcat/install/$platform/$profile.$genos.tmpl")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                       $::XCATROOT
-                         . "/share/xcat/install/$platform/$profile.$genos.tmpl",
-                       "/$installroot/autoinst/" . $node,
-                       $node
-                       );
-        }
-        elsif (-r $::XCATROOT . "/share/xcat/install/$platform/$profile.tmpl")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
-                    $::XCATROOT . "/share/xcat/install/$platform/$profile.tmpl",
-                    "/$installroot/autoinst/" . $node, $node);
-        }
+
         if ($tmperr)
         {
             $callback->(
@@ -861,5 +806,35 @@ sub copycd
         $callback->({data => "Media copy operation successful"});
     }
 }
+
+sub get_tmpl_file_name {
+  my $base=shift;
+  my $profile=shift;
+  my $os=shift;
+  my $arch=shift;
+  my $genos=shift;
+
+  if (-r   "$base/$profile.$os.$arch.tmpl") {
+    return  "base/$profile.$os.$arch.tmpl";     
+  }
+  elsif (-r "$base/$profile.$genos.$arch.tmpl") {
+    return  "$base/$profile.$genos.$arch.tmpl";
+  }
+  elsif (-r "$base/$profile.$arch.tmpl") {
+    return  "$base/$profile.$arch.tmpl";
+  }
+  elsif ( -r "$base/$profile.$os.tmpl") {
+    return   "$base/$profile.$os.tmpl";
+  }
+  elsif (-r "$base/$profile.$genos.tmpl") {
+    return  "$base/$profile.$genos.tmpl";
+  }
+  elsif (-r "$base/$profile.tmpl") {
+    return  "$base/$profile.tmpl";  
+  }
+
+  return "";
+}
+
 
 1;

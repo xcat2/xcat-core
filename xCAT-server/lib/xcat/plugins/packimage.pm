@@ -61,19 +61,15 @@ sub process_request {
         return;
     }
     my $oldpath=cwd();
-    my $exlistloc;
-    if (-r "$::XCATROOT/share/xcat/netboot/$distname/$profile.$osver.$arch.exlist") {
-       $exlistloc = "$::XCATROOT/share/xcat/netboot/$distname/$profile.$osver.$arch.exlist";
-    } elsif (-r "$::XCATROOT/share/xcat/netboot/$distname/$profile.$arch.exlist") {
-       $exlistloc = "$::XCATROOT/share/xcat/netboot/$distname/$profile.$arch.exlist";
-    } elsif (-r "$::XCATROOT/share/xcat/netboot/$distname/$profile.$osver.exlist") {
-       $exlistloc = "$::XCATROOT/share/xcat/netboot/$distname/$profile.$osver.exlist";
-    } elsif (-r "$::XCATROOT/share/xcat/netboot/$distname/$profile.exlist") {
-       $exlistloc = "$::XCATROOT/share/xcat/netboot/$distname/$profile.exlist";
-    } else {
-       $callback->({error=>["Unable to finde file exclusion list under $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver"],errorcode=>[1]});
+    my $exlistloc=get_exlist_file_name("$installroot/custom/netboot/$distname", $profile, $osver, $arch);
+    if (!$exlistloc) {  $exlistloc=get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); }
+
+    if (!$exlistloc)
+    {
+       $callback->({error=>["Unable to finde file exclusion list under $installroot/custom/netboot/$distname or $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver"],errorcode=>[1]});
        next;
     }
+    #print "exlistloc=$exlistloc\n";
     my $exlist;
     open($exlist,"<",$exlistloc);
     my $excludestr = "find . ";
@@ -238,3 +234,21 @@ sub copybootscript {
 	return 0;
 }
 
+sub get_exlist_file_name {
+    my $base=shift;
+    my $profile=shift;
+    my $osver=shift;
+    my $arch=shift;
+    
+    my $exlistloc="";
+    if (-r "$base/$profile.$osver.$arch.exlist") {
+       $exlistloc = "$base/$profile.$osver.$arch.exlist";
+    } elsif (-r "$base/$profile.$arch.exlist") {
+       $exlistloc = "$base/$profile.$arch.exlist";
+    } elsif (-r "$base/$profile.$osver.exlist") {
+       $exlistloc = "$base/$profile.$osver.exlist";
+    } elsif (-r "$base/$profile.exlist") {
+       $exlistloc = "$base/$profile.exlist";
+   }
+    return $exlistloc;
+}
