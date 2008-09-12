@@ -1723,30 +1723,6 @@ sub getAttribs
         {
             unless ($data->{$attrib} =~ /^$/ || !defined($data->{$attrib}))
             {    #To undef fields in rows that may still be returned
-
-	      my $wrkstr = $data->{$attrib};
-         my $out;
-	      while ($wrkstr =~ /(\{.*?\})/g) {
-		#-- this have to be thoroughly tested...
-		#-- special constructions in tables
-		#-- for example allows to have the same database for two xCAT master servers
-		#-- hence helping xCAT high availability
-		 my $exp = $1;
-		 my $expfound = 0;
-
-		 $exp =~ /^{hostname}$/ && do { $out = qx/hostname/; chomp $out; $expfound = 1; };
-		 $exp =~ /^{xcatmaster}$/ && do {
-		   my $ostab = xCAT::Table->new('site');
-		   $out = $ostab->getAttribs({key=>"master"},'value');
-		   if ($out and $out->{value}) {
-		     $out = $out->{'value'}; $expfound = 1;
-		   }
-		 };
-		 $wrkstr =~ s/$exp/$out/ if $expfound;
-
-             }
-             $data->{$attrib} = $wrkstr;
-
                 $rethash{$attrib} = $data->{$attrib};
             }
         }
