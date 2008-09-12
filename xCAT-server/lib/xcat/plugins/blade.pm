@@ -714,7 +714,7 @@ sub vitals {
       $bindobj= new SNMP::VarList(@bindlist);
       $session->get($bindobj); #[".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
       for my $tmp (@$bindobj) {
-            if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/) {
+            if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/ and $tmp->[2] ne "") {
               $tmp =~ s/ = /:/;
               push @output,$tmp->[2];
             }
@@ -732,7 +732,7 @@ sub vitals {
       $bindobj= new SNMP::VarList(@bindlist);
       $session->get($bindobj);
       for my $tmp (@$bindobj) {
-        if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/) {
+        if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/ and $tmp->[2] ne "") {
           $tmp =~ s/ = /:/;
           push @output,$tmp->[2];
         }
