@@ -796,42 +796,73 @@ sub vitals {
       push @output,"$tmp";
     }
 
+    my %ledresults=();
+    my $ledstring="";
+    if (grep /led/,@vitems) {
+        my @bindset = (
+            [$erroroid,$slot],
+            [$beaconoid,$slot],
+            [$infooid,$slot],
+            [$kvmoid,$slot],
+            [$mtoid,$slot],
+        );
+        my $bindlist = new SNMP::VarList(@bindset);
+        $session->get($bindlist);
+        foreach (@$bindlist) {
+            $ledresults{$_->[0] .".". $_->[1]}=$_->[2];
+        }
+    }
     if (grep /errorled/,@vitems) {
-      my $stat = $session->get([$erroroid.".".$slot]);
-      if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; }
-      $tmp="Error led: ".$stat;
-      push @output,"$tmp";
+      my $stat = $ledresults{".".$erroroid.".".$slot}; #$session->get([$erroroid.".".$slot]);
+      if ($stat==1) { 
+          $ledstring=1;
+          push @output,"Error LED: on";
+        }
+      #$tmp="Error led: ".$stat;
     }
  
     if (grep /beaconled/,@vitems) {
-      my $stat = $session->get([$beaconoid.".".$slot]);
-      if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; } 
+      my $stat = $ledresults{".".$beaconoid.".".$slot}; #$session->get([$beaconoid.".".$slot]);
+      if ($stat==1) { $stat = "on"; } 
          elsif ($stat==2) { $stat = "blinking"; }
-      $tmp="Beacon led: ".$stat;
-      push @output,"$tmp";
+      if ($stat) {
+          $ledstring=1;
+          $tmp="Beacon led: ".$stat;
+          push @output,"$tmp";
+      }
     }
 
     if (grep /infoled/,@vitems) {
-      my $stat = $session->get([$infooid.".".$slot]);
-       if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; }
-      $tmp="Info led: ".$stat;
-      push @output,"$tmp";
+      my $stat = $ledresults{".".$infooid.".".$slot}; #$session->get([$infooid.".".$slot]);
+      if ($stat==1) { 
+          $ledstring=1;
+          push @output,"Info led: on";
+      }
     }
 
     if (grep /kvmled/,@vitems) {
-      my $stat = $session->get([$kvmoid.".".$slot]);
-      if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; } 
+      my $stat = $ledresults{".".$kvmoid.".".$slot}; #$session->get([$kvmoid.".".$slot]);
+      if ($stat==1) { $stat = "on"; } 
          elsif ($stat==2) { $stat = "blinking"; }
-      $tmp="KVM led: ".$stat;
-      push @output,$tmp;
+      if ($stat) {
+          $ledstring=1;
+          $tmp="KVM led: ".$stat;
+          push @output,$tmp;
+      }
     }
 
     if (grep /mtled/,@vitems) {
-      my $stat = $session->get([$mtoid.".".$slot]);
-      if ($stat==0) { $stat = "off"; } elsif ($stat==1) { $stat = "on"; } 
+      my $stat = $ledresults{".".$mtoid.".".$slot}; #$session->get([$mtoid.".".$slot]);
+      if ($stat==1) { $stat = "on"; } 
         elsif ($stat==2) { $stat = "blinking"; }
-      $tmp="MT led: ".$stat;
-      push @output,"$tmp";
+      if ($stat) {
+          $ledstring=1;
+          $tmp="MT led: ".$stat;
+          push @output,"$tmp";
+      }
+    }
+    if (grep /led/,@vitems and not $ledstring) {
+        push @output,"No active LEDS";
     }
 
   } else {	#-- chassis query
