@@ -84,6 +84,14 @@ my $blower1stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.10';#blower1State
 my $blower2stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.11';#blower2State
 my $blower3stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.12';#blower2State
 my $blower4stateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.13';#blower2State
+my $blower1rpmoid = '.1.3.6.1.4.1.2.3.51.2.2.3.20';#blower1SpeedRPM
+my $blower2rpmoid = '.1.3.6.1.4.1.2.3.51.2.2.3.21';#blower2SpeedRPM
+my $blower3rpmoid = '.1.3.6.1.4.1.2.3.51.2.2.3.22';#blower3SpeedRPM
+my $blower4rpmoid = '.1.3.6.1.4.1.2.3.51.2.2.3.23';#blower4SpeedRPM
+my $blower1contstateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.30';#blower1Controllerstote
+my $blower2contstateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.31';#blower2''
+my $blower3contstateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.32';#blower3''
+my $blower4contstateoid = '.1.3.6.1.4.1.2.3.51.2.2.3.33';#blower4''
 my $mmoname = '1.3.6.1.4.1.2.3.51.2.22.4.3';#chassisName
 my $mmotype = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.1';#bladeCenterVpdMachineType
 my $mmomodel = '1.3.6.1.4.1.2.3.51.2.2.21.1.1.2';#bladeCenterVpdMachineModel
@@ -648,6 +656,7 @@ sub bootseq {
 }
 
 
+my %chassiswidevitals;
 sub vitals {
    my @output;
    my $tmp;
@@ -658,7 +667,7 @@ sub vitals {
    if ( defined $slot and $slot > 0 ) { 	#-- blade query
      foreach (@_) {
        if ($_ eq 'all') {
-         push @vitems,qw(temp voltage wattage summary);
+         push @vitems,qw(temp voltage wattage summary fan);
          push @vitems,qw(errorled beaconled infoled kvmled mtled);
        } elsif ($_ =~ '^led') {
          push @vitems,qw(errorled beaconled infoled kvmled mtled);
@@ -684,7 +693,12 @@ sub vitals {
        }
      }
   }
-
+  if (grep /fan/,@vitems or grep /blower/,@vitems) { #We'll lump blowers and fans together for blades, besides, BCS fans
+                                                     #use the 'blower' OIDs anyway
+      unless (defined $chassiswidevitals{blower}) {
+          populateblowervitals();
+      }
+  }
   my $tmp;
 
   if ( defined $slot and $slot > 0) {	#-- querying some blade
@@ -703,7 +717,7 @@ sub vitals {
          push @output,"$tmp";
        }
    }
-       
+           
     my @bindlist;
     my $bindobj;
     if (grep /voltage/,@vitems) {
@@ -737,7 +751,29 @@ sub vitals {
           push @output,$tmp->[2];
         }
       }
+      unless (defined $chassiswidevitals{ambient}) {
+          $chassiswidevitals{ambient} = [];
+          my @ambientbind=([".1.3.6.1.4.1.2.3.51.2.2.1.5.1","0"],[".1.3.6.1.4.1.2.3.51.2.2.1.5.2","0"]);
+          my $targ = new SNMP::VarList(@ambientbind);
+          my $tempidx=1;
+          $session->get($targ);
+          for my $result (@$targ) {
+              if ($result->[2] eq "NOSUCHINSTANCE") { next; }
+              push @{$chassiswidevitals{ambient}},"Ambient ".$tempidx++." :".$result->[2];
+          }
+      }
+      foreach (@{$chassiswidevitals{ambient}}) {
+          push @output,$_;
+      }
     }
+            
+    if (grep /fan/,@vitems or grep /blower/,@vitems) { #We'll lump blowers and fans together for blades, besides, BCS fans
+                                                       #use the 'blower' OIDs anyway
+        foreach (@{$chassiswidevitals{blower}}) {
+            push @output,$_;
+        }
+    }
+
 
     if (grep /summary/,@vitems) {
       $tmp="Status: ".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.3.'.$slot]);
@@ -785,31 +821,10 @@ sub vitals {
 
   } else {	#-- chassis query
 
-   if (grep /blower/,@vitems) {
-     my $blowerbase = "1.3.6.1.4.1.2.3.51.2.2.3";
-     for ( my $i=1; $i<=4; $i++) {	#-- Blowers
-
-       my $speed = $session->get([$blowerbase.".".($i+0).".0"]);
-       my $state = $session->get([$blowerbase.".".($i+9).".0"]);
-       my $speedrpm = $session->get([$blowerbase.".".($i+19).".0"]);
-       my $cstate = $session->get([$blowerbase.".".($i+29).".0"]);
-
-       next if $state eq "NOSUCHINSTANCE";
-
-       if ($state==0) { $state = "unknown"; } 
-          elsif ($state==1) { $state = "good"; } 
-          elsif ($state==2) { $state = "warning"; }
-          elsif ($state==3) { $state = "bad"; }
-
-       if ($cstate==0) { $cstate = "operational"; } 
-          elsif ($cstate==1) { $cstate = "flashing"; } 
-          elsif ($cstate==2) { $cstate = "notPresent"; } 
-          elsif ($cstate==3) { $cstate = "communicationError"; } 
-          elsif ($cstate==255) { $cstate = "unknown"; } 
-
-       push @output,sprintf("Blower %d: state %s, speed %d%%, %d RPM, controller %s",$i,$state,$speed,$speedrpm,$cstate);
-     }
-
+   if (grep /blower/,@vitems or grep /fan/,@vitems) {
+        foreach (@{$chassiswidevitals{blower}}) {
+            push @output,$_;
+        }
   }
 
    if (grep /fan/,@vitems) {
@@ -933,6 +948,69 @@ sub vitals {
    return(0,@output);
 }
  
+sub populateblowervitals {
+          $chassiswidevitals{blower}=[];
+          my @bindoid = (
+              [$blower1speedoid,"0"],
+              [$blower2speedoid,"0"],
+              [$blower3speedoid,"0"],
+              [$blower4speedoid,"0"],
+              [$blower1stateoid,"0"],
+              [$blower2stateoid,"0"],
+              [$blower3stateoid,"0"],
+              [$blower4stateoid,"0"],
+              [$blower1rpmoid,"0"],
+              [$blower2rpmoid,"0"],
+              [$blower3rpmoid,"0"],
+              [$blower4rpmoid,"0"],
+              [$blower1contstateoid,"0"],
+              [$blower2contstateoid,"0"],
+              [$blower3contstateoid,"0"],
+              [$blower4contstateoid,"0"],
+          );
+          my $bind = new SNMP::VarList(@bindoid);
+          $session->get($bind);
+          my %blowerstats=();
+          foreach (@$bind) {
+              if ($_->[2] eq "NOSUCHINSTANCE") { next; }
+              my $idx=$_->[0];
+              $idx =~ s/^.*\.(\d*)$/$1/;
+              if ($idx < 10) {
+                  $blowerstats{$idx}->{percentage}=$_->[2];
+                  $blowerstats{$idx}->{percentage}=~ s/^[^\d]*(\d*)[^\d].*$/$1/;
+              } elsif ($idx < 20) {
+                  $blowerstats{$idx-9}->{state}=$_->[2];
+              } elsif ($idx < 30) {
+                  $blowerstats{$idx-19}->{rpm}=$_->[2];
+              } elsif ($idx < 40) {
+                  $blowerstats{$idx-29}->{cstate}=$_->[2];
+              }
+          }
+          foreach my $blowidx (keys %blowerstats) {
+              my $bdata=$blowerstats{$blowidx};
+              my $text="Blower/Fan $blowidx:";
+              if (defined $bdata->{rpm}) {
+                  $text.=$bdata->{rpm}." RPM (".$bdata->{percentage}."%)";
+              } else {
+                  $text.=$bdata->{percentage}."% RPM";
+              }
+              if ($bdata->{state} == 2) {
+                  $text.=" Warning state";
+              } elsif ($bdata->{state} == 3) {
+                  $text.=" Bad state";
+              } elsif ($bdata->{state} == 0) {
+                  $text .= " Unknown state";
+              }
+              if ($bdata->{cstate} == 1) {
+                  $text .= " Controller flashing";
+              } elsif ($bdata->{cstate} == 2) {
+                  $text .= " Not present";
+              } elsif ($bdata->{cstate} == 3) {
+                  $text .= " Communication failure to controller";
+              }
+              push @{$chassiswidevitals{blower}},$text;
+          }
+}
 sub rscan {
 
   my $args = shift;
