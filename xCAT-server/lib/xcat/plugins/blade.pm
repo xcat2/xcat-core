@@ -699,6 +699,14 @@ sub vitals {
           populateblowervitals();
       }
   }
+  if (grep /fan/,@vitems) {  #Only put in fans if fan requested, use of word 'blower' would indicate omitting the 'fans'
+                             #For those wondering why 'power supply' fans are considered relevant to a particular blade,
+                             #note that blades capable of taking high speed daughtercards have holes along the edges.
+                             #Those holes are air intakes fed by the PSU exhaust, to get cooler air into the expansion area
+      unless (defined $chassiswidevitals{fan}) {
+          populatefanvitals();
+      }
+  }
   my $tmp;
 
   if ( defined $slot and $slot > 0) {	#-- querying some blade
@@ -767,9 +775,16 @@ sub vitals {
       }
     }
             
-    if (grep /fan/,@vitems or grep /blower/,@vitems) { #We'll lump blowers and fans together for blades, besides, BCS fans
+    if (grep /blower/,@vitems) { #We'll lump blowers and fans together for blades, besides, BCS fans
                                                        #use the 'blower' OIDs anyway
         foreach (@{$chassiswidevitals{blower}}) {
+            push @output,$_;
+        }
+    } elsif (grep /fan/,@vitems) { 
+        foreach (@{$chassiswidevitals{blower}}) {
+            push @output,$_;
+        }
+        foreach (@{$chassiswidevitals{fan}}) {
             push @output,$_;
         }
     }
@@ -821,48 +836,19 @@ sub vitals {
 
   } else {	#-- chassis query
 
-   if (grep /blower/,@vitems or grep /fan/,@vitems) {
+    if (grep /blower/,@vitems) {
         foreach (@{$chassiswidevitals{blower}}) {
             push @output,$_;
         }
-  }
+    } elsif (grep /fan/,@vitems) {
+        foreach (@{$chassiswidevitals{blower}}) {
+            push @output,$_;
+        }
+        foreach (@{$chassiswidevitals{fan}}) {
+            push @output,$_;
+        }
+    }
 
-   if (grep /fan/,@vitems) {
-
-     #-- power module fans OIDs
-     my $fanpackindex = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.1";
-     my $fanpackexists = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.2";
-     my $fanpackstate = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.3";
-     my $fanpackfancount = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.4";
-     my $fanpackavspeed = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.5";
-     my $fanpackavspeedrpm = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.6";
-     my $fanpackcstate = "1.3.6.1.4.1.2.3.51.2.2.6.1.1.7";
-
-     for ( my $i=1; $i<=4; $i++) {	#-- Power module fan packs
-       my $ind = $session->get([$fanpackindex.".$i"]);
-       my $exists = $session->get([$fanpackexists.".$i"]);
-       my $state = $session->get([$fanpackstate.".$i"]);
-       my $fancount = $session->get([$fanpackfancount.".$i"]);
-       my $avspeed = $session->get([$fanpackavspeed.".$i"]);
-       my $avspeedrpm = $session->get([$fanpackavspeedrpm.".$i"]);
-       my $cstate = $session->get([$fanpackcstate.".$i"]);
-
-       $exists = $exists == 1?"present":"not present";
-       
-       if ($state==0) { $state = "unknown"; } 
-          elsif ($state==1) { $state = "good"; } 
-          elsif ($state==2) { $state = "warning"; }
-          elsif ($state==3) { $state = "bad"; }
-
-       if ($cstate==0) { $cstate = "operational"; } 
-          elsif ($cstate==1) { $cstate = "flashing"; } 
-          elsif ($cstate==2) { $cstate = "notPresent"; } 
-          elsif ($cstate==3) { $cstate = "communicationError"; } 
-          elsif ($cstate==255) { $cstate = "unknown"; } 
-
-       push @output,sprintf("Power fans %d: %s, state %s, %d fans, speed %d%%, %d RPM, controller %s",$ind,$exists,$state,$fancount,$avspeed,$avspeedrpm,$cstate);
-     }
-   }
 
      if (grep /volt/,@vitems) {
        my $voltbase = "1.3.6.1.4.1.2.3.51.2.2.2.1";
@@ -948,6 +934,71 @@ sub vitals {
    return(0,@output);
 }
  
+sub populatefanvitals { 
+#This function populates the fan section of the chassis wide vitals hash
+    $chassiswidevitals{fan}=[];
+    my @bindlist = (
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.3",1],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.3",2],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.3",3],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.3",4],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.5",1],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.5",2],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.5",3],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.5",4],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.6",1],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.6",2],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.6",3],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.6",4],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.7",1],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.7",2],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.7",3],
+        ["1.3.6.1.4.1.2.3.51.2.2.6.1.1.7",4],
+     );
+    my $bind = new SNMP::VarList(@bindlist);
+    my %faninfo;
+    $session->get($bind);
+    foreach (@$bind) {
+        if ($_->[2] eq "NOSUCHINSTANCE") { next; }
+        my $restype=$_->[0];
+        $restype =~ s/^.*\.(\d*)$/$1/;
+        my $idx=$_->[1];
+        if ($restype eq "3") {
+            $faninfo{$idx}->{state}=$_->[2];
+        } elsif ($restype eq "5") {
+            $faninfo{$idx}->{percentage}=$_->[2];
+        } elsif ($restype eq "6") {
+            $faninfo{$idx}->{rpm}=$_->[2];
+        } elsif ($restype eq "7") {
+            $faninfo{$idx}->{cstate}=$_->[2];
+        }
+    }
+    foreach (sort keys %faninfo) {
+        my $text="Fan pack $_:";
+        if (defined $faninfo{$_}->{rpm}) {
+            $text.=" ".$faninfo{$_}->{rpm};
+            if (defined $faninfo{$_}->{percentage}) {
+                $text .=" (".$faninfo{$_}->{percentage}."%)";
+            } 
+            $text .= " RPM";
+        } elsif (defined $faninfo{$_}->{percentage}) {
+            $text .= " ".$faninfo{$_}->{percentage}."% RPM";
+        }
+        if ($faninfo{$_}->{state} eq "2") {
+            $text .= " Warning";
+        } elsif ($faninfo{$_}->{state} eq "3") {
+            $text .= " Error";
+        }
+        if ($faninfo{$_}->{cstate} eq "1") {
+            $text .= " (firmware update in progress)";
+        } elsif ($faninfo{$_}->{cstate} eq "2") {
+            $text .= " (not present)";
+        } elsif ($faninfo{$_}->{cstate} eq "3") {
+            $text .= " (communication failure";
+        }
+        push @{$chassiswidevitals{fan}},$text;
+    }
+}
 sub populateblowervitals {
           $chassiswidevitals{blower}=[];
           my @bindoid = (
@@ -986,7 +1037,7 @@ sub populateblowervitals {
                   $blowerstats{$idx-29}->{cstate}=$_->[2];
               }
           }
-          foreach my $blowidx (keys %blowerstats) {
+          foreach my $blowidx (sort keys %blowerstats) {
               my $bdata=$blowerstats{$blowidx};
               my $text="Blower/Fan $blowidx:";
               if (defined $bdata->{rpm}) {
