@@ -1,0 +1,48 @@
+=head1 NAME
+
+B<xcatstop> - Stops the xCAT daemon (xcatd) on AIX.
+
+=head1 SYNOPSIS
+
+
+B<xcatstop> [B<-h>|B<--help>] [B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+The xcatstop command stops the xCAT daemon (xcatd) on AIX.  
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version.
+
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To stop the xCAT daemon, enter:
+
+B<xcatstop>
+
+
+
+=head1 FILES
+
+/opt/xcat/sbin/xcatstop
+
+
+=head1 SEE ALSO
+
+L<xcatstart(1)|xcatstart.1>
+
+
+

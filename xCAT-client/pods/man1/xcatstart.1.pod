@@ -1,0 +1,48 @@
+=head1 NAME
+
+B<xcatstart> - Starts the xCAT daemon (xcatd) on AIX.
+
+=head1 SYNOPSIS
+
+
+B<xcatstart> [B<-h>|B<--help>] [B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+The xcatstart command starts the xCAT daemon (xcatd) on AIX. If the daemon is already running, it will stop the daemon and restart it. 
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version.
+
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To start the xCAT daemon, enter:
+
+B<xcatstart>
+
+
+
+=head1 FILES
+
+/opt/xcat/sbin/xcatstart
+
+
+=head1 SEE ALSO
+
+L<xcatstop(1)|xcatstop.1>
+
+
+
