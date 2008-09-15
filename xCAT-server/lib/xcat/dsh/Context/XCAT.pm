@@ -292,7 +292,8 @@ sub resolve_node
 		site table .
         if no site table (rsh, rcp attribute)  definition,  then 
           on Linux use ssh    
-          on AIX, check for ssh and use it is installed, otherwise use rsh
+          on AIX, check for ssh and use it is installed and configured
+          , otherwise use rsh
 
         Arguments:
         	None
@@ -318,15 +319,23 @@ sub resolve_node
 #-------------------------------------------------------------------------------
 sub get_xcat_remote_cmds
 {
+    # override with site table settings, if they exist 
+    my $ssh_setup = 0;
+    my @useSSH = xCAT::Utils->get_site_attribute("useSSHonAIX");
+    $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper 
+    if (($useSSH[0] eq "1") || ($useSSH[0] eq "YES"))
+    {
+        $ssh_setup = 1;
+    }
     if (xCAT::Utils->isLinux()) { 
       $XCAT_RSH_CMD = "/usr/bin/ssh";    # use ssh
       $XCAT_RCP_CMD = "/usr/bin/scp"; 
     } else { # AIX
-      if (-e "/usr/bin/ssh")  {         # ssh is installed
+      if ((-e "/usr/bin/ssh") && ( $ssh_setup == 1)) {  # ssh is configured 
         $XCAT_RSH_CMD = "/usr/bin/ssh";    # use ssh 
         $XCAT_RCP_CMD = "/usr/bin/scp"; 
       } else {
-        $XCAT_RSH_CMD = "/usr/bin/rsh";    # no ssh, use rsh
+        $XCAT_RSH_CMD = "/usr/bin/rsh";    #  use rsh
         $XCAT_RCP_CMD = "/usr/bin/rcp"; 
       }
     }
