@@ -66,7 +66,8 @@ chmod -h 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 cp -h bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod -h 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 %endif
-
+ln -sf sbin/stopstartxcatd $RPM_BUILD_ROOT/%{prefix}/sbin/xcatstart
+ln -sf sbin/stopstartxcatd $RPM_BUILD_ROOT/%{prefix}/sbin/xcatstop
 #cp rc.d/* $RPM_BUILD_ROOT/%{prefix}/rc.d
 #chmod 755 $RPM_BUILD_ROOT/%{prefix}/rc.d/*
 
