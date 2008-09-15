@@ -1,0 +1,93 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use Getopt::Long;
+use File::Basename;
+use xCAT::MsgUtils;
+use xCAT::Utils;
+
+#-----------------------------------------------------------------------------
+
+=head1  startstopxcatd 
+
+
+ 
+ stopstartxcatd  - this routine is linked to by startxCAT and stopxCAT.
+ It runs on AIX.  If the admin runs startxCAT, it will start 
+ or restart the xcatd, if it is already running.   
+ If the admin runs stopxCAT, it will stop the xcatd.
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+my $rc  = 0;
+my $cmd = basename($0);
+if (!(xCAT::Utils->isAIX()))
+{    # only runs on AIX
+    xCAT::MsgUtils->message("E", "This command should only be run on AIX.\n");
+    exit 1;
+
+}
+
+&parse_args($cmd);
+$rc = xCAT::Utils->runxcatd($cmd);
+exit $rc;
+
+#-----------------------------------------------------------------------------
+
+=head3 parse_args
+  
+  Parses for  input
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_args
+{
+    my ($cmd) = @_;
+    my $msg;
+    my $usagemsg;
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+    if (
+        !GetOptions(
+            'h|help'    => \$::HELP,
+            'v|version' => \$::VERSION
+
+        )
+      )
+    {
+        $usagemsg = "$cmd [-h|-v]\n";
+        xCAT::MsgUtils->message("E", $usagemsg);
+        exit 1;
+    }
+    if ($::HELP)
+    {
+        $usagemsg = "$cmd [-h|-v]\n";
+        xCAT::MsgUtils->message("I", $usagemsg);
+        exit 0;
+    }
+    if ($::VERSION)
+    {
+        my $version = xCAT::Utils->Version();
+        $version .="\n";
+        xCAT::MsgUtils->message("I", $version);
+        exit 0;
+    }
+
+}
+
