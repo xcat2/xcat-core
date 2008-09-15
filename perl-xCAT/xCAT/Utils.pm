@@ -2397,10 +2397,84 @@ sub isMounted
     Error:
     Example:
         my $version= xCAT::Version();
+=cut
+
 #-------------------------------------------------------------------------------
 sub Version 
 {
 my $version="Version 2.1";
     return $version;
+}
+#-------------------------------------------------------------------------------
+
+=head3   runxcatd 
+    Stops or starts xcatd  
+    Arguments:
+        xcatstart - start the daemon,  restart if already running
+        xcatstop - stop the daemon
+    Returns:
+        0 = not error, 1 = error 
+    Globals:
+        none
+    Error:
+	   
+    Example:
+        my $rc = xCAT::runxcatd("xcatstart") ; ( starts xcatd)
+        my $rc = xCAT::runxcatd("xcatstop") ; ( stops xcatd)
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub runxcatd 
+{
+ my ($class, $cmd) = @_;
+ if ( ! (xCAT::Utils->isAIX())) { # only runs on AIX
+      xCAT::MsgUtils->message("E", "This command should only be run on AIX.\n");
+     return 1;
+ }
+
+ #
+ # if xcatd already running 
+ # Get the  xcatd processes  and stop them
+ #
+ my @xpids = xCAT::Utils->runcmd("ps -ef\|grep \"xcatd\"", 0);
+ if ($#xpids >= 1)
+ {    # will have at least "0" for the grep
+    xCAT::MsgUtils->message('I', "Stopping xcatd processes....\n");
+    foreach my $ps (@xpids)
+    {
+
+        $ps =~ s/^\s+//;    # strip any leading spaces
+        my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
+
+        # if $ps contains "grep" then it's not one of the daemon processes
+        if ($ps !~ /grep/)
+        {
+
+            #	    	print "pid=$pid\n";
+            #my $cmd = "/bin/kill -9 $pid";
+            my $cmd = "/bin/kill  $pid";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E',
+                      "Could not stop xcatd process $pid.\n");
+                return 1;
+            }
+        }
+    }
+  }
+
+
+  if ($cmd eq "xcatstart") {  # start xcatd
+    xCAT::MsgUtils->message('I', "Starting xcatd.....\n");
+    my    $xcmd = "$::XCATROOT/sbin/xcatd &";
+    my $outref = xCAT::Utils->runcmd("$xcmd", 0);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::MsgUtils->message('E', "Could not start xcatd process.\n");
+        return 1;
+    }
+  }
+  return 0;
 }
 1;
