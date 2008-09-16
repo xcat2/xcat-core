@@ -1898,6 +1898,8 @@ sub preprocess_request {
     # build each request for each service node
     ###########################################
     my @result = ();
+    my $mncopy = {%$req};
+    push @result, $mncopy;
     foreach my $sn (keys (%sv_hash)) {
       my $reqcopy = {%$req};
       $reqcopy->{_xcatdest} = $sn;
