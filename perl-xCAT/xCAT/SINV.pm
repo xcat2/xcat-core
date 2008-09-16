@@ -49,16 +49,10 @@ sub usage
     my $usagemsg5 = "      [-c xdsh command  | -f xdsh command file] \n ";
     my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .= $usagemsg4a .= $usagemsg5;
 ###  end usage mesage
-    if ($::CALLBACK)
-    {
-        my $rsp = {};
-        $rsp->{data}->[0] = $usagemsg;
-        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-    }
-    else
-    {
-        xCAT::MsgUtils->message("I", $usagemsg . "\n");
-    }
+
+     my $rsp = {};
+     $rsp->{data}->[0] = $usagemsg;
+     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return;
 
 }
@@ -108,7 +102,9 @@ sub parse_and_run_sinv
     {
         my $version = xCAT::Utils->Version();
         $version .= "\n";
-        xCAT::MsgUtils->message("I", $version);
+        my $rsp = {};
+        $rsp->{data}->[0] = $version;
+        xCAT::MsgUtils->message("I", $rsp, $callback);
         exit 0;
     }
     if ($options{'verbose'})
@@ -217,8 +213,7 @@ sub parse_and_run_sinv
     chomp $outputfile;
 
     # open the file for writing
-    open(OUTPUTFILE, ">$outputfile");
-    if ($? != 0)
+    unless (open(OUTPUTFILE, ">$outputfile"))
     {
         $rsp->{data}->[0] = " Cannot open $outputfile for output.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
