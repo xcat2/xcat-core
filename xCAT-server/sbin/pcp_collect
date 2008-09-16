@@ -1,0 +1,124 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#package xCAT_monitoring::performance;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use xCAT::NodeRange;
+use Sys::Hostname;
+use Socket;
+use xCAT::Utils;
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
+use xCAT::MsgUtils;
+use strict;
+use warnings;
+1;
+performance();
+sub  performance
+     { #opening subroutine
+	  
+		   my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
+           #identification of this node
+           my @hostinfo=xCAT::Utils->determinehostname();
+           #print "hosT:@hostinfo\n";
+           my $isSV=xCAT::Utils->isServiceNode();
+           #print "is sv is:$isSV \n";
+           my %iphash=();
+           foreach(@hostinfo) {$iphash{$_}=1;}
+           if (!$isSV) { $iphash{'noservicenode'}=1;}
+
+           my @children;
+		   my $str;
+		   
+           foreach my $key (keys (%$noderef))
+            { #opening foreach1
+		      #print "opening foreach1 \n";
+              #print "key is: $key \n";
+              my @key_a=split(',', $key);
+			  if (! $iphash{$key_a[0]}) { next;}
+              my $mon_nodes=$noderef->{$key};
+
+              foreach(@$mon_nodes)
+                { #opening foreach2
+                  my $node=$_->[0];
+                  my $nodetype=$_->[1];
+                  #print "node=$node, nodetype=$nodetype\n";
+                  if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
+                   {
+                    push(@children,$node);
+                   }
+                } #closing foreach2
+            }  #closing foreach1
+          #print "children:@children\n";
+		  my $count_child=@children;
+		  if($count_child > 0)
+		   { #opening if count_child 1
+			 #print "number of children is $count_child \n";
+             no strict;
+			 no warnings;
+		     #my $i=0;
+			 for ($i = 0;$i < $count_child;$i++)
+				 { #opening if count_child 2
+				  $str=`pmdumptext -c $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config -d§ -s1 -h$children[$i] -f%D:%H:%M:%S`;
+				  #print "before split is $str \n";
+				  $str =~ s/\n//g;
+				  #print "before split_1 is $str \n";
+				  my @spl1=split(/§/,$str);
+				  #print "splitted and #printing \n";
+				  #print @spl1;
+				  my $count_spl1=@spl1;
+			      #print "the array has $count_spl1 elements \n"; 
+				  #print "@spl1[0] \n";
+				  #print "@spl1[1] \n";
+				  my $count3= `cat $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config | wc -l`;
+			      #print "the number of lines in the file is count3:$count3 \n";
+				  `tr "\n" "§" <$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config> $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config.tr`;
+				  my $fname = "$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config.tr";
+                  unless ( open( CONF, $fname ))
+                  {
+                   return(0);
+                  }
+                  my $raw_data = <CONF>;
+                  close( CONF );
+				  
+                  #print "the contents of the config file are $raw_data \n";
+				  my @spl2=split(/§/,$raw_data);
+				  #print "splitted and #printing \n";
+				  #print @spl2;
+				  my $count_spl2=@spl2;
+			      #print "the array has $count_spl2 elements \n"; 
+				  #print @spl2[0] ;
+				  #print @spl2[1] ;
+                  #print "updating table \n";
+				  my $table1=xCAT::Table->new("performance", -create => 1,-autocommit => 1);
+				  #print "table created \n";
+				  my $j;
+				  #my $k;
+				  my $l=$j+1;
+				  #print "l is $l \n";
+				  my %setting_hash=();
+				  for ($j=0;$j<$count_spl2 ;$j++)
+					 {
+					  
+					  #print "inside j loop \n";
+					  #print "spl1[0] is $spl1[0] \n";
+					  my %key_col1 = (timestamp=>$spl1[0]);
+				      #print "time stamp updated \n";
+					  #print "node is $children[$i] \n";
+	                  $key_col1{node}=$children[$i]; 
+				      #print "children updatesd \n";
+					  #print "spl2 is $spl2[$j] \n";
+				      $key_col1{attrname} = $spl2[$j];
+					  #$setting_hash{attrname}=$spl2[$j];
+					  #print "spl1 is $spl1[$j+1] \n";
+                      $setting_hash{attrvalue}=$spl1[$j+1];
+					  $table1->setAttribs(\%key_col1, \%setting_hash);
+					 }
+				  $table1->close();
+				 } #closing if count_child 2
+			 } #closing if count_child 1   
+			
+	} # closing subroutine
