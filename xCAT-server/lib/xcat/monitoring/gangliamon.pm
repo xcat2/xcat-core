@@ -1176,4 +1176,19 @@ sub getDescription
    Gangliam monitoring software \n";
 }
 
-
+#--------------------------------------------------------------------------------
+=head3    getPostscripts
+      This function returns the postscripts needed for the nodes.
+     Arguments: none
+    Returns:
+     The the postscripts. It a pointer to an array with the node group names as the keys
+    and the comma separated poscript names as the value. For example:
+    {service=>"cmd1,cmd2", xcatdefaults=>"cmd3,cmd4"} where xcatdefults is a group
+    of all nodes including the service nodes.
+=cut
+#--------------------------------------------------------------------------------
+sub getPostscripts {
+  my $ret={};
+  $ret->{compute}="confGang";
+  return $ret;
+}
