@@ -14,9 +14,9 @@ package xCAT_plugin::sinv;
 use strict;
 
 require xCAT::Utils;
-require xCAT::SINV;
 
 require xCAT::MsgUtils;
+require xCAT::SINV;
 use Getopt::Long;
 1;
 
@@ -39,38 +39,37 @@ sub handled_commands
 
 =head3  preprocess_request
 
-  Check and setup for hierarchy 
 
 =cut
 
 #-------------------------------------------------------
-sub preprocess_request
-{
-    my $req = shift;
-    my $cb  = shift;
-    my %sn;
-    my $sn;
-    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
-    my $nodes   = $req->{node};
-    my $service = "xcat";
-    my @requests;
+#sub preprocess_request
+#{
+#    my $req = shift;
+#    my $cb  = shift;
+#    my %sn;
+#    my $sn;
+#    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+#    my $nodes   = $req->{node};
+#    my $service = "xcat";
+#    my @requests;
+#
+# find service nodes for requested nodes
+# build an individual request for each service node
+#    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
 
-    # find service nodes for requested nodes
-    # build an individual request for each service node
-    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+# build each request for each service node
 
-    # build each request for each service node
+#    foreach my $snkey (keys %$sn)
+#    {
+#        my $reqcopy = {%$req};
+#        $reqcopy->{node} = $sn->{$snkey};
+#        $reqcopy->{'_xcatdest'} = $snkey;
+#        push @requests, $reqcopy;
 
-    foreach my $snkey (keys %$sn)
-    {
-        my $reqcopy = {%$req};
-        $reqcopy->{node} = $sn->{$snkey};
-        $reqcopy->{'_xcatdest'} = $snkey;
-        push @requests, $reqcopy;
-
-    }
-    return \@requests;
-}
+#    }
+#    return \@requests;
+#}
 
 #-------------------------------------------------------
 
