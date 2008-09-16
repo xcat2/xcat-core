@@ -28,56 +28,6 @@ use Getopt::Long;
 
 #------------------------------------------------------------------------------
 
-=head3   parse_args  			    	 
-   Checks input arguments from the client 
-
-=cut
-
-#------------------------------------------------------------------------------
-sub parse_args
-{
-
-    my @command_line = ();
-    @command_line = @ARGV;
-    $::command_line = $0 . " " . join(" ", @command_line);
-    my %options = ();
-    $Getopt::Long::ignorecase = 0;    #Checks case in GetOptions
-    Getopt::Long::Configure("bundling");
-    if (
-        !GetOptions(
-                    'h|help'     => \$options{'help'},
-                    't|tc=s'     => \$options{'template_cnt'},
-                    'p|tp=s'     => \$options{'template_path'},
-                    'r|tp=s'     => \$options{'remove_template'},
-                    'o|output=s' => \$options{'output_file'},
-                    's|seed=s'   => \$options{'seed_node'},
-                    'c|cmd=s'    => \$options{'xdsh_cmd'},
-                    'f|file=s'   => \$options{'xdsh_file'},
-                    'v|version'  => \$options{'version'},
-                    'V|Verbose'  => \$options{'verbose'},
-        )
-      )
-    {
-
-        &usage;
-        exit 1;
-    }
-    if ($options{'help'})
-    {
-        &usage;
-        exit 0;
-    }
-    if ($options{'version'})
-    {
-        my $version = xCAT::Utils->Version;
-        xCAT::MsgUtils->message("I", $version);
-        exit 0;
-    }
-
-}
-
-#------------------------------------------------------------------------------
-
 =head3   usage  			    	 
   Display usage message 
 
@@ -88,20 +38,22 @@ sub usage
 {
 ## usage message
 
-    my $usagemsg1 = "The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
+    my $usagemsg1 =
+      "The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
     my $usagemsg1a = "sinv -h \nsinv -v \nsinv [noderange]\n";
-    my $usagemsg2 =
+    my $usagemsg2  =
       "      [-o output file ] [-p template path] [-t template count]\n";
     my $usagemsg3 = "      [-r remove templates] [-s seednode]\n";
     my $usagemsg4 = "      [-c xdsh command  | -f xdsh command file] \n ";
     my $usagemsg5 = "     [-V verbose] [-h usage]\n ";
-    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .= $usagemsg5;
+    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
+      $usagemsg5;
 ###  end usage mesage
     if ($::CALLBACK)
     {
         my $rsp = {};
         $rsp->{data}->[0] = $usagemsg;
-        CAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
     else
     {
@@ -164,7 +116,7 @@ sub parse_and_run_sinv
     }
 
     # if neither xdsh command or file, error
-    if   (!($options{'xdsh_cmd'}) && (!($options{'xdsh_file'})))
+    if (!($options{'xdsh_cmd'}) && (!($options{'xdsh_file'})))
     {
         $rsp->{data}->[0] =
           "Neither the xdsh command, nor the xdsh command file have been supplied.\n";
@@ -229,9 +181,9 @@ sub parse_and_run_sinv
     my $templatecnt = $options{'template_cnt'};
     if (!$templatecnt)
     {
-        #$rsp->{data}->[0] = "Missing template count on the command.\n";
-        #xCAT::MsgUtils->message("E", $rsp, $callback);
-        #exit 1;
+        $rsp->{data}->[0] =
+          "No template count on the command, defaults to 1.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         $templatecnt = 1;    # default
     }
     chomp $templatecnt;
@@ -243,9 +195,8 @@ sub parse_and_run_sinv
     my $rmtemplate = $options{'remove_template'};
     if (!$rmtemplate)
     {
-        #$rsp->{data}->[0] = "Remove template value missing.\n";
-        #xCAT::MsgUtils->message("E", $rsp, $callback);
-        #exit 1;
+        $rsp->{data}->[0] = "Remove template value missing, default is no.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         $rmtemplate = "no";    #default
     }
     chomp $rmtemplate;
