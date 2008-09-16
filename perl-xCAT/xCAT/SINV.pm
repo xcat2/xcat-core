@@ -41,13 +41,13 @@ sub usage
     my $usagemsg1 =
       "The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
     my $usagemsg1a = "sinv -h \nsinv -v \nsinv [noderange]\n";
-    my $usagemsg2  =
-      "      [-o output file ] [-p template path] [-t template count]\n";
-    my $usagemsg3 = "      [-r remove templates] [-s seednode]\n";
-    my $usagemsg4 = "      [-c xdsh command  | -f xdsh command file] \n ";
-    my $usagemsg5 = "     [-V verbose] [-h usage]\n ";
-    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg5;
+    my $usagemsg2 = "      [-V verbose] [-v version] [-h usage]\n ";
+    my $usagemsg3  =
+      "     [-o output file ] [-p template path] [-t template count]\n";
+    my $usagemsg4 = "      [-r remove templates] [-s seednode]\n";
+    my $usagemsg4a = "      [-e exactmatch] [-i ignore]\n";
+    my $usagemsg5 = "      [-c xdsh command  | -f xdsh command file] \n ";
+    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .= $usagemsg4a .= $usagemsg5;
 ###  end usage mesage
     if ($::CALLBACK)
     {
@@ -107,6 +107,7 @@ sub parse_and_run_sinv
     if ($options{'version'})
     {
         my $version = xCAT::Utils->Version();
+        $version .= "\n";
         xCAT::MsgUtils->message("I", $version);
         exit 0;
     }
