@@ -1842,7 +1842,7 @@ sub initfru {
 			\@lcmd,
 			\@lreturnd
 		);
-		if ($lerror == 0 && $lreturnd[36-$authoffset] == 0) {
+		if ($lerror eq "" && $lreturnd[36-$authoffset] == 0) {
 			my @a = ($fw_rev2);
 			my @b= @lreturnd[37-$authoffset .. $#lreturnd-1];
 			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@b));
@@ -1956,59 +1956,62 @@ sub initfru {
 		}
 	}
 
-	($rc,@output) = frudump($fru_header_offset_chassis,2,8);
-	if($rc != 0) {
-		return($rc,@output);
-	}
+  	my $chassis_serial_num="unknown";
+  	my $chassis_part_num="unknown";
+    my $chassis_type="unknown";
+    if ($fru_header_offset_chassis) {
+    	($rc,@output) = frudump($fru_header_offset_chassis,2,8);
+    	if($rc != 0) {
+    		return($rc,@output);
+    	}
+    
+    	my $chassis_info_area_format_version = $output[0];
+    	my $chassis_info_area_length = $output[1] * 8;
+    
+    	if($chassis_info_area_format_version != 1) {
+    		($rc,$text)=initoemfru($mfg_id,$prod_id,$device_id);
+    		if($rc == 1) {
+    			$text = "FRU format unknown";
+    			return($rc,$text);
+    		}
+    		if($rc == 2) {
+    			return(0,"");
+    		}
+    	}
 
-	my $chassis_info_area_format_version = $output[0];
-	my $chassis_info_area_length = $output[1] * 8;
-
-	if($chassis_info_area_format_version != 1) {
-		($rc,$text)=initoemfru($mfg_id,$prod_id,$device_id);
-		if($rc == 1) {
-			$text = "FRU format unknown";
-			return($rc,$text);
-		}
-		if($rc == 2) {
-			return(0,"");
-		}
-	}
-
-	($rc,@output) = frudump($fru_header_offset_chassis,$chassis_info_area_length,8);
-	if($rc != 0) {
-		return($rc,@output);
-	}
-
-	my $c=2;
-	my $chassis_type = $output[$c++];
-	my $chassis_part_num_type = ($output[$c] & 0b11000000) >> 6;
-	my $chassis_part_num_len = $output[$c] & 0b00111111;
-	my $chassis_part_num;
-	$c++;
-	if($chassis_part_num_type == 3) {
-		$chassis_part_num = getascii(@output[$c..$c+$chassis_part_num_len-1]);
-	}
-	else {
-		$chassis_part_num = "unsupported type $chassis_part_num_type";
-	}
-	$c=$c+$chassis_part_num_len;
-	my $chassis_serial_num_type = ($output[$c] & 0b11000000) >> 6;
-	my $chassis_serial_num_len = $output[$c] & 0b00111111;
-	my $chassis_serial_num;
-	$c++;
-	if($chassis_serial_num_type == 3) {
-		$chassis_serial_num = getascii(@output[$c..$c+$chassis_serial_num_len-1]);
-	}
-	else {
-		$chassis_serial_num = "unsupported type $chassis_serial_num_type";
-	}
-	if(!$chassis_part_num) {
-		$chassis_part_num = "undefined";
-	}
-	if(!$chassis_serial_num) {
-		$chassis_serial_num = "undefined";
-	}
+    	($rc,@output) = frudump($fru_header_offset_chassis,$chassis_info_area_length,8);
+    	if($rc != 0) {
+    		return($rc,@output);
+    	}
+    
+    	my $c=2;
+    	$chassis_type = $output[$c++];
+    	my $chassis_part_num_type = ($output[$c] & 0b11000000) >> 6;
+    	my $chassis_part_num_len = $output[$c] & 0b00111111;
+    	$c++;
+    	if($chassis_part_num_type == 3) {
+    		$chassis_part_num = getascii(@output[$c..$c+$chassis_part_num_len-1]);
+    	}
+    	else {
+    		$chassis_part_num = "unsupported type $chassis_part_num_type";
+    	}
+    	$c=$c+$chassis_part_num_len;
+    	my $chassis_serial_num_type = ($output[$c] & 0b11000000) >> 6;
+    	my $chassis_serial_num_len = $output[$c] & 0b00111111;
+    	$c++;
+    	if($chassis_serial_num_type == 3) {
+    		$chassis_serial_num = getascii(@output[$c..$c+$chassis_serial_num_len-1]);
+    	}
+    	else {
+    		$chassis_serial_num = "unsupported type $chassis_serial_num_type";
+    	}
+    	if(!$chassis_part_num) {
+    		$chassis_part_num = "undefined";
+    	}
+    	if(!$chassis_serial_num) {
+    		$chassis_serial_num = "undefined";
+    	}
+    }
 
 	$fru = FRU->new();
 	$fru->rec_type("serial");
