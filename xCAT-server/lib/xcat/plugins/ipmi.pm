@@ -4259,6 +4259,34 @@ sub getchanauthcap {
 	}
 
 	$code = $response[20];
+    if ($code == 0xcc) {
+        #Despite the fact that the IPMI 1.5 spec declared the high bits to be
+        #reserved, some 1.5 BMCs checked the value anyway (erroneously)
+        #This retries with the IPMI 2.0 bit cleared
+    	@data = ($rqsa,$seqlun,0x38,0x0e,0x04);
+    	@rn = ($rssa,$netfun);
+    	$length = (scalar @data)+4;
+    	
+    	@msg = (
+    		@rmcp,
+    		$auth,
+    		@seqnum,
+    		@session_id,
+    		$length,
+    		$rssa,
+    		$netfun,
+    		dochksum(\@rn),
+    		@data,
+    		dochksum(\@data)
+    	);
+
+    	($error,@response) = domsg($sock,\@msg,$timeout,0);
+    
+    	if($error) {
+    		return($error);
+    	}
+    	$code = $response[20];
+    }
 	if($code != 0x00) {
 		$error = $codes{$code};
 		if(!$error) {
