@@ -27,7 +27,8 @@ sub handled_commands
 {
     return {
             copycd    => "windows",
-            mkinstall => "nodetype:os=win.*"
+            mkinstall => "nodetype:os=(win.*|imagex)",
+            mkimage => "nodetype:os=imagex",
             };
 }
 
@@ -49,8 +50,70 @@ sub process_request
    {
        return mkinstall($request, $callback, $doreq);
    }
+   elsif ($request->{command}->[0] eq 'mkimage') {
+       return mkimage($request, $callback, $doreq);
+   }
 }
 
+sub mkimage {
+    my $installroot = "/install";
+    my $request = shift;
+    my $callback = shift;
+    my $doreq = shift;
+    my @nodes = @{$request->{node}};
+    my $node;
+    my $ostab = xCAT::Table->new('nodetype');
+    my $oshash = $ostab->getNodesAttribs(\@nodes,['profile','arch']);
+    my $shandle;
+    foreach $node (@nodes) {
+        $ent = $oshash->{$node}->[0];
+        unless ($ent->{arch} and $ent->{profile})
+        {
+            $callback->(
+                        {
+                         error => ["No profile defined in nodetype for $node"],
+                         errorcode => [1]
+                        }
+                        );
+            next;    #No profile
+        }
+        open($shandle,">","$installroot/autoinst/$node.cmd");
+        print $shandle  "if exist c:\\xcatimgcred.txt move c:\\xcatimgcred.txt c:\\xcatimgcred.cmd\r\n";
+        print $shandle  "if not exist c:\\xcatimgcred.cmd (\r\n";
+        print $shandle  "  echo ERROR: C:\\xcatimgcred.txt was missing, can't authenticate to server to store image\r\n";
+        print $shandle ")\r\n";
+        print $shandle "call c:\\xcatimgcred.cmd\r\n";
+        print $shandle "del c:\\xcatimgcred.cmd\r\n";
+        print $shandle "x:\r\n";
+        print $shandle "cd \\xcat\r\n";
+        print $shandle "net use /delete i:\r\n";
+        print $shandle 'net use i: %IMGDEST% %PASSWORD% /user:%USER%'."\r\n";
+        print $shandle 'mkdir i:\images'."\r\n";
+        print $shandle 'mkdir i:\images\'.$ent->{arch}."\r\n";
+        print $shandle "imagex /capture c: i:\\images\\".$ent->{arch}."\\".$ent->{profile}.".wim ".$ent->{profile}."_".$ent->{arch}."\r\n";
+        print $shandle "IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64\r\n";
+        print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
+        print $shandle "IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86\r\n";
+        print $shandle ":x86\r\n";
+        print $shandle "i:\\postscripts\\upflagx86 %XCATD% 3002 next\r\n";
+        print $shandle "GOTO END\r\n";
+        print $shandle ":x64\r\n";
+        print $shandle "i:\\postscripts\\upflagx64 %XCATD% 3002 next\r\n";
+        print $shandle ":END\r\n";
+        print $shandle "pause\r\n";
+        close($shandle);
+        foreach (getips($node)) {
+            link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
+            unlink "/tftpboot/Boot/BCD.$_";
+            if ($ent->{arch} =~ /64/) {
+                link "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
+            } else {
+                link "/tftpboot/Boot/BCD.32","/tftpboot/Boot/BCD.$_";
+            }
+        }
+    }
+}
+#Don't sweat os type as for mkimage it is always 'imagex' if it got here
 sub mkinstall
 {
     my $installroot;
@@ -59,11 +122,18 @@ sub mkinstall
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{$request->{node}};
+    my $tftpdir="/tftpboot";
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my %doneimgs;
     my $bptab = xCAT::Table->new('bootparams',-create=>1);
     my $hmtab = xCAT::Table->new('nodehm');
+    unless (-r "$tftpdir/Boot/pxeboot.0" ) {
+       $callback->(
+        {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
+        });
+       return;
+    }
     foreach $node (@nodes)
     {
         my $osinst;
@@ -81,6 +151,15 @@ sub mkinstall
         my $os      = $ent->{os};
         my $arch    = $ent->{arch};
         my $profile = $ent->{profile};
+        if ($os eq "imagex") {
+                     unless ( -r "$installroot/images/$profile.$arch.wim" ) {
+                        $callback->({error=>["$installroot/images/$profile.$arch.wim not found, run rimage on a node to capture first"],errorcode=>[1]});
+                         next;
+                     }
+         
+                     next;
+        } 
+
         my $tmplfile=get_tmpl_file_name("$installroot/custom/install/windows", $profile, $os, $arch);
         if (! $tmplfile) { $tmplfile=get_tmpl_file_name("$::XCATROOT/share/xcat/install/windows", $profile, $os, $arch); }
         unless ( -r "$tmplfile")

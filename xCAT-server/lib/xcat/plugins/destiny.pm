@@ -82,7 +82,7 @@ sub setdestiny {
       if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
       $bptab->setNodeAttribs($_,$hash);
      }
-  } elsif ($state =~ /^install$/ or $state eq "install" or $state eq "netboot") {
+  } elsif ($state =~ /^install$/ or $state eq "install" or $state eq "netboot" or $state eq "image") {
     chomp($state);
     $subreq->({command=>["mk$state"],
               node=>$req->{node}}, \&relay_response);
