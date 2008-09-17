@@ -25,8 +25,15 @@ $::NODETYPE_HMC="hmc";
 $::NODETYPE_IVM="ivm";
 
 # valid values for nodelist.status columns or other status 
-$::STATUS_ACTIVE="active";
-$::STATUS_INACTIVE="inactive";
+$::STATUS_ACTIVE="alive";
+$::STATUS_INACTIVE="unreachable";
+$::STATUS_INSTALLING="installing";
+$::STATUS_INSTALLED="installed";
+$::STATUS_BOOTING="booting";
+$::STATUS_NETBOOTING="netbooting";
+$::STATUS_BOOTED="booted";
+$::STATUS_POWERING_OFF="powering-off";
+$::STATUS_DISCOVERING="discovering";
 $::STATUS_UNKNOWN="unknown";
 
 1;

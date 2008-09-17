@@ -61,8 +61,8 @@ if ($cond_name eq "NodeReachability") {
   exit 1;
 }
 my $status_string;
-if ($status == 1) { $status_string="active"; }
-else { $status_string="inactive"; }
+if ($status == 1) { $status_string="alive"; }
+else { $status_string="unreachable"; }
 
 my $result=`$::XCATROOT/bin/nodech $node nodelist.status=$status_string 2>&1`;
 my $code=$?;

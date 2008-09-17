@@ -273,7 +273,7 @@ sub deconfig {
        none.
     Returns:
        a hash that has the node status. The format is: 
-          {active=>[node1, node3,...], unreachable=>[node4, node2...], unknown=>[node8, node101...]}
+          {alive=>[node1, node3,...], unreachable=>[node4, node2...], unknown=>[node8, node101...]}
 =cut
 #--------------------------------------------------------------------------------
 sub getMonNodesStatus {
@@ -328,7 +328,7 @@ sub getMonNodesStatus {
     Arguments:
        status -- a hash pointer of the node status. A key is a status string. The value is 
                 an array pointer of nodes that have the same status.
-                for example: {active=>["node1", "node1"], inactive=>["node5","node100"]}
+                for example: {alive=>["node1", "node1"], unreachable=>["node5","node100"]}
     Returns:
         0 for successful.
         non-0 for not successful.

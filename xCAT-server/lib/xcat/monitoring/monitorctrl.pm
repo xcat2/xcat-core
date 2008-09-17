@@ -539,7 +539,7 @@ sub processMonitoringTableChanges {
     Arguments:
        status -- a hash pointer of the node status. A key is a status string. The value is 
                 an array pointer of nodes that have the same status.
-                for example: {active=>["node1", "node1"], inactive=>["node5","node100"]}
+                for example: {alive=>["node1", "node1"], unreachable=>["node5","node100"]}
     Returns:
         0 for successful.
         non-0 for not successful.
@@ -581,7 +581,7 @@ sub setNodeStatusAttributes {
        none.
     Returns:
        a hash that has the node status. The format is: 
-          {active=>[node1, node3,...], unreachable=>[node4, node2...], unknown=>[node8, node101...]}
+          {alive=>[node1, node3,...], unreachable=>[node4, node2...], unknown=>[node8, node101...]}
 =cut
 #--------------------------------------------------------------------------------
 sub getNodeStatus {
@@ -821,7 +821,7 @@ sub getNodeMonServerPair {
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
+      {monserver1=>[['node1', 'osi', 'alive'], ['node2', 'switch', 'booting']...], ...} 
       A key is a pair of hostnames with the first one being the service node ip/hostname 
       that faces the mn and the second one being the service node ip/hostname that faces the cn. 
       The value of the first one can be "noservicenode" meaning that there is no service node 
@@ -913,7 +913,7 @@ sub getMonHierarchy {
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
+      {monserver1=>[['node1', 'osi', 'alive'], ['node2', 'switch', 'booting']...], ...} 
       A key is a pair of hostnames with the first one being the service node ip/hostname 
       that faces the mn and the second one being the service node ip/hostname that faces the cn. 
       The value of the first one can be "noservicenode" meaning that there is no service node 
@@ -976,7 +976,7 @@ sub getMonServerWithInfo {
     Returns:
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
-      {monserver1=>[['node1', 'osi', 'active'], ['node2', 'switch', 'booting']...], ...} 
+      {monserver1=>[['node1', 'osi', 'alive'], ['node2', 'switch', 'booting']...], ...} 
       A key is a pair of hostnames with the first one being the service node ip/hostname 
       that faces the mn and the second one being the service node ip/hostname that faces the cn. 
       The value of the first one can be "noservicenode" meaning that there is no service node 

@@ -263,7 +263,7 @@ nodelist => {
     descriptions => {
      node => 'The hostname of a node in the cluster.',
      groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group.",
-     status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, discovering, installing, installed, alive, off.',
+     status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, installing, installed, alive, powering-off, unreachable. The default value is defined. The possible status change sequenses are: defined->[discovering]->installing->installed->alive,  defined->netbooting->booted->alive,  alive/unreachable->booting->alive,  alive->powering-off->unreachable, alive->unreachable',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
     },

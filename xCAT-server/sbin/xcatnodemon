@@ -71,7 +71,7 @@ if (keys(%node_status) > 0) {
        nodes-- an array of nodes.
     Returns:
        a hash that has the node status. The format is: 
-          {active=>[node1, node3,...], unreachable=>[node4, node2...]}
+          {alive=>[node1, node3,...], unreachable=>[node4, node2...]}
 =cut
 #--------------------------------------------------------------------------------
 sub pingNodeStatus {
