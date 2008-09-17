@@ -284,7 +284,7 @@ nodepos => {
  },
   },
 noderes => {
-    cols => [qw(node servicenode netboot tftpserver nfsserver monserver kernel initrd kcmdline nfsdir serialport installnic primarynic cmdinterface xcatmaster current_osimage next_osimage comments disable)],
+    cols => [qw(node servicenode netboot tftpserver nfsserver monserver nfsdir installnic primarynic cmdinterface xcatmaster current_osimage next_osimage comments disable)],
     keys => [qw(node)],
     table_desc => 'Resources and settings to use when installing nodes.',
  descriptions => {
@@ -294,11 +294,7 @@ noderes => {
   tftpserver => 'The TFTP server for this node (as known by this node).',
   nfsserver => 'The NFS server for this node (as known by this node).',
   monserver => 'The monitoring aggregation point for this node (as known by the management node).',
-  kernel => 'DEPRECATED, only here for migration to bootparams table',
-  initrd => 'DEPRECATED, only here for migration to bootparams table',
-  kcmdline => 'DEPRECATED, only here for migration to bootparams table',
   nfsdir => 'Not used??  The path that should be mounted from the NFS server.',
-  serialport => 'DEPRECATED!  Has been moved to the nodehm table',
   installnic => 'The network adapter on the node that will be used for OS deployment.  If not set, primarynic will be used.',
   primarynic => 'The network adapter on the node that will be used for xCAT management.  Default is eth0.',
   defnetname => 'The host (or ip) by which a node should be addressed (i.e. in psh/pscp). By default, nodename is assumed to be equal to this',
@@ -515,13 +511,14 @@ switch =>  {
  },
   },
 vpd => {
-    cols => [qw(node serial mtm comments disable)],
+    cols => [qw(node serial mtm asset comments disable)],
     keys => [qw(node)],
     table_desc => 'The Machine type, Model, and Serial numbers of each node.',
  descriptions => {
   node => 'The node name or group name.',
   serial => 'The serial number of the node.',
   mtm => 'The machine type and model number of the node.  E.g. 7984-6BU',
+  asset => 'A field for administators to use to correlate inventory numbers they may have to accomodate',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
