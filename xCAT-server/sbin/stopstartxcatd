@@ -37,7 +37,7 @@ my $rc  = 0;
 my $cmd = basename($0);
 if (!(xCAT::Utils->isAIX()))
 {    # only runs on AIX
-    xCAT::MsgUtils->message("E", "This command should only be run on AIX.\n");
+    xCAT::MsgUtils->message("E", "This command should only be run on AIX.\nRun service xcatd [start|stop|restart] on Linux.\n ");
     exit 1;
 
 }
