@@ -89,7 +89,7 @@ sub mkimage {
         print $shandle "net use /delete i:\r\n";
         print $shandle 'net use i: %IMGDEST% %PASSWORD% /user:%USER%'."\r\n";
         print $shandle 'mkdir i:\images'."\r\n";
-        print $shandle 'mkdir i:\images\'.$ent->{arch}."\r\n";
+        print $shandle 'mkdir i:\images'."\\".$ent->{arch}."\r\n";
         print $shandle "imagex /capture c: i:\\images\\".$ent->{arch}."\\".$ent->{profile}.".wim ".$ent->{profile}."_".$ent->{arch}."\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
