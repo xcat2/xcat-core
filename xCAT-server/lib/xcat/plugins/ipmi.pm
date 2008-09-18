@@ -2252,12 +2252,6 @@ sub parsechassis {
     }
 }
 
-
-
-
-
-
-
 sub writefru {
     my $netfun = 0x28; # Storage (0x0A << 2)
     my @cmd=(0x10,0);
@@ -3595,8 +3589,11 @@ sub vitals {
 				if($rc == 0) {
 					$unitdesc = $units{$sdr->sensor_units_2};
 
-					$value = (($sdr->M * $reading) + ($sdr->B * (10**$sdr->B_exp))) * (10**$sdr->R_exp);
-					if($sdr->linearization == 0) {
+                    $value = $reading;
+                    if ($sdr->rec_type==1) {
+    					$value = (($sdr->M * $reading) + ($sdr->B * (10**$sdr->B_exp))) * (10**$sdr->R_exp);
+                    }
+					if($sdr->rec_type != 1 or $sdr->linearization == 0) {
 						$reading = $value;
 						if($value == int($value)) {
 							$lformat = "%-30s%8d%-20s";
@@ -3615,13 +3612,14 @@ sub vitals {
 						$lformat = "%-30s%8d %-20s";
 					}
 					else {
-						$reading = "RAW($sdr->linearization) $reading";
+						$reading = "RAW(".$sdr->linearization.") $reading";
 					}
 	
 					if($sdr->sensor_units_1 & 1) {
 						$per = "% ";
 					} else {
                   $per = " ";
+                  $per .= $sdr->rec_type;
                }
                my $numformat = ($sdr->sensor_units_1 & 0b11000000) >> 6;
                if ($numformat) {
@@ -3664,7 +3662,7 @@ sub vitals {
 	if($subcommand eq "all") {
 		my @cleds;
 		($rc,$text) = power("stat");
-		$text = sprintf($format,"Power Status:",$text);
+		$text = sprintf($format,"Power Status:",$text,"");
 		push(@output,$text);
 		($rc,@cleds) = checkleds();
 		foreach $text (@cleds) {
@@ -3912,6 +3910,7 @@ sub initsdr {
 			#Using an impossible sensor number to not conflict with decodealert
 			$sdr->sensor_owner_id(260);
 			$sdr->sensor_owner_lun(260);
+            $sdr->id_string("LED");
 			if ($sdr_data[12] > $sdr_data[13]) {
 				$sdr->led_id(($sdr_data[13]<<8)+$sdr_data[12]);
 			} else {
