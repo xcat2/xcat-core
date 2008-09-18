@@ -332,8 +332,12 @@ sub translate_sensor {
    my $lformat;
    my $per;
    $unitdesc = $units{$sdr->sensor_units_2};
-   $value = (($sdr->M * $reading) + ($sdr->B * (10**$sdr->B_exp))) * (10**$sdr->R_exp);
-   if($sdr->linearization == 0) {
+   if ($sdr->rec_type == 1) {
+    $value = (($sdr->M * $reading) + ($sdr->B * (10**$sdr->B_exp))) * (10**$sdr->R_exp);
+   } else {
+    $value = $reading;
+   }
+   if($sdr->rec_type !=1 or $sdr->linearization == 0) {
       $reading = $value;
       if($value == int($value)) {
          $lformat = "%-30s%8d%-20s";
