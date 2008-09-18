@@ -2172,7 +2172,7 @@ sub frudump {
 
 sub parsefru {
     my $bytes = shift;
-    my $structure;
+    my $fruhash;
     my $curridx; #store indexes as needed for convenience
     my $currsize; #store current size
     my $subidx;
@@ -2200,7 +2200,7 @@ sub parsefru {
             return "unknown-winternal",undef;
         }
         #capture slice of bytes
-        $structure->{internal}=[@{$bytes}[($bytes->[1]*8)..($bytes->[1]*8+$internal_size)]]; #,$bytes->[1]*8,$internal_size];
+        $fruhash->{internal}=[@{$bytes}[($bytes->[1]*8)..($bytes->[1]*8+$internal_size)]]; #,$bytes->[1]*8,$internal_size];
     }
     if ($bytes->[2]) { #Chassis info area, xCAT will preserve fields, not manipulate them
         $curridx=$bytes->[2]*8;
@@ -2209,16 +2209,204 @@ sub parsefru {
         }
         $currsize=($bytes->[$curridx+1])*8;
         @currarea=@{$bytes}[$curridx..($curridx+$currsize)]; #splice @$bytes,$curridx,$currsize;
-        parsechassis(@currarea);
-
+        $fruhash->{chassis} = parsechassis(@currarea);
     }
+    if ($bytes->[3]) { #Board info area, to be preserved
+        $curridx=$bytes->[3]*8;
+        unless ($bytes->[$curridx]==1) {
+            return "unknown-COULDGUESS",undef;
+        }
+        $currsize=($bytes->[$curridx+1])*8;
+        @currarea=@{$bytes}[$curridx..($curridx+$currsize)];
+        $fruhash->{board} = parseboard(@currarea);
+    }
+    if ($bytes->[4]) { #Product info area present, will probably be thoroughly modified
+        $curridx=$bytes->[4]*8;
+        unless ($bytes->[$curridx]==1) {
+            return "unknown-COULDGUESS",undef;
+        }
+        $currsize=($bytes->[$curridx+1])*8;
+        @currarea=@{$bytes}[$curridx..($curridx+$currsize)];
+        $fruhash->{product} = parseprod(@currarea);
+    }
+    if ($bytes->[5]) { #Generic multirecord present..
+        $fruhash->{extra}=[];
+        my $last=0;
+        $curridx=$bytes->[5]*8;
+        my $currsize;
+        while (not $last) {
+            if ($bytes->[$curridx+1] & 128) {
+                $last=1;
+            }
+            $currsize=$bytes->[$curridx+2];
+            push @{$fruhash->{extra}},$bytes->[$curridx..$curridx+4+$currsize];
+        }
+    }
+    print Dumper($fruhash->{extra});
 }
 
+sub parseprod {
+    my @area = @_;
+    my %info;
+    my $language=$area[2];
+    my $idx=3;
+    my $currsize;
+    my $currdata;
+    my $encode;
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%info;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $info{manufacturer}->{encoding}=$encode;
+        $info{manufacturer}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%info;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $info{product}->{encoding}=$encode;
+        $info{product}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%info;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $info{model}->{encoding}=$encode;
+        $info{model}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%info;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $info{version}->{encoding}=$encode;
+        $info{version}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%info;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $info{serialnumber}->{encoding}=$encode;
+        $info{serialnumber}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%info;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $info{asset}->{encoding}=$encode;
+        $info{asset}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%info;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $info{fruid}->{encoding}=$encode;
+        $info{fruid}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    if ($currsize) {
+        $info{extra}=[];
+    }
+    while ($currsize>0) {
+        if ($currsize>1) {
+            push @{$info{extra}},{value=>$currdata,encodng=>$encode};
+        }
+        $idx+=$currsize;
+        ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    }
+    return \%info;
+
+}
+sub parseboard {
+    my @area = @_;
+    my %boardinf;
+    my $idx=6;
+    my $language=$area[2];
+    my $tstamp = ($area[3]+($area[4]<<8)+($area[5]<<16))*60+820472400; #820472400 is meant to be 1/1/1996
+    $boardinf{raw}=[@area]; #store for verbatim replacement
+    $boardinf{builddate}=scalar localtime($tstamp);
+    my $encode;
+    my $currsize;
+    my $currdata;
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%boardinf;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $boardinf{manufacturer}->{encoding}=$encode;
+        $boardinf{manufacturer}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%boardinf;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $boardinf{name}->{encoding}=$encode;
+        $boardinf{name}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%boardinf;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $boardinf{serialnumber}->{encoding}=$encode;
+        $boardinf{serialnumber}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%boardinf;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $boardinf{partnumber}->{encoding}=$encode;
+        $boardinf{partnumber}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    unless ($currsize) {
+        return \%boardinf;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $boardinf{fruid}->{encoding}=$encode;
+        $boardinf{fruid}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    if ($currsize) {
+        $boardinf{extra}=[];
+    }
+    while ($currsize>0) {
+        if ($currsize>1) {
+            push @{$boardinf{extra}},{value=>$currdata,encodng=>$encode};
+        }
+        $idx+=$currsize;
+        ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+    }
+    return \%boardinf;
+}
 sub parsechassis {
     my @chassarea=@_;
     my %chassisinf;
     my $currsize;
+    my $currdata;
     my $idx=3;
+    my $encode;
+    $chassisinf{raw}=[@chassarea]; #store for verbatim replacement
     $chassisinf{type}="unknown";
     if ($chassis_types{$chassarea[2]}) {
         $chassisinf{type}=$chassis_types{$chassarea[2]};
@@ -2226,35 +2414,63 @@ sub parsechassis {
     if ($chassarea[$idx] == 0xc1) {
         return \%chassisinf;
     }
-    if ($chassarea[$idx++] & 0b00111111) {
-        $currsize=$chassarea[3] & 0b00111111;
-        $chassisinf{partenc}=($chassarea[3] & 0b11000000)>>6;
-        if ($chassisinf{partenc}==3) {
-            $chassisinf{partnum}=getascii(@chassarea[$idx..($idx+$currsize-1)]);
-        } else { #preserve the raw bytes that we don't understand
-            $chassisinf{partnum}=[@chassarea[$idx..($idx+$currsize-1)]];
-        }
-        $idx=$idx+$currsize; #advance index to next candidate field, chassis serial #
+    ($currsize,$currdata,$encode)=extractfield(\@chassarea,$idx);
+    unless ($currsize) {
+        return \%chassisinf;
+    }
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $chassisinf{partnumber}->{encoding}=$encode;
+        $chassisinf{partnumber}->{value}=$currdata;
     } 
-    if ($chassarea[$idx] == 0xc1) {
+    ($currsize,$currdata,$encode)=extractfield(\@chassarea,$idx);
+    unless ($currsize) {
         return \%chassisinf;
     }
-    if ($chassarea[$idx++] & 0b00111111) {
-        $currsize=$chassarea[$idx-1] & 0b00111111;
-        $chassisinf{serialenc}=($chassarea[$idx-1] & 0b11000000)>>6;
-        if ($chassisinf{serialenc}==3) {
-            $chassisinf{serialnum}=getascii(@chassarea[$idx..($currsize+$idx-1)]);
-        } else {
-            $chassisinf{serialnum}=[@chassarea[$idx..($currsize+$idx-1)]];
+    $idx+=$currsize;
+    if ($currsize>1) {
+        $chassisinf{serialnumber}->{encoding}=$encode;
+        $chassisinf{serialnumber}->{value}=$currdata;
+    }
+    ($currsize,$currdata,$encode)=extractfield(\@chassarea,$idx);
+    if ($currsize) {
+        $chassisinf{extra}=[];
+    }
+    while ($currsize>0) {
+        if ($currsize>1) {
+            push @{$chassisinf{extra}},{value=>$currdata,encodng=>$encode};
         }
-        $idx=$idx+$currsize;
+        $idx+=$currsize;
+        ($currsize,$currdata,$encode)=extractfield(\@chassarea,$idx);
     }
-    if ($chassarea[$idx] == 0xc1) {
-        return \%chassisinf;
-    } else {
-        die "Malformed FRU area";
-    }
+    return \%chassisinf;
 }
+
+sub extractfield { #idx is location of the type/length byte, returns something appropriate
+    my $area = shift;
+    my $idx = shift;
+    my $language=shift;
+    my $data;
+    my $size = $area->[$idx] & 0b00111111;
+    my $encoding = ($area->[$idx] & 0b11000000)>>6;
+    unless ($size) {
+        return 1,undef,undef;
+    }
+    if ($size==1 && $encoding==3) { 
+        return 0,'','';
+    }
+    if ($encoding==3) {
+        $data=getascii(@$area[$idx+1..$size+$idx]);
+    } else {
+        $data = [@$area[$idx+1..$size+$idx]];
+    }
+    return $size+1,$data,$encoding;
+}
+
+
+
+
+
 
 sub writefru {
     my $netfun = 0x28; # Storage (0x0A << 2)
@@ -4786,7 +5002,7 @@ sub getascii {
                 } else {
                     $alpha[$c]=" ";
                 }
-                if($alpha[$c] !~ /[\/\w\-:]/) {
+                if($alpha[$c] !~ /[\/\w\-:\[\]]/) {
         			if ($alpha[($c-1)] !~ /\s/) {
                     	    $alpha[$c] = " ";
 	          		} else {
