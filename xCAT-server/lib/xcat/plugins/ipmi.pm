@@ -3623,7 +3623,6 @@ sub vitals {
 						$per = "% ";
 					} else {
                   $per = " ";
-                  $per .= $sdr->rec_type;
                }
                my $numformat = ($sdr->sensor_units_1 & 0b11000000) >> 6;
                if ($numformat) {
