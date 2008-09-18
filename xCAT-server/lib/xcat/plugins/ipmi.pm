@@ -31,6 +31,7 @@ sub handled_commands {
     rsetboot => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
     reventlog => 'nodehm:mgt',
+    writefru => 'nodehm:mgt',
   }
 }
 
@@ -2165,10 +2166,115 @@ sub frudump {
 	return(0,@fru_data);
 }
 
+sub parsefru {
+    my $bytes = shift;
+    my $structure;
+    my $curridx; #store indexes as needed for convenience
+    my $currsize; #store current size
+    my $subidx;
+    my @currarea;
+    unless ($bytes->[0]==1) {
+        if ($bytes->[0]==0 or $bytes->[0]==0xff) { #not in spec, but probably unitialized, xCAT probably will rewrite fresh
+            return "clear",undef;
+        } else { #some meaning suggested, but not parsable, xCAT shouldn't meddle
+            return "unknown",undef;
+        }
+    }
+    if ($bytes->[1]) { #The FRU spec, unfortunately, gave no easy way to tell the size of internal area
+        #consequently, will find the next defined field and preserve the addressing and size of current FRU 
+        #area until then
+        my $internal_size;
+        if ($bytes->[2]) {
+            $internal_size=$bytes->[2]*8-($bytes->[1]*8);
+        } elsif ($bytes->[3]) {
+            $internal_size=$bytes->[3]*8-($bytes->[1]*8);
+        } elsif ($bytes->[4]) {
+            $internal_size=$bytes->[4]*8-($bytes->[1]*8);
+        } elsif ($bytes->[5]) {
+            $internal_size=$bytes->[5]*8-($bytes->[1]*8);
+        } else { #The FRU area is intact enough to signify xCAT can't safely manipulate contents
+            return "unknown-winternal",undef;
+        }
+        #capture slice of bytes
+        $structure->{internal}=[@{$bytes}[($bytes->[1]*8)..($bytes->[1]*8+$internal_size)]]; #,$bytes->[1]*8,$internal_size];
+    }
+    if ($bytes->[2]) { #Chassis info area, xCAT will preserve fields, not manipulate them
+        $curridx=$bytes->[2]*8;
+        unless ($bytes->[$curridx]==1) { #definitely unparsable, but the section is preservable
+            return "unknown-COULDGUESS",undef; #be lazy for now, TODO revisit this and add guessing if it ever matters
+        }
+        $currsize=($bytes->[$curridx+1])*8;
+        @currarea=@{$bytes}[$curridx..($curridx+$currsize)]; #splice @$bytes,$curridx,$currsize;
+        parsechassis(@currarea);
+
+    }
+}
+
+sub parsechassis {
+    my @chassarea=@_;
+    my %chassisinf;
+    my $currsize;
+    my $idx=3;
+    $chassisinf{type}="unknown";
+    if ($chassis_types{$chassarea[2]}) {
+        $chassisinf{type}=$chassis_types{$chassarea[2]};
+    }
+    if ($chassarea[$idx] == 0xc1) {
+        return \%chassisinf;
+    }
+    if ($chassarea[$idx++] & 0b00111111) {
+        $currsize=$chassarea[3] & 0b00111111;
+        $chassisinf{partenc}=($chassarea[3] & 0b11000000)>>6;
+        if ($chassisinf{partenc}==3) {
+            $chassisinf{partnum}=getascii(@chassarea[$idx..($idx+$currsize-1)]);
+        } else { #preserve the raw bytes that we don't understand
+            $chassisinf{partnum}=[@chassarea[$idx..($idx+$currsize-1)]];
+        }
+        $idx=$idx+$currsize; #advance index to next candidate field, chassis serial #
+    } 
+    if ($chassarea[$idx] == 0xc1) {
+        return \%chassisinf;
+    }
+    if ($chassarea[$idx++] & 0b00111111) {
+        $currsize=$chassarea[$idx-1] & 0b00111111;
+        $chassisinf{serialenc}=($chassarea[$idx-1] & 0b11000000)>>6;
+        if ($chassisinf{serialenc}==3) {
+            $chassisinf{serialnum}=getascii(@chassarea[$idx..($currsize+$idx-1)]);
+        } else {
+            $chassisinf{serialnum}=[@chassarea[$idx..($currsize+$idx-1)]];
+        }
+        $idx=$idx+$currsize;
+    }
+    if ($chassarea[$idx] == 0xc1) {
+        return \%chassisinf;
+    } else {
+        die "Malformed FRU area";
+    }
+}
+
+
+
+
+
+
+
 sub writefru {
-	my $serial = shift;
-	my $model = shift;
+    my $netfun = 0x28; # Storage (0x0A << 2)
+    my @cmd=(0x10,0);
 	my @bytes;
+    my $error = docmd($netfun,\@cmd,\@bytes);
+    @bytes=splice @bytes,36-$authoffset;
+    pop @bytes;
+    unless (defined $bytes[0] and $bytes[0] == 0) {
+        return (1,"FRU device 0 inaccessible");
+    }
+    my $frusize=($bytes[2]<<8)+$bytes[1];
+    ($error,@bytes) = frudump(0,$frusize,16);
+    my $fruhash = parsefru(\@bytes);
+    return;
+    my $serial;
+    my $model;
+    
 	my $rc;
 	my $text;
 
@@ -4673,7 +4779,11 @@ sub getascii {
         my $c = 0;
 
         foreach(@_) {
-                $alpha[$c] = sprintf("%c",$_);
+                if (defined $_ and $_ < 128 and $_ > 0x20) {
+                    $alpha[$c] = sprintf("%c",$_);
+                } else {
+                    $alpha[$c]=" ";
+                }
                 if($alpha[$c] !~ /[\/\w\-:]/) {
         			if ($alpha[($c-1)] !~ /\s/) {
                     	    $alpha[$c] = " ";
