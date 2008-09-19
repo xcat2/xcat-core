@@ -18,7 +18,7 @@ require xCAT::Utils;
 require xCAT::MsgUtils;
 require xCAT::SINV;
 use Getopt::Long;
-1;
+
 
 #-------------------------------------------------------
 
@@ -37,13 +37,77 @@ sub handled_commands
 
 #-------------------------------------------------------
 
-=head3  preprocess_request
+=head3  preprocess_request ( handles hierachy,  TBD)
 
 
 =cut
 
 #-------------------------------------------------------
-
+#sub preprocess_request
+#{
+#    my $req = shift;
+#    my $cb  = shift;
+#     $::CALLBACK = $cb;
+#    my %sn;
+#    my $sn;
+#    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+#    my $nodes    = $req->{node};
+#    my $service  = "xcat";
+#    my @requests;
+#    #display usage statement if -h and version if -v
+#    my $extrargs = $req->{arg};
+#    my @exargs=($req->{arg});
+#    if (ref($extrargs)) {
+#      @exargs=@$extrargs;
+#    }
+#    @ARGV=@exargs;
+#  $Getopt::Long::ignorecase=0;
+#  if(!GetOptions(
+#      'h|help'     => \$::HELP,
+#      'v|version'  => \$::VERSION)) {
+#    $req= {};
+#    #return;
+#  }
+#  if ($::HELP) {
+#    xCAT::SINV->usage();
+#    $req = {};
+#    return;
+#  }
+#  if ($::VERSION) {
+#     my $version = xCAT::Utils->Version();
+#     $version .= "\n";
+#     my $rsp = {};
+#     $rsp->{data}->[0] = $version;
+#     xCAT::MsgUtils->message("I", $rsp, $cb);
+#    $req= {};
+#    return;
+#  }
+#  if ($nodes) {
+#    # find service nodes for requested nodes
+#    # build an individual request for each service node
+#    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+#
+#    # build each request for each service node
+#
+#    foreach my $snkey (keys %$sn)
+#    {
+#            my $reqcopy = {%$req};
+#            $reqcopy->{node} = $sn->{$snkey};
+#            $reqcopy->{'_xcatdest'} = $snkey;
+#            push @requests, $reqcopy;
+#
+#    }
+#  } else {   # no nodes
+#        my $rsp = {};
+#        $rsp->{data}->[0] = "No noderange specified on the command.\n";
+#        xCAT::MsgUtils->message("E", $rsp, $cb);
+#        $req= {};
+#        return;
+#
+#  }
+#    return \@requests;
+# }
+#
 #-------------------------------------------------------
 
 =head3  process_request
@@ -58,13 +122,14 @@ sub process_request
 
     my $request  = shift;
     my $callback = shift;
+    my $sub_req = shift;
     my $nodes    = $request->{node};
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
     my $envs     = $request->{env};
     my $rsp      = {};
 
-    sinv($nodes, $args, $callback, $command, $request->{noderange}->[0]);
+    sinv($nodes, $args, $callback, $command, $request->{noderange}->[0],$sub_req);
 }
 
 #-------------------------------------------------------
@@ -79,17 +144,18 @@ sub process_request
 #-------------------------------------------------------
 sub sinv
 {
-    my ($nodes, $args, $callback, $command, $noderange) = @_;
+    my ($nodes, $args, $callback, $command, $noderange, $sub_req) = @_;
 
     my $rsp = {};
 
-    # parse  input
+    # parse  input  and run dsh
     my @local_results =
       xCAT::SINV->parse_and_run_sinv($nodes,   $args, $callback,
-                                     $command, $noderange);
+                                     $command, $noderange, $sub_req);
     push @{$rsp->{data}}, @local_results;
 
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     return;
 }
+1;
