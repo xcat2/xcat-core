@@ -10,6 +10,7 @@ use Sys::Syslog;
 use Data::Dumper;
 use SNMP; 
 my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco equip
+my $switchestab; #table handle to the switches
 #use IF-MIB (1.3.6.1.2.1.2) for all switches
 #   1.3.6.1.2.1.31.1.1 - ifXtable
 #       1.3.6.1.2.1.31.1.1.1.1.N = name - ifName
@@ -207,6 +208,9 @@ sub refresh_switch {
   my $output = shift;
   my $community = shift;
   my $switch = shift;
+  my $snmpver=1;
+  my $privproto='AES';
+  my $swent=$switchestab->getAttribs({switch=>$switch},[qw(snmpversion username password privacy auth)]);
   $session = new SNMP::Session(
                   DestHost => $switch,
                   Version => '1',
