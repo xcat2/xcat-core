@@ -251,7 +251,9 @@ sub isLinux
 #-------------------------------------------------------------------------------
 sub Version
 {
-    my $version = "Version 2.1\n"; 
+    my $version = "Version 2.1"; 
+#The following tag tells the build script where to append build info
+#XCATSVNBUILDSUBHERE
     return $version; 
 }
 
