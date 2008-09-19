@@ -2387,28 +2387,6 @@ sub isMounted
 }
 #-------------------------------------------------------------------------------
 
-=head3   Version 
-    Returns the Version of the release, to be used for the version flag on 
-    each command 
-    Arguments:
-        None 
-    Returns:
-        version number 
-    Globals:
-        none
-    Error:
-    Example:
-        my $version= xCAT::Version();
-=cut
-
-#-------------------------------------------------------------------------------
-sub Version 
-{
-my $version="Version 2.1";
-    return $version;
-}
-#-------------------------------------------------------------------------------
-
 =head3   runxcatd 
     Stops or starts xcatd  
     Arguments:
