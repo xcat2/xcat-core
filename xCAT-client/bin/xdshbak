@@ -22,6 +22,9 @@ use Getopt::Std;
 #                                                                   #
 # Inputs:                                                           #
 #  -c : list distinct output only once                              #
+#  -h : usage                                                       #
+#  -x : omit extra header output for each node.                     #
+#            Can not be used with -c.                               # 
 #                                                                   #
 # Ouputs:                                                           #
 #       Filtered output                                             #
@@ -191,7 +194,7 @@ sub d_syntax
 {
     my $usage1 = "Usage: xdshbak   [-c | -x | -h] \n";
     my $usage2 =
-      "-c : compresses the output by listng unique output only once.\n";
+      "-c : compresses the output by listing unique output only once.\n";
     my $usage3 = "-h : help  \n";
     my $usage4 =
       "-x : omit extra header output for each node.  Can not be used with -c. \n";
