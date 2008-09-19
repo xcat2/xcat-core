@@ -1552,7 +1552,10 @@ sub inv {
         $subcommand = "all";
     }
 	if($subcommand eq "all") {
-		@types = qw(model serial deviceid mprom guid);
+		@types = qw(model serial deviceid mprom guid misc asset);
+	}
+	elsif($subcommand eq "asset") {
+		@types = qw(asset);
 	}
 	elsif($subcommand eq "model") {
 		@types = qw(model);
@@ -1565,6 +1568,9 @@ sub inv {
 	}
 	elsif($subcommand eq "mprom") {
 		@types = qw(mprom);
+	}
+	elsif($subcommand eq "misc") {
+		@types = qw(misc);
 	}
 	elsif($subcommand eq "deviceid") {
 		@types = qw(deviceid);
@@ -1579,19 +1585,15 @@ sub inv {
 		return(1,"unsupported BMC inv argument $subcommand");
 	}
 
-	foreach(@types) {
-		my $type = $_;
-		my $otext;
-		my $key;
+	my $otext;
+	my $key;
 
-		foreach $key (keys %fru_hash) {
-			my $fru = $fru_hash{$key};
-			#print($fru->rec_type."\n");
-			if($fru->rec_type eq $type) {
-				$otext = sprintf($format,$fru_hash{$key}->desc . ":",$fru_hash{$key}->value);
-				#print $otext;
-				push(@output,$otext);
-			}
+	foreach $key (sort keys %fru_hash) {
+		my $fru = $fru_hash{$key};
+		if(grep {$_ eq $fru->rec_type} @types) {
+			$otext = sprintf($format,$fru_hash{$key}->desc . ":",$fru_hash{$key}->value);
+			#print $otext;
+			push(@output,$otext);
 		}
 	}
 
@@ -1839,7 +1841,7 @@ sub initfru {
 	if($mfg_id == 2 && $prod_id == 34869) {
 		$mprom = sprintf("%x.%x",$fw_rev1,$fw_rev2);
 	}
-	else {
+	elsif ($mfg_id == 2) {
 		my @lcmd = (0x50);
 		my @lreturnd = ();
 		my $lerror = docmd(
@@ -1855,7 +1857,10 @@ sub initfru {
 			my @a = ($fw_rev2);
 			$mprom = sprintf("%d.%s",$fw_rev1,decodebcd(\@a));
 		}
-	}
+	} else {
+        my @a = ($fw_rev2);
+        $mprom = sprintf("%d.%s",$fw_rev1,decodebcd(\@a));
+    }
 
 	$fru = FRU->new();
 	$fru->rec_type("mprom");
@@ -1903,54 +1908,29 @@ sub initfru {
 #	if($rc == 2) {
 #		return(0,"");
 #	}
-
+    $netfun = 0x28; # Storage (0x0A << 2)
+	my @bytes;
 	@cmd=(0x10,0x00);
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
+    $error = docmd($netfun,\@cmd,\@bytes);
+    if ($error) { return (1,$error); }
+    @bytes=splice @bytes,36-$authoffset;
+    pop @bytes;
+    unless (defined $bytes[0] and $bytes[0] == 0) {
+        if ($codes{$bytes[0]}) {
+            return (1,"FRU device 0 inaccessible".$codes{$bytes[0]});
+        } else {
+            return (1,"FRU device 0 inaccessible");
+        }
+    }
+    my $frusize=($bytes[2]<<8)+$bytes[1];
 
-	if($error) {
-		$rc = 1;
-		$text = $error;
-		return($rc,$text);
-	}
-
-	$code = $returnd[36-$authoffset];
-
-	if($code == 0x00) {
-	}
-	else {
-		$rc = 1;
-		$text = $codes{$code};
-	}
-
+	($rc,@bytes) = frudump(0,$frusize,16);
 	if($rc != 0) {
-		if(!$text) {
-			$text = sprintf("unknown response %02x",$code);
-		}
-		return($rc,$text);
+		return($rc,@bytes);
 	}
-
-	my $fru_size_ls = $returnd[37-$authoffset];
-	my $fru_size_ms = $returnd[38-$authoffset];
-	my $fru_size = $fru_size_ms*256 + $fru_size_ls;
-	my $fru_bytes_words = $returnd[39-$authoffset] & 1;
-
-	($rc,@output) = frudump(0,8,8);
-	if($rc != 0) {
-		return($rc,@output);
-	}
-
-	my $fru_header_ver = $output[0];
-	my $fru_header_offset_internal = $output[1];
-	my $fru_header_offset_chassis = $output[2] * 8;
-	my $fru_header_offset_board = $output[3];
-	my $fru_header_offset_product = $output[4];
-	my $fru_header_offset_mult = $output[5];
-
-	if($fru_header_ver != 1) {
+    my $fruhash;
+    ($error,$fruhash) = parsefru(\@bytes);
+    if ($error) {
 		($rc,$text)=initoemfru($mfg_id,$prod_id,$device_id);
 		if($rc == 1) {
 			$text = "FRU format unknown";
@@ -1960,83 +1940,198 @@ sub initfru {
 			return(0,"");
 		}
 	}
+    my $frudex=0;
+    if (defined $fruhash->{product}->{manufacturer}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("misc");
+    	$fru->desc("System Manufacturer");
+        if ($fruhash->{product}->{product}->{encoding}==3) {
+        	$fru->value($fruhash->{product}->{manufacturer}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{product}->{manufacturer}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    if (defined $fruhash->{product}->{product}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("model");
+    	$fru->desc("System Description");
+        if ($fruhash->{product}->{product}->{encoding}==3) {
+        	$fru->value($fruhash->{product}->{product}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{product}->{product}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    if (defined $fruhash->{product}->{model}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("model");
+    	$fru->desc("System Model/MTM");
+        if ($fruhash->{product}->{model}->{encoding}==3) {
+        	$fru->value($fruhash->{product}->{model}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{product}->{model}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    if (defined $fruhash->{product}->{version}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("misc");
+    	$fru->desc("System Revision");
+        if ($fruhash->{product}->{version}->{encoding}==3) {
+        	$fru->value($fruhash->{product}->{version}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{product}->{version}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    if (defined $fruhash->{product}->{serialnumber}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("serial");
+    	$fru->desc("System Serial Number");
+        if ($fruhash->{product}->{serialnumber}->{encoding}==3) {
+        	$fru->value($fruhash->{product}->{serialnumber}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{product}->{serialnumber}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    if (defined $fruhash->{product}->{asset}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("asset");
+    	$fru->desc("System Asset Number");
+        if ($fruhash->{product}->{asset}->{encoding}==3) {
+        	$fru->value($fruhash->{product}->{asset}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{product}->{asset}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    foreach (@{$fruhash->{product}->{extra}}) {
+        $fru = FRU->new();
+        $fru->rec_type("misc");
+        $fru->desc("Product Extra data");
+        if ($_->{encoding} == 3) {
+            $fru->value($_->{value});
+        } else {
+            print Dumper($_);
+            print $_->{encoding};
+            $fru->value(phex($_->{value}));
+        }
+        $fru_hash{$frudex++} = $fru;
+    }
+    
 
-  	my $chassis_serial_num="unknown";
-  	my $chassis_part_num="unknown";
-    my $chassis_type="unknown";
-    if ($fru_header_offset_chassis) {
-    	($rc,@output) = frudump($fru_header_offset_chassis,2,8);
-    	if($rc != 0) {
-    		return($rc,@output);
-    	}
-    
-    	my $chassis_info_area_format_version = $output[0];
-    	my $chassis_info_area_length = $output[1] * 8;
-    
-    	if($chassis_info_area_format_version != 1) {
-    		($rc,$text)=initoemfru($mfg_id,$prod_id,$device_id);
-    		if($rc == 1) {
-    			$text = "FRU format unknown";
-    			return($rc,$text);
-    		}
-    		if($rc == 2) {
-    			return(0,"");
-    		}
-    	}
-
-    	($rc,@output) = frudump($fru_header_offset_chassis,$chassis_info_area_length,8);
-    	if($rc != 0) {
-    		return($rc,@output);
-    	}
-    
-    	my $c=2;
-    	$chassis_type = $output[$c++];
-    	my $chassis_part_num_type = ($output[$c] & 0b11000000) >> 6;
-    	my $chassis_part_num_len = $output[$c] & 0b00111111;
-    	$c++;
-    	if($chassis_part_num_type == 3) {
-    		$chassis_part_num = getascii(@output[$c..$c+$chassis_part_num_len-1]);
-    	}
-    	else {
-    		$chassis_part_num = "unsupported type $chassis_part_num_type";
-    	}
-    	$c=$c+$chassis_part_num_len;
-    	my $chassis_serial_num_type = ($output[$c] & 0b11000000) >> 6;
-    	my $chassis_serial_num_len = $output[$c] & 0b00111111;
-    	$c++;
-    	if($chassis_serial_num_type == 3) {
-    		$chassis_serial_num = getascii(@output[$c..$c+$chassis_serial_num_len-1]);
-    	}
-    	else {
-    		$chassis_serial_num = "unsupported type $chassis_serial_num_type";
-    	}
-    	if(!$chassis_part_num) {
-    		$chassis_part_num = "undefined";
-    	}
-    	if(!$chassis_serial_num) {
-    		$chassis_serial_num = "undefined";
-    	}
+    if ($fruhash->{chassis}->{serialnumber}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("serial");
+    	$fru->desc("Chassis Serial Number");
+        if ($fruhash->{chassis}->{serialnumber}->{encoding}==3) {
+        	$fru->value($fruhash->{chassis}->{serialnumber}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{chassis}->{serialnumber}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
     }
 
-	$fru = FRU->new();
-	$fru->rec_type("serial");
-	$fru->desc("Serial Number");
-	$fru->value($chassis_serial_num);
-	$fru_hash{1} = $fru;
+    if ($fruhash->{chassis}->{partnumber}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("model");
+    	$fru->desc("Chassis Part Number");
+        if ($fruhash->{chassis}->{partnumber}->{encoding}==3) {
+        	$fru->value($fruhash->{chassis}->{partnumber}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{chassis}->{partnumber}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
 
-	if($chassis_types{$chassis_type}) {
-		$chassis_part_num .= " ";
-		$chassis_part_num .= $chassis_types{$chassis_type};
-	}
 
-	$fru = FRU->new();
-	$fru->rec_type("model");
-	$fru->desc("Model Number");
-	$fru->value($chassis_part_num);
-	$fru_hash{2} = $fru;
+    foreach (@{$fruhash->{chassis}->{extra}}) {
+        $fru = FRU->new();
+        $fru->rec_type("misc");
+        $fru->desc("Chassis Extra data");
+        if ($_->{encoding} == 3) {
+            $fru->value($_->{value});
+        } else {
+            print Dumper($_);
+            print $_->{encoding};
+            $fru->value(phex($_->{value}));
+        }
+        $fru_hash{$frudex++} = $fru;
+    }
+
+    if ($fruhash->{board}->{builddate})  {
+        $fru = FRU->new();
+        $fru->rec_type("misc");
+        $fru->desc("Board manufacture date");
+        $fru->value($fruhash->{board}->{builddate});
+        $fru_hash{$frudex++} = $fru;
+    }
+
+    if ($fruhash->{board}->{manufacturer}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("misc");
+    	$fru->desc("Board manufacturer");
+        if ($fruhash->{board}->{manufacturer}->{encoding}==3) {
+        	$fru->value($fruhash->{board}->{manufacturer}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{board}->{manufacturer}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    if ($fruhash->{board}->{name}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("misc");
+    	$fru->desc("Board Description");
+        if ($fruhash->{board}->{name}->{encoding}==3) {
+        	$fru->value($fruhash->{board}->{name}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{board}->{name}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    if ($fruhash->{board}->{serialnumber}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("misc");
+    	$fru->desc("Board Serial Number");
+        if ($fruhash->{board}->{serialnumber}->{encoding}==3) {
+        	$fru->value($fruhash->{board}->{serialnumber}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{board}->{serialnumber}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    if ($fruhash->{board}->{partnumber}->{value}) {
+	    $fru = FRU->new();
+    	$fru->rec_type("misc");
+    	$fru->desc("Board Model Number");
+        if ($fruhash->{board}->{partnumber}->{encoding}==3) {
+        	$fru->value($fruhash->{board}->{partnumber}->{value});
+        } else {
+        	$fru->value(phex($fruhash->{board}->{partnumber}->{value}));
+        }
+    	$fru_hash{$frudex++} = $fru;
+    }
+    foreach (@{$fruhash->{board}->{extra}}) {
+        $fru = FRU->new();
+        $fru->rec_type("misc");
+        $fru->desc("Board Extra data");
+        if ($_->{encoding} == 3) {
+            $fru->value($_->{value});
+        } else {
+            print Dumper($_);
+            print $_->{encoding};
+            $fru->value(phex($_->{value}));
+        }
+        $fru_hash{$frudex++} = $fru;
+    }
+
 
 	return($rc,$text);
 }
+
+
 
 sub fru {
 	my $subcommand = shift;
@@ -2081,7 +2176,6 @@ sub fru {
 	my $fru_size_ls = $returnd[37-$authoffset];
 	my $fru_size_ms = $returnd[38-$authoffset];
 	my $fru_size = $fru_size_ms*256 + $fru_size_ls;
-	my $fru_bytes_words = $returnd[39-$authoffset] & 1;
 
 	if($subcommand eq "dump") {
 		print "FRU Size: $fru_size\n";
@@ -2242,7 +2336,7 @@ sub parsefru {
             push @{$fruhash->{extra}},$bytes->[$curridx..$curridx+4+$currsize];
         }
     }
-    print Dumper($fruhash->{extra});
+    return 0,$fruhash;
 }
 
 sub parseprod {
@@ -2322,7 +2416,7 @@ sub parseprod {
     }
     while ($currsize>0) {
         if ($currsize>1) {
-            push @{$info{extra}},{value=>$currdata,encodng=>$encode};
+            push @{$info{extra}},{value=>$currdata,encoding=>$encode};
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
@@ -2392,7 +2486,7 @@ sub parseboard {
     }
     while ($currsize>0) {
         if ($currsize>1) {
-            push @{$boardinf{extra}},{value=>$currdata,encodng=>$encode};
+            push @{$boardinf{extra}},{value=>$currdata,encoding=>$encode};
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
@@ -2438,7 +2532,7 @@ sub parsechassis {
     }
     while ($currsize>0) {
         if ($currsize>1) {
-            push @{$chassisinf{extra}},{value=>$currdata,encodng=>$encode};
+            push @{$chassisinf{extra}},{value=>$currdata,encoding=>$encode};
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@chassarea,$idx);
@@ -2484,7 +2578,8 @@ sub writefru {
     }
     my $frusize=($bytes[2]<<8)+$bytes[1];
     ($error,@bytes) = frudump(0,$frusize,16);
-    my $fruhash = parsefru(\@bytes);
+    my $fruhash; 
+    ($error,$fruhash) = parsefru(\@bytes);
     return;
     my $serial;
     my $model;
