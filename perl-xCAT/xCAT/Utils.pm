@@ -235,7 +235,7 @@ sub isLinux
 
 =head3   Version 
     Arguments:
-        none
+        Optional 'short' string to request only the version;
     Returns:
        xcat Version number 
     Globals:
@@ -252,7 +252,12 @@ sub isLinux
 sub Version
 {
 #The following tag tells the build script where to append build info
-    my $version = "Version 2.1"#XCATSVNBUILDSUBHERE
+    my $version=shift;
+    if ($version eq 'short') {
+        $version = "2.1";
+    } else {
+        $version = "Version 2.1"#XCATSVNBUILDSUBHERE
+    }
     ;
     return $version; 
 }
