@@ -21,7 +21,9 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use Fcntl qw(:flock);
 use Getopt::Long;
-
+my $tempfile;
+my $errored=0;
+my @dshresult;
 #
 # Subroutines
 #
@@ -41,18 +43,19 @@ sub usage
     my $usagemsg1 =
       "The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
     my $usagemsg1a = "sinv -h \nsinv -v \nsinv [noderange]\n";
-    my $usagemsg2 = "      [-V verbose] [-v version] [-h usage]\n ";
+    my $usagemsg2  = "      [-V verbose] [-v version] [-h usage]\n ";
     my $usagemsg3  =
       "     [-o output file ] [-p template path] [-t template count]\n";
-    my $usagemsg4 = "      [-r remove templates] [-s seednode]\n";
+    my $usagemsg4  = "      [-r remove templates] [-s seednode]\n";
     my $usagemsg4a = "      [-e exactmatch] [-i ignore]\n";
-    my $usagemsg5 = "      [-c xdsh command  | -f xdsh command file] \n ";
-    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .= $usagemsg4a .= $usagemsg5;
+    my $usagemsg5  = "      [-c xdsh command  | -f xdsh command file] \n ";
+    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
+      $usagemsg4a .= $usagemsg5;
 ###  end usage mesage
 
-     my $rsp = {};
-     $rsp->{data}->[0] = $usagemsg;
-     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+    my $rsp = {};
+    $rsp->{data}->[0] = $usagemsg;
+    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return;
 
 }
@@ -67,7 +70,7 @@ sub usage
 #------------------------------------------------------------------------------
 sub parse_and_run_sinv
 {
-    my ($class, $nodes, $args, $callback, $command, $noderange) = @_;
+    my ($class, $nodes, $args, $callback, $command, $noderange, $sub_req) = @_;
     my $rsp = {};
     $::CALLBACK = $callback;
     @ARGV       = @{$args};    # get argument
@@ -115,6 +118,7 @@ sub parse_and_run_sinv
     # if neither xdsh command or file, error
     if (!($options{'xdsh_cmd'}) && (!($options{'xdsh_file'})))
     {
+        my $rsp = {};
         $rsp->{data}->[0] =
           "Neither the xdsh command, nor the xdsh command file have been supplied.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -124,6 +128,7 @@ sub parse_and_run_sinv
     # if  both xdsh command and file, error
     if (($options{'xdsh_cmd'}) && (($options{'xdsh_file'})))
     {
+        my $rsp = {};
         $rsp->{data}->[0] =
           "Both the xdsh command, and the xdsh command file have been supplied. Only one or the other is allowed.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -137,6 +142,7 @@ sub parse_and_run_sinv
     my @inputNodes = join(',', @nodelist);
     if (@inputNodes == 0)
     {
+        my $rsp = {};
         $rsp->{data}->[0] = "No noderange specified on the command.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
@@ -165,6 +171,7 @@ sub parse_and_run_sinv
     my $templatepath = $options{'template_path'};
     if (!$templatepath)
     {
+        my $rsp = {};
         $rsp->{data}->[0] = "Missing template path on the command.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
@@ -178,9 +185,10 @@ sub parse_and_run_sinv
     my $templatecnt = $options{'template_cnt'};
     if (!$templatecnt)
     {
+        my $rsp = {};
         $rsp->{data}->[0] =
           "No template count on the command, defaults to 1.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+        xCAT::MsgUtils->message("I", $rsp, $callback);
         $templatecnt = 1;    # default
     }
     chomp $templatecnt;
@@ -192,8 +200,9 @@ sub parse_and_run_sinv
     my $rmtemplate = $options{'remove_template'};
     if (!$rmtemplate)
     {
+        my $rsp = {};
         $rsp->{data}->[0] = "Remove template value missing, default is no.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+        xCAT::MsgUtils->message("I", $rsp, $callback);
         $rmtemplate = "no";    #default
     }
     chomp $rmtemplate;
@@ -206,6 +215,7 @@ sub parse_and_run_sinv
     my $outputfile = $options{'output_file'};
     if (!$outputfile)
     {
+        my $rsp = {};
         $rsp->{data}->[0] = "Output file path missing.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
@@ -215,6 +225,7 @@ sub parse_and_run_sinv
     # open the file for writing
     unless (open(OUTPUTFILE, ">$outputfile"))
     {
+        my $rsp = {};
         $rsp->{data}->[0] = " Cannot open $outputfile for output.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
@@ -237,6 +248,7 @@ sub parse_and_run_sinv
     #
     # Build Output file header
     #
+    my $rsp = {};
     $rsp->{data}->[0] = "Command started with following input.\n";
     $rsp->{data}->[1] = "xdsh cmd:$cmd.\n";
     $rsp->{data}->[2] = "Template path:$templatepath.\n";
@@ -260,12 +272,9 @@ sub parse_and_run_sinv
         $i++;
     }
     print $::OUTPUT_FILE_HANDLE "\n";
-
-    #  put out for all to see
     if ($::VERBOSE)
     {
         xCAT::MsgUtils->message("I", $rsp, $callback);
-        $rsp = {};
     }
 
     #
@@ -287,33 +296,53 @@ sub parse_and_run_sinv
     # Tell them we are running DSH
     if ($::VERBOSE)
     {
+        my $rsp = {};
         $rsp->{data}->[0] = "Running xdsh command.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
-
     #
     #  Run the DSH command
     #
     my $nodelist    = $inputNodes[0];
-    my $tempfile    = "/tmp/sinv.$$";
-    my $dsh_command = "xdsh ";
-    $dsh_command .= $nodelist;
+    $tempfile    = "/tmp/sinv.$$";
+    #my $dsh_command = "xdsh ";
+    #$dsh_command .= $nodelist;
 
-    $dsh_command .= " $cmd  > $tempfile";
-    my $rc = system("$dsh_command");
-    if ($rc != 0)
-    {
-        $rsp->{data}->[0] = "Error from xdsh command:$dsh_command.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        exit 1;
-    }
+    #$dsh_command .= " $cmd  > $tempfile";
+    #my $rc = system("$dsh_command");
+    #if ($rc != 0)
+    #{
+    #    my $rsp = {};
+    #    $rsp->{data}->[0] = "Error from xdsh command:$dsh_command.\n";
+    #    xCAT::MsgUtils->message("E", $rsp, $callback);
+    #    exit 1;
+    #}
+    
+    # Below code needed to run xdsh from the plugin
+    # and still support a hierarchial xdsh
+    # this will run xdsh with input,  return to xdshoutput routine
+    # and then return inline after this code. 
 
+    $sub_req->({command=>['xdsh'],
+           node=>\@nodelist,
+         #arg=>[$args[0]]},\&xdshoutput);
+         arg=>[$cmd]},\&xdshoutput);
+
+    #    debug print output 
+    my $rsp = {};
+    my $i=0;
+   foreach my $line (@dshresult) {
+        $rsp->{data}->[$i] = $line;
+        $i++;
+   }
+   xCAT::MsgUtils->message("I", $rsp, $callback);
     #  Build report and write to output file
-    #
-    if (!(-z "$tempfile"))
+    #  if file exist and has something in it
+    if ((-e $tempfile) && (!(-z $tempfile)))
     {    # if dsh returned something
 
         # Tell them we are building the report
+        my $rsp = {};
         $rsp->{data}->[0] = "Building Report.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
@@ -325,14 +354,16 @@ sub parse_and_run_sinv
     }
     else
     {
+        my $rsp = {};
         $rsp->{data}->[0] = "No output from xdsh.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
     # Finally we need to cleanup and exit
     #
-    system("/bin/rm  $tempfile");
+    #system("/bin/rm  $tempfile");
     close(OUTPUTFILE);
+    my $rsp = {};
     $rsp->{data}->[0] = "Command Complete. Check report in $outputfile.\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
@@ -731,6 +762,36 @@ sub writereport
         $nodefound = 0;
     }
     return;
+}
+#------------------------------------------------------------------------------
+
+=head3   dshoutput  			    	 
+
+ Check xdsh output 
+
+=cut
+
+#------------------------------------------------------------------------------
+sub xdshoutput 
+{
+   my $resp = shift;
+   my $i=0;
+   foreach my $line ($resp->{info}->[$i]) {
+     push (@dshresult, $line); 
+     $i++;
+   }
+   my $rsp={};
+   $rsp->{data}->[0] = "Could not open $tempfile\n";
+   open(FILE, ">$tempfile")||
+        xCAT::MsgUtils->message("E", $rsp,  $::CALLBACK);
+        return 1;
+   foreach my $line (@dshresult) {
+    print FILE $line 
+   }
+   close FILE;
+   return 0; 
+
+
 }
 
 1;
