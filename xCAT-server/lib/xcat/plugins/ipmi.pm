@@ -7,6 +7,7 @@ package xCAT_plugin::ipmi;
 use strict;
 use warnings "all";
 
+use POSIX qw(ceil floor);
 use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
 use xCAT::Usage;
@@ -79,7 +80,7 @@ my $cache_dir = "/var/cache/xcat";
 use xCAT::data::ibmleds;
 use xCAT::data::ipmigenericevents;
 use xCAT::data::ipmisensorevents;
-my $cache_version = 1;
+my $cache_version = 2;
 
 my %idpxthermbytes = (  #Data to enact the profile quickly
      '0z' => [0x0A,0x37,0x41,0x3C,0x0a,0x0a,0x1e],
@@ -2135,38 +2136,38 @@ sub initfru {
 sub formfru {
     my $fruhash = shift;
     my $frusize = shift;
-    use integer; #divisions are meant to to be even
     $frusize-=8; #consume 8 bytes for mandatory header
     my $availindex=1;
     my @bytes=(1,0,0,0,0,0,0,0); #
     if ($fruhash->{internal}) { #Allocate the space at header time
         $bytes[1]=$availindex;
-        $availindex+=(scalar @{$fruhash->{internal}})/8;
+        $availindex+=ceil((scalar @{$fruhash->{internal}})/8);
         $frusize-=(scalar @{$fruhash->{internal}}); #consume internal bytes
         push @bytes,@{$fruhash->{internal}};
     } 
     if ($fruhash->{chassis}) {
         $bytes[2]=$availindex;
         push @bytes,@{$fruhash->{chassis}->{raw}};
-        $availindex+=(scalar @{$fruhash->{chassis}->{raw}})/8;
-        $frusize -= (scalar @{$fruhash->{chassis}->{raw}});
+        $availindex+=ceil((scalar @{$fruhash->{chassis}->{raw}})/8);
+        $frusize -= ceil((scalar @{$fruhash->{chassis}->{raw}})/8)*8;
     }
     if ($fruhash->{board}) {
         $bytes[3]=$availindex;
         push @bytes,@{$fruhash->{board}->{raw}};
-        $availindex+=(scalar @{$fruhash->{board}->{raw}})/8;
-        $frusize -= (scalar @{$fruhash->{board}->{raw}});
+        $availindex+=ceil((scalar @{$fruhash->{board}->{raw}})/8);
+        $frusize -= ceil((scalar @{$fruhash->{board}->{raw}})/8)*8;
     }
     if ($fruhash->{product}) {
         $bytes[4]=$availindex;
         my @prodbytes = buildprodfru($fruhash->{product});
-        $availindex+=(scalar @prodbytes)/8;
-        $frusize -= scalar @prodbytes;
+        push @bytes,@prodbytes;
+        $availindex+=ceil((scalar @prodbytes)/8);
+        $frusize -= ceil((scalar @prodbytes)/8)*8;;
     }
     if ($fruhash->{extra}) {
         $bytes[5]=$availindex;
         push @bytes,@{$fruhash->{extra}};
-        $frusize -= scalar @{$fruhash->{extra}}
+        $frusize -= ceil((scalar @{$fruhash->{extra}})/8)*8;
         #Don't need to track availindex anymore
     }
     $bytes[7] = dochksum([@bytes[0..6]]);
@@ -2177,9 +2178,48 @@ sub formfru {
     }
 }
 
+sub transfieldtobytes {
+    my $hashref=shift;
+    unless (defined $hashref) {
+        return (0xC0);
+    }
+    my @data;
+    my $size;
+    if ($hashref->{encoding} ==3) {
+        @data=unpack("C*",$hashref->{value});
+    } else {
+        @data=@{$hashref->{value}};
+    }
+    $size=scalar(@data);
+    unshift(@data,$size|($hashref->{encoding}<<6));
+    return @data;
+}
 sub buildprodfru {
     my $prod=shift;
-    my @bytes;
+    my @bytes=(1,0,0);
+    my @data;
+    my $padsize;
+    push @bytes,transfieldtobytes($prod->{manufacturer});
+    push @bytes,transfieldtobytes($prod->{product});
+    push @bytes,transfieldtobytes($prod->{model});
+    push @bytes,transfieldtobytes($prod->{version});
+    push @bytes,transfieldtobytes($prod->{serialnumber});
+    push @bytes,transfieldtobytes($prod->{asset});
+    push @bytes,transfieldtobytes($prod->{fruid});
+    push @bytes,transfieldtobytes($prod->{fruid});
+    foreach (@{$prod->{extra}}) {
+        push @bytes,transfieldtobytes($_);
+    }
+    push @bytes,transfieldtobytes({encoding=>3,value=>"xCAT "});
+    push @bytes,(0xc1);
+    $bytes[1]=ceil((scalar(@bytes)+1)/8);
+    $padsize=(ceil((scalar(@bytes)+1)/8)*8)-scalar(@bytes)-1;
+    while ($padsize--) {
+        push @bytes,(0x00);
+    }
+    $padsize=dochksum(\@bytes);#reuse padsize for a second to store checksum
+    push @bytes,$padsize;
+
     return @bytes;
 }
 
