@@ -2132,6 +2132,56 @@ sub initfru {
 }
 
 
+sub formfru {
+    my $fruhash = shift;
+    my $frusize = shift;
+    use integer; #divisions are meant to to be even
+    $frusize-=8; #consume 8 bytes for mandatory header
+    my $availindex=1;
+    my @bytes=(1,0,0,0,0,0,0,0); #
+    if ($fruhash->{internal}) { #Allocate the space at header time
+        $bytes[1]=$availindex;
+        $availindex+=(scalar @{$fruhash->{internal}})/8;
+        $frusize-=(scalar @{$fruhash->{internal}}); #consume internal bytes
+        push @bytes,@{$fruhash->{internal}};
+    } 
+    if ($fruhash->{chassis}) {
+        $bytes[2]=$availindex;
+        push @bytes,@{$fruhash->{chassis}->{raw}};
+        $availindex+=(scalar @{$fruhash->{chassis}->{raw}})/8;
+        $frusize -= (scalar @{$fruhash->{chassis}->{raw}});
+    }
+    if ($fruhash->{board}) {
+        $bytes[3]=$availindex;
+        push @bytes,@{$fruhash->{board}->{raw}};
+        $availindex+=(scalar @{$fruhash->{board}->{raw}})/8;
+        $frusize -= (scalar @{$fruhash->{board}->{raw}});
+    }
+    if ($fruhash->{product}) {
+        $bytes[4]=$availindex;
+        my @prodbytes = buildprodfru($fruhash->{product});
+        $availindex+=(scalar @prodbytes)/8;
+        $frusize -= scalar @prodbytes;
+    }
+    if ($fruhash->{extra}) {
+        $bytes[5]=$availindex;
+        push @bytes,@{$fruhash->{extra}};
+        $frusize -= scalar @{$fruhash->{extra}}
+        #Don't need to track availindex anymore
+    }
+    $bytes[7] = dochksum([@bytes[0..6]]);
+    if ($frusize<0) {
+        return undef;
+    } else {
+        return \@bytes;
+    }
+}
+
+sub buildprodfru {
+    my $prod=shift;
+    my @bytes;
+    return @bytes;
+}
 
 sub fru {
 	my $subcommand = shift;
@@ -2294,7 +2344,7 @@ sub parsefru {
             return "unknown-winternal",undef;
         }
         #capture slice of bytes
-        $fruhash->{internal}=[@{$bytes}[($bytes->[1]*8)..($bytes->[1]*8+$internal_size)]]; #,$bytes->[1]*8,$internal_size];
+        $fruhash->{internal}=[@{$bytes}[($bytes->[1]*8)..($bytes->[1]*8+$internal_size-1)]]; #,$bytes->[1]*8,$internal_size];
     }
     if ($bytes->[2]) { #Chassis info area, xCAT will preserve fields, not manipulate them
         $curridx=$bytes->[2]*8;
@@ -2302,7 +2352,7 @@ sub parsefru {
             return "unknown-COULDGUESS",undef; #be lazy for now, TODO revisit this and add guessing if it ever matters
         }
         $currsize=($bytes->[$curridx+1])*8;
-        @currarea=@{$bytes}[$curridx..($curridx+$currsize)]; #splice @$bytes,$curridx,$currsize;
+        @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)]; #splice @$bytes,$curridx,$currsize;
         $fruhash->{chassis} = parsechassis(@currarea);
     }
     if ($bytes->[3]) { #Board info area, to be preserved
@@ -2311,7 +2361,7 @@ sub parsefru {
             return "unknown-COULDGUESS",undef;
         }
         $currsize=($bytes->[$curridx+1])*8;
-        @currarea=@{$bytes}[$curridx..($curridx+$currsize)];
+        @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)];
         $fruhash->{board} = parseboard(@currarea);
     }
     if ($bytes->[4]) { #Product info area present, will probably be thoroughly modified
@@ -2320,7 +2370,7 @@ sub parsefru {
             return "unknown-COULDGUESS",undef;
         }
         $currsize=($bytes->[$curridx+1])*8;
-        @currarea=@{$bytes}[$curridx..($curridx+$currsize)];
+        @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)];
         $fruhash->{product} = parseprod(@currarea);
     }
     if ($bytes->[5]) { #Generic multirecord present..
@@ -2333,7 +2383,7 @@ sub parsefru {
                 $last=1;
             }
             $currsize=$bytes->[$curridx+2];
-            push @{$fruhash->{extra}},$bytes->[$curridx..$curridx+4+$currsize];
+            push @{$fruhash->{extra}},$bytes->[$curridx..$curridx+4+$currsize-1];
         }
     }
     return 0,$fruhash;
@@ -2580,6 +2630,11 @@ sub writefru {
     ($error,@bytes) = frudump(0,$frusize,16);
     my $fruhash; 
     ($error,$fruhash) = parsefru(\@bytes);
+    my @newfru=@{formfru($fruhash,$frusize)};
+    print Dumper(@newfru);
+    print phex(\@bytes);
+    print "\n****************************\n";
+    print phex(\@newfru);
     return;
     my $serial;
     my $model;
