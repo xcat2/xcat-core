@@ -13,6 +13,7 @@ use xCAT::Utils;
 use xCAT::Usage;
 use Thread qw(yield);
 my $tfactor = 0;
+my $vpdhash;
 my %bmc_comm_pids;
 
 require Exporter;
@@ -2157,13 +2158,16 @@ sub formfru {
         $availindex+=ceil((scalar @{$fruhash->{board}->{raw}})/8);
         $frusize -= ceil((scalar @{$fruhash->{board}->{raw}})/8)*8;
     }
-    if ($fruhash->{product}) {
-        $bytes[4]=$availindex;
-        my @prodbytes = buildprodfru($fruhash->{product});
-        push @bytes,@prodbytes;
-        $availindex+=ceil((scalar @prodbytes)/8);
-        $frusize -= ceil((scalar @prodbytes)/8)*8;;
+    #xCAT will always have a product FRU in this process
+    $bytes[4]=$availindex;
+    unless (defined $fruhash->{product}) {
+        $fruhash->{product}={};
     }
+    my @prodbytes = buildprodfru($fruhash->{product});
+    push @bytes,@prodbytes;
+    $availindex+=ceil((scalar @prodbytes)/8);
+    $frusize -= ceil((scalar @prodbytes)/8)*8;;
+    #End of product fru setup
     if ($fruhash->{extra}) {
         $bytes[5]=$availindex;
         push @bytes,@{$fruhash->{extra}};
@@ -2172,6 +2176,8 @@ sub formfru {
     }
     $bytes[7] = dochksum([@bytes[0..6]]);
     if ($frusize<0) {
+        print "Uhoh $frusize\n";
+        print phex(\@bytes);
         return undef;
     } else {
         return \@bytes;
@@ -2191,11 +2197,31 @@ sub transfieldtobytes {
         @data=@{$hashref->{value}};
     }
     $size=scalar(@data);
+    if ($size > 64) {
+        die "Field too large for IPMI FRU specification";
+    }
     unshift(@data,$size|($hashref->{encoding}<<6));
     return @data;
 }
+sub mergefru {
+    my $phash = shift; #Product hash
+    if ($vpdhash->{$currnode}->[0]->{mtm}) {
+        $phash->{model}->{encoding}=3;
+        $phash->{model}->{value}=$vpdhash->{$currnode}->[0]->{mtm};
+    }
+    if ($vpdhash->{$currnode}->[0]->{serial}) {
+        $phash->{serialnumber}->{encoding}=3;
+        $phash->{serialnumber}->{value}=$vpdhash->{$currnode}->[0]->{serial};
+    }
+    if ($vpdhash->{$currnode}->[0]->{asset}) {
+        $phash->{asset}->{encoding}=3;
+        $phash->{asset}->{value}=$vpdhash->{$currnode}->[0]->{asset};
+    }
+}
+
 sub buildprodfru {
     my $prod=shift;
+    mergefru($prod);
     my @bytes=(1,0,0);
     my @data;
     my $padsize;
@@ -2207,10 +2233,17 @@ sub buildprodfru {
     push @bytes,transfieldtobytes($prod->{asset});
     push @bytes,transfieldtobytes($prod->{fruid});
     push @bytes,transfieldtobytes($prod->{fruid});
+    my $foundsig=0;
     foreach (@{$prod->{extra}}) {
         push @bytes,transfieldtobytes($_);
+        my $sig=getascii(transfieldtobytes($_));
+        if ($sig =~ /FRU by xCAT/) {
+            $foundsig = 1;
+        }
     }
-    push @bytes,transfieldtobytes({encoding=>3,value=>"xCAT "});
+    unless ($foundsig) {
+        push @bytes,transfieldtobytes({encoding=>3,value=>"$currnode FRU by xCAT ".xCAT::Utils::Version('short')});
+    }
     push @bytes,(0xc1);
     $bytes[1]=ceil((scalar(@bytes)+1)/8);
     $padsize=(ceil((scalar(@bytes)+1)/8)*8)-scalar(@bytes)-1;
@@ -2670,57 +2703,19 @@ sub writefru {
     ($error,@bytes) = frudump(0,$frusize,16);
     my $fruhash; 
     ($error,$fruhash) = parsefru(\@bytes);
-    my @newfru=@{formfru($fruhash,$frusize)};
-    print Dumper(@newfru);
+    my $newfru=formfru($fruhash,$frusize);
+    unless ($newfru) {
+        return (1,"FRU data will not fit in BMC FRU space, fields too long");
+    }
     print phex(\@bytes);
     print "\n****************************\n";
-    print phex(\@newfru);
-    return;
-    my $serial;
-    my $model;
-    
-	my $rc;
-	my $text;
-
-	#header
-	@bytes = (0x01,0x01,0x02,0x00,0x00,0x00,0x00);
-	@bytes = (@bytes,dochksum(\@bytes));
-
-	($rc,$text) = fruwrite(0,\@bytes,8);
+    print phex($newfru);
+    my $rc;
+    my $text;
+	($rc,$text) = fruwrite(0,$newfru,8);
 	if($rc) {
 		return($rc,$text);
 	}
-
-	#internal use area
-	@bytes = (0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
-
-	($rc,$text) = fruwrite(8,\@bytes,8);
-	if($rc) {
-		return($rc,$text);
-	}
-
-	#chassis info area
-	@bytes = (0x01,0x04,0x17);
-	push(@bytes,0b11000000 + length($model));
-	@bytes = (@bytes,unpack("C*",$model));
-	push(@bytes,0b11000000 + length($serial));
-	@bytes = (@bytes,unpack("C*",$serial));
-	push(@bytes,0xc1);
-
-	foreach(@bytes..30) {
-		push(@bytes,0x00);
-	}
-	@bytes = (@bytes,dochksum(\@bytes));
-
-	if(@bytes > 32) {
-		return(1,"Serial + Model too long");
-	}
-
-	($rc,$text) = fruwrite(16,\@bytes,8);
-	if($rc) {
-		return($rc,$text);
-	}
-
 	return(0,"FRU Updated");
 }
 
@@ -5525,6 +5520,10 @@ sub process_request {
 
     #my @threads;
     my @donargs=();
+    if ($request->{command}->[0] =~ /fru/) {
+        my $vpdtab = xCAT::Table->new('vpd');
+        $vpdhash = $vpdtab->getNodesAttribs($noderange,[qw(serial mtm asset)]);
+    }
 	my $ipmihash = $ipmitab->getNodesAttribs($noderange,['bmc','username','password']) ;
 	foreach(@$noderange) {
 		my $node=$_;
