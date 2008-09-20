@@ -2176,8 +2176,6 @@ sub formfru {
     }
     $bytes[7] = dochksum([@bytes[0..6]]);
     if ($frusize<0) {
-        print "Uhoh $frusize\n";
-        print phex(\@bytes);
         return undef;
     } else {
         return \@bytes;
@@ -2707,9 +2705,6 @@ sub writefru {
     unless ($newfru) {
         return (1,"FRU data will not fit in BMC FRU space, fields too long");
     }
-    print phex(\@bytes);
-    print "\n****************************\n";
-    print phex($newfru);
     my $rc;
     my $text;
 	($rc,$text) = fruwrite(0,$newfru,8);
