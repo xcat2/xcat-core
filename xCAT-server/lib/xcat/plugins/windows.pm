@@ -28,6 +28,7 @@ sub handled_commands
     return {
             copycd    => "windows",
             mkinstall => "nodetype:os=(win.*|imagex)",
+            mkwinshell => "windows",
             mkimage => "nodetype:os=imagex",
             };
 }
@@ -45,6 +46,9 @@ sub process_request
     if ($request->{command}->[0] eq 'copycd')
     {
         return copycd($request, $callback, $doreq);
+    }
+    elsif ($request->{command}->[0] eq 'mkwinshell') {
+        return winshell($request,$callback,$doreq);
     }
    elsif ($request->{command}->[0] eq 'mkinstall')
    {
@@ -102,16 +106,49 @@ sub mkimage {
         print $shandle ":END\r\n";
         print $shandle "pause\r\n";
         close($shandle);
-        foreach (getips($node)) {
-            link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
-            unlink "/tftpboot/Boot/BCD.$_";
-            if ($ent->{arch} =~ /64/) {
-                link "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
-            } else {
-                link "/tftpboot/Boot/BCD.32","/tftpboot/Boot/BCD.$_";
-            }
+        mkwinlinks($node,$ent);
+    }
+}
+sub mkwinlinks {
+    my $node = shift;
+    my $ent = shift;
+    foreach (getips($node)) {
+        link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
+        unlink "/tftpboot/Boot/BCD.$_";
+        if ($ent->{arch} =~ /64/) {
+            link "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
+        } else {
+            link "/tftpboot/Boot/BCD.32","/tftpboot/Boot/BCD.$_";
         }
     }
+}
+
+sub winshell {
+    my $installroot = "/install";
+    my $request = shift;
+    my $script = "cmd";
+    my @nodes    = @{$request->{node}};
+    my $node;
+    my $ostab = xCAT::Table->new('nodetype');
+    my $oshash = $ostab->getNodesAttribs(\@nodes,['profile','arch']);
+    foreach $node (@nodes) {
+        open($shandle,">","$installroot/autoinst/$node.cmd");
+        print $shandle $script;
+        close $shandle;
+        mkwinlinks($node,$oshash->{$node}->[0]);
+        my $bptab = xCAT::Table->new('bootparams',-create=>1);
+        $bptab->setNodeAttribs(
+                                $node,
+                                {
+                                 kernel   => "Boot/pxeboot.0",
+                                 initrd   => "",
+                                 kcmdline => ""
+                                }
+                                );
+    }
+}
+
+sub applyimagescript {
 }
 #Don't sweat os type as for mkimage it is always 'imagex' if it got here
 sub mkinstall
@@ -295,7 +332,6 @@ sub copycd
     if ($sitetab)
     {
         (my $ref) = $sitetab->getAttribs({key => installdir}, value);
-        print Dumper($ref);
         if ($ref and $ref->{value})
         {
             $installroot = $ref->{value};
