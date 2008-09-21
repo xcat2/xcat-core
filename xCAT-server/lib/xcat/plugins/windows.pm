@@ -60,6 +60,12 @@ sub process_request
 }
 
 sub mkimage {
+#NOTES ON IMAGING:
+#-System must be sysprepped before capture, with /generalize
+#-EMS settings appear to be lost in the process
+#-If going to /audit, it's more useful than /oobe.  
+#  audit complains about incorrect password on first boot, without any login attempt
+#  audit causes a 'system preparation tool' dialog on first boot that I close
     my $installroot = "/install";
     my $request = shift;
     my $callback = shift;
@@ -109,6 +115,7 @@ sub mkimage {
         mkwinlinks($node,$ent);
     }
 }
+
 sub mkwinlinks {
     my $node = shift;
     my $ent = shift;
@@ -149,6 +156,32 @@ sub winshell {
 }
 
 sub applyimagescript {
+#Applying will annoy administrator with password change and sysprep tool 
+#in current process
+#EMS settings loss also bad..
+#require/use setup.exe for 2k8 to alleviate this?
+    my $arch=shift;
+    my $profile=shift;
+    my $applyscript=<<ENDAPPLY
+    echo select disk 0 > x:/xcat/diskprep.prt
+    echo clean >> x:/xcat/diskprep.prt
+    echo create partition primary >> x:/xcat/diskprep.prt
+    echo format quick >> x:/xcat/diskprep.prt
+    echo active >> x:/xcat/diskprep.prt
+    echo assign >> x:/xcat/diskprep.prt
+    if exist i:/images/$arch/$profile.prt copy i:/images/$arch/$profile.prt x:/xcat/diskprep.prt
+    diskpart /s x:/xcat/diskprep.prt
+    x:/xcat/imagex /apply i:/images/$arch/$profile.wim 1 c:
+    IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64
+    IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64
+    IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86
+    :x86
+    i:/postscripts/upflagx86 %XCATD% 3002 next
+    GOTO END
+    :x64
+    i:/postscripts/upflagx64 %XCATD% 3002 next
+    :END
+ENDAPPLY
 }
 #Don't sweat os type as for mkimage it is always 'imagex' if it got here
 sub mkinstall
@@ -189,11 +222,27 @@ sub mkinstall
         my $arch    = $ent->{arch};
         my $profile = $ent->{profile};
         if ($os eq "imagex") {
-                     unless ( -r "$installroot/images/$profile.$arch.wim" ) {
+                     unless ( -r "$installroot/images/$arch/$profile.wim" ) {
                         $callback->({error=>["$installroot/images/$profile.$arch.wim not found, run rimage on a node to capture first"],errorcode=>[1]});
                          next;
                      }
-         
+                     my $script=applyimagescript($arch,$profile);
+                     my $shandle;
+                     open($shandle,">","$installroot/autoinst/$node.cmd");
+                     print $shandle $script;
+                     close($shandle);
+                     mkwinlinks($node,$ent);
+                    if ($arch =~ /x86/)
+                    {
+                        $bptab->setNodeAttribs(
+                                                $node,
+                                                {
+                                                 kernel   => "Boot/pxeboot.0",
+                                                 initrd   => "",
+                                                 kcmdline => ""
+                                                }
+                                                );
+                   }
                      next;
         } 
 

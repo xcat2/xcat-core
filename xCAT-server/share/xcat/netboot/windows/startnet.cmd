@@ -1,4 +1,5 @@
 @echo off
+echo Initializing, please wait.
 wpeinit
 ping -n 10 127.0.0.1 > NUL 2>&1
 md \temp
