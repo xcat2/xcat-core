@@ -1412,8 +1412,8 @@ sub mk_spot
 				}
 
 				# create resource location
-                my $cmd = "/usr/bin/mkdir -p $loc";
-                my $output = xCAT::Utils->runcmd("$cmd", -1);
+                my $mkdircmd = "/usr/bin/mkdir -p $loc";
+                my $output = xCAT::Utils->runcmd("$mkdircmd", -1);
                 if ($::RUNCMD_RC  != 0) {
                     my $rsp;
                     push @{$rsp->{data}}, "Could not create $loc.\n";
@@ -1434,8 +1434,8 @@ sub mk_spot
 
 				$loc = "/tftpboot";
 				# create resource location
-                my $cmd = "/usr/bin/mkdir -p $loc";
-                my $output = xCAT::Utils->runcmd("$cmd", -1);
+                my $mkdircmd = "/usr/bin/mkdir -p $loc";
+                my $output = xCAT::Utils->runcmd("$mkdircmd", -1);
                 if ($::RUNCMD_RC  != 0) {
                     my $rsp;
                     push @{$rsp->{data}}, "Could not create $loc.\n";
@@ -1788,6 +1788,7 @@ sub mk_mksysb
 		Example:
 
 		Comments:
+
 			rmnimimage [-V] [-f|--force] image_name
 =cut
 
