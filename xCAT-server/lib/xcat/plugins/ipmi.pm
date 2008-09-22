@@ -2160,7 +2160,8 @@ sub formfru {
     }
     #xCAT will always have a product FRU in this process
     $bytes[4]=$availindex;
-    unless (defined $fruhash->{product}) {
+    unless (defined $fruhash->{product}) { #Make sure there is a data structure
+                        #to latch onto..
         $fruhash->{product}={};
     }
     my @prodbytes = buildprodfru($fruhash->{product});
