@@ -33,7 +33,7 @@ sub handled_commands {
     rsetboot => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
     reventlog => 'nodehm:mgt',
-    writefru => 'nodehm:mgt',
+    rfrurewrite => 'nodehm:mgt',
   }
 }
 
@@ -754,7 +754,7 @@ sub ipmicmd {
 	elsif($command eq "generic") {
 		($rc,@output) = generic($subcommand);
 	}
-	elsif($command eq "writefru") {
+	elsif($command eq "rfrurewrite") {
 		($rc,@output) = writefru($subcommand,shift);
 	}
 	elsif($command eq "fru") {
