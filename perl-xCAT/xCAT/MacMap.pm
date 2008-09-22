@@ -210,7 +210,10 @@ sub refresh_switch {
   my $switch = shift;
   my $snmpver=1;
   my $privproto='AES';
-  my $swent=$switchestab->getAttribs({switch=>$switch},[qw(snmpversion username password privacy auth)]);
+  my $swent;
+  if ($switchestab) {
+    $swent=$switchestab->getAttribs({switch=>$switch},[qw(snmpversion username password privacy auth)]);
+  }
   $session = new SNMP::Session(
                   DestHost => $switch,
                   Version => '1',
