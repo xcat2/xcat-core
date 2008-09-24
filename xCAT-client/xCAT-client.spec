@@ -143,11 +143,12 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/moncfg
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/mondecfg
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monadd
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monrm
-ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/mkdsklsnode
-ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/rmdsklsnode
-ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/mknimimage
-ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/rmnimimage
-ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/nimnodeset
+ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/mkdsklsnode
+ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/rmdsklsnode
+ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/mknimimage
+ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/rmnimimage
+ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/nimnodeset
+ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/nimnodecust
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/mkdef
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/chdef
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/lsdef

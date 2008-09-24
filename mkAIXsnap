@@ -44,8 +44,8 @@ fi
 #
 # do an update from the trunk directory level
 #
-#svn update | tee $BLDTOP/coresvnup
-svn update
+svn update | tee $BLDTOP/coresvnup
+#svn update
 
 # create a simple install script
 echo "# xCAT on AIX - install script" > $RPMDIR/instxcat
@@ -83,6 +83,12 @@ chmod +x ./instxcat
 # add all the file names to flist
 echo "instxcat" > ./flist
 ls *.rpm >> ./flist
+
+# add the service node bundle files to the tar file
+cp $BLDTOP/xCATaixSN.bnd $RPMDIR
+cp $BLDTOP/xCATaixSSH.bnd $RPMDIR 
+echo "xCATaixSN.bnd" >> ./flist
+echo "xCATaixSSH.bnd" >> ./flist
 
 #TIME=`date +%Y%m%d%H%M`
 tar -cvf core-aix-snap.tar -L flist
