@@ -111,7 +111,7 @@ unless ($onlyinitrd) {
 
 
    #this is for extra packages
-   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch/1";
+   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
    my $pkgnames=get_extra_package_names();
 
 
