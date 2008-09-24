@@ -22,8 +22,11 @@ use xCAT::Utils;
 use Fcntl qw(:flock);
 use Getopt::Long;
 my $tempfile;
-my $errored=0;
+my $errored = 0;
 my @dshresult;
+my $templatepath;
+my $processflg;
+
 #
 # Subroutines
 #
@@ -79,16 +82,18 @@ sub parse_and_run_sinv
     Getopt::Long::Configure("bundling");
     if (
         !GetOptions(
-                    'h|help'     => \$options{'help'},
-                    't|tc=s'     => \$options{'template_cnt'},
-                    'p|tp=s'     => \$options{'template_path'},
-                    'r|remove=s' => \$options{'remove_template'},
-                    'o|output=s' => \$options{'output_file'},
-                    's|seed=s'   => \$options{'seed_node'},
-                    'c|cmd=s'    => \$options{'xdsh_cmd'},
-                    'f|file=s'   => \$options{'xdsh_file'},
-                    'v|version'  => \$options{'version'},
-                    'V|Verbose'  => \$options{'verbose'},
+                    'h|help'        => \$options{'help'},
+                    't|tc=s'        => \$options{'template_cnt'},
+                    'p|tp=s'        => \$options{'template_path'},
+                    'r|remove'      => \$options{'remove_template'},
+                    'o|output=s'    => \$options{'output_file'},
+                    's|seed=s'      => \$options{'seed_node'},
+                    'e|exactmatch'  => \$options{'exactmatch'},
+                    'i|ignorefirst' => \$options{'ignorefirst'},
+                    'c|cmd=s'       => \$options{'xdsh_cmd'},
+                    'f|file=s'      => \$options{'xdsh_file'},
+                    'v|version'     => \$options{'version'},
+                    'V|Verbose'     => \$options{'verbose'},
         )
       )
     {
@@ -138,15 +143,14 @@ sub parse_and_run_sinv
     #
     # get the  node list
     #
-    my @nodelist = @$nodes;
-    my @inputNodes = join(',', @nodelist);
-    if (@inputNodes == 0)
+    if (!(@$nodes))
     {
         my $rsp = {};
         $rsp->{data}->[0] = "No noderange specified on the command.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
     }
+    my @nodelist = @$nodes;
 
     #
     # Get Command to run
@@ -160,15 +164,42 @@ sub parse_and_run_sinv
     {
 
         # read the command from the file
+        if (!(-e $options{'xdsh_file'}))
+        {    # file does not exist
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "Input xdsh command file: $options{'xdsh_file'} does not exist.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            exit 1;
+        }
         $cmd = `cat $options{'xdsh_file'}`;
     }
     chomp $cmd;
 
     #
+    # Get exact match request
+    #
+    my $exactmatch = "NO";
+    if ($options{'exactmatch'})
+    {
+        $exactmatch = "YES";
+    }
+
+    #
+    # Get ignore matches on first template request
+    #
+    my $ignorefirsttemplate = "NO";
+    if ($options{'ignorefirst'})
+    {
+        $ignorefirsttemplate = "YES";
+    }
+
+    #
+    #
     # Get template path
     #
-
-    my $templatepath = $options{'template_path'};
+    my $admintemplate;
+    $templatepath = $options{'template_path'};
     if (!$templatepath)
     {
         my $rsp = {};
@@ -176,6 +207,18 @@ sub parse_and_run_sinv
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
     }
+    else
+    {
+        if (-e ($templatepath))
+        {    # the admin has input the template
+            $admintemplate = "YES";
+        }
+        else
+        {
+            $admintemplate = "NO";
+        }
+    }
+
     chomp $templatepath;
 
     #
@@ -185,11 +228,7 @@ sub parse_and_run_sinv
     my $templatecnt = $options{'template_cnt'};
     if (!$templatecnt)
     {
-        my $rsp = {};
-        $rsp->{data}->[0] =
-          "No template count on the command, defaults to 1.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-        $templatecnt = 1;    # default
+        $templatecnt = 0;    # default
     }
     chomp $templatecnt;
 
@@ -197,13 +236,10 @@ sub parse_and_run_sinv
     # Get remove template value
     #
 
-    my $rmtemplate = $options{'remove_template'};
-    if (!$rmtemplate)
+    my $rmtemplate = "NO";    #default
+    if ($options{'remove_template'})
     {
-        my $rsp = {};
-        $rsp->{data}->[0] = "Remove template value missing, default is no.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-        $rmtemplate = "no";    #default
+        $rmtemplate = "YES";
     }
     chomp $rmtemplate;
 
@@ -235,12 +271,23 @@ sub parse_and_run_sinv
     #
     #
     # Get seed node if it exists to build the original template
+    # if seed node does not exist and the admin did not submit a \
+    # template, the the first node becomes the seed node
     #
-
+    my @seed;
     my $seednode = $options{'seed_node'};
     if ($seednode)
     {
         chomp $seednode;
+        push @seed, $seednode;
+    }
+    else
+    {
+        if ($admintemplate eq "NO")
+        {    # admin did not generate a template
+            push @seed, $nodelist[$#nodelist];    # assign last element as seed
+            $seednode = $nodelist[$#nodelist];
+        }
     }
 
     my $tmpnodefile;
@@ -250,23 +297,40 @@ sub parse_and_run_sinv
     #
     my $rsp = {};
     $rsp->{data}->[0] = "Command started with following input.\n";
-    $rsp->{data}->[1] = "xdsh cmd:$cmd.\n";
+    if ($cmd)
+    {
+        $rsp->{data}->[1] = "xdsh cmd:$cmd.\n";
+    }
+    else
+    {
+        $rsp->{data}->[1] = "xdsh cmd:None.\n";
+    }
     $rsp->{data}->[2] = "Template path:$templatepath.\n";
     $rsp->{data}->[3] = "Template cnt:$templatecnt.\n";
     $rsp->{data}->[4] = "Remove template:$rmtemplate.\n";
     $rsp->{data}->[5] = "Output file:$outputfile.\n";
+    $rsp->{data}->[6] = "Exactmatch:$exactmatch.\n";
+    $rsp->{data}->[7] = "Ignorefirst:$ignorefirsttemplate.\n";
     if ($seednode)
     {
-        $rsp->{data}->[6] = "Seed node:$seednode.\n";
+        $rsp->{data}->[8] = "Seed node:$seednode.\n";
     }
     else
     {
-        $rsp->{data}->[6] = "Seed node:None.\n";
+        $rsp->{data}->[8] = "Seed node:None.\n";
+    }
+    if ($options{'xdsh_file'})
+    {
+        $rsp->{data}->[9] = "file:$options{'xdsh_file'}.\n";
+    }
+    else
+    {
+        $rsp->{data}->[9] = "file:None.\n";
     }
 
     #write to output file the header
     my $i = 0;
-    while ($i < 7)
+    while ($i < 10)
     {
         print $::OUTPUT_FILE_HANDLE $rsp->{data}->[$i];
         $i++;
@@ -277,21 +341,32 @@ sub parse_and_run_sinv
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
+    # setup a tempfile for xdsh output
+    $tempfile = "/tmp/sinv.$$";
+
     #
     # if we are to seed the original template,run the dsh command against the
     # seed node and save in template_path
-
     if ($seednode)
     {
-        my $dsh_command = "xdsh  $seednode -v $cmd  > $templatepath";
-        my $rc          = system("$dsh_command");
-        if ($rc != 0)
-        {
-            $rsp->{data}->[0] = "Error from xdsh command:$dsh_command.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            exit 1;
-        }
+
+        # Below code needed to run xdsh from the plugin
+        # and still support a hierarchial xdsh
+        # this will run xdsh with input,  return to xdshoutput routine
+        # and then return inline after this code.
+
+        $processflg = "seednode";
+        $sub_req->(
+                   {
+                    command => ['xdsh'],
+                    node    => \@seed,
+                    arg     => [$cmd]
+                   },
+                   \&xdshoutput
+                   );
+
     }
+    $processflg = "node";
 
     # Tell them we are running DSH
     if ($::VERBOSE)
@@ -300,45 +375,28 @@ sub parse_and_run_sinv
         $rsp->{data}->[0] = "Running xdsh command.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
+
     #
     #  Run the DSH command
     #
-    my $nodelist    = $inputNodes[0];
-    $tempfile    = "/tmp/sinv.$$";
-    #my $dsh_command = "xdsh ";
-    #$dsh_command .= $nodelist;
 
-    #$dsh_command .= " $cmd  > $tempfile";
-    #my $rc = system("$dsh_command");
-    #if ($rc != 0)
-    #{
-    #    my $rsp = {};
-    #    $rsp->{data}->[0] = "Error from xdsh command:$dsh_command.\n";
-    #    xCAT::MsgUtils->message("E", $rsp, $callback);
-    #    exit 1;
-    #}
-    
     # Below code needed to run xdsh from the plugin
     # and still support a hierarchial xdsh
     # this will run xdsh with input,  return to xdshoutput routine
-    # and then return inline after this code. 
+    # and then return inline after this code.
 
-    $sub_req->({command=>['xdsh'],
-           node=>\@nodelist,
-         #arg=>[$args[0]]},\&xdshoutput);
-         arg=>[$cmd]},\&xdshoutput);
+    $sub_req->(
+               {
+                command => ['xdsh'],
+                node    => \@nodelist,
+                arg     => [$cmd]
+               },
+               \&xdshoutput
+               );
 
-    #    debug print output 
-    my $rsp = {};
-    my $i=0;
-   foreach my $line (@dshresult) {
-        $rsp->{data}->[$i] = $line;
-        $i++;
-   }
-   xCAT::MsgUtils->message("I", $rsp, $callback);
     #  Build report and write to output file
     #  if file exist and has something in it
-    if ((-e $tempfile) && (!(-z $tempfile)))
+    if (-e $tempfile)
     {    # if dsh returned something
 
         # Tell them we are building the report
@@ -347,9 +405,11 @@ sub parse_and_run_sinv
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
         xCAT::SINV->buildreport(
-                                $outputfile,  $tempfile,   $templatepath,
-                                $templatecnt, $rmtemplate, $nodelist,
-                                $callback
+                                $outputfile,   $tempfile,
+                                $templatepath, $templatecnt,
+                                $rmtemplate,   \@nodelist,
+                                $callback,     $ignorefirsttemplate,
+                                $exactmatch,   $admintemplate
                                 );
     }
     else
@@ -361,7 +421,7 @@ sub parse_and_run_sinv
 
     # Finally we need to cleanup and exit
     #
-    #system("/bin/rm  $tempfile");
+    system("/bin/rm  $tempfile");
     close(OUTPUTFILE);
     my $rsp = {};
     $rsp->{data}->[0] = "Command Complete. Check report in $outputfile.\n";
@@ -381,19 +441,30 @@ sub parse_and_run_sinv
   Call writereport to take the hash and write the report to the output file
   Cleanup
   Input (report file, file containing dsh run,template file,template count 
-         whether to remove the generated templates, original dsh node list)         
+         whether to remove the generated templates, original dsh node list,
+		 ignorefirsttemplate,exactmatch)
+
+  If exactmatch is chosen, a diff is done against the template and the output.
+  If not exactmatch, then each record (line) in the template must be 
+  checked against the node's output to determine, if it exists. 
+
 =cut
 
 #------------------------------------------------------------------------------
 sub buildreport
 {
 
-    my ($class, $outputfile, $dshrun, $templatepath, $templatecnt,
-        $removetemplate, $nodelist, $callback)
+    my (
+        $class,        $outputfile,  $dshrun,
+        $templatepath, $templatecnt, $removetemplate,
+        $nodelistin,   $callback,    $ignorefirsttemplate,
+        $exactmatch,   $admintemplate
+      )
       = @_;
-    my $pname = "buildreport";
-    my $rc    = $::OK;
-    my $rsp   = {};
+    my @nodelist = @$nodelistin;
+    my $pname    = "buildreport";
+    my $rc       = $::OK;
+    my $rsp      = {};
 
     # Compare files and build report of nodes that match and those that do not
     if (!-f "$templatepath")    # we supplied a template
@@ -437,7 +508,6 @@ sub buildreport
     close(TEMPLATE);
     close(DSHRESULTS);
 
-    #
     #Now we have to analyze the template(s) against the dsh command output
     #The matching nodes will be built in one array and the non matching node
     #In another array
@@ -477,9 +547,19 @@ sub buildreport
                 @processNodearray = @Nodearray;    # save node data
                 @Nodearray        = ();            # initialize array
                 push @Nodearray, $dshline;         # save node name
-                my @info =
-                  xCAT::rinv->compareoutput($outputfile, \@templatearray,
+                my @info;
+                if ($exactmatch eq "YES")
+                {                                  # output matches exactly
+                    @info =
+                      xCAT::SINV->diffoutput($outputfile, \@templatearray,
                                      \@processNodearray, \%nodehash, $callback);
+                }
+                else
+                {    # output is contained in the template
+                    @info =
+                      xCAT::SINV->compareoutput($outputfile, \@templatearray,
+                                     \@processNodearray, \%nodehash, $callback);
+                }
                 $nodename = pop @info;
                 $template = pop @info;
                 push @{$nodehash{$template}}, $nodename;    # add node name
@@ -502,9 +582,25 @@ sub buildreport
          # process the last entry
     if (@Nodearray)
     {
-        my @info =
-          xCAT::SINV->compareoutput($outputfile, \@templatearray,
-                                    \@Nodearray, \%nodehash);
+        my @info;
+        if ($exactmatch eq "YES")
+        {    # output matches exactly
+            @info =
+              xCAT::SINV->diffoutput(
+                                     $outputfile, \@templatearray,
+                                     \@Nodearray, \%nodehash,
+                                     $callback
+                                     );
+        }
+        else
+        {    # output is contained in the template
+            @info =
+              xCAT::SINV->compareoutput(
+                                        $outputfile, \@templatearray,
+                                        \@Nodearray, \%nodehash,
+                                        $callback
+                                        );
+        }
         $nodename = pop @info;
         $template = pop @info;
         push @{$nodehash{$template}}, $nodename;
@@ -514,19 +610,27 @@ sub buildreport
     # Write the report
     #
 
-    xCAT::SINV->writereport($outputfile, \%nodehash, $nodelist, $callback);
+    xCAT::SINV->writereport($outputfile, \%nodehash, \@nodelist, $callback,
+                            $ignorefirsttemplate);
 
     #
     # Cleanup  the template files if the remove option was yes
     #
-    if ($removetemplate eq "yes")
+    $removetemplate =~ tr/a-z/A-Z/;    # convert to upper
+    if ($removetemplate eq "YES")
     {
         foreach $template (@templatearray)    # for each template
         {
-            if (   (-f "$template")
-                && ($template ne $templatepath))    # not first one
+            if (-f "$template")
             {
-                `/bin/rm -f $template 2>&1`;
+
+                if (($template ne $templatepath) || ($admintemplate eq "NO"))
+
+                  # not the first template or the first one was not created by
+                  # admin, it was generated by the code
+                {
+                    `/bin/rm -f $template 2>&1`;
+                }
             }
         }
     }
@@ -623,21 +727,177 @@ sub compareoutput
 
                 }    # if header
             }    # end foreach templateline
-        }    # end check exists
-             #
-             # if match found, process no more templates
-             #
+        }
+
+        # end check exists
+        #
+        # if match found, process no more templates
+        #
         if ($match == 1)
         {
             last;    # exit template loop
         }
-    }    # end foreach template
-         #
-         # if no match
-         #   if generate a new template ( check the list of template file
-         #     to see if there is one that does not exist
-         #       put node data to new template file
-         #
+    }
+
+    # end foreach template
+    #
+    # if no match
+    #   if generate a new template ( check the list of template file
+    #     to see if there is one that does not exist
+    #       put node data to new template file
+    #
+    if ($match == 0)
+    {
+        my $nodesaved = 0;
+        foreach $template (@templatearray)
+        {
+            if (!-f "$template")
+            {
+                if (!open(NEWTEMPLATE, ">$template"))
+                {
+                    $rsp->{data}->[0] = "Error opening $template:\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+
+                    return;
+                }
+                else
+                {
+                    print NEWTEMPLATE @Nodearray;    # build a new template
+                    $nodesaved = 1;
+                    close(NEWTEMPLATE);
+                    $matchedtemplate = $template;
+                    last;
+                }
+            }
+        }
+        if ($nodesaved == 0)
+        {                                            # out of templates
+            $matchedtemplate = "no template";        # put in other list
+        }
+    }
+    @info[0] = $matchedtemplate;
+    @info[1] = $nodename;
+    return @info;
+}
+
+#------------------------------------------------------------------------------
+
+=head3   diffoutput  			    	 
+ The purpose of this routine is to build sets of nodes
+   that have the same configuration.  We will build up
+   to template_cnt sets.  If more nodes are not part of these
+   sets they will be put in an other list.
+
+ foreach template
+  Open the input template
+  Compare the template to the input node data
+  if exact match
+    add the node to the matched template  hash
+ end foreach
+ if no match
+   if generate and a new template allowed
+     make this nodes information into a new template
+     add the node to matched template
+   else
+     add the node to "notemplate" list
+=cut
+
+#------------------------------------------------------------------------------
+sub diffoutput
+{
+    my ($class, $outputfile, $template_array, $Node_array, $Node_hash,
+        $callback) = @_;
+    my @Nodearray     = @$Node_array;
+    my @templatearray = @$template_array;
+    my %nodehash      = %$Node_hash;
+    my $pname         = "compareoutput";
+    my $rc            = $::OK;
+    my $templateline;
+    my $info;
+    my $nodeline;
+    my $match = 0;
+    my @info;
+    my $nodename;
+    my $line;
+    %nodehash = ();
+    my $template;
+    my $matchedtemplate;
+    my $rsp                = {};
+    my @template_noheader  = ();
+    my @nodearray_noheader = ();
+
+    # build a node arrray without the header
+    foreach $nodeline (@Nodearray)    # for each node line
+    {
+        if ($nodeline =~ /HOST:/)
+        {                             # save the hostname
+            ($line, $nodename) = split ':', $nodeline;
+            $nodename =~ s/\s*//g;    # remove blanks
+            chomp $nodename;
+
+        }
+        else                          # build node array with no header
+        {
+            push(@nodearray_noheader, $nodeline);
+        }
+    }    # end foreach nodeline
+
+    #
+    # foreach template
+    #   build a template array with no header
+    #   compare to the node array with no header
+    #
+
+    foreach $template (@templatearray)    # for each template
+    {
+
+        if (-f "$template")
+        {                                 # if it exists
+
+            # Read the template file
+            open(TEMPLATE, "<$template");
+            my @template = <TEMPLATE>;
+
+            # now compare host data to template
+            foreach $templateline (@template)    # for each line in the template
+            {
+
+                # skip the header and blanks
+                if (   ($templateline !~ /HOST:/)
+                    && ($templateline !~ /---------/)
+                    && ($templateline !~ /^\s*$/))
+
+                {
+
+                    # Build template array with no header
+                    push(@template_noheader, $templateline);
+
+                }    # if header
+            }    # end foreach templateline
+
+            # if nodearray matches template exactly,quit processing templates
+
+            if (@nodearray_noheader eq @template_noheader)
+            {
+                $matchedtemplate = $template;
+                $match           = 1;
+                last;
+            }
+            else    # go to next template
+            {
+                $match             = 0;
+                @template_noheader = ();
+            }
+        }    # end template exist
+
+    }    #end foreach template
+
+    #
+    # if no match
+    #   if generate a new template - check the list of template files
+    #     to see if there is one that does not exist
+    #       put node data to new template file
+    #
     if ($match == 0)
     {
         my $nodesaved = 0;
@@ -683,9 +943,11 @@ sub compareoutput
 #------------------------------------------------------------------------------
 sub writereport
 {
-    my ($class, $outputfile, $Node_hash, $nodelist, $callback) = @_;
+    my ($class, $outputfile, $Node_hash, $nodelistin, $callback,
+        $ignorefirsttemplate)
+      = @_;
     my %nodehash     = %$Node_hash;
-    my @dshnodearray = $nodelist;
+    my @dshnodearray = @$nodelistin;
     my $pname        = "writereport";
     my $template;
     my @nodenames;
@@ -695,6 +957,8 @@ sub writereport
     # Header message
     #
     my $rsp = {};
+    $ignorefirsttemplate =~ tr/a-z/A-Z/;    # convert to upper
+
     foreach my $template (sort keys %nodehash)
     {
 
@@ -711,11 +975,25 @@ sub writereport
         foreach my $nodename (@nodenames)
         {
             push @nodearray, $nodename;    # build an array of all the nodes
-            $rsp->{data}->[0] = "$nodename\n";
-            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-            if ($::VERBOSE)
-            {
-                xCAT::MsgUtils->message("I", $rsp, $callback);
+            if ($ignorefirsttemplate ne "YES")
+            {                              #  report first template
+                $rsp->{data}->[0] = "$nodename\n";
+                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+                if ($::VERBOSE)
+                {
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+            }
+            else
+            {    # do not report nodes on first template
+                $rsp->{data}->[0] =
+                  "Not reporting matches on first template.\n";
+                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+                if ($::VERBOSE)
+                {
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+                $ignorefirsttemplate = "NO";    # reset for remaining templates
             }
         }
     }
@@ -763,34 +1041,90 @@ sub writereport
     }
     return;
 }
+
 #------------------------------------------------------------------------------
 
 =head3   dshoutput  			    	 
 
- Check xdsh output 
+ Check xdsh output  - get output from xdsh and pipe to xdshbak and
+ store results in $tempfile or $templatepath ( for seed node) based on
+ $processflag = seednode 
 
 =cut
 
 #------------------------------------------------------------------------------
-sub xdshoutput 
+sub xdshoutput
 {
-   my $resp = shift;
-   my $i=0;
-   foreach my $line ($resp->{info}->[$i]) {
-     push (@dshresult, $line); 
-     $i++;
-   }
-   my $rsp={};
-   $rsp->{data}->[0] = "Could not open $tempfile\n";
-   open(FILE, ">$tempfile")||
-        xCAT::MsgUtils->message("E", $rsp,  $::CALLBACK);
-        return 1;
-   foreach my $line (@dshresult) {
-    print FILE $line 
-   }
-   close FILE;
-   return 0; 
+    my $resp = shift;
+    my $i    = 0;
+    @dshresult = ();
+    foreach (@{$resp->{info}})
+    {
+        my $line = $_;
+        $line .= "\n";
+        push(@dshresult, $line);
+    }
 
+    # open file to write results of xdsh
+    my $newtempfile = $tempfile;
+    $newtempfile .= "temp";
+    my $rsp = {};
+    $rsp->{data}->[0] = "Could not open $newtempfile\n";
+    open(FILE, ">$newtempfile");
+    if ($? > 0)
+    {
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
+    foreach my $line (@dshresult)
+    {
+        print FILE $line;
+    }
+    close FILE;
+    my $outputfile;
+    if ($processflg eq "seednode")
+    {    # xdsh to seednode
+        $outputfile = $templatepath;
+    }
+    else
+    {    # xdsh to nodelist
+        $outputfile = $tempfile;
+    }
+
+    # open  file to put results of xdshbak
+    my $rsp = {};
+    $rsp->{data}->[0] = "Could not open $outputfile\n";
+    open(FILE, ">$outputfile");
+    if ($? > 0)
+    {
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
+    my $rsp = {};
+    $rsp->{data}->[0] = "Could not call xdshbak \n";
+    my $cmd = " /opt/xcat/bin/xdshbak <$newtempfile |";
+
+    open(DSHBAK, "$cmd");
+    if ($? > 0)
+    {
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
+
+    my $line;
+
+    while (<DSHBAK>)
+    {
+        $line = $_;
+        print FILE $line
+
+    }
+
+    close(DSHBAK);
+    close FILE;
+
+    system("/bin/rm  $newtempfile");
+    return 0;
 
 }
 
