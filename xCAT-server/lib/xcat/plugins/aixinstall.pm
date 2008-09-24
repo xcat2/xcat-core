@@ -4,12 +4,14 @@
 #
 #  xCAT plugin package to handle the following commands.
 #	 mkdsklsnode, rmdsklsnode, mknimimage,  
-#	 rmnimimage & nimnodeset
+#	 rmnimimage, nimnodecust,  & nimnodeset
 #
 #####################################################
 
 package xCAT_plugin::aixinstall;
 
+use Sys::Hostname;
+use File::Basename;
 use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::Utils;
@@ -31,7 +33,7 @@ $Getopt::Long::ignorecase = 0;
 =head1    aixinstall
 
 This program module file supports the mkdsklsnode, rmdsklsnode,
-rmnimimage, mknimimage, & nimnodeset commands.
+rmnimimage, mknimimage, nimnodecust, & nimnodeset commands.
 
 
 =cut
@@ -61,8 +63,205 @@ sub handled_commands
 			rmnimimage => "aixinstall",
             mkdsklsnode => "aixinstall",
 			rmdsklsnode => "aixinstall",
-			nimnodeset => "aixinstall"
+			nimnodeset => "aixinstall",
+			nimnodecust => "aixinstall"
             };
+}
+
+#-------------------------------------------------------
+
+=head3  preprocess_request
+
+  Check and setup for hierarchy
+
+=cut
+
+#-------------------------------------------------------
+sub preprocess_request
+{
+    my $req = shift;
+    my $cb  = shift;
+	my $sub_req = shift;
+
+	my $command  = $req->{command}->[0];
+    $::args     = $req->{arg};
+    $::filedata = $req->{stdin}->[0];
+
+    my %sn;
+    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    my $nodes    = $req->{node};
+    my $service  = "xcat";
+    my @requests;
+	my $lochash;
+	my $nethash;
+	my $nodehash;
+	my $imagehash;
+	my $attrs;
+	my $locs;
+
+	#
+	# preprocess each cmd - (help, version, gather data etc.)
+	#	set up requests for service nodes
+	#
+	if ($command =~ /mknimimage/) {
+        # just send this to the NIM primary
+    	my $nimprime = xCAT::Utils->get_site_Master();
+    	my $sitetab = xCAT::Table->new('site');
+    	(my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
+    	if ($et and $et->{value}) {
+        	$nimprime = $et->{value};
+
+    	}
+
+		my $reqcopy = {%$req};
+        $reqcopy->{'_xcatdest'} = $nimprime;
+        push @requests, $reqcopy;
+
+		return \@requests;
+    }
+
+    if ($command =~ /rmnimimage/) {
+		# take care of -h etc.
+		# also get osimage hash to pass on!!
+		my ($rc, $imagehash) = &prermnimimage($cb);
+		if ( $rc ) { # either error or -h was processed etc.
+            my $rsp;
+            if ($rc eq "1") {
+                $rsp->{errorcode}->[0] = $rc;
+                push @{$rsp->{data}}, "Return=$rc.";
+                xCAT::MsgUtils->message("E", $rsp, $cb, $rc);
+            }
+            return undef;
+        }
+
+		# need to remove NIM res from all SNs
+		# get all the service nodes
+		my @nlist = xCAT::Utils->list_all_nodes;
+		my $sn;
+		if (\@nlist) {
+			$sn = xCAT::Utils->get_ServiceNode(\@nlist, $service, "MN");
+		}
+
+		# if something more than -h etc. then pass on the request
+		if (defined($imagehash)) {
+			foreach my $snkey (keys %$sn) {
+				my $reqcopy = {%$req};
+				$reqcopy->{'_xcatdest'} = $snkey;
+                $reqcopy->{'imagehash'} = \%$imagehash;
+				push @requests, $reqcopy;
+			}
+			return \@requests;
+		} else {
+			return undef;
+		}
+    }
+
+	#
+	# get the hash of service nodes - for the nodes that were provided
+	#
+	my $sn;
+	if ($nodes) {
+		$sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+	}
+
+	# these commands might be merged some day??
+    if (($command =~ /nimnodeset/) || ($command =~ /mkdsklsnode/)) {
+		my ($rc, $nodehash, $nethash, $imagehash, $lochash, $attrs) = &prenimnodeset($cb, $command);
+
+		if ( $rc ) { # either error or -h was processed etc.
+            my $rsp;
+            if ($rc eq "1") {
+                $rsp->{errorcode}->[0] = $rc;
+                push @{$rsp->{data}}, "Return=$rc.";
+                xCAT::MsgUtils->message("E", $rsp, $cb, $rc);
+            }
+            return undef;
+        }
+
+		# set up the requests to go to the service nodes
+		foreach my $snkey (keys %$sn) {
+			my $reqcopy = {%$req};
+			$reqcopy->{node} = $sn->{$snkey};
+			$reqcopy->{'_xcatdest'} = $snkey;
+
+			# might as well pass along anything we had to look up
+            #   in the preprocessing
+            if ($nodehash) {
+                $reqcopy->{'nodehash'} = \%$nodehash;
+            }
+            if ($nethash) {
+                $reqcopy->{'nethash'} = \%$nethash;
+            }
+            if ($imagehash) {
+                $reqcopy->{'imagehash'} = \%$imagehash;
+            }
+            if ($lochash) {
+                $reqcopy->{'lochash'} = \%$lochash;
+            }
+            if ($attrs) {
+                $reqcopy->{'attrval'} = \%$attrs;
+            }
+            push @requests, $reqcopy;
+		}
+		return \@requests;
+    }
+
+	if ($command =~ /nimnodecust/) {
+		# handle -h etc.
+		# copy stuff to service nodes 
+        my ($rc, $bndloc) = &prenimnodecust($cb, $nodes);
+		if ( $rc ) { # either error or -h was processed etc.
+            my $rsp;
+            if ($rc eq "1") {
+                $rsp->{errorcode}->[0] = $rc;
+                push @{$rsp->{data}}, "Return=$rc.";
+                xCAT::MsgUtils->message("E", $rsp, $cb, $rc);
+            }
+            return undef;
+        }
+
+		# set up the requests to go to the service nodes
+        #   all get the same request
+        foreach my $snkey (keys %$sn) {
+            my $reqcopy = {%$req};
+            $reqcopy->{node} = $sn->{$snkey};
+            $reqcopy->{'_xcatdest'} = $snkey;
+			if ($bndloc) {
+                $reqcopy->{'lochash'} = \%$bndloc;
+            }
+
+            push @requests, $reqcopy;
+        }
+        return \@requests;
+    }
+
+    if ($command =~ /rmdsklsnode/) {
+		# handle -h etc.
+        my $rc =  &prermdsklsnode($cb);
+
+		if ( $rc ) { # either error or -h was processed etc.
+            my $rsp;
+            if ($rc eq "1") {
+                $rsp->{errorcode}->[0] = $rc;
+                push @{$rsp->{data}}, "Return=$rc.";
+                xCAT::MsgUtils->message("E", $rsp, $cb, $rc);
+            }
+            return undef;
+		} else {
+
+			# set up the requests to go to the service nodes
+			#   all get the same request
+			foreach my $snkey (keys %$sn) {
+				my $reqcopy = {%$req};
+				$reqcopy->{node} = $sn->{$snkey};
+				$reqcopy->{'_xcatdest'} = $snkey;
+
+				push @requests, $reqcopy;
+			}
+			return \@requests;
+		}
+    }
+	return undef;
 }
 
 #----------------------------------------------------------------------------
@@ -102,10 +301,18 @@ sub process_request
     $::args     = $request->{arg};
     $::filedata = $request->{stdin}->[0];
 
+	# set the data passed in by the preprocess_request routine
+	my $nodehash = $request->{'nodehash'};
+	my $nethash = $request->{'nethash'};
+	my $imagehash = $request->{'imagehash'};
+	my $lochash = $request->{'lochash'};
+	my $attrval = $request->{'attrval'};
+	my $nodes    = $request->{node};
+
     # figure out which cmd and call the subroutine to process
     if ($command eq "mkdsklsnode")
     {
-        ($ret, $msg) = &mkdsklsnode($callback, $sub_req);
+        ($ret, $msg) = &mkdsklsnode($callback, $nodes, $nodehash, $nethash, $imagehash, $lochash, $sub_req);
     }
     elsif ($command eq "mknimimage")
     {
@@ -113,17 +320,22 @@ sub process_request
     }
 	elsif ($command eq "rmnimimage")
 	{
-		($ret, $msg) = &rmnimimage($callback);
-					}
+		($ret, $msg) = &rmnimimage($callback, $imagehash);
+
+	}
 	elsif ($command eq "rmdsklsnode")
 	{
 		($ret, $msg) = &rmdsklsnode($callback);
 	} 
 	elsif ($command eq "nimnodeset")
 	{
-		($ret, $msg) = &nimnodeset($callback, $sub_req);
+		($ret, $msg) = &nimnodeset($callback, $nodes, $nodehash, $nethash, $imagehash, $lochash, $sub_req);
 	}
 
+	elsif ($command eq "nimnodecust")
+    {
+        ($ret, $msg) = &nimnodecust($callback, $lochash, $nodes);
+    }
 
 	if ($ret > 0) {
 		my $rsp;
@@ -131,7 +343,7 @@ sub process_request
 		if ($msg) {
 			push @{$rsp->{data}}, $msg;
 		} else {
-			push @{$rsp->{data}}, "Command returned an error.";
+			push @{$rsp->{data}}, "Return=$ret.";
 		}
 
 		$rsp->{errorcode}->[0] = $ret;
@@ -139,12 +351,8 @@ sub process_request
 		xCAT::MsgUtils->message("E", $rsp, $callback, $ret);
 
 	}
-
 	return 0;
 }
-    
-my $errored = 0;
-
 
 #----------------------------------------------------------------------------
 
@@ -168,7 +376,18 @@ my $errored = 0;
 sub nimnodeset
 {
     my $callback = shift;
+	my $nodes = shift;
+    my $nodehash = shift;
+    my $nethash = shift;
+    my $imaghash = shift;
+    my $locs = shift;
     my $sub_req = shift;
+
+	my %lochash = %{$locs};
+    my %objhash = %{$nodehash}; # node definitions
+    my %nethash = %{$nethash};
+    my %imagehash = %{$imaghash}; # osimage definition
+    my @nodelist = @$nodes;
 
 	my $error=0;
 	my @nodesfailed;
@@ -178,6 +397,10 @@ sub nimnodeset
 	#	- need to change to pass in the callback 
 	#	- just set global for now
     $::callback=$callback;
+
+	my $Sname;
+    ($Sname = hostname()) =~ s/\..*$//;
+    chomp $Sname;
 
 	if (defined(@{$::args})) {
         @ARGV = @{$::args};
@@ -198,41 +421,18 @@ sub nimnodeset
 		return 1;
 	}
 
-	if ($::HELP) {
-		&nimnodeset_usage($callback);
-		return 0;
-	}
-
-	# display the version statement if -v or --verison is specified
-    if ($::VERSION)
-    {
-		my $version=xCAT::Utils->Version();
-        my $rsp;
-        push @{$rsp->{data}}, "nimnodeset $version\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-        return 0;
-    }
-
-	my @nodelist;
 	my %objtype;
-	my %objhash;    # node definitions
 	my %attrs;  	# attr=val pairs from cmd line 
 	my %cmdargs; 	# args for the "nim -o bos_inst" cmd line
 	my @machines;	# list of defined NIM machines
 	my @nimrestypes;	# list of NIM resource types 
 	my @nodesfailed;	# list of xCAT nodes that could not be initialized
-	my %imagehash;		# osimage definition
 
 	# the first arg should be a noderange - the other should be attr=val
     #  - put attr=val operands in %attrs hash
     while (my $a = shift(@ARGV))
     {
-        if (!($a =~ /=/))
-        {
-			@nodelist = &noderange($a, 0);
-        }
-        else
-        {
+        if ($a =~ /=/) {
             # if it has an "=" sign its an attr=val - we hope
             my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
             if (!defined($attr) || !defined($value))
@@ -246,21 +446,6 @@ sub nimnodeset
 			$attrs{$attr} = $value;
         }
     }
-
-	# get all the attrs for these node definitions
-	foreach my $o (@nodelist)
-	{
-		$objtype{$o} = 'node';
-	}
-	%objhash = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
-	if (!defined(%objhash))
-	{
-		my $rsp;
-		push @{$rsp->{data}}, "Could not get xCAT object definitions.\n";
-	    xCAT::MsgUtils->message("E", $rsp, $callback);
-    	return 1;
-	}
-
 
     #
     #  Get a list of the defined NIM machines
@@ -278,73 +463,69 @@ ll~;
     if ($::RUNCMD_RC  != 0)
     {
         my $rsp;
-        push @{$rsp->{data}}, "Could not get NIM resource definitions.";
+        push @{$rsp->{data}}, "$Sname: Could not get NIM resource types.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
 
-	# get the osimage definition
-	if ($::OSIMAGE) {
-        my %objtype;
-        $objtype{$::OSIMAGE} = 'osimage';
-        %imagehash = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
-        if (!defined(%imagehash))
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not get an osimage definition for \'$image_name\'.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-        }
-	}
-
-	# create a NIM script resource using the xcataixpost script
-	my $resname = "xcataixpost";
-	my $respath = "/install/postscripts/xcataixpost";
-	if (&mkScriptRes($resname, $respath, $callback) != 0) {
-		my $rsp;
-		push @{$rsp->{data}}, "Could not create a NIM resource for xcataixpost.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
-	}
-
-	my $error=0;
-    foreach my $node (keys %objhash)
-    {
-		
-		# get the image name to use for this node
-		# either from cmd line or node def
+	#
+	# get all the image names needed and make sure they are defined on the 
+	# local server
+	#
+	my @image_names;
+	my %nodeosi;
+	foreach my $node (@nodelist) {
 		if ($::OSIMAGE){
 			# from the command line
-			$image_name=$::OSIMAGE;
-			chomp $image_name;
-		} elsif ( $objhash{$node}{profile} ) {
-
-			# from the node definition
-			$image_name=$objhash{$node}{profile};
-			chomp $image_name;
-
-			# get this osimage definition
-			my %objtype;
-			$objtype{$image_name} = 'osimage';
-			%imagehash = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
-			if (!defined(%imagehash))
-			{
+			$nodeosi{$node} = $::OSIMAGE;
+		} else {
+			if ( $objhash{$node}{profile} ) {
+				$nodeosi{$node} = $objhash{$node}{profile};
+			} else {
 				my $rsp;
-				push @{$rsp->{data}}, "Could not get an osimage definition for \'$image_name\'.\n";
+				push @{$rsp->{data}}, "$Sname: Could not determine an OS image name for node \'$node\'.\n";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
 				push(@nodesfailed, $node);
 				$error++;
 				next;
 			}
-
-		} else {
-			my $rsp;
-            push @{$rsp->{data}}, "Could not determine an OS image name for node \'$node\'.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-			push(@nodesfailed, $node);
-			$error++;
-			next;
 		}
+		if (!grep (/^$nodeosi{$node}$/, @image_names)) {
+			push(@image_names, $nodeosi{$node});
+		}
+	}
+	
+	if (scalar(@image_names) == 0)  {
+		# if no images then error
+		return 1;
+	}
+
+	#
+    # get the primary NIM master - default to management node
+    #
+    my $nimprime = xCAT::Utils->get_site_Master();
+    my $sitetab = xCAT::Table->new('site');
+    (my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
+    if ($et and $et->{value}) {
+        $nimprime = $et->{value};
+
+    }
+
+	#
+    # if this isn't the NIM primary then make sure the local NIM defs
+    #   have been created etc.
+    #
+ 	if (!&is_me($nimprime)) {
+        &make_SN_resource($callback, \@nodelist, \@image_names, \%imagehash, \%lochash);
+    }
+
+	my $error=0;
+    foreach my $node (@nodelist)
+    {
+		
+		# get the image name to use for this node
+		my $image_name = $nodeosi{$node};
+        chomp $image_name;
 
 		# check if node is in ready state
 		my $shorthost;
@@ -358,7 +539,7 @@ ll~;
 				my $output = xCAT::Utils->runcmd("$rcmd", -1);
             	if ($::RUNCMD_RC  != 0) {
                 	my $rsp;
-                	push @{$rsp->{data}}, "Could not reset the existing NIM object named \'$shorthost\'.\n";
+                	push @{$rsp->{data}}, "$Sname: Could not reset the existing NIM object named \'$shorthost\'.\n";
                 	if ($::VERBOSE) {
                     	push @{$rsp->{data}}, "$output";
                 	}
@@ -370,7 +551,7 @@ ll~;
 			} else {
 
 				my $rsp;
-				push @{$rsp->{data}}, "The NIM machine named $shorthost is not in the ready state and cannot be initialized.\n";
+				push @{$rsp->{data}}, "$Sname: The NIM machine named $shorthost is not in the ready state and cannot be initialized.\n";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
                 push(@nodesfailed, $node);
@@ -390,7 +571,7 @@ ll~;
             #error - only support standalone for now
             #   - use mkdsklsnode for diskless/dataless nodes
             my $rsp;
-            push @{$rsp->{data}}, "Use the mkdsklsnode command to initialize diskless/dataless nodes.\n";
+            push @{$rsp->{data}}, "$Sname: Use the mkdsklsnode command to initialize diskless/dataless nodes.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             $error++;
             push(@nodesfailed, $node);
@@ -410,7 +591,7 @@ ll~;
 		chomp $nim_name;
 		if (!grep(/^$nim_name$/, @machines)) {
 			my $rsp;
-			push @{$rsp->{data}}, "The NIM machine \'$nim_name\' is not defined.\n";
+			push @{$rsp->{data}}, "$Sname: The NIM machine \'$nim_name\' is not defined.\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
             $error++;
             push(@nodesfailed, $node);
@@ -425,6 +606,7 @@ ll~;
 		#		only take the attrs that are actual NIM resource types
 		my $script_string="";
         my $bnd_string="";
+
         foreach my $restype (sort(keys %{$imagehash{$image_name}})) {
             # restype is res type (spot, script etc.)
             # resname is the name of the resource (61spot etc.)
@@ -492,7 +674,8 @@ ll~;
 		}
 
 		# must add script res
-		$cmdargs{script} = $resname;
+		#$cmdargs{script} = $resname;
+		#$cmdargs{script} = "xcataixpost";
 
 		# set boot_client
 		if (!defined($cmdargs{boot_client})) {
@@ -525,7 +708,7 @@ ll~;
 		if ($::RUNCMD_RC  != 0)
 		{
 			my $rsp;
-			push @{$rsp->{data}}, "The NIM bos_inst operation failed for \'$nim_name\'.\n";
+			push @{$rsp->{data}}, "$Sname: The NIM bos_inst operation failed for \'$nim_name\'.\n";
 			if ($::VERBOSE) {
 				push @{$rsp->{data}}, "$output";
 			}
@@ -545,14 +728,14 @@ ll~;
 			if (!grep(/^$node$/, @nodesfailed)) {
 				# change the node def if we were successful
 				$nodeattrs{$node}{objtype} = 'node';
-				$nodeattrs{$node}{profile} = $image_name;
+				$nodeattrs{$node}{profile} = $::OSIMAGE;
 			}
 		}
 
 
 		if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0) {
 			my $rsp;
-			push @{$rsp->{data}}, "Could not write data to the xCAT database.\n";
+			push @{$rsp->{data}}, "$Sname: Could not write data to the xCAT database.\n";
 			xCAT::MsgUtils->message("E", $rsp, $::callback);
 			$error++;
 		}
@@ -561,17 +744,17 @@ ll~;
 	# update the .rhosts file on the server so the rcp from the node works
     if (&update_rhosts(\@nodelist, $callback) != 0) {
         my $rsp;
-        push @{$rsp->{data}}, "Could not update the /.rhosts file.\n";
+        push @{$rsp->{data}}, "$Sname: Could not update the /.rhosts file.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         $error++;
     }
 
 	if ($error) {
 		my $rsp;
-		push @{$rsp->{data}}, "One or more errors occurred when attempting to initialize AIX NIM nodes.\n";
+		push @{$rsp->{data}}, "$Sname: One or more errors occurred when attempting to initialize AIX NIM nodes.\n";
 
 		if ($::VERBOSE && (defined(@nodesfailed))) {
-			push @{$rsp->{data}}, "The following node(s) could not be initialized.\n";
+			push @{$rsp->{data}}, "$Sname: The following node(s) could not be initialized.\n";
 			foreach my $n (@nodesfailed) {
 				push @{$rsp->{data}}, "$n";
 			}
@@ -581,7 +764,7 @@ ll~;
 		return 1;
 	} else {
 		my $rsp;
-		push @{$rsp->{data}}, "AIX/NIM nodes were initialized.\n";
+		push @{$rsp->{data}}, "$Sname: AIX/NIM nodes were initialized.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 
 		return 0;
@@ -662,13 +845,13 @@ sub mknimimage
 	{
 
 		&mknimimage_usage($callback);
-        return 1;
+        return 0;
 	}
 
 	# display the usage if -h or --help is specified
     if ($::HELP) {
         &mknimimage_usage($callback);
-        return 0;
+        return 2;
     }
 
 	# display the version statement if -v or --verison is specified
@@ -899,7 +1082,7 @@ sub mknimimage
         	} else {
 				# it doesn't exist so create it
 				my $type="root";
-				if (&mknimres($root_name, $type, $callback) != 0) {
+				if (&mknimres($root_name, $type, $callback, $::opt_l) != 0) {
 					my $rsp;
 					push @{$rsp->{data}}, "Could not create a NIM definition for \'$root_name\'.\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -939,7 +1122,7 @@ sub mknimimage
         	} else {
 				# create it
 				my $type="dump";
-				if (&mknimres($dump_name, $type, $callback) != 0) {
+				if (&mknimres($dump_name, $type, $callback, $::opt_l) != 0) {
 					my $rsp;
 					push @{$rsp->{data}}, "Could not create a NIM definition for \'$dump_name\'.\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -989,7 +1172,7 @@ sub mknimimage
         		} else {
 					# it doesn't exist so create it
 					my $type="paging";
-					if (&mknimres($paging_name, $type, $callback) != 0) {
+					if (&mknimres($paging_name, $type, $callback, $::opt_l) != 0) {
 						my $rsp;
 						push @{$rsp->{data}}, "Could not create a NIM definition for \'$paging_name\'.\n";
 						xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1218,6 +1401,15 @@ sub mk_lpp_source
 		}
 
 	} elsif ($::opt_s) { 
+
+		# if this isn't a dir and it is an 
+		#existing lpp_source then use it
+		if ( !(-d $::opt_s) ) {
+            if ((grep(/^$::opt_s$/, @lppresources))) {
+                # if an lpp_source was provided then use it
+                return $::opt_s;
+            }
+        }
 
 		# if source is provided we may need to create a new lpp_source
 
@@ -1771,6 +1963,105 @@ sub mk_mksysb
 
 #----------------------------------------------------------------------------
 
+=head3   prermnimimage
+
+        Preprocessing for the rmnimimage command.
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub prermnimimage
+{
+	my $callback = shift;
+
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &rmnimimage_usage($callback);
+        return (1);
+    }
+
+	# parse the options
+    Getopt::Long::Configure("no_pass_through");
+    if(!GetOptions(
+        'f|force'   => \$::FORCE,
+        'h|help'    => \$::HELP,
+        'verbose|V' => \$::VERBOSE,
+        'v|version' => \$::VERSION,))
+    {
+
+        &rmnimimage_usage($callback);
+        return (1);
+    }
+
+	 # display the usage if -h or --help is specified
+    if ($::HELP) {
+        &rmnimimage_usage($callback);
+        return (2);
+    }
+
+    # display the version statement if -v or --verison is specified
+    if ($::VERSION)
+    {
+        my $version=xCAT::Utils->Version();
+        my $rsp;
+        push @{$rsp->{data}}, "rmnimimage $version\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+        return (2);
+    }
+
+	my $image_name = shift @ARGV;
+
+    # must have an image name
+    if (!defined($image_name) ) {
+        my $rsp;
+        push @{$rsp->{data}}, "The xCAT osimage name is required.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        &rmnimimage_usage($callback);
+        return (1);
+    }
+
+    # get the xCAT image definition
+    my %imagedef;
+    my %objtype;
+    $objtype{$image_name} = 'osimage';
+    %imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
+    if (!defined(%imagedef)) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get xCAT image definition.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return (0);
+    }
+
+	#
+    # remove the osimage def
+    #
+    my %objhash;
+    $objhash{$image_name} = "osimage";
+
+    if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0) { 
+        my $rsp;
+        push @{$rsp->{data}}, "Could not remove the existing xCAT definition for \'$image_name\'.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+    } else {
+        my $rsp;
+        push @{$rsp->{data}}, "Removed the xCAT osimage definition \'$image_name\'.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+
+	return (0, \%imagedef);
+}
+
+#----------------------------------------------------------------------------
+
 =head3   rmnimimage
 
 		Support for the rmnimimage command.
@@ -1788,7 +2079,6 @@ sub mk_mksysb
 		Example:
 
 		Comments:
-
 			rmnimimage [-V] [-f|--force] image_name
 =cut
 
@@ -1796,6 +2086,14 @@ sub mk_mksysb
 sub rmnimimage
 {
 	my $callback = shift;
+	my $imaghash = shift;
+
+	my %imagedef;
+	if ($imaghash) {
+		%imagedef = %{$imaghash};
+	} else {
+		return 0;
+	}
 
 	if (defined(@{$::args})) {
         @ARGV = @{$::args};
@@ -1817,22 +2115,6 @@ sub rmnimimage
         return 1;
     }
 
-    # display the usage if -h or --help is specified
-    if ($::HELP) {
-        &rmnimimage_usage($callback);
-        return 0;
-	}
-
-	# display the version statement if -v or --verison is specified
-    if ($::VERSION)
-    {
-		my $version=xCAT::Utils->Version();
-        my $rsp;
-        push @{$rsp->{data}}, "rmnimimage $version\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-        return 0;
-    }
-
 	my $image_name = shift @ARGV;
 
     # must have an image name
@@ -1844,20 +2126,8 @@ sub rmnimimage
         return 1;
     }
 
-	# get the xCAT image definition 
-	my %imagedef;
-	my %objtype;
-	$objtype{$image_name} = 'osimage';
-	%imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
-	if (!defined(%imagedef)) {
-		my $rsp;
- 		push @{$rsp->{data}}, "Could not get xCAT image definition.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
-	}
-
 	#
-	#  Get a list of the all nim resources
+	#  Get a list of the all the locally defined nim resources
 	#
 	my $cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
 	my @nimresources = [];
@@ -1919,23 +2189,6 @@ sub rmnimimage
 
 	}
 
-
-	#	
-	# remove the osimage def 
-	#
-	my %objhash;
-	$objhash{$image_name} = "osimage";
-	if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0) {
-		my $rsp;
-		push @{$rsp->{data}}, "Could not remove the existing xCAT definition for \'$image_name\'.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		$error++;
-	} else {
-		my $rsp;
-		push @{$rsp->{data}}, "Removed the xCAT osimage definition \'$image_name\'.\n";
-		xCAT::MsgUtils->message("I", $rsp, $callback);
-	}	
-
 	if ($error) {
 		my $rsp;
 		push @{$rsp->{data}}, "One or more errors occurred when trying to remove the xCAT osimage definition \'$image_name\' and the related NIM resources.\n";
@@ -1962,22 +2215,38 @@ sub mkScriptRes
 {
 	my $resname = shift;
 	my $respath = shift;
+	my $nimprime = shift;
 	my $callback = shift;
 
-    my ($cmd, $output, $rc);
+    my ($defcmd, $output, $rc);
 
-    my $defcmd = "lsnim -t script | grep \"$resname \" || nim -o define -t script -a server=master -a location=$respath $resname";
-
-    my $output = xCAT::Utils->runcmd("$defcmd", -1);
-    if ($::RUNCMD_RC != 0)
-    {
-		if ($::VERBOSE) {
-			my $rsp;
-            push @{$rsp->{data}}, "$output";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-        }
+	my $cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+    my @nimresources = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get NIM resource definitions.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
+    if (!grep(/^$resname$/, @nimresources)) {
+
+		if (!&is_me($nimprime)) {
+			$defcmd = qq~/usr/bin/dsh -n $nimprime "/usr/sbin/nim -o define -t script -a server=master -a location=$respath $resname 2>/dev/null"~;
+		} else {
+    		$defcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a location=$respath $resname 2>/dev/null~;
+		}
+
+    	my $output = xCAT::Utils->runcmd("$defcmd", -1);
+    	if ($::RUNCMD_RC != 0)
+    	{
+			if ($::VERBOSE) {
+				my $rsp;
+            	push @{$rsp->{data}}, "$output";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+        	}
+        	return 1;
+    	}
+	}
     return 0;
 }
 
@@ -2114,20 +2383,29 @@ sub update_inittab
 =cut
 
 #-----------------------------------------------------------------------------
-sub get_nim_attr_val {
+sub get_nim_attr_val 
+{
 
 	my $resname = shift;
 	my $attrname = shift;
 	my $callback = shift;
+	my $nimprime = shift;
 
-	my $cmd = "/usr/sbin/lsnim -l $resname";
+	my $cmd;
+	if ( ($nimprime) && (!is_me($nimprime)) ) {
+		# if the NIM primary is not the node we're running on
+		$cmd = qq~/usr/bin/dsh -n $nimprime "/usr/sbin/lsnim -l $resname 2>/dev/null"~;
+	} else {
+		# assume we're running on the NIM primary
+		$cmd = "/usr/sbin/lsnim -l $resname 2>/dev/null";
+	}
 
 	my @result = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC  != 0)
     {
 		my $rsp;
         push @{$rsp->{data}}, "Could not run lsnim command.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+#        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
 
@@ -2170,7 +2448,7 @@ sub get_res_loc {
 	my $spotname = shift;
 	my $callback = shift;
 
-	my $cmd = "/usr/sbin/lsnim -l $spotname";
+	my $cmd = "/usr/sbin/lsnim -l $spotname 2>/dev/null";
 
 	my @result = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC  != 0)
@@ -2398,6 +2676,7 @@ sub mknimres {
     my $res_name = shift;
 	my $type = shift;
     my $callback = shift;
+	my $location = shift;
 
 	if ($::VERBOSE) {
 		my $rsp;
@@ -2405,16 +2684,16 @@ sub mknimres {
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
+#####  check this!!!!
 	my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
 
 	# where to put it - the default is /install
-	if ($::opt_l) {
-		$cmd .= "-a location=$::opt_l ";
+	if ($location) {
+		$cmd .= "-a location=$location ";
 	} else {
-		$cmd .= "-a location=/install/nim/$type ";
+		$cmd .= "-a location=/install/nim/$type/$res_name ";
 	}
 	$cmd .= "$res_name  2>&1";
-
 	if ($::VERBOSE) {
         my $rsp;
         push @{$rsp->{data}}, "Running command: \'$cmd\'.\n";
@@ -2675,9 +2954,703 @@ sub update_dd_boot {
 
 #----------------------------------------------------------------------------
 
-=head3   mkdsklsnode
+=head3   prenimnodecust
 
-        Support for the mkdsklsnode command.
+        Preprocessing for the nimnodecust command.
+
+        Runs on the xCAT management node only!
+
+        Arguments:
+        Returns:
+                0 - OK - need to forward request
+                1 - error - done
+				2 - help or version - done
+        Globals:
+        Example:
+        Comments:
+            - If needed, copy files to the service nodes
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub prenimnodecust
+{
+    my $callback = shift;
+	my $nodes = shift;
+
+	my @nodelist;
+
+	if ($nodes) {
+		@nodelist =@$nodes;
+	}
+
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &nimnodecust_usage($callback);
+        return 1;
+    }
+
+	# parse the options
+    if(!GetOptions(
+        'h|help'    => \$::HELP,
+		'b=s'		=> \$::BUNDLES,
+        's=s'       => \$::LPPSOURCE,
+        'p=s'     	=> \$::PACKAGELIST,
+        'verbose|V' => \$::VERBOSE,
+        'v|version' => \$::VERSION,))
+    { return 1; }
+
+    if ($::HELP) {
+		&nimnodecust_usage($callback);
+        return 2;
+    }
+
+	# display the version statement if -v or --verison is specified
+    if ($::VERSION)
+    {
+        my $version=xCAT::Utils->Version();
+        my $rsp;
+        push @{$rsp->{data}}, "nimnodecust $version\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+        return 2;
+    }
+
+	# make sure the nodes are resolvable
+    #  - if not then exit
+    foreach my $n (@nodelist) {
+        my $packed_ip = gethostbyname($n);
+        if (!$packed_ip) {
+            my $rsp;
+            $rsp->{data}->[0] = "Could not resolve node $n.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    }
+
+	# get the NIM primary server name
+	my $nimprime = xCAT::Utils->get_site_Master();
+	my $sitetab = xCAT::Table->new('site');
+	(my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
+	if ($et and $et->{value}) {
+		$nimprime = $et->{value};
+	}
+
+	# get a list of packages that will be installed
+	my @pkglist;
+	my %bndloc;
+	if ( $::PACKAGELIST ) {
+		@pkglist = split(/,/, $::PACKAGELIST);
+	} elsif ( $::BUNDLES ) {
+		my @bndlist = split(/,/, $::BUNDLES);
+		foreach my $bnd (@bndlist) {
+			my ($rc, $list, $loc) =  &readBNDfile($callback, $bnd, $nimprime);
+			push (@pkglist, @$list);
+			$bndloc{$bnd} = $loc;
+		}
+	}
+
+	# get the location of the lpp_source
+	my $lpp_source_loc = &get_nim_attr_val($::LPPSOURCE, 'location', $callback, $nimprime);
+	my $rpm_srcdir = "$lpp_source_loc/RPMS/ppc";
+	my $instp_srcdir = "$lpp_source_loc/installp/ppc";
+
+	# 
+	#  Get the service nodes for this list of nodes
+    #
+    my $sn = xCAT::Utils->get_ServiceNode(\@nodelist, "xcat", "MN");
+    if ($::ERROR_RC) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	# copy the packages to the service nodes - if needed
+	foreach my $snkey (keys %$sn) {
+		
+		# if it's not me then we need to copy the pkgs there
+		if (!&is_me($snkey) ) {
+
+			my $cmdstr;
+			if ( !&is_me($nimprime)) {
+				$cmdstr = "/usr/bin/dsh -n $nimprime ";
+			} else {
+				$cmdstr = "";
+			}
+
+			foreach my $pkg (@pkglist) {
+				my $rcpcmd;
+				# note the xCAT rpm entries end in "*" - ex. "R:perl-xCAT-2.1*"
+				if ( ($pkg =~ /rpm\s*$/) || ($pkg =~ /xCAT/) || ($pkg =~ /R:/)) {
+
+					$rcpcmd = "$cmdstr '/usr/bin/rcp $rpm_srcdir/$pkg $snkey:$rpm_srcdir'";
+
+					my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+                    if ($::RUNCMD_RC  != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not copy $pkg to $snkey.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                    }
+
+				} else {
+					$rcpcmd .= "$cmdstr '/usr/bin/rcp $instp_srcdir/$pkg $snkey:$instp_srcdir'";
+
+					my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+					if ($::RUNCMD_RC  != 0) {
+						my $rsp;
+						push @{$rsp->{data}}, "Could not copy $pkg to $snkey.\n";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+					}
+
+				}
+			}
+		}
+	}
+
+	# the NIM primary master may not be the management node
+	my $cmdstr;
+	if ( !&is_me($nimprime)) {
+		$cmdstr = "/usr/bin/dsh -n $nimprime ";
+	} else {
+		$cmdstr = "";
+	}
+
+	#
+    # if bundles provided then copy bnd files to SNs
+    #
+	if ( $::BUNDLES ) {
+		foreach my $snkey (keys %$sn) {
+
+			if (!&is_me($snkey) ) {
+        		my @bndlist = split(/,/, $::BUNDLES);
+        		foreach my $bnd (@bndlist) {
+            		my $bnd_file_loc = $bndloc{$bnd};
+					my $bnddir = dirname($bnd_file_loc);
+					my $cmd = "$cmdstr '/usr/bin/rcp $bnd_file_loc $snkey:$bnddir'";
+#print "bnd cp cmd = $cmd\n";
+
+					my $output = xCAT::Utils->runcmd("$cmd", -1);
+                    if ($::RUNCMD_RC  != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not copy $bnd_file_loc to $snkey.\n"
+;
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                    }
+        		}
+			}	
+		}
+	}
+
+	return (0, \%bndloc);
+}
+
+#----------------------------------------------------------------------------
+
+=head3   nimnodecust
+
+        Processing for the nimnodecust command.
+
+		Does AIX node customization.
+
+        Arguments:
+        Returns:
+                0 - OK 
+                1 - error 
+        Globals:
+        Example:
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub nimnodecust
+{
+	my $callback = shift;
+	my $locs = shift;
+	my $nodes = shift;
+
+	my %bndloc;
+	if ($locs) {
+		%bndloc = %{$locs};
+	}
+
+	my @nodelist;
+	if ($nodes) {
+        @nodelist =@$nodes;
+    }
+
+    if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &nimnodecust_usage($callback);
+        return 1;
+    }
+
+    # parse the options
+    if(!GetOptions(
+        'h|help'    => \$::HELP,
+        'b=s'       => \$::BUNDLES,
+        's=s'       => \$::LPPSOURCE,
+        'p=s'       => \$::PACKAGELIST,
+        'verbose|V' => \$::VERBOSE,
+        'v|version' => \$::VERSION,))
+    { return 1; }
+
+	my $Sname = hostname();
+
+	# get list NIM NIM machines defined locally
+	my @machines = [];
+    my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+
+    @machines = xCAT::Utils->runcmd("$cmd", -1);
+
+	# see if lpp_source is defined locally
+	my $cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+
+	my @nimresources = xCAT::Utils->runcmd("$cmd", -1);
+	if ($::RUNCMD_RC  != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "$Sname: Could not get NIM resource definitions.";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+	if (!grep(/^$::LPPSOURCE$/, @nimresources)) {
+		return 1;
+	}
+
+	# put together a cust cmd line for NIM
+    my @pkglist;
+	my $custcmd = "nim -o cust -a lpp_source=$::LPPSOURCE ";
+    if ( $::PACKAGELIST ) {
+        @pkglist = split(/,/, $::PACKAGELIST);
+		$custcmd .= "-a filesets=\"";
+		foreach my $p (@pkglist) {
+			$custcmd .= " $p";
+		}
+		$custcmd .= "\"";
+			
+    }
+	
+	if ( $::BUNDLES ) {
+
+        my @bndlist = split(/,/, $::BUNDLES);
+        foreach my $bnd (@bndlist) {
+
+			# check if bundles defined locally
+			if (!grep(/^$bnd$/, @nimresources)) {
+				# try to define it
+				my $bcmd = "/usr/sbin/nim -Fo define -t installp_bundle -a server=master -a location=$bndloc{$bnd} $bnd";
+
+				my $output = xCAT::Utils->runcmd("$bcmd", -1);
+				if ($::RUNCMD_RC  != 0) {
+					my $rsp;
+					push @{$rsp->{data}}, "$Sname: Could not create bundle resource $bnd.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return 1;
+				}
+			}
+			# need a separate -a for each one ! 
+			$custcmd .= " -a installp_bundle=$bnd ";		
+        }
+    }
+
+	# for each node run NIM -o cust operation
+	foreach my $n (@nodelist) {
+		# TODO - check if machine is defined???
+
+		# run the cust cmd - one for each node???
+		my $cmd .= "$custcmd  $n";
+
+		my $output = xCAT::Utils->runcmd("$cmd", -1);
+		if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "$Sname: Could not customize node $n.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3 readBNDfile
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub  readBNDfile
+{
+	my $callback = shift;
+	my $BNDname = shift;
+	my $nimprime = shift;
+
+	my $junk;
+	my @pkglist,
+	my $pkgname;
+
+	# get the location of the file from the NIM resource definition
+	my $bnd_file_name = &get_nim_attr_val($BNDname, 'location', $callback, $nimprime);
+
+	# open the file
+	unless (open(BNDFILE, "<$bnd_file_name")) {
+		return (1);
+	}
+
+	# get the names of the packages
+	while (my $l = <BNDFILE>) {
+
+		chomp $l;
+
+		# skip blank and comment lines
+        next if ($l =~ /^\s*$/ || $l =~ /^\s*#/);
+
+		# bnd file entries look like - I:openssl.base or R:foobar.rpm
+		if (grep(/:/, $l)) {
+			($junk, $pkgname) = split(/:/, $l);
+			push (@pkglist, $pkgname);
+			#push (@pkglist, $l);  # keep the I & R??? - NO
+
+		}
+	}
+	close(BNDFILE);
+
+	return (0, \@pkglist, $bnd_file_name);
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   prenimnodeset
+
+        Preprocessing for the nimnodeset & mkdsklsnode command.
+
+		Runs on the xCAT management node only!
+
+        Arguments:
+        Returns:
+                 - OK
+                 - error
+        Globals:
+        Example:
+        Comments:
+			- Gather info from the management node and/or the NIM 
+			 	primary server and pass it along to the requests that
+			 	go to the service nodes.
+			- If needed, copy NIM files to the service nodes
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub prenimnodeset
+{
+    my $callback = shift;
+    my $command = shift;
+    my $error=0;
+
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+		if ($command eq 'mkdsklsnode') {
+        	&mkdsklsnode_usage($callback);
+		} else {
+			&nimnodeset_usage($callback);
+        }
+        return (2);
+    }
+
+	# parse the options
+    if(!GetOptions(
+        'f|force'   => \$::FORCE,
+        'h|help'    => \$::HELP,
+        'i=s'       => \$::OSIMAGE,
+        'n|new'     => \$::NEWNAME,
+        'verbose|V' => \$::VERBOSE,
+        'v|version' => \$::VERSION,))
+    { 
+		return (1); 
+	}
+
+	if ($::HELP) {
+		if ($command eq 'mkdsklsnode') {
+        	&mkdsklsnode_usage($callback);
+		} else {
+			&nimnodeset_usage($callback);
+		}
+        return (2);
+    }
+
+    # display the version statement if -v or --verison is specified
+    if ($::VERSION)
+    {
+        my $version=xCAT::Utils->Version();
+        my $rsp;
+		if ($command eq 'mkdsklsnode') {
+        	push @{$rsp->{data}}, "mkdsklsnode $version\n";
+		} else {
+			push @{$rsp->{data}}, "nimnodeset $version\n";
+		}
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+        return (2);
+    }
+
+	if (!$::OSIMAGE) {
+		if ($command eq 'mkdsklsnode') {
+            &mkdsklsnode_usage($callback);
+        } else {
+            &nimnodeset_usage($callback);
+        }
+		return (1);
+	}
+
+	my @nodelist;
+    my %objtype;
+    my %objhash;
+    my %attrs;
+
+	# the first arg should be a noderange - the other should be attr=val
+    #  - put attr=val operands in %attrs hash
+    while (my $a = shift(@ARGV))
+    {
+        if (!($a =~ /=/))
+        {
+            @nodelist = &noderange($a, 0);
+        }
+        else
+        {
+            # if it has an "=" sign its an attr=val - we hope
+            my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+            if (!defined($attr) || !defined($value))
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
+            }
+            # put attr=val in hash
+            $attrs{$attr} = $value;
+        }
+    }
+
+	my $Sname;
+	($Sname = hostname()) =~ s/\..*$//;
+	chomp $Sname;
+
+    # make sure the nodes are resolvable
+    #  - if not then exit
+    foreach my $n (@nodelist) {
+        my $packed_ip = gethostbyname($n);
+        if (!$packed_ip) {
+            my $rsp;
+            $rsp->{data}->[0] = "$Sname: Could not resolve node $n.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    }
+
+	#
+	# get all the attrs for these node definitions
+	#
+    foreach my $o (@nodelist)
+    {
+        $objtype{$o} = 'node';
+    }
+    %objhash = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
+    if (!defined(%objhash))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get xCAT object definitions.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return (1);
+    }
+
+	#
+	# Get the network info for each node
+	#
+    my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist, $callback);
+    if (!defined(%nethash))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get xCAT network definitions for one or
+ more nodes.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return (1);
+    }
+
+	#
+	# get a list of os images 
+	#
+	my @image_names;  # list of osimages needed
+    my %nodeosi;  # hash of osimage for each node
+    foreach my $node (@nodelist) {
+        if ($::OSIMAGE){
+            # from the command line
+            $nodeosi{$node} = $::OSIMAGE;
+        } else {
+            if ( $objhash{$node}{profile} ) {
+                $nodeosi{$node} = $objhash{$node}{profile};
+            } else {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not determine an OS image name for node \'$node\'.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                next;
+            }
+        }
+        if (!grep (/^$nodeosi{$node}$/, @image_names)) {
+            push(@image_names, $nodeosi{$node});
+        }
+    }
+
+    #
+	# get the primary NIM master - default to management node
+	#
+	my $nimprime = xCAT::Utils->get_site_Master();
+    my $sitetab = xCAT::Table->new('site');
+    (my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
+    if ($et and $et->{value}) {
+        $nimprime = $et->{value};
+		
+    }
+	chomp $nimprime;
+
+	#
+	#  Get a list of all nim resource types
+	#
+	my $cmd;
+	if (&is_me($nimprime)) {
+		$cmd = qq~/usr/sbin/lsnim -P -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+	} else { 
+		#  ######  TODO   ######
+		#  change dsh to xCAT xdsh equiv
+		$cmd = qq~/usr/bin/dsh -n $nimprime "/usr/sbin/lsnim -P -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null"~;
+	}
+
+    my @nimrestypes = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get NIM resource definitions.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return (1);
+    }
+
+	#
+	# get the image defs from the DB
+	#
+	my %lochash;
+	my %imghash;
+	my %objtype;
+	foreach my $m (@image_names) {
+		$objtype{$m} = 'osimage';
+	}
+	%imghash = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
+	if (!defined(%imghash)) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get xCAT osimage definitions.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return (1);
+	}
+
+	#
+	# modify the image hash with whatever was passed in with attr=val
+	#	- also add xcataixpost if appropriate
+	#
+	my $add_xcataixpost = 0;
+	if (%attrs) {
+ 		foreach my $i (@image_names) {
+			foreach my $restype (keys %{$imghash{$i}} ) {
+				if ( $attrs{$restype} ) {
+					$imghash{$i}{$restype} = $attrs{$restype};
+				}
+			}
+		}
+	}
+
+	# add the "xcataixpost" script to each image def for standalone systems
+	foreach my $i (@image_names) {
+		if ( $imghash{$i}{nimtype} =~ /standalone/) {
+			# add it to the list of scripts for this image
+			$imghash{$i}{'script'} .= "xcataixpost";
+
+			# also make sure to create the resource
+			$add_xcataixpost++;
+		}
+	}
+
+	#
+	# create a hash containing the locations of the NIM resources 
+	#	that are used for each osimage
+	# - the NIM resource names are unique!
+	#
+	foreach my $i (@image_names) {
+		foreach my $restype (keys %{$imghash{$i}} ) {
+			my @reslist;
+			if ( grep (/^$restype$/, @nimrestypes) ) {
+				# spot, mksysb etc.
+				my $resname = $imghash{$i}{$restype};
+
+				# if comma list - split and put in list
+				if ($resname) {
+					foreach (split /,/,$resname) {
+						chomp $_;
+						push (@reslist, $_);
+					}
+				}
+			}
+
+			foreach my $res (@reslist) {
+				# go to primary NIM master to get resource defs and 
+				#	pick out locations
+				# TODO - handle NIM prime!!
+				my $loc = &get_nim_attr_val($res, "location", $callback, $nimprime);
+
+				# add to hash
+				$lochash{$res} = "$loc";
+			}
+		}
+	}
+
+	#
+    # create a NIM script resource using the xcataixpost script
+	#
+	if ($add_xcataixpost) {  # if we have at least one standalone node
+    	my $resname = "xcataixpost";
+    	my $respath = "/install/postscripts/xcataixpost";
+    	if (&mkScriptRes($resname, $respath, $nimprime, $callback) != 0) {
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not create a NIM resource for xcataixpost.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return (1);
+    	}
+		$lochash{$resname} = "/install/postscripts/xcataixpost";
+	}
+
+	#####################################################
+	#
+	#	Copy files/dirs to remote service nodes so they can be
+	#		defined locally when this cmd runs there 
+	#
+	######################################################
+	if (&doSNcopy($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash, \%nodeosi)) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not copy NIM resources to the xCAT service nodes.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return (1);
+	}
+
+	# pass this along to the process_request routine
+	return (0, \%objhash, \%nethash, \%imghash, \%lochash, \%attrs);
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   doSNcopy
+
+        Copy NIM resource files/dirs to remote service nodes so they can be
+           defined locally
 
         Arguments:
         Returns:
@@ -2690,14 +3663,204 @@ sub update_dd_boot {
 =cut
 
 #-----------------------------------------------------------------------------
+sub doSNcopy
+{
+	my $callback = shift;
+    my $nodes = shift;
+	my $nimprime = shift;
+	my $restypes = shift;
+    my $imaghash = shift;
+    my $locs = shift;
+	my $nosi = shift;
+
+    my %lochash = %{$locs};
+    my %imghash = %{$imaghash};
+    my @nodelist = @$nodes;
+	my @nimrestypes = @$restypes;
+	my %nodeosi = %{$nosi};
+
+	#
+	#  Get a list of nodes for each service node
+	#
+	my $sn = xCAT::Utils->get_ServiceNode(\@nodelist, "xcat", "MN");
+	if ($::ERROR_RC) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	#
+	# Get a list of images for each SN
+	#
+	my %SNosi;
+	foreach my $snkey (keys %$sn) {
+		my @nodes = @{$sn->{$snkey}};
+		foreach my $n (@nodes) {
+			push (@{$SNosi{$snkey}}, $nodeosi{$n});
+		}
+	}
+
+	#
+	#  For each SN
+	#	- copy whatever is needed to the SNs
+	#
+	my @nimresources;
+	foreach my $snkey (keys %$sn) {
+
+		if (!&is_me($snkey) ) {
+			# if the SN is some other node then I need to copy
+			# 	some NIM files/dir to the remote SN - so that
+			#	the NIM res defs can be created when the rest of this cmd
+			# 	runs on that SN
+
+			# get a list of the resources that are defined on the SN
+			########## TODO  ###########
+			# switch to xdsh - or whatever
+			my $cmd = qq~/usr/bin/dsh -n $snkey "/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null"~;
+
+    		@nimresources = xCAT::Utils->runcmd("$cmd", -1);
+    		if ($::RUNCMD_RC  != 0)
+    		{
+        		my $rsp;
+        		push @{$rsp->{data}}, "Could not get NIM resource definitions.";
+        		xCAT::MsgUtils->message("E", $rsp, $callback);
+        		return 1;
+    		}
+
+			# for each image
+			foreach my $image (@{$SNosi{$snkey}}) {
+
+				# for each resource
+				foreach my $restype (keys (%{$imghash{$image}})) {
+
+					# if a valid NIM type and a value is set
+					if (($imghash{$image}{$restype}) && (grep(/^$restype$/, @nimrestypes))) {
+						# could have a comma separated list - ex. script etc.
+					  	foreach my $res (split /,/, $imghash{$image}{$restype}) {
+							chomp $res;
+
+							# if the resources are not defined on the SN
+							###########  TODO - need to handle a force option !!!!
+							if (!grep(/^$res$/, @nimresources)) {
+
+								# copy appropriate files to the SN
+								# use same location on all NIM servers
+								# rcp dirs/files to corresponding dirs on each SN
+								# rcp creates local dirs if needed
+								my $rcpcmd;
+								if ( $restype eq "lpp_source") {
+									# get the location on the NIM primary
+									my $resloc = $lochash{$res};
+
+									# rcp the whole dir from the NIM primary to 
+									# 	the service node
+									#  do we have to check if SN is NIMprime??
+									my $snIP = inet_ntoa(inet_aton($snkey));
+									chomp $snIP;
+									if ( !&is_me($nimprime)) {
+										# if NIM primary is another system
+										$rcpcmd = qq~/usr/bin/dsh -n $nimprime "/usr/bin/rcp -r $resloc/* $snkey:$resloc" 2>/dev/null~;
+									} else {
+										$rcpcmd = qq~/usr/bin/rcp -r $resloc/* $snkey:$resloc 2>/dev/null~;
+									}
+									my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+									if ($::RUNCMD_RC  != 0) {
+										my $rsp;
+        								push @{$rsp->{data}}, "Could not copy NIM resources to $snkey.\n";
+        								xCAT::MsgUtils->message("E", $rsp, $callback);
+        								return 1;
+									}
+								}
+
+								#  These all have a NIM location value that 
+								#	includes a file name
+								my @dorestypes=("mksysb", "resolv_conf", "script", "installp_bundle", "bosinst_data");
+								if (grep(/^$restype$/, @dorestypes)) {
+									my $resloc = $lochash{$res};
+
+									# the location includes the filename	
+									# get the dir name
+									my $dir = dirname($resloc);
+									chomp $dir;
+
+									if ( !&is_me($nimprime)) {
+                                    	# if NIM primary is another system
+                                    	$rcpcmd = qq~/usr/bin/dsh -n $nimprime "/usr/bin/rcp $resloc $snkey:$dir 2>/dev/null"~;
+
+									} else {
+										$rcpcmd = qq~/usr/bin/rcp $resloc $snkey:$dir 2>/dev/null~;
+									}
+							   		my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+                                	if ($::RUNCMD_RC  != 0) {
+                                    	my $rsp;
+                                    	push @{$rsp->{data}}, "Could not copy NIM resources to $snkey.\n";
+                                    	xCAT::MsgUtils->message("E", $rsp, $callback);
+                                    	return 1;
+                                	}
+								}
+							} # end - if res not defined
+					  	} # end foreach resource of this type
+					} # end - if it's a valid res type
+				} # end - for each resource
+			} # end - for each image
+		} # end - if the SN is not me
+	} # end - for each SN
+
+	return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   mkdsklsnode
+
+        Support for the mkdsklsnode command.
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Example:
+        Comments:
+
+		This runs on the service node in a hierarchical env
+
+=cut
+
+#-----------------------------------------------------------------------------
 sub mkdsklsnode 
 {
 	my $callback = shift;
-	my $sub_req = shift;
+	my $nodes = shift;
+	my $nodehash = shift;
+	my $nethash = shift;
+	my $imaghash = shift;
+	my $locs = shift;
+
+	my %lochash = %{$locs};
+	my %objhash = %{$nodehash};
+	my %nethash = %{$nethash};
+	my %imagehash = %{$imaghash};
+	my @nodelist = @$nodes;
 
 	my $error=0;
 	my @nodesfailed;
 	my $image_name;
+
+	my $Sname = hostname();
+
+	# make sure the nodes are resolvable
+	#  - if not then exit
+	foreach my $n (@nodelist) {
+		my $packed_ip = gethostbyname($n);
+		if (!$packed_ip) {
+			my $rsp;
+			$rsp->{data}->[0] = "$Sname: Could not resolve node $n.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	}
 
 	# some subroutines require a global callback var
 	#	- need to change to pass in the callback 
@@ -2720,39 +3883,16 @@ sub mkdsklsnode
 		'verbose|V' => \$::VERBOSE,
 		'v|version' => \$::VERSION,))
 	{
-		&mkdsklsnode_usage($callback);
 		return 1;
 	}
 
-	if ($::HELP) {
-		&mkdsklsnode_usage($callback);
-		return 0;
-	}
-
-	# display the version statement if -v or --verison is specified
-    if ($::VERSION)
-    {
-		my $version=xCAT::Utils->Version();
-        my $rsp;
-        push @{$rsp->{data}}, "mkdsklsnode $version\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-        return 0;
-    }
-
-	my @nodelist;
 	my %objtype;
-	my %objhash;
 	my %attrs;
 
-	# the first arg should be a noderange - the other should be attr=val
     #  - put attr=val operands in %attrs hash
     while (my $a = shift(@ARGV))
     {
-        if (!($a =~ /=/))
-        {
-			@nodelist = &noderange($a, 0);
-        }
-        else
+        if ($a =~ /=/)
         {
             # if it has an "=" sign its an attr=val - we hope
             my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
@@ -2768,33 +3908,9 @@ sub mkdsklsnode
         }
     }
 
-	# get all the attrs for these node definitions
-	foreach my $o (@nodelist)
-	{
-		$objtype{$o} = 'node';
-	}
-	%objhash = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
-	if (!defined(%objhash))
-	{
-		my $rsp;
-		push @{$rsp->{data}}, "Could not get xCAT object definitions.\n";
-	    xCAT::MsgUtils->message("E", $rsp, $callback);
-    	return 1;
-	}
-
-	#Get the network info for each node
-	my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist, $callback);
-	if (!defined(%nethash))
-	{
-		my $rsp;
-		push @{$rsp->{data}}, "Could not get xCAT network definitions for one or more nodes.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
-	}
-
-   
     #
     #  Get a list of the defined NIM machines
+	#    these are machines defined on the SN! 
     #
 	my @machines = [];
     my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/nu
@@ -2803,42 +3919,60 @@ ll~;
     @machines = xCAT::Utils->runcmd("$cmd", -1);
 	# don't fail - maybe just don't have any defined!
 
-	my $error=0;
-	my @nodesfailed;
-	foreach my $node (keys %objhash)
-	{
-		# get the image name to use for this node
-		# either from cmd line or node def
+	#
+	# get all the image names and create a hash of osimage 
+	#	names for each node
+	#
+	my @image_names;
+	my %nodeosi;
+	foreach my $node (@nodelist) {
 		if ($::OSIMAGE){
 			# from the command line
-			$image_name=$::OSIMAGE;
+			$nodeosi{$node} = $::OSIMAGE;
 		} elsif ( $objhash{$node}{profile} ) {
-			# from the node definition
-			$image_name=$objhash{$node}{profile};
-		} else {
-			my $rsp;
-            push @{$rsp->{data}}, "Could not determine an OS image name for node \'$node\'.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-			push(@nodesfailed, $node);
-			$error++;
-			next;
+			$nodeosi{$node} = $objhash{$node}{profile};
 		}
-		chomp $image_name;
+		if (!grep (/^$nodeosi{$node}$/, @image_names)) {
+			push(@image_names, $nodeosi{$node});
+		}
+	}
+	
+	if (scalar(@image_names) == 0)  {
+		# if no images then error
+		my $rsp;
+		push @{$rsp->{data}}, "Could not determine which xCAT osimage to use.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
 
-		# get the osimage definition
-		#  getobjdefs does caching
-		my %objtype;
-		$objtype{$image_name} = 'osimage';
-    	my %imagehash = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
-		if (!defined(%imagehash))
-		{
-			my $rsp;
-			push @{$rsp->{data}}, "Could not get an osimage definition for \'$image_name\'.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			push(@nodesfailed, $node);
-			$error++;
-			next;
-		}
+	#
+    # get the primary NIM master - default to management node
+    #
+    my $nimprime = xCAT::Utils->get_site_Master();
+    my $sitetab = xCAT::Table->new('site');
+    (my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
+    if ($et and $et->{value}) {
+        $nimprime = $et->{value};
+
+    }
+
+	#
+	# if this isn't the NIM primary then make sure the local NIM defs 
+	#	have been created etc.
+	#
+	if (!&is_me($nimprime)) {
+		&make_SN_resource($callback, \@nodelist, \@image_names, \%imagehash, \%lochash);
+	}
+
+	#
+	# define and initialize the diskless/dataless nodes
+	#
+	my $error=0;
+	my @nodesfailed;
+	foreach my $node (@nodelist) 
+	{
+		my $image_name = $nodeosi{$node};
+		chomp $image_name;
 
 		# set the NIM machine type
 		my $type="diskless";
@@ -2850,14 +3984,14 @@ ll~;
 		if ( ($type =~ /standalone/) ) {
             #error - only support diskless/dataless
             my $rsp;
-            push @{$rsp->{data}}, "Use the nimnodeset command to initialize standalone type nodes.\n";
+            push @{$rsp->{data}}, "Use the nimnodeset command to initialize NIM standalone type nodes.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             $error++;
             push(@nodesfailed, $node);
             next;
         }
 		
-		# generate new NIM client name
+		# generate a NIM client name
 		my $nim_name;
 		if ($::NEWNAME) {
 			# generate a new nim name 
@@ -2871,16 +4005,16 @@ ll~;
 		}
 		chomp $nim_name;
 
-		# need short host name for NIM cmds 
+		# need the short host name for NIM cmds 
         my $nodeshorthost;
         ($nodeshorthost = $node) =~ s/\..*$//;
         chomp $nodeshorthost;
 
-		# 
-		#  define/initialize the new machine
+		#
+		#  define the new NIM machine
 		#
 
-		# see if it's already defined
+		# 	see if it's already defined first
 		if (grep(/^$nim_name$/, @machines)) { 
 			if ($::FORCE) {
 				# get rid of the old definition
@@ -2927,6 +4061,7 @@ ll~;
 
 		# check for required attrs
 		if (($type ne "standalone")) {
+
 			# mask, gateway, cosi, root, dump, paging
 			if (!$nethash{$node}{'mask'} || !$nethash{$node}{'gateway'} || !$imagehash{$image_name}{spot} || !$imagehash{$image_name}{root} || !$imagehash{$image_name}{dump}) {
 				my $rsp;
@@ -2951,6 +4086,7 @@ ll~;
 		}	
 
 		# set some default values
+		# overwrite with cmd line values - if any
 		my $speed="100";
        	my $duplex="full";
 		if ($attrs{duplex}) {
@@ -3038,7 +4174,7 @@ ll~;
 	#	if ($::VERBOSE) {
 			my $rsp;
 			push @{$rsp->{data}}, "Initializing NIM machine \'$nim_name\'. This could take a while.\n";
-			push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
+			#push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
 	#	}
 
@@ -3055,9 +4191,11 @@ ll~;
 			push(@nodesfailed, $node);
 			next;
        	}
-	}
+	} # end - for each node
 
+	#
 	# update the node definitions with the new osimage - if provided
+	#
 	my %nodeattrs;
 	if ($::OSIMAGE) {
 		foreach my $node (keys %objhash) {
@@ -3065,7 +4203,7 @@ ll~;
 			if (!grep(/^$node$/, @nodesfailed)) {
 				# change the node def if we were successful
 				$nodeattrs{$node}{objtype} = 'node';
-				$nodeattrs{$node}{profile} = $image_name;
+				$nodeattrs{$node}{profile} = $::OSIMAGE;
 			}
 		}
 		if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0) {
@@ -3076,7 +4214,9 @@ ll~;
 		}
 	}
 
+	#
 	# update the .rhosts file on the server so the rcp from the node works
+	#
 	if (&update_rhosts(\@nodelist, $callback) != 0) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not update the /.rhosts file.\n";
@@ -3084,6 +4224,9 @@ ll~;
 		$error++;
     }
 
+	#
+	# process any errors
+	#
 	if ($error) {
 		my $rsp;
 		push @{$rsp->{data}}, "One or more errors occurred when attempting to initialize AIX NIM diskless nodes.\n";
@@ -3104,6 +4247,262 @@ ll~;
 
  		return 0;
 	}
+
+	return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   make_SN_resource 
+
+		See if the required NIM resources are created on the local server.
+		
+		Create local definitions if necessary.
+			- use files copied down from the NIM primary id applicable
+
+		Runs only on service nodes that are not the NIM primary
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub make_SN_resource
+{
+	my $callback = shift;
+	my $nodes = shift;
+	my $images = shift;
+	my $imghash = shift;
+	my $lhash = shift;
+
+	my @nodelist = @{$nodes};
+	my @image_names = @{$images};
+	my %imghash; # hash of osimage defs
+	my %lochash; # hash of res locations
+	if ($imghash) {
+		%imghash = %{$imghash};
+	}
+	if ($lhash) {
+		%lochash = %{$lhash};
+	}
+
+	my $cmd;
+	
+	my $SNname = hostname();
+
+	#
+	# get list of valid NIM resource types
+	#
+	$cmd = qq~/usr/sbin/lsnim -P -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+	my @nimrestypes = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get NIM resource types on \'$SNname\'.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	#
+	# get the local defined res names
+	#
+	$cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+	my @nimresources = xCAT::Utils->runcmd("$cmd", -1);
+	if ($::RUNCMD_RC  != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get NIM resource definitions on \'$SNname\'.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	#
+	# go through each osimage needed on this server 
+	#	- if the NIM resource is not already defined then define it
+	#
+
+	# for each image
+	foreach my $image (@image_names) {
+
+		# for each resource
+		foreach my $restype (keys (%{$imghash{$image}})) {
+
+			# if a valid NIM type and a value is set
+			if (($imghash{$image}{$restype}) && (grep(/^$restype$/, @nimrestypes))) {
+
+				# only support (bosinst_data, dump, home, mksysb,
+				#	installp_bundle, lpp_source, script, paging
+				#	root, shared_home, spot, tmp, resolv_conf)
+
+				# if root, tmp, home, shared_home, dump, paging then
+				# ???? does it matter that dkls_init also will try to create
+				#	root, dump, paging?????
+				my @dir_res=('root', 'tmp', 'home', 'shared_home', 'dump', 'paging');
+				if (grep(/^$restype$/, @dir_res) ) {
+
+					# if the resource is not defined on the SN ( TODO - force??)
+					if (!grep(/^$imghash{$image}{$restype}$/, @nimresources)) {
+						if (&mknimres($imghash{$image}{$restype}, $restype, $callback, $lochash{$imghash{$image}{$restype}}) != 0) {
+							next;
+						}
+					}
+				}
+
+				if ($restype eq "lpp_source" ) {
+					# if the resource is not defined on the SN ( TODO - force??)
+                    if (!grep(/^$imghash{$image}{$restype}$/, @nimresources)) {
+						# if lpp_source - use copied dir
+						# check for loc dir
+						if ( -d $lochash{$imghash{$image}{$restype}} ) {
+							my $cmd = "/usr/sbin/nim -Fo define -t lpp_source -a server=master -a location=$lochash{$imghash{$image}{$restype}} $imghash{$image}{$restype}";
+							my $output = xCAT::Utils->runcmd("$cmd", -1);
+							if ($::RUNCMD_RC  != 0) {
+								my $rsp;
+								push @{$rsp->{data}}, "Could not create NIM resource $imghash{$image}{$restype} on $SNname \n";
+								xCAT::MsgUtils->message("E", $rsp, $callback);
+							}
+						}
+					}
+				}
+
+				# if installp_bundle, script then could have multiple names
+				#		so the imghash name must be split 
+				#  the lochash is based on names 
+				if (($restype eq "installp_bundle") || ($restype eq "script") ) {
+					foreach my $res (split /,/, $imghash{$image}{$restype}) {
+						# if the resource is not defined on the SN
+						if (!grep(/^$res$/, @nimresources)) {
+							if ( -e $lochash{$res} ) {
+								my $cmd = "/usr/sbin/nim -Fo define -t $restype -a server=master -a location=$lochash{$res}  $res";
+
+								my $output = xCAT::Utils->runcmd("$cmd", -1);
+								if ($::RUNCMD_RC  != 0) {
+									my $rsp;
+									push @{$rsp->{data}}, "Could not create NIM resource $res on $SNname \n";
+									xCAT::MsgUtils->message("E", $rsp, $callback);
+								}
+							}
+						}
+					}
+				}
+
+				# if mksysb, resolv_conf, bosinst_data  then
+				#   the last part of the location is the actual file name
+				my @usefileloc = ("mksysb", "resolv_conf", "bosinst_data");
+				if (grep(/^$restype$/, @usefileloc) ) {
+					# if the resource is not defined on the SN ( TODO - force??)
+                    if (!grep(/^$imghash{$image}{$restype}$/, @nimresources)) {
+						if ( -e $lochash{$imghash{$image}{$restype}} ) {
+							my $cmd = "/usr/sbin/nim -Fo define -t $restype -a server=master -a location=$lochash{$imghash{$image}{$restype}} $imghash{$image}{$restype}";
+							my $output = xCAT::Utils->runcmd("$cmd", -1);
+							if ($::RUNCMD_RC  != 0) {
+								my $rsp;
+								push @{$rsp->{data}}, "Could not create NIM resource $imghash{$image}{$restype} on $SNname \n";
+								xCAT::MsgUtils->message("E", $rsp, $callback);
+							}
+						}
+					}
+				}
+
+				# if spot 
+				if ($restype eq "spot" ) {
+
+					# if the resource is not defined on the SN ( TODO - force??)
+                    if (!grep(/^$imghash{$image}{$restype}$/, @nimresources)) {
+
+						# make sure the lpp_source has already been created
+						if (!grep(/^$imghash{$image}{'lpp_source'}$/, @nimresources)) {
+							if ( -d $lochash{$imghash{$image}{'lpp_source'}} ) {
+                            	my $lpp_cmd = "/usr/sbin/nim -Fo define -t lpp_source -a server=master -a location=$lochash{$imghash{$image}{'lpp_source'}} $imghash{$image}{'lpp_source'}";
+								my $output = xCAT::Utils->runcmd("$lpp_cmd", -1);
+								if ($::RUNCMD_RC  != 0) {
+									my $rsp;
+									push @{$rsp->{data}}, "Could not create NIM resource $imghash{$image}{'lpp_source'} on $SNname \n";
+									xCAT::MsgUtils->message("E", $rsp, $callback);
+								}
+							}
+						}
+
+						# build spot from lpp_source
+						# location for spot is odd
+						# ex. /install/nim/spot/611image/usr
+						# want /install/nim/spot for loc when creating new one
+						my $loc = dirname(dirname($lochash{$imghash{$image}{$restype}}));
+						chomp $loc;
+						my $spotcmd = "/usr/sbin/nim -o define -t spot -a server=master -a source=$imghash{$image}{'lpp_source'} -a location=$loc $imghash{$image}{$restype}";
+						my $output = xCAT::Utils->runcmd("$spotcmd", -1);
+						if ($::RUNCMD_RC  != 0) {
+							my $rsp;
+							push @{$rsp->{data}}, "Could not create NIM resource $imghash{$image}{$restype} on $SNname \n";
+							xCAT::MsgUtils->message("E", $rsp, $callback);
+						}
+					}
+				} # end  - if spot
+			} # end - if valid NIM res type
+		} # end - for each restype in osimage def
+	} # end - for each image
+
+	return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   prermdsklsnode
+
+        Preprocessing for the mkdsklsnode command.
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+				2 - done processing this cmd
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub prermdsklsnode
+{
+	my $callback = shift;
+
+    if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &rmdsklsnode_usage($callback);
+        return 2;
+    }
+
+	# parse the options
+    if(!GetOptions(
+        'f|force'   => \$::FORCE,
+        'h|help'     => \$::HELP,
+        'i=s'       => \$::opt_i,
+        'verbose|V' => \$::VERBOSE,
+        'v|version'  => \$::VERSION,))
+    {
+        &rmdsklsnode_usage($callback);
+        return 1;
+    }
+
+    if ($::HELP) {
+        &rmdsklsnode_usage($callback);
+        return 2;
+    }
+
+	# display the version statement if -v or --verison is specified
+    if ($::VERSION)
+    {
+        my $version=xCAT::Utils->Version();
+        my $rsp;
+        push @{$rsp->{data}}, "rmdsklsnode $version\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+        return 2;
+    }
+
+	return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -3118,12 +4517,6 @@ ll~;
         Returns:
                 0 - OK
                 1 - error
-        Globals:
-
-        Error:
-
-        Example:
-
         Comments:
 
 			rmdsklsnode [-V] [-f | --force] {-i image_name} noderange
@@ -3157,21 +4550,6 @@ sub rmdsklsnode
     {
         &rmdsklsnode_usage($callback);
         return 1;
-    }
-
-    if ($::HELP) {
-        &rmdsklsnode_usage($callback);
-        return 0;
-	}
-
-	# display the version statement if -v or --verison is specified
-    if ($::VERSION)
-    {
-		my $version=xCAT::Utils->Version();
-        my $rsp;
-        push @{$rsp->{data}}, "rmdsklsnode $version\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-        return 0;
     }
 
     my $a = shift @ARGV;
@@ -3355,6 +4733,29 @@ sub rmnimimage_usage
 
 #----------------------------------------------------------------------------
 
+=head3  nimnodecust_usage
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub nimnodecust_usage
+{
+    my $callback = shift;
+
+	my $rsp;
+    push @{$rsp->{data}}, "\n  nimnodecust - Use this xCAT command to customize AIX \n\t\t\tstandalone nodes.";
+    push @{$rsp->{data}}, "  Usage: ";
+    push @{$rsp->{data}}, "\tnimnodecust [-h | --help ]";
+    push @{$rsp->{data}}, "or";
+    push @{$rsp->{data}}, "\tnimnodecust [-V] [ -s lpp_source_name ]\n\t\t[-p packages] [-b installp_bundles] noderange [attr=val [attr=val ...]]\n";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+    return 0;
+
+}
+
+#----------------------------------------------------------------------------
+
 =head3  nimnodeset_usage
 
 =cut
@@ -3373,6 +4774,50 @@ sub nimnodeset_usage
     push @{$rsp->{data}}, "\tnimnodeset [-V] [-f|--force] [ -i osimage_name]\n\t\tnoderange [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  is_me
+
+	returns 1 if the hostname is the node I'm running on
+
+    Arguments:
+        none
+    Returns:
+        1 -  this is the node I'm running on
+        0 -  this is not the node I'm running on
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (&is_me(&somehostname)) { blah; }
+    Comments:
+        none
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub is_me
+{
+    my $name = shift;
+
+	my $hn = hostname();
+	chomp $hn;
+    my $myIP = inet_ntoa(inet_aton($hn));
+    chomp $myIP;
+
+	my $nameIP = inet_ntoa(inet_aton($name));
+	chomp $nameIP;
+
+	if ($nameIP eq $myIP) {
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 1;

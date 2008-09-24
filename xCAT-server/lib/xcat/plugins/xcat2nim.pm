@@ -8,6 +8,7 @@
 
 package xCAT_plugin::xcat2nim;
 
+use Sys::Hostname;
 use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::Utils;
@@ -76,35 +77,46 @@ sub preprocess_request
     my $cb  = shift;
     my %sn;
     if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
-    my $nodes    = $req->{node};
+    my $nodes    = $req->{node}; # this may not be the list of nodes we need!
+	my $command  = $req->{command}->[0];
+	$::args     = $req->{arg};
     my $service  = "xcat";
 	my @requests;
 
-	if ($nodes) {
-		# find service nodes for requested nodes
-    	# build an individual request for each service node
-    	my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+	if ($command =~ /xcat2nim/) {
+		
+		# handle -h etc.
+		#  list of nodes could be derived multiple ways!!
+		my ($ret, $mynodes) = &prexcat2nim($cb);
 
-    	# build each request for each service node
-    	foreach my $snkey (keys %$sn)
-    	{
-    		my $n=$sn->{$snkey};
-            my $reqcopy = {%$req};
-            $reqcopy->{node} = $sn->{$snkey};
-            $reqcopy->{'_xcatdest'} = $snkey;
-            push @requests, $reqcopy;
-    	}
+		if ( $ret ) { # either error or -h was processed etc.
+			my $rsp;
+			if ($ret eq "1") {
+        		$rsp->{errorcode}->[0] = $ret;
+            	push @{$rsp->{data}}, "Return=$ret.";
+        		xCAT::MsgUtils->message("E", $rsp, $cb, $ret);
+			}
+            return undef;
+        } else {
+			if ($mynodes) {
+				# set up the requests to go to the service nodes
+            	#   all get the same request
+				# get the hash of service nodes - for the nodes that were provided
+				my $sn;
+				$sn = xCAT::Utils->get_ServiceNode($mynodes, $service, "MN");
+            	foreach my $snkey (keys %$sn) {
+                	my $reqcopy = {%$req};
+                	$reqcopy->{node} = $sn->{$snkey};
+                	$reqcopy->{'_xcatdest'} = $snkey;
 
-	} else {
-		# process this request on the management node
-		# read the site table - master attrib
-        my $master = xCAT::Utils->get_site_Master();
-		my $reqcopy = {%$req};
-        $reqcopy->{'_xcatdest'} = $master;
-        push @requests, $reqcopy;
-	}
-
-    return \@requests;
+                	push @requests, $reqcopy;
+            	}
+            	return \@requests;
+			}
+        }
+    }
+			
+    return undef;
 }
 
 #----------------------------------------------------------------------------
@@ -133,7 +145,7 @@ sub process_request
 {
 
     $::request  = shift;
-    $::callback = shift;
+    my $callback = shift;
 
     my $ret;
     my $msg;
@@ -144,16 +156,127 @@ sub process_request
     $::args     = $::request->{arg};
     $::filedata = $::request->{stdin}->[0];
 
-   ($ret, $msg) = &x2n($::callback);
-
-    if ($msg)
-    {
-        $rsp->{data}->[0] = $msg;
-        $::callback->($rsp);
-    }
+   ($ret, $msg) = &x2n($callback);
 	if ($ret > 0) {
+		my $rsp;
 		$rsp->{errorcode}->[0] = $ret;
+		push @{$rsp->{data}}, "Return=$ret.";
+		xCAT::MsgUtils->message("E", $rsp, $callback, $ret);
 	}
+	return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   prexcat2nim
+
+        Preprocessing for the xcat2nim command.
+
+        Arguments:
+        Returns:
+                0 - OK - needs further processing
+                1 - error - done processing this cmd
+                2 - help or version - done processing this cmd
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub prexcat2nim
+{
+	my $callback = shift;
+
+	$::callback = $callback;
+
+	my @nodelist;  # pass back list of nodes
+
+	$::msgstr = "";
+
+    if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+		&xcat2nim_usage;
+        return 1;
+    }
+
+	Getopt::Long::Configure("no_pass_through");
+    if (
+        !GetOptions(
+                    'all|a'     => \$::opt_a,
+                    'f|force'   => \$::FORCE,
+                    'help|h|?'    => \$::opt_h,
+                    'list|l'    => \$::opt_l,
+                    'update|u'  => \$::opt_u,
+                    'remove|r'  => \$::opt_r,
+                    'o=s'       => \$::opt_o,
+                    't=s'       => \$::opt_t,
+                    'verbose|V' => \$::opt_V,
+                    'version|v' => \$::opt_v,
+        )
+      )
+    {
+		&xcat2nim_usage;
+        return 1;
+    }
+
+	# Option -h for Help
+    if ($::opt_h )
+    {
+		&xcat2nim_usage;
+        return 2;
+    }
+
+    # Option -v for version - do we need this???
+    if ($::opt_v)
+    {
+        my $rsp;
+        my $version=xCAT::Utils->Version();
+        $rsp->{data}->[0] = "xcat2nim - $version";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+        return 2;    # - just exit
+    }
+
+########  TODO  ##################
+# this needs to be cleaned up!!!!!
+#   too much duplicate code being called ...
+#################################
+
+	# process the command line
+    my $rc = &processArgs;
+
+	my %objhash = xCAT::DBobjUtils->getobjdefs(\%::objtype);
+
+	# need to figure out what nodes are involved so
+	#	we can create the node/group defs on the 
+	#	correct service nodes
+	foreach my $o (@::clobjnames) {
+		if ($::objtype{$o} eq 'node') {
+			push (@nodelist, $o);
+		}
+		if ($::objtype{$o} eq 'group') {
+			my $memberlist = xCAT::DBobjUtils->getGroupMembers($o, \%objhash);
+			my @members = split(',', $memberlist);
+			if (@members) {
+        		foreach my $n (@members) {
+					push (@nodelist, $n);
+				}
+			}
+		}
+	}
+ 
+	# make sure the nodes are resolvable
+    #  - if not then exit
+    foreach my $n (@nodelist) {
+        my $packed_ip = gethostbyname($n);
+        if (!$packed_ip) {
+            my $rsp;
+            $rsp->{data}->[0] = "Could not resolve node $n.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+
+        }
+    }
+
+	return (0, \@nodelist);
 }
 
 #----------------------------------------------------------------------------
@@ -272,22 +395,6 @@ sub processArgs
         }
     }
 
-    # Option -h for Help
-    if (defined($::opt_h) )
-    {
-        return 2;
-    }
-
-    # Option -v for version - do we need this???
-    if (defined($::opt_v))
-    {
-        my $rsp;
-		my $version=xCAT::Utils->Version();
-        $rsp->{data}->[0] = "$::command - $version";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
-        return 1;    # - just exit
-    }
-
     # Option -V for verbose output
     if (defined($::opt_V))
     {
@@ -312,7 +419,7 @@ sub processArgs
             {
                 my $rsp;
                 $rsp->{data}->[0] =
-                  "Cannot combine multiple types with \'att=val\' pairs on the command line.\n";
+                  "$::msgstr Cannot combine multiple types with \'att=val\' pairs on the command line.\n";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 3;
             }
@@ -339,7 +446,7 @@ sub processArgs
             {
                 my $rsp;
                 $rsp->{data}->[0] =
-                  "Type \'$t\' is not a valid xCAT object type.\n";
+                  "$::msgstr Type \'$t\' is not a valid xCAT object type.\n";
                 $rsp->{data}->[1] = "Skipping to the next type.\n";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
@@ -358,7 +465,7 @@ sub processArgs
         # make the default type = 'node' if not specified
         push(@::clobjtypes, 'node');
         my $rsp;
-        $rsp->{data}->[0] = "Assuming an object type of \'node\'.\n";
+        $rsp->{data}->[0] = "$::msgstr Assuming an object type of \'node\'.\n";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
     }
 
@@ -408,7 +515,7 @@ sub processArgs
             {
                 my $rsp;
                 $rsp->{data}->[0] =
-                    "Could not get objects of type \'$t\'.\n";
+                    "$::msgstr Could not get objects of type \'$t\'.\n";
                 $rsp->{data}->[1] = "Skipping to the next type.\n";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
                 next;
@@ -431,7 +538,7 @@ sub processArgs
 
         my $rsp;
         $rsp->{data}->[0] =
-          "Cannot use \'-a\' with \'-o\' or a noderange.\n";
+          "$::msgstr Cannot use \'-a\' with \'-o\' or a noderange.\n";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
@@ -472,7 +579,7 @@ sub processArgs
     {
         my $rsp;
         $rsp->{data}->[0] =
-          "Could not determine what object definitions to remove.\n";
+          "$::msgstr Could not determine what object definitions to remove.\n";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
@@ -526,6 +633,16 @@ sub x2n
     my $rc    = 0;
     my $error = 0;
 
+	# get the local short host name
+    ($::local_host = hostname()) =~ s/\..*$//;
+    chomp $::local_host;
+
+	if (xCAT::Utils->isMN()){
+		$::msgstr = "";
+	} else {
+		$::msgstr = "$::local_host: ";
+	}
+
     # process the command line
     $rc = &processArgs;
     if ($rc != 0)
@@ -539,16 +656,12 @@ sub x2n
         return ($rc - 1);
     }
 
-	# get the local short host name
-    ($::local_host = `hostname`) =~ s/\..*$//;
-	chomp $::local_host;
-
 	# get all the attrs for these definitions
 	%::objhash = xCAT::DBobjUtils->getobjdefs(\%::objtype);
 	if (!defined(%::objhash))
     {
 		my $rsp;
-        $rsp->{data}->[0] = "Could not get xCAT object definitions.\n";
+        $rsp->{data}->[0] = "$::msgstr Could not get xCAT object definitions.\n";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
@@ -566,25 +679,25 @@ sub x2n
 			}
         } else {
 
-		# create a NIM machine definition
-		if ($::objtype{$objname} eq 'node') {
-		    # need to set group type to either static or dynamic
-            $::objhash{$objname}{'grouptype'}='static';
-			if (mkclientdef($objname, $callback)) {
-                # could not create client definition
-				$error++;
-            }
-			next;
-		}
-
-		# create a NIM group definition
-		if ($::objtype{$objname} eq 'group') {
-			if (mkgrpdef($objname, $callback)) {
-				# could not create group definition
-				$error++;
+			# create a NIM machine definition
+			if ($::objtype{$objname} eq 'node') {
+		    	# need to set group type to either static or dynamic
+            	$::objhash{$objname}{'grouptype'}='static';
+				if (mkclientdef($objname, $callback)) {
+                	# could not create client definition
+					$error++;
+            	}
+				next;
 			}
-			next;
-		}
+
+			# create a NIM group definition
+			if ($::objtype{$objname} eq 'group') {
+				if (mkgrpdef($objname, $callback)) {
+					# could not create group definition
+					$error++;
+				}
+				next;
+			}
 		}
 	}	
 
@@ -592,7 +705,7 @@ sub x2n
     {
         my $rsp;
         $rsp->{data}->[0] =
-          "One or more errors occured.\n";
+          "$::msgstr One or more errors occured.\n";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
@@ -604,11 +717,11 @@ sub x2n
             #  give results
 			my $rsp;
 			if ($::opt_r) {
-				$rsp->{data}->[0] = "The following definitions were removed:";
+				$rsp->{data}->[0] = "$::msgstr The following definitions were removed:";
 			} elsif ($::opt_u) {
-				$rsp->{data}->[0] = "The following definitions were updated:";
+				$rsp->{data}->[0] = "$::msgstr The following definitions were updated:";
 			} elsif (!$::opt_l) {
-				$rsp->{data}->[0] = "The following definitions were created:";
+				$rsp->{data}->[0] = "$::msgstr The following definitions were created:";
 			}
 
             xCAT::MsgUtils->message("I", $rsp, $::callback);
@@ -626,7 +739,7 @@ sub x2n
 			if (!$::opt_l) {
             	my $rsp;
             	$rsp->{data}->[0] =
-              	"NIM operations have completed successfully.\n";
+              	"$::local_host: NIM operations have completed successfully.\n";
             	xCAT::MsgUtils->message("I", $rsp, $::callback);
 			}
         }
@@ -669,21 +782,11 @@ sub mkclientdef
 	my $nim_args;
 	my $nim_type;
 
-	# get the name of the nim master
-    #  ???? assume node short hostname is unique in xCAT cluster????
-    my $nim_master = &getNIMmaster($node);
-	chomp $nim_master;
-
-    if (!defined($nim_master)) {
-        my $rsp;
-        $rsp->{data}->[0] = "Could not find the NIM master for node \'$node\'.\n";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
-        return 1;
-    }
+	# this code runs on service nodes - which are NIM masters
 
 	# check to see if the client is already defined 
 	#	- sets $::client_exists
-    if (&check_nim_client($node, $nim_master)) {
+    if (&check_nim_client($node, $::local_host)) {
         # the routine failed
         return 1;
     }
@@ -700,7 +803,7 @@ sub mkclientdef
 			my $output = xCAT::Utils->runcmd("$rmcmd", -1);
 			if ($::RUNCMD_RC  != 0) {
 				my $rsp;
-				push @{$rsp->{data}}, "Could not remove the existing NIM object named \'$shorthost\'.\n";
+				push @{$rsp->{data}}, "$::msgstr Could not remove the existing NIM object named \'$shorthost\'.\n";
 				if ($::VERBOSE) {
 					push @{$rsp->{data}}, "$output";
 				}
@@ -710,7 +813,7 @@ sub mkclientdef
 
 		} else { # no force
         	my $rsp;
-        	$rsp->{data}->[0] = "The NIM client machine \'$shorthost\' already exists.  Use the \'-f\' option to remove and recreate or the \'-u\' option to update an existing definition.\n";
+        	$rsp->{data}->[0] = "$::msgstr The NIM client machine \'$shorthost\' already exists.  Use the \'-f\' option to remove and recreate or the \'-u\' option to update an existing definition.\n";
         	xCAT::MsgUtils->message("I", $rsp, $::callback);
         	return 1;
 		}
@@ -756,7 +859,7 @@ sub mkclientdef
 		if (!$::objhash{$node}{'mac'})
 		{
 			my $rsp;
-           	$rsp->{data}->[0] = "Missing the MAC for node \'$node\'.\n";
+           	$rsp->{data}->[0] = "$::msgstr Missing the MAC for node \'$node\'.\n";
            	xCAT::MsgUtils->message("E", $rsp, $::callback);
            	return 1;
 		}
@@ -786,18 +889,14 @@ sub mkclientdef
 
 	# may need to use dsh if it is a remote server
 	my $nimcmd;
-   	if ($nim_master ne $::local_host) {
-		$nimcmd = qq~xdsh $nim_master "$cmd 2>&1"~;
-	} else {
-		$nimcmd = qq~$cmd 2>&1~;
-	}
+	$nimcmd = qq~$cmd 2>&1~;
 
 	# run the cmd
    	my $output = xCAT::Utils->runcmd("$nimcmd", -1);
    	if ($::RUNCMD_RC  != 0)
    	{
        	my $rsp;
-       	$rsp->{data}->[0] = "Could not create a NIM definition for \'$node\'.\n";
+       	$rsp->{data}->[0] = "$::msgstr Could not create a NIM definition for \'$node\'.\n";
 		if ($::verbose)
        	{
 			$rsp->{data}->[1] = "$output";
@@ -847,6 +946,14 @@ sub mkgrpdef
 
 	foreach my $servname (keys %ServerList)
 	{
+
+		# only handle the defs for the local SN
+		my $shortsn;
+		($shortsn = $servname) =~ s/\..*$//;
+		if ($shortsn ne $::local_host) {
+			next;
+		}
+
 		my @members = @{$ServerList{$servname}};
 
 		# check to see if the group is already defined - sets $::grp_exists
@@ -865,7 +972,7 @@ sub mkgrpdef
 				my $output = xCAT::Utils->runcmd("$rmcmd", -1);
 				if ($::RUNCMD_RC  != 0) {
 					my $rsp;
-					push @{$rsp->{data}}, "Could not remove the existing NIM group named \'$group\'.\n";
+					push @{$rsp->{data}}, "$::msgstr Could not remove the existing NIM group named \'$group\'.\n";
 					if ($::VERBOSE) {
 						push @{$rsp->{data}}, "$output";
 					}
@@ -875,7 +982,7 @@ sub mkgrpdef
 
 			} else { # no force
 				my $rsp;
-       			$rsp->{data}->[0] = "The NIM group \'$group\' already exists.  Use the \'-f\' option to remove and recreate or the \'-u\' option to update an existing definition.\n";
+       			$rsp->{data}->[0] = "$::msgstr The NIM group \'$group\' already exists.  Use the \'-f\' option to remove and recreate or the \'-u\' option to update an existing definition.\n";
        			xCAT::MsgUtils->message("I", $rsp, $::callback);
 				return 1;
 			}
@@ -888,15 +995,15 @@ sub mkgrpdef
         if ($#members > 1024) {
            	my $rsp;
            	$rsp->{data}->[0] =
-           		"Cannot create a NIM group definition with more than 1024 members - on \'$servname\'.";
+           		"$::msgstr Cannot create a NIM group definition with more than 1024 members - on \'$servname\'.";
            	xCAT::MsgUtils->message("I", $rsp, $::callback);
            	next;
         }
 
 		#
-		#  The list may become quite long and not fit on one cmds line
+		#  The list may become quite long and not fit on one cmd line
 		#  so we do it one at a time for now - need to revisit this
-		#      (like do blocks at a time)
+		#      (like do blocks at a time)  - TODO
 		#
 		my $justadd=0;  # after the first define we just need to add
 		foreach my $memb (@members) {
@@ -915,17 +1022,13 @@ sub mkgrpdef
 
 			# do we need dsh
 			my $nimcmd;
-			if ($servname ne $::local_host) {
-				$nimcmd = qq~xdsh $servname "$cmd"~;
-			} else {
-				$nimcmd = $cmd;
-			}
+			$nimcmd = $cmd;
 
 			my $output = xCAT::Utils->runcmd("$cmd", -1);
         	if ($::RUNCMD_RC  != 0)
         	{
            		my $rsp;
-           		$rsp->{data}->[0] = "Could not create a NIM definition for \'$group\'.\n";
+           		$rsp->{data}->[0] = "$::msgstr Could not create a NIM definition for \'$group\'.\n";
 				if ($::verbose)
            		{
 					$rsp->{data}->[1] = "$output";
@@ -963,36 +1066,19 @@ sub mkgrpdef
 sub rm_or_list_nim_object
 {
 	my ($object, $type) = @_;
-	my $nim_master = undef;
 
 	if ($type eq 'node') {
-		# get name of nim master
-		#  ???? assume node short hostname is unique in xCAT cluster????
-		$nim_master = &getNIMmaster($object);
-		chomp $nim_master;
 
-		if (!defined($nim_master)) {
-			my $rsp;
-            $rsp->{data}->[0] = "Could not find the NIM master for node \'$object\'.\n";
-            xCAT::MsgUtils->message("E", $rsp, $::callback);
-            return 1;
-		}
-		
 		if ($::opt_l) {
 
 			my $cmd;
-			# if the name of the master is not the local host then use dsh
-			if ($nim_master ne $::local_host) {
-				$cmd = qq~xdsh $nim_master "lsnim -l $object 2>/dev/null"~;
-			} else {
-				$cmd = qq~lsnim -l $object 2>/dev/null~;
-			}
+			$cmd = qq~lsnim -l $object 2>/dev/null~;
 		
 			my $outref = xCAT::Utils->runcmd("$cmd", -1);
         	if ($::RUNCMD_RC  != 0)
         	{
             	my $rsp;
-            	$rsp->{data}->[0] = "Could not get the NIM definition for $object.\n";
+            	$rsp->{data}->[0] = "$::msgstr Could not get the NIM definition for $object.\n";
 				if ($::verbose)
                 {
 					$rsp->{data}->[1] = "$outref";
@@ -1012,20 +1098,14 @@ sub rm_or_list_nim_object
 
 		} elsif ($::opt_r) {
 			# remove the object
-			# if the name of the master is not the local host then use dsh
-
 			my $cmd;
-            if ($nim_master ne $::local_host) {
-                $cmd = qq~xdsh $nim_master "nim -o remove $object 2>/dev/null"~;
-            } else {
-                $cmd = qq~nim -o remove $object 2>/dev/null~;
-            }
+            $cmd = qq~nim -o remove $object 2>/dev/null~;
 
 			my $outref = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC  != 0)
             {
                 my $rsp;
-                $rsp->{data}->[0] = "Could not remove the NIM definition for \'$object\'.\n";
+                $rsp->{data}->[0] = "$::msgstr Could not remove the NIM definition for \'$object\'.\n";
 				if ($::verbose)
                 {
 					$rsp->{data}->[1] = "$outref";
@@ -1045,27 +1125,23 @@ sub rm_or_list_nim_object
 		# 	display it
 		foreach my $servname (keys %servgroups)
     	{
-			# make sure we have the short host name of the NIM master
-			my $master;
-			if ($servname) {
-        		($master = $servname) =~ s/\..*$//;
-    		}
-			chomp $master;
+
+			# only handle the defs for the local SN
+			my $shortsn;
+			($shortsn = $servname) =~ s/\..*$//;
+			if ($shortsn ne $::local_host) {
+				next;
+			}
 
 			my $cmd;
 			if ($::opt_l) {
-				# if the name of the master is not the local host then use dsh
-        		if ($master ne $::local_host) {
-            		$cmd = qq~xdsh $master "lsnim -l $object 2>/dev/null"~;
-        		} else {
-            		$cmd = qq~lsnim -l $object 2>/dev/null~;
-        		}
+           		$cmd = qq~lsnim -l $object 2>/dev/null~;
 			
 				my $outref = xCAT::Utils->runcmd("$cmd", -1);
         		if ($::RUNCMD_RC  != 0)
         		{
             		my $rsp;
-            		$rsp->{data}->[0] = "Could not list the NIM definition for \'$object\'.\n";
+            		$rsp->{data}->[0] = "$::msgstr Could not list the NIM definition for \'$object\'.\n";
 					if ($::verbose)
                     {
 						$rsp->{data}->[1] = "$outref";
@@ -1076,26 +1152,18 @@ sub rm_or_list_nim_object
 
             		#  display NIM output
             		my $rsp;
-           	# 		$rsp->{data}->[0] = "NIM master: $master";
-			#		$rsp->{data}->[1] = "Group name: $object";
 					$rsp->{data}->[0] = "$outref";
             		xCAT::MsgUtils->message("I", $rsp, $::callback);
             		return 0;
         		}
 			} elsif ($::opt_r) {
-				# if the name of the master is not the local host then use dsh
-                if ($master ne $::local_host) {
-                   $cmd = qq~xdsh $master "nim -o remove $object 2>/dev/null"~;
-					
-                } else {
-                    $cmd = qq~nim -o remove $object 2>/dev/null~;
-                }
+                $cmd = qq~nim -o remove $object 2>/dev/null~;
 
 				my $outref = xCAT::Utils->runcmd("$cmd", -1);
                 if ($::RUNCMD_RC  != 0)
                 {
                     my $rsp;
-                    $rsp->{data}->[0] = "Could not remove the NIM definition for \'$object\'.\n";
+                    $rsp->{data}->[0] = "$::msgstr Could not remove the NIM definition for \'$object\'.\n";
 					if ($::verbose)
                     {
 						$rsp->{data}->[1] = "$outref";
@@ -1202,7 +1270,7 @@ sub getMasterGroupLists
         %memberhash = xCAT::DBobjUtils->getobjdefs(\%membhash);
     } else {
 		my $rsp;
-        $rsp->{data}->[0] = "Could not get members of the xCAT group \'$group\'.\n";
+        $rsp->{data}->[0] = "$::msgstr Could not get members of the xCAT group \'$group\'.\n";
 		xCAT::MsgUtils->message("E", $rsp, $::callback);
 		return undef;
     }
@@ -1222,7 +1290,7 @@ sub getMasterGroupLists
             	$NimMaster = $memberhash{$m}{xcatmaster};
 
         	} else {
-            	$NimMaster = `hostname`;
+            	$NimMaster = hostname();
 			}
 
         	# assume short hostnames for now???
@@ -1234,7 +1302,7 @@ sub getMasterGroupLists
 	} else {
 		# could not get node def
 		my $rsp;
-        $rsp->{data}->[0] = "Could not get xCAT node definition for all members of the xCAT group \'$group\'.\n";
+        $rsp->{data}->[0] = "$::msgstr Could not get xCAT node definition for all members of the xCAT group \'$group\'.\n";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
 		return undef;
 	}
@@ -1276,17 +1344,13 @@ sub check_nim_group
 	if ( $::NIMGroupList{$servnode}) {
 		@GroupList = @{$::NIMGroupList{$servnode}};
 	} else {
-		if ($servnode ne $::local_host) {
-            $cmd = qq~xdsh $servnode "lsnim -c groups | cut -f1 -d' ' 2>/dev/null"~;
-        } else {
-            $cmd = qq~lsnim -c groups | cut -f1 -d' ' 2>/dev/null~;
-        }
+        $cmd = qq~lsnim -c groups | cut -f1 -d' ' 2>/dev/null~;
 
 		@GroupList = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
     	{
         	my $rsp;
-        	$rsp->{data}->[0] = "Could not get a list of NIM group definitions.\n";
+        	$rsp->{data}->[0] = "$::msgstr Could not get a list of NIM group definitions.\n";
         	xCAT::MsgUtils->message("E", $rsp, $::callback);
         	return 1;
     	}
@@ -1329,17 +1393,13 @@ sub check_nim_client
     if ( $::NIMclientList{$servnode}) {
         @ClientList = @{$::NIMclientList{$servnode}};
     } else {
-		if ($servnode ne $::local_host) {
-			$cmd = qq~xdsh $servnode "lsnim -c machines | cut -f1 -d' ' 2>/dev/null"~;
-		} else {
-			$cmd = qq~lsnim -c machines | cut -f1 -d' ' 2>/dev/null~;
-		}
+		$cmd = qq~lsnim -c machines | cut -f1 -d' ' 2>/dev/null~;
 
         @ClientList = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC  != 0)
         {
             my $rsp;
-            $rsp->{data}->[0] = "Could not get a list of NIM client definitions from \'$servnode\'.\n";
+            $rsp->{data}->[0] = "$::msgstr Could not get a list of NIM client definitions from \'$servnode\'.\n";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 1;
         }

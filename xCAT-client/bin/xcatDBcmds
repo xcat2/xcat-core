@@ -68,10 +68,10 @@ foreach my $a (@ARGV)
 # For some commands we need to set the noderange value
 # - don't want to depend on the order of args so need to pick
 #   the operand that doesn't have an "=" sign ( ie. attr=val format)
-my @checkcmds = ("nimnodeset", "mkdsklsnode", "rmdsklsnode", "xcat2nim");
+my @checkcmds = ("nimnodeset", "mkdsklsnode", "rmdsklsnode", "xcat2nim", "nimnodecust");
 if (grep(/^$bname$/, @checkcmds) ) { 
 	# strip off all options
-	getopts('ab:fh?i:l:urs:m:no:t:vV');
+	getopts('ab:d:f:h?i:l:urs:m:no:t:vVp:');
 	# check the operands for a noderange
 	while (my $a = shift(@ARGV)) {
 		if (!($a =~ /=/)) {
