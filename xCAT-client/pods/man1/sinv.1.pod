@@ -1,0 +1,250 @@
+=head1 B<NAME>
+
+B<sinv> - Checks the software configuration of the nodes in the cluster. 
+
+=head1 B<SYNOPSIS>
+
+B<sinv> I<noderange> [B<-o> I<output>] [B<-p> <template path>] [B<-t> I<template count>] [B<-s> I<seed node>] [B<-i>] [B<-e>] [B<-r>] [B<-V>] [[B<-f> I<xdsh command file>] | [B<-c> I<xdsh command>]]
+
+B<sinv> [B<-h> | B<-v>]
+
+
+=head1 B<DESCRIPTION>
+
+The B<sinv> command is designed to check the configuration of the nodes in a cluster.
+The command takes as input command line flags, and one or more templates which will be compared against the output of the xdsh command, designated to be run by the -c or -f flag, on the nodes in the noderange. 
+
+The nodes will then be grouped according to the template they match and a report returned to the administrator in the output file designated by the -o flag.  
+ 
+The B<sinv> command is an xCAT Distributed Shell Utility.
+
+
+B<TARGET> B<SPECIFICATION>:
+
+The target are node(s) where xdsh will be executed.  Node
+targets are specified by the I<noderange>.
+
+
+B<COMMAND> B<SPECIFICATION>:
+
+The xdsh command to execute on the remote targets is specified by the
+ B<-c> flag, or by the B<-f> flag
+which is followed by the fully qualified path to a file containing the command.
+
+Note: do not add | xdshbak to the command on the command line or in the
+command file, it is automatically added by sinv.
+
+The syntax for the B<-c>  B<sinv> parameter is as follows:
+
+"I<command>[; I<command>]..."
+
+where I<command> is the command to run on the remote
+target. Quotation marks are required to ensure that all commands in the
+list are executed remotely, and that any special characters are interpreted
+correctly on the remote target. 
+
+The B<sinv> command does not work with any interactive commands, including
+those that read from standard input.
+
+B<REMOTE> B<SHELL> B<COMMAND>:
+
+The  B<sinv>  command  uses B<xdsh> which uses a configurable remote shell command to execute
+remote commands on the remote targets. Support is  explicitly  provided
+for  AIX  Remote  Shell and OpenSSH, but any secure remote command that
+conforms to the IETF (Internet Engineering Task  Force)  Secure  Remote
+Command Protocol can be used. See man B<xdsh> for more details.
+
+=head1 B<OPTIONS>
+
+=over 5
+
+=item B<-o>|B<--output> I<report output file>
+
+This is the location of the file that will contain the report
+of the nodes that match, and do not match, the input templates.
+
+=item B<-p>|B<--tp> I<template path>
+
+This is the path to the template file. The template contains the output
+of xdsh command, that has been run against a "seed" node, a node 
+that contains the configuration that you would like  
+all nodes in your noderange to match. 
+
+The admin can create the template by running the xdsh command on
+the seed node, pipe to xdshbak ( required) and store the output
+in the template path. See examples.
+
+B<Note:> The admin can also edit the
+template to remove any lines that they do not want checked.  
+
+An alternative method is to use the [B<-s> I<seed node>] parameter, 
+which will automatically build the template for you from the 
+seed node named.
+
+If a template path file does not exist, and a seed node is not input,
+then sinv will automatically use the first node in the noderange as
+the seed node and build the template.  
+
+
+=item B<-t>|B<--tc> I<template count>
+
+This count is the number of templates that the command will use
+to check for nodes matches.  If the template in the template path does not
+match a node, the B<sinv> will check additional templates  up 
+to the template count.
+  
+For each node, it will compare the node against each template to see if 
+there is a match.  
+If there is no match, and we are not over the template count,
+then a new template will be created from the node output. 
+This will result in having all nodes that match a given template reported in
+their group at the end of the run in the output file. 
+If no template count is specified,  0 is the default, and all nodes will
+be compared against the first template.
+
+=item B<-s>|B<--seed> I<seed node>
+
+This is the node that will be used to build the first template
+that is stored in template path.  You can use this parameter instead of running
+the xdsh command yourself to build the template.
+
+B<Note:> If no template path file exists, and no seed node is supplied,
+the seed node automatically is the first node from the
+noderange.
+
+=item B<-i>|B<--ignorefirst>
+
+This flag suppresses the reporting of the nodes matching the first
+template. In very large systems, you may not want to show the nodes that
+have the correct configuration, since the list could contain thousands of nodes.
+This allows you to only report the nodes that do not match the required 
+configuration. 
+
+=item B<-e>|B<--exactmatch>
+
+This requires the check of node output against template to be an exact match.
+If this flag is not set, B<sinv> checks to see if the return from the 
+xdsh command to the nodes contain a match for each line in the input 
+template (except for xdshbak header and comments). If not in exactmatch mode,
+there can exist more lines in the xdsh return from the nodes.
+
+For example, if running a "rpm -qa | grep xCAT" command, without exactmatch 
+set, if the node containes more xCAT rpms that listed in the template,
+it would be considered a match, as long as all rpms listed in the template
+were on the node. With exactmatch set, the output must be identical 
+to the template. 
+
+=item B<-c>|B<--command>
+
+The command that will be run by xdsh. The command should be enclosed in 
+double quotes to insure correct shell interpretation.
+
+B<Note:> do not add the | xdshbak to the command,
+it is automatically added by sinv.
+
+=item B<-f>|B<--file>
+
+The file containing the command that will be run by xdsh  
+This should be the fully qualified name of the file. 
+
+B<Note:> do not add the | xdshbak to the command in the file,
+it is automatically added by sinv.
+
+=item B<-r>|B<--remove>
+
+This flag indicates that generated templates should be removed at the
+at the end of the B<sinv> command execution. 
+
+If the flag is input, then all templates that are generated by the B<sinv>
+command, will be removed. If the first template is created by the admin,
+it will not be removed.
+
+If the flag is not input, no
+templates will be removed. It is up to the admin to cleanup templates.
+
+=item B<-h>|B<--help>
+
+Displays usage information.
+
+=item B<-v>|B<--version>
+
+Displays xCAT release version.
+
+=item B<-V>|B<--Verbose>
+
+Verbose mode.
+
+
+=back
+
+
+=head1 B<Examples>
+
+=over 3
+
+=item *
+
+To setup sinv.template for input to the B<sinv> command , enter:
+
+B<xdsh> I<node1,node2 "rpm -qa | grep xCAT | xdshbak "> /tmp/sinv.template>
+
+Note: when setting up the template the output of xdsh must be piped
+	  to xdshbak, sinv processing depends on it.
+
+=item *
+
+To execute B<sinv> using the sinv.template generated above
+on the nodegroup, B<testnodes> ,possibly generating up to two
+new templates, and removing all generated templates in the end, and writing
+output report to /tmp/sinv.output, enter:
+
+B<sinv> I<testnodes -c "rpm -qa | grep xCAT" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output>
+
+Note: do not add the pipe to xdshbak on the -c flag, it is automatically
+added by the sinv routine.
+
+=item *
+
+To execute B<sinv> on noderange, node1-node4, using the seed node, node8,
+to generate the first template, using the xdsh command (-c),
+possibly generating up to two additional
+templates and not removing any templates at the end, enter:
+
+B<xsinv> I<node1-node4 -c "lslpp -l | grep bos.adt" -s node8 -p /tmp/sinv.template -t 2 -o /tmp/sinv.output> 
+
+=item *
+
+To execute B<sinv> on noderange, node1-node4, automatically using node1 as
+the seed node, to generate the sinv.template from the xdsh command (-c),
+using the exact match option, generating no additional templates, enter:
+
+
+B<xsinv> I<node1-node4 -c "lslpp -l | grep bos.adt"  -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
+
+Note: the /tmp/sinv.template file must be empty, otherwise it will be used
+as an admin generated template.
+
+=item *
+
+To execute B<sinv> on noderange, node1-node4, automatically using node1 as
+the seed node, to generate the sinv.template from the command input (-c),
+using the exact match option, generating no additional templates, and 
+reporting only nodes that do not match enter:
+
+
+B<xsinv> I<node1-node4 -c "lslpp -l | grep bos.adt"  -e -i -p /tmp/sinv.template  -o /tmp/sinv.output> 
+
+Note: the /tmp/sinv.template file must be empty, otherwise it will be used
+as an admin generated template.
+
+=back
+
+=head1 B<Files>
+
+B</opt/xcat/bin/sinv/>
+
+Location of the sinv command.
+
+=head1 B<SEE ALSO>
+
+L <xdsh(1)|xdsh.1>, L<xdshbak(1)|xdshbak.1>, L<noderange(3)|noderange.3>
