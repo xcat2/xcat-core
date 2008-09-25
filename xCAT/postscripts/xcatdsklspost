@@ -72,8 +72,8 @@ while [ -z "$MYCONT" ]; do
     MYCONT=`cat /tmp/mypostscript`
 #    echo "MYCONT=$MYCONT"
 done
-if [ $# -gt 0 ]; then
-  POSTS=$1
+if [ $# -gt 1 ]; then
+  POSTS=$2
   #remove all the postscripts
   TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
   echo "$TMP" > /tmp/mypostscript
@@ -88,6 +88,12 @@ if [ -x /tmp/mypostscript ];then
    /tmp/mypostscript
 fi
 rm -f /tmp/mypostscript
+
+#notify the server that we are done with netbooting
+if [ $# -eq 0 ]; then
+  updateflag.awk $MASTER 3002 netbooted
+fi
+
 killall stunnel
 rm -rf /etc/stunnel
 

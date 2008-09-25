@@ -4,6 +4,8 @@ use xCAT::NodeRange;
 use Data::Dumper;
 use xCAT::Utils;
 use Sys::Syslog;
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
 use strict;
 
 my $request;
@@ -205,6 +207,7 @@ sub nextdestiny {
   my $node;
   $chaintab = xCAT::Table->new('chain');
   my $chainents = $chaintab->getNodesAttribs(\@nodes,[qw(currstate currchain chain)]);
+  my %node_status=();
   foreach $node (@nodes) {
     unless($chaintab) {
       syslog("local1|err","ERROR: $node requested destiny update, no chain table");
@@ -226,16 +229,34 @@ sub nextdestiny {
       $ref->{currchain} = $ref->{currstate};
     }
     $chaintab->setNodeAttribs($node,$ref); #$ref is in a state to commit back to db
+
+    #collect node status for certain states
+    if ($ref->{currstate} =~ /^boot/) {
+      my $stat="booting";
+      if (exists($node_status{$stat})) {
+        my $pa=$node_status{$stat};
+        push(@$pa, $node);
+      }
+      else {
+        $node_status{$stat}=[$node];
+      }
+    }
+
     my %requ;
     $requ{node}=[$node];
     $requ{arg}=[$ref->{currstate}];
     setdestiny(\%requ);
   }
+  
+  #setup the nodelist.status
+  xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+
   if ($callnodeset) {
      $subreq->({command=>['nodeset'],
                node=> \@nodes,
                arg=>['enact']});
   }
+
 }
 
 

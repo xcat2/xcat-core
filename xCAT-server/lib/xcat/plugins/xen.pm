@@ -3,7 +3,13 @@
 package xCAT_plugin::xen;
 my $libvirtsupport;
 $libvirtsupport = eval { require Sys::Virt; };
-
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
 
 #use Net::SNMP qw(:snmp INTEGER);
 use xCAT::Table;
@@ -436,6 +442,7 @@ sub preprocess_request {
   }
   return \@requests;
 }
+ 
     
 sub adopt {
 #TODO: adopt orphans into suitable homes if possible
@@ -529,8 +536,43 @@ sub process_request {
       return;
   }
 
+  #get new node status
+  my %nodestat=();
+  my $errornodes={};
+  my $check=0;
+  my $newstat;
+  if ($command eq 'rpower') {
+    my $subcommand=$exargs[0];
+    if (($subcommand ne 'stat') && ($subcommand ne 'status')) { 
+      $check=1; 
+      my @allnodes=@$noderange;
+      if ($subcommand eq 'off') { $newstat=$::STATUS_POWERING_OFF; }
+      else { $newstat=$::STATUS_BOOTING;}
+      foreach (@allnodes) { $nodestat{$_}=$newstat; }
+
+      if ($subcommand ne 'off') {
+        #get the current nodeset stat
+        if (@allnodes>0) {
+          my $chaintab = xCAT::Table->new('chain');
+          my $tabdata=$chaintab->getNodesAttribs(\@allnodes,['node', 'currstate']); 
+          foreach my $node (@allnodes) {
+            my $tmp1=$tabdata->{$node}->[0];
+            if ($tmp1) {
+              my $currstate=$tmp1->{currstate};
+              if ($currstate =~ /^install/) { $nodestat{$node}=$::STATUS_INSTALLING;}
+              elsif ($currstate =~ /^netboot/) { $nodestat{$node}=$::STATUS_NETBOOTING;}
+	    }
+	  }
+        }
+      }
+    }
+  }
+
+  foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+
+
   foreach $hyp (sort (keys %hyphash)) {
-    while ($children > $vmmaxp) { forward_data($callback,$sub_fds); }
+    while ($children > $vmmaxp) { forward_data($callback,$sub_fds,$errornodes); }
     $children++;
     my $cfd;
     my $pfd;
@@ -549,14 +591,37 @@ sub process_request {
     $sub_fds->add($cfd);
   }
   while ($sub_fds->count > 0 or $children > 0) {
-    forward_data($callback,$sub_fds);
+    forward_data($callback,$sub_fds,$errornodes);
   }
-  while (forward_data($callback,$sub_fds)) {}
+  while (forward_data($callback,$sub_fds,$errornodes)) {}
+
+  #update the node status to the nodelist.status table
+  if ($check) {
+    my %node_status=();
+    foreach (keys(%$errornodes)) { $nodestat{$_}="error"; } 
+
+    foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+
+    foreach my $node (keys %nodestat) {
+      my $stat=$nodestat{$node};
+      if ($stat eq "error") { next; }
+      if (exists($node_status{$stat})) {
+        my $pa=$node_status{$stat};
+        push(@$pa, $node);
+      }
+      else {
+        $node_status{$stat}=[$node];
+      }
+    }
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+  }
+
 }
 
 sub forward_data {
   my $callback = shift;
   my $fds = shift;
+  my $errornodes=shift;
   my @ready_fds = $fds->can_read(1);
   my $rfh;
   my $rc = @ready_fds;
@@ -569,6 +634,10 @@ sub forward_data {
       print $rfh "ACK\n";
       my $responses=thaw($data);
       foreach (@$responses) {
+        #save the nodes that has errors for node status monitoring
+        if ((exists($_->{node}->[0]->{errorcode})) &&  ($_->{node}->[0]->{errorcode} != 0)) { 
+           if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
+        }
         $callback->($_);
       }
     } else {

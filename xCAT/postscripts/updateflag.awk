@@ -2,9 +2,11 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 BEGIN {
-	xcatdhost = ARGV[1]
+    xcatdhost = ARGV[1]
     xcatdport = ARGV[2]
-
+    flag = ARGV[3]
+    
+	if (!flag) flag = "next"
 
 	ns = "/inet/tcp/0/" ARGV[1] "/" xcatdport
 
@@ -13,7 +15,7 @@ BEGIN {
 			print $0 | "logger -t xcat"
 
 		if($0 == "ready")
-			print "next" |& ns
+			print flag |& ns
 		if($0 == "done")
 			break
 	}

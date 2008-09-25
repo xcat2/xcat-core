@@ -14,7 +14,7 @@ use Socket;
 use xCAT::PPCcli; 
 use xCAT::GlobalDef;
 use xCAT::DBobjUtils;
-
+use xCAT_monitoring::monitorctrl;
 
 ##########################################
 # Globals
@@ -127,6 +127,47 @@ sub process_command {
     my $fds = new IO::Select;
     my $hw;
     my $sessions;
+
+  #get new node status
+  my %nodestat=();
+  my $errornodes={};
+  my $check=0;
+  my $newstat;
+  if ($request->{command} eq 'rpower') {
+    my $subcommand=$request->{arg}->[0];
+    if (($subcommand ne 'stat') && ($subcommand ne 'status') && ($subcommand ne 'state')) { 
+      $check=1;
+      my $noderange = $request->{node}; 
+      my @allnodes=@$noderange;
+
+      if ($subcommand eq 'off') { $newstat=$::STATUS_POWERING_OFF; }
+      else { $newstat=$::STATUS_BOOTING;}
+      foreach (@allnodes) { $nodestat{$_}=$newstat; }
+
+      if ($subcommand ne 'off') {
+        #get the current nodeset stat
+        if (@allnodes>0) {
+          my $chaintab = xCAT::Table->new('chain');
+          my $tabdata=$chaintab->getNodesAttribs(\@allnodes,['node', 'currstate']); 
+          foreach my $node (@allnodes) {
+            my $tmp1=$tabdata->{$node}->[0];
+            if ($tmp1) {
+              my $currstate=$tmp1->{currstate};
+              if ($currstate =~ /^install/) { $nodestat{$node}=$::STATUS_INSTALLING;}
+              elsif ($currstate =~ /^netboot/) { $nodestat{$node}=$::STATUS_NETBOOTING;}
+	    }
+	  }
+        }
+      }
+    }
+  } elsif ($request->{command} eq 'rnetboot') { 
+    $check=1;
+    my $noderange = $request->{node}; 
+    my @allnodes=@$noderange;
+    foreach (@allnodes) { $nodestat{$_}=$::STATUS_NETBOOTING;}
+  }
+
+  foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
     
     foreach ( @$nodes ) {
         while ( $children > $request->{ppcmaxp} ) {
@@ -154,7 +195,7 @@ sub process_command {
     # Process responses from children
     #######################################
     while ( $children > 0 ) {
-        child_response( $callback, $fds );
+        child_response( $callback, $fds, $errornodes);
         Time::HiRes::sleep(0.1);
     }
     if ( exists( $request->{verbose} )) {
@@ -162,6 +203,28 @@ sub process_command {
         my $msg     = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
         trace( $request, $msg );
     }
+
+  #update the node status to the nodelist.status table
+  if ($check) {
+    my %node_status=();
+    foreach (keys(%$errornodes)) { $nodestat{$_}="error"; } 
+
+    foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+
+    foreach my $node (keys %nodestat) {
+      my $stat=$nodestat{$node};
+      if ($stat eq "error") { next; }
+      if (exists($node_status{$stat})) {
+        my $pa=$node_status{$stat};
+        push(@$pa, $node);
+      }
+      else {
+        $node_status{$stat}=[$node];
+      }
+    }
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+  }
+
     return(0);
 }
 
@@ -189,6 +252,7 @@ sub child_response {
 
     my $callback = shift;
     my $fds = shift;
+    my $errornodes=shift;
     my @ready_fds = $fds->can_read(1);
 
     foreach my $rfh (@ready_fds) {
@@ -203,6 +267,10 @@ sub child_response {
             }
             my $responses = thaw($data);
             foreach ( @$responses ) {
+                #save the nodes that has errors for node status monitoring
+                if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  { 
+                   if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
+                }
                 $callback->( $_ );
             }
             next;

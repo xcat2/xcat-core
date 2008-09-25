@@ -14,6 +14,7 @@ use xCAT::Utils;
 use xCAT_plugin::notification;
 use xCAT_monitoring::montbhandler;
 use Sys::Hostname;
+use xCAT::GlobalDef;
 
 #the list stores the names of the monitoring plug-in and the file name and module names.
 #the names are stored in the "name" column of the monitoring table. 
@@ -24,7 +25,6 @@ my %PRODUCT_LIST;
 #for xCAT.
 my $NODESTAT_MON_NAME; 
 my $masterpid;
-
 
 
 1;
@@ -540,6 +540,8 @@ sub processMonitoringTableChanges {
        status -- a hash pointer of the node status. A key is a status string. The value is 
                 an array pointer of nodes that have the same status.
                 for example: {alive=>["node1", "node1"], unreachable=>["node5","node100"]}
+       force -- 1 force the input values to be set.
+             -- 0 make sure if the input value is the next valid value.
     Returns:
         0 for successful.
         non-0 for not successful.
@@ -551,10 +553,32 @@ sub setNodeStatusAttributes {
   if ($temp =~ /xCAT_monitoring::monitorctrl/) {
     $temp=shift;
   }
+  my $force=shift;
+  my $tab = xCAT::Table->new('nodelist',-create=>0,-autocommit=>1);
 
   my %status_hash=%$temp;
 
-  my $tab = xCAT::Table->new('nodelist',-create=>0,-autocommit=>1);
+  #check if the next value is valid or not
+  if (!$force) {
+    foreach my $s (keys %status_hash) {
+      my @new_nodes=();
+      my $nodes=$status_hash{$s};
+      if ($nodes && (@$nodes>0)) {
+        my $tabdata=$tab->getNodesAttribs($nodes,['node', 'status']); 
+        foreach my $node (@$nodes) {
+          my $tmp1=$tabdata->{$node}->[0];
+          if ($tmp1) {
+            my $status=$tmp1->{status};
+            if (!$status) {$status=$::STATUS_DEFINED; } #default is 'defined'
+            if ($::NEXT_NODESTAT_VAL{$status}->{$s}==1) { push(@new_nodes,$node); } 
+          }  
+        }
+      }
+      #print "newnodes=@new_nodes\n";
+      $status_hash{$s}=\@new_nodes;
+    } #end foreach
+  }
+
   my %updates;
   if ($tab) {
     foreach (keys %status_hash) {

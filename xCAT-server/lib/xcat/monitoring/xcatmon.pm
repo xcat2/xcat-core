@@ -310,7 +310,15 @@ sub getMonNodesStatus {
       my $status=$_->[2];
       if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
       elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
-      else { push(@unknown_nodes, $node);}
+      else {
+	my $need_active=0;
+        my $need_inactive=0;
+	if ($::NEXT_NODESTAT_VAL{$status}->{$::STATUS_ACTIVE}==1) { $need_active=1;}
+	if ($::NEXT_NODESTAT_VAL{$status}->{$::STATUS_INACTIVE}==1) { $need_inactive=1;}
+        if (($need_active==1) && ($need_inactive==0)) { push(@inactive_nodes, $node); } #put it into the inactive list so that the monitoring code can switch it to active.
+        elsif (($need_active==0) && ($need_inactive==1)) { push(@active_nodes, $node); } #put it into the active list so that the monitoring code can chane it to inactive.
+        elsif  (($need_active==1) && ($need_inactive==1)) { push(@unknown_nodes, $node);} #unknow list so that the monitoring code can change it to active or inactive
+      }
     }
   }
  
@@ -329,6 +337,8 @@ sub getMonNodesStatus {
        status -- a hash pointer of the node status. A key is a status string. The value is 
                 an array pointer of nodes that have the same status.
                 for example: {alive=>["node1", "node1"], unreachable=>["node5","node100"]}
+       force -- 1 force the input values to be set.
+             -- 0 make sure if the input value is the next valid value.
     Returns:
         0 for successful.
         non-0 for not successful.
@@ -339,7 +349,9 @@ sub setNodeStatusAttributes {
   if ($temp =~ /xCAT_monitoring::xcatmon/) {
     $temp=shift;
   }
-  return xCAT_monitoring::monitorctrl->setNodeStatusAttributes($temp);
+  my $force=shift;
+  
+  return xCAT_monitoring::monitorctrl->setNodeStatusAttributes($temp, $force);
 }
 
 #--------------------------------------------------------------------------------

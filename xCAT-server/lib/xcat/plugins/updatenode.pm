@@ -17,6 +17,8 @@ use xCAT::Utils;
 use Getopt::Long;
 use xCAT::GlobalDef;
 use Sys::Hostname;
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
 
 1;
 
@@ -40,7 +42,8 @@ use Sys::Hostname;
 sub handled_commands
 {
   return {
-    updatenode     => "updatenode"};
+    updatenode     => "updatenode",
+    updatenodestat     => "updatenode"};
 }
 
 
@@ -60,7 +63,9 @@ sub preprocess_request
     if ($command eq "updatenode")
     {
       return preprocess_updatenode($request, $callback);
-    } 
+    } elsif ($command eq "updatenodestat") {
+      return [$request];
+    }
     else {
       my $rsp={};
       $rsp->{data}->[0]= "unsupported command: $command.";
@@ -87,11 +92,11 @@ sub process_request
     my $command  = $request->{command}->[0];
     my $localhostname=hostname();
 
-    if ($command eq "updatenode")
-    {
-	return updatenode($request, $callback);
-    } 
-    else {
+    if ($command eq "updatenode") {
+       return updatenode($request, $callback);
+    } elsif ($command eq "updatenodestat") {
+       return updatenodestat($request, $callback);
+    } else {
 	my $rsp={};
 	$rsp->{data}->[0]= "$localhostname: unsupported command: $command.";
 	$callback->($rsp);
@@ -233,10 +238,11 @@ sub updatenode {
   if ($nodestring) {
     my $output;
     if (xCAT::Utils->isLinux()) {
-      $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcatdsklspost $postscripts 2>&1`;
+      $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcatdsklspost 1 $postscripts 2>&1`;
     }
     else {
-      $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcataixpost $postscripts 2>&1`;
+      $output="This function is not supported on AIX.";
+      #$output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcataixpost 1 $postscripts 2>&1`;
     }
     my $rsp={};
     $rsp->{data}->[0]= "$output\n";
@@ -245,6 +251,37 @@ sub updatenode {
 
   return 0;
   
+}
+
+
+sub updatenodestat {
+  my $request = shift;
+  my $callback = shift;
+  my @nodes=();
+  my @args=();
+  if (ref($request->{node})) {
+    @nodes = @{$request->{node}};
+  } else {
+     if ($request->{node}) { @nodes = ($request->{node}); }
+  }
+  if (ref($request->{arg})) {
+    @args=@{$request->{arg}};
+  } else {
+    @args=($request->{arg});
+  }
+
+  if ((@nodes>0) && (@args>0)) {
+    my %node_status=();
+    my $stat=$args[0];
+    $node_status{$stat}=[];
+    foreach my $node (@nodes) {
+       my $pa=$node_status{$stat};
+       push(@$pa, $node);
+    }
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);     
+  }
+
+  return 0;
 }
 
 

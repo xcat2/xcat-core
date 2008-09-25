@@ -1,6 +1,11 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::blade;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 #use Net::SNMP qw(:snmp INTEGER);
 use xCAT::Table;
 use Thread qw(yield);
@@ -8,7 +13,10 @@ use xCAT::Utils;
 use xCAT::Usage;
 use IO::Socket;
 use SNMP;
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
 use strict;
+
 #use warnings;
 my %mm_comm_pids;
 
@@ -2645,9 +2653,47 @@ sub dompa {
 #Add a dummy node for eventlog to get non-blade events
     $mpahash{$mpa}->{nodes}->{$mpa}=-1;
   }
+
+  #get new node status
+  my %nodestat=();
+  my $check=0;
+  my $newstat;
+  if ($command eq 'rpower') {
+    if (($args->[0] ne 'stat') && ($args->[0] ne 'status')) { 
+      $check=1; 
+      my @allnodes=keys %{$mpahash->{$mpa}->{nodes}};
+      if ($args->[0] eq 'off') { $newstat=$::STATUS_POWERING_OFF; }
+      else { $newstat=$::STATUS_BOOTING;}
+      foreach (@allnodes) { $nodestat{$_}=$newstat; }
+
+      if ($args->[0] ne 'off') {
+        #get the current nodeset stat
+        if (@allnodes>0) {
+          my $chaintab = xCAT::Table->new('chain');
+          my $tabdata=$chaintab->getNodesAttribs(\@allnodes,['node', 'currstate']); 
+          foreach my $node (@allnodes) {
+            my $tmp1=$tabdata->{$node}->[0];
+            if ($tmp1) {
+              my $currstate=$tmp1->{currstate};
+              if ($currstate =~ /^install/) { $nodestat{$node}=$::STATUS_INSTALLING;}
+              elsif ($currstate =~ /^netboot/) { $nodestat{$node}=$::STATUS_NETBOOTING;}
+	    }
+	  }
+        }
+      }
+    }
+  }
+
+  foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;
     my ($rc,@output) = bladecmd($mpa,$node,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@$args); 
+
+    #update the node status
+    if (($check) && ($rc)) {
+      $nodestat{$node}="error";
+    }
 
     foreach(@output) {
       my %output;
@@ -2679,6 +2725,27 @@ sub dompa {
       waitforack($out);
     }
     yield;
+  }
+
+  #update the node status to the nodelist.status table
+  if ($check) {
+    my %node_status=();
+
+    foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+
+    foreach my $node (keys %nodestat) {
+      my $stat=$nodestat{$node};
+      if ($stat eq "error") { next; }
+      if (exists($node_status{$stat})) {
+        my $pa=$node_status{$stat};
+        push(@$pa, $node);
+      }
+      else {
+        $node_status{$stat}=[$node];
+      }
+    }
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+
   }
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";

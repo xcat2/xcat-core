@@ -4,8 +4,15 @@
 #(C)IBM Corp
 
 package xCAT_plugin::ipmi;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
 
 use POSIX qw(ceil floor);
 use Storable qw(store_fd retrieve_fd thaw freeze);
@@ -5542,12 +5549,45 @@ sub process_request {
         return;
     }
 
+  #get new node status
+  my %nodestat=();
+  my $errornodes={};
+  my $check=0;
+  my $newstat;
+  if ($command eq 'rpower') {
+    if (($extrargs->[0] ne 'stat') && ($extrargs->[0] ne 'status') && ($extrargs->[0] ne 'state')) { 
+      $check=1; 
+      my @allnodes;
+      foreach (@donargs) { push(@allnodes, $_->[0]); }
+
+      if ($extrargs->[0] eq 'off') { $newstat=$::STATUS_POWERING_OFF; }
+      else { $newstat=$::STATUS_BOOTING;}
+      foreach (@allnodes) { $nodestat{$_}=$newstat; }
+
+      if ($extrargs->[0] ne 'off') {
+        #get the current nodeset stat
+        if (@allnodes>0) {
+          my $chaintab = xCAT::Table->new('chain');
+          my $tabdata=$chaintab->getNodesAttribs(\@allnodes,['node', 'currstate']); 
+          foreach my $node (@allnodes) {
+            my $tmp1=$tabdata->{$node}->[0];
+            if ($tmp1) {
+              my $currstate=$tmp1->{currstate};
+              if ($currstate =~ /^install/) { $nodestat{$node}=$::STATUS_INSTALLING;}
+              elsif ($currstate =~ /^netboot/) { $nodestat{$node}=$::STATUS_NETBOOTING;}
+	    }
+	  }
+        }
+      }
+    }
+  }
+  foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
 
     my $children = 0;
     $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($kpid > 0) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
-      while ($children > $ipmimaxp) { forward_data($callback,$sub_fds); }
+      while ($children > $ipmimaxp) { forward_data($callback,$sub_fds, $errornodes); }
       $children++;
       my $cfd;
       my $pfd;
@@ -5556,24 +5596,50 @@ sub process_request {
       $pfd->autoflush(1);
       my $child = xCAT::Utils->xfork();
       unless (defined $child) { die "Fork failed" };
-	  if ($child == 0) { 
+	if ($child == 0) { 
         close($cfd);
-        donode($pfd,$_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
+        my $rrc=donode($pfd,$_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
         close($pfd);
-		exit(0);
-	  }
+	exit(0);
+      }
       $bmc_comm_pids{$child}=1;
       close ($pfd);
       $sub_fds->add($cfd)
 	}
     while ($sub_fds->count > 0 and $children > 0) {
-      forward_data($callback,$sub_fds);
+      forward_data($callback,$sub_fds,$errornodes);
     }
-    while (forward_data($callback,$sub_fds)) {} #Make sure they get drained, this probably is overkill but shouldn't hurt
+    while (forward_data($callback,$sub_fds, $errornodes)) {} #Make sure they get drained, this probably is overkill but shouldn't hurt
+
+
+  #update the node status to the nodelist.status table
+  if ($check) {
+    my %node_status=();
+    foreach (keys(%$errornodes)) { $nodestat{$_}="error"; } 
+
+    foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+
+    foreach my $node (keys %nodestat) {
+      my $stat=$nodestat{$node};
+      if ($stat eq "error") { next; }
+      if (exists($node_status{$stat})) {
+        my $pa=$node_status{$stat};
+        push(@$pa, $node);
+      }
+      else {
+        $node_status{$stat}=[$node];
+      }
+    }
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+  }
+
+    
 }
 sub forward_data { #unserialize data from pipe, chunk at a time, use magic to determine end of data structure
   my $callback = shift;
   my $fds = shift;
+  my $errornodes=shift;
+
   my @ready_fds = $fds->can_read(1);
   my $rfh;
   my $rc = @ready_fds;
@@ -5586,6 +5652,10 @@ sub forward_data { #unserialize data from pipe, chunk at a time, use magic to de
       print $rfh "ACK\n";
       my $responses=thaw($data);
       foreach (@$responses) {
+        #save the nodes that has errors for node status monitoring
+        if (exists($_->{node}->[0]->{errorcode}))  { 
+           if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
+        }
         $callback->($_);
       }
     } else {
@@ -5617,6 +5687,7 @@ sub donode {
   yield;
   #my $msgtoparent=freeze(\@outhashes);
  # print $outfd $msgtoparent;
+  return $rc;
 }
 
 sub sendoutput {
