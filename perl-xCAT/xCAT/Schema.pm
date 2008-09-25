@@ -490,7 +490,11 @@ site => {
    "  genpasswords (automatically generate random passwords for BMCs when configuring them)\n".
    "  defserialport (default serial port - currently only used by mknb)\n".
    "  defserialspeed (default serial speed - currently only used by mknb)\n".
-   "  defserialflow (default serial flow - currently only used by mknb)\n",
+   "  defserialflow (default serial flow - currently only used by mknb)\n".
+   "  ppctimeout (the timeout, in milliseconds, to use when communicating with PPC hw)\n".
+   "  maxssh (max # of SSH connections for hw ctrl purposes to PPC hw)\n".
+   "  ppcretry (max # of PPC hw connection attempts before failing)\n".
+   "  fsptimeout (the timeout, in milliseconds, to use when communicating with FSPs)\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
