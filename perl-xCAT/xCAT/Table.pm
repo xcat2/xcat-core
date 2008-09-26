@@ -107,7 +107,7 @@ sub buildcreatestmt
         if (isAKey(\@{$descr->{keys}},$col)) {   # keys need defined length
           $retv .= "\"$col\" VARCHAR(128)";
         } else {
-          $retv .= "$col TEXT";
+          $retv .= "\"$col\" TEXT";
         } 
         if (grep /^$col$/, @{$descr->{required}})
         {
@@ -650,6 +650,7 @@ sub setAttribs
         #push @qargs, $keypairs{$_};
         $qstring .= "\"$_\" = ? AND ";
         push @qargs, $keypairs{$_};
+
     }
     $qstring =~ s/ AND \z//;
     my $query = $self->{dbh}->prepare($qstring);
