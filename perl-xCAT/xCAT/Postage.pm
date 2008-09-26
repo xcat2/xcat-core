@@ -3,6 +3,7 @@ package xCAT::Postage;
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
+use xCAT::Utils;
 use Data::Dumper;
 use strict;
 BEGIN
@@ -286,44 +287,7 @@ sub makescript {
 #-----------------------------------------------------------------------------
 sub getnodesetstate {
   my $node=shift;
-  my $state="undefined";
-
-  #get boot type (pxe or yaboot)  for the node
-  my $noderestab=xCAT::Table->new('noderes',-create=>0);
-  my $ent=$noderestab->getNodeAttribs($node,[qw(netboot)]);
-  if ($ent->{netboot})  {
-    my $boottype=$ent->{netboot};
-
-    #get nodeset state from corresponding files
-    my $bootfilename;
-    if ($boottype eq "pxe") { $bootfilename="/tftpboot/pxelinux.cfg/$node";}
-    elsif ($boottype eq "yaboot") { $bootfilename="/tftpboot/etc/$node";}
-    else { $bootfilename="/tftpboot/pxelinux.cfg/$node"; }
-
-    if (-r $bootfilename) {
-      my $fhand;
-      open ($fhand, $bootfilename);
-      my $headline = <$fhand>;
-      close $fhand;
-      $headline =~ s/^#//;
-      chomp($headline);
-      my @a=split(' ', $headline);
-      $state = $a[0];
-    } else {
-      xCAT::MsgUtils->message('S', "getpostscripts: file $bootfilename cannot be accessed.");
-    }
-  } else {
-    xCAT::MsgUtils->message('S', "getpostscripts: noderes.netboot for node $node not defined.");
-  }
-
-  #get the nodeset state from the chain table as a backup.
-  if ($state eq "undefined") {
-    my $chaintab = xCAT::Table->new('chain');
-    my $stref = $chaintab->getNodeAttribs($node,['currstate']);
-    if ($stref and $stref->{currstate}) { $state=$stref->{currstate}; }
-  }
-
-  return $state;
+  return xCAT::Utils->get_nodeset_state($node);
 }
 
 sub  get_otherpkg_file_name {

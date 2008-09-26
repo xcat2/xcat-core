@@ -121,38 +121,41 @@ if [[ $OSTYPE = linux* ]]; then
   fi
   exit 0
 else #AIX
-  mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH
-  rm -f -R /xcatpost/post/otherpkgs/$OSVER/$ARCH/*
+  #mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH
+  #rm -f -R /xcatpost/post/otherpkgs/$OSVER/$ARCH/*
 
   # get the name of my service node/NIM master from the /etc/niminfo file
-  if [ -f "/etc/niminfo" ]; then
-    servnode=`grep NIM_MASTER_HOSTNAME /etc/niminfo|tr "=" " "|awk {'print $3'}`
-    echo "servnode=$servnode"
-  else 
-    echo "Could not find /etc/niminfo file"
-    logger "otherpkgs: Could not find /etc/niminfo file" 
-    exit 1
-  fi
+  #if [ -f "/etc/niminfo" ]; then
+  #  servnode=`grep NIM_MASTER_HOSTNAME /etc/niminfo|tr "=" " "|awk {'print $3'}`
+  #  echo "servnode=$servnode"
+  #else 
+  #  echo "Could not find /etc/niminfo file"
+  #  logger "otherpkgs: Could not find /etc/niminfo file" 
+  #  exit 1
+  #fi
 
-  for x in `echo "$OTHERPKGS" | tr "," "\n"`
-  do
-    result=`rcp -r $servnode:/install/post/otherpkgs/$OSVER/$ARCH/$x* /xcatpost/post/otherpkgs/$OSVER/$ARCH/.`
-    if [ $? -ne 0 ]; then 
-      echo "$result"
-      logger "otherpkgs: $result"
-    fi
-  done
+  #for x in `echo "$OTHERPKGS" | tr "," "\n"`
+  #do
+  #  result=`rcp -r $servnode:/install/post/otherpkgs/$OSVER/$ARCH/$x* /xcatpost/post/otherpkgs/$OSVER/$ARCH/.`
+  #  if [ $? -ne 0 ]; then 
+  #    echo "$result"
+  #    logger "otherpkgs: $result"
+  #  fi
+  #done
 
   #on AIX use geninstall
-  PKGS=`echo "$OTHERPKGS" | tr "," " "`
-  cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
-  result=`geninstall -I aX -Y -d /xcatpost/post/otherpkgs/$OSVER/$ARCH $PKGS 2>&1`
-  rc=$?
-  if [ $rc -ne 0 ]; then
-    echo "$result"
-    logger "otherpkgs: $result"
-  fi
-  exit $rc
+  #PKGS=`echo "$OTHERPKGS" | tr "," " "`
+  #cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
+  #result=`geninstall -I aX -Y -d /xcatpost/post/otherpkgs/$OSVER/$ARCH $PKGS 2>&1`
+  #rc=$?
+  #if [ $rc -ne 0 ]; then
+  #  echo "$result"
+  #  logger "otherpkgs: $result"
+  #fi
+  #exit $rc
+
+  echo "Please use nimnodecust command to add additional packages to AIX nodes."
+  logger "xCAT otherpkgs: Please use nimnodecust command to add addition packages to AIX nodes."
 fi
 
 exit 0

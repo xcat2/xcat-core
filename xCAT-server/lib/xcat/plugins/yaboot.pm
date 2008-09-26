@@ -289,5 +289,35 @@ sub process_request {
 
 }
 
+#----------------------------------------------------------------------------
+=head3  getNodesetStates
+       returns the nodeset state for the given nodes. The possible nodeset
+           states are: netboot, install, boot and discover.
+    Arguments:
+        nodes  --- a pointer to an array of nodes
+        states -- a pointer to a hash table. This hash will be filled by this
+             function node and key and the nodeset stat as the value. 
+    Returns:
+       (return code, error message)
+=cut
+#-----------------------------------------------------------------------------
+sub getNodesetStates {
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_plugin::yaboot/) {
+    $noderef=shift;
+  }
+  my @nodes=@$noderef;
+  my $hashref=shift; 
+  
+  if (@nodes>0) {
+    foreach my $node (@nodes) {
+      my $tmp=getstate($node);
+      my @a=split(' ', $tmp);
+      $stat = $a[0];
+      $hashref->{$node}=$stat;
+    }
+  }
+  return (0, "");
+}
 
 1;

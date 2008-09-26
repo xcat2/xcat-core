@@ -87,7 +87,7 @@ if (&runcmd($chcmd) != 0) {
 if (-f $scriptname)
 {
     if (@ARGV>0) {
-      my $scripts=$ARGV[0];
+      my $scripts=$ARGV[1];
       my $POSTS=join('\n', split(',', $scripts));
       #print "scripts=$scripts\n";
       #remove all the postscripts
@@ -110,6 +110,16 @@ if (-f $scriptname)
 	close($::LOG_FILE);
     exit 1;
 }
+
+if (@ARGV<1) {
+  if (&updateflag != 0) {
+    print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server..\n";
+    close($::LOG_FILE);
+    exit 1;
+  }
+}
+
 
 close($::LOG_FILE);
 
@@ -154,6 +164,36 @@ sub  getmypost {
 	close(POSTSCRIPT);
 	close $remote;
 	return 0;
+}
+
+############################################################
+#
+#   updateflag
+#     Tells xCAT on the server that the post scripts is done.      
+#
+############################################################
+sub  updateflag {
+   print "updateflag servicenode=$servnode\n";
+    my $port = "3002";
+    my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servnode, PeerPort  => $port, );
+    unless ($remote) { 
+        print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+	return 1;
+    }
+    $remote->autoflush(1);
+
+    my $line;
+    while (defined ($line = <$remote>)) {
+        chomp $line;
+        if ($line eq "ready") {
+           print $remote "netbooted\n";
+        } elsif ($line eq "done") {
+	    last;
+        }
+    }
+    close $remote;
+    return 0;
 }
 
 #####################################################

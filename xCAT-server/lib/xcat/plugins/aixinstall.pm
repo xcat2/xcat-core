@@ -9,7 +9,11 @@
 #####################################################
 
 package xCAT_plugin::aixinstall;
-
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 use Sys::Hostname;
 use File::Basename;
 use xCAT::NodeRange;
@@ -4780,13 +4784,13 @@ sub nimnodeset_usage
 
 =head3  is_me
 
-	returns 1 if the hostname is the node I'm running on
+	returns 1 if the hostname is the node I am running on
 
     Arguments:
         none
     Returns:
-        1 -  this is the node I'm running on
-        0 -  this is not the node I'm running on
+        1 -  this is the node I am running on
+        0 -  this is not the node I am running on
     Globals:
         none
     Error:
@@ -4818,6 +4822,83 @@ sub is_me
 	} else {
 		return 0;
 	}
+}
+
+#----------------------------------------------------------------------------
+=head3  getNodesetStates
+       returns the nodeset state for the given nodes. The possible nodeset
+           states are: diskless, dataless, standalone and undefined.
+    Arguments:
+        nodes  --- a pointer to an array of nodes
+        states -- a pointer to a hash table. This hash will be filled by this
+             function node and key and the nodeset stat as the value. 
+    Returns:
+       (return code, error message)
+=cut
+#-----------------------------------------------------------------------------
+sub getNodesetStates {
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_plugin::aixinstall/) {
+    $noderef=shift;
+  }
+  my @nodes=@$noderef;
+  my $hashref=shift; 
+  
+  if (@nodes>0) {
+    my $nttab = xCAT::Table->new('nodetype');
+    my $nimtab = xCAT::Table->new('nimimage');
+    if (! $nttab) { return (1, "Unable to open nodetype table.");}
+    if (! $nimtab) { return (1, "Unable to open nimimage table.");}
+
+    my %nimimage=();
+    my $nttabdata=$nttab->getNodesAttribs(\@nodes,['node', 'profile']); 
+    foreach my $node (@nodes) {
+      my $tmp1=$nttabdata->{$node}->[0];
+      if ($tmp1) {
+        my $profile=$tmp1->{profile};
+        if ( ! exists($nimimage{$profile})) { 
+          (my $tmp)=$nimtab->getAttribs({'imagename'=>$profile},'nimtype');
+          if (defined($tmp)) { $nimimage{$profile} = $tmp->{nimtype}; }
+          else { $nimimage{$profile}="undefined";}
+        }
+        $hashref->{$node}=$nimimage{$profile};
+      } else {$hashref->{$node}="undefined";}
+    }
+    $nttab->close();
+    $nimtab->close();
+  }
+  return (0, "");
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   getNodesetState
+       get current nodeset stat for the given node.
+    Arguments:
+        nodes -- node name.
+    Returns:
+       nodesetstate 
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub getNodesetState {
+  my $node = shift;
+  my $state="undefined";
+  my $nttab = xCAT::Table->new('nodetype');
+  my $nimtab = xCAT::Table->new('nimimage');
+  if ($nttab && $nimtab) {
+    my $tmp1 = $nttab->getNodeAttribs($node,['profile']);
+    if ($tmp1 && $tmp1->{profile}) {
+       my $profile=$tmp1->{profile};
+       my $tmp2=$nimtab->getAttribs({'imagename'=>$profile},'nimtype');
+        if (defined($tmp2)) { $state = $tmp2->{nimtype}; }
+    }
+    $nttab->close();
+    $nimtab->close();
+  }
+
+  return $state;
 }
 
 1;

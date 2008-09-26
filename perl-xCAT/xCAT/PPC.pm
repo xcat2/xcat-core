@@ -147,14 +147,13 @@ sub process_command {
       if ($subcommand ne 'off') {
         #get the current nodeset stat
         if (@allnodes>0) {
-          my $chaintab = xCAT::Table->new('chain');
-          my $tabdata=$chaintab->getNodesAttribs(\@allnodes,['node', 'currstate']); 
-          foreach my $node (@allnodes) {
-            my $tmp1=$tabdata->{$node}->[0];
-            if ($tmp1) {
-              my $currstate=$tmp1->{currstate};
-              if ($currstate =~ /^install/) { $nodestat{$node}=$::STATUS_INSTALLING;}
-              elsif ($currstate =~ /^netboot/) { $nodestat{$node}=$::STATUS_NETBOOTING;}
+	  my $nsh={};
+          my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+          if ($ret) { trace( $request, $msg );}
+          else {
+            foreach (keys %$nsh) {
+	      my $currstate=$nsh->{$_};
+              $nodestat{$_}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
 	    }
 	  }
         }
@@ -164,7 +163,18 @@ sub process_command {
     $check=1;
     my $noderange = $request->{node}; 
     my @allnodes=@$noderange;
-    foreach (@allnodes) { $nodestat{$_}=$::STATUS_NETBOOTING;}
+    #get the current nodeset stat
+    if (@allnodes>0) {
+      my $nsh={};
+      my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+      if ($ret) { trace( $request, $msg );}
+      else {
+        foreach (keys %$nsh) {
+          my $currstate=$nsh->{$_};
+          $nodestat{$_}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "netboot");
+        }
+      }
+    }
   }
 
   foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove

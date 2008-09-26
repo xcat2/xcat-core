@@ -528,7 +528,30 @@ sub processMonitoringTableChanges {
 
 
 
-
+#--------------------------------------------------------------------------------
+=head3    getNodeStatusFromNodesetState
+      This routine returns the node status string for the given nodeset string
+=cut
+#--------------------------------------------------------------------------------
+sub getNodeStatusFromNodesetState {
+  my $nodeset=shift;
+  if ($nodeset =~ /xCAT_monitoring::monitorctrl/) {
+    $nodeset=shift;
+  } 
+  my $action=shift;
+  
+  my $status=$::STATUS_BOOTING;
+  if ($nodeset =~ /^install/) { $status=$::STATUS_INSTALLING; }  #linux
+  elsif ($nodeset =~ /^netboot/) { $status=$::STATUS_NETBOOTING;}  #linux 
+  elsif ($nodeset =~ /^boot/) { $status=$::STATUS_BOOTING;}  #linux
+  elsif ($nodeset =~ /^discover/) { $status=$::STATUS_DISCOVERING;}  #linux 
+  elsif (($nodeset =~ /^diskless/) || ($nodeset =~ /^dataless/)) { $status=$::STATUS_NETBOOTING;}  #aix
+  elsif ($nodeset =~ /^standalone/) {   #aix
+    if ($action eq "rnetboot") { $status=$::STATUS_INSTALLING; }
+    else { $status=$::STATUS_BOOTING; }
+  }
+  return $status;
+}
 
 #--------------------------------------------------------------------------------
 =head3    setNodeStatusAttributes

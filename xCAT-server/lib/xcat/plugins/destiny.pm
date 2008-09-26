@@ -231,8 +231,11 @@ sub nextdestiny {
     $chaintab->setNodeAttribs($node,$ref); #$ref is in a state to commit back to db
 
     #collect node status for certain states
-    if ($ref->{currstate} =~ /^boot/) {
-      my $stat="booting";
+    my $stat;
+    if ($ref->{currstate} =~ /^boot/) { $stat=$::STATUS_BOOTING; }
+    elsif ($ref->{currstate} =~ /^discover/) { $stat=$::STATUS_DISCOVERING; }
+    
+    if ($stat) {
       if (exists($node_status{$stat})) {
         my $pa=$node_status{$stat};
         push(@$pa, $node);
@@ -249,7 +252,9 @@ sub nextdestiny {
   }
   
   #setup the nodelist.status
-  xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+  if (keys(%node_status) > 0) {
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+  }
 
   if ($callnodeset) {
      $subreq->({command=>['nodeset'],

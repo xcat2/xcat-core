@@ -5,7 +5,6 @@
 #   Generic xCAT post script for diskless nodes
 #
 #####################################################
-
 if [ ! `uname` == Linux ]; then
    MYDIR=`dirname $0`
    exec $MYDIR/xcatdsklspost.aix
@@ -83,16 +82,16 @@ fi
 #MYCONT=`cat /tmp/mypostscript`
 #echo "$MYCONT"
 
+if [ $# -eq 0 ]; then
+  #notify the server that we are done with netbooting
+  echo "updateflag.awk \$MASTER 3002 netbooted" >> /tmp/mypostscript
+fi
+
 chmod +x /tmp/mypostscript
 if [ -x /tmp/mypostscript ];then
    /tmp/mypostscript
 fi
 rm -f /tmp/mypostscript
-
-#notify the server that we are done with netbooting
-if [ $# -eq 0 ]; then
-  updateflag.awk $MASTER 3002 netbooted
-fi
 
 killall stunnel
 rm -rf /etc/stunnel

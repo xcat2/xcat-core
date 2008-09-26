@@ -233,7 +233,7 @@ sub updatenode {
   my $localhostname=hostname();
 
   my $nodestring=join(',', @$nodes);
-  print "postscripts=$postscripts, nodestring=$nodestring\n";
+  #print "postscripts=$postscripts, nodestring=$nodestring\n";
 
   if ($nodestring) {
     my $output;
@@ -241,8 +241,7 @@ sub updatenode {
       $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcatdsklspost 1 $postscripts 2>&1`;
     }
     else {
-      $output="This function is not supported on AIX.";
-      #$output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcataixpost 1 $postscripts 2>&1`;
+      $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcataixpost 1 $postscripts 2>&1`;
     }
     my $rsp={};
     $rsp->{data}->[0]= "$output\n";

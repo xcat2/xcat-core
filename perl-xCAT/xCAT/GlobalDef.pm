@@ -37,7 +37,7 @@ $::STATUS_DISCOVERING="discovering";
 $::STATUS_DEFINED="defined";
 $::STATUS_UNKNOWN="unknown";
 
-#defined->[discovering]->installing->booting->->alive,  defined->netbooting->booted->alive,  alive/unreachable->booting->->alive,  powering-off->unreachable, alive->unreachable
+#defined->[discovering]->installing->booting->booted->alive,  defined->netbooting->booted->alive,  alive/unreachable->booting->booted->alive,  powering-off->unreachable, alive->unreachable
 %::NEXT_NODESTAT_VAL=(
   $::STATUS_DEFINED=>{$::STATUS_DISCOVERING=>1, $::STATUS_INSTALLING=>1, $::STATUS_NETBOOTING=>1, $::STATUS_POWERING_OFF=>1, $::STATUS_BOOTING=>1},
   $::STATUS_DISCOVERING=>{$::STATUS_INSTALLING=>1},

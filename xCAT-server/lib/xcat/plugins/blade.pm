@@ -2669,14 +2669,12 @@ sub dompa {
       if ($args->[0] ne 'off') {
         #get the current nodeset stat
         if (@allnodes>0) {
-          my $chaintab = xCAT::Table->new('chain');
-          my $tabdata=$chaintab->getNodesAttribs(\@allnodes,['node', 'currstate']); 
-          foreach my $node (@allnodes) {
-            my $tmp1=$tabdata->{$node}->[0];
-            if ($tmp1) {
-              my $currstate=$tmp1->{currstate};
-              if ($currstate =~ /^install/) { $nodestat{$node}=$::STATUS_INSTALLING;}
-              elsif ($currstate =~ /^netboot/) { $nodestat{$node}=$::STATUS_NETBOOTING;}
+	  my $nsh={};
+          my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+          if (!$ret) {
+            foreach (keys %$nsh) {
+	      my $currstate=$nsh->{$_};
+              $nodestat{$_}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
 	    }
 	  }
         }
