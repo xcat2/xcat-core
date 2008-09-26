@@ -222,11 +222,11 @@ sub extnoderange { #An extended noderange function.  Needed as the more straight
     }
     my $return;
     $retaincache=1;
-    $return->{nodes}=[noderange($range,$verify)];
+    $return->{node}=[noderange($range,$verify)];
     if ($namedopts->{intersectinggroups}) {
         my %grouphash=();
         my $nlent;
-        foreach (@{$return->{nodes}}) {
+        foreach (@{$return->{node}}) {
             $nlent=$nodelist->getNodeAttribs($_,['groups']);
             if ($nlent and $nlent->{groups}) {
                 foreach (split /,/,$nlent->{groups}) {

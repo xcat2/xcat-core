@@ -594,7 +594,7 @@ sub plugin_command {
   my $sock = shift;
   my $callback = shift;
   my %handler_hash;
-  use xCAT::NodeRange;
+  use xCAT::NodeRange qw/extnoderange nodesmissed noderange/;
   $Main::resps={};  
   my @nodes;
   if ($req->{node}) {
@@ -1099,6 +1099,16 @@ sub service_connection {
             if ($req->{transid}) {
               $resp{transid}=$req->{transid}->[0];
             }
+            print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
+            next;
+          } elsif ($req->{command}->[0] eq "extnoderange" and $req->{noderange}) {  #This is intended for the UIs to build trees
+            #as this would be part of a highly dynamic construct, it has a shortcut here to minimize server load
+            my $subgroups=0;
+            if ($req->{arg} and grep /subgroups/,@{$req->{arg}}) {
+                $subgroups=1;
+            }
+            my %resp=%{extnoderange($req->{noderange}->[0],{intersectinggroups=>$subgroups})};
+            $resp{serverdone}={};
             print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
             next;
           } else {
