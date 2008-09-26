@@ -7,6 +7,7 @@ use strict;
 #Perl implementation of noderange
 our @ISA = qw(Exporter);
 our @EXPORT = qw(noderange nodesmissed);
+our @EXPORT_OK = qw(extnoderange);
 
 my $missingnodes=[];
 my $nodelist; #=xCAT::Table->new('nodelist',-create =>1);
@@ -212,7 +213,34 @@ sub expandatom {
 sub retain_cache { #A semi private operation to be used *ONLY* in the interesting Table<->NodeRange module interactions.
     $retaincache=shift;
 }
-    
+sub extnoderange { #An extended noderange function.  Needed as the more straightforward function return format too simple for this.
+    my $range = shift;
+    my $namedopts = shift;
+    my $verify=1;
+    if ($namedopts->{skipnodeverify}) {
+        $verify=0;
+    }
+    my $return;
+    $retaincache=1;
+    $return->{nodes}=[noderange($range,$verify)];
+    if ($namedopts->{intersectinggroups}) {
+        my %grouphash=();
+        my $nlent;
+        foreach (@{$return->{nodes}}) {
+            $nlent=$nodelist->getNodeAttribs($_,['groups']);
+            if ($nlent and $nlent->{groups}) {
+                foreach (split /,/,$nlent->{groups}) {
+                    $grouphash{$_}=1;
+                }
+            }
+        }
+        $return->{intersectinggroups}=[sort keys %grouphash];
+    }
+    $retaincache=0;
+    undef ($nodelist);
+    @allnodeset=();
+    return $return;
+}
 sub noderange {
   $missingnodes=[];
   #We for now just do left to right operations
