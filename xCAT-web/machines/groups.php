@@ -68,17 +68,69 @@ foreach($groups as $group => $status) {
 
 GroupNodeTable::insertGroupTableFooter();
 
-echo <<<EOS
-<!-- <SCRIPT language="JavaScript"> XCATEvent.doExpandNodes(); </SCRIPT> -->
-</form>
-<table>
-<tr><td><img src="$TOPDIR/images/green-ball-m.gif"></td><td align=left>Node is good (Status is ready/pbs/sshd)</td></tr>
-<tr><td><img src="$TOPDIR/images/red-ball-m.gif"></td><td align=left>Node is bad (Status is 'noping')</td></tr>
-<tr><td><img src="$TOPDIR/images/yellow-ball-m.gif"></td><td align=left>Other status (unknown/node unavailable...)</td></tr>
-</table>
-<p id=disclaimer>This interface is still under construction and not yet ready for use.</p>
-</div>
-</BODY>
-</HTML>
-EOS;
+echo '<!-- <SCRIPT language="JavaScript"> XCATEvent.doExpandNodes(); </SCRIPT> --></form><table><tr>';
+
+echo '<td><img src="' . getStatusImage('good') . '"> Good</td><td width=20></td>';
+echo '<td><img src="' . getStatusImage('warning') . '"> Possible problem</td><td width=20></td>';
+echo '<td><img src="' . getStatusImage('bad') . '"> Problem</td><td width=20></td>';
+echo '<td><img src="' . getStatusImage('unknown') . '"> Unknown</td>';
+
+echo '</tr></table></div>';
+insertFooter();
+
+
+
+//-----------------------------------------------------------------------------
+// Returns the aggregate status of each node group in the cluster.  The return value is a
+// hash in which the key is the group name and the value is nodelist.status.
+function getGroupStatus() {
+	$groups = array();
+	$xml = docmd('tabdump','',array('nodelist'));
+	$output = $xml->xcatresponse->children();
+	#$output = $xml->children();	// technically, we should iterate over the xcatresponses, because there can be more than one
+	foreach ($output as $line) {
+		//echo "<p>line=$line</p>";
+		$vals = array();
+		preg_match('/^"([^"]*)","([^"]*)",(.*)$/', $line, $vals);	//todo: create function to parse tabdump output better
+		if (count($vals) > 3) {
+			//$node = $vals[1];
+			$grplist = preg_split('/,/', $vals[2]);
+			$rest = $vals[3];
+			$status = array();
+			preg_match('/^"([^"]*)"/', $rest, $status);
+			if (count($status) < 2) { $status[1] = 'unknown'; }
+			foreach ($grplist as $g) {
+				if (array_key_exists($g,$groups)) { $groups[$g] = minstat($groups[$g], $status[1]); }
+				else { $groups[$g] = $status[1]; }
+			}
+		}
+	}
+	return $groups;
+}
+
+
+//-----------------------------------------------------------------------------
+// For 2 status strings from nodestat or nodelist.status, return the "lowest".
+function minstat($s1, $s2) {
+	$statnum = array( 'unknown' => 0,
+					'noping' => 1,
+					'ping' => 2,
+					'snmp' => 3,
+					'sshd' => 4,
+					'pbs' => 5,
+					'ready' => 6,
+					);
+
+	// if either value is empty, just return the other one
+	if (!isset($s1)) { return $s2; }
+	if (!isset($s2)) { return $s1; }
+
+	// if either value does not map into the hash, then return unknown
+	if (!isset($statnum[$s1]) || !isset($statnum[$s2])) { return 'unknown'; }
+
+	if ($statnum[$s1] < $statnum[$s2]) { return $s1; }
+	else { return $s2; }
+}
+
+
 ?>

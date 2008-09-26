@@ -3,7 +3,8 @@
 	/* background-color: #002432; */
 }
 
-.TopMiddle { background: #FFF url(../images/top.jpg) repeat-x top; }
+.TopTop { background: #FFF url(../images/toptop.jpg) repeat-x top; }
+.TopMiddle { background: #FFF url(../images/top2.jpg) repeat-x top; padding-top: 1px; }
 
 /*
 #top {
@@ -38,7 +39,7 @@
 	border-right: 2px solid white;
 }
 
-#mainNav {   /* the UL the contains the LIs of one row of menu items */
+#mainNav {   /* the UL that contains the LIs of one row of menu items */
 	/* position: absolute;
 	float: left; */
 	list-style: none;
@@ -63,7 +64,7 @@
   display: block;
   padding: 0 2em;  /*2em;*/
   margin: 0px;
-  background: #09334b;
+  background: #0B4360;  /* #09334b; */
   color: #fafafa;
 }
 
@@ -95,7 +96,7 @@
 } */
 
 #mainNav a:hover {
-  background: #09334b;
+  background: #0B4360;   /* #09334b; */
   color: #fafafa;
 }
 
@@ -123,6 +124,21 @@ div#content {
 
 .ContentForm { margin: 10px 2px 15px 2px; }
 
+.PageFooter {
+ background-color : #e8e8e8;
+ margin: 10px;
+ padding: 5px;
+}
+
+#disclaimer {
+ font-weight: bold;
+ font-size: 8pt;
+ font-style: italic;
+ color: red;
+ text-align: center;
+ margin: 5px;
+}
+
 BODY {
 	margin: 0;
 	padding: 10px;
@@ -138,6 +154,7 @@ BODY {
 	*/
 }
 
+IMG { vertical-align: middle; }
 INPUT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 SELECT {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}
 TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; font-weight : bold;}

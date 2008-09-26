@@ -1,13 +1,7 @@
+
 /* Styles specific to the groups.php page */
 
-#disclaimer {
- font-weight: bold;
- font-size: 9pt;
- color: red;
- text-align: center;
- margin: 5px;
-}
-
 .GroupNodeTable { margin-left: 10px; }
+.GroupNodeTable TD { padding-left: 0.2em; padding-right: 0.2em; }
 .GroupNodeTableHeader { color: black; background-color : #FFFF66; font-weight : bold; white-space: nowrap; }
 .GroupNodeTableRow { color: black; background-color : #FFFF66; white-space: nowrap; }

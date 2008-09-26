@@ -84,8 +84,8 @@ function getNodeGroupSection($group, $nodes) {
 	$right_arrow_gif = $imagedir . "/grey_arrow_r.gif";
 	$left_arrow_gif = $imagedir . "/grey_arrow_l.gif";
 
-	$html .= "<table id='$group' class=GroupNodeTable width='100%' cellpadding=0 cellspacing=1 border=0>\n";
-	$html .= "<TR class=GroupNodeTableHeader><TD>Node Name</TD><TD>Arch</TD><TD>OS</TD><TD>Mode</TD><TD>Status</TD><TD>Power Method</TD><TD>Comment</TD></TR>\n";
+	$html = "<table id='$group' class=GroupNodeTable width='100%' cellpadding=0 cellspacing=1 border=0>\n";
+	$html .= "<TR class=GroupNodeTableHeader><TD>Node Name</TD><TD>Arch</TD><TD>OS</TD><TD>Profile</TD><TD>Status</TD><TD>Power Method</TD><TD>Comment</TD></TR>\n";
 
 	foreach($nodes as $nodeName => $attrs) {
 		$html .= GroupNodeTable::getNodeTableRow($nodeName, $attrs);
@@ -103,16 +103,19 @@ function getNodeGroupSection($group, $nodes) {
 function getNodeTableRow($nodeName, $attrs) {
 	$html = "<tr class=GroupNodeTableRow>\n" .
 			"<td align=left><input type=checkbox name='node_$nodeName' >$nodeName</td>\n" .
-			"<td>" . $attrs['arch'] . "</td>\n" .
-			"<td>" . $attrs['osversion'] . "</td>\n" .
-			"<td>" . $attrs['mode'] . "</td>\n";
+			"<td>" . (array_key_exists('nodetype.arch',$attrs)?$attrs['nodetype.arch']:'') . "</td>\n" .
+			"<td>" . (array_key_exists('nodetype.os',$attrs)?$attrs['nodetype.os']:'') . "</td>\n" .
+			"<td>" . (array_key_exists('nodetype.profile',$attrs)?$attrs['nodetype.profile']:'') . "</td>\n";
 
-	$stat = 'unknown';   //todo: implement
+	$stat = 'unknown';   //todo: implement when nodels <nr> nodelist.status works
 	$img_string = '<img src="' . getStatusImage($stat) . '">';
 
-	$html .= "<td>" . $img_string . "</td>".
-			"<td>" . $attrs['power'] . "</td>".
-			"<td>" . $attrs['comment'] . "</td></tr>";
+	$powerstr = array_key_exists('nodehm.power',$attrs) ? $attrs['nodehm.power'] : NULL;
+	if (empty($powerstr)) { $powerstr = array_key_exists('nodehm.mgt',$attrs)?$attrs['nodehm.mgt']:''; }
+
+	$html .= "<td align=center>" . $img_string . "</td>".
+			"<td>" . $powerstr . "</td>".
+			"<td>" . (array_key_exists('nodelist.comments',$attrs)?$attrs['nodelist.comments']:'') . "</td></tr>";
 
 	return $html;
 	}
@@ -123,7 +126,7 @@ function getNodeTableRow($nodeName, $attrs) {
  */
 function determineStatus($statStr) {
 	$status = NULL;
-	if ($statStr == "ready" || $statStr == "pbs" || $statStr == "sshd") { $status = "good"; }
+	if ($statStr == "alive" || $statStr == "ready" || $statStr == "pbs" || $statStr == "sshd") { $status = "good"; }
 	else if ($statStr == "noping") { $status = "bad"; }
 	else if ($statStr == "ping") { $status = "warning"; }
 	else { $status = "unknown"; }

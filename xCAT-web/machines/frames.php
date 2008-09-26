@@ -4,8 +4,11 @@ $TOPDIR = '..';
 require_once "$TOPDIR/lib/functions.php";
 insertHeader('xCAT Frame Node List', NULL, NULL, array('machines','frames'));
 if (isAIX()) { $aixDisabled = 'disabled'; }
-?>
+insertNotDoneYet();
+echo '</body></html>';
 
+/* This was copied from the csm web interface and can be used as the beginning code
+   for the frame view.
 <SCRIPT language="JavaScript">
 function _reloadMe(form)
 {
@@ -125,7 +128,6 @@ else { return form.selAllCheckbox.checked; }   // non-rack display
 </SCRIPT>
 
 <div id=content>
-<?php /* phpinfo(); */ ?>
 <P align="center"><IMG src="images/csmlogo.gif" border="0"></P>
 <H2>Node List on Management Server <?= $_SERVER["SERVER_NAME"] ?></H2>
 
@@ -349,3 +351,4 @@ if ($AIXdisable) {
 </div>
 </body>
 </HTML>
+?>

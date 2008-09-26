@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+# NOTE: this cmd is not ported to xCAT 2.0 and is not used any more!!!!!!
+
 # Display some aggregate information about each group, gathered from the db and its nodes
 
 use strict;

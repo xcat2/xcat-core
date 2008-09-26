@@ -7,10 +7,12 @@ session_start();     // retain session variables across page requests
 if (!isset($TOPDIR)) { $TOPDIR = '..'; }
 
 // The settings below display error on the screen, instead of giving blank pages.
-error_reporting(E_ALL ^ E_NOTICE);
+//error_reporting(E_ALL ^ E_NOTICE);
+error_reporting(E_ALL);
 ini_set('display_errors', true);
 
 
+//-----------------------------------------------------------------------------
 /**
  * Inserts the header part of the HTML and the top part of the page, including the menu.
  * Also includes some common css and js files and the css and js files specified.
@@ -53,7 +55,7 @@ echo "</head><body>\n";
 echo <<<EOS
 <table id=headingTable border=0 cellspacing=0 cellpadding=0>
 <tr valign=top>
-    <td><img src='$TOPDIR/images/topl.jpg'></td>
+    <td><img src='$TOPDIR/images/topl2.jpg'></td>
     <td class=TopMiddle><img id=xcatImage src='$TOPDIR/images/xCAT_icon-l.gif' height=40px></td>
     <td class=TopMiddle width='100%'>
 
@@ -62,7 +64,7 @@ EOS;
 
 insertMenus($currents);
 
-echo "</td><td><img src='$TOPDIR/images/topr.jpg'></td></tr></table>\n";
+echo "</td><td><img src='$TOPDIR/images/topr2.jpg'></td></tr></table>\n";
 //echo "</div></div>\n";     // end the top div
 }  // end insertHeader
 
@@ -126,10 +128,10 @@ $MENU = array(
 		'list' => array(
 			'diagnose' => array('label' => 'Diagnose', 'url' => "$TOPDIR/support/diagnose.php"),
 			'update' => array('label' => 'Update', 'url' => "$TOPDIR/support/update.php"),
-			'howtos' => array('label' => 'HowTos', 'url' => "$TOPDIR/support/howtos.php"),
-			'manpages' => array('label' => 'Man Pages', 'url' => "$TOPDIR/support/manpages.php"),
-			'maillist' => array('label' => 'Mail List', 'url' => "http://xcat.org/mailman/listinfo/xcat-user"),
-			'wiki' => array('label' => 'Wiki', 'url' => "http://xcat.wiki.sourceforge.net/"),
+			'howtos' => array('label' => 'HowTos', 'url' => getDocURL('howto')),
+			'manpages' => array('label' => 'Man Pages', 'url' => getDocURL('manpage')),
+			'maillist' => array('label' => 'Mail List', 'url' => getDocURL('web','mailinglist')),
+			'wiki' => array('label' => 'Wiki', 'url' => getDocURL('web','wiki')),
 			'suggest' => array('label' => 'Suggestions', 'url' => "$TOPDIR/support/suggest.php"),
 			'about' => array('label' => 'About', 'url' => "$TOPDIR/support/about.php"),
 			)
@@ -137,6 +139,7 @@ $MENU = array(
 	);
 
 
+//-----------------------------------------------------------------------------
 // Insert the menus at the top of the page
 //   $currents is an array of the current menu choice tree
 function insertMenus($currents) {
@@ -152,6 +155,7 @@ function insertMenus($currents) {
 }
 
 
+//-----------------------------------------------------------------------------
 // Insert one set of choices under a main choice.
 function insertMenuRow($current, $isTop, $items) {
 	global $TOPDIR;
@@ -182,8 +186,80 @@ function insertMenuRow($current, $isTop, $items) {
 
 	//echo "</TR></TABLE>\n";
 	//echo "</ul></div>\n";
-	echo "</td></tr></ul>\n";
+	echo "\n</ul></td></tr>\n";
 }
+
+
+//-----------------------------------------------------------------------------
+// Inserts the html for each pages footer
+function insertFooter() {
+echo '<div class=PageFooter><p id=disclaimer>This interface is still under construction and not yet ready for use.</p></div></BODY></HTML>';
+}
+
+
+//-----------------------------------------------------------------------------
+// Run a cmd via the xcat client/server protocol
+// args is an array of arguments to the cmd
+// Returns a tree of SimpleXML objects.  See perl-xCAT/xCAT/Client.pm for the format.
+function docmd($cmd, $nr, $args){
+	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
+	$request->addChild('command',$cmd);
+	foreach ($args as $a) {
+		$request->addChild('arg',$a);
+	}
+	if(!empty($nr)){
+		$request->addChild('noderange',$nr);
+	}
+	#echo $request->asXML();
+	$xml = submit_request($request,0);
+	return $xml;
+}
+
+
+//-----------------------------------------------------------------------------
+// Used by docmd()
+// req is a tree of SimpleXML objects
+// Returns a tree of SimpleXML objects.  See perl-xCAT/xCAT/Client.pm for the format.
+function submit_request($req, $skipVerify){
+	#global $cert,$port,$xcathost;
+	$apachehome = '/var/www';		#todo:  for sles this should be /var/lib/wwwrun
+	$cert = "$apachehome/.xcat/client-cred.pem";
+	$xcathost = "localhost";
+	$port = "3001";
+	$rsp = 0;
+	$response = '';
+	$cleanexit=0;
+
+	// Open a socket to xcatd
+	$context = stream_context_create(array('ssl'=>array('local_cert' => $cert)));
+	if($fp = stream_socket_client('ssl://'.$xcathost.':'.$port,$errno,$errstr,30,
+                STREAM_CLIENT_CONNECT,$context)){
+		fwrite($fp,$req->asXML());		// send the xml to xcatd
+		while(!feof($fp)){				// and then read until there is no more
+			$response .= preg_replace('/\n/','', stream_get_contents($fp));		// remove newlines and add it to the response
+
+			// Look for the serverdone response
+			$pattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>\s*$/';
+			if(preg_match($pattern,$response)) {		// transaction is done, pkg up the xml and return it
+				#echo htmlentities($response);
+				$response = '<xcat>' . preg_replace($pattern,'', $response) . '</xcat>';		// remove the serverdone response and put an xcat tag around the rest
+				$rsp = simplexml_load_string($response,'SimpleXMLElement', LIBXML_NOCDATA);
+				$cleanexit = 1;
+			}
+		}
+		fclose($fp);
+	}else{
+		echo "<p>xCAT Submit request Error: $errno - $errstr</p>\n";
+	}
+	if(! $cleanexit){
+		if(!$skipVerify){
+			echo "<p>Error: xCAT response ended prematurely.</p>";
+			$rsp = 0;
+		}
+	}
+	return $rsp;
+}
+
 
 
 /** ----------------------------------------------------------------------------------------------
@@ -238,8 +314,9 @@ function runcmd ($cmd, $mode, &$output, $options=NULL){
 }
 
 
+//-----------------------------------------------------------------------------
 // Send the keys and values in the primary global arrays
-function dumpGlobals() { //------------------------------------
+function dumpGlobals() {
 	trace('$_SERVER:');
 	foreach ($_SERVER as $key => $val) { trace("$key = $val"); }
 	trace('<br>$_ENV:');
@@ -253,8 +330,12 @@ function dumpGlobals() { //------------------------------------
 	}
 }
 
+
+//-----------------------------------------------------------------------------
 function getXcatRoot() { return isset($_ENV['XCATROOT']) ? $_ENV['XCATROOT'] : '/opt/xcat'; }
 
+
+//-----------------------------------------------------------------------------
 # Returns true if the given rpm file is already installed at this version or higher.
 function isInstalled($rpmfile) {
 	$aixrpmopt = isAIX() ? '--ignoreos' : '';
@@ -271,6 +352,7 @@ function isInstalled($rpmfile) {
 
 $isSupportedHash = array();
 
+//-----------------------------------------------------------------------------
 # Returns true if the specified feature is supported.  This is normally determined by some fast
 # method like checking for the existence of a file.  The answer is also cached for next time.
 function isSupported($feature) {
@@ -297,9 +379,10 @@ define("TRACE", "1");
 function trace($str) { if (TRACE) { echo "<p class=Trace>$str</p>\n"; } }
 
 
+//-----------------------------------------------------------------------------
 // Take in a hostname or ip address and return the fully qualified primary hostname.  If resolution fails,
 // it just returns what it was given.
-function resolveHost($host) { //------------------------------------
+function resolveHost($host) {
 	if (isIPAddr($host)) {       // IP address
 		$hostname = gethostbyaddr($host);
 		return $hostname;
@@ -312,23 +395,41 @@ function resolveHost($host) { //------------------------------------
 	}
 }
 
-//------------------------------------
+//-----------------------------------------------------------------------------
 function isIPAddr ($host) { return preg_match('/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/', $host); }
 
 
-// Returns the URL for the requested documentation.  This provides 1 level of indirection in case the location
-// of some of the documentation changes.
-function getDocURL($book, $section) { //------------------------------------
+//-----------------------------------------------------------------------------
+// Returns the URL for the requested documentation.  This provides 1 level of indirection in case
+// the location of some of the documentation changes.
+// book is the name (minus the dollar sign) of one of the arrays below.
+// section is the book/website/table name, or in the case of manpage:  cmd.section#
+function getDocURL($book, $section = NULL) {
+	global $TOPDIR;
 	$web = array (
-		   'docs' => "http://xcat.org/doc",
-		   'forum' => "http://xcat.org/mailman/listinfo/xcat-user",
-		   'updates' => "http://www.alphaworks.ibm.com/tech/xCAT",
-		   'opensrc' => "http://www-rcf.usc.edu/~garrick",
-		   'wiki' => "http://www.asianlinux.org/xcat",
+		   'docs' => "http://xcat.svn.sourceforge.net/svnroot/xcat/xcat-core/trunk/xCAT-client/share/doc",
+		   'mailinglist' => "http://xcat.org/mailman/listinfo/xcat-user",
+		   'updates' => "http://xcat.sourceforge.net/yum",
+		   'opensrc' => "http://xcat.sourceforge.net/yum",
+		   'wiki' => "http://xcat.wiki.sourceforge.net",
 		   );
-	$man = array ();
-	$howto = array ();
-	$rsctadmin = array (
+	$manpage = array(
+				0 => "$TOPDIR/../xcat-doc",
+				1 => "$TOPDIR/../xcat-doc/man1/xcat.1.html",
+				);
+	$dbtable = array(
+				0 => "$TOPDIR/../xcat-doc/man5",
+				1 => "$TOPDIR/../xcat-doc/man5/xcatdb.5.html",
+				);
+	$howto = array(
+				0 => "$TOPDIR/../xcat-doc",
+				1 => "$TOPDIR/../xcat-doc/index.html",
+				'linuxCookbook' => "$TOPDIR/../xcat-doc/xCAT2.pdf",
+				'idataplexCookbook' => "$TOPDIR/../xcat-doc/xCAT-iDpx.pdf",
+				'aixCookbook' => "$TOPDIR/../xcat-doc/xCAT2onAIX.pdf",
+				);
+	/*
+	$rsctadmin = array (		//todo:  update this
 				0 => "http://publib.boulder.ibm.com/infocenter/clresctr/vxrx/topic/com.ibm.cluster.rsct.doc/rsct_aix5l53",
 				1 => "$rsctadmin[0]/bl5adm1002.html",
 				 'sqlExpressions' => "$rsctadmin[0]/bl5adm1042.html#ussexp",
@@ -336,8 +437,7 @@ function getDocURL($book, $section) { //------------------------------------
 				 'responses' => "$rsctadmin[0]/bl5adm1041.html#cmrresp",
 				 'resourceClasses' => "$rsctadmin[0]/bl5adm1039.html#lavrc",
 				);
-
-	$rsctref = array (
+	$rsctref = array (		//todo:  update this
 				0 => "http://publib.boulder.ibm.com/infocenter/clresctr/vxrx/topic/com.ibm.cluster.rsct.doc/rsct_linux151",
 				1 => "$rsctref[0]/bl5trl1002.html",
 			   'errm' => "$rsctref[0]/bl5trl1067.html#errmcmd",
@@ -347,11 +447,23 @@ function getDocURL($book, $section) { //------------------------------------
 			   'lscondresp' => "$rsctref[0]/bl5trl1071.html#lscondresp",
 			   'startcondresp' => "$rsctref[0]/bl5trl1079.html#startcondresp",
 			  );
+	*/
 
 	if ($book) {
-		if (!$section) { $section = 1; }     // link to whole book if no section specified
-		$url = &$$book;
-		return $url[$section];
+		//$url = &$$book;
+		if ($book=='web') $url = & $web;
+		elseif ($book=='manpage') $url = & $manpage;
+		elseif ($book=='dbtable') $url = & $dbtable;
+		elseif ($book=='howto') $url = & $howto;
+		else return NULL;
+
+		if (!$section) { return $url[1]; }     // link to whole book if no section specified
+		if ($book=='manpage') {
+			$m = explode('.',$section);		// 1st part is cmd name, 2nd part is man section
+			return "$url[0]/man$m[1]/$m[0].$m[1].html";
+		}
+		elseif ($book=='dbtable') { return "$url[0]/$section.5.html"; }
+		else return $url[$section];
 	}
 	else {          // produce html for a page that contains all the links above, for testing purposes
 		return '';        //todo:
@@ -359,8 +471,9 @@ function getDocURL($book, $section) { //------------------------------------
 }
 
 
+//-----------------------------------------------------------------------------
 // This returns important display info about each type of hardware, so we can easily add new hw types.
-function getHWTypeInfo($hwtype, $attr) { //------------------------------------
+function getHWTypeInfo($hwtype, $attr) {
 	//todo: get the aliases to be keys in this hash too
 	$hwhash = array (
 			  'x335' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8676' ),
@@ -431,8 +544,9 @@ function getHWTypeInfo($hwtype, $attr) { //------------------------------------
 }
 
 
+//-----------------------------------------------------------------------------
 // Returns the image that should be displayed for this type of hw.  Gets this from getHWTypeInfo()
-function getHWTypeImage($hwtype, $powermethod) { //------------------------------------
+function getHWTypeImage($hwtype, $powermethod) {
 	# 1st try to match the hw type
 	$info = getHWTypeInfo($hwtype, 'image');
 	if ($info) { return $info['image']; }
@@ -451,6 +565,7 @@ function getHWTypeImage($hwtype, $powermethod) { //-----------------------------
 }
 
 
+//-----------------------------------------------------------------------------
 // Return the image that represents the status string passed in
 function getStatusImage($status) {
 	global $TOPDIR;
@@ -461,6 +576,7 @@ function getStatusImage($status) {
 }
 
 
+//-----------------------------------------------------------------------------
 // Returns the specified user preference value, or the default.  (The preferences are stored in cookies.)
 // If no key is specified, it will return the list of preference names.
 function getPref($key) {
@@ -474,69 +590,76 @@ function getPref($key) {
 }
 
 
+//-----------------------------------------------------------------------------
 // Returns a list of some or all of the nodes in the cluster and some of their attributes.
 // Pass in a node range (or NULL to get all nodes) and an array of attribute names (or NULL for none).
 // Returns an array where each key is the node name and each value is an array of attr/value pairs.
+// attrs is an array of attributes that should be returned.
 function getNodes($noderange, $attrs) {
 	//my ($hostname, $type, $osname, $distro, $version, $mode, $status, $conport, $hcp, $nodeid, $pmethod, $location, $comment) = split(/:\|:/, $na);
 	//$nodes[] = array('hostname'=>"node$i.cluster.com", 'type'=>'x3655', 'osname'=>'Linux', 'distro'=>'RedHat', 'version'=>'4.5', 'status'=>1, 'conport'=>$i, 'hcp'=>"node$i-bmc.cluster.com", 'nodeid'=>'', 'pmethod'=>'bmc', 'location'=>"frame=1 u=$", 'comment'=>'');
 	$nodes = array();
-	foreach ($attrs as $a) {
-		$output = array();
-		//echo "<p>nodels $noderange $a</p>\n";
-		runcmd("nodels $noderange $a", 2, $output);
-		foreach ($output as $line) {
-			$vals = preg_split('/: */', $line);   // vals[0] will be the node name
-			if (!$nodes[$vals[0]]) { $nodes[$vals[0]] = array(); }
-			$attributes = & $nodes[$vals[0]];
-			if ($a == 'type') {
-				$types = preg_split('/-/', $vals[1]);
-				$attributes['osversion'] = $types[0];
-				$attributes['arch'] = $types[1];
-				$attributes['type'] = $types[2];
-			}
-		}
+	//$xml = docmd('nodels',$noderange,implode(' ',$attrs));
+	$xml = docmd('nodels',$noderange,$attrs);
+	$output = $xml->xcatresponse->children();		// technically, we should iterate over the xcatresponses, because there can be more than one
+	foreach ($output as $o) {
+		$nodename = (string)$o->name;
+		$data = $o->data;
+		$attrval = (string)$data->contents;
+		$attrname = (string)$data->desc;
+		//echo "<p> $attrname = $attrval </p>\n";
+		//echo "<p>"; print_r($nodename); echo "</p>\n";
+		//echo "<p>"; print_r($o); echo "</p>\n";
+		//$nodes[$nodename] = array('osversion' => $attr);
+		if (!array_key_exists($nodename,$nodes)) { $nodes[$nodename] = array(); }
+		$attributes = & $nodes[$nodename];
+		$attributes[$attrname] = $attrval;
 	}
 	return $nodes;
 }
 
+//function awalk($value, $key) { echo "<p>$key=$value.</p>\n"; }
+//function awalk2($a) { foreach ($a as $key => $value) { if (is_array($value)) {$v='<array>';} else {$v=$value;} echo "<p>$key=$v.</p>\n"; } }
 
+
+//-----------------------------------------------------------------------------
 // Returns the node groups defined in the cluster.
 function getGroups() {
 	$groups = array();
-	$output = array();
-	runcmd("listattr", 2, $output);
-	foreach ($output as $grp) { $groups[] = $grp; }
-	return $groups;
-}
-
-
-// Returns the aggregate status of each node group in the cluster.  The return value is a
-// hash in which the key is the group name and the value is the status as returned by nodestat.
-function getGroupStatus() {
-	$groups = array();
-	$output = array();
-	runcmd("grpattr", 2, $output);
+	$xml = docmd('tabdump','',array('nodelist'));
+	$output = $xml->xcatresponse->children();
+	#$output = $xml->children();	// technically, we should iterate over the xcatresponses, because there can be more than one
 	foreach ($output as $line) {
 		//echo "<p>line=$line</p>";
-		$vals = preg_split('/: */', $line);
-		if (count($vals) == 2) { $groups[$vals[0]] = $vals[1]; }
+		$vals = array();
+		preg_match('/^"([^"]*)","([^"]*)"/', $line, $vals);	//todo: create function to parse tabdump output better
+		if (count($vals) > 2) {
+			//$node = $vals[1];
+			$grplist = preg_split('/,/', $vals[2]);
+			foreach ($grplist as $g) { $groups[$g] = 1; }
+		}
 	}
-	return $groups;
+	$grplist = array_keys($groups);
+	sort($grplist);
+	return $grplist;
 }
 
-// Returns true if we are running on AIX ------------------------------------
+//-----------------------------------------------------------------------------
+// Returns true if we are running on AIX
 function isAIX() { }     //todo: implement
 
-// Returns true if we are running on Linux ------------------------------------
+//-----------------------------------------------------------------------------
+// Returns true if we are running on Linux
 function isLinux() { }     //todo: implement
 
-// Returns true if we are running on Windows ------------------------------------
+//-----------------------------------------------------------------------------
+// Returns true if we are running on Windows
 function isWindows() { return array_key_exists('WINDIR', $_SERVER); }
 
 
+//-----------------------------------------------------------------------------
 // Create file folder-like tabs.  Tablist is an array of label/url pairs.
-function insertTabs ($tablist, $currentTabIndex) { //------------------------------------
+function insertTabs ($tablist, $currentTabIndex) {
 	echo "<TABLE cellpadding=4 cellspacing=0 width='100%' summary=Tabs><TBODY><TR>";
 	foreach ($tablist as $key => $tab) {
 		if ($key != 0) { echo "<TD width=2></TD>"; }
@@ -551,6 +674,7 @@ function insertTabs ($tablist, $currentTabIndex) { //---------------------------
 }
 
 
+//-----------------------------------------------------------------------------
 // Create the Action buttons in a table.  Each argument passed in is a button, which is an array of attribute strings.
 // If your onclick attribute contains javascript code that uses quotes, use double quotes instead of single quotes.
 // Note:  if only 1 button is passed in, the button is not put in a table.
@@ -568,6 +692,7 @@ function insertButtons () {
 }
 
 
+//-----------------------------------------------------------------------------
 // Display messages in the html.  If severity is W or E, it will attempt to use the Error class
 // from the style sheet.
 function msg($severity, $msg)
@@ -580,6 +705,7 @@ function msg($severity, $msg)
   }
 
 
+//-----------------------------------------------------------------------------
 function insertNotDoneYet() { echo "<p class=NotDone>This page is not done yet.</p>\n"; }
 
 ?>

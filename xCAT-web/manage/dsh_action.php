@@ -46,81 +46,54 @@ if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['h
 	$ret_code = @$_REQUEST["ret_code"];
 
 
-		 //if ($group == "")	$nodegrps = "blade7";	// For now, use blade7 as test node
+	if (!empty($group)) $noderange = $group;
+	else $noderange = $node;
 
-		 if ($psh == "off"){ //using dsh
-			$command = "xdsh ";
-			$copy_cmd = "xdcp ";
-			if ($group == "") $node_group = /* "-n " . */ $node;
-			else $node_group = /* "-N " . */ $group;
+	if ($serial == "on") $args[] = "-s";	//streaming mode
+	if (!empty($fanout)) { $args[] = "-f"; $args[] = $fanout; }
+	if (!empty($userID)) { $args[] = "-l"; $args[] = $userID; }
+	if ($verify == "on")  $args[] = "-v";
+	if ($monitor == "on")  $args[] = "-m";
+	if ($copy == "on")  $args[] = "-e";
+	if ($ret_code == "on") $args[] = "-z";
 
-		 }else{
-		 	$command = "psh ";
-			$copy_cmd = "pscp ";
-			if ($group == "") $node_group = $node;
-			else $node_group = $group;
-		 }
+	//$exp_cmd = "export DSH_CONTEXT=XCAT XCATROOT=/opt/xcat; ";
 
-		if ($serial == "on")	$options = "-s ";	//serial mode/streaming mode
-		if ($fanout == "")	$options .= "-f 64 "; else $options .= "-f " . $fanout;
-		if ($userID != "")  $options .= "-l " . $userID;
-		if ($verify == "on")  $options .= "-v ";
-		if ($monitor == "on")  $options .= "-m ";
+/*
+	if ($copy == "on"){		//using dcp/prcp
 
-		//echo "<p>Command: ". $cmd ."</p>";
+		//extract the script name from the command
+		$script = strtok($cmd,' ');
 
-		//$exp_cmd = "export DSH_CONTEXT=XCAT XCATROOT=/opt/xcat; ";
-
-		if ($copy == "on"){		//using dcp/prcp
-
-			//extract the script name from the command
-			$script = strtok($cmd,' ');
-
-			//copy the command to the remote node
-			$source = "/opt/xcat/bin/" . $script; //copy from
-			$target = "/tmp";	//copy to
-			if ($psh == "off"){
-				$copy_cmd = $exp_cmd . $copy_cmd . $node_group . " " . $source . " " . $target;
-			}else{
-				$copy_cmd = $copy_cmd . $source . " " . $node_group . ":" . $target;
-			}
-			runcmd($copy_cmd,1, $outp);
-
-			if ($psh != "on"){
-				$command_string = $exp_cmd . $command. $node_group . " /tmp/" . $cmd;
-			}else{
-				$command_string = $command . $node_group . " /tmp/" . $cmd;
-			}
-
-		}
-		else{
-			if ($psh != "on"){
-				$command_string = $exp_cmd . $command. $node_group . " " . $cmd;
-			}else{
-				$command_string = $command . $node_group . " " . $cmd;
-			}
-		}
-
-		if ($collapse == "on")  $command_string .= " | dshbak -c";
-
-		echo "<p><b>Command:  $command_string</b></p>";
-		//echo "<p><b>Command Ouput:</b></br></p>"; //output will be returned from the runcmd function call
-
-		//run the script
-		$output = array();
-		if ($ret_code == "on"){
-			$rc = runcmd($command_string, 0, $output);	//mode 0
-			if ($rc == 0){
-				foreach ($output as $line){ echo "$line<br>"; }
-			}
-
+		//copy the command to the remote node
+		$source = $script;
+		$target = "/tmp";
+		if (empty($psh) || $psh!="on"){
+			$xml = docmd('xdcp',$noderange,array($source, $target));
+			//todo: check if copy succeeded
 		}else{
-			//$rc = runcmd($command_string,1, $outp);	//streaming mode - DOES NOT WORK YET
-			$rc = runcmd($command_string, 0, $output);	//mode 0
-			if ($rc == 0){
-				foreach ($output as $line){ echo "$line<br>"; }
-			}
+			runcmd("pscp $source $noderange:$target",1,$outp);
 		}
+		$cmd = "/tmp/$cmd";
+	}
+*/
+
+	if (empty($psh) || $psh!="on") $command = "xdsh";
+	else $command = "psh";
+
+	//if ($collapse == "on")  $command_string .= " | dshbak -c";
+
+	// Run the script
+	$args[] = $cmd;
+	echo "<p><b>Command:  $command $noderange " . implode(' ',$args) . "</b></p>";
+	//echo "<p><b>Command Ouput:</b></br></p>"; //output will be returned from the runcmd function call
+	//$rc = runcmd($command_string,1, $outp);	//streaming mode - DOES NOT WORK YET
+	$xml = docmd($command, $noderange, $args);
+	//echo "<p>count=" . count($xml) . ", children=" . $xml->children() . "</p>";
+	//echo "<p>"; print_r($xml); echo "</p>";
+	//$output = $xml->xcatresponse->children();
+	//echo "<p>"; print_r($output); echo "</p>";
+	foreach ($xml->children() as $response) foreach ($response->children() as $line) { echo "$line<br>"; }
 
 
 
