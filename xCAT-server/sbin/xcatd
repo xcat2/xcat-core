@@ -1110,7 +1110,7 @@ sub service_connection {
             my %resp=%{extnoderange($req->{noderange}->[0],{intersectinggroups=>$subgroups})};
             $resp{serverdone}={};
             print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
-            return; #Would do next, but the php client currently chockes that way
+            next;
           } else {
             my %resp=(error=>"Unsupported request");
             $resp{serverdone} = {};
