@@ -2527,7 +2527,7 @@ sub getNodesetStates{
         xCAT::MsgUtils->message('E',$retarray[1]);}
     } 
     if (@pxenodes > 0) {
-      use xCAT_plugin::pxe;
+      require xCAT_plugin::pxe;
       @retarray=xCAT_plugin::pxe::getNodesetStates(\@pxenodes, $hashref);
       if ($retarray[0]) { 
 	$retcode=$retarray[0];
@@ -2536,7 +2536,7 @@ sub getNodesetStates{
       }
     } 
     if (@aixnodes > 0) {
-      use xCAT_plugin::aixinstall;
+      require xCAT_plugin::aixinstall;
       @retarray=xCAT_plugin::aixinstall::getNodesetStates(\@aixnodes, $hashref);
       if ($retarray[0]) { 
 	$retcode=$retarray[0];
