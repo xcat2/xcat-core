@@ -2576,25 +2576,25 @@ sub get_nodeset_state {
     my $boottype=$ent->{netboot};
     #get nodeset state from corresponding files
     if ($boottype eq "pxe") { 
-      use xCAT_plugin::pxe;
+      require xCAT_plugin::pxe;
       my $tmp=xCAT_plugin::pxe::getstate($node);
       my @a=split(' ', $tmp);
       $state = $a[0];
 
     }
     elsif ($boottype eq "yaboot") { 
-      use xCAT_plugin::yaboot;
+      require xCAT_plugin::yaboot;
       my $tmp=xCAT_plugin::yaboot::getstate($node); 
       my @a=split(' ', $tmp);
       $state = $a[0];
     }
     elsif ($boottype eq "aixinstall") {
-      use xCAT_plugin::aixinstall;
+      require xCAT_plugin::aixinstall;
       $state=xCAT_plugin::aixinstall::getNodesetState($node); 
     }
   }
   else { #default to AIX because AIX does not set noderes.netboot value
-      use xCAT_plugin::aixinstall;
+      require xCAT_plugin::aixinstall;
       $state=xCAT_plugin::aixinstall::getNodesetState($node); 
   }
 
