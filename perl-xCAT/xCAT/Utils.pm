@@ -2519,7 +2519,7 @@ sub getNodesetStates{
     my $errormsg; 
    # print "ya=@yabootnodes, pxe=@pxenodes, aix=@aixnodes\n";     
     if (@yabootnodes > 0) {
-      use xCAT_plugin::yaboot;
+      require xCAT_plugin::yaboot;
       @retarray=xCAT_plugin::yaboot::getNodesetStates(\@yabootnodes, $hashref);
       if ($retarray[0]) { 
 	$retcode=$retarray[0];
