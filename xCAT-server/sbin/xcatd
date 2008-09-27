@@ -1055,6 +1055,28 @@ sub build_response {
   }
 }
 
+sub becomeuser {
+#if username and password match, return the new username
+#otherwise, return undef
+#TODO PAM?
+    my $passtab = xCAT::Table->new('passwd');
+    my $id=shift;
+    my $pass=shift;
+    my $passent=$passtab->getAttribs({key=>'xcat',username=>$id},['password']);
+    unless ($passent) {
+        return undef;
+    }
+    $passent=$passent->{password};
+    if ($passent =~ /^\$1\$.*\$/) { #MD5 hash, calculate before comparison
+        $pass = crypt($pass,$passent);
+    } #Not bothering with old DES method, for now assume plaintext if not set
+    if ($pass eq $passent) {
+        return $id;
+    }
+#If here, unable to validate given credential
+    return undef;
+}
+
 sub service_connection {
   my $sock = shift;
   my $peername = shift;
@@ -1078,6 +1100,19 @@ sub service_connection {
       #$req = eval { XMLin($request, ForceArray => [ 'attribute' , 'attributepair' ]) };
       if ($request =~ m/<\/xcatrequest>/) {
         $req = eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
+        #first change peername on 'becomeuser' tag if present and valid
+        if (defined $req->{becomeuser}) {
+            $peername=becomeuser($req->{becomeuser}->[0]->{id}->[0],
+                                 $req->{becomeuser}->[0]->{password}->[0]);
+            unless (defined $peername) {
+                my $resp={error=>["Authentication failure"],errorcode=>[1]};
+                $resp->{serverdone}={};
+                print $sock XMLout($resp,RootName => 'xcatresponse',NoAttr=>1);
+                return;
+            }
+            delete($req->{becomeuser}); #Remove it to keep it from view
+        }
+
         #we have a full request..
         #printf $request."\n";
         $request="";
