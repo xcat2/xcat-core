@@ -1102,7 +1102,7 @@ sub service_connection {
         $req = eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
         #first change peername on 'becomeuser' tag if present and valid
         if (defined $req->{becomeuser}) {
-            $peername=becomeuser($req->{becomeuser}->[0]->{id}->[0],
+            $peername=becomeuser($req->{becomeuser}->[0]->{username}->[0],
                                  $req->{becomeuser}->[0]->{password}->[0]);
             unless (defined $peername) {
                 my $resp={error=>["Authentication failure"],errorcode=>[1]};
@@ -1121,7 +1121,17 @@ sub service_connection {
           $req->{'_xcat_clienthost'} = [$peerhost];
           $req->{'_xcat_clientport'}= [$peerport];
           $$progname="xCATd SSL: ".$req->{command}->[0]." for ".($peername ? $peername ."@".$peerhost : $peerhost);
-          if ($cmd_handlers{$req->{command}->[0]}) {
+          if ($req->{command}->[0] eq "authcheck") { #provide a method for UI to verify a user without actually requesting action
+              my $resp;
+              if ($peername or $peername eq "0") {
+                  $resp->{username}=[$peername];
+                  $resp->{data}=["Authenticated"];
+              } else {
+                  $resp->{data}=["Unauthenticated"];
+              }
+              $resp->{serverdone}={};
+              print $sock XMLout($resp,RootName => 'xcatresponse',NoAttr=>1);
+          } elsif ($cmd_handlers{$req->{command}->[0]}) {
             return plugin_command($req,$sock,\&convey_response);
           } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
             my @nodes = noderange($req->{noderange}->[0]);
