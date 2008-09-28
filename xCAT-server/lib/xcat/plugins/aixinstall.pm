@@ -725,24 +725,24 @@ ll~;
 
 	# update the node definitions with the new osimage - if provided
 	my %nodeattrs;
-	if ($::OSIMAGE) {
-		foreach my $node (keys %objhash) {
-			chomp $node;
+	foreach my $node (keys %objhash) {
+        chomp $node;
 
-			if (!grep(/^$node$/, @nodesfailed)) {
-				# change the node def if we were successful
-				$nodeattrs{$node}{objtype} = 'node';
-				$nodeattrs{$node}{profile} = $::OSIMAGE;
-			}
-		}
+        if (!grep(/^$node$/, @nodesfailed)) {
+            # change the node def if we were successful
+            $nodeattrs{$node}{objtype} = 'node';
+            $nodeattrs{$node}{os} = "AIX";
+            if ($::OSIMAGE) {
+                $nodeattrs{$node}{profile} = $::OSIMAGE;
+            }
+        }
+    }
 
-
-		if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0) {
-			my $rsp;
-			push @{$rsp->{data}}, "$Sname: Could not write data to the xCAT database.\n";
-			xCAT::MsgUtils->message("E", $rsp, $::callback);
-			$error++;
-		}
+	if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "$Sname: Could not write data to the xCAT database.\n";
+		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		$error++;
 	}
 
 	# update the .rhosts file on the server so the rcp from the node works
@@ -4201,21 +4201,22 @@ ll~;
 	# update the node definitions with the new osimage - if provided
 	#
 	my %nodeattrs;
-	if ($::OSIMAGE) {
-		foreach my $node (keys %objhash) {
-			chomp $node;
-			if (!grep(/^$node$/, @nodesfailed)) {
-				# change the node def if we were successful
-				$nodeattrs{$node}{objtype} = 'node';
-				$nodeattrs{$node}{profile} = $::OSIMAGE;
-			}
-		}
-		if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0) {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not write data to the xCAT database.\n";
-			xCAT::MsgUtils->message("E", $rsp, $::callback);
-			$error++;
-		}
+	foreach my $node (keys %objhash) {
+        chomp $node;
+        if (!grep(/^$node$/, @nodesfailed)) {
+            # change the node def if we were successful
+            $nodeattrs{$node}{objtype} = 'node';
+            $nodeattrs{$node}{os} = "AIX";
+            if ($::OSIMAGE) {
+                $nodeattrs{$node}{profile} = $::OSIMAGE;
+            }
+        }
+    }
+	if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not write data to the xCAT database.\n";
+		xCAT::MsgUtils->message("E", $rsp, $::callback);
+		$error++;
 	}
 
 	#
