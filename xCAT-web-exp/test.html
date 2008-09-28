@@ -1,0 +1,68 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>xCAT web UI experiments</title>
+<link rel="stylesheet" type="text/css" href="tree_component.css" />
+<script type="text/javascript" src="css.js"></script>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="jquery.listen.js"></script>
+<script type="text/javascript" src="tree_component.js"></script>
+<script type="text/javascript">
+    $(function() {
+        var nrtree = new tree_component();
+        nrtree.init($("#nrlist"),{
+            rules: {
+                multiple: "Ctrl"
+            },
+            ui: {
+                animation: 250
+            },
+            callback : {
+                onchange : printtree
+                },
+            data : {
+                type : "json",
+                async : "true",
+                url: "noderangesource.php",
+            }
+        });
+     });
+
+      function printtree (node,nrtree) {
+        myselection=nrtree.selected_arr;
+        var noderange="";
+        for (node in myselection) {
+            noderange+=myselection[node][0].id;
+        }
+        $("#rangedisplay").text("Noderange: "+noderange.substring(1));
+     }
+</script>
+            
+</head>
+<body>
+<div id="rangedisplay">
+</div>
+<hr>
+<div class="demo">
+<div id="nrlist" class="dots"></div>
+</div>
+<hr>
+<!-- <div class="demo">
+<div id="htlist" class="dots">
+<ul>
+<li id="storage"><a>storage</a>
+    <ul>
+        <li id="node1"><a>node1</a></li>
+        <li id="node2"><a>node2</a></li>
+    </ul>
+<li id="compute" class="open"><a>compute</a>
+    <ul>
+        <li id="node3"><a>node3</a></li>
+        <li id="node4"><a>node4</a></li>
+        <li id="node5"><a>node5</a></li>
+    </ul>
+</li>
+</ul>
+</div>
+</div> -->
+</body>
+</html>
