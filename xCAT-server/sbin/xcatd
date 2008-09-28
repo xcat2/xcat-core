@@ -1062,6 +1062,9 @@ sub becomeuser {
     my $passtab = xCAT::Table->new('passwd');
     my $id=shift;
     my $pass=shift;
+    unless (defined $id and defined $pass) {
+        return undef;
+    }
     my $passent=$passtab->getAttribs({key=>'xcat',username=>$id},['password']);
     unless ($passent) {
         return undef;
