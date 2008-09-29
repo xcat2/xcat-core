@@ -19,7 +19,7 @@ use Getopt::Long;
 
 =head3  handled_commands 
 
-This runs on Service Node 
+This runs on Service Node  ( only sets up for Linux)
 Checks servicenode table tfpserver attribute
 Call  setup_TFTP  (actually setting up atftp)
 
@@ -33,6 +33,10 @@ sub handled_commands
     if ($ENV{'XCATBYPASS'}) {
        return 0;
     }
+    if (xCAT::Utils->isAIX()) { # do not run on AIX
+       return 0;
+    }
+
 
     my $rc = 0;
 
