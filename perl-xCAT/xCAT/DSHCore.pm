@@ -314,6 +314,7 @@ sub pipe_handler
 
             $line =~ s/\n/\n$label/g;
             ($line =~ /\n$label$/) && ($line =~ s/\n$label$/\n/);
+            chomp $line;
 
             my @output_files    = ();
             my @output_file_nos = ();
@@ -326,7 +327,10 @@ sub pipe_handler
                     $line =~ s/$label//g;
                 }
 
-                print $write_fh $line;
+                my $rsp={};
+                $rsp->{data}->[0] = $line;
+                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                #print $write_fh $line;
             }
 
             if (@output_files)
