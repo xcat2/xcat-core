@@ -709,11 +709,11 @@ sub setAttribs
         {
             if (ref($keypairs{$_}))
             {
-                $cmd .= $_ . " = '" . $keypairs{$_}->[0] . "' AND ";
+                $cmd .= "\"$_\"" . " = '" . $keypairs{$_}->[0] . "' AND ";
             }
             else
             {
-                $cmd .= $_ . " = '" . $keypairs{$_} . "' AND ";
+                $cmd .= "\"$_\"" . " = '" . $keypairs{$_} . "' AND ";
             }
         }
         $cmd =~ s/ AND \z//;
