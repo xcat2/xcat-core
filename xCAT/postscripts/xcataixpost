@@ -84,6 +84,7 @@ if (&runcmd($chcmd) != 0) {
 }
 
 # check & run the postscript
+my $nodesetstat="standalone";
 if (-f $scriptname)
 {
     if (@ARGV>0) {
@@ -96,6 +97,9 @@ if (-f $scriptname)
       #add requested postscripts in
       `echo "$POSTS" | tr "," "\n" >> $scriptname`;
    }
+
+   $nodesetstat=`grep "NODESETSTATE=" $scriptname|awk -F \= '{print \$2}'`;
+   chomp($nodesetstat);
 
     if (&runcmd("cd /xcatpost;$scriptname") != 0)
     {
@@ -112,7 +116,7 @@ if (-f $scriptname)
 }
 
 if (@ARGV<1) {
-  if (&updateflag != 0) {
+  if (&updateflag($nodesetstat) != 0) {
     print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
     print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server..\n";
     close($::LOG_FILE);
@@ -173,7 +177,11 @@ sub  getmypost {
 #
 ############################################################
 sub  updateflag {
-   print "updateflag servicenode=$servnode\n";
+    my $nodesetstat=shift;
+    my $state="netbooted";
+    if ($nodesetstat eq "standalone") { $state="installed booting"; }
+
+ 
     my $port = "3002";
     my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servnode, PeerPort  => $port, );
     unless ($remote) { 
@@ -187,7 +195,7 @@ sub  updateflag {
     while (defined ($line = <$remote>)) {
         chomp $line;
         if ($line eq "ready") {
-           print $remote "netbooted\n";
+           print $remote "installstatus $state\n";
         } elsif ($line eq "done") {
 	    last;
         }

@@ -211,19 +211,23 @@ if ($inet6support) {
             plugin_command(\%request,undef,\&build_response);
           #  exit(0);
           #}
-        } elsif ($text =~ /netbooted/) {
-          my %request = (
-            command => [ 'updatenodestat' ],
-            node => [ $node ],
-            arg => [ 'booted' ],
-            );
+        } elsif ($text =~ /installstatus/) {
+	  my @tmpa=split(' ', $text);
+          for (my $i = 1; $i <= @tmpa-1; $i++) {
+            my $newstat=$tmpa[$i];
+            my %request = (
+              command => [ 'updatenodestat' ],
+              node => [ $node ],
+              arg => [ "$newstat" ],
+              );
+            #node should be blocked, race condition may occur otherwise
+            #my $pid=xCAT::Utils->xfork();
+            #unless ($pid) { #fork off the nodeset and potential slowness
+              plugin_command(\%request,undef,\&build_response);
+            #   exit(0);
+            #}
+          }
           close($conn);
-          #node should be blocked, race condition may occur otherwise
-          #my $pid=xCAT::Utils->xfork();
-          #unless ($pid) { #fork off the nodeset and potential slowness
-            plugin_command(\%request,undef,\&build_response);
-          #  exit(0);
-          #}
         } elsif ($text =~ /^unlocktftpdir/) { #TODO: only nodes in install state should be allowed
        mkpath("$tftpdir/xcat/$node");
 	    chmod 01777,"$tftpdir/xcat/$node";

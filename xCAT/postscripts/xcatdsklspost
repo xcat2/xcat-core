@@ -84,7 +84,7 @@ fi
 
 if [ $# -eq 0 ]; then
   #notify the server that we are done with netbooting
-  echo "updateflag.awk \$MASTER 3002 netbooted" >> /tmp/mypostscript
+  echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript
 fi
 
 chmod +x /tmp/mypostscript
