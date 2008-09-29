@@ -308,6 +308,9 @@ sub getMonNodesStatus {
     foreach(@$monnodes) {
       my $node=$_->[0];
       my $status=$_->[2];
+      my $type=$_[1];
+      if (!$status) { $status=$::STATUS_DEFINED;} #default
+
       if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
       elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
       else {
@@ -318,6 +321,10 @@ sub getMonNodesStatus {
         if (($need_active==1) && ($need_inactive==0)) { push(@inactive_nodes, $node); } #put it into the inactive list so that the monitoring code can switch it to active.
         elsif (($need_active==0) && ($need_inactive==1)) { push(@active_nodes, $node); } #put it into the active list so that the monitoring code can chane it to inactive.
         elsif  (($need_active==1) && ($need_inactive==1)) { push(@unknown_nodes, $node);} #unknow list so that the monitoring code can change it to active or inactive
+        else {
+          #if it is non-osi node, check it anyway
+	  if ($type !~ /osi/) {push(@unknown_nodes, $node);}
+        }
       }
     }
   }

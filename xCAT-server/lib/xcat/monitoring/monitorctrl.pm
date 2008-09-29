@@ -578,6 +578,7 @@ sub setNodeStatusAttributes {
   }
   my $force=shift;
   my $tab = xCAT::Table->new('nodelist',-create=>0,-autocommit=>1);
+  my $nttab = xCAT::Table->new('nodetype',-create=>0,-autocommit=>1);
 
   my %status_hash=%$temp;
 
@@ -588,12 +589,22 @@ sub setNodeStatusAttributes {
       my $nodes=$status_hash{$s};
       if ($nodes && (@$nodes>0)) {
         my $tabdata=$tab->getNodesAttribs($nodes,['node', 'status']); 
+        my $nttabdata=$nttab->getNodesAttribs($nodes,['node', 'nodetype']); 
         foreach my $node (@$nodes) {
           my $tmp1=$tabdata->{$node}->[0];
           if ($tmp1) {
             my $status=$tmp1->{status};
             if (!$status) {$status=$::STATUS_DEFINED; } #default is 'defined'
-            if ($::NEXT_NODESTAT_VAL{$status}->{$s}==1) { push(@new_nodes,$node); } 
+            if ($::NEXT_NODESTAT_VAL{$status}->{$s}==1) { push(@new_nodes,$node); }
+            else {
+              #for non-osi type, always change
+	      my $type;
+              my $nttmp1=$nttabdata->{$node}->[0];
+              if ($nttmp1) {
+                $type=$nttmp1->{nodetype};
+	      }
+              if ((!$type) || ($type !~ /osi/)) {push(@new_nodes,$node);}
+            } 
           }  
         }
       }
@@ -618,6 +629,7 @@ sub setNodeStatusAttributes {
   }
 
   $tab->close;
+  $nttab->close;
   return 0;
 }
 

@@ -56,7 +56,9 @@ if (@changed_inactive>0) {
 
 #only set the node status for the changed ones
 if (keys(%node_status) > 0) {
-  xCAT_monitoring::xcatmon::setNodeStatusAttributes(\%node_status);
+  #the second parameter means ignore checking. This is because the check is
+  #done getMonNodesStatus() call
+  xCAT_monitoring::xcatmon::setNodeStatusAttributes(\%node_status, 1);
 }
 
 #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
