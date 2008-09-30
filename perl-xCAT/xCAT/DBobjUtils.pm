@@ -144,6 +144,9 @@ sub getObjectsOfType
 
         Comments:
 
+			TODO - this routine makes too many calls to the DB
+				-  maybe look up all tables for the obj types up front 
+
 =cut
 
 #-----------------------------------------------------------------------------
@@ -280,7 +283,9 @@ sub getobjdefs
             # Get the attr values from the DB tables
             #
 
-            if ($type eq 'node')
+			# if ($type eq 'node')
+			# lookup_attr is the key to the table we are looking in
+			if ($lookup_attr eq 'node')
             {
                 my $thistable;
                 my $needtocommit = 0;
