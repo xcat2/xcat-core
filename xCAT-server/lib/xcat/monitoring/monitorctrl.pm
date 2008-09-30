@@ -540,11 +540,13 @@ sub getNodeStatusFromNodesetState {
   } 
   my $action=shift;
   
-  my $status=$::STATUS_BOOTING;
+  my $status=$::STATUS_BOOTING; #boot, reboot, runimage
   if ($nodeset =~ /^install/) { $status=$::STATUS_INSTALLING; }  #linux
   elsif ($nodeset =~ /^netboot/) { $status=$::STATUS_NETBOOTING;}  #linux 
-  elsif ($nodeset =~ /^boot/) { $status=$::STATUS_BOOTING;}  #linux
   elsif ($nodeset =~ /^discover/) { $status=$::STATUS_DISCOVERING;}  #linux 
+  elsif ($nodeset =~ /^runcmd/) { $status=$::STATUS_CONFIGURING;}  #linux 
+  elsif ($nodeset =~ /^standby/) { $status=$::STATUS_STANDING_BY;}  #linux 
+  elsif ($nodeset =~ /^shell/) { $status=$::STATUS_SHELL;}  #linux 
   elsif (($nodeset =~ /^diskless/) || ($nodeset =~ /^dataless/)) { $status=$::STATUS_NETBOOTING;}  #aix
   elsif ($nodeset =~ /^standalone/) {   #aix
     if ($action eq "rnetboot") { $status=$::STATUS_INSTALLING; }

@@ -263,7 +263,7 @@ nodelist => {
     descriptions => {
      node => 'The hostname of a node in the cluster.',
      groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group.",
-     status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, installing, alive, powering-off, unreachable. The default value is defined. The possible status change sequenses are: defined->[discovering]->installing->installed->booting->alive,  defined->netbooting->booted->alive,  alive/unreachable->booting->alive,  alive->powering-off->unreachable, alive->unreachable',
+     status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. The default value is defined. The possible status change sequenses are: defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->alive,  defined->[discovering]->[configuring]->[standingby]->netbooting->booted->alive,  alive/unreachable->booting->alive,  alive->powering-off->unreachable, alive->unreachable',
      appstatus => "A comma-delimited list monitored applications that are active on the node. For example 'sshd,rmcd,gmond",
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -552,6 +552,17 @@ nimimage  => {
   mksysb => 'The name of a NIM mksysb resource.',
   comments => 'Any user-provided notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
+ },
+  },
+performance => {
+    cols => [qw(timestamp node attrname attrvalue)],
+    keys => [qw(timestamp node attrname)],
+    table_desc => 'Describes the system performance every interval unit of time.',
+ descriptions => {
+   timestamp => 'The time at which the metric was captured.',
+   node => 'The node name.',
+   attrname => 'The metric name.',
+   attrvalue => 'The metric value.'
  },
   },
 );        # end of tabspec definition
@@ -1380,6 +1391,29 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  access_tabentry => 'monitoring.name=attr:name',
                  },
 );
+
+#########################
+#     performance table    #
+#########################
+@{$defspec{performance}->{'attrs'}} = (
+
+        {attr_name => 'timestamp',
+                 tabentry => 'performance.timestamp',
+                 access_tabentry => 'performance.timestamp=attr:timestamp',
+                 },
+        {attr_name => 'node',
+                 tabentry => 'performance.node',
+                 access_tabentry => 'performance.timestamp=attr:timestamp',
+  },
+        {attr_name => 'attrname',
+                 tabentry => 'performance.netname',
+                 access_tabentry => 'performance.timestamp=attr:timestamp',
+  },
+        {attr_name => 'attrvalue',
+                 tabentry => 'performance.attrvalue',
+                 access_tabentry => 'performance.timestamp=attr:timestamp',
+  },
+             );
 
 # Build a corresponding hash for the attribute names to make
 # definition access easier

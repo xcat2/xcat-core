@@ -34,13 +34,13 @@ sub process_request {
   $callback = shift;
   $subreq = shift;
   if ($request->{command}->[0] eq 'getdestiny') {
-    getdestiny();
+    getdestiny(0);
   }
   if ($request->{command}->[0] eq 'nextdestiny') {
-    nextdestiny($request);
+    nextdestiny(0);  #it is called within dodestiny
   }
   if ($request->{command}->[0] eq 'setdestiny') {
-    setdestiny($request);
+    setdestiny($request, 0); 
   }
 }
 
@@ -59,12 +59,14 @@ sub relay_response {
 
 sub setdestiny {
   my $req=shift;
+  my $flag=shift;
+
   $chaintab = xCAT::Table->new('chain',-create=>1);
   my @nodes=@{$req->{node}};
   my $state = $req->{arg}->[0];
   my %nstates;
   if ($state eq "next") {
-    return nextdestiny();
+    return nextdestiny($flag + 1);  #this is special case where updateflag is called
   } elsif ($state eq "iscsiboot") {
      my $iscsitab=xCAT::Table->new('iscsi');
      unless ($iscsitab) {
@@ -172,11 +174,12 @@ sub setdestiny {
     } 
     $chaintab->setNodeAttribs($_,{currstate=>$lstate});
   }
-  return getdestiny();
+  return getdestiny($flag + 1);
 }
 
 
 sub nextdestiny {
+  my $flag=shift;
   my $callnodeset=0;
   if (scalar(@_)) {
      $callnodeset=1;
@@ -207,7 +210,6 @@ sub nextdestiny {
   my $node;
   $chaintab = xCAT::Table->new('chain');
   my $chainents = $chaintab->getNodesAttribs(\@nodes,[qw(currstate currchain chain)]);
-  my %node_status=();
   foreach $node (@nodes) {
     unless($chaintab) {
       syslog("local1|err","ERROR: $node requested destiny update, no chain table");
@@ -230,32 +232,12 @@ sub nextdestiny {
     }
     $chaintab->setNodeAttribs($node,$ref); #$ref is in a state to commit back to db
 
-    #collect node status for certain states
-    my $stat;
-    if ($ref->{currstate} =~ /^boot/) { $stat=$::STATUS_BOOTING; }
-    elsif ($ref->{currstate} =~ /^discover/) { $stat=$::STATUS_DISCOVERING; }
-    
-    if ($stat) {
-      if (exists($node_status{$stat})) {
-        my $pa=$node_status{$stat};
-        push(@$pa, $node);
-      }
-      else {
-        $node_status{$stat}=[$node];
-      }
-    }
-
     my %requ;
     $requ{node}=[$node];
     $requ{arg}=[$ref->{currstate}];
-    setdestiny(\%requ);
+    setdestiny(\%requ, $flag+1);
   }
   
-  #setup the nodelist.status
-  if (keys(%node_status) > 0) {
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
-  }
-
   if ($callnodeset) {
      $subreq->({command=>['nodeset'],
                node=> \@nodes,
@@ -266,6 +248,12 @@ sub nextdestiny {
 
 
 sub getdestiny {
+  my $flag=shift;
+  # flag value:
+  # 0--getdestiny is called by dodestiny
+  # 1--called by nextdestiny in dodestiny. The node calls nextdestiny before boot and runcmd.
+  # 2--called by nodeset command
+  # 3--called by updateflag after the node finished installation and before booting
   my @args;
   my @nodes;
   if ($request->{node}) {
@@ -295,6 +283,8 @@ sub getdestiny {
   my $bpents = $bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline xcatmaster)]);
   my $sitetab= xCAT::Table->new('site');
   (my $sent) = $sitetab->getAttribs({key=>'master'},'value');
+
+  my %node_status=();
   foreach $node (@nodes) {
     unless ($chaintab) { #Without destiny, have the node wait with ssh hopefully open at least
       $callback->({node=>[{name=>[$node],data=>['standby'],destiny=>[ 'standby' ]}]});
@@ -302,8 +292,21 @@ sub getdestiny {
     }
     my $ref = $chainents->{$node}->[0]; #$chaintab->getNodeAttribs($node,[qw(currstate chain)]);
     unless ($ref) {
+      #collect node status for certain states
+      if (($flag==0) || ($flag==3)) { 
+        my $stat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState("standby", "getdestiny");
+	#print "node=$node, stat=$stat\n";
+        if ($stat) {
+          if (exists($node_status{$stat})) {
+            my $pa=$node_status{$stat};
+            push(@$pa, $node);
+          }
+          else { $node_status{$stat}=[$node]; }
+        }    
+      }
+
       $callback->({node=>[{name=>[$node],data=>['standby'],destiny=>[ 'standby' ]}]});
-      return;
+      next;
     }
     unless ($ref->{currstate}) { #Has a record, but not yet in a state...
       my @chain = split /,/,$ref->{chain};
@@ -335,8 +338,27 @@ sub getdestiny {
        $response{imgserver} = xCAT::Utils->my_ip_facing($node);
     }
     
+    #collect node status for certain states
+    if (($flag==0) || ($flag==3)) {
+      my $stat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($response{destiny}->[0], "getdestiny");
+	#print  "node=$node, stat=$stat\n";
+      if ($stat) {
+        if (exists($node_status{$stat})) {
+          my $pa=$node_status{$stat};
+          push(@$pa, $node);
+        }
+        else { $node_status{$stat}=[$node]; }
+      }    
+    }
+
     $callback->({node=>[\%response]});
   }  
+
+  #setup the nodelist.status
+  if (($flag==0) || ($flag==3)) {
+      #print "save status\n";
+    if (keys(%node_status) > 0) { xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1); }
+  }
 }
 
 
