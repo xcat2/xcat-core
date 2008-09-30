@@ -66,7 +66,7 @@ sub process_request {
 
     if (!$exlistloc)
     {
-       $callback->({error=>["Unable to finde file exclusion list under $installroot/custom/netboot/$distname or $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver"],errorcode=>[1]});
+       $callback->({error=>["Unable to find file exclusion list under $installroot/custom/netboot/$distname or $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver"],errorcode=>[1]});
        next;
     }
     #print "exlistloc=$exlistloc\n";
