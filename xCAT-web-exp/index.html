@@ -1,0 +1,178 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>xCAT WebUI</title>
+<link rel="stylesheet" type="text/css" href="colorscheme.css" />
+<style type="text/css">
+    span.logstatus {
+        margin-left: 5.5em;
+    }
+    label {
+        text-align: right;
+        width: 5em;
+        float: left;
+        margin-right: 0.5em;
+        display: block;
+    }
+    *#nrtree {
+        width:20%;
+    }
+    *#logout {
+       position:absolute;
+       top:0;
+       right:0;
+       margin-left:1em;
+       text-align: center;
+       vertical-align: middle;
+    }
+    .xcatbutton button {
+        margin: .5em .5em .5em 8px;
+        color: #555555;
+        background: #e6e6e6 url(images/e6e6e6_40x100_textures_02_glass_75.png) 0 50% repeat-x;
+        font-size: 0.7em;
+        border: 1px solid #d3d3d3;
+        cursor: pointer;
+        padding: .2em .6em .3em .6em;
+        line-height: 1.4em;
+    }
+    .xcatbutton button:hover {
+        color: #212121;
+        background: #dadada url(images/dadada_40x100_textures_02_glass_75.png) 0 50% repeat-x;
+        border: 1px solid #999999;
+    }
+    .xcatbutton button:active {
+        color: #222222;
+        background: #ffffff url(images/ffffff_40x100_textures_02_glass_65.png) 0 50% repeat-x;
+        border: 1px solid #dddddd;
+    }
+
+</style>
+<link rel="stylesheet" type="text/css" href="tree_component.css" />
+<script type="text/javascript" src="css.js"></script>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="jquery.listen.js"></script>
+<script type="text/javascript" src="tree_component.js"></script>
+<script type="text/javascript" src="jquery.ui.js"></script>
+<script type="text/javascript">
+    var logdialog;
+    var nrtree;
+    function openlogdialog (data, textstatus) { //open the log in dialog if not logged in
+        if (data.authenticated == "no") {
+            logdialog.dialog("open");
+        }
+    }
+            
+
+    function logincallback (data, textstatus) {
+        $("#password").val(""); //clear the password field regardless of what happens
+        if (data.authenticated == "yes") {
+            $("#logstatus").text("Logged in successfully");
+            nrtree.refresh(); // Fix tree potentiall broken through attempts to operate without auth
+            logdialog.dialog("close");
+        } else {
+            $("#logstatus").text("Authentication failure");
+            $("#logstatus").css("color","#ff0000");
+        }
+    }
+    function logout () {
+        $.post("log.php",{logout:1})
+        $("#logstatus").html("");
+        logdialog.dialog("open");
+    }
+
+    function login() {
+        $("#logstatus").css("color","#000000");
+        $("#logstatus").html('Authenticating...<img src="images/throbber.gif"/>');
+        var passwd=$("#password").val();
+        $.post("log.php",{
+                username: $("#username").val(),
+                password: passwd
+            },logincallback,"json");
+    }
+    function updatenoderange() {
+    }
+
+    $(document).ready(function() {
+        nrtree = new tree_component(); // -Tree begin
+        nrtree.init($("#nrtree"),{
+             rules: {
+                multiple: "Ctrl"
+            },
+            ui: {
+                animation: 250
+            },
+            callback : {
+                onchange : updatenoderange
+                }, 
+            data : {
+                type : "json",
+                async : "true",
+                url: "noderangesource.php"
+            }
+        });  //Tree finish
+
+        logdialog=$("#logdialog").dialog({
+            modal: true,
+            closeOnEscape: false,
+            overlay: {
+                backgroundColor: "#000",
+                opacity: 0.75
+
+            },
+            height: 200,
+            width: 350,
+            autoOpen: false,
+            buttons: {
+                "Log In": login
+                },
+            open: function(type, dialog) {
+                if (document.location.protocol == "http:") {
+                    $("#logstatus").html("Unencrypted Session!");
+                    $("#logstatus").css("color","#ff0000");
+                }
+                if ($("#username").val() == "") {
+                    $("#username").focus();
+                } else {
+                    $("#password").focus();
+                }
+            },
+            close: function(type, dialog) {
+                return false;
+            }
+
+        });
+            
+    $("#username").keydown(function(event) {
+        if (event.keyCode==13) {
+            $("#password").focus();
+        }
+    });
+    $("#password").keydown(function(event) {
+        if (event.keyCode==13) {
+            login();
+        }
+    });
+    $("#login").click(function(event) {
+        login();
+    });
+    $("#logout").click(function(event) {
+        logout();
+    });
+    $.post("log.php",{},openlogdialog,"json");
+    });
+</script>
+</head>
+<body>
+        <div id="nrdisplay">Noderange:</div>
+        <div id="nrtree"></div>
+        <!-- The omnipresent login dialog, waiting to be called forth by javascript -->
+        <div id="logdialog">
+            <form id="loginform" method="post" action="login.php">
+            <label for="username">Username:</label><input id="username" type="text" name="username"><br/>
+            <label for="password">Password:</label><input id="password" type="password" name="password"></form>
+            <span class="logstatus" id="logstatus"><br/></span>
+        </div>
+        <!-- Log out control -->
+        <div id="logout" class="xcatbutton"><button>Log Out</button></div>
+</body>
+</html>
