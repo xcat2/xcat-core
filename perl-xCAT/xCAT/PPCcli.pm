@@ -976,7 +976,68 @@ sub power_cmd {
     return undef;
 }
 
+#####################################
+# Reset HMC network (hostname & IP)
+#####################################
+sub network_reset {
 
+    my $exp    = shift;
+    my $current_ip   = shift;
+    my $hostname_ip  =shift;
+    my $hwtype = @$exp[2];
+
+    my ($ip,$hostname) = split /,/, $hostname_ip;
+    if ( !$hostname || !$ip)
+    {
+        return ( [RC_ERROR,"No valid hostname or IP find. This could be a internal bug of xCAT."] );
+    }
+#####################################
+# Format command based on HW Type
+#####################################
+    my %cmd = (
+            hmc =>"lshmc -n -F hostname:ipaddr",
+            ivm =>"lsivm" #just for future consideration
+            );
+
+#####################################
+# Get current hostname and IP
+#####################################
+    my $result = send_cmd( $exp, $cmd{$hwtype} );
+    if ( @$result[0] != SUCCESS ) {
+        return( $result );
+    }
+    my ($current_hostname,$current_all_ip) = split /:/, @$result[1];
+
+#####################################
+# Find the correct interface
+#####################################
+    my @eth_ip = split /,/,$current_all_ip;
+    my $i;
+    for( $i=0; $i < scalar(@eth_ip); $i++)
+    {
+        if (@eth_ip[$i] eq $current_ip)
+        {
+            last;
+        }
+    }
+    if ($i >= scalar(@eth_ip))
+    {
+# What's happen?
+        return ( [RC_ERROR,"No appropriate IP addresses to be updated. This could be a internal bug of xCAT."]);
+    }
+
+    %cmd = (
+# probably need update netmask also
+            hmc => "chhmc -c network  -s modify -h $hostname -i eth$i -a $ip",
+            ivm => "nothing"
+           );
+    $result = send_cmd( $exp, $cmd{$hwtype} );
+#####################################
+# Return error
+#####################################
+    return( $result );
+
+}
 
 
 1;

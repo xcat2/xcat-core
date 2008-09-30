@@ -1076,20 +1076,81 @@ sub process_request {
     process_command( \%request );
 }
 
+##########################################################################
+# connect hmc via ssh and execute remote command
+##########################################################################
+sub sshcmds_on_hmc
+{
+    my $ip = shift;
+    my $user = shift;
+    my $password = shift;
+    my @cmds = @_;
+    
+    my %handled;
+    my @data;
+    my @exp;
+    for my $cmd (@cmds)
+    {
+        if ( $cmd =~ /(.+?)=(.*)/)
+        {
+            my ($command,$value) = ($1,$2);
+            $handled{$command} = $value;
+        }
+    }
+    my %request = (
+            ppcretry => 1,
+            verbose  => 0,
+            ppcmaxp    => 64,
+            ppctimeout => 0,
+            fsptimeout => 0,
+            ppcretry   => 3,
+            maxssh     => 10
 
+            );
 
+    my $valid_ip;
+    foreach my $individual_ip ( split /,/, $ip ) {
+         ################################
+         # Get userid and password 
+         ################################
+         my @cred = xCAT::PPCdb::credentials( $individual_ip, "hmc" );
+         $request{$individual_ip}{cred} = \@cred;
+
+        @exp = xCAT::PPCcli::connect( \%request, 'hmc', $individual_ip);
+####################################
+# Successfully connected 
+####################################
+        if ( ref($exp[0]) eq "Expect" ) {
+            $valid_ip = $individual_ip;
+            last;
+        }
+    }
+
+########################################
+# Error connecting 
+########################################
+    if ( ref($exp[0]) ne "Expect" ) {
+        return ([1,@cmds]);
+    }
+########################################
+# Process specific command 
+########################################
+    for my $cmd ( keys %handled)
+    {
+        my $result;
+        if ($cmd eq 'network_reset')
+        {
+            $result = xCAT::PPCcli::network_reset( \@exp, $valid_ip, $handled{$cmd});
+            my $RC = shift( @$result);
+        }
+        push @data, @$result[0]; 
+    }
+########################################
+# Close connection to remote server
+########################################
+    xCAT::PPCcli::disconnect( \@exp );
+
+    return ([0, undef, \@data]);
+}
 
 1;
-
-
-
-
-
-
-
-
-
-
-
-
-
