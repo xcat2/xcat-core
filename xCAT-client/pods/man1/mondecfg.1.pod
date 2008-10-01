@@ -1,0 +1,65 @@
+=head1 NAME
+
+B<mondecfg> - Deconfigures a 3rd party monitoring software from monitoring the xCAT cluster.
+
+
+
+=head1 SYNOPSIS
+
+I<moncfg [-h| --help]>
+
+I<moncfg [-v| --version]>
+
+I<moncfg name [noderange] [-r|--remote]>
+
+
+=head1 DESCRIPTION
+
+This command is used to deconfigure a 3rd party monitoring software from monitoring the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes. The operation will also be performed on the nodes if the I<-r> option is specified. The deconfigration operation will remove the nodes from the 3rd party software's monitoring domain. 
+
+
+=head1 Parameters
+
+I<name> is the name of the monitoring plug-in module.  Use I<monls> command to list all the monitoring plug-in modules that can be used.
+
+I<noderange> specified the nodes to be deconfigured. If omitted, all nodes will be deconfigured.
+
+=head1 OPTIONS
+
+
+B<-h | --help>          Display usage message.
+
+B<-r | --remote>        Specifies that the operation will also be performed on the nodes.
+
+B<-v | --version >      Command Version.
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To deconfigure the management node and the service nodes from the ganglia monitoring, enter:
+
+  mondecfg gangliamon
+
+
+1. To deconfigure the management node, nodes and their service nodes from the ganglia monitoring, enter:
+
+  mondecfg gangliamon -r
+
+
+=head1 FILES
+
+/opt/xcat/bin/mondecfg
+
+
+=head1 SEE ALSO
+
+L<monls(1)|monls.1>, L<moncfg(1)|moncfg.1>, L<monadd(1)|monadd.1>, L<monrm(1)|monrm.1>, L<monstart(1)|monstart.1>, L<monstop(1)|monstop.1>
+
+
+

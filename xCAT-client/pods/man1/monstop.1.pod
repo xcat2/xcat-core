@@ -7,28 +7,31 @@ B<monstop> -  Stops a monitoring plug-in module to monitor the xCAT cluster.
 
 I<monstop [-h| --help]>
 
-I<monstop  [-v| --version]>
+I<monstop [-v| --version]>
 
-
-I<monstop name>
+I<monstop name [noderange] [-r|--remote]>
 
 
 =head1 DESCRIPTION
 
-This command is used to unregister a monitoring plug-in module from the I<monitoring> table. A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. Once unregistered, xCAT will ask the monitoring plug-in to stop the 3rd party software to monitor the xCAT cluster.
+This command is used to stop a 3rd party software, (for example stop the daemons), from monitoring the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the I<-r> option is specified.
 
 =head1 Parameters
 
-I<name> is the name of the monitoring plug-in module in the I<monitoring> table.
+I<name> is the name of the monitoring plug-in module in the I<monitoring> table. Use I<monls> command to list all the monitoring plug-in modules that can be used.
+
+I<noderange> is the nodes to be stopped for monitoring. If omitted, all nodes will be stopped.
 
 =head1 OPTIONS
 
 
 B<-h | -help>          Display usage message.
 
+B<-r | --remote>       Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be stopped.
+
 B<-v | -version >      Command Version.
 
-B<-V | -verbose>       Verbose output.
+
 
 
 =head1 RETURN VALUE
@@ -43,7 +46,7 @@ B<-V | -verbose>       Verbose output.
 
   monstop gangliamon
 
-Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<tabdump monitoring>.
+Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<monls>.
 
 
 
@@ -54,7 +57,7 @@ Please note that gangliamon must have been registered in the xCAT I<monitoring> 
 
 =head1 SEE ALSO
 
-L<monstart(1)|monstart.1>, L<monls(1)|monls.1>
+L<monls(1)|monls.1>, L<monstart(1)|monstart.1>, L<monadd(1)|monadd.1>, L<monrm(1)|monrm.1>, L<moncfg(1)|moncfg.1>, L<mondecfg(1)|mondecfg.1>
 
 
 

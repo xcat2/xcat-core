@@ -17,7 +17,7 @@ I<monls [-a|--all] [-d|--description]>
 
 =head1 DESCRIPTION
 
-This command is used to list the status, desctiption and the settings of one or all of the monitoring plug-in modules.
+This command is used to list the status, desctiption, the configuration scripts and the settings of one or all of the monitoring plug-in modules.
 
 
 =head1 Parameters
@@ -34,10 +34,7 @@ B<-d | --description>  Display the description of the plug-in modules. The descr
 
 B<-h | --help>         Display usage message.
 
-B<-v | -version >      Command Version.
-
-B<-V | -verbose>       Verbose output.
-
+B<-v | --version >      Command Version.
 
 =head1 RETURN VALUE
 
@@ -81,5 +78,5 @@ The output looks like this:
 
 =head1 SEE ALSO
 
-L<monstart(1)|monstart.1>, L<monstop(1)|monstop.1>
+L<monadd(1)|monadd.1>, L<monrm(1)|monrm.1>, L<monstart(1)|monstart.1>, L<monstop(1)|monstop.1>, L<moncfg(1)|moncfg.1>, L<mondecfg(1)|mondecfg.1>
 
