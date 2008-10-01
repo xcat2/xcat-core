@@ -161,12 +161,7 @@ fi
 if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
     #migration issue for monitoring
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d 
-    #restart the xcatd
-    pids=`ps xww |grep xcatd|grep -v grep|cut -c1-7`
-    if [ ! -z "$pids" ]; then
-      kill $pids
-    fi
-    $XCATROOT/sbin/xcatd&
+    $XCATROOT/sbin/xcatstart
 fi  
 %endif
 
