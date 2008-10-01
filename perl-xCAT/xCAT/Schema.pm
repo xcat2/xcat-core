@@ -529,7 +529,7 @@ vpd => {
  },
   },
 nimimage  => {
- cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group nimmethod script bosinst_data installp_bundle mksysb comments disable)],
+ cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group nimmethod script bosinst_data installp_bundle mksysb fb_script comments disable)],
  keys => [qw(imagename)],
     table_desc => 'All the info that specifies a particular AIX operating system image that can be used to deploy AIX nodes.',
  descriptions => {
@@ -547,6 +547,7 @@ nimimage  => {
   res_group => 'The name of a NIM resource group.',
   nimmethod => 'The NIM install method to use, (ex. rte, mksysb).',
   script => 'The name of a NIM script resource.',
+  fb_script => 'The name of a NIM fb_script resource.',
   bosinst_data => 'The name of a NIM bosinst_data resource.',
   installp_bundle => 'The name of a NIM installp_bundle resource.',
   mksysb => 'The name of a NIM mksysb resource.',
@@ -1119,6 +1120,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  },
  {attr_name => 'script',
                  tabentry => 'nimimage.script',
+                 access_tabentry => 'nimimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'fb_script',
+                 tabentry => 'nimimage.fb_script',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'bosinst_data',
