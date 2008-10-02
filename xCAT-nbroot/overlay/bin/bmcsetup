@@ -26,41 +26,77 @@ BMCGW=`grep gateway /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCUS=`grep username /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCPW=`grep password /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-ipmitool lan set 1 ipsrc static
-ipmitool lan set 1 ipaddr $BMCIP
-ipmitool lan set 1 netmask $BMCNM
+while ! ipmitool lan set 1 ipsrc static; do
+    sleep 1
+done
+while ! ipmitool lan set 1 ipaddr $BMCIP; do
+    sleep 1
+done
+while ! ipmitool lan set 1 netmask $BMCNM; do
+    sleep 1
+done
 if [ ! -z "$BMCGW" ]; then
-    ipmitool lan set 1 defgw ipaddr $BMCGW
+    while ! ipmitool lan set 1 defgw ipaddr $BMCGW; do
+        sleep 1
+    done
 fi
-ipmitool user disable 1
-ipmitool user disable 3
-ipmitool user disable 4
-ipmitool user enable 2
-ipmitool user priv 2 4 1
-ipmitool user set name 2 $BMCUS
-ipmitool user set password 2 $BMCPW
+while ! ipmitool user disable 1; do
+    sleep 1
+done
+while ! ipmitool user disable 3; do
+    sleep 1
+done
+while ! ipmitool user disable 4; do
+    sleep 1
+done
+while ! ipmitool user enable 2; do
+    sleep 1
+done
+while ! ipmitool user priv 2 4 1; do
+    sleep 1
+done
+while ! ipmitool user set name 2 $BMCUS; do
+    sleep 1
+done
+while ! ipmitool user set password 2 $BMCPW; do
+    sleep 1
+done
 echo "Set up following user table: "
 ipmitool user list 1
 
 
 echo "Enabling Channel 1: "
-ipmitool raw 0x6 0x40 0x1 0x42 0x44
-ipmitool raw 0x6 0x40 0x1 0x82 0x84
+while ! ipmitool raw 0x6 0x40 0x1 0x42 0x44; do
+    sleep 1
+done
+while ! ipmitool raw 0x6 0x40 0x1 0x82 0x84; do
+    sleep 1
+done
 
 echo "Enabling ARP responses: "
-ipmitool lan set 1 arp respond on
+while ! ipmitool lan set 1 arp respond on; do
+    sleep 1
+done
 
 echo "Enabling IPMI v 1.5 MD5 LAN access:"
-ipmitool lan set 1 auth admin md5
+while ! ipmitool lan set 1 auth admin md5; do
+    sleep 1
+done
 
 echo "Enabling IPMI v 2.0 LAN access:"
-ipmitool lan set 1 cipher_privs uaaaXXXXXXXXXXX
+while ! ipmitool lan set 1 cipher_privs uaaaXXXXXXXXXXX; do
+    sleep 1
+done
 
 echo "Enabling SOL for channel 1"
-ipmitool raw 0xc 0x21 0x1 0x1 0x1
+while ! ipmitool raw 0xc 0x21 0x1 0x1 0x1; do
+    sleep 1
+done
 
 echo "Enabling SOL for user 2"
-ipmitool raw 6 0x4c 1 2 2 0 0 0
+while ! ipmitool raw 6 0x4c 1 2 2 0 0 0; do
+    sleep 1
+done
 
 allowcred.awk &
 CREDPID=$!
@@ -68,5 +104,8 @@ frume.awk
 kill $CREDPID
 
 echo "Lighting Identify Light"
-ipmitool raw 0 4 0xff
+while :
+    do ipmitool raw 0 4 10
+    sleep 5
+done &
 
