@@ -198,6 +198,7 @@ sub parse_args_xdsh
     if ($options{'version'})
     {
         my $version = xCAT::Utils->Version();
+        $version .= "\n";
         xCAT::MsgUtils->message("I", $version);
         exit 0;
     }
@@ -283,6 +284,7 @@ sub parse_args_xdcp
     if ($options{'version'})
     {
         my $version = xCAT::Utils->Version();
+        $version .= "\n";
         xCAT::MsgUtils->message("I", $version);
         exit 0;
     }
