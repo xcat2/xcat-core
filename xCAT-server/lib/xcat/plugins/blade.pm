@@ -2657,40 +2657,39 @@ sub dompa {
   #get new node status
   my %nodestat=();
   my $check=0;
-  my $newstat;
+  my $nsh={};
+
   if ($command eq 'rpower') {
     if (($args->[0] ne 'stat') && ($args->[0] ne 'status')) { 
       $check=1; 
       my @allnodes=keys %{$mpahash->{$mpa}->{nodes}};
-      if ($args->[0] eq 'off') { $newstat=$::STATUS_POWERING_OFF; }
-      else { $newstat=$::STATUS_BOOTING;}
-      foreach (@allnodes) { $nodestat{$_}=$newstat; }
 
-      if ($args->[0] ne 'off') {
-        #get the current nodeset stat
-        if (@allnodes>0) {
-	  my $nsh={};
-          my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
-          if (!$ret) {
-            foreach (keys %$nsh) {
-	      my $currstate=$nsh->{$_};
-              $nodestat{$_}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
-	    }
-	  }
-        }
+      #get the current nodeset stat
+      if (@allnodes>0) {
+        my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+        if ($ret)  { xCAT::MsgUtils->message('S', "Cannot update node status: $msg\n"); }
       }
     }
   }
-
-  foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
 
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;
     my ($rc,@output) = bladecmd($mpa,$node,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@$args); 
 
     #update the node status
-    if (($check) && ($rc)) {
-      $nodestat{$node}="error";
+    if ($check) {
+      if ($rc) { $nodestat{$node}="error"; }
+      else {
+	my $stattmp=$output[0];
+        if ($stattmp) {
+          my @atmp=split(' ', $stattmp); 
+          my $newstat=$atmp[$#atmp];
+          if (($newstat eq "on") || ($newstat eq "reset"))  {
+	    my $currstate=$nsh->{$node};
+            $nodestat{$node}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
+          } else { $nodestat{$node}=$::STATUS_POWERING_OFF;}
+        }
+      }
     }
 
     foreach(@output) {
