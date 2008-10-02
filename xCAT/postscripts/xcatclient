@@ -4,7 +4,7 @@
 #(C)IBM Corp
 #
 
-if [ ! -x /usr/sbin/stunnel -a ! -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
+if [ ! -x /usr/sbin/stunnel -a ! -x /usr/bin/stunnel ]; then #Stop if no stunnel to help the next bit
    exit 0
    fi
    allowcred.awk &
