@@ -90,6 +90,8 @@ use xCAT::data::ipmigenericevents;
 use xCAT::data::ipmisensorevents;
 my $cache_version = 2;
 
+my $status_noop="XXXno-opXXX";
+
 my %idpxthermbytes = (  #Data to enact the profile quickly
      '0z' => [0x0A,0x37,0x41,0x3C,0x0a,0x0a,0x1e],
      '1a' => [0x0A,0x30,0x3C,0x3C,0x0a,0x0a,0x1e],
@@ -524,7 +526,9 @@ sub ipmicmd {
 			($rc,$text) = power("stat");
 		}
 		elsif($subcommand eq "on") {
-			($rc,$text) = power("on");
+                   my ($oldrc,$oldtext) = power("stat");
+		   ($rc,$text) = power("on");
+                   if(($rc == 0) && ($text eq "on") && ($oldtext eq "on")) { $text .= " $status_noop"; }
 		}
 		elsif($subcommand eq "nmi") {
 			($rc,$text) = power("nmi");
@@ -547,15 +551,19 @@ sub ipmicmd {
 #
 # e325 hack end
 #
+                        my ($oldrc,$oldtext) = power("stat");
 			($rc,$text) = power("off");
-#
+                         if(($rc == 0) && ($text eq "off") && ($oldtext eq "off")) { $text .= " $status_noop"; }
+	
 #			if($text0 ne "") {
 #				$text = $text0 . " " . $text;
 #			}
 		}
 		elsif($subcommand eq "reset") {
+                        my ($oldrc,$oldtext) = power("stat");
 			($rc,$text) = power("reset");
 			$noclose = 0;
+                        if(($rc == 0) && ($text eq "off") && ($oldtext eq "off")) { $text .= " $status_noop"; }
 		}
 		elsif($subcommand eq "cycle") {
 			my $text2;
@@ -5579,7 +5587,7 @@ sub process_request {
       }
     }
   }
-  foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+  #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
 
     my $children = 0;
     $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($kpid > 0) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
@@ -5613,13 +5621,13 @@ sub process_request {
   #update the node status to the nodelist.status table
   if ($check) {
     my %node_status=();
-    foreach (keys(%$errornodes)) { $nodestat{$_}="error"; } 
+    foreach (keys(%$errornodes)) { $nodestat{$_}="no-op"; } 
 
-    foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+    #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
 
     foreach my $node (keys %nodestat) {
       my $stat=$nodestat{$node};
-      if ($stat eq "error") { next; }
+      if ($stat eq "no-op") { next; }
       if (exists($node_status{$stat})) {
         my $pa=$node_status{$stat};
         push(@$pa, $node);
@@ -5650,9 +5658,21 @@ sub forward_data { #unserialize data from pipe, chunk at a time, use magic to de
       print $rfh "ACK\n";
       my $responses=thaw($data);
       foreach (@$responses) {
-        #save the nodes that has errors for node status monitoring
-        if (exists($_->{node}->[0]->{errorcode}))  { 
-           if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
+        #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
+        my $no_op=0;
+        if (exists($_->{node}->[0]->{errorcode})) { $no_op=1; }
+        else { 
+          my $text=$_->{node}->[0]->{data}->[0]->{contents}->[0];
+          #print "data:$text\n";
+          if (($text) && ($text =~ /$status_noop/)) {
+	    $no_op=1;
+            #remove the symbols that meant for use by node status
+            $_->{node}->[0]->{data}->[0]->{contents}->[0] =~ s/ $status_noop//; 
+          }
+        }  
+	#print "data:". $_->{node}->[0]->{data}->[0]->{contents}->[0] . "\n";
+        if ($no_op) {
+          if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
         }
         $callback->($_);
       }

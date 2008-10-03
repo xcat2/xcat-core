@@ -196,6 +196,7 @@ my $mpa;
 my $allinchassis=0;
 my $curn;
 my @cfgtext;
+my $status_noop="XXXno-opXXX";
 
 
 sub fillresps {
@@ -1482,26 +1483,34 @@ sub power {
         return (1,"$subcommand unsupported on the management module");
      }
   }
-  if ($subcommand eq "stat" or $subcommand eq "boot") {
-    $validsub=1;
-    $data = $session->get([$powerstatoid.".".$slot]);
-    if ($data == 1) {
-      $stat = "on";
-    } elsif ( $data == 0) {
-      $stat = "off";
-    } else {
-      $stat= "error";
-    }
-  } elsif ($subcommand eq "off") {
+   
+  #get stat first  
+  $validsub=1;
+  $data = $session->get([$powerstatoid.".".$slot]);
+  if ($data == 1) {
+    $stat = "on";
+  } elsif ( $data == 0) {
+    $stat = "off";
+  } else {
+    $stat= "error";
+  }
+  
+  my $old_stat=$stat;
+  if ($subcommand eq "off") {
     $validsub=1;
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,0,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
-    $stat = "off";
+    $stat = "off"; 
+    if ($old_stat eq "off") { $stat .= " $status_noop"; }
   } 
   if ($subcommand eq "on" or ($subcommand eq "boot" and $stat eq "off")) {
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
-    $stat .= " " . ($data ? "on" : "off");
+    if ($subcommand eq "boot") { $stat .= " " . ($data ? "on" : "off"); } 
+    if ($subcommand eq "on") {
+      $stat = ($data ? "on" : "off");
+      if ($old_stat eq "on") { $stat .= " $status_noop"; }
+    }
   } elsif ($subcommand eq "reset" or ($subcommand eq "boot" and $stat eq "on")) {
     $data = $session->set(new SNMP::Varbind([".".$powerresetoid,$slot ,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
@@ -2676,19 +2685,27 @@ sub dompa {
     $curn = $node;
     my ($rc,@output) = bladecmd($mpa,$node,$mpahash->{$mpa}->{nodes}->{$node},$mpahash->{$mpa}->{username},$mpahash->{$mpa}->{password},$command,@$args); 
 
+    #print "output=@output\n";
+    my $no_op=0;
+    if ($rc) { $no_op=1; }
+    elsif (@output>0) { 
+      if ($output[0] =~ /$status_noop/) {
+	$no_op=1;
+        $output[0] =~ s/ $status_noop//; #remove the simbols that meant for use by node statu
+      }
+    }
+    #print "output=@output\n";
+
     #update the node status
-    if ($check) {
-      if ($rc) { $nodestat{$node}="error"; }
-      else {
-	my $stattmp=$output[0];
-        if ($stattmp) {
-          my @atmp=split(' ', $stattmp); 
-          my $newstat=$atmp[$#atmp];
-          if (($newstat eq "on") || ($newstat eq "reset"))  {
-	    my $currstate=$nsh->{$node};
-            $nodestat{$node}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
-          } else { $nodestat{$node}=$::STATUS_POWERING_OFF;}
-        }
+    if (($check) && (!$no_op)) {
+      my $stattmp=$output[0];
+      if ($stattmp) {
+        my @atmp=split(' ', $stattmp); 
+        my $newstat=$atmp[$#atmp];
+        if (($newstat eq "on") || ($newstat eq "reset"))  {
+          my $currstate=$nsh->{$node};
+          $nodestat{$node}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
+        } else { $nodestat{$node}=$::STATUS_POWERING_OFF;}
       }
     }
 
@@ -2728,11 +2745,11 @@ sub dompa {
   if ($check) {
     my %node_status=();
 
-    foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+    #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
 
     foreach my $node (keys %nodestat) {
       my $stat=$nodestat{$node};
-      if ($stat eq "error") { next; }
+      if ($stat eq "no-op") { next; }
       if (exists($node_status{$stat})) {
         my $pa=$node_status{$stat};
         push(@$pa, $node);
