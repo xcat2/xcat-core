@@ -309,9 +309,10 @@ sub getdestiny {
       next;
     }
     unless ($ref->{currstate}) { #Has a record, but not yet in a state...
-      my @chain = split /,/,$ref->{chain};
-      $ref->{currstate} = shift @chain;
-      $chaintab->setNodeAttribs($node,{currstate=>$ref->{currstate}});
+      return nextdestiny(0); #Becomes a nextdestiny...
+#      my @chain = split /,/,$ref->{chain};
+#      $ref->{currstate} = shift @chain;
+#      $chaintab->setNodeAttribs($node,{currstate=>$ref->{currstate}});
     }
     my %response;
     $response{name}=[$node];
