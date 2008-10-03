@@ -57,7 +57,7 @@ EOS;
  * @param String nodeGroup	The group.
  */
 function insertGroupTableRow($nodeGroupName, $status) {
-$img_string = getStatusImage(GroupNodeTable::determineStatus($status));
+$img_string = getStatusImage(mapStatus($status));
 
 //echo '<tr bgcolor="#FFCC00"><td align=left>';
 echo '<tr class=TableRow><td align=left width=140>';
@@ -119,19 +119,6 @@ function getNodeTableRow($nodeName, $attrs) {
 
 	return $html;
 	}
-
-/**
- * @param String nodestatStr	The status of the node as output by the nodestat command
- * @return "good", "bad", "warning", or "unknown"
- */
-function determineStatus($statStr) {
-	$status = NULL;
-	if ($statStr == "alive" || $statStr == "ready" || $statStr == "pbs" || $statStr == "sshd") { $status = "good"; }
-	else if ($statStr == "noping") { $status = "bad"; }
-	else if ($statStr == "ping") { $status = "warning"; }
-	else { $status = "unknown"; }
-	return $status;
-}
 
 }   // end the class
 ?>

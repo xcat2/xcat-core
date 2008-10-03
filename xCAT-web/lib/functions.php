@@ -55,8 +55,8 @@ echo "</head><body>\n";
 echo <<<EOS
 <table id=headingTable border=0 cellspacing=0 cellpadding=0>
 <tr valign=top>
-    <td><img src='$TOPDIR/images/topl2.jpg'></td>
-    <td class=TopMiddle><img id=xcatImage src='$TOPDIR/images/xCAT_icon-l.gif' height=40px></td>
+    <td><img class=ImgTop src='$TOPDIR/images/topl2.jpg'></td>
+    <td class=TopMiddle><img id=xcatImage src='$TOPDIR/images/xCAT_icon-l.gif'></td>
     <td class=TopMiddle width='100%'>
 
 EOS;
@@ -64,7 +64,7 @@ EOS;
 
 insertMenus($currents);
 
-echo "</td><td><img src='$TOPDIR/images/topr2.jpg'></td></tr></table>\n";
+echo "</td><td><img class=ImgTop src='$TOPDIR/images/topr2.jpg'></td></tr></table>\n";
 //echo "</div></div>\n";     // end the top div
 }  // end insertHeader
 
@@ -132,7 +132,7 @@ $MENU = array(
 			'manpages' => array('label' => 'Man Pages', 'url' => getDocURL('manpage')),
 			'maillist' => array('label' => 'Mail List', 'url' => getDocURL('web','mailinglist')),
 			'wiki' => array('label' => 'Wiki', 'url' => getDocURL('web','wiki')),
-			'suggest' => array('label' => 'Suggestions', 'url' => "$TOPDIR/support/suggest.php"),
+			'suggest' => array('label' => 'Suggest', 'url' => "$TOPDIR/support/suggest.php"),
 			'about' => array('label' => 'About', 'url' => "$TOPDIR/support/about.php"),
 			)
 		),
@@ -145,7 +145,7 @@ $MENU = array(
 function insertMenus($currents) {
 	global $TOPDIR;
 	global $MENU;
-	echo "<table border=0 cellspacing=0 cellpadding=0>\n";
+	echo "<table class=MenuTable border=0 cellspacing=0 cellpadding=0>\n";
 
 	insertMenuRow($currents[0], 1, $MENU);
 
@@ -160,13 +160,15 @@ function insertMenus($currents) {
 function insertMenuRow($current, $isTop, $items) {
 	global $TOPDIR;
 	//$img = "$TOPDIR/images/h3bg_new.gif";
-	$menuRowClass = $isTop ? '' : 'class=MenuRowBottom';
-	$menuItemClass = $isTop ? 'class=MenuItemTop' : '';
-	$currentClass = $isTop ? 'class=CurrentMenuItemTop' : '';
+	//$menuRowClass = $isTop ? '' : 'class=MenuRowBottom';
+	$menuItemClass = $isTop ? '' : 'class=MenuItemBottom';
+	//$currentClass = $isTop ? 'class=CurrentMenuItemTop' : '';
 
 	//echo "<TABLE class=MenuTable id=mainNav cellpadding=0 cellspacing=0 border=0><tr>\n";
 	//echo "<div class=$menuRowClass><ul id=mainNav>\n";
-	echo "<tr><td $menuRowClass><ul id=mainNav>\n";
+	//echo "<tr><td $menuRowClass><ul id=mainNav>\n";
+	//echo "<tr><td><ul id=mainNav>\n";
+	echo "<tr><td>\n";
 
 	foreach ($items as $key => $value) {
 		$label = $value['label'];
@@ -177,16 +179,21 @@ function insertMenuRow($current, $isTop, $items) {
 		}
 		if ($key == $current){
 			//echo "<TD><a id=$key href='$link[1]'>$link[0]</a></TD>\n";
-			echo "<li><p $currentClass>$label</p></li>";
+			//echo "<li><p $currentClass>$label</p></li>";
+			//echo "<li><p>$label</p></li>";
+			//echo "<p class=CurrentMenuItem>$label</p>";
+			echo "<span class=CurrentMenuItem>$label</span>";
 		} else {
 			//echo "<TD><a class=NavItem id=$key href='$link[1]'>$link[0]</a></TD>\n";
-			echo "<li><a $menuItemClass id=$key href='$url'>$label</a></li>";
+			//echo "<li><a $menuItemClass id=$key href='$url'>$label</a></li>";
+			echo "<a $menuItemClass id=$key href='$url'>$label</a>";
 		}
 	}
 
 	//echo "</TR></TABLE>\n";
 	//echo "</ul></div>\n";
-	echo "\n</ul></td></tr>\n";
+	//echo "\n</ul></td></tr>\n";
+	echo "\n</td></tr>\n";
 }
 
 
@@ -471,76 +478,125 @@ function getDocURL($book, $section = NULL) {
 }
 
 
+$HWTypeInfo = array (
+		  'x335' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8676' ),
+		  'x336' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8837' ),
+		  'x306' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8836' ),
+		  'x306m' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8849,8491' ),
+		  'x3550' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'7978' ),
+		  'e325' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8835' ),
+		  'e326' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8848' ),
+		  'e326m' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'7969' ),
+		  'e327' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'' ),
+		  'x3250' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'4190,4194' ),
+		  'x3350' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'4192,4193,hmc' ),  # just guessed about hmc
+		  'x3450' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'7948' ),
+		  'x3455' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'7940,ipmi,xseries,default' ),
+		  'x3550' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'7978' ),
+
+		  'x340' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'8656' ),
+		  'x342' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'8669' ),
+		  'x345' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'8670' ),
+		  'x346' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'8840' ),
+		  'x3650' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'7979' ),
+		  'x3655' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'7943' ),
+
+		  'x360' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'8686' ),
+		  'x365' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'8862' ),
+		  'x366' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'8863' ),
+		  'x445' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
+		  'x450' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
+		  'x455' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
+		  'x460' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
+
+		  'x3755' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>4, 'aliases'=>'7163,8877' ),
+		  'x3850' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>4, 'aliases'=>'7141,7233' ),
+		  'x3950' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>4, 'aliases'=>'' ),  # 7141,7233
+
+		  'hs20' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8678,8843,7981,blade' ),   # removed 8832 because it is older and it made this entry to wide in the drop down boxes
+		  'hs12' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8014,8028' ),
+		  'hs21' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'7995,8853' ),
+		  'js20' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8842' ),
+		  'js12' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'799860X' ),
+		  'js21' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8844,7998J21' ),
+		  'js22' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'799861X' ),
+		  'qs21' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'0792' ),
+		  'qs22' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'0793' ),
+		  'ls20' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8850' ),
+		  'ls21' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'7971' ),
+		  'ls22' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'7901' ),
+		  'hs40' => array ( 'image'=>'blade2.gif', 'rackimage'=>'blade2-front', 'u'=>7, 'aliases'=>'8839' ),
+		  'ls41' => array ( 'image'=>'blade2.gif', 'rackimage'=>'blade2-front', 'u'=>7, 'aliases'=>'7972' ),
+		  'ls42' => array ( 'image'=>'blade2.gif', 'rackimage'=>'blade2-front', 'u'=>7, 'aliases'=>'7902' ),
+
+		# POWER 4 servers
+		  'p610' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>5, 'aliases'=>'7028' ),
+		  'p615' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>4, 'aliases'=>'7029' ),
+		  'p630' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>4, 'aliases'=>'' ),  # 7026
+		  'p640' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>5, 'aliases'=>'7026' ),
+		  'p650' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>8, 'aliases'=>'7038' ),
+		  'p655' => array ( 'image'=>'590.gif', 'rackimage'=>'x335-front', 'u'=>42, 'aliases'=>'7039' ),
+		  'p670' => array ( 'image'=>'590.gif', 'rackimage'=>'x335-front', 'u'=>42, 'aliases'=>'' ),  # 7040
+		  'p690' => array ( 'image'=>'590.gif', 'rackimage'=>'x335-front', 'u'=>42, 'aliases'=>'7040' ),
+
+		# OpenPOWER servers
+		  'p710' => array ( 'image'=>'342.gif', 'rackimage'=>'x335-front', 'u'=>2, 'aliases'=>'9123' ),
+		  'p720' => array ( 'image'=>'520.gif', 'rackimage'=>'x345-front', 'u'=>4, 'aliases'=>'9124' ),
+
+		# POWER 5 servers
+		  'p5-505' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'' ),  # 9115
+		  'p5-505Q' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'9115' ),
+
+		  'p5-510' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'9110' ),
+		  'p5-510Q' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'' ),  # 9110
+		  'p5-575' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'9118' ),
+
+		  'p5-520' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9111' ),
+		  'p5-520Q' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9131' ),
+		  'p5-550' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9113' ),
+		  'p5-550Q' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9133' ),
+		  'p5-560' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9116' ),
+		  'p5-560Q' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'' ),  # 9116
+		  'p5-570' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'' ),  # 9117
+
+		  'p5-590' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'' ),  # 9119
+		  'p5-595' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'' ),  # 9119
+
+		# POWER 6 servers
+		  '520' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8203' ),
+		  '550' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8204' ),
+		  '570' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9117' ),
+		  '575' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'9125' ),
+		  '595' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'9119' ),
+		 );
+
+
 //-----------------------------------------------------------------------------
 // This returns important display info about each type of hardware, so we can easily add new hw types.
-function getHWTypeInfo($hwtype, $attr) {
-	//todo: get the aliases to be keys in this hash too
-	$hwhash = array (
-			  'x335' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8676' ),
-			  'x336' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8837' ),
-			  'x306' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8836' ),
-			  'x306m' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8849,8491' ),
-			  'x3550' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'7978' ),
-			  'e325' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8835' ),
-			  'e326' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'8848' ),
-			  'e326m' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'7969' ),
-			  'e327' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'' ),
+function getHWTypeInfo($hwtype, $attr=NULL) {
+global $HWTypeInfo;
 
-			  'x340' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'8656' ),
-			  'x342' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'8669' ),
-			  'x345' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'8670' ),
-			  'x346' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'8840' ),
-			  'x3650' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'7979' ),
+// Get the aliases defined as keys, if we have not done that yet
+if (!array_key_exists('9119',$HWTypeInfo)) {
+	$keys = array_keys($HWTypeInfo);		// make a copy of the keys, because we will be adding some in the loop below
+	foreach ($keys as $key) {
+		$value = $HWTypeInfo[$key];
+		if (array_key_exists('aliases',$value) && !empty($value['aliases'])) {
+			$aliases = explode(',', $value['aliases']);
+			foreach ($aliases as $a) {
+				if (array_key_exists($a,$HWTypeInfo)) { msg('W', "Internal warning: Duplicate alias in HWTypeInfo array: $a"); }
+				else { $HWTypeInfo[$a] = $value; }
+			}
+		}
+	}
+}
 
-			  'x360' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'8686' ),
-			  'x365' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'8862' ),
-			  'x366' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'8863' ),
-			  'x3850' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'8863' ),
-			  'x445' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
-			  'x450' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
-			  'x455' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
-			  'x460' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
-			  'x3950' => array ( 'image'=>'342.gif', 'rackimage'=>'x366-front', 'u'=>3, 'aliases'=>'' ),
-
-			  'hs20' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8678,8843,7981' ),   # removed 8832 because it is older and it made this entry to wide in the drop down boxes
-			  'js20' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8842' ),
-			  'js21' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8844' ),
-			  'ls20' => array ( 'image'=>'blade.gif', 'rackimage'=>'blade-front', 'u'=>7, 'aliases'=>'8850' ),
-			  'hs40' => array ( 'image'=>'blade2.gif', 'rackimage'=>'blade2-front', 'u'=>7, 'aliases'=>'8839' ),
-
-			  'p5-505' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'9115' ),
-			  'p5-505Q' => array ( 'image'=>'330.gif', 'rackimage'=>'x335-front', 'u'=>1, 'aliases'=>'9115' ),
-
-			  'p5-510' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'9110' ),
-			  'p5-510Q' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'9110' ),
-			  'p5-575' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'9118' ),
-
-			  'p5-520' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9111' ),
-			  'p5-520Q' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9131' ),
-			  'p5-550' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9113' ),
-			  'p5-550Q' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9133' ),
-			  'p5-560' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9116' ),
-			  'p5-560Q' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9116' ),
-			  'p5-570' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9117' ),
-
-			  'p5-590' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'9119' ),
-			  'p5-595' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'9119' ),
-
-			  'p710' => array ( 'image'=>'342.gif', 'rackimage'=>'x335-front', 'u'=>2, 'aliases'=>'9123' ),
-			  'p720' => array ( 'image'=>'520.gif', 'rackimage'=>'x345-front', 'u'=>4, 'aliases'=>'9124' ),
-
-			  'p610' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>5, 'aliases'=>'7028' ),
-			  'p615' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>4, 'aliases'=>'7029' ),
-			  'p630' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>4, 'aliases'=>'7026' ),
-			  'p640' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>5, 'aliases'=>'7026' ),
-			  'p650' => array ( 'image'=>'520.gif', 'rackimage'=>'x335-front', 'u'=>8, 'aliases'=>'7038' ),
-			  'p655' => array ( 'image'=>'590.gif', 'rackimage'=>'x335-front', 'u'=>42, 'aliases'=>'7039' ),
-			  'p670' => array ( 'image'=>'590.gif', 'rackimage'=>'x335-front', 'u'=>42, 'aliases'=>'7040' ),
-			  'p690' => array ( 'image'=>'590.gif', 'rackimage'=>'x335-front', 'u'=>42, 'aliases'=>'7040' ),
-			 );
-	$info = $hwhash[strtolower($hwtype)];
-	if (isset($attr)) { return $info[$attr]; }
-	else { return $info; }
+// Now return the info requested
+$k = strtolower($hwtype);
+if (!array_key_exists($k,$HWTypeInfo)) { return NULL; }
+$info = $HWTypeInfo[$k];
+if (isset($attr)) { return $info[$attr]; }
+else { return $info; }
 }
 
 
@@ -549,19 +605,57 @@ function getHWTypeInfo($hwtype, $attr) {
 function getHWTypeImage($hwtype, $powermethod) {
 	# 1st try to match the hw type
 	$info = getHWTypeInfo($hwtype, 'image');
-	if ($info) { return $info['image']; }
+	if (!empty($info)) { return $info; }
 
 	# No matches yet.  Use the power method to get a generic type.
 	if (isset($powermethod)) {
-		$powermethod = strtolower($powermethod);
-	  if ($powermethod == 'blade') { return getHWTypeInfo('hs20', 'image'); }
-	  elseif ($powermethod == 'hmc') { return getHWTypeInfo('p5-520', 'image'); }
-	  elseif ($powermethod == 'bmc') { return getHWTypeInfo('x335','image'); }
-	  elseif ($powermethod == 'xseries') { return getHWTypeInfo('x335', 'image'); }
+		$info = getHWTypeInfo($powermethod, 'image');
+		if (!empty($info)) { return $info; }
 	}
 
 	# As a last resort, return the most common node image
-	return getHWTypeInfo('x335', 'image');
+	return getHWTypeInfo('default', 'image');
+}
+
+
+//-----------------------------------------------------------------------------
+// Map the many possible values of nodelist.status into one of four:  good, bad, warning, unknown
+//todo: update this list from Lings new status work
+function mapStatus($statStr) {
+	$status = NULL;
+	if ($statStr == "alive" || $statStr == "ready" || $statStr == "pbs" || $statStr == "sshd") { $status = "good"; }
+	else if ($statStr == "noping" || $statStr=='unreachable') { $status = "bad"; }
+	else if ($statStr == "ping") { $status = "warning"; }
+	else { $status = "unknown"; }
+	return $status;
+}
+
+
+//-----------------------------------------------------------------------------
+// For 2 status strings from nodestat or nodelist.status, return the "lowest" (worst).
+// Use this function when trying to aggregate multiple status values into one.
+//todo: update this list from Lings new status work
+function minStatus($s1, $s2) {
+	$statnum = array( 'unknown' => 0,
+					'unreachable' => 1,
+					'noping' => 1,
+					'ping' => 2,
+					'snmp' => 3,
+					'sshd' => 4,
+					'pbs' => 5,
+					'ready' => 6,
+					'alive' => 6,
+					);
+
+	// if either value is empty, just return the other one
+	if (!isset($s1)) { return $s2; }
+	if (!isset($s2)) { return $s1; }
+
+	// if either value does not map into the hash, then return unknown
+	if (!isset($statnum[$s1]) || !isset($statnum[$s2])) { return 'unknown'; }
+
+	if ($statnum[$s1] < $statnum[$s2]) { return $s1; }
+	else { return $s2; }
 }
 
 
@@ -599,13 +693,16 @@ function getNodes($noderange, $attrs) {
 	//my ($hostname, $type, $osname, $distro, $version, $mode, $status, $conport, $hcp, $nodeid, $pmethod, $location, $comment) = split(/:\|:/, $na);
 	//$nodes[] = array('hostname'=>"node$i.cluster.com", 'type'=>'x3655', 'osname'=>'Linux', 'distro'=>'RedHat', 'version'=>'4.5', 'status'=>1, 'conport'=>$i, 'hcp'=>"node$i-bmc.cluster.com", 'nodeid'=>'', 'pmethod'=>'bmc', 'location'=>"frame=1 u=$", 'comment'=>'');
 	$nodes = array();
+	if (empty($noderange)) { $nodrange = '/.*'; }
 	//$xml = docmd('nodels',$noderange,implode(' ',$attrs));
 	$xml = docmd('nodels',$noderange,$attrs);
-	$output = $xml->xcatresponse->children();		// technically, we should iterate over the xcatresponses, because there can be more than one
-	foreach ($output as $o) {
+	//$output = $xml->xcatresponse->children();		// technically, we should iterate over the xcatresponses, because there can be more than one
+	//foreach ($output as $o) {
+	foreach ($xml->children() as $response) foreach ($response->children() as $o) {
 		$nodename = (string)$o->name;
 		$data = $o->data;
 		$attrval = (string)$data->contents;
+		if (empty($attrval)) { continue; }
 		$attrname = (string)$data->desc;
 		//echo "<p> $attrname = $attrval </p>\n";
 		//echo "<p>"; print_r($nodename); echo "</p>\n";

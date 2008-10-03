@@ -8,7 +8,7 @@ if (isAIX()) { $aixDisabled = 'disabled'; }
 
 require_once("$TOPDIR/lib/GroupNodeTable.class.php");
 
-insertHeader('Groups', array('groups.css'),
+insertHeader('xCAT Groups and Nodes', array('groups.css'),
 	array("$TOPDIR/lib/GroupNodeTableUpdater.js","$TOPDIR/js/prototype.js","$TOPDIR/js/scriptaculous.js?load=effects"),
 	array('machines','groups'));
 
@@ -100,36 +100,12 @@ function getGroupStatus() {
 			preg_match('/^"([^"]*)"/', $rest, $status);
 			if (count($status) < 2) { $status[1] = 'unknown'; }
 			foreach ($grplist as $g) {
-				if (array_key_exists($g,$groups)) { $groups[$g] = minstat($groups[$g], $status[1]); }
+				if (array_key_exists($g,$groups)) { $groups[$g] = minStatus($groups[$g], $status[1]); }
 				else { $groups[$g] = $status[1]; }
 			}
 		}
 	}
 	return $groups;
-}
-
-
-//-----------------------------------------------------------------------------
-// For 2 status strings from nodestat or nodelist.status, return the "lowest".
-function minstat($s1, $s2) {
-	$statnum = array( 'unknown' => 0,
-					'noping' => 1,
-					'ping' => 2,
-					'snmp' => 3,
-					'sshd' => 4,
-					'pbs' => 5,
-					'ready' => 6,
-					);
-
-	// if either value is empty, just return the other one
-	if (!isset($s1)) { return $s2; }
-	if (!isset($s2)) { return $s1; }
-
-	// if either value does not map into the hash, then return unknown
-	if (!isset($statnum[$s1]) || !isset($statnum[$s2])) { return 'unknown'; }
-
-	if ($statnum[$s1] < $statnum[$s2]) { return $s1; }
-	else { return $s2; }
 }
 
 
