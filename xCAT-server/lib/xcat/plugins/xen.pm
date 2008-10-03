@@ -43,6 +43,8 @@ my $vmmaxp;
 my $mactab;
 my $nrtab;
 my $machash;
+my $status_noop="XXXno-opXXX";
+
 sub handled_commands {
   unless ($libvirtsupport) {
       return {};
@@ -320,21 +322,23 @@ sub power {
             if ($dom) {
                 refresh_vm($dom);
             }
+        } else {
+          $retstring .= " $status_noop";
         }
     } elsif ($subcommand eq 'off') {
         if ($dom) {
             $dom->destroy();
-        }
+        } else { $retstring .= " $status_noop"; }
     } elsif ($subcommand eq 'softoff') {
         if ($dom) {
             $dom->shutdown();
-        }
+        } else { $retstring .= " $status_noop"; } 
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
             $dom->reboot(1); #TODO: Sys::Virt *nor* libvirt have meaningful flags,
                             #but require it
             $retstring.="reset";
-        }
+        } else { $retstring .= " $status_noop"; } 
     } else { 
         unless ($subcommand =~ /^stat/) {
             return (1,"Unsupported power directive '$subcommand'");
@@ -566,7 +570,7 @@ sub process_request {
     }
   }
 
-  foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+  #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
 
 
   foreach $hyp (sort (keys %hyphash)) {
@@ -596,13 +600,13 @@ sub process_request {
   #update the node status to the nodelist.status table
   if ($check) {
     my %node_status=();
-    foreach (keys(%$errornodes)) { $nodestat{$_}="error"; } 
+    foreach (keys(%$errornodes)) { $nodestat{$_}="no-op"; } 
 
-    foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+    #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
 
     foreach my $node (keys %nodestat) {
       my $stat=$nodestat{$node};
-      if ($stat eq "error") { next; }
+      if ($stat eq "no-op") { next; }
       if (exists($node_status{$stat})) {
         my $pa=$node_status{$stat};
         push(@$pa, $node);
@@ -632,9 +636,21 @@ sub forward_data {
       print $rfh "ACK\n";
       my $responses=thaw($data);
       foreach (@$responses) {
-        #save the nodes that has errors for node status monitoring
-        if ((exists($_->{node}->[0]->{errorcode})) &&  ($_->{node}->[0]->{errorcode} != 0)) { 
-           if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
+        #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
+        my $no_op=0;
+        if (exists($_->{node}->[0]->{errorcode})) { $no_op=1; }
+        else { 
+          my $text=$_->{node}->[0]->{data}->[0]->{contents}->[0];
+          #print "data:$text\n";
+          if (($text) && ($text =~ /$status_noop/)) {
+	    $no_op=1;
+            #remove the symbols that meant for use by node status
+            $_->{node}->[0]->{data}->[0]->{contents}->[0] =~ s/ $status_noop//; 
+          }
+        }  
+	#print "data:". $_->{node}->[0]->{data}->[0]->{contents}->[0] . "\n";
+        if ($no_op) {
+          if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
         }
         $callback->($_);
       }
