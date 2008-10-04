@@ -2247,17 +2247,13 @@ sub buildprodfru {
     push @bytes,transfieldtobytes($prod->{asset});
     push @bytes,transfieldtobytes($prod->{fruid});
     push @bytes,transfieldtobytes($prod->{fruid});
-    my $foundsig=0;
     foreach (@{$prod->{extra}}) {
-        push @bytes,transfieldtobytes($_);
         my $sig=getascii(transfieldtobytes($_));
-        if ($sig =~ /FRU by xCAT/) {
-            $foundsig = 1;
+        unless ($sig and $sig =~ /FRU by xCAT/) {
+            push @bytes,transfieldtobytes($_);
         }
     }
-    unless ($foundsig) {
-        push @bytes,transfieldtobytes({encoding=>3,value=>"$currnode FRU by xCAT ".xCAT::Utils::Version('short')});
-    }
+    push @bytes,transfieldtobytes({encoding=>3,value=>"$currnode FRU by xCAT ".xCAT::Utils::Version('short')});
     push @bytes,(0xc1);
     $bytes[1]=ceil((scalar(@bytes)+1)/8);
     $padsize=(ceil((scalar(@bytes)+1)/8)*8)-scalar(@bytes)-1;
