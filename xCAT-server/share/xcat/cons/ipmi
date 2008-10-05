@@ -57,13 +57,23 @@ until ($username and $password and $bmc) {
 #}
 #xCAT::Utils::close_all_dbhs;
 #my $isintel = system "ipmitool -I lanplus -U $username -P $password -H $bmc chassis status > /dev/null 2>&1";
-my $isintel = system "ipmitool -I lan -U $username -P $password -H $bmc mc info| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
-$isintel = not $isintel;
+my $isintel=0;
+my @mcinfo=`ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+my $solcom="sol";
+my $iface="lanplus";
+if (grep /IPMI Version              : 1.5/,@mcinfo) {
+    $solcom="isol";
+    $iface="lan";
+} elsif (grep /Manufacturer ID           : 343/,@mcinfo) {
+    $isintel=1;
+}
 my $inteloption="";
 if ($isintel) {
    $inteloption=" -o intelplus";
 }
-system "ipmitool -I lanplus$inteloption -U $username -P $password -H $bmc sol deactivate"; #Stop any active session
-exec "ipmitool -I lanplus$inteloption -U $username -P $password -H $bmc sol activate";
+if ($iface eq "lanplus") {
+    system "ipmitool -I lanplus $inteloption -U $username -P $password -H $bmc $solcom deactivate"; #Stop any active session
+}
+exec "ipmitool -I $iface $inteloption -U $username -P $password -H $bmc $solcom activate";
   
 
