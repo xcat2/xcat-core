@@ -4008,7 +4008,12 @@ sub runDsh_api
     $::DSH_API_MESSAGE = "";
     my $verbose_old = $::VERBOSE;
     $::VERBOSE   = 0;
+    #
+    # execute dsh
+    #
+    $::RUNCMD_RC=0;
     $::RUNCMD_RC = xCAT::DSHCLI->execute_dsh($optionsRef);
+
     $::DSH_API   = 0;
     $::VERBOSE   = $verbose_old;
     my $returnCode;    #command will exit with this code
@@ -4045,7 +4050,7 @@ sub runDsh_api
             {
                 $errmsg = $::DSH_API_MESSAGE;
             }
-            if (!$DSHCLI::NO_MESSAGES)
+            if ((!$DSHCLI::NO_MESSAGES) && ($::DSH_API_NODES_FAILED))
             {
                 xCAT::MsgUtils->message(
                     "E",

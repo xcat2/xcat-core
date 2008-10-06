@@ -724,16 +724,17 @@ sub pping_hostnames
 
     my $hostname_list = join ",", @hostnames;
     my @output =
-      xCAT::Utils->runcmd("pping -H $hostname_list", -1);
-
+      xCAT::Utils->runcmd("pping $hostname_list", -1);
+     $::RUNCMD_RC =0; # reset
     my @no_response = ();
     foreach my $line (@output)
     {
         my ($hostname, $result) = split ':', $line;
         my ($token,    $status) = split ' ', $result;
         chomp($token);
-        !(($token eq 'ping') && ($status eq '(alive)'))
-          && (push @no_response, $hostname);
+       if ($token ne 'ping') {
+          push @no_response, $hostname;
+       }
     }
 
     return @no_response;
