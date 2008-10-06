@@ -786,6 +786,181 @@ sub runcmd
 
 }
 
+
+#-------------------------------------------------------------------------------
+
+=head3    runxcmd
+   Run the given xCAT cmd and return the output in an array.
+   Alternately, if this function is used in a scalar context, the output
+   is joined into a single string with newlines separating the lines.
+
+   Arguments:
+	   command - string with following format:
+			<xCAT cmd name> <comma-delimited nodelist> <cmd args>
+			where the xCAT cmd name is as reqistered in the plugins
+				  the nodelist is already flattened and verified
+				  the remainder of the string is passed as args
+	OR
+	   command - request hash
+
+	   reference to xCAT daemon sub_req routine
+
+	   exitcode  
+
+	   reference to output
+
+   Returns:
+	   see below
+   Globals:
+	   $::RUNCMD_RC  , $::CALLBACK
+   Error:
+	  Cannot determine error code. If ERROR data set in response
+	  hash, $::RUNCMD_RC will be set to 1.
+      Normally, if there is an error running the cmd,it will display the
+		error and exit with the cmds exit code, unless exitcode
+		is given one of the following values:
+            0:     display error msg, DO NOT exit on error, but set
+					$::RUNCMD_RC to the exit code.
+			-1:     DO NOT display error msg and DO NOT exit on error, but set
+				    $::RUNCMD_RC to the exit code.
+			-2:    DO the default behavior (display error msg and exit with cmds
+				exit code.
+             number > 0:    Display error msg and exit with the given code
+
+   Example:
+		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -2, 1);
+
+   Comments:
+		   If refoutput is true, then the output will be returned as a
+		   reference to an array for efficiency.
+
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub runxcmd
+
+{
+
+	my $save_CALLBACK = $::CALLBACK;  
+    my ($class, $cmd, $subreq, $exitcode, $refoutput) = @_;
+    $::RUNCMD_RC = 0;
+    if ($::VERBOSE)
+    {
+        xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+    }
+    $::xcmd_outref = [];
+	my $req;
+	if (ref($cmd) eq "HASH") {
+		$req = $cmd;
+	} else { # assume scalar
+		my ($cmdname,$nodelist,$cmdargs) = split(" ",$cmd);
+		my @nodes = split(",",$nodelist);
+		chomp $cmdargs;
+		$req={command=>[$cmdname],
+				  node=>\@nodes,
+				  arg=>[$cmdargs]};
+	}
+	$subreq->($req,\&runxcmd_output);
+	$::CALLBACK = $save_CALLBACK;  # in case the subreq call changed it
+	my $outref=$::xcmd_outref;
+    if ($::RUNCMD_RC)
+    {
+        my $displayerror = 1;
+        my $rc;
+        if (defined($exitcode) && length($exitcode) && $exitcode != -2)
+        {
+            if ($exitcode > 0)
+            {
+                $rc = $exitcode;
+            }    # if not zero, exit with specified code
+            elsif ($exitcode <= 0)
+            {
+                $rc = '';    # if zero or negative, do not exit
+                if ($exitcode < 0) { $displayerror = 0; }
+            }
+        }
+        else
+        {
+            $rc = $::RUNCMD_RC;
+        }    # if exitcode not specified, use cmd exit code
+        if ($displayerror)
+        {
+            my $rsp={};
+            my $errmsg = join('', @$outref);
+            chomp $errmsg;
+            if ($::CALLBACK)
+            {
+                $rsp->{data}->[0] =
+                  "Command failed: $cmd. Error message: $errmsg.\n";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            }
+            else
+            {
+                xCAT::MsgUtils->message("E",
+                             "Command failed: $cmd. Error message: $errmsg.\n");
+            }
+            $xCAT::Utils::errno = 29;
+        }
+    }
+    if ($refoutput)
+    {
+        chomp(@$outref);
+        return $outref;
+    }
+    elsif (wantarray)
+    {
+        chomp(@$outref);
+        return @$outref;
+    }
+    else
+    {
+        my $line = join('', @$outref);
+        chomp $line;
+        return $line;
+    }
+}
+# runxcmd_output -- Internal subroutine for runxcmd to capture the output
+#	from the xCAT daemon subrequest call
+#	Note - only basic info, data, and error responses returned
+#	For more complex node or other return structures, you will need
+#	to write your own wrapper to subreq instead of using runxcmd.
+sub runxcmd_output {
+	my $resp = shift;  
+	if (defined($resp->{info})) {
+	    push @$::xcmd_outref,@{$resp->{info}};
+	}
+	if (defined($resp->{sinfo})) {
+	    push @$::xcmd_outref,@{$resp->{sinfo}};
+	}
+	if (defined($resp->{data})) {
+	    push @$::xcmd_outref,@{$resp->{data}};
+	}
+	if (defined($resp->{error})) {
+	    push @$::xcmd_outref,@{$resp->{error}};
+		$::RUNCMD_RC=1;
+	}
+  	if (defined($resp->{errorcode})) {
+    	if (ref($resp->{errorcode}) eq 'ARRAY') { 
+			foreach my $ecode (@{$resp->{errorcode}}) { 
+				$::RUNCMD_RC |= $ecode; 
+			} 
+		} else { 
+			# assume it is a non-reference scalar
+			$::RUNCMD_RC |= $resp->{errorcode}; 
+		}   
+  	}
+
+
+#  		my $i=0;
+#	    foreach my $line ($resp->{info}->[$i]) {    
+#	      push (@dshresult, $line);
+#	      $i++;
+#	    }
+   	return 0;
+}
+
+
 #--------------------------------------------------------------------------------
 
 =head3    getHomeDir
