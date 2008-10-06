@@ -8,6 +8,10 @@ B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<off>|B<stat>|B<state>|B<reset>|B<b
 
 B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
+=head2 PPC (with IVM or HMC) specific:
+
+B<rpower> I<noderange> [B<--nodeps>] {B<of>}
+
 =head1 DESCRIPTION
 
 B<rpower> controls the power for a single or range of nodes,  via the out-of-band path.
@@ -41,6 +45,10 @@ This option is recommended over B<cycle>.
 =item B<cycle>
 
 Power off, then on.
+
+=item B<of>
+
+Boot the node to open firmware mode.
 
 =item B<--nodeps>
 
