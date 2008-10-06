@@ -21,7 +21,7 @@ performance();
 sub  performance
      { #opening subroutine
 	  
-		   my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
+           my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
            #identification of this node
            my @hostinfo=xCAT::Utils->determinehostname();
            #print "hosT:@hostinfo\n";
@@ -32,14 +32,14 @@ sub  performance
            if (!$isSV) { $iphash{'noservicenode'}=1;}
 
            my @children;
-		   my $str;
+           my $str;
 		   
            foreach my $key (keys (%$noderef))
             { #opening foreach1
-		      #print "opening foreach1 \n";
+	      #print "opening foreach1 \n";
               #print "key is: $key \n";
               my @key_a=split(',', $key);
-			  if (! $iphash{$key_a[0]}) { next;}
+	      if (! $iphash{$key_a[0]}) { next;}
               my $mon_nodes=$noderef->{$key};
 
               foreach(@$mon_nodes)
@@ -53,27 +53,29 @@ sub  performance
                    }
                 } #closing foreach2
             }  #closing foreach1
-          #print "children:@children\n";
-		  my $count_child=@children;
-		  if($count_child > 0)
-		   { #opening if count_child 1
-			 #print "number of children is $count_child \n";
-             no strict;
-			 no warnings;
-		     #my $i=0;
-		     my @inactive_children;
-			 for ($i = 0;$i < $count_child;$i++)
-				 { #opening if count_child 2
-				  $str=`pmdumptext -c $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config -d§ -s1 -h$children[$i] -f%D:%H:%M:%S 2>&1`;
-				  #print "before split is $str \n";
-				  #if ($str =~ /\s*No\s*route\s*to\s*host/)
-				  if ($str =~ /pmdumptext:\s*Error:\s*host\s*"\w*":/) 
-                                  {
-                                   #print "host unreachable \n";
-				   @inactive_children=$children[$i];
-				   #print "inactive children is @inactive_children \n";
-                                  }
-                               else
+          
+	  #print "children:@children\n";
+          my $count_child=@children;
+          if($count_child > 0)
+            { #opening if count_child 1
+	      #print "number of children is $count_child \n";
+              no strict;
+	      no warnings;
+	      #my $i=0;
+	       my @inactive_children;
+	       for ($i = 0;$i < $count_child;$i++)
+		   { #opening if count_child 2
+			$str=`pmdumptext -c $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config -d§ -s1 -h$children[$i] -f%D:%H:%M:%S 2>&1`;
+			#print "before split is $str \n";
+			#if ($str =~ /\s*No\s*route\s*to\s*host/)
+			if ($str =~ /pmdumptext:\s*Error:\s*host\s*"\w*":/) 
+                          {
+                             #print "host unreachable \n";
+			     @inactive_children=$children[$i];
+			     #print "inactive children is @inactive_children \n";
+                          }
+                             
+			 else
 			       {
 				  #print "into elso loop \n";
 				  $str =~ s/\n//g;
@@ -82,29 +84,32 @@ sub  performance
 				  #print "splitted and #printing \n";
 				  #print @spl1;
 				  my $count_spl1=@spl1;
-			      #print "the array has $count_spl1 elements \n"; 
+			          #print "the array has $count_spl1 elements \n"; 
 				  #print "@spl1[0] \n";
 				  #print "@spl1[1] \n";
 				  my $count3= `cat $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config | wc -l`;
-			      #print "the number of lines in the file is count3:$count3 \n";
-				  `tr "\n" "§" <$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config> $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config.tr`;
-				  my $fname = "$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config.tr";
-                  unless ( open( CONF, $fname ))
-                  {
-                   return(0);
-                  }
-                  my $raw_data = <CONF>;
-                  close( CONF );
-				  
-                  #print "the contents of the config file are $raw_data \n";
+			          #print "the number of lines in the file is count3:$count3 \n";
+				  #`tr "\n" "§" <$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config> $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config.tr`;
+				  my $fname = "$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config";
+                                  unless ( open( CONF, $fname ))
+                                   {
+                                     return(0);
+                                   }
+                                  my @raw_data = <CONF>;
+                                  close( CONF );
+				  #print "before chopping @raw_data \n";
+				  chop(@raw_data);
+				  #print "raw data after chopping is @raw_data \n";
+				  my $raw_data = join('§', @raw_data);
+                                  #print "the contents of the config file are $raw_data \n";
 				  my @spl2=split(/§/,$raw_data);
 				  #print "splitted and #printing \n";
 				  #print @spl2;
 				  my $count_spl2=@spl2;
-			      #print "the array has $count_spl2 elements \n"; 
+			          #print "the array has $count_spl2 elements \n"; 
 				  #print @spl2[0] ;
 				  #print @spl2[1] ;
-                  #print "updating table \n";
+                                  #print "updating table \n";
 				  my $table1=xCAT::Table->new("performance", -create => 1,-autocommit => 1);
 				  #print "table created \n";
 				  my $j;
@@ -115,47 +120,65 @@ sub  performance
 				  for ($j=0;$j<$count_spl2 ;$j++)
 					 {
 					  
-					  #print "inside j loop \n";
-					  #print "spl1[0] is $spl1[0] \n";
-					  my %key_col1 = (timestamp=>$spl1[0]);
-				      #print "time stamp updated \n";
-					  #print "node is $children[$i] \n";
-	                  $key_col1{node}=$children[$i]; 
-				      #print "children updatesd \n";
-					  #print "spl2 is $spl2[$j] \n";
-				      $key_col1{attrname} = $spl2[$j];
-					  #$setting_hash{attrname}=$spl2[$j];
-					  #print "spl1 is $spl1[$j+1] \n";
-                      $setting_hash{attrvalue}=$spl1[$j+1];
-					  $table1->setAttribs(\%key_col1, \%setting_hash);
+					    #print "inside j loop \n";
+					    #print "spl1[0] is $spl1[0] \n";
+					    my %key_col1 = (timestamp=>$spl1[0]);
+				            #print "time stamp updated \n";
+					    #print "node is $children[$i] \n";
+	                                    $key_col1{node}=$children[$i]; 
+				            #print "children updatesd \n";
+					    #print "spl2 is $spl2[$j] \n";
+				            $key_col1{attrname} = $spl2[$j];
+					    #$setting_hash{attrname}=$spl2[$j];
+					    #print "spl1 is $spl1[$j+1] \n";
+                                            $setting_hash{attrvalue}=$spl1[$j+1];
+					    $table1->setAttribs(\%key_col1, \%setting_hash);
 					 }
-				  $table1->close();
+				    $table1->close();
 				  }
 				 } #closing if count_child 2
-                      my %node_status=();
-		      #print "2nd set is @inactive_children \n";
-		      my $count_inactive=@inactive_children;
-                      if ($count_inactive>0) 
-		         {
-		           #print "more than 0 inactive children \n";
-			   #print "3rd set is @inactive_children \n";			   
-                           $node_status{$::STATUS_INACTIVE}=\@inactive_children;
-			   my $changed1=$nodes_status{$::STATUS_INACTIVE};
-                           #print "the changed1 is $changed1 \n";
-			   my @final_inactive=@$changed1;
-			   #print "final inactive is @final_inactive \n";
-                         }
 
 
-      #only set the node status for the changed ones
-      if (keys(%node_status) > 0) 
-        {
-          #print %node_status, "\n"; 
-          #print "updating nodelist table \n";
-          xCAT_monitoring::xcatmon::setNodeStatusAttributes(\%node_status);
-        }
+		      my $table2=xCAT::Table->new("monitoring", -create =>1);
+                      if (!$table2)
+		       {
+                        my $rsp={};
+                        $rsp->{data}->[0]="Cannot open the monitoring table.\n";
+                        $callback->($rsp);
+                        return 1;
+                       }
+
+		      my $ref = $table2->getAttribs({'name' => 'pcpmon'}, 'nodestatmon');
+		      #print "array is $ref \n";
+                      my $node_stat=$ref->{nodestatmon};
+		      #print "nodestatmon is $node_stat \n";
+		      if ($node_stat ='Y')
+		      { #opening ifnodestatusmon
+		        #print "inside nodestatus mon $node_stat \n";
+                         my %node_status=();
+		         #print "2nd set is @inactive_children \n";
+		         my $count_inactive=@inactive_children;
+                         if ($count_inactive>0) 
+		           { 
+		             #print "more than 0 inactive children \n";
+			     #print "3rd set is @inactive_children \n";			   
+                             $node_status{$::STATUS_INACTIVE}=\@inactive_children;
+			     my $changed1=$nodes_status{$::STATUS_INACTIVE};
+                             #print "the changed1 is $changed1 \n";
+			     my @final_inactive=@$changed1;
+			     #print "final inactive is @final_inactive \n";
+                           }
 
 
-			 } #closing if count_child 1   
+                           #only set the node status for the changed ones
+                           if (keys(%node_status) > 0) 
+                           {
+                             #print %node_status, "\n"; 
+                             #print "updating nodelist table \n";
+                             xCAT_monitoring::xcatmon::setNodeStatusAttributes(\%node_status);
+                           }
+
+                     } #closing if nodestatusmon
+	    } #closing if count_child 1   
 			
-	} # closing subroutine
+        } # closing subroutine
