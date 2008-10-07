@@ -335,7 +335,8 @@ if ($inet6support) {
       foreach my $pkey (keys %packets) {
         ($sport,$client) = sockaddr_in($packets{$pkey}->[0]);
         $data=$packets{$pkey}->[1];
-        $peerhost=gethostbyaddr($client,AF_INET)."\n";
+        $peerhost=gethostbyaddr($client,AF_INET);
+        $peerhost .="\n";
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme")) {
           $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET);
