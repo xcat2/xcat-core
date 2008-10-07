@@ -69,17 +69,17 @@ exit $rc;
 sub runcmd
 {
     my ($cmd) = @_;
-	my $rc;
+    my $rc=0;
 
     $cmd .= ' 2>&1' ;
-    my $outref = [];
-    @$outref = `$cmd`;
+    $::outref = [];
+    $::outref = `$cmd`;
     if ($?)
     {
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg="$cmd returned rc=$rc @$outref\n";
+            my $msg="$cmd returned rc=$rc @$::outref\n";
             `logger -t xcat $msg`;
         }
     }
@@ -90,30 +90,157 @@ sub runcmd
 sub setupAIXsn
 {
 	my $error=0;
+	my $servnode;
+
+	# get the name of my service node/NIM master from the /etc/xcatinfo file
+	#  file was created by xcataixpost when the node was first installed
+	if (-f "/etc/xcatinfo") {
+    		my $cmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
+    		&runcmd($cmd);
+    		my $SNline = $::outref;
+    		my $junk;
+    		($junk, $servnode) =  split(/=/, $SNline);
+    		$servnode =~ s/^\s*//;
+    		chomp $servnode;
+	} else {
+			$msg = "$::sdate servicenode: Could not find /etc/xcatinfo file.\n";
+        	`logger -t xcat $msg`;
+    		$error++;
+	}
+
+	my $rcpcmd = "rcp -r $servnode:/etc/hosts /etc";
+	if (&runcmd($rcpcmd) != 0) {
+		$msg = "$::sdate servicenode: Could not get /etc/hosts file.\n";
+        `logger -t xcat $msg`;
+		$error++;
+	}
+
+	# make sure we have enough space in /xcatpost ("/") fs
+	my $dfcmd = "df -m / | grep '\/' |tr -s ' '| cut -f 3 -d ' '";
+	if (&runcmd($dfcmd) != 0) {
+		$msg = "$::sdate servicenode: Could not find file system free space.\n";
+		`logger -t xcat $msg`;
+		$error++;
+	}
+	my $freespace = $::outref;
+	if ($freespace <= 220) {
+		# add to "/" fs if needed
+		my $chfscmd = "/usr/sbin/chfs -a size=+220M  /";
+		if (&runcmd($chfscmd) != 0) {
+			$msg = "$::sdate servicenode: Could not increase file system size.\n";
+        	`logger -t xcat $msg`;
+          	$error++;
+		}
+	}
+
+	# make sure we have enough space in /usr fs
+    my $dfcmd = "df -m /usr | grep 'usr' |tr -s ' '| cut -f 3 -d ' '";
+    if (&runcmd($dfcmd) != 0) {
+        $msg = "$::sdate servicenode: Could not find file system free space.\n";
+        `logger -t xcat $msg`;
+        $error++;
+    }
+    my $freespace = $::outref;
+    if ($freespace <= 2200) {
+        # add to "/usr" fs if needed
+        my $chfscmd = "/usr/sbin/chfs -a size=+2200M  /usr";
+        if (&runcmd($chfscmd) != 0) {
+            $msg = "$::sdate servicenode: Could not increase file system size.\n
+";
+            `logger -t xcat $msg`;
+            $error++;
+        }
+    }
+
+	# copy SN software to /xcatpost/AIX/xcatpkgs
+	my $rcpcmd = "mkdir -p /xcatpost/AIX/xcatpkgs; rcp -r $servnode:/install/AIX/xcatpkgs/* /xcatpost/AIX/xcatpkgs";
+    if (&runcmd($rcpcmd) != 0) {
+		$msg = "$::sdate servicenode: Could not copy service node software from the management node.\n";
+		`logger -t xcat $msg`;
+        $error++;
+    }
+
+	# run inutoc
+	my $inucmd = "inutoc /xcatpost/AIX/xcatpkgs";
+	if (&runcmd($rcpcmd) != 0) {
+		$msg = "$::sdate servicenode: Could not run inutoc.\n";
+        `logger -t xcat $msg`;
+        $error++;
+    }
+
+	# install openssl
+	my $gencmd = "geninstall -IaXY -d /xcatpost/AIX/xcatpkgs -f /xcatpost/AIX/xcatpkgs/xCATinstpSN.bnd";
+	if (&runcmd($gencmd) != 0) {
+		$msg = "$::sdate servicenode: Could not install openssl.\n";
+        `logger -t xcat $msg`;
+        $error++;
+    }
+
+	# install openssh
+	my $gencmd = "geninstall -IaXY -d /xcatpost/AIX/xcatpkgs -f /xcatpost/AIX/xcatpkgs/xCATaixSSH.bnd";
+	if (&runcmd($gencmd) != 0) {
+		$msg = "$::sdate servicenode: Could not install openssh.\n";
+        `logger -t xcat $msg`;
+        $error++;
+    }
+
+	# 
+	# run updatepkg to update RPM's reflection of the software
+    #   installed by installp - may already be done - but won't hurt!
+    if (&runcmd("/usr/sbin/updtvpkg") != 0) {
+		$msg = "$::sdate servicenode: Could not run updtvpkg.\n";
+        `logger -t xcat $msg`;
+        $error++;
+    }
+
+	# install rpms
+	my $rpmcmd = "rpm -U /xcatpost/AIX/xcatpkgs/*.rpm";
+	if (&runcmd($rpmcmd) != 0) {
+
+		$msg = "$::sdate servicenode: Could not install xCAT RPMs.\n";
+        `logger -t xcat $msg`;
+        $error++;
+    }
 
 	# so conserver will start
 	if (&runcmd("mkdir -p /var/log/consoles")!= 0) {
+		$msg = "$::sdate servicenode: Could not make /var/log/consoles.\n";
+        `logger -t xcat $msg`;
 		$error++;
 	}
 
 	# makes it a service node
 	if (&runcmd("touch /etc/xCATSN") != 0 ) {
-	    $error++;
-    }
-
-	# run updatepkg to update RPM's reflection of the software 
-	#	installed by installp - may already be done - but won't hurt!
-	if (&runcmd("/usr/sbin/updtvpkg") != 0) {
+		$msg = "$::sdate servicenode: Could not touch /etc/xCATSN\n";
+        `logger -t xcat $msg`;
 	    $error++;
     }
 
 	# call copycerts
 	if (&runcmd("/opt/xcat/sbin/copycerts") != 0) {
+		$msg = "$::sdate servicenode: Could not run copycerts.\n";
+        `logger -t xcat $msg`;
 	    $error++;
     }
 
+	# copy the cfgloc file from /xcatpost
+	if (&runcmd("mkdir -p /etc/xcat")!= 0) {
+		$msg = "$::sdate servicenode: Could not make /etc/xcat directory.\n";
+        `logger -t xcat $msg`;
+        $error++;
+    }
+
+	my $sedcmd = "sed -e 's/host=.*|xcatadmin/host=$servnode|xcatadmin/' /xcatpost/etc/xcat/cfgloc > /etc/xcat/cfgloc";
+	if (&runcmd($sedcmd)!= 0) {
+		$msg = "$::sdate servicenode: Could not copy cfgloc file.\n";
+        `logger -t xcat $msg`;
+        $error++;
+    }
+	
 	# start xcatd
 	if (&runcmd("/opt/xcat/sbin/xcatd &") != 0) {
+		$msg = "$::sdate servicenode: Could not start xcatd.\n";
+        `logger -t xcat $msg`;
 	    $error++;
     }
 
@@ -125,15 +252,17 @@ sub setupAIXsn
 	# $mkitab_cmd = 'mkitab "xcatd:2:once:/usr/bin/startsrc -s xcatd > /dev/console 2>&1"';
 
 	if (&runcmd($mkitab_cmd) != 0) {
+		$msg = "$::sdate servicenode: Could not add xcatd to /etc/inittab.\n";
+        `logger -t xcat $msg`;
 	    $error++;
     }
 
 	# do nim master setup - master fileset already installed
 	if (&runcmd("nim_master_setup -a mk_resource=no") != 0) {
+		$msg = "$::sdate servicenode: Could not run nim_master_setup.\n";
+        `logger -t xcat $msg`;
 	    $error++;
     }
-
-	# MySQL setup??? - no - do in separate post script
 
 	if ($error > 0) {
 		return $error;
