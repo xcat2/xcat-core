@@ -694,7 +694,7 @@ ll~;
 		# create the cmd line args
 		my $arg_string=" ";
 		foreach my $attr (keys %cmdargs) {
-			$arg_string .= "-a $attr=$cmdargs{$attr} ";
+			$arg_string .= "-a $attr=\"$cmdargs{$attr}\" ";
 		}
 
 		if ($script_string) {
@@ -752,6 +752,21 @@ ll~;
         xCAT::MsgUtils->message("E", $rsp, $callback);
         $error++;
     }
+
+	#
+	# make sure we have the latest /etc/hosts from the management node
+	#
+	my $master = xCAT::Utils->get_site_Master();
+	if (!&is_me($master)) {
+		my $cpcmd = "rcp -r $master:/etc/hosts /etc";
+		my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+        if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+            push @{$rsp->{data}}, "Could not get /etc/hosts from the management node.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+			$error++;
+		}
+	}
 
 	if ($error) {
 		my $rsp;
@@ -3659,6 +3674,7 @@ sub prenimnodeset
         Arguments:
         Returns:
                 0 - OK
+
                 1 - error
         Globals:
         Example:
@@ -4176,8 +4192,9 @@ ll~;
 		}
 
 	#	if ($::VERBOSE) {
+			my $time=`date`;
 			my $rsp;
-			push @{$rsp->{data}}, "Initializing NIM machine \'$nim_name\'. This could take a while.\n";
+			push @{$rsp->{data}}, "Initializing NIM machine \'$nim_name\'. This could take a while. $time\n";
 			#push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
 	#	}
@@ -4228,6 +4245,37 @@ ll~;
         xCAT::MsgUtils->message("E", $rsp, $callback);
 		$error++;
     }
+
+	#
+	# make sure we have the latest /etc/hosts from the management node
+	#
+	my $master = xCAT::Utils->get_site_Master();
+	if (!&is_me($master)) {
+		my $cpcmd = "rcp -r $master:/etc/hosts /etc";
+		my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+        if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+            push @{$rsp->{data}}, "Could not get /etc/hosts from the management node.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+			$error++;
+		}
+	}
+
+
+	#
+	# make sure we have the latest /etc/hosts from the management node
+	#
+	my $master = xCAT::Utils->get_site_Master();
+	if (!&is_me($master)) {
+		my $cpcmd = "rcp -r $master:/etc/hosts /etc";
+		my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+        if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+            push @{$rsp->{data}}, "Could not get /etc/hosts from the management node.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+			$error++;
+		}
+	}
 
 	#
 	# process any errors
