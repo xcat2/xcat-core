@@ -56,6 +56,13 @@ if (&runcmd($cmd) != 0) {
 	exit 1;
 }
 
+# save the name of the xCAT server in case the /etc/niminfo file 
+#  gets overwritten
+my $xcatinfo="/etc/xcatinfo";
+open(XCATINFO,">",$xcatinfo);
+print XCATINFO "XCATSERVER=$servnode\n";
+close(XCATINFO);
+
 # get the contents of the /install/postscripts dir on the server
 my $rcpcmd = "rcp -r $servnode:/install/postscripts/* /xcatpost";
 if (&runcmd($rcpcmd) != 0) {
