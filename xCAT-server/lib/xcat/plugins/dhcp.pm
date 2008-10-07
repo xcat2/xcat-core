@@ -320,12 +320,21 @@ sub process_request
            my $dhcpinterfaces = $href->{value};
            my $dhcpif;
            INTF: foreach $dhcpif (split /;/,$dhcpinterfaces) {
+              my $host;
+              my $savehost;
               if ($dhcpif =~ /\|/) {
                  
                  (my $ngroup,$dhcpif) = split /\|/,$dhcpif;
-                 my $host;
                  foreach $host (noderange($ngroup)) {
+                    $savehost=$host;
                     if (xCAT::Utils->thishostisnot($host)) {
+                       
+                        next INTF;
+                    }
+                 }
+                 if (!defined($savehost)) { # host not defined in db,
+                                 # probably management node
+                    if (xCAT::Utils->thishostisnot($ngroup)) {
                         next INTF;
                     }
                  }
