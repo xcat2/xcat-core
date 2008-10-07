@@ -1593,8 +1593,9 @@ sub thishostisnot
 
     my @ips = split /\n/, `/sbin/ip addr`;
     my $comp = inet_aton($comparison);
-    foreach (@ips)
-    {
+    if ($comp) {
+      foreach (@ips)
+      {
         if (/^\s*inet/)
         {
             my @ents = split(/\s+/);
@@ -1607,6 +1608,7 @@ sub thishostisnot
 
             #print Dumper(inet_aton($ip));
         }
+      }
     }
     return 1;
 }
