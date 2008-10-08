@@ -52,14 +52,17 @@ vm => {
     }
 },
 bootparams => {
-   cols => [qw(node kernel initrd kcmdline comments disable)],
+   cols => [qw(node kernel initrd kcmdline addkcmdline comments disable)],
    keys => [qw(node)],
    table_desc => 'Current boot settings to be sent to systems attempting network boot for deployment, stateless, or other reasons.  Mostly automatically manipulated by xCAT.',
    descriptions => {
       'node' => 'The node or group name',
       'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
       'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
-      'kcmdline' => 'Arguments to be passed to the kernel'
+      'kcmdline' => 'Arguments to be passed to the kernel',
+      'addkcmdline' => 'User specified one or more parameters to be passed to the kernel',
+     comments => 'Any user-written notes.',
+     disable => "Set to 'yes' or '1' to comment out this row.",
    }
 },
 prodkey => {
@@ -69,7 +72,9 @@ prodkey => {
     descriptions => {
         node => "The node name or group name.",
         product => "A string to identify the product (for OSes, the osname would be used, i.e. wink28",
-        key => "The product key relevant to the aforementioned node/group and product combination"
+        key => "The product key relevant to the aforementioned node/group and product combination",
+     comments => 'Any user-written notes.',
+     disable => "Set to 'yes' or '1' to comment out this row.",
     }
 },
 chain => {
@@ -679,6 +684,10 @@ my @nodeattrs = (
                 },
  {attr_name => 'kcmdline',
                  tabentry => 'bootparams.kcmdline',
+                 access_tabentry => 'bootparams.node=attr:node',
+                },
+ {attr_name => 'addkcmdline',
+                 tabentry => 'bootparams.addkcmdline',
                  access_tabentry => 'bootparams.node=attr:node',
                 },
         # Note that the serialport attr is actually defined down below
