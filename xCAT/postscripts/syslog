@@ -208,7 +208,12 @@ fi
 
 #restart the syslog daemon to take the new conf file settings
 if [ $isLinux -eq 0 ]; then
-  refresh -s syslogd
+  PARSE_SRC_STATE="-e1d;s/.* \([a-zA-Z0-9]*\)$/\1/"
+  state=$(LC_ALL=C lssrc -s syslogd | LC_ALL=C sed "$PARSE_SRC_STATE")
+  if [[ -n "$state" && "$state" = "active" ]];then
+     stopsrc -s syslogd
+  fi
+  startsrc -s syslogd
 else 
   $init restart
 fi
