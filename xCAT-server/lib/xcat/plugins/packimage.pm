@@ -133,6 +133,7 @@ sub process_request {
        $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
+      chmod 0755,$temppath;
       $excludestr =~ s!-a \z!|cpio -dump $temppath!; 
     } elsif ($method =~ /nfs/) {
        $excludestr = "touch ../rootimg.nfs";
