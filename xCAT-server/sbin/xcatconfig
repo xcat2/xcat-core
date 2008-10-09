@@ -718,19 +718,6 @@ if ((!-r "/etc/xcat/policy.sqlite") || $::FORCE)
     }
 }
 
-# Make this system a management node
-my $cmd = "/bin/touch /etc/xCATMN";
-my $outref = xCAT::Utils->runcmd("$cmd", 0);
-if ($::RUNCMD_RC != 0)
-{
-    xCAT::MsgUtils->message('E', "Could not create /etc/xCATMN file.\n");
-}
-else
-{
-    xCAT::MsgUtils->message('I', "Created /etc/xCATMN file.\n");
-}
-
-
 #
 # set up syslog
 #
@@ -801,17 +788,17 @@ if ((!-d "/etc/xcat/ca") || $::FORCE)
 #  copy to postscript directory
 my $cmd    = "/bin/rm -rf /install/postscripts/ca &2>/dev/null";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
-my $cmd    = "/bin/mkdir -p /install/postscripts/ca";
+my $cmd    = "/bin/mkdir -p /install/postscripts/ca/certs";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
 if ($::RUNCMD_RC != 0)
 {
     xCAT::MsgUtils->message('E',
-                       "Could not create /install/postscripts/ca directory.\n");
+                       "Could not create /install/postscripts/ca/certs directory.\n");
 }
 else
 {
     xCAT::MsgUtils->message('I',
-                            "Created /install/postscripts/ca directory.\n");
+                            "Created /install/postscripts/ca/certs directory.\n");
 }
 my $cmd = "/bin/cp -r /etc/xcat/ca/* /install/postscripts/ca";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -921,6 +908,33 @@ else
 {
     xCAT::MsgUtils->message('I',
            "Copied $::root/.xcat/* to /install/postscripts/_xcat directory.\n");
+}
+my $cmd = "/bin/cp -r /etc/xcat/ca/certs/* /install/postscripts/ca/certs";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC != 0)
+{
+    xCAT::MsgUtils->message(
+        'E',
+        "Could not copy /etc/xcat/ca/certs/* to  /install/postscripts/ca/certs directory.\n"
+        );
+}
+else
+{
+    xCAT::MsgUtils->message('I',
+               "Copied /etc/xcat/ca/certs* to /install/postscripts/ca/certs directory.\n");
+}
+
+
+# Make this system a management node
+my $cmd = "/bin/touch /etc/xCATMN";
+my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if ($::RUNCMD_RC != 0)
+{
+    xCAT::MsgUtils->message('E', "Could not create /etc/xCATMN file.\n");
+}
+else
+{
+    xCAT::MsgUtils->message('I', "Created /etc/xCATMN file.\n");
 }
 
 #
