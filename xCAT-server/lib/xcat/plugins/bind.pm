@@ -13,7 +13,9 @@ no strict "refs"; #This code is as yet still very broken...
 #use warnings;
 use Sys::Hostname;
 use Cwd;
+use Getopt::Long;
 use xCAT::Table;
+use xCAT::MsgUtils;
 use Data::Dumper;
 
 use Sys::Syslog;
@@ -107,6 +109,20 @@ sub process_request {
     unless (-d $DBDir) {
         $DBDir = "/var/lib/named/";
     }
+    # if both do not exist, make /var/named
+    unless (-d $DBDir) {
+        $DBDir = "/var/named/";
+        my $cmd = "/bin/mkdir $DBDir";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+             my $rsp={};
+             $rsp->{data}->[0] = "Could not create $DBDir.\n";
+             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+             exit 1;
+        }
+    }
+
     $Host = hostname;
     $Host =~ s/\..*//;
     my $sitetab = xCAT::Table->new('site');
@@ -117,7 +133,10 @@ sub process_request {
     my @args=();
     if ($request->{arg}) {
         @args = @{$request->{arg}};
+        @ARGV = @{$request->{arg}};
     }
+    &checkusageandversion($callback);
+
     (my $fent) = $sitetab->getAttribs({key=>'forwarders'},'value');
     if ($fent and defined $fent->{value}) {
         @forwarders = split /[,:;]/,$fent->{value};
@@ -235,7 +254,7 @@ foreach $canonical (keys %Hosts){
 	if($Cnames{$canonical} != 1){
 	    printf DOMAIN "%-20s IN  A     %s\n", $canonical, $addr;
 	} else {
-	   syslog("local1|err","$canonical - can't create A record because CNAME exists for name.\n");
+	   syslog("local4|err","$canonical - can't create A record because CNAME exists for name.\n");
 	}
 	#
 	# Print cname or address records for each alias.
@@ -286,7 +305,7 @@ foreach $canonical (keys %Hosts){
 			       $alias, $canonical, $Domain;
 			$Cnames{$alias} = 1;
 		    } else {
-			syslog "local1|err","$alias - CNAME or A exists already; alias ignored\n";
+			syslog "local4|err","$alias - CNAME or A exists already; alias ignored\n";
 		    }
 		}
 
@@ -378,7 +397,7 @@ sub MX {
     my ($first, $a, $key, $comments);
 
     if($Cnames{$canonical}){
-	syslog "local1|err","$canonical - can't create MX record because CNAME exists for name.\n";
+	syslog "local4|err","$canonical - can't create MX record because CNAME exists for name.\n";
 	return;
     }
     $first = 1;
@@ -448,7 +467,7 @@ sub MAKE_SOA {
 	if (/\($/) {
         my $junk;
 	    if (! $soa_warned) {
-		syslog "local1|err","Converting SOA format to new style.\n";
+		syslog "local4|err","Converting SOA format to new style.\n";
 		$soa_warned++;
 	    }
 	    if ($ForceSerial > 0) {
@@ -483,8 +502,8 @@ sub MAKE_SOA {
 		$Expire = $_[9];
 		$Ttl = $_[10];
 	    } else {
-		syslog "local1|err","Improper format SOA in $fname.\n";
-		syslog "local1|err","I give up ... sorry.\n";
+		syslog "local4|err","Improper format SOA in $fname.\n";
+		syslog "local4|err","I give up ... sorry.\n";
 		exit(1);
 	    }
 	}
@@ -561,7 +580,7 @@ sub FIXUP {
 
     # Clean up nameservers
     if (!@Servers) {
-	syslog "local1|err","No -s option specified.  Assuming \"-s $Host.$Domain\"\n";
+	syslog "local4|err","No -s option specified.  Assuming \"-s $Host.$Domain\"\n";
 	push(@Servers, "$Host.$Domain.");
     } else {
 	foreach $s (@Servers) {
@@ -585,7 +604,7 @@ sub FIXUP {
 	}
     }
 
-    # Now open boot file and print saved data
+    # Now open boot file (named.conf)  and print saved data
     open(BOOT, "> $Bootfile")  || die "can not open $Bootfile";
 
     #
@@ -671,8 +690,8 @@ sub PARSEARGS {
 	$option = $args[$i];
 	if($option eq "-d"){
             if ($Domain ne "") {
-		syslog "local1|err","Only one -d option allowed.\n";
-		syslog "local1|err","I give up ... sorry.\n";
+		syslog "local4|err","Only one -d option allowed.\n";
+		syslog "local4|err","I give up ... sorry.\n";
 		exit(1);
             }
 	    $Domain = $args[++$i];
@@ -741,7 +760,7 @@ sub PARSEARGS {
 
 	} elsif ($option eq "-m"){
 	    if ($args[++$i] !~ /:/) {
-		syslog "local1|err","Improper format for -m option ignored ($args[$i]).\n";
+		syslog "local4|err","Improper format for -m option ignored ($args[$i]).\n";
 	    }
 	    push(@Mx, $args[$i]);
 
@@ -751,8 +770,8 @@ sub PARSEARGS {
 		$tmp1 .= ".$Domain";
 	    }
             if ($Domain eq $tmp1) {
-		syslog "local1|err","Domain for -c option must not match domain for -d option.\n";
-		syslog "local1|err","I give up ... sorry.\n";
+		syslog "local4|err","Domain for -c option must not match domain for -d option.\n";
+		syslog "local4|err","I give up ... sorry.\n";
 		exit(1);
             }
 	    my $tmp2 = $tmp1;
@@ -774,8 +793,8 @@ sub PARSEARGS {
 	} elsif ($option eq "-o"){
 	    if (   $args[++$i] !~ /^[:\d]*$/
 		|| split(':', $args[$i]) != 4) {
-		syslog "local1|err","Improper format for -o ($args[$i]).\n";
-		syslog "local1|err","I give up ... sorry.\n";
+		syslog "local4|err","Improper format for -o ($args[$i]).\n";
+		syslog "local4|err","I give up ... sorry.\n";
 		exit(1);
 	    }
 	    ($DefRefresh, $DefRetry, $DefExpire, $DefTtl) = split(':', $args[$i]);
@@ -787,16 +806,16 @@ sub PARSEARGS {
 	} elsif ($option eq "-H"){
 	    $Hostfile = $args[++$i];
 	    if (! -r $Hostfile || -z $Hostfile) {
-		syslog "local1|err","Invalid file specified for -H ($Hostfile).\n";
-		syslog "local1|err","I give up ... sorry.\n";
+		syslog "local4|err","Invalid file specified for -H ($Hostfile).\n";
+		syslog "local4|err","I give up ... sorry.\n";
 		exit(1);
 	    }
 
 	} elsif ($option eq "-C"){
 	    $Commentfile = $args[++$i];
 	    if (! -r $Commentfile || -z $Commentfile) {
-		syslog "local1|err","Invalid file specified for -C ($Commentfile).\n";
-		syslog "local1|err","I give up ... sorry.\n";
+		syslog "local4|err","Invalid file specified for -C ($Commentfile).\n";
+		syslog "local4|err","I give up ... sorry.\n";
 		exit(1);
 	    }
 
@@ -804,12 +823,12 @@ sub PARSEARGS {
 	    $Defsubnetmask = $args[++$i];
 	    if (   $Defsubnetmask !~ /^[.\d]*$/
 		|| split('\.', $Defsubnetmask) != 4) {
-		syslog "local1|err","Improper subnet mask ($Defsubnetmask).\n";
-		syslog "local1|err","I give up ... sorry.\n";
+		syslog "local4|err","Improper subnet mask ($Defsubnetmask).\n";
+		syslog "local4|err","I give up ... sorry.\n";
 		exit(1);
 	    }
 	    if ($#Networks >= 0) {
-		syslog "local1|err","Hmm, -N option should probably be specified before any -n options.\n";
+		syslog "local4|err","-N option should be specified before any -n options.\n";
 	    }
 
 	} elsif ($option eq "-n"){
@@ -836,8 +855,8 @@ sub PARSEARGS {
 	    } else {
 		if (   $subnetmask !~ /^[.\d]*$/
 		    || split('\.', $subnetmask) != 4) {
-		    syslog "local1|err","Improper subnet mask ($subnetmask).\n";
-		    syslog "local1|err","I give up ... sorry.\n";
+		    syslog "local4|err","Improper subnet mask ($subnetmask).\n";
+		    syslog "local4|err","I give up ... sorry.\n";
 		    exit(1);
 		}
 		foreach $tmp1 (&SUBNETS($net, $subnetmask)) {
@@ -847,15 +866,15 @@ sub PARSEARGS {
 
 	} else {
 	    if($option =~ /^-.*/){
-		syslog "local1|err","Unknown option: $option ... ignored.\n";
+		syslog "local4|err","Unknown option: $option ... ignored.\n";
 	    }
 	}
 	$i++;
     }
 
     if (!@Networks || $Domain eq "") {
-	syslog "local1|err","Must specify one -d and at least one -n.\n";
-	syslog "local1|err","I give up ... sorry.\n";
+	syslog "local4|err","Must specify one -d and at least one -n.\n";
+	syslog "local4|err","I give up ... sorry.\n";
 	exit(1);
     }
 }
@@ -1095,6 +1114,35 @@ sub GEN_BOOT {
         }
 	close(F);
     }
+}
+# subroutine to display the usage
+sub checkusageandversion
+{
+   my $callback=shift;
+   #my $args=shift;
+   # parse the options
+   if(GetOptions(
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION))
+   {
+   if ($::HELP) {
+     my $rsp={};
+     $rsp->{data}->[0]= "Usage:";
+     $rsp->{data}->[1]= "  makedns <options>";
+     $rsp->{data}->[2]= "  makedns [-h|--help|-v|--version]";
+     $rsp->{data}->[3]= "     <options> See man makedns";
+     xCAT::MsgUtils->message("I", $rsp, $callback);
+     exit 0;
+   }
+   if ($::VERSION) {
+     my $version = xCAT::Utils->Version();
+     my $rsp={};
+     $rsp->{data}->[0]= "$version";
+     xCAT::MsgUtils->message("I", $rsp, $callback);
+     exit 0;
+   }
+  }
+   return;
 }
 
 1;
