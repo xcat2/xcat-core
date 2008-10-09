@@ -48,14 +48,17 @@ sub copyCertstoSN
 {
     my $rc = 0;
     `touch /etc/xCATSN`;
+    # get roots home directory
+    my $homedir=xCAT::Utils->getHomeDir();
     if (-d "/xcatpost/_xcat")
     {
-        if (!(-d "/root/.xcat"))
+        if (!(-d "$homedir/.xcat"))
         {
-            mkdir("/root/.xcat", 0600);
+            `mkdir -p $homedir/.xcat`;
+            `chmod 0600 $homedir/.xcat`;
         }
-        `cp -f -rp /xcatpost/_xcat/* /root/.xcat`;
-        `chmod 0600 /root/.xcat/*`;
+        `cp -f -rp /xcatpost/_xcat/* $homedir/.xcat`;
+        `chmod 0600 $homedir/.xcat/*`;
     }
     else
     {
@@ -73,6 +76,10 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/ca", 0755);
         }
+        if (!(-d "/etc/xcat/ca/certs"))
+        {
+            mkdir("/etc/xcat/ca/certs", 0755);
+        }
         `cp -f -rp /xcatpost/ca/* /etc/xcat/ca`;
         `chmod 0600 /etc/xcat/ca/*`;
         `chmod 0600 /etc/xcat/ca/certs/*`;
@@ -81,6 +88,25 @@ sub copyCertstoSN
     {
         xCAT::MsgUtils->message('S', "/xcatpost/ca directory does not exist\n");
 
+    }
+    if (xCAT::Utils->isAIX()) { 
+      if (-d "/xcatpost/cert")
+      {
+        if (!(-d "/etc/xcat"))
+        {
+            mkdir("/etc/xcat", 0755);
+        }
+        if (!(-d "/etc/xcat/cert"))
+        {
+            mkdir("/etc/xcat/cert", 0755);
+        }
+        `cp -f -rp /xcatpost/cert/* /etc/xcat/cert`;
+        `chmod 0600 /etc/xcat/cert/*`;
+      }
+      else
+      {
+        xCAT::MsgUtils->message('S', "/xcatpost/cert directory does not exist\n");
+      }
     }
     return $rc;
 }
