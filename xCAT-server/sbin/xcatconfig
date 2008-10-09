@@ -397,7 +397,7 @@ if (!-d "/install/postscripts/_ssh")
 }
 
 #
-#  Generate id_rsa.pub
+#  Generate id_rsa.pub, if it does not exist or the force option 
 #
 my $pubfile = "$::root/.ssh/id_rsa.pub";
 my $rsafile = "$::root/.ssh/id_rsa";
@@ -434,24 +434,6 @@ if ((!-r $pubfile) || $::FORCE)
     {
         xCAT::MsgUtils->message('I', "Generated $pubfile.\n");
 
-        # copy it for install on node
-        my $cmd = "/bin/cp $pubfile /install/postscripts/_ssh/authorized_keys";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message(
-                'E',
-                "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys.\n"
-                );
-        }
-        else
-        {
-            xCAT::MsgUtils->message(
-                'I',
-                "Copied $pubfile to /install/postscripts/_ssh/authorized_keys.\n"
-                );
-        }
-
        if ($::osname eq 'AIX')
        {
           # allows node be able to scp to the MN  only for AIX
@@ -470,6 +452,29 @@ if ((!-r $pubfile) || $::FORCE)
           }
        }
     }
+}
+# copy authorized_keys for install on node
+if (-r $pubfile) {
+  my $cmd = "/bin/cp $pubfile /install/postscripts/_ssh/authorized_keys";
+  my $outref = xCAT::Utils->runcmd("$cmd", 0);
+  if ($::RUNCMD_RC != 0)
+  {
+      xCAT::MsgUtils->message(
+          'E',
+     "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys.\n"
+         );
+  }
+  else
+  {
+      xCAT::MsgUtils->message(
+      'I',
+      "Copied $pubfile to /install/postscripts/_ssh/authorized_keys.\n"
+      );
+  }
+} else {
+      xCAT::MsgUtils->message( 'E',
+     "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys,because $pubfile does not exist.\n"
+         );
 }
 
 #

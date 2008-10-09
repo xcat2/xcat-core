@@ -38,7 +38,8 @@ exit 0;
   Copy from the mounted /xcatpost/ directory to the MS /install/postscripts
   directory the /install/postscripts/ca  install/postscripts/cert and
   /install/postscripts/_xcat into the local file system.  These certificate are
-  needed for the postresql db setup for the service node to be able to access
+  needed for the postresql and mysql db setup for the service node
+  to be able to access
   the DB from the service node.
 
 =cut
