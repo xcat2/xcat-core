@@ -86,20 +86,23 @@ else {
 my $children = 0;
 my $inputs = new IO::Select;
 my %pids; # pid => node
-my %errored; # Keep a list of children with non-zero exit codes
+my %exitcodes; # Keep a list of children with known exit codes
+my %foundcodes;
 
-# This happens whenever a child dies; keeps track of non-zero exit codes.
+# This happens whenever a child dies; keeps track of exit codes.
 sub handle_chld {
   my $pid;
-  do { 
-    my $pid = waitpid(-1,WNOHANG);
-    my $node = $pids{$pid};
-    my $exitc = $? >> 8;
-    if ($exitc) {
-      $errored{$node} = $exitc;
-    }
+  my $lasterr=$?>>8;
+  my $foundproc=0;
+  while (($pid = waitpid(-1,WNOHANG)) > 0) { 
+    $foundproc=1;
+    $exitcodes{$pids{$pid}} = $? >> 8;
     $children--;
-  } until ($pid <= 0);
+  }
+  unless ($foundproc) { #Above loop mysteriously had no children, store previous $?  as a candidate for omitted return codes
+    $foundcodes{$lasterr}=1;
+    $children--; #Free a slot from the child that must have sent this signal
+  }
 }
 $SIG{CHLD} = \&handle_chld;
 
@@ -122,12 +125,24 @@ while ($inputs->count and $children) {
 }
 while (processoutput($inputs)) {};
 wait;
-my $exitcode;
-if (keys %errored) {
-  $exitcode = 2;
-  while (my ($node, $exitc) = each(%errored)) {
-    print stderr "$node: *** ssh exited with error code $exitc.\n";
-  }
+my $exitcode=0;
+foreach (values %pids) {
+    my $possible_codes = join ",",keys %foundcodes;
+    unless (defined $exitcodes{$_}) {
+        print stderr "$_: *** psh missed exit code, probably one of the following: $possible_codes\n";
+    }
+}
+foreach (keys %exitcodes) {
+    if ($exitcodes{$_}) {
+        print stderr "$_: *** ssh exited with error code ".$exitcodes{$_}.".\n";
+        $exitcode++;
+    }
+}
+if ($exitcode) { #Exit code reflects number of failed nodes
+    $exitcode=$exitcode%256; #keep from overflowing valid values
+    unless ($exitcode) { #if number of failed nodes happened to be evenly divisible by 256, make it non-zero again
+        $exitcode++;
+    }
 }
 exit($exitcode);
 
