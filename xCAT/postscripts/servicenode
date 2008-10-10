@@ -195,12 +195,7 @@ sub setupAIXsn
 
 	# install rpms
 	my $rpmcmd = "rpm -U /xcatpost/AIX/xcatpkgs/*.rpm";
-	if (&runcmd($rpmcmd) != 0) {
-
-		$msg = "$::sdate servicenode: Could not install xCAT RPMs.\n";
-        `logger -t xcat $msg`;
-        $error++;
-    }
+	&runcmd($rpmcmd);
 
 	# so conserver will start
 	if (&runcmd("mkdir -p /var/log/consoles")!= 0) {
