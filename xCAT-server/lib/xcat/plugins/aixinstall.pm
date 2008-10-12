@@ -402,9 +402,7 @@ sub nimnodeset
 	#	- just set global for now
     $::callback=$callback;
 
-	my $Sname;
-    ($Sname = hostname()) =~ s/\..*$//;
-    chomp $Sname;
+	my $Sname = &myxCATname();
 
 	if (defined(@{$::args})) {
         @ARGV = @{$::args};
@@ -507,13 +505,7 @@ ll~;
 	#
     # get the primary NIM master - default to management node
     #
-    my $nimprime = xCAT::Utils->get_site_Master();
-    my $sitetab = xCAT::Table->new('site');
-    (my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
-    if ($et and $et->{value}) {
-        $nimprime = $et->{value};
-
-    }
+	my $nimprime = &getnimprime();
 
 	#
     # if this isn't the NIM primary then make sure the local NIM defs
@@ -539,6 +531,12 @@ ll~;
 		if ( defined($cstate) && (!($cstate =~ /ready/)) ){
 			if ($::FORCE) {
 				# if it's not in a ready state then reset it
+				if ($::VERBOSE) {
+					my $rsp;
+					push @{$rsp->{data}}, "$Sname: Reseting NIM definition for $shorthost.\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+				}
+
 				my $rcmd = "/usr/sbin/nim -Fo reset $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost";
 				my $output = xCAT::Utils->runcmd("$rcmd", -1);
             	if ($::RUNCMD_RC  != 0) {
@@ -746,6 +744,11 @@ ll~;
 	}
 
 	# update the .rhosts file on the server so the rcp from the node works
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Updating .rhosts on $Sname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
     if (&update_rhosts(\@nodelist, $callback) != 0) {
         my $rsp;
         push @{$rsp->{data}}, "$Sname: Could not update the /.rhosts file.\n";
@@ -755,9 +758,31 @@ ll~;
 
 	#
 	# make sure we have the latest /etc/hosts from the management node
+	#	- if needed
 	#
-	my $master = xCAT::Utils->get_site_Master();
-	if (!&is_me($master)) {
+	if (-e "/etc/xCATSN") { 
+		# then this is a service node and we need to copy the hosts file 
+		#	from the management node
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "Updating /etc/hosts on $Sname.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
+		my $catcmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
+		my $result = xCAT::Utils->runcmd("$catcmd", -1);
+		if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not read /etc/xcatinfo.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+		
+		# the xcatinfo file contains "XCATSERVER=<server name>"
+		# 	the server for a service node is the management node 
+		my ($attr,$master) = split("= ",$result);
+		chomp $master;
+
+		# copy the hosts file from the master to the service node
 		my $cpcmd = "rcp -r $master:/etc/hosts /etc";
 		my $output = xCAT::Utils->runcmd("$cpcmd", -1);
         if ($::RUNCMD_RC  != 0) {
@@ -767,6 +792,29 @@ ll~;
 			$error++;
 		}
 	}
+
+	# restart inetd
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Restarting inetd on $Sname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+	my $scmd = "stopsrc -s inetd";
+    my $output = xCAT::Utils->runcmd("$scmd", -1);
+    if ($::RUNCMD_RC  != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not stop inetd on $Sname.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        $error++;
+    }
+	my $scmd = "startsrc -s inetd";
+    my $output = xCAT::Utils->runcmd("$scmd", -1);
+    if ($::RUNCMD_RC  != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not start inetd on $Sname.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        $error++;
+    }
 
 	if ($error) {
 		my $rsp;
@@ -2309,7 +2357,8 @@ sub update_rhosts
 
 		# is this node already in the file
 		my $entry = "$IP root";
-		my $cmd = "cat $rhostname | grep $IP";
+		#my $cmd = "cat $rhostname | grep '$IP root'";
+		my $cmd = "cat $rhostname | grep $entry";
     	my @result = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC == 0)
     	{
@@ -2508,8 +2557,6 @@ sub chkFSspace {
 	my $location = shift;
     my $size = shift;
     my $callback = shift;
-
-# TODO - test this !!!
 
 	# get free space
     # ex. 1971.06 (Free MB)
@@ -3147,8 +3194,6 @@ sub prenimnodecust
             		my $bnd_file_loc = $bndloc{$bnd};
 					my $bnddir = dirname($bnd_file_loc);
 					my $cmd = "$cmdstr '/usr/bin/rcp $bnd_file_loc $snkey:$bnddir'";
-#print "bnd cp cmd = $cmd\n";
-
 					my $output = xCAT::Utils->runcmd("$cmd", -1);
                     if ($::RUNCMD_RC  != 0) {
                         my $rsp;
@@ -3216,7 +3261,7 @@ sub nimnodecust
         'v|version' => \$::VERSION,))
     { return 1; }
 
-	my $Sname = hostname();
+	my $Sname = &myxCATname();
 
 	# get list NIM NIM machines defined locally
 	my @machines = [];
@@ -3415,15 +3460,6 @@ sub prenimnodeset
         return (2);
     }
 
-	if (!$::OSIMAGE) {
-		if ($command eq 'mkdsklsnode') {
-            &mkdsklsnode_usage($callback);
-        } else {
-            &nimnodeset_usage($callback);
-        }
-		return (1);
-	}
-
 	my @nodelist;
     my %objtype;
     my %objhash;
@@ -3453,9 +3489,7 @@ sub prenimnodeset
         }
     }
 
-	my $Sname;
-	($Sname = hostname()) =~ s/\..*$//;
-	chomp $Sname;
+	my $Sname = &myxCATname();;
 
     # make sure the nodes are resolvable
     #  - if not then exit
@@ -3524,7 +3558,11 @@ sub prenimnodeset
 
     #
 	# get the primary NIM master - default to management node
+	#  since this code runs on the management node - the primary
+	#	NIM server is either the management node or the value of the 
+	#	site table "NIMprime" attr
 	#
+
 	my $nimprime = xCAT::Utils->get_site_Master();
     my $sitetab = xCAT::Table->new('site');
     (my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
@@ -3674,7 +3712,6 @@ sub prenimnodeset
         Arguments:
         Returns:
                 0 - OK
-
                 1 - error
         Globals:
         Example:
@@ -3868,7 +3905,8 @@ sub mkdsklsnode
 	my @nodesfailed;
 	my $image_name;
 
-	my $Sname = hostname();
+	# get name as known by xCAT 
+	my $Sname = &myxCATname();;
 
 	# make sure the nodes are resolvable
 	#  - if not then exit
@@ -3919,7 +3957,7 @@ sub mkdsklsnode
             if (!defined($attr) || !defined($value))
             {
                 my $rsp;
-                $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
+                $rsp->{data}->[0] = "$Sname: Incorrect \'attr=val\' pair - $a\n";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 1;
             }
@@ -3960,21 +3998,17 @@ ll~;
 	if (scalar(@image_names) == 0)  {
 		# if no images then error
 		my $rsp;
-		push @{$rsp->{data}}, "Could not determine which xCAT osimage to use.\n";
+		push @{$rsp->{data}}, "$Sname: Could not determine which xCAT osimage to use.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
 
 	#
     # get the primary NIM master - default to management node
+	#  since this code could be running on a service node the NIM
+	# 	primary is either the server for this node or the management node
     #
-    my $nimprime = xCAT::Utils->get_site_Master();
-    my $sitetab = xCAT::Table->new('site');
-    (my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
-    if ($et and $et->{value}) {
-        $nimprime = $et->{value};
-
-    }
+    my $nimprime = &getnimprime();
 
 	#
 	# if this isn't the NIM primary then make sure the local NIM defs 
@@ -4004,7 +4038,7 @@ ll~;
 		if ( ($type =~ /standalone/) ) {
             #error - only support diskless/dataless
             my $rsp;
-            push @{$rsp->{data}}, "Use the nimnodeset command to initialize NIM standalone type nodes.\n";
+            push @{$rsp->{data}}, "$Sname: Use the nimnodeset command to initialize NIM standalone type nodes.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             $error++;
             push(@nodesfailed, $node);
@@ -4038,13 +4072,17 @@ ll~;
 		if (grep(/^$nim_name$/, @machines)) { 
 			if ($::FORCE) {
 				# get rid of the old definition
-
-				#  ???? - does remove alone do the deallocate??
+				if ($::VERBOSE) {
+					my $rsp;
+					push @{$rsp->{data}}, "$Sname: Removing NIM definition for $nim_name.\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+				}
+				
 				my $rmcmd = "/usr/sbin/nim -Fo reset $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name;/usr/sbin/nim -Fo remove $nim_name";
 				my $output = xCAT::Utils->runcmd("$rmcmd", -1);
 				if ($::RUNCMD_RC  != 0) {
 					my $rsp;
-					push @{$rsp->{data}}, "Could not remove the existing NIM object named \'$nim_name\'.\n";
+					push @{$rsp->{data}}, "$Sname: Could not remove the existing NIM object named \'$nim_name\'.\n";
 					if ($::VERBOSE) {
 						push @{$rsp->{data}}, "$output";
 					}
@@ -4056,7 +4094,7 @@ ll~;
 
 			} else { # no force
 				my $rsp;
-				push @{$rsp->{data}}, "The node \'$node\' is already defined. Use the force option to remove and reinitialize.";
+				push @{$rsp->{data}}, "$Sname: The node \'$node\' is already defined. Use the force option to remove and reinitialize.";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
 				push(@nodesfailed, $node);
 				$error++;
@@ -4072,7 +4110,7 @@ ll~;
        	unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
        	{
 			my $rsp;
-			push @{$rsp->{data}}, "Could not get valid IP address for node $node.\n";
+			push @{$rsp->{data}}, "$Sname: Could not get valid IP address for node $node.\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
 			$error++;
 			push(@nodesfailed, $node);
@@ -4085,7 +4123,7 @@ ll~;
 			# mask, gateway, cosi, root, dump, paging
 			if (!$nethash{$node}{'mask'} || !$nethash{$node}{'gateway'} || !$imagehash{$image_name}{spot} || !$imagehash{$image_name}{root} || !$imagehash{$image_name}{dump}) {
 				my $rsp;
-           		push @{$rsp->{data}}, "Missing required information for node \'$node\'.\n";
+           		push @{$rsp->{data}}, "$Sname: Missing required information for node \'$node\'.\n";
            		xCAT::MsgUtils->message("E", $rsp, $callback);
 				$error++;
            		push(@nodesfailed, $node);
@@ -4097,7 +4135,7 @@ ll~;
 		if ($type eq "diskless" ) {
 			if (!$imagehash{$image_name}{paging} ) {
 				my $rsp;
-				push @{$rsp->{data}}, "Missing required information for node \'$node\'.\n";
+				push @{$rsp->{data}}, "$Sname: Missing required information for node \'$node\'.\n";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
 				$error++;
 				push(@nodesfailed, $node);
@@ -4126,7 +4164,7 @@ ll~;
 
 		if ($::VERBOSE) {
            	my $rsp;
-           	push @{$rsp->{data}}, "Creating NIM node definition.\n";
+           	push @{$rsp->{data}}, "$Sname: Creating NIM node definition.\n";
            	push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
            	xCAT::MsgUtils->message("I", $rsp, $callback);
 		}
@@ -4135,7 +4173,7 @@ ll~;
        	if ($::RUNCMD_RC  != 0)
        	{
            	my $rsp;
-           	push @{$rsp->{data}}, "Could not create a NIM definition for \'$nim_name\'.\n";
+           	push @{$rsp->{data}}, "$Sname: Could not create a NIM definition for \'$nim_name\'.\n";
            	if ($::VERBOSE) {
              	push @{$rsp->{data}}, "$output";
            	}
@@ -4194,7 +4232,7 @@ ll~;
 	#	if ($::VERBOSE) {
 			my $time=`date`;
 			my $rsp;
-			push @{$rsp->{data}}, "Initializing NIM machine \'$nim_name\'. This could take a while. $time\n";
+			push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while. $time\n";
 			#push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
 			xCAT::MsgUtils->message("I", $rsp, $callback);
 	#	}
@@ -4203,7 +4241,7 @@ ll~;
        	if ($::RUNCMD_RC  != 0)
        	{
 			my $rsp;
-			push @{$rsp->{data}}, "Could not initialize NIM client named \'$nim_name\'.\n";
+			push @{$rsp->{data}}, "$Sname: Could not initialize NIM client named \'$nim_name\'.\n";
 			if ($::VERBOSE) {
 				push @{$rsp->{data}}, "$output";
 	   		}
@@ -4231,7 +4269,7 @@ ll~;
     }
 	if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0) {
 		my $rsp;
-		push @{$rsp->{data}}, "Could not write data to the xCAT database.\n";
+		push @{$rsp->{data}}, "$Sname: Could not write data to the xCAT database.\n";
 		xCAT::MsgUtils->message("E", $rsp, $::callback);
 		$error++;
 	}
@@ -4239,9 +4277,15 @@ ll~;
 	#
 	# update the .rhosts file on the server so the rcp from the node works
 	#
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Updating the .rhosts file on $Sname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+
 	if (&update_rhosts(\@nodelist, $callback) != 0) {
 		my $rsp;
-		push @{$rsp->{data}}, "Could not update the /.rhosts file.\n";
+		push @{$rsp->{data}}, "$Sname: Could not update the /.rhosts file.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
 		$error++;
     }
@@ -4250,42 +4294,78 @@ ll~;
 	# make sure we have the latest /etc/hosts from the management node
 	#
 	my $master = xCAT::Utils->get_site_Master();
-	if (!&is_me($master)) {
-		my $cpcmd = "rcp -r $master:/etc/hosts /etc";
-		my $output = xCAT::Utils->runcmd("$cpcmd", -1);
-        if ($::RUNCMD_RC  != 0) {
-			my $rsp;
-            push @{$rsp->{data}}, "Could not get /etc/hosts from the management node.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-			$error++;
-		}
-	}
-
 
 	#
 	# make sure we have the latest /etc/hosts from the management node
+	#	- if needed
 	#
-	my $master = xCAT::Utils->get_site_Master();
-	if (!&is_me($master)) {
+	if (-e "/etc/xCATSN") { 
+
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "$Sname: Copying /etc/hosts from the management server.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
+		# then this is a service node and we need to copy the hosts file 
+		#	from the management node
+		my $catcmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
+		my $result = xCAT::Utils->runcmd("$catcmd", -1);
+		if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "$Sname: Could not read /etc/xcatinfo.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+		
+		# the xcatinfo file contains "XCATSERVER=<server name>"
+		# 	the server for a service node is the management node 
+		my ($attr,$master) = split("= ",$result);
+		chomp $master;
+
+		# copy the hosts file from the master to the service node
 		my $cpcmd = "rcp -r $master:/etc/hosts /etc";
 		my $output = xCAT::Utils->runcmd("$cpcmd", -1);
         if ($::RUNCMD_RC  != 0) {
 			my $rsp;
-            push @{$rsp->{data}}, "Could not get /etc/hosts from the management node.\n";
+            push @{$rsp->{data}}, "$Sname: Could not get /etc/hosts from the management node.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
 			$error++;
 		}
 	}
+
+	# restart inetd
+    if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Restarting inetd on $Sname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+    my $scmd = "stopsrc -s inetd";
+    my $output = xCAT::Utils->runcmd("$scmd", -1);
+    if ($::RUNCMD_RC  != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not stop inetd on $Sname.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        $error++;
+    }
+    my $scmd = "startsrc -s inetd";
+    my $output = xCAT::Utils->runcmd("$scmd", -1);
+    if ($::RUNCMD_RC  != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not start inetd on $Sname.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        $error++;
+    }
+
 
 	#
 	# process any errors
 	#
 	if ($error) {
 		my $rsp;
-		push @{$rsp->{data}}, "One or more errors occurred when attempting to initialize AIX NIM diskless nodes.\n";
+		push @{$rsp->{data}}, "$Sname: One or more errors occurred when attempting to initialize AIX NIM diskless nodes.\n";
 
 		if ($::VERBOSE && (defined(@nodesfailed))) {
-			push @{$rsp->{data}}, "The following node(s) could not be initialized.\n";
+			push @{$rsp->{data}}, "$Sname: The following node(s) could not be initialized.\n";
 			foreach my $n (@nodesfailed) {
 				push @{$rsp->{data}}, "$n";
 			}
@@ -4295,7 +4375,7 @@ ll~;
 		return 1;
 	} else {
 		my $rsp;
-		push @{$rsp->{data}}, "AIX/NIM diskless nodes were initialized.\n";
+		push @{$rsp->{data}}, "$Sname: AIX/NIM diskless nodes were initialized.\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 
  		return 0;
@@ -4346,7 +4426,7 @@ sub make_SN_resource
 
 	my $cmd;
 	
-	my $SNname = hostname();
+	my $SNname = &myxCATname();
 
 	#
 	# get list of valid NIM resource types
@@ -4585,6 +4665,8 @@ sub rmdsklsnode
     #   - need to change to pass in the callback
     #   - just set global for now
     $::callback=$callback;
+
+	my $Sname = &myxCATname();
 
 	if (defined(@{$::args})) {
         @ARGV = @{$::args};
@@ -4831,6 +4913,103 @@ sub nimnodeset_usage
 
 #----------------------------------------------------------------------------
 
+=head3  getnimprime
+
+	Get the primary NIM server for this servcie node
+
+    Returns:
+    Example:
+    Comments:
+
+		For now this will be the XCATSERVER but will have to be changed
+			for mixed cluster support
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub  getnimprime
+{
+
+	if (-e "/etc/xCATSN") { # I'm a service node
+
+		# service nodes have an xcatinfo file that says who installed them
+		# it's the name of the server as known by this node
+		my $catcmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
+		my $result = xCAT::Utils->runcmd("$catcmd", -1);
+		if ($::RUNCMD_RC  != 0) {
+			return undef;
+		}
+
+		my ($attr,$server) = split("= ",$result);
+        chomp $server;
+
+		return $server;
+
+	} else {
+		# just return the site MASTER so nothing breaks
+		my $master = xCAT::Utils->get_site_Master();
+		chomp $master;
+		return $master;
+	}
+	return undef;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  myxCATname
+
+	Gets the name of the node I'm running on - as known by xCAT
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub myxCATname
+{
+
+	# get a list of all xCAT nodes
+	my @nodes=xCAT::Utils->list_all_nodes;
+
+	# get all the possible IPs for the node I'm running on
+    my $ifcmd = "ifconfig -a | grep 'inet '";
+    my @result = xCAT::Utils->runcmd($ifcmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+		return undef;
+	}
+
+	# try each interface until we find one that is defined for xCAT
+	foreach my $int (@result) {
+		my $hostname;
+   		my ($inet, $myIP, $str) = split(" ", $int);
+        chomp $myIP; 
+
+		my $packedaddr = inet_aton($myIP);
+        my $hostname = gethostbyaddr($packedaddr, AF_INET);
+
+        if ($hostname)
+        {
+            my $shorthost;
+			($shorthost = $hostname) =~ s/\..*$//;
+        	chomp $shorthost;
+			if (grep(/^$shorthost$/, @nodes) ) {
+            	return $shorthost;
+        	}
+        }
+	}
+
+	# if no match then just return hostname
+	my $hn = hostname();
+	my $shorthost;
+	($shorthost = $hn) =~ s/\..*$//;
+	chomp $shorthost;
+	return $shorthost;
+}
+
+
+#----------------------------------------------------------------------------
+
 =head3  is_me
 
 	returns 1 if the hostname is the node I am running on
@@ -4858,19 +5037,36 @@ sub is_me
 {
     my $name = shift;
 
-	my $hn = hostname();
-	chomp $hn;
-    my $myIP = inet_ntoa(inet_aton($hn));
-    chomp $myIP;
-
+	# convert to IP
 	my $nameIP = inet_ntoa(inet_aton($name));
-	chomp $nameIP;
+    chomp $nameIP;
 
-	if ($nameIP eq $myIP) {
-		return 1;
-	} else {
+	# split into octets
+	my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
+
+	# get all the possible IPs for the node I'm running on
+    my $ifcmd = "ifconfig -a | grep 'inet '";
+    my @result = xCAT::Utils->runcmd($ifcmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+		my $rsp;
+	#	push @{$rsp->{data}}, "Could not run $ifcmd.\n";
+    #    xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 0;
-	}
+    }
+
+    foreach my $int (@result)
+    {
+        my ($inet, $myIP, $str) = split(" ", $int);
+		chomp $myIP;
+		# Split the two ip addresses up into octets
+    	my ($a1, $a2, $a3, $a4) = split /\./, $myIP;		
+
+		if ( ($a1 == $b1) && ($a2 == $b2) && ($a3 == $b3) && ($a4 == $b4) ) {
+			return 1;
+		}		
+    }
+	return 0;
 }
 
 #----------------------------------------------------------------------------
