@@ -1104,7 +1104,50 @@ sub defmk
             }
         }    # end - if group type
 
-    }
+        #
+        #  Need special handling for node objects that have the
+        #	groups attr set - may need to create group defs
+        #
+        if (($type eq "node") && $::FINALATTRS{$obj}{groups})
+        {
+
+            # get the list of groups in the "groups" attr
+            my @grouplist;
+            @grouplist = split(/,/, $::FINALATTRS{$obj}{groups});
+
+            # get the list of all defined group objects
+
+            my @definedgroups = xCAT::DBobjUtils->getObjectsOfType("group");
+
+			my %GroupHash;
+            foreach my $g (@grouplist)
+            {
+                if (!grep(/^$g$/, @definedgroups))
+                {
+
+                    # define it
+                    $GroupHash{$g}{objtype}   = "group";
+                    $GroupHash{$g}{grouptype} = "static";
+                    $GroupHash{$g}{members}   = "static";
+                }
+            }
+            if (defined(%GroupHash))
+            {
+
+                if (xCAT::DBobjUtils->setobjdefs(\%GroupHash) != 0)
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Could not write data to the xCAT database.\n";
+
+                    # xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                }
+            }
+
+        }    # end - if type = node
+
+    } # end of each obj
 
     #
     #  write each object into the tables in the xCAT database
@@ -1729,6 +1772,7 @@ sub defch
             }
 
         }    # end - if type = node
+
     }    # end - for each object to update
 
     #
