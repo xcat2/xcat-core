@@ -2711,15 +2711,25 @@ sub writefru {
     }
     my $frusize=($bytes[2]<<8)+$bytes[1];
     ($error,@bytes) = frudump(0,$frusize,16);
+    if ($error) {
+        return (1,"Error retrieving FRU: ".$error);
+    }
     my $fruhash; 
     ($error,$fruhash) = parsefru(\@bytes);
     my $newfru=formfru($fruhash,$frusize);
     unless ($newfru) {
         return (1,"FRU data will not fit in BMC FRU space, fields too long");
     }
-    my $rc;
+    my $rc=1;
+    my $writeattempts=0;
     my $text;
-	($rc,$text) = fruwrite(0,$newfru,8);
+    while ($rc and $writeattempts<15) {
+        if ($writeattempts) {
+            sleep 1;
+        }
+    	($rc,$text) = fruwrite(0,$newfru,8);
+        $writeattempts++;
+    }
 	if($rc) {
 		return($rc,$text);
 	}
