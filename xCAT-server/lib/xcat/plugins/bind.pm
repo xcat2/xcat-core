@@ -190,14 +190,15 @@ sub process_request
          qq|zone "0.0.127.IN-ADDR.ARPA" in {\n\ttype master;\n\tfile "db.127.0.0";\n\tnotify no;\n};\n\n|
          );
 
-    &PARSEARGS($callback,@args);
+    &PARSEARGS($callback, @args);
     &FIXUP($callback);
-
-    my $rsp = {};
-    $rsp->{data}->[0] = "Unable to open $Hostfile\n";
-    open(HOSTS, $Hostfile)
-     || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-
+    unless (open(HOSTS, $Hostfile))
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Unable to open $Hostfile\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        exit 1;
+    }
     my $data;
     my $comment;
     my $addr;
@@ -403,7 +404,7 @@ sub process_request
         }
         if ($Commentfile ne "")
         {
-            &DO_COMMENTS($callback,$canonical, @addrs);
+            &DO_COMMENTS($callback, $canonical, @addrs);
         }
     }
 
@@ -425,10 +426,10 @@ sub process_request
 
     # generate boot.* files
     &GEN_BOOT($callback);
-
-   $rsp->{data}->[0] = "Setup of DNS complete.";
-   xCAT::MsgUtils->message("I", $rsp, $callback);
-   exit 0;
+    my $rsp = {};
+    $rsp->{data}->[0] = "Setup of DNS complete.";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+    exit 0;
 }
 
 #
@@ -438,15 +439,18 @@ sub process_request
 #
 sub DO_COMMENTS
 {
-    my ($callback,$canonical, @addrs) = @_;
+    my ($callback, $canonical, @addrs) = @_;
     my (@c, $c, $a, $comments);
 
     if (!$Commentfileread)
     {
-        my $rsp = {};
-        $rsp->{data}->[0] = "Unable to open file $Commentfile: $!.\n";
-        open(F, $Commentfile)
-          || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        unless (open(F, $Commentfile))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Unable to open file $Commentfile: $!.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1;
+        }
         $Commentfileread++;
         while (<F>)
         {
@@ -565,10 +569,13 @@ sub MAKE_SOA
     if (-s $fname)
     {
 
-        my $rsp = {};
-        $rsp->{data}->[0] = "Unable to open $fname: $!.\n";
-        open($file, "$fname")
-          || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        unless (open($file, "$fname"))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Unable to open $fname: $!.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1;
+        }
         $_ = <$file>;
         chop;
         if (/\($/)
@@ -663,11 +670,13 @@ sub MAKE_SOA
         close($file);
     }
 
-    my $rsp = {};
-    $rsp->{data}->[0] = "Unable to open $fname: $!.\n";
-    open($file, "> $fname")
-      || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-
+    unless (open($file, "> $fname"))
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Unable to open $fname: $!.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        exit 1;
+    }
     print $file '$TTL 86400' . "\n";
     print $file "\@ IN  SOA $RespHost $RespUser ";
     print $file "( $Serial $Refresh $Retry $Expire $Ttl )\n";
@@ -766,10 +775,13 @@ sub FIXUP
     }
 
     # Now open boot file (named.conf)  and print saved data
-    my $rsp = {};
-    $rsp->{data}->[0] = "Unable to  open $Bootfile.\n";
-    open(BOOT, "> $Bootfile")
-      || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    unless (open(BOOT, "> $Bootfile"))
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Unable to  open $Bootfile.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        exit 1;
+    }
 
     #
     # Write either the version 4 boot file directives or the
@@ -809,10 +821,13 @@ sub FIXUP
             # Copy the options in since "include" cannot be used
             # within a statement.
             #
-            my $rsp = {};
-            $rsp->{data}->[0] = "Unable to open spcl.options.\n";
-            open(OPTIONS, "<spcl.options")
-              || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            unless (open(OPTIONS, "<spcl.options"))
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Unable to open spcl.options.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                exit 1;
+            }
             while (<OPTIONS>)
             {
                 print BOOT;
@@ -856,7 +871,7 @@ sub FIXUP
 
 sub PARSEARGS
 {
-    my ($callback,@args) = @_;
+    my ($callback, @args) = @_;
     my ($i, $net, $subnetmask, $option, $tmp1);
     my ($file, @newargs, @targs);
     my ($sec, $min, $hour, $mday, $mon, $year, $rest);
@@ -894,10 +909,13 @@ sub PARSEARGS
         elsif ($option eq "-f")
         {
             $file = $args[++$i];
-            my $rsp = {};
-            $rsp->{data}->[0] = "Unable to open args file $file: $!.\n";
-            open(F, $file)
-              || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            unless (open(F, $file))
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Unable to open args file $file: $!.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                exit 1;
+            }
             while (<F>)
             {
                 next if (/^#/);
@@ -907,7 +925,7 @@ sub PARSEARGS
                 push(@newargs, @targs);
             }
             close(F);
-            &PARSEARGS($callback,@newargs);
+            &PARSEARGS($callback, @newargs);
 
         }
         elsif ($option eq "-z")
@@ -1248,7 +1266,7 @@ sub SUBNETS
 
 sub GEN_BOOT
 {
-    $callback   = shift;
+    $callback = shift;
     my ($revaddr, $n);
 
     if (0)
@@ -1256,10 +1274,13 @@ sub GEN_BOOT
             #
             # Create a boot file for a cache-only server
             #
-        my $rsp = {};
-        $rsp->{data}->[0] = "Unable to open boot.cacheonly: $!.\n";
-        open(F, ">boot.cacheonly")
-          || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        unless (open(F, ">boot.cacheonly"))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Unable to open boot.cacheonly: $!.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1;
+        }
         if ($Version == 4)
         {
             print F "directory\t$DBDir\n";
@@ -1292,10 +1313,13 @@ sub GEN_BOOT
                 # within a statement.
                 #
 
-                my $rsp = {};
-                $rsp->{data}->[0] = "Unable to open boot.cacheonly: $!.\n";
-                open(OPTIONS, "<spcl.options")
-                  || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                unless (open(OPTIONS, "<spcl.options"))
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Unable to open boot.cacheonly: $!.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                    exit 1;
+                }
 
                 while (<OPTIONS>)
                 {
@@ -1323,10 +1347,13 @@ sub GEN_BOOT
     #
     if (defined($Bootsecaddr))
     {
-        my $rsp = {};
-        $rsp->{data}->[0] = "Unable to open boot.sec: $!.\n";
-        open(F, ">boot.sec")
-          || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        unless (open(F, ">boot.sec"))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Unable to open boot.sec: $!.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1;
+        }
 
         if ($Version == 4)
         {
@@ -1356,10 +1383,13 @@ sub GEN_BOOT
                 # Copy the options in since "include" cannot be used
                 # within a statement.
                 #
-                my $rsp = {};
-                $rsp->{data}->[0] = "Unable to open spcl.options.\n";
-                open(OPTIONS, "<spcl.options")
-                  || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                unless (open(OPTIONS, "<spcl.options"))
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Unable to open spcl.options.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                    exit 1;
+                }
 
                 while (<OPTIONS>)
                 {
@@ -1390,10 +1420,13 @@ sub GEN_BOOT
         }
         close(F);
 
-        my $rsp = {};
-        $rsp->{data}->[0] = "Unable to open  boot.sec.save: $!.\n";
-        open(F, ">boot.sec.save")
-          || die xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        unless (open(F, ">boot.sec.save"))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Unable to open  boot.sec.save: $!.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1;
+        }
 
         if ($Version == 4)
         {
@@ -1425,8 +1458,13 @@ sub GEN_BOOT
                 # Copy the options in since "include" cannot be used
                 # within a statement.
                 #
-                open(OPTIONS, "<spcl.options")
-                  || die "Can't open spcl.options\n";
+                unless (open(OPTIONS, "<spcl.options"))
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Can't open spcl.options.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                    exit 1;
+                }
                 while (<OPTIONS>)
                 {
                     print F;
