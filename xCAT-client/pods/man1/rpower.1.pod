@@ -4,7 +4,7 @@ B<rpower> - remote power control of nodes
 
 =head1 SYNOPSIS
 
-B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>}
+B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>|B<softoff>}
 
 B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -23,6 +23,10 @@ B<rpower> controls the power for a single or range of nodes,  via the out-of-ban
 =item B<on>
 
 Turn power on.
+
+=item B<softoff>
+
+Attempt to request clean shutdown of OS (may not detect failures in completing command)
 
 =item B<off>
 
