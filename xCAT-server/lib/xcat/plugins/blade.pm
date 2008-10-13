@@ -1496,6 +1496,13 @@ sub power {
   }
   
   my $old_stat=$stat;
+  if ($subcommand eq "softoff") {
+    $validsub=1;
+    $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,2,'INTEGER']));
+    unless ($data) { return (1,$session->{ErrorStr}); }
+    $stat = "softoff"; 
+    if ($old_stat eq "off") { $stat .= " $status_noop"; }
+  } 
   if ($subcommand eq "off") {
     $validsub=1;
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,0,'INTEGER']));

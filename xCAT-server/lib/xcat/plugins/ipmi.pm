@@ -533,26 +533,9 @@ sub ipmicmd {
 		elsif($subcommand eq "nmi") {
 			($rc,$text) = power("nmi");
 		}
-		elsif($subcommand eq "off") {
-#
-# e325 hack
-#
-#			my $mfg_id;
-#			my $prod_id;
-#			my $device_id;
-#			my $text0;
-#
-#			($rc,$text,$mfg_id,$prod_id,$device_id) = getdevid();
-#
-#			if(0 && $mfg_id == 2 && ($prod_id == 0x8835 || $prod_id == 8835) && $device_id == 0) {
-#				($rc,$text0) = power("reset");
-#				sleep(5);
-#			}
-#
-# e325 hack end
-#
+		elsif($subcommand eq "off" or $subcommand eq "softoff") {
                         my ($oldrc,$oldtext) = power("stat");
-			($rc,$text) = power("off");
+			($rc,$text) = power($subcommand);
                          if(($rc == 0) && ($text eq "off") && ($oldtext eq "off")) { $text .= " $status_noop"; }
 	
 #			if($text0 ne "") {
@@ -1315,6 +1298,9 @@ sub power {
 	elsif($subcommand eq "on") {
 		@cmd = (0x02,0x01);
 	}
+	elsif($subcommand eq "softoff") {
+		@cmd = (0x02,0x05);
+	}
 	elsif($subcommand eq "off") {
 		@cmd = (0x02,0x00);
 	}
@@ -1373,6 +1359,17 @@ sub power {
 
 			if($code == 0x00) {
 				$text="on";
+			}
+			else {
+				$rc = 1;
+				$text = $codes{$code};
+			}
+		}
+		if($subcommand eq "softoff") {
+			$code = $returnd[36-$authoffset];
+
+			if($code == 0x00) {
+				$text="softoff";
 			}
 			else {
 				$rc = 1;
