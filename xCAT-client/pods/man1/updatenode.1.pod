@@ -1,0 +1,83 @@
+=head1 NAME
+
+B<updatenode> - Reruns postsctipts or runs additional scripts on the nodes. 
+
+
+
+=head1 SYNOPSIS
+
+I<updatenode [-h| --help]>
+
+I<updatenode [-v| --version]>
+
+I<updatenode I<noderange> [I<script1>[,I<script2>...]]>
+
+
+=head1 DESCRIPTION
+
+This command is used for the following:
+1 install additional software for stateful nodes.
+2 run postscripts defined in the postscripts table for both stateful and stateless nodes.  
+3 run any script for both stateful and stateless nodes. 
+
+=head1 Parameters
+
+I<noderange> is a list of nodes and node groups.
+
+I<script1,script2...> a list of script names. The scripts must be copied under /install/postsctipts directory. They can be from the I<postsctipts> table or not. 
+
+=head1 OPTIONS
+
+B<-h | --help>         Display usage message.
+
+B<-v | --version >      Command Version.
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To install additional software for Linux stateful nodes, first copy the extra rpms you are going to add on to
+
+ /install/post/otherpkgs/<os>/<arch>/* 
+
+directory where <os> and <arch> are defined in the I<nodetype> table. 
+
+Second, add rpm names (without version number) into
+
+ /install/custom/install/<ostype>/profile.otherpkgs.pkglist 
+
+where <profile> is defined in the I<nodetype> table. <ostype> is the operating system name without the version number. The following os types are recognized by xCAT.
+
+  centos 
+  fedora 
+  rh
+  sles 
+  windows
+
+Third, type:
+
+   updatenode <noderange> otherpkgs
+ 
+2. To re-run all the postscripts for the nodes, type
+
+   updatenode <noderange> 
+
+3. To re-run the syslog postscripts for the nodes, type
+
+   updatenode <noderange> syslog
+
+4. To run a list of scripts, make sure the scripts are copied to /install/postscripts directory, then type
+   updatenode <noderange> script1,script2
+
+Note: script1,script2 may or may not be defined in the postscripts table. However if  you want script1 and script2 get invoked next time the nodes are deployed, add them into the postscripts table.
+
+
+=head1 FILES
+
+/opt/xcat/bin/updatenode
+
+
