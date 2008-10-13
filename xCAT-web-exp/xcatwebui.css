@@ -1,0 +1,68 @@
+span.logstatus {
+    margin-left: 5.5em;
+}
+label {
+    text-align: right;
+    width: 5em;
+    float: left;
+    margin-right: 0.5em;
+    display: block;
+}
+div#header {
+    border-bottom: 1px solid #d3d3d3;
+    vertical-align: middle;
+    top:0;
+    left:0;
+    width:100%;
+    height:1.8em;
+    z-index:2;
+}
+
+#nodetabs {
+    float: left;
+}
+#nodearea {
+    float: left;
+    right: 0;
+}
+#nodepane: {
+    float: left;
+    clear: left;
+}
+#nrtree {
+    float: left;
+    clear: left;
+    border-right: 1px solid #d3d3d3;
+    border-top: 1px solid #d3d3d3;
+    height:100%;
+    width:9.5em;
+}
+#logout {
+   position:absolute;
+   top:0;
+   right:0;
+   margin-left:1em;
+   text-align: center;
+   vertical-align: top;
+}
+.xcatbutton button {
+    margin: .5em .5em .5em 8px;
+    color: #555555;
+    background: #e6e6e6 url(images/e6e6e6_40x100_textures_02_glass_75.png) 0 50% repeat-x;
+    font-size: 0.7em;
+    border: 1px solid #d3d3d3;
+    cursor: pointer;
+    padding: .2em .6em .3em .6em;
+    line-height: 1.4em;
+}
+.xcatbutton button:hover {
+    color: #212121;
+    background: #dadada url(images/dadada_40x100_textures_02_glass_75.png) 0 50% repeat-x;
+    border: 1px solid #999999;
+}
+.xcatbutton button:active {
+    color: #222222;
+    background: #ffffff url(images/ffffff_40x100_textures_02_glass_65.png) 0 50% repeat-x;
+    border: 1px solid #dddddd;
+}
+
