@@ -89,10 +89,6 @@ if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['h
 	//echo "<p><b>Command Ouput:</b></br></p>"; //output will be returned from the runcmd function call
 	//$rc = runcmd($command_string,1, $outp);	//streaming mode - DOES NOT WORK YET
 	$xml = docmd($command, $noderange, $args);
-	//echo "<p>count=" . count($xml) . ", children=" . $xml->children() . "</p>";
-	//echo "<p>"; print_r($xml); echo "</p>";
-	//$output = $xml->xcatresponse->children();
-	//echo "<p>"; print_r($output); echo "</p>";
 	foreach ($xml->children() as $response) foreach ($response->children() as $line) { echo "$line<br>"; }
 
 

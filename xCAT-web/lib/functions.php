@@ -113,10 +113,10 @@ $MENU = array(
 		),
 	'config' => array(
 		'label' => 'Configure',
-		'default' => 'site',
+		'default' => 'db',
 		'list' => array(
 			'prefs' => array('label' => 'Preferences', 'url' => "$TOPDIR/config/prefs.php"),
-			'site' => array('label' => 'Cluster Settings', 'url' => "$TOPDIR/config/site.php"),
+			'db' => array('label' => 'Cluster Settings', 'url' => "$TOPDIR/config/db.php"),
 			'mgmtnode' => array('label' => 'Mgmt Node', 'url' => "$TOPDIR/config/mgmtnode.php"),
 			'monitor' => array('label' => 'Monitor Setup', 'url' => "$TOPDIR/config/monitor.php"),
 			'eventlog' => array('label' => 'Event Log', 'url' => "$TOPDIR/config/eventlog.php"),
@@ -200,7 +200,7 @@ function insertMenuRow($current, $isTop, $items) {
 //-----------------------------------------------------------------------------
 // Inserts the html for each pages footer
 function insertFooter() {
-echo '<div class=PageFooter><p id=disclaimer>This interface is still under construction and not yet ready for use.</p></div></BODY></HTML>';
+echo '<div class=PageFooter><p id=disclaimer>This interface is still under construction and not yet ready for production use.</p></div></BODY></HTML>';
 }
 
 
@@ -211,12 +211,8 @@ echo '<div class=PageFooter><p id=disclaimer>This interface is still under const
 function docmd($cmd, $nr, $args){
 	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
 	$request->addChild('command',$cmd);
-	foreach ($args as $a) {
-		$request->addChild('arg',$a);
-	}
-	if(!empty($nr)){
-		$request->addChild('noderange',$nr);
-	}
+	if(!empty($nr)) { $request->addChild('noderange',$nr); }
+	if (!empty($args)) { foreach ($args as $a) { $request->addChild('arg',$a); } }
 	#echo $request->asXML();
 	$xml = submit_request($request,0);
 	return $xml;
@@ -251,12 +247,13 @@ function submit_request($req, $skipVerify){
 				#echo htmlentities($response);
 				$response = '<xcat>' . preg_replace($pattern,'', $response) . '</xcat>';		// remove the serverdone response and put an xcat tag around the rest
 				$rsp = simplexml_load_string($response,'SimpleXMLElement', LIBXML_NOCDATA);
+				//echo '<p>'; print_r($rsp); echo "</p>\n";
 				$cleanexit = 1;
 			}
 		}
 		fclose($fp);
 	}else{
-		echo "<p>xCAT Submit request Error: $errno - $errstr</p>\n";
+		echo "<p>xCAT Submit request socket Error: $errno - $errstr</p>\n";
 	}
 	if(! $cleanexit){
 		if(!$skipVerify){
@@ -265,6 +262,30 @@ function submit_request($req, $skipVerify){
 		}
 	}
 	return $rsp;
+}
+
+
+//-----------------------------------------------------------------------------
+// Use with submit_request() to get the data fields (output that is not node-oriented)
+function getXmlData(& $xml) {
+	$data = array();
+	foreach ($xml->children() as $response) foreach ($response->children() as $k => $v) {
+		if ($k == 'data') { $data[] = (string) $v; }
+	}
+	return $data;
+}
+
+
+//-----------------------------------------------------------------------------
+// Use with submit_request() to get any errors that might have occurred
+// Returns the errorcode and adds any error strings to the $error array passed in
+function getXmlErrors(& $xml, & $errors) {
+	$errorcode = 0;
+	foreach ($xml->children() as $response) foreach ($response->children() as $k => $v) {
+		if ($k == 'error') { $errors[] = (string) $v; }
+		if ($k == 'errorcode') { $errorcode = (string) $v; }
+	}
+	return $errorcode;
 }
 
 
@@ -696,11 +717,9 @@ function getNodes($noderange, $attrs) {
 	if (empty($noderange)) { $nodrange = '/.*'; }
 	//$xml = docmd('nodels',$noderange,implode(' ',$attrs));
 	$xml = docmd('nodels',$noderange,$attrs);
-	//$output = $xml->xcatresponse->children();		// technically, we should iterate over the xcatresponses, because there can be more than one
-	//foreach ($output as $o) {
 	foreach ($xml->children() as $response) foreach ($response->children() as $o) {
 		$nodename = (string)$o->name;
-		$data = $o->data;
+		$data = & $o->data;
 		$attrval = (string)$data->contents;
 		if (empty($attrval)) { continue; }
 		$attrname = (string)$data->desc;
@@ -724,17 +743,17 @@ function getNodes($noderange, $attrs) {
 function getGroups() {
 	$groups = array();
 	$xml = docmd('tabdump','',array('nodelist'));
-	$output = $xml->xcatresponse->children();
+	//$output = $xml->xcatresponse->children();
 	#$output = $xml->children();	// technically, we should iterate over the xcatresponses, because there can be more than one
-	foreach ($output as $line) {
+	//foreach ($output as $line) {
+	foreach ($xml->children() as $response) foreach ($response->children() as $line) {
+		$line = (string) $line;
 		//echo "<p>line=$line</p>";
-		$vals = array();
-		preg_match('/^"([^"]*)","([^"]*)"/', $line, $vals);	//todo: create function to parse tabdump output better
-		if (count($vals) > 2) {
-			//$node = $vals[1];
-			$grplist = preg_split('/,/', $vals[2]);
-			foreach ($grplist as $g) { $groups[$g] = 1; }
-		}
+		if (ereg("^#", $line)) { continue; }	// skip the header
+		$vals = splitTableFields($line);
+		if (empty($vals[0]) || empty($vals[1])) continue;	// node or groups missing
+		$grplist = preg_split('/,/', $vals[1]);
+		foreach ($grplist as $g) { $groups[$g] = 1; }
 	}
 	$grplist = array_keys($groups);
 	sort($grplist);
@@ -804,5 +823,21 @@ function msg($severity, $msg)
 
 //-----------------------------------------------------------------------------
 function insertNotDoneYet() { echo "<p class=NotDone>This page is not done yet.</p>\n"; }
+
+//-----------------------------------------------------------------------------
+// Parse the columns of 1 line of tabdump output
+//Todo: the only thing this doesn't handle is escaped double quotes.
+function splitTableFields($line){
+	$fields = array();
+	$line = ",$line";		// prepend a comma.  this makes the parsing more consistent
+	for ($rest=$line; !empty($rest); ) {
+		$vals = array();
+		// either match everything in the 1st pair of quotes, or up to the next comma
+		if (!preg_match('/^,"([^"]*)"(.*)$/', $rest, $vals)) { preg_match('/^,([^,]*)(.*)$/', $rest, $vals); }
+		$fields[] = $vals[1];
+		$rest = $vals[2];
+	}
+	return $fields;
+}
 
 ?>

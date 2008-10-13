@@ -26,7 +26,8 @@ insertButtons(
 	);
 
 // Get the attributes for all nodes
-$attrlist = array('nodepos.rack','nodepos.u','nodepos.chassis','nodepos.slot','nodepos.room','vpd.mtm','nodetype.arch','nodehm.power','nodehm.mgt','mp.mpa','mp.id');
+$attrlist = array('nodepos.rack','nodepos.u','vpd.mtm','nodehm.power','nodehm.mgt','mp.mpa','mp.id');
+echo "<p>To see nodes in this view, set the following attributes in the xCAT DB: " . implode(', ',$attrlist) . "</p>\n";
 $nodes = getNodes('/.*', $attrlist);
 $frames = array();
 

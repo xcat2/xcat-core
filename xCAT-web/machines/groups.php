@@ -86,23 +86,18 @@ insertFooter();
 function getGroupStatus() {
 	$groups = array();
 	$xml = docmd('tabdump','',array('nodelist'));
-	$output = $xml->xcatresponse->children();
-	#$output = $xml->children();	// technically, we should iterate over the xcatresponses, because there can be more than one
-	foreach ($output as $line) {
-		//echo "<p>line=$line</p>";
-		$vals = array();
-		preg_match('/^"([^"]*)","([^"]*)",(.*)$/', $line, $vals);	//todo: create function to parse tabdump output better
-		if (count($vals) > 3) {
-			//$node = $vals[1];
-			$grplist = preg_split('/,/', $vals[2]);
-			$rest = $vals[3];
-			$status = array();
-			preg_match('/^"([^"]*)"/', $rest, $status);
-			if (count($status) < 2) { $status[1] = 'unknown'; }
-			foreach ($grplist as $g) {
-				if (array_key_exists($g,$groups)) { $groups[$g] = minStatus($groups[$g], $status[1]); }
-				else { $groups[$g] = $status[1]; }
-			}
+	foreach ($xml->children() as $response) foreach ($response->children() as $line) {
+		$line = (string) $line;
+		//echo "<p>"; print_r($line); "</p>\n";
+		if (ereg("^#", $line)) { continue; }	// skip the header
+		$vals = splitTableFields($line);
+		if (empty($vals[0]) || empty($vals[1])) continue;	// node or groups missing
+		$grplist = preg_split('/,/', $vals[1]);
+		if (empty($vals[2])) { $status = 'unknown'; }
+		else { $status = $vals[2]; }
+		foreach ($grplist as $g) {
+			if (array_key_exists($g,$groups)) { $groups[$g] = minStatus($groups[$g], $status); }
+			else { $groups[$g] = $status; }
 		}
 	}
 	return $groups;

@@ -1,0 +1,104 @@
+
+/* Styles specific to the db.php page */
+
+#tableNames {
+ position: relative;	/* so the h3 inside can be absolute to this div */
+ border: 1px solid black;
+ text-align: left;
+ padding: 12px 5px 10px 5px;
+ margin-top: 10px;
+ margin-bottom: 10px;
+}
+
+#tableNames H3 {
+ position: absolute;
+ top: -25px;
+ left: 15px;
+ background-color: white;
+ padding: 0px 5px;
+}
+
+#tableNames A {
+ font-size: 9pt;
+ margin-left: 0.6em;
+ margin-right: 0.6em;
+}
+
+#helpLinks A {
+ margin-left: 0.4em;
+ margin-right: 0.4em;
+}
+
+
+.middlepane {
+	/* float: left; */
+	padding: 5px;
+	margin: 10px;
+	min-width: 600px;
+}
+
+/*
+.bottompane {
+	float: left;
+	padding: 5px;
+	margin: 10px;
+	min-width: 600px;
+	border-top: 1px dotted #555;
+}
+*/
+
+
+
+.colHeaders {
+	font-weight: bold;
+	text-align: center;
+}
+
+/* the alternating rows of the table */
+.ListLine0 { background: #e0f8f8; }
+.ListLine1 { background: #b0f8f8; }
+
+.Xcell {		/* the table cell that contains the red x */
+ background-color: white;
+ vertical-align: middle;
+}
+
+.Ximg { padding-right: 15px; }
+.Ximg2 { padding-right: 15px; }
+
+.edit {
+	background: #8f8f0b;
+}
+
+a.gbutton {
+    background: transparent url('../images/bg_button_a.gif') no-repeat scroll top right;
+    color: #444;
+    display: inline-block;
+    /* float: left; */
+    font: normal 12px arial, sans-serif;
+    height: 24px;
+    margin-right: 6px;
+    padding-right: 18px; /* sliding doors padding */
+    text-decoration: none;
+}
+
+a.gbutton span {
+    background: transparent url('../images/bg_button_span.gif') no-repeat;
+    display: inline-block;
+    line-height: 14px;
+    padding: 5px 0 5px 18px;
+    cursor: pointer;
+}
+
+
+a.gbutton:active {
+    background-position: bottom right;
+    color: #000;
+    outline: none; /* hide dotted outline in Firefox */
+}
+
+a.gbutton:active span {
+    background-position: bottom left;
+    padding: 6px 0 4px 18px; /* push text down 1px */
+    cursor: pointer;
+}
