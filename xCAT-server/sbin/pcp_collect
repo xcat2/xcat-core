@@ -87,10 +87,21 @@ sub  performance
 			          #print "the array has $count_spl1 elements \n"; 
 				  #print "@spl1[0] \n";
 				  #print "@spl1[1] \n";
-				  my $count3= `cat $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config | wc -l`;
+				  #my $count3= `cat $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config | wc -l`;
 			          #print "the number of lines in the file is count3:$count3 \n";
 				  #`tr "\n" "§" <$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config> $::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config.tr`;
-				  my $fname = "$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config";
+				  my $fname;
+				  if (-e "/var/log/pcpmon.config")
+				   {
+				     #print "config under /var/log \n";
+				     $fname="/var/log/pcpmon.config";
+				   }
+				  else
+				   {
+                                     #print "config not under /var/log \n";
+                                     $fname = "$::XCATROOT/lib/perl/xCAT_monitoring/pcp/pcpmon.config"; 
+				   }
+				  print "config file is in $fname \n";
                                   unless ( open( CONF, $fname ))
                                    {
                                      return(0);
