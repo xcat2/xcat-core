@@ -267,7 +267,7 @@ sub process_request {
   my $chaintab=xCAT::Table->new('chain',-create=>1);
   my $chainhash=$chaintab->getNodesAttribs(\@nodes,['currstate']);
   my $mactab=xCAT::Table->new('mac',-create=>1);
-  my $machhash=$mactab->getNodesAttribs(\@nodes,['mac']);
+  my $machash=$mactab->getNodesAttribs(\@nodes,['mac']);
 
   foreach (@nodes) {
     my %response;
