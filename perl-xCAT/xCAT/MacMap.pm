@@ -50,6 +50,13 @@ OID, and have the switch table port value match exactly the format suggested by 
     #Most common case, won't match at all
     return 0;
   }
+  #3com convention, contributed by Aaron Knister
+  if ( $namepersnmp =~ /^RMON Port (0?)(\d+) on unit \d+/ ) {
+     if ( $2 =~ $namepercfg ) {
+         return 1;
+     }
+  }
+
   #stop contemplating vlan, Nu, and console interfaces
   if (($namepersnmp =~ /vl/i) or ($namepersnmp =~ /Nu/) or ($namepersnmp =~ /onsole/))  {
     return 0;
