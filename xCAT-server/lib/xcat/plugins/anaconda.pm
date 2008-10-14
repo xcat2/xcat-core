@@ -174,6 +174,8 @@ sub mknetboot
     my $hmhash =
           $hmtab->getNodesAttribs(\@nodes,
                                  ['serialport', 'serialspeed', 'serialflow']);
+    my $addkcmdhash =
+        $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
     foreach $node (@nodes)
     {
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
@@ -347,6 +349,16 @@ sub mknetboot
                 $kcmdline .= "n8r";
             }
         }
+        # add the addkcmdline attribute  to the end
+        # of the command, if it exists
+        my $addkcmd   = $addkcmdhash->{$node}->[0];
+        # add the extra addkcmd command info, if in the table
+        if ($addkcmd->{'addkcmdline'}) {
+                $kcmdline .= " ";
+                $kcmdline .= $addkcmd->{'addkcmdline'};
+           
+        }
+        
         $bptab->setNodeAttribs(
                       $node,
                       {
