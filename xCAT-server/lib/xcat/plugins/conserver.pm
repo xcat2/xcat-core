@@ -230,6 +230,17 @@ sub makeconservercf {
   my @cfgents1;# = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
   if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
       @cfgents1 = $hmtab->getNodesAttribs($nodes,['cons','serialport','mgt','conserver','termserver','termport']);
+#to make the result consistent to getAllNodeAttribs
+      my @tmpcfgents1;
+      foreach my $ent (@cfgents1)
+      {
+          foreach my $nodeent ( keys %$ent)
+          {
+              push @tmpcfgents1, $ent->{$nodeent}->[0] ;
+          }
+      }
+      @cfgents1 = @tmpcfgents1
+
   } else {
     @cfgents1 = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
   }
