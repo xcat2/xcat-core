@@ -1931,13 +1931,10 @@ sub switch_cmd {
 
     my $req = shift;
     my $slp = shift;
-    my %mm;
-    my %hmc;
-    my %slp_mm;
-    my %slp_hmc;
     my %slp_all;
     my %hosts;
     my @entries;
+    my $targets = {};
     my $hosttab  = xCAT::Table->new( 'hosts' );
     my $swtab    = xCAT::Table->new( 'switch' );
 
@@ -1950,16 +1947,21 @@ sub switch_cmd {
     ###########################################
     # Any MMs/HMCs in SLP response
     ###########################################
-    foreach ( @$slp ) {
-        if ( /\(type=management-module\)/ and /\(ip-address=([^\),]+)/) {
-            $slp_mm{$1} = undef;
-            next;
-        }
-        if ( /\(type=hardware-management-console\)/ and /\(ip-address=([^\),]+)/) {
-            $slp_hmc{$1} = undef;
+    foreach my $slp_entry ( @$slp ) {
+        foreach my $service_type (SERVICE_FSP, SERVICE_BPA, SERVICE_MM, SERVICE_HMC)
+        {
+            
+            if ( $slp_entry =~ /\(type=$service_type\)/ and $slp_entry =~ /\(ip-address=([^\),]+)/)
+            {
+                $slp_all{$1}{'mac'} = undef;
+                $slp_all{$1}{'type'} = 'MM' if $service_type eq SERVICE_MM;
+                $slp_all{$1}{'type'} = 'FSP' if $service_type eq SERVICE_FSP;
+                $slp_all{$1}{'type'} = 'BPA' if $service_type eq SERVICE_BPA;
+                $slp_all{$1}{'type'} = 'HMC' if $service_type eq SERVICE_HMC;
+                last;
+            }
         }
     }
-    %slp_all = (%slp_mm,%slp_hmc);
     ###########################################
     # No MMs/HMCs in response
     ###########################################
@@ -1999,30 +2001,60 @@ sub switch_cmd {
     # Ping each MM/HMCs to update arp table 
     ###########################################
     foreach my $ip ( keys %slp_all ) {
-        my $cmd = `ping -c 1 -w 0 $ip`;
+        if ( $^O eq 'aix')
+        {
+            `ping -c 1 -w 1 $ip`;
+        }
+        else
+        {
+            `ping -c 1 -w 0 $ip`;
+        }
     }    
     ###########################################
     # Match discovered IP to MAC in arp table
     ###########################################
-    my $arp = `/sbin/arp -n`;
+    my $arp;
+    if ( $^O eq 'aix')
+    {
+        $arp = `/usr/sbin/arp -a`;
+    }
+    else
+    {
+        $arp = `/sbin/arp -n`;
+    }
+
     my @arpents = split /\n/, $arp;
 
     if ( $verbose ) {
         trace( $req, "ARP TABLE:" );
     }
-    foreach ( @arpents ) {
-        /^(\S+)+\s+\S+\s+(\S+)\s/;
-        if ( exists( $slp_all{$1} )) {
+    my $isMacFound = 0;
+    foreach my $arpent ( @arpents ) {
+        my ($ip, $mac);
+        if ( $^O eq 'aix' && $arpent =~ /\((\S+)\)\s+at\s+(\S+)/)
+        {
+            ($ip, $mac) = ($1,$2);
+        }
+        elsif ( $arpent =~ /^(\S+)+\s+\S+\s+(\S+)\s/)
+        {
+            ($ip, $mac) = ($1,$2);
+        }
+        else
+        {
+             ($ip, $mac) = (undef,undef);
+        }
+        if ( exists( $slp_all{$ip} )) {
             if ( $verbose ) {
-                trace( $req, "\t\t($1)->($2)" );
+                trace( $req, "\t\t($ip)->($mac)" );
             }
-            $slp_all{$1} = $2;
+            $slp_all{$ip}{'mac'} = $mac;
+            $isMacFound = 1;
         }
     }
     ###########################################
     # No discovered IP - MAC matches 
     ###########################################
-    if ( !grep( defined($_), values %slp_all )) {
+    if ( ! $isMacFound) {
         return;
     }
     if ( $verbose ) {
@@ -2032,69 +2064,103 @@ sub switch_cmd {
         #######################################
         # Not in SLP response
         #######################################
-        if ( !defined( $slp_all{$ip} ) or !defined( $macmap )) { 
+        if ( !defined( $slp_all{$ip}{'mac'} ) or !defined( $macmap )) { 
             next;
         }
         #######################################
         # Get node from switch 
         #######################################
-        my $name = $macmap->find_mac( $slp_all{$ip} );
+        my $name = $macmap->find_mac( $slp_all{$ip}{'mac'} );
         if ( !defined( $name )) {
             if ( $verbose ) {
-                trace( $req, "\t\t($slp_all{$ip})-> NOT FOUND" ); 
+                trace( $req, "\t\t($slp_all{$ip}{'mac'})-> NOT FOUND" ); 
             }
             next;
         }
         if ( $verbose ) {
-            trace( $req, "\t\t($slp_all{$ip})-> $name" ); 
+            trace( $req, "\t\t($slp_all{$ip}{'mac'})-> $name" ); 
         }
         #######################################
         # In hosts table 
         #######################################
         if ( defined( $hosts{$name} )) {
-            if ( exists $slp_mm{$ip})
-            {
-                if ( $ip eq $hosts{$name} ) {
-                    if ( $verbose ) {
-                        trace( $req, "MM already set '$ip' - skipping" );
-                    }
-                    next;
+            if ( $ip eq $hosts{$name} ) {
+                if ( $verbose ) {
+                    trace( $req, "$slp_all{$ip}{'type'} already set '$ip' - skipping" );
 
                 }
-                $mm{$ip}->{args} = "$hosts{$name},$name";
-                $mm{$ip}->{type} = "MM";
             }
-            elsif ( exists $slp_hmc{$ip})
+            else
             {
-                if ( $ip eq $hosts{$name} ) {
-                    if ( $verbose ) {
-                        trace( $req, "HMC already set '$ip' - skipping" );
-                    }
-                    next;
-
-                }
-                $hmc{$ip}->{args} = "$hosts{$name},$name";
-                $hmc{$ip}->{type} = "HMC";
+                $targets->{$slp_all{$ip}{'type'}}->{$ip}->{'args'} = "$hosts{$name},$name";
+                $targets->{$slp_all{$ip}{'type'}}->{$ip}->{'mac'}  = $slp_all{$ip}{'mac'};
+                $targets->{$slp_all{$ip}{'type'}}->{$ip}->{'name'} = $name;
+                $targets->{$slp_all{$ip}{'type'}}->{$ip}->{'ip'}   = $hosts{$name};
             }
         }
     }
     ###########################################
     # No MMs   
     ###########################################
-    if ( !%mm && !%hmc) {
+    if ( !%$targets) {
         if ( $verbose ) {
             trace( $req, "No ARP-Switch-SLP matches found" ); 
         }
         return;
     }
     ###########################################
-    # Update MM hardware w/discovery info
+    # Update MM/HMC hardware w/discovery info
     ###########################################
-    my $result = rspconfig( $req, \%mm, \%hmc );
+    my $result;
+    if (exists $targets->{'MM'} || exists $targets->{'HMC'})
+     {
+         $result = rspconfig( $req, $targets );
+     }
+     else
+     {
+         $result = dhcpconfig ($req, $targets );
+     }
     return( $result );
 }
 
+sub dhcpconfig
+{
+    my $request   = shift;
+    my $targets   = shift;
+    my $callback  = $request->{callback};
+    my $fsp = $targets->{'FSP'};
+    my $bpa = $targets->{'BPA'};
 
+    $fsp = {} if (!$fsp);
+    $bpa = {} if (!$bpa);
+    my $dhcp_targets = {%$fsp, %$bpa};
+    my $mactab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
+    if ( !$mactab ) {
+        return 1;
+    }
+    for my $node ( keys %$dhcp_targets)
+    {
+        my $name = $dhcp_targets->{$node}->{'name'};
+        my $mac  = $dhcp_targets->{$node}->{'mac'};
+        $mactab->setNodeAttribs( $name,{mac=>$mac} );
+    }
+    $mactab->close();
+
+    my @nodelist = ();
+    
+    for my $ip (keys %$dhcp_targets)
+     {
+        push @nodelist, $dhcp_targets->{$ip}->{'name'};
+     }
+    my $cmdref;
+    $cmdref->{arg} = [];
+    $cmdref->{command}->[0] = "makedhcp";
+    $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+    $cmdref->{noderange}->[0]     = join ',', @nodelist;
+    $cmdref->{node} = \@nodelist;
+    xCAT_plugin::dhcp::process_request($cmdref, \&xCAT::Client::handle_response);
+    return 1;
+}
 
 ##########################################################################
 # Run rspconfig against MMs
@@ -2102,12 +2168,16 @@ sub switch_cmd {
 sub rspconfig {
 
     my $request   = shift;
-    my $mm        = shift;
-    my $hmc       = shift;
+    my $targets   = shift;
     my $callback  = $request->{callback};
     my $start;
 
-    if (%$mm)
+    my $mm = $targets->{'MM'};
+    my $hmc = $targets->{'HMC'};
+    #my $fsp = $targets->{'FSP'};
+    #my $bpa = $targets->{'BPA'};
+
+    if ($mm && %$mm)
     {
         my $bladeuser = 'USERID';
         my $bladepass = 'PASSW0RD';
@@ -2143,7 +2213,7 @@ sub rspconfig {
             $mm->{$_}->{password} = $pass;
         }
     }
-    if (%$hmc)
+    if ($hmc && %$hmc)
     {
         my $hmcuser = 'hscroot';
         my $hmcpass = 'abc123';
@@ -2171,7 +2241,7 @@ sub rspconfig {
         }
     }
     
-    my %target_dev = (%$mm,%$hmc);
+    my %rsp_dev = (%$mm,%$hmc);
     #############################################
     # Fork one process per MM/HMC 
     #############################################
@@ -2179,8 +2249,8 @@ sub rspconfig {
     $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
     my $fds = new IO::Select;
    
-    foreach my $ip ( keys %target_dev) {
-        my $pipe = fork_cmd( $request, $ip, \%target_dev);
+    foreach my $ip ( keys %rsp_dev) {
+        my $pipe = fork_cmd( $request, $ip, \%rsp_dev);
         if ( $pipe ) {
             $fds->add( $pipe );
             $children++;
@@ -2215,7 +2285,7 @@ sub rspconfig {
                 if ( $verbose ) {
                     trace( $request, "$ip: @$result[0]" );
                 }
-                delete $target_dev{$ip};
+                delete $rsp_dev{$ip};
                 next;
             } 
         }        
@@ -2232,7 +2302,7 @@ sub rspconfig {
 
             if ( $cmd =~ /^network_reset/ ) {
                 if ( $Rc != SUCCESS ) {
-                    delete $target_dev{$ip};
+                    delete $rsp_dev{$ip};
                     next;
                 }
                 if ( $verbose ) {
@@ -2252,7 +2322,7 @@ sub rspconfig {
         if ( $verbose ) {
             trace( $request, "Error opening '$fname'" );
         }
-        return( \%target_dev );
+        return( \%rsp_dev );
     } 
     my @rawdata = <HOSTS>;
     close( HOSTS );
@@ -2260,8 +2330,8 @@ sub rspconfig {
     ######################################
     # Remove old entry 
     ######################################
-    foreach ( keys %target_dev) {
-        my ($ip,$host) = split /,/,$target_dev{$_}->{args};
+    foreach ( keys %rsp_dev) {
+        my ($ip,$host) = split /,/,$rsp_dev{$_}->{args};
         foreach ( @rawdata ) {
             if ( /^#/ or /^\s*\n$/ ) {
                 next;
@@ -2278,11 +2348,11 @@ sub rspconfig {
         if ( $verbose ) {
             trace( $request, "Error opening '$fname'" );
         }
-        return( \%target_dev );
+        return( \%rsp_dev );
     }
     print HOSTS @rawdata;
     close( HOSTS );
-    return( \%target_dev );
+    return( \%rsp_dev );
 }
 
 
