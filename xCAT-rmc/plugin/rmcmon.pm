@@ -133,7 +133,7 @@ sub start {
 	  } else { #inactive
 	    if (!exists($assocHash{"$cond:_:$resp"})) { 
               $result=`/usr/bin/mkcondresp $cond $resp  2>&1`; 
-              if ($?) {
+              if (($?) && ($result !~ /2618-201/)) { #resource already defined
                 my $rsp={};
                 $rsp->{data}->[0]="$localhostname: $result";
                 $callback->($rsp);
@@ -287,15 +287,15 @@ sub stop {
     } # if ($pid)
   
     #restop the rmc daemon
-    $result=`stopsrc -s ctrmc`;
-    if ($?) {
-      if ($callback) {
-        my $rsp={};
-        $rsp->{data}->[0]="$localhostname: RMC deamon cannot be stopped.";
-        $callback->($rsp);
-      }
-      return (1, "RMC deamon cannot be stopped\n");
-    }
+    #$result=`stopsrc -s ctrmc`;
+    #if ($?) {
+    #  if ($callback) {
+    #    my $rsp={};
+    #    $rsp->{data}->[0]="$localhostname: RMC deamon cannot be stopped.";
+    #    $callback->($rsp);
+    #  }
+    #  return (1, "RMC deamon cannot be stopped\n");
+    #}
   }
 
   if ($scope) {
@@ -1020,7 +1020,7 @@ sub addNodes {
         }
         $result=`XCATBYPASS=Y  $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1`;
         if ($?) {
-	  my $error="cannot copy the file configrmcnode to node $node";
+          my $error="cannot copy the file configrmcnode to node $node";
           reportError("cannot copy the file configrmcnode to node $node.\n$result", $callback);
           next;
         }
