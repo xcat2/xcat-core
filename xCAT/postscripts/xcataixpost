@@ -26,6 +26,7 @@ my $logfile = $logdir . "/xcat.log";
 open(LOGFILE,">>",$logfile);
 $::LOG_FILE = \*LOGFILE;
 
+
 # get hostname
 $::shorthost = `hostname -s`;
 chomp $::shorthost;
@@ -94,7 +95,7 @@ if (&runcmd($chcmd) != 0) {
 my $nodesetstat="standalone";
 if (-f $scriptname)
 {
-    if (@ARGV>0) {
+    if (@ARGV>1) {
       my $scripts=$ARGV[1];
       my $POSTS=join('\n', split(',', $scripts));
       #print "scripts=$scripts\n";
@@ -112,22 +113,17 @@ if (-f $scriptname)
     {
 		print "$::sdate  xcataixpost: Could not run $scriptname.\n";
 		print $::LOG_FILE "$::sdate  xcataixpost: Could not run $scriptname.\n";
-		close($::LOG_FILE);
-		exit 1;
     }
 } else {
 	print "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
-	close($::LOG_FILE);
-    exit 1;
 }
+
 
 if (@ARGV<1) {
   if (&updateflag($nodesetstat) != 0) {
     print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
     print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server..\n";
-    close($::LOG_FILE);
-    exit 1;
   }
 }
 
@@ -185,7 +181,7 @@ sub  getmypost {
 ############################################################
 sub  updateflag {
     my $nodesetstat=shift;
-    my $state="netbooted";
+    my $state="booted";
     if ($nodesetstat eq "standalone") { $state="installed booting"; }
 
  
