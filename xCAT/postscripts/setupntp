@@ -63,6 +63,7 @@ restrict 127.0.0.1" >>$conf_file
   fi
 
   service ntpd start 
+  chkconfig --add  ntpd 
   chkconfig --level 345 ntpd on
 else
 # stop and start AIX ntp
