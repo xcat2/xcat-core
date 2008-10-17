@@ -1,0 +1,29 @@
+
+/* Styles specific to the wizards */
+
+#outerWizardPane {
+ /* position: relative;		so the h3 inside can be absolute to this div */
+ /* border: 1px solid black; */
+ background-color: #CCCCFF;
+ margin: 0px 20px 15px 20px;
+ padding: 5px 0px;
+}
+
+#wizardHeading {	/* the inner pane where the wizard page contents goes */
+ /* position: absolute;	move this up so it is part of the outerWizardPane border
+ top: -25px;
+ left: 50px;
+ background-color: white;
+ padding: 0px 5px; */
+ margin-bottom: 5px;
+}
+
+#wizardPane {
+ background-color: white;
+ padding: 10px 0px;
+ margin-bottom: 5px;
+}
+
+.NonCurrentSummaryItem {}
+
+.CurrentSummaryItem { background-color: yellow; }

@@ -221,7 +221,7 @@ a.button {
     background: transparent url('../images/bg_button_a.gif') no-repeat scroll top right;
     color: #444;
     display: block;
-    float: left;
+    /* float: left; */
     font: normal 12px arial, sans-serif;
     height: 24px;
     margin-right: 6px;

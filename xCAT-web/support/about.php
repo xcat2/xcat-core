@@ -5,7 +5,7 @@
 $TOPDIR = '..';
 require_once "$TOPDIR/lib/functions.php";
 
-insertHeader('About', NULL, NULL, array('support','about'));
+insertHeader('About xCAT Web Interface', NULL, NULL, array('support','about'));
 ?>
 <h4>xCAT Web Interface version:  ???</h4>
 
@@ -14,7 +14,7 @@ insertHeader('About', NULL, NULL, array('support','about'));
 <ul>
   <li>Vallard Benincosa</li>
   <li>Bruce Potter</li>
-  <li>Quyen Nguyen</li>
+  <li>Jarrod Johnson</li>
 </ul>
-</body>
-</html>
+
+<?php insertFooter(); ?>

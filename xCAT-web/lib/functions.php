@@ -76,10 +76,9 @@ $MENU = array(
 		'default' => 'groups',
 		'list' => array(
 			'lab' => array('label' => 'Lab Floor', 'url' => "$TOPDIR/machines/lab.php"),
-			'frames' => array('label' => 'Frames', 'url' => "$TOPDIR/machines/frames.php"),
-			'groups' => array('label' => 'Groups', 'url' => "$TOPDIR/machines/groups.php"),
-			'nodes' => array('label' => 'Nodes', 'url' => "$TOPDIR/machines/nodes.php"),
-			'layout' => array('label' => 'Layout', 'url' => "$TOPDIR/machines/layout.php"),
+			'frames' => array('label' => 'Racks', 'url' => "$TOPDIR/machines/frames.php"),
+			'groups' => array('label' => 'Groups/Nodes', 'url' => "$TOPDIR/machines/groups.php"),
+			'discover' => array('label' => 'Discover', 'url' => "$TOPDIR/machines/discover.php"),
 			)
 		),
 	'manage' => array(
@@ -127,7 +126,7 @@ $MENU = array(
 		'default' => 'diagnose',
 		'list' => array(
 			'diagnose' => array('label' => 'Diagnose', 'url' => "$TOPDIR/support/diagnose.php"),
-			'update' => array('label' => 'Update', 'url' => "$TOPDIR/support/update.php"),
+			'update' => array('label' => 'Update', 'url' => "$TOPDIR/support/updategui.php"),
 			'howtos' => array('label' => 'HowTos', 'url' => getDocURL('howto')),
 			'manpages' => array('label' => 'Man Pages', 'url' => getDocURL('manpage')),
 			'maillist' => array('label' => 'Mail List', 'url' => getDocURL('web','mailinglist')),

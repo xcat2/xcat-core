@@ -1,28 +1,12 @@
 <?php
 /* session_start(); */
 $TOPDIR = '..';
-require_once "$TOPDIR/functions.php";
-insertHeader('Update xCAT Web Interface', $TOPDIR, '', '');
-insertNav('updategui', $TOPDIR);
-
-?>
-
-<div id=content>
-<P id=logo><IMG class=Middle src="<?= $TOPDIR ?>/images/xcatlogo.gif"></P>
-<FORM name=updateguiForm action="updategui.php" class=NoMargin>
-
-<?php
-getPkg();
-?>
-
-</FORM>
-</div>
-</body>
-</HTML>
+require_once "$TOPDIR/lib/functions.php";
+insertHeader('Update xCAT Web Interface', NULL, NULL, array('support','update'));
+insertNotDoneYet();
+insertFooter();
 
 
-
-<?php
 // Find, download, and install the xcat.web pkg
 function getPkg() { //------------------------------------
 	$rpmname = 'xcat.web';

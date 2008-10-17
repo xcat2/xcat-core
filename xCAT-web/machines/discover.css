@@ -1,0 +1,11 @@
+
+/* Styles specific to the Discover page. */
+
+#wizardPane H3 {
+ margin-top: 20px;
+ margin-bottom: 2px;
+}
+
+P#wizardDone {font-weight : bold; }
+
+.wizardProgressTable { margin: 10px 0px; }
