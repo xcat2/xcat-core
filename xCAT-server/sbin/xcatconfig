@@ -178,7 +178,7 @@ if ($::osname eq 'Linux')
     # start vsftpd
     my $cmd    = "/sbin/chkconfig vsftpd on";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    my $cmd    = "/etc/rc.d/init.d/vsftpd restart";
+    my $cmd    = "/etc/init.d/vsftpd restart";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -753,8 +753,8 @@ else
 #		$syslogcmds .= "stopsrc -s syslogd;";
 #		$syslogcmds .= "startsrc -s syslogd;";
 #	} else {
-#		$syslogcmds .= "/etc/rc.d/init.d/syslog stop;";
-#		$syslogcmds .= "/etc/rc.d/init.d/syslog start;";
+#		$syslogcmds .= "/etc/init.d/syslog stop;";
+#		$syslogcmds .= "/etc/init.d/syslog start;";
 #	}
 #
 #	my $outref = xCAT::Utils->runcmd("$syslogcmds", 0);
@@ -1078,7 +1078,7 @@ if ($::osname eq 'Linux')
     }
 
     # restart httpd
-    my $cmd = "/etc/rc.d/init.d/httpd stop; /etc/rc.d/init.d/httpd start";
+    my $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {

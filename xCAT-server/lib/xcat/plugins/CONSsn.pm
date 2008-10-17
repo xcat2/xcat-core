@@ -65,9 +65,9 @@ sub handled_commands
                     # start conserver
                 my $cmd;
                 if (-f "/var/run/conserver.pid") {
-                   $cmd = "/etc/rc.d/init.d/conserver restart";
+                   $cmd = "/etc/init.d/conserver restart";
                 } else {
-                   $cmd = "/etc/rc.d/init.d/conserver start";
+                   $cmd = "/etc/init.d/conserver start";
                 }
                 xCAT::Utils->runcmd($cmd, -1);
             }
@@ -144,9 +144,9 @@ sub setup_CONS
         } else {
           my $cmd;
           if (-f "/var/run/conserver.pid") {
-            $cmd = "/etc/rc.d/init.d/conserver restart";
+            $cmd = "/etc/init.d/conserver restart";
           } else {
-            $cmd = "/etc/rc.d/init.d/conserver start";
+            $cmd = "/etc/init.d/conserver start";
           }
           my @out = xCAT::Utils->runcmd($cmd, 0);
           if ($::RUNCMD_RC != 0)
