@@ -252,12 +252,16 @@ sub makescript {
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-start-here\n";
 
+  my %post_hash=();  #used to reduce duplicates
   # get the xcatdefaults entry in the postscripts table
   my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts');
   my $defscripts = $et->{'postscripts'};
   if ($defscripts) {
     foreach my $n (split(/,/, $defscripts)) {
-      push @scriptd, $n."\n";
+      if (! exists($post_hash{$n})) {
+	$post_hash{$n}=1;
+        push @scriptd, $n."\n";
+      }
     }
   }
 
@@ -266,7 +270,10 @@ sub makescript {
   $ps = $et->{'postscripts'};
   if ($ps) {
     foreach my $n (split(/,/, $ps)) {
-      push @scriptd, $n."\n";
+      if (! exists($post_hash{$n})) {
+	$post_hash{$n}=1;
+        push @scriptd, $n."\n";
+      }
     }
   }
 
