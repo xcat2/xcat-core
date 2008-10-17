@@ -9,6 +9,8 @@ B<xdsh> I<noderange> [B<-B> I<bypass>] [B<-C> I<context>] [B<-e>] [B<-E> I<envir
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
 [B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
 
+B<xdsh> [B<-i> I<image path>]
+
 B<xdsh> [B<-h> | B<-V> | B<-q>]
 
 
@@ -275,8 +277,21 @@ dard output or  standard  error.  Monitoring  messages  are
 written to standard output.
 
 =item B<-r>|B<--node-rsh> I<node_remote_shell>
+
+
 Specifies  the  full  path of the remote shell command used
 for remote command execution on node targets.
+
+
+=item B<-i>|B<--rootimg> I<install image>
+
+
+Specifies  the  full  path to the install image on the local node. 
+xdsh will chroot to this path and run the xdsh command against the
+install image.  No other xdsh flags, environment variables apply with 
+this input.  A noderange is not accepted. Only runs on the local host, 
+normally the Management Node. 
+
 
 =item B<-s>|B<--stream>
 
