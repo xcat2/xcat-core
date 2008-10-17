@@ -3,11 +3,16 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
 use File::Basename;
+use Cwd;
+
 #use Data::Dumper;
 use Getopt::Long;
 require xCAT::MsgUtils;
@@ -46,44 +51,56 @@ This program is the client interface for xdsh/xdcp.
 my $cmdref;
 my $arg;
 my @SaveARGV = @ARGV;
+$cmdref->{cwd}->[0]     = cwd();
 $cmdref->{command}->[0] = $bname;    # save my command name
-# check for help, bypass, other client flags
-if ($bname eq "xdsh")
-{
-    &parse_args_xdsh;
-}
-else
-{                                        # xdcp
-    &parse_args_xdcp;
-}
 
-my $arg = shift(@SaveARGV);
+my $arg = @SaveARGV[0];
 
 if ($arg =~ /^-/)                    # no noderange
 {
-    xCAT::MsgUtils->message(
-             "I",
-             "Node range not specified, see $bname man page for syntax.\n"
-    );
-    exit 1;
+
+    # check for help, bypass, other client flags
+    if ($bname eq "xdsh")
+    {
+        &parse_args_xdsh;
+    }
+    else
+    {                                # xdcp
+        &parse_args_xdcp;
+    }
+    if ($::ROOTIMG != 1)
+    {    # if not running against rootimg then noderange required
+        xCAT::MsgUtils->message("I",
+                 "Node range not specified, see $bname man page for syntax.\n");
+        exit 1;
+    }
 }
 else
 {
     $cmdref->{noderange}->[0] = $arg;    # save noderange
-    if (!($cmdref->{noderange}->[0])) {
-       xCAT::MsgUtils->message(
-             "I",
-             "Node range not specified, see man page for syntax.\n"
-             );
-       exit 1;
+    my $tmp = shift(@SaveARGV);          # take if off the argument list
+    if (!($cmdref->{noderange}->[0]))
+    {
+        xCAT::MsgUtils->message("I",
+                        "Node range not specified, see man page for syntax.\n");
+        exit 1;
     }
     @ARGV = @SaveARGV;                   # noderange removed for parsing
+    if ($bname eq "xdsh")
+    {
+        &parse_args_xdsh;
+    }
+    else
+    {                                    # xdcp
+        &parse_args_xdcp;
+    }
 }
 
 foreach (@SaveARGV)
 {
     push(@{$cmdref->{arg}}, $_);
 }
+
 #  add environment variables, if they have not already been assigned with
 #  command line flags
 if (!($::NODE_RSH))
@@ -91,6 +108,14 @@ if (!($::NODE_RSH))
     if ($ENV{'DSH_NODE_RSH'})
     {
         push(@{$cmdref->{env}}, "DSH_NODE_RSH=$ENV{'DSH_NODE_RSH'}");
+
+    }
+}
+if (!($::NODE_RCP))
+{
+    if ($ENV{'DSH_NODE_RCP'})
+    {
+        push(@{$cmdref->{env}}, "DSH_NODE_RCP=$ENV{'DSH_NODE_RCP'}");
 
     }
 }
@@ -127,7 +152,7 @@ if (!($::CONTEXT_SET))
     }
 }
 
-xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
+xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
 
 #-----------------------------------------------------------------------------
@@ -151,18 +176,20 @@ sub parse_args_xdsh
     my %options = ();
     if (
         !GetOptions(
-            'e|execute'                => \$options{'execute'},
-            'f|fanout=i'               => \$options{'fanout'},
-            'h|help'                   => \$options{'help'},
-            'l|user=s'                 => \$options{'user'},
-            'm|monitor'                => \$options{'monitor'},
-            'o|node-options=s'         => \$options{'node-options'},
-            'q|show-config'            => \$options{'show-config'},
-            'r|node-rsh=s'             => \$options{'node-rsh'},
-            's|stream'                 => \$options{'streaming'},
-            't|timeout=i'              => \$options{'timeout'},
-            'v|verify'                 => \$options{'verify'},
-            'z|exit-status'            => \$options{'exit-status'},
+            'e|execute'        => \$options{'execute'},
+            'f|fanout=i'       => \$options{'fanout'},
+            'h|help'           => \$options{'help'},
+            'l|user=s'         => \$options{'user'},
+            'm|monitor'        => \$options{'monitor'},
+            'o|node-options=s' => \$options{'node-options'},
+            'q|show-config'    => \$options{'show-config'},
+            'r|node-rsh=s'     => \$options{'node-rsh'},
+            'i|rootimg=s'      => \$options{'rootimg'},
+            's|stream'         => \$options{'streaming'},
+            't|timeout=i'      => \$options{'timeout'},
+            'v|verify'         => \$options{'verify'},
+            'z|exit-status'    => \$options{'exit-status'},
+
             'B|bypass'                 => \$options{'bypass'},
             'C|context=s'              => \$options{'context'},
             'E|environment=s'          => \$options{'environment'},
@@ -191,7 +218,11 @@ sub parse_args_xdsh
         xCAT::DSHCLI->usage_dsh;
         exit 0;
     }
-    if ($options{'bypass'} || $options{'ssh-setup'})    # must force bypass mode for -K, so it can prompt user for node pw
+    if ($options{'bypass'})
+    {
+        $ENV{XCATBYPASS} = "yes";    # bypass xcatd
+    }
+    if ($options{'ssh-setup'})
     {
         $ENV{XCATBYPASS} = "yes";    # bypass xcatd
     }
@@ -202,23 +233,27 @@ sub parse_args_xdsh
         xCAT::MsgUtils->message("I", $version);
         exit 0;
     }
-    if ($options{'node-rsh'})        # if set on command line, use it
+    if ($options{'rootimg'})
+    {
+        $::ROOTIMG = 1;
+    }
+    if ($options{'node-rsh'})    # if set on command line, use it
     {
         $::NODE_RSH = 1;
     }
-    if ($options{'node-opts'})       # if set on command line, use it
+    if ($options{'node-opts'})    # if set on command line, use it
     {
         $::NODE_OPTS = 1;
     }
-    if ($options{'fanout'})          # if set on command line, use it
+    if ($options{'fanout'})       # if set on command line, use it
     {
         $::FANOUT = 1;
     }
-    if ($options{'timeout'})         # if set on command line, use it
+    if ($options{'timeout'})      # if set on command line, use it
     {
         $::TIMEOUT = 1;
     }
-    if ($options{'context'})         # if a context is specified, use it
+    if ($options{'context'})      # if a context is specified, use it
     {
         $::CONTEXT_SET = 1;
     }
@@ -288,8 +323,12 @@ sub parse_args_xdcp
         xCAT::MsgUtils->message("I", $version);
         exit 0;
     }
+    if ($options{'node-rcp'})    # if set on command line, use it
+    {
+        $::NODE_RCP = 1;
+    }
 
-    if ($::BYPASS)
+    if ($options{'bypass'})
     {
         $ENV{XCATBYPASS} = "yes";    # bypass xcatd
     }
@@ -312,12 +351,10 @@ sub check_invalid_exports
     #   DSH_NODEGROUP_PATH
     #  For support Env Variables tell them to use the command line flag
     ##
-    if ($ENV{'DSH_LIST'})            # if file of nodes input
+    if ($ENV{'DSH_LIST'})    # if file of nodes input
     {
-        xCAT::MsgUtils->message(
-              "I",
-              "DSH_LIST is set but is not supported. It will be ignored.\n"
-              );
+        xCAT::MsgUtils->message("I",
+                 "DSH_LIST is set but is not supported. It will be ignored.\n");
 
     }
     if ($ENV{'DSH_NODE_LIST'})

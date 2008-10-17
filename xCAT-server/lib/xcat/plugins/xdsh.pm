@@ -56,23 +56,30 @@ sub preprocess_request
     my %sn;
     my $sn;
     if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
-    my $nodes    = $req->{node};
-    my $service  = "xcat";
+    my $nodes   = $req->{node};
+    my $service = "xcat";
     my @requests;
 
     # find service nodes for requested nodes
     # build an individual request for each service node
-    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
-
-    # build each request for each service node
-
-    foreach my $snkey (keys %$sn)
+    if ($nodes)
     {
+        $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+
+        # build each request for each service node
+
+        foreach my $snkey (keys %$sn)
+        {
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;
             push @requests, $reqcopy;
 
+        }
+    }
+    else
+    {    # running local on image ( -R option)
+        return [$req];
     }
     return \@requests;
 }
@@ -95,7 +102,7 @@ sub process_request
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
     my $envs     = $request->{env};
-    my $rsp={} ;
+    my $rsp      = {};
 
     # get the Environment Variables and set them in the current environment
     foreach my $envar (@{$request->{env}})
@@ -116,7 +123,7 @@ sub process_request
         }
         else
         {
-            my $rsp={};
+            my $rsp = {};
             $rsp->{data}->[0] =
               "Unknown command $command.  Cannot process the command.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
@@ -139,7 +146,8 @@ sub xdsh
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
 
-    my $rsp={};
+    my $rsp = {};
+
     # parse dsh input
     my @local_results =
       xCAT::DSHCLI->parse_and_run_dsh($nodes,   $args, $callback,
@@ -170,8 +178,8 @@ sub xdcp
     my @local_results =
       xCAT::DSHCLI->parse_and_run_dcp($nodes,   $args, $callback,
                                       $command, $noderange);
-    my $rsp={};
-    my $i = 0;
+    my $rsp = {};
+    my $i   = 0;
     ##  process return data
     foreach my $line (@local_results)
     {
