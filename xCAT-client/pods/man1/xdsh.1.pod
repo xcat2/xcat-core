@@ -9,7 +9,7 @@ B<xdsh> I<noderange> [B<-B> I<bypass>] [B<-C> I<context>] [B<-e>] [B<-E> I<envir
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
 [B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
 
-B<xdsh> [B<-i> I<image path>]
+B<xdsh> [B<-i> I<image path>] I<command_list>
 
 B<xdsh> [B<-h> | B<-V> | B<-q>]
 
@@ -476,6 +476,22 @@ To run the ps command on node1 and ignore all the dsh
 environment variable except the DSH_NODE_OPTS, enter:
 
 B<xdsh> I<node1 -X `DSH_NODE_OPTS' ps>
+
+
+=item *
+
+To run on Linux, the xdsh command "rpm -qa | grep xCAT" 
+on the service node fedora9 diskless image, enter:
+
+B<xdsh> I<-i /install/netboot/fedora9/x86_64/service/rootimg "rpm -qa | grep xCAT">
+
+
+=item *
+
+To run on AIX, the xdsh command "lslpp -l | grep bos"  
+on the NIM 611dskls spot, enter:
+
+B<xdsh> I<-i /install/nim/spot/611dskls "/usr/bin/lslpp -l | grep bos">
 
 =back
 
