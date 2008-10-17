@@ -934,6 +934,7 @@ sub addNodes {
   my $mn_ipaddresses;
   my $result;
   my $first_time=1;
+  my @normal_nodes=();
 
   foreach my $node(@mon_nodes) {
     my $mn_node_id_found=0;
@@ -1010,25 +1011,19 @@ sub addNodes {
 	  }
         }
       } else { #normal nodes
-        #get info for the node
-	if (!$mn_node_id_found) {
-          ($mn_node_id, $mn_ipaddresses)=getNodeInfo($node, $flag);
-          if ($mn_node_id == -1) {
-            reportError($mn_ipaddresses, $callback);
-            next; 
-          }
-        }
-        $result=`XCATBYPASS=Y  $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1`;
-        if ($?) {
-          my $error="cannot copy the file configrmcnode to node $node";
-          reportError("cannot copy the file configrmcnode to node $node.\n$result", $callback);
-          next;
-        }
-        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node NODE=$node NODEID=$mn_node_id MONMASTER=$master MS_NODEID=$ms_node_id /tmp/configrmcnode 1 2>&1`;
-        if ($?) { reportError($result, $callback);}
+	push(@normal_nodes, $node);
       }
     }
   } 
+
+  #let updatenode command to handle the normal nodes as a bulk
+  if (@normal_nodes>0) {
+    my $nr=join(',',@normal_nodes); 
+    $result=`XCATBYPASS=Y $::XCATROOT/bin/updatenode $nr configrmcnode 2>&1`;
+    if ($?) {
+      reportError($result, $callback);
+    }		   
+  }
 
   return (0, "ok"); 
 }
@@ -1070,6 +1065,7 @@ sub removeNodes {
   my $ms_ipaddresses;
   my $result;
   my $first_time=1;
+  my @normal_nodes=();
  
   #find in active nodes
   my $inactive_nodes=[];
@@ -1137,18 +1133,24 @@ sub removeNodes {
         $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "rmrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1"`;
         if ($?) { reportError($result, $callback); }
       } else { #normal nodes
-        #copy the configuration script and run it locally
-        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdcp $node $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1 `;
-        if ($?) {
-          reportError("rmcmon:removeNodes: cannot copy the file configrmcnode to node $node.", $callback);
-          next;
-        }
-
-        $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node NODE=$node MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1`;
-        if ($?) { reportError($result, $callback);  }
+        push(@normal_nodes, $node);
       }
     }
-  }          
+  }   
+
+  #let updatenode command to handle the normal nodes as a bulk
+  if (@normal_nodes>0) {
+    my $nr=join(',',@normal_nodes); 
+    #copy the configuration script and run it locally
+    $result=`XCATBYPASS=Y $::XCATROOT/bin/xdcp $nr $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1 `;
+    if ($?) {
+      reportError("rmcmon:removeNodes: cannot copy the file configrmcnode to nodes $nr:\$result", $callback);
+      next;
+    }
+
+    $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1`;
+    if ($?) { reportError($result, $callback);  }
+  }    
 
   return (0, "ok");
 }

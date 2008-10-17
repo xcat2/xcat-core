@@ -18,6 +18,10 @@ else
   ADD=1
 fi
 
+if [ -z "$NODE" ]; then
+   NODE=`hostname`
+fi
+
 logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONMASTER=$MONMASTER,MS_NODEID=$MS_NODEID"
 
 #check if rsct is installed and running
