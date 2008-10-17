@@ -194,6 +194,9 @@ TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; fo
 
 .Middle {vertical-align : middle;}
 .Center {text-align : center;}
+.Left {text-align : left;}
+.Right {text-align : right;}
+.NoBullet { list-style-type: none; }
 .YellowBackground {background-color : yellow;}
 .SmallText {font-size : small;}
 .XSmallText {font-size : x-small;}
