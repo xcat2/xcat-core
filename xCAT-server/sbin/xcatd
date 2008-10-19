@@ -949,14 +949,26 @@ sub thishostisnot {
       return 1;
   }
   foreach (@ips) {
-    if (/^\s*inet/) {
-      my @ents = split(/\s+/);
-      my $ip=$ents[2];
-      $ip =~ s/\/.*//;
-      if (inet_aton($ip) and inet_aton($ip) eq $comp) {
-        return 0;
-      }
-      #print Dumper(inet_aton($ip));
+	if (xCAT::Utils->isAIX()) {
+        # don't want "inet6" entry - causes error in inet_aton
+        if (/^\s*inet\s+/) {
+            my @ents = split(/\s+/);
+            my $ip=$ents[2];
+            $ip =~ s/\/.*//;
+            if (inet_aton($ip) and inet_aton($ip) eq $comp) {
+                return 0;
+            }
+        }
+    } else {
+        if (/^\s*inet/) {
+            my @ents = split(/\s+/);
+            my $ip=$ents[2];
+            $ip =~ s/\/.*//;
+            if (inet_aton($ip) and inet_aton($ip) eq $comp) {
+                return 0;
+            }
+        }
+		#print Dumper(inet_aton($ip));
     }
   }
   return 1;

@@ -510,18 +510,29 @@ sub thishostisnot {
 # TODO:  AIX will hang on the inet_aton call if it gets passed an IPv6
 #        address, since we have not added INET6 support to AIX yet.
 #        The ifconfig -a output may contain an IPv6 address for localhost.
-#        This code should only get called if using hierarchy, which
-#        is also not supported for AIX yet.
+#        This code should only get called if using hierarchy
 ####
   my $comp=IO::Socket::inet_aton($comparison);
   foreach (@ips) {
-    if (/^\s*inet/) {
-      my @ents = split(/\s+/);
-      my $ip=$ents[2];
-      $ip =~ s/\/.*//;
-      if (IO::Socket::inet_aton($ip) eq $comp) {
-        return 0;
-      }
+	if (xCAT::Utils->isAIX()) {
+        # don't want "inet6" entry - causes error in inet_aton
+        if (/^\s*inet\s+/) {
+            my @ents = split(/\s+/);
+            my $ip=$ents[2];
+            $ip =~ s/\/.*//;
+            if (IO::Socket::inet_aton($ip) eq $comp) {
+                return 0;
+            }
+        }
+    } else {
+        if (/^\s*inet/) {
+            my @ents = split(/\s+/);
+            my $ip=$ents[2];
+            $ip =~ s/\/.*//;
+            if (IO::Socket::inet_aton($ip) eq $comp) {
+                return 0;
+            }
+        }
     }
   }
   return 1;

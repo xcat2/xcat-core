@@ -44,7 +44,7 @@ fi
 #
 # do an update from the trunk directory level
 #
-svn update | tee $BLDTOP/coresvnup
+#svn update | tee $BLDTOP/coresvnup
 #svn update
 
 # create a simple install script
