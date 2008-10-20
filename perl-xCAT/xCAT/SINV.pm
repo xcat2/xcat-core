@@ -18,6 +18,7 @@ the sinv command.
 package xCAT::SINV;
 use strict;
 use xCAT::MsgUtils;
+use xCAT::NodeRange;
 use xCAT::Utils;
 use Fcntl qw(:flock);
 use Getopt::Long;
@@ -73,10 +74,30 @@ sub usage
 #------------------------------------------------------------------------------
 sub parse_and_run_sinv
 {
-    my ($class, $nodes, $args, $callback, $command, $noderange, $sub_req) = @_;
+    my ($class, $request, $callback, $sub_req) = @_;
     my $rsp = {};
     $::CALLBACK = $callback;
-    @ARGV       = @{$args};    # get argument
+    my $args     = $request->{arg};
+    @ARGV       = @{$args};    # get arguments
+    my @noderange;
+    my $noderange = $ARGV[0];
+    if ($noderange =~ /^-/)
+    {                                 # no noderange, it is a flag
+        @noderange = "NO_NODE_RANGE";
+    }
+    else
+    {                                 # get noderange
+        @noderange = noderange($noderange);    # expand noderange
+        my $tmp = shift(@ARGV);    # shift the noderange from the args
+        if (nodesmissed)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "Invalid nodes in noderange:" . join(',', nodesmissed);
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return;
+        }
+    }
     my %options = ();
     $Getopt::Long::ignorecase = 0;    #Checks case in GetOptions
     Getopt::Long::Configure("bundling");
@@ -143,14 +164,14 @@ sub parse_and_run_sinv
     #
     # get the  node list
     #
-    if (!(@$nodes))
+    if (!(@noderange))
     {
         my $rsp = {};
         $rsp->{data}->[0] = "No noderange specified on the command.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
     }
-    my @nodelist = @$nodes;
+    my @nodelist = @noderange;
 
     #
     # Get Command to run
