@@ -26,11 +26,47 @@ logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONMASTER=$MONM
 
 #check if rsct is installed and running
 if [ ! -e /usr/bin/lsrsrc ]; then  
-  echo "RMC setup on node $NODE: RSCT is not is not installed."
   logger xCAT "RMC setup on node $NODE: RSCT is not is not installed."
   exit 1;
+else
+  PID=`/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print $2}'`
+  if [ -z "$PID" ]; then
+    result=`/usr/sbin/rsct/bin/rmcctrl -s 2>&1`;
+    if [ $? -gt 0 ]; then
+      logger xCAT "RMC deamon cannot be started on node $NODE:$result"
+      exit 1;
+    fi
+  fi
 fi
- 
+
+#wait for RMC daemon to fully functional
+RETRY_LIMIT=10          # number of 2 second retry intervals (20 second total)
+let i=$RETRY_LIMIT
+while :
+do
+  lsrsrc > /dev/null 2>&1
+  rc=$?
+  if [[ $rc -eq 0 ]]
+  then
+    break
+  fi
+
+  i=$((i - 1))
+  if (( i > 0 ))
+  then
+      sleep 2
+  else
+      break
+  fi
+done
+if [[ $rc -ne 0 ]]
+then
+  logger xCAT "RMC subsystem has not started"
+  exit 1
+fi
+
+
+
 #check if the resource is defined
 result=`/usr/bin/lsrsrc-api -s IBM.MCP::"NodeID=0x$MS_NODEID"::MNName 2>&1`
 if [ $? -gt 0 ]; then
@@ -93,9 +129,9 @@ if [[ $NODEID != "" ]]; then
 fi
   
 PID=`/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print $2}'`
-if [ !$PID ]; then
+if [ -z "$PID" ]; then
   #restart rmc daemon
-  result=`startsrc -s ctrmc 2>&1`;
+  result=`/usr/sbin/rsct/bin/rmcctrl -s 2>&1`;
   if [ $? -gt 0 ]; then
     echo "RMC deamon cannot be started on node $NODE:$result"
     logger xCAT "RMC deamon cannot be started on node $NODE:$result"
@@ -106,7 +142,7 @@ fi
 
 if [ $ADD -eq 1 ]; then
   #enable remote client connection
-  /usr/bin/rmcctrl -p; /usr/bin/refrsrc IBM.MCP
+  /usr/sbin/rsct/bin/rmcctrl -p; /usr/bin/refrsrc IBM.MCP
 
   #get IP address of MS
   ms_ip=$MONMASTER
