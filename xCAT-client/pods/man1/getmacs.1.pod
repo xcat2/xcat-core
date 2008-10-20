@@ -20,7 +20,7 @@ Note than on AIX systems, the returned MAC address is not colon-seperated (for e
 
 B<-C>          IP address of the partition.
 
-B<-d>          Display MAC only. The default is to write the first adapter MAC to the xCAT database.
+B<-d>          Display MAC only. The default is to write the first valid adapter MAC to the xCAT database.
 
 B<-f>          Force immediate shutdown of the partition.
 
@@ -44,7 +44,7 @@ B<-V>          Verbose output.
 
 =head1 EXAMPLES
 
-1. To retrieve the MAC address for the HMC-managed partition lpar4 and write the first adapter MAC to the xCAT database, enter:
+1. To retrieve the MAC address for the HMC-managed partition lpar4 and write the first valid adapter MAC to the xCAT database, enter:
 
 I<getmacs lpar4>
 

@@ -354,7 +354,7 @@ sub getmacs {
         }
     }
     #####################################
-    # Write first adapter MAC to database 
+    # Write first valid adapter MAC to database
     #####################################
     if ( !exists( $opt->{d} )) {
         writemac( $name, $result );
@@ -390,23 +390,48 @@ sub format_mac {
 
 
 ##########################################################################
-# Writes the first adapter MAC to the database
+# Write first valid adapter MAC to database 
 ##########################################################################
 sub writemac {
 
     my $name  = shift;
     my $data  = shift;
     my $value;
+    my $pingret;
+    my @fields;
 
     #####################################
-    # Find first adapter
+    # Find first valid adapter
     #####################################
     foreach ( @$data ) {
         if ( /^ent\s+/ ) {
             $value = $_;
-            last;
+            #####################################
+            # MAC not found in output
+            #####################################
+            if ( !defined( $value )) {
+                return;
+            }
+            @fields = split /\s+/, $value;
+            $pingret = $fields[4];
+            if ( $pingret eq "successful" ) {
+                last;
+            }
         }
     }
+
+    #####################################
+    # If no valid adapter, find the first one
+    #####################################
+    if ( $pingret ne "successful" ) {
+        foreach ( @$data ) {
+            if ( /^ent\s+/ ) {
+            $value = $_;
+                last;
+            }
+        }
+    }
+
     #####################################
     # MAC not found in output
     #####################################
@@ -417,7 +442,7 @@ sub writemac {
     # Get adapter mac
     #####################################
     $value = format_mac( $value ); 
-    my @fields = split /\s+/, $value;
+    @fields = split /\s+/, $value;
     my $mac    = $fields[2];
 
     #####################################
