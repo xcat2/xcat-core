@@ -123,13 +123,8 @@ sub process_request
     my $request  = shift;
     my $callback = shift;
     my $sub_req = shift;
-    my $nodes    = $request->{node};
-    my $command  = $request->{command}->[0];
-    my $args     = $request->{arg};
-    my $envs     = $request->{env};
-    my $rsp      = {};
 
-    sinv($nodes, $args, $callback, $command, $request->{noderange}->[0],$sub_req);
+    sinv($request, $callback,$sub_req);
 }
 
 #-------------------------------------------------------
@@ -144,14 +139,14 @@ sub process_request
 #-------------------------------------------------------
 sub sinv
 {
-    my ($nodes, $args, $callback, $command, $noderange, $sub_req) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
-    my $rsp = {};
 
     # parse  input  and run dsh
     my @local_results =
-      xCAT::SINV->parse_and_run_sinv($nodes,   $args, $callback,
-                                     $command, $noderange, $sub_req);
+      xCAT::SINV->parse_and_run_sinv($request, $callback,
+                                      $sub_req);
+    my $rsp = {};
     push @{$rsp->{data}}, @local_results;
 
     xCAT::MsgUtils->message("I", $rsp, $callback);
