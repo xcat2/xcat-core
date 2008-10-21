@@ -15,6 +15,7 @@ use xCAT::PPCcli;
 use xCAT::GlobalDef;
 use xCAT::DBobjUtils;
 use xCAT_monitoring::monitorctrl;
+use Thread qw(yield);
 
 ##########################################
 # Globals
@@ -119,18 +120,9 @@ sub process_command {
     if ( !defined( $nodes )) {
         return(1);
     }
-    #######################################
-    # Fork process
-    #######################################
-    my $children = 0;
-    $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
-    my $fds = new IO::Select;
-    my $hw;
-    my $sessions;
 
   #get new node status
   my %nodestat=();
-  my $errornodes={};
   my $check=0;
   my $newstat;
   if ($request->{command} eq 'rpower') {
@@ -177,10 +169,27 @@ sub process_command {
     }
   }
 
-  foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
-    
+
+    #######################################
+    # Fork process
+    #######################################
+    my $children = 0;
+    $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
+    my $fds = new IO::Select;
+    my $hw;
+    my $sessions;
+
+   
     foreach ( @$nodes ) {
         while ( $children > $request->{ppcmaxp} ) {
+            my $errornodes={};
+            child_response( $callback, $fds, $errornodes);
+
+            #update the node status to the nodelist.status table
+            if ($check) {
+	        updateNodeStatus(\%nodestat, $errornodes);
+            }
+
             Time::HiRes::sleep(0.1);
         }
         ###################################
@@ -204,40 +213,58 @@ sub process_command {
     #######################################
     # Process responses from children
     #######################################
-    while ( $children > 0 ) {
+    while ( $fds->count > 0 or $children > 0 ) {
+        my $errornodes={};
         child_response( $callback, $fds, $errornodes);
+
+        #update the node status to the nodelist.status table
+        if ($check) {
+	  updateNodeStatus(\%nodestat, $errornodes);
+        }
+
         Time::HiRes::sleep(0.1);
     }
+    
+    #drain one more time
+    my $rc=1;
+    while ( $rc>0 ) {
+      my $errornodes={};
+      $rc=child_response( $callback, $fds, $errornodes);
+      #update the node status to the nodelist.status table
+      if ($check) {
+        updateNodeStatus(\%nodestat, $errornodes);
+      }
+    }
+
     if ( exists( $request->{verbose} )) {
         my $elapsed = Time::HiRes::gettimeofday() - $start;
         my $msg     = sprintf( "Total Elapsed Time: %.3f sec\n", $elapsed );
         trace( $request, $msg );
     }
 
-  #update the node status to the nodelist.status table
-  if ($check) {
-    my %node_status=();
-    foreach (keys(%$errornodes)) { $nodestat{$_}="error"; } 
-
-    foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
-
-    foreach my $node (keys %nodestat) {
-      my $stat=$nodestat{$node};
-      if ($stat eq "error") { next; }
-      if (exists($node_status{$stat})) {
-        my $pa=$node_status{$stat};
-        push(@$pa, $node);
-      }
-      else {
-        $node_status{$stat}=[$node];
-      }
-    }
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
-  }
-
     return(0);
 }
 
+##########################################################################
+# updateNodeStatus
+##########################################################################
+sub updateNodeStatus {
+  my $nodestat=shift;
+  my $errornodes=shift;
+  my %node_status=();
+  foreach my $node (keys(%$errornodes)) {
+    if ($errornodes->{$node} == -1) { next;} #has error, not updating status
+    my $stat=$nodestat->{$node};
+    if (exists($node_status{$stat})) {
+      my $pa=$node_status{$stat};
+      push(@$pa, $node);
+    }
+    else {
+      $node_status{$stat}=[$node];
+    }
+  }
+  xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+}
 
 ##########################################################################
 # Verbose mode (-V)
@@ -264,6 +291,7 @@ sub child_response {
     my $fds = shift;
     my $errornodes=shift;
     my @ready_fds = $fds->can_read(1);
+    my $rc = @ready_fds;
 
     foreach my $rfh (@ready_fds) {
         my $data = <$rfh>;
@@ -279,8 +307,10 @@ sub child_response {
             foreach ( @$responses ) {
                 #save the nodes that has errors for node status monitoring
                 if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  { 
+                   if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; } 
+	       } else {
                    if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
-                }
+               }
                 $callback->( $_ );
             }
             next;
@@ -291,6 +321,8 @@ sub child_response {
         $fds->remove($rfh);
         close($rfh);
     }
+    yield; #Try to avoid useless iterations as much as possible
+    return $rc;
 } 
 
 
