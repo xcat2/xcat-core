@@ -542,7 +542,6 @@ sub process_request {
 
   #get new node status
   my %nodestat=();
-  my $errornodes={};
   my $check=0;
   my $newstat;
   if ($command eq 'rpower') {
@@ -574,7 +573,14 @@ sub process_request {
 
 
   foreach $hyp (sort (keys %hyphash)) {
-    while ($children > $vmmaxp) { forward_data($callback,$sub_fds,$errornodes); }
+    while ($children > $vmmaxp) { 
+      my $errornodes={};
+      forward_data($callback,$sub_fds,$errornodes);
+      #update the node status to the nodelist.status table
+      if ($check) {
+        updateNodeStatus(\%nodestat, $errornodes);
+      }
+    }
     $children++;
     my $cfd;
     my $pfd;
@@ -593,32 +599,45 @@ sub process_request {
     $sub_fds->add($cfd);
   }
   while ($sub_fds->count > 0 or $children > 0) {
+    my $errornodes={};
     forward_data($callback,$sub_fds,$errornodes);
-  }
-  while (forward_data($callback,$sub_fds,$errornodes)) {}
-
-  #update the node status to the nodelist.status table
-  if ($check) {
-    my %node_status=();
-    foreach (keys(%$errornodes)) { $nodestat{$_}="no-op"; } 
-
-    #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
-
-    foreach my $node (keys %nodestat) {
-      my $stat=$nodestat{$node};
-      if ($stat eq "no-op") { next; }
-      if (exists($node_status{$stat})) {
-        my $pa=$node_status{$stat};
-        push(@$pa, $node);
-      }
-      else {
-        $node_status{$stat}=[$node];
-      }
+    #update the node status to the nodelist.status table
+    if ($check) {
+      updateNodeStatus(\%nodestat, $errornodes);
     }
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
   }
 
+  #Make sure they get drained, this probably is overkill but shouldn't hurt
+  my $rc=1;
+  while ( $rc>0 ) {
+    my $errornodes={};
+    $rc=forward_data($callback,$sub_fds,$errornodes);
+    #update the node status to the nodelist.status table
+    if ($check) {
+      updateNodeStatus(\%nodestat, $errornodes);
+    }
+  }   
 }
+
+sub updateNodeStatus {
+  my $nodestat=shift;
+  my $errornodes=shift;
+  my %node_status=();
+  foreach my $node (keys(%$errornodes)) {
+    if ($errornodes->{$node} == -1) { next;} #has error, not updating status
+    my $stat=$nodestat->{$node};
+    if (exists($node_status{$stat})) {
+      my $pa=$node_status{$stat};
+      push(@$pa, $node);
+    }
+    else {
+      $node_status{$stat}=[$node];
+    }
+  }
+  xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+}
+
+
 
 sub forward_data {
   my $callback = shift;
@@ -650,8 +669,10 @@ sub forward_data {
         }  
 	#print "data:". $_->{node}->[0]->{data}->[0]->{contents}->[0] . "\n";
         if ($no_op) {
+          if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; } 
+      } else {
           if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
-        }
+      }
         $callback->($_);
       }
     } else {
