@@ -1,0 +1,140 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#Note, this ppping still frontends fping.  I think it would be possible to write a perl equivalent, but
+#I've not had the time.  Net::Ping shows perl code I could see being adapted for a somewhat
+#asynchronous ICMP ping (the tcp syn is interesting, but far too limited, and that is currently the only async 
+#method Net::Ping provides.
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';  
+}
+use lib "$::XCATROOT/lib/perl";
+
+use IO::Socket::SSL;
+use XML::Simple;
+if ($^O =~ /^linux/i) {
+  $XML::Simple::PREFERRED_PARSER='XML::Parser';
+}
+use Data::Dumper;
+use IO::Handle;
+use IO::Select;
+use xCAT::Utils;
+use Getopt::Long;
+my $interface;
+
+my $USAGE="Usage: ppping [-i|--interface interface] [-s|--serial] noderange
+       ppping -h|--help
+       pping  -v|--version\n"; 
+
+# parse the options
+if(!GetOptions(
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION,
+      's|serial'  => \$::SERIAL,
+      'interface=s' => \$interface))
+{
+  print "$USAGE";
+  exit 1;
+}
+
+if ($::HELP) {  print "$USAGE"; exit 0}
+if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
+
+my $xcathost='localhost:3001';
+if ($ENV{XCATHOST}) {
+  $xcathost=$ENV{XCATHOST};
+}
+
+unless (@ARGV) {
+   print "$USAGE";
+   exit 1;
+}
+my $noderange = $ARGV[0];
+my $client = IO::Socket::SSL->new(
+                PeerAddr=>$xcathost,
+                SSL_key_file=>$ENV{HOME}."/.xcat/client-cred.pem",
+                SSL_cert_file=>$ENV{HOME}."/.xcat/client-cred.pem",
+                SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
+                SSL_use_cert => 1,
+                #SSL_verify_mode => 1,
+             );
+die "Connection failure: $!\n" unless ($client);
+my %cmdref = (command => 'noderange', noderange => $noderange);
+$SIG{ALRM} = sub { die "No response getting noderange" };
+alarm(15);
+print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+alarm(15);
+my $response="";
+my @nodes=();
+while (<$client>) {
+  alarm(0);
+  $response .= $_;
+  if ($response =~ m/<\/xcatresponse>/) {
+    $rsp=XMLin($response, ForceArray => ['node']);
+    $response='';
+    if ($rsp->{warning}) {
+      printf "Warning: ".$rsp->{warning}."\n";
+    }
+    if ($rsp->{error}) {
+      die ("ERROR: ".$rsp->{error}."\n");
+    } elsif ($rsp->{node}) {
+      @nodes=@{$rsp->{node}};
+    }
+    if ($rsp->{serverdone}) {
+      last;
+    }
+  }
+}
+close($client);
+my $children = 0;
+my $inputs = new IO::Select;
+$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
+
+unless (scalar(@nodes)) {
+  exit;
+}
+
+my @reachable_nodes=();
+my @unreachable_nodes=();
+open (PPING, "$::XCATROOT/bin/pping ".join(',',@nodes). " 2> /dev/null|") or die("Cannot open pping-internal pipe: $!");
+while (<PPING>) {
+  if ($_ =~ / ping/) {
+      my @a_tmp=split(':', $_);
+      push(@reachable_nodes, $a_tmp[0]);
+  } 
+  else {
+    my @a_tmp=split(':', $_);
+    push(@unreachable_nodes, $a_tmp[0]);
+  }
+}
+close(PPING);
+
+foreach(@unreachable_nodes) {
+  print "$_: noping\n";
+}
+
+my $i_string="";
+if ($interface) { $i_string="-i $interface"; }
+
+if (@reachable_nodes > 0) {
+  my $allnodes=join(',', @nodes);
+  if ($::SERIAL) {
+    foreach(@reachable_nodes) {
+      my $result=`$::XCATROOT/bin/xdsh $_ -B -e $::XCATROOT/sbin/pping2 "$i_string -q $allnodes" 2>&1`;
+      print "$result";
+    }
+  } else {
+    my $node_string=join(',', @reachable_nodes);
+    open (PPING2, "$::XCATROOT/bin/xdsh $node_string -B -s -e $::XCATROOT/sbin/pping2 \"$i_string -q $allnodes\" 2> /dev/null|") or die("Cannot open pping-internal pipe: $!");
+    while (<PPING2>) {
+      print "$_";
+    }
+    close(PPING2); 
+  }
+  
+}
+
+exit 0;
+
+
+

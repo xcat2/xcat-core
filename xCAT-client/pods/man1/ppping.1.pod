@@ -15,10 +15,10 @@ B<pping> {B<-v>|B<--version>}
 =head1 DESCRIPTION
 
 B<ppping> is a utility used to test ping between nodes in the noderange.
-B<ppping> will return an unsorted list of nodes with a ping or noping status.  The list is actually sorted by first ping, unless -s is specified.
+B<ppping> will return an unsorted list of nodes with a noping status.  
 B<ppping> front-ends ping and fping if available.
 
-This command does not support the xcatd client/server communication.  It must be run on the management node.
+This command does not support the xcatd client/server communication.  It must be run on the management node. 
 
 
 =head1 OPTIONS

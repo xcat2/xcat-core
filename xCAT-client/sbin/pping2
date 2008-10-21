@@ -1,0 +1,70 @@
+#!/bin/ksh
+#egan@us.ibm.com
+#(C)IBM Corp
+#
+
+SERIAL=""
+ETH=""
+Q=0
+while [ -n "$1" ]
+do
+    case "$1" in
+          -q)
+	      Q=1
+	      shift
+	      ;;
+	  -s)
+	      SERIAL="on"
+	      shift
+	      ;;
+	  -i)
+	      shift
+	      ETH=$1
+	      shift
+	      ;;
+	   *)
+	      LEFT="$LEFT $1"
+	      shift
+	      ;;
+	esac
+done
+
+if [ -n "$LEFT" ]
+then
+   set $LEFT
+fi
+
+nodes=`echo $1 |sed "s/,/ /g"`
+if [ -n "$ETH" ];  then 
+    nodes=`echo $nodes |sed "s/ /-$ETH /g"` 
+    nodes="$nodes-$ETH"
+fi
+
+which fping >/dev/null 2>&1
+if [ "$?" = "0" ]; then
+    if [ "$Q" = "1" ]; then
+       fping $nodes 2>&1 | grep -v 'is alive' | sed "s/ is unreachable/: noping/"
+    else
+       fping $nodes 2>&1 | sed "s/ is alive/: ping/" | sed "s/ is unreachable/: noping/"
+    fi
+else
+    JOBS=""
+    for i in $nodes
+    do
+       (if ping -c1 $i >/dev/null 2>&1
+	then
+	    if [ "$Q" = "0" ]; then
+		echo "$i: ping"
+	    fi
+	else
+	    echo "$i: noping"
+	fi) &
+        if [ -z "$SERIAL" ]; then
+	    JOBS="$JOBS $!"
+	else
+	    wait $!
+	fi
+    done
+    wait
+fi
+exit 0
