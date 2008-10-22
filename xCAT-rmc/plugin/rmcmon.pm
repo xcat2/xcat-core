@@ -941,12 +941,19 @@ sub addNodes {
     my $hmc_ssh_enabled=0;
     #get mn info
     if ($first_time) {
-      ($ms_node_id, $ms_ipaddresses)=getNodeInfo($ms_host_name, 0);
       $first_time=0;
+      $ms_node_id=getLocalNodeID();
       if ($ms_node_id == -1) {
-        reportError($ms_ipaddresses, $callback);
-        return (1, $ms_ipaddresses); 
+        reportError("Cannot get nodeid for $ms_host_name", $callback);
+        return (1, "Cannot get nodeid for $ms_host_name"); 
       }
+     
+      $result= xCAT::Utils::toIP( $master );
+      if ( @$result[0] != 0 ) {
+        reportError("Cannot resolve $master", $callback);
+        return (1, "Cannot resolve $master"); 
+      }
+      $ms_ipaddresses="{" . @$result[1] . "}";
     }
 
     if (!$rmcHash{$node}) {
