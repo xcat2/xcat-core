@@ -137,10 +137,10 @@ sub process_request {
 
     # figure out which cmd and call the subroutine to process
     if ( $::command eq "rollupdate" ) {
-        $ret = &rollupdate;
+        $ret = &rollupdate($::request);
     }
     elsif ( $::command eq "rebootnodes" ) {
-        $ret = &rebootnodes;
+        $ret = &rebootnodes($::request);
     }
 
     return $ret;
@@ -653,6 +653,7 @@ sub ll_jobs {
     }
 
     if ( scalar(@calldirectly) > 0 ) {
+		my @children;
         foreach my $ugname (@calldirectly) {
             my $nodelist = join( ',', @{ $updategroup->{$ugname} } );
             my $rsp;
@@ -670,16 +671,18 @@ sub ll_jobs {
                                           "ROLLUPDATE-update_job_submitted"
                                      }
             );
-            xCAT::Utils->runxcmd(
-                                  {
-                                     command          => ['rebootnodes'],
-                                     _xcat_clienthost => [ $nodes[0] ],
-                                     arg => [ "loadleveler", $nodelist ]
-                                  },
-                                  $::SUBREQ,
-                                  0
-            );
+			my $childpid = rebootnodes( { command => ['rebootnodes'],
+                           _xcat_clienthost => [ $nodes[0] ],
+                           arg 				=> [ "loadleveler", $nodelist ]
+                          });
+			if (defined($childpid) && ($childpid != 0)) {
+				push (@children, $childpid);
+			}
         }
+		# wait until all the children are finished before returning
+		foreach my $child (@children) {
+			waitpid($child,0);  
+		}	
     }
 
     return $rc;
@@ -705,29 +708,48 @@ sub ll_jobs {
 			Note that since this command only gets called from the daemon
 			through a port request from a node, there is no active callback
 			to return messages to.  Log only critical errors to the system log.
+
+			This subroutine will fork a child process to do the actual
+			work of shutting down and rebooting nodes.  The parent will return
+			immediately to the caller so that other reboot requests can be
+			handled in parallel.  It is the caller's responsibility to ensure
+			the parent process does not go away and take these children down
+			with it.  (Not a problem when called from xcatd, since that is
+			"long-running".)
 =cut
 
 #-----------------------------------------------------------------------------
 
 sub rebootnodes {
-    my $nodes     = $::request->{node};
-    my $command   = $::request->{command}->[0];
-    my $scheduler = $::request->{arg}->[0];
-    my $hostlist  = $::request->{arg}->[1];
+	my $reboot_request = shift;
+    my $nodes     = $reboot_request->{node};
+    my $command   = $reboot_request->{command}->[0];
+    my $scheduler = $reboot_request->{arg}->[0];
+    my $hostlist  = $reboot_request->{arg}->[1];
     my $rc;
 
     my $client;
-    if ( defined( $::request->{'_xcat_clienthost'} ) ) {
-        $client = $::request->{'_xcat_clienthost'}->[0];
+    if ( defined( $reboot_request->{'_xcat_clienthost'} ) ) {
+        $client = $reboot_request->{'_xcat_clienthost'}->[0];
     }
     if ( defined($client) ) { ($client) = xCAT::NodeRange::noderange($client) }
     unless ( defined($client) ) {  #Not able to do identify the host in question
         return;
     }
 
-    my @nodes = split( /\,/, $hostlist );
+	my $childpid = xCAT::Utils->xfork();
+    unless (defined $childpid)  { die "Fork failed" };
+    if ($childpid != 0) {
+		# This is the parent process, just return and let the child do all
+		# the work.
+		return $childpid;
+	}
+
+	# This is now the child process
+
 
     # make sure nodes are in correct state
+    my @nodes = split( /\,/, $hostlist );
     my $nltab = xCAT::Table->new('nodelist');
     foreach my $node (@nodes) {
         my ($ent) = $nltab->getAttribs( { node => $node }, "appstatus" );
@@ -739,7 +761,7 @@ sub rebootnodes {
                 "S",
 "ROLLUPDATE failure: Node $node appstatus not in valid state for rolling update "
             );
-            return 1;
+            exit(1);
         }
     }
 
@@ -861,7 +883,7 @@ sub rebootnodes {
         xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
     }
 
-    return;
+    exit(0);
 }
 
 1;
