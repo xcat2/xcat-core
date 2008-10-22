@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# Sample job command template file used to generate cluster rolling update
+# jobs that will be submitted to LoadLeveler.
+# xCAT will substitute the following when creating the LL job command files:
+#  [[NODESET]]   - nodeset name
+#  [[XNODELIST]] - comma-delimited list of xcat node names 
+#  [[XCATSERVER]] - xcat server name
+#  [[XCATPORT]]] - xcatd port on server
+#  [[LLMACHINES]] - the LL machine list.  Quoted, space delimited list of LL
+#                   machine names that were available at the time the xCAT 
+#                   rollupdate command was run
+#  [[LLCOUNT]] - number of machines in LLMACHINES list
+#
+# @ job_name = rollupdate_[[NODESET]]
+# @ job_type = parallel
+# @ node_usage = not_shared
+# @ restart = no
+# @ error   = /home/lluser/rollupdate_jobs/rollupdate_[[NODESET]].$(Host).$(Cluster).$(Process).err
+# @ output  = /home/lluser/rollupdate_jobs/rollupdate_[[NODESET]].$(Host).$(Cluster).$(Process).out
+# @ executable = /opt/xcat/share/xcat/rollupdate/send_reboot_request
+# @ arguments = 1 loadleveler [[XCATSERVER]] [[XCATPORT]] [[XNODELIST]] 
+# @ node = [[LLCOUNT]]
+# @ tasks_per_node = 1
+# @ requirements = (Machine == {[[LLMACHINES]]}) 
+# @ queue
+

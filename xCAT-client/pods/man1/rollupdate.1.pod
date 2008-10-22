@@ -1,0 +1,83 @@
+=head1 NAME
+
+B<rollupdate> - performs cluster rolling update
+
+
+=head1 SYNOPSIS
+
+B<cat> I<stanza-file> B<|> B<rollupdate> [B<-V> | B<--verbose>] 
+
+B<rollupdate> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
+
+
+=head1 DESCRIPTION
+
+The B<rollupdate> command creates and submits scheduler jobs that will notify xCAT to shutdown a group of nodes, run optional out-of-band commands from the xCAT management node, and reboot the nodes.  Currently, only LoadLeveler is supported as a job scheduler with B<rollupdate>.
+
+Input to the B<rollupdate> command is passed in as stanza data through STDIN.  Information such as the sets of nodes that will be updated, the name of the job scheduler, a template for generating job command files, and other control data are required.  See 
+/opt/xcat/share/xcat/rollupdate/rollupdate.input.sample 
+for stanza keywords, usage, and examples.
+
+The B<rollupdate> command will use the input data to determine each set of nodes that will be managed together as an update group.  For each update group, a job scheduler command file is created and submitted.  When the group of nodes becomes available and the scheduler runs the job, the job will send a message to the xCAT daemon on the management node to begin the update process for all the nodes in the update group.  The nodes will be stopped by the job scheduler (for LoadLeveler, the nodes are drained), an operating system shutdown command will be sent to each node, out-of-band operations can be run on the management node, and the nodes are powered back on.
+
+The B<rollupdate> command assumes that, if the update is to include rebooting stateless nodes to a new operating system image, the image has been created and tested, and that all relevant xCAT commands have been run for the nodes such that the new image will be loaded when xCAT reboots the nodes.
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-v|--version>
+
+Command Version.
+
+=item B<-V|--verbose>
+
+Display additional progress and error messages.
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
+
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To run a cluster rolling update based on the information provided in the file 
+/u/admin/rolling_updates/update_all.stanza
+enter:
+
+  cat /admin/rolling_updates/update_all.stanza | rollupdate
+
+=back
+
+
+=head1 FILES
+
+/opt/xcat/bin/rollupdate
+
+
+=head1 SEE ALSO
+
+L<rollupdate.input(5)|rollupdate.input.5>
+
