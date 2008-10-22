@@ -9,7 +9,7 @@ use xCAT::Utils;
 =head1  xCAT::Usage
 =head2    Package Description
   xCAT usage module. Some commands such as rpower have different implementations 
-  for different hardware. This module holds the usage usage string for these kind
+  for different hardware. This module holds the usage string for these kind
   of commands so that the usage can be referenced from different modules.
 =cut
 #-------------------------------------------------------------------------------
@@ -187,8 +187,7 @@ sub parseCommand {
 
   #print "command=$command, args=@exargs, ARGV=@ARGV\n";
 
-  $Getopt::Long::ignorecase=0;
-  $Getopt::Long::pass_through=1;
+  Getopt::Long::Configure('pass_through','no_ignore_case');
 
   # parse the options
   if(!GetOptions(

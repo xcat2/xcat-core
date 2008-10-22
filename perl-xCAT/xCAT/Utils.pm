@@ -797,9 +797,11 @@ sub runcmd
    Arguments:
 	   command - string with following format:
 			<xCAT cmd name> <comma-delimited nodelist> <cmd args>
-			where the xCAT cmd name is as reqistered in the plugins
+			where the xCAT cmd name is as reqistered in the plugins,
 				  the nodelist is already flattened and verified
-				  the remainder of the string is passed as args
+				  the remainder of the string is passed as args.
+				  The nodelist may be set to the string "NO_NODE_RANGE" to
+				  not pass in any nodes to the command.
 	OR
 	   command - request hash
 
@@ -834,6 +836,11 @@ sub runcmd
 		   If refoutput is true, then the output will be returned as a
 		   reference to an array for efficiency.
 
+		   Do not use the scalar string input for xdsh unless you are running
+		   a simple single-word command.  When building your request hash,
+		   the entire command string xdsh runs needs to be a single entry
+		   in the arg array.
+
 
 =cut
 
@@ -853,13 +860,20 @@ sub runxcmd
 	my $req;
 	if (ref($cmd) eq "HASH") {
 		$req = $cmd;
-	} else { # assume scalar
-		my ($cmdname,$nodelist,$cmdargs) = split(" ",$cmd);
-		my @nodes = split(",",$nodelist);
-		chomp $cmdargs;
-		$req={command=>[$cmdname],
-				  node=>\@nodes,
-				  arg=>[$cmdargs]};
+	} else { # assume scalar, build request hash the way we do in xcatclient
+		my @cmdargs=split(/\s+/,$cmd);
+		my $cmdname = shift(@cmdargs);
+  		$req->{command}=[$cmdname];
+		my $arg=shift(@cmdargs);
+		while ($arg =~ /^-/) {
+  			push (@{$req->{arg}}, $arg);
+  			$arg=shift(@cmdargs);
+		}
+		if ($arg ne "NO_NODE_RANGE") {
+			my @nodes = split(",",$arg);
+  			$req->{node}=\@nodes;
+		}
+		push (@{$req->{arg}}, @cmdargs);
 	}
 	$subreq->($req,\&runxcmd_output);
 	$::CALLBACK = $save_CALLBACK;  # in case the subreq call changed it
@@ -889,16 +903,20 @@ sub runxcmd
             my $rsp={};
             my $errmsg = join('', @$outref);
             chomp $errmsg;
+			my $displaycmd=$cmd;
+			if (ref($cmd) eq "HASH") {
+				$displaycmd=$cmd->{command}->[0];
+			}
             if ($::CALLBACK)
             {
                 $rsp->{data}->[0] =
-                  "Command failed: $cmd. Error message: $errmsg.\n";
+                  "Command failed: $displaycmd. Error message: $errmsg.\n";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             }
             else
             {
                 xCAT::MsgUtils->message("E",
-                             "Command failed: $cmd. Error message: $errmsg.\n");
+                             "Command failed: $displaycmd. Error message: $errmsg.\n");
             }
             $xCAT::Utils::errno = 29;
         }
