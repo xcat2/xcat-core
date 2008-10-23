@@ -1,0 +1,14 @@
+
+.FormTable { color: black; background-color : #CCCCCC; }
+
+#inner_table {
+ margin-left: 5px;
+ margin-right: 10px;
+}
+
+#cmdDialog {
+ margin: 0px 10px 20px 10px;	/* for some reason the containing dialog cuts off the right 30px */
+ padding: 0px;
+ font-family: Sans-Serif;
+ font-size: 7pt;
+}

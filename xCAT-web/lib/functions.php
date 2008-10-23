@@ -26,19 +26,24 @@ function insertHeader($title, $stylesheets, $javascripts, $currents) {
 global $TOPDIR;
 
 // Remember the current page so we can open it again the next time they come to the web interface
-$expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
-foreach ($currents as $key => $value) { setcookie("currentpage[$key]", $value, $expire_time, '/'); }
+if ($currents[0] != 'logout') {
+	$expire_time = gmmktime(0, 0, 0, 1, 1, 2038);
+	foreach ($currents as $key => $value) { setcookie("currentpage[$key]", $value, $expire_time, '/'); }
+	}
 
-echo <<<EOS
+echo <<<EOS1
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 Strict//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <title>$title</title>
 <meta http-equiv="Content-Type" content="application/xhtml+xml;  charset=iso-8859-1">
-<link href="$TOPDIR/lib/style.css" rel="stylesheet">
+<link href="$TOPDIR/lib/style.css" rel=stylesheet type='text/css'>
+<link href="$TOPDIR/jq/theme/jquery-ui-theme.css" rel=stylesheet type='text/css'>
+<script src="$TOPDIR/jq/jquery.min.js" type="text/javascript"></script>
+<script src="$TOPDIR/jq/jquery-ui-all.min.js" type="text/javascript"></script>
 <script src="$TOPDIR/lib/functions.js" type="text/javascript"></script>
 
-EOS;
+EOS1;
 
 
 if ($stylesheets) {
@@ -52,21 +57,50 @@ if ($javascripts) {
 		}
 	}
 echo "</head><body>\n";
-echo <<<EOS
+echo <<<EOS3
 <table id=headingTable border=0 cellspacing=0 cellpadding=0>
 <tr valign=top>
     <td><img class=ImgTop src='$TOPDIR/images/topl2.jpg'></td>
     <td class=TopMiddle><img id=xcatImage src='$TOPDIR/images/xCAT_icon-l.gif'></td>
     <td class=TopMiddle width='100%'>
 
-EOS;
+EOS3;
 //echo "<div id=top><img id=xcatImage src='$TOPDIR/images/xCAT_icon.gif'><div id=menuDiv>\n";
 
 insertMenus($currents);
 
 echo "</td><td><img class=ImgTop src='$TOPDIR/images/topr2.jpg'></td></tr></table>\n";
 //echo "</div></div>\n";     // end the top div
+
+if (!isAuthenticated()) {
+	insertLogin();		// display the login dialog and page footer
+	exit;		// Do not want to continue with the rest of the page
+	// If the login dialog is successful, it will load index.php which will remember what
+	// page they were trying to go to.
+}
 }  // end insertHeader
+
+
+//-----------------------------------------------------------------------------
+// If they are not authenticated yet, display the login dialog
+function insertLogin() {
+global $TOPDIR;
+// The javascript in xcatauth.js will add the Login button and display the dialog
+echo <<<EOS2
+<script src="$TOPDIR/lib/xcatauth.js" type="text/javascript"></script>
+<div id=logdialog>
+<p id=logdialogNote>Note: The username and password used must be in the passwd table in the xCAT database.</p>
+<form id=loginform><table cellspacing=3>
+<tr><td align=right><label for=username>Username:</label></td><td align=left><input id=username type=text name=username></td></tr>
+<tr><td align=right><label for=password>Password:</label></td><td align=left><input id=password type=password name=password></td></tr>
+</table></form>
+<p><span id=logstatus><br/></span></p>
+</div>
+
+EOS2;
+
+insertFooter();
+}
 
 
 // This is the data structure that represents the menu for each page.
@@ -133,6 +167,13 @@ $MENU = array(
 			'wiki' => array('label' => 'Wiki', 'url' => getDocURL('web','wiki')),
 			'suggest' => array('label' => 'Suggest', 'url' => "$TOPDIR/support/suggest.php"),
 			'about' => array('label' => 'About', 'url' => "$TOPDIR/support/about.php"),
+			)
+		),
+	'logout' => array(
+		'label' => 'Logout',
+		'default' => 'logout',
+		'list' => array(
+			'logout' => array('label' => 'Logout/Login', 'url' => "$TOPDIR/lib/logout.php"),
 			)
 		),
 	);
@@ -208,10 +249,18 @@ echo '<div class=PageFooter><p id=disclaimer>This interface is still under const
 // args is an array of arguments to the cmd
 // Returns a tree of SimpleXML objects.  See perl-xCAT/xCAT/Client.pm for the format.
 function docmd($cmd, $nr, $args){
+	// If for some reason we are not logged in yet, do not even try to communicate w/xcatd
+	if (!is_logged()) {
+		echo "<p>Docmd: not logged in yet - can not run command.</p>\n";
+		return simplexml_load_string('<xcat></xcat>','SimpleXMLElement', LIBXML_NOCDATA);
+    }
 	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
 	$request->addChild('command',$cmd);
 	if(!empty($nr)) { $request->addChild('noderange',$nr); }
 	if (!empty($args)) { foreach ($args as $a) { $request->addChild('arg',$a); } }
+    $usernode=$request->addChild('becomeuser');
+    $usernode->addChild('username',$_SESSION["username"]);
+    $usernode->addChild('password',getpassword());
 	#echo $request->asXML();
 	$xml = submit_request($request,0);
 	return $xml;
@@ -224,8 +273,8 @@ function docmd($cmd, $nr, $args){
 // Returns a tree of SimpleXML objects.  See perl-xCAT/xCAT/Client.pm for the format.
 function submit_request($req, $skipVerify){
 	#global $cert,$port,$xcathost;
-	$apachehome = '/var/www';		#todo:  for sles this should be /var/lib/wwwrun
-	$cert = "$apachehome/.xcat/client-cred.pem";
+	//$apachehome = '/var/www';		# for sles this should be /var/lib/wwwrun
+	//$cert = "$apachehome/.xcat/client-cred.pem";
 	$xcathost = "localhost";
 	$port = "3001";
 	$rsp = 0;
@@ -233,21 +282,28 @@ function submit_request($req, $skipVerify){
 	$cleanexit=0;
 
 	// Open a socket to xcatd
-	$context = stream_context_create(array('ssl'=>array('local_cert' => $cert)));
-	if($fp = stream_socket_client('ssl://'.$xcathost.':'.$port,$errno,$errstr,30,
-                STREAM_CLIENT_CONNECT,$context)){
+	$context = stream_context_create();		// do not need certificate anymore:  array('ssl'=>array('local_cert' => $cert))
+	if($fp = stream_socket_client('ssl://'.$xcathost.':'.$port,$errno,$errstr,30,STREAM_CLIENT_CONNECT,$context)){
 		fwrite($fp,$req->asXML());		// send the xml to xcatd
 		while(!feof($fp)){				// and then read until there is no more
-			$response .= preg_replace('/\n/','', stream_get_contents($fp));		// remove newlines and add it to the response
+			$response .= preg_replace('/\n/','', fgets($fp));		// remove newlines and add it to the response
 
 			// Look for the serverdone response
-			$pattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>\s*$/';
-			if(preg_match($pattern,$response)) {		// transaction is done, pkg up the xml and return it
-				#echo htmlentities($response);
-				$response = '<xcat>' . preg_replace($pattern,'', $response) . '</xcat>';		// remove the serverdone response and put an xcat tag around the rest
+			$fullpattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>/';
+			$mixedpattern = '/<serverdone>\s*<\/serverdone>.*<\/xcatresponse>/';
+			//$shortpattern = '/<serverdone>\s*<\/serverdone>/';
+			if(preg_match($mixedpattern,$response)) {		// transaction is done, pkg up the xml and return it
+				//echo "<p>", htmlentities($response), "</p>\n";
+				// remove the serverdone response and put an xcat tag around the rest
+				$count = 0;
+				$response = preg_replace($fullpattern,'', $response, -1, $count);		// 1st try to remove the long pattern
+				if (!$count) { $response = preg_replace($mixedpattern,'', $response) . '</xcatresponse>/'; }		// if its not there, then remove the short pattern
+				$response = "<xcat>$response</xcat>";
+				//echo "<p>", htmlentities($response), "</p>\n";
 				$rsp = simplexml_load_string($response,'SimpleXMLElement', LIBXML_NOCDATA);
 				//echo '<p>'; print_r($rsp); echo "</p>\n";
 				$cleanexit = 1;
+				break;
 			}
 		}
 		fclose($fp);
@@ -256,7 +312,7 @@ function submit_request($req, $skipVerify){
 	}
 	if(! $cleanexit){
 		if(!$skipVerify){
-			echo "<p>Error: xCAT response ended prematurely.</p>";
+			echo "<p>Error: xCAT response ended prematurely: ", htmlentities($response), "</p>";
 			$rsp = 0;
 		}
 	}
@@ -344,17 +400,22 @@ function runcmd ($cmd, $mode, &$output, $options=NULL){
 //-----------------------------------------------------------------------------
 // Send the keys and values in the primary global arrays
 function dumpGlobals() {
-	trace('$_SERVER:');
-	foreach ($_SERVER as $key => $val) { trace("$key = $val"); }
-	trace('<br>$_ENV:');
-	foreach ($_ENV as $key => $val) { trace("$key = $val"); }
-	trace('<br>$_REQUEST:');
-	foreach ($_REQUEST as $key => $val) { trace("$key = $val"); }
+	//trace('<b>$_SERVER:</b>');
+	//foreach ($_SERVER as $key => $val) { trace("$key=$val."); }
+	//trace('<b>$_ENV:</b>');
+	//foreach ($_ENV as $key => $val) { trace("$key=$val."); }
+	trace('<b>$_GET:</b>');
+	foreach ($_GET as $key => $val) { trace("$key=$val."); }
+	trace('<b>$_POST:</b>');
+	foreach ($_POST as $key => $val) { trace("$key=$val."); }
+	trace('<b>$_COOKIE:</b>');
+	foreach ($_COOKIE as $key => $val) { trace("$key=$val."); }
 	if (isset($_SESSION)) {
-
-		trace('<br>$_SESSION:');
-		foreach ($_SESSION as $key => $val) { trace("$key = $val"); }
+		trace('<b>$_SESSION:</b>');
+		foreach ($_SESSION as $key => $val) { trace("$key=$val."); }
 	}
+	trace('<b>$GLOBALS:</b>');
+	foreach ($GLOBALS as $key => $val) { trace("$key=$val."); }
 }
 
 
@@ -792,18 +853,19 @@ function insertTabs ($tablist, $currentTabIndex) {
 //-----------------------------------------------------------------------------
 // Create the Action buttons in a table.  Each argument passed in is a button, which is an array of attribute strings.
 // If your onclick attribute contains javascript code that uses quotes, use double quotes instead of single quotes.
-// Note:  if only 1 button is passed in, the button is not put in a table.
 function insertButtons () {
 	$num = func_num_args();
-	if ($num > 1) echo "<TABLE cellpadding=0 cellspacing=2><TR>";
+	/* if ($num > 1) */ echo "<TABLE cellpadding=0 cellspacing=2><TR>";
 	foreach (func_get_args() as $button) {
 		//echo "<td><INPUT type=submit class=but $button ></td>";
 		$otherattrs = @$button['otherattrs'];
-		if ($num > 1) echo "<td>";
-		echo "<a class=button href='' onclick='{$button['onclick']};return false' $otherattrs><span>{$button['label']}</span></a>";
-		if ($num > 1) echo "</td>";
+		$id = @$button['id'];
+		if (!empty($id)) { $id = "id=$id"; }
+		/* if ($num > 1) */ echo "<td>";
+		echo "<a class=button $id href='' onclick='{$button['onclick']};return false' $otherattrs><span>{$button['label']}</span></a>";
+		/* if ($num > 1) */ echo "</td>";
 		}
-	if ($num > 1) echo "</TR></TABLE>\n";
+	/* if ($num > 1) */ echo "</TR></TABLE>\n";
 }
 
 
@@ -837,6 +899,104 @@ function splitTableFields($line){
 		$rest = $vals[2];
 	}
 	return $fields;
+}
+
+#function to enable password storage to split between cookie and session variable
+function xorcrypt($data,$key) {
+    $datalen=strlen($data);
+    $keylen=strlen($key);
+    for ($i=0;$i<$datalen;$i++) {
+        $data[$i]=chr(ord($data[$i])^ord($key[$i]));
+    }
+    return $data;
+}
+
+function getpassword() {
+    if (isset($GLOBALS['xcatauthsecret'])) {
+        $cryptext=$GLOBALS['xcatauthsecret'];
+    } else if (isset($_COOKIE["xcatauthsecret"])) {
+        $cryptext = $_COOKIE["xcatauthsecret"];
+    } else {
+        return false;
+    }
+    return xorcrypt($_SESSION["secretkey"],base64_decode($cryptext));
+}
+
+#remembers the password, splitting knowledge between server and client side
+#persistant storage
+#Caller should regenerate session id when contemplating a new user/password,
+#to preclude session fixation, though fixation is limited without the secret.
+function setpassword($password) {
+    $randlen=strlen($password);
+    $key=getrandchars($randlen);
+    $cryptext=xorcrypt($password,$key);
+    $cryptext=base64_encode($cryptext); #non-ascii chars, base64 it
+#Not bothering with explicit expiration, as time sync would be too hairy
+#should go away when browser closes.  Any timeout will be handled server
+#side.  If the session id invalidates and the one-time key discarded,
+#the cookie contents are worthless anyway
+#nevertheless, when logout happens, cookie should be reaped
+    setcookie("xcatauthsecret",$cryptext,0,'/');
+    $GLOBALS["xcatauthsecret"]=$cryptext; #May need it sooner, prefer globals
+    $_SESSION["secretkey"]=$key;
+}
+
+function getrandchars($length) {
+    $charset='0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*';
+    $charsize=strlen($charset);
+    srand();
+    $chars='';
+    for ($i=0;$i<$length;$i++) {
+        $num=rand()%$charsize;
+        $chars=$chars.substr($charset,$num,1);
+    }
+    return $chars;
+}
+
+// Determine if they at least have a user/pw that they have entered (that may or may not be valid)
+function is_logged() {
+    if (isset($_SESSION["username"]) and !is_bool(getpassword())) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+// Determine if they are currently logged in successfully
+function isAuthenticated() {
+    if (is_logged()) {
+        if ($_SESSION["xcatpassvalid"] != 1) {
+            $testcred=docmd("authcheck","",NULL);
+            if (isset($testcred->{'xcatresponse'}->{'data'})) {
+                $result="".$testcred->{'xcatresponse'}->{'data'};
+                if (is_numeric(strpos("Authenticated",$result))) {
+                    $_SESSION["xcatpassvalid"]=1; #proven good
+                } else {
+                    $_SESSION["xcatpassvalid"]=0; #proven bad
+                }
+            }
+        }
+    }
+    if (isset($_SESSION["xcatpassvalid"]) and $_SESSION["xcatpassvalid"]==1) { return true; }
+    else { return false; }
+}
+
+function logout() {
+    #clear the secret cookie from browser.
+    #expire cookie a week ago, server time, may not work if client clock way off, but the value will be cleared at least.
+    if (isset($_COOKIE["xcatauthsecret"])) {
+        setcookie("xcatauthsecret",'',time()-86400*7,'/'); #NOTE: though firefox doesn't seem to zap it dynamically from cookie store in
+    #the client side dialog, firefox does stop submitting the value.  The sensitivity of the 'stale' cookie even if compromised
+    #is negligible, as the session id will be invalidated and the one-time-key needed to decrypt the password is destroyed on the server
+    }
+    #expire the sesion cookie
+    if (isset($_COOKIE[session_name()])) {
+        setcookie(session_name(),"",time()-86400*7,"/");
+    }
+    #clear server store of data
+    $_SESSION=array();
+    session_destroy();
 }
 
 ?>

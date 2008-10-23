@@ -177,7 +177,6 @@ TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; fo
 
 .TableHeader { color: black; background-color : #fffdb0; font-weight : bold; font-size : 9pt; white-space: nowrap; }
 .TableRow { color: black; background-color : #b3c2d9; font-size : 9pt; white-space: nowrap; } /* #d8dff1 */
-.FormTable { color: black; background-color : #CCCCCC; }
 .Info {color : blue;}
 .Error {font-weight : bold; color : red;}
 .Trace {color: gray;  padding: 0px; margin: 0px;}
@@ -249,4 +248,22 @@ a.button:active {
 a.button:active span {
     background-position: bottom left;
     padding: 6px 0 4px 18px; /* push text down 1px */
+}
+
+/* For the Login dialog */
+
+.LogDialog {
+ background-color: white;
+}
+
+#logdialog {	/* the div inside the dialog */
+ margin: 0px 10px 20px 10px;	/* for some reason the containing dialog cuts off the right 30px */
+ padding: 0px;
+ /* background-color: white;
+ font-family: Sans-Serif;
+ font-size: 7pt; */
+}
+
+#logdialogNote {
+ margin-top: 3px;
 }

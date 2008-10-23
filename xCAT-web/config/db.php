@@ -6,7 +6,7 @@ $TOPDIR = '..';
 require_once "$TOPDIR/lib/functions.php";
 
 insertHeader('xCAT Database', array('db.css'),
-			array('db.js',"$TOPDIR/jq/jquery.min.js","$TOPDIR/jq/jquery.jeditable.mini.js"),
+			array('db.js',"$TOPDIR/jq/jquery.jeditable.mini.js"),
 			array('config','db'));
 
 echo "<div id=content align=center>\n";

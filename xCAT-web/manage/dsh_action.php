@@ -30,66 +30,52 @@ if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['h
 
 	//get the command and the options
 	$cmd = @$_REQUEST["command"];
-	$copy = @$_REQUEST["copy"];
 	$node = @$_REQUEST["node"];
 	$group = @$_REQUEST["nodegrps"];
-	$psh = @$_REQUEST["psh"];
+
+	$copy = @$_REQUEST["copy_script"];
+	$psh = @$_REQUEST["run_psh"];
 
 	$serial = @$_REQUEST["serial"];
+	$monitor = @$_REQUEST["monitor"];
 	$verify = @$_REQUEST["verify"];
 	$collapse = @$_REQUEST["collapse"];
+
 	$fanout = @$_REQUEST["fanout"];
 	$userID = @$_REQUEST["userID"];
 	$rshell = @$_REQUEST["rshell"];
 	$shell_opt = @$_REQUEST["shell_opt"];
-	$monitor = @$_REQUEST["monitor"];
+
 	$ret_code = @$_REQUEST["ret_code"];
 
-
+	// Set the cmd arguments
 	if (!empty($group)) $noderange = $group;
 	else $noderange = $node;
 
-	if ($serial == "on") $args[] = "-s";	//streaming mode
+	if ($copy)  $args[] = "-e";
+
+	if ($serial) $args[] = "-s";	//streaming mode
+	if ($monitor)  $args[] = "-m";
+	if ($verify)  $args[] = "-v";
+
 	if (!empty($fanout)) { $args[] = "-f"; $args[] = $fanout; }
 	if (!empty($userID)) { $args[] = "-l"; $args[] = $userID; }
-	if ($verify == "on")  $args[] = "-v";
-	if ($monitor == "on")  $args[] = "-m";
-	if ($copy == "on")  $args[] = "-e";
-	if ($ret_code == "on") $args[] = "-z";
+	if (!empty($rshell)) { $args[] = "-r"; $args[] = $rshell; }
+	if (!empty($shell_opt)) { $args[] = "-o"; $args[] = $shell_opt; }
 
-	//$exp_cmd = "export DSH_CONTEXT=XCAT XCATROOT=/opt/xcat; ";
+	if ($ret_code) $args[] = "-z";
 
-/*
-	if ($copy == "on"){		//using dcp/prcp
-
-		//extract the script name from the command
-		$script = strtok($cmd,' ');
-
-		//copy the command to the remote node
-		$source = $script;
-		$target = "/tmp";
-		if (empty($psh) || $psh!="on"){
-			$xml = docmd('xdcp',$noderange,array($source, $target));
-			//todo: check if copy succeeded
-		}else{
-			runcmd("pscp $source $noderange:$target",1,$outp);
-		}
-		$cmd = "/tmp/$cmd";
-	}
-*/
-
-	if (empty($psh) || $psh!="on") $command = "xdsh";
+	if (!$psh) $command = "xdsh";
 	else $command = "psh";
 
-	//if ($collapse == "on")  $command_string .= " | dshbak -c";
+	//todo:  if ($collapse == "on")  $command_string .= " | dshbak -c";
 
 	// Run the script
 	$args[] = $cmd;
-	echo "<p><b>Command:  $command $noderange " . implode(' ',$args) . "</b></p>";
-	//echo "<p><b>Command Ouput:</b></br></p>"; //output will be returned from the runcmd function call
-	//$rc = runcmd($command_string,1, $outp);	//streaming mode - DOES NOT WORK YET
-	$xml = docmd($command, $noderange, $args);
+	echo "<p>Command: &nbsp;<b>$command $noderange " . implode(' ',$args) . "</b></p><p>";
+	$xml = docmd($command, $noderange, $args);		//todo: do streaming output
 	foreach ($xml->children() as $response) foreach ($response->children() as $line) { echo "$line<br>"; }
+	echo "</p>\n";
 
 
 

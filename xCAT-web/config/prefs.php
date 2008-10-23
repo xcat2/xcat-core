@@ -8,7 +8,7 @@ require_once "$TOPDIR/lib/functions.php";
 
 insertHeader('Preferences', NULL, NULL, array('config','prefs'));
 
-echo "<FORM NAME=prefs onsubmit='return false'><TABLE class=inner_table cellspacing=0 cellpadding=5><TBODY>\n";
+echo "<FORM NAME=prefs onsubmit='return false'><TABLE cellspacing=0 cellpadding=5><TBODY>\n";
 
 //foreach ($_COOKIE as $key => $value) { echo "<p>$key: {$_COOKIE[$key]}</p>\n"; }
 

@@ -24,7 +24,7 @@ $pages = array('intro' => 'Discover Hardware',
 if (isset($_REQUEST['page'])) {	displayWizard($pages); }
 
 else {		// initial display of the wizard, show the whole page
-insertHeader('Discover New Nodes', array('discover.css',"$TOPDIR/lib/wizard.css"), array("$TOPDIR/jq/jquery.min.js"), array('machines','discover'));
+insertHeader('Discover New Nodes', array('discover.css',"$TOPDIR/lib/wizard.css"), NULL, array('machines','discover'));
 echo "<div id=content align=center>\n";
 displayWizard($pages);
 echo "</div>\n";	// end the content div
