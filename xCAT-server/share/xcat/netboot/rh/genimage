@@ -263,6 +263,11 @@ sub mkinitrd {
    }
    print $inifile <<EOMS;
 netstart
+while ! ifconfig | grep inet; do
+    echo Failed to acquire address, retrying
+    sleep 1
+    netstart
+done
 ifconfig lo 127.0.0.1
 ifconfig lo up
 cd /
