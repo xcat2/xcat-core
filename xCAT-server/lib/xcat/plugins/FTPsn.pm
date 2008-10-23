@@ -125,10 +125,10 @@ sub setup_FTP
         mkpath($installdir);
     }
     $cmd = "usermod -d $installdir ftp";
-    system $cmd;
-    if ($? > 0) {
+    my $outref = xCAT::Utils->runcmd($cmd,0);
+    if ($::RUNCMD_RC) {
 
-       xCAT::MsgUtils->message("S", "Error from command:$cmd");
+     xCAT::MsgUtils->message("S", "Error from command:$cmd");
     }
 
     # restart tftp
