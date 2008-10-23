@@ -62,7 +62,7 @@ then
   fi
 
   # Update the apache config
-  echo "Updating $apachedaemon configuration for xCAT..."
+  #echo "Updating $apachedaemon configuration for xCAT..."
   /bin/rm -f /etc/$apachedaemon/conf.d/xcat-web.conf
   /bin/ln -s %{prefix}/web/etc/apache2/conf.d/xcat-web.conf /etc/$apachedaemon/conf.d/xcat-web.conf
   /etc/init.d/$apachedaemon reload
@@ -82,6 +82,7 @@ then
   #echo -e "y\ny\ny" | %{prefix}/share/xcat/scripts/setup-local-client.sh $apacheuser
   #XCATROOT=%{prefix} %{prefix}/sbin/chtab priority=5 policy.name=$apacheuser policy.rule=allow
 
+  echo "To use xCAT-web, point your browser to http://"`hostname`"/xcat-web"
 fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]        # initial install, or upgrade and this is the newer rpm
