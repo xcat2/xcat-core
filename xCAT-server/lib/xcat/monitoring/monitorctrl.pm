@@ -635,8 +635,12 @@ sub setNodeStatusAttributes {
     xCAT::MsgUtils->message("S", "Could not read the nodelist table\n");
   }
 
-  $tab->close;
-  $nttab->close;
+  if ($tab) { 
+      $tab->close;
+  }
+  if ($nttab) { 
+      $nttab->close;
+  }
   return 0;
 }
 
