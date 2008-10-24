@@ -55,7 +55,7 @@ sub start
       my $localhost=hostname();
       print "local host is $localhost \n";
       print "starting gmond locally \n";
-      my $res_gmond = `/etc/init.d/gmond restart 2>&1`;
+      my $res_gmond = `/etc/rc.d/init.d/gmond restart 2>&1`;
       print "res_gmond=$res_gmond\n";
       print "the result gmond before  is $? \n";
       if ($?)
@@ -76,7 +76,7 @@ sub start
         }
  
         print "starting gmetad locally \n";
-        my $res_gmetad = `/etc/init.d/gmetad restart 2>&1`;
+        my $res_gmetad = `/etc/rc.d/init.d/gmetad restart 2>&1`;
         print "the result gmetad before  is $? \n";
         if ($?)
          {
@@ -138,8 +138,8 @@ sub start
           print "children:@children\n";
           my $rec = join(',',@children);
           print "the string is $rec";
-     print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>& \n"; 
-      my $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>&1`;
+     print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>& \n"; 
+      my $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>&1`;
        if ($result)
         {
          if ($callback)
@@ -994,7 +994,7 @@ sub stop
       my $localhost=hostname();
       print "local host is $localhost \n";
       print "stopping gmond locally \n";
-      my $res_gmond = `/etc/init.d/gmond stop 2>&1`;
+      my $res_gmond = `/etc/rc.d/init.d/gmond stop 2>&1`;
       print "res_gmond=$res_gmond\n";
       print "the result gmond before  is $? \n";
       if ($?)
@@ -1015,7 +1015,7 @@ sub stop
         }
 
         print "stopping gmetad locally \n";
-        my $res_gmetad = `/etc/init.d/gmetad stop 2>&1`;
+        my $res_gmetad = `/etc/rc.d/init.d/gmetad stop 2>&1`;
         print "the result gmetad before  is $? \n";
         if ($?)
          {
@@ -1075,8 +1075,8 @@ sub stop
           print "children:@children\n";
           my $rec = join(',',@children);
           print "the string is $rec";
-     print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>& \n";
-       my $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>&1`;
+     print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>& \n";
+       my $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>&1`;
        if ($result)
         {
          if ($callback)
