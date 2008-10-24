@@ -5,7 +5,8 @@
   xCAT plugin package to handle sinv 
 
    Supported command:
-         sinv 
+         sinv - software/firmware inventory program
+                run xdsh or rinv.  See man sinv.
 
 =cut
 

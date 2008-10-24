@@ -27,6 +27,7 @@ my $errored = 0;
 my @dshresult;
 my $templatepath;
 my $processflg;
+my @cmdresult;
 
 #
 # Subroutines
@@ -46,13 +47,13 @@ sub usage
 
     my $usagemsg1 =
       "The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
-    my $usagemsg1a = "sinv -h \nsinv -v \nsinv [noderange]\n";
+    my $usagemsg1a = "sinv -h \nsinv -v \nsinv \n";
     my $usagemsg2  = "      [-V verbose] [-v version] [-h usage]\n ";
     my $usagemsg3  =
-      "     [-o output file ] [-p template path] [-t template count]\n";
-    my $usagemsg4  = "      [-r remove templates] [-s seednode]\n";
+      "     [-o output file ] [-p <template path>] [-t <template count>]\n";
+    my $usagemsg4  = "      [-r remove templates] [-s <seednode>]\n";
     my $usagemsg4a = "      [-e exactmatch] [-i ignore]\n";
-    my $usagemsg5  = "      [-c xdsh command  | -f xdsh command file] \n ";
+    my $usagemsg5  = "      [-c <command>  | -f <command file>] \n ";
     my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
       $usagemsg4a .= $usagemsg5;
 ###  end usage mesage
@@ -76,31 +77,14 @@ sub parse_and_run_sinv
 {
     my ($class, $request, $callback, $sub_req) = @_;
     my $rsp = {};
+    my $rc  = 0;
     $::CALLBACK = $callback;
-    my $args     = $request->{arg};
-    @ARGV       = @{$args};    # get arguments
-    my @noderange;
-    my $noderange = $ARGV[0];
-    if ($noderange =~ /^-/)
-    {                                 # no noderange, it is a flag
-        @noderange = "NO_NODE_RANGE";
-    }
-    else
-    {                                 # get noderange
-        @noderange = noderange($noderange);    # expand noderange
-        my $tmp = shift(@ARGV);    # shift the noderange from the args
-        if (nodesmissed)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] =
-              "Invalid nodes in noderange:" . join(',', nodesmissed);
-            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-            return;
-        }
-    }
+    my $args = $request->{arg};
+    @ARGV = @{$args};    # get arguments
     my %options = ();
     $Getopt::Long::ignorecase = 0;    #Checks case in GetOptions
     Getopt::Long::Configure("bundling");
+
     if (
         !GetOptions(
                     'h|help'        => \$options{'help'},
@@ -111,8 +95,8 @@ sub parse_and_run_sinv
                     's|seed=s'      => \$options{'seed_node'},
                     'e|exactmatch'  => \$options{'exactmatch'},
                     'i|ignorefirst' => \$options{'ignorefirst'},
-                    'c|cmd=s'       => \$options{'xdsh_cmd'},
-                    'f|file=s'      => \$options{'xdsh_file'},
+                    'c|cmd=s'       => \$options{'sinv_cmd'},
+                    'f|file=s'      => \$options{'sinv_cmd_file'},
                     'v|version'     => \$options{'version'},
                     'V|Verbose'     => \$options{'verbose'},
         )
@@ -141,61 +125,102 @@ sub parse_and_run_sinv
         $::VERBOSE = "yes";
     }
 
-    # if neither xdsh command or file, error
-    if (!($options{'xdsh_cmd'}) && (!($options{'xdsh_file'})))
+    # if neither  command or file, error
+    if (!($options{'sinv_cmd'}) && (!($options{'sinv_cmd_file'})))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "Neither the xdsh command, nor the xdsh command file have been supplied.\n";
+          "Neither the sinv command, nor the sinv command file have been supplied.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
     }
 
-    # if  both xdsh command and file, error
-    if (($options{'xdsh_cmd'}) && (($options{'xdsh_file'})))
+    # if  both  command and file, error
+    if (($options{'sinv_cmd'}) && (($options{'sinv_cmd_file'})))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "Both the xdsh command, and the xdsh command file have been supplied. Only one or the other is allowed.\n";
+          "Both the sinv command, and the sinv command file have been supplied. Only one or the other is allowed.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
     }
-
-    #
-    # get the  node list
-    #
-    if (!(@noderange))
-    {
-        my $rsp = {};
-        $rsp->{data}->[0] = "No noderange specified on the command.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        exit 1;
-    }
-    my @nodelist = @noderange;
 
     #
     # Get Command to run
     #
     my $cmd;
-    if ($options{'xdsh_cmd'})
+    if ($options{'sinv_cmd'})
     {
-        $cmd = $options{'xdsh_cmd'};
+        $cmd = $options{'sinv_cmd'};
     }
     else
     {
 
         # read the command from the file
-        if (!(-e $options{'xdsh_file'}))
+        if (!(-e $options{'sinv_cmd_file'}))
         {    # file does not exist
             my $rsp = {};
             $rsp->{data}->[0] =
-              "Input xdsh command file: $options{'xdsh_file'} does not exist.\n";
+              "Input command file: $options{'sinv_cmd_file'} does not exist.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             exit 1;
         }
-        $cmd = `cat $options{'xdsh_file'}`;
+        $cmd = `cat $options{'sinv_cmd_file'}`;
     }
     chomp $cmd;
+
+    #
+    # the command can be either xdsh or rinv for now
+    # strip off the program and the noderange
+    #
+    my @nodelist = ();
+    my ($cmdtype, $noderange, $args) = split(' ', $cmd, 3);
+    $cmd = "";
+    if ($noderange =~ /^-/)
+    {    # no noderange
+        $cmd .= "$noderange ";    #  put flag back on command
+    }
+    $cmd .= $args;
+    if (($cmdtype ne "xdsh") && ($cmdtype ne "rinv"))
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] =
+          "Only commands xdsh and rinv are currently supported.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        exit 1;
+    }
+    my $cmdoutput;
+    if ($cmdtype eq "xdsh")
+    {    # chose output routine to run
+        $cmdoutput = "xdshoutput";
+    }
+    else
+    {    # rinv
+        $cmdoutput = "rinvoutput";
+    }
+
+    # this must be a noderange or the flag indicating we are going to the
+    #  install image ( -i) for xdsh, only case where noderange is not required
+
+    if ($noderange =~ /^-/)
+    {    # no noderange, it is a flag
+        @nodelist = "NO_NODE_RANGE";
+
+        # add flag back to arguments
+        $args .= $noderange;
+    }
+    else
+    {    # get noderange
+        @nodelist = noderange($noderange);    # expand noderange
+        if (nodesmissed)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "Invalid or missing noderange:" . join(',', nodesmissed);
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return;
+        }
+    }
 
     #
     # Get exact match request
@@ -290,9 +315,9 @@ sub parse_and_run_sinv
     $::OUTPUT_FILE_HANDLE = \*OUTPUTFILE;
 
     #
-    #
+    # For xdsh command
     # Get seed node if it exists to build the original template
-    # if seed node does not exist and the admin did not submit a \
+    # if seed node does not exist and the admin did not submit a
     # template, the the first node becomes the seed node
     #
     my @seed;
@@ -320,11 +345,11 @@ sub parse_and_run_sinv
     $rsp->{data}->[0] = "Command started with following input.\n";
     if ($cmd)
     {
-        $rsp->{data}->[1] = "xdsh cmd:$cmd.\n";
+        $rsp->{data}->[1] = "$cmdtype cmd:$cmd.\n";
     }
     else
     {
-        $rsp->{data}->[1] = "xdsh cmd:None.\n";
+        $rsp->{data}->[1] = "$cmdtype cmd:None.\n";
     }
     $rsp->{data}->[2] = "Template path:$templatepath.\n";
     $rsp->{data}->[3] = "Template cnt:$templatecnt.\n";
@@ -340,9 +365,9 @@ sub parse_and_run_sinv
     {
         $rsp->{data}->[8] = "Seed node:None.\n";
     }
-    if ($options{'xdsh_file'})
+    if ($options{'sinv_cmd_file'})
     {
-        $rsp->{data}->[9] = "file:$options{'xdsh_file'}.\n";
+        $rsp->{data}->[9] = "file:$options{'sinv_cmd_file'}.\n";
     }
     else
     {
@@ -362,63 +387,67 @@ sub parse_and_run_sinv
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
-    # setup a tempfile for xdsh output
+    # setup a tempfile for command output
     $tempfile = "/tmp/sinv.$$";
 
     #
     # if we are to seed the original template,run the dsh command against the
     # seed node and save in template_path
+    # already checked for rinv command above and exited, if seed node
+    #
     if ($seednode)
     {
 
-        # Below code needed to run xdsh from the plugin
+        # Below code needed to run xdsh or rinv from the plugin
         # and still support a hierarchial xdsh
-        # this will run xdsh with input,  return to xdshoutput routine
+        # this will run xdsh or rinv with input,  return to
+        # xdshoutput routine or rinvoutput routine
         # and then return inline after this code.
 
         $processflg = "seednode";
         $sub_req->(
                    {
-                    command => ['xdsh'],
+                    command => [$cmdtype],
                     node    => \@seed,
                     arg     => [$cmd]
                    },
-                   \&xdshoutput
+                   \&$cmdoutput
                    );
+
+        #  write the results to the tempfile after running through xdshbak
+        $rc = &storeresults;
 
     }
     $processflg = "node";
 
-    # Tell them we are running DSH
+    # Tell them we are running the command
     if ($::VERBOSE)
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Running xdsh command.\n";
+        $rsp->{data}->[0] = "Running $cmdtype command.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
-    #
-    #  Run the DSH command
-    #
-
-    # Below code needed to run xdsh from the plugin
+    # Below code needed to run xdsh/rinv from the plugin
     # and still support a hierarchial xdsh
-    # this will run xdsh with input,  return to xdshoutput routine
+    # this will run the command with input,  return to cmdoutput routine
     # and then return inline after this code.
-
     $sub_req->(
                {
-                command => ['xdsh'],
+                command => [$cmdtype],
                 node    => \@nodelist,
                 arg     => [$cmd]
                },
-               \&xdshoutput
+               \&$cmdoutput
                );
+
+    #  write the results to the tempfile after running through xdshbak
+    $rc = &storeresults;
 
     #  Build report and write to output file
     #  if file exist and has something in it
-    if (-e $tempfile)
-    {    # if dsh returned something
+    if ((-e $tempfile) && ($rc == 0))
+    {    # if cmd returned something
 
         # Tell them we are building the report
         my $rsp = {};
@@ -436,23 +465,27 @@ sub parse_and_run_sinv
     else
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "No output from xdsh.\n";
+        $rsp->{data}->[0] = "No output from $cmdtype.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
     # Finally we need to cleanup and exit
     #
-    system("/bin/rm  $tempfile");
+    if (-e $tempfile)
+    {
+        system("/bin/rm  $tempfile");
+    }
     close(OUTPUTFILE);
     my $rsp = {};
     $rsp->{data}->[0] = "Command Complete. Check report in $outputfile.\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
-
+    return $rc;
 }
 
 #------------------------------------------------------------------------------
 
-=head3   buildreport  			    	 
+=head3   buildreport (note originally written only for xdsh but
+		 now supports rinv also)
 
   This routine will take the input template and compare against 
   the output of the dsh command and build a report of the differences. 
@@ -517,7 +550,7 @@ sub buildreport
         }
     }
 
-    # Read the output of the dsh command
+    # Read the output of the dsh or rinv command
 
     if (!open(DSHRESULTS, "<$dshrun"))
     {
@@ -590,12 +623,12 @@ sub buildreport
         }
         else
         {
-            if (   ($dshline !~ /---------/)
-                && ($dshline !~ /^\s*$/))
 
-              # skip headers and blanks and stop on the next host
+            if ($dshline !~ /^\s*$/)                        # skip blanks
+
+              # skip  blanks and stop on the next host
             {
-                push @Nodearray, $dshline;    # build the node results  dsh
+                push @Nodearray, $dshline;    # build the node results
             }
         }
 
@@ -847,7 +880,7 @@ sub diffoutput
     my @template_noheader  = ();
     my @nodearray_noheader = ();
 
-    # build a node arrray without the header
+    # build a node array without the header
     foreach $nodeline (@Nodearray)    # for each node line
     {
         if ($nodeline =~ /HOST:/)
@@ -859,7 +892,10 @@ sub diffoutput
         }
         else                          # build node array with no header
         {
-            push(@nodearray_noheader, $nodeline);
+            if ($nodeline !~ /---------/)
+            {
+                push(@nodearray_noheader, $nodeline);
+            }
         }
     }    # end foreach nodeline
 
@@ -995,10 +1031,11 @@ sub writereport
         @nodenames = @{$nodehash{$template}};
         foreach my $nodename (@nodenames)
         {
-            push @nodearray, $nodename;    # build an array of all the nodes
+            my @shortnodename = split(/\./, $nodename);
+            push @nodearray, $shortnodename[0];   # build an array of  the nodes
             if ($ignorefirsttemplate ne "YES")
-            {                              #  report first template
-                $rsp->{data}->[0] = "$nodename\n";
+            {                                     #  report first template
+                $rsp->{data}->[0] = "$shortnodename[0]\n";
                 print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
                 if ($::VERBOSE)
                 {
@@ -1021,16 +1058,22 @@ sub writereport
 
     #
     # Now check to see if we covered all nodes in the dsh
+    #  short names must match long names
     #
     my $firstpass = 0;
     my $nodefound = 0;
     foreach my $dshnodename (@dshnodearray)
     {
+        my @shortdshnodename;
+        my @shortnodename;
         chomp $dshnodename;
         $dshnodename =~ s/\s*//g;    # remove blanks
         foreach my $nodename (@nodearray)
         {
-            if ($dshnodename eq $nodename)
+            @shortdshnodename = split(/\./, $dshnodename);
+            @shortnodename    = split(/\./, $nodename);
+
+            if ($shortdshnodename[0] eq $shortnodename[0])
             {
                 $nodefound = 1;      # we have a match
                 last;
@@ -1040,8 +1083,7 @@ sub writereport
         {                            # dsh node name missing
             if ($firstpass == 0)
             {                        # put out header
-                $rsp->{data}->[0] =
-                  "The following nodes had no output from xdsh:\n";
+                $rsp->{data}->[0] = "The following nodes had no output:\n";
                 print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
                 if ($::VERBOSE)
                 {
@@ -1051,7 +1093,7 @@ sub writereport
             }
 
             # add missing node
-            $rsp->{data}->[0] = "$dshnodename\n";
+            $rsp->{data}->[0] = "$shortdshnodename[0]\n";
             print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
             if ($::VERBOSE)
             {
@@ -1065,69 +1107,174 @@ sub writereport
 
 #------------------------------------------------------------------------------
 
-=head3   dshoutput  			    	 
+=head3   xdshoutput  			    	 
 
- Check xdsh output  - get output from xdsh and pipe to xdshbak and
- store results in $tempfile or $templatepath ( for seed node) based on
- $processflag = seednode 
+ Check xdsh output  - get output from command and pipe to xdshbak 
 
 =cut
 
 #------------------------------------------------------------------------------
 sub xdshoutput
 {
-    my $resp = shift;
-    my $i    = 0;
-    @dshresult = ();
-    foreach (@{$resp->{info}})
+    my $rsp = shift;
+
+    my $rc = 0;
+
+    # Handle info structure, like xdsh returns
+    if ($rsp->{warning})
     {
-        my $line = $_;
-        $line .= "\n";
-        push(@dshresult, $line);
+        my $msg = {};
+        $msg->{data}->[0] = $rsp->{warning}->[0];
+        xCAT::MsgUtils->message("E", $msg, $::CALLBACK, 1);
+        return 1;
+    }
+    if ($rsp->{info})
+    {
+        foreach (@{$rsp->{info}})
+        {
+            my $line = $_;
+            $line .= "\n";
+            push(@cmdresult, $line);
+        }
     }
 
-    # open file to write results of xdsh
+    return $rc;
+
+}
+
+#------------------------------------------------------------------------------
+
+=head3   rinvoutput  			    	 
+
+ Check rinv output  - get output from command
+
+=cut
+
+#------------------------------------------------------------------------------
+sub rinvoutput
+{
+    my $rsp = shift;
+
+    # Handle node structure, like rinv returns
+    my $errflg = 0;
+
+    #if (scalar @{$rsp->{node}})
+    if ($rsp->{node})
+    {
+
+        my $nodes = ($rsp->{node});
+        my $node;
+        foreach $node (@$nodes)
+        {
+            my $desc = $node->{name}->[0];
+            if ($node->{errorcode})
+            {
+                if (ref($node->{errorcode}) eq 'ARRAY')
+                {
+                    foreach my $ecode (@{$node->{errorcode}})
+                    {
+                        $xCAT::Client::EXITCODE |= $ecode;
+                    }
+                }
+                else
+                {
+                    $xCAT::Client::EXITCODE |= $node->{errorcode};
+                }    # assume it is a non-reference scalar
+            }
+            if ($node->{error})
+            {
+                $desc .= ": Error: " . $node->{error}->[0];
+                $errflg = 1;
+            }
+            if ($node->{data})
+            {
+                if (ref(\($node->{data}->[0])) eq 'SCALAR')
+                {
+                    $desc = $desc . ": " . $node->{data}->[0];
+                }
+                else
+                {
+                    if ($node->{data}->[0]->{desc})
+                    {
+                        $desc = $desc . ": " . $node->{data}->[0]->{desc}->[0];
+                    }
+                    if ($node->{data}->[0]->{contents})
+                    {
+                        $desc = "$desc: " . $node->{data}->[0]->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc)
+            {
+
+                my $line = $desc;
+                $line .= "\n";
+
+                push(@cmdresult, $line);
+            }
+        }
+    }
+
+    return 0;
+
+}
+
+#------------------------------------------------------------------------------
+
+=head3   storeresults 			    	 
+
+  Runs command output through xdshbak and stores in /tmp/<tempfile>
+ store results in $tempfile or $templatepath ( for seed node) based on
+ $processflag = seednode 
+=cut
+
+#------------------------------------------------------------------------------
+
+sub storeresults
+{
+
+    # open file to write results of xdsh or rinv command
     my $newtempfile = $tempfile;
     $newtempfile .= "temp";
-    my $rsp = {};
-    $rsp->{data}->[0] = "Could not open $newtempfile\n";
     open(FILE, ">$newtempfile");
     if ($? > 0)
     {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Could not open $newtempfile\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
-    foreach my $line (@dshresult)
+    foreach my $line (@cmdresult)
     {
         print FILE $line;
     }
     close FILE;
     my $outputfile;
     if ($processflg eq "seednode")
-    {    # xdsh to seednode
+    {    # cmd to seednode
         $outputfile = $templatepath;
     }
     else
-    {    # xdsh to nodelist
+    {    # cmd to nodelist
         $outputfile = $tempfile;
     }
 
     # open  file to put results of xdshbak
-    my $rsp = {};
-    $rsp->{data}->[0] = "Could not open $outputfile\n";
     open(FILE, ">$outputfile");
     if ($? > 0)
     {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Could not open $outputfile\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
-    my $rsp = {};
-    $rsp->{data}->[0] = "Could not call xdshbak \n";
     my $cmd = " /opt/xcat/bin/xdshbak <$newtempfile |";
 
     open(DSHBAK, "$cmd");
     if ($? > 0)
     {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Could not call xdshbak \n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
@@ -1143,10 +1290,8 @@ sub xdshoutput
 
     close(DSHBAK);
     close FILE;
-
     system("/bin/rm  $newtempfile");
-    return 0;
 
+    return;
 }
-
 1;

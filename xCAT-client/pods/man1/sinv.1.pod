@@ -4,7 +4,7 @@ B<sinv> - Checks the software configuration of the nodes in the cluster.
 
 =head1 B<SYNOPSIS>
 
-B<sinv> I<noderange> [B<-o> I<output>] [B<-p> <template path>] [B<-t> I<template count>] [B<-s> I<seed node>] [B<-i>] [B<-e>] [B<-r>] [B<-V>] [[B<-f> I<xdsh command file>] | [B<-c> I<xdsh command>]]
+B<sinv>  [B<-o> I<output>] [B<-p> I<template path>] [B<-t> I<template count>] [B<-s> I<seed node>] [B<-i>] [B<-e>] [B<-r>] [B<-V>] [[B<-f> I<command file>] | [B<-c> I<command>]]
 
 B<sinv> [B<-h> | B<-v>]
 
@@ -14,20 +14,17 @@ B<sinv> [B<-h> | B<-v>]
 The B<sinv> command is designed to check the configuration of the nodes in a cluster.
 The command takes as input command line flags, and one or more templates which will be compared against the output of the xdsh command, designated to be run by the -c or -f flag, on the nodes in the noderange. 
 
-The nodes will then be grouped according to the template they match and a report returned to the administrator in the output file designated by the -o flag.  
+The nodes will then be grouped according to the template they match and a report returned to the administrator in the output file designated by the -o flag. 
+
+B<sinv> supports checking the output from the  B<rinv> or B<xdsh> command. 
  
 The B<sinv> command is an xCAT Distributed Shell Utility.
 
 
-B<TARGET> B<SPECIFICATION>:
-
-The target are node(s) where xdsh will be executed.  Node
-targets are specified by the I<noderange>.
-
 
 B<COMMAND> B<SPECIFICATION>:
 
-The xdsh command to execute on the remote targets is specified by the
+The xdsh or rinv command to execute on the remote targets is specified by the
  B<-c> flag, or by the B<-f> flag
 which is followed by the fully qualified path to a file containing the command.
 
@@ -48,8 +45,7 @@ those that read from standard input.
 
 B<REMOTE> B<SHELL> B<COMMAND>:
 
-The  B<sinv>  command  uses B<xdsh> which uses a configurable remote shell command to execute
-remote commands on the remote targets. Support is  explicitly  provided
+For xdsh, support is  explicitly  provided
 for  AIX  Remote  Shell and OpenSSH, but any secure remote command that
 conforms to the IETF (Internet Engineering Task  Force)  Secure  Remote
 Command Protocol can be used. See man B<xdsh> for more details.
@@ -106,10 +102,10 @@ be compared against the first template.
 
 This is the node that will be used to build the first template
 that is stored in template path.  You can use this parameter instead of running
-the xdsh command yourself to build the template.
+the command yourself to build the template.
 
 B<Note:> If no template path file exists, and no seed node is supplied,
-the seed node automatically is the first node from the
+the seed node automatically is the first node in the
 noderange.
 
 =item B<-i>|B<--ignorefirst>
@@ -136,7 +132,7 @@ to the template.
 
 =item B<-c>|B<--command>
 
-The command that will be run by xdsh. The command should be enclosed in 
+The xdsh or rinv command that will be run. The command should be enclosed in 
 double quotes to insure correct shell interpretation.
 
 B<Note:> do not add the | xdshbak to the command,
@@ -144,7 +140,7 @@ it is automatically added by sinv.
 
 =item B<-f>|B<--file>
 
-The file containing the command that will be run by xdsh  
+The file containing the xdsh or rinv command that will be run. 
 This should be the fully qualified name of the file. 
 
 B<Note:> do not add the | xdshbak to the command in the file,
@@ -184,11 +180,20 @@ Verbose mode.
 
 =item *
 
-To setup sinv.template for input to the B<sinv> command , enter:
+To setup sinv.template (name optional) for input to the B<sinv> command , enter:
 
 B<xdsh> I<node1,node2 "rpm -qa | grep xCAT | xdshbak "> /tmp/sinv.template>
 
 Note: when setting up the template the output of xdsh must be piped
+	  to xdshbak, sinv processing depends on it.
+
+=item *
+
+To setup rinv.template for input to the B<sinv> command , enter:
+
+B<rinv> I<node1-node2 serial> /tmp/rinv.template>
+
+Note: when setting up the template the output of rinv must be piped
 	  to xdshbak, sinv processing depends on it.
 
 =item *
@@ -198,7 +203,7 @@ on the nodegroup, B<testnodes> ,possibly generating up to two
 new templates, and removing all generated templates in the end, and writing
 output report to /tmp/sinv.output, enter:
 
-B<sinv> I<testnodes -c "rpm -qa | grep xCAT" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output>
+B<sinv> I< -c "xdsh testnodes rpm -qa | grep xCAT" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output>
 
 Note: do not add the pipe to xdshbak on the -c flag, it is automatically
 added by the sinv routine.
@@ -210,8 +215,16 @@ to generate the first template, using the xdsh command (-c),
 possibly generating up to two additional
 templates and not removing any templates at the end, enter:
 
-B<xsinv> I<node1-node4 -c "lslpp -l | grep bos.adt" -s node8 -p /tmp/sinv.template -t 2 -o /tmp/sinv.output> 
+B<xsinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt" -s node8 -p /tmp/sinv.template -t 2 -o /tmp/sinv.output> 
 
+=item *
+
+To execute B<sinv> on noderange, node1-node4, using the seed node, node8,
+to generate the first template, using the rinv command (-c),
+possibly generating up to two additional
+templates and removing any generated templates at the end, enter:
+
+B<xsinv> I<-c "rinv node1-node4 serial" -s node8 -p /tmp/sinv.template -t 2 -r -o /tmp/rinv.output> 
 =item *
 
 To execute B<sinv> on noderange, node1-node4, automatically using node1 as
@@ -219,7 +232,7 @@ the seed node, to generate the sinv.template from the xdsh command (-c),
 using the exact match option, generating no additional templates, enter:
 
 
-B<xsinv> I<node1-node4 -c "lslpp -l | grep bos.adt"  -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
+B<xsinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt"  -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
 
 Note: the /tmp/sinv.template file must be empty, otherwise it will be used
 as an admin generated template.
@@ -232,7 +245,7 @@ using the exact match option, generating no additional templates, and
 reporting only nodes that do not match enter:
 
 
-B<xsinv> I<node1-node4 -c "lslpp -l | grep bos.adt"  -e -i -p /tmp/sinv.template  -o /tmp/sinv.output> 
+B<xsinv> I< -c "xdsh node1-node4 lslpp -l | grep bos.adt"  -e -i -p /tmp/sinv.template  -o /tmp/sinv.output> 
 
 Note: the /tmp/sinv.template file must be empty, otherwise it will be used
 as an admin generated template.
