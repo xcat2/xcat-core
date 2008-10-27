@@ -854,7 +854,11 @@ sub runxcmd
     $::RUNCMD_RC = 0;
     if ($::VERBOSE)
     {
-        xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+        if (ref($cmd) eq "HASH") {
+            xCAT::MsgUtils->message("I", "Running internal xCAT command: $cmd->{command}->[0] ... \n");
+        } else {
+           xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+        }
     }
     $::xcmd_outref = [];
 	my $req;

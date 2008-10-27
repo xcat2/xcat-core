@@ -21,7 +21,8 @@ use warnings;
 #
 # Globals
 #
-# <none>
+$::LOGDIR="/var/log/xcat";
+$::LOGFILE="rollupdate.log";
 
 #------------------------------------------------------------------------------
 
@@ -382,6 +383,12 @@ sub rollupdate {
             xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
             return 1;
         }
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{ $rsp->{data} }, "Creating update group $ugname with nodes: ";
+			push @{ $rsp->{data} }, join(',',@{$updategroup{$ugname}});
+           	xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+		}
     }
 
     foreach my $mgline ( @{ $::FILEATTRS{'mapgroups'} } ) {
@@ -397,6 +404,12 @@ sub rollupdate {
                 xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
                 return 1;
             }
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{ $rsp->{data} }, "Creating update group $ugname with nodes: ";
+				push @{ $rsp->{data} }, join(',',@{$updategroup{$ugname}});
+           		xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+			}
         }
     }
     unless (%updategroup) {
@@ -456,6 +469,11 @@ sub ll_jobs {
     my $updategroup = shift;
     my $rc          = 0;
 
+	if ($::VERBOSE) {
+		my $rsp;
+		push @{ $rsp->{data} }, "Creating LL job command files ";
+   		xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+	}
     #
     # Load job command file template
     #
@@ -476,11 +494,21 @@ sub ll_jobs {
         xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
         return 1;
     }
+	if ($::VERBOSE) {
+		my $rsp;
+		push @{ $rsp->{data} }, "Reading LL job template file $tmpl_file_name ";
+   		xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+	}
     my @lines = <$TMPL_FILE>;
     close $TMPL_FILE;
 
     # Query LL for list of machines and their status
     my $cmd = "llstatus -r %n %sca 2>/dev/null";
+	if ($::VERBOSE) {
+		my $rsp;
+		push @{ $rsp->{data} }, "Running command: $cmd ";
+   		xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+	}
     my @llstatus = xCAT::Utils->runcmd( $cmd, 0 );
     if ( $::RUNCMD_RC != 0 ) {
         my $rsp;
@@ -530,7 +558,7 @@ sub ll_jobs {
         return 1;
     }
     unless ( -d $lljobs_dir ) {
-        unless ( mkpath($lljobs_dir) ) {
+        unless ( File::Path::mkpath($lljobs_dir) ) {
             my $rsp;
             push @{ $rsp->{data} }, "Could not create directory $lljobs_dir";
             xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
@@ -617,12 +645,22 @@ sub ll_jobs {
                 xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
                 return 1;
             }
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{ $rsp->{data} }, "Writing LL job command file $lljob_file ";
+   				xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+			}
             print $JOBFILE @jclines;
             close($JOBFILE);
             chown( $uid, $gid, $lljob_file );
 
             # Submit LL job
             my $cmd = qq~su - $lluser "-c llsubmit $lljob_file"~;
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{ $rsp->{data} }, "Running command: $cmd ";
+   				xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+			}
             my @llsubmit = xCAT::Utils->runcmd( "$cmd", 0 );
             if ( $::RUNCMD_RC != 0 ) {
                 my $rsp;
@@ -681,6 +719,11 @@ sub ll_jobs {
         }
 		# wait until all the children are finished before returning
 		foreach my $child (@children) {
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{ $rsp->{data} }, "Waiting for child PID $child to complete ";
+   				xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+			}
 			waitpid($child,0);  
 		}	
     }
@@ -724,9 +767,21 @@ sub rebootnodes {
 	my $reboot_request = shift;
     my $nodes     = $reboot_request->{node};
     my $command   = $reboot_request->{command}->[0];
-    my $scheduler = $reboot_request->{arg}->[0];
-    my $hostlist  = $reboot_request->{arg}->[1];
+	my @reboot_args = @{$reboot_request->{arg}};
+    my $scheduler = shift @reboot_args;
+	if (($scheduler eq "-V") || ($scheduler eq "--verbose")) {
+		$::VERBOSE=1;
+		$scheduler = shift @reboot_args;
+	}
+    my $hostlist  = shift @reboot_args;
     my $rc;
+
+	if ($::VERBOSE) { 
+		unless (-d $::LOGDIR) { File::Path::mkpath($::LOGDIR); } 
+		open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+		print RULOG localtime()." rebootnodes request for $hostlist\n";
+		close (RULOG);
+	}
 
     my $client;
     if ( defined( $reboot_request->{'_xcat_clienthost'} ) ) {
@@ -756,6 +811,12 @@ sub rebootnodes {
         unless ( defined($ent)
                  && ( $ent->{appstatus} eq "ROLLUPDATE-update_job_submitted" ) )
         {
+			if ($::VERBOSE) { 
+				open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+				print RULOG localtime()." Node $node appstatus not in valid state for rolling update\n";
+				print RULOG "The following nodelist will not be processed:\n $hostlist \n";
+				close (RULOG);
+			}
             my $rsp;
             xCAT::MsgUtils->message(
                 "S",
@@ -771,6 +832,11 @@ sub rebootnodes {
 
         # Query LL for list of machines and their status
         my $cmd = "llstatus -r %n %sca 2>/dev/null";
+		if ($::VERBOSE) { 
+			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+			print RULOG localtime()." Running command \'$cmd\'\n";
+			close (RULOG);
+		}
         my @llstatus = xCAT::Utils->runcmd( $cmd, 0 );
         my %machines;
         foreach my $machineline (@llstatus) {
@@ -787,6 +853,11 @@ sub rebootnodes {
                  && ( $machines{$node}{'mstatus'} eq "1" ) )
             {
                 my $cmd = "llctl -h $node drain";
+				if ($::VERBOSE) { 
+					open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+					print RULOG localtime()." Running command \'$cmd\'\n";
+					close (RULOG);
+				}
                 xCAT::Utils->runcmd( $cmd, 0 );
             }
         }
@@ -795,6 +866,11 @@ sub rebootnodes {
     # Shutdown the nodes
     # FUTURE:  Replace if we ever develop cluster shutdown function
     my $shutdown_cmd = "shutdown -F &";
+	if ($::VERBOSE) { 
+		open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+		print RULOG localtime()." Running command \'xdsh $hostlist -v $shutdown_cmd\' \n";
+		close (RULOG);
+	}
     xCAT::Utils->runxcmd(
                           {
                              command => ['xdsh'],
@@ -811,6 +887,11 @@ sub rebootnodes {
     do {
         $alldown = 1;
         my $pwrstat_cmd = "rpower $nodelist stat";
+		if ($::VERBOSE) { 
+			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+			print RULOG localtime()." Running command \'$pwrstat_cmd\' \n";
+			close (RULOG);
+		}
         my @pwrstat = xCAT::Utils->runxcmd( $pwrstat_cmd, $::SUBREQ, 0 );
         foreach my $pline (@pwrstat) {
             my ( $pnode, $pstat ) = split( /\s+/, $pline );
@@ -823,6 +904,12 @@ sub rebootnodes {
                 # node off
                 if ( $slept >= 300 ) {
                     my $pwroff_cmd = "rpower $pnode off";
+        			my $pwrstat_cmd = "rpower $nodelist stat";
+					if ($::VERBOSE) { 
+						open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+						print RULOG localtime()." Running command \'$pwroff_cmd\' \n";
+						close (RULOG);
+					}
                     xCAT::Utils->runxcmd( $pwroff_cmd, $::SUBREQ, 0 );
                 }
                 else {
@@ -867,19 +954,21 @@ sub rebootnodes {
     if ( scalar(@rnetboot_nodes) > 0 ) {
         my $rnb_nodelist = join( ',', @rnetboot_nodes );
         my $cmd = "rnetboot $rnb_nodelist -f";
-        if ($::VERBOSE) {
-            system("date >> /tmp/rollupdate.out");
-            system("echo running command: $cmd >> /tmp/rollupdate.out");
-        }
+		if ($::VERBOSE) { 
+			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+			print RULOG localtime()." Running command \'$cmd\' \n";
+			close (RULOG);
+		}
         xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
     }
     elsif ( scalar(@rpower_nodes) > 0 ) {
         my $rp_nodelist = join( ',', @rpower_nodes );
         my $cmd = "rpower $rp_nodelist boot";
-        if ($::VERBOSE) {
-            system("date >> /tmp/rollupdate.out");
-            system("echo running command: $cmd >> /tmp/rollupdate.out");
-        }
+		if ($::VERBOSE) { 
+			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+			print RULOG localtime()." Running command \'$cmd\' \n";
+			close (RULOG);
+		}
         xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
     }
 

@@ -23,6 +23,9 @@ where:
                 drain the schedd on the nodelist.  Otherwise, when this job
                 ends, LL may submit new jobs to the nodes and those jobs will
                 die when the node is shutdown.  Default is 10 minutes.
+    [--verbose|-V] optional verbose indicator which if set will tell the 
+                xcatd daemon to log status messages in the log file
+                /var/log/xcat/rollupdate.log on the xCAT management node.
     <scheduler> is the job scheduler plugin to be invoked.  'loadleveler' is
                 currently the only scheduler supported by xCAT.
     <xcatserver> is the xcatd service node for the node running this script.
@@ -45,6 +48,11 @@ system "date";
 my $sleeptime = 60 * ( shift @ARGV );
 if ( $sleeptime <= 0 ) { $sleeptime = 600; }
 my $scheduler    = shift @ARGV;
+my $verbose = "";
+if ( ($scheduler eq '--verbose') || ($scheduler eq '-V') ) {
+	$verbose = $scheduler;
+	$scheduler = shift @ARGV;
+}
 my $xcatd_server = shift @ARGV;
 my $port         = shift @ARGV;
 my $nodelist     = shift @ARGV;
@@ -66,8 +74,8 @@ while ( defined( $line = <$remote> ) ) {
     print "read from port:  $line\n";
     if ( $line eq "ready" ) {
         system "date";
-        print "sending:  rebootnodes $scheduler $nodelist\n";
-        print $remote "rebootnodes $scheduler $nodelist\n";
+        print "sending:  rebootnodes $verbose $scheduler $nodelist\n";
+        print $remote "rebootnodes $verbose $scheduler $nodelist\n";
     }
     if ( $line eq "done" ) { last; }
 }
