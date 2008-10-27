@@ -20,7 +20,7 @@ use Getopt::Long;
 #-------------------------------------------------------
 
 =head3  handled_commands
-
+Only for Linux now
 Check to see if on a Service Node
 Check database to see if this node is going to have Conserver setup
    should be always
@@ -35,6 +35,9 @@ sub handled_commands
 {
     # If called in XCATBYPASS mode, don't do any setup
     if ($ENV{'XCATBYPASS'}) {
+       return 0;
+    }
+    if (xCAT::Utils->isAIX()) { # do not run on AIX
        return 0;
     }
 
