@@ -96,15 +96,21 @@ sub setdestiny {
     foreach (@{$req->{node}}) {
       $nstates{$_} = $state; #local copy of state variable for mod
       my $ntent = $ntents->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(os arch profile)]);
-      if ($ntent and $ntent->{os}) {
-        $nstates{$_} .= " ".$ntent->{os};
-      } else { $errored =1; $callback->({error=>"nodetype.os not defined for $_"}); }
+      if ($state ne "winshell") {
+        if ($ntent and $ntent->{os}) {
+            $nstates{$_} .= " ".$ntent->{os};
+        } else { $errored =1; $callback->({error=>"nodetype.os not defined for $_"}); }
+      } else {
+          $nstates{$_} .= " winpe";
+      }
       if ($ntent and $ntent->{arch}) {
         $nstates{$_} .= "-".$ntent->{arch};
       } else { $errored =1; $callback->({error=>"nodetype.arch not defined for $_"}); }
-      if ($ntent and $ntent->{profile}) {
-        $nstates{$_} .= "-".$ntent->{profile};
-      } else { $errored =1; $callback->({error=>"nodetype.profile not defined for $_"}); }
+      if ($state ne "winshell") {
+        if ($ntent and $ntent->{profile}) {
+            $nstates{$_} .= "-".$ntent->{profile};
+          } else { $errored =1; $callback->({error=>"nodetype.profile not defined for $_"}); }
+      }
       if ($errored) {return;}
       unless ($state =~ /^netboot/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
     }
