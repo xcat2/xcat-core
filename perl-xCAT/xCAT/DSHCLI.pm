@@ -3652,21 +3652,7 @@ sub parse_and_run_dsh
         # we will use the create the nostname from the directory
         # for the hostname in the output
         my $path = $options{'rootimg'};
-        if (xCAT::Utils->isLinux())
-        {
-            my @fields = split('/', $path);
-            $imagename .= $fields[5];
-            $imagename .= ".";
-            $imagename .= $fields[3];
-            $imagename .= ".";
-            $imagename .= $fields[4];
-        }
-        else
-        {    # AIX
-            my @fields = split('/', $path);
-            my $name = pop @fields;
-            $imagename = $name;
-        }
+        $imagename= xCAT::Utils->get_image_name($path);
         if (defined(@$nodes))
         {
             my $rsp = ();
