@@ -2804,5 +2804,40 @@ sub get_nodeset_state {
 }
 
 
+#-------------------------------------------------------------------------------
+
+=head3   get_image_name
+       get a name for the install image on AIX and Linux, to be used
+       by xdsh and sinv for the nodename 
+    Arguments:
+        path to image.
+    Returns:
+       imagename 
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_image_name {
+ my ($class, $imagepath) = @_;
+ my $imagename;
+ if (xCAT::Utils->isLinux())
+ {
+      my @fields = split('/', $imagepath);
+      $imagename .= $fields[5];
+      $imagename .= ".";
+      $imagename .= $fields[3];
+      $imagename .= ".";
+      $imagename .= $fields[4];
+ }
+ else
+ {    # AIX
+      my @fields = split('/', $imagepath);
+      my $name = pop @fields;
+      $imagename = $name;
+ }
+
+  return $imagename;    
+}
+
 
 1;
