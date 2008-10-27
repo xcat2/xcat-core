@@ -123,9 +123,9 @@ sub mkwinlinks {
         link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
         unlink "/tftpboot/Boot/BCD.$_";
         if ($ent->{arch} =~ /64/) {
-            link "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
+            symlink "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
         } else {
-            link "/tftpboot/Boot/BCD.32","/tftpboot/Boot/BCD.$_";
+            symlink "/tftpboot/Boot/BCD.32","/tftpboot/Boot/BCD.$_";
         }
     }
 }
