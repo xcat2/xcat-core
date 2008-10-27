@@ -28,6 +28,7 @@ my @dshresult;
 my $templatepath;
 my $processflg;
 my @cmdresult;
+my @errresult;
 
 #
 # Subroutines
@@ -43,6 +44,7 @@ my @cmdresult;
 #------------------------------------------------------------------------------
 sub usage
 {
+    my $callback = shift;
 ## usage message
 
     my $usagemsg1 =
@@ -103,12 +105,12 @@ sub parse_and_run_sinv
       )
     {
 
-        &usage;
+        &usage($callback);
         exit 1;
     }
     if ($options{'help'})
     {
-        &usage;
+        &usage($callback);
         exit 0;
     }
     if ($options{'version'})
@@ -173,14 +175,20 @@ sub parse_and_run_sinv
     # the command can be either xdsh or rinv for now
     # strip off the program and the noderange
     #
-    my @nodelist = ();
-    my ($cmdtype, $noderange, $args) = split(' ', $cmd, 3);
-    $cmd = "";
+    my @nodelist  = ();
+    my @cmdparts  = split(' ', $cmd);
+    my $cmdtype   = shift @cmdparts;
+    my $noderange = shift @cmdparts;
+    my @cmd = ();
     if ($noderange =~ /^-/)
     {    # no noderange
-        $cmd .= "$noderange ";    #  put flag back on command
+        push @cmd, $noderange;    #  put flag back on command
     }
-    $cmd .= $args;
+    foreach my $part (@cmdparts)
+    {
+
+        push @cmd, $part;         # build rest of command
+    }
     if (($cmdtype ne "xdsh") && ($cmdtype ne "rinv"))
     {
         my $rsp = {};
@@ -191,11 +199,11 @@ sub parse_and_run_sinv
     }
     my $cmdoutput;
     if ($cmdtype eq "xdsh")
-    {    # chose output routine to run
+    {                              # chose output routine to run
         $cmdoutput = "xdshoutput";
     }
     else
-    {    # rinv
+    {                              # rinv
         $cmdoutput = "rinvoutput";
     }
 
@@ -203,14 +211,14 @@ sub parse_and_run_sinv
     #  install image ( -i) for xdsh, only case where noderange is not required
 
     if ($noderange =~ /^-/)
-    {    # no noderange, it is a flag
+    {                              # no noderange, it is a flag
         @nodelist = "NO_NODE_RANGE";
 
         # add flag back to arguments
         $args .= $noderange;
     }
     else
-    {    # get noderange
+    {                              # get noderange
         @nodelist = noderange($noderange);    # expand noderange
         if (nodesmissed)
         {
@@ -409,13 +417,25 @@ sub parse_and_run_sinv
                    {
                     command => [$cmdtype],
                     node    => \@seed,
-                    arg     => [$cmd]
+                    arg     => [@cmd]
                    },
                    \&$cmdoutput
                    );
+        if ($? > 0)
+        {
+            my $rsp = {};
+            my $i   = 0;
+            foreach my $line (@cmdresult)
+            {
+                $rsp->{data}->[$i] = $line;
+                $i++;
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
 
         #  write the results to the tempfile after running through xdshbak
-        $rc = &storeresults;
+        $rc = &storeresults($callback);
 
     }
     $processflg = "node";
@@ -436,16 +456,30 @@ sub parse_and_run_sinv
                {
                 command => [$cmdtype],
                 node    => \@nodelist,
-                arg     => [$cmd]
+                arg     => [@cmd]
                },
                \&$cmdoutput
                );
 
+    if ($? > 0)
+    {
+        my $rsp = {};
+        my $i   = 0;
+        foreach my $line (@cmdresult)
+        {
+            $rsp->{data}->[$i] = $line;
+            $i++;
+        }
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
     #  write the results to the tempfile after running through xdshbak
-    $rc = &storeresults;
+    $rc = &storeresults($callback);
 
     #  Build report and write to output file
     #  if file exist and has something in it
+
     if ((-e $tempfile) && ($rc == 0))
     {    # if cmd returned something
 
@@ -1123,10 +1157,21 @@ sub xdshoutput
     # Handle info structure, like xdsh returns
     if ($rsp->{warning})
     {
-        my $msg = {};
-        $msg->{data}->[0] = $rsp->{warning}->[0];
-        xCAT::MsgUtils->message("E", $msg, $::CALLBACK, 1);
-        return 1;
+        foreach (@{$rsp->{warning}})
+        {
+            my $line = $_;
+            $line .= "\n";
+            push(@errresult, $line);
+        }
+    }
+    if ($rsp->{error})
+    {
+        foreach (@{$rsp->{error}})
+        {
+            my $line = $_;
+            $line .= "\n";
+            push(@errresult, $line);
+        }
     }
     if ($rsp->{info})
     {
@@ -1232,6 +1277,7 @@ sub rinvoutput
 
 sub storeresults
 {
+    my $callback = shift;
 
     # open file to write results of xdsh or rinv command
     my $newtempfile = $tempfile;
@@ -1241,7 +1287,7 @@ sub storeresults
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Could not open $newtempfile\n";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
     foreach my $line (@cmdresult)
@@ -1265,7 +1311,7 @@ sub storeresults
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Could not open $outputfile\n";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
     my $cmd = " /opt/xcat/bin/xdshbak <$newtempfile |";
@@ -1275,7 +1321,7 @@ sub storeresults
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Could not call xdshbak \n";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
 
@@ -1292,6 +1338,30 @@ sub storeresults
     close FILE;
     system("/bin/rm  $newtempfile");
 
+    # capture errors
+    # open errorfile to write results of xdsh or rinv command
+    if (@errresult)
+    {    # if errors
+        my $newtempfile = $tempfile;
+        $newtempfile .= "err";
+        open(FILE, ">$newtempfile");
+        if ($? > 0)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Could not open $newtempfile\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        foreach my $line (@errresult)
+        {
+            print FILE $line;
+        }
+        close FILE;
+        my $rsp = {};
+        $rsp->{data}->[0] = "Check $newtempfile for errors.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+
+    }
     return;
 }
 1;
