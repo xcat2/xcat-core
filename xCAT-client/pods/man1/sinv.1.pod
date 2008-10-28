@@ -77,6 +77,10 @@ An alternative method is to use the [B<-s> I<seed node>] parameter,
 which will automatically build the template for you from the 
 seed node named.
 
+If a template path file does not exist, and a seed node is not input,
+then sinv will automatically use the first node in the noderange as
+the seed node and build the template.
+
 
 =item B<-t>|B<--tc> I<template count>
 
@@ -99,6 +103,10 @@ be compared against the first template.
 This is the node that will be used to build the first template
 that is stored in template path.  You can use this parameter instead of running
 the command yourself to build the template.
+
+B<Note:> If the template path file does not exists, and no seed node is 
+supplied, the seed node automatically is the first node in the
+noderange.
 
 
 =item B<-i>|B<--ignorefirst>
