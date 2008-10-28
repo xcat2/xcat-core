@@ -124,7 +124,7 @@ sub start {
           if ($tmp1[3] !~ /Not|not/) { #active
 	    if ((!exists($assocHash{"$cond:_:$resp"})) || ($assocHash{"$cond:_:$resp"}==0)) {
 	      $result=`/usr/bin/startcondresp $cond $resp 2>&1`;
-              if ($?) {
+              if (($?) && ($result !~ /2618-244/)) { #started
                 my $rsp={};
                 $rsp->{data}->[0]="$localhostname: $result";
                 $callback->($rsp);
@@ -140,7 +140,7 @@ sub start {
 	      }
             } elsif ($assocHash{"$cond:_:$resp"}==1) { 
               $result=`/usr/bin/stopcondresp $cond $resp  2>&1`;
-              if ($?) {
+              if (($?) && ($result !~ /2618-264/)) { #stoped
                 my $rsp={};
                 $rsp->{data}->[0]="$localhostname: $result";
                 $callback->($rsp);
@@ -275,7 +275,7 @@ sub stop {
         if (@tmp1 < 4) { next; }
         if ($tmp1[3] !~ /Not|not/) {
 	  my $result=`/usr/bin/stopcondresp $tmp1[0] $tmp1[1]  2>&1`;
-          if ($?) {
+          if (($?) && ($result !~ /2618-264/)) { #stoped
 	    if ($callback) {
               my $rsp={};
               $rsp->{data}->[0]="$localhostname: $result";
@@ -605,7 +605,7 @@ sub startNodeStatusMon {
   if (!$isSV) {
     #start monitoring the status of mn's immediate children
     my $result=`startcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
-    if ($?) {
+    if (($?) && ($result !~ /2618-244/)) { #started
       $retcode=$?;
       $retmsg="Error start node status monitoring: $result";
       reportError($retmsg, $callback);
@@ -613,7 +613,7 @@ sub startNodeStatusMon {
 
     #start monitoring the status of mn's grandchildren via their service nodes
     $result=`startcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
-    if ($?) {
+    if (($?) && ($result !~ /2618-244/)) { #started
       $retcode=$?;
       $retmsg="Error start node status monitoring: $result";
       reportError($retmsg, $callback);
@@ -728,7 +728,7 @@ sub stopNodeStatusMon {
  
   #stop monitoring the status of mn's immediate children
   my $result=`stopcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
-  if ($?) {
+  if (($?) && ($result !~ /2618-264/)) { #stoped
     $retcode=$?;
     $retmsg="Error stop node status monitoring: $result";
     reportError($retmsg, $callback);
@@ -736,7 +736,7 @@ sub stopNodeStatusMon {
 
   #stop monitoring the status of mn's grandchildren via their service nodes
   $result=`stopcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
-  if ($?) {
+  if (($?) && ($result !~ /2618-264/)) { #stoped
     $retcode=$?;
     $retmsg="Error stop node status monitoring: $result";
     reportError($retmsg, $callback);
