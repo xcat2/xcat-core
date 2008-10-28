@@ -327,7 +327,7 @@ sub parse_and_run_sinv
     # Get seed node if it exists to build the original template
     # if seed node does not exist and the admin did not submit a
     # template, the the first node becomes the seed node
-    #
+    # if there is no nodelist then error
     my @seed;
     my $seednode = $options{'seed_node'};
     if ($seednode)
@@ -337,10 +337,17 @@ sub parse_and_run_sinv
     }
     else
     {
-        if ($admintemplate eq "NO")
+        if ($admintemplate eq "NO") # default the seed node
         {    # admin did not generate a template
-            push @seed, $nodelist[$#nodelist];    # assign last element as seed
-            $seednode = $nodelist[$#nodelist];
+            if ($nodelist[0] ne "NO_NODE_RANGE") {
+              push @seed, $nodelist[0];    # assign first element as seed
+              $seednode = $nodelist[0];
+            } else { # error cannot default 
+               my $rsp = {};
+               $rsp->{data}->[0] = "No template or seed node supplied and no noderange to chose a default.\n";
+               xCAT::MsgUtils->message("E", $rsp, $callback,1);
+               exit 1;
+            }
         }
     }
 
