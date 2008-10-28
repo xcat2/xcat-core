@@ -2828,9 +2828,9 @@ sub get_image_name {
  {
       my @fields = split('/', $imagepath);
       $imagename .= $fields[5];
-      $imagename .= ".";
+      $imagename .= "-";
       $imagename .= $fields[3];
-      $imagename .= ".";
+      $imagename .= "-";
       $imagename .= $fields[4];
  }
  else

@@ -165,7 +165,7 @@ sub parse_and_run_sinv
             $rsp->{data}->[0] =
               "Input command file: $options{'sinv_cmd_file'} does not exist.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
-            exit 1;
+            return 1;
         }
         $cmd = `cat $options{'sinv_cmd_file'}`;
     }
@@ -179,7 +179,7 @@ sub parse_and_run_sinv
     my @cmdparts  = split(' ', $cmd);
     my $cmdtype   = shift @cmdparts;
     my $noderange = shift @cmdparts;
-    my @cmd = ();
+    my @cmd       = ();
     if ($noderange =~ /^-/)
     {    # no noderange
         push @cmd, $noderange;    #  put flag back on command
@@ -199,11 +199,11 @@ sub parse_and_run_sinv
     }
     my $cmdoutput;
     if ($cmdtype eq "xdsh")
-    {                              # chose output routine to run
+    {                             # chose output routine to run
         $cmdoutput = "xdshoutput";
     }
     else
-    {                              # rinv
+    {                             # rinv
         $cmdoutput = "rinvoutput";
     }
 
@@ -211,14 +211,14 @@ sub parse_and_run_sinv
     #  install image ( -i) for xdsh, only case where noderange is not required
 
     if ($noderange =~ /^-/)
-    {                              # no noderange, it is a flag
+    {                             # no noderange, it is a flag
         @nodelist = "NO_NODE_RANGE";
 
         # add flag back to arguments
         $args .= $noderange;
     }
     else
-    {                              # get noderange
+    {                             # get noderange
         @nodelist = noderange($noderange);    # expand noderange
         if (nodesmissed)
         {
@@ -1092,49 +1092,52 @@ sub writereport
 
     #
     # Now check to see if we covered all nodes in the dsh
-    #  short names must match long names
+    #  short names must match long names, ignore NO_NODE_RANGE
     #
     my $firstpass = 0;
     my $nodefound = 0;
     foreach my $dshnodename (@dshnodearray)
     {
-        my @shortdshnodename;
-        my @shortnodename;
-        chomp $dshnodename;
-        $dshnodename =~ s/\s*//g;    # remove blanks
-        foreach my $nodename (@nodearray)
-        {
-            @shortdshnodename = split(/\./, $dshnodename);
-            @shortnodename    = split(/\./, $nodename);
-
-            if ($shortdshnodename[0] eq $shortnodename[0])
+        if ($dshnodename ne "NO_NODE_RANGE")
+        {    # skip it
+            my @shortdshnodename;
+            my @shortnodename;
+            chomp $dshnodename;
+            $dshnodename =~ s/\s*//g;    # remove blanks
+            foreach my $nodename (@nodearray)
             {
-                $nodefound = 1;      # we have a match
-                last;
+                @shortdshnodename = split(/\./, $dshnodename);
+                @shortnodename    = split(/\./, $nodename);
+
+                if ($shortdshnodename[0] eq $shortnodename[0])
+                {
+                    $nodefound = 1;      # we have a match
+                    last;
+                }
             }
-        }
-        if ($nodefound == 0)
-        {                            # dsh node name missing
-            if ($firstpass == 0)
-            {                        # put out header
-                $rsp->{data}->[0] = "The following nodes had no output:\n";
+            if ($nodefound == 0)
+            {                            # dsh node name missing
+                if ($firstpass == 0)
+                {                        # put out header
+                    $rsp->{data}->[0] = "The following nodes had no output:\n";
+                    print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+                    if ($::VERBOSE)
+                    {
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                    $firstpass = 1;
+                }
+
+                # add missing node
+                $rsp->{data}->[0] = "$shortdshnodename[0]\n";
                 print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
                 if ($::VERBOSE)
                 {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
-                $firstpass = 1;
             }
-
-            # add missing node
-            $rsp->{data}->[0] = "$shortdshnodename[0]\n";
-            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-            if ($::VERBOSE)
-            {
-                xCAT::MsgUtils->message("I", $rsp, $callback);
-            }
+            $nodefound = 0;
         }
-        $nodefound = 0;
     }
     return;
 }

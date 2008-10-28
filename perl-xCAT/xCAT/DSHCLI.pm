@@ -3602,13 +3602,13 @@ sub parse_and_run_dsh
       )
     {
         xCAT::DSHCLI->usage_dsh;
-        exit 1;
+        return 1;
     }
 
     if ($options{'help'})
     {
         xCAT::DSHCLI->usage_dsh;
-        exit 0;
+        return 0;
     }
 
     my $rsp = {};
@@ -3653,12 +3653,16 @@ sub parse_and_run_dsh
         # for the hostname in the output
         my $path = $options{'rootimg'};
         $imagename= xCAT::Utils->get_image_name($path);
+        if (@$nodes[0] eq "NO_NODE_RANGE") { # from sinv, discard this name
+            undef @$nodes;
+        }
         if (defined(@$nodes))
         {
             my $rsp = ();
             $rsp->{data}->[0] =
-              "Input noderange and any other xdsh flags or environment variables are not valid with -i flag. They are  ignored.";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+              "Input noderange:@$nodes and any other xdsh flags or environment variables are not valid with -i flag.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,1);
+            return;
         }
 
     }
