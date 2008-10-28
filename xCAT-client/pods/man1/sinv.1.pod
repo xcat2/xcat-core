@@ -175,7 +175,7 @@ Verbose mode.
 
 To setup sinv.template (name optional) for input to the B<sinv> command , enter:
 
-B<xdsh> I<node1,node2 "rpm -qa | grep xCAT" | xdshbak > /tmp/sinv.template>
+B<xdsh> I<node1,node2 "rpm -qa | grep xCAT  | xdshbak" E<gt> /tmp/sinv.template>
 
 Note: when setting up the template the output of xdsh must be piped
 	  to xdshbak, sinv processing depends on it.
@@ -184,7 +184,7 @@ Note: when setting up the template the output of xdsh must be piped
 
 To setup rinv.template for input to the B<sinv> command , enter:
 
-B<rinv> I<node1-node2 serial | xdshbak > /tmp/rinv.template>
+B<rinv> I<node1-node2 "serial | xdshbak" E<gt> /tmp/rinv.template>
 
 Note: when setting up the template the output of rinv must be piped
 	  to xdshbak, sinv processing depends on it.
