@@ -103,8 +103,6 @@ while (<STDIN>)
     # feedback on lines processed
     #
     $num_lines++;
-    if ($::opt_x) { $num_lines % 100 == 0 && print STDOUT "."; }
-    else { $num_lines % 1000 == 0 && print STDOUT "."; }
 
     if (/: /)
     {
