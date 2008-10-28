@@ -37,7 +37,7 @@ sub process_request {
     getdestiny(0);
   }
   if ($request->{command}->[0] eq 'nextdestiny') {
-    nextdestiny(0);  #it is called within dodestiny
+    nextdestiny(0,1);  #it is called within dodestiny
   }
   if ($request->{command}->[0] eq 'setdestiny') {
     setdestiny($request, 0); 
