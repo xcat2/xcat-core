@@ -41,6 +41,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 mkdir -p $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
@@ -77,6 +78,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca/*
 
 cp share/xcat/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 cp share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
+cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 cp share/xcat/cons/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/*
 ln -sf /%{prefix}/share/xcat/cons/hmc $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/ivm
