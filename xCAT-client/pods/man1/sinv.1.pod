@@ -77,10 +77,6 @@ An alternative method is to use the [B<-s> I<seed node>] parameter,
 which will automatically build the template for you from the 
 seed node named.
 
-If a template path file does not exist, and a seed node is not input,
-then sinv will automatically use the first node in the noderange as
-the seed node and build the template.  
-
 
 =item B<-t>|B<--tc> I<template count>
 
@@ -104,9 +100,6 @@ This is the node that will be used to build the first template
 that is stored in template path.  You can use this parameter instead of running
 the command yourself to build the template.
 
-B<Note:> If no template path file exists, and no seed node is supplied,
-the seed node automatically is the first node in the
-noderange.
 
 =item B<-i>|B<--ignorefirst>
 
@@ -182,7 +175,7 @@ Verbose mode.
 
 To setup sinv.template (name optional) for input to the B<sinv> command , enter:
 
-B<xdsh> I<node1,node2 "rpm -qa | grep xCAT | xdshbak "> /tmp/sinv.template>
+B<xdsh> I<node1,node2 "rpm -qa | grep xCAT" | xdshbak > /tmp/sinv.template>
 
 Note: when setting up the template the output of xdsh must be piped
 	  to xdshbak, sinv processing depends on it.
@@ -191,7 +184,7 @@ Note: when setting up the template the output of xdsh must be piped
 
 To setup rinv.template for input to the B<sinv> command , enter:
 
-B<rinv> I<node1-node2 serial> /tmp/rinv.template>
+B<rinv> I<node1-node2 serial | xdshbak > /tmp/rinv.template>
 
 Note: when setting up the template the output of rinv must be piped
 	  to xdshbak, sinv processing depends on it.
@@ -224,31 +217,20 @@ to generate the first template, using the rinv command (-c),
 possibly generating up to two additional
 templates and removing any generated templates at the end, enter:
 
-B<xsinv> I<-c "rinv node1-node4 serial" -s node8 -p /tmp/sinv.template -t 2 -r -o /tmp/rinv.output> 
+B<xsinv> I<-c "rinv node1-node4 serial" -s node8 -p /tmp/sinv.template -t 2 -r -o /tmp/rinv.output>
+ 
 =item *
 
-To execute B<sinv> on noderange, node1-node4, automatically using node1 as
+To execute B<sinv> on noderange, node1-node4, using node1 as
 the seed node, to generate the sinv.template from the xdsh command (-c),
 using the exact match option, generating no additional templates, enter:
 
 
-B<xsinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt"  -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
+B<xsinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt"  -s node1 -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
 
 Note: the /tmp/sinv.template file must be empty, otherwise it will be used
 as an admin generated template.
 
-=item *
-
-To execute B<sinv> on noderange, node1-node4, automatically using node1 as
-the seed node, to generate the sinv.template from the command input (-c),
-using the exact match option, generating no additional templates, and 
-reporting only nodes that do not match enter:
-
-
-B<xsinv> I< -c "xdsh node1-node4 lslpp -l | grep bos.adt"  -e -i -p /tmp/sinv.template  -o /tmp/sinv.output> 
-
-Note: the /tmp/sinv.template file must be empty, otherwise it will be used
-as an admin generated template.
 
 =back
 
