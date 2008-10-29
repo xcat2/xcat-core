@@ -85,10 +85,10 @@ echo "instxcat" > ./flist
 ls *.rpm >> ./flist
 
 # add the service node bundle files to the tar file
-cp $BLDTOP/xCATaixSN.bnd $RPMDIR
-cp $BLDTOP/xCATaixSSH.bnd $RPMDIR 
-echo "xCATaixSN.bnd" >> ./flist
-echo "xCATaixSSH.bnd" >> ./flist
+#cp $BLDTOP/xCATaixSN.bnd $RPMDIR
+#cp $BLDTOP/xCATaixSSH.bnd $RPMDIR 
+#echo "xCATaixSN.bnd" >> ./flist
+#echo "xCATaixSSH.bnd" >> ./flist
 
 #TIME=`date +%Y%m%d%H%M`
 tar -cvf core-aix-snap.tar -L flist
@@ -99,14 +99,15 @@ gzip core-aix-snap.tar
 #
 if [ $UPLOAD == 1 ]; then
 
-  # clear out the old files
-  ssh nott@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/aix/devel; rm -f *.gz; cd /home/groups/x/xc/xcat/htdocs/aix/devel/core-snap; rm -f *.rpm"
+  # clear out the old files - do this manually with winscp session!
+#  ssh nott@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/aix/devel; rm -f *.gz; cd /home/groups/x/xc/xcat/htdocs/aix/devel/core-snap; rm -f *.rpm"
 
-  scp *.rpm nott@shell1.sf.net:/home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
+  scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
 
-  scp core-aix-snap.tar.gz nott@shell1.sf.net:/home/groups/x/xc/xcat/htdocs/aix/devel
+  scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel
 
-# rsync -avP -e ssh core-aix-snap.tar.gz nott@frs.sourceforge.net:uploads/
+# for dep-aix
+#scp dep-aix-2.1.tar.gz nott,xcat@web.sourceforge.net:upload/
 
 fi
 

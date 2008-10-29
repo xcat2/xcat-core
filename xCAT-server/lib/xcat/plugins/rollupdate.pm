@@ -637,7 +637,7 @@ sub ll_jobs {
                 $jcline =~ s/\[\[LLCOUNT\]\]/$machinecount/;
                 push( @jclines, $jcline );
             }
-            my $lljob_file = $lljobs_dir . "/rollupate_" . $ugname . ".cmd";
+            my $lljob_file = $lljobs_dir . "/rollupdate_" . $ugname . ".cmd";
             my $JOBFILE;
             unless ( open( $JOBFILE, ">$lljob_file" ) ) {
                 my $rsp;
@@ -878,10 +878,9 @@ sub rebootnodes {
                              arg     => [ "-v", $shutdown_cmd ]
                           },
                           $::SUBREQ,
-                          0
+                          -1
     );
-    sleep(60);    # give shutdown 1 minute
-    my $slept    = 60;
+    my $slept    = 0;
     my $alldown  = 1;
     my $nodelist = join( ',', @nodes );
     do {
@@ -892,9 +891,9 @@ sub rebootnodes {
 			print RULOG localtime()." Running command \'$pwrstat_cmd\' \n";
 			close (RULOG);
 		}
-        my @pwrstat = xCAT::Utils->runxcmd( $pwrstat_cmd, $::SUBREQ, 0 );
-        foreach my $pline (@pwrstat) {
-            my ( $pnode, $pstat ) = split( /\s+/, $pline );
+        my $pwrstat = xCAT::Utils->runxcmd( $pwrstat_cmd, $::SUBREQ, -1, 1 );
+        foreach my $pline (@{$pwrstat}) {
+            my ( $pnode, $pstat, $rest ) = split( /\s+/, $pline );
             if (    ( $pstat eq "Running" )
                  || ( $pstat eq "Shutting" )
                  || ( $pstat eq "on" ) )
@@ -904,13 +903,12 @@ sub rebootnodes {
                 # node off
                 if ( $slept >= 300 ) {
                     my $pwroff_cmd = "rpower $pnode off";
-        			my $pwrstat_cmd = "rpower $nodelist stat";
 					if ($::VERBOSE) { 
 						open (RULOG, ">>$::LOGDIR/$::LOGFILE");
 						print RULOG localtime()." Running command \'$pwroff_cmd\' \n";
 						close (RULOG);
 					}
-                    xCAT::Utils->runxcmd( $pwroff_cmd, $::SUBREQ, 0 );
+                    xCAT::Utils->runxcmd( $pwroff_cmd, $::SUBREQ, -1 );
                 }
                 else {
                     $alldown = 0;
@@ -921,8 +919,8 @@ sub rebootnodes {
 
         # If all nodes are not down yet, wait some more
         unless ($alldown) {
-            sleep(15);
-            $slept += 15;
+            sleep(20);
+            $slept += 20;
         }
     } until ($alldown);
 

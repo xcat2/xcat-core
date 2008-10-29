@@ -958,6 +958,23 @@ sub runxcmd_output {
 	if (defined($resp->{data})) {
 	    push @$::xcmd_outref,@{$resp->{data}};
 	}
+    if (defined($resp->{node})) {
+        my $node=$resp->{node}->[0];
+        my $desc=$node->{name}->[0];
+        if (defined($node->{data})) {
+           if (ref(\($node->{data}->[0])) eq 'SCALAR') {
+              $desc=$desc.": ".$node->{data}->[0];
+           } else {
+              if (defined($node->{data}->[0]->{desc})) {
+                $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
+              }
+              if (defined($node->{data}->[0]->{contents})) {
+                $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
+              }
+          }
+       }
+       push @$::xcmd_outref,$desc;
+    }
 	if (defined($resp->{error})) {
 	    push @$::xcmd_outref,@{$resp->{error}};
 		$::RUNCMD_RC=1;
