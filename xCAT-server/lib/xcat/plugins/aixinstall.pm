@@ -1507,7 +1507,7 @@ sub mk_lpp_source
 			
 			my $loc;
 			if ($::opt_l) {
-				$loc = "$::opt_l/$lppsrcname";
+				$loc = "$::opt_l/lpp_source/$lppsrcname";
 			} else {
 				$loc = "/install/nim/lpp_source/$lppsrcname";
 			}
@@ -1609,7 +1609,7 @@ sub mk_spot
 
 				# where to put it - the default is /install
 				if ($::opt_l) {
-					$cpcosi_cmd .= "-l $::opt_l ";
+					$cpcosi_cmd .= "-l $::opt_l/spot ";
 				} else {
 					$cpcosi_cmd .= "-l /install/nim/spot  ";
 				}
@@ -1663,8 +1663,8 @@ sub mk_spot
 				# where to put it - the default is /install
 				my $loc;
 				if ($::opt_l) {
-					$cmd .= "-a location=$::opt_l ";
-					$loc = "$::opt_l";
+					$cmd .= "-a location=$::opt_l/spot ";
+					$loc = "$::opt_l/spot";
 				} else {
 					$cmd .= "-a location=/install/nim/spot  ";
 					$loc = "/install/nim/spot";
@@ -1772,7 +1772,7 @@ sub mk_bosinst_data
 
 			my $loc;
 			if ($::opt_l) {
-				$loc = $::opt_l;
+				$loc = "$::opt_l/bosinst_data";
 			} else {
 				$loc = "/install/nim/bosinst_data";
 			}
@@ -1873,7 +1873,7 @@ sub mk_resolv_conf
 			# use the resolv.conf file to create a res if it exists
 			my $loc;
 			if ($::opt_l) {
-				$loc = $::opt_l;
+				$loc = "$::opt_l/resolv_conf/$resolv_conf_name";
 			} else {
 				$loc = "/install/nim/resolv_conf/$resolv_conf_name";
 			}
@@ -1955,9 +1955,9 @@ sub mk_mksysb
 
 				my $loc;
             	if ($::opt_l) {
-                	$loc = $::opt_l;
+                	$loc = "$::opt_l/mksysb/$::image_name";
             	} else {
-					$loc = "/install/nim/mksysb/$::image_name";
+			$loc = "/install/nim/mksysb/$::image_name";
             	}
 
 				# create resource location for mksysb image
@@ -2755,7 +2755,7 @@ sub mknimres {
 
 	# where to put it - the default is /install
 	if ($location) {
-		$cmd .= "-a location=$location ";
+		$cmd .= "-a location=$location/$type/$res_name ";
 	} else {
 		$cmd .= "-a location=/install/nim/$type/$res_name ";
 	}
