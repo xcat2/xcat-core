@@ -216,7 +216,7 @@ to generate the first template, using the xdsh command (-c),
 possibly generating up to two additional
 templates and not removing any templates at the end, enter:
 
-B<xsinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt" -s node8 -p /tmp/sinv.template -t 2 -o /tmp/sinv.output> 
+B<sinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt" -s node8 -p /tmp/sinv.template -t 2 -o /tmp/sinv.output> 
 
 =item *
 
@@ -225,7 +225,7 @@ to generate the first template, using the rinv command (-c),
 possibly generating up to two additional
 templates and removing any generated templates at the end, enter:
 
-B<xsinv> I<-c "rinv node1-node4 serial" -s node8 -p /tmp/sinv.template -t 2 -r -o /tmp/rinv.output>
+B<sinv> I<-c "rinv node1-node4 serial" -s node8 -p /tmp/sinv.template -t 2 -r -o /tmp/rinv.output>
  
 =item *
 
@@ -234,7 +234,7 @@ the seed node, to generate the sinv.template from the xdsh command (-c),
 using the exact match option, generating no additional templates, enter:
 
 
-B<xsinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt"  -s node1 -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
+B<sinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt"  -s node1 -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
 
 Note: the /tmp/sinv.template file must be empty, otherwise it will be used
 as an admin generated template.
