@@ -44,11 +44,8 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/web/*
 
 %post
 # Post-install script---------------------------------------------------
-
-if [ "$1" = 1 ]    # initial install
-then
-  # Set variables for apache because the names vary on redhat and suse
-  if [ -e "/etc/redhat-release" ]; then
+# Set variables for apache because the names vary on redhat and suse
+if [ -e "/etc/redhat-release" ]; then
   	apachedaemon='httpd'
   	apacheuser='apache'
 
@@ -56,11 +53,13 @@ then
 	#echo "Updating apache userid to allow logins..."
 	#cp /etc/passwd /etc/passwd.orig
 	#perl -e 'while (<>) { s,^apache:(.*):/sbin/nologin$,apache:$1:/bin/bash,; print $_; }' /etc/passwd.orig >/etc/passwd
-  else    # SuSE
+else    # SuSE
   	apachedaemon='apache2'
   	apacheuser='wwwrun'
-  fi
+fi
 
+if [ "$1" = 1 ]    # initial install
+then
   # Update the apache config
   #echo "Updating $apachedaemon configuration for xCAT..."
   /bin/rm -f /etc/$apachedaemon/conf.d/xcat-web.conf
@@ -82,11 +81,13 @@ then
   #echo -e "y\ny\ny" | %{prefix}/share/xcat/scripts/setup-local-client.sh $apacheuser
   #XCATROOT=%{prefix} %{prefix}/sbin/chtab priority=5 policy.name=$apacheuser policy.rule=allow
 
-  echo "To use xCAT-web, point your browser to http://"`hostname`"/xcat-web"
+  echo "To use xCAT-web, point your browser to http://"`hostname`"/xcat"
 fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]        # initial install, or upgrade and this is the newer rpm
 then
+  #todo: can remove this after a few releases, unless we change xcat-web.conf again
+  /etc/init.d/$apachedaemon reload
   true
 fi
 

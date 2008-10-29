@@ -5,7 +5,7 @@
 $TOPDIR = '..';
 require_once "$TOPDIR/lib/functions.php";
 
-insertHeader('OS Images', NULL, NULL, array('deploy','osimages'));
+insertHeader('Configure Management Node', NULL, NULL, array('config','mgmtnode'));
 insertNotDoneYet();
 insertFooter();
 ?>

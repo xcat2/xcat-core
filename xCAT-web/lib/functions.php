@@ -38,7 +38,7 @@ echo <<<EOS1
 <title>$title</title>
 <meta http-equiv="Content-Type" content="application/xhtml+xml;  charset=iso-8859-1">
 <link href="$TOPDIR/lib/style.css" rel=stylesheet type='text/css'>
-<link href="$TOPDIR/jq/theme/jquery-ui-theme.css" rel=stylesheet type='text/css'>
+<link href="$TOPDIR/jq/theme/jquery-ui-themeroller.css" rel=stylesheet type='text/css'>
 <script src="$TOPDIR/jq/jquery.min.js" type="text/javascript"></script>
 <script src="$TOPDIR/jq/jquery-ui-all.min.js" type="text/javascript"></script>
 <script src="$TOPDIR/lib/functions.js" type="text/javascript"></script>
@@ -109,29 +109,19 @@ $MENU = array(
 		'label' => 'Machines',
 		'default' => 'groups',
 		'list' => array(
-			'lab' => array('label' => 'Lab Floor', 'url' => "$TOPDIR/machines/lab.php"),
-			'frames' => array('label' => 'Racks', 'url' => "$TOPDIR/machines/frames.php"),
+			'frames' => array('label' => 'Lab Floor/Racks', 'url' => "$TOPDIR/machines/frames.php"),
 			'groups' => array('label' => 'Groups/Nodes', 'url' => "$TOPDIR/machines/groups.php"),
 			'discover' => array('label' => 'Discover', 'url' => "$TOPDIR/machines/discover.php"),
 			)
 		),
-	'manage' => array(
-		'label' => 'Manage',
-		'default' => 'dsh',
+	'config' => array(
+		'label' => 'Configure',
+		'default' => 'db',
 		'list' => array(
-			'dsh' => array('label' => 'Run Cmds', 'url' => "$TOPDIR/manage/dsh.php"),
-			'copyfiles' => array('label' => 'Copy Files', 'url' => "$TOPDIR/manage/copyfiles.php"),
-			'cfm' => array('label' => 'Sync Files', 'url' => "$TOPDIR/manage/cfm.php"),
-			'hwctrl' => array('label' => 'HW Ctrl', 'url' => "$TOPDIR/manage/hwctrl.php"),
-			'diagnodes' => array('label' => 'Diagnose', 'url' => "$TOPDIR/manage/diagnodes.php"),
-			)
-		),
-	'jobs' => array(
-		'label' => 'Jobs',
-		'default' => 'overview',
-		'list' => array(
-			'overview' => array('label' => 'Overview', 'url' => "$TOPDIR/jobs/overview.php"),
-			//todo:  Vallard fill in rest
+			'prefs' => array('label' => 'Preferences', 'url' => "$TOPDIR/config/prefs.php"),
+			'db' => array('label' => 'Cluster Settings', 'url' => "$TOPDIR/config/db.php"),
+			'mgmtnode' => array('label' => 'Mgmt Node', 'url' => "$TOPDIR/config/mgmtnode.php"),
+			'cfm' => array('label' => 'Sync Files', 'url' => "$TOPDIR/config/cfm.php"),
 			)
 		),
 	'deploy' => array(
@@ -144,15 +134,22 @@ $MENU = array(
 			'monitor' => array('label' => 'Monitor', 'url' => "$TOPDIR/deploy/monitor.php"),
 			)
 		),
-	'config' => array(
-		'label' => 'Configure',
-		'default' => 'db',
+	'monitor' => array(
+		'label' => 'Monitor',
+		'default' => 'monsetup',
 		'list' => array(
-			'prefs' => array('label' => 'Preferences', 'url' => "$TOPDIR/config/prefs.php"),
-			'db' => array('label' => 'Cluster Settings', 'url' => "$TOPDIR/config/db.php"),
-			'mgmtnode' => array('label' => 'Mgmt Node', 'url' => "$TOPDIR/config/mgmtnode.php"),
-			'monitor' => array('label' => 'Monitor Setup', 'url' => "$TOPDIR/config/monitor.php"),
-			'eventlog' => array('label' => 'Event Log', 'url' => "$TOPDIR/config/eventlog.php"),
+			'monsetup' => array('label' => 'Monitor Setup', 'url' => "$TOPDIR/monitor/monsetup.php"),
+			'moncond' => array('label' => 'Define Events', 'url' => "$TOPDIR/monitor/moncond.php"),
+			'monview' => array('label' => 'View Events', 'url' => "$TOPDIR/monitor/monview.php"),
+			'eventlog' => array('label' => 'Event Log', 'url' => "$TOPDIR/monitor/eventlog.php"),
+			)
+		),
+	'jobs' => array(
+		'label' => 'Jobs',
+		'default' => 'overview',
+		'list' => array(
+			'overview' => array('label' => 'Overview', 'url' => "$TOPDIR/jobs/overview.php"),
+			//todo:  Vallard fill in rest
 			)
 		),
 	'support' => array(
@@ -340,6 +337,7 @@ function getXmlErrors(& $xml, & $errors) {
 		if ($k == 'error') { $errors[] = (string) $v; }
 		if ($k == 'errorcode') { $errorcode = (string) $v; }
 	}
+	if ($errorcode==0 && count($errors)) { $errorcode = -1 * count($errors); }		// the plugin author forgot to set the errorcode
 	return $errorcode;
 }
 
@@ -509,6 +507,10 @@ function getDocURL($book, $section = NULL) {
 				0 => "$TOPDIR/../xcat-doc/man5",
 				1 => "$TOPDIR/../xcat-doc/man5/xcatdb.5.html",
 				);
+	$dbobject = array(
+				0 => "$TOPDIR/../xcat-doc/man7",
+				1 => "$TOPDIR/../xcat-doc/man5/xcatdb.5.html",
+				);
 	$howto = array(
 				0 => "$TOPDIR/../xcat-doc",
 				1 => "$TOPDIR/../xcat-doc/index.html",
@@ -517,7 +519,7 @@ function getDocURL($book, $section = NULL) {
 				'aixCookbook' => "$TOPDIR/../xcat-doc/xCAT2onAIX.pdf",
 				);
 	/*
-	$rsctadmin = array (		//todo:  update this
+	$rsctadmin = array (		// update this
 				0 => "http://publib.boulder.ibm.com/infocenter/clresctr/vxrx/topic/com.ibm.cluster.rsct.doc/rsct_aix5l53",
 				1 => "$rsctadmin[0]/bl5adm1002.html",
 				 'sqlExpressions' => "$rsctadmin[0]/bl5adm1042.html#ussexp",
@@ -525,7 +527,7 @@ function getDocURL($book, $section = NULL) {
 				 'responses' => "$rsctadmin[0]/bl5adm1041.html#cmrresp",
 				 'resourceClasses' => "$rsctadmin[0]/bl5adm1039.html#lavrc",
 				);
-	$rsctref = array (		//todo:  update this
+	$rsctref = array (		// update this
 				0 => "http://publib.boulder.ibm.com/infocenter/clresctr/vxrx/topic/com.ibm.cluster.rsct.doc/rsct_linux151",
 				1 => "$rsctref[0]/bl5trl1002.html",
 			   'errm' => "$rsctref[0]/bl5trl1067.html#errmcmd",
@@ -542,6 +544,7 @@ function getDocURL($book, $section = NULL) {
 		if ($book=='web') $url = & $web;
 		elseif ($book=='manpage') $url = & $manpage;
 		elseif ($book=='dbtable') $url = & $dbtable;
+		elseif ($book=='dbobject') $url = & $dbobject;
 		elseif ($book=='howto') $url = & $howto;
 		else return NULL;
 
@@ -551,6 +554,7 @@ function getDocURL($book, $section = NULL) {
 			return "$url[0]/man$m[1]/$m[0].$m[1].html";
 		}
 		elseif ($book=='dbtable') { return "$url[0]/$section.5.html"; }
+		elseif ($book=='dbobject') { return "$url[0]/$section.7.html"; }
 		else return $url[$section];
 	}
 	else {          // produce html for a page that contains all the links above, for testing purposes
@@ -855,17 +859,18 @@ function insertTabs ($tablist, $currentTabIndex) {
 // If your onclick attribute contains javascript code that uses quotes, use double quotes instead of single quotes.
 function insertButtons () {
 	$num = func_num_args();
-	/* if ($num > 1) */ echo "<TABLE cellpadding=0 cellspacing=2><TR>";
+	if ($num > 1) echo "<TABLE cellpadding=0 cellspacing=2><TR>";
 	foreach (func_get_args() as $button) {
-		//echo "<td><INPUT type=submit class=but $button ></td>";
 		$otherattrs = @$button['otherattrs'];
 		$id = @$button['id'];
 		if (!empty($id)) { $id = "id=$id"; }
-		/* if ($num > 1) */ echo "<td>";
-		echo "<a class=button $id href='' onclick='{$button['onclick']};return false' $otherattrs><span>{$button['label']}</span></a>";
-		/* if ($num > 1) */ echo "</td>";
+		$onclick = @$button['onclick'];
+		if (!empty($onclick)) { $onclick = "onclick='$onclick'"; }
+		if ($num > 1) echo "<td>";
+		echo "<a class=button $id $onclick $otherattrs><span>{$button['label']}</span></a>";
+		if ($num > 1) echo "</td>";
 		}
-	/* if ($num > 1) */ echo "</TR></TABLE>\n";
+	if ($num > 1) echo "</TR></TABLE>\n";
 }
 
 

@@ -137,7 +137,7 @@ div#content {
 .ContentForm { margin: 10px 2px 15px 2px; }
 
 .PageFooter {
- background-color : #e8e8e8;
+ background-color : #f3f3f3;  /* #e8e8e8; */
  margin: 10px;
  padding: 5px;
 }
@@ -222,7 +222,7 @@ TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; fo
 a.button {
     background: transparent url('../images/bg_button_a.gif') no-repeat scroll top right;
     color: #444;
-    display: block;
+    display: inline-block;  /*block;*/
     /* float: left; */
     font: normal 12px arial, sans-serif;
     height: 24px;
@@ -234,7 +234,7 @@ a.button {
 
 a.button span {
     background: transparent url('../images/bg_button_span.gif') no-repeat;
-    display: block;
+    display: inline-block;  /*block;*/
     line-height: 14px;
     padding: 5px 0 5px 18px;
 }

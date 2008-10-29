@@ -1,7 +1,36 @@
 
 /* Styles specific to the groups.php page */
 
-.GroupNodeTable { margin-left: 10px; }
-.GroupNodeTable TD { padding-left: 0.2em; padding-right: 0.2em; }
-.GroupNodeTableHeader { color: black; background-color : #FFFF66; font-weight : bold; white-space: nowrap; }
-.GroupNodeTableRow { color: black; background-color : #FFFF66; white-space: nowrap; }
+#nodetabs {
+    /* float: left; */
+    margin-left: 10px;
+    /* right: 0;
+    clear: left;
+	font-size : 8pt; */
+}
+
+#nodetabs-a {
+	font-size : 8pt;
+	padding: 0.5em 0.5em;
+}
+
+/*
+#nodepane: { float: left;  clear: left; }
+#nodetabs { float: left; }
+*/
+
+#nrtree {
+    /* float: left; */
+    /* clear: left; */
+    border-right: 1px solid #d3d3d3;
+    border-top: 1px solid #d3d3d3;
+    margin-right: 10px;
+    padding-top: 5px;
+    padding-right: 5px;
+    /* height:100%; */
+    /* width:9.5em; */
+}
+
+/* #placeHolder { clear: left; } */
+
+/* .ui-tabs-hide { display: none; } */

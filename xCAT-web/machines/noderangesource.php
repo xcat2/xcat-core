@@ -4,7 +4,7 @@
 
 $TOPDIR = '..';
 require_once "$TOPDIR/lib/functions.php";
-require_once "$TOPDIR/lib/jsonwrapper.php";
+require_once "$TOPDIR/jq/jsonwrapper.php";
     if (isset($_GET['id'])) {
         $id = $_GET['id'];
     }

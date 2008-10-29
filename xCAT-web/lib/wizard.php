@@ -56,7 +56,7 @@ echo "</div>\n";		// end the inner wizard pane
 insertButtons(
 		array('label' => 'Back', 'otherattrs' => 'id=backButton', 'onclick' => '$("#wizardPane").load("?page="+document.currentPage+"&action=back");'),
 		array('label' => 'Next', 'otherattrs' => 'id=nextButton', 'onclick' => '$("#wizardPane").load("?page="+document.currentPage+"&action=next");'),
-		array('label' => 'Cancel', 'onclick' => '$("#wizardPane").load("?page="'.$keys[0].'"&action=cancel");')
+		array('label' => 'Cancel', 'onclick' => '$("#wizardPane").load("?page='.$keys[0].'&action=cancel");')
 	);
 configureButtons(0, $pages);
 echo "</div>\n";		// end the outer wizard pane

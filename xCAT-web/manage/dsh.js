@@ -1,11 +1,11 @@
 // Create and show the dialog that shows the dsh output
 
-$(document).ready(function() {
+function dshReady() /*$(document).ready(function()*/ {
 	var cmddialog = $('<div id=cmdDialog title=Title></div>');
     cmddialog.dialog({ height: 500, width: 400, autoOpen: false});
 
     $("input[type='text']").keypress(function(e) { if (isEnterKey(e.which)) {opencmddialog();} });
-});
+} /*)*/ ;
 
 
 // Determine if the key pressed was the enter key.
@@ -25,15 +25,16 @@ function opencmddialog() {
 	// Build the property list that will get POSTed
 	var props = {};
 	props.command = $('#command').val();
-	props.nodegrps = $('#nodegrps option:selected').val();
+	if (window.noderange && window.noderange != "") { props.noderange = window.noderange; }	// this comes from the nodetree widget
+	else if ($('#nodegrps')) { props.noderange = $('#nodegrps option:selected').val(); }
+	else if ($('#nodeList')) { props.noderange = $('#nodeList').val(); }
+
 
 	// If required fields were not filled in, bail
-	if (props.command.length == 0 || props.nodegrps.length == 0) {
-	    alert('Select a node group and enter a command before pressing the Run Cmd button.');
+	if (props.command.length == 0 || !props.noderange || props.noderange.length == 0) {
+	    alert('Select nodes and enter a command before pressing the Run Cmd button.');
 	    return;
 	  }
-
-	if ($('#nodeList')) { props.nodeList = $('#nodeList').val(); }
 
 	if ($('#copy_script').attr('checked')) { props.copy_script = 1; }
 	if ($('#run_psh').attr('checked')) { props.run_psh = 1; }
@@ -56,5 +57,5 @@ function opencmddialog() {
 	// Open the dialog and get the output sent to it
     $('#cmdDialog').children().remove();	// get rid of previous content
     $('#cmdDialog').dialog("open");
-    $('#cmdDialog').load('dsh_action.php', props);
+    $('#cmdDialog').load('../manage/dsh_action.php', props);
 }

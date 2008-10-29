@@ -35,7 +35,7 @@ if(!is_array($headers)){ die("<p>Can't find header line in $tab</p>"); }
 echo "<table id=tabTable>\n";
 echo "<tr class='colHeaders'><td></td>\n";		// extra cell is for the red x
 foreach($headers as $colHead) { echo "<td>$colHead</td>"; }
-echo "</tr>\n"; # close header table
+echo "</tr>\n"; # close header row
 
 // Save the width of the table for adding a new row when they click that button
 $tableWidth = count($headers);
@@ -69,9 +69,10 @@ echo "</table>\n";
 $_SESSION["editable-$tab"] = & $editable;		// save the array so we can access it in the next call of this file or change.php
 //unset($_SESSION["editable-$tab"]);
 
-echo "<p><a class=gbutton id=newrow><span>Add Row</span></a>\n";
-echo "<a class=gbutton id=saveit><span>Save</span></a>\n";
-echo "<a class=gbutton id=reset><span>Cancel</span></a></p>\n";
+insertButtons(array('label' => 'Add Row', 'id' => 'newrow'),
+			array('label' => 'Save', 'id' => 'saveit'),
+			array('label' => 'Cancel', 'id' => 'reset')
+			);
 ?>
 
 
@@ -124,6 +125,9 @@ function getTabHeaders($xml){
 function savexCATchanges($tab, & $editable){
 	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
 	$request->addChild('command','tabrestore');
+    $usernode=$request->addChild('becomeuser');
+    $usernode->addChild('username',$_SESSION["username"]);
+    $usernode->addChild('password',getpassword());
 	foreach($editable as $line){
 		foreach ($line as &$f) { if (!empty($f) && !preg_match('/^".*"$/', $f)) { $f = '&quot;'.$f.'&quot;'; } }
 		$linestr = implode(",",$line);

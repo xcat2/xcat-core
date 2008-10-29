@@ -30,8 +30,8 @@ if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['h
 
 	//get the command and the options
 	$cmd = @$_REQUEST["command"];
-	$node = @$_REQUEST["node"];
-	$group = @$_REQUEST["nodegrps"];
+	$noderange = @$_REQUEST["noderange"];
+	//$group = @$_REQUEST["nodegrps"];
 
 	$copy = @$_REQUEST["copy_script"];
 	$psh = @$_REQUEST["run_psh"];
@@ -49,8 +49,8 @@ if (isset($_COOKIE['history']) && array_search($_REQUEST['command'], $_COOKIE['h
 	$ret_code = @$_REQUEST["ret_code"];
 
 	// Set the cmd arguments
-	if (!empty($group)) $noderange = $group;
-	else $noderange = $node;
+	//if (!empty($group)) $noderange = $group;
+	//else $noderange = $node;
 
 	if ($copy)  $args[] = "-e";
 

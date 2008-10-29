@@ -39,7 +39,7 @@ echo " Choose which type of hardware you want to discover, and then click Next.<
 // The least hacky way to get this list left justified, but have the block in the center, is to use a table.  CSS snobs, just deal with it.
 echo "<table class=WizardListTable><tr><td><ul class=NoBullet>\n";
 echo "<li><label><input type=radio name=hwType value=systemx disabled> System x hardware (not implemented yet)</label></li>\n";
-echo "<li><label><input type=radio name=hwType value=systemp checked> System p hardware</label></li>\n";
+echo "<li><label><input type=radio name=hwType value=systemp checked> System p hardware (only partially implemented)</label></li>\n";
 echo "</ul></td></tr></table>\n";
 }
 

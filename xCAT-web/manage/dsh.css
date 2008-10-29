@@ -1,9 +1,12 @@
 
-.FormTable { color: black; background-color : #CCCCCC; }
+/* .FormTable { color: black; background-color : #CCCCCC; } */
+
+#dshForm { font-size: 8pt; }
 
 #inner_table {
- margin-left: 5px;
+ margin-left: 15px;
  margin-right: 10px;
+ /* background-color: red; */
 }
 
 #cmdDialog {

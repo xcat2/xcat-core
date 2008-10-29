@@ -6,76 +6,52 @@ $TOPDIR = '..';
 require_once "$TOPDIR/lib/functions.php";
 if (isAIX()) { $aixDisabled = 'disabled'; }
 
-require_once("$TOPDIR/lib/GroupNodeTable.class.php");
-
-insertHeader('xCAT Groups and Nodes', array('groups.css'),
-	array("$TOPDIR/lib/GroupNodeTableUpdater.js","$TOPDIR/js/prototype.js","$TOPDIR/js/scriptaculous.js?load=effects"),
+insertHeader('xCAT Groups and Nodes', array("$TOPDIR/jq/jsTree/tree_component.css",'groups.css','attributes.css',"$TOPDIR/manage/dsh.css"),
+	array("$TOPDIR/jq/jsTree/css.js","$TOPDIR/jq/jsTree/jquery.listen.js","$TOPDIR/jq/jsTree/tree_component.js","$TOPDIR/jq/jquery.cookie.js",'noderangetree.js','groups.js','attributes.js'),
 	array('machines','groups'));
 
-echo "<div id=content align=center>\n";
+echo "<div id=content>\n";
 
-insertButtons(
-		array('label' => 'Attributes', 'onclick' => ''),
-		array('label' => 'Create Group', 'onclick' => ''),
-		array('label' => 'Ping', 'onclick' => ''),
-		//'Updatenode',
-		array('label' => 'Run Cmd', 'onclick' => ''),
-		array('label' => 'Copy Files', 'onclick' => ''),
-		array('label' => 'Sync Files', 'onclick' => '')
-	);
-insertButtons(
-		//'Soft Maint',
-		array('label' => 'HW Ctrl', 'onclick' => ''),
-		array('label' => 'RSA/MM/FSP', 'onclick' => ''),
-		array('label' => 'Deploy', 'onclick' => ''),
-		array('label' => 'Diagnose', 'onclick' => ''),
-		array('label' => 'Remove', 'onclick' => '')
-	);
-	/*
-	array(
-		'name=propButton value="Attributes"',
-		'name=defineButton value="Create Like"',
-		'name=createGroupButton value="Create Group"',
-		'name=pingNodesButton value="Ping"',
-		//'name=updateButton value="Updatenode"',
-		'name=runcmdButton value="Run Cmd"',
-		'name=copyFilesButton value="Copy Files"'
-	),
-	array(
-		//'name=softMaintButton value="Soft Maint" onclick="this.form.nodesNeeded=1;"',
-		'name=hwctrlButton value="HW Ctrl"',
-		'name=rsaButton value="RSA/MM/FSP" onclick="this.form.nodesNeeded=1;"',
-		'name=installButton value="Install"',
-		'name=perfmonButton value="Perf Mon"',
-		//'name=webminButton value="Webmin" onclick="this.form.nodesNeeded=1;"',
-		'name=diagButton value="Diagnose" onclick="this.form.nodesNeeded=1;"',
-		'name=removeButton value="Remove"'
-	),
-	*/
+// Create the noderange tree and the tabs side by side.  Once again I tried to do this with css and all
+// methods seemed to be inadequate
+echo "<table cellspacing=0 cellpadding=0><tr valign=top>\n";
+echo "<td><div id=nrtree></div></td>\n";		// nrtree is the place to put the noderange tree
 
-echo '<form name="nodelist" class=ContentForm>';
+$tabs = array('Attributes' => '#attributes-tab',
+				'Run Cmd' => '../manage/dsh.php?intab=1',
+				'Rpower' => 'rpower.php',
+				'Rvitals/Rinv' => 'rvitals.php',
+				'Ping' => 'ping.php',
+				'Copy' => 'copyfiles.php',
+				'SP Config' => 'spconfig.php',
+				'Diagnose' => 'diagnode.php',
+				'Add/Remove' => 'addremove.php',
+			);
 
-GroupNodeTable::insertGroupTableHeader();
+echo "<td width='100%'><div id=nodetabs>\n";
 
-// Get the names and status of the groups
-$groups = getGroupStatus();
-
-// Print the HTML for each of them
-foreach($groups as $group => $status) {
-	//echo "<p>$group status is $status</p>";
-	echo GroupNodeTable::insertGroupTableRow($group, $status);
+echo "<ul>\n";
+foreach ($tabs as $key => $url) {
+	echo "<li class='ui-tabs-nav-item'><a id='nodetabs-a' href='$url'>$key</a></li>\n";
 }
+echo "</ul>\n";
+echo "<div id='attributes-tab'></div>\n";
 
-GroupNodeTable::insertGroupTableFooter();
+echo "</div></td></tr></table>\n";
 
-echo '<!-- <SCRIPT language="JavaScript"> XCATEvent.doExpandNodes(); </SCRIPT> --></form><table><tr>';
+//echo "<div id=placeHolder></div>\n";	// since the other 2 divs are floats, need this one to give the content div some size
 
+
+/*
+echo '<table><tr>';
 echo '<td><img src="' . getStatusImage('good') . '"> Good</td><td width=20></td>';
 echo '<td><img src="' . getStatusImage('warning') . '"> Possible problem</td><td width=20></td>';
 echo '<td><img src="' . getStatusImage('bad') . '"> Problem</td><td width=20></td>';
 echo '<td><img src="' . getStatusImage('unknown') . '"> Unknown</td>';
+echo '</tr></table>';
+*/
 
-echo '</tr></table></div>';
+echo '</div>';		// end the content div
 insertFooter();
 
 
