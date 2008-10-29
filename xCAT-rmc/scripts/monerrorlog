@@ -344,7 +344,7 @@ sub verify_atd
     $cmd = service("atd", "start");
     runcmd($cmd, -1);
     if ($::RUNCMD_RC)   {
-      print "Warning: atd has failed to start!\n";
+     # print "Warning: atd has failed to start!\n";
     }
     elsif (!$::RUNCMD_RC)  {
       sleep(1);
