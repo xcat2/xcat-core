@@ -1056,7 +1056,7 @@ sub writereport
     #
     my $rsp = {};
     $ignorefirsttemplate =~ tr/a-z/A-Z/;    # convert to upper
-
+    my $firstpass = 0;
     foreach my $template (sort keys %nodehash)
     {
 
@@ -1085,12 +1085,15 @@ sub writereport
             }
             else
             {    # do not report nodes on first template
-                $rsp->{data}->[0] =
+                if ($firstpass == 0) {
+                  $rsp->{data}->[0] =
                   "Not reporting matches on first template.\n";
-                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-                if ($::VERBOSE)
-                {
+                  print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+                  if ($::VERBOSE)
+                  {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
+                  }
+                  $firstpass = 1;
                 }
             }
         }
