@@ -337,16 +337,20 @@ sub parse_and_run_sinv
     }
     else
     {
-        if ($admintemplate eq "NO") # default the seed node
-        {    # admin did not generate a template
-            if ($nodelist[0] ne "NO_NODE_RANGE") {
-              push @seed, $nodelist[0];    # assign first element as seed
-              $seednode = $nodelist[0];
-            } else { # error cannot default 
-               my $rsp = {};
-               $rsp->{data}->[0] = "No template or seed node supplied and no noderange to chose a default.\n";
-               xCAT::MsgUtils->message("E", $rsp, $callback,1);
-               exit 1;
+        if ($admintemplate eq "NO")    # default the seed node
+        {                              # admin did not generate a template
+            if ($nodelist[0] ne "NO_NODE_RANGE")
+            {
+                push @seed, $nodelist[0];    # assign first element as seed
+                $seednode = $nodelist[0];
+            }
+            else
+            {                                # error cannot default
+                my $rsp = {};
+                $rsp->{data}->[0] =
+                  "No template or seed node supplied and no noderange to chose a default.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                exit 1;
             }
         }
     }
@@ -1067,6 +1071,18 @@ sub writereport
         {
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
+        if ($ignorefirsttemplate eq "YES")
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "Ignore flag chosen, not reporting matches on first template.\n";
+            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+            if ($::VERBOSE)
+            {
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            next;
+        }
 
         #print list of nodes
         @nodenames = @{$nodehash{$template}};
@@ -1074,27 +1090,14 @@ sub writereport
         {
             my @shortnodename = split(/\./, $nodename);
             push @nodearray, $shortnodename[0];   # build an array of  the nodes
-            if ($ignorefirsttemplate ne "YES")
-            {                                     #  report first template
-                $rsp->{data}->[0] = "$shortnodename[0]\n";
-                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-                if ($::VERBOSE)
-                {
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-            }
-            else
-            {    # do not report nodes on first template
-                $rsp->{data}->[0] =
-                  "Not reporting matches on first template.\n";
-                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-                if ($::VERBOSE)
-                {
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
-                $ignorefirsttemplate = "NO";    # reset for remaining templates
+            $rsp->{data}->[0] = "$shortnodename[0]\n";
+            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+            if ($::VERBOSE)
+            {
+                xCAT::MsgUtils->message("I", $rsp, $callback);
             }
         }
+        $ignorefirsttemplate = "NO";    # reset for remaining templates
     }
 
     #
@@ -1106,7 +1109,7 @@ sub writereport
     foreach my $dshnodename (@dshnodearray)
     {
         if ($dshnodename ne "NO_NODE_RANGE")
-        {    # skip it
+        {                               # skip it
             my @shortdshnodename;
             my @shortnodename;
             chomp $dshnodename;
