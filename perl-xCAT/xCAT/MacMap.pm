@@ -10,7 +10,6 @@ use Sys::Syslog;
 use Data::Dumper;
 use SNMP; 
 my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco equip
-my $switchestab; #table handle to the switches
 #use IF-MIB (1.3.6.1.2.1.2) for all switches
 #   1.3.6.1.2.1.31.1.1 - ifXtable
 #       1.3.6.1.2.1.31.1.1.1.1.N = name - ifName
@@ -118,13 +117,36 @@ sub find_mac {
 
 sub refresh_table {
   my $self = shift;
+  my $curswitch;
   $self->{mactable}={};
   $self->{switchtab} = xCAT::Table->new('switch', -create => 1);
-  $self->{sitetab} = xCAT::Table->new('site');
+  $self->{switchestab} = xCAT::Table->new('switches', -create => 1);
+  my @switchentries=$self->{switchestab}->getAllAttribs(qw(switch snmpversion username password privacy auth));
+  $self->{switchparmhash}={};
   my $community = "public";
+  $self->{sitetab} = xCAT::Table->new('site');
   my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
   if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
   else { #Would warn here.. 
+  }
+  foreach (@switchentries) {
+      $curswitch=$_->{switch};
+      $self->{switchparmhash}->{$curswitch}=$_;
+      if ($_->{snmpversion}) {
+          if ($_->{snmpversion} =~ /3/) { #clean up to accept things like v3 or ver3 or 3, whatever.
+              $self->{switchparmhash}->{$curswitch}->{snmpversion}=3;
+              unless ($_->{auth}) {
+                $self->{switchparmhash}->{$curswitch}->{auth}='md5'; #Default to md5 auth if not specified but using v3
+              }
+          } elsif ($_->{snmpversion} =~ /2/) {
+              $self->{switchparmhash}->{$curswitch}->{snmpversion}=2;
+          } else {
+              $self->{switchparmhash}->{$curswitch}->{snmpversion}=1; #Default to lowest common denominator, snmpv1
+          }
+        }
+        unless (defined $_->{password}) { #if no password set, inherit the community
+            $self->{switchparmhash}->{$curswitch}->{password}=$community;
+        }
   }
   my %checked_pairs;
   my @entries = $self->{switchtab}->getAllNodeAttribs(['node','port','switch']);
@@ -215,18 +237,47 @@ sub refresh_switch {
   my $output = shift;
   my $community = shift;
   my $switch = shift;
-  my $snmpver=1;
-  my $privproto='AES';
+  my $snmpver='1';
   my $swent;
-  if ($switchestab) {
-    $swent=$switchestab->getAttribs({switch=>$switch},[qw(snmpversion username password privacy auth)]);
+  $swent = $self->{switchparmhash}->{$switch};
+
+  if ($swent) {
+      $snmpver=$swent->{snmpversion};
+      $community=$swent->{password};
   }
-  $session = new SNMP::Session(
-                  DestHost => $switch,
-                  Version => '1',
-                  Community => $community,
-                  UseNumeric => 1
-             );
+  if ($snmpver ne '3') {
+      $session = new SNMP::Session(
+                      DestHost => $switch,
+                      Version => $snmpver,
+                      Community => $community,
+                      UseNumeric => 1
+                 );
+  } else { #we have snmp3
+      if ($swent->{privacy}) {
+      $session = new SNMP::Session(
+                      DestHost => $switch,
+                      SecName => $swent->{username},
+                      AuthProto => uc($swent->{auth}),
+                      AuthPass => $community,
+                      SecLevel => 'authPriv',
+                      PrivProto => uc($swent->{privacy}),
+                      PrivPass => $community,
+                      Version => $snmpver,
+                      UseNumeric => 1
+                 );
+      } else {
+      $session = new SNMP::Session(
+                      DestHost => $switch,
+                      SecName => $swent->{username},
+                      AuthProto => uc($swent->{auth}),
+                      AuthPass => $community,
+                      SecLevel => 'authNoPriv',
+                      Version => $snmpver,
+                      UseNumeric => 1
+                 );
+      }
+  }
+
   #if ($error) { die $error; }
   unless ($session) { xCAT::MsgUtils->message("S","Failed to communicate with $switch"); return; }
   my $namemap = walkoid($session,'.1.3.6.1.2.1.31.1.1.1.1');
@@ -259,7 +310,7 @@ sub refresh_switch {
       my $switchport = $namemap->{$portid};
       foreach $portname (keys %{$self->{switches}->{$switch}}) {
         unless (namesmatch($portname,$switchport)) { next }
-        $vlans_to_check{$iftovlanmap->{$portid}} = 1;
+        $vlans_to_check{"".$iftovlanmap->{$portid}} = 1; #cast to string, may not be needed
       }
     }
   } else {
@@ -267,14 +318,42 @@ sub refresh_switch {
   }
 
   my $vlan;
-  foreach $vlan (keys %vlans_to_check) {
-    unless ($vlan eq 'NA') { 
-      $session = new SNMP::Session(
+  foreach $vlan (sort keys %vlans_to_check) { #Sort, because if numbers, we want 1 first
+    unless ($vlan eq 'NA' or $vlan eq '1') { #don't subject users to the context pain unless needed
+        if ($snmpver ne '3') {
+          $session = new SNMP::Session(
                   DestHost => $switch,
-                  Version => '1',
+                  Version => $snmpver,
                   Community => $community."@".$vlan,
                   UseNumeric => 1
              );
+        } else { #Cisco and snmpv3 with non-default vlan, user will have to do lots of configuration to grant context access
+            if ($swent->{privacy}) {
+                $session = new SNMP::Session(
+                      DestHost => $switch,
+                      SecName => $swent->{username},
+                      AuthProto => uc($swent->{auth}),
+                      AuthPass => $community,
+                      SecLevel => 'authPriv',
+                      PrivProto => uc($swent->{privacy}),
+                      PrivPass => $community,
+                      Version => $snmpver,
+                      Context => "vlan-".$vlan,
+                      UseNumeric => 1
+                 );
+            } else {
+                $session = new SNMP::Session(
+                      DestHost => $switch,
+                      SecName => $swent->{username},
+                      AuthProto => uc($swent->{auth}),
+                      AuthPass => $community,
+                      SecLevel => 'authNoPriv',
+                      Version => $snmpver,
+                      Context => "vlan-".$vlan,
+                      UseNumeric => 1
+                 );
+            }
+        }
     }
     unless ($session) { return; } 
     my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2'); # Good for all switches
