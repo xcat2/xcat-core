@@ -641,6 +641,8 @@ if ((!-r "/etc/xcat/site.sqlite") || $::FORCE)
     {
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=useSSHonAIX site.value=no;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=consoleondemand site.value=yes;";
     }
 
     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
