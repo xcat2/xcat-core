@@ -25,6 +25,7 @@ use Getopt::Std;
 #  -h : usage                                                       #
 #  -x : omit extra header output for each node.                     #
 #            Can not be used with -c.                               # 
+#  -q : quiet mode                                                  #
 #                                                                   #
 # Ouputs:                                                           #
 #       Filtered output                                             #
@@ -49,7 +50,7 @@ $::dsh_command = 'xdshbak';
 #
 # Process the command line...
 #
-if (!getopts('cxh'))
+if (!getopts('cxhq'))
 {    # Gather options; if errors
     &d_syntax;
     exit(-1);
@@ -70,6 +71,11 @@ if ($::opt_c && $::opt_x)
 if ($::opt_c)
 {
     $compress++;
+}
+
+if ($::opt_q)
+{
+    $quiet++;
 }
 
 #
@@ -103,7 +109,10 @@ while (<STDIN>)
     # feedback on lines processed
     #
     $num_lines++;
-
+    if (!($quiet)) {
+      if ($::opt_x) { $num_lines % 100 == 0 && print STDOUT "."; }
+      else { $num_lines % 1000 == 0 && print STDOUT "."; }
+    }
     if (/: /)
     {
         @fields = split(': ', $_);
@@ -190,13 +199,14 @@ else
 
 sub d_syntax
 {
-    my $usage1 = "Usage: xdshbak   [-c | -x | -h] \n";
+    my $usage1 = "Usage: xdshbak   [-c | -x | -h | -q] \n";
     my $usage2 =
       "-c : compresses the output by listing unique output only once.\n";
     my $usage3 = "-h : help  \n";
     my $usage4 =
       "-x : omit extra header output for each node.  Can not be used with -c. \n";
-    my $usage = $usage1 .= $usage2 .= $usage3 .= $usage4;
+    my $usage5 = "-q : quiet mode.\n";
+    my $usage = $usage1 .= $usage2 .= $usage3 .= $usage4 .= $usage5;
     xCAT::MsgUtils->message("I", $usage);
 
 }
