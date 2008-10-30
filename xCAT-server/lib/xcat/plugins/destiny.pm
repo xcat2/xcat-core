@@ -21,6 +21,7 @@ my $typetab;
 my $restab;
 my $sitetab;
 my $hmtab;
+my $tftpdir="/tftpboot";
 
 sub handled_commands {
   return {
@@ -73,11 +74,14 @@ sub setdestiny {
         $callback->({error=>"Unable to open iscsi table to get iscsiboot parameters",errorcode=>[1]});
      }
      my $bptab = xCAT::Table->new('bootparams',-create=>1);
+     my $nodetype = xCAT::Table->new('nodetype');
+     my $ntents = $nodetype->getNodesAttribs($req->{node},[qw(os arch profile)]);
      my $ients = $iscsitab->getNodesAttribs($req->{node},[qw(kernel kcmdline initrd)]);
      foreach (@{$req->{node}}) {
       my $ient = $ients->{$_}->[0]; #$iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
+      my $ntent = $ntents->{$_}->[0];
       unless ($ient and $ient->{kernel}) {
-         $callback->({error=>"$_: No iscsi boot data available",errorcode=>[1]});
+         unless ($ntent and $ntent->{arch} =~ /x86/ and -f "$tftpdir/undionly.kpxe") { $callback->({error=>"$_: No iscsi boot data available",errorcode=>[1]}); } #If x86 node and undionly.kpxe exists, presume they know what they are doing
          next;
       }
       my $hash;

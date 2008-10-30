@@ -22,6 +22,9 @@ my $callback;
 my $restartdhcp;
 my $nrhash;
 my $machash;
+my $iscsients;
+my $chainents;
+my $tftpdir='/tftpboot';
 
 sub handled_commands
 {
@@ -110,17 +113,25 @@ sub addnode
     #up the lease file the way we would want anyway.
     my $node = shift;
     my $ent;
+    my $nrent;
+    my $chainent;
+    my $ient;
+    if ($chainents and $chainents->{$node}) {
+        $chainent = $chainents->{$node}->[0];
+    }
+    if ($iscsients and $iscsients->{$node}) {
+        $ient = $iscsients->{$node}->[0];
+    }
     my $lstatements       = $statements;
     my $guess_next_server = 0;
     if ($nrhash)
     {
-        my $ent;
-        $ent = $nrhash->{$node}->[0];
-        if ($ent and $ent->{tftpserver})
+        $nrent = $nrhash->{$node}->[0];
+        if ($nrent and $nrent->{tftpserver})
         {
             $lstatements =
                 'next-server '
-              . inet_ntoa(inet_aton($ent->{tftpserver})) . ';'
+              . inet_ntoa(inet_aton($nrent->{tftpserver})) . ';'
               . $statements;
         }
         else
@@ -129,9 +140,9 @@ sub addnode
         }
 
         #else {
-        # $ent = $nrtab->getNodeAttribs($node,['servicenode']);
-        # if ($ent and $ent->{servicenode}) {
-        #  $statements = 'next-server  = \"'.inet_ntoa(inet_aton($ent->{servicenode})).'\";'.$statements;
+        # $nrent = $nrtab->getNodeAttribs($node,['servicenode']);
+        # if ($nrent and $nrent->{servicenode}) {
+        #  $statements = 'next-server  = \"'.inet_ntoa(inet_aton($nrent->{servicenode})).'\";'.$statements;
         # }
         #}
     }
@@ -211,6 +222,25 @@ sub addnode
                 $lstatements = "next-server $nxtsrv;$statements";
             }
         }
+        if ($ient and $ient->{server} and $ient->{target}) {
+            if (defined ($ient->{lun})) {
+                $lstatements = 'option root-path \"iscsi:'.$ient->{server}.':::'.$ient->{lun}.':'.$ient->{target}.'\";'.$lstatements;
+            } else {
+                $lstatements = 'option root-path \"iscsi:'.$ient->{server}.':::'.$ient->{lun}.':'.$ient->{target}.'\";'.$lstatements;
+            }
+            if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe') {
+                if (-f "$tftpdir/undionly.kpxe") {
+                    if ($chainent and $chainent->{currstate} and $chainent->{currstate} eq 'iscsiboot') {
+                        $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else { filename = \"undionly.kpxe\"; } '.$lstatements;
+                    } else {
+                        $lstatements = 'if exists gpxe.bus-id { filename = \"pxelinux.0\"; } else { filename = \"undionly.kpxe\"; } '.$lstatements;
+                    } 
+                } #TODO: warn when windows
+            }
+        }
+
+
+
         #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
         print $omshell "new host\n";
         print $omshell
@@ -469,7 +499,17 @@ sub process_request
           . $ent->{password} . "\"\n";
         print $omshell "connect\n";
         my $nrtab = xCAT::Table->new('noderes');
-        $nrhash = $nrtab->getNodesAttribs($req->{node}, ['tftpserver']);
+        my $chaintab = xCAT::Table->new('chain');
+        if ($chaintab) {
+            $chainents = $chaintab->getNodesAttribs($req->{node},['currstate']);
+        } else {
+            $chainents = undef;
+        }
+        $nrhash = $nrtab->getNodesAttribs($req->{node}, ['tftpserver','netboot']);
+        my $iscsitab = xCAT::Table->new('iscsi');
+        if ($iscsitab) {
+            $iscsients = $iscsitab->getNodesAttribs($req->{node},[qw(server target lun)]);
+        }
         my $mactab = xCAT::Table->new('mac');
         $machash = $mactab->getNodesAttribs($req->{node},['mac']);
         foreach (@{$req->{node}})

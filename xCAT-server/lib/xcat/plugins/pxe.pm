@@ -299,6 +299,10 @@ sub process_request {
       setstate($_,\%bphash,\%chainhash,\%machash);
     }
   }
+  if ($args[0] ne 'stat') {
+    $sub_req->({command=>['makedhcp'],
+           node=>\@nodes},$callback);
+   }
 
 }
 

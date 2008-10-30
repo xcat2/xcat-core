@@ -131,7 +131,7 @@ ipmi => {
  },
   },
 iscsi => {
-    cols => [qw(node server target file userid passwd kernel kcmdline initrd comments disable)],
+    cols => [qw(node server target lun file userid passwd kernel kcmdline initrd comments disable)],
     keys => [qw(node)],
     table_desc => 'Contains settings that control how to boot a node from an iSCSI target',
  descriptions => {
