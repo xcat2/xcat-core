@@ -20,47 +20,83 @@ while ! getipmi
 do
     echo "Retrying retrieval of IPMI settings from server"
 done
+TIMEOUT=15
 kill $CREDPID
 BMCIP=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCGW=`grep gateway /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCUS=`grep username /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCPW=`grep password /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
+TRIES=0
 while ! ipmitool lan set 1 ipsrc static; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool lan set 1 ipaddr $BMCIP; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool lan set 1 netmask $BMCNM; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 if [ ! -z "$BMCGW" ]; then
     while ! ipmitool lan set 1 defgw ipaddr $BMCGW; do
         sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+    TRIES=0
 fi
 while ! ipmitool user disable 1; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool user disable 3; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool user disable 4; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool user enable 2; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool user priv 2 4 1; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool user set name 2 $BMCUS; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool user set password 2 $BMCPW; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 echo "Set up following user table: "
 ipmitool user list 1
 
@@ -68,44 +104,67 @@ ipmitool user list 1
 echo "Enabling Channel 1: "
 while ! ipmitool raw 0x6 0x40 0x1 0x42 0x44; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 while ! ipmitool raw 0x6 0x40 0x1 0x82 0x84; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
 
-echo "Enabling ARP responses: "
+echo -n "Enabling ARP responses: "
 while ! ipmitool lan set 1 arp respond on; do
     sleep 1
+    let TRIES=TRIES+1
+    echo -n .
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
+echo
 
 echo "Enabling IPMI v 1.5 MD5 LAN access:"
 while ! ipmitool lan set 1 auth admin md5; do
     sleep 1
+    let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+TRIES=0
+if [ ! "$IPMIVER" == "1.5"  ]; then 
+    echo "Enabling IPMI v 2.0 LAN access:"
+    while ! ipmitool lan set 1 cipher_privs XaaaXXXXXXXXXXX; do
+        sleep 1
+        let TRIES=TRIES+1
+    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+    TRIES=0
 
-echo "Enabling IPMI v 2.0 LAN access:"
-while ! ipmitool lan set 1 cipher_privs uaaaXXXXXXXXXXX; do
-    sleep 1
-done
-
-echo "Enabling SOL for channel 1"
-while ! ipmitool raw 0xc 0x21 0x1 0x1 0x1; do
-    sleep 1
-done
-
-echo "Enabling SOL for user 2"
-while ! ipmitool raw 6 0x4c 1 2 2 0 0 0; do
-    sleep 1
-done
+    echo "Enabling SOL for channel 1"
+    while ! ipmitool raw 0xc 0x21 0x1 0x1 0x1; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+    TRIES=0
+    
+    echo "Enabling SOL for user 2"
+    while ! ipmitool raw 6 0x4c 1 2 2 0 0 0; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+fi
 
 allowcred.awk &
 CREDPID=$!
-frume.awk
+#frume.awk
 kill $CREDPID
 
 echo "Lighting Identify Light"
 while :
-    do ipmitool raw 0 4 10
+    do ipmitool raw 0 4 10 > /dev/null
     sleep 5
 done &
 
