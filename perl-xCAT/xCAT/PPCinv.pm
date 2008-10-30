@@ -362,7 +362,6 @@ sub bus {
             # Output values 
             #################################
             foreach ( @{$data->{$id}} ) {
-                s/,/:/;
                 push @result, [$name,$_,$Rc];
             }
         }
