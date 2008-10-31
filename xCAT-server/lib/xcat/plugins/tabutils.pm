@@ -539,7 +539,11 @@ sub nodech
         $callback->(\%rsp);
     };
 
-    @ARGV = @{$args};
+    if ($args) {
+        @ARGV = @{$args};
+    } else {
+        @ARGV=();
+    }
     my %options = ('h|?|help'  => \$HELP, 'v|version' => \$VERSION);
     if (!$addmode) { $options{'d|delete'} = \$deletemode; }
     if (!GetOptions(%options)) {
