@@ -835,17 +835,6 @@ sub nodels
         push @{$rsp{data}}, "  nodels [noderange] [-H|--with-fieldname] [table.attribute | shortname] [...]";
         push @{$rsp{data}}, "  nodels {-v|--version}";
         push @{$rsp{data}}, "  nodels [-?|-h|--help]";
-#####  xcat 1.2 nodels usage:
-        #     $rsp->{data}->[1]= "  nodels [noderange] [group|pos|type|rg|install|hm|all]";
-        #     $rsp->{data}->[2]= " ";
-        #     $rsp->{data}->[3]= "  nodels [noderange] hm.{power|reset|cad|vitals|inv|cons}";
-        #     $rsp->{data}->[4]= "                     hm.{bioscons|eventlogs|getmacs|netboot}";
-        #     $rsp->{data}->[5]= "                     hm.{eth0|gcons|serialbios|beacon}";
-        #     $rsp->{data}->[6]= "                     hm.{bootseq|serialbps|all}";
-        #     $rsp->{data}->[7]= " ";
-        #     $rsp->{data}->[8]= "  nodels [noderange] rg.{tftp|nfs_install|install_dir|serial}";
-        #     $rsp->{data}->[9]= "                     rg.{usenis|install_roll|acct|gm|pbs}";
-        #     $rsp->{data}->[10]="                     rg.{access|gpfs|netdevice|prinic|all}";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $callback->(\%rsp);
     };
@@ -856,10 +845,11 @@ sub nodels
         @ARGV=();
     }
     my $NOTERSE;
-    if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'v|version' => \$VERSION,) ) { nodels_usage->(1); return; }
+
+   if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'v|version' => \$VERSION,) ) { $nodels_usage->(1); return; }
 
     # Help
-    if ($HELP) { nodels_usage->(0); return; }
+    if ($HELP) { $nodels_usage->(0); return; }
 
     # Version
     if ($VERSION)
