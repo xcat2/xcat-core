@@ -106,7 +106,7 @@ sub build_diskstruct {
         my @locations=split /\|/,$disklocs;
         foreach (@locations) {
             my $disk = $_;
-            my $disktype = substr($disk, 0, 3):
+            my $disktype = substr($disk, 0, 3);
             $currdev='hd'.$suffixes[$suffidx++];
             if ($disktype eq "phy") {
                 my $diskdev = substr($disk, 4);
