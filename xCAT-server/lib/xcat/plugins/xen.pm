@@ -105,9 +105,17 @@ sub build_diskstruct {
         my $disklocs=$vmhash->{$node}->[0]->{storage};
         my @locations=split /\|/,$disklocs;
         foreach (@locations) {
+            my $disk = $_;
+            my $disktype = substr($disk, 0, 3):
             $currdev='hd'.$suffixes[$suffidx++];
-            $diskhash->{type}='file';
-            $diskhash->{source}->{file}=$_; #"/vms/$node";
+            if ($disktype eq "phy") {
+                my $diskdev = substr($disk, 4);
+                $diskhash->{type}='dev';
+                $diskhash->{source}->{dev}=$diskdev;
+            } else {
+                $diskhash->{type}='file';
+                $diskhash->{source}->{file}=$_;
+            }
             $diskhash->{target}->{dev}=$currdev;
             push @returns,$diskhash;
         }
