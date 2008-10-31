@@ -124,10 +124,17 @@ sub process_request {
          }
       }
       my $targname;
-      $iscsient = $iscsitab->getNodeAttribs($node,['target']);
+      my $lun;
+      $iscsient = $iscsitab->getNodeAttribs($node,['target','lun']);
       if ($iscsient and $iscsient->{target}) {
          $targname = $iscsient->{target};
       }
+      if ($iscsient and defined($iscsient->{lun})) {
+          $lun = $iscsient->{lun};
+      } else {
+          $lun = '1';
+          $iscsitab->setNodeAttribs($node,{lun=>$lun});
+       }
       unless ($targname) {
          my @date = localtime;
          my $year = 1900+$date[5];
