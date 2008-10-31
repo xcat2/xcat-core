@@ -52,7 +52,7 @@ vm => {
     }
 },
 bootparams => {
-   cols => [qw(node kernel initrd kcmdline addkcmdline comments disable)],
+   cols => [qw(node kernel initrd kcmdline addkcmdline dhcpstatements adddhcpstatements comments disable)],
    keys => [qw(node)],
    table_desc => 'Current boot settings to be sent to systems attempting network boot for deployment, stateless, or other reasons.  Mostly automatically manipulated by xCAT.',
    descriptions => {
@@ -61,6 +61,8 @@ bootparams => {
       'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
       'kcmdline' => 'Arguments to be passed to the kernel',
       'addkcmdline' => 'User specified one or more parameters to be passed to the kernel',
+      'dhcpstatements' => 'xCAT manipulated custom dhcp statements (not intended for user manipulation)',
+      'adddhcpstatements' => 'Custom dhcp statements for administrator use (not implemneted yet)',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
    }
