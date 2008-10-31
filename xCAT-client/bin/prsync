@@ -19,9 +19,10 @@ use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;
 Getopt::Long::Configure("require_order");
-GetOptions(
-  "interface=s" => \$interface,
-  );
+Getopt::Long::Configure("posix_default");
+Getopt::Long::Configure("no_gnu_compat");
+Getopt::Long::Configure("bundling");
+
 my %nodehdl;
 my $xcathost='localhost:3001';
 if ($ENV{XCATHOST}) {
@@ -29,9 +30,29 @@ if ($ENV{XCATHOST}) {
 }
 
 my $pshmaxp = 64; #TODO: should this be server dictated or local conf?
-unless (@ARGV) {
-    print "Usage: pscp [-i <suffix] filename <noderange>:<destination>\n";
+if (!(@ARGV)) {
+       &usage;
+       exit(1);
+   
 }
+if (!GetOptions(
+  'h|help'     => \$help,
+  'v|version'  => \$version,
+  'i|interface=s'  => \$interface))
+{
+       &usage;
+       exit(1);
+}
+if ($help) {
+    &usage;
+    exit(0);
+}
+if ($version) {
+    my $version = xCAT::Utils->Version();
+    print "$version \n";
+    exit(0);
+}
+
 (my $noderange,my $destloc) = split(/:/,$ARGV[1]);
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
@@ -131,4 +152,10 @@ sub scpnode {
   my $file = shift;
   my $dest = shift;
   open($$out,"rsync -az $file $node:$dest 2>&1 |");
+}
+sub usage {
+    print "Usage: prsync filename [filename ...] noderange:destinationdirectory\n";
+    print "       prsync  [rsync-opts] [filename filename ...] [directory directory ...]\n";
+    print "       noderange:destinationdirectory\n";
+    print "       prsync {-h|--help|-v|--version}\n";
 }
