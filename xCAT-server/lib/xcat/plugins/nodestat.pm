@@ -96,9 +96,14 @@ sub preprocess_request
     }
     else
     {    # non node options like -h 
-         my $args=$req->{arg};  
          @ARGV=();
-         @ARGV=@{$args};
+         my $args=$req->{arg};  
+         if ($args) {
+           @ARGV = @{$args};
+         } else {
+            &usage($cb);
+            return(1);
+         }
          # parse the options
           Getopt::Long::Configure("posix_default");
           Getopt::Long::Configure("no_gnu_compat");
