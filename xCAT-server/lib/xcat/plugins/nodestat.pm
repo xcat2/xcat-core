@@ -4,6 +4,7 @@ use warnings;
 
 use Socket;
 use IO::Handle;
+use Getopt::Long;
 my $stat;
 
 sub handled_commands {
@@ -77,20 +78,49 @@ sub preprocess_request
     if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
     my $nodes    = $req->{node};
     my $service  = "xcat";
-
-    # find service nodes for requested nodes
-    # build an individual request for each service node
-    my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
-
-    # build each request for each service node
     my @requests;
-    foreach my $snkey (keys %$sn)
-    {
+    if ($nodes){  
+      # find service nodes for requested nodes
+      # build an individual request for each service node
+      my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+
+      # build each request for each service node
+      foreach my $snkey (keys %$sn)
+      {
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;
             push @requests, $reqcopy;
 
+      }
+    }
+    else
+    {    # non node options like -h 
+         my $args=$req->{arg};  
+         @ARGV=();
+         @ARGV=@{$args};
+         # parse the options
+          Getopt::Long::Configure("posix_default");
+          Getopt::Long::Configure("no_gnu_compat");
+          Getopt::Long::Configure("bundling");
+         if (!GetOptions(
+          'h|help'     => \$::HELP,
+          'v|version'  => \$::VERSION))
+         {
+              &usage($cb);
+              return(1);
+         }
+         if ($::HELP) {
+              &usage($cb);
+              return(0);
+         } 
+         if ($::VERSION) {
+             my $version = xCAT::Utils->Version();
+             my $rsp={};
+             $rsp->{data}->[0] = "$version";
+             xCAT::MsgUtils->message("I", $rsp, $cb);
+             return(0);
+         } 
     }
     return \@requests;
 }
@@ -132,6 +162,15 @@ sub process_request {
          next;
       }
    }
+}
+sub usage
+{
+    my $cb=shift;
+    my $rsp={};
+    $rsp->{data}->[0]= "Usage:";
+    $rsp->{data}->[1]= "  nodestat [noderange]";
+    $rsp->{data}->[2]= "  nodestat [-h|--help|-v|--version]";
+    xCAT::MsgUtils->message("I", $rsp, $cb);
 }
 
 1;

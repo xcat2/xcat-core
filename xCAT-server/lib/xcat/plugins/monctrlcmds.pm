@@ -249,6 +249,9 @@ sub preprocess_monstart
   my $settings;
 
   # parse the options
+  Getopt::Long::Configure("posix_default");
+  Getopt::Long::Configure("no_gnu_compat");
+  Getopt::Long::Configure("bundling");
   if(!GetOptions(
       'h|help'     => \$::HELP,
       'v|version'  => \$::VERSION,
