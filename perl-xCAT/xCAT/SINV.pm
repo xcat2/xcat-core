@@ -1327,7 +1327,7 @@ sub storeresults
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
-    my $cmd = " /opt/xcat/bin/xdshbak <$newtempfile |";
+    my $cmd = " /opt/xcat/bin/xdshbak -q <$newtempfile |";
 
     open(DSHBAK, "$cmd");
     if ($? > 0)
