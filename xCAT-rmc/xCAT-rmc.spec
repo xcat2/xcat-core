@@ -62,6 +62,11 @@ rm -rf $RPM_BUILD_ROOT
   fi
 %else
   #restart the xcatd
-  $XCATROOT/sbin/xcatstart
+  XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/xcatstart
 %endif
+
+
+
+
+
 
