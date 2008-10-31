@@ -276,21 +276,21 @@ else
 if (-d "/install/postscripts/.ssh")
 {
     my $cmd = "/bin/mv /install/postscripts/.ssh /install/postscripts/_ssh";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message(
-            'E',
-            "Could not move /install/postscripts/.ssh directory to /install/postscripts/_ssh.\n"
-            );
-    }
-    else
-    {
-        xCAT::MsgUtils->message(
-            'I',
-            "Moved /install/postscripts/.ssh directory to /install/postscripts/_ssh.\n"
-            );
-    }
+    my $outref = xCAT::Utils->runcmd("$cmd", -1);
+   # if ($::RUNCMD_RC != 0)
+   # {
+    #    xCAT::MsgUtils->message(
+     #       'E',
+      #      "Could not move /install/postscripts/.ssh directory to /install/postscripts/_ssh.\n"
+       #     );
+   # }
+   # else
+   # {
+    #    xCAT::MsgUtils->message(
+    #        'I',
+     #       "Moved /install/postscripts/.ssh directory to /install/postscripts/_ssh.\n"
+    #       );
+  #  }
 }
 if (-d "/install/postscripts/.xcat")
 {
