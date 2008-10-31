@@ -1,5 +1,17 @@
 #!/bin/sh
 CONSERVER=$2
+if [ $1 = -h  ]; then
+    echo "rcons - remotely accesses the serial console of a node"
+    echo "rcons <singlenode>"
+    echo "rcons [-h|--help|-v|--version]"
+    exit 0
+fi
+if [ $1 = -v  ]; then
+    echo "Version 2.1"
+    exit 0
+fi
+#if [ -z "$CONSERVER" ]; then
+#   CONSERVER=`nodels $1 nodehm.conserver`
 #if [ -z "$CONSERVER" ]; then
 #   CONSERVER=`nodels $1 nodehm.conserver`
 #fi
