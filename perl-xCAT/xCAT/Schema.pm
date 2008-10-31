@@ -133,7 +133,7 @@ ipmi => {
  },
   },
 iscsi => {
-    cols => [qw(node server target lun file userid passwd kernel kcmdline initrd comments disable)],
+    cols => [qw(node server target lun iname file userid passwd kernel kcmdline initrd comments disable)],
     keys => [qw(node)],
     table_desc => 'Contains settings that control how to boot a node from an iSCSI target',
  descriptions => {
@@ -141,6 +141,7 @@ iscsi => {
   server => 'The server containing the iscsi boot device for this node.',
   target => 'The iscsi disk used for the boot device for this node.  Filled in by xCAT.',
   lun => 'LUN of boot device.  Per RFC-4173, this is presumed to be 0 if unset.  tgtd often requires this to be 1',
+  iname => 'Initiator name.  Currently unused.',
   file => 'The path on the server of the OS image the node should boot from.',
   userid => 'The userid of the iscsi server containing the boot device for this node.',
   passwd => 'The password for the iscsi server containing the boot device for this node.',
