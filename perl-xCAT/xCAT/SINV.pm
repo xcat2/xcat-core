@@ -337,16 +337,20 @@ sub parse_and_run_sinv
     }
     else
     {
-        if ($admintemplate eq "NO") # default the seed node
-        {    # admin did not generate a template
-            if ($nodelist[0] ne "NO_NODE_RANGE") {
-              push @seed, $nodelist[0];    # assign first element as seed
-              $seednode = $nodelist[0];
-            } else { # error cannot default 
-               my $rsp = {};
-               $rsp->{data}->[0] = "No template or seed node supplied and no noderange to chose a default.\n";
-               xCAT::MsgUtils->message("E", $rsp, $callback,1);
-               exit 1;
+        if ($admintemplate eq "NO")    # default the seed node
+        {                              # admin did not generate a template
+            if ($nodelist[0] ne "NO_NODE_RANGE")
+            {
+                push @seed, $nodelist[0];    # assign first element as seed
+                $seednode = $nodelist[0];
+            }
+            else
+            {                                # error cannot default
+                my $rsp = {};
+                $rsp->{data}->[0] =
+                  "No template or seed node supplied and no noderange to chose a default.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                exit 1;
             }
         }
     }
@@ -441,7 +445,7 @@ sub parse_and_run_sinv
             return 1;
         }
 
-        #  write the results to the tempfile after running through xdshbak
+        #  write the results to the tempfile after running through xcoll
         $rc = &storeresults($callback);
 
     }
@@ -481,12 +485,11 @@ sub parse_and_run_sinv
         return 1;
     }
 
-    #  write the results to the tempfile after running through xdshbak
+    #  write the results to the tempfile after running through xcoll
     $rc = &storeresults($callback);
 
     #  Build report and write to output file
     #  if file exist and has something in it
-
     if ((-e $tempfile) && ($rc == 0))
     {    # if cmd returned something
 
@@ -514,6 +517,7 @@ sub parse_and_run_sinv
     #
     if (-e $tempfile)
     {
+
         system("/bin/rm  $tempfile");
     }
     close(OUTPUTFILE);
@@ -617,7 +621,7 @@ sub buildreport
     my $match = 0;
     my $host;
     my $label;
-    my $firstpass = 0;
+    my $headerlines = 0;
     my @processNodearray;
     my $hostline;
     my $nodename;
@@ -625,23 +629,24 @@ sub buildreport
     my @Nodearray;
     my $dshline;
     my %nodehash;
-  DSHARRAY: foreach $dshline (@dsharray)    # for each line returned from dsh
+  DSHARRAY: foreach $dshline (@dsharray)    # each line returned from dsh/rinv
     {
 
-        if ($dshline =~ /HOST:/)            #  Host header
+        if ($dshline =~ /============/)     #  Host header
         {
-            if ($firstpass == 0)
+            if ($headerlines < 2)
             {
 
-                # put the node name on the array to process
+                # read until we reach another header
                 push @Nodearray, $dshline;
-                $firstpass = 1;
+                $headerlines++;
             }
             else
-            {    # Hit next node name, process current array
+            {    # Hit next header, process current array
                 @processNodearray = @Nodearray;    # save node data
                 @Nodearray        = ();            # initialize array
-                push @Nodearray, $dshline;         # save node name
+                $headerlines      = 1;             # already read one line
+                push @Nodearray, $dshline;         # save next data
                 my @info;
                 if ($exactmatch eq "YES")
                 {                                  # output matches exactly
@@ -770,6 +775,8 @@ sub compareoutput
     my $match = 0;
     my @info;
     my $nodename;
+    my @nodenames;
+    my @tmpnodenames;
     my $line;
     %nodehash = ();
     my $template;
@@ -778,6 +785,7 @@ sub compareoutput
 
     foreach $template (@templatearray)    # for each template
     {
+        my $skiphostline = 1;
         if (-f "$template")
         {                                 # if it exists
 
@@ -790,20 +798,32 @@ sub compareoutput
             {
 
                 # skip the header and blanks
-                if (   ($templateline !~ /HOST:/)
-                    && ($templateline !~ /---------/)
-                    && ($templateline !~ /^\s*$/))
-
+                if ($templateline =~ /============/)
+                {                                #  Host header
+                    next;
+                }
+                if ($skiphostline == 1)
+                {
+                    $skiphostline = 0;
+                    next;
+                }
+                if ($templateline !~ /^\s*$/)    # skip blanks
                 {
                     $match = 0;
+                    my $gothosts = 0;
                     foreach $nodeline (@Nodearray)    # for each node line
                     {
-                        if ($nodeline =~ /HOST:/)
-                        {                             # if the hostname
-                            ($line, $nodename) = split ':', $nodeline;
+                        if ($nodeline =~ /==========/)
+                        {
+                            next;
+                        }
+
+                        if ($gothosts == 0)
+                        {                             # get the hostnames
+                            $nodename = $nodeline;
                             $nodename =~ s/\s*//g;    # remove blanks
                             chomp $nodename;
-
+                            $gothosts = 1;
                         }
                         else
                         {
@@ -920,24 +940,27 @@ sub diffoutput
     my $rsp                = {};
     my @template_noheader  = ();
     my @nodearray_noheader = ();
+    my $hostfound          = 0;
 
     # build a node array without the header
     foreach $nodeline (@Nodearray)    # for each node line
     {
-        if ($nodeline =~ /HOST:/)
+        if ($nodeline =~ /================/)
+        {                             # skip
+            next;
+        }
+        if ($hostfound == 0)
         {                             # save the hostname
-            ($line, $nodename) = split ':', $nodeline;
+            $nodename = $nodeline;
             $nodename =~ s/\s*//g;    # remove blanks
             chomp $nodename;
+            $hostfound = 1;
+            next;
 
         }
-        else                          # build node array with no header
-        {
-            if ($nodeline !~ /---------/)
-            {
-                push(@nodearray_noheader, $nodeline);
-            }
-        }
+
+        # build node array with no header
+        push(@nodearray_noheader, $nodeline);
     }    # end foreach nodeline
 
     #
@@ -951,6 +974,7 @@ sub diffoutput
 
         if (-f "$template")
         {                                 # if it exists
+            my $skiphostline = 1;
 
             # Read the template file
             open(TEMPLATE, "<$template");
@@ -961,16 +985,23 @@ sub diffoutput
             {
 
                 # skip the header and blanks
-                if (   ($templateline !~ /HOST:/)
-                    && ($templateline !~ /---------/)
-                    && ($templateline !~ /^\s*$/))
+                if ($templateline =~ /============/)
+                {                                #  Host header
+                    next;
+                }
+                if ($skiphostline == 1)
+                {
+                    $skiphostline = 0;
+                    next;
+                }
+                if ($templateline !~ /^\s*$/)    # skip blanks
 
                 {
 
                     # Build template array with no header
                     push(@template_noheader, $templateline);
 
-                }    # if header
+                }                                # if header
             }    # end foreach templateline
 
             # if nodearray matches template exactly,quit processing templates
@@ -1070,31 +1101,42 @@ sub writereport
 
         #print list of nodes
         @nodenames = @{$nodehash{$template}};
-        foreach my $nodename (@nodenames)
+        my $nodelist = "";
+        foreach my $nodenameline (@nodenames)
         {
-            my @shortnodename = split(/\./, $nodename);
-            push @nodearray, $shortnodename[0];   # build an array of  the nodes
-            if ($ignorefirsttemplate ne "YES")
-            {                                     #  report first template
-                $rsp->{data}->[0] = "$shortnodename[0]\n";
+
+            # split apart the list of nodes
+            my @longnodenames = split(',', $nodenameline);
+            foreach my $node (@longnodenames)
+            {
+                my @shortnodename = split(/\./, $node);
+                push @nodearray, $shortnodename[0];    # add to process list
+                $nodelist .= $shortnodename[0];        # add to print list
+                $nodelist .= ',';
+            }
+        }
+        chop $nodelist;
+        if ($ignorefirsttemplate ne "YES")
+        {                                              #  report first template
+            $rsp->{data}->[0] = "$nodelist\n";
+            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+            if ($::VERBOSE)
+            {
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+        }
+        else
+        {    # do not report nodes on first template
+            if ($firstpass == 0)
+            {
+                $rsp->{data}->[0] =
+                  "Not reporting matches on first template.\n";
                 print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
                 if ($::VERBOSE)
                 {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
-            }
-            else
-            {    # do not report nodes on first template
-                if ($firstpass == 0) {
-                  $rsp->{data}->[0] =
-                  "Not reporting matches on first template.\n";
-                  print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-                  if ($::VERBOSE)
-                  {
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                  }
-                  $firstpass = 1;
-                }
+                $firstpass = 1;
             }
         }
         $ignorefirsttemplate = "NO";    # reset for remaining templates
@@ -1104,12 +1146,12 @@ sub writereport
     # Now check to see if we covered all nodes in the dsh
     #  short names must match long names, ignore NO_NODE_RANGE
     #
-    my $firstpass = 0;
     my $nodefound = 0;
+    my $rsp       = {};
     foreach my $dshnodename (@dshnodearray)
     {
-        if ($dshnodename ne "NO_NODE_RANGE")
-        {    # skip it
+        if (($dshnodename ne "NO_NODE_RANGE") && ($dshnodename ne "UNKNOWN"))
+        {                               # skip it
             my @shortdshnodename;
             my @shortnodename;
             chomp $dshnodename;
@@ -1127,28 +1169,30 @@ sub writereport
             }
             if ($nodefound == 0)
             {                            # dsh node name missing
-                if ($firstpass == 0)
-                {                        # put out header
-                    $rsp->{data}->[0] = "The following nodes had no output:\n";
-                    print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-                    if ($::VERBOSE)
-                    {
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
-                    $firstpass = 1;
-                }
 
                 # add missing node
-                $rsp->{data}->[0] = "$shortdshnodename[0]\n";
-                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-                if ($::VERBOSE)
-                {
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
+                $rsp->{data}->[0] .= $shortdshnodename[0];
+                $rsp->{data}->[0] .= ",";
             }
-            $nodefound = 0;
         }
     }
+    if ($rsp->{data}->[0])
+    {
+        $rsp->{data}->[0] = "The following nodes had no output:\n";
+        print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+        if ($::VERBOSE)
+        {
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+        chop $rsp->{data}->[0];
+        $rsp->{data}->[0] .= "\n";
+        print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+        if ($::VERBOSE)
+        {
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+    }
+    $nodefound = 0;
     return;
 }
 
@@ -1156,7 +1200,7 @@ sub writereport
 
 =head3   xdshoutput  			    	 
 
- Check xdsh output  - get output from command and pipe to xdshbak 
+ Check xdsh output  - get output from command and pipe to xcoll 
 
 =cut
 
@@ -1281,7 +1325,7 @@ sub rinvoutput
 
 =head3   storeresults 			    	 
 
-  Runs command output through xdshbak and stores in /tmp/<tempfile>
+  Runs command output through xcoll and stores in /tmp/<tempfile>
  store results in $tempfile or $templatepath ( for seed node) based on
  $processflag = seednode 
 =cut
@@ -1318,7 +1362,7 @@ sub storeresults
         $outputfile = $tempfile;
     }
 
-    # open  file to put results of xdshbak
+    # open  file to put results of xcoll
     open(FILE, ">$outputfile");
     if ($? > 0)
     {
@@ -1327,28 +1371,29 @@ sub storeresults
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
-    my $cmd = " /opt/xcat/bin/xdshbak -q <$newtempfile |";
+    my $cmd = " /opt/xcat/bin/xcoll <$newtempfile |";
 
-    open(DSHBAK, "$cmd");
+    open(XCOLL, "$cmd");
     if ($? > 0)
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Could not call xdshbak \n";
+        $rsp->{data}->[0] = "Could not call xcoll \n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
 
     my $line;
 
-    while (<DSHBAK>)
+    while (<XCOLL>)
     {
         $line = $_;
         print FILE $line
 
     }
 
-    close(DSHBAK);
+    close(XCOLL);
     close FILE;
+
     system("/bin/rm  $newtempfile");
 
     # capture errors
