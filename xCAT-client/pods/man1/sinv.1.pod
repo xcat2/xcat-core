@@ -28,6 +28,7 @@ The xdsh or rinv command to execute on the remote targets is specified by the
  B<-c> flag, or by the B<-f> flag
 which is followed by the fully qualified path to a file containing the command.
 
+
 Note: do not add | xcoll to the command on the command line or in the
 command file, it is automatically added by sinv.
 
