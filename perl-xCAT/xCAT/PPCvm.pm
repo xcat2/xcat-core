@@ -69,7 +69,7 @@ sub chvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose p=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose p=s) )) {
         return( usage() );
     }
     ####################################
@@ -138,7 +138,7 @@ sub mkvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose i=s n=s c=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose i=s n=s c=s) )) {
         return( usage() );
     }
     ####################################
@@ -228,7 +228,7 @@ sub rmvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose) )) {
         return( usage() );
     }
     ####################################
@@ -284,7 +284,7 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose) )) {
         return( usage() );
     }
     ####################################
