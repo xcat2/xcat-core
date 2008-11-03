@@ -27,3 +27,24 @@
 .NonCurrentSummaryItem {}
 
 .CurrentSummaryItem { background-color: yellow; }
+
+.WizardProgressTable {
+ margin: 10px 0px;
+ /* text-align: left; */
+}
+
+.WizardProgressTable UL { list-style-type: none; }
+
+.WizardProgressTable LI {
+ /* list-style-image: url('../images/checked-box.gif'); */
+ margin-top: 1em;
+ margin-bottom: 1em;
+ font-weight: bold;
+}
+
+.WizardProgressTable IMG { margin-right: 1em; margin-left: 1em; }
+
+.WizardProgressCurrent {
+ /* font-weight: bold; */
+ background-color: #D8E8FF;  /* yellow; */
+ }

@@ -242,6 +242,28 @@ echo '<div class=PageFooter><p id=disclaimer>This interface is still under const
 
 
 //-----------------------------------------------------------------------------
+// Similar to docmd(), but also takes in data that is the table contents
+function doTabrestore($tab, & $data){
+	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
+	$request->addChild('command','tabrestore');
+    $usernode=$request->addChild('becomeuser');
+    $usernode->addChild('username',$_SESSION["username"]);
+    $usernode->addChild('password',getpassword());
+	foreach($data as $line){
+		foreach ($line as &$f) { if (!empty($f) && !preg_match('/^".*"$/', $f)) { $f = '&quot;'.$f.'&quot;'; } }
+		$linestr = implode(",",$line);
+		$linestr = str_replace('"', '&quot;',$linestr);	//todo: should we use the htmlentities function?
+		$linestr = str_replace("'", '&apos;',$linestr);
+		//echo "<p>addChild:$linestr.</p>\n";
+		$request->addChild('data', $linestr);
+	}
+	$request->addChild('table',$tab);
+	$resp = submit_request($request, 0);
+	return $resp;
+}
+
+
+//-----------------------------------------------------------------------------
 // Run a cmd via the xcat client/server protocol
 // args is an array of arguments to the cmd
 // Returns a tree of SimpleXML objects.  See perl-xCAT/xCAT/Client.pm for the format.
@@ -274,7 +296,7 @@ function submit_request($req, $skipVerify){
 	//$cert = "$apachehome/.xcat/client-cred.pem";
 	$xcathost = "localhost";
 	$port = "3001";
-	$rsp = 0;
+	$rsp = FALSE;
 	$response = '';
 	$cleanexit=0;
 
@@ -308,9 +330,14 @@ function submit_request($req, $skipVerify){
 		echo "<p>xCAT Submit request socket Error: $errno - $errstr</p>\n";
 	}
 	if(! $cleanexit){
-		if(!$skipVerify){
+		if (preg_match('/^\s*<xcatresponse>.*<\/xcatresponse>\s*$/',$response)) {
+			// It is probably an error msg, that is why we didn't get serverdone
+			$response = "<xcat>$response</xcat>";
+			$rsp = simplexml_load_string($response,'SimpleXMLElement', LIBXML_NOCDATA);
+			}
+		elseif(!$skipVerify){
 			echo "<p>Error: xCAT response ended prematurely: ", htmlentities($response), "</p>";
-			$rsp = 0;
+			$rsp = FALSE;
 		}
 	}
 	return $rsp;
@@ -332,6 +359,8 @@ function getXmlData(& $xml) {
 // Use with submit_request() to get any errors that might have occurred
 // Returns the errorcode and adds any error strings to the $error array passed in
 function getXmlErrors(& $xml, & $errors) {
+	if (!isset($errors)) { $errors = array(); }
+	if (!isset($xml) || $xml===FALSE) { $errors[]='rc = 1'; return 1; }
 	$errorcode = 0;
 	foreach ($xml->children() as $response) foreach ($response->children() as $k => $v) {
 		if ($k == 'error') { $errors[] = (string) $v; }

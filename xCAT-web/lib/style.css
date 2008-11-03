@@ -180,6 +180,7 @@ TEXTAREA {vertical-align : middle; font-size : 8pt; font-family : sans-serif; fo
 .Info {color : blue;}
 .Error {font-weight : bold; color : red;}
 .Trace {color: gray;  padding: 0px; margin: 0px;}
+.Disabled { color: gray; }
 
 .BasicHeading {background-color : #8CA4D9;}
 .BlueBack {background-color : #C2CEDE; /* #8CA4D9; */ }

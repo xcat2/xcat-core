@@ -68,7 +68,11 @@ $ooe = 0;		// alternates the background of the table
 //$item = 0;		// the column #
 //$line = 0;
 //$editable = array();
-foreach ($attrs as $node => $attrarray) {
+$keys = array_keys($attrs);
+natsort($keys);			// natsort sorts 10 after 2
+//foreach ($attrs as $node => $attrarray) {
+foreach ($keys as $node) {
+	$attrarray = & $attrs[$node];
 	$cl = "ListLine$ooe";
 
 	// 1st the column for the node name

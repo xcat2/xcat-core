@@ -8,21 +8,6 @@
 
 P#wizardDone {font-weight : bold; }
 
-.WizardProgressTable {
- margin: 10px 0px;
- text-align: left;
-}
-
-.WizardProgressTable UL { list-style-type: none; }
-
-.WizardProgressTable LI {
- /* list-style-image: url('../images/checked-box.gif'); */
- margin-top: 1em;
- margin-bottom: 1em;
-}
-
-.WizardProgressTable IMG { margin-right: 1em; }
-
 .WizardListTable {
  margin: 10px 0px;
  text-align: left;

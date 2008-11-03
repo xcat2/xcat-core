@@ -8,6 +8,6 @@ function loadAttrTab(panel) {
 	var nr = '';
 	if (window.noderange && window.noderange != "") { nr = window.noderange; }
 	panel.children().remove();	// get rid of previous content
-	panel.append('<p>Loading node attributes...</p>');
+	panel.append('<p>Loading node attributes... <img src="../images/throbber.gif"></p>');
 	panel.load('attributes.php?noderange='+nr);
 }

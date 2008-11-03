@@ -15,7 +15,7 @@ if(isset($_REQUEST['kill'])) {
 }
 
 if(isset($_REQUEST['save'])) {
-	$rsp = savexCATchanges($tab,$_SESSION["editable-$tab"]);
+	$rsp = doTabrestore($tab,$_SESSION["editable-$tab"]);
 	$errors = array();
 	if (getXmlErrors($rsp,$errors)) { echo "<p class=Error>Tabrestore failed: ", implode(' ',$errors), "</p>\n"; }
 	else { echo "<p class=Info>Changes have been saved.</p>\n"; }
@@ -118,27 +118,6 @@ function getTabHeaders($xml){
 	}
 	// If we get here, we never found the header line
 	return NULL;
-}
-
-
-//-----------------------------------------------------------------------------
-function savexCATchanges($tab, & $editable){
-	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
-	$request->addChild('command','tabrestore');
-    $usernode=$request->addChild('becomeuser');
-    $usernode->addChild('username',$_SESSION["username"]);
-    $usernode->addChild('password',getpassword());
-	foreach($editable as $line){
-		foreach ($line as &$f) { if (!empty($f) && !preg_match('/^".*"$/', $f)) { $f = '&quot;'.$f.'&quot;'; } }
-		$linestr = implode(",",$line);
-		$linestr = str_replace('"', '&quot;',$linestr);	//todo: should we use the htmlentities function?
-		$linestr = str_replace("'", '&apos;',$linestr);
-		//echo "<p>addChild:$linestr.</p>\n";
-		$request->addChild('data', $linestr);
-	}
-	$request->addChild('table',$tab);
-	$resp = submit_request($request, 0);
-	return $resp;
 }
 
 
