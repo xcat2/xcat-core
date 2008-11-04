@@ -110,7 +110,7 @@ sub build_diskstruct {
             $currdev='hd'.$suffixes[$suffidx++];
             if ($disktype eq "phy") {
                 my $diskdev = substr($disk, 4);
-                $diskhash->{type}='dev';
+                $diskhash->{type}='block';
                 $diskhash->{source}->{dev}=$diskdev;
             } else {
                 $diskhash->{type}='file';
@@ -354,7 +354,7 @@ sub power {
     }
 
     unless ($retstring =~ /reset/) {
-        $retstring.=getpowstate($dom);
+        $retstring=getpowstate($dom).$retstring;
     }
     return (0,$retstring);
 }
@@ -665,7 +665,7 @@ sub forward_data {
       foreach (@$responses) {
         #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
         my $no_op=0;
-        if (exists($_->{node}->[0]->{errorcode})) { $no_op=1; }
+        if ($_->{node}->[0]->{errorcode}) { $no_op=1; }
         else { 
           my $text=$_->{node}->[0]->{data}->[0]->{contents}->[0];
           #print "data:$text\n";
