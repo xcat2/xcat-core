@@ -3537,8 +3537,12 @@ sub parse_and_run_dsh
 {
     my ($class, $nodes, $args, $callback, $command, $noderange) = @_;
 
-    @ARGV       = @{$args};    # get arguments
     $::CALLBACK = $callback;
+    if (!($args)) {
+        usage_dsh;
+        exit 1;
+    }
+    @ARGV       = @{$args};    # get arguments
     if ($ENV{'XCATROOT'})
     {
         $::XCATROOT = $ENV{'XCATROOT'};    # setup xcatroot home directory
@@ -3813,8 +3817,12 @@ sub usage_dcp
 sub parse_and_run_dcp
 {
     my ($class, $nodes, $args, $callback, $command, $noderange) = @_;
-    @ARGV       = @{$args};    # get arguments
     $::CALLBACK = $callback;
+    if (!($args)) {
+        usage_dcp;
+        exit 1;
+    }
+    @ARGV       = @{$args};    # get arguments
     if ($ENV{'XCATROOT'})
     {
         $::XCATROOT = $ENV{'XCATROOT'};    # setup xcatroot home directory
