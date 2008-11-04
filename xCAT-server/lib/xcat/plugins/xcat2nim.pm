@@ -576,10 +576,6 @@ sub processArgs
     # must have object name(s) -
     if (!@::clobjnames)
     {
-        my $rsp;
-        $rsp->{data}->[0] =
-          "$::msgstr Could not determine what object definitions to remove.\n";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
 

@@ -653,10 +653,6 @@ sub processArgs
     # must have object name(s) -
 	if ((scalar(@::clobjnames) == 0) && (scalar(@::fileobjnames) == 0))
     {
-        my $rsp;
-        $rsp->{data}->[0] =
-          "Could not determine what object definitions to remove.\n";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
 
