@@ -216,6 +216,7 @@ if (getXmlErrors($xml,$errors)) { msg('E',"tabrestore switch failed: " . implode
 
 // Send JSON data back to the browser.  Todo: handle the errors too.
 echo json_encode(array('step' => (integer)++$step, 'done' => FALSE, 'error' => ''));
+//echo "<script type='text/javascript'>wizardStep(", ++$step, ",false,'');</script>";
 }
 
 
