@@ -36,6 +36,7 @@ sub process_request {
   my $doreq = shift;
   my $distname = undef;
   my $arch = undef;
+  my $help = undef;
   $identified=0;
   $::CDMOUNTPATH="/mnt/xcat";
   my $existdir = getcwd;
@@ -45,8 +46,13 @@ sub process_request {
   }
   GetOptions(
     'n|name|osver=s' => \$distname,
-    'a|arch=s' => \$arch
+    'a|arch=s' => \$arch,
+    'h|help' => \$help
   );
+  if ($help) {
+    $callback->({info=>"copycds [{-n|--name|--osver}=distroname] [{-a|--arch}=architecture] 1st.iso [2nd.iso ...]."});
+    return;
+  }
   if ($arch and $arch =~ /i.86/) {
     $arch = 'x86';
   }
