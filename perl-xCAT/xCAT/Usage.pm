@@ -102,8 +102,12 @@ my %usage = (
        mkvm srccec -c destcec [-V|--verbose]
        mkvm [-h|--help|-v|--version]",
     "lsvm" => 
-"Usage: lsvm <noderange> [-V|--verbose] 
-       lsvm [-h|--help|-v|--version]",
+"Usage:
+   Common:
+       lsvm <noderange> [-V|--verbose]
+       lsvm [-h|--help|-v|--version]
+   PPC specific:
+       lsvm <noderange> [-a|--all]",
     "chvm" => 
 "Usage: chvm <noderange> [-p profile][-V|--verbose] 
        chvm [-h|--help|-v|--version]",

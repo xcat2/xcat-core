@@ -284,7 +284,7 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose a|all) )) {
         return( usage() );
     }
     ####################################
@@ -772,6 +772,7 @@ sub list {
     my $request = shift;
     my $hash    = shift;
     my $exp     = shift;
+    my $args   = $request->{opt};
     my @values  = ();
     my @lpars   = ();
     my $result;
@@ -846,10 +847,20 @@ sub list {
                     next;
                 }
                 #################################
-                # List LPAR profile
+                # List the default LPAR profile,
+                # or all the profiles if option
+                # -a|--all is assigned
                 #################################
-                $pprofile .= "@$prof[0]\n\n";
-            }                
+                if (exists( $args->{a} )) {
+	            my $count = 0;
+	            foreach (@$prof) {
+	                $pprofile .= "@$prof[$count]\n\n";
+	                $count++;
+	            }
+	        } else {
+	            $pprofile .= "@$prof[0]\n\n";
+	        }
+	    }                
             push @values, [$lpar, $pprofile, SUCCESS];
         }
     }
