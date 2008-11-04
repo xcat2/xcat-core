@@ -11,6 +11,7 @@ I<lsvm [-v| --version]>
 
 I<lsvm [-V| --verbose] noderange>
 
+I<lsvm [-a| --all] noderange>
 
 =head1 DESCRIPTION
 
@@ -24,6 +25,8 @@ B<-h>          Display usage message.
 B<-v>          Command Version.
 
 B<-V>          Verbose output.
+
+B<-a>          List all the profiles for one partition
 
 
 =head1 RETURN VALUE
