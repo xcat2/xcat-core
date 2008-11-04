@@ -16,7 +16,6 @@ logger -t xcat "Install: Setup NTP"
 # table, if they exist. If they don't exist, do not setup ntp
 # else use the master which should be a service node
 if [ "$master" ==  "$sitemaster" ]; then
-   
   if [ $NTPSERVERS ]; then
         if [ !  -f $conf_file_org ]; then
           mv -f $conf_file $conf_file_org
@@ -46,13 +45,18 @@ fi
 if [[ $OSTYPE = linux* ]]; then
   mkdir -p /var/lib/ntp
   chown ntp /var/lib/ntp
-
   echo "driftfile /var/lib/ntp/drift
 disable auth
 restrict 127.0.0.1" >>$conf_file
+# default service for redhat/fedora
+SERVICE=ntpd
+echo $SERVICE
+if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+  SERVICE=ntp
+fi
 
 #service ntpd restart 
-  service ntpd stop 
+  service $SERVICE stop 
   logger -t xcat "ntpdate -t5 $master "
   ntpdate -t5 $master 
   if [ "$?" != "0" ]
@@ -62,9 +66,9 @@ restrict 127.0.0.1" >>$conf_file
             logger -t xcat "ntpdate -t5 $master failed"
   fi
 
-  service ntpd start 
-  chkconfig --add  ntpd 
-  chkconfig --level 345 ntpd on
+  service $SERVICE start 
+  chkconfig --add  $SERVICE 
+  chkconfig --level 345 $SERVICE on
 else
 # stop and start AIX ntp
   echo "driftfile /etc/ntp.drift
