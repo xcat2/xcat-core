@@ -662,15 +662,17 @@ sub buildreport
                 }
                 $nodename = pop @info;
                 $template = pop @info;
-                push @{$nodehash{$template}}, $nodename;    # add node name
-                                                            # to template hash
+                if ($nodename ne "UNKNOWN")
+                {
+                    push @{$nodehash{$template}}, $nodename;    # add node name
+                }    # to template hash
 
             }
         }
         else
         {
 
-            if ($dshline !~ /^\s*$/)                        # skip blanks
+            if ($dshline !~ /^\s*$/)    # skip blanks
 
               # skip  blanks and stop on the next host
             {
@@ -703,7 +705,10 @@ sub buildreport
         }
         $nodename = pop @info;
         $template = pop @info;
-        push @{$nodehash{$template}}, $nodename;
+        if ($nodename ne "UNKNOWN")
+        {
+            push @{$nodehash{$template}}, $nodename;
+        }
     }
 
     #
@@ -823,6 +828,12 @@ sub compareoutput
                             $nodename = $nodeline;
                             $nodename =~ s/\s*//g;    # remove blanks
                             chomp $nodename;
+                            if ($nodename eq "UNKNOWN")
+                            {                         # skip this node
+                                @info[0] = "NONE";
+                                @info[1] = "UNKNOWN";
+                                return @info;
+                            }
                             $gothosts = 1;
                         }
                         else
@@ -943,6 +954,7 @@ sub diffoutput
     my $hostfound          = 0;
 
     # build a node array without the header
+    # skip any UNKNOWN entries added by xcoll
     foreach $nodeline (@Nodearray)    # for each node line
     {
         if ($nodeline =~ /================/)
@@ -954,6 +966,12 @@ sub diffoutput
             $nodename = $nodeline;
             $nodename =~ s/\s*//g;    # remove blanks
             chomp $nodename;
+            if ($nodename eq "UNKNOWN")
+            {                         # skip this node
+                @info[0] = "NONE";
+                @info[1] = "UNKNOWN";
+                return @info;
+            }
             $hostfound = 1;
             next;
 
@@ -1416,7 +1434,7 @@ sub storeresults
         }
         close FILE;
         my $rsp = {};
-        $rsp->{data}->[0] = "Check $newtempfile for errors.\n";
+        $rsp->{data}->[0] = "\nCheck $newtempfile for errors.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
 
     }
