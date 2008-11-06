@@ -1427,7 +1427,7 @@ sub xCATdB {
             my $server = "";
 
             my $values = join( ",",
-               $type,$name,$cageid,$model,$serial,$server,$prof,$frame,$ips );
+               lc($type),$name,$cageid,$model,$serial,$server,$prof,$frame,$ips );
             xCAT::PPCdb::add_ppc( "fsp", [$values] );
         }
         elsif ( $type =~ /^(RSA|MM)$/ ) {
@@ -1903,11 +1903,14 @@ sub preprocess_request {
     # find all the service nodes for xCAT cluster
     # build an individual request for each service node
     ###########################################
-    my $nrtab=xCAT::Table->new("noderes", -create =>0);
-    my @all=$nrtab->getAllNodeAttribs(['servicenode']);
+    my $nrtab=xCAT::Table->new("noderes", -create =>0);  
     my %sv_hash=();
-    foreach (@all) {
-      if ($_->{servicenode}) {$sv_hash{$_->{servicenode}}=1;}
+    if ( $nrtab)
+    {
+	    my @all=$nrtab->getAllNodeAttribs(['servicenode']);
+	    foreach (@all) {
+		    if ($_->{servicenode}) {$sv_hash{$_->{servicenode}}=1;}
+	    }
     }
     ###########################################
     # build each request for each service node
