@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/enr perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::DSHCLI;
@@ -2523,7 +2523,7 @@ sub handle_signal_dsh
                 {
 
                     $rsp->{data}->[0] =
-                      "dsh>  Remote_command_cancelled $user_target";
+                      "xdsh>  Remote_command_cancelled $user_target";
                     $$dsh_options{'monitor'}
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                 }
@@ -2581,7 +2581,7 @@ sub handle_signal_dsh
                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
                     $rsp->{data}->[0] =
-                      "dsh>  Remote_command_cancelled $user_target";
+                      "xdsh>  Remote_command_cancelled $user_target";
                     $$dsh_options{'monitor'}
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                 }
@@ -2604,7 +2604,7 @@ sub handle_signal_dsh
             $dsh_stats{'canceled-targets'}   = $dsh_target_status{'canceled'};
         }
 
-        $rsp->{data}->[0] = "dsh>  Dsh_remote_execution_completed";
+        $rsp->{data}->[0] = "xdsh>  Dsh_remote_execution_completed";
         $$dsh_options{'monitor'}
           && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
@@ -3713,7 +3713,7 @@ sub parse_and_run_dsh
         @results = xCAT::DSHCLI->runlocal_on_rootimg(\%options, $imagename);
         if ($::RUNCMD_RC)
         {    # error from dsh
-            $rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
+            $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
         }
@@ -3726,7 +3726,7 @@ sub parse_and_run_dsh
         @results = xCAT::DSHCLI->runDsh_api(\%options, 0);
         if ($::RUNCMD_RC)
         {    # error from dsh
-            $rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
+            $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
         }
@@ -3970,7 +3970,7 @@ sub parse_and_run_dcp
     if ($::RUNCMD_RC)
     {    # error from dcp
         my $rsp={};
-        $rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
+        $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
     }
@@ -4059,7 +4059,7 @@ sub parse_input_file
   node.
   Arguments:
       $optionRef:
-         Specifies a hash in which the dsh options are provided
+         Specifies a hash in which the xdsh options are provided
       $exitCode:
 		  reference to an array for efficiency.
   Example:
@@ -4186,7 +4186,7 @@ sub runDsh_api
             {
                 xCAT::MsgUtils->message(
                     "E",
-                    "dsh command: $$optionsRef{'command'} failed on  nodes:$::DSH_API_NODES_FAILED."
+                    "xdsh command: $$optionsRef{'command'} failed on  nodes:$::DSH_API_NODES_FAILED."
                     );
             }
         }

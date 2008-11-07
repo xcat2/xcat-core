@@ -1455,26 +1455,16 @@ sub storeresults
     system("/bin/rm  $newtempfile");
 
     # capture errors
-    # open errorfile to write results of xdsh or rinv command
+    # 
     if (@errresult)
     {    # if errors
-        my $newtempfile = $tempfile;
-        $newtempfile .= "err";
-        open(FILE, ">$newtempfile");
-        if ($? > 0)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] = "Could not open $newtempfile\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-        }
+        my $rsp = {};
+        my $i=0;
         foreach my $line (@errresult)
         {
-            print FILE $line;
+            $rsp->{data}->[$i] = $line;
+            $i++;
         }
-        close FILE;
-        my $rsp = {};
-        $rsp->{data}->[0] = "\nCheck $newtempfile for errors.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
 
     }
