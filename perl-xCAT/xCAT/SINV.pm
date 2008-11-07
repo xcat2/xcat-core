@@ -53,11 +53,11 @@ sub usage
     my $usagemsg2  = "      [-V verbose] [-v version] [-h usage]\n ";
     my $usagemsg3  =
       "     [-o output file ] [-p <template path>] [-t <template count>]\n";
-    my $usagemsg4  = "      [-r remove templates] [-s <seednode>]\n";
-    my $usagemsg4a = "      [-e exactmatch] [-i ignore]\n";
-    my $usagemsg5  = "      [-c <command>  | -f <command file>] \n ";
+    my $usagemsg4 = "      [-r remove templates] [-s <seednode>]\n";
+    my $usagemsg5 = "      [-e exactmatch] [-i ignore]\n";
+    my $usagemsg6 = "      [-c <command>  | -f <command file>] \n ";
     my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg4a .= $usagemsg5;
+      $usagemsg5 .= $usagemsg6;
 ###  end usage mesage
 
     my $rsp = {};
@@ -305,22 +305,27 @@ sub parse_and_run_sinv
     my $outputfile = $options{'output_file'};
     if (!$outputfile)
     {
-        my $rsp = {};
-        $rsp->{data}->[0] = "Output file path missing.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        exit 1;
+        $::NOOUTPUTFILE = 1;
     }
-    chomp $outputfile;
-
-    # open the file for writing
-    unless (open(OUTPUTFILE, ">$outputfile"))
+    else
     {
-        my $rsp = {};
-        $rsp->{data}->[0] = " Cannot open $outputfile for output.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        exit 1;
+
+        chomp $outputfile;
     }
-    $::OUTPUT_FILE_HANDLE = \*OUTPUTFILE;
+
+    # open the file for writing, if it exists
+    if ($outputfile)
+    {
+        unless (open(OUTPUTFILE, ">$outputfile"))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = " Cannot open $outputfile for output.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            exit 1;
+        }
+        $::OUTPUT_FILE_HANDLE = \*OUTPUTFILE;
+
+    }
 
     #
     # For xdsh command
@@ -373,7 +378,14 @@ sub parse_and_run_sinv
     $rsp->{data}->[2] = "Template path:$templatepath.\n";
     $rsp->{data}->[3] = "Template cnt:$templatecnt.\n";
     $rsp->{data}->[4] = "Remove template:$rmtemplate.\n";
-    $rsp->{data}->[5] = "Output file:$outputfile.\n";
+    if ($outputfile)
+    {
+        $rsp->{data}->[5] = "Output file:$outputfile.\n";
+    }
+    else
+    {
+        $rsp->{data}->[5] = "Output file:None.\n";
+    }
     $rsp->{data}->[6] = "Exactmatch:$exactmatch.\n";
     $rsp->{data}->[7] = "Ignorefirst:$ignorefirsttemplate.\n";
     if ($seednode)
@@ -395,13 +407,16 @@ sub parse_and_run_sinv
 
     #write to output file the header
     my $i = 0;
-    while ($i < 10)
+    if ($::OUTPUT_FILE_HANDLE)
     {
-        print $::OUTPUT_FILE_HANDLE $rsp->{data}->[$i];
-        $i++;
+        while ($i < 10)
+        {
+            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[$i];
+            $i++;
+        }
+        print $::OUTPUT_FILE_HANDLE "\n";
     }
-    print $::OUTPUT_FILE_HANDLE "\n";
-    if ($::VERBOSE)
+    if (($::VERBOSE) || ($::NOOUTPUTFILE))
     {
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
@@ -452,7 +467,7 @@ sub parse_and_run_sinv
     $processflg = "node";
 
     # Tell them we are running the command
-    if ($::VERBOSE)
+    if (($::VERBOSE) || ($::NOOUTPUTFILE))
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Running $cmdtype command.\n";
@@ -520,10 +535,15 @@ sub parse_and_run_sinv
 
         system("/bin/rm  $tempfile");
     }
-    close(OUTPUTFILE);
     my $rsp = {};
-    $rsp->{data}->[0] = "Command Complete. Check report in $outputfile.\n";
+    $rsp->{data}->[0] = "Command Complete.";
     xCAT::MsgUtils->message("I", $rsp, $callback);
+    if ($::OUTPUT_FILE_HANDLE)
+    {
+        close(OUTPUTFILE);
+        $rsp->{data}->[0] = "Check report in $outputfile.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
     return $rc;
 }
 
@@ -1111,8 +1131,11 @@ sub writereport
 
         # print template name
         $rsp->{data}->[0] = "The following nodes match $template:\n";
-        print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-        if ($::VERBOSE)
+        if ($::OUTPUT_FILE_HANDLE)
+        {
+            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+        }
+        if (($::VERBOSE) || ($::NOOUTPUTFILE))
         {
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
@@ -1137,8 +1160,11 @@ sub writereport
         if ($ignorefirsttemplate ne "YES")
         {                                              #  report first template
             $rsp->{data}->[0] = "$nodelist\n";
-            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-            if ($::VERBOSE)
+            if ($::OUTPUT_FILE_HANDLE)
+            {
+                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+            }
+            if (($::VERBOSE) || ($::NOOUTPUTFILE))
             {
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
@@ -1149,8 +1175,11 @@ sub writereport
             {
                 $rsp->{data}->[0] =
                   "Not reporting matches on first template.\n";
-                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-                if ($::VERBOSE)
+                if ($::OUTPUT_FILE_HANDLE)
+                {
+                    print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+                }
+                if (($::VERBOSE) || ($::NOOUTPUTFILE))
                 {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
@@ -1197,15 +1226,21 @@ sub writereport
     if ($rsp->{data}->[0])
     {
         $rsp->{data}->[0] = "The following nodes had no output:\n";
-        print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-        if ($::VERBOSE)
+        if ($::OUTPUT_FILE_HANDLE)
+        {
+            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+        }
+        if (($::VERBOSE) || ($::NOOUTPUTFILE))
         {
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
         chop $rsp->{data}->[0];
         $rsp->{data}->[0] .= "\n";
-        print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
-        if ($::VERBOSE)
+        if ($::OUTPUT_FILE_HANDLE)
+        {
+            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
+        }
+        if (($::VERBOSE) || ($::NOOUTPUTFILE))
         {
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
@@ -1228,6 +1263,8 @@ sub xdshoutput
     my $rsp = shift;
 
     my $rc = 0;
+    @errresult = ();
+    @cmdresult = ();
 
     # Handle info structure, like xdsh returns
     if ($rsp->{warning})
@@ -1274,6 +1311,9 @@ sub xdshoutput
 sub rinvoutput
 {
     my $rsp = shift;
+
+    @errresult = ();
+    @cmdresult = ();
 
     # Handle node structure, like rinv returns
     my $errflg = 0;
