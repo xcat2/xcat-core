@@ -139,15 +139,15 @@ sub process_command {
       if ($subcommand ne 'off') {
         #get the current nodeset stat
         if (@allnodes>0) {
-	  my $nsh={};
+   my $nsh={};
           my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
           if ($ret) { trace( $request, $msg );}
           else {
             foreach (keys %$nsh) {
-	      my $currstate=$nsh->{$_};
+       my $currstate=$nsh->{$_};
               $nodestat{$_}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
-	    }
-	  }
+     }
+   }
         }
       }
     }
@@ -187,7 +187,7 @@ sub process_command {
 
             #update the node status to the nodelist.status table
             if ($check) {
-	        updateNodeStatus(\%nodestat, $errornodes);
+         updateNodeStatus(\%nodestat, $errornodes);
             }
 
             Time::HiRes::sleep(0.1);
@@ -219,7 +219,7 @@ sub process_command {
 
         #update the node status to the nodelist.status table
         if ($check) {
-	  updateNodeStatus(\%nodestat, $errornodes);
+   updateNodeStatus(\%nodestat, $errornodes);
         }
 
         Time::HiRes::sleep(0.1);
@@ -308,7 +308,7 @@ sub child_response {
                 #save the nodes that has errors for node status monitoring
                 if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  { 
                    if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; } 
-	       } else {
+        } else {
                    if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
                }
                 $callback->( $_ );
@@ -575,7 +575,7 @@ sub resolve_netwk {
         #################################
         # Get mac-address (-m)
         #################################
-        my ($ent) = $tab->getAttribs( {node=>$_}, "mac" );
+        my ($ent) = $tab->getNodeAttribs( $_, ['mac'] );
         if ( !defined($ent) ) {
             my $msg = sprintf( "$_: $errmsg{NO_ATTR}","mac","mac");
             send_msg( $request, 1, $msg );
@@ -630,7 +630,7 @@ sub resolve {
     #################################
     # Get attributes 
     #################################
-    my ($att) = $tabs->{ppc}->getAttribs({'node'=>$node}, @attribs );
+    my ($att) = $tabs->{ppc}->getNodeAttribs( $node, \@attribs );
  
     if ( !defined( $att )) { 
         return( sprintf( $errmsg{NODE_UNDEF}, "ppc" )); 
@@ -651,16 +651,14 @@ sub resolve {
         #############################
         if (( $request->{command} eq "rvitals" ) &&
             ( $request->{method}  =~ /^all|temp$/ )) { 
-           my ($ent) = $tabs->{ppc}->getAttribs(
-                                 {node=>$att->{parent}}, "parent" );
+           my ($ent) = $tabs->{ppc}->getNodeAttribs( $att->{parent},['parent']);
      
            #############################
            # Find MTMS in vpd database 
            #############################
            if (( defined( $ent )) && exists( $ent->{parent} )) {
                my @attrs = qw(mtm serial);
-               my ($vpd) = $tabs->{vpd}->getAttribs(
-                                 {node=>$ent->{parent}},@attrs );
+               my ($vpd) = $tabs->{vpd}->getAttribs($ent->{parent},\@attrs);
 
                if ( !defined( $vpd )) {
                    return( sprintf( $errmsg{NO_UNDEF}, "vpd" )); 
@@ -702,7 +700,7 @@ sub resolve {
     # Find MTMS in vpd database 
     #################################
     my @attrs = qw(mtm serial);
-    my ($vpd) = $tabs->{vpd}->getAttribs({node=>$att->{node}}, @attrs );
+    my ($vpd) = $tabs->{vpd}->getNodeAttribs($att->{node}, \@attrs );
 
     if ( !defined( $vpd )) {
         return( sprintf( $errmsg{NODE_UNDEF}, "vpd: ($att->{node})" )); 
@@ -1186,3 +1184,4 @@ sub sshcmds_on_hmc
 }
 
 1;
+
