@@ -14,7 +14,7 @@ B<sinv> [B<-h> | B<-v>]
 The B<sinv> command is designed to check the configuration of the nodes in a cluster.
 The command takes as input command line flags, and one or more templates which will be compared against the output of the xdsh command, designated to be run by the -c or -f flag, on the nodes in the noderange. 
 
-The nodes will then be grouped according to the template they match and a report returned to the administrator in the output file designated by the -o flag. 
+The nodes will then be grouped according to the template they match and a report returned to the administrator in the output file designated by the -o flag, or to stdout. 
 
 B<sinv> supports checking the output from the  B<rinv> or B<xdsh> command. 
  
@@ -57,8 +57,7 @@ Command Protocol can be used. See man B<xdsh> for more details.
 
 =item B<-o>|B<--output> I<report output file>
 
-Optional output file. This is the location of the file that will contain
- the report of the nodes that match, and do not match, the input templates.
+Optional output file. This is the location of the file that will contain the report of the nodes that match, and do not match, the input templates.
 If the flag is not used, the output will go to stdout. 
 
 =item B<-p>|B<--tp> I<template path>
