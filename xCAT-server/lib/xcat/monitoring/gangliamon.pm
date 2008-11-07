@@ -406,8 +406,9 @@ sub confGmond
        {#opening if scope of confGmond
         print "opening scope \n";
         print "inside scope is:$scope";
+        chomp(my $hostname = `hostname`);
         my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-
+         
         print "pairHash: $pPairHash \n";
         #identification of this node
         my @hostinfo=xCAT::Utils->determinehostname();
@@ -457,8 +458,17 @@ sub confGmond
               print "shell script time \n";
               print "MONSERVER is $key_a[0] \n";
               print "MONMASTER is $key_a[1] \n";
-              my $res_conf=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node MONSERVER=$key_a[0] MONMASTER=$key_a[1] /tmp/confGang 2>&1`;
-              if($?)
+              my $res_conf;
+              if ( $key_a[0] =~ /noservicenode/ )
+              {
+              $res_conf=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node MONSERVER=$hostname MONMASTER=$key_a[1] /tmp/confGang 2>&1`;
+              }
+
+             else 
+             {
+              $res_conf=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node MONSERVER=$key_a[0] MONMASTER=$key_a[1] /tmp/confGang 2>&1`;
+             }
+       if($?)
                 { #openinf if ?
                   if($callback) 
                     {
