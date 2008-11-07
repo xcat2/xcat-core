@@ -1,5 +1,7 @@
 #!/bin/sh
 #get IP address of MS
+OS=`uname`
+echo "the OS is $OS"
 ms_ip=$MONMASTER
 echo "hi is $ms_ip"
 result=`ping -c1 $MONMASTER 2>&1`
@@ -17,12 +19,58 @@ result=`ping -c1 $MONMASTER 2>&1`
  fi
 
 CLUSTER=\"$MONSERVER\"
+echo "cluster is $CLUSTER"
 MASTER=$ms_ip
 #echo "The new IP is: $NEW_IP"
 #echo "I will replace now....
 gmond_conf="/etc/ganglia/gmond.conf"
 gmond_conf_old="/etc/gmond.conf"
  
+    if [ $OS == "AIX" ]; then
+      echo "into AIX loop"
+      if [ -f  $gmond_conf_old ]; then
+       echo "ganglia version 3.0.7"
+       grep "xCAT gmond settings done" $gmond_conf_old
+         if [ $? -gt 0 ]; then
+           /bin/cp -f $gmond_conf_old /etc/gmond.conf.orig
+           sed -e "s/setuid = yes/setuid = no/1" $gmond_conf_old > /etc/gmond.conf1
+           sed -e 's/name = "unspecified"/name='$CLUSTER'/1' /etc/gmond.conf1 > /etc/gmond.conf2
+           sed -e "1,40s/mcast_join = .*/host = $MASTER/" /etc/gmond.conf2 > /etc/gmond.conf3
+           sed -e 's/mcast_join/#/g' /etc/gmond.conf3 > /etc/gmond.conf4
+           sed -e "s/bind/#/g" /etc/gmond.conf4 > /etc/gmond.conf5
+           /bin/cp -f /etc/gmond.conf5 $gmond_conf_old
+           rm -f /etc/gmond.conf1 /etc/gmond.conf2 /etc/gmond.conf3 /etc/gmond.conf4 /etc/gmond.conf5
+           echo "# xCAT gmond settings done sh" >> $gmond_conf_old
+         fi
+       fi
+    fi   
+
+
+    if [ $OS == "AIX" ]; then
+      echo "into AIX new loop"
+      if [ -f  $gmond_conf ]; then
+      echo "ganglia version v3.10"
+       grep "xCAT gmond settings done" $gmond_conf
+         if [ $? -gt 0 ]; then
+           /bin/cp -f $gmond_conf /etc/ganglia/gmond.conf.orig
+           sed -e "s/setuid = yes/setuid = no/1" $gmond_conf > /etc/ganglia/gmond.conf1
+           sed -e 's/name = "unspecified"/name='$CLUSTER'/1' /etc/ganglia/gmond.conf1 > /etc/ganglia/gmond.conf2
+           sed -e "1,40s/mcast_join = .*/host = $MASTER/" /etc/ganglia/gmond.conf2 > /etc/ganglia/gmond.conf3
+           sed -e 's/mcast_join/#/g' /etc/ganglia/gmond.conf3 > /etc/ganglia/gmond.conf4
+           sed -e "s/bind/#/g" /etc/ganglia/gmond.conf4 > /etc/ganglia/gmond.conf5
+           /bin/cp -f /etc/ganglia/gmond.conf5 $gmond_conf
+           rm -f /etc/ganglia/gmond.conf1 /etc/ganglia/gmond.conf2 /etc/ganglia/gmond.conf3 /etc/ganglia/gmond.conf4 /etc/ganglia/gmond.conf5
+           echo "# xCAT gmond settings done sh" >> $gmond_conf
+         fi
+       fi
+    fi
+
+
+
+
+
+     if [ $OS != "AIX" ]; then
+       echo "not AIX"
      if [ -f  $gmond_conf ]; then
        grep "xCAT gmond settings done" $gmond_conf
          if [ $? -gt 0 ]; then
@@ -35,8 +83,13 @@ gmond_conf_old="/etc/gmond.conf"
            sed -i 's/bind/#/g' $gmond_conf
            echo "# xCAT gmond settings done sh" >> $gmond_conf
          fi
+       fi
      fi
  
+
+ if [ $OS != "AIX" ]; then
+       echo "not AIX"
+
     if [ -f $gmond_conf_old ]; then
       grep "xCAT gmond settings done" $gmond_conf_old
          if [ $? -gt 0 ]; then
@@ -50,9 +103,14 @@ gmond_conf_old="/etc/gmond.conf"
            echo "# xCAT gmond settings done sh_old" >> $gmond_conf_old
          fi 
     fi
-
+fi
 
      if [ ! -f  $gmond_conf ]; then 
+       #  echo "file not found"
+       logger -t gmonfail "gmond configuration file not found"
+     fi
+
+     if [ ! -f  $gmond_conf_old ]; then
        #  echo "file not found"
        logger -t gmonfail "gmond configuration file not found"
      fi
