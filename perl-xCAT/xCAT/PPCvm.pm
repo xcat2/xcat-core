@@ -355,7 +355,7 @@ sub clone {
     if ( !defined( $tab )) {
         return( [[RC_ERROR, "Error opening 'vpd' database"]] );
     }
-    my ($ent) = $tab->getAttribs({node=>$dest}, qw(mtm serial));
+    my ($ent) = $tab->getNodeAttribs($dest, [qw(mtm serial)]);
 
     #####################################
     # Node not found
@@ -852,15 +852,15 @@ sub list {
                 # -a|--all is assigned
                 #################################
                 if (exists( $args->{a} )) {
-	            my $count = 0;
-	            foreach (@$prof) {
-	                $pprofile .= "@$prof[$count]\n\n";
-	                $count++;
-	            }
-	        } else {
-	            $pprofile .= "@$prof[0]\n\n";
-	        }
-	    }                
+             my $count = 0;
+             foreach (@$prof) {
+                 $pprofile .= "@$prof[$count]\n\n";
+                 $count++;
+             }
+         } else {
+             $pprofile .= "@$prof[0]\n\n";
+         }
+     }                
             push @values, [$lpar, $pprofile, SUCCESS];
         }
     }
@@ -1134,7 +1134,7 @@ sub xCATdB {
         if ( !defined( $tab )) {
             return( "Error opening 'ppc' database" );
         }
-        my ($ent) = $tab->getAttribs({node=>$lpar}, "parent" );
+        my ($ent) = $tab->getNodeAttribs($lpar, ['parent'] );
 
         ###################################
         # Node not found 
@@ -1197,6 +1197,7 @@ sub lsvm {
 
 
 1;
+
 
 
 
