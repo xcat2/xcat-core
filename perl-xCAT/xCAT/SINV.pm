@@ -439,6 +439,8 @@ sub parse_and_run_sinv
         # and then return inline after this code.
 
         $processflg = "seednode";
+        @errresult = ();
+        @cmdresult = ();
         $sub_req->(
                    {
                     command => [$cmdtype],
@@ -478,6 +480,8 @@ sub parse_and_run_sinv
     # and still support a hierarchial xdsh
     # this will run the command with input,  return to cmdoutput routine
     # and then return inline after this code.
+    @errresult = ();
+    @cmdresult = ();
     $sub_req->(
                {
                 command => [$cmdtype],
@@ -1263,8 +1267,6 @@ sub xdshoutput
     my $rsp = shift;
 
     my $rc = 0;
-    @errresult = ();
-    @cmdresult = ();
 
     # Handle info structure, like xdsh returns
     if ($rsp->{warning})
@@ -1312,8 +1314,6 @@ sub rinvoutput
 {
     my $rsp = shift;
 
-    @errresult = ();
-    @cmdresult = ();
 
     # Handle node structure, like rinv returns
     my $errflg = 0;
@@ -1462,7 +1462,7 @@ sub storeresults
         my $i=0;
         foreach my $line (@errresult)
         {
-            $rsp->{data}->[$i] = $line;
+            $rsp->{data}->[$i] = "$line";
             $i++;
         }
         xCAT::MsgUtils->message("E", $rsp, $callback);
