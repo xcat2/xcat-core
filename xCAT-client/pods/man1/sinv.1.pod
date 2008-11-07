@@ -57,8 +57,9 @@ Command Protocol can be used. See man B<xdsh> for more details.
 
 =item B<-o>|B<--output> I<report output file>
 
-This is the location of the file that will contain the report
-of the nodes that match, and do not match, the input templates.
+Optional output file. This is the location of the file that will contain
+ the report of the nodes that match, and do not match, the input templates.
+If the flag is not used, the output will go to stdout. 
 
 =item B<-p>|B<--tp> I<template path>
 
