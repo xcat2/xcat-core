@@ -233,7 +233,7 @@ sub addnode
                     if ($chainent and $chainent->{currstate} and $chainent->{currstate} eq 'iscsiboot') {
                         $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else { filename = \"undionly.kpxe\"; } '.$lstatements;
                     } else {
-                        $lstatements = 'if exists gpxe.bus-id { filename = \"pxelinux.0\"; } else { filename = \"undionly.kpxe\"; } '.$lstatements;
+                        $lstatements = 'if exists gpxe.bus-id { filename = \"pxelinux.0\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive gPXE
                     } 
                 } #TODO: warn when windows
             }
@@ -768,6 +768,9 @@ sub newconfig
     push @dhcpconf, "#xCAT generated dhcp configuration\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "authoritative;\n";
+    push @dhcpconf, "option space gpxe;\n";
+    push @dhcpconf, "option gpxe-encap-opts code 175 = encapsulate gpxe;\n";
+    push @dhcpconf, "option gpxe.bus-id code 177 = string;\n";
     push @dhcpconf, "ddns-update-style none;\n";
     push @dhcpconf,
       "option client-architecture code 93 = unsigned integer 16;\n";

@@ -275,13 +275,13 @@ sub migrate {
     eval {
      $dom = $newhypconn->get_domain_by_name($node);
     };
-    $vmtab->setNodeAttribs($node,{host=>$targ});
     if ($dom) {
         refresh_vm($dom);
     }
     if ($rc) {
         return (1,"Failed migration from $prevhyp to $targ");
     } else {
+        $vmtab->setNodeAttribs($node,{host=>$targ});
         return (0,"migrated to $targ");
     }
 }
