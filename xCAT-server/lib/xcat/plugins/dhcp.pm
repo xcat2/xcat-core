@@ -231,7 +231,7 @@ sub addnode
             if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe') {
                 if (-f "$tftpdir/undionly.kpxe") {
                     if ($chainent and $chainent->{currstate} and $chainent->{currstate} eq 'iscsiboot') {
-                        $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else { filename = \"undionly.kpxe\"; } '.$lstatements;
+                        $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements;
                     } else {
                         $lstatements = 'if exists gpxe.bus-id { filename = \"pxelinux.0\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive gPXE
                     } 
