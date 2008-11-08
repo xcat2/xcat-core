@@ -723,7 +723,7 @@ ll~;
 
 	# update the node definitions with the new osimage - if provided
 	my %nodeattrs;
-	foreach my $node (keys %objhash) {
+	foreach my $node (@nodelist) {
         chomp $node;
 
         if (!grep(/^$node$/, @nodesfailed)) {
@@ -4256,7 +4256,7 @@ ll~;
 	# update the node definitions with the new osimage - if provided
 	#
 	my %nodeattrs;
-	foreach my $node (keys %objhash) {
+	foreach my $node (@nodelist) {
         chomp $node;
         if (!grep(/^$node$/, @nodesfailed)) {
             # change the node def if we were successful
