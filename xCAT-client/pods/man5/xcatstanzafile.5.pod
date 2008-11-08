@@ -115,7 +115,7 @@ Sample stanza file:
 
  grp01:
     objtype=group
-    memberlist=node1,node2,node3
+    members=node1,node2,node3
 
 =back
 
