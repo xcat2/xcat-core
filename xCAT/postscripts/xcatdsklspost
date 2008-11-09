@@ -96,6 +96,10 @@ rm -f /tmp/mypostscript
 killall stunnel
 rm -rf /etc/stunnel
 
+#tell user it is done when this is called by updatenode command
+if [ $# -gt 0 ]; then
+  echo "returned"
+fi
 
 
 

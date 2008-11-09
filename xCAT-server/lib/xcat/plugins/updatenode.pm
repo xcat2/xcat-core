@@ -236,16 +236,25 @@ sub updatenode {
   #print "postscripts=$postscripts, nodestring=$nodestring\n";
 
   if ($nodestring) {
-    my $output;
+    my $cmd;
     if (xCAT::Utils->isLinux()) {
-      $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcatdsklspost 1 $postscripts 2>&1`;
+      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost 1 $postscripts 2>&1";
     }
     else {
-      $output=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -e /install/postscripts/xcataixpost 1 $postscripts 2>&1`;
+      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost 1 $postscripts 2>&1";
     }
-    my $rsp={};
-    $rsp->{data}->[0]= "$output\n";
-    $callback->($rsp);
+    if (! open (CMD, "$cmd |")) {
+      my $rsp={};
+      $rsp->{data}->[0]= "Cannot run command $cmd";
+      $callback->($rsp);    
+    } else {
+      while (<CMD>) {
+        my $rsp={};
+        $rsp->{data}->[0]= "$_";
+        $callback->($rsp);
+      }
+      close(CMD);
+    }
   }
 
   return 0;

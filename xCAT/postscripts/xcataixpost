@@ -64,8 +64,16 @@ open(XCATINFO,">",$xcatinfo);
 print XCATINFO "XCATSERVER=$servnode\n";
 close(XCATINFO);
 
+
 # get the contents of the /install/postscripts dir on the server
-my $rcpcmd = "rcp -r $servnode:/install/postscripts/* /xcatpost";
+my $rcpcmd;
+if ((@ARGV==0) || ($ARGV[0] != 2)) { 
+  $rcpcmd= "rcp -r $servnode:/install/postscripts/* /xcatpost";
+} else {
+  #when argv[1]=2, there is only one postscript file, user wants only download it to save time
+  $rcpcmd= "rcp $servnode:/install/postscripts/$ARGV[1] /xcatpost";
+}
+
 if (&runcmd($rcpcmd) != 0) {
 	print "$::sdate xcataixpost: Could not rcp file from $servnode.\n";
 	print $::LOG_FILE "$::sdate xcataixpost: Could not rcp file from $servnode.\n";
@@ -125,6 +133,9 @@ if (@ARGV<1) {
     print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
     print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server..\n";
   }
+} else {
+  #called by updatenode, infrom user it is done
+  print "returned";
 }
 
 
