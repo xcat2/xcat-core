@@ -638,7 +638,7 @@ sub startNodeStatusMon {
 sub saveRMCNodeStatusToxCAT {
   #print "rmcmon::saveRMCNodeStatusToxCAT called\n";
   my $retcode=0;
-  my $retmsg="started";
+  my $retmsg="";
   my $statusref=shift;
   if ($statusref =~ /xCAT_monitoring::rmcmon/) {
     $statusref=shift;
@@ -652,30 +652,31 @@ sub saveRMCNodeStatusToxCAT {
   my @active_nodes=();
   my @inactive_nodes=();
   if ($node) {
-    $result=`CT_MANAGEMENT_SCOPE=4 /usr/bin/lsrsrc-api -o IBM.MngNode::::$node::Name::Status 2>&1`;
+    $result=`CT_MANAGEMENT_SCOPE=4 LANG=C /usr/bin/lsrsrc-api -o IBM.MngNode::::$node::Name::Status 2>&1`;
   } else {
-    $result=`CT_MANAGEMENT_SCOPE=1 /usr/bin/lsrsrc-api -s IBM.MngNode::::Name::Status 2>&1`;
+    $result=`CT_MANAGEMENT_SCOPE=1 LANG=C /usr/bin/lsrsrc-api -s IBM.MngNode::::Name::Status 2>&1`;
   }
-  if ($?) {
-    $retcode=$?;
-    $retmsg=$result;
-    xCAT::MsgUtils->message('SI', "[mon]: Error getting node status from RMC: $result\n");
-    return ($retcode, $retmsg);
-  } else {
-    if ($result) {
-      my @lines=split('\n', $result);
-      #only save the ones that needs to change
-      foreach (@lines) {
+
+  
+  if ($result) {
+    my @lines=split('\n', $result);
+    #only save the ones that needs to change
+    foreach (@lines) {
 	my @pairs=split('::', $_);
-        if ($pairs[1]==1) { 
-          if ($status_hash{$pairs[0]} ne $::STATUS_ACTIVE) { push @active_nodes,$pairs[0];} 
+        if ($pairs[0] eq "ERROR") {
+	  $retmsg .= "$_\n";
         }
-        else { 
-          if ($status_hash{$pairs[0]} ne $::STATUS_INACTIVE) { push @inactive_nodes, $pairs[0];}
-        }  
+        else {
+          if ($pairs[1]==1) { 
+            if ($status_hash{$pairs[0]} ne $::STATUS_ACTIVE) { push @active_nodes,$pairs[0];} 
+          }
+          else { 
+            if ($status_hash{$pairs[0]} ne $::STATUS_INACTIVE) { push @inactive_nodes, $pairs[0];}
+          }
+        }   
       } 
-    }
   }
+  
 
   my %new_node_status=();
   if (@active_nodes>0) {
@@ -688,6 +689,10 @@ sub saveRMCNodeStatusToxCAT {
   if (keys(%new_node_status) > 0) {
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_node_status);
   }  
+
+  if ($retmsg) {$retcode=1;}
+  else {$retmsg="started";}
+ 
   return ($retcode, $retmsg);
 }
 
@@ -1013,6 +1018,7 @@ sub addNodes {
             next;
 	  }  else {
             #print "hmccmd2=XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot \"mkrsrc-api IBM.MCP::MNName::\\\"$node\\\"::KeyToken::\\\"$master\\\"::IPAddresses::\\\"$ms_ipaddresses\\\"::NodeID::0x$ms_node_id 2>&1\"\n";
+            reportError("Configuring $node", $callback); 
             $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "mkrsrc-api IBM.MCP::MNName::\\\"$node\\\"::KeyToken::\\\"$master\\\"::IPAddresses::\\\"$ms_ipaddresses\\\"::NodeID::0x$ms_node_id 2>&1"`;
             if ($?) { reportError($result, $callback); }
 	  }
@@ -1026,10 +1032,28 @@ sub addNodes {
   #let updatenode command to handle the normal nodes as a bulk
   if (@normal_nodes>0) {
     my $nr=join(',',@normal_nodes); 
-    $result=`XCATBYPASS=Y $::XCATROOT/bin/updatenode $nr configrmcnode 2>&1`;
-    if ($?) {
-      reportError($result, $callback);
-    }		   
+    reportError("Configuring the following nodes. It may takes a while.\n$nr", $callback); 
+
+    #use 2 here to tell xcataixpost that there is only one postscript, download only it. It applies to AIX only 
+    my $cmd;
+    if (xCAT::Utils->isLinux()) {
+      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost 2 configrmcnode 2>&1";
+    }
+    else {
+      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost 2 configrmcnode 2>&1";
+    }
+    if (! open (CMD, "$cmd |")) {
+      reportError("Cannot run command $cmd", $callback);
+    } else {
+      while (<CMD>) {
+        reportError("$_", $callback);
+      }
+      close(CMD);
+    }
+    #$result=`XCATBYPASS=Y $::XCATROOT/bin/updatenode $nr configrmcnode 2>&1`;
+    #if ($?) {
+    #  reportError($result, $callback);
+    #}		   
   }
 
   return (0, "ok"); 
@@ -1069,7 +1093,6 @@ sub removeNodes {
   my $localhostname=hostname();
   my $ms_host_name=$localhostname;
   my $ms_node_id;
-  my $ms_ipaddresses;
   my $result;
   my $first_time=1;
   my @normal_nodes=();
@@ -1125,7 +1148,11 @@ sub removeNodes {
     } else {
       #get mn info
       if ($first_time) {
-        ($ms_node_id, $ms_ipaddresses)=getNodeInfo($ms_host_name);
+        $ms_node_id=getLocalNodeID();
+        if ($ms_node_id == -1) {
+          reportError("Cannot get nodeid for $ms_host_name", $callback);
+          return (1, "Cannot get nodeid for $ms_host_name"); 
+        }
         $first_time=0;
       }
 
@@ -1155,8 +1182,19 @@ sub removeNodes {
       next;
     }
 
-    $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1`;
-    if ($?) { reportError($result, $callback);  }
+    reportError("De-configuring the following nodes. It may takes a while.\n$nr", $callback); 
+    my $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr -s MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1";
+    if (! open (CMD1, "$cmd |")) {
+      reportError("Cannot run command $cmd", $callback);
+    } else {
+      while (<CMD1>) {
+        reportError("$_", $callback);
+      }
+      close(CMD1);
+    }
+
+    #$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1`;
+    #if ($?) { reportError($result, $callback);  }
   }    
 
   return (0, "ok");
