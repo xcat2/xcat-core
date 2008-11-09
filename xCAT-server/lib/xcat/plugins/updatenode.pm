@@ -286,7 +286,7 @@ sub updatenodestat {
        my $pa=$node_status{$stat};
        push(@$pa, $node);
     }
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);     
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 0);     
   }
 
   return 0;
