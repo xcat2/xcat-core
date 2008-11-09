@@ -9,6 +9,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 use xCAT::GlobalDef;
+use xCAT::NodeRange;
 use xCAT_monitoring::monitorctrl;
 
 #use Net::SNMP qw(:snmp INTEGER);
@@ -21,6 +22,7 @@ use SNMP;
 use strict;
 #use warnings;
 my %vm_comm_pids;
+my @destblacklist;
 my $vmhash;
 my $hmhash;
 
@@ -39,16 +41,16 @@ use xCAT::DBobjUtils;
 use Getopt::Long;
 
 my %runningstates;
-my $vmmaxp;
+my $vmmaxp=64;
 my $mactab;
 my $nrtab;
 my $machash;
 my $status_noop="XXXno-opXXX";
 
 sub handled_commands {
-  unless ($libvirtsupport) {
-      return {};
-  }
+  #unless ($libvirtsupport) {
+  #    return {};
+  #}
   return {
     rpower => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
@@ -56,6 +58,7 @@ sub handled_commands {
     #rvitals => 'nodehm:mgt',
     #rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
+    revacuate => 'vm:virtflags',
     #rspreset => 'nodehm:mgt',
     #rspconfig => 'nodehm:mgt',
     #rbootseq => 'nodehm:mgt',
@@ -251,9 +254,49 @@ sub getvmcons {
     }
 }
 
+sub pick_target {
+    my $node = shift;
+    my $target;
+    my $leastusedmemory=undef;
+    my $currentusedmemory;
+    my $candidates= $vmhash->{$node}->[0]->{migrationdest};
+    my $currhyp=$vmhash->{$node}->[0]->{host};
+    unless ($candidates) {
+        return undef;
+    }
+    print "$node with $candidates\n";
+    foreach (noderange($candidates)) {
+        my $targconn;
+        my $cand=$_;
+        $currentusedmemory=0;
+        if ($_ eq $currhyp) { next; } #skip current node
+        if (grep { "$_" eq $cand } @destblacklist) { print "$_ was blacklisted\n"; next; } #skip blacklisted destinations
+            print "maybe $_\n";
+        $targconn = Sys::Virt->new(uri=>"xen+ssh://".$_);
+        unless ($targconn) { next; } #skip unreachable destinations
+        foreach ($targconn->list_domains()) {
+            if ($_->get_name() eq 'Domain-0') { next; } #Dom0 memory usage is elastic, we are interested in HVM DomU memory, which is inelastic
+
+            $currentusedmemory += $_->get_info()->{memory};
+        }
+        if (not defined ($leastusedmemory)) {
+            $leastusedmemory=$currentusedmemory;
+            $target=$_;
+        } elsif ($currentusedmemory < $leastusedmemory) {
+            $leastusedmemory=$currentusedmemory;
+            $target=$_;
+        }
+    }
+    return $target;
+}
+
+
 sub migrate {
     my $node = shift();
     my $targ = shift();
+    unless ($targ) {
+        $targ = pick_target($node);
+    }
     my $prevhyp;
     my $target = "xen+ssh://".$targ;
     my $currhyp="xen+ssh://";
@@ -461,7 +504,7 @@ sub adopt {
     return 0;
 }
      
-sub grab_table_data{
+sub grab_table_data{ #grab table data relevent to VM guest nodes
   my $noderange=shift;
   my $callback=shift;
   $vmtab = xCAT::Table->new("vm");
@@ -502,13 +545,36 @@ sub process_request {
   } else {
     @exargs = ($request->{arg});
   }
+  if ($command eq 'revacuate') {
+      my $newnoderange;
+      foreach (@$noderange) {
+        $hypconn=undef;
+        push @destblacklist,$_;
+        $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$_);
+        foreach ($hypconn->list_domains()) {
+            my $guestname = $_->get_name();
+            if ($guestname eq 'Domain-0') {
+                next;
+            }
+            push @$newnoderange,$guestname;
+        }
+      }
+      $hypconn=undef;
+      $noderange = $newnoderange;
+      $command = 'rmigrate';
+  }
+
   grab_table_data($noderange,$callback);
 
-  my $sitetab = xCAT::Table->new('site');
-  my $tmp;
-  if ($sitetab) {
-    ($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
-    if (defined($tmp)) { $vmmaxp=$tmp->{value}; }
+  if ($command eq 'revacuate' or $command eq 'rmigrate') {
+      $vmmaxp=1; #for now throttle concurrent migrations, requires more sophisticated heuristics to ensure sanity
+  } else {
+      my $sitetab = xCAT::Table->new('site');
+      my $tmp;
+      if ($sitetab) {
+        ($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
+        if (defined($tmp)) { $vmmaxp=$tmp->{value}; }
+      }
   }
 
   my $children = 0;
