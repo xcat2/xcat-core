@@ -768,6 +768,7 @@ sub dohyp {
   my @exargs=@{$namedargs{-args}};
   my $node;
   my $args = \@exargs;
+  $vmtab = xCAT::Table->new("vm");
 
 
   $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$hyp);
