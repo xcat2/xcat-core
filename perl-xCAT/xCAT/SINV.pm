@@ -363,62 +363,66 @@ sub parse_and_run_sinv
     my $tmpnodefile;
 
     #
-    # Build Output file header
-    #
-    my $rsp = {};
-    $rsp->{data}->[0] = "Command started with following input.\n";
-    if ($cmd)
+    # Build Output header
+    if (($::VERBOSE) || ($outputfile))
     {
-        $rsp->{data}->[1] = "$cmdtype cmd:$cmd.\n";
-    }
-    else
-    {
-        $rsp->{data}->[1] = "$cmdtype cmd:None.\n";
-    }
-    $rsp->{data}->[2] = "Template path:$templatepath.\n";
-    $rsp->{data}->[3] = "Template cnt:$templatecnt.\n";
-    $rsp->{data}->[4] = "Remove template:$rmtemplate.\n";
-    if ($outputfile)
-    {
-        $rsp->{data}->[5] = "Output file:$outputfile.\n";
-    }
-    else
-    {
-        $rsp->{data}->[5] = "Output file:None.\n";
-    }
-    $rsp->{data}->[6] = "Exactmatch:$exactmatch.\n";
-    $rsp->{data}->[7] = "Ignorefirst:$ignorefirsttemplate.\n";
-    if ($seednode)
-    {
-        $rsp->{data}->[8] = "Seed node:$seednode.\n";
-    }
-    else
-    {
-        $rsp->{data}->[8] = "Seed node:None.\n";
-    }
-    if ($options{'sinv_cmd_file'})
-    {
-        $rsp->{data}->[9] = "file:$options{'sinv_cmd_file'}.\n";
-    }
-    else
-    {
-        $rsp->{data}->[9] = "file:None.\n";
-    }
 
-    #write to output file the header
-    my $i = 0;
-    if ($::OUTPUT_FILE_HANDLE)
-    {
-        while ($i < 10)
+        #
+        my $rsp = {};
+        $rsp->{data}->[0] = "Command started with following input.\n";
+        if ($cmd)
         {
-            print $::OUTPUT_FILE_HANDLE $rsp->{data}->[$i];
-            $i++;
+            $rsp->{data}->[1] = "$cmdtype cmd:$cmd.\n";
         }
-        print $::OUTPUT_FILE_HANDLE "\n";
-    }
-    if (($::VERBOSE) || ($::NOOUTPUTFILE))
-    {
-        xCAT::MsgUtils->message("I", $rsp, $callback);
+        else
+        {
+            $rsp->{data}->[1] = "$cmdtype cmd:None.\n";
+        }
+        $rsp->{data}->[2] = "Template path:$templatepath.\n";
+        $rsp->{data}->[3] = "Template cnt:$templatecnt.\n";
+        $rsp->{data}->[4] = "Remove template:$rmtemplate.\n";
+        if ($outputfile)
+        {
+            $rsp->{data}->[5] = "Output file:$outputfile.\n";
+        }
+        else
+        {
+            $rsp->{data}->[5] = "Output file:None.\n";
+        }
+        $rsp->{data}->[6] = "Exactmatch:$exactmatch.\n";
+        $rsp->{data}->[7] = "Ignorefirst:$ignorefirsttemplate.\n";
+        if ($seednode)
+        {
+            $rsp->{data}->[8] = "Seed node:$seednode.\n";
+        }
+        else
+        {
+            $rsp->{data}->[8] = "Seed node:None.\n";
+        }
+        if ($options{'sinv_cmd_file'})
+        {
+            $rsp->{data}->[9] = "file:$options{'sinv_cmd_file'}.\n";
+        }
+        else
+        {
+            $rsp->{data}->[9] = "file:None.\n";
+        }
+
+        #write to output file the header
+        my $i = 0;
+        if ($::OUTPUT_FILE_HANDLE)
+        {
+            while ($i < 10)
+            {
+                print $::OUTPUT_FILE_HANDLE $rsp->{data}->[$i];
+                $i++;
+            }
+            print $::OUTPUT_FILE_HANDLE "\n";
+        }
+        if (!($outputfile))
+        {
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
     }
 
     # setup a tempfile for command output
@@ -439,8 +443,8 @@ sub parse_and_run_sinv
         # and then return inline after this code.
 
         $processflg = "seednode";
-        @errresult = ();
-        @cmdresult = ();
+        @errresult  = ();
+        @cmdresult  = ();
         $sub_req->(
                    {
                     command => [$cmdtype],
@@ -1047,8 +1051,9 @@ sub diffoutput
             }    # end foreach templateline
 
             # if nodearray matches template exactly,quit processing templates
-
-            if (@nodearray_noheader eq @template_noheader)
+            my $are_equal =
+              compare_arrays(\@nodearray_noheader, \@template_noheader);
+            if ($are_equal)
             {
                 $matchedtemplate = $template;
                 $match           = 1;
@@ -1314,7 +1319,6 @@ sub rinvoutput
 {
     my $rsp = shift;
 
-
     # Handle node structure, like rinv returns
     my $errflg = 0;
 
@@ -1455,11 +1459,11 @@ sub storeresults
     system("/bin/rm  $newtempfile");
 
     # capture errors
-    # 
+    #
     if (@errresult)
     {    # if errors
         my $rsp = {};
-        my $i=0;
+        my $i   = 0;
         foreach my $line (@errresult)
         {
             $rsp->{data}->[$i] = "$line";
@@ -1469,5 +1473,16 @@ sub storeresults
 
     }
     return;
+}
+
+sub compare_arrays
+{
+    my ($first, $second) = @_;
+    return 0 unless @$first == @$second;
+    for (my $i = 0 ; $i < @$first ; $i++)
+    {
+        return 0 if $first->[$i] ne $second->[$i];
+    }
+    return 1;
 }
 1;
