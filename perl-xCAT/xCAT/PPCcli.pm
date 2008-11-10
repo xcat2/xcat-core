@@ -613,11 +613,39 @@ sub lpar_netboot {
         $cmd.= " -x -v";
     }
     #####################################
-    # Force LPAR shutdown
+    # Force LPAR shutdown (-f specified)
+    # Or send shutdown request to non-AIX
+    # LPARs
     #####################################
     if ( exists( $opt->{f} )) {
         $cmd.= " -i";
+    } else {
+        #################################
+	# Determine if LPAR and mgmt node
+	# are AIX or not.
+	################################
+        my $table = "nodetype";
+        my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
+        if (defined(@TableRowArray))
+        {
+            foreach (@TableRowArray)
+            {
+                my @nodelist = split(',', $_->{'node'});
+                my @oslist = split(',', $_->{'os'});
+                my $nodename = @$d[6];
+                my $osname = "AIX";
+                if (grep(/^$nodename$/, @nodelist))
+                {
+                    if (!grep(/^$osname$/, @oslist) || !xCAT::Utils->isAIX())
+                    {
+                        `xdsh $nodename "shutdown -h now" 2>/dev/null`;
+                        last;
+                    }
+                }
+            }
+        }
     }
+
     #####################################
     # Get MAC-address or network boot
     #####################################
