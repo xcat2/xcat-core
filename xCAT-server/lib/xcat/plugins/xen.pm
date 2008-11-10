@@ -166,6 +166,7 @@ sub build_nicstruct {
         my $rethash;
         $rethash->{type}='bridge';
         $rethash->{mac}->{address}=$_;
+        $rethash->{source}->{bridge}='xenbr0';
         push @rethashes,$rethash;
     }
     return \@rethashes;
