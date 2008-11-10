@@ -848,6 +848,13 @@ sub defmk
                 else
                 {
                     $::CLIATTRS{$objname}{$attr} = $::ATTRS{$attr};
+                    if ($::verbose)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] = "\nFunction: defmk-->set the attrs for each object definition";
+                        $rsp->{data}->[1] = "defmk: objname=$objname, attr=$attr, value=$::ATTRS{$attr}";
+                        xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    }
                 }
             }    # end - foreach attr
 
@@ -878,6 +885,13 @@ sub defmk
 
             @{$objTypeLists{$t}} = xCAT::DBobjUtils->getObjectsOfType($t);
         }
+        if ($::verbose)
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "\ndefmk: list objects that are defined for each type";
+            $rsp->{data}->[1] = "@{$objTypeLists{$t}}\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
     }
 
     foreach my $obj (keys %::FINALATTRS)
@@ -898,6 +912,12 @@ sub defmk
         # if object already exists
         if (grep(/$obj/, @{$objTypeLists{$type}}))
         {
+            if ($::verbose)
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "defmk: object already exists, remove old ones";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
             if ($::opt_f)
             {
 
@@ -1061,6 +1081,12 @@ sub defmk
                 my $newgroups;
                 foreach my $n (@memberlist)
                 {
+                    if ($::verbose)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] = "defmk: add group name [$n] to nodelist table";
+                        xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    }
 
                     #  add this group name to the node entry in
                     #		the nodelist table
@@ -1129,7 +1155,12 @@ sub defmk
             }
             if (defined(%GroupHash))
             {
-
+                if ($::verbose)
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] = "Write GroupHash: %GroupHash to xCAT database\n";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                }
                 if (xCAT::DBobjUtils->setobjdefs(\%GroupHash) != 0)
                 {
                     my $rsp;
@@ -1363,6 +1394,13 @@ sub defch
         else
         {
             @{$objTypeLists{$t}} = xCAT::DBobjUtils->getObjectsOfType($t);
+        }
+        if ($::verbose)
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "\ndefch: list objects that are defined for each type";
+            $rsp->{data}->[1] = "@{$objTypeLists{$t}}\n";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
     }
 
