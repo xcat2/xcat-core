@@ -157,9 +157,6 @@ sub getobjdefs
 
     my %typehash = %$hash_ref;
 
-	my @gottabs;
-	my %tabhash;
-
 	@::foundTableList = ();
 	
 	if ($::ATTRLIST eq "none") {
@@ -285,70 +282,51 @@ sub getobjdefs
             #
             # Get the attr values from the DB tables
             #
+
+			# if ($type eq 'node')
 			# lookup_attr is the key to the table we are looking in
 			if ($lookup_attr eq 'node')
             {
-
-				#
-				#  Note: there are many node attrs and they a scattered across
-				#	many DB tables.  It seems the fastest way to get a node
-				# 	def is to read each table completely the first time it
-				#	is queried.  This way we get each table only once no
-				#	matter how many attrs or how many nodes we need.
-				#	%tabhash holds the complete contents of each table that
-				#	was already queried. %objhash contains only the info
-				#	that was requested by this call to getobjdefs 
-				#
                 my $thistable;
+                my $needtocommit = 0;
 
-					# if we have this table
-					if ( grep(/^$lookup_table$/, @gottabs)) {
-
-						# set the attr val for this object
-						if ($tabhash{$lookup_table}{$objname}{$attr}) {
-							$objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$attr};
-						}
-					} else {
-						# need to read new table
-                    	# open the table
-                    	$thistable = xCAT::Table->new($lookup_table, -create     => 1, -autocommit => 0);
-                    	if (!$thistable)
-                    	{
-                        	my $rsp;
-                        	$rsp->{data}->[0] =
+                if ($::gettableref{$lookup_table})
+                {
+                    # if we already opened this table use the reference
+                    $thistable = $::gettableref{$lookup_table};
+                }
+                else
+                {
+                    # open the table
+                    $thistable =
+                          xCAT::Table->new(
+                                           $lookup_table,
+                                           -create     => 1,
+                                           -autocommit => 0
+                                           );
+                    if (!$thistable)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] =
                               "Could not get the \'$thistable\' table.";
-                        	xCAT::MsgUtils->message("E", $rsp, $::callback);
-                        	return undef;
-                    	}
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        return undef;
+                    }
 
-						# look up attr values
-                		my @rows = xCAT::DBobjUtils->getDBtable($lookup_table);
+                    # look up attr values
+                    my $ent;
+                    $ent = $thistable->getNodeAttribs($objname, [$tabattr]);
 
-						# keep track that we looked up this table
-						push(@gottabs, $lookup_table);
-
-                		if (defined(@rows)) {
-							foreach my $r (@rows) {
-								# for each field in table/row (= attr)
-								foreach my $a ( keys %$r) {
-									# don't set the objname as an attr
-									if ( $a ne $lookup_attr) {
-										if ($r->{$a}) {
-											# populate the tabhash with all info
-											$tabhash{$lookup_table}{$r->{$lookup_attr}}{$a} = $r->{$a};
-											# only want specific req in objhash
-											if (($r->{$lookup_attr} eq $objname) && ($a eq $tabattr)){
-												$objhash{$objname}{$a}=$r->{$a};
-											}
-										}
-									}
-
-								}
-                    		}
-                		}
-                    	$thistable->commit;
-                	} # end - need to read new table
-			} # end - if the key is a node
+                    #   create object hash $objhash{$objname}{$attr}
+                    #   - if the return is a reference and the
+                    #       attr val is defined
+                    if (ref($ent) and defined $ent->{$tabattr})
+					{
+                       	$objhash{$objname}{$attr} = $ent->{$tabattr};
+                    }
+                    $thistable->commit;
+                }
+            }
             else
             {
                 # look up attr values
