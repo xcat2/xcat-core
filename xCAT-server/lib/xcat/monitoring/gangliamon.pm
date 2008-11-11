@@ -54,10 +54,24 @@ sub start
       my $callback=shift;
       my $localhost=hostname();
       print "local host is $localhost \n";
+      my $OS=`uname`;
+      print "OS is $OS \n";
       print "starting gmond locally \n";
-      my $res_gmond = `/etc/rc.d/init.d/gmond restart 2>&1`;
-      print "res_gmond=$res_gmond\n";
-      print "the result gmond before  is $? \n";
+	  my $res_gmond;
+      if ( $OS =~ /AIX/ )
+      {
+       print "OS is AIX \n";
+       $res_gmond = `/etc/rc.d/init.d/gmond restart 2>&1`;
+       print "res_gmond=$res_gmond\n";
+       print "the result gmond before  is $? \n";
+      }
+      else
+      {
+       print "OS is not AIX \n";
+       $res_gmond = `/etc/init.d/gmond restart 2>&1`;
+       print "res_gmond=$res_gmond\n";
+       print "the result gmond before  is $? \n";
+      }
       if ($?)
        {
          print "gmond result after is $? \n";
@@ -76,8 +90,22 @@ sub start
         }
  
         print "starting gmetad locally \n";
-        my $res_gmetad = `/etc/rc.d/init.d/gmetad restart 2>&1`;
-        print "the result gmetad before  is $? \n";
+		my $res_gmetad;
+      if ( $OS =~ /AIX/ )
+      {
+       print "OS is AIX \n";
+       $res_gmetad = `/etc/rc.d/init.d/gmetad restart 2>&1`;
+       print "res_gmetad=$res_gmetad\n";
+       print "the result gmetad before  is $? \n";
+      }
+      else
+      {
+       print "OS is not AIX \n";
+       $res_gmetad = `/etc/init.d/gmetad restart 2>&1`;
+       print "res_gmetad=$res_gmetad\n";
+       print "the result gmetad before  is $? \n";
+      }
+
         if ($?)
          {
             print "gmetad result after is $? \n";
@@ -99,6 +127,8 @@ sub start
     
         if ($scope)
          { #opening if scope
+           my $OS=`uname`;
+           print "OS is $OS \n";
            print "opening scope \n";
            print "inside scope is:$scope";
            print "noderef is: @$noderef \n"; 
@@ -138,9 +168,21 @@ sub start
           print "children:@children\n";
           my $rec = join(',',@children);
           print "the string is $rec";
-     print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>& \n"; 
-      my $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>&1`;
-       if ($result)
+		  my $result;
+      if ( $OS =~ /AIX/ )
+      {
+       print "OS is AIX \n";
+       print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>& \n";
+       $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>&1`;
+      }
+      else
+      {
+       print "OS is not AIX \n";
+       print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>& \n";
+       $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>&1`;
+      }
+
+      if ($result)
         {
          if ($callback)
            {
@@ -1003,11 +1045,25 @@ sub stop
       my $callback=shift;
       my $localhost=hostname();
       print "local host is $localhost \n";
+	  my $OS=`uname`;
       print "stopping gmond locally \n";
-      my $res_gmond = `/etc/rc.d/init.d/gmond stop 2>&1`;
-      print "res_gmond=$res_gmond\n";
-      print "the result gmond before  is $? \n";
-      if ($?)
+      my $res_gmond;
+      if ( $OS =~ /AIX/ )
+       {
+         print "OS is AIX \n";
+         $res_gmond = `/etc/rc.d/init.d/gmond stop 2>&1`;
+         print "res_gmond=$res_gmond\n";
+         print "the result gmond before  is $? \n";
+       }
+      else
+      {
+       print "OS is not AIX \n";
+       $res_gmond = `/etc/init.d/gmond stop 2>&1`;
+       print "res_gmond=$res_gmond\n";
+       print "the result gmond before  is $? \n";
+      }
+
+    if ($?)
        {
          print "gmond result after is $? \n";
          if ($callback)
@@ -1025,9 +1081,23 @@ sub stop
         }
 
         print "stopping gmetad locally \n";
-        my $res_gmetad = `/etc/rc.d/init.d/gmetad stop 2>&1`;
-        print "the result gmetad before  is $? \n";
-        if ($?)
+        my $res_gmetad;
+      if ( $OS =~ /AIX/ )
+      {
+       print "OS is AIX \n";
+       $res_gmetad = `/etc/rc.d/init.d/gmetad stop 2>&1`;
+       print "res_gmetad=$res_gmetad\n";
+       print "the result gmetad before  is $? \n";
+      }
+      else
+      {
+       print "OS is not AIX \n";
+       $res_gmetad = `/etc/init.d/gmetad stop 2>&1`;
+       print "res_gmetad=$res_gmetad\n";
+       print "the result gmetad before  is $? \n";
+      }
+
+		if ($?)
          {
             print "gmetad result after is $? \n";
            if ($callback)
@@ -1048,6 +1118,8 @@ sub stop
 
         if ($scope)
          { #opening if scope
+		   my $OS=`uname`;
+		   print "the OS is $OS \n";
            print "opening scope \n";
            print "noderef is: @$noderef \n";
            my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
@@ -1085,8 +1157,21 @@ sub stop
           print "children:@children\n";
           my $rec = join(',',@children);
           print "the string is $rec";
-     print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>& \n";
-       my $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>&1`;
+          my $result; 
+
+         if ( $OS =~ /AIX/ )
+         {
+          print "OS is AIX \n";
+          print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>& \n";
+          $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>&1`;
+         }
+        else
+        {
+         print "OS is not AIX \n";
+         print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>& \n";
+         $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>&1`;
+        }
+
        if ($result)
         {
          if ($callback)
