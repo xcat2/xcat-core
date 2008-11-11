@@ -835,6 +835,10 @@ sub compareoutput
                 {                                #  Host header
                     next;
                 }
+                if ($templateline =~ /UNKNOWN/)
+                {                                #  skip UNKNOWN header
+                    next;
+                }
                 if ($skiphostline == 1)
                 {
                     $skiphostline = 0;
@@ -1033,6 +1037,10 @@ sub diffoutput
                 # skip the header and blanks
                 if ($templateline =~ /============/)
                 {                                #  Host header
+                    next;
+                }
+                if ($templateline =~ /UNKNOWN/)
+                {                                # skip UNKNOWN HEADER 
                     next;
                 }
                 if ($skiphostline == 1)
