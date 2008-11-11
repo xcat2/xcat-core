@@ -708,11 +708,11 @@ sub plugin_command {
    $queuelist =~ s/:/./g;
    foreach (keys %unhandled_nodes) {
       if ($sock) {
-         print $sock XMLout({node=>[{name=>[$_],data=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
+         print $sock XMLout({node=>[{name=>[$_],error=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
       } else {
          my $tabdesc = $queuelist;
          $tabdesc =~ s/=.*$//;
-         $callback->({node=>[{name=>[$_],data=>['Unable to identify plugin for this command, check relevant tables: '.$tabdesc],errorcode=>[1]}]});
+         $callback->({node=>[{name=>[$_],error=>['Unable to identify plugin for this command, check relevant tables: '.$tabdesc],errorcode=>[1]}]});
       }
      }
   }
