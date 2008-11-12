@@ -57,7 +57,7 @@ OID, and have the switch table port value match exactly the format suggested by 
   }
 
   #stop contemplating vlan, Nu, stacking ports, and console interfaces
-  if (($namepersnmp =~ /vl/i) or ($namepersnmp =~ /Nu/) or ($namepersnmp =~ /onsole/) or ($namepersnmp =~ /Stack/)  {
+  if (($namepersnmp =~ /vl/i) or ($namepersnmp =~ /Nu/) or ($namepersnmp =~ /onsole/) or ($namepersnmp =~ /Stack/))  {
     return 0;
   }
   #broken up for code readablitiy, don't check port channel numbers or CPU
