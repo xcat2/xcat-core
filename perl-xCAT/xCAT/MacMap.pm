@@ -56,8 +56,8 @@ OID, and have the switch table port value match exactly the format suggested by 
      }
   }
 
-  #stop contemplating vlan, Nu, and console interfaces
-  if (($namepersnmp =~ /vl/i) or ($namepersnmp =~ /Nu/) or ($namepersnmp =~ /onsole/))  {
+  #stop contemplating vlan, Nu, stacking ports, and console interfaces
+  if (($namepersnmp =~ /vl/i) or ($namepersnmp =~ /Nu/) or ($namepersnmp =~ /onsole/) or ($namepersnmp =~ /Stack/)  {
     return 0;
   }
   #broken up for code readablitiy, don't check port channel numbers or CPU
@@ -309,7 +309,7 @@ sub refresh_switch {
       my $portname;
       my $switchport = $namemap->{$portid};
       foreach $portname (keys %{$self->{switches}->{$switch}}) {
-        unless (namesmatch($portname,$switchport)) { next }
+        unless (namesmatch($portname,$switchport) and defined $iftovlanmap->{$portid}) { next }
         $vlans_to_check{"".$iftovlanmap->{$portid}} = 1; #cast to string, may not be needed
       }
     }
@@ -319,7 +319,7 @@ sub refresh_switch {
 
   my $vlan;
   foreach $vlan (sort keys %vlans_to_check) { #Sort, because if numbers, we want 1 first
-    unless ($vlan eq 'NA' or $vlan eq '1') { #don't subject users to the context pain unless needed
+    unless (not $vlan or $vlan eq 'NA' or $vlan eq '1') { #don't subject users to the context pain unless needed
         if ($snmpver ne '3') {
           $session = new SNMP::Session(
                   DestHost => $switch,
