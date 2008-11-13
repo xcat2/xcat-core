@@ -584,8 +584,8 @@ sub setNodeStatusAttributes {
     $temp=shift;
   }
   my $force=shift;
-  my $tab = xCAT::Table->new('nodelist',-create=>0,-autocommit=>1);
-  my $nttab = xCAT::Table->new('nodetype',-create=>0,-autocommit=>1);
+  my $tab = xCAT::Table->new('nodelist',-create=>1,-autocommit=>1);
+  my $nttab = xCAT::Table->new('nodetype',-create=>1,-autocommit=>1);
 
   my %status_hash=%$temp;
 
@@ -659,7 +659,7 @@ sub getNodeStatus {
   my @inactive_nodes=();
   my @active_nodes=();
   my @unknown_nodes=();
-  my $table=xCAT::Table->new("nodelist", -create =>0);
+  my $table=xCAT::Table->new("nodelist", -create =>1);
   if ($table) {
     my @tmp1=$table->getAllAttribs(('node','status'));
     if (@tmp1 > 0) {
@@ -834,7 +834,7 @@ sub getNodeMonServerPair {
 
   #get all nodes from the nodelist table if the input has 0 nodes.
   if (@nodes==0) {
-    my $table1=xCAT::Table->new("nodelist", -create =>0);
+    my $table1=xCAT::Table->new("nodelist", -create =>1);
     my @tmp1=$table1->getAllAttribs(('node'));
     foreach(@tmp1) {
       push @nodes, $_->{node};
@@ -843,7 +843,7 @@ sub getNodeMonServerPair {
   }
   if (@nodes==0) { return $ret; }
 
-  my $table2=xCAT::Table->new("noderes", -create =>0);
+  my $table2=xCAT::Table->new("noderes", -create =>1);
   my $tabdata = $table2->getNodesAttribs(\@nodes,['monserver', 'servicenode', 'xcatmaster']);
   foreach my $node (@nodes) {
     my $monserver;
@@ -902,17 +902,17 @@ sub getMonHierarchy {
   my $ret={};
   
   #get all from nodelist table and noderes table
-  my $table=xCAT::Table->new("nodelist", -create =>0);
+  my $table=xCAT::Table->new("nodelist", -create =>1);
   my @tmp1=$table->getAllAttribs(('node','status'));
 
-  my $table2=xCAT::Table->new("noderes", -create =>0);  
+  my $table2=xCAT::Table->new("noderes", -create =>1);  
   my @tmp2=$table2->getAllNodeAttribs(['node','monserver', 'servicenode', 'xcatmaster']);
   my %temp_hash2=();
   foreach (@tmp2) {
     $temp_hash2{$_->{node}}=$_;
   }
 
-  my $table3=xCAT::Table->new("nodetype", -create =>0);
+  my $table3=xCAT::Table->new("nodetype", -create =>1);
   my @tmp3=$table3->getAllNodeAttribs(['node','nodetype']);
   my %temp_hash3=();
   foreach (@tmp3) {
@@ -1005,7 +1005,7 @@ sub getMonServerWithInfo {
   foreach (@in_nodes) {
     push(@allnodes, $_->[0]);
   }
-  my $table3=xCAT::Table->new("nodetype", -create =>0);
+  my $table3=xCAT::Table->new("nodetype", -create =>1);
   my $tabdata=$table3->getNodesAttribs(\@allnodes,['nodetype']);
   my $pPairHash=getNodeMonServerPair(\@allnodes, 0);
 
@@ -1067,9 +1067,9 @@ sub getMonServer {
 
   my $ret={};
   #get all from nodelist table and noderes table
-  my $table=xCAT::Table->new("nodelist", -create =>0);
+  my $table=xCAT::Table->new("nodelist", -create =>1);
   my $tabdata=$table->getNodesAttribs(\@allnodes,['node', 'status']);
-  my $table3=xCAT::Table->new("nodetype", -create =>0);
+  my $table3=xCAT::Table->new("nodetype", -create =>1);
   my $tabdata3=$table3->getNodesAttribs(\@allnodes,['nodetype']);
 
   
