@@ -621,9 +621,9 @@ sub lpar_netboot {
         $cmd.= " -i";
     } else {
         #################################
-	# Determine if LPAR and mgmt node
-	# are AIX or not.
-	################################
+ # Determine if LPAR and mgmt node
+ # are AIX or not.
+ ################################
         my $table = "nodetype";
         my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
         if (defined(@TableRowArray))
@@ -988,7 +988,7 @@ sub power_cmd {
 
     my $op   = shift;  
     my $d    = shift;
-    my $type = @$d[4];
+    my $type = (@$d[4] eq "fsp") ? "sys" : @$d[4];
 
     ##############################
     # Build command 
@@ -1069,6 +1069,7 @@ sub network_reset {
 
 
 1;
+
 
 
 
