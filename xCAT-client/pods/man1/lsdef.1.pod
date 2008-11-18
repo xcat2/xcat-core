@@ -114,9 +114,9 @@ To list an osimage definition named "aix53J".
 
 =item 7.
 
-To list all adapter definitions for node "clstrn03".
+To list all node definitions that have a status value of "booting".
 
- lsdef -t adapter -w nodename=clstrn03
+ lsdef -t node -w status=booting
 
 =item 8.
 
@@ -129,12 +129,6 @@ To list all the attributes of the group "service".
 To list all the attributes of the nodes that are members of the group "service".
 
  lsdef -t node -l service
-
-=item 10.
-
-To list all nodes that have a service node called "FMS01".
-
- lsdef -t node -w nfsserver=FMS01
 
 =back
 
