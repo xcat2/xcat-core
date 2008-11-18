@@ -62,15 +62,15 @@ An error has occurred.
 
 1) Remove the NIM machine definition for the xCAT node named "node01".
 
-B<mkdsklsnode node01>
+B<rmdsklsnode node01>
 
 2) Remove the NIM machine definition for xCAT node "node02" and the image "61cosi". (i.e. NIM machine name "node02_61cosi".)
 
-B<mkdsklsnode -i 61cosi node02>
+B<rmdsklsnode -i 61cosi node02>
 
 3) Remove the NIM definitions for all xCAT nodes in the group "aixnodes". Remove the NIM definitions even if the NIM node state is set to "currently running".
 
-B<mkdsklsnode -f aixnodes>
+B<rmdsklsnode -f aixnodes>
 
 =head1 FILES
 
