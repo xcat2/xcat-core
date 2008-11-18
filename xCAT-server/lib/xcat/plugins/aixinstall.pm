@@ -723,7 +723,7 @@ ll~;
 
 	# update the node definitions with the new osimage - if provided
 	my %nodeattrs;
-	foreach my $node (@nodelist) {
+	foreach my $node (keys %objhash) {
         chomp $node;
 
         if (!grep(/^$node$/, @nodesfailed)) {
@@ -1264,20 +1264,6 @@ sub mknimimage
         if ( !defined($bosinst_data_name)) {
 			my $rsp;
             push @{$rsp->{data}}, "Could not create bosinst_data definition.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-        }
-
-		#
-        # create resolv_conf
-		#
-		$resolv_conf_name = &mk_resolv_conf($callback);
-        chomp $resolv_conf_name;
-        $newres{resolv_conf} = $resolv_conf_name;
-        if ( !defined($resolv_conf_name)) {
-            # error
-			my $rsp;
-            push @{$rsp->{data}}, "Could not create resolv_conf definition.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
@@ -4256,7 +4242,7 @@ ll~;
 	# update the node definitions with the new osimage - if provided
 	#
 	my %nodeattrs;
-	foreach my $node (@nodelist) {
+	foreach my $node (keys %objhash) {
         chomp $node;
         if (!grep(/^$node$/, @nodesfailed)) {
             # change the node def if we were successful
