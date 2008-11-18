@@ -106,7 +106,7 @@ B<mknimimage -s /dev/cd0 61image>
 
 B<mknimimage -s /dev/cd0 61image installp_bundle=mybndlres,addswbnd>
 
-This command will create lpp_source, spot, bosinst_data, and resolve_conf resources using the source specified by the "-s" option.  The installp_bundle information will also be included in the osimage definition.  The mybndlres and addswbnd resources must be created before using this osimage definition to install a node.
+This command will create lpp_source, spot, and bosinst_data resources using the source specified by the "-s" option.  The installp_bundle information will also be included in the osimage definition.  The mybndlres and addswbnd resources must be created before using this osimage definition to install a node.
 
 3) Create an osimage definition that includes a mksysb image and related resources.
 
