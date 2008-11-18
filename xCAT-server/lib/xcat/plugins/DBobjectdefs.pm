@@ -2456,10 +2456,6 @@ sub defls
                             {
                                 $attrval = $defhash{$obj}{$showattr};
                             }
-                            else
-                            {
-                                $attrval = " ";
-                            }
 
                             # if an attr list was provided then just display those
                             if ($::opt_i)
@@ -2513,7 +2509,7 @@ sub defls
                                 {
 
                                     # don't print unless set
-									if ( (defined $attrval) && ($attrval ne " "))	
+									if ($attrval)	
                                     {
                                         my $rsp;
                                         $rsp->{data}->[0] =

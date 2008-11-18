@@ -765,6 +765,9 @@ sub setobjdefs
         # get the object type decription from Schema.pm
         my $datatype = $xCAT::Schema::defspec{$type};
 
+		# get the key to look for, for this object type
+        my $objkey = $datatype->{'objkey'};
+
         #  get a list of valid attr names
         #               for this type object
         my %attrlist;
@@ -778,6 +781,11 @@ sub setobjdefs
         # check FINALATTRS to see if all the attrs are valid
         foreach my $attr (keys %{$objhash{$objname}})
         {
+
+		if ($attr eq $objkey)
+		{
+			next;
+		}
 
             if ($attr eq "objtype")
             {
@@ -818,6 +826,10 @@ sub setobjdefs
 			my ($lookup_table, $lookup_attr);
             my $attr_name = $this_attr->{attr_name};
 
+			if ($attr_name eq $objkey)
+			{
+    			next;
+			}
 
             # if we have a value for this attribute then process it
             #   - otherwise go to the next attr
