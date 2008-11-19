@@ -43,6 +43,7 @@ if (isset($_REQUEST['page'])) {		// navigate to another page in the wizard
 
 	// Run the function for this page
 	//dumpGlobals();
+	if (isset($_REQUEST['output'])) { insertWizardOutputHeader(); }
 	if ($action != 'step') configureButtons($k, $pages);
 	$keys[$k]($action, $step);
 }
@@ -102,12 +103,53 @@ echo "</script>\n";
 
 
 //-----------------------------------------------------------------------------
+// Display a list of tasks to be done.
 function insertProgressTable($tasks) {
 global $TOPDIR;
 echo "<table class=WizardProgressTable><ul>\n";
 foreach ($tasks as $k => $t) {
-	echo "<li id=step", $k+1, "><img id=chk src='$TOPDIR/images/unchecked-box.gif'>$t<img id=spinner src='$TOPDIR/images/invisible.gif' width=16 height=16></li>\n";
+	if (is_array($t)) {
+		$text = $t[0];
+		$type = $t[1];
+		}
+	else {
+		$text = $t;
+		$type = 'onlyerrors';
+		}
+	if ($type == 'disabled') $cl = 'class=Disabled';
+	else $cl = '';
+	echo "<li id=step", $k+1, " $cl><p id=task><img id=chk src='$TOPDIR/images/unchecked-box.gif'>$text<img id=spinner src='$TOPDIR/images/invisible.gif' width=16 height=16></p>\n";
+	if ($type == 'output') {
+		echo "<iframe id=output></iframe></li>\n";
+		}
+	else { echo "<p id=output></p></li>\n"; }
 	}
 echo "</ul></table>\n";
 }
+
+
+//-----------------------------------------------------------------------------
+// Instruct the client-side to move on to the next step in this page.
+function nextStep($step, $done) {
+// Was using JSON, but that is more difficult with all the utilities that can directly display errors they encounter.
+//echo json_encode(array('step' => (integer)++$step, 'done' => FALSE, 'error' => ''));
+
+$func = (isset($_REQUEST['output']) ? 'parent.wizardStep' : 'wizardStep');
+echo "<script type='text/javascript'>", $func, "($step,", ($done?'true':'false'), ");</script>";
+}
+
+
+//-----------------------------------------------------------------------------
+// Used for the html that we send to the iframe
+function insertWizardOutputHeader() {
+echo <<<EOS1
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 Strict//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<LINK rel=stylesheet href='../lib/wizard.css' type='text/css'>
+</head><body>
+
+EOS1;
+}
+
 ?>

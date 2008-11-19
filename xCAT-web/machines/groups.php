@@ -7,7 +7,7 @@ require_once "$TOPDIR/lib/functions.php";
 if (isAIX()) { $aixDisabled = 'disabled'; }
 
 insertHeader('xCAT Groups and Nodes', array("$TOPDIR/jq/jsTree/tree_component.css",'groups.css','attributes.css',"$TOPDIR/manage/dsh.css"),
-	array("$TOPDIR/jq/jsTree/css.js","$TOPDIR/jq/jsTree/jquery.listen.js","$TOPDIR/jq/jsTree/tree_component.js","$TOPDIR/jq/jquery.cookie.js",'noderangetree.js','groups.js','attributes.js'),
+	array("$TOPDIR/jq/jsTree/css.js","$TOPDIR/jq/jsTree/jquery.listen.js","$TOPDIR/jq/jsTree/tree_component.js","$TOPDIR/jq/jquery.cookie.js",'noderangetree.js','groups.js','attributes.js','rvitals.js'),
 	array('machines','groups'));
 
 echo "<div id=content>\n";
@@ -19,8 +19,9 @@ echo "<td><div id=nrtree></div></td>\n";		// nrtree is the place to put the node
 
 $tabs = array('Attributes' => '#attributes-tab',
 				'Run Cmd' => '../manage/dsh.php?intab=1',
-				'Rpower' => 'rpower.php',
-				'Rvitals/Rinv' => 'rvitals.php',
+				'Rvitals' => '#rvitals-tab',
+				);
+$tabsDisabled = array('Rpower' => 'rpower.php',
 				'Ping' => 'ping.php',
 				'Copy' => 'copyfiles.php',
 				'SP Config' => 'spconfig.php',
@@ -34,8 +35,12 @@ echo "<ul>\n";
 foreach ($tabs as $key => $url) {
 	echo "<li class='ui-tabs-nav-item'><a id='nodetabs-a' href='$url'>$key</a></li>\n";
 }
+foreach ($tabsDisabled as $key2 => $url2) {
+	echo "<li class='ui-tabs-nav-item'><a id='nodetabs-a-disabled' href='$url2'>$key2</a></li>\n";
+}
 echo "</ul>\n";
 echo "<div id='attributes-tab'></div>\n";
+echo "<div id='rvitals-tab'></div>\n";
 
 echo "</div></td></tr></table>\n";
 

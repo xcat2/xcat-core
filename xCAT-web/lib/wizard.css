@@ -24,9 +24,15 @@
  margin-bottom: 5px;
 }
 
+.WizardInputSection { background-color: #EAEAFF; /* #E5E5FF; */ }
+
 .NonCurrentSummaryItem {}
 
 .CurrentSummaryItem { background-color: yellow; }
+
+.WizardInputTable {
+ margin-bottom: 20px;
+}
 
 .WizardProgressTable {
  margin: 10px 0px;
@@ -43,6 +49,12 @@
 }
 
 .WizardProgressTable IMG { margin-right: 1em; margin-left: 1em; }
+
+.WizardProgressTable P#output { margin-left: 35px; }
+
+.WizardProgressTable IFRAME#output { margin-left: 35px; width: 400px; }
+
+.WizardProgressOutput { margin: 0px; }
 
 .WizardProgressCurrent {
  /* font-weight: bold; */

@@ -31,9 +31,9 @@ function makeEditable(table, cellclass, imgclass, linkclass) {
 // Form a table row to add to the table
 function formRow(linenum, numCells, ooe) {
 var newrow = '<tr class=ListLine' + ooe + ' id=row' + linenum + '><td class=Xcell><a class=Xlink2 title="Delete row"><img class=Ximg2 src=../images/red-x2-light.gif></a></td>';
-for (var i=1; i<=numCells; i++) {
+for (var i=0; i<numCells; i++) {
 	var val = '';
-	if (i == 1)  { val = 'x'; }
+	if (i == 0)  { val = 'x'; }
 	newrow += '<td class=editme2 id="' + linenum + '-' + i + '">' + val + '</td>';
 }
 newrow += '</tr>';

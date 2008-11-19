@@ -21,12 +21,11 @@ $("#wizardPane").load("?a=1", props);
 
 
 // Repeatedly make a json call to the server until it tells us there are no more steps
-function wizardStep(step, done, error) {
-//todo: handle errors
+function wizardStep(step, done) {
 // Mark the previous step as complete
 if (step > 1) {
 	var prevstep = step -1;
-	$(".WizardProgressTable #step"+prevstep).removeClass("WizardProgressCurrent");
+	$(".WizardProgressTable #step"+prevstep+" #task").removeClass("WizardProgressCurrent");
 	$(".WizardProgressTable #step"+prevstep+" #chk").attr('src','../images/checked-box.gif');
 	//$(".WizardProgressTable #step"+prevstep+" #spinner").hide();
 	$(".WizardProgressTable #step"+prevstep+" #spinner").attr('src', '../images/invisible.gif');
@@ -36,7 +35,7 @@ if (done) { return; }
 //alert('here');
 
 // Make the current item bold
-$(".WizardProgressTable #step"+step).addClass("WizardProgressCurrent");
+$(".WizardProgressTable #step"+step+" #task").addClass("WizardProgressCurrent");
 //$(".WizardProgressTable #step"+step).append("<img id=spinner src='../images/throbber.gif'/>");
 $(".WizardProgressTable #step"+step+" #spinner").attr('src', '../images/throbber.gif');
 
@@ -44,10 +43,15 @@ $(".WizardProgressTable #step"+step+" #spinner").attr('src', '../images/throbber
 var props = { page: window.currentPage, action: 'step', step: step };
 //alert('props page:'+props.page+ ' action:'+props.action+' step:'+props.step);
 
-//jQuery.getJSON('?page='+window.currentPage+'&action=step&step='+step, {}, function(json) {
+/*
 jQuery.post('?a=1', props, function(json, textStatus) {
 	wizardStep(json.step, json.done, json.error);
 	}, 'json');
+*/
+// Decide if this task has a P or IFRAME for the output and invoke the function appropriately.
+var output = $(".WizardProgressTable #step"+step+" #output");
+if (output.is('IFRAME')) { output.attr('src','?page='+props.page+'&action='+props.action+'&step='+props.step+'&output=1'); }
+else { output.load("?a=1", props); }
 }
 
 

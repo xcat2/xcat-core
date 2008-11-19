@@ -86,8 +86,8 @@ fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]        # initial install, or upgrade and this is the newer rpm
 then
-  #todo: can remove this after a few releases, unless we change xcat-web.conf again
-  /etc/init.d/$apachedaemon reload
+  # Uncomment this if we change xcat-web.conf again
+  #/etc/init.d/$apachedaemon reload
   true
 fi
 

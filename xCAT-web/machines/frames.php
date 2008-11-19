@@ -38,9 +38,7 @@ foreach ($nodes as $nodename => $attrs)	{
 	$isBlade=0;
 
 	// Get the display info for this node (image, size, etc.)
-	$info = getHWInfo(array_key_exists('vpd.mtm',$attrs)?$attrs['vpd.mtm']:'',
-					array_key_exists('nodehm.power',$attrs)?$attrs['nodehm.power']:'',
-					array_key_exists('nodehm.mgt',$attrs)?$attrs['nodehm.mgt']:'');
+	$info = getHWInfo(@$attrs['vpd.mtm'], @$attrs['nodehm.power'], @$attrs['nodehm.mgt']);
 	if (empty($info)) { continue; }
 	$image = $info['rackimage'];
 	$size = $info['u'];
@@ -50,7 +48,7 @@ foreach ($nodes as $nodename => $attrs)	{
 	else { $isMM = 0; }
 
 	// If this is a blade, have to get the position from its MM
-	if ($size == 7 && !$isMM) {     # blade
+	if ((@$attrs['nodehm.mgt']=='blade' || @$attrs['nodehm.power']=='blade') && !$isMM) {     # blade
 		$isBlade = 1;
 		if (!array_key_exists('mp.mpa',$attrs) || !array_key_exists('mp.id',$attrs)) { continue; }
 		if (!array_key_exists($attrs['mp.mpa'],$nodes)) { continue; }
@@ -103,14 +101,14 @@ echo "<TABLE class=AllRacksTable><TBODY valign=bottom><TR>\n";
 # xSeries frames are 78.7in H x 23.6in W (3.3 ratio).  The server enclosure area is approx 71.4 x 19 (3.75 ratio).  Each U is approx 1.725
 
 ksort($frames, SORT_NUMERIC);
-foreach ($frames as $fnum => $frame) {
+foreach ($frames as $fnum => $frm) {
 	echo "<TD><INPUT type=checkbox name=selAll${fnum}Checkbox onclick='selectAll(this,$fnum)'><B> Rack $fnum</B>\n";
 	echo "<TABLE class=RackTable cellpadding=0 cellspacing=2><TBODY>\n";
 
 	// Go thru each u position and either draw the svr or fill in an empty slot
 	for ($i=1; $i<=42;) {
-		if (array_key_exists($i,$frame)) {		# this slot has a server in it
-			$u = & $frame[$i];		// $u is the machine info at that u #
+		if (array_key_exists($i,$frm)) {		# this slot has a server in it
+			$u = & $frm[$i];		// $u is the machine info at that u #
 			// $u has keys of (nodename, image, alt, size) for rack mounted and (nodename, chassis, size) for blades
 			if (array_key_exists('chassis',$u)) {    # this a bladecenter chassis
 				$chassis =  & $u['chassis'];   # this is really a ref to an array of blades
@@ -161,7 +159,7 @@ function getHWInfo($mtm, $powermethod, $mgt) {
 	}
 
 	# No matches yet.  Use the power method to get a generic type.
-	if (!empty($powermethod)) { $powermethod = $powermethod; }
+	if (!empty($powermethod)) {}
 	elseif (!empty($mgt)) { $powermethod = $mgt; }
 	if (!empty($powermethod)) { return getHWTypeInfo($powermethod); }
 	else { return NULL; }

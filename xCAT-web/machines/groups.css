@@ -14,6 +14,12 @@
 	padding: 0.5em 0.5em;
 }
 
+#nodetabs-a-disabled {
+	font-size : 8pt;
+	padding: 0.5em 0.5em;
+	color: #BFBFBF;
+}
+
 /*
 #nodepane: { float: left;  clear: left; }
 #nodetabs { float: left; }

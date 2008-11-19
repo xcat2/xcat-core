@@ -15,6 +15,9 @@ function updatenoderange() {
     		//window.nodetabs.tabs('select', index);	// simulate selecting it, so it reloads.  Did not work.
     		loadAttrTab($('#attributes-tab'));
     		}
+    	if (index == 2) {
+    		loadVitalsTab($('#rvitals-tab'));
+    		}
     	}
 
 }

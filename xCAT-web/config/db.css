@@ -24,6 +24,15 @@
  margin-right: 0.6em;
 }
 
+#tableHeading { margin-top: 0px; margin-bottom: 0px; }
+
+#helpLinks { margin-top: 0px; }
+
+#helpLinks A {
+ margin-left: 2em;
+ margin-right: 2em;
+}
+
 .middlepane {
 	/* float: left; */
 	padding: 5px;

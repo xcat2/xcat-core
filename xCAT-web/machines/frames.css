@@ -13,7 +13,7 @@
  font-size: 1px;
 }
 
-.RackTable IMG { vertical-align: baseline; }
+.RackTable IMG { vertical-align: middle; /*baseline;*/ }
 
 .RackEmptyCell { background-color: #999999; }
 

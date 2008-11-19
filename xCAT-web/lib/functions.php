@@ -237,7 +237,9 @@ function insertMenuRow($current, $isTop, $items) {
 //-----------------------------------------------------------------------------
 // Inserts the html for each pages footer
 function insertFooter() {
-echo '<div class=PageFooter><p id=disclaimer>This interface is still under construction and not yet ready for production use.</p></div></BODY></HTML>';
+//echo "<div class=PageFooter><p id=disclaimer>This interface is still under construction and not yet ready for production use.</p></div>\n";
+echo "<div class=PageFooter><p class='Emphasis Center'>This interface is still under development - use accordingly.</p></div>\n";
+echo '</BODY></HTML>';
 }
 
 
@@ -251,7 +253,20 @@ function doTabrestore($tab, & $data){
     $usernode->addChild('password',getpassword());
 	foreach($data as $line){
 		foreach ($line as &$f) { if (!empty($f) && !preg_match('/^".*"$/', $f)) { $f = '&quot;'.$f.'&quot;'; } }
+
+		// Combine the elements of the array, but have to handle sparse arrays
+		ksort($line, SORT_NUMERIC);
+		$keys = array_keys($line);
+		$maxindex = count($line)-1;
+		//echo "<p>"; print_r($line); echo "</p>";
+		//trace("$maxindex, $keys[$maxindex]");
+		if ($keys[$maxindex] != $maxindex) {		// need to fill in some values
+			for ($i=0; $i<=$keys[$maxindex]; $i++) { if (!isset($line[$i])) {$line[$i]='';} }
+			ksort($line, SORT_NUMERIC);
+			}
 		$linestr = implode(",",$line);
+		//trace($linestr);
+
 		$linestr = str_replace('"', '&quot;',$linestr);	//todo: should we use the htmlentities function?
 		$linestr = str_replace("'", '&apos;',$linestr);
 		//echo "<p>addChild:$linestr.</p>\n";
@@ -677,11 +692,11 @@ $HWTypeInfo = array (
 		  'p5-595' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'' ),  # 9119
 
 		# POWER 6 servers
-		  '520' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8203' ),
-		  '550' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8204' ),
-		  '570' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9117' ),
-		  '575' => array ( 'image'=>'342.gif', 'rackimage'=>'x345-front', 'u'=>2, 'aliases'=>'9125' ),
-		  '595' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'9119' ),
+		  'p6-520' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8203,520' ),
+		  'p6-550' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8204,550' ),
+		  'p6-570' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9117,570' ),
+		  'p6-575' => array ( 'image'=>'342.gif', 'rackimage'=>'p6-575-front', 'u'=>2, 'aliases'=>'9125,575' ),
+		  'p6-595' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'9119,595' ),
 		 );
 
 
@@ -801,7 +816,7 @@ function getPref($key) {
 //-----------------------------------------------------------------------------
 // Returns a list of some or all of the nodes in the cluster and some of their attributes.
 // Pass in a node range (or NULL to get all nodes) and an array of attribute names (or NULL for none).
-// Returns an array where each key is the node name and each value is an array of attr/value pairs.
+// Returns an array where each key is the node name and each value is an array of attr/value pairs (unless only 1 attr was request, in which case it is just the attr value).
 // attrs is an array of attributes that should be returned.
 function getNodes($noderange, $attrs) {
 	//my ($hostname, $type, $osname, $distro, $version, $mode, $status, $conport, $hcp, $nodeid, $pmethod, $location, $comment) = split(/:\|:/, $na);
@@ -810,19 +825,21 @@ function getNodes($noderange, $attrs) {
 	if (empty($noderange)) { $nodrange = '/.*'; }
 	//$xml = docmd('nodels',$noderange,implode(' ',$attrs));
 	$xml = docmd('nodels',$noderange,$attrs);
+	//echo "<p>"; print_r($xml); echo "</p>\n";
 	foreach ($xml->children() as $response) foreach ($response->children() as $o) {
 		$nodename = (string)$o->name;
 		$data = & $o->data;
 		$attrval = (string)$data->contents;
 		if (empty($attrval)) { continue; }
-		$attrname = (string)$data->desc;
-		//echo "<p> $attrname = $attrval </p>\n";
-		//echo "<p>"; print_r($nodename); echo "</p>\n";
-		//echo "<p>"; print_r($o); echo "</p>\n";
-		//$nodes[$nodename] = array('osversion' => $attr);
-		if (!array_key_exists($nodename,$nodes)) { $nodes[$nodename] = array(); }
-		$attributes = & $nodes[$nodename];
-		$attributes[$attrname] = $attrval;
+		if (count($attrs) > 1) {		// if more than 1 attr requested, the output will include the attr description (name)
+			$attrname = (string)$data->desc;
+			if (!array_key_exists($nodename,$nodes)) { $nodes[$nodename] = array(); }
+			$attributes = & $nodes[$nodename];
+			$attributes[$attrname] = $attrval;
+			}
+		else {			// only 1 attr, so no attr name
+			$nodes[$nodename] = $attrval;
+			}
 	}
 	return $nodes;
 }

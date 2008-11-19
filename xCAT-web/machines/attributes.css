@@ -10,6 +10,8 @@
 
 #nodeAttrTable { background-color: #F9F9F9; }
 
+#nodeAttrTable TD { white-space: nowrap; }
+
 .colHeaders {
 	font-weight: bold;
 	text-align: center;

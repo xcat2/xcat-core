@@ -22,7 +22,7 @@ echo "\n</div>\n";
 
 if(isset($_REQUEST['tab'])) { $tab = $_REQUEST['tab']; }
 else { $tab = "nodelist"; }
-$p = "edittab.php?tab=$tab";
+//$p = "edittab.php?tab=$tab";
 
 echo "<div class=middlepane id=middlepane>Loading $tab ...</div>\n";
 //echo "<div class=bottompane></div>\n";

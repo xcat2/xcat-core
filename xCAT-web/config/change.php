@@ -29,9 +29,7 @@ else {
 	$editable = & $_SESSION["editable-$tab"];
 
 	# Modify the array with the new value from the editable widget
-	//$oldValue = $editable[$theLine][$theField];
 	$editable[$theLine][$theField] = $value;
-	//$s = 's=' . $editable[$theLine][$theField] . '.';
 
 	// This value goes back to the javascript editable object in the browser
 	echo "$value";

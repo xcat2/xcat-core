@@ -23,10 +23,19 @@ if(isset($_REQUEST['save'])) {
 
 // Get table contents
 //$f = splitTableFields2('"node01","node02","5000","off",,'); echo '<p>'; foreach ($f as $k => $v) { echo "$k=$v<br>"; } echo "</p>\n";
+/*
 echo "<h1>$tab Table</h1>";
-echo "<table border=0><tr><td rowspan=2>", getTabDescription($tab), "</td>\n";
+echo "<table><tr><td rowspan=2>", getTabDescription($tab), "</td>\n";
 echo "<td><a href='" . getDocURL('dbtable',$tab) . "' target='_blank'>Column Descriptions</a></td></tr>\n";
 echo "<tr><td><a href='" . getDocURL('dbtable') . "' target='_blank'>Regular Expression Support</a></td></tr></table>\n";
+*/
+echo "<table cellpadding=8><tr valign=middle><td nowrap><h2 id=tableHeading>$tab Table:</h2></td><td>", getTabDescription($tab), "</td></tr></table>\n";
+echo "<p id=helpLinks><a href='" . getDocURL('dbtable',$tab) . "' target='_blank'>Column Descriptions</a>\n";
+echo "<a href='" . getDocURL('dbtable') . "' target='_blank'>Regular Expression Support</a></p>\n";
+
+insertButtons(array('label' => 'Save', 'id' => 'saveit'),
+			array('label' => 'Cancel', 'id' => 'reset')
+			);
 
 // Display the column names
 $xml = docmd('tabdump','',array($tab));
@@ -69,10 +78,9 @@ echo "</table>\n";
 $_SESSION["editable-$tab"] = & $editable;		// save the array so we can access it in the next call of this file or change.php
 //unset($_SESSION["editable-$tab"]);
 
-insertButtons(array('label' => 'Add Row', 'id' => 'newrow'),
-			array('label' => 'Save', 'id' => 'saveit'),
-			array('label' => 'Cancel', 'id' => 'reset')
-			);
+echo "<p>";
+insertButtons(array('label' => 'Add Row', 'id' => 'newrow'));
+echo "</p>\n";
 ?>
 
 
