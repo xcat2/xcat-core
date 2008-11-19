@@ -993,6 +993,13 @@ if ($::RUNCMD_RC != 0)
     xCAT::MsgUtils->message('E', "Could not start xcatd.\n");
 }
 
+# for AIX systems add xcatd to the /etc/inittab file
+if ($::osname eq 'AIX')
+{
+        my $mkitab_cmd = 'mkitab "xcatd:2:once:/opt/xcat/sbin/xcatd > /dev/console 2>&1" > /dev/null 2>&1';
+        my $rc = system($mkitab_cmd);
+}
+
 # more - Linux-only config
 if ($::osname eq 'Linux')
 {
