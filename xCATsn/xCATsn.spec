@@ -51,7 +51,8 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 
 # makes it a service node
   touch /etc/xCATSN
-
+# remove any management node file
+  rm  /etc/xCATMN
 
 
 

@@ -121,7 +121,10 @@ if [ -d /install/postscripts/.xcat ]; then
 fi
 chkconfig vsftpd on
 /etc/init.d/vsftpd start
-if [ "$1" = "1" ]; then #Only if installing for the fist time..
+# remove any service node file
+ rm  /etc/xCATSN
+
+if [ "$1" = "1" ]; then #Only if installing for the first time..
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
     echo StrictHostKeyChecking no >> /root/.ssh/config
@@ -188,6 +191,7 @@ if [ "$1" = "1" ]; then #Only if installing for the fist time..
 	fi
     # make Management Node
 	touch /etc/xCATMN
+
 	# setup syslog
         /install/postscripts/syslog
     #fi
