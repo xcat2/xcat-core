@@ -1612,6 +1612,7 @@ proc boot_network {} {
         send_command
         expect {
             -i $spawn_id_rconsole
+            -nocase
             -re $pattern($state) {
                 nc_msg $msg($state)
                 set state $newstate($state)
@@ -1669,6 +1670,7 @@ proc Boot {} {
             set rc 5
             return
         }
+        -nocase
         -re {!([0-9A-F]+)} {
             send_user "$PROGRAM: The network boot ended in an error.\n"
             nc_msg $expect_out(buffer)
