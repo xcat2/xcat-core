@@ -1,11 +1,11 @@
 Summary: xCAT perl libraries
 Name: perl-xCAT
-Version: 2.1
+Version: 2.1.1
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 4
 License: EPL
 Group: System Environment/Libraries
-Source: perl-xCAT-2.1.tar.gz
+Source: perl-xCAT-2.1.1.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
