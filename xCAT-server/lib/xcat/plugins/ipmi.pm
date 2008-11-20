@@ -92,14 +92,14 @@ my $cache_version = 2;
 
 my $status_noop="XXXno-opXXX";
 
-my %idpxthermbytes = (  #Data to enact the profile quickly
-     '0z' => [0x0A,0x37,0x41,0x3C,0x0a,0x0a,0x1e],
-     '1a' => [0x0A,0x30,0x3C,0x3C,0x0a,0x0a,0x1e],
-     '2b' => [0x0A,0x30,0x3C,0x3C,0x0a,0x0a,0x1e],
-     '3c' => [0x0A,0x30,0x3C,0x3C,0x0a,0x0a,0x1e],
-     '4d' => [0x0A,0x37,0x44,0x3C,0x0a,0x0a,0x1e],
-     '5e' => [0x0A,0x37,0x44,0x3C,0x0a,0x0a,0x1e],
-     '6f' => [0x0A,0x35,0x44,0x3C,0x0a,0x0a,0x1e],
+my %idpxthermprofiles = (
+    '0z' => [0x37,0x41,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e],
+    '1a' => [0x30,0x3c,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e], 
+    '2b' => [0x30,0x3c,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e], 
+    '3c' => [0x30,0x3c,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e], 
+    '4d' => [0x37,0x44,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e], 
+    '5e' => [0x37,0x44,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e], 
+    '6f' => [0x35,0x44,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e], 
 );
 my %codes = (
 	0x00 => "Command Completed Normal",
@@ -930,19 +930,15 @@ sub getnetinfo {
        my $code;
        my @returnd;
        my $thermdata;
-       foreach (0xe0,0xe1,0xe2,0xe3,0xe4,0xe5,0xe6) {
-           docmd(0x18,[0x52,0x15,0x40,0x1,$_],\@returnd);
-           $code = $returnd[36-$authoffset];
-           if ($code eq 0) {
-               $thermdata.= sprintf("%02x ",$returnd[37-$authoffset]);
-           } else {
-               return (1,"Error reading thermal profile data for this server");
-           }
-       }
-       chop($thermdata);
+       my $netfun=0x2e<<2; #currently combined netfun & lun, to be simplified later
+       my @cmd = (0x41,0x4d,0x4f,0x00,0x6f,0xff,0x61,0x00);
+       my @bytes;
+       my $error = docmd($netfun,\@cmd,\@bytes);
+       @bytes=splice @bytes,36-$authoffset;
+       @bytes=splice @bytes,16;
        my $validprofiles="";
-       foreach (keys %idpxthermbytes) {
-           if ($thermdata eq sprintf("%02x %02x %02x %02x %02x %02x %02x",@{$idpxthermbytes{$_}})) {
+       foreach (keys %idpxthermprofiles) {
+           if (sprintf("%02x %02x %02x %02x %02x %02x %02x",@bytes) eq sprintf("%02x %02x %02x %02x %02x %02x %02x",@{$idpxthermprofiles{$_}})) {
                $validprofiles.="$_,";
            }
        }
@@ -950,7 +946,7 @@ sub getnetinfo {
            chop($validprofiles);
            return (0,"The following thermal profiles are in effect: ".$validprofiles);
        }
-       return (1,"Unable to identify current thermal profile: \"$thermdata\"");
+       return (1,sprintf("Unable to identify current thermal profile: \"%02x %02x %02x %02x %02x %02x %02x\"",@bytes));
    }
 
 	my $netfun = 0x30;
@@ -1248,19 +1244,9 @@ sub idpxthermprofile {
     my $subcommand = lc(shift);
     my @returnd;
     my $netfun = 0xb8;
-    my @cmd = (0x41,0x4d,0x4f,0x00,0x6f,0xfe,0x60,0,00,0,0,0,0,0xff);
-    #Hash for extensibility
-    my %thermprofiles = (
-        '0z' => [0x37,0x41,0,0,0,0,6,0xa,0x3c,0xa,0xa,0x1e,0x6],
-        '1a' => [0x30,0x3c,0,0,0,0,6,0xa,0x3c,0xa,0xa,0x1e,0x6], 
-        '2b' => [0x30,0x3c,0,0,0,0,6,0xa,0x3c,0xa,0xa,0x1e,0x6], 
-        '3c' => [0x30,0x3c,0,0,0,0,6,0xa,0x3c,0xa,0xa,0x1e,0x6], 
-        '4d' => [0x37,0x44,0,0,0,0,6,0xa,0x3c,0xa,0xa,0x1e,0x6], 
-        '5e' => [0x37,0x44,0,0,0,0,6,0xa,0x3c,0xa,0xa,0x1e,0x6], 
-        '6f' => [0x35,0x44,0,0,0,0,6,0xa,0x3c,0xa,0xa,0x1e,0x6], 
-    );
-    if ($thermprofiles{$subcommand}) {
-        push @cmd,@{$thermprofiles{$subcommand}};
+    my @cmd = (0x41,0x4d,0x4f,0x00,0x6f,0xfe,0x60,0,0,0,0,0,0,0,0xff);
+    if ($idpxthermprofiles{$subcommand}) {
+        push @cmd,@{$idpxthermprofiles{$subcommand}};
     } else {
         return (1,"Not an understood thermal profile, expected a 2 hex digit value corresponding to chassis label on iDataplex server");
     }
@@ -1269,14 +1255,6 @@ sub idpxthermprofile {
         \@cmd,
         \@returnd
     );
-    #The BMC now understands the thermal profile, for immediate results, push to power supply now
-    my @directbytes = @{$idpxthermbytes{$subcommand}};
-    my $dindex=0;
-    foreach (@directbytes) {
-        @cmd = (0x52,0x15,0x40,0x0,0xe0+$dindex,$_);
-        docmd(0x18,\@cmd,\@returnd);
-        $dindex++;
-    }
     return (0,"OK");
 }
 
