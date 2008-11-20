@@ -1681,8 +1681,6 @@ sub GetMasterNodeName
     {
         xCAT::MsgUtils->message('S',
                                 "Unable to open noderes or nodetype table.\n");
-        $noderestab->close;
-        $typetab->close;
         return 1;
     }
     my $sitetab = xCAT::Table->new('site');
