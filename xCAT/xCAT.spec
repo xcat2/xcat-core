@@ -122,8 +122,9 @@ fi
 chkconfig vsftpd on
 /etc/init.d/vsftpd start
 # remove any service node file
+if [ -f /etc/xCATSN ]; then
  rm  /etc/xCATSN
-
+fi
 if [ "$1" = "1" ]; then #Only if installing for the first time..
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
