@@ -1823,6 +1823,11 @@ sub readSNInfo
             }
 
             $et = xCAT::Utils->GetNodeOSARCH($nodename);
+            if ($et == 1) {
+                xCAT::MsgUtils->message('S',
+                                  "Could not get OS/ARCH for node $nodename\n");
+                return 1;
+            } 
             if (!($et->{'os'} || $et->{'arch'}))
             {
                 xCAT::MsgUtils->message('S',
