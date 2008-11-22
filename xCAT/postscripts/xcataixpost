@@ -9,6 +9,8 @@
 use File::Path;
 use IO::Socket;
 
+sleep int(rand(10));
+
 # since we don't have syslog set up yet we'll
 # just save msgs in a local log file
 $logdir = "/var/log/xcat";

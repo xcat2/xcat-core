@@ -213,11 +213,28 @@ if [ $isLinux -eq 0 ]; then
   if [[ -n "$state" && "$state" = "active" ]];then
      stopsrc -s syslogd
   fi
-  startsrc -s syslogd
+     
+  #wait for syslogd to fully started
+  RETRY_LIMIT=30          # number of 2 second retry intervals (60 second total)
+  let i=$RETRY_LIMIT
+  while :
+  do
+      ret=`LC_ALL=C startsrc -s syslogd 2>&1`
+      if [[ $ret == *PID* ]];then
+        break
+      fi
+
+      i=$((i - 1))
+      if (( i > 0 ));then
+          sleep 2
+      else
+          break
+      fi
+  done
 else 
   $init restart
 fi
 
 #keep a record
-logger -t xcat "Install: syslog setup"
+logger -t xCAT "Install: syslog setup"
 exit 0
