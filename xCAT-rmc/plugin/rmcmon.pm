@@ -860,8 +860,7 @@ sub reportError
   my $callback=shift;
   if ($callback) {
     my $rsp={};
-    my $localhostname=hostname();
-    $rsp->{data}->[0]="$localhostname: $error";
+    $rsp->{data}->[0]=$error;
     $callback->($rsp);
   } else { xCAT::MsgUtils->message('S', "[mon]: $error\n"); }
   return;
@@ -989,11 +988,14 @@ sub addNodes {
       }
     }
 
-    if ($scope==0) { next; }
     if ($inactiveHash{$node}) { next;}
+
+    push(@normal_nodes, $node);
+    if ($scope==0) { next; }
 
     #copy the configuration script and run it locally
     if($iphash{$node}) {
+      pop(@normal_nodes);
       $result=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$node"::KeyToken::"$master"::IPAddresses::"$ms_ipaddresses"::NodeID::0x$ms_node_id`;      
       if ($?) {
         reportError($result, $callback);
@@ -1001,6 +1003,7 @@ sub addNodes {
       }
     } else {
       if ($flag) { #define MCP on HMC
+        pop(@normal_nodes);
 	if (!$hmc_ssh_enabled) {
           my $result=`XCATBYPASS=Y $::XCATROOT/bin/rspconfig $node sshcfg=enable 2>&1`;
           if ($?) {
@@ -1023,8 +1026,6 @@ sub addNodes {
             if ($?) { reportError($result, $callback); }
 	  }
         }
-      } else { #normal nodes
-	push(@normal_nodes, $node);
       }
     }
   } 
@@ -1032,21 +1033,39 @@ sub addNodes {
   #let updatenode command to handle the normal nodes as a bulk
   if (@normal_nodes>0) {
     my $nr=join(',',@normal_nodes); 
-    reportError("Configuring the following nodes. It may takes a while.\n$nr", $callback); 
 
-    #use 2 here to tell xcataixpost that there is only one postscript, download only it. It applies to AIX only 
+    #get the fanout value
+    my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("rmcmon");
+
+    my $fanout_string="";
+    my $fanout_value=$settings{'rfanout'};
+    if ($fanout_value) { $fanout_string="DSH_FANOUT=$fanout_value";}
+
+    #for local mode, need to referesh the IBM.MCP class to initialize the hb
+    if ($scope==0) {
+      #$result=`XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr /usr/bin/refrsrc-api -c IBM.MCP 2>&1"`;
+      if ($?) { reportError($result, $callback); }
+      return (0, "ok"); 
+    }
+
+    #this is remore case
+    reportError("Configuring the following nodes. It may take a while.\n$nr", $callback);
     my $cmd;
+    #use 2 here to tell xcataixpost that there is only one postscript, download only it. It applies to AIX only     
     if (xCAT::Utils->isLinux()) {
-      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost 2 configrmcnode 2>&1";
+      $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost 2 configrmcnode 2>&1";
     }
     else {
-      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost 2 configrmcnode 2>&1";
+      $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost 2 configrmcnode 2>&1";
     }
     if (! open (CMD, "$cmd |")) {
       reportError("Cannot run command $cmd", $callback);
     } else {
       while (<CMD>) {
-        reportError("$_", $callback);
+	chomp;
+        my $rsp={};
+        $rsp->{data}->[0]="$_";
+        $callback->($rsp);
       }
       close(CMD);
     }
@@ -1175,20 +1194,29 @@ sub removeNodes {
   #let updatenode command to handle the normal nodes as a bulk
   if (@normal_nodes>0) {
     my $nr=join(',',@normal_nodes); 
+
+    my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("rmcmon");
+
+    my $fanout_string="";
+    my $fanout_value=$settings{'rfanout'};
+    if ($fanout_value) { $fanout_string="DSH_FANOUT=$fanout_value";}
+
     #copy the configuration script and run it locally
-    $result=`XCATBYPASS=Y $::XCATROOT/bin/xdcp $nr $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1 `;
+    $result=`XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdcp $nr $::XCATROOT/sbin/rmcmon/configrmcnode /tmp 2>&1 `;
     if ($?) {
-      reportError("rmcmon:removeNodes: cannot copy the file configrmcnode to nodes $nr:\$result", $callback);
-      next;
+      reportError("$result", $callback);
     }
 
-    reportError("De-configuring the following nodes. It may takes a while.\n$nr", $callback); 
-    my $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nr -s MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1";
+    reportError("De-configuring the following nodes. It may take a while.\n$nr", $callback); 
+    my $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s MS_NODEID=$ms_node_id /tmp/configrmcnode -1 2>&1";
     if (! open (CMD1, "$cmd |")) {
       reportError("Cannot run command $cmd", $callback);
     } else {
       while (<CMD1>) {
-        reportError("$_", $callback);
+	chomp;
+        my $rsp={};
+        $rsp->{data}->[0]="$_";
+        $callback->($rsp);
       }
       close(CMD1);
     }
@@ -1236,7 +1264,8 @@ sub getDescription {
     good for threadhold monitoring. xCAT automatically sets up the 
     monitoring domain for RMC during node deployment time. 
   Settings:
-    none.";
+    rfanout -- indicating the fanout number for configuring or deconfiguring 
+        remote nodes.";
 }
 
 #--------------------------------------------------------------------------------

@@ -244,7 +244,7 @@ if (!-e $runfile){
     print ODM '
 errnotify:
       en_pid = 0
-      en_name = "xcat_rmc_errlog_sensor"
+      en_name = "xcat_rmc_errlog"
       en_persistenceflg = 1
       en_method = "' . "$::XCATROOT/sbin/rmcmon/errmsgque" . ' sequence = $1 error_id = $2 class = $3 type = $4 alert_flags = $5 res_name = $6 res_type = $7 res_class = $8 label = $9"
 ';
@@ -296,7 +296,7 @@ elsif ($^O =~ /^aix/i) {
     # set $ENV{'SENSOR_MonitorStatus'} to 2
     # should not do clean up when IBM.SensorRM is stopped
     if (&isRMrunning("IBM.SensorRM")) {
-      runcmd("/bin/odmdelete -o errnotify -q \" en_name=xcat_rmc_errlog_sens\"", -1);
+      runcmd("/bin/odmdelete -o errnotify -q \" en_name=xcat_rmc_errlog\"", -1);
       if (-e $runfile) {
         unlink($runfile);
       }

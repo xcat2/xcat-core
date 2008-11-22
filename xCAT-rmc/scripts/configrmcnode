@@ -22,7 +22,7 @@ if [ -z "$NODE" ]; then
    NODE=`hostname`
 fi
 
-logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONMASTER=$MONMASTER,MS_NODEID=$MS_NODEID"
+#logger xCAT "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONMASTER=$MONMASTER,MS_NODEID=$MS_NODEID"
 
 #check if rsct is installed and running
 if [ ! -e /usr/bin/lsrsrc ]; then  
@@ -139,6 +139,32 @@ if [ -z "$PID" ]; then
   fi
 fi
 
+#wait for RMC daemon to fully functional
+RETRY_LIMIT=20          # number of 2 second retry intervals (40 second total)
+let i=$RETRY_LIMIT
+while :
+do
+  lsrsrc > /dev/null 2>&1
+  rc=$?
+  if [[ $rc -eq 0 ]]
+  then
+    break
+  fi
+
+  i=$((i - 1))
+  if (( i > 0 ))
+  then
+      sleep 2
+  else
+      break
+  fi
+done
+if [[ $rc -ne 0 ]]
+then
+  logger xCAT "RMC subsystem has not started"
+  exit 1
+fi
+
 
 if [ $ADD -eq 1 ]; then
   #enable remote client connection
@@ -178,6 +204,7 @@ else
     exit 1
   fi
 fi
+echo "done"
 exit 0;
 
 
