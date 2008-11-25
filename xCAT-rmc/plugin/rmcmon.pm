@@ -124,7 +124,7 @@ sub start {
           if ($tmp1[3] !~ /Not|not/) { #active
 	    if ((!exists($assocHash{"$cond:_:$resp"})) || ($assocHash{"$cond:_:$resp"}==0)) {
 	      $result=`/usr/bin/startcondresp $cond $resp 2>&1`;
-              if (($?) && ($result !~ /2618-244/)) { #started
+              if (($?) && ($result !~ /2618-244|2618-008/)) { #started
                 my $rsp={};
                 $rsp->{data}->[0]="$localhostname: $result";
                 $callback->($rsp);
@@ -133,7 +133,7 @@ sub start {
 	  } else { #inactive
 	    if (!exists($assocHash{"$cond:_:$resp"})) { 
               $result=`/usr/bin/mkcondresp $cond $resp  2>&1`; 
-              if (($?) && ($result !~ /2618-201/)) { #resource already defined
+              if (($?) && ($result !~ /2618-201|2618-008/)) { #resource already defined
                 my $rsp={};
                 $rsp->{data}->[0]="$localhostname: $result";
                 $callback->($rsp);
@@ -605,7 +605,7 @@ sub startNodeStatusMon {
   if (!$isSV) {
     #start monitoring the status of mn's immediate children
     my $result=`startcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
-    if (($?) && ($result !~ /2618-244/)) { #started
+    if (($?) && ($result !~ /2618-244|2618-008/)) { #started
       $retcode=$?;
       $retmsg="Error start node status monitoring: $result";
       reportError($retmsg, $callback);
@@ -613,7 +613,7 @@ sub startNodeStatusMon {
 
     #start monitoring the status of mn's grandchildren via their service nodes
     $result=`startcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
-    if (($?) && ($result !~ /2618-244/)) { #started
+    if (($?) && ($result !~ /2618-244|2618-008/)) { #started
       $retcode=$?;
       $retmsg="Error start node status monitoring: $result";
       reportError($retmsg, $callback);
