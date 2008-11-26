@@ -14,7 +14,7 @@ use xCAT::Utils;
 use xCAT::NodeRange;
 
 my @dhcpconf; #Hold DHCP config file contents to be written back.
-my @nrn;      # To hold output of netstat -rn to be consulted throughout process
+my @nrn;      # To hold output of networks table to be consulted throughout process
 my $domain;
 my $omshell;
 my $statements;    #Hold custom statements to be slipped into host declarations
@@ -419,8 +419,15 @@ sub process_request
             @dhcpconf = ();
         }
     }
-    @nrn = split /\n/, `/bin/netstat -rn`;
-    splice @nrn, 0, 2;    #get rid of header
+	my $nettab = xCAT::Table->new("networks");
+	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+	foreach(@vnets){
+		my $n = $_->{net};
+		my $if = $_->{mgtifname};
+		my $nm = $_->{mask};
+		#$callback->({data => ["array of nets $n : $if : $nm"]});
+		push @nrn, "$n:$if:$nm";
+	}
     if ($querynics)
     {    #Use netstat to determine activenics only when no site ent.
         foreach (@nrn)
@@ -432,9 +439,9 @@ sub process_request
             {
                 next;
             }
-            if ($ent[7] =~ m/(ipoib|ib|vlan|bond|eth|myri|man|wlan)/)
+            if ($ent[1] =~ m/(ipoib|ib|vlan|bond|eth|myri|man|wlan)/)
             {    #Mask out many types of interfaces, like xCAT 1.x
-                $activenics{$ent[7]} = 1;
+                $activenics{$ent[1]} = 1;
             }
         }
     }
@@ -531,14 +538,14 @@ sub process_request
     }
     foreach (@nrn)
     {
-        my @line = split /\s+/;
+        my @line = split /:/;
         my $firstoctet = $line[0]; 
         $firstoctet =~ s/^(\d+)\..*/$1/;
         if ($line[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
         {
             next;
         }
-        if ($activenics{$line[7]} and $line[3] !~ /G/)
+        if ($activenics{$line[1]} and $line[2] !~ /G/)
         {
             addnet($line[0], $line[2]);
         }
@@ -565,7 +572,7 @@ sub addnet
         $restartdhcp=1;
         foreach (@nrn)
         {    # search for relevant NIC
-            my @ent = split /\s+/;
+            my @ent = split /:/;
             $firstoctet = $ent[0];
             $firstoctet =~ s/^(\d+)\..*/$1/;
             if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
@@ -574,7 +581,7 @@ sub addnet
             }
             if ($ent[0] eq $net and $ent[2] eq $mask)
             {
-                $nic = $ent[7];
+                $nic = $ent[1];
             }
         }
         #print " add $net $mask under $nic\n";
@@ -695,8 +702,10 @@ sub addnet
         {
             push @netent, "    next-server  $tftp;\n";
         }
-        push @netent, "    option log-servers $myip;\n";
-        push @netent, "    option ntp-servers $myip;\n";
+				if ($myip){
+        	push @netent, "    option log-servers $myip;\n";
+        	push @netent, "    option ntp-servers $myip;\n";
+				}
         push @netent, "    option domain-name \"$domain\";\n";
         if ($nameservers)
         {
