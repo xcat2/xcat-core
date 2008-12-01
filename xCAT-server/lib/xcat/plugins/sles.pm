@@ -528,6 +528,9 @@ sub copycd
             chomp($darch);
             last;
         }
+        if (not $darch and m/^BASEARCHS\s+(\S+)/) {
+            $darch = $1;
+        }
     }
     close($dinfo);
     unless ($darch)
