@@ -260,9 +260,9 @@ sub Version
 #The following tag tells the build script where to append build info
     my $version=shift;
     if ($version eq 'short') {
-        $version = "2.1";
+        $version = "2.1.1";
     } else {
-        $version = "Version 2.1"#XCATSVNBUILDSUBHERE
+        $version = "Version 2.1.1"#XCATSVNBUILDSUBHERE
     }
     ;
     return $version; 
