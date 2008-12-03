@@ -77,7 +77,7 @@ if [[ $OSTYPE = linux* ]]; then
       #find out which syslog is used for SLES, syslog or syslog-ng
       result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`
       if [[ $result = *syslog-ng* ]]; then
-        conf_file="/etc/syslog-ng/syslog-ng.conf"
+        conf_file="/etc/syslog-ng/syslog-ng.conf.in"
         ng=1
       fi
     fi
