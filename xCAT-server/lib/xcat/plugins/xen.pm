@@ -93,8 +93,18 @@ sub build_oshash {
     my %rethash;
     $rethash{type}->{content}='hvm';
     $rethash{loader}->{content}='/usr/lib/xen/boot/hvmloader';
-    $rethash{boot}->[0]->{dev}='network';
-    $rethash{boot}->[1]->{dev}='hd';
+    if (defined $vmhash->{$node}->[0]->{bootorder}) {
+        my $bootorder = $vmhash->{$node}->[0]->{bootorder};
+        my @bootdevs = split(/:/,$bootorder);
+        my $bootnum = 0;
+        foreach (@bootdevs) {
+            $rethash{boot}->[$bootnum]->{dev}=$_;
+            $bootnum++;
+        }
+    } else {
+        $rethash{boot}->[0]->{dev}='network';
+        $rethash{boot}->[1]->{dev}='hd';
+    }
     return \%rethash;
 }
 
@@ -107,19 +117,36 @@ sub build_diskstruct {
     if (defined $vmhash->{$node}->[0]->{storage}) {
         my $disklocs=$vmhash->{$node}->[0]->{storage};
         my @locations=split /\|/,$disklocs;
-        foreach (@locations) {
-            my $disk = $_;
-            my $disktype = substr($disk, 0, 3);
-            $currdev='hd'.$suffixes[$suffidx++];
-            if ($disktype eq "phy") {
-                my $diskdev = substr($disk, 4);
+        foreach $disk (@locations) {
+            #Setting default values of a virtual disk backed by a file at hd*.
+            $diskhash->{type} = 'file';
+            $diskhash->{device} = 'disk';
+            $diskhash->{target}->[dev] = hd.$suffixes[$suffidx];
+
+            my @disk_parts = split(/,/, $disk);
+            #Find host file and determine if it is a file or a block device.
+            if (substr($disk_parts[0], 0, 4) eq 'phy:') {
                 $diskhash->{type}='block';
-                $diskhash->{source}->{dev}=$diskdev;
+                $diskhash->{source}->{dev} = substr($disk_parts[0], 4);
             } else {
-                $diskhash->{type}='file';
-                $diskhash->{source}->{file}=$_;
+                $diskhash->{source>->{file} = $disk_parts[0];
             }
-            $diskhash->{target}->{dev}=$currdev;
+
+            #See if there are any other options. If not, increment suffidx because the already determined device node was used.
+            if (@disk_parts gt 1) {
+                my @disk_opts = split(/:/, $disk_parts[1]);
+                if ($disk_opts[0] ne '') {
+                    $diskhash->{target}->{dev} = $disk_opts[0];
+                } else {
+                    $suffidx++;
+                }
+                if ($disk_opts[1] eq 'cdrom') {
+                    $diskhash->{device}='cdrom';
+                }
+            } else {
+                $suffidx++;
+            }
+
             push @returns,$diskhash;
         }
     }
