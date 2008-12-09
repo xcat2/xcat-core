@@ -2675,7 +2675,7 @@ sub dompa {
           push(@output,"slot:$slot");
           push(@output,"fwrev:$fwrev");
           if ($port) {
-            push(@output,"ba:$ba");
+            push(@output,"port:$port");
           }
           if ($ba) {
             push(@output,"ba:$ba");
