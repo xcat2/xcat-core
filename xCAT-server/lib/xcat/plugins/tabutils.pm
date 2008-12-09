@@ -642,6 +642,9 @@ sub nodech
                           #So before, table.column==value meant set to =value, now it would be matching value
                           #the new way would be table.column=@=value to be unambiguous
                           #now a value like '@hi' would be set with table.column=@@hi
+        if ($value eq '') { #If blank, force a null entry to override group settings
+            $value = '|^.*$||';
+        }
         my $op = '=';
         if ($temp =~ /,$/)
         {

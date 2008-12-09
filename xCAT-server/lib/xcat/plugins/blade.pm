@@ -16,10 +16,13 @@ use SNMP;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use strict;
+use LWP;
 
 #use warnings;
 my %mm_comm_pids;
 
+#a 'browser' for http actions
+my $browser;
 use XML::Simple;
 if ($^O =~ /^linux/i) {
  $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -41,6 +44,7 @@ sub handled_commands {
     rscan => 'nodehm:mgt',
     rpower => 'nodehm:power,mgt',
     getbladecons => 'blade',
+    getrvidparms => 'nodehm:mgt',
     rvitals => 'nodehm:mgt',
     rinv => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
@@ -1761,6 +1765,39 @@ sub build_depend {
   return( [\%dp,\%mpa_hash] );
 }
 
+sub httplogin {
+       #TODO: Checked for failed login here.
+       my $mpa = shift;
+       my $user = shift;
+       my $pass = shift;
+       my $url="http://$mpa/shared/userlogin.php";
+       $browser = LWP::UserAgent->new;
+       $browser->cookie_jar({});
+       my $response = $browser->post($url,{userid=>$user,password=>$pass,login=>"Log In"});
+       $response = $browser->post("http://$mpa/shared/welcome.php",{timeout=>1,save=>""});
+       $response = $browser->post("http://$mpa/shared/welcomeright.php",{timeout=>1,save=>""});
+}
+sub get_kvm_params {
+    my $mpa = shift;
+    my $response = $browser->get("http://$mpa/private/vnc_only.php");
+    my $html = $response->{_content};
+    my $destip;
+    my $rbs;
+    foreach (split /\n/,$html) {
+        if (/<param\s+name\s*=\s*"([^"]*)"\s+value\s*=\s*"([^"]*)"/) {
+           if ($1 eq 'ip') {
+               $destip=$2;
+           } elsif ($1 eq 'rbs') {
+                $rbs = $2;
+           }
+        }
+    }
+    return ($destip,$rbs);
+}
+       
+
+
+
 
 sub getbladecons {
    my $noderange = shift;
@@ -2594,6 +2631,41 @@ sub dompa {
   my $node;
   my $args = \@exargs;
 
+  #Handle http commands on their own
+  if ($command eq "getrvidparms") {
+      my $user = $mpahash->{$mpa}->{username};
+      my $pass = $mpahash->{$mpa}->{password};
+      httplogin($mpa,$user,$pass);
+      (my $target, my $authtoken) = get_kvm_params($mpa);
+      #an http logoff would invalidate the KVM token, so we can't do it here
+      #For the instant in time, banking on the http session timeout to cleanup for us
+      #It may be possible to provide the session id to client so it can logoff when done, but
+      #that would give full AMM access to the KVM client
+      foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
+          my $slot = $mpahash->{$mpa}->{nodes}->{$node};
+          my @output = ();
+          push(@output,"method:blade");
+          push(@output,"server:$target");
+          push(@output,"authtoken:$authtoken");
+          push(@output,"slot:$slot");
+          my %outh;
+          $outh{node}->[0]->{name}=[$node];
+          $outh{node}->[0]->{data}=[];
+          foreach (@output) {
+              (my $tag, my $text)=split /:/,$_,2;
+              push (@{$outh{node}->[0]->{data}},{desc=>[$tag],contents=>[$text]});
+              print $out freeze([\%outh]);
+              print $out "\nENDOFFREEZE6sK4ci\n";
+                yield;
+              waitforack($out);
+              %outh=();
+              $outh{node}->[0]->{name}=[$node];
+              $outh{node}->[0]->{data}=[];
+          }
+
+      }
+      return;
+  }
   # Handle telnet commands before SNMP
   if ($command eq "rspconfig") { 
     foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {

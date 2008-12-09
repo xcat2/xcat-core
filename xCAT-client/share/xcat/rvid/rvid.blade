@@ -1,0 +1,8 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+if [ ! -f /tmp/xcat/$rvid_server.remotekvm.jar ]; then 
+    wget -O /tmp/xcat/$rvid_server.remotekvm.jar http://$rvid_server/private/remotekvm.jar
+fi
+
+java -jar /tmp/remotekvm.jar -s $rvid_server -r $rvid_authtoken -b $rvid_slot >& /dev/null
+rm /tmp/xcat/rvid_server.remotekvm.jar
