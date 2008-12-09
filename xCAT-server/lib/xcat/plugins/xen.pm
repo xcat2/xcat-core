@@ -117,11 +117,11 @@ sub build_diskstruct {
     if (defined $vmhash->{$node}->[0]->{storage}) {
         my $disklocs=$vmhash->{$node}->[0]->{storage};
         my @locations=split /\|/,$disklocs;
-        foreach $disk (@locations) {
+        foreach my $disk (@locations) {
             #Setting default values of a virtual disk backed by a file at hd*.
             $diskhash->{type} = 'file';
             $diskhash->{device} = 'disk';
-            $diskhash->{target}->[dev] = hd.$suffixes[$suffidx];
+            $diskhash->{target}->{dev} = 'hd'.$suffixes[$suffidx];
 
             my @disk_parts = split(/,/, $disk);
             #Find host file and determine if it is a file or a block device.
@@ -129,7 +129,7 @@ sub build_diskstruct {
                 $diskhash->{type}='block';
                 $diskhash->{source}->{dev} = substr($disk_parts[0], 4);
             } else {
-                $diskhash->{source>->{file} = $disk_parts[0];
+                $diskhash->{source}->{file} = $disk_parts[0];
             }
 
             #See if there are any other options. If not, increment suffidx because the already determined device node was used.
