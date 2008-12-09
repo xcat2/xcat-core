@@ -1792,6 +1792,20 @@ sub get_kvm_params {
            }
         }
     }
+    unless (defined $destip and defined $rbs) { #Try another way
+        $response = $browser->get("http://$mpa/private/remotecontrol.js.php");
+        foreach (split /\n/,$html) {
+            if (/<param\s+name\s*=\s*"([^"]*)"\s+value\s*=\s*"([^"]*)"/i) {
+               if ($1 eq 'ip') {
+                   $destip=$2;
+               } elsif ($1 eq 'rbs') {
+                    $rbs = $2;
+               }
+            }
+        }
+    }
+
+
     return ($destip,$rbs);
 }
        
