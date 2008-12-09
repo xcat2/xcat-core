@@ -19,7 +19,6 @@ sub process_response {
     my $resp = shift;
     foreach my $rst (\@{$resp->{node}}) {
         foreach my $rsp (@$rst) {
-            print Dumper($rsp);
          $rvidhash{$rsp->{name}->[0]}->{$rsp->{data}->[0]->{desc}->[0]} = $rsp->{data}->[0]->{contents}->[0];
         }
     }
@@ -40,7 +39,6 @@ if ($arg ne "NO_NODE_RANGE") {
 push (@{$cmdref->{arg}}, @ARGV);
 
 xCAT::Client::submit_request($cmdref,\&process_response);
-print Dumper(\%rvidhash);
 my %CLEANENV=%ENV;
 foreach my $node (keys %rvidhash) {
     %ENV=%CLEANENV;

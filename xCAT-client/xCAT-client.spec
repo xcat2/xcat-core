@@ -48,6 +48,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man3
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
@@ -58,6 +59,8 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man3
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man5
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man8
 
+cp share/xcat/rvid/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid/
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid/*
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
