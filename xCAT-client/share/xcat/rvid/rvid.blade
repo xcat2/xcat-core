@@ -1,9 +1,28 @@
-#!/bin/sh
+#!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+set
+fwpref=${rvid_fwrev%%???}
+fwver=${rvid_fwrev##????}
+fwmaj=${fwver%%?}
+if [ -z "$fwmaj" ]; then
+    echo "Unable to recognize AMM firmware revision"
+    exit 1
+fi
 mkdir -p /tmp/xcat
 if [ ! -f /tmp/xcat/$rvid_server.remotekvm.jar ]; then 
     wget -O /tmp/xcat/$rvid_server.remotekvm.jar http://$rvid_server/private/remotekvm.jar
 fi
+if [ $fwpref == 'BPET' ]; then
+    if [ $fwmaj -ge 46 ]; then
+        java -jar /tmp/xcat/$rvid_server.remotekvm.jar -s $rvid_server -r $rvid_authtoken -b $rvid_slot >& /dev/null
+    elif [ $fwmaj -ge 42 ]; then
+        java -jar /tmp/xcat/$rvid_server.remotekvm.jar $rvid_server -rbs $rvid_authtoken -ba $rvid_ba -port $rvid_port >& /dev/null
+    else 
+        echo "Unknown method for firmware $rvid_fwrev, ensure it is at least BPET42R";
+    fi
+else
+    echo "Unknown semantics for $fwpref, trying a particular way, may not work."
+   java -jar /tmp/xcat/$rvid_server.remotekvm.jar $rvid_server -rbs $rvid_authtoken -ba $rvid_ba -b $rvid_slot >& /dev/null
+fi
 
-java -jar /tmp/xcat/$rvid_server.remotekvm.jar -s $rvid_server -r $rvid_authtoken -b $rvid_slot >& /dev/null
-rm /tmp/xcat/rvid_server.remotekvm.jar
+rm /tmp/xcat/$rvid_server.remotekvm.jar

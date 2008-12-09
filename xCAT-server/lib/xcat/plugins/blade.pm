@@ -1783,30 +1783,41 @@ sub get_kvm_params {
     my $html = $response->{_content};
     my $destip;
     my $rbs;
+    my $fwrev;
+    my $port;
     foreach (split /\n/,$html) {
         if (/<param\s+name\s*=\s*"([^"]*)"\s+value\s*=\s*"([^"]*)"/) {
            if ($1 eq 'ip') {
                $destip=$2;
            } elsif ($1 eq 'rbs') {
                 $rbs = $2;
+           } elsif ($1 eq 'cdl') {
+               $fwrev=$2;
            }
         }
     }
+    my $ba;
     unless (defined $destip and defined $rbs) { #Try another way
         $response = $browser->get("http://$mpa/private/remotecontrol.js.php");
+        $html = $response->{_content};
         foreach (split /\n/,$html) {
-            if (/<param\s+name\s*=\s*"([^"]*)"\s+value\s*=\s*"([^"]*)"/i) {
+            if (/<param\s+name\s*=\s*"?([^"]*)"?\s+value\s*=\s*"?([^"]*)"?/i) {
                if ($1 eq 'ip') {
                    $destip=$2;
                } elsif ($1 eq 'rbs') {
                     $rbs = $2;
+               } elsif ($1 eq 'ba') {
+                   $ba=$2; #NOTE: This is the username and password.  The client seems to required it for this version of firmware.
+               } elsif ($1 eq 'cdl') {
+                   $fwrev=$2;
+               } elsif ($1 eq 'port') {
+                   $port=$2;
                }
+
             }
         }
     }
-
-
-    return ($destip,$rbs);
+    return ($destip,$rbs,$fwrev,$port,$ba);
 }
        
 
@@ -2650,7 +2661,7 @@ sub dompa {
       my $user = $mpahash->{$mpa}->{username};
       my $pass = $mpahash->{$mpa}->{password};
       httplogin($mpa,$user,$pass);
-      (my $target, my $authtoken) = get_kvm_params($mpa);
+      (my $target, my $authtoken, my $fwrev, my $port, my $ba) = get_kvm_params($mpa);
       #an http logoff would invalidate the KVM token, so we can't do it here
       #For the instant in time, banking on the http session timeout to cleanup for us
       #It may be possible to provide the session id to client so it can logoff when done, but
@@ -2662,6 +2673,13 @@ sub dompa {
           push(@output,"server:$target");
           push(@output,"authtoken:$authtoken");
           push(@output,"slot:$slot");
+          push(@output,"fwrev:$fwrev");
+          if ($port) {
+            push(@output,"ba:$ba");
+          }
+          if ($ba) {
+            push(@output,"ba:$ba");
+          }
           my %outh;
           $outh{node}->[0]->{name}=[$node];
           $outh{node}->[0]->{data}=[];
