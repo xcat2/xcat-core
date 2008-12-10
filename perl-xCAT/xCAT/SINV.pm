@@ -199,7 +199,7 @@ sub parse_and_run_sinv
     }
     my $cmdoutput;
     if ($cmdtype eq "xdsh")
-    {                             # chose output routine to run
+    {                             # choose output routine to run
         $cmdoutput = "xdshoutput";
     }
     else
@@ -353,7 +353,7 @@ sub parse_and_run_sinv
             {                                # error cannot default
                 my $rsp = {};
                 $rsp->{data}->[0] =
-                  "No template or seed node supplied and no noderange to chose a default.\n";
+                  "No template or seed node supplied and no noderange to choose a default.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback, 1);
                 exit 1;
             }
