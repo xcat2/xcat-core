@@ -1806,8 +1806,8 @@ sub get_kvm_params {
                    $destip=$2;
                } elsif ($1 eq 'rbs') {
                     $rbs = $2;
-               } elsif ($1 eq 'ba') {
-                   $ba=$2; #NOTE: This is the username and password.  The client seems to required it for this version of firmware.
+               #} elsif ($1 eq 'ba') {
+               #    $ba=$2; #NOTE: This is the username and password.  The client seems to required it for this version of firmware, not exporting for SECURITY
                } elsif ($1 eq 'cdl') {
                    $fwrev=$2;
                } elsif ($1 eq 'port') {
@@ -2677,9 +2677,9 @@ sub dompa {
           if ($port) {
             push(@output,"port:$port");
           }
-          if ($ba) {
-            push(@output,"ba:$ba");
-          }
+          #if ($ba) { #SECURITY: This exposes AMM credentials, use at own risk
+          #  push(@output,"ba:$ba");
+          #}
           my %outh;
           $outh{node}->[0]->{name}=[$node];
           $outh{node}->[0]->{data}=[];

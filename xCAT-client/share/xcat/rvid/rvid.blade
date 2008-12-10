@@ -15,6 +15,8 @@ if [ $fwpref == 'BPET' ]; then
     if [ $fwmaj -ge 46 ]; then
         java -jar /tmp/xcat/$rvid_server.remotekvm.jar -s $rvid_server -r $rvid_authtoken -b $rvid_slot >& /dev/null
     elif [ $fwmaj -ge 42 ]; then
+        echo "Unable to securely support $rvid_fwrev in an adequately secure manner, please upgrade to BPET46C or better"
+        exit 1
         java -jar /tmp/xcat/$rvid_server.remotekvm.jar $rvid_server -rbs $rvid_authtoken -ba $rvid_ba -port $rvid_port >& /dev/null
     else 
         echo "Unknown method for firmware $rvid_fwrev, ensure it is at least BPET42R";
