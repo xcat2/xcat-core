@@ -57,6 +57,7 @@ sub handled_commands {
     getxencons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
     #rinv => 'nodehm:mgt',
+    getrvidparms => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
     revacuate => 'vm:virtflags',
     #rspreset => 'nodehm:mgt',
@@ -278,7 +279,35 @@ sub getvmcons {
         $sconsparms->{node}->[0]->{baudrate}=[$serialspeed];
         return (0,$sconsparms);
     } elsif ($type eq "vnc") {
-        return (0,'ssh+vnc@'.$hyper.": ".$consdata->{vncport});
+        my $domdata=`ssh $hyper xm list $node -l`;
+        my @domlines = split /\n/,$domdata;
+        my $foundvfb=0;
+        my $vnclocation;
+        foreach (@domlines) {
+            if (/\(vfb/) {
+                $foundvfb=1;
+            }
+            if ($foundvfb and /location\s+([^\)]+)/) {
+                $vnclocation=$1;
+                $foundvfb=0;
+                last;
+            }
+        }
+        return (0,'ssh+vnc@'.$hyper.": ".$vnclocation); #$consdata->{vncport});
+    }
+}
+sub getrvidparms {
+    my $node=shift;
+    my $location = getvmcons($node,"vnc");
+    if ($location =~ /ssh\+vnc@([^:]*):([^:]*):(\d+)/) {
+        my @output = (
+        "method: xen",
+        "server: $1",
+        "vncdisplay: $2:$3",
+        );
+        return  0,@output;
+    } else {
+        return (1,"Error: Unable to determine rvid destination for $node");
     }
 }
 
@@ -371,6 +400,8 @@ sub getpowstate {
     }
 }
 
+
+
 sub power {
     my $subcommand = shift;
     my $retstring;
@@ -441,6 +472,8 @@ sub guestcmd {
     return power(@args);
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
+  } elsif ($command eq "getrvidparms") {
+      return getrvidparms($node,@args);
   } elsif ($command eq "getxencons") {
       return getvmcons($node,@args);
   }
