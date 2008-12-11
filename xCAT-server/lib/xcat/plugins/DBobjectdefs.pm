@@ -2764,7 +2764,7 @@ sub defrm
                 # make a new "groups" list for the node without the
                 #  	group that is being removed
                 my $first = 1;
-                my $newgrps;
+                my $newgrps = "";
                 foreach my $grp (@gprslist)
                 {
                     chomp($grp);
@@ -2780,7 +2780,7 @@ sub defrm
                         {
                             $newgrps .= ",";
                         }
-                        $newgrps .= $grp;
+                        $newgrps .="$grp";
                         $first = 0;
 
                     }
