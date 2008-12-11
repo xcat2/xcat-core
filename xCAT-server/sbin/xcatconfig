@@ -79,8 +79,10 @@ else
     xCAT::MsgUtils->message('I', "Created /etc/xCATMN file.\n");
 }
 # Make sure service node file is not there 
-my $cmd = "/bin/rm /etc/xCATSN";
-my $outref = xCAT::Utils->runcmd("$cmd", 0);
+if (-f "/etc/xCATSN") {
+	my $cmd = "/bin/rm /etc/xCATSN";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+}
 
 # some Linux-only config
 #  (used to FTP postscripts to nodes)
