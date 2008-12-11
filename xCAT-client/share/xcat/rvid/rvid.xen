@@ -2,4 +2,4 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 myport=${rvid_vncdisplay#*:}
 let myport=myport-5900;
-vncviewer :$myport -via $rvid_server
+vncviewer :$myport -via $rvid_server >& /dev/null
