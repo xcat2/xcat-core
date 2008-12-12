@@ -1,6 +1,6 @@
 =head1 B<NAME>
 
-B<xcoll> - Formats and consolidates the output of the B<psh> command.
+B<xcoll> - Formats and consolidates the output of the B<psh,rinv,sinv> commands.
 
 =head1 B<SYNOPSIS>
 
@@ -8,7 +8,7 @@ B<xcoll>
 
 =head1 B<DESCRIPTION>
 
-The  B<xcoll> command formats and consolidates output from the B<psh> command. The B<xcoll>
+The  B<xcoll> command formats and consolidates output from the B<psh,rinv,sinv> command. The B<xcoll>
 command takes, as input, lines in the following format:
 
 host_name: line of output from remote command
