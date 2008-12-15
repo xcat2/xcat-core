@@ -22,7 +22,7 @@ This command is used to remove xCAT object definitions that are stored in the xC
 
 =item B<-a|--all>
 
-Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option.
+Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option.  Once all the data is removed the xCAT daemon will no longer work and you will have to switch to bypass mode in order to restore your data. You can switch to bypass mode by setting the XCATBYPASS environmant variable.  (ex. "export XCATBYPASS=yes") 
 
 =item B<-f|--force>
 
@@ -61,23 +61,19 @@ Verbose mode.
 
 =over 3
 
-=item 1. To completely clear the xCAT database.
-
- rmdef -f -a
-
-=item 2. To remove a range of node definitions.
+=item 1. To remove a range of node definitions.
 
  rmdef -t node node1-node4
 
-=item 3. To remove all node and group definitions.
+=item 2. To remove all node and group definitions.
 
  rmdef -t node,group
 
-=item 4. To remove all node definitions for the nodes contained in the group bpcnodes.
+=item 3. To remove all node definitions for the nodes contained in the group bpcnodes.
 
  rmdef -t node -o bpcnodes
 
-=item 5. To remove the group called bpcnodes.
+=item 4. To remove the group called bpcnodes.
 
  rmdef -t group -o bpcnodes
 
