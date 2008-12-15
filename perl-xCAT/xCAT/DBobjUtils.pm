@@ -1140,43 +1140,37 @@ sub rmobjdefs
         {
             my $attr = $this_attr->{attr_name};
 
-            #only need to bother with tables that have attrs set for this object
-            if ($DBattrvals{$objname}{$attr})
+            # get table lookup info from Schema.pm
+
+            # might need to check the value of other attrs to figure out
+            #   what tables some attrs are in
+            if (exists($this_attr->{only_if}))
             {
+                my ($check_attr, $check_value) =
+                  split('\=', $this_attr->{only_if});
 
-                # get table lookup info from Schema.pm
-
-                # might need to check the value of other attrs to figure out
-                #   what tables some attrs are in
-                if (exists($this_attr->{only_if}))
-                {
-                    my ($check_attr, $check_value) =
-                      split('\=', $this_attr->{only_if});
-
-                    # if the object attr value to check is not the value we need
-                    #   to match then try the next "only_if" value
-                    #   next if $DBattrvals{$objname}{$check_attr} ne $check_value;
-					next if ( !($DBattrvals{$objname}{$check_attr} =~ /\b$check_value\b/) );
-
-                }
-
-                #  get the info needed to access the DB table
-                # ex. 'nodelist.node', 'attr:node'
-                my ($lookup_key, $lookup_value) =
-                  split('\=', $this_attr->{access_tabentry});
-
-                # ex. 'nodelist', 'node'
-                my ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
-
-                # ex. 'attr', 'node'
-                my ($lookup_type, $lookup_data) = split('\:', $lookup_value);
-
-                # we'll need table name, key name, & object name
-                # put this info in a hash - we'll process it later - below
-
-                push @{$tablehash{$lookup_table}{$lookup_attr}}, $objname;
+                # if the object attr value to check is not the value we need
+                #   to match then try the next "only_if" value
+                #   next if $DBattrvals{$objname}{$check_attr} ne $check_value;
+				next if ( !($DBattrvals{$objname}{$check_attr} =~ /\b$check_value\b/) );
 
             }
+
+            #  get the info needed to access the DB table
+            # ex. 'nodelist.node', 'attr:node'
+            my ($lookup_key, $lookup_value) =
+              split('\=', $this_attr->{access_tabentry});
+
+            # ex. 'nodelist', 'node'
+            my ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
+
+            # ex. 'attr', 'node'
+            my ($lookup_type, $lookup_data) = split('\:', $lookup_value);
+
+            # we'll need table name, key name, & object name
+            # put this info in a hash - we'll process it later - below
+
+            push @{$tablehash{$lookup_table}{$lookup_attr}}, $objname;
         }
     }
 
