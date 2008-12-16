@@ -1101,17 +1101,6 @@ sub mknimimage
 		}
 
 		#
-		#  Update the SPOT resource
-		#
-		my $rc=&updatespot($spot_name, $lpp_source_name, $callback);
-		if ($rc != 0) {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not update the SPOT resource named \'$spot_name\'.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return 1;
-		}
-
-		#
 		#  Identify or create the rest of the resources for this diskless image
 		#
 		# 	- required - root, dump, paging, 
@@ -1270,7 +1259,7 @@ sub mknimimage
 
 		if ($::METHOD eq "rte" ) {
 
-			# need lpp_source, spot, resolv_conf, & bosinst_data
+			# need lpp_source, spot & bosinst_data
 			# user can specify others
 
 			# must have a source and a name
@@ -1310,8 +1299,9 @@ sub mknimimage
 
 		} elsif ($::METHOD eq "mksysb" ) {
 
-			# need mksysb, resolv_conf, & bosinst_data
+			# need mksysb bosinst_data
 			# user provides SPOT
+			#  TODO - create SPOT from mksysb
             # user can specify others
 			#
 			# get mksysb resource
@@ -2783,9 +2773,11 @@ sub updatespot {
 
 	my $spot_loc;
 
-	my $rsp;
-	push @{$rsp->{data}}, "Updating $spot_name.\n";
-	xCAT::MsgUtils->message("I", $rsp, $callback);
+	if ($::VERBOSE) {
+		my $rsp;
+		push @{$rsp->{data}}, "Updating $spot_name.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
 
 	#
 	#  add rpm.rte to the SPOT 
@@ -2859,15 +2851,15 @@ sub updatespot {
 			xCAT::MsgUtils->message("E", $rsp, $callback);
 			return 1;
 		}
+	}
 
-		# Modify the rc.dd-boot script to set the ODM correctly
-		my $boot_file = "$spot_loc/lib/boot/network/rc.dd_boot";
-		if (&update_dd_boot($boot_file, $callback) != 0) {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not update the rc.dd_boot file in the SPOT.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return 1;
-		}
+	# Modify the rc.dd-boot script to set the ODM correctly
+	my $boot_file = "$spot_loc/lib/boot/network/rc.dd_boot";
+	if (&update_dd_boot($boot_file, $callback) != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not update the rc.dd_boot file in the SPOT.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
 	}
 
 	#
@@ -4003,6 +3995,16 @@ ll~;
 	if (!&is_me($nimprime)) {
 		&make_SN_resource($callback, \@nodelist, \@image_names, \%imagehash, \%lochash);
 	}
+
+	#  Update the SPOT resource
+    foreach my $image (@image_names) {
+        my $rc=&updatespot($imagehash{$image}{'spot'}, $imagehash{$image}{'lpp_source'}, $callback);
+        if ($rc != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "$Sname: Could not update the SPOT resource named \'$imagehash{$image}{'spot'}\'.\n";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+    }	
 
 	#
 	# define and initialize the diskless/dataless nodes
