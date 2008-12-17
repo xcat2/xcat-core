@@ -124,6 +124,98 @@ sub getObjectsOfType
 
 #----------------------------------------------------------------------------
 
+=head3   getobjattrs
+
+        Get data from tables 
+
+        Arguments:
+        Returns:
+                undef
+                hash ref - (ex. $tabhash{$table}{$objname}{$attr} = $value)
+        Globals:
+        Error:
+        Example:
+
+                %tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash);
+
+        Comments:
+			For now - only support tables that have 'node' as key !!!
+=cut
+
+#-----------------------------------------------------------------------------
+sub getobjattrs
+{
+    my ($class, $ref_hash) = @_;
+	my %typehash = %$ref_hash;
+
+	my %tableattrs;
+	my %tabhash;
+
+	# get a list of object names for each type
+	my %objtypelist;
+	foreach my $objname (sort (keys %typehash)) {
+		# get list of objects for each type
+		# $objtypelist{$typehash{$objname}}=$objname;
+		push @{$objtypelist{$typehash{$objname}}}, $objname;
+	}
+
+	# go through each object type and look up all the info for each object
+	foreach my $objtype (keys %objtypelist) {
+
+		# only do node type for now 
+	  	if ($objtype eq 'node') {
+
+			# find the list of tables and corresponding attrs 
+			#	- for this object type
+			# get the object type decription from Schema.pm
+        	my $datatype = $xCAT::Schema::defspec{$objtype};
+
+        	foreach my $this_attr (@{$datatype->{'attrs'}}) {
+            	my $attr = $this_attr->{attr_name};
+
+				# table_attr is the attr that actually appears in the
+            	#  table which could possibly be different then the attr
+            	#  used in the node def
+				# ex. 'nodetype.arch'
+				my ($lookup_table, $table_attr) = split('\.', $this_attr->{tabentry});
+				if (!grep(/^$table_attr$/, @{$tableattrs{$lookup_table}})) {
+					push @{$tableattrs{$lookup_table}}, $table_attr;
+				}
+        	}
+
+			# foreach table look up the list of attrs for this 
+			#	list of object names
+			foreach my $table (keys %tableattrs) {
+				# open the table
+				my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+				if (!$thistable) {
+					my $rsp;
+					$rsp->{data}->[0] = "Could not get the \'$thistable\' table.";
+					xCAT::MsgUtils->message("E", $rsp, $::callback);
+				}
+
+				my @objlist = @{$objtypelist{$objtype}};
+
+				my $rec = $thistable->getNodesAttribs(\@objlist, @{$tableattrs{$table}});
+
+				# fill in %tabhash with any values that are set
+				foreach my $n (@objlist) {
+					my $tmp1=$rec->{$n}->[0];
+					foreach $a (@{$tableattrs{$table}}) {
+						if ($tmp1->{$a}) {
+							$tabhash{$table}{$n}{$a} = $tmp1->{$a};
+						}
+					}
+				}
+				$thistable->commit;
+			}
+	  	}
+	}
+	return %tabhash;
+}
+
+#----------------------------------------------------------------------------
+
 =head3   getobjdefs
 
         Get object definitions from the DB.
@@ -144,9 +236,6 @@ sub getObjectsOfType
 
         Comments:
 
-			TODO - this routine makes too many calls to the DB
-				-  maybe look up all tables for the obj types up front 
-
 =cut
 
 #-----------------------------------------------------------------------------
@@ -156,6 +245,8 @@ sub getobjdefs
     my %objhash;
 
     my %typehash = %$hash_ref;
+
+	my %tabhash;
 
 	@::foundTableList = ();
 	
@@ -168,6 +259,23 @@ sub getobjdefs
         }
         return %objhash;
     }
+
+	# see if we need to get any objects of type 'node' 
+	my $getnodes=0;
+	foreach my $objname (keys %typehash) {
+		if ($typehash{$objname} eq 'node') {
+			$getnodes=1;
+		}
+	}
+
+	# if so then get node info from tables now
+    #   still may need to look up values in some tables using
+    #   other keys - also need to figure out what tables to take
+    #   values from when using 'only_if' - see below
+	# - but this saves lots of time
+	if ($getnodes) {
+		%tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash);
+	}
 
     foreach my $objname (sort (keys %typehash))
     {
@@ -202,17 +310,6 @@ sub getobjdefs
             }
             next;
         }
-
-		# see if we saved this from a previous call
-		if ($::saveObjHash{$objname})
-		{
-
-			# use the one we saved
-			$objhash{$objname} = $::saveObjHash{$objname};
-
-		}
-		else
-		{
 
         # get data from DB
         my $type = $typehash{$objname};
@@ -280,53 +377,17 @@ sub getobjdefs
             my ($lookup_type, $lookup_data) = split('\:', $lookup_value);
 
             #
-            # Get the attr values from the DB tables
+            # Get the attr values 
             #
 
-			# if ($type eq 'node')
 			# lookup_attr is the key to the table we are looking in
-			if ($lookup_attr eq 'node')
+			# if we're looking up a node attr and the key is 'node'
+			#	then the value should be in %tabhash
+			if ( ($lookup_attr eq 'node') && ($type eq 'node') )
             {
-                my $thistable;
-                my $needtocommit = 0;
+				$objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$tabattr};
 
-                if ($::gettableref{$lookup_table})
-                {
-                    # if we already opened this table use the reference
-                    $thistable = $::gettableref{$lookup_table};
-                }
-                else
-                {
-                    # open the table
-                    $thistable =
-                          xCAT::Table->new(
-                                           $lookup_table,
-                                           -create     => 1,
-                                           -autocommit => 0
-                                           );
-                    if (!$thistable)
-                    {
-                        my $rsp;
-                        $rsp->{data}->[0] =
-                              "Could not get the \'$thistable\' table.";
-                        xCAT::MsgUtils->message("E", $rsp, $::callback);
-                        return undef;
-                    }
-
-                    # look up attr values
-                    my $ent;
-                    $ent = $thistable->getNodeAttribs($objname, [$tabattr]);
-
-                    #   create object hash $objhash{$objname}{$attr}
-                    #   - if the return is a reference and the
-                    #       attr val is defined
-                    if (ref($ent) and defined $ent->{$tabattr})
-					{
-                       	$objhash{$objname}{$attr} = $ent->{$tabattr};
-                    }
-                    $thistable->commit;
-                }
-            }
+			}
             else
             {
                 # look up attr values
@@ -390,10 +451,6 @@ sub getobjdefs
             next;
 
 		}
-
-        $::saveObjHash{$objname} = $objhash{$objname};
-
-		} # end if not cached
     }
     return %objhash;
 }
