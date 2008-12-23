@@ -1,4 +1,4 @@
-Summary: Web Interface for xCAT
+Summary: Web Interface for xCAT 2
 Name: xCAT-web
 Version: 2.1.1
 Release: snap%(date +"%Y%m%d%H%M")
