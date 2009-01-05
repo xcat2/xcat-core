@@ -82,6 +82,14 @@ sub parse_and_run_sinv
     my $rc  = 0;
     $::CALLBACK = $callback;
     my $args = $request->{arg};
+    if (!($args)) {
+        my $rsp = {};
+        $rsp->{data}->[0] =
+          "No arguments have been supplied to the sinv command. Check the sinv man page for appropriate input. \n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        exit 1;
+    }
+
     @ARGV = @{$args};    # get arguments
     my %options = ();
     $Getopt::Long::ignorecase = 0;    #Checks case in GetOptions
