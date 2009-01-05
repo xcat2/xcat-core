@@ -654,6 +654,18 @@ sub ll_jobs {
             close($JOBFILE);
             chown( $uid, $gid, $lljob_file );
 
+			# Need to change status before actually submittly LL jobs
+			# If LL jobs happen to run right away, the update code checking
+			# for the status may run before we've had a chance to actually update it
+            my $nltab = xCAT::Table->new('nodelist');
+            my @nodes = split( /\,/, $nodelist );
+            $nltab->setNodesAttribs(
+                                     \@nodes,
+                                     {
+                                        appstatus =>
+                                          "ROLLUPDATE-update_job_submitted"
+                                     }
+            );
             # Submit LL job
             my $cmd = qq~su - $lluser "-c llsubmit $lljob_file"~;
 			if ($::VERBOSE) {
@@ -669,16 +681,6 @@ sub ll_jobs {
                 xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
                 return 1;
             }
-
-            my $nltab = xCAT::Table->new('nodelist');
-            my @nodes = split( /\,/, $nodelist );
-            $nltab->setNodesAttribs(
-                                     \@nodes,
-                                     {
-                                        appstatus =>
-                                          "ROLLUPDATE-update_job_submitted"
-                                     }
-            );
         }
         elsif ( defined($nodelist) ) {
 
@@ -826,6 +828,9 @@ sub rebootnodes {
         }
     }
 
+    # my $nltab = xCAT::Table->new('nodelist');
+    $nltab->setNodesAttribs( \@nodes, { appstatus => "ROLLUPDATE-shutting_down" } );
+
     # remove nodes from LL
     $scheduler =~ tr/[A-Z]/[a-z]/;
     if ( $scheduler eq 'loadleveler' ) {
@@ -852,7 +857,8 @@ sub rebootnodes {
             if ( defined( $machines{$node} )
                  && ( $machines{$node}{'mstatus'} eq "1" ) )
             {
-                my $cmd = "llctl -h $node drain";
+                #my $cmd = "llctl -h $node drain";
+                my $cmd = "llctl -h $node flush startd";
 				if ($::VERBOSE) { 
 					open (RULOG, ">>$::LOGDIR/$::LOGFILE");
 					print RULOG localtime()." Running command \'$cmd\'\n";
@@ -861,6 +867,8 @@ sub rebootnodes {
                 xCAT::Utils->runcmd( $cmd, 0 );
             }
         }
+		# give LL a chance to catch up
+		sleep 15;
     }
 
     # Shutdown the nodes
@@ -951,7 +959,8 @@ sub rebootnodes {
     $nltab->setNodesAttribs( \@nodes, { appstatus => "ROLLUPDATE-rebooting" } );
     if ( scalar(@rnetboot_nodes) > 0 ) {
         my $rnb_nodelist = join( ',', @rnetboot_nodes );
-        my $cmd = "rnetboot $rnb_nodelist -f";
+        # my $cmd = "rnetboot $rnb_nodelist -f";
+        my $cmd = "rpower $rnb_nodelist on";
 		if ($::VERBOSE) { 
 			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
 			print RULOG localtime()." Running command \'$cmd\' \n";

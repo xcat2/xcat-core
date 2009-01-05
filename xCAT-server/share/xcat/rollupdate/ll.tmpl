@@ -14,14 +14,18 @@
 #
 # @ job_name = rollupdate_[[NODESET]]
 # @ job_type = parallel
+## Note:  really want node usage to be not shared, but there
+##   was a timing bug in LL that sometimes caused a rollupdate job to 
+##   not start.  Should be fixed by now.
 # @ node_usage = not_shared
 # @ restart = no
 # @ error   = /home/lluser/rollupdate_jobs/rollupdate_[[NODESET]].$(Host).$(Cluster).$(Process).err
 # @ output  = /home/lluser/rollupdate_jobs/rollupdate_[[NODESET]].$(Host).$(Cluster).$(Process).out
 # @ executable = /opt/xcat/share/xcat/rollupdate/send_reboot_request
-# @ arguments = 5 loadleveler [[XCATSERVER]] [[XCATPORT]] [[XNODELIST]] 
+# @ arguments = 10 --verbose loadleveler [[XCATSERVER]] [[XCATPORT]] [[XNODELIST]] 
 # @ node = [[LLCOUNT]]
 # @ tasks_per_node = 1
 # @ requirements = (Machine == {[[LLMACHINES]]}) 
+# @ wall_clock_limit = 21:00,20:00
 # @ queue
 
