@@ -308,7 +308,7 @@ sub make_node_list_file
     }
 
     open($::NODE_LIST_FILE, ">$file")
-      or MsgUtils->message("E", "Cannot write to file: $file\n");
+      or xCAT::MsgUtils->message("E", "Cannot write to file: $file\n");
     foreach my $node (@node_list)
     {
         print $::NODE_LIST_FILE "$node\n";
