@@ -435,14 +435,20 @@ sub firmware {
         while (my ($name,$d) = each(%$h) ) {
 
             #####################################
-            # Command only supported on FSP/BPAs 
+            # Command only supported on FSP/BPA/LPARs 
             #####################################
-            if ( @$d[4] !~ /^(fsp|bpa)$/ ) {
+            if ( @$d[4] !~ /^(fsp|bpa|lpar)$/ ) {
                 push @result, 
-                    [$name,"Information only available for CEC/BPA",RC_ERROR];
+                    [$name,"Information only available for CEC/BPA/LPAR",RC_ERROR];
                 next; 
             }
-            my $values = xCAT::PPCcli::lslic( $exp, $d );
+	   #################
+	   #For support on  Lpars, the flag need to be changed.
+	   ##########
+	   if(@$d[4] eq "lpar")	{
+		@$d[4] = "fsp";
+	   }
+           my $values = xCAT::PPCcli::lslic( $exp, $d );
             my $Rc = shift(@$values);
     
             #####################################
