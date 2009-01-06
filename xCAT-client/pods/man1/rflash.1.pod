@@ -1,0 +1,107 @@
+=head1 Name
+
+B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems 
+
+=head1 B<Synopsis>
+
+B<rflash> [B<-h>|B<--help>] I<noderange> [B<-p> I<directory>] [B<--activate> B<concurrent>|B<disruptive>][B<--commit>|B<--recover>] [B<-v>]
+
+=head1 B<Description>
+
+B<rflash> The B<rflash> command initiates Firmware updates on supported xCAT compute nodes.  Licensed Internal Code (also known as microcode) updates are performed on supported HMC-attached  POWER5 and POWER6 pSeries nodes. The command scans the specified directory structure for Firmware update package files applicable to the given nodes and components. And  then it will B<automatically> select the B<latest> version for the upgrade.
+
+The POWER5  and POWER6 systems contain several components that use Licensed Internal Code.  The B<rflash> command supports two of these components: the managed system (also known as the Central Electronics Complex, or CEC) and the power subsystem (also known as the Bulk Power Assembly (BPA) or Bulk Power Controller (BPC)).  Some POWER5 managed systems can be attached to a power subsystem.  These power subsystems can support multiple managed systems.  When the B<rflash> command is invoked, xCAT will determine the managed system or power subsystem associated with that CEC and perform the update. 
+
+The B<noderange> can be an CEC or CEC list, a Lpar or Lpar list and a BPA or BPA list. When the I<noderange> is an CEC or CEC list, B<rflash> will upgrade the firmware of the CEC or CECs in the cec list. If I<noderange> is a Lpar or Lpar list, B<rflash> will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes.  If I<noderange> is a BPA or BPA list, B<rflash> will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The I<noderange> can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the I<noderange>  man  page  for  detailed usage information. 
+
+The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates.  
+
+B<Warning!>  This command may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems.
+
+Depending on the Licensed Internal Code update that is installed, the affected HMC-attached POWER5 and POWER6 systems may need to be recycled.  The B<--activate> flag determines how the affected systems activate the new code.  The concurrent option activates code updates that do not require a system recycle (known as a “concurrent update”).  If this option is given with an update that requires a system recycle (known as a “disruptive update”), a message will be returned, and no activation will be performed.  The disruptive option will cause any affected systems that are powered on to be powered down before installing and activating the update.  Once the update is complete, the command will attempt to power on any affected systems that it powered down.  Those systems that were powered down when the command was issued will remain powered down when the update is complete.
+
+The flash chip of a POWER5 and POWER6 managed system or power subsystem stores firmware in two locations, referred to as the temporary side and the permanent side.  By default, most POWER5 and POWER6 systems boot from the temporary side of the flash.  When the B<rflash> command updates code, the current contents of the temporary side are written to the permanent side, and the new code is written to the temporary side.  The new code is then activated.  Therefore, the two sides of the flash will contain different levels of code when the update has completed.
+
+The B<--commit> flag is used to write the contents of the temporary side of the flash to the permanent side.  This flag should be used after updating code and verifying correct system operation.  The B<--recover> flag is used to write the permanent side of the flash chip back to the temporary side.  This flag should be used to recover from a corrupt flash operation, so that the previously running code can be restored.
+
+B<NOTE:> The B<--commit> and B<--recover> two flags can't be used with B<--ativate> option at the same time. 
+
+IBM recommends that you shutdown your Operating System images and power off your managed systems before applying disruptive updates to managed systems or power subsystems.
+
+Any previously activated code on the affected systems will be automatically accepted into permanent flash by this procedure.  
+
+B<IMPORTANT!>  If the power subsystem is recycled, all of its attached managed systems will be recycled. 
+
+=head1 B<Options>
+
+=over 7
+
+=item B<-h>
+
+Writes the command’s usage statement to standard output. 
+
+=item B<-p directory>
+
+Specifies the directory where the packages are located.
+
+=item B<--activate concurrent | disruptive>
+
+Must be specified to activate the new Licensed Internal Code.  The “disruptive” option will cause the target systems to be recycled.  Without this flag, LIC updates will be installed only, not activated.
+
+=item B<--commit>
+
+Used to commit the flash image in the temporary side of the chip to the permanent side for both managed systems and power subsystems.
+
+=item B<--recover>
+
+Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
+
+=item B<-v>
+
+Displays the command's version.
+
+=back
+
+=head1 B<Exit Status>
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+
+=head1 B<Examples>
+
+=over 4
+
+=item 1
+
+To  update  only the  power subsystem attached to a single HMC-attached pSeries CEC(cec_name), and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
+
+B<rflash> I<cec_name> I<-p /tmp/fw> I<--activate disruptive>
+
+=item 2
+
+To  update  only the  power subsystem attached to a single HMC-attached pSeries node, and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
+
+B<rflash> I<bpa_name> I<-p /tmp/fw> I<--activate disruptive>
+
+=item 3
+
+To commit a firmware update to permanent flash on an HMC-attached CEC, enter:
+
+B<rflash> I<cec_name> I<--commit>
+
+=back
+
+=head1 B<Location>
+
+B</opt/xcat/bin/rflash>
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+=head1 SEE ALSO
+
+rinv(1)
+
