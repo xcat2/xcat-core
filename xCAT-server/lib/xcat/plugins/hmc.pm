@@ -20,7 +20,8 @@ sub handled_commands {
       rscan     => 'nodehm:mgt',
       getmacs   => 'nodehm:mgt',
       rnetboot  => 'nodehm:mgt',
-      rspconfig => 'nodehm:mgt'
+      rspconfig => 'nodehm:mgt',
+      rflash => 'nodehm:mgt'
   };
 }
 
