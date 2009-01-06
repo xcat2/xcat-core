@@ -1,0 +1,536 @@
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+package xCAT::PPCrflash;
+use strict;
+use Getopt::Long;
+use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
+use xCAT::Usage;
+use xCAT::PPCinv;
+use xCAT::DSHCLI;
+use Getopt::Long;
+use File::Spec;
+use POSIX qw(tmpnam);
+
+
+
+my $packages_dir= ();
+my $activate	= ();
+my $verbose	= 0;
+$::POWER_DEST_DIR               = "/tmp";
+my $release_level;
+my $active_level;
+my @dirlist;
+
+#######################################
+# This flag tracks the operation to be performed.  If set, it means we need
+# to commit a previously applied update or else recover from one.
+#######################################
+my $housekeeping = undef;
+
+#####################################
+#For -V|--verbose,put the $msg into @value
+###################################
+sub dpush {
+	my $value = shift;
+	my $msg = shift;
+
+	if($verbose == 1) {
+		push(@$value,$msg);
+	}
+}
+
+
+##########################################################################
+# Parse the command line for options and operands 
+##########################################################################
+
+sub parse_args {
+
+   	my $request = shift;
+    	my %opt     = ();
+    	my $cmd     = $request->{command};
+    	my $args    = $request->{arg};
+
+
+    	#############################################
+    	# Responds with usage statement
+    	#############################################
+    	local *usage = sub {
+       		 my $usage_string = xCAT::Usage->getUsage($cmd);
+       	 	return( [ $_[0], $usage_string] );
+   	 };
+    	#############################################
+    	# Process command-line arguments
+    	#############################################
+    	if ( !defined( $args )) {
+        	return(usage( "No command specified" ));
+    	}
+
+    	#############################################
+    	# Checks case in GetOptions, allows opts
+    	# to be grouped (e.g. -vx), and terminates
+    	# at the first unrecognized option.
+    	#############################################
+    	@ARGV = @$args;
+    	$Getopt::Long::ignorecase = 0;
+    	Getopt::Long::Configure( "bundling" );
+
+    	if ( !GetOptions( \%opt, qw(h|help v|version V|verbose p=s activate=s commit recover) )) {
+   	     return( usage() );
+    	}
+    	
+	####################################
+    	# Option -v for version
+    	####################################
+	if ( exists( $opt{v} )) {
+        	return( \$::VERSION );
+	}
+		
+	#################################
+	#Option --activate not valid with --commit or --recover
+	#################################
+	if( exists( $opt{activate} ) && (exists( $opt{commit}) || exists( $opt{recover}))) {
+		return( usage("Option --activate not valid with --commit or --recover ") );
+	}	
+
+	#################################
+        #Option -p not valid with --commit or --recover
+        #################################
+        if( exists( $opt{p} ) && (exists( $opt{commit}) || exists( $opt{recover} ))) {
+               return( usage("Option -p not valid with --commit or --recover ") );
+        }
+	
+
+	#################################
+	#Option -p required
+	#################################
+	if( exists( $opt{p} ) && (!exists( $opt{activate}) )) {
+		return( usage("Option -p must be used with --activate ") );
+	}	
+	
+	###############################
+	#--activate's value only can be concurrent and disruptive
+	################################
+	if(exists($opt{activate})) {
+		if( ($opt{activate} ne "concurrent") && ($opt{activate} ne "disruptive")) {
+			return (usage("--activate's value can only be concurrent or disruptive"));
+		}
+	}
+	
+	####################################
+   	 # Check for "-" with no option
+    	####################################
+    	if ( grep(/^-$/, @ARGV )) {
+  	      return(usage( "Missing option: -" ));
+    	}
+    
+   	####################################
+    	# Check for an extra argument
+    	####################################
+    	if ( defined( $ARGV[0] )) {
+	        return(usage( "Invalid Argument: $ARGV[0]" ));
+	}
+	
+	
+	#check to see if we are housekeeping or updating
+	#
+	if( defined( $opt{commit}) ) {
+		print "commit flag\n";
+		$housekeeping = "commit";
+	} elsif( defined( $opt{ recover }) ) {
+		print "recover flag\n";
+		$housekeeping = "recover";
+	} else {
+		print "no housekeeping - update mode\n";
+		$housekeeping = undef;
+	}
+
+	#############################################
+    	# Option -V for verbose output
+    	#############################################
+    	if ( exists( $opt{V} )) {
+        	$verbose = 1;
+    	}
+
+		
+	####################################
+  	# No operands - add command name 
+ 	####################################
+	$request->{method} = $cmd;
+	return( \%opt );
+}
+
+sub print_var {
+	my $j = shift;
+	my $msg = shift;
+	
+	my $var = "+++++++++$msg start--++++\n";
+	if(ref($j) eq "ARRAY") {
+	     my $t;
+	     foreach $t(@$j) {
+                if(ref($t) eq "ARRAY") {
+                        my $t0 = join(" ", @$t);
+		#	if(ref($t0) eq "SCALAR") {
+                     	   $var = $var."\t$t0(array)\n";
+		#	} else {
+		#	   &print_var($t0);
+		#	}
+                } elsif( ref($t) eq "HASH" ) {
+                        my $t12;
+                        my $t23;
+                        while(($t12, $t23) = each(%$t)) {
+                                $var = $var. "\t$t12 => \n";	
+		#		if(ref($t23) eq "SCALAR") {
+                     			$var = $var. "\t$t23(hash)\n";
+		#		} else {
+		#	   		&print_var($t23);
+		#		}
+                        }
+
+                }else {
+                        $var = $var. "$t\n";
+                }
+	    }
+        } elsif (ref($j) eq "HASH") {
+		 my $t1;
+		  my $t2;
+      	  while(($t1, $t2) =each (%$j)) {
+        	        $var = $var. "$t1 =>";
+                if(ref($t2) eq "HASH") {
+                        my $t12;
+                        my $t23;
+                        while(($t12, $t23) = each(%$t2)) {
+                                $var = $var. "\t$t12 => $t23\n";
+                        }
+                } elsif(ref($t2) eq "ARRAY") {
+                        my $t = join(" ", @$t2);
+                        $var = $var. "$t (array)\n";
+                } else {
+                        $var = $var. "$t2\n";
+                }
+	   }
+        } else {
+		$var = $var. "$j(scalar)\n";
+	}
+
+
+	$var = $var. "+++++++++++$msg end+++++++++++\n";
+	
+	return $var;
+}
+
+#-------------------------------------------------------------------------#
+# get_lic_filenames - construct and validate the lup filenames for each   #
+# each node                                                               #
+#-------------------------------------------------------------------------#
+#
+sub get_lic_filenames {
+	my $mtms = shift;
+	my $upgrade_required = 0;	
+	my $msg = undef;
+	my $filename;
+
+	if(! -d $packages_dir) {
+              $msg = "The directory $packages_dir doesn't exist!";
+              return ("","","", $msg, -1);
+        }
+        
+	#print "opening directory and reading names\n";
+        opendir DIRHANDLE, $packages_dir;
+        @dirlist= readdir DIRHANDLE;
+        closedir DIRHANDLE;
+
+        @dirlist = File::Spec->no_upwards( @dirlist );
+
+        # Make sure we have some files to process
+        #
+        if( !scalar( @dirlist ) ) {
+        	$msg = "directory $packages_dir is empty";
+                return ("","","",$msg, -1);
+        }
+
+        $release_level =~/(\w{4})(\d{3})/;
+        my $pns = $1;
+	my $fff = $2;
+		
+	#Find the latest version lic file
+        @dirlist = grep /\.rpm$/, @dirlist;
+        @dirlist = grep /$1/, @dirlist;
+        if( !scalar( @dirlist ) ) {
+		$msg = "There isn't a package suitable for $mtms";
+                return ("","","",$msg, -1);
+	}
+        if( scalar(@dirlist) > 1) {
+         # Need to find the latest version package.
+        	@dirlist =reverse sort(@dirlist);
+                my $t = "\n";
+                foreach $t(@dirlist) {
+                       $msg =$msg."$t\t";
+                }
+         }
+
+         $filename = File::Spec->catfile( $packages_dir, $dirlist[0] );
+         $dirlist[0] =~ /(\w(4)(\d(3))_(\w(3))_(\d(3).rpm$))/;
+         if(($pns eq $2) && ($4 < $active_level)) {
+		$msg = $msg. "Upgrade $mtms concurrently!";
+		if($activate ne "concurrent") {
+			$msg = "Option --actviate's value should be disruptive";
+			return ("", "","", $msg, -1);
+		}
+	} else {
+		$msg = $msg . "Upgrade $mtms disruptively!";
+                if($activate ne "disruptive") {
+			$msg = "Option --actviate's value should be concurrent ";
+			return ("", "","", $msg, -1);
+		}
+        }
+        #print "filename is $filename\n";
+	##############
+	#If the release levels are different, it will be upgrade_required.
+	#############	
+	if($fff ne $2) {
+		$upgrade_required = 1;
+	}
+	my $xml_file_name = $filename;
+	$xml_file_name =~ s/(.+\.)rpm/\1xml/;
+	#print "check_licdd_update: source xml file is $xml_file_name\n";
+
+	if( ( -z $filename)|| ( -z $xml_file_name) ) {
+		$msg = "The package $filename or xml $xml_file_name is empty" ;
+		return ("", "", "", $msg, -1);
+	}
+		
+	return ($filename, $xml_file_name ,$upgrade_required, $msg, 0);
+
+}
+
+##########################
+#Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems
+###########################
+sub rflash {
+
+    	my $request = shift;
+    	my $hash    = shift;
+    	my $exp     = shift;
+    	my $hwtype  = @$exp[2];
+    	my @result;
+	
+	$packages_dir = $request->{opt}->{p};
+	$activate = $request->{opt}->{activate};	
+
+	my $hmc;
+	my $mtms;
+	my $component; # system or power
+	my $h;
+	my $user;
+	
+	my $tmp_file; #the file handle of the stanza
+	my $rpm_file;
+	my $xml_file;
+	my @rpm_files;
+	my @xml_files;
+	my $upgrade_required;
+	my $stanza = undef;
+	
+	my @value;
+
+	$hmc = @$exp[3];
+	dpush(\@value, [$hmc, "In rflash()"]);
+	dpush(\@value,[$hmc, print_var($request, "request")]);
+	dpush(\@value,[$hmc, print_var($hash, "hash")]);
+	dpush(\@value,[$hmc, print_var($exp, "exp")]);
+	#	print_var($t);
+	########################
+	# Now build a temporary file containing the stanzas to be run on the HMC
+	###################
+	my $tmp_file = tmpnam();# the file handle of the stanza
+	##############################
+	# Open the temp file
+	##########################
+	
+	dpush(\@value,[$hmc, "opening file $tmp_file"]);
+	unless( open TMP, ">$tmp_file" ) {
+        	push (@value,[ $hmc, "cannot open $tmp_file, $!\n"]);
+	       	return (\@value);
+	}
+
+	while(($mtms,$h) = each(%$hash)) {
+		dpush(\@value,[$hmc, "mtms:$mtms"]);
+        	my $lflag = 0;
+		my $managed_system = $mtms;
+      		if( defined( $housekeeping ) ) {
+               	    	#$hmc_has_work = 1;
+        	        #$::work_flag = 1;
+             		&dpush(\@value,[$hmc,"$mtms:creating stanza for housekeeping operation\n"]);
+                    	$stanza = "updlic::" . $managed_system . "::" . $housekeeping . "::::";
+                    	
+			&dpush(\@value,[$hmc, "$mtms:Writing $stanza to file\n"]);
+			push(@result,[$hmc,"$mtms:$housekeeping successfully!"]);
+                    	print TMP "$stanza\n";
+       		} else {
+			while(my ($name, $d) = each(%$h)) {
+				if ( @$d[4] !~ /^(fsp|bpa|lpar)$/ ) {
+               				 push @value,
+                 				 [$name,"Information only available for LPAR/CEC/BPA",RC_ERROR];
+               				 next;
+           		    	}
+			
+				###############
+				#If $name is a Lpar, the flag will be changed from "lpar" to "fsp"
+				#######################
+				if ( @$d[4] =~ /^lpar$/ ) {
+                	        	@$d[4] = "fsp";
+                        		$lflag = 1;
+					push (@value, [$hmc,"$name is a Lpar on MTMS $mtms", 1]);
+                		}
+				if( @$d[4] eq "fsp" ) {
+					$component = "system";
+				} else {
+					$component = "power";
+				}	
+				dpush(\@value, [$hmc,"$mtms:componet:$component!"]);
+	
+				my $values = xCAT::PPCcli::lslic( $exp, $d );
+        	    		my $Rc = shift(@$values);
+            			#####################################
+            			# Return error
+      		      		#####################################
+            			if ( $Rc != SUCCESS ) {
+                			push @value, [$name,@$values[0],$Rc];
+                			next;
+				}
+				
+				if ( @$values[0] =~ /ecnumber=(\w+)/ ) {
+                	       		$release_level = $1;
+                       			&dpush( \@value, [$hmc,"$mtms :release level:$1"]);
+				}
+				
+				if ( @$values[0] =~ /activated_level=(\w+)/ ) {
+                        		$active_level = $1;
+                       			&dpush( \@value, [$hmc,"$mtms :activated level:$1"]);
+				}	
+				my $msg;			
+				my $flag = 0;	
+				($rpm_file, $xml_file, $upgrade_required,$msg, $flag) = &get_lic_filenames($mtms);
+				if( $flag == -1) {
+					push (@value, [$hmc,"$mtms: $msg"]);
+					return (\@value);
+				}
+				dpush ( \@value, [$hmc, $msg]);
+
+                		# If we get to this point, the HMC has to attempt an update on the
+                        	# managed system, so set the flag.
+                        	#
+                        	#$hmc_has_work = 1;
+                        	#::work_flag = 1;
+
+                        	# Collect the rpm and xml file names in a list so we can dcp then
+                       		# in one call.
+                        	#
+                        	if( scalar( grep /$rpm_file/, @rpm_files ) == 0 ) {
+                        		push @rpm_files, $rpm_file;
+                        		push @xml_files, $xml_file;
+                        	}
+
+				push(@result,[$hmc, "Upgrade $mtms from release level:$release_level activated level:$active_level to $rpm_file successfully"]);
+
+                        }
+			
+			my $rpm_dest = $::POWER_DEST_DIR."/".$dirlist[0];
+			# The contents of the stanza file are slightly different depending
+              		 # on the operation being performed.
+                	#
+               		if( $upgrade_required ) {
+                      		$stanza = "updlic::" . $managed_system . "::upgrade::::$rpm_dest";
+               		} else {
+                	       	$stanza = "updlic::" . $managed_system . "::activate::" . $component . "::" .$rpm_dest;
+               		}
+                	dpush(\@value,[$hmc, "Writing $stanza to file"]);
+  			print TMP "$stanza\n";
+			@dirlist = ();
+			$rpm_file = ();
+			$xml_file = ();
+
+   		}
+	}
+	# Close the file.  dcp the stanza file, rpm update and xml file to the
+	# target HMC
+	#
+	close TMP;
+	
+	##################################
+    	# Get userid/password
+    	##################################
+    	my $cred = $request->{$hmc}{cred};
+	$user =  @$cred[0];
+	
+	dpush(\@value, [$hmc,"user: $user"]);;
+#	$password = @$cred[1]	
+
+	my $rpm_file_list = join(",", @rpm_files);	
+	my $xml_file_list = join(",", @xml_files);	
+	###############################
+	#Prepare for "xdcp"-----runDcp_api
+	##############################
+	my %options = ();
+	$options{ 'user' } = $user; 
+	$options{ 'nodes' } = $hmc; 
+	$options{ 'preserve' } = 1;
+	$options{ 'source' } = "$tmp_file $rpm_file_list $xml_file_list";
+	$options{ 'target' } = "/tmp";
+
+	dpush(\@value, [$hmc,"invoking RunDcp_api()"]);
+	my @res = xCAT::DSHCLI->runDcp_api( \%options, 0 );
+	if ($::RUNCMD_RC) {   # error from dcp
+        	my $rsp={};
+        	$rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
+        	xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+		push(@value,[$hmc,$rsp->{data}->[0]]);
+		push(@value,[$hmc,"Failed to copy $tmp_file $rpm_file_list $xml_file_list to $hmc"]);
+		return(\@value);
+    	}
+
+#	print_var(@res);
+	%options = ();
+	dpush(\@value,[$hmc, "copy files to $hmc complete"]);
+
+	#`$::XDSH $hmc -K`;
+	###############################################
+	# Now that all the stanzas files have been built and copied to the HMCs,
+	# we can use a single dsh command to invoke them all.
+	################################################
+	$options{ 'user' } = $user; 
+	$options{ 'nodes' } = $hmc; 
+	$options{ 'exit-status' } = 1;
+	$options{ 'stream' } = 1;	
+	$options{ 'preserve' } = 1;
+	$options{ 'command' } = "csmlicutil $tmp_file";
+#	$options{ 'command' } = "ls -al";
+
+	@res = xCAT::DSHCLI->runDsh_api(\%options, 0);
+	if ($::RUNCMD_RC) {    # error from dsh 
+        	my $rsp={};
+        	$rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
+        	xCAT::MsgUtils->message("S", $rsp, $::CALLBACK, 1);
+		dpush(\@value,[$hmc,"failed to run  xCAT::DSHCLI->runDsh_api()"]);
+		push(@value,[$hmc,$rsp->{data}->[0]]);
+		push(@value,[$hmc,"Maybe need to configure the HMC to allow remote ssh connections"]);
+		return(\@value);
+    	}
+
+
+	%options = ();
+
+	my $r = ();
+	foreach $r (@res){
+		push(@value, [$r]);	
+
+	}
+	push(@value, @result);
+	return (\@value);	
+
+}
+
+1;
+
+
