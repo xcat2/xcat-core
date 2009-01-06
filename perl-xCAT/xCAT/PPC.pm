@@ -32,7 +32,8 @@ my %modules = (
   rnetboot  => "xCAT::PPCboot",
   getmacs   => "xCAT::PPCmac",
   reventlog => "xCAT::PPClog",
-  rspconfig => "xCAT::PPCcfg"
+  rspconfig => "xCAT::PPCcfg",
+  rflash => "xCAT::PPCrflash"
 );
 
 ##########################################
