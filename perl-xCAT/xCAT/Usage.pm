@@ -117,7 +117,10 @@ my %usage = (
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]
-             [-t tries][-m][-e cmd][-c [timeout[timeout,..]]]"
+             [-t tries][-m][-e cmd][-c [timeout[timeout,..]]]",
+  "rflash" =>
+"Usage: rflash [ -h|--help|-v|--version]
+	rflash noderange -p directory [--activate concurrent | disruptive] [--commit | --recover] [-V|--verbose]"
 );
 my $vers = xCAT::Utils->Version();
 my %version = (
@@ -136,7 +139,8 @@ my %version = (
     "lsvm" => "$vers",
     "chvm" => "$vers",
     "rmvm" => "$vers",
-    "lsslp" => "$vers"
+    "lsslp" => "$vers",
+    "rflash" => "$vers"
 );
 
 #--------------------------------------------------------------------------------
