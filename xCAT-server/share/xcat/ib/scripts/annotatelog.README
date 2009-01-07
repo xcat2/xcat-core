@@ -1,0 +1,245 @@
+# IBM_PROLOG_BEGIN_TAG 
+# This is an automatically generated prolog. 
+#  
+#  
+#  
+# Licensed Materials - Property of IBM 
+#  
+# (C) COPYRIGHT International Business Machines Corp. 2008 
+# All Rights Reserved 
+#  
+# US Government Users Restricted Rights - Use, duplication or 
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp. 
+#  
+# IBM_PROLOG_END_TAG 
+
+annotatelog.README
+
+This README describes how to use the annotatelog script.
+
+The syntax of the annotatelog command is:
+
+annotatelog -f log_file [-s start_time] [-e end_time]
+            { [-i -g guid_file -l link_file] [-S] [-c] [-u]| [-a -g guid_file -l link_file]}
+            {[-n node_list -g guid_file] [-E]}
+            [-h]
+
+        -A       Output the combination of -i, -S, -c and -u. It should be used with -g and -l flags.
+        -f log_file
+                 Specifies a log file fullpath name to analyze.
+                 Must be xCAT consolidated log got from Qlogic HSM or ESM.
+        -s start_time
+                 Specifies the start time for analysis, where the start_time
+                 variable has the format ddmmyyhh:mm:ss (day, month, year, 
+                 hour, minute, and second), 00:00:00 is valid.
+        -e end_time
+                 Specifies the end time for analysis, where the end_time 
+                 variable has the format ddmmyyhh:mm:ss (day, month, year, 
+                 hour, minute, and second), 00:00:00 is valid.
+        -l link_file
+                 Specifies a link file fullpath name, which concatenates all
+                 '/var/opt/iba/analysis/baseline/fabric*links' files from all fabric management servers.
+        -g guid_file
+                 Specifies a guid file fullpath name, which has a list of 
+                 GUIDs as obtained from the "getGuids" script.
+        -E       Annotate with node ERRLOG_ON and ERRLOG_OFF information. This
+                 can help determine if a disappearance was caused by a node
+                 disappearing. It is for AIX nodes only and should be used with -x or -n flag.
+        -S       Sort the log entries by subnet manager only.
+        -i       Sort the log entries by IB node only.
+        -c       Sort the log entries by chassis only.
+        -u       Sort the log entries by FRU only.
+        -n node_list
+                 Specifies a comma-separated list of node host names, IP addresses to look up in log entries.
+        -h       Display usage information.
+        
+In xCAT cluster with IB QLogic switches, the switch logs and subnet 
+manager (ESM/HSM) logs will use the syslog protocol for log redirection; 
+they are redirected to the xCAT Management Node. The xCAT Management Node syslogd recognizes the facility (local6) and priority (NOTICE and above) and put the log 
+entries into a file/FIFO that is being monitored by AIXSyslogSensor on 
+AIX system or ErrorLogSensor on Linux system. The condition-response 
+setup on xCAT Management Node local will move the log entries to file 
+/var/log/xcat/errorlog/[xCAT Management Node]. So there are a lot of 
+entries in this log file and it is difficult for the administrator to look through.
+
+annotatelog is a sample script to parse the QLogic log entries in file 
+/var/log/xcat/errorlog/[xCAT Management Node] on xCAT Management Server 
+by subnet manager, IB node, chassis, FRU(Field-Replaceable Unit) or a 
+particular node. This script is supported by both AIX and Linux Management 
+Node. From xCAT's point of view, the log to analyze must be xCAT 
+consolidated log, which means this log file must come from xCAT 
+syslog/errorlog monitoring mechanism, such as /var/log/xcat/errorlog/[xCAT 
+Management Node] file. Since the log format is various, xCAT do not 
+support other log files.
+
+This script provides several flags to specify the category critera, 
+they are -S, -i, -c, -u, -n and -A.
+If -S flag is set, the output will be sorted by Subnet Manager, since 
+the SM may have multi-port, so the output is classified by 
+<subnet_manager_name: port number>, please see the details in the 
+example below:
+
+############################################
+Logs by Subnet Manager
+############################################
+
+----------------------------------------------
+Report by subnet manager: 'c890f12ec07:port 2' 
+----------------------------------------------
+May  5 09:06:33 c890f12ec07 local6:notice c890f12ec07 iview_sm[5445]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 2|COND:#4 Disappearance 
+from fabric|NODE:IBM G1 Logical HCA :port 2:0x000255007002651f|DETAIL:
+Node type: hca
+May  5 08:23:55 c890f12ec07 local6:notice c890f12ec07 iview_sm[5128]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 2|COND:#3 Appearance in 
+fabric|NODE:IBM G1 Logical HCA :port 2:0x0002550070027f1f|DETAIL:Node 
+type: hca
+
+----------------------------------------------
+Report by subnet manager: 'c890f12ec07:port 1'
+----------------------------------------------
+
+May  5 09:06:33 c890f12ec07 local6:notice c890f12ec07 iview_sm[5442]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 1|COND:#4 Disappearance 
+from fabric|NODE:IBM G1 Logical HCA :port 1:0x000255007002650f|DETAIL:
+Node type: hca
+May  5 09:06:33 c890f12ec07 local6:notice c890f12ec07 iview_sm[5442]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 1|COND:#4 Disappearance 
+from fabric|NODE:IBM G1 Logical HCA :port 1:0x0002550070027f0f|DETAIL:
+Node type: hca
+
+
+If -i flag is set, the output will be sorted by IB node, it is 
+classified by < node_name: port number : GUID number>, furthermore, 
+if the log entry includes keyword of "IBM *Logical", then we will 
+display the link relationships between the IBM G1 Logic HCA and 
+IBM G1 Logic Switch, IBM G1 Logic Switch and Qlogic Switch. We will 
+use the result file of getGuids script to get the node name 
+corresponding to HCA port number and GUIDs; and use the fabric link 
+files  from Fabric Management Server(HSM/ESM) to get the Qlogic swith 
+connection information, so -i flag must be used with -g and -l flags.; 
+and if the log entry does not include keyword of "IBM *Logical", we 
+could not get the corresponding nodename and connection relationship 
+for it, so this entry will be displayed directly and set the string 
+after "NODE:" as the IB node. Please see the details in the examples below:
+
+############################################
+Logs by IB node
+############################################
+
+----------------------------------------------
+Reported by IB node: 'c890f11ec06.ppd.pok.ibm.com: port 1: GUID 0x0002550070027f0f'
+- ehca0 <-> IBM G1 Logical Switch 1 port 17 (GUID 0x0002550070027f20)
+- Connector is C65-T1 (HV=Cx-T1)
+- IBM G1 Logical Switch 1 <-> SilverStorm 9024 DDR port 16 (GUID 0x00066a00d900042d)
+----------------------------------------------
+
+May  5 09:06:33 c890f12ec07 local6:notice c890f12ec07 iview_sm[5442]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 1|COND:#4 Disappearance 
+from fabric|NODE:IBM G1 Logical HCA :port 1:0x0002550070027f0f|DETAIL:
+Node type: hca
+
+----------------------------------------------
+Reported by IB node: 'SilverStorm 9120 GUID=0x00066a0002000225 Leaf 8, Chip A:port 0:0x00066a0007001311'
+----------------------------------------------
+Mar 25 16:21:54 c890f12ec07 iview_sm[3725]: c890f12ec07; MSG:NOTICE|
+SM:c890f12ec07:port 1|COND:#4 Disappearance from fabric|NODE:SilverStorm 
+9120 GUID=0x00066a0002000225 Leaf 8, Chip A:port 0:0x00066a0007001311|
+DETAIL:Node type: switch
+
+
+If -c flag is set, the output will be sorted by chassis, it is classified 
+by <chassis: model type: GUID number>, please see the details in the example 
+below:
+
+############################################################
+Logs by CHASSIS
+############################################################
+
+----------------------------------------------
+Reported by chassis: 'SilverStorm: model 9120: GUID 0x00066a0002000225' 
+----------------------------------------------
+
+Apr 23 09:16:56 qswitch slot101:9.114.80.179;MSG:WARNING|CHASSIS:SilverStorm 
+9120 GUID=0x00066a0002000225|COND:#17 FRU state changed from online 
+to offline|FRU:Power Supply 1|PN:200805-101
+
+
+If -u flag is set, the output will be sorted by FRU, please see the details in 
+the example below:
+
+############################################################
+Logs by FRUS from CHASSIS
+############################################################
+
+------------------------------------------------------------
+Associated with FRU: 'Power Supply 1' 
+------------------------------------------------------------
+
+Apr 23 09:19:12 qswitch slot101:9.114.80.179;MSG:NOTICE|CHASSIS:SilverStorm 
+9120 GUID=0x00066a0002000225|COND:#18 FRU state changed from offline 
+to online|FRU:Power Supply 1|PN:200805-101
+
+
+If -n flag is set, the output will be sorted by a certain nodename, please see 
+the details in the example below:
+
+############################################################
+Logs for special nodes
+############################################################
+------------------------------------------------------------
+Reported by node: 'c890f11ec06.ppd.pok.ibm.com'
+------------------------------------------------------------
+
+May  5 08:23:55 c890f12ec07 local6:notice c890f12ec07 iview_sm[5128]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 2|COND:#3 Appearance in fabric|
+NODE:IBM G1 Logical HCA :port 2:0x0002550070027f1f|DETAIL:Node type: hca
+May  5 09:06:33 c890f12ec07 local6:notice c890f12ec07 iview_sm[5442]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 1|COND:#4 Disappearance from 
+fabric|NODE:IBM G1 Logical HCA :port 1:0x0002550070027f0f|DETAIL:Node 
+type: hca
+
+------------------------------------------------------------
+Reported by node: 'c890f11ec05.ppd.pok.ibm.com'
+------------------------------------------------------------
+May  5 09:06:33 c890f12ec07 local6:notice c890f12ec07 iview_sm[5445]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 2|COND:#4 Disappearance from 
+fabric|NODE:IBM G1 Logical HCA :port 2:0x000255007002651f|DETAIL:Node 
+type: hca
+
+
+If -E flag is set with -n or -i flag, annotatelog script will use dsh to access 
+the IB nodes or node list specified by -n flag, and use "errpt -J ERRLOG_ON 
+ERRLOG_OFF" command to get the corresponding timestamps, and added these 
+timestamps into annotatelog output. Please see the detail below:
+
+----------------------------------------------
+Reported by IB node: 'c890f11ec06.ppd.pok.ibm.com: port 1: GUID 0x0002550070027f0f'
+- ehca0 <-> IBM G1 Logical Switch 1 port 17 (GUID 0x0002550070027f20)
+- Connector is C65-T1 (HV=Cx-T1)
+- IBM G1 Logical Switch 1 <-> SilverStorm 9024 DDR port 16 (GUID 0x00066a00d900042d)
+----------------------------------------------
+# c890f11ec06.ppd.pok.ibm.com
+# ERRLOG_ON: 01/05/08 09:23
+# ERRLOG_OFF: 04/05/08 09:23
+----------------------------------------------
+
+May  5 09:06:33 c890f12ec07 local6:notice c890f12ec07 iview_sm[5442]: 
+c890f12ec07; MSG:NOTICE|SM:c890f12ec07:port 1|COND:#4 Disappearance from 
+fabric|NODE:IBM G1 Logical HCA :port 1:0x0002550070027f0f|DETAIL:Node 
+type: hca
+
+
+If -A flag is set, the output will be the combination of -i, -S, -c and -u.
+
+If a log entry that can not be parsed into any types above, it will be displayed 
+in "Logs by others". And these logs can only be displayed when -A flag is used, 
+please see the details in the example below:
+
+############################################################
+Logs by others
+############################################################
+May 14 11:44:22 qswitch slot101:9.114.80.179 FEtask[86f38fb8]: ESM: Embedded SM 
+Error: rmsg_recv: output buffer[2016] too small for incoming data[2035] : 0
+May 14 11:44:22 qswitch slot101:9.114.80.179 PM_task[86f08298]: ESM: Embedded SM 
+Error: DoSendFeAsync  - message send failed  : 128

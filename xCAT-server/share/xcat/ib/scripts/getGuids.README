@@ -1,0 +1,69 @@
+# IBM_PROLOG_BEGIN_TAG 
+# This is an automatically generated prolog. 
+#  
+#  
+#  
+# Licensed Materials - Property of IBM 
+#  
+# (C) COPYRIGHT International Business Machines Corp. 2008 
+# All Rights Reserved 
+#  
+# US Government Users Restricted Rights - Use, duplication or 
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp. 
+#  
+# IBM_PROLOG_END_TAG 
+
+getGuids.README
+
+This README describes how to use the getGuids script.
+
+The syntax of the getGuids command is:
+
+getGuids [-h] [-f output_file]
+         -f output_file
+            Specifies a file full path name that is used to save the 
+            GUIDs output.
+         -h 
+            Display usage information.
+
+The getGuids is a sample script to get GUIDs for Infiniband Galaxy HCAs
+(Host Channel Adapter) and their ports from xCAT Management Nodes. It 
+needs to be run from xCAT Management Node, and will use dsh to all 
+the xCAT Managed Nodes so that it could use ibstat command on AIX system 
+or ibv_devinfo command on Linux system to get the information about the 
+IB devices. 
+
+If dsh is unreachable for certain nodes, getGuids will give a warning 
+message to the user and recommend configuring dsh for these nodes. If 
+ibstat or ibv_devinfo command is not available on the target nodes, 
+getGuids will give a warning message to indicate that could not get 
+GUIDs on these nodes.
+
+The output of this script will be printed to the screen and also saved 
+into output file, which could be specified by -f flag; otherwise, xCAT 
+will use the default output file /var/opt/xcat/ib/Guids.xcat. 
+
+The format for the output file is <Node: Device: Type: GUID>, for example:
+--------------------------------------------------
+c890f11ec05.ppd.pok.ibm.com: ehca0: baseguid: 00025500700265
+c890f11ec05.ppd.pok.ibm.com: ehca0: dev: 0002550070026500
+c890f11ec05.ppd.pok.ibm.com: ehca0: lsw0: 0002550070026580
+c890f11ec05.ppd.pok.ibm.com: ehca0: lsw1: 0002550070026581
+c890f11ec05.ppd.pok.ibm.com: ehca0: portGID_1: 000255007002650f
+c890f11ec05.ppd.pok.ibm.com: ehca0: portGID_2: 000255007002651f
+--------------------------------------------------
+
+This output file will be used by annotatelog script to organize the log 
+entries gathered onto the xCAT MN through remote logging. This script is 
+not necessary for non-Galaxy adapters because users can give the adapter 
+names directly and do not need the GUID map.
+
+getGuids will get IB GUIDs from all the AIX nodes and Linux nodes that 
+are defined on the xCAT Management Node (MN); for the nodes that are 
+not defined on xCAT MN, if user wants to get GUIDs for these nodes too, 
+please define them as xCAT Management Node first and configure dsh before 
+using getGuides script.
+
+The log file for the script getGuids is /var/log/xcat/getGuids.log.
+The supported hardware types of the nodes gathered GUIDs from are POWER6 
+HV4/HV4+, POWER6 HV8/HV8+ and POWER6 IH.

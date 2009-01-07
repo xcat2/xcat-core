@@ -1,0 +1,88 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Sample xCAT post script for configuring secondary adatper based on eth0 
+# settings and some conventions.  This scripts works for both diskfull installs # and diskless boots.
+
+use Socket;
+
+#Check the platform
+my $PLTFRM = `uname`;
+chomp $PLTFRM;
+
+my @nums = (0..3);
+foreach my $num (@nums) {
+    # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
+    my $nic = "ib$num";
+    my $hostname = "$ENV{NODE}-$nic";
+    my $packed_ip = gethostbyname($hostname);
+    if (!$packed_ip) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); exit 1; }
+    my $ip = inet_ntoa($packed_ip);
+    #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
+    my $netmask = "255.255.255.0";
+    my ($first, $second, $rest) = split(/\./, $ip);
+    my $gateway = "$first.$second.255.254";
+
+    if ($PLTFRM eq "Linux") {
+        # Write the info to the ifcfg file
+        my $dir = "/etc/sysconfig/network-scripts";
+        if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configiba: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+        print FILE "DEVICE=$nic\n";
+        print FILE "BOOTPROTO=none\n";
+        print FILE "IPADDR=$ip\n";
+        print FILE "NETMASK=$netmask\n";
+        print FILE "GATEWAY=$gateway\n";
+        print FILE "ONBOOT=yes\n";
+        close FILE;
+        runcmd("$dir/ifup $nic");
+        system("logger -t xcat 'configiba: successfully configured $nic.'");
+    } elsif ($PLTFRM eq "AIX") {
+        #Check whether the icm is available
+        my $cmd = "lsdev -C | grep icm | grep Available";
+        `$cmd`;
+        if ($?) {
+            my $iba_cmd = "mkdev -c management -s infiniband -t icm";
+            runcmd($iba_cmd);
+            if ($?) {
+                my $iba_command = "mkdev -l icm";
+                runcmd($iba_command);
+                if ($?) { exit $?; }
+            }
+        }
+        #Configure the IB interfaces
+        my $iba_num = int($num / 2);
+        my $ib_adapter = "iba$iba_num";
+        my $port;
+        if ($num % 2 ==0) { $port = 1; }
+        else { $port = 2; }
+        my $mkib_cmd = "mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask";
+        runcmd($mkib_cmd);
+        system("logger -t xcat 'configiba: successfully configured $nic.'");
+    }
+}
+exit 0;
+
+sub runcmd {
+    my $cmd = shift @_;
+    $cmd .= ' 2>&1';
+    my @output = `$cmd`;
+    my $rc = $? >> 8;
+    if ($rc) {
+        system("logger -t xcat 'configiba: command $cmd failed with rc $rc: " . join('',@output) . "'");
+        return $rc;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

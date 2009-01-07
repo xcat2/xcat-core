@@ -1,0 +1,1071 @@
+#!/usr/bin/perl
+# IBM_PROLOG_BEGIN_TAG 
+# This is an automatically generated prolog. 
+#  
+#  
+#  
+# Licensed Materials - Property of IBM 
+#  
+# (C) COPYRIGHT International Business Machines Corp. 2008 
+# All Rights Reserved 
+#  
+# US Government Users Restricted Rights - Use, duplication or 
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp. 
+#  
+# IBM_PROLOG_END_TAG 
+
+
+###########################################################################
+#                                                                         #
+# Command: annotatelog                                                    #
+#                                                                         #
+#-------------------------------------------------------------------------#
+#    This xCAT script is used to parse the QLogic log entries in file 
+#    /var/log/xcat/errorlog/[xCAT Management Nodes] on CSM Management 
+#    Node by subnet manager, IB node, chassis, FRU(Field-Replaceable Unit) or a 
+#    particular node. This script is supported by both AIX and Linux MN.
+#    From xCAT's point of view, the log to analyze must be xCAT 
+#    consolidated log, which means this log file must come from xCAT 
+#    syslog/errorlog monitoring mechanism, such as
+#    /var/log/xcat/errorlog/[xCAT Management Nodes] file. Since the log format
+#    is various, xCAT do not support other log files.
+#    Command Syntax:
+#    annotatelog -f log_file [-s start_time] [-e end_time]
+#                { [-i -g guid_file -l link_file] [-S] [-c] [-u]| [-a -g guid_file -l link_file]}
+#                {[-n node_list -g guid_file] [-E]}
+#                [-h]
+#
+#        -A       Output the combination of -i, -S, -c and -u. It should be used with -g and -l flags.
+#        -f log_file
+#                 Specifies a log file fullpath name to analyze.
+#                 Must be xCAT consolidated log got from Qlogic HSM or ESM.
+#        -s start_time
+#                 Specifies the start time for analysis, where the start_time
+#                 variable has the format ddmmyyhh:mm:ss (day, month, year, 
+#                 hour, minute, and second), 00:00:00 is valid.
+#        -e end_time
+#                 Specifies the end time for analysis, where the end_time 
+#                 variable has the format ddmmyyhh:mm:ss (day, month, year, 
+#                 hour, minute, and second), 00:00:00 is valid.
+#        -l link_file
+#                 Specifies a link file fullpath name, which concatenates all
+#                 '/var/opt/iba/analysis/baseline/fabric*links' files from all fabric management nodes.
+#        -g guid_file
+#                 Specifies a guid file fullpath name, which has a list of 
+#                 GUIDs as obtained from the "getGuids" script.
+#        -E       Annotate with node ERRLOG_ON and ERRLOG_OFF information. This
+#                 can help determine if a disappearance was caused by a node
+#                 disappearing. It is for AIX nodes only and should be used with -x or -n flag.
+#        -S       Sort the log entries by subnet manager only.
+#        -i       Sort the log entries by IB node only.
+#        -c       Sort the log entries by chassis only.
+#        -u       Sort the log entries by FRU only.
+#        -n node_list
+#                 Specifies a comma-separated list of node host names, IP addresses to look up in log entries.
+#        -h       Display usage information.
+# Exit codes:
+#     0 - success
+#     1 - fail
+###########################################################################
+
+use strict;
+use Getopt::Long;
+use Time::Local;
+
+#Maps between HCA adapter and connector
+%::HCAMAP = (
+        "iba0_lsw1" => "C65-T1 (HV=Cx-T1)", "iba0_lsw2" => "C65-T2 (HV=Cx-T2)",
+        "iba1_lsw1" => "C65-T3", "iba1_lsw2" => "C65-T4",
+        "iba2_lsw1" => "C66-T1", "iba2_lsw2" => "C66-T2",
+        "iba3_lsw1" => "C66-T3", "iba3_lsw2" => "C66-T4",
+        "ehca0_lsw1" => "C65-T1 (HV=Cx-T1)", "ehca0_lsw2" => "C65-T2 (HV=Cx-T2)",
+        "ehca1_lsw1" => "C65-T3", "ehca1_lsw2" => "C65-T4",
+        "ehca2_lsw1" => "C66-T1", "ehca2_lsw2" => "C66-T2",
+        "ehca3_lsw1" => "C66-T3", "ehca3_lsw2" => "C66-T4",
+);
+
+$::OK = 0;
+$::NOK = 1;
+$::SHSEP = "###############################################################################";
+$::DASEP = "-------------------------------------------------------------------------------";
+
+#Logs sorted by kinds of method
+%::SMLOGS;
+%::FRULOGS;
+%::CHASSISLOGS;
+%::NODELOGS;
+%::NODELOGSBYNAME;
+%::OTHERLOGS;
+#The start time and end time of logs that will be analyzed
+$::Start_Epoch;
+$::End_Epoch;
+#Record the relationship between guid and it's information 
+%::GUIDS;
+#Record links between HCA and Switch and links between Switch and Swtich 
+%::HCALinks;
+#ERRLOG_ON and ERRLOG_OFF information
+%::ELOGON;
+%::ELOGOFF;
+#Information related with a node
+%::NodeInfo;
+#List of nodes that their logs will be analyzed
+@::NodeList;
+
+# MAIN Main main#
+&getArgs();
+&getLogs($::LOG_FILE);
+&outputLogs();
+exit $::OK;
+
+#--------------------------------------------------------------------------------
+
+=head3  getArgs
+        Parse the command line and check the values
+        Notes:
+=cut
+
+#--------------------------------------------------------------------------------
+sub getArgs()
+{
+    $Getopt::Long::ignorecase = 0;
+    if (
+        !GetOptions(
+                    'h'      => \$::HELP,
+                    'A'      => \$::ALL,
+                    'f=s'    => \$::LOG_FILE,
+                    's=s'    => \$::START_TIME,
+                    'e=s'    => \$::END_TIME,
+                    'g=s'    => \$::GUIDS_FILE,
+                    'l=s'    => \$::LINKS_FILE,
+                    'E'      => \$::ERRLOG,
+                    'S'      => \$::SM,
+                    'i'      => \$::IBNODE,
+                    'c'      => \$::CHASSIS,
+                    'u'      => \$::FRU,
+                    'n=s'    => \$::NODE_LIST
+         )
+       )
+    {
+        usage();
+    	exit $::NOK;
+    }
+    if ( $::HELP == 1 )
+    {
+        usage();
+        exit $::OK;
+    }
+    if ( $::LOG_FILE eq "" )
+    {
+        print "Please use \"-f\" to specify a log file.";
+        usage();
+    	exit $::NOK;
+    }
+
+    if ( $::SM == 0 && $::IBNODE == 0 && $::CHASSIS == 0 && $::FRU == 0 && $::NODE_LIST eq "")
+    {
+        #If there is no flag specified, -A is default
+        $::ALL = 1;
+    }
+    
+    if ( $::ALL == 1 && ($::SM == 1 || $::IBNODE == 1 || $::CHASSIS == 1 || $::FRU == 1))
+    {
+        print "The flag -i, -S, -c or -u should not be used with -A.";
+        usage();
+    	exit $::NOK;
+    }
+
+    if ( ($::ALL == 1 || $::IBNODE == 1) && ( $::GUIDS_FILE eq "" || $::LINKS_FILE eq ""))
+    {
+        print "The -g flag and -l flag should be used with -a or -i flag.\n";
+        usage();
+    	exit $::NOK;
+    }
+
+    if ( $::ERRLOG == 1 && ( $::IBNODE == 0 && $::ALL == 0 && $::NODE_LIST eq "") )
+    {
+        print "The -E flag should be used with -n or -i or -a flag.\n";
+        usage();
+    	exit $::NOK;
+    }
+    
+    if ( $::NODE_LIST ne "" && $::GUIDS_FILE eq "" )
+    {
+        print "The -n flag should be used with -g flag.\n";
+        usage();
+    	exit $::NOK;
+    }
+    
+    if ( $::NODE_LIST ne "")
+    {
+        @::NodeList = split /,/, $::NODE_LIST;
+        #List all nodes in Managed or MinManaged mode
+        my @AllNodes = `nodels`; chomp @AllNodes;
+        my @NotDefinedNodes;
+    	foreach my $node (@::NodeList)
+        {
+            #If there are IP addresses in NodeList, convert IP to hostname first
+            if (isIpaddr($node))
+            {
+                my ($hostname, $ip) = getHost($node);
+                $node = $hostname;
+            }
+            #Check nodes in NodeList and find those that are not defined in CSM database or not in Managed or MinManaged mode
+            if (!(grep {$_ =~ /$node/} @AllNodes))
+            {
+                push (@NotDefinedNodes, $node);
+                next;
+            }
+    	}
+        if (scalar(@NotDefinedNodes))
+        {
+            my $badnodes = join ",", @NotDefinedNodes;
+            print "Could not find Managed Node(s) $badnodes in the node database.  Run lsnode -w \"Mode='Managed' or Mode='MinManaged'\" to see the list of valid node names.\n";
+            exit $::NOK;
+        }
+    }
+
+    if ( $::GUIDS_FILE ne "" ) { %::GUIDS = getGUIDs($::GUIDS_FILE); }
+    if ( $::LINKS_FILE ne "" ) { %::HCALinks = getHCALinks($::LINKS_FILE); }
+
+    if ( $::START_TIME ne "" )
+    {
+        $::Start_Epoch = epochTime($::START_TIME);
+    }
+    else
+    {
+        $::Start_Epoch = 0;
+    }
+
+    if ( $::END_TIME ne "" )
+    {
+        $::End_Epoch = epochTime($::END_TIME);
+    }
+    else
+    {
+        undef $::End_Epoch;
+    }
+}
+
+#-------------------------------------------------------------------------------
+-
+
+=head3    isIpaddr
+
+    returns 1 if parameter is has a valid IP address form.
+
+    Arguments:
+        dot qulaified IP address: e.g. 1.2.3.4
+    Returns:
+        1 - if legal IP address
+        0 - if not legal IP address.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if ($ipAddr) { blah; }
+    Comments:
+        Doesn't test if the IP address is on the network,
+        just tests its form.
+
+=cut
+
+#-------------------------------------------------------------------------------
+-
+sub isIpaddr
+{
+    my ($class, $addr) = @_;
+
+    #print "addr=$addr\n";
+    if ($addr !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+    {
+        return 0;
+    }
+
+    if ($1 > 255 || $1 == 0 || $2 > 255 || $3 > 255 || $4 > 255)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+#-------------------------------------------------------------------------------
+-
+
+#-------------------------------------------------------------------------------
+-
+
+=head3    getHost
+
+    Return primary hostname and ip address for the given hostname or
+    ip address and die if hostname resolution fails.
+
+    Arguments:
+        A string: either an Ip Address or a HostName.
+    Returns:
+         ($nodename, $nodeip) as strings
+    Error:
+        returns 0;
+    Example:
+        my ($nodename, $nodeip) = getHost($node);
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+-
+
+sub getHost
+{
+    my ($class, $arg, $live) = @_;
+
+    #print "arg=$arg\n";
+    my ($hostname, $ipaddr);
+    if (isIpaddr($arg))
+    {
+        $ipaddr = $arg;
+        my $packedaddr = inet_aton($ipaddr);
+        $hostname = gethostbyaddr($packedaddr, AF_INET);
+        if (!$hostname)
+        {
+            $hostname = $ipaddr;
+        }
+
+        #print "hostname=$hostname\n";
+    else    # they specified a hostname
+    {
+        $hostname = $arg;    # this may be a short hostname
+        my ($name, $aliases, $addrtype, $length, @addrs) =
+        gethostbyname($hostname);
+
+        #print "name=$name, # of addrs=$#addrs.\n";
+        my $packedaddr = $addrs[0];
+        $ipaddr   = inet_ntoa($packedaddr);
+        $hostname =
+          $name; # they may have specified a shorter or non-primary name
+        #print "ipaddr=$ipaddr, hostname=$hostname\n";
+    }
+    if $ipaddr =~ /127\.0\.0/;
+    return ($hostname, $ipaddr);
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  getLogs
+        Parse the logs
+        Notes:
+Arguments:
+        $logfile - The file name of log file
+Returns:
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub getLogs
+{
+    my ($logfile) = @_;
+    my $tsepoch;
+    unless (open(LOGFILE, $logfile))
+    {
+        print "Can't open '$logfile':\n\t$!";
+        exit $::NOK;
+    }
+	
+    foreach my $line (<LOGFILE>)
+    {
+        chomp $line;
+        $tsepoch = 0;
+        # only work with local6 logs
+        #if ( $line =~ /local6/ ) {
+        # parse up log entries
+            if ($line =~ /SM:.*COND:#12/ and ($::ALL == 1 || $::SM == 1))
+            {
+				my ($ts, $level, $sm, $cond, $node, $linkedto, $detail);
+                #Parse a line of logs
+                #The DETAIL is not always there
+                if ( $line =~ /(.........:..:..).*MSG:(\w*)\|SM:(.*)\|COND:(.*)\|NODE:(.*)\|LINKEDTO:(.*)\|DETAIL:(.*)/ )
+                {
+                    ($ts, $level, $sm, $cond, $node, $linkedto, $detail) = ($1, $2, $3, $4, $5, $6, $7);
+                }
+                elsif ($line =~ /(.........:..:..).*MSG:(\w*)\|SM:(.*)\|COND:(.*)\|NODE:(.*)\|DETAIL:(.*)/)
+                {
+                    ($ts, $level, $sm, $cond, $node, $detail) = ($1, $2, $3, $4, $5, $6);
+                }
+
+                $tsepoch = epochTime($ts) if($ts);
+                #Check the time of this log is in the period specified
+                if ( $tsepoch >= $::Start_Epoch && (!defined($::End_Epoch) || ($ts && $tsepoch <= $::End_Epoch)) )
+                {
+                    $::SMLOGS{$sm} = "$::SMLOGS{$sm}\n$line";
+                }
+                next;
+            }
+
+            if ($line =~ /CHASSIS:/ and ($::ALL == 1 || $::CHASSIS == 1 || $::FRU == 1))
+            {
+				my ($ts, $level, $chassis, $cond, $FRU, $pn, $details);
+                if ( $line =~ /(.........:..:..).*MSG:(\w*)\|CHASSIS:(.*)\|COND:(.*)\|FRU:(.*)\|PN:(.*)\|DETAIL:(.*)/ )
+                {
+                    ($ts, $level, $chassis, $cond, $FRU, $pn, $details) = ($1, $2, $3, $4, $5, $6, $7);
+                }
+                elsif ($line =~ /(.........:..:..).*MSG:(\w*)\|CHASSIS:(.*)\|COND:(.*)\|FRU:(.*)\|PN:(.*)/)
+                {
+                    ($ts, $level, $chassis, $cond, $FRU, $pn) = ($1, $2, $3, $4, $5, $6);
+                }
+
+                $tsepoch = epochTime($ts) if($ts);
+                if ( $tsepoch >= $::Start_Epoch && (!defined($::End_Epoch) || ($ts && $tsepoch <= $::End_Epoch)) )
+                {
+                    $FRU = "$chassis - $FRU";
+                    $::FRULOGS{$FRU} = "$::FRULOGS{$FRU}\n$line" if ($::ALL == 1 || $::FRU == 1);
+                    $::CHASSISLOGS{$chassis} = "$::CHASSISLOGS{$chassis}\n$line" if ($::ALL == 1 || $::CHASSIS == 1);
+                }
+                next;
+            }
+
+            if ($line =~ /SM:/ && ($::ALL == 1 || $::SM == 1 || $::IBNODE == 1 || $::NODE_LIST ne ""))
+            {
+                my $guid;
+                my $port;
+                my $guidref;
+                my $realguid;
+                my $lsw;
+                my $lswref;
+                my $hcaphys;
+                my $host;
+                my $elog_entry;
+                my ($ts, $level, $sm, $cond, $node, $linkedto, $detail);
+                if ( $line =~ /(.........:..:..).*MSG:(\w*)\|SM:(.*)\|COND:(.*)\|NODE:(.*)\|LINKEDTO:(.*)\|DETAIL:(.*)/)
+                {
+                    ($ts, $level, $sm, $cond, $node, $linkedto, $detail) = ($1, $2, $3, $4, $5, $6, $7);
+                }
+                elsif ( $line =~ /(.........:..:..).*MSG:(\w*)\|SM:(.*)\|COND:(.*)\|NODE:(.*)\|LINKEDTO:(.*)/ )
+                {
+                    ($ts, $level, $sm, $cond, $node, $linkedto) = ($1, $2, $3, $4, $5, $6);
+                }
+                elsif ( $line =~ /(.........:..:..).*MSG:(\w*)\|SM:(.*)\|COND:(.*)\|NODE:(.*)\|DETAIL:(.*)/ )
+                {
+                    ($ts, $level, $sm, $cond, $node, $detail) = ($1, $2, $3, $4, $5, $6);
+                }
+                elsif ( $line =~ /(.........:..:..).*MSG:(\w*)\|SM:(.*)\|COND:(.*)\|NODE:(.*)/ )
+                {
+                    ($ts, $level, $sm, $cond, $node) = ($1, $2, $3, $4, $5);
+                }
+				if ( $sm eq "") { $sm = "Other"; }
+                
+                $tsepoch = epochTime($ts) if($ts);
+                if ( $tsepoch >= $::Start_Epoch && (!defined($::End_Epoch) || ($ts && $tsepoch <= $::End_Epoch)) )
+                {
+                    if ($node =~ /IBM .*Logical/ && ($::ALL == 1 || $::IBNODE == 1 || $::NODE_LIST ne ""))
+                    {
+                        $guid = $node;
+                        $guid =~ s/.*:0x//;
+                        $port = $node;
+                        $port =~ s/.*port //;
+                        $port =~ s/:.*//;
+                        if ( $node =~ /IBM .*Logical Switch/ )
+                        {
+                            #It's for Logical Switch
+                            $realguid = $guid;
+                            $guid =~ s/..$/00/;
+                            $node =~ /.*Switch (\d):.*/;
+                            $lsw = $1;
+                            #The key for HCALinks to find the next link of this Logical Switch
+                            $guidref = "$realguid:1";
+                        }
+                        else
+                        {
+                            #It's for Logical HCA
+                            $::GUIDS{$guid}{type} =~ /.*(\d+)/;
+                            $lsw = $1;
+                            #The key for HCALinks to find the linked Logical Switch of this Logical HCA
+                            $guidref = "$guid:$port";
+                            $lswref = $::HCALinks{$guidref};
+                            $lswref =~ /.*GUID\s*0x(\w+).*/;
+                            $lswref = $1;
+                            #The key for HCALinks to find the next link of the Logical Switch
+                            $lswref = "$lswref:1";
+                        }
+                        my $hcadev = $::GUIDS{$guid}{dev};
+                        my $hcalu = "${hcadev}_lsw${lsw}";
+                        #Find the connector
+                        $hcaphys = $::HCAMAP{$hcalu};
+
+                        $host = $::GUIDS{$guid}{host};
+                        #If this it a log for HCA, the guid can be translated to a hostname using GUIDS map
+                        $node = "$host :port $port:0x$guid" if($host);
+                        if ( $::NODE_LIST ne "" )
+                        {
+                            if ( grep {$host =~ /$_/ || $_ =~ /$host/} @::NodeList )
+                            {
+                                $::NODELOGSBYNAME{$host} = "$::NODELOGSBYNAME{$host}\n$line";
+                            }
+                        }
+                        #If -E is specified, get the ERRLOG_ON and ERRLOG_OFF information
+                        if ( $::ERRLOG == 1 && $host && ($::ALL == 1 || $::IBNODE == 1 || ($::NODE_LIST ne "" && grep {$host =~ /$_/ || $_ =~ /$host/} @::NodeList)))
+                        {
+                            if ( ! exists $::ELOGON{$host})
+                            {
+                                my $ret = getERRLOG($host);
+                                ($::ELOGON{$host}, $::ELOGOFF{$host}) = split/[_]/, $ret;
+                            }
+                            $elog_entry = "\n# ERRLOG_ON: $::ELOGON{$host}\n# ERRLOG_OFF: $::ELOGOFF{$host}";
+                        }
+                        if ($::ALL == 1 || $::IBNODE == 1)
+                        {
+                            $::HCALinks{$guidref} =~ /(.+)\s*port.*/;
+                            my $swname = $1;
+                            my $lswn = $::HCALinks{$guidref} ? $::HCALinks{$guidref} : "Not Found";
+                            my $swn = $::HCALinks{$lswref} ? $::HCALinks{$lswref} : "Not Found";
+                            
+                            if ( (! exists $::NodeInfo{$node}) && $node)
+                            {
+                                if ( $node =~ /IBM .*Logical Switch/ )
+                                {
+                                    $::NodeInfo{$node} = "- <-> $lswn";
+                                }
+                                else
+                                {
+                                    $::NodeInfo{$node} = "- $::GUIDS{$guid}{dev} <-> $lswn\n" .
+                                                         "- Connector is $hcaphys\n" .
+                                                         "- $swname<-> $swn";
+                                    if ( ($::ALL == 1 || $::IBNODE == 1) && $::ERRLOG == 1 )
+                                    {
+                                        $::NodeInfo{$node} = $::NodeInfo{$node} . "\n$::DASEP\n# $host$elog_entry";
+                                    }
+                                }
+                            }
+                        }
+                        if ($::ERRLOG == 1 && $host && $::NODE_LIST ne "" && (grep {$host =~ /$_/ || $_ =~ /$host/} @::NodeList))
+                        {
+                            $::NodeInfo{$host} = "$elog_entry";
+                        }
+                    }
+                    
+                    $::SMLOGS{$sm} = "$::SMLOGS{$sm}\n$line" if ($::ALL == 1 || $::SM == 1);
+                    $::NODELOGS{$node} = "$::NODELOGS{$node}\n$line" if ($::ALL == 1 || $::IBNODE == 1);
+                }
+                next;
+            }
+			if ($line =~ /.*/ and ($::ALL == 1))
+            {
+                $line =~ /(.........:..:..).*/;
+                my $tsepoch = epochTime($1) if($1);
+                if ( $tsepoch >= $::Start_Epoch && (!defined($::End_Epoch) || ($1 && $tsepoch <= $::End_Epoch)) )
+                {
+                    $::OTHERLOGS{"others"} = "$::OTHERLOGS{\"others\"}\n$line";
+                }
+			}
+        #}
+    }
+    close LOGFILE;
+    return;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  outputLogs
+        Output the results of logs analysis
+        Notes:
+=cut
+
+#--------------------------------------------------------------------------------
+sub outputLogs
+{
+    my $SMLOGHDR = "Logs by Subnet Manager";
+    my $SMLOGSECT = "Reported by subnet manager: ";
+    my $IBNODEHDR = "Logs by IB node";
+    my $IBNODESECT = "Reported by IB node: ";
+    my $IBNODEHDRBYNAME = "Logs for special nodes";
+    my $CHLOGHDR = "Logs by CHASSIS";
+    my $CHLOGSECT = "Reported by chassis: ";
+    my $FRULOGHDR = "Logs by FRUS from CHASSIS";
+    my $FRULOGSECT = "Associated with FRU: ";
+    my $OTLOGHDR = "Logs by Others";
+    my $OTLOGSECT = "";
+
+    print <<EOUT;
+###############################################################################
+Order of log output:
+EOUT
+
+    my $nout = 1;
+    if ( $::SM == 1 or $::ALL == 1)
+    {
+        print <<SOUT;
+$nout. SM log organized by subnet manager location (Fabric/MS or switch)
+   Look for: "$SMLOGHDR" to start the SM logs.
+   Each section begins with "$SMLOGSECT".
+SOUT
+
+        $nout++;
+    }
+
+    if ( $::IBNODE == 1 or $::ALL == 1)
+    {
+        print <<SOUT;
+$nout. SM log organized by IB node (switch, logical switch, logical HCA, CA)
+   Look for: "$IBNODEHDR" to start the IB Node logs.
+   Each section begins with "$IBNODESECT".
+SOUT
+
+        $nout++;
+    }
+
+    if ( $::CHASSIS == 1 or $::ALL == 1)
+    {
+        print <<SOUT;
+$nout. Chassis logs organized by chassis (good for switch FRU problems; not links)
+   Look for: "$CHLOGHDR" to start the Chassis logs.
+   Each section begins with "$CHLOGSECT".
+SOUT
+
+        $nout++;
+    }
+
+    if ( $::FRU == 1 or $::ALL == 1)
+    {
+        print <<SOUT;
+$nout. Chassis logs organized by FRU in chassis
+   Look for: "$FRULOGHDR" to start the FRU based chassis logs.
+   Each section begins with "$FRULOGSECT".
+SOUT
+
+        $nout++;
+    }
+    
+    if ( $::ALL == 1)
+    {
+        print <<SOUT;
+$nout. Other logs
+SOUT
+
+        $nout++;
+    }
+    
+    if ( $::NODE_LIST ne "")
+    {
+        print <<SOUT;
+$nout. SM log organized by special nodes (switch, logical switch, logical HCA, CA)
+   Look for: "$IBNODEHDR" to start the IB Node logs.
+   Each section begins with "$IBNODESECT".
+SOUT
+
+        $nout++;
+    }
+    
+    print "###############################################################################";
+
+    if ( $::SM == 1 or $::ALL == 1)
+    {
+        outputEntries($SMLOGHDR, $SMLOGSECT, %::SMLOGS);
+    }
+    if ( $::IBNODE == 1 or $::ALL == 1)
+    {
+        outputEntries($IBNODEHDR, $IBNODESECT, %::NODELOGS);
+    }
+    if ($::CHASSIS == 1 or $::ALL == 1)
+    {
+        outputEntries($CHLOGHDR, $CHLOGSECT, %::CHASSISLOGS);
+    }
+    if ($::FRU == 1 or $::ALL == 1)
+    {
+        outputEntries($FRULOGHDR, $FRULOGSECT, %::FRULOGS);
+    }
+    if ($::ALL == 1)
+    {
+        outputEntries($OTLOGHDR, $OTLOGSECT, %::OTHERLOGS);
+    }
+    if ( $::NODE_LIST ne "" )
+    {
+        outputEntries($IBNODEHDRBYNAME, $IBNODESECT, %::NODELOGSBYNAME);
+    }
+    return;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  outputEntries
+        Output logs sorted by one method 
+        Notes:
+=cut
+
+#--------------------------------------------------------------------------------
+sub outputEntries
+{
+    my ($title, $prefix, %log) = @_;
+    print "\n$::SHSEP\n$title\n$::SHSEP\n";
+    for my $k ( keys %log )
+    {  
+        print "\n$::DASEP\n$prefix'$k'\n" if ( $prefix ne "");
+		if ( exists $::NodeInfo{$k} )
+        { 
+		    print "$::NodeInfo{$k}\n";
+        }
+		print "$::DASEP\n" if ( $prefix ne "");
+        print "$log{$k}\n";
+    }
+    return;
+};
+
+#--------------------------------------------------------------------------------
+
+=head3  epochTime
+        Convert a time string to numberic style
+        Notes:
+Arguments:
+        $timestring - A time string
+Returns:
+        $epoch - Time in numberic style
+=cut
+
+#--------------------------------------------------------------------------------
+sub epochTime
+{
+    my ($timestring) = @_;
+    my $ots = $timestring;
+    my $epoch = "";
+    my $formaterror = 0;
+    my %themon = ( "Jan" => 0, "Feb" => 1, "Mar" => 2, "Apr" => 3, "May" => 4,
+        "Jun" => 5, "Jul" => 6, "Aug" => 7, "Sep" => 8, "Oct" => 9,
+        "Nov" => 10, "Dec" => 11,
+    );
+
+    if ( length($timestring) > 1 )
+    {
+        #If the time string is not of ddmmyyhh:mm:ss format, it will be a time stamp of a log
+        if ( $timestring =~ /\S+\s+\d+\s+\d+:\d+:\d+/ )
+        {
+            my $mont = substr $timestring, 0, 3;
+            my $dayt = substr $timestring, 4, 2;
+            my $time = substr $timestring, 7;
+            if (exists $themon{$mont})
+            {
+                $mont = $themon{$mont} + 1;
+            }
+            my ($psec, $pmin, $phour, $pmday, $pmon, $pyear, $pwday, $pyday, $pisdst) = localtime();
+            $pyear = $pyear + 1900;
+            my $year = substr $pyear, 2, 2;
+            if ($dayt < 10) { $dayt =~ s/ /0/g; }
+            if ($mont < 10) { $mont = "0$mont"; }
+            #Format the timestring to ddmmyyhh:mm:ss
+            $timestring = "$dayt$mont$year$time";
+        }
+    }
+
+    if ( ! ($timestring =~ /^\d+:\d+:\d+$/) )
+    {
+        print "Invalid time '$ots'\n";
+        exit $::NOK;
+    }
+        
+    my $day = substr $timestring, 0, 2;
+    if ( !($day =~ /^\d+$/) || $day < 1 || $day > 31 )
+    {
+        $formaterror = 1;
+    }
+    my $mon = substr $timestring, 2, 2;
+    if ( !($mon =~ /^\d+$/) || $mon < 1 || $mon > 12 )
+    {
+        $formaterror = 1;
+    }
+    $mon = $mon - 1;
+    my $year = substr $timestring, 4, 2;
+    if ( !($year =~ /^\d+$/) )
+    {
+        $formaterror = 1;
+    }
+    $year = $year - 1900;
+    if ( $year < 0 ) { $year = $year + 2000 }
+    if ( $year > 138 ) { $formaterror = 1; }
+    my $hour = substr $timestring, 6, 2;
+    if ( !($hour =~ /^\d+$/) || $hour < 0 || $hour > 23 )
+    {
+        $formaterror = 1;
+    }
+    my $min = substr $timestring, 9, 2;
+    if ( !($min =~ /^\d+$/) || $min < 0 || $min > 59 )
+    {
+        $formaterror = 1;
+    }
+    my $sec = substr $timestring, 12, 2;
+    if ( !($sec =~ /^\d+$/) || $sec < 0 || $sec > 59 )
+    {
+        $formaterror = 1;
+    }
+    if($formaterror)
+    {
+        print "Invalid time '$ots'\n";
+        exit $::NOK;
+    }
+    $epoch = timegm($sec, $min, $hour, $day, $mon, $year);
+
+    return ($epoch);
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  usage
+
+        usage for annotatelog
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub usage
+{
+
+ print <<EFMT;
+
+Usage: annotatelog -f log_file [-s start_time] [-e end_time]
+                   { [-i -g guid_file -l link_file] [-S] [-c] [-u]| [-a -g guid_file -l link_file]}
+                   {[-n node_list -g guid_file] [-E]}
+                   [-h]
+
+        -A       Output the combination of -i, -S, -c and -u. It should be used with -g and -l flags.
+        -f log_file
+                 Specifies a log file fullpath name to analyze.
+                 Must be CSM consolidated log got from Qlogic HSM or ESM.
+        -s start_time
+                 Specifies the start time for analysis, where the start_time
+                 variable has the format ddmmyyhh:mm:ss (day, month, year, 
+                 hour, minute, and second), 00:00:00 is valid.
+        -e end_time
+                 Specifies the end time for analysis, where the end_time 
+                 variable has the format ddmmyyhh:mm:ss (day, month, year, 
+                 hour, minute, and second), 00:00:00 is valid.
+        -l link_file
+                 Specifies a link file fullpath name, which concatenates all
+                 '/var/opt/iba/analysis/baseline/fabric*links' files from all fabric management nodes.
+        -g guid_file
+                 Specifies a guid file fullpath name, which has a list of 
+                 GUIDs as obtained from the "getGuids" script.
+        -E       Annotate with node ERRLOG_ON and ERRLOG_OFF information. This
+                 can help determine if a disappearance was caused by a node
+                 disappearing. It is for AIX nodes only and should be used with -x or -n flag.
+        -S       Sort the log entries by subnet manager only.
+        -i       Sort the log entries by IB node only.
+        -c       Sort the log entries by chassis only.
+        -u       Sort the log entries by FRU only.
+        -n node_list
+                 Specifies a comma-separated list of node host names, IP addresses to look up in log entries.
+        -h       Display usage information.
+
+EFMT
+
+ return;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  getERRLOG
+        Use dsh to run errpt command to get the ERRLOG_ON and ERRLOG_OFF information
+        Notes:
+Arguments:
+        $host - Host that the ERRLOG_ON and ERRLOG_OFF information is get from
+Returns:
+        $ret - ERRLOG_ON and ERRLOG_OFF information
+=cut
+
+#--------------------------------------------------------------------------------
+sub getERRLOG
+{
+    my ($host) = @_;
+    print "Getting errpt on $host\n";
+    my $rc = checkDshReachability($host);
+    if ( $rc != 0 )
+    {
+        print "Warning: The dsh is unreachable for the node: $host. Run updatenode to configure dsh for that node.\n";
+		return "";
+    }
+    my $cmd = "dsh -w $host 'errpt -J \"ERRLOG_ON ERRLOG_OFF\"'";
+    my $out = `$cmd`;
+	if ($? != 0)
+    {
+	    print "Errors occured when running command: $cmd. The node $host may be not AIX node.\n";
+		return "";
+	}
+    my $osep = "";
+    my $fsep = "";
+    my $logon = "";
+    my $logoff = "";
+    my $ts = "";
+
+    foreach my $line (split /[\n]/, $out)
+    {
+        chomp $line;
+        if ($line =~/.*TIMESTAMP/) { next;}
+        if ($line =~ /.*ON/)
+        {
+            if ($line =~ /(\S*) *(\S*) *(\w*) .*/)
+            {
+                my ($junk, $junk, $ts) = ($1, $2, $3);
+                $ts = neatTime($ts);
+                $logon = "$logon$osep$ts";
+                $osep = "; ";
+            }
+        }
+        if ($line =~ /.*OFF/)
+        {
+            if ($line =~ /(\S*) *(\S*) *(\w*) .*/)
+            {
+                my ($junk, $junk, $ts) = ($1, $2, $3);
+                $ts = neatTime($ts);
+                $logoff = "$logoff$fsep$ts";
+                $fsep = "; ";
+            }
+        }
+    }
+    my $ret = "${logon}_${logoff}";
+    return ($ret);
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  neatTime
+        Convert the time stamp of ERRLOG_ON and ERRLOG_OFF information into mm/dd/yy hh:mm format
+        Notes:
+Arguments:
+        $timein - Time stamp of ERRLOG_ON and ERRLOG_OFF information
+Returns:
+        $neattime - Formatted time
+=cut
+
+#--------------------------------------------------------------------------------
+sub neatTime
+{
+    my ($timein) = @_;
+    my $m = substr $timein, 0, 2;
+    my $d = substr $timein, 2, 2;
+    my $h = substr $timein, 4, 2;
+    my $mn = substr $timein, 6, 2;
+    my $y = substr $timein, 8, 2;
+    my $neattime = "$m/$d/$y $h:$mn";
+
+    return $neattime;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  getGUIDs
+        Get guid maps
+        Notes:
+Arguments:
+        $guidfile - A guid file fullpath name, which has a list of GUIDs as obtained from the "getGuids" script.
+Returns:
+        %guids - A hash table recording guid maps
+=cut
+
+#--------------------------------------------------------------------------------
+sub getGUIDs
+{
+    my ($guidfile) = @_;
+    my %guids;
+    unless(open(GUIDSFILE, $guidfile))
+    {
+        print "Can't open guid file '$guidfile':\n\t$!";
+        exit $::NOK;
+    }
+
+    foreach my $line (<GUIDSFILE>)
+    {
+        chomp $line;
+        if ($line =~ /(\S*): (\S*): (\S*): (\w*$)/)
+        {
+            my ($host, $dev, $type, $guid) = ($1, $2, $3, $4);
+            $guids{$guid}{host} = $host;
+            $guids{$guid}{dev} = $dev;
+            $guids{$guid}{type} = $type;
+        }
+    }
+	close GUIDSFILE;
+    return %guids;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  getHCALinks
+        Get links between HCA and Switch and links between Switch and Swtich 
+        Notes:
+Arguments:
+        $hcalfile - A link file fullpath name, which concatenates all '/var/opt/iba/analysis/baseline/fabric*links' files from all fabric management nodes.
+Returns:
+        %hcalinks - A hash table recording links
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub getHCALinks
+{
+    my ($hcalfile) = @_;
+    my $getit = 0;
+    my $hcaport = "";
+    my %hcalinks;
+
+    unless(open(LINKS, $hcalfile))
+    {
+        print "Can't open HCA Links file '$hcalfile':\n\t$!";
+        exit $::NOK;
+    }
+    foreach my $line (<LINKS>)
+    {
+        if ( $getit == 1  )
+        {
+            if ($line =~ /.*0x(\S*)\s+(\d+)\s+(\w+)\s+(.*)/)
+            {
+                my ($guid, $port, $type, $name) = ($1, $2, $3, $4);
+                $hcalinks{$hcaport} = "$name port $port (GUID 0x$guid)";
+                $getit = 0;
+            }
+        }
+        if ($line =~ /g.*IBM.*Logical/)
+        {
+            if ($line =~ /.*g 0x(\S*) *(\d*) .*/)
+            {
+                my $port;
+                ($hcaport, $port) = ($1, $2);
+                $hcaport = "$hcaport:$port";
+                $getit = 1;
+            }
+        }
+        else
+        {
+            $getit = 0;
+        }
+    }
+    
+    foreach my $key (keys %::HCALinks)
+    {
+        print "$key -> $hcalinks{$key}\n";
+    }
+    close LINKS;
+    return %hcalinks;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   checkDshReachability
+
+        Notes: Check the dsh reachability between the Management Nodes
+               and node.
+
+Arguments:
+        $node - the remote node hostname.
+
+Returns:
+        $::OK - The remote node is reachable through dsh.
+        $::NOK - The remote node is unreachable through dsh.
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub checkDshReachability()
+{
+    my ($node) = @_;
+    my $output = `dsh -Q -n $node date 2>/dev/null`;
+    return $?;
+}
