@@ -331,7 +331,7 @@ sub rflash {
 	my @xml_files;
 	my $upgrade_required;
 	my $stanza = undef;
-	
+	my $mtms_t;	
 	my @value;
 
 	$hmc = @$exp[3];
@@ -356,6 +356,7 @@ sub rflash {
 
 	while(($mtms,$h) = each(%$hash)) {
 		dpush(\@value,[$hmc, "mtms:$mtms"]);
+		$mtms_t = "$mtms_t $mtms";
         	my $lflag = 0;
 		my $managed_system = $mtms;
       		if( defined( $housekeeping ) ) {
@@ -388,7 +389,7 @@ sub rflash {
 				} else {
 					$component = "power";
 				}	
-				dpush(\@value, [$hmc,"$mtms:componet:$component!"]);
+				dpush(\@value, [$hmc,"$mtms:component:$component!"]);
 	
 				my $values = xCAT::PPCcli::lslic( $exp, $d );
         	    		my $Rc = shift(@$values);
@@ -414,6 +415,7 @@ sub rflash {
 				($rpm_file, $xml_file, $upgrade_required,$msg, $flag) = &get_lic_filenames($mtms);
 				if( $flag == -1) {
 					push (@value, [$hmc,"$mtms: $msg"]);
+					push (@value, [$hmc,"Failed to upgrade the firmware of $mtms on $hmc"]);
 					return (\@value);
 				}
 				dpush ( \@value, [$hmc, $msg]);
@@ -431,8 +433,8 @@ sub rflash {
                         		push @rpm_files, $rpm_file;
                         		push @xml_files, $xml_file;
                         	}
-
-				push(@result,[$hmc, "Upgrade $mtms from release level:$release_level activated level:$active_level to $rpm_file successfully"]);
+				my ($volume,$directories,$file) = File::Spec->splitpath($rpm_file);
+				push(@result,[$hmc, "Upgrade $mtms from release level:$release_level activated level:$active_level to $file successfully"]);
 
                         }
 			
@@ -487,6 +489,8 @@ sub rflash {
         	xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 		push(@value,[$hmc,$rsp->{data}->[0]]);
 		push(@value,[$hmc,"Failed to copy $tmp_file $rpm_file_list $xml_file_list to $hmc"]);
+		push(@value,[$hmc,"Please check whether the HMC $hmc is configured to allow remote ssh connections"]);
+		push (@value, [$hmc,"Failed to upgrade the firmware of $mtms_t  on $hmc"]);
 		return(\@value);
     	}
 
@@ -514,7 +518,9 @@ sub rflash {
         	xCAT::MsgUtils->message("S", $rsp, $::CALLBACK, 1);
 		dpush(\@value,[$hmc,"failed to run  xCAT::DSHCLI->runDsh_api()"]);
 		push(@value,[$hmc,$rsp->{data}->[0]]);
-		push(@value,[$hmc,"Maybe need to configure the HMC to allow remote ssh connections"]);
+		push(@value,[$hmc,"Please check whether the HMC $hmc is configured to allow remote ssh connections"]);
+		#push (@value, [$hmc,"Failed to run the upgrade command \"rflash\" on $hmc"]);
+		push (@value, [$hmc,"Failed to upgrade the firmware of $mtms_t  on $hmc"]);
 		return(\@value);
     	}
 
