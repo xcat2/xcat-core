@@ -1,6 +1,6 @@
 Summary: Metapackage for a common, default xCAT service node setup
 Name: xCATsn
-Version: 2.1.1
+Version: 2.2
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 4
 License: EPL
