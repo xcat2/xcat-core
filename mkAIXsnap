@@ -54,25 +54,25 @@ echo "# xCAT on AIX - install script" > $RPMDIR/instxcat
 # build the RPMs
 #
 ./makeperlxcatrpm
-mv /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-2.1*rpm $RPMDIR/
-echo "rpm -Uvh perl-xCAT-2.1*rpm" >> $RPMDIR/instxcat
+mv /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-2.*rpm $RPMDIR/
+echo "rpm -Uvh perl-xCAT-2.*rpm" >> $RPMDIR/instxcat
 
 ./makeclientrpm
-mv /opt/freeware/src/packages/RPMS/ppc/xCAT-client-2.1*rpm $RPMDIR/
-echo "rpm -Uvh xCAT-client-2.1*rpm" >> $RPMDIR/instxcat
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-client-2.*rpm $RPMDIR/
+echo "rpm -Uvh xCAT-client-2.*rpm" >> $RPMDIR/instxcat
 
 ./makeserverrpm
-mv /opt/freeware/src/packages/RPMS/ppc/xCAT-server-2.1*rpm $RPMDIR/
-echo "rpm -Uvh xCAT-server-2.1*rpm" >> $RPMDIR/instxcat
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-server-2.*rpm $RPMDIR/
+echo "rpm -Uvh xCAT-server-2.*rpm" >> $RPMDIR/instxcat
 
 ./makermcrpm
-mv /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc-2.1*rpm $RPMDIR/
-echo "rpm -Uvh xCAT-rmc-2.1*rpm" >> $RPMDIR/instxcat
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc-2.*rpm $RPMDIR/
+echo "rpm -Uvh xCAT-rmc-2.*rpm" >> $RPMDIR/instxcat
 
 cd ./xCAT
 ./mkrpm
-mv /opt/freeware/src/packages/RPMS/ppc/xCAT-2.1*rpm $RPMDIR/
-echo "rpm -Uvh xCAT-2.1*rpm" >> $RPMDIR/instxcat
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-2.*rpm $RPMDIR/
+echo "rpm -Uvh xCAT-2.*rpm" >> $RPMDIR/instxcat
 
 #
 # create the tar.gz file to upload
