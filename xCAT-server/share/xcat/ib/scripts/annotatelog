@@ -68,7 +68,7 @@
 #     1 - fail
 ###########################################################################
 
-use strict;
+use Net::Config;
 use Getopt::Long;
 use Time::Local;
 
@@ -247,7 +247,6 @@ sub getArgs()
 }
 
 #-------------------------------------------------------------------------------
--
 
 =head3    isIpaddr
 
@@ -271,7 +270,6 @@ sub getArgs()
 =cut
 
 #-------------------------------------------------------------------------------
--
 sub isIpaddr
 {
     my ($class, $addr) = @_;
@@ -293,10 +291,8 @@ sub isIpaddr
 }
 
 #-------------------------------------------------------------------------------
--
 
 #-------------------------------------------------------------------------------
--
 
 =head3    getHost
 
@@ -317,7 +313,6 @@ sub isIpaddr
 =cut
 
 #-------------------------------------------------------------------------------
--
 
 sub getHost
 {
@@ -329,13 +324,14 @@ sub getHost
     {
         $ipaddr = $arg;
         my $packedaddr = inet_aton($ipaddr);
-        $hostname = gethostbyaddr($packedaddr, AF_INET);
+        $hostname = gethostbyaddr($packedaddr,AF_INET);
         if (!$hostname)
         {
             $hostname = $ipaddr;
         }
 
         #print "hostname=$hostname\n";
+    }
     else    # they specified a hostname
     {
         $hostname = $arg;    # this may be a short hostname
@@ -349,7 +345,6 @@ sub getHost
           $name; # they may have specified a shorter or non-primary name
         #print "ipaddr=$ipaddr, hostname=$hostname\n";
     }
-    if $ipaddr =~ /127\.0\.0/;
     return ($hostname, $ipaddr);
 }
 
