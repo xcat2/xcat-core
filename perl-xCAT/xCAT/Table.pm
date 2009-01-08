@@ -7,6 +7,7 @@
 #class xcattable
 package xCAT::Table;
 use Sys::Syslog;
+use Data::Dumper;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -1038,6 +1039,10 @@ sub getNodeAttribs
     foreach $datum (@data) {
     foreach $attrib (@attribs)
     {
+        unless (defined $datum->{$attrib}) {
+            #skip undefined values, save time
+            next;
+        }
 
         if ($datum->{$attrib} =~ /^\/.*\/.*\/$/)
         {
@@ -1068,6 +1073,10 @@ sub getNodeAttribs
                $retval = $node;
                $retval =~ s/$parts[0]/$parts[1]/;
                $datum->{$attrib} = $retval;
+               if ($datum->{$attrib} =~ /^$/) {
+                  #If regex forces a blank, act like a normal blank does
+                  delete $datum->{$attrib};
+               }
                next; #skip the redundancy that follows otherwise
             }
             while ($curr)
@@ -1097,6 +1106,10 @@ sub getNodeAttribs
 
             #print Data::Dumper::Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
             #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
+        }
+        if ($datum->{$attrib} =~ /^$/) {
+            #If regex forces a blank, act like a normal blank does
+            delete $datum->{$attrib};
         }
     }
     }
