@@ -7,7 +7,7 @@ B<xdsh> - Concurrently runs commands on multiple nodes.
 B<xdsh> I<noderange> [B<-B> I<bypass>] [B<-C> I<context>] [B<-e>] [B<-E> I<environment_file>]  [B<-f> I<fanout>]
 [B<-K>]  [B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
-[B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
+[B<-T>] [B<-v>] [B<-X> I<env_list>] [B<--devicetype> I<type of device>] [B<-z>] I<command_list>
 
 B<xdsh> [B<-i> I<image path>] I<command_list>
 
@@ -343,6 +343,10 @@ string, all B<xdsh> environment variables will be ignored.
 This option is useful when running B<xdsh> from within other
 scripts when you don't want the user's environment affecting
 the behavior of xdsh.
+
+=item B<--devicetype> I<type of device>
+
+Specify a user-defined device type that references the location of relevant device configuration file. The devicetype value must correspond to a valid device configuration file under the /var/opt/csm/ directory. For example, the /var/opt/csm/IBSwitch/Qlogic/config file is the location if devicetype is specified ¡°IBSwitch::Qlogic¡±
 
 =item B<-z>|B<--exit-status>
 

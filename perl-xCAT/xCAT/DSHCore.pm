@@ -248,7 +248,8 @@ sub ifconfig_inet
 =cut
 
 #---------------------------------------------------------------------------
-
+# NOTE: global environment $::__DSH_LAST_LINE only can be used in DSHCore::pipe_handler and DSHCore::pipe_handler_buffer
+$::__DSH_LAST_LINE  = undef;
 sub pipe_handler
 {
     my ($class, $options, $target_properties, $read_fh, $buffer_size, $label,
@@ -258,6 +259,21 @@ sub pipe_handler
     my $line;
     my $target_hostname;
     my $eof_reached = undef;
+    my $cust_rc_deal =0;
+
+    if ($::USER_POST_CMD)
+    {
+        # If user provide post-command to display return code,
+        # the keyword 'DSH_RC' will be searched,
+        # the return code is gotten in another way as shown like below:
+        # ...
+        # <output>
+        # <return_code>
+        # DSH_RC
+        #
+        # The last two lines are needed to be moved out from output
+        $cust_rc_deal = 1;
+    }
 
     while (sysread($read_fh, $line, $buffer_size) != 0
            || ($eof_reached = 1))
@@ -288,6 +304,22 @@ sub pipe_handler
 
         if (@lines)
         {
+            if ($cust_rc_deal)
+            {
+                # Dump the last line at the beginning of current buffer
+                if ($::__DSH_LAST_LINE)
+                {
+                    unshift @lines, "$::__DSH_LAST_LINE" ;
+                }
+                # Pop current buffer to $::__DSH_LAST_LINE
+                $::__DSH_LAST_LINE = $lines[scalar @lines - 1];
+                pop @lines;
+                # Skip this loop if array @lines is empty.
+                if (scalar @lines == 0)
+                {
+                    next;
+                }
+            }
 
             $line = join "\n", @lines;
             $line .= "\n";
@@ -301,6 +333,21 @@ sub pipe_handler
                 my ($discard, $target_rc) = split '=', $target_rc_string;
                 $line =~ s/:DSH_TARGET_RC=$target_rc:\n//g;
                 $$target_properties{'target-rc'} = $target_rc;
+            }
+            if ( $::__DSH_LAST_LINE =~ /DSH_RC/ && $cust_rc_deal) {
+                my $target_rc = undef;
+                # Get the number in the last line
+                $line =~ /[\D]*([0-9]+)\s*$/ ;
+                $target_rc = $1;
+                $$target_properties{'target-rc'} = $target_rc;
+                # Remove the last line
+                $line =~ s/$target_rc\s*\n$//g;
+                #$line = $line . "## ret=$target_rc";
+                # Clean up $::__DSH_LAST_LINE
+                undef $::__DSH_LAST_LINE ;
+                # when '-z' is specified, display return code
+                $::DSH_EXIT_STATUS &&
+                    ($line .="Remote_command_rc = $target_rc");
             }
 
             if ($line ne '')
@@ -395,6 +442,7 @@ sub pipe_handler
 =cut
 
 #---------------------------------------------------------------------------
+# NOTE: global environment $::__DSH_LAST_LINE only can be used in DSHCore::pipe_handler and DSHCore::pipe_handler_buffer
 
 sub pipe_handler_buffer
 {
@@ -405,11 +453,25 @@ sub pipe_handler_buffer
     my $line;
     my $eof_reached = undef;
 
+    my $cust_rc_deal =0;
+    if ($::USER_POST_CMD)
+    {
+        # If user provide post-command to display return code,
+        # the keyword 'DSH_RC' will be searched,
+        # the return code is gotten in another way as shown like below:
+        # ...
+        # <output>
+        # <return_code>
+        # DSH_RC
+        #
+        # The last two lines are needed to be moved out from output
+        $cust_rc_deal = 1;
+    }
+
     while (   (sysread($read_fh, $line, $buffer_size) != 0)
            || ($eof_reached = 1))
     {
         last if ($eof_reached);
-
         if ($line =~ /^\n$/)
         {
 
@@ -434,6 +496,22 @@ sub pipe_handler_buffer
 
         if (@lines)
         {
+            if ($cust_rc_deal)
+            {
+                # Dump the last line at the beginning of current buffer
+                if ($::__DSH_LAST_LINE)
+                {
+                    unshift @lines, "$::__DSH_LAST_LINE" ;
+                }
+                # Pop current buffer to $::__DSH_LAST_LINE
+                $::__DSH_LAST_LINE = $lines[scalar @lines - 1];
+                pop @lines;
+                # Skip this loop if array @lines is empty.
+                if (scalar @lines == 0)
+                {
+                    next;
+                }
+            }
 
             $line = join "\n", @lines;
             $line .= "\n";
@@ -447,6 +525,21 @@ sub pipe_handler_buffer
                 my ($discard, $target_rc) = split '=', $target_rc_string;
                 $line =~ s/:DSH_TARGET_RC=$target_rc:\n//g;
                 $$target_properties{'target-rc'} = $target_rc;
+            }
+            if ( $::__DSH_LAST_LINE =~ /DSH_RC/ && $cust_rc_deal) {
+                my $target_rc = undef;
+                # Get the number in the last line
+                $line =~ /[\D]*([0-9]+)\s*$/ ;
+                $target_rc = $1;
+                $$target_properties{'target-rc'} = $target_rc;
+                # Remove the last line
+                $line =~ s/$target_rc\s*\n$//g;
+                #$line = $line . "## ret=$target_rc";
+                # Clean up $::__DSH_LAST_LINE
+                undef $::__DSH_LAST_LINE ;
+                # when '-z' is specified, display return code
+                $::DSH_EXIT_STATUS &&
+                    ($line .="Remote_command_rc = $target_rc");
             }
 
             if ($line ne '')
@@ -469,7 +562,6 @@ sub pipe_handler_buffer
             last if ($fh_count == 0);
         }
     }
-
     return $eof_reached;
 }
 

@@ -201,6 +201,7 @@ sub parse_args_xdsh
             'T|trace'                  => \$options{'trace'},
             'V|version'                => \$options{'version'},
 
+            'devicetype=s'             => \$options{'devicetype'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},

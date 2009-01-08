@@ -44,6 +44,13 @@ if { [info exists env(XCAT_UPD_MULTNODES)] } {
 } else {
 	set manynodes ""
 }
+
+if { [info exists env(SSH_SETUP_COMMAND)] } {
+    set ssh_setup_cmd $env(SSH_SETUP_COMMAND)
+} else {
+    set ssh_setup_cmd ""
+}
+
 #
 # check input arguments
 #
@@ -61,7 +68,13 @@ if { [llength $argv] != 0 } {
 	# -t means test to see if the shell is already setup
 	if { [string compare "-t" [lindex $argv 0]] ==0 } {
 		set env(LC_ALL) "C"
-		set pid [ spawn [lindex $argv 1] [lindex $argv 2] -l root echo test.success ]
+		if { [string compare $ssh_setup_cmd $empty] !=0 } {
+			set userid "admin"
+		} else {
+			set userid "root"
+		}
+
+		set pid [ spawn [lindex $argv 1] [lindex $argv 2] -l $userid echo test.success ]
 		expect {
 			timeout { exit 1 }
 			"Are you sure you want to continue connecting (yes/no)?" {
@@ -210,6 +223,9 @@ if { [llength $argv] != 0 } {
 		set printlist [ join $nodelist ", " ]
 		set scp "/usr/bin/scp"
 		set directory "/install/postscripts/.ssh"
+		set fh_auth_keys2  [ open "/install/postscripts/.ssh/authorized_keys2" "r"]
+		set auth_keys2 [read $fh_auth_keys2]
+		close $fh_auth_keys2
 	        if { [info exists env(XCAT_REMOTE_PASSWORD)] } {
 		    set word $env(XCAT_REMOTE_PASSWORD)
 		} else {
@@ -224,33 +240,64 @@ if { [llength $argv] != 0 } {
 		    send_user "\n"
 		}
 		foreach node $nodelist {
-			set env(LC_ALL) "C"
-			set pid [ spawn $scp -r -p $directory root\@$node:/tmp ] 
-			expect {
-				"Are you sure you want to continue connecting (yes/no)?" {
-					send "yes\r"
-					exp_continue
+			if { [string compare $ssh_setup_cmd $empty] ==0 } {
+				set env(LC_ALL) "C"
+				set pid [ spawn $scp -r -p $directory root\@$node:/tmp ] 
+				expect {
+					"Are you sure you want to continue connecting (yes/no)?" {
+						send "yes\r"
+						exp_continue
+					}
+					"*ssword*" {
+						send "$word\r"
+						exp_continue
+					}
+					"Permission denied*" {
+						exec /bin/kill $pid
+					}
 				}
-				"*ssword*" {
-					send "$word\r"
-					exp_continue
+				set pid [ spawn $remoteshell $node -l root /tmp/.ssh/copy.perl ]
+				expect {
+					"Are you sure you want to continue connecting (yes/no)?" {
+						send "yes\r"
+						exp_continue
+					}
+					"*ssword*" {
+						send "$word\r"
+						exp_continue
+					}
+					"Permission denied*" {
+						exec /bin/kill $pid
+					}
 				}
-				"Permission denied*" {
-					exec /bin/kill $pid
+			} else {
+				# Loop all keys in $auth_keys2 and generate ssh setup command one by one
+				# Remove '\n'
+				set auth_keys2 [string range $auth_keys2 0 end-1]
+				set all_keys [split $auth_keys2 "\n"]
+				set ssh_setup_string ""
+				foreach each_key $all_keys {
+					# Skip blank line
+					if { [string compare each_key $empty] == 0 } {
+						continue;
+					}
+					set ssh_setup_string "$ssh_setup_string;$ssh_setup_cmd \"$each_key\""
 				}
-			}
-			set pid [ spawn $remoteshell $node -l root /tmp/.ssh/copy.perl ]
-			expect {
-				"Are you sure you want to continue connecting (yes/no)?" {
-					send "yes\r"
-					exp_continue
-				}
-				"*ssword*" {
-					send "$word\r"
-					exp_continue
-				}
-				"Permission denied*" {
-					exec /bin/kill $pid
+				# Trim semicolon at the tail
+				set ssh_setup_string [string range $ssh_setup_string 1 end]
+				set pid [ spawn $remoteshell $node -l admin $ssh_setup_string ]
+				expect {
+					"Are you sure you want to continue connecting (yes/no)?" {
+						send "yes\r"
+						exp_continue
+					}
+					"*ssword*" {
+						send "$word\r"
+						exp_continue
+					}
+					"Permission denied*" {
+						exec /bin/kill $pid	
+					}
 				}
 			}
 		}
@@ -273,7 +320,12 @@ if { [llength $argv] != 0 } {
 			}
 			foreach hn $nlist {
 				set env(LC_ALL) "C"
-				set pid [ spawn $remoteshell $hn -l root echo test.success ]
+				if { [string compare $ssh_setup_cmd $empty] !=0 } {
+					set userid "admin"
+				} else {
+					set userid "root"
+				}
+				set pid [ spawn $remoteshell $hn -l $userid echo test.success ]
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
 						send "yes\r"

@@ -2126,6 +2126,37 @@ sub config_dsh
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
+    # Check devicetype attr and try to load device configuration
+    $$options{'devicetype'} = $$options{'devicetype'} || $ENV{'DEVICETYPE'} || u
+ndef;
+    if ( $$options{'devicetype'} )
+    {
+        $ENV{'DEVICETYPE'} = $$options{'devicetype'};
+        my $devicepath = $$options{'devicetype'};
+        $devicepath =~ s/::/\//g;
+        $devicepath = "/var/opt/xcat/" . $devicepath. "/config";
+        # Get configuration from $::XCATDEVCFGDIR
+        if ( -e $devicepath)
+        {
+            my $deviceconf = get_config($devicepath);
+            # Get all dsh section configuration
+            foreach my $entry (keys %{ $$deviceconf{'xdsh'} } )
+            {
+                my $value = $$deviceconf{'xdsh'}{$entry};
+                if ($value)
+                {
+                    $$options{$entry} = $value;
+                }
+
+            }
+        }
+        else
+        {
+            $rsp->{data}->[0] = "EMsgMISSING_DEV_CFG";
+            xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
+        }
+    }
+
     !$$options{'node-rsh'}
       && (   $$options{'node-rsh'} = $ENV{'DSH_NODE_RSH'}
           || $ENV{'DSH_REMOTE_CMD'}
@@ -2225,63 +2256,94 @@ sub config_dsh
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-    # Set a default PATH
-    $$options{'pre-command'} = $path_set;
-
-    if (!$$options{'no-locale'})
+    # Check if $$options{'pre-command'} has been overwritten
+    if (!$$options{'pre-command'})
     {
-        my @output = `/usr/bin/locale`;
-        chomp(@output);
+        # Set a default PATH
+        $$options{'pre-command'} = $path_set;
 
-        my @settings = ();
-        !($$options{'syntax'} eq 'csh') && (push @settings, $env_set);
-
-        foreach my $line (@output)
+        if (!$$options{'no-locale'})
         {
-            $line =~ s/=/$env_assign/;
+            my @output = `/usr/bin/locale`;
+            chomp(@output);
+
+            my @settings = ();
+            !($$options{'syntax'} eq 'csh') && (push @settings, $env_set);
+
+            foreach my $line (@output)
+            {
+                $line =~ s/=/$env_assign/;
+
+                if ($$options{'syntax'} eq 'csh')
+                {
+                    push @settings, "$env_set $line;";
+                }
+
+                else
+                {
+                    push @settings, $line;
+                }
+            }
 
             if ($$options{'syntax'} eq 'csh')
             {
-                push @settings, "$env_set $line;";
+                push @settings, "$env_set PERL_BADLANG${env_assign}0;";
             }
 
             else
             {
-                push @settings, $line;
+                push @settings, "PERL_BADLANG${env_assign}0";
             }
-        }
+ 
+            my $locale_settings = join ' ', @settings;
+            !($$options{'syntax'} eq 'csh') && ($locale_settings .= ' ; ');
 
+            $$options{'pre-command'} .= $locale_settings;
+        }
+    }
+    else
+    {
+        $$options{'pre-command'} = '';
+    }
+
+    # Check if $$options{'post-command'} has been overwritten.
+    if (! $$options{'post-command'} )
+    {
         if ($$options{'syntax'} eq 'csh')
         {
-            push @settings, "$env_set PERL_BADLANG${env_assign}0;";
+            $$options{'post-command'} =
+              "; $env_set DSH_TARGET_RC$env_assign\$status; echo \":DSH_TARGET_RC=\${DSH_TARGET_RC}:\"";
         }
 
         else
         {
-            push @settings, "PERL_BADLANG${env_assign}0";
+            $$options{'post-command'} =
+              "; $env_set DSH_TARGET_RC$env_assign\$?; echo \":DSH_TARGET_RC=\${DSH_TARGET_RC}:\"";
         }
 
-        my $locale_settings = join ' ', @settings;
-        !($$options{'syntax'} eq 'csh') && ($locale_settings .= ' ; ');
-
-        $$options{'pre-command'} .= $locale_settings;
+        $$options{'exit-status'}
+          && ($$options{'post-command'} .=
+              ' ; echo "Remote_command_rc = $DSH_TARGET_RC"');
     }
-
-    if ($$options{'syntax'} eq 'csh')
-    {
-        $$options{'post-command'} =
-          "; $env_set DSH_TARGET_RC$env_assign\$status; echo \":DSH_TARGET_RC=\${DSH_TARGET_RC}:\"";
-    }
-
     else
     {
-        $$options{'post-command'} =
-          "; $env_set DSH_TARGET_RC$env_assign\$?; echo \":DSH_TARGET_RC=\${DSH_TARGET_RC}:\"";
+        # post-command is overwritten by user , set env $::USER_POST_CMD
+        $::USER_POST_CMD = 1;
+        if ($$options{'post-command'} =~ /NULL/ )
+        {
+            $$options{'post-command'} = '';
+        }
+        else
+        {
+            # $::DSH_EXIT_STATUS ony can be used in DSHCore::pipe_handler_buffer
+            # and DSHCore::pipe_handler
+            $$options{'exit-status'}
+            && ($::DSH_EXIT_STATUS = 1);
+            $$options{'post-command'} = ";$$options{'post-command'}";
+            # Append "DSH_RC" keyword to mark output
+            $$options{'post-command'} = "$$options{'post-command'};echo DSH_RC";
+        }
     }
-
-    $$options{'exit-status'}
-      && ($$options{'post-command'} .=
-          ' ; echo "Remote_command_rc = $DSH_TARGET_RC"');
 
     if (
         !$$options{'nodes'}
@@ -3476,7 +3538,6 @@ sub isFdNumExceed
 sub usage_dsh
 {
 ## usage message
-
     my $usagemsg1 =
       " xdsh -h \n xdsh -q \n xdsh -v \n xdsh [noderange] [group]\n";
     my $usagemsg2 =
@@ -3485,7 +3546,7 @@ sub usage_dsh
     my $usagemsg4 =
       "[-m] [-o options][-q] [-Q] [-r remote_shell] [-i image path]\n";
     my $usagemsg5 =
-      "      [-s] [-S ksh | csh] [-t timeout] [-T] [-X environment variables] [-v] [-z]\n";
+      "      [-s] [-S ksh | csh] [-t timeout] [-T] [-X environment variables] [--devicetype type_of_device] [-v] [-z]\n";
     my $usagemsg6 = "      [command_list]\n";
     my $usagemsg7 =
       "Note:Context always defaults to XCAT unless -C flag is set.";
@@ -3597,6 +3658,7 @@ sub parse_and_run_dsh
             'T|trace'                  => \$options{'trace'},
             'V|version'                => \$options{'version'},
 
+            'devicetype|devicetype=s'  => \$options{'devicetype'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
@@ -3695,7 +3757,19 @@ sub parse_and_run_dsh
         }
         else
         {
-
+            if (defined $options{'devicetype'})
+            {
+                $ENV{'DEVICETYPE'} = $options{'devicetype'};
+                my $devicepath = $options{'devicetype'};
+                $devicepath =~ s/::/\//g;
+                $devicepath = "/var/opt/xcat/" . $devicepath. "/config";
+                if ( -e $devicepath)
+                {
+                    my $deviceconf = get_config($devicepath);
+                    # Get ssh-setup-command attribute from configuration
+                    $ENV{'SSH_SETUP_COMMAND'} = $$deviceconf{'main'}{'ssh-setup-command'};
+                }
+            }
             my $rc      = xCAT::Utils->setupSSH(@nodelist);
             my @results = "return code = $rc";
             return (@results);
@@ -3864,6 +3938,7 @@ sub parse_and_run_dcp
                     'R|recursive'      => \$options{'recursive'},
                     'T|trace'          => \$options{'trace'},
                     'V|version'        => \$options{'version'},
+                    'devicetype=s'     => \$options{'devicetype'},
                     'X:s'              => \$options{'ignore_env'}
         )
       )
@@ -4376,5 +4451,127 @@ sub show_dsh_config
         }
     }
 }
+
+#-------------------------------------------------------------------------------
+
+=head3   get_config
+
+    Substitute specific keywords in hash
+        e.g. config file:
+        [main]
+        cachedir=/var/cache/yum
+        keepcache=1
+        [base]
+        name=Red Hat Linux $releasever - $basearch - Base
+        baseurl=http://mirror.dulug.duke.edu/pub/yum-repository/redhat/$releasev
+er/$basearch/
+
+        %config = {
+                                main => {
+                                        'cachedir'  => '/var/cache/yum',
+                                        'keepcache' => '1'
+                                                },
+                                bash => {
+                                        'name'          => 'Red Hat Linux $relea
+sever - $basearch - Base',
+                                        'baseurl'       => 'http://mirror.dulug.
+duke.edu/pub/yum-repository/redhat/$releasever/$basearch/'
+                                                }
+                          }
+
+    Arguments:
+          $configfile      - config file
+    Returns:
+          $config_ref    - reference to config hash
+    Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_config
+{
+    my $configfile = shift;
+    my @content = readFile($configfile);
+    my $current_section = "DEFAULT";
+    my %config;
+    my $xcat_use;
+    $xcat_use = 0;
+    foreach my $line (@content)
+    {
+        my ($entry, $value);
+        chomp $line;
+        if ( $line =~ /\QDO NOT ERASE THIS SECTION\E/ )
+        {
+             # reverse flag
+             $xcat_use = ! $xcat_use;
+        }
+        if ($xcat_use)
+        {
+             # Remove leading "#". This line is used by xCAT
+             $line =~ s/^#//g;
+        }
+        else
+        {
+        # Remove comment line
+             $line =~ s/#.*$//g;
+        }
+        $line =~ s/^\s+//g;
+        $line =~ s/\s+$//g;
+        next unless $line;
+        if ( $line =~ /^\s*\[([\w+-\.]+)\]\s*$/ ) {
+            $current_section = $1;
+        } else {
+            # Ignore line doesn't key/value pair.
+            if ($line !~ /=/)
+            {
+                next;
+            }
+            $line =~ /^\s*([^=]*)\s*=\s*(.*)\s*$/;
+            $entry = $1;
+            $value = $2;
+            $entry =~ s/^#*//g;
+            # Remove leading and trailing spaces
+            $entry =~ s/^\s+//g;
+            $entry =~ s/\s+$//g;
+            $value =~ s/^\s+//g;
+            $value =~ s/\s+$//g;
+            $config{$current_section}{"$entry"} = $value;
+        }
+    }
+    return \%config;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    readFile
+
+    Read a file and return its content.
+
+    Arguments:
+        filename
+    Returns:
+        file contents or undef
+    Globals:
+        none
+    Error:
+        undef
+    Example:
+        my $blah = readFile('/etc/redhat-release');
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub readFile
+{
+    my $filename = shift;
+    open(FILE, "<$filename");
+    my @contents = <FILE>;
+    close(FILE);
+    return @contents;
+}
+
 
 1;
