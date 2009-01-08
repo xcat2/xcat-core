@@ -234,6 +234,16 @@ sub process_request {
   } else {
     if ($request->{node}) { @rnodes = ($request->{node}); }
   }
+
+  my $args_ref = $request->{arg};
+  if(scalar grep(/^--version$|^-v$/, @$args_ref)) {
+      my $ver = xCAT::Utils->Version();
+      my %rsp;
+      $rsp{data}->[0]="$ver";
+      $callback->(\%rsp);
+      return;
+  }
+
   unless (@rnodes) {
       if ($usage{$request->{command}->[0]}) {
           $callback->({data=>$usage{$request->{command}->[0]}});

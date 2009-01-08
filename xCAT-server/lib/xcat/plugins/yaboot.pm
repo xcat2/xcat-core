@@ -256,6 +256,23 @@ sub process_request {
   } else {
     @args=($request->{arg});
   }
+ 
+  if(scalar grep /^--version$|^-v$/, @args) {
+      my $ver = xCAT::Utils->Version();
+      my %rsp;
+      $rsp{data}->[0]="$ver";
+      $callback->(\%rsp);
+      return;
+  }
+  if(scalar grep /^--help$|^-h$/, @args) {
+      if($usage{$request->{command}->[0]}) {
+          my %rsp;
+          $rsp{data}->[0]=$usage{$request->{command}->[0]};
+          $callback->(\%rsp);
+      }
+      return;
+  }
+
   unless ($args[0] eq 'stat' or $args[0] eq 'enact') {
     $sub_req->({command=>['setdestiny'],
            node=>\@nodes,
