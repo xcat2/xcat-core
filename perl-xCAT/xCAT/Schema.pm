@@ -1,5 +1,11 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Schema;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use xCAT::ExtTab;
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
@@ -578,6 +584,18 @@ performance => {
 );        # end of tabspec definition
 
 
+
+###################################################
+# adding user defined external tables
+##################################################
+foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
+    $tabspec{$tabname}=$xCAT::ExtTab::ext_tabspec{$tabname};
+}
+ 
+
+
+
+
 ####################################################
 #
 #  Data abstraction definitions
@@ -623,7 +641,7 @@ performance => {
 #site =>    { attrs => [], attrhash => {}, objkey => 'sitename' },
   policy => { attrs => [], attrhash => {}, objkey => 'priority' },
   monitoring => { attrs => [], attrhash => {}, objkey => 'name' },
-  notification => { attrs => [], attrhash => {}, objkey => 'filename' }
+  notification => { attrs => [], attrhash => {}, objkey => 'filename' },
 );
 
 
@@ -1410,28 +1428,46 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  },
 );
 
-#########################
-#     performance table    #
-#########################
-@{$defspec{performance}->{'attrs'}} = (
 
-        {attr_name => 'timestamp',
-                 tabentry => 'performance.timestamp',
-                 access_tabentry => 'performance.timestamp=attr:timestamp',
-                 },
-        {attr_name => 'node',
-                 tabentry => 'performance.node',
-                 access_tabentry => 'performance.timestamp=attr:timestamp',
-  },
-        {attr_name => 'attrname',
-                 tabentry => 'performance.netname',
-                 access_tabentry => 'performance.timestamp=attr:timestamp',
-  },
-        {attr_name => 'attrvalue',
-                 tabentry => 'performance.attrvalue',
-                 access_tabentry => 'performance.timestamp=attr:timestamp',
-  },
-             );
+
+
+###################################################
+# adding user defined external defspec
+##################################################
+foreach my $objname (keys(%xCAT::ExtTab::ext_defspec)) {
+    if (exists($xCAT::ExtTab::ext_defspec{$objname}->{'attrs'})) {
+	if (exists($defspec{$objname})) {
+	    my @extattr=@{$xCAT::ExtTab::ext_defspec{$objname}->{'attrs'}};
+	    my @attr=@{$defspec{$objname}->{'attrs'}};
+	    my %tmp_hash=();
+	    foreach my $orig (@attr) {
+		my $attrname=$orig->{attr_name};
+		$tmp_hash{$attrname}=1;
+	    }
+	    foreach(@extattr) {
+		my $attrname=$_->{attr_name};
+		if (exists($tmp_hash{$attrname})) {
+		    xCAT::MsgUtils->message('ES', "\n  Warning: Conflict when adding user defined defspec. Attribute name $attrname is already defined in object $objname. \n");
+		} else {
+		    push(@{$defspec{$objname}->{'attrs'}}, $_); 
+		}
+	    }
+	} else {
+	    $defspec{$objname}=$xCAT::ExtTab::ext_defspec{$objname};
+	}
+    }
+}
+
+
+#print "\ndefspec:\n";
+#foreach(%xCAT::Schema::defspec) {
+#    print "  $_:\n";
+#    my @attr=@{$xCAT::Schema::defspec{$_}->{'attrs'}};
+#    foreach my $h (@attr) {
+#	print "    " . $h->{attr_name} . "\n";
+#    }
+#}  
+
 
 # Build a corresponding hash for the attribute names to make
 # definition access easier

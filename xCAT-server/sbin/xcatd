@@ -52,6 +52,7 @@ if ($^O =~ /^linux/i) {
 	$XML::Simple::PREFERRED_PARSER='XML::Parser';
 }
 use xCAT::Table;
+use xCAT::ExtTab;
 use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog qw(:DEFAULT setlogsock);
@@ -120,6 +121,14 @@ $SIG{PIPE} = sub {
     confess "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)"
 };
 $progname = \$0;
+
+
+#create the user defined external database tables if they do not exist.
+#update the tables if there are schema changes.
+if (xCAT::Utils->isMN()) {
+    xCAT::ExtTab->updateTables();
+}
+
 sub daemonize {
   chdir('/');
   umask 0022;
