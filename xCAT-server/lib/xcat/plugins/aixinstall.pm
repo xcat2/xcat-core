@@ -918,7 +918,7 @@ sub mknimimage
 	# display the usage if -h or --help is specified
     if ($::HELP) {
         &mknimimage_usage($callback);
-        return 2;
+        return 0;
     }
 
 	# display the version statement if -v or --verison is specified
@@ -982,6 +982,17 @@ sub mknimimage
 	#
 	#  Install/config NIM master if needed
 	#
+	# check for client file set
+	my $lsnimcmd = "/usr/bin/lslpp -l bos.sysmgt.nim.client >/dev/null 2>&1";
+	my $out = xCAT::Utils->runcmd("$lsnimcmd", -1);
+	if ($::RUNCMD_RC  != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not install and configure NIM.\n";
+		push @{$rsp->{data}}, "The bos.sysmgt.nim.client file set is a prerequisite for the NIM master.  Please install this software and retry the command.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
 	# check for master file set
 	my $lsnimcmd = "/usr/bin/lslpp -l bos.sysmgt.nim.master >/dev/null 2>&1";
 	my $out = xCAT::Utils->runcmd("$lsnimcmd", -1);
@@ -992,7 +1003,7 @@ sub mknimimage
 		my $nimout = xCAT::Utils->runcmd("$nimcmd", -1);
 		if ($::RUNCMD_RC  != 0) {
 			my $rsp;
-			push @{$rsp->{data}}, "Could install and configure NIM.\n";
+			push @{$rsp->{data}}, "Could not install and configure NIM.\n";
 			if ($::VERBOSE) {
                 push @{$rsp->{data}}, "$nimout";
             }
