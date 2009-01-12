@@ -301,6 +301,27 @@ sub mkinstall
                          "/install/autoinst/$node",
                          $node
                          );
+			#sles11 cannot find <pattern>base-64bit</pattern> and
+			#<package>stunnel</package> in the autoyast file
+			if($os eq 'sles11') {
+				my $SLES_YAST_FILE;
+				open SLES_YAST_FILE, "/install/autoinst/$node"||\
+				return "Cannot open autoyast file for SLES11\n";
+				my $yast_content="";
+				while(<SLES_YAST_FILE>) {
+					if($_ !~ m/<pattern>base-64bit<\/pattern>|
+						<package>stunnel<\/package>/) {
+						$yast_content .=$_;
+					}
+				}
+				close SLES_YAST_FILE;
+				#create one new autoyast file
+				system("rm /install/autoinst/$node");
+				open SLES_YAST_FILE, ">/install/autoinst/$node" || \
+					return "cannot open autoyast file for SLES11\n";
+				print SLES_YAST_FILE $yast_content;
+				close SLES_YAST_FILE;
+			}
         }
 
         if ($tmperr)

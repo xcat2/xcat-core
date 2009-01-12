@@ -230,7 +230,7 @@ sub plugin_command {
     @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
     if (xCAT::NodeRange::nodesmissed()) {
 #     my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',xCAT::NodeRange::nodesmissed)};
-		#my $rsp->{serverdone} = {};#minjun
+		#my $rsp->{serverdone} = {};
       print "Invalid nodes in noderangex:".join(',',xCAT::NodeRange::nodesmissed())."\n";
 #     if ($sock) {
 #       print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
