@@ -11,15 +11,23 @@ package xCAT_schema::Sample;
 #      jobid, status, node, jobstatus are the column names. Change them to your like.
 #      Each table must have a 'disable' column.
 #   5 change the keys
-#   6 change the table descriptions and column descriptions to your like.
-#   7 restart the the xcatd, the tables will be automatically generated. 
-#   8 do above steps on all the service nodes. 
+#   6 change the data types. The default data type is TEXT if not specified.
+#     The supported data types are: 
+#        REAL,CHAR,TEXT,DATE,TIME,FLOAT,BIGINT,DOUBLE,STRING,
+#        BINARY,DECIMAL,BOOLEAN,INTEGER,VARCHAR,SMALLINT,TIMESTAMP 
+#   7 change the table descriptions and column descriptions to your like.
+#   8 restart the the xcatd, the tables will be automatically generated. 
+#   9 copy the file to all the service nodes and restart the xcatd on all the service node. 
 # 
 ###############################################################################
 %tabspec = (
     lljob => {
 	cols => [qw(jobid status disable)],  #do not change 'disable, it is required by xCAT
 	keys => [qw(jobid)],
+        required => [qw(jobid)],
+        types => {
+	    jobid => 'INTEGER',  
+	},
 	table_desc => 'Stores jobs.',
 	descriptions => {
 	    jobid => 'The job id.',
@@ -28,13 +36,19 @@ package xCAT_schema::Sample;
 	},
     },
     llnode => {
-        cols => [qw(node jobid jobstatus disable)],
+        cols => [qw(node jobid jobstatus cpu_usage disable)],
         keys => [qw(node)],
+        required => [qw(node jobid)],
+        types => {
+	    jobid => 'INTEGER',
+	    cpu_usage => 'FLOAT',
+	},
         table_desc => 'Stores the node status.',
         descriptions => {
             node=> 'The node.',
             jobid => 'The job that runs on the node.',
             jobstatus => 'The status of the job on the node.',
+            cpu_usage => 'The percent of cpu usage on the node.',
 	    disable => "Set to 'yes' or '1' to comment out this row.",
         },
     },
@@ -83,6 +97,10 @@ package xCAT_schema::Sample;
     },
     {	attr_name => 'jobstatus',
 	tabentry => 'llnode.jobstatus',
+	access_tabentry => 'llnode.node=attr:node',
+    },
+    {	attr_name => 'cpu',
+	tabentry => 'llnode.cpu_usage',
 	access_tabentry => 'llnode.node=attr:node',
     },
 );

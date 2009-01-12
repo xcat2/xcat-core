@@ -103,13 +103,19 @@ sub buildcreatestmt
     my $descr = shift;
     my $retv  = "CREATE TABLE $tabn (\n  ";
     my $col;
+    my $types=$descr->{types};
     foreach $col (@{$descr->{cols}})
     {
-        if (isAKey(\@{$descr->{keys}},$col)) {   # keys need defined length
-          $retv .= "\"$col\" VARCHAR(128)";
-        } else {
-          $retv .= "\"$col\" TEXT";
-        } 
+	if (($types) && ($types->{$col})) {
+	    $retv .= "\"$col\"" . $types->{$col};
+	} else {
+	    if (isAKey(\@{$descr->{keys}},$col)) {   # keys need defined length
+		$retv .= "\"$col\" VARCHAR(128)";
+	    } else {
+		$retv .= "\"$col\" TEXT";
+	    } 
+	}
+
         if (grep /^$col$/, @{$descr->{required}})
         {
             $retv .= " NOT NULL";
