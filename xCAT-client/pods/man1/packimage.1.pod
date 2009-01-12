@@ -45,7 +45,7 @@ B<-m>          Method (default cpio)
 
 =head1 EXAMPLES
 
-1. To pack a fedora8 image for a compute node architecture x86_64 and place it in the  /install/netboot/fedora8/x86_64/compute/rootimg directory enter:
+1. To pack a fedora8 image for a compute node architecture x86_64 and place it in the  /install/netboot/fedora8/x86_64/compute/rootimg.gz file enter:
 
 I<packimage  -o fedora8 -p compute -a x86_64>
 
