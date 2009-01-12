@@ -9,3 +9,4 @@ busybox-anaconda
 wget
 vim-minimal
 ntp
+sysklogd
