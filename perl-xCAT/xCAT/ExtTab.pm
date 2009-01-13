@@ -33,7 +33,11 @@ foreach (@extSchema) {
     if (${"xCAT_schema::" . "$modname" . "::"}{tabspec}) {
 	my %tabspec=%{${"xCAT_schema::" . "$modname" . "::"}{tabspec}};
 	foreach my $tabname (keys(%tabspec)) {
-	    $ext_tabspec{$tabname}=$tabspec{$tabname};
+            if (exists($ext_tabspec{$tabname})) {
+		xCAT::MsgUtils->message('ES', "\n  Warning: File $file: the table name $tabname is used by other applications. Please rename the table.\n");
+	    } else {
+		$ext_tabspec{$tabname}=$tabspec{$tabname};
+	    }
 	}
     } else {
 	xCAT::MsgUtils->message('ES', "\n  Warning: Cannot find \%tabspec variable in the user defined database table schema file $file\n");
@@ -105,6 +109,7 @@ foreach (@extSchema) {
 sub updateTables
 {
     #print "\nupdateTables\n";
+    print "\n";
     foreach (keys %ext_tabspec) {
 	my $table= xCAT::Table->new($_,-create=>1,-autocommit=>1);
     }

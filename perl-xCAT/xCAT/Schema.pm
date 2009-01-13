@@ -589,7 +589,11 @@ performance => {
 # adding user defined external tables
 ##################################################
 foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
-    $tabspec{$tabname}=$xCAT::ExtTab::ext_tabspec{$tabname};
+    if (exists($tabspec{$tabname})) {
+	xCAT::MsgUtils->message('ES', "\n  Warning: Conflict when adding user defined tablespec. Duplicate table name: $tabname. \n");
+    } else {
+      $tabspec{$tabname}=$xCAT::ExtTab::ext_tabspec{$tabname};
+    }
 }
  
 
