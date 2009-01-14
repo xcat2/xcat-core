@@ -10,19 +10,22 @@ package xCAT_schema::Sample;
 #   4  lljob and llnode are the table names. 
 #      jobid, status, node, jobstatus are the column names. Change them to your like.
 #      Each table must have a 'disable' column.
-#   5 change the keys
+#      Please do not use SQL reserved words for your table names and column names.
+#      Use this site to check the reserved words: 
+#         http://www.petefreitag.com/tools/sql_reserved_words_checker/  
+#   5 change the keys.
 #   6 change the data types. The default data type is TEXT if not specified.
 #     The supported data types are: 
 #        REAL,CHAR,TEXT,DATE,TIME,FLOAT,BIGINT,DOUBLE,STRING,
 #        BINARY,DECIMAL,BOOLEAN,INTEGER,VARCHAR,SMALLINT,TIMESTAMP 
 #   7 change the table descriptions and column descriptions to your like.
 #   8 restart the the xcatd, the tables will be automatically generated. 
-#   9 copy the file to all the service nodes and restart the xcatd on all the service node. 
+#   9 copy your file to all the service nodes and restart the xcatd on all the service node. 
 # 
 ###############################################################################
 %tabspec = (
     lljob => {
-	cols => [qw(jobid status disable)],  #do not change 'disable, it is required by xCAT
+	cols => [qw(jobid status comments disable)],  #do not change 'disable' and 'comments', it is required by xCAT
 	keys => [qw(jobid)],
         required => [qw(jobid)],
         types => {
@@ -36,7 +39,7 @@ package xCAT_schema::Sample;
 	},
     },
     llnode => {
-        cols => [qw(node jobid jobstatus cpu_usage disable)],
+        cols => [qw(node jobid jobstatus cpu_usage comments disable)],
         keys => [qw(node)],
         required => [qw(node jobid)],
         types => {
