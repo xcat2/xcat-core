@@ -107,7 +107,7 @@ sub buildcreatestmt
     foreach $col (@{$descr->{cols}})
     {
 	if (($types) && ($types->{$col})) {
-	    $retv .= "\"$col\"" . $types->{$col};
+	    $retv .= "\"$col\" " . $types->{$col};
 	} else {
 	    if (isAKey(\@{$descr->{keys}},$col)) {   # keys need defined length
 		$retv .= "\"$col\" VARCHAR(128)";

@@ -17,7 +17,8 @@ package xCAT_schema::Sample;
 #   6 change the data types. The default data type is TEXT if not specified.
 #     The supported data types are: 
 #        REAL,CHAR,TEXT,DATE,TIME,FLOAT,BIGINT,DOUBLE,STRING,
-#        BINARY,DECIMAL,BOOLEAN,INTEGER,VARCHAR,SMALLINT,TIMESTAMP 
+#        BINARY,DECIMAL,BOOLEAN,INTEGER,VARCHAR,SMALLINT,TIMESTAMP
+#     Please note that SQLight only supports: INTEGER, REAL, TEXT, BLOB. 
 #   7 change the table descriptions and column descriptions to your like.
 #   8 restart the the xcatd, the tables will be automatically generated. 
 #   9 copy your file to all the service nodes and restart the xcatd on all the service node. 
@@ -35,6 +36,7 @@ package xCAT_schema::Sample;
 	descriptions => {
 	    jobid => 'The job id.',
 	    status => 'The status of the job.',
+	    comments => 'Any user-written notes.',
 	    disable => "Set to 'yes' or '1' to comment out this row.",
 	},
     },
@@ -52,6 +54,7 @@ package xCAT_schema::Sample;
             jobid => 'The job that runs on the node.',
             jobstatus => 'The status of the job on the node.',
             cpu_usage => 'The percent of cpu usage on the node.',
+	    comments => 'Any user-written notes.',
 	    disable => "Set to 'yes' or '1' to comment out this row.",
         },
     },
