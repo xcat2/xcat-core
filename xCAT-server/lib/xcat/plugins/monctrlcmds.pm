@@ -318,7 +318,7 @@ sub preprocess_monstart
   my $table=xCAT::Table->new("monitoring", -create => 1,-autocommit => 1);
   if ($table) {
     my $found=0;
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) {
 	if ($pname eq $_->{name}) {
@@ -503,7 +503,7 @@ sub preprocess_monstop
   my $table=xCAT::Table->new("monitoring", -create => 1,-autocommit => 1);
   if ($table) {
     my $found=0;
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) {
 	if ($pname eq $_->{name}) {
@@ -662,7 +662,7 @@ sub monls {
   #get the list from the table
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) {
         my $pname=$_->{name};
@@ -883,7 +883,7 @@ sub monadd {
   }
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) {
         my $name=$_->{name};
@@ -1082,7 +1082,7 @@ sub monrm {
   my $found=0;
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) {
 	if ($pname eq $_->{name}) {
@@ -1299,7 +1299,7 @@ sub preprocess_moncfg
   my $table=xCAT::Table->new("monitoring", -create => 1,-autocommit => 1);
   if ($table) {
     my $found=0;
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) {
 	if ($pname eq $_->{name}) {
@@ -1477,7 +1477,7 @@ sub preprocess_mondecfg
   my $table=xCAT::Table->new("monitoring", -create => 1,-autocommit => 1);
   if ($table) {
     my $found=0;
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) {
 	if ($pname eq $_->{name}) {

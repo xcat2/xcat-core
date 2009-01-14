@@ -469,7 +469,7 @@ sub tabdump
         return 1;
     }
 
-    my $recs = $tabh->getAllEntries();
+    my $recs = $tabh->getAllEntries("all");
     my $rec;
     unless (@$recs)        # table exists, but is empty.  Show header.
     {
