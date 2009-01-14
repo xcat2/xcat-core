@@ -621,9 +621,9 @@ sub lpar_netboot {
         $cmd.= " -i";
     } else {
         #################################
- # Determine if LPAR and mgmt node
- # are AIX or not.
- ################################
+        # Determine if LPAR and mgmt node
+        # are AIX or not.
+        ################################
         my $table = "nodetype";
         my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
         if (defined(@TableRowArray))
@@ -632,13 +632,12 @@ sub lpar_netboot {
             {
                 my @nodelist = split(',', $_->{'node'});
                 my @oslist = split(',', $_->{'os'});
-                my $nodename = @$d[6];
                 my $osname = "AIX";
-                if (grep(/^$nodename$/, @nodelist))
+                if (grep(/^$name$/, @nodelist))
                 {
                     if (!grep(/^$osname$/, @oslist) || !xCAT::Utils->isAIX())
                     {
-                        `xdsh $nodename "shutdown -h now" 2>/dev/null`;
+                        `xdsh $name "shutdown -h now" 2>/dev/null`;
                         last;
                     }
                 }
@@ -662,8 +661,16 @@ sub lpar_netboot {
     # Network specified (-D ping test)
     #####################################
     if ( exists( $opt->{S} )) {
+        my %nethash   = xCAT::DBobjUtils->getNetwkInfo( [$name] );
+        #####################################
+        # Network attributes undefined
+        #####################################
+        if ( !%nethash ) {
+            return( [RC_ERROR,"Cannot get network information for $name"] );
+        }
+        my $netmask = $nethash{$name}{mask};
         $cmd.= (!defined( $mac )) ? " -D" : "";
-        $cmd.= " -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C}";
+        $cmd.= " -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C} -K $netmask";
     }
     #####################################
     # Add lpar name, profile, CEC name 
