@@ -2127,8 +2127,8 @@ sub config_dsh
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
     # Check devicetype attr and try to load device configuration
-    $$options{'devicetype'} = $$options{'devicetype'} || $ENV{'DEVICETYPE'} || u
-ndef;
+    $$options{'devicetype'} =
+    $$options{'devicetype'} || $ENV{'DEVICETYPE'} || undef;
     if ( $$options{'devicetype'} )
     {
         $ENV{'DEVICETYPE'} = $$options{'devicetype'};
