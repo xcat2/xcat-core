@@ -266,6 +266,10 @@ sub tabrestore
     }
     $tab->delEntries();    #Yes, delete *all* entries
     my $header = shift @{$request->{data}};
+    unless ($header =~ /^#/) {
+        $cb->({error => "Data missing header line starting with #",errorcode=>1});
+        return;
+    }
     $header =~ s/"//g;     #Strip " from overzealous CSV apps
     $header =~ s/^#//;
     $header =~ s/\s+$//;
