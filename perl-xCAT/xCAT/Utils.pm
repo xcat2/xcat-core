@@ -1080,14 +1080,19 @@ sub setupSSH
         mkdir("/install/postscripts/.ssh", 0755);
     }
 
-    # Generate the keys
+    # Generate the keys, if they do not already exist
     my $rsp={};
-    xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
-    if ($::RUNCMD_RC != 0)
-    {    # error
-        $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+    my $home = xCAT::Utils->getHomeDir("root");
+    if (   !(-e "$home/.ssh/id_rsa.pub")
+        || !(-e "$home/.ssh/id_dsa.pub"))
+   {
+      xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
+      if ($::RUNCMD_RC != 0)
+      {    # error
+          $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
+          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
+      }
     }
 
     # Copy the keys to the directory
