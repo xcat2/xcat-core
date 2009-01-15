@@ -7,6 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::PPCinv;
 use xCAT::DSHCLI;
+use xCAT::Table;
 use Getopt::Long;
 use File::Spec;
 use POSIX qw(tmpnam);
@@ -304,6 +305,35 @@ sub get_lic_filenames {
 
 }
 
+
+sub get_one_mtms {
+	my $bpa = shift;
+	my $tab = xCAT::Table->new("ppc");
+	my $msg ;	
+	unless ($tab) {
+        	$msg = "ERROR: Unable to open basic ppc table for configuration";
+		return ("", $msg);
+	}
+
+	#################################
+    	# Get node 
+    	#################################
+    	my @ent = $tab->getAllAttribsWhere("parent=\"$bpa\"", 'node');
+    	if (@ent < 0) {
+      		$msg = "failed to get the CEC whose parent is $bpa!";
+		return ("", $msg);
+    	}
+	my $cec = $ent[0]->{node};
+	$msg = "the first cec is $cec whose parent is $bpa!";
+	
+	$cec =~ /(\w{6})\-([\w\-]{8})\-SN(\w{7})/;
+	my $mtms = "$2*$3";
+#	print "the managed system is $mtms!\n";
+	return ($mtms, $msg);	
+}
+
+
+
 ##########################
 #Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems
 ###########################
@@ -435,13 +465,25 @@ sub rflash {
                         	}
 				my ($volume,$directories,$file) = File::Spec->splitpath($rpm_file);
 				push(@result,[$hmc, "Upgrade $mtms from release level:$release_level activated level:$active_level to $file successfully"]);
-
+			
+				#If mtms is a bpa, we should change the managed_system to a cec whose parent is a bpa.	
+        			if($component eq "power") {
+					($managed_system, $msg)=  &get_one_mtms($name);
+					if($managed_system eq "") {
+						push(@value, [$hmc, $msg]);
+						return (\@value);
+					
+					}
+					dpush(\@value,[$hmc, $msg]);
+				}
+								
                         }
 			
 			my $rpm_dest = $::POWER_DEST_DIR."/".$dirlist[0];
 			# The contents of the stanza file are slightly different depending
               		 # on the operation being performed.
                 	#
+		#	$managed_system = "9125-F2A*0262652";
                		if( $upgrade_required ) {
                       		$stanza = "updlic::" . $managed_system . "::upgrade::::$rpm_dest";
                		} else {
@@ -468,23 +510,26 @@ sub rflash {
 	
 	dpush(\@value, [$hmc,"user: $user"]);;
 #	$password = @$cred[1]	
+	
 
-	my $rpm_file_list = join(",", @rpm_files);	
-	my $xml_file_list = join(",", @xml_files);	
+	my $rpm_file_list = join(" ", @rpm_files);	
+	my $xml_file_list = join(" ", @xml_files);	
 	###############################
 	#Prepare for "xdcp"-----runDcp_api
 	##############################
 	my %options = ();
 	$options{ 'user' } = $user; 
 	$options{ 'nodes' } = $hmc; 
+	$options{ 'exit-status' } = 1;
 	$options{ 'preserve' } = 1;
 	$options{ 'source' } = "$tmp_file $rpm_file_list $xml_file_list";
 	$options{ 'target' } = "/tmp";
-
-	dpush(\@value, [$hmc,"invoking RunDcp_api()"]);
-	my @res = xCAT::DSHCLI->runDcp_api( \%options, 0 );
-	if ($::RUNCMD_RC) {   # error from dcp
+	
+	my @res = xCAT::DSHCLI->runDcp_api( \%options, 0);
+	my $Rc = shift(@res);
+	if ($::RUNCMD_RC || $Rc =~ /denied/) {   # error from dcp
         	my $rsp={};
+		dpush(\@value, [$hmc,"invoking RunDcp_api()"]);
         	$rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
         	xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 		push(@value,[$hmc,$rsp->{data}->[0]]);
@@ -494,9 +539,16 @@ sub rflash {
 		return(\@value);
     	}
 
+	my $r = ();
+	foreach $r (@res){
+		push(@value, [$r]);	
+
+	}
+		
+	
 #	print_var(@res);
 	%options = ();
-	dpush(\@value,[$hmc, "copy files to $hmc complete"]);
+	push(@value,[$hmc, "copy files to $hmc complete"]);
 
 	#`$::XDSH $hmc -K`;
 	###############################################
@@ -512,7 +564,7 @@ sub rflash {
 #	$options{ 'command' } = "ls -al";
 
 	@res = xCAT::DSHCLI->runDsh_api(\%options, 0);
-	if ($::RUNCMD_RC) {    # error from dsh 
+	if ($::RUNCMD_RC ) {    # error from dsh 
         	my $rsp={};
         	$rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
         	xCAT::MsgUtils->message("S", $rsp, $::CALLBACK, 1);

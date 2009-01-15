@@ -415,6 +415,12 @@ sub preprocess_nodes {
             return undef;
         }
     }
+	
+    ####################
+    # $f1 and $f2 are the flags for rflash, to check if there are BPAs and CECs at the same time.
+    #################
+    my $f1 = 0;	
+    my $f2 = 0;	
     ##########################################
     # Group nodes
     ##########################################
@@ -434,8 +440,22 @@ sub preprocess_nodes {
         my $hcp  = @$d[3];
         my $mtms = @$d[2];
 
+	if ( $request->{command} eq "rflash" ) {
+		if(@$d[4] =~/^(fsp|lpar)$/) {
+			$f1 = 1;
+		} else {
+			$f2 = 1;	
+		}
+	}
+	
         $nodehash{$hcp}{$mtms}{$node} = $d;
     } 
+		
+   if($f1 * $f2) {
+	send_msg( $request, 1, "The argument noderange of rflash can't be BPA and CEC(or LPAR) at the same time");
+	return undef; 
+   }
+
     ##########################################
     # Get userid and password
     ##########################################
@@ -1034,19 +1054,52 @@ sub preprocess_request {
   ####################
   #suport for "rflash", copy the rpm and xml packages from user-spcefied-directory to /install/packages_fw
   #####################	
- if ( $command eq "rflash" ) {
+  if ( $command eq "rflash" ) {
+	preprocess_for_rflash($req,$callback, \@exargs);
+  }
+   
+	
+  # find service nodes for the HCPs
+  # build an individual request for each service node
+  my $service  = "xcat";
+  my @hcps=keys(%hcp_hash);
+  my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
+
+  # build each request for each service node
+  foreach my $snkey (keys %$sn)
+  {
+    #print "snkey=$snkey\n";
+    my $reqcopy = {%$req};
+    $reqcopy->{'_xcatdest'} = $snkey;
+    my $hcps1=$sn->{$snkey};
+    my @nodes=();
+    foreach (@$hcps1) { 
+      push @nodes, @{$hcp_hash{$_}{nodes}};
+    }
+    $reqcopy->{node} = \@nodes;
+    #print "nodes=@nodes\n";
+    push @requests, $reqcopy;
+  }
+  return \@requests;
+}
+
+sub preprocess_for_rflash {
+	my $req      = shift;
+  	my $callback = shift;
+	my $exargs = shift;	
+
  	my $packages_fw = "/install/packages_fw";
 	my $c = 0;
        	my $packages_d;
-	foreach (@exargs) {
+	foreach (@$exargs) {
 		$c++;
 		if($_ eq "-p") {
-			$packages_d = $exargs[$c];
+			$packages_d = $$exargs[$c];
 			last;	
 		}
 	}
 	if($packages_d ne $packages_fw ) {
-		$exargs[$c] = $packages_fw;
+		$$exargs[$c] = $packages_fw;
 		if(! -d $packages_d) {
               		$callback->({data=>["The directory $packages_d doesn't exist!"]});
 	      		$req = ();
@@ -1113,35 +1166,9 @@ sub preprocess_request {
 
 		}
 
-		$req->{arg} = \@exargs;
+		$req->{arg} = $exargs;
 	}
-  }
-   
-	
-  # find service nodes for the HCPs
-  # build an individual request for each service node
-  my $service  = "xcat";
-  my @hcps=keys(%hcp_hash);
-  my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
-
-  # build each request for each service node
-  foreach my $snkey (keys %$sn)
-  {
-    #print "snkey=$snkey\n";
-    my $reqcopy = {%$req};
-    $reqcopy->{'_xcatdest'} = $snkey;
-    my $hcps1=$sn->{$snkey};
-    my @nodes=();
-    foreach (@$hcps1) { 
-      push @nodes, @{$hcp_hash{$_}{nodes}};
-    }
-    $reqcopy->{node} = \@nodes;
-    #print "nodes=@nodes\n";
-    push @requests, $reqcopy;
-  }
-  return \@requests;
 }
-
 
 ##########################################################################
 # Process request from xCat daemon

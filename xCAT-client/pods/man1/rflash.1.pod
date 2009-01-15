@@ -4,7 +4,9 @@ B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attache
 
 =head1 B<Synopsis>
 
-B<rflash> [B<-h>|B<--help>] I<noderange> [B<-p> I<directory>] [B<--activate> B<concurrent>|B<disruptive>][B<--commit>|B<--recover>] [B<-v>]
+B<rflash> [B<-h>|B<--help>][B<-v>|B<--version>]
+
+B<rflash> I<noderange> B<-p> I<directory> [B<--activate> B<concurrent>|B<disruptive>][B<--commit>|B<--recover>] [B<-V>|B<--verbose>]
 
 =head1 B<Description>
 
@@ -24,9 +26,7 @@ The flash chip of a POWER5 and POWER6 managed system or power subsystem stores f
 
 The B<--commit> flag is used to write the contents of the temporary side of the flash to the permanent side.  This flag should be used after updating code and verifying correct system operation.  The B<--recover> flag is used to write the permanent side of the flash chip back to the temporary side.  This flag should be used to recover from a corrupt flash operation, so that the previously running code can be restored.
 
-B<NOTE:> The B<--commit> and B<--recover> two flags can't be used with B<--ativate> option at the same time. 
-
-IBM recommends that you shutdown your Operating System images and power off your managed systems before applying disruptive updates to managed systems or power subsystems.
+xCAT recommends that you shutdown your Operating System images and power off your managed systems before applying disruptive updates to managed systems or power subsystems.
 
 Any previously activated code on the affected systems will be automatically accepted into permanent flash by this procedure.  
 
@@ -36,7 +36,7 @@ B<IMPORTANT!>  If the power subsystem is recycled, all of its attached managed s
 
 =over 7
 
-=item B<-h>
+=item B<-h|--help>
 
 Writes the command’s usage statement to standard output. 
 
@@ -56,9 +56,13 @@ Used to commit the flash image in the temporary side of the chip to the permanen
 
 Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
 
-=item B<-v>
+=item B<-v|--version>
 
 Displays the command's version.
+
+=item B<-V|--verbose>
+
+Verbose output.
 
 =back
 
@@ -68,123 +72,27 @@ Displays the command's version.
 
 1 An error has occurred.
 
-
 =head1 B<Examples>
 
 =over 4
 
-POWER5 and POWER6  Licensed Internal Code updates must meet the following B<prerequisites>:
-
-(1)Enable the HMC to allow remote ssh connections.
-
-(2)Ensure that ssh is installed on the xCAT management node
-
-(3)The Lpar , CEC, or BPA has been defined in the nodelist, nodetype, ppc tables
-
-(4)Define the HMC related the above node as a node on the management node. For example,
-
-#nodeadd  hmc01.clusters.com groups=hmc
-
-(5)Run the xdsh command to set up and generate the ssh keys on the xCAT management node and transfer the public key to the HMC. You must also manually configure the HMC to allow remote ssh connections. For example
-
-#xdsh hmc01.clusters.com -K
-
-or use other ways, for example:
-
-#ssh-keygen -t rsa;
-
-#ssh-keygen -t dsa;
-
-#cd /root/.ssh
-
-#ls;
-
-#firstkey=`cat id_dsa.pub`
-
-#ssh hscroot@c76v3hmc03.ppd.pok.ibm.com mkauthkeys -a \"$firstkey\"
-Password:
-
-# secondkey=`cat id_rsa.pub`
-
-#ssh hscroot@c76v3hmc03.ppd.pok.ibm.com mkauthkeys -a \"$secondkey\"
-
-(6)If the firmware upgrade will be done through service node, the HMC or CEC and the corresponding service node have been add into the noderes  table.
-
-(7)The update files are ready for the firmware upgrade.
-
-There are 2 B<scenarioes> to show how to use this command.
-
 =item 1
 
-To  update only the power subsystem attached to a single HMC-attached pSeries CEC(Server-m_tmp-SNs_tmp), and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw.
+To  update  only the  power subsystem attached to a single HMC-attached pSeries CEC(cec_name), and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
 
-(1) Define the CEC as a device on the management node. 
-
-B<nodeadd  Server-m_tmp-SNs_tmp groups=hmc,all>
-
-Modify the table nodehm
-
-B<chtab node="Server-m_tmp-SNs_tmp"  nodehm.mgt="hmc">
-
-Modify the table nodetype:
-
-B<chtab node="Server-m_tmp-SNs_tmp"  nodetype.nodetype="fsp">
-
-Modify the table ppc:
-
-B<chtab node="Server-m_tmp-SNs_tmp"  ppc.hcp= hmc01.clusters.com>
-
-Modify the tab vpd:
-
-B<chtab node=Server-m_tmp-SNs_tmp  vpd.serial=s_tmp vpd.mtm=m_tmp>
-
-Set the  account of the HMC(Modify the ppchcp):
-
-B<chtab hcp=hmc01.clusters.com  ppchcp.username=xxxxxx ppchcp.password=xxxxxx>
-
-(2)  Generate the ssh keys on the xCAT management node and transfer the public key to the HMC to configure the HMC to allow remote ssh connections(Please see the item 5 of the prerequisites)
-
-(3)If a service node will be used, define the attribute values for specified service node(service node01) in servicenode table. (optional)
-  
-(4)If the service node will be used, define the service node attribute values for the CEC. For example,  (optional)
-
-B<chtab node=Server-m_tmp-SNs_tmp noderes.servicenode=servicenode01>
-
-(5)Use rinv to check current code level  
-
-B<rinv  Server-m_tmp-SNs_tmp  firm>
-
-(6) Download the Microcode update package and associated XML file from the IBM Web site: I<http://www14.software.ibm.com/webapp/set2/firmware/gjsn>. Create the /tmp/fw directory, if necessary, and copy the downloaded files to the /tmp/fw directory.
-
-(7) Run the rflash command with  the --activate flag to specify the update mode to perform the updates.
-
-B<rflash Server-m_tmp-SNs_tmp  -p /tmp/fw --activate disruptive>
-
-B<NOTES>:
-
-(1)You Need check your update is concurrent or disruptive here!! other commands sample: rflash Server-m_tmp-SNs_tmp  -p /tmp/fw --activate concurrent
-
-(2)If the noderange is BPA/Lpar, the upgrade steps are the same as the CEC's
-
-(3)System p5 and p6 updates can require time to complete and there is no visual indication that the command is proceeding.
+B<rflash> I<cec_name> I<-p /tmp/fw> I<--activate disruptive>
 
 =item 2
 
-To commit currently activated LIC updates(copy T to P) for HMC-attached System p5 and p6 CEC
+To  update  only the  power subsystem attached to a single HMC-attached pSeries node, and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
 
-(1-5) The 1-5  steps are the same as the (1-5) steps in B<scenario 1>
+B<rflash> I<bpa_name> I<-p /tmp/fw> I<--activate disruptive>
 
-(6)Check the output of the step 5 that whether the LIC will be committed. If yes, run the step(7)
+=item 3
 
-(7)Run the rflash command with “--commit” flag to finish the work
+To commit a firmware update to permanent flash on an HMC-attached CEC, enter:
 
-B<rflash  Server-m_tmp-SNs_tmp --commit>
-
-B<NOTES>:
-
-(1)If the noderange is BPA/Lpar, the commit steps are the same as the CEC's.
-
-(2)If recover the installed LIC updates , the steps are the same as the (1-6) steps of this B<scenario 2>. Only the last step is different.
+B<rflash> I<cec_name> I<--commit>
 
 =back
 
