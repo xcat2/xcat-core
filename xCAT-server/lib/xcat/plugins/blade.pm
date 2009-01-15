@@ -668,6 +668,20 @@ sub bootseq {
   }
 }
 
+sub cleantemp {
+#Taken a bladecenter string, reformat/convert to be consistent with ipmi presentation choices
+    my $temp = shift;
+    my $tnum;
+    $temp =~ /(\d+\.\d+) Centigrade/;
+    $tnum=$1;
+    $temp =~ s/ = /:/;
+    $temp =~ s/\+(\d+)/$1/; #remove + sign from temperature readings if put in
+    $temp =~ s/Centigrade/C/; #remove controversial use of Centigrade
+    if ($tnum) {
+         $temp .= " (".sprintf("%.2f",$tnum*(9/5)+32)." F)";
+    }
+    return $temp;
+}
 
 my %chassiswidevitals;
 sub vitals {
@@ -750,7 +764,7 @@ sub vitals {
       $session->get($bindobj); #[".1.3.6.1.4.1.2.3.51.2.22.1.5.5.1.$idx.$slot"]);
       for my $tmp (@$bindobj) {
             if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/ and $tmp->[2] ne "") {
-              $tmp =~ s/ = /:/;
+              $tmp->[2] =~ s/ = /:/;
               push @output,$tmp->[2];
             }
       }
@@ -766,10 +780,10 @@ sub vitals {
       }
       $bindobj= new SNMP::VarList(@bindlist);
       $session->get($bindobj);
+      my $tnum;
       for my $tmp (@$bindobj) {
         if ($tmp and defined $tmp->[2] and $tmp->[2] !~ /Not Readable/ and $tmp->[2] ne "") {
-          $tmp =~ s/ = /:/;
-          push @output,$tmp->[2];
+          push @output,cleantemp($tmp->[2]);
         }
       }
       unless (defined $chassiswidevitals{ambient}) {
@@ -780,10 +794,11 @@ sub vitals {
           $session->get($targ);
           for my $result (@$targ) {
               if ($result->[2] eq "NOSUCHINSTANCE") { next; }
-              push @{$chassiswidevitals{ambient}},"Ambient ".$tempidx++." :".$result->[2];
+              push @{$chassiswidevitals{ambient}},"Ambient ".$tempidx++." :".cleantemp($result->[2]);
           }
       }
       foreach (@{$chassiswidevitals{ambient}}) {
+
           push @output,$_;
       }
     }
