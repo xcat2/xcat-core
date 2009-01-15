@@ -236,10 +236,12 @@ sub new
        $self->{connstring} =~ s/^/dbi:/;
         #return undef;
     }
+    my $oldumask= umask 0077;
     unless ($::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}) { #= $self->{tabname};
       $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}} =
         DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $self->{autocommit}});
      }
+     umask $oldumask;
 
     $self->{dbh} = $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}};
       #DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $autocommit});
