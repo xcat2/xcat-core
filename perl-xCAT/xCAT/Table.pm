@@ -1582,7 +1582,8 @@ sub delEntries
         my @qargs = ();
         foreach (keys %keypairs)
         {
-            $qstring .= "$_ = ? AND ";
+            $qstring .= "\"$_\" = ? AND "; #mysql change
+            #$qstring .= "$_ = ? AND ";
             push @qargs, $keypairs{$_};
         }
         $qstring =~ s/ AND \z//;
@@ -1605,7 +1606,8 @@ sub delEntries
     if ($keyref) { $delstring .= ' WHERE '; }
     foreach (keys %keypairs)
     {
-        $delstring .= $_ . ' = ? AND ';
+        #$delstring .= $_ . ' = ? AND ';
+        $delstring .= "\"$_\"" . ' = ? AND '; #mysql change
         if (ref($keypairs{$_}))
         {   #XML transformed data may come in mangled unreasonably into listrefs
             push @stargs, $keypairs{$_}->[0];
