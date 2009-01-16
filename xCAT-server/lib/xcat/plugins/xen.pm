@@ -414,7 +414,7 @@ sub makedom {
     if ($dom) {
            refresh_vm($dom);
     }
-    return $dom;
+    return $dom,undef;
 }
 
 
