@@ -73,6 +73,10 @@ sub connect {
     my $ssh;
     my $expect_log;
     my $errmsg;
+	
+    if ($req->{command} eq 'rflash') {
+	$verbose = 0;
+    }
 
     ##################################################
     # Use timeout from site table (if defined) 
