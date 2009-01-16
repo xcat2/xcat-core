@@ -400,6 +400,22 @@ sub getpowstate {
     }
 }
 
+sub makedom {
+    my $node=shift;
+    my $dom;
+    my $xml=build_xmldesc($node);
+    my $errstr;
+    eval { $dom=$hypconn->create_domain($xml); };
+    if ($@) { $errstr = $@; }
+    if (ref $errstr) {
+       $errstr = ":".$errstr->{message};
+    }
+    if ($errstr) { return (undef,$errstr); }
+    if ($dom) {
+           refresh_vm($dom);
+    }
+    return $dom;
+}
 
 
 sub power {
@@ -418,20 +434,11 @@ sub power {
             $subcommand="reset";
         }
     }
+    my $errstr;
     if ($subcommand eq 'on') {
         unless ($dom) {
-            my $xml=build_xmldesc($node);
-            my $errstr;
-            eval { $dom=$hypconn->create_domain($xml); };
-
-            if ($@) { $errstr = $@; }
-            if (ref $errstr) {
-                $errstr = ":".$errstr->{message};
-            }
+            $dom,$errstr = makedom($node);
             if ($errstr) { return (1,$errstr); }
-            if ($dom) {
-                refresh_vm($dom);
-            }
         } else {
           $retstring .= " $status_noop";
         }
@@ -445,8 +452,9 @@ sub power {
         } else { $retstring .= " $status_noop"; } 
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
-            $dom->reboot(1); #TODO: Sys::Virt *nor* libvirt have meaningful flags,
-                            #but require it
+            $dom->destroy();
+            $dom = makedom($node);
+            if ($errstr) { return (1,$errstr); }
             $retstring.="reset";
         } else { $retstring .= " $status_noop"; } 
     } else { 
