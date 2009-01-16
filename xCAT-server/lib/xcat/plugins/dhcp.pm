@@ -737,8 +737,8 @@ sub addnic
     {    #add a section if not there
         $restartdhcp=1;
         print "Adding NIC $nic\n";
-        push @dhcpconf, "shared-network $nic {\n";
-        push @dhcpconf, "\} # $nic nic_end\n";
+        push @dhcpconf, "#shared-network $nic {\n";
+        push @dhcpconf, "#\} # $nic nic_end\n";
     }
 
     #return; #Don't touch it, it should already be fine..
