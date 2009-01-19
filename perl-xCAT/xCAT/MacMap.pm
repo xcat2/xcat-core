@@ -154,7 +154,14 @@ sub refresh_table {
   $self->{switches} = {};
   foreach $entry (@entries) {
     if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
-    	$self->{switches}->{$entry->{switch}}->{$entry->{port}}=$entry->{node};
+    	if ( !$self->{switches}->{$entry->{switch}}->{$entry->{port}})
+        {
+            $self->{switches}->{$entry->{switch}}->{$entry->{port}} = $entry->{node};
+        }
+        else
+        {
+            $self->{switches}->{$entry->{switch}}->{$entry->{port}} .= ",$entry->{node}";
+        }
     } else {
         xCAT::MsgUtils->message("S","xCAT Table error:".$entry->{node}."Has missing or invalid switch.switch and/or switch.port fields");
     }

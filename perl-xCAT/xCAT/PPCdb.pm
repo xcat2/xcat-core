@@ -12,7 +12,8 @@ use xCAT::GlobalDef;
 my %logon = (
     hmc => ["hscroot","abc123"],
     ivm => ["padmin", "padmin"],
-    fsp => ["admin",  "admin"]
+    fsp => ["admin",  "admin"],
+    bpa => ["admin",  "admin"]
 );
 
 ###########################################
@@ -21,9 +22,19 @@ my %logon = (
 my %hcptab = (
     hmc => "ppchcp",
     ivm => "ppchcp",
-    fsp => "ppcdirect"
+    fsp => "ppcdirect",
+    bpa => "ppcdirect"
 );
 
+###########################################
+# The default groups of hcp
+###########################################
+my %defaultgrp = (
+    hmc => "hmc",
+    ivm => "ivm",
+    fsp => "fsp",
+    bpa => "bpa"
+);
 
 
 ##########################################################################
@@ -301,7 +312,15 @@ sub credentials {
     $tab = xCAT::Table->new( $hcptab{$hwtype} );
     if ( $tab ) {
         my ($ent) = $tab->getAttribs( {hcp=>$server}, qw(username password));
-        if ( $ent ) {
+        if ( $ent){
+            if (defined($ent->{password})) { $pass = $ent->{password}; }
+            if (defined($ent->{username})) { $user = $ent->{username}; }
+        }
+    ##############################################################
+    # If no user/passwd found, check if there is a default group
+    ##############################################################
+        elsif( ($ent) = $tab->getAttribs( {hcp=>$defaultgrp{$hwtype}}, qw(username password)))
+        {
             if (defined($ent->{password})) { $pass = $ent->{password}; }
             if (defined($ent->{username})) { $user = $ent->{username}; }
         }
@@ -311,11 +330,4 @@ sub credentials {
 
 
 1;
-
-
-
-
-
-
-
 

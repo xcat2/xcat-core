@@ -35,13 +35,18 @@ sub parse_args {
         "date",
         "autopower",
         "sysdump",
-        "spdump"
+        "spdump",
+        "network"
+    );
+    my @bpa = (
+        "network"
     );
     my @ppc = (
         "sshcfg"
     );
     my %rsp = (
         fsp => \@fsp,
+        bpa => \@bpa,
         ivm => \@ppc,
         hmc => \@ppc
     );
@@ -183,6 +188,16 @@ sub parse_option {
            return( "Invalid argument '$value'" );
        }
     }
+    if ( $command eq 'network'){
+        my ( $adapter_name, $ip, $host, $gateway, $netmask) =
+                split /,/, $value;
+        return ( "Network interface name is required") if ( ! $adapter_name);
+        return ( "Invalide network interface name $adapter_name") if ( $adapter_name !~ /^eth\d$/);
+        return undef if ( $ip eq '*');
+        return ( "Invalid IP address format") if ( $ip and $ip !~ /\d+\.\d+\.\d+\.\d+/);
+        return ( "Invalid netmask format") if ( $netmask and $netmask !~ /\d+\.\d+\.\d+\.\d+/);
+    }
+
     return undef;
 }
 

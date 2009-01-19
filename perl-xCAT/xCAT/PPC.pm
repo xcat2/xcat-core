@@ -335,7 +335,7 @@ sub resolve_hcp {
     my $request   = shift;
     my $noderange = shift;
     my @nodegroup = ();
-    my $tab       = ($request->{hwtype} eq "fsp") ? "ppcdirect" : "ppchcp";
+    my $tab       = ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa") ? "ppcdirect" : "ppchcp";
     my $db        = xCAT::Table->new( $tab );
 
     ####################################
@@ -391,7 +391,7 @@ sub preprocess_nodes {
     #   Direct-attached FSP 
     ########################################
     if (( $request->{command} =~ /^(rscan|rspconfig)$/ ) or
-        ( $request->{hwtype} eq "fsp" )) {
+        ( $request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa")) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
     }
@@ -817,7 +817,7 @@ sub invoke_cmd {
     ########################################
     # Direct-attached FSP handler 
     ########################################
-    if ( $hwtype eq "fsp" ) {
+    if ( $hwtype eq "fsp" or $hwtype eq "bpa") {
   
         ####################################
         # Dynamically load FSP module
@@ -1013,7 +1013,7 @@ sub preprocess_request {
   # get the HCPs for the LPARs in order to figure out which service 
   # nodes to send the requests to
   ###################################################################
-  my $hcptab_name = ($package eq "fsp") ? "ppcdirect" : "ppchcp";
+  my $hcptab_name = ($package eq "fsp" or $package eq "bpa") ? "ppcdirect" : "ppchcp";
   my $hcptab  = xCAT::Table->new( $hcptab_name );
   unless ($hcptab ) {
     $callback->({data=>["Cannot open $hcptab_name table"]});
@@ -1298,5 +1298,76 @@ sub sshcmds_on_hmc
     return ([0, undef, \@data]);
 }
 
+##########################################################################
+# logon asm and update configuration
+##########################################################################
+sub updconf_in_asm
+{
+    my $ip = shift;
+    my $target_dev = shift;
+    my @cmds = @_;
+
+    eval { require xCAT::PPCfsp };
+    if ( $@ ) {
+        return ([1,@cmds]);
+    }
+
+    my %handled;
+    for my $cmd (@cmds)
+    {
+        if ( $cmd =~ /(.+?)=(.*)/)
+        {
+            my ($command,$value) = ($1,$2);
+            $handled{$command} = $value;
+        }
+    }
+
+    my %request = (
+            ppcretry    => 1,
+            verbose     => 0,
+            ppcmaxp     => 64,
+            ppctimeout  => 0,
+            fsptimeout  => 0,
+            ppcretry    => 3,
+            maxssh      => 10,
+            arg         => \@cmds,
+            method      => \%handled,
+            command     => 'rspconfig',
+            hwtype      => lc($target_dev->{'type'}),
+            );
+
+    my $valid_ip;
+    my @exp;
+    foreach my $individual_ip ( split /,/, $ip ) {
+         ################################
+         # Get userid and password 
+         ################################
+         my @cred = xCAT::PPCdb::credentials( $individual_ip, lc($target_dev->{'type'}));
+        $request{$individual_ip}{cred} = \@cred;
+        $request{node} = [$individual_ip];  
+
+        @exp = xCAT::PPCfsp::connect(\%request, $individual_ip);
+####################################
+# Successfully connected 
+####################################
+        if ( ref($exp[0]) eq "LWP::UserAgent" ) {
+            $valid_ip = $individual_ip;
+            last;
+        }
+    }
+
+####################################
+# Error connecting 
+####################################
+    if ( ref($exp[0]) ne "LWP::UserAgent" ) {
+        return ([1,@cmds]);
+    }
+    my $result = xCAT::PPCfsp::handler( $valid_ip, \%request, \@exp );
+    my $RC = shift( @$result);
+    my @data;
+    push @data, @$result[0];
+
+    return ([0, undef, \@data]);
+}
 1;
 

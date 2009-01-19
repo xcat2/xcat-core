@@ -33,7 +33,8 @@ my %cmds = (
      date          => ["Time Of Day",                   \&date], 
      autopower     => ["Auto Power Restart",            \&autopower],
      sysdump       => ["System Dump",                   \&sysdump],
-     spdump        => ["Service Processor Dump",        \&spdump] },
+     spdump        => ["Service Processor Dump",        \&spdump],
+     network       => ["Network Configuration",         \&netcfg]},
 );
 
 
@@ -1554,11 +1555,273 @@ sub all_clear {
     return( $result );
 }
 
+##########################################################################
+# Gets and set network configuration
+##########################################################################
+sub netcfg
+{
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    
+    ######################################
+    # Parsing arg
+    ######################################
+    my $set_config = 0;
+    my ($inc_name, $inc_ip, $inc_host, $inc_gateway, $inc_netmask) = ();
+    my $real_inc_name = undef;
+    if ( $request->{'method'}->{'network'})
+    {
+        $set_config = 1;
+    }
+    
+    my $interfaces = undef;
+    my $form = undef;
+    
+    my $res = get_netcfg( $exp, $request, $id, \$interfaces, \$form);
+
+    return $res if ( $res->[0] == RC_ERROR);
+		
+    my $output = "";
+    #######################################
+    # Set configuration
+    #######################################
+    if ( $set_config)
+    {
+        return set_netcfg( $exp, $request, $interfaces, $form);
+    }
+    #######################################
+    # Get configuration and format output
+    #######################################
+    else
+    {
+        return format_netcfg( $interfaces);
+    }
+    
+}
+
+##########################################################################
+# Gets network configuration
+##########################################################################
+sub get_netcfg
+{
+    my $exp        = shift;
+    my $request    = shift;
+    my $id         = shift;
+    my $interfaces = shift;
+    my $form       = shift;
+    my $ua         = @$exp[0];
+    my $server     = @$exp[1];
+	######################################
+    # Get Network Configuration URL
+    ######################################
+    my $url = "https://$server/cgi-bin/cgi?form=$id";
+    my $res = $ua->get( $url );
+   
+    ##################################
+    # Return error
+    ##################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+
+    ##################################
+    # Get "Network Configuraiton" form 
+    ##################################
+    $$form = HTML::Form->parse( $res->content, $res->base );
+
+    ##################################
+    # Return error
+    ##################################
+    if ( !defined( $$form )) {
+        return( [RC_ERROR,"'Network Configuration' form not found"] );
+    } 
+
+    ##################################
+    # For some P6 machines
+    ##################################
+    if ( $$form->find_input('ip', 'radio', 1))
+    {    
+        my $ipv4Radio = $$form->find_input('ip', 'radio', 1);
+        if (!$ipv4Radio)
+        {
+            print "Cannot find IPv4 option\n";
+            exit;
+        }
+        #$ipv4Radio->check();
+
+        my $data = $$form->click('submit');
+        $res = $ua->request( $data);
+        $$form = HTML::Form->parse( $res->content, $res->base );
+        if ( !defined( $$form )) {
+            return( [RC_ERROR,"'Network Configuration' form not found"] );
+        } 
+    }
+    
+    #######################################
+    # Parse the form to get the inc input
+    #######################################
+    my $has_found_all = 0;
+    my $i = 0;
+    while ( not $has_found_all)
+    {
+        my $input = $$form->find_input( "interface$i", 'checkbox');
+        if ( ! $input)
+        {
+            $has_found_all = 1;
+        }
+        else
+        {
+            $$interfaces->{"interface$i"}->{'selected'} = $input;
+            $$interfaces->{"interface$i"}->{'type'}     = $$form->find_input("ip$i", 'option');
+            $$interfaces->{"interface$i"}->{'hostname'} = $$form->find_input("host$i", 'text');
+            $$interfaces->{"interface$i"}->{'ip'}       = $$form->find_input("static_ip$i", 'text');
+            $$interfaces->{"interface$i"}->{'gateway'}  = $$form->find_input("gateway$i", 'text');
+            $$interfaces->{"interface$i"}->{'netmask'}  = $$form->find_input("subnet$i", 'text');
+            #we do not support dns yet, just in case of future support
+            $$interfaces->{"interface$i"}->{'dns0'}     = $$form->find_input("dns0$i", 'text');
+            $$interfaces->{"interface$i"}->{'dns1'}     = $$form->find_input("dns1$i", 'text');
+            $$interfaces->{"interface$i"}->{'dns2'}     = $$form->find_input("dns2$i", 'text');
+            $i++;
+        }
+    }
+    return ( [RC_ERROR,"Cannot find any network interface on $server"]) if ( ! $$interfaces);
+    
+    return ( [SUCCESS, undef]);
+}
+
+##########################################################################
+# Set network configuration
+##########################################################################
+sub set_netcfg
+{
+    my $exp         = shift;
+    my $request     = shift;
+    my $interfaces  = shift;
+    my $form        = shift;
+    my $ua          = @$exp[0];
+
+    my $real_inc_name;
+    my ($inc_name, $inc_ip, $inc_host, $inc_gateway, $inc_netmask) = split /,/, $request->{'method'}->{'network'};
+
+    chomp ($inc_name, $inc_ip, $inc_host, $inc_gateway, $inc_netmask);
+    if ( $inc_name =~ /^eth(\d)$/)
+    {
+        $real_inc_name = "interface$1";
+    }
+    elsif ( $inc_name =~/(\d+)\.(\d+)\.(\d+)\.(\d+)/)
+    {
+        for my $inc (keys %$interfaces)
+        {
+            if ($interfaces->{ $inc}->{'ip'}->value() eq $inc_name)
+            {
+                $real_inc_name = $inc;
+                last;
+            }
+        }
+    }
+    else
+    {
+        return( [RC_ERROR, "Incorrect network interface name $inc_name"] );
+    }
+
+    return ( [RC_ERROR,"Cannot find interface $inc_name"]) if ( ! exists ($$interfaces{ $real_inc_name}));
+
+    $interfaces->{ $real_inc_name}->{'selected'}->check();
+
+    if ( $interfaces->{ $real_inc_name}->{'type'})
+    {
+        $interfaces->{ $real_inc_name}->{'type'}->value('Static');
+    }
+    else
+    {
+        return ( [RC_ERROR,"Cannot set this interface to static type"]);
+    }
+    my @set_entries = ();
+    if ( $inc_ip )
+    {
+        return ( [RC_ERROR,"Cannot set IP address to $inc_ip"]) if (! $interfaces->{ $real_inc_name}->{'ip'});
+        $interfaces->{ $real_inc_name}->{'ip'}->value( $inc_ip);
+        push @set_entries, 'IP address';
+    }
+    if ( $inc_host)
+    {
+        return ( [RC_ERROR,"Cannot set hostname to $inc_host"]) if (! $interfaces->{ $real_inc_name}->{'hostname'});
+        $interfaces->{ $real_inc_name}->{'hostname'}->value( $inc_host);
+        push @set_entries, 'hostname';
+    }
+    if ( $inc_gateway)
+    {
+        return ( [RC_ERROR,"Cannot set gateway to $inc_gateway"]) if (! $interfaces->{ $real_inc_name}->{'gateway'});
+        $interfaces->{ $real_inc_name}->{'gateway'}->value( $inc_gateway);
+        push @set_entries, 'gateway';
+    }
+    if ( $inc_netmask)
+    {
+        return ( [RC_ERROR,"Cannot set netmask to $inc_netmask"]) if (! $interfaces->{ $real_inc_name}->{'netmask'});
+        $interfaces->{ $real_inc_name}->{'netmask'}->value( $inc_netmask);
+        push @set_entries, 'netmask';
+    }
+
+    #Click "Continue" button
+    my $data = $form->click('save');
+    my $res = $ua->request( $data);
+    if (!$res->is_success())
+    {
+        return ( [RC_ERROR, "Failed to set " . join ',', @set_entries]);
+    }
+
+    #Go to the confirm page
+    $form = HTML::Form->parse( $res->content, $res->base );
+#    $data = $form->click('submit');
+    $res = $ua->request( $data);
+    if ($res->is_success())
+    {
+        return ( [SUCCESS, "Success to set " . join ',', @set_entries]);
+    }
+    else
+    {
+        return ( [RC_ERROR, "Failed to set " . join ',', @set_entries]);
+    }
+}
+
+##########################################################################
+# Format the output of network configuration
+##########################################################################
+sub format_netcfg
+{
+    my $interfaces  = shift;
+    my $output      = undef;
+    for my $inc ( sort keys %$interfaces)
+    {
+#improve needed: need to make the output consistent to MM            
+        $output .= "\n\t" . $inc . ":\n";
+        $output =~ s/interface(\d)/eth$1/;
+        # There are 2 possible value for $type, 
+        # 1 means "Dynamic", 2 means "Static"
+        # Now to find the correct type name
+        my @possible_values = $interfaces->{$inc}->{'type'}->possible_values();
+        my @possible_names  = $interfaces->{$inc}->{'type'}->value_names();
+        my %value_names = {};
+        for ( my $i = 0; $i < scalar( @possible_values); $i++)
+        {
+            $value_names{ @possible_values[$i]} = @possible_names[$i];
+        }
+        my $type = $interfaces->{$inc}->{'type'} ? $value_names{ $interfaces->{$inc}->{'type'}->value()} : undef;;
+        $type = "Static" if ( $type == 2);
+        my $ip = $interfaces->{$inc}->{'ip'} ? $interfaces->{$inc}->{'ip'}->value() : undef;
+        my $hostname = $interfaces->{$inc}->{'hostname'} ? $interfaces->{$inc}->{'hostname'}->value() : undef;
+        my $gateway = $interfaces->{$inc}->{'gateway'} ? $interfaces->{$inc}->{'gateway'}->value() : undef;
+        my $netmask = $interfaces->{$inc}->{'netmask'} ? $interfaces->{$inc}->{'netmask'}->value() : undef;
+
+        $output .= "\t\tIP Type: "    . $type     . "\n";
+        $output .= "\t\tIP Address: " . $ip       . "\n";
+        $output .= "\t\tHostname: "   . $hostname . "\n";
+        $output .= "\t\tGateway: "    . $gateway  . "\n";
+        $output .= "\t\tNetmask: "    . $netmask  . "\n";
+    }
+    return( [SUCCESS,$output] );
+}
 
 1;
-
-
-
-
-
 
