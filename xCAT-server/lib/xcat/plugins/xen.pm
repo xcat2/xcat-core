@@ -111,7 +111,6 @@ sub build_oshash {
 
 sub build_diskstruct {
     my @returns=();
-    my $diskhash;
     my $currdev;
     my @suffixes=('a'..'z');
     my $suffidx=0;
@@ -120,6 +119,7 @@ sub build_diskstruct {
         my @locations=split /\|/,$disklocs;
         foreach my $disk (@locations) {
             #Setting default values of a virtual disk backed by a file at hd*.
+            my $diskhash;
             $diskhash->{type} = 'file';
             $diskhash->{device} = 'disk';
             $diskhash->{target}->{dev} = 'hd'.$suffixes[$suffidx];
@@ -437,7 +437,7 @@ sub power {
     my $errstr;
     if ($subcommand eq 'on') {
         unless ($dom) {
-            $dom,$errstr = makedom($node);
+            ($dom,$errstr) = makedom($node);
             if ($errstr) { return (1,$errstr); }
         } else {
           $retstring .= " $status_noop";
@@ -453,7 +453,7 @@ sub power {
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
             $dom->destroy();
-            $dom = makedom($node);
+            ($dom,$errstr) = makedom($node);
             if ($errstr) { return (1,$errstr); }
             $retstring.="reset";
         } else { $retstring .= " $status_noop"; } 
