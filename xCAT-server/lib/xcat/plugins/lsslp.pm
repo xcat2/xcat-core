@@ -202,7 +202,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c))) {
+            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c u))) {
         return( usage() );
     }
     #############################################
@@ -661,7 +661,15 @@ sub invoke_cmd {
                     $target_dev->{password},
                     @cmds );
         }
-
+        else #The rest must be fsp or bpa
+        {
+            @cmds = ("network=$target_dev->{args}");
+            trace( $request, "update config on $target_dev->{'type'} $ip");
+            $result = xCAT::PPC::updconf_in_asm(
+                    $ip,
+                    $target_dev,
+                    @cmds );
+        }
         ####################################
         # Pass result array back to parent
         ####################################
@@ -965,12 +973,16 @@ sub format_output {
     ###########################################
     # Query switch ports
     ###########################################
-    my $mm = switch_cmd( $request, $values );
+    my $rsp_targets = undef;
+    if ( $opt{u})
+    {
+        $rsp_targets = switch_cmd( $request, $values );
+    }
 
     ###########################################
     # Parse responses and add to hash
     ###########################################
-    my $outhash = parse_responses( $request, $values, $mm, \$length );
+    my $outhash = parse_responses( $request, $values, $rsp_targets, \$length );
 
     ###########################################
     # No responses
@@ -1376,7 +1388,7 @@ sub xCATdB {
 
             my $values = join( ",",
                lc($type),$name,$id,$model,$serial,$name,$prof,$frame,$ips );
-            xCAT::PPCdb::add_ppc( $type, [$values] );
+            xCAT::PPCdb::add_ppc( lc($type), [$values] );
         }
         elsif ( $type =~ /^(HMC|IVM)$/ ) {
             xCAT::PPCdb::add_ppchcp( $type, $data );
@@ -1934,7 +1946,7 @@ sub switch_cmd {
 
     my $req = shift;
     my $slp = shift;
-    my %slp_all;
+    my $slp_all = undef;
     my %hosts;
     my @entries;
     my $targets = {};
@@ -1944,31 +1956,21 @@ sub switch_cmd {
     ###########################################
     # No tables
     ###########################################
-    if ( !defined($swtab) or !defined($hosttab) ) {
+    if ( !defined($swtab)) {
+    #if ( !defined($swtab) or !defined($hosttab) ) {
         return;
     }
     ###########################################
-    # Any MMs/HMCs in SLP response
+    # Any MMs/HMCs/FSPs/BPAs in SLP response
     ###########################################
     foreach my $slp_entry ( @$slp ) {
-        foreach my $service_type (SERVICE_FSP, SERVICE_BPA, SERVICE_MM, SERVICE_HMC)
-        {
-
-            if ( $slp_entry =~ /\(type=$service_type\)/ and $slp_entry =~ /\(ip-address=([^\),]+)/)
-            {
-                $slp_all{$1}{'mac'} = undef;
-                $slp_all{$1}{'type'} = 'MM' if $service_type eq SERVICE_MM;
-                $slp_all{$1}{'type'} = 'FSP' if $service_type eq SERVICE_FSP;
-                $slp_all{$1}{'type'} = 'BPA' if $service_type eq SERVICE_BPA;
-                $slp_all{$1}{'type'} = 'HMC' if $service_type eq SERVICE_HMC;
-                last;
-            }
-        }
+        my $slp_hash = get_slp_attr( $slp_entry);
+        $slp_all->{$slp_hash->{'ip-address'}} = $slp_hash if ($slp_hash);
     }
     ###########################################
-    # No MMs/HMCs in response
+    # No MMs/HMCs/FSPs/BPAs in response
     ###########################################
-    if ( !%slp_all ) {
+    if ( !$slp_all ) {
         return;
     }
 
@@ -1984,38 +1986,63 @@ sub switch_cmd {
     if ( $verbose ) {
         trace( $req, "SWITCH/HOSTS TABLE:" );
     }
-    foreach ( @entries ) {
-        my $ent = $hosttab->getNodeAttribs($_,[qw(ip)]);
+    foreach my $nodename ( @entries ) {
+        my $ent = undef;
+        if ( $hosttab)
+        {
+            my $enthash = $hosttab->getNodeAttribs( $nodename,[qw(ip)]);
+            $ent = $enthash->{ip};
+        }
+        if (!$ent)
+        {
+            my $net_bin = inet_aton($nodename);
+            $ent = inet_ntoa($net_bin) if ($net_bin);
+        }
+
         if ( !$ent ) {
             next;
         }
-        $hosts{$_} = $ent->{ip};
+
+        $hosts{ $nodename} = $ent;
         if ( $verbose ) {
-            trace( $req, "\t\t($_)->($ent->{ip})" );
+            trace( $req, "\t\t($nodename)->($ent)" );
         }
     }
     ###########################################
     # No MMs/HMCs in hosts/switch table
     ###########################################
     if ( !%hosts ) {
-        return;
+        return undef;
     }
     ###########################################
     # Ping each MM/HMCs to update arp table
     ###########################################
-    foreach my $ip ( keys %slp_all ) {
-        if ( $^O eq 'aix')
+    foreach my $ips ( keys %$slp_all ) {
+        my @all_ips = split /,/, $ips;
+        my $rc = 0;
+        for my $single_ip (@all_ips)
         {
-            `ping -c 1 -w 1 $ip`;
+            #not sure why runcmd cannot handle the return code
+            #my $res = xCAT::Utils->runcmd ("ping -c 1 -w 1 $single_ip", -1);
+            trace ($req, "Trying ping $single_ip");
+            my $rc = system("ping -c 1 -w 1 $single_ip 2>/dev/null 1>/dev/null");
+            if ( !$::RUNCMD_RC )
+            {
+                $slp_all->{$single_ip} = $slp_all->{ $ips};
+                delete $slp_all->{ $ips};
+                last;
+            }
         }
-        else
+        if ( $rc)
         {
-            `ping -c 1 -w 0 $ip`;
+            trace( $req, "Cannot ping any IP of $ips, it's because the network is too slow?");
+            delete $slp_all->{ $ips};
         }
     }
     ###########################################
     # Match discovered IP to MAC in arp table
     ###########################################
+    return undef if ( ! scalar( keys %$slp_all));
     my $arp;
     if ( $^O eq 'aix')
     {
@@ -2046,11 +2073,11 @@ sub switch_cmd {
         {
              ($ip, $mac) = (undef,undef);
         }
-        if ( exists( $slp_all{$ip} )) {
+        if ( exists( $slp_all->{$ip} )) {
             if ( $verbose ) {
                 trace( $req, "\t\t($ip)->($mac)" );
             }
-            $slp_all{$ip}{'mac'} = $mac;
+            $slp_all->{$ip}->{'mac'} = $mac;
             $isMacFound = 1;
         }
     }
@@ -2063,25 +2090,43 @@ sub switch_cmd {
     if ( $verbose ) {
         trace( $req, "getting switch information...." );
     }
-    foreach my $ip ( keys %slp_all ) {
+    foreach my $ip ( keys %$slp_all ) {
         #######################################
         # Not in SLP response
         #######################################
-        if ( !defined( $slp_all{$ip}{'mac'} ) or !defined( $macmap )) {
+        if ( !defined( $slp_all->{$ip}->{'mac'} ) or !defined( $macmap )) {
             next;
         }
         #######################################
         # Get node from switch
         #######################################
-        my $name = $macmap->find_mac( $slp_all{$ip}{'mac'} );
-        if ( !defined( $name )) {
+        my $names = $macmap->find_mac( $slp_all->{$ip}->{'mac'} );
+        if ( !defined( $names )) {
             if ( $verbose ) {
-                trace( $req, "\t\t($slp_all{$ip}{'mac'})-> NOT FOUND" );
+                trace( $req, "\t\t($slp_all->{$ip}->{'mac'})-> NOT FOUND" );
             }
             next;
         }
+        
+        #######################################
+        # Identify multiple nodes
+        #######################################
+        my $name;
+        if ( $names =~/,/ ) {
+            $name = disti_multi_node( $req, $names, $slp_all->{$ip});
+            if ( ! $name)
+            {
+                trace( $req, "Cannot distinguish $names.");
+                next;
+            }
+            
+        }
+        else
+        {
+            $name = $names;
+        }
         if ( $verbose ) {
-            trace( $req, "\t\t($slp_all{$ip}{'mac'})-> $name" );
+            trace( $req, "\t\t($slp_all->{$ip}->{'mac'})-> $name" );
         }
         #######################################
         # In hosts table
@@ -2089,21 +2134,27 @@ sub switch_cmd {
         if ( defined( $hosts{$name} )) {
             if ( $ip eq $hosts{$name} ) {
                 if ( $verbose ) {
-                    trace( $req, "$slp_all{$ip}{'type'} already set '$ip' - skipping" );
+                    trace( $req, "\t\t\t$slp_all->{$ip}->{'type'} already set '$ip' - skipping" );
 
                 }
             }
             else
             {
-                $targets->{$slp_all{$ip}{'type'}}->{$ip}->{'args'} = "$hosts{$name},$name";
-                $targets->{$slp_all{$ip}{'type'}}->{$ip}->{'mac'}  = $slp_all{$ip}{'mac'};
-                $targets->{$slp_all{$ip}{'type'}}->{$ip}->{'name'} = $name;
-                $targets->{$slp_all{$ip}{'type'}}->{$ip}->{'ip'}   = $hosts{$name};
+                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} = "$hosts{$name},$name";
+                if ( $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} ne 'MM')
+                {
+                    my %netinfo = xCAT::DBobjUtils->getNetwkInfo([$hosts{$name}]);
+                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} .= ",$netinfo{$hosts{$name}}{'gateway'},$netinfo{$hosts{$name}}{'mask'}";
+                }
+                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'mac'}  = $slp_all->{$ip}->{'mac'};
+                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'name'} = $name;
+                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'ip'}   = $hosts{$name};
+                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} = $slp_all->{$ip}->{'type'};
             }
         }
     }
     ###########################################
-    # No MMs
+    # No rspconfig target found
     ###########################################
     if ( !%$targets) {
         if ( $verbose ) {
@@ -2112,139 +2163,94 @@ sub switch_cmd {
         return;
     }
     ###########################################
-    # Update MM/HMC hardware w/discovery info
+    # Update target hardware w/discovery info
     ###########################################
-    my $result;
-    if (exists $targets->{'MM'} || exists $targets->{'HMC'})
-     {
-         $result = rspconfig( $req, $targets );
-     }
-     else
-     {
-         $result = dhcpconfig ($req, $targets );
-     }
-    return( $result );
-}
-
-sub dhcpconfig
-{
-    my $request   = shift;
-    my $targets   = shift;
-    my $callback  = $request->{callback};
-    my $fsp = $targets->{'FSP'};
-    my $bpa = $targets->{'BPA'};
-
-    $fsp = {} if (!$fsp);
-    $bpa = {} if (!$bpa);
-    my $dhcp_targets = {%$fsp, %$bpa};
-    my $mactab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
-    if ( !$mactab ) {
-        return 1;
-    }
-    for my $node ( keys %$dhcp_targets)
-    {
-        my $name = $dhcp_targets->{$node}->{'name'};
-        my $mac  = $dhcp_targets->{$node}->{'mac'};
-        $mactab->setNodeAttribs( $name,{mac=>$mac} );
-    }
-    $mactab->close();
-
-    my @nodelist = ();
-
-    for my $ip (keys %$dhcp_targets)
-     {
-        push @nodelist, $dhcp_targets->{$ip}->{'name'};
-     }
-    my $cmdref;
-    $cmdref->{arg} = [];
-    $cmdref->{command}->[0] = "makedhcp";
-    $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-    $cmdref->{noderange}->[0]     = join ',', @nodelist;
-    $cmdref->{node} = \@nodelist;
-    xCAT_plugin::dhcp::process_request($cmdref, \&xCAT::Client::handle_response);
-    return 1;
+    return rspconfig( $req, $targets );
 }
 
 ##########################################################################
-# Run rspconfig against MMs
+# Distinguish 
+##########################################################################
+sub disti_multi_node
+{
+    my $req = shift;
+    my $names = shift;
+    my $slp = shift;
+
+    return undef if ( !$slp->{'cage-number'});    
+
+    my $ppctab = xCAT::Table->new( 'ppc');
+    return undef if ( ! $ppctab);
+
+    my $vpdtab = xCAT::Table->new( 'vpd');
+    my @nodes = split /,/, $names;
+    my $correct_node = undef;
+    for my $node ( @nodes)
+    {
+        my $id_parent = $ppctab->getNodeAttribs( $node, ['id','parent']);
+        next if (! $id_parent or ! $id_parent->{'id'});
+        if ( $id_parent->{'id'} eq $slp->{'cage-number'})
+        {
+            my $vpdnode = undef;
+            if ( $id_parent->{ 'parent'}#if no parent defined, take it as is.  
+                 and $vpdtab
+                 and $vpdnode = $vpdtab->getNodeAttribs($id_parent->{ 'parent'}, ['serial','mtm'])
+                 and $vpdnode->{'serial'}
+                 and $vpdnode->{'mtm'})
+            {
+                 if ( $vpdnode->{'serial'} ne $slp->{'bpc-serial-number'} 
+                      or $vpdnode->{'mtm'} ne $slp->{'bpc-machinetype-model'})
+                 {
+                    next;
+                 }
+            }
+            return undef if ( $correct_node);#had matched another node before
+            $correct_node = $node;
+        }
+    }
+    return $correct_node;    
+}
+##########################################################################
+# Run rspconfig against targets
+##########################################################################
+sub get_slp_attr
+{
+    my $slp_entry = shift;
+    my $slp_hash  = undef;
+
+    $slp_entry =~ s/^[^\(]*?\((.*)\)[^\)]*?$/$1/;
+    
+    my @entries = split /\),\(/, $slp_entry;
+    for my $entry ( @entries)
+    {
+        if ( $entry =~ /^(.+?)=(.*)$/)
+        {
+            $slp_hash->{$1} = $2;
+        }
+    }
+    
+    if ( $slp_hash->{'type'})
+    {
+        $slp_hash->{'type'} = 'MM'  if ($slp_hash->{'type'} eq SERVICE_MM);
+        $slp_hash->{'type'} = 'FSP' if ($slp_hash->{'type'} eq SERVICE_FSP);
+        $slp_hash->{'type'} = 'BPA' if ($slp_hash->{'type'} eq SERVICE_BPA);
+        $slp_hash->{'type'} = 'HMC' if ($slp_hash->{'type'} eq SERVICE_HMC);
+    }
+    
+    return $slp_hash;
+}
+
+##########################################################################
+# Run rspconfig against targets
 ##########################################################################
 sub rspconfig {
 
     my $request   = shift;
     my $targets   = shift;
     my $callback  = $request->{callback};
-    my $start;
+    my $start = Time::HiRes::gettimeofday();
 
-    my $mm = $targets->{'MM'};
-    my $hmc = $targets->{'HMC'};
-    #my $fsp = $targets->{'FSP'};
-    #my $bpa = $targets->{'BPA'};
-
-    if ($mm && %$mm)
-    {
-        my $bladeuser = 'USERID';
-        my $bladepass = 'PASSW0RD';
-        if ( $verbose ) {
-            trace( $request, "telneting to management-modules....." );
-            $start = Time::HiRes::gettimeofday();
-        }
-#############################################
-# Check passwd table for userid/password
-#############################################
-        my $passtab = xCAT::Table->new('passwd');
-        if ( $passtab ) {
-            my ($ent) = $passtab->getAttribs({key=>'blade'},'username','password');
-            if ( defined( $ent )) {
-                $bladeuser = $ent->{username};
-                $bladepass = $ent->{password};
-            }
-        }
-#############################################
-# Get MM userid/password
-#############################################
-        my $mpatab = xCAT::Table->new('mpa');
-        foreach ( keys %$mm ) {
-            my $user = $bladeuser;
-            my $pass = $bladepass;
-
-            if ( defined( $mpatab )) {
-                my ($ent) = $mpatab->getAttribs({mpa=>$_},'username','password');
-                if ( defined( $ent->{password} )) { $pass = $ent->{password}; }
-                if ( defined( $ent->{username} )) { $user = $ent->{username}; }
-            }
-            $mm->{$_}->{username} = $user;
-            $mm->{$_}->{password} = $pass;
-        }
-    }
-    if ($hmc && %$hmc)
-    {
-        my $hmcuser = 'hscroot';
-        my $hmcpass = 'abc123';
-        if ( $verbose ) {
-            trace( $request, "sshing to HMC......");
-            $start = Time::HiRes::gettimeofday();
-        }
-
-#############################################
-# Get HMC userid/password
-#############################################
-        my $hcptab = xCAT::Table->new('ppchcp');
-        foreach ( keys %$hmc ) {
-            my $user = $hmcuser;
-            my $pass = $hmcpass;
-
-            if ( defined( $hcptab )) {
-                my ($ent) = $hcptab->getAttribs({hcp=>$_},'username','password');
-                if ( defined( $ent->{password} )) { $pass = $ent->{password}; }
-                if ( defined( $ent->{username} )) { $user = $ent->{username}; }
-            }
-            $hmc->{$_}->{username} = $user;
-            $hmc->{$_}->{password} = $pass;
-            trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
-        }
-    }
-
-    my %rsp_dev = (%$mm,%$hmc);
+    my %rsp_dev = get_rsp_dev( $request, $targets);
     #############################################
     # Fork one process per MM/HMC
     #############################################
@@ -2358,6 +2364,89 @@ sub rspconfig {
     return( \%rsp_dev );
 }
 
+#############################################
+# Get rsp devices and their logon info
+#############################################
+sub get_rsp_dev
+{
+    my $request = shift;
+    my $targets = shift;
+
+    my $mm  = $targets->{'MM'}  ? $targets->{'MM'} : {};
+    my $hmc = $targets->{'HMC'} ? $targets->{'HMC'}: {};
+    my $fsp = $targets->{'FSP'} ? $targets->{'FSP'}: {};
+    my $bpa = $targets->{'BPA'} ? $targets->{'BPA'}: {};
+
+    if (%$mm)
+    {
+        my $bladeuser = 'USERID';
+        my $bladepass = 'PASSW0RD';
+        if ( $verbose ) {
+            trace( $request, "telneting to management-modules....." );
+        }
+        #############################################
+        # Check passwd table for userid/password
+        #############################################
+        my $passtab = xCAT::Table->new('passwd');
+        if ( $passtab ) {
+            my ($ent) = $passtab->getAttribs({key=>'blade'},'username','password');
+            if ( defined( $ent )) {
+                $bladeuser = $ent->{username};
+                $bladepass = $ent->{password};
+            }
+        }
+        #############################################
+        # Get MM userid/password
+        #############################################
+        my $mpatab = xCAT::Table->new('mpa');
+        foreach ( keys %$mm ) {
+            my $user = $bladeuser;
+            my $pass = $bladepass;
+
+            if ( defined( $mpatab )) {
+                my ($ent) = $mpatab->getAttribs({mpa=>$_},'username','password');
+                if ( defined( $ent->{password} )) { $pass = $ent->{password}; }
+                if ( defined( $ent->{username} )) { $user = $ent->{username}; }
+            }
+            $mm->{$_}->{username} = $user;
+            $mm->{$_}->{password} = $pass;
+        }
+    }
+    if (%$hmc )
+    {
+        #############################################
+        # Get HMC userid/password
+        #############################################
+        foreach ( keys %$hmc ) {
+            ( $hmc->{$_}->{username}, $hmc->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($hmc->{$_}->{'type'})); 
+            trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
+        }
+    }
+
+    if ( %$fsp)
+    {
+        #############################################
+        # Get FSP userid/password
+        #############################################
+        foreach ( keys %$fsp ) {
+            ( $fsp->{$_}->{username}, $fsp->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($fsp->{$_}->{'type'})); 
+            trace( $request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
+        }
+    }
+
+    if ( %$bpa)
+    {
+        #############################################
+        # Get BPA userid/password
+        #############################################
+        foreach ( keys %$bpa ) {
+            ( $bpa->{$_}->{username}, $bpa->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($bpa->{$_}->{'type'})); 
+            trace( $request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
+        }
+    }
+    
+    return (%$mm,%$hmc,%$fsp,%$bpa);
+}
 
 ##########################################################################
 # Process request from xCat daemon
