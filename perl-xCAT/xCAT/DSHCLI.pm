@@ -3541,12 +3541,12 @@ sub usage_dsh
     my $usagemsg1 =
       " xdsh -h \n xdsh -q \n xdsh -v \n xdsh [noderange] [group]\n";
     my $usagemsg2 =
-      "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file] [-f fanout]\n";
+      "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file] [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L] [-K ssh setup] ";
     my $usagemsg4 =
       "[-m] [-o options][-q] [-Q] [-r remote_shell] [-i image path]\n";
     my $usagemsg5 =
-      "      [-s] [-S ksh | csh] [-t timeout] [-T] [-X environment variables] [--devicetype type_of_device] [-v] [-z]\n";
+      "      [-s] [-S ksh | csh] [-t timeout] [-T] [-X environment variables] [-v] [-z]\n";
     my $usagemsg6 = "      [command_list]\n";
     my $usagemsg7 =
       "Note:Context always defaults to XCAT unless -C flag is set.";
