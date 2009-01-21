@@ -1814,6 +1814,9 @@ sub get_kvm_params {
     my $ba;
     unless (defined $destip and defined $rbs) { #Try another way
         $response = $browser->get("http://$mpa/private/remotecontrol.js.php");
+        if ($response->{_rc} == 404) { #In some firmwares, its "shared" instead of private
+            $response = $browser->get("http://$mpa/shared/remotecontrol.js.php");
+        }
         $html = $response->{_content};
         foreach (split /\n/,$html) {
             if (/<param\s+name\s*=\s*"?([^"]*)"?\s+value\s*=\s*"?([^"]*)"?/i) {
