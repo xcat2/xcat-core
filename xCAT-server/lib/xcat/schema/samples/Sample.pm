@@ -7,8 +7,9 @@ package xCAT_schema::Sample;
 #   1  copy this file to /opt/xcat/lib/perl/xCAT_schema directory, rename it.
 #   2  change the word Sample above to be the same as the file name.
 #   3  Do NOT change the variable name "%tabspec".
-#   4  lljob and llnode are the table names. 
-#      jobid, status, node, jobstatus are the column names. Change them to your like.
+#   4  x_lljob and x_llnode are the table names. 
+#      jobid, status, node, jobstatus are the column names. 
+#      Change them to your like. Please make sure all table names start with "x_".
 #      Each table must have a 'disable' column.
 #      Please do not use SQL reserved words for your table names and column names.
 #      Use this site to check the reserved words: 
@@ -25,7 +26,7 @@ package xCAT_schema::Sample;
 # 
 ###############################################################################
 %tabspec = (
-    lljob => {
+    x_lljob => {      #your table name should start with "x_".
 	cols => [qw(jobid status comments disable)],  #do not change 'disable' and 'comments', it is required by xCAT
 	keys => [qw(jobid)],
         required => [qw(jobid)],
@@ -40,7 +41,7 @@ package xCAT_schema::Sample;
 	    disable => "Set to 'yes' or '1' to comment out this row.",
 	},
     },
-    llnode => {
+    x_llnode => {     
         cols => [qw(node jobid jobstatus cpu_usage comments disable)],
         keys => [qw(node)],
         required => [qw(node jobid)],
@@ -74,40 +75,43 @@ package xCAT_schema::Sample;
 # Note: The xCAT database accessting commands such as
 #       tabdump, chtab, gettab, nodels, nodeadd, nodech, etc. 
 #       still work without it.
+# 
+#       Please make sure that any new object name and attribute name
+#       should start with "x_". 
 ################################################################## 
 
 %defspec = (
-    job => { attrs => [], attrhash => {}, objkey => 'jobid' },   #create a new object called 'job', 
+    x_job => { attrs => [], attrhash => {}, objkey => 'x_jobid' },   #create a new object called 'x_job', 
 );
 
-#define the attribtues in the 'job' object using the lljob talbe columns.
-@{$defspec{job}->{'attrs'}} = 
+#define the attribtues in the 'x_job' object using the x_lljob talbe columns.
+@{$defspec{x_job}->{'attrs'}} = 
 (
-    {   attr_name => 'jobid',
-	tabentry => 'lljob.jobid',
-	access_tabentry => 'lljob.jobid=attr:jobid',
+    {   attr_name => 'x_jobid',
+	tabentry => 'x_lljob.jobid',
+	access_tabentry => 'x_lljob.jobid=attr:x_jobid',
     },
-    {   attr_name => 'status',
-	tabentry => 'lljob.status',
-	access_tabentry => 'lljob.jobid=attr:jobid',
+    {   attr_name => 'x_status',
+	tabentry => 'x_lljob.status',
+	access_tabentry => 'x_lljob.jobid=attr:x_jobid',
     },
 );
 
 #object 'node' already defined in /opt/xcat/lib/perl/xCAT/Schema.pm. 
-#Here we just add jobid and jobstatus attributes to the node object
+#Here we just add x_jobid and x_jobstatus attributes to the node object
 @{$defspec{node}->{'attrs'}} = 
 (
-    {	attr_name => 'jobid',
-	tabentry => 'llnode.jobid',
-	access_tabentry => 'llnode.node=attr:node',
+    {	attr_name => 'x_jobid',
+	tabentry => 'x_llnode.jobid',
+	access_tabentry => 'x_llnode.node=attr:node',
     },
-    {	attr_name => 'jobstatus',
-	tabentry => 'llnode.jobstatus',
-	access_tabentry => 'llnode.node=attr:node',
+    {	attr_name => 'x_jobstatus',
+	tabentry => 'x_llnode.jobstatus',
+	access_tabentry => 'x_llnode.node=attr:node',
     },
-    {	attr_name => 'cpu',
-	tabentry => 'llnode.cpu_usage',
-	access_tabentry => 'llnode.node=attr:node',
+    {	attr_name => 'x_cpu',
+	tabentry => 'x_llnode.cpu_usage',
+	access_tabentry => 'x_llnode.node=attr:node',
     },
 );
 1;
