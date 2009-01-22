@@ -257,10 +257,12 @@ if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) {
 
   #email the full message to the alerts aliase
   my $cmd="echo \'$info$head\n$middle\' \| mail -s \"$severity_type: Cluster SNMP Alert\!\" $MAILTO";
+  $ENV{'XCATCFG'}="";
   `$cmd`;
 }
 
 #log to syslog if needed. default is log all
+$ENV{'XCATCFG'}="";
 if ($LOG || (keys(%hashL)==0)) {
   my $head="SNMP $severity received from $host($ip).";
   my $body;
