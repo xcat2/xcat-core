@@ -4,7 +4,7 @@ B<makeconservercf> - creates the conserver configuration file from info in the x
 
 =head1 SYNOPSIS
 
-B<makeconservercf> [B<-l|--local>] [I<noderange>]
+B<makeconservercf> [B<-l|--local|-d|--delete>] [I<noderange>]
 
 B<makeconservercf> [B<-h|--help|-v|--version>]
 
@@ -25,6 +25,10 @@ all relevant management/service nodes.  If -l is specified, it will only create 
 =head1 OPTIONS
 
 =over 10
+
+=item B<-d|--delete>
+
+Delete rather than add or refresh the nodes specified as a noderange.
 
 =item B<-l|--local>
 

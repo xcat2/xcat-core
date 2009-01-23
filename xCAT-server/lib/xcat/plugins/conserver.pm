@@ -13,13 +13,14 @@ my @cservers = qw(mrv cyclades);
 my %termservers; #list of noted termservers
 
 my $usage_string=
-"  makeconservercf noderange
+"  makeconservercf [-d|--delete] noderange
   makeconservercf [-l|--local]
   makeconservercf -h|--help
   makeconservercf -v|--version
     -l|--local   The conserver gets set up only on the local host.
                  The default goes down to all the conservers on
-                 the server nodes and set them up.
+                 the server nodes and set them up
+    -d|--delete  Conserver has the relevant entries for the given noderange removed immediately from configuration
     -h|--help    Display this usage statement.
     -v|--version Display the version number.";
 
@@ -207,6 +208,16 @@ sub makeconservercf {
   my $req = shift;
   %termservers = (); #clear hash of existing entries
   my $cb = shift;
+  my $extrargs = $req->{arg};
+  my @exargs=($req->{arg});
+  if (ref($extrargs)) {
+    @exargs=@$extrargs;
+  }
+  @ARGV=@exargs;
+  $Getopt::Long::ignorecase=0;
+  #$Getopt::Long::pass_through=1;
+  my $delmode;
+  GetOptions('d|delete'  => \$delmode);
   my $nodes = $req->{node};
   my $svboot=0;
   if (exists($req->{svboot})) { $svboot=1;}
@@ -279,7 +290,7 @@ sub makeconservercf {
             dotsent($_,\@filecontent);
             $termservers{$_->{termserver}}=1; #prevent needless cycles being burned
           }
-          donodeent($_,\@filecontent);
+          donodeent($_,\@filecontent,$delmode);
         }
       }
     }
@@ -369,6 +380,7 @@ sub donodeent {
   my $cfgent = shift;
   my $node = $cfgent->{node};
   my $content = shift;
+  my $delmode = shift;
   my $idx=0;
   my $toidx=-1;
   my $skip = 0;
@@ -390,6 +402,9 @@ sub donodeent {
       $idx++;
     }
     $skip = $skipnext;
+  }
+  if ($delmode) {
+      return;
   }
   push @$content,"#xCAT BEGIN $node CONS\n";
   push @$content,"console $node {\n";
