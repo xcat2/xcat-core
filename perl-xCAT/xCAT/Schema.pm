@@ -417,7 +417,7 @@ postscripts => {
  },
   },
 ppc => {
-    cols => [qw(node hcp id pprofile parent comments disable)],
+    cols => [qw(node hcp id pprofile parent supernode comments disable)],
     keys => [qw(node)],
     table_desc => 'List of system p hardware: HMCs, IVMs, FSPs, BPCs.',
  descriptions => {
@@ -426,6 +426,7 @@ ppc => {
   id => 'For LPARs: the LPAR numeric id; for FSPs: the cage number; for BPAs: the frame number.',
   pprofile => 'The LPAR profile that will be used the next time the LPAR is powered on with rpower.',
   parent => 'For LPARs: the FSP/CEC; for FSPs: the BPA (if one exists).',
+  supernode => 'Comma separated list of 2 ids. The first one is the id of the supernode the FSP resides in. The second one is the logic location number (0-3) within the supernode for the FSP.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -968,6 +969,17 @@ my @nodeattrs = (
                  tabentry => 'ppc.parent',
                  access_tabentry => 'ppc.node=attr:node',
                 },
+ {attr_name => 'supernode',
+                 only_if => 'mgt=hmc',
+                 tabentry => 'ppc.supernode',
+                 access_tabentry => 'ppc.node=attr:node',
+                },
+ {attr_name => 'supernode',
+                 only_if => 'mgt=ivm',
+                 tabentry => 'ppc.supernode',
+                 access_tabentry => 'ppc.node=attr:node',
+                },
+
 #######################
 #  ppcdirect table    #
 #######################
