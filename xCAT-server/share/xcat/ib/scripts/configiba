@@ -24,20 +24,50 @@ foreach my $num (@nums) {
     my $gateway = "$first.$second.255.254";
 
     if ($PLTFRM eq "Linux") {
+        # Issue openibd for Linux at boot time
+        my $OS_name;
+        if ( -f '/etc/redhat-release')
+        {
+            $OS_name = "redhat";
+        }
+        elsif ( -f '/etc/SuSE-release')
+        {
+            $OS_name = "suse";
+        }
+        else
+        {
+            print "Unsupported to config IB on this OS!\n";
+            exit;
+        }
+        if ( -f "/etc/infiniband/openib.conf")
+        {
+            runcmd("/usr/bin/sed -i 's/SDP_LOAD=yes/SDP_LOAD=no/g' /etc/infiniband/openib.conf");
+        }
+        my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
+        runcmd($openibd_cmd);
         # Write the info to the ifcfg file
-        my $dir = "/etc/sysconfig/network-scripts";
+        my $dir;
+        if ( $OS_name eq 'suse')
+        {
+            $dir = "/etc/sysconfig/network";
+        }
+        elsif ( $OS_name eq 'redhat')
+        {
+            $dir = "/etc/sysconfig/network-scripts";
+        }
         if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configiba: cannot open $dir/ifcfg-$nic.'"); exit 1; }
         print FILE "DEVICE=$nic\n";
         print FILE "BOOTPROTO=none\n";
         print FILE "IPADDR=$ip\n";
         print FILE "NETMASK=$netmask\n";
         print FILE "GATEWAY=$gateway\n";
-        print FILE "ONBOOT=yes\n";
+        print FILE "ONBOOT=yes\n" if ( $OS_name eq 'redhat');
+        print FILE "STARTMODE=auto\n" if ( $OS_name eq 'suse');
         close FILE;
         runcmd("$dir/ifup $nic");
         system("logger -t xcat 'configiba: successfully configured $nic.'");
     } elsif ($PLTFRM eq "AIX") {
-        #Check whether the icm is available
+    #Check whether the icm is available
         my $cmd = "lsdev -C | grep icm | grep Available";
         `$cmd`;
         if ($?) {
