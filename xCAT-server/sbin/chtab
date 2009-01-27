@@ -16,7 +16,7 @@ use strict;
 sub usage {
   print "Usage:\n";
   print " To add or update rows for tables:
-   chtab keycolname=keyvalue[,keycolname=keyvalue...] [tablename.colname=newvalue] [tablename.colname=newvalue]...\n";
+   chtab [keycolname=keyvalue[,keycolname=keyvalue...]] [tablename.colname=newvalue] [tablename.colname=newvalue]...\n";
   print " To delete rows from tables:
    chtab -d|--delete keycolname=keyvalue[,keycolname=keyvalue...] tablename [tablename]...\n";
   print " To display usage and other information:
@@ -59,13 +59,18 @@ unless ($target) {
   usage;
   exit(1);
 }
-my %keyhash;
-my @keypairs=split(/,/,$target);
-foreach (@keypairs) {
-  m/(.*)=(.*)/;
-  my $key=$1;
-  my $val=$2;
-  $keyhash{$key}=$val;
+
+my %keyhash=();
+if ($target !~ /\./) {
+  my @keypairs=split(/,/,$target);
+  foreach (@keypairs) {
+    m/(.*)=(.*)/;
+    my $key=$1;
+    my $val=$2;
+    $keyhash{$key}=$val;
+  }
+} else {
+    unshift(@ARGV, $target);
 }
 
 
@@ -89,7 +94,13 @@ else {
 	($table,$temp) = split('\.',$_,2);
 	($column,$value) = split("=",$temp,2);
     unless ($tables{$table}) {
-	  $tables{$table} = xCAT::Table->new($table,-create => 1,-autocommit => 0);
+	my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
+	if ($tab) {
+	    $tables{$table}=$tab;
+	} else {
+	    print "Table $table does not exist.\n";
+	    exit(1);
+	}
     }
     $tableupdates{$table}{$column}=$value;
   }

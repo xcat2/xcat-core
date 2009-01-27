@@ -101,13 +101,30 @@ sub buildcreatestmt
 {
     my $tabn  = shift;
     my $descr = shift;
+    my $xcatcfg = shift;
     my $retv  = "CREATE TABLE $tabn (\n  ";
     my $col;
     my $types=$descr->{types};
+    my $pkset=0;
+
     foreach $col (@{$descr->{cols}})
     {
 	if (($types) && ($types->{$col})) {
-	    $retv .= "\"$col\" " . $types->{$col};
+            if ($types->{$col} =~ /INTEGER AUTO_INCREMENT/) {
+		if ($xcatcfg =~ /^SQLite:/) {
+		    $retv .= "\"$col\" INTEGER PRIMARY KEY AUTOINCREMENT ";
+                    $pkset=1;
+		} elsif ($xcatcfg =~ /^Pg:/) {
+		    $retv .= "\"$col\" SERIAL ";
+		} elsif ($xcatcfg =~ /^mysql:/){
+		    $retv .= "\"$col\" INTEGER AUTO_INCREMENT ";
+		} elsif ($xcatcfg =~ /^db2:/){
+		    $retv .= "\"$col\" INTEGER GENERATED ALWAYS AS IDENTITY ";  #have not tested on DB2
+		} else {
+		}
+	    } else {
+		$retv .= "\"$col\" " . $types->{$col};
+	    }
 	} else {
 	    if (isAKey(\@{$descr->{keys}},$col)) {   # keys need defined length
 		$retv .= "\"$col\" VARCHAR(128)";
@@ -122,12 +139,17 @@ sub buildcreatestmt
         }
         $retv .= ",\n  ";
     }
-    $retv .= "PRIMARY KEY (";
-    foreach (@{$descr->{keys}})
-    {
-       $retv .= "\"$_\","
+    if ($pkset) {
+	$retv =~ s/,\n  $/\n)/;
+    } else {
+	$retv .= "PRIMARY KEY (";
+	foreach (@{$descr->{keys}})
+	{
+	    $retv .= "\"$_\","
+	}
+	$retv =~ s/,$/)\n)/;
     }
-    $retv =~ s/,$/)\n)/;
+	print "retv=$retv\n";
     return $retv;
 }
 
@@ -259,7 +281,8 @@ sub new
             {
                 my $str =
                   buildcreatestmt($self->{tabname},
-                                  $xCAT::Schema::tabspec{$self->{tabname}});
+                                  $xCAT::Schema::tabspec{$self->{tabname}},
+				  $xcatcfg);
                 $self->{dbh}->do($str);
             }
             else { return undef; }
@@ -279,7 +302,8 @@ sub new
             }
             my $str =
               buildcreatestmt($self->{tabname},
-                              $xCAT::Schema::tabspec{$self->{tabname}});
+                              $xCAT::Schema::tabspec{$self->{tabname}},
+			      $xcatcfg);
             $self->{dbh}->do($str);
         }
     } else { #generic DBI
@@ -298,7 +322,8 @@ sub new
 	    }
 	    my $str =
 	       buildcreatestmt($self->{tabname},
-	                       $xCAT::Schema::tabspec{$self->{tabname}});
+	                       $xCAT::Schema::tabspec{$self->{tabname}},
+			       $xcatcfg);
 	    $self->{dbh}->do($str);
 	}
      }
@@ -642,7 +667,9 @@ sub setAttribs
     #-Key value
     #-Hash reference of column-value pairs to set
     my $self     = shift;
-    my %keypairs = %{shift()};
+    my $pKeypairs=shift;
+    my %keypairs = ();
+    if ($pKeypairs != undef) { %keypairs = %{$pKeypairs}; }
 
     #my $key = shift;
     #my $keyval=shift;
@@ -653,28 +680,33 @@ sub setAttribs
     my @notif_data;
     my $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE ";
     my @qargs   = ();
-    foreach (keys %keypairs)
-    {
-        #$qstring .= "$_ = ? AND "; #mysql changes
-        #push @qargs, $keypairs{$_};
-        $qstring .= "\"$_\" = ? AND ";
-        push @qargs, $keypairs{$_};
+    my $query;
+    my $data;
 
-    }
-    $qstring =~ s/ AND \z//;
-    my $query = $self->{dbh}->prepare($qstring);
-    $query->execute(@qargs);
-
-    #get the first row
-    my $data = $query->fetchrow_arrayref();
-    if (defined $data)
-    {
-        $action = "u";
-    }
-    else
-    {
-        $action = "a";
-    }
+    if (($pKeypairs != undef) && (keys(%keypairs)>0)) {
+	foreach (keys %keypairs)
+	{
+	    #$qstring .= "$_ = ? AND "; #mysql changes
+	    #push @qargs, $keypairs{$_};
+	    $qstring .= "\"$_\" = ? AND ";
+	    push @qargs, $keypairs{$_};
+	    
+	}
+	$qstring =~ s/ AND \z//;
+	$query = $self->{dbh}->prepare($qstring);
+	$query->execute(@qargs);
+	
+	#get the first row
+	$data = $query->fetchrow_arrayref();
+	if (defined $data)
+	{
+	    $action = "u";
+	}
+	else
+	{
+	    $action = "a";
+	}
+    } else { $action = "a";}
 
     #prepare the notification data
     my $notif =
@@ -700,7 +732,9 @@ sub setAttribs
         }
     }
 
-    $query->finish();
+    if ($query) {
+	$query->finish();
+    }
 
     if ($action eq "u")
     {
@@ -739,7 +773,6 @@ sub setAttribs
     }
     else
     {
-
         #insert the rows
         $action = "a";
         @bind   = ();
