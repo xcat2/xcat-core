@@ -582,7 +582,33 @@ performance => {
    attrvalue => 'The metric value.'
  },
   },
+
+eventlog => {
+    cols => [qw(recid  eventtime monitor monnode node application component id severity  message rawdata comments disable)], 
+    keys => [qw(recid)],
+    types => {
+	recid => 'INTEGER AUTO_INCREMENT',  
+    },
+    table_desc => 'Stores the events occurred.',  
+    descriptions => {
+        recid => 'The record id.',
+	eventtime => 'The timestamp for the event.',     
+	monitor => 'The name of the monitor that monitors this event.',    #in RMC, it's the condition name
+        monnode => 'The node that monitors this event.',
+	node => 'The node where the event occurred',    
+	application => 'The application that reports the event.',        #RMC, Ganglia 
+	component  => 'The component where the event occurred.',   #in RMC, it's the resource class name
+	id => 'The location or the resource name where the event occurred', #In RMC it's the resource name and attribute name
+	severity => 'The severity of the event. Valid values are: informational, warning, critical.',
+	message => 'The full description of the event.',
+	rawdata => ' The data that associated with the event. ',    # in RMC, it's the attribute value, it takes the format of attname=attvalue[,atrrname=attvalue....]
+	comments => 'Any user-provided notes.',
+	disable => "Set to 'yes' or '1' to comment out this row.",
+    },
+},
+
 );        # end of tabspec definition
+
 
 
 
