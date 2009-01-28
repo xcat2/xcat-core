@@ -56,23 +56,23 @@ echo "# xCAT on AIX - install script" > $RPMDIR/instxcat
 # build the RPMs
 #
 ./makeperlxcatrpm
-mv /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-$VER.*rpm $RPMDIR/
+mv /opt/freeware/src/packages/RPMS/ppc/perl-xCAT-$VER-*rpm $RPMDIR/
 echo "rpm -Uvh perl-xCAT-$VER.*rpm" >> $RPMDIR/instxcat
 
 ./makeclientrpm
-mv /opt/freeware/src/packages/RPMS/ppc/xCAT-client-$VER.*rpm $RPMDIR/
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-client-$VER-*rpm $RPMDIR/
 echo "rpm -Uvh xCAT-client-$VER.*rpm" >> $RPMDIR/instxcat
 
 ./makeserverrpm
-mv /opt/freeware/src/packages/RPMS/ppc/xCAT-server-$VER.*rpm $RPMDIR/
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-server-$VER-*rpm $RPMDIR/
 echo "rpm -Uvh xCAT-server-$VER.*rpm" >> $RPMDIR/instxcat
 
 ./makermcrpm
-mv /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc-$VER.*rpm $RPMDIR/
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc-$VER-*rpm $RPMDIR/
 echo "rpm -Uvh xCAT-rmc-$VER.*rpm" >> $RPMDIR/instxcat
 
 ./makexcatrpm
-mv /opt/freeware/src/packages/RPMS/ppc/xCAT-$VER.*rpm $RPMDIR/
+mv /opt/freeware/src/packages/RPMS/ppc/xCAT-$VER-*rpm $RPMDIR/
 echo "rpm -Uvh xCAT-$VER.*rpm" >> $RPMDIR/instxcat
 
 #
