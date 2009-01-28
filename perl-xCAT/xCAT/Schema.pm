@@ -595,10 +595,10 @@ eventlog => {
 	eventtime => 'The timestamp for the event.',     
 	monitor => 'The name of the monitor that monitors this event.',    #in RMC, it's the condition name
         monnode => 'The node that monitors this event.',
-	node => 'The node where the event occurred',    
+	node => 'The node where the event occurred.',    
 	application => 'The application that reports the event.',        #RMC, Ganglia 
 	component  => 'The component where the event occurred.',   #in RMC, it's the resource class name
-	id => 'The location or the resource name where the event occurred', #In RMC it's the resource name and attribute name
+	id => 'The location or the resource name where the event occurred.', #In RMC it's the resource name and attribute name
 	severity => 'The severity of the event. Valid values are: informational, warning, critical.',
 	message => 'The full description of the event.',
 	rawdata => ' The data that associated with the event. ',    # in RMC, it's the attribute value, it takes the format of attname=attvalue[,atrrname=attvalue....]
@@ -673,6 +673,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   policy => { attrs => [], attrhash => {}, objkey => 'priority' },
   monitoring => { attrs => [], attrhash => {}, objkey => 'name' },
   notification => { attrs => [], attrhash => {}, objkey => 'filename' },
+    eventlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
 );
 
 
@@ -1469,6 +1470,62 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  access_tabentry => 'monitoring.name=attr:name',
                  },
 );
+
+@{$defspec{eventlog}->{'attrs'}} = (
+        {attr_name => 'recid',
+                 tabentry => 'eventlog.recid',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'eventtime',
+                 tabentry => 'eventlog.eventtime',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'monitor',
+                 tabentry => 'eventlog.monitor',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'monnode',
+                 tabentry => 'eventlog.monnode',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'node',
+                 tabentry => 'eventlog.node',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'application',
+                 tabentry => 'eventlog.application',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'component',
+                 tabentry => 'eventlog.component',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'id',
+                 tabentry => 'eventlog.id',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'severity',
+                 tabentry => 'eventlog.severity',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'message',
+                 tabentry => 'eventlog.message',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'rawdata',
+                 tabentry => 'eventlog.rawdata',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'comments',
+                 tabentry => 'eventlog.comments',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+	{attr_name => 'disable',
+                 tabentry => 'eventlog.disable',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+);
+
 
 
 

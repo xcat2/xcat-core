@@ -2869,4 +2869,58 @@ sub get_image_name {
 }
 
 
+#-------------------------------------------------------------------------------
+
+=head3   logEventsToDatabase
+       Logs the given events info to the xCAT's 'eventlog' database 
+    Arguments:
+        arrayref -- A pointer to an array. Each element is a hash that contains an events.
+        The hash should contain the at least one of the following keys:
+          eventtime -- The format is "mm-dd-yyyy hh:mm:ss".
+                       If omitted, the current date and time will be used.
+          monitor  -- The name of the monitor that monitors this event.
+          monnode -- The node that monitors this event.
+          node -- The node where the event occurred.
+          application -- The application that reports the event.
+          component -- The component where the event occurred.
+          id -- The location or the resource name where the event occurred.
+          severity -- The severity of the event. Valid values are: informational, warning, critical.
+          message -- The full description of the event.
+	  rawdata -- The data that associated with the event.         
+  Returns:
+       (ret code, error message) 
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub logEventsToDatabase{
+    my $pEvents=shift;
+    if (($pEvents) && ($pEvents =~ /xCAT::Utils/)) {
+	$pEvents=shift;
+    }
+    
+    if (($pEvents) && (@$pEvents > 0)) {
+	my $currtime;
+	my $tab = xCAT::Table->new("eventlog",-create => 1,-autocommit => 0);
+        if (!$tab) {
+	    return (1, "The evnetlog table cannot be opened.");
+	}
+
+	foreach my $event (@$pEvents) {
+	    #create event time if it does not exist
+	    if (!exists($event->{eventtime}))  {
+		if (!$currtime) {
+		    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+		    $currtime=sprintf("%02d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec);
+		}
+		$event->{eventtime}=$currtime;
+	    }
+	    $tab->setAttribs(undef, $event);
+	}
+	$tab->commit;
+    }    
+    
+    return (0, "");
+}
+
 1;
