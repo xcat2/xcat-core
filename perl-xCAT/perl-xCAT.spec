@@ -1,11 +1,11 @@
 Summary: xCAT perl libraries
 Name: perl-xCAT
-Version: 2.2
+Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 4
 License: EPL
 Group: System Environment/Libraries
-Source: perl-xCAT-2.2.tar.gz
+Source: perl-xCAT-%(cat Version).tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
@@ -22,11 +22,14 @@ Provides perl xCAT libraries for core functionality.  Required for all xCAT inst
 Includes xCAT::Table, xCAT::NodeRange, among others.
 
 %prep
-%setup -q
+%setup -q -n perl-xCAT
 %build
 # This phase is done in (for RH): /usr/src/redhat/BUILD/perl-xCAT-2.0
 # All of the tarball source has been unpacked there and is in the same file structure
 # as it is in svn.
+
+# Modify the Version() function in xCAT/Utils.pm to automatically have the correct version
+./modifyUtils %{version}
 
 # Build the pod version of the man pages for each DB table.  It puts them in the man5 and man7 subdirs.
 # Then convert the pods to man pages and html pages.

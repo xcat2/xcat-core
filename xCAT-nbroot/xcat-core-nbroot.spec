@@ -1,4 +1,4 @@
-%define version	2.1
+%define version	%(cat Version)
 %ifarch i386 i586 i686 x86
 %define tarch x86
 %endif
@@ -18,15 +18,12 @@ AutoProv: false
 
 
 
-
-
-
 Name:	 %{name}
 Version: %{version}
 Group: System/Utilities
 License: EPL
 Vendor: IBM Corp.
-Summary: xCAT-nbroot-coreprovides opensource components of the netboot image
+Summary: xCAT-nbroot-core provides opensource components of the netboot image
 URL:	 http://xcat.org
 Source1: xcat-nbrootoverlay.tar.gz
 

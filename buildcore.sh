@@ -1,5 +1,6 @@
 #!/bin/sh
 cd `dirname $0`
+VER=`cat Version`
 export BDIR=`pwd`
 GREP=grep
 export DESTDIR=`pwd`/core-snap
@@ -21,87 +22,84 @@ mkdir -p $DESTDIR
 mkdir -p $SRCDIR
 cd xcat-core
 svn up > ../coresvnup
-if [ `wc -l ../coresvnup|awk '{print $1}'` != 1 ] && ! grep "^At revision" ../coresvnup; then
-	SVNREF=r`svn info|grep Revision|awk '{print $2}'`
-	BUILDDATE=`date`
-	VERADD=". ' (svn $SVNREF\/built $BUILDDATE)'"
-	sed -i s/#XCATSVNBUILDSUBHERE/"$VERADD"/ perl-xCAT/xCAT/Utils.pm
-	echo perl-xCAT >> ../coresvnup
-fi
+
+# This update of Utils.pm is now done in the perl-xCAT spec file
+#if [ `wc -l ../coresvnup|awk '{print $1}'` != 1 ] && ! grep "^At revision" ../coresvnup; then
+#	SVNREF=r`svn info|grep Revision|awk '{print $2}'`
+#	BUILDDATE=`date`
+#	VERADD=". ' (svn $SVNREF\/built $BUILDDATE)'"
+#	sed -i s/#XCATSVNBUILDSUBHERE/"$VERADD"/ perl-xCAT/xCAT/Utils.pm
+#	echo perl-xCAT >> ../coresvnup
+#fi
+
 if $GREP xCAT-client ../coresvnup; then
    UPLOAD=1
    ./makeclientrpm
    rm -f $DESTDIR/xCAT-client*rpm
    rm -f $SRCDIR/xCAT-client*rpm
-   mv /usr/src/$pkg/RPMS/noarch/xCAT-client-2.2*rpm $DESTDIR/
-   mv /usr/src/$pkg/SRPMS/xCAT-client-2.2*rpm $SRCDIR/
+   mv /usr/src/$pkg/RPMS/noarch/xCAT-client-$VER*rpm $DESTDIR/
+   mv /usr/src/$pkg/SRPMS/xCAT-client-$VER*rpm $SRCDIR/
 fi
 if $GREP perl-xCAT ../coresvnup; then
    UPLOAD=1
    ./makeperlxcatrpm
    rm -f $DESTDIR/perl-xCAT*rpm
    rm -f $SRCDIR/perl-xCAT*rpm
-   mv /usr/src/$pkg/RPMS/noarch/perl-xCAT-2.2*rpm $DESTDIR/
-   mv /usr/src/$pkg/SRPMS/perl-xCAT-2.2*rpm $SRCDIR/
+   mv /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm $DESTDIR/
+   mv /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
 fi
-svn revert perl-xCAT/xCAT/Utils.pm
+#svn revert perl-xCAT/xCAT/Utils.pm
 if $GREP xCAT-web ../coresvnup; then
    UPLOAD=1
    rm -f $DESTDIR/xCAT-web*
    rm -f $SRCDIR/xCAT-web*
    ./makewebrpm
-   mv /usr/src/$pkg/RPMS/noarch/xCAT-web-2.2*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCAT-web-2.2*rpm $SRCDIR
+   mv /usr/src/$pkg/RPMS/noarch/xCAT-web-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCAT-web-$VER*rpm $SRCDIR
 fi
 if $GREP xCAT-server ../coresvnup; then
    UPLOAD=1
    ./makeserverrpm
    rm -f $DESTDIR/xCAT-server*rpm
    rm -f $SRCDIR/xCAT-server*rpm
-   mv /usr/src/$pkg/RPMS/noarch/xCAT-server-2.2*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCAT-server-2.2*rpm $SRCDIR
+   mv /usr/src/$pkg/RPMS/noarch/xCAT-server-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCAT-server-$VER*rpm $SRCDIR
 fi
 if $GREP xCAT-nbroot ../coresvnup; then
    UPLOAD=1
-   cd xCAT-nbroot
-   ./mkrpm x86_64
-   ./mkrpm ppc64
-   ./mkrpm x86
+   ./makenbrootrpm x86_64
+   ./makenbrootrpm ppc64
+   ./makenbrootrpm x86
    rm -f $DESTDIR/xCAT-nbroot-core*rpm
    rm -f $SRCDIR/xCAT-nbroot-core*rpm
    mv /usr/src/$pkg/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
    mv /usr/src/$pkg/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
-   cd ..
 fi
 if $GREP "U    xCATsn/" ../coresvnup || $GREP "A    xCATsn/" ../coresvnup; then
    UPLOAD=1
-   cd xCATsn
-   rm -f $DESTDIR/xCATsn-2.2*rpm
-   rm -f $SRCDIR/xCATsn-2.2*rpm
-   ./mkrpm x86_64
-   mv /usr/src/$pkg/RPMS/*/xCATsn-2*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCATsn-2*rpm $SRCDIR
-   ./mkrpm i386
-   mv /usr/src/$pkg/RPMS/*/xCATsn-2*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCATsn-2*rpm $SRCDIR
-   ./mkrpm ppc64
-   mv /usr/src/$pkg/RPMS/*/xCATsn-2*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCATsn-2*rpm $SRCDIR
-   cd ..
+   rm -f $DESTDIR/xCATsn-$VER*rpm
+   rm -f $SRCDIR/xCATsn-$VER*rpm
+   ./makexcatsnrpm x86_64
+   mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCATsn-$VER*rpm $SRCDIR
+   ./makexcatsnrpm i386
+   mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCATsn-$VER*rpm $SRCDIR
+   ./makexcatsnrpm ppc64
+   mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCATsn-$VER*rpm $SRCDIR
 fi
 if $GREP "U    xCAT/" ../coresvnup || $GREP "A    xCAT/" ../coresvnup; then
    UPLOAD=1
-   cd xCAT
-   rm -f $DESTDIR/xCAT-2.2*rpm
-   rm -f $SRCDIR/xCAT-2.2*rpm
-   ./mkrpm x86_64
-   mv /usr/src/$pkg/RPMS/*/xCAT-2*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCAT-2*rpm $SRCDIR
-   ./mkrpm ppc64
-   mv /usr/src/$pkg/RPMS/*/xCAT-2*rpm $DESTDIR
-   ./mkrpm i386
-   mv /usr/src/$pkg/RPMS/*/xCAT-2*rpm $DESTDIR
-   cd ..
+   rm -f $DESTDIR/xCAT-$VER*rpm
+   rm -f $SRCDIR/xCAT-$VER*rpm
+   ./makexcatrpm x86_64
+   mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCAT-$VER*rpm $SRCDIR
+   ./makexcatrpm ppc64
+   mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
+   ./makexcatrpm i386
+   mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
 fi
 if [ $UPLOAD == 0 ]; then
  echo "Nothing new detected"

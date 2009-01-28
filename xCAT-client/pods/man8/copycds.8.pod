@@ -1,19 +1,63 @@
 
 =head1 NAME
 
-B<copycds> - Copies Linux distributions and service levels from CDs to install directory.
+B<copycds> - Copies Linux distributions and service levels from CDs/DVDs to install directory.
 
 =head1 SYNOPSIS
 
-B<copycds> [{B<-n|--name|--osver>}=I<distroname>] [{B<-a|--arch>}=I<architecture>] I<1st.iso [2nd.iso ...]>
+B<copycds> [{B<-n|--name|--osver>}=I<distroname>] [{B<-a|--arch>}=I<architecture>] {I<iso>|I<device-path>} ...
 
 B<copycds> [B<-h>|B<--help>]
 
 
 =head1 DESCRIPTION
 
-The copycds command copies all contents of Distribution CDs or Service Pack CDs to the install directory as
-designated in the B<site> table attribute: B<installdir>.
+The B<copycds> command copies all contents of Distribution CDs/DVDs or Service Pack CDs/DVDs to the install directory as
+designated in the B<site> table attribute: B<installdir>.  The B<copycds> command can copy from one or more ISO files,
+or from the CD/DVD device path.  If xCAT doesn't recognize the signature of the CD/DVD (e.g. in the .discinfo
+file), you must specify the -n and -a options.  This is sometimes the case for distros that have very
+recently been released, and the xCAT code hasn't been updated for it yet.
+
+
+=head1 OPTIONS
+
+=over 6
+
+=item {B<-n|--name|--osver>}=I<distroname>
+
+The linux distro name and version that the ISO/DVD contains.  Examples:  rhels5.3, centos5.1, fedora9.
+
+=item {B<-a|--arch>}=I<architecture>]
+
+The architecture of the linux distro on the ISO/DVD.  Examples:  x86, x86_64, ppc64.
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 2
+
+=item *
+
+To copy the RPMs from a set of ISOs that represent the CDs of a distro:
+
+B<copycds cd1.iso cd2.iso cd3.iso>
+
+=item *
+
+To copy the RPMs from a physical DVD:
+
+B<copycds /dev/dvd>
+
+=item *
+
+To copy the RPMs from a DVD ISO of a very recently released distro:
+
+B<copycds -n rhels5.3 -a x86_64 dvd.iso>
+
+=back
+
 
 =head1 SEE ALSO
 

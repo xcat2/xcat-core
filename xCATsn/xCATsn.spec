@@ -1,6 +1,6 @@
 Summary: Metapackage for a common, default xCAT service node setup
 Name: xCATsn
-Version: 2.2
+Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 4
 License: EPL
@@ -12,6 +12,7 @@ Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 #BuildArch: noarch
 Source1: xcat.conf
+Source2: license.tar.gz
 Provides: xCATsn = %{version}
 Requires: xCAT-server xCAT-client  perl-xCAT perl-XML-Parser
 
@@ -30,13 +31,22 @@ including hardware management and software management.
 
 
 %prep
+%ifos linux
+tar zxf %{SOURCE2}
+%else
+cp %{SOURCE2} /opt/freeware/src/packages/BUILD
+gunzip -f license.tar.gz
+tar -xf license.tar
+%endif
 
 %build
 
 %install
+mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d/
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
-cd -
+# cd -
+cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -72,5 +82,7 @@ fi
 
 %files
 %{prefix}
+# one for sles, one for rhel. yes, it's ugly...
 /etc/httpd/conf.d/xcat.conf
+/etc/apache2/conf.d/xcat.conf
 %defattr(-,root,root)

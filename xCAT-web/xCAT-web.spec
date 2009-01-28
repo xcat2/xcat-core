@@ -1,12 +1,12 @@
 Summary: Web Interface for xCAT 2
 Name: xCAT-web
-Version: 2.2
+Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 4
 
 License: EPL
 Group: Applications/System
-Source: xCAT-web-2.2.tar.gz
+Source: xCAT-web-%(cat Version).tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 URL: http://xcat.org
@@ -25,7 +25,7 @@ Requires: httpd
 Provides a browser-based interface for xCAT (extreme Cluster Administration Tool).
 
 %prep
-%setup -q
+%setup -q -n xCAT-web
 %build
 %install
 

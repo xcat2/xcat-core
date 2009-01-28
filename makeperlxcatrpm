@@ -1,20 +1,28 @@
 #!/bin/sh
 
 OSNAME=$(uname)
-VER="2.2"
+VER=`cat Version`
 
 if [ "$OSNAME" = "AIX" ]
 then
 
-        source=$PWD
-        cd /opt/freeware/src/packages/SOURCES
-        rm -f perl-xCAT-$VER; ln -s $source/perl-xCAT perl-xCAT-$VER
-        rm -f /opt/freeware/src/packages/SRPMS/perl-xCAT*rpm /opt/freeware/src/packages/RPMS/ppc/perl-xCAT*rpm
+        #source=$PWD
+        #cd /opt/freeware/src/packages/SOURCES
+        #rm -f perl-xCAT-$VER; ln -s $source/perl-xCAT perl-xCAT-$VER
+        #rm -f /opt/freeware/src/packages/SRPMS/perl-xCAT*rpm /opt/freeware/src/packages/RPMS/ppc/perl-xCAT*rpm
+        #echo '.svn' > /tmp/xcat-excludes
+        #tar -X /tmp/xcat-excludes -cf perl-xCAT-$VER.tar perl-xCAT-$VER
+        #gzip -f /opt/freeware/src/packages/SOURCES/perl-xCAT-$VER.tar
+        #cd $source/perl-xCAT
+        #rpm -ba perl-xCAT.spec
+        
+        source=/opt/freeware/src/packages
+        rm -f $source/SRPMS/perl-xCAT*rpm $source/RPMS/ppc/perl-xCAT*rpm
         echo '.svn' > /tmp/xcat-excludes
-        tar -X /tmp/xcat-excludes -cf perl-xCAT-$VER.tar perl-xCAT-$VER
-        gzip -f /opt/freeware/src/packages/SOURCES/perl-xCAT-$VER.tar
-        cd $source/perl-xCAT
-        rpm -ba perl-xCAT.spec
+        tar -X /tmp/xcat-excludes -cf $source/perl-xCAT-$VER.tar perl-xCAT
+        gzip -f $source/SOURCES/perl-xCAT-$VER.tar
+        rpm -ba perl-xCAT/perl-xCAT.spec
+        #rpm -ta $source/SOURCES/perl-xCAT-$VER.tar.gz
 else
 	if [ -f /etc/redhat-release ]
 	then
@@ -22,14 +30,11 @@ else
 	else
    		pkg="packages"
 	fi
-	source=$PWD
 
-	# Trying to avoid having the version  on the perl-xCAT dir name in svn
 	set -x
-	cd /usr/src/$pkg/SOURCES
-	rm -f perl-xCAT-$VER; ln -s $source/perl-xCAT perl-xCAT-$VER   # have to make tar think it is in perl-xCAT-2.1
-	rm -f perl-xCAT-$VER.tar.gz
-	tar -czhf perl-xCAT-$VER.tar.gz --exclude=.svn --exclude=.project perl-xCAT-$VER
+	
+	tar  --exclude .svn -czhf /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz perl-xCAT;
 	rm -f /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm
-	rpmbuild -ta  perl-xCAT-$VER.tar.gz
+	rpmbuild -ta /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz
+	
 fi

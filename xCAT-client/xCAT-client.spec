@@ -1,11 +1,11 @@
 Summary: Core executables and data of the xCAT management project
 Name: xCAT-client
-Version: 2.2
+Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 4
 License: EPL
 Group: Applications/System
-Source: xCAT-client-2.2.tar.gz
+Source: xCAT-client-%(cat Version).tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
@@ -23,7 +23,7 @@ Provides: xCAT-client = %{version}
 xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.
 
 %prep
-%setup -q
+%setup -q -n xCAT-client
 %build
 # This phase is done in (for RH): /usr/src/redhat/BUILD/xCAT-client-2.0
 # All of the tarball source has been unpacked there and is in the same file structure

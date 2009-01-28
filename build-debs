@@ -2,7 +2,7 @@
 # Accepts directories to build packages from on the commandline, but defaults
 # to building: perl-xCAT and xCAT-client
 
-major="2.1"
+major=`cat Version`
 lintian="" # TODO: lintian fails currently
 #lintian="--svn-lintian"
 

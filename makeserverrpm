@@ -1,18 +1,26 @@
 #!/bin/sh
 
 OSNAME=$(uname)
-VER=2.2
+VER=`cat Version`
 
 if [ "$OSNAME" = "AIX" ]
 then
 
-	echo '.svn' > /tmp/xcat-excludes
-    tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/xCAT-server-$VER.tar xCAT-server
-    gzip -f /opt/freeware/src/packages/SOURCES/xCAT-server-$VER.tar
-    cd ./xCAT-server
-    rm -f /opt/freeware/src/packages/SRPMS/xCAT-server-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-server-$VER*rpm
-    rpm -ba xCAT-server.spec
+	#echo '.svn' > /tmp/xcat-excludes
+    #tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/xCAT-server-$VER.tar xCAT-server
+    #gzip -f /opt/freeware/src/packages/SOURCES/xCAT-server-$VER.tar
+    #cd ./xCAT-server
+    #rm -f /opt/freeware/src/packages/SRPMS/xCAT-server-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-server-$VER*rpm
+    #rpm -ba xCAT-server.spec
     #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-server-$VER*rpm
+
+    source=/opt/freeware/src/packages
+	echo '.svn' > /tmp/xcat-excludes
+    tar -X /tmp/xcat-excludes -cf $source/SOURCES/xCAT-server-$VER.tar xCAT-server
+    gzip -f $source/SOURCES/xCAT-server-$VER.tar
+    rm -f $source/SRPMS/xCAT-server-$VER*rpm $source/RPMS/ppc/xCAT-server-$VER*rpm
+    rpm -ba xCAT-server/xCAT-server.spec
+    #rpm -ta $source/SOURCES/xCAT-server-$VER.tar.gz
 
 else
 
@@ -23,8 +31,8 @@ else
    		pkg="packages"
 	fi
 
-	tar  --exclude .svn -czf /usr/src/$pkg/SOURCES/xCAT-server-$VER.tar.gz xCAT-server;
+	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/xCAT-server-$VER.tar.gz xCAT-server
 	rm -f /usr/src/$pkg/SRPMS/xCAT-server-$VER*rpm /usr/src/$pkg/RPMS/noarch/xCAT-server-$VER*rpm
-	rpmbuild -ta /usr/src/$pkg/SOURCES/xCAT-server-$VER.tar.gz ;
+	rpmbuild -ta /usr/src/$pkg/SOURCES/xCAT-server-$VER.tar.gz
 	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-server-$VER*rpm
 fi

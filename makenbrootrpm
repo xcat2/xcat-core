@@ -1,0 +1,16 @@
+#!/bin/sh
+VER=`cat Version`
+if [ -f /etc/redhat-release ]
+then
+   pkg="redhat"
+else
+   pkg="packages"
+fi
+cd `dirname $0`/xCAT-nbroot
+tar --exclude .svn -czvf /usr/src/$pkg/SOURCES/xcat-nbrootoverlay.tar.gz -C overlay/  .
+#mv -f *.gz /usr/src/$pkg/SOURCES
+cp LICENSE.html /usr/src/$pkg/BUILD
+cp xcat-core-nbroot.spec /usr/src/$pkg/SOURCES
+cd -
+rm -f /usr/src/$pkg/SRPMS/xCAT-nbroot-$VER*rpm /usr/src/$pkg/RPMS/*/xCAT-nbroot-$VER*rpm
+rpmbuild -ba xCAT-nbroot/xcat-core-nbroot.spec --target $1

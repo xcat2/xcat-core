@@ -1,12 +1,12 @@
 #!/bin/sh
 
 OSNAME=$(uname)
-VER=2.2
+VER=`cat Version`
 
 if [ "$OSNAME" = "AIX" ]
 then
 
-    cd `dirname $0`
+    cd `dirname $0`/xCAT
     echo '.svn' > /tmp/xcat-excludes
     echo 'upflag' >> /tmp/xcat-excludes
 
@@ -19,12 +19,10 @@ then
     cp xcat.conf /opt/freeware/src/packages/SOURCES
 
     rm -f /opt/freeware/src/packages/SRPMS/xCAT-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-$VER*rpm
-
-    rpm -ba xCAT.spec
-
-    # don't install
-    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-$VER*rpm
     cd -
+
+    rpm -ba xCAT/xCAT.spec
+    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-$VER*rpm
 
 else
 
@@ -35,15 +33,15 @@ else
 		pkg="packages"
 	fi
 
-	cd `dirname $0`
+	cd `dirname $0`/xCAT
 	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
 	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/templates.tar.gz templates
 	cp xcat.conf /usr/src/$pkg/SOURCES
+	cd -
 	rm -f /usr/src/$pkg/SRPMS/xCAT-$VER*rpm /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm
    if [ ! -z "$1" ]; then
-	rpmbuild -ba xCAT.spec --target $1
+	rpmbuild -ba xCAT/xCAT.spec --target $1
    else
-	rpmbuild -ba xCAT.spec
+	rpmbuild -ba xCAT/xCAT.spec
    fi
-	cd -
 fi

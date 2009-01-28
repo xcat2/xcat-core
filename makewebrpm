@@ -1,16 +1,24 @@
 #!/bin/sh
 
 OSNAME=$(uname)
-version='2.2'
+VER=`cat Version`
 
 if [ "$OSNAME" = "AIX" ]
 then
+	#echo '.svn' > /tmp/xcat-excludes
+    #tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/xCAT-web.tar xCAT-web
+    #gzip -f /opt/freeware/src/packages/SOURCES/xCAT-web.tar
+    #cd ./xCAT-web
+    #rm -f /opt/freeware/src/packages/SRPMS/xCAT-web*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-web*rpm
+    #rpm -ba xCAT-web.spec
+    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-web*rpm
+
+    source=/opt/freeware/src/packages
 	echo '.svn' > /tmp/xcat-excludes
-    tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/xCAT-web.tar xCAT-web
-    gzip -f /opt/freeware/src/packages/SOURCES/xCAT-web.tar
-    cd ./xCAT-web
-    rm -f /opt/freeware/src/packages/SRPMS/xCAT-web*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-web*rpm
-    rpm -ba xCAT-web.spec
+    tar -X /tmp/xcat-excludes -cf $source/SOURCES/xCAT-web-$VER.tar xCAT-web
+    gzip -f $source/SOURCES/xCAT-web-$VER.tar
+    rm -f $source/SRPMS/xCAT-web*rpm $source/RPMS/noarch/xCAT-web*rpm
+    rpm -ba xCAT-web/xCAT-web.spec
     #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCAT-web*rpm
 
 else
@@ -20,15 +28,10 @@ else
 	else
    		pkg="packages"
 	fi
-	source=$PWD
 
-	# Trying to avoid having the version # (2.0) on the xCAT-web dir name in svn
 	set -x
-	cd /usr/src/$pkg/SOURCES
-	rm -f xCAT-web-$version; ln -s $source/xCAT-web xCAT-web-$version   # have to make tar think it is in xCAT-web-2.0
-	rm -f xCAT-web-$version.tar.gz
-	tar -czhf xCAT-web-$version.tar.gz --exclude=.svn --exclude=.project xCAT-web-$version
-	rm -f /usr/src/$pkg/SRPMS/xCAT-web-$version*rpm /usr/src/$pkg/RPMS/noarch/xCAT-web-$version*rpm
-	rpmbuild -ta xCAT-web-$version.tar.gz
-	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-web-$version*rpm
+	tar --exclude=.svn -czf /usr/src/$pkg/SOURCES/xCAT-web-$VER.tar.gz xCAT-web
+	rm -f /usr/src/$pkg/SRPMS/xCAT-web-$VER*rpm /usr/src/$pkg/RPMS/noarch/xCAT-web-$VER*rpm
+	rpmbuild -ta /usr/src/$pkg/SOURCES/xCAT-web-$VER.tar.gz
+	#rpm -Uvh /usr/src/$pkg/RPMS/noarch/xCAT-web-$VER*rpm
 fi

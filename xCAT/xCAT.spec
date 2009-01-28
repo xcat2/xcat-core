@@ -1,6 +1,6 @@
 Summary: Metapackage for a common, default xCAT setup
 Name: xCAT
-Version: 2.2
+Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
 License: EPL
 Group: Applications/System
