@@ -61,8 +61,8 @@ unless ($target) {
 }
 
 my %keyhash=();
-if ($target !~ /\./) {
-  my @keypairs=split(/,/,$target);
+my @keypairs=split(/,/,$target);
+if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/) {
   foreach (@keypairs) {
     m/(.*)=(.*)/;
     my $key=$1;
