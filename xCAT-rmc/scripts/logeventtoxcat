@@ -1,0 +1,58 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# This script is used by LogEventToxCATDatabase event response to put RMC events into 
+# the xCAT evnetlog table.  It handles both batch and non-batching events.
+
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use strict;
+use Getopt::Std;
+use POSIX qw(strftime);
+use xCAT::Utils;
+use xCAT::MsgUtils;
+
+#`echo "---------------" >> /tmp/ling.log`;
+#foreach(keys %ENV) {
+#    my $s="$_=" . $ENV{$_};
+#    `echo $s >> /tmp/ling.log`;
+#}
+
+my $batch=$ENV{ERRM_COND_BATCH};
+my @a=();
+
+if (!$batch) {
+    my $time=$ENV{ERRM_TIME};
+    my $nodenamelist=$ENV{ERRM_NODE_NAMELIST};
+    $nodenamelist =~ s/\{(.*)\}/$1/;
+    
+    my $event={
+	eventtype => $ENV{ERRM_TYPE}, 
+	monitor => $ENV{ERRM_COND_NAME}, 
+	monnode => $ENV{ERRM_NODE_NAME},
+	node => $nodenamelist,
+	application => 'RMC',
+	component => $ENV{ERRM_RSRC_CLASS_PNAME},
+	id => $ENV{ERRM_RSRC_NAME} . "," . $ENV{ERRM_ATTR_PNAME},
+	severity => $ENV{ERRM_COND_SEVERITY},
+	message => '',
+	rawdata => $ENV{ERRM_ATTR_PNAME} . "=" . $ENV{ERRM_VALUE},
+    }; 
+    
+    push(@a, $event);
+} else {
+   xCAT::MsgUtils->message('S', "logeventtoxcat:batching is not supported by this script yet.\n");
+   exit 0;
+}    
+
+my ($rc, $msg)=xCAT::Utils->logEventsToDatabase(\@a);
+if ($rc) {
+   xCAT::MsgUtils->message('S', "logeventtoxcat:$msg\n");
+}
+
+exit $rc;
+
+
