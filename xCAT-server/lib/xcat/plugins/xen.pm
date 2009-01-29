@@ -363,6 +363,9 @@ sub migrate {
     } else {
         return (1,"Unable to find current location of $node");
     }
+    if ($currhyp eq $target) {
+        return (0,"Guest is already on host $targ");
+    }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
     my $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
