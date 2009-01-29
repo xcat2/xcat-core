@@ -584,7 +584,7 @@ performance => {
   },
 
 eventlog => {
-    cols => [qw(recid  eventtime monitor monnode node application component id severity  message rawdata comments disable)], 
+    cols => [qw(recid  eventtime eventtype monitor monnode node application component id severity  message rawdata comments disable)], 
     keys => [qw(recid)],
     types => {
 	recid => 'INTEGER AUTO_INCREMENT',  
@@ -593,7 +593,8 @@ eventlog => {
     descriptions => {
         recid => 'The record id.',
 	eventtime => 'The timestamp for the event.',     
-	monitor => 'The name of the monitor that monitors this event.',    #in RMC, it's the condition name
+	eventtype => 'The type of the event.',     # for RMC it's either "Event" or "Rearm event".
+	monitor => 'The name of the monitor that monitors this event.',    #for RMC, it's the condition name
         monnode => 'The node that monitors this event.',
 	node => 'The node where the event occurred.',    
 	application => 'The application that reports the event.',        #RMC, Ganglia 
@@ -1478,6 +1479,10 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  },
         {attr_name => 'eventtime',
                  tabentry => 'eventlog.eventtime',
+                 access_tabentry => 'eventlog.recid=attr:recid',
+                 },
+        {attr_name => 'eventtype',
+                 tabentry => 'eventlog.eventtype',
                  access_tabentry => 'eventlog.recid=attr:recid',
                  },
         {attr_name => 'monitor',

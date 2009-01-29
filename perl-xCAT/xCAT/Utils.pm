@@ -2889,6 +2889,25 @@ sub get_image_name {
 	  rawdata -- The data that associated with the event.         
   Returns:
        (ret code, error message) 
+  Example:
+    my  @a=();
+    my $event={
+        eventtime=>"07-28-2009 23:02:03",
+        node => 'node1',
+        rawdata => 'kjdlkfajlfjdlksaj',
+    };
+    push (@a, $event);
+
+    my $event1={
+        node => 'cu03cp',
+        monnode => 'cu03sv',
+        application => 'RMC',
+        component => 'IBM.Sensor',
+        id => 'AIXErrorLogSensor',
+        severity => 'warning',
+    };
+    push(@a, $event1);
+    xCAT::Utils->logEventsToDatabase(\@a);
 
 =cut
 
@@ -2915,7 +2934,8 @@ sub logEventsToDatabase{
 		}
 		$event->{eventtime}=$currtime;
 	    }
-	    $tab->setAttribs(undef, $event);
+	    my @ret=$tab->setAttribs(undef, $event);
+            if (@ret > 1) { return (1, $ret[1]); }
 	}
 	$tab->commit;
     }    
