@@ -1916,6 +1916,15 @@ sub setFINALattrs
             }
 
             # get the data type definition from Schema.pm
+
+			if (!$::FILEATTRS{$objname}{objtype}) {
+				my $rsp;
+				$rsp->{data}->[0] = "\nNo objtype value was specified for \'$objname\'. Cannot create object definition.\n";
+				xCAT::MsgUtils->message("E", $rsp, $::callback);
+				$error = 1;
+				next;
+			}
+
             my $datatype =
               $xCAT::Schema::defspec{$::FILEATTRS{$objname}{objtype}};
             my @list;
