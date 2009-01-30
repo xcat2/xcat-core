@@ -3,12 +3,11 @@
 # mkAIXsnap
 #
 # This script can be used to extract, build, tar, compress and upload 
-# the latest xCAT for AIX code.
+# the latest xCAT for AIX snapshot code.
 #	- this will be the latest development snapshot
 #	- the snapshot should be created as needed
 #       - this script should run in the ../xcat-core/trunk directory
 #         (ex. /u/ntest/svn/workspace/xcat/xcat-core/trunk)
-#
 #	- you will need SourceForge ssh access set up 
 #	  ( get the contents of .ssh/id_rsa.pub on your local machine 
 #	  and add it to .ssh/authorized_keys on shell1.sf.net in
@@ -17,14 +16,11 @@
 #	  /home/groups/x/xc/xcat/htdocs/aix/devel
 #	- the individual RPMs go to:
 #	  /home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
-#	- nothing will be added to the release download area
-#	- Since there is no release available for AIX yet 
-#	  each snap is complete
+#	- nothing is added to the release download area
 #
 BLDTOP=`pwd`
 RPMDIR=$BLDTOP/aix-core-snap
 VER=`cat Version`
-
 
 # upload to SourceForge ??
 UPLOAD=0
@@ -101,14 +97,14 @@ gzip core-aix-snap.tar
 if [ $UPLOAD == 1 ]; then
 
   # clear out the old files - do this manually with winscp session!
-#  ssh nott@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/aix/devel; rm -f *.gz; cd /home/groups/x/xc/xcat/htdocs/aix/devel/core-snap; rm -f *.rpm"
 
   scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
 
-  scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel
+  scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel 
+
 
 # for dep-aix
-#scp dep-aix-$VER.tar.gz nott,xcat@web.sourceforge.net:upload/
+#scp dep-aix-$VER.tar.gz nott@web.sourceforge.net:uploads/
 
 fi
 
