@@ -217,11 +217,18 @@ sub handle_output {
 sub walkoid {
   my $session = shift;
   my $oid = shift;
+  my %namedargs = @_;
   my $retmap = undef; 
   my $varbind = new SNMP::Varbind([$oid,'']);
   $session->getnext($varbind);
   if ($session->{ErrorStr}) {
-   xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": ".$session->{ErrorStr});
+    unless ($namedargs{silentfail}) {
+        if ($namedargs{warncisco}) {
+            xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}." (First attempt at indexing by VLAN failed, ensure that the switch has the vlan configured such that it appears in 'show vlan'): ".$session->{ErrorStr});
+        } else {
+            xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": ".$session->{ErrorStr});
+        }
+    }
     return undef;
   }
   my $count=0;
@@ -307,7 +314,7 @@ sub refresh_switch {
     return;
   }
   #Above is valid without community string indexing, on cisco, we need it on the next one and onward
-  my $iftovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.68.1.2.2.1.2');
+  my $iftovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.68.1.2.2.1.2',silentfail=>1);
   my %vlans_to_check;
   if (defined($iftovlanmap)) { #We have a cisco, the intelligent thing is to do SNMP gets on the ports 
 # that we can verify are populated per switch table
@@ -325,8 +332,10 @@ sub refresh_switch {
   }
 
   my $vlan;
+  my $iscisco=0;
   foreach $vlan (sort keys %vlans_to_check) { #Sort, because if numbers, we want 1 first
     unless (not $vlan or $vlan eq 'NA' or $vlan eq '1') { #don't subject users to the context pain unless needed
+        $iscisco=1;
         if ($snmpver ne '3') {
           $session = new SNMP::Session(
                   DestHost => $switch,
@@ -363,12 +372,12 @@ sub refresh_switch {
         }
     }
     unless ($session) { return; } 
-    my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2'); # Good for all switches
+    my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2',ciscowarn=>$iscisco); # Good for all switches
     # my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2'); 
-    my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2');
+    my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2',silentfail=>1);
     unless (defined($mactoindexmap)) { #if no qbridge defined, try bridge mib, probably cisco
       #$mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2');
-      $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2'); 
+      $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2',ciscowarn=>$iscisco); 
     } #Ok, time to process the data
     foreach my $oid (keys %$namemap) {
     #$oid =~ m/1.3.6.1.2.1.31.1.1.1.1.(.*)/;
