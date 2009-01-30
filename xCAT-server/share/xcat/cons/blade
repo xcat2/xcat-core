@@ -1,13 +1,41 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use Fcntl qw(:DEFAULT :flock);
+sub get_lock {
+    unless (flock(LOCKHANDLE,LOCK_EX|LOCK_NB)) {
+        $| = 1;
+        print "Acquiring startup lock...";
+        flock(LOCKHANDLE,LOCK_EX) or die "Error trying to secure a startup lock";
+        print "done\n";
+    }
+    truncate(LOCKHANDLE,0);
+    print LOCKHANDLE $$."\n";
+}
+
+sub release_lock {
+    truncate(LOCKHANDLE,0);
+    flock(LOCKHANDLE,LOCK_UN);
+}
+
 BEGIN
 {
     use Time::HiRes qw(sleep);
+    use File::Path;
+    use Fcntl qw(:DEFAULT :flock);
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-    my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
-    print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
-    sleep $sleepint;
+    umask 0077;
+    mkpath("/tmp/xcat/");
+    unless (sysopen(LOCKHANDLE,"/tmp/xcat/consolelock",O_WRONLY | O_CREAT)) {
+        sleep 15;
+        print "Unable to open lock file";
+        exit 0;
+    }
+    get_lock();
+    #my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
+    #print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
+    #sleep $sleepint;
 }
+my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
 use lib "$::XCATROOT/lib/perl";
 $ENV{HOME}='/root/';
 require xCAT::Client;
@@ -68,9 +96,21 @@ my $cmdref={
 };
 xCAT::Client::submit_request($cmdref,\&getans);
 until ($mm and $username and $slot) {
-    print "console not ready\n";
-    sleep 5+int(rand(10));
+    release_lock(); #Let other clients have a go
+    $sleepint=10+int(rand(20)); #Stagger to minimize lock collisions, but no big deal when it does happen
+    print "Console not ready, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip delay)\n";
+    sleep $sleepint;
+    get_lock();
     xCAT::Client::submit_request($cmdref,\&getans);
+}
+release_lock(); #done with xcatd, can run with near impunity
+my $solchkcmd = "ssh -t $username"."@"."$mm sol -T blade[$slot]";
+my $solstatus = `$solchkcmd`;
+while ($solstatus !~ /SOL Session: Ready/ and $solstatus !~ /SOL Session: Active/) {
+    $sleepint=60+int(rand(30)); #Stagger sleep to take it easy on AMM/hosting server
+    print "SOL unavailable, retrying in $sleepint seconds (hit Ctrl-E,c,o to skip)\n";
+    sleep $sleepint;
+    $solstatus = `$solchkcmd`;
 }
 exec "ssh -t $username"."@"."$mm console -o -T blade[$slot]";
 #my $pathtochild= dirname($scriptname). "/";
