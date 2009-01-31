@@ -762,6 +762,7 @@ sub plugin_command {
           $req->{node}=\@nodes;
         }
         no strict  "refs";
+        eval { #REMOVEEVALFORDEBUG
         if ($dispatch_requests) { 
 	        dispatch_request($req,$callback,$modname);
         } else {
@@ -773,6 +774,21 @@ sub plugin_command {
           close($parent_fd);
           xexit(0);
         } 
+        }; #REMOVEEVALFORDEBUG
+        if ($sock) { #We shouldn't still be alive, try to send as much detail to parent as possible as to why
+            my $error= "$modname plugin bug, pid $$, process description: '$$progname'";
+            if ($@) {
+                $error .= " with error '$@'";
+            } else { #Sys::Virt and perhaps Net::SNMP sometimes crashes in a way $@ won't catch..
+                $error .= " with missing eval error, probably due to special manipulation of $@ or strange circumstances in an XS library, remove evals in xcatd marked 'REMOVEEVALFORDEBUG and run xcatd -f for more info";
+            }
+            if (scalar (@nodes)) { #Don't know which of the nodes, so one error message warning about the possibliity..
+                $error .= " while trying to fulfill request for the following nodes: ".join(",",@nodes);
+            }
+            xCAT::MsgUtils->message("S","xcatd: $error");
+            $callback->({error=>[$error],errorcode=>[1]});
+            xexit(0); #Die like we should have done
+        }
       } else {
         $plugin_children{$child}=1;
         close $parfd;
@@ -1124,7 +1140,8 @@ sub service_connection {
   my $timedout = 0;
 
   $SIG{ALRM} = sub { $timedout = 1; die; }; 
-  eval {
+  my $evalpid = $$;
+  eval { #REMOVEEVALFORDEBUG
     my $request;
     my $req=undef;
     alarm(15);
@@ -1212,7 +1229,7 @@ sub service_connection {
       }
       alarm(15);
     } 
-  };
+  }; #REMOVEEVALFORDEBUG
   if ($@) { # The eval statement caught a program bug..
     if ($@ =~ /^SIGPIPE/) {
          xCAT::MsgUtils->message("S","xcatd: Unexpected client disconnect");
@@ -1232,6 +1249,15 @@ sub service_connection {
             };
         }
     }
+  } elsif ($evalpid ne $$) {
+      xCAT::MsgUtils->message("S","A child jumped to where it should never ever be, this shouldn't be possible, please report this bug");
+      #The folowing corrupts the SSL state preventing any further output by the parent.  
+      #A bug triggering this absolutely
+      #needs to fixed.  With the current code layout it is either trash valid data that could have been or 
+      #risk user missing data
+      #without knowing it.  It's likely possible to rearchitect to change that, but as it stands it really
+      #should be no longer possible to hit this condition.
+      print $sock,XMLout({error=>"A child jumped to where it should never ever be, this shouldn't be possible, please report this bug"});
   }
   $SIG{ALRM}= sub { die "$$ failed shutting down" };
   alarm(10);
