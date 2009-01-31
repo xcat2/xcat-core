@@ -329,7 +329,9 @@ sub pick_target {
         if ($_ eq $currhyp) { next; } #skip current node
         if (grep { "$_" eq $cand } @destblacklist) { print "$_ was blacklisted\n"; next; } #skip blacklisted destinations
             print "maybe $_\n";
-        $targconn = Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
+            eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
+                $targconn = Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
+            };
         unless ($targconn) { next; } #skip unreachable destinations
         foreach ($targconn->list_domains()) {
             if ($_->get_name() eq 'Domain-0') { next; } #Dom0 memory usage is elastic, we are interested in HVM DomU memory, which is inelastic
@@ -370,11 +372,17 @@ sub migrate {
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
     my $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
-    #serviced, we just want to trigger an arp query
+    #serviced, we just want to trigger MAC move in the switch forwarding dbs
     my $rc=system("virsh -c $currhyp migrate --live $node $target");
     system("arp -d $node"); #Make ethernet fabric take note of change
-    send($sock,"dummy",0,$pa); 
-    my $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ."?no_tty=1");
+    send($sock,"dummy",0,$pa);  #UDP packet to force forwarding table update in switches, ideally a garp happened, but just in case...
+    my $newhypconn;
+    eval {#Contain Sys::Virt bugs
+        $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ."?no_tty=1");
+    };
+    unless ($newhypconn) {
+        return (1,"Failed migration from $prevhyp to $targ (VM destination unreachable)");
+    }
     my $dom;
     eval {
      $dom = $newhypconn->get_domain_by_name($node);
@@ -623,7 +631,13 @@ sub process_request {
       foreach (@$noderange) {
         $hypconn=undef;
         push @destblacklist,$_;
-        $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
+        eval { #Contain bugs that won't be in $@
+            $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
+        };
+        unless ($hypconn)  {
+            $callback->({node=>[{name=>[$_],error=>["Cannot communicate via libvirt to node"]}]});
+            next;
+        }
         foreach ($hypconn->list_domains()) {
             my $guestname = $_->get_name();
             if ($guestname eq 'Domain-0') {
@@ -843,7 +857,9 @@ sub dohyp {
   $vmtab = xCAT::Table->new("vm");
 
 
-  $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$hyp."?no_tty=1");
+  eval { #Contain Sys::Virt bugs that make $@ useless
+    $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$hyp."?no_tty=1");
+  };
   unless ($hypconn) {
      my %err=(node=>[]);
      foreach (keys %{$hyphash{$hyp}->{nodes}}) {
