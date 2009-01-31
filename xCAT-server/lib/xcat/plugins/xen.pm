@@ -329,7 +329,7 @@ sub pick_target {
         if ($_ eq $currhyp) { next; } #skip current node
         if (grep { "$_" eq $cand } @destblacklist) { print "$_ was blacklisted\n"; next; } #skip blacklisted destinations
             print "maybe $_\n";
-        $targconn = Sys::Virt->new(uri=>"xen+ssh://".$_);
+        $targconn = Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
         unless ($targconn) { next; } #skip unreachable destinations
         foreach ($targconn->list_domains()) {
             if ($_->get_name() eq 'Domain-0') { next; } #Dom0 memory usage is elastic, we are interested in HVM DomU memory, which is inelastic
@@ -355,7 +355,7 @@ sub migrate {
         $targ = pick_target($node);
     }
     my $prevhyp;
-    my $target = "xen+ssh://".$targ;
+    my $target = "xen+ssh://".$targ."?no_tty=1";
     my $currhyp="xen+ssh://";
     if ($vmhash->{$node}->[0]->{host}) {
         $prevhyp=$vmhash->{$node}->[0]->{host};
@@ -363,6 +363,7 @@ sub migrate {
     } else {
         return (1,"Unable to find current location of $node");
     }
+    $currhyp.="?no_tty=1";
     if ($currhyp eq $target) {
         return (0,"Guest is already on host $targ");
     }
@@ -373,7 +374,7 @@ sub migrate {
     my $rc=system("virsh -c $currhyp migrate --live $node $target");
     system("arp -d $node"); #Make ethernet fabric take note of change
     send($sock,"dummy",0,$pa); 
-    my $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ);
+    my $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ."?no_tty=1");
     my $dom;
     eval {
      $dom = $newhypconn->get_domain_by_name($node);
@@ -622,7 +623,7 @@ sub process_request {
       foreach (@$noderange) {
         $hypconn=undef;
         push @destblacklist,$_;
-        $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$_);
+        $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
         foreach ($hypconn->list_domains()) {
             my $guestname = $_->get_name();
             if ($guestname eq 'Domain-0') {
@@ -842,7 +843,7 @@ sub dohyp {
   $vmtab = xCAT::Table->new("vm");
 
 
-  $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$hyp);
+  $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$hyp."?no_tty=1");
   unless ($hypconn) {
      my %err=(node=>[]);
      foreach (keys %{$hyphash{$hyp}->{nodes}}) {
