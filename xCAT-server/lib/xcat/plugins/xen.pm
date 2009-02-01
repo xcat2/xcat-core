@@ -356,6 +356,9 @@ sub migrate {
     unless ($targ) {
         $targ = pick_target($node);
     }
+    unless ($targ) {
+        return (1,"Unable to identify a suitable target host for guest $node");
+    }
     my $prevhyp;
     my $target = "xen+ssh://".$targ."?no_tty=1";
     my $currhyp="xen+ssh://";
@@ -369,6 +372,13 @@ sub migrate {
     if ($currhyp eq $target) {
         return (0,"Guest is already on host $targ");
     }
+    my $testhypconn;
+    eval {#Contain Sys::Virt bugs
+        $testhypconn= Sys::Virt->new(uri=>"xen+ssh://".$prevhyp."?no_tty=1");
+    };
+    unless ($testhypconn) {
+        return (1,"Unable to reach $prevhyp to perform operation of $node, use nodech to change vm.host if certain of no split-brain possibility exists");
+    }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
     my $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
@@ -376,24 +386,25 @@ sub migrate {
     my $rc=system("virsh -c $currhyp migrate --live $node $target");
     system("arp -d $node"); #Make ethernet fabric take note of change
     send($sock,"dummy",0,$pa);  #UDP packet to force forwarding table update in switches, ideally a garp happened, but just in case...
-    my $newhypconn;
-    eval {#Contain Sys::Virt bugs
-        $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ."?no_tty=1");
-    };
-    unless ($newhypconn) {
-        return (1,"Failed migration from $prevhyp to $targ (VM destination unreachable)");
-    }
-    my $dom;
-    eval {
-     $dom = $newhypconn->get_domain_by_name($node);
-    };
-    if ($dom) {
-        refresh_vm($dom);
-    }
     if ($rc) {
         return (1,"Failed migration from $prevhyp to $targ");
     } else {
         $vmtab->setNodeAttribs($node,{host=>$targ});
+        my $newhypconn;
+        eval {#Contain Sys::Virt bugs
+            $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ."?no_tty=1");
+        };
+        if ($newhypconn) {
+            my $dom;
+            eval {
+             $dom = $newhypconn->get_domain_by_name($node);
+            };
+            if ($dom) {
+                refresh_vm($dom);
+            }
+        } else {
+            return (0,"migrated to $targ");
+        }
         return (0,"migrated to $targ");
     }
 }
