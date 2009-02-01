@@ -2190,8 +2190,12 @@ sub process_request {
     unless (defined($cpid)) { die "Fork error"; }
     unless ($cpid) {
       close($cfd);
-      dompa($pfd,$mpa,\%mpahash,$command,-args=>\@exargs);
-      exit(0);
+      eval {
+        dompa($pfd,$mpa,\%mpahash,$command,-args=>\@exargs);
+        exit(0);
+      };
+      if ($@) { die "$@"; }
+      die "blade plugin encountered a general error while communication with $mpa";
     }
     $mm_comm_pids{$cpid} = 1;
     close ($pfd);
