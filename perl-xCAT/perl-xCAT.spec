@@ -51,6 +51,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man7
 
 cp -r xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data/*
 
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
