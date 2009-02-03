@@ -1138,7 +1138,7 @@ sub getAllRegs
   my %names=();   
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) { 
         my $monnode=0;
@@ -1190,7 +1190,7 @@ sub config {
   if (@product_names == 0) {
     @product_names=keys(%all);    
   }
-
+  
   print "------config: product_names=@product_names\n";
 
   foreach(@product_names) {
@@ -1312,7 +1312,7 @@ sub  getNodeConfData {
   my %names=();   
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my $tmp1=$table->getAllEntries();
+    my $tmp1=$table->getAllEntries("all");
     if (defined($tmp1) && (@$tmp1 > 0)) {
       foreach(@$tmp1) { $names{$_->{name}}=1; }
     }

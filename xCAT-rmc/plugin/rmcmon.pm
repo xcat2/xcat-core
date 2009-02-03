@@ -438,15 +438,27 @@ sub config {
   }
 
   #create conditions/responses/sensors on the service node or mn
-  my $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/sn 2>&1`;
+  my $result=`/usr/sbin/rsct/install/bin/ctversion`;
+  my $rsct_ver;
+  if (!$?) {
+      chomp($result);
+      my @tempa=split(/ /, $result); 
+      if (@tempa>1) {
+          $rsct_ver=$tempa[1]; 
+      }
+  }
+  my $version_string;
+  if ($rsct_ver) {$version_string="RSCT_VER=$rsct_ver"; } 
+
+  my $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/sn 2>&1`;
   if ($?) {
     my $error= "Error when creating predefined resources on $localhostname:\n$result";
     reportError($error, $callback);
   }   
   if ($isSV) {
-    $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/node 2>&1`; 
+    $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/node 2>&1`; 
   } else  {
-    $result=`$::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`; 
+    $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`;
   }      
   if ($?) {
     my $error= "Error when creating predefined resources on $localhostname:\n$result";

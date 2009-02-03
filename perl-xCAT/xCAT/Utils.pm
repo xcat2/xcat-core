@@ -2943,4 +2943,47 @@ sub logEventsToDatabase{
     return (0, "");
 }
 
+
+#-------------------------------------------------------------------------------
+
+=head3   CheckVersion
+       Checks the two versions numbers to see which one is greater.
+    Arguments:
+        ver_a the version number in format of d.d.d.d...
+        ver_b the version number in format of d.d.d.d...
+    Returns:
+        1 if ver_a is greater than ver_b
+        0 if ver_a is eaqual to ver_b
+        -1 if ver_a is smaller than ver_b
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub  CheckVersion {
+    my $ver_a=shift;
+    if ($ver_a =~ /xCAT::Utils/) {
+	$ver_a=shift;
+    }
+    my $ver_b=shift;
+
+    my @a=split(/\./,$ver_a);
+    my @b=split(/\./,$ver_b);
+    my $len_a=@a;
+    my $len_b=@b;
+       
+    my $index=0;
+    my $max_index=($len_a>$len_b) ? $len_a : $len_b;
+
+    for ($index=0; $index <= $max_index; $index++) {
+ 	my $val_a=($len_a < $index) ? 0 : $a[$index];
+	my $val_b=($len_b < $index) ? 0 : $b[$index];
+	if ($val_a > $val_b) { return 1;}
+	if ($val_a < $val_b) { return -1;}
+    }
+  
+    return 0;
+}
+
+
+
 1;
