@@ -151,6 +151,14 @@ if (!($::CONTEXT_SET))
         push(@{$cmdref->{env}}, "DSH_CONTEXT=$ENV{'DSH_CONTEXT'}");
     }
 }
+if ($ENV{'DSH_REMOTE_PASSWORD'})
+{
+    push(@{$cmdref->{env}}, "DSH_REMOTE_PASSWORD=$ENV{'DSH_REMOTE_PASSWORD'}");
+}
+if ($ENV{'DSH_CURRENT_USERID'})
+{
+    push(@{$cmdref->{env}}, "DSH_CURRENT_USERID=$ENV{'DSH_CURRENT_USERID'}");
+}
 
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
@@ -176,20 +184,20 @@ sub parse_args_xdsh
     my %options = ();
     if (
         !GetOptions(
-            'e|execute'        => \$options{'execute'},
-            'f|fanout=i'       => \$options{'fanout'},
-            'h|help'           => \$options{'help'},
-            'l|user=s'         => \$options{'user'},
-            'm|monitor'        => \$options{'monitor'},
-            'o|node-options=s' => \$options{'node-options'},
-            'q|show-config'    => \$options{'show-config'},
-            'r|node-rsh=s'     => \$options{'node-rsh'},
-            'i|rootimg=s'      => \$options{'rootimg'},
-            's|stream'         => \$options{'streaming'},
-            't|timeout=i'      => \$options{'timeout'},
-            'v|verify'         => \$options{'verify'},
-            'z|exit-status'    => \$options{'exit-status'},
-
+            'e|execute'                => \$options{'execute'},
+            'f|fanout=i'               => \$options{'fanout'},
+            'h|help'                   => \$options{'help'},
+            'l|user=s'                 => \$options{'user'},
+            'm|monitor'                => \$options{'monitor'},
+            'o|node-options=s'         => \$options{'node-options'},
+            'q|show-config'            => \$options{'show-config'},
+            'r|node-rsh=s'             => \$options{'node-rsh'},
+            'i|rootimg=s'              => \$options{'rootimg'},
+            's|stream'                 => \$options{'streaming'},
+            't|timeout=i'              => \$options{'timeout'},
+            'v|verify'                 => \$options{'verify'},
+            'w|touserid=s'             => \$options{'touserid'},
+            'z|exit-status'            => \$options{'exit-status'},
             'B|bypass'                 => \$options{'bypass'},
             'C|context=s'              => \$options{'context'},
             'E|environment=s'          => \$options{'environment'},
@@ -201,7 +209,7 @@ sub parse_args_xdsh
             'T|trace'                  => \$options{'trace'},
             'V|version'                => \$options{'version'},
 
-            'devicetype=s'             => \$options{'devicetype'},
+            'devicetype=s'               => \$options{'devicetype'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
@@ -225,7 +233,29 @@ sub parse_args_xdsh
     }
     if ($options{'ssh-setup'})
     {
-        $ENV{XCATBYPASS} = "yes";    # bypass xcatd
+
+        # prompt for the password for the current userid on the node
+        my $current_userid = getlogin();
+        $ENV{DSH_CURRENT_USERID} = $current_userid;
+        my $userpw;
+        my $msg =
+          "Enter the password for the userid on the node where the ssh keys \nwill be updated:\n";
+        xCAT::MsgUtils->message("I", $msg);
+        system("stty -echo");        # turn off keyboard
+        chop($userpw = <STDIN>);
+        system("stty echo");         # turn on keyboard
+
+        if ($userpw eq "")
+        {                            # did not enter a password
+            $msg = "Did not enter a password must abort the key exchange";
+            xCAT::MsgUtils->message("E", $msg);
+            exit 2;
+        }
+        else
+        {                            # password entered pass to the server
+            $ENV{DSH_REMOTE_PASSWORD} = $userpw;
+
+        }
     }
     if ($options{'version'})
     {

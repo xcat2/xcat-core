@@ -1,9 +1,10 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Utils;
+
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
@@ -14,7 +15,6 @@ require xCAT::Schema;
 require Data::Dumper;
 require xCAT::NodeRange;
 require DBI;
-
 
 our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw(genpassword);
@@ -30,6 +30,7 @@ This program module file, is a set of utilities used by xCAT commands.
 =cut
 
 #-------------------------------------------------------------
+
 =head3 genUUID
     Returns an RFC 4122 compliant UUIDv4
     Arguments:
@@ -39,23 +40,28 @@ This program module file, is a set of utilities used by xCAT commands.
             for example: f16196d1-7534-41c1-a0ae-a9633b030583
 
 =cut
+
 #-------------------------------------------------------
-sub genUUID {
+sub genUUID
+{
+
     #UUIDv4 has 6 fixed bits and 122 random bits
     #Though a UUID of this form is not guaranteed to be unique absolutely,
-    #the chances of a cluster the size of the entire internet generating 
-    #two identical UUIDs is 4 in 10 octillion. 
-    srand(); #Many note this as bad practice, however, forks are going on..
+    #the chances of a cluster the size of the entire internet generating
+    #two identical UUIDs is 4 in 10 octillion.
+    srand();    #Many note this as bad practice, however, forks are going on..
     my $uuid;
-    $uuid=sprintf("%08x-%04x-4%03x-",int(rand(4294967295)),int(rand(65535)),int(rand(4095)));
-    my $num=32768;
+    $uuid =
+      sprintf("%08x-%04x-4%03x-",
+              int(rand(4294967295)),
+              int(rand(65535)), int(rand(4095)));
+    my $num = 32768;
     $num = $num | int(rand(16383));
-    $uuid.=sprintf("%04x-%04x%08x",$num,int(rand(65535)),int(rand(4294967295)));
+    $uuid .=
+      sprintf("%04x-%04x%08x", $num, int(rand(65535)), int(rand(4294967295)));
     return $uuid;
 }
 
-
-            
 #--------------------------------------------------------------------------------
 
 =head3    genpassword
@@ -257,15 +263,18 @@ sub isLinux
 #-------------------------------------------------------------------------------
 sub Version
 {
-#The following tag tells the build script where to append build info
-    my $version=shift;
-    if ($version eq 'short') {
-        $version = '' #XCATVERSIONSUBHERE ;
-    } else {
-        $version = 'Version ' #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
+
+    #The following tag tells the build script where to append build info
+    my $version = shift;
+    if ($version eq 'short')
+    {
+        $version = ''    #XCATVERSIONSUBHERE ;
     }
-    ;
-    return $version; 
+    else
+    {
+        $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
+    }
+    return $version;
 }
 
 #-------------------------------------------------------------------------------
@@ -497,7 +506,7 @@ sub list_all_node_groups
 sub list_nodes_in_nodegroups
 {
     my ($class, $group) = @_;
-    my $req={};
+    my $req = {};
     $req->{noderange}->[0] = $group;
     my @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
     return @nodes;
@@ -740,7 +749,7 @@ sub runcmd
         }    # if exitcode not specified, use cmd exit code
         if ($displayerror)
         {
-            my $rsp={};
+            my $rsp    = {};
             my $errmsg = '';
             if (xCAT::Utils->isLinux() && $::RUNCMD_RC == 139)
             {
@@ -785,7 +794,6 @@ sub runcmd
     }
 
 }
-
 
 #-------------------------------------------------------------------------------
 
@@ -849,39 +857,48 @@ sub runxcmd
 
 {
 
-	my $save_CALLBACK = $::CALLBACK;  
+    my $save_CALLBACK = $::CALLBACK;
     my ($class, $cmd, $subreq, $exitcode, $refoutput) = @_;
     $::RUNCMD_RC = 0;
     if ($::VERBOSE)
     {
-        if (ref($cmd) eq "HASH") {
-            xCAT::MsgUtils->message("I", "Running internal xCAT command: $cmd->{command}->[0] ... \n");
-        } else {
-           xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+        if (ref($cmd) eq "HASH")
+        {
+            xCAT::MsgUtils->message("I",
+                  "Running internal xCAT command: $cmd->{command}->[0] ... \n");
+        }
+        else
+        {
+            xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
         }
     }
     $::xcmd_outref = [];
-	my $req;
-	if (ref($cmd) eq "HASH") {
-		$req = $cmd;
-	} else { # assume scalar, build request hash the way we do in xcatclient
-		my @cmdargs=split(/\s+/,$cmd);
-		my $cmdname = shift(@cmdargs);
-  		$req->{command}=[$cmdname];
-		my $arg=shift(@cmdargs);
-		while ($arg =~ /^-/) {
-  			push (@{$req->{arg}}, $arg);
-  			$arg=shift(@cmdargs);
-		}
-		if ($arg ne "NO_NODE_RANGE") {
-			my @nodes = split(",",$arg);
-  			$req->{node}=\@nodes;
-		}
-		push (@{$req->{arg}}, @cmdargs);
-	}
-	$subreq->($req,\&runxcmd_output);
-	$::CALLBACK = $save_CALLBACK;  # in case the subreq call changed it
-	my $outref=$::xcmd_outref;
+    my $req;
+    if (ref($cmd) eq "HASH")
+    {
+        $req = $cmd;
+    }
+    else
+    {    # assume scalar, build request hash the way we do in xcatclient
+        my @cmdargs = split(/\s+/, $cmd);
+        my $cmdname = shift(@cmdargs);
+        $req->{command} = [$cmdname];
+        my $arg = shift(@cmdargs);
+        while ($arg =~ /^-/)
+        {
+            push(@{$req->{arg}}, $arg);
+            $arg = shift(@cmdargs);
+        }
+        if ($arg ne "NO_NODE_RANGE")
+        {
+            my @nodes = split(",", $arg);
+            $req->{node} = \@nodes;
+        }
+        push(@{$req->{arg}}, @cmdargs);
+    }
+    $subreq->($req, \&runxcmd_output);
+    $::CALLBACK = $save_CALLBACK;    # in case the subreq call changed it
+    my $outref = $::xcmd_outref;
     if ($::RUNCMD_RC)
     {
         my $displayerror = 1;
@@ -891,10 +908,10 @@ sub runxcmd
             if ($exitcode > 0)
             {
                 $rc = $exitcode;
-            }    # if not zero, exit with specified code
+            }                        # if not zero, exit with specified code
             elsif ($exitcode <= 0)
             {
-                $rc = '';    # if zero or negative, do not exit
+                $rc = '';            # if zero or negative, do not exit
                 if ($exitcode < 0) { $displayerror = 0; }
             }
         }
@@ -904,13 +921,14 @@ sub runxcmd
         }    # if exitcode not specified, use cmd exit code
         if ($displayerror)
         {
-            my $rsp={};
+            my $rsp = {};
             my $errmsg = join('', @$outref);
             chomp $errmsg;
-			my $displaycmd=$cmd;
-			if (ref($cmd) eq "HASH") {
-				$displaycmd=$cmd->{command}->[0];
-			}
+            my $displaycmd = $cmd;
+            if (ref($cmd) eq "HASH")
+            {
+                $displaycmd = $cmd->{command}->[0];
+            }
             if ($::CALLBACK)
             {
                 $rsp->{data}->[0] =
@@ -920,7 +938,7 @@ sub runxcmd
             else
             {
                 xCAT::MsgUtils->message("E",
-                             "Command failed: $displaycmd. Error message: $errmsg.\n");
+                      "Command failed: $displaycmd. Error message: $errmsg.\n");
             }
             $xCAT::Utils::errno = 29;
         }
@@ -942,63 +960,80 @@ sub runxcmd
         return $line;
     }
 }
+
 # runxcmd_output -- Internal subroutine for runxcmd to capture the output
 #	from the xCAT daemon subrequest call
 #	Note - only basic info, data, and error responses returned
 #	For more complex node or other return structures, you will need
 #	to write your own wrapper to subreq instead of using runxcmd.
-sub runxcmd_output {
-	my $resp = shift;  
-	if (defined($resp->{info})) {
-	    push @$::xcmd_outref,@{$resp->{info}};
-	}
-	if (defined($resp->{sinfo})) {
-	    push @$::xcmd_outref,@{$resp->{sinfo}};
-	}
-	if (defined($resp->{data})) {
-	    push @$::xcmd_outref,@{$resp->{data}};
-	}
-    if (defined($resp->{node})) {
-        my $node=$resp->{node}->[0];
-        my $desc=$node->{name}->[0];
-        if (defined($node->{data})) {
-           if (ref(\($node->{data}->[0])) eq 'SCALAR') {
-              $desc=$desc.": ".$node->{data}->[0];
-           } else {
-              if (defined($node->{data}->[0]->{desc})) {
-                $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
-              }
-              if (defined($node->{data}->[0]->{contents})) {
-                $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
-              }
-          }
-       }
-       push @$::xcmd_outref,$desc;
+sub runxcmd_output
+{
+    my $resp = shift;
+    if (defined($resp->{info}))
+    {
+        push @$::xcmd_outref, @{$resp->{info}};
     }
-	if (defined($resp->{error})) {
-	    push @$::xcmd_outref,@{$resp->{error}};
-		$::RUNCMD_RC=1;
-	}
-  	if (defined($resp->{errorcode})) {
-    	if (ref($resp->{errorcode}) eq 'ARRAY') { 
-			foreach my $ecode (@{$resp->{errorcode}}) { 
-				$::RUNCMD_RC |= $ecode; 
-			} 
-		} else { 
-			# assume it is a non-reference scalar
-			$::RUNCMD_RC |= $resp->{errorcode}; 
-		}   
-  	}
+    if (defined($resp->{sinfo}))
+    {
+        push @$::xcmd_outref, @{$resp->{sinfo}};
+    }
+    if (defined($resp->{data}))
+    {
+        push @$::xcmd_outref, @{$resp->{data}};
+    }
+    if (defined($resp->{node}))
+    {
+        my $node = $resp->{node}->[0];
+        my $desc = $node->{name}->[0];
+        if (defined($node->{data}))
+        {
+            if (ref(\($node->{data}->[0])) eq 'SCALAR')
+            {
+                $desc = $desc . ": " . $node->{data}->[0];
+            }
+            else
+            {
+                if (defined($node->{data}->[0]->{desc}))
+                {
+                    $desc = $desc . ": " . $node->{data}->[0]->{desc}->[0];
+                }
+                if (defined($node->{data}->[0]->{contents}))
+                {
+                    $desc = "$desc: " . $node->{data}->[0]->{contents}->[0];
+                }
+            }
+        }
+        push @$::xcmd_outref, $desc;
+    }
+    if (defined($resp->{error}))
+    {
+        push @$::xcmd_outref, @{$resp->{error}};
+        $::RUNCMD_RC = 1;
+    }
+    if (defined($resp->{errorcode}))
+    {
+        if (ref($resp->{errorcode}) eq 'ARRAY')
+        {
+            foreach my $ecode (@{$resp->{errorcode}})
+            {
+                $::RUNCMD_RC |= $ecode;
+            }
+        }
+        else
+        {
 
+            # assume it is a non-reference scalar
+            $::RUNCMD_RC |= $resp->{errorcode};
+        }
+    }
 
-#  		my $i=0;
-#	    foreach my $line ($resp->{info}->[$i]) {    
-#	      push (@dshresult, $line);
-#	      $i++;
-#	    }
-   	return 0;
+    #  		my $i=0;
+    #	    foreach my $line ($resp->{info}->[$i]) {
+    #	      push (@dshresult, $line);
+    #	      $i++;
+    #	    }
+    return 0;
 }
-
 
 #--------------------------------------------------------------------------------
 
@@ -1035,11 +1070,18 @@ sub getHomeDir
 
 =head3   setupSSH
 
-        Transfers the ssh keys to setup ssh to the input nodes.
+        Generates if needed and Transfers the ssh keys 
+		fOr a userid to setup ssh to the input nodes.
 
         Arguments:
                Array of nodes
         Returns:
+
+        Env Variables: $DSH_FROM_USERID,  $DSH_TO_USERID, $DSH_REMOTE_PASSWORD
+          the ssh keys are transferred from the $DSH_FROM_USERID to the $DSH_TO_USERID
+          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID 
+               must be obtained by
+		         the calling script or from the xdsh client
 
         Globals:
               $::XCATROOT  ,  $::CALLBACK
@@ -1062,6 +1104,46 @@ sub setupSSH
     my @badnodes = ();
     my $n_str    = join ',', @nodes;
     my $SSHdir   = "/install/postscripts/.ssh";
+    if (!($ENV{'DSH_REMOTE_PASSWORD'}))
+    {
+        my $rsp = ();
+        $rsp->{data}->[0] =
+          "User password for the ssh key exchange has not been input. xdsh -K cannot complete.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+
+    }
+
+    # setup who the keys are coming from and who they are going to
+    my $from_userid;
+    my $to_userid;
+    if (!($ENV{'DSH_FROM_USERID'}))
+    {
+        my $rsp = ();
+        $rsp->{data}->[0] =
+          "DSH From Userid  has not been input. xdsh -K cannot complete.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+
+    }
+    else
+    {
+        $from_userid = $ENV{'DSH_FROM_USERID'};
+    }
+    if (!($ENV{'DSH_TO_USERID'}))
+    {
+        my $rsp = ();
+        $rsp->{data}->[0] =
+          "DSH to Userid  has not been input. xdsh -K cannot complete.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+
+    }
+    else
+    {
+        $to_userid = $ENV{'DSH_TO_USERID'};
+    }
+
     if ($::XCATROOT)
     {
         $::REMOTESHELL_EXPECT = "$::XCATROOT/sbin/remoteshell.expect";
@@ -1081,36 +1163,26 @@ sub setupSSH
     }
 
     # Generate the keys, if they do not already exist
-    my $rsp={};
-    my $home = xCAT::Utils->getHomeDir("root");
-    if (   !(-e "$home/.ssh/id_rsa.pub")
-        || !(-e "$home/.ssh/id_dsa.pub"))
-   {
-      xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
-      if ($::RUNCMD_RC != 0)
-      {    # error
-          $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
-          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+    my $rsp = {};
 
-      }
-    }
+    # Get the home directory
+    my $home = xCAT::Utils->getHomeDir($from_userid);
+    $ENV{'DSH_FROM_USERID_HOME'} = $home;
 
-    # Copy the keys to the directory
-    my $rc = xCAT::Utils->cpSSHFiles($SSHdir);
-    if ($rc != 0)
+    # generates new keys, if they do not already exist
+    xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
+    if ($::RUNCMD_RC != 0)
     {    # error
-        $rsp->{data}->[0] = "Error running cpSSHFiles.\n";
+        $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        return 1;
 
     }
 
-    open(FILE, ">$SSHdir/copy.perl")
-      or die "cannot open file $SSHdir/copy.perl\n";
-
-    #  build the perl copy script in $SSHdir/copy.perl
+    #  build the perl copy script in $HOME/.ssh/copy.perl
+    open(FILE, ">$home/.ssh/copy.perl")
+      or die "cannot open file $home/.ssh/copy.perl\n";
     print FILE "#!/usr/bin/perl
-my (\$name,\$passwd,\$uid,\$gid,\$quota,\$comment,\$gcos,\$dir,\$shell,\$expire) = getpwnam(\"root\");
+my (\$name,\$passwd,\$uid,\$gid,\$quota,\$comment,\$gcos,\$dir,\$shell,\$expire) = getpwnam($to_userid);
 my \$home = \$dir;
 umask(0077);
 \$dest_dir = \"\$home/.ssh/\";
@@ -1120,25 +1192,51 @@ if (! -d \"\$dest_dir\" ) {
     system(\"\$cmd\");
     chmod 0700, \$dest_dir;
 }
-`cat /tmp/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
-`cat /tmp/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1`;
-`rm -f /tmp/.ssh/authorized_keys 2>&1`;
-`rm -f /tmp/.ssh/authorized_keys2 2>&1`;
-`rm -f /tmp/.ssh/copy.perl 2>&1`;
-rmdir(\"/tmp/.ssh\");";
+`cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
+`cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1`;
+`rm -f /tmp/$to_userid/.ssh/* 2>&1`;
+rmdir(\"/tmp/$to_userid/.ssh\");
+rmdir(\"/tmp/$to_userid\");";
     close FILE;
-    chmod 0744, "$SSHdir/copy.perl";
+    chmod 0744, "$home/.ssh/copy.perl";
 
-    # end build Perl code
+    #  TODO build the shell copy script in $HOME/.ssh/copy.sh
+    #open(FILE, ">$home/.ssh/copy.sh")
+    #  or die "cannot open file $home/.ssh/copy.sh\n";
+    #print FILE "#!/bin/sh";
+    #close FILE;
+    #chmod 0744, "$home/.ssh/copy.sh";
 
-    #set an ENV var if more than 10 nodes for remoteshell.expect
-    my $num_nodes = scalar(@nodes);
-    if ($num_nodes > 10)
+    if ($from_userid eq "root")
     {
-        $ENV{'XCAT_UPD_MULTNODES'} = 1;
+        my $rc = xCAT::Utils->cpSSHFiles($SSHdir);
+        if ($rc != 0)
+        {    # error
+            $rsp->{data}->[0] = "Error running cpSSHFiles.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 1;
+
+        }
+
+        # copy the copy install file to the install directory, if from and
+        # to userid are root
+        if ($to_userid eq "root")
+        {
+
+            my $cmd = " cp $home/.ssh/copy.perl $SSHdir/copy.perl";
+            xCAT::Utils->runcmd($cmd, 0);
+            my $rsp = {};
+            if ($::RUNCMD_RC != 0)
+            {
+                $rsp->{data}->[0] = "$cmd failed.\n";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                return (1);
+
+            }
+        }
     }
 
-    # send the keys to the nodes
+    # send the keys to the nodes   for root or some other id
     #
     my $cmd = "$::REMOTESHELL_EXPECT -s $n_str";
     my $rc  = system("$cmd") >> 8;
@@ -1162,9 +1260,6 @@ rmdir(\"/tmp/.ssh\");";
         }
     }
 
-    xCAT::Utils->runcmd("/bin/stty echo", 0);
-    delete $ENV{'XCAT_UPD_MULTNODES'};
-
     if (@badnodes)
     {
         my $nstring = join ',', @badnodes;
@@ -1186,7 +1281,8 @@ rmdir(\"/tmp/.ssh\");";
 =head3    cpSSHFiles
 
         Copies the ssh keyfiles and the copy perl script into
-		/install/postscripts/.ssh.
+		/install/postscripts/.ssh. and the $HOME/.ssh directory of
+                userid
 
         Arguments:
                directory path
@@ -1210,7 +1306,7 @@ sub cpSSHFiles
 {
     my ($class, $SSHdir) = @_;
     my ($cmd, $rc);
-    my $rsp={};
+    my $rsp = {};
     if ($::VERBOSE)
     {
         $rsp->{data}->[0] = "Copying SSH Keys";
@@ -1228,7 +1324,7 @@ sub cpSSHFiles
     }
     $cmd = " cp $home/.ssh/identity.pub $authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
-    my $rsp={};
+    my $rsp = {};
     if ($::RUNCMD_RC != 0)
     {
         $rsp->{data}->[0] = "$cmd failed.\n";
@@ -1238,6 +1334,25 @@ sub cpSSHFiles
     }
     else
     {
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+    $cmd = " cp $home/.ssh/identity.pub $home/.ssh/authorized_keys";
+    xCAT::Utils->runcmd($cmd, 0);
+    my $rsp = {};
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "$cmd failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return (1);
+
+    }
+    else
+    {
+        chmod 0600, "$home/.ssh/authorized_keys";
         if ($::VERBOSE)
         {
             $rsp->{data}->[0] = "$cmd succeeded.\n";
@@ -1262,8 +1377,26 @@ sub cpSSHFiles
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
     }
+    $cmd = "cp $home/.ssh/id_rsa.pub $home/.ssh/authorized_keys2";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "$cmd failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return (1);
 
-    my $rsp={};
+    }
+    else
+    {
+        chmod 0600, "$home/.ssh/authorized_keys2";
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+
+    my $rsp = {};
     $cmd = "cat $home/.ssh/id_dsa.pub >> $authorized_keys2";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -1637,22 +1770,23 @@ sub thishostisnot
 
     my @ips = split /\n/, `/sbin/ip addr`;
     my $comp = inet_aton($comparison);
-    if ($comp) {
-      foreach (@ips)
-      {
-        if (/^\s*inet/)
+    if ($comp)
+    {
+        foreach (@ips)
         {
-            my @ents = split(/\s+/);
-            my $ip   = $ents[2];
-            $ip =~ s/\/.*//;
-            if (inet_aton($ip) eq $comp)
+            if (/^\s*inet/)
             {
-                return 0;
-            }
+                my @ents = split(/\s+/);
+                my $ip   = $ents[2];
+                $ip =~ s/\/.*//;
+                if (inet_aton($ip) eq $comp)
+                {
+                    return 0;
+                }
 
-            #print Dumper(inet_aton($ip));
+                #print Dumper(inet_aton($ip));
+            }
         }
-      }
     }
     return 1;
 }
@@ -1828,11 +1962,12 @@ sub readSNInfo
             }
 
             $et = xCAT::Utils->GetNodeOSARCH($nodename);
-            if ($et == 1) {
+            if ($et == 1)
+            {
                 xCAT::MsgUtils->message('S',
                                   "Could not get OS/ARCH for node $nodename\n");
                 return 1;
-            } 
+            }
             if (!($et->{'os'} || $et->{'arch'}))
             {
                 xCAT::MsgUtils->message('S',
@@ -2361,6 +2496,7 @@ sub get_ServiceNode
 #-----------------------------------------------------------------------------
 sub toIP
 {
+
     # does not support IPV6  IPV6TODO
     if ($_[0] =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/)
     {
@@ -2551,7 +2687,7 @@ sub getSNList
 
     # reads all nodes from the service node table
     my @servicenodes;
-    my $servicenodetab = xCAT::Table->new('servicenode',-create=>1);
+    my $servicenodetab = xCAT::Table->new('servicenode', -create => 1);
     unless ($servicenodetab)    # no  servicenode table
     {
         xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
@@ -2620,6 +2756,7 @@ sub isMounted
     }
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3   runxcatd 
@@ -2640,57 +2777,60 @@ sub isMounted
 =cut
 
 #-------------------------------------------------------------------------------
-sub runxcatd 
+sub runxcatd
 {
- my ($class, $cmd) = @_;
- if ( ! (xCAT::Utils->isAIX())) { # only runs on AIX
-      xCAT::MsgUtils->message("E", "This command should only be run on AIX.\n");
-     return 1;
- }
+    my ($class, $cmd) = @_;
+    if (!(xCAT::Utils->isAIX()))
+    {    # only runs on AIX
+        xCAT::MsgUtils->message("E",
+                                "This command should only be run on AIX.\n");
+        return 1;
+    }
 
- #
- # if xcatd already running 
- # Get the  xcatd processes  and stop them
- #
- my @xpids = xCAT::Utils->runcmd("ps -ef\|grep \"xcatd\"", 0);
- if ($#xpids >= 1)
- {    # will have at least "0" for the grep
-    xCAT::MsgUtils->message('I', "Stopping xcatd processes....\n");
-    foreach my $ps (@xpids)
-    {
-
-        $ps =~ s/^\s+//;    # strip any leading spaces
-        my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
-
-        # if $ps contains "grep" then it's not one of the daemon processes
-        if ($ps !~ /grep/)
+    #
+    # if xcatd already running
+    # Get the  xcatd processes  and stop them
+    #
+    my @xpids = xCAT::Utils->runcmd("ps -ef\|grep \"xcatd\"", 0);
+    if ($#xpids >= 1)
+    {    # will have at least "0" for the grep
+        xCAT::MsgUtils->message('I', "Stopping xcatd processes....\n");
+        foreach my $ps (@xpids)
         {
 
-            #	    	print "pid=$pid\n";
-            #my $cmd = "/bin/kill -9 $pid";
-            my $cmd = "/bin/kill  $pid";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
+            $ps =~ s/^\s+//;    # strip any leading spaces
+            my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
+
+            # if $ps contains "grep" then it's not one of the daemon processes
+            if ($ps !~ /grep/)
             {
-                xCAT::MsgUtils->message('E',
-                      "Could not stop xcatd process $pid.\n");
-                return 1;
+
+                #	    	print "pid=$pid\n";
+                #my $cmd = "/bin/kill -9 $pid";
+                my $cmd = "/bin/kill  $pid";
+                xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    xCAT::MsgUtils->message('E',
+                                        "Could not stop xcatd process $pid.\n");
+                    return 1;
+                }
             }
         }
     }
-  }
 
-
-  if ($cmd eq "xcatstart") {  # start xcatd
-    xCAT::MsgUtils->message('I', "Starting xcatd.....\n");
-    my    $xcmd = "$::XCATROOT/sbin/xcatd &";
-    my $outref = xCAT::Utils->runcmd("$xcmd", 0);
-    if ($::RUNCMD_RC != 0) {
-        xCAT::MsgUtils->message('E', "Could not start xcatd process.\n");
-        return 1;
+    if ($cmd eq "xcatstart")
+    {    # start xcatd
+        xCAT::MsgUtils->message('I', "Starting xcatd.....\n");
+        my $xcmd = "$::XCATROOT/sbin/xcatd &";
+        my $outref = xCAT::Utils->runcmd("$xcmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not start xcatd process.\n");
+            return 1;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
 
 #-------------------------------------------------------------------------------
@@ -2706,72 +2846,91 @@ sub runxcatd
 =cut
 
 #-------------------------------------------------------------------------------
-sub getNodesetStates{
-  my $noderef=shift;
-  if ($noderef =~ /xCAT::Utils/) {
-    $noderef=shift;
-  }
-  my @nodes=@$noderef;
-  my $hashref=shift; 
-
-  if (@nodes>0) {
-    my $tab = xCAT::Table->new('noderes');
-    if (! $tab) { return (1, "Unable to open noderes table.");}
-
-    #initialize all nodes
-    foreach (@nodes) { $hashref->{$_}="undefined";}
-
-    my @aixnodes=();
-    my @pxenodes=();
-    my @yabootnodes=();
-    my $tabdata=$tab->getNodesAttribs(\@nodes,['node', 'netboot']);
-    foreach my $node (@nodes) {
-      my $nb="aixinstall";
-      my $tmp1=$tabdata->{$node}->[0];
-      if (($tmp1) && ($tmp1->{netboot})) { $nb=$tmp1->{netboot};}
-      if ($nb eq "yaboot") {
-	push(@yabootnodes,$node);
-      } elsif  ($nb eq "pxe") {
-	push(@pxenodes,$node);
-      } elsif ($nb eq "aixinstall") {
-	push(@aixnodes,$node);
-      }      
+sub getNodesetStates
+{
+    my $noderef = shift;
+    if ($noderef =~ /xCAT::Utils/)
+    {
+        $noderef = shift;
     }
+    my @nodes   = @$noderef;
+    my $hashref = shift;
 
-    my @retarray;
-    my $retcode=0;
-    my $errormsg; 
-   # print "ya=@yabootnodes, pxe=@pxenodes, aix=@aixnodes\n";     
-    if (@yabootnodes > 0) {
-      require xCAT_plugin::yaboot;
-      @retarray=xCAT_plugin::yaboot::getNodesetStates(\@yabootnodes, $hashref);
-      if ($retarray[0]) { 
-	$retcode=$retarray[0];
-        $errormsg .= $retarray[1];
-        xCAT::MsgUtils->message('E',$retarray[1]);}
-    } 
-    if (@pxenodes > 0) {
-      require xCAT_plugin::pxe;
-      @retarray=xCAT_plugin::pxe::getNodesetStates(\@pxenodes, $hashref);
-      if ($retarray[0]) { 
-	$retcode=$retarray[0];
-        $errormsg .= $retarray[1];
-        xCAT::MsgUtils->message('E',$retarray[1]);
-      }
-    } 
-    if (@aixnodes > 0) {
-      require xCAT_plugin::aixinstall;
-      @retarray=xCAT_plugin::aixinstall::getNodesetStates(\@aixnodes, $hashref);
-      if ($retarray[0]) { 
-	$retcode=$retarray[0];
-        $errormsg .= $retarray[1];
-        xCAT::MsgUtils->message('E',$retarray[1]);
-      }
+    if (@nodes > 0)
+    {
+        my $tab = xCAT::Table->new('noderes');
+        if (!$tab) { return (1, "Unable to open noderes table."); }
+
+        #initialize all nodes
+        foreach (@nodes) { $hashref->{$_} = "undefined"; }
+
+        my @aixnodes    = ();
+        my @pxenodes    = ();
+        my @yabootnodes = ();
+        my $tabdata     = $tab->getNodesAttribs(\@nodes, ['node', 'netboot']);
+        foreach my $node (@nodes)
+        {
+            my $nb   = "aixinstall";
+            my $tmp1 = $tabdata->{$node}->[0];
+            if (($tmp1) && ($tmp1->{netboot})) { $nb = $tmp1->{netboot}; }
+            if ($nb eq "yaboot")
+            {
+                push(@yabootnodes, $node);
+            }
+            elsif ($nb eq "pxe")
+            {
+                push(@pxenodes, $node);
+            }
+            elsif ($nb eq "aixinstall")
+            {
+                push(@aixnodes, $node);
+            }
+        }
+
+        my @retarray;
+        my $retcode = 0;
+        my $errormsg;
+
+        # print "ya=@yabootnodes, pxe=@pxenodes, aix=@aixnodes\n";
+        if (@yabootnodes > 0)
+        {
+            require xCAT_plugin::yaboot;
+            @retarray =
+              xCAT_plugin::yaboot::getNodesetStates(\@yabootnodes, $hashref);
+            if ($retarray[0])
+            {
+                $retcode = $retarray[0];
+                $errormsg .= $retarray[1];
+                xCAT::MsgUtils->message('E', $retarray[1]);
+            }
+        }
+        if (@pxenodes > 0)
+        {
+            require xCAT_plugin::pxe;
+            @retarray =
+              xCAT_plugin::pxe::getNodesetStates(\@pxenodes, $hashref);
+            if ($retarray[0])
+            {
+                $retcode = $retarray[0];
+                $errormsg .= $retarray[1];
+                xCAT::MsgUtils->message('E', $retarray[1]);
+            }
+        }
+        if (@aixnodes > 0)
+        {
+            require xCAT_plugin::aixinstall;
+            @retarray =
+              xCAT_plugin::aixinstall::getNodesetStates(\@aixnodes, $hashref);
+            if ($retarray[0])
+            {
+                $retcode = $retarray[0];
+                $errormsg .= $retarray[1];
+                xCAT::MsgUtils->message('E', $retarray[1]);
+            }
+        }
     }
-  }
-  return (0, "");   
+    return (0, "");
 }
-
 
 #-------------------------------------------------------------------------------
 
@@ -2785,53 +2944,61 @@ sub getNodesetStates{
 =cut
 
 #-------------------------------------------------------------------------------
-sub get_nodeset_state {
-  my $node=shift;
-  if ($node =~ /xCAT::Utils/) {
-    $node=shift;
-  }
-
-  my $state="undefined";
-
-  #get boot type (pxe, yaboot or aixinstall)  for the node
-  my $noderestab=xCAT::Table->new('noderes',-create=>0);
-  my $ent=$noderestab->getNodeAttribs($node,[qw(netboot)]);
-  if ($ent && $ent->{netboot})  {
-    my $boottype=$ent->{netboot};
-    #get nodeset state from corresponding files
-    if ($boottype eq "pxe") { 
-      require xCAT_plugin::pxe;
-      my $tmp=xCAT_plugin::pxe::getstate($node);
-      my @a=split(' ', $tmp);
-      $state = $a[0];
-
+sub get_nodeset_state
+{
+    my $node = shift;
+    if ($node =~ /xCAT::Utils/)
+    {
+        $node = shift;
     }
-    elsif ($boottype eq "yaboot") { 
-      require xCAT_plugin::yaboot;
-      my $tmp=xCAT_plugin::yaboot::getstate($node); 
-      my @a=split(' ', $tmp);
-      $state = $a[0];
-    }
-    elsif ($boottype eq "aixinstall") {
-      require xCAT_plugin::aixinstall;
-      $state=xCAT_plugin::aixinstall::getNodesetState($node); 
-    }
-  }
-  else { #default to AIX because AIX does not set noderes.netboot value
-      require xCAT_plugin::aixinstall;
-      $state=xCAT_plugin::aixinstall::getNodesetState($node); 
-  }
 
-  #get the nodeset state from the chain table as a backup.
-  if ($state eq "undefined") {
-    my $chaintab = xCAT::Table->new('chain');
-    my $stref = $chaintab->getNodeAttribs($node,['currstate']);
-    if ($stref and $stref->{currstate}) { $state=$stref->{currstate}; }
-  }
+    my $state = "undefined";
 
-  return $state;    
+    #get boot type (pxe, yaboot or aixinstall)  for the node
+    my $noderestab = xCAT::Table->new('noderes', -create => 0);
+    my $ent = $noderestab->getNodeAttribs($node, [qw(netboot)]);
+    if ($ent && $ent->{netboot})
+    {
+        my $boottype = $ent->{netboot};
+
+        #get nodeset state from corresponding files
+        if ($boottype eq "pxe")
+        {
+            require xCAT_plugin::pxe;
+            my $tmp = xCAT_plugin::pxe::getstate($node);
+            my @a = split(' ', $tmp);
+            $state = $a[0];
+
+        }
+        elsif ($boottype eq "yaboot")
+        {
+            require xCAT_plugin::yaboot;
+            my $tmp = xCAT_plugin::yaboot::getstate($node);
+            my @a = split(' ', $tmp);
+            $state = $a[0];
+        }
+        elsif ($boottype eq "aixinstall")
+        {
+            require xCAT_plugin::aixinstall;
+            $state = xCAT_plugin::aixinstall::getNodesetState($node);
+        }
+    }
+    else
+    {    #default to AIX because AIX does not set noderes.netboot value
+        require xCAT_plugin::aixinstall;
+        $state = xCAT_plugin::aixinstall::getNodesetState($node);
+    }
+
+    #get the nodeset state from the chain table as a backup.
+    if ($state eq "undefined")
+    {
+        my $chaintab = xCAT::Table->new('chain');
+        my $stref = $chaintab->getNodeAttribs($node, ['currstate']);
+        if ($stref and $stref->{currstate}) { $state = $stref->{currstate}; }
+    }
+
+    return $state;
 }
-
 
 #-------------------------------------------------------------------------------
 
@@ -2846,28 +3013,28 @@ sub get_nodeset_state {
 =cut
 
 #-------------------------------------------------------------------------------
-sub get_image_name {
- my ($class, $imagepath) = @_;
- my $imagename;
- if (xCAT::Utils->isLinux())
- {
-      my @fields = split('/', $imagepath);
-      $imagename .= $fields[5];
-      $imagename .= "-";
-      $imagename .= $fields[3];
-      $imagename .= "-";
-      $imagename .= $fields[4];
- }
- else
- {    # AIX
-      my @fields = split('/', $imagepath);
-      my $name = pop @fields;
-      $imagename = $name;
- }
+sub get_image_name
+{
+    my ($class, $imagepath) = @_;
+    my $imagename;
+    if (xCAT::Utils->isLinux())
+    {
+        my @fields = split('/', $imagepath);
+        $imagename .= $fields[5];
+        $imagename .= "-";
+        $imagename .= $fields[3];
+        $imagename .= "-";
+        $imagename .= $fields[4];
+    }
+    else
+    {    # AIX
+        my @fields = split('/', $imagepath);
+        my $name = pop @fields;
+        $imagename = $name;
+    }
 
-  return $imagename;    
+    return $imagename;
 }
-
 
 #-------------------------------------------------------------------------------
 
@@ -2912,78 +3079,49 @@ sub get_image_name {
 =cut
 
 #-------------------------------------------------------------------------------
-sub logEventsToDatabase{
-    my $pEvents=shift;
-    if (($pEvents) && ($pEvents =~ /xCAT::Utils/)) {
-	$pEvents=shift;
+sub logEventsToDatabase
+{
+    my $pEvents = shift;
+    if (($pEvents) && ($pEvents =~ /xCAT::Utils/))
+    {
+        $pEvents = shift;
     }
-    
-    if (($pEvents) && (@$pEvents > 0)) {
-	my $currtime;
-	my $tab = xCAT::Table->new("eventlog",-create => 1,-autocommit => 0);
-        if (!$tab) {
-	    return (1, "The evnetlog table cannot be opened.");
-	}
 
-	foreach my $event (@$pEvents) {
-	    #create event time if it does not exist
-	    if (!exists($event->{eventtime}))  {
-		if (!$currtime) {
-		    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
-		    $currtime=sprintf("%02d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec);
-		}
-		$event->{eventtime}=$currtime;
-	    }
-	    my @ret=$tab->setAttribs(undef, $event);
+    if (($pEvents) && (@$pEvents > 0))
+    {
+        my $currtime;
+        my $tab = xCAT::Table->new("eventlog", -create => 1, -autocommit => 0);
+        if (!$tab)
+        {
+            return (1, "The evnetlog table cannot be opened.");
+        }
+
+        foreach my $event (@$pEvents)
+        {
+
+            #create event time if it does not exist
+            if (!exists($event->{eventtime}))
+            {
+                if (!$currtime)
+                {
+                    my (
+                        $sec,  $min,  $hour, $mday, $mon,
+                        $year, $wday, $yday, $isdst
+                      )
+                      = localtime(time);
+                    $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+                                        $mon + 1, $mday, $year + 1900,
+                                        $hour, $min, $sec);
+                }
+                $event->{eventtime} = $currtime;
+            }
+            my @ret = $tab->setAttribs(undef, $event);
             if (@ret > 1) { return (1, $ret[1]); }
-	}
-	$tab->commit;
-    }    
-    
+        }
+        $tab->commit;
+    }
+
     return (0, "");
 }
-
-
-#-------------------------------------------------------------------------------
-
-=head3   CheckVersion
-       Checks the two versions numbers to see which one is greater.
-    Arguments:
-        ver_a the version number in format of d.d.d.d...
-        ver_b the version number in format of d.d.d.d...
-    Returns:
-        1 if ver_a is greater than ver_b
-        0 if ver_a is eaqual to ver_b
-        -1 if ver_a is smaller than ver_b
-
-=cut
-
-#-------------------------------------------------------------------------------
-sub  CheckVersion {
-    my $ver_a=shift;
-    if ($ver_a =~ /xCAT::Utils/) {
-	$ver_a=shift;
-    }
-    my $ver_b=shift;
-
-    my @a=split(/\./,$ver_a);
-    my @b=split(/\./,$ver_b);
-    my $len_a=@a;
-    my $len_b=@b;
-       
-    my $index=0;
-    my $max_index=($len_a>$len_b) ? $len_a : $len_b;
-
-    for ($index=0; $index <= $max_index; $index++) {
- 	my $val_a=($len_a < $index) ? 0 : $a[$index];
-	my $val_b=($len_b < $index) ? 0 : $b[$index];
-	if ($val_a > $val_b) { return 1;}
-	if ($val_a < $val_b) { return -1;}
-    }
-  
-    return 0;
-}
-
-
 
 1;

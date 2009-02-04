@@ -40,7 +40,7 @@ our @dsh_valid_env = (
                       'DSH_NODE_OPTS',      'DSH_NODE_RCP',
                       'DSH_NODE_RSH',       'DSH_OUTPUT',
                       'DSH_PATH',           'DSH_SYNTAX',
-                      'DSH_TIMEOUT',
+                      'DSH_TIMEOUT',        'DSH_REMOTE_PASSWORD',
                       );
 select(STDERR);
 $| = 1;
@@ -2127,20 +2127,23 @@ sub config_dsh
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
     # Check devicetype attr and try to load device configuration
-    $$options{'devicetype'} =
-    $$options{'devicetype'} || $ENV{'DEVICETYPE'} || undef;
-    if ( $$options{'devicetype'} )
+    $$options{'devicetype'} = $$options{'devicetype'}
+      || $ENV{'DEVICETYPE'}
+      || undef;
+    if ($$options{'devicetype'})
     {
         $ENV{'DEVICETYPE'} = $$options{'devicetype'};
         my $devicepath = $$options{'devicetype'};
         $devicepath =~ s/::/\//g;
-        $devicepath = "/var/opt/xcat/" . $devicepath. "/config";
+        $devicepath = "/var/opt/xcat/" . $devicepath . "/config";
+
         # Get configuration from $::XCATDEVCFGDIR
-        if ( -e $devicepath)
+        if (-e $devicepath)
         {
             my $deviceconf = get_config($devicepath);
+
             # Get all dsh section configuration
-            foreach my $entry (keys %{ $$deviceconf{'xdsh'} } )
+            foreach my $entry (keys %{$$deviceconf{'xdsh'}})
             {
                 my $value = $$deviceconf{'xdsh'}{$entry};
                 if ($value)
@@ -2259,6 +2262,7 @@ sub config_dsh
     # Check if $$options{'pre-command'} has been overwritten
     if (!$$options{'pre-command'})
     {
+
         # Set a default PATH
         $$options{'pre-command'} = $path_set;
 
@@ -2294,7 +2298,7 @@ sub config_dsh
             {
                 push @settings, "PERL_BADLANG${env_assign}0";
             }
- 
+
             my $locale_settings = join ' ', @settings;
             !($$options{'syntax'} eq 'csh') && ($locale_settings .= ' ; ');
 
@@ -2307,7 +2311,7 @@ sub config_dsh
     }
 
     # Check if $$options{'post-command'} has been overwritten.
-    if (! $$options{'post-command'} )
+    if (!$$options{'post-command'})
     {
         if ($$options{'syntax'} eq 'csh')
         {
@@ -2327,19 +2331,22 @@ sub config_dsh
     }
     else
     {
+
         # post-command is overwritten by user , set env $::USER_POST_CMD
         $::USER_POST_CMD = 1;
-        if ($$options{'post-command'} =~ /NULL/ )
+        if ($$options{'post-command'} =~ /NULL/)
         {
             $$options{'post-command'} = '';
         }
         else
         {
+
             # $::DSH_EXIT_STATUS ony can be used in DSHCore::pipe_handler_buffer
             # and DSHCore::pipe_handler
             $$options{'exit-status'}
-            && ($::DSH_EXIT_STATUS = 1);
+              && ($::DSH_EXIT_STATUS = 1);
             $$options{'post-command'} = ";$$options{'post-command'}";
+
             # Append "DSH_RC" keyword to mark output
             $$options{'post-command'} = "$$options{'post-command'};echo DSH_RC";
         }
@@ -3540,9 +3547,10 @@ sub usage_dsh
 ## usage message
     my $usagemsg1 =
       " xdsh -h \n xdsh -q \n xdsh -v \n xdsh [noderange] [group]\n";
-    my $usagemsg2 =
+    my $usagemsg1a = " xdsh  [noderange] -K [-w touserid]\n";
+    my $usagemsg2  =
       "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file] [--devicetype type_of_device] [-f fanout]\n";
-    my $usagemsg3 = "      [-l user_ID] [-L] [-K ssh setup] ";
+    my $usagemsg3 = "      [-l user_ID] [-L]  ";
     my $usagemsg4 =
       "[-m] [-o options][-q] [-Q] [-r remote_shell] [-i image path]\n";
     my $usagemsg5 =
@@ -3550,8 +3558,8 @@ sub usage_dsh
     my $usagemsg6 = "      [command_list]\n";
     my $usagemsg7 =
       "Note:Context always defaults to XCAT unless -C flag is set.";
-    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg5 .= $usagemsg6 .= $usagemsg7;
+    my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg2 .= $usagemsg3 .=
+      $usagemsg4 .= $usagemsg5 .= $usagemsg6  .= $usagemsg7;
 ###  end usage mesage
     if ($::CALLBACK)
     {
@@ -3599,11 +3607,12 @@ sub parse_and_run_dsh
     my ($class, $nodes, $args, $callback, $command, $noderange) = @_;
 
     $::CALLBACK = $callback;
-    if (!($args)) {
+    if (!($args))
+    {
         usage_dsh;
         exit 1;
     }
-    @ARGV       = @{$args};    # get arguments
+    @ARGV = @{$args};    # get arguments
     if ($ENV{'XCATROOT'})
     {
         $::XCATROOT = $ENV{'XCATROOT'};    # setup xcatroot home directory
@@ -3633,20 +3642,20 @@ sub parse_and_run_dsh
 
     if (
         !GetOptions(
-            'e|execute'        => \$options{'execute'},
-            'f|fanout=i'       => \$options{'fanout'},
-            'h|help'           => \$options{'help'},
-            'l|user=s'         => \$options{'user'},
-            'm|monitor'        => \$options{'monitor'},
-            'o|node-options=s' => \$options{'node-options'},
-            'q|show-config'    => \$options{'show-config'},
-            'r|node-rsh=s'     => \$options{'node-rsh'},
-            'i|rootimg=s'      => \$options{'rootimg'},
-            's|stream'         => \$options{'streaming'},
-            't|timeout=i'      => \$options{'timeout'},
-            'v|verify'         => \$options{'verify'},
-            'z|exit-status'    => \$options{'exit-status'},
-
+            'e|execute'                => \$options{'execute'},
+            'f|fanout=i'               => \$options{'fanout'},
+            'h|help'                   => \$options{'help'},
+            'l|user=s'                 => \$options{'user'},
+            'm|monitor'                => \$options{'monitor'},
+            'o|node-options=s'         => \$options{'node-options'},
+            'q|show-config'            => \$options{'show-config'},
+            'r|node-rsh=s'             => \$options{'node-rsh'},
+            'i|rootimg=s'              => \$options{'rootimg'},
+            's|stream'                 => \$options{'streaming'},
+            't|timeout=i'              => \$options{'timeout'},
+            'v|verify'                 => \$options{'verify'},
+            'w|touserid=s'             => \$options{'touserid'},
+            'z|exit-status'            => \$options{'exit-status'},
             'B|bypass'                 => \$options{'bypass'},
             'C|context=s'              => \$options{'context'},
             'E|environment=s'          => \$options{'environment'},
@@ -3658,7 +3667,7 @@ sub parse_and_run_dsh
             'T|trace'                  => \$options{'trace'},
             'V|version'                => \$options{'version'},
 
-            'devicetype|devicetype=s'  => \$options{'devicetype'},
+            'devicetype|devicetype=s'    => \$options{'devicetype'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
@@ -3718,8 +3727,9 @@ sub parse_and_run_dsh
         # we will use the create the nostname from the directory
         # for the hostname in the output
         my $path = $options{'rootimg'};
-        $imagename= xCAT::Utils->get_image_name($path);
-        if (@$nodes[0] eq "NO_NODE_RANGE") { # from sinv, discard this name
+        $imagename = xCAT::Utils->get_image_name($path);
+        if (@$nodes[0] eq "NO_NODE_RANGE")
+        {    # from sinv, discard this name
             undef @$nodes;
         }
         if (defined(@$nodes))
@@ -3727,7 +3737,7 @@ sub parse_and_run_dsh
             my $rsp = ();
             $rsp->{data}->[0] =
               "Input noderange:@$nodes and any other xdsh flags or environment variables are not valid with -i flag.";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,1);
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
 
@@ -3755,25 +3765,89 @@ sub parse_and_run_dsh
             return;
 
         }
-        else
+
+        # Rules: if (current userid running command) not eq touserid,
+        #   the current running userid must be root
+        #
+        #   if not set then the touserid will be defaulted to
+        #   the current running userid.
+        #  DSH_REMOTE_PASSWORD env variable must be set to the correct
+        #  password for the key update.  This was setup in xdsh client
+        #  frontend.  remoteshell.expect depends on this
+
+        if (!($ENV{'DSH_REMOTE_PASSWORD'}))
         {
-            if (defined $options{'devicetype'})
-            {
-                $ENV{'DEVICETYPE'} = $options{'devicetype'};
-                my $devicepath = $options{'devicetype'};
-                $devicepath =~ s/::/\//g;
-                $devicepath = "/var/opt/xcat/" . $devicepath. "/config";
-                if ( -e $devicepath)
-                {
-                    my $deviceconf = get_config($devicepath);
-                    # Get ssh-setup-command attribute from configuration
-                    $ENV{'SSH_SETUP_COMMAND'} = $$deviceconf{'main'}{'ssh-setup-command'};
-                }
-            }
-            my $rc      = xCAT::Utils->setupSSH(@nodelist);
-            my @results = "return code = $rc";
-            return (@results);
+            my $rsp = ();
+            $rsp->{data}->[0] =
+              "User password for ssh key exchange has not been supplied./n Cannot complete the -K command./n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+
         }
+
+        if (!($ENV{'DSH_CURRENT_USERID'}))
+        {
+            my $rsp = ();
+            $rsp->{data}->[0] =
+              "Current Userid has not been supplied./n Cannot complete the -K command./n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+
+        }
+
+        my $current_userid = $ENV{'DSH_CURRENT_USERID'};
+
+        # if touser id  defined
+        if (defined $options{'touserid'})
+        {
+
+            # if current_userid ne touserid then current_userid
+            # must be root
+            if (   ($current_userid ne $options{'touserid'})
+                && ($current_userid ne "root"))
+            {
+                my $rsp = ();
+                $rsp->{data}->[0] =
+                  "When touserid:$options{'touserid'} is not the same as the current user:$current_userid. The the command must be run by root id.";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                return;
+            }
+
+            # passed security checks so, if set
+            $ENV{'DSH_FROM_USERID'} = $current_userid;
+            $ENV{'DSH_TO_USERID'}   = $options{'touserid'};
+        }
+        else
+        {    # not defined, so default to current userid
+            $ENV{'DSH_FROM_USERID'} = $current_userid;
+            $ENV{'DSH_TO_USERID'}   = $current_userid;
+        }
+
+        # setting up IB switch ssh, different interface that ssh for
+        # userid on node.  Must build special ssh command to be sent
+        # to the IB switch to setup ssh
+        if (defined $options{'devicetype'})
+        {
+            $ENV{'DEVICETYPE'} = $options{'devicetype'};
+            my $devicepath = $options{'devicetype'};
+            $devicepath =~ s/::/\//g;
+            $devicepath = "/var/opt/xcat/" . $devicepath . "/config";
+            if (-e $devicepath)
+            {
+                my $deviceconf = get_config($devicepath);
+
+                # Get ssh-setup-command attribute from configuration
+                $ENV{'SSH_SETUP_COMMAND'} =
+                  $$deviceconf{'main'}{'ssh-setup-command'};
+            }
+        }
+
+        #
+        # setup ssh keys on the nodes or ib switch
+        #
+        my $rc      = xCAT::Utils->setupSSH(@nodelist);
+        my @results = "return code = $rc";
+        return (@results);
     }
     if (!(@ARGV))
     {    #  no args , an error
@@ -3892,11 +3966,12 @@ sub parse_and_run_dcp
 {
     my ($class, $nodes, $args, $callback, $command, $noderange) = @_;
     $::CALLBACK = $callback;
-    if (!($args)) {
+    if (!($args))
+    {
         usage_dcp;
         exit 1;
     }
-    @ARGV       = @{$args};    # get arguments
+    @ARGV = @{$args};    # get arguments
     if ($ENV{'XCATROOT'})
     {
         $::XCATROOT = $ENV{'XCATROOT'};    # setup xcatroot home directory
@@ -4031,20 +4106,24 @@ sub parse_and_run_dcp
     #
     # build list of nodes
     my @nodelist;
-    if (defined(@$nodes)) { # there are nodes
-       @nodelist = @$nodes;
-       $options{'nodes'} = join(',', @nodelist);
-    } else {
-        my $rsp={};
+    if (defined(@$nodes))
+    {    # there are nodes
+        @nodelist = @$nodes;
+        $options{'nodes'} = join(',', @nodelist);
+    }
+    else
+    {
+        my $rsp = {};
         $rsp->{data}->[0] = "Noderange missing in command input.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
+
     # Execute the dcp api
     my @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
     if ($::RUNCMD_RC)
     {    # error from dcp
-        my $rsp={};
+        my $rsp = {};
         $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
@@ -4383,7 +4462,7 @@ sub runDcp_api
             if (!$DSHCLI::NO_MESSAGES)
             {
                 xCAT::MsgUtils->message("E",
-                              "dcp command failed, Return code=$::RUNCMD_RC.");
+                               "dcp command failed, Return code=$::RUNCMD_RC.");
             }
         }
 
@@ -4490,8 +4569,8 @@ duke.edu/pub/yum-repository/redhat/$releasever/$basearch/'
 #-------------------------------------------------------------------------------
 sub get_config
 {
-    my $configfile = shift;
-    my @content = readFile($configfile);
+    my $configfile      = shift;
+    my @content         = readFile($configfile);
     my $current_section = "DEFAULT";
     my %config;
     my $xcat_use;
@@ -4500,27 +4579,34 @@ sub get_config
     {
         my ($entry, $value);
         chomp $line;
-        if ( $line =~ /\QDO NOT ERASE THIS SECTION\E/ )
+        if ($line =~ /\QDO NOT ERASE THIS SECTION\E/)
         {
-             # reverse flag
-             $xcat_use = ! $xcat_use;
+
+            # reverse flag
+            $xcat_use = !$xcat_use;
         }
         if ($xcat_use)
         {
-             # Remove leading "#". This line is used by xCAT
-             $line =~ s/^#//g;
+
+            # Remove leading "#". This line is used by xCAT
+            $line =~ s/^#//g;
         }
         else
         {
-        # Remove comment line
-             $line =~ s/#.*$//g;
+
+            # Remove comment line
+            $line =~ s/#.*$//g;
         }
         $line =~ s/^\s+//g;
         $line =~ s/\s+$//g;
         next unless $line;
-        if ( $line =~ /^\s*\[([\w+-\.]+)\]\s*$/ ) {
+        if ($line =~ /^\s*\[([\w+-\.]+)\]\s*$/)
+        {
             $current_section = $1;
-        } else {
+        }
+        else
+        {
+
             # Ignore line doesn't key/value pair.
             if ($line !~ /=/)
             {
@@ -4530,6 +4616,7 @@ sub get_config
             $entry = $1;
             $value = $2;
             $entry =~ s/^#*//g;
+
             # Remove leading and trailing spaces
             $entry =~ s/^\s+//g;
             $entry =~ s/\s+$//g;
@@ -4572,6 +4659,5 @@ sub readFile
     close(FILE);
     return @contents;
 }
-
 
 1;

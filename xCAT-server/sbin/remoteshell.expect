@@ -1,23 +1,43 @@
 #!/usr/bin/expect --
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #
+#
 # sets up ssh on the input node list
 # called from by xdsh  <nodelist> -K command 
+# Environment Variables:
 #
-# DSH_REMOTE_CMD  set to path to remote shell (ssh)
+#   DSH_REMOTE_CMD  set to path to remote shell (ssh)
 #     root password must agree on all the nodes
+#
+#   XCAT_ROOT set to root of xCAT install
+#
+#   DSH_REMOTE_PASSWORD  - user password for -s option 
+#
+#   SSH_SETUP_COMMAND - Command to be sent to the IB switch to setup SSH. 
+#
+#   DSH_FROM_USERID_HOME - The home directory of the userid from 
+#                  where the ssh keys will be obtained
+#                  to send
+#
+#   DSH_FROM_USERID - The userid from where the ssh keys will be obtained
+#                  to send
+#                  to the node,  or generated and then obtained to send to the
+#                  node.
+#   DSH_TO_USERID - The userid on the node where the ssh keys will be updated. 
 #
 # Usage: remoteshell.expect 
 #   [-t remote_shell hostname]  test the remoteshell on the host
 #   [-k] Generates the ssh keys needed 
-#   [-n hostname] - gather ssh keys for the hostname
-#   [-s node_list]
+#   [-s node_list]  copies the ssh keys to the nodes
 #   [-h ] usage
 #
 #    exit 0 - good
 #    exit 1 - abort
 #    exit 2 - usage error
 #
+#
+################################################################################
+
 #
 ################################################################################
 
@@ -39,17 +59,34 @@ if { [info exists env(XCATROOT)] } {
 } else {
 	set xcatroot "/opt/xcat" 
 }
-if { [info exists env(XCAT_UPD_MULTNODES)] } {
-	set manynodes $env(XCAT_UPD_MULTNODES)
-} else {
-	set manynodes ""
-}
 
 if { [info exists env(SSH_SETUP_COMMAND)] } {
     set ssh_setup_cmd $env(SSH_SETUP_COMMAND)
 } else {
     set ssh_setup_cmd ""
 }
+# User on the Management node that has the ssh keys
+if { [info exists env(DSH_FROM_USERID)] } {
+    set from_userid $env(DSH_FROM_USERID)
+} else {
+    set from_userid "root"
+}
+
+# User on the node where we will send the ssh keys
+if { [info exists env(DSH_TO_USERID)] } {
+    set to_userid $env(DSH_TO_USERID)
+} else {
+    set to_userid "root"
+}
+
+# get the from userid and its home directory to get the ssh keys
+
+#set home [exec /usr/bin/perl -e {$user = $ENV{'DSH_FROM_USERID'} ? $ENV{'DSH_FROM_USERID'} : "root"; @info = getpwnam($user); print $info[7] . "\n";}]
+
+#if { [string compare $home $empty] ==0 } {
+#set home $env(HOME)
+#}
+set home $env(DSH_FROM_USERID_HOME)
 
 #
 # check input arguments
@@ -60,7 +97,6 @@ if { [llength $argv] != 0 } {
      puts "Usage: remoteshell.expect" 
      puts "  -t remote_shell hostname - test the remoteshell on the host"
      puts "  -k Generates the ssh keys needed" 
-     puts "  -n hostname - gather ssh keys for the hostname"
      puts "  -s node_list  - copies keys to the nodes"
      puts "  -h  usage"
      exit 0
@@ -68,13 +104,8 @@ if { [llength $argv] != 0 } {
 	# -t means test to see if the shell is already setup
 	if { [string compare "-t" [lindex $argv 0]] ==0 } {
 		set env(LC_ALL) "C"
-		if { [string compare $ssh_setup_cmd $empty] !=0 } {
-			set userid "admin"
-		} else {
-			set userid "root"
-		}
 
-		set pid [ spawn [lindex $argv 1] [lindex $argv 2] -l $userid echo test.success ]
+		set pid [ spawn [lindex $argv 1] [lindex $argv 2] -l $to_userid echo test.success ]
 		expect {
 			timeout { exit 1 }
 			"Are you sure you want to continue connecting (yes/no)?" {
@@ -94,11 +125,7 @@ if { [llength $argv] != 0 } {
 		}
 		exit 1
 	} elseif { [string compare "-k" [lindex $argv 0]] ==0 } {
-		# -k  means copy the keys to the nodes
-		set home [exec /usr/bin/perl -e {$user = $ENV{'USER'} ? $ENV{'USER'} : "root"; @info = getpwnam($user); print $info[7] . "\n";}]
-		if { [string compare $home $empty] ==0 } {
-			set home $env(HOME)
-		}
+		# -k  means generate the keys to the nodes
 		# check to see if ssh rsa1 keys exists, if not generate it
 		if {![file exists "$home/.ssh/identity"]} {   # key does not exist 
 			set env(LC_ALL) "C"
@@ -179,39 +206,8 @@ if { [llength $argv] != 0 } {
 			send "\r"
 			expect eof
 		}
-	} elseif { [string compare "-n" [lindex $argv 0]] ==0 } {
-		#gather ssh host keys
-		set hostname [lindex $argv 1]
-		set hlist [split $hostname '.']
-		set name ""
-		set nlist ""
-		set j [llength $hlist]
-		for { set i 0 } { $i<$j} {incr i } {
-			set element [lindex $hlist $i]
-			if { $i == 0 } {
-				set name $element
-			} else {
-
-				set name "$name.$element"
-			}
-			lappend nlist $name
-		}
-
-		foreach hn $nlist {
-			set env(LC_ALL) "C"
-			set pid [ spawn $remoteshell $hn -l root echo test.success ]
-			expect {
-				"Are you sure you want to continue connecting (yes/no)?" {
-					send "yes\r"
-					exp_continue
-				}
-				"*ssword*" {
-					exec /bin/kill $pid
-				}
-				"test.success" { continue }
-			}
-		}
 	} elseif { [string compare "-s" [lindex $argv 0]] ==0 } {
+                # copy the keys to the nodes
 		set nodes [lindex $argv 1]
 		set empty ""
 		if { [string compare $nodes $empty] ==0 } {
@@ -222,27 +218,29 @@ if { [llength $argv] != 0 } {
 		set nodelist2 $nodelist
 		set printlist [ join $nodelist ", " ]
 		set scp "/usr/bin/scp"
-		set directory "/install/postscripts/.ssh"
-		set fh_auth_keys2  [ open "/install/postscripts/.ssh/authorized_keys2" "r"]
+		set directory "$home/.ssh"
+		set fh_auth_keys2  [ open "$home/.ssh/authorized_keys2" "r"]
 		set auth_keys2 [read $fh_auth_keys2]
 		close $fh_auth_keys2
-	        if { [info exists env(XCAT_REMOTE_PASSWORD)] } {
-		    set word $env(XCAT_REMOTE_PASSWORD)
+	   if { [info exists env(DSH_REMOTE_PASSWORD)] } {
+		    set word $env(DSH_REMOTE_PASSWORD)
 		} else {
-		    exec /bin/stty -echo
-		    set timeout 360
-		    puts "Enter the password for the userid (usually root) used to access the following target nodes: $printlist"
-		    expect_user "*\n"
-		    set timeout 80
-		    exec /bin/stty echo
-		    set word $expect_out(buffer)
-		    set expect_out(buffer) ""
-		    send_user "\n"
+		  exec /bin/stty -echo
+		  set timeout 360
+		  puts "Enter the password for the userid:$to_userid to access the following target nodes: $printlist"
+		  expect_user "*\n"
+		  set timeout 80
+		  exec /bin/stty echo
+		  set word $expect_out(buffer)
+		  set expect_out(buffer) ""
+		  send_user "\n"
 		}
+                
 		foreach node $nodelist {
+                       puts $node
 			if { [string compare $ssh_setup_cmd $empty] ==0 } {
 				set env(LC_ALL) "C"
-				set pid [ spawn $scp -r -p $directory root\@$node:/tmp ] 
+				set pid [ spawn $remoteshell $node -l $to_userid /bin/mkdir -p /tmp/$to_userid/.ssh ]
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
 						send "yes\r"
@@ -256,7 +254,49 @@ if { [llength $argv] != 0 } {
 						exec /bin/kill $pid
 					}
 				}
-				set pid [ spawn $remoteshell $node -l root /tmp/.ssh/copy.perl ]
+				set pid [ spawn $scp  $directory/authorized_keys2 $to_userid\@$node:/tmp/$to_userid/.ssh ] 
+				expect {
+					"Are you sure you want to continue connecting (yes/no)?" {
+						send "yes\r"
+						exp_continue
+					}
+					"*ssword*" {
+						send "$word\r"
+						exp_continue
+					}
+					"Permission denied*" {
+						exec /bin/kill $pid
+					}
+				}
+				set pid [ spawn $scp  $directory/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh ] 
+				expect {
+					"Are you sure you want to continue connecting (yes/no)?" {
+						send "yes\r"
+						exp_continue
+					}
+					"*ssword*" {
+						send "$word\r"
+						exp_continue
+					}
+					"Permission denied*" {
+						exec /bin/kill $pid
+					}
+				}
+				set pid [ spawn $scp  $directory/copy.perl $to_userid\@$node:/tmp/$to_userid/.ssh ] 
+				expect {
+					"Are you sure you want to continue connecting (yes/no)?" {
+						send "yes\r"
+						exp_continue
+					}
+					"*ssword*" {
+						send "$word\r"
+						exp_continue
+					}
+					"Permission denied*" {
+						exec /bin/kill $pid
+					}
+				}
+				set pid [ spawn $remoteshell $node -l $to_userid /tmp/$to_userid/.ssh/copy.perl ]
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
 						send "yes\r"
@@ -285,7 +325,7 @@ if { [llength $argv] != 0 } {
 				}
 				# Trim semicolon at the tail
 				set ssh_setup_string [string range $ssh_setup_string 1 end]
-				set pid [ spawn $remoteshell $node -l admin $ssh_setup_string ]
+				set pid [ spawn $remoteshell $node -l $to_userid $ssh_setup_string ]
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
 						send "yes\r"
@@ -320,12 +360,7 @@ if { [llength $argv] != 0 } {
 			}
 			foreach hn $nlist {
 				set env(LC_ALL) "C"
-				if { [string compare $ssh_setup_cmd $empty] !=0 } {
-					set userid "admin"
-				} else {
-					set userid "root"
-				}
-				set pid [ spawn $remoteshell $hn -l $userid echo test.success ]
+				set pid [ spawn $remoteshell $hn -l $to_userid echo test.success ]
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
 						send "yes\r"
@@ -356,80 +391,19 @@ if { [llength $argv] != 0 } {
 		} else {
 			exit 0
 		}
-	} elseif { [string compare "-d" [lindex $argv 0]] ==0 } { 
-	# check xdsh  ping to verify
-		set env(DSH_PING_VERIFY) "1"
-		set env(DSH_LIST) [lindex $argv 1]
-		log_user 1
-		set timeout 360
-		set env(LC_ALL) "C"
-		if { [info exists env(XCAT_PING)] } {
-			set pid [ spawn "$xcatroot/bin/xdsh" -B -v -t 80 /bin/echo test.success ]
-		} else {
-			set pid [ spawn "$xcatroot/bin/xdsh" -B -t 80 /bin/echo test.success ]
-		}
-		expect {
-			timeout {
-				exec /bin/kill $pid
-				set failed "1"
-			}
-		}
-		log_user 0
-		set timeout 80
-    } elseif { [string compare "-dn" [lindex $argv 0]] ==0 } { 
-	# check xdsh  ping nodes
-		set env(DSH_PING_VERIFY) "1"
-		#set env(DSH_LIST) [lindex $argv 1]
-		set node [lindex $argv 1]
-		log_user 1
-		set timeout 360
-		set env(LC_ALL) "C"
-		if { [info exists env(XCAT_PING)] } {	
-			set pid [ spawn "$xcatroot/bin/xdsh"  $node -B -v -t 80 /bin/echo test.success ]
-		} else {  # no verify
-			set pid [ spawn "$xcatroot/bin/xdsh"   $node -B -t 80 /bin/echo test.success ]
-		}
-		expect {
-			timeout {
-				exec /bin/kill $pid
-				set failed "1"
-			}
-		}
-		log_user 0
-		set timeout 80
-	} elseif { [string compare "-ds" [lindex $argv 0]] ==0 } { 
-		# check dsh, ssh with options 
-		set env(DSH_PING_VERIFY) "1"
-		set env(DSH_LIST) [lindex $argv 1]
-		log_user 1
-		set timeout 360
-		set env(LC_ALL) "C"
-		if { [info exists env(XCAT_PING)] } {
-			set pid [ spawn $xcatroot/bin/xdsh -B -v -o "-o BatchMode=yes" -t 80 /bin/echo test.success ]
-		} else { # no verify
-			set pid [ spawn $xcatroot/bin/xdsh -B -o "-o BatchMode=yes" -t 80 /bin/echo test.success ]
-		}
-		expect {
-			timeout {
-				exec /bin/kill $pid
-				set failed "1"
-			}
-		}
-		log_user 0
-		set timeout 80
-	    } else {  #  usage  error 
+   } else {  #  usage  error 
+              puts "flag entered is not valid" 
               puts "Usage: remoteshell.expect" 
               puts "  -t remote_shell hostname - test the remoteshell on the host"
               puts "  -k Generates the ssh keys needed" 
-              puts "  -n hostname - gather ssh keys for the hostname"
               puts "  -s node_list  - copies keys to the nodes"
 	      exit  2
 	    }
 } else {   # usage error
+              puts "Command requires a flag" 
               puts "Usage: remoteshell.expect" 
               puts "  -t remote_shell hostname - test the remoteshell on the host"
               puts "  -k Generates the ssh keys needed" 
-              puts "  -n hostname - gather ssh keys for the hostname"
               puts "  -s node_list  - copies keys to the nodes"
 	      exit  2
 }
