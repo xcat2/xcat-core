@@ -1964,7 +1964,6 @@ sub DESTROY
     undef $self->{nodelist};    #Could be circular
 }
 
-
 =head3 getTableList
 	Description: Returns a list of the table names in the xCAT database.
 =cut
@@ -1991,10 +1990,9 @@ sub getDescriptions {
 	foreach my $t (keys %xCAT::Schema::tabspec) { $ret->{$t} = $xCAT::Schema::tabspec{$t}->{table_desc}; }
 	return $ret;
 }
+
 #--------------------------------------------------------------------------
-
 =head3  isAKey 
-
     Description:  Checks to see if table field is a table key 
 
     Arguments:
@@ -2011,7 +2009,6 @@ sub getDescriptions {
               if(isaKey($key_list, $col));
 
 =cut
-
 #--------------------------------------------------------------------------------
 sub isAKey 
 {
@@ -2025,6 +2022,30 @@ sub isAKey
     }
     return 0;
 }
+
+#--------------------------------------------------------------------------
+=head3   getAutoIncrementColumns
+    get a list of column names that are of type "INTEGER AUTO_INCREMENT".
+
+    Returns:
+        an array of column names that are auto increment.
+=cut
+#--------------------------------------------------------------------------------
+sub getAutoIncrementColumns {
+    my $self=shift;
+    my $descr=$xCAT::Schema::tabspec{$self->{tabname}};
+    my $types=$descr->{types};
+    my @ret=();
+
+    foreach my $col (@{$descr->{cols}})
+    {
+	if (($types) && ($types->{$col})) {
+            if ($types->{$col} =~ /INTEGER AUTO_INCREMENT/) { push(@ret,$col); }
+	}
+    }
+    return @ret;
+}
+
 
 1;
 

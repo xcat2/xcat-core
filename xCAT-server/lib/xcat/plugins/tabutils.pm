@@ -276,6 +276,11 @@ sub tabrestore
     my @colns = split(/,/, $header);
     my $line;
     my $rollback = 0;
+
+    my @tmp=$tab->getAutoIncrementColumns(); #get the columns that are auto increment by DB. 
+    my %auto_cols=();
+    foreach (@tmp) { $auto_cols{$_}=1;}
+
   LINE: foreach $line (@{$request->{data}})
     {
         $linenumber++;
@@ -288,7 +293,9 @@ sub tabrestore
             if ($line =~ /^,/ or $line eq "")
             {                    #Match empty, or end of line that is empty
                  #TODO: should we detect when there weren't enough CSV fields on a line to match colums?
-                $record{$col} = undef;
+                if (!exists($auto_cols{$col})) {
+		    $record{$col} = undef;
+		}
                 $line =~ s/^,//;
             }
             elsif ($line =~ /^[^,]*"/)
@@ -339,7 +346,9 @@ sub tabrestore
                         chop $ent;
                         $ent = substr($ent, 1);
                         $ent =~ s/""/"/g;
-                        $record{$col} = $ent;
+			if (!exists($auto_cols{$col})) {
+			    $record{$col} = $ent;
+			}
                     }
                     else
                     {
@@ -357,7 +366,9 @@ sub tabrestore
             }
             elsif ($line =~ /^([^,]+)/)
             {    #easiest case, no Text::Balanced needed..
-                $record{$col} = $1;
+		if (!exists($auto_cols{$col})) {
+		    $record{$col} = $1;
+		}
                 $line =~ s/^([^,]+)(,|$)//;
             }
         }
