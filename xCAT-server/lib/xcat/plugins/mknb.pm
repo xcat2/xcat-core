@@ -118,6 +118,11 @@ sub process_request {
          }
          chmod(0644,"$tftpdir/pxelinux.0");
       }
+   } elsif ($arch =~ /ppc/) {
+      mkpath("$tftpdir/etc");
+      if (! -r "$tftpdir/yaboot") {
+          $callback->({error=>["Unable to locate yaboot to boot ppc clients, install yaboot-xcat"],errorcode=>[1]});
+      }
    }
    my $dopxe=0;
    foreach (keys %{$hexnets}) {
