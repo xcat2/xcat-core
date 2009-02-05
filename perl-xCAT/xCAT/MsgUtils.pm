@@ -95,6 +95,7 @@ This program module file, supports the xcat messaging and logging
             Here's the meaning of the 1st character, if a callback specified:
 
                 D - DATA this is returned to the client callback routine
+                N - Node Data this is returned to the client callback routine
                 E - error this is displayed/logged by daemon/Client.pm.
                 I - informational this is displayed/logged by daemon/Client.pm.
                 S - Message will be logged to syslog ( severe error)
@@ -127,6 +128,7 @@ This program module file, supports the xcat messaging and logging
                 D - DATA  goes to STDOUT
                 E - error.  This type of message will be sent to STDERR.
                 I - informational  goes to STDOUT
+                N - Node informational  goes to STDOUT
                 S - Message will be logged to syslog ( severe error)
                      Note S can be combined with other flags for example
 					 SE logs message to syslog and is sent to STDERR.
@@ -157,6 +159,7 @@ This program module file, supports the xcat messaging and logging
     Use with no callback
 		# Message to STDOUT
         xCAT::MsgUtils->message('I', "Operation $value1 succeeded\n");
+        xCAT::MsgUtils->message('N', "Node:$node failed\n");
 		# Message to STDERR
         xCAT::MsgUtils->message('E', "Operation $value1 failed\n");
         # Message to Syslog 
@@ -168,36 +171,42 @@ This program module file, supports the xcat messaging and logging
 
     Use with callback
         # Message to callback
-		my %rsp;
+      my $rsp = {};
 		$rsp->{data}->[0] = "Job did not run. \n";
 	    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
 
-		my %rsp;
+      my $rsp = {};
 		$rsp->{error}->[0] = "No hosts in node list\n";
 	    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
+      my $rsp = {};
+     $rsp->{node}->[0]->{name}->[0] ="mynode";
+     $rsp->{node}->[0]->{data}->[0] ="mydata";
+     xCAT::MsgUtils->message("N", $rsp, $callback);
 
-		my %rsp;
+
+
+      my $rsp = {};
 		$rsp->{info}->[0] = "No hosts in node list\n";
 	    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
 
-		my %rsp;
+      my $rsp = {};
 		$rsp->{warning}->[0] = "No hosts in node list\n";
 	    xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
 
-		my %rsp;
+      my $rsp = {};
 		$rsp->{error}->[0] = "Host not responding\n";
 	    xCAT::MsgUtils->message("S", $rsp, $::CALLBACK);
 
 
         # Message to Syslog and callback
-		my %rsp;
+      my $rsp = {};
 		$rsp->{error}->[0] = "Host not responding\n";
 	    xCAT::MsgUtils->message("SE", $rsp, $::CALLBACK);
 
         # Message to Syslog and callback
-		my %rsp;
+      my $rsp = {};
 		$rsp->{info}->[0] = "Host not responding\n";
 	    xCAT::MsgUtils->message("SI", $rsp, $::CALLBACK);
 
@@ -237,8 +246,8 @@ sub message
     my $call_back = shift;    # optional
     my $exitcode  = shift;    # optional
 
-    # should be I, D, E, S, W , L
-    #  or S(I, D, E, S, W, L)
+    # should be I, D, E, S, W , L,N
+    #  or S(I, D, E, S, W, L,N)
 
     my $stdouterrf = \*STDOUT;
     my $stdouterrd = '';
@@ -309,6 +318,7 @@ sub message
     {    # callback routine provided
         my $sevkey;
         if    ($sev =~ /D/) { $sevkey = 'data'; }
+        elsif ($sev =~ /N/) { $sevkey = 'node'; }
         elsif ($sev =~ /I/) { $sevkey = 'info'; }
         elsif ($sev =~ /W/) { $sevkey = 'warning'; }
         elsif ($sev =~ /E/)
