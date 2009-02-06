@@ -166,6 +166,12 @@ if ($ENV{'DSH_TO_USERID'})
     push(@{$cmdref->{env}}, "DSH_TO_USERID=$ENV{'DSH_TO_USERID'}");
 }
 
+if ($ENV{'DEVICETYPE'})
+{
+    push(@{$cmdref->{env}}, "DEVICETYPE=$ENV{'DEVICETYPE'}");
+}
+
+
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
 

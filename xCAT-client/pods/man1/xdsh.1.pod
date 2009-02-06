@@ -9,6 +9,9 @@ B<xdsh> I<noderange> [B<-B> I<bypass>] [B<-C> I<context>] [B<--devicetype> I<typ
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
 [B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
 
+B<xdsh> I<noderange>  [B<-K>] 
+B<xdsh> I<noderange>  [B<-K>] [B<-l>  I<userID>]  
+
 B<xdsh> [B<-i> I<image path>] I<command_list>
 
 B<xdsh> [B<-h> | B<-V> | B<-q>]
@@ -244,15 +247,20 @@ is not specified, a default fanout value of B<64> is used.
 Displays usage information.
 
 =item B<-K>|B<--ssh-setup>
+=item B<-K>|B<--ssh-setup>  B<-l>|B<--user> I<user_ID> 
 
 Set  up  the  SSH  keys  for the specified node list.
-Currently, this must be run on the management node (not  on  a
-remote  client), because it forces itself into bypass mode.
+Currently, this must be run on on a client that has the userid
+defined consistent with the userid that will be updated with ssh
+keys on the node.  
+If the -l option is not defined, then the user_id updated on the 
+node will the same as the current user_id running the command.
+If the -l option is used, and the user_id is not the current user_id
+running the command then the command must be run as root. 
+
 Other device types, such as IB switch, are also supported.  The
 device should be defined as a node and nodetype should be defined 
 as switch before connecting.
-Specify the user name from [-l username] option with [-K] option
-if the default user name is not "root" when setup SSH keys.
 
 =item B<-l>|B<--user> I<user_ID>
 

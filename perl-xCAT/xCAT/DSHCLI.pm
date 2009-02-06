@@ -42,6 +42,7 @@ our @dsh_valid_env = (
                       'DSH_PATH',           'DSH_SYNTAX',
                       'DSH_TIMEOUT',        'DSH_REMOTE_PASSWORD',
                       'DSH_TO_USERID',      'DSH_FROM_USERID',
+                      'DEVICETYPE',    
                       );
 select(STDERR);
 $| = 1;
