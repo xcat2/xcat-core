@@ -41,6 +41,7 @@ our @dsh_valid_env = (
                       'DSH_NODE_RSH',       'DSH_OUTPUT',
                       'DSH_PATH',           'DSH_SYNTAX',
                       'DSH_TIMEOUT',        'DSH_REMOTE_PASSWORD',
+                      'DSH_TO_USERID',      'DSH_FROM_USERID',
                       );
 select(STDERR);
 $| = 1;
@@ -3547,7 +3548,7 @@ sub usage_dsh
 ## usage message
     my $usagemsg1 =
       " xdsh -h \n xdsh -q \n xdsh -v \n xdsh [noderange] [group]\n";
-    my $usagemsg1a = " xdsh  [noderange] -K [-w touserid]\n";
+    my $usagemsg1a = " xdsh  [noderange] -K [-l logonuserid]\n";
     my $usagemsg2  =
       "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file] [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
@@ -3654,7 +3655,6 @@ sub parse_and_run_dsh
             's|stream'                 => \$options{'streaming'},
             't|timeout=i'              => \$options{'timeout'},
             'v|verify'                 => \$options{'verify'},
-            'w|touserid=s'             => \$options{'touserid'},
             'z|exit-status'            => \$options{'exit-status'},
             'B|bypass'                 => \$options{'bypass'},
             'C|context=s'              => \$options{'context'},
@@ -3785,7 +3785,7 @@ sub parse_and_run_dsh
 
         }
 
-        if (!($ENV{'DSH_CURRENT_USERID'}))
+        if (!($ENV{'DSH_FROM_USERID'}))
         {
             my $rsp = ();
             $rsp->{data}->[0] =
@@ -3795,33 +3795,34 @@ sub parse_and_run_dsh
 
         }
 
-        my $current_userid = $ENV{'DSH_CURRENT_USERID'};
-
-        # if touser id  defined
-        if (defined $options{'touserid'})
+        if (!($ENV{'DSH_TO_USERID'})) # id to logon to the node and update the
+                                      # keys
         {
+            my $rsp = ();
+            $rsp->{data}->[0] =
+              "Logon  Userid has not been supplied./n Cannot complete the -K command./n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
 
-            # if current_userid ne touserid then current_userid
-            # must be root
-            if (   ($current_userid ne $options{'touserid'})
+        }
+
+
+        my $current_userid = $ENV{'DSH_FROM_USERID'};
+        my $to_userid = $ENV{'DSH_TO_USERID'};
+
+
+        # if current_userid ne touserid then current_userid
+        # must be root
+        if (   ($current_userid ne $to_userid)
                 && ($current_userid ne "root"))
-            {
+        {
                 my $rsp = ();
                 $rsp->{data}->[0] =
-                  "When touserid:$options{'touserid'} is not the same as the current user:$current_userid. The the command must be run by root id.";
+                  "When touserid:$to_userid is not the same as the current user:$current_userid. The the command must be run by root id.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
                 return;
-            }
+        }
 
-            # passed security checks so, if set
-            $ENV{'DSH_FROM_USERID'} = $current_userid;
-            $ENV{'DSH_TO_USERID'}   = $options{'touserid'};
-        }
-        else
-        {    # not defined, so default to current userid
-            $ENV{'DSH_FROM_USERID'} = $current_userid;
-            $ENV{'DSH_TO_USERID'}   = $current_userid;
-        }
 
         # setting up IB switch ssh, different interface that ssh for
         # userid on node.  Must build special ssh command to be sent

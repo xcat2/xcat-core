@@ -155,9 +155,15 @@ if ($ENV{'DSH_REMOTE_PASSWORD'})
 {
     push(@{$cmdref->{env}}, "DSH_REMOTE_PASSWORD=$ENV{'DSH_REMOTE_PASSWORD'}");
 }
-if ($ENV{'DSH_CURRENT_USERID'})
+
+if ($ENV{'DSH_FROM_USERID'})
 {
-    push(@{$cmdref->{env}}, "DSH_CURRENT_USERID=$ENV{'DSH_CURRENT_USERID'}");
+    push(@{$cmdref->{env}}, "DSH_FROM_USERID=$ENV{'DSH_FROM_USERID'}");
+}
+
+if ($ENV{'DSH_TO_USERID'})
+{
+    push(@{$cmdref->{env}}, "DSH_TO_USERID=$ENV{'DSH_TO_USERID'}");
 }
 
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
@@ -196,7 +202,6 @@ sub parse_args_xdsh
             's|stream'                 => \$options{'streaming'},
             't|timeout=i'              => \$options{'timeout'},
             'v|verify'                 => \$options{'verify'},
-            'w|touserid=s'             => \$options{'touserid'},
             'z|exit-status'            => \$options{'exit-status'},
             'B|bypass'                 => \$options{'bypass'},
             'C|context=s'              => \$options{'context'},
@@ -236,10 +241,19 @@ sub parse_args_xdsh
 
         # prompt for the password for the current userid on the node
         my $current_userid = getlogin();
-        $ENV{DSH_CURRENT_USERID} = $current_userid;
+        $ENV{DSH_FROM_USERID} = $current_userid;
+        # find out who we are going to long on to the node as
+        # if -l option or current userid
+        my $to_userid;
+        if ($options{'user'}) {
+           $to_userid=$options{'user'};
+        } else {
+           $to_userid=$current_userid;
+        }
+        $ENV{DSH_TO_USERID} = $to_userid;
         my $userpw;
         my $msg =
-          "Enter the password for the userid on the node where the ssh keys \nwill be updated:\n";
+          "Enter the password for the userid:$to_userid on the node where the ssh keys \nwill be updated:\n";
         xCAT::MsgUtils->message("I", $msg);
         system("stty -echo");        # turn off keyboard
         chop($userpw = <STDIN>);
@@ -261,7 +275,7 @@ sub parse_args_xdsh
     {
         my $version = xCAT::Utils->Version();
         $version .= "\n";
-        xCAT::MsgUtils->message("I", $version);
+        xCAT::MsgUtils->message("N", $version);
         exit 0;
     }
     if ($options{'rootimg'})
