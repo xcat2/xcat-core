@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # Sample xCAT post script for configuring secondary adatper based on eth0 
 # settings and some conventions.  This scripts works for both diskfull installs # and diskless boots.
