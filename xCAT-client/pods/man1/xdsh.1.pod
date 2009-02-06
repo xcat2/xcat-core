@@ -5,7 +5,7 @@ B<xdsh> - Concurrently runs commands on multiple nodes.
 =head1 B<SYNOPSIS>
 
 B<xdsh> I<noderange> [B<-B> I<bypass>] [B<-C> I<context>] [B<--devicetype> I<type_of_device>] [B<-e>] [B<-E> I<environment_file>]  [B<-f> I<fanout>]
-[B<-K>]  [B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
+[B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
 [B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
 
@@ -248,6 +248,7 @@ is not specified, a default fanout value of B<64> is used.
 Displays usage information.
 
 =item B<-K>|B<--ssh-setup>
+
 =item B<-K>|B<--ssh-setup>  B<-l>|B<--user> I<user_ID> 
 
 Set  up  the  SSH  keys  for the specified node list.
@@ -402,6 +403,11 @@ issued command is B<0>.
 
 Specifies the default context to use  when  resolving
 targets. This variable is overridden by the B<-C> flag.
+
+=item B<DEVICETYPE>
+
+Specify a user-defined device type.  See B<--devicetype> flag.
+
 
 =item B<DSH_ENVIRONMENT>
 
