@@ -10,6 +10,7 @@ I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ks
 [B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
 
 B<xdsh> I<noderange>  [B<-K>] 
+
 B<xdsh> I<noderange>  [B<-K>] [B<-l>  I<userID>]  
 
 B<xdsh> [B<-i> I<image path>] I<command_list>
