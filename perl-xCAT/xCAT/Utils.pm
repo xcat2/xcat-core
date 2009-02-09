@@ -1194,6 +1194,9 @@ if (! -d \"\$dest_dir\" ) {
 }
 `cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
 `cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1`;
+`cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1`;
+`cp /tmp/$to_userid/.ssh/id_dsa  \$home/.ssh/id_dsa 2>&1`;
+`chmod 0600 \$home/.ssh/id_* 2>&1`;
 `rm -f /tmp/$to_userid/.ssh/* 2>&1`;
 rmdir(\"/tmp/$to_userid/.ssh\");
 rmdir(\"/tmp/$to_userid\");";

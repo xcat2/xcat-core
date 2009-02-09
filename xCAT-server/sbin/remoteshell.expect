@@ -282,6 +282,36 @@ if { [llength $argv] != 0 } {
 						exec /bin/kill $pid
 					}
 				}
+				set pid [ spawn $scp  $directory/id_rsa $to_userid\@$node:/tmp/$to_userid/.ssh ] 
+				expect {
+					"Are you sure you want to continue connecting (yes/no)?" {
+						send "yes\r"
+						exp_continue
+					}
+					"*ssword*" {
+						send "$word\r"
+						exp_continue
+					}
+					"Permission denied*" {
+						exec /bin/kill $pid
+					}
+				}
+				set pid [ spawn $scp  $directory/id_dsa $to_userid\@$node:/tmp/$to_userid/.ssh ] 
+				expect {
+					"Are you sure you want to continue connecting (yes/no)?" {
+						send "yes\r"
+						exp_continue
+					}
+					"*ssword*" {
+						send "$word\r"
+						exp_continue
+					}
+					"Permission denied*" {
+						exec /bin/kill $pid
+					}
+				}
+				set pid [ spawn $scp  $directory/copy.perl $to_userid\@$node:/tmp/$to_userid/.ssh ] 
+				set pid [ spawn $scp  $directory/copy.perl $to_userid\@$node:/tmp/$to_userid/.ssh ] 
 				set pid [ spawn $scp  $directory/copy.perl $to_userid\@$node:/tmp/$to_userid/.ssh ] 
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
