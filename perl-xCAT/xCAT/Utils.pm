@@ -1103,7 +1103,7 @@ sub setupSSH
     my @nodes    = $ref_nodes;
     my @badnodes = ();
     my $n_str    = join ',', @nodes;
-    my $SSHdir   = "/install/postscripts/.ssh";
+    my $SSHdir   = "/install/postscripts/_ssh";
     if (!($ENV{'DSH_REMOTE_PASSWORD'}))
     {
         my $rsp = ();
@@ -1159,7 +1159,7 @@ sub setupSSH
     {
         mkdir("/install",                  0755);
         mkdir("/install/postscripts",      0755);
-        mkdir("/install/postscripts/.ssh", 0755);
+        mkdir("/install/postscripts/_ssh", 0755);
     }
 
     # Generate the keys, if they do not already exist
@@ -1246,7 +1246,21 @@ rmdir(\"/tmp/$to_userid\");";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
     }
+    #  Remove $home/.ssh/authorized_keys*
+    #  Easy to remote this code, if we want
+    #  The MN to be able to ssh to itself
 
+    $cmd = "rm $home/.ssh/authorized_keys*";
+    xCAT::Utils->runcmd($cmd, 0);
+    my $rsp = {};
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "$cmd failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return (1);
+
+    }
+    
     # must always check to see if worked, run test
     foreach my $n (@nodes)
     {
@@ -1281,7 +1295,7 @@ rmdir(\"/tmp/$to_userid\");";
 =head3    cpSSHFiles
 
         Copies the ssh keyfiles and the copy perl script into
-		/install/postscripts/.ssh. and the $HOME/.ssh directory of
+		/install/postscripts/_ssh. and the $HOME/.ssh directory of
                 userid
 
         Arguments:
