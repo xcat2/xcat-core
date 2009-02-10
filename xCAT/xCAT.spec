@@ -72,6 +72,7 @@ rm postscripts.tar
 
 rm LICENSE.html
 mkdir -p postscripts/hostkeys
+mkdir -p /etc/xcat/hostkeys 
 cd -
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
@@ -104,20 +105,31 @@ if [ ! -d /var/ftp/tftpboot ]; then
    echo "/tftpboot   /var/ftp/tftpboot none bind,defaults 0 0" >> /etc/fstab
    mount /var/ftp/tftpboot
 fi
-
-if [ ! -f /install/postscripts/hostkeys/ssh_host_key ]; then
-    echo Generating SSH1 RSA Key...
-    /usr/bin/ssh-keygen -t rsa1 -f /install/postscripts/hostkeys/ssh_host_key -C '' -N ''
-    echo Generating SSH2 RSA Key...
-    /usr/bin/ssh-keygen -t rsa -f /install/postscripts/hostkeys/ssh_host_rsa_key -C '' -N ''
-    echo Generating SSH2 DSA Key...
-    /usr/bin/ssh-keygen -t dsa -f /install/postscripts/hostkeys/ssh_host_dsa_key -C '' -N ''
+# never generated the keys
+if [ ! -f /install/postscripts/hostkeys/ssh_host_key.pub ]; then
+ echo Generating SSH1 RSA Key...
+ /usr/bin/ssh-keygen -t rsa1 -f /etc/xcat/hostkeys/ssh_host_key -C '' -N ''
+ echo Generating SSH2 RSA Key...
+ /usr/bin/ssh-keygen -t rsa -f /etc/xcat/hostkeys/ssh_host_rsa_key -C '' -N ''
+ echo Generating SSH2 DSA Key...
+ /usr/bin/ssh-keygen -t dsa -f /etc/xcat/hostkeys/ssh_host_dsa_key -C '' -N ''
+ /bin/cp /etc/xcat/hostkeys/ssh_host*.pub /install/postscripts/hostkeys/ 
+fi
+# generated the keys before, still have private keys in install 
+# copy all to the new private directory and then remove private keys
+if [ -f /install/postscripts/hostkeys/ssh_host_key ]; then
+ /bin/cp /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.
+ /bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key
+ /bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key
+ /bin/rm /install/postscripts/hostkeys/ssh_host_key
 fi
 if [ -d /install/postscripts/.ssh ]; then
-   mv /install/postscripts/.ssh /install/postscripts/_ssh
+   /bin/mv /install/postscripts/.ssh/* /install/postscripts/_ssh/.
+   rmdir /install/postscripts/.ssh
 fi
 if [ -d /install/postscripts/.xcat ]; then
-   mv /install/postscripts/.xcat /install/postscripts/_xcat
+   /bin/mv /install/postscripts/.xcat/* /install/postscripts/_xcat/.
+   rmdir /install/postscripts/.xcat
 fi
 chkconfig vsftpd on
 /etc/init.d/vsftpd start

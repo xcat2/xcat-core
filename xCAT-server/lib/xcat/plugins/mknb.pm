@@ -80,10 +80,10 @@ sub process_request {
    chmod(0700,$tempdir."/root/.ssh");
    copy("/root/.ssh/id_rsa.pub","$tempdir/root/.ssh/authorized_keys");
    chmod(0600,"$tempdir/root/.ssh/authorized_keys");
-   if (-r "$installdir/postscripts/hostkeys/ssh_host_key") {
-      copy("$installdir/postscripts/hostkeys/ssh_host_key","$tempdir/etc/ssh_host_key");
-      copy("$installdir/postscripts/hostkeys/ssh_host_rsa_key","$tempdir/etc/ssh_host_rsa_key");
-      copy("$installdir/postscripts/hostkeys/ssh_host_dsa_key","$tempdir/etc/ssh_host_dsa_key");
+   if (-r "/etc/xcat/hostkeys/ssh_host_key") {
+    copy("/etc/xcat/hostkeys/ssh_host_key","$tempdir/etc/ssh_host_key");
+    copy("/etc/xcat/hostkeys/ssh_host_rsa_key","$tempdir/etc/ssh_host_rsa_key");
+    copy("/etc/xcat/hostkeys/ssh_host_dsa_key","$tempdir/etc/ssh_host_dsa_key");
       chmod(0600,<$tempdir/etc/ssh_*>);
    }
    unless (-r "$tempdir/etc/ssh_host_key") {
