@@ -330,8 +330,13 @@ sub pick_target {
         if (grep { "$_" eq $cand } @destblacklist) { print "$_ was blacklisted\n"; next; } #skip blacklisted destinations
             print "maybe $_\n";
             eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
-                $targconn = Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
+                $targconn = Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1&netcat=nc");
             };
+            unless ($targconn) {
+                eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
+                    $targconn = Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
+                };
+            }
         unless ($targconn) { next; } #skip unreachable destinations
         foreach ($targconn->list_domains()) {
             if ($_->get_name() eq 'Domain-0') { next; } #Dom0 memory usage is elastic, we are interested in HVM DomU memory, which is inelastic
@@ -373,17 +378,37 @@ sub migrate {
         return (0,"Guest is already on host $targ");
     }
     my $testhypconn;
+    my $srcnetcatadd="&netcat=nc";
     eval {#Contain Sys::Virt bugs
-        $testhypconn= Sys::Virt->new(uri=>"xen+ssh://".$prevhyp."?no_tty=1");
+        $testhypconn= Sys::Virt->new(uri=>"xen+ssh://".$prevhyp."?no_tty=1$srcnetcatadd");
     };
     unless ($testhypconn) {
+        $srcnetcatadd="";
+        eval {#Contain Sys::Virt bugs
+            $testhypconn= Sys::Virt->new(uri=>"xen+ssh://".$prevhyp."?no_tty=1");
+        };
+    }
+    unless ($testhypconn) {
         return (1,"Unable to reach $prevhyp to perform operation of $node, use nodech to change vm.host if certain of no split-brain possibility exists");
+    }
+    my $destnetcatadd="&netcat=nc";
+    eval {#Contain Sys::Virt bugs
+        $testhypconn= Sys::Virt->new(uri=>$target.$destnetcatadd);
+    };
+    unless ($testhypconn) {
+        $destnetcatadd="";
+        eval {#Contain Sys::Virt bugs
+            $testhypconn= Sys::Virt->new(uri=>$target);
+        };
+    }
+    unless ($testhypconn) {
+        return (1,"Unable to reach $targ to perform operation of $node, destination unusable.");
     }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
     my $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
     #serviced, we just want to trigger MAC move in the switch forwarding dbs
-    my $rc=system("virsh -c $currhyp migrate --live $node $target");
+    my $rc=system("virsh -c $currhyp".$srcnetcatadd." migrate --live $node $target.$destnetcatadd");
     system("arp -d $node"); #Make ethernet fabric take note of change
     send($sock,"dummy",0,$pa);  #UDP packet to force forwarding table update in switches, ideally a garp happened, but just in case...
     if ($rc) {
@@ -392,8 +417,13 @@ sub migrate {
         $vmtab->setNodeAttribs($node,{host=>$targ});
         my $newhypconn;
         eval {#Contain Sys::Virt bugs
-            $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ."?no_tty=1");
+            $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ."?no_tty=1&netcat=nc");
         };
+        unless ($newhypconn) {
+            eval {#Contain Sys::Virt bugs
+                $newhypconn= Sys::Virt->new(uri=>"xen+ssh://".$targ."?no_tty=1");
+            };
+        }
         if ($newhypconn) {
             my $dom;
             eval {
@@ -643,10 +673,15 @@ sub process_request {
         $hypconn=undef;
         push @destblacklist,$_;
         eval { #Contain bugs that won't be in $@
-            $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
+            $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1&netcat=nc");
         };
+        unless ($hypconn) { #retry for socat
+            eval { #Contain bugs that won't be in $@
+                $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$_."?no_tty=1");
+            };
+        }
         unless ($hypconn)  {
-            $callback->({node=>[{name=>[$_],error=>["Cannot communicate via libvirt to node"]}]});
+            $callback->({node=>[{name=>[$_],error=>["Cannot communicate BC via libvirt to node"]}]});
             next;
         }
         foreach ($hypconn->list_domains()) {
@@ -869,12 +904,17 @@ sub dohyp {
 
 
   eval { #Contain Sys::Virt bugs that make $@ useless
-    $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$hyp."?no_tty=1");
+    $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$hyp."?no_tty=1&netcat=nc");
   };
+  unless ($hypconn) {
+    eval { #Contain Sys::Virt bugs that make $@ useless
+        $hypconn= Sys::Virt->new(uri=>"xen+ssh://".$hyp."?no_tty=1");
+    };
+  }
   unless ($hypconn) {
      my %err=(node=>[]);
      foreach (keys %{$hyphash{$hyp}->{nodes}}) {
-        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate via libvirt to $hyp"],errorcode=>[1]});
+        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate AB via libvirt to $hyp"],errorcode=>[1]});
      }
      print $out freeze([\%err]);
      print $out "\nENDOFFREEZE6sK4ci\n";
