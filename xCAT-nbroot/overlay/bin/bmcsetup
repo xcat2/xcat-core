@@ -134,7 +134,16 @@ done
 TRIES=0
 if [ ! "$IPMIVER" == "1.5"  ]; then 
     echo "Enabling IPMI v 2.0 LAN access:"
-    while ! ipmitool lan set 1 cipher_privs XaaaXXXXXXXXXXX; do
+    SUPPORTEDSUITES=`ipmitool lan print 1|grep Suites|awk -F: '{print $2}'|sed -e 's/ 0//'`
+    PRIVS="X"
+    for priv in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
+        if echo $SUPPORTEDSUITES|grep $priv > /dev/null; then
+            PRIVS="$PRIVS"a
+        else
+            PRIVS="$PRIVS"X
+        fi
+    done
+    while ! ipmitool lan set 1 cipher_privs $PRIVS; do
         sleep 1
         let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
