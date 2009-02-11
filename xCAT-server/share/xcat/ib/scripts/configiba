@@ -64,7 +64,7 @@ foreach my $num (@nums) {
         print FILE "ONBOOT=yes\n" if ( $OS_name eq 'redhat');
         print FILE "STARTMODE=auto\n" if ( $OS_name eq 'suse');
         close FILE;
-        runcmd("$dir/ifup $nic");
+        runcmd("ifup $nic");
         system("logger -t xcat 'configiba: successfully configured $nic.'");
     } elsif ($PLTFRM eq "AIX") {
     #Check whether the icm is available
