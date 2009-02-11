@@ -3,6 +3,7 @@
 #egan@us.ibm.com
 #(C)IBM Corp
 #
+# For Linux only
 
 if [ -r /etc/ssh/sshd_config ]
 then
