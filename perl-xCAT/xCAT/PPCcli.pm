@@ -584,6 +584,7 @@ sub lpar_netboot {
     my $timeout = my $t = @$exp[7]*10;
     my $cmd     = "lpar_netboot -t ent -f";
     my $gateway = $opt->{G};
+    my $node    = @$d[6];
 
     #####################################
     # Power6 HMCs (V7) do not support 
@@ -637,11 +638,11 @@ sub lpar_netboot {
                 my @nodelist = split(',', $_->{'node'});
                 my @oslist = split(',', $_->{'os'});
                 my $osname = "AIX";
-                if (grep(/^$name$/, @nodelist))
+                if (grep(/^$node$/, @nodelist))
                 {
                     if (!grep(/^$osname$/, @oslist) || !xCAT::Utils->isAIX())
                     {
-                        `xdsh $name "shutdown -h now" 2>/dev/null`;
+                        `xdsh $node "shutdown -h now" 2>/dev/null`;
                         last;
                     }
                 }
@@ -665,14 +666,14 @@ sub lpar_netboot {
     # Network specified (-D ping test)
     #####################################
     if ( exists( $opt->{S} )) {
-        my %nethash   = xCAT::DBobjUtils->getNetwkInfo( [$name] );
+        my %nethash   = xCAT::DBobjUtils->getNetwkInfo( [$node] );
         #####################################
         # Network attributes undefined
         #####################################
         if ( !%nethash ) {
-            return( [RC_ERROR,"Cannot get network information for $name"] );
+            return( [RC_ERROR,"Cannot get network information for $node"] );
         }
-        my $netmask = $nethash{$name}{mask};
+        my $netmask = $nethash{$node}{mask};
         $cmd.= (!defined( $mac )) ? " -D" : "";
         $cmd.= " -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C} -K $netmask";
     }
