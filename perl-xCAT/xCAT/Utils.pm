@@ -268,11 +268,11 @@ sub Version
     my $version = shift;
     if ($version eq 'short')
     {
-        $version = ''    #XCATVERSIONSUBHERE ;
+        $version = ''    . '2.2' ;
     }
     else
     {
-        $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
+        $version = 'Version '    . '2.2' . ' (built Wed Feb 11 07:31:11 EST 2009)' ;
     }
     return $version;
 }
@@ -1179,36 +1179,52 @@ sub setupSSH
     }
 
     #  build the perl copy script in $HOME/.ssh/copy.perl
-    open(FILE, ">$home/.ssh/copy.perl")
-      or die "cannot open file $home/.ssh/copy.perl\n";
-    print FILE "#!/usr/bin/perl
-my (\$name,\$passwd,\$uid,\$gid,\$quota,\$comment,\$gcos,\$dir,\$shell,\$expire) = getpwnam($to_userid);
-my \$home = \$dir;
-umask(0077);
-\$dest_dir = \"\$home/.ssh/\";
-if (! -d \"\$dest_dir\" ) {
+    #open(FILE, ">$home/.ssh/copy.perl")
+    #  or die "cannot open file $home/.ssh/copy.perl\n";
+    #print FILE "#!/usr/bin/perl
+#my (\$name,\$passwd,\$uid,\$gid,\$quota,\$comment,\$gcos,\$dir,\$shell,\$expire) = getpwnam($to_userid);
+#my \$home = \$dir;
+#umask(0077);
+#\$dest_dir = \"\$home/.ssh/\";
+#if (! -d \"\$dest_dir\" ) {
     # create a local directory
-    \$cmd = \"mkdir -p \$dest_dir\";
-    system(\"\$cmd\");
-    chmod 0700, \$dest_dir;
-}
-`cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
-`cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1`;
-`cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1`;
-`cp /tmp/$to_userid/.ssh/id_dsa  \$home/.ssh/id_dsa 2>&1`;
-`chmod 0600 \$home/.ssh/id_* 2>&1`;
-`rm -f /tmp/$to_userid/.ssh/* 2>&1`;
-rmdir(\"/tmp/$to_userid/.ssh\");
-rmdir(\"/tmp/$to_userid\");";
-    close FILE;
-    chmod 0744, "$home/.ssh/copy.perl";
+ #   \$cmd = \"mkdir -p \$dest_dir\";
+  #  system(\"\$cmd\");
+   # chmod 0700, \$dest_dir;
+#}
+#`cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
+#`cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1`;
+#`cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1`;
+#`cp /tmp/$to_userid/.ssh/id_dsa  \$home/.ssh/id_dsa 2>&1`;
+#`chmod 0600 \$home/.ssh/id_* 2>&1`;
+#`rm -f /tmp/$to_userid/.ssh/* 2>&1`;
+#rmdir(\"/tmp/$to_userid/.ssh\");
+#rmdir(\"/tmp/$to_userid\");";
+ #   close FILE;
+ #   chmod 0744, "$home/.ssh/copy.perl";
 
-    #  TODO build the shell copy script in $HOME/.ssh/copy.sh
-    #open(FILE, ">$home/.ssh/copy.sh")
-    #  or die "cannot open file $home/.ssh/copy.sh\n";
-    #print FILE "#!/bin/sh";
-    #close FILE;
-    #chmod 0744, "$home/.ssh/copy.sh";
+
+#  Replace the perl script with a shell script
+#  Shell is needed because the nodes may not have Perl installed
+    open(FILE, ">$home/.ssh/copy.sh")
+      or die "cannot open file $home/.ssh/copy.sh\n";
+    print FILE "#!/bin/sh
+umask 0077
+home=`egrep \"^$to_userid\" /etc/passwd | cut -f6 -d :`
+dest_dir=\"\$home/.ssh\"
+mkdir -p \$dest_dir
+cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1
+cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1
+cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1
+cp /tmp/$to_userid/.ssh/id_dsa  \$home/.ssh/id_dsa 2>&1
+chmod 0600 \$home/.ssh/id_* 2>&1
+rm -f /tmp/$to_userid/.ssh/* 2>&1
+rmdir \"/tmp/$to_userid/.ssh\"
+rmdir \"/tmp/$to_userid\"";
+
+    close FILE;
+    chmod 0744, "$home/.ssh/copy.sh";
+
 
     if ($from_userid eq "root")
     {
@@ -1226,7 +1242,7 @@ rmdir(\"/tmp/$to_userid\");";
         if ($to_userid eq "root")
         {
 
-            my $cmd = " cp $home/.ssh/copy.perl $SSHdir/copy.perl";
+            my $cmd = " cp $home/.ssh/copy.sh $SSHdir/copy.sh";
             xCAT::Utils->runcmd($cmd, 0);
             my $rsp = {};
             if ($::RUNCMD_RC != 0)
@@ -1297,7 +1313,7 @@ rmdir(\"/tmp/$to_userid\");";
 
 =head3    cpSSHFiles
 
-        Copies the ssh keyfiles and the copy perl script into
+        Copies the ssh keyfiles and the copy  script into
 		/install/postscripts/_ssh. and the $HOME/.ssh directory of
                 userid
 
