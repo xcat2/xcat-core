@@ -70,6 +70,19 @@ websrv => {
 		'disable' => "Set to 'yes' or '1' to comment out this row.",
 	 },
   },
+boottarget => {
+   cols => [qw(bprofile kernel initrd kcmdline comments disable)],
+   keys => [qw(bprofile)],
+   table_desc => 'Target profiles with their accompanying kernel parameters',
+   descriptions => {
+      'profile' => 'The name you want this boot target profile to be called',
+      'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
+      'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
+      'kcmdline' => 'Arguments to be passed to the kernel',
+      comments => 'Any user-written notes.',
+      disable => "Set to 'yes' or '1' to comment out this row."
+    }
+},
 bootparams => {
    cols => [qw(node kernel initrd kcmdline addkcmdline dhcpstatements adddhcpstatements comments disable)],
    keys => [qw(node)],
@@ -687,7 +700,8 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   policy => { attrs => [], attrhash => {}, objkey => 'priority' },
   monitoring => { attrs => [], attrhash => {}, objkey => 'name' },
   notification => { attrs => [], attrhash => {}, objkey => 'filename' },
-    eventlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
+  eventlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
+  boottarget => { attrs => [], attrhash => {}, objkey => 'bprofile' },
 );
 
 
