@@ -71,6 +71,11 @@ if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
 fi
 
 
+if [ -r /etc/xCATSN ] ; then
+   mkdir /etc/xcat/hostkeys
+   cp /etc/ssh/ssh* /etc/xcat/hostkeys/.
+
+fi
 
 
 umask 0077
