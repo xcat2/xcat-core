@@ -119,14 +119,27 @@ unless ($onlyinitrd) {
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/dev";
    #system "mount -o bind /dev $installroot/netboot/$osver/$arch/$profile/rootimg/dev";
    system "mknod $installroot/netboot/$osver/$arch/$profile/rootimg/dev/zero c 1 5";
+   system "mknod $installroot/netboot/$osver/$arch/$profile/rootimg/dev/null c 1 3"; #that's neccessary for SLES11
    open($fd,">>","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/fstab");
    print $fd "#Dummy fstab for rpm postscripts to see\n";
    close($fd);
-   system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir");
+   if($osver eq "sles11") {#zypper in SLES11 is different
+	   my $rootimg_dir="$installroot/netboot/$osver/$arch/$profile/rootimg";
+	   if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
+		   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
+	   }
+	   system("zypper -R $rootimg_dir ar file:$srcdir $osver");
+   }else {
+	   system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir");
+   }
 
    #for extra packages
    if ($pkgnames) {
-     system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir_otherpkgs");
+     if($osver eq "sles11") {	#SLES11
+     	system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar file:$srcdir_otherpkgs otherpkg");
+     }else {
+        system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir_otherpkgs");
+     }
    }
 
    #-- add custom repositories to the image
@@ -145,8 +158,12 @@ unless ($onlyinitrd) {
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* ";
    #$yumcmd .= "install ";
    #mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
-   my $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -y ";
-
+   my $yumcmd;
+   if($osver eq "sles11") {
+   	$yumcmd = "YAST_IS_RUNNING=\"instsys\" zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -l "; #add -l for SLES11
+   }else {
+        $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install";
+   }
    my $pkglist= get_pkglist_file_name($customdir);
    if (!$pkglist) {
      $pkglist= get_pkglist_file_name($pathtofiles);
@@ -225,6 +242,8 @@ sub mkinitrd {
 			rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
         } elsif(-r "/boot/vmlinuz-$kernelver") {
 			copy("/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+		} elsif(-r "/boot/vmlinux-$kernelver") {#for SLES10,11
+			copy("/boot/vmlinux-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
 		}
 		else {
 			xdie("Cannot read /boot/vmlinuz-$kernelver");
@@ -239,6 +258,10 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/tmp");
 	mkpath("/tmp/xcatinitrd.$$/var/run");
 	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
+	if($osver eq "sles11" && $arch eq "ppc64") {#SLES11 for Power6
+		mkpath("/tmp/xcatinitrd.$$/lib64/power6");
+	}
+	mkpath("/tmp/xcatinitrd.$$/lib/power6");#SLES10
 	mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
 	mkpath("/tmp/xcatinitrd.$$/proc");
 	mkpath("/tmp/xcatinitrd.$$/sys");
@@ -248,7 +271,7 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/var/lib/dhcpcd");
 	my $inifile;
 	open($inifile,">","/tmp/xcatinitrd.$$/init");
-	print $inifile "#!/bin/bash\n";
+	print $inifile "#!/bin/bash -x\n";
 	print $inifile "mount -t proc /proc /proc\n";
 	print $inifile "mount -t sysfs /sys /sys\n";
    print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
@@ -382,6 +405,7 @@ EOMS
    print $inifile "  exit\n";
    print $inifile "fi\n";
    print $inifile "cd /\n";
+   print $inifile "mkdir /sysroot/var/lib/dhcpcd/\n";	#neccessary for SLES11, not sure for SLES10
    print $inifile "cp /var/lib/dhcpcd/* /sysroot/var/lib/dhcpcd/\n";
    print $inifile "cp /etc/resolv.conf /sysroot/etc/\n";
    print $inifile "cp /etc/HOSTNAME /sysroot/etc/\n";
@@ -417,8 +441,9 @@ END
          push @filestoadd,[$_,"lib/$_"];
      }
    }
-   foreach ("usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed") {
-      getlibs($_);
+   foreach ("usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed") {
+	   #gzip is neccesary for SLES11
+      getlibs($_); #there's one small bug for getlibs
       push @filestoadd,$_;
    }
    if ($arch =~ /x86_64/) {
@@ -465,6 +490,7 @@ END
    }
 
    #copy("$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
+   system("cd /tmp/xcatinitrd.$$/bin/; ln -sf bash sh");	#neccessary for SLES11
    system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $installroot/netboot/$osver/$arch/$profile/initrd.gz");
    system("rm -rf /tmp/xcatinitrd.$$");
 
@@ -594,7 +620,11 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       system("sed -i '".'s/^\(TARGETS = .*\)$/\1 gettyset/'."' $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
       system("ln -s ../gettyset $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/rc3.d/S60gettyset");
    }
-   rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+   if($osver eq "sles11") {#for sles11
+	   rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+   }else {
+   	   rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+   }
 }
 
 #get th extra package name

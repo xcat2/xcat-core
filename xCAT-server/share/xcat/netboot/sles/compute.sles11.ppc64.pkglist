@@ -1,0 +1,15 @@
+aaa_base
+bash 
+nfs-utils
+#stunnel
+dhcpcd 
+kernel-ppc64
+openssh
+#procps
+psmisc
+#resmgr
+wget
+sysconfig 
+syslog-ng
+klogd
+vim
