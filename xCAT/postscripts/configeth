@@ -18,18 +18,80 @@ my $netmask = "255.255.0.0";
 my ($first, $second, $rest) = split(/\./, $ip);
 my $gateway = "$first.$second.255.254";
 
-# Write the info to the ifcfg file
-my $dir = "/etc/sysconfig/network-scripts";
-if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
-print FILE "DEVICE=$nic\n";
-print FILE "BOOTPROTO=none\n";
-print FILE "IPADDR=$ip\n";
-print FILE "NETMASK=$netmask\n";
-print FILE "GATEWAY=$gateway\n";
-print FILE "ONBOOT=yes\n";
-close FILE;
+if ($^O =~ /^aix/i) { }
+elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
+	# Write the info to the ifcfg file
+	my $dir = "/etc/sysconfig/network";
+	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+	# Not sure what is really REQUIRED from below -- copied the eth file from
+	# the system
+	print FILE "BOOTPROTO=\'static\'\n";
+	print FILE "BROADCAST=\'\'\n";
+	print FILE "ETHTOOL_OPTIONS=\'\'\n";
+	print FILE "IPADDR=\'".$ip."\'\n";
+	print FILE "MTU=\'\'\n";
+	print FILE "NAME=\'\'\n";
+	print FILE "NETMASK=\'".$netmask."\'\n";
+	print FILE "NETWORK=\'\'\n";
+	print FILE "REMOTE_IPADDR=\'\'\n";
+	print FILE "STARTMODE=\'onboot\'\n";
+	print FILE "UNIQUE=\'\'\n";
+	print FILE "USERCONTROL=\'no\'\n";
+	print FILE "_nm_name=\'static-0\'\n";
 
-runcmd("$dir/ifup $nic");
+	close FILE;
+	runcmd("ifup $nic");
+
+        my $nic = 'eth0';
+        # make file for eth0, too
+	if (! -f "$dir/ifcfg-$nic") {
+	    my $hostname = "$ENV{NODE}";
+	    my $packed_ip = gethostbyname($hostname);
+	    if (!$packed_ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
+	    my $ip = inet_ntoa($packed_ip);
+	    
+            #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
+	    my $netmask = "255.255.0.0";
+	    my ($first, $second, $rest) = split(/\./, $ip);
+	    my $gateway = "$first.$second.255.254";
+	    
+	    # Write the info to the ifcfg file
+	    my $dir = "/etc/sysconfig/network";
+	    if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+	    # Not sure what is really REQUIRED from below -- copied the eth file from
+	    # the system
+	    print FILE "BOOTPROTO=\'static\'\n";
+	    print FILE "BROADCAST=\'\'\n";
+	    print FILE "ETHTOOL_OPTIONS=\'\'\n";
+	    print FILE "IPADDR=\'".$ip."\'\n";
+	    print FILE "MTU=\'\'\n";
+	    print FILE "NAME=\'\'\n";
+	    print FILE "NETMASK=\'".$netmask."\'\n";
+	    print FILE "NETWORK=\'\'\n";
+	    print FILE "REMOTE_IPADDR=\'\'\n";
+	    print FILE "STARTMODE=\'onboot\'\n";
+	    print FILE "UNIQUE=\'\'\n";
+	    print FILE "USERCONTROL=\'no\'\n";
+	    print FILE "_nm_name=\'static-0\'\n";
+	    
+	    close FILE;
+	    runcmd("ifup $nic");
+	}
+}
+else {
+	# Write the info to the ifcfg file
+	my $dir = "/etc/sysconfig/network-scripts";
+	if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configeth: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+	print FILE "DEVICE=$nic\n";
+	print FILE "BOOTPROTO=none\n";
+	print FILE "IPADDR=$ip\n";
+	print FILE "NETMASK=$netmask\n";
+	print FILE "GATEWAY=$gateway\n";
+	print FILE "ONBOOT=yes\n";
+	close FILE;
+
+	runcmd("$dir/ifup $nic");
+}
 system("logger -t xcat 'configeth: successfully configured $nic.'");
 
 exit 0;
