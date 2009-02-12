@@ -141,7 +141,7 @@ sub makescript {
          push @scriptd, "export $attribute\n";
  
        } else {   # not Master attribute
-           push @scriptd, "$attribute=".$value."\n";
+           push @scriptd, "$attribute='".$value."'\n";
            push @scriptd, "export $attribute\n";
        }
   }
