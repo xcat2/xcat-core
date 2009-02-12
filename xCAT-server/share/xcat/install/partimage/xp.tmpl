@@ -1,0 +1,9 @@
+#Edit and enter a space delimited list of disks, it must be in double quotes.
+
+export DISKS="sda"
+
+#Leave as is:
+
+export NFS_SERVER=#TABLE:noderes:$NODE:nfsserver#
+export IMAGE=image-#TABLE:nodetype:$NODE:profile#
+export NFS_DIR=#TABLE:site:key=installdir:value#/partimage
