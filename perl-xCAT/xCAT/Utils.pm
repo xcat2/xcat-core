@@ -268,13 +268,14 @@ sub Version
     my $version = shift;
     if ($version eq 'short')
     {
-        $version = ''    . '2.2' ;
+        $version = ''    #XCATVERSIONSUBHERE ;
     }
     else
     {
-        $version = 'Version '    . '2.2' . ' (built Wed Feb 11 07:31:11 EST 2009)' ;
+        $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ; 
     }
     return $version;
+ 
 }
 
 #-------------------------------------------------------------------------------
