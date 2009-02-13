@@ -870,6 +870,41 @@ sub list {
 
 
 ##########################################################################
+# Increments virtual lhea adapter in partition profile 
+##########################################################################
+sub lhea_adapter {
+
+    my $cfgdata = shift;
+
+    #########################################
+    # Increment LHEA adapters if present
+    #   23000000/2/1/7/none,23000008/2/1/4/none 
+    # Increment 7 and 4 in example above.
+    #########################################
+    if ( $cfgdata =~ /(\"*lhea_logical_ports)/ ) {
+
+        #####################################
+        # If double-quoted, has comma-
+        # seperated list of adapters
+        #####################################
+        my $delim = ( $1 =~ /^\"/ ) ? "\\\\\"" : ","; 
+        $cfgdata  =~ /lhea_logical_ports=([^$delim]+)|$/;
+                                              
+        my @lhea = split ",", $1;
+        foreach ( @lhea ) {
+            if ( /(\w+)\/(\w+)$/ ) {
+                my $id = ($1 =~ /(\d+)/) ? $1+1 : $1;
+                s/(\w+)\/(\w+)$/$id\/$2/;
+            } 
+        }
+        my $adapters = "lhea_logical_ports=".join( ",", @lhea );
+        $cfgdata =~ s/lhea_logical_ports=[^$delim]+/$adapters/;
+    }
+    return( $cfgdata );
+}
+
+
+##########################################################################
 # Increments virtual scsi adapter in partition profile 
 ##########################################################################
 sub scsi_adapter {
@@ -1008,6 +1043,14 @@ sub create {
         $cfgdata =~ s/\blpar_id=[^,]+|$/lpar_id=$id/;
         $cfgdata =~ s/\bname=[^,]+|$/name=$name/;
 
+        #################################
+        # Modify LHEA adapters
+        #################################
+        if ( $cfgdata =~ /lhea_logical_ports=(\w+)/ ) {
+            if ( $1 !~ /^none$/i ) {
+                $cfgdata = lhea_adapter( $cfgdata );
+            }
+        }
         #################################
         # Modify SCSI adapters
         #################################
