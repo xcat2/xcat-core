@@ -60,7 +60,7 @@ B<rspconfig> I<noderange> B<procdecfg>={B<configure|deconfigure>:B<processinguni
 
 B<rspconfig> I<noderange> B<memdecfg>={B<configure|deconfigure>:B<processingunit>:B<unit|bank>:B<id,...>>}
 
-=head2 PPC specific:
+=head2 HMC Specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>}
 
