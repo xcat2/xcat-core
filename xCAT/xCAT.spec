@@ -122,7 +122,7 @@ fi
 # generated the keys before, still have private keys in install 
 # copy all to the new private directory and then remove private keys
 if [ -f /install/postscripts/hostkeys/ssh_host_key ]; then
- /bin/cp /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.
+ /bin/cp -p /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.
  /bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key
  /bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key
  /bin/rm /install/postscripts/hostkeys/ssh_host_key
