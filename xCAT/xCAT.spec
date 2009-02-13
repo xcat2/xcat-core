@@ -72,7 +72,6 @@ rm postscripts.tar
 
 rm LICENSE.html
 mkdir -p postscripts/hostkeys
-mkdir -p /etc/xcat/hostkeys 
 cd -
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
@@ -105,6 +104,11 @@ if [ ! -d /var/ftp/tftpboot ]; then
    echo "/tftpboot   /var/ftp/tftpboot none bind,defaults 0 0" >> /etc/fstab
    mount /var/ftp/tftpboot
 fi
+
+if [ ! -d /etc/xcat/hostkeys ]; then 
+   mkdir -p /etc/xcat/hostkeys
+fi
+
 # never generated the keys
 if [ ! -f /install/postscripts/hostkeys/ssh_host_key.pub ]; then
  echo Generating SSH1 RSA Key...
