@@ -24,7 +24,7 @@ if [ -z "$SIP" ]; then
 fi
 
 #echo "SIP=$SIP"
-if [ $OSVER=='11' ]; then
+if [ "$OSVER" = "11" ]; then
     SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '   
 fi
 
@@ -97,7 +97,7 @@ if [ $# -eq 0 ]; then
   echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript
 fi
 
-if [ $OSVER=='11' ]; then #for SLES11
+if [ "$OSVER" = "11" ]; then #for SLES11
    DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /tmp/mypostscript`
    echo "$DHCP_TMP" > /tmp/mypostscript
 fi

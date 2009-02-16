@@ -35,7 +35,7 @@ if [[ $OSTYPE = linux* ]]; then
     SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
   fi
 #update SIP for SLES11
-if [ $OSVER=='sles11' ]; then
+if [ "$OSVER" = "sles11" ]; then
     SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '
 fi
 
@@ -93,8 +93,8 @@ fi
     rpm -q zypper
     if [ $? -eq 0 ]; then 
       #use zypper
-      if [ $OSVER=='sles11' ]; then
-	zypper ar ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1 otherpkgs
+      if [ "$OSVER" = "sles11" ]; then
+	    zypper ar ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1 otherpkgs
       else
         zypper sa ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1
       fi
