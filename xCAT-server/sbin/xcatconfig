@@ -1155,7 +1155,12 @@ if ($::osname eq 'Linux')
     }
 
     # restart httpd
-    my $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
+    my $cmd;
+    if(-e "/etc/init.d/apache2") {#for sles
+        $cmd = "/etc/init.d/apache2 stop; /etc/init.d/apache2 start";
+    }else {
+        $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
+    }
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -1167,7 +1172,11 @@ if ($::osname eq 'Linux')
     }
 
     # enable httpd
-    my $cmd = "/sbin/chkconfig httpd on";
+    if(-e "/etc/init.d/apache2") {#for sles
+        $cmd = "/sbin/chkconfig apache2 on";
+    }else {
+        $cmd = "/sbin/chkconfig httpd on";
+    }
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
