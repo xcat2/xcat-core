@@ -34,6 +34,10 @@ if [[ $OSTYPE = linux* ]]; then
   if [ -z "$SIP" ]; then
     SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
   fi
+#update SIP for SLES11
+if [ $OSVER=='sles11' ]; then
+    SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '
+fi
 
   if [[ $OTHERPKGS_HASREPO -eq 1 ]]; then
     rpm -q yum
@@ -89,7 +93,11 @@ if [[ $OSTYPE = linux* ]]; then
     rpm -q zypper
     if [ $? -eq 0 ]; then 
       #use zypper
-      zypper sa ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1
+      if [ $OSVER=='sles11' ]; then
+	zypper ar ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1 otherpkgs
+      else
+        zypper sa ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1
+      fi
 
       #install
       PKGS=`echo "$OTHERPKGS" | tr "," " "`
