@@ -87,7 +87,7 @@ my %usage = (
            procdecfg=<configure|deconfigure>:<processing unit>:id,...|
            date=<mm-dd-yyyy>|
            time=<hh:mm:ss>
-   PPC specific:
+   HMC specific:
            rspconfig <noderange>  [sshcfg]
            rspconfig <noderange>  [sshcfg=<enable|disable>]",
     "getmacs" => 
