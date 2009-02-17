@@ -22,6 +22,7 @@ sub handled_commands {
 sub addnode {
   my $node = shift;
   my $ip = shift;
+  unless ($node and $ip) { return; } #bail if requested to do something that could zap /etc/hosts badly
   my $othernames = shift;
   my $idx=0;
   my $foundone=0;
