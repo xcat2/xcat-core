@@ -194,7 +194,7 @@ sub build_nicstruct {
         my $rethash;
         $rethash->{type}='bridge';
         $rethash->{mac}->{address}=$_;
-        $rethash->{source}->{bridge}='xenbr0';
+        $rethash->{source}->{bridge}='xenbr0'; #TODO: support syntax in nics field in table, must be able to tie macs/hostname/network id together
         push @rethashes,$rethash;
     }
     return \@rethashes;
@@ -392,6 +392,7 @@ sub migrate {
         return (1,"Unable to reach $prevhyp to perform operation of $node, use nodech to change vm.host if certain of no split-brain possibility exists");
     }
     my $destnetcatadd="&netcat=nc";
+    undef $testhypconn;
     eval {#Contain Sys::Virt bugs
         $testhypconn= Sys::Virt->new(uri=>$target.$destnetcatadd);
     };
@@ -408,7 +409,7 @@ sub migrate {
     my $ipa=inet_aton($node);
     my $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
     #serviced, we just want to trigger MAC move in the switch forwarding dbs
-    my $rc=system("virsh -c $currhyp".$srcnetcatadd." migrate --live $node $target.$destnetcatadd");
+    my $rc=system("virsh -c '$currhyp".$srcnetcatadd."' migrate --live $node '$target"."$destnetcatadd'");
     system("arp -d $node"); #Make ethernet fabric take note of change
     send($sock,"dummy",0,$pa);  #UDP packet to force forwarding table update in switches, ideally a garp happened, but just in case...
     if ($rc) {
