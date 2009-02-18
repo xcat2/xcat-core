@@ -434,10 +434,10 @@ policy => {
 postscripts => {
     cols => [qw(node postscripts comments disable)],
     keys => [qw(node)],
-    table_desc => 'Not used yet!  The scripts that should be run on each node after installation or diskless boot.',
+    table_desc => ' The scripts that should be run on each node after installation or diskless boot.',
  descriptions => {
   node => 'The node name or group name.',
-  postscripts => 'Comma separated list of scripts that should be run on this node after installation or diskless boot.',
+  postscripts => 'Comma separated list of scripts that should be run on this node after installation or diskless boot. xCAT automatically adds the syslog and remoteshell postscripts to the xcatdefaults row of the table. The default scripts will run first on the nodes after install.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
