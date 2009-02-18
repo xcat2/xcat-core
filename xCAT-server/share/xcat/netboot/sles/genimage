@@ -106,6 +106,13 @@ unless (grep /af_packet/,@ndrivers) {
    unshift(@ndrivers,"af_packet.ko");
 }
 
+my $osver_host;
+if(`grep VERSION /etc/SuSE-release` =~ /VERSION = (\d+)/) {
+    $osver_host=$1;
+} else {
+    $osver_host=11;
+}
+
 unless ($onlyinitrd) {
    my $srcdir = "$installroot/$osver/$arch/1";
 
@@ -123,7 +130,7 @@ unless ($onlyinitrd) {
    open($fd,">>","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/fstab");
    print $fd "#Dummy fstab for rpm postscripts to see\n";
    close($fd);
-   if($osver =~ /sles11/) {#zypper in SLES11 is different
+   if($osver_host == 11) {#zypper in SLES11 is different
 	   my $rootimg_dir="$installroot/netboot/$osver/$arch/$profile/rootimg";
 	   if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
 		   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
@@ -135,7 +142,10 @@ unless ($onlyinitrd) {
 
    #for extra packages
    if ($pkgnames) {
-     if($osver =~ /sles11/) {	#SLES11
+     if($osver_host == 11) {	#SLES11
+        if(-e "$installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo") {
+            system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo");
+        }
      	system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar file:$srcdir_otherpkgs otherpkg");
      }else {
         system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir_otherpkgs");
@@ -159,8 +169,8 @@ unless ($onlyinitrd) {
    #$yumcmd .= "install ";
    #mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
    my $yumcmd;
-   if($osver =~ /sles11/) {
-   	$yumcmd = "YAST_IS_RUNNING=\"instsys\" zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -l "; #add -l for SLES11
+   if($osver =~ /sles11/ && $osver_host == 11) {
+       $yumcmd = "YAST_IS_RUNNING=\"instsys\" zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -l "; #add -l for SLES11
    }else {
         $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install ";
    }
@@ -200,7 +210,14 @@ unless ($onlyinitrd) {
 unlink "/tmp/genimage.$$.yum.conf";
 
 #-- run postinstall script
-if (-x "$pathtofiles/$profile.postinstall") {
+if (-x "$pathtofiles/$profile.$osver.$arch.postinstall") {
+    my $rc = system("$pathtofiles/$profile.$osver.$arch.postinstall", "$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
+    if($rc) {
+        print "postinstall script failed\n";
+        exit 1;
+    }
+}
+elsif (-x "$pathtofiles/$profile.postinstall") {
    my $rc = system("$pathtofiles/$profile.postinstall","$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
    if ($rc) {
       print "postinstall script failed\n";
@@ -235,7 +252,7 @@ sub getlibs {
 sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/bin");
 	if($basekernelver eq $kernelver) {
-                if (-f "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver") {
+        if (-f "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver") {
 		    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
 	         } elsif (-f "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux-$kernelver"){
                     rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
@@ -243,16 +260,16 @@ sub mkinitrd {
         }
 	else {
 	    if(-r "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver") {
-		rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
-            } elsif(-r "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux-$kernelver") {
-                 rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
-            }  elsif(-r "/boot/vmlinuz-$kernelver") {
-		copy("/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+		    rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+        } elsif(-r "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux-$kernelver") {
+            rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+        }  elsif(-r "/boot/vmlinuz-$kernelver") {
+		    copy("/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
 	    } elsif(-r "/boot/vmlinux-$kernelver") {#for SLES10,11
 			copy("/boot/vmlinux-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
 	    }
 	    else {
-		xdie("Cannot read /boot/vmlinuz-$kernelver");
+		    xdie("Cannot read /boot/vmlinuz-$kernelver");
 	    }
 	}
 	symlink("bin","/tmp/xcatinitrd.$$/sbin");
@@ -264,7 +281,7 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/tmp");
 	mkpath("/tmp/xcatinitrd.$$/var/run");
 	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
-	if((($osver =~ /sles11/) || ($osver =~ /sles10/)) && $arch eq "ppc64") {#SLES11 for Power6
+	if($osver =~ /sles/ && $arch eq "ppc64") {#SLES for Power6
 	    mkpath("/tmp/xcatinitrd.$$/lib64/power6");
 	}
 	mkpath("/tmp/xcatinitrd.$$/lib/power6");#SLES10
@@ -448,7 +465,6 @@ END
      }
    }
    foreach ("usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed") {
-	   #gzip is neccesary for SLES11
       getlibs($_); #there's one small bug for getlibs
       push @filestoadd,$_;
    }
