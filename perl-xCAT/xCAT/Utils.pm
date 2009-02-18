@@ -272,10 +272,10 @@ sub Version
     }
     else
     {
-        $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ; 
+        $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
     }
     return $version;
- 
+
 }
 
 #-------------------------------------------------------------------------------
@@ -1183,30 +1183,29 @@ sub setupSSH
     #open(FILE, ">$home/.ssh/copy.perl")
     #  or die "cannot open file $home/.ssh/copy.perl\n";
     #print FILE "#!/usr/bin/perl
-#my (\$name,\$passwd,\$uid,\$gid,\$quota,\$comment,\$gcos,\$dir,\$shell,\$expire) = getpwnam($to_userid);
-#my \$home = \$dir;
-#umask(0077);
-#\$dest_dir = \"\$home/.ssh/\";
-#if (! -d \"\$dest_dir\" ) {
+    #my (\$name,\$passwd,\$uid,\$gid,\$quota,\$comment,\$gcos,\$dir,\$shell,\$expire) = getpwnam($to_userid);
+    #my \$home = \$dir;
+    #umask(0077);
+    #\$dest_dir = \"\$home/.ssh/\";
+    #if (! -d \"\$dest_dir\" ) {
     # create a local directory
- #   \$cmd = \"mkdir -p \$dest_dir\";
-  #  system(\"\$cmd\");
-   # chmod 0700, \$dest_dir;
-#}
-#`cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
-#`cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1`;
-#`cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1`;
-#`cp /tmp/$to_userid/.ssh/id_dsa  \$home/.ssh/id_dsa 2>&1`;
-#`chmod 0600 \$home/.ssh/id_* 2>&1`;
-#`rm -f /tmp/$to_userid/.ssh/* 2>&1`;
-#rmdir(\"/tmp/$to_userid/.ssh\");
-#rmdir(\"/tmp/$to_userid\");";
- #   close FILE;
- #   chmod 0744, "$home/.ssh/copy.perl";
+    #   \$cmd = \"mkdir -p \$dest_dir\";
+    #  system(\"\$cmd\");
+    # chmod 0700, \$dest_dir;
+    #}
+    #`cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
+    #`cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1`;
+    #`cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1`;
+    #`cp /tmp/$to_userid/.ssh/id_dsa  \$home/.ssh/id_dsa 2>&1`;
+    #`chmod 0600 \$home/.ssh/id_* 2>&1`;
+    #`rm -f /tmp/$to_userid/.ssh/* 2>&1`;
+    #rmdir(\"/tmp/$to_userid/.ssh\");
+    #rmdir(\"/tmp/$to_userid\");";
+    #   close FILE;
+    #   chmod 0744, "$home/.ssh/copy.perl";
 
-
-#  Replace the perl script with a shell script
-#  Shell is needed because the nodes may not have Perl installed
+    #  Replace the perl script with a shell script
+    #  Shell is needed because the nodes may not have Perl installed
     open(FILE, ">$home/.ssh/copy.sh")
       or die "cannot open file $home/.ssh/copy.sh\n";
     print FILE "#!/bin/sh
@@ -1226,32 +1225,34 @@ rmdir \"/tmp/$to_userid\"";
     close FILE;
     chmod 0744, "$home/.ssh/copy.sh";
 
-
-    if ($from_userid eq "root")
-    {
-        my $rc = xCAT::Utils->cpSSHFiles($SSHdir);
-        if ($rc != 0)
-        {    # error
-            $rsp->{data}->[0] = "Error running cpSSHFiles.\n";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            return 1;
-
-        }
-
-        # copy the copy install file to the install directory, if from and
-        # to userid are root
-        if ($to_userid eq "root")
+    if (xCAT::Utils->isMN())
+    {    # if on Management Node
+        if ($from_userid eq "root")
         {
-
-            my $cmd = " cp $home/.ssh/copy.sh $SSHdir/copy.sh";
-            xCAT::Utils->runcmd($cmd, 0);
-            my $rsp = {};
-            if ($::RUNCMD_RC != 0)
-            {
-                $rsp->{data}->[0] = "$cmd failed.\n";
+            my $rc = xCAT::Utils->cpSSHFiles($SSHdir);
+            if ($rc != 0)
+            {    # error
+                $rsp->{data}->[0] = "Error running cpSSHFiles.\n";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-                return (1);
+                return 1;
 
+            }
+
+            # copy the copy install file to the install directory, if from and
+            # to userid are root
+            if ($to_userid eq "root")
+            {
+
+                my $cmd = " cp $home/.ssh/copy.sh $SSHdir/copy.sh";
+                xCAT::Utils->runcmd($cmd, 0);
+                my $rsp = {};
+                if ($::RUNCMD_RC != 0)
+                {
+                    $rsp->{data}->[0] = "$cmd failed.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                    return (1);
+
+                }
             }
         }
     }
@@ -1266,21 +1267,24 @@ rmdir \"/tmp/$to_userid\"";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
     }
+
     #  Remove $home/.ssh/authorized_keys*
     #  Easy to remote this code, if we want
     #  The MN to be able to ssh to itself
-
-    $cmd = "rm $home/.ssh/authorized_keys*";
-    xCAT::Utils->runcmd($cmd, 0);
-    my $rsp = {};
-    if ($::RUNCMD_RC != 0)
+    if (xCAT::Utils->isMN())
     {
-        $rsp->{data}->[0] = "$cmd failed.\n";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        return (1);
+        $cmd = "rm $home/.ssh/authorized_keys*";
+        xCAT::Utils->runcmd($cmd, 0);
+        my $rsp = {};
+        if ($::RUNCMD_RC != 0)
+        {
+            $rsp->{data}->[0] = "$cmd failed.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return (1);
 
+        }
     }
-    
+
     # must always check to see if worked, run test
     foreach my $n (@nodes)
     {
@@ -1314,9 +1318,8 @@ rmdir \"/tmp/$to_userid\"";
 
 =head3    cpSSHFiles
 
-        Copies the ssh keyfiles and the copy  script into
-		/install/postscripts/_ssh. and the $HOME/.ssh directory of
-                userid
+           Builds authorized_keyfiles from the keys only run on Management Node
+           and for root and puts them in /install/postscripts/_ssh 
 
         Arguments:
                directory path
