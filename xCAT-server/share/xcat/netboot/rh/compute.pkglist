@@ -10,3 +10,4 @@ wget
 vim-minimal
 ntp
 sysklogd
+rpm
