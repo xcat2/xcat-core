@@ -393,7 +393,14 @@ sub process_request
         $callback->({data => ["Usage: makedhcp <-n> <noderange>"]});
         return;
     }
-    if (grep /^-n$/, @{$req->{arg}})
+    
+   if(grep /-h/,@{$req->{arg}}) {
+        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
+        $callback->({data => [$usage]});
+        return;
+    }
+
+   if (grep /^-n$/, @{$req->{arg}})
     {
         if (-e "/etc/dhcpd.conf")
         {
