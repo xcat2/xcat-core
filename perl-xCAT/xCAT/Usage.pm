@@ -120,7 +120,8 @@ my %usage = (
              [-t tries][-m][-e cmd][-c [timeout[timeout,..]]]",
   "rflash" =>
 "Usage: rflash [ -h|--help|-v|--version]
-	rflash noderange -p directory [--activate concurrent | disruptive] [--commit | --recover] [-V|--verbose]"
+	rflash <noderange> -p directory [--activate concurrent | disruptive][-V|--verbose] 
+	rflash <noderange> [--commit | --recover] [-V|--verbose]"
 );
 my $vers = xCAT::Utils->Version();
 my %version = (

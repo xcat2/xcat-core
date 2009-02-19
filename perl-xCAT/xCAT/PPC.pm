@@ -1054,7 +1054,8 @@ sub preprocess_request {
   ####################
   #suport for "rflash", copy the rpm and xml packages from user-spcefied-directory to /install/packages_fw
   #####################	
-  if ( $command eq "rflash" ) {
+  if ( ( $command eq "rflash" ) && (grep(/commit/,@exargs) == 0 && grep(/recover/,@exargs) == 0)) {
+ # if ( $command eq "rflash" ) {
 	preprocess_for_rflash($req,$callback, \@exargs);
   }
    
@@ -1068,7 +1069,7 @@ sub preprocess_request {
   # build each request for each service node
   foreach my $snkey (keys %$sn)
   {
-    #print "snkey=$snkey\n";
+    #$callback->({data=>["The service node $snkey "]});
     my $reqcopy = {%$req};
     $reqcopy->{'_xcatdest'} = $snkey;
     my $hcps1=$sn->{$snkey};

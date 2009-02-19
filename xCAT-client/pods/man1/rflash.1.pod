@@ -4,17 +4,21 @@ B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attache
 
 =head1 B<Synopsis>
 
-B<rflash> [B<-h>|B<--help>][B<-v>|B<--version>]
+B<rflash> [B<-h>|B<--help> | B<-v>|B<--version>]
 
-B<rflash> I<noderange> B<-p> I<directory> [B<--activate> B<concurrent>|B<disruptive>][B<--commit>|B<--recover>] [B<-V>|B<--verbose>]
+B<rflash> I<noderange> B<-p> I<directory> [B<--activate> B<concurrent>|B<disruptive>] [B<-V>|B<--verbose>]
+
+B<rflash> I<noderange> [B<--commit>|B<--recover>] [B<-V>|B<--verbose>]
 
 =head1 B<Description>
 
-B<rflash> The B<rflash> command initiates Firmware updates on supported xCAT compute nodes.  Licensed Internal Code (also known as microcode) updates are performed on supported HMC-attached  POWER5 and POWER6 pSeries nodes. The command scans the specified directory structure for Firmware update package files applicable to the given nodes and components. And  then it will B<automatically> select the B<latest> version for the upgrade.
+B<rflash> The B<rflash> command initiates Firmware updates on supported xCAT nodes.  Licensed Internal Code (also known as microcode) updates are performed on supported HMC-attached  POWER5 and POWER6 pSeries nodes.
+
+The command scans the specified directory structure for Firmware update package files applicable to the given nodes and components. And then it will B<automatically> select the B<latest> version for the upgrade. The firmware update files include the Microcode update package and associated XML file. They can be downloaded from the IBM Web site: I<http://www14.software.ibm.com/webapp/set2/firmware/gjsn>.
 
 The POWER5  and POWER6 systems contain several components that use Licensed Internal Code.  The B<rflash> command supports two of these components: the managed system (also known as the Central Electronics Complex, or CEC) and the power subsystem (also known as the Bulk Power Assembly (BPA) or Bulk Power Controller (BPC)).  Some POWER5 managed systems can be attached to a power subsystem.  These power subsystems can support multiple managed systems.  When the B<rflash> command is invoked, xCAT will determine the managed system or power subsystem associated with that CEC and perform the update. 
 
-The B<noderange> can be an CEC or CEC list, a Lpar or Lpar list and a BPA or BPA list. When the I<noderange> is an CEC or CEC list, B<rflash> will upgrade the firmware of the CEC or CECs in the cec list. If I<noderange> is a Lpar or Lpar list, B<rflash> will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes.  If I<noderange> is a BPA or BPA list, B<rflash> will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The I<noderange> can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the I<noderange>  man  page  for  detailed usage information. 
+The B<noderange> can be an CEC or CEC list, a Lpar or Lpar list and a BPA or BPA list. But CEC (or Lpar) and BPA B<can't> be used at the same time. When the I<noderange> is an CEC or CEC list, B<rflash> will upgrade the firmware of the CEC or CECs in the cec list. If I<noderange> is a Lpar or Lpar list, B<rflash> will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes.  If I<noderange> is a BPA or BPA list, B<rflash> will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The I<noderange> can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the I<noderange>  man  page  for  detailed usage information. 
 
 The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates.  
 
@@ -25,6 +29,8 @@ Depending on the Licensed Internal Code update that is installed, the affected H
 The flash chip of a POWER5 and POWER6 managed system or power subsystem stores firmware in two locations, referred to as the temporary side and the permanent side.  By default, most POWER5 and POWER6 systems boot from the temporary side of the flash.  When the B<rflash> command updates code, the current contents of the temporary side are written to the permanent side, and the new code is written to the temporary side.  The new code is then activated.  Therefore, the two sides of the flash will contain different levels of code when the update has completed.
 
 The B<--commit> flag is used to write the contents of the temporary side of the flash to the permanent side.  This flag should be used after updating code and verifying correct system operation.  The B<--recover> flag is used to write the permanent side of the flash chip back to the temporary side.  This flag should be used to recover from a corrupt flash operation, so that the previously running code can be restored.
+
+B<NOTE:>At present, the B<rflash> command B<doesn't> support B<commit/recover> for BPAs. Because the command "B<licutil>" on HMC doesn't support the "B<commit>" and "B<recover>" operation for the BPA. And "B<rflash>" is dependent on the "B<licutil>" command. So when the B<--commit> or B<--recover> two flags is used, the noderange cannot be a BPA or BPA list in the B<rflash> command. xCAT will pay the attention to the changes all the time.
 
 xCAT recommends that you shutdown your Operating System images and power off your managed systems before applying disruptive updates to managed systems or power subsystems.
 
