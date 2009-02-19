@@ -1,0 +1,13 @@
+bash 
+nfs-utils
+stunnel
+dhclient 
+kernel 
+openssh-server 
+openssh-clients
+busybox-anaconda
+wget
+vim-minimal
+ntp
+sysklogd
+rpm
