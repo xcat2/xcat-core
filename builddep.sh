@@ -25,7 +25,7 @@ if [ "$1" == "NOUPLOAD" ]; then
 fi
 set -x
 
-# Sign the rpms that are not already signed.  The closed pipe warnings are normal.
+# Sign the rpms that are not already signed.  The "standard input reopened" warnings are normal.
 $XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'`
 
 # Create the repodata dirs
@@ -38,8 +38,10 @@ chmod -R g+w *
 
 # Build the tarball
 VER=`cat $XCATCOREDIR/Version`
-DFNAME=../xcat-dep-$VER-snap`date +%Y.%m.%d`.tar.bz2
-tar jcvf $DFNAME dep-snap
+DFNAME=xcat-dep-$VER-snap`date +%Y.%m.%d`.tar.bz2
+cd ..
+tar jcvf $DFNAME xcat-dep
+cd xcat-dep
 
 if [ $UPLOAD == 0 ]; then
  exit 0;
@@ -51,5 +53,5 @@ rsync -rlv * $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/xcat-dep/
 #ssh jbjohnso@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/yum/; rm -rf dep-snap; tar jxvf $DFNAME"
 
 # Upload the tarball to the SF uploads dir for the FRS
-#scp $DFNAME $UPLOADUSER@web.sourceforge.net:uploads/
-#scp $DFNAME $UPLOADUSER@frs.sourceforge.net:uploads/
+scp ../$DFNAME $UPLOADUSER@web.sourceforge.net:uploads/
+#scp ../$DFNAME $UPLOADUSER@frs.sourceforge.net:uploads/
