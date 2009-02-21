@@ -130,12 +130,66 @@ sub preprocess_request
     return \@requests;
 }
 
+sub interrogate_node { #Meant to run against confirmed up nodes
+    my $node=shift;
+    my $doreq=shift;
+    my $status = "";
+    if (nodesockopen($node,15002)) {
+        $status.="pbs,"
+    }
+    if (nodesockopen($node,8002)) {
+        $status.="xend,"
+    }
+    if (nodesockopen($node,22)) {
+        $status.="sshd,"
+    }
+    $status =~ s/,$//;
+    if ($status) {
+        return $status;
+    }
+    if ($status = installer_query($node)) {
+        return  $status;
+    } else { #pingable, but no *clue* as to what the state may be
+         $doreq->({command=>['nodeset'],
+                  node=>[$node],
+                  arg=>['stat']},
+                  \&getstat);
+         return 'ping '.$stat;
+     }
+}
+
 sub process_request {
    my $request = shift;
    my $callback = shift;
    my $doreq = shift;
    my @nodes = @{$request->{node}};
+   my %unknownnodes;
+   foreach (@nodes) {
+	$unknownnodes{$_}=1;
+   }
    my $node;
+   my $fping;
+   open($fping,"fping ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start fping: $!");
+   while (<$fping>) {
+      my %rsp;
+      my $node=$_;
+      $node =~ s/ .*//;
+      chomp $node;
+       if (/ is alive/) {
+           $rsp{name}=[$node];
+           $rsp{data} = [ interrogate_node($node,$doreq) ];
+           $callback->({node=>[\%rsp]});
+       } elsif (/is unreachable/) {
+         $rsp{name}=[$node];
+         $rsp{data} = [ 'noping' ];
+         $callback->({node=>[\%rsp]});
+       } elsif (/ address not found/) {
+         $rsp{name}=[$node];
+         $rsp{data} = [ 'nosuchhost' ];
+         $callback->({node=>[\%rsp]});
+       }
+    }
+    @nodes=();
    foreach $node (@nodes) {
       my %rsp;
       my $text="";
@@ -147,6 +201,10 @@ sub process_request {
       }
       if (nodesockopen($node,15002)) {
          $rsp{data} = [ 'pbs' ];
+         $callback->({node=>[\%rsp]});
+         next;
+      } elsif (nodesockopen($node,8002)) {
+         $rsp{data} = [ 'xend' ];
          $callback->({node=>[\%rsp]});
          next;
       } elsif (nodesockopen($node,22)) {
