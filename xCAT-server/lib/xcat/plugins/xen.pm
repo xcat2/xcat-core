@@ -53,6 +53,7 @@ sub handled_commands {
   #}
   return {
     rpower => 'nodehm:power,mgt',
+    mkvm => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
     getxencons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
@@ -194,7 +195,7 @@ sub build_nicstruct {
         my $rethash;
         $rethash->{type}='bridge';
         $rethash->{mac}->{address}=$_;
-        $rethash->{source}->{bridge}='xenbr0'; #TODO: support syntax in nics field in table, must be able to tie macs/hostname/network id together
+        $rethash->{source}->{bridge}='xenbr0';
         push @rethashes,$rethash;
     }
     return \@rethashes;
@@ -391,8 +392,8 @@ sub migrate {
     unless ($testhypconn) {
         return (1,"Unable to reach $prevhyp to perform operation of $node, use nodech to change vm.host if certain of no split-brain possibility exists");
     }
-    my $destnetcatadd="&netcat=nc";
     undef $testhypconn;
+    my $destnetcatadd="&netcat=nc";
     eval {#Contain Sys::Virt bugs
         $testhypconn= Sys::Virt->new(uri=>$target.$destnetcatadd);
     };
@@ -472,6 +473,9 @@ sub makedom {
 }
 
 
+sub mkvm {
+ build_xmldesc($node);
+}
 sub power {
     my $subcommand = shift;
     my $retstring;
@@ -532,6 +536,8 @@ sub guestcmd {
   my $error;
   if ($command eq "rpower") {
     return power(@args);
+  } elsif ($command eq "mkvm") {
+      return mkvm();
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
   } elsif ($command eq "getrvidparms") {
@@ -915,7 +921,7 @@ sub dohyp {
   unless ($hypconn) {
      my %err=(node=>[]);
      foreach (keys %{$hyphash{$hyp}->{nodes}}) {
-        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate via libvirt to $hyp"],errorcode=>[1]});
+        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate AB via libvirt to $hyp"],errorcode=>[1]});
      }
      print $out freeze([\%err]);
      print $out "\nENDOFFREEZE6sK4ci\n";
