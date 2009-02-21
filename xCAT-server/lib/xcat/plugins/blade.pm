@@ -147,7 +147,9 @@ my %bootdevices = (
   8 => 'iscsi',
   9 => 'iscsicrit',
   10 => 'hd4',
-  11 => 'usbflash'
+  11 => 'usbflash',
+  12 => 'hypervisor',
+  13 => 'legacy'
 );
 my %bootnumbers = (
   'none' => 0,
