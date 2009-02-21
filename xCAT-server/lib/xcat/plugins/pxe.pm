@@ -78,6 +78,13 @@ sub setstate {
     print $pcfg "LOCALBOOT 0\n";
     close($pcfg);
   } elsif ($kern and $kern->{kernel}) {
+    if ($kern->{kernel} =~ /!/) {
+	my $hypervisor;
+	my $kernel;
+	($kernel,$hypervisor) = split /!/,$kern->{kernel};
+    	print $pcfg " KERNEL mboot.c32\n";
+	print $pcfg " APPEND $hypervisor --- $kernel ".$kern->{kcmdline}." --- ".$kern->{initrd}."\n";
+    } else {
     #It's time to set pxelinux for this node to boot the kernel..
     print $pcfg " KERNEL ".$kern->{kernel}."\n";
     if ($kern->{initrd} or $kern->{kcmdline}) {
@@ -90,6 +97,7 @@ sub setstate {
       print $pcfg $kern->{kcmdline}."\n";
     } else {
       print $pcfg "\n";
+    }
     }
     close($pcfg);
     my $inetn = inet_aton($node);

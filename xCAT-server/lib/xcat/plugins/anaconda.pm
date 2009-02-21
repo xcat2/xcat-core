@@ -149,6 +149,7 @@ sub process_request
 
 sub mknetboot
 {
+    my $xenstyle=0;
     my $req      = shift;
     my $callback = shift;
     my $doreq    = shift;
@@ -249,6 +250,11 @@ sub mknetboot
 
         #TODO: only copy if newer...
         unless ($donetftp{$osver,$arch,$profile}) {
+	if (-f "/$installroot/netboot/$osver/$arch/$profile/hypervisor") {
+        	copy("/$installroot/netboot/$osver/$arch/$profile/hypervisor",
+             	"/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+		$xenstyle=1;
+	}
         copy("/$installroot/netboot/$osver/$arch/$profile/kernel",
              "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
         copy("/$installroot/netboot/$osver/$arch/$profile/initrd.gz",
@@ -363,10 +369,14 @@ sub mknetboot
            
         }
         
+	my $kernstr="xcat/netboot/$osver/$arch/$profile/kernel";
+	if ($xenstyle) {
+	   $kernstr.= "!xcat/netboot/$osver/$arch/$profile/hypervisor";
+	}
         $bptab->setNodeAttribs(
                       $node,
                       {
-                       kernel => "xcat/netboot/$osver/$arch/$profile/kernel",
+                       kernel => "$kernstr",
                        initrd => "xcat/netboot/$osver/$arch/$profile/initrd.gz",
                        kcmdline => $kcmdline
                       }
