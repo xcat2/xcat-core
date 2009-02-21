@@ -53,6 +53,7 @@ sub handled_commands {
   #}
   return {
     rpower => 'nodehm:power,mgt',
+    mkvm => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
     getnencons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
@@ -473,6 +474,9 @@ sub makedom {
 }
 
 
+sub mkvm {
+ build_xmldesc($node);
+}
 sub power {
     my $subcommand = shift;
     my $retstring;
@@ -533,6 +537,8 @@ sub guestcmd {
   my $error;
   if ($command eq "rpower") {
     return power(@args);
+  } elsif ($command eq "mkvm") {
+      return mkvm();
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
   } elsif ($command eq "getrvidparms") {

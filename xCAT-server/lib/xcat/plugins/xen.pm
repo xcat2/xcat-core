@@ -921,7 +921,7 @@ sub dohyp {
   unless ($hypconn) {
      my %err=(node=>[]);
      foreach (keys %{$hyphash{$hyp}->{nodes}}) {
-        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate AB via libvirt to $hyp"],errorcode=>[1]});
+        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate via libvirt to $hyp"],errorcode=>[1]});
      }
      print $out freeze([\%err]);
      print $out "\nENDOFFREEZE6sK4ci\n";
