@@ -149,7 +149,8 @@ my %bootdevices = (
   10 => 'hd4',
   11 => 'usbflash',
   12 => 'hypervisor',
-  13 => 'legacy'
+  13 => 'uefi',
+  14 => 'legacy'
 );
 my %bootnumbers = (
   'none' => 0,
@@ -180,6 +181,8 @@ my %bootnumbers = (
   'harddisk4' => 10,
   'usbflash' => 11,
   'flash' => 11,
+  'uefi' => 13,
+  'legacy' => 14,
   'usb' => 11
 );
 
