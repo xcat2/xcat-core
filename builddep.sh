@@ -38,7 +38,7 @@ chmod -R g+w *
 
 # Build the tarball
 VER=`cat $XCATCOREDIR/Version`
-DFNAME=xcat-dep-$VER-snap`date +%Y.%m.%d`.tar.bz2
+DFNAME=xcat-dep-$VER-snap`date +%Y%m%d%H%M`.tar.bz2
 cd ..
 tar jcvf $DFNAME xcat-dep
 cd xcat-dep

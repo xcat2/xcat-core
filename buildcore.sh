@@ -1,7 +1,14 @@
 #!/bin/sh
+
+# Build and upload the xcat-core code.  Run this script from a dir in which you want
+# 2 subdirs created:  core-snap and core-snap-srpms.
+
+# you can change this if you need to
+UPLOADUSER=bp-sawyers
+
+export HOME=/root
 cd `dirname $0`
 VER=`cat Version`
-export BDIR=`pwd`
 GREP=grep
 export DESTDIR=`pwd`/core-snap
 export SRCDIR=`pwd`/core-snap-srpms
@@ -20,17 +27,8 @@ fi
 #rm -rf $SRCDIR
 mkdir -p $DESTDIR
 mkdir -p $SRCDIR
-cd xcat-core
+#cd xcat-core
 svn up > ../coresvnup
-
-# This update of Utils.pm is now done in the perl-xCAT spec file
-#if [ `wc -l ../coresvnup|awk '{print $1}'` != 1 ] && ! grep "^At revision" ../coresvnup; then
-#	SVNREF=r`svn info|grep Revision|awk '{print $2}'`
-#	BUILDDATE=`date`
-#	VERADD=". ' (svn $SVNREF\/built $BUILDDATE)'"
-#	sed -i s/#XCATSVNBUILDSUBHERE/"$VERADD"/ perl-xCAT/xCAT/Utils.pm
-#	echo perl-xCAT >> ../coresvnup
-#fi
 
 if $GREP xCAT-client ../coresvnup; then
    UPLOAD=1
@@ -48,7 +46,6 @@ if $GREP perl-xCAT ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm $DESTDIR/
    mv /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
 fi
-#svn revert perl-xCAT/xCAT/Utils.pm
 if $GREP xCAT-web ../coresvnup; then
    UPLOAD=1
    rm -f $DESTDIR/xCAT-web*
@@ -105,19 +102,20 @@ if [ $UPLOAD == 0 ]; then
  echo "Nothing new detected"
  exit 0;
 fi
-$BDIR/sign.exp $DESTDIR/*rpm
-$BDIR/sign.exp $SRCDIR/*rpm
+build-utils/rpmsign.exp $DESTDIR/*rpm
+build-utils/rpmsign.exp $SRCDIR/*rpm
 createrepo $DESTDIR
 createrepo $SRCDIR
 rm $SRCDIR/repodata/repomd.xml.asc
 rm $DESTDIR/repodata/repomd.xml.asc
 gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
 gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
+chgrp -R xcat $DESTDIR
+chmod -R g+w $DESTDIR
 cd $DESTDIR/..
 export CFNAME=core-rpms-snap.tar.bz2
-export DFNAME=dep-rpms-snap.tar.bz2
-#tar jcvf $DFNAME dep-snap
 tar jcvf $CFNAME core-snap
-scp $CFNAME jbjohnso@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/yum/devel/
-rsync -av --delete core-snap jbjohnso@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/yum/devel/
-#ssh jbjohnso@shell2.sourceforge.net "cd /home/groups/x/xc/xcat/htdocs/yum/devel; tar jcvf $CFNAME core-snap"
+chgrp xcat $CFNAME
+chmod g+w $CFNAME
+scp $CFNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
+rsync -rlv --delete core-snap $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
