@@ -57,7 +57,7 @@ foreach my $num (@nums) {
         }
         if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configiba: cannot open $dir/ifcfg-$nic.'"); exit 1; }
         print FILE "DEVICE=$nic\n";
-        print FILE "BOOTPROTO=none\n";
+        print FILE "BOOTPROTO=static\n";
         print FILE "IPADDR=$ip\n";
         print FILE "NETMASK=$netmask\n";
         print FILE "GATEWAY=$gateway\n";
