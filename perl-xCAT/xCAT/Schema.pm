@@ -494,7 +494,7 @@ servicenode => {
   conserver => 'Do we set up Conserver on this service node? Valid values:yes or 1, no or 0.',
   monserver => 'Is this a monitoring event collection point? Valid values:yes or 1, no or 0.',
   ldapserver => 'Do we set up ldap caching proxy on this service node? Valid values:yes or 1, no or 0.',
-  ntpserver => 'Do we set up and ntp server on this service node? Valid values:yes or 1, no or 0.',
+  ntpserver => 'Not used presently. Do we set up and ntp server on this service node? Valid values:yes or 1, no or 0.',
   ftpserver => 'Do we set up and ftp server on this service node? Valid values:yes or 1, no or 0.',
 
      comments => 'Any user-written notes.',
