@@ -7,11 +7,11 @@
 UPLOADUSER=bp-sawyers
 
 export HOME=/root
+export DESTDIR=`pwd`/core-snap
+export SRCDIR=`pwd`/core-snap-srpms
 cd `dirname $0`
 VER=`cat Version`
 GREP=grep
-export DESTDIR=`pwd`/core-snap
-export SRCDIR=`pwd`/core-snap-srpms
 UPLOAD=0
 if [ "$1" == "UPLOAD" ]; then
    UPLOAD=1 
@@ -119,4 +119,4 @@ tar jcvf $CFNAME core-snap
 chgrp xcat $CFNAME
 chmod g+w $CFNAME
 scp $CFNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
-rsync -av --delete core-snap $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
+rsync -rlv --delete core-snap $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
