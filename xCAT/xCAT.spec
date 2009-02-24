@@ -93,17 +93,6 @@ else
   apachename=httpd
 fi
 
-if [ ! -d /var/ftp/install ]; then
-   mkdir -p /var/ftp/install
-   echo "/install                /var/ftp/install        none  bind,defaults 0 0" >> /etc/fstab
-   mount /var/ftp/install
-fi
-
-if [ ! -d /var/ftp/tftpboot ]; then 
-   mkdir -p /var/ftp/tftpboot
-   echo "/tftpboot   /var/ftp/tftpboot none bind,defaults 0 0" >> /etc/fstab
-   mount /var/ftp/tftpboot
-fi
 
 if [ ! -d /etc/xcat/hostkeys ]; then 
    mkdir -p /etc/xcat/hostkeys
