@@ -100,7 +100,11 @@ sub find_mac {
       if ((lc($mac) ne $_) and ($self->{mactable}->{lc($mac)} eq $self->{mactable}->{$_})) {
         #$reftbl = 1;
         #Delete *possibly* stale data, without being heavy handed..
-        delete $self->{mactable}->{$_};
+        #But if this mac indicates multiple nodes, leave it there
+        if ( $self->{mactable}->{lc($mac)} !~ /,/)
+        {
+            delete $self->{mactable}->{$_};
+        }
       }
     }
     unless ($reftbl) { return $self->{mactable}->{lc($mac)};}

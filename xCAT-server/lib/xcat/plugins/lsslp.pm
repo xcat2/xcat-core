@@ -2177,7 +2177,7 @@ sub disti_multi_node
     my $names = shift;
     my $slp = shift;
 
-    return undef if ( !$slp->{'cage-number'});    
+    return undef if ( ! exists $slp->{'cage-number'});    
 
     my $ppctab = xCAT::Table->new( 'ppc');
     return undef if ( ! $ppctab);
@@ -2188,21 +2188,28 @@ sub disti_multi_node
     for my $node ( @nodes)
     {
         my $id_parent = $ppctab->getNodeAttribs( $node, ['id','parent']);
-        next if (! $id_parent or ! $id_parent->{'id'});
+        next if (! defined $id_parent or ! exists $id_parent->{'id'});
         if ( $id_parent->{'id'} eq $slp->{'cage-number'})
         {
             my $vpdnode = undef;
-            if ( $id_parent->{ 'parent'}#if no parent defined, take it as is.  
-                 and $vpdtab
-                 and $vpdnode = $vpdtab->getNodeAttribs($id_parent->{ 'parent'}, ['serial','mtm'])
-                 and $vpdnode->{'serial'}
-                 and $vpdnode->{'mtm'})
+            if ( defined $id_parent->{ 'parent'})#if no parent defined, take it as is.  
             {
-                 if ( $vpdnode->{'serial'} ne $slp->{'bpc-serial-number'} 
-                      or $vpdnode->{'mtm'} ne $slp->{'bpc-machinetype-model'})
-                 {
+                if( $vpdtab
+                        and $vpdnode = $vpdtab->getNodeAttribs($id_parent->{ 'parent'}, ['serial','mtm'])
+                        and exists $vpdnode->{'serial'}
+                        and exists $vpdnode->{'mtm'})
+                {
+                    if ( $vpdnode->{'serial'} ne $slp->{'bpc-serial-number'} 
+                            or $vpdnode->{'mtm'} ne $slp->{'bpc-machinetype-model'})
+                    {
+                        next;
+                    }
+                }
+                elsif ( "$slp->{'bpc-machinetype-model'}*$slp->{'bpc-serial-number'}" ne $id_parent->{ 'parent'})
+                {
                     next;
-                 }
+                }
+                    
             }
             return undef if ( $correct_node);#had matched another node before
             $correct_node = $node;
