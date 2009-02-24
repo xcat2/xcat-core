@@ -28,16 +28,18 @@ if [[ -z "$OTHERPKGS" ]]; then
   exit 0
 fi
 
-if [[ $OSTYPE = linux* ]]; then
-  #find out the server
-  SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
-  if [ -z "$SIP" ]; then
-    SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
-  fi
+#if [[ $OSTYPE = linux* ]]; then
+#  #find out the server
+#  SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
+#  if [ -z "$SIP" ]; then
+#    SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
+#  fi
 #update SIP for SLES11
-if [ "$OSVER" = "sles11" ]; then
-    SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '
-fi
+#if [ "$OSVER" = "sles11" ]; then
+#    SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '
+#fi
+
+
 
   if [[ $OTHERPKGS_HASREPO -eq 1 ]]; then
     rpm -q yum
@@ -46,7 +48,7 @@ fi
       REPOFILE="/tmp/xCAT-otherpkgs.repo"
       echo "[xcat-otherpkgs]" > $REPOFILE
       echo "name=xcat-otherpkgs" >> $REPOFILE
-      echo "baseurl=ftp://$SIP/post/otherpkgs/$OSVER/$ARCH" >> $REPOFILE
+      echo "baseurl=ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH" >> $REPOFILE
       echo "enabled=1" >> $REPOFILE
       echo "gpgcheck=0" >> $REPOFILE
       #clean meta data to make possible for update
@@ -94,9 +96,9 @@ fi
     if [ $? -eq 0 ]; then 
       #use zypper
       if [ "$OSVER" = "sles11" ]; then
-	    zypper ar ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1 otherpkgs
+	    zypper ar ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/1 otherpkgs
       else
-        zypper sa ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/1
+        zypper sa ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/1
       fi
 
       #install
@@ -115,11 +117,11 @@ fi
 
   for x in `echo "$OTHERPKGS" | tr "," "\n"`
   do
-    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/post/otherpkgs/$OSVER/$ARCH/$x-* 2> /tmp/wget.log  
+    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/$x-* 2> /tmp/wget.log  
   done
 
-  mv $SIP/post/otherpkgs/* /xcatpost/post/otherpkgs; 
-  rm -rf $SIP
+  mv $NFSSERVER/post/otherpkgs/* /xcatpost/post/otherpkgs; 
+  rm -rf $NFSSERVER
 
   cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
   result=`rpm -Uvh * 2>&1`
