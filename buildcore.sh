@@ -102,6 +102,7 @@ if [ $UPLOAD == 0 ]; then
  echo "Nothing new detected"
  exit 0;
 fi
+set -x
 build-utils/rpmsign.exp $DESTDIR/*rpm
 build-utils/rpmsign.exp $SRCDIR/*rpm
 createrepo $DESTDIR
@@ -118,4 +119,4 @@ tar jcvf $CFNAME core-snap
 chgrp xcat $CFNAME
 chmod g+w $CFNAME
 scp $CFNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
-rsync -rlv --delete core-snap $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
+rsync -av --delete core-snap $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
