@@ -473,6 +473,7 @@ sub clone {
         my @temp = @$srcd;
         $temp[0] = $lparid;
         $temp[2] = $destcec;
+        $temp[4] = 'lpar';
 
         my $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", \@temp, $cfg ); 
         $Rc = shift(@$result);
@@ -483,7 +484,7 @@ sub clone {
         if ( $Rc == SUCCESS ) {
             my $newname = $dest."_".$name;
             my $err = xCATdB( 
-               "mkvm", $newname, $profile, $lparid, $srcd, $hwtype, $name );
+               "mkvm", $newname, $profile, $lparid, $srcd, $hwtype, $name, $dest );
 
             if ( defined( $err )) {
                 push @values, [$err, RC_ERROR];
@@ -1134,6 +1135,7 @@ sub xCATdB {
     my $d       = shift;
     my $hwtype  = shift;
     my $lpar    = shift;
+    my $parent  = shift;
 
     #######################################
     # Remove entry 
@@ -1177,19 +1179,30 @@ sub xCATdB {
         if ( !defined( $tab )) {
             return( "Error opening 'ppc' database" );
         }
-        my ($ent) = $tab->getNodeAttribs($lpar, ['parent'] );
+        ###################################
+        # If there is no parent provided
+        # this lpar should be the cloned 
+        # in the same cec
+        # Otherwise it should be cloned 
+        # between cecs
+        ###################################
+        if ( ! $parent) 
+        {
+            my ($ent) = $tab->getNodeAttribs($lpar, ['parent'] );
 
-        ###################################
-        # Node not found 
-        ###################################
-        if ( !defined( $ent )) { 
-            return( "'$lpar' not found in 'ppc' database" );
-        }
-        ###################################
-        # Attributes not found 
-        ###################################
-        if ( !exists( $ent->{parent} )) {
-            return( "'parent' attribute not found in 'ppc' database" );
+            ###################################
+            # Node not found 
+            ###################################
+            if ( !defined( $ent )) { 
+                return( "'$lpar' not found in 'ppc' database" );
+            }
+            ###################################
+            # Attributes not found 
+            ###################################
+            if ( !exists( $ent->{parent} )) {
+                return( "'parent' attribute not found in 'ppc' database" );
+            }
+            $parent = $ent->{parent};
         }
         my $values = join( ",",
                 "lpar",
@@ -1199,7 +1212,7 @@ sub xCATdB {
                 $serial,
                 $server,
                 $profile,
-                $ent->{parent} ); 
+                $parent ); 
         
         return( xCAT::PPCdb::add_ppc( $hwtype, [$values] )); 
     }
