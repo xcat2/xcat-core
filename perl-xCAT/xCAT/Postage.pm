@@ -166,6 +166,12 @@ sub makescript {
 	}
   }
 
+  my $noderesent = $noderestab->getNodeAttribs($node,['nfsserver']);
+  if ($noderesent and defined($noderesent->{'nfsserver'})) {
+    push @scriptd, "NFSSERVER=".$noderesent->{'nfsserver'}."\n";
+    push @scriptd, "export NFSSERVER\n";
+  }
+
   my $os;
   my $profile;
   my $arch;
