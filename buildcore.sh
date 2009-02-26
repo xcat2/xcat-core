@@ -3,19 +3,28 @@
 # Build and upload the xcat-core code.  Run this script from a dir in which you want
 # 2 subdirs created:  core-snap and core-snap-srpms.
 
+# Usage:  buildcore.sh [<branch>] [release]
+#		<branch> - e.g. 2.1.  If not specified, the trunk/new devel branch is assumed
+#		release - if the keyword "release" is specified, means an official dot release.
+#					Otherwise, and snap build is assumed.
+# You can override the default upload behavior by specifying env var: UP=0 or UP=1
+
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
 
 export HOME=/root
-export DESTDIR=`pwd`/core-snap
-export SRCDIR=`pwd`/core-snap-srpms
+if [ -n "$1" ]; then
+	export DESTDIR=`pwd`/$1/core-snap
+	export SRCDIR=`pwd`/$1/core-snap-srpms
+else
+	export DESTDIR=`pwd`/core-snap
+	export SRCDIR=`pwd`/core-snap-srpms
+fi
+
 cd `dirname $0`
 VER=`cat Version`
 GREP=grep
 UPLOAD=0
-if [ "$1" == "UPLOAD" ]; then
-   UPLOAD=1 
-fi
 if [ -f /etc/redhat-release ]
 then
   pkg="redhat"
@@ -23,8 +32,6 @@ else
   pkg="packages"
 fi
 
-#rm -rf $DESTDIR
-#rm -rf $SRCDIR
 mkdir -p $DESTDIR
 mkdir -p $SRCDIR
 #cd xcat-core
@@ -98,10 +105,22 @@ if $GREP "U    xCAT/" ../coresvnup || $GREP "A    xCAT/" ../coresvnup; then
    ./makexcatrpm i386
    mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
 fi
-if [ $UPLOAD == 0 ]; then
- echo "Nothing new detected"
- exit 0;
+
+# Decide whether to upload or not
+if [ -n "$UP" ]; then
+	if [ $UP == 0 ]; then
+		exit 0;
+	fi
+	#else we will continue
+else
+	if [ $UPLOAD == 0 ]; then
+		echo "Nothing new detected"
+		exit 0;
+	fi
+	#else we will continue
 fi
+
+# Prepare the RPMs for pkging and upload
 set -x
 build-utils/rpmsign.exp $DESTDIR/*rpm
 build-utils/rpmsign.exp $SRCDIR/*rpm
@@ -114,9 +133,17 @@ gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
 chgrp -R xcat $DESTDIR
 chmod -R g+w $DESTDIR
 cd $DESTDIR/..
+#todo: if $2 == "release" then name the tarball differently and upload to FRS.  Also upload RPMs to xcat-core instead of core-snap.
 export CFNAME=core-rpms-snap.tar.bz2
 tar jcvf $CFNAME core-snap
 chgrp xcat $CFNAME
 chmod g+w $CFNAME
-scp $CFNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
-rsync -rlv --delete core-snap $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/devel/
+
+# Upload the tarball and individual RPMs
+if [ -n "$1" ]; then
+	DIR=$1
+else
+	DIR=devel
+fi
+scp $CFNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$DIR/
+rsync -rlv --delete core-snap $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$DIR/
