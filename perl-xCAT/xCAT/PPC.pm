@@ -127,7 +127,7 @@ sub process_command {
   my $check=0;
   my $newstat;
   if ($request->{command} eq 'rpower') {
-    my $subcommand=$request->{arg}->[0];
+    my $subcommand=$request->{op};
     if (($subcommand ne 'stat') && ($subcommand ne 'status') && ($subcommand ne 'state')) { 
       $check=1;
       my $noderange = $request->{node}; 
