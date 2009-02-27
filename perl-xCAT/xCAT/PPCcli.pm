@@ -618,35 +618,39 @@ sub lpar_netboot {
         $cmd.= " -x -v";
     }
     #####################################
-    # Force LPAR shutdown (-f specified)
-    # Or send shutdown request to non-AIX
-    # LPARs
+    # Force LPAR shutdown if -f specified
     #####################################
     if ( exists( $opt->{f} )) {
         $cmd.= " -i";
     } else {
         #################################
-        # Determine if LPAR and mgmt node
-        # are AIX or not.
-        ################################
+        # Force LPAR shutdown if LPAR is
+        # running Linux
+        #################################
         my $table = "nodetype";
+        my $intable = 0;
         my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
-        if (defined(@TableRowArray))
-        {
-            foreach (@TableRowArray)
-            {
+        if ( defined(@TableRowArray) ) {
+            foreach ( @TableRowArray ) {
                 my @nodelist = split(',', $_->{'node'});
                 my @oslist = split(',', $_->{'os'});
                 my $osname = "AIX";
-                if (grep(/^$node$/, @nodelist))
-                {
-                    if (!grep(/^$osname$/, @oslist) || !xCAT::Utils->isAIX())
-                    {
-                        `xdsh $node "shutdown -h now" 2>/dev/null`;
-                        last;
+                if ( grep(/^$node$/, @nodelist) ) {
+                    if ( !grep(/^$osname$/, @oslist) ) {
+                        $cmd.= " -i";
                     }
+                    $intable = 1;
+                    last;
                 }
             }
+        }
+        #################################
+        # Force LPAR shutdown if LPAR OS
+        # type is not assigned in table 
+        # but mnt node is running Linux
+        #################################
+        if ( xCAT::Utils->isLinux() && $intable == 0 ) {
+            $cmd.= " -i";
         }
     }
 
