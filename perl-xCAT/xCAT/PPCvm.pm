@@ -82,15 +82,29 @@ sub chvm_parse_args {
     # Check for an extra argument
     ####################################
     if ( defined( $ARGV[0] )) {
-        return(usage( "Invalid Argument: $ARGV[0]" ));
+        $opt{a} = [@ARGV];
+        for my $attr ( @{$opt{a}})
+        {
+            if ( $attr !~ /(\w+)=(\w*)/)
+            {
+                return(usage( "Invalid argument or attribute: $attr" ));
+            }
+        }
     }
     ####################################
     # Configuration file required 
     ####################################
-    if ( !exists( $opt{p} )) { 
+    if ( !exists( $opt{p}) and !exists( $opt{a})) { 
         if ( !defined( $request->{stdin} )) { 
-            return(usage( "Configuration file not specified" ));
+            return(usage( "Configuration file or attributes not specified" ));
         }
+    }
+    ####################################
+    # Both configuration file and
+    # attributes are specified
+    ####################################
+    if ( exists( $opt{p}) and exists( $opt{a})) {
+        return(usage( "Flag -p cannot be used together with attribute list"));
     }
     ####################################
     # No operands - add command name 
@@ -641,7 +655,165 @@ sub getprofile {
 # Changes the configuration of an existing partition 
 ##########################################################################
 sub modify {
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    return modify_by_prof( $request, $hash, $exp) if ( $request->{opt}->{p});
+    return modify_by_attr( $request, $hash, $exp);
+}
 
+##########################################################################
+# Changes the configuration of an existing 
+# partition based on the attributes specified
+##########################################################################
+sub modify_by_attr {
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $hwtype  = @$exp[2];
+    my $name    = @{$request->{node}}[0];
+    my $opt     = $request->{opt};
+    my $attrstr= $opt->{a};
+    my @values;
+
+    if ( defined( $attrstr )) { 
+        ###################################
+        # Get LPAR active profiles 
+        ###################################
+        while (my ($cec,$h) = each(%$hash) ) {
+            while (my ($lpar,$d) = each(%$h) ) {
+                ###########################
+                # Get current profile
+                ###########################
+                my $cfg_res = xCAT::PPCcli::lssyscfg(
+                             $exp,
+                             "node",
+                             $cec,
+                             'curr_profile',
+                             @$d[0]);
+                my $Rc = shift(@$cfg_res);
+                if ( $Rc != SUCCESS ) {
+                    push @values, [$lpar, @$cfg_res[0], $Rc];
+                    next;
+                }
+
+                my $prof = xCAT::PPCcli::lssyscfg(
+                             $exp,
+                             "prof",
+                             $cec,
+                             "lpar_ids=@$d[0],profile_names=@$cfg_res[0]" );
+                $Rc = shift(@$prof);
+
+                if ( $Rc != SUCCESS ) {
+                    push @values, [$lpar, @$prof[0], $Rc];
+                    next;
+                }
+                my $cfgdata = @$prof[0];
+                ###########################
+                # Modify profile
+                ###########################
+                $cfgdata = strip_profile( $cfgdata, $hwtype );
+                $cfgdata =~ s/,*lpar_env=[^,]+|$//;
+                $cfgdata =~ s/,*all_resources=[^,]+|$//;
+                $cfgdata =~ s/,*lpar_name=[^,]+|$//;
+                my $err_msg;
+                ($Rc, $err_msg, $cfgdata) = subst_profile( $cfgdata, $attrstr);
+                if ( $Rc != SUCCESS ) {
+                    push @values, [$lpar, $err_msg, $Rc];
+                    next;
+                }
+                my $result = xCAT::PPCcli::chsyscfg( $exp, $d, $cfgdata );
+                $Rc = shift(@$result);
+                push @values, [$lpar,@$result[0],$Rc];
+            }
+        }
+    }
+    return (\@values);
+}
+
+##########################################################################
+# Substitue attributes-value pairs in profile
+##########################################################################
+sub subst_profile
+{
+    my $cfgdata = shift;
+    my $attrlist = shift;
+
+    my @cfgarray = split /,/, $cfgdata;
+    ##########################################
+    # Repair those lines splitted incorrectly
+    ##########################################
+    my @newcfgarray;
+    my $full_line;
+    while (my $line = shift( @cfgarray))
+    {
+        if ( !$full_line)
+        {
+            $full_line = $line;
+        }
+        else
+        {
+            $full_line = "$full_line,$line";
+        }
+        if ( $full_line =~ /^[^\"]/ or $full_line =~ /^\".+\"$/)
+        {
+            $full_line =~ s/^\"(.+)\"$/$1/;
+            push @newcfgarray, $full_line;
+            $full_line = undef;
+            next;
+        }
+    }
+
+    ##########################################
+    # Substitute attributes in new array
+    ##########################################
+    my @final_array;
+    my @attrs = @$attrlist;
+    for my $cfgline ( @newcfgarray)
+    {
+        for ( my $i = 0; $i < scalar(@attrs); $i++ )
+        {
+            my $av_pair = $attrs[$i];
+            next if ( !$av_pair);
+            #assuming there will not be too many attributes to be changed
+            my ($attr,$value) = $av_pair =~ /^\s*(\S+?)\s*=\s*(\S+)\s*$/;
+            if ( $cfgline =~ /^$attr=/)
+            {
+                $cfgline = "$attr=$value";
+                delete $attrs[$i];
+                last;
+            }
+        }
+        if ( $cfgline =~ /,/)
+        {
+            $cfgline = "\"$cfgline\"";
+        }
+        push @final_array, $cfgline;
+    }
+    $cfgdata = join ',',@final_array;
+
+    ##########################################
+    # Get not found attribute list
+    ##########################################
+    my %not_found = ();
+    for (@attrs)
+    {
+        if ( $_)
+        {
+            my ($a) = split /=/;
+            $not_found{$a} = 1;
+        }
+    }
+    my $Rc = scalar(keys %not_found);
+    my $incorrect_attrs = join ',', (keys %not_found);
+    return ($Rc, "Incorrect attribute(s) $incorrect_attrs", $cfgdata);
+}
+
+##########################################################################
+# Changes the configuration of an existing 
+# partition based on the profile specified
+##########################################################################
+sub modify_by_prof {
     my $request = shift;
     my $hash    = shift;
     my $exp     = shift;
@@ -730,12 +902,17 @@ sub modify {
             $cfg =~ s/lpar_id=[^,]+/lpar_id=@$d[0]/;          
 
             #################################
-            # Modify SCSI adapters
+            # Modify SCSI/LHEA adapters
             #################################
             if ( exists( $opt->{p} )) { 
                 if ( $cfg =~ /virtual_scsi_adapters=(\w+)/ ) {
                     if ( $1 !~ /^none$/i ) {
                         $cfg = scsi_adapter( $cfg );
+                    }
+                }
+                if ( $cfg =~ /lhea_logical_ports=(\w+)/ ) {
+                    if ( $1 !~ /^none$/i ) {
+                        $cfg = lhea_adapter( $cfg );
                     }
                 }
             }
