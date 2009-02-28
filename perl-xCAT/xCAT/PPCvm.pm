@@ -739,6 +739,7 @@ sub subst_profile
     my $cfgdata = shift;
     my $attrlist = shift;
 
+    $cfgdata =~ s/\\\"/\"/g;
     my @cfgarray = split /,/, $cfgdata;
     ##########################################
     # Repair those lines splitted incorrectly
@@ -786,7 +787,7 @@ sub subst_profile
         }
         if ( $cfgline =~ /,/)
         {
-            $cfgline = "\"$cfgline\"";
+            $cfgline = "\\\"$cfgline\\\"";
         }
         push @final_array, $cfgline;
     }
