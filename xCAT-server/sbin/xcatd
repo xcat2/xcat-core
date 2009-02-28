@@ -944,25 +944,42 @@ sub dispatch_request {
     }
     $SIG{CHLD}='DEFAULT';
       $dispatch_parentfd = $parfd;
-     if (ref($_->{'_xcatdest'}) eq 'ARRAY') {
-         $_->{'_xcatdest'} = $_->{'_xcatdest'}->[0];
-     }
-     if ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'})) {
-        $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );
-        $$progname.=": connection to ".$ENV{XCATHOST};
-        eval {
-        undef $_->{'_xcatdest'};
-        xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem"); 
-        };
-        if ($@) {
-            my $errstr=$@;
-	   dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server ($errstr)"],errorcode=>[1]}); 
-	    xCAT::MsgUtils->message("S","Error dispatching request: ".$errstr);
-	}
+      my @prexcatdests=();
+      my @xcatdests=();
+     if (ref($_->{'_xcatdest'}) eq 'ARRAY') { #If array, consider it an 'anycast' operation, broadcast done through dupe 
+                                              #requests, or an alternative join '&' maybe?
+         @prexcatdests=@{$_->{'_xcatdest'}};
      } else {
-        $$progname.=": locally executing";
-        $SIG{CHLD}='DEFAULT';
-        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
+         @prexcatdests=($_->{'_xcatdest'});
+     }
+     foreach (@prexcatdests) {
+         if (/,/) {
+             push @xcatdests,split /,/,$_;
+         } else {
+             push @xcatdests,$_;
+         }
+     }
+     my $xcatdest;
+     foreach $xcatdest (@xcatdests) {
+        if ($xcatdest and thishostisnot($xcatdest)) {
+            $ENV{XCATHOST} =  ($xcatdest =~ /:/ ? $xcatdest : $xcatdest.":3001" );
+            $$progname.=": connection to ".$ENV{XCATHOST};
+            eval {
+            undef $_->{'_xcatdest'};
+            xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem"); 
+            };
+            if ($@) {
+            my $errstr=$@;
+	            dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server ($errstr)"],errorcode=>[1]}); 
+	            xCAT::MsgUtils->message("S","Error dispatching request: ".$errstr);
+                next;
+	        }
+         } else {
+            $$progname.=": locally executing";
+            $SIG{CHLD}='DEFAULT';
+            ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
+            last;
+        }
      }
      xexit;
   }
