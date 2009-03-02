@@ -78,7 +78,7 @@ until ($dsthost and $speed and $dstty) {
     xCAT::Client::submit_request($cmdref,\&getans);
 }
 release_lock();
-exec "ssh -t $dsthost screen -e ^]a -d -R -S serial-".$ARGV[0]."-cons -A $dstty $speed";
+exec "ssh -t $dsthost screen -U -a -O -e ^]a -d -R -S serial-".$ARGV[0]."-cons -A $dstty $speed";
 
 #my $pathtochild= dirname($scriptname). "/";
 #exec $pathtochild."blade.expect $mm $slot $username $password";
