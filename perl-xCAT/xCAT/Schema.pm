@@ -152,12 +152,13 @@ hosts => {
  },
   },
 ipmi => {
-    cols => [qw(node bmc username password comments disable )],
+    cols => [qw(node bmc bmcport username password comments disable )],
     keys => [qw(node)],
     table_desc => 'Settings for nodes that are controlled by an on-board BMC via IPMI.',
  descriptions => {
   node => 'The node name or group name.',
   bmc => 'The hostname of the BMC adapater.',
+  bmcport => 'In systems with selectable shared/dedicated ethernet ports, this parameter can be used to specify the preferred port.  0 means use the shared port, 1 means dedicated, blank is to not assign',
   username => 'The BMC userid.  If not specified, the key=ipmi row in the passwd table is used as the default.',
   password => 'The BMC password.  If not specified, the key=ipmi row in the passwd table is used as the default.',
      comments => 'Any user-written notes.',
