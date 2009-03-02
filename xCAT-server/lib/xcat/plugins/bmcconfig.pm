@@ -109,13 +109,17 @@ sub process_request  {
   if ($tmphash->{value} eq "1" or $tmphash->{value}  =~ /y(es)?/i) {
     $password = genpassword(8);
     $gennedpassword=1;
+    $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username']);
   } else {
-    $tmphash=$ipmitable->getNodeAttribs($node,['password']);
+    $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username','bmcport','password']);
     if ($tmphash->{password}) {
       $password = $tmphash->{password};
     }
   }
-  $tmphash=$ipmitable->getNodeAttribs($node,['bmc','username']);
+  my $bmcport;
+  if (defined $tmphash->{bmcport}) {
+      $bmcport = $tmphash->{bmcport};
+  }
   if ($tmphash->{bmc} ) {
     $bmc=$tmphash->{bmc};
   }
@@ -129,6 +133,9 @@ sub process_request  {
   }
   (my $ip,my $mask,my $gw) = net_parms($bmc);
   my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
+  if (defined $bmcport) {
+      $response->{bmcport}=$bmcport;
+  }
   $callback->($response);
   if ($gennedpassword) { # save generated password
     $ipmitable->setNodeAttribs($node,{password=>$password});
