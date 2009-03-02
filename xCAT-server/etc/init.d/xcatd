@@ -70,6 +70,12 @@ restart)
   $0 stop
   $0 start
   ;;
+reload)
+  $0 stop
+  echo -n "Reloading xCATd "
+  export XCATRELOAD=yes 
+  $0 start
+  ;;
 status)
   $STATUS
   ;;
