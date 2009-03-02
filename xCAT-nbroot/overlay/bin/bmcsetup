@@ -28,6 +28,30 @@ BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCUS=`grep username /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 BMCPW=`grep password /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
+IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
+if [ "$IPMIMFG" == 2 ]; then #IBM
+    IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
+    if [ "$IBMFAM" == "59554f4f" ]; then
+        #BMC YUOO family insists that username change on each set
+        if [ -z "$BMCUS" ]; then #blank user, set to foo first
+            ipmitool user set name 2 "foo";
+        else
+            TEMPUSER=`echo $BMCUS|sed -e 's/'^.//'`
+            if [ -z "$TEMPUSER" ]; then #was one character, set it to foo first
+                ipmitool user set name 2 "foo";
+            else #still non blank, can use tempuser as safe temporary value
+                ipmitool user set name 2 $TEMPUSER
+            fi
+        fi
+        BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+        if [ ! -z "$BMCPORT" ]; then
+            ipmitool raw 0xc 1 1 0xc0 $BMCPORT
+        fi
+    fi
+fi
+            
+
+        
 TRIES=0
 while ! ipmitool lan set 1 ipsrc static; do
     sleep 1
