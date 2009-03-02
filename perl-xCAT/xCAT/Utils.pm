@@ -2024,43 +2024,44 @@ sub readSNInfo
 
 
   Checks the service node table in the database to see 
-  if the input Service should be setup on the
+  if input Service should be setup on the
   input service node
 
-  Input: service nodename, service,ipaddres(s) and hostnames of service node
+  Input:servicenodename,ipaddres(s) and hostnames of service node
   Output:
-        0 - no service required
-        1 - setup service
-        2 - service is setup, just start the daemon
-		-1 - error
+        array of services to setup  for this service node
     Globals:
-        none
+        $::RUNCMD_RC = 0; good
+        $::RUNCMD_RC = 1; error 
     Error:
         none
     Example:
-         if (xCAT::Utils->isServiceReq($servicenodename, $service, $serviceip) { blah; }
+      @servicestosetup=xCAT::Utils->isServiceReq($servicenodename, @serviceip) { blah; }
 
 =cut
 
 #-----------------------------------------------------------------------------
 sub isServiceReq
 {
-    my ($class, $servicenodename, $service, $serviceip) = @_;
+    my ($class, $servicenodename, $serviceip) = @_;
+
+    # list of all services from service node table
+    # note this must be updated if more services added
+    my @services = (
+                    "nameserver", "dhcpserver", "tftpserver", "nfsserver",
+                    "conserver",  "monserver",  "ldapserver", "ntpserver",
+                    "ftpserver"
+                    );
+
     my @ips = @$serviceip;    # list of service node ip addresses and names
     my $rc  = 0;
-
-    # check if service is already setup
-    #`grep $service /etc/xCATSN`;
-    #if ($? == 0)
-    #{                         # service is already setup, just start daemon
-    #    return 2;
-    #}
 
     $rc = xCAT::Utils->exportDBConfig();    # export DB env
     if ($rc != 0)
     {
         xCAT::MsgUtils->message('S', "Unable export DB environment.\n");
-        return -1;
+        $::RUNCMD_RC = 1;
+        return;
 
     }
 
@@ -2069,34 +2070,43 @@ sub isServiceReq
     unless ($servicenodetab)
     {
         xCAT::MsgUtils->message('S', "Unable to open servicenode table.\n");
-        return 0;    # do not setup anything
+        $::RUNCMD_RC = 1;
+        return;    # do not setup anything
     }
 
-    # read all the nodes from the table
-    my @snodelist = $servicenodetab->getAllNodeAttribs([$service]);
-    $servicenodetab->close;
-    foreach $serviceip (@ips)    # check the table for this servicenode
-    {
-        foreach my $node (@snodelist)
+    my @process_service_list = ();
 
+    # read all the nodes from the table, for each service
+    foreach my $service (@services)
+    {
+        my @snodelist = $servicenodetab->getAllNodeAttribs([$service]);
+
+        foreach $serviceip (@ips)    # check the table for this servicenode
         {
-            if ($serviceip eq $node->{'node'})
-            {                    # match table entry
-                if ($node->{$service})
-                {                # returns service, only if set
-                    my $value = $node->{$service};
-                    $value =~ tr/a-z/A-Z/;    # convert to upper
-                         # value 1 or yes  then we setup the service
-                    if (($value eq "1") || ($value eq "YES"))
-                    {
-                        return 1;    # found service required for the node
+            foreach my $node (@snodelist)
+
+            {
+                if ($serviceip eq $node->{'node'})
+                {                    # match table entry
+                    if ($node->{$service})
+                    {                # returns service, only if set
+                        my $value = $node->{$service};
+                        $value =~ tr/a-z/A-Z/;    # convert to upper
+                             # value 1 or yes  then we setup the service
+                        if (($value eq "1") || ($value eq "YES"))
+                        {
+                            push @process_service_list,
+                              $service;    # found service to setup
+                        }
                     }
                 }
             }
         }
     }
+    $servicenodetab->close;
 
-    return 0;    # servicenode is not required to setup this service
+    $::RUNCMD_RC = 0;
+    return @process_service_list;
 
 }
 
@@ -2163,7 +2173,7 @@ sub update_xCATSN
 
 #-----------------------------------------------------------------------------
 
-=head3 gethost_ips
+=head3 gethost_ips  (AIX and Linux)
      Will use ifconfig to determine all possible ip addresses for the
 	 host it is running on and then gethostbyaddr to get all possible hostnames
 
@@ -2189,9 +2199,20 @@ sub gethost_ips
     }
     foreach my $addr (@result)
     {
-        my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
-        my @ip = split(":", $addr1);
-        push @ipaddress, $ip[1];
+        my @ip;
+        if (xCAT::Utils->isLinux())
+        {
+            my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
+            @ip = split(":", $addr1);
+            push @ipaddress, $ip[1];
+        }
+        else
+        {    #AIX
+            my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
+              split(" ", $addr);
+            push @ipaddress, $addr1;
+
+        }
     }
     my @names = @ipaddress;
     foreach my $ipaddr (@names)
@@ -3163,6 +3184,173 @@ sub logEventsToDatabase
 
 #-------------------------------------------------------------------------------
 
+=head3   startService
+	Supports AIX and Linux as long as the service is registered with
+	lssrc or startsrc.  
+	Used by the service node plugin (AAsn.pm) to start requested services. 
+    Checks to see if the input service is already started. If it is started
+	and the force flag is not set, it does not start the service. Otherwise
+	it starts the service.
+	Note we are using the system command on the start of the services to see
+	the output when the xcatd is started on Service Nodes.  Do not change this.
+    Arguments:
+     servicename
+	 force flag
+    Returns:
+        0 - service started or already started
+		1 - could not start the service
+    Globals:
+        none
+    Error:
+        1 error
+    Example:
+		 my $forceflag=1;
+         if (xCAT::Utils->startService("named",$forceflag)) { ...}
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub startService
+{
+    my ($class, $service, $force) = @_;
+    my $rc = 0;
+    my @output;
+    my $cmd;
+    if (xCAT::Utils->isAIX())
+    {
+        if (!($force))
+        {    # if don't force, check to see if started, and exit if started
+            @output =
+              xCAT::Utils->runcmd("LANG=C /usr/bin/lssrc -s $service", 0);
+            if ($::RUNCMD_RC != 0)
+            {    # error so start it
+                $cmd = "/usr/bin/stopsrc -s $service";
+                system $cmd;    # note using system here to see output when
+                                # daemon comes up
+                if ($? > 0)
+                {               # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                }
+                $cmd = "/usr/bin/startsrc -s $service";
+                system $cmd;
+                if ($? > 0)
+                {               # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                    return 1;
+                }
+
+            }
+            else                # check if already running
+            {
+                my ($subsys, $group, $pid, $status) = split(' ', $output[1]);
+                if (defined($status) && $status eq 'active')
+                {               # already running
+                    return 0;
+                }
+                else
+                {               # not running, start it
+                    $cmd = "/usr/bin/startsrc -s $service";
+                    system $cmd;    # note using system here to see output when
+                                    # daemon comes up
+                    if ($? > 0)
+                    {
+                        xCAT::MsgUtils->message("S",
+                                                "Error on command: $cmd\n");
+                        return 1;
+                    }
+
+                }
+            }
+        }
+        else                        # force start
+        {
+            $cmd = "/usr/bin/stopsrc -s $service";
+            system $cmd;            # note using system here to see output when
+                                    # daemon comes up
+            if ($? > 0)
+            {
+                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+            }
+            $cmd = "/usr/bin/startsrc -s $service";
+            system $cmd;
+
+            if ($? > 0)
+            {
+                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                return 1;
+            }
+        }
+    }
+    else    # linux
+    {
+        if (!($force))
+        {    # check to see if started, and exit if started
+            my @output = xCAT::Utils->runcmd("service $service status", -1);
+            if ($::RUNCMD_RC == 0)
+            {    #  no error, means running for some
+                    # services
+                if (($service ne "conserver") && ($service ne "nfs"))
+                {
+                    return 0;
+                }
+                if (($service eq "conserver") || ($service eq "nfs"))
+                {
+
+                    # must check output
+                    if (grep(/running/, @output))
+                    {
+                        return 0;
+                    }
+                }
+            }
+
+            # not running start
+            $cmd = "service $service start";
+            system $cmd;
+            if ($? > 0)
+            {    # error
+                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                return 1;
+            }
+            else
+            {
+                if ($service eq "conserver")
+                {    # does not give bad return
+                    my @output =
+                      xCAT::Utils->runcmd("service $service status", -1);
+                    if (!(grep(/running/, @output)))
+                    {
+                        xCAT::MsgUtils->message("S",
+                                                "Error on command: $cmd\n");
+                        return 1;
+                    }
+                }
+            }
+        }
+        else
+        {    # force  stop and start
+            $cmd = "service $service stop";
+            system $cmd;
+            if ($? > 0)
+            {    # error
+                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+            }
+            $cmd = "service $service start";
+            system $cmd;
+            if ($? > 0)
+            {    # error
+                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                return 1;
+            }
+        }
+
+    }
+    return $rc;
+}
+#-------------------------------------------------------------------------------
+
 =head3   CheckVersion
        Checks the two versions numbers to see which one is greater.
     Arguments:
@@ -3200,7 +3388,6 @@ sub  CheckVersion {
   
     return 0;
 }
-
 
 
 1;
