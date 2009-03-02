@@ -5,7 +5,7 @@ B<xcatstart> - Starts the xCAT daemon (xcatd) on AIX.
 =head1 SYNOPSIS
 
 
-B<xcatstart> [B<-h>|B<--help>] [B<-v>|B<--version>]
+B<xcatstart> [B<-h>|B<--help>] [B<-v>|B<--version>][B<-r>|B<--reload>]
 
 
 =head1 DESCRIPTION
@@ -18,6 +18,8 @@ The xcatstart command starts the xCAT daemon (xcatd) on AIX. If the daemon is al
 B<-h>          Display usage message.
 
 B<-v>          Command Version.
+
+B<-r>         On a Service Node, services will not be restarted.
 
 
 
