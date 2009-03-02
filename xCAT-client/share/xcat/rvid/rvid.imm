@@ -1,0 +1,16 @@
+#!/bin/bash
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+mkdir -p /tmp/xcat
+JAVADETECTED=`which javaws 2> /dev/null`
+if [ -z "$JAVADETECTED" ]; then
+    echo "Error: javaws not in path, unable to execute remote video"
+    exit 1
+fi
+echo $rvid_jnlp > /tmp/xcat/wvid_imm_$$.jnlp
+javaws  /tmp/xcat/wvid_imm_$$.jnlp >& /dev/null 
+if [ ! -z "$rvid_mediajnlp" ]; then
+   echo $rvid_jnlp > /tmp/xcat/wvid_imm_media_$$.jnlp
+   javaws  /tmp/xcat/wvid_imm_media_$$.jnlp >& /dev/null 
+   rm  /tmp/xcat/wvid_imm_media_$$.jnlp >& /dev/null 
+fi
+rm  /tmp/xcat/wvid_imm_$$.jnlp >& /dev/null

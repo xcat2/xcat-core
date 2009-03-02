@@ -19,6 +19,8 @@ use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
 use xCAT::Usage;
 use Thread qw(yield);
+use LWP 5.64;
+use HTTP::Request::Common;
 my $tfactor = 0;
 my $vpdhash;
 my %bmc_comm_pids;
@@ -41,6 +43,7 @@ sub handled_commands {
     rbeacon => 'nodehm:mgt',
     reventlog => 'nodehm:mgt',
     rfrurewrite => 'nodehm:mgt',
+    getrvidparms => 'nodehm:mgt'
   }
 }
 
@@ -70,10 +73,12 @@ my $currnode; #string to describe current node, presumably nodename
 my $globrc=0;
 my $userid;
 my $passwd;
+my $ipmi_bmcipaddr;
 my $timeout;
 my $port;
 my $debug;
 my $ndebug = 0;
+my @cmdargv;
 my $sock;
 my @user;
 my @pass;
@@ -459,8 +464,9 @@ sub ipmicmd {
 	$authoffset=0;
 
 	my $command = shift;
+    @cmdargv = @_;
 	my $subcommand = shift;
-   my @leftovers = @_;
+
 
 	my $rc=0;
 	my $text="";
@@ -473,11 +479,11 @@ sub ipmicmd {
 		$text = "failed to get IP for $node";
 		return(2,$text);
 	}
-	my $nodeip = inet_ntoa($packed_ip);
+    $ipmi_bmcipaddr=inet_ntoa($packed_ip);
 
 	$sock = IO::Socket::INET->new(
 		Proto => 'udp',
-		PeerHost => $nodeip,
+		PeerHost => $ipmi_bmcipaddr,
 		PeerPort => $port,
 	);
 	if(!defined($sock)) {
@@ -595,6 +601,9 @@ sub ipmicmd {
 	}
 	elsif($command eq "rbeacon") {
 		($rc,$text) = beacon($subcommand);
+	}
+	elsif($command eq "getrvidparms") {
+		($rc,@output) = getrvidparms($subcommand);
 	}
 #	elsif($command eq "info") {
 #		if($subcommand eq "sensorname") {
@@ -1256,6 +1265,51 @@ sub idpxthermprofile {
         \@returnd
     );
     return (0,"OK");
+}
+
+
+sub getrvidparms {
+    my $netfun = 0x3a;
+    my @mcinfo=getdevid();
+    unless ($mcinfo[2] == 2) { #Only implemented for IBM servers
+        return(1,"Remote video is not supported on this system");
+    }
+    #TODO: use get bmc capabilities to see if rvid is actually supported before bothering the client java app
+    my @build_id;
+    my $localerror = docmd(
+        0xe8,
+        [0x50],
+        \@build_id
+    );
+    if ($localerror) {
+        return(1,$localerror);
+    }
+    @build_id=splice @build_id,36-$authoffset;
+    unless ($build_id[1]==0x59 and $build_id[2]==0x55 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
+        return(1,"Remote video is not supported on this system");
+    }
+    #wvid should be a possiblity, time to do the http...
+    my $browser = LWP::UserAgent->new();
+    my $message = "$userid,$passwd";
+    $browser->cookie_jar({});
+    my $baseurl = "http://".$ipmi_bmcipaddr."/";
+    my $response = $browser->request(POST $baseurl."/session/create",'Content-Type'=>"text/xml",Content=>$message);
+    unless ($response->content eq "ok") {
+        return (1,"Server returned unexpected data");
+    }
+
+    $response = $browser->request(GET $baseurl."/kvm/kvm/jnlp");
+    my $jnlp = $response->content;
+    if ($jnlp =~ /This advanced option requires the purchase and installation/) {
+        return (1,"Node does not have feature key for remote video");
+    }
+    $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode kvm</argument>!;
+    my @return=("method:imm","jnlp:$jnlp");
+    if (grep /-m/,@cmdargv) {
+        $response = $browser->request(GET $baseurl."/kvm/vm/jnlp");
+        push @return,"mediajnlp:".$response->content;
+    }
+    return (0,@return);
 }
 
 
@@ -5726,9 +5780,11 @@ sub sendoutput {
         $text =~ s/^\s+//;
         $text =~ s/\s+$//;
         $output{node}->[0]->{name}->[0]=$currnode;
-        $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
         if ($rc) {
           $output{node}->[0]->{errorcode}=[$rc];
+            $output{node}->[0]->{error}->[0]=$text;
+        } else {
+            $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
         }
         #push @outhashes,\%output; #Save everything for the end, don't know how to be slicker with Storable and a pipe
         print $outfd freeze([\%output]);

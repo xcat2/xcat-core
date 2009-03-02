@@ -2076,7 +2076,7 @@ sub process_request {
   # only 1 node when changing textid to something other than '*'
   if ($command eq "rspconfig" and grep(/^textid=[^*]/,@exargs)) {
     if ( @$noderange > 1 ) {
-      $callback->({data=>["Single node required when changing textid"],
+      $callback->({error=>["Single node required when changing textid"],
                    errorcode=>1});
       return;
     }
@@ -2763,7 +2763,11 @@ sub dompa {
         $text =~ s/\s+$//;
         $output{node}->[0]->{errorcode} = $rc;
         $output{node}->[0]->{name}->[0]=$node;
-        $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+        if ($rc) {
+            $output{node}->[0]->{error}->[0]=$text;
+        } else {
+            $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+        }
         
         print $out freeze([\%output]);
         print $out "\nENDOFFREEZE6sK4ci\n";
@@ -2878,7 +2882,11 @@ sub dompa {
         $text =~ s/\s+$//;
         $output{node}->[0]->{errorcode} = $rc;
         $output{node}->[0]->{name}->[0]=$node;
-        $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+        if ($rc) {
+            $output{node}->[0]->{error}->[0]=$text;
+        } else {
+            $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+        }
       }
       print $out freeze([\%output]);
       print $out "\nENDOFFREEZE6sK4ci\n";
