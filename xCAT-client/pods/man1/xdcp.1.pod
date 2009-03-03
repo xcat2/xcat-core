@@ -19,7 +19,7 @@ nodes. The command issues a remote copy com-
 mand for each node or device specified. When files are  pulled  from  a
 target,  they  are  placed  into  the  target_path with the name of the
 remote node or device appended to  the  copied  source_file  name.  The
-/usr/bin/rcp command is the model for syntax and security.
+/usr/bin/rcp command is the model for syntax and security. If using hierarchy, then xdcp actually runs on the service node that is servicing the compute node. The file to be copied to the compute node must first be copied to the service node. 
 
 B<TARGET> B<SPECIFICATION>:
 
@@ -291,14 +291,6 @@ userdefined.
 =head1 B<Examples>
 
 =over 3
-
-=item *
-
-To  copy the /tmp/etc/hosts file from the local host to the /etc
-directory on node3, node4, node5, and to user gregb  on  node16,
-enter:
-
-B<xdcp>  I<node3-node5 gregb@node16 /tmp/etc/hosts /etc>
 
 
 =item *
