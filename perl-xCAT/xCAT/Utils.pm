@@ -2349,6 +2349,7 @@ sub get_site_Master
          $::ERROR_RC=0 no error $::ERROR_RC=1 error
 
 	 example: $sn =xCAT::Utils->get_ServiceNode(\@nodes,$service,"MN");
+	  $sn =xCAT::Utils->get_ServiceNode(\@nodes,$service,"Node");
 
 =cut
 
@@ -2359,6 +2360,7 @@ sub get_ServiceNode
     my @node_list = @$node;
     my $cmd;
     my %snhash;
+    my $nodehash;
     my $sn;
     my $nodehmtab;
     my $noderestab;
@@ -2402,19 +2404,24 @@ sub get_ServiceNode
 
     if ($service eq "xcat")
     {    # find all service nodes for the nodes in the list
+
+        $nodehash = $noderestab->getNodesAttribs(\@node_list, [$snattribute]);
         foreach my $node (@node_list)
         {
-            $sn = $noderestab->getNodeAttribs($node, [$snattribute]);
-            if ($sn and $sn->{$snattribute})
-            {    # if service node defined
-                my $key = $sn->{$snattribute};
-                push @{$snhash{$key}}, $node;
-            }
-            else
-            {    # use site.master
-                push @{$snhash{$master}}, $node;
+            foreach my $rec (@{$nodehash->{$node}})
+            {
+                if ($rec and $rec->{$snattribute})
+                {
+                    my $key = $rec->{$snattribute};
+                    push @{$snhash{$key}}, $node;
+                }
+                else
+                {    # use site.master
+                    push @{$snhash{$master}}, $node;
+                }
             }
         }
+
         $noderestab->close;
         return \%snhash;
 
@@ -2426,81 +2433,18 @@ sub get_ServiceNode
             || ($service eq "nfsserver") || ($service eq "monserver")
           )
         {
+            $nodehash =
+              $noderestab->getNodesAttribs(\@node_list,
+                                           [$service, $snattribute]);
             foreach my $node (@node_list)
             {
-                $sn =
-                  $noderestab->getNodeAttribs($node, [$service, $snattribute]);
-                if ($sn and $sn->{$service})
+                foreach my $rec (@{$nodehash->{$node}})
                 {
-
-                    # see if both  MN and Node address in attribute
-                    my ($msattr, $nodeattr) = split ',', $sn->{$service};
-                    my $key = $msattr;
-                    if ($request eq "Node")
-                    {
-                        if ($nodeattr)    # override with Node, if it exists
-                        {
-                            $key = $nodeattr;
-                        }
-                    }
-                    push @{$snhash{$key}}, $node;
-                }
-                else
-                {
-                    if ($sn and $sn->{$snattribute})    # if it exists
-                    {
-                        my $key = $sn->{$snattribute};
-                        push @{$snhash{$key}}, $node;
-                    }
-                    else
-                    {                                   # use site.master
-                        push @{$snhash{$master}}, $node;
-                    }
-                }
-            }
-            $noderestab->close;
-            return \%snhash;
-
-        }
-        else
-        {
-            if ($service eq "conserver")
-            {
-
-                $nodehmtab = xCAT::Table->new('nodehm');
-                unless ($nodehmtab)    # no nodehm table default to site->master
-                {
-                    xCAT::MsgUtils->message('I',
-                                            "Unable to open nodehm table.\n");
-
-                    # use service node
-                    foreach my $node (@node_list)
-                    {
-                        $sn =
-                          $noderestab->getNodeAttribs($node, [$snattribute]);
-                        if ($sn)
-                        {
-                            my $key = $sn->{$snattribute};
-                            push @{$snhash{$key}}, $node;
-                        }
-                        else
-                        {    # no service node use master
-                            push @{$snhash{$master}}, $node;
-                        }
-                    }
-                    $nodehmtab->close;
-                    return \%snhash;
-                }
-
-                # can read the nodehm table
-                foreach my $node (@node_list)
-                {
-                    $sn = $nodehmtab->getNodeAttribs($node, ['conserver']);
-                    if ($sn and $sn->{'conserver'})
+                    if ($rec and $rec->{$service})
                     {
 
                         # see if both  MN and Node address in attribute
-                        my ($msattr, $nodeattr) = split ',', $sn->{'conserver'};
+                        my ($msattr, $nodeattr) = split ',', $rec->{$service};
                         my $key = $msattr;
                         if ($request eq "Node")
                         {
@@ -2512,17 +2456,96 @@ sub get_ServiceNode
                         push @{$snhash{$key}}, $node;
                     }
                     else
-                    {                         # use service node
-                        $sn =
-                          $noderestab->getNodeAttribs($node, [$snattribute]);
-                        if ($sn and $sn->{$snattribute})
+                    {
+                        if ($rec and $rec->{$snattribute})    # if it exists
                         {
-                            my $key = $sn->{$snattribute};
+                            my $key = $rec->{$snattribute};
                             push @{$snhash{$key}}, $node;
                         }
                         else
-                        {                     # no service node use master
+                        {                                     # use site.master
                             push @{$snhash{$master}}, $node;
+                        }
+                    }
+                }
+            }
+
+            $noderestab->close;
+            return \%snhash;
+
+        }
+        else
+        {
+            if ($service eq "conserver")
+            {
+
+                # read the nodehm table
+                $nodehmtab = xCAT::Table->new('nodehm');
+                unless ($nodehmtab)    # no nodehm table
+                {
+                    xCAT::MsgUtils->message('I',
+                                            "Unable to open nodehm table.\n");
+
+                    # use servicenode
+                    $nodehash =
+                      $noderestab->getNodesAttribs(\@node_list, [$snattribute]);
+                    foreach my $node (@node_list)
+                    {
+                        foreach my $rec (@{$nodehash->{$node}})
+                        {
+                            if ($rec and $rec->{$snattribute})
+                            {
+                                my $key = $rec->{$snattribute};
+                                push @{$snhash{$key}}, $node;
+                            }
+                            else
+                            {    # use site.master
+                                push @{$snhash{$master}}, $node;
+                            }
+                        }
+                    }
+                    $noderestab->close;
+                    return \%snhash;
+                }
+
+                # can read the nodehm table
+                $nodehash =
+                  $nodehmtab->getNodesAttribs(\@node_list, ['conserver']);
+                foreach my $node (@node_list)
+                {
+                    foreach my $rec (@{$nodehash->{$node}})
+                    {
+                        if ($rec and $rec->{'conserver'})
+                        {
+
+                            # see if both  MN and Node address in attribute
+                            my ($msattr, $nodeattr) = split ',',
+                              $rec->{'conserver'};
+                            my $key = $msattr;
+                            if ($request eq "Node")
+                            {
+                                if ($nodeattr
+                                  )    # override with Node, if it exists
+                                {
+                                    $key = $nodeattr;
+                                }
+                            }
+                            push @{$snhash{$key}}, $node;
+                        }
+                        else
+                        {              # use service node for this node
+                            $sn =
+                              $noderestab->getNodeAttribs($node,
+                                                          [$snattribute]);
+                            if ($sn and $sn->{$snattribute})
+                            {
+                                my $key = $sn->{$snattribute};
+                                push @{$snhash{$key}}, $node;
+                            }
+                            else
+                            {          # no service node use master
+                                push @{$snhash{$master}}, $node;
+                            }
                         }
                     }
                 }
@@ -3349,6 +3372,7 @@ sub startService
     }
     return $rc;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3   CheckVersion
@@ -3364,30 +3388,32 @@ sub startService
 =cut
 
 #-------------------------------------------------------------------------------
-sub  CheckVersion {
-    my $ver_a=shift;
-    if ($ver_a =~ /xCAT::Utils/) {
-	$ver_a=shift;
+sub CheckVersion
+{
+    my $ver_a = shift;
+    if ($ver_a =~ /xCAT::Utils/)
+    {
+        $ver_a = shift;
     }
-    my $ver_b=shift;
+    my $ver_b = shift;
 
-    my @a=split(/\./,$ver_a);
-    my @b=split(/\./,$ver_b);
-    my $len_a=@a;
-    my $len_b=@b;
-       
-    my $index=0;
-    my $max_index=($len_a>$len_b) ? $len_a : $len_b;
+    my @a = split(/\./, $ver_a);
+    my @b = split(/\./, $ver_b);
+    my $len_a = @a;
+    my $len_b = @b;
 
-    for ($index=0; $index <= $max_index; $index++) {
- 	my $val_a=($len_a < $index) ? 0 : $a[$index];
-	my $val_b=($len_b < $index) ? 0 : $b[$index];
-	if ($val_a > $val_b) { return 1;}
-	if ($val_a < $val_b) { return -1;}
+    my $index     = 0;
+    my $max_index = ($len_a > $len_b) ? $len_a : $len_b;
+
+    for ($index = 0 ; $index <= $max_index ; $index++)
+    {
+        my $val_a = ($len_a < $index) ? 0 : $a[$index];
+        my $val_b = ($len_b < $index) ? 0 : $b[$index];
+        if ($val_a > $val_b) { return 1; }
+        if ($val_a < $val_b) { return -1; }
     }
-  
+
     return 0;
 }
-
 
 1;
