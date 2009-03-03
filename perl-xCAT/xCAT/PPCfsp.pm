@@ -557,8 +557,8 @@ sub entries {
     # Parse log entries 
     ##################################
     foreach ( @entries ) {
-        if ( /tabindex=\d+><\/td><td>(.*)<\/td><td / ) {
-            my $values = $1;
+        if ( /tabindex=(\d+)><\/td><td>(.*)<\/td><\/tr>/ ){
+            my $values = $2;
             $values =~ s/<\/td><td>/  /g;
             $result.= "$values\n";
 
