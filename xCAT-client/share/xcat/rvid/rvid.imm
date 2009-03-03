@@ -9,7 +9,7 @@ fi
 echo $rvid_jnlp > /tmp/xcat/wvid_imm_$$.jnlp
 javaws  /tmp/xcat/wvid_imm_$$.jnlp >& /dev/null 
 if [ ! -z "$rvid_mediajnlp" ]; then
-   echo $rvid_jnlp > /tmp/xcat/wvid_imm_media_$$.jnlp
+   echo $rvid_mediajnlp > /tmp/xcat/wvid_imm_media_$$.jnlp
    javaws  /tmp/xcat/wvid_imm_media_$$.jnlp >& /dev/null 
    rm  /tmp/xcat/wvid_imm_media_$$.jnlp >& /dev/null 
 fi
