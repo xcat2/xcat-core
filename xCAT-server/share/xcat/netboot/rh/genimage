@@ -312,6 +312,7 @@ for i in `cat /proc/cmdline`; do
       fi
    fi
 done
+echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
 if [ "\$NFS" = "1" ]; then
   echo Setting up nfs with ram overlay.
   mknod /dev/loop0 b 7 0
