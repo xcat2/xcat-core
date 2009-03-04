@@ -13,8 +13,8 @@ BASE_PBS_PREFIX=/opt/torque
 
 ulimit -n 20000
 ulimit -i 20000
-chmod 777 /var/spool/pbs/spool /var/spool/pbs/undelivered
-chmod o+t /var/spool/pbs/spool /var/spool/pbs/undelivered
+chmod 777 /var/spool/torque/spool /var/spool/torque/undelivered
+chmod o+t /var/spool/torque/spool /var/spool/torque/undelivered
 
 ARCH=$(uname -m)
 AARCH="/$ARCH"
