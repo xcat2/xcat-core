@@ -42,28 +42,34 @@ fi
 
 if [ "$LOCALNFS" = "local" ]
 then
-	if [ ! -d "$TPRE/$TARCH/bin" ]
+	if [ -d "$TPRE/$TARCH"]
 	then
-		echo "${MYNAME}: cannot read $TPRE/$TARCH/bin" >&2
+		RTPRE="$TPRE/$TARCH"
+	else
+		RTPRE="$TPRE"
+	fi
+	if [ ! -d "$RTPRE/bin" ]
+	then
+		echo "${MYNAME}: cannot read $RTPRE/bin" >&2
 		exit 1
 	fi
-	if [ ! -d "$TPRE/$TARCH/lib" ]
+	if [ ! -d "$RTPRE/lib" ]
 	then
-		echo "${MYNAME}: cannot read $TPRE/$TARCH/lib" >&2
+		echo "${MYNAME}: cannot read $RTPRE/lib" >&2
 		exit 1
 	fi
-	if [ ! -d "$TPRE/$TARCH/sbin" ]
+	if [ ! -d "$RTPRE/sbin" ]
 	then
-		echo "${MYNAME}: cannot read $TPRE/$TARCH/sbin" >&2
+		echo "${MYNAME}: cannot read $RTPRE/sbin" >&2
 		exit 1
 	fi
 
-	find $TPRE/$TARCH -print | cpio -v -dump $ROOTDIR
+	find $RTPRE -print | cpio -v -dump $ROOTDIR
 
-	echo "$TPRE/$TARCH/lib" >$ROOTDIR/etc/ld.so.conf.d/torque.conf
+	echo "$RTPRE/lib" >$ROOTDIR/etc/ld.so.conf.d/torque.conf
 	chroot $ROOTDIR /sbin/ldconfig
 else
-	echo "$TPRE/$TARCH/lib" >$ROOTDIR/etc/ld.so.conf.d/torque.conf
+	echo "$RTPRE/lib" >$ROOTDIR/etc/ld.so.conf.d/torque.conf
 fi
 
 cd $ROOTDIR
