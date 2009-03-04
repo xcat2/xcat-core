@@ -960,6 +960,8 @@ sub dispatch_request {
          }
      }
      my $xcatdest;
+     my $numdests=scalar(@xcatdests);
+     my $request_satisfied=0;
      foreach $xcatdest (@xcatdests) {
         if ($xcatdest and thishostisnot($xcatdest)) {
             $ENV{XCATHOST} =  ($xcatdest =~ /:/ ? $xcatdest : $xcatdest.":3001" );
@@ -970,10 +972,15 @@ sub dispatch_request {
             };
             if ($@) {
             my $errstr=$@;
-	            dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server ($errstr)"],errorcode=>[1]}); 
-	            xCAT::MsgUtils->message("S","Error dispatching request: ".$errstr);
+	            if ($numdests == 1) {
+                    dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server ($errstr)"],errorcode=>[1]}); 
+	                xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.": ".$errstr);
+                } else {
+	                xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.", trying other service nodes: ".$errstr);
+                }
                 next;
 	        } else {
+                $request_satisfied=1;
                 last;
             }
          } else {
@@ -983,6 +990,11 @@ sub dispatch_request {
             last;
         }
      }
+     if ($numdests > 1 and not $request_satisfied) {
+	    xCAT::MsgUtils->message("S","Error dispatching a request to all possible service nodes for request");
+        dispatch_callback({error=>["Failed to dispatch command to any of the following service nodes: ".join(",",@xcatdests)],errorcode=>[1]}); 
+     }
+
      xexit;
   }
  while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset) }
