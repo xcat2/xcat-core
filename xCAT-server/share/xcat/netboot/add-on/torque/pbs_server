@@ -21,7 +21,7 @@ else
 	PBS_PREFIX=$BASE_PBS_PREFIX
 fi
 
-PBS_HOME=/var/spool/pbs
+PBS_HOME=/var/spool/torque
 
 # let see how we were called
 case "$1" in
