@@ -973,7 +973,9 @@ sub dispatch_request {
 	            dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server ($errstr)"],errorcode=>[1]}); 
 	            xCAT::MsgUtils->message("S","Error dispatching request: ".$errstr);
                 next;
-	        }
+	        } else {
+                last;
+            }
          } else {
             $$progname.=": locally executing";
             $SIG{CHLD}='DEFAULT';
