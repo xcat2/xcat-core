@@ -42,7 +42,7 @@ fi
 
 if [ "$LOCALNFS" = "local" ]
 then
-	if [ -d "$TPRE/$TARCH"]
+	if [ -d "$TPRE/$TARCH" ]
 	then
 		RTPRE="$TPRE/$TARCH"
 	else
@@ -73,9 +73,9 @@ else
 fi
 
 cd $ROOTDIR
-mkdir -p var/spool/pbs
-chmod 755 var var/spool var/spool/pbs
-cd var/spool/pbs
+mkdir -p var/spool/torque
+chmod 755 var var/spool var/spool/torque
+cd var/spool/torque
 mkdir -p aux checkpoint mom_logs mom_priv spool undelivered
 chmod 777 spool undelivered
 chmod o+t spool undelivered
