@@ -16,7 +16,7 @@ sub parse_args {
     my $command = $request->{command};
     my $args    = $request->{arg};
     my %opt     = ();
-    my @rvitals = qw(temp voltage power state all);
+    my @rvitals = qw(temp voltage power lcds state all);
 
     #############################################
     # Responds with usage statement
@@ -128,6 +128,37 @@ sub enumerate_temp {
     return( [SUCCESS,\%outhash] );
 }
 
+##########################################################################
+# Returns refcode
+##########################################################################
+sub enumerate_lcds {
+
+    my $exp = shift;
+    my $d = shift;
+    my $mtms = @$d[2];
+    my $Rc = undef;
+    my $value = undef;
+    my $nodetype = @$d[4];
+    my $lpar_id = @$d[0];
+    my @refcode = ();
+    
+    my $values = xCAT::PPCcli::lsrefcode($exp, $nodetype, $mtms, $lpar_id);
+    foreach $value (@$values){
+        #Return error
+        $Rc = shift @$value;
+        if ($Rc != SUCCESS){
+            push @refcode, ( [$Rc, @$value[0]] );
+        } else {
+            if( @$value[0] =~ /refcode=(\w+)/){
+                  push @refcode, ( [$Rc, $1] );
+	    } else {
+                  push @refcode, ( [$Rc, @$value[0]]);
+            }
+        }
+    }
+
+    return \@refcode;
+}
 
 
 ##########################################################################
@@ -292,7 +323,43 @@ sub power {
 sub state {
     return( xCAT::PPCpower::state(@_,"System State: "));
 }
- 
+###########################################################################
+# Returns system LCD status (LCD1, LCD2)
+##########################################################################
+sub lcds {
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $hwtype  = @$exp[2];
+    my @result  = ();
+    my $text = "Current LCD:";
+    my $prefix  = "Current LCD%d: %s";
+    my $rcode = undef;
+    my $refcodes = undef;
+    my $Rc = undef;
+    my $num = undef;
+    my $value = undef;
+
+    while (my ($mtms,$h) = each(%$hash) ) {
+        while(my ($name, $d) = each(%$h) ){
+            #Support HMC only
+            if($hwtype ne 'hmc'){
+                push @result, [$name, "$text Not available(NO HMC)", 1];
+                next;
+            }
+            $refcodes = enumerate_lcds($exp, $d);
+            $num = 1;
+            foreach $rcode (@$refcodes){
+                $Rc = shift(@$rcode);
+                $value = sprintf($prefix, $num, @$rcode[0]);
+                push @result, [$name, $value, $Rc];
+                $num = $num + 1;
+	    }
+        }
+    }
+    return \@result;
+}
+
 
 ##########################################################################
 # Returns all vitals
@@ -303,7 +370,8 @@ sub all {
         @{temp(@_)}, 
         @{voltage(@_)}, 
         @{state(@_)},
-        @{power(@_)} 
+        @{power(@_)},
+	@{lcds(@_)}, 
     ); 
     return( \@values );
 }

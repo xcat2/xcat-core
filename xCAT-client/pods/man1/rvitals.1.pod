@@ -4,7 +4,7 @@ B<rvitals> - remote hardware vitals
 
 =head1 B<Synopsis>
 
-B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<summary>|B<all>}
+B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<lcds>|B<summary>|B<all>}
 
 B<rvitals> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -59,6 +59,10 @@ unless the Service Processor flash gets updated.
 
 Retrieves the system state.
 
+=item B<lcds>
+
+Retrieves LCDs status.
+
 =item B<all>
 
 All of the above.
@@ -95,6 +99,7 @@ B<rvitals> I<node5> I<all>
  node5: Fan 5 Percent of max:   100%
  node5: Fan 6 Percent of max:   100%
  node5: Current Power Status On
+ node5: Current LCD1: SuSE Linux
  node5: Power On Seconds  11855915
  node5: Number of Reboots   930
  node5: System State Booting OS or in unsupported OS

@@ -20,16 +20,18 @@ my %usage = (
 "Usage: rnetboot <noderange> [-f][-V|--verbose]
        rnetboot [-h|--help|-v|--version]",
     "rpower" => 
-"Usage: rpower <noderange> [--nodeps][on|off|reset|stat|state|boot|cycle|softoff] [-V|--verbose]
+"Usage: rpower <noderange> [--nodeps][on|onstandby|off|reset|stat|state|boot|cycle|softoff] [-V|--verbose]
        rpower [-h|--help|-v|--version]
      PPC (with IVM or HMC) specific:
        rpower <noderange> [--nodeps] [of] [-V|--verbose]
+     PPC (HMC) specific:
+       rpower <noderange> [onstandby] [-V|--verbose]
 ",
     "rbeacon" => 
 "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
        rbeacon [-h|--help|-v|--version]",
     "rvitals" => 
-"Usage: rvitals <noderange> [all|temp|wattage|voltage|fanspeed|power|leds|state] [-V|--verbose]
+"Usage: rvitals <noderange> [all|temp|wattage|voltage|fanspeed|power|leds|lcds|state] [-V|--verbose]
        rvitals [-h|--help|-v|--version]",
     "reventlog" => 
 "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>] [-V|--verbose]

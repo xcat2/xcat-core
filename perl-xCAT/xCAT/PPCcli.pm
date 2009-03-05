@@ -51,11 +51,21 @@ my %powercmd = (
   sys  => { 
       reset =>"chsysstate -r %s -m %s -o off --immed --restart",
       on    =>"chsysstate -r %s -m %s -o on",
+      onstandby =>"chsysstate -r %s -m %s -o onstandby",
       off   =>"chsysstate -r %s -m %s -o off",
       boot  =>"undetermined" }
 );
 
-
+##############################################
+# lsrefcode supported formats
+##############################################
+my %lsrefcode = (
+  fsp => {
+      pri =>"lsrefcode -r sys -m %s -s p",
+      sec =>"lsrefcode -r sys -m %s -s s",
+  },
+  lpar   =>"lsrefcode -r lpar -m %s --filter lpar_ids=%s",
+);
 
 ##########################################################################
 # Logon to remote server
@@ -288,6 +298,39 @@ sub chsyscfg {
     return( $result );
 }
 
+##########################################################################
+# List reference codes for resources (lpars, managed system, etc)
+##########################################################################
+sub lsrefcode {
+
+    my $exp = shift;
+    my $res = shift;
+    my $d1  = shift;
+    my $d2  = shift;
+    my $cmd = undef;
+    my @cmds = undef;
+    my $result = undef;
+    my @values;
+
+    ###################################
+    # Select command  
+    ###################################
+    if($res eq 'fsp'){
+        $cmds[0] = sprintf($lsrefcode{$res}{pri}, $d1);
+        $cmds[1] = sprintf($lsrefcode{$res}{sec}, $d1);
+    } elsif($res eq 'lpar'){
+        $cmds[0] = sprintf($lsrefcode{$res}, $d1, $d2);
+    }
+
+    ###################################
+    # Send command
+    ###################################
+    foreach $cmd (@cmds){
+        $result = send_cmd( $exp, $cmd );
+        push @values, $result;
+    }
+    return \@values;
+}
 
 ##########################################################################
 # Creates a logical partition on the managed system 
@@ -906,7 +949,6 @@ sub send_cmd {
     ##########################################
     $ssh->clear_accum();
     $ssh->send( "$cmd; echo Rc=\$\?\r" );
-
     ##########################################
     # The first element is the number of the
     # pattern or string that matched, the

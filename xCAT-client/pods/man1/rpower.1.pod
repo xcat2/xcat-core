@@ -4,13 +4,17 @@ B<rpower> - remote power control of nodes
 
 =head1 SYNOPSIS
 
-B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>|B<softoff>}
+B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>|B<softoff>}
 
 B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head2 PPC (with IVM or HMC) specific:
 
 B<rpower> I<noderange> [B<--nodeps>] {B<of>}
+
+=head2 PPC (with HMC) specific:
+
+B<rpower> I<noderange> [B<onstandby>]
 
 =head1 DESCRIPTION
 
@@ -23,6 +27,10 @@ B<rpower> controls the power for a single or range of nodes,  via the out-of-ban
 =item B<on>
 
 Turn power on.
+
+=item B<onstandby>
+
+Turn power on to standby state
 
 =item B<softoff>
 
