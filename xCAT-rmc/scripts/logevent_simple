@@ -1,0 +1,39 @@
+#!/usr/bin/env perl
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
+open(FILE, ">>/var/log/logevent_simple.log") or dir ("cannot open the file\n");
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+printf FILE "\n-----------%2d-%02d-%04d %02d:%02d:%02d-----------\n", $mon+1,$mday,$year+1900,$hour,$min,$sec;
+
+my $respname=$ENV{ERRM_ER_NAME};
+my $cond_name=$ENV{ERRM_COND_NAME};
+my $batch=0;
+if (exists($ENV{ERRM_COND_BATCH})) { $batch=$ENV{ERRM_COND_BATCH}; }
+if ($batch) {
+    if ($ENV{ERRM_COND_BATCH_NUM} > 0) {
+       #check if event detail file exist
+       if (!exists($ENV{ERRM_EVENT_DETAIL_FILE})){
+           xCAT::MsgUtils->message('S', "logeventtoxcat: no event detail file specified in the response $respname for condition $cond_name.\n");
+           exit (1);
+       }
+
+       my $filename=$ENV{ERRM_EVENT_DETAIL_FILE};
+      if (! -f $filename) {
+          xCAT::MsgUtils->message('S', "logeventtoxcat: cannot find event detail file $filename in response $respname for condition $cond_name.\n");
+          exit (1);
+       }
+       open(FILE1, "<$filename");
+       my $line1=readline(FILE1);
+       my @aTemp=split(/=/, $line1);
+       my $num_events=$aTemp[1];
+       close(FILE1);
+       print FILE "Total events=$num_events\n\n";
+    }
+} 																	      
+close(FILE);
+return 0;
+    

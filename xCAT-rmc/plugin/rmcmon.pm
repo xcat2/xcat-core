@@ -613,25 +613,52 @@ sub startNodeStatusMon {
     reportError($retmsg, $callback);
   }
 
-  
-  if (!$isSV) {
-    #start monitoring the status of mn's immediate children
-    my $result=`startcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
-    if (($?) && ($result !~ /2618-244|2618-008/)) { #started
-      $retcode=$?;
-      $retmsg="Error start node status monitoring: $result";
-      reportError($retmsg, $callback);
-    }
-
-    #start monitoring the status of mn's grandchildren via their service nodes
-    $result=`startcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
-    if (($?) && ($result !~ /2618-244|2618-008/)) { #started
-      $retcode=$?;
-      $retmsg="Error start node status monitoring: $result";
-      reportError($retmsg, $callback);
-    }
+ #get rsct version
+  my $result=`/usr/sbin/rsct/install/bin/ctversion`;
+  my $rsct_ver="0.0.0";
+  if (!$?) {
+      chomp($result);
+      my @tempa=split(/ /, $result); 
+      if (@tempa>1) {
+          $rsct_ver=$tempa[1]; 
+      }
   }
  
+  #get setting from the monsetting table
+  my $batch=0;
+  if (xCAT::Utils->CheckVersion($rsct_ver, "2.3.5.0") >= 0) {
+    my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("rmcmon");
+
+    my $batch_string=$settings{'nodeusebatch'};
+    if ($batch_string  =~ /1|Yes|yes|YES|Y|y/ ) { $batch=1;}   
+  }
+
+  if ($batch) {
+      my $result=`startcondresp NodeReachability_Batch UpdatexCATNodeStatus_Batch 2>&1`;
+      if (($?) && ($result !~ /2618-244|2618-008/)) { #started
+	  $retcode=$?;
+	  $retmsg="Error start node status monitoring: $result";
+	  reportError($retmsg, $callback);
+      }
+  } else {
+    if (!$isSV) {
+	#start monitoring the status of mn's immediate children
+	my $result=`startcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
+	if (($?) && ($result !~ /2618-244|2618-008/)) { #started
+	    $retcode=$?;
+	    $retmsg="Error start node status monitoring: $result";
+	    reportError($retmsg, $callback);
+	}
+	
+	#start monitoring the status of mn's grandchildren via their service nodes
+	$result=`startcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
+	if (($?) && ($result !~ /2618-244|2618-008/)) { #started
+	    $retcode=$?;
+	    $retmsg="Error start node status monitoring: $result";
+	    reportError($retmsg, $callback);
+	}
+    }
+  }
   return ($retcode, $retmsg);
 }
 
@@ -740,24 +767,54 @@ sub stopNodeStatusMon {
   my $retmsg="";
 
   my $isSV=xCAT::Utils->isServiceNode();
-  if ($isSV) { return  ($retcode, $retmsg); }
   my $localhostname=hostname();
  
-  #stop monitoring the status of mn's immediate children
-  my $result=`stopcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
-  if (($?) && ($result !~ /2618-264/)) { #stoped
-    $retcode=$?;
-    $retmsg="Error stop node status monitoring: $result";
-    reportError($retmsg, $callback);
+ #get rsct version
+  my $result=`/usr/sbin/rsct/install/bin/ctversion`;
+  my $rsct_ver="0.0.0";
+  if (!$?) {
+      chomp($result);
+      my @tempa=split(/ /, $result); 
+      if (@tempa>1) {
+          $rsct_ver=$tempa[1]; 
+      }
+  }
+ 
+  #get setting from the monsetting table
+  my $batch=0;
+  if (xCAT::Utils->CheckVersion($rsct_ver, "2.3.5.0") >= 0) {
+    my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("rmcmon");
+
+    my $batch_string=$settings{'nodeusebatch'};
+    if ($batch_string  =~ /1|Yes|yes|YES|Y|y/ ) { $batch=1;}   
+  }
+  if ($batch) {
+      my $result=`stopcondresp NodeReachability_Batch UpdatexCATNodeStatus_Batch 2>&1`;
+      if (($?) && ($result !~ /2618-264/)) { #stoped
+	  $retcode=$?;
+	  $retmsg="Error stop node status monitoring: $result";
+	  reportError($retmsg, $callback);
+      }
+      
+  } else {
+      if ($isSV) { return  ($retcode, $retmsg); }
+
+      #stop monitoring the status of mn's immediate children
+      my $result=`stopcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
+      if (($?) && ($result !~ /2618-264/)) { #stoped
+	  $retcode=$?;
+	  $retmsg="Error stop node status monitoring: $result";
+	  reportError($retmsg, $callback);
+      }
+      #stop monitoring the status of mn's grandchildren via their service nodes
+      $result=`stopcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
+      if (($?) && ($result !~ /2618-264/)) { #stoped
+	  $retcode=$?;
+	  $retmsg="Error stop node status monitoring: $result";
+	  reportError($retmsg, $callback);
+      }
   }
 
-  #stop monitoring the status of mn's grandchildren via their service nodes
-  $result=`stopcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
-  if (($?) && ($result !~ /2618-264/)) { #stoped
-    $retcode=$?;
-    $retmsg="Error stop node status monitoring: $result";
-    reportError($retmsg, $callback);
-   }
   return ($retcode, $retmsg);
 }
 
@@ -1277,7 +1334,9 @@ sub getDescription {
     monitoring domain for RMC during node deployment time. 
   Settings:
     rfanout -- indicating the fanout number for configuring or deconfiguring 
-        remote nodes.";
+        remote nodes.
+    nodeusebatch -- use RMC event batching function when doing node status monitoring.
+";
 }
 
 #--------------------------------------------------------------------------------
