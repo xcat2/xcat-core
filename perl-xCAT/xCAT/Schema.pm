@@ -529,6 +529,7 @@ site => {
    "  iscsidir (the path to put the iscsi disks in on the mgmt node)\n".
    "  xcatservers (Deprecated!  Will be replaced by the servicenode table.  List service nodes)\n".
    "  svloglocal (syslog on the service node does not get forwarded to the mgmt node - default is 0)\n".
+   "  consoleondemand (when set to 'yes', it connects and creates the console output only when the user opens the console)\n".
    "  dhcpinterfaces (network interfaces DHCP should listen on.  If same for all nodes, use simple comma-separated list of NICs.  Also support: mn|eth1,eth2;service|bond0;compute|eth0)\n".
    "  forwarders (DNS servers at your site that can provide names outside of the cluster)\n".
    "  genpasswords (automatically generate random passwords for BMCs when configuring them)\n".
