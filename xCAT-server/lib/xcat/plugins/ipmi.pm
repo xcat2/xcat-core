@@ -94,6 +94,7 @@ use xCAT::data::ibmleds;
 use xCAT::data::ipmigenericevents;
 use xCAT::data::ipmisensorevents;
 my $cache_version = 2;
+my $frudex; #iterator for initfru to use
 
 my $status_noop="XXXno-opXXX";
 
@@ -334,9 +335,9 @@ sub decode_fru_locator { #Handle fru locator records
     my @locator = @_;
 	my $sdr = SDR->new();
 	$sdr->rec_type(0x11);
-    $sdr->sensor_owner_id("FRU".$locator[6]);
-    $sdr->sensor_owner_lun($locator[7]);
-    $sdr->sensor_number($locator[5]);
+    $sdr->sensor_owner_id("FRU");
+    $sdr->sensor_owner_lun("FRU");
+    $sdr->sensor_number($locator[7]);
     unless ($locator[8] & 0x80 and ($locator[8] & 0x1f) == 0 and $locator[9] == 0) {
         #only logical devices at lun 0 supported for now
         return undef;
@@ -346,7 +347,7 @@ sub decode_fru_locator { #Handle fru locator records
     }
     my $idlen = $locator[16] & 0x3f;
     unless ($idlen > 1) { return undef; }
-    $sdr->id_string(pack("C*",@locator[17..17+$idlen]));
+    $sdr->id_string(pack("C*",@locator[17..17+$idlen-1]));
     $sdr->fru_type($locator[11]);
     $sdr->fru_subtype($locator[12]);
 
@@ -1627,7 +1628,7 @@ sub inv {
         $subcommand = "all";
     }
 	if($subcommand eq "all") {
-		@types = qw(model serial deviceid mprom guid misc asset);
+		@types = qw(model serial deviceid mprom guid misc hw asset);
 	}
 	elsif($subcommand eq "asset") {
 		@types = qw(asset);
@@ -1657,7 +1658,8 @@ sub inv {
 		@types = qw(guid);
 	}
 	else {
-		return(1,"unsupported BMC inv argument $subcommand");
+        @types = ($subcommand);
+		#return(1,"unsupported BMC inv argument $subcommand");
 	}
 
 	my $otext;
@@ -1665,11 +1667,15 @@ sub inv {
 
 	foreach $key (sort keys %fru_hash) {
 		my $fru = $fru_hash{$key};
-		if(grep {$_ eq $fru->rec_type} @types) {
-			$otext = sprintf($format,$fru_hash{$key}->desc . ":",$fru_hash{$key}->value);
-			#print $otext;
-			push(@output,$otext);
-		}
+        my $type;
+        foreach $type (split /,/,$fru->rec_type) {
+    		if(grep {$_ eq $type} @types) {
+    			$otext = sprintf($format,$fru_hash{$key}->desc . ":",$fru_hash{$key}->value);
+    			#print $otext;
+    			push(@output,$otext);
+                last;
+            }
+        }
 	}
 
 	return($rc,@output);
@@ -1871,6 +1877,58 @@ return(2,"");
 	return(1,"No OEM FRU Support");
 }
 
+sub decode_spd {
+    print "SPD: ".phex(\@_);
+}
+sub add_textual_fru {
+    my $parsedfru = shift;
+    my $description = shift;
+    my $category = shift;
+    my $subcategory = shift;
+    my $types = shift;
+
+    if ($parsedfru->{$category} and $parsedfru->{$category}->{$subcategory}) {
+        my $fru;
+        my @subfrus;
+
+        if (ref $parsedfru->{$category}->{$subcategory} eq 'ARRAY') {
+            @subfrus = @{$parsedfru->{$category}->{$subcategory}};
+        } else {
+            @subfrus = ($parsedfru->{$category}->{$subcategory})
+        }
+        foreach (@subfrus) {
+            $fru = FRU->new();
+            $fru->rec_type($types);
+            $fru->desc($description);
+            if ($subcategory eq 'builddate') {
+                $fru->value($_);
+            } else {
+                if ($_->{encoding} == 3) {
+                    $fru->value($_->{value});
+                } else {
+                    $fru->value(phex($_->{value}));
+                }
+                    
+            }
+            $fru_hash{$frudex++} = $fru;
+        }
+    }
+}
+sub add_textual_frus {
+    my $parsedfru = shift;
+    my $desc = shift;
+    my $categorydesc = shift;
+    my $category = shift;
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Part Number",$category,"partnumber","hw");
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer","hw");
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber","hw");
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Name",$category,"name","hw");
+    if ($category eq 'board') {
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Date",$category,"builddate","hw");
+    }
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Additional Info",$category,"extra","hw");
+}
+
 sub initfru {
 	my $netfun = 0x28;
 	my @cmd;
@@ -2015,7 +2073,7 @@ sub initfru {
 			return(0,"");
 		}
 	}
-    my $frudex=0;
+    $frudex=0;
     if (defined $fruhash->{product}->{manufacturer}->{value}) {
 	    $fru = FRU->new();
     	$fru->rec_type("misc");
@@ -2206,13 +2264,41 @@ sub initfru {
     }
     #Ok, done with fru 0, on to the other fru devices from SDR
     my $key;
+    my $subrc;
     foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
         my $sdr = $sdr_hash{$key};
         unless ($sdr->rec_type == 0x11 and $sdr->fru_type == 0x10) { #skip non fru sdr stuff and frus I don't understand
             next;
         }
         
-        if ($sdr->fru_type == 0x1) { #
+        if ($sdr->fru_type == 0x10) { #supported
+            if ($sdr->fru_subtype == 0x1) { #DIMM
+                $fru = FRU->new();
+                $fru->rec_type("hw,dimm");
+                $fru->desc($sdr->id_string);
+	            ($subrc,@bytes) = frudump(0,get_frusize($sdr->sensor_number),16,$sdr->sensor_number);
+                if ($subrc) {
+                    print $sdr->id_string.":".$bytes[0]."\n";
+                    $fru->value($bytes[0]);
+                    $fru_hash{$frudex++} = $fru;
+                    next;
+                }
+                decode_spd(@bytes);
+            } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
+	            ($subrc,@bytes) = frudump(0,get_frusize($sdr->sensor_number),16,$sdr->sensor_number);
+                if ($subrc) {
+                    $fru = FRU->new();
+                    $fru->value($bytes[0]);
+                    $fru->rec_type("hw");
+                    $fru->desc($sdr->id_string);
+                    $fru_hash{$frudex++} = $fru;
+                    next;
+                }
+                my $parsedfru=parsefru(\@bytes);
+                add_textual_frus($parsedfru,$sdr->id_string,"Board ",'board');
+                add_textual_frus($parsedfru,$sdr->id_string,"Product ",'product');
+                add_textual_frus($parsedfru,$sdr->id_string,"Chassis ",'chassis');
+            }
         }
     }
 
@@ -2220,7 +2306,22 @@ sub initfru {
 
 	return($rc,$text);
 }
-
+sub get_frusize {
+    my $fruid=shift;
+    my $netfun = 0x28; # Storage (0x0A << 2)
+    my @cmd=(0x10,$fruid);
+	my @bytes;
+    my $error = docmd($netfun,\@cmd,\@bytes);
+    @bytes=splice @bytes,36-$authoffset;
+    pop @bytes;
+    unless (defined $bytes[0] and $bytes[0] == 0) {
+        if ($codes{$bytes[0]}) {
+            return (0,$codes{$bytes[0]});
+        }
+        return (0,"FRU device $fruid inaccessible");
+    }
+    return ($bytes[2]<<8)+$bytes[1];
+}
 
 sub formfru {
     my $fruhash = shift;
@@ -2414,6 +2515,7 @@ sub frudump {
 	my $chunk = shift;
     my $fruid = shift;
     unless (defined $fruid) { $fruid = 0; }
+    unless ($length) { return (1,$chunk); } #chunk happens to get the error text
 
 	my $netfun = 0x28;
 	my @cmd;
@@ -2428,8 +2530,12 @@ sub frudump {
 	for(my $c=$offset;$c < $length+$offset;$c += $chunk) {
 		my $ms = int($c / 0x100);
 		my $ls = $c - $ms * 0x100;
+        my $reqsize = $chunk;
+        if ($c+$chunk > $length+$offset) {
+            $reqsize = ($length+$offset-$c);
+        }
 
-		@cmd=(0x11,$fruid,$ls,$ms,$chunk);
+		@cmd=(0x11,$fruid,$ls,$ms,$reqsize);
 		$error = docmd(
 			$netfun,
 			\@cmd,
@@ -2448,7 +2554,7 @@ sub frudump {
 		}
 		else {
 			$rc = 1;
-			$text = $codes{$code};
+			$text = $codes{$code}." $fruid $ms $ls $chunk BORK";
 		}
 
 		if($rc != 0) {
@@ -2459,9 +2565,9 @@ sub frudump {
 		}
 
 		my $count = $returnd[37-$authoffset];
-		if($count != $chunk) {
+		if($count != $reqsize) {
 			$rc = 1;
-			$text = "FRU read error (bytes requested: $chunk, got: $count)";
+			$text = "FRU read error (bytes requested: $reqsize, got: $count)";
 			return($rc,$text);
 		}
 
@@ -2639,7 +2745,9 @@ sub parseboard {
     my $language=$area[2];
     my $tstamp = ($area[3]+($area[4]<<8)+($area[5]<<16))*60+820472400; #820472400 is meant to be 1/1/1996
     $boardinf{raw}=[@area]; #store for verbatim replacement
-    $boardinf{builddate}=scalar localtime($tstamp);
+    unless ($tstamp == 820472400) {
+        $boardinf{builddate}=scalar localtime($tstamp);
+    }
     my $encode;
     my $currsize;
     my $currdata;
