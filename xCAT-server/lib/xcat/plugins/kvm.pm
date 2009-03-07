@@ -36,7 +36,6 @@ use Storable qw(freeze thaw);
 use IO::Select;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
-use Net::Telnet;
 use xCAT::DBobjUtils;
 use Getopt::Long;
 
