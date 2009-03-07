@@ -2803,6 +2803,9 @@ sub writefru {
             sleep 1;
         }
     	($rc,$text) = fruwrite(0,$newfru,8);
+        if ($text =~ /rotected/) {
+            last;
+        }
         $writeattempts++;
     }
 	if($rc) {
@@ -2854,6 +2857,9 @@ sub fruwrite {
 		}
 
 		if($rc != 0) {
+            if ($code == 0x80) {
+                $text = "Write protected FRU";
+            }
 			if(!$text) {
 				$text = sprintf("unknown response %02x",$code);
 			}
