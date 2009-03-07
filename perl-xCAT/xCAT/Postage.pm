@@ -198,6 +198,27 @@ sub makescript {
     push @scriptd, "export SVLOGLOCAL\n"; 
   } 
 
+	# add the root passwd, if any, for AIX nodes
+	# get it from the system/root entry in the passwd table
+	# !!!!!  it must be an unencrypted value for AIX!!!!
+	# - user will have to reset if this is a security issue
+	$os =~ s/\s*$//;
+	$os =~ tr/A-Z/a-z/;    # Convert to lowercase
+	if ($os eq "aix") {
+		my $passwdtab = xCAT::Table->new('passwd');
+		unless ( $passwdtab) {
+			my $rsp;
+			push @{$rsp->{data}}, "Unable to open passwd table.";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+
+		my $et = $passwdtab->getAttribs({key => 'system', username => 'root'}, 'password');
+		if ($et and defined ($et->{'password'})) {
+			push @scriptd, "ROOTPW=".$et->{'password'}."\n";
+			push @scriptd, "export ROOTPW\n";
+		}
+	}
+
   if (!$nodesetstate) { $nodesetstate=getnodesetstate($node);}
   push @scriptd, "NODESETSTATE=".$nodesetstate."\n";
   push @scriptd, "export NODESETSTATE\n";
