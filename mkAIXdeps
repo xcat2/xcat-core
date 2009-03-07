@@ -1,5 +1,9 @@
 #!/bin/sh
 
+#  This script packages the AIX RPM dependencies
+#    - it should be run in the ../xcat/xcat-core/trunk directory
+#    - it puts everything in a aix-dep-snap subdirectory
+
 BLDTOP=`pwd`
 RPMDIR=$BLDTOP/aix-dep-snap
 VER=`cat $BLDTOP/Version`
@@ -11,6 +15,7 @@ then
   rm -f $RPMDIR/instmysql
   rm -f $RPMDIR/README
   rm -f $RPMDIR/*.rpm
+  rm -f $RPMDIR/*.bnd
   rm -f $RPMDIR/flist
   rm -f $RPMDIR/flist2
   rm -f $RPMDIR/*.gz
@@ -73,12 +78,19 @@ echo "rpm -Uvh perl-Crypt-SSLeay-0.57-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 # get the OSS README file
 cp ./../../../xcat-dep/trunk/AIX/README $RPMDIR/
 
+# add the bundle files to the dep packages
+cp $BLDTOP/xCATaixSN.bnd $RPMDIR/
+cp $BLDTOP/xCATaixSSH.bnd $RPMDIR/
+cp $BLDTOP/xCATaixSSL.bnd $RPMDIR/
+
 # make the default required RPM tar.gz file
-#ls $RPMDIR/*.rpm > $RPMDIR/flist
 ls *.rpm > $RPMDIR/flist
 chmod +x $RPMDIR/instoss
 echo "README" >> $RPMDIR/flist
 echo "instoss" >> $RPMDIR/flist
+echo "xCATaixSN.bnd" >> $RPMDIR/flist
+echo "xCATaixSSH.bnd" >> $RPMDIR/flist
+echo "xCATaixSSL.bnd" >> $RPMDIR/flist
 tar -cvf $RPMDIR/dep-aix-$VER.tar -L $RPMDIR/flist
 gzip $RPMDIR/dep-aix-$VER.tar
 
