@@ -100,41 +100,56 @@ sub process_request
     my @filecontent;
     my $retdata;
     my $tfilename;
+
+	my $root;
+    if (xCAT::Utils->isAIX()) {
+        $root = "";
+    } else {
+        $root = "/root";
+    }
+
     foreach (@params_to_return) {
+
        if (/ssh_root_key/) { 
-          unless (-r "/root/.ssh/id_rsa") {
+          unless (-r "$root/.ssh/id_rsa") {
             push @{$rsp->{'error'}},"Unable to read root's private ssh key";
             next;
           }
-          $tfilename = "/root/.ssh/id_rsa";
+          $tfilename = "$root/.ssh/id_rsa";
+
        } elsif (/xcat_server_cred/) {
           unless (-r "/etc/xcat/cert/server-cred.pem") {
             push @{$rsp->{'error'}},"Unable to read root's private xCAT key";
             next;
           }
           $tfilename = "/etc/xcat/cert/server-cred.pem";
+
        } elsif (/xcat_client_cred/ or /xcat_root_cred/) {
-          unless (-r "/root/.xcat/client-cred.pem") {
+          unless (-r "$root/.xcat/client-cred.pem") {
             push @{$rsp->{'error'}},"Unable to read root's private xCAT key";
             next;
           }
-          $tfilename = "/root/.xcat/client-cred.pem";
+          $tfilename = "$root/.xcat/client-cred.pem";
+
        } elsif (/ssh_dsa_hostkey/) {
           unless (-r "/etc/xcat/hostkeys/ssh_host_dsa_key") {
              push @{$rsp->{'error'}},"Unable to read private DSA key from /etc/xcat/hostkeys";
           }
           $tfilename="/etc/xcat/hostkeys/ssh_host_dsa_key";
+
        } elsif (/ssh_rsa_hostkey/) {
           unless (-r "/etc/xcat/hostkeys/ssh_host_rsa_key") {
              push @{$rsp->{'error'}},"Unable to read private RSA key from /etc/xcat/hostkeys";
           }
           $tfilename="/etc/xcat/hostkeys/ssh_host_rsa_key";
+
        } elsif (/xcat_cfgloc/) {
           unless (-r "/etc/xcat/cfgloc") {
             push @{$rsp->{'error'}},"Unable to read xCAT database location";
             next;
           }
           $tfilename = "/etc/xcat/cfgloc";
+
        } else {
           next;
        }
