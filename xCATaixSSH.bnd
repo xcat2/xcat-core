@@ -1,3 +1,6 @@
+# bundle file for openssh - installp package from AIX
+#	Note - openssl must be installed before openssh
+
 I:openssh.base
 I:openssh.license
 I:openssh.man.en_US
