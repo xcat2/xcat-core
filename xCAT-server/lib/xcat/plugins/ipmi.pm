@@ -320,6 +320,8 @@ struct SDR => {
 	id_string		=> '$',
 	#LED id
 	led_id		=> '$',
+    fru_type  => '$',
+    fru_subtype  => '$',
 };
 
 struct FRU => {
@@ -327,6 +329,29 @@ struct FRU => {
 	desc				=> '$',
 	value				=> '$',
 };
+
+sub decode_fru_locator { #Handle fru locator records
+    my @locator = @_;
+	my $sdr = SDR->new();
+	$sdr->rec_type(0x11);
+    $sdr->sensor_owner_id("FRU".$locator[6]);
+    $sdr->sensor_owner_lun($locator[7]);
+    $sdr->sensor_number($locator[5]);
+    unless ($locator[8] & 0x80 and ($locator[8] & 0x1f) == 0 and $locator[9] == 0) {
+        #only logical devices at lun 0 supported for now
+        return undef;
+    }
+    unless (($locator[16] & 0xc0) == 0xc0) { #Only unpacked ASCII for now, no unicode or BCD plus yet
+        return undef;
+    }
+    my $idlen = $locator[16] & 0x3f;
+    unless ($idlen > 1) { return undef; }
+    $sdr->id_string(pack("C*",@locator[17..17+$idlen]));
+    $sdr->fru_type($locator[11]);
+    $sdr->fru_subtype($locator[12]);
+
+    return $sdr;
+}
 
 sub waitforack {
     my $sock = shift;
@@ -1589,6 +1614,10 @@ sub inv {
 	my @types;
 	my $format = "%-20s %s";
 
+	($rc,$text) = initsdr(); #Look for those precious locator reconds
+	if($rc != 0) {
+		return($rc,$text);
+	}
 	($rc,$text) = initfru();
 	if($rc != 0) {
 		return($rc,$text);
@@ -2060,8 +2089,9 @@ sub initfru {
         if ($_->{encoding} == 3) {
             $fru->value($_->{value});
         } else {
-            print Dumper($_);
-            print $_->{encoding};
+            #print Dumper($_);
+            #print $_->{encoding};
+            next;
             $fru->value(phex($_->{value}));
         }
         $fru_hash{$frudex++} = $fru;
@@ -2100,8 +2130,9 @@ sub initfru {
         if ($_->{encoding} == 3) {
             $fru->value($_->{value});
         } else {
-            print Dumper($_);
-            print $_->{encoding};
+            next;
+            #print Dumper($_);
+            #print $_->{encoding};
             $fru->value(phex($_->{value}));
         }
         $fru_hash{$frudex++} = $fru;
@@ -2166,12 +2197,25 @@ sub initfru {
         if ($_->{encoding} == 3) {
             $fru->value($_->{value});
         } else {
-            print Dumper($_);
-            print $_->{encoding};
+            next;
+            #print Dumper($_);
+            #print $_->{encoding};
             $fru->value(phex($_->{value}));
         }
         $fru_hash{$frudex++} = $fru;
     }
+    #Ok, done with fru 0, on to the other fru devices from SDR
+    my $key;
+    foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
+        my $sdr = $sdr_hash{$key};
+        unless ($sdr->rec_type == 0x11 and $sdr->fru_type == 0x10) { #skip non fru sdr stuff and frus I don't understand
+            next;
+        }
+        
+        if ($sdr->fru_type == 0x1) { #
+        }
+    }
+
 
 
 	return($rc,$text);
@@ -2368,6 +2412,8 @@ sub frudump {
 	my $offset = shift;
 	my $length = shift;
 	my $chunk = shift;
+    my $fruid = shift;
+    unless (defined $fruid) { $fruid = 0; }
 
 	my $netfun = 0x28;
 	my @cmd;
@@ -2383,7 +2429,7 @@ sub frudump {
 		my $ms = int($c / 0x100);
 		my $ls = $c - $ms * 0x100;
 
-		@cmd=(0x11,0x00,$ls,$ms,$chunk);
+		@cmd=(0x11,$fruid,$ls,$ms,$chunk);
 		$error = docmd(
 			$netfun,
 			\@cmd,
@@ -3883,7 +3929,7 @@ sub checkleds {
 	}
 	foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
 		my $sdr = $sdr_hash{$key};
-		if($sdr->sensor_type == 0xED && $sdr->rec_type == 0xC0) {
+		if($sdr->rec_type == 0xC0 && $sdr->sensor_type == 0xED) {
 			#this stuff is to help me build the file from spec paste
 			#my $tehstr=sprintf("grep 0x%04X /opt/xcat/lib/x3755led.tab",$sdr->led_id);
 			#my $tehstr=`$tehstr`;
@@ -3932,7 +3978,7 @@ sub checkleds {
 				}
 			}
 
-			if ($returnd[38-$authoffset] != 0) {
+			if ($returnd[38-$authoffset]) { # != 0) {
 				#It's on...
 				if ($returnd[42-$authoffset] == 4) {
 					push(@output,sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
@@ -4032,7 +4078,7 @@ sub vitals {
 
 		foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
 			my $sdr = $sdr_hash{$key};
-			if(($doall and not $sdr->sensor_type==0xed) or ($sdr->sensor_type == $filter && $sdr->rec_type == 0x01)) {
+			if(($doall and not $sdr->rec_type == 0x11 and not $sdr->sensor_type==0xed) or ($sdr->rec_type == 0x01 and $sdr->sensor_type == $filter)) {
 				my $lformat = $format;
 
 				($rc,$reading) = readsensor($sdr->sensor_number);
@@ -4299,6 +4345,8 @@ sub initsdr {
 		elsif($sdr_type == 0xC0) {
 			#LED descriptor, maybe
 		}
+		elsif($sdr_type == 0x11) { #FRU locator
+		}
 		elsif($sdr_type == 0x12) {
 			next;
 		}
@@ -4342,6 +4390,13 @@ sub initsdr {
 
 			$offset += $len;
 		}
+		if($sdr_type == 0x11) { #FRU locator
+            my $sdr = decode_fru_locator(@sdr_data);
+            if ($sdr) {
+		        $sdr_hash{$sdr->sensor_owner_id . "." . $sdr->sensor_owner_lun . "." . $sdr->sensor_number} = $sdr;
+            }
+            next;
+        }
 
 		if($debug) {
 			hexadump(\@sdr_data);
@@ -4409,6 +4464,7 @@ sub initsdr {
 			$sdr->id_string($override_string);
 		}
 		else {
+            unless (defined $sdr->id_string_type) { next; }
 			$byte_format = ($sdr->id_string_type & 0b11000000) >> 6;
 			if($byte_format == 0b11) {
 				my $len = ($sdr->id_string_type & 0b00011111) - 1;
@@ -4426,7 +4482,12 @@ sub initsdr {
 				$sdr->id_string("BCD unsupported");
 			}
 			elsif($byte_format == 0b00) {
-				$sdr->id_string("unicode unsupported");
+                my $len = ($sdr->id_string_type & 0b00011111) - 1;
+                if ($len > 1) { #It should be something, but need sample to code
+				    $sdr->id_string("unicode unsupported");
+                } else {
+                    next;
+                }
 			}
 		}
 
