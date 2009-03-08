@@ -1917,6 +1917,8 @@ sub add_textual_frus {
     my $desc = shift;
     my $categorydesc = shift;
     my $category = shift;
+    my $type = shift;
+    unless ($type) { $type = 'hw'; }
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Part Number",$category,"partnumber","hw");
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer","hw");
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber","hw");
@@ -2288,7 +2290,7 @@ sub initfru {
                     next;
                 }
                 my $parsedfru = decode_spd(@bytes);
-                add_textual_frus($parsedfru,$sdr->id_string,"",'product');
+                add_textual_frus($parsedfru,$sdr->id_string,"",'product','dimm,hw');
             } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
 	            ($subrc,@bytes) = frudump(0,get_frusize($sdr->sensor_number),16,$sdr->sensor_number);
                 if ($subrc) {
