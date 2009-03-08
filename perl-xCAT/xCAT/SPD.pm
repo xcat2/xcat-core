@@ -601,7 +601,7 @@ sub decode_manufacturer {
     my $arr_index = shift;
     my $code = shift;
     unless ($code) {
-        return "BUGGY SPD";
+        return "Malformed SPD";
     }
     return $jedec_ids->[$arr_index]->{$code};
 }
@@ -677,7 +677,7 @@ sub decode_spd {
     my $rethash;
     print Dumper(@spd);
     if (($spd[0] & 0xf) > 3) { #TODO: Remove workaround for buggy SPD
-        $rethash->{product}->{extra}=[{value=>'BUGGY SPD',encoding=>3}];
+        $rethash->{product}->{extra}=[{value=>'Malformed SPD (missing leading byte)',encoding=>3}];
         unshift @spd,3;
     }
     $rethash->{product}->{name}=$memtypes{$spd[2]};
@@ -710,7 +710,7 @@ sub decode_spd {
         }
         foreach (@spd[128..145]) {
             if ($_ & 0b10000000) {
-                $rethash->{product}->{model}="BUGGY SPD";
+                $rethash->{product}->{model}="Malformed SPD";
             }
         }
         unless ($rethash->{product}->{model}) {
