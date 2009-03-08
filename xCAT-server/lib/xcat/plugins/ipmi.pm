@@ -13,6 +13,7 @@ use strict;
 use warnings "all";
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
+use xCAT::SPD qw/decode_spd/;
 
 use POSIX qw(ceil floor);
 use Storable qw(store_fd retrieve_fd thaw freeze);
@@ -1877,9 +1878,6 @@ return(2,"");
 	return(1,"No OEM FRU Support");
 }
 
-sub decode_spd {
-    print "SPD: ".phex(\@_);
-}
 sub add_textual_fru {
     my $parsedfru = shift;
     my $description = shift;
@@ -1900,7 +1898,7 @@ sub add_textual_fru {
             $fru = FRU->new();
             $fru->rec_type($types);
             $fru->desc($description);
-            if ($subcategory eq 'builddate') {
+            if (not ref $_) {
                 $fru->value($_);
             } else {
                 if ($_->{encoding} == 3) {
@@ -1922,9 +1920,15 @@ sub add_textual_frus {
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Part Number",$category,"partnumber","hw");
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer","hw");
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber","hw");
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Name",$category,"name","hw");
-    if ($category eq 'board') {
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."",$category,"name","hw");
+    if ($parsedfru->{$category}->{builddate}) {
         add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Date",$category,"builddate","hw");
+    }
+    if ($parsedfru->{$category}->{buildlocation}) {
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Location",$category,"buildlocation","hw");
+    }
+    if ($parsedfru->{$category}->{model})  {
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Model",$category,"model","hw");
     }
     add_textual_fru($parsedfru,$desc." ".$categorydesc."Additional Info",$category,"extra","hw");
 }
@@ -2283,7 +2287,8 @@ sub initfru {
                     $fru_hash{$frudex++} = $fru;
                     next;
                 }
-                decode_spd(@bytes);
+                my $parsedfru = decode_spd(@bytes);
+                add_textual_frus($parsedfru,$sdr->id_string,"",'product');
             } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
 	            ($subrc,@bytes) = frudump(0,get_frusize($sdr->sensor_number),16,$sdr->sensor_number);
                 if ($subrc) {
@@ -2554,7 +2559,7 @@ sub frudump {
 		}
 		else {
 			$rc = 1;
-			$text = $codes{$code}." $fruid $ms $ls $chunk BORK";
+			$text = $codes{$code};
 		}
 
 		if($rc != 0) {
