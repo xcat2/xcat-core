@@ -33,6 +33,8 @@ The B<makedhcp> command also uses the following attributes from the xCAT databas
 B<site.dhcpinterfaces>, B<site.domain>, B<networks.dynamicrange>, B<networks.dhcpserver>.  See
 the xcatdb man page for details about the database attributes.
 
+Note: This command is not supported for AIX clusters.
+
 
 =head1 OPTIONS
 
