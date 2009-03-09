@@ -692,9 +692,10 @@ $HWTypeInfo = array (
 		  'p5-595' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'' ),  # 9119
 
 		# POWER 6 servers
-		  'p6-520' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8203,520' ),
-		  'p6-550' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8204,550' ),
-		  'p6-570' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9117,570' ),
+		  'p6-520' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8203,520,HV4' ),
+		  'p6-550' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8204,550,HV8' ),
+		  'p6-560' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'8234,560,ML4+' ),
+		  'p6-570' => array ( 'image'=>'520.gif', 'rackimage'=>'p5-520-front', 'u'=>4, 'aliases'=>'9117,570,ML4,ML8,ML12,ML16' ),
 		  'p6-575' => array ( 'image'=>'342.gif', 'rackimage'=>'p6-575-front', 'u'=>2, 'aliases'=>'9125,575' ),
 		  'p6-595' => array ( 'image'=>'590.gif', 'rackimage'=>'p5-590-front', 'u'=>42, 'aliases'=>'9119,595' ),
 		 );

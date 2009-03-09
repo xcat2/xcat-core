@@ -69,6 +69,14 @@ if $GREP xCAT-server ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/xCAT-server-$VER*rpm $DESTDIR
    mv /usr/src/$pkg/SRPMS/xCAT-server-$VER*rpm $SRCDIR
 fi
+if $GREP xCAT-rmc ../coresvnup; then
+   UPLOAD=1
+   ./makermcrpm
+   rm -f $DESTDIR/xCAT-rmc*rpm
+   rm -f $SRCDIR/xCAT-rmc*rpm
+   mv /usr/src/$pkg/RPMS/noarch/xCAT-rmc-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCAT-rmc-$VER*rpm $SRCDIR
+fi
 if $GREP xCAT-nbroot ../coresvnup; then
    UPLOAD=1
    ./makenbrootrpm x86_64
