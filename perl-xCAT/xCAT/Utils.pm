@@ -2444,7 +2444,7 @@ sub get_ServiceNode
                     {
 
                         # see if both  MN and Node address in attribute
-                        my ($msattr, $nodeattr) = split ',', $rec->{$service};
+                        my ($msattr, $nodeattr) = split ':', $rec->{$service};
                         my $key = $msattr;
                         if ($request eq "Node")
                         {
@@ -2519,7 +2519,7 @@ sub get_ServiceNode
                         {
 
                             # see if both  MN and Node address in attribute
-                            my ($msattr, $nodeattr) = split ',',
+                            my ($msattr, $nodeattr) = split ':',
                               $rec->{'conserver'};
                             my $key = $msattr;
                             if ($request eq "Node")
