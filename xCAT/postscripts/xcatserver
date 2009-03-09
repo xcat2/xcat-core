@@ -14,6 +14,8 @@ if [ ! -x /usr/sbin/stunnel -a ! -x /usr/bin/stunnel ]; then #Stop if no stunnel
    getcredentials.awk xcat_server_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cert/server-cred.pem
    chmod 600 /etc/xcat/cert/*
    getcredentials.awk xcat_cfgloc | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cfgloc
+    sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc > /etc/xcat/cfgloc.new
+    mv /etc/xcat/cfgloc.new /etc/xcat/cfgloc
    chmod 600 /etc/xcat/cfgloc
    cp _xcat/ca.pem /etc/xcat/cert/ca.pem
    kill -9 $CREDPID
