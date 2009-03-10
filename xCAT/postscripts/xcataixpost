@@ -20,7 +20,7 @@ if (!-d $logdir) {
 }
 
 $::sdate = `/bin/date`;
-chomp $sdate;
+chomp $::sdate;
 my $logfile = $logdir . "/xcat.log";
 
 # this log should not contain much so it might be ok to let it grow?
@@ -28,27 +28,41 @@ my $logfile = $logdir . "/xcat.log";
 open(LOGFILE,">>",$logfile);
 $::LOG_FILE = \*LOGFILE;
 
-
 # get hostname
 $::shorthost = `hostname -s`;
 chomp $::shorthost;
 
-# get the name of my service node/NIM master from the /etc/niminfo file
-if (-f "/etc/niminfo") {
-    $cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
-    &runcmd($cmd);
-    my $SNline = $::outref;
+my $servnode;
+if (-f "/etc/xcatinfo") {
+	# if this file exists assume it has the correct server name
+	my $cmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
+	&runcmd($cmd);
+	my $SNline = $::outref;
 	my $junk;
-    ($junk, $servnode) =  split(/=/, $SNline);
-    $servnode =~ s/^\s*//;
-    chomp $servnode;
-
+	($junk, $servnode) =  split(/=/, $SNline);
 } else {
-	print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
-    print $::LOG_FILE "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
-	close($::LOG_FILE);
-    exit 1;
+	# get the name of my service node/NIM master from the /etc/niminfo file
+	if (-f "/etc/niminfo") {
+    	$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
+    	&runcmd($cmd);
+    	my $SNline = $::outref;
+		my $junk;
+    	($junk, $servnode) =  split(/=/, $SNline);
+
+		# save the servnode from niminfo in xcatinfo
+		my $xcatinfo="/etc/xcatinfo";
+		open(XCATINFO,">",$xcatinfo);
+		print XCATINFO "XCATSERVER=$servnode\n";
+		close(XCATINFO);
+	} else {
+		print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
+    	print $::LOG_FILE "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
+		close($::LOG_FILE);
+    	exit 1;
+	}
 }
+$servnode =~ s/^\s*//;
+chomp $servnode;
 
 # create the xcatpost dir
 my $cmd = "mkdir -p /xcatpost";
@@ -59,28 +73,37 @@ if (&runcmd($cmd) != 0) {
 	exit 1;
 }
 
-# save the name of the xCAT server in case the /etc/niminfo file 
-#  gets overwritten
-my $xcatinfo="/etc/xcatinfo";
-open(XCATINFO,">",$xcatinfo);
-print XCATINFO "XCATSERVER=$servnode\n";
-close(XCATINFO);
-
-
 # get the contents of the /install/postscripts dir on the server
-my $rcpcmd;
-if ((@ARGV==0) || ($ARGV[0] != 2)) { 
-  $rcpcmd= "rcp -r $servnode:/install/postscripts/* /xcatpost";
-} else {
-  #when argv[1]=2, there is only one postscript file, user wants only download it to save time
-  $rcpcmd= "rcp $servnode:/install/postscripts/$ARGV[1] /xcatpost";
+#   - mount dir from server and copy files
+my $mcmd = "mkdir -p /xcatmnt; mount $servnode:/install/postscripts /xcatmnt";
+if (&runcmd($mcmd) != 0) {
+    print "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
+    close($::LOG_FILE);
+    exit 1;
 }
 
-if (&runcmd($rcpcmd) != 0) {
-	print "$::sdate xcataixpost: Could not rcp file from $servnode.\n";
-	print $::LOG_FILE "$::sdate xcataixpost: Could not rcp file from $servnode.\n";
-	close($::LOG_FILE);
-	exit 1;
+if ((@ARGV==0) || ($ARGV[0] != 2)) {
+    my $cpcmd = "cp -r /xcatmnt /xcatpost >/dev/null 2>&1";
+} else {
+    # when argv[1]=2, there is only one postscript file,
+    #   user wants only download it to save time
+    $cpcmd= "cp /xcatmnt/postscripts/$ARGV[1] /xcatpost >/dev/null 2>&1";
+}
+
+if (&runcmd($cpcmd) != 0) {
+    print "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+	print $::LOG_FILE "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+    close($::LOG_FILE);
+    exit 1;
+}
+
+my $ucmd = "umount /xcatmnt; rmdir /xcatmnt";
+if (&runcmd($ucmd) != 0) {
+    print "$::sdate xcataixpost: Could not unmount /install.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not unmount /install/postscripts.\n";
+    close($::LOG_FILE);
+    exit 1;
 }
 
 # request the xCAT postscript for this particular node
@@ -129,7 +152,6 @@ if (-f $scriptname)
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
 }
 
-
 if (@ARGV<1) {
   if (&updateflag($nodesetstat) != 0) {
     print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
@@ -140,6 +162,15 @@ if (@ARGV<1) {
   print "returned";
 }
 
+# Set the local password - if provided
+my $rpd = $ENV{'ROOTPW'};
+if ($rpd) {
+	my $pwcmd = qq~echo "root:$rpd" | /bin/chpasswd -c >/dev/null 2>&1~;
+	if (&runcmd($pwcmd) != 0) {
+		$msg = "$::sdate xcataixpost: Could not set password.\n";
+		`logger -t xcat $msg`;
+	}
+}
 
 close($::LOG_FILE);
 
@@ -170,6 +201,7 @@ sub  getmypost {
 	if (!open(POSTSCRIPT, ">$scriptname") ) {
 		print "$::sdate  xcataixpost: Could not open $scriptname.\n";
 		print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n";
+		close $remote;
 		return 1;
 	}
 
@@ -180,6 +212,7 @@ sub  getmypost {
 			next;
 		}
 		print POSTSCRIPT "$line\n";
+#print "xcataixpost: line = \'$line\'\n";
 	}
 	close(POSTSCRIPT);
 	close $remote;
@@ -237,8 +270,8 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-			print "$::sdate  xcataixpost: $::outref\n";
-			print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
+	#		print "$::sdate  xcataixpost: $::outref\n";
+	#		print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
         }
     }
  return $rc;

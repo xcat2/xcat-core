@@ -3662,15 +3662,68 @@ sub prenimnodeset
     # create a NIM script resource using the xcataixpost script
 	#
 	if ($add_xcataixpost) {  # if we have at least one standalone node
-    	my $resname = "xcataixpost";
-    	my $respath = "/install/postscripts/xcataixpost";
-    	if (&mkScriptRes($resname, $respath, $nimprime, $callback) != 0) {
-        	my $rsp;
-        	push @{$rsp->{data}}, "Could not create a NIM resource for xcataixpost.\n";
-        	xCAT::MsgUtils->message("E", $rsp, $callback);
-        	return (1);
-    	}
-		$lochash{$resname} = "/install/postscripts/xcataixpost";
+
+		my $pre;
+		if (&is_me($nimprime)) {
+			$pre = "";
+		} else {
+			$pre = "xdsh $nimprime";
+		}
+
+		my $createscript=0;
+		# see if it already exists
+		my $scmd = qq~$pre /usr/sbin/lsnim -l 'xcataixpost' 2>/dev/null~;
+		xCAT::Utils->runcmd($scmd, 0);
+		if ($::RUNCMD_RC != 0) {
+			# doesn't exist so create it
+			$createscript=1;
+		} else {
+			# it exists so see if it's in the correct location
+			my $loc = &get_nim_attr_val('xcataixpost', 'location', $callback, $nimprime);
+
+			# see if it's in the wrong place
+			if ($loc eq "/install/postscripts/xcataixpost") {
+				# need to remove this def and create a new one
+				$createscript=1;
+
+				my $rcmd = qq~$pre /usr/sbin/nim -Fo remove 'xcataixpost' 2>/dev/null~;
+				xCAT::Utils->runcmd($rcmd, 0);
+				if ($::RUNCMD_RC != 0) {
+					# error - could not remove NIM xcataixpost script resource.
+				}
+
+			}
+
+		}
+
+		# create a new one if we need to
+		if ($createscript) {
+			# copy file to /install/nim/scripts
+			my $ccmd = qq~$pre mkdir -m 644 -p /install/nim/scripts; cp /install/postscripts/xcataixpost /install/nim/scripts 2>/dev/null; chmod +x /install/nim/scripts/xcataixpost~;
+			xCAT::Utils->runcmd($ccmd, 0);
+			if ($::RUNCMD_RC != 0) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not copy xcataixpost.";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
+			}
+
+			# define the new xcataixpost resource
+			my $dcmd = qq~$pre /usr/sbin/nim -o define -t script -a server=master -a location=/install/nim/scripts/xcataixpost xcataixpost 2>/dev/null~;
+			xCAT::Utils->runcmd($dcmd, 0);
+			if ($::RUNCMD_RC != 0) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not create a NIM resource for xcataixpost.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return (1);
+			}
+		}
+
+		# make sure we clean up the /etc/exports file
+		my $ecmd = qq~$pre /usr/sbin/rmnfsexp -d /install/postscripts/xcataixpost -B 2>/dev/null~;
+		xCAT::Utils->runcmd($ecmd, 0);
+
+		$lochash{'xcataixpost'} = "/install/nim/scripts/xcataixpost";
 	}
 
 	#####################################################
