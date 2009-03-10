@@ -3152,6 +3152,46 @@ sub decodealert {
 	return(0,$text);
 }
 
+sub readauxentry {
+    my $netfn=0x2e<<2;
+    my $entrynum = shift;
+    my $entryls = ($entrynum&0xff);
+    my $entryms = ($entrynum>>8);
+    my @cmd = (0x93,0x4d,0x4f,0x00,$entryls,$entryms,0,0,0xff,0x5); #Get log size andup to 1275 bytes of data, keeping it under 1500 to accomodate mixed-mtu circumstances
+    my @data;
+    my $error = docmd(
+        $netfn,
+        \@cmd,
+        \@data
+        );
+    if ($error) { return $error; }
+    @data=splice @data,36-$authoffset;
+    if ($data[0]) { return $data[0]; }
+    my $text;
+    unless ($data[1] == 0x4d and $data[2] == 0x4f and $data[3] == 0) { return "Unrecognized response format" }
+    $entrynum=$data[6]+($data[7]<<8);
+    if (($data[10]&1) == 1) {
+        $text="POSSIBLY INCOMPLETE DATA FOLLOWS:\n";
+    }
+    my $addtext="";
+    if ($data[5] > 5) {
+        $addtext="\nTODO:SUPPORT MORE DATA THAT WAS SEEN HERE";
+    }
+    @data = splice @data,11;
+    pop @data;
+    while(scalar(@data)) {
+        my @subdata = splice @data,0,24;
+        my $numbytes = scalar(@subdata);
+        $text.=sprintf(("%02x "x$numbytes)."\n",@subdata);
+    }
+    $text.=$addtext;
+    return (0,$entrynum,$text);
+
+
+}
+
+
+
 sub eventlog {
 	my $subcommand = shift;
 
@@ -3265,6 +3305,7 @@ sub eventlog {
 
     my $res_id_ls=0;
     my $res_id_ms=0;
+    my %auxloginfo;
     if ($subcommand =~ /clear/) { #Don't bother with a reservation unless a clear is involved
         #atomic SEL retrieval need not require it, so an event during retrieval will not kill reventlog effort off
     	@cmd=(0x42);
@@ -3302,7 +3343,43 @@ sub eventlog {
 
 	    $res_id_ls = $returnd[37-$authoffset];
     	$res_id_ms = $returnd[38-$authoffset];
+    } elsif ($mfg_id == 2) {
+        #For requests other than clear, we check for IBM extended auxillary log data
+        my @auxdata;
+        my $netfn = 0xa << 2;
+        my @auxlogcmd = (0x5a,1);
+        $error = docmd(
+            $netfn,
+            \@auxlogcmd,
+            \@auxdata);
+        @auxdata=splice @auxdata,36-$authoffset;
+        print Dumper(\@auxdata);
+        unless ($error or $auxdata[0] or $auxdata[5] != 0x4d or $auxdata[6] != 0x4f or $auxdata[7] !=0x0 ) { #Don't bother if support cannot be confirmed by service processor
+            $netfn=0x2e<<2; #switch netfunctions to read
+            my $numauxlogs = $auxdata[8]+($auxdata[9]<<8);
+            my $auxidx=1;
+            my $rc;
+            my $entry;
+            my $extdata;
+            while ($auxidx<=$numauxlogs) {
+                ($rc,$entry,$extdata) = readauxentry($auxidx++);
+                unless ($rc) {
+                    if ($auxloginfo{$entry}) {
+                        $auxloginfo{$entry}.=$extdata;
+                    } else {
+                        $auxloginfo{$entry}=$extdata;
+                    }
+                }
+            }
+            if ($auxloginfo{0}) {
+                if ($skiptail) {
+                    sendoutput(0,":Unassociated auxillary data detected:\n".$auxloginfo{0});
+                }
+            }
+            print Dumper(\%auxloginfo);
+        }
     }
+
 
 	if($subcommand eq "clear") {
 		@cmd=(0x47,$res_id_ls,$res_id_ms,0x43,0x4c,0x52,0xaa);
@@ -3442,6 +3519,9 @@ sub eventlog {
 		}
 		else {
 			$text=getoemevent($record_type,$mfg_id,\@sel_data);
+            if ($auxloginfo{$entry}) { 
+                $text.=" With additional data:\n".$auxloginfo{$entry};
+            }
             if ($skiptail) {
                 sendoutput($rc,$text);
             } else {
@@ -3558,6 +3638,9 @@ sub eventlog {
 			$text = "$text - Recovered";
 		}
 
+        if ($auxloginfo{$entry}) {
+             $text.=" with additional data:\n".$auxloginfo{$entry};
+        }
         if ($skiptail) {
             sendoutput($rc,$text);
         } else {
@@ -5333,7 +5416,7 @@ sub domsg {
 		#alarm($timeout);
 		my $received = $s->can_read($timeout);
 		if($received and $received > 0) {
-			if ($sock->recv($recv,128)) {
+			if ($sock->recv($recv,1300)) {
 				if($recv) {
 					@response = unpack("C*",$recv);
 					last;
