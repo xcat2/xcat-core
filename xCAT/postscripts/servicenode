@@ -85,14 +85,14 @@ sub runcmd
     my $rc=0;
 
     $cmd .= ' 2>&1' ;
-    $::outref = [];
-    $::outref = `$cmd`;
+    my $outref = [];
+    @$outref = `$cmd`;
     if ($?)
     {
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg="$cmd returned rc=$rc @$::outref\n";
+            my $msg="$cmd returned rc=$rc @$outref\n";
             `logger -t xcat $msg`;
         }
     }
