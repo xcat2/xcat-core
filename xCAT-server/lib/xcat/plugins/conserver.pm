@@ -154,6 +154,8 @@ sub docfheaders {
 # Put in standard headers common to all conserver.cf files
   my $content = shift;
   my $numlines = @$content;
+  my $idx = 0;
+  my $skip = 0;
   my @meat = grep(!/^#/,@$content);
   unless (grep(/^config \* {/,@meat)) {
     push @$content,"config * {\n";
@@ -171,36 +173,49 @@ sub docfheaders {
   unless (grep(/^default mrv/,@meat)) {
     push @$content,"default mrv { type host; portbase 2000; portinc 100; }\n"
   }
-  unless (grep(/^access \*/,@meat)) {
-    #push @$content,"#xCAT BEGIN ACCESS\n";
-    push @$content,"access * {\n";
-    push @$content,"  trusted 127.0.0.1;\n";
-    if (xCAT::Utils->isServiceNode()) {
-      my $master=xCAT::Utils->get_site_Master();
-      push @$content, "  trusted $master;\n";
+  #Go through and delete that which would match access and default
+  while($idx < @$content){
+    if (($content->[$idx] =~ /^access \*/)
+      ||($content->[$idx] =~ /^default \*/)) {
+      $skip = 1;
     }
-    push @$content,"}\n";
-    #push @$content,"#xCAT END ACCESS\n";
-  }
-  unless (grep(/^default \*/,@meat)) {
-    push @$content,"default * {\n";
-    push @$content,"  logfile /var/log/consoles/&;\n";
-    push @$content,"  timestamp 1hab;\n";
-    push @$content,"  include full;\n";
-    push @$content,"  master localhost;\n";
-
-    #-- if option "conserverondemand" in site table is set to yes
-    #-- then start all consoles on demand
-    #-- this helps eliminate many ssh connections to blade AMM
-    #-- which seems to kill AMMs occasionally
-    my $sitetab  = xCAT::Table->new('site');
-    my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
-    if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
-      push @$content,"  options ondemand;\n";
+    if ($skip == 1){
+      splice(@$content, $idx, 1);
+    } else {
+      $idx++;
     }
-
-    push @$content,"}\n";
+    if($content->[$idx] =~ /\}/){
+      splice(@$content, $idx, 1);
+      $skip = 0;
+    }
   }
+  #push @$content,"#xCAT BEGIN ACCESS\n";
+  push @$content,"access * {\n";
+  push @$content,"  trusted 127.0.0.1;\n";
+  if (xCAT::Utils->isServiceNode()) {
+    my $master=xCAT::Utils->get_site_Master();
+    push @$content, "  trusted $master;\n";
+  }
+  push @$content,"}\n";
+  #push @$content,"#xCAT END ACCESS\n";
+
+  push @$content,"default * {\n";
+  push @$content,"  logfile /var/log/consoles/&;\n";
+  push @$content,"  timestamp 1hab;\n";
+  push @$content,"  include full;\n";
+  push @$content,"  master localhost;\n";
+
+  #-- if option "conserverondemand" in site table is set to yes
+  #-- then start all consoles on demand
+  #-- this helps eliminate many ssh connections to blade AMM
+  #-- which seems to kill AMMs occasionally
+  my $sitetab  = xCAT::Table->new('site');
+  my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
+  if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+    push @$content,"  options ondemand;\n";
+  }
+
+  push @$content,"}\n";
 
 
 }
