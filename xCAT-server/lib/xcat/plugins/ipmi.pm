@@ -3180,9 +3180,11 @@ sub readauxentry {
     @data = splice @data,11;
     pop @data;
     while(scalar(@data)) {
-        my @subdata = splice @data,0,24;
+        my @subdata = splice @data,0,30;
         my $numbytes = scalar(@subdata);
-        $text.=sprintf(("%02x "x$numbytes)."\n",@subdata);
+        my $formatstring="%02x"x$numbytes;
+        $formatstring =~ s/%02x%02x/%02x%02x /g;
+        $text.=sprintf($formatstring."\n",@subdata);
     }
     $text.=$addtext;
     return (0,$entrynum,$text);
@@ -3365,7 +3367,7 @@ sub eventlog {
                 ($rc,$entry,$extdata) = readauxentry($auxidx++);
                 unless ($rc) {
                     if ($auxloginfo{$entry}) {
-                        $auxloginfo{$entry}.=$extdata;
+                        $auxloginfo{$entry}.="!".$extdata;
                     } else {
                         $auxloginfo{$entry}=$extdata;
                     }
@@ -3373,7 +3375,12 @@ sub eventlog {
             }
             if ($auxloginfo{0}) {
                 if ($skiptail) {
-                    sendoutput(0,":Unassociated auxillary data detected:\n".$auxloginfo{0});
+                    foreach (split /!/,$auxloginfo{0}) {
+                        sendoutput(0,":Unassociated auxillary data detected:");
+                        foreach (split /\n/,$_) {
+                            sendoutput(0,$_);
+                        }
+                    }
                 }
             }
             print Dumper(\%auxloginfo);
@@ -3639,12 +3646,23 @@ sub eventlog {
 		}
 
         if ($auxloginfo{$entry}) {
-             $text.=" with additional data:\n".$auxloginfo{$entry};
-        }
-        if ($skiptail) {
-            sendoutput($rc,$text);
+             $text.=" with additional data:";
+             if ($skiptail) {
+                sendoutput($rc,$text);
+                foreach (split /\n/,$auxloginfo{$entry}) {
+                    sendoutput(0,$_);
+                }
+             } else {
+        		push(@output,$text);
+                push @output,split /\n/,$auxloginfo{$entry};
+             } 
+
         } else {
-    		push(@output,$text);
+            if ($skiptail) {
+                sendoutput($rc,$text);
+            } else {
+        		push(@output,$text);
+            }
         }
 
 		if($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) {
