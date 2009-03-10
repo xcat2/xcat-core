@@ -50,7 +50,7 @@ setup on xCAT Management Node local will move the log entries to file
 entries in this log file and it is difficult for the administrator to look through.
 
 annotatelog is a sample script to parse the QLogic log entries in file 
-/var/log/xcat/errorlog/[xCAT Management Node] on xCAT Management Server 
+/var/log/xcat/errorlog/[xCAT Management Node] on xCAT Management Node 
 by subnet manager, IB node, chassis, FRU(Field-Replaceable Unit) or a 
 particular node. This script is supported by both AIX and Linux Management 
 Node. From xCAT's point of view, the log to analyze must be xCAT 

@@ -7,7 +7,7 @@
 #                                                                         #
 #-------------------------------------------------------------------------#
 #    This xCAT script is used to parse the QLogic log entries in file 
-#    /var/log/xcat/errorlog/[xCAT Management Nodes] on CSM Management 
+#    /var/log/xcat/errorlog/[xCAT Management Nodes] on xCAT Management 
 #    Node by subnet manager, IB node, chassis, FRU(Field-Replaceable Unit) or a 
 #    particular node. This script is supported by both AIX and Linux MN.
 #    From xCAT's point of view, the log to analyze must be xCAT 
@@ -195,7 +195,7 @@ sub getArgs()
                 my ($hostname, $ip) = getHost($node);
                 $node = $hostname;
             }
-            #Check nodes in NodeList and find those that are not defined in CSM database or not in Managed or MinManaged mode
+            #Check nodes in NodeList and find those that are not defined in xCAT database or not in Managed or MinManaged mode
             if (!(grep {$_ =~ /$node/} @AllNodes))
             {
                 push (@NotDefinedNodes, $node);
@@ -810,7 +810,7 @@ Usage: annotatelog -f log_file [-s start_time] [-e end_time]
         -A       Output the combination of -i, -S, -c and -u. It should be used with -g and -l flags.
         -f log_file
                  Specifies a log file fullpath name to analyze.
-                 Must be CSM consolidated log got from Qlogic HSM or ESM.
+                 Must be xCAT consolidated log got from Qlogic HSM or ESM.
         -s start_time
                  Specifies the start time for analysis, where the start_time
                  variable has the format ddmmyyhh:mm:ss (day, month, year, 

@@ -1,0 +1,121 @@
+# IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+configCECs.README
+
+This README describes how to use the configCECs script.
+
+The syntax of the configCECs command is:
+
+configCECs -H hmc_list [-c cec_format] [-l lpar_format] [-p profile_format] 
+           [--frame_pad_len len_number] [--node_pad_len len_number]
+           [--cage_pad_len len_number] 
+           [--allocate_type always_all | always_list | conditional]
+           [--exclude_hw ]
+           [-h]
+
+        -H hmc_list
+                   Specifies a comma-separated list of HMC host names, IP 
+                   addresses to configure CECs on.
+        -c cec_format
+                   Specifies the naming format for CEC, the default format 
+                   is f%Fn%N_SN%S.
+        -l lpar_format
+                   Specifies the naming format for LPAR, the default 
+                   format is f%Fn%N.
+        -p profile_format
+                   Specifies the naming format for profile, the default 
+                   format is the same with lpar_format.
+        --frame_pad_len len_number
+                   Specifies the number of digits used for the frame 
+                   numbers, it will be zero filled if needed. The default 
+                   value is no padding.
+        --node_pad_len len_number
+                   Specifies the number of digits used for the node numbers, 
+                   it will be zero filled if needed. The default value 
+                   is no padding.
+        --cage_pad_len len_number
+                   Specifies the number of digits used for the cage numbers, 
+                   it will be zero filled if needed. The default value is 
+                   no padding.
+        --allocate_type
+                   Specifies the allocation method that is used to allocate 
+                   resources to full system partition. The supported 
+                   allocation methods are always_all, always_list and 
+                   conditional. The default method is always_all. always_all 
+                   indicates to always use the 'all resources' LPAR flag; 
+                   always_list indicates to always explicitly list the 
+                   devices in the LPAR; and conditional indicates to use 
+                   the 'all resources' LPAR flag if not --exclude_hw is found,
+                   otherwise use an explicit list for the hardware. 
+        --exclude_hw
+                   Specifies a comma-separated list of hardware names or 
+                   'device id's that do not need to assign. The supported 
+                   hardware names are RIO and 10G, RIO indicates Galaxy 1 HCA 
+                   used for RIO connection in IH nodes; 10G indicates 2-port 
+                   10G integrated adapter in IH nodes. It can only be used 
+                   with --allocate_type is always_list or conditional.
+        -h         Display usage information.
+        
+The configCECs script is written in ksh, and used to create a full 
+system partition for each CECs Managed by the HMC. It will use ssh to 
+login the HMC with the hscroot userid in order to rename the CECs based 
+on a certain pattern specified through command line and create full 
+partition for all the CECs.
+
+Since for the large HPC environment the user usually does not use many 
+nodes that are not IH nodes, so we only support Power6 IH servers in 
+this script. If the user wants to do LPAR setup for HV or HE servers, 
+he needs to modify this sample script manually. 
+
+To specify the name format to be used for the CEC/LPAR/Profile, this 
+script uses the same logic that the 'date' command uses for specifying 
+how to output the date. There are 4 field descriptors that the script 
+will recognize:
+            %F = the frame number of the frame that the CEC is in
+            %N = the relative node number of the CEC in the frame
+            %C = the cage number of the CEC in the frame
+            %S = the serial number of the CEC
+For example if you want the CEC name to be 
+'airbus_f<frame#>n<node#>_SN<serial#>', then the format to use would be 
+'airbus_f%Fn%N_SN%S'
+
+The way the script finds the CECs on the HMC is to issue the 
+'lssyscfg -r frame' command to find all the frames and then issues the 
+'lssyscfg -r cage' command for each frame to list the contents of each 
+cage position in a given frame. It then starts looking for CECs starting 
+at cage 1 and going through to the last cage. The first CEC found in a 
+frame is assumed to be node 1, the second node found is node two and so on. 
+The script then will assign each CEC a frame number, a node number, a cage 
+number and the Serial number of the CEC which can be used in naming the 
+CEC/LPAR/Profile. If no frames/cages/CECs are found on this HMC, an error 
+message will be displayed.
+
+xCAT command rspconfig could be used to setup ssh remote shell from the 
+xCAT Management Node to the HMCs without prompting for the hscroot password; 
+otherwise the user has to type in the password manually for many times. 
+And if the user wants to use the frame number in the name of the CEC or 
+LPAR then the frame number must be set on the frames through HMC Web GUI 
+or HMC command line before issuing this script.
+
+This script supports three resource allocate_types to create the full system 
+partition; they are always_all, always_list and conditional. The default 
+method is always_all. always_all indicates to always use the 'all resources' 
+LPAR flag; always_list indicates to always explicitly list the devices in the 
+LPAR; and conditional indicates to use the 'all resources' LPAR flag if not 
+--exclude_hw is found, otherwise use an explicit list for the hardware.
+
+As default, this script will assign all the resources to the full system 
+partition, but if the allocate_type is always_list or conditional, then the 
+user could use --exclude_hw flag to exclude those devices that can not be 
+assigned or not supported by the operating system from assignment. The 
+supported hardware names or 'device_id's to exclude are RIO and 10G, RIO 
+indicates Galaxy 1 HCA used for RIO connection in IH nodes; 10G indicates 
+2-port 10G integrated adapter in IH nodes.
+
+Actually, this script will not change the CECs/LPARs directly but creates 
+one or two scripts (Rename_cecs, Build_lpars) in /tmp directory on xCAT MN 
+that will do the changes once the user executes them. The /tmp/Rename_cecs 
+should be run first and then the /tmp/Build_lpars. The reason why we do it 
+this way is to have the user see exactly what HMC commands would be executed 
+and also have a better chance to fine tune the commands if it is needed.

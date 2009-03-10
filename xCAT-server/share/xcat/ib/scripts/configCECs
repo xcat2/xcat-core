@@ -1,0 +1,743 @@
+#!/usr/bin/ksh
+
+###########################################################################
+#
+# The configCECs script is written in ksh, and used to create a full  
+# system partition for each CECs Managed by the HMC. It will use ssh to 
+# login the HMC with the hscroot userid in order to rename the CECs based 
+# on a certain pattern specified through command line and create full 
+# partition for all the CECs. 
+# Command Syntax:
+#      configCECs -H hmc_list [-c cec_format] [-l lpar_format] [-p profile_format] 
+#                   [--frame_pad_len len_number] [--node_pad_len len_number]
+#                   [--cage_pad_len len_number] 
+#                   [--allocate_type always_all | always_list | conditional]
+#                   [--exclude_hw ]
+#                   [-h]
+#
+#        -H hmc_list
+#                   Specifies a comma-separated list of HMC host names, IP addresses to configure CECs on.
+#        -c cec_format
+#                   Specifies the naming format for CEC, the default format is f%Fn%N_SN%S.
+#        -l lpar_format
+#                   Specifies the naming format for LPAR, the default format is f%Fn%N.
+#        -p profile_format
+#                   Specifies the naming format for profile, the default format is the same with lpar_format.
+#        --frame_pad_len len_number
+#                   Specifies the number of digits used for the frame numbers, it will be zero filled if
+#                   needed. The default value is no padding.
+#        --node_pad_len len_number
+#                   Specifies the number of digits used for the node numbers, it will be zero filled if
+#                   needed. The default value is no padding.
+#        --cage_pad_len len_number
+#                   Specifies the number of digits used for the cage numbers, it will be zero filled if
+#                   needed. The default value is no padding.
+#        --allocate_type
+#                   Specifies the allocation method that is used to allocate resources to full system 
+#                   partition. The supported allocation methods are always_all, always_list and conditional.
+#                   The default method is always_all. always_all indicates to always use the 'all resources'
+#                   LPAR flag; always_list indicates to always explicitly list the devices in the LPAR; and
+#                   conditional indicates to use the 'all resources' LPAR flag if not --exclude_hw is found,
+#                   otherwise use an explicit list for the hardware. 
+#        --exclude_hw
+#                   Specifies a comma-separated list of hardware names or 'device id's that do not need to 
+#                   assign. The supported hardware names are RIO and 10G, RIO indicates Galaxy 1 HCA used 
+#                   for RIO connection in IH nodes; 10G indicates 2-port 10G integrated adapter in IH nodes.
+#                   It can only be used with --allocate_type is always_list or conditional.
+#        -h         Display usage information.
+###########################################################################
+
+###########################################################################
+#                                                                         #
+# Setup default values for the script's variables. Some of these might    #
+# be overwritten by the commmand line arguments.                          #
+#                                                                         #
+###########################################################################
+CEC_FILE="/tmp/Rename_cecs"
+LPAR_FILE="/tmp/Build_lpars"
+
+CECFORMAT="f%Fn%N_SN%S"
+LPARFORMAT="f%Fn%N"
+PROFFORMAT=""
+NODE_PAD_LENGTH=0   # A value of '0' means no padding
+FRAME_PAD_LENGTH=0  # A value of '0' means no padding
+CAGE_PAD_LENGTH=0   # A value of '0' means no padding
+ALLOCATE_TYPE="always_all"
+COMM_LPAR_INFO_AR="lpar_id=1,lpar_env=aixlinux,all_resources=1,boot_mode=norm,conn_monitoring=0" #For "all resources"
+COMM_LPAR_INFO_LS="lpar_id=1,lpar_env=aixlinux,boot_mode=norm,conn_monitoring=0,proc_mode=ded,sharing_mode=keep_idle_procs"
+NEW_LPAR_ID='1'
+FULLPATH='NO'
+NEWLINE='
+'
+HAVE_PROCESSED_CAGE=""
+
+###########################################################################
+#                                                                         #
+# usage for configCECs                                                    #
+#                                                                         #
+###########################################################################
+usage()
+{
+echo "Usage: configCECs -H hmc_list [-c cec_format] [-l lpar_format] [-p profile_format] 
+                   [--frame_pad_len len_number] [--node_pad_len len_number]
+                   [--cage_pad_len len_number] 
+                   [--allocate_type always_all | always_list | conditional]
+                   [--exclude_hw ]
+                   [-h]
+
+        -H hmc_list
+                   Specifies a comma-separated list of HMC host names, IP addresses to configure CECs on.
+        -c cec_format
+                   Specifies the naming format for CEC, the default format is f%Fn%N_SN%S.
+        -l lpar_format
+                   Specifies the naming format for LPAR, the default format is f%Fn%N.
+        -p profile_format
+                   Specifies the naming format for profile, the default format is the same with lpar_format.
+        --frame_pad_len len_number
+                   Specifies the number of digits used for the frame numbers, it will be zero filled if
+                   needed. The default value is no padding.
+        --node_pad_len len_number
+                   Specifies the number of digits used for the node numbers, it will be zero filled if
+                   needed. The default value is no padding.
+        --cage_pad_len len_number
+                   Specifies the number of digits used for the cage numbers, it will be zero filled if
+                   needed. The default value is no padding.
+        --allocate_type
+                   Specifies the allocation method that is used to allocate resources to full system 
+                   partition. The supported allocation methods are always_all, always_list and conditional.
+                   The default method is always_all. always_all indicates to always use the 'all resources'
+                   LPAR flag; always_list indicates to always explicitly list the devices in the LPAR; and
+                   conditional indicates to use the 'all resources' LPAR flag if not --exclude_hw is found,
+                   otherwise use an explicit list for the hardware. 
+        --exclude_hw
+                   Specifies a comma-separated list of hardware names or 'device id's that do not need to 
+                   assign. The supported hardware names are RIO and 10G, RIO indicates Galaxy 1 HCA used 
+                   for RIO connection in IH nodes; 10G indicates 2-port 10G integrated adapter in IH nodes.
+                   It can only be used with --allocate_type is always_list or conditional.
+        -h         Display usage information."
+}
+
+############################################################################
+#                                                                          #
+# List all resources and exclude the resources indicated by '--exclude_hw' #
+#                                                                          #
+############################################################################
+lsres()
+{
+    EXCLUDE_HW=`echo $EXCLUDE_HW | sed "s/,/\|/g"`
+    ###########################################################
+    #                                                         #
+    # Get the details of any HCAs in the CEC while skipping   #
+    # the Galaxy 1 adapter for the RIO (adapter_id of         #
+    # 230015ff). When allocate a HCA, a GUID is needed. First #
+    # we try to extract this GUID from unassigned_guids       #
+    # attibute. If the unassigned_guids is null, we will try  #
+    # to extract this GUID from assigned_guids attibute. If   #
+    # this two attribute are both null, an error message will #
+    # will be printed to indicate this device can be          #
+    # allocated.                                              #
+    #                                                         #
+    ###########################################################
+    HCA_STRING=""
+    HCA_LIST_CMD="ssh hscroot@$HMC $LSHWRES -r hca --level sys -F adapter_id:unassigned_guids:assigned_guids -m $CEC_NAME"
+    TMP_HCA_LIST=`$HCA_LIST_CMD`
+    SAVEIFS="$IFS"
+    IFS="$NEWLINE"
+    set -A HCA_LIST $TMP_HCA_LIST
+    IFS="$SAVEIFS"
+    H_INDEX=0
+    if [[ $HCA_LIST != "No results were found." ]]; then
+        while (($H_INDEX < ${#HCA_LIST[*]})); do
+            ADAPTER_ID=`echo ${HCA_LIST[$H_INDEX]} | cut -d ':' -f1`
+            UNASSIGNED_GUID=`echo ${HCA_LIST[$H_INDEX]} | cut -d ':' -f2`
+            ASSIGNED_GUID=`echo ${HCA_LIST[$H_INDEX]} | cut -d ':' -f3`
+            IS_EXCLUDED=`echo "$EXCLUDE_HW" | grep -q "$ADAPTER_ID" && echo yes || echo no`
+            if [[ $IS_EXCLUDED == "yes" ]]; then
+                ((H_INDEX=$H_INDEX+1))
+                continue
+            fi
+            if [[ "$UNASSIGNED_GUID" != "" && "$UNASSIGNED_GUID" != "none" ]]; then
+                GUID=`echo $UNASSIGNED_GUID | cut -d ',' -f1`
+            else
+                if [[ "$ASSIGNED_GUID" != "" && "$ASSIGNED_GUID" != "none" ]]; then
+                    GUID=`echo $ASSIGNED_GUID | cut -d ',' -f1`
+                else
+                    echo "  ERROR: The device $ADAPTER_ID could not be allocated."
+                    ((H_INDEX=$H_INDEX+1))
+                    continue
+                fi
+            fi
+            if [[ $HCA_STRING == "" ]]; then
+                HCA_STRING=$ADAPTER_ID'/'$GUID'/4'
+            else
+                HCA_STRING=${HCA_STRING}','$ADAPTER_ID'/'$GUID'/4'
+            fi
+            ((H_INDEX=$H_INDEX+1))
+        done
+        if [[ "${HCA_STRING}" != '' ]]; then
+            HCA_STRING=',\\\\\"hca_adapters='${HCA_STRING}'\\\\\"'
+        fi
+    fi
+    ###########################################################
+    #                                                         #
+    # Get the location of all the I/O slots.                  #
+    #                                                         #
+    ###########################################################
+    IO_LIST_CMD="ssh hscroot@$HMC $LSHWRES -r io --rsubtype slot -F drc_index -m $CEC_NAME"
+    if [[ $EXCLUDE_HW != '' ]]; then
+        IO_LIST_CMD=${IO_LIST_CMD}" | egrep -v \"$EXCLUDE_HW\""
+    fi
+    set -A IO_LIST `$IO_LIST_CMD`
+    I_INDEX=0
+    if [[ $IO_LIST != "No" ]]; then
+        while (($I_INDEX < ${#IO_LIST[*]})); do
+            if [[ $I_INDEX == "0" ]]; then
+                IO_STRING=${IO_LIST[$I_INDEX]}'//0'
+            else
+                IO_STRING=${IO_STRING}','${IO_LIST[$I_INDEX]}'//0'
+            fi
+            ((I_INDEX=$I_INDEX+1))
+        done
+        if [[ "${IO_STRING}" != '' ]]; then
+            IO_STRING=',\\\\\"io_slots='${IO_STRING}'\\\\\"'
+        fi
+    fi
+    ###########################################################
+    #                                                         #
+    # Get the info on the HEAs in the CEC.                    #
+    #                                                         #
+    ###########################################################
+    HEA_LIST_CMD="ssh hscroot@$HMC $LSHWRES -r hea --rsubtype phys --level port -F adapter_id/port_group/phys_port_id/log_port_ids -m $CEC_NAME"
+    set -A HEA_LIST `$HEA_LIST_CMD`
+    IS_EXCLUDED=`echo "$EXCLUDE_HW" | grep -q "2300000c" && echo yes || echo no`
+    if [[ $HEA_LIST != "No" ]]; then
+        if [[ ${#HEA_LIST[*]} = '4' || $IS_EXCLUDED == "yes" ]]; then
+            HEA_STRING='23000014/2/0/1/,23000014/2/1/2/,23000014/1/0/1/,23000014/1/1/2/'
+        else
+            HEA_STRING='23000014/2/0/1/,23000014/2/1/2/,23000014/1/0/1/,23000014/1/1/2/,2300000c/2/0/1/,2300000c/1/0/1/'
+        fi
+        HEA_STRING=',\\\\\"lhea_logical_ports='${HEA_STRING}'\\\\\"'
+    fi
+    ###########################################################
+    #                                                         #
+    # Get the maximum installed memory.                       #
+    #                                                         #
+    ###########################################################
+    MAX_MEM=`ssh hscroot@$HMC $LSHWRES -r mem --level sys -F installed_sys_mem -m $CEC_NAME`
+    MEM_STRING=',min_mem=4096,desired_mem='$MAX_MEM',max_mem='$MAX_MEM
+    ###########################################################
+    #                                                         #
+    # Get the maximum installed CPUs.                         #
+    #                                                         #
+    ###########################################################
+    MAX_CPU=`ssh hscroot@$HMC $LSHWRES -r proc --level sys -F installed_sys_proc_units -m $CEC_NAME`
+    MAX_CPU=`echo $MAX_CPU | sed -e 's/\.0$//'`
+    CPU_STRING=',min_procs=1,desired_procs='$MAX_CPU',max_procs='$MAX_CPU
+}
+
+###########################################################################
+#                                                                         #
+# Parse/validate the commmand line arguments.                             #
+#                                                                         #
+###########################################################################
+OS=`uname`
+if [[ "$OS" == "AIX" ]]; then
+    #The getopt on AIX doesn't support long options
+    ALLARGS=$*
+    ALLARGS=`echo $ALLARGS | sed -e 's/ --frame_pad_len/ -F/'`
+    ALLARGS=`echo $ALLARGS | sed -e 's/ --node_pad_len/ -N/'`
+    ALLARGS=`echo $ALLARGS | sed -e 's/ --cage_pad_len/ -G/'`
+    ALLARGS=`echo $ALLARGS | sed -e 's/ --allocate_type/ -A/'`
+    ALLARGS=`echo $ALLARGS | sed -e 's/ --exclude_hw/ -E/'`
+    echo "$ALLARGS" | grep " --" 2>&1 >/dev/null
+    if [ $? -eq 0 ]; then
+        strerr="Invalid options"
+        echo "$strerr" >&2
+        usage
+        exit 1
+    fi
+    args=`getopt H:c:l:p:hF:N:G:A:E: $ALLARGS 2>&1`
+    if [ $? -gt 0 ]; then
+        strerr="Invalid options"
+        echo "$strerr" >&2
+        usage
+        exit 1
+    fi
+    args=`echo $args | sed -e 's/ -F/ --frame_pad_len/'`
+    args=`echo $args | sed -e 's/ -N/ --node_pad_len/'`
+    args=`echo $args | sed -e 's/ -G/ --cage_pad_len/'`
+    args=`echo $args | sed -e 's/ -A/ --allocate_type/'`
+    args=`echo $args | sed -e 's/ -E/ --exclude_hw/'`
+elif [[ "$OS" == "Linux" ]]; then
+    args=`getopt -u -l frame_pad_len:,node_pad_len:,cage_pad_len:,allocate_type:,exclude_hw: H:c:l:p:h $*`
+    if [ $? -gt 0 ]; then
+        strerr="Invalid options"
+        echo "$strerr" >&2
+        usage
+        exit 1
+    fi
+else
+    echo "The system $OS is not supported."
+    exit 1
+fi
+
+set -- $args
+for i in $args; do
+    case $i in
+    -H)
+        shift;
+        HMC_LIST=$1;
+        shift;;
+    -c)
+        shift;
+        CECFORMAT=$1;
+        shift;;
+    -l) 
+        shift;
+        LPARFORMAT=$1;
+        shift;;
+    -p)
+        shift;
+        PROFFORMAT=$1;
+        shift;;
+    --frame_pad_len)
+        shift;
+        FRAME_PAD_LENGTH=$1;
+        if [[ `echo "$FRAME_PAD_LENGTH" | grep -sqE ^[0-9]+$ ;echo $?` != "0" ]]; then
+            echo "The parameter of --frame_pad_len should be an integer."
+            usage
+            exit 1
+        fi
+        typeset -RZ${FRAME_PAD_LENGTH} F_NUM;
+        shift
+        ;;
+    --node_pad_len)
+        shift;
+        NODE_PAD_LENGTH=$1;
+        if [[ `echo "$NODE_PAD_LENGTH" | grep -sqE ^[0-9]+$ ;echo $?` != "0" ]]; then
+            echo "The parameter of --node_pad_len should be an integer."
+            usage
+            exit 1
+        fi
+        typeset -RZ${NODE_PAD_LENGTH}  N_NUM;
+        shift;;
+    --cage_pad_len)
+        shift;
+        CAGE_PAD_LENGTH=$1;
+        if [[ `echo "$CAGE_PAD_LENGTH" | grep -sqE ^[0-9]+$ ;echo $?` != "0" ]]; then
+            echo "The parameter of --cage_pad_len should be an integer."
+            usage
+            exit 1
+        fi
+        typeset -RZ${CAGE_PAD_LENGTH} CAGE_NUM;
+        shift;;
+    --allocate_type)
+        shift;
+        ALLOCATE_TYPE=$1;
+        shift;;
+    --exclude_hw)
+        shift;
+        EXCLUDE_HW=$1;
+        shift;;
+    -h)
+        shift
+        usage
+        exit 0
+        ;;
+    esac
+done
+
+if [[ "$HMC_LIST" == '' ]]; then
+    echo "There is no HMC specified. Please use -H to specify HMC."
+    usage
+    exit 1
+fi
+if [[ "$ALLOCATE_TYPE" != "always_all" ]] && [[ "$ALLOCATE_TYPE" != "always_list" ]] && [[ "$ALLOCATE_TYPE" != "conditional" ]]; then
+    echo "The parameter of --allocate_type is incorrect."
+    usage
+    exit 1
+fi
+if [[ "$ALLOCATE_TYPE" == "always_all" ]] && [[ "$EXCLUDE_HW" != '' ]]; then
+    echo "The flag --exclude_hw can only be used with --allocate_type is always_list or conditional."
+    usage
+    exit 1
+fi
+if [[ "$ALLOCATE_TYPE" == "conditional" ]] && [[ "$EXCLUDE_HW" != '' ]]; then
+    ALLOCATE_TYPE="always_list"
+fi
+if [[ "$ALLOCATE_TYPE" == "conditional" ]] && [[ "$EXCLUDE_HW" == '' ]]; then
+    ALLOCATE_TYPE="always_all"
+fi
+if [[ "$EXCLUDE_HW" != '' ]]; then
+    EXCLUDE_HW=`echo $EXCLUDE_HW | awk -F, '{ for (i=1;i<=NF;i++){ if($i=="RIO") $i="230015ff"; if($i=="10G") $i="2300000c"; } print $0 }'`
+    EXCLUDE_HW=`echo $EXCLUDE_HW | sed "s/ /,/g"`
+fi
+###########################################################################
+#                                                                         #
+# Remove any old output files from previous runs of this script.          #
+#                                                                         #
+###########################################################################
+
+rm -r $CEC_FILE  >/dev/null 2>&1
+rm -r $LPAR_FILE  >/dev/null 2>&1
+
+###########################################################################
+#                                                                         #
+# Add the full pathname to the HMC commands if needed.                    #
+#                                                                         #
+###########################################################################
+
+if [[ "$FULLPATH" == "YES" ]]; then
+    HMCPATH='/opt/hsc/bin/'
+else
+    HMCPATH=''
+fi
+LSSYSCFG=${HMCPATH}'lssyscfg'
+MKSYSCFG=${HMCPATH}'mksyscfg'
+CHSYSCFG=${HMCPATH}'chsyscfg'
+RMSYSCFG=${HMCPATH}'rmsyscfg'
+LSHWRES=${HMCPATH}'lshwres'
+###########################################################################
+#                                                                         #
+# Main loop: For the given HMC ($HMC) list all it's frames.  For each     #
+# frame display the contents of it's cages to find it's CECs. Then for    #
+# each CEC build the HMC commands to name the CEC and build the LPAR.     #
+# The HMC commands are written to the two output files ($CEC_FILE and     #
+# $LPAR_FILE).                                                            #
+#                                                                         #
+###########################################################################
+HMC_LIST=`echo $HMC_LIST | sed "s/,/ /g"`
+for HMC in $HMC_LIST; do
+    echo "Checking HMC $HMC......"
+    SAVEIFS="$IFS"
+    IFS="$NEWLINE"
+    set -A ALLFRAMES `ssh hscroot@$HMC $LSSYSCFG -r frame -F name,frame_num,serial_num,state`
+    IFS="$SAVEIFS"
+    if [[ ${#ALLFRAMES[*]} == "0" ]]; then
+        echo 'ERROR: NO FRAMES WERE FOUND ON HMC' "$HMC"
+        continue
+    fi
+    F_INDEX=0
+    while (($F_INDEX < ${#ALLFRAMES[*]})); do
+        SAVEIFS="$IFS"
+        IFS=','
+        set -A FRAMELINE ${ALLFRAMES[$F_INDEX]}
+        IFS="$SAVEIFS"
+        F_NAME="${FRAMELINE[0]}"
+        F_NUM="${FRAMELINE[1]}"
+        F_SN="${FRAMELINE[2]}"
+        F_STATE="${FRAMELINE[3]}"
+        ###################################################################
+        #                                                                 #
+        # Check if the frame number is invalid (0 or non-numeric).        #
+        #                                                                 #
+        ###################################################################
+        if [[ "$F_NAME" == "No results were found." ]]; then
+            echo 'ERROR: NO FRAMES WERE FOUND ON HMC' "$HMC"
+            break
+        fi
+        if [[ "$F_NUM" == "0" || `echo "$F_NUM" | grep -sqE ^[0-9]+$ ;echo $?` != "0" ]]; then
+            echo 'ERROR: Invalid Frame number for frame' "$F_NAME"":" "$F_NUM"
+            ((F_INDEX=$F_INDEX+1))
+            continue
+        fi
+
+        ###################################################################
+        #                                                                 #
+        # Check if at least one BPA is in the 'Standby' state.            #
+        #                                                                 #
+        ###################################################################
+        if [[ `echo $F_STATE | grep -sq Standby ; echo $?` != "0" ]]; then
+            echo 'ERROR: Frame' "$F_NAME" 'is in incorrect state -' $F_STATE
+            ((F_INDEX=$F_INDEX+1))
+            continue
+        fi
+
+        ###################################################################
+        #                                                                 #
+        # List the contents of each cage in the current frame using the   #
+        # 'lssyscfg -r cage' command and loop through each one to find the#
+        # CECs.                                                           #
+        #                                                                 #
+        ###################################################################
+        N_NUM=0
+        SAVEIFS="$IFS"
+        IFS="$NEWLINE"
+        set -A ALLCAGES `ssh hscroot@$HMC $LSSYSCFG -r cage -e "$F_NAME" -F cage_num,contents,type_model_serial_num,loc_code,owner | sort -n`
+        IFS="$SAVEIFS"
+        CAGE_INDEX=0
+        while (($CAGE_INDEX < ${#ALLCAGES[*]})); do
+            SAVEIFS="$IFS"
+            IFS=','
+            set -A CAGELINE ${ALLCAGES[$CAGE_INDEX]}
+            IFS="$SAVEIFS"
+            CAGE_NUM="${CAGELINE[0]}"
+            CAGE_CONTENTS="${CAGELINE[1]}"
+            CAGE_TYPE_MODEL_SN="${CAGELINE[2]}"
+            CAGE_LOC_CODE="${CAGELINE[3]}"
+            CAGE_OWNER="${CAGELINE[4]}"
+            if [[ "$CAGE_NUM" == "No results were found." ]]; then
+                echo 'ERROR: NO CAGES WERE FOUND ON FRAME' "$F_NAME"
+                break
+            fi
+            case $CAGE_CONTENTS in
+            io) ;; ## Ignore RIO drawer
+            48) ;; ## Ignore Federation switch board
+            sys)
+                ###########################################################
+                #                                                         #
+                # For each CEC found validate that the frame was able to  #
+                # read it's MTMS correctly. The MTMS is the only common   #
+                # piece of data between the 'lssyscfg -r cage' and        #
+                # 'lssyscfg -r sys' commands.  So, if the MTMS is invalid #
+                # skip over this CEC since will not be able to find it in #
+                # the 'lssyscfg -r sys' command output.  The MTMS must be #
+                # split in 2 since 'lssyscfg -r sys' uses different fields#
+                # for the Model/Type and the Serial Number.               #
+                #                                                         #
+                ###########################################################
+                echo "Frame $F_NUM Cage $CAGE_NUM contains CEC $CAGE_TYPE_MODEL_SN"
+                N_NUM=$((${N_NUM} + 1))
+                if [[ "$CAGE_TYPE_MODEL_SN" == "No-TMS*Data!!!" ]]; then
+                    echo "  ERROR: Bad Type-Model-SN data:" "$CAGE_TYPE_MODEL_SN"
+                else
+                    CAGE_TYPE_MODEL=`echo $CAGE_TYPE_MODEL_SN |cut -d '*' -f1`
+                    CAGE_SN=`echo $CAGE_TYPE_MODEL_SN | cut -d '*' -f2`
+                    for PREVCAGE in $HAVE_PROCESSED_CAGE; do
+                        if [[ "$PREVCAGE" == "${CAGE_TYPE_MODEL}:${CAGE_SN}" ]]; then
+                            PROCESSED=1
+                            break
+                        fi
+                        PROCESSED=0
+                    done
+                    if [[ $PROCESSED == 1 ]]; then
+                        echo "  ERROR: ${CAGE_TYPE_MODEL}:${CAGE_SN} has already been processed."
+                        ((CAGE_INDEX=$CAGE_INDEX+1))
+                        continue
+                    fi
+                    HAVE_PROCESSED_CAGE="${HAVE_PROCESSED_CAGE}${CAGE_TYPE_MODEL}:${CAGE_SN} "
+                    #######################################################
+                    #                                                     #
+                    # List all the CECs on this HMC and grep for the MTMS #
+                    # that was found for the CEC in this cage. If it is   #
+                    # not found or not an IH p5 then skip over this CEC.  #
+                    #                                                     #
+                    #######################################################
+                    CEC_ENTRY=`ssh hscroot@$HMC $LSSYSCFG -r sys -F name:state:power_off_policy:service_lpar_id:type_model:serial_num | grep "${CAGE_TYPE_MODEL}:${CAGE_SN}$"`
+                    SAVE_RC=$?
+                    if [[ "$SAVE_RC" != "0" ]]; then
+                        echo "  ERROR: Could not find System $CAGE_TYPE_MODEL $CAGE_SN on this HMC"
+                    else
+                        ###################################################
+                        #                                                 #
+                        # Save the detail data of this CEC.               #
+                        #                                                 #
+                        ###################################################
+                        CEC_NAME=`echo "$CEC_ENTRY" | cut -d ':' -f1`
+                        CEC_STATE=`echo "$CEC_ENTRY" | cut -d ':' -f2`
+                        CEC_POWER_POLICY=`echo "$CEC_ENTRY" | cut -d ':' -f3`
+                        CEC_SERV_LPAR_ID=`echo "$CEC_ENTRY" | cut -d ':' -f4`
+                        CEC_TYPE_MODEL=`echo "$CEC_ENTRY" | cut -d ':' -f5`
+                        CEC_SN=`echo "$CEC_ENTRY" | cut -d ':' -f6`
+                        ###################################################
+                        #                                                 #
+                        # Format the new CEC name.                        #
+                        #                                                 #
+                        ###################################################
+                        CEC_NEW_NAME=''
+                        PERCENT='no'
+                        for i in `echo $CECFORMAT | sed -e 's/./& /g'`; do
+                            if [[ $i = '%' && $PERCENT = 'no' ]]; then
+                                PERCENT='yes'
+                            else
+                                if [[ $PERCENT = 'yes' ]]; then
+                                    case $i in
+                                    F) CEC_NEW_NAME=${CEC_NEW_NAME}${F_NUM} ;;
+                                    N) CEC_NEW_NAME=${CEC_NEW_NAME}${N_NUM} ;;
+                                    S) CEC_NEW_NAME=${CEC_NEW_NAME}${CEC_SN} ;;
+                                    C) CEC_NEW_NAME=${CEC_NEW_NAME}${CAGE_NUM} ;;
+                                    %) CEC_NEW_NAME=${CEC_NEW_NAME}${i} ;;
+                                    *) echo "Ignoring Invalid character "${i}" after a '%'." ;;
+                                    esac
+                                    PERCENT='no'
+                                else
+                                    CEC_NEW_NAME=${CEC_NEW_NAME}${i}
+                                fi
+                            fi
+                        done
+                        ###################################################
+                        #                                                 #
+                        # If the current CEC name needs to be changed then#
+                        # build the 'chsyscfg' command and append it to   #
+                        # the file. 
+                        #                                                 #
+                        ###################################################
+                        if [[ "$CEC_NAME" == "$CEC_NEW_NAME" ]]; then
+                            echo "  INFO: CEC NAME ($CEC_NAME) IS CORRECT."
+                        else
+                            echo "  CHANGE: OLD CEC NAME:" "$CEC_NAME""." "NEW CEC NAME:" "$CEC_NEW_NAME""."
+                            echo "ssh hscroot@$HMC $CHSYSCFG -r sys -m $CEC_NAME -i \"new_name=$CEC_NEW_NAME\"" >>  $CEC_FILE
+                        fi
+                        ###################################################
+                        #                                                 #
+                        # Check if the CEC is powered up. If it isn't we  #
+                        # have to skip over it since it needs to be up to #
+                        # do anything else other then changing the CEC    #
+                        # name.                                           #
+                        #                                                 #
+                        ###################################################
+                        if [[ "$CEC_STATE" == "Standby" || "$CEC_STATE" == "Operating" ]]; then
+                            ###############################################
+                            #                                             #
+                            # Make sure the CEC power off policy is set to#
+                            # 1. This prevents the CEC from being powered #
+                            # off when the last LPAR is shutdown.         #
+                            #                                             #
+                            ###############################################
+                            if [[ "$CEC_POWER_POLICY" == "1" ]]; then
+                                echo "  INFO: CEC POWER OFF POLICY IS SET OK ($CEC_POWER_POLICY)."
+                            else
+                                echo "  CHANGE: CEC POWER OFF POLICY IS SET WRONG ($CEC_POWER_POLICY)."
+                                echo "ssh hscroot@$HMC $CHSYSCFG -r sys -m $CEC_NAME -i \"power_off_policy=1\"" >>  $CEC_FILE
+                            fi
+                            ###############################################
+                            #                                             #
+                            # Format the new LPAR name.                   #
+                            #                                             #
+                            ###############################################
+                            LPAR_NAME=''
+                            PERCENT='no'
+                            for i in `echo $LPARFORMAT | sed -e 's/./& /g'`; do
+                                if [[ $i = '%' &&  $PERCENT = 'no' ]]; then
+                                    PERCENT='yes'
+                                else
+                                    if [[ $PERCENT = 'yes' ]]; then
+                                        case $i in
+                                        F) LPAR_NAME=${LPAR_NAME}${F_NUM} ;;
+                                        N) LPAR_NAME=${LPAR_NAME}${N_NUM} ;;
+                                        S) LPAR_NAME=${LPAR_NAME}${CEC_SN} ;;
+                                        C) LPAR_NAME=${LPAR_NAME}${CAGE_NUM} ;;
+                                        %) LPAR_NAME=${LPAR_NAME}${i} ;;
+                                        *) echo "Ignoring Invalid character "${i}" after a '%'." ;;
+                                        esac
+                                        PERCENT='no'
+                                    else
+                                        LPAR_NAME=${LPAR_NAME}${i}
+                                    fi
+                                fi
+                            done
+                            ###############################################
+                            #                                             #
+                            # Format the new Profile name.                #
+                            #                                             #
+                            ###############################################
+                            if [[ "$PROFFORMAT" == '' ]]; then
+                                PROF_NAME=$LPAR_NAME
+                            else
+                                PROF_NAME=''
+                                PERCENT='no'
+                                for i in `echo $PROFFORMAT | sed -e 's/./& /g'`; do
+                                    if [[ $i = '%' &&  $PERCENT = 'no' ]]; then
+                                        PERCENT='yes'
+                                    else
+                                        if [[ $PERCENT = 'yes' ]]; then
+                                            case $i in
+                                            F) PROF_NAME=${PROF_NAME}${F_NUM} ;;
+                                            N) PROF_NAME=${PROF_NAME}${N_NUM} ;;
+                                            S) PROF_NAME=${PROF_NAME}${CEC_SN} ;;
+                                            C) PROF_NAME=${PROF_NAME}${CAGE_NUM} ;;
+                                            %) PROF_NAME=${PROF_NAME}${i} ;;
+                                            *) echo "Ignoring Invalid character "${i}" after a '%'." ;;
+                                            esac
+                                            PERCENT='no'
+                                        else
+                                            PROF_NAME=${PROF_NAME}${i}
+                                        fi
+                                    fi
+                                done
+                            fi
+                            ###############################################
+                            #                                             #
+                            # Check if an LPAR with this name already     #
+                            # exists on this CEC.                         #
+                            #                                             #
+                            ###############################################
+                            LPAR_ENTRY=`ssh hscroot@$HMC $LSSYSCFG  -r lpar -m $CEC_NAME -F name:lpar_id:state --filter "lpar_names=$LPAR_NAME" `
+                            LPAR_ENTRY_RC="$?"
+                            if [[ "$LPAR_ENTRY_RC" == "0" ]]; then
+                                ###########################################
+                                #                                         #
+                                # An LPAR with the this name exists. Now  #
+                                # check if the LPAR ID and the profile are#
+                                # also correct.                           #
+                                #                                         #
+                                ###########################################
+                                LPAR_ID=`echo "$LPAR_ENTRY" |cut -d ':' -f2`
+                                LPAR_STATE=`echo "$LPAR_ENTRY" |cut -d ':' -f3`
+                                if [[ "$LPAR_ID" == "$NEW_LPAR_ID" ]]; then
+                                    echo "  INFO: LPAR $LPAR_NAME IS ALREADY CONFIGURED AS ID 1"
+                                    if [[ "$CEC_SERV_LPAR_ID" == "$NEW_LPAR_ID" ]]; then
+                                        echo "  INFO: SERVICE LPAR ID IS SET OK ($CEC_SERV_LPAR_ID)."
+                                    else
+                                        echo "  CHANGE: SERVICE LPAR ID IS SET WRONG ($CEC_SERV_LPAR_ID)."
+                                        echo "ssh hscroot@$HMC $CHSYSCFG -r sys -m $CEC_NEW_NAME -i \"service_lpar_id=1\"" >>  $CEC_FILE
+                                    fi
+                                else
+                                    echo "  ERROR: LPAR $LPAR_NAME IS CONFIGURED AS ID $LPAR_ID"
+                                fi
+                            else
+                                ###########################################
+                                #                                         #
+                                # There is no existing LPAR with the      #
+                                # requested name.                         #
+                                # Now verify there is no existing LPAR    #
+                                # with the requested LPAR ID#.            #
+                                #                                         #
+                                ###########################################
+                                LPAR_ENTRY=`ssh hscroot@$HMC $LSSYSCFG -r lpar -m $CEC_NAME -F name:lpar_id:state --filter "lpar_ids=$NEW_LPAR_ID" `
+                                LPAR_ENTRY_RC="$?"
+                                LPAR_INFO=''
+                                if [[ "$ALLOCATE_TYPE" == "always_all" ]]; then
+                                    LPAR_INFO=${COMM_LPAR_INFO_AR}
+                                else
+                                    lsres
+                                    LPAR_INFO=${COMM_LPAR_INFO_LS}${CPU_STRING}${MEM_STRING}${IO_STRING}${HEA_STRING}${HCA_STRING}
+                                fi
+                                if [[ "$LPAR_ENTRY_RC" == "0" ]]; then
+                                    #######################################
+                                    #                                     #
+                                    # An existing LPAR with the requested #
+                                    # LPAR ID# (but different LPAR name)  #
+                                    # was found.                          #
+                                    #                                     #
+                                    #######################################
+                                    echo "  CHANGE: REMOVE LPAR ID $NEW_LPAR_ID"
+                                    echo "ssh hscroot@$HMC $CHSYSCFG -r sys -m $CEC_NEW_NAME -i \"service_lpar_id=none\"" >>  $LPAR_FILE
+                                    echo "ssh hscroot@$HMC $RMSYSCFG -r lpar -m $CEC_NEW_NAME --id $NEW_LPAR_ID" >>  $LPAR_FILE
+                                    CONFIG_DATA="name=${LPAR_NAME},profile_name=${PROF_NAME},${LPAR_INFO}"
+                                    echo "  CHANGE: CREATE LPAR $LPAR_NAME as LPAR ID 1"
+                                    echo "ssh hscroot@$HMC $MKSYSCFG -r lpar -m $CEC_NEW_NAME -i \"$CONFIG_DATA\"" >>  $LPAR_FILE
+                                    echo "ssh hscroot@$HMC $CHSYSCFG -r sys -m $CEC_NEW_NAME -i \"service_lpar_id=1\"" >>  $LPAR_FILE
+                                else
+                                    CONFIG_DATA="name=${LPAR_NAME},profile_name=${PROF_NAME},${LPAR_INFO}"
+                                    echo "  CHANGE: CREATE LPAR $LPAR_NAME as LPAR ID 1"
+                                    echo "ssh hscroot@$HMC $MKSYSCFG -r lpar -m $CEC_NEW_NAME -i \"$CONFIG_DATA\"" >>  $LPAR_FILE
+                                    echo "ssh hscroot@$HMC $CHSYSCFG -r sys -m $CEC_NEW_NAME -i \"service_lpar_id=1\"" >>  $LPAR_FILE
+                                fi
+                            fi
+                        else
+                            echo "  ERROR: CEC NOT POWERED UP. STATE IS: $CEC_STATE"
+                        fi
+                    fi
+                fi ;;
+            none) ;; ## Ignore empty cage in the frame
+            *) echo "  ERROR: Unknown device in cage" $CAGE_NUM ;;
+            esac
+            ((CAGE_INDEX=$CAGE_INDEX+1))
+        done
+        ((F_INDEX=$F_INDEX+1))
+    done
+done
+
+chmod u+x $CEC_FILE  >/dev/null 2>&1
+chmod u+x $LPAR_FILE  >/dev/null 2>&1
