@@ -133,10 +133,16 @@ sub makescript {
          push @scriptd, "SITEMASTER=".$value."\n";
          push @scriptd, "export SITEMASTER\n";
          # if node has service node as master then override site master
-         my $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
+         my $et = $noderestab->getNodeAttribs($node,['xcatmaster', 'servicenode']);
          if ($et and defined($et->{'xcatmaster'})) { 
            $value = $et->{'xcatmaster'};
-         }
+         } 
+	 if ($et and defined($et->{'servicenode'})) { 
+	     my $tmp = $et->{'servicenode'};
+	     if ($tmp =~ /,/) { #service node pool case,use local host as the master
+		 $value=xCAT::Utils->getFacingIP($node); 
+	     }
+	 }
          push @scriptd, "$attribute=".$value."\n";
          push @scriptd, "export $attribute\n";
  
