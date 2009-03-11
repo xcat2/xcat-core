@@ -1330,7 +1330,7 @@ sub getrvidparms {
     if ($jnlp =~ /This advanced option requires the purchase and installation/) {
         return (1,"Node does not have feature key for remote video");
     }
-    $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode kvm</argument>!;
+    $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode wvid/argument>!;
     my @return=("method:imm","jnlp:$jnlp");
     if (grep /-m/,@cmdargv) {
         $response = $browser->request(GET $baseurl."/kvm/vm/jnlp");
