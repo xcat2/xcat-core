@@ -30,7 +30,7 @@ The flash chip of a POWER5 and POWER6 managed system or power subsystem stores f
 
 The B<--commit> flag is used to write the contents of the temporary side of the flash to the permanent side.  This flag should be used after updating code and verifying correct system operation.  The B<--recover> flag is used to write the permanent side of the flash chip back to the temporary side.  This flag should be used to recover from a corrupt flash operation, so that the previously running code can be restored.
 
-B<NOTE:>At present, the B<rflash> command B<doesn't> support B<commit/recover> for BPAs. Because the command "B<licutil>" on HMC doesn't support the "B<commit>" and "B<recover>" operation for the BPA. And "B<rflash>" is dependent on the "B<licutil>" command. So when the B<--commit> or B<--recover> two flags is used, the noderange cannot be a BPA or BPA list in the B<rflash> command. xCAT will pay the attention to the changes all the time.
+B<NOTE:>When the B<--commit> or B<--recover> two flags is used, the noderange B<cannot> be BPA. It only B<can> be CEC or LPAR ,and  will take effect for B<both> managed systems and power subsystems.
 
 xCAT recommends that you shutdown your Operating System images and power off your managed systems before applying disruptive updates to managed systems or power subsystems.
 
@@ -96,7 +96,7 @@ B<rflash> I<bpa_name> I<-p /tmp/fw> I<--activate disruptive>
 
 =item 3
 
-To commit a firmware update to permanent flash on an HMC-attached CEC, enter:
+To commit a firmware update to permanent flash for both managed system and the related power subsystems, enter:
 
 B<rflash> I<cec_name> I<--commit>
 

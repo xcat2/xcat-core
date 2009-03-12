@@ -307,28 +307,32 @@ sub get_lic_filenames {
 
 
 sub get_one_mtms {
-	my $bpa = shift;
-	my $tab = xCAT::Table->new("ppc");
-	my $msg ;	
-	unless ($tab) {
-        	$msg = "ERROR: Unable to open basic ppc table for configuration";
-		return ("", $msg);
-	}
+	my $exp = shift;
+        my $bpa = shift;
+        my $cmd = "lssyscfg -r cage -e $bpa";
+        my $mtms;
+        my $msg;
 
-	#################################
-    	# Get node 
-    	#################################
-    	my @ent = $tab->getAllAttribsWhere("parent=\"$bpa\"", 'node');
-    	if (@ent < 0) {
-      		$msg = "failed to get the CEC whose parent is $bpa!";
-		return ("", $msg);
-    	}
-	my $cec = $ent[0]->{node};
-	$msg = "the first cec is $cec whose parent is $bpa!";
+        my $values = xCAT::PPCcli::send_cmd( $exp, $cmd );
+        my $Rc = shift(@$values);
+
+        #####################################
+        # Return error
+        #####################################
+        if ( $Rc != SUCCESS ) {
+                $msg = "ERROR: Failed to find a CEC managed by $bpa on the HMC";
+                return ("", $msg);
+        }
+
+        foreach (@$values) {
+                if( $_ =~ /cage_num=(\w*),contents=sys,type_model_serial_num=(\w+)-(\w+)\*(\w+),loc_code=(\w+).(\w+).(\w+)/) {
+                        $mtms = "$2-$3*$4";
+                        last;
+                }
+        }
+
 	
-	$cec =~ /(\w{6})\-([\w\-]{8})\-SN(\w{7})/;
-	my $mtms = "$2*$3";
-#	print "the managed system is $mtms!\n";
+	#	print "the managed system is $mtms!\n";
 	return ($mtms, $msg);	
 }
 
@@ -468,7 +472,7 @@ sub rflash {
 			
 				#If mtms is a bpa, we should change the managed_system to a cec whose parent is a bpa.	
         			if($component eq "power") {
-					($managed_system, $msg)=  &get_one_mtms($name);
+					($managed_system, $msg)=  &get_one_mtms($exp, $managed_system);
 					if($managed_system eq "") {
 						push(@value, [$hmc, $msg]);
 						return (\@value);

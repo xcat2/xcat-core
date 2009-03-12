@@ -444,7 +444,15 @@ sub preprocess_nodes {
 		if(@$d[4] =~/^(fsp|lpar)$/) {
 			$f1 = 1;
 		} else {
-			$f2 = 1;	
+			$f2 = 1;
+			my $exargs=$request->{arg};
+                        my $t= xCAT::PPCrflash::print_var($exargs, "exargs");
+                        if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
+                                send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
+                                send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
+                                return undef;
+                        }
+	
 		}
 	}
 	
