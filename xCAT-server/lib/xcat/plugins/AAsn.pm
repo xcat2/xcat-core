@@ -844,7 +844,6 @@ sub setup_TFTP
 {
     my ($nodename) = @_;
     my $rc         = 0;
-    my $tftpdir    = "/tftpboot";    # default
     my $cmd;
     my $master;
     my $os;
@@ -875,12 +874,22 @@ sub setup_TFTP
         xCAT::MsgUtils->message("S", "atftp is not installed");
         return 1;
     }
-    if ($output[0] =~ "atftp")    # it is atftp
+    my $mountdirectory = "1";    # default to mount tftpboot dir
+    if ($output[0] =~ "atftp")   # it is atftp
     {
 
+        # read sharedtftp attribute from site table, if exist
+        my @sharedtftp = xCAT::Utils->get_site_attribute("sharedtftp");
+        if (exists($sharedtftp[0]))
+        {
+            $mountdirectory = $sharedtftp[0];
+            $mountdirectory =~ tr/a-z/A-Z/;    # convert to upper
+        }
+
         # read tftpdir directory from database
+        my $tftpdir    = "/tftpboot";    # default
         my @tftpdir1 = xCAT::Utils->get_site_attribute("tftpdir");
-        if ($tftpdir1[0])
+        if (exists($tftpdir1[0]))
         {
             $tftpdir = $tftpdir1[0];
         }
@@ -889,18 +898,23 @@ sub setup_TFTP
             mkdir($tftpdir);
         }
 
-        # check to see if tftp directory already mounted
-        my $mounted = xCAT::Utils->isMounted($tftpdir);
-        if ($mounted == 0)    # not already mounted
+        # if request to mount
+        if ($mountdirectory eq "1" || $mountdirectory eq "YES")
         {
 
-            # need to  mount the directory
-            my $cmd = " mount -o rw,nolock $master:$tftpdir $tftpdir";
-            system $cmd;
-            if ($? > 0)
-            {                 # error
-                $rc = 1;
-                xCAT::MsgUtils->message("S", "Error $cmd");
+            # check to see if tftp directory already mounted
+            my $mounted = xCAT::Utils->isMounted($tftpdir);
+            if ($mounted == 0)    # not already mounted
+            {
+
+                # need to  mount the directory
+                my $cmd = " mount -o rw,nolock $master:$tftpdir $tftpdir";
+                system $cmd;
+                if ($? > 0)
+                {                 # error
+                    $rc = 1;
+                    xCAT::MsgUtils->message("S", "Error $cmd");
+                }
             }
         }
 
@@ -921,14 +935,18 @@ sub setup_TFTP
     if ($rc == 0)
     {
 
-        # update fstab so that it will restart on reboot
-        $cmd =
-          "fgrep \"$master:$tftpdir $tftpdir nfs timeo=14,intr 1 2\" /etc/fstab";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)    # not already there
+        if ($mountdirectory eq "1" || $mountdirectory eq "YES")
         {
 
-            `echo "$master:$tftpdir $tftpdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+            # update fstab so that it will restart on reboot
+            $cmd =
+              "fgrep \"$master:$tftpdir $tftpdir nfs timeo=14,intr 1 2\" /etc/fstab";
+            xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0)    # not already there
+            {
+
+                `echo "$master:$tftpdir $tftpdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+            }
         }
     }
 
