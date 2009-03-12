@@ -1685,9 +1685,10 @@ sub my_if_netmap
 #-------------------------------------------------------------------------------
 
 =head3   my_ip_facing
-
+         Returns my ip address  
+         Linux only
     Arguments:
-        none
+        nodename 
     Returns:
     Globals:
         none
