@@ -184,7 +184,7 @@ sub docfheaders {
     } else {
       $idx++;
     }
-    if($content->[$idx] =~ /\}/){
+    if($skip and $content->[$idx] =~ /\}/){
       splice(@$content, $idx, 1);
       $skip = 0;
     }
