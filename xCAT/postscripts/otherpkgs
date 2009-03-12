@@ -39,7 +39,9 @@ fi
 #    SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '
 #fi
 
-
+if [[ -z "$NFSSERVER" ]]; then
+    NFSSERVER=$MASTER
+fi
 
   if [[ $OTHERPKGS_HASREPO -eq 1 ]]; then
     rpm -q yum
