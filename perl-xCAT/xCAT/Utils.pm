@@ -543,7 +543,7 @@ sub get_site_attribute
     if ($sitetab)
     {
         (my $ref) = $sitetab->getAttribs({key => $attr}, 'value');
-        if ($ref and $ref->{value})
+        if ($ref)
         {
             $values = $ref->{value};
         }
