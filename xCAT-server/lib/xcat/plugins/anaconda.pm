@@ -280,7 +280,7 @@ sub mknetboot
 #                                 ['serialport', 'serialspeed', 'serialflow']);
 
         # determine image server, if tftpserver use it, else use xcatmaster
-        # else use site.Master, last resort use self
+        # last resort use self
         my $imgsrv;
         my $ient;
         $ient = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['tftpserver']);
@@ -297,20 +297,21 @@ sub mknetboot
             }
             else
             {
-                $ient = $sitetab->getAttribs({key => master}, value);
-                if ($ient and $ient->{value})
+                # master not correct for service node pools
+                #$ient = $sitetab->getAttribs({key => master}, value);
+                #if ($ient and $ient->{value})
+                #{
+                #    $imgsrv = $ient->{value};
+                #}
+                #else
+                #{
+                my $ipfn = xCAT::Utils->my_ip_facing($node);
+                if ($ipfn)
                 {
-                    $imgsrv = $ient->{value};
-                }
-                else
-                {
-                    my $ipfn = xCAT::Utils->my_ip_facing($node);
-                    if ($ipfn)
-                    {
                         $imgsrv = $ipfn;    #guessing self is second best
 
-                    }
                 }
+                #}
             }
         }
         unless ($imgsrv)
