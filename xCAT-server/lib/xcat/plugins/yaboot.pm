@@ -173,7 +173,7 @@ sub preprocess_request {
    my $req = shift;
   
    my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
-   if ($sent and ($sent->{value} == 0 or $ent->{value} =~ /no/i)) {
+   if ($sent and ($sent->{value} == 0 or $sent->{value} =~ /no/i)) {
       $req->{'_disparatetftp'}=[1];
       return xCAT::Scope->get_broadcast_scope($req,@_);
    }
