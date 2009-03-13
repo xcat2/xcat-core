@@ -274,7 +274,7 @@ sub confGmond
     print "cluster is: $hostname \n";
 
     print "checking gmond settings \n";
-	if (-e "/etc/ganglia")
+	if (-e "/etc/ganglia/gmond.conf")
 	  { #opening if 3.1.0
 	    print "ganglia version 3.1.0 \n";
         `/bin/grep "xCAT gmond settings done" /etc/ganglia/gmond.conf`;
@@ -562,7 +562,7 @@ sub confGmetad
     print "cluster is: $hostname \n";
     
     print "checking gmetad settings \n";
-	if (-e "/etc/ganglia")
+	if (-e "/etc/ganglia/gmetad.conf")
 	  { #opening if 3.1.0
 	    print "ganglia version 3.1.0 \n";
     `/bin/grep "xCAT gmetad settings done" /etc/ganglia/gmetad.conf`;
@@ -838,7 +838,7 @@ sub deconfGmond
     my $localhost=hostname();
 
      print "saving configured Gmond file \n";
-	 if (-e "/etc/ganglia")
+	 if (-e "/etc/ganglia/gmond.conf")
 	  { #opening if V3.1.0
 	  print "Ganglia V 3.1.0 \n";
       `/bin/cp -f /etc/ganglia/gmond.conf /etc/ganglia/gmond.conf.save`;
@@ -979,7 +979,7 @@ sub deconfGmetad
     my $localhost=hostname();
 
      print "saving configured Gmetad file \n";
-	 if (-e "/etc/ganglia")
+	 if (-e "/etc/ganglia/gmetad.conf")
 	  { #opening V3.1.0
 	  print "Ganglia V 3.1.0 \n";
      `/bin/cp -f /etc/ganglia/gmetad.conf /etc/ganglia/gmetad.conf.save`;
