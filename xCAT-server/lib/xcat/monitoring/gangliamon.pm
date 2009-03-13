@@ -909,7 +909,7 @@ sub deconfGmond
               my $node = join(',',@children);
               print "the children are: $node \n";
               print "saving the configured Gmond file in childern \n";
-			  if (-e "/etc/ganglia")
+			  if (-e "/etc/ganglia/gmond.conf")
 			  { # opening if V3.1.0
 			  print "Ganglia V 3.1.0 \n";
                my $res_sv = `XCATBYPASS=Y $::XCATROOT/bin/xdsh $node /bin/cp -f /etc/ganglia/gmond.conf /etc/ganglia/gmond.conf.save`;
