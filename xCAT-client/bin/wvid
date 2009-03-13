@@ -19,7 +19,7 @@ sub process_response {
     my $resp = shift;
     foreach my $rst (\@{$resp->{node}}) {
         foreach my $rsp (@$rst) {
-         if ($rsp->{errorcode}) {
+         if ($rsp->{errorcode} and (not ref $rsp->{errorcode} or $rsp-{errorcode}->[0])) {
             print $rsp->{name}->[0].": Error: ".$rsp->{error}->[0]."\n";
          } else {
             $rvidhash{$rsp->{name}->[0]}->{$rsp->{data}->[0]->{desc}->[0]} = $rsp->{data}->[0]->{contents}->[0];

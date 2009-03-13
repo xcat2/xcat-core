@@ -54,7 +54,7 @@ sub handled_commands {
     rpower => 'nodehm:power,mgt',
     mkvm => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
-    getnencons => 'nodehm:mgt',
+    getcons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
     #rinv => 'nodehm:mgt',
     getrvidparms => 'nodehm:mgt',
@@ -93,7 +93,6 @@ sub waitforack {
 sub build_oshash {
     my %rethash;
     $rethash{type}->{content}='hvm';
-    #$rethash{loader}->{content}='/usr/lib/xen/boot/hvmloader';
     if (defined $vmhash->{$node}->[0]->{bootorder}) {
         my $bootorder = $vmhash->{$node}->[0]->{bootorder};
         my @bootdevs = split(/:/,$bootorder);
@@ -161,6 +160,12 @@ sub build_nicstruct {
     my $rethash;
     my $node = shift;
     my @macs=();
+    my @nics=();
+    if ($vmhash->{$node}->[0]->{nics}) {
+        @nics = split /,/,$vmhash->{$node}->[0]->{nics};
+    } else {
+        @nics = ('virbr0');
+    }
     if ($machash->{$node}->[0]->{mac}) {
         my $macdata=$machash->{$node}->[0]->{mac};
         foreach my $macaddr (split /\|/,$macdata) {
@@ -192,9 +197,18 @@ sub build_nicstruct {
     my @rethashes;
     foreach (@macs) {
         my $rethash;
+        my $nic = shift @nics;
+        my $type = 'e1000'; #better default fake nic than rtl8139, relevant to most
+        unless ($nic) {
+            last; #Don't want to have multiple vnics tied to the same switch
+        }
+        if ($nic =~ /=/) {
+            ($nic,$type) = split /=/,$nic,2;
+        }
         $rethash->{type}='bridge';
         $rethash->{mac}->{address}=$_;
-        $rethash->{source}->{bridge}='virbr0'; #TODO: syntax to tie vnics to bridgenames/vlans/whatever
+        $rethash->{source}->{bridge}=$nic;
+        $rethash->{model}->{type}=$type;
         push @rethashes,$rethash;
     }
     return \@rethashes;
@@ -236,7 +250,6 @@ sub build_xmldesc {
     $xtree{features}->{acpi}={};
     $xtree{features}->{apic}={};
     $xtree{features}->{content}="\n";
-    $xtree{devices}->{emulator}->{content}='/usr/local/bin/qemu-system-x86_64';
     $xtree{devices}->{disk}=build_diskstruct();
     $xtree{devices}->{interface}=build_nicstruct($node);
     $xtree{devices}->{graphics}->{type}='vnc';
@@ -255,7 +268,7 @@ sub refresh_vm {
     return {vncport=>$vncport,textconsole=>$stty};
 }
 
-sub getvmcons {
+sub getcons {
     my $node = shift();
     my $type = shift();
     my $dom;
@@ -279,26 +292,12 @@ sub getvmcons {
         $sconsparms->{node}->[0]->{baudrate}=[$serialspeed];
         return (0,$sconsparms);
     } elsif ($type eq "vnc") {
-        my $domdata=`ssh $hyper xm list $node -l`;
-        my @domlines = split /\n/,$domdata;
-        my $foundvfb=0;
-        my $vnclocation;
-        foreach (@domlines) {
-            if (/\(vfb/) {
-                $foundvfb=1;
-            }
-            if ($foundvfb and /location\s+([^\)]+)/) {
-                $vnclocation=$1;
-                $foundvfb=0;
-                last;
-            }
-        }
-        return (0,'ssh+vnc@'.$hyper.": ".$vnclocation); #$consdata->{vncport});
+        return (0,'ssh+vnc@'.$hyper.": localhost:".$consdata->{vncport}); #$consdata->{vncport});
     }
 }
 sub getrvidparms {
     my $node=shift;
-    my $location = getvmcons($node,"vnc");
+    my $location = getcons($node,"vnc");
     if ($location =~ /ssh\+vnc@([^:]*):([^:]*):(\d+)/) {
         my @output = (
         "method: kvm",
@@ -542,8 +541,8 @@ sub guestcmd {
       return migrate($node,@args);
   } elsif ($command eq "getrvidparms") {
       return getrvidparms($node,@args);
-  } elsif ($command eq "getkvmcons") {
-      return getvmcons($node,@args);
+  } elsif ($command eq "getcons") {
+      return getcons($node,@args);
   }
 =cut
   } elsif ($command eq "rvitals") {
@@ -913,7 +912,6 @@ sub dohyp {
   eval { #Contain Sys::Virt bugs that make $@ useless
     $hypconn= Sys::Virt->new(uri=>"qemu+ssh://".$hyp."/system?no_tty=1&netcat=nc");
   };
-  print "HAH".Dumper($hypconn);
   unless ($hypconn) {
     eval { #Contain Sys::Virt bugs that make $@ useless
         $hypconn= Sys::Virt->new(uri=>"qemu+ssh://".$hyp."/system?no_tty=1");
