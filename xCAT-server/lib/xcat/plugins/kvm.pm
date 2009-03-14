@@ -245,7 +245,11 @@ sub build_xmldesc {
     } else {
         $xtree{memory}->{content}=524288;
     }
-    $xtree{vcpu}->{content}=1;
+    if (defined $vmhash->{$node}->[0]->{cpus}) {
+        $xtree{vcpu}->{content}=$vmhash->{$node}->[0]->{cpus};
+    } else {
+        $xtree{vcpu}->{content}=1;
+    }
     $xtree{features}->{pae}={};
     $xtree{features}->{acpi}={};
     $xtree{features}->{apic}={};
@@ -646,7 +650,7 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
     $callback->({data=>["Cannot open vm table"]});
     return;
   }
-  $vmhash = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','storage','memory','cpu','nics','bootorder','virtflags']);
+  $vmhash = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','storage','memory','cpus','nics','bootorder','virtflags']);
   $mactab = xCAT::Table->new("mac",-create=>1);
   $nrtab= xCAT::Table->new("noderes",-create=>1);
   $machash = $mactab->getNodesAttribs($noderange,['mac']);
