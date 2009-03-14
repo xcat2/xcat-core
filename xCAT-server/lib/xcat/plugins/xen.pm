@@ -1,8 +1,6 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::xen;
-my $libvirtsupport;
-$libvirtsupport = eval { require Sys::Virt; };
 BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -12,13 +10,11 @@ use xCAT::GlobalDef;
 use xCAT::NodeRange;
 use xCAT_monitoring::monitorctrl;
 
-#use Net::SNMP qw(:snmp INTEGER);
 use xCAT::Table;
 use XML::Simple qw(XMLout);
 use Thread qw(yield);
 use IO::Socket;
 use IO::Select;
-use SNMP;
 use strict;
 #use warnings;
 my %vm_comm_pids;
@@ -573,15 +569,6 @@ sub preprocess_request {
   my $request = shift;
   if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
   my $callback=shift;
-  unless ($libvirtsupport) { #Try to see if conditions changed since last check (no xCATd restart for it to take effect)
-        $libvirtsupport = eval { require Sys::Virt; };
-  }
-  unless ($libvirtsupport) { #Still no Sys::Virt module
-      $callback->({error=>"Sys::Virt perl module missing, unable to fulfill Xen plugin requirements",errorcode=>[42]});
-      return [];
-  }
-  require Sys::Virt::Domain;
-  %runningstates = (&Sys::Virt::Domain::STATE_NOSTATE=>1,&Sys::Virt::Domain::STATE_RUNNING=>1,&Sys::Virt::Domain::STATE_BLOCKED=>1);
   my @requests;
 
   my $noderange = $request->{node}; #Should be arrayref
@@ -657,6 +644,15 @@ sub process_request {
      }
      exit 0;
   };
+  #makes sense to check it here anyway, this way we avoid the main process
+  #sucking up ram with Sys::Virt
+  my $libvirtsupport = eval { require Sys::Virt; };
+  unless ($libvirtsupport) { #Still no Sys::Virt module
+      $callback->({error=>"Sys::Virt perl module missing, unable to fulfill Xen plugin requirements",errorcode=>[42]});
+      return [];
+  }
+  require Sys::Virt::Domain;
+  %runningstates = (&Sys::Virt::Domain::STATE_NOSTATE=>1,&Sys::Virt::Domain::STATE_RUNNING=>1,&Sys::Virt::Domain::STATE_BLOCKED=>1);
 
   my $request = shift;
   my $callback = shift;

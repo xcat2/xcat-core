@@ -12,7 +12,6 @@ use Thread qw(yield);
 use xCAT::Utils;
 use xCAT::Usage;
 use IO::Socket;
-use SNMP;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use strict;
@@ -2033,9 +2032,16 @@ sub process_request {
      }
      exit 0;
   };
-
   my $request = shift;
   my $callback = shift;
+  eval { 
+      require SNMP;
+  }
+  if ($@) {
+      $callback->{error=>['Missing SNMP perl support'],errorcode=>[1]};
+      return;
+  }
+
   my $doreq = shift;
   my $level = shift;
   my $noderange = $request->{node};
