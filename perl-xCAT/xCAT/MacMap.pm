@@ -8,7 +8,6 @@ use IO::Select;
 use IO::Handle;
 use Sys::Syslog;
 use Data::Dumper;
-use SNMP; 
 my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco equip
 #use IF-MIB (1.3.6.1.2.1.2) for all switches
 #   1.3.6.1.2.1.31.1.1 - ifXtable
@@ -78,6 +77,12 @@ OID, and have the switch table port value match exactly the format suggested by 
 
 sub new {
   my $self = {};
+  eval {
+      require SNMP; 
+  };
+  if ($@) {
+      die "SNMP support required to use MacMAP";
+  }
   my $proto = shift;
   my $class = ref($proto) || $proto;
 

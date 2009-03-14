@@ -1,10 +1,8 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::nodediscover;
-#use Net::SNMP qw(:snmp INTEGER);
 use xCAT::Table;
 use IO::Socket;
-use SNMP;
 use strict;
 
 use XML::Simple;
