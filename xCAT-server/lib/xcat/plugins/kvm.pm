@@ -105,10 +105,26 @@ sub build_oshash {
 }
 
 sub build_diskstruct {
+    my $cdloc=shift;
     my @returns=();
     my $currdev;
-    my @suffixes=('a'..'z');
+    my @suffixes=('a','b','d'..'z');
     my $suffidx=0;
+    if ($cdloc) {
+        my $cdhash;
+        $cdhash->{device}='cdrom';
+        if ($cdloc =~ /^\/dev/) {
+            $cdhash->{type}='block';
+        } else {
+            $cdhash->{type}='file';
+        }
+        $cdhash->{source}->{file}=$cdloc;
+        $cdhash->{readonly};
+        $cdhash->{target}->{dev}='hdc';
+        push @returns,$cdhash;
+    }
+
+
     if (defined $vmhash->{$node}->[0]->{storage}) {
         my $disklocs=$vmhash->{$node}->[0]->{storage};
         my @locations=split /\|/,$disklocs;
@@ -231,6 +247,7 @@ sub getUnits {
 
 sub build_xmldesc {
     my $node = shift;
+    my $cdloc=shift;
     my %xtree=();
     $xtree{type}='kvm';
     $xtree{name}->{content}=$node;
@@ -262,7 +279,7 @@ sub build_xmldesc {
     $xtree{features}->{acpi}={};
     $xtree{features}->{apic}={};
     $xtree{features}->{content}="\n";
-    $xtree{devices}->{disk}=build_diskstruct();
+    $xtree{devices}->{disk}=build_diskstruct($cdloc);
     $xtree{devices}->{interface}=build_nicstruct($node);
     $xtree{devices}->{input}->{type}='tablet';
     $xtree{devices}->{input}->{bus}='usb';
@@ -469,8 +486,9 @@ sub getpowstate {
 
 sub makedom {
     my $node=shift;
+    my $cdloc = shift;
     my $dom;
-    my $xml=build_xmldesc($node);
+    my $xml=build_xmldesc($node,$cdloc);
     print $xml;
     my $errstr;
     eval { $dom=$hypconn->create_domain($xml); };
@@ -490,7 +508,11 @@ sub mkvm {
  build_xmldesc($node);
 }
 sub power {
-    my $subcommand = shift;
+    @ARGV=@_;
+    require Getopt::Long;
+    my $cdloc;
+    GetOptions('cdrom|iso|c|i=s'=>\$cdloc);
+    my $subcommand = shift @ARGV;
     my $retstring;
     my $dom;
     eval {
@@ -508,7 +530,7 @@ sub power {
     my $errstr;
     if ($subcommand eq 'on') {
         unless ($dom) {
-            ($dom,$errstr) = makedom($node);
+            ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
         } else {
           $retstring .= " $status_noop";
@@ -524,7 +546,7 @@ sub power {
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
             $dom->destroy();
-            ($dom,$errstr) = makedom($node);
+            ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
             $retstring.="reset";
         } else { $retstring .= " $status_noop"; } 
@@ -535,7 +557,7 @@ sub power {
     }
 
     unless ($retstring =~ /reset/) {
-        $retstring=getpowstate($dom).$retstring;
+        $retstring=$retstring.getpowstate($dom);
     }
     return (0,$retstring);
 }
