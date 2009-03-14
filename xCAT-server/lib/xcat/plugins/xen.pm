@@ -647,6 +647,8 @@ sub process_request {
   #makes sense to check it here anyway, this way we avoid the main process
   #sucking up ram with Sys::Virt
   my $libvirtsupport = eval { require Sys::Virt; };
+  my $request = shift;
+  my $callback = shift;
   unless ($libvirtsupport) { #Still no Sys::Virt module
       $callback->({error=>"Sys::Virt perl module missing, unable to fulfill Xen plugin requirements",errorcode=>[42]});
       return [];
@@ -654,8 +656,6 @@ sub process_request {
   require Sys::Virt::Domain;
   %runningstates = (&Sys::Virt::Domain::STATE_NOSTATE=>1,&Sys::Virt::Domain::STATE_RUNNING=>1,&Sys::Virt::Domain::STATE_BLOCKED=>1);
 
-  my $request = shift;
-  my $callback = shift;
   $doreq = shift;
   my $level = shift;
   my $noderange = $request->{node};
