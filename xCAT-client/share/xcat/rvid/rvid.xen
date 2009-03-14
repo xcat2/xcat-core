@@ -3,4 +3,4 @@
 myport=${rvid_vncdisplay#*:}
 let myport=myport-5900;
 export VNC_VIA_CMD='/usr/bin/ssh -o BatchMode=yes -f -L "$L":"$H":"$R" "$G" sleep 20'
-vncviewer :$myport -via $rvid_server >& /dev/null
+vncviewer :$myport -via $rvid_server AutoSelect=0 FullColor=1 >& /dev/null
