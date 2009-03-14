@@ -246,6 +246,12 @@ sub build_xmldesc {
     } else {
         $xtree{vcpu}->{content}=1;
     }
+    if (defined ($nthash->{$node}->[0]->{os}) and $nthash->{$node}->[0]->{os} =~ /win.*/) {
+        $xtree{clock}->{offset}='localtime';
+    } else {
+        $xtree{clock}->{offset}='utc';
+    }
+
     $xtree{features}->{pae}={};
     $xtree{features}->{acpi}={};
     $xtree{features}->{apic}={};
@@ -635,7 +641,7 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
       $hmhash  = $hmtab->getNodesAttribs($noderange,['serialspeed']);
   }
   if ($nttab) {
-      $hmhash  = $hmtab->getNodesAttribs($noderange,['serialspeed']);
+      $nthash  = $nttab->getNodesAttribs($noderange,['os']); #allow us to guess RTC config
   }
   unless ($vmtab) { 
     $callback->({data=>["Cannot open vm table"]});
