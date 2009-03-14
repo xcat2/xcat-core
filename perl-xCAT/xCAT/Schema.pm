@@ -39,7 +39,7 @@ use xCAT::ExtTab;
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
 vm => {
-    cols => [qw(node host migrationdest storage memory cpus nics bootorder virtflags vncport textconsole beacon comments disable)],
+    cols => [qw(node host migrationdest storage memory cpus nics bootorder clockoffset virtflags vncport textconsole beacon comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
@@ -51,6 +51,7 @@ vm => {
         'cpus' => 'Number of CPUs the node should see.',
         'nics' => 'Network configuration parameters',
         'bootorder' => 'Boot sequence (i.e. net,hd)',
+        'clockoffset' => 'Whether to have guest RTC synced to "localtime" or "utc"  If not populated, xCAT will guess based on the nodetype.os contents.',
         'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen")',
         'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
         'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',

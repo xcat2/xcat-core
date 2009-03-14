@@ -246,10 +246,16 @@ sub build_xmldesc {
     } else {
         $xtree{vcpu}->{content}=1;
     }
-    if (defined ($nthash->{$node}->[0]->{os}) and $nthash->{$node}->[0]->{os} =~ /win.*/) {
-        $xtree{clock}->{offset}='localtime';
+    if (defined ($vmhash->{$node}->[0]->{clockoffset})) {
+        #If user requested a specific behavior, give it
+        $xtree{clock}->{offset}=$vmhash->{$node}->[0]->{clockoffset};
     } else {
-        $xtree{clock}->{offset}='utc';
+        #Otherwise, only do local time for things that look MS
+        if (defined ($nthash->{$node}->[0]->{os}) and $nthash->{$node}->[0]->{os} =~ /win.*/) {
+            $xtree{clock}->{offset}='localtime';
+        } else { #For everyone else, utc is preferred generally
+            $xtree{clock}->{offset}='utc';
+        }
     }
 
     $xtree{features}->{pae}={};
