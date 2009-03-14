@@ -8,7 +8,6 @@
 
 #-------------------------------------------------------
 package xCAT_plugin::getpostscript;
-use xCAT::Postage;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
@@ -66,6 +65,7 @@ sub process_request
     my $state;
     if ($request->{scripttype}) { $state = $request->{scripttype}->[0];}
 
+    require xCAT::Postage;
     my @scriptcontents = xCAT::Postage::makescript($client,$state,$callback);
     if (scalar(@scriptcontents)) {
        $rsp->{data} = \@scriptcontents;

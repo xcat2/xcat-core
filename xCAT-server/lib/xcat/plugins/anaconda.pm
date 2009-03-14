@@ -12,8 +12,6 @@ use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-use xCAT::Template;
-#use xCAT::Postage;
 use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -411,6 +409,7 @@ sub mkinstall
     my %hents = 
               %{$hmtab->getNodesAttribs(\@nodes,
                                      ['serialport', 'serialspeed', 'serialflow'])};
+    require xCAT::Template;
     foreach $node (@nodes)
     {
         my $osinst;

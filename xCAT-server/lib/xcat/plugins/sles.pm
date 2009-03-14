@@ -11,8 +11,6 @@ use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-use xCAT::Template;
-use xCAT::Postage;
 use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -261,6 +259,7 @@ sub mkinstall
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my %doneimgs;
+    require xCAT::Template; #only used here, load so memory can be COWed
     foreach $node (@nodes)
     {
         my $osinst;

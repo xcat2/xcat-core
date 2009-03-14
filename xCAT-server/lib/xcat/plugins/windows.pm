@@ -12,8 +12,6 @@ use xCAT::Table;
 use xCAT::Utils;
 use Socket;
 use xCAT::MsgUtils;
-use xCAT::Template;
-use xCAT::Postage;
 use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -204,6 +202,7 @@ sub mkinstall
         });
        return;
     }
+    require xCAT::Template;
     foreach $node (@nodes)
     {
         my $osinst;
