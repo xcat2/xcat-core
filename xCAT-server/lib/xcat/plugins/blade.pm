@@ -2036,7 +2036,7 @@ sub process_request {
   my $callback = shift;
   eval { 
       require SNMP;
-  }
+  };
   if ($@) {
       $callback->{error=>['Missing SNMP perl support'],errorcode=>[1]};
       return;
