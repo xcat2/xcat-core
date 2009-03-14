@@ -12,7 +12,6 @@ use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-use xCAT::Yum;
 use xCAT::Template;
 #use xCAT::Postage;
 use Data::Dumper;
@@ -823,6 +822,7 @@ sub copycd
     #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
     #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
     chmod 0755, "$installroot/$distname/$arch";
+    require xCAT::Yum;
     xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
     if ($rc != 0)
     {

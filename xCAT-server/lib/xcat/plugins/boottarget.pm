@@ -12,7 +12,6 @@ use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-use xCAT::Yum;
 use xCAT::Template;
 #use xCAT::Postage;
 use Data::Dumper;

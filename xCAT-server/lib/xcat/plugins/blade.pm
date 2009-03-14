@@ -32,7 +32,6 @@ use Storable qw(freeze thaw);
 use IO::Select;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
-use Net::Telnet;
 use xCAT::DBobjUtils;
 use Getopt::Long;
 
@@ -2249,6 +2248,7 @@ sub telnetcmds {
   unless (%handled) {
     return([0,\@unhandled]);
   }
+  require Net::Telnet;
   my $t = new Net::Telnet(
                 Timeout=>15, 
                 Errmode=>'return',
