@@ -252,6 +252,8 @@ sub build_xmldesc {
     $xtree{features}->{content}="\n";
     $xtree{devices}->{disk}=build_diskstruct();
     $xtree{devices}->{interface}=build_nicstruct($node);
+    $xtree{devices}->{input}->{type}='tablet';
+    $xtree{devices}->{input}->{bus}='usb';
     $xtree{devices}->{graphics}->{type}='vnc';
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
