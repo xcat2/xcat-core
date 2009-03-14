@@ -2,4 +2,5 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 myport=${rvid_vncdisplay#*:}
 let myport=myport-5900;
+export VNC_VIA_CMD='/usr/bin/ssh -o BatchMode=yes -f -L "$L":"$H":"$R" "$G" sleep 20'
 vncviewer :$myport -via $rvid_server >& /dev/null
