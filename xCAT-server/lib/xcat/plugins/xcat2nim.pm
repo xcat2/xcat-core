@@ -17,6 +17,7 @@ use Data::Dumper;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use strict;
+use Socket;
 
 # options can be bundled up like -vV
 Getopt::Long::Configure("bundling");
@@ -930,6 +931,8 @@ sub mkgrpdef
     my $callback = shift;
 
     my $cmd = undef;
+	my $servnode = undef;
+    my $GrpSN = undef;
 
 	# get members and determine all the different masters
     #   For example, the xCAT group "all" will have nodes that are managed
@@ -937,84 +940,87 @@ sub mkgrpdef
     #   on each of those masters
     my %ServerList = &getMasterGroupLists($group);
 
-	# get the members for the group def on this system
-	my @members = @{$ServerList{$::local_host}};
+	foreach my $servname (keys %ServerList)
+	{
 
-	# check to see if the group is already defined - sets $::grp_exists
-	if (&check_nim_group($group, $::local_host)) {
-		# the routine failed
-		return 1;
-	}
+		# get the members for the group def on this system
+		my @members = @{$ServerList{$servname}};
 
-	# don't update an existing def unless we're told 
-	if ($::grp_exists && !$::opt_u) {
-		if ($::FORCE) {
-			# get rid of the old definition
-
-			#  ???? - does remove alone do the deallocate??
-			my $rmcmd = "/usr/sbin/nim -Fo remove $group";
-			my $output = xCAT::Utils->runcmd("$rmcmd", -1);
-			if ($::RUNCMD_RC  != 0) {
-				my $rsp;
-				push @{$rsp->{data}}, "$::msgstr Could not remove the existing NIM group named \'$group\'.\n";
-				if ($::VERBOSE) {
-					push @{$rsp->{data}}, "$output";
-				}
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				return 1;
-			}
-
-		} else { # no force
-			my $rsp;
-   			$rsp->{data}->[0] = "$::msgstr The NIM group \'$group\' already exists.  Use the \'-f\' option to remove and recreate or the \'-u\' option to update an existing definition.\n";
-   			xCAT::MsgUtils->message("I", $rsp, $::callback);
+		# check to see if the group is already defined - sets $::grp_exists
+		if (&check_nim_group($group, $servname)) {
+			# the routine failed
 			return 1;
 		}
-	} 
 
-	# either create or update the group def on this master
+		# don't update an existing def unless we're told 
+		if ($::grp_exists && !$::opt_u) {
+			if ($::FORCE) {
+				# get rid of the old definition
 
-	# any list with more than 1024 members is an error
-    #   - NIM can't handle that
-    if ($#members > 1024) {
-       	my $rsp;
-       	$rsp->{data}->[0] =
-       		"$::msgstr Cannot create a NIM group definition with more than 1024 members - on \'$::local_host\'.";
-       	xCAT::MsgUtils->message("I", $rsp, $::callback);
-       	next;
-    }
+				#  ???? - does remove alone do the deallocate??
+				my $rmcmd = "/usr/sbin/nim -Fo remove $group";
+				my $output = xCAT::Utils->runcmd("$rmcmd", -1);
+				if ($::RUNCMD_RC  != 0) {
+					my $rsp;
+					push @{$rsp->{data}}, "$::msgstr Could not remove the existing NIM group named \'$group\'.\n";
+					if ($::VERBOSE) {
+						push @{$rsp->{data}}, "$output";
+					}
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return 1;
+				}
 
-	#
-	#  The list may become quite long and not fit on one cmd line
-	#  so we do it one at a time for now - need to revisit this
-	#      (like do blocks at a time)  - TODO
-	#
-	my $justadd=0;  # after the first define we just need to add
-	foreach my $memb (@members) {
-
-		my $shorthost;
-		($shorthost = $memb) =~ s/\..*$//;
-
-		# do we change or create
-		my $cmd;
-		if (($::grp_exists && $::opt_u)  || $justadd) {
-			$cmd = "nim -o change -a add_member=$shorthost $group 2>&1";
-		} else {
-			$cmd = "nim -o define -t mac_group -a add_member=$shorthost $group 2>&1";
-			$justadd++;
-		}
-
-		my $output = xCAT::Utils->runcmd("$cmd", -1);
-       	if ($::RUNCMD_RC  != 0)
-       	{
-       		my $rsp;
-       		$rsp->{data}->[0] = "$::msgstr Could not create a NIM definition for \'$group\'.\n";
-			if ($::verbose)
-       		{
-				$rsp->{data}->[1] = "$output";
+			} else { # no force
+				my $rsp;
+   				$rsp->{data}->[0] = "$::msgstr The NIM group \'$group\' already exists.  Use the \'-f\' option to remove and recreate or the \'-u\' option to update an existing definition.\n";
+   				xCAT::MsgUtils->message("I", $rsp, $::callback);
+				return 1;
 			}
+		} 
+
+		# either create or update the group def on this master
+
+		# any list with more than 1024 members is an error
+    	#   - NIM can't handle that
+    	if ($#members > 1024) {
+       		my $rsp;
+       		$rsp->{data}->[0] = "$::msgstr Cannot create a NIM group definition with more than 1024 members - on \'$servname\'.";
        		xCAT::MsgUtils->message("E", $rsp, $::callback);
-       		return 1;
+       		next;
+    	}
+
+		#
+		#  The list may become quite long and not fit on one cmd line
+		#  so we do it one at a time for now - need to revisit this
+		#      (like do blocks at a time)  - TODO
+		#
+		my $justadd=0;  # after the first define we just need to add
+		foreach my $memb (@members) {
+
+			my $shorthost;
+			($shorthost = $memb) =~ s/\..*$//;
+
+			# do we change or create
+			my $cmd;
+			if (($::grp_exists && $::opt_u)  || $justadd) {
+				$cmd = "nim -o change -a add_member=$shorthost $group 2>&1";
+			} else {
+				$cmd = "nim -o define -t mac_group -a add_member=$shorthost $group 2>&1";
+				$justadd++;
+			}
+
+			my $output = xCAT::Utils->runcmd("$cmd", -1);
+       		if ($::RUNCMD_RC  != 0)
+       		{
+       			my $rsp;
+       			$rsp->{data}->[0] = "$::msgstr Could not create a NIM definition for \'$group\'.\n";
+				if ($::verbose)
+       			{
+					$rsp->{data}->[1] = "$output";
+				}
+       			xCAT::MsgUtils->message("E", $rsp, $::callback);
+       			return 1;
+			}
 		}
 	}
 
@@ -1082,7 +1088,7 @@ sub rm_or_list_nim_object
 			if ($::FORCE) {
 				$cmd = qq~nim -Fo reset $object;nim -Fo deallocate -a subclass=all $object;nim -Fo remove $object 2>/dev/null~;
 			} else {
-            	$cmd = qq~nim -Fo remove $object 2>/dev/null~;
+           		$cmd = qq~nim -Fo remove $object 2>/dev/null~;
 			}
 
 			my $outref = xCAT::Utils->runcmd("$cmd", -1);
@@ -1102,43 +1108,59 @@ sub rm_or_list_nim_object
 
 	if ($type eq 'group') {
 
-		my $cmd;
-		if ($::opt_l) {
-       		$cmd = qq~lsnim -l $object 2>/dev/null~;
+		# get members and determine all the different masters
+		my %servgroups = &getMasterGroupLists($object);
+
+		# get the group definition from each master and
+		#   display it
+		foreach my $servname (keys %servgroups)
+		{
+
+			# only handle the defs for the local SN
+			my $shortsn;
+			($shortsn = $servname) =~ s/\..*$//;
+			if ($shortsn ne $::local_host) {
+				next;
+			}
+
+			my $cmd;
+			if ($::opt_l) {
+       			$cmd = qq~lsnim -l $object 2>/dev/null~;
 		
-			my $outref = xCAT::Utils->runcmd("$cmd", -1);
-       		if ($::RUNCMD_RC  != 0)
-       		{
-           		my $rsp;
-           		$rsp->{data}->[0] = "$::msgstr Could not list the NIM definition for \'$object\'.\n";
-				if ($::verbose)
-                {
-					$rsp->{data}->[1] = "$outref";
-				}
-           		xCAT::MsgUtils->message("E", $rsp, $::callback);
-           		return 1;
-       		} else {
+				my $outref = xCAT::Utils->runcmd("$cmd", -1);
+       			if ($::RUNCMD_RC  != 0)
+       			{
+           			my $rsp;
+           			$rsp->{data}->[0] = "$::msgstr Could not list the NIM definition for \'$object\'.\n";
+					if ($::verbose)
+                	{
+						$rsp->{data}->[1] = "$outref";
+					}
+           			xCAT::MsgUtils->message("E", $rsp, $::callback);
+           			return 1;
+       			} else {
 
-           		#  display NIM output
-           		my $rsp;
-				$rsp->{data}->[0] = "$outref";
-           		xCAT::MsgUtils->message("I", $rsp, $::callback);
-           		return 0;
-       		}
-		} elsif ($::opt_r) {
-            $cmd = qq~nim -Fo remove $object 2>/dev/null~;
+           			#  display NIM output
+           			my $rsp;
+					$rsp->{data}->[0] = "$outref";
+           			xCAT::MsgUtils->message("I", $rsp, $::callback);
+           			return 0;
+       			}
+			} elsif ($::opt_r) {
+            	$cmd = qq~nim -Fo remove $object 2>/dev/null~;
 
-			my $outref = xCAT::Utils->runcmd("$cmd", -1);
-            if ($::RUNCMD_RC  != 0)
-            {
-                my $rsp;
-                $rsp->{data}->[0] = "$::msgstr Could not remove the NIM definition for \'$object\'.\n";
-				if ($::verbose)
-                {
-					$rsp->{data}->[1] = "$outref";
+				my $outref = xCAT::Utils->runcmd("$cmd", -1);
+            	if ($::RUNCMD_RC  != 0)
+            	{
+                	my $rsp;
+                	$rsp->{data}->[0] = "$::msgstr Could not remove the NIM definition for \'$object\'.\n";
+					if ($::verbose)
+                	{
+						$rsp->{data}->[1] = "$outref";
+					}
+                	xCAT::MsgUtils->message("E", $rsp, $::callback);
+                	return 1;
 				}
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
-                return 1;
             }
 		}
 	}
@@ -1247,18 +1269,26 @@ sub getMasterGroupLists
 		# sort the list by server node - one list per server
     	foreach my $m (@members) {
 
+			$NimMaster = hostname();
+
         	if ($memberhash{$m}{nimmaster}) {
             	$NimMaster = $memberhash{$m}{nimmaster};
+        	} 
 
-        	} elsif ($memberhash{$m}{servicenode}) {
+			if ($memberhash{$m}{servicenode}) {
             	# the servicenode attr is set for this node
             	$NimMaster = $memberhash{$m}{servicenode};
+        	} 
 
-        	} elsif ($memberhash{$m}{xcatmaster}) {
+			if ($memberhash{$m}{xcatmaster}) {
             	$NimMaster = $memberhash{$m}{xcatmaster};
+			}
 
-        	} else {
-            	$NimMaster = hostname();
+			if ($NimMaster =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/) {
+				# convert IP to hostname
+				my $packedaddr = inet_aton($NimMaster);
+				my $hostname = gethostbyaddr($packedaddr, AF_INET);
+				$NimMaster = $hostname;
 			}
 
         	# assume short hostnames for now???
