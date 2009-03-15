@@ -150,6 +150,30 @@ sub process_request
           }
           $tfilename = "/etc/xcat/cfgloc";
 
+       } elsif (/krb5_keytab/) { #TODO: MUST RELAY TO MASTER
+           my $princsuffix=$request->{'_xcat_clientfqdn'}->[0];
+           $ENV{KRB5CCNAME}="/tmp/xcat/krb5cc_xcat_$$";
+           system('kinit -S kadmin/admin -k -t /etc/xcat/krb5_pass xcat/admin');
+           system("kadmin -p xcat/admin -c /tmp/xcat/krb5cc_xcat_$$ -q 'delprinc -force host/$princsuffix'");
+           system("kadmin -p xcat/admin -c /tmp/xcat/krb5cc_xcat_$$ -q 'delprinc -force nfs/$princsuffix'");
+           system("kadmin -p xcat/admin -c /tmp/xcat/krb5cc_xcat_$$ -q 'addprinc -randkey host/$princsuffix'");
+           system("kadmin -p xcat/admin -c /tmp/xcat/krb5cc_xcat_$$ -q 'addprinc -randkey nfs/$princsuffix'");
+           unlink "/tmp/xcat/keytab.$$";
+           system("kadmin -p xcat/admin -c /tmp/xcat/krb5cc_xcat_$$ -q 'ktadd -k /tmp/xcat/keytab.$$ nfs/$princsuffix'");
+           system("kadmin -p xcat/admin -c /tmp/xcat/krb5cc_xcat_$$ -q 'ktadd -k /tmp/xcat/keytab.$$ host/$princsuffix'");
+           system("kdestroy -c /tmp/xcat/krb5cc_xcat_$$");
+           unlink("/tmp/xcat/krb5cc_xcat_$$");
+           my $keytab;
+           open($keytab, "/tmp/xcat/keytab.$$");
+           my $tabdata="\n";
+           my $buf;
+           require MIME::Base64;
+           while (read($keytab,$buf,1140)) {
+               $tabdata.=MIME::Base64::encode_base64($buf);
+           }
+           push @{$rsp->{'data'}},{content=>[$tabdata],desc=>[$_]};
+           unlink "/tmp/xcat/keytab.$$";
+           next;
        } else {
           next;
        }

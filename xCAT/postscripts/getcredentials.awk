@@ -7,7 +7,8 @@ BEGIN {
         print "<xcatrequest>" |& server
         print "   <command>getcredentials</command>" |& server
         print "   <callback_port>300</callback_port>" |& server
-        print "   <arg>"ARGV[1]"</arg>" |& server
+        for (i=1; i<ARGC; i++) 
+            print "   <arg>"ARGV[i]"</arg>" |& server
         print "</xcatrequest>" |& server
 
         while (server |& getline) {

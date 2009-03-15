@@ -562,6 +562,7 @@ until ($quit) {
     }
     $clientselect->add($connection);
     my $peerhost=undef;
+    my $peerfqdn=undef;
     my $peer=$connection->peer_certificate("owner");
     if ($peer) {
       $peer =~ m/CN=([^\/]*)/;
@@ -584,13 +585,14 @@ if ($inet6support) {
 
 
     unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr,AF_INET); }
+    $peerfqdn=$peerhost;
     $peerhost =~ s/\.$domain\.*$//;
     $peerhost =~ s/-eth\d*$//;
     $peerhost =~ s/-myri\d*$//;
     $peerhost =~ s/-ib\d*$//;
     #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
     $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost);
-    service_connection($connection,$peername,$peerhost);
+    service_connection($connection,$peername,$peerhost,$peerfqdn);
     xexit(0);
   }
   $sslclients++; #THROTTLE
@@ -1166,6 +1168,7 @@ sub service_connection {
   my $sock = shift;
   my $peername = shift;
   my $peerhost = shift;
+  my $peerfqdn = shift;
   my $peerport = $sock->peerport;
   my %tables=();
   #some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
@@ -1205,6 +1208,7 @@ sub service_connection {
         if (validate($peername,$peerhost,$req)) {
           $req->{'_xcat_authname'} = [$peername];
           $req->{'_xcat_clienthost'} = [$peerhost];
+          $req->{'_xcat_clientfqdn'} = [$peerfqdn];
           $req->{'_xcat_clientport'}= [$peerport];
           $$progname="xCATd SSL: ".$req->{command}->[0]." for ".($peername ? $peername ."@".$peerhost : $peerhost);
           if ($req->{command}->[0] eq "authcheck") { #provide a method for UI to verify a user without actually requesting action
