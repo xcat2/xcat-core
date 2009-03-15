@@ -24,24 +24,43 @@ sub addnode {
   my $ip = shift;
   unless ($node and $ip) { return; } #bail if requested to do something that could zap /etc/hosts badly
   my $othernames = shift;
+  my $domain = shift;
   my $idx=0;
   my $foundone=0;
   
   while ($idx <= $#hosts) {
     if ($hosts[$idx] =~ /^${ip}\s/ or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}\s/) {
       #TODO: if foundone, delete a dupe
-      $hosts[$idx] = "$ip $node $othernames\n";
+      if ($domain and $node !~ /\./) {
+          $hosts[$idx] = "$ip $node.$domain $node $othernames\n";
+      } else {
+          $hosts[$idx] = "$ip $node $othernames\n";
+      }
       $foundone=1;
     }
     $idx++;
   }
   if ($foundone) { return;}
+  if ($domain and $node !~ /\./) {
+      push @hosts,"$ip $node.$domain $node $othernames\n";
+  } else {
+      push @hosts,"$ip $node $othernames\n";
+  }
   push @hosts,"$ip $node $othernames\n";
 }
 sub process_request {
   my $req = shift;
   my $callback = shift;
   my $hoststab = xCAT::Table->new('hosts');
+  my $sitetab = xCAT::Table->new('site');
+  my $domain;
+  if ($sitetab) {
+    my $dent = $sitetab->getAttribs({key=>'domain'},'value');
+    if ($dent and $dent->{value}) {
+        $domain=$dent->{value};
+    }
+  }
+
   @hosts = ();
   if (grep /-h/,@{$req->{arg}}) {
       $callback->({data=>$usage{makehosts}});
@@ -71,12 +90,12 @@ sub process_request {
     my $hostscache = $hoststab->getNodesAttribs($req->{node},[qw(ip node hostnames)]);
     foreach(@{$req->{node}}) {
       my $ref = $hostscache->{$_}->[0]; #$hoststab->getNodeAttribs($_,[qw(ip node hostnames)]);
-      addnode $ref->{node},$ref->{ip},$ref->{hostnames};
+      addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
     }
   } else {
     my @hostents = $hoststab->getAllNodeAttribs(['ip','node','hostnames']);
     foreach (@hostents) {
-      addnode $_->{node},$_->{ip},$_->{hostnames};
+      addnode $_->{node},$_->{ip},$_->{hostnames},$domain;
     }
   }
   writeout();
