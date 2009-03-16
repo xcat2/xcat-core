@@ -121,6 +121,12 @@ sub setupAIXsn
 		}
 	}
 
+	# call copycerts
+    if (&runcmd("/opt/xcat/sbin/copycerts") != 0) {
+        $msg = "$::sdate servicenode: Could not run copycerts.\n";
+        `logger -t xcat $msg`;
+    }
+
     # get the xCAT credentials from the server
 	&getcreds;
 
