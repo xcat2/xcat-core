@@ -1,5 +1,8 @@
 #!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+if dmidecode|grep Vendor|grep QEMU; then #for now, reboot 
+    IAMAVM=1
+fi
 for parm in `cat /proc/cmdline`; do
   key=`echo $parm|awk -F= '{print $1}'`
   if [ "$key" == "xcatd" ]; then
@@ -70,6 +73,9 @@ while :; do
       echo "<xcatrequest>"
       echo "<command>findme</command>"
       echo "<arch>$ARCH</arch>"
+      if [ ! -z "$IAMAVM" ]; then
+        echo "<nodetype>virtual</nodetype>"
+      fi
       for i in `ifconfig -a|grep HWaddr|grep -v sit|awk '{print $1 "|" $5}'`; do 
         IFACE=`echo $i|awk -F'|' '{print $1}'`
         DRIVER=`ethtool -i $IFACE|grep ^driver|awk '{print $2}'`

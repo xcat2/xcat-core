@@ -19,6 +19,15 @@ sub process_request {
  my $cb = shift;
  my $doreq = shift;
  my $ip = $req->{'_xcat_clientip'};
+ if (defined $req->{nodetype} and $req->{nodetype}->[0] eq 'virtual') {
+ #Don't attempt switch discovery of a  VM Guest
+ #TODO: in this case, we could/should find the host system 
+ #and then ask it what node is associated with the mac
+ #Either way, it would be kinda weird since xCAT probably made up the mac addy
+ #anyway, however, complex network topology function may be aided by
+ #discovery working.  Food for thought.
+     return;
+ }
  my $mac = '';
  my $arptable = `/sbin/arp -n`;
  my @arpents = split /\n/,$arptable;
