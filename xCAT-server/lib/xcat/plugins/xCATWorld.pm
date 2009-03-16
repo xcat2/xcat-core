@@ -47,31 +47,39 @@ sub handled_commands
 sub preprocess_request
 {
     my $req = shift;
-    my $cb  = shift;
+    my $callback  = shift;
     my %sn;
-    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    #if already preprocessed, go straight to request
+    if ($req->{_xcatpreprocessed}->[0] == 1 ) { return [$req]; }
     my $nodes    = $req->{node};
     my $service  = "xcat";
 
     # find service nodes for requested nodes
     # build an individual request for each service node
-    $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+    if ($nodes) {
+     $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
 
-    # build each request for each service node
+      # build each request for each service node
 
-    foreach my $snkey (keys %$sn)
-    {
+      foreach my $snkey (keys %$sn)
+      {
 	my $n=$sn->{$snkey};
 	print "snkey=$snkey, nodes=@$n\n";
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
             push @requests, $reqcopy;
 
+      }
+      return \@requests;
+    } else { # input error
+       my %rsp;
+       $rsp->{data}->[0] = "Input noderange missing. Useage: xCATWorld <noderange> \n";
+      xCAT::MsgUtils->message("I", $rsp, $callback, 0);
+      return 1;
     }
-    return \@requests;
 }
-
 
 #-------------------------------------------------------
 
