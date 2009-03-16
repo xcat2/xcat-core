@@ -3208,20 +3208,20 @@ sub logEventsToDatabase
 
 #-------------------------------------------------------------------------------
 
-=head3   startService
+=head3   StartService
 	Supports AIX and Linux as long as the service is registered with
 	lssrc or startsrc.  
 	Used by the service node plugin (AAsn.pm) to start requested services. 
     Checks to see if the input service is already started. If it is started
-	and the force flag is not set, it does not start the service. Otherwise
-	it starts the service.
+	it stops and  starts the service. Otherwise
+	it just starts the service.
 	Note we are using the system command on the start of the services to see
 	the output when the xcatd is started on Service Nodes.  Do not change this.
     Arguments:
      servicename
 	 force flag
     Returns:
-        0 - service started or already started
+        0 - ok
 		1 - could not start the service
     Globals:
         none
@@ -3229,7 +3229,7 @@ sub logEventsToDatabase
         1 error
     Example:
 		 my $forceflag=1;
-         if (xCAT::Utils->startService("named",$forceflag)) { ...}
+         if (xCAT::Utils->startService("named") { ...}
     Comments:
         none
 
@@ -3238,18 +3238,40 @@ sub logEventsToDatabase
 #-------------------------------------------------------------------------------
 sub startService
 {
-    my ($class, $service, $force) = @_;
+    my ($class, $service) = @_;
     my $rc = 0;
     my @output;
     my $cmd;
     if (xCAT::Utils->isAIX())
     {
-        if (!($force))
-        {    # if don't force, check to see if started, and exit if started
-            @output =
-              xCAT::Utils->runcmd("LANG=C /usr/bin/lssrc -s $service", 0);
-            if ($::RUNCMD_RC != 0)
-            {    # error so start it
+        @output = xCAT::Utils->runcmd("LANG=C /usr/bin/lssrc -s $service", 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error so start it
+            $cmd = "/usr/bin/stopsrc -s $service";
+            system $cmd;    # note using system here to see output when
+                            # daemon comes up
+            if ($? > 0)
+            {               # error
+                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+            }
+            $cmd = "/usr/bin/startsrc -s $service";
+            system $cmd;
+            if ($? > 0)
+            {               # error
+                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                return 1;
+            }
+
+        }
+        else
+        {
+
+            # check to see if running
+            my ($subsys, $group, $pid, $status) = split(' ', $output[1]);
+            if (defined($status) && $status eq 'active')
+            {
+
+                # already running, stop and start
                 $cmd = "/usr/bin/stopsrc -s $service";
                 system $cmd;    # note using system here to see output when
                                 # daemon comes up
@@ -3264,113 +3286,120 @@ sub startService
                     xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                     return 1;
                 }
-
-            }
-            else                # check if already running
-            {
-                my ($subsys, $group, $pid, $status) = split(' ', $output[1]);
-                if (defined($status) && $status eq 'active')
-                {               # already running
-                    return 0;
-                }
-                else
-                {               # not running, start it
-                    $cmd = "/usr/bin/startsrc -s $service";
-                    system $cmd;    # note using system here to see output when
-                                    # daemon comes up
-                    if ($? > 0)
-                    {
-                        xCAT::MsgUtils->message("S",
-                                                "Error on command: $cmd\n");
-                        return 1;
-                    }
-
-                }
-            }
-        }
-        else                        # force start
-        {
-            $cmd = "/usr/bin/stopsrc -s $service";
-            system $cmd;            # note using system here to see output when
-                                    # daemon comes up
-            if ($? > 0)
-            {
-                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
-            }
-            $cmd = "/usr/bin/startsrc -s $service";
-            system $cmd;
-
-            if ($? > 0)
-            {
-                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
-                return 1;
-            }
-        }
-    }
-    else    # linux
-    {
-        if (!($force))
-        {    # check to see if started, and exit if started
-            my @output = xCAT::Utils->runcmd("service $service status", -1);
-            if ($::RUNCMD_RC == 0)
-            {    #  no error, means running for some
-                    # services
-                if (($service ne "conserver") && ($service ne "nfs"))
-                {
-                    return 0;
-                }
-                if (($service eq "conserver") || ($service eq "nfs"))
-                {
-
-                    # must check output
-                    if (grep(/running/, @output))
-                    {
-                        return 0;
-                    }
-                }
-            }
-
-            # not running start
-            $cmd = "service $service start";
-            system $cmd;
-            if ($? > 0)
-            {    # error
-                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
-                return 1;
+                return 0;
             }
             else
             {
-                if ($service eq "conserver")
-                {    # does not give bad return
-                    my @output =
-                      xCAT::Utils->runcmd("service $service status", -1);
-                    if (!(grep(/running/, @output)))
-                    {
+
+                # not running, start it
+                $cmd = "/usr/bin/startsrc -s $service";
+                system $cmd;    # note using system here to see output when
+                                # daemon comes up
+                if ($? > 0)
+                {
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                    return 1;
+                }
+
+            }
+        }
+    }
+    else                        # linux
+    {
+        my @output = xCAT::Utils->runcmd("service $service status", -1);
+        if ($::RUNCMD_RC == 0)
+        {
+
+            #  whether or not an error is returned varies by service 
+            #  stop and start the service for those running
+            if (($service ne "conserver") && ($service ne "nfs"))
+            {
+                $cmd = "service $service stop";
+                system $cmd;
+                if ($? > 0)
+                {    # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                }
+                $cmd = "service $service start";
+                system $cmd;
+                if ($? > 0)
+                {    # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                    return 1;
+                }
+                return 0;
+            }
+            if (($service eq "conserver") || ($service eq "nfs"))
+            {
+
+                # must check output
+                if (grep(/running/, @output))
+                {
+                    $cmd = "service $service stop";
+                    system $cmd;
+                    if ($? > 0)
+                    {    # error
+                        xCAT::MsgUtils->message("S",
+                                                "Error on command: $cmd\n");
+                    }
+                    $cmd = "service $service start";
+                    system $cmd;
+                    if ($? > 0)
+                    {    # error
                         xCAT::MsgUtils->message("S",
                                                 "Error on command: $cmd\n");
                         return 1;
                     }
+                    return 0;
+                }
+                else
+                {
+
+                    # not running , just start
+                    $cmd = "service $service start";
+                    system $cmd;
+                    if ($? > 0)
+                    {    # error
+                        xCAT::MsgUtils->message("S",
+                                                "Error on command: $cmd\n");
+                        return 1;
+                    }
+                    return 0;
                 }
             }
         }
         else
-        {    # force  stop and start
-            $cmd = "service $service stop";
-            system $cmd;
-            if ($? > 0)
-            {    # error
-                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
-            }
-            $cmd = "service $service start";
-            system $cmd;
-            if ($? > 0)
-            {    # error
-                xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
-                return 1;
+        {
+
+            # error getting status, check output 
+            # must check output
+            if (grep(/stopped/, @output)) # stopped
+            {
+                $cmd = "service $service start";
+                system $cmd;
+                if ($? > 0)
+                {    # error
+                  xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                  return 1;
+                }
+            } else{  # not sure
+                $cmd = "service $service stop";
+                system $cmd;
+                if ($? > 0)
+                {    # error
+                  xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                }
+                $cmd = "service $service start";
+                system $cmd;
+                if ($? > 0)
+                {    # error
+                  xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                  return 1;
+                }
             }
         }
-
     }
+
     return $rc;
 }
 
@@ -3430,7 +3459,8 @@ sub CheckVersion
 =cut
 
 #-------------------------------------------------------------------------------
-sub getFacingIP {
+sub getFacingIP
+{
     my ($class, $node) = @_;
     my $ip;
     my $cmd;
@@ -3450,7 +3480,7 @@ sub getFacingIP {
         xCAT::MsgUtils->message("S", "Error from $cmd\n");
         exit $::RUNCMD_RC;
     }
-    
+
     # split node address
     my ($n1, $n2, $n3, $n4) = split('\.', $nodeip);
 
@@ -3461,49 +3491,53 @@ sub getFacingIP {
         if (xCAT::Utils->isLinux())
         {
             my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
-            if ((!$addr1) || (!$Mask)) { next; } 
-	    my @ips = split(":", $addr1);
-	    my @masks=split(":", $Mask);
-	    $ip=$ips[1];
-	    $mask=$masks[1];	    
+            if ((!$addr1) || (!$Mask)) { next; }
+            my @ips   = split(":", $addr1);
+            my @masks = split(":", $Mask);
+            $ip   = $ips[1];
+            $mask = $masks[1];
         }
         else
         {    #AIX
-            my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) = split(" ", $addr);
-            if ((!$addr1) && (!$mask1)) { next;}
-            $ip=$addr1;
-	    $mask1 =~ s/0x//;
-	    $mask=`printf "%d.%d.%d.%d" \$(echo "$mask1" | sed 's/../0x& /g')`;
+            my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
+              split(" ", $addr);
+            if ((!$addr1) && (!$mask1)) { next; }
+            $ip = $addr1;
+            $mask1 =~ s/0x//;
+            $mask =
+              `printf "%d.%d.%d.%d" \$(echo "$mask1" | sed 's/../0x& /g')`;
         }
 
-        if($ip && $mask) {
-	    # split interface IP
-	    my ($h1, $h2, $h3, $h4) = split('\.', $ip);
-	    
-	    # split mask
-	    my ($m1, $m2, $m3, $m4) = split('\.', $mask);
-	    
-	    # AND this interface IP with the netmask of the network
-	    my $a1 = ((int $h1) & (int $m1));
-	    my $a2 = ((int $h2) & (int $m2));
-	    my $a3 = ((int $h3) & (int $m3));
-	    my $a4 = ((int $h4) & (int $m4));
-	    
-	    # AND node IP with the netmask of the network
-	    my $b1 = ((int $n1) & (int $m1));
-	    my $b2 = ((int $n2) & (int $m2));
-	    my $b3 = ((int $n3) & (int $m3));
-	    my $b4 = ((int $n4) & (int $m4));
-	    
+        if ($ip && $mask)
+        {
 
-	    if ( ($b1 == $a1) && ($b2 ==$a2) && ($b3 == $a3) && ($b4 == $a4)) {
-		return $ip;
-	    }
-	}
+            # split interface IP
+            my ($h1, $h2, $h3, $h4) = split('\.', $ip);
+
+            # split mask
+            my ($m1, $m2, $m3, $m4) = split('\.', $mask);
+
+            # AND this interface IP with the netmask of the network
+            my $a1 = ((int $h1) & (int $m1));
+            my $a2 = ((int $h2) & (int $m2));
+            my $a3 = ((int $h3) & (int $m3));
+            my $a4 = ((int $h4) & (int $m4));
+
+            # AND node IP with the netmask of the network
+            my $b1 = ((int $n1) & (int $m1));
+            my $b2 = ((int $n2) & (int $m2));
+            my $b3 = ((int $n3) & (int $m3));
+            my $b4 = ((int $n4) & (int $m4));
+
+            if (($b1 == $a1) && ($b2 == $a2) && ($b3 == $a3) && ($b4 == $a4))
+            {
+                return $ip;
+            }
+        }
     }
 
     xCAT::MsgUtils->message("S", "Cannot find master for the node $node\n");
-    return 0;   
+    return 0;
 }
 
 1;
