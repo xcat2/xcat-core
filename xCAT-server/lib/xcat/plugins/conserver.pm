@@ -153,25 +153,23 @@ sub process_request {
 sub docfheaders {
 # Put in standard headers common to all conserver.cf files
   my $content = shift;
+  my @newheaders=();
   my $numlines = @$content;
   my $idx = 0;
   my $skip = 0;
   my @meat = grep(!/^#/,@$content);
   unless (grep(/^config \* {/,@meat)) {
-    push @$content,"config * {\n";
-    push @$content,"  sslrequired yes;\n";
-    push @$content,"  sslauthority /etc/xcat/cert/ca.pem;\n";
-    push @$content,"  sslcredentials /etc/xcat/cert/server-cred.pem;\n";
-    push @$content,"}\n";
-  }
-  unless (grep(/^default full/,@meat)) {
-    push @$content,"default full { rw *; }\n";
+    push @newheaders,"config * {\n";
+    push @newheaders,"  sslrequired yes;\n";
+    push @newheaders,"  sslauthority /etc/xcat/cert/ca.pem;\n";
+    push @newheaders,"  sslcredentials /etc/xcat/cert/server-cred.pem;\n";
+    push @newheaders,"}\n";
   }
   unless (grep(/^default cyclades/,@meat)) {
-    push @$content,"default cyclades { type host; portbase 7000; portinc 1; }\n"
+    push @newheaders,"default cyclades { type host; portbase 7000; portinc 1; }\n"
   }
   unless (grep(/^default mrv/,@meat)) {
-    push @$content,"default mrv { type host; portbase 2000; portinc 100; }\n"
+    push @newheaders,"default mrv { type host; portbase 2000; portinc 100; }\n"
   }
   #Go through and delete that which would match access and default
   while($idx < @$content){
@@ -190,20 +188,20 @@ sub docfheaders {
     }
   }
   #push @$content,"#xCAT BEGIN ACCESS\n";
-  push @$content,"access * {\n";
-  push @$content,"  trusted 127.0.0.1;\n";
+  push @newheaders,"access * {\n";
+  push @newheaders,"  trusted 127.0.0.1;\n";
   if (xCAT::Utils->isServiceNode()) {
     my $master=xCAT::Utils->get_site_Master();
-    push @$content, "  trusted $master;\n";
+    push @newheaders, "  trusted $master;\n";
   }
-  push @$content,"}\n";
+  push @newheaders,"}\n";
   #push @$content,"#xCAT END ACCESS\n";
 
-  push @$content,"default * {\n";
-  push @$content,"  logfile /var/log/consoles/&;\n";
-  push @$content,"  timestamp 1hab;\n";
-  push @$content,"  include full;\n";
-  push @$content,"  master localhost;\n";
+  push @newheaders,"default * {\n";
+  push @newheaders,"  logfile /var/log/consoles/&;\n";
+  push @newheaders,"  timestamp 1hab;\n";
+  push @newheaders,"  rw *;\n";
+  push @newheaders,"  master localhost;\n";
 
   #-- if option "conserverondemand" in site table is set to yes
   #-- then start all consoles on demand
@@ -212,10 +210,11 @@ sub docfheaders {
   my $sitetab  = xCAT::Table->new('site');
   my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
   if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
-    push @$content,"  options ondemand;\n";
+    push @newheaders,"  options ondemand;\n";
   }
 
-  push @$content,"}\n";
+  push @newheaders,"}\n";
+  unshift @$content,@newheaders;
 
 
 }
