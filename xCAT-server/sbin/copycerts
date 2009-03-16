@@ -101,7 +101,7 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/cert", 0755);
         }
-        `cp -f -rp /xcatpost/cert/* /etc/xcat/cert`;
+        `cp -f -rp /xcatpost/_xcat/* /etc/xcat/cert`;
         `chmod 0600 /etc/xcat/cert/*`;
       }
       else
