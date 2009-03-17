@@ -446,7 +446,7 @@ sub process_request
             {
                 next;
             }
-            if ($ent[1] =~ m/(ipoib|ib|vlan|bond|eth|myri|man|wlan)/)
+            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan)/)
             {    #Mask out many types of interfaces, like xCAT 1.x
                 $activenics{$ent[1]} = 1;
             }
