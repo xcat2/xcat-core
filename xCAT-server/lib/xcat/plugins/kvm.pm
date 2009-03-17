@@ -503,9 +503,72 @@ sub makedom {
     return $dom,undef;
 }
 
+sub createstorage {
+    my $filename=shift;
+    my $mastername=shift;
+    my $size=shift;
+    if ($mastername and $size) {
+        return 1,"Can not specify both a master to clone and a size";
+    }
+    if ($mastername) {
+        unless ($mastername =~ /^\//) {
+            $mastername = $xCAT_plugin::kvm::masterdir.'/'.$mastername;
+        }
+        my $rc=system("qemu-img create -f qcow2 -b $mastername $filename");
+        if ($rc) {
+            return $rc,"Failure creating image $filename from $mastername";
+        }
+    }
+    if ($size) {
+        my $rc = system("qemu-img create -f qcow2 $filename ".getUnits($size,"g",1024));
+        if ($rc) {
+            return $rc,"Failure creating image $filename of size $size\n";
+        }
+    }
+}
+
+
 
 sub mkvm {
+ shift; #Throuw away first argument
+ @ARGV=@_;
+ my $disksize;
+ my $mastername;
+ my $force=0;
+ require Getopt::Long;
+ GetOptions(
+    'master|m=s'=>\$mastername,
+    'size|s=s'=>\$disksize,
+    'force|f'=>\$force
+ );
  build_xmldesc($node);
+ if (defined $vmhash->{$node}->[0]->{storage}) {
+    my $diskname=$vmhash->{$node}->[0]->{storage};
+    if ($diskname =~ /^phy:/) { #in this case, mkvm should have no argumens
+        if ($mastername or $disksize) {
+            return 1,"mkvm management of block device storage not implemented";
+        }
+    } elsif (-f $diskname) {
+        if ($mastername or $disksize) {
+            if ($force) {
+                unlink $diskname;
+            } else {
+                return 1,"Storage already exists, delete manually or use --force";
+            }
+            createstorage($diskname,$mastername,$disksize);
+        }
+    } else {
+        if ($mastername or $disksize) {
+            createstorage($diskname,$mastername,$disksize);
+        } else {
+            #TODO: warn  they may have no disk? the mgt may not have visibility....
+        }
+    }
+ } else {
+     if ($mastername or $disksize) {
+         return 1,"Requested initialization of storage, but vm.storage has no value for node";
+     }
+ }
 }
 sub power {
     @ARGV=@_;
@@ -572,7 +635,7 @@ sub guestcmd {
   if ($command eq "rpower") {
     return power(@args);
   } elsif ($command eq "mkvm") {
-      return mkvm();
+      return mkvm($node,@args);
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
   } elsif ($command eq "getrvidparms") {
@@ -741,12 +804,13 @@ sub process_request {
       $command = 'rmigrate';
   }
 
+  my $sitetab;
   grab_table_data($noderange,$callback);
 
   if ($command eq 'revacuate' or $command eq 'rmigrate') {
       $vmmaxp=1; #for now throttle concurrent migrations, requires more sophisticated heuristics to ensure sanity
   } else {
-      my $sitetab = xCAT::Table->new('site');
+      $sitetab = xCAT::Table->new('site');
       my $tmp;
       if ($sitetab) {
         ($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
@@ -821,6 +885,11 @@ sub process_request {
   }
 
   #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
+  my $sent = $sitetab->getAttribs({key=>'masterimgdir'},'value');
+  if ($sent) {
+    $xCAT_plugin::kvm::masterdir=$sent->{value};
+  }
+
 
 
   foreach $hyp (sort (keys %hyphash)) {
