@@ -283,6 +283,12 @@ sub getMonNodesStatus {
   my @unknown_nodes=();
 
   my $hierachy=xCAT_monitoring::monitorctrl->getMonHierarchy();
+  if (ref($hierachy) eq 'ARRAY') {
+      xCAT::MsgUtils->message('S', "[mon]: " . $hierachy->[1]);
+      return %status;	
+  }
+ 
+
   my @mon_servers=keys(%$hierachy); 
   my $isSV=xCAT::Utils->isServiceNode(); 
   

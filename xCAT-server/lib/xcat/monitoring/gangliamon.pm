@@ -50,31 +50,20 @@ sub start
          $noderef=shift;
         }
       my $scope=shift;
-      print "scope is: $scope \n";
       my $callback=shift;
       my $localhost=hostname();
-      print "local host is $localhost \n";
       my $OS=`uname`;
-      print "OS is $OS \n";
-      print "starting gmond locally \n";
 	  my $res_gmond;
       if ( $OS =~ /AIX/ )
       {
-       print "OS is AIX \n";
        $res_gmond = `/etc/rc.d/init.d/gmond restart 2>&1`;
-       print "res_gmond=$res_gmond\n";
-       print "the result gmond before  is $? \n";
       }
       else
       {
-       print "OS is not AIX \n";
        $res_gmond = `/etc/init.d/gmond restart 2>&1`;
-       print "res_gmond=$res_gmond\n";
-       print "the result gmond before  is $? \n";
       }
       if ($?)
        {
-         print "gmond result after is $? \n";
          if ($callback)
             {
              my $resp={};
@@ -89,26 +78,18 @@ sub start
            return(1,"Ganglia Gmond not started successfully. \n");
         }
  
-        print "starting gmetad locally \n";
 		my $res_gmetad;
       if ( $OS =~ /AIX/ )
       {
-       print "OS is AIX \n";
        $res_gmetad = `/etc/rc.d/init.d/gmetad restart 2>&1`;
-       print "res_gmetad=$res_gmetad\n";
-       print "the result gmetad before  is $? \n";
       }
       else
       {
-       print "OS is not AIX \n";
        $res_gmetad = `/etc/init.d/gmetad restart 2>&1`;
-       print "res_gmetad=$res_gmetad\n";
-       print "the result gmetad before  is $? \n";
       }
 
         if ($?)
          {
-            print "gmetad result after is $? \n";
            if ($callback)
             {
              my $resp={};
@@ -128,17 +109,21 @@ sub start
         if ($scope)
          { #opening if scope
            my $OS=`uname`;
-           print "OS is $OS \n";
-           print "opening scope \n";
-           print "inside scope is:$scope";
-           print "noderef is: @$noderef \n"; 
            my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-  	   print "pairhash: $pPairHash\n";
+	   if (ref($pPairHash) eq 'ARRAY') {
+	       if ($callback) {
+		   my $resp={};
+		   $resp->{data}->[0]=$pPairHash->[1];
+		   $callback->($resp);
+	       } else {
+		   xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+	       }
+	       return (1, "");	
+	   }
+
 	   #identification of this node
 	   my @hostinfo=xCAT::Utils->determinehostname();
-	   print "host:@hostinfo\n";
 	   my $isSV=xCAT::Utils->isServiceNode();
-	   print "is sv is:$isSV \n";
            my %iphash=();	
 	   foreach(@hostinfo) {$iphash{$_}=1;}
 	   if (!$isSV) { $iphash{'noservicenode'}=1;}
@@ -146,39 +131,29 @@ sub start
            my @children;
 	   foreach my $key (keys (%$pPairHash))
             { #opening foreach1
-              print "opening foreach1 \n";
-              print "key is: $key \n";
-              my @key_a=split(',', $key);
-              print "a[0] is: $key_a[0] \n";
-              print "a[1] is: $key_a[1] \n";
-              if (! $iphash{$key_a[0]}) { next;}   
+              my @key_a=split(':', $key);
+	      if (! $iphash{$key_a[0]}) {  next; }
 	      my $mon_nodes=$pPairHash->{$key};
+
 
 	      foreach(@$mon_nodes)
 	        { #opening foreach2
 	          my $node=$_->[0];
 	          my $nodetype=$_->[1];
-                  print "node=$node, nodetype=$nodetype\n";
 	          if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
 	           { 
                     push(@children,$node);
 	           }
   	        } #closing foreach2
             }  #closing foreach1
-          print "children:@children\n";
           my $rec = join(',',@children);
-          print "the string is $rec";
 		  my $result;
       if ( $OS =~ /AIX/ )
       {
-       print "OS is AIX \n";
-       print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>& \n";
        $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>&1`;
       }
       else
       {
-       print "OS is not AIX \n";
-       print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>& \n";
        $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>&1`;
       }
 
@@ -233,7 +208,6 @@ sub config
      $noderef=shift;
      }
      my $scope=shift;
-     print "scope is $scope \n";
      my $callback=shift;
      
      confGmond($noderef,$scope,$callback);
@@ -256,279 +230,260 @@ sub config
 #--------------------------------------------------------------
 
 sub confGmond
-  {
+{
     print "gangliamon:confGmond called \n";
-       no warnings;
-     #  no strict 'vars';
+    no warnings;
+    #  no strict 'vars';
     my $noderef=shift;
     if ($noderef =~ /xCAT_monitoring::gangliamon/) {
-    $noderef=shift;
+	$noderef=shift;
     }
     my $scope=shift;
-    print "scope inside Gmonc is $scope \n";
     my $callback=shift;
-
-    my $localhost=hostname();
-
-    chomp(my $hostname = `hostname`);
-    print "cluster is: $hostname \n";
-
-    print "checking gmond settings \n";
-	if (-e "/etc/ganglia/gmond.conf")
-	  { #opening if 3.1.0
-	    print "ganglia version 3.1.0 \n";
-        `/bin/grep "xCAT gmond settings done" /etc/ganglia/gmond.conf`;
-        print "result in V3.1.0 is $? \n";
-
-		if($?)
-        { #openinf if ?
-         if($callback) {
-         my $resp={};
-         $resp->{data}->[0]="$localhost: $?";
-         $callback->($resp);
-         } else {   xCAT::MsgUtils->message('S', "Gmond not configured $? \n"); }
-        
-            #backup the original file
-            print "backing up original gmond file \n";
-            `/bin/cp -f /etc/ganglia/gmond.conf /etc/ganglia/gmond.conf.orig`;
-            print "original file backed up \n";
-             my $master=xCAT::Utils->get_site_Master();
-             print "obtained site master: $master \n";
-             open(FILE1, "</etc/ganglia/gmond.conf");
-             open(FILE, "+>/etc/ganglia/gmond.conf.tmp");
-             print "files opened for config \n";
-             my $fname = "/etc/ganglia/gmond.conf";
-             unless ( open( CONF, $fname ))
-              {
-                return(0);
-              }
-
-               my @raw_data = <CONF>;
-               close( CONF );
-               print "trying to pattern matching \n";
-               my $str = join('',@raw_data);
-               $str =~ s/setuid = yes/setuid = no/;
-               $str =~ s/bind/#bind/;
-               $str =~ s/mcast_join = .*/host = $master/;
-               print "Phase 1 pattern matching done and trying to use monitoctrl \n";
-            my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-            print "pair has obtained \n";
-            print "pairHash: $pPairHash \n";
-            #identification of this node
-            my @hostinfo=xCAT::Utils->determinehostname();
-            print "host:@hostinfo\n";
-            my $isSV=xCAT::Utils->isServiceNode();
-            my %iphash=();
-            foreach(@hostinfo) {$iphash{$_}=1;}
-            if (!$isSV) { $iphash{'noservicenode'}=1;}
-           
-           # my @children;
-            foreach my $key (keys (%$pPairHash))
-             { #opening for each
-               my @key_a=split(',', $key);
-               if (! $iphash{$key_a[0]}) { next;}
-               print "a[0] is: $key_a[0] \n";
-               print "a[1] is: $key_a[1] \n";
-               my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
-               if ( $key_a[0]!~/$pattern/ )
-                {
-                 my $cluster = $key_a[0];
-                 print "it workrd cluster is: $cluster \n";
-                 if (-e "/etc/xCATSN")
-                  {
-                   $str =~ s/name = "unspecified"/name="$cluster"/;
-                  }
-                }
-
-             } #closing for each
-
-               $str =~ s/name = "unspecified"/name="$hostname"/;
-               $str =~ s/mcast_join/# mcast_join/;
-               print FILE $str;
-               print FILE "# xCAT gmond settings done \n";
-               print "Gmond conf succ \n"; 
-             close(FILE1);
-              close(FILE);
-               print "files closed \n";
-            `/bin/cp -f /etc/ganglia/gmond.conf.tmp /etc/ganglia/gmond.conf`;
-
-      #      } #closing for each
-
-       } #closing if ?
-
-	  } #closing if 3.1.0
-	 
-	 else
-      {  #opening if 3.0.7
-		 print "ganglia version 3.0.7 \n";
-		 `/bin/grep "xCAT gmond settings done" /etc/gmond.conf`;
-		 print "result in V3.0.7 is $? \n";
-
-		 if($?)
-          { #openinf if ?
-          if($callback) {
-          my $resp={};
-          $resp->{data}->[0]="$localhost: $?";
-          $callback->($resp);
-          } else {   xCAT::MsgUtils->message('S', "Gmond not configured $? \n"); }
-        
-            #backup the original file
-            print "backing up original gmond file \n";
-            `/bin/cp -f /etc/gmond.conf /etc/gmond.conf.orig`;
-            print "original file backed up \n";
-             my $master=xCAT::Utils->get_site_Master();
-             print "obtained site master: $master \n";
-             open(FILE1, "</etc/gmond.conf");
-             open(FILE, "+>/etc/gmond.conf.tmp");
-             print "files opened for config \n";
-             my $fname = "/etc/gmond.conf";
-             unless ( open( CONF, $fname ))
-              {
-                return(0);
-              }
-
-               my @raw_data = <CONF>;
-               close( CONF );
-               print "trying to pattern matching \n";
-               my $str = join('',@raw_data);
-               $str =~ s/setuid = yes/setuid = no/;
-               $str =~ s/bind/#bind/;
-               $str =~ s/mcast_join = .*/host = $master/;
-               print "Phase 1 pattern matching done and trying to use monitoctrl \n";
-            my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-            print "pair has obtained \n";
-            print "pairHash: $pPairHash \n";
-            #identification of this node
-            my @hostinfo=xCAT::Utils->determinehostname();
-            print "host:@hostinfo\n";
-            my $isSV=xCAT::Utils->isServiceNode();
-            my %iphash=();
-            foreach(@hostinfo) {$iphash{$_}=1;}
-            if (!$isSV) { $iphash{'noservicenode'}=1;}
-           
-           # my @children;
-            foreach my $key (keys (%$pPairHash))
-             { #opening for each
-               my @key_a=split(',', $key);
-               if (! $iphash{$key_a[0]}) { next;}
-               print "a[0] is: $key_a[0] \n";
-               print "a[1] is: $key_a[1] \n";
-               my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
-               if ( $key_a[0]!~/$pattern/ )
-                {
-                 my $cluster = $key_a[0];
-                 print "it workrd cluster is: $cluster \n";
-                 if (-e "/etc/xCATSN")
-                  {
-                   $str =~ s/name = "unspecified"/name="$cluster"/;
-                  }
-                }
-
-             } #closing for each
-
-               $str =~ s/name = "unspecified"/name="$hostname"/;
-               $str =~ s/mcast_join/# mcast_join/;
-               print FILE $str;
-               print FILE "# xCAT gmond settings done \n";
-               print "Gmond conf succ \n"; 
-             close(FILE1);
-              close(FILE);
-               print "files closed \n";
-            `/bin/cp -f /etc/gmond.conf.tmp /etc/gmond.conf`;
-
-      #      } #closing for each
-
-       } #closing if ?
     
-	  }  #closing if 3.0.7
+    my $localhost=hostname();
+    
+    chomp(my $hostname = `hostname`);
+    if (-e "/etc/ganglia/gmond.conf")
+    { #opening if 3.1.0
+        `/bin/grep "xCAT gmond settings done" /etc/ganglia/gmond.conf`;
+	
+	if($?)
+        { #openinf if ?
+	    if($callback) {
+		my $resp={};
+		$resp->{data}->[0]="$localhost: $?";
+		$callback->($resp);
+	    } else {   xCAT::MsgUtils->message('S', "Gmond not configured $? \n"); }
+	    
+            #backup the original file
+            `/bin/cp -f /etc/ganglia/gmond.conf /etc/ganglia/gmond.conf.orig`;
+	    my $master=xCAT::Utils->get_site_Master();
+	    open(FILE1, "</etc/ganglia/gmond.conf");
+	    open(FILE, "+>/etc/ganglia/gmond.conf.tmp");
+	    my $fname = "/etc/ganglia/gmond.conf";
+	    unless ( open( CONF, $fname ))
+	    {
+                return(0);
+	    }
+	    
+	    my @raw_data = <CONF>;
+	    close( CONF );
+	    my $str = join('',@raw_data);
+	    $str =~ s/setuid = yes/setuid = no/;
+	    $str =~ s/bind/#bind/;
+	    $str =~ s/mcast_join = .*/host = $master/;
 
+            my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+	    if (ref($pPairHash) eq 'ARRAY') {
+		if ($callback) {
+		    my $resp={};
+		    $resp->{data}->[0]=$pPairHash->[1];
+		    $callback->($resp);
+		} else {
+		    xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+		}
+		return (1, "");	
+	    }
 
-       
-      if ($scope)
-       {#opening if scope of confGmond
-        print "opening scope \n";
-        print "inside scope is:$scope";
+            #identification of this node
+            my @hostinfo=xCAT::Utils->determinehostname();
+            my $isSV=xCAT::Utils->isServiceNode();
+            my %iphash=();
+            foreach(@hostinfo) {$iphash{$_}=1;}
+            if (!$isSV) { $iphash{'noservicenode'}=1;}
+	    
+	    # my @children;
+            foreach my $key (keys (%$pPairHash))
+	    { #opening for each
+		my @key_a=split(':', $key);
+		if (! $iphash{$key_a[0]}) {  next; }
+		my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
+		if ( $key_a[0]!~/$pattern/ )
+                {
+		    my $cluster = $key_a[0];
+		    if (-e "/etc/xCATSN")
+		    {
+			$str =~ s/name = "unspecified"/name="$cluster"/;
+		    }
+                }
+		
+	    } #closing for each
+	    
+	    $str =~ s/name = "unspecified"/name="$hostname"/;
+	    $str =~ s/mcast_join/# mcast_join/;
+	    print FILE $str;
+	    print FILE "# xCAT gmond settings done \n";
+	    close(FILE1);
+	    close(FILE);
+            `/bin/cp -f /etc/ganglia/gmond.conf.tmp /etc/ganglia/gmond.conf`;
+	    
+	    #      } #closing for each
+	    
+	} #closing if ?
+	
+    } #closing if 3.1.0
+    
+    else
+    {  #opening if 3.0.7
+	`/bin/grep "xCAT gmond settings done" /etc/gmond.conf`;
+	
+	if($?)
+	{ #openinf if ?
+	    if($callback) {
+		my $resp={};
+		$resp->{data}->[0]="$localhost: $?";
+		$callback->($resp);
+	    } else {   xCAT::MsgUtils->message('S', "Gmond not configured $? \n"); }
+	    
+            #backup the original file
+            `/bin/cp -f /etc/gmond.conf /etc/gmond.conf.orig`;
+	    my $master=xCAT::Utils->get_site_Master();
+	    open(FILE1, "</etc/gmond.conf");
+	    open(FILE, "+>/etc/gmond.conf.tmp");
+	    my $fname = "/etc/gmond.conf";
+	    unless ( open( CONF, $fname ))
+	    {
+                return(0);
+	    }
+	    
+	    my @raw_data = <CONF>;
+	    close( CONF );
+	    my $str = join('',@raw_data);
+	    $str =~ s/setuid = yes/setuid = no/;
+	    $str =~ s/bind/#bind/;
+	    $str =~ s/mcast_join = .*/host = $master/;
+            my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+	    if (ref($pPairHash) eq 'ARRAY') {
+	       if ($callback) {
+		   my $resp={};
+		   $resp->{data}->[0]=$pPairHash->[1];
+		   $callback->($resp);
+	       } else {
+		   xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+	       }
+	       return (1, "");	
+	    }
+	    
+            #identification of this node
+            my @hostinfo=xCAT::Utils->determinehostname();
+            my $isSV=xCAT::Utils->isServiceNode();
+            my %iphash=();
+            foreach(@hostinfo) {$iphash{$_}=1;}
+            if (!$isSV) { $iphash{'noservicenode'}=1;}
+	    
+	    # my @children;
+            foreach my $key (keys (%$pPairHash))
+	    { #opening for each
+		my @key_a=split(':', $key);
+		if (! $iphash{$key_a[0]}) {  next; }
+
+		my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
+		if ( $key_a[0]!~/$pattern/ )
+                {
+		    my $cluster = $key_a[0];
+		    if (-e "/etc/xCATSN")
+		    {
+			$str =~ s/name = "unspecified"/name="$cluster"/;
+		    }
+                }
+		
+	    } #closing for each
+	    
+	    $str =~ s/name = "unspecified"/name="$hostname"/;
+	    $str =~ s/mcast_join/# mcast_join/;
+	    print FILE $str;
+	    print FILE "# xCAT gmond settings done \n";
+	    close(FILE1);
+	    close(FILE);
+            `/bin/cp -f /etc/gmond.conf.tmp /etc/gmond.conf`;
+	    
+	    #      } #closing for each
+	    
+	} #closing if ?
+	
+    }  #closing if 3.0.7
+    
+    
+    
+    if ($scope)
+    {#opening if scope of confGmond
         chomp(my $hostname = `hostname`);
         my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-         
-        print "pairHash: $pPairHash \n";
+	if (ref($pPairHash) eq 'ARRAY') {
+	    if ($callback) {
+		my $resp={};
+		$resp->{data}->[0]=$pPairHash->[1];
+		$callback->($resp);
+	    } else {
+		xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+	    }
+	    return (1, "");	
+	}
+	
         #identification of this node
         my @hostinfo=xCAT::Utils->determinehostname();
-        print "host:@hostinfo\n";
         my $isSV=xCAT::Utils->isServiceNode();
         my %iphash=();
         foreach(@hostinfo) {$iphash{$_}=1;}
         if (!$isSV) { $iphash{'noservicenode'}=1;}
-
-       my @children;
-       foreach my $key (keys (%$pPairHash))
+	
+	my @children;
+	foreach my $key (keys (%$pPairHash))
         { #opening for each
-          my @key_a=split(',', $key);
-          if (! $iphash{$key_a[0]}) { next;}
-          print "a[0] is: $key_a[0] \n";
-          print "a[1] is: $key_a[1] \n";
-          if (! $iphash{$key_a[0]}) { next;}   
-	   my $mon_nodes=$pPairHash->{$key};
-
-	      foreach(@$mon_nodes)
-	        { #opening foreach2
-	          my $node=$_->[0];
-	          my $nodetype=$_->[1];
-                  #print "node=$node, nodetype=$nodetype\n";
-	          if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
-	           { 
-                    push(@children,$node);
-	           }
-  	        } #closing foreach2
-
-              my $node = join(',',@children);
-              print "the children are: $node \n";
-              print "copying into CP node \n";
-              my $res_cp = `XCATBYPASS=Y $::XCATROOT/bin/xdcp $node /install/postscripts/confGang /tmp 2>&1`;
-              if($?)
-                { #openinf if ?
-                  if($callback) 
-                    {
-                     my $resp={};
-                     $resp->{data}->[0]="$localhost: $res_cp";
-                     $callback->($resp);
-                    } 
-                  else {   xCAT::MsgUtils->message('S', "Cannot copy confGang into /tmp: $res_cp \n"); }
-                 } #closing if ?
-
-               
-              print "shell script time \n";
-              print "MONSERVER is $key_a[0] \n";
-              print "MONMASTER is $key_a[1] \n";
-              my $res_conf;
-              if ( $key_a[0] =~ /noservicenode/ )
-              {
-              $res_conf=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node MONSERVER=$hostname MONMASTER=$key_a[1] /tmp/confGang 2>&1`;
-              }
-
-             else 
-             {
-              $res_conf=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node MONSERVER=$key_a[0] MONMASTER=$key_a[1] /tmp/confGang 2>&1`;
-             }
-       if($?)
-                { #openinf if ?
-                  if($callback) 
-                    {
-                     my $resp={};
-                     $resp->{data}->[0]="$localhost: $res_conf";
-                     $callback->($resp);
-                    } 
-                  else {   xCAT::MsgUtils->message('S', "Cannot configure gmond in nodes: $res_conf \n"); }
-                 } #closing if ?
-            } #closing for each
+	    my @key_a=split(':', $key);
+	    if (! $iphash{$key_a[0]}) {  next; }
+	    my $mon_nodes=$pPairHash->{$key};
+	    
+	    foreach(@$mon_nodes)
+	    { #opening foreach2
+		my $node=$_->[0];
+		my $nodetype=$_->[1];
+		#print "node=$node, nodetype=$nodetype\n";
+		if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
+		{ 
+		    push(@children,$node);
+		}
+	    } #closing foreach2
+	    
+	    my $node = join(',',@children);
+	    my $res_cp = `XCATBYPASS=Y $::XCATROOT/bin/xdcp $node /install/postscripts/confGang /tmp 2>&1`;
+	    if($?)
+	    { #openinf if ?
+		if($callback) 
+		{
+		    my $resp={};
+		    $resp->{data}->[0]="$localhost: $res_cp";
+		    $callback->($resp);
+		} 
+		else {   xCAT::MsgUtils->message('S', "Cannot copy confGang into /tmp: $res_cp \n"); }
+	    } #closing if ?
+	    
+	    
+	    my $res_conf;
+	    if ( $key_a[0] =~ /noservicenode/ )
+	    {
+		$res_conf=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node MONSERVER=$hostname MONMASTER=$key_a[1] /tmp/confGang 2>&1`;
+	    }
+	    
+	    else 
+	    {
+		$res_conf=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node MONSERVER=$key_a[0] MONMASTER=$key_a[1] /tmp/confGang 2>&1`;
+	    }
+	    if($?)
+	    { #openinf if ?
+		if($callback) 
+		{
+		    my $resp={};
+		    $resp->{data}->[0]="$localhost: $res_conf";
+		    $callback->($resp);
+		} 
+		else {   xCAT::MsgUtils->message('S', "Cannot configure gmond in nodes: $res_conf \n"); }
+	    } #closing if ?
+	} #closing for each
         
-      }#closing if scope
-
-
-
-
-
-    } # closing subroutine
+    }#closing if scope
+} # closing subroutine
 
 #--------------------------------------------------------------
 =head3    confGmetad
@@ -553,20 +508,14 @@ sub confGmetad
     $noderef=shift;
     }
     my $scope=shift;
-    print "scope inside confGmetad is $scope \n";
     my $callback=shift;
 
     my $localhost=hostname();
 
     chomp(my $hostname = `hostname`);
-    print "cluster is: $hostname \n";
-    
-    print "checking gmetad settings \n";
 	if (-e "/etc/ganglia/gmetad.conf")
 	  { #opening if 3.1.0
-	    print "ganglia version 3.1.0 \n";
     `/bin/grep "xCAT gmetad settings done" /etc/ganglia/gmetad.conf`;
-    print "result V3.1.0 is $? \n";
       
        if($?)
         { #openinf if ?
@@ -576,7 +525,6 @@ sub confGmetad
          $callback->($resp);
          } else {   xCAT::MsgUtils->message('S', "Gmetad not configured $? \n"); }
           # backup the original file
-          print "backing up original gmetad file \n";
           `/bin/cp -f /etc/ganglia/gmetad.conf /etc/ganglia/gmetad.conf.orig`;
 
           open(FILE1, "</etc/ganglia/gmetad.conf");
@@ -599,12 +547,22 @@ sub confGmetad
          
           if (-e "/etc/xCATMN")
           {
-           print "\n Managmt node \n";
            print(OUTFILE "data_source \"$hostname\" localhost \n");
           }
           my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
+	 if (ref($noderef) eq 'ARRAY') {
+	     if ($callback) {
+		 my $resp={};
+		 $resp->{data}->[0]=$noderef->[1];
+		 $callback->($resp);
+	     } else {
+		 xCAT::MsgUtils->message('S', "[mon]: " . $noderef->[1]);
+	     }
+	     return (1, "");	
+	 }
+
+
           my @hostinfo=xCAT::Utils->determinehostname();
-          print "host:@hostinfo\n";
           my $isSV=xCAT::Utils->isServiceNode();
           my %iphash=();
           foreach(@hostinfo) {$iphash{$_}=1;}
@@ -614,23 +572,19 @@ sub confGmetad
           my $cluster;
           foreach my $key (keys (%$noderef))
            {
-            my @key_g=split(',', $key);
-         #    print "a[0] is: $key_g[0] \n";
+            my @key_g=split(':', $key);
              if (! $iphash{$key_g[0]}) { next;}
              my $mon_nodes=$noderef->{$key};
-             print "a[0] is hi: $key_g[0] \n";
              my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
              if ( $key_g[0]!~/$pattern/ )
              { 
                no warnings;
                $cluster = $key_g[0];
-               print "found cluster: $cluster \n";
              }
              foreach(@$mon_nodes)
               {
                 my $node=$_->[0];
                 my $nodetype=$_->[1];
-                print "node=$node, nodetype=$nodetype\n";
                  if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
                   {
                     push(@children,$node);
@@ -638,17 +592,12 @@ sub confGmetad
               }
   
            }
-         print "children:@children\n";
          my $num=@children;
-         print "the number of children is: $num \n";
           if (-e "/etc/xCATSN")
                 {
-                 print "cluster hi is $cluster \n";
                  for (my $i = 0; $i < $num; $i++)
                   {
-                   print "childred is $children[ $i ] \n";
                    print ( OUTFILE "data_source \"$cluster\" $children[ $i ]  \n");
-                   print "children printed \n";
                   }
                 } 
        
@@ -656,9 +605,7 @@ sub confGmetad
               {
                 for (my $j = 0; $j < $num; $j++)
                  {
-                  print "childred is $children[ $j ] \n";
                   print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]  \n");
-                  print "children printed \n";
                  }
               }
        print(OUTFILE "# xCAT gmetad settings done \n");
@@ -669,9 +616,7 @@ sub confGmetad
 else 
 
    {#opening if 3.0.7
-		 print "ganglia version 3.0.7 \n";
 		 `/bin/grep "xCAT gmetad settings done" /etc/gmetad.conf`;
-		 print "result in V3.0.7 is $? \n";
         if($?)
         { #openinf if ?
          if($callback) {
@@ -680,7 +625,6 @@ else
          $callback->($resp);
          } else {   xCAT::MsgUtils->message('S', "Gmetad not configured $? \n"); }
           # backup the original file
-          print "backing up original gmetad file \n";
           `/bin/cp -f /etc/gmetad.conf /etc/gmetad.conf.orig`;
 
           open(FILE1, "</etc/gmetad.conf");
@@ -688,9 +632,7 @@ else
         
           while (readline(FILE1))
           {
-            # print STDERR "READ = $_\n";
             s/data_source/#data_source/g;
-            # print STDERR "POST-READ = $_\n";
             print FILE $_;
           }
           close(FILE1);
@@ -703,12 +645,21 @@ else
          
           if (-e "/etc/xCATMN")
           {
-           print "\n Managmt node \n";
            print(OUTFILE "data_source \"$hostname\" localhost \n");
           }
           my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
+	 if (ref($noderef) eq 'ARRAY') {
+	     if ($callback) {
+		 my $resp={};
+		 $resp->{data}->[0]=$noderef->[1];
+		 $callback->($resp);
+	     } else {
+		 xCAT::MsgUtils->message('S', "[mon]: " . $noderef->[1]);
+	     }
+	     return (1, "");	
+	 }
+
           my @hostinfo=xCAT::Utils->determinehostname();
-          print "host:@hostinfo\n";
           my $isSV=xCAT::Utils->isServiceNode();
           my %iphash=();
           foreach(@hostinfo) {$iphash{$_}=1;}
@@ -718,23 +669,20 @@ else
           my $cluster;
           foreach my $key (keys (%$noderef))
            {
-            my @key_g=split(',', $key);
+            my @key_g=split(':', $key);
          #    print "a[0] is: $key_g[0] \n";
              if (! $iphash{$key_g[0]}) { next;}
              my $mon_nodes=$noderef->{$key};
-             print "a[0] is hi: $key_g[0] \n";
              my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
              if ( $key_g[0]!~/$pattern/ )
              { 
                no warnings;
                $cluster = $key_g[0];
-               print "found cluster: $cluster \n";
              }
              foreach(@$mon_nodes)
               {
                 my $node=$_->[0];
                 my $nodetype=$_->[1];
-                print "node=$node, nodetype=$nodetype\n";
                  if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
                   {
                     push(@children,$node);
@@ -742,17 +690,12 @@ else
               }
   
            }
-         print "children:@children\n";
          my $num=@children;
-         print "the number of children is: $num \n";
           if (-e "/etc/xCATSN")
                 {
-                 print "culster hi is $cluster \n";
                  for (my $i = 0; $i < $num; $i++)
                   {
-                   print "childred is $children[ $i ] \n";
                    print ( OUTFILE "data_source \"$cluster\" $children[ $i ]  \n");
-                   print "children printed \n";
                   }
                 } 
        
@@ -760,9 +703,7 @@ else
               {
                 for (my $j = 0; $j < $num; $j++)
                  {
-                  print "childred is $children[ $j ] \n";
                   print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]  \n");
-                  print "children printed \n";
                  }
               }
        print(OUTFILE "# xCAT gmetad settings done \n");
@@ -801,7 +742,6 @@ sub deconfig
      $noderef=shift;
      }
      my $scope=shift;
-     print "scope is $scope \n";
      my $callback=shift;
      
      deconfGmond($noderef,$scope,$callback);
@@ -832,17 +772,13 @@ sub deconfGmond
     $noderef=shift;
     }
     my $scope=shift;
-    print "scope inside Gmond is $scope \n";
     my $callback=shift;
 
     my $localhost=hostname();
 
-     print "saving configured Gmond file \n";
 	 if (-e "/etc/ganglia/gmond.conf")
 	  { #opening if V3.1.0
-	  print "Ganglia V 3.1.0 \n";
       `/bin/cp -f /etc/ganglia/gmond.conf /etc/ganglia/gmond.conf.save`;
-      print "deconfiguring Ganglia Gmond \n";
       my $decon_gmond=`/bin/cp -f /etc/ganglia/gmond.conf.orig /etc/ganglia/gmond.conf`;
        if($?)
         { #openinf if ?
@@ -856,9 +792,7 @@ sub deconfGmond
 	  
 	 else 
 	  { #opening V3.0.7
-	    print "Ganglia V 3.0.7 \n";
 	   `/bin/cp -f /etc/gmond.conf /etc/gmond.conf.save`;
-       print "deconfiguring Ganglia Gmond \n";
        my $decon_gmond=`/bin/cp -f /etc/gmond.conf.orig /etc/gmond.conf`;
         if($?)
         { #openinf if ?
@@ -872,34 +806,36 @@ sub deconfGmond
 
       if ($scope)
        {#opening if scope of confGmond
-        print "opening scope \n";
-        print "inside scope is:$scope";
         my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+	if (ref($pPairHash) eq 'ARRAY') {
+	    if ($callback) {
+		my $resp={};
+		$resp->{data}->[0]=$pPairHash->[1];
+		$callback->($resp);
+	    } else {
+		xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+	    }
+	    return (1, "");	
+	}
 
-        print "pairHash: $pPairHash \n";
         #identification of this node
         my @hostinfo=xCAT::Utils->determinehostname();
-        print "host:@hostinfo\n";
         my $isSV=xCAT::Utils->isServiceNode();
         my %iphash=();
         foreach(@hostinfo) {$iphash{$_}=1;}
         if (!$isSV) { $iphash{'noservicenode'}=1;}
 
-       my @children;
-       foreach my $key (keys (%$pPairHash))
+	my @children;
+	foreach my $key (keys (%$pPairHash))
         { #opening for each
-          my @key_a=split(',', $key);
-          if (! $iphash{$key_a[0]}) { next;}
-          print "a[0] is: $key_a[0] \n";
-          print "a[1] is: $key_a[1] \n";
-          if (! $iphash{$key_a[0]}) { next;}   
-	   my $mon_nodes=$pPairHash->{$key};
-
+	    my @key_a=split(':', $key);
+	    if (! $iphash{$key_a[0]}) {  next; }
+	    my $mon_nodes=$pPairHash->{$key};
+	    
 	      foreach(@$mon_nodes)
 	        { #opening foreach2
 	          my $node=$_->[0];
 	          my $nodetype=$_->[1];
-                  #print "node=$node, nodetype=$nodetype\n";
 	          if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
 	           { 
                     push(@children,$node);
@@ -907,11 +843,8 @@ sub deconfGmond
   	        } #closing foreach2
 
               my $node = join(',',@children);
-              print "the children are: $node \n";
-              print "saving the configured Gmond file in childern \n";
 			  if (-e "/etc/ganglia/gmond.conf")
 			  { # opening if V3.1.0
-			  print "Ganglia V 3.1.0 \n";
                my $res_sv = `XCATBYPASS=Y $::XCATROOT/bin/xdsh $node /bin/cp -f /etc/ganglia/gmond.conf /etc/ganglia/gmond.conf.save`;
 
                my $res_cp = `XCATBYPASS=Y $::XCATROOT/bin/xdsh $node /bin/cp -f /etc/ganglia/gmond.conf.orig /etc/ganglia/gmond.conf`;
@@ -929,7 +862,6 @@ sub deconfGmond
 
 		     else
 			{
-                print "Ganglia V 3.0.7 \n";
                my $res_sv = `XCATBYPASS=Y $::XCATROOT/bin/xdsh $node /bin/cp -f /etc/gmond.conf /etc/gmond.conf.save`;
 
                my $res_cp = `XCATBYPASS=Y $::XCATROOT/bin/xdsh $node /bin/cp -f /etc/gmond.conf.orig /etc/gmond.conf`;
@@ -973,17 +905,13 @@ sub deconfGmetad
     $noderef=shift;
     }
     my $scope=shift;
-    print "scope inside Gmetad is $scope \n";
     my $callback=shift;
 
     my $localhost=hostname();
 
-     print "saving configured Gmetad file \n";
 	 if (-e "/etc/ganglia/gmetad.conf")
 	  { #opening V3.1.0
-	  print "Ganglia V 3.1.0 \n";
      `/bin/cp -f /etc/ganglia/gmetad.conf /etc/ganglia/gmetad.conf.save`;
-     print "deconfiguring Ganglia Gmetad \n";
      my $decon_gmetad=`/bin/cp -f /etc/ganglia/gmetad.conf.orig /etc/ganglia/gmetad.conf`;
       if($?)
         { #openinf if ?
@@ -997,9 +925,7 @@ sub deconfGmetad
 
 	 else 
 	  { #opening V3.0.7
-	  print "Ganglia V 3.0.7 \n";
 	   `/bin/cp -f /etc/gmetad.conf /etc/gmetad.conf.save`;
-       print "deconfiguring Ganglia Gmetad \n";
        my $decon_gmetad=`/bin/cp -f /etc/gmetad.conf.orig /etc/gmetad.conf`;
        if($?)
         { #openinf if ?
@@ -1044,28 +970,19 @@ sub stop
       my $scope=shift;
       my $callback=shift;
       my $localhost=hostname();
-      print "local host is $localhost \n";
 	  my $OS=`uname`;
-      print "stopping gmond locally \n";
       my $res_gmond;
       if ( $OS =~ /AIX/ )
        {
-         print "OS is AIX \n";
          $res_gmond = `/etc/rc.d/init.d/gmond stop 2>&1`;
-         print "res_gmond=$res_gmond\n";
-         print "the result gmond before  is $? \n";
        }
       else
       {
-       print "OS is not AIX \n";
        $res_gmond = `/etc/init.d/gmond stop 2>&1`;
-       print "res_gmond=$res_gmond\n";
-       print "the result gmond before  is $? \n";
       }
 
     if ($?)
        {
-         print "gmond result after is $? \n";
          if ($callback)
             {
              my $resp={};
@@ -1080,26 +997,18 @@ sub stop
            return(1,"Ganglia Gmond not stopped successfully. \n");
         }
 
-        print "stopping gmetad locally \n";
         my $res_gmetad;
       if ( $OS =~ /AIX/ )
       {
-       print "OS is AIX \n";
        $res_gmetad = `/etc/rc.d/init.d/gmetad stop 2>&1`;
-       print "res_gmetad=$res_gmetad\n";
-       print "the result gmetad before  is $? \n";
       }
       else
       {
-       print "OS is not AIX \n";
        $res_gmetad = `/etc/init.d/gmetad stop 2>&1`;
-       print "res_gmetad=$res_gmetad\n";
-       print "the result gmetad before  is $? \n";
       }
 
 		if ($?)
          {
-            print "gmetad result after is $? \n";
            if ($callback)
             {
              my $resp={};
@@ -1116,19 +1025,23 @@ sub stop
 
 
 
-        if ($scope)
-         { #opening if scope
-		   my $OS=`uname`;
-		   print "the OS is $OS \n";
-           print "opening scope \n";
-           print "noderef is: @$noderef \n";
-           my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-           print "pairhash: $pPairHash\n";
+        if ($scope) { #opening if scope
+	     my $OS=`uname`;
+	     my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+	     if (ref($pPairHash) eq 'ARRAY') {
+		 if ($callback) {
+		     my $resp={};
+		     $resp->{data}->[0]=$pPairHash->[1];
+		     $callback->($resp);
+		 } else {
+		     xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+		 }
+		 return (1, "");	
+	     }
+
            #identification of this node
            my @hostinfo=xCAT::Utils->determinehostname();
-           print "host:@hostinfo\n";
            my $isSV=xCAT::Utils->isServiceNode();
-           print "is sv is:$isSV \n";
            my %iphash=();
            foreach(@hostinfo) {$iphash{$_}=1;}
            if (!$isSV) { $iphash{'noservicenode'}=1;}
@@ -1136,39 +1049,29 @@ sub stop
            my @children;
            foreach my $key (keys (%$pPairHash))
             { #opening foreach1
-              print "opening foreach1 \n";
-              print "key is: $key \n";
-              my @key_a=split(',', $key);
-              print "a[1] is: $key_a[1] \n";
-              if (! $iphash{$key_a[0]}) { next;}
+              my @key_a=split(':', $key);
+	      if (! $iphash{$key_a[0]}) {  next; }
               my $mon_nodes=$pPairHash->{$key};
 
               foreach(@$mon_nodes)
                 { #opening foreach2
                   my $node=$_->[0];
                   my $nodetype=$_->[1];
-                  print "node=$node, nodetype=$nodetype\n";
                   if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
                    {
                     push(@children,$node);
                    }
                 } #closing foreach2
             }  #closing foreach1
-          print "children:@children\n";
           my $rec = join(',',@children);
-          print "the string is $rec";
           my $result; 
 
          if ( $OS =~ /AIX/ )
          {
-          print "OS is AIX \n";
-          print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>& \n";
           $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>&1`;
          }
         else
         {
-         print "OS is not AIX \n";
-         print "XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>& \n";
          $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>&1`;
         }
 

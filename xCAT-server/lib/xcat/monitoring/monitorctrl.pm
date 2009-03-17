@@ -789,14 +789,16 @@ sub getPluginSettings {
 sub isMonServer {
   my $pHash=getNodeMonServerPair([], 1);
 
+  if (ref($pHash) eq 'ARRAY') { return 0; }
+
   my @hostinfo=xCAT::Utils->determinehostname();
   my $isSV=xCAT::Utils->isServiceNode();
   my  %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   if (!$isSV) { $iphash{'noservicenode'}=1;}
-  
+ 
   foreach my $pair (keys(%$pHash)) {
-    my @a=split(',', $pair);
+    my @a=split(':', $pair);
     if ($iphash{$a[0]} || $iphash{$a[1]}) { return 1;}
   }
   
@@ -810,10 +812,10 @@ sub isMonServer {
             nodelist table will be used.
        retfromat 0-- A pointer to a hash table with node as the key and a the monserver pairs
                      string as the value.  
-                     For example: { node1=>"sv1,ma1", node2=>"sv1,ma1", node3=>"sv2,ma2"...}
+                     For example: { node1=>"sv1:ma1", node2=>"sv2:ma2", node3=>"sv2:ma2"...}
                  1-- A pointer to a hash table with monserver pairs as the key and an array
                      pointer of nodes as the value. 
-                     For example: { "sv1,ma1"=>[node1,node2], "sv2,ma2"=>node3...}
+                     For example: { "sv1:ma1"=>[node1,node2], "sv2:ma2"=>node3...}
                    
          The pair is in the format of "monserver,monmaser". First one is the monitoring service 
       node ip/hostname that faces the mn and the second one is the monitoring service 
@@ -822,6 +824,7 @@ sub isMonServer {
       for that node. In this case the second one is the site master. 
    Returns: 
       An pointer to a hash.
+      It retuens a pointer to an array if there is an error. Format is [code, message].
 =cut
 #--------------------------------------------------------------------------------
 sub getNodeMonServerPair {
@@ -852,9 +855,10 @@ sub getNodeMonServerPair {
     my $tmp2 = $tabdata->{$node}->[0];
     if ($tmp2 && $tmp2->{monserver}) {
         $pairs=$tmp2->{monserver}; 
+        $pairs =~ s/,/:/;  #for backward conmpatibility. used to be aa,bb not the format is aa:bb
         #when there is only one hostname specified in noderes.monserver, 
         #both monserver and monmaster take the same hostname.
-        if ($pairs !~ /,/) { $pairs=$tmp2->{monserver}.','.$tmp2->{monserver}; } 
+        if ($pairs !~ /:/) { $pairs=$tmp2->{monserver}.':'.$tmp2->{monserver}; } 
     }
 
     if (!$pairs) {
@@ -862,9 +866,13 @@ sub getNodeMonServerPair {
       if ($tmp2->{xcatmaster})  {  $monmaster=$tmp2->{xcatmaster}; } 
       if (!$monserver) { $monserver="noservicenode"; }
       if (!$monmaster) { $monmaster=xCAT::Utils->get_site_attribute('master'); }
-      $pairs="$monserver,$monmaster";
+      $pairs="$monserver:$monmaster";
     } 
     #print "node=$node, pairs=$pairs\n";
+
+    if ($monserver =~ /,/) { #monserver in noderes table must be defined in the service node pool case
+	return [1, "Please specify 'monserver' on the noderes table for the node $node because the service node pools are used."]; 
+    }
 
     if ($retformat) {
       if (exists($ret->{$pairs})) {
@@ -896,6 +904,7 @@ sub getNodeMonServerPair {
       that faces the mn and the second one being the service node ip/hostname that faces the cn. 
       The value of the first one can be "noservicenode" meaning that there is no service node 
       for that node. In this case the second one is the site master.  
+      It returns a pointer to an array if there is an error. Format is [code, message].
 =cut
 #--------------------------------------------------------------------------------
 sub getMonHierarchy {
@@ -938,9 +947,10 @@ sub getMonHierarchy {
       if (defined($row2) && ($row2)) {
 	if ($row2->{monserver}) {
           $pairs=$row2->{monserver}; 
+	  $pairs =~ s/,/:/;  #for backward conmpatibility. used to be aa,bb not the format is aa:bb
           #when there is only one hostname specified in noderes.monserver, 
           #both monserver and monmaster take the same hostname.
-          if ($pairs !~ /,/) { $pairs=$row2->{monserver}.','.$row2->{monserver}; } 
+          if ($pairs !~ /:/) { $pairs=$row2->{monserver}.':'.$row2->{monserver}; } 
         }
       }
       
@@ -948,8 +958,12 @@ sub getMonHierarchy {
         if ($row2->{servicenode}) {  $monserver=$row2->{servicenode}; }
         if ($row2->{xcatmaster})  {  $monmaster=$row2->{xcatmaster}; } 
         if (!$monserver) { $monserver="noservicenode"; }
-        if (!$monmaster) { $monmaster=$sitemaster; }
-        $pairs="$monserver,$monmaster";
+	if(!$monmaster) { $monmaster=$sitemaster; }
+        $pairs="$monserver:$monmaster";
+      }
+
+      if ($monserver =~ /,/) { #monserver in noderes table must be defined in the service node pool case
+	  return [1, "Please specify 'monserver' on the noderes table for the node $node because the service node pools are used."]; 
       }
 
       #print "node=$node, pairs=$pairs\n";
@@ -984,10 +998,12 @@ sub getMonHierarchy {
       A hash reference keyed by the monitoring server nodes and each value is a ref to
       an array of [nodes, nodetype, status] arrays  monitored by the server. So the format is:
       {monserver1=>[['node1', 'osi', 'alive'], ['node2', 'switch', 'booting']...], ...} 
-      A key is a pair of hostnames with the first one being the service node ip/hostname 
+      A key is pair of hostnames with the first one being the service node ip/hostname 
       that faces the mn and the second one being the service node ip/hostname that faces the cn. 
       The value of the first one can be "noservicenode" meaning that there is no service node 
       for that node. In this case the second one is the site master.  
+      It retuens a pointer to an array if there is an error. Format is [code, message].
+
 =cut
 #--------------------------------------------------------------------------------
 sub getMonServerWithInfo {
@@ -1008,6 +1024,8 @@ sub getMonServerWithInfo {
   my $table3=xCAT::Table->new("nodetype", -create =>1);
   my $tabdata=$table3->getNodesAttribs(\@allnodes,['nodetype']);
   my $pPairHash=getNodeMonServerPair(\@allnodes, 0);
+
+  if (ref($pPairHash) eq 'ARRAY') { return $pPairHash; } 
 
   foreach (@in_nodes) {
     my $node=$_->[0];
@@ -1051,6 +1069,7 @@ sub getMonServerWithInfo {
       that faces the mn and the second one being the service node ip/hostname that faces the cn. 
       The value of the first one can be "noservicenode" meaning that there is no service node 
       for that node. In this case the second one is the site master.  
+      It retuens a pointer to an array if there is an error. Format is [code, message].
 =cut
 #--------------------------------------------------------------------------------
 sub getMonServer {
@@ -1061,6 +1080,10 @@ sub getMonServer {
 
   my @allnodes=@$p_input;
   my $pPairHash=getNodeMonServerPair(\@allnodes, 0);
+
+  if (ref($pPairHash) eq 'ARRAY') { return $pPairHash; } 
+
+
   if (@allnodes==0) {
     @allnodes= keys(%$pPairHash);
   }
@@ -1302,7 +1325,7 @@ sub  getNodeConfData {
   my %ret=();
   #get monitoring server
   my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair([$node], 0);
-  my @pair_array=split(',', $pHash->{$node});
+  my @pair_array=split(':', $pHash->{$node});
   my $monserver=$pair_array[0];
   if ($monserver eq 'noservicenode') { $monserver=hostname(); }
   $ret{MONSERVER}=$monserver;

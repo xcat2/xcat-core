@@ -300,6 +300,11 @@ sub stop {
 
   if ($scope) {
     my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+    if (ref($pPairHash) eq 'ARRAY') {
+	reportError($pPairHash->[1], $callback);
+	return (1, "");	
+    }
+
  
     #the identification of this node
     my @hostinfo=xCAT::Utils->determinehostname();
@@ -309,10 +314,10 @@ sub stop {
     if (!$isSV) { $iphash{'noservicenode'}=1;}
 
     foreach my $key (keys (%$pPairHash)) {
-      my @key_a=split(',', $key);
-      if (! $iphash{$key_a[0]}) { next;}   
+      my @key_a=split(':', $key);
+      if (! $iphash{$key_a[0]}) { next;}  
       my $mon_nodes=$pPairHash->{$key};
-
+      
       #figure out what nodes to stop
       my @nodes_to_stop=();
       if ($mon_nodes) {
@@ -398,6 +403,11 @@ sub config {
   `/usr/bin/rmcctrl -p`;
   
   my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+  if (ref($pPairHash) eq 'ARRAY') {
+      reportError($pPairHash->[1], $callback);
+      return (1, "");	
+  }
+
  
   #the identification of this node
   my @hostinfo=xCAT::Utils->determinehostname();
@@ -407,9 +417,10 @@ sub config {
   if (!$isSV) { $iphash{'noservicenode'}=1;}
 
   foreach my $key (keys (%$pPairHash)) {
-    my @key_a=split(',', $key);
-    if (! $iphash{$key_a[0]}) { next;}   
+    my @key_a=split(':', $key);
+    if (! $iphash{$key_a[0]}) { next;} 
     my $mon_nodes=$pPairHash->{$key};
+
     my $master=$key_a[1];
 
     #figure out what nodes to add
@@ -491,6 +502,10 @@ sub deconfig {
   my $callback=shift;
   my $localhostname=hostname();
   my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+  if (ref($pPairHash) eq 'ARRAY') {
+      reportError($pPairHash->[1], $callback);
+      return (1, "");	
+  }
  
   #the identification of this node
   my @hostinfo=xCAT::Utils->determinehostname();
@@ -500,9 +515,10 @@ sub deconfig {
   if (!$isSV) { $iphash{'noservicenode'}=1;}
 
   foreach my $key (keys (%$pPairHash)) {
-    my @key_a=split(',', $key);
-    if (! $iphash{$key_a[0]}) { next;}   
+    my @key_a=split(':', $key);
+    if (! $iphash{$key_a[0]}) { next;}  
     my $mon_nodes=$pPairHash->{$key};
+
     my $master=$key_a[1];
 
     #figure out what nodes to remove
@@ -585,6 +601,10 @@ sub startNodeStatusMon {
   #get all the nodes status from IBM.MngNode class of local host and 
   #the identification of this node
   my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+  if (ref($pPairHash) eq 'ARRAY') {
+      reportError($pPairHash->[1], $callback);
+      return (1, "");	
+  }
 
   my @hostinfo=xCAT::Utils->determinehostname();
   my %iphash=();
@@ -594,9 +614,10 @@ sub startNodeStatusMon {
   my @servicenodes=();
   my %status_hash=();
   foreach my $key (keys (%$pPairHash)) {
-    my @key_a=split(',', $key);
-    if (! $iphash{$key_a[0]}) { next; } 
+    my @key_a=split(':', $key);
+    if (! $iphash{$key_a[0]}) { next;}
     my $mon_nodes=$pPairHash->{$key};
+
     foreach(@$mon_nodes) {
       my $nodetype=$_->[1];
       if ($nodetype) {

@@ -9,6 +9,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use strict;
 use xCAT_monitoring::monitorctrl;
+use xCAT::Utils;
 
 1;
 #-------------------------------------------------------------------------------
@@ -101,12 +102,22 @@ sub start {
     foreach(@hostinfo) {$iphash{$_}=1;}
     if (!$isSV) { $iphash{'noservicenode'}=1;}
     my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+    if (ref($pPairHash) eq 'ARRAY') {
+	if ($callback) {
+	    my $resp={};
+	    $resp->{data}->[0]=$pPairHash->[1];
+	    $callback->($resp);
+	} else {
+	    xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+	}
+	return (1, "");	
+    }
 
     foreach my $key (keys(%$pPairHash)) {
-      my @key_a=split(',', $key);
-      if (! $iphash{$key_a[0]}) { next;} 
-  
+      my @key_a=split(':', $key);
+      if (! $iphash{$key_a[0]}) {  next; }
       my $mon_nodes=$pPairHash->{$key};
+
       foreach(@$mon_nodes) {
         my $node_info=$_;
         print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
@@ -159,12 +170,22 @@ sub stop {
     foreach(@hostinfo) {$iphash{$_}=1;}
     if (!$isSV) { $iphash{'noservicenode'}=1;}
     my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+    if (ref($pPairHash) eq 'ARRAY') {
+	if ($callback) {
+	    my $resp={};
+	    $resp->{data}->[0]=$pPairHash->[1];
+	    $callback->($resp);
+	} else {
+	    xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+	}
+	return (1, "");	
+    }
 
     foreach my $key (keys(%$pPairHash)) {
-      my @key_a=split(',', $key);
-      if (! $iphash{$key_a[0]}) { next;} 
-  
+      my @key_a=split(':', $key); 
+      if (! $iphash{$key_a[0]}) {  next; }
       my $mon_nodes=$pPairHash->{$key};
+
       foreach(@$mon_nodes) {
         my $node_info=$_;
         print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
@@ -373,6 +394,7 @@ sub getDescription {
       node ip/hostname that faces the cn. 
       The value of the first one can be "noservicenode" meaning that there is no service node 
       for that node. In this case the second one is the site master. 
+      It returns a pointer to an array if there is an error. Format is [code, message].
 =cut
 #--------------------------------------------------------------------------------
 sub getNodesMonServers

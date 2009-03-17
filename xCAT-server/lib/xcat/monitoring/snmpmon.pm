@@ -368,6 +368,19 @@ sub configBMC {
   if (!$isSV) { $iphash{'noservicenode'}=1;}
  
   my $pPairHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair($noderef, 0);
+  if (ref($pPairHash) eq 'ARRAY') { 
+      if ($callback) {
+	  my $rsp={};
+	  if ($ret_val) {
+	      $rsp->{data}->[0]=$pPairHash->[1];
+	  } 
+	  $callback->($rsp);
+      } else {
+	  xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+      } 
+      return (0, "");
+  }
+
     
   my %masterhash=();
   my @node_a=();
@@ -381,7 +394,7 @@ sub configBMC {
         if (! exists($pPairHash->{$node})) {next;}
         
         my $pairs=$pPairHash->{$node};
-        my @a_temp=split(',',$pairs); 
+        my @a_temp=split(':',$pairs); 
         my $monserver=$a_temp[0];
         my $master=$a_temp[1];
 
@@ -510,8 +523,21 @@ sub configMPA {
         $mpa_hash{$mpa}=1;
         
         my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair([$mpa], 0);
+	if (ref($pHash) eq 'ARRAY') { 
+	    if ($callback) {
+		my $rsp={};
+		if ($ret_val) {
+		    $rsp->{data}->[0]=$pHash->[1];
+		} 
+		$callback->($rsp);
+	    } else {
+		xCAT::MsgUtils->message('S', "[mon]: " . $pHash->[1]);
+	    } 
+	    return (0, "");
+	}
+
         my $pairs=$pHash->{$mpa}; 
-        my @a_temp=split(',',$pairs); 
+        my @a_temp=split(':',$pairs); 
         my $monserver=$a_temp[0];
         my $master=$a_temp[1];
 
@@ -791,6 +817,7 @@ sub getDescription {
       node ip/hostname that faces the cn. 
       The value of the first one can be "noservicenode" meaning that there is no service node 
       for that node. In this case the second one is the site master. 
+      It retuens a pointer to an array if there is an error. Format is [code, message].
 =cut
 #--------------------------------------------------------------------------------
 sub getNodesMonServers
@@ -805,6 +832,11 @@ sub getNodesMonServers
   my $ret={};
   my $localhostname=hostname();
   my $pPairHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair($noderef, 0);
+
+  if (ref($pPairHash) eq 'ARRAY') { 
+      return $pPairHash;               
+  } 
+
 
   #check for blades, only returns the MPAs and their monservers
   my %mpa_hash=();
@@ -827,6 +859,10 @@ sub getNodesMonServers
           $pairs=$pPairHash->{$mpa}; 
         } else {
           my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair([$mpa], 0);
+	  if (ref($pHash) eq 'ARRAY') { 
+	      return $pHash;               
+	  } 
+
           $pairs=$pHash->{$mpa};
         }
 

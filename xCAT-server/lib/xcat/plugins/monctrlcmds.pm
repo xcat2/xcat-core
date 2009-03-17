@@ -97,7 +97,16 @@ sub preprocess_request
       } else {
         $mon_hierachy=xCAT_monitoring::monitorctrl->getNodeMonServerPair($allnodes, 1);
       }
+      
+      if (ref($mon_hierachy) eq 'ARRAY') { 
+          my $rsp2={};
+          $rsp2->{data}->[0]=$mon_hierachy->[1];
+          $callback->($rsp2);
+	  $req = {};
+	  return;               
+      } 
 
+     
       my @mon_servers=keys(%$mon_hierachy); 
       my @hostinfo=xCAT::Utils->determinehostname();
       #print "hostinfo=@hostinfo\n";
@@ -109,7 +118,7 @@ sub preprocess_request
       foreach (@mon_servers) {
         #service node come in pairs, the first one is the monserver adapter that facing the mn,
         # the second one is facing the cn. we use the first one here
-        my @server_pair=split(',', $_); 
+        my @server_pair=split(':', $_); 
         my $sv=$server_pair[0];
         my $mon_nodes=$mon_hierachy->{$_};
         if ((!$mon_nodes) || (@$mon_nodes ==0)) { next; }
@@ -117,12 +126,11 @@ sub preprocess_request
 
         my $reqcopy = {%$req};
 	if (! $iphash{$sv}) {
-	  if ($isSV) { next; } #if the command is issued on the monserver, 
-                              # only handle its children.
-          $reqcopy->{'_xcatdest'}=$sv;
-          my $rsp2={};
-          $rsp2->{data}->[0]="sending request to $sv...";
-          $callback->($rsp2);
+	  if ($isSV) { next; } #if the command is issued on the monserver, only handle its children.
+	  $reqcopy->{'_xcatdest'}=$sv;
+	  my $rsp2={};
+	  $rsp2->{data}->[0]="sending request to $sv...";
+	  $callback->($rsp2);
         } 
 
         push @{$reqcopy->{module}}, $a_ret[1];
