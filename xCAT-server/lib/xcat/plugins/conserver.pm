@@ -405,7 +405,7 @@ sub donodeent {
 
   my $isSN=xCAT::Utils->isServiceNode();
 
-  while ($idx < $#$content) { # Go through and delete that which would match my entry
+  while ($idx <= $#$content) { # Go through and delete that which would match my entry
     if ($content->[$idx] =~ /^#xCAT BEGIN $node CONS/) {
       $toidx=$idx; #TODO put it back right where I found it
       $skip = 1;
