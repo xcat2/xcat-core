@@ -804,13 +804,12 @@ sub process_request {
       $command = 'rmigrate';
   }
 
-  my $sitetab;
+  my $sitetab = xCAT::Table->new('site');
   grab_table_data($noderange,$callback);
 
   if ($command eq 'revacuate' or $command eq 'rmigrate') {
       $vmmaxp=1; #for now throttle concurrent migrations, requires more sophisticated heuristics to ensure sanity
   } else {
-      $sitetab = xCAT::Table->new('site');
       my $tmp;
       if ($sitetab) {
         ($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
