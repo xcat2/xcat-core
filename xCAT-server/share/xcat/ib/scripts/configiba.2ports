@@ -4,33 +4,45 @@
 # Sample xCAT post script for configuring secondary adatper based on eth0 
 # settings and some conventions.  This scripts works for both diskfull installs # and diskless boots.
 
+# configiba.2ports assume two ports are both available for one IB adapter.
+
 use Socket;
 
 #Check the platform
 my $PLTFRM = `uname`;
 chomp $PLTFRM;
 
+my $HOST = `hostname -s`;
+chomp $HOST;
+
 my @nums = (0..3);
-foreach my $num (@nums) {
+foreach my $num ( @nums ) {
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
     my $nic = "ib$num";
-    my $hostname = "$ENV{NODE}-$nic";
+
+    # Get hostname from system incase postscript environment is not ready
+    if ( $HOST ) {
+        my $hostname = "$HOST-$nic";
+    } else {
+        my $hostname = "$ENV{NODE}-$nic";
+    }
+
     my $packed_ip = gethostbyname($hostname);
-    if (!$packed_ip) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); exit 1; }
+    if ( !$packed_ip ) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); exit 1; }
     my $ip = inet_ntoa($packed_ip);
     #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
     my $netmask = "255.255.255.0";
     my ($first, $second, $rest) = split(/\./, $ip);
     my $gateway = "$first.$second.255.254";
 
-    if ($PLTFRM eq "Linux") {
+    if ( $PLTFRM eq "Linux" ) {
         # Issue openibd for Linux at boot time
         my $OS_name;
-        if ( -f '/etc/redhat-release')
+        if ( -f '/etc/redhat-release' )
         {
             $OS_name = "redhat";
         }
-        elsif ( -f '/etc/SuSE-release')
+        elsif ( -f '/etc/SuSE-release' )
         {
             $OS_name = "suse";
         }
@@ -39,7 +51,7 @@ foreach my $num (@nums) {
             print "Unsupported to config IB on this OS!\n";
             exit;
         }
-        if ( -f "/etc/infiniband/openib.conf")
+        if ( -f "/etc/infiniband/openib.conf" )
         {
             runcmd("/usr/bin/sed -i 's/SDP_LOAD=yes/SDP_LOAD=no/g' /etc/infiniband/openib.conf");
         }
@@ -51,11 +63,11 @@ foreach my $num (@nums) {
         {
             $dir = "/etc/sysconfig/network";
         }
-        elsif ( $OS_name eq 'redhat')
+        elsif ( $OS_name eq 'redhat' )
         {
             $dir = "/etc/sysconfig/network-scripts";
         }
-        if (!open(FILE, ">$dir/ifcfg-$nic")) { system("logger -t xcat 'configiba: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+        if ( !open(FILE, ">$dir/ifcfg-$nic") ) { system("logger -t xcat 'configiba: cannot open $dir/ifcfg-$nic.'"); exit 1; }
         print FILE "DEVICE=$nic\n";
         print FILE "BOOTPROTO=static\n";
         print FILE "IPADDR=$ip\n";
@@ -66,7 +78,7 @@ foreach my $num (@nums) {
         close FILE;
         runcmd("ifup $nic");
         system("logger -t xcat 'configiba: successfully configured $nic.'");
-    } elsif ($PLTFRM eq "AIX") {
+    } elsif ( $PLTFRM eq "AIX" ) {
     #Check whether the icm is available
         my $cmd = "lsdev -C | grep icm | grep Available";
         `$cmd`;
@@ -97,7 +109,7 @@ sub runcmd {
     $cmd .= ' 2>&1';
     my @output = `$cmd`;
     my $rc = $? >> 8;
-    if ($rc) {
+    if ( $rc ) {
         system("logger -t xcat 'configiba: command $cmd failed with rc $rc: " . join('',@output) . "'");
         return $rc;
     }

@@ -1,0 +1,128 @@
+#!/usr/bin/perl
+# IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Sample xCAT post script for configuring secondary adatper based on eth0 
+# settings and some conventions.  This scripts works for both diskfull installs # and diskless boots.
+
+# configiba.1port assume there is only port availabe per IB adapter.
+
+use Socket;
+
+#Check the platform
+my $PLTFRM = `uname`;
+chomp $PLTFRM;
+
+my $HOST = `hostname -s`;
+chomp $HOST;
+
+my @nums = (0..3);
+foreach my $num ( @nums ) {
+    # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
+    my $nic = "ib$num";
+
+    # Get hostname from system in case postscript environment is not ready
+    if ( $HOST ) {
+        my $hostname = "$HOST-$nic";
+    } else {
+        my $hostname = "$ENV{NODE}-$nic";
+    }
+
+    my $packed_ip = gethostbyname($hostname);
+    if ( !$packed_ip ) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); exit 1; }
+    my $ip = inet_ntoa($packed_ip);
+    #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
+    my $netmask = "255.255.255.0";
+    my ($first, $second, $rest) = split(/\./, $ip);
+    my $gateway = "$first.$second.255.254";
+
+    if ( $PLTFRM eq "Linux" ) {
+        # Issue openibd for Linux at boot time
+        my $OS_name;
+        if ( -f '/etc/redhat-release' )
+        {
+            $OS_name = "redhat";
+        }
+        elsif ( -f '/etc/SuSE-release' )
+        {
+            $OS_name = "suse";
+        }
+        else
+        {
+            print "Unsupported to config IB on this OS!\n";
+            exit;
+        }
+        if ( -f "/etc/infiniband/openib.conf" )
+        {
+            runcmd("/usr/bin/sed -i 's/SDP_LOAD=yes/SDP_LOAD=no/g' /etc/infiniband/openib.conf");
+        }
+        my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
+        runcmd($openibd_cmd);
+        # Write the info to the ifcfg file
+        my $dir;
+        if ( $OS_name eq 'suse')
+        {
+            $dir = "/etc/sysconfig/network";
+        }
+        elsif ( $OS_name eq 'redhat' )
+        {
+            $dir = "/etc/sysconfig/network-scripts";
+        }
+        if ( !open(FILE, ">$dir/ifcfg-$nic") ) { system("logger -t xcat 'configiba: cannot open $dir/ifcfg-$nic.'"); exit 1; }
+        print FILE "DEVICE=$nic\n";
+        print FILE "BOOTPROTO=static\n";
+        print FILE "IPADDR=$ip\n";
+        print FILE "NETMASK=$netmask\n";
+        print FILE "GATEWAY=$gateway\n";
+        print FILE "ONBOOT=yes\n" if ( $OS_name eq 'redhat');
+        print FILE "STARTMODE=auto\n" if ( $OS_name eq 'suse');
+        close FILE;
+        runcmd("ifup $nic");
+        system("logger -t xcat 'configiba: successfully configured $nic.'");
+    } elsif ( $PLTFRM eq "AIX" ) {
+    #Check whether the icm is available
+        my $cmd = "lsdev -C | grep icm | grep Available";
+        `$cmd`;
+        if ($?) {
+            my $iba_cmd = "mkdev -c management -s infiniband -t icm";
+            runcmd($iba_cmd);
+            if ($?) {
+                my $iba_command = "mkdev -l icm";
+                runcmd($iba_command);
+                if ($?) { exit $?; }
+            }
+        }
+        #Configure the IB interfaces.  Customize the port num.
+        my $iba_num = $num;
+        my $ib_adapter = "iba$iba_num";
+        my $port = 1;
+        my $mkib_cmd = "mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask";
+        runcmd($mkib_cmd);
+        system("logger -t xcat 'configiba: successfully configured $nic.'");
+    }
+}
+exit 0;
+
+sub runcmd {
+    my $cmd = shift @_;
+    $cmd .= ' 2>&1';
+    my @output = `$cmd`;
+    my $rc = $? >> 8;
+    if ( $rc ) {
+        system("logger -t xcat 'configiba: command $cmd failed with rc $rc: " . join('',@output) . "'");
+        return $rc;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
