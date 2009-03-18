@@ -132,6 +132,11 @@ sub process_request  {
      return 1;
   }
   (my $ip,my $mask,my $gw) = net_parms($bmc);
+  unless ($ip and $mask and $username and $password) {
+     xCAT::MsgUtils->message('S',"Unable to determine IP, netmask, username, and/or pasword for $bmc, ensure that host resolution is working.  Best guess parameters would have been: IP: '$ip', netmask: '$netmask', username: '$username', password: '$password'",  );
+     $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
+     return 1;
+  }
   my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
   if (defined $bmcport) {
       $response->{bmcport}=$bmcport;
