@@ -583,7 +583,13 @@ sub setup_NFS
     my $rc = 0;
     if (xCAT::Utils->isLinux())
     {
-        $rc = xCAT::Utils->startService("nfs");
+       my $os = xCAT::Utils->osver();
+       if ($os =~ /sles.*/) {
+         $rc = xCAT::Utils->startService("nfs");
+         $rc = xCAT::Utils->startService("nfsserver");
+       } else {
+         $rc = xCAT::Utils->startService("nfs");
+       }
     }
     else
     {    #AIX
