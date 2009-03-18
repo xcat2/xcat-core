@@ -343,6 +343,7 @@ sub getrvidparms {
 
 sub pick_target {
     my $node = shift;
+    my $addmemory = shift;
     my $target;
     my $leastusedmemory=undef;
     my $currentusedmemory;
@@ -372,6 +373,9 @@ sub pick_target {
             if ($_->get_name() eq 'Domain-0') { next; } #Dom0 memory usage is elastic, we are interested in HVM DomU memory, which is inelastic
 
             $currentusedmemory += $_->get_info()->{memory};
+        }
+        if ($addmemory and $addmemory->{$_}) {
+            $currentusedmemory += $addmemory->{$_};
         }
         if (not defined ($leastusedmemory)) {
             $leastusedmemory=$currentusedmemory;
@@ -718,9 +722,35 @@ sub preprocess_request {
  
     
 sub adopt {
-#TODO: adopt orphans into suitable homes if possible
-    return 0;
+    my $orphash = shift;
+    my $hyphash = shift;
+    my %hypsethash;
+    my %addmemory = ();
+    my $node;
+    my $target;
+    foreach $node (keys %{$orphash}) {
+        $target=pick_target($node,\%addmemory);
+        unless ($target) {
+            next;
+        }
+        $addmemory{$target}+=getUnits($vmhash->{$node}->[0]->{memory},"M",1024);
+        $hyphash{$target}->{nodes}->{$node}=1;
+        delete $orphash->{$node};
+        push @{$hypsethash{$target}},$node;
+    }
+    foreach (keys %hypsethash) {
+        $vmtab->setNodesAttribs($hypsethash{$_},{'host'=>$_});
+    }
+    if (keys %{$orphash}) {
+        return 0;
+    } else { 
+        return 1;
+    }
 }
+
+#TODO: adopt orphans into suitable homes if possible
+#    return 0;
+#}
      
 sub grab_table_data{ #grab table data relevent to VM guest nodes
   my $noderange=shift;
@@ -788,7 +818,7 @@ sub process_request {
             };
         }
         unless ($hypconn)  {
-            $callback->({node=>[{name=>[$_],error=>["Cannot communicate BC via libvirt to node"]}]});
+            $callback->({node=>[{name=>[$_],error=>["Cannot communicate via libvirt to node"]}]});
             next;
         }
         foreach ($hypconn->list_domains()) {
@@ -831,12 +861,17 @@ sub process_request {
       }
   }
   if (keys %orphans) {
-      if ($command eq "rpower" and (grep /^on$/,@exargs or grep /^boot$/,@exargs)) {
-          unless (adopt(\%orphans,\%hyphash)) {
-            $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
-            return 1;
+      if ($command eq "rpower") {
+          if (grep /^on$/,@exargs or grep /^boot$/,@exargs) {
+            unless (adopt(\%orphans,\%hyphash)) {
+                $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
+                return 1;
+              }
+          } else {
+              foreach (keys %orphans) {
+                  $callback->({node=>[{name=>[$_],data=>[{contents=>['off']}]}]});
+              }
           }
-         
       } elsif ($command eq "rmigrate") {
           $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
           return;
@@ -1026,7 +1061,7 @@ sub dohyp {
   unless ($hypconn) {
      my %err=(node=>[]);
      foreach (keys %{$hyphash{$hyp}->{nodes}}) {
-        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate AB via libvirt to $hyp"],errorcode=>[1]});
+        push (@{$err{node}},{name=>[$_],error=>["Cannot communicate via libvirt to $hyp"],errorcode=>[1]});
      }
      print $out freeze([\%err]);
      print $out "\nENDOFFREEZE6sK4ci\n";
