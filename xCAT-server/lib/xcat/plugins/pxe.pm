@@ -68,7 +68,18 @@ sub setstate {
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = xCAT::Utils->my_ip_facing($node);
-      unless ($ipfn) { return (1,"Unable to identify IP facing client node"); }
+      unless ($ipfn) {
+        my @myself = xCAT::Utils->determinehostname();
+        my $myname = $myself[(scalar @myself)-1];
+         $callback->(
+                {
+                 error => [
+                     "$myname: Unable to determine or reasonably guess the image server for $node"
+                 ],
+                 errorcode => [1]
+                }
+                );
+      }
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/;
   }
   my $pcfg;
