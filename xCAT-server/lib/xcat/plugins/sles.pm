@@ -162,12 +162,7 @@ sub mknetboot
                 #}
                 #else
                 #{
-                my $ipfn = xCAT::Utils->my_ip_facing($node);
-                if ($ipfn)
-                {
-                    $imgsrv = $ipfn;    #guessing self is second best
-
-                }
+                $imgsrv = '!myipfn!';
                 #}
             }
         }

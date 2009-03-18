@@ -66,6 +66,11 @@ sub setstate {
   my %chainhash = %{shift()};
   my %machash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
+  if ($kern->{kcmdline} =~ /!myipfn!/) {
+      my $ipfn = xCAT::Utils->my_ip_facing($node);
+      unless ($ipfn) { return (1,"Unable to identify IP facing client node"); }
+      $kern->{kcmdline} =~ s/!myipfn!/$ipfn/;
+  }
   my $pcfg;
   open($pcfg,'>',$tftpdir."/pxelinux.cfg/".$node);
   my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
@@ -314,7 +319,12 @@ sub process_request {
       $response{node}->[0]->{data}->[0]= getstate($_);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      setstate($_,\%bphash,\%chainhash,\%machash);
+      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash);
+      if ($rc) {
+        $response{node}->[0]->{errorcode}->[0]= $rc;
+        $response{node}->[0]->{errorc}->[0]= $errstr;
+        $callback->(\%response);
+      }
     }
   }
   if ($args[0] ne 'stat') {
