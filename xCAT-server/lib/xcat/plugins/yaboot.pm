@@ -305,6 +305,7 @@ sub process_request {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
         $callback->(\%response);
+      }
     }
   }
   my @normalnodeset = keys %normalnodes;
