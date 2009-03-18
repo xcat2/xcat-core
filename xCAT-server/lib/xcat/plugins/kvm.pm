@@ -91,7 +91,7 @@ sub build_oshash {
     $rethash{type}->{content}='hvm';
     if (defined $vmhash->{$node}->[0]->{bootorder}) {
         my $bootorder = $vmhash->{$node}->[0]->{bootorder};
-        my @bootdevs = split(/:/,$bootorder);
+        my @bootdevs = split(/[:,]/,$bootorder);
         my $bootnum = 0;
         foreach (@bootdevs) {
             $rethash{boot}->[$bootnum]->{dev}=$_;
