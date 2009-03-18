@@ -3228,7 +3228,6 @@ sub logEventsToDatabase
     Error:
         1 error
     Example:
-		 my $forceflag=1;
          if (xCAT::Utils->startService("named") { ...}
     Comments:
         none
@@ -3539,5 +3538,66 @@ sub getFacingIP
     xCAT::MsgUtils->message("S", "Cannot find master for the node $node\n");
     return 0;
 }
+#-------------------------------------------------------------------------------
+
+=head3  osver
+        Returns the os and version of the System you are running on 
+    Arguments:
+      none
+    Returns:
+        0 - ok
+    Globals:
+        none
+    Error:
+        1 error
+    Example:
+         my $os=(xCAT::Utils->osver{ ...}
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub osver
+{
+	my $osver = "unknown";
+	my $os    = '';
+	my $ver   = '';
+	my $line  = '';
+	my @lines;
+	if (-f "/etc/redhat-release")
+	{
+		chomp($line = `head -n 1 /etc/redhat-release`);
+		$os = "rh";
+		chomp($ver = `tr -d '.' < /etc/redhat-release | head -n 1`);
+		$ver =~ s/[^0-9]*([0-9]+).*/$1/;
+		if    ($line =~ /AS/) { $os = 'rhas' }
+		elsif ($line =~ /ES/) { $os = 'rhes' }
+		elsif ($line =~ /WS/) { $os = 'rhws' }
+        elsif ($line =~ /Server/) { $os = 'rhserver' }
+        elsif ($line =~ /Client/) { $os = 'rhclient' }
+		elsif (-f "/etc/fedora-release") { $os = 'rhfc' }
+	}
+	elsif (-f "/etc/SuSE-release")
+	{
+		chomp(@lines = `cat /etc/SuSE-release`);
+		if (grep /SLES|Enterprise Server/, @lines) { $os = "sles" }
+		if (grep /SLEC/, @lines) { $os = "slec" }
+		chomp($ver = `tr -d '.' < /etc/SuSE-release | head -n 1 `);
+		$ver =~ s/[^0-9]*([0-9]+).*/$1/;
+
+		#print "ver: $ver\n";
+	}
+	elsif (-f "/etc/UnitedLinux-release")
+	{
+
+		$os = "ul";
+		chomp($ver = `tr -d '.' < /etc/UnitedLinux-release | head -n 1 `);
+		$ver =~ s/[^0-9]*([0-9]+).*/$1/;
+	}
+	$os = "$os" . "$ver";
+	return ($os);
+}
+
 
 1;
