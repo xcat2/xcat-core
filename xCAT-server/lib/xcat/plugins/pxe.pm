@@ -319,7 +319,7 @@ sub process_request {
       $response{node}->[0]->{data}->[0]= getstate($_);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash);
+      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
