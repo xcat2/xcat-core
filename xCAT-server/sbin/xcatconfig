@@ -574,6 +574,51 @@ if (!-d "/var/log/consoles")
     }
 }
 
+if ($::osname eq 'AIX')
+{
+    if(!-f "/usr/sbin/conserver")
+    {
+	my $cmd = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver";
+	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.\n");
+        }
+        else
+        {
+            xCAT::MsgUtils->message('I', "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.\n");
+        }
+    }
+    if(!-f "/usr/bin/console")
+    {
+	$cmd = "ln -sf /opt/freeware/bin/console /usr/bin/console";
+	$outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not ln -sf /opt/freeware/bin/console /usr/bin/console.\n");
+        }
+        else
+        {
+            xCAT::MsgUtils->message('I', "ln -sf /opt/freeware/bin/console /usr/bin/console.\n");
+        }
+    }
+  
+    $cmd = "lssrc -a | grep conserver";
+    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    unless($outref =~ /conserver/)
+    {
+        $cmd = "mkssys -p /opt/freeware/sbin/conserver -s conserver -u 0 -S -n 15 -f 15 -a \"-o -O1 -C /etc/conserver.cf\"";
+	$outref = xCAT::Utils->runcmd("$cmd", 0);
+	if ($::RUNCMD_RC != 0)
+	{
+	    xCAT::MsgUtils->message('E', "Could not add subsystem conserver.\n");
+	}
+	else
+	{
+	    xCAT::MsgUtils->message('I', "Add subsystem conserver.\n");
+	}
+    }
+}
 # some Linux-only config
 if ($::osname eq 'Linux')
 {
