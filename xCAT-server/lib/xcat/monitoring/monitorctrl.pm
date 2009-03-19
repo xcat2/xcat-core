@@ -1325,6 +1325,11 @@ sub  getNodeConfData {
   my %ret=();
   #get monitoring server
   my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair([$node], 0);
+  if (ref($pHash) eq 'ARRAY') { 
+      xCAT::MsgUtils->message('S', "[mon]: getPostScripts: " . $pHash->[1]);
+      return %ret;   
+  }
+
   my @pair_array=split(':', $pHash->{$node});
   my $monserver=$pair_array[0];
   if ($monserver eq 'noservicenode') { $monserver=hostname(); }
