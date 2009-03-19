@@ -300,7 +300,7 @@ nodehm => {
  },
   },
 nodelist => {
-    cols => [qw(node groups status appstatus comments disable)],
+    cols => [qw(node groups status appstatus primarysn comments disable)],
     keys => [qw(node)],
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
     descriptions => {
@@ -308,6 +308,7 @@ nodelist => {
      groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group.",
      status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. The default value is defined. The possible status change sequenses are: defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->alive,  defined->[discovering]->[configuring]->[standingby]->netbooting->booted->alive,  alive/unreachable->booting->alive,  alive->powering-off->unreachable, alive->unreachable',
      appstatus => "A comma-delimited list monitored applications that are active on the node. For example 'sshd,rmcd,gmond",
+     primarysn => "Not used currently. The primary servicenode, used by this node.",
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
     },
@@ -328,7 +329,7 @@ nodepos => {
  },
   },
 noderes => {
-    cols => [qw(node servicenode netboot tftpserver nfsserver monserver nfsdir installnic primarynic cmdinterface xcatmaster current_osimage next_osimage comments disable)],
+    cols => [qw(node servicenode netboot tftpserver nfsserver monserver nfsdir installnic primarynic cmdinterface xcatmaster current_osimage next_osimage nimserver comments disable)],
     keys => [qw(node)],
     table_desc => 'Resources and settings to use when installing nodes.',
  descriptions => {
@@ -345,6 +346,7 @@ noderes => {
   xcatmaster => 'The hostname of the xCAT service node (as known by this node).  This is the default value if nfsserver or tftpserver are not set.',
   current_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image currently deployed on this node.',
   next_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image that will be installed on the node the next time it is deployed.',
+     nimserver => 'Not used for now. The NIM server for this node (as known by this node).',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -484,7 +486,7 @@ ppchcp => {
  },
   },
 servicenode => {
-    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver comments disable)],
+    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver nimserver comments disable)],
     keys => [qw(node)],
     table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
  descriptions => {
@@ -496,8 +498,9 @@ servicenode => {
   conserver => 'Do we set up Conserver on this service node? Valid values:yes or 1, no or 0.',
   monserver => 'Is this a monitoring event collection point? Valid values:yes or 1, no or 0.',
   ldapserver => 'Do we set up ldap caching proxy on this service node? Valid values:yes or 1, no or 0.',
-  ntpserver => 'Not used presently. Do we set up and ntp server on this service node? Valid values:yes or 1, no or 0.',
-  ftpserver => 'Do we set up and ftp server on this service node? Valid values:yes or 1, no or 0.',
+  ntpserver => 'Not used presently. Do we set up a ntp server on this service node? Valid values:yes or 1, no or 0.',
+  ftpserver => 'Do we set up a ftp server on this service node? Valid values:yes or 1, no or 0.',
+  nimserver => 'Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0.',
 
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -747,6 +750,10 @@ my @nodeattrs = (
                  tabentry => 'noderes.nfsserver',
                  access_tabentry => 'noderes.node=attr:node',
   },
+        {attr_name => 'nimserver',
+                 tabentry => 'noderes.nimserver',
+                 access_tabentry => 'noderes.node=attr:node',
+  },
 ###
 # TODO:  Is noderes.nfsdir used anywhere?  Could not find any code references
 #        to this attribute.
@@ -831,6 +838,10 @@ my @nodeattrs = (
   },
 	{attr_name => 'setupftp',
                  tabentry => 'servicenode.ftpserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setupnim',
+                 tabentry => 'servicenode.nimserver',
                  access_tabentry => 'servicenode.node=attr:node',
   },
 ######################
@@ -1059,6 +1070,11 @@ my @nodeattrs = (
                  tabentry => 'ipmi.bmc',
                  access_tabentry => 'ipmi.node=attr:node',
   },
+        {attr_name => 'bmcport',
+                 only_if => 'mgt=ipmi',
+                 tabentry => 'ipmi.bmcport',
+                 access_tabentry => 'ipmi.node=attr:node',
+  },
         {attr_name => 'bmcusername',
                  only_if => 'mgt=ipmi',
                  tabentry => 'ipmi.username',
@@ -1207,6 +1223,10 @@ my @nodeattrs = (
              },
         {attr_name => 'appstatus',
                  tabentry => 'nodelist.appstatus',
+                 access_tabentry => 'nodelist.node=attr:node',
+             },
+        {attr_name => 'primarysn',
+                 tabentry => 'nodelist.primarysn',
                  access_tabentry => 'nodelist.node=attr:node',
              },
 ####################
