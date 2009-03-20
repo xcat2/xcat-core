@@ -433,20 +433,25 @@ sub processArgs
         # give the list of attr names for each type specified
         foreach my $t (@::clobjtypes)
         {
-            if ($t eq 'site')
-            {
-                my $rsp;
-                $rsp->{data}->[0] =
-                  "\nThere can only be one site definition. The name of the site definition is \'clustersite\'.  This definiton consists of an unlimited list of user-defined attributes and values. Some specific attribute values are required to support xCAT features.  See the xCAT documentation for more information.\n";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
-                next;
-
-            }
             my $rsp;
-            $rsp->{data}->[0] = "The valid attribute names for object type '$t' are:\n";
 
-            # get the data type  definition from Schema.pm
+			if ($t eq 'site') {
+				my $schema = xCAT::Table->getTableSchema('site');
+				my $desc;
+
+				$rsp->{data}->[0] = "\nThere can only be one site definition. The name of the \nsite definition is \'clustersite\'.  This definiton consists of an \nunlimited list of user-defined attributes and values. Some specific attribute \nvalues are required to support xCAT features. The following is a list \nof the attributes currently used by xCAT.\n"; 
+
+				$desc = $schema->{descriptions}->{'key'};
+				$rsp->{data}->[1] = $desc;
+
+				xCAT::MsgUtils->message("I", $rsp, $::callback);
+				next;
+			}
+
+			# get the data type  definition from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$t};
+
+			$rsp->{data}->[0] = "The valid attribute names for object type '$t' are:\n";
 
             # get the objkey for this type object (ex. objkey = 'node')
             my $objkey = $datatype->{'objkey'};
@@ -2389,7 +2394,7 @@ sub defls
                                     next;
                                 }
 
-                                if ($myhash{$obj}{$showattr})
+                                if (exists($myhash{$obj}{$showattr}))
                                 {
                                     my $rsp;
                                     $rsp->{data}->[0] =
@@ -2461,7 +2466,7 @@ sub defls
                             }
 
                             my $attrval;
-							if ( defined($defhash{$obj}{$showattr}))
+							if ( exists($defhash{$obj}{$showattr}))
                             {
                                 $attrval = $defhash{$obj}{$showattr};
                             }

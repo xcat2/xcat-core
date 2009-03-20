@@ -3,10 +3,15 @@
 #  This script packages the AIX RPM dependencies
 #    - it should be run in the ../xcat/xcat-core/trunk directory
 #    - it puts everything in a aix-dep-snap subdirectory
+#
+# to upload deps gz file to FRS SourceForge location
+# scp dep-aix-2.2-snap*.tar.gz nott@web.sourceforge.net:uploads/
 
 BLDTOP=`pwd`
 RPMDIR=$BLDTOP/aix-dep-snap
 VER=`cat $BLDTOP/Version`
+DATE=`date +"%Y%m%d%H%M"`
+SNAP="snap$DATE"
 
 if [ -d $RPMDIR ]
 then
@@ -32,6 +37,9 @@ echo "# xCAT on AIX - prerequisite install script" > $RPMDIR/instoss
 
 cp /opt/freeware/src/packages/RPMS/ppc/perl-DBI-1.55-1.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh perl-DBI-1.55-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
+
+cp /opt/freeware/src/packages/RPMS/ppc/bash-3.2-1.aix5.2.ppc.rpm $RPMDIR/
+echo "rpm -Uvh bash-3.2-1.aix5.2.ppc.rpm" >> $RPMDIR/instoss
 
 cp /opt/freeware/src/packages/RPMS/ppc/perl-DBD-SQLite-1.13-1.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh perl-DBD-SQLite-1.13-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
@@ -75,6 +83,18 @@ echo "rpm -Uvh openslp-1.2.1-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 cp /opt/freeware/src/packages/RPMS/ppc/perl-Crypt-SSLeay-0.57-1.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh perl-Crypt-SSLeay-0.57-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
+cp /opt/freeware/src/packages/RPMS/ppc/perl-Net-Telnet-3.03-1.2.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh perl-Net-Telnet-3.03-1.2.aix5.3.ppc.rpm" >> $RPMDIR/instoss
+
+cp /opt/freeware/src/packages/RPMS/ppc/net-snmp-5.4.2.1-1.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh net-snmp-5.4.2.1-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
+
+cp /opt/freeware/src/packages/RPMS/ppc/net-snmp-devel-5.4.2.1-1.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh net-snmp-devel-5.4.2.1-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
+
+cp /opt/freeware/src/packages/RPMS/ppc/net-snmp-perl-5.4.2.1-1.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh net-snmp-perl-5.4.2.1-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
+
 # get the OSS README file
 cp ./../../../xcat-dep/trunk/AIX/README $RPMDIR/
 
@@ -91,8 +111,8 @@ echo "instoss" >> $RPMDIR/flist
 echo "xCATaixSN.bnd" >> $RPMDIR/flist
 echo "xCATaixSSH.bnd" >> $RPMDIR/flist
 echo "xCATaixSSL.bnd" >> $RPMDIR/flist
-tar -cvf $RPMDIR/dep-aix-$VER.tar -L $RPMDIR/flist
-gzip $RPMDIR/dep-aix-$VER.tar
+tar -cvf $RPMDIR/dep-aix-$VER-$SNAP.tar -L $RPMDIR/flist
+gzip $RPMDIR/dep-aix-$VER-$SNAP.tar
 
 # make a second tar.gz for mysql packages
 cp /opt/freeware/src/packages/RPMS/ppc/perl-DBD-mysql-4.007-1.aix5.3.ppc.rpm $RPMDIR/
@@ -106,7 +126,7 @@ echo "xcat-mysql-5.0-1.aix5.3.ppc.rpm" >> $RPMDIR/flist2
 chmod +x $RPMDIR/instmysql
 echo "instmysql" >> $RPMDIR/flist2
 echo "README" >> $RPMDIR/flist2
-tar -cvf $RPMDIR/xcat-mysql-$VER.tar -L $RPMDIR/flist2
-gzip $RPMDIR/xcat-mysql-$VER.tar
+tar -cvf $RPMDIR/xcat-mysql-$VER-$SNAP.tar -L $RPMDIR/flist2
+gzip $RPMDIR/xcat-mysql-$VER-$SNAP.tar
 
 exit 0;

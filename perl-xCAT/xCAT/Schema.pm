@@ -509,41 +509,41 @@ servicenode => {
 site => {
     cols => [qw(key value comments disable)],
     keys => [qw(key)],
-    table_desc => 'Global settings for the whole cluster.  This table is different from the other tables in that each attribute is just named in the key column, rather than having a separate column for each attribute.',
+    table_desc => "Global settings for the whole cluster.  This table is different from the \nother tables in that each attribute is just named in the key column, rather \nthan having a separate column for each attribute. The following is a list of \nthe attributes currently used by xCAT.\n",
  descriptions => {
-  key => "Name of the attribute.  Valid values:\n".
-   "  master (xCAT management node)\n".
-   "  xcatconfdir (default /etc/xcat)\n".
-   "  domain (DNS domain name used for the cluster)\n".
-   "  installdir (the local directory name used to hold the node deployment pkgs)\n".
-   "  installloc (location to mount the installdir from in format hostname:/path)\n".
-   "  sharedtftp (set to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes). Default is 1.\n".
-   "  xcatdport (port used by xcatd daemon for client/server communication)\n".
-   "  xcatiport (port used by xcatd to receive install status updates from nodes)\n".
-   "  timezone (e.g. America/New_York)\n".
-   "  nameservers (comma delimited list of DNS servers for the cluster - often the mgmt node)\n".
-   "  ntpservers (comma delimited list of NTP servers for the cluster - often the mgmt node)\n".
-   "  useSSHonAIX (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX.\n".
-   "  blademaxp (max # of processes for blade hw ctrl)\n".
-   "  ppcmaxp (max # of processes for PPC hw ctrl)\n".
-   "  ipmimaxp (max # of processes for ipmi hw ctrl)\n".
-   "  ipmitimeout (the timeout to use when communicating with BMCs)\n".
-   "  ipmiretries (the # of retries to use when communicating with BMCs)\n".
-   "  ipmisdrcache\n".
-   "  iscsidir (the path to put the iscsi disks in on the mgmt node)\n".
-   "  xcatservers (Deprecated!  Will be replaced by the servicenode table.  List service nodes)\n".
-   "  svloglocal (syslog on the service node does not get forwarded to the mgmt node - default is 0)\n".
-   "  consoleondemand (when set to 'yes', it connects and creates the console output only when the user opens the console)\n".
-   "  dhcpinterfaces (network interfaces DHCP should listen on.  If same for all nodes, use simple comma-separated list of NICs.  Also support: mn|eth1,eth2;service|bond0;compute|eth0)\n".
-   "  forwarders (DNS servers at your site that can provide names outside of the cluster)\n".
-   "  genpasswords (automatically generate random passwords for BMCs when configuring them)\n".
-   "  defserialport (default serial port - currently only used by mknb)\n".
-   "  defserialspeed (default serial speed - currently only used by mknb)\n".
-   "  defserialflow (default serial flow - currently only used by mknb)\n".
-   "  ppctimeout (the timeout, in milliseconds, to use when communicating with PPC hw)\n".
-   "  maxssh (max # of SSH connections for hw ctrl purposes to PPC hw)\n".
-   "  ppcretry (max # of PPC hw connection attempts before failing)\n".
-   "  fsptimeout (the timeout, in milliseconds, to use when communicating with FSPs)\n",
+  key => "Name of the attribute. - (Description)\n".
+   "  master - (xCAT management node)\n\n".
+   "  xcatconfdir - (default /etc/xcat)\n\n".
+   "  domain - (DNS domain name used for the cluster)\n\n".
+   "  installdir - (the local directory name used to hold the node deployment pkgs)\n\n".
+   "  installloc - (location to mount the installdir from in format hostname:/path)\n\n".
+   "  sharedtftp - (set to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1.)\n\n".
+   "  xcatdport - (port used by xcatd daemon for client/server communication)\n\n".
+   "  xcatiport - (port used by xcatd to receive install status updates from nodes)\n\n".
+   "  timezone - (e.g. America/New_York)\n\n".
+   "  nameservers - (comma delimited list of DNS servers for the cluster - often the mgmt node)\n\n".
+   "  ntpservers - (comma delimited list of NTP servers for the cluster - often the mgmt node)\n\n".
+   "  useSSHonAIX -(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX.\n\n".
+   "  blademaxp - (max # of processes for blade hw ctrl)\n\n".
+   "  ppcmaxp - (max # of processes for PPC hw ctrl)\n\n".
+   "  ipmimaxp - (max # of processes for ipmi hw ctrl)\n\n".
+   "  ipmitimeout - (the timeout to use when communicating with BMCs)\n\n".
+   "  ipmiretries - (the # of retries to use when communicating with BMCs)\n\n".
+   "  ipmisdrcache -\n\n".
+   "  iscsidir - (the path to put the iscsi disks in on the mgmt node)\n\n".
+   "  xcatservers - (Deprecated!  Will be replaced by the servicenode table.  List service nodes)\n\n".
+   "  svloglocal - (syslog on the service node does not get forwarded to the mgmt node - default is 0)\n\n".
+   "  consoleondemand - (when set to 'yes', it connects and creates the console output only when the user opens the console)\n\n".
+   "  dhcpinterfaces - (network interfaces DHCP should listen on.  If same for all nodes, use simple comma-separated list of NICs.  Also support: mn|eth1,eth2;service|bond0;compute|eth0)\n\n".
+   "  forwarders - (DNS servers at your site that can provide names outside of the cluster)\n\n".
+   "  genpasswords - (automatically generate random passwords for BMCs when configuring them)\n\n".
+   "  defserialport - (default serial port - currently only used by mknb)\n\n".
+   "  defserialspeed - (default serial speed - currently only used by mknb)\n\n".
+   "  defserialflow - (default serial flow - currently only used by mknb)\n\n".
+   "  ppctimeout - (the timeout, in milliseconds, to use when communicating with PPC hw)\n\n".
+   "  maxssh - (max # of SSH connections for hw ctrl purposes to PPC hw)\n\n".
+   "  ppcretry - (max # of PPC hw connection attempts before failing)\n\n".
+   "  fsptimeout - (the timeout, in milliseconds, to use when communicating with FSPs)\n\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -702,7 +702,6 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   network => { attrs => [], attrhash => {}, objkey => 'netname' },
   group => { attrs => [], attrhash => {}, objkey => 'groupname' },
   site =>    { attrs => [], attrhash => {}, objkey => 'master' },
-#site =>    { attrs => [], attrhash => {}, objkey => 'sitename' },
   policy => { attrs => [], attrhash => {}, objkey => 'priority' },
   monitoring => { attrs => [], attrhash => {}, objkey => 'name' },
   notification => { attrs => [], attrhash => {}, objkey => 'filename' },
@@ -1417,43 +1416,6 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  access_tabentry => 'site.key=str:xcatdport',
                  description => 'Port used by xcatd daemon on master'},
              );
-
-#@{$defspec{site}->{'attrs'}} = (
-#        {attr_name => 'sitename',
-#                 tabentry => 'site.sitename',
-#                 access_tabentry => 'site.sitename=attr:sitename',
-#                 description => 'Name of this xCAT cluster site definition.'},
-#        {attr_name => 'master',
-#                 tabentry => 'site.master',
-#                 access_tabentry => 'site.sitename=attr:sitename',
-#                 description => 'The name of the xCAT management node.'},
-#        {attr_name => 'domain',
-#                 tabentry => 'site.domain',
-#                 access_tabentry => 'site.sitename=attr:sitename',
-#                 description => 'The DNS domain name for this cluster.'},
-#        {attr_name => 'installdir',
-#                 tabentry => 'site.installdir',
-#                 access_tabentry => 'site.sitename=attr:sitename',
-#                 description => 'The installation directory.'},
-#        {attr_name => 'rsh',
-#                 tabentry => 'site.rsh',
-#                 access_tabentry => 'site.sitename=attr:sitename',
-#                 description => 'Specifies the path of the remote shell command to use.'},
-#        {attr_name => 'rcp',
-#                 tabentry => 'site.rcp',
-#                 access_tabentry => 'site.sitename=attr:sitename',
-#                 description => 'Specifies the path of the remote copy command to use.'},
-#        {attr_name => 'xcatdport',
-#                 tabentry => 'site.xcatdport',
-#                 access_tabentry => 'site.sitename=attr:sitename',
-#                 description => 'The port used by xcatd daemon running on the xCAT management node.'},
-#  {attr_name => 'usercomment',
-#                 tabentry => 'site.comments',
-#                 access_tabentry => 'site.sitename=attr:sitename',
-#                description => 'User comment.'},
-#             );
-
-
 #######################
 #  groups data object #
 #######################
