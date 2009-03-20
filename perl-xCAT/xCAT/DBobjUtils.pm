@@ -202,7 +202,7 @@ sub getobjattrs
 				foreach my $n (@objlist) {
 					my $tmp1=$rec->{$n}->[0];
 					foreach $a (@{$tableattrs{$table}}) {
-						if ($tmp1->{$a}) {
+						if (defined($tmp1->{$a})) {
 							$tabhash{$table}{$n}{$a} = $tmp1->{$a};
 						}
 					}
@@ -243,9 +243,7 @@ sub getobjdefs
 {
     my ($class, $hash_ref) = @_;
     my %objhash;
-
     my %typehash = %$hash_ref;
-
 	my %tabhash;
 
 	@::foundTableList = ();
@@ -293,8 +291,14 @@ sub getobjdefs
 
                     if ($_->{key})
                     {
-                        $foundinfo++;
-                        $objhash{$objname}{$_->{key}} = $_->{value};
+						if (defined($_->{value}) ) {
+                        	$foundinfo++;
+							if ($::VERBOSE) {
+								$objhash{$objname}{$_->{key}} = "$_->{value}\t(Table:site - Key:$_->{key})";
+							} else {
+                        		$objhash{$objname}{$_->{key}} = $_->{value};
+							}
+						}
                     }
                 }
                 if ($foundinfo)
@@ -385,7 +389,13 @@ sub getobjdefs
 			#	then the value should be in %tabhash
 			if ( ($lookup_attr eq 'node') && ($type eq 'node') )
             {
-				$objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$tabattr};
+				if (defined($tabhash{$lookup_table}{$objname}{$tabattr}) ) {
+					if ($::VERBOSE) {
+						$objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$tabattr)";
+					} else {
+						$objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$tabattr};
+					}
+				}
 
 			}
             else
@@ -398,7 +408,13 @@ sub getobjdefs
                     {
                         if ($_->{$lookup_attr} eq $objname)
                         {
-                           	$objhash{$objname}{$attr} = $_->{$tabattr};
+							if (defined($_->{$tabattr}) ) {
+								if ($::VERBOSE) {
+									$objhash{$objname}{$attr} = "$_->{$tabattr}\t(Table:$lookup_table - Key:$tabattr)";
+								} else {
+                           			$objhash{$objname}{$attr} = $_->{$tabattr};
+								}
+							}
                         }
                     }
                 }
@@ -433,7 +449,14 @@ sub getobjdefs
                     	if ($_->{key})
                     	{
                         	$foundinfo++;
-                        	$objhash{$objname}{$_->{key}} = $_->{value};
+							if (defined($_->{value}) ) {
+								$foundinfo++;
+								if ($::VERBOSE) {
+									$objhash{$objname}{$_->{key}} = "$_->{value}\t(Table:monsetting - Key:$_->{key})";
+								} else {
+                        			$objhash{$objname}{$_->{key}} = $_->{value};
+								}
+							}
                     	}
 					}
                 }
