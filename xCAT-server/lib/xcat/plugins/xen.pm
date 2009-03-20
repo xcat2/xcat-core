@@ -34,6 +34,7 @@ use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
 use xCAT::DBobjUtils;
 use Getopt::Long;
+use xCAT::SvrUtils;
 
 my %runningstates;
 my $vmmaxp=64;
@@ -766,7 +767,7 @@ sub process_request {
         #get the current nodeset stat
         if (@allnodes>0) {
 	  my $nsh={};
-          my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+          my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
           if (!$ret) { 
             foreach (keys %$nsh) {
 	      my $currstate=$nsh->{$_};

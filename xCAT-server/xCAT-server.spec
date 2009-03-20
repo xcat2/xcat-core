@@ -48,6 +48,7 @@ mkdir -p $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 
 %ifos linux
 cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
@@ -87,6 +88,9 @@ ln -sf /%{prefix}/share/xcat/cons/hmc $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/
 
 cp lib/xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
+
+cp lib/perl/xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 
 # For now, don't ship these plugins - to avoid AIX dependency on SNMP.
 %ifnos linux

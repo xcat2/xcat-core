@@ -4,6 +4,7 @@ use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use Data::Dumper;
 use strict;
 BEGIN
@@ -323,7 +324,7 @@ sub makescript {
 #-----------------------------------------------------------------------------
 sub getnodesetstate {
   my $node=shift;
-  return xCAT::Utils->get_nodeset_state($node);
+  return xCAT::SvrUtils->get_nodeset_state($node);
 }
 
 sub  get_otherpkg_file_name {

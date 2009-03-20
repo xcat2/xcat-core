@@ -5,6 +5,7 @@ use strict;
 use lib "/opt/xcat/lib/perl";
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use xCAT::Usage;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
@@ -141,7 +142,7 @@ sub process_command {
         #get the current nodeset stat
         if (@allnodes>0) {
    my $nsh={};
-          my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+          my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
           if ($ret) { trace( $request, $msg );}
           else {
             foreach (keys %$nsh) {
@@ -159,7 +160,7 @@ sub process_command {
     #get the current nodeset stat
     if (@allnodes>0) {
       my $nsh={};
-      my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+      my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
       if ($ret) { trace( $request, $msg );}
       else {
         foreach (keys %$nsh) {

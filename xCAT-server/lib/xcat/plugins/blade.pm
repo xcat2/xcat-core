@@ -34,6 +34,7 @@ use IO::Handle;
 use Time::HiRes qw(gettimeofday sleep);
 use xCAT::DBobjUtils;
 use Getopt::Long;
+use xCAT::SvrUtils;
 
 sub handled_commands {
   return {
@@ -2832,7 +2833,7 @@ sub dompa {
 
       #get the current nodeset stat
       if (@allnodes>0) {
-        my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+        my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
         if ($ret)  { xCAT::MsgUtils->message('S', "Cannot update node status: $msg\n"); }
       }
     }

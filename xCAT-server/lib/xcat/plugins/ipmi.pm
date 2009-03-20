@@ -18,6 +18,7 @@ use xCAT::SPD qw/decode_spd/;
 use POSIX qw(ceil floor);
 use Storable qw(store_fd retrieve_fd thaw freeze);
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use xCAT::Usage;
 use Thread qw(yield);
 use LWP 5.64;
@@ -5893,7 +5894,7 @@ sub process_request {
         #get the current nodeset stat
         if (@allnodes>0) {
 	  my $nsh={};
-          my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+          my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
           if (!$ret) { 
             foreach (keys %$nsh) {
 	      my $currstate=$nsh->{$_};
