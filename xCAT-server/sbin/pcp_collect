@@ -38,7 +38,7 @@ sub  performance
             { #opening foreach1
 	      #print "opening foreach1 \n";
               #print "key is: $key \n";
-              my @key_a=split(',', $key);
+              my @key_a=split(':', $key);
 	      if (! $iphash{$key_a[0]}) { next;}
               my $mon_nodes=$noderef->{$key};
 
