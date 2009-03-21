@@ -27,7 +27,7 @@ Requires: ipmitool >= 1.8.9
 
 %description
 xCATsn is a service node management package intended for at-scale management,
-including hardware management and software management.
+including hardware management and software management. 
 
 
 %prep

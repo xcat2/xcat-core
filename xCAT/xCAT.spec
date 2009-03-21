@@ -22,7 +22,7 @@ Requires: atftp dhcp httpd nfs-utils expect conserver fping bind perl-XML-Parser
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-Requires: xCAT-nbroot-oss-x86 xCAT-nbroot-core-x86 xCAT-nbkernel-x86 xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 syslinux perl-version perl-SOAP-Lite
+Requires: xCAT-nbroot-oss-x86 xCAT-nbroot-core-x86 xCAT-nbkernel-x86 xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 syslinux
 Requires: ipmitool >= 1.8.9
 %endif
 

@@ -19,6 +19,11 @@ BuildArch: noarch
 
 Provides: xCAT-client = %{version}
 
+# fping is needed by pping (in case xCAT-client is installed by itself on a remote client)
+%ifos linux
+Requires: fping
+%endif
+
 %description
 xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.
 

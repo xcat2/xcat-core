@@ -11,10 +11,18 @@ B<makedns> [B<-h>|B<--help>]
 
 =head1 DESCRIPTION
 
-B<makedns> makes a DNS server from the /etc/hosts file entries.  It also uses the following
+B<makedns> configures a DNS server on the local machine from the /etc/hosts file entries.  It also uses the following
 attributes set in the B<site> table as default values:  B<domain>, B<forwarders>, B<nameservers>.
 The domain value can be overridden by the B<-d> option.
-The netmasks from the B<networks> table will also be used if not overridden by the B<-n> option.
+The netmasks from the B<networks> table will also be used if not overridden by the B<-n> option.  Only entries in
+/etc/hosts that are part of a network listed in the B<networks> table will be added to DNS.
+
+B<makedns> can only handle hostnames from a single domain, normally a private domain just for the cluster.  The
+typical cluster set up is for site.domain to be set to the cluster domain, site.nameservers to be set to the
+cluster-facing IP address of the management node, and site.forwarders to be set to the IP address of one or more
+nameservers at your site that can resolve names outside of your cluster.  With this set up, all nodes ask the
+management node to resolve names, and if it is a name that the MN DNS does not know about, it will ask the outside
+world.
 
 
 =head1 OPTIONS
@@ -39,11 +47,11 @@ Boot file to use.
 
 =item B<-A>
 
-Do aliases.
+Write the address records, i.e. the hostname to IP address mappings.
 
 =item B<-M>
 
-Do mx records.
+Write the MX records, i.e. the additional aliases for a hostname.
 
 =item B<-w>
 

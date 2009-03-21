@@ -87,7 +87,7 @@ if $GREP xCAT-nbroot ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
    mv /usr/src/$pkg/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
 fi
-if $GREP "U    xCATsn/" ../coresvnup || $GREP "A    xCATsn/" ../coresvnup; then
+if $GREP -E '^[UAD] +xCATsn/' ../coresvnup; then
    UPLOAD=1
    rm -f $DESTDIR/xCATsn-$VER*rpm
    rm -f $SRCDIR/xCATsn-$VER*rpm
@@ -96,12 +96,10 @@ if $GREP "U    xCATsn/" ../coresvnup || $GREP "A    xCATsn/" ../coresvnup; then
    mv /usr/src/$pkg/SRPMS/xCATsn-$VER*rpm $SRCDIR
    ./makexcatsnrpm i386
    mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCATsn-$VER*rpm $SRCDIR
    ./makexcatsnrpm ppc64
    mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCATsn-$VER*rpm $SRCDIR
 fi
-if $GREP "U    xCAT/" ../coresvnup || $GREP "A    xCAT/" ../coresvnup; then
+if $GREP -E '^[UAD] +xCAT/' ../coresvnup; then
    UPLOAD=1
    rm -f $DESTDIR/xCAT-$VER*rpm
    rm -f $SRCDIR/xCAT-$VER*rpm

@@ -24,9 +24,6 @@ use Getopt::Long;
 use strict;
 use warnings;
 
-require SOAP::Lite;
-require xCAT::vboxService;
-
 my $cmd = 'clienttest';
 
 #-------------------------------------------------------
@@ -103,6 +100,13 @@ sub process_request
     my $envs     = $request->{env};
 	our $rsp;
 	my $node;
+
+	my $soapsupport = eval { require SOAP::Lite; };
+	unless ($soapsupport) { #Still no SOAP::Lite module
+      $callback->({error=>"SOAP::Lite perl module missing, unable to fulfill Virtual Box plugin requirements",errorcode=>[42]});
+      return [];
+	}
+require xCAT::vboxService;
    
     my @nodes=@$nodes;
 

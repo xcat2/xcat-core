@@ -3672,7 +3672,7 @@ IVirtualBox_createMachine => {
   }, # end IVirtualBox_createMachine
 ); # end my %methods
 
-require SOAP::Lite;
+#require SOAP::Lite;	# vbox.pm requires SOAP::Lite before requiring vboxService.pm, so we can check for SOAP::Lite dynamically
 require Exporter;
 use Carp ();
 
