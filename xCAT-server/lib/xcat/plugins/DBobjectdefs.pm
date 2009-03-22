@@ -439,7 +439,7 @@ sub processArgs
 				my $schema = xCAT::Table->getTableSchema('site');
 				my $desc;
 
-				$rsp->{data}->[0] = "\nThere can only be one site definition. The name of the \nsite definition is \'clustersite\'.  This definiton consists of an \nunlimited list of user-defined attributes and values. Some specific attribute \nvalues are required to support xCAT features. The following is a list \nof the attributes currently used by xCAT.\n"; 
+				$rsp->{data}->[0] = "\nThere can only be one xCAT site definition. This definition consists \nof an unlimited list of user-defined attributes and values that represent \nglobal settings for the whole cluster. The following is a list \nof the attributes currently supported by xCAT.\n";
 
 				$desc = $schema->{descriptions}->{'key'};
 				$rsp->{data}->[1] = $desc;
