@@ -204,6 +204,9 @@ sub getobjattrs
 					foreach $a (@{$tableattrs{$table}}) {
 						if (defined($tmp1->{$a})) {
 							$tabhash{$table}{$n}{$a} = $tmp1->{$a};
+#print "obj = $n, table = $table, attr =$a, val = $tabhash{$table}{$n}{$a}\n";
+
+ 
 						}
 					}
 				}
@@ -241,7 +244,7 @@ sub getobjattrs
 #-----------------------------------------------------------------------------
 sub getobjdefs
 {
-    my ($class, $hash_ref) = @_;
+    my ($class, $hash_ref, $verbose) = @_;
     my %objhash;
     my %typehash = %$hash_ref;
 	my %tabhash;
@@ -293,7 +296,7 @@ sub getobjdefs
                     {
 						if (defined($_->{value}) ) {
                         	$foundinfo++;
-							if ($::VERBOSE) {
+							if ($verbose == 1) {
 								$objhash{$objname}{$_->{key}} = "$_->{value}\t(Table:site - Key:$_->{key})";
 							} else {
                         		$objhash{$objname}{$_->{key}} = $_->{value};
@@ -390,7 +393,7 @@ sub getobjdefs
 			if ( ($lookup_attr eq 'node') && ($type eq 'node') )
             {
 				if (defined($tabhash{$lookup_table}{$objname}{$tabattr}) ) {
-					if ($::VERBOSE) {
+					if ($verbose == 1) {
 						$objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Lookup:$tabattr)";
 					} else {
 						$objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$tabattr};
@@ -409,7 +412,7 @@ sub getobjdefs
                         if ($_->{$lookup_attr} eq $objname)
                         {
 							if (defined($_->{$tabattr}) ) {
-								if ($::VERBOSE) {
+								if ($verbose == 1) {
 									$objhash{$objname}{$attr} = "$_->{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Lookup:$tabattr)";
 								} else {
                            			$objhash{$objname}{$attr} = $_->{$tabattr};
@@ -451,7 +454,7 @@ sub getobjdefs
                         	$foundinfo++;
 							if (defined($_->{value}) ) {
 								$foundinfo++;
-								if ($::VERBOSE) {
+								if ($verbose == 1) {
 									$objhash{$objname}{$_->{key}} = "$_->{value}\t(Table:monsetting)";
 								} else {
                         			$objhash{$objname}{$_->{key}} = $_->{value};

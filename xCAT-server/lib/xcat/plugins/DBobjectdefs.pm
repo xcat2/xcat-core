@@ -331,7 +331,10 @@ sub processArgs
     {
         $::verbose = 1;
         $::VERBOSE = 1;
-    }
+    } else {
+		$::verbose = 0;
+        $::VERBOSE = 0;
+	}
 
     #
     # process the input file - if provided
@@ -439,7 +442,7 @@ sub processArgs
 				my $schema = xCAT::Table->getTableSchema('site');
 				my $desc;
 
-				$rsp->{data}->[0] = "\nThere can only be one xCAT site definition. This definition consists \nof an unlimited list of user-defined attributes and values that represent \nglobal settings for the whole cluster. The following is a list \nof the attributes currently supported by xCAT.\n";
+				$rsp->{data}->[0] = "\nThere can only be one xCAT site definition. This definition consists \nof an unlimited list of user-defined attributes and values that represent \nglobal settings for the whole cluster. The following is a list \nof the attributes currently supported by xCAT.\n"; 
 
 				$desc = $schema->{descriptions}->{'key'};
 				$rsp->{data}->[1] = $desc;
@@ -2107,7 +2110,7 @@ sub defls
 
         }
 
-        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE);
         if (!defined(%myhash))
         {
             my $rsp;
@@ -2124,7 +2127,9 @@ sub defls
     {
         %objhash = %::ObjTypeHash;
 
-        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+print "defls: verb = $::VERBOSE\n";
+
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE);
         if (!defined(%myhash))
         {
             my $rsp;
@@ -2178,7 +2183,7 @@ sub defls
         else
         {
 
-            %myhash = xCAT::DBobjUtils->getobjdefs(\%::AllObjTypeHash);
+            %myhash = xCAT::DBobjUtils->getobjdefs(\%::AllObjTypeHash, $::VERBOSE);
             if (!defined(%myhash))
             {
                 my $rsp;
