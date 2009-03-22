@@ -391,7 +391,7 @@ sub getobjdefs
             {
 				if (defined($tabhash{$lookup_table}{$objname}{$tabattr}) ) {
 					if ($::VERBOSE) {
-						$objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$tabattr)";
+						$objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Lookup:$tabattr)";
 					} else {
 						$objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$tabattr};
 					}
@@ -410,7 +410,7 @@ sub getobjdefs
                         {
 							if (defined($_->{$tabattr}) ) {
 								if ($::VERBOSE) {
-									$objhash{$objname}{$attr} = "$_->{$tabattr}\t(Table:$lookup_table - Key:$tabattr)";
+									$objhash{$objname}{$attr} = "$_->{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Lookup:$tabattr)";
 								} else {
                            			$objhash{$objname}{$attr} = $_->{$tabattr};
 								}
@@ -452,7 +452,7 @@ sub getobjdefs
 							if (defined($_->{value}) ) {
 								$foundinfo++;
 								if ($::VERBOSE) {
-									$objhash{$objname}{$_->{key}} = "$_->{value}\t(Table:monsetting - Key:$_->{key})";
+									$objhash{$objname}{$_->{key}} = "$_->{value}\t(Table:monsetting)";
 								} else {
                         			$objhash{$objname}{$_->{key}} = $_->{value};
 								}
