@@ -511,39 +511,40 @@ site => {
     keys => [qw(key)],
     table_desc => "Global settings for the whole cluster.  This table is different from the \nother tables in that each attribute is just named in the key column, rather \nthan having a separate column for each attribute. The following is a list of \nthe attributes currently used by xCAT.\n",
  descriptions => {
-  key => "Name of the attribute. - (Description)\n".
-   "  master - (xCAT management node)\n\n".
-   "  xcatconfdir - (default /etc/xcat)\n\n".
-   "  domain - (DNS domain name used for the cluster)\n\n".
-   "  installdir - (the local directory name used to hold the node deployment pkgs)\n\n".
-   "  installloc - (location to mount the installdir from in format hostname:/path)\n\n".
-   "  sharedtftp - (set to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1.)\n\n".
-   "  xcatdport - (port used by xcatd daemon for client/server communication)\n\n".
-   "  xcatiport - (port used by xcatd to receive install status updates from nodes)\n\n".
-   "  timezone - (e.g. America/New_York)\n\n".
-   "  nameservers - (comma delimited list of DNS servers for the cluster - often the mgmt node)\n\n".
-   "  ntpservers - (comma delimited list of NTP servers for the cluster - often the mgmt node)\n\n".
-   "  useSSHonAIX -(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX.\n\n".
-   "  blademaxp - (max # of processes for blade hw ctrl)\n\n".
-   "  ppcmaxp - (max # of processes for PPC hw ctrl)\n\n".
-   "  ipmimaxp - (max # of processes for ipmi hw ctrl)\n\n".
-   "  ipmitimeout - (the timeout to use when communicating with BMCs)\n\n".
-   "  ipmiretries - (the # of retries to use when communicating with BMCs)\n\n".
+  key => "Name of the attribute:\tDescription\n".
+   "  blademaxp:\tThe maximum number of processes for blade hardware control.\n\n".
+   "  consoleondemand:\tWhen set to 'yes', it connects and creates the console output only when the user opens the console.\n\n".
+   "  defserialflow:\tThe default serial flow - currently only used by the mknb command.\n\n".
+   "  defserialport:\tThe default serial port - currently only used by mknb.\n\n".
+   "  defserialspeed:\tThe default serial speed - currently only used by mknb.\n\n".
+   "  dhcpinterfaces\tThe network interfaces DHCP should listen on.  If same for all nodes, use simple comma-separated list of NICs.  Also supports: mn|eth1,eth2;service|bond0;compute|eth0.\n\n".
+   "  domain:\tThe DNS domain name used for the cluster.\n\n".
+   "  forwarders:\tThe DNS servers at your site that can provide names outside of the cluster.\n\n".
+   "  fsptimeout:\tThe timeout, in milliseconds, to use when communicating with  FSPs.\n\n".
+   "  genpasswords:\tAutomatically generate random passwords for BMCs when configuring them.\n\n".
+   "  installdir:\tThe local directory name used to hold the node deployment packages.\n\n".
+   "  installloc:\tThe location to mount the install directory from in format hostname:/path.\n\n".
+   "  ipmimaxp:\tThe max # of processes for ipmi hw ctrl.\n\n".
+   "  ipmiretries:\tThe # of retries to use when communicating with BMCs.\n\n".
    "  ipmisdrcache -\n\n".
-   "  iscsidir - (the path to put the iscsi disks in on the mgmt node)\n\n".
-   "  xcatservers - (Deprecated!  Will be replaced by the servicenode table.  List service nodes)\n\n".
-   "  svloglocal - (syslog on the service node does not get forwarded to the mgmt node - default is 0)\n\n".
-   "  consoleondemand - (when set to 'yes', it connects and creates the console output only when the user opens the console)\n\n".
-   "  dhcpinterfaces - (network interfaces DHCP should listen on.  If same for all nodes, use simple comma-separated list of NICs.  Also support: mn|eth1,eth2;service|bond0;compute|eth0)\n\n".
-   "  forwarders - (DNS servers at your site that can provide names outside of the cluster)\n\n".
-   "  genpasswords - (automatically generate random passwords for BMCs when configuring them)\n\n".
-   "  defserialport - (default serial port - currently only used by mknb)\n\n".
-   "  defserialspeed - (default serial speed - currently only used by mknb)\n\n".
-   "  defserialflow - (default serial flow - currently only used by mknb)\n\n".
-   "  ppctimeout - (the timeout, in milliseconds, to use when communicating with PPC hw)\n\n".
-   "  maxssh - (max # of SSH connections for hw ctrl purposes to PPC hw)\n\n".
-   "  ppcretry - (max # of PPC hw connection attempts before failing)\n\n".
-   "  fsptimeout - (the timeout, in milliseconds, to use when communicating with FSPs)\n\n",
+   "  ipmitimeout:\tThe timeout to use when communicating with BMCs.\n\n".
+   "  iscsidir:\tThe path to put the iscsi disks in on the mgmt node.\n\n".
+   "  master:\tThe hostname of the xCAT management node.\n\n".
+   "  maxssh:\tThe max # of SSH connections for hw ctrl purposes to PPC hw.\n\n".
+   "  nameservers:\tA comma delimited list of DNS servers for the cluster - often the xCAT management node.\n\n".
+   "  ntpservers:\tA comma delimited list of NTP servers for the cluster - often the xCAT management node.\n\n".
+   "  ppcmaxp:\tThe max # of processes for PPC hw ctrl.\n\n".
+   "  ppcretry:\tThw max # of PPC hw connection attempts before failing.\n\n".
+   "  ppctimeout:\tThe timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
+   "  sharedtftp:\tSet to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1.\n\n".
+   "  timezone:\t(e.g. America/New_York)\n\n".
+   "  useSSHonAIX:\t(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX.\n\n".
+   "  svloglocal:\tsyslog on the service node does not get forwarded to the mgmt node - default is 0.\n\n".
+   "  xcatconfdir:\t(default /etc/xcat)\n\n".
+   "  xcatdport:\tThe port used by the xcatd daemon for client/server communication.\n\n".
+   "  xcatiport:\tThe port used by xcatd to receive install status updates from nodes.\n\n".
+   "  xcatservers:\t(Deprecated!  Will be replaced by the servicenode table.  Li
+st service nodes)\n\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
