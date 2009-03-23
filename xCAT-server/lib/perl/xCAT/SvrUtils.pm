@@ -28,7 +28,7 @@ use strict;
 sub getNodesetStates
 {
     my $noderef = shift;
-    if ($noderef =~ /xCAT::Utils/)
+    if ($noderef =~ /xCAT::SvrUtils/)
     {
         $noderef = shift;
     }
@@ -126,7 +126,7 @@ sub getNodesetStates
 sub get_nodeset_state
 {
     my $node = shift;
-    if ($node =~ /xCAT::Utils/)
+    if ($node =~ /xCAT::SvrUtils/)
     {
         $node = shift;
     }
