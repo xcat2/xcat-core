@@ -4253,6 +4253,7 @@ sub vitals {
 	my $reading;
 	my $unitdesc;
 	my $value;
+	my $extext;
 	my $format = "%-30s%8s %-20s";
 	my $per = " ";
    my $doall;
@@ -4304,7 +4305,7 @@ sub vitals {
 			if(($doall and not $sdr->rec_type == 0x11 and not $sdr->sensor_type==0xed) or ($sdr->rec_type == 0x01 and $sdr->sensor_type == $filter)) {
 				my $lformat = $format;
 
-				($rc,$reading) = readsensor($sdr->sensor_number);
+				($rc,$reading,$extext) = readsensor($sdr);
 				$unitdesc = "";
 				if($rc == 0) {
 					$unitdesc = $units{$sdr->sensor_units_2};
@@ -4316,10 +4317,10 @@ sub vitals {
 					if($sdr->rec_type != 1 or $sdr->linearization == 0) {
 						$reading = $value;
 						if($value == int($value)) {
-							$lformat = "%-30s%8d%-20s";
+							$lformat = "%-30s%8d%s";
 						}
 						else {
-							$lformat = "%-30s%8.3f%-20s";
+							$lformat = "%-30s%8.3f%s";
 						}
 					}
 					elsif($sdr->linearization == 7) {
@@ -4329,7 +4330,7 @@ sub vitals {
 						else {
 							$reading = 0;
 						}
-						$lformat = "%-30s%8d %-20s";
+						$lformat = "%-30s%8d %s";
 					}
 					else {
 						$reading = "RAW(".$sdr->linearization.") $reading";
@@ -4370,6 +4371,9 @@ sub vitals {
 				}
             #$unitdesc.= sprintf(" %x",$sdr->sensor_type);
 				$text = sprintf($lformat,$sdr->id_string . ":",$reading,$per.$unitdesc);
+				if ($extext) {
+					$text="$text ($extext)";
+				}
 				push(@output,$text);
 			}
 #			else {
@@ -4393,7 +4397,8 @@ sub vitals {
 }
 
 sub readsensor {
-	my $sensor = shift;
+    my $sdr = shift;
+	my $sensor = $sdr->sensor_number;
 	my $netfun = 0x10;
 	my @cmd;
 	my @returnd = ();
@@ -4435,8 +4440,256 @@ sub readsensor {
 		return($rc,$text);
 	}
 	$text = $returnd[37-$authoffset];
+    my $exdata1 = $returnd[39-$authoffset];
+    my $exdata2 = $returnd[39-$authoffset];
+    my $extext;
+    my @exparts;
+    if ($sdr->event_type_code == 0x1) {
+        if ($exdata1 & 1<<5) {
+            $extext = "At or above upper non-recoverable threshold";
+        } elsif ($exdata1 & 1<<4)  {
+            $extext = "At or above upper critical threshold";
+        } elsif ($exdata1 & 1<<3) {
+            $extext = "At or above upper non-critical threshold";
+        } 
+        if ($exdata1 & 1<<2) {
+            $extext = "At or below lower non-critical threshold";
+        } elsif ($exdata1 & 1<<1) {
+            $extext = "At or below lower critical threshold";
+        } elsif ($exdata1 & 1) {
+            $extext = "At or below lower non-recoverable threshold";
+        }
+    } elsif ($sdr->event_type_code == 0x6f) {
+        if ($sdr->sensor_type == 0x10) {
+	    @exparts=();
+            if ($exdata1 & 1<<4) {
+                push @exparts,"SEL full";
+            } elsif ($exdata1 & 1<<5) {
+                push @exparts,"SEL almost full";
+            }
+	    if ($exdata1 & 1) {
+	       push @exparts,"Correctable Memory Error Logging Disabled";
+	    } 
+	    if ($exdata1 & 1<<3) {
+	       push @exparts,"All logging disabled";
+	    } elsif ($exdata1 & 1<<1) {
+	       push @exparts,"Some logging disabled";
+	    }
+	    if (@exparts) {
+	       $extext = join(",",@exparts);
+	    }
+        } elsif ($sdr->sensor_type == 0x7) {
+	   @exparts=();
+	   if ($exdata1 & 1) {
+	      push @exparts,"IERR";
+	   }
+	   if ($exdata1 & 1<<1) {
+	      push @exparts,"Thermal trip";
+	   }
+	   if ($exdata1 & 1<<2) {
+	      push @exparts,"FRB1/BIST failure";
+	   }
+	   if ($exdata1 & 1<<3) {
+	      push @exparts,"FRB2/Hang in POST due to processor";
+	   }
+	   if ($exdata1 & 1<<4) {
+	      push @exparts,"FRB3/Processor Initialization failure";
+	   }
+	   if ($exdata1 & 1<<5) {
+	      push @exparts,"Configuration error";
+	   }
+	   if ($exdata1 & 1<<6) {
+	      push @exparts,"Uncorrectable CPU-complex error";
+	   }
+	   if ($exdata1 & 1<<7) {
+	      push @exparts,"Present";
+	   }
+	   if ($exdata1 & 1<<8) {
+	      push @exparts,"Processor disabled";
+	   }
+	   if ($exdata1 & 1<<9) {
+	      push @exparts,"Terminator present";
+	   }
+	   if ($exdata1 & 1<<10) {
+	      push @exparts,"Hardware throttled";
+	   }
+        } elsif ($sdr->sensor_type == 0x8) {
+	   @exparts=();
+	   if ($exdata1 & 1) {
+	        push @exparts,"Present";
+	   }
+	   if ($exdata1 & 1<<1) {
+	        push @exparts,"Failed";
+	   }
+	   if ($exdata1 & 1<<2) {
+	        push @exparts,"Failure predicted";
+	   }
+	   if ($exdata1 & 1<<3) {
+	        push @exparts,"AC Lost";
+	   }
+	   if ($exdata1 & 1<<4) {
+	        push @exparts,"AC input lost or out of range";
+	   }
+	   if ($exdata1 & 1<<5) {
+	        push @exparts,"AC input out of range";
+	   }
+	   if ($exdata1 & 1<<6) {
+	        push @exparts,"Configuration error";
+	   }
+	   if (@exparts) {
+	      $extext = join(",",@exparts);
+	   }
+        } elsif ($sdr->sensor_type == 0x13) {
+            @exparts=();
+            if ($exdata1 & 1) {
+                push @exparts,"Front panel NMI/Diagnostic";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Bus timeout";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"I/O channel check NMI";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Software NMI";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"PCI PERR";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"PCI SERR";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"EISA failsafe timeout";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Bus correctable .rror";
+            }
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Bus uncorrectable error";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"Fatal NMI";
+            }
+            if ($exdata1 & 1<<10) {
+                push @exparts,"Bus fatal error";
+            }
+            if (@exparts) {
+                $extext = join(",",@exparts);
+            }
+        } elsif ($sdr->sensor_type == 0xc) {
+            @exparts=();
+            if ($exdata1 & 1) {
+                push @exparts,"Correctable error(s)";
+            } 
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Uncorrectable error(s)";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Parity";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Memory scrub failure";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"DIMM disabled";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Correctable error limit reached";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"Present";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Configuration error";
+            }
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Spare";
+            }
+            if (@exparts) {
+                $extext = join(",",@exparts);
+            }
+        } elsif ($sdr->sensor_type == 0x21) {
+            @exparts=();
+            if ($exdata1 & 1) {
+                push @exparts,"Fault";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Identify";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Installed/attached";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Ready for install";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Ready for removal";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Powered off";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"Removal requested";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Interlocked";
+            }
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Disabled";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"Spare";
+            }
+        } elsif ($sdr->sensor_type == 0xf) {
+            @exparts=();
+            if ($exdata1 & 1) {
+                push @exparts,"POST error";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Firmware hang";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Firmware progress";
+            }
+            if (@exparts) {
+                $extext = join(",",@exparts);
+            }
+        } elsif ($sdr->sensor_type == 0x9) {
+	   @exparts=();
+	   if ($exdata1 & 1) {
+	      push @exparts,"Power off";
+	   }
+	   if ($exdata1 & 1<<1) {
+	      push @exparts,"Power off";
+	   }
+	   if ($exdata1 & 1<<2) {
+	      push @exparts,"240VA Power Down";
+	   }
+	   if ($exdata1 & 1<<3) {
+	      push @exparts,"Interlock Power Down";
+	   }
+	   if ($exdata1 & 1<<4) {
+	      push @exparts,"AC lost";
+	   }
+	   if ($exdata1 & 1<<5) {
+	      push @exparts,"Soft power control failure";
+	   }
+	   if ($exdata1 & 1<<6) {
+	      push @exparts,"Power unit failure";
+	   }
+	   if ($exdata1 & 1<<7) {
+	      push @exparts,"Power unit failure predicted";
+	   }
+	   if (@exparts) {
+	      $extext = join(",",@exparts);
+	   }
+        } else {
+            $extext = "xCAT needs to add support for ".$sdr->sensor_type;
+        }
+    }
 
-	return($rc,$text);
+	return($rc,$text,$extext);
 }
 
 sub initsdr {
@@ -4677,7 +4930,7 @@ sub initsdr {
 			$sdr->B_exp(comp2int(4,$sdr_data[30] & 0b00001111));
 		} elsif ($sdr_type == 0x02) {
 		   $sdr->sensor_units_1($sdr_data[21]);
-      }
+        }
 
 		$sdr->id_string_type($sdr_data[48-$sdr_offset]);
 
