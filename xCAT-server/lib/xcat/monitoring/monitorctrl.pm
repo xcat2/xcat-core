@@ -848,6 +848,7 @@ sub getNodeMonServerPair {
 
   my $table2=xCAT::Table->new("noderes", -create =>1);
   my $tabdata = $table2->getNodesAttribs(\@nodes,['monserver', 'servicenode', 'xcatmaster']);
+  my $sitemaster=xCAT::Utils->get_site_attribute('master'); 
   foreach my $node (@nodes) {
     my $monserver;
     my $monmaster;
@@ -865,7 +866,7 @@ sub getNodeMonServerPair {
       if ($tmp2->{servicenode}) {  $monserver=$tmp2->{servicenode}; }
       if ($tmp2->{xcatmaster})  {  $monmaster=$tmp2->{xcatmaster}; } 
       if (!$monserver) { $monserver="noservicenode"; }
-      if (!$monmaster) { $monmaster=xCAT::Utils->get_site_attribute('master'); }
+      if (!$monmaster) { $monmaster=$sitemaster; }
       $pairs="$monserver:$monmaster";
     } 
     #print "node=$node, pairs=$pairs\n";
