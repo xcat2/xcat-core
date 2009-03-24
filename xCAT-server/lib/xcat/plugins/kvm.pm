@@ -894,9 +894,17 @@ sub process_request {
   my %nodestat=();
   my $check=0;
   my $newstat;
+  my $global_check=1;
+  if ($sitetab) {
+    (my $ref) = $sitetab->getAttribs({key => 'nonodestatus'}, 'value');
+    if ($ref and $ref->{value}) {
+       if ($ref->{value} =~ /1|y|Y/) { $global_check=0; }
+    }
+  }
+
   if ($command eq 'rpower') {
     my $subcommand=$exargs[0];
-    if (($subcommand ne 'stat') && ($subcommand ne 'status')) { 
+    if (($global_check) && ($subcommand ne 'stat') && ($subcommand ne 'status')) { 
       $check=1; 
       my @allnodes=@$noderange;
       if ($subcommand eq 'off') { $newstat=$::STATUS_POWERING_OFF; }

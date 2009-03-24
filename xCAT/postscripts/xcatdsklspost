@@ -94,7 +94,10 @@ fi
 
 if [ $# -eq 0 ]; then
   #notify the server that we are done with netbooting
-  echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript
+  CNS=`grep NONODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`
+  if [ -z "$CNS" ] || [ $CNS != "'1'" -a   $CNS != "'Y'"  -a  $CNS != "'y'" ]; then
+      echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript
+  fi
 fi
 
 DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /tmp/mypostscript`

@@ -2826,8 +2826,18 @@ sub dompa {
   my $check=0;
   my $nsh={};
 
+  my $global_check=1;
+  my $sitetab = xCAT::Table->new('site');
+  if ($sitetab) {
+    (my $ref) = $sitetab->getAttribs({key => 'nonodestatus'}, 'value');
+    if ($ref and $ref->{value}) {
+       if ($ref->{value} =~ /1|y|Y/) { $global_check=0; }
+    }
+  }
+
+
   if ($command eq 'rpower') {
-    if (($args->[0] ne 'stat') && ($args->[0] ne 'status')) { 
+    if (($global_check) && ($args->[0] ne 'stat') && ($args->[0] ne 'status')) { 
       $check=1; 
       my @allnodes=keys %{$mpahash->{$mpa}->{nodes}};
 
@@ -2838,6 +2848,8 @@ sub dompa {
       }
     }
   }
+  #print "\nglobal_check=$global_check, check=$check\n";
+
 
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
     $curn = $node;

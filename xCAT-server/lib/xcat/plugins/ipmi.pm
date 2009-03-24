@@ -5880,8 +5880,16 @@ sub process_request {
   my %nodestat=();
   my $check=0;
   my $newstat;
+  my $global_check=1;
+  if ($sitetab) {
+    (my $ref) = $sitetab->getAttribs({key => 'nonodestatus'}, 'value');
+    if ($ref and $ref->{value}) {
+       if ($ref->{value} =~ /1|y|Y/) { $global_check=0; }
+    }
+  }
+ 
   if ($command eq 'rpower') {
-    if (($extrargs->[0] ne 'stat') && ($extrargs->[0] ne 'status') && ($extrargs->[0] ne 'state')) { 
+    if (($global_check) && ($extrargs->[0] ne 'stat') && ($extrargs->[0] ne 'status') && ($extrargs->[0] ne 'state')) { 
       $check=1; 
       my @allnodes;
       foreach (@donargs) { push(@allnodes, $_->[0]); }
@@ -5905,6 +5913,7 @@ sub process_request {
       }
     }
   }
+
   #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
 
     my $children = 0;

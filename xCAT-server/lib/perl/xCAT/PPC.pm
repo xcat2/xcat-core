@@ -127,9 +127,17 @@ sub process_command {
   my %nodestat=();
   my $check=0;
   my $newstat;
+  my $global_check=1;
+  if ($sitetab) {
+    (my $ref) = $sitetab->getAttribs({key => 'nonodestatus'}, 'value');
+    if ($ref and $ref->{value}) {
+       if ($ref->{value} =~ /1|y|Y/) { $global_check=0; }
+    }
+  }
+
   if ($request->{command} eq 'rpower') {
     my $subcommand=$request->{op};
-    if (($subcommand ne 'stat') && ($subcommand ne 'status') && ($subcommand ne 'state')) { 
+    if (($global_check) && ($subcommand ne 'stat') && ($subcommand ne 'status') && ($subcommand ne 'state')) { 
       $check=1;
       my $noderange = $request->{node}; 
       my @allnodes=@$noderange;

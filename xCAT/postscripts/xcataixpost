@@ -140,9 +140,16 @@ if (-f $scriptname)
 }
 
 if (@ARGV<1) {
-  if (&updateflag($nodesetstat) != 0) {
-    print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server..\n";
+  my $update=1;
+  if (-f $scriptname) {
+      my $CNS=`grep NONODESTATUS= $scriptname`;
+      if ((!$?) && ($CNS =~ /\'1\'|\'Y\'|\'y\'/)) { $update=0;}  #only update is nonodestatus is not set in the site table
+  }
+  if ($update) {
+      if (&updateflag($nodesetstat) != 0) {
+	  print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
+	  print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server..\n";
+      }
   }
 } else {
   #called by updatenode, infrom user it is done

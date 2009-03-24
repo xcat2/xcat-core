@@ -532,6 +532,7 @@ site => {
    "  master:\tThe hostname of the xCAT management node.\n\n".
    "  maxssh:\tThe max # of SSH connections for hw ctrl purposes to PPC hw.\n\n".
    "  nameservers:\tA comma delimited list of DNS servers for the cluster - often the xCAT management node.\n\n".
+   "  nonodestatus:\tIf set to 1, the nodelist.status column will not be updated during the node deployment, node discovery and power operation.\n\n".
    "  ntpservers:\tA comma delimited list of NTP servers for the cluster - often the xCAT management node.\n\n".
    "  ppcmaxp:\tThe max # of processes for PPC hw ctrl.\n\n".
    "  ppcretry:\tThw max # of PPC hw connection attempts before failing.\n\n".
