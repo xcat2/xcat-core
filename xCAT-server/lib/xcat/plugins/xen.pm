@@ -758,7 +758,7 @@ sub process_request {
   my $sitetab = xCAT::Table->new('site');
   if ($sitetab) {
     (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref and $ref->{value}) {
+    if ($ref) {
        if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
     }
   }

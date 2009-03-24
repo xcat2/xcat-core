@@ -29,7 +29,7 @@ my $nonodestatus=0;
 my $sitetab = xCAT::Table->new('site');
 if ($sitetab) {
     (my $ref1) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref1 and $ref1->{value}) {
+    if ($ref1) {
 	if ($ref1->{value} =~ /0|n|N/) { $nonodestatus=1; }
     }
 }

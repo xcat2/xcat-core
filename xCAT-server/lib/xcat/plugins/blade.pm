@@ -2830,7 +2830,7 @@ sub dompa {
   my $sitetab = xCAT::Table->new('site');
   if ($sitetab) {
     (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref and $ref->{value}) {
+    if ($ref) {
        if ($ref->{value} =~ /0|N|n/) { $global_check=0; }
     }
   }

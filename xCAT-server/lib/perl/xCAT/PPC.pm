@@ -130,7 +130,7 @@ sub process_command {
   my $global_check=1;
   if ($sitetab) {
     (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref and $ref->{value}) {
+    if ($ref) {
        if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
     }
   }
