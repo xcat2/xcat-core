@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# autogpfsd
+#
+# chkconfig: 345 86 84
+# description: autogpfsd
+#
+
+# Source the library functions
+. /etc/rc.d/init.d/functions
+
+# let see how we were called
+case "$1" in
+	start) 
+		echo -n "Starting autogpfsd daemon: "
+		/usr/sbin/autogpfsd.pl && echo_success || echo_failure
+		echo
+		;;
+	stop)
+		echo -n "Shutting down autogpfsd daemon: "
+		killproc autogpfsd.pl
+		echo
+		;;
+	status)
+		status autogpfsd.pl
+		;;
+	restart)
+		$0 stop
+		$0 start
+		;;
+	*)
+		echo "Usage: autogpfsd {start|stop|restart|status}"
+		exit 1
+esac

@@ -1,0 +1,99 @@
+#!/bin/sh
+#
+# autogpfsc
+#
+# chkconfig: 345 56 24
+# description: action autogpfsc
+#
+# Source the library functions
+. /etc/rc.d/init.d/functions
+
+. /etc/sysconfig/autogpfsc
+
+# let see how we were called
+case "$1" in
+	start) 
+		echo "Starting autoGPFS: "
+
+		lastexit=2
+		while [ "$lastexit" = "2" ]
+		do
+			for i in $(echo $SERVERS | tr ',' ' ')
+			do
+				/usr/sbin/autogpfsc.pl $i $PORT 2>/dev/null
+				lastexit=$?
+				if [ "$lastexit" = "0" ]
+				then
+					break
+				fi
+				if [ "$lastexit" = "1" ]
+				then
+					break
+				fi
+			done
+			sleep 1
+		done
+
+		if [ "$lastexit" != "0" ]
+		then
+			BLOCK=no
+		fi
+
+		sleep 5
+
+		if [ "$BLOCK" = "yes" ]
+		then
+			echo -n "Waiting on GPFS mounts..."
+			DOBLOCK=yes
+		fi
+
+		while [ "$DOBLOCK" = "yes" ]
+		do
+			DOBLOCK=no
+
+			for i in $(
+				grep "\bgpfs\b" /etc/fstab | \
+				awk '{print $2}'
+			)
+			do
+				mount | grep "\b/gpfs1\b" >/dev/null 2>&1
+				if [ "$?" != "0" ]
+				then
+					DOBLOCK=yes
+				fi
+			done
+
+			sleep 1
+		done
+
+		if [ "$BLOCK" = "yes" ]
+		then
+			echo "done"
+		fi
+
+		echo -n "autoGPFS: "
+		if [ "$lastexit" = "0" ]
+		then
+ 			echo_success
+		else
+			echo_failure
+		fi
+		echo
+		exit $lastexit
+		;;
+	stop)
+		echo -n "Shutting down GPFS: "
+		/usr/lpp/mmfs/bin/mmshutdown
+		echo
+		;;
+#	status)
+#		status autogpfsc.pl
+#		;;
+	restart)
+		$0 stop
+		$0 start
+		;;
+	*)
+		echo "Usage: autogpfsc {start|stop|restart}"
+		exit 1
+esac
