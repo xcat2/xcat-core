@@ -2915,7 +2915,6 @@ sub runxcatd
     return 0;
 }
 
-
 #-------------------------------------------------------------------------------
 
 =head3   get_image_name
@@ -3143,7 +3142,7 @@ sub startService
         if ($::RUNCMD_RC == 0)
         {
 
-            #  whether or not an error is returned varies by service 
+            #  whether or not an error is returned varies by service
             #  stop and start the service for those running
             if (($service ne "conserver") && ($service ne "nfs"))
             {
@@ -3204,30 +3203,32 @@ sub startService
         else
         {
 
-            # error getting status, check output 
+            # error getting status, check output
             # must check output
-            if (grep(/stopped/, @output)) # stopped
+            if (grep(/stopped/, @output))    # stopped
             {
                 $cmd = "service $service start";
                 system $cmd;
                 if ($? > 0)
-                {    # error
-                  xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
-                  return 1;
+                {                            # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                    return 1;
                 }
-            } else{  # not sure
+            }
+            else
+            {                                # not sure
                 $cmd = "service $service stop";
                 system $cmd;
                 if ($? > 0)
-                {    # error
-                  xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                {                            # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                 }
                 $cmd = "service $service start";
                 system $cmd;
                 if ($? > 0)
-                {    # error
-                  xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
-                  return 1;
+                {                            # error
+                    xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
+                    return 1;
                 }
             }
         }
@@ -3372,6 +3373,7 @@ sub getFacingIP
     xCAT::MsgUtils->message("S", "Cannot find master for the node $node\n");
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3  osver
@@ -3394,44 +3396,228 @@ sub getFacingIP
 #-------------------------------------------------------------------------------
 sub osver
 {
-	my $osver = "unknown";
-	my $os    = '';
-	my $ver   = '';
-	my $line  = '';
-	my @lines;
-	if (-f "/etc/redhat-release")
-	{
-		chomp($line = `head -n 1 /etc/redhat-release`);
-		$os = "rh";
-		chomp($ver = `tr -d '.' < /etc/redhat-release | head -n 1`);
-		$ver =~ s/[^0-9]*([0-9]+).*/$1/;
-		if    ($line =~ /AS/) { $os = 'rhas' }
-		elsif ($line =~ /ES/) { $os = 'rhes' }
-		elsif ($line =~ /WS/) { $os = 'rhws' }
+    my $osver = "unknown";
+    my $os    = '';
+    my $ver   = '';
+    my $line  = '';
+    my @lines;
+    if (-f "/etc/redhat-release")
+    {
+        chomp($line = `head -n 1 /etc/redhat-release`);
+        $os = "rh";
+        chomp($ver = `tr -d '.' < /etc/redhat-release | head -n 1`);
+        $ver =~ s/[^0-9]*([0-9]+).*/$1/;
+        if    ($line =~ /AS/)     { $os = 'rhas' }
+        elsif ($line =~ /ES/)     { $os = 'rhes' }
+        elsif ($line =~ /WS/)     { $os = 'rhws' }
         elsif ($line =~ /Server/) { $os = 'rhserver' }
         elsif ($line =~ /Client/) { $os = 'rhclient' }
-		elsif (-f "/etc/fedora-release") { $os = 'rhfc' }
-	}
-	elsif (-f "/etc/SuSE-release")
-	{
-		chomp(@lines = `cat /etc/SuSE-release`);
-		if (grep /SLES|Enterprise Server/, @lines) { $os = "sles" }
-		if (grep /SLEC/, @lines) { $os = "slec" }
-		chomp($ver = `tr -d '.' < /etc/SuSE-release | head -n 1 `);
-		$ver =~ s/[^0-9]*([0-9]+).*/$1/;
+        elsif (-f "/etc/fedora-release") { $os = 'rhfc' }
+    }
+    elsif (-f "/etc/SuSE-release")
+    {
+        chomp(@lines = `cat /etc/SuSE-release`);
+        if (grep /SLES|Enterprise Server/, @lines) { $os = "sles" }
+        if (grep /SLEC/, @lines) { $os = "slec" }
+        chomp($ver = `tr -d '.' < /etc/SuSE-release | head -n 1 `);
+        $ver =~ s/[^0-9]*([0-9]+).*/$1/;
 
-		#print "ver: $ver\n";
-	}
-	elsif (-f "/etc/UnitedLinux-release")
-	{
+        #print "ver: $ver\n";
+    }
+    elsif (-f "/etc/UnitedLinux-release")
+    {
 
-		$os = "ul";
-		chomp($ver = `tr -d '.' < /etc/UnitedLinux-release | head -n 1 `);
-		$ver =~ s/[^0-9]*([0-9]+).*/$1/;
-	}
-	$os = "$os" . "$ver";
-	return ($os);
+        $os = "ul";
+        chomp($ver = `tr -d '.' < /etc/UnitedLinux-release | head -n 1 `);
+        $ver =~ s/[^0-9]*([0-9]+).*/$1/;
+    }
+    $os = "$os" . "$ver";
+    return ($os);
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 checkCreds 
+        Checks the various credential files on the Management Node to
+		make sure the permission are correct for using and transferring
+		to the nodes and service nodes.
+		Also removes /install/postscripts/etc/xcat/cfgloc if found
+    Arguments:
+      $callback 
+    Returns:
+        0 - ok
+    Globals:
+        none 
+    Error:
+         warnings of possible missing files  and directories
+    Example:
+         my $rc=xCAT::Utils->checkCreds
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub checkCreds
+{
+    my $lib  = shift;
+    my $cb  = shift;
+    my $dir = "/install/postscripts/_xcat";
+    if (-d $dir)
+    {
+        my $file = "$dir/ca.pem";
+        if (-e $file)
+        {
+
+            my $cmd = "/bin/chmod 0644 $file";
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Error on command: $cmd";
+                xCAT::MsgUtils->message("I", $rsp, $cb);
+
+            }
+        }
+        else
+        {    # ca.pem missing
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error: $file is missing.";
+            xCAT::MsgUtils->message("I", $rsp, $cb);
+        }
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Error: $dir is missing.";
+        xCAT::MsgUtils->message("I", $rsp, $cb);
+    }
+    my $dir = "/install/postscripts/ca";
+    if (-d $dir)
+    {
+        my $file = "$dir/ca-cert.pem";
+        if (-e $file)
+        {
+
+            my $cmd = "/bin/chmod 0644 $file";
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Error on command: $cmd";
+                xCAT::MsgUtils->message("I", $rsp, $cb);
+
+            }
+        }
+        else
+        {    # ca_cert.pem missing
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error: $file is missing.";
+            xCAT::MsgUtils->message("I", $rsp, $cb);
+        }
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Error: $dir is missing.";
+        xCAT::MsgUtils->message("I", $rsp, $cb);
+    }
+
+    # ssh hostkeys
+    my $dir = "/install/postscripts/hostkeys";
+    if (-d $dir)
+    {
+        my $file = "$dir/ssh_host_key.pub";
+        if (-e $file)
+        {
+            my $file2  = "$dir/*.pub";                     # all public keys
+            my $cmd    = "/bin/chmod 0644 $file2";
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Error on command: $cmd";
+                xCAT::MsgUtils->message("I", $rsp, $cb);
+
+            }
+        }
+        else
+        {                                                  # hostkey missing
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error: $file is missing.";
+            xCAT::MsgUtils->message("I", $rsp, $cb);
+        }
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Error: $dir is missing.";
+        xCAT::MsgUtils->message("I", $rsp, $cb);
+    }
+
+    # ssh directory
+    my $dir = "/install/postscripts/_ssh";
+    if (-d $dir)
+    {
+        my $file = "$dir/authorized_keys";
+        if (-e $file)
+        {
+            my $file2  = "$dir/authorized_keys*";
+            my $cmd    = "/bin/chmod 0644 $file2";
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Error on command: $cmd";
+                xCAT::MsgUtils->message("I", $rsp, $cb);
+
+            }
+
+            # make install script executable
+            $file2 = "$dir/copy.sh";
+            if (-e $file2)
+            {
+                my $cmd = "/bin/chmod 0744 $file2";
+                my $outref = xCAT::Utils->runcmd("$cmd", 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Error on command: $cmd";
+                    xCAT::MsgUtils->message("I", $rsp, $cb);
+
+                }
+            }
+        }
+        else
+        {    # authorized keys missing
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error: $file is missing.";
+            xCAT::MsgUtils->message("I", $rsp, $cb);
+        }
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Error: $dir is missing.";
+        xCAT::MsgUtils->message("I", $rsp, $cb);
+    }
+
+    # remove any old cfgloc files
+    my $file = "/install/postscripts/etc/xcat/cfgloc";
+    if (-e $file)
+    {
+
+        my $cmd = "/bin/rm  $file";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error on command: $cmd";
+            xCAT::MsgUtils->message("I", $rsp, $cb);
+
+        }
+    }
+
+}
 
 1;
