@@ -5,6 +5,7 @@ use Data::Dumper;
 use xCAT::Utils;
 use Sys::Syslog;
 use xCAT::GlobalDef;
+use xCAT::Table;
 use xCAT_monitoring::monitorctrl;
 use strict;
 
@@ -22,6 +23,17 @@ my $restab;
 my $sitetab;
 my $hmtab;
 my $tftpdir="/tftpboot";
+
+
+my $nonodestatus=0;
+my $sitetab = xCAT::Table->new('site');
+if ($sitetab) {
+    (my $ref1) = $sitetab->getAttribs({key => 'nonodestatus'}, 'value');
+    if ($ref1 and $ref1->{value}) {
+	if ($ref1->{value} =~ /1|y|Y/) { $nonodestatus=1; }
+    }
+}
+
 
 sub handled_commands {
   return {
@@ -303,7 +315,7 @@ sub getdestiny {
     my $ref = $chainents->{$node}->[0]; #$chaintab->getNodeAttribs($node,[qw(currstate chain)]);
     unless ($ref) {
       #collect node status for certain states
-      if (($flag==0) || ($flag==3)) { 
+      if (($nonodestatus==0) && (($flag==0) || ($flag==3))) { 
         my $stat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState("standby", "getdestiny");
 	#print "node=$node, stat=$stat\n";
         if ($stat) {
@@ -366,7 +378,7 @@ sub getdestiny {
   }  
 
   #setup the nodelist.status
-  if (($flag==0) || ($flag==3)) {
+  if (($nonodestatus==0) && (($flag==0) || ($flag==3))) {
       #print "save status\n";
     if (keys(%node_status) > 0) { xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1); }
   }
