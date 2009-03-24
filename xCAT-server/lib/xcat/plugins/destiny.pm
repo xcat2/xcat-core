@@ -28,9 +28,9 @@ my $tftpdir="/tftpboot";
 my $nonodestatus=0;
 my $sitetab = xCAT::Table->new('site');
 if ($sitetab) {
-    (my $ref1) = $sitetab->getAttribs({key => 'nonodestatus'}, 'value');
+    (my $ref1) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
     if ($ref1 and $ref1->{value}) {
-	if ($ref1->{value} =~ /1|y|Y/) { $nonodestatus=1; }
+	if ($ref1->{value} =~ /0|n|N/) { $nonodestatus=1; }
     }
 }
 

@@ -142,8 +142,8 @@ if (-f $scriptname)
 if (@ARGV<1) {
   my $update=1;
   if (-f $scriptname) {
-      my $CNS=`grep NONODESTATUS= $scriptname`;
-      if ((!$?) && ($CNS =~ /\'1\'|\'Y\'|\'y\'/)) { $update=0;}  #only update is nonodestatus is not set in the site table
+      my $CNS=`grep NODESTATUS= $scriptname`;
+      if ((!$?) && ($CNS =~ /\'0\'|\'N\'|\'n\'/)) { $update=0;}  #only update is nonodestatus is not set in the site table
   }
   if ($update) {
       if (&updateflag($nodesetstat) != 0) {

@@ -94,8 +94,8 @@ fi
 
 if [ $# -eq 0 ]; then
   #notify the server that we are done with netbooting
-  CNS=`grep NONODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`
-  if [ -z "$CNS" ] || [ $CNS != "'1'" -a   $CNS != "'Y'"  -a  $CNS != "'y'" ]; then
+  CNS=`grep NODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`
+  if [ -z "$CNS" ] || [ $CNS != "'0'" -a   $CNS != "'N'"  -a  $CNS != "'n'" ]; then
       echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript
   fi
 fi
