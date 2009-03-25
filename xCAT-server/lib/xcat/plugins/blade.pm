@@ -2037,13 +2037,12 @@ sub process_request {
   };
   my $request = shift;
   my $callback = shift;
-  eval { 
+  # Since switch.pm and lsslp.pm both create a MacMap object (which requires SNMP), SNMP is still required at xcatd start up.
+  # So do not bother trying to do this require in an eval.
+  #eval { 
       require SNMP;
-  };
-  if ($@) {
-      $callback->{error=>['Missing SNMP perl support'],errorcode=>[1]};
-      return;
-  }
+  #};
+  #if ($@) { $callback->{error=>['Missing SNMP perl support'],errorcode=>[1]};  return; }
 
   my $doreq = shift;
   my $level = shift;

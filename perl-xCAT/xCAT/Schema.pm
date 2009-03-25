@@ -286,8 +286,8 @@ nodehm => {
  descriptions => {
   node => 'The node name or group name.',
   power => 'The method to use to control the power of the node. If not set, the mgt attribute will be used.  Valid values: ipmi, blade, hmc, ivm, fsp.  If "ipmi", xCAT will search for this node in the ipmi table for more info.  If "blade", xCAT will search for this node in the mp table.  If "hmc", "ivm", or "fsp", xCAT will search for this node in the ppc table.',
-  mgt => 'The method to use to do general hardware management of the node.  This attribute is used as the default if power, cons, or getmac is not set.  Valid values: ipmi, blade, hmc, ivm, fsp.  See the power attribute for more details.',
-  cons => 'The console method. If not set, conserver will not be configured for this node.  Valid values: cyclades, mrv, or the values valid for mgt??',
+  mgt => 'The method to use to do general hardware management of the node.  This attribute is used as the default if power or getmac is not set.  Valid values: ipmi, blade, hmc, ivm, fsp.  See the power attribute for more details.',
+  cons => 'The console method. This attribute does not default to the value of mgt, because if cons is not set, conserver will not be configured for this node.  Valid values: cyclades, mrv, or the values valid for mgt??',
   termserver => 'The hostname of the terminal server.',
   termport => 'The port number on the terminal server that this node is connected to.',
   conserver => 'The hostname of the machine where the conserver daemon is running.  If not set, the default is the xCAT management node.',
@@ -513,25 +513,25 @@ site => {
  descriptions => {
   key => "Name of the attribute:\tDescription\n".
    "  blademaxp:\tThe maximum number of processes for blade hardware control.\n\n".
-   "  consoleondemand:\tWhen set to 'yes', it connects and creates the console output only when the user opens the console.\n\n".
+   "  consoleondemand:\tWhen set to 'yes', conserver connects and creates the console output only when the user opens the console.\n\n".
    "  defserialflow:\tThe default serial flow - currently only used by the mknb command.\n\n".
    "  defserialport:\tThe default serial port - currently only used by mknb.\n\n".
    "  defserialspeed:\tThe default serial speed - currently only used by mknb.\n\n".
-   "  dhcpinterfaces\tThe network interfaces DHCP should listen on.  If same for all nodes, use simple comma-separated list of NICs.  Also supports: mn|eth1,eth2;service|bond0;compute|eth0.\n\n".
+   "  dhcpinterfaces\tThe network interfaces DHCP should listen on.  If it is the same for all nodes, use simple comma-separated list of NICs.  To specify different NICs for different nodes: mn|eth1,eth2;service|bond0.\n\n".
    "  domain:\tThe DNS domain name used for the cluster.\n\n".
-   "  forwarders:\tThe DNS servers at your site that can provide names outside of the cluster.\n\n".
+   "  forwarders:\tThe DNS servers at your site that can provide names outside of the cluster.  The DNS on the management node will forward requests it does not know to these servers.\n\n".
    "  fsptimeout:\tThe timeout, in milliseconds, to use when communicating with  FSPs.\n\n".
    "  genpasswords:\tAutomatically generate random passwords for BMCs when configuring them.\n\n".
    "  installdir:\tThe local directory name used to hold the node deployment packages.\n\n".
-   "  installloc:\tThe location to mount the install directory from in format hostname:/path.\n\n".
+   "  installloc:\tThe location that service nodes should mount the install directory from in format hostname:/path.  If hostname is omitted, it defaults to the management node.\n\n".
    "  ipmimaxp:\tThe max # of processes for ipmi hw ctrl.\n\n".
    "  ipmiretries:\tThe # of retries to use when communicating with BMCs.\n\n".
    "  ipmisdrcache -\n\n".
    "  ipmitimeout:\tThe timeout to use when communicating with BMCs.\n\n".
    "  iscsidir:\tThe path to put the iscsi disks in on the mgmt node.\n\n".
-   "  master:\tThe hostname of the xCAT management node.\n\n".
-   "  maxssh:\tThe max # of SSH connections for hw ctrl purposes to PPC hw.\n\n".
-   "  nameservers:\tA comma delimited list of DNS servers for the cluster - often the xCAT management node.\n\n".
+   "  master:\tThe hostname of the xCAT management node, as known by the nodes.\n\n".
+   "  maxssh:\tThe max # of SSH connections at any one time to the hw ctrl point for PPC hw ctrl purposes.\n\n".
+   "  nameservers:\tA comma delimited list of DNS servers that each node in the cluster should use - often the xCAT management node.\n\n".
    "  nodestatus:\tIf set to 'n', the nodelist.status column will not be updated during the node deployment, node discovery and power operation.\n\n".
    "  ntpservers:\tA comma delimited list of NTP servers for the cluster - often the xCAT management node.\n\n".
    "  ppcmaxp:\tThe max # of processes for PPC hw ctrl.\n\n".

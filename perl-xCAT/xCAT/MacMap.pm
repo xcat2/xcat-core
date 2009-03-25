@@ -8,6 +8,7 @@ use IO::Select;
 use IO::Handle;
 use Sys::Syslog;
 use Data::Dumper;
+use SNMP;
 my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco equip
 #use IF-MIB (1.3.6.1.2.1.2) for all switches
 #   1.3.6.1.2.1.31.1.1 - ifXtable
@@ -77,12 +78,10 @@ OID, and have the switch table port value match exactly the format suggested by 
 
 sub new {
   my $self = {};
-  eval {
-      require SNMP; 
-  };
-  if ($@) {
-      die "SNMP support required to use MacMAP";
-  }
+  # Since switch.pm and lsslp.pm both create a MacMap object, SNMP is still required at xcatd start up.
+  # So we are going back to "use SNMP;" at the top of this file so RPM will automatically generate a prereq.
+  #eval { require SNMP; };
+  #if ($@) { die "SNMP support required to use MacMAP"; }
   my $proto = shift;
   my $class = ref($proto) || $proto;
 
