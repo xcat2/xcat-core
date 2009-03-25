@@ -77,7 +77,7 @@ if [[ $OSTYPE = linux* ]]; then
       #find out which syslog is used for SLES, syslog or syslog-ng
       result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`
       if [[ $result = *syslog-ng* ]]; then
-        conf_file="/etc/syslog-ng/syslog-ng.conf.in"
+        conf_file="/etc/syslog-ng/syslog-ng.conf"
         ng=1
       fi
     fi
@@ -110,7 +110,7 @@ if [ $isLinux -eq 1 ] && [ -a $sysconfig ]; then
   if [ $isC3 -eq 0 ]; then 
     if [ -f /etc/xCATMN ]; then
       #on MN: make the syslogd be able to receive remote logs 
-      awk  '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
+      awk  '{if($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) {
             if ($0 !~ /-r/) {sub(/\"$/, " -r\"", $0)}
             if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
             print $0}
@@ -118,7 +118,7 @@ if [ $isLinux -eq 1 ] && [ -a $sysconfig ]; then
     else
       if [ $isSN -eq 1 ]; then
         #on SN: make the syslog be able to receive and forward remote logs
-        awk '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
+        awk '{if($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) {
               if ($0 !~ /-r/) {sub(/\"$/, " -r\"", $0)}
               if ($0 !~ /-h/) {sub(/\"$/, " -h\"", $0)}
               if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
@@ -126,7 +126,7 @@ if [ $isLinux -eq 1 ] && [ -a $sysconfig ]; then
             else { print $0}}'  $sysconfig > $sysconfig.tmp 
       else
         ##turn off the time marker on all 
-        awk '{if($0 ~ /^SYSLOGD_OPTIONS=/) {
+        awk '{if($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) {
               if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
               print $0}
             else {print $0}}' $sysconfig > $sysconfig.tmp 
@@ -138,11 +138,13 @@ fi
 
 
 #syslog-ng has different way of enabling log forwarding
-if [ $ng -eq 1 -a $isSN -eq 1 ]; then
-  if [ ! -f $conf_file.XCATORIG ];  then
-    cp -f $conf_file $conf_file.XCATORIG
+if [ $ng -eq 1 ]; then
+  if [ $isSN -eq 1 -o -f /etc/xCATMN ]; then
+    if [ ! -f $conf_file.XCATORIG ];  then
+       cp -f $conf_file $conf_file.XCATORIG
+    fi
+    sed -i 's/#udp(ip("0.0.0.0/udp(ip("0.0.0.0/' $conf_file
   fi
-  sed -i 's/#udp(ip("0.0.0.0/udp(ip("0.0.0.0/' $conf_file
 fi
 
 
