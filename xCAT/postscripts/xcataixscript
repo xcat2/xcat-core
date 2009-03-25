@@ -1,0 +1,132 @@
+#!/usr/bin/env perl -w
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#
+#   xCAT script resource for NIM (AIX nodes)
+#
+#####################################################
+
+use File::Path;
+
+# since we don't have syslog set up yet we'll
+# just save msgs in a local log file
+$logdir = "/var/log/xcat";
+
+if (!-d $logdir) {
+	mkpath($logdir);
+}
+
+$::sdate = `/bin/date`;
+chomp $::sdate;
+my $logfile = $logdir . "/xcat.log";
+
+# this log should not contain much so it might be ok to let it grow?
+# at least we'll have the errors preserved
+open(LOGFILE,">>",$logfile);
+$::LOG_FILE = \*LOGFILE;
+
+# get hostname
+$::shorthost = `hostname -s`;
+chomp $::shorthost;
+
+my $servnode;
+# get the name of my service node/NIM master from the /etc/niminfo file
+if (-f "/etc/niminfo") {
+   	$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
+   	&runcmd($cmd);
+   	my $SNline = $::outref;
+	my $junk;
+   	($junk, $servnode) =  split(/=/, $SNline);
+
+	# save the servnode from niminfo in xcatinfo
+	my $xcatinfo="/etc/xcatinfo";
+	open(XCATINFO,">",$xcatinfo);
+	print XCATINFO "XCATSERVER=$servnode\n";
+	close(XCATINFO);
+} else {
+	print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
+   	print $::LOG_FILE "$::sdate  xcataixscript: Could not find /etc/niminfo file.\n";
+}
+$servnode =~ s/^\s*//;
+chomp $servnode;
+
+# create the xcatpost dir
+my $cmd = "mkdir -m 755 -p /xcatpost";
+if (&runcmd($cmd) != 0) {
+	print "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
+	print $::LOG_FILE "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
+}
+
+# get the contents of the /install/postscripts dir on the server
+#   - mount dir from server and copy files
+my $mcmd = "mkdir -p /xcatmnt; mount -o nolock $servnode:/install/postscripts /xcatmnt";
+if (&runcmd($mcmd) != 0) {
+    print "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
+}
+
+my $cpcmd;
+if ((@ARGV==0) || ($ARGV[0] != 2)) {
+    $cpcmd = "cp -r /xcatmnt/* /xcatpost >/dev/null 2>&1";
+} else {
+    # when argv[1]=2, there is only one postscript file,
+    #   user wants only download it to save time
+    $cpcmd= "cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
+}
+
+if (&runcmd($cpcmd) != 0) {
+#    print "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+#	print $::LOG_FILE "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+}
+
+# make sure all are executable
+my $chcmd = "chmod +x /xcatpost/*";
+if (&runcmd($chcmd) != 0) {
+    print "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
+}
+
+my $ucmd = "umount /xcatmnt; rmdir /xcatmnt";
+if (&runcmd($ucmd) != 0) {
+    print "$::sdate xcataixpost: Could not unmount /install.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not unmount /install/postscripts.\n";
+}
+
+# add xcatd to /etc/inittab???
+# see if it is already there
+my $lsicmd = "/usr/sbin/lsitab xcat > /dev/null 2>&1";
+if (&runcmd($lsicmd) != 0) {
+	# ok - create the entry
+	my $mkitab_cmd = 'mkitab "xcat:2:wait:/xcatpost/xcataixpost > /dev/console 2>&1"';
+	if (&runcmd($mkitab_cmd) != 0) {
+		print "$::sdate xcataixpost: Could not add xcataixpost to /etc/inittab.\n";
+		print $::LOG_FILE "$::sdate xcataixpost: Could not add xcataixpost to /etc/inittab.\n";
+	}
+}
+
+close($::LOG_FILE);
+
+exit 0;
+
+#####################################################
+#
+# run the command
+#
+#####################################################
+sub runcmd
+{
+    my ($cmd) = @_;
+	my $rc=0;
+    $cmd .= ' 2>&1' ;
+    $::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+#			print "$::sdate  xcataixpost: $::outref\n";
+#			print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
+        }
+    }
+ return $rc;
+}
