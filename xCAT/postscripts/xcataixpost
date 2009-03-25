@@ -4,10 +4,16 @@
 #
 #   xCAT post script for AIX nodes
 #
+#               This script is run from the /etc/inittab file on both
+#               diskless and diskfull AIX nodes
+#
+#               It is also run by the updatenode cmd
+#
 #####################################################
 
 use File::Path;
 use IO::Socket;
+use Getopt::Long;
 
 sleep int(rand(10));
 
@@ -27,6 +33,14 @@ my $logfile = $logdir . "/xcat.log";
 # at least we'll have the errors preserved
 open(LOGFILE,">>",$logfile);
 $::LOG_FILE = \*LOGFILE;
+
+#
+# Process the command line...
+#
+if (!GetOptions('copy|c' => \$::opt_c,))
+{    # Gather options
+        exit 1;
+}
 
 # get hostname
 $::shorthost = `hostname -s`;
@@ -62,40 +76,46 @@ if (-f "/etc/xcatinfo") {
 $servnode =~ s/^\s*//;
 chomp $servnode;
 
-# create the xcatpost dir
-my $cmd = "mkdir -p /xcatpost";
-if (&runcmd($cmd) != 0) {
-	print "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
-	print $::LOG_FILE "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
-}
+# if the /xcatpost dir has not been populated or the -c option is
+#   specified then do the mount and copy of /install/postscripts
+if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
+	# create the xcatpost dir
+	my $cmd = "mkdir -p /xcatpost";
+	if (&runcmd($cmd) != 0) {
+		print "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
+		print $::LOG_FILE "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
+	}
 
-# get the contents of the /install/postscripts dir on the server
-#   - mount dir from server and copy files
-my $mcmd = "mkdir -p /xcatmnt; mount $servnode:/install/postscripts /xcatmnt";
-if (&runcmd($mcmd) != 0) {
-    print "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
-}
+	# get the contents of the /install/postscripts dir on the server
+	#   - mount dir from server and copy files
+	my $mcmd = "mkdir -p /xcatmnt; mount $servnode:/install/postscripts /xcatmnt";
+	if (&runcmd($mcmd) != 0) {
+    	print "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
+    	print $::LOG_FILE "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
+	}
 
-my $cpcmd;
-if ((@ARGV==0) || ($ARGV[0] != 2)) {
-    $cpcmd = "cp -r /xcatmnt/* /xcatpost 2>/dev/null";
-} else {
-    # when argv[1]=2, there is only one postscript file,
-    #   user wants only download it to save time
-    $cpcmd= "cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
-}
+	my $cpcmd;
+	if ((@ARGV==0) || ($ARGV[0] != 2)) {
+    	$cpcmd = "cp -r /xcatmnt/* /xcatpost 2>/dev/null";
+	} else {
+    	# when argv[1]=2, there is only one postscript file,
+    	#   user wants only download it to save time
+    	$cpcmd= "cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
+	}
 
-if (&runcmd($cpcmd) != 0) {
-#    print "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
-#	print $::LOG_FILE "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
-}
+	if (&runcmd($cpcmd) != 0) {
+	#    print "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+	#	print $::LOG_FILE "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+	}
 
-my $ucmd = "umount /xcatmnt; rmdir /xcatmnt";
-if (&runcmd($ucmd) != 0) {
-    print "$::sdate xcataixpost: Could not unmount /install.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not unmount /install/postscripts.\n";
-}
+	my $ucmd = "umount /xcatmnt; rmdir /xcatmnt";
+	if (&runcmd($ucmd) != 0) {
+    	print "$::sdate xcataixpost: Could not unmount /install.\n";
+    	print $::LOG_FILE "$::sdate xcataixpost: Could not unmount /install/postscripts.\n";
+	}
+
+} # end recopy postscripts
+
 
 # request the xCAT postscript for this particular node
 $scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
@@ -206,7 +226,6 @@ sub  getmypost {
 			next;
 		}
 		print POSTSCRIPT "$line\n";
-#print "xcataixpost: line = \'$line\'\n";
 	}
 	close(POSTSCRIPT);
 	close $remote;

@@ -146,9 +146,15 @@ sub setupAIXsn
     #    `logger -t xcat $msg`;
     }
 
+	# set ulimit - so we can copy over large files - like spot
+	if (&runcmd("/usr/bin/chuser fsize=-1 root") != 0) {
+		$msg = "$::sdate servicenode: Could not change ulimit\n";
+		`logger -t xcat $msg`;
+	}
+
 	# do nim master setup - master fileset already installed
-	if (&runcmd("nim_master_setup -a mk_resource=no") != 0) {
-		$msg = "$::sdate servicenode: Could not run nim_master_setup.\n";
+    if (&runcmd("/usr/sbin/nim_master_setup -a mk_resource=no") != 0) {
+        $msg = "$::sdate servicenode: Could not run nim_master_setup.\n";
         `logger -t xcat $msg`;
     }
 
@@ -246,6 +252,7 @@ sub getresponse
 	my ($req) = @_;
 
 	my $port = "3001";
+	my $node = $ENV{'NODE'};
 
 	# open listener connection to wait for check from management node
 	my $lpid = &openlistener();
@@ -256,6 +263,21 @@ sub getresponse
 		PeerPort  => $port,
 		Proto    => 'tcp',
 	);
+
+	# try a few more times
+	my $times=1;  
+	while (!$sock) {
+		sleep(2);
+		$times++;
+		$sock = IO::Socket::SSL->new(
+        	PeerAddr => $::servnode,
+        	PeerPort  => $port,
+        	Proto    => 'tcp',
+    	);	
+		if ($times == 5) {
+			last;
+		}
+	}
 
 	unless ($sock) {
 		my $msg = "servicenode: Cannot connect to host \'$::servnode\'\n";
