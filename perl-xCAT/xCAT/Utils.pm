@@ -3437,7 +3437,7 @@ sub osver
 
 #-------------------------------------------------------------------------------
 
-=head3 checkCreds 
+=head3 checkCredFiles 
         Checks the various credential files on the Management Node to
 		make sure the permission are correct for using and transferring
 		to the nodes and service nodes.
@@ -3458,9 +3458,9 @@ sub osver
 =cut
 
 #-------------------------------------------------------------------------------
-sub checkCreds
+sub checkCredFiles
 {
-    my $lib  = shift;
+    my $lib = shift;
     my $cb  = shift;
     my $dir = "/install/postscripts/_xcat";
     if (-d $dir)
@@ -3492,6 +3492,28 @@ sub checkCreds
         $rsp->{data}->[0] = "Error: $dir is missing.";
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
+    
+
+    my $dir = "/etc/xcat/cert";
+    if (-d $dir)
+    {
+        my $file = "$dir/server-cred.pem";  # from getcredentials
+        if (!(-e $file))
+        {
+
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error: $file is missing.";
+            xCAT::MsgUtils->message("I", $rsp, $cb);
+        }
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Error: $dir is missing.";
+        xCAT::MsgUtils->message("I", $rsp, $cb);
+    }
+    
+
     my $dir = "/install/postscripts/ca";
     if (-d $dir)
     {
@@ -3511,6 +3533,40 @@ sub checkCreds
         }
         else
         {    # ca_cert.pem missing
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error: $file is missing.";
+            xCAT::MsgUtils->message("I", $rsp, $cb);
+        }
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Error: $dir is missing.";
+        xCAT::MsgUtils->message("I", $rsp, $cb);
+    }
+
+    # todo, I think  next release this directory can be removed and
+    # copycerts modified because ca.pem is gotten by getcredentials from
+    # /etc/xcat/cert
+    my $dir = "/install/postscripts/cert";
+    if (-d $dir)
+    {
+        my $file = "$dir/ca.pem";
+        if (-e $file)
+        {
+            my $file2 = "$dir/*" ;
+            my $cmd = "/bin/chmod 0644 $file2";
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Error on command: $cmd";
+                xCAT::MsgUtils->message("I", $rsp, $cb);
+
+            }
+        }
+        else
+        {    # ca.pem missing
             my $rsp = {};
             $rsp->{data}->[0] = "Error: $file is missing.";
             xCAT::MsgUtils->message("I", $rsp, $cb);
