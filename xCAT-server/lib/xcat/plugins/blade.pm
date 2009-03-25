@@ -2785,7 +2785,9 @@ sub dompa {
   }
   # Only telnet commands
   unless ( @$args ) {
-    return;
+    if($command ne "getmacs"){
+      return;
+    }
   }
 
   $session = new SNMP::Session(
