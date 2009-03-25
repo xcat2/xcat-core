@@ -57,8 +57,11 @@ sub start
     my $value=5; #default
     my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("pcpmon");
     
-    my $reading=$settings{'ping-interval'};
-    if ($reading>0) { $value=$reading;}
+    my $reading;
+    if (exists($settings{'ping-interval'})) {
+      $reading=$settings{'ping-interval'};;
+      if ($reading>0) { $value=$reading;}
+    }
     
     #create the cron job, it will run the command every 5 minutes(default and can be changed).
     my $newentry;

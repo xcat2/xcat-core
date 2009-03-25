@@ -131,8 +131,11 @@ sub startNodeStatusMon
   #foreach (keys(%settings)) {
   #  print "key=$_, value=$settings{$_}\n";
   #}
-  my $reading=$settings{'ping-interval'};
-  if ($reading>0) { $value=$reading;}
+  my $reading;
+  if (exists($settings{'ping-interval'})) { 
+    $reading=$settings{'ping-interval'};
+    if ($reading>0) { $value=$reading;}
+  }
    
   #create the cron job, it will run the command every 3 minutes.
   my $newentry;
