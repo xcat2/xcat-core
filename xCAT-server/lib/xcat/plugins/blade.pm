@@ -1359,6 +1359,9 @@ sub getmacs {
 	       push @midxary,$1;
 	     }
            }
+       } else {
+           $nrtab->close;
+           return -1, "please set noderes.installnic or noderes.primarynic";
        }
    }
    if ($code==0) {
