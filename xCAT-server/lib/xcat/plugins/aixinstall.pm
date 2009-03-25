@@ -2551,8 +2551,8 @@ sub get_nim_attr_val
     if ($::RUNCMD_RC  != 0)
     {
 		my $rsp;
-        push @{$rsp->{data}}, "Could not run lsnim command.\n";
-#        xCAT::MsgUtils->message("E", $rsp, $callback);
+        push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
 
@@ -2601,7 +2601,7 @@ sub get_res_loc {
     if ($::RUNCMD_RC  != 0)
     {
 		my $rsp;
-        push @{$rsp->{data}}, "Could not run lsnim command.\n";
+        push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
@@ -3717,11 +3717,15 @@ sub prenimnodeset
 		}
 	}
 
-	# add the "xcataixpost" script to each image def for standalone systems
+	# add the "xcataixscript" script to each image def for standalone systems
 	foreach my $i (@image_names) {
 		if ( $imghash{$i}{nimtype} =~ /standalone/) {
 			# add it to the list of scripts for this image
-			$imghash{$i}{'script'} .= "xcataixpost";
+			if (defined($imghash{$i}{'script'}) ) {
+				$imghash{$i}{'script'} .= ",xcataixscript";
+			} else {
+				$imghash{$i}{'script'} .= "xcataixscript";
+			}
 
 			# also make sure to create the resource
 			$add_xcataixpost++;
@@ -3775,26 +3779,26 @@ sub prenimnodeset
 
 		my $createscript=0;
 		# see if it already exists
-		my $scmd = qq~$pre /usr/sbin/lsnim -l 'xcataixpost' 2>/dev/null~;
+		my $scmd = qq~$pre /usr/sbin/lsnim -l 'xcataixscript' 2>/dev/null~;
 		xCAT::Utils->runcmd($scmd, 0);
 		if ($::RUNCMD_RC != 0) {
 			# doesn't exist so create it
 			$createscript=1;
 		} else {
 			# it exists so see if it's in the correct location
-			my $loc = &get_nim_attr_val('xcataixpost', 'location', $callback, $nimprime);
+			my $loc = &get_nim_attr_val('xcataixscript', 'location', $callback, $nimprime);
 
 			# see if it's in the wrong place
-			if ($loc eq "/install/postscripts/xcataixpost") {
+# TODO - how handle migration????
+			if ($loc ne "/install/nim/scripts/xcataixscript") {
 				# need to remove this def and create a new one
 				$createscript=1;
 
-				my $rcmd = qq~$pre /usr/sbin/nim -Fo remove 'xcataixpost' 2>/dev/null~;
+				my $rcmd = qq~$pre /usr/sbin/nim -Fo remove 'xcataixscript' 2>/dev/null~;
 				xCAT::Utils->runcmd($rcmd, 0);
 				if ($::RUNCMD_RC != 0) {
-					# error - could not remove NIM xcataixpost script resource.
+					# error - could not remove NIM xcataixscript script resource.
 				}
-
 			}
 
 		}
@@ -3802,27 +3806,27 @@ sub prenimnodeset
 		# create a new one if we need to
 		if ($createscript) {
 			# copy file to /install/nim/scripts
-			my $ccmd = qq~$pre mkdir -m 644 -p /install/nim/scripts; cp /install/postscripts/xcataixpost /install/nim/scripts 2>/dev/null; chmod +x /install/nim/scripts/xcataixpost~;
+			my $ccmd = qq~$pre mkdir -m 644 -p /install/nim/scripts; cp /install/postscripts/xcataixscript /install/nim/scripts 2>/dev/null; chmod +x /install/nim/scripts/xcataixscript~;
 			xCAT::Utils->runcmd($ccmd, 0);
 			if ($::RUNCMD_RC != 0) {
 				my $rsp;
-				push @{$rsp->{data}}, "Could not copy xcataixpost.";
+				push @{$rsp->{data}}, "Could not copy xcataixscript.";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
 				return 1;
 			}
 
-			# define the new xcataixpost resource
-			my $dcmd = qq~$pre /usr/sbin/nim -o define -t script -a server=master -a location=/install/nim/scripts/xcataixpost xcataixpost 2>/dev/null~;
+			# define the xcataixscript resource
+			my $dcmd = qq~$pre /usr/sbin/nim -o define -t script -a server=master -a location=/install/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
 			xCAT::Utils->runcmd($dcmd, 0);
 			if ($::RUNCMD_RC != 0) {
 				my $rsp;
-				push @{$rsp->{data}}, "Could not create a NIM resource for xcataixpost.\n";
+				push @{$rsp->{data}}, "Could not create a NIM resource for xcataixscript.\n";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
 				return (1);
 			}
 		}
 
-		# make sure we clean up the /etc/exports file
+		# make sure we clean up the /etc/exports file of old post script
 		my $ecmd = qq~$pre /usr/sbin/rmnfsexp -d /install/postscripts/xcataixpost -B 2>/dev/null~;
 		xCAT::Utils->runcmd($ecmd, 0);
 
@@ -3850,6 +3854,7 @@ sub prenimnodeset
 	#		defined locally when this cmd runs there 
 	#
 	######################################################
+
 	if (&doSNcopy($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash, \%nodeosi)) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not copy NIM resources to the xCAT service nodes.\n";
@@ -4041,7 +4046,7 @@ sub copyres
 	my $FSname = $fslist[7];
 
 	# How much space is the resource using?
-	my $ducmd = "/usr/bin/du -sm $dir | /usr/bin/awk '{print \$1}'";
+	my $ducmd = qq~xdsh $dest /usr/bin/du -sm $dir | /usr/bin/awk '{print \$1}'~;
 
 	my $reqsize = xCAT::Utils->runcmd("$ducmd", -1);
     if ($::RUNCMD_RC  != 0) {
@@ -4207,7 +4212,6 @@ sub doSNcopy
 	#
 	my @nimresources;
 	foreach my $snkey (keys %$sn) {
-
 		if (!&is_me($snkey) ) {
 
 			# running on the management node so
@@ -4893,7 +4897,7 @@ sub checkNIMnetworks
 		my @result = xCAT::Utils->runcmd("$cmd", -1);
 		if ($::RUNCMD_RC  != 0) {
 			my $rsp;
-			push @{$rsp->{data}}, "Could not run lsnim command.\n";
+			push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
 			return 1;
 		}
@@ -4902,9 +4906,9 @@ sub checkNIMnetworks
 			# skip comment lines
 			next if ($l =~ /^\s*#/);
 
-			my ($nimname, $net_addr, $snm) = split(':');
-			$NIMnets{$nimname}{'net_addr'} = $net_addr;
-            $NIMnets{$nimname}{'snm'} = $snm;
+			my ($nimname, $net_addr, $snm) = split(':', $l);
+			$NIMnets{$netwk}{'net_addr'} = $net_addr;
+            $NIMnets{$netwk}{'snm'} = $snm;
 		}
 	}
 
@@ -4913,14 +4917,27 @@ sub checkNIMnetworks
 	#
 	foreach my $node (@nodelist) {
 		# see if the NIM net we need is defined
-	
+
+		# split node mask
+		my ($nm1, $nm2, $nm3, $nm4) = split('\.', $nethash{$node}{mask});
+
+		# split node net addr
+		my ($nn1, $nn2, $nn3, $nn4) = split('\.', $nethash{$node}{net});
+
 		my $foundmatch=0;
 		# foreach nim network name
 		foreach my $netwk (@networks) {
-			
+
+			# split definition mask
+			my ($dm1, $dm2, $dm3, $dm4) = split('\.', $NIMnets{$netwk}{'snm'});
+
+			# split definition net addr
+			my ($dn1, $dn2, $dn3, $dn4) = split('\.', $NIMnets{$netwk}{'net_addr'});
 			# check for the same netmask and network address
-			if (($nethash{$node}{net} eq $NIMnets{$netwk}{net_addr}) && ($nethash{$node}{mask} eq $NIMnets{$netwk}{snm}) ) {
-				$foundmatch=1;
+			if ( ($nn1 == $dn1) && ($nn2 ==$dn2) && ($nn3 == $dn3) && ($nn4 == $dn4) ) {
+				if ( ($nm1 == $dm1) && ($nm2 ==$dm2) && ($nm3 == $dm3) && ($nm4 == $dm4) ) {
+					$foundmatch=1;
+				}
 			}
 		}
 
@@ -5110,6 +5127,39 @@ sub make_SN_resource
 
 	my $nimprime = &getnimprime();
     chomp $nimprime;
+
+	#
+    #  Install/config NIM master if needed
+    #
+	my $lsnimcmd = "/usr/sbin/lsnim -l >/dev/null 2>&1";
+    my $out = xCAT::Utils->runcmd("$lsnimcmd", -1);
+    if ($::RUNCMD_RC  != 0) {
+
+		# then we need to configure NIM on this node
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "Configuring NIM.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
+        #  NIM filesets should already be installed on the service node
+        my $nimcmd = "nim_master_setup -a mk_resource=no";
+        if ($::VERBOSE) {
+            my $rsp;
+            push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+		my $nimout = xCAT::Utils->runcmd("$nimcmd", -1);
+        if ($::RUNCMD_RC  != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not install and configure NIM.\n";
+            if ($::VERBOSE) {
+                push @{$rsp->{data}}, "$nimout";
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    }
 
 	# make sure we have the NIM networks defs etc we need for these nodes
 	if (&checkNIMnetworks($callback, \@nodelist, \%nethash) != 0) {
