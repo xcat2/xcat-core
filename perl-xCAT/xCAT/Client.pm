@@ -230,7 +230,7 @@ sub plugin_command {
     @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
     if (xCAT::NodeRange::nodesmissed()) {
 #     my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',xCAT::NodeRange::nodesmissed)};
-		#my $rsp->{serverdone} = {};
+#     my $rsp->{serverdone} = {};
       print "Invalid nodes in noderangex:".join(',',xCAT::NodeRange::nodesmissed())."\n";
 #     if ($sock) {
 #       print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
@@ -385,6 +385,15 @@ sub plugin_command {
 #       close $parfd;
 #       $check_fds->add($pfd);
 #     }
+    } else {
+      my $pm_name = $plugins_dir."/".$modname.".pm";
+      foreach my $node (keys %{$handler_hash{$_}}) {
+        if ($sock) {
+         print $sock XMLout({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
+        } else {
+         $callback->({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]});
+        }
+      }
     }
   }
   unless ($sock) { return $Main::resps };
