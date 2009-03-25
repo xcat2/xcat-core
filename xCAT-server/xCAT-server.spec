@@ -94,7 +94,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 
 # For now, don't ship these plugins - to avoid AIX dependency on SNMP.
 %ifnos linux
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
+#rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
