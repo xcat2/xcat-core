@@ -353,7 +353,8 @@ sub process_request {
     Arguments:
         nodes  --- a pointer to an array of nodes
         states -- a pointer to a hash table. This hash will be filled by this
-             function node and key and the nodeset stat as the value. 
+             function. The key is the nodeset status and the value is a pointer
+             to an array of nodes. 
     Returns:
        (return code, error message)
 =cut
@@ -365,13 +366,18 @@ sub getNodesetStates {
   }
   my @nodes=@$noderef;
   my $hashref=shift; 
-  
   if (@nodes>0) {
     foreach my $node (@nodes) {
       my $tmp=getstate($node);
       my @a=split(' ', $tmp);
       $stat = $a[0];
-      $hashref->{$node}=$stat;
+      if (exists($hashref->{$stat})) {
+	  my $pa=$hashref->{$stat};
+	  push(@$pa, $node);
+      }
+      else {
+	  $hashref->{$stat}=[$node];
+      }
     }
   }
   return (0, "");

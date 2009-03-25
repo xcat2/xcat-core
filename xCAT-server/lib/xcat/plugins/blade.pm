@@ -2822,33 +2822,62 @@ sub dompa {
   }
 
   #get new node status
-  my %nodestat=();
+  my %oldnodestatus=(); #saves the old node status
+  my @allerrornodes=();
   my $check=0;
-  my $nsh={};
-
   my $global_check=1;
   my $sitetab = xCAT::Table->new('site');
   if ($sitetab) {
     (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
     if ($ref) {
-       if ($ref->{value} =~ /0|N|n/) { $global_check=0; }
+       if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
     }
   }
 
 
   if ($command eq 'rpower') {
-    if (($global_check) && ($args->[0] ne 'stat') && ($args->[0] ne 'status')) { 
+    if (($global_check) && ($args->[0]  ne 'stat') && ($args->[0]  ne 'status') && ($args->[0]  ne 'state')) { 
       $check=1; 
       my @allnodes=keys %{$mpahash->{$mpa}->{nodes}};
 
-      #get the current nodeset stat
-      if (@allnodes>0) {
-        my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
-        if ($ret)  { xCAT::MsgUtils->message('S', "Cannot update node status: $msg\n"); }
+      #save the old status
+      my $nodelisttab = xCAT::Table->new('nodelist');
+      if ($nodelisttab) {
+        my $tabdata     = $nodelisttab->getNodesAttribs(\@allnodes, ['node', 'status']);
+        foreach my $node (@allnodes)
+        {
+            my $tmp1 = $tabdata->{$node}->[0];
+            if ($tmp1) { 
+		if ($tmp1->{status}) { $oldnodestatus{$node}=$tmp1->{status}; }
+		else { $oldnodestatus{$node}=""; }
+	    }
+	}
       }
+      #print "oldstatus:" . Dumper(\%oldnodestatus);
+      
+      #set the new status to the nodelist.status
+      my %newnodestatus=(); 
+      my $newstat;
+      if (($args->[0] eq 'off') || ($args->[0] eq 'softoff')) { 
+	  my $newstat=$::STATUS_POWERING_OFF; 
+	  $newnodestatus{$newstat}=\@allnodes;
+      } else {
+        #get the current nodeset stat
+        if (@allnodes>0) {
+	  my $nsh={};
+          my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
+          if (!$ret) { 
+            foreach (keys %$nsh) {
+		my $newstat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($_, "rpower");
+		$newnodestatus{$newstat}=$nsh->{$_};
+	    }
+	  }
+        }
+      }
+      #print "newstatus" . Dumper(\%newnodestatus);
+      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
   }
-  #print "\nglobal_check=$global_check, check=$check\n";
 
 
   foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
@@ -2867,16 +2896,8 @@ sub dompa {
     #print "output=@output\n";
 
     #update the node status
-    if (($check) && (!$no_op)) {
-      my $stattmp=$output[0];
-      if ($stattmp) {
-        my @atmp=split(' ', $stattmp); 
-        my $newstat=$atmp[$#atmp];
-        if (($newstat eq "on") || ($newstat eq "reset"))  {
-          my $currstate=$nsh->{$node};
-          $nodestat{$node}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
-        } else { $nodestat{$node}=$::STATUS_POWERING_OFF;}
-      }
+    if (($check) && ($no_op)) {
+	push(@allerrornodes, $node);
     }
 
     foreach(@output) {
@@ -2915,25 +2936,21 @@ sub dompa {
     yield;
   }
 
-  #update the node status to the nodelist.status table
   if ($check) {
-    my %node_status=();
-
-    #foreach (keys %nodestat) { print "node=$_,status=" . $nodestat{$_} ."\n"; } #Ling:remove
-
-    foreach my $node (keys %nodestat) {
-      my $stat=$nodestat{$node};
-      if ($stat eq "no-op") { next; }
-      if (exists($node_status{$stat})) {
-        my $pa=$node_status{$stat};
-        push(@$pa, $node);
-      }
-      else {
-        $node_status{$stat}=[$node];
-      }
-    }
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
-
+      #print "allerrornodes=@allerrornodes\n";
+      #revert the status back for there is no-op for the nodes
+      my %old=(); 
+      foreach my $node (@allerrornodes) {
+	  my $stat=$oldnodestatus{$node};
+	  if (exists($old{$stat})) {
+	      my $pa=$old{$stat};
+	      push(@$pa, $node);
+	  }
+	  else {
+	      $old{$stat}=[$node];
+	  }
+      } 
+      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
   }
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";

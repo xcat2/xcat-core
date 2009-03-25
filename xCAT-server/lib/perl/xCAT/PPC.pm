@@ -124,9 +124,9 @@ sub process_command {
     }
 
   #get new node status
-  my %nodestat=();
+  my %oldnodestatus=(); #saves the old node status
+  my @allerrornodes=();
   my $check=0;
-  my $newstat;
   my $global_check=1;
   if ($sitetab) {
     (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
@@ -135,49 +135,56 @@ sub process_command {
     }
   }
 
-  if ($request->{command} eq 'rpower') {
-    my $subcommand=$request->{op};
+  my $command=$request->{command};
+  if (($command eq 'rpower') || ($command eq 'rnetboot')) {
+    my $subcommand="temp";
+    if ($command eq 'rpower') {  $subcommand=$request->{op}; }
     if (($global_check) && ($subcommand ne 'stat') && ($subcommand ne 'status') && ($subcommand ne 'state')) { 
-      $check=1;
+      $check=1; 
       my $noderange = $request->{node}; 
       my @allnodes=@$noderange;
-
-      if ($subcommand eq 'off') { $newstat=$::STATUS_POWERING_OFF; }
-      else { $newstat=$::STATUS_BOOTING;}
-      foreach (@allnodes) { $nodestat{$_}=$newstat; }
-
-      if ($subcommand ne 'off') {
+ 
+      #save the old status
+      my $nodelisttab = xCAT::Table->new('nodelist');
+      if ($nodelisttab) {
+        my $tabdata     = $nodelisttab->getNodesAttribs(\@allnodes, ['node', 'status']);
+        foreach my $node (@allnodes)
+        {
+            my $tmp1 = $tabdata->{$node}->[0];
+            if ($tmp1) { 
+		if ($tmp1->{status}) { $oldnodestatus{$node}=$tmp1->{status}; }
+		else { $oldnodestatus{$node}=""; }
+	    }
+	}
+      }
+      #print "oldstatus:" . Dumper(\%oldnodestatus);
+      
+      #set the new status to the nodelist.status
+      my %newnodestatus=(); 
+      my $newstat;
+      if (($subcommand eq 'off') || ($subcommand eq 'softoff')) { 
+	  my $newstat=$::STATUS_POWERING_OFF; 
+	  $newnodestatus{$newstat}=\@allnodes;
+      } else {
         #get the current nodeset stat
         if (@allnodes>0) {
-   my $nsh={};
+	  my $nsh={};
           my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
-          if ($ret) { trace( $request, $msg );}
-          else {
+          if (!$ret) { 
             foreach (keys %$nsh) {
-       my $currstate=$nsh->{$_};
-              $nodestat{$_}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "rpower");
-     }
-   }
+		my $newstat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($_, $command);
+		$newnodestatus{$newstat}=$nsh->{$_};
+	    }
+	  } else {
+	      trace( $request, $msg );
+	  }
         }
       }
-    }
-  } elsif ($request->{command} eq 'rnetboot') { 
-    $check=1;
-    my $noderange = $request->{node}; 
-    my @allnodes=@$noderange;
-    #get the current nodeset stat
-    if (@allnodes>0) {
-      my $nsh={};
-      my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
-      if ($ret) { trace( $request, $msg );}
-      else {
-        foreach (keys %$nsh) {
-          my $currstate=$nsh->{$_};
-          $nodestat{$_}=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($currstate, "netboot");
-        }
-      }
+      #print "newstatus" . Dumper(\%newnodestatus);
+      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
   }
+
 
 
     #######################################
@@ -192,12 +199,12 @@ sub process_command {
    
     foreach ( @$nodes ) {
         while ( $children > $request->{ppcmaxp} ) {
-            my $errornodes={};
-            child_response( $callback, $fds, $errornodes);
+            my $handlednodes={};
+            child_response( $callback, $fds, $handlednodes);
 
             #update the node status to the nodelist.status table
             if ($check) {
-         updateNodeStatus(\%nodestat, $errornodes);
+		updateNodeStatus($handlednodes, \@allerrornodes);
             }
 
             Time::HiRes::sleep(0.1);
@@ -224,12 +231,12 @@ sub process_command {
     # Process responses from children
     #######################################
     while ( $fds->count > 0 or $children > 0 ) {
-        my $errornodes={};
-        child_response( $callback, $fds, $errornodes);
+        my $handlednodes={};
+        child_response( $callback, $fds, $handlednodes);
 
         #update the node status to the nodelist.status table
         if ($check) {
-   updateNodeStatus(\%nodestat, $errornodes);
+	    updateNodeStatus($handlednodes, \@allerrornodes);
         }
 
         Time::HiRes::sleep(0.1);
@@ -238,11 +245,11 @@ sub process_command {
     #drain one more time
     my $rc=1;
     while ( $rc>0 ) {
-      my $errornodes={};
-      $rc=child_response( $callback, $fds, $errornodes);
+      my $handlednodes={};
+      $rc=child_response( $callback, $fds, $handlednodes);
       #update the node status to the nodelist.status table
       if ($check) {
-        updateNodeStatus(\%nodestat, $errornodes);
+        updateNodeStatus($handlednodes, \@allerrornodes);
       }
     }
 
@@ -252,6 +259,24 @@ sub process_command {
         trace( $request, $msg );
     }
 
+    if ($check) {
+        #print "allerrornodes=@allerrornodes\n";
+        #revert the status back for there is no-op for the nodes
+        my %old=(); 
+        foreach my $node (@allerrornodes) {
+	    my $stat=$oldnodestatus{$node};
+	    if (exists($old{$stat})) {
+		my $pa=$old{$stat};
+		push(@$pa, $node);
+	    }
+	    else {
+		$old{$stat}=[$node];
+	    }
+        } 
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
+    }  
+
+
     return(0);
 }
 
@@ -259,21 +284,11 @@ sub process_command {
 # updateNodeStatus
 ##########################################################################
 sub updateNodeStatus {
-  my $nodestat=shift;
-  my $errornodes=shift;
-  my %node_status=();
-  foreach my $node (keys(%$errornodes)) {
-    if ($errornodes->{$node} == -1) { next;} #has error, not updating status
-    my $stat=$nodestat->{$node};
-    if (exists($node_status{$stat})) {
-      my $pa=$node_status{$stat};
-      push(@$pa, $node);
-    }
-    else {
-      $node_status{$stat}=[$node];
-    }
+  my $handlednodes=shift;
+  my $allerrornodes=shift;
+  foreach my $node (keys(%$handlednodes)) {
+    if ($handlednodes->{$node} == -1) { push(@$allerrornodes, $node); }  
   }
-  xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
 }
 
 ##########################################################################

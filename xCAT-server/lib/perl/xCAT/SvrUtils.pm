@@ -40,9 +40,6 @@ sub getNodesetStates
         my $tab = xCAT::Table->new('noderes');
         if (!$tab) { return (1, "Unable to open noderes table."); }
 
-        #initialize all nodes
-        foreach (@nodes) { $hashref->{$_} = "undefined"; }
-
         my @aixnodes    = ();
         my @pxenodes    = ();
         my @yabootnodes = ();
