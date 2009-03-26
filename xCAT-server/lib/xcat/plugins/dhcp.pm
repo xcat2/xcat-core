@@ -402,6 +402,31 @@ sub process_request
 
    if (grep /^-n$/, @{$req->{arg}})
     {
+        #support for /etc/sysconfig/dhcpd
+        if(-e "/etc/sysconfig/dhcpd") {
+            my @dhcpdifs = split / /,`grep '^DHCPD_INTERFACE' /etc/sysconfig/dhcpd |sed -e 's/DHCPD_INTERFACE=\"//' |sed -e 's/\"//'`;
+            if(scalar @dhcpdifs > 0) {
+                chomp $dhcpdifs[scalar @dhcpdifs - 1];
+            }
+            #get "mgtifname" from network table
+            my $nettab = xCAT::Table->new("networks");
+            my @nets_ref = $nettab->getAllAttribs('net','mgtifname');
+            
+            foreach(@nets_ref) {
+                my $if = $_->{mgtifname};
+                #add the neccessary mgtifnames to @dhcpifs
+                my $num = grep /$if/, @dhcpdifs;
+                next if ($num > 0);
+                push @dhcpdifs, $if;
+            }
+
+            #update DHCPINTERFACES in the file /etc/sysconfig/dhcpd
+            my @tmp = map {"$_ "} @dhcpdifs;
+            my $output = `sed 's/^DHCPD_INTERFACE=.*$\"/DHCPD_INTERFACE=\"@tmp\"/' /etc/sysconfig/dhcpd`;
+            open DHCPD_FD, '>', "/etc/sysconfig/dhcpd";
+            print DHCPD_FD $output;
+            close DHCPD_FD;
+        }
         if (-e "/etc/dhcpd.conf")
         {
             my $bakname = "/etc/dhcpd.conf.xcatbak";
