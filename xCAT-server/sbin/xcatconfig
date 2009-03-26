@@ -1134,36 +1134,21 @@ if ($::osname eq 'Linux')
         }
     }
 
-    # run mknb
-    if ($::arch eq "x86_64")
+    # run mknb - only needed for Intel platforms for now
+    if ($::arch eq "x86_64" || $::arch eq "x86")
     {
-        my $cmd = "$::XCATROOT/sbin/mknb x86_64";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E',
-                     "The mknb x86_64 command returned error: $::RUNCMD_RC.\n");
-        }
-        else
-        {
-            xCAT::MsgUtils->message('I',
-                            "The mknb x86_64 command was run with no error.\n");
-        }
-    }
-    if ($::arch eq "ppc64")
-    {
-        my $cmd = "$::XCATROOT/sbin/mknb ppc64";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E',
-                      "The mknb ppc64 command returned error: $::RUNCMD_RC.\n");
-        }
-        else
-        {
-            xCAT::MsgUtils->message('I',
-                             "The mknb ppc64 command was run with no error.\n");
-        }
+    	foreach my $ar (qw(x86 x86_64 ppc64)) {
+        	my $cmd = "$::XCATROOT/sbin/mknb $ar";
+        	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        	if ($::RUNCMD_RC != 0) 	{
+            	xCAT::MsgUtils->message('E',
+                     "The mknb $ar command returned error: $::RUNCMD_RC.\n");
+        		}
+        	else {
+            	xCAT::MsgUtils->message('I',
+                            "The mknb $ar command was run with no error.\n");
+        		}
+        	}
     }
 
     # run makenetworks

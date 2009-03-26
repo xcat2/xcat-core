@@ -98,6 +98,8 @@ if $GREP -E '^[UAD] +xCATsn/' ../coresvnup; then
    mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
    ./makexcatsnrpm ppc64
    mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
+   ./makexcatsnrpm s390x
+   mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
 fi
 if $GREP -E '^[UAD] +xCAT/' ../coresvnup; then
    UPLOAD=1
@@ -106,9 +108,11 @@ if $GREP -E '^[UAD] +xCAT/' ../coresvnup; then
    ./makexcatrpm x86_64
    mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
    mv /usr/src/$pkg/SRPMS/xCAT-$VER*rpm $SRCDIR
+   ./makexcatrpm i386
+   mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
    ./makexcatrpm ppc64
    mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
-   ./makexcatrpm i386
+   ./makexcatrpm s390x
    mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
 fi
 

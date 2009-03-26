@@ -17,11 +17,19 @@ Provides: xCATsn = %{version}
 Requires: xCAT-server xCAT-client  perl-xCAT perl-XML-Parser
 
 %ifos linux
-Requires: atftp dhcp httpd nfs-utils expect conserver fping bind
+# yaboot-xcat is pulled in so any SN can manage ppc nodes
+Requires: atftp dhcp httpd nfs-utils expect fping bind yaboot-xcat
+%ifarch s390x
+# No additional requires for zLinux right now
+%else
+Requires: conserver
+%endif
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-Requires: xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 syslinux
+# All versions of the nb rpms are pulled in so an x86 MN can manage nodes of any arch.
+# The nb rpms are used for dhcp-based discovery, and flashing, so for now we do not need them on a ppc MN.
+Requires: xCAT-nbroot-oss-x86 xCAT-nbroot-core-x86 xCAT-nbkernel-x86 xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 xCAT-nbroot-oss-ppc64 xCAT-nbroot-core-ppc64 xCAT-nbkernel-ppc64 syslinux
 Requires: ipmitool >= 1.8.9
 %endif
 
