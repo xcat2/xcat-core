@@ -98,19 +98,11 @@ echo "rpm -Uvh net-snmp-perl-5.4.2.1-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 # get the OSS README file
 cp ./../../../xcat-dep/trunk/AIX/README $RPMDIR/
 
-# add the bundle files to the dep packages
-cp $BLDTOP/xCATaixSN.bnd $RPMDIR/
-cp $BLDTOP/xCATaixSSH.bnd $RPMDIR/
-cp $BLDTOP/xCATaixSSL.bnd $RPMDIR/
-
 # make the default required RPM tar.gz file
 ls *.rpm > $RPMDIR/flist
 chmod +x $RPMDIR/instoss
 echo "README" >> $RPMDIR/flist
 echo "instoss" >> $RPMDIR/flist
-echo "xCATaixSN.bnd" >> $RPMDIR/flist
-echo "xCATaixSSH.bnd" >> $RPMDIR/flist
-echo "xCATaixSSL.bnd" >> $RPMDIR/flist
 tar -cvf $RPMDIR/dep-aix-$VER-$SNAP.tar -L $RPMDIR/flist
 gzip $RPMDIR/dep-aix-$VER-$SNAP.tar
 

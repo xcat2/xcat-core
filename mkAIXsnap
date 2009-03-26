@@ -74,18 +74,21 @@ echo "rpm -Uvh xCAT-$VER-*rpm" >> $RPMDIR/instxcat
 #
 # create the tar.gz file to upload
 #
+chmod +x $RPMDIR/instxcat
+
+# add to flist
+echo "instxcat" > $RPMDIR/flist
+
+# add the service node bundle files 
+cp $BLDTOP/xCATaixSN.bnd $RPMDIR/
+cp $BLDTOP/xCATaixSSH.bnd $RPMDIR/
+cp $BLDTOP/xCATaixSSL.bnd $RPMDIR/
+echo "xCATaixSN.bnd" >> $RPMDIR/flist
+echo "xCATaixSSH.bnd" >> $RPMDIR/flist
+echo "xCATaixSSL.bnd" >> $RPMDIR/flist
+
 cd $RPMDIR
-chmod +x ./instxcat
-
-# add all the file names to flist
-echo "instxcat" > ./flist
-ls *.rpm >> ./flist
-
-# add the service node bundle files to the tar file
-#cp $BLDTOP/xCATaixSN.bnd $RPMDIR
-#cp $BLDTOP/xCATaixSSH.bnd $RPMDIR 
-#echo "xCATaixSN.bnd" >> ./flist
-#echo "xCATaixSSH.bnd" >> ./flist
+ls *.rpm >> flist
 
 #TIME=`date +%Y%m%d%H%M`
 tar -cvf core-aix-snap.tar -L flist
