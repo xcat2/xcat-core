@@ -20,6 +20,9 @@ my $omshell;
 my $statements;    #Hold custom statements to be slipped into host declarations
 my $callback;
 my $restartdhcp;
+my $sitenameservers;
+my $sitentpservers;
+my $sitelogservers;
 my $nrhash;
 my $machash;
 my $iscsients;
@@ -376,6 +379,19 @@ sub process_request
               }
            }
         }
+        ($href) = $sitetab->getAttribs({key => 'nameservers'}, 'value');
+        if ($href and $href->{value}) {
+            $sitenameservers = $href->{value};
+        }
+        ($href) = $sitetab->getAttribs({key => 'ntpservers'}, 'value');
+        if ($href and $href->{value}) {
+            $sitentpservers = $href->{value};
+        }
+        ($href) = $sitetab->getAttribs({key => 'logservers'}, 'value');
+        if ($href and $href->{value}) {
+            $sitelogservers = $href->{value};
+        }
+        ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
         ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
         unless ($href and $href->{value})
         {
@@ -598,6 +614,22 @@ sub process_request
     }
 }
 
+sub putmyselffirst {
+    my $srvlist = shift;
+            if ($srvlist =~ /,/) { #TODO: only reshuffle when requested, or allow opt out of reshuffle?
+                my @dnsrvs = split /,/,$srvlist;
+                my @reordered;
+                foreach (@dnsrvs) {
+                    if (xCAT::Utils->thishostisnot($_)) {
+                        push @reordered,$_;
+                    } else {
+                        unshift @reordered,$_;
+                    }
+                }
+                $srvlist = join(', ',@reordered);
+            }
+            return $srvlist;
+}
 sub addnet
 {
     my $net  = shift;
@@ -643,6 +675,8 @@ sub addnet
         # if here, means we found the idx before which to insert
         my $nettab = xCAT::Table->new("networks");
         my $nameservers;
+        my $ntpservers;
+        my $logservers;
         my $gateway;
         my $tftp;
         my $range;
@@ -652,21 +686,40 @@ sub addnet
         {
             my ($ent) =
               $nettab->getAttribs({net => $net, mask => $mask},
-                    qw(tftpserver nameservers gateway dynamicrange dhcpserver));
+                    qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver));
+            if ($ent and $ent->{ntpservers}) {
+                $ntpservers = $ent->{ntpservers};
+            } elsif ($sitentpservers) {
+                $ntpservers = $sitentpservers;
+            }
+            if ($ent and $ent->{logservers}) {
+                $logservers = $ent->{logservers};
+            } elsif ($sitelogservers) {
+                $logservers = $sitelogservers;
+            }
             if ($ent and $ent->{nameservers})
             {
                 $nameservers = $ent->{nameservers};
             }
             else
             {
+                if ($sitenameservers) {
+                    $nameservers = $sitenameservers;
+                } else {
                 $callback->(
                     {
                      warning => [
-                         "No $net specific entry for nameservers, and dhcp plugin not sourcing from site yet (TODO)"
+                         "No $net specific entry for nameservers, and no nameservers defined in site table."
                      ]
                     }
                     );
+                }
             }
+            $nameservers=putmyselffirst($nameservers);
+            $ntpservers=putmyselffirst($nameservers);
+            $logservers=putmyselffirst($nameservers);
+
+
             if ($ent and $ent->{tftpserver})
             {
                 $tftp = $ent->{tftpserver};
@@ -743,10 +796,10 @@ sub addnet
         {
             push @netent, "    next-server  $tftp;\n";
         }
-				if ($myip){
+		if ($myip){
         	push @netent, "    option log-servers $myip;\n";
         	push @netent, "    option ntp-servers $myip;\n";
-				}
+        }
         push @netent, "    option domain-name \"$domain\";\n";
         if ($nameservers)
         {
