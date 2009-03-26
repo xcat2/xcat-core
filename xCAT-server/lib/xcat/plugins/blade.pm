@@ -1904,9 +1904,9 @@ sub getbladecons {
           next;
       }
       if (defined($ent->{id})) { 
-          $rsp->{node}->[0]->{slot}=$ent->{id};
+          $rsp->{node}->[0]->{slot}=[$ent->{id}];
       } else { 
-          $rsp->{node}->[0]->{slot}="";
+          $rsp->{node}->[0]->{slot}=[""];
       }
       $callback->($rsp);
    }
