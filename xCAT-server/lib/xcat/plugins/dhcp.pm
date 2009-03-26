@@ -453,12 +453,21 @@ sub process_request
     }
 	my $nettab = xCAT::Table->new("networks");
 	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+    my @nsrnoutput = split /\n/,`/bin/netstat -rn`;
+    splice @nsrnoutput, 0, 2;
+    foreach (@nsrnoutput) { #scan netstat
+        my @parts = split  /\s+/;
+        push @nrn,$parts[0].":".$parts[7].":".$parts[2];
+    }
+
 	foreach(@vnets){
 		my $n = $_->{net};
 		my $if = $_->{mgtifname};
 		my $nm = $_->{mask};
 		#$callback->({data => ["array of nets $n : $if : $nm"]});
-		push @nrn, "$n:$if:$nm";
+        if ($if =~ /!remote!/) { #only take in networks with special interface
+    		push @nrn, "$n:$if:$nm";
+        }
 	}
     if ($querynics)
     {    #Use netstat to determine activenics only when no site ent.
