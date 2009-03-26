@@ -332,6 +332,7 @@ sub preprocess_request
 
 sub process_request
 {
+    my $oldmask = umask 0077;
     $restartdhcp=0;
     my $req = shift;
     $callback = shift;
@@ -612,6 +613,7 @@ sub process_request
         system("/etc/init.d/dhcpd restart");
         system("chkconfig dhcpd on");
     }
+    umask $oldmask;
 }
 
 sub putmyselffirst {
