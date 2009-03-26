@@ -796,8 +796,14 @@ sub addnet
         {
             push @netent, "    next-server  $tftp;\n";
         }
-		if ($myip){
+        if ($logservers) {
+        	push @netent, "    option log-servers $logservers;\n";
+        } elsif ($myip){
         	push @netent, "    option log-servers $myip;\n";
+        }
+        if ($ntpservers) {
+        	push @netent, "    option ntp-servers $ntpservers;\n";
+        } elsif ($myip){
         	push @netent, "    option ntp-servers $myip;\n";
         }
         push @netent, "    option domain-name \"$domain\";\n";
