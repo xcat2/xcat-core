@@ -37,7 +37,7 @@ BEGIN
 }
 my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
 use lib "$::XCATROOT/lib/perl";
-$ENV{HOME}='/root/';
+#$ENV{HOME}='/root/';
 require xCAT::Client;
 
 #require xCAT::Table;
@@ -90,9 +90,9 @@ sub getans {
     }
 }
 my $cmdref={
-    command=>"getbladecons",
-    arg=>"text",
-    noderange=>$ARGV[0]
+    command=>["getbladecons"],
+    arg=>["text"],
+    noderange=>[$ARGV[0]]
 };
 xCAT::Client::submit_request($cmdref,\&getans);
 until ($mm and $username and $slot) {
