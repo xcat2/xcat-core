@@ -457,7 +457,7 @@ sub process_request
     splice @nsrnoutput, 0, 2;
     foreach (@nsrnoutput) { #scan netstat
         my @parts = split  /\s+/;
-        push @nrn,$parts[0].":".$parts[7].":".$parts[2];
+        push @nrn,$parts[0].":".$parts[7].":".$parts[2],":",$parts[3];
     }
 
 	foreach(@vnets){
@@ -586,7 +586,7 @@ sub process_request
         {
             next;
         }
-        if ($activenics{$line[1]} and $line[2] !~ /G/)
+        if ($activenics{$line[1]} and $line[3] !~ /G/)
         {
             addnet($line[0], $line[2]);
         }
