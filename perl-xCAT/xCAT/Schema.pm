@@ -248,7 +248,7 @@ mpa => {
  },
   },
 networks => {
-    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers dynamicrange nodehostname comments disable)],
+    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange nodehostname comments disable)],
     keys => [qw(net mask)],
     table_desc => 'Describes the networks in the cluster and info necessary to set up nodes on that network.',
  descriptions => {
