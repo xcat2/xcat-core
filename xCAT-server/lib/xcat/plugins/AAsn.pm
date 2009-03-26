@@ -115,17 +115,6 @@ sub handled_commands
 
                 }
 
-                $service = "dhcpserver";
-                if (grep(/$service/, @servicelist))
-                {
-
-                    $rc = &setup_DHCP($nodename);    # setup DHCP
-                    if ($rc == 0)
-                    {
-                        xCAT::Utils->update_xCATSN($service);
-                    }
-
-                }
 
                 $service = "ftpserver";
                 if (grep(/$service/, @servicelist))
@@ -174,6 +163,8 @@ sub handled_commands
                     }
 
                 }
+
+
             }    # end Linux only
 
             #
@@ -201,6 +192,23 @@ sub handled_commands
                 }
 
             }
+            #
+            # setup dhcp only on Linux and last 
+            #
+            if (xCAT::Utils->isLinux())  {
+                my $service = "dhcpserver";
+                if (grep(/$service/, @servicelist))
+                {
+
+                    $rc = &setup_DHCP($nodename);    # setup DHCP
+                    if ($rc == 0)
+                    {
+                        xCAT::Utils->update_xCATSN($service);
+                    }
+
+                }
+            }
+
 
             # done now in setupntp postinstall script, but may change
             #$service = "ntpserver";
