@@ -256,7 +256,7 @@ sub process_request {
 
   #back to normal business
   #if not shared tftpdir, then filter, otherwise, set up everything
-  if ($req->{_disparatetftp}) { #reading hint from preprocess_command
+  if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
      if (xCAT::Utils->nodeonmynet($_)) {
@@ -320,12 +320,23 @@ sub process_request {
     }
   }
   my @normalnodeset = keys %normalnodes;
+  if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
+  $sub_req->({command=>['makedhcp'],arg=>['-l'],
+           node=>\@normalnodeset},$callback);
+  } else {
   $sub_req->({command=>['makedhcp'],
            node=>\@normalnodeset},$callback);
+  }
   my @breaknetboot=keys %breaknetbootnodes;
-  $sub_req->({command=>['makedhcp'],
+  if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+    $sub_req->({command=>['makedhcp'],
+         node=>\@breaknetboot,
+         arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+  } else {
+    $sub_req->({command=>['makedhcp'],
          node=>\@breaknetboot,
          arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+  }
 
 }
 

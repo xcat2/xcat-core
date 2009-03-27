@@ -276,7 +276,7 @@ sub process_request {
   }
 
   #if not shared, then help sync up
-  if ($req->{_disparatetftp}) { #reading hint from preprocess_command
+  if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
      if (xCAT::Utils->nodeonmynet($_)) {
@@ -339,9 +339,14 @@ sub process_request {
     }
   }
   if ($args[0] ne 'stat') {
+  if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+    $sub_req->({command=>['makedhcp'],arg=>['-l'],
+           node=>\@nodes},$callback);
+  } else {
     $sub_req->({command=>['makedhcp'],
            node=>\@nodes},$callback);
    }
+  }
 
 }
 
