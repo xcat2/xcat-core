@@ -216,6 +216,8 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
        $RPM_INSTALL_PREFIX0/sbin/mknb x86
        $RPM_INSTALL_PREFIX0/sbin/mknb x86_64
        $RPM_INSTALL_PREFIX0/sbin/mknb ppc64
+%else
+	true 
 %endif
     fi
     $RPM_INSTALL_PREFIX0/sbin/makenetworks
