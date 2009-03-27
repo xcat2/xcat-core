@@ -356,22 +356,26 @@ sub process_request
            INTF: foreach $dhcpif (split /;/,$dhcpinterfaces) {
               my $host;
               my $savehost;
+              my $foundself;
               if ($dhcpif =~ /\|/) {
                  
                  (my $ngroup,$dhcpif) = split /\|/,$dhcpif;
                  foreach $host (noderange($ngroup)) {
                     $savehost=$host;
-                    if (xCAT::Utils->thishostisnot($host)) {
-                       
-                        next INTF;
+                    unless (xCAT::Utils->thishostisnot($host)) {
+                        $foundself=1;
+                        last;
                     }
                  }
                  if (!defined($savehost)) { # host not defined in db,
                                  # probably management node
-                    if (xCAT::Utils->thishostisnot($ngroup)) {
-                        next INTF;
+                    unless (xCAT::Utils->thishostisnot($ngroup)) {
+                        $foundself=1;
                     }
                  }
+              }
+              unless ($foundself) {
+                  next INTF;
               }
               foreach (split /[,\s]+/, $dhcpif)
               {
@@ -474,7 +478,7 @@ sub process_request
     splice @nsrnoutput, 0, 2;
     foreach (@nsrnoutput) { #scan netstat
         my @parts = split  /\s+/;
-        push @nrn,$parts[0].":".$parts[7].":".$parts[2],":",$parts[3];
+        push @nrn,$parts[0].":".$parts[7].":".$parts[2].":".$parts[3];
     }
 
 	foreach(@vnets){
