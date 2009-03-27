@@ -298,18 +298,23 @@ sub preprocess_request
 {
     my $req = shift;
     $callback = shift;
+    my $localonly
+    @ARGV       = @{$req->{arg}};
+    GetOptions('l' => \$localonly);
     if ($req->{_xcatdest})
     {
         return [$req];
     }    #Exit if the packet has been preprocessed in its history
     my @requests =
       ({%$req});    #Start with a straight copy to reflect local instance
-    my @sn = xCAT::Utils->getSNList('dhcpserver');
-    foreach my $s (@sn)
-    {
-        my $reqcopy = {%$req};
-        $reqcopy->{'_xcatdest'} = $s;
-        push @requests, $reqcopy;
+    unless ($localonly) {
+        my @sn = xCAT::Utils->getSNList('dhcpserver');
+        foreach my $s (@sn)
+        {
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $s;
+            push @requests, $reqcopy;
+        }
     }
     if (scalar(@requests) > 1)
     {               #hierarchy detected, enforce more rigorous sanity

@@ -388,6 +388,7 @@ sub setup_CONS
         # make the consever 8 configuration file
         my $cmdref;
         $cmdref->{command}->[0] = "makeconservercf";
+        $cmdref->{arg}->[0] = "-l";
         $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
         $cmdref->{svboot}->[0]  = "yes";
 
@@ -448,6 +449,7 @@ sub setup_DHCP
     }
     my $cmdref;
     $cmdref->{command}->[0] = "makedhcp";
+    $cmdref->{arg}->[0] = "-l";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
     $cmdref->{arg}->[0]     = "-n";
 
@@ -462,6 +464,7 @@ sub setup_DHCP
     }
     $cmdref;
     $cmdref->{command}->[0] = "makedhcp";
+    $cmdref->{arg}->[0] = "-l";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
     $cmdref->{arg}->[0]     = "-a";
 
