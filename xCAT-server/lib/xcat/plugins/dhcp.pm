@@ -298,7 +298,7 @@ sub preprocess_request
 {
     my $req = shift;
     $callback = shift;
-    my $localonly
+    my $localonly;
     @ARGV       = @{$req->{arg}};
     GetOptions('l' => \$localonly);
     if ($req->{_xcatdest})
