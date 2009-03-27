@@ -542,6 +542,8 @@ site => {
    "  sharedtftp:\tSet to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1.\n\n".
    "  timezone:\t(e.g. America/New_York)\n\n".
    "  useSSHonAIX:\t(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX.\n\n".
+   "  rsh:\tpath to remote shell command for xdsh.\n\n".
+   "  rcp:\tpath to remote copy command for xdcp.\n\n".
    "  svloglocal:\tsyslog on the service node does not get forwarded to the mgmt node - default is 0.\n\n".
    "  xcatconfdir:\t(default /etc/xcat)\n\n".
    "  xcatdport:\tThe port used by the xcatd daemon for client/server communication.\n\n".
