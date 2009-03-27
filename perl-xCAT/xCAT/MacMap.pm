@@ -45,15 +45,15 @@ OID, and have the switch table port value match exactly the format suggested by 
   }
   #Begin guessing, first off, all tested scenarios have likely correct guesses ending
   #in the cfg string, with some non-numeric prefix before it.
-  unless ($namepersnmp =~ /[^0123456789]$namepercfg\z/)  {
-    #Most common case, won't match at all
-    return 0;
-  }
   #3com convention, contributed by Aaron Knister
   if ( $namepersnmp =~ /^RMON Port (0?)(\d+) on unit \d+/ ) {
      if ( $2 =~ $namepercfg ) {
          return 1;
      }
+  }
+  unless ($namepersnmp =~ /[^0123456789]$namepercfg\z/)  {
+    #Most common case, won't match at all
+    return 0;
   }
 
   #stop contemplating vlan, Nu, stacking ports, and console interfaces
@@ -62,7 +62,7 @@ OID, and have the switch table port value match exactly the format suggested by 
   }
   #broken up for code readablitiy, don't check port channel numbers or CPU
   #have to distinguish betweer Port and Po and PortChannel
-  if (($namepersnmp !~ /Port #/) and ($namepersnmp !~ /Port\d/) and ($namepersnmp =~ /Po/) or ($namepersnmp =~ /LAG/) or ($namepersnmp =~ /CPU/)) {
+  if (($namepersnmp !~ /Port #/) and ($namepersnmp !~ /Port\d/) and ($namepersnmp =~ /Po/) or ($namepersnmp =~ /po\d/) or ($namepersnmp =~ /XGE/) or ($namepersnmp =~ /LAG/) or ($namepersnmp =~ /CPU/)) {
     return 0;
   }
   #don't contemplate ManagementEthernet
