@@ -537,7 +537,7 @@ site => {
    "  nodestatus:\tIf set to 'n', the nodelist.status column will not be updated during the node deployment, node discovery and power operation.\n\n".
    "  ntpservers:\tA comma delimited list of NTP servers for the cluster - often the xCAT management node.\n\n".
    "  ppcmaxp:\tThe max # of processes for PPC hw ctrl.\n\n".
-   "  ppcretry:\tThw max # of PPC hw connection attempts before failing.\n\n".
+   "  ppcretry:\tThe max # of PPC hw connection attempts before failing.\n\n".
    "  ppctimeout:\tThe timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
    "  sharedtftp:\tSet to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1.\n\n".
    "  timezone:\t(e.g. America/New_York)\n\n".
