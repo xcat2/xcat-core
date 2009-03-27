@@ -855,9 +855,11 @@ sub mkclientdef
 		if (!$::objhash{$node}{'mac'})
 		{
 			my $rsp;
-           	$rsp->{data}->[0] = "$::msgstr Missing the MAC for node \'$node\'.\n";
-           	xCAT::MsgUtils->message("E", $rsp, $::callback);
-           	return 1;
+           		$rsp->{data}->[0] = "$::msgstr Missing the MAC for node \'$node\'.\n";
+           		xCAT::MsgUtils->message("E", $rsp, $::callback);
+           		return 1;
+		} else {
+			$::objhash{$node}{'mac'} =~ s/://g;
 		}
 			
 		$ifattr="-a if1=\'$net_name $shorthost $::objhash{$node}{'mac'} $adaptertype\'";
