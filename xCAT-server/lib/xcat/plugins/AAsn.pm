@@ -958,7 +958,7 @@ sub setup_TFTP
                 my %hmhash = %{$hmtab->getNodesAttribs(\@tnodes,[qw(node netboot)])};
                 foreach (@tnodes) {
                   if ($hmhash{$_}->[0]->{netboot}) {
-                      push $netmethods{$hmhash{$_}->[0]->{netboot}},$_;
+                      push @{$netmethods{$hmhash{$_}->[0]->{netboot}}},$_;
                   }
                 }
                 $cmdref->{command}->[0] = "nodeset";
@@ -966,7 +966,6 @@ sub setup_TFTP
                 $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
                 foreach my $modname (keys %netmethods) {
                     $cmdref->{node} = $netmethods{$modname};
-                    print Dumper($cmdref);
                     ${"xCAT_plugin::" . $modname . "::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
                 }
                 

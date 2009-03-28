@@ -88,11 +88,12 @@ sub setdestiny {
           if ($stents{$_}->[0]->{currstate}) {
               $state = $stents{$_}->[0]->{currstate};
               $state =~ s/ .*//;
-              push $nodestates{$state},$_;
+              push @{$nodestates{$state}},$_;
           }
       }
       foreach (keys %nodestates) {
           $req->{arg}->[0]=$_;
+          $req->{node} = $nodestates{$_};
           setdestiny($req,30,1); #ludicrous flag to denote no table updates can be inferred.
       }
       return;
