@@ -319,6 +319,7 @@ sub process_request {
       }
     }
   }
+  unless ($sub_req) { return; } #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
   my @normalnodeset = keys %normalnodes;
   if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
   $sub_req->({command=>['makedhcp'],arg=>['-l'],
