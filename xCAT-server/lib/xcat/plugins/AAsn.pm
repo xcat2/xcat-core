@@ -965,7 +965,7 @@ sub setup_TFTP
                   }
                 }
                 $cmdref->{command}->[0] = "nodeset";
-                $cmdref->{localonly}->[0] = "1";
+                $cmdref->{inittime}->[0] = "1";
                 $cmdref->{arg}->[0] = "enact";
                 $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
                 my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';

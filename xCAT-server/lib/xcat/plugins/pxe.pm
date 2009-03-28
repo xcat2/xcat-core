@@ -189,7 +189,7 @@ sub preprocess_request {
    my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    if ($sent and ($sent->{value} == 0 or $sent->{value} =~ /no/i)) {
       $req->{'_disparatetftp'}=[1];
-      if ($req->{localonly}->[0]) {
+      if ($req->{inittime}->[0]) {
           return [$req];
       }
       return xCAT::Scope->get_broadcast_scope($req,@_);
@@ -341,9 +341,9 @@ sub process_request {
       }
     }
   }
-  unless ($sub_req) { return; } #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
+  if ($request->{inittime}->[0]) { return; } #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
   if ($args[0] ne 'stat') {
-  if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
     $sub_req->({command=>['makedhcp'],arg=>['-l'],
            node=>\@nodes},$callback);
   } else {

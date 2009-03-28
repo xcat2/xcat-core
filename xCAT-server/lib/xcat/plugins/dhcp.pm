@@ -12,6 +12,7 @@ use Sys::Syslog;
 use IPC::Open2;
 use xCAT::Utils;
 use xCAT::NodeRange;
+use Fcntl ':flock';
 
 my @dhcpconf; #Hold DHCP config file contents to be written back.
 my @nrn;      # To hold output of networks table to be consulted throughout process
@@ -428,6 +429,9 @@ sub process_request
         return;
     }
 
+   my $dhcplockfd;
+   open($dhcplockfd,"/tmp/xcat/dhcplock");
+   flock($dhcplockfd,LOCK_EX);
    if (grep /^-n$/, @{$req->{arg}})
     {
         if (-e "/etc/dhcpd.conf")
@@ -637,6 +641,7 @@ sub process_request
         system("/etc/init.d/dhcpd restart");
         system("chkconfig dhcpd on");
     }
+    flock($dhcplockfd,LOCK_UN);
     umask $oldmask;
 }
 
