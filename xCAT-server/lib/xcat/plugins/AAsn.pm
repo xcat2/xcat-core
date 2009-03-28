@@ -948,7 +948,7 @@ sub setup_TFTP
             ${"xCAT_plugin::mknb::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
             #now, run nodeset enact on
             my $mactab = xCAT::Table->new('mac');
-            my $hmtab = xCAT::Table->new('nodehm');
+            my $hmtab = xCAT::Table->new('noderes');
             if ($mactab and $hmtab) {
                 my @mentries = ($mactab->getAllNodeAttribs([qw(node mac)])); #nodeset fails if no mac entry, filter on discovered nodes first...
                 my %netmethods;
