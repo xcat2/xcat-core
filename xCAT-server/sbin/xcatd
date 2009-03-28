@@ -423,14 +423,14 @@ sub scan_plugins {
       }
     }
   }
-  my @plugins=glob($plugins_dir."/*.pm");
   foreach (@plugins) {
+    no strict 'refs';
     /.*\/([^\/]*).pm$/;
     my $modname = $1;
     unless (defined(${"xCAT_plugin::".$modname."::"}{init_plugin})) {
         next;
     }
-    ${"xCAT_plugin::".$modname."::"}{init_plugin}->();
+    ${"xCAT_plugin::".$modname."::"}{init_plugin}->(\&do_request);
   }
 }
 scan_plugins;
