@@ -50,9 +50,10 @@ else if on the Management Node
 #-------------------------------------------------------
 
 sub handled_commands
-
+{ return; }
+sub init_plugin 
 {
-
+    my $doreq = shift;
 
     # If called in XCATBYPASS mode, don't do any setup
     if ($ENV{'XCATBYPASS'})
@@ -157,7 +158,7 @@ sub handled_commands
                 if (grep(/$service/, @servicelist))
                 {
 
-                    $rc = &setup_TFTP($nodename);    # setup TFTP
+                    $rc = &setup_TFTP($nodename,$doreq);    # setup TFTP
                     if ($rc == 0)
                     {
                         xCAT::Utils->update_xCATSN($service);
@@ -860,7 +861,8 @@ sub setup_SSH
 #-----------------------------------------------------------------------------
 sub setup_TFTP
 {
-    my ($nodename) = @_;
+    my ($nodename, $doreq) = @_;
+
     my $rc         = 0;
     my $cmd;
     my $master;
@@ -940,11 +942,11 @@ sub setup_TFTP
             use xCAT_plugin::mknb;
             $cmdref->{command}->[0] = "mknb";
             $cmdref->{arg}->[0] = "ppc64";
-            ${"xCAT_plugin::mknb::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
+            $doreq->($cmdref,\&xCAT::Client::handle_response);
             $cmdref->{arg}->[0] = "x86";
-            ${"xCAT_plugin::mknb::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
+            $doreq->($cmdref,\&xCAT::Client::handle_response);
             $cmdref->{arg}->[0] = "x86_64";
-            ${"xCAT_plugin::mknb::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
+            $doreq->($cmdref,\&xCAT::Client::handle_response);
             #now, run nodeset enact on
             my $mactab = xCAT::Table->new('mac');
             my $hmtab = xCAT::Table->new('noderes');
@@ -968,8 +970,7 @@ sub setup_TFTP
                 my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
                 foreach my $modname (keys %netmethods) {
                     $cmdref->{node} = $netmethods{$modname};
-                    require "$plugins_dir/$modname.pm";
-                    ${"xCAT_plugin::" . $modname . "::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
+                    $doreq->($cmdref,\&xCAT::Client::handle_response);
                 }
                 
             }
