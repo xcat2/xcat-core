@@ -67,7 +67,6 @@ sub handled_commands
     }
 
     my $rc = 0;
-    my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
 
     if (xCAT::Utils->isServiceNode())
     {
@@ -966,6 +965,7 @@ sub setup_TFTP
                 $cmdref->{command}->[0] = "nodeset";
                 $cmdref->{arg}->[0] = "enact";
                 $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+                my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
                 foreach my $modname (keys %netmethods) {
                     $cmdref->{node} = $netmethods{$modname};
                     require "$plugins_dir/$modname.pm";
