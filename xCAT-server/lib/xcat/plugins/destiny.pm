@@ -74,12 +74,29 @@ sub relay_response {
 sub setdestiny {
   my $req=shift;
   my $flag=shift;
+  my $noupdate=shift;
 
   $chaintab = xCAT::Table->new('chain',-create=>1);
   my @nodes=@{$req->{node}};
   my $state = $req->{arg}->[0];
   my %nstates;
-  if ($state eq "next") {
+  if ($state eq "enact") {
+      my %nodestates;
+      my %stents = %{$chaintab->getNodesAttribs($req->{node},"currstate")};
+      my $state;
+      foreach (@{$req->{node}}) { #First, build a hash of all of the states to attempt to keep things as aggregated as possible
+          if ($stents{$_}->[0]->{currstate}) {
+              $state = $stents{$_}->[0]->{currstate};
+              $state =~ s/ .*//;
+              push $nodestates{$state},$_;
+          }
+      }
+      foreach (keys %nodestates) {
+          $req->{arg}->[0]=$_;
+          setdestiny($req,30,1); #ludicrous flag to denote no table updates can be inferred.
+      }
+      return;
+  } elsif ($state eq "next") {
     return nextdestiny($flag + 1);  #this is special case where updateflag is called
   } elsif ($state eq "iscsiboot") {
      my $iscsitab=xCAT::Table->new('iscsi');
@@ -190,6 +207,7 @@ sub setdestiny {
       $callback->({error=>["Unknown state $state requested"],errorcode=>[1]});
       return;
   }
+  if ($noupdate) { return; } #skip table manipulation if just doing 'enact'
   foreach (@nodes) {
     my $lstate = $state;
     if ($nstates{$_}) {

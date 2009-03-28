@@ -933,6 +933,44 @@ sub setup_TFTP
                     xCAT::MsgUtils->message("S", "Error $cmd");
                 }
             }
+        } else { #if not mounting, have to regenerate....
+            #first, run mknb to get nbfs and such going?
+            my $cmdref;
+            $cmdref->{command}->[0] = "mknb";
+            $cmdref->{arg}->[0] = "ppc64";
+            ${"xCAT_plugin::mknb::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
+            $cmdref->{arg}->[0] = "x86";
+            ${"xCAT_plugin::mknb::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
+            $cmdref->{arg}->[0] = "x86_64";
+            ${"xCAT_plugin::mknb::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
+            #now, run nodeset enact on
+            #now, run nodeset enact on
+            my $mactab = xCAT::Table->new('mac');
+            my $hmtab = xCAT::Table->new('nodehm');
+            if ($mactab and $hmtab) {
+                my @mentries = ($mactab->getAllNodeAttribs([qw(node mac)])); #nodeset fails if no mac entry, filter on discovered nodes first...
+                my %netmethods;
+                my @tnodes;
+                foreach (@mentries) {
+                    unless (defined $_->{mac}) { next; }
+                    push @tnodes,$_->{node};
+                }
+                my %hmhash = %{$hmtab->getNodesAttribs(\@tnodes,[qw(node netboot)])};
+                foreach (@tnodes) {
+                  if ($hmhash{$_}->[0]->{netboot}) {
+                      push $netmethods{$hmhash{$_}->[0]->{netboot}},$_;
+                  }
+                }
+                $cmdref->{command}->[0] = "nodeset";
+                $cmdref->{arg}->[0] = "enact";
+                $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+                foreach my $modname (keys %netmethods) {
+                    $cmdref->{node} = $netmethods{$modname};
+                    print Dumper($cmdref);
+                    ${"xCAT_plugin::" . $modname . "::"}{process_request}->($cmdref, \&xCAT::Client::handle_response);
+                }
+                
+            }
         }
 
         # start atftp

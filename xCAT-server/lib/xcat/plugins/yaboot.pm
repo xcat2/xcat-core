@@ -289,7 +289,7 @@ sub process_request {
       return;
   }
 
-  unless ($args[0] eq 'stat' or $args[0] eq 'enact') {
+  unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
     $sub_req->({command=>['setdestiny'],
            node=>\@nodes,
          arg=>[$args[0]]},\&pass_along);
