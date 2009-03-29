@@ -149,11 +149,7 @@ if (-f $scriptname)
    $nodesetstat=`grep "NODESETSTATE=" $scriptname|awk -F \= '{print \$2}'`;
    chomp($nodesetstat);
 
-    if (&runcmd("cd /xcatpost;$scriptname") != 0)
-    {
-		print "$::sdate  xcataixpost: Could not run $scriptname.\n";
-		print $::LOG_FILE "$::sdate  xcataixpost: Could not run $scriptname.\n";
-    }
+    &runcmd("cd /xcatpost;$scriptname");
 } else {
 	print "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
