@@ -6,8 +6,15 @@
 
 use Socket;
 
-# Take primary node name, add -eth1 and then reverse resolve to get what ip should be
-my $nic = 'eth1';
+# Take primary node name, add "-eth1" for linux and "-en1" for AIX  and 
+#	then reverse resolve to get what ip should be
+my $nic;
+if ($^O =~ /^aix/i) {
+    $nic = 'en1';
+} else {
+    $nic = 'eth1';
+}
+
 my $hostname = "$ENV{NODE}-$nic";
 my $packed_ip = gethostbyname($hostname);
 if (!$packed_ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
@@ -18,7 +25,9 @@ my $netmask = "255.255.0.0";
 my ($first, $second, $rest) = split(/\./, $ip);
 my $gateway = "$first.$second.255.254";
 
-if ($^O =~ /^aix/i) { }
+if ($^O =~ /^aix/i) { 
+	runcmd("chdev -l 'en1' -a netaddr=$ip -a netmask=$netmask -a state='up'");
+}
 elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
 	# Write the info to the ifcfg file
 	my $dir = "/etc/sysconfig/network";
