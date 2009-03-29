@@ -27,6 +27,7 @@ proc read_credentials {} {
     global filename
     global userid
     global passwd
+    global PROGRAM
 
     if [catch { open $filename "r" } fhandle ] {
         send_user "$PROGRAM: Error opening temporary password file\n"
@@ -42,7 +43,7 @@ proc read_credentials {} {
     exec rm $filename
 
     if { ![regexp {([^ ]+ [^ ]+)\n} $buf match cred ]} {
-        send_user "$PROGRAM: Error parsing temporary password file\n"
+        send_user "$PROGRAM: Error parsing temporary password file $filename\n"
         exit 1
     }
     set userid [ lindex $cred 0 ]
@@ -61,6 +62,7 @@ proc connect {} {
     global prompt
     global userid
     global passwd
+    global PROGRAM
 
     if [ catch { spawn ssh $userid@$hcp} ssh_pid ] {
         send_user "$PROGRAM: Unable to spawn ssh connection to $hcp\n"
@@ -77,9 +79,8 @@ proc connect {} {
         -re $prompt {
 
         }
-        -re "continue connecting (yes/no)?" {
-            send -i $ssh_spawn_id "yes\r"
-            expect_continue
+        -re "ast login.*" {
+            return
         }
         -re "assword: $" {
              if { $pwd_sent != 1 } {
@@ -125,7 +126,11 @@ proc run_lssyscfg {} {
 
     expect {
         -i $ssh_spawn_id \
-        -re "\r\n(.*)\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+        -re "echo.*echo.*\r\n(.*)\r\nRc=(\[0-9]*)\r\n(.*)" {
+            set rc $expect_out(2,string)
+            set msg $expect_out(1,string)
+        }
+        -re "echo.*\r\n(.*)\r\nRc=(\[0-9]*)\r\n(.*)" {
             set rc $expect_out(2,string)
             set msg $expect_out(1,string)
         }
@@ -1678,7 +1683,7 @@ proc Boot {} {
             return
         }
         -ex {--------------------------------} {
-            send_user "$PROGRAM: # Network boot proceeding, exiting.\n"
+            nc_msg "$PROGRAM: # Network boot proceeding, exiting.\n"
         }
         timeout {
             set mins [expr ($timeout/60)]
@@ -1944,19 +1949,19 @@ trap {
 
 
 
-
 #
 # Main MAIN main
 #
 set BINPATH "/opt/hsc/bin"
 set PROGRAM "lpar_netboot"
 
+set CONSOLEBIN "/opt/xcat/bin/rcons"
+
 set noboot 0        ;# default is to boot
 set Boot_timeout 3000
 
 global expect_out
 global loc_code
-
 # Flags and initial variable
 set discovery 0
 set discover_all 0
@@ -2128,7 +2133,7 @@ if { [llength $argv] < 1 } {
 set arg0 [lindex $argv 0]
 set arg1 [lindex $argv 1]
 
-if { [llength $argv] > 6 } {
+if { [llength $argv] > 7 } {
     send_user "$PROGRAM: Extraneous parameter(s)\n"
     usage
 }
@@ -2157,7 +2162,7 @@ set manage [lindex $argv 2]
 set lparid [lindex $argv 3]
 set hcp [lindex $argv 4]
 set filename [lindex $argv 5]
-
+set name [lindex $argv 6]
 
 if {$dev_type_found}    { nc_msg "$PROGRAM Status: List only $list_type adapters\n"               }
 if {$noboot}            { nc_msg "$PROGRAM Status: -n (no boot) flag detected\n"                  }
@@ -2202,39 +2207,15 @@ read_credentials
 #
 nc_msg "$PROGRAM Status: connecting to $hcp\n"
 connect
-
-if {$rmvterm_flag} {
-    nc_msg "$PROGRAM Status: -f (force close virtual session) flag detected\n"
-    set cmd "rmvt -id $lparid"
-    send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
-
-    expect {
-        -i $ssh_spawn_id \
-        -re "\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
-            set rc $expect_out(1,string)
-        }
-        timeout {
-            send_user "$PROGRAM: Timeout waiting for command prompt\n"
-            exit 1
-        }
-        eof {
-           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
-           exit 1
-       }
-    }
-    if { $rc } {
-        nc_msg "$PROGRAM Status: warning: error from rmvterm command\n"
-        send_user "$PROGRAM: Error : $msg\n"
-    }
-}
+nc_msg "$PROGRAM Status: finished connecting to $hcp\n"
 
 #
 # open the S1 serial port
 #
 nc_msg "$PROGRAM Status: open port\n"
 
-if [ catch { spawn ssh $userid@$hcp} rsconole_pid ] {
-    send_user "$PROGRAM: Unable to spawn console ssh connection to $hcp\n"
+if [ catch { spawn $CONSOLEBIN $name } rsconole_pid ] {
+    send_user "Unable to spawn console connection to $hcp\n"
     exit 1
 }
 
@@ -2243,31 +2224,15 @@ nc_msg "$PROGRAM Status: spawn_id is $spawn_id\n"
 
 set timeout 10
 set pwd_sent 0
-send_user "# Connecting to $NODENAME\n"
+send_user "# Connecting to $name\n"
  
-#
-# Look for password prompt, and reply
-#
 expect {
     -i $spawn_id_rconsole \
-    -re $prompt {
-
-    }
-    -re "continue connecting (yes/no)?" {
-        send -i $spawn_id_rconsole "yes\r"
-        expect_continue
-    }
-    -re "assword: $" {
-         if { $pwd_sent != 1 } {
-             set pwd_sent 1
-             send -i $spawn_id_rconsole "$passwd\r"
-             exp_continue
-         }
-         send_user "$PROGRAM: Incorrect login\n"
-         exit 1
+    -re "Enter.* for help.*" {
+        send_user "# Connected\n"
     }
     timeout {
-        send_user "$PROGRAM: Timeout waiting for password prompt\n"
+        send_user "$PROGRAM: Timeout waiting for console connection\n"
         exit 1
     }
     eof {
@@ -2276,25 +2241,10 @@ expect {
     }
 }
 
-set timeout 2 
-send -i $spawn_id_rconsole "mkvt -id $lparid\r"
-
-expect {
-    -i $spawn_id_rconsole \
-    "Virtual terminal is already connected." {
-         send_user "$PROGRAM: $expect_out(0,string)\n"
-         exit 1
-    }
-    "Virtual terminal device not found." {
-         send_user "$PROGRAM: $expect_out(0,string)\n"
-         exit 1
-    }
-}
-
-send_user "# Connected\n" 
 send_user "# Checking for power off.\n"
 
 run_lssyscfg
+
 if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activated"] == 0) } {
     send_user "# Power off complete.\n"
 } else { 
@@ -2315,11 +2265,11 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
 
     expect {
         -i $ssh_spawn_id \
-        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*)" {
             set rc $expect_out(2,string)
             set msg $expect_out(1,string)
         }
-        -re "\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+        -re "\r\nRc=(\[0-9])\r\n(.*)" {
             set rc $expect_out(1,string)
         }
         timeout {
@@ -2377,16 +2327,16 @@ if { $list_disk == 1 } {
 
 } else {
     send_user "# Power on $NODENAME to Open Firmware.\n"
-    set timeout 10
+    set timeout 20
     send -i $ssh_spawn_id "chsysstate -r lpar -o on -b of -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
 
     expect {
         -i $ssh_spawn_id \
-        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*)" {
             set rc $expect_out(2,string)
             set msg $expect_out(1,string)
         }
-        -re "\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+        -re "\r\nRc=(\[0-9])\r\n(.*)" {
             set rc $expect_out(1,string)
         }
         timeout {
@@ -2464,6 +2414,9 @@ while { ! $done } {
             nc_msg "$PROGRAM Status: selecting active console\n"
             exec sleep 1
             send -i $spawn_id_rconsole "0";
+        }
+        -re "bumped(.*)" {
+            exp_continue
         }
         timeout {
             send_user "$PROGRAM: Timeout; exiting\n"

@@ -69,6 +69,7 @@ sub ivm_rnetboot {
     my $d       = shift;
     my $exp     = shift;
     my $name    = shift;
+    my $node    = shift;
     my $opt     = shift;
     my $ssh     = @$exp[0];
     my $userid  = @$exp[4];
@@ -80,7 +81,7 @@ sub ivm_rnetboot {
     # Disconnect Expect session
     #######################################
     xCAT::PPCcli::disconnect( $exp );
-    
+ 
     #######################################
     # Get node data 
     #######################################
@@ -134,7 +135,7 @@ sub ivm_rnetboot {
     #######################################
     # Add command options
     #######################################
-    $cmd.= " -t ent -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp $fname";
+    $cmd.= " -t ent -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp $fname \"$node\"";
 
     #######################################
     # Execute command
@@ -182,7 +183,7 @@ sub rnetboot {
     my $options = $request->{opt};
     my $hwtype  = @$exp[2];
     my $result;
-    my $node;
+    my $name;
 
     #####################################
     # Get node data 
@@ -190,7 +191,7 @@ sub rnetboot {
     my $lparid = @$d[0];
     my $mtms   = @$d[2];
     my $type   = @$d[4];
-    my $name   = @$d[6];
+    my $node   = @$d[6];
     my $o      = @$d[7]; 
 
     #####################################
@@ -233,38 +234,27 @@ sub rnetboot {
     # Return error
     #########################################
     if ( $Rc != SUCCESS ) {
-        return( [[$name,@$values[0],$Rc]] );
+        return( [[$node,@$values[0],$Rc]] );
     }
     #########################################
     # Find LPARs by lpar_id
     #########################################
     foreach ( @$values ) {
         if ( /^(.*),$lparid$/ ) {
-            $node = $1;
+            $name = $1;
             last;
         }
     }
     #########################################
     # Node not found by lpar_id
     #########################################
-    if ( !defined( $node )) {
-        return( [[$name,"Node not found, lparid=$lparid",RC_ERROR]] );
+    if ( !defined( $name )) {
+        return( [[$node,"Node not found, lparid=$lparid",RC_ERROR]] );
     }
     #########################################
-    # IVM does not have lpar_netboot command
-    # so we have to manually perform boot. 
+    # Manually perform boot. 
     #########################################
-    if ( $hwtype eq "ivm" ) {
-        $result = ivm_rnetboot( $request, $d, $exp, $node, \%opt );
-    }
-    else {
-        $result = xCAT::PPCcli::lpar_netboot( 
-                           $exp,
-                           $request->{verbose}, 
-                           $node,
-                           $d,
-                           \%opt );
-    }
+    $result = ivm_rnetboot( $request, $d, $exp, $name, $node, \%opt );
     $Rc = shift(@$result);
 
     ##################################
