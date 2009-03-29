@@ -1346,13 +1346,9 @@ sub mknimimage
         # create resolv_conf
         #
         my $resolv_conf_name = &mk_resolv_conf($callback);
-        chomp $resolv_conf_name;
-        $newres{resolv_conf} = $resolv_conf_name;
-        if ( !defined($resolv_conf_name)) {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not create resolv_conf definition.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
+		if (defined($resolv_conf_name)) {
+        	chomp $resolv_conf_name;
+        	$newres{resolv_conf} = $resolv_conf_name;
         }
 	}
 
@@ -1851,6 +1847,8 @@ sub mk_bosinst_data
 
         Create a resolv.conf file from data in xCAT site table.
 
+		Only if the node "domain" & "nameservers" attrs are set!
+
         Returns:
                 0 - OK
                 1 - error
@@ -1860,7 +1858,9 @@ sub mk_bosinst_data
 sub mk_resolv_conf_file
 {
 	my $callback = shift;
-	my $fullname = shift;
+	my $loc = shift;
+
+	my $fullname = "$loc/resolv.conf";
 
 	# check site table - get domain, nameservers attr
 	my $sitetab = xCAT::Table->new('site');
@@ -1874,6 +1874,19 @@ sub mk_resolv_conf_file
 	if ($domain && $nameservers) {
 		# fullname is something like 
 		#	/install/nim/resolv_conf/610img_resolv_conf/resolv.conf
+
+		my $mkcmd = "/usr/bin/mkdir -p $loc";
+		my $output = xCAT::Utils->runcmd("$mkcmd", -1);
+		if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not create $loc.\n";
+			if ($::VERBOSE) {
+				push @{$rsp->{data}}, "$output\n";
+			}
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return undef;
+		}
+
 		unless (open(RSCNF, ">$fullname")) {
             my $rsp;
             push @{$rsp->{data}}, "Could not open $fullname.\n";
@@ -1889,7 +1902,9 @@ sub mk_resolv_conf_file
 			print RSCNF "nameserver $_\n";
 		}
 		close (RSCNF);
-	}
+	} else {
+        return 1;
+    }
 	return 0;
 }
 
@@ -1898,6 +1913,9 @@ sub mk_resolv_conf_file
 =head3   mk_resolv_conf
 
         Create a NIM   resource.
+
+		Only if the node "domain" & "nameservers" attrs are set!  If
+		not set assume user does not want resolv.conf file
 
         Returns:
                 0 - OK
@@ -1927,64 +1945,39 @@ sub mk_resolv_conf
 
 		# we may need to create a new one
 
-		# see if it's already defined
-		if (grep(/^$resolv_conf_name$/, @::nimresources)) {
-			my $rsp;
-			push @{$rsp->{data}}, "Using existing resolv_conf resource named \'$resolv_conf_name\'.\n";
-			xCAT::MsgUtils->message("I", $rsp, $callback);
-
+		my $fileloc;
+		my $loc;
+		if ($::opt_l) {
+			$loc = "$::opt_l/resolv_conf/$resolv_conf_name";
 		} else {
+			$loc = "/install/nim/resolv_conf/$resolv_conf_name";
+		}
 
-			my $fileloc;
-			my $loc;
-			if ($::opt_l) {
-				$loc = "$::opt_l/resolv_conf/$resolv_conf_name";
-			} else {
-				$loc = "/install/nim/resolv_conf/$resolv_conf_name";
-			}
+		$fileloc = "$loc/resolv.conf";
 
-			$fileloc = "$loc/resolv.conf";
+		# create the resolv.conf file based on the domain & nameservers
+		#	attrs in the xCAT site table
+		my $rc = &mk_resolv_conf_file($callback, $loc);
+		if ($rc != 0) {
+            return undef;
+        }
+		# define the new resolv_conf resource
+		my $cmd = "/usr/sbin/nim -o define -t resolv_conf -a server=master ";
+		$cmd .= "-a location=$fileloc ";
+		$cmd .= "$resolv_conf_name  2>&1";
 
-			my $mkcmd = "/usr/bin/mkdir -p $loc";
-            my $output = xCAT::Utils->runcmd("$mkcmd", -1);
-            if ($::RUNCMD_RC  != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "Could not create $loc.\n";
-                if ($::VERBOSE) {
-                    push @{$rsp->{data}}, "$output\n";
-                }
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return undef;
-            }
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "Running: \'$cmd\'\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 
-			# create the resolv.conf file based on the domain & nameservers
-			#	attrs in the xCAT site table
-			my $rc = &mk_resolv_conf_file($callback, $fileloc);
-			if ($rc != 0) {
-				my $rsp;
-				push @{$rsp->{data}}, "Could not create $fileloc.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				return undef;
-			}
-
-			# define the new resolv_conf resource
-			my $cmd = "/usr/sbin/nim -o define -t resolv_conf -a server=master ";
-			$cmd .= "-a location=$fileloc ";
-			$cmd .= "$resolv_conf_name  2>&1";
-
-			if ($::VERBOSE) {
-                my $rsp;
-                push @{$rsp->{data}}, "Running: \'$cmd\'\n";
-                xCAT::MsgUtils->message("I", $rsp, $callback);
-            }
-
-			my $output = xCAT::Utils->runcmd("$cmd", -1);
-			if ($::RUNCMD_RC  != 0) {
-				my $rsp;
-				push @{$rsp->{data}}, "Could not create a NIM definition for \'$resolv_conf_name\'.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				return undef;
-			}
+		my $output = xCAT::Utils->runcmd("$cmd", -1);
+		if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not create a NIM definition for \'$resolv_conf_name\'.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return undef;
 		}
 	} # end resolv_conf res
 
@@ -3002,19 +2995,8 @@ sub updatespot {
 	}
 
 	# add resolv.conf to image if data is provided in site table
-	if ($::VERBOSE) {
-        my $rsp;
-        push @{$rsp->{data}}, "Adding resolv.conf file to the image.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
 	my $fileloc = "$spot_loc/lpp/bos/inst_root/etc/resolv.conf";
 	my $rc = &mk_resolv_conf_file($callback, $fileloc);
-	if ($rc != 0) {
-		my $rsp;
-		push @{$rsp->{data}}, "Could not create $spot_loc/lpp/bos/inst_root/etc/resolv.conf\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
-	}
 	return 0;
 }
 
