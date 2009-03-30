@@ -37,11 +37,6 @@ BEGIN
 }
 my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
 use lib "$::XCATROOT/lib/perl";
-if ($^O =~ /^linux/i){
-  $ENV{HOME}='/root/';
-} else {
-  $ENV{HOME}='/';
-}
 require xCAT::Client;
 
 #require xCAT::Table;

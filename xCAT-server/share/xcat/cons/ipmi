@@ -37,7 +37,6 @@ BEGIN
 my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
 $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 use lib "$::XCATROOT/lib/perl";
-$ENV{HOME}='/root/';
 require xCAT::Client;
 my $username = 'USERID';
 my $password = 'PASSW0RD';

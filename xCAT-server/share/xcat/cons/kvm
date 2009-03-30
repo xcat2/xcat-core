@@ -44,7 +44,6 @@ BEGIN
 #}
 my $sleepint;
 use lib "$::XCATROOT/lib/perl";
-$ENV{HOME}='/root/';
 require xCAT::Client;
 
 require File::Basename;

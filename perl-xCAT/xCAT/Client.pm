@@ -73,9 +73,10 @@ sub submit_request {
   my $keyfile = shift;
   my $certfile = shift;
   my $cafile = shift;
-  unless ($keyfile) { $keyfile = $ENV{HOME}."/.xcat/client-cred.pem"; }
-  unless ($certfile) { $certfile = $ENV{HOME}."/.xcat/client-cred.pem"; }
-  unless ($cafile) { $cafile  = $ENV{HOME}."/.xcat/ca.pem"; }
+  require xCAT::Utils;
+  unless ($keyfile) { $keyfile = xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem"; }
+  unless ($certfile) { $certfile = xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem"; }
+  unless ($cafile) { $cafile  = xCAT::Utils->getHomeDir()."/.xcat/ca.pem"; }
   $xCAT::Client::EXITCODE = 0;    # clear out exit code before invoking the plugin
 
 
