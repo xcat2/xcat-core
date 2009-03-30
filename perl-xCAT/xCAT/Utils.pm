@@ -1062,9 +1062,13 @@ sub runxcmd_output
 sub getHomeDir
 {
     my ($class, $username) = @_;
-    my @user = split ':', (`/bin/grep ^$username /etc/passwd 2>&1`);
-    my $home = $user[5];
-    return $home;
+    my @user;
+    if ($username) {
+        @user = getpwnam($username);
+    } else {
+        @user = getpwuid($>);
+    }
+    return $user[7];
 }
 
 #--------------------------------------------------------------------------------
