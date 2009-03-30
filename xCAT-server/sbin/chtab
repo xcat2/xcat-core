@@ -77,6 +77,11 @@ if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/) {
 if ($::DELETE) {
   #delete option is specified
   my @tables_to_del=@ARGV;
+  if(@tables_to_del == 0) {
+        print "Missing table name.\n";
+        usage;
+        exit(1);
+  }
   for (@tables_to_del) {
     $tables{$_} = xCAT::Table->new($_,-create => 1,-autocommit => 0);
     $tables{$_}->delEntries(\%keyhash);
