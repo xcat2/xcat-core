@@ -68,6 +68,7 @@ I<rscan ivm02 -x -w>
 Output is similar to:
 
  <Node>
+   <cons></cons>
    <profile></profile>
    <parent></parent>
    <serial>10B7D1G</serial>
@@ -81,6 +82,7 @@ Output is similar to:
  </Node>
 
  <Node>
+   <cons>ivm</cons>
    <profile>lpar01</profile>
    <parent>Server-9133-55A-10B7D1G</parent>
    <serial></serial>
@@ -94,6 +96,7 @@ Output is similar to:
  <Node>
 
  </Node>
+   <cons>ivm</cons>
    <profile>lpar02</profile>
    <parent>Server-9133-55A-10B7D1G</parent>
    <serial></serial>
@@ -124,6 +127,7 @@ Output is similar to:
     parent=
     groups=bpa,all
     mgt=hmc
+    cons=
 
   Server-9119-590-SN02C5F9E:
     objtype=node
@@ -136,6 +140,7 @@ Output is similar to:
     parent=Server-9458-100992001Y_B
     groups=fsp,all
     mgt=hmc
+    cons=
 
   lpar01:
     objtype=node
@@ -148,6 +153,7 @@ Output is similar to:
     parent=Server-9119-590-SN02C5F9E
     groups=lpar,all
     mgt=hmc
+    cons=hmc
 
   lpar02:
     objtype=node
@@ -160,7 +166,7 @@ Output is similar to:
     parent=Server-9119-590-SN02C5F9E
     groups=lpar,all
     mgt=hmc
-
+    cons=hmc
 
 =head1 FILES
 

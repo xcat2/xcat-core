@@ -25,7 +25,7 @@ my @header = (
     ["serial-number", "%-15s" ],
     ["address",       "%s\n" ]);
 
-my @attribs = qw(nodetype node id mtm serial hcp pprofile parent groups mgt);
+my @attribs = qw(nodetype node id mtm serial hcp pprofile parent groups mgt cons);
 my %nodetype = (
     fsp  => $::NODETYPE_FSP,
     bpa  => $::NODETYPE_BPA,
@@ -468,6 +468,13 @@ sub format_stanza {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
+            } elsif ( /^cons$/ ) {
+                 if ( $type eq "lpar" ) {
+                    $d = $hwtype;
+                } else {
+                    $d = undef;
+                }
+               
             } elsif ( /^(mtm|serial)$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;                    
@@ -526,6 +533,12 @@ sub format_xml {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
+            } elsif ( /^cons$/ ) {
+                if ( $type eq "lpar" ) {
+                    $d = $hwtype;
+                } else {
+                    $d = undef;
+                }
             } elsif ( /^(mtm|serial)$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;
