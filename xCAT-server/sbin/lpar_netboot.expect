@@ -30,7 +30,7 @@ proc read_credentials {} {
     global PROGRAM
 
     if [catch { open $filename "r" } fhandle ] {
-        send_user "$PROGRAM: Error opening temporary password file\n"
+        send_user "$PROGRAM: Error opening temporary password file $filename\n"
         exit 1
     }
     ###############################################
@@ -2569,7 +2569,7 @@ if { $noboot } { # Display information for all supported adapters
             set rc $expect_out(2,string)
             set msg $expect_out(1,string)
         }
-        -re "\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
+        -re "\r\nRc=(\[0-9]*)\r\n(.*)" {
             set rc $expect_out(1,string)
         }
         timeout {

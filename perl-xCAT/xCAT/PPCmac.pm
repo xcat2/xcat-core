@@ -131,6 +131,7 @@ sub ivm_getmacs {
     my $d        = shift;
     my $exp      = shift; 
     my $name     = shift;
+    my $node     = shift;
     my $opt      = $request->{opt};
     my $ssh      = @$exp[0];
     my $userid   = @$exp[4];
@@ -197,7 +198,7 @@ sub ivm_getmacs {
     #######################################
     # Add command options 
     #######################################
-    $cmd.= " -t ent -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp $fname";
+    $cmd.= " -t ent -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp $fname \"$node\"";
 
     #######################################
     # Execute command 
@@ -248,7 +249,7 @@ sub getmacs {
     my $opt     = $request->{opt};
     my $hwtype  = @$exp[2];
     my $result;
-    my $node;
+    my $name;
 
     #########################################
     # Get node data 
@@ -256,13 +257,13 @@ sub getmacs {
     my $lparid = @$d[0];
     my $mtms   = @$d[2];
     my $type   = @$d[4];
-    my $name   = @$d[6];
+    my $node   = @$d[6];
 
     #########################################
     # Invalid target hardware 
     #########################################
     if ( $type ne "lpar" ) {
-        return( [[$name,"Node must be LPAR",RC_ERROR]] );
+        return( [[$node,"Node must be LPAR",RC_ERROR]] );
     }
     #########################################
     # Get name known by HCP
@@ -275,39 +276,27 @@ sub getmacs {
     # Return error
     #########################################
     if ( $Rc != SUCCESS ) {
-        return( [[$name,@$values[0],$Rc]] );
+        return( [[$node,@$values[0],$Rc]] );
     }
     #########################################
     # Find LPARs by lpar_id
     #########################################
     foreach ( @$values ) {
         if ( /^(.*),$lparid$/ ) {
-            $node = $1;
+            $name = $1;
             last;
         }
     }
     #########################################
     # Node not found by lpar_id 
     #########################################
-    if ( !defined( $node )) {
-        return( [[$name,"Node not found, lparid=$lparid",RC_ERROR]] );
+    if ( !defined( $name )) {
+        return( [[$node,"Node not found, lparid=$lparid",RC_ERROR]] );
     }
     #########################################
-    # IVM does not have lpar_netboot command
-    # so we have to manually collect MAC 
-    # addresses. 
+    # Manually collect MAC addresses.
     #########################################
-    if ( $hwtype eq "ivm" ) {
-        $result = ivm_getmacs( $request, $d, $exp, $node );
-    }
-    else {
-        $result = xCAT::PPCcli::lpar_netboot( 
-                           $exp,
-                           $request->{verbose},
-                           $node,
-                           $d,
-                           $opt );
-    }
+    $result = ivm_getmacs( $request, $d, $exp, $name, $node );
     $Rc = shift(@$result);
    
     ##################################
