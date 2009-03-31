@@ -1146,7 +1146,7 @@ sub addNodes {
       $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost 2 configrmcnode 2>&1";
     }
     else {
-      $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost 2 configrmcnode 2>&1";
+      $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost -c 2 configrmcnode 2>&1";
     }
     if (! open (CMD, "$cmd |")) {
       reportError("Cannot run command $cmd", $callback);

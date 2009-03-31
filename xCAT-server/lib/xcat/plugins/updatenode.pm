@@ -241,7 +241,7 @@ sub updatenode {
       $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost 1 $postscripts 2>&1";
     }
     else {
-      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost 1 $postscripts 2>&1";
+      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -c 1 $postscripts 2>&1";
     }
     if (! open (CMD, "$cmd |")) {
       my $rsp={};
