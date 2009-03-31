@@ -105,9 +105,10 @@ sub add_ppc {
             ###########################
             # Update nodehm table
             ###########################
-            $db{nodehm}->setNodeAttribs( $name, {mgt=>$hwtype} );
             if($type =~ /^lpar$/){
-                $db{nodehm}->setNodeAttribs( $name, {cons=>$hwtype} );
+                $db{nodehm}->setNodeAttribs( $name, {mgt=>$hwtype,cons=>$hwtype} );
+            } else {
+                $db{nodehm}->setNodeAttribs( $name, {mgt=>$hwtype} );
             }
             $db{nodehm}{commit} = 1;
         }
