@@ -1685,6 +1685,9 @@ proc Boot {} {
         -ex {BOOTP} {
             nc_msg "$PROGRAM: # Network boot proceeding, exiting.\n"
         }
+        -ex {------} {
+            nc_msg "$PROGRAM: # Network boot proceeding, exiting.\n"
+        }
         timeout {
             set mins [expr ($timeout/60)]
             send_user "$PROGRAM: Timeout waiting for the boot image to boot up. \
