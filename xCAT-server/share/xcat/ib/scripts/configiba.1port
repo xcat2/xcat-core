@@ -19,12 +19,13 @@ my @nums = (0..3);
 foreach my $num ( @nums ) {
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
     my $nic = "ib$num";
+    my $hostname;
 
     # Get hostname from system in case postscript environment is not ready
     if ( $HOST ) {
-        my $hostname = "$HOST-$nic";
+        $hostname = "$HOST-$nic";
     } else {
-        my $hostname = "$ENV{NODE}-$nic";
+        $hostname = "$ENV{NODE}-$nic";
     }
 
     my $packed_ip = gethostbyname($hostname);

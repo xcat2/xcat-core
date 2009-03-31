@@ -4,7 +4,7 @@ configiba.README
 
 This README describes how to use the configiba script.
 
-This configiba postscript is used to do secondary adapter configuration for InfiniBand interfaces (ibX) and ml0 on both AIX and Linux Managed Nodes.  Please copy this script to postscripts directory before configuration, generally the folder is /install/postscripts.
+This configiba postscript is used to do secondary adapter configuration for InfiniBand interfaces (ibX) and ml0 on both AIX and Linux Managed Nodes.  If only one port on each InfiniBand adapter is available, please copy configiba.1port to /install/postscripts.  If both ports on each adapter are available, please copy configiba.2ports to /install/postscripts.
 
 There are two times to configure IB adapters, during node installation or with command updatenode after node installation.  These two IB configuration ways are similar and finally they will trigger this sample postscript to configure IB adapters.  
 
@@ -28,16 +28,23 @@ makedns
 stopsrc -s named 
 startsrc -s named
 lssrc -s named 
-Node: Only if the state of named is active, we can continue to test DNS.
+Note: Only if the state of named is active, we can continue to test DNS.
 
 4.Check if DNS for the IB network has been setup successfully
 nslookup [node_short_hostname-ib_interfacename]
 
 5.Add this script to postscripts
-chtab node=c890f11ec01 postscripts.postscripts=configiba
-Note: please include other postscripts what you need also.
+chtab node=c890f11ec01 postscripts.postscripts=configiba.1port
+or 
+chtab node=c890f11ec01 postscripts.postscripts=configiba.2ports
+Note: The postscripts name depends on the script copied to /install/postscripts/
 
 6.Now all the preparation work for IB configuration has been done, user can continue the general node installation or trigger updatenode command to configure IB adapters.
+
+updatenode c890f11ec01 configiba.1port
+or
+updatenode c890f11ec01 configiba.2ports
+
 
 As a sample postscript, the netmask is set to default value: 255.255.0.0 and gateway is set to "X.X.255.254".  If the IB interface name is not a simple combination of short hostname and ibX or netmask and gateway cannot meet user's requirement, user can modify this scripts by himself, like the example below:
 
@@ -56,3 +63,5 @@ my @nums = (0..1);
 Note: Currently, for diskless installation, there is no /etc/resolv.conf  generated for the compute node.  This makes the compute node cannot resolve the name services on management node.  User needs to use rcp to copy resolv.conf to compute node as a workarround.  The fomat of resolv.conf is like:
 domain ppd.pok.ibm.com
 nameserver 172.16.0.1
+
+Note: 172.16.0.1 is the IP address which provides the name service for IB interfaces.
