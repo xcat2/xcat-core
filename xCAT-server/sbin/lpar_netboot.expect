@@ -1682,7 +1682,7 @@ proc Boot {} {
             set rc 1
             return
         }
-        -ex {------} {
+        -ex {BOOTP} {
             nc_msg "$PROGRAM: # Network boot proceeding, exiting.\n"
         }
         timeout {
