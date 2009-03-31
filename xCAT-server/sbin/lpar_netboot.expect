@@ -2239,7 +2239,7 @@ expect {
         exit 1
     }
     eof {
-        send_user "$PROGRAM: ssh connection terminated unexpectedly\n"
+        send_user "$PROGRAM: ssh connection terminated unexpectedly, please make sure rcons $name works\n"
         exit 1
     }
 }
