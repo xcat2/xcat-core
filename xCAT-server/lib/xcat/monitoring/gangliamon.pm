@@ -146,15 +146,20 @@ sub start
 	           }
   	        } #closing foreach2
             }  #closing foreach1
-          my $rec = join(',',@children);
-		  my $result;
-      if ( $OS =~ /AIX/ )
-      {
-       $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>&1`;
-      }
-      else
-      {
-       $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>&1`;
+          my $rec = undef;
+          my $result = undef;
+          if(exists($children[0])){
+            $rec = join(',',@children);
+          }
+      if($rec){
+        if ( $OS =~ /AIX/ )
+        {
+         $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>&1`;
+        }
+        else
+        {
+         $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>&1`;
+        }
       }
 
       if ($result)
@@ -1063,17 +1068,21 @@ sub stop
                    }
                 } #closing foreach2
             }  #closing foreach1
-          my $rec = join(',',@children);
-          my $result; 
-
-         if ( $OS =~ /AIX/ )
-         {
-          $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>&1`;
+          my $result = undef; 
+         my $rec = undef;
+	 if( exists($children[0]) ){
+           $rec = join(',',@children);
          }
-        else
-        {
-         $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>&1`;
-        }
+         if($rec){
+           if ( $OS =~ /AIX/ )
+           {
+            $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>&1`;
+           }
+           else
+           {
+           $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>&1`;
+           }
+         }
 
        if ($result)
         {
