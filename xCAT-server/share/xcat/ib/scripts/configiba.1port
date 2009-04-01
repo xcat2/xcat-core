@@ -123,7 +123,7 @@ if ( $PLTFRM eq "AIX" ) {
         exit;
     }
 
-    my $chdev_cmd = "chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=detach 2>&1";
+    my $chdev_cmd = "chdev -l ml0 -a state=detach 2>&1";
     runcmd($chdev_cmd);
 
     $chdev_cmd = "chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=up 2>&1";
@@ -145,17 +145,4 @@ sub runcmd {
         return $rc;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
