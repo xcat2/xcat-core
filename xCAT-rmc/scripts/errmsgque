@@ -1,12 +1,47 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-
 use strict;
 use locale;
 
 use Getopt::Std;
 use IPC::SysV qw(IPC_STAT S_IRWXU IPC_PRIVATE IPC_CREAT S_IRUSR S_IWUSR );
 use IPC::Msg;
+
+
+
+my $m = ord('xcat');
+my $key = IPC::SysV::ftok("/var/adm/ras/errlog", $m);
+
+# my $msg = new IPC::Msg($key, IPC_CREAT|S_IRUSR|S_IWUSR );
+# my $message =  join " ", @ARGV;
+# $msg->snd(1, "$message");
+
+my $message =  join " ", @ARGV;
+
+runcmd("/usr/bin/refsensor ErrorLogSensor String=\"$message\" 1>/dev/null 2>/dev/null", 0);
+if($::RUNCMD_RC != 0){
+	my $msg = new IPC::Msg($key, IPC_CREAT|S_IRUSR|S_IWUSR );
+	my $stat = $msg->stat;
+	my $qcurrentlen = $$stat[5];
+	if ($qcurrentlen >= 10000)
+	{
+		if (!-d "/var/opt/xcat_err_mon/")
+		{
+			my $cmd = "mkdir -p \"/var/opt/xcat_err_mon\"";
+			runcmd($cmd, -1);	
+		}
+		open(FILE, ">>/var/opt/xcat_err_mon/errmsgqueerr.log");
+		my $sdate = `/bin/date`;
+		chomp $sdate;
+		print FILE "$sdate:\n";
+		print FILE "Can not write the message to queue because the queue is almost full, the message content is: $message\n\n\n";
+		close FILE;
+		exit 0;
+   	}
+	$msg->snd(1, "$message");
+}
+
+exit 0;
 
 #--------------------------------------------------------------------------------
 =head3    runcmd
@@ -39,9 +74,8 @@ sub runcmd
 {
   my ($cmd, $exitcode, $refoutput) = @_;
   $::RUNCMD_RC = 0;
-  if (!$::NO_STDERR_REDIRECT) { 
-    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
-  }
+  if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
+ 
   my $outref = [];
   @$outref = `$cmd`;
   if ($?)
@@ -122,7 +156,7 @@ sub runcmd
 sub filterRmcApiOutput
 {
   my ($cmd, $outref) = @_;
-  if ($::VERBOSE || !($cmd =~ m|^/usr/bin/\S+-api |))  {
+  if (!($cmd =~ m|^/usr/bin/\S+-api |))  {
     return;
   }    # give as much info as possible, if verbose
 
@@ -140,26 +174,3 @@ sub filterRmcApiOutput
   $$outref[0] =~ s/^ERROR${d}.*${d}.*${d}.*${d}.*${d}//;
 }
 
-my $m = ord('xcat_rmc');
-my $key = IPC::SysV::ftok("/var/adm/ras/errlog", $m);
-
-my $msg = new IPC::Msg($key, IPC_CREAT|S_IRUSR|S_IWUSR );
-my $message =  join " ", @ARGV;
-my $stat = $msg->stat;
-my $qcurrentlen = $$stat[5];
-if ($qcurrentlen >= 10000) {
-  if (!-d "/var/opt/xcat_rmc_err_mon/") {
-    my $cmd = "mkdir -p \"/var/opt/xcat_rmc_err_mon\"";
-    runcmd($cmd, -1);	
-  }
-  open(FILE, ">>/var/opt/xcat_rmc_err_mon/errmsgqueerr.log");
-  my $sdate = `/bin/date`;
-  chomp $sdate;
-  print FILE "$sdate:\n";
-  print FILE "Can not write the message to queue because the queue is almost full, the message content is: $message\n\n\n";
-  close FILE;
-  exit 0;
-}
-$msg->snd(1, "$message");
-
-exit 0;

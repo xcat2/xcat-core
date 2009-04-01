@@ -3,240 +3,111 @@
 #------------------------------------------------------------------------------
 =head1  monaixsyslog
 =head2  
-  When first run (by the sensor) this script adds an entry to the AIX ODM
-  or Linux syslog.conf file so that it will be notified when an error is
-  logged (through a message queue on AIX and a named pipe on Linux). Then
-  it checks for any logged errors. On all subsequent runs this script just
-  checks for errors.
 =cut
-#------------------------------------------------------------------------------#
-
-use strict;
+#------------------------------------------------------------------------------
 use locale;
 use Getopt::Long;
-use IPC::SysV qw(IPC_STAT S_IRWXU IPC_PRIVATE IPC_CREAT S_IRUSR S_IWUSR );
-use IPC::Msg;
 
-BEGIN
-{
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-}
+my $dirname = "xcat_aix_syslog";
+my $vardir = "/var/opt/$dirname";   
 
-my $dirname = "xcat_err_mon";
-my $vardir = "/var/opt/$dirname";    
-
-my $default_runfile = "$vardir/.monerrorlog_run";
-my $default_fifo = "$vardir/syslog_fifo";
+my $default_runfile = "$vardir/.monaixsyslog_run";
+my $default_file = "$vardir/syslog.out";
 my $default_pri = "*.warn";
-$::MAX_SENSOR_STRING = 10240;
 
-my ($facility_priority, $fifo, $runfile) = &getArgs();
+$::MAX_SENSOR_STRING = 10240;
+my ($facility_priority, $logfile, $runfile) = &getArgs();
+
 my ($syslogconf, $embedinfo);
 
-if (isNg())
-{
-    $syslogconf = "/etc/syslog-ng/syslog-ng.conf";
-    if (($facility_priority eq $default_pri) && ($fifo eq $default_fifo))
-    {
-    	$embedinfo = "destination warn_fifo { pipe(\\\"$fifo\\\" group(root) perm(0644)); };\nlog { source(src); filter(f_warn); destination(warn_fifo); };";
-    }
-    else
-    {
-        my $tmp_dest = createRandomName("fifo");
-    	$embedinfo = "destination $tmp_dest { pipe(\\\"$fifo\\\" group(root) perm(0644)); };\nlog { source(src); filter($facility_priority); destination($tmp_dest); };";
-    }
-}
-else
-{
-	$syslogconf = "/etc/syslog.conf";
-    $embedinfo = "$facility_priority   |$fifo";
-}
-my $odmstanza  = "$vardir/odmstanza";
+$syslogconf = "/etc/syslog.conf";
+$embedinfo = "$facility_priority   $logfile    rotate size 4m files 1";
 
 if (!-d $vardir) { mkdir($vardir); }
 
-#--------------------------------------------------------------------------------
-
-=head3   first_time_run 
-
-        Notes: check whether this is the first time that monerrlog is run
-	       on Linux, check the marker file /var/opt/xcat_err_mon/.monerrorlog_run
-	       on AIX, check the errnotify odm entry itself
-
-Arguments:
-	N/A
-
-Returns:
-       0 - This is NOT the first time that monerrlog is run
-       1 - This is the first time that monerrlog is run 
-=cut
-
-#--------------------------------------------------------------------------------
-sub first_time_run()
-{
-	if($^O =~ /^aix/i)
-	{
-		my $output  = runcmd("/bin/odmget -q \"en_name=xcat_errlog_sen\" errnotify", -1);
-		if (!$output)
-		{
-			return 1;
-		}
-		return 0;
-	}
-	else
-	{
-		if (!-e $runfile)
-		{
-			return 1;
-		}
-		return 0;
-	}
-
-}
-
 #check to see if this is the first time this script has been run
-if (&first_time_run)
+if (!-e $runfile)
 {      #first time
-	if ($^O =~ /^linux/i)
+	if ($^O =~ /^aix/i)
 	{
 		runcmd("grep \"$embedinfo\" $syslogconf", -1);
 		if ($::RUNCMD_RC == 1)
-		{    #grep did not find dirname
+		{    #grep did not find embedinfo
 			    #update syslog.conf
 			if (!-d $vardir) { mkdir($vardir); }
-                        if (!-e $fifo)
-                        {
-  			    runcmd("/usr/bin/mkfifo $fifo");
-                        }
+			if (!-e $logfile)
+			{
+			    touchFile($logfile);
+			}
 			runcmd("echo \"$embedinfo\" >> $syslogconf");
-			my $cmd = service("syslog", "restart");
+			my $cmd = "refresh -s syslogd";
 			runcmd($cmd);
 		}
 		touchFile($runfile);
-	}
-	elsif ($^O =~ /^aix/i)
-	{
-		open(ODM, ">$odmstanza") or die $!;
-		print ODM '
-errnotify:
-      en_pid = 0
-      en_name = "xcat_errlog_sen"
-      en_persistenceflg = 1
-      en_method =  "' . "$::XCATROOT/sbin/rmcmon/errmsgque" . ' sequence = $1 error_id = $2 class = $3 type = $4 alert_flags = $5 res_name = $6 res_type = $7 res_class = $8 label = $9"
-';
-		close ODM or die $!;
-		runcmd("/usr/bin/odmadd $odmstanza");
-	}
+	}	
 	else
 	{
-		print "unknown platform\n";
+		print "non-AIX platform, this scripts should not be ran.\n";
 		exit 1;
 	}
 }
 
 #Check for errors
 
-if ($^O =~ /^linux/i)
+if ($^O =~ /^aix/i)
 {
-	local $SIG{ALRM} = sub { die "alarm\n" };
-	eval {
-		alarm 4;
-		open(PIPE, $fifo) or die 
-                    print "cannot open file$fifo"; 
-		alarm 0;
-	};
-	if ($@ =~ /alarm/) { close PIPE; exit 0; }
+    unless (open(RUNFILE, "<$runfile"))
+    {
+        print "Cannot open file $runfile\n"; 
+        exit 1;
+    }
+    
+    my $marker = <RUNFILE>;
+    close(RUNFILE);
 
-	my $allinfo = "";
-	while (1)
-	{
-		my $line;
-		eval {
-			alarm 2;
-			$line = <PIPE>;
-			alarm 0;
-		};
-		if ($@ =~ /alarm/) { 
-				close PIPE; 
-                # send the messages to sensor
-				if ($allinfo)
-				{
-					my $strlen = length($allinfo);
-					# The condition/response can not handle
-					# the long sensor String very well, 
-					# use file to pass messages.
-					# file name: /var/opt/xcat_err_mon/tmplogmsg  
-					if ($strlen > $::MAX_SENSOR_STRING)
-					{
-						srand(time | $$); 
-						my $filename = "$vardir/tmplogmsg_$$";
-						while (-e $filename)
-						{
-							$filename = createRandomName($filename);
-						}
-						if (open(TMPLOG, ">$filename"))
-						{
-							print TMPLOG $allinfo;
-							close TMPLOG;
-							print "XCAT_MONERRORLOG_FILE:$filename";
-						}
-						else
-						{
-							#open failed, why?
-							print "OPEN_FILE_FAILED: $filename";
-						}
-					}
-					else
-					{
-						print $allinfo;
-					}
-				}
+    my ($new_number, $new_content, $to_rfile);
+    # If the $runfile is empty, then we should read the $logfile from the beginning.
+    if (!$marker)
+    {
+        ($new_number, $new_content, $to_rfile) = &refreshSensorFromLogfile($logfile, 0, undef);
+    }
+    else
+    {
+        my @info = split ':::', $marker;
+        my ($last_modified_time, $line_number, $mark_content) = @info;
+        
+        my @stats = stat($logfile);
+        my $time = $stats[9];
+        if ($time == $last_modified_time)
+        {
+            # The log file has not been updated since last modified.
+            exit 0;
+        }
 
-				exit 0; 
-		}
-		$allinfo .= $line;
-	}
-	close PIPE;
+        ($new_number, $new_content, $to_rfile) = &refreshSensorFromLogfile($logfile, $line_number, $mark_content);
+
+        # If the $to_rfile is set, then we should refresh the info from rotated file to Sensor first.
+        if ($to_rfile)
+        {
+            # Read the rotated file first.
+            my $rotated_file = "$logfile" . ".0";
+            ($new_number, $new_content, $to_rfile) = &refreshSensorFromLogfile($rotated_file, $line_number, $mark_content);
+
+            # Then read the log file just from the beginning to refresh the Sensor.
+            ($new_number, $new_content, $to_rfile) = &refreshSensorFromLogfile($logfile, 0, undef);
+        }
+    }
+    
+    # Get the last modified time for this log file
+    my @stats = stat($logfile);
+    my $new_time = $stats[9];
+
+    &updateRunfile($new_time, $new_number, $new_content, $runfile);
 }
-elsif ($^O =~ /^aix/i)
+else
 {
-	# the monitoring is stopped
-	if ($ENV{'SENSOR_MonitorStatus'} eq '2')
-	{
-		# stopsrc -s IBM.SensorRM will also 
-		# set $ENV{'SENSOR_MonitorStatus'} to 2
-		# should not do clean up when IBM.SensorRM is stopped
-		if (isRMrunning("IBM.SensorRM"))
-		{
-			runcmd("/bin/odmdelete -o errnotify -q \" en_name=xcat_errlog_sen\"", -1);
-			if (-e $runfile)
-			{
-				unlink($runfile);
-			}
-		}
-		exit 0;
-	}
-
-	my $m = ord('xcat');
-	my $key = IPC::SysV::ftok("/var/adm/ras/errlog", $m);
-	my $buf;
-	my $msg = new IPC::Msg($key, IPC_CREAT | S_IRUSR | S_IWUSR);
-	local $SIG{ALRM} = sub { die "alarm\n" };
-	while (1)
-	{
-		eval {
-			alarm 2;
-			my $rectype = $msg->rcv($buf, 256);
-			alarm 0;
-		};
-		if ($@ =~ /alarm/) { close PIPE; exit 0; }
-		runcmd(
-			"echo \"/usr/bin/refsensor ErrorLogSensor String=\'$buf\' 1>/dev/null 2>/dev/null\" | at now",
-			0
-		);
-	}
-
-	exit 0;
+    print "non-AIX platform, this scripts should not be ran.\n";
+	exit 1;
 }
 
 exit 0;
@@ -249,7 +120,7 @@ exit 0;
 
 	paras: 
 	-p  :    <facility>.<priority>, the default value is "*.warn"
-	-f  :    <fifo_name>, the default value is "/var/opt/xcat_err_mon/syslog_fifo"
+	-f  :    <fifo_name>, the default value is "/var/opt/xcat_aix_syslog/syslog_fifo"
 
 =cut
 
@@ -265,12 +136,12 @@ sub getArgs()
     # Checks case in GetOptions
     $Getopt::Long::ignorecase = 0;
 
-    my ($facility_priority, $fifo, $runfile);
+    my ($facility_priority, $file, $runfile);
 
     if (
         !GetOptions(
                     'p=s'      => \$facility_priority,
-                    'f=s'      => \$fifo,
+                    'f=s'      => \$file,
         )
       )
     {
@@ -279,20 +150,20 @@ sub getArgs()
     }
 
     # Set runfile mark file
-    if ($facility_priority || $fifo)
+    if ($facility_priority || $file)
     {
-        my @para = split '/', $fifo;
+        my @para = split '/', $file;
         my $newpara = join '-', @para;
-        $runfile = "$vardir/.monerrorlog_run" . "-$facility_priority". "-$newpara";
+        $runfile = "$vardir/.monaixsyslog_run" . "-$facility_priority". "-$newpara";
     }
     else
     {
         $runfile = $default_runfile;
     }
 
-    if (!$fifo)
+    if (!$file)
     {
-        $fifo = $default_fifo; 
+        $file = $default_file; 
     }
 
     if (!$facility_priority)
@@ -300,9 +171,140 @@ sub getArgs()
         $facility_priority = $default_pri;
     }
     
-    return ($facility_priority, $fifo, $runfile);
+    return ($facility_priority, $file, $runfile);
 }
 
+#-------------------------------------------------------------------------------
+
+=head3    refreshSensorFromLogfile
+
+	read the log file line by line to refresh the Sensor
+
+    Args:
+    $file       - the log file
+    $bgnline    - the beginning line number that we should read from
+    $bgncontent - the line content related to $line
+
+    Return:
+    $i            - the line number that has been read and refreshed to Sensor.
+    $mark_content - the line content related to $i
+    $to_rfile     - the flag that indicates whether we need to read from the 
+                    rotated file.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub refreshSensorFromLogfile()
+{
+    my ($file, $bgnline, $bgncontent) = @_;
+    unless (open(FILE, "<$file"))
+    {
+        # The file may be opened by syslogd.
+        exit 0;
+    }
+    
+    my $i = 0;
+    my $matchflag = 0;
+    my $to_rfile = 0;
+    my $mark_content;
+    my $allinfo = "";
+    while (my $line = <FILE>)
+    {
+        if ($matchflag || $bgnline == 0)
+        {
+            # Start reading the file from this line and push it to the sensor
+            # and update the mark file
+            $allinfo .= $line;
+    		$i = $i + 1;
+    		$mark_content = $line;
+        }
+        else
+        {
+            if ($i != $bgnline - 1)
+            {
+                $i = $i + 1;
+                next;
+            }
+
+            if ($line eq $bgncontent)
+            {
+                $matchflag = 1;
+                $i = $i + 1;
+                next;
+            }
+            else
+            {
+                # The line number is the same, but the content is different
+                # that indicates the log file has been rotated.
+                $to_rfile = 1;
+                last;
+            }
+        }
+    }
+    if ($allinfo)
+    {
+        my $strlen = length($allinfo);
+        # The condition/response can not handle
+        # the long sensor String very well,
+        # use file to pass messages.
+        # file name: /var/opt/xcat_aix_syslog/tmplogmsg_$$
+        if ($strlen > $::MAX_SENSOR_STRING)
+        {
+            srand(time | $$);
+            my $filename = "$vardir/tmplogmsg_$$";
+            while (-e $filename)
+            {
+                $filename = createRandomName($filename);
+            }
+            if (open(TMPLOG, ">$filename"))
+            {
+                print TMPLOG $allinfo;
+                close TMPLOG;
+                print "XCAT_MONAIXSYSLOG_FILE:$filename";
+            }
+            else
+            {
+                #open failed, why?
+                print "OPEN_FILE_FAILED: $filename";
+            }
+        }
+        else
+        {
+             print $allinfo;
+        }
+    }
+    close(FILE);
+
+    return ($i, $mark_content, $to_rfile);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    updateRunfile
+
+	use the new marker line to update the runfile
+
+    Args:
+    $time - last mofidied time
+    $line - line number
+    $content - line content
+    $file - the run file
+
+    Return:
+    $i            - the line number that has been read and refreshed to Sensor.
+    $mark_content - the line content related to $i
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub updateRunfile()
+{
+    my ($time, $line, $content, $file) = @_;
+    
+    # the marker line is something like "last_modified_time:::line_number:::mark_content"
+    my $new_marker = join(":::", $time, $line, $content);
+    runcmd("echo \"$new_marker\" > $file");
+}
 
 #--------------------------------------------------------------------------------
 =head3    runcmd
@@ -469,6 +471,8 @@ sub touchFile
   }
   return 0;
 }
+
+
 #--------------------------------------------------------------------------------
 
 =head3    createRandomName
@@ -492,7 +496,7 @@ sub touchFile
 
 sub createRandomName
 {
-    my $name = shift;
+    my $name=shift;
 
     my $nI;
     for ($nI = 0 ; $nI < 8 ; $nI++)
@@ -501,66 +505,5 @@ sub createRandomName
         $name .= $char;
     }
     $name;
-}
-
-#--------------------------------------------------------------------------------
-=head3    service
-    Send a service request to an init script.
-    Arguments:
-        $service  - a service name such as 'inetd','xinetd'
-        $svcarg   - arguments for the service such as 'start',
-                    'stop' or 'status'. 
-    Returns:
-        A full cli for the service script.
-=cut
-
-#--------------------------------------------------------------------------------
-sub service
-{
-  my ($service, $svcarg) = @_;
-  my $cmd;
-  my $SVCCLI = "/sbin/service";
-  my $SVCDIR = "/etc/init.d";
-
-  #  On SLES, nfs server script is "nfsserver".
-  if (((-e "/etc/SuSE-release") || isHMC()) && $service eq "nfs")  {
-    $service = "nfsserver";
-  }
-  if (-f $SVCCLI)  {
-    $cmd = "$SVCCLI $service $svcarg ";
-  }
-  else {
-    $cmd = "$SVCDIR/$service $svcarg";
-  }
-  return $cmd;
-}
-
-sub isHMC
-{
-  my $hmcfile = "/opt/hsc/data/hmcType.properties";
-  if (-e $hmcfile) { return 1; }
-  else { return 0; }
-}
-
-sub isNg {
-    if (-f "/etc/SuSE-release") {
-	my $sysconfig="/etc/sysconfig/syslog";
-        my $result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`;
-	if ($result =~ /syslog-ng/) { return 1; }
-    }
-
-    return 0;
-}
-
-sub isRMrunning{
-  my $resMan = $_[0];
-  my @output = runcmd("LANG=C /usr/bin/lssrc -s $resMan", -1);
-  if ($::RUNCMD_RC) { return 0; }   # maybe we should try to catch real errors here
-  my ($subsys, $group, $pid, $status) = split(' ', $output[1]);
-  if (defined($status) && $status eq 'active') { 
-    #now check to see if IBM.AuditRM is up
-    return 1;
-  }
-  return 0;
 }
 
