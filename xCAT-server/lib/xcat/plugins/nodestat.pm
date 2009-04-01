@@ -166,7 +166,16 @@ sub process_request {
    my %unknownnodes;
    foreach (@nodes) {
 	$unknownnodes{$_}=1;
+	my $packed_ip = undef;
+        $packed_ip = gethostbyname($_);
+        if( !defined $packed_ip) {
+                my %rsp;
+                $rsp{name}=[$_];
+                $rsp{data} = [ "Please make sure $_ exists in /etc/hosts" ];
+                $callback->({node=>[\%rsp]});
+        }
    }
+
    my $node;
    my $fping;
    open($fping,"fping ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start fping: $!");
