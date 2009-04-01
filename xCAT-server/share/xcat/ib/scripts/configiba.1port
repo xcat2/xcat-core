@@ -29,7 +29,7 @@ foreach my $num ( @nums ) {
     }
 
     my $packed_ip = gethostbyname($hostname);
-    if ( !$packed_ip ) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); exit 1; }
+    if ( !$packed_ip ) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); next; }
     my $ip = inet_ntoa($packed_ip);
     #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
     my $netmask = "255.255.255.0";
@@ -101,6 +101,38 @@ foreach my $num ( @nums ) {
         system("logger -t xcat 'configiba: successfully configured $nic.'");
     }
 }
+
+#Configure the ml0 interface
+if ( $PLTFRM eq "AIX" ) {
+    my $hostname;
+    if ( $HOST ) {
+        $hostname = "$HOST-ml0";
+    } else {
+        $hostname = "$ENV{NODE}-ml0";
+    }
+    my $packed_ip = gethostbyname($hostname);
+    if ( !$packed_ip ) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); exit; }
+    my $ip = inet_ntoa($packed_ip);
+    my $netmask = "255.255.255.0";
+
+    #Check whether the mlt0 is available
+    my $cmd = "lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null";
+    `$cmd`;
+    if ( $? ) {
+        system("logger -t xcat 'configiba: mlt0 interface is not available'");
+        exit;
+    }
+
+    my $chdev_cmd = "chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=detach 2>&1";
+    runcmd($chdev_cmd);
+
+    $chdev_cmd = "chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=up 2>&1";
+    runcmd($chdev_cmd);
+
+    system("logger -t xcat 'configiba: configured ml0.'");
+}
+
+
 exit 0;
 
 sub runcmd {
