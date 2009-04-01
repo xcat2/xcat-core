@@ -1282,19 +1282,6 @@ sub mknimimage
             return 1;
         }
 
-		#
-		# get spot resource
-		#
-		$spot_name=&mk_spot($lpp_source_name, $callback);
-		chomp $spot_name;
-		$newres{spot} = $spot_name;
-		if ( !defined($spot_name)) {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not create spot definition.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return 1;
-		}
-
 		if ($::METHOD eq "rte" ) {
 
 			# need lpp_source, spot & bosinst_data
@@ -1342,7 +1329,20 @@ sub mknimimage
 				return 1;
             }
 		} 
-		#
+	#
+	# get spot resource
+	#
+	$spot_name=&mk_spot($lpp_source_name, $callback);
+	chomp $spot_name;
+	$newres{spot} = $spot_name;
+	if ( !defined($spot_name)) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not create spot definition.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	#
         # create resolv_conf
         #
         my $resolv_conf_name = &mk_resolv_conf($callback);
