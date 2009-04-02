@@ -5,12 +5,15 @@ use warnings;
 use xCAT::Table;
 use Data::Dumper;
 use File::Copy;
+use Getopt::Long;
+
 
 my @hosts; #Hold /etc/hosts data to be written back
+my $LONGNAME;
 
 
 my %usage=(
-    makehosts => "Usage: makehosts [-n] <noderange>",
+    makehosts => "Usage: makehosts <noderange> [-n] [-l]\n       makehosts -h",
 );
 sub handled_commands {
   return {
@@ -31,26 +34,76 @@ sub addnode {
   while ($idx <= $#hosts) {
     if ($hosts[$idx] =~ /^${ip}\s/ or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}\s/) {
       #TODO: if foundone, delete a dupe
-      if ($domain and $node !~ /\./) {
-          $hosts[$idx] = "$ip $node.$domain $node $othernames\n";
-      } else {
-          $hosts[$idx] = "$ip $node $othernames\n";
-      }
+      $hosts[$idx]=build_line($ip, $node, $domain, $othernames); 
       $foundone=1;
+      return;
     }
     $idx++;
   }
-  if ($foundone) { return;}
-  if ($domain and $node !~ /\./) {
-      push @hosts,"$ip $node.$domain $node $othernames\n";
-  } else {
-      push @hosts,"$ip $node $othernames\n";
-  }
-  push @hosts,"$ip $node $othernames\n";
+
+  my $line=build_line($ip, $node, $domain, $othernames); 
+  push @hosts, $line;
 }
+
+sub build_line {
+    my $ip=shift; 
+    my $node=shift;
+    my $domain=shift;
+    my $othernames=shift;
+    my @o_names=split(/,| /, $othernames);
+    my $longname;
+    foreach (@o_names) {
+	if (($_ eq $node) || ( $domain && ($_ eq "$node.$domain"))) {
+            $longname="$node.$domain";
+	    $_="";
+	} elsif ( $_ =~ /\./) {
+            if (!$longname) { 
+		$longname=$_;
+		$_="";
+	    }
+	}
+    } 
+
+    if ($domain && !$longname) {
+	$longname="$node.$domain";
+    } 
+
+    $othernames=join(' ', @o_names);
+    if ($LONGNAME) { return "$ip $longname $node $othernames\n"; } 
+    else { return "$ip $node $longname $othernames\n"; }
+}
+
+
 sub process_request {
+  Getopt::Long::Configure("bundling") ;
+  $Getopt::Long::ignorecase=0;
+  Getopt::Long::Configure("no_pass_through");
+
   my $req = shift;
   my $callback = shift;
+  my $HELP;
+  my $REMOVE;
+
+  # parse the options
+  if ($req && $req->{arg}) {@ARGV = @{$req->{arg}};}
+  else {  @ARGV = (); }
+  print "argv=@ARGV\n";
+  if(!GetOptions(
+      'h|help'  => \$HELP,
+      'n'  => \$REMOVE,
+      'l|longnamefirst'  => \$LONGNAME,))
+  {
+    $callback->({data=>$usage{makehosts}});
+    return;
+  }
+
+  # display the usage if -h
+  if ($HELP) { 
+    $callback->({data=>$usage{makehosts}});
+    return;
+  }
+
+
   my $hoststab = xCAT::Table->new('hosts');
   my $sitetab = xCAT::Table->new('site');
   my $domain;
@@ -62,11 +115,7 @@ sub process_request {
   }
 
   @hosts = ();
-  if (grep /-h/,@{$req->{arg}}) {
-      $callback->({data=>$usage{makehosts}});
-      return;
-  }
-  if (grep /-n/,@{$req->{arg}}) {
+  if ($REMOVE) {
     if (-e "/etc/hosts") {
       my $bakname = "/etc/hosts.xcatbak";
       rename("/etc/hosts",$bakname);

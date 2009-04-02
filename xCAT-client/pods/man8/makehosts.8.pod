@@ -4,7 +4,7 @@ B<makehosts> - sets up /etc/hosts from the xCAT hosts table.
 
 =head1 SYNOPSIS
 
-B<makehosts> [B<-n>] [I<noderange>]
+B<makehosts> [B<-n>] [I<noderange>] [B<-l>|B<--longnamefirst>]
 
 B<makehosts> {B<-h>|B<--help>}
 
@@ -22,6 +22,11 @@ in the hosts table and then easily generate /etc/hosts using makehosts.
 
 Completely replace the /etc/hosts file, losing any previous content.  If this option is not specified,
 it will only replace the lines in the file that correspond to the nodes in the specified noderange.
+
+=item B<-l>|B<--longnamefirst>
+
+The long name of the host will appear before the short name for each host in the /etc/hosts file.
+The default is short name first.
 
 =back
 
