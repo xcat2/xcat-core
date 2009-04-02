@@ -1329,22 +1329,22 @@ sub mknimimage
 				return 1;
             }
 		} 
-	#
-	# get spot resource
-	#
-	$spot_name=&mk_spot($lpp_source_name, $callback);
-	chomp $spot_name;
-	$newres{spot} = $spot_name;
-	if ( !defined($spot_name)) {
-		my $rsp;
-		push @{$rsp->{data}}, "Could not create spot definition.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
-	}
+		#
+		# get spot resource
+		#
+		$spot_name=&mk_spot($lpp_source_name, $callback);
+		chomp $spot_name;
+		$newres{spot} = $spot_name;
+		if ( !defined($spot_name)) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not create spot definition.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
 
-	#
-        # create resolv_conf
-        #
+		#
+		# create resolv_conf
+		#
         my $resolv_conf_name = &mk_resolv_conf($callback);
 		if (defined($resolv_conf_name)) {
         	chomp $resolv_conf_name;
@@ -1363,18 +1363,27 @@ sub mknimimage
 		$osimagedef{$::image_name}{nimmethod}=$::METHOD;
 	}
 
-	# get resources from the original osimage if provided
-	if ($::opt_i) {
+	#
+    # get resources from the original osimage if provided
+    #
+    if ($::opt_i) {
 
-		foreach my $type (keys %{$::imagedef{$::opt_i}}) {
+        foreach my $type (keys %{$::imagedef{$::opt_i}}) {
+            # could be comma list!!
+            my $include = 1;
+            my @reslist = split(/,/, $::imagedef{$::opt_i}{$type});
+            foreach my $res (@reslist) {
+                if (!grep(/^$res$/, @::nimresources)) {
+                    my $include = 0;
+                    last;
+                }
+            }
 
-            if (grep(/^$::imagedef{$::opt_i}{$type}$/, @::nimresources)) {
-                # if this is a resource then add it to the new osimage
-				# ex. type=spot, name = myspot
+            if ($include) {
                 $osimagedef{$::image_name}{$type}=$::imagedef{$::opt_i}{$type};
             }
         }
-	}
+    }
 
 	if (defined(%newres)) {
 
@@ -1384,15 +1393,28 @@ sub mknimimage
 		}
 	}
 
+	#
+	# overwrite with anything provided on the command line
+	#
 	if (defined(%::attrres)) {
 
-		# add overlay/any additional from the cmd line if provided
-		foreach my $type (keys %::attrres) {
-			if (grep(/^$::attrres{$type}$/, @::nimresources)) {
-				$osimagedef{$::image_name}{$type}=$::attrres{$type};
-			}
-		}
-	}
+        # add overlay/any additional from the cmd line if provided
+        foreach my $type (keys %::attrres) {
+            # could be comma list!!
+            my $include = 1;
+            my @reslist = split(/,/, $::attrres{$type});
+            foreach my $res (@reslist) {
+                if (!grep(/^$res$/, @::nimresources)) {
+                    my $include = 0;
+                    last;
+                }
+            }
+
+            if ($include) {
+                $osimagedef{$::image_name}{$type}=$::attrres{$type};
+            }
+        }
+    }
 
 	# create the osimage def
 	if (xCAT::DBobjUtils->setobjdefs(\%osimagedef) != 0)
