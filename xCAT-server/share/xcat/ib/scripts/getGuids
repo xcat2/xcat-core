@@ -6,7 +6,7 @@
 # Command: getGuids                                                       #
 #                                                                         #
 #-------------------------------------------------------------------------#
-#     This xCAT script will use dsh to get the Guids from Linux nodes      #
+#     This xCAT script will use xdsh to get the Guids from Linux nodes      #
 #     and AIX nodes, and save the results to file /opt/xcat/samples/ib/    #
 #     Guids.xcat, log file is /var/log/xcat/getGuids.log.                   #
 # Command Syntax:                                                         #
@@ -27,13 +27,15 @@ use Getopt::Long;
 # Log file
 $::GUIDS_LOG = "/var/log/xcat/getGuids.log";
 $::DEFAULT_RESULT_FILE = "/var/opt/xcat/ib/Guids.xcat";
+$::GUIDS_LOG_PATH = "/var/log/xcat";
+$::DEFAULT_RESULT_FILE_PATH = "/var/opt/xcat/ib";
 
 # variables and Commands
 $::OK = 0;
 $::NOK = 1;
 $::logging = 0;
 $::GLOBAL_EXIT = 0;
-$::NODEGRP = "/opt/xcat/bin/nodegrp";
+$::NODEGRP = "/opt/xcat/bin/nodels";
 $::LinuxIBCmd = "/usr/bin/ibv_devinfo";
 $::AIXIBCmd = "/usr/bin/ibstat";
 
@@ -45,6 +47,7 @@ $::AIXIBCmd = "/usr/bin/ibstat";
 $::logging++;
 
 local *FILE;
+`/usr/bin/mkdir -p $::DEFAULT_RESULT_FILE_PATH`;
 unless (open(FILE, ">$::RESULT_FILE"))
 {
     print "Can't open file $::RESULT_FILE for writing.\n";
@@ -56,7 +59,7 @@ unless (open(FILE, ">$::RESULT_FILE"))
 }
 
 # get Linux nodes
-my @LnxNodes = `$::NODEGRP LinuxNodes`;
+my @LnxNodes = `$::NODEGRP all nodetype.os | grep -E "sles|rhel"`;
 print $::LOG_FILE_HANDLE  "Running command: $::NODEGRP LinuxNodes\n";
 chomp @LnxNodes;
 
@@ -68,11 +71,13 @@ my $num = scalar(@LnxNodes);
 if ($num > 0)
 {
     # Handle Linux Nodes
-    # Check if dsh is reachable
+    # Check if xdsh is reachable
     foreach my $node (@LnxNodes)
     {
-        my $rc = &checkDshReachability($node);
-        if ($rc == 0) # dsh is ok
+        my $rest;
+        ($node, $rest) = split(/:/, $node);
+        my $rc = &checkxDshReachability($node);
+        if ($rc == 0) # xdsh is ok
         {
             push @ReachableLnxNodes, $node;
         }
@@ -86,11 +91,11 @@ if ($num > 0)
     {
         my $UnreachableLnxNodes = join (", ", @UnreachableLnxNodes);
         print 
-          "Warning: dsh is unreachable for the node(s): $UnreachableLnxNodes.\n" .
-          "Please use updatenode command to configure it.\n";
+          "Warning: xdsh is unreachable for the node(s): $UnreachableLnxNodes.\n" .
+          "Please use xdsh <Node> -K command to configure it.\n";
         print $::LOG_FILE_HANDLE
-          "Warning: dsh is unreachable for the node(s): $UnreachableLnxNodes.\n" .
-          "Please use updatenode command to configure it.\n";
+          "Warning: xdsh is unreachable for the node(s): $UnreachableLnxNodes.\n" .
+          "Please use xdsh <Node> -K command to configure it.\n";
     }
 
     foreach my $node (@ReachableLnxNodes)
@@ -127,8 +132,8 @@ if ($num > 0)
 }
 
 # get AIX nodes
-my @AIXNodes = `$::NODEGRP AIXNodes`;
-print $::LOG_FILE_HANDLE  "Running command: $::NODEGRP AIXNodes\n";
+my @AIXNodes = `$::NODEGRP all nodetype.os | grep "AIX"`;
+print $::LOG_FILE_HANDLE  "Running command: $::NODEGRP\n";
 chomp @AIXNodes;
 
 my @ReachableAIXNodes;
@@ -139,11 +144,14 @@ my $num = scalar(@AIXNodes);
 if ($num > 0)
 {
     # Handle AIX Nodes 
-    # Check if dsh is reachable
+    # Check if xdsh is reachable
     foreach my $node (@AIXNodes)
     {
-        my $rc = &checkDshReachability($node);
-        if ($rc == 0) # dsh is ok
+        my $rest;
+        ($node, $rest) = split(/:/, $node);
+        
+        my $rc = &checkxDshReachability($node);
+        if ($rc == 0) # xdsh is ok
         {
             push @ReachableAIXNodes, $node;
         }
@@ -157,11 +165,11 @@ if ($num > 0)
     {
         my $UnreachableAIXNodes = join (", ", @UnreachableAIXNodes);
         print 
-          "Warning: The dsh is unreachable for the node(s): $UnreachableAIXNodes.\n" .
-          "Please use updatenode command to configure it.\n";
+          "Warning: The xdsh is unreachable for the node(s): $UnreachableAIXNodes.\n" .
+          "Please use xdsh <Node> -K command to configure it.\n";
         print $::LOG_FILE_HANDLE
-          "Warning: The dsh is unreachable for the node(s): $UnreachableAIXNodes.\n" .
-          "Please use updatenode command to configure it.\n";
+          "Warning: The xdsh is unreachable for the node(s): $UnreachableAIXNodes.\n" .
+          "Please use xdsh <Node> -K command to configure it.\n";
     }
 
     foreach my $node (@ReachableAIXNodes)
@@ -250,7 +258,7 @@ sub getArgs()
         $::RESULT_FILE = $::DEFAULT_RESULT_FILE;
         if (!-e "/var/opt/xcat/ib/")
         {
-            `mkdir /var/opt/xcat/ib/`;
+            `/usr/bin/mkdir -p /var/opt/xcat/ib/`;
             if ($?)
             {
                 $::GLOBAL_EXIT = $?;
@@ -280,27 +288,27 @@ sub usage()
 
 #--------------------------------------------------------------------------------
 
-=head3   checkDshReachability
+=head3   checkxDshReachability
 
-        Notes: Check the dsh reachability between the Management Nodes 
+        Notes: Check the xdsh reachability between the Management Nodes 
                and node.
 
 Arguments:
         $node - the remote node hostname.
 
 Returns:
-        $::OK - The remote node is reachable through dsh.
-        $::NOK - The remote node is unreachable through dsh.
+        $::OK - The remote node is reachable through xdsh.
+        $::NOK - The remote node is unreachable through xdsh.
 
 =cut
 
 #--------------------------------------------------------------------------------
-sub checkDshReachability()
+sub checkxDshReachability()
 {
     my ($node) = @_;
 
-    my $output = `dsh -Q -n $node date 2>/dev/null`;
-    print $::LOG_FILE_HANDLE  "Running command: dsh -Q -n $node date 2>/dev/null\n";
+    my $output = `xdsh $node date 2>/dev/null`;
+    print $::LOG_FILE_HANDLE  "Running command: xdsh $node date 2>/dev/null\n";
     if ($? == $::OK)
     {
         return $::OK;
@@ -330,12 +338,12 @@ sub checkIBCmdAvailability()
     my ($node, $os) = @_;
     my $output;
     if ($os eq "Linux") {
-        $output = `dsh -Q -n $node ls $::LinuxIBCmd 2>/dev/null`;
-        print $::LOG_FILE_HANDLE "Running command: dsh -Q -n $node ls $::LinuxIBCmd 2>/dev/null\n"
+        $output = `xdsh $node ls $::LinuxIBCmd 2>/dev/null`;
+        print $::LOG_FILE_HANDLE "Running command: xdsh $node ls $::LinuxIBCmd 2>/dev/null\n"
     }
     else {
-        $output = `dsh -Q -n $node ls $::AIXIBCmd 2>/dev/null`;
-        print $::LOG_FILE_HANDLE "Running command: dsh -Q -n $node ls $::AIXIBCmd 2>/dev/null\n"
+        $output = `xdsh $node ls $::AIXIBCmd 2>/dev/null`;
+        print $::LOG_FILE_HANDLE "Running command: xdsh $node ls $::AIXIBCmd 2>/dev/null\n"
     }
 
     #print "Here: " . $output;
@@ -367,6 +375,7 @@ sub append_logging()
     if (!-e $logfile)
     {
         #  create the log file if not already there
+        `/usr/bin/mkdir -p $::GUIDS_LOG_PATH`;
         unless (open(LOGFILE, ">$logfile"))
         {
             # Cannot open file
@@ -446,7 +455,7 @@ sub getAIXGUIDS()
     print "Getting GUIDs from AIX nodes...\n";
     print $::LOG_FILE_HANDLE "Getting GUIDs from AIX nodes...\n";
 
-    my $getCmd = "dsh -n $AIXNodes $::AIXIBCmd -v 2>/dev/null";
+    my $getCmd = "xdsh $AIXNodes $::AIXIBCmd -v 2>/dev/null";
     print $::LOG_FILE_HANDLE "Running command: $getCmd.\n";
     my @output = `$getCmd`;
 
@@ -551,7 +560,7 @@ sub getLinuxGUIDS()
     print $::LOG_FILE_HANDLE
       "Getting GUIDs from Linux nodes...\n";
 
-    my $getCmd = "dsh -n $LnxNodes $::LinuxIBCmd -v 2>/dev/null";
+    my $getCmd = "xdsh $LnxNodes $::LinuxIBCmd -v 2>/dev/null";
     print $::LOG_FILE_HANDLE "Running command: $getCmd.\n";
     my @output = `$getCmd`;
 
