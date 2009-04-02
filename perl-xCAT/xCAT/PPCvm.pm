@@ -120,87 +120,155 @@ sub chvm_parse_args {
 sub mkvm_parse_args {
 
     my $request = shift;
+
+#return directly for PPC::process_request
+    if ( $request->{opt})
+    {
+        $request->{method} = $request->{command};
+        return $request->{opt};
+    }
+
     my %opt     = ();
-    my $cmd     = $request->{command};
+    my $cmd     = $request->{command}->[0];
     my $args    = $request->{arg};
 
-    #############################################
-    # Responds with usage statement
-    #############################################
+#############################################
+# Responds with usage statement
+#############################################
     local *usage = sub {
         my $usage_string = xCAT::Usage->getUsage($cmd);
         return( [ $_[0], $usage_string] );
     };
-    #############################################
-    # Process command-line arguments
-    #############################################
+#############################################
+# Process command-line arguments
+#############################################
     if ( !defined( $args )) {
         return(usage( "No command specified" ));
     }
-    #############################################
-    # Only 1 node allowed 
-    #############################################
-    if ( scalar( @{$request->{node}} ) > 1) {
-        return(usage( "multiple nodes specified" ));
-    } 
-    #############################################
-    # Checks case in GetOptions, allows opts
-    # to be grouped (e.g. -vx), and terminates
-    # at the first unrecognized option.
-    #############################################
+#############################################
+# Checks case in GetOptions, allows opts
+# to be grouped (e.g. -vx), and terminates
+# at the first unrecognized option.
+#############################################
     @ARGV = @$args;
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose i=s n=s c=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose i=s l=s c=s p=s) )) {
         return( usage() );
     }
-    ####################################
-    # Check for "-" with no option
-    ####################################
+####################################
+# Check for "-" with no option
+####################################
     if ( grep(/^-$/, @ARGV )) {
         return(usage( "Missing option: -" ));
     }
-    ####################################
-    # Check for non-zero integer 
-    ####################################
+####################################
+# Check for non-zero integer 
+####################################
     if ( exists( $opt{i} )) {
         if ( $opt{i} !~ /^([1-9]{1}|[1-9]{1}[0-9]+)$/ ) {
             return(usage( "Invalid entry: $opt{i}" ));
 
         }
     }
-    ####################################
-    # -i and -n not valid with -c 
-    ####################################
+####################################
+# -i and -l not valid with -c 
+####################################
     if ( exists( $opt{c} ) ) {
-        if ( exists($opt{i}) or exists($opt{n})) {
+        if ( exists($opt{i}) or exists($opt{l})) {
+            return( usage() );
+        }
+####################################
+# -p is required for -c
+####################################
+        if ( !exists($opt{p})) {
             return( usage() );
         }
     }
-    ####################################
-    # If -i and -n, both required
-    ####################################
-    elsif ( !exists($opt{n}) or !exists($opt{i})) {
+####################################
+# If -i and -l, both required
+####################################
+    elsif ( !exists($opt{l}) or !exists($opt{i})) {
         return( usage() );
     }
-    ####################################
-    # Check for an extra argument
-    ####################################
+####################################
+# Check for an extra argument
+####################################
     if ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
     }
-    ####################################
-    # Expand -n noderange
-    ####################################
-    if ( exists( $opt{n} )) {
-        my @noderange = xCAT::NodeRange::noderange( $opt{n},0 );
+####################################
+# Expand -l noderange
+####################################
+    if ( exists( $opt{l} )) {
+        my @noderange = xCAT::NodeRange::noderange( $opt{l},0 );
         if ( !@noderange ) {
-            return(usage( "Invalid noderange: '$opt{n}'" ));
+            return(usage( "Invalid noderange: '$opt{l}'" ));
         }
-        $opt{n} = \@noderange;
+        $opt{lpar} = \@noderange;
     }
-    ####################################
+####################################
+# Expand -c noderange
+####################################
+    if ( exists( $opt{c} )) {
+        my @noderange = xCAT::NodeRange::noderange( $opt{c},0 );
+        if ( !@noderange ) {
+            return(usage( "Invalid noderange: '$opt{l}'" ));
+        }
+        $opt{cec} = \@noderange;
+    }
+
+#################################################
+# Swap the targets to be processed in PPC.pm
+#################################################
+    $opt{target} = [@{$request->{node}}];
+    if ( $opt{l})
+    {
+        $request->{node} = [@{$opt{lpar}}];
+        $request->{noderange} = $opt{l};
+    }
+
+    if ( $opt{c})
+    {
+        $request->{node} = [@{$opt{cec}}];
+        $request->{noderange} = $opt{c};
+    }    
+
+#############################################
+# Only 1 node allowed 
+#############################################
+    if ( scalar( @{$request->{node}} ) > 1) {
+        return(usage( "Multiple source specified" ));
+    } 
+
+####################################
+# Read and check profile
+####################################
+    if ( exists( $opt{p})) {
+        $opt{p} = $request->{cwd}->[0] . $opt{p} if ( $opt{p} !~ /^\//);
+        return ( usage( "Profile $opt{p} cannot be found")) if ( ! -f $opt{p});
+        open (PROFFILE, "<$opt{p}") or return ( usage( "Cannot open profile $opt{p}"));
+        my @cfgdata = ();
+        while(  <PROFFILE>)
+        {
+            chomp;
+            /\w+/ or next;
+            if ( /name=/ and /lpar_name/ and /lpar_id/ and /lpar_env/)
+            {
+                push @cfgdata, $_;
+            }
+            else
+            {
+                s/^[^,]*:\s*(name=.*)$/$1/;
+                return ( usage( "Invalid line in profile: $_"));
+            }
+        }
+        return ( usage( "No valid line was found in profile $opt{p}.")) if ( scalar( @cfgdata) < 1);
+        $opt{profile} = \@cfgdata;
+    }
+
+####################################
     # No operands - add command name 
     ####################################
     $request->{method} = $cmd;
@@ -326,165 +394,95 @@ sub lsvm_parse_args {
 # Clones all the LPARs from one CEC to another (must be on same HMC) 
 ##########################################################################
 sub clone {
-
+    my $request = shift;
     my $exp     = shift;
-    my $src     = shift;
-    my $dest    = shift;
-    my $srcd    = shift;
+    my $targets = shift;
+    my $profile = shift;
+    my $destd   = shift;
+    my $destname= shift;
     my $hwtype  = @$exp[2];
     my $server  = @$exp[3];
     my @values  = ();
-    my @lpars   = ();
-    my $srccec;
+    my @lpars   = @$targets;
     my $destcec;
-    my @cfgdata;
- 
-    #####################################
-    # Always one source CEC specified 
-    #####################################
-    my $lparid = @$srcd[0];
-    my $mtms   = @$srcd[2];
-    my $type   = @$srcd[4];
 
-    #####################################
-    # Not supported on IVM 
-    #####################################
+#####################################
+# Always one source CEC specified 
+#####################################
+    my $lparid = @$destd[0];
+    my $mtms   = @$destd[2];
+    my $type   = @$destd[4];
+
+#####################################
+# Not supported on IVM 
+#####################################
     if ( $hwtype eq "ivm" ) {
         return( [[RC_ERROR,"Not supported for IVM"]] );
     }
-    #####################################
-    # Source must be CEC 
-    #####################################
+#####################################
+# Source must be CEC 
+#####################################
     if ( $type ne "fsp" ) {
         return( [[RC_ERROR,"Node must be an FSP"]] );
     }
-    #####################################
-    # Find Destination CEC 
-    #####################################
-    my $tab = xCAT::Table->new( "vpd" );
-
-    #####################################
-    # Error opening vpd database
-    #####################################
-    if ( !defined( $tab )) {
-        return( [[RC_ERROR, "Error opening 'vpd' database"]] );
+#####################################
+# Attributes not found
+#####################################
+    if ( !$mtms) {
+        return( [[RC_ERROR,"Cannot found serial and mtm for $destname"]] );
     }
-    my ($ent) = $tab->getNodeAttribs($dest, [qw(mtm serial)]);
 
-    #####################################
-    # Node not found
-    #####################################
-    if ( !defined( $ent )) {
-        return( [[RC_ERROR,"Destination '$dest' not in 'vpd' database"]] );
-    }
-    #####################################
-    # Attributes not found
-    #####################################
-    if ( !exists( $ent->{mtm} ) or !exists( $ent->{serial} )) {
-        return( [[RC_ERROR,"Attributes not in 'vpd' database"]] );
-    }
-    my $destmtms = "$ent->{mtm}*$ent->{serial}";
-
-    #####################################
-    # Enumerate CECs
-    #####################################
+#####################################
+# Enumerate CECs
+#####################################
     my $filter = "type_model,serial_num";
     my $cecs = xCAT::PPCcli::lssyscfg( $exp, "fsps", $filter );
     my $Rc = shift(@$cecs);
 
-    #####################################
-    # Return error
-    #####################################
+#####################################
+# Return error
+#####################################
     if ( $Rc != SUCCESS ) {
         return( [[$Rc, @$cecs[0]]] );
     }
-    #####################################
-    # Find source/dest CEC 
-    #####################################
+#####################################
+# Find source/dest CEC 
+#####################################
     foreach ( @$cecs ) {
         s/(.*),(.*)/$1*$2/;
 
         if ( $_ eq $mtms ) {
-            $srccec = $_;
-        } elsif ( $_ eq $destmtms ) {
-            $destcec = $destmtms;
+            $destcec = $_;
         }
     }
-    #####################################
-    # Source CEC not found
-    #####################################
-    if ( !defined( $srccec )) {
-        return( [[RC_ERROR,"Source CEC '$src' not found"]] );
-    } 
-    #####################################
-    # Destination CEC not found
-    #####################################
+#####################################
+# Destination CEC not found
+#####################################
     if ( !defined( $destcec )) {
-        return([[RC_ERROR,"Destination CEC '$dest' not found on '$server'"]]);
+        return([[RC_ERROR,"Destination CEC '$destname' not found on '$server'"]]);
     }
-    #####################################
-    # Get all LPARs on source CEC 
-    #####################################
-    $filter = "name,lpar_id";
-    my $result = xCAT::PPCcli::lssyscfg(
-                                    $exp,
-                                    "lpar",
-                                    $srccec,
-                                    $filter );
-    $Rc = shift(@$result);
-
-    #####################################
-    # Return error
-    #####################################
-    if ( $Rc != SUCCESS  ) {
-        return( [[$Rc, @$result[0]]] );
-    }
-    #####################################
-    # Get profile for each LPAR
-    #####################################
-    foreach ( @$result ) {
-        my ($name,$id) = split /,/;
-
-        #################################
-        # Get source LPAR profile
-        #################################
-        my $prof = xCAT::PPCcli::lssyscfg(
-                              $exp,
-                              "prof",
-                              $srccec,
-                              "lpar_ids=$id" );
-
-        $Rc = shift(@$prof); 
-
-        #################################
-        # Return error
-        #################################
-        if ( $Rc != SUCCESS ) {
-            return( [[$Rc, @$prof[0]]] );
-        }
-        #################################
-        # Save LPAR profile 
-        #################################
-        push @cfgdata, @$prof[0];
-    }
-    #####################################
-    # Modify read back profile
-    #####################################
-    foreach my $cfg ( @cfgdata ) {
+#####################################
+# Modify read back profile
+#####################################
+    my $min_lpar_num = scalar(@$profile) < scalar(@$targets) ? scalar(@$profile) : scalar(@$targets) ;
+    my $i;
+    for ($i = 0; $i < $min_lpar_num; $i++)
+    {
+        my $cfg = $profile->[$i];
+        $cfg =~ s/^[^,]*:\s*(name=.*)$/$1/;
         $cfg =~ s/^name=([^,]+|$)/profile_name=$1/;
         my $profile = $1;
 
-        $cfg =~ s/\blpar_name=([^,]+|$)/name=$1/;
-        my $name = $1;
+        $cfg =~ s/\blpar_name=([^,]+|$)/name=$targets->[$i]/;
 
         $cfg = strip_profile( $cfg, $hwtype);
         $cfg =~ /lpar_id=([^,]+)/;
         $lparid = $1;
-    
-        #################################
-        # Create new LPAR  
-        #################################
-        my @temp = @$srcd;
+
+#################################
+# Create new LPAR  
+#################################
+        my @temp = @$destd;
         $temp[0] = $lparid;
         $temp[2] = $destcec;
         $temp[4] = 'lpar';
@@ -492,22 +490,21 @@ sub clone {
         my $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", \@temp, $cfg ); 
         $Rc = shift(@$result);
 
-        #################################
-        # Success - add LPAR to database 
-        #################################
+#################################
+# Success - add LPAR to database 
+#################################
         if ( $Rc == SUCCESS ) {
-            my $newname = $dest."_".$name;
             my $err = xCATdB( 
-               "mkvm", $newname, $profile, $lparid, $srcd, $hwtype, $name, $dest );
+                    "mkvm", $targets->[$i], $profile, $lparid, $destd, $hwtype, $targets->[$i], $destname );
 
             if ( defined( $err )) {
                 push @values, [$err, RC_ERROR];
             }
             next;
         }
-        #################################
-        # Error - Save error 
-        #################################
+#################################
+# Error - Save error 
+#################################
         push @values, [@$result[0], $Rc]; 
     }
     if ( !scalar(@values) ) {
@@ -1046,6 +1043,52 @@ sub list {
     return( \@values );
 }
 
+sub hca_adapter {
+
+    my $cfgdata = shift;
+
+#########################################
+# Increment HCA adapters if present
+# "23001eff/2550010250300/2,23001eff/2550010250400/2"  
+# Increment the last 2 number of 2550010250300 and 
+# 2550010250400 in example above.
+#########################################
+    if ( $cfgdata =~ /(\"*hca_adapters)/ ) {
+
+#####################################
+# If double-quoted, has comma-
+# seperated list of adapters
+#####################################
+        my $delim = ( $1 =~ /^\"/ ) ? "\\\\\"" : ","; 
+        $cfgdata  =~ /hca_adapters=([^$delim]+)|$/;
+        my @hcas = split ",", $1;
+        my $adapters = "hca_adapters=";
+        for my $hca ( @hcas)
+        {
+            my @hcainfo = split /\//, $hca;
+            ######################################################
+            # split it to 2 part, only increase the last 2 number
+            # otherwise it can overflow if change it to dec
+            ######################################################
+            my $portlen = length( $hcainfo[1]);
+            my $portprefix = substr($hcainfo[1],0,$portlen-2);
+            my $portpostfix = substr($hcainfo[1],$portlen-2);
+            my $portnum = hex $portpostfix;
+            $portnum++;
+            $portpostfix = sprintf '%x', $portnum;
+            if ( length( $portpostfix) == 1)
+            {
+                $portpostfix = '0' . $portpostfix;
+            }    
+            $hcainfo[1] = $portprefix . $portpostfix;
+                
+            $adapters = $adapters . join( "/", @hcainfo ) . ',';
+        }
+        $adapters =~ s/^(.*),$/$1/;
+        $cfgdata =~ s/hca_adapters=[^$delim]+/$adapters/;
+    }
+    return( $cfgdata );
+}
 
 
 ##########################################################################
@@ -1161,7 +1204,13 @@ sub create {
     # Clone all the LPARs on CEC 
     #####################################
     if ( exists( $opt->{c} )) {
-        my $result = clone( $exp, $lpar, $opt->{c}, $d );
+        my $result = clone( $request,
+                            $exp, 
+                            $opt->{target}, 
+                            $opt->{profile}, 
+                            $d, 
+                            $request->{node}->[0]
+                          );
         foreach ( @$result ) { 
             my $Rc = shift(@$_);
             push @values, [$opt->{c}, @$_[0], $Rc];
@@ -1211,7 +1260,7 @@ sub create {
         $cfgdata =~ s/lpar_name=/name=/;
     }
     
-    foreach my $name ( @{$opt->{n}} ) {
+    foreach my $name ( @{$opt->{target}} ) {
 
         #################################
         # Modify read-back profile.
@@ -1228,6 +1277,14 @@ sub create {
         if ( $cfgdata =~ /lhea_logical_ports=(\w+)/ ) {
             if ( $1 !~ /^none$/i ) {
                 $cfgdata = lhea_adapter( $cfgdata );
+            }
+        }
+        #################################
+        # Modify HCA adapters
+        #################################
+        if ( $cfgdata =~ /hca_adapters=(\w+)/ ) {
+            if ( $1 !~ /^none$/i ) {
+                $cfgdata = hca_adapter( $cfgdata );
             }
         }
         #################################

@@ -1012,6 +1012,19 @@ sub preprocess_request {
   my $callback = shift;
   my @requests;
 
+  #####################################
+  # Special cases for mkvm
+  #####################################
+  if ( $req->{command}->[0] eq 'mkvm')
+  {
+      $req = mkvm_prepare ( $req);
+      if ( ref($req) eq 'ARRAY')#Something wrong
+      {
+          $callback->({data=>$req});
+          $req = {};
+          return;
+      }
+  }
   ####################################
   # Get hwtype 
   ####################################
@@ -1116,6 +1129,51 @@ sub preprocess_request {
   return \@requests;
 }
 
+####################################
+# Special case for mkvm
+####################################
+sub mkvm_prepare
+{
+    my $req = shift;
+
+    # Following code could be changed more flexibly, as we did in PPC::runcmd
+    # But since we only mkvm need to be handled in this specific way, keep the code simple
+    ######################################
+    # Load specific module
+    ######################################
+    eval "require xCAT::PPCvm";
+    if ( $@ ) {
+        return( $@ );
+    }
+
+    my $opt = xCAT::PPCvm::mkvm_parse_args( $req);
+    if ( ref($opt) eq 'ARRAY')
+    {
+        return $opt;
+    }
+    $req->{opt} = $opt;
+
+    ########################################################
+    #Check lpar number in command line and profile
+    ########################################################
+    if ( exists $opt->{c})
+    {
+        my @profile = @{$opt->{profile}};
+        my @lpars = @{$opt->{target}};
+        my $min_lpar_num = scalar( @profile);
+        if ( scalar(@profile) > scalar( @lpars))
+        {
+            xCAT::MsgUtils->message('W', "Warning: Lpar configuration number in profile is greater than lpars in command line. Only first " . scalar(@lpars) . " lpars will be created.\n");
+            $min_lpar_num = scalar( @lpars);
+        }
+        elsif ( scalar(@profile) < scalar( @lpars))
+        {
+            xCAT::MsgUtils->message('W', "Warning: Lpar number in command line is greater than lpar configuration number in profile. Only lpars " . join ",", @lpars[0..$min_lpar_num-1] . " will be created.\n");
+        }
+    }
+
+    return $req;
+}
 sub preprocess_for_rflash {
 	my $req      = shift;
   	my $callback = shift;
@@ -1228,6 +1286,9 @@ sub process_request {
     $request{hwtype}   = $package; 
     $request{callback} = $callback; 
     $request{method}   = "parse_args";
+
+    #For mkvm only so far
+    $request{opt}      = $req->{opt} if (exists $req->{opt});
 
     ####################################
     # Process command-specific options
