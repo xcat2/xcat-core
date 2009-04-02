@@ -252,7 +252,7 @@ function doTabrestore($tab, & $data){
     $usernode->addChild('username',$_SESSION["username"]);
     $usernode->addChild('password',getpassword());
 	foreach($data as $line){
-		foreach ($line as &$f) { if (!empty($f) && !preg_match('/^".*"$/', $f)) { $f = '&quot;'.$f.'&quot;'; } }
+		foreach ($line as &$f) { if (!empty($f) && !ereg("^#", $f) && !preg_match('/^".*"$/', $f)) { $f = '&quot;'.$f.'&quot;'; } }
 
 		// Combine the elements of the array, but have to handle sparse arrays
 		ksort($line, SORT_NUMERIC);

@@ -27,7 +27,7 @@ require_once "$TOPDIR/jq/jsonwrapper.php";
     $numsubgroups=count($rvals->xcatresponse->intersectinggroups);
     $numnodes=count($rvals->xcatresponse->node);
     $jdata=array();
-    if ($numnodes >= $numsubgroups) { #If there are few enough subgroups to be helpful filters, add them in
+    if ($numnodes >= $numsubgroups || $root==1) { #If there are few enough subgroups to be helpful filters, add them in
         foreach ($rvals->xcatresponse->intersectinggroups as $group) {
             if (! in_array("$group",$parents)) {
             $jdata[]= array("data"=>"$group",
