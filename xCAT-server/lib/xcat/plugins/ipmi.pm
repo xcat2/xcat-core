@@ -361,7 +361,7 @@ sub waitforack {
     my $select = new IO::Select;
     $select->add($sock);
     my $str;
-    if ($select->can_read(10)) { # Continue after 10 seconds, even if not acked...
+    if ($select->can_read(60)) { # Continue after 60 seconds, even if not acked...
         if ($str = <$sock>) {
         } else {
            $select->remove($sock); #Block until parent acks data
@@ -6200,7 +6200,7 @@ sub process_request {
   }
 
     my $children = 0;
-    $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($kpid > 0) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
+    $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($bmc_comm_pids{$kpid}) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
       while ($children > $ipmimaxp) { 
@@ -6291,7 +6291,7 @@ sub forward_data { #unserialize data from pipe, chunk at a time, use magic to de
       while ($data !~ /ENDOFFREEZE6sK4ci/) {
         $data .= <$rfh>;
       }
-      print $rfh "ACK\n";
+      eval { print $rfh "ACK\n"; };  # Ignore ack loss to child that has given up and exited
       my $responses=thaw($data);
       foreach (@$responses) {
         #save the nodes that has errors and the ones that has no-op for use by the node status monitoring

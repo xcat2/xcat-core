@@ -264,7 +264,7 @@ sub waitforack {
     my $select = new IO::Select;
     $select->add($sock);
     my $str;
-    if ($select->can_read(10)) { # Continue after 10 seconds, even if not acked...
+    if ($select->can_read(60)) { # Continue after 60 seconds, even if not acked...
         if ($str = <$sock>) {
         } else {
            $select->remove($sock); #Block until parent acks data
@@ -2178,7 +2178,7 @@ sub process_request {
 
 
   my $children = 0;
-  $SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { delete $mm_comm_pids{$cpid}; $children--; } };
+  $SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { if ($mm_comm_pids{$cpid}) { delete $mm_comm_pids{$cpid}; $children--; } } };
   my $inputs = new IO::Select;;
   foreach my $info (@$moreinfo) {
     $info=~/^\[(.*)\]\[(.*)\]\[(.*)\]/;
@@ -2688,7 +2688,7 @@ sub forward_data {
       while ($data !~ /ENDOFFREEZE6sK4ci/) {
         $data .= <$rfh>;
       }
-      print $rfh "ACK\n";
+      eval { print $rfh "ACK\n"; }; #Ignore ack loss due to child giving up and exiting, we don't actually explicitly care about the acks
       my $responses=thaw($data);
       foreach (@$responses) {
         $callback->($_);
