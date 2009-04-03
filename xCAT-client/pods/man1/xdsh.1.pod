@@ -487,10 +487,11 @@ userdefined.
 
 =item *
 
-To set up the SSH keys for IB switch 
+To define the IB switch as a node and to set up the SSH keys for IB switch 
 B<qswitch> with device configuration file
 B</var/opt/xcat/IBSwitch/Qlogic/config> and user name B<username>, Enter
 
+B<chdef> I<-t node -o qswitch groups=all nodetype=switch>
 B<xdsh> I<qswitch -K -l username --devicetype IBSwitch::Qlogic>
 
 
