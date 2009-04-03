@@ -364,8 +364,9 @@ sub process_request
            INTF: foreach $dhcpif (split /;/,$dhcpinterfaces) {
               my $host;
               my $savehost;
-              my $foundself;
+              my $foundself=1;
               if ($dhcpif =~ /\|/) {
+                 $foundself=0;
                  
                  (my $ngroup,$dhcpif) = split /\|/,$dhcpif;
                  foreach $host (noderange($ngroup)) {
