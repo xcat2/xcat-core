@@ -1106,11 +1106,25 @@ if ($::RUNCMD_RC != 0)
 }
 
 # for AIX systems add xcatd to the /etc/inittab file
+#   and add /install/postscripts to /etc/exports
 if ($::osname eq 'AIX')
 {
     my $mkitab_cmd =
       'mkitab "xcatd:2:once:/opt/xcat/sbin/xcatd > /dev/console 2>&1" > /dev/null 2>&1';
     my $rc = system($mkitab_cmd);
+
+	# check if /install/postscripts is in /etc/exports
+    my $catcmd = "/bin/cat /etc/exports | grep '/install/postscripts '";
+    my $outref = xCAT::Utils->runcmd("$catcmd", -1);
+    if ($::RUNCMD_RC != 0)
+    {
+        # if not add it and make sure it is exported
+        my $ecmd = "echo '/install/postscripts -ro' >> /etc/exports; exportfs -a";
+        my $outref2 = xCAT::Utils->runcmd("$ecmd", -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message('E', "Could not update the /etc/exports file.\n");
+        }
+    }
 }
 
 # more - Linux-only config
