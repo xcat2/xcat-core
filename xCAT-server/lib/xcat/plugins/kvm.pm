@@ -79,7 +79,7 @@ sub waitforack {
     my $select = new IO::Select;
     $select->add($sock);
     my $str;
-    if ($select->can_read(10)) { # Continue after 10 seconds, even if not acked...
+    if ($select->can_read(60)) { # Continue after 10 seconds, even if not acked...
         if ($str = <$sock>) {
         } else {
            $select->remove($sock); #Block until parent acks data
@@ -849,7 +849,7 @@ sub process_request {
   }
 
   my $children = 0;
-  $SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { delete $vm_comm_pids{$cpid}; $children--; } };
+  $SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { if ($vm_comm_pids{$cpid}) { delete $vm_comm_pids{$cpid}; $children--; } } };
   my $inputs = new IO::Select;;
   my $sub_fds = new IO::Select;
   %hyphash=();
@@ -1042,7 +1042,7 @@ sub forward_data {
       while ($data !~ /ENDOFFREEZE6sK4ci/) {
         $data .= <$rfh>;
       }
-      print $rfh "ACK\n";
+      eval { print $rfh "ACK\n"; }; #ignore failures to send inter-process ack
       my $responses=thaw($data);
       foreach (@$responses) {
         #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
