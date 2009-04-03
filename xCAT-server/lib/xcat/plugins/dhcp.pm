@@ -507,8 +507,10 @@ sub process_request
 
         my $ifarg = "$dhcpd_key=\"";
         foreach (keys %activenics) {
+            if (/!remote!/) { next; }
             $ifarg .= " $_";
         }
+        $ifarg =~ s/^ //;
         $ifarg .= "\"\n";
 
         while (<DHCPD_FD>) {
