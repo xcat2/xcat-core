@@ -37,6 +37,7 @@ $::LOG_FILE = \*LOGFILE;
 #
 # Process the command line...
 #
+#  the -c means redo the copy of scripts from the server
 if (!GetOptions('copy|c' => \$::opt_c,))
 {    # Gather options
         exit 1;
@@ -94,7 +95,6 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
     	print $::LOG_FILE "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
 	}
 
-	my $cpcmd;
 	if ((@ARGV==0) || ($ARGV[0] != 2)) {
     	$cpcmd = "cp -r /xcatmnt/* /xcatpost 2>/dev/null";
 	} else {
@@ -129,6 +129,24 @@ my $chcmd = "chmod +x /xcatpost/*";
 if (&runcmd($chcmd) != 0) {
 	print "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
 	print $::LOG_FILE "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
+}
+
+if (-f $scriptname) {
+	# set the timezone
+    my $cmd = "cat $scriptname | grep 'TIMEZONE='";
+    &runcmd($cmd);
+    my $TZline = $::outref;
+    my ($junk, $tz) =  split(/=/, $TZline);
+	chomp $tz;
+    if ($tz) {
+        my $tzcmd = qq~/usr/bin/chtz $tz >/dev/null 2>&1~;
+        if (&runcmd($tzcmd) != 0) {
+            $msg = "$::sdate xcataixpost: Could not set timezone.\n";
+            `logger -t xcat $msg`;
+        } else {
+			&runcmd("export TZ=$tz");
+		}
+    }
 }
 
 # check & run the postscript
@@ -172,13 +190,20 @@ if (@ARGV<1) {
   print "returned";
 }
 
-# Set the local password - if provided
-my $rpd = $ENV{'ROOTPW'};
-if ($rpd) {
-	my $pwcmd = qq~echo "root:$rpd" | /bin/chpasswd -c >/dev/null 2>&1~;
-	if (&runcmd($pwcmd) != 0) {
-		$msg = "$::sdate xcataixpost: Could not set password.\n";
-		`logger -t xcat $msg`;
+if (-f $scriptname) {
+
+	# Set the local password - if provided
+	my $cmd = "cat $scriptname | grep 'ROOTPW='";
+    &runcmd($cmd);
+    my $PWline = $::outref;
+    my ($junk, $rpd) =  split(/=/, $PWline);
+	chomp $rpd;
+	if ($rpd) {
+		my $pwcmd = qq~echo "root:$rpd" | /bin/chpasswd -c >/dev/null 2>&1~;
+		if (&runcmd($pwcmd) != 0) {
+			$msg = "$::sdate xcataixpost: Could not set password.\n";
+			`logger -t xcat $msg`;
+		}
 	}
 }
 
