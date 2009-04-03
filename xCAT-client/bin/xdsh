@@ -263,6 +263,12 @@ sub parse_args_xdsh
 
     if ($options{'ssh-setup'})       # if going to setup ssh keys
     {
+       if ($to_userid ne $current_userid) { #error
+            my $msg = "For -K option, the -l option is not supported unless same id as running the command.\n";
+            xCAT::MsgUtils->message("E", $msg);
+            exit 2;
+
+       }
 
         # prompt for the password for the userid on the node that will be setup
         my $userpw;
