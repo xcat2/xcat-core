@@ -249,17 +249,17 @@ Displays usage information.
 
 =item B<-K>|B<--ssh-setup>
 
-=item B<-K>|B<--ssh-setup>  B<-l>|B<--user> I<user_ID> 
+=item B<-K>|B<--ssh-setup>  B<-l>|B<--user> I<user_ID> B<--devicetype> I<type_of_device> 
 
 Set  up  the  SSH  keys  for the specified node list.
 Currently, this must be run on on a client that has the userid
 defined consistent with the userid that will be updated with ssh
 keys on the node.  
-If the -l option is not defined, then the user_id updated on the 
-node will the same as the current user_id running the command.
-If the -l option is used, and the user_id is not the current user_id
-running the command then the command must be run as root. 
-
+If the current user is root,  roots public ssh keys will be put in the
+authorized_keys* files under roots .ssh directory on the node(s).
+If the current user is non-root, and the user is in the policy table, then
+the current users public ssh keys and root's public ssh keys will be put in
+the authorized_keys* files under the current users .ssh directory on the node(s).
 Other device types, such as IB switch, are also supported.  The
 device should be defined as a node and nodetype should be defined 
 as switch before connecting.
@@ -487,13 +487,18 @@ userdefined.
 
 =item *
 
-To define the IB switch as node and set  up  the  SSH  keys  for IB switch 
+To set up the SSH keys for IB switch 
 B<qswitch> with device configuration file
 B</var/opt/xcat/IBSwitch/Qlogic/config> and user name B<username>, Enter
 
-B<chdef> I<-t node -o qswitch groups=all nodetype=switch>
 B<xdsh> I<qswitch -K -l username --devicetype IBSwitch::Qlogic>
 
+
+=item *
+
+To set up the SSH keys for root on node1, run as root: 
+
+B<xdsh> I<node1 -K>
 
 =item *
 
