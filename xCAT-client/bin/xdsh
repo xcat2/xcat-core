@@ -260,13 +260,14 @@ sub parse_args_xdsh
         $to_userid = $current_userid;
     }
     $ENV{DSH_TO_USERID} = $to_userid;
-    # cannot use -K and -l options together
-    if (($options{'ssh-setup'}) && ($options{'user'})) {
-            my $msg = "The -K option and the -l option are not supported together.\n";
+
+    # only allow -K with -l if --devicetype defined
+    if ((($options{'user'}) && ($options{'ssh-setup'}))
+ && (!($options{'devicetype'}))) {
+            my $msg = "The -K and -l flag may only be used if --devicetype is specified\n.";
             xCAT::MsgUtils->message("E", $msg);
             exit 2;
     }
-
     if ($options{'ssh-setup'})       # if going to setup ssh keys
     {
 
@@ -319,8 +320,9 @@ sub parse_args_xdsh
                 exit 2;
 
             }
-			   #  add config file with stict host checking no
-			   my $cmd="echo \"StrictHostKeyChecking no\" >> $home/.ssh/config";
+
+            #  add config file with stict host checking no
+            my $cmd = "echo \"StrictHostKeyChecking no\" >> $home/.ssh/config";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {    # error
@@ -328,7 +330,7 @@ sub parse_args_xdsh
                 xCAT::MsgUtils->message("E", $msg);
             }
 
-			   my $cmd="chmod 0600 $home/.ssh/config";
+            my $cmd = "chmod 0600 $home/.ssh/config";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {    # error
