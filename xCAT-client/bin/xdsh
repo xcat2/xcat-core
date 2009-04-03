@@ -260,15 +260,15 @@ sub parse_args_xdsh
         $to_userid = $current_userid;
     }
     $ENV{DSH_TO_USERID} = $to_userid;
+    # cannot use -K and -l options together
+    if (($options{'ssh-setup'}) && ($options{'user'})) {
+            my $msg = "The -K option and the -l option are not supported together.\n";
+            xCAT::MsgUtils->message("E", $msg);
+            exit 2;
+    }
 
     if ($options{'ssh-setup'})       # if going to setup ssh keys
     {
-       if ($to_userid ne $current_userid) { #error
-            my $msg = "For -K option, the -l option is not supported unless same id as running the command.\n";
-            xCAT::MsgUtils->message("E", $msg);
-            exit 2;
-
-       }
 
         # prompt for the password for the userid on the node that will be setup
         my $userpw;
