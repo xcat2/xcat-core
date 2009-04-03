@@ -4705,7 +4705,7 @@ ll~;
 
 		# define the node 
 		my $defcmd = "/usr/sbin/nim -o define -t $type ";
-		$defcmd .= "-a if1='find_net $nodeshorthost 0' ";
+		$defcmd .= "-a if1='find_net $nodeshorthost $objhash{$node}{'mac'}' ";
 		$defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
 		$defcmd .= "-a net_definition='ent $nethash{$node}{'mask'} $nethash{$node}{'gateway'}' ";
 		$defcmd .= "-a net_settings1='$speed $duplex' ";
