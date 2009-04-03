@@ -185,7 +185,7 @@ my %bootnumbers = (
   'usb' => 11
 );
 
-my @rscan_attribs = qw(nodetype name id mtm serial mpa groups mgt);
+my @rscan_attribs = qw(nodetype name id mtm serial mpa groups mgt cons);
 my @rscan_header = (
   ["type",          "%-8s" ],
   ["name",          "" ],
@@ -1244,6 +1244,7 @@ sub rscan {
   }
   foreach (@values) {
     my @data = split /,/;
+    my $type = $data[0];
     my $name = $data[1];
   
     my ($k1,$u1);
@@ -1256,6 +1257,9 @@ sub rscan {
     my ($k2,$u2);
     $k2->{node} = $name;
     $u2->{mgt}  = "blade";
+    if($type eq "blade"){
+      $u2->{cons} = "blade";
+    }
     $db{nodehm}->setAttribs($k2,$u2);
     $db{nodehm}{commit} = 1;
 
@@ -1298,6 +1302,10 @@ sub rscan_xml {
             $d = "$type,all";
         } elsif ( /^mgt$/ ) {
             $d = "blade";
+        } elsif ( /^cons$/) {
+           if($type eq "blade"){
+             $d = "blade";
+           }
         } elsif ( /^mpa$/ ) {
             $d = $mpa;
         }
@@ -1331,6 +1339,10 @@ sub rscan_stanza {
             $d = "$type,all";
         } elsif ( /^mgt$/ ) {
             $d = "blade"; 
+        } elsif ( /^cons$/ ) {
+            if($type eq "blade"){
+              $d = "blade";
+            }
         } elsif ( /^mpa$/ ) {
             $d = $mpa;
         }
