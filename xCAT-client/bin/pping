@@ -81,13 +81,17 @@ if ($interface) {
 unless (scalar(@nodes)) {
    exit;
 }
-open (FPING, "fping ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open fping pipe: $!");
-while (<FPING>) {
-  if ($_ =~ /is unreachable/) {
-    s/ is unreachable/: noping/;
-  } elsif ($_ =~ /is alive/) {
-    s/ is alive/: ping/;
-  }
-  print $_;
+my %deadnodes;
+foreach (@nodes) {
+    $deadnodes{$_}=1;
 }
-
+open (FPING, "nmap -sP ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+while (<FPING>) {
+  if (/Host (.*) \(.*\) appears to be up/) {
+      print "$1: ping\n";
+      delete $deadnodes{$1};
+  }
+}
+foreach (sort keys %deadnodes) {
+    print "$_: noping\n";
+}
