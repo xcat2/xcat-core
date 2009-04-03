@@ -171,7 +171,6 @@ if ($ENV{'DEVICETYPE'})
     push(@{$cmdref->{env}}, "DEVICETYPE=$ENV{'DEVICETYPE'}");
 }
 
-
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
 
@@ -242,24 +241,33 @@ sub parse_args_xdsh
     {
         $ENV{XCATBYPASS} = "yes";    # bypass xcatd
     }
-    if ($options{'ssh-setup'})
+
+    # find out who is the current user running xdsh
+    #my $current_userid = getlogin(); # does not work for su
+    my $current_userid = getpwuid($>);
+
+    $ENV{DSH_FROM_USERID} = $current_userid;
+
+    # find out who we are going to log on to the node as
+
+    my $to_userid;
+    if ($options{'user'})            # if -l option
+    {
+        $to_userid = $options{'user'};
+    }
+    else
+    {
+        $to_userid = $current_userid;
+    }
+    $ENV{DSH_TO_USERID} = $to_userid;
+
+    if ($options{'ssh-setup'})       # if going to setup ssh keys
     {
 
-        # prompt for the password for the current userid on the node
-        my $current_userid = getlogin();
-        $ENV{DSH_FROM_USERID} = $current_userid;
-        # find out who we are going to long on to the node as
-        # if -l option or current userid
-        my $to_userid;
-        if ($options{'user'}) {
-           $to_userid=$options{'user'};
-        } else {
-           $to_userid=$current_userid;
-        }
-        $ENV{DSH_TO_USERID} = $to_userid;
+        # prompt for the password for the userid on the node that will be setup
         my $userpw;
         my $msg =
-          "Enter the password for the userid:$to_userid on the node where the ssh keys \nwill be updated:\n";
+          "Enter the password for the userid: $to_userid on the node where the ssh keys \nwill be updated:\n";
         xCAT::MsgUtils->message("I", $msg);
         system("stty -echo");        # turn off keyboard
         chop($userpw = <STDIN>);
@@ -276,7 +284,53 @@ sub parse_args_xdsh
             $ENV{DSH_REMOTE_PASSWORD} = $userpw;
 
         }
-    }
+
+        # if current_userid is not "root", we need to generate the keys
+        # here before becoming root while running under xcatd
+        #
+        if ($current_userid ne "root")
+        {
+            if ($::XCATROOT)
+            {
+                $::REMOTESHELL_EXPECT = "$::XCATROOT/sbin/remoteshell.expect";
+            }
+            else
+            {
+                $::REMOTESHELL_EXPECT = "/opt/xcat/sbin/remoteshell.expect";
+            }
+            $::REMOTE_SHELL = "/usr/bin/ssh";
+
+            # Get the home directory
+            my $home = xCAT::Utils->getHomeDir($current_userid);
+            $ENV{'DSH_FROM_USERID_HOME'} = $home;
+
+            # generates new keys, if they do not already exist
+            xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
+            if ($::RUNCMD_RC != 0)
+            {    # error
+                $msg = "remoteshell.expect failed generating keys.";
+                xCAT::MsgUtils->message("E", $msg);
+                exit 2;
+
+            }
+			   #  add config file with stict host checking no
+			   my $cmd="echo \"StrictHostKeyChecking no\" >> $home/.ssh/config";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {    # error
+                $msg = "Error from $cmd\n";
+                xCAT::MsgUtils->message("E", $msg);
+            }
+
+			   my $cmd="chmod 0600 $home/.ssh/config";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {    # error
+                $msg = "Error from $cmd\n";
+                xCAT::MsgUtils->message("E", $msg);
+            }
+        }
+    }    # end setup of ssh
     if ($options{'version'})
     {
         my $version = xCAT::Utils->Version();
