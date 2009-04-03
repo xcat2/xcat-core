@@ -291,6 +291,25 @@ sub parse_args_xdsh
             $ENV{DSH_REMOTE_PASSWORD} = $userpw;
 
         }
+        # Get the home directory
+        my $home = xCAT::Utils->getHomeDir($current_userid);
+        $ENV{'DSH_FROM_USERID_HOME'} = $home;
+        #  add config file with strict host checking no
+        my $cmd = "echo \"StrictHostKeyChecking no\" >> $home/.ssh/config";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+                $msg = "Error from $cmd\n";
+                xCAT::MsgUtils->message("E", $msg);
+        }
+
+        my $cmd = "chmod 0600 $home/.ssh/config";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+              $msg = "Error from $cmd\n";
+              xCAT::MsgUtils->message("E", $msg);
+        }
 
         # if current_userid is not "root", we need to generate the keys
         # here before becoming root while running under xcatd
@@ -307,9 +326,6 @@ sub parse_args_xdsh
             }
             $::REMOTE_SHELL = "/usr/bin/ssh";
 
-            # Get the home directory
-            my $home = xCAT::Utils->getHomeDir($current_userid);
-            $ENV{'DSH_FROM_USERID_HOME'} = $home;
 
             # generates new keys, if they do not already exist
             xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
@@ -321,22 +337,6 @@ sub parse_args_xdsh
 
             }
 
-            #  add config file with stict host checking no
-            my $cmd = "echo \"StrictHostKeyChecking no\" >> $home/.ssh/config";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {    # error
-                $msg = "Error from $cmd\n";
-                xCAT::MsgUtils->message("E", $msg);
-            }
-
-            my $cmd = "chmod 0600 $home/.ssh/config";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {    # error
-                $msg = "Error from $cmd\n";
-                xCAT::MsgUtils->message("E", $msg);
-            }
         }
     }    # end setup of ssh
     if ($options{'version'})
