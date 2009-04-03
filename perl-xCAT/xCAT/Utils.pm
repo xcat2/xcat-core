@@ -1063,9 +1063,12 @@ sub getHomeDir
 {
     my ($class, $username) = @_;
     my @user;
-    if ($username) {
+    if ($username)
+    {
         @user = getpwnam($username);
-    } else {
+    }
+    else
+    {
         @user = getpwuid($>);
     }
     return $user[7];
@@ -1159,57 +1162,40 @@ sub setupSSH
     }
     $::REMOTE_SHELL = "/usr/bin/ssh";
 
-    # make the directory to hold keys to transfer to the nodes
-    if (!-d $SSHdir)
-    {
-        mkdir("/install",                  0755);
-        mkdir("/install/postscripts",      0755);
-        mkdir("/install/postscripts/_ssh", 0755);
-    }
+    #
+    # if we are running as root
+    # for non-root users, keys were generated in the xdsh client code
+    #
 
-    # Generate the keys, if they do not already exist
     my $rsp = {};
 
     # Get the home directory
     my $home = xCAT::Utils->getHomeDir($from_userid);
     $ENV{'DSH_FROM_USERID_HOME'} = $home;
 
-    # generates new keys, if they do not already exist
-    xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
-    if ($::RUNCMD_RC != 0)
-    {    # error
-        $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+    if ($from_userid eq "root")
+    {
 
+        # make the directory to hold keys to transfer to the nodes
+        if (!-d $SSHdir)
+        {
+            mkdir("/install",                  0755);
+            mkdir("/install/postscripts",      0755);
+            mkdir("/install/postscripts/_ssh", 0755);
+        }
+
+        # generates new keys for root, if they do not already exist
+        xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
+        if ($::RUNCMD_RC != 0)
+        {    # error
+            $rsp->{data}->[0] = "remoteshell.expect failed generating keys.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+        }
     }
 
-    #  build the perl copy script in $HOME/.ssh/copy.perl
-    #open(FILE, ">$home/.ssh/copy.perl")
-    #  or die "cannot open file $home/.ssh/copy.perl\n";
-    #print FILE "#!/usr/bin/perl
-    #my (\$name,\$passwd,\$uid,\$gid,\$quota,\$comment,\$gcos,\$dir,\$shell,\$expire) = getpwnam($to_userid);
-    #my \$home = \$dir;
-    #umask(0077);
-    #\$dest_dir = \"\$home/.ssh/\";
-    #if (! -d \"\$dest_dir\" ) {
-    # create a local directory
-    #   \$cmd = \"mkdir -p \$dest_dir\";
-    #  system(\"\$cmd\");
-    # chmod 0700, \$dest_dir;
-    #}
-    #`cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1`;
-    #`cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1`;
-    #`cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1`;
-    #`cp /tmp/$to_userid/.ssh/id_dsa  \$home/.ssh/id_dsa 2>&1`;
-    #`chmod 0600 \$home/.ssh/id_* 2>&1`;
-    #`rm -f /tmp/$to_userid/.ssh/* 2>&1`;
-    #rmdir(\"/tmp/$to_userid/.ssh\");
-    #rmdir(\"/tmp/$to_userid\");";
-    #   close FILE;
-    #   chmod 0744, "$home/.ssh/copy.perl";
-
-    #  Replace the perl script with a shell script
-    #  Shell is needed because the nodes may not have Perl installed
+    # build the shell copy script, needed Perl not always there
+    # for root and non-root ids
     open(FILE, ">$home/.ssh/copy.sh")
       or die "cannot open file $home/.ssh/copy.sh\n";
     print FILE "#!/bin/sh
@@ -1227,12 +1213,13 @@ rmdir \"/tmp/$to_userid/.ssh\"
 rmdir \"/tmp/$to_userid\"";
 
     close FILE;
-    chmod 0744, "$home/.ssh/copy.sh";
+    chmod 0777,"$home/.ssh/copy.sh";
 
     if (xCAT::Utils->isMN())
     {    # if on Management Node
         if ($from_userid eq "root")
         {
+
             my $rc = xCAT::Utils->cpSSHFiles($SSHdir);
             if ($rc != 0)
             {    # error
@@ -1259,6 +1246,11 @@ rmdir \"/tmp/$to_userid\"";
                 }
             }
         }
+        else
+        {    # from_userid is not root
+                # build the authorized key files for non-root user
+            xCAT::Utils->bldnonrootSSHFiles($from_userid);
+        }
     }
 
     # send the keys to the nodes   for root or some other id
@@ -1272,12 +1264,12 @@ rmdir \"/tmp/$to_userid\"";
 
     }
 
-    #  Remove $home/.ssh/authorized_keys*
-    #  Easy to remote this code, if we want
-    #  The MN to be able to ssh to itself
+    #remove $home/.ssh/authorized_keys*
+    #Easy to remote this code, if we want
+    #The MN to be able to ssh to itself and nodes to ssh to the MN
     if (xCAT::Utils->isMN())
     {
-        $cmd = "rm $home/.ssh/authorized_keys*";
+        $cmd = "rm  $home/.ssh/authorized_keys*";
         xCAT::Utils->runcmd($cmd, 0);
         my $rsp = {};
         if ($::RUNCMD_RC != 0)
@@ -1326,7 +1318,7 @@ rmdir \"/tmp/$to_userid\"";
            and for root and puts them in /install/postscripts/_ssh 
 
         Arguments:
-               directory path
+               install directory path
         Returns:
 
         Globals:
@@ -1334,7 +1326,7 @@ rmdir \"/tmp/$to_userid\"";
         Error:
 
         Example:
-                xCAT::Utils->cpSSHFiles;
+                xCAT::Utils->cpSSHFiles($dir);
 
         Comments:
                 none
@@ -1355,14 +1347,15 @@ sub cpSSHFiles
     }
     my $home = xCAT::Utils->getHomeDir("root");
 
-    my $authorized_keys  = "$SSHdir/authorized_keys";
-    my $authorized_keys2 = "$SSHdir/authorized_keys2";
     if (   !(-e "$home/.ssh/identity.pub")
         || !(-e "$home/.ssh/id_rsa.pub")
         || !(-e "$home/.ssh/id_dsa.pub"))
     {
         return 1;
     }
+
+    # copy to install directory
+    my $authorized_keys = "$SSHdir/authorized_keys";
     $cmd = " cp $home/.ssh/identity.pub $authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
     my $rsp = {};
@@ -1381,6 +1374,8 @@ sub cpSSHFiles
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
     }
+
+    # copy to home ssh directory
     $cmd = " cp $home/.ssh/identity.pub $home/.ssh/authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
     my $rsp = {};
@@ -1401,6 +1396,8 @@ sub cpSSHFiles
         }
     }
 
+    # copy to install directory
+    my $authorized_keys2 = "$SSHdir/authorized_keys2";
     $cmd = "cp $home/.ssh/id_rsa.pub $authorized_keys2";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -1418,6 +1415,8 @@ sub cpSSHFiles
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
     }
+
+    # copy to home ssh directory
     $cmd = "cp $home/.ssh/id_rsa.pub $home/.ssh/authorized_keys2";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -1437,8 +1436,29 @@ sub cpSSHFiles
         }
     }
 
+    # add dsa key to install directory
     my $rsp = {};
     $cmd = "cat $home/.ssh/id_dsa.pub >> $authorized_keys2";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "$cmd failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return (1);
+
+    }
+    else
+    {
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+
+    # add dsa key to  home ssh directory
+    my $rsp = {};
+    $cmd = "cat $home/.ssh/id_dsa.pub >> $home/.ssh/authorized_keys2";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -1460,6 +1480,169 @@ sub cpSSHFiles
     {
         return 1;
     }
+    return (0);
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   bldnonrootSSHFiles 
+
+           Builds authorized_keyfiles for the non-root id
+           It must not only contain the public keys for the non-root id
+		   but also the public keys for root
+
+        Arguments:
+              from_userid -current id running xdsh from the command line 
+        Returns:
+
+        Globals:
+              $::CALLBACK
+        Error:
+
+        Example:
+                xCAT::Utils->bldnonrootSSHFiles;
+
+        Comments:
+                none
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub bldnonrootSSHFiles
+{
+    my ($class, $from_userid) = @_;
+    my ($cmd, $rc);
+    my $rsp = {};
+    if ($::VERBOSE)
+    {
+        $rsp->{data}->[0] = "Building  SSH Keys for $from_userid";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+    }
+    my $home     = xCAT::Utils->getHomeDir($from_userid);
+    my $roothome = xCAT::Utils->getHomeDir("root");
+
+    if (   !(-e "$home/.ssh/identity.pub")
+        || !(-e "$home/.ssh/id_rsa.pub")
+        || !(-e "$home/.ssh/id_dsa.pub"))
+    {
+        return 1;
+    }
+    $cmd = " cp $home/.ssh/identity.pub $home/.ssh/authorized_keys";
+    xCAT::Utils->runcmd($cmd, 0);
+    my $rsp = {};
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "$cmd failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return (1);
+
+    }
+    else
+    {
+        chmod 0600, "$home/.ssh/authorized_keys";
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+
+    my $rsp = {};
+    $cmd = "cp $home/.ssh/id_rsa.pub $home/.ssh/authorized_keys2";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "$cmd failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return (1);
+
+    }
+    else
+    {
+        chmod 0600, "$home/.ssh/authorized_keys2";
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+
+    my $rsp = {};
+    $cmd = "cat $home/.ssh/id_dsa.pub >> $home/.ssh/authorized_keys2";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "$cmd failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return (1);
+
+    }
+    else
+    {
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+
+    # add roots keys
+    # if cannot access, warn and continue
+    my $rsp = {};
+    $cmd = "cat $roothome/.ssh/identity.pub >> $home/.ssh/authorized_keys";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "Warning: Cannot give $from_userid root ssh authority. \n";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+
+    }
+    else
+    {
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+    my $rsp = {};
+    $cmd = "cat $roothome/.ssh/id_rsa.pub >> $home/.ssh/authorized_keys2";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "Warning: Cannot give $from_userid root ssh authority. \n";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+
+    }
+    else
+    {
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+
+    my $rsp = {};
+    $cmd = "cat $roothome/.ssh/id_dsa.pub >> $home/.ssh/authorized_keys2";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $rsp->{data}->[0] = "Warning: Cannot give $from_userid root ssh authority. \n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return (1);
+
+    }
+    else
+    {
+        if ($::VERBOSE)
+        {
+            $rsp->{data}->[0] = "$cmd succeeded.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
+    }
+
     return (0);
 }
 
@@ -3496,12 +3679,11 @@ sub checkCredFiles
         $rsp->{data}->[0] = "Error: $dir is missing.";
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
-    
 
     my $dir = "/etc/xcat/cert";
     if (-d $dir)
     {
-        my $file = "$dir/server-cred.pem";  # from getcredentials
+        my $file = "$dir/server-cred.pem";    # from getcredentials
         if (!(-e $file))
         {
 
@@ -3516,7 +3698,6 @@ sub checkCredFiles
         $rsp->{data}->[0] = "Error: $dir is missing.";
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
-    
 
     my $dir = "/install/postscripts/ca";
     if (-d $dir)
@@ -3558,8 +3739,8 @@ sub checkCredFiles
         my $file = "$dir/ca.pem";
         if (-e $file)
         {
-            my $file2 = "$dir/*" ;
-            my $cmd = "/bin/chmod 0644 $file2";
+            my $file2  = "$dir/*";
+            my $cmd    = "/bin/chmod 0644 $file2";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {

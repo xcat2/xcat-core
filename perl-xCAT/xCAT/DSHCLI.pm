@@ -42,7 +42,7 @@ our @dsh_valid_env = (
                       'DSH_PATH',           'DSH_SYNTAX',
                       'DSH_TIMEOUT',        'DSH_REMOTE_PASSWORD',
                       'DSH_TO_USERID',      'DSH_FROM_USERID',
-                      'DEVICETYPE',    
+                      'DEVICETYPE',
                       );
 select(STDERR);
 $| = 1;
@@ -1044,7 +1044,7 @@ sub fork_fanout_dsh
             if (my $specified_usr =
                 ($$target_properties{'user'} || $$options{'user'}))
             {
-                my $current_usr = getlogin();
+                my $current_usr = getpwuid($>);
                 if ($specified_usr ne $current_usr)
                 {
                     delete $$target_properties{'localhost'};
@@ -3707,6 +3707,21 @@ sub parse_and_run_dsh
         xCAT::DSHCLI->ignoreEnv($options{'ignore_env'});
     }
 
+    # this was determined in the xdsh client code, because non-root user
+    # actions must be taken there.
+    #  either -l option or current user
+    if (!($ENV{'DSH_TO_USERID'}))
+    {
+        my $rsp = ();
+        $rsp->{data}->[0] = "DSH_TO_USERID not setup./n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+    }
+    else
+    {
+        $options{'user'} = $ENV{'DSH_TO_USERID'};
+    }
+
     #
     # build list of nodes
     my @nodelist;
@@ -3754,7 +3769,10 @@ sub parse_and_run_dsh
 
     $options{'command'} = join ' ', @ARGV;
 
+    #
     # -K option just sets up the ssh keys on the nodes and exits
+    #
+
     if (defined $options{'ssh-setup'})
     {
 
@@ -3770,8 +3788,6 @@ sub parse_and_run_dsh
         # Rules: if (current userid running command) not eq touserid,
         #   the current running userid must be root
         #
-        #   if not set then the touserid will be defaulted to
-        #   the current running userid.
         #  DSH_REMOTE_PASSWORD env variable must be set to the correct
         #  password for the key update.  This was setup in xdsh client
         #  frontend.  remoteshell.expect depends on this
@@ -3796,8 +3812,8 @@ sub parse_and_run_dsh
 
         }
 
-        if (!($ENV{'DSH_TO_USERID'})) # id to logon to the node and update the
-                                      # keys
+        if (!($ENV{'DSH_TO_USERID'}))   # id to logon to the node and update the
+                                        # keys
         {
             my $rsp = ();
             $rsp->{data}->[0] =
@@ -3807,23 +3823,20 @@ sub parse_and_run_dsh
 
         }
 
-
         my $current_userid = $ENV{'DSH_FROM_USERID'};
-        my $to_userid = $ENV{'DSH_TO_USERID'};
-
+        my $to_userid      = $ENV{'DSH_TO_USERID'};
 
         # if current_userid ne touserid then current_userid
         # must be root
         if (   ($current_userid ne $to_userid)
-                && ($current_userid ne "root"))
+            && ($current_userid ne "root"))
         {
-                my $rsp = ();
-                $rsp->{data}->[0] =
-                  "When touserid:$to_userid is not the same as the current user:$current_userid. The the command must be run by root id.";
-                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-                return;
+            my $rsp = ();
+            $rsp->{data}->[0] =
+              "When touserid:$to_userid is not the same as the current user:$current_userid. The the command must be run by root id.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
         }
-
 
         # setting up IB switch ssh, different interface that ssh for
         # userid on node.  Must build special ssh command to be sent
