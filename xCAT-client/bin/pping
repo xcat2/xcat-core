@@ -86,10 +86,20 @@ foreach (@nodes) {
     $deadnodes{$_}=1;
 }
 open (FPING, "nmap -sP ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+my $node;
 while (<FPING>) {
   if (/Host (.*) \(.*\) appears to be up/) {
-      print "$1: ping\n";
-      delete $deadnodes{$1};
+      $node=$1;
+      unless ($deadnodes{$node}) {
+          foreach (keys %deadnodes) {
+              if ($node =~ /^$_\./) {
+                  $node = $_;
+                  last;
+              }
+          }
+      }
+      delete $deadnodes{$node};
+      print "$node: ping\n";
   }
 }
 foreach (sort keys %deadnodes) {
