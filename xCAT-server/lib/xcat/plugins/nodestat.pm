@@ -120,7 +120,6 @@ sub process_request {
         '8002' => 'xend',
    );
    my @livenodes;
-   $statselect = new IO::Select;
    my @nodes = @{$request->{node}};
    my %unknownnodes;
    foreach (@nodes) {
