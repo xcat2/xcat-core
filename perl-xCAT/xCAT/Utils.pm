@@ -1110,7 +1110,8 @@ sub setupSSH
     my ($class, $ref_nodes) = @_;
     my @nodes    = $ref_nodes;
     my @badnodes = ();
-    my $n_str    = join ',', @nodes;
+    #my $n_str    = join ',', @nodes;
+    my $n_str    = $nodes[0];
     my $SSHdir   = "/install/postscripts/_ssh";
     if (!($ENV{'DSH_REMOTE_PASSWORD'}))
     {
@@ -1282,7 +1283,8 @@ rmdir \"/tmp/$to_userid\"";
     }
 
     # must always check to see if worked, run test
-    foreach my $n (@nodes)
+    my @testnodes=  split(",", $nodes[0]);
+    foreach my $n (@testnodes)
     {
         my $cmd    = "$::REMOTESHELL_EXPECT -t $::REMOTE_SHELL $n ";
         my @cmdout = `$cmd 2>&1`;

@@ -3785,9 +3785,9 @@ sub parse_and_run_dsh
 
         }
 
-        # Rules: if (current userid running command) not eq touserid,
-        #   the current running userid must be root
-        #
+        #  IF using the xdsh -K -l option then we are setting up the
+        #  --devicetype.   xdsh -K -l is not allowed for users.
+        #  This is checked for in the client code.
         #  DSH_REMOTE_PASSWORD env variable must be set to the correct
         #  password for the key update.  This was setup in xdsh client
         #  frontend.  remoteshell.expect depends on this
@@ -3860,7 +3860,7 @@ sub parse_and_run_dsh
         #
         # setup ssh keys on the nodes or ib switch
         #
-        my $rc      = xCAT::Utils->setupSSH(@nodelist);
+        my $rc      = xCAT::Utils->setupSSH($options{'nodes'});
         my @results = "return code = $rc";
         return (@results);
     }
