@@ -1110,7 +1110,6 @@ sub setupSSH
     my ($class, $ref_nodes) = @_;
     my @nodes    = $ref_nodes;
     my @badnodes = ();
-    #my $n_str    = join ',', @nodes;
     my $n_str    = $nodes[0];
     my $SSHdir   = "/install/postscripts/_ssh";
     if (!($ENV{'DSH_REMOTE_PASSWORD'}))
