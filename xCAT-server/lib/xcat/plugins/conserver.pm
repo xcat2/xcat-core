@@ -74,17 +74,12 @@ sub preprocess_request {
   }
   if ($::LOCAL) {
     if ($noderange && @$noderange>0) {
-      $callback->({data=>"Invalide option -l or --local when there are nodes specified."});
+      $callback->({data=>"Invalid option -l or --local when there are nodes specified."});
       $request = {};
       return;
     }
   }
   
-  #if(exists($ARGV[0])){
-  #  $callback->({data=>"Invalide option $ARGV[0] specified."});
-  #  $request = {};
-  #  return;
-  #}
   
   # get site master
   my $master=xCAT::Utils->get_site_Master();
