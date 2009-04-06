@@ -26,7 +26,6 @@ use lib "$::XCATROOT/lib/perl";
 # MAIN
 use strict;
 use IO::Socket;
-use IO::Socket::SSL;
 
 # MAIN
 
@@ -62,12 +61,32 @@ else
 	&runcmd("rpm -e OpenIPMI-tools");
 
 	&runcmd("rpm -e tftp-server");
-	if ($ENV{'NODESETSTATE'} eq "install")
-	{
-    	$msg = "Installing xCAT";
-    	`logger -t xcat $msg`;
-    	&runcmd("rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm");
-	}
+
+    if (`rpm -q xCATsn` =~ /package xCATsn is not installed/) {
+        #xCATsn package has not been installed yet
+        $msg = "Installing xCAT";
+        `logger -t xcat $msg`;
+        if ( -f "/etc/SuSE-release") { #special case for SLES11
+            &runcmd("rpm -e perl-doc"); #perl-doc conflicts with perl-Version which will be installed
+        }
+        &runcmd("rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm");
+    }
+    #if ($ENV{'NODESETSTATE'} eq "install")
+    #{
+    #		$msg = "Installing xCAT";
+    #		`logger -t xcat $msg`;
+    #        if(-f "/etc/SuSE-release") {
+    ##            # `pkill -9 y2base`;
+    #            $msg = "xCATsn for SuSE";
+    #            `logger -t xCAT $msg`;
+                #$msg=`zypper ar -t plaindir file:/xcatpost/xcat/RPMS xcatsn > /root/dbg.log 2>&1`;
+                #`logger -t xCAT "$msg"`;
+                #`zypper install -y xCAT-server xCAT-client perl-xCAT perl-DBD-mysql xCATsn vsftpd perl-IO-Socket-SSL`;
+                #`rpm -ivh /xcatpost/xcat/RPMS/*.rpm`;
+                #        }else {
+                #	&runcmd("rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm");
+                #}
+                #}
 	&runcmd("/opt/xcat/sbin/copycerts");
 }
 
@@ -248,6 +267,7 @@ sub getcreds
 #####################################################
 sub getresponse
 {
+    require IO::SOCKET::SSL;
 	my ($req) = @_;
 
 	my $port = "3001";
