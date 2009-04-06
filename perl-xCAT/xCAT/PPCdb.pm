@@ -99,7 +99,7 @@ sub add_ppc {
             ###########################
             # Update nodelist table
             ###########################
-            updategroups( $name, $db{nodelist}, $hwtype );
+            updategroups( $name, $db{nodelist}, $type );
             $db{nodelist}{commit} = 1;
 
             ###########################
