@@ -15,6 +15,7 @@ my %termservers; #list of noted termservers
 my $usage_string=
 "  makeconservercf [-d|--delete] noderange
   makeconservercf [-l|--local]
+  makeconservercf 
   makeconservercf -h|--help
   makeconservercf -v|--version
     -l|--local   The conserver gets set up only on the local host.
@@ -79,11 +80,11 @@ sub preprocess_request {
     }
   }
   
-  if(exists($ARGV[0])){
-    $callback->({data=>"Invalide option $ARGV[0] specified."});
-    $request = {};
-    return;
-  }
+  #if(exists($ARGV[0])){
+  #  $callback->({data=>"Invalide option $ARGV[0] specified."});
+  #  $request = {};
+  #  return;
+  #}
   
   # get site master
   my $master=xCAT::Utils->get_site_Master();
