@@ -6,12 +6,33 @@ use Socket;
 use IO::Handle;
 use Getopt::Long;
 my $stat;
-my %portservices;
 
 sub handled_commands {
    return { 
       nodestat => 'nodestat',
    };
+}
+
+sub pinghost {
+   my $node = shift;
+   my $rc = system("ping -q -n -c 1 -w 1 $node > /dev/null");
+   if ($rc == 0) {
+      return 1;
+   } else {
+      return 0;
+   }
+}
+
+sub nodesockopen {
+   my $node = shift;
+   my $port = shift;
+   my $socket;
+   my $addr = gethostbyname($node);
+   my $sin = sockaddr_in($port,$addr);
+   my $proto = getprotobyname('tcp');
+   socket($socket,PF_INET,SOCK_STREAM,$proto) || return 0;
+   connect($socket,$sin) || return 0;
+   return 1;
 }
 
 sub installer_query {
@@ -107,14 +128,41 @@ sub preprocess_request
          } 
     }
     return \@requests;
-    return 0;
 }
 
-sub process_request {
+sub interrogate_node { #Meant to run against confirmed up nodes
+    my $node=shift;
+    my $doreq=shift;
+    my $status = "";
+    if (nodesockopen($node,15002)) {
+        $status.="pbs,"
+    }
+    if (nodesockopen($node,8002)) {
+        $status.="xend,"
+    }
+    if (nodesockopen($node,22)) {
+        $status.="sshd,"
+    }
+    $status =~ s/,$//;
+    if ($status) {
+        return $status;
+    }
+    if ($status = installer_query($node)) {
+        return  $status;
+    } else { #pingable, but no *clue* as to what the state may be
+         $doreq->({command=>['nodeset'],
+                  node=>[$node],
+                  arg=>['stat']},
+                  \&getstat);
+         return 'ping '.$stat;
+     }
+}
+
+sub process_request_nmap {
    my $request = shift;
    my $callback = shift;
    my $doreq = shift;
-   %portservices = (
+   my %portservices = (
         '22' => 'ssh',
         '15002' => 'pbs',
         '8002' => 'xend',
@@ -189,6 +237,88 @@ sub process_request {
          $rsp{data} = [ 'noping' ];
          $callback->({node=>[\%rsp]});
     }
+}
+
+sub process_request {
+   if ( -x '/usr/bin/nmap' ) {
+       return process_request_nmap(@_);
+   }
+   my $request = shift;
+   my $callback = shift;
+   my $doreq = shift;
+
+   my @nodes = @{$request->{node}};
+   my %unknownnodes;
+   foreach (@nodes) {
+	$unknownnodes{$_}=1;
+	my $packed_ip = undef;
+        $packed_ip = gethostbyname($_);
+        if( !defined $packed_ip) {
+                my %rsp;
+                $rsp{name}=[$_];
+                $rsp{data} = [ "Please make sure $_ exists in /etc/hosts" ];
+                $callback->({node=>[\%rsp]});
+        }
+   }
+
+   my $node;
+   my $fping;
+   open($fping,"fping ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start fping: $!");
+   while (<$fping>) {
+      my %rsp;
+      my $node=$_;
+      $node =~ s/ .*//;
+      chomp $node;
+       if (/ is alive/) {
+           $rsp{name}=[$node];
+           $rsp{data} = [ interrogate_node($node,$doreq) ];
+           $callback->({node=>[\%rsp]});
+       } elsif (/is unreachable/) {
+         $rsp{name}=[$node];
+         $rsp{data} = [ 'noping' ];
+         $callback->({node=>[\%rsp]});
+       } elsif (/ address not found/) {
+         $rsp{name}=[$node];
+         $rsp{data} = [ 'nosuchhost' ];
+         $callback->({node=>[\%rsp]});
+       }
+    }
+    @nodes=();
+   foreach $node (@nodes) {
+      my %rsp;
+      my $text="";
+      $rsp{name}=[$node];
+      unless (pinghost($node)) {
+         $rsp{data} = [ 'noping' ];
+         $callback->({node=>[\%rsp]});
+         next;
+      }
+      if (nodesockopen($node,15002)) {
+         $rsp{data} = [ 'pbs' ];
+         $callback->({node=>[\%rsp]});
+         next;
+      } elsif (nodesockopen($node,8002)) {
+         $rsp{data} = [ 'xend' ];
+         $callback->({node=>[\%rsp]});
+         next;
+      } elsif (nodesockopen($node,22)) {
+         $rsp{data} = [ 'sshd' ];
+         $callback->({node=>[\%rsp]});
+         next;
+      } elsif ($text = installer_query($node)) {
+         $rsp{data} = [ $text ];
+         $callback->({node=>[\%rsp]});
+         next;
+      } else {
+         $doreq->({command=>['nodeset'],
+                  node=>[$node],
+                  arg=>['stat']},
+                  \&getstat);
+         $rsp{data} = [ 'ping '.$stat ];
+         $callback->({node=>[\%rsp]});
+         next;
+      }
+   }
 }
 sub usage
 {
