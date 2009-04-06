@@ -102,9 +102,14 @@ my %usage = (
    PPC specific:
        getmacs <noderange> [-f][-d][-S server -G gateway -C client]",
     "mkvm" => 
-"Usage: mkvm singlenode -i id -n noderange [-V|--verbose]
-       mkvm srccec -c destcec [-V|--verbose]
-       mkvm [-h|--help|-v|--version]",
+"Usage:
+    Common:
+       mkvm [-h|--help|-v|--version]
+    For PPC:
+       mkvm noderange -i id -l singlenode [-V|--verbose]
+       mkvm noderange -c destcec -p profile [-V|--verbose]
+    For KVM
+       mkvm noderange -m|--master mastername -s|--size disksize -f|--force",
     "lsvm" => 
 "Usage:
    Common:
