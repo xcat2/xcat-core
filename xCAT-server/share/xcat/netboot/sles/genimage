@@ -161,7 +161,11 @@ unless ($onlyinitrd) {
        chomp;
        next if /^\s*#/;
        ($repotype,$repourl,$repoalias) = split m/\|/;
-       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa -t $repotype $repourl $repoalias");
+       if ($osver =~ /sles11/ && $osver_host == 11) {
+           system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar $repourl $repoalias");
+       }else {
+           system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa -t $repotype $repourl $repoalias");
+       }
      }
    }
 
@@ -170,7 +174,7 @@ unless ($onlyinitrd) {
    #mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
    my $yumcmd;
    if($osver =~ /sles11/ && $osver_host == 11) {
-       $yumcmd = "YAST_IS_RUNNING=\"instsys\" zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -l "; #add -l for SLES11
+       $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -l "; #add -l for SLES11
    }else {
         $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install ";
    }
