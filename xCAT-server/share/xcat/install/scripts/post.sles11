@@ -55,6 +55,10 @@ export MASTER_IP=#XCATVAR:XCATMASTER#
 export MASTER_IPS=#XCATVAR:XCATMASTER#
 export MASTER="#XCATVAR:XCATMASTER#"
 
+# for servicenode, add /install to /etc/fstab
+echo "$MASTER:/install  /install    nfs timeo=14,intr   1 2" >>/etc/fstab
+
+
 #
 #  This script has not yet been updated to work with service nodes
 #
