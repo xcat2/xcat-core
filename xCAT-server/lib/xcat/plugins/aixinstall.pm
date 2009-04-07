@@ -3412,7 +3412,7 @@ sub nimnodecust
 
 	# put together a cust cmd line for NIM
     my @pkglist;
-	my $custcmd = "nim -o cust -a lpp_source=$::LPPSOURCE ";
+	my $custcmd = "nim -o cust -a lpp_source=$::LPPSOURCE -a installp_flags=agQXY ";
     if ( $::PACKAGELIST ) {
         @pkglist = split(/,/, $::PACKAGELIST);
 		$custcmd .= "-a filesets=\"";
