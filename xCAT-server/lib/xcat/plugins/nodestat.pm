@@ -163,7 +163,7 @@ sub process_request_nmap {
    my $callback = shift;
    my $doreq = shift;
    my %portservices = (
-        '22' => 'ssh',
+        '22' => 'sshd',
         '15002' => 'pbs',
         '8002' => 'xend',
    );
@@ -189,15 +189,17 @@ sub process_request_nmap {
    foreach (@nodes) {
        $deadnodes{$_}=1;
    }
-   open($fping,"nmap -p $ports ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
+   open($fping,"nmap -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
    my $currnode='';
    my $port;
    my $state;
    my %states;
    my %rsp;
+   my $installquerypossible=0;
    while (<$fping>) {
       if (/Interesting ports on ([^ ]*) /) {
           $currnode=$1;
+          $installquerypossible=0; #reset possibility indicator
           unless ($deadnodes{$1}) {
               foreach (keys %deadnodes) {
                   if ($currnode =~ /^$_\./) {
@@ -211,7 +213,7 @@ sub process_request_nmap {
           if (/^MAC/) {
               $rsp{name}=[$currnode];
               my $status = join ',',sort keys %states ;
-              unless ($status or $status = installer_query($currnode)) { #pingable, but no *clue* as to what the state may be
+              unless ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
                  $doreq->({command=>['nodeset'],
                       node=>[$currnode],
                       arg=>['stat']},
@@ -228,7 +230,11 @@ sub process_request_nmap {
           if (/^PORT/) { next; }
           ($port,$state) = split;
           if ($port =~ /^(\d*)\// and $state eq 'open') {
-              $states{$portservices{$1}}=1;
+              if ($1 eq "3001") {
+                $installquerypossible=1; #It is possible to actually query node
+              } else {
+                $states{$portservices{$1}}=1;
+              }
           }
       } 
     }
