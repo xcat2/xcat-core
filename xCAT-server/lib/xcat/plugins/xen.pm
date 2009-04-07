@@ -714,7 +714,7 @@ sub process_request {
   }
 
   my $children = 0;
-  $SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { if ($vm_comm_pids{$cpid}) { delete $vm_comm_pids{$cpid}; $children--; } } };
+  $SIG{CHLD} = sub { my $cpid; while (($cpid = waitpid(-1, WNOHANG)) > 0) { if ($vm_comm_pids{$cpid}) { delete $vm_comm_pids{$cpid}; $children--; } } };
   my $inputs = new IO::Select;;
   my $sub_fds = new IO::Select;
   %hyphash=();

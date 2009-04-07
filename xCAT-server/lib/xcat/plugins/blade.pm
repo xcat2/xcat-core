@@ -2178,7 +2178,7 @@ sub process_request {
 
 
   my $children = 0;
-  $SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { if ($mm_comm_pids{$cpid}) { delete $mm_comm_pids{$cpid}; $children--; } } };
+  $SIG{CHLD} = sub { my $cpid; while (($cpid = waitpid(-1, WNOHANG)) > 0) { if ($mm_comm_pids{$cpid}) { delete $mm_comm_pids{$cpid}; $children--; } } };
   my $inputs = new IO::Select;;
   foreach my $info (@$moreinfo) {
     $info=~/^\[(.*)\]\[(.*)\]\[(.*)\]/;
