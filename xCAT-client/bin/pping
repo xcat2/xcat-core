@@ -81,27 +81,43 @@ if ($interface) {
 unless (scalar(@nodes)) {
    exit;
 }
-my %deadnodes;
-foreach (@nodes) {
-    $deadnodes{$_}=1;
+if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') {
+    nmap_pping();
+    exit;
 }
-open (FPING, "nmap -sP ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
-my $node;
+open (FPING, "fping ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open fping pipe: $!");
 while (<FPING>) {
-  if (/Host (.*) \(.*\) appears to be up/) {
-      $node=$1;
-      unless ($deadnodes{$node}) {
-          foreach (keys %deadnodes) {
-              if ($node =~ /^$_\./) {
-                  $node = $_;
-                  last;
+  if ($_ =~ /is unreachable/) {
+    s/ is unreachable/: noping/;
+  } elsif ($_ =~ /is alive/) {
+    s/ is alive/: ping/;
+  }
+  print $_;
+}
+
+sub nmap_pping {
+    my %deadnodes;
+    foreach (@nodes) {
+        $deadnodes{$_}=1;
+    }
+    open (FPING, "nmap -sP ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+    my $node;
+    while (<FPING>) {
+      if (/Host (.*) \(.*\) appears to be up/) {
+          $node=$1;
+          unless ($deadnodes{$node}) {
+              foreach (keys %deadnodes) {
+                  if ($node =~ /^$_\./) {
+                      $node = $_;
+                      last;
+                  }
               }
           }
+          delete $deadnodes{$node};
+          print "$node: ping\n";
       }
-      delete $deadnodes{$node};
-      print "$node: ping\n";
-  }
-}
-foreach (sort keys %deadnodes) {
-    print "$_: noping\n";
+    }
+    foreach (sort keys %deadnodes) {
+        print "$_: noping\n";
+    }
 }
