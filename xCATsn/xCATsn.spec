@@ -18,7 +18,7 @@ Requires: xCAT-server xCAT-client  perl-xCAT perl-XML-Parser
 
 %ifos linux
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
-Requires: atftp dhcp httpd nfs-utils expect nmap bind yaboot-xcat
+Requires: atftp dhcp httpd nfs-utils expect nmap fping bind yaboot-xcat
 %ifarch s390x
 # No additional requires for zLinux right now
 %else

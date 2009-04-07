@@ -1,6 +1,6 @@
 =head1 Name
 
-B<nodestat> - display the running status of a noderange
+B<nodestat> - display the running status of each node in a noderange
 
 =head1 B<Synopsis>
 
@@ -10,12 +10,12 @@ B<nodestat> [I<-h>|I<--help>|I<-v>|I<--version>]
 
 =head1 B<Description>
 
-B<nodestat>  is  a  small  utility used to display the running status of a
+B<nodestat>  displays the running status of a
 single or range of nodes or groups.  See L<noderange(3)|noderange.3>.
 
 B<nodestat> will first check for pbs_mom, if that fails then B<nodestat> will
-check for snmpd, then ping.  If ping fails, then B<nodestat> returns "nop-
-ing".
+check for snmpd, then sshd, then ping.  If ping fails, then B<nodestat> returns
+"noping".
 
 =head1 B<Options>
 
@@ -34,16 +34,15 @@ Print help.
 
 =head1 B<Examples>
 
- nodestat gpfs
+ nodestat compute
 
+ node1   sshd
+ node2   sshd
+ node3   ping
  node4   snmp
  node5   pbs
  node6   snmp
  node7   noping
-
-=head1 B<Author>
-
-Egan Ford <egan@us.ibm.com>
 
 =head1 B<See> B<Also>
 

@@ -4,25 +4,36 @@
 # 2 subdirs created:  core-snap and core-snap-srpms.
 
 # Usage:  buildcore.sh [<branch>] [release]
-#		<branch> - e.g. 2.1.  If not specified, the trunk/new devel branch is assumed
-#		release - if the keyword "release" is specified, means an official dot release.
+#		<branch> - e.g. 2.1 or devel (the default).  If not specified, the trunk/new devel branch is assumed
+#		promote - if the keyword "promote" is specified, means an official dot release.
 #					Otherwise, and snap build is assumed.
 # You can override the default upload behavior by specifying env var: UP=0 or UP=1
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
 
+set -x
 export HOME=/root
 if [ -n "$1" ]; then
-	export DESTDIR=`pwd`/$1/core-snap
-	export SRCDIR=`pwd`/$1/core-snap-srpms
+	REL=$1
 else
-	export DESTDIR=`pwd`/core-snap
-	export SRCDIR=`pwd`/core-snap-srpms
+	REL=devel
 fi
-
 cd `dirname $0`
 VER=`cat Version`
+if [ "$2" = "promote" ]; then
+	CORE="xcat-core"
+	TARNAME=xcat-core-$VER.tar.bz2
+else
+	CORE="core-snap"
+	TARNAME=core-rpms-snap.tar.bz2
+fi
+DESTDIR=`pwd`/$REL/$CORE
+
+if [ "$2" != "promote" ]; then      # very long if statement to not do builds if we are promoting
+mkdir -p $DESTDIR
+SRCDIR=`pwd`/$REL/core-snap-srpms
+mkdir -p $SRCDIR
 GREP=grep
 UPLOAD=0
 if [ -f /etc/redhat-release ]
@@ -32,9 +43,6 @@ else
   pkg="packages"
 fi
 
-mkdir -p $DESTDIR
-mkdir -p $SRCDIR
-#cd xcat-core
 svn up > ../coresvnup
 
 if $GREP xCAT-client ../coresvnup; then
@@ -131,7 +139,6 @@ else
 fi
 
 # Prepare the RPMs for pkging and upload
-set -x
 build-utils/rpmsign.exp $DESTDIR/*rpm
 build-utils/rpmsign.exp $SRCDIR/*rpm
 createrepo $DESTDIR
@@ -142,18 +149,18 @@ gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
 gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
 chgrp -R xcat $DESTDIR
 chmod -R g+w $DESTDIR
+fi		# end of very long if-not-promote
+
+set -x
 cd $DESTDIR/..
-#todo: if $2 == "release" then name the tarball differently and upload to FRS.  Also upload RPMs to xcat-core instead of core-snap.
-export CFNAME=core-rpms-snap.tar.bz2
-tar jcvf $CFNAME core-snap
-chgrp xcat $CFNAME
-chmod g+w $CFNAME
+tar -hjcvf $TARNAME $CORE
+chgrp xcat $TARNAME
+chmod g+w $TARNAME
 
 # Upload the tarball and individual RPMs
-if [ -n "$1" ]; then
-	DIR=$1
+rsync -rlv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
+if [ "$2" = "promote" ]; then
+	true	#todo: upload tarball to FRS.
 else
-	DIR=devel
+	scp $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
 fi
-scp $CFNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$DIR/
-rsync -rlv --delete core-snap $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$DIR/
