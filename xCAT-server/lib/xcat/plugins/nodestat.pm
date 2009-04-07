@@ -5,7 +5,7 @@ use warnings;
 use Socket;
 use IO::Handle;
 use Getopt::Long;
-my $stat;
+my %nodesetstats;
 
 sub handled_commands {
    return { 
@@ -58,7 +58,9 @@ sub installer_query {
 
 sub getstat {
    my $response = shift;
-   $stat = $response->{node}->[0]->{data}->[0];
+   foreach (@{$response->{node}}) {
+        $nodesetstats{$_->{name}->[0]} = $_->{data}->[0];
+   }
 }
 
 #-------------------------------------------------------
@@ -154,7 +156,7 @@ sub interrogate_node { #Meant to run against confirmed up nodes
                   node=>[$node],
                   arg=>['stat']},
                   \&getstat);
-         return 'ping '.$stat;
+         return 'ping '.$nodesetstats{$node};
      }
 }
 
@@ -196,10 +198,12 @@ sub process_request_nmap {
    my %states;
    my %rsp;
    my $installquerypossible=0;
+   my @nodesetnodes=();
    while (<$fping>) {
       if (/Interesting ports on ([^ ]*) /) {
           $currnode=$1;
           $installquerypossible=0; #reset possibility indicator
+          %rsp=();
           unless ($deadnodes{$1}) {
               foreach (keys %deadnodes) {
                   if ($currnode =~ /^$_\./) {
@@ -211,16 +215,12 @@ sub process_request_nmap {
           delete $deadnodes{$currnode};
       } elsif ($currnode) {
           if (/^MAC/) {
-              $rsp{name}=[$currnode];
               my $status = join ',',sort keys %states ;
               unless ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
-                 $doreq->({command=>['nodeset'],
-                      node=>[$currnode],
-                      arg=>['stat']},
-                      \&getstat);
-                 $status= 'ping '.$stat;
+                 push @nodesetnodes,$currnode; #Aggregate call to nodeset
+                 next;
               }
-
+              $rsp{name}=[$currnode];
               $rsp{data} = [ $status ];
               $callback->({node=>[\%rsp]});
               $currnode="";
@@ -238,6 +238,17 @@ sub process_request_nmap {
           }
       } 
     }
+    if (@nodesetnodes) {
+        $doreq->({command=>['nodeset'],
+                  node=>\@nodesetnodes,
+                  arg=>['stat']},
+                  \&getstat);
+        foreach (@nodesetnodes) {
+              $rsp{name}=[$_];
+              $rsp{data} = [ "ping ".$nodesetstats{$_} ];
+              $callback->({node=>[\%rsp]});
+        }
+    }
     foreach $currnode (sort keys %deadnodes) {
          $rsp{name}=[$currnode];
          $rsp{data} = [ 'noping' ];
@@ -246,6 +257,7 @@ sub process_request_nmap {
 }
 
 sub process_request {
+   %nodesetstats=();
    if ( -x '/usr/bin/nmap' ) {
        return process_request_nmap(@_);
    }
@@ -289,43 +301,8 @@ sub process_request {
          $callback->({node=>[\%rsp]});
        }
     }
-    @nodes=();
-   foreach $node (@nodes) {
-      my %rsp;
-      my $text="";
-      $rsp{name}=[$node];
-      unless (pinghost($node)) {
-         $rsp{data} = [ 'noping' ];
-         $callback->({node=>[\%rsp]});
-         next;
-      }
-      if (nodesockopen($node,15002)) {
-         $rsp{data} = [ 'pbs' ];
-         $callback->({node=>[\%rsp]});
-         next;
-      } elsif (nodesockopen($node,8002)) {
-         $rsp{data} = [ 'xend' ];
-         $callback->({node=>[\%rsp]});
-         next;
-      } elsif (nodesockopen($node,22)) {
-         $rsp{data} = [ 'sshd' ];
-         $callback->({node=>[\%rsp]});
-         next;
-      } elsif ($text = installer_query($node)) {
-         $rsp{data} = [ $text ];
-         $callback->({node=>[\%rsp]});
-         next;
-      } else {
-         $doreq->({command=>['nodeset'],
-                  node=>[$node],
-                  arg=>['stat']},
-                  \&getstat);
-         $rsp{data} = [ 'ping '.$stat ];
-         $callback->({node=>[\%rsp]});
-         next;
-      }
-   }
 }
+
 sub usage
 {
     my $cb=shift;
