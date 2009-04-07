@@ -13,6 +13,7 @@
 UPLOADUSER=bp-sawyers
 
 set -x
+CURRENTDIR=`pwd`
 export HOME=/root
 if [ -n "$1" ]; then
 	REL=$1
@@ -28,11 +29,11 @@ else
 	CORE="core-snap"
 	TARNAME=core-rpms-snap.tar.bz2
 fi
-DESTDIR=`pwd`/$REL/$CORE
+DESTDIR=$CURRENTDIR/$REL/$CORE
 
 if [ "$2" != "promote" ]; then      # very long if statement to not do builds if we are promoting
 mkdir -p $DESTDIR
-SRCDIR=`pwd`/$REL/core-snap-srpms
+SRCDIR=$CURRENTDIR/$REL/core-snap-srpms
 mkdir -p $SRCDIR
 GREP=grep
 UPLOAD=0
