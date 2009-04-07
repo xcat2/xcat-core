@@ -147,7 +147,7 @@ sub invoke_cmd {
     #################################
     # Get node type
     #################################
-    my ($ent) = $tabs{nodetype}->getAttribs({'node'=>$node}, "nodetype" );
+    my ($ent) = $tabs{nodetype}->getNodeAttribs($node, ["nodetype"] );
     if ( !defined( $ent )) {
         return( sprintf( $errmsg{NODE_UNDEF}, "nodetype" ));
     }
@@ -186,7 +186,7 @@ sub invoke_cmd {
     # Find MTMS in vpd database
     #################################
     my @attrs = qw(mtm serial);
-    my ($vpd) = $tabs{vpd}->getAttribs({node=>$att->{parent}}, @attrs );
+    my ($vpd) = $tabs{vpd}->getNodeAttribs($att->{parent}, \@attrs );
 
     if ( !defined( $vpd )) {
         return( sprintf( $errmsg{NODE_UNDEF}, "vpd" ));
