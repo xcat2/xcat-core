@@ -2772,6 +2772,7 @@ sub toIP
     {
         return ([0, $_[0]]);
     }
+    $!=undef;
     my $packed_ip = gethostbyname($_[0]);
     if (!$packed_ip or $!)
     {
