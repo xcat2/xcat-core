@@ -24,6 +24,9 @@ Requires: atftp dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsft
 # No additional requires for zLinux right now
 %else
 Requires: conserver
+%ifarch ppc64
+Requires: perl-IO-Stty
+%endif
 %endif
 %endif
 
