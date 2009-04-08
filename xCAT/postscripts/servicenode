@@ -27,6 +27,11 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use IO::Socket;
 
+my $useSocketSSL=eval { require IO::Socket::SSL; };
+if ($useSocketSSL) {
+        require IO::Socket::SSL;
+}
+
 # MAIN
 
 my $rc=0;
@@ -267,7 +272,6 @@ sub getcreds
 #####################################################
 sub getresponse
 {
-    require IO::SOCKET::SSL;
 	my ($req) = @_;
 
 	my $port = "3001";
