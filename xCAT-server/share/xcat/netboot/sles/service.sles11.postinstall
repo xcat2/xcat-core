@@ -33,8 +33,6 @@ END
 
 
 cat <<END >>$installroot/etc/hosts
-9.114.47.247	xcat_n02
-9.114.47.248	xcat_n03
 END
 
 

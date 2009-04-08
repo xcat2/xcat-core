@@ -153,19 +153,22 @@ unless ($onlyinitrd) {
    }
 
    #-- add custom repositories to the image
-   if (-r "$pathtofiles/$profile.repolist") {
-     $repolist = "$pathtofiles/$profile.repolist";
+   if ( -r "$pathtofiles/$profile.$osver.$arch.repolist") {
+       $repolist = "$pathtofiles/$profile.$osver.$arch.repolist";
+   }elsif ( -r "$pathtofiles/$profile.$osver.repolist") {
+       $repolist = "$pathtofiles/$profile.$osver.repolist";
+   }elsif ( -r "$pathtofiles/$profile.repolist") {
+       $repolist = "$pathtofiles/$profile.repolist";
+   }
+
+   if ( -r "$repolist") {
      print "Reading custom repositories\n";
      open($repoconfig,"<","$repolist");
      while (<$repoconfig>) {
        chomp;
        next if /^\s*#/;
        ($repotype,$repourl,$repoalias) = split m/\|/;
-       if ($osver =~ /sles11/ && $osver_host == 11) {
-           system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar $repourl $repoalias");
-       }else {
-           system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa -t $repotype $repourl $repoalias");
-       }
+       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar $repourl $repoalias");
      }
    }
 
@@ -218,6 +221,13 @@ if (-x "$pathtofiles/$profile.$osver.$arch.postinstall") {
     my $rc = system("$pathtofiles/$profile.$osver.$arch.postinstall", "$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
     if($rc) {
         print "postinstall script failed\n";
+        exit 1;
+    }
+}
+elsif (-x "$pathtofiles/$profile.$osver.postinstall") {
+    my $rc = system("$pathtofiles/$profile.$osver.postinstall","$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
+    if ($rc) {
+        print "posinstall script failed\n";
         exit 1;
     }
 }

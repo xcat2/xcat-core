@@ -3,7 +3,7 @@ bash
 nfs-utils
 #stunnel
 dhcpcd 
-kernel-ppc64
+kernel
 openssh
 #procps
 psmisc
