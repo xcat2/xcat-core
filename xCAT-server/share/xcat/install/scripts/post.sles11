@@ -75,7 +75,7 @@ do
 
 		if [ "$?" = "0" ]
 		then
-            if [ -x  /usr/bin/stunnel ]; then
+            if [ -x  /usr/bin/openssl ]; then
                 USEOPENSSLFORXCAT=1
                 export USEOPENSSLFORXCAT
             else
