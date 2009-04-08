@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<!DOCTYPE profile SYSTEM "/usr/share/YaST2/include/autoinstall/profile.dtd">
+<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+  <install>
+    <bootloader>
+      <write_bootloader config:type="boolean">true</write_bootloader>
+      <activate config:type="boolean">true</activate>
+      <kernel_parameters></kernel_parameters>
+      <lba_support config:type="boolean">false</lba_support>
+      <linear config:type="boolean">false</linear>
+      <location>mbr</location>
+    </bootloader>
+    <iscsi-client>
+        <initiatorname>#TABLE:nodelist:$NODE:node#</initiatorname>
+        <targets config:type="list">
+            <listentry>
+                <authmethod>None</authmethod>
+                <portal>#TABLE:iscsi:$NODE:server#:3260,1</portal>
+                <startup>onboot</startup>
+                <target>#TABLE:iscsi:$NODE:target#</target>
+            </listentry>
+        </targets>
+        <version>1.0</version>
+    </iscsi-client>
+    <general>
+      <clock>
+        <hwclock>GMT</hwclock>
+        <timezone>#TABLE:site:key=timezone:value#</timezone>
+      </clock>
+      <keyboard>
+        <keymap>english-us</keymap>
+      </keyboard>
+      <language>en_US</language>
+      <mode>
+        <confirm config:type="boolean">false</confirm>
+        <forceboot config:type="boolean">false</forceboot>
+        <interactive_boot config:type="boolean">false</interactive_boot>
+        <reboot config:type="boolean">true</reboot>
+      </mode>
+      <mouse>
+        <id>non</id>
+      </mouse>
+    </general>
+    <partitioning config:type="list">
+      <drive>
+        <initialize config:type="boolean">true</initialize>
+        <use>all</use>
+      </drive>
+    </partitioning>
+    <software>
+      <patterns config:type="list">
+        <pattern>base</pattern>
+	    <pattern>x11</pattern>
+      </patterns>
+      <packages config:type="list">
+        <package>xntp</package>
+        <package>rsync</package>
+        <package>open-iscsi</package>
+      </packages>
+    </software>
+  </install>
+  <configure>
+    <users config:type="list">
+      <user>
+        <username>root</username>
+        <user_password>#CRYPT:passwd:key=system,username=root:password#</user_password>
+        <encrypted config:type="boolean">true</encrypted>
+        <forename/>
+        <surname/>
+      </user>
+    </users>
+    <networking>
+      <dns>
+        <dhcp_hostname config:type="boolean">true</dhcp_hostname>
+        <dhcp_resolv config:type="boolean">true</dhcp_resolv>
+        <domain>#TABLE:site:key=domain:value#</domain>
+        <hostname>#TABLE:nodelist:$NODE:node#</hostname>
+      </dns>
+      <interfaces config:type="list">
+        <interface>
+          <bootproto>dhcp</bootproto>
+          <device>eth0</device>
+          <startmode>nfsroot</startmode>
+        </interface>
+      </interfaces>
+      <routing>
+        <ip_forward config:type="boolean">false</ip_forward>
+        <routes config:type="list"/>
+      </routing>
+    </networking>
+    <scripts>
+   #INCLUDE:../scripts/pre.sles#
+   #INCLUDE:../scripts/chroot.sles#
+   #INCLUDE:../scripts/post.sles11.iscsi#
+    </scripts>
+  </configure>
+</profile>
