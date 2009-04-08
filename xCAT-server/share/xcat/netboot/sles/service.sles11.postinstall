@@ -33,6 +33,11 @@ END
 
 
 cat <<END >>$installroot/etc/hosts
+`getent hosts $HOSTNAME`
+END
+
+cat <<END >>$installroot/root/.bashrc
+export XCATHOST=$HOSTNAME:3001
 END
 
 
