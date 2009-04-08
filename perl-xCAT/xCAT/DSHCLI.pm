@@ -2965,7 +2965,7 @@ sub _resolve_nodes
 
         my $rsp = {};
         $rsp->{data}->[0] =
-          "The specified node $node is not defined to the cluster.";
+          "The specified node $node address is not resolvable in the cluster.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
     }
 
