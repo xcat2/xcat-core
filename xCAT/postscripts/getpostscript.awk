@@ -1,5 +1,12 @@
 #!/usr/bin/awk -f
 BEGIN {
+        if (ENVIRON["USEOPENSSLFORXCAT"]) {
+            server = "openssl s_client -quiet -connect " ENVIRON["XCATSERVER"]
+        } else {
+            server = "/inet/tcp/0/127.0.0.1/400"
+        }
+
+
         server = "/inet/tcp/0/127.0.0.1/400"
         quit = "no"
 

@@ -75,21 +75,26 @@ do
 
 		if [ "$?" = "0" ]
 		then
-	 rpm -ivh $i/post/otherpkgs/sles11/$NODE_ARCH/stunnel*.rpm
-	 mkdir -p /usr/var/run/stunnel
-         mkdir -p /var/stunnel
-         if [ -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
-            echo client=yes > /etc/stunnel/stunnel.conf
-            echo foreground=no >> /etc/stunnel/stunnel.conf
-            echo output=/dev/null >> /etc/stunnel/stunnel.conf
-            echo verify=0 >> /etc/stunnel/stunnel.conf
-            echo '[xcatd]' >> /etc/stunnel/stunnel.conf
-            echo accept=400 >> /etc/stunnel/stunnel.conf
-            echo connect=$i:3001 >> /etc/stunnel/stunnel.conf
+            if [ -x  /usr/bin/stunnel ]; then
+                USEOPENSSLFORXCAT=1
+                export USEOPENSSLFORXCAT
+            else
+                 rpm -ivh $i/post/otherpkgs/sles11/$NODE_ARCH/stunnel*.rpm
+                 mkdir -p /usr/var/run/stunnel
+                     mkdir -p /var/stunnel
+                     if [ -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
+                        echo client=yes > /etc/stunnel/stunnel.conf
+                        echo foreground=no >> /etc/stunnel/stunnel.conf
+                        echo output=/dev/null >> /etc/stunnel/stunnel.conf
+                        echo verify=0 >> /etc/stunnel/stunnel.conf
+                        echo '[xcatd]' >> /etc/stunnel/stunnel.conf
+                        echo accept=400 >> /etc/stunnel/stunnel.conf
+                        echo connect=$i:3001 >> /etc/stunnel/stunnel.conf
 
-            stunnel
-            STUN_PID=$!
-            sleep 1
+                        stunnel
+                        STUN_PID=$!
+                        sleep 1
+                     fi
          fi
          mv $i/postscripts /xcatpost
          rm -rf $i
@@ -122,7 +127,9 @@ cd /
 /xcatpost/#TABLE:nodelist:$NODE:node#
 rm -Rf /xcatpost
 rm -f /tmp/mypostscript
-rm -f /etc/stunnel/stunnel.conf
+if [ ! -x /usr/bin/stunnel ]; then 
+    rm -f /etc/stunnel/stunnel.conf
+fi
 rmdir /xcatpost
 ]]>
 

@@ -5,8 +5,13 @@
 #
 
 if [ ! -x /usr/sbin/stunnel -a ! -x /usr/bin/stunnel ]; then #Stop if no stunnel to help the next bit
-   exit 0
+   if [ -x /usr/bin/openssl ]; then
+      USEOPENSSLFORXCAT=1
+      export USEOPENSSLFORXCAT
+   else 
+       exit 0
    fi
+fi
    allowcred.awk &
    CREDPID=$!
    sleep 1
