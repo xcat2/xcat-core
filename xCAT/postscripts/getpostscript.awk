@@ -7,7 +7,6 @@ BEGIN {
         }
 
 
-        server = "/inet/tcp/0/127.0.0.1/400"
         quit = "no"
 
 
