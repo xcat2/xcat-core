@@ -160,7 +160,7 @@ chmod g+w $TARNAME
 
 # Upload the tarball and individual RPMs
 rsync -rlv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
-if [ "$2" = "promote" ]; then
+if [ "$2" = "promote" -a "$1" != "devel" ]; then
 	true	#todo: upload tarball to FRS.
 else
 	scp $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
