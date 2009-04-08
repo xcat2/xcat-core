@@ -286,31 +286,6 @@ sub mkinstall
             next;
         }
 
-	    #before setting sles11 full installation, check if stunnel is in the right place
-	    if ($os =~ /sles11/ && $arch eq "ppc64") {
-            unless ( -d "/install/post/otherpkgs/sles11/ppc64" )
-            {
-                $callback->(
-                    {
-                        error => ["No such a directory: /install/post/otherpkgs/sles11/ppc64"],
-                        errorcode => [1]
-                    }
-                );
-            }
-            opendir(DIR, "/install/post/otherpkgs/sles11/ppc64");
-            my @tmp = grep { /^stunnel.*\.ppc64\.rpm$/ } readdir(DIR);
-            closedir DIR;
-            unless ( scalar @tmp> 0 && -r "/install/post/otherpkgs/sles11/ppc64/$rpms[0]" )
-            {
-                $callback->(
-                    {
-                        error => ["No stunnel rpm package in /install/post/otherpkgs/sles11/ppc64"],
-                        errorcode => [1]
-                    }
-                );
-            }
-	    }
-
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr;
         if (-r "$tmplfile")
@@ -321,27 +296,6 @@ sub mkinstall
                          "/install/autoinst/$node",
                          $node
                          );
-			#sles11 cannot find <pattern>base-64bit</pattern> and
-			#<package>stunnel</package> in the autoyast file
-			if($os =~ /sles11/) {
-				my $SLES_YAST_FILE;
-				open SLES_YAST_FILE, "/install/autoinst/$node"||\
-				return "Cannot open autoyast file for SLES11\n";
-				my $yast_content="";
-				while(<SLES_YAST_FILE>) {
-					if($_ !~ m/<pattern>base-64bit<\/pattern>|
-						<package>stunnel<\/package>/) {
-						$yast_content .=$_;
-					}
-				}
-				close SLES_YAST_FILE;
-				#create one new autoyast file
-				system("rm /install/autoinst/$node");
-				open SLES_YAST_FILE, ">/install/autoinst/$node" || \
-					return "cannot open autoyast file for SLES11\n";
-				print SLES_YAST_FILE $yast_content;
-				close SLES_YAST_FILE;
-			}
         }
 
         if ($tmperr)
