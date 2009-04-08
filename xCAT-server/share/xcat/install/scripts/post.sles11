@@ -78,6 +78,8 @@ do
             if [ -x  /usr/bin/openssl ]; then
                 USEOPENSSLFORXCAT=1
                 export USEOPENSSLFORXCAT
+                XCATSERVER=$i:3001
+                export XCATSERVER
             else
                  rpm -ivh $i/post/otherpkgs/sles11/$NODE_ARCH/stunnel*.rpm
                  mkdir -p /usr/var/run/stunnel
