@@ -155,11 +155,26 @@ sub setstate {
   foreach $ip (keys %ipaddrs) {
    my @ipa=split(/\./,$ip);
    my $pname = sprintf("%02x%02x%02x%02x",@ipa);
+    #special case for sles 11
+   my @mac_substr = split /\:/, $machash{$node}->[0]->{mac};
+   my $sles11_special_link = sprintf("yaboot.conf-%s-%s-%s-%s-%s-%s", @mac_substr);
    unlink($tftpdir."/etc/".$pname);
+   if ( $kern->{'kernel'} =~ /sles11\/ppc64\/inst64$/) #special case for sles 11
+   {
+       unlink($tftpdir . $sles11_special_link);
+   }
    if ($hassymlink) { 
-    symlink($node,$tftpdir."/etc/".$pname);
+       symlink($node,$tftpdir."/etc/".$pname);
+       if ( $kern->{'kernel'} =~ /sles11\/ppc64\/inst64$/) #special case for sles 11
+       {
+           symlink($tftpdir."/etc/".$node, $tftpdir . '/' . $sles11_special_link);
+       }
    } else {
-    link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
+       link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
+       if ( $kern->{'kernel'} =~ /sles11\/ppc64\/inst64$/) #special case for sles 11
+       {
+           link($tftpdir."/etc/".$node, $tftpdir . '/' . $sles11_special_link);
+       }
    }
   }
 }

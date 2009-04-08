@@ -400,6 +400,11 @@ sub mkinstall
                 {
                     copy("/install/$os/$arch/1/suseboot/inst64",
                          "/tftpboot/xcat/$os/$arch");
+                    #special case for sles 11
+                    if ( $os eq 'sles11' and -r "/install/$os/$arch/1/suseboot/yaboot")
+                    {
+                         copy("/install/$os/$arch/1/suseboot/yaboot", "/tftpboot/");
+                    }
                 }
                 $doneimgs{"$os|$arch"} = 1;
             }
