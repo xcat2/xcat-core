@@ -940,13 +940,14 @@ sub setup_TFTP
             #first, run mknb to get nbfs and such going?
             my $cmdref;
             use xCAT_plugin::mknb;
-            $cmdref->{command}->[0] = "mknb";
-            $cmdref->{arg}->[0] = "ppc64";
-            $doreq->($cmdref,\&xCAT::Client::handle_response);
-            $cmdref->{arg}->[0] = "x86";
-            $doreq->($cmdref,\&xCAT::Client::handle_response);
-            $cmdref->{arg}->[0] = "x86_64";
-            $doreq->($cmdref,\&xCAT::Client::handle_response);
+            for my $architecture ("ppc64","x86","x86_64") {
+                unless (-d "$::XCATROOT/share/xcat/netboot/$archictecture") {
+                    next;
+                }
+                $cmdref->{command}->[0] = "mknb";
+                $cmdref->{arg}->[0] = $architecture;
+                $doreq->($cmdref,\&xCAT::Client::handle_response);
+            }
             #now, run nodeset enact on
             my $mactab = xCAT::Table->new('mac');
             my $hmtab = xCAT::Table->new('noderes');
