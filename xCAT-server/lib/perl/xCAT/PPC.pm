@@ -191,42 +191,127 @@ sub process_command {
     # Fork process
     #######################################
     my $children = 0;
-    $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
     my $fds = new IO::Select;
-    my $hw;
-    my $sessions;
 
-   
-    foreach ( @$nodes ) {
-        while ( $children > $request->{ppcmaxp} ) {
-            my $handlednodes={};
-            child_response( $callback, $fds, $handlednodes);
+    # For the commands getmacs and rnetboot, each time 
+    # to fork process, pick out the HMC that has the 
+    # least process number created to connect to the HMC.
+    # After the process by preprocess_nodes, the $nodes 
+    # variable has following structure:
+    # $nodes
+    #   |hcp
+    #       |[[hcp,node1_attr], [hcp,node2_attr] ...]
+    #       |count    //node number managed by the hcp
+    #       |runprocess    //the process number connect to the hcp
+    #       |index    //the index of node will be forked of the hcp
+    if ( $request->{command} =~ /^(getmacs|rnetboot)$/ ) {
+        my %pid_owner = ();
 
-            #update the node status to the nodelist.status table
-            if ($check) {
-		updateNodeStatus($handlednodes, \@allerrornodes);
+        # Use the CHID signal to control the 
+        #connection number of certain hcp    
+        $SIG{CHLD} = sub { my $pid = 0; while (($pid = waitpid(-1, WNOHANG)) > 0) 
+                                         { $nodes->{$pid_owner{$pid}}{'runprocess'}--; $children--; } };
+        
+        my $hasnode = 1;
+        while ($hasnode) {
+            while ( $children >= $request->{ppcmaxp} ) {
+                my $handlednodes={};
+                child_response( $callback, $fds, $handlednodes);
+    
+                #update the node status to the nodelist.status table
+                if ($check) {
+                    updateNodeStatus($handlednodes, \@allerrornodes);
+                }
+    
+                Time::HiRes::sleep(0.1);
             }
-
-            Time::HiRes::sleep(0.1);
+            # Pick out the hcp which has least processes
+            my $least_processes = $request->{maxssh};
+            my $least_hcp;
+            my $got_one = 0;
+            while (!$got_one) {
+                $hasnode = 0;
+                foreach my $hcp (keys %$nodes) {
+                    if ($nodes->{$hcp}{'index'} < $nodes->{$hcp}{'count'}) {
+                        $hasnode = 1;
+                        if ($nodes->{$hcp}{'runprocess'} < $least_processes) {
+                            $least_processes = $nodes->{$hcp}{'runprocess'};
+                            $least_hcp = $hcp;
+                        }
+                    }
+                }
+    
+                if (!$hasnode) {
+                    # There are no node in the $nodes
+                    goto ENDOFFORK;
+                }
+                
+                if ($least_processes < $request->{maxssh}) {
+                    $got_one = 1;
+                } else {
+                    my $handlednodes={};
+                    child_response( $callback, $fds, $handlednodes);
+    
+                    #update the node status to the nodelist.status table
+                    if ($check) {
+                        updateNodeStatus($handlednodes, \@allerrornodes);
+                    }
+                    Time::HiRes::sleep(0.1);
+                }
+            }
+    
+            my ($pipe, $pid) = fork_cmd( $nodes->{$least_hcp}{'nodegroup'}->[$nodes->{$least_hcp}{'index'}]->[0], 
+                                         $nodes->{$least_hcp}{'nodegroup'}->[$nodes->{$least_hcp}{'index'}]->[1], $request );
+    
+            if ($pid) {
+                $pid_owner{$pid} = $least_hcp;
+                $nodes->{$least_hcp}{'index'}++;
+                $nodes->{$least_hcp}{'runprocess'}++;
+            }
+            
+            if ( $pipe ) {
+                $fds->add( $pipe );
+                $children++;
+            }
         }
-        ###################################
-        # sleep between connects to same
-        # HMC/IVM so as not to overwelm it
-        ###################################
-        if ( $hw ne @$_[0] ) {
-            $sessions = 1;
-        } elsif ( $sessions++ >= $request->{maxssh} ) {
-            sleep(1);
-            $sessions = 1;
-        }
-        $hw = @$_[0];
-
-        my $pipe = fork_cmd( @$_[0], @$_[1], $request );
-        if ( $pipe ) {
-            $fds->add( $pipe );
-            $children++;
+    } else {
+        $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
+        my $hw;
+        my $sessions;
+        
+        foreach ( @$nodes ) {
+            while ( $children >= $request->{ppcmaxp} ) {
+                my $handlednodes={};
+                child_response( $callback, $fds, $handlednodes);
+    
+                #update the node status to the nodelist.status table
+                if ($check) {
+                    updateNodeStatus($handlednodes, \@allerrornodes);
+                }
+    
+                Time::HiRes::sleep(0.1);
+            }
+            ###################################
+            # sleep between connects to same
+            # HMC/IVM so as not to overwelm it
+            ###################################
+            if ( $hw ne @$_[0] ) {
+                $sessions = 1;
+            } elsif ( $sessions++ >= $request->{maxssh} ) {
+                sleep(1);
+                $sessions = 1;
+            }
+            $hw = @$_[0];
+    
+            my ($pipe) = fork_cmd( @$_[0], @$_[1], $request );
+            if ( $pipe ) {
+                $fds->add( $pipe );
+                $children++;
+            }
         }
     }
+    
+ENDOFFORK:
     #######################################
     # Process responses from children
     #######################################
@@ -406,6 +491,7 @@ sub preprocess_nodes {
     my $method    = $request->{method};
     my %nodehash  = ();
     my @nodegroup = ();
+    my %hcpgroup = ();
     my %tabs      = ();
     my $netwk;
 
@@ -507,6 +593,7 @@ sub preprocess_nodes {
     ##########################################
     if ( $method =~ /^(getmacs|rnetboot)$/ ) {
         while (my ($hcp,$hash) = each(%nodehash) ) {    
+            @nodegroup = ();
             while (my ($mtms,$h) = each(%$hash) ) {
                 while (my ($lpar,$d) = each(%$h)) {
                     push @$d, $lpar;
@@ -520,9 +607,14 @@ sub preprocess_nodes {
                     push @nodegroup,[$hcp,$d]; 
                 }
             }
+            $hcpgroup{$hcp}{'nodegroup'} = [@nodegroup];
+            $hcpgroup{$hcp}{'count'} = $#nodegroup + 1;
+            $hcpgroup{$hcp}{'runprocess'} = 0;
+            $hcpgroup{$hcp}{'index'} = 0;
         }
-        return( \@nodegroup );
+        return( \%hcpgroup );
     }
+
     ##########################################
     # Power control commands are grouped 
     # by CEC which is the smallest entity 
@@ -826,7 +918,7 @@ sub fork_cmd {
         # Parent process
         ###################################
         close( $child );
-        return( $parent );
+        return( $parent, $pid );
     }
     return(0);
 }
