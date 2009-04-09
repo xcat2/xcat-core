@@ -705,11 +705,11 @@ sub get_tmpl_file_name {
   if (-r   "$base/$profile.$os.$arch.tmpl") {
     return "$base/$profile.$os.$arch.tmpl";
   }
-  elsif (-r "$base/$profile.$arch.tmpl") {
-    return  "$base/$profile.$arch.tmpl";
-  }
   elsif (-r "$base/$profile.$os.tmpl") {
     return  "$base/$profile.$os.tmpl";
+  }
+  elsif (-r "$base/$profile.$arch.tmpl") {
+    return  "$base/$profile.$arch.tmpl";
   }
   elsif (-r "$base/$profile.tmpl") {
     return  "$base/$profile.tmpl";
