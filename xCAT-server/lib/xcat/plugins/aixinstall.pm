@@ -3037,7 +3037,7 @@ sub updatespot {
 	}
 
 	# add resolv.conf to image if data is provided in site table
-	my $fileloc = "$spot_loc/lpp/bos/inst_root/etc/resolv.conf";
+	my $fileloc = "$spot_loc/lpp/bos/inst_root/etc";
 	my $rc = &mk_resolv_conf_file($callback, $fileloc);
 	return 0;
 }
