@@ -137,8 +137,8 @@ if (-f $scriptname) {
     &runcmd($cmd);
     my $TZline = $::outref;
     my ($junk, $tz) =  split(/=/, $TZline);
-	chomp $tz;
     if ($tz) {
+		chomp $tz;	
         my $tzcmd = qq~/usr/bin/chtz $tz >/dev/null 2>&1~;
         if (&runcmd($tzcmd) != 0) {
             $msg = "$::sdate xcataixpost: Could not set timezone.\n";
@@ -197,8 +197,8 @@ if (-f $scriptname) {
     &runcmd($cmd);
     my $PWline = $::outref;
     my ($junk, $rpd) =  split(/=/, $PWline);
-	chomp $rpd;
 	if ($rpd) {
+		chomp $rpd;
 		my $pwcmd = qq~echo "root:$rpd" | /bin/chpasswd -c >/dev/null 2>&1~;
 		if (&runcmd($pwcmd) != 0) {
 			$msg = "$::sdate xcataixpost: Could not set password.\n";
