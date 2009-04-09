@@ -1,6 +1,9 @@
 # bundle file for openssl - installp package from AIX
 
 # installp packages
+I:rpm.rte
 I:openssl.base
 I:openssl.license
 
+# RPMs
+R:perl-IO-Socket-SSL-1.06-1.aix5.3.ppc.rpm
