@@ -58,6 +58,7 @@ foreach my $num ( @nums ) {
         }
         my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
         runcmd($openibd_cmd);
+
         # Write the info to the ifcfg file
         my $dir;
         if ( $OS_name eq 'suse')
@@ -77,6 +78,10 @@ foreach my $num ( @nums ) {
         print FILE "ONBOOT=yes\n" if ( $OS_name eq 'redhat');
         print FILE "STARTMODE=auto\n" if ( $OS_name eq 'suse');
         close FILE;
+
+        my $openibd_start_cmd = "/sbin/service openibd start";
+        runcmd($openibd_start_cmd);
+
         runcmd("ifup $nic");
         system("logger -t xcat 'configiba: successfully configured $nic.'");
     } elsif ( $PLTFRM eq "AIX" ) {
