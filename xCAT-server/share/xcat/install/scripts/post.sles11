@@ -55,12 +55,6 @@ export MASTER_IP=#XCATVAR:XCATMASTER#
 export MASTER_IPS=#XCATVAR:XCATMASTER#
 export MASTER="#XCATVAR:XCATMASTER#"
 
-# for servicenode, add /install to /etc/fstab
-echo "$MASTER:/install  /install    nfs timeo=14,intr   1 2" >>/etc/fstab
-
-# check the arch for nodetype
-NODE_ARCH=#TABLE:nodetype:$NODE:arch#
-
 #
 #  This script has not yet been updated to work with service nodes
 #
@@ -71,7 +65,6 @@ do
 	do
 		#mount -r $i:/install/postscripts /xcatpost
       wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/post/otherpkgs/sles11/$NODE_ARCH
 
 		if [ "$?" = "0" ]
 		then
@@ -81,6 +74,8 @@ do
                 XCATSERVER=$i:3001
                 export XCATSERVER
             else
+                 NODE_ARCH=#TABLE:nodetype:$NODE:arch#
+                 wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/post/otherpkgs/sles11/$NODE_ARCH
                  rpm -ivh $i/post/otherpkgs/sles11/$NODE_ARCH/stunnel*.rpm
                  mkdir -p /usr/var/run/stunnel
                      mkdir -p /var/stunnel
