@@ -22,37 +22,6 @@ proc nc_msg { msg } {
 #
 # PROCEDURE
 #
-proc read_credentials {} {
-
-    global filename
-    global userid
-    global passwd
-    global PROGRAM
-
-    if [catch { open $filename "r" } fhandle ] {
-        send_user "$PROGRAM: Error opening temporary password file $filename\n"
-        exit 1
-    }
-    ###############################################
-    # Read the password from the file,
-    # then close and immediately delete it
-    ###############################################
-    set buf [ read $fhandle ]
-    set cred ""
-    close $fhandle
-    exec rm $filename
-
-    if { ![regexp {([^ ]+ [^ ]+)\n} $buf match cred ]} {
-        send_user "$PROGRAM: Error parsing temporary password file $filename\n"
-        exit 1
-    }
-    set userid [ lindex $cred 0 ]
-    set passwd [ lindex $cred 1 ]
-}
-
-#
-# PROCEDURE
-#
 # Define the procedure to connect to the IVM
 #
 proc connect {} {
@@ -121,7 +90,7 @@ proc run_lssyscfg {} {
     global rc
     global prompt
 
-    set timeout 10
+    set timeout 20
     send -i $ssh_spawn_id "lssyscfg -r lpar -m \"$manage\" --filter lpar_names=\"$node\" -F state; echo Rc=\$\?\r";
 
     expect {
@@ -143,7 +112,13 @@ proc run_lssyscfg {} {
            exit 1
        }
     }
-   
+
+    # Slow down the requests speed to hcp, so that hcp will not busy on
+    # query.  Instead, hcp should put more time on other activities.
+    # Another reason to set this sleep is giving some time to the lpars
+    # to be more stable.
+    sleep 4 
+
     if { $rc } {
         send_user "$PROGRAM: Unable to determine machine state\n"
         nc_msg "$PROGRAM Status: error from lssyscfg command\n"
@@ -245,10 +220,6 @@ proc ck_args {} {
         nc_msg "$PROGRAM Status: managed system $manage\n"
     }
 
-    if { $filename == "" } {
-        send_user "$PROGRAM: userid/password filename is required\n"
-        usage
-    }
     if { $hcp == "" } {
         send_user "$PROGRAM: Hardware control point address is required\n"
         usage
@@ -533,7 +504,7 @@ proc get_adap_prop { phandle } {
 
     set adap_prop_list {}
     set rc 0
-    set timeout 60
+    set timeout 120 
     set state 0
     nc_msg "$PROGRAM Status: get_adap_prop start\n"
 
@@ -1951,7 +1922,6 @@ trap {
 
 
 
-
 #
 # Main MAIN main
 #
@@ -2136,7 +2106,7 @@ if { [llength $argv] < 1 } {
 set arg0 [lindex $argv 0]
 set arg1 [lindex $argv 1]
 
-if { [llength $argv] > 7 } {
+if { [llength $argv] > 6 } {
     send_user "$PROGRAM: Extraneous parameter(s)\n"
     usage
 }
@@ -2164,8 +2134,7 @@ set profile [lindex $argv 1]
 set manage [lindex $argv 2]
 set lparid [lindex $argv 3]
 set hcp [lindex $argv 4]
-set filename [lindex $argv 5]
-set name [lindex $argv 6]
+set name [lindex $argv 5]
 
 if {$dev_type_found}    { nc_msg "$PROGRAM Status: List only $list_type adapters\n"               }
 if {$noboot}            { nc_msg "$PROGRAM Status: -n (no boot) flag detected\n"                  }
@@ -2203,7 +2172,8 @@ if { ! $noboot } {
 }
 
 # Get userid and password
-read_credentials
+set userid $env(HCP_USERID) 
+set passwd $env(HCP_PASSWD)
 
 #
 # Connect to the remote server
@@ -2263,7 +2233,7 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
     } else {
         set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
     }
-    set timeout 10
+    set timeout 30
     send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
 
     expect {
@@ -2330,7 +2300,7 @@ if { $list_disk == 1 } {
 
 } else {
     send_user "# Power on $NODENAME to Open Firmware.\n"
-    set timeout 20
+    set timeout 60 
     send -i $ssh_spawn_id "chsysstate -r lpar -o on -b of -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
 
     expect {
@@ -2563,7 +2533,7 @@ if { $noboot } { # Display information for all supported adapters
     } else {
         set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
     }
-    set timeout 10
+    set timeout 30
     send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
 
     expect {

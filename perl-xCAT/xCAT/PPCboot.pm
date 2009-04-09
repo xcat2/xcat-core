@@ -103,17 +103,12 @@ sub ivm_rnetboot {
         return( [RC_ERROR,"Command not installed: $cmd"] );
     }
     #######################################
-    # Create random temporary userid/pw
-    # file between 1000000 and 2000000
+    # Save user name and passwd of hcp to
+    # environment variables.
+    # lpar_netboot.expect depends on it 
     #######################################
-    my $random = int( rand(1000001)) + 1000000;
-    my $fname = "/tmp/xCAT-$hcp-$random";
-
-    unless ( open( CRED, ">$fname" )) {
-        return( [RC_ERROR,"Error creating temporary password file '$fname'"]);
-    }
-    print CRED "$userid $pw\n";
-    close( CRED );
+    $ENV{HCP_USERID} = $userid;
+    $ENV{HCP_PASSWD} = $pw;
 
     #######################################
     # Turn on verbose and debugging
@@ -135,7 +130,7 @@ sub ivm_rnetboot {
     #######################################
     # Add command options
     #######################################
-    $cmd.= " -t ent -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp $fname \"$node\"";
+    $cmd.= " -t ent -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
 
     #######################################
     # Execute command
@@ -151,12 +146,6 @@ sub ivm_rnetboot {
     }
     close OUTPUT;
 
-    #######################################
-    # If command did not, remove file
-    #######################################
-    if ( -r $fname ) {
-        unlink( $fname );
-    }
     #######################################
     # Get command exit code
     #######################################
