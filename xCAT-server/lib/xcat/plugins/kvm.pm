@@ -784,9 +784,15 @@ sub process_request {
   };
   my $request = shift;
   my $callback = shift;
-  my $libvirtsupport = eval { require Sys::Virt; };
+  my $libvirtsupport = eval { 
+      require Sys::Virt; 
+      if (Sys::Virt->VERSION < "0.2.0") {
+          die;
+      }
+      1;
+  };
   unless ($libvirtsupport) { #Still no Sys::Virt module
-      $callback->({error=>"Sys::Virt perl module missing, unable to fulfill KVM plugin requirements",errorcode=>[42]});
+      $callback->({error=>"Sys::Virt perl module missing or older than 0.2.0, unable to fulfill KVM plugin requirements",errorcode=>[42]});
       return [];
   }
   require Sys::Virt::Domain;
