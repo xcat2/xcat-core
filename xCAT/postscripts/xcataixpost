@@ -166,7 +166,7 @@ if (-f $scriptname)
 
    $nodesetstat=`grep "NODESETSTATE=" $scriptname|awk -F \= '{print \$2}'`;
    chomp($nodesetstat);
-
+    $ENV{PATH}="/xcatpost:$ENV{PATH}";
     &runcmd("cd /xcatpost;$scriptname");
 } else {
 	print "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
