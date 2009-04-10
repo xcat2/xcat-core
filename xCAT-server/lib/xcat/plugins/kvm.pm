@@ -335,6 +335,7 @@ sub getrvidparms {
         "server: $1",
         "vncdisplay: $2:$3",
         "virturi: ".$hypconn->get_uri(),
+        "virtname: $node",
         );
         return  0,@output;
     } else {

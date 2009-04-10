@@ -1,5 +1,12 @@
 #!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+if [ ! -z $rvid_virturi -a ! -z $rvid_virtname ]; then
+    if [ -x /usr/bin/virt-viewer ]; then
+        exec /usr/bin/virt-viewer -c $rvid_virturi $rvid_virtname
+    else
+        echo "Installation of virt-viewer is recommended, falling back to vncviewer"
+    fi
+fi
 myport=${rvid_vncdisplay#*:}
 let myport=myport-5900;
 export VNC_VIA_CMD='/usr/bin/ssh -o BatchMode=yes -f -L "$L":"$H":"$R" "$G" sleep 20'
