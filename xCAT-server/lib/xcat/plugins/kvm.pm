@@ -65,7 +65,6 @@ sub handled_commands {
   };
 }
 
-my $virsh;
 my $vmhash;
 my $hypconn;
 my $hyp;
@@ -353,14 +352,12 @@ sub pick_target {
     unless ($candidates) {
         return undef;
     }
-    print "$node with $candidates\n";
     foreach (noderange($candidates)) {
         my $targconn;
         my $cand=$_;
         $currentusedmemory=0;
         if ($_ eq $currhyp) { next; } #skip current node
-        if (grep { "$_" eq $cand } @destblacklist) { print "$_ was blacklisted\n"; next; } #skip blacklisted destinations
-            print "maybe $_\n";
+        if (grep { "$_" eq $cand } @destblacklist) { next; } #skip blacklisted destinations
             eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
                 $targconn = Sys::Virt->new(uri=>"qemu+ssh://".$_."/system?no_tty=1&netcat=nc");
             };
@@ -412,66 +409,69 @@ sub migrate {
     if ($currhyp eq $target) {
         return (0,"Guest is already on host $targ");
     }
-    my $testhypconn;
+    my $srchypconn;
+    my $desthypconn;
     my $srcnetcatadd="&netcat=nc";
     eval {#Contain Sys::Virt bugs
-        $testhypconn= Sys::Virt->new(uri=>"qemu+ssh://".$prevhyp."/system?no_tty=1$srcnetcatadd");
+        $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://".$prevhyp."/system?no_tty=1$srcnetcatadd");
     };
-    unless ($testhypconn) {
+    unless ($srchypconn) {
         $srcnetcatadd="";
         eval {#Contain Sys::Virt bugs
-            $testhypconn= Sys::Virt->new(uri=>"qemu+ssh://".$prevhyp."/system?no_tty=1");
+            $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://".$prevhyp."/system?no_tty=1");
         };
     }
-    unless ($testhypconn) {
+    unless ($srchypconn) {
         return (1,"Unable to reach $prevhyp to perform operation of $node, use nodech to change vm.host if certain of no split-brain possibility exists");
     }
     my $destnetcatadd="&netcat=nc";
-    undef $testhypconn;
     eval {#Contain Sys::Virt bugs
-        $testhypconn= Sys::Virt->new(uri=>$target.$destnetcatadd);
+        $desthypconn= Sys::Virt->new(uri=>$target.$destnetcatadd);
     };
-    unless ($testhypconn) {
+    unless ($desthypconn) {
         $destnetcatadd="";
         eval {#Contain Sys::Virt bugs
-            $testhypconn= Sys::Virt->new(uri=>$target);
+            $desthypconn= Sys::Virt->new(uri=>$target);
         };
     }
-    unless ($testhypconn) {
+    unless ($desthypconn) {
         return (1,"Unable to reach $targ to perform operation of $node, destination unusable.");
     }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
     my $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
     #serviced, we just want to trigger MAC move in the switch forwarding dbs
-    my $rc=system("virsh -c '$currhyp".$srcnetcatadd."' migrate --live $node '$target"."$destnetcatadd'");
+    my $nomadomain;
+    eval { 
+        $nomadomain = $srchypconn->get_domain_by_name($node);
+    };
+    unless ($nomadomain) {
+        return (1,"Unable to find $node on $prevhyp, vm.host may be incorrect or a split-brain condition, such as libvirt forgetting a guest due to restart or bug.");
+    }
+    my $newdom;
+    my $errstr;
+    eval {
+        $newdom=$nomadomain->migrate($desthypconn,&Sys::Virt::Domain::MIGRATE_LIVE,undef,undef,0);
+    };
+    if ($@) { $errstr = $@; }
+#TODO: If it looks like it failed to migrate, ensure the guest exists only in one place
+    if ($errstr) { 
+        return (1,"Failed migration of $node from $prevhyp to $targ: $errstr");
+    }
+    unless ($newdom) {
+        return (1,"Failed migration from $prevhyp to $targ");
+    }
     system("arp -d $node"); #Make ethernet fabric take note of change
     send($sock,"dummy",0,$pa);  #UDP packet to force forwarding table update in switches, ideally a garp happened, but just in case...
-    if ($rc) {
-        return (1,"Failed migration from $prevhyp to $targ");
-    } else {
+    #BTW, this should all be moot since the underlying kvm seems good about gratuitous traffic, but it shouldn't hurt anything
+    refresh_vm($newdom);
+    #The migration seems tohave suceeded, but to be sure...
+    close($sock);
+    if ($desthypconn->get_domain_by_name($node)) {
         $vmtab->setNodeAttribs($node,{host=>$targ});
-        my $newhypconn;
-        eval {#Contain Sys::Virt bugs
-            $newhypconn= Sys::Virt->new(uri=>"qemu+ssh://".$targ."/system?no_tty=1&netcat=nc");
-        };
-        unless ($newhypconn) {
-            eval {#Contain Sys::Virt bugs
-                $newhypconn= Sys::Virt->new(uri=>"qemu+ssh://".$targ."/system?no_tty=1");
-            };
-        }
-        if ($newhypconn) {
-            my $dom;
-            eval {
-             $dom = $newhypconn->get_domain_by_name($node);
-            };
-            if ($dom) {
-                refresh_vm($dom);
-            }
-        } else {
-            return (0,"migrated to $targ");
-        }
         return (0,"migrated to $targ");
+    } else { #This *should* not be possible
+        return (1,"Failed migration from $prevhyp to $targ, despite normal looking run...");
     }
 }
 
@@ -494,7 +494,6 @@ sub makedom {
     my $cdloc = shift;
     my $dom;
     my $xml=build_xmldesc($node,$cdloc);
-    print $xml;
     my $errstr;
     eval { $dom=$hypconn->create_domain($xml); };
     if ($@) { $errstr = $@; }
