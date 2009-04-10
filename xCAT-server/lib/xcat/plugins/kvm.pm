@@ -334,6 +334,7 @@ sub getrvidparms {
         "method: kvm",
         "server: $1",
         "vncdisplay: $2:$3",
+        "virturi: ".$hypconn->get_uri(),
         );
         return  0,@output;
     } else {
@@ -359,11 +360,11 @@ sub pick_target {
         if ($_ eq $currhyp) { next; } #skip current node
         if (grep { "$_" eq $cand } @destblacklist) { next; } #skip blacklisted destinations
             eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
-                $targconn = Sys::Virt->new(uri=>"qemu+ssh://".$_."/system?no_tty=1&netcat=nc");
+                $targconn = Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1&netcat=nc");
             };
             unless ($targconn) {
                 eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
-                    $targconn = Sys::Virt->new(uri=>"qemu+ssh://".$_."/system?no_tty=1");
+                    $targconn = Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1");
                 };
             }
         unless ($targconn) { next; } #skip unreachable destinations
@@ -397,8 +398,8 @@ sub migrate {
         return (1,"Unable to identify a suitable target host for guest $node");
     }
     my $prevhyp;
-    my $target = "qemu+ssh://".$targ."/system?no_tty=1";
-    my $currhyp="qemu+ssh://";
+    my $target = "qemu+ssh://root@".$targ."/system?no_tty=1";
+    my $currhyp="qemu+ssh://root@";
     if ($vmhash->{$node}->[0]->{host}) {
         $prevhyp=$vmhash->{$node}->[0]->{host};
         $currhyp.=$prevhyp;
@@ -413,12 +414,12 @@ sub migrate {
     my $desthypconn;
     my $srcnetcatadd="&netcat=nc";
     eval {#Contain Sys::Virt bugs
-        $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://".$prevhyp."/system?no_tty=1$srcnetcatadd");
+        $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$prevhyp."/system?no_tty=1$srcnetcatadd");
     };
     unless ($srchypconn) {
         $srcnetcatadd="";
         eval {#Contain Sys::Virt bugs
-            $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://".$prevhyp."/system?no_tty=1");
+            $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$prevhyp."/system?no_tty=1");
         };
     }
     unless ($srchypconn) {
@@ -816,11 +817,11 @@ sub process_request {
         $hypconn=undef;
         push @destblacklist,$_;
         eval { #Contain bugs that won't be in $@
-            $hypconn= Sys::Virt->new(uri=>"qemu+ssh://".$_."/system?no_tty=1&netcat=nc");
+            $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1&netcat=nc");
         };
         unless ($hypconn) { #retry for socat
             eval { #Contain bugs that won't be in $@
-                $hypconn= Sys::Virt->new(uri=>"qemu+ssh://".$_."/system?no_tty=1");
+                $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1");
             };
         }
         unless ($hypconn)  {
@@ -1092,11 +1093,11 @@ sub dohyp {
 
 
   eval { #Contain Sys::Virt bugs that make $@ useless
-    $hypconn= Sys::Virt->new(uri=>"qemu+ssh://".$hyp."/system?no_tty=1&netcat=nc");
+    $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$hyp."/system?no_tty=1&netcat=nc");
   };
   unless ($hypconn) {
     eval { #Contain Sys::Virt bugs that make $@ useless
-        $hypconn= Sys::Virt->new(uri=>"qemu+ssh://".$hyp."/system?no_tty=1");
+        $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$hyp."/system?no_tty=1");
     };
   }
   unless ($hypconn) {
