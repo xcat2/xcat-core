@@ -23,17 +23,10 @@
 #     setup the ssh keys on the node
 #  end
 
-BEGIN
-{
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-}
-use lib "$::XCATROOT/lib/perl";
-
 # MAIN
 use strict;
 use IO::Socket;
 use IO::Socket::SSL;
-use xCAT::Utils;
 my $rc = 0;
 
 # Override from site table
@@ -262,8 +255,6 @@ sub getresponse
 	}
 
 	close ($sock);
-#debug
-#print "resp = \'$response\'\n";
 
 	kill 2, $lpid;
 	if ($response) {
@@ -284,7 +275,7 @@ sub openlistener
 
 	# fork a child process to open a socket to listen for communication 
 	#	from the server
-	my $pid = xCAT::Utils->xfork;
+	my $pid = fork;
 	unless (defined $pid) {
 		# fork failed
 		$msg = "aixremoteshell: Could not fork process.\n";
