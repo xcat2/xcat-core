@@ -1,0 +1,708 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#####################################################
+#
+# This script will read the CSM database and build
+# xCAT stanza files to be input into an xCAT database
+# using the chdef command
+# example node.stanza | chdef -z
+#
+#####################################################
+
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+
+my $needhelp  = 0;
+my $directory = "/tmp/csm2xcat";
+
+if (
+    !GetOptions("help"  => \$needhelp,
+                "dir=s" => \$directory,)
+  )
+{
+    &usage;
+    exit 1;
+}
+
+if ($needhelp)
+{
+    &usage;
+    exit 0;
+}
+
+#Create the users choice directory
+mkdir $directory unless -d $directory;
+
+# create a log
+open(LOG, ">$directory/conversion.log")
+  or die "Can't open logfile for writing: $!";
+&log_this("Conversion started at " . scalar(localtime()));
+
+# build the stanza files for the site table
+&getSiteinfo;
+
+# build the stanza files for the node
+&getNodeinfo;
+
+# build the stanza files for the devices
+&getDevinfo;
+
+log_this("Conversion finished at " . scalar(localtime()));
+print
+  "Conversion finished, please carefully review $directory/conversion.log and check results in the $directory  stanza files before using chdef -z to update the database!\n";
+close(LOG);
+exit 0;
+
+# end main
+
+#
+# logger
+#
+
+sub log_this
+{
+    print LOG join('', @_), "\n";
+}
+
+#
+# write to stanza files
+#
+sub write_stanza
+{
+    print STANZA @_;
+}
+
+#
+# runs csmconfig or uses the csmconfig.output file
+#  and builds site table stanza file
+#
+
+sub getSiteinfo
+{
+    log_this("Reading Site information\n");
+    print "Running csmconfg to read site info!\n";
+
+    # open the site stanza file
+    my $stanzafile = "$directory/site.stanza";
+    open(STANZA, ">$stanzafile")
+      or die "Can't open $stanzafile for writing: $!";
+    write_stanza("# <xCAT data object stanza file>\n\n");
+    write_stanza("clustersite:\n");
+    write_stanza("    objtype=site\n");
+
+    my @results;
+    my $cmd;
+
+    # use of file is for debug
+    my $csmconfiginfofile = "$directory/csmconfigdebug.output";
+    if (-e $csmconfiginfofile)
+    {    # use the imported file
+        $cmd = "cat $csmconfiginfofile";
+        log_this("Reading $csmconfiginfofile information\n");
+        @results = runcmd($cmd);
+    }
+    else
+    {    # run the command
+        $cmd     = "/opt/csm/bin/csmconfig";
+        @results = runcmd($cmd);
+    }
+    if ($::RUNCMD_RC != 0)
+    {
+        my $msg = "Error processing csmconfig information\n";
+        log_this($msg);
+        print "$msg";
+        close(STANZA);
+        return;
+    }
+
+    foreach my $line (@results)
+    {
+        my $xcatline;
+        $line =~ s/\s*//g;    #remove extra blanks
+        my ($attr, $value) = split(/=/, $line);
+        if ($attr eq "RemoteShell")
+        {
+
+            if ($value)
+            {
+                $xcatline = "    rsh=";
+                $xcatline .= "$value\n";
+            }
+        }
+        if ($attr eq "RemoteCopyCmd")
+        {
+
+            if ($value)
+            {
+                $xcatline = "    rcp=";
+                $xcatline .= "$value\n";
+            }
+        }
+        if ($xcatline)
+        {
+            write_stanza($xcatline);
+        }
+    }
+    close(STANZA);
+    return 0;
+}
+
+#
+# runs lsnodes -l  and build node stanza file
+#
+
+sub getNodeinfo
+{
+
+    # open the node stanza file
+    my $stanzafile = "$directory/node.stanza";
+    open(STANZA, ">$stanzafile")
+      or die "Can't open $stanzafile for writing: $!";
+    write_stanza("# <xCAT data object stanza file\n");
+    log_this("Reading Node information\n");
+    print "Running lsnode -l for node info!\n";
+
+    my $OS       = "";
+    my $GRP      = "";
+    my $ARCH     = "";
+    my $DISTNAME = "";
+
+    my @results;
+    my $cmd;
+    my $lsnodefile = "$directory/lsnodedebug.output";
+
+    # use of file is for debug
+    if (-e $lsnodefile)
+    {    # use the imported file
+        log_this("Reading $lsnodefile information\n");
+        $cmd     = "cat $lsnodefile";
+        @results = runcmd($cmd);
+    }
+    else
+    {    # run the command
+        $cmd     = "/opt/csm/bin/lsnode -l";
+        @results = runcmd($cmd);
+    }
+    if ($::RUNCMD_RC != 0)
+    {
+        my $msg = "Error processing lsnode information\n";
+        log_this($msg);
+        print "$msg";
+        close(STANZA);
+        return;
+    }
+
+    #
+    #  build hash  of lsnode info
+    #
+    my $output   = buildNodehash(\@results);
+    my %nodehash = %$output;
+    my %attrhash;
+    my $nodename;
+    my $attributes;
+
+    # my $test = $nodehash{"c55n03.ppd.pok.ibm.com"}{"PowerStatus"};
+
+    while (($nodename, $attributes) = each %nodehash)
+    {
+
+        #
+        # build commonly needed attributes
+        #
+        %attrhash = %$attributes;
+
+        # get osname, distribution name for later
+        $OS = $attrhash{"InstallOSName"};
+        my $tmpname = $attrhash{"InstallDistributionName"};
+        $DISTNAME = lc($tmpname);
+        my $pkgarch = $attrhash{"InstallPkgArchitecture"};
+        if ($pkgarch)
+        {
+            if ($OS eq "LINUX")
+            {
+                $ARCH = $pkgarch;    # save arch
+            }
+            else
+            {                        #AIX
+                $ARCH = "ppc64";
+            }
+        }
+
+        #
+        # first process the nodename
+        #
+        my $value;
+        my $xcatline;
+        my $attr;
+        my $grplist = get_groups($nodename);
+        if (!(grep /compute/, $grplist))
+        {
+            $grplist .= ",compute";
+        }
+        if (!(grep /all/, $grplist))
+        {
+            $grplist .= ",all";
+        }
+        $GRP = $grplist;    # save for setting up other tables
+        my $shortnodename = get_shortname($nodename);
+        $xcatline = "$shortnodename:\n";    # write node name
+        $xcatline .= "    objtype=node\n";
+        if ($grplist)
+        {
+            $xcatline .= "    groups=$grplist\n";
+            $xcatline .= "    profile=compute\n";
+        }
+        $xcatline .= "    status=defined\n";
+
+        if ($xcatline)
+        {
+            write_stanza($xcatline);
+            $xcatline = "";
+        }
+
+        #now process all the attributes associated with the nodename
+        #my $test = $attrhash{"InstallServer"};
+        #my $test1 = $attrhash{"Mode"};
+
+        while (($attr, $value) = each %$attributes)
+        {
+            if ($attr eq "InstallServer")
+            {
+                if ($value)
+                {
+                    $xcatline = "    xcatmaster=$value\n";
+                    $xcatline .= "    servicenode=$value\n";
+
+                }
+            }
+            if ($attr eq "ManagementServer")
+            {
+
+                my $installserver = $attrhash{"InstallServer"};
+                if ($installserver eq "")    # if no install server, use MN
+                {
+                    if ($value)
+                    {
+                        $xcatline = "    xcatmaster=$value\n";
+                    }
+                }
+            }
+            if ($attr eq "InstallOSName")
+            {
+                if ($value)
+                {
+                    if ($value eq "AIX")
+                    {
+                        $xcatline = "    os=$value\n";
+                        $xcatline .= "    arch=ppc64\n";
+                    }
+                }
+            }
+            if ($attr eq "InstallDistributionVersion")
+            {
+                if (   $value
+                    && $DISTNAME)    # put together DistributeName and Version
+                {
+                    $xcatline = "    os=$DISTNAME";
+                    $xcatline .= "$value\n";
+                }
+            }
+            if ($attr eq "InstallPkgArchitecture")    # filled in for Linux
+            {
+                if ($value)
+                {
+                    if ($OS eq "LINUX")
+                    {
+                        $xcatline = "    arch=$value\n";
+                        if ($value =~ /86/)
+                        {
+                            $xcatline .= "    netboot=pxe\n";
+                        }
+                        if ($value =~ /ppc/)
+                        {
+                            $xcatline .= "    netboot=yaboot\n";
+                        }
+
+                    }
+                }
+            }
+            if ($attr eq "LParID")
+            {
+                if ($ARCH =~ /ppc/)
+                {
+                    if ($value)
+                    {    # this is an LPAR
+                        $xcatline = "    id=$value\n";
+                        $xcatline .= "    nodetype=lpar\n";
+                    }
+                }
+            }
+            if ($attr eq "ConsoleMethod")
+            {
+                if ($value)
+                {
+                    $xcatline = "    cons=$value\n";
+                }
+            }
+            if ($attr eq "ConsolePortNum")
+            {
+                if ($value)
+                {
+                    $xcatline = "    termport=$value\n";
+                }
+            }
+            if ($attr eq "PowerMethod")
+            {
+                if ($value)
+                {
+                    if ($value eq "xseries")
+                    {
+                        $value = "ipmi";
+                    }
+                    $xcatline = "    power=$value\n";
+                    $xcatline .= "    mgt=$value\n";
+                }
+            }
+            if ($attr eq "InstallAdapterMacaddr")
+            {
+                if ($value)
+                {
+                    $xcatline = "    mac=$value\n";
+                }
+            }
+            if ($attr eq "HWSerialNum")
+            {
+                if ($value)
+                {
+                    $xcatline = "    serial=$value\n";
+                }
+            }
+            if ($attr eq "ConsoleSerialSpeed")
+            {
+                if ($value)
+                {
+                    $xcatline = "    serialspeed=$value\n";
+                    $xcatline .= "    serialflow=hard\n";    # hardcoded
+                }
+            }
+            if ($attr eq "ConsoleSerialDevice")
+            {
+                if ($value)
+                {
+                    $xcatline = "    serialport=$value\n";
+                }
+            }
+            if ($attr eq "ConsoleServerName")
+            {
+                if ($value)
+                {
+                    $xcatline = "    termserver=$value\n";
+                }
+            }
+            if ($xcatline)
+            {
+                write_stanza($xcatline);
+                $xcatline = "";
+            }
+        }
+    }
+
+    close(STANZA);
+    return 0;
+}
+
+#
+# runs lshwdev -l  stanza file and builds node stanza file for xCAT
+#
+
+sub getDevinfo
+{
+
+    # open the node stanza file
+    my $stanzafile = "$directory/device.stanza";
+    open(STANZA, ">$stanzafile")
+      or die "Can't open $stanzafile for writing: $!";
+    write_stanza("# <xCAT data object stanza file\n");
+
+    log_this("Reading Device information\n");
+    print "Running lshwdev -l for device info!\n";
+
+    my $MN;
+    my $OS;
+    my $hwmodel;
+
+    my @results;
+    my $cmd;
+    my $HWMODEL = "";
+
+    # use of file is for debug
+    my $lshwdevfile = "$directory/lshwdevdebug.output";
+    if (-e $lshwdevfile)
+    {    # use the imported file
+        log_this("Reading $lshwdevfile information\n");
+        $cmd     = "cat $lshwdevfile";
+        @results = runcmd($cmd);
+    }
+    else
+    {    # run the command
+        $cmd     = "/opt/csm/bin/lshwdev -l";
+        @results = runcmd($cmd);
+    }
+    if ($::RUNCMD_RC != 0)
+    {
+        my $msg = "Error processing lshwdev information\n";
+        log_this($msg);
+        print "$msg";
+        close(STANZA);
+        return;
+    }
+
+    #
+    #  build hash  of lshwdev info
+    #
+    my $output   = buildNodehash(\@results);
+    my %nodehash = %$output;
+    my %attrhash;
+    my $nodename;
+    my $attributes;
+
+    while (($nodename, $attributes) = each %nodehash)
+    {
+
+        #
+        # build commonly needed attributes
+        #
+        %attrhash = %$attributes;
+        $HWMODEL  = $attrhash{"HWModel"};
+
+        #
+        # first process the devicename
+        #
+        my $value;
+        my $xcatline;
+        my $attr;
+
+        my $grplist  = get_dev_groups($nodename);
+        my $shortnodename = get_shortname($nodename);
+        $xcatline = "$shortnodename:\n";    # write node name
+        $xcatline .= "    objtype=node\n";
+        if ($grplist)
+        {
+            $xcatline .= "    groups=$grplist\n";
+        }
+        $xcatline .= "    status=defined\n";
+        if ($xcatline)
+        {
+            write_stanza($xcatline);
+            $xcatline = "";
+        }
+
+        #now process all the attributes associated with the device
+        while (($attr, $value) = each %$attributes)
+        {
+
+            if ($attr eq "DeviceType")
+            {
+                if ($value)
+                {
+                    my $lcvalue = lc($value);
+                    $xcatline = "    nodetype=$lcvalue\n";
+                }
+            }
+            if ($attr eq "HWType")    # put Model and type together
+            {
+                if ($value)
+                {
+                    $xcatline = "    mtm=$HWMODEL";
+                    $xcatline .= "-";
+                    $xcatline .= "$value\n";
+                }
+            }
+            if ($attr eq "HWSerialNum")
+            {
+                if ($value)
+                {
+                    $xcatline = "    serial=$value\n";
+                }
+            }
+            if ($attr eq "PhysicalLocation")
+            {
+                if ($value)
+                {
+                    $xcatline = "    room=$value\n";
+                }
+            }
+            if ($attr eq "Macaddr")
+            {
+                if ($value)
+                {
+                    $xcatline = "    mac=$value\n";
+                }
+            }
+            if ($xcatline)
+            {
+                write_stanza($xcatline);
+                $xcatline = "";
+            }
+        }
+    }
+    close(STANZA);
+    return 0;
+}
+
+#
+# change to short hostname for xCAT
+# if ip address, just return it
+#
+sub get_shortname
+{
+    my $hostname = shift();
+
+    # if not ip address
+    if ($hostname !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+    {
+        my @shorthost = split(/\./, $hostname);
+        return $shorthost[0];
+    }
+    else
+    {    # return ip address
+        return $hostname;
+    }
+}
+
+#
+# get list of groups for input hostname
+#
+sub get_groups
+{
+    my $hostname = shift();
+    my $grouplist;
+    my @results;
+    my $cmd;
+
+    # use of file is for debug
+    my $groupfile = "$directory/nodegrpdebug.output";
+    if (-e $groupfile)
+    {    # use the imported file
+        $cmd     = "cat $groupfile";
+        @results = runcmd($cmd);
+    }
+    else
+    {    # run the command
+        $cmd     = "/opt/csm/bin/nodegrp -s $hostname";
+        @results = runcmd($cmd);
+    }
+
+    foreach my $line (@results)
+    {
+        $grouplist .= $line;
+        $grouplist .= ",";
+    }
+    chop $grouplist;    # get rid of last comma
+    return $grouplist;
+}
+
+#
+# get list of groups for input device
+#
+sub get_dev_groups
+{
+    my $devname = shift();
+    my $grouplist;
+    my $cmd;
+    my @results;
+    my $hwgroupfile = "$directory/hwdevgrpdebug.output";
+    if (-e $hwgroupfile)
+    {    # use the imported file
+        $cmd     = "cat $hwgroupfile";
+        @results = runcmd($cmd);
+    }
+    else
+    {    # run the command
+        $cmd     = "/opt/csm/bin/hwdevgrp -s $devname";
+        @results = runcmd($cmd);
+    }
+
+    foreach my $line (@results)
+    {
+        $grouplist .= $line;
+        $grouplist .= ",";
+    }
+    chop $grouplist;    # get rid of last comma
+    return $grouplist;
+}
+
+#
+# build node hash.  Build a hash of hashes,  each entry
+#   nodex=> {
+#            attribute=>value
+#            attribute=>value
+#               .
+#
+#
+
+sub buildNodehash
+{
+    my ($info) = @_;
+    my @nodeinfo = @$info;
+    my %nodehash;
+    my $nodename;
+    foreach my $line (@nodeinfo)
+    {
+        $line =~ s/\s*//g;    #remove extra blanks
+        my ($attr, $value) = split(/=/, $line);
+        if (($attr eq "Hostname") || ($attr eq "Name"))
+        {
+            $nodename = $value;    # set the hash key
+        }
+        else
+        {                          # all other lines are part of hash
+            $nodehash{$nodename}{$attr} = $value;
+        }
+    }
+    return \%nodehash;
+}
+
+#
+# runs the input command and handles the errors.   Returns the output
+#
+
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc = 0;
+    $::RUNCMD_RC = 0;
+    my $outref = [];
+    @$outref = `$cmd`;
+    if ($?)
+    {
+        $rc          = $? ;
+        $::RUNCMD_RC = $rc;
+        if ($rc > 0)
+        {
+            my $msg = "$cmd returned rc=$rc @$outref\n";
+            log_this($msg);
+            print "$msg";
+        }
+    }
+    chomp(@$outref);
+    return @$outref;
+
+}
+
+sub usage
+{
+    print "CSM database to xCAT stanza files migration utility.\n";
+    print
+      "Reads the CSM database and creates xCAT stanza files that \ncan be imported using the chdef command into the xCAT database.\n";
+    print "Usage:\n";
+    print "\t--help - usage\n";
+    print
+      "\t--directory - output directory for stanza files.\n                      Default is /tmp/csm2xcat.\n";
+    print "\n";
+    return;
+}
+
