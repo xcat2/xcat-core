@@ -1,0 +1,57 @@
+=head1 NAME
+
+B<csm2xcat> - Allows the migration of a CSM database to an xCAT database. 
+
+=head1 SYNOPSIS
+
+B<csm2xcat> [{B<--dir>} I<path>]
+
+B<csm2xcat> [B<-h>] 
+
+
+=head1 DESCRIPTION
+
+The csm2xcat command must be run on the Management Node of the CSM system that you want to migrate to xCAT.  The commmand will build  three xCAT stanza files that can update the xCAT database with the chdef command. 
+
+Copy the csm2xcat command to the CSM Management Server.  Run the command, indicating where you want your stanza files saved with the --dir parameter.  Check the stanza files to see if the information is what you want put in the xCAT database. Copy the three stanza files- site.stanza, node.stanza, device.stanza back to your xCAT Management node, and run the chdef command to input into the xCAT database.
+
+=head1 OPTIONS
+
+B<-h>          Display usage message.
+
+B<--dir>          Path to the directory containing the stanza files.
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To build xCAT stanza files, enter on the CSM Management Server:
+
+B<csm2xcat --dir  /tmp/mydir>
+
+
+2. To put the data in the xCAT database on the xCAT Management Node:
+
+B<cat site.stanza | chdef -z>
+
+B<cat node.stanza | chdef -z>
+
+B<cat device.stanza | chdef -z>
+
+
+=head1 FILES
+
+/opt/xcat/share/xcat/tools/csm2xcat
+
+$dir/conversion.log
+
+
+=head1 SEE ALSO
+
+L<chdef(1)|chdef.1>
+
+
