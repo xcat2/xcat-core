@@ -395,18 +395,31 @@ sub mkinstall
               . " install=http://"
               . $ent->{nfsserver}
               . "/install/$os/$arch/1";
-            if ($ent->{installnic})
-            {
-                $kcmdline .= " netdevice=" . $ent->{installnic};
-            }
-            elsif ($ent->{primarynic})
-            {
-                $kcmdline .= " netdevice=" . $ent->{primarynic};
-            }
-            else
-            {
-                $kcmdline .= " netdevice=eth0";
-            }
+              #if ($ent->{installnic})
+              #{
+              #  $kcmdline .= " netdevice=" . $ent->{installnic};
+              #}
+              #elsif ($ent->{primarynic})
+              #{
+              #  $kcmdline .= " netdevice=" . $ent->{primarynic};
+              #}
+              #else
+              #{
+              #  $kcmdline .= " netdevice=eth0";
+              #}
+
+              #use mac.mac to set "netdevice=", if mac.mac exists
+              my $mactab = xCAT::Table->new('mac');
+              (my $macref) = $mactab->getAttribs({node => $node}, mac);
+              if ($macref) {
+                  $kcmdline .= " netdevice=$macref->{mac}";
+              }elsif ($ent->{installnic}) {
+                  $kcmdline .= " netdevice=" . $ent->{installnic};
+              }elsif ($ent->{primarynic}) {
+                  $kcmdline .= " netdevice=" . $ent->{primarynic};
+              }else {
+                  $kcmdline .= " netdevice=eth0";
+              }
 
             #TODO: driver disk handling should in SLES case be a mod of the install source, nothing to see here
             if (defined $sent->{serialport})
