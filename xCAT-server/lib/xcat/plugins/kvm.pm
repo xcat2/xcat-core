@@ -607,6 +607,7 @@ sub power {
     } elsif ($subcommand eq 'off') {
         if ($dom) {
             $dom->destroy();
+            undef $dom;
         } else { $retstring .= "$status_noop"; }
     } elsif ($subcommand eq 'softoff') {
         if ($dom) {
@@ -615,6 +616,7 @@ sub power {
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
             $dom->destroy();
+            undef $dom;
             ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
             $retstring.="reset";
