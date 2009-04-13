@@ -214,12 +214,14 @@ sub makescript {
 			push @{$rsp->{data}}, "Unable to open passwd table.";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
 		}
-
-		my $et = $passwdtab->getAttribs({key => 'system', username => 'root'}, 'password');
-		if ($et and defined ($et->{'password'})) {
+                
+                if ($passwdtab) {
+		  my $et = $passwdtab->getAttribs({key => 'system', username => 'root'}, 'password');
+		  if ($et and defined ($et->{'password'})) {
 			push @scriptd, "ROOTPW=".$et->{'password'}."\n";
 			push @scriptd, "export ROOTPW\n";
-		}
+		  }
+               }
 	}
 
   if (!$nodesetstate) { $nodesetstate=getnodesetstate($node);}
