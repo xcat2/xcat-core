@@ -64,22 +64,26 @@ sub process_request {
     my $exlistloc=get_exlist_file_name("$installroot/custom/netboot/$distname", $profile, $osver, $arch);
     if (!$exlistloc) {  $exlistloc=get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); }
 
-    if (!$exlistloc)
-    {
-       $callback->({error=>["Unable to find file exclusion list under $installroot/custom/netboot/$distname or $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver"],errorcode=>[1]});
-       next;
-    }
+    #if (!$exlistloc)
+    #{
+    #   $callback->({error=>["Unable to find file exclusion list under $installroot/custom/netboot/$distname or $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver"],errorcode=>[1]});
+    #   next;
+    #}
     #print "exlistloc=$exlistloc\n";
-    my $exlist;
-    open($exlist,"<",$exlistloc);
+
     my $excludestr = "find . ";
-    while (<$exlist>) {
-       chomp $_;
-       s/\s*#.*//;      #-- remove comments 
-       next if /^\s*$/; #-- skip empty lines
-       $excludestr .= "'!' -path '".$_."' -a ";
+    if ($exlistloc) {
+        my $exlist;
+        open($exlist,"<",$exlistloc);
+        #my $excludestr = "find . ";
+        while (<$exlist>) {
+            chomp $_;
+            s/\s*#.*//;      #-- remove comments 
+            next if /^\s*$/; #-- skip empty lines
+            $excludestr .= "'!' -path '".$_."' -a ";
+        }
+        close($exlist);
     }
-    close($exlist);
 
 	# add the xCAT post scripts to the image
     if (! -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {
@@ -129,8 +133,12 @@ sub process_request {
     unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.sfs");
     unlink("$installroot/netboot/$osver/$arch/$profile/rootimg.nfs");
     if ($method =~ /cpio/) {
-       $excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
-       $oldmask = umask 0077;
+        if (!$exlistloc) {
+            $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg.gz";
+        }else {
+            $excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
+        }
+        $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
       chmod 0755,$temppath;
