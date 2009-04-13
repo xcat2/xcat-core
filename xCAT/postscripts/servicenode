@@ -29,7 +29,7 @@ use IO::Socket;
 
 my $useSocketSSL=eval { require IO::Socket::SSL; };
 if ($useSocketSSL) {
-        require IO::Socket::SSL;
+	require IO::Socket::SSL;
 }
 
 # MAIN
@@ -136,6 +136,12 @@ sub setupAIXsn
         `logger -t xcat $msg`;
     }
 
+	# copy the postscripts to /install/postscripts
+	if (&runcmd("cp -R /xcatpost/* /install/postscripts > /dev/null 2>&1") != 0 ) {
+		$msg = "$::sdate servicenode: Could not copy postscripts to /install/postscripts.\n";
+		`logger -t xcat $msg`;
+	}
+
 	# make sure we don't have xCATMN file 
 	if (-f "/etc/xCATMN") {
 		if (&runcmd("rm  /etc/xCATMN") != 0 ) {
@@ -174,6 +180,46 @@ sub setupAIXsn
 		$msg = "$::sdate servicenode: Could not change ulimit\n";
 		`logger -t xcat $msg`;
 	}
+
+	# stop inetd, make sure bootp & tftp are in /etc/inetd.conf and restart
+    if (&runcmd("stopsrc -s inetd") != 0) {
+        $msg = "$::sdate servicenode: Could not stop inetd.\n";
+        `logger -t xcat $msg`;
+    }
+
+    my $tmp_inetd_file = "/etc/inetd.conf.tmp";
+    unless (open(TMPINETD, ">>$tmp_inetd_file")) {
+        $msg = "$::sdate servicenode: Could not open $tmp_inetd_file.\n";
+        `logger -t xcat $msg`;
+    }
+
+    my $inetd_file_name = "/etc/inetd.conf";
+    unless (open(INETDFILE, "<$inetd_file_name")) {
+        $msg = "$::sdate servicenode: Could not open $inetd_file_name.\n";
+        `logger -t xcat $msg`;
+    }
+
+    while (my $l = <INETDFILE>) {
+        chomp $l;
+        if (($l =~ /bootps/) || ($l =~ /tftp/)) {
+            $l =~ s/^\s*#/$1/;
+            print TMPINETD $l . "\n";
+        } else {
+            print TMPINETD $l . "\n";
+        }
+    }
+    close (TMPINETD);
+    close (INETDFILE);
+
+	if (&runcmd("mv $tmp_inetd_file $inetd_file_name > /dev/null 2>&1") != 0) {
+        $msg = "$::sdate servicenode: Could not update /etc/inetd.conf.\n";
+        `logger -t xcat $msg`;
+    }
+
+    if (&runcmd("startsrc -s inetd") != 0) {
+        $msg = "$::sdate servicenode: Could not restart inetd.\n";
+        `logger -t xcat $msg`;
+    }
 
 	# do nim master setup - master fileset already installed
     if (&runcmd("/usr/sbin/nim_master_setup -a mk_resource=no") != 0) {
