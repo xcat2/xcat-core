@@ -602,23 +602,23 @@ sub power {
             ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
         } else {
-          $retstring .= " $status_noop";
+          $retstring .= "$status_noop";
         }
     } elsif ($subcommand eq 'off') {
         if ($dom) {
             $dom->destroy();
-        } else { $retstring .= " $status_noop"; }
+        } else { $retstring .= "$status_noop"; }
     } elsif ($subcommand eq 'softoff') {
         if ($dom) {
             $dom->shutdown();
-        } else { $retstring .= " $status_noop"; } 
+        } else { $retstring .= "$status_noop"; } 
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
             $dom->destroy();
             ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
             $retstring.="reset";
-        } else { $retstring .= " $status_noop"; } 
+        } else { $retstring .= "$status_noop"; } 
     } else { 
         unless ($subcommand =~ /^stat/) {
             return (1,"Unsupported power directive '$subcommand'");
@@ -1061,7 +1061,7 @@ sub forward_data {
           if (($text) && ($text =~ /$status_noop/)) {
 	    $no_op=1;
             #remove the symbols that meant for use by node status
-            $_->{node}->[0]->{data}->[0]->{contents}->[0] =~ s/ $status_noop//; 
+            $_->{node}->[0]->{data}->[0]->{contents}->[0] =~ s/$status_noop//; 
           }
         }  
 	#print "data:". $_->{node}->[0]->{data}->[0]->{contents}->[0] . "\n";
