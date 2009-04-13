@@ -1,4 +1,4 @@
-Summary: Metapackage for a common, default xCAT setup
+Summary: Meta-package for a common, default xCAT setup
 Name: xCAT
 Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
