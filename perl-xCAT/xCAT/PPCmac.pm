@@ -1,6 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::PPCmac;
+use Socket;
 use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
@@ -16,6 +17,7 @@ sub parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
+    my $node    = $request->{node};
     my $vers = 
     my @VERSION = qw( 2.1 );
 
@@ -42,7 +44,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s d f))) { 
+    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s D d f))) { 
         return( usage() );
     }
     ####################################
@@ -70,23 +72,108 @@ sub parse_args {
         return(usage( "Invalid Argument: $ARGV[0]" ));
     }
     ####################################
-    # If one specified, all required 
+    # Check argument for ping test
     ####################################
-    my @network;
-    foreach ( qw(C G S) ) {
-        if ( exists($opt{$_}) ) {
+    if ( exists($opt{D}) ) {
+        my @network;
+        my $client_ip;
+        my $gateway;
+        my $service_name;
+        my $server_name;
+        my $master_name;
+        my $server_ip;
+        my $in_hirachical;
+
+        my %nethash   = xCAT::DBobjUtils->getNetwkInfo( $node );
+        #####################################
+        # Network attributes undefined
+        #####################################
+        if ( !%nethash ) {
+            return( [RC_ERROR,"Cannot get network information for $node"] );
+        }
+
+        if ( exists($opt{C}) ) {
             push @network, $_;
+        } else {
+            # get, check the node IP
+            $client_ip = inet_ntoa(inet_aton(@$node[0]));
+            chomp $client_ip;
+            if ( $client_ip ) {
+                $opt{C} = $client_ip;
+                push @network, $client_ip;
+            }
         }
+
+        if ( exists($opt{S}) ) {
+            push @network, $_;
+        } else {
+            ####################################
+            # Read server name from noderes 
+            # table.  Either service node in 
+            # hirachical mode or management node
+            # in non-hirachical mode
+            ####################################
+            my $noderestab=xCAT::Table->new('noderes');
+            unless ( $noderestab ) {
+                return( usage() );
+            }
+            $service_name = $noderestab->getNodeAttribs(@$node[0], ['servicenode']);
+            $server_name = $service_name->{'servicenode'};
+            $in_hirachical = 1;
+            if ( !$server_name ) {
+                $master_name = $noderestab->getNodeAttribs(@$node[0], ['xcatmaster']);
+                $server_name = $master_name->{'xcatmaster'};
+                $in_hirachical = 0;
+            }
+            
+            if ( $server_name ) {
+                $server_ip = inet_ntoa(inet_aton($server_name));
+                chomp $server_ip;
+                if ( $server_ip ) {
+                    $opt{S} = $server_ip;
+                    push @network, $server_ip;
+                }
+            }
+            $noderestab->close;
+        }
+
+        if ( exists($opt{G}) ) {
+            push @network, $_;
+        } elsif ( $in_hirachical ) {
+            ####################################
+            # In hirachical mode, set gateway to
+            # service node if service node and
+            # compute node are in the same net.  
+            ####################################
+            my %service_nethash   = xCAT::DBobjUtils->getNetwkInfo( [$server_name] );
+            if ( $nethash{@$node[0]}{net}==$service_nethash{$server_name}{net} ){
+                $gateway = $server_ip;
+                $opt{G} = $gateway;
+                push @network, $gateway;
+            }
+        } else {
+            ####################################
+            # Set gateway in networks table
+            ####################################
+            $gateway = $nethash{@$node[0]}{gateway};
+            if ( $gateway ) {
+                $opt{G} = $gateway;
+                push @network, $gateway;
+            }
+        }
+
+        if ( @network ) {
+            if ( scalar(@network) != 3 ) {
+                return( usage() );
+            }
+            my $result = validate_ip( $opt{C}, $opt{G}, $opt{S} );
+            if ( @$result[0] ) {
+                return(usage( @$result[1] ));
+            }
+        }
+    } elsif ( exists($opt{S}) || exists($opt{G}) || exists($opt{C}) ) {
+        return(usage( "Option '-D' is required for ping test\n" ));
     }
-    if ( @network ) {
-        if ( scalar(@network) != 3 ) {
-            return( usage() );
-        }
-        my $result = validate_ip( $opt{C}, $opt{G}, $opt{S} );
-        if ( @$result[0] ) {
-            return(usage( @$result[1] ));
-        }
-    } 
     ####################################
     # Set method to invoke 
     ####################################

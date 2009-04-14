@@ -100,7 +100,7 @@ my %usage = (
        getmacs <noderange> [-V|--verbose]
        getmacs [-h|--help|-v|--version]
    PPC specific:
-       getmacs <noderange> [-f][-d][-S server -G gateway -C client]",
+       getmacs <noderange> [-f][-d][-D -S server -G gateway -C client]",
     "mkvm" => 
 "Usage:
     Common:
