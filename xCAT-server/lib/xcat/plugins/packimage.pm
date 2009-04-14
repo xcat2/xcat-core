@@ -27,6 +27,11 @@ sub process_request {
       $installroot = $ent->{value};
    }
    @ARGV = @{$request->{arg}};
+   my $argc = scalar @ARGV;
+   if ($argc == 0) {
+       $callback->({info=>["packimage -h \npackimage -v \npackimage [-p profile] [-a architecture] [-o OS] [-m method]\n"]});
+       return;
+   }
     my $osver;
     my $arch;
     my $profile;
@@ -44,7 +49,7 @@ sub process_request {
       $callback->({info=>[$version]});
       return;
    }
-   if ($help || scalar @ARGV == 0) {
+   if ($help) {
       $callback->({info=>["packimage -h \npackimage -v \npackimage [-p profile] [-a architecture] [-o OS] [-m method]\n"]});
       return;
    }
@@ -64,11 +69,10 @@ sub process_request {
     my $exlistloc=get_exlist_file_name("$installroot/custom/netboot/$distname", $profile, $osver, $arch);
     if (!$exlistloc) {  $exlistloc=get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); }
 
-    #if (!$exlistloc)
-    #{
-    #   $callback->({error=>["Unable to find file exclusion list under $installroot/custom/netboot/$distname or $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver"],errorcode=>[1]});
-    #   next;
-    #}
+    if (!$exlistloc)
+    {
+        $callback->({data=>["WARNING: Unable to find file exclusion list under $installroot/custom/netboot/$distname or $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver\n"]});
+    }
     #print "exlistloc=$exlistloc\n";
 
     my $excludestr = "find . ";
