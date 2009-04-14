@@ -395,45 +395,18 @@ sub mkinstall
               . " install=http://"
               . $ent->{nfsserver}
               . "/install/$os/$arch/1";
-              #if ($ent->{installnic})
-              #{
-              #  $kcmdline .= " netdevice=" . $ent->{installnic};
-              #}
-              #elsif ($ent->{primarynic})
-              #{
-              #  $kcmdline .= " netdevice=" . $ent->{primarynic};
-              #}
-              #else
-              #{
-              #  $kcmdline .= " netdevice=eth0";
-              #}
-
-              if ($arch eq "ppc64") {
-                  #use mac.mac to set "netdevice=", if mac.mac exists
-                  my $mactab = xCAT::Table->new('mac');
-                  (my $macref) = $mactab->getAttribs({node => $node}, mac);
-                  if ($macref) {
-                      $kcmdline .= " netdevice=$macref->{mac}";
-                  } else {
-                      $callback->(
-                          {
-                              error => [
-                                "Unable to find the mac address for $node!"
-                              ],
-                              errorcode => [1]
-                          }
-                      );
-
-                  }
-              } else {  #mac.mac is not verified on system x, so it keeps the old way
-                  if ($ent->{installnic}) {
-                      $kcmdline .= " netdevice=" . $ent->{installnic};
-                  }elsif ($ent->{primarynic}) {
-                      $kcmdline .= " netdevice=" . $ent->{primarynic};
-                  }else {
-                      $kcmdline .= " netdevice=eth0";
-                  }
-              }
+            if ($ent->{installnic})
+            {
+                $kcmdline .= " netdevice=" . $ent->{installnic};
+            }
+            elsif ($ent->{primarynic})
+            {
+                $kcmdline .= " netdevice=" . $ent->{primarynic};
+            }
+            else
+            {
+                $kcmdline .= " netdevice=eth0";
+            }
 
             #TODO: driver disk handling should in SLES case be a mod of the install source, nothing to see here
             if (defined $sent->{serialport})
