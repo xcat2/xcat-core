@@ -15,6 +15,7 @@ I<getmacs [-V| --verbose] noderange> [-f][-d][-D -S server -G gateway -C client]
 
 The getmacs command collects MAC address from a single or range of nodes.
 Note that on AIX systems, the returned MAC address is not colon-seperated (for example 8ee2245cf004), while on Linux systems the MAC address is colon-seperated (for example 8e:e2:24:5c:f0:04).
+If no ping test performed,  getmacs writes the first adapter MAC to the xCAT database.  If ping test performed, getmacs will write the first successfully pinged MAC to xCAT database.
 
 =head1 OPTIONS
 
