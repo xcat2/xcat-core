@@ -4070,7 +4070,7 @@ sub copyres
 	my $FSname = $fslist[7];
 
 	# How much space is the resource using?
-	my $ducmd = qq~xdsh $dest /usr/bin/du -sm $dir | /usr/bin/awk '{print \$1}'~;
+	my $ducmd = qq~/usr/bin/du -sm $dir | /usr/bin/awk '{print \$1}'~;
 
 	my $reqsize = xCAT::Utils->runcmd("$ducmd", -1);
     if ($::RUNCMD_RC  != 0) {
@@ -4086,14 +4086,14 @@ sub copyres
 	# how much space do we need
 	my $needspace;
 	if (($restype eq 'lpp_source') || ($restype eq 'spot')) {
-		# need size of resource plus size of tar file plus
-		$needspace = int ((2 * $reqsize)+100);
+		# need size of resource plus size of tar file plus fudge factor
+		$needspace = int ($reqsize + $reqsize + 100);
 	} else {
 		$needspace = int ($reqsize+10);
 	}
 
 	# increase FS if needed
-	my $addsize;
+	my $addsize = 0;
 	if ( $needspace > $free_space) {
 		# how much should we increase FS?
 		$addsize = int ($needspace - $free_space);
@@ -4112,6 +4112,12 @@ sub copyres
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
+    }
+
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Space available on $dest=$free_space, space needed=$needspace, amount of space that will be added is \'$addsize\'\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
 	# do copy from NIM primary
@@ -4241,6 +4247,12 @@ sub doSNcopy
 			# running on the management node so
 			# copy the /etc/hosts file to the SN
 			my $rcpcmd = "xdcp $snkey /etc/hosts /etc 2>/dev/null";
+			if ($::VERBOSE) {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$rcpcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+
 			my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
 			if ($::RUNCMD_RC  != 0) {
 				my $rsp;
@@ -4705,7 +4717,8 @@ ll~;
 
 		# define the node 
 		my $defcmd = "/usr/sbin/nim -o define -t $type ";
-		$defcmd .= "-a if1='find_net $nodeshorthost $objhash{$node}{'mac'}' ";
+        $objhash{$node}{'mac'}  =~ s/://g;  # strip out colons if any
+        $defcmd .= "-a if1='find_net $nodeshorthost $objhash{$node}{'mac'}' ";
 		$defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
 		$defcmd .= "-a net_definition='ent $nethash{$node}{'mask'} $nethash{$node}{'gateway'}' ";
 		$defcmd .= "-a net_settings1='$speed $duplex' ";
