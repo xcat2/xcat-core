@@ -206,6 +206,7 @@ sub mkvm_parse_args {
         if ( !@noderange ) {
             return(usage( "Invalid noderange: '$opt{l}'" ));
         }
+        @noderange = sort @noderange;
         $opt{lpar} = \@noderange;
     }
 ####################################
@@ -405,6 +406,7 @@ sub clone {
     my @values  = ();
     my @lpars   = @$targets;
     my $destcec;
+    my $opt     = $request->{opt};
 
 #####################################
 # Always one source CEC specified 
@@ -445,6 +447,20 @@ sub clone {
     if ( $Rc != SUCCESS ) {
         return( [[$Rc, @$cecs[0]]] );
     }
+
+#####################################
+# Get HCA info
+#####################################
+    my $unassigned_iba = undef;
+    if ( exists $opt->{ibautocfg})
+    {
+        $unassigned_iba = get_unassigned_iba( $exp, $mtms, $opt->{ibacap});
+    }
+    else
+    {
+        $unassigned_iba = get_unassigned_iba( $exp, $mtms, undef);
+    }
+
 #####################################
 # Find source/dest CEC 
 #####################################
@@ -479,6 +495,14 @@ sub clone {
         $cfg =~ /lpar_id=([^,]+)/;
         $lparid = $1;
 
+        if (exists $opt->{ibautocfg})
+        {
+            $cfg = hcasubst( $cfg, $unassigned_iba, $opt->{ibaautocfg});
+        }   
+        else
+        {
+            $cfg = hcasubst( $cfg, $unassigned_iba, undef);
+        }
 #################################
 # Create new LPAR  
 #################################
@@ -1002,7 +1026,7 @@ sub list {
             ####################################
             # Get LPAR profile 
             ####################################
-            foreach ( @lpars ) {
+            foreach ( sort @lpars ) {
                 my ($name,$id) = split /,/;
             
                 #################################
@@ -1042,7 +1066,9 @@ sub list {
     }
     return( \@values );
 }
-
+##########################################################################
+# Increments hca adapter in partition profile
+##########################################################################
 sub hca_adapter {
 
     my $cfgdata = shift;
@@ -1089,7 +1115,163 @@ sub hca_adapter {
     }
     return( $cfgdata );
 }
+##########################################################################
+# Get unassigned hca guid
+##########################################################################
+sub get_unassigned_iba
+{
+    my $exp     = shift;
+    my $mtms    = shift;
+    my $ibacap  = shift;
+    my $max_ib_num = 0;
+    if ( ! $ibacap)
+    {
+        $ibacap = '1';
+    }
+    if ( $ibacap eq '1')
+    {
+        $max_ib_num = 16;
+    }
+    elsif ( $ibacap eq '2')
+    {
+        $max_ib_num = 8;
+    }
+    elsif ( $ibacap eq '3')
+    {
+        $max_ib_num = 4;
+    }
+    elsif ( $ibacap eq '4')
+    {
+        $max_ib_num = 1;
+    }
+    else
+    {
+        return undef;
+    }
 
+    my $hwres = xCAT::PPCcli::lshwres( $exp, ['sys','hca', 'adapter_id:phys_loc:unassigned_guids'], $mtms);
+    my $Rc = shift(@$hwres);
+    if ( $Rc == SUCCESS)
+    {
+        my @unassigned_ibas;
+        my $ib_hash = {};
+        for my $hca_info (@$hwres)
+        {
+            chomp $hca_info;
+            if ($hca_info =~ /^(.+):(.+):(.+)$/)
+            {
+                my $adapter_id       = $1;
+                my $phys_loc         = $2;
+                my $unassigned_guids = $3;
+                if ( $phys_loc =~ /C65$/ or $phys_loc =~ /C66$/)
+                {
+                    my @guids = split /,/, $unassigned_guids;
+                    $max_ib_num = scalar( @guids) if (scalar( @guids) < $max_ib_num);
+                    for (my $i = 0; $i < $max_ib_num; $i++)
+                    {
+                        my $guid = @guids[$i];
+                        $guid =~ s/\s*(\S+)\s*/$1/;
+                        unshift @{$ib_hash->{$phys_loc}->{$adapter_id}}, "$adapter_id/$guid/$ibacap";  
+                    }
+                }
+            }
+        }
+        for my $loc ( sort keys %$ib_hash)
+        {
+            my $min_guid_num = -1;
+            for my $id (keys %{$ib_hash->{$loc}})
+            {
+                if ( $min_guid_num == -1 or $min_guid_num > scalar( @{$ib_hash->{$loc}->{$id}}))
+                {
+                    $min_guid_num = scalar( @{$ib_hash->{$loc}->{$id}});
+                }
+            }
+            for (my $i = 0; $i < $min_guid_num; $i++)
+            {
+                my $unassigned_iba = undef;
+                for my $adp_id (sort keys %{$ib_hash->{$loc}})
+                {
+                    my $iba = $ib_hash->{$loc}->{$adp_id}->[$i];
+                    $unassigned_iba .= ",$iba";
+                }
+                if ($unassigned_iba)
+                {
+                    $unassigned_iba =~ s/^,//;
+                    push @unassigned_ibas, $unassigned_iba;
+                }
+            }
+        }
+        return \@unassigned_ibas;
+    }
+    else
+    {
+        return undef;
+    }
+}
+##########################################################################
+# Substitue hca info
+##########################################################################
+sub hcasubst
+{
+    my $cfgdata = shift;
+    my $unassignedhca = shift;
+    my $autocfg = shift;
+    $unassignedhca = [] if (!$unassignedhca);
+
+    if ( $cfgdata =~ /(\"*hca_adapters)/ ) {
+    
+    #####################################
+    # If double-quoted, has comma-
+    # seperated list of adapters
+    #####################################
+        my $delim = ( $1 =~ /^\"/ ) ? "\\\\\"" : ","; 
+        $cfgdata  =~ /hca_adapters=([^$delim]+)|$/;
+        my $oldhca = $1;
+        my $newhca;
+        if ( $autocfg)
+        {
+            $newhca = shift @$unassignedhca;
+        }
+        elsif ( $oldhca eq 'none')
+        {
+            $newhca = 'none'
+        }
+        else
+        {
+            if ( $oldhca =~ /\/(\d)$/)
+            {
+                my $ibacap = $1;
+                $newhca = shift @$unassignedhca;
+                my @newhcas = split /,/, $newhca;
+                for my $hcaentry ( @newhcas)
+                {
+                    $hcaentry =~ s/\/(\d)$/\/$ibacap/;
+                }
+                $newhca = join ',', @newhcas;
+            }
+            else
+            {
+                $newhca = 'none';
+            }
+        }
+            
+        my $adapters = undef;
+        if ( $newhca )
+        {
+            $adapters  = "hca_adapters=$newhca";
+        }
+        else
+        {
+            $adapters = "hca_adapters=none";
+        }
+        if ( $adapters =~ /,/ and $delim ne "\\\\\"")
+        {
+            $adapters = "\\\\\"" . $adapters . "\\\\\"";
+        }
+        $cfgdata =~ s/hca_adapters=[^$delim]+/$adapters/;
+    }
+    return( $cfgdata );
+}
 
 ##########################################################################
 # Increments virtual lhea adapter in partition profile 
