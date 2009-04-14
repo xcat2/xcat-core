@@ -8,27 +8,29 @@ I<getmacs [-h| --help]>
 
 I<getmacs [-v| --version]>
 
-I<getmacs [-V| --verbose] noderange> [-f][-d][-S server -G gateway -C client]
+I<getmacs [-V| --verbose] noderange> [-f][-d][-D -S server -G gateway -C client]
 
 
 =head1 DESCRIPTION
 
 The getmacs command collects MAC address from a single or range of nodes.
-Note than on AIX systems, the returned MAC address is not colon-seperated (for example 8ee2245cf004), while on Linux systems the MAC address is colon-seperated (for example 8e:e2:24:5c:f0:04).
+Note that on AIX systems, the returned MAC address is not colon-seperated (for example 8ee2245cf004), while on Linux systems the MAC address is colon-seperated (for example 8e:e2:24:5c:f0:04).
 
 =head1 OPTIONS
 
-B<-C>          IP address of the partition.
+B<-C>          Specify the IP address of the partition for ping test. The default is to read from xCAT database if no -C specified. 
 
 B<-d>          Display MAC only. The default is to write the first valid adapter MAC to the xCAT database.
 
+B<-D>          Perform ping test.
+
 B<-f>          Force immediate shutdown of the partition.
 
-B<-G>          Gateway IP address of the partition specified with the -C option.
+B<-G>          Gateway IP address of the partition.  The default is to read from xCAT database if no -G specified.
 
 B<-h>          Display usage message.
 
-B<-S>          The IP address of the machine to ping.
+B<-S>          The IP address of the machine to ping.  The default is to read from xCAT databse if no -S specified.
 
 B<-v>          Command Version.
 
@@ -74,7 +76,7 @@ ent U9133.55A.10B7D1G-V12-C4-T1 8ee2245cf004 /vdevice/l-lan@30000004 virtual
 
 3. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result only, enter:
 
-I<getmacs lpar4 -d -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234>
+I<getmacs lpar4 -d -D -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234>
 
 #Type  Location Code   MAC Address      Full Path Name  Ping Result
 
