@@ -193,7 +193,7 @@ mac => {
  descriptions => {
   node => 'The node name or group name.',
   interface => 'The adapter interface name that will be used to install and manage the node. E.g. eth0 (for linux) or en0 (for AIX).)',
-  mac => 'The MAC address of the network adapter that will be used to install the node, e.g. 00:D0:A8:00:05:F3 .',
+  mac => 'The mac address or addresses for which xCAT will manage static bindings for this node.  This may be simply a mac address, which would be bound to the node name (such as "01:02:03:04:05:0E").  This may also be a "|" delimited string of "mac address!hostname" format (such as "01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth1").',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
