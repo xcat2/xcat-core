@@ -7,7 +7,7 @@ use strict;
 #Perl implementation of noderange
 our @ISA = qw(Exporter);
 our @EXPORT = qw(noderange nodesmissed);
-our @EXPORT_OK = qw(extnoderange);
+our @EXPORT_OK = qw(extnoderange abbreviate_noderange);
 
 my $missingnodes=[];
 my $nodelist; #=xCAT::Table->new('nodelist',-create =>1);
@@ -241,6 +241,51 @@ sub extnoderange { #An extended noderange function.  Needed as the more straight
     @allnodeset=();
     return $return;
 }
+sub abbreviate_noderange { 
+    #takes a list of nodes or a string and abbreviates
+    my $nodes=shift;
+    my %grouphash;
+    my %sizedgroups;
+    my %nodesleft;
+    my %targetelems;
+    unless (ref $nodes) {
+        $nodes = noderange($nodes);
+    }
+    %nodesleft = map { $_ => 1 } @{$nodes};
+    unless ($nodelist) { 
+        $nodelist =xCAT::Table->new('nodelist',-create =>1); 
+    }
+    my $group;
+	foreach($nodelist->getAllAttribs('node','groups')) {
+		my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
+        foreach $group (@groups) {
+            push @{$grouphash{$group}},$_->{node};
+        }
+    }
+
+    foreach $group (keys %grouphash) {
+        push @{$sizedgroups{scalar @{$grouphash{$group}}}},$group;
+    }
+    my $node;
+    use Data::Dumper;
+    print Dumper(\%sizedgroups);
+    foreach (reverse sort {$a <=> $b} keys %sizedgroups) {
+        GROUP: foreach $group (@{$sizedgroups{$_}}) {
+                foreach $node (@{$grouphash{$group}}) {
+                    unless (grep $node eq $_,keys %nodesleft) {
+                    #this group contains a node that isn't left, skip it
+                        next GROUP;
+                    }
+                }
+                foreach $node (@{$grouphash{$group}}){
+                    delete $nodesleft{$node};
+                }
+                $targetelems{$group}=1;
+        }
+    }
+    return (join ',',keys %targetelems,keys %nodesleft);
+}
+
 sub noderange {
   $missingnodes=[];
   #We for now just do left to right operations

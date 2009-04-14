@@ -1,6 +1,10 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+use lib "$::XCATROOT/lib/perl";
 use Data::Dumper;
+use xCAT::Client;
+use strict;
 my %output;
 while (<STDIN>) {
     my $node;
@@ -18,11 +22,24 @@ my %collated;
 foreach (keys %output) {
     $collated{$output{$_}}->{$_}=1;
 }
-foreach (keys %collated) {
-    my $nodes = join(',',sort (keys %{$collated{$_}}));
+
+my $nodes;
+sub fillerup {
+    my $response = shift;
+    if ($response->{data}->[0]) {
+        $nodes = $response->{data}->[0];
+    }
+}
+foreach my $output (keys %collated) {
+    $nodes = join(',',sort (keys %{$collated{$output}}));
+    my $cmdref = {
+        noderange => [$nodes],
+        command => ['rnoderange'],
+    };
+    xCAT::Client::submit_request($cmdref,\&fillerup);
     print "====================================\n";
     print "$nodes\n";
     print "====================================\n";
-    print $_;
+    print $output;
     print "\n";
 }

@@ -11,7 +11,7 @@ use warnings;
 use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
-use xCAT::NodeRange;
+use xCAT::NodeRange qw/abbreviate_noderange/;
 use xCAT::Schema;
 use xCAT::Utils;
 use Getopt::Long;
@@ -46,6 +46,7 @@ sub handled_commands
             delattr    => "tabutils",     # not implemented yet
             chtype     => "tabutils",     # not implemented yet
             nr         => "tabutils",     # not implemented yet
+            rnoderange => "tabutils",     # not implemented yet
             tabgrep    => "tabutils"
             };
 }
@@ -88,6 +89,10 @@ sub process_request
     if ($command eq "nodels")
     {
         return nodels($nodes, $args, $callback, $request->{emptynoderange}->[0]);
+    }
+    elsif ($command eq "rnoderange") 
+    {
+        return rnoderange($nodes,$args,$callback);
     }
     elsif ($command eq "noderm" or $command eq "rmnode")
     {
@@ -833,6 +838,16 @@ sub tabgrep
 
 }
 
+sub rnoderange 
+{
+    my $nodes = shift;
+    my $args = shift;
+    my $callback = shift;
+    my $data = abbreviate_noderange($nodes);
+    if ($data) {
+        $callback->({data=>[$data]});
+    }
+}
 #####################################################
 #  nodels command
 #####################################################
