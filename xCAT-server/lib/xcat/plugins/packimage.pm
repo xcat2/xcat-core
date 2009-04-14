@@ -44,7 +44,7 @@ sub process_request {
       $callback->({info=>[$version]});
       return;
    }
-   if ($help) {
+   if ($help || scalar @ARGV == 0) {
       $callback->({info=>["packimage -h \npackimage -v \npackimage [-p profile] [-a architecture] [-o OS] [-m method]\n"]});
       return;
    }
