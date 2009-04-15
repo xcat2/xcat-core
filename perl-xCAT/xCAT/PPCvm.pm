@@ -154,7 +154,7 @@ sub mkvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose i=s l=s c=s p=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose ibautocfg ibacap=s i=s l=s c=s p=s) )) {
         return( usage() );
     }
 ####################################
@@ -163,6 +163,22 @@ sub mkvm_parse_args {
     if ( grep(/^-$/, @ARGV )) {
         return(usage( "Missing option: -" ));
     }
+    #############################################################
+    # Check if only ibacap or ibautocfg specified with the other
+    #############################################################
+#    if ( exists $opt{ibautocfg} and ! exists $opt{ibacap})
+#    {
+#       return(usage( "Missing option ibacap when ibautocfg is specified"));
+#    }    
+#    elsif ( exists $opt{ibacap} and !exists $opt{ibautocfg})
+#    {
+#        return(usage( "Missing option ibautocfg when ibacap is specified"));
+#    }    
+#    if ( $opt{ibacap} ne '1' and $opt{ibacap} ne '2' and $opt{ibacap} ne '3' and $opt{ibacap} ne '4')
+#    {
+#        return(usage( "IB adapter virtual capability (option --ibacap) can only be number 1,2,3,4. \n\t 1 means 'Low utilization': 6.25% of HCA resources (1/16 of an HCA); \n\t 2 means 'Medium utilization': 12.5% of HCA resources (1/8 of an HCA); \n\t 3 means 'High utilization': 25% of HCA resources (1/4 of an HCA);\n\t 4 means 'Dedicated HCA': 100% of HCA resources (complete HCA).\n"));
+#    }
+
 ####################################
 # Check for non-zero integer 
 ####################################
@@ -452,6 +468,7 @@ sub clone {
 # Get HCA info
 #####################################
     my $unassigned_iba = undef;
+    my $iba_replace_pair = undef;
     if ( exists $opt->{ibautocfg})
     {
         $unassigned_iba = get_unassigned_iba( $exp, $mtms, $opt->{ibacap});
@@ -459,6 +476,7 @@ sub clone {
     else
     {
         $unassigned_iba = get_unassigned_iba( $exp, $mtms, undef);
+        $iba_replace_pair = get_iba_replace_pair( $unassigned_iba, $profile);
     }
 
 #####################################
@@ -497,11 +515,11 @@ sub clone {
 
         if (exists $opt->{ibautocfg})
         {
-            $cfg = hcasubst( $cfg, $unassigned_iba, $opt->{ibaautocfg});
+            $cfg = hcaautoconf( $cfg, $unassigned_iba);
         }   
         else
         {
-            $cfg = hcasubst( $cfg, $unassigned_iba, undef);
+            $cfg = hcasubst( $cfg, $iba_replace_pair);
         }
 #################################
 # Create new LPAR  
@@ -1208,14 +1226,92 @@ sub get_unassigned_iba
         return undef;
     }
 }
+
+##########################################################################
+# get iba replacement pair (from source profile to target)
+##########################################################################
+sub get_iba_replace_pair
+{
+    my $unassigned_iba = shift;
+    my $profile        = shift;
+
+#############################
+# Get hca info from profile
+#############################
+    my @oldhca_prefixes;
+    for my $cfg (@$profile)
+    {
+        if ( $cfg =~ /(\"*hca_adapters)/ )
+        {
+            my $delim = ( $1 =~ /^\"/ ) ? "\\\\\"" : ",";
+            $cfg  =~ /hca_adapters=([^$delim]+)|$/;
+            my $oldhca = $1;
+            my @oldhcas = split /,/, $oldhca;
+            for my $oldhca_entry (@oldhcas)
+            {
+                if ( $oldhca_entry =~ /(.+\/.+)..\/\d+/)
+                {
+                    my $oldhca_prefix = $1;
+                    if (!grep /\Q$oldhca_prefix\E/, @oldhca_prefixes)
+                    {
+                        push @oldhca_prefixes, $oldhca_prefix;
+                    }
+                }
+            }
+        }
+    }
+###########################################
+# Get hca info from unasigned hca array
+###########################################
+    my @newhca_prefixes;
+    for my $newhca ( @$unassigned_iba)
+    {
+        my @newhcas = split /,/, $newhca;
+        for my $newhca_entry ( @newhcas)
+        {
+            if ( $newhca_entry =~ /(.+\/.+)..\/\d+/)
+            {
+                my $newhca_prefix = $1;
+                if (!grep /\Q$newhca_prefix\E/,@newhca_prefixes)
+                {
+                    push @newhca_prefixes, $newhca_prefix;
+                }
+            }
+        }
+    }
+#############################    
+# Create replacement pair
+#############################
+    my %pair_hash;
+    for ( my $i = 0; $i < scalar @oldhca_prefixes; $i++)
+    {
+        $pair_hash{ @oldhca_prefixes[$i]} = @newhca_prefixes[$i];
+    }
+
+    return \%pair_hash;
+}
 ##########################################################################
 # Substitue hca info
 ##########################################################################
 sub hcasubst
 {
     my $cfgdata = shift;
+    my $replace_hash = shift;
+    if ( $cfgdata =~ /(\"*hca_adapters)/ ) {
+        for my $oldhca_prefix (keys %$replace_hash)
+        {
+            $cfgdata =~ s/\Q$oldhca_prefix\E/$replace_hash->{$oldhca_prefix}/g;
+        }
+    }
+    return $cfgdata;
+}
+##########################################################################
+# Automatically configure HCA adapters
+##########################################################################
+sub hcaautoconf
+{
+    my $cfgdata = shift;
     my $unassignedhca = shift;
-    my $autocfg = shift;
     $unassignedhca = [] if (!$unassignedhca);
 
     if ( $cfgdata =~ /(\"*hca_adapters)/ ) {
@@ -1228,32 +1324,7 @@ sub hcasubst
         $cfgdata  =~ /hca_adapters=([^$delim]+)|$/;
         my $oldhca = $1;
         my $newhca;
-        if ( $autocfg)
-        {
-            $newhca = shift @$unassignedhca;
-        }
-        elsif ( $oldhca eq 'none')
-        {
-            $newhca = 'none'
-        }
-        else
-        {
-            if ( $oldhca =~ /\/(\d)$/)
-            {
-                my $ibacap = $1;
-                $newhca = shift @$unassignedhca;
-                my @newhcas = split /,/, $newhca;
-                for my $hcaentry ( @newhcas)
-                {
-                    $hcaentry =~ s/\/(\d)$/\/$ibacap/;
-                }
-                $newhca = join ',', @newhcas;
-            }
-            else
-            {
-                $newhca = 'none';
-            }
-        }
+        $newhca = shift @$unassignedhca;
             
         my $adapters = undef;
         if ( $newhca )
@@ -1270,7 +1341,7 @@ sub hcasubst
         }
         $cfgdata =~ s/hca_adapters=[^$delim]+/$adapters/;
     }
-    return( $cfgdata );
+    return $cfgdata ;
 }
 
 ##########################################################################

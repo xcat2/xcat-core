@@ -1260,7 +1260,8 @@ sub mkvm_prepare
         }
         elsif ( scalar(@profile) < scalar( @lpars))
         {
-            xCAT::MsgUtils->message('W', "Warning: Lpar number in command line is greater than lpar configuration number in profile. Only lpars " . join ",", @lpars[0..$min_lpar_num-1] . " will be created.\n");
+            my $lparlist = join ",", @lpars[0..($min_lpar_num-1)];
+            xCAT::MsgUtils->message('W', "Warning: Lpar number in command line is greater than lpar configuration number in profile. Only lpars " . $lparlist . " will be created.\n");
         }
     }
 
