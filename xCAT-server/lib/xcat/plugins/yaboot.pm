@@ -159,19 +159,19 @@ sub setstate {
    my @mac_substr = split /\:/, $machash{$node}->[0]->{mac};
    my $sles11_special_link = sprintf("yaboot.conf-%s-%s-%s-%s-%s-%s", @mac_substr);
    unlink($tftpdir."/etc/".$pname);
-   if ( $kern->{'kernel'} =~ /sles11\/ppc64\/inst64$/) #special case for sles 11
+   if ( $kern->{'kernel'} =~ /sles11\/ppc64\//) #special case for sles 11
    {
-       unlink($tftpdir . $sles11_special_link);
+       unlink($tftpdir . "/" . $sles11_special_link);
    }
    if ($hassymlink) { 
        symlink($node,$tftpdir."/etc/".$pname);
-       if ( $kern->{'kernel'} =~ /sles11\/ppc64\/inst64$/) #special case for sles 11
+       if ( $kern->{'kernel'} =~ /sles11\/ppc64\//) #special case for sles 11
        {
            symlink($tftpdir."/etc/".$node, $tftpdir . '/' . $sles11_special_link);
        }
    } else {
        link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
-       if ( $kern->{'kernel'} =~ /sles11\/ppc64\/inst64$/) #special case for sles 11
+       if ( $kern->{'kernel'} =~ /sles11\/ppc64\//) #special case for sles 11
        {
            link($tftpdir."/etc/".$node, $tftpdir . '/' . $sles11_special_link);
        }
