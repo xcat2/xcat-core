@@ -11,7 +11,7 @@ use warnings;
 use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
-use xCAT::NodeRange qw/abbreviate_noderange/;
+use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 use xCAT::Schema;
 use xCAT::Utils;
 use Getopt::Long;
