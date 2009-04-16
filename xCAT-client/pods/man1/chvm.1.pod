@@ -12,9 +12,13 @@ I<chvm [-v| --version]>
 I<chvm [-V| --verbose] noderange [-p profile]>
 
 
+I<chvm [-V| --verbose] noderange attr=val [attr=val...]>
+
+
 =head1 DESCRIPTION
 
-The chvm command modifies the partition profile for the partitions specified in noderange. A partitions current profile can be read using lsvm, modified, and piped into the chvm command, or changed with the -p flag.
+The chvm command modifies the partition profile for the partitions specified in noderange. A partitions current profile can be read using lsvm, modified, and piped into the chvm command, or changed with the -p flag. 
+This command also supports to change specific partition attributes by specifying one or more "attribute equals value" pairs in command line directly, without whole partition profile.
 
 =head1 OPTIONS
 
@@ -22,6 +26,8 @@ The chvm command modifies the partition profile for the partitions specified in 
 B<-h>          Display usage message.
 
 B<-p profile>  Name of an existing partition profile.
+
+B<attr=val>    Specifies one or more "attribute equals value" pairs, separated by spaces.
 
 B<-v>          Command Version.
 
@@ -52,6 +58,12 @@ Output is similar to:
 
 lpar4: Success
 
+3. To change partition attributes for lpar4 by specifying attribute value pairs in command line, enter:
+I<chvm lpar4 max_mem=4096>
+
+Output is similar to:
+
+lpar4: Success
 
 =head1 FILES
 
