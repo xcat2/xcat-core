@@ -438,13 +438,6 @@ Specifies the full path of the  remote  shell  to  use  for
 remote  command execution on node targets. This variable is
 overridden by the B<-r> flag.
 
-=item B<DSH_NODEGROUP_PATH>
-
-Specifies a colon-separated list of directories  that
-contain node group files for the B<DSH> context. When the B<-a> flag
-is specified in the B<DSH> context,  a  list  of  unique  node
-names is collected from all node group files in the path.
-
 =item B<DSH_PATH>
 
 Sets the command path to use on the targets. If B<DSH_PATH> is
