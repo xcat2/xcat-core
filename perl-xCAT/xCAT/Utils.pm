@@ -1952,6 +1952,7 @@ sub nodeonmynet
     my $noden = unpack("N", inet_aton($nodeip));
     my @nets;
     if ($utildata->{nodeonmynetdata} and $utildata->{nodeonmynetdata}->{pid} == $$) {
+        @nets = @{$utildata->{nodeonmynetdata}->{nets}};
     } else {
         @nets = split /\n/, `/sbin/ip route`;
         my $nettab=xCAT::Table->new("networks");
@@ -1964,11 +1965,12 @@ sub nodeonmynet
                     $bits--;
                     $curm=$curm>>1;
                 }
-                push @nets,$_->{'net'}."/".$bits." remote";
+                push @nets,$_->{'net'}."/".$bits." dev remote";
             }
         }
         $utildata->{nodeonmynetdata}->{pid}=$$;
-        $utildata->{nodeonmynetdata}->{n}
+        $utildata->{nodeonmynetdata}->{nets} = \@nets;
+    }
     foreach (@nets)
     {
         my @elems = split /\s+/;

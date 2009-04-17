@@ -16,7 +16,6 @@ use Fcntl ':flock';
 
 my @dhcpconf; #Hold DHCP config file contents to be written back.
 my @nrn;      # To hold output of networks table to be consulted throughout process
-my $haveremotenics;
 my $domain;
 my $omshell;
 my $statements;    #Hold custom statements to be slipped into host declarations
@@ -475,7 +474,6 @@ sub process_request
 		my $nm = $_->{mask};
 		#$callback->({data => ["array of nets $n : $if : $nm"]});
         if ($if =~ /!remote!/) { #only take in networks with special interface
-            $haveremotenics=1;
     		push @nrn, "$n:$if:$nm";
         }
 	}
@@ -618,7 +616,7 @@ sub process_request
             }
             else
             {
-                unless ($haveremotenics or xCAT::Utils->nodeonmynet($_))
+                unless (xCAT::Utils->nodeonmynet($_))
                 {
                     next;
                 }
