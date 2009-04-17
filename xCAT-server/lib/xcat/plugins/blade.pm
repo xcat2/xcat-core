@@ -1580,6 +1580,7 @@ sub power {
 sub beacon {
   my $subcommand = shift;
   my $data;
+  unless ($subcommand) { $subcommand = "stat"; }
   if ($subcommand eq "stat") {
   } elsif ($subcommand eq "on") {
     $data = $session->set(new SNMP::Varbind([$beaconoid,$slot , 1,'INTEGER']));

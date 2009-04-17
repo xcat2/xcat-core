@@ -1430,6 +1430,8 @@ sub getAllNodeAttribs
     #Extract and substitute every node record, expanding groups and substituting as getNodeAttribs does
     my $self    = shift;
     my $attribq = shift;
+    my $hashretstyle = shift;
+    my $rethash;
     my @results = ();
     my %donenodes
       ; #Remember those that have been done once to not return same node multiple times
@@ -1476,7 +1478,12 @@ sub getAllNodeAttribs
 			$att->{node} = $_;
 		}
                 $donenodes{$_} = 1;
-                push @results, @attrs;    #$self->getNodeAttribs($_,@attribs);
+
+                if ($hashretstyle) {
+                    $rethash->{$_} = \@attrs; #$self->getNodeAttribs($_,\@attribs);
+                } else {
+                    push @results, @attrs;    #$self->getNodeAttribs($_,@attribs);
+                }
             }
         }
     }
@@ -1484,7 +1491,11 @@ sub getAllNodeAttribs
     $self->{nodelist}->{_use_cache} = 0;
     xCAT::NodeRange::retain_cache(0);
     $query->finish();
-    return @results;
+    if ($hashretstyle) {
+        return $rethash;
+    } else {
+        return @results;
+    }
 }
 
 #--------------------------------------------------------------------------

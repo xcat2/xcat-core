@@ -19,6 +19,7 @@ require DBI;
 our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw(genpassword);
 
+my $utildata; #data to persist locally
 #--------------------------------------------------------------------------------
 
 =head1    xCAT::Utils
@@ -1917,7 +1918,7 @@ sub my_ip_facing
 
 #-------------------------------------------------------------------------------
 
-=head3 nodeonmynet - checks to see if node is on the network
+=head3 nodeonmynet - checks to see if node is on any network this server is attached to or remote network potentially managed by this system
     Arguments:
        Node name
     Returns:  1 if node is on the network
@@ -1949,7 +1950,25 @@ sub nodeonmynet
         return 0;    #Not supporting IPv6 here IPV6TODO
     }
     my $noden = unpack("N", inet_aton($nodeip));
-    my @nets = split /\n/, `/sbin/ip route`;
+    my @nets;
+    if ($utildata->{nodeonmynetdata} and $utildata->{nodeonmynetdata}->{pid} == $$) {
+    } else {
+        @nets = split /\n/, `/sbin/ip route`;
+        my $nettab=xCAT::Table->new("networks");
+        my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+        foreach (@vnets) {
+            if ($_->{mgtifname} eq '!remote!') { #global scoped network
+                my $curm = unpack("N", inet_aton($_->{mask}));
+                my $bits=32;
+                until ($curm & 1)  {
+                    $bits--;
+                    $curm=$curm>>1;
+                }
+                push @nets,$_->{'net'}."/".$bits." remote";
+            }
+        }
+        $utildata->{nodeonmynetdata}->{pid}=$$;
+        $utildata->{nodeonmynetdata}->{n}
     foreach (@nets)
     {
         my @elems = split /\s+/;

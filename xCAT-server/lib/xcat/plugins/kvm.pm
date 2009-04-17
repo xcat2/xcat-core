@@ -42,6 +42,7 @@ my $vmmaxp=64;
 my $mactab;
 my $nrtab;
 my $machash;
+my %usedmacs;
 my $status_noop="XXXno-opXXX";
 
 sub handled_commands {
@@ -185,26 +186,37 @@ sub build_nicstruct {
             push @macs,$macaddr;
         }
     }
-    unless (scalar(@macs)) {
-        my $allbutmult = 65279; # & mask for bitwise clearing of the multicast bit of mac
-        my $localad=512; # | to set the bit for locally admnistered mac address
-        my $leading=int(rand(65535));
-        $leading=$leading|512;
-        $leading=$leading&65279;
-        my $n=inet_aton($node);
-        my $tail;
-        if ($n) {
-           $tail=unpack("N",$n);
+    unless (scalar(@macs) >= scalar(@nics)) {
+        my $neededmacs=scalar(@nics) - scalar(@macs);
+        my $macstr;
+        my $tmac;
+        my $leading;
+        while ($neededmacs--) {
+            my $allbutmult = 65279; # & mask for bitwise clearing of the multicast bit of mac
+            my $localad=512; # | to set the bit for locally admnistered mac address
+            $leading=int(rand(65535)); 
+            $leading=$leading|512;
+            $leading=$leading&65279;
+            my $n=inet_aton($node);
+            my $tail;
+            if ($n) {
+               $tail=unpack("N",$n);
+            }
+            unless ($tail) {
+                $tail=int(rand(4294967295));
+            }
+            $tmac = sprintf("%04x%08x",$leading,$tail);
+            $tmac =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
+	    if ($usedmacs{$tmac}) { #If we have a collision we can actually perceive, retry the generation of this mac
+		$neededmacs++;
+		next;
+            }
+            $usedmacs{$tmac}=1;
+            push @macs,$tmac;
         }
-        unless ($tail) {
-            $tail=int(rand(4294967295));
-        }
-        my $macstr = sprintf("%04x%08x",$leading,$tail);
-        $macstr =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
-        $mactab->setNodeAttribs($node,{mac=>$macstr});
+        $mactab->setNodeAttribs($node,{mac=>join('|',@macs)});
         $nrtab->setNodeAttribs($node,{netboot=>'pxe'});
         $doreq->({command=>['makedhcp'],node=>[$node]});
-        push @macs,$macstr;
     }
     my @rethashes;
     foreach (@macs) {
@@ -775,7 +787,16 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
   $vmhash = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','storage','memory','cpus','nics','bootorder','virtflags']);
   $mactab = xCAT::Table->new("mac",-create=>1);
   $nrtab= xCAT::Table->new("noderes",-create=>1);
-  $machash = $mactab->getNodesAttribs($noderange,['mac']);
+  $machash = $mactab->getAllNodeAttribs(['mac'],1);
+  my $macs;
+  my $mac;
+  foreach (keys %$machash) {
+      $macs=$machash->{$_}->[0]->{mac};
+      foreach $mac (split /\|/,$macs) {
+          $mac =~ s/\!.*//;
+          $usedmacs{lc($mac)}=1;
+      }
+  }
 }
 
 sub process_request { 
