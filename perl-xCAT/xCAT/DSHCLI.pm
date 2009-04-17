@@ -3018,51 +3018,8 @@ sub verify_targets
     my @ping_list;
     foreach my $user_target (keys(%$resolved_targets))
     {
-        my $context  = $$resolved_targets{$user_target}{'context'};
-        my $hostname = $$resolved_targets{$user_target}{'hostname'};
-        eval "require Context::$context";
-        my $mode = $context->verify_mode($hostname);
-        my $rsp  = {};
-        if (($mode eq "Managed") && ($context->verify_target($hostname) == 1))
-        {
-            my $target = $context->verify_target();
-            $rsp->{data}->[0] = "TRACE:Verifying $hostname with $target.";
-            $dsh_trace
-              && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        }
-        elsif ($mode eq "MinManaged")
-        {
-            if ($context->verify_target($hostname) == 1)
-            {
-                my $target = $context->verify_target();
-                $rsp->{data}->[0] = "TRACE:Verifying $hostname with $target.";
-                $dsh_trace
-                  && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-
-            }
-            elsif ($context->verify_target($hostname) == 0)
-            {
-                $rsp->{data}->[0] =
-                  "$user_target is not responding. No command will be issued to this host.";
-                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-
-                $rsp->{data}->[0] =
-                  "dsh>  Remote_command_cancelled $user_target";
-                $$dsh_options{'monitor'}
-                  && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-
-                push @{$dsh_target_status{'canceled'}}, $user_target;
-                delete $$resolved_targets{$user_target};
-            }
-            else
-            {
-                push @ping_list, $hostname;
-            }
-        }
-        else
-        {
-            push @ping_list, $hostname;
-        }
+            my @shorthostname = split(/\./, $user_target);
+            push @ping_list, $shorthostname[0];
     }
 
     if (@ping_list)
