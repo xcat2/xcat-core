@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Build and upload the xcat-core code.  Run this script from a dir in which you want
-# 2 subdirs created:  core-snap and core-snap-srpms.
+# 2 subdirs created:  <version>/core-snap and <version>/core-snap-srpms.
 
 # Usage:  buildcore.sh [<branch>] [release]
 #		<branch> - e.g. 2.1 or devel (the default).  If not specified, the trunk/new devel branch is assumed
@@ -30,6 +30,7 @@ else
 	TARNAME=core-rpms-snap.tar.bz2
 fi
 DESTDIR=$CURRENTDIR/$REL/$CORE
+
 
 if [ "$2" != "promote" ]; then      # very long if statement to not do builds if we are promoting
 mkdir -p $DESTDIR
@@ -152,13 +153,24 @@ chgrp -R xcat $DESTDIR
 chmod -R g+w $DESTDIR
 fi		# end of very long if-not-promote
 
-set -x
+
+# Modify the repo file to point to either xcat-core or core-snap
+cd $DESTDIR
+if [ "$2" = "promote" ]; then
+	sed -e 's|/core-snap|/xcat-core|' xCAT-core.repo > xCAT-core.repo.new
+	mv -f xCAT-core.repo.new xCAT-core.repo
+else
+	sed -e 's|/xcat-core|/core-snap|' xCAT-core.repo > xCAT-core.repo.new
+	mv -f xCAT-core.repo.new xCAT-core.repo
+fi
+
+# Build the tarball
 cd $DESTDIR/..
 tar -hjcvf $TARNAME $CORE
 chgrp xcat $TARNAME
 chmod g+w $TARNAME
 
-# Upload the tarball and individual RPMs
+# Upload the tarball and individual RPMs to sourceforge
 rsync -rLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
 if [ "$2" = "promote" -a "$1" != "devel" ]; then
 	# upload tarball to FRS area
