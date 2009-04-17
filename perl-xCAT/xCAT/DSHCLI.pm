@@ -3548,7 +3548,7 @@ sub usage_dsh
 {
 ## usage message
     my $usagemsg1 =
-      " xdsh -h \n xdsh -q \n xdsh -v \n xdsh [noderange] [group]\n";
+      " xdsh -h \n xdsh -q \n xdsh -V \n xdsh [noderange] [group]\n";
     my $usagemsg1a = " xdsh  [noderange] -K [-l logonuserid]\n";
     my $usagemsg2  =
       "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file] [--devicetype type_of_device] [-f fanout]\n";
