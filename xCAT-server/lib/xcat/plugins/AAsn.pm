@@ -899,17 +899,18 @@ sub setup_TFTP
     {
 
         # read sharedtftp attribute from site table, if exist
-        my @sharedtftp = xCAT::Utils->get_site_attribute("sharedtftp");
-        if (exists($sharedtftp[0]))
+        my $stab = xCAT::Table->new('site');
+        my $sharedtftp = $stab->getAttribs({key=>'sharedtftp'},'value');
+        if ($sharedtftp) 
         {
-            $mountdirectory = $sharedtftp[0];
+            $mountdirectory = $sharedtftp->{value};
             $mountdirectory =~ tr/a-z/A-Z/;    # convert to upper
         }
-
+        $stab->close;
         # read tftpdir directory from database
         my $tftpdir    = "/tftpboot";    # default
         my @tftpdir1 = xCAT::Utils->get_site_attribute("tftpdir");
-        if (exists($tftpdir1[0]))
+        if (defined($tftpdir1[0]))
         {
             $tftpdir = $tftpdir1[0];
         }
