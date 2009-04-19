@@ -274,7 +274,7 @@ sub process_request {
 
   #back to normal business
   #if not shared tftpdir, then filter, otherwise, set up everything
-  if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
      if (xCAT::Utils->nodeonmynet($_)) {
@@ -306,7 +306,8 @@ sub process_request {
       }
       return;
   }
-
+  
+  $errored=0;
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
     $sub_req->({command=>['setdestiny'],
            node=>\@nodes,
