@@ -474,7 +474,7 @@ sub parse_and_run_sinv
             return 1;
         }
 
-        #  write the results to the tempfile after running through xcoll
+        #  write the results to the tempfile after running through xdshcoll
         $rc = &storeresults($callback);
 
     }
@@ -516,7 +516,7 @@ sub parse_and_run_sinv
         return 1;
     }
 
-    #  write the results to the tempfile after running through xcoll
+    #  write the results to the tempfile after running through xdshcoll
     $rc = &storeresults($callback);
 
     #  Build report and write to output file
@@ -994,7 +994,7 @@ sub diffoutput
     my $hostfound          = 0;
 
     # build a node array without the header
-    # skip any UNKNOWN entries added by xcoll
+    # skip any UNKNOWN entries added by xdshcoll
     foreach $nodeline (@Nodearray)    # for each node line
     {
         if ($nodeline =~ /================/)
@@ -1278,7 +1278,7 @@ sub writereport
 
 =head3   xdshoutput  			    	 
 
- Check xdsh output  - get output from command and pipe to xcoll 
+ Check xdsh output  - get output from command and pipe to xdshcoll 
 
 =cut
 
@@ -1403,7 +1403,7 @@ sub rinvoutput
 
 =head3   storeresults 			    	 
 
-  Runs command output through xcoll and stores in /tmp/<tempfile>
+  Runs command output through xdshcoll and stores in /tmp/<tempfile>
  store results in $tempfile or $templatepath ( for seed node) based on
  $processflag = seednode 
 =cut
@@ -1440,7 +1440,7 @@ sub storeresults
         $outputfile = $tempfile;
     }
 
-    # open  file to put results of xcoll
+    # open  file to put results of xdshcoll
     open(FILE, ">$outputfile");
     if ($? > 0)
     {
@@ -1449,13 +1449,13 @@ sub storeresults
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
-    my $cmd = " /opt/xcat/bin/xcoll <$newtempfile |";
+    my $cmd = " /opt/xcat/sbin/xdshcoll <$newtempfile |";
 
     open(XCOLL, "$cmd");
     if ($? > 0)
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Could not call xcoll \n";
+        $rsp->{data}->[0] = "Could not call xdshcoll \n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }

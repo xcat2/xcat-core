@@ -3665,14 +3665,11 @@ sub parse_and_run_dsh
     }
 
     # this was determined in the xdsh client code, because non-root user
-    # actions must be taken there.
-    #  either -l option or current user
+    # actions must be taken there.  For those calling xdsh plugin, default
+    # is root
     if (!($ENV{'DSH_TO_USERID'}))
     {
-        my $rsp = ();
-        $rsp->{data}->[0] = "DSH_TO_USERID not setup./n";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
+        $options{'user'} = "root";
     }
     else
     {
