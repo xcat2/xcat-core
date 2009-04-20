@@ -29,7 +29,7 @@ The xdsh or rinv command to execute on the remote targets is specified by the
 which is followed by the fully qualified path to a file containing the command.
 
 
-Note: do not add | xcoll to the command on the command line or in the
+Note: do not add | xdshcoll to the command on the command line or in the
 command file, it is automatically added by sinv.
 
 The syntax for the B<-c>  B<sinv> parameter is as follows:
@@ -68,7 +68,7 @@ that contains the configuration that you would like
 all nodes in your noderange to match. 
 
 The admin can create the template by running the xdsh command on
-the seed node, pipe to xcoll ( required) and store the output
+the seed node, pipe to xdshcoll ( required) and store the output
 in the template path. See examples.
 
 B<Note:> The admin can also edit the
@@ -123,7 +123,7 @@ configuration.
 This requires the check of node output against template to be an exact match.
 If this flag is not set, B<sinv> checks to see if the return from the 
 xdsh command to the nodes contain a match for each line in the input 
-template (except for xcoll header and comments). If not in exactmatch mode,
+template (except for xdshcoll header and comments). If not in exactmatch mode,
 there can exist more lines in the xdsh return from the nodes.
 
 For example, if running a "rpm -qa | grep xCAT" command, without exactmatch 
@@ -137,7 +137,7 @@ to the template.
 The xdsh or rinv command that will be run. The command should be enclosed in 
 double quotes to insure correct shell interpretation.
 
-B<Note:> do not add the | xcoll to the command,
+B<Note:> do not add the | xdshcoll to the command,
 it is automatically added by sinv.
 
 =item B<-f>|B<--file>
@@ -145,7 +145,7 @@ it is automatically added by sinv.
 The file containing the xdsh or rinv command that will be run. 
 This should be the fully qualified name of the file. 
 
-B<Note:> do not add the | xcoll to the command in the file,
+B<Note:> do not add the | xdshcoll to the command in the file,
 it is automatically added by sinv.
 
 =item B<-r>|B<--remove>
@@ -184,19 +184,19 @@ Verbose mode.
 
 To setup sinv.template (name optional) for input to the B<sinv> command , enter:
 
-B<xdsh> I<node1,node2 "rpm -qa | grep xCAT " | xcoll  E<gt> /tmp/sinv.template>
+B<xdsh> I<node1,node2 "rpm -qa | grep xCAT " | xdshcoll  E<gt> /tmp/sinv.template>
 
 Note: when setting up the template the output of xdsh must be piped
-	  to xcoll, sinv processing depends on it.
+	  to xdshcoll, sinv processing depends on it.
 
 =item *
 
 To setup rinv.template for input to the B<sinv> command , enter:
 
-B<rinv> I<node1-node2 serial | xcoll  E<gt> /tmp/rinv.template>
+B<rinv> I<node1-node2 serial | xdshcoll  E<gt> /tmp/rinv.template>
 
 Note: when setting up the template the output of rinv must be piped
-	  to xcoll, sinv processing depends on it.
+	  to xdshcoll, sinv processing depends on it.
 
 =item *
 
@@ -207,7 +207,7 @@ output report to /tmp/sinv.output, enter:
 
 B<sinv> I< -c "xdsh testnodes rpm -qa | grep xCAT" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output>
 
-Note: do not add the pipe to xcoll on the -c flag, it is automatically
+Note: do not add the pipe to xdshcoll on the -c flag, it is automatically
 added by the sinv routine.
 
 =item *
@@ -251,4 +251,4 @@ Location of the sinv command.
 
 =head1 B<SEE ALSO>
 
-L <xdsh(1)|xdsh.1>, L<xcoll(1)|xcoll.1>, L<noderange(3)|noderange.3>
+L <xdsh(1)|xdsh.1>, L<noderange(3)|noderange.3>

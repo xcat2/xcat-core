@@ -1,24 +1,24 @@
 =head1 B<NAME>
 
-B<xcoll> - Formats and consolidates the output of the B<psh,rinv,sinv> commands.
+B<xdshcoll> - Formats and consolidates the output of the B<xdsh,sinv> commands.
 
 =head1 B<SYNOPSIS>
 
-B<xcoll>
+B<xdshcoll>
 
 =head1 B<DESCRIPTION>
 
-The  B<xcoll> command formats and consolidates output from the B<psh,rinv,sinv> command. The B<xcoll>
+The  B<xdshcoll> command formats and consolidates output from the B<xdsh,sinv> command. The B<xdshcoll>
 command takes, as input, lines in the following format:
 
-groupname: line of output from remote command, will use group name, if defined
+host_name: line of output from remote command
 
-The B<xcoll> command formats the lines as follows and writes them  to
+The B<xdshcoll> command formats the lines as follows and writes them  to
 standard  output. Assume that the output from node3 and node4
 is identical:
 
  ====================================
- node1 or nodegroup name
+ node1
  ====================================
  .
  .
@@ -27,7 +27,7 @@ is identical:
  .
 
  ====================================
- node2 or nodegroup name
+ node2
  ====================================
  .
  .
@@ -36,7 +36,7 @@ is identical:
  .
 
  ====================================
- node3, node4 or nodegroup name
+ node3, node4
  ====================================
  .
  .
@@ -54,10 +54,10 @@ is identical:
 To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
 
-B<psh> I<node1,node2,node3 cat /etc/passwd> | B<xcoll>
+B<psh> I<node1,node2,node3 cat /etc/passwd> | B<xdshcoll>
 
 =back
 
 =head1 B<SEE ALSO>
 
-L<psh(1)|psh.1>, L<xdshbak(1)|xdshbak.1> ,L<xdshcoll(1)|xdshcoll.1>
+L<xdshbak(1)|xdshbak.1>
