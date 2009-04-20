@@ -1,0 +1,28 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use Data::Dumper;
+my %output;
+while (<STDIN>) {
+    my $node;
+    my $output;
+    if (/:/) {
+        ($node,$output) = split /:/,$_,2;
+    } else {
+        $node= "UNKNOWN";
+        $output = $_;
+    }
+    $output =~ s/^ //;
+    $output{$node}.=$output;
+}
+my %collated;
+foreach (keys %output) {
+    $collated{$output{$_}}->{$_}=1;
+}
+foreach (keys %collated) {
+    my $nodes = join(',',sort (keys %{$collated{$_}}));
+    print "====================================\n";
+    print "$nodes\n";
+    print "====================================\n";
+    print $_;
+    print "\n";
+}
