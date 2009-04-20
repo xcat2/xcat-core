@@ -22,7 +22,7 @@ is identical:
  ====================================
  .
  .
- lines from psh for node1 with hostnames stripped off
+ lines from xdsh for node1 with hostnames stripped off
  .
  .
 
@@ -31,7 +31,7 @@ is identical:
  ====================================
  .
  .
- lines from psh for node2 with hostnames stripped off
+ lines from xdsh for node2 with hostnames stripped off
  .
  .
 
@@ -40,7 +40,7 @@ is identical:
  ====================================
  .
  .
- lines from psh for node 3 with hostnames stripped off
+ lines from xdsh for node 3 with hostnames stripped off
  .
  .
 
@@ -54,7 +54,7 @@ is identical:
 To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
 
-B<psh> I<node1,node2,node3 cat /etc/passwd> | B<xdshcoll>
+B<xdsh> I<node1,node2,node3 cat /etc/passwd> | B<xdshcoll>
 
 =back
 
