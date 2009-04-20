@@ -210,9 +210,9 @@ sub validate_ip {
 
 
 ##########################################################################
-# IVM get LPAR MAC addresses
+# Get LPAR MAC addresses
 ##########################################################################
-sub ivm_getmacs {
+sub do_getmacs {
 
     my $request  = shift;
     my $d        = shift;
@@ -372,7 +372,7 @@ sub getmacs {
     #########################################
     # Manually collect MAC addresses.
     #########################################
-    $result = ivm_getmacs( $request, $d, $exp, $name, $node );
+    $result = do_getmacs( $request, $d, $exp, $name, $node );
     $Rc = shift(@$result);
    
     ##################################
@@ -381,19 +381,19 @@ sub getmacs {
     if ( exists($request->{verbose}) ) {
         if ( $Rc == SUCCESS ) {
             if ( !exists( $opt->{d} )) { 
-                writemac( $name, $result );
+                writemac( $node, $result );
             }
         }
-        return( [[$name,join( '', @$result ),$Rc]] );
+        return( [[$node,join( '', @$result ),$Rc]] );
     }
     ##################################
     # Return error
     ##################################
     if ( $Rc != SUCCESS ) {
         if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
-            return( [[$name,$1,$Rc]] );
+            return( [[$node,$1,$Rc]] );
         }
-        return( [[$name,join( '', @$result ),$Rc]] );
+        return( [[$node,join( '', @$result ),$Rc]] );
     }
     #####################################
     # lpar_netboot returns:
@@ -422,9 +422,9 @@ sub getmacs {
     # Write first valid adapter MAC to database
     #####################################
     if ( !exists( $opt->{d} )) {
-        writemac( $name, $result );
+        writemac( $node, $result );
     }
-    return( [[$name,$data,$Rc]] );
+    return( [[$node,$data,$Rc]] );
 }
 
 

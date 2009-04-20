@@ -61,9 +61,9 @@ sub parse_args {
 
 
 ##########################################################################
-# IVM rnetboot 
+# Netboot the lpar 
 ##########################################################################
-sub ivm_rnetboot {
+sub do_rnetboot {
 
     my $request = shift;
     my $d       = shift;
@@ -243,14 +243,14 @@ sub rnetboot {
     #########################################
     # Manually perform boot. 
     #########################################
-    $result = ivm_rnetboot( $request, $d, $exp, $name, $node, \%opt );
+    $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
     $Rc = shift(@$result);
 
     ##################################
     # Form string from array results
     ##################################
     if ( exists($request->{verbose}) ) {
-        return( [[$name,join( '', @$result ),$Rc]] );
+        return( [[$node,join( '', @$result ),$Rc]] );
     }
     ##################################
     # Return error
@@ -268,9 +268,9 @@ sub rnetboot {
     ##################################
     if ( $Rc != SUCCESS ) {
         if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
-            return( [[$name,$1,$Rc]] );
+            return( [[$node,$1,$Rc]] );
         }
-        return( [[$name,join( '', @$result ),$Rc]] );
+        return( [[$node,join( '', @$result ),$Rc]] );
     }
     ##################################
     # Split array into string
@@ -293,7 +293,7 @@ sub rnetboot {
     #
     #####################################
     if ( $data =~ /Finished/) {
-        return( [[$name,"Success",$Rc]] );
+        return( [[$node,"Success",$Rc]] );
     }
     #####################################
     # Can still be error w/ Rc=0:
@@ -308,9 +308,9 @@ sub rnetboot {
     #
     #####################################
     if ( $data =~ /lpar_netboot: (.*)/ ) {
-        return( [[$name,$1,RC_ERROR]] );
+        return( [[$node,$1,RC_ERROR]] );
     }
-    return( [[$name,$data,RC_ERROR]] );
+    return( [[$node,$data,RC_ERROR]] );
 }
  
 
