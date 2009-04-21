@@ -1,6 +1,6 @@
 =head1 B<NAME>
 
-B<xcoll> - Formats and consolidates the output of the B<psh,rinv commands.
+B<xcoll> - Formats and consolidates the output of the B<psh>, B<rinv> commands.
 
 =head1 B<SYNOPSIS>
 
