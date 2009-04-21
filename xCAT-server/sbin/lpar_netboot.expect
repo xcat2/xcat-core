@@ -2388,8 +2388,24 @@ while { ! $done } {
             exec sleep 1
             send -i $spawn_id_rconsole "0";
         }
-        -re "bumped(.*)" {
-            exp_continue
+        -re "English|French|German|Italian|Spanish|Portuguese|Chinese|Japanese|Korean" {
+            nc_msg "$PROGRAM Status: Languagae Selection Panel received\n"
+            exec sleep 1
+            send -i $spawn_id_rconsole "2\r"
+        }
+        -re "'admin'" {
+            nc_msg "$PROGRAM Status: No password specified\n"
+            send_user "$PROGRAM: No password specified\n"
+            exit 1
+        }
+        -re "Invalid Password" {
+            nc_msg "$PROGRAM Status:  FSP password is invalid.\n"
+            send_user "$PROGRAM Status: FSP password is invalid.\n"
+            exit 1
+        }
+        -re "0 >" {
+            nc_msg "$PROGRAM Status: at ok prompt\n"
+            set done 1
         }
         timeout {
             send_user "$PROGRAM: Timeout; exiting\n"
