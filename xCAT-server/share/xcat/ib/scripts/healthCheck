@@ -1,0 +1,1362 @@
+#!/usr/bin/perl
+# IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+###########################################################################
+#                                                                         #
+# Command: healthCheck                                                    #
+#                                                                         #
+#-------------------------------------------------------------------------#
+#    This script is used to check the system health for both AIX and 
+#    Linux Managed Nodes on Power6 platforms. It will use xdsh to access
+#    the target nodes, and check the status for processor clock speed,
+#    IB interfaces, memory, large page configuration and HCA status.
+#    If xdsh is unreachable, an error message will be given. 
+# Command Syntax:
+#    healthCheck { [-n node_list] [-M]}
+#                {[-p min_clock_speed] [-i method] [-m min_memory]
+#                [-l min_freelp] [ -H [--speed speed --ignore interface_list --width width]]} 
+#                [ -h ]
+#
+#        -M          Check status for all the Managed Nodes that are defined on this MN.
+#        -n node_list
+#                    Specifies a comma-separated list of node host names, IP addresses for health check.
+#        -p min_clock_speed
+#                    Specifies the minimal processor clock speed in MHz for processor monitor.
+#        -i method
+#                    Specifies the method to do Infiniband interface status check, the supported 
+#                    check methods are LL and RSCT.
+#        -m min_memory
+#                    Specifies the minimal total memory in MB.
+#        -l min_freelp
+#                    Specifies the minimal free large page number.
+#        -H          Check the status for HCAs.
+#        --speed speed
+#                    Specifies the physical port speed in G bps, it should be used with -H flag.
+#        --ignore interface_list
+#                    Specifies a comma-separated list of interface name to ignore from HCA status check, 
+#                    such as ib0,ib1. It should be used with -H flag.
+#        --width width
+#                    Specifies the physical port width, such as 4X or 12X. It should be used with -H flag.
+#        -h          Display usage information.
+# Exit codes:
+#     0 - success
+#     1 - fail
+###########################################################################
+
+use strict;
+use Getopt::Long;
+
+# Log file
+$::HEALTHCHECK_PATH = "/var/log/xcat";
+$::HEALTHCHECK_LOG = "$::HEALTHCHECK_PATH/healthCheck.log";
+
+# variables and Commands
+$::OK = 0;
+$::NOK = 1;
+$::logging = 0;
+$::GLOBAL_EXIT = 0;
+$::NODELS = "/opt/xcat/bin/nodels";
+$::LinuxProcCmd = "cat /proc/cpuinfo";
+$::AIXProcCmd = "/usr/pmapi/tools/pmcycles";
+$::IBifLLCmdL = "/opt/ibmll/LoadL/full/bin/llstatus";
+$::IBifLLCmdA = "/usr/lpp/LoadL/full/bin/llstatus";
+$::IBifRSCTCmd = "/usr/bin/lsrsrc";
+$::AIXMemCmd = "/usr/bin/vmstat";
+$::LinuxMemCmd = "cat /proc/meminfo";
+$::AIXHCACmd = "/usr/bin/ibstat";
+$::LinuxHCACmd = "/usr/bin/ibv_devinfo";
+
+#Nodes to be checked
+my @NodeList;
+my @LnxNodeList;
+my @AIXNodeList;
+#Ignored ib interfaces when checking HCA status
+my @IgnoreList;
+
+# MAIN Main main#
+# Append logging information to getGuids.log
+&append_logging($::HEALTHCHECK_LOG);
+$::logging++;
+
+&getArgs;
+
+my @ReachableNodes;
+my @UnreachableNodes;
+if (scalar(@NodeList) > 0)
+{
+    # Check if xdsh is reachable
+    foreach my $node (@NodeList)
+    {
+        my $rc = &checkDshReachability($node);
+        if ($rc == 0)
+        { # xdsh is ok
+            push @ReachableNodes, $node;
+        }
+        else
+        {
+            push @UnreachableNodes, $node;
+        }
+    }
+
+    if (scalar (@UnreachableNodes))
+    {
+        my $UnreachableNodes = join (", ", @UnreachableNodes);
+        print "Warning: The xdsh is unreachable for the node(s): $UnreachableNodes. Run updatenode to configure xdsh for that node(s).\n";
+        print $::LOG_FILE_HANDLE "Warning: The xdsh is unreachable for the node(s): $UnreachableNodes. Run updatenode to configure xdsh for that node(s).\n";
+    }
+}
+else
+{
+    print "Error: No hosts in node list\n";
+    print $::LOG_FILE_HANDLE "Error: No hosts in node list\n";
+    $::GLOBAL_EXIT = $::NOK;
+    exit;
+}
+
+#Divide the nodes into two groups: Linux nodes and AIX nodes
+my @AllLnxNodes = `$::NODELS all nodetype.os | grep -E "sles|rhel"`;
+print $::LOG_FILE_HANDLE "Running command: $::NODELS all nodetype.os | grep -E sles|rhel\n";
+chomp @AllLnxNodes;
+my @AllAIXNodes = `$::NODELS all nodetype.os | grep "AIX"`;
+print $::LOG_FILE_HANDLE "Running command: $::NODELS all nodetype.os | grep AIX\n";
+chomp @AllAIXNodes;
+
+foreach my $node (@ReachableNodes)
+{
+    if ( grep {$_ =~ /$node/} @AllLnxNodes )
+    {
+        push @LnxNodeList, $node;
+    }
+    if ( grep {$_ =~ /$node/} @AllAIXNodes )
+    {
+        push @AIXNodeList, $node;
+    }
+}
+
+#Do health check for Linux nodes and AIX nodes
+if (scalar (@LnxNodeList))
+{
+    my $rc = &healthCheckLinux(\@LnxNodeList);
+    if ($rc)
+    {
+        $::GLOBAL_EXIT = $rc;
+        exit;
+    }
+}
+if (scalar (@AIXNodeList))
+{
+    my $rc = &healthCheckAIX(\@AIXNodeList);
+    if ($rc)
+    {
+        $::GLOBAL_EXIT = $rc;
+        exit;
+    }
+}
+
+# Finish up and exit
+END
+{
+	if ($::logging)
+    {
+		&stop_logging();
+	}
+	#Determine exit code
+	if ($::GLOBAL_EXIT > $?)
+    {
+		$? = $::GLOBAL_EXIT;
+	}
+}
+exit;  # end of Main
+
+#--------------------------------------------------------------------------------
+
+=head3  getArgs
+        Parse the command line and check the values
+=cut
+
+#--------------------------------------------------------------------------------
+sub getArgs()
+{
+    $Getopt::Long::ignorecase = 0;
+    my $rc = GetOptions(
+        'h'        => \$::HELP,
+        'M'        => \$::ALLMANAGED,
+        'n=s'      => \$::NODE_LIST,
+        'p=f'      => \$::MIN_CLOCK_SPEED,
+        'i=s'      => \$::IF_CHECK_METHOD,
+        'm=f'      => \$::MIN_MEMORY,
+        'l=i'      => \$::MIN_FREELP,
+        'H'        => \$::HCA,
+        'speed=f'  => \$::HCASPEED,
+        'ignore=s' => \$::IGNORE_LIST,
+        'width=s'  => \$::WIDTH
+    );
+    if ($::HELP)
+    {
+        &usage();
+        $::GLOBAL_EXIT = $::OK;
+        exit;
+    }
+    if (!$rc)
+    { #There are syntax errors in parameters
+        &usage();
+        $::GLOBAL_EXIT = $::NOK;
+        exit;
+    }
+    if ($::IF_CHECK_METHOD)
+    {
+        if ($::IF_CHECK_METHOD ne "LL" && $::IF_CHECK_METHOD ne "RSCT")
+        {
+            print "The method to check IB interface must be \"LL\" or \"RSCT\".\n";
+            &usage();
+            $::GLOBAL_EXIT = $::NOK;
+            exit;
+        }
+    }
+    if(!defined($::MIN_CLOCK_SPEED) && !defined($::IF_CHECK_METHOD) && !defined($::MIN_MEMORY) && !defined($::MIN_FREELP) && !defined($::HCA))
+    {
+        print "There is nothing to check. Please specify what you want to check.\n";
+        &usage();
+        $::GLOBAL_EXIT = $::NOK;
+        exit;
+    }
+    
+    if(!defined($::HCA) && (defined($::HCASPEED) || $::IGNORE_LIST ne "" || $::WIDTH ne ""))
+    {
+        print "The flag --speed, --ignore or --width should be used with -H flag.\n";
+        &usage();
+        $::GLOBAL_EXIT = $::NOK;
+        exit;
+    }
+    
+    if($::WIDTH ne "")
+    {
+        if(!($::WIDTH =~ /^(\d+)X$/))
+        {
+            print "The parameter of --width should be 4X, 12X, etc.\n";
+            &usage();
+            $::GLOBAL_EXIT = $::NOK;
+            exit;
+        }
+    }
+
+    #Parse the node list
+    if ($::NODE_LIST)
+    {    
+        @NodeList = `$::NODELS $::NODE_LIST`; chomp @NodeList;
+        if ($?) {
+            print $::LOG_FILE_HANDLE  "Running command: $::NODELS $::NODE_LIST fail\n";
+            exit;
+        } else {
+            print $::LOG_FILE_HANDLE  "Running command: $::NODELS $::NODE_LIST\n";
+        }
+    }
+
+    #If -M is set, list all nodes in Managed mode
+    if ($::ALLMANAGED)
+    {
+        my @templist = `$::NODELS`;
+        chomp @templist;
+        print $::LOG_FILE_HANDLE  "Running command: lsnode -w \"Mode='Managed' or Mode='MinManaged'\"\n";
+        @NodeList = @templist;
+    }
+    if ($::IGNORE_LIST)
+    {
+        @IgnoreList = split /,/, $::IGNORE_LIST;
+    }
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  usage
+
+        usage for healthCheck
+=cut
+
+#--------------------------------------------------------------------------------
+sub usage()
+{
+    print
+"Usage: healthCheck { [-n node_list] [-M]}
+                    {[-p min_clock_speed] [-i method] [-m min_memory]
+                    [-l min_freelp] [ -H [--speed speed --ignore interface_list --width width]]} 
+                    [ -h ]
+
+        -M          Check status for all the Managed Nodes that are defined on this MS.
+        -n node_list
+                    Specifies a comma-separated list of node host names, IP addresses for health check.
+        -p min_clock_speed
+                    Specifies the minimal processor clock speed in MHz for processor monitor.
+        -i method
+                    Specifies the method to do Infiniband interface status check, the supported 
+                    check methods are LL and RSCT.
+        -m min_memory
+                    Specifies the minimal total memory in MB.
+        -l min_freelp
+                    Specifies the minimal free large page number.
+        -H          Check the status for HCAs.
+        --speed speed
+                    Specifies the physical port speed in G bps, it should be used with -H flag.
+        --ignore interface_list
+                    Specifies a comma-separated list of interface name to ignore from HCA status check, 
+                    such as ib0,ib1. It should be used with -H flag.
+        --width width
+                    Specifies the physical port width, such as 4X or 12X. It should be used with -H flag.
+        -h          Display usage information.
+";         
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   checkDshReachability
+
+        Notes: Check the xdsh reachability between the Management Server
+               and node.
+
+Arguments:
+        $node - the remote node hostname.
+
+Returns:
+        $::OK - The remote node is reachable through xdsh.
+        $::NOK - The remote node is unreachable through xdsh.
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub checkDshReachability()
+{
+    my ($node) = @_;
+    my $output = `xdsh $node date 2>/dev/null`;
+    print $::LOG_FILE_HANDLE  "Running command: xdsh $node date 2>/dev/null\n";
+    if ($? == $::OK)
+    {
+        return $::OK;
+    }
+    return $::NOK;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   checkCmdAvailability
+
+        Check availability of some command on the nodes.
+
+Arguments:
+        $refNodes - The reference to a group of nodes.
+        $cmd - The command that will be checked.
+Returns:
+        @ValidNodes - A group of nodes that the command is available on these nodes.
+=cut
+
+#--------------------------------------------------------------------------------
+sub checkCmdAvailability
+{
+    my ($refNodes, $cmd) = @_;
+    my @ValidNodes;
+    my @BadNodes;
+    foreach my $node (@$refNodes)
+    {
+        #Use xdsh to "ls" the command 
+        `xdsh $node ls $cmd 2>/dev/null`;
+        print $::LOG_FILE_HANDLE "Running command: xdsh $node ls $cmd 2>/dev/null\n";
+        if ($? == $::OK)
+        {
+            push @ValidNodes, $node;
+        }
+        else
+        {
+            push @BadNodes, $node;
+        }
+    }
+
+    if (scalar (@BadNodes))
+    {
+        my $BadNodes = join (", ", @BadNodes);
+        print "Warning: The command $cmd is not available on the node(s): $BadNodes.\n";
+        print $::LOG_FILE_HANDLE "Warning: The command $cmd is not available on the node(s): $BadNodes.\n";
+    }
+    return @ValidNodes;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    append_logging
+
+	Append logging messages to a logfile.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub append_logging()
+{
+    my ($logfile) = @_;
+    my ($cmd,  $rc);
+
+    #  get log file ready
+    if (!-e $logfile)
+    {
+        `mkdir -p $::HEALTHCHECK_PATH`;
+        #  create the log file if not already there
+        unless (open(LOGFILE, ">$logfile"))
+        {
+            # Cannot open file
+            print "Can't open file \"$logfile\" for writing.\n";
+            return $::NOK;
+        }
+    }
+    else
+    {
+        # it's there so just append
+        unless (open(LOGFILE, ">>$logfile"))
+        {
+            print "Can't update file  \"$logfile\".\n";
+            return $::NOK;
+        }
+    }
+
+    $::LOG_FILE_HANDLE = \*LOGFILE;
+
+    # Print the date to the top of the logfile
+    my $sdate = `/bin/date`;
+    chomp $sdate;
+    print "Output log is being written to \"$logfile\".\n";
+
+    print $::LOG_FILE_HANDLE
+        "---------------------------------------------------------------------\n";
+    print $::LOG_FILE_HANDLE "Logging started $sdate.\n";
+    print $::LOG_FILE_HANDLE
+        "---------------------------------------------------------------------\n";
+
+    return $::OK;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    stop_logging
+
+	Turn off message logging.
+	
+=cut
+
+#-------------------------------------------------------------------------------
+sub stop_logging()
+{
+    # Print the date at the bottom of the logfile
+    my $sdate = `/bin/date`;
+    chomp $sdate;
+    print $::LOG_FILE_HANDLE
+        "---------------------------------------------------------------------\n";
+    print $::LOG_FILE_HANDLE "Logging stopped $sdate.\n";
+    print $::LOG_FILE_HANDLE
+        "---------------------------------------------------------------------\n";
+
+    close($::LOG_FILE_HANDLE);
+    $::LOG_FILE_HANDLE = undef;
+
+    return $::OK;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    healthCheckLinux
+
+          Check Linux nodes
+Arguments:
+        $refLnxNodes - The reference to the group of Linux nodes.
+=cut
+
+#-------------------------------------------------------------------------------
+sub healthCheckLinux()
+{
+    my ($refLnxNodes) = @_;
+    my $allnodes = join ", ", @$refLnxNodes;
+    print "Checking health for Linux nodes: $allnodes...\n";
+    print $::LOG_FILE_HANDLE "Checking health for Linux nodes: $allnodes...\n";    
+    my $rc;
+    if ( defined($::MIN_CLOCK_SPEED) )
+    {
+        $rc = procsrCheckLinux($refLnxNodes);
+        if ($rc != $::OK) {
+            return $::NOK;
+        }
+    }
+    if ( defined($::MIN_MEMORY) || defined($::MIN_FREELP) )
+    {
+        $rc = memCheckLinux($refLnxNodes);
+        if ($rc != $::OK)
+        {
+            return $::NOK;
+        }
+    }
+    if ( $::IF_CHECK_METHOD ne "" )
+    {
+        $rc = ifCheck($refLnxNodes, 'Linux');
+        if ($rc != $::OK)
+        {
+            return $::NOK;
+        }
+    }
+    if ( defined($::HCA) )
+    {
+        $rc = HCACheckLinux($refLnxNodes);
+        if ($rc != $::OK)
+        {
+            return $::NOK;
+        }
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    healthCheckAIX
+
+          Check AIX nodes
+Arguments:
+        $refAIXNodes - The reference to the group of AIX nodes.
+=cut
+
+#-------------------------------------------------------------------------------
+sub healthCheckAIX()
+{
+    my ($refAIXNodes) = @_;
+    my $allnodes = join ", ", @$refAIXNodes;
+    print "Checking health for AIX nodes: $allnodes...\n";
+    print $::LOG_FILE_HANDLE "Checking health for AIX nodes: $allnodes...\n";
+    
+    my $rc;
+    if ( defined($::MIN_CLOCK_SPEED) )
+    {
+        $rc = procsrCheckAIX($refAIXNodes);
+        if ($rc != $::OK)
+        {
+            return $::NOK;
+        }
+    }
+    if ( defined($::MIN_MEMORY) || defined($::MIN_FREELP) )
+    {
+        $rc = memCheckAIX($refAIXNodes);
+        if ($rc != $::OK)
+        {
+            return $::NOK;
+        }
+    }
+    if ( $::IF_CHECK_METHOD ne "" )
+    {
+        $rc = ifCheck($refAIXNodes, 'AIX');
+        if ($rc != $::OK)
+        {
+            return $::NOK;
+        }
+    }
+    if ( defined($::HCA) )
+    {
+        $rc = HCACheckAIX($refAIXNodes);
+        if ($rc != $::OK)
+        {
+            return $::NOK;
+        }
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    procsrCheckLinux
+
+          Check processor clock speed for Linux nodes
+Arguments:
+        $refLnxNodes - The reference to the group of Linux nodes.
+=cut
+
+#-------------------------------------------------------------------------------
+sub procsrCheckLinux()
+{
+    my ($refLnxNodes) = @_;
+    my $ValidLnxNodes = join (",", @$refLnxNodes);
+
+    print "\nChecking processor clock speed for nodes: $ValidLnxNodes...\n";
+    print $::LOG_FILE_HANDLE "Checking processor clock speed for nodes: $ValidLnxNodes...\n";
+
+    my $checkCmd = "xdsh $ValidLnxNodes \"$::LinuxProcCmd\" 2>/dev/null";
+    print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
+    my @output = `$checkCmd`;
+    if ($?)
+    {
+        print "Command failed: $checkCmd.\n";
+        print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
+        return $::NOK;
+    }
+    
+    my $host;
+    my $pcrnum;
+    my $clspeed;
+    my %result;
+    foreach my $line (@output)
+    {
+        chomp $line;
+        # Get node hostname
+        if ($line =~ /(\S*):.*/)
+        {
+            $host = $1;
+        }
+        if ($line =~ /\S+: processor\s*: (\d+)/)
+        {
+            #Get processor number
+            $pcrnum = $1;
+        }
+        if ($line =~ /\S+: clock\s*: (.*)MHz/)
+        {
+            #Get processor clock speed
+            $clspeed = $1;
+            if ($clspeed < $::MIN_CLOCK_SPEED)
+            {
+                $result{$host} = "$result{$host}Processor $pcrnum clock speed is $clspeed MHz. UNEXPECTED LOW FREQUENCY.\n";
+            }
+        }
+    }
+    if (%result)
+    {
+        foreach my $h (sort keys %result)
+        {
+            print "$h:\n$result{$h}";
+            print $::LOG_FILE_HANDLE "$h:\n$result{$h}";
+        }
+    }
+    else
+    {
+        print "The processor clock speed of all nodes is normal.\n";
+        print $::LOG_FILE_HANDLE "The processor clock speed of all nodes is normal.\n";
+    }
+    return $::OK;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    procsrCheckAIX
+
+	      Check processor clock speed for AIX nodes
+Arguments:
+        $refAIXNodes - The reference to the group of AIX nodes.
+=cut
+
+#-------------------------------------------------------------------------------
+sub procsrCheckAIX()
+{
+    my ($refAIXNodes) = @_;
+    my @ValidAIXNodes;
+    my $abnormal = 0;
+    my $allnodes = join ", ", @$refAIXNodes;
+    print "\nChecking processor clock speed for nodes: $allnodes...\n";
+    print $::LOG_FILE_HANDLE "Checking processor clock speed for nodes: $allnodes...\n";
+    
+    @ValidAIXNodes = &checkCmdAvailability($refAIXNodes, $::AIXProcCmd);
+
+    if (!scalar (@ValidAIXNodes))
+    {
+        return $::NOK;
+    }
+    my $ValidAIXNodes = join (",", @ValidAIXNodes);
+    my $checkCmd = "xdsh $ValidAIXNodes \"$::AIXProcCmd -M\" 2>/dev/null";
+    print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
+    my @output = `$checkCmd`;
+    if ($?)
+    {
+        print "Command failed: $checkCmd.\n";
+        print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
+        return $::NOK;
+    }
+    
+    my $host;
+    my $pcrnum;
+    my $clspeed;
+    foreach my $line (@output)
+    {
+        chomp $line;
+        # Get node hostname
+        if ($line =~ /(\S*):.*/)
+        {
+            $host = $1;
+        }
+        if ($line =~ /\S+:\s*This machine runs at (\d+) MHz/)
+        {
+            #Get processor clock speed
+            $clspeed = $1;
+            if ($clspeed < $::MIN_CLOCK_SPEED)
+            {
+                $abnormal = 1;
+                print "$host processor clock speed is $clspeed MHz. UNEXPECTED LOW FREQUENCY.\n";
+                print $::LOG_FILE_HANDLE "$host processor clock speed is $clspeed MHz. UNEXPECTED LOW FREQUENCY.\n";
+            }
+        }
+    }
+    if(!$abnormal)
+    {
+        print "The processor clock speed of all nodes is normal.\n";
+        print $::LOG_FILE_HANDLE "The processor clock speed of all nodes is normal.\n";
+    }
+    return $::OK;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    ifCheck
+
+          Check ib interfaces status
+Arguments:
+        $refNodes - The reference to all nodes.
+        $os - Linux or AIX
+=cut
+
+#-------------------------------------------------------------------------------
+sub ifCheck()
+{
+    my ($refNodes, $os) = @_;
+    my @ValidNodes;
+    my $cmd;
+    my $abnormal = 0;
+    my $allnodes = join ", ", @$refNodes;
+    
+    if ($::IF_CHECK_METHOD eq "LL")
+    {
+        if ($os eq 'Linux')
+        {
+            $cmd = $::IBifLLCmdL;
+        }
+        elsif ($os eq 'AIX')
+        {
+            $cmd = $::IBifLLCmdA;
+        }
+        else
+        {
+            return $::NOK;
+        }
+    }
+    elsif ($::IF_CHECK_METHOD eq "RSCT")
+    {
+        $cmd = $::IBifRSCTCmd;
+    }
+    else
+    {
+        return $::NOK;
+    }
+    
+    print "\nChecking IB interface status using command $cmd for nodes: $allnodes...\n";
+    print $::LOG_FILE_HANDLE "Checking IB interface status using command $cmd for nodes: $allnodes...\n";
+    
+    @ValidNodes = &checkCmdAvailability($refNodes, $cmd);
+    
+    if (!scalar (@ValidNodes))
+    {
+        return $::NOK;
+    }
+    
+    my $ValidNodes = join (",", @ValidNodes);
+    
+    #Method is "LL"
+    if ($::IF_CHECK_METHOD eq "LL")
+    {
+        #Run the LL command on only one node, this is enough because it will return status of all nodes
+        my $checkCmd = "xdsh $ValidNodes[0] \"$cmd -a\" 2>/dev/null";
+        print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
+        my @output = `$checkCmd`;
+        if ($?)
+        {
+            print "Command failed: $checkCmd.\n";
+            print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
+            return $::NOK;
+        }
+        
+        #Record whether the next line is the beginning of a new section
+        my $armed = 0;
+        my $ibnum;
+        my $host;
+        #Record abnormal ib interfaces of a node
+        my @ib_array = ();
+        foreach my $line (@output)
+        {
+            chomp $line;
+            #The text returned by llstatus is seperared into several sections by "=================="
+            if ($line =~ /==================/)
+            {
+                #If there are abnormal interfaces found after check last section
+                if ( @ib_array )
+                {
+                    print "$host IB interface(s) down: ";
+                    print $::LOG_FILE_HANDLE "$host IB interface(s) down: ";
+                    foreach (sort @ib_array)
+                    { 
+                        print "ib$_ " ;
+                        print $::LOG_FILE_HANDLE "ib$_ " ;
+                    }
+                    print "\n";
+                    print $::LOG_FILE_HANDLE "\n";
+                }
+                @ib_array = ();
+                $armed = 1;
+            }
+            elsif ( ( $armed ) && ($line =~ /\S+?:\s*(\S+)/) )
+            { #The first line of a new section
+                #Get node hostname
+                $host = $1;
+                $armed = 0;
+            }
+            elsif ( $line =~ /\S+?:\s*ib(\d+).*/ )
+            {
+                #Get interface number
+                $ibnum = $1;
+                #Check the status
+                if ( ! ($line =~ /READY/) )
+                {
+                    $abnormal = 1;                
+                    push @ib_array, $ibnum;
+                }
+            }
+        }
+        #If there are abnormal interfaces found after check the last section
+        if ( @ib_array )
+        {
+            print "$host IB interface(s) down: ";
+            print $::LOG_FILE_HANDLE "$host IB interface(s) down: ";
+            foreach (sort @ib_array)
+            { 
+                print "ib$_ " ;
+                print $::LOG_FILE_HANDLE "ib$_ " ;
+            }
+            print "\n";
+            print $::LOG_FILE_HANDLE "\n";
+        }
+    }
+    #Method is "RSCT"
+    elsif ($::IF_CHECK_METHOD eq "RSCT")
+    {
+        my $checkCmd = "xdsh $ValidNodes \"$::IBifRSCTCmd IBM.NetworkInterface Name OpState\" 2>/dev/null";
+        print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
+        my @output = `$checkCmd`;
+        if ($?)
+        {
+            print "Command failed: $checkCmd.\n";
+            print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
+            return $::NOK;
+        }
+        my $host;
+        my $prevhost;
+        my $ifname;
+        my $opstate;
+        my @ib_array = ();
+        foreach my $line (@output)
+        {
+            chomp $line;
+            if ($line =~ /(\S*):.*/)
+            {
+                #Get node hostname
+                $host = $1;
+                #If the host is not equal prevhost, it indicates this is beginning of a section for another node.
+                #If there are abnormal interfaces found after check last node, print them.
+                if (($host ne $prevhost) && @ib_array)
+                {
+                    print "$prevhost IB interface(s) down: ";
+                    print $::LOG_FILE_HANDLE "$prevhost IB interface(s) down: ";
+                    foreach (sort @ib_array)
+                    { 
+                        print "$_ " ;
+                        print $::LOG_FILE_HANDLE "$_ " ;
+                    }
+                    print "\n";
+                    print $::LOG_FILE_HANDLE "\n";
+                    @ib_array = ();
+                }
+                $prevhost = $host;                
+            }
+            if ($line =~ /\S*:\s*Name\s*=\s*\"(.*)\"/)
+            {
+                #Get interface name
+                $ifname = $1;
+            }
+            if ($line =~ /\S+:\s*OpState\s*=\s*(\d+)/)
+            {
+                #Check the status
+                $opstate = $1;
+                if ($opstate != 1 && $ifname =~ /ib/)
+                {
+                    $abnormal = 1;
+                    push @ib_array, $ifname;
+                }
+            }
+        }
+        #If there are abnormal interfaces found after check the last node, print them.
+        if (@ib_array)
+        {
+            print "$host IB interface(s) down: ";
+            print $::LOG_FILE_HANDLE "$host IB interface(s) down: ";
+            foreach (sort @ib_array)
+            { 
+                print "$_ " ;
+                print $::LOG_FILE_HANDLE "$_ " ;
+            }
+            print "\n";
+            print $::LOG_FILE_HANDLE "\n";
+        }
+    }
+    if(!$abnormal)
+    {
+        print "IB interfaces of all nodes are normal.\n";
+        print $::LOG_FILE_HANDLE "IB interfaces of all nodes are normal.\n";
+    }
+    return $::OK;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    memCheckLinux
+
+          Check memory and free large page for Linux nodes
+Arguments:
+        $refLnxNodes - The reference to the group of Linux nodes.
+=cut
+
+#-------------------------------------------------------------------------------
+sub memCheckLinux()
+{
+    my ($refLnxNodes) = @_;
+    my $abnormalmem = 0;
+    my $abnormalflp = 0;
+    my $ValidLnxNodes = join (",", @$refLnxNodes);
+
+    print "\nChecking memory for nodes: $ValidLnxNodes...\n";
+    print $::LOG_FILE_HANDLE "Checking memory for nodes: $ValidLnxNodes...\n";
+
+    my $checkCmd = "xdsh $ValidLnxNodes \"$::LinuxMemCmd\" 2>/dev/null";
+    print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
+    my @output = `$checkCmd`;
+    if ($?)
+    {
+        print "Command failed: $checkCmd.\n";
+        print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
+        return $::NOK;
+    }
+    
+    my $host;
+    my $mem;
+    my $freelp;
+    foreach my $line (@output)
+    {
+        chomp $line;
+        if ($line =~ /(\S*): MemTotal:\s*(\d+) kB/ && defined($::MIN_MEMORY))
+        {
+            # Get node hostname and memory size
+            $host = $1;
+            $mem = $2;
+            if ($mem < ($::MIN_MEMORY * 1000))
+            {
+                $abnormalmem = 1;
+                my $mem2 = $mem / 1000;
+                print "$host total memory is $mem2 MB. UNEXPECTED small size.\n";
+                print $::LOG_FILE_HANDLE "$host total memory is $mem kB. UNEXPECTED small size.\n";
+            }
+        }
+        if ($line =~ /(\S*): HugePages_Free:\s*(\d+)/ && defined($::MIN_FREELP))
+        {
+            # Get node hostname and number of free large page
+            $host = $1;
+            $freelp = $2;
+            if ($freelp < $::MIN_FREELP)
+            {
+                $abnormalflp = 1;
+                print "$host Free large page is $freelp. UNEXPECTED small size.\n";
+                print $::LOG_FILE_HANDLE "$host Free large page is $freelp. UNEXPECTED small size.\n";
+            }
+        }
+    }
+    if(!$abnormalmem && defined($::MIN_MEMORY))
+    {
+        print "Memory size of all nodes are normal.\n";
+        print $::LOG_FILE_HANDLE "Memory size of all nodes are normal.\n"
+    }
+    if(!$abnormalflp && defined($::MIN_FREELP))
+    {
+        print "Free large page number of all nodes are normal.\n";
+        print $::LOG_FILE_HANDLE "Free large page number of all nodes are normal.\n";
+    }
+    return $::OK;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    memCheckAIX
+
+          Check memory and free large page for AIX nodes
+Arguments:
+        $refAIXNodes - The reference to the group of AIX nodes.
+=cut
+
+#-------------------------------------------------------------------------------
+sub memCheckAIX()
+{
+    my ($refAIXNodes) = @_;
+    my $abnormalmem = 0;
+    my $abnormalflp = 0;
+    my @ValidAIXNodes;
+    my $allnodes = join ", ", @$refAIXNodes;
+    print "\nChecking memory for nodes $allnodes...\n";
+    print $::LOG_FILE_HANDLE "Checking memory for nodes $allnodes...\n";
+    
+    @ValidAIXNodes = &checkCmdAvailability($refAIXNodes, $::AIXMemCmd);
+    
+    if (!scalar (@ValidAIXNodes))
+    {
+        return $::NOK;
+    }
+    my $ValidAIXNodes = join (",", @ValidAIXNodes);
+    my $checkCmd = "xdsh $ValidAIXNodes \"$::AIXMemCmd -l\" 2>/dev/null";
+
+    print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
+    my @output = `$checkCmd`;
+    if ($?)
+    {
+        print "Command failed: $checkCmd.\n";
+        print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
+        return $::NOK;
+    }
+    
+    my $host;
+    my $mem;
+    my $freelp;
+    foreach my $line (@output)
+    {
+        chomp $line; 
+        if ($line =~ /(\S*):\s+System Configuration: lcpu=(\d+)\s+mem=(\d+)\s*MB/ && defined($::MIN_MEMORY))
+        {
+            # Get node hostname and memory size
+            $host = $1;
+            $mem = $3;
+            if ($mem < $::MIN_MEMORY)
+            {
+                $abnormalmem = 1;
+                print "$host total memory is $mem MB. UNEXPECTED small size\n";
+                print $::LOG_FILE_HANDLE "$host total memory is $mem MB. UNEXPECTED small size\n";
+            }
+        }
+        if ($line =~ /(\S*):\s*\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)/ && defined($::MIN_FREELP))
+        {
+            # Get node hostname and number of free large page
+            $host = $1;
+            $freelp = $2;
+            if ($freelp < $::MIN_FREELP)
+            {
+                $abnormalflp = 1;
+                print "$host Free large page is $freelp. UNEXPECTED small size\n";
+                print $::LOG_FILE_HANDLE "$host Free large page is $freelp. UNEXPECTED small size\n";
+            }
+        }
+    }
+    if(!$abnormalmem && defined($::MIN_MEMORY))
+    {
+        print "Memory size of all nodes are normal.\n";
+        print $::LOG_FILE_HANDLE "Memory size of all nodes are normal.\n"
+    }
+    if(!$abnormalflp && defined($::MIN_FREELP))
+    {
+        print "Free large page number of all nodes is normal.\n";
+        print $::LOG_FILE_HANDLE "Free large page number of all nodes is normal.\n";
+    }
+    return $::OK;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    HCACheckAIX
+
+          Check HCA status for AIX nodes
+Arguments:
+        $refAIXNodes - The reference to the group of AIX nodes.
+=cut
+
+#-------------------------------------------------------------------------------
+sub HCACheckAIX()
+{
+    my ($refAIXNodes) = @_;
+    my @ValidAIXNodes;
+    my $abnormal = 0;
+    my $allnodes = join ", ", @$refAIXNodes;
+    print "\nChecking HCA status for nodes $allnodes...\n";
+    print $::LOG_FILE_HANDLE "Checking HCA status for nodes $allnodes...\n";
+    
+    @ValidAIXNodes = &checkCmdAvailability($refAIXNodes, $::AIXHCACmd);
+
+    if (!scalar (@ValidAIXNodes))
+    {
+        return $::NOK;
+    }
+    my $ValidAIXNodes = join (",", @ValidAIXNodes);
+    my $checkCmd = "xdsh $ValidAIXNodes \"$::AIXHCACmd -v | egrep 'IB PORT.*INFO|Port State:|Physical Port'\" 2>/dev/null";
+    print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
+    my @output = `$checkCmd`;
+    if ($?)
+    {
+        print "Command failed: $checkCmd.\n";
+        print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
+        return $::NOK;
+    }
+    
+    #If --speed or --width is not set, this two hashes is used to record the speed and width of a interface.
+    my %speedhash;
+    my %widthhash;
+    my $host;
+    my $hca_id;
+    my $port;
+    my $if_id;
+    my $ignore = 0;
+    foreach my $line (@output)
+    {
+        chomp $line;
+        #Get host name
+        if ($line =~ /(\S*): (.*)/)
+        {
+            $host = $1;
+        }
+        #Get HCA ID and port number
+        if ($line =~ /\S*:\s*IB PORT (\d+) INFORMATION \(iba(\d+)\)/)
+        {
+            $port = $1;
+            $hca_id = $2;
+            #Calculate interface number according to HCA ID and port number
+            $if_id = $hca_id * 2 + $port - 1;
+            #If the interface is in ignore list
+            if ( grep {$_ eq "ib$if_id"} @IgnoreList )
+            {
+                $ignore = 1;
+            }
+            else
+            {
+                $ignore = 0;
+            }
+            next;
+        }
+        #Check Logical Port State
+        if ($line =~ /\S*:\s*Logical Port State:\s*(\w+)/ && $ignore == 0)
+        {
+            if ($1 ne "Active")
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id Logical Port State is $1. UNEXPECTED STATE.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Logical Port State is $1. UNEXPECTED STATE.\n";
+            }
+            next;
+        }
+        #Check Physical Port State
+        if ($line =~ /\S*:\s*Physical Port State:\s*(\w+)/ && $ignore == 0)
+        {
+            if ($1 ne "Active")
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id Physical Port State is $1. UNEXPECTED STATE.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port State is $1. UNEXPECTED STATE.\n";
+            }
+            next;
+        }
+        #Check Physical Port Physical State
+        if ($line =~ /\S*:\s*Physical Port Physical State:\s*(\.+)/ && $ignore == 0)
+        {
+            if ($1 ne "Link Up")
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id Physical Port Physical State is $1. UNEXPECTED STATE.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port Physical State is $1. UNEXPECTED STATE.\n";
+            }
+            next;
+        }
+        #Check speed
+        if ($line =~ /\S*:\s*Physical Port Speed:\s*(.+)\s*G/ && $ignore == 0)
+        {
+            if (!defined($::HCASPEED))
+            {
+                $speedhash{"$host: ib$if_id"} = $1; 
+            }
+            elsif ($1 != $::HCASPEED)
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id speed is $1Gbps. UNEXPECTED SPEED.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id speed is $1Gbps. UNEXPECTED SPEED.\n";
+            }
+            next;
+        }
+        #Ckeck width
+        if ($line =~ /\S*:\s*Physical Port Width:\s*(\w+)/ && $ignore == 0)
+        {
+            if ($::WIDTH eq "")
+            {
+                $widthhash{"$host: ib$if_id"} = $1;
+            }
+            elsif ($1 ne $::WIDTH)
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id Physical Port Width is $1. UNEXPECTED WIDTH.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port Width is $1. UNEXPECTED WIDTH.\n";
+            }
+            next;
+        }
+    }
+    foreach my $key (sort keys %speedhash)
+    {
+        print "$key: Physical Port Speed: $speedhash{$key}G\n";
+        print $::LOG_FILE_HANDLE "$key: Physical Port Speed: $speedhash{$key}G\n";
+    }
+    foreach my $key (sort keys %widthhash)
+    {
+        print "$key: Physical Port Width: $widthhash{$key}\n";
+        print $::LOG_FILE_HANDLE "$key: Physical Port Width: $widthhash{$key}\n";
+    }
+    #All are normal
+    if(!$abnormal)
+    {
+        print "HCA status of all nodes is normal.\n";
+        print $::LOG_FILE_HANDLE "HCA status of all nodes is normal.\n";
+    }
+    return $::OK;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    HCACheckLinux
+
+          Check HCA status for Linux nodes
+Arguments:
+        $refLnxNodes - The reference to the group of Linux nodes.
+=cut
+
+#-------------------------------------------------------------------------------
+sub HCACheckLinux()
+{
+    my ($refLnxNodes) = @_;
+    my @ValidLnxNodes;
+    my $abnormal = 0;
+    my $allnodes = join ", ", @$refLnxNodes;
+    print "\nChecking HCA status for nodes: $allnodes...\n";
+    print $::LOG_FILE_HANDLE "Checking HCA status for nodes: $allnodes...\n";
+    
+    @ValidLnxNodes = &checkCmdAvailability($refLnxNodes, $::LinuxHCACmd);
+
+    if (!scalar (@ValidLnxNodes))
+    {
+        return $::NOK;
+    }
+    my $ValidLnxNodes = join (",", @ValidLnxNodes);
+    my $checkCmd = "xdsh $ValidLnxNodes \"$::LinuxHCACmd -v | egrep 'ehca|port:|state:|width:|speed:'\" 2>/dev/null";
+    print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
+    my @output = `$checkCmd`;
+    if ($?)
+    {
+        print "Command failed: $checkCmd.\n";
+        print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
+        return $::NOK;
+    }
+    
+    #If --speed or --width is not set, this two hashes is used to record the speed and width of a interface.
+    my %speedhash;
+    my %widthhash;
+    my $host;
+    my $hca_id;
+    my $port;
+    my $if_id;
+    my $ignore = 0;
+    foreach my $line (@output)
+    {
+        chomp $line;
+        #Get host name
+        if ($line =~ /(\S*): (.*)/)
+        {
+            $host = $1;
+        }
+        #Get HCA ID
+        if ($line =~ /\S*:\s*hca_id:\s*ehca(\d+)/)
+        {
+            $hca_id = $1;
+            next;
+        }
+        #Get port number
+        if ($line =~ /\S*:\s*port:\s*(\d+)/)
+        {
+            #Calculate interface number according to HCA ID and port number
+            $port = $1;
+            $if_id = $hca_id * 2 + $port - 1;
+            #If the interface is in ignore list
+            if ( grep {$_ eq "ib$if_id"} @IgnoreList )
+            {
+                $ignore = 1;
+            }
+            else
+            {
+                $ignore = 0;
+            }
+            next;
+        }
+        #Check state
+        if ($line =~ /\S*:\s*state:\s*(\w+)\s*\(.*/ && $ignore == 0)
+        {
+            if ($1 ne "PORT_ACTIVE")
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id state is $1. UNEXPECTED STATE.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id state is $1. UNEXPECTED STATE.\n";
+            }
+            next;
+        }
+        #Chenk width
+        if ($line =~ /\S*:\s*active_width:\s*(\w+)\s*\(.*/ && $ignore == 0)
+        {
+            if ($::WIDTH eq "")
+            {
+                $widthhash{"$host: ib$if_id"} = $1;
+            }
+            elsif ($1 ne $::WIDTH)
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id active_width is $1. UNEXPECTED WIDTH.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id active_width is $1. UNEXPECTED WIDTH.\n";
+            }
+            next;
+        }
+        #Check speed
+        if ($line =~ /\S*:\s*active_speed:\s*(.+)\s*Gbps.*/ && $ignore == 0)
+        {
+            if (!defined($::HCASPEED))
+            {
+                $speedhash{"$host: ib$if_id"} = $1;
+            }
+            elsif ($1 != $::HCASPEED)
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id active_speed is $1Gbps. UNEXPECTED SPEED.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id active_speed is $1Gbps. UNEXPECTED SPEED.\n";
+            }
+            next;
+        }
+        #Check Physical State
+        if ($line =~ /\S*:\s*phys_state:\s*(\w+)\s*\(.*/ && $ignore == 0)
+        {
+            if ($1 ne "LINK_UP")
+            {
+                $abnormal = 1;
+                print "$host: ib$if_id phys_state is $1. UNEXPECTED STATE.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id phys_state is $1. UNEXPECTED STATE.\n";
+            }
+            next;
+        }
+    }
+    foreach my $key (sort keys %speedhash)
+    {
+        print "$key: Physical Port Speed: $speedhash{$key}G\n";
+        print $::LOG_FILE_HANDLE "$key: Physical Port Speed: $speedhash{$key}G\n";
+    }
+    foreach my $key (sort keys %widthhash)
+    {
+        print "$key: Physical Port Width: $widthhash{$key}\n";
+        print $::LOG_FILE_HANDLE "$key: Physical Port Width: $widthhash{$key}\n";
+    }
+    #All are normal
+    if(!$abnormal)
+    {
+        print "HCA status of all nodes is normal.\n";
+        print $::LOG_FILE_HANDLE "HCA status of all nodes is normal.\n";
+    }
+    return $::OK;
+}

@@ -1,0 +1,176 @@
+# IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+healthCheck.README
+
+This README describes how to use the healthCheck script.
+
+The syntax of the healthCheck command is:
+
+healthCheck { [-n node_list] [-M]}
+            {[-p min_clock_speed] [-i method] [-m min_memory]
+            [-l min_freelp] [ -H [--speed speed --ignore interface_list --width width]]} 
+            [ -h ]
+
+        -M          Check status for all the Managed Nodes that are defined on this MN.
+        -n node_list
+                    Specifies a comma-separated list of node host names, IP addresses for health check.
+        -p min_clock_speed
+                    Specifies the minimal processor clock speed in MHz for processor monitor.
+        -i method
+                    Specifies the method to do Infiniband interface status check, the supported 
+                    check methods are LL and RSCT.
+        -m min_memory
+                    Specifies the minimal total memory in MB.
+        -l min_freelp
+                    Specifies the minimal free large page number.
+        -H          Check the status for HCAs.
+        --speed speed
+                    Specifies the physical port speed in G bps, it should be used with -H flag.
+        --ignore interface_list
+                    Specifies a comma-separated list of interface name to ignore from HCA status check, 
+                    such as ib0,ib1. It should be used with -H flag.
+        --width width
+                    Specifies the physical port width, such as 4X or 12X. It should be used with -H flag.
+        -h          Display usage information.
+        
+This script is used to check the system health for both AIX and Linux 
+Managed Nodes on Power6 platforms. It will use xdsh to access the target 
+nodes, and check the status for processor clock speed, IB interfaces, 
+memory and large page configuration. If xdsh is unreachable, an error 
+message will be given.
+
+1. Processor clock speed check
+This script will use xdsh command to access the target nodes, and run 
+"/usr/pmapi/tools/pmcycles -M" command on the AIX MNs or "cat 
+/proc/cpuinfo" command on Linux MNs to list the actual processor clock 
+speed in MHz. Compare this actual speed with the minimal value that user 
+specified in command line with -p flag, if it is smaller than the minimal 
+value, a warning message will be given out to indicate the unexpected low 
+frequency.
+
+2. IB interface status check by llstatus
+In LoadLeveler cluster environment, all the nodes are sharing the same 
+cluster information. So we only need to xdsh to one of these nodes, and 
+run LoadLeveler command "/usr/lpp/LoadL/full/bin/llstatus -a" on AIX or 
+"/opt/ibmll/LoadL/full/bin/llstatus -a" on Linux nodes to list the IB 
+interface status. If the status is not "READY", a warning message related 
+to its nodename and IB port will be given out. This check process needs 
+the "llstatus" command existed on the MNs, if it does not exist, an error 
+message will be output.
+
+3. IB interface status check by lsrsrc
+This script will use xdsh command to access the target nodes, and run 
+"/usr/bin/lsrsrc IBM.NetworkInterface Name OpState" command on AIX or 
+Linux MNs to list the IB interface status for each node. If the "OpState" 
+value is not "1", a warning message related to its nodename and IB port 
+will be given out.
+
+4. Memory check
+This script will use xdsh command to access the target nodes, and run 
+"/usr/bin/vmstat" command on AIX MNs or "cat /proc/meminfo" commands on 
+Linux MNs to list the total memory information. If the total memory is 
+smaller than the minimal value specified by the user in GB, a warning 
+message will be given out with the node name and its real total memory 
+account. 
+
+5. Free large page check
+This script will use xdsh command to access the target nodes, and run 
+"/usr/bin/vmstat -l" command on AIX MNs or "cat /proc/meminfo" commands 
+on Linux MNs to list the free large page information. If the free large 
+page number is smaller than the minimal value specified by the user, a 
+warning message will be given out with the node name and its real free 
+large page number. 
+
+6. Check HCA status
+This script will use xdsh command to access the target nodes. 
+For AIX nodes, we use command ibstat -v | egrep "IB PORT.*INFO|Port State
+:|Physical Port" to get the HCA status of Logical Port State, Physical 
+Port State, Physical Port Physical State, Physical Port Speed and Physical 
+Port Width. The expected values are "Logical Port State: Active", "Physical 
+Port State: Active", "Physical Port Physical State: Link Up", "Physical 
+Port Width: 4X". If the actual value is not the same as expected one, a 
+warning message will be given out.
+This is an example of the output of ibstat command:
+c890f11ec01:/ # ibstat -v | egrep "IB PORT.*INFO|Port State:|Physical Port"
+ IB PORT 1 INFORMATION (iba0)
+Logical Port State:                     Active
+Physical Port State:                    Active
+Physical Port Physical State:           Link Up
+Physical Port Speed:                    2.5G
+Physical Port Width:                    4X
+ IB PORT 2 INFORMATION (iba0)
+Logical Port State:                     Active
+Physical Port State:                    Active
+Physical Port Physical State:           Link Up
+Physical Port Speed:                    2.5G
+Physical Port Width:                    4X
+
+For Linux nodes, we use command ibv_devinfo -v | egrep "ehca|port:|state:
+|width:|speed:" to get the HCA status of port state, active_width, active_speed 
+and phys_state. The expected values are "port state: PORT_ACTIVE", 
+"active_width: 4X", "phys_state: LINK_UP". If the actual value is not the 
+same as expected one, a warning message will be given out.
+This is an example of the output of ibv_devinfo command:
+c890f11ec05:~ # ibv_devinfo -v | egrep "ehca|port:|state:|width:|speed:"
+hca_id: ehca0
+                port:   1
+                        state:                  PORT_ACTIVE (4)
+                        active_width:           4X (2)
+                        active_speed:           2.5 Gbps (1)
+                        phys_state:             LINK_UP (5)
+                port:   2
+                        state:                  PORT_ACTIVE (4)
+                        active_width:           4X (2)
+                        active_speed:           2.5 Gbps (1)
+                        phys_state:             LINK_UP (5)
+
+But for "Physical Port Speed" on AIX nodes or "active_speed" on Linux nodes, 
+since SDR and DDR adapters will use the different speeds, SDR is 2.5G and DDR 
+is 5.0G, so the user needs to specify this "Speed" by flag "--speed", for 
+example:
+
+healthCheck -N AIXNodes -H --speed 2.5
+
+If "--speed" is not specified with "-H" flag, healthCheck script will list the 
+actual value of "Physical Port Speed" gotten from ibstat command for each HCAs, 
+so that it is easy for the user to use "grep" command to find the speed value 
+he/she wants.
+The output format is <node_name>:<interface_name>:< Physical Port Speed >:
+<speed_value>, for example:
+
+c890f11ec01.ppd.pok.ibm.com: ib0: Physical Port Speed: 2.5G
+c890f11ec01.ppd.pok.ibm.com: ib1: Physical Port Speed: 2.5G
+c890f11ec02.ppd.pok.ibm.com: ib0: Physical Port Speed: 5.0G
+c890f11ec02.ppd.pok.ibm.com: ib1: Physical Port Speed: 5.0G
+Since the output of ibstat or ibv_devinfo is identified by HCA name and port 
+number, so we will use the mapping table below to map the HCA name and port 
+number to its interface name. Please see the table below:
+
+Interface Name	Adapter Name	Port Number
+ib0	            iba0/ehca0	    1
+ib1	            iba0/ehca0	    2
+ib2	            iba1/ehca1	    1
+ib3	            iba1/ehca1	    2
+......	
+
+For "Physical Port Width" on AIX nodes or "active_width" on Linux nodes, since 
+it could be 4X or 12X, so the user needs to specify this "width" by flag 
+"--width", for example:
+
+healthCheck -N LinuxNodes -H --width 4X
+
+If "--width" is not specified, healthCheck script will list the actual value 
+of "Physical Port Width" gotten from ibstat command for each HCAs, so that it 
+is easy for the user to use "grep" command to find the speed value he/she wants.
+The output format is <node_name>:<interface_name>:< Physical Port Width >:
+<width_value>, for example:
+
+c890f11ec01.ppd.pok.ibm.com: ib0: Physical Port Width: 4X
+c890f11ec01.ppd.pok.ibm.com: ib1: Physical Port Width: 4X
+c890f11ec02.ppd.pok.ibm.com: ib0: Physical Port Width: 4X
+
+For the ports that are not used by the target nodes, the user could use --ignore 
+flag to exclude them from HCA status check. If the user does not specify these 
+"unused port" with --ignore flag, healthCheck script will check all HCA check 
+items for all interfaces, and return the warning message to for the failed ones. 
+The user could use grep piped into wc -l to get the total number of "unused port".
