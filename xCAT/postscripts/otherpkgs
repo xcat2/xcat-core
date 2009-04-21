@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -39,9 +39,9 @@ fi
 #    SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '
 #fi
 
-if [[ -z "$NFSSERVER" ]]; then
+  if [[ -z "$NFSSERVER" ]]; then
     NFSSERVER=$MASTER
-fi
+  fi
 
   if [[ $OTHERPKGS_HASREPO -eq 1 ]]; then
     rpm -q yum
@@ -91,26 +91,32 @@ fi
         exit 0
       fi      
     fi
-  
+    
 
     #try zypper
-    rpm -q zypper
-    if [ $? -eq 0 ]; then 
+    result=`rpm -q zypper`
+    if [ "$?" = "0" ]; then 
       #use zypper
       if [ "$OSVER" = "sles11" ]; then
-	    zypper ar ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/1 otherpkgs
+	    zypper ar ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/ otherpkgs
       else
-        zypper sa ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/1
+        zypper sa ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/
       fi
+
+      zypper refresh       
 
       #install
       PKGS=`echo "$OTHERPKGS" | tr "," " "`
-      zypper install -y $PKGS
+      echo "zypper install -y $PKGS"
+      result=`zypper install -y $PKGS 2>&1`
+      if [ $? -ne 0 ]; then 
+        logger "otherpkgs: $result"
+      fi
       exit 0
     fi
   fi
 
-  #if it is not handled by the above code, we will use wget to handle it
+  #if it is not handled by the above code, we will use wget to download the rpms
   mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH; 
   rm -f -R /xcatpost/post/otherpkgs/*
   mkdir -p /tmp/postage/
@@ -125,14 +131,42 @@ fi
   mv $NFSSERVER/post/otherpkgs/* /xcatpost/post/otherpkgs; 
   rm -rf $NFSSERVER
 
+  #try zypper with local dir first
+  result=`rpm -q zypper`
+  if [ "$?" = "0" ]; then
+    #use zypper
+    if [ "$OSVER" = "sles11" ]; then
+      zypper ar file:/xcatpost/post/otherpkgs/$OSVER/$ARCH/ otherpkgs
+    else
+      zypper sa file:/xcatpost/post/otherpkgs/$OSVER/$ARCH/
+    fi
+
+    zypper refresh
+
+    #install
+    PKGS=`echo "$OTHERPKGS" | tr "," " "`
+    echo "zypper install -y $PKGS"
+    result=`zypper install -y $PKGS 2>&1`
+    if [ $? -ne 0 ]; then
+      logger "otherpkgs: $result"
+    fi
+    rm -f -R /xcatpost/post/otherpkgs/*
+    exit 0
+  fi
+
+  #last, try rpm
   cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
-  result=`rpm -Uvh * 2>&1`
+  echo "using rpm command to install packages" >> /tmp/updatenode.out
+  result=`rpm -Uvh --replacepkgs * 2>&1`
+  #result=`rpm -Fvh * 2>&1`
   echo "$result"
+  echo "$result" >> /tmp/updatenode.out
   if [ $? -ne 0 ]; then 
     logger "otherpkgs $result"
   fi
+  rm -f -R /xcatpost/post/otherpkgs/*
   exit 0
-else #AIX
+#else #AIX
   #mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH
   #rm -f -R /xcatpost/post/otherpkgs/$OSVER/$ARCH/*
 
@@ -166,9 +200,9 @@ else #AIX
   #fi
   #exit $rc
 
-  echo "Please use nimnodecust command to add additional packages to AIX nodes."
-  logger "xCAT otherpkgs: Please use nimnodecust command to add addition packages to AIX nodes."
-fi
+#  echo "Please use nimnodecust command to add additional packages to AIX nodes."
+#  logger "xCAT otherpkgs: Please use nimnodecust command to add addition packages to AIX nodes."
+#fi
 
 exit 0
 
