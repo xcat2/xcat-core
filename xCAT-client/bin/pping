@@ -34,9 +34,9 @@ unless (@ARGV) {
 my $noderange = $ARGV[0];
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
-                SSL_key_file=>$ENV{HOME}."/.xcat/client-cred.pem",
-                SSL_cert_file=>$ENV{HOME}."/.xcat/client-cred.pem",
-                SSL_ca_file => $ENV{HOME}."/.xcat/ca.pem",
+                SSL_key_file=> xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem",
+                SSL_cert_file=> xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem",
+                SSL_ca_file =>  xCAT::Utils->getHomeDir()."/.xcat/ca.pem",
                 SSL_use_cert => 1,
                 #SSL_verify_mode => 1,
              );
@@ -100,7 +100,7 @@ sub nmap_pping {
     foreach (@nodes) {
         $deadnodes{$_}=1;
     }
-    open (FPING, "nmap -sP ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+    open (FPING, "nmap -PE --send-ip -sP ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
     my $node;
     while (<FPING>) {
       if (/Host (.*) \(.*\) appears to be up/) {

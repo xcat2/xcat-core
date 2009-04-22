@@ -191,7 +191,7 @@ sub process_request_nmap {
    foreach (@nodes) {
        $deadnodes{$_}=1;
    }
-   open($fping,"nmap -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
+   open($fping,"nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
    my $currnode='';
    my $port;
    my $state;
