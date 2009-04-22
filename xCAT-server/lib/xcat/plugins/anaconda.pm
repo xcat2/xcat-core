@@ -67,6 +67,7 @@ sub preprocess_request
 {
     my $req      = shift;
     my $callback = shift;
+    return [$req]; #calls are only made from pre-farmed out scenarios
     if ($req->{command}->[0] eq 'copycd')
     {    #don't farm out copycd
         return [$req];
