@@ -718,7 +718,13 @@ my $master = inet_ntoa($addrs[0]);
 my ($domain, $timezone);
 if ($::osname eq 'AIX')
 {
-    ($domain = $hname) =~ s/^.*?\.//;
+	my ($name, $rest) = split('\.', $hname);
+	if ($rest) {
+		($domain = $hname) =~ s/^.*?\.//;
+	} else {
+		$domain="";
+	}
+
     $timezone = $ENV{'TZ'};
 }
 else
@@ -817,6 +823,7 @@ if ((!-r "/etc/xcat/policy.sqlite") || $::FORCE)
     {
         $chtabcmds =
           "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
+		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow;";
         $chtabcmds .=
@@ -916,7 +923,7 @@ if ((!-d "/etc/xcat/ca") || $::FORCE)
 }
 
 #  copy to postscript directory
-my $cmd    = "/bin/rm -rf /install/postscripts/ca &2>/dev/null";
+my $cmd    = "/bin/rm -rf /install/postscripts/ca >/dev/null 2>&1";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
 my $cmd    = "/bin/mkdir -p /install/postscripts/ca/certs";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -963,7 +970,7 @@ if ((!-d "/etc/xcat/cert") || $::FORCE)
 }
 
 #  copy to postscript directory
-my $cmd    = "/bin/rm -rf /install/postscripts/cert &2>/dev/null";
+my $cmd    = "/bin/rm -rf /install/postscripts/cert >/dev/null 2>&1";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
 my $cmd    = "/bin/mkdir -p /install/postscripts/cert";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1011,7 +1018,7 @@ if ((!-r "$::root/.xcat/client-key.pem") || $::FORCE)
 }
 
 #  copy to postscript directory
-my $cmd    = "/bin/rm -rf /install/postscripts/_xcat &2>/dev/null";
+my $cmd    = "/bin/rm -rf /install/postscripts/_xcat >/dev/null 2>&1";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
 my $cmd    = "/bin/mkdir -p /install/postscripts/_xcat";
 my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1106,7 +1113,7 @@ if ($::RUNCMD_RC != 0)
 }
 
 # for AIX systems add xcatd to the /etc/inittab file
-#   and add /install/postscripts to /etc/exports
+#	and add /install/postscripts to /etc/exports
 if ($::osname eq 'AIX')
 {
     my $mkitab_cmd =
@@ -1114,7 +1121,7 @@ if ($::osname eq 'AIX')
     my $rc = system($mkitab_cmd);
 
 	# check if /install/postscripts is in /etc/exports
-    my $catcmd = "/bin/cat /etc/exports | grep '/install/postscripts '";
+    my $catcmd = "/bin/cat /etc/exports | grep '/install/postscripts ' >/dev/null 2>&1";
     my $outref = xCAT::Utils->runcmd("$catcmd", -1);
     if ($::RUNCMD_RC != 0)
     {
