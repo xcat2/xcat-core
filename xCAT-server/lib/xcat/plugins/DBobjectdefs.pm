@@ -918,7 +918,7 @@ sub defmk
         }
 
         # if object already exists
-        if (grep(/$obj/, @{$objTypeLists{$type}}))
+        if (grep(/^$obj$/, @{$objTypeLists{$type}}))
         {
             if ($::verbose)
             {
