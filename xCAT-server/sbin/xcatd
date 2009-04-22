@@ -595,7 +595,15 @@ if ($inet6support) {
 
     unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr,AF_INET); }
     $peerfqdn=$peerhost;
-    $peerhost =~ s/\.$domain\.*$//;
+
+	if ($domain) {
+        # strip off domain if set
+        $peerhost =~ s/\.$domain\.*$//;
+    } else {
+        # otherwise just strip off whatever comes after the first dot
+        $peerhost =~ s/^.*?\.//;
+    }
+
     $peerhost =~ s/-eth\d*$//;
     $peerhost =~ s/-myri\d*$//;
     $peerhost =~ s/-ib\d*$//;
