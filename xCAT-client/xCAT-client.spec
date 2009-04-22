@@ -202,13 +202,14 @@ setenv PERL_BADLANG 0" >/etc/profile.d/xcat.csh
 chmod 755 /etc/profile.d/xcat.*
 
 %else
+if [ "$1" = "1" ]; then #Only if installing for the first time..
 echo "
 # xCAT setup
 XCATROOT=$RPM_INSTALL_PREFIX0
 PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
 MANPATH=\$MANPATH:\$XCATROOT/share/man
 export XCATROOT PATH MANPATH" >>/etc/profile
-
+fi
 %endif
 
 %preun
