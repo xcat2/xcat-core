@@ -149,7 +149,7 @@ sub buildcreatestmt
 	}
 	$retv =~ s/,$/)\n)/;
     }
-	print "retv=$retv\n";
+	#print "retv=$retv\n";
     return $retv;
 }
 
