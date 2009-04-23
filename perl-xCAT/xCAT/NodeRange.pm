@@ -100,7 +100,7 @@ sub expandatom {
 	}
 
 	if ($atom =~ m/\+/) {  # process the + operator
-		$atom =~ m/^([^0-9]*)([0-9]+)([^\+]*)\+([0-9]+)/;
+		$atom =~ m/^(.*)([0-9]+)([^0-9\+]*)\+([0-9]+)/;
 		my $pref=$1;
 		my $startnum=$2;
 		my $suf=$3;
