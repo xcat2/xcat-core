@@ -217,27 +217,19 @@ unless ($onlyinitrd) {
 unlink "/tmp/genimage.$$.yum.conf";
 
 #-- run postinstall script
-if (-x "$pathtofiles/$profile.$osver.$arch.postinstall") {
-    my $rc = system("$pathtofiles/$profile.$osver.$arch.postinstall", "$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
+my $postinstall_filename= get_postinstall_file_name($customdir);
+if (!$postinstall_filename) {
+    $postinstall_filename= get_postinstall_file_name($pathtofiles);
+} 
+
+if (($postinstall_filename) && (-x $postinstall_filename)) {
+    my $rc = system($postinstall_filename, "$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
     if($rc) {
         print "postinstall script failed\n";
         exit 1;
     }
 }
-elsif (-x "$pathtofiles/$profile.$osver.postinstall") {
-    my $rc = system("$pathtofiles/$profile.$osver.postinstall","$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
-    if ($rc) {
-        print "posinstall script failed\n";
-        exit 1;
-    }
-}
-elsif (-x "$pathtofiles/$profile.postinstall") {
-   my $rc = system("$pathtofiles/$profile.postinstall","$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
-   if ($rc) {
-      print "postinstall script failed\n";
-      exit 1;
-   }
-}
+
 
 mkinitrd();
 
@@ -712,5 +704,20 @@ sub get_pkglist_file_name {
    return "";
 }
 
+
+sub get_postinstall_file_name {
+   my $base=shift;
+   if (-x "$base/$profile.$osver.$arch.postinstall") {
+      return "$base/$profile.$osver.$arch.postinstall";
+   } elsif (-x "$base/$profile.$arch.postinstall") {
+      return "$base/$profile.$arch.postinstall";
+   } elsif (-x "$base/$profile.$osver.postinstall") {
+      return "$base/$profile.$osver.postinstall";
+   } elsif (-x "$base/$profile.postinstall") {
+      return "$base/$profile.postinstall";
+   } 
+
+   return "";
+}
 
 
