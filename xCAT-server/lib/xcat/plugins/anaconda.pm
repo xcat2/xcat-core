@@ -838,7 +838,7 @@ sub get_tmpl_file_name {
   my $genos=shift;
 
   if (-r   "$base/$profile.$os.$arch.tmpl") {
-    return  "base/$profile.$os.$arch.tmpl";     
+    return  "$base/$profile.$os.$arch.tmpl";     
   }
   elsif (-r "$base/$profile.$genos.$arch.tmpl") {
     return  "$base/$profile.$genos.$arch.tmpl";
