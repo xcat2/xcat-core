@@ -14,6 +14,7 @@ use xCAT::MsgUtils;
 use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
+use Fcntl ":flock";
 use xCAT::Client qw(submit_request);
 my $clientselect = new IO::Select;
 my $sslclients = 0; #THROTTLE
@@ -991,15 +992,24 @@ sub dispatch_request {
      my $numdests=scalar(@xcatdests);
      my $request_satisfied=0;
      foreach $xcatdest (@xcatdests) {
+        my $dlock;
         if ($xcatdest and thishostisnot($xcatdest)) {
+            mkpath("/var/lock/xcat/"); #For now, limit intra-xCAT requests to one at a time, to mitigate DB handle usage
+            open($dlock,">","/var/lock/xcat/dispatchto_$xcatdest");
+            flock($dlock,LOCK_EX);
             $ENV{XCATHOST} =  ($xcatdest =~ /:/ ? $xcatdest : $xcatdest.":3001" );
             $$progname.=": connection to ".$ENV{XCATHOST};
+            my $errstr;
             eval {
             undef $_->{'_xcatdest'};
             xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem"); 
             };
             if ($@) {
-            my $errstr=$@;
+             $errstr=$@;
+            }
+            unlink("/var/lock/xcat/dispatchto_$xcatdest");
+            flock($dlock,LOCK_UN);
+            if ($errstr) {
 	            if ($numdests == 1) {
                     dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server ($errstr)"],errorcode=>[1]}); 
 	                xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.": ".$errstr);
