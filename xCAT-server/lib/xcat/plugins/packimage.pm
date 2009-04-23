@@ -94,6 +94,10 @@ sub process_request {
        $callback->({error=>["$installroot/netboot/$osver/$arch/$profile/rootimg does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
        return;
     }
+
+   #some rpms like atftp mount the rootimg/proc to /proc, we need to make sure rootimg/proc is free of junk 
+   #before packaging the image
+   `umount $installroot/netboot/$osver/$arch/$profile/rootimg/proc`;
 	copybootscript($installroot, $osver, $arch, $profile, $callback);
    my $passtab = xCAT::Table->new('passwd');
    if ($passtab) {

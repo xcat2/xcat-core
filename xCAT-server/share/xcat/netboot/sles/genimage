@@ -119,7 +119,7 @@ unless ($onlyinitrd) {
 
    #this is for extra packages
    my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
-   my $pkgnames=get_extra_package_names();
+   my $extrapkgnames=get_extra_package_names();
 
 
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/etc";
@@ -141,7 +141,7 @@ unless ($onlyinitrd) {
    }
 
    #for extra packages
-   if ($pkgnames) {
+   if ($extrapkgnames) {
      if($osver_host == 11) {	#SLES11
         if(-e "$installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo") {
             system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo");
@@ -192,26 +192,35 @@ unless ($onlyinitrd) {
       exit 1;
    }
 
+   my $pkgnames;
    open($yumconfig,"<","$pkglist");
    while (<$yumconfig>) {
       chomp; 
       s/\s*#.*//;      #-- remove comments 
       next if /^\s*$/; #-- skip empty lines
-      $yumcmd .= $_ . " ";
+      $pkgnames .= $_ . " ";
    }
    close($yumconfig);
+   
 
-   #append extra package names to zypper command 
-   if ($pkgnames) {
-       $yumcmd .= " $pkgnames ";
-   }   
-
-   $yumcmd =~ s/ $/\n/;
-   my $rc = system($yumcmd);
+   #$yumcmd =~ s/ $/\n/;
+   #print "$yumcmd $pkgnames\n";
+   my $rc = system("$yumcmd $pkgnames");
    if ($rc) { 
       print "zypper invocation failed\n";
       exit 1;
    }
+
+   #add extra packages in the list
+   if ($extrapkgnames) {
+       #print "$yumcmd $extrapkgnames\n";
+       $rc = system("$yumcmd $extrapkgnames");
+       if ($rc) { 
+	   print "zypper invocation failed\n";
+	   exit 1;
+       }
+   }
+
    postscripts(); #run 'postscripts'
 }
 unlink "/tmp/genimage.$$.yum.conf";
@@ -230,8 +239,12 @@ if (($postinstall_filename) && (-x $postinstall_filename)) {
     }
 }
 
+#some rpms mounts the imageroot/proc on the /proc, need to release it, 
+#otherwise got kernal panic when installing 
+`umount $installroot/netboot/$osver/$arch/$profile/rootimg/proc`; 
 
 mkinitrd();
+
 
 sub getlibs {
 	my $file = shift;
