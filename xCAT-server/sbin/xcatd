@@ -357,7 +357,7 @@ if ($inet6support) {
           $req->{'_xcat_clienthost'}=gethostbyaddr($client,AF_INET);
           $req->{'_xcat_clientip'}=inet_ntoa($client);
           $req->{'_xcat_clientport'}=$sport;
-          if (defined($cmd_handlers{"findme"})) {
+          if (defined($cmd_handlers{"findme"}) and xCAT::Utils->nodeonmynet(inet_ntoa($client))) { #only discover from ips that appear to be on a managed network
             $req->{cacheonly}->[0] = 1;
             plugin_command($req,undef,\&build_response);
   	    if ($req->{cacheonly}->[0]) {

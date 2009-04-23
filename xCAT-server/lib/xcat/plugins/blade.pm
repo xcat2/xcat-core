@@ -2143,7 +2143,6 @@ sub process_request {
         last;
       }
     }
-    unless ($mac) { return };
 
     #Only refresh the the cache when the request permits and no useful answer
     if ($macmaptimestamp < (time() - 300)) { #after five minutes, invalidate cache
@@ -2158,7 +2157,19 @@ sub process_request {
          process_request(\%invreq,\&fillresps);
       }
     }
-    unless ($macmap{$mac}) { 
+    my $found=0;
+    if ($mac and $macmap{$mac}) { 
+        $found=1;
+    } else {
+        foreach (@{$request->{mac}}) {
+           /.*\|.*\|([\dABCDEFabcdef:]+)(\||$)/;
+           if ($1 and $macmap{$1}) {
+               $found=1;
+               last;
+           }
+        }
+    }
+    unless ($found) { 
       return 1; #failure
     }
     my $mactab = xCAT::Table->new('mac',-create=>1);

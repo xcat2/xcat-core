@@ -37,17 +37,20 @@ sub process_request {
      last;
    }
  }
- unless ($mac) {
-   return;
+ my $node;
+ my $firstpass=1;
+ if ($mac) {
+    $node = $macmap->find_mac($mac,$req->{cacheonly}->[0]);
+    $firstpass=0;
  }
- my $node = $macmap->find_mac($mac,$req->{cacheonly}->[0]);
- #if (not $node and $req->{checkallmacs}->[0]) {
- #   foreach (@{$req->{mac}}) {
- #      /.*\|.*\|([\dABCDEFabcdef:]+)(\||$)/;
- #      $node = $macmap->find_mac($1,$req->{cacheonly}->[0]);
- #      if ($node) { last; }
- #   }
- #}
+ if (not $node) { # and $req->{checkallmacs}->[0]) {
+    foreach (@{$req->{mac}}) {
+       /.*\|.*\|([\dABCDEFabcdef:]+)(\||$)/;
+       $node = $macmap->find_mac($1,$firstpass);
+       $firstpass=0;
+       if ($node) { last; }
+    }
+ }
     
  if ($node) {
   my $mactab = xCAT::Table->new('mac',-create=>1);
