@@ -2,6 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------
 package xCAT_plugin::AAsn;
+use strict;
 use xCAT::Table;
 
 use xCAT::Utils;
@@ -351,7 +352,7 @@ sub mountInstall
     {
 
         # update fstab to mount on reboot
-        $cmd = "grep $master:$installloc $installdir  /etc/fstab  ";
+        my $cmd = "grep $master:$installloc $installdir  /etc/fstab  ";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
@@ -393,7 +394,7 @@ sub setup_CONS
         $cmdref->{arg}->[0] = "-l";
         $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
         $cmdref->{svboot}->[0]  = "yes";
-
+        no strict  "refs";
         my $modname = "conserver";
         ${"xCAT_plugin::" . $modname . "::"}{process_request}
           ->($cmdref, \&xCAT::Client::handle_response);
@@ -443,7 +444,7 @@ sub setup_DHCP
     my $cmd;
 
     # run makedhcp
-    $XCATROOT = "/opt/xcat";    # default
+    my $XCATROOT = "/opt/xcat";    # default
 
     if ($ENV{'XCATROOT'})
     {
@@ -454,7 +455,7 @@ sub setup_DHCP
     $cmdref->{arg}->[0] = "-l";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
     $cmdref->{arg}->[0]     = "-n";
-
+    no strict  "refs";
     my $modname = "dhcp";
     ${"xCAT_plugin::" . $modname . "::"}{process_request}
       ->($cmdref, \&xCAT::Client::handle_response);
@@ -490,7 +491,7 @@ sub setup_FTP
 {
     my $rc = 0;
     my $cmd;
-    $XCATROOT = "/opt/xcat";    # default
+    my $XCATROOT = "/opt/xcat";    # default
 
     if ($ENV{'XCATROOT'})
     {
@@ -654,7 +655,7 @@ sub setup_NTPsn
         # create config file
         open(CFGFILE, ">$ntpcfg")
           or xCAT::MsgUtils->message('SE',
-                                  "Cannot open $configfile for NTP update. \n");
+                                  "Cannot open $ntpcfg for NTP update. \n");
         print CFGFILE "server ";
         print CFGFILE $master;
         print CFGFILE "\n";
@@ -694,7 +695,7 @@ sub setup_NTPmn
             # add server names
             open(CFGFILE, ">$ntpcfg")
               or xCAT::MsgUtils->message('SE',
-                                  "Cannot open $configfile for NTP update. \n");
+                                  "Cannot open $ntpcfg for NTP update. \n");
             my @servers = split ',', $ntpservers[0];
             foreach my $addr (@servers)
             {
@@ -868,7 +869,7 @@ sub setup_TFTP
     my $master;
     my $os;
     my $arch;
-    $XCATROOT = "/opt/xcat";         # default
+    my $XCATROOT = "/opt/xcat";         # default
 
     if ($ENV{'XCATROOT'})
     {
@@ -894,6 +895,7 @@ sub setup_TFTP
         xCAT::MsgUtils->message("S", "atftp is not installed");
         return 1;
     }
+    my $tftpdir;
     my $mountdirectory = "1";    # default to mount tftpboot dir
     if ($output[0] =~ "atftp")   # it is atftp
     {
@@ -908,7 +910,7 @@ sub setup_TFTP
         }
         $stab->close;
         # read tftpdir directory from database
-        my $tftpdir    = "/tftpboot";    # default
+        $tftpdir    = "/tftpboot";    # default
         my @tftpdir1 = xCAT::Utils->get_site_attribute("tftpdir");
         if (defined($tftpdir1[0]))
         {
@@ -942,7 +944,7 @@ sub setup_TFTP
             my $cmdref;
             use xCAT_plugin::mknb;
             for my $architecture ("ppc64","x86","x86_64") {
-                unless (-d "$::XCATROOT/share/xcat/netboot/$archictecture") {
+                unless (-d "$::XCATROOT/share/xcat/netboot/$architecture") {
                     next;
                 }
                 $cmdref->{command}->[0] = "mknb";
