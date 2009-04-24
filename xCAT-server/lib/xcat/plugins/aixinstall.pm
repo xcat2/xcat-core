@@ -3039,6 +3039,27 @@ sub updatespot {
 	# add resolv.conf to image if data is provided in site table
 	my $fileloc = "$spot_loc/lpp/bos/inst_root/etc";
 	my $rc = &mk_resolv_conf_file($callback, $fileloc);
+
+	# change the inst_root dir to "root system"
+    # the default is "bin bin" which will not work if the user
+    #   wants to use ssh as the remote shell for the nodes
+    my $inst_root_dir = "$spot_loc/lpp/bos/inst_root";
+    my $chcmd = "/usr/bin/chgrp system $inst_root_dir; /usr/bin/chown root $inst_root_dir";
+    if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Running: \'$chcmd\'\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+
+    my @result = xCAT::Utils->runcmd("$chcmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not change the group and owner for the inst_root directory.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
 	return 0;
 }
 
