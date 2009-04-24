@@ -4267,7 +4267,7 @@ sub doSNcopy
 
 			# running on the management node so
 			# copy the /etc/hosts file to the SN
-			my $rcpcmd = "xdcp $snkey /etc/hosts /etc 2>/dev/null";
+			my $rcpcmd = "xdcp $snkey /etc/hosts /etc";
 			if ($::VERBOSE) {
                 my $rsp;
                 push @{$rsp->{data}}, "Running: \'$rcpcmd\'\n";
@@ -4286,7 +4286,7 @@ sub doSNcopy
 			# 	runs on that SN
 
 			# get a list of the resources that are defined on the SN
-			my $cmd = qq~xdsh $snkey "/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null"~;
+			my $cmd = qq~xdsh $snkey "/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' '"~;
 
     		@nimresources = xCAT::Utils->runcmd("$cmd", -1);
     		if ($::RUNCMD_RC  != 0)
