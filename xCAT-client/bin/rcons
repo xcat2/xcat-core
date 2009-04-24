@@ -1,8 +1,8 @@
 #!/bin/sh
-CONSERVER=$2
 if [ $1 = -h  ]; then
     echo "rcons - remotely accesses the serial console of a node"
     echo "rcons <singlenode>"
+    echo "rcons <singlenode> [conserver] [-f]"
     echo "rcons [-h|--help|-v|--version]"
     exit 0
 fi
@@ -10,11 +10,16 @@ if [ $1 = -v  ]; then
     echo "Version 2.1"
     exit 0
 fi
-#if [ -z "$CONSERVER" ]; then
-#   CONSERVER=`nodels $1 nodehm.conserver`
-#if [ -z "$CONSERVER" ]; then
-#   CONSERVER=`nodels $1 nodehm.conserver`
-#fi
+
+if [ -n "$3" ] && [ "$3" = "-f" ]; then
+    FORCE=-f
+    CONSERVER=$2
+fi
+
+if [ -n "$2" ] && [ "$2" = "-f" ]; then
+    FORCE=-f
+fi
+
 if [ -z "$CONSERVER" ]; then
 	CONSERVER=$XCATHOST
 fi
@@ -32,5 +37,5 @@ if [ ! -f $HOME/.consolerc ]; then
 	echo "	sslcredentials $HOME/.xcat/client-cred.pem;" >> $HOME/.consolerc
 	echo '}' >> $HOME/.consolerc
 fi
-	
-exec console -f -M $CONSERVER $1
+
+exec console $FORCE -M $CONSERVER $1

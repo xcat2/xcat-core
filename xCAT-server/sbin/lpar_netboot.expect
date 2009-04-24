@@ -2187,7 +2187,7 @@ nc_msg "$PROGRAM Status: finished connecting to $hcp\n"
 #
 nc_msg "$PROGRAM Status: open port\n"
 
-if [ catch { spawn $CONSOLEBIN $name } rsconole_pid ] {
+if [ catch { spawn $CONSOLEBIN $name -f } rsconole_pid ] {
     send_user "Unable to spawn console connection to $hcp\n"
     exit 1
 }
