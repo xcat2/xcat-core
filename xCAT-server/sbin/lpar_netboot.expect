@@ -2233,7 +2233,7 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
     } else {
         set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
     }
-    set timeout 30
+    set timeout 120
     send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
 
     expect {
@@ -2296,11 +2296,12 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
 
 if { $list_disk == 1 } {
     nc_msg "$PROGRAM Status: Power on to SMS.\n"
-    set rc [catch {eval exec $BINPATH/chsysstate -r lpar -o on -b sms -m \"$manage\" -n \"$node\" -f \"$profile\"} msg]
+    set timeout 120
+    send -i $ssh_spawn_id "chsysstate -r lpar -o on -b sms -m \"$manage\" -n \"$node\" -f \"$profile\""
 
 } else {
     send_user "# Power on $NODENAME to Open Firmware.\n"
-    set timeout 60 
+    set timeout 120
     send -i $ssh_spawn_id "chsysstate -r lpar -o on -b of -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
 
     expect {
@@ -2549,7 +2550,7 @@ if { $noboot } { # Display information for all supported adapters
     } else {
         set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
     }
-    set timeout 30
+    set timeout 120
     send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
 
     expect {
