@@ -264,6 +264,8 @@ sub abbreviate_noderange {
     }
 
     foreach $group (keys %grouphash) {
+        #skip single node sized groups, these outliers frequently pasted into non-noderange capable contexts
+        if (scalar @{$grouphash{$group}} < 2) { next; }
         push @{$sizedgroups{scalar @{$grouphash{$group}}}},$group;
     }
     my $node;
