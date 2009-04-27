@@ -1191,6 +1191,7 @@ sub mknimimage
 			# may need to create new one
 			# all use the same dump res unless another is specified
 			$dump_name= $::image_name . "_dump";
+
 			# see if it's already defined
         	if (grep(/^$dump_name$/, @::nimresources)) {
 				my $rsp;
@@ -1507,6 +1508,7 @@ sub mk_lpp_source
             if ((grep(/^$::opt_s$/, @lppresources))) {
                 # if an lpp_source was provided then use it
                 return $::opt_s;
+
             }
         }
 
@@ -1984,6 +1986,7 @@ sub mk_resolv_conf
         	} else {
 
 				my $fileloc;
+
 				my $loc;
 				if ($::opt_l) {
 					$loc = "$::opt_l/resolv_conf/$resolv_conf_name";
@@ -2569,6 +2572,7 @@ sub get_nim_attr_val
 {
 
 	my $resname = shift;
+
 	my $attrname = shift;
 	my $callback = shift;
 	my $nimprime = shift;
@@ -3936,7 +3940,8 @@ sub bkupNIMresources
     my $resname = shift;
 
 	# create file name
-	my $bkfile = $bkdir . "/" . $resname . ".bk";
+	my $dir = dirname($bkdir);
+	my $bkfile = $dir . "/" . $resname . ".bk";
 
 	# remove the old file 
 	if (-e $bkfile) {
@@ -4151,32 +4156,48 @@ sub copyres
 	}
 
 	# if res is spot or lpp_source then
-    #   backup dir it first!
+    	#   backup dir it first!
 	my $bkdir;  # directory to backup
 	if ( $restype eq "lpp_source") {
 		$bkdir = $resloc;
-		my $bkfile = &bkupNIMresources($callback, $bkdir, $resname);
-		if (!defined($bkfile)) {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not archive $bkdir.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return 1;
+		# Ex. /install/nim/lpp_source/61D_lpp_source
+		my $dir = dirname($bkdir);
+		# ex. /install/nim/lpp_source
+		my $bkfile = $dir . "/" . $resname . ".bk";
+		if (!grep(/^$resname$/, @::resbacked)) {
+			$bkfile = &bkupNIMresources($callback, $bkdir, $resname);
+			if (!defined($bkfile)) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not archive $bkdir.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
+			}
+			push @::resbacked, $resname;
 		}
-		
+	
 		# copy the file to the SN
-		$cpcmd .= "xdcp $dest $bkfile $bkdir 2>/dev/null";
+		$cpcmd .= "xdcp $dest $bkfile $dir 2>/dev/null";
 	} elsif ($restype eq 'spot') {
 		$bkdir = dirname($resloc);
-		my $bkfile = &bkupNIMresources($callback, $bkdir, $resname);
-		if (!defined($bkfile)) {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not archive $bkdir.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return 1;
+		# ex. /install/nim/spot/61dimg
+
+		my $dir = dirname($bkdir);
+		# ex. /install/nim/spot
+
+		my $bkfile = $dir . "/" . $resname . ".bk";
+		if (!grep(/^$resname$/, @::resbacked) ){
+			my $bkfile = &bkupNIMresources($callback, $bkdir, $resname);
+			if (!defined($bkfile)) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not archive $bkdir.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
+			}
+			push @::resbacked, $resname;
 		}
 
 		# copy the file to the SN
-        $cpcmd .= "xdcp $dest $bkfile $bkdir 2>/dev/null";
+        $cpcmd .= "xdcp $dest $bkfile $dir 2>/dev/null";
 
 	} else {
 
@@ -4253,7 +4274,9 @@ sub doSNcopy
 	foreach my $snkey (keys %$sn) {
 		my @nodes = @{$sn->{$snkey}};
 		foreach my $n (@nodes) {
-			push (@{$SNosi{$snkey}}, $nodeosi{$n});
+			if (!grep (/^$nodeosi{$n}$/, @{$SNosi{$snkey}}) ) {
+				push (@{$SNosi{$snkey}}, $nodeosi{$n});
+			}
 		}
 	}
 
@@ -4261,13 +4284,17 @@ sub doSNcopy
 	#  For each SN
 	#	- copy whatever is needed to the SNs
 	#
+	
+	# keep track if spot/lpp_source has already been backed up
+	@::resbacked=();
+
 	my @nimresources;
 	foreach my $snkey (keys %$sn) {
 		if (!&is_me($snkey) ) {
 
 			# running on the management node so
 			# copy the /etc/hosts file to the SN
-			my $rcpcmd = "xdcp $snkey /etc/hosts /etc";
+			my $rcpcmd = "xdcp $snkey /etc/hosts /etc ";
 			if ($::VERBOSE) {
                 my $rsp;
                 push @{$rsp->{data}}, "Running: \'$rcpcmd\'\n";
@@ -4299,10 +4326,9 @@ sub doSNcopy
 
 			# for each image
 			foreach my $image (@{$SNosi{$snkey}}) {
-
 				# for each resource
 				foreach my $restype (keys (%{$imghash{$image}})) {
-					
+
 					my $nimtype=$imghash{$image}{'nimtype'};
 					if (($nimtype ne 'standalone')  && ($restype eq 'lpp_source') ) {
 						# don't copy lpp_source for diskless/dataless nodes
@@ -4335,7 +4361,8 @@ sub doSNcopy
 										my $rsp;
 										push @{$rsp->{data}}, "Copying NIM resources to the xCAT service nodes. This could take a while.";
 										xCAT::MsgUtils->message("I", $rsp, $callback);
-									#   }
+
+									  # }
 
 									if (&copyres($callback, $snkey, $restype, $resloc, $res, $nimprime) ) {  
 										# error
@@ -5264,11 +5291,23 @@ sub make_SN_resource
 			if (($imghash{$image}{$restype}) && (grep(/^$restype$/, @nimrestypes))) {
 
 				#  TODO see if it already exists on this SN
-				#   for now just skip this res if it's defined
-				# 	the force option my be a problem if res is allocated
-				# 	to other nodes
 				if (grep(/^$imghash{$image}{$restype}$/, @nimresources)) {
-					next;
+					# try to remove it - so spot etc can be updated!
+					if ($::VERBOSE) {
+						my $rsp;
+                		push @{$rsp->{data}}, "Removing old $imghash{$image}{$restype}.\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+					}
+
+					my $cmd = "nim -Fo remove $imghash{$image}{$restype}";
+					my $output = xCAT::Utils->runcmd("$cmd", -1);
+					if ($::RUNCMD_RC  != 0) {
+						my $rsp;
+						push @{$rsp->{data}}, "Could not remove the NIM resource definition \'$imghash{$image}{$restype}\'.\n";
+						push @{$rsp->{data}}, "$output";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+						next;
+					}
 				}
 
 				# if root, tmp, home, shared_home, dump, paging then
@@ -5288,7 +5327,14 @@ sub make_SN_resource
 
 					# restore the backup file - then remove it
 					my $bkname = $imghash{$image}{$restype} . ".bk";
-					my $restcmd = "cd $lochash{$imghash{$image}{$restype}}; restore -xvqf $bkname; rm $bkname";
+
+					my $resdir = $lochash{$imghash{$image}{$restype}};
+					# ex. /install/nim/lpp_source/61D_lpp_source
+
+					my $dir = dirname($resdir);
+                    # ex. /install/nim/lpp_source
+
+					my $restcmd = "mv $dir/$bkname $resdir; cd $resdir; restore -xvqf $bkname; rm $bkname";
 
 					my $output = xCAT::Utils->runcmd("$restcmd", -1);
 					if ($::RUNCMD_RC  != 0) {
@@ -5357,7 +5403,12 @@ sub make_SN_resource
 					chomp $resdir;
                     # ex. /install/nim/spot/612dskls
 
-                    my $restcmd = "cd $resdir; restore -xvqf $bkname; rm $bkname";
+					my $dir = dirname($resdir);
+					# ex. /install/nim/spot
+					my $restcmd = "mv $dir/$bkname $resdir; cd $resdir; restore -xvqf $bkname; rm $bkname";
+
+
+
 					my $output = xCAT::Utils->runcmd("$restcmd", -1);
 					if ($::RUNCMD_RC  != 0) {
 						my $rsp;
@@ -5539,7 +5590,7 @@ sub rmdsklsnode
 			next;
 		}
 
-		$cmd = "nim -o deallocate -a subclass=all $nodename";
+		$cmd = "nim -Fo deallocate -a subclass=all $nodename";
 
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
@@ -5555,7 +5606,7 @@ sub rmdsklsnode
 			next;
 		}
 
-		$cmd = "nim -o remove $nodename";
+		$cmd = "nim -Fo remove $nodename";
 
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
