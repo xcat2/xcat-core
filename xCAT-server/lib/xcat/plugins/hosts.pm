@@ -50,7 +50,10 @@ sub build_line {
     my $node=shift;
     my $domain=shift;
     my $othernames=shift;
-    my @o_names=split(/,| /, $othernames);
+    my @o_names=();
+    if (defined $othernames) {
+         @o_names=split(/,| /, $othernames);
+    }
     my $longname;
     foreach (@o_names) {
 	if (($_ eq $node) || ( $domain && ($_ eq "$node.$domain"))) {
@@ -87,7 +90,8 @@ sub process_request {
   # parse the options
   if ($req && $req->{arg}) {@ARGV = @{$req->{arg}};}
   else {  @ARGV = (); }
-  print "argv=@ARGV\n";
+
+# print "argv=@ARGV\n";
   if(!GetOptions(
       'h|help'  => \$HELP,
       'n'  => \$REMOVE,
