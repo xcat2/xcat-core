@@ -2408,6 +2408,9 @@ while { ! $done } {
             nc_msg "$PROGRAM Status: at ok prompt\n"
             set done 1
         }
+        -re "bumped" {
+            exp_continue
+        }
         timeout {
             send_user "$PROGRAM: Timeout; exiting\n"
             exit 1
