@@ -142,6 +142,15 @@ sub setupAIXsn
 		`logger -t xcat $msg`;
 	}
 
+	# check if /install/postscripts is in /etc/exports
+    if (&runcmd("/bin/cat /etc/exports | grep '/install/postscripts ' >/dev/null 2>&1")  != 0) {
+        # if not add it and make sure it is exported
+        if (&runcmd("echo '/install/postscripts -ro' >> /etc/exports; exportfs -a") !=0 ) {
+            $msg = "$::sdate servicenode: Could not update the /etc/exports file.\n";
+            `logger -t xcat $msg`;
+        }
+    }
+
 	# make sure we don't have xCATMN file 
 	if (-f "/etc/xCATMN") {
 		if (&runcmd("rm  /etc/xCATMN") != 0 ) {
