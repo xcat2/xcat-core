@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-require 'open3.pl';
+#require 'open3.pl';
 
 #This script is a modified version of mtime to be used as part of a sensor in the
 #software managemnent system. This PERL script goes and finds the latest changed file via mtime
