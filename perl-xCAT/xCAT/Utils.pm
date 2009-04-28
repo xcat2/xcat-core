@@ -3014,6 +3014,47 @@ sub getSNList
 
 #-------------------------------------------------------------------------------
 
+=head3    validate_ip
+    Validate list of IPs
+    Arguments:
+        List of IPs
+    Returns:
+        1 - Invalid IP address in the list
+        0 - IP addresses are all valid
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        if (xCAT::Utils->validate_ip($IP)) {}
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub validate_ip
+{
+    my ($class, @IPs) = @_;
+    foreach (@IPs) {
+        my $ip = $_;
+        ###################################
+        # Length is 4 for IPv4 addresses
+        ###################################
+        my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+        if ( scalar(@octets) != 4 ) {
+            return( [1,"Invalid IP address1: $ip"] );
+        }
+        foreach my $octet ( @octets ) {
+            if (( $octet < 0 ) or ( $octet > 255 )) {
+                return( [1,"Invalid IP address2: $ip"] );
+            }
+        }
+    }
+    return([0]);
+}
+
+#-------------------------------------------------------------------------------
+
 =head3    isMounted
     Checks if the input directory is already mounted 
     Arguments:

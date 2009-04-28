@@ -7,7 +7,6 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 
 
-
 ##########################################################################
 # Parse the command line for options and operands 
 ##########################################################################
@@ -78,17 +77,15 @@ sub parse_args {
         my @network;
         my $client_ip;
         my $gateway;
-        my $service_name;
-        my $server_name;
-        my $master_name;
+        my $server;
         my $server_ip;
-        my $in_hirachical;
+        my %server_nethash;
 
-        my %nethash   = xCAT::DBobjUtils->getNetwkInfo( $node );
+        my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( $node );
         #####################################
         # Network attributes undefined
         #####################################
-        if ( !%nethash ) {
+        if ( !%client_nethash ) {
             return( [RC_ERROR,"Cannot get network information for $node"] );
         }
 
@@ -104,58 +101,63 @@ sub parse_args {
             }
         }
 
+        ####################################
+        # Set server IP
+        ####################################
         if ( exists($opt{S}) ) {
             push @network, $_;
         } else {
-            ####################################
-            # Read server name from noderes 
-            # table.  Either service node in 
-            # hirachical mode or management node
-            # in non-hirachical mode
-            ####################################
-            my $noderestab=xCAT::Table->new('noderes');
-            unless ( $noderestab ) {
-                return( usage() );
-            }
-            $service_name = $noderestab->getNodeAttribs(@$node[0], ['servicenode']);
-            $server_name = $service_name->{'servicenode'};
-            $in_hirachical = 1;
-            if ( !$server_name ) {
-                $master_name = $noderestab->getNodeAttribs(@$node[0], ['xcatmaster']);
-                $server_name = $master_name->{'xcatmaster'};
-                $in_hirachical = 0;
-            }
-            
-            if ( $server_name ) {
-                $server_ip = inet_ntoa(inet_aton($server_name));
-                chomp $server_ip;
+            $server = xCAT::Utils->get_ServiceNode( $node, "xcat", "MN" );
+            foreach my $key ( keys %$server ) {
+                my $valid_ip = xCAT::Utils->validate_ip( $key );
+                if ( $valid_ip ) {
+                    ###################################################
+                    # Service node is returned as hostname, Convert 
+                    # hostname to IP  
+                    ####################################
+                    $server_ip = inet_ntoa(inet_aton($key));
+                    chomp $server_ip;
+                } else {
+                    ####################################
+                    # Service node is returned as an IP
+                    # set the IP as server 
+                    ####################################
+                    $server_ip = $key;
+                }
+
                 if ( $server_ip ) {
-                    $opt{S} = $server_ip;
+                    $opt{S} = $server_ip; 
                     push @network, $server_ip;
                 }
+                last;
             }
-            $noderestab->close;
+        }
+        ####################################################################
+        # Fulfill in the server network information for gateway resolving
+        ####################################################################
+        if ( exists($opt{S}) ) {
+            $server = gethostbyaddr( inet_aton($opt{S}), AF_INET );
+            if ( $server ) {
+                %server_nethash = xCAT::DBobjUtils->getNetwkInfo( [$server] );
+            }
         }
 
         if ( exists($opt{G}) ) {
             push @network, $_;
-        } elsif ( $in_hirachical ) {
+        } elsif ( $client_nethash{@$node[0]}{net} eq $server_nethash{$server}{net} ) {
             ####################################
-            # In hirachical mode, set gateway to
-            # service node if service node and
-            # compute node are in the same net.  
+            # Set gateway to service node if 
+            # service node and client node are 
+            # in the same net
             ####################################
-            my %service_nethash   = xCAT::DBobjUtils->getNetwkInfo( [$server_name] );
-            if ( $nethash{@$node[0]}{net}==$service_nethash{$server_name}{net} ){
-                $gateway = $server_ip;
-                $opt{G} = $gateway;
-                push @network, $gateway;
-            }
+            $gateway = $opt{S};
+            $opt{G} = $gateway;
+            push @network, $gateway;
         } else {
             ####################################
             # Set gateway in networks table
             ####################################
-            $gateway = $nethash{@$node[0]}{gateway};
+            $gateway = $client_nethash{@$node[0]}{gateway};
             if ( $gateway ) {
                 $opt{G} = $gateway;
                 push @network, $gateway;
@@ -166,13 +168,13 @@ sub parse_args {
             if ( scalar(@network) != 3 ) {
                 return( usage() );
             }
-            my $result = validate_ip( $opt{C}, $opt{G}, $opt{S} );
+            my $result = xCAT::Utils->validate_ip( $opt{C}, $opt{G}, $opt{S} );
             if ( @$result[0] ) {
                 return(usage( @$result[1] ));
             }
         }
     } elsif ( exists($opt{S}) || exists($opt{G}) || exists($opt{C}) ) {
-        return(usage( "Option '-D' is required for ping test\n" ));
+        return( [RC_ERROR,"Option '-D' is required for ping test\n"] );
     }
     ####################################
     # Set method to invoke 
@@ -180,33 +182,6 @@ sub parse_args {
     $request->{method} = $cmd; 
     return( \%opt );
 }
-
-
-
-##########################################################################
-# Validate list of IPs
-##########################################################################
-sub validate_ip {
-
-    foreach (@_) {
-        my $ip = $_;
-
-        ###################################
-        # Length is 4 for IPv4 addresses
-        ###################################
-        my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-        if ( scalar(@octets) != 4 ) {
-            return( [1,"Invalid IP address1: $ip"] );
-        }
-        foreach my $octet ( @octets ) {
-            if (( $octet < 0 ) or ( $octet > 255 )) {
-                return( [1,"Invalid IP address2: $ip"] );
-            }
-        }
-    }
-    return([0]);
-}
-
 
 
 ##########################################################################
