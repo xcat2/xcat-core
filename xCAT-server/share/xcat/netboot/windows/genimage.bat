@@ -35,6 +35,7 @@ bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%
 
 "C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" /mountrw c:\WinPE_%SUFFIX%\pxe\Boot\winpe_%SUFFIX%.wim 1 c:\WinPE_%SUFFIX%\rootfs
 copy startnet.cmd c:\WinPE_%SUFFIX%\rootfs\Windows\system32
+copy "C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\pxeboot.n12 c:\WinPE_%SUFFIX%\pxe\Boot\pxeboot.0
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\bootmgr.exe c:\WinPE_%SUFFIX%\pxe\
 for /r c:\drivers %%d in (*.inf) do "C:\Program Files\Windows AIK\Tools\PETools\peimg.exe" /inf=%%d c:\WinPE_%SUFFIX%\rootfs
