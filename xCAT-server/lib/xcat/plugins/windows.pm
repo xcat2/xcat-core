@@ -169,7 +169,7 @@ sub applyimagescript {
     echo assign >> x:/xcat/diskprep.prt
     if exist i:/images/$arch/$profile.prt copy i:/images/$arch/$profile.prt x:/xcat/diskprep.prt
     diskpart /s x:/xcat/diskprep.prt
-    x:/xcat/imagex /apply i:/images/$arch/$profile.wim 1 c:
+    x:/windows/system32/imagex /apply i:/images/$arch/$profile.wim 1 c:
     IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64
     IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64
     IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86
