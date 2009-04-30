@@ -1,0 +1,32 @@
+=head1 NAME
+
+B<makeknownhosts> - Make a known_hosts file under $ROOTHOME/.ssh for input noderange.
+
+=head1 SYNOPSIS
+
+B<makeknownhosts> [I<noderange>]
+
+B<makeknownhosts> {B<-h>|B<--help>}
+
+=head1 DESCRIPTION
+
+B<makeknownhosts> builds a known_hosts file in the $ROOTHOME/.ssh directory for all nodes from the input noderange.
+This will avoid having ssh give a warning when nodes are automatically added to the known_hosts file.   This file should be distributed using xdcp to all the nodes,if you want node to node communication not to display the warning. 
+
+=head1 OPTIONS
+
+=over 6
+
+
+=head1 EXAMPLES
+
+=over 2
+
+=item *
+
+makeknownhosts compute
+
+=back
+
+=head1 SEE ALSO 
+
