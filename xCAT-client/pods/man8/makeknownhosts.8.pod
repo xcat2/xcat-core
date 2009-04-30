@@ -17,6 +17,7 @@ This will avoid having ssh give a warning when nodes are automatically added to 
 
 =over 6
 
+=back
 
 =head1 EXAMPLES
 
@@ -28,5 +29,4 @@ makeknownhosts compute
 
 =back
 
-=head1 SEE ALSO 
 
