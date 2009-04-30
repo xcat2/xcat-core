@@ -201,7 +201,7 @@ sub add_known_host
     my ($node, $callback) = @_;
     my $cmd;
     my $line;
-    my $ip_address;
+    my @ip_address;
     my $home        = xCAT::Utils->getHomeDir("root");
     my $known_hosts = "$home/.ssh/known_hosts";
 
@@ -211,36 +211,55 @@ sub add_known_host
     my $addrtype;
     my $length;
     my @addrs;
-    if (($hostname, $aliases, $addrtype, $length, @addrs) =
-        gethostbyname($node))
-    {
-        $ip_address = inet_ntoa($addrs[0]);
-    }
+
+    # get the key
     $cmd = "cat $hostkey";
     my @output = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Could $cmd, cannot create known_hosts";
+        $rsp->{data}->[0] = "$cmd failed, cannot build known_hosts file";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
     }
-    if (defined $hostname) {
-      chop($output[0]);
-      $line = "\"";
-      $line .= "$hostname,$ip_address ";
-      $line .= $output[0];
-      $line .= "\"";
-      $cmd = "echo  $line >> $known_hosts";
-      xCAT::Utils->runcmd($cmd, 0);
+    chop($output[0]);
+    my $ip_address = "";
+    if (($hostname, $aliases, $addrtype, $length, @addrs) =
+        gethostbyname($node))
+    {
+        foreach my $ipaddr (@addrs)
+        {
+            $ip_address .= inet_ntoa($ipaddr);
+            $ip_address .= ",";
+        }
+    }
+    chop($ip_address);
+    my @newaliaslist = split (/ /,$aliases);
 
-      if ($::RUNCMD_RC != 0)
-      {
-        my $rsp = {};
-        $rsp->{data}->[0] = "$cmd failed, cannot create known_hosts";
-        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-        return 1;
-      }
+    my $aliaslist="";
+    foreach my $entry (@newaliaslist) {
+        $aliaslist .= "$entry,";
+    }
+    
+    if (defined $hostname)
+    {
+        $line = "\"";
+        $line .= "$hostname,";
+        $line .= "$aliaslist";
+        $line .= "$ip_address";
+        $line .= " ";
+        $line .= $output[0];
+        $line .= "\"";
+        $cmd = "echo  $line >> $known_hosts";
+        xCAT::Utils->runcmd($cmd, 0);
+
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "$cmd failed, cannot create known_hosts";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return 1;
+        }
     }
     return 0;
 }
