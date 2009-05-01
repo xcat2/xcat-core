@@ -1191,7 +1191,6 @@ sub mknimimage
 			# may need to create new one
 			# all use the same dump res unless another is specified
 			$dump_name= $::image_name . "_dump";
-
 			# see if it's already defined
         	if (grep(/^$dump_name$/, @::nimresources)) {
 				my $rsp;
@@ -1986,7 +1985,6 @@ sub mk_resolv_conf
         	} else {
 
 				my $fileloc;
-
 				my $loc;
 				if ($::opt_l) {
 					$loc = "$::opt_l/resolv_conf/$resolv_conf_name";
@@ -2572,7 +2570,6 @@ sub get_nim_attr_val
 {
 
 	my $resname = shift;
-
 	my $attrname = shift;
 	my $callback = shift;
 	my $nimprime = shift;
@@ -4140,11 +4137,11 @@ sub copyres
         }
     }
 
-	if ($::VERBOSE) {
-        my $rsp;
-        push @{$rsp->{data}}, "Space available on $dest=$free_space, space needed=$needspace, amount of space that will be added is \'$addsize\'\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
+#	if ($::VERBOSE) {
+#        my $rsp;
+#        push @{$rsp->{data}}, "Space available on $dest=$free_space, space needed=$needspace, amount of space that will be added is \'$addsize\'\n";
+#        xCAT::MsgUtils->message("I", $rsp, $callback);
+#    }
 
 	# do copy from NIM primary
 	my $cpcmd;
@@ -4156,7 +4153,7 @@ sub copyres
 	}
 
 	# if res is spot or lpp_source then
-    	#   backup dir it first!
+    #   backup dir it first!
 	my $bkdir;  # directory to backup
 	if ( $restype eq "lpp_source") {
 		$bkdir = $resloc;
@@ -4186,7 +4183,7 @@ sub copyres
 
 		my $bkfile = $dir . "/" . $resname . ".bk";
 		if (!grep(/^$resname$/, @::resbacked) ){
-			my $bkfile = &bkupNIMresources($callback, $bkdir, $resname);
+			$bkfile = &bkupNIMresources($callback, $bkdir, $resname);
 			if (!defined($bkfile)) {
 				my $rsp;
 				push @{$rsp->{data}}, "Could not archive $bkdir.\n";
@@ -4207,6 +4204,12 @@ sub copyres
 		my $dir = dirname($resloc);
 		$cpcmd .= "xdcp $dest $resloc $dir 2>/dev/null";
 	}
+
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Copying NIM resource to service node. Running command \'$cpcmd\'.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
 
 	$output = xCAT::Utils->runcmd("$cpcmd",-1);
 	if ($::RUNCMD_RC  != 0) {
@@ -4358,11 +4361,12 @@ sub doSNcopy
 									my $resloc = $lochash{$res};
 
 									#   if ($::VERBOSE) {
+									if (0) {
 										my $rsp;
-										push @{$rsp->{data}}, "Copying NIM resources to the xCAT service nodes. This could take a while.";
+										push @{$rsp->{data}}, "Copying NIM resources to the xCAT $snkey service node. This could take a while.";
 										xCAT::MsgUtils->message("I", $rsp, $callback);
 
-									  # }
+									   }
 
 									if (&copyres($callback, $snkey, $restype, $resloc, $res, $nimprime) ) {  
 										# error
@@ -5290,23 +5294,47 @@ sub make_SN_resource
 			# if a valid NIM type and a value is set
 			if (($imghash{$image}{$restype}) && (grep(/^$restype$/, @nimrestypes))) {
 
-				#  TODO see if it already exists on this SN
+				#  see if it already exists on this SN
 				if (grep(/^$imghash{$image}{$restype}$/, @nimresources)) {
-					# try to remove it - so spot etc can be updated!
-					if ($::VERBOSE) {
-						my $rsp;
-                		push @{$rsp->{data}}, "Removing old $imghash{$image}{$restype}.\n";
-						xCAT::MsgUtils->message("I", $rsp, $callback);
-					}
-
-					my $cmd = "nim -Fo remove $imghash{$image}{$restype}";
-					my $output = xCAT::Utils->runcmd("$cmd", -1);
+					# is it allocated?
+					my $cmd = "/usr/sbin/lsnim -l $imghash{$image}{$restype} 2>/dev/null";
+					my @result = xCAT::Utils->runcmd("$cmd", -1);
 					if ($::RUNCMD_RC  != 0) {
 						my $rsp;
-						push @{$rsp->{data}}, "Could not remove the NIM resource definition \'$imghash{$image}{$restype}\'.\n";
-						push @{$rsp->{data}}, "$output";
+						push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
 						xCAT::MsgUtils->message("E", $rsp, $callback);
 						next;
+					}
+
+					my $alloc_count;
+					foreach (@result){
+						my ($attr,$value) = split('=');
+						chomp $attr;
+						$attr =~ s/\s*//g;  # remove blanks
+						chomp $value;
+						$value =~ s/^\s*//;
+						if ($attr eq "alloc_count") {
+							$alloc_count = $value;
+							last;
+						}
+					}
+
+					if ( defined($alloc_count) && ($alloc_count != 0) ){
+						my $rsp;
+						push @{$rsp->{data}}, "The resource named \'$imghash{$image}{$restype}\' is currently allocated. It will not be recreated.\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+						next;
+					} else {
+						# it's not allocated so remove and recreate
+						my $cmd = "nim -Fo remove $imghash{$image}{$restype}";
+						my $output = xCAT::Utils->runcmd("$cmd", -1);
+						if ($::RUNCMD_RC  != 0) {
+							my $rsp;
+							push @{$rsp->{data}}, "Could not remove the NIM resource definition \'$imghash{$image}{$restype}\'.\n";
+							push @{$rsp->{data}}, "$output";
+							xCAT::MsgUtils->message("E", $rsp, $callback);
+							next;
+						}
 					}
 				}
 
@@ -5335,6 +5363,12 @@ sub make_SN_resource
                     # ex. /install/nim/lpp_source
 
 					my $restcmd = "mv $dir/$bkname $resdir; cd $resdir; restore -xvqf $bkname; rm $bkname";
+
+					if ($::VERBOSE) {
+						my $rsp;
+						push @{$rsp->{data}}, "Restoring $bkname on $SNname. Running command \'$restcmd\'.\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+					}
 
 					my $output = xCAT::Utils->runcmd("$restcmd", -1);
 					if ($::RUNCMD_RC  != 0) {
@@ -5406,8 +5440,12 @@ sub make_SN_resource
 					my $dir = dirname($resdir);
 					# ex. /install/nim/spot
 					my $restcmd = "mv $dir/$bkname $resdir; cd $resdir; restore -xvqf $bkname; rm $bkname";
-
-
+					if ($::VERBOSE) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Restoring $bkname on $SNname. Run
+ning command \'$restcmd\'.\n";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
 
 					my $output = xCAT::Utils->runcmd("$restcmd", -1);
 					if ($::RUNCMD_RC  != 0) {
