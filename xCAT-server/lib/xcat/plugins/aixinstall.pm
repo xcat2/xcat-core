@@ -361,7 +361,7 @@ sub process_request
 	}
 	elsif ($command eq "rmdsklsnode")
 	{
-		($ret, $msg) = &rmdsklsnode($callback);
+		($ret, $msg) = &rmdsklsnode($callback,$nodes);
 	} 
 	elsif ($command eq "nimnodeset")
 	{
@@ -668,6 +668,7 @@ ll~;
                         $cmdargs{$restype} = $resname;
                     }
                 }
+
             }
         }
 
@@ -4205,12 +4206,6 @@ sub copyres
 		$cpcmd .= "xdcp $dest $resloc $dir 2>/dev/null";
 	}
 
-	if ($::VERBOSE) {
-        my $rsp;
-        push @{$rsp->{data}}, "Copying NIM resource to service node. Running command \'$cpcmd\'.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
-
 	$output = xCAT::Utils->runcmd("$cpcmd",-1);
 	if ($::RUNCMD_RC  != 0) {
 		my $rsp;
@@ -4218,6 +4213,12 @@ sub copyres
 		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
+
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Copying NIM resource to service node. Running command \'$cpcmd\'.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
 
 	return 0;    
 }
@@ -4297,13 +4298,12 @@ sub doSNcopy
 
 			# running on the management node so
 			# copy the /etc/hosts file to the SN
-			my $rcpcmd = "xdcp $snkey /etc/hosts /etc ";
 			if ($::VERBOSE) {
                 my $rsp;
-                push @{$rsp->{data}}, "Running: \'$rcpcmd\'\n";
+                push @{$rsp->{data}}, "Running: \'xdcp $snkey /etc/hosts /etc\'\n";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
-
+			my $rcpcmd = "xdcp $snkey /etc/hosts /etc ";
 			my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
 			if ($::RUNCMD_RC  != 0) {
 				my $rsp;
@@ -5361,15 +5361,12 @@ sub make_SN_resource
 
 					my $dir = dirname($resdir);
                     # ex. /install/nim/lpp_source
-
-					my $restcmd = "mv $dir/$bkname $resdir; cd $resdir; restore -xvqf $bkname; rm $bkname";
-
 					if ($::VERBOSE) {
 						my $rsp;
-						push @{$rsp->{data}}, "Restoring $bkname on $SNname. Running command \'$restcmd\'.\n";
+						push @{$rsp->{data}}, "Restoring $bkname on $SNname. Running command \'mv $dir/$bkname $resdir/$bkname; cd $resdir; restore -xvqf $bkname; rm $bkname\'.\n";
 						xCAT::MsgUtils->message("I", $rsp, $callback);
 					}
-
+					my $restcmd = "mv $dir/$bkname $resdir/$bkname; cd $resdir; restore -xvqf $bkname; rm $bkname";
 					my $output = xCAT::Utils->runcmd("$restcmd", -1);
 					if ($::RUNCMD_RC  != 0) {
 						my $rsp;
@@ -5439,13 +5436,14 @@ sub make_SN_resource
 
 					my $dir = dirname($resdir);
 					# ex. /install/nim/spot
-					my $restcmd = "mv $dir/$bkname $resdir; cd $resdir; restore -xvqf $bkname; rm $bkname";
+
 					if ($::VERBOSE) {
                         my $rsp;
-                        push @{$rsp->{data}}, "Restoring $bkname on $SNname. Run
-ning command \'$restcmd\'.\n";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
+                        push @{$rsp->{data}}, "Restoring $bkname on $SNname. Running command \'mv $dir/$bkname $resdir/$bkname; cd $resdir; restore -xvqf $bkname; rm $bkname\'\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+					}
+						
+					my $restcmd = "mv $dir/$bkname $resdir/$bkname; cd $resdir; restore -xvqf $bkname; rm $bkname";
 
 					my $output = xCAT::Utils->runcmd("$restcmd", -1);
 					if ($::RUNCMD_RC  != 0) {
@@ -5536,7 +5534,7 @@ sub prermdsklsnode
 
 =head3   rmdsklsnode
 
-        Support for the mkdsklsnode command.
+        Support for the rmdsklsnode command.
 
 		Remove NIM diskless client definitions.
 
@@ -5553,6 +5551,8 @@ sub prermdsklsnode
 sub rmdsklsnode
 {
 	my $callback = shift;
+	my $nodes = shift;
+    my @nodelist = @$nodes;
 
 	# To-Do
     # some subroutines require a global callback var
@@ -5563,12 +5563,17 @@ sub rmdsklsnode
 	my $Sname = &myxCATname();
 	chomp $Sname;
 
+if (0) {
 	if (defined(@{$::args})) {
         @ARGV = @{$::args};
     } else {
         &rmdsklsnode_usage($callback);
         return 0;
     }
+}
+
+
+
 
     # parse the options
     if(!GetOptions(
@@ -5582,6 +5587,7 @@ sub rmdsklsnode
         return 1;
     }
 
+if (0) {
     my $a = shift @ARGV;
 
 	# need a node range
@@ -5590,7 +5596,13 @@ sub rmdsklsnode
         &rmdsklsnode_usage($callback);
         return 1;
     }
-    my @nodelist = &noderange($a, 0);
+
+    #my @nodelist = &noderange($a, 0);
+
+}
+
+
+
 	if (!defined(@nodelist) ) {
 		# error - must have list of nodes
 		&rmdsklsnode_usage($callback);
@@ -5611,7 +5623,7 @@ sub rmdsklsnode
 		}
 
 		# nim -Fo reset c75m5ihp05_53Lcosi
-		my $cmd = "nim -Fo reset $nodename";
+		my $cmd = "nim -Fo reset $nodename  >/dev/null 2>&1";
 		my $output;
 
     	$output = xCAT::Utils->runcmd("$cmd", -1);
@@ -5628,7 +5640,7 @@ sub rmdsklsnode
 			next;
 		}
 
-		$cmd = "nim -Fo deallocate -a subclass=all $nodename";
+		$cmd = "nim -Fo deallocate -a subclass=all $nodename  >/dev/null 2>&1";
 
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
@@ -5644,7 +5656,7 @@ sub rmdsklsnode
 			next;
 		}
 
-		$cmd = "nim -Fo remove $nodename";
+		$cmd = "nim -Fo remove $nodename  >/dev/null 2>&1";
 
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
