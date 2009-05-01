@@ -13,7 +13,7 @@ B<xcatconfig> {B<-h>|B<--help>}
 
 =head1 DESCRIPTION
 
-B<xcatconfig> During the install of the Management Node, it will generate the .ssh keys for root and the ssh hostkeys that will be shared by the node. It will generate the certificates used by the daemon and initialize the site table, and start the xcatd. 
+B<xcatconfig> During the install of the Management Node, it will generate the .ssh keys for root and the ssh hostkeys that will be shared by the nodes. It will generate the certificates used by the daemon and initialize the site table, and start the xcatd. 
  
 =head1 OPTIONS
 
