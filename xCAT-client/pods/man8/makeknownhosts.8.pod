@@ -11,10 +11,9 @@ B<makeknownhosts> {B<-h>|B<--help>}
 =head1 DESCRIPTION
 
 B<makeknownhosts> builds a known_hosts file in the $ROOTHOME/.ssh directory for all nodes from the input noderange. The known_hosts file is built from the 
-shared ssh host key that xCAT distributes to the nodes. To build the key for a
-node, you are only required to have the node in the database and name resolution
- working for the node. You do not have to be able to access the node. 
-Having this file will avoid the ssh warning when nodes are automatically added to the known_hosts file.   Th file should be distributed using xdcp to all the nodes, if you want node to node communication not to display the warning. 
+shared ssh host key that xCAT distributes to the nodes.
+To build the key for a node, you are only required to have the node in the database and name resolution working for the node. You do not have to be able to access the node. 
+Having this file will avoid the ssh warning when nodes are automatically added to the known_hosts file.   The file should be distributed using xdcp to all the nodes, if you want node to node communication not to display the warning. 
 
 =head1 OPTIONS
 
