@@ -22,7 +22,7 @@ B<xcatconfig> During the install of the Management Node, it will generate the .s
 =item B<-f> I<force>
 
 The force option can be used after the install to reinitialize the Management Node. This will regenerate keys, credential and reinititialize the site table. This option should be used, if keys or credentials become corrupt or lost. 
-Additonal action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be stopped and started to pick up the new credentials, rspconfig needs to be rerun to distribute the new keys to the MM. 
+Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be stopped and started to pick up the new credentials, rspconfig needs to be rerun to distribute the new keys to the MM. If nodes are reinstalled, then you will need to remove their entries from the known_hosts files on the managment node before using ssh, xdsh, xdcp. 
 
 =back
 
