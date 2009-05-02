@@ -211,7 +211,7 @@ if ($::osname eq 'Linux')
 }    # - some Linux-only config
 
 #
-# Generate ssh keys
+# Generate ssh host keys
 #
 
 #  create /etc/xcat/hostkeys and /install/postscripts/hostkeys
@@ -235,8 +235,53 @@ if (!-d "/etc/xcat/hostkeys")               # directory for public/private keys
                             "Could not create /etc/xcat/hostkeys directory.\n");
     }
 }
+#
+# move old hostkeys keys if they exist in /install, to the 
+# new directory /etc/xcat/hostkeys and remove private keys
+if (-f "/install/postscripts/hostkeys/ssh_host_key")
+{
 
-if ($::FORCE)
+    # copy all keys to /etc/xcat/hostkeys directory
+    my $cmd = "/bin/cp -p /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.";
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+    }
+
+    # remove private keys from install dir, leave the public keys
+    if (-f "/install/postscripts/hostkeys/ssh_host_dsa_key")
+    {
+        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+        }
+    }
+    if (-f "/install/postscripts/hostkeys/ssh_host_key")
+    {
+        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_key";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+        }
+    }
+    if (-f "/install/postscripts/hostkeys/ssh_host_rsa_key")
+    {
+        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+        }
+    }
+}
+
+# if hostkey does not exist or force option, regenerate
+my $hostkey = "/install/postscripts/hostkeys/ssh_host_rsa_key.pub";
+if ((!-r $hostkey) || $::FORCE)
 {
 
     # remove the old keys
@@ -305,54 +350,12 @@ if ($::FORCE)
     }
 }
 
-#
-# move old keys if they exist, to the new directory and remove private keys
-if (-f "/install/postscripts/hostkeys/ssh_host_key")
-{
-
-    # copy all keys to /etc/xcat/hostkeys directory
-    my $cmd = "/bin/cp -p /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message('E', "$cmd not successful.\n");
-    }
-
-    # remove private keys from install dir
-    if (-f "/install/postscripts/hostkeys/ssh_host_dsa_key")
-    {
-        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
-        }
-    }
-    if (-f "/install/postscripts/hostkeys/ssh_host_key")
-    {
-        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_key";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
-        }
-    }
-    if (-f "/install/postscripts/hostkeys/ssh_host_rsa_key")
-    {
-        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
-        }
-    }
-}
 
 #
 # move old directories if they exist
 if (-d "/install/postscripts/.ssh")
 {
-    my $cmd    = "/bin/mv /install/postscripts/.ssh/* /install/postscripts/_ssh/.";
+    my $cmd = "/bin/mv /install/postscripts/.ssh/* /install/postscripts/_ssh/.";
     my $outref = xCAT::Utils->runcmd("$cmd", -1);
     my $cmd    = "/bin/rmdir /install/postscripts/.ssh";
     my $outref = xCAT::Utils->runcmd("$cmd", -1);
@@ -374,7 +377,8 @@ if (-d "/install/postscripts/.ssh")
 }
 if (-d "/install/postscripts/.xcat")
 {
-    my $cmd = "/bin/mv /install/postscripts/.xcat/* /install/postscripts/_xcat/.";
+    my $cmd =
+      "/bin/mv /install/postscripts/.xcat/* /install/postscripts/_xcat/.";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -383,7 +387,7 @@ if (-d "/install/postscripts/.xcat")
             "Could not move /install/postscripts/.xcat directory to /install/postscripts/_xcat.\n"
             );
     }
-    my $cmd    = "/bin/rmdir /install/postscripts/.xcat";
+    my $cmd = "/bin/rmdir /install/postscripts/.xcat";
     my $outref = xCAT::Utils->runcmd("$cmd", -1);
 }
 
@@ -576,49 +580,60 @@ if (!-d "/var/log/consoles")
 
 if ($::osname eq 'AIX')
 {
-    if(!-f "/usr/sbin/conserver")
+    if (!-f "/usr/sbin/conserver")
     {
-	my $cmd = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver";
-	my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        my $cmd = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.\n");
+            xCAT::MsgUtils->message(
+                'E',
+                "Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.\n"
+                );
         }
         else
         {
-            xCAT::MsgUtils->message('I', "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.\n");
+            xCAT::MsgUtils->message('I',
+                  "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.\n");
         }
     }
-    if(!-f "/usr/bin/console")
+    if (!-f "/usr/bin/console")
     {
-	$cmd = "ln -sf /opt/freeware/bin/console /usr/bin/console";
-	$outref = xCAT::Utils->runcmd("$cmd", 0);
+        $cmd = "ln -sf /opt/freeware/bin/console /usr/bin/console";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not ln -sf /opt/freeware/bin/console /usr/bin/console.\n");
+            xCAT::MsgUtils->message(
+                'E',
+                "Could not ln -sf /opt/freeware/bin/console /usr/bin/console.\n"
+                );
         }
         else
         {
-            xCAT::MsgUtils->message('I', "ln -sf /opt/freeware/bin/console /usr/bin/console.\n");
+            xCAT::MsgUtils->message('I',
+                        "ln -sf /opt/freeware/bin/console /usr/bin/console.\n");
         }
     }
-  
+
     $cmd = "lssrc -a | grep conserver";
     $outref = xCAT::Utils->runcmd("$cmd", 0);
-    unless($outref =~ /conserver/)
+    unless ($outref =~ /conserver/)
     {
-        $cmd = "mkssys -p /opt/freeware/sbin/conserver -s conserver -u 0 -S -n 15 -f 15 -a \"-o -O1 -C /etc/conserver.cf\"";
-	$outref = xCAT::Utils->runcmd("$cmd", 0);
-	if ($::RUNCMD_RC != 0)
-	{
-	    xCAT::MsgUtils->message('E', "Could not add subsystem conserver.\n");
-	}
-	else
-	{
-	    xCAT::MsgUtils->message('I', "Add subsystem conserver.\n");
-	}
+        $cmd =
+          "mkssys -p /opt/freeware/sbin/conserver -s conserver -u 0 -S -n 15 -f 15 -a \"-o -O1 -C /etc/conserver.cf\"";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E',
+                                    "Could not add subsystem conserver.\n");
+        }
+        else
+        {
+            xCAT::MsgUtils->message('I', "Add subsystem conserver.\n");
+        }
     }
 }
+
 # some Linux-only config
 if ($::osname eq 'Linux')
 {
@@ -718,12 +733,15 @@ my $master = inet_ntoa($addrs[0]);
 my ($domain, $timezone);
 if ($::osname eq 'AIX')
 {
-	my ($name, $rest) = split('\.', $hname);
-	if ($rest) {
-		($domain = $hname) =~ s/^.*?\.//;
-	} else {
-		$domain="";
-	}
+    my ($name, $rest) = split('\.', $hname);
+    if ($rest)
+    {
+        ($domain = $hname) =~ s/^.*?\.//;
+    }
+    else
+    {
+        $domain = "";
+    }
 
     $timezone = $ENV{'TZ'};
 }
@@ -823,7 +841,8 @@ if ((!-r "/etc/xcat/policy.sqlite") || $::FORCE)
     {
         $chtabcmds =
           "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
-		$chtabcmds .= "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow;";
         $chtabcmds .=
@@ -1120,16 +1139,21 @@ if ($::osname eq 'AIX')
       'mkitab "xcatd:2:once:/opt/xcat/sbin/xcatd > /dev/console 2>&1" > /dev/null 2>&1';
     my $rc = system($mkitab_cmd);
 
-	# check if /install/postscripts is in /etc/exports
-    my $catcmd = "/bin/cat /etc/exports | grep '/install/postscripts ' >/dev/null 2>&1";
+    # check if /install/postscripts is in /etc/exports
+    my $catcmd =
+      "/bin/cat /etc/exports | grep '/install/postscripts ' >/dev/null 2>&1";
     my $outref = xCAT::Utils->runcmd("$catcmd", -1);
     if ($::RUNCMD_RC != 0)
     {
+
         # if not add it and make sure it is exported
-        my $ecmd = "echo '/install/postscripts -ro' >> /etc/exports; exportfs -a";
+        my $ecmd =
+          "echo '/install/postscripts -ro' >> /etc/exports; exportfs -a";
         my $outref2 = xCAT::Utils->runcmd("$ecmd", -1);
-        if ($::RUNCMD_RC != 0) {
-            xCAT::MsgUtils->message('E', "Could not update the /etc/exports file.\n");
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E',
+                                   "Could not update the /etc/exports file.\n");
         }
     }
 }
@@ -1158,18 +1182,21 @@ if ($::osname eq 'Linux')
     # run mknb - only needed for Intel platforms for now
     if ($::arch eq "x86_64" || $::arch eq "x86")
     {
-    	foreach my $ar (qw(x86 x86_64 ppc64)) {
-        	my $cmd = "$::XCATROOT/sbin/mknb $ar";
-        	my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        	if ($::RUNCMD_RC != 0) 	{
-            	xCAT::MsgUtils->message('E',
-                     "The mknb $ar command returned error: $::RUNCMD_RC.\n");
-        		}
-        	else {
-            	xCAT::MsgUtils->message('I',
-                            "The mknb $ar command was run with no error.\n");
-        		}
-        	}
+        foreach my $ar (qw(x86 x86_64 ppc64))
+        {
+            my $cmd = "$::XCATROOT/sbin/mknb $ar";
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E',
+                        "The mknb $ar command returned error: $::RUNCMD_RC.\n");
+            }
+            else
+            {
+                xCAT::MsgUtils->message('I',
+                               "The mknb $ar command was run with no error.\n");
+            }
+        }
     }
 
     # run makenetworks
@@ -1207,9 +1234,12 @@ if ($::osname eq 'Linux')
 
     # restart httpd
     my $cmd;
-    if(-e "/etc/init.d/apache2") {#for sles
+    if (-e "/etc/init.d/apache2")
+    {    #for sles
         $cmd = "/etc/init.d/apache2 stop; /etc/init.d/apache2 start";
-    }else {
+    }
+    else
+    {
         $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
     }
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1223,9 +1253,12 @@ if ($::osname eq 'Linux')
     }
 
     # enable httpd
-    if(-e "/etc/init.d/apache2") {#for sles
+    if (-e "/etc/init.d/apache2")
+    {    #for sles
         $cmd = "/sbin/chkconfig apache2 on";
-    }else {
+    }
+    else
+    {
         $cmd = "/sbin/chkconfig httpd on";
     }
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
