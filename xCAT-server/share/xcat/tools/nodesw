@@ -1,0 +1,537 @@
+#!/usr/bin/perl
+use strict;
+use SNMP;
+use Socket;
+use Data::Dumper;
+use Getopt::Long;
+$SNMP::debugging = 1;
+$SNMP::verbose = 1;
+$SNMP::best_guess = 1;
+# each 0 is four bits: 0000 0000
+# thus its broken down: 
+# - ports 1-8 are in the first hex number 
+# - ports 9-16 are in the second hex number 
+# - ports 17-24 are in the third hex number 
+# - ports 25-32 are in the fourth hex number 
+# - ports 33-40 are in the fifth hex number 
+# - ports 41-48 are in the sixth hex number 
+# - ports 49-56 are in the seventh hex number 
+my @bitmap = (0x01, 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02);
+
+
+sub getVlanMask{
+	my $session = shift;
+	my $vlan = shift;
+	my @xs;
+	my @hs;
+	my $oid = ".1.3.6.1.2.1.17.7.1.4.3.1.4.$vlan";
+	my $hs = $session->get($oid);
+	if($session->{ErrorNum}){
+		die "Couldn't get OID!" . $session->{ErrorStr} . "\n";
+	}
+	$hs =~ s/\"//g;  # get rid of quotes!
+	@hs = split(" ",$hs);
+	#foreach(@hs){ print "$_\n"; }
+	@xs = map(hex, @hs);
+	#foreach (@xs){
+	#	print $_ . "\n";
+	#}
+	unless(scalar(@xs) eq 7){
+		print "Could not get vlan mask for $vlan\n";
+	}
+	#print "Switch mask:\n";
+	#printf("%02x %02x %02x %02x %02x %02x %02x\n", @xs);
+	return(@xs);
+}
+# add port 1
+# returns a 7 digit hex string to logically or with existing
+# to add this port to the subnet
+sub getPortMask {
+	my $port = shift;
+	my @portMask;
+	my $hex;
+	my $xIndex;
+	if($port < 9){ $xIndex = 0;
+	}elsif($port < 17){ $xIndex = 1;
+	}elsif($port < 25){ $xIndex = 2;
+	}elsif($port < 33){ $xIndex = 3;
+	}elsif($port < 41){ $xIndex = 4;
+	}elsif($port < 49){ $xIndex = 5;
+	}elsif($port < 57){ $xIndex = 6;
+	}else{
+		print "I don't know how to handle this port...\n";
+		exit;	
+	}
+	$port = $port % 8;
+	#print "$port\n";
+	$hex = $bitmap[$port];
+	#printf("%02x\n", $hex);
+	for(0 .. 6){
+		if($_ eq $xIndex){ 
+			push @portMask, $hex;
+		}else{
+			push @portMask, hex(0);
+		}
+	}
+	#print "Port mask:\n";
+	#printf("%02x %02x %02x %02x %02x %02x %02x\n", @portMask);
+	return @portMask;
+	
+}
+
+
+sub getSwitchInfo{
+	my $switch = shift;
+	my ($version,$community,@junk);
+# bunch of xCAT tables stuff here to connect to switch	
+  my $info = `tabdump switches | grep smc001 | sed 's/"//g'`;
+	if($?){
+		# if not in here, we try the defaults.
+		$version = 1;
+		$community = "public";
+	}else{
+		(undef,$version,undef,$community,@junk) = split(/,/,$info);
+	}
+
+	if($::DEBUG){
+		print "switch parameters for $switch:\n";
+		print "\tSNMP Version: $version\n";
+		print "\tSNMP Community: $community\n";
+	}
+	return($community, $version);
+}
+
+sub connectToSwitch{
+	my $switch = shift;
+	my $session;
+	my ($community, $snmpver) = getSwitchInfo($switch);
+	$session = new SNMP::Session(
+								DestHost => $switch,
+								Version => $snmpver,
+								Community => $community,
+								UseSprintValue => 1,
+						);		
+	unless($session) {
+		#ERROR:
+		print "Failed to communicate with $switch\n";
+		print $SNMP::Session::ErrorStr . "\n";
+		#xCAT::MsgUtils->message("S","Failed to communicate with $switch");
+	}
+	return $session;
+}
+
+sub xorMasks{
+	my $sm = shift;
+	my $pm = shift;
+	my @nm;
+	foreach(0 .. 6){
+		my $foo = @$sm[$_] ^ @$pm[$_];
+		##printf("%02x\n", $foo); 
+		$nm[$_] = $foo;
+	}
+	return @nm;	
+}
+
+
+sub orMasks{
+	my $sm = shift;
+	my $pm = shift;
+	my @nm;
+	foreach(0 .. 6){
+		my $foo = @$sm[$_] | @$pm[$_];
+		##printf("%02x\n", $foo); 
+		$nm[$_] = $foo;
+	}
+	return @nm;	
+}
+
+
+sub andMasks{
+	my $sm = shift;
+	my $pm = shift;
+	my @nm;
+	foreach(0 .. 6){
+		my $foo = @$sm[$_] & @$pm[$_];
+		##printf("%02x\n", $foo); 
+		$nm[$_] = $foo;
+	}
+	return @nm;	
+}
+
+
+# KLUDGE function because I can't figure out how to do this with 
+# SNMP.pm and I give up after a week of trying.
+
+sub snmpset {
+	my $sess = shift;
+	my $oid = shift;
+	my $type = shift;
+	my $val = shift;
+	my $snmpset = "/usr/bin/snmpset";	
+	my ($cmd, $comm, $vers, $switch);
+	unless(-r "/usr/bin/snmpset"){
+		print "/usr/bin/snmpset command not found!  Please install net-snmp-utils\n";
+		exit 1;
+	}
+
+	$comm = $sess->{Community};
+	$vers = $sess->{Version};
+	$switch = $sess->{DestHost};
+
+	$cmd = "$snmpset -c $comm -v $vers $switch $oid $type $val";
+	#print "$cmd\n";	
+	system("$cmd >/dev/null");
+	#print "ec: $?\n";
+	if($? > 0){
+		print "Failed to execute command $cmd\n";	
+		exit 1;
+	}
+	return $?;
+}
+
+
+sub addNodeToVlan{
+	# to run: switchport allowed vlan add $port (use bitmap)
+	# snmpset .. $oid1.$vlan x 00 00 00 00 00 00 00
+  
+	my $oid1 = '.1.3.6.1.2.1.17.7.1.4.3.1.4';
+	# to run: switchport native vlan $vlan
+	# snmpset .. $oid2.$port u $vlan
+	my $oid2 = '.1.3.6.1.2.1.17.7.1.4.5.1.1';
+	my $session = shift;
+	my $vlan = shift;
+	my $port = shift;
+	#$oid1 .= ".$vlan";
+	#print "$oid1 \n";
+	my @xs;  # netmask for current switch
+	my @pm;  # netmask for port 
+	my @jm;  # the joined netmask
+	@xs = getVlanMask($session, $vlan);
+	@pm = getPortMask($port);
+	@jm = orMasks(\@xs, \@pm);
+	#print "Join mask:\n";
+	printf("%02x %02x %02x %02x %02x %02x %02x\n", @jm) if $::DEBUG;
+	my $mask = sprintf("%02x %02x %02x %02x %02x %02x %02x ", @jm);
+
+	#################################
+	#  PART 1:  add the switchport allowed capability
+	#################################
+
+	# TODO:  This part I can't get working so I'm just going to do an 
+	# snmpset command here instead.
+	#my $v1 = new SNMP::Varbind([$oid1,$vlan,$mask, 'OCTETSTR']);
+	#print Dumper($v1);
+	#$session->set($v1);
+	#if($session->{ErrorStr}) {
+	#	print "Error! " . $session->{ErrorStr} . "\n";
+	#}
+	snmpset($session, "$oid1.$vlan", "x", "\'$mask\'");
+
+	#######################################
+	#  PART 2: add the switchport native
+	#######################################
+
+	# first get the current one for part 3:
+	my $currNativeVlan = $session->get("$oid2.$port");
+	if($session->{ErrorNum}){
+		die "Couldn't get OID!" . $session->{ErrorStr} . "\n";
+	}
+	print "currNativeVLAN: $currNativeVlan\n" if $::DEBUG;
+	print "$currNativeVlan -> ";
+	# set the new switchport native vlan
+	my $v2 = new SNMP::Varbind([$oid2,$port,$vlan,'GAUGE32']);
+	#print Dumper($v2);
+	$session->set($v2);
+	if($session->{ErrorStr}) {
+		print "Error! " . $session->{ErrorStr} . "\n";
+	}
+	
+	#######################################
+	#  PART 3: take it off the other one it is on
+	#######################################
+	delPortFromVlan($session, $port, $currNativeVlan);	
+
+}
+
+# returns the vlan number
+sub getVlans{
+	my $session = shift;
+	my %vlans;
+	# IF-MIB:ifName: .1.3.6.1.2.1.31.1.1.1.1
+	my $ifName = '.1.3.6.1.2.1.31.1.1.1.1';
+	my $varbind = new SNMP::Varbind([$ifName, '']);
+	$session->getnext($varbind);
+  if($session->{ErrorStr}) {
+		print "Error! " . $session->{ErrorStr} . "\n";
+	}
+	# varbind: name: ifName, 1, Port1, OCTETSTR
+	while($varbind->[2]){
+		#print $varbind->[2] . "\n";
+		my $name =  $varbind->[2];
+		if($name =~ /VLAN/){
+			#print "Found $name on " . $session->{DestHost} . "\n";
+			$name =~ s/VLAN//g;
+			# we subtract 1000 off the name to give us the actual VLAN.
+			$vlans{$name} = $varbind->[1] - 1000;
+			#foreach(@$varbind){
+			#	print "\t$_\n";
+			#}
+		}
+		$session->getnext($varbind);
+	}
+	#print Dumper(%vlans);
+	#foreach(keys %vlans){
+	#	print "VLAN: $_ has value: ". $vlans{$_} ."\n";
+	#}
+	return \%vlans;
+}
+
+# return 1 if port is on vlan return 0 if not on vlan
+sub checkPortVlan{
+	my $rc = 0;
+	my $session = shift;
+	my $p = shift;
+	my $v = shift;
+	my @xs;  # netmask for current switch
+	my @pm;  # netmask for port 
+	my @jm;  # the joined netmask
+	@xs = getVlanMask($session, $v);
+	@pm = getPortMask($p);
+	@jm = andMasks(\@xs, \@pm);
+	#print "And Mask:\n";
+	#printf("%02x %02x %02x %02x %02x %02x %02x\n", @jm);
+	my $m = sprintf("%x%x%x%x%x%x%x", @jm);
+	#print "m: $m\n";
+	if($m > 0){
+		#print "port $p is on VLAN $v on switch " . $session->{DestHost}  . "\n";
+		$rc = 1;
+	}
+	return $rc;
+		
+}
+
+sub delPortFromVlan {
+	my $session = shift;
+	my $port = shift;
+	my $vlan = shift;
+	print "removing port $port from vlan $vlan\n" if $::DEBUG;
+	# first check and see if its on there:
+	unless(checkPortVlan($session, $port, $vlan)){
+		print "Port $port is not on VLAN $vlan\n";
+	}
+	my @vm = getVlanMask($session, $vlan);
+	my @pm = getPortMask($port);
+	my @xm = xorMasks(\@vm, \@pm);
+	#print "portmask:\n";
+	#printf("%02x %02x %02x %02x %02x %02x %02x\n", @pm);
+	#print "vlanmask:\n";
+	#printf("%02x %02x %02x %02x %02x %02x %02x\n", @vm);
+	#print "xormask:\n";
+	#printf("%02x %02x %02x %02x %02x %02x %02x\n", @xm);
+
+	# this is the untagged remove	
+	my $oid1 = '.1.3.6.1.2.1.17.7.1.4.3.1.4';
+	my $mask = sprintf("%02x %02x %02x %02x %02x %02x %02x ", @xm);
+	snmpset($session, "$oid1.$vlan", "x", "\'$mask\'");
+
+
+	# this is the tagged  remove
+	my $oid2 = '.1.3.6.1.2.1.17.7.1.4.3.1.2';
+	#my $mask = sprintf("%02x %02x %02x %02x %02x %02x %02x ", @xm);
+	#print "tagged mask: $mask\n";
+	snmpset($session, "$oid2.$vlan", "x", "\'$mask\'");
+	
+}
+
+
+sub displayHelp{
+	my $ec = shift;
+	print "nodesw changes the vlan of a node to a specified vlan\n";
+	print "requires xCAT 2.0, Switch configured with SNMP sets, and only tested on SMC8648T\n";
+	print "nodesw -h|--help\n";
+	print "nodesw [-v] <noderange> vlan <vlan number>\n";
+	print "nodesw [-v] <noderange> show\n";
+	exit $ec;
+}
+
+sub getNodeRange{
+	my $nr = shift;
+	my @nr = `/opt/xcat/bin/nodels $nr switch.switch switch.port`;
+	my $nh;
+	chomp(@nr);
+	if($?){
+		print $nr[0];
+		exit 1;
+	}
+	foreach(@nr){
+		my($n,$char,$val) = split(/:/, $_);
+		$char = (split(/\./,$char))[1];
+		$val =~ s/ //g;
+		$nh->{$n}{$char} = $val;
+	}
+
+	if($::DEBUG){
+		foreach(keys %$nh){
+			print $_ .":";
+			print " switch:" . $nh->{$_}{'switch'} ;
+			print " port:" . $nh->{$_}{'port'};
+			print "\n";
+		}	
+	}
+
+
+	# make sure all fields are defined
+	my $e = 0;
+	foreach my $node (keys %$nh){
+		unless($nh->{$node}{'switch'}){
+			print "$node does not have a defined switch in xCAT! (nodels $node switch.switch)\n";
+			$e++;
+		}
+		unless($nh->{$node}{'port'}){
+			print "$node does not have a defined port in xCAT! (nodels $node switch.port)\n";
+			$e++;
+		}
+	
+	}
+	if($e > 0){
+		exit 1;
+	}
+
+	# return the node hash
+	return $nh;
+}
+
+
+sub show{
+	my $oid2 = '.1.3.6.1.2.1.17.7.1.4.5.1.1';
+	my $nh = shift;
+	foreach my $node (keys %$nh){
+		my $port = $nh->{$node}{'port'};	
+		my $switch = $nh->{$node}{'switch'};	
+		my $session = connectToSwitch($switch);
+		my $currNativeVlan = $session->get("$oid2.$port");
+  	if($session->{ErrorNum}){
+    	die "Couldn't get OID!" . $session->{ErrorStr} . "\n";
+  	}
+  	print "$node: $currNativeVlan\n";
+	}
+}
+
+
+
+##### commands:
+# get VLANS
+# check VLANs that contain port X
+
+
+# we want to put this port on this new vlan, here is how we do it:
+# connect to switch to see:
+
+my $help =0;
+$::DEBUG = 0;
+GetOptions(
+	'h|help' => \$help,
+	'v|verbose' => \$::DEBUG
+);
+
+if($help){
+	displayHelp(0);
+}
+
+if($::DEBUG){
+	print "verbose is set to on!\n";
+}
+
+my $nr = "";
+my $nodeRange = shift;
+my $cmd = shift;
+my $vlan = shift;
+
+unless ($nodeRange){
+	print "missing noderange!\n\n";
+	displayHelp(1);
+}
+
+unless($cmd) {
+	print "missing operation! [show | vlan ]\n\n";
+	displayHelp(1);
+}
+
+if($cmd eq 'vlan'){
+	unless($vlan){
+		print "missing vlan number!\n\n";
+		displayHelp(1);
+	}	
+	$nr = getNodeRange($nodeRange);
+	chVlan($nr, $vlan);
+
+}elsif($cmd eq 'show'){
+	print "showing $nodeRange vlan settings\n" if $::DEBUG;
+	$nr = getNodeRange($nodeRange);
+	show($nr);
+	
+}else{
+	print "unrecognized operation requested: $cmd\n\n";
+	displayHelp(1);	
+}
+ 
+
+
+################################################################################
+# getVlans
+# find all vlans  of a switch
+################################################################################
+#my $vlans = getVlans($session);
+
+
+
+################################################################################
+#  checkPort Vlan
+################################################################################
+#checkPortVlan($session, $port, $vlans->{$_};
+
+
+################################################################################
+# addPortToVLAN
+################################################################################
+# get all VLANs
+sub chVlan{
+	my $nh = shift;
+	my $currSwitch = '';
+	my ($session, $vlans, $exists);
+	foreach my $node (keys %$nh){
+		my $port = $nh->{$node}{'port'};	
+		my $switch = $nh->{$node}{'switch'};	
+		unless($switch eq $currSwitch){
+			$session = connectToSwitch($switch);
+			$vlans = getVlans($session);
+			$exists = 0;
+			$currSwitch = $switch;
+		}
+
+		foreach(keys %$vlans){
+		# see if the requested VLAN actually exists
+			if( $_ eq $vlan){
+				print "VLAN $_ exists on $switch\n" if $::DEBUG;
+				# if it exists see if its already on it
+				$exists = 1;
+				if(checkPortVlan($session, $port, $vlans->{$_})){
+					print "$node: port $port already exists on $switch VLAN $vlan\n";
+					exit 1;
+				}else{
+					print "Adding Port: $port to VLAN: $vlan\n" if $::DEBUG;
+					print $node . ": ";
+					if(addNodeToVlan($session, $vlan, $port) eq 0){
+						print "Added port: $port to VLAN: $vlan\n" if $::DEBUG;
+						print "$vlan\n";
+					}
+				}
+			}
+		}
+		unless($exists){
+			print "VLAN $vlan does not exist on " . $session->{DestHost} . "\n";
+			exit 1;
+		}
+	}
+}
+
