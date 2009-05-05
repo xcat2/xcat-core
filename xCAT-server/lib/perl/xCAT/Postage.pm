@@ -237,6 +237,15 @@ sub makescript {
   }
   push @scriptd, "export NTYPE\n";
 
+  
+  my $mactab=xCAT::Table->new("mac", -create =>0);
+  my $tmp=$mactab->getNodeAttribs($node, ['mac']);
+  if (defined($tmp) && ($tmp)) {
+    my $mac=$tmp->{mac};
+    push @scriptd, "MACADDRESS='".$mac."'\n";
+    push @scriptd, "export MACADDRESS\n";
+  }
+
   #get monitoring server and other configuration data for monitoring setup on nodes
   my %mon_conf=xCAT_monitoring::monitorctrl->getNodeConfData($node);
   foreach (keys(%mon_conf)) {
