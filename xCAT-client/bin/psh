@@ -120,11 +120,13 @@ foreach (@nodes) {
   $inputs->add($child);
   $nodehdl{$child} = $node;
 }
-while ($inputs->count and $children) {
+while ($inputs->count) {
   processoutput($inputs);
 }
 while (processoutput($inputs)) {};
-wait;
+while (wait != -1) {
+  yield;
+}
 my $exitcode=0;
 foreach (values %pids) {
     my $possible_codes = join ",",keys %foundcodes;
