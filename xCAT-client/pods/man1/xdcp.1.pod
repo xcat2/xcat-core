@@ -319,12 +319,12 @@ B<xdcp> I<NodeGroup1 -f 12 -RP /var/log/testlogdir /var/log>
 =item *
 
 To copy  /localnode/smallfile and /tmp/bigfile to /tmp on node1
-using rsync, enter:
+using rsync (ssh), enter:
 
-I<RSYNC_RSH=/usr/bin/ssh; xdcp -r /usr/bin/rsync -o "-z" \
+I<xdcp -r /usr/bin/rsync -o "-z" \
 node1 /localnode/smallfile /tmp/bigfile /tmp>
 
-This command uses rsync with the RSYNC_RSH  environment  variable
+This command uses rsync with the ssh remote command 
 and the -z flag on rsync.
 
 
