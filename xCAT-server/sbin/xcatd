@@ -991,7 +991,7 @@ sub dispatch_request {
          @prexcatdests=($_->{'_xcatdest'});
      }
      foreach (@prexcatdests) {
-         if (/,/) {
+         if ($_ and /,/) {
              push @xcatdests,split /,/,$_;
          } else {
              push @xcatdests,$_;
