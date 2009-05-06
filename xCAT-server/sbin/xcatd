@@ -339,6 +339,10 @@ if ($inet6support) {
   until ($quit) {
     eval { 
 	while (1) {	
+         unless ($actualpid == $$) { #This really should be impossible now...
+             xCAT::MsgUtils->message("S","xcatd: Something absolutely ludicrous happpened, xCAT developers think this message is impossible to see, post if you see it, fork bomb averted");
+             exit(1); 
+         }
         until ($select->can_read(5)) { if ($quit) { last; }; yield; } #Wait for data
 	while ($select->can_read(0)) { #Pull all buffer data that can be pulled
 	   $part = $socket->recv($data,1500);
@@ -388,6 +392,7 @@ if ($inet6support) {
        xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT UDP service: ".$@);
     }
     unless ($actualpid == $$) { #We should absolutely never be here, exponential growth from a plugin crash.
+        xCAT::MsgUtils->message("S","xcatd: Something ludicrous happpened, bailing to avoid fork bomb, double check perl XS modules like 'net-snmp-perl'");
         exit 1;
     }
   }
@@ -758,6 +763,7 @@ sub plugin_command {
   }  
   foreach (keys %handler_hash) {
     my $modname = $_;
+    my $shouldbealivepid=$$;
     if (-r $plugins_dir."/".$modname.".pm") {
       require $plugins_dir."/".$modname.".pm";
       $plugin_numchildren++;
@@ -799,7 +805,7 @@ sub plugin_command {
           xexit(0);
         } 
         }; #REMOVEEVALFORDEBUG
-        if ($sock) { #We shouldn't still be alive, try to send as much detail to parent as possible as to why
+        if ($sock or $shouldbealivepid != $$) { #We shouldn't still be alive, try to send as much detail to parent as possible as to why
             my $error= "$modname plugin bug, pid $$, process description: '$$progname'";
             if ($@) {
                 $error .= " with error '$@'";
@@ -952,6 +958,9 @@ sub dispatch_request {
     my $parfd; #use a private variable so it won't trounce itself recursively
     my $child;
     delete $_->{noderange};
+    if (ref $_->{'_xcatdest'} and (ref $_->{'_xcatdest'}) eq 'ARRAY') {
+        _->{'_xcatdest'} =  $_->{'_xcatdest'}->[0];
+    }
     if ($onlyone and not ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'}))) {
         $SIG{CHLD}='DEFAULT';
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
