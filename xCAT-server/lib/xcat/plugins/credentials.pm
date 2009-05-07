@@ -134,12 +134,14 @@ sub process_request
        } elsif (/ssh_dsa_hostkey/) {
           unless (-r "/etc/xcat/hostkeys/ssh_host_dsa_key") {
              push @{$rsp->{'error'}},"Unable to read private DSA key from /etc/xcat/hostkeys";
+             next;
           }
           $tfilename="/etc/xcat/hostkeys/ssh_host_dsa_key";
 
        } elsif (/ssh_rsa_hostkey/) {
           unless (-r "/etc/xcat/hostkeys/ssh_host_rsa_key") {
              push @{$rsp->{'error'}},"Unable to read private RSA key from /etc/xcat/hostkeys";
+             next;
           }
           $tfilename="/etc/xcat/hostkeys/ssh_host_rsa_key";
 
