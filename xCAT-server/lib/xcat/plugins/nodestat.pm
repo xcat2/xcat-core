@@ -75,6 +75,7 @@ sub getstat {
 sub preprocess_request
 {
     my $req = shift;
+    return [$req]; #For now, do not distribute, nodestat seems to lose accuracy and slow down distributed
     my $cb  = shift;
     my %sn;
     if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
