@@ -123,6 +123,7 @@ sub setdestiny {
      }
   } elsif ($state =~ /^install$/ or $state eq "install" or $state eq "netboot" or $state eq "image" or $state eq "winshell") {
     chomp($state);
+    $errored=0;
     $subreq->({command=>["mk$state"],
               node=>$req->{node}}, \&relay_response);
     if ($errored) { return; }
