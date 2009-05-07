@@ -242,6 +242,11 @@ sub process_request
             {
                 ($canonical, $aliases) = split(' ', $names, 2);
                 $canonical =~ s/\.$netpat//;
+                #If we feed in names with, say, underscores, bind complains usually due to default check-names behavior.  Later, we may should support putting check-names to ignore, but for now let them know it won't work and skip it
+                unless ($canonical =~ /^[a-z0-9-]+$/i) {
+                    xCAT::MsgUtils->message("E", {errorcode=>[1],error=>["$canonical contains invalid characters, skipping entry"]}, $callback, 1);
+                    next LINE;
+                }
                 if ($Cnames{$canonical} != 1)
                 {
                     printf DOMAIN "%-20s IN  CNAME %s.%s.\n", $canonical,
@@ -264,6 +269,10 @@ sub process_request
         ($canonical, $aliases) = split(' ', $names, 2);   # separate out aliases
         next if ($dontdodomains && $canonical =~ /\./);   # skip domain names
         $canonical =~ s/$Domainpattern//;    # strip off domain if there is one
+        unless ($canonical =~ /^[a-z0-9-]+$/i) {
+            xCAT::MsgUtils->message("E", {errorcode=>[1],error=>["$canonical contains invalid characters, skipping entry"]}, $callback, 1);
+            next;
+         }
         $Hosts{$canonical} .= $addr . " ";   # index addresses by canonical name
         $Aliases{$addr} .= $aliases . " ";   # index aliases by address
         $Comments{"$canonical-$addr"} = $comment;
@@ -326,6 +335,10 @@ sub process_request
                     $alias =~ s/$Domainpattern//;
                     if ($alias eq $canonical)
                     {
+                        next;
+                    }
+                    unless ($alias  =~ /^[a-z0-9-]+$/i) {
+                        xCAT::MsgUtils->message("E", {errorcode=>[1],error=>["$canonical alias $alias contains invalid characters, skipping entry"]}, $callback, 1);
                         next;
                     }
 
