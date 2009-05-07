@@ -583,7 +583,14 @@ sub setobjdefs
     my %objhash = %$hash_ref;
     my %settableref;
     my $ret = 0;
+	my %allupdates;
+	my $setattrs=0;
 
+	# for each object figure out:
+	#	- what tables to update
+	#	- which table attrs correspond to which object attrs
+	#	- what the keys are for each table
+	# update the tables a row at a time
     foreach my $objname (keys %objhash)
     {
 
@@ -699,7 +706,6 @@ sub setobjdefs
 					%keyhash=(name=>$objname);
 					%updates=($attr=>$val);
 					$montable->setAttribs(\%keyhash, \%updates);
-
 				} else {
 					# else it belongs in the monsetting table
 					$keyhash{name} = $objname;
@@ -711,14 +717,12 @@ sub setobjdefs
 
 			$montable->commit;
 			$monsettable->commit;
-
 			next;
 		}
 
         # handle the site table as a special case !!!!!
         if ($type eq 'site')
         {
-
             # if plus or minus then need to know current settings
             my %DBhash;
             $DBhash{$objname} = $type;
@@ -749,7 +753,6 @@ sub setobjdefs
                 my $val;
                 if ($::plus_option)
                 {
-
                     # add new to existing - at the end - comma separated
                     if (defined($DBattrvals{$objname}{$attr}))
                     {
@@ -760,16 +763,13 @@ sub setobjdefs
                     {
                         $val = "$objhash{$objname}{$attr}";
                     }
-
                 }
                 elsif ($::minus_option)
                 {
-
                     # remove the specified list of values from the current
                     #   attr values.
                     if ($DBattrvals{$objname}{$attr})
                     {
-
                         # get the list of attrs to remove
                         my @currentList = split(/,/, $DBattrvals{$objname}{$attr});
                         my @minusList   = split(/,/, $objhash{$objname}{$attr});
@@ -782,7 +782,6 @@ sub setobjdefs
                             chomp $i;
                             if (!grep(/^$i$/, @minusList))
                             {
-
                                 # set new groups list for node
                                 if (!$first)
                                 {
@@ -794,7 +793,6 @@ sub setobjdefs
                         }
                         $val = $newlist;
                     }
-
                 }
                 else
                 {
@@ -836,6 +834,10 @@ sub setobjdefs
             next;
         }
 
+		#
+		#  handle the rest of the object types
+		#
+
         # get the attr=vals for these objects from the DB - if any
         #       - so we can figure out where to put additional attrs
         my %DBhash;
@@ -848,11 +850,11 @@ sub setobjdefs
         # get the object type decription from Schema.pm
         my $datatype = $xCAT::Schema::defspec{$type};
 
-		# get the key to look for, for this object type
+		# get the object key to look for, for this object type
         my $objkey = $datatype->{'objkey'};
 
         #  get a list of valid attr names
-        #               for this type object
+        #     for this type object
         my %attrlist;
         foreach my $entry (@{$datatype->{'attrs'}})
         {
@@ -865,10 +867,10 @@ sub setobjdefs
         foreach my $attr (keys %{$objhash{$objname}})
         {
 
-		if ($attr eq $objkey)
-		{
-			next;
-		}
+			if ($attr eq $objkey)
+			{
+				next;
+			}
 
             if ($attr eq "objtype")
             {
@@ -894,9 +896,8 @@ sub setobjdefs
         }
 
         #   we need to figure out what table to
-        #               store each attr
+        #      store each attr
         #   And we must do this in the order given in defspec!!
-
 
 		my @setattrlist=();
 		my @checkedattrs;
@@ -906,7 +907,7 @@ sub setobjdefs
 
             my %keyhash;
             my %updates;
-			my ($lookup_table, $lookup_attr);
+			my ($lookup_table, $lookup_attr, $lookup_data);
             my $attr_name = $this_attr->{attr_name};
 
 			if ($attr_name eq $objkey)
@@ -918,7 +919,6 @@ sub setobjdefs
             #   - otherwise go to the next attr
             if (defined($objhash{$objname}{$attr_name}))
             {
-
                 # check the defspec to see where this attr goes
 
                 # the table for this attr might depend on the
@@ -945,7 +945,6 @@ sub setobjdefs
 
 					if ( !($objhash{$objname}{$check_attr})  && !($DBattrvals{$objname}{$check_attr}) ) {
                         # if I didn't already check for this attr
-                        # if ($::VERBOSE) {
                         my $rsp;
                         if (!grep(/^$attr_name$/, @checkedattrs)) {
                             push @{$rsp->{data}}, "Cannot set the \'$attr_name\' attribute unless a value is provided for \'$check_attr\'.\n";
@@ -961,7 +960,6 @@ sub setobjdefs
                             }
                         }
 						xCAT::MsgUtils->message("I", $rsp, $::callback);
-                       # }
 						push(@checkedattrs, $attr_name);
                         next;
                     }
@@ -995,16 +993,6 @@ sub setobjdefs
             {
                 next;
             }
-
-            #
-            # write to the DB table
-            #
-
-            my $thistable;
-            my $needtocommit = 0;
-
-            # ex. node= c68m3hvp03 (key in table)
-            $keyhash{$lookup_attr} = $objname;
 
             my $val;
             if ($::plus_option)
@@ -1070,67 +1058,20 @@ sub setobjdefs
 
             }
 
-            # ex. nodetype = osi (attr=val or col = col value)
-            $updates{$::tabattr} = "$val";
+			$allupdates{$lookup_table}{$objname}{$lookup_attr}{$lookup_attr}=$objname;
+			$allupdates{$lookup_table}{$objname}{$lookup_attr}{$::tabattr} = $val;
+			$setattrs=1;
 
-            if (ref($::settableref{$lookup_table}))
-            {
-
-                # if we already opened this table use the reference
-                $thistable = $::settableref{$lookup_table};
-            }
-            else
-            {
-
-                # open the table
-                $thistable =
-                  xCAT::Table->new(
-                                   $lookup_table,
-                                   -create     => 1,
-                                   -autocommit => 0
-                                   );
-
-                if (!$thistable)
-                {
-                    my $rsp;
-                    $rsp->{data}->[0] =
-                      "Could not set the \'$thistable\' table.";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    return 1;
-                }
-
-                # set the attr values in the DB
-                my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
-                if (!defined($rc))
-                {
-                    if ($::verbose)
-                    {
-                        my $rsp;
-                        $rsp->{data}->[0] =
-                          "Could not set the \'$attr_name\' attribute of the \'$objname\' object in the xCAT database.\n";
-                        $rsp->{data}->[1] = "Error returned is \'$str->errst
-r\'.";
-                        xCAT::MsgUtils->message("I", $rsp, $::callback);
-                    }
-                    $ret = 1;
-					$thistable->commit;
-                    next;
-                }
-
-                # $::settableref{$lookup_table} = $thistable;
-				
-				push(@setattrlist, $attr_name);
-
-                $thistable->commit;
-
-            }
+			push(@setattrlist, $attr_name);
 
         }    # end - foreach attribute
 
+
+# TODO - need to get back to this
+if (0) {
 		#
 		#  check to see if all the attrs got set
 		#
-		# debug: print "attrprovided = @attrprovided, setattrlist = @setattrlist\n";
 
 		my @errlist;
 		foreach $a (@attrprovided)
@@ -1149,8 +1090,68 @@ r\'.";
 			xCAT::MsgUtils->message("E", $rsp, $::callback);
 		}
 
+}
+
     }    # end - foreach object
 
+	# now set the attribute values in the tables
+	#   - handles all except site, monitoring & monsetting for now
+	if ($setattrs) {
+		foreach my $table (keys %allupdates) {
+
+			# get the keys for this table
+			my $schema = xCAT::Table->getTableSchema($table);
+			my $keys = $schema->{keys};
+
+			# open the table
+			my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+			if (!$thistable) {
+				my $rsp;
+				$rsp->{data}->[0] = "Could not set the \'$thistable\' table.";
+				xCAT::MsgUtils->message("E", $rsp, $::callback);
+				return 1;
+			}
+
+			ROW: foreach my $row (keys %{$allupdates{$table}}) {
+				my %keyhash;
+				my %updates;
+				foreach my $key (keys %{$allupdates{$table}{$row}}) {
+					foreach my $column (keys %{$allupdates{$table}{$row}{$key}}) {
+						# make sure we have a value for each key
+						foreach my $k (@$keys) {
+							if (!$allupdates{$table}{$row}{$key}{$k}) {
+								my $rsp;
+								$rsp->{data}->[0] = "\nMissing required attribute values for the \'$row\' object. The required attributes are: @$keys\n";
+								xCAT::MsgUtils->message("E", $rsp, $::callback);
+								$ret = 1;
+								next ROW;
+							}
+						}
+
+						# need to add obj name
+						if ( grep(/^$key$/, @$keys)) {
+							# ex. $keyhash{netname}=clstr_net;
+							$keyhash{$key}=$row;
+						} else {
+							$updates{$key}=$row;
+						}
+
+						# if attrs are keys then add to keyhash
+						if ( grep(/^$column$/, @$keys)) {
+							# ex. $keyhash{node}= node1
+							$keyhash{$column}=$allupdates{$table}{$row}{$key}{$column};
+						} else {
+							# ex.  $updates{os}= "AIX"
+							$updates{$column} = $allupdates{$table}{$row}{$key}{$column};
+						}
+					}
+				}
+				# do table updates one object/row at a a time???
+				my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
+			}
+			$thistable->commit;
+		}
+	}
     return $ret;
 }
 

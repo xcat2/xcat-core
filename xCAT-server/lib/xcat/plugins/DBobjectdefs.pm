@@ -402,9 +402,9 @@ sub processArgs
             {
                 my $rsp;
                 $rsp->{data}->[0] =
-                  "Type \'$t\' is not a valid xCAT object type.\n";
-                $rsp->{data}->[1] = "Skipping to the next type.\n";
+                  "\nType \'$t\' is not a valid xCAT object type.";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
+				return 3;
             }
             else
             {
@@ -602,9 +602,9 @@ sub processArgs
                         my $rsp;
                         $rsp->{data}->[0] =
                           "Could not get objects of type \'$t\'.\n";
-                        $rsp->{data}->[1] = "Skipping to the next type.\n";
+                        #$rsp->{data}->[1] = "Skipping to the next type.\n";
                         xCAT::MsgUtils->message("I", $rsp, $::callback);
-                        next;
+                        return 3;
                     }
                 }
 
@@ -902,7 +902,7 @@ sub defmk
         }
     }
 
-    foreach my $obj (keys %::FINALATTRS)
+    OBJ: foreach my $obj (keys %::FINALATTRS)
     {
 
         my $type = $::FINALATTRS{$obj}{objtype};
@@ -917,18 +917,34 @@ sub defmk
             next;
         }
 
+		# we don't want to overwrite any existing table row.  This could
+		#	happen if there are multiple table keys. (ex. networks table -
+		#		where the object name is not either of the table keys - net 
+		#		& mask)
+		#  just handle network objects for now - 
+		if ($type eq 'network') {
+			my @nets = xCAT::DBobjUtils->getObjectsOfType('network');
+			my %objhash;
+			foreach my $n (@nets) {
+				$objhash{$n} = $type;
+			}
+			my %nethash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+			foreach my $o (keys %nethash) {
+				if ( ($nethash{$o}{net} eq $::FINALATTRS{$o}{net})  && ($nethash{$o}{mask} eq $::FINALATTRS{$o}{mask}) ) {
+					my $rsp;
+					$rsp->{data}->[0] = "A network definition called \'$o\' already exists that contains the same net and mask values. Cannot create a definition for \'$obj\'.\n";
+					xCAT::MsgUtils->message("E", $rsp, $::callback);
+					$error = 1;
+					next OBJ;
+				}	
+			}
+		}
+
         # if object already exists
         if (grep(/^$obj$/, @{$objTypeLists{$type}}))
         {
-            if ($::verbose)
-            {
-                my $rsp;
-                $rsp->{data}->[0] = "defmk: object already exists, remove old ones";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
-            }
             if ($::opt_f)
             {
-
                 # remove the old object
 				my %objhash;
                 $objhash{$obj} = $type;
@@ -2126,8 +2142,6 @@ sub defls
     if ($::objectsfrom_optt)
     {
         %objhash = %::ObjTypeHash;
-
-print "defls: verb = $::VERBOSE\n";
 
         %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE);
         if (!defined(%myhash))
