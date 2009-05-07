@@ -279,7 +279,7 @@ sub process_request {
   }
 
   #if not shared, then help sync up
-  if ($req->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
      if (xCAT::Utils->nodeonmynet($_)) {
