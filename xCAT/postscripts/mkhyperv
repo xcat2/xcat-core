@@ -1,0 +1,138 @@
+#!/bin/sh
+# this script is used to setup the hypervisor for KVM installations.
+# In order for this to work, you have to do the following:
+#
+# 1.  In your install template, make sure you add the following
+#     to your packages list :
+#     bridge-utils
+#     dnsmasq
+#     iscsi-initiator-utils
+#     kvm
+#     libvirt.x86_64
+#     gpxe-kvm
+# 
+# 2.  In order to get those packaes, you'll need to add the 
+#     xCAT-dep repo.  For our test we added the line:
+#     repo  --name=xcat-dep --baseurl=http://#TABLE:noderes:$NODE:nfsserver#/install/xcat/xcat-dep/rh5/#TABLE:nodetype:$NODE:arch#
+#     This line can be added after the url --url <blah> line
+#
+#  Once you have that, then the following scripts just set up kvm
+#  When the machine boots the first time you'll know it works if you can
+#  run the command: 
+#  virsh list
+#  You'll then see output like:
+# Id Name                 State
+#----------------------------------
+
+
+
+
+# configure network interfaces for bridging
+# here we assume you are using eth0.  Change it if it goes
+# somewhere else.
+HWETH0=`grep HWADDR /etc/sysconfig/network-scripts/ifcfg-eth0`
+HWETH1=`grep HWADDR /etc/sysconfig/network-scripts/ifcfg-eth1`
+cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+TYPE=Ethernet
+ONBOOT=yes
+BRIDGE=br0
+PROMISC=yes
+$HWETH0
+EOF
+cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-eth1
+DEVICE=eth1
+TYPE=Ethernet
+ONBOOT=no
+BOOTPROTO=dhcp
+$HWETH1
+EOF
+cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-br0
+DEVICE=br0
+TYPE=Bridge
+ONBOOT=yes
+BOOTPROTO=dhcp
+PEERDNS=yes
+EOF
+
+#disabled networking code in init.d/kvm
+rm -f /etc/libvirt/qemu/networks/*.xml
+rm -f /etc/libvirt/qemu/networks/autostart/*.xml
+chkconfig --add libvirtd
+
+#added runlevels to init.d/kvm - kvm needs to start before libvirt or the
+#libvirt will not recognize kvm-ness is available and vm creation will fail.
+
+cat <<EOF > /etc/init.d/kvm && chmod u+x /etc/init.d/kvm && chkconfig --add kvm
+#!/bin/sh
+# kvm init script - stripped off bridge code, but still 'Takes care
+#
+# description: The KVM is a kernel level Virtual Machine Monitor.
+start () {
+  grep -q GenuineIntel /proc/cpuinfo && /sbin/modprobe kvm-intel
+  grep -q AuthenticAMD /proc/cpuinfo && /sbin/modprobe kvm-amd
+}
+stop () {
+  grep -q GenuineIntel /proc/cpuinfo && /sbin/modprobe -r kvm-intel
+  grep -q AuthenticAMD /proc/cpuinfo && /sbin/modprobe -r kvm-amd
+}
+case "\$1" in
+  start)
+    echo -n $"Starting KVM: "
+    start
+    echo
+    ;;
+  stop)
+    echo -n $"Shutting down KVM: "
+    stop
+    echo
+    ;;
+  status)
+    echo
+    ;;
+  *)
+    echo "Unknown command: \$1" >&2
+    echo "Valid commands are: start, stop, status" >&2
+    exit 1
+esac
+EOF
+
+
+# iscsi target init script
+# you may not need this.  Also, you'll have to set the iSCSI target
+# leaving this command in shouldn't hurt anything if you don't have
+# an iSCSI target
+
+ISCSITARGET=h0.cluster1
+
+cat <<EOF > /etc/init.d/iscsiconnect && chmod u+x
+/etc/init.d/iscsiconnect && chkconfig --add iscsiconnect
+#!/bin/sh
+#
+# chkconfig: 345 10 75
+# description: iscsi script to discover and connect to targets on boot
+connect_targets()
+{
+  iscsiadm -m discovery -t st -p $ISCSITARGET
+  iscsiadm -m node -L automatic
+}
+disconnect_targets()
+{
+  iscsiadm -m node --logout
+}
+case "\$1" in
+    start)
+      connect_targets
+      ;;
+    stop)
+      disconnect_targets
+      ;;
+    status)
+      iscsiadm -m node
+      ;;
+    *)
+      echo "Unknown command: \$1" >&2
+      echo "Valid commands are: start, stop, status" >&2
+      exit 1
+esac
+EOF
