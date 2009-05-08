@@ -10,6 +10,9 @@ VER=$1
 
 SVNINFO=`svn info 2>/dev/null|grep Revision`
 #/bin/echo -e $SVNINFO
+if [ $? -ne 0 -a -f .svninfo ]; then
+    SVNINFO=`cat .svninfo 2>/dev/null|grep Revision`
+fi
 if [ $? -eq 0 ]
 	then
 		SVNREF="svn r"`echo $SVNINFO|awk '{print $2}'`", "

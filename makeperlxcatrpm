@@ -33,7 +33,9 @@ else
 
 	set -x
 	
+    svn info > perl-xCAT/.svninfo
 	tar  --exclude .svn -czhf /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz perl-xCAT;
+    rm perl-xCAT/.svninfo
 	rm -f /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm
 	rpmbuild -ta /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz
 	

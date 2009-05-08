@@ -46,9 +46,13 @@ else
   pkg="packages"
 fi
 
+BUILDIT=0
 if [ -z "$SVNUP" ]; then
 	SVNUP=../coresvnup
 	svn up > $SVNUP
+    if ! grep 'At revision' $SVNUP; then
+        BUILDIT=1
+    fi
 fi
 
 if $GREP xCAT-client $SVNUP; then
@@ -59,7 +63,7 @@ if $GREP xCAT-client $SVNUP; then
    mv /usr/src/$pkg/RPMS/noarch/xCAT-client-$VER*rpm $DESTDIR/
    mv /usr/src/$pkg/SRPMS/xCAT-client-$VER*rpm $SRCDIR/
 fi
-if $GREP perl-xCAT $SVNUP; then
+if [ $BUILDIT eq 1 ]; then #$GREP perl-xCAT $SVNUP; then
    UPLOAD=1
    ./makeperlxcatrpm
    rm -f $DESTDIR/perl-xCAT*rpm
