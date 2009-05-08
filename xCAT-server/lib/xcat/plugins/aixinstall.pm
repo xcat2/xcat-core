@@ -799,7 +799,6 @@ if (0) {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         $error++;
     }
-
 }
 
 	# restart inetd
@@ -1987,7 +1986,6 @@ sub mk_resolv_conf
 				my $fileloc;
 				my $loc;
 				if ($::opt_l) {
-
 					$loc = "$::opt_l/resolv_conf/$resolv_conf_name";
 				} else {
 					$loc = "/install/nim/resolv_conf/$resolv_conf_name";
@@ -3067,6 +3065,7 @@ sub updatespot {
 
 #----------------------------------------------------------------------------
 
+
 =head3   update_dd_boot
 
          Add the workaround for the default console to rc.dd_boot.
@@ -3610,6 +3609,17 @@ sub prenimnodeset
         return (2);
     }
 
+	# if an osimage is included make sure it is defined
+	if ($::OSIMAGE) {
+		my @oslist = xCAT::DBobjUtils->getObjectsOfType('osimage');
+		if (!grep(/^$::OSIMAGE$/, @oslist) ) {
+			my $rsp;
+			$rsp->{data}->[0] = "The xCAT osimage named \'$::OSIMAGE\' is not defined.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	}
+
 	my @nodelist;
     my %objtype;
     my %objhash;
@@ -3896,10 +3906,10 @@ sub prenimnodeset
     }
 
 	# Checks the various credential files on the Management Node to
-	#	make sure the permission are correct for using and transferring
-	#	to the nodes and service nodes.
-	#	Also removes /install/postscripts/etc/xcat/cfgloc if found
-	my $result= xCAT::Utils->checkCredFiles($callback);
+    #   make sure the permission are correct for using and transferring
+    #   to the nodes and service nodes.
+    #   Also removes /install/postscripts/etc/xcat/cfgloc if found
+    my $result= xCAT::Utils->checkCredFiles($callback);
 
 	#####################################################
 	#
@@ -4324,21 +4334,20 @@ sub doSNcopy
 			# get a list of the resources that are defined on the SN
 			my $cmd = qq~xdsh $snkey "/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' '"~;
 
-# ndebug
 			my @resources = xCAT::Utils->runcmd("$cmd", -1);
-    		if ($::RUNCMD_RC  != 0)
-    		{
-        		my $rsp;
-        		push @{$rsp->{data}}, "Could not get NIM resource definitions.";
-        		xCAT::MsgUtils->message("E", $rsp, $callback);
-        		return 1;
-    		}
-			
-			foreach my $r (@resources) {
-				my ($node, $nimres) = split(': ', $r);
-				chomp $nimres;
-				push(@nimresources, $nimres);
-			}
+            if ($::RUNCMD_RC  != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not get NIM resource definitions.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            foreach my $r (@resources) {
+                my ($node, $nimres) = split(': ', $r);
+                chomp $nimres;
+                push(@nimresources, $nimres);
+            }
 
 			# for each image
 			foreach my $image (@{$SNosi{$snkey}}) {
@@ -4358,7 +4367,6 @@ sub doSNcopy
 							chomp $res;
 
 							# if the resources are not defined on the SN
-######  TODO - need to handle a force option !!!!
 							if (!grep(/^$res$/, @nimresources)) 
 							{
 
@@ -4377,7 +4385,8 @@ sub doSNcopy
 										my $rsp;
 										push @{$rsp->{data}}, "Copying NIM resources to the xCAT $snkey service node. This could take a while.";
 										xCAT::MsgUtils->message("I", $rsp, $callback);
-								   }
+
+									   }
 
 									if (&copyres($callback, $snkey, $restype, $resloc, $res, $nimprime) ) {  
 										# error
@@ -5301,12 +5310,11 @@ sub make_SN_resource
 			if (($imghash{$image}{$restype}) && (grep(/^$restype$/, @nimrestypes))) {
 
 				#  Note: - for now keep it simple - if the resource exists
-				# 	then don't try to recreate it
+                #   then don't try to recreate it
 
 				#  see if it already exists on this SN
-				#  if (grep(/^$imghash{$image}{$restype}$/, @nimresources)) 
-#ndebug
-				if (0)
+				# if (grep(/^$imghash{$image}{$restype}$/, @nimresources)) 
+				if (0) 
 				{
 					# is it allocated?
 					my $cmd = "/usr/sbin/lsnim -l $imghash{$image}{$restype} 2>/dev/null";
@@ -5349,16 +5357,14 @@ sub make_SN_resource
 						}
 					}
 				}
-
-
-
+	
 				#  see if it already exists on this SN
                 if (grep(/^$imghash{$image}{$restype}$/, @nimresources)) {
-					my $rsp;
-					push @{$rsp->{data}}, "Using existing resource called \'$imghash{$image}{$restype}\'.\n";
-					xCAT::MsgUtils->message("I", $rsp, $callback);
-					next;
-				}
+                    my $rsp;
+                    push @{$rsp->{data}}, "Using existing resource called \'$imghash{$image}{$restype}\'.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                    next;
+                }
 
 				# if root, tmp, home, shared_home, dump, paging then
 				# 	these dont require copying anything from the nim primary
