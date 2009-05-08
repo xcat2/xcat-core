@@ -5996,12 +5996,6 @@ sub loadsdrcache {
 
 
 sub preprocess_request { 
-  $SIG{INT} = $SIG{TERM} = sub { 
-     foreach (keys %bmc_comm_pids) {
-        kill 2, $_;
-     }
-     exit 0;
-  };
   my $request = shift;
   if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
   my $callback=shift;
@@ -6200,6 +6194,12 @@ sub process_request {
   }
 
     my $children = 0;
+    $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
+         foreach (keys %bmc_comm_pids) {
+            kill 2, $_;
+         }
+         exit 0;
+    };
     $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($bmc_comm_pids{$kpid}) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
