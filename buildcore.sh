@@ -8,6 +8,7 @@
 #		promote - if the keyword "promote" is specified, means an official dot release.
 #					Otherwise, and snap build is assumed.
 # You can override the default upload behavior by specifying env var: UP=0 or UP=1
+# You can control which rpms get built by specifying a coresvnup file env var:  SVNUP=<filename>
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
@@ -29,12 +30,12 @@ else
 	CORE="core-snap"
 	TARNAME=core-rpms-snap.tar.bz2
 fi
-DESTDIR=$CURRENTDIR/$REL/$CORE
+DESTDIR=../../$CORE
 
 
 if [ "$2" != "promote" ]; then      # very long if statement to not do builds if we are promoting
 mkdir -p $DESTDIR
-SRCDIR=$CURRENTDIR/$REL/core-snap-srpms
+SRCDIR=../../core-snap-srpms
 mkdir -p $SRCDIR
 GREP=grep
 UPLOAD=0
@@ -45,9 +46,12 @@ else
   pkg="packages"
 fi
 
-svn up > ../coresvnup
+if [ -z "$SVNUP" ]; then
+	SVNUP=../coresvnup
+	svn up > $SVNUP
+fi
 
-if $GREP xCAT-client ../coresvnup; then
+if $GREP xCAT-client $SVNUP; then
    UPLOAD=1
    ./makeclientrpm
    rm -f $DESTDIR/xCAT-client*rpm
@@ -55,7 +59,7 @@ if $GREP xCAT-client ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/xCAT-client-$VER*rpm $DESTDIR/
    mv /usr/src/$pkg/SRPMS/xCAT-client-$VER*rpm $SRCDIR/
 fi
-if $GREP perl-xCAT ../coresvnup; then
+if $GREP perl-xCAT $SVNUP; then
    UPLOAD=1
    ./makeperlxcatrpm
    rm -f $DESTDIR/perl-xCAT*rpm
@@ -63,7 +67,7 @@ if $GREP perl-xCAT ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm $DESTDIR/
    mv /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
 fi
-if $GREP xCAT-web ../coresvnup; then
+if $GREP xCAT-web $SVNUP; then
    UPLOAD=1
    rm -f $DESTDIR/xCAT-web*
    rm -f $SRCDIR/xCAT-web*
@@ -71,7 +75,7 @@ if $GREP xCAT-web ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/xCAT-web-$VER*rpm $DESTDIR
    mv /usr/src/$pkg/SRPMS/xCAT-web-$VER*rpm $SRCDIR
 fi
-if $GREP xCAT-server ../coresvnup; then
+if $GREP xCAT-server $SVNUP; then
    UPLOAD=1
    ./makeserverrpm
    rm -f $DESTDIR/xCAT-server*rpm
@@ -79,7 +83,7 @@ if $GREP xCAT-server ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/xCAT-server-$VER*rpm $DESTDIR
    mv /usr/src/$pkg/SRPMS/xCAT-server-$VER*rpm $SRCDIR
 fi
-if $GREP xCAT-rmc ../coresvnup; then
+if $GREP xCAT-rmc $SVNUP; then
    UPLOAD=1
    ./makermcrpm
    rm -f $DESTDIR/xCAT-rmc*rpm
@@ -87,7 +91,7 @@ if $GREP xCAT-rmc ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/xCAT-rmc-$VER*rpm $DESTDIR
    mv /usr/src/$pkg/SRPMS/xCAT-rmc-$VER*rpm $SRCDIR
 fi
-if $GREP xCAT-nbroot ../coresvnup; then
+if $GREP xCAT-nbroot $SVNUP; then
    UPLOAD=1
    ./makenbrootrpm x86_64
    ./makenbrootrpm ppc64
@@ -97,7 +101,7 @@ if $GREP xCAT-nbroot ../coresvnup; then
    mv /usr/src/$pkg/RPMS/noarch/xCAT-nbroot-core-*rpm $DESTDIR
    mv /usr/src/$pkg/SRPMS/xCAT-nbroot-core-*rpm $SRCDIR
 fi
-if $GREP -E '^[UAD] +xCATsn/' ../coresvnup; then
+if $GREP -E '^[UAD] +xCATsn/' $SVNUP; then
    UPLOAD=1
    rm -f $DESTDIR/xCATsn-$VER*rpm
    rm -f $SRCDIR/xCATsn-$VER*rpm
@@ -111,7 +115,7 @@ if $GREP -E '^[UAD] +xCATsn/' ../coresvnup; then
    ./makexcatsnrpm s390x
    mv /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm $DESTDIR
 fi
-if $GREP -E '^[UAD] +xCAT/' ../coresvnup; then
+if $GREP -E '^[UAD] +xCAT/' $SVNUP; then
    UPLOAD=1
    rm -f $DESTDIR/xCAT-$VER*rpm
    rm -f $SRCDIR/xCAT-$VER*rpm
@@ -165,7 +169,7 @@ else
 fi
 
 # Build the tarball
-cd $DESTDIR/..
+cd ..
 tar -hjcvf $TARNAME $CORE
 chgrp xcat $TARNAME
 chmod g+w $TARNAME
