@@ -1927,7 +1927,9 @@ sub getbladecons {
 
 sub preprocess_request { 
   my $request = shift;
-  if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+  #if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+  
+  if ($request->{_xcatpreprocessed}->[0] == 1 ) { return [$request]; }
   my $callback=shift;
   my @requests;
 
@@ -1948,7 +1950,8 @@ sub preprocess_request {
   }
 
   if (!$noderange) {
-    $usage_string=xCAT::Usage->getUsage($command);
+    $usage_string="Missing Noderange\n";
+    $usage_string .=xCAT::Usage->getUsage($command);
     $callback->({data=>$usage_string});
     $request = {};
     return;
@@ -1995,6 +1998,7 @@ sub preprocess_request {
     #print "snkey=$snkey\n";
     my $reqcopy = {%$request};
     $reqcopy->{'_xcatdest'} = $snkey;
+    $reqcopy->{_xcatpreprocessed}->[0] = 1; 
     my $mms1=$sn->{$snkey};
     my @moreinfo=();
     my @nodes=();

@@ -1100,7 +1100,8 @@ sub preprocess_request {
 
   my $package  = shift;
   my $req      = shift;
-  if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+  #if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+  if ($req->{_xcatpreprocessed}->[0] == 1 ) { return [$req]; }
   my $callback = shift;
   my @requests;
 
@@ -1123,7 +1124,7 @@ sub preprocess_request {
   $package =~ s/xCAT_plugin:://;
 
   ####################################
-  # Prompt for usage if needed 
+  # Prompt for usage if needed and on MN
   ####################################
   my $noderange = $req->{node}; #Should be arrayref
   my $command = $req->{command}->[0];
@@ -1132,19 +1133,21 @@ sub preprocess_request {
   if (ref($extrargs)) {
     @exargs=@$extrargs;
   }
-
-  my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
-  if ($usage_string) {
-    $callback->({data=>[$usage_string]});
-    $req = {};
-    return;
-  }
-  if (!$noderange) {
-    $usage_string=xCAT::Usage->getUsage($command);
-    $callback->({data=>[$usage_string]});
-    $req = {};
-    return;
+  if ($ENV{'XCATBYPASS'}){
+   my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+   if ($usage_string) {
+      $callback->({data=>[$usage_string]});
+      $req = {};
+      return ;
+   }
+   if (!$noderange) {
+      $usage_string="Missing noderange";
+      $callback->({data=>[$usage_string]});
+      $req = {};
+      return ;
+   }   
   }   
+
 
   ##################################################################
   # get the HCPs for the LPARs in order to figure out which service 
@@ -1209,6 +1212,7 @@ sub preprocess_request {
     #$callback->({data=>["The service node $snkey "]});
     my $reqcopy = {%$req};
     $reqcopy->{'_xcatdest'} = $snkey;
+    $reqcopy->{_xcatpreprocessed}->[0] = 1;
     my $hcps1=$sn->{$snkey};
     my @nodes=();
     foreach (@$hcps1) { 
