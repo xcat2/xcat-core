@@ -1,10 +1,10 @@
 #!/bin/sh
 
-# Build and upload the xcat-core code.  Run this script from a dir in which you want
-# 2 subdirs created:  <version>/core-snap and <version>/core-snap-srpms.
+# Build and upload the xcat-core code.  This script and the rest of the xcat-core source should
+# be in a dir called <rel>/src/xcat-code, where <rel> is the same as the release dir it will be
+# uploaded to in sourceforge (e.g. devel, or 2.2).
 
-# Usage:  buildcore.sh [<branch>] [release]
-#		<branch> - e.g. 2.1 or devel (the default).  If not specified, the trunk/new devel branch is assumed
+# Usage:  buildcore.sh [promote]
 #		promote - if the keyword "promote" is specified, means an official dot release.
 #					Otherwise, and snap build is assumed.
 # You can override the default upload behavior by specifying env var: UP=0 or UP=1
@@ -14,14 +14,14 @@
 UPLOADUSER=bp-sawyers
 
 set -x
-CURRENTDIR=`pwd`
 export HOME=/root
-if [ -n "$1" ]; then
-	REL=$1
-else
-	REL=devel
-fi
 cd `dirname $0`
+
+# Strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
+CURDIR=`pwd`
+D=${CURDIR/\/src\/xcat-core/}
+REL=`basename $D`
+
 VER=`cat Version`
 if [ "$2" = "promote" ]; then
 	CORE="xcat-core"
