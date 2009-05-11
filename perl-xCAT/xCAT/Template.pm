@@ -54,6 +54,10 @@ sub subvars {
       die "Unable to identify master for $node";
   }
   $ENV{XCATMASTER}=$master;
+
+  #replace the env with the right value so that correct include files can be found
+  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+
   #FIRST, do *all* includes, recursive and all
   my $doneincludes=0;
   while (not $doneincludes) {

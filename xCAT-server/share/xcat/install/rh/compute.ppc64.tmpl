@@ -175,6 +175,6 @@ openssh-server
 util-linux
 compat-libstdc++-33
 %pre
-#INCLUDE:../scripts/pre.rh#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
 %post
-#INCLUDE:../scripts/post.rh#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rh#

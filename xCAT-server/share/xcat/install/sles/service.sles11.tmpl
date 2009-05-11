@@ -90,9 +90,9 @@
       </routing>
     </networking>
     <scripts>
-   #INCLUDE:../scripts/pre.sles#
-   #INCLUDE:../scripts/chroot.sles#
-   #INCLUDE:../scripts/post.sles11#
+   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.sles#
+   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/chroot.sles#
+   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.sles11#
     </scripts>
   </configure>
 </profile>
