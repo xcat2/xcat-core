@@ -3859,6 +3859,40 @@ sub checkCredFiles
         $rsp->{data}->[0] = "Error: $dir is missing.";
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
+    # ssh hostkeys
+    my $dir = "/etc/xcat/hostkeys";
+    if (-d $dir)
+    {
+        my $file = "$dir/ssh_host_key.pub";
+        if (-e $file)
+        {
+            my $file2  = "$dir/*.pub";                     # all public keys
+            my $cmd    = "/bin/chmod 0644 $file2";
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Error on command: $cmd";
+                xCAT::MsgUtils->message("I", $rsp, $cb);
+
+            }
+        }
+        else
+        {                                                  # hostkey missing
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error: $file is missing.";
+            xCAT::MsgUtils->message("I", $rsp, $cb);
+        }
+    }
+    else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Error: $dir is missing.";
+        xCAT::MsgUtils->message("I", $rsp, $cb);
+    }
+
+    # ssh directory
+    my $dir = "/install/postscripts/_ssh";
 
     # ssh directory
     my $dir = "/install/postscripts/_ssh";
