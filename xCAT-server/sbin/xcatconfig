@@ -281,7 +281,8 @@ if (-f "/install/postscripts/hostkeys/ssh_host_key")
 
 # if hostkey does not exist or force option, regenerate
 my $hostkey = "/install/postscripts/hostkeys/ssh_host_rsa_key.pub";
-if ((!-r $hostkey) || $::FORCE)
+my $hostkey2 = "/etc/xcat/hostkeys/ssh_host_rsa_key.pub";
+if ((!-r $hostkey) || (!-r $hostkey2) || $::FORCE)
 {
 
     # remove the old keys
