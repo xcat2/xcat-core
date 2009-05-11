@@ -235,59 +235,17 @@ if (!-d "/etc/xcat/hostkeys")               # directory for public/private keys
                             "Could not create /etc/xcat/hostkeys directory.\n");
     }
 }
-#
-# move old hostkeys keys if they exist in /install, to the 
-# new directory /etc/xcat/hostkeys and remove private keys
-if (-f "/install/postscripts/hostkeys/ssh_host_key")
-{
-
-    # copy all keys to /etc/xcat/hostkeys directory
-    my $cmd = "/bin/cp -p /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message('E', "$cmd not successful.\n");
-    }
-
-    # remove private keys from install dir, leave the public keys
-    if (-f "/install/postscripts/hostkeys/ssh_host_dsa_key")
-    {
-        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
-        }
-    }
-    if (-f "/install/postscripts/hostkeys/ssh_host_key")
-    {
-        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_key";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
-        }
-    }
-    if (-f "/install/postscripts/hostkeys/ssh_host_rsa_key")
-    {
-        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
-        }
-    }
-}
-
-# if hostkey does not exist or force option, regenerate
-my $hostkey = "/install/postscripts/hostkeys/ssh_host_rsa_key.pub";
-my $hostkey2 = "/etc/xcat/hostkeys/ssh_host_rsa_key.pub";
-if ((!-r $hostkey) || (!-r $hostkey2) || $::FORCE)
+# 
+# if private hostkeys do not exist in either directory or force option
+# regenerate
+my $hostkey = "/install/postscripts/hostkeys/ssh_host_rsa_key";
+my $hostkey2 = "/etc/xcat/hostkeys/ssh_host_rsa_key";
+if (((!-r $hostkey) && (!-r $hostkey2)) || $::FORCE)
 {
 
     # remove the old keys
     my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host*";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    my $outref = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message(
@@ -298,7 +256,7 @@ if ((!-r $hostkey) || (!-r $hostkey2) || $::FORCE)
 
     # remove the old keys
     my $cmd = "/bin/rm /etc/xcat/hostkeys/ssh_host*";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    my $outref = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message(
@@ -349,7 +307,82 @@ if ((!-r $hostkey) || (!-r $hostkey2) || $::FORCE)
     {
         xCAT::MsgUtils->message('I', "$cmd is successful\n");
     }
+} else {  # keys exist 
+#
+# so if private keys are in /install
+# move old hostkeys keys if they exist in /install, to the 
+# new directory /etc/xcat/hostkeys and remove private keys from /install
+  if (-f "/install/postscripts/hostkeys/ssh_host_rsa_key")
+  {
+
+    # copy all keys to /etc/xcat/hostkeys directory
+    my $cmd = "/bin/cp -p /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.";
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+    }
+
+    # remove private keys from install dir, leave the public keys
+    if (-f "/install/postscripts/hostkeys/ssh_host_dsa_key")
+    {
+        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+        }
+    }
+    if (-f "/install/postscripts/hostkeys/ssh_host_key")
+    {
+        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_key";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+        }
+    }
+    if (-f "/install/postscripts/hostkeys/ssh_host_rsa_key")
+    {
+        my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key";
+        my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+        }
+    }
+  }
+  # so if no public key in  /install/postscripts/hostkeys
+  # copy the /etc/xcat/hostkeys  public keys to /install/postscripts/hostkeys 
+  if ( !(-f "/install/postscripts/hostkeys/ssh_host_rsa_key.pub"))
+  {
+    # rm any files 
+    my $cmd =
+      "/bin/rm /install/postscripts/hostkeys/*";
+    my $outref = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message('E', "$cmd not successful. Files may not exist.\n");
+    }
+    else
+    {
+        xCAT::MsgUtils->message('I', "$cmd is successful\n");
+    }
+    # copy the public keys to install directory
+    my $cmd =
+      "/bin/cp /etc/xcat/hostkeys/*.pub /install/postscripts/hostkeys/.";
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+    }
+    else
+    {
+        xCAT::MsgUtils->message('I', "$cmd is successful\n");
+    }
+  }
 }
+
 
 
 #
