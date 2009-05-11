@@ -254,8 +254,12 @@ sub enumerate {
             if ( defined($host) ) {
                 $fname = $host;
             }
-            push @values, join( ",",
-                "bpa",$fname,$id,$model,$serial,$server,$prof,$bpa,"$ipa $ipb");
+            my $bpastr = join( ",","bpa",$fname,$id,$model,$serial,$server,$prof,$bpa,"$ipa $ipb");
+            if ( !grep /^\Q$bpastr\E$/, @values)
+            {
+                push @values, join( ",",
+                    "bpa",$fname,$id,$model,$serial,$server,$prof,$bpa,"$ipa $ipb");
+            }
         }
         #####################################
         # Save CEC information
