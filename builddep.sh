@@ -54,4 +54,5 @@ rsync -rlv * $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/xcat-dep/
 
 # Upload the tarball to the SF uploads dir for the FRS
 scp ../$DFNAME $UPLOADUSER@web.sourceforge.net:uploads/
+echo "$DFNAME has been uploaded to the FRS uploads dir.  Remember to move it into the release."
 #scp ../$DFNAME $UPLOADUSER@frs.sourceforge.net:uploads/
