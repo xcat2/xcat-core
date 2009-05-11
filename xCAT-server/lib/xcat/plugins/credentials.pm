@@ -179,22 +179,15 @@ sub process_request
        } else {
           next;
        }
-       if (defined $tfilename && -r $tfilename) {
-           open($tmpfile,$tfilename);
-           @filecontent=<$tmpfile>;
-           close($tmpfile);
-           $retdata = "\n".join('',@filecontent);
-           push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$_]};
-           $retdata="";
-           @filecontent=();
-       }
+       open($tmpfile,$tfilename);
+       @filecontent=<$tmpfile>;
+       close($tmpfile);
+       $retdata = "\n".join('',@filecontent);
+       push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$_]};
+       $retdata="";
+       @filecontent=();
     }
-    if (defined $rsp->{data}->[0]) {
-        xCAT::MsgUtils->message("D", $rsp, $callback, 0);
-    }else {
-        delete $rsp->{'data'};
-        xCAT::MsgUtils->message("E", $rsp, $callback, 0);
-    }
+    xCAT::MsgUtils->message("D", $rsp, $callback, 0);
     return;
 }
 

@@ -48,58 +48,33 @@ fi
 allowcred.awk &
 CREDPID=$!
 sleep 1
+getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
+MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
+while [ -z "$MYCONT" ]; do
+    let SLI=$RANDOM%10
+    let SLI=SLI+10
+    sleep $SLI
+    getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
+    MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
+done
+chmod 600 /etc/ssh/ssh_host_dsa_key
+if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
+   rm /etc/ssh/ssh_host_dsa_key
+fi
+getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
+MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
+while [ -z "$MYCONT" ]; do
+    let SLI=$RANDOM%10
+    let SLI=SLI+10
+    sleep $SLI
+    getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
+    MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
+done
+chmod 600 /etc/ssh/ssh_host_rsa_key
+if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
+   rm /etc/ssh/ssh_host_rsa_key
+fi
 
-function cred_handler() {
-        getcredentials.awk $1 | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/$1
-        grep -E '<error>' /tmp/$1
-        if [ $? ]; then
-                cat /tmp/$1 | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/$1
-		chmod 600 /etc/ssh/$1
-                if ! grep "PRIVATE KEY" /etc/ssh/$1 > /dev/null 2>&1 ; then
-                        logger -t xCAT $1 is PRIVATE KEY
-                        rm /etc/ssh/$1
-                        return
-                fi
-                logger -t xCAT $1
-                rm /tmp/$1
-        else
-                ERR_MSG = `send -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/$1`
-                logger -t xCAT $1 Error: $ERR_MSG
-                rm /tm/$1
-                return
-        fi
-
-        MYCONT=`cat /etc/ssh/$1`
-        while [ -z "$MYCONT" ]; do
-                let SLI=$RANDOM%10
-                let SLI=SLI+10
-                sleep $SLI
-                getcredentials.awk $1 | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/$1
-                grep -E '<error>' /tmp/$1
-                if [ $? ]; then
-                        cat /tmp/$1 | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/$1
-			chmod 600 /etc/ssh/$1
-			if ! grep "PRIVATE KEY" /etc/ssh/$1 > /dev/null 2>&1 ; then
-				logger -t xCAT $1 is PRIVATE KEY
-				rm /etc/ssh/$1
-				return
-			fi
-                        logger -t xCAT $1
-                        rm /tmp/$1
-                else
-                        ERR_MSG = `send -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/$1`
-                        logger -t xCAT $1 Error: $ERR_MSG
-                        rm /tm/$1
-                        return
-                fi
-
-                MYCONT=`cat /etc/ssh/$1`
-        done
-
-        return
-}
-cred_handler ssh_dsa_hostkey 
-cred_handler ssh_rsa_hostkey
 
 if [ -r /etc/xCATSN ] ; then
    mkdir /etc/xcat/hostkeys
