@@ -109,23 +109,31 @@ if [ ! -d /etc/xcat/hostkeys ]; then
    mkdir -p /etc/xcat/hostkeys
 fi
 
-# never generated the keys
-if [ ! -f /install/postscripts/hostkeys/ssh_host_key.pub ]; then
+# Do not have private keys in install or /etc/xcat/hostkeys 
+# Generate new keys and update /install with the public keys 
+if [ ! -f /install/postscripts/hostkeys/ssh_host_rsa_key ] && [ ! -f /etc/xcat/hostkeys/ssh_host_rsa_key ] ; then
  echo Generating SSH1 RSA Key...
  /usr/bin/ssh-keygen -t rsa1 -f /etc/xcat/hostkeys/ssh_host_key -C '' -N ''
  echo Generating SSH2 RSA Key...
  /usr/bin/ssh-keygen -t rsa -f /etc/xcat/hostkeys/ssh_host_rsa_key -C '' -N ''
  echo Generating SSH2 DSA Key...
  /usr/bin/ssh-keygen -t dsa -f /etc/xcat/hostkeys/ssh_host_dsa_key -C '' -N ''
+ /bin/rm /install/postscripts/hostkeys/*
  /bin/cp /etc/xcat/hostkeys/ssh_host*.pub /install/postscripts/hostkeys/ 
-fi
-# generated the keys before, still have private keys in install 
-# copy all to the new private directory and then remove private keys
-if [ -f /install/postscripts/hostkeys/ssh_host_key ]; then
- /bin/cp -p /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.
- /bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key
- /bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key
- /bin/rm /install/postscripts/hostkeys/ssh_host_key
+else
+# generated the keys before and still have private keys in install 
+# copy all from /install to /etc/xcat/hostkeys and then remove private keys
+# from /install
+  if [ -f /install/postscripts/hostkeys/ssh_host_rsa_key ]; then
+   /bin/cp -p /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.
+   /bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key
+   /bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key
+   /bin/rm /install/postscripts/hostkeys/ssh_host_key
+  fi
+  if [ ! -f /install/postscripts/hostkeys/ssh_host_rsa_key.pub ]; then
+    /bin/rm /install/postscripts/hostkeys/*
+    /bin/cp /etc/xcat/hostkeys/ssh_host*.pub /install/postscripts/hostkeys/ 
+  fi
 fi
 if [ -d /install/postscripts/.ssh ]; then
    /bin/mv /install/postscripts/.ssh/* /install/postscripts/_ssh/.
