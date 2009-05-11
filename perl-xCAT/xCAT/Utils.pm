@@ -3733,7 +3733,7 @@ sub checkCredFiles
         else
         {    # ca.pem missing
             my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing.";
+            $rsp->{data}->[0] = "Error: $file is missing. Run xcatconfig (no force)";
             xCAT::MsgUtils->message("I", $rsp, $cb);
         }
     }
@@ -3752,7 +3752,7 @@ sub checkCredFiles
         {
 
             my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing.";
+            $rsp->{data}->[0] = "Error: $file is missing. run xcatconfig (no force)";
             xCAT::MsgUtils->message("I", $rsp, $cb);
         }
     }
@@ -3783,7 +3783,7 @@ sub checkCredFiles
         else
         {    # ca_cert.pem missing
             my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing.";
+            $rsp->{data}->[0] = "Error: $file is missing. Run xcatconfig (no force)";
             xCAT::MsgUtils->message("I", $rsp, $cb);
         }
     }
@@ -3817,7 +3817,7 @@ sub checkCredFiles
         else
         {    # ca.pem missing
             my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing.";
+            $rsp->{data}->[0] = "Error: $file is missing. Run xcatconfig (no force)";
             xCAT::MsgUtils->message("I", $rsp, $cb);
         }
     }
@@ -3849,7 +3849,7 @@ sub checkCredFiles
         else
         {                                                  # hostkey missing
             my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing.";
+            $rsp->{data}->[0] = "Error: $file is missing. Run xcatconfig (no force)";
             xCAT::MsgUtils->message("I", $rsp, $cb);
         }
     }
@@ -3880,7 +3880,7 @@ sub checkCredFiles
         else
         {                                                  # hostkey missing
             my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing.";
+            $rsp->{data}->[0] = "Error: $file is missing. Run xcatconfig (no force)";
             xCAT::MsgUtils->message("I", $rsp, $cb);
         }
     }
@@ -3930,7 +3930,7 @@ sub checkCredFiles
         else
         {    # authorized keys missing
             my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing.";
+            $rsp->{data}->[0] = "Error: $file is missing. Run xcatconfig (no force)";
             xCAT::MsgUtils->message("I", $rsp, $cb);
         }
     }
