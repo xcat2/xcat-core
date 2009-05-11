@@ -137,11 +137,11 @@ proc usage {} {
     global PROGRAM
 
     send_user "Usage: Install partition \
-            \n\t$PROGRAM \[-v\] \[-x\] \[-f\] \[-A -D | \[-D\] | \[-D\] -m macaddress\] -t ent -s speed -d duplex \
-            \n\t\t-S server -G gateway -C client hostname profile managed_system lparid remote_host password_filename\
+            \n\t$PROGRAM \[-v\] \[-x\] \[-f\] \[-w set_boot_order\] \[-A -D | \[-D\] | \[-D\] -m macaddress\] -t ent -s speed -d duplex \
+            \n\t\t-S server -G gateway -C client hostname profile managed_system lparid remote_host\
             \n \
             \nUsage: Return macaddress \
-            \n\t$PROGRAM -M -n \[-v\] -t ent \[-f] \[-x] \[-D -s speed -d duplex -S server -G gateway -C client\] hostname profile managed_system lparid remote_host password_file\
+            \n\t$PROGRAM -M -n \[-v\] -t ent \[-f] \[-x] \[-D -s speed -d duplex -S server -G gateway -C client\] hostname profile managed_system lparid remote_host\
             \n \
             \n\t-n\tDo not boot partition \
             \n\t-t\tSpecifies network type ent \
@@ -155,6 +155,12 @@ proc usage {} {
             \n\t-v\tVerbose output \
             \n\t-x\tDebug output \
             \n\t-f\tForce close virtual terminal session \
+            \n\t-w\tSet boot device order \
+            \n\t\t\t0: Don't set boot device order \
+            \n\t\t\t1: Set network as boot device \
+            \n\t\t\t2: Set network as 1st boot device, disk as 2nd boot device \
+            \n\t\t\t3: Set disk as 1st boot device, network as 2nd boot device \
+            \n\t\t\t4: set disk as boot device \
             \n\t-M\tDiscovery ethernet adapter mac address and location code \
             \n\t--help\tPrints this help\n"
     exit 1
@@ -794,7 +800,6 @@ proc get_adaptr_loc { phandle } {
     global command     
     global PROGRAM
     global NODENAME
-    global list_disk
 
     set rc 0
     nc_msg "$PROGRAM Status: get_adaptr_loc start\n"
@@ -855,9 +860,7 @@ proc get_adaptr_loc { phandle } {
                         -i $spawn_id_rconsole
                         -re "(-*\[0-9\]*)  ok(.*)0 >(.*)" {
                             set loc_rc $expect_out(1,string)
-                            if { $list_disk != 1 } {
-                                send_user "$PROGRAM: Error getting adapter physical location.\n"
-                            }
+                            send_user "$PROGRAM: Error getting adapter physical location.\n"
                             nc_msg "$PROGRAM Status: Error getting physical location for phandle=$phandle. RC=$loc_rc.\n"
                             set rc 1
                             return
@@ -926,7 +929,6 @@ proc ping_server { full_path_name phandle } {
     global client_ip
     global gateway_ip
     global list_type
-    global list_disk
     global adap_speed
     global adap_duplex
     global command
@@ -1109,13 +1111,9 @@ proc ping_server { full_path_name phandle } {
                     }
 
                     if { $ping_rc == 0 } {
-                        if { $list_disk != 1 } {
-                            send_user "# $full_path_name ping successful.\n"
-                        }
+                        send_user "# $full_path_name ping successful.\n"
                     } elseif { $ping_rc ==  1 } {
-                        if { $list_disk != 1 } {
-                            send_user "# $full_path_name ping unsuccessful.\n"
-                        }
+                        send_user "# $full_path_name ping unsuccessful.\n"
 			nc_msg "# $full_path_name ping unsuccessful.\n"
                         nc_msg "$ping_debug\n"
 
@@ -1212,7 +1210,7 @@ proc ping_server { full_path_name phandle } {
 #   
 # PROCEDURE
 #
-proc get_disk_info_sms {} {
+proc set_disk_boot {} {
     global rc
     global expect_out
     global spawn_id_rconsole
@@ -1229,217 +1227,101 @@ proc get_disk_info_sms {} {
     global sms_dev_array_os_ver
     global colon
     global list_physical
+    global boot_device
 
     # state 0, get SMS screen
     set done(0) 0
     regexp "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Select Boot Options(\r)" $expect_out(2,string) x0 x1 x2 command
     set cmd(0) "$command\r"
     set msg(0) "$PROGRAM Status: sending return to repaint SMS screen\n"
-    set pattern(0)  "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Select Install(.*)Boot(.*)Device(\r)"
+    set pattern(0) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Configure Boot Device Order(\r)"
     set newstate(0) 1
 
-    # state 1, get Select Boot Options
+    # state 1, Multiboot
     set done(1) 0
-    set msg(1) "$PROGRAM Status: Select Boot Options\n"
-    set pattern(1) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Hard Drive(\r)"
+    set msg(1) "$PROGRAM Status: Multiboot\n"
+    set pattern(1) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Select 1st Boot Device(\r)"
     set newstate(1) 2
     
-    # state 2, Select Install/Boot Device
+    # state 2, Configure Boot Device Order
     set done(2) 0
-    set msg(2) "$PROGRAM Status: Select Install/Boot Device\n"
-    set pattern(2) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)List All Devices(\r)"
+    set msg(2) "$PROGRAM Status: Configure Boot Device Order"
+    set pattern(2) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Hard Drive(.*)"
     set newstate(2) 3
 
-    # state 3, List All Devices
+    # state 3, Select Device Type
     set done(3) 0
-    set msg(3) "$PROGRAM Status: Hard Drive\n"
-    set pattern(3) "Select Device(\r)"
+    set msg(3) "$PROGRAM Status: Select Device Type"
+    set pattern(3) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)SCSI(.*)"
     set newstate(3) 4
 
-    # state 4, activate /packages/net
+    # state 4, Select Media Type
     set done(4) 0
-    set cmd(4) "M"
-    set msg(4) "$PROGRAM Status: Getting disk information.\n" 
-    set pattern(4) "(.*)Navigation key(.*)"
-    set newstate(4) 5
+    set msg(4) "$PROGRAM Status: Select Media Type"
+    set pattern(4) "(\n)(\[ ])(\[1])(\[.])(\[ ]+)(\\S+)(.*)"
+    set newstate(4) 5 
 
-    # state 5, activate /packages/net
+    # state 5, Select Media Adapter 
     set done(5) 0
-    set cmd(5) "0\r"
-    set msg(5) "$PROGRAM Status: Getting to SMS Main Menu.\n"
-    set pattern(5) "(.*)Exit SMS(.*)Prompt?(.*)"
+    set msg(5) "$PROGRAM Status: Select Media Adapter"
+    set pattern(5) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)(\\S)(\[ ]+)SCSI (\[0-9]+) MB Harddisk(.*)loc=(.*)\[)]"
     set newstate(5) 6
 
-    # state 6, activate /packages/net
+    # state 6, Select Device
     set done(6) 0
-    set cmd(6) "Y"
-    set msg(6) "$PROGRAM Status: Exiting SMS.\n"
-    set pattern(6) "(.*)ok(.*)0 >(.*)"
+    set msg(6) "$PROGRAM Status: Select Device"
+    set pattern(6) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Set Boot Sequence(.*)"
     set newstate(6) 7
 
-    # state 7, all done
-    set done(7) 1
+    # state 7, Select Task 
+    set done(7) 0
+    set msg(7) "$PROGRAM Status: Select Task"
+    set pattern(7) "(.*)Current Boot Sequence(.*)"
+    set newstate(7) 8 
+
+    # state 8, Return to Main Menu
+    set done(8) 0
+    set cmd(8) "M"
+    set msg(8) "$PROGRAM Status: Restored Default Setting.\n" 
+    set pattern(8) "(.*)Navigation key(.*)"
+    set newstate(8) 9
+
+    # state 9, Getting to SMS Main Menu
+    set done(9) 0
+    set cmd(9) "0\r"
+    set msg(9) "$PROGRAM Status: Getting to SMS Main Menu.\n"
+    set pattern(9) "(.*)Exit SMS(.*)Prompt?(.*)"
+    set newstate(9) 10 
+
+    # state 10, Exiting SMS
+    set done(10) 0
+    set cmd(10) "Y"
+    set msg(10) "$PROGRAM Status: Exiting SMS.\n"
+    set pattern(10) "(.*)ok(.*)0 >(.*)"
+    set newstate(10) 11
+
+    # state 11, all done
+    set done(11) 1
 
     set timeout 30
     set state 0
     while { $done($state) == 0 } {
-	nc_msg "$PROGRAM Status: command is $cmd($state)\n"
 	set command $cmd($state)
         send_command
         expect {
             -i $spawn_id_rconsole
             -re $pattern($state) {
-		if { $state == 3 } {
-		    set statedone 0
-   		    set sms_dev_count 1 
-		    set timeout 10     ;# shouldn't take more than a few second
-		    while { ! $statedone } {
-		        expect {  
-		            -re "(\n)(\[^\r]*)(\r)" {
-				    if { [regexp "(\[0-9]+\.)(\[ ]+)(\[0-9|\-])(\[ ]+)(.*)" $expect_out(2,string) x0 x1 x2 x3 x4 x5] } { 
-					set dev_name $x5
-                                        if { [regexp "(.*) (.*) (.*) (.*) (.*) (\[(])(.*) (.*)(\[)])" $dev_name x0 x1 x2 x3 x4 x5 x6 x7 x8] } {
-                                            set dev_name $x1
-                                            set dev_size $x2
-                                            set dev_os $x7
-                                            set dev_os_ver $x8
-					} else {
-					    set dev_os ""
-					    set dev_os_ver ""
-					}
-				    }
-
-			            if { [regexp "loc=(.*)" $expect_out(2,string) x0 x1] } {
-					set dev_loc $x1
-					if { [regexp "(.*) (\[)])" $dev_loc x0 x1] } {
-					    set dev_loc $x1
-					}
-				    } else {
-				        set dev_loc ""
-				    }
-
-				    if { $dev_loc != "" } {
-					set sms_dev_array_name($sms_dev_count) "$dev_name"
-					set sms_dev_array_loc($sms_dev_count) "$dev_loc"
-					set sms_dev_array_os($sms_dev_count) "$dev_os"
-					set sms_dev_array_os_ver($sms_dev_count) "$dev_os_ver"
-					incr sms_dev_count
-				    }
-		            }
-		            -re "Navigation key:" {
-		                set statedone 1 
-		            }
-		            timeout { 
-		                send_user "$PROGRAM: Timeout isolating single line of ls output\n"
-		                set rc 1
-		                return
-		            }
-		            eof {
-		                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
-		                set rc 1
-		                return
-		            }
-		        }
-		    } 
-		}
+                if { $state == 4 } {
+                    if { $expect_out(6,string) == "None" } {
+                        set state  8
+                    }
+                }
 
                 set state $newstate($state)
-                if { ($state != 4) && ($state != 5) && ($state != 6) } {
+                if { ($state != 8) && ($state != 9) && ($state != 10) } {
 			set cmd($state) "$expect_out(3,string)\r"
-		}
-            }
-            timeout {
-                send_user "$PROGRAM: Timeout\n"
-                set rc 1
-                return
-            }
-            eof {
-                send_user "$PROGRAM: Cannot connect to $NODENAME\n"
-                set rc 1
-                return
-            }
-	}
-    }
-}
-
-
-#   
-# PROCEDURE
-#
-proc get_disk_info {} {
-    global rc
-    global expect_out
-    global spawn_id_rconsole
-    global command
-    global PROGRAM
-    global NODENAME
-    global phandle_array
-    global full_path_name_array
-    global adapter_found
-    global adap_type
-    global disk_count
-    global disk_array_size
-    global disk_array_loc
-    global disk_array_path
-    global disk_array_devtype
-    global sms_dev_array_loc            
-    global sms_dev_array_name
-    global sms_dev_array_os
-    global sms_dev_array_os_ver         
-    global colon
-    global list_physical
-
-    nc_msg "$PROGRAM Status: get_disk_info start\n"
-
-    nc_msg "$PROGRAM Status: sending dev /packages/gui command\n"
-    set command  "dev /packages/gui\r"
-    send_command
-    expect {
-        -i $spawn_id_rconsole 
-        -re "(.*)ok(.*)0 >(.*)" {
-            nc_msg "$PROGRAM Status: at root\n"
-        }
-        -re "]" {
-            send_user "$PROGRAM: Unexpected prompt\n"
-            set rc 1
-            return
-        } 
-        timeout {
-            send_user "$PROGRAM: Timeout\n"
-            set rc 1
-            return
-        }
-        eof {
-            send_user "$PROGRAM: Cannot connect to $NODENAME\n"
-            set rc 1
-            return
-        }
-    }
-
-    nc_msg "$PROGRAM Status: sending display_boot_devices #DISK command\n"
-    set command "display_boot_devices #ALL\r"
-    send_command 
-	
-    set done 0
-    set timeout 30
-    set disk_count 1
-    set rc 0
-
-    while { ! $done } {
-        expect {
-            -i $spawn_id_rconsole
-            -re "(\n)(\[^\r]*)(\r)" {
-                if { [regexp "SCSI (\[0-9]+) MB Harddisk (.*)loc=(.*)\[)]" $expect_out(2,string) x0 x1 x2 x3] } {
-                    set disk_array_size($disk_count) "$x1"
-                    set disk_array_loc($disk_count)  [string trimright "$x3"]
-                    set disk_array_path($disk_count) ""
-                    incr disk_count 
                 }
             }
-            -re "0 >" {
-                nc_msg "$PROGRAM Status: at root\n"
-                set done 1
-            }
             timeout {
                 send_user "$PROGRAM: Timeout\n"
                 set rc 1
@@ -1450,44 +1332,10 @@ proc get_disk_info {} {
                 set rc 1
                 return
             }
-        }
-    }
-
-    set disk_count [array size disk_array_path]    
-    for {set i 1} {$i <= $disk_count} {incr i 1} {
-	set phandle_count [array size phandle_array]
-	for { set j 1 } { $j <= $phandle_count } { incr j 1 } {
-            set loc_code [get_adaptr_loc $phandle_array($j)]
-            if { [string first "$loc_code" "$disk_array_loc($i)"] != -1 } {
-                set disk_array_path($i) $full_path_name_array($j)
-                break
-            }
-	}
-
-        if { [string first "vdevice" "$disk_array_path($i)"] != -1 } {
-            set disk_array_devtype($i) "virtual"
-        } else {
-            set disk_array_devtype($i) "physical"
-        }
-
-	set disk_array_os($i) ""
-        set disk_array_os_ver($i) ""
-
-        set sms_dev_count [array size sms_dev_array_loc]
-        for { set j 1 } { $j <= $sms_dev_count } { incr j 1 } {
-            if { [string first "$sms_dev_array_loc($j)" "$disk_array_loc($i)"] != -1 } {
-                 set disk_array_os($i) $sms_dev_array_os($j)
-                 set disk_array_os_ver($i) $sms_dev_array_os_ver($j)
-            }
-        }
-
-	if { $colon } {
-                send_user "disk\:$disk_array_loc($i)\:\:$disk_array_path($i)\:\:$disk_array_devtype($i)\:$disk_array_size($i)\:$disk_array_os($i)\:$disk_array_os_ver($i)\:\n"
-	} else {
-		send_user "disk $disk_array_loc($i) $disk_array_path($i) $disk_array_devtype($i) $disk_array_size($i) $disk_array_os($i) $disk_array_os_ver($i)\n"
 	}
     }
 }
+
 
 ###################################################################
 #
@@ -1514,6 +1362,7 @@ proc boot_network {} {
     global extra_args
     global PROGRAM
     global NODENAME
+    global set_boot_order
     set rc 0
     set i 0
 
@@ -1540,8 +1389,12 @@ proc boot_network {} {
     # duplex during boot.
     # state 0, stack count 0
     set done(0) 0
-#   set cmd(0) "boot $full_path_name:speed=$speed,duplex=$duplex,bootp,0.0.0.0,,0.0.0.0,0.0.0.0\r"
-    set cmd(0) "boot $full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip $extra_args\r"
+    if {$extra_args != "" } {
+        set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip $extra_args"
+    } else {
+        set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip"
+    }
+    set cmd(0) "boot $net_device(0)\r"
     set msg(0) "$PROGRAM Status: network boot initiated\n"
     set pattern(0) "BOOTP"
     set newstate(0) 99
@@ -1549,8 +1402,8 @@ proc boot_network {} {
     # If the install adapter is FDDI, don't set the speed and duplex
     # state 1
     set done(1) 0
-#   set cmd(1) "boot $full_path_name:bootp,0.0.0.0,,0.0.0.0,0.0.0.0\r"
-    set cmd(1) "boot $full_path_name:bootp,$server_ip,,$client_ip,$gateway_ip\r"
+    set net_device(1) "$full_path_name:bootp,$server_ip,,$client_ip,$gateway_ip"
+    set cmd(1) "boot $net_device(1)\r"
     set msg(1) "$PROGRAM Status: network boot initiated\n"
     set pattern(1) "BOOTP"
     set newstate(1) 99
@@ -1561,15 +1414,6 @@ proc boot_network {} {
     # state -1, all done
     set done(-1) 1
 
-    ##############################################################################
-    # This is the expect code.        
-    # First, the initial state is set to 0.
-    # Then, in a loop, 
-    #    the done flag is checked,
-    #    the command is sent to the chrp interface
-    #    expect listens with the pattern 
-    #    
-    ##############################################################################
     if { $chosen_adap_type ==  "fddi" } {
         set state 1
     } else {
@@ -1581,15 +1425,61 @@ proc boot_network {} {
         set state 0
     }
 
+    ##################################################################
+    # Set the boot device order.
+    ##################################################################
+    if { $set_boot_order > 0 } {
+        set done(2) 0
+        set msg(2) "$PROGRAM Status: read original boot-device\n"
+        set cmd(2) "printenv boot-device\r"
+        set pattern(2) ".*boot-device\\s+(\\S+)(.*)ok(.*)"
+        set newstate(2) 3
+
+        set done(3) 0
+        set msg(3) "$PROGRAM Status: set the environment variable boot-device\n"
+        set pattern(3) "(.*)ok(.*)(\[0-9]) >(.*)"
+        if {  $state == 0 } {
+            set newstate(3) 0
+        } else {
+            set newstate(3) 1
+        }
+        set state 2
+    }  
+
     set timeout 30     ;# shouldn't take long
     while { $done($state) == 0 } {
-        nc_msg "$PROGRAM Status: command is $cmd($state)\n"
         set command $cmd($state)
         send_command
         expect {
             -i $spawn_id_rconsole
             -nocase
             -re $pattern($state) {
+                if { $state == 2 } {
+                    if { $set_boot_order == 1 } {
+                        ########################################
+                        # Set network as boot device
+                        ########################################
+                        set cmd(3) "setenv boot-device $net_device($newstate(3))\r"
+                    } elseif { $set_boot_order == 2 } {
+                        ########################################
+                        # Set network as 1st boot device,disk as 2nd boot device
+                        ########################################
+                        set boot_device_bk $expect_out(1,string)
+                        set cmd(3) "setenv boot-device $net_device($newstate(3)) $boot_device_bk\r"
+                    } elseif { $set_boot_order == 3 } {
+                        ########################################
+                        # Set disk as 1st boot device,network as 2nd boot device
+                        ########################################
+                        set boot_device_bk $expect_out(1,string)
+                        set cmd(3) "setenv boot-device $boot_device_bk $net_device($newstate(3))\r"
+                    } elseif { $set_boot_order == 4 } {
+                        ########################################
+                        # set disk as boot device 
+                        ########################################
+                        set boot_device_bk $expect_out(1,string)
+                        set cmd(3) "setenv boot-device $boot_device_bk\r"
+                    }
+                }
                 nc_msg $msg($state)
                 set state $newstate($state)
             }
@@ -1694,7 +1584,7 @@ proc multiple_open-dev {} {
     global spawn_id_rconsole
     global PROGRAM
     global NODENAME
-    global command
+    global comman
     global env
 
     set command  "dev /packages/net \r"
@@ -1946,7 +1836,7 @@ set debug_flag 0
 set rmvterm_flag 0
 set immed_flag 0
 set list_physical 0
-set list_disk 0
+set set_boot_order 0
 set colon 0
 set choice 0
 set full_path_name ""
@@ -2037,6 +1927,10 @@ while { [llength $argv] > 0} {
                set argv [lrange $argv 1 end]
              }
 
+        "-w" { set set_boot_order [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
         "-l" { set phys_loc [lindex $argv 1]
                set argv [lrange $argv 2 end]
              }
@@ -2081,11 +1975,6 @@ while { [llength $argv] > 0} {
                set argv [lrange $argv 1 end]
              }
 
-        "--disk" {
-               set list_disk 1
-               set argv [lrange $argv 1 end]
-             }
-
         "--help" {
                 usage
              }
@@ -2120,12 +2009,9 @@ if { $list_physical == 0 } {
     set dev_count [array size dev_pat]
 }
 
-if { $list_disk == 1 } {
+if { $set_boot_order > 1 } {
     set dev_pat(4) "scsi"
     set dev_type(4) "disk"
-    #set dev_pat(5) "fibre-channel"
-    #set dev_type(5) "disk"
- 
     set dev_count [array size dev_pat]
 }
 
@@ -2294,11 +2180,10 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
     }
 }
 
-if { $list_disk == 1 } {
-    nc_msg "$PROGRAM Status: Power on to SMS.\n"
+if { $set_boot_order > 1 } {
+    send_user "$PROGRAM Status: Power on $NODENAME to SMS.\n"
     set timeout 120
-    send -i $ssh_spawn_id "chsysstate -r lpar -o on -b sms -m \"$manage\" -n \"$node\" -f \"$profile\""
-
+    send -i $ssh_spawn_id "chsysstate -r lpar -o on -b sms -m \"$manage\" -n \"$node\" -f \"$profile\"\r"
 } else {
     send_user "# Power on $NODENAME to Open Firmware.\n"
     set timeout 120
@@ -2422,9 +2307,8 @@ while { ! $done } {
     }
 }
 
-
-if { $list_disk == 1 } {
-    get_disk_info_sms
+if { $set_boot_order > 1 } {
+    set_disk_boot
 }
 
 global phandle
@@ -2504,10 +2388,6 @@ if { $noboot } { # Display information for all supported adapters
             }
         }
 
-        if { $list_disk == 1 } {
-            get_disk_info
-	}
-        
     } else {
         for {set i 1} {$i <= $adapter_found} {incr i 1} {
 	    if {[regexp $match_pat $adap_type($i)] != 0 } {
@@ -2538,10 +2418,6 @@ if { $noboot } { # Display information for all supported adapters
 		}
                 break;
             }
-        }
-
-        if { $list_disk == 1 } {
-            get_disk_info
         }
     }
 

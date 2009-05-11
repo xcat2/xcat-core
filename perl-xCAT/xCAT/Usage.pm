@@ -17,7 +17,7 @@ use xCAT::Utils;
 
 my %usage = (
     "rnetboot" => 
-"Usage: rnetboot <noderange> [-f][-V|--verbose]
+"Usage: rnetboot <noderange> [-s net|hd] [-f] [-V|--verbose]
        rnetboot [-h|--help|-v|--version]",
     "rpower" => 
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|reset|stat|state|boot|cycle|softoff] [-V|--verbose]

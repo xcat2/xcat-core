@@ -40,15 +40,26 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose f) )) { 
+    if ( !GetOptions( \%opt, qw(V|Verbose f s=s) )) { 
         return( usage() );
     }
+
+    if ( exists( $opt{s} ) ){
+        my @boot_devices = split(/,/, $opt{s});
+        foreach (@boot_devices) {
+            if ( (!/^net$/) && (!/^hd$/) ) {
+                return(usage( "boot device $_ is not supported" ));
+            }
+         }
+    }
+
     ####################################
     # Check for "-" with no option
     ####################################
     if ( grep(/^-$/, @ARGV )) {
         return(usage( "Missing option: -" ));
     }
+
     ####################################
     # Check for an extra argument
     ####################################
@@ -122,6 +133,24 @@ sub do_rnetboot {
     if ( exists( $opt->{f} )) {
         $cmd.= " -i";
     }
+
+    #######################################
+    # Write boot order
+    #######################################
+    if (  exists( $opt->{s} )) {
+        foreach ($opt->{s}) {
+            if ( /^net$/ ) {
+                $cmd.= " -w 1";
+            } elsif ( /^net,hd$/ ) {
+                $cmd.= " -w 2";
+            } elsif ( /^hd,net$/ ) {
+                $cmd.= " -w 3";
+            } elsif ( /^hd$/ ) {
+                $cmd.= " -w 4";
+            }
+        }
+    }
+
     #######################################
     # Network specified
     #######################################
@@ -206,6 +235,13 @@ sub rnetboot {
     if ( exists( $options->{f} )) { 
         $opt{f} = 1;
     }
+    #####################################
+    # Write boot device order
+    #####################################
+    if ( exists( $options->{s} )) {
+        $opt{s} = $options->{s};
+    }
+
     #####################################
     # Invalid target hardware 
     #####################################
