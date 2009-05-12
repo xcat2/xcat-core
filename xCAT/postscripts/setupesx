@@ -1,0 +1,40 @@
+# esx setup
+# example on how to set up ESX.  We setup ssh and also add a basic
+# VLAN configuration 
+
+# Enable SSH access to root
+sed -e 's/PermitRootLogin no/PermitRootLogin yes/' /etc/ssh/sshd_config > /etc/ssh/sshd_config.new
+mv -f /etc/ssh/sshd_config.new /etc/ssh/sshd_config
+/etc/init.d/sshd restart
+
+# create a script that will launch the first time ESX does and configure
+# the network
+cat >/tmp/esxcfg.sh <<EOF1
+#!/bin/sh
+# Configure ESX Server.  You'll need to put your own IP address
+# in here. We assume eth0 is your nic.  Change if needed.
+NIC=eth0
+IPADDR=`ifconfig $NIC |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}'`
+NETMASK=`ifconfig $NIC |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
+
+Q=$(hostname | awk -Fhab '{print $2}' | sed 's/^0//g')
+esxcfg-vswitch -U vmnic0 vSwitch0
+esxcfg-vswitch -L vmnic1 vSwitch0
+esxcfg-vswif -i \$IPADDR -n $NETMASK vswif0
+esxcfg-firewall -e sshClient
+
+esxcfg-firewall -e ntpClient
+esxcfg-firewall -o 123,udp,out,ntpServer
+esxcfg-firewall -o 514,udp,out,syslog
+esxcfg-firewall -l
+service syslog restart
+
+EOF1
+
+chmod +x /tmp/esxcfg.sh
+cp /etc/rc.d/rc.local /etc/rc.d/rc.local.bak
+
+cat >>/etc/rc.d/rc.local <<EOF
+/tmp/esxcfg.sh
+mv -f /etc/rc.d/rc.local.bak /etc/rc.d/rc.local
+EOF
