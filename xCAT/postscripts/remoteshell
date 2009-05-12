@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -x
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #egan@us.ibm.com
 #(C)IBM Corp
@@ -48,38 +48,65 @@ fi
 allowcred.awk &
 CREDPID=$!
 sleep 1
-getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
-MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
-while [ -z "$MYCONT" ]; do
-    let SLI=$RANDOM%10
-    let SLI=SLI+10
-    sleep $SLI
-    getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
-    MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
-done
-chmod 600 /etc/ssh/ssh_host_dsa_key
-if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
-   rm /etc/ssh/ssh_host_dsa_key
-fi
-getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
-MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
-while [ -z "$MYCONT" ]; do
-    let SLI=$RANDOM%10
-    let SLI=SLI+10
-    sleep $SLI
-    getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
-    MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
-done
-chmod 600 /etc/ssh/ssh_host_rsa_key
-if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
-   rm /etc/ssh/ssh_host_rsa_key
-fi
 
+
+getcredentials.awk ssh_dsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_dsa_hostkey
+
+#check the message is an error or not
+grep -E '<error>' /tmp/ssh_dsa_hostkey
+if [ $? -ne 0 ]; then
+	#the message received is the data
+	cat /tmp/ssh_dsa_hostkey | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_dsa_key
+	logger -t xCAT ssh_dsa_hostkey
+	MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
+        while [ -z "$MYCONT" ]; do
+                let SLI=$RANDOM%10
+                let SLI=SLI+10
+                sleep $SLI
+                getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
+                MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
+        done
+        chmod 600 /etc/ssh/ssh_host_dsa_key
+        if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
+                rm /etc/ssh/ssh_host_dsa_key
+        fi
+else 
+	#the message received is an error, so parse it
+	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_dsa_hostkey`
+	logger -t xCAT Error: $ERR_MSG
+fi
+rm /tmp/ssh_dsa_hostkey
+
+getcredentials.awk ssh_rsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_rsa_hostkey
+
+#check whether the message is an error or not
+grep -E '<error>' /tmp/ssh_rsa_hostkey
+if [ $? -ne 0 ]; then
+	#the message received is the data we request
+	cat /tmp/ssh_rsa_hostkey | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_rsa_key
+	logger -t xCAT ssh_rsa_hostkey
+	MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
+	while [ -z "$MYCONT" ]; do
+    		let SLI=$RANDOM%10
+    		let SLI=SLI+10
+    		sleep $SLI
+    		getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
+    		MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
+	done
+	chmod 600 /etc/ssh/ssh_host_rsa_key
+	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
+   		rm /etc/ssh/ssh_host_rsa_key
+	fi
+else
+	#This is an error message
+	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_rsa_hostkey`
+	logger -t xCAT Error: $ERR_MSG
+fi
+rm /tmp/ssh_rsa_hostkey
 
 if [ -r /etc/xCATSN ] ; then
    mkdir /etc/xcat/hostkeys
    cp /etc/ssh/ssh* /etc/xcat/hostkeys/.
-
 fi
 
 
@@ -87,17 +114,29 @@ umask 0077
 
 mkdir -p /root/.ssh/
 sleep 1
-getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
-MYCONT=`cat /root/.ssh/id_rsa`
-while [ -z "$MYCONT" ]; do
-    let SLI=$RANDOM%10
-    let SLI=SLI+10
-    sleep $SLI
-    getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
-    MYCONT=`cat /root/.ssh/id_rsa`
-done
+getcredentials.awk ssh_root_key | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
 
-    
+#check whether the message is an error or not
+grep -E '<error>' /tmp/ssh_root_key
+if [ $? -ne 0 ]; then
+	#The message contains the data we request
+	cat /tmp/ssh_root_key | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa
+	logger -t xCAT ssh_root_key
+	MYCONT=`cat /root/.ssh/id_rsa`
+	while [ -z "$MYCONT" ]; do
+		let SLI=$RANDOM%10
+		let SLI=SLI+10
+		sleep $SLI
+		getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
+		MYCONT=`cat /root/.ssh/id_rsa`
+	done
+else
+	#This is an error message
+	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_root_key`
+	logger -t xCAT ssh_root_key Error: $ERR_MSG
+fi
+rm /tmp/ssh_root_key
+
 if ! grep "PRIVATE KEY" /root/.ssh/id_rsa > /dev/null 2>&1 ; then
    rm /root/.ssh/id_rsa
 fi

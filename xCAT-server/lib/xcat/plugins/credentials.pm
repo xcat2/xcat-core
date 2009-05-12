@@ -179,15 +179,25 @@ sub process_request
        } else {
           next;
        }
-       open($tmpfile,$tfilename);
-       @filecontent=<$tmpfile>;
-       close($tmpfile);
-       $retdata = "\n".join('',@filecontent);
-       push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$_]};
-       $retdata="";
-       @filecontent=();
+	#check if the file exists or not
+       if (defined $tfilename && -r $tfilename) {
+           open($tmpfile,$tfilename);
+           @filecontent=<$tmpfile>;
+           close($tmpfile);
+           $retdata = "\n".join('',@filecontent);
+           push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$_]};
+           $retdata="";
+           @filecontent=();
+       }
     }
-    xCAT::MsgUtils->message("D", $rsp, $callback, 0);
+    if (defined $rsp->{data}->[0]) {
+	#if we got the data from the file, send the data message to the client
+        xCAT::MsgUtils->message("D", $rsp, $callback, 0);
+    }else {
+	#if the file doesn't exist, send the error message to the client
+        delete $rsp->{'data'};
+        xCAT::MsgUtils->message("E", $rsp, $callback, 0);
+    }
     return;
 }
 
