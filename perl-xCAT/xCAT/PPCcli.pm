@@ -904,7 +904,15 @@ sub lslic {
 
     my $exp = shift;
     my $d   = shift;
+    my $timeout = shift;
     my $cmd = "lslic ";
+    
+    ##########################################
+    # Use timeout from site table (if defined) 
+    ##########################################
+    if ( !defined( $timeout )) {
+        $timeout = @$exp[7] * 3;
+    }
 
     #####################################
     # Command only support on CEC/BPAs
@@ -921,7 +929,7 @@ sub lslic {
     #####################################
     # Send command
     #####################################
-    my $result = send_cmd( $exp, $cmd );
+    my $result = send_cmd( $exp, $cmd , $timeout);
     return( $result );
 
 }

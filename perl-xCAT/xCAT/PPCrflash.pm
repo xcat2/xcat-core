@@ -350,7 +350,8 @@ sub rflash {
     	my $exp     = shift;
     	my $hwtype  = @$exp[2];
     	my @result;
-	
+        my $timeout    = $request->{ppctimeout};
+
 	$packages_dir = $request->{opt}->{p};
 	$activate = $request->{opt}->{activate};	
 
@@ -427,7 +428,7 @@ sub rflash {
 				}	
 				dpush(\@value, [$hmc,"$mtms:component:$component!"]);
 	
-				my $values = xCAT::PPCcli::lslic( $exp, $d );
+				my $values = xCAT::PPCcli::lslic( $exp, $d, $timeout );
         	    		my $Rc = shift(@$values);
             			#####################################
             			# Return error

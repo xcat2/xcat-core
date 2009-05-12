@@ -38,6 +38,8 @@ Any previously activated code on the affected systems will be automatically acce
 
 B<IMPORTANT!>  If the power subsystem is recycled, all of its attached managed systems will be recycled. 
 
+If it outputs B<"Timeout waiting for prompt"> during the upgrade, please set the B<"ppctimeout"> larger in the B<site> table. After the upgrade, remeber to change it back. If run the B<"rflash"> command on an AIX management node, need to make sure the value of B<"useSSHonAIX"> is B<"yes"> in the site table.
+
 =head1 B<Options>
 
 =over 7
