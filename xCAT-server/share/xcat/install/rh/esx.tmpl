@@ -1,0 +1,42 @@
+install
+lang en_US.UTF-8
+langsupport --default en_US.UTF-8 en_US.UTF-8
+timezone --utc "#TABLE:site:key=timezone:value#"
+keyboard us
+mouse genericwheelps/2 --device psaux
+text
+skipx
+network --bootproto dhcp
+firewall --enable
+rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
+authconfig --enableshadow --enablemd5
+bootloader --location=mbr
+reboot
+url --url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
+zerombr yes
+clearpart --all --initlabel --drives=sda
+part /boot    --fstype ext3    --size=100   --ondisk=sda
+part /        --fstype ext3    --size=1500  --ondisk=sda
+part swap                      --size=512   --ondisk=sda
+part None     --fstype vmfs3   --size=900 --ondisk=sda --grow
+part None     --fstype vmkcore --size=100   --ondisk=sda
+
+#VMware specific
+vmaccepteula
+#Server Based:
+#Standard License Type
+#vmlicense --mode=server --server=27000@192.168.0.25 -edition=esxFull
+#Starter License Type
+#vmlicense --mode=server --server=27000@192.168.0.25 -edition=esxExpress
+#File Based: 
+#Place the content of the lincese file 
+#in a single line in the %vmlicense_text section
+#vmlicense --mode=file
+
+%packages
+@base
+
+%pre
+#INCLUDE:../scripts/pre.rh#
+%post
+#INCLUDE:../scripts/post.esx#
