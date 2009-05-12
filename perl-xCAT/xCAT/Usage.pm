@@ -20,7 +20,7 @@ my %usage = (
 "Usage: rnetboot <noderange> [-s net|hd] [-f] [-V|--verbose]
        rnetboot [-h|--help|-v|--version]",
     "rpower" => 
-"Usage: rpower <noderange> [--nodeps] [on|onstandby|off|reset|stat|state|boot|cycle|softoff] [-V|--verbose]
+"Usage: rpower <noderange> [--nodeps] [on|onstandby|off|reset|stat|state|boot] [-V|--verbose]
        rpower [-h|--help|-v|--version]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
@@ -28,6 +28,8 @@ my %usage = (
        rpower <noderange> [--nodeps] [of] [-V|--verbose]
      PPC (HMC) specific:
        rpower <noderange> [onstandby] [-V|--verbose]
+     Blade specific:
+       rpower <noderange> [cycle|softoff] [-V|--verbose]
 ",
     "rbeacon" => 
 "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]

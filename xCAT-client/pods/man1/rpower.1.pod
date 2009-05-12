@@ -4,7 +4,7 @@ B<rpower> - remote power control of nodes
 
 =head1 SYNOPSIS
 
-B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<cycle>|B<softoff>}
+B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<reset>|B<boot>}
 
 B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -15,6 +15,10 @@ B<rpower> I<noderange> [B<--nodeps>] {B<of>}
 =head2 PPC (with HMC) specific:
 
 B<rpower> I<noderange> [B<onstandby>]
+
+=head2 Blade specific:
+
+B<rpower> I<noderange> [B<cycle>|B<softoff>] 
 
 =head1 DESCRIPTION
 
