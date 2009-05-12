@@ -271,27 +271,29 @@ sub get_lic_filenames {
          }
 
          $filename = File::Spec->catfile( $packages_dir, $dirlist[0] );
-         $dirlist[0] =~ /(\w(4)(\d(3))_(\w(3))_(\d(3).rpm$))/;
-         if(($pns eq $2) && ($4 < $active_level)) {
-		$msg = $msg. "Upgrade $mtms concurrently!";
-		if($activate ne "concurrent") {
-			$msg = "Option --actviate's value should be disruptive";
-			return ("", "","", $msg, -1);
-		}
-	} else {
-		$msg = $msg . "Upgrade $mtms disruptively!";
-                if($activate ne "disruptive") {
-			$msg = "Option --actviate's value should be concurrent ";
-			return ("", "","", $msg, -1);
-		}
-        }
-        #print "filename is $filename\n";
+         $dirlist[0] =~ /(\w{4}(\d{3})_(\w{3})_(\d{3}.rpm$))/;
 	##############
 	#If the release levels are different, it will be upgrade_required.
-	#############	
+	#############
 	if($fff ne $2) {
 		$upgrade_required = 1;
+	} else {
+
+       	 if(($pns eq $1) && ($4 < $active_level)) {
+		$msg = $msg. "Upgrade $mtms $activate!";
+	#	if($activate ne "concurrent") {
+	#		$msg = "Option --actviate's value should be disruptive";
+	#		return ("", "","", $msg, -1);
+	#	}
+	  } else {
+		$msg = $msg . "Upgrade $mtms disruptively!";
+                if($activate ne "disruptive") {
+			$msg = "Option --actviate's value shouldn't be concurrent, and it must be disruptive";
+			return ("", "","", $msg, -1);
+		}
+       	 } 
 	}
+        #print "filename is $filename\n";
 	my $xml_file_name = $filename;
 	$xml_file_name =~ s/(.+\.)rpm/\1xml/;
 	#print "check_licdd_update: source xml file is $xml_file_name\n";
