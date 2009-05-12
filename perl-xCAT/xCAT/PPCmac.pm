@@ -245,7 +245,38 @@ sub do_getmacs {
     #######################################
     if ( exists( $opt->{f} )) {
         $cmd.= " -i";
+    } else {
+        #################################
+        # Force LPAR shutdown if LPAR is
+        # running Linux
+        #################################
+        my $table = "nodetype";
+        my $intable = 0;
+        my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
+        if ( defined(@TableRowArray) ) {
+            foreach ( @TableRowArray ) {
+                my @nodelist = split(',', $_->{'node'});
+                my @oslist = split(',', $_->{'os'});
+                my $osname = "AIX";
+                if ( grep(/^$node$/, @nodelist) ) {
+                    if ( !grep(/^$osname$/, @oslist) ) {
+                        $cmd.= " -i";
+                    }
+                    $intable = 1;
+                    last;
+                }
+            }
+        }
+        #################################
+        # Force LPAR shutdown if LPAR OS
+        # type is not assigned in table
+        # but mnt node is running Linux
+        #################################
+        if ( xCAT::Utils->isLinux() && $intable == 0 ) {
+            $cmd.= " -i";
+        }
     }
+
     #######################################
     # Network specified (-D ping test)
     #######################################
