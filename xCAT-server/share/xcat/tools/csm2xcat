@@ -513,6 +513,9 @@ sub getDevinfo
                 {
                     my $lcvalue = lc($value);
                     $xcatline = "    nodetype=$lcvalue\n";
+                    if ($lcvalue eq "hmc") {
+                      $xcatline .= "    mgt=$lcvalue\n";
+                    }
                 }
             }
             if ($attr eq "HWType")    # put Model and type together
