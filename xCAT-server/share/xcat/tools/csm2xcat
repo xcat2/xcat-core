@@ -408,6 +408,9 @@ sub getNodeinfo
                 $xcatline = "";
             }
         }
+        $xcatline = "\n";
+        write_stanza($xcatline);
+        $xcatline = "";
     }
 
     close(STANZA);
@@ -548,6 +551,9 @@ sub getDevinfo
                 $xcatline = "";
             }
         }
+        $xcatline = "\n";
+        write_stanza($xcatline);
+        $xcatline = "";
     }
     close(STANZA);
     return 0;
