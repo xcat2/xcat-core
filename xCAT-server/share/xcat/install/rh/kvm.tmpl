@@ -1,5 +1,6 @@
 #egan@us.ibm.com
-#
+# read more on installing KVM here:
+# http://xcat.wiki.sourceforge.net/KVM+
 
 lang en_US
 langsupport en_US
@@ -11,6 +12,13 @@ network --bootproto dhcp
 #
 #nfs --server #XCATVAR:INSTALL_NFS# --dir #XCATVAR:INSTALL_SRC_DIR#
 url --url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
+
+# For KVM to install properly you need to install other packages from 
+# another installation repository.  Usually we create a directory:
+# /install/xcat with all of the xCAT rpms in there.  Then after doing
+# mklocalrep your machine that is installing can get these.  An example:
+# repo --name=xcat-dep --baseurl=http://#TABLE:noderes:$NODE:nfsserver#/install/xcat/xcat-dep/rh5/#TABLE:nodetype:$NODE:arch#
+
 
 #device ethernet e100
 keyboard "us"
@@ -152,6 +160,16 @@ sendmail-cf
 openssh-server
 util-linux
 screen
+bridge-utils
+dnsmasq
+# you also need to install these packages, if you set up your
+# repo as explained above, then you can get them from your management
+# server:
+#iscsi-initiator-utils
+#kvm
+#perl-Sys-Virt
+#libvirt.x86_64
+#gpxe-kvm
 %pre
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
 %post
