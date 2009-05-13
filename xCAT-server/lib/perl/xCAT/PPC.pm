@@ -803,7 +803,7 @@ sub resolve {
            #############################
            if (( defined( $ent )) && exists( $ent->{parent} )) {
                my @attrs = qw(mtm serial);
-               my ($vpd) = $tabs->{vpd}->getAttribs($ent->{parent},\@attrs);
+               my ($vpd) = $tabs->{vpd}->getNodeAttribs($ent->{parent},\@attrs);
 
                if ( !defined( $vpd )) {
                    return( sprintf( $errmsg{NO_UNDEF}, "vpd" )); 
