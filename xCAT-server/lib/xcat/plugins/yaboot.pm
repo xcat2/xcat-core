@@ -151,7 +151,8 @@ sub setstate {
         }
      }
   }
-  my $hassymlink = eval { symlink("",""); 1 };
+# Do not use symbolic link, p5 does not support symbolic link in /tftpboot
+#  my $hassymlink = eval { symlink("",""); 1 };
   foreach $ip (keys %ipaddrs) {
    my @ipa=split(/\./,$ip);
    my $pname = sprintf("%02x%02x%02x%02x",@ipa);
@@ -163,19 +164,19 @@ sub setstate {
    {
        unlink($tftpdir . "/" . $sles11_special_link);
    }
-   if ($hassymlink) { 
-       symlink($node,$tftpdir."/etc/".$pname);
-       if ( $kern->{'kernel'} =~ /sles11\/ppc64\//) #special case for sles 11
-       {
-           symlink($tftpdir."/etc/".$node, $tftpdir . '/' . $sles11_special_link);
-       }
-   } else {
+   #if ($hassymlink) { 
+   #    symlink($node,$tftpdir."/etc/".$pname);
+   #    if ( $kern->{'kernel'} =~ /sles11\/ppc64\//) #special case for sles 11
+   #    {
+   #        symlink($tftpdir."/etc/".$node, $tftpdir . '/' . $sles11_special_link);
+   #    }
+   #} else {
        link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
        if ( $kern->{'kernel'} =~ /sles11\/ppc64\//) #special case for sles 11
        {
            link($tftpdir."/etc/".$node, $tftpdir . '/' . $sles11_special_link);
        }
-   }
+   #}
   }
 }
   
