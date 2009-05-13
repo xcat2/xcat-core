@@ -26,7 +26,11 @@
 # MAIN
 use strict;
 use IO::Socket;
-use IO::Socket::SSL;
+my $useSocketSSL=eval { require IO::Socket::SSL; };
+if ($useSocketSSL) {
+        require IO::Socket::SSL;
+}
+
 my $rc = 0;
 
 # Override from site table
