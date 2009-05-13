@@ -321,6 +321,10 @@ sub lsrefcode {
     } elsif($res eq 'lpar'){
         $cmds[0] = sprintf($lsrefcode{$res}, $d1, $d2);
     }
+    else
+    {
+        return [[0,'Not available']];
+    }
 
     ###################################
     # Send command
