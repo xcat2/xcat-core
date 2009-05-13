@@ -1001,13 +1001,18 @@ sub setobjdefs
                 # add new to existing - at the end - comma separated
                 if (defined($DBattrvals{$objname}{$attr_name}))
                 {
-					# if it's not already in the list!
-					if (!($DBattrvals{$objname}{$attr_name} =~ /\b$objhash{$objname}{$attr_name}\b/) )
-					{
-                    	$val = "$DBattrvals{$objname}{$attr_name},$objhash{$objname}{$attr_name}";
-					} else {
-						$val = "$DBattrvals{$objname}{$attr_name}";
-					}
+                    # add the attr into the list if it's not already in the list!
+                    # and avoid the duplicate values
+                    my @DBattrarray = split(',', $DBattrvals{$objname}{$attr_name});
+                    my @objhasharray = split(',', $objhash{$objname}{$attr_name});
+                    foreach my $objattr (@objhasharray)
+                    {
+                        if (!grep(/^\Q$objattr\E$/, @DBattrarray))
+                        {
+                            push @DBattrarray, $objattr;
+                        }
+                     }
+                     $val = join(',', @DBattrarray);
                 }
                 else
                 {
