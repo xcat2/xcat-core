@@ -1105,19 +1105,18 @@ sub preprocess_request {
   my $callback = shift;
   my @requests;
 
-  #####################################
-  # Special cases for mkvm
-  #####################################
-  if ( $req->{command}->[0] eq 'mkvm')
+#####################################
+# Parse arguments
+#####################################
+  my $opt = parse_args($package, $req, $callback);
+  if ( ref($opt) eq 'ARRAY' ) 
   {
-      $req = mkvm_prepare ( $req);
-      if ( ref($req) eq 'ARRAY')#Something wrong
-      {
-          $callback->({data=>$req});
-          $req = {};
-          return;
-      }
+      send_msg( $req, 1, @$opt );
+      return(1);
   }
+  
+  $req->{opt} = $opt;
+
   ####################################
   # Get hwtype 
   ####################################
@@ -1224,53 +1223,38 @@ sub preprocess_request {
   }
   return \@requests;
 }
-
 ####################################
-# Special case for mkvm
+# Parse arguments
 ####################################
-sub mkvm_prepare
+sub parse_args
 {
-    my $req = shift;
+    my $package = shift;
+    my $req     = shift;
+    my $callback= shift;
+    $package =~ s/xCAT_plugin:://;
+#    if ( exists $req->{opt})
+#    {
+#        return $req->{opt};
+#    }
 
-    # Following code could be changed more flexibly, as we did in PPC::runcmd
-    # But since we only mkvm need to be handled in this specific way, keep the code simple
-    ######################################
-    # Load specific module
-    ######################################
-    eval "require xCAT::PPCvm";
-    if ( $@ ) {
-        return( $@ );
-    }
-
-    my $opt = xCAT::PPCvm::mkvm_parse_args( $req);
-    if ( ref($opt) eq 'ARRAY')
-    {
-        return $opt;
-    }
-    $req->{opt} = $opt;
-
-    ########################################################
-    #Check lpar number in command line and profile
-    ########################################################
-    if ( exists $opt->{c})
-    {
-        my @profile = @{$opt->{profile}};
-        my @lpars = @{$opt->{target}};
-        my $min_lpar_num = scalar( @profile);
-        if ( scalar(@profile) > scalar( @lpars))
-        {
-            xCAT::MsgUtils->message('W', "Warning: Lpar configuration number in profile is greater than lpars in command line. Only first " . scalar(@lpars) . " lpars will be created.\n");
-            $min_lpar_num = scalar( @lpars);
-        }
-        elsif ( scalar(@profile) < scalar( @lpars))
-        {
-            my $lparlist = join ",", @lpars[0..($min_lpar_num-1)];
-            xCAT::MsgUtils->message('W', "Warning: Lpar number in command line is greater than lpar configuration number in profile. Only lpars " . $lparlist . " will be created.\n");
-        }
-    }
-
-    return $req;
+#################################
+# To match the old logic
+##################################
+    my $command = $req->{command}->[0];
+    my $stdin   = $req->{stdin}->[0];
+    $req->{command}  = $command;
+    $req->{stdin}    = $stdin; 
+    $req->{hwtype}   = $package; 
+    $req->{callback} = $callback; 
+    $req->{method}   = "parse_args";
+    
+    my $opt = runcmd( $req);
+    
+    $req->{command} = [ $command];
+    $req->{stdin}   = [ $stdin];
+    return $opt;
 }
+
 sub preprocess_for_rflash {
 	my $req      = shift;
   	my $callback = shift;
@@ -1375,41 +1359,21 @@ sub process_request {
     ####################################
     # Build hash to pass around 
     ####################################
-    my %request; 
-    $request{command}  = $req->{command}->[0];
-    $request{arg}      = $req->{arg};
-    $request{node}     = $req->{node};
-    $request{stdin}    = $req->{stdin}->[0]; 
-    $request{hwtype}   = $package; 
-    $request{callback} = $callback; 
-    $request{method}   = "parse_args";
-
-    #For mkvm only so far
-    $request{opt}      = $req->{opt} if (exists $req->{opt});
-
-    ####################################
-    # Process command-specific options
-    ####################################
-    my $opt = runcmd( \%request );
-
-    ####################################
-    # Return error
-    ####################################
-    if ( ref($opt) eq 'ARRAY' ) {
-        send_msg( \%request, 1, @$opt );
-        return(1);
-    }
+    my $request = {%$req};
+    $request->{command} = $req->{command}->[0];
+    $request->{stdin}   = $req->{stdin}->[0]; 
+    $request->{hwtype}  = $package;
+    $request->{callback}= $callback;
     ####################################
     # Option -V for verbose output
     ####################################
-    if ( exists( $opt->{V} )) {
-        $request{verbose} = 1;
+    if ( exists( $request->{opt}->{V} )) {
+        $request->{verbose} = 1;
     }
     ####################################
     # Process remote command
     ####################################
-    $request{opt} = $opt; 
-    process_command( \%request );
+    process_command( $request );
 }
 
 ##########################################################################

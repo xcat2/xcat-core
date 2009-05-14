@@ -121,15 +121,8 @@ sub mkvm_parse_args {
 
     my $request = shift;
 
-#return directly for PPC::process_request
-    if ( $request->{opt})
-    {
-        $request->{method} = $request->{command};
-        return $request->{opt};
-    }
-
     my %opt     = ();
-    my $cmd     = $request->{command}->[0];
+    my $cmd     = $request->{command};
     my $args    = $request->{arg};
 
 #############################################
@@ -282,6 +275,20 @@ sub mkvm_parse_args {
             }
         }
         return ( usage( "No valid line was found in profile $opt{p}.")) if ( scalar( @cfgdata) < 1);
+
+        my @lpars = @{$opt{target}};
+        my $min_lpar_num = scalar( @cfgdata);
+        if ( scalar(@cfgdata) > scalar( @lpars))
+        {
+            xCAT::MsgUtils->message('W', "Warning: Lpar configuration number in profile is greater than lpars in command line. Only first " . scalar(@lpars) . " lpars will be created.\n");
+            $min_lpar_num = scalar( @lpars);
+        }
+        elsif ( scalar(@cfgdata) < scalar( @lpars))
+        {
+            my $lparlist = join ",", @lpars[0..($min_lpar_num-1)];
+            xCAT::MsgUtils->message('W', "Warning: Lpar number in command line is greater than lpar configuration number in profile. Only lpars " . $lparlist . " will be created.\n");
+        }
+
         $opt{profile} = \@cfgdata;
     }
 
