@@ -82,8 +82,8 @@ echo "rpm -Uvh perl-Digest-MD5-2.36-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 cp /opt/freeware/src/packages/RPMS/ppc/fping-2.4b2_to-1.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh fping-2.4b2_to-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
-cp /opt/freeware/src/packages/RPMS/ppc/openslp-1.2.1-1.aix5.3.ppc.rpm $RPMDIR/
-echo "rpm -Uvh openslp-1.2.1-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
+cp /opt/freeware/src/packages/RPMS/ppc/openslp-xcat-1.2.1-1.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh openslp-xcat-1.2.1-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
 cp /opt/freeware/src/packages/RPMS/ppc/perl-Crypt-SSLeay-0.57-1.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh perl-Crypt-SSLeay-0.57-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
@@ -125,5 +125,8 @@ echo "instmysql" >> $RPMDIR/flist2
 echo "README" >> $RPMDIR/flist2
 tar -cvf $RPMDIR/xcat-mysql-$VER-$SNAP.tar -L $RPMDIR/flist2
 gzip $RPMDIR/xcat-mysql-$VER-$SNAP.tar
+
+chgrp xcat *
+chmod g+w *
 
 exit 0;

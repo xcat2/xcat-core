@@ -20,7 +20,8 @@
 #
 # scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
 #scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel 
-#
+#scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/2.2/core-snap
+#scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/2.2
 
 BLDTOP=`pwd`
 RPMDIR=$BLDTOP/aix-core-snap
@@ -97,6 +98,9 @@ ls *.rpm >> flist
 #TIME=`date +%Y%m%d%H%M`
 tar -cvf core-aix-snap.tar -L flist
 gzip core-aix-snap.tar
+
+chgrp xcat *
+chmod g+w *
 
 #
 # upload the tar file and RPMs to SourceForge
