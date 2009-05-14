@@ -197,6 +197,9 @@ sub interact {
 				last;
 			}
 		}
+		while(<OUTPUT>) {
+			# let mmlscluster finish up
+		}
 		close(OUTPUT);
 
 		logger('info',"$node detected as $status");
@@ -312,6 +315,8 @@ sub daemonic {
 	open(STDERR,">&STDOUT");
 	chdir('/');
 	umask(0);
+	#cannot remember why I needed this
+	#$ENV{PATH} = "$ENV{XCATROOT}/bin:$ENV{XCATROOT}/sbin:$ENV{XCATROOT}/lib:$ENV{PATH}";
 	return $$;
 }
 
@@ -358,6 +363,9 @@ sub logger {
 	openlog('autogpfsd','','local0');
 	syslog($type,$msg);
 	closelog();
+
+	#hack for no syslog
+	#system("(date;echo : $type $msg) >>/tmp/autogpfsd.log");
 }
 
 END { unlink PIDFILE if $$ == $pid; }
