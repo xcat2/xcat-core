@@ -28,7 +28,7 @@ while(<$sock>) {
 	$line = $_;
 
 	if($line =~ /^busy/) {
-		exit(2);
+		exit(3);
 	}
 	if($line =~ /^new started/) {
 		next;

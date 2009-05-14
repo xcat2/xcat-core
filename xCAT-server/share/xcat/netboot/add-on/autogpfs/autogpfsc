@@ -53,10 +53,11 @@ case "$1" in
 
 			for i in $(
 				grep "\bgpfs\b" /etc/fstab | \
+				grep -v noauto | \
 				awk '{print $2}'
 			)
 			do
-				mount | grep "\b/gpfs1\b" >/dev/null 2>&1
+				mount | grep "\b/$1\b" >/dev/null 2>&1
 				if [ "$?" != "0" ]
 				then
 					DOBLOCK=yes
