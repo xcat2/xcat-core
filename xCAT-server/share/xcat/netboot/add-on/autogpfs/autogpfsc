@@ -57,7 +57,7 @@ case "$1" in
 				awk '{print $2}'
 			)
 			do
-				mount | grep "\b/$1\b" >/dev/null 2>&1
+				mount | grep "\b$i\b" >/dev/null 2>&1
 				if [ "$?" != "0" ]
 				then
 					DOBLOCK=yes
