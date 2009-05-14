@@ -2180,32 +2180,77 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
     }
 }
 
+set done 0
+set retry_count 0
 if { $set_boot_order > 1 } {
     send_user "$PROGRAM Status: Power on $NODENAME to SMS.\n"
     set timeout 120
-    send -i $ssh_spawn_id "chsysstate -r lpar -o on -b sms -m \"$manage\" -n \"$node\" -f \"$profile\"\r"
+    while { ! $done } {
+        send -i $ssh_spawn_id "chsysstate -r lpar -o on -b sms -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
+
+        expect {
+            -i $ssh_spawn_id \
+            -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*)" {
+                set rc $expect_out(2,string)
+                set msg $expect_out(1,string)
+                set done 1
+            }
+            -re "\r\nRc=(\[0-9])\r\n(.*)" {
+                set rc $expect_out(1,string)
+                set done 1
+            }
+            timeout {
+                if { $retry_count == 2 } {
+                    send_user "$PROGRAM: Timeout waiting for command prompt\n"
+                    exit 1
+                }
+                sleep 1
+                incr retry_count
+            }
+            eof {
+                if { $retry_count == 2 } {
+                    send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
+                    exit 1
+                }
+                sleep 1
+                incr retry_count
+            }
+        }
+    }
 } else {
     send_user "# Power on $NODENAME to Open Firmware.\n"
     set timeout 120
-    send -i $ssh_spawn_id "chsysstate -r lpar -o on -b of -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
+    while { ! $done } {
+        send -i $ssh_spawn_id "chsysstate -r lpar -o on -b of -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
 
-    expect {
-        -i $ssh_spawn_id \
-        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*)" {
-            set rc $expect_out(2,string)
-            set msg $expect_out(1,string)
+        expect {
+            -i $ssh_spawn_id \
+            -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*)" {
+                set rc $expect_out(2,string)
+                set msg $expect_out(1,string)
+                set done 1
+            }
+            -re "\r\nRc=(\[0-9])\r\n(.*)" {
+                set rc $expect_out(1,string)
+                set done 1
+            }
+            timeout {
+                if { $retry_count == 1 } {
+                    send_user "$PROGRAM: Timeout waiting for command prompt\n"
+                    exit 1
+                }
+                sleep 1
+                incr retry_count
+            }
+            eof {
+                if { $retry_count == 1 } {
+                    send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
+                    exit 1
+                }
+                sleep 1
+                incr retry_count
+            }
         }
-        -re "\r\nRc=(\[0-9])\r\n(.*)" {
-            set rc $expect_out(1,string)
-        }
-        timeout {
-            send_user "$PROGRAM: Timeout waiting for command prompt\n"
-            exit 1
-        }
-        eof {
-           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
-           exit 1
-       }
     }
 }
 
