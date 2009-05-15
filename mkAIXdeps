@@ -11,7 +11,8 @@ BLDTOP=`pwd`
 RPMDIR=$BLDTOP/aix-dep-snap
 VER=`cat $BLDTOP/Version`
 DATE=`date +"%Y%m%d%H%M"`
-SNAP="snap$DATE"
+#SNAP="snap$DATE"
+SNAP="$DATE"
 
 if [ -d $RPMDIR ]
 then
