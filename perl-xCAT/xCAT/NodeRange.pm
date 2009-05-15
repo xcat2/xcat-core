@@ -50,12 +50,40 @@ sub expandatom {
      }
 
     # Try to match groups?
-	foreach($nodelist->getAllAttribs('node','groups')) {
-		my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
-		if (grep { $_ eq "$atom" } @groups ) {
-			push @nodes,$_->{node};
-		}
-	}
+        my $grptab = xCAT::Table->new('nodegroup');
+        my @grplist = @{$grptab->getAllEntries()};
+        my $isdynamicgrp = 0;
+        foreach my $grpdef_ref (@grplist) {
+            my %grpdef = %$grpdef_ref;
+            # Try to match a dynamic node group
+            # do not try to match the static node group from nodegroup table,
+            # the static node groups are stored in nodelist table.
+            if (($grpdef{'groupname'} eq $atom) && ($grpdef{'grouptype'} eq 'dynamic'))
+            {
+                $isdynamicgrp = 1;
+                my $grpname = $atom;
+                my %grphash;
+                $grphash{$grpname}{'objtype'} = 'group';
+                $grphash{$grpname}{'grouptype'} = 'dynamic';
+                $grphash{$grpname}{'wherevals'} = $grpdef{'wherevals'};
+                my $memberlist = xCAT::DBobjUtils->getGroupMembers($grpname, \%grphash);
+                foreach my $grpmember (split ",", $memberlist)
+                {
+                    push @nodes, $grpmember;
+                }
+                last; #there should not be more than one group with the same name
+             }
+         }
+         # The atom is not a dynamic node group, is it a static node group???
+         if(!$isdynamicgrp)
+         {
+	        foreach($nodelist->getAllAttribs('node','groups')) {
+	            my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
+	            if (grep { $_ eq "$atom" } @groups ) {
+		        push @nodes,$_->{node};
+	            }
+                }
+          }
 
 	if ($atom =~ m/^[0-9]+\z/) {    # if only numbers, then add the prefix
 		my $nodename=$nprefix.$atom.$nsuffix;

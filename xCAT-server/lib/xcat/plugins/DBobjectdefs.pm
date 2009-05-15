@@ -242,15 +242,6 @@ sub processArgs
         return 2;
     }
 
-	#  opt_d not yet supported
-    if ($::opt_d)
-    {
-        my $rsp;
-        $rsp->{data}->[0] = "The \'-d\' option is not yet implemented.";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
-        return 2;
-    }
-
     # can get object names in many ways - easier to keep track
     $::objectsfrom_args = 0;
     $::objectsfrom_opto = 0;
@@ -1163,18 +1154,40 @@ sub defmk
 
             # get the list of all defined group objects
 
-            my @definedgroups = xCAT::DBobjUtils->getObjectsOfType("group");
+            # getObjectsOfType("group") only returns static groups,
+            # generally speaking, the nodegroup table should includes all the static and dynamic groups,
+            # but it is possible that the static groups are not in nodegroup table,
+            # so we have to get the static and dynamic groups separately.
+            my @definedgroups = xCAT::DBobjUtils->getObjectsOfType("group"); #static groups
+            my $grptab = xCAT::Table->new('nodegroup');
+            my @grplist = @{$grptab->getAllEntries()}; #dynamic groups and static groups in nodegroup table
 
 			my %GroupHash;
             foreach my $g (@grouplist)
             {
-                if (!grep(/^$g$/, @definedgroups))
+                my $indynamicgrp = 0;
+                #check the dynamic node groups
+                foreach my $grpdef_ref (@grplist) 
                 {
-
-                    # define it
-                    $GroupHash{$g}{objtype}   = "group";
-                    $GroupHash{$g}{grouptype} = "static";
-                    $GroupHash{$g}{members}   = "static";
+                     my %grpdef = %$grpdef_ref;
+                     if (($grpdef{'groupname'} eq $g) && ($grpdef{'grouptype'} eq 'dynamic'))
+                     {
+                         $indynamicgrp = 1;
+                         my $rsp;
+                         $rsp->{data}->[0] = "nodegroup $g is a dynamic node group, should not add a node into a dynamic node group statically.\n";
+                         xCAT::MsgUtils->message("I", $rsp, $::callback);
+                          last;
+                      }
+                }
+                if (!$indynamicgrp)
+                {
+                    if (!grep(/^$g$/, @definedgroups))
+                    {
+                        # define it
+                        $GroupHash{$g}{objtype}   = "group";
+                        $GroupHash{$g}{grouptype} = "static";
+                        $GroupHash{$g}{members}   = "static";
+                     }
                 }
             }
             if (defined(%GroupHash))
@@ -1800,7 +1813,13 @@ sub defch
 
             # get the list of all defined group objects
 
-            my @definedgroups = xCAT::DBobjUtils->getObjectsOfType("group");
+            # getObjectsOfType("group") only returns static groups,
+            # generally speaking, the nodegroup table should includes all the static and dynamic groups,
+            # but it is possible that the static groups are not in nodegroup table,
+            # so we have to get the static and dynamic groups separately.
+            my @definedgroups = xCAT::DBobjUtils->getObjectsOfType("group"); #Static node groups
+            my $grptab = xCAT::Table->new('nodegroup');
+            my @grplist = @{$grptab->getAllEntries()}; #dynamic groups and static groups in nodegroup table
 
             # if we're creating the node or we're adding to or replacing
             #	the "groups" attr then check if the group
@@ -1814,13 +1833,30 @@ sub defch
 				my %GroupHash;
                 foreach my $g (@grouplist)
                 {
-                    if (!grep(/^$g$/, @definedgroups))
+                    my $indynamicgrp = 0;
+                    #check the dynamic node groups
+                    foreach my $grpdef_ref (@grplist)    
                     {
+                         my %grpdef = %$grpdef_ref;
+                         if (($grpdef{'groupname'} eq $g) && ($grpdef{'grouptype'} eq 'dynamic'))
+                         {
+                             $indynamicgrp = 1;
+                             my $rsp;
+                             $rsp->{data}->[0] = "nodegroup $g is a dynamic node group, should not add a node into a dynamic node group statically.\n";
+                             xCAT::MsgUtils->message("I", $rsp, $::callback);
+                              last;
+                          }
+                    }
+                    if (!$indynamicgrp)
+                    {
+                        if (!grep(/^$g$/, @definedgroups))
+                        {
 
-                        # define it
-                        $GroupHash{$g}{objtype}   = "group";
-                        $GroupHash{$g}{grouptype} = "static";
-                        $GroupHash{$g}{members}   = "static";
+                            # define it
+                            $GroupHash{$g}{objtype}   = "group";
+                            $GroupHash{$g}{grouptype} = "static";
+                            $GroupHash{$g}{members}   = "static";
+                        }
                     }
                 }
                 if (defined(%GroupHash))
@@ -2507,7 +2543,7 @@ sub defls
 
 									if ( ($defhash{$obj}{'objtype'} eq 'group') && ($showattr eq 'members'))
                                     {
-										$defhash{$obj}{'grouptype'} = "static";
+										#$defhash{$obj}{'grouptype'} = "static";
                                         my $memberlist =
                                           xCAT::DBobjUtils->getGroupMembers(
                                                                      $obj,
@@ -2538,7 +2574,7 @@ sub defls
                                     && ($showattr eq 'members'))
 
                                 {
-									$defhash{$obj}{'grouptype'} = "static";
+									#$defhash{$obj}{'grouptype'} = "static";
                                     my $memberlist =
                                       xCAT::DBobjUtils->getGroupMembers($obj,\%defhash);
                                     my $rsp;

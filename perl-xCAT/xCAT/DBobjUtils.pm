@@ -1562,12 +1562,27 @@ sub getGroupMembers
 
             foreach my $testattr (keys %whereHash)
             {
-                if ($myhash{$objname}{$testattr} ne $::WhereHash{$testattr})
+                if ($whereHash{$testattr} =~ /^\//) 
+                { # wherevals includes regular expression
+                    my $tmpwherestring = $whereHash{$testattr};
+                    $tmpwherestring =~ /^\/(.*)\/$/g;
+                    $tmpwherestring = $1;
+                    if (!defined($myhash{$objname}{$testattr}) || ($myhash{$objname}{$testattr} !~ /$tmpwherestring/) )
+                    {
+                        # don't disply
+                        $addlist = 0;
+                        next;
+                     }
+                }
+                else #no regular expression in wherevals
                 {
+                    if ($myhash{$objname}{$testattr} ne $whereHash{$testattr})
+                    {
 
-                    # don't disply
-                    $addlist = 0;
-                    next;
+                        # don't disply
+                        $addlist = 0;
+                        next;
+                     }
                 }
             }
             if ($addlist)
