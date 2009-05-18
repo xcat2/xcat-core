@@ -241,6 +241,11 @@ sub parse_args_xdsh
     {
         $ENV{XCATBYPASS} = "yes";    # bypass xcatd
     }
+    if ($options{'show-config'})
+    {
+        xCAT::DSHCLI->show_dsh_config;
+        exit 0;
+    }
 
     # find out who is the current user running xdsh
     #my $current_userid = getlogin(); # does not work for su
@@ -262,13 +267,15 @@ sub parse_args_xdsh
     $ENV{DSH_TO_USERID} = $to_userid;
 
     # only allow -K with -l if --devicetype defined
-    if ((($options{'user'}) && ($options{'ssh-setup'}))
- && (!($options{'devicetype'}))) {
-            my $msg = "The -K and -l flag may only be used if --devicetype is specified\n.";
-            xCAT::MsgUtils->message("E", $msg);
-            exit 2;
+    if (   (($options{'user'}) && ($options{'ssh-setup'}))
+        && (!($options{'devicetype'})))
+    {
+        my $msg =
+          "The -K and -l flag may only be used if --devicetype is specified\n.";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 2;
     }
-    if ($options{'ssh-setup'})       # if going to setup ssh keys
+    if ($options{'ssh-setup'})    # if going to setup ssh keys
     {
 
         # prompt for the password for the userid on the node that will be setup
@@ -276,39 +283,41 @@ sub parse_args_xdsh
         my $msg =
           "Enter the password for the userid: $to_userid on the node where the ssh keys \nwill be updated:\n";
         xCAT::MsgUtils->message("I", $msg);
-        system("stty -echo");        # turn off keyboard
+        system("stty -echo");     # turn off keyboard
         chop($userpw = <STDIN>);
-        system("stty echo");         # turn on keyboard
+        system("stty echo");      # turn on keyboard
 
         if ($userpw eq "")
-        {                            # did not enter a password
+        {                         # did not enter a password
             $msg = "Did not enter a password must abort the key exchange";
             xCAT::MsgUtils->message("E", $msg);
             exit 2;
         }
         else
-        {                            # password entered pass to the server
+        {                         # password entered pass to the server
             $ENV{DSH_REMOTE_PASSWORD} = $userpw;
 
         }
+
         # Get the home directory
         my $home = xCAT::Utils->getHomeDir($current_userid);
         $ENV{'DSH_FROM_USERID_HOME'} = $home;
+
         #  add config file with strict host checking no
         my $cmd = "echo \"StrictHostKeyChecking no\" >> $home/.ssh/config";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {    # error
-                $msg = "Error from $cmd\n";
-                xCAT::MsgUtils->message("E", $msg);
+            $msg = "Error from $cmd\n";
+            xCAT::MsgUtils->message("E", $msg);
         }
 
         my $cmd = "chmod 0600 $home/.ssh/config";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {    # error
-              $msg = "Error from $cmd\n";
-              xCAT::MsgUtils->message("E", $msg);
+            $msg = "Error from $cmd\n";
+            xCAT::MsgUtils->message("E", $msg);
         }
 
         # if current_userid is not "root", we need to generate the keys
@@ -325,7 +334,6 @@ sub parse_args_xdsh
                 $::REMOTESHELL_EXPECT = "/opt/xcat/sbin/remoteshell.expect";
             }
             $::REMOTE_SHELL = "/usr/bin/ssh";
-
 
             # generates new keys, if they do not already exist
             xCAT::Utils->runcmd("$::REMOTESHELL_EXPECT -k", 0);
@@ -400,7 +408,9 @@ sub parse_args_xdcp
     if (
         !GetOptions(
                     'f|fanout=i'       => \$options{'fanout'},
+                    'F|File=s'         => \$options{'File'},
                     'h|help'           => \$options{'help'},
+                    'i|rootimg=s'      => \$options{'rootimg'},
                     'l|user=s'         => \$options{'user'},
                     'n|nodes=s'        => \$options{'nodes'},
                     'o|node-options=s' => \$options{'node-options'},
@@ -429,12 +439,23 @@ sub parse_args_xdcp
         xCAT::DSHCLI->usage_dcp;
         exit 0;
     }
+    if ($options{'show-config'})
+    {
+        xCAT::DSHCLI->show_dsh_config;
+        exit 0;
+    }
     if ($options{'version'})
     {
         my $version = xCAT::Utils->Version();
         $version .= "\n";
         xCAT::MsgUtils->message("I", $version);
         exit 0;
+    }
+    if (($options{'rootimg'}) && (!($options{'File'})))
+    {
+        xCAT::MsgUtils->message("E",
+                                "To use -i flag you must supply the -F flag\n.");
+        exit 1;
     }
     if ($options{'node-rcp'})    # if set on command line, use it
     {

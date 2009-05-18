@@ -3018,8 +3018,8 @@ sub verify_targets
     my @ping_list;
     foreach my $user_target (keys(%$resolved_targets))
     {
-            my @shorthostname = split(/\./, $user_target);
-            push @ping_list, $shorthostname[0];
+        my @shorthostname = split(/\./, $user_target);
+        push @ping_list, $shorthostname[0];
     }
 
     if (@ping_list)
@@ -3504,21 +3504,18 @@ sub isFdNumExceed
 sub usage_dsh
 {
 ## usage message
-    my $usagemsg1 =
-      " xdsh -h \n xdsh -q \n xdsh -V \n xdsh [noderange] [group]\n";
-    my $usagemsg1a = " xdsh  [noderange] -K [-l logonuserid]\n";
+    my $usagemsg1  = " xdsh -h \n xdsh -q \n xdsh -V \n";
+    my $usagemsg1a = "xdsh  [noderange] -K [-l logonuserid]\n";
     my $usagemsg2  =
-      "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file] [--devicetype type_of_device] [-f fanout]\n";
+      "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file]
+      [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
-    my $usagemsg4 =
-      "[-m] [-o options][-q] [-Q] [-r remote_shell] [-i image path]\n";
-    my $usagemsg5 =
-      "      [-s] [-S ksh | csh] [-t timeout] [-T] [-X environment variables] [-v] [-z]\n";
+    my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
+      [-i image path] [-s] [-S ksh | csh] [-t timeout]\n";
+    my $usagemsg5 = "      [-T] [-X environment variables] [-v] [-z]\n";
     my $usagemsg6 = "      [command_list]\n";
-    my $usagemsg7 =
-      "Note:Context always defaults to XCAT unless -C flag is set.";
     my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg2 .= $usagemsg3 .=
-      $usagemsg4 .= $usagemsg5 .= $usagemsg6  .= $usagemsg7;
+      $usagemsg4 .= $usagemsg5 .= $usagemsg6;
 ###  end usage mesage
     if ($::CALLBACK)
     {
@@ -3650,11 +3647,22 @@ sub parse_and_run_dsh
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
     }
+    my $remotecommand = $options{'node-rsh'};
     if ($options{'node-rsh'}
         && (!-f $options{'node-rsh'} || !-x $options{'node-rsh'}))
     {
         $rsp->{data}->[0] =
-          "Remote command: $options{'node-rcp'} does not exist or is not executable";
+          "Remote command: $remotecommand does not exist or is not executable.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        exit 1;
+    }
+
+    # put rsync on a dsh command
+    if ($options{'node-rsh'}
+        && (grep /rsync/, $options{'node-rsh'}))
+    {
+        $rsp->{data}->[0] =
+          "Remote command: $remotecommand should be used with the dcp command. ";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         exit 1;
     }
@@ -3674,6 +3682,14 @@ sub parse_and_run_dsh
     else
     {
         $options{'user'} = $ENV{'DSH_TO_USERID'};
+    }
+
+    if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
+    {    #  no nodes and not -i option, error
+        my $rsp = ();
+        $rsp->{data}->[0] = "Unless using -i option,  noderange is required.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
     }
 
     #
@@ -3820,6 +3836,7 @@ sub parse_and_run_dsh
     }
     if (!(@ARGV))
     {    #  no args , an error
+
         $rsp->{data}->[0] = "No command argument provided";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
@@ -3830,6 +3847,7 @@ sub parse_and_run_dsh
         @results = xCAT::DSHCLI->runlocal_on_rootimg(\%options, $imagename);
         if ($::RUNCMD_RC)
         {    # error from dsh
+            my $rsp = ();
             $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
@@ -3877,18 +3895,25 @@ sub parse_and_run_dsh
 sub usage_dcp
 {
     ### usage message
-    my $usagemsg1 = " xdcp -h \n xdcp \n xdcp -v \n xdcp [noderange] [group]\n";
+    my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp [noderange]\n";
     my $usagemsg2 =
       "      [-B bypass] [-C context] [-c] [-f fanout] [-l user_ID]\n";
     my $usagemsg3 =
-      "      [-o options] [-s] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
+      "      [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
       "      [-R] [-t timeout] [-T] [-X environment variables] [-v] \n";
-    my $usagemsg5 = "      source_file... target_path\n";
-    my $usagemsg6 =
-      "Note:Context is always defaults to XCAT unless the -C flag is input.";
+    my $usagemsg5    = "      source_file... target_path\n";
+    my $usagemsg5a   = " xdcp [noderange] [-F <rsyncfile>] ";
+    my $usagemsg5b   = "[-f fanout] [-t timeout] [-o options] [-v]\n";
+    my $usagemsg5aa  = " xdcp [noderange] [-s] [-F <rsyncfile>] ";
+    my $usagemsg5bb  = "[-f fanout] [-t timeout]\n";
+    my $usagemsg5bbb = "                  [-o options] [-v]\n";
+    my $usagemsg5c   = " xdcp [-i imagepath] [-F <rsyncfile>] ";
+    my $usagemsg5d   = "[-o options]\n";
+
     my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg5 .= $usagemsg6;
+      $usagemsg5 .= $usagemsg5a .= $usagemsg5b .= $usagemsg5aa .=
+      $usagemsg5bb .= $usagemsg5bbb;
 
     if ($::CALLBACK)
     {
@@ -3966,13 +3991,15 @@ sub parse_and_run_dcp
     if (
         !GetOptions(
                     'f|fanout=i'       => \$options{'fanout'},
+                    'F|File=s'         => \$options{'File'},
                     'h|help'           => \$options{'help'},
                     'l|user=s'         => \$options{'user'},
                     'o|node-options=s' => \$options{'node-options'},
                     'q|show-config'    => \$options{'show-config'},
                     'p|preserve'       => \$options{'preserve'},
                     'r|c|node-rcp=s'   => \$options{'node-rcp'},
-                    's'                => \$options{'rsync'},
+                    'i|rootimg=s'      => \$options{'rootimg'},
+                    's'                => \$options{'rsyncSN'},
                     't|timeout=i'      => \$options{'timeout'},
                     'v|verify'         => \$options{'verify'},
                     'B|bypass'         => \$options{'bypass'},
@@ -4002,6 +4029,13 @@ sub parse_and_run_dcp
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
     }
+    if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
+    {    #  no nodes and not -i option, error
+        my $rsp = ();
+        $rsp->{data}->[0] = "Unless using -i option,  noderange is required.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+    }
 
     if ($options{'version'})
     {
@@ -4015,25 +4049,101 @@ sub parse_and_run_dcp
     {
         xCAT::DSHCLI->ignoreEnv($options{'ignore_env'});
     }
+    if (defined($options{'rootimg'}))
+    {    # running against local host
+            # diskless image
 
-    # rsync chosen and node-rcp path not input, then use rsync
-    ($options{'rsync'} && !$options{'node-rcp'})
-      && ($options{'node-rcp'} = '/usr/bin/rsync');
-
-    if ($options{'node-rcp'}
-        && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
+        if (!(-e ($options{'rootimg'})))
+        {    # directory does not exist
+            my $rsp = ();
+            $rsp->{data}->[0] =
+              "Input image directory $options{'rootimg'} does not exist.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+        }
+        if (!($options{'File'}))
+        {    # File not given
+            my $rsp = ();
+            $rsp->{data}->[0] =
+              "If -i option is use, then the -F option must input the file list.\nThe file will contain the list of files to rsync to the image.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+        }
+    }
+    my $syncfile = $options{'File'};
+    if ($options{'File'}
+        && (!-f $options{'File'}))
     {
-        $rsp->{data}->[0] =
-          "Remote command: $options{'node-rcp'} does not exist or is not executable";
+        $rsp->{data}->[0] = "File:$syncfile does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         exit;
     }
 
-    if ($ENV{'DSH_COPY_FILE_LIST'})
+    # invalid to put the -F  with the -r flag
+    if ($options{'File'} && $options{'node-rcp'})
     {
-        &parse_input_file(\%options, $ENV{'DSH_COPY_FILE_LIST'});
+        my $rsp = ();
+        $rsp->{data}->[0] =
+          "If -F option is use, then -r is invalid. The command will always the rsync using ssh.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+    }
+
+    # invalid to put the -s  without the -F flag
+    if (!($options{'File'}) && $options{'rsyncSN'})
+    {
+        my $rsp = ();
+        $rsp->{data}->[0] =
+          "If -s option is use, then -F must point to the syncfile.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+    }
+
+    # -s chosen or -F set rsync path
+    (   ($options{'rsyncSN'} || $options{'File'})
+     && ($options{'node-rcp'} = '/usr/bin/rsync'));
+    my $remotecopycommand = $options{'node-rcp'};
+    if ($options{'node-rcp'}
+        && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
+    {
+        $rsp->{data}->[0] =
+          "Remote command: $remotecopycommand does not exist or is not executable.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        exit;
+    }
+
+    #
+    # build list of nodes
+    my @nodelist;
+    if (defined(@$nodes))
+    {    # there are nodes
+        @nodelist = @$nodes;
+        $options{'nodes'} = join(',', @nodelist);
     }
     else
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Noderange missing in command input.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+    }
+
+    #
+    #  if -F flag then we are going to process the file and use
+    #  rsync to distribute the files listed in the input file
+    #  Format of the file lines are the following, follows the rsync syntax
+    #    /.../file   /..../file2 ->  /..../directory
+    #    /....file*   /...../sample*  -> /..../directory
+    #
+    my @results;
+    if ($options{'File'})
+    {
+        @results =
+          &parse_rsync_input_file(\@nodelist, \%options, $options{'File'});
+
+        #@results = &parse_rdist_input_file(\%options, $options{'File'});
+    }
+    else    # source and destination files are from command line
     {
         if (@ARGV < 1)
         {
@@ -4070,26 +4180,11 @@ sub parse_and_run_dcp
             $options{'target'} = pop @ARGV;
             $options{'source'} = join $::__DCP_DELIM, @ARGV;
         }
-    }
 
-    #
-    # build list of nodes
-    my @nodelist;
-    if (defined(@$nodes))
-    {    # there are nodes
-        @nodelist = @$nodes;
-        $options{'nodes'} = join(',', @nodelist);
-    }
-    else
-    {
-        my $rsp = {};
-        $rsp->{data}->[0] = "Noderange missing in command input.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
     }
 
     # Execute the dcp api
-    my @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
+    @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
     if ($::RUNCMD_RC)
     {    # error from dcp
         my $rsp = {};
@@ -4097,6 +4192,7 @@ sub parse_and_run_dcp
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
     }
+
     return (@results);
 
 }
@@ -4104,10 +4200,118 @@ sub parse_and_run_dcp
 #-------------------------------------------------------------------------------
 
 =head3
-       parse_input_file
+       parse_rsync_input_file
 
-        This parses the dcp input build the call to execute_dcp.
+        This parses the -F rsync input file.
 
+        File format:
+          /.../file1 ->  /.../dir1/filex
+          /.../file1 ->  /.../dir1
+          /.../file1 /..../filex  -> /...../dir1
+
+        Arguments:
+		  Input nodelist,options, pointer to the sync file 
+
+        Returns:
+           Errors if invalid options or the executed dcp command
+
+        Globals:
+
+
+        Error:
+        	None
+
+        Example:
+
+        Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub parse_rsync_input_file
+{
+    use File::Basename;
+    my ($nodes, $options, $input_file) = @_;
+    my @dest_host = @$nodes;
+    open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
+    while (my $line = <INPUTFILE>)
+    {
+        chomp $line;
+        if ($line =~ /(.+) -> (.+)/)
+        {
+            my $src_file  = $1;
+            my $dest_file = $2;
+            $dest_file =~ s/[\s;]//g;
+            my $dest_dir;
+            if (-d $dest_file)
+            {    # if a directory , just use
+                $dest_dir = $dest_file;
+            }
+            else
+            {    # strip off the file
+                $dest_dir = dirname($dest_file);
+            }
+            $dest_dir =~ s/\s*//g;    #remove blanks
+
+            my @srcfiles = (split ' ', $src_file);
+
+            foreach my $target_node (@dest_host)
+            {
+                $$options{'destDir_srcFile'}{$target_node}            ||= {};
+                $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||= {};
+
+                # for each file on the line
+                foreach my $srcfile (@srcfiles)
+                {
+
+                    # can be full file name for destination or just the
+                    # directory name
+                    my $src_basename = basename($srcfile);    # get file name
+
+                    my $dest_basename;    # destination file name
+                    if (-d $dest_file)
+                    {    # if a directory, get filename from src
+                        $dest_basename = $src_basename;
+                    }
+                    else
+                    {    # get the file name from the destination
+                        $dest_basename = basename($dest_file);
+                    }
+                    $dest_basename =~ s/[\s;]//g;
+
+                    # if the filename will be the same at the destination
+                    if ($src_basename eq $dest_basename)
+                    {
+                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                          {'same_dest_name'} ||= [];
+                        push @{$$options{'destDir_srcFile'}{$target_node}
+                              {$dest_dir}{'same_dest_name'}}, $srcfile;
+                    }
+                    else    # changing file names
+                    {
+                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                          {'diff_dest_name'} ||= {};
+                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                          {'diff_dest_name'}{$srcfile} = $dest_basename;
+                    }
+
+                }
+            }
+        }
+    }
+    close INPUTFILE;
+    $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+
+}
+
+#-------------------------------------------------------------------------------
+
+=head3
+       parse_rdist_input_file
+
+        This parses the -F rdist fromat input file to build the call to execute_dcp.
+        Note: no longer used but may come back
         Arguments:
 		  $nodes,$args,$callback,$command,$noderange
 		  These may exist, called from xdsh plugin
@@ -4129,7 +4333,7 @@ sub parse_and_run_dcp
 
 #-------------------------------------------------------------------------------
 
-sub parse_input_file
+sub parse_rdist_input_file
 {
     use File::Basename;
     my ($options, $input_file) = @_;
