@@ -417,7 +417,7 @@ sub parse_args_xdcp
                     'q|show-config'    => \$options{'show-config'},
                     'p|preserve'       => \$options{'preserve'},
                     'r|c|node-rcp=s'   => \$options{'node-rcp'},
-                    's'                => \$options{'rsync'},
+                    's'                => \$options{'rsyncSN'},
                     't|timeout=i'      => \$options{'timeout'},
                     'v|verify'         => \$options{'verify'},
                     'B|bypass'         => \$options{'bypass'},

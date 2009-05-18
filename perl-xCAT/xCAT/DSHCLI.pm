@@ -4136,11 +4136,18 @@ sub parse_and_run_dcp
     #    /....file*   /...../sample*  -> /..../directory
     #
     my @results;
+    my $syncSN = 0;
+    if ($options{'rsyncSN'})
+    {
+        $syncSN = 1;
+    }
     if ($options{'File'})
     {
         @results =
-          &parse_rsync_input_file(\@nodelist, \%options, $options{'File'});
+          &parse_rsync_input_file(\@nodelist,       \%options,
+                                  $options{'File'}, $syncSN);
 
+        # rdist not supported
         #@results = &parse_rdist_input_file(\%options, $options{'File'});
     }
     else    # source and destination files are from command line
@@ -4232,7 +4239,7 @@ sub parse_and_run_dcp
 sub parse_rsync_input_file
 {
     use File::Basename;
-    my ($nodes, $options, $input_file) = @_;
+    my ($nodes, $options, $input_file, $rsyncSN) = @_;
     my @dest_host = @$nodes;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
@@ -4258,12 +4265,21 @@ sub parse_rsync_input_file
 
             foreach my $target_node (@dest_host)
             {
-                $$options{'destDir_srcFile'}{$target_node}            ||= {};
-                $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||= {};
+                $$options{'destDir_srcFile'}{$target_node} ||= {};
 
                 # for each file on the line
                 foreach my $srcfile (@srcfiles)
                 {
+
+                    #  if syncing the Service Node, file goes to the same place
+                    # from which it came
+                    if ($rsyncSN == 1)
+                    {    #  syncing the SN
+                        $dest_dir = dirname($srcfile);
+                        $dest_dir =~ s/\s*//g;    #remove blanks
+                    }
+                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                      {};
 
                     # can be full file name for destination or just the
                     # directory name
