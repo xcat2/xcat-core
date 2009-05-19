@@ -845,6 +845,8 @@ sub fork_fanout_dcp
         my $user_target       = shift @$targets_waiting;
         my $target_properties = $$resolved_targets{$user_target};
 
+        my @shorthostname = split(/\./, $user_target);
+        $user_target=$shorthostname[0];
         my @dcp_command;
 
         if (!$$target_properties{'localhost'})
