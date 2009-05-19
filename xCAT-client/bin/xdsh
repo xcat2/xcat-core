@@ -171,6 +171,11 @@ if ($ENV{'DEVICETYPE'})
     push(@{$cmdref->{env}}, "DEVICETYPE=$ENV{'DEVICETYPE'}");
 }
 
+if ($ENV{'RSYNCSN'})
+{
+    push(@{$cmdref->{env}}, "RSYNCSN=$ENV{'RSYNCSN'}");
+}
+
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
 
@@ -256,7 +261,7 @@ sub parse_args_xdsh
     # find out who we are going to log on to the node as
 
     my $to_userid;
-    if ($options{'user'})            # if -l option
+    if ($options{'user'})    # if -l option
     {
         $to_userid = $options{'user'};
     }
@@ -444,6 +449,10 @@ sub parse_args_xdcp
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
     }
+    if ($options{'rsyncSN'})
+    {
+        $ENV{'RSYNCSN'} = "yes";    # rsync file to SN
+    }
     if ($options{'version'})
     {
         my $version = xCAT::Utils->Version();
@@ -454,7 +463,7 @@ sub parse_args_xdcp
     if (($options{'rootimg'}) && (!($options{'File'})))
     {
         xCAT::MsgUtils->message("E",
-                                "To use -i flag you must supply the -F flag\n.");
+                               "To use -i flag you must supply the -F flag\n.");
         exit 1;
     }
     if ($options{'node-rcp'})    # if set on command line, use it

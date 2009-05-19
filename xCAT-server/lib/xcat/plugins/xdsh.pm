@@ -55,32 +55,61 @@ sub preprocess_request
     my $cb  = shift;
     my %sn;
     my $sn;
+
     #if already preprocessed, go straight to request
-    if ($req->{_xcatpreprocessed}->[0] == 1 ) { return [$req]; }
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
     my $nodes   = $req->{node};
     my $service = "xcat";
     my @requests;
+    my $syncsn = 0;
+    foreach my $envar (@{$req->{env}})
+    {
+        my ($var, $value) = split(/=/, $envar, 2);
+        if ($var eq "RSYNCSN")
+        {    # syncing SN, will change
+            $syncsn = 1;    # nodelist to the list of SN
+            last;           # for those nodes
+        }
+    }
 
     # find service nodes for requested nodes
     # build an individual request for each service node
     if ($nodes)
     {
         $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+        if ($syncsn == 0)
+        {                   # not syncing sn, do hierarchy
+                            # build each request for each service node
 
-        # build each request for each service node
+            foreach my $snkey (keys %$sn)
+            {
+                my $reqcopy = {%$req};
+                $reqcopy->{node}                   = $sn->{$snkey};
+                $reqcopy->{'_xcatdest'}            = $snkey;
+                $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                push @requests, $reqcopy;
 
-        foreach my $snkey (keys %$sn)
-        {
-            my $reqcopy = {%$req};
-            $reqcopy->{node} = $sn->{$snkey};
-            $reqcopy->{'_xcatdest'} = $snkey;
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
-            push @requests, $reqcopy;
+            }
+        }
+        else
+        {    # syncing SN
+                # rebuild nodelist and noderange with service nodes
+            my @snodes;
+            my @snoderange;
+            foreach my $snkey (keys %$sn)
+            {
+                push @snodes, $snkey;
+                $snoderange[0] .= "$snkey,";
 
+            }
+            chop $snoderange[0];
+            $req->{node}      = \@snodes;
+            $req->{noderange} = \@snoderange;
+            return [$req];
         }
     }
     else
-    {    # running local on image ( -R option)
+    {    # running local on image
         return [$req];
     }
     return \@requests;
