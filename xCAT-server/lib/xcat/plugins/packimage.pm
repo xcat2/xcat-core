@@ -73,23 +73,35 @@ sub process_request {
     {
         $callback->({data=>["WARNING: Unable to find file exclusion list under $installroot/custom/netboot/$distname or $::XCATROOT/share/xcat/netboot/$distname/ for $profile/$arch/$osver\n"]});
     }
-    #print "exlistloc=$exlistloc\n";
-
+ 
     my $excludestr = "find . ";
+    my $includestr;
     if ($exlistloc) {
         my $exlist;
         open($exlist,"<",$exlistloc);
-        #my $excludestr = "find . ";
+        system("echo -n > /tmp/xcat_packimg.txt");
         while (<$exlist>) {
             chomp $_;
             s/\s*#.*//;      #-- remove comments 
             next if /^\s*$/; #-- skip empty lines
-            $excludestr .= "'!' -path '".$_."' -a ";
+            if (/^\+/) {
+		s/^\+//; #remove '+'	
+		$includestr .= "-path '". $_ ."' -o ";                
+            } else { 
+		s/^\-//;  #remove '-' if any
+		$excludestr .= "'!' -path '".$_."' -a ";
+	    }
         }
         close($exlist);
-    }
+   }
+   $excludestr =~ s/-a $//;
+   if ($includestr) {
+       $includestr =~ s/-o $//;
+       $includestr = "find . " .  $includestr;
+   }
+   print "\nexcludestr=$excludestr\n\n includestr=$includestr\n\n";
 
-	# add the xCAT post scripts to the image
+   # add the xCAT post scripts to the image
     if (! -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {
        $callback->({error=>["$installroot/netboot/$osver/$arch/$profile/rootimg does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
        return;
@@ -144,13 +156,24 @@ sub process_request {
         if (!$exlistloc) {
             $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg.gz";
         }else {
-            $excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
+	    chdir("$installroot/netboot/$osver/$arch/$profile/rootimg");
+	    system("$excludestr >> /tmp/xcat_packimg.txt"); 
+	    if ($includestr) {
+		system("$includestr >> /tmp/xcat_packimg.txt"); 
+	    }
+            #$excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
+            $excludestr = "cat /tmp/xcat_packimg.txt|cpio -H newc -o | gzip -c - > ../rootimg.gz";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
       chmod 0755,$temppath;
-      $excludestr =~ s!-a \z!|cpio -dump $temppath!; 
+      chdir("$installroot/netboot/$osver/$arch/$profile/rootimg");
+      system("$excludestr >> /tmp/xcat_packimg.txt"); 
+      if ($includestr) {
+	  system("$includestr >> /tmp/xcat_packimg.txt"); 
+      }
+      $excludestr =~ "cat /tmp/xcat_packimg.txt|cpio -dump $temppath"; 
     } elsif ($method =~ /nfs/) {
        $excludestr = "touch ../rootimg.nfs";
     } else {

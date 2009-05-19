@@ -146,9 +146,9 @@ unless ($onlyinitrd) {
         if(-e "$installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo") {
             system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo");
         }
-     	system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar file:$srcdir_otherpkgs otherpkg");
+     	system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar -t Plaindir file:$srcdir_otherpkgs otherpkg");
      }else {
-        system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir_otherpkgs");
+        system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa -t Plaindir file:$srcdir_otherpkgs");
      }
    }
 
@@ -680,6 +680,8 @@ sub get_extra_package_names {
      open($pkgfile,"<","$otherpkglist");
      while (<$pkgfile>) {
         chomp;
+	s/\s*#.*//;      #-- remove comments 
+	next if /^\s*$/; #-- skip empty lines
         $pkgnames .= $_ . " ";
      }
      close($pkgfile);
