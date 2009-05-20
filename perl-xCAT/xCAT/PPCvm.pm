@@ -742,6 +742,26 @@ sub modify_by_attr {
                     push @values, [$lpar, @$cfg_res[0], $Rc];
                     next;
                 }
+                ##############################################
+                # If there is no curr_profile, which means no
+                # profile has been applied yet (before first 
+                # boot?), use the default_profile
+                ##############################################
+                if ( ! @$cfg_res[0])
+                {
+                    $cfg_res = xCAT::PPCcli::lssyscfg(
+                            $exp,
+                            "node",
+                            $cec,
+                            'default_profile',
+                            @$d[0]);
+                    $Rc = shift(@$cfg_res);
+                    if ( $Rc != SUCCESS ) {
+                        push @values, [$lpar, @$cfg_res[0], $Rc];
+                        next;
+                    }
+                }
+
 
                 my $prof = xCAT::PPCcli::lssyscfg(
                              $exp,
