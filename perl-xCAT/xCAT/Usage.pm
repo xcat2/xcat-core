@@ -133,7 +133,13 @@ my %usage = (
   "rflash" =>
 "Usage: rflash [ -h|--help|-v|--version]
 	rflash <noderange> -p directory [--activate concurrent | disruptive][-V|--verbose] 
-	rflash <noderange> [--commit | --recover] [-V|--verbose]"
+	rflash <noderange> [--commit | --recover] [-V|--verbose]",
+    "mkconn" =>
+"Usage:
+    mkvm [-h|--help]
+    mkconn noderange -t [--bind] [-V|--verbose]
+    mkconn noderange -p single_hmc [-P fsp/bpa passwd] [-V|--verbose]",
+
 );
 my $vers = xCAT::Utils->Version();
 my %version = (

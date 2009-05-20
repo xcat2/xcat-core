@@ -1,6 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-package xCAT_plugin::fsp;
+package xCAT_plugin::bpa;
 use strict;
 use xCAT::PPC;
 
@@ -10,8 +10,6 @@ use xCAT::PPC;
 ##########################################################################
 sub handled_commands {
   return {
-      rpower    => 'nodehm:power,mgt',
-      reventlog => 'nodehm:mgt',
       rspconfig => 'nodehm:mgt',
       mkconn    => 'nodehm:mgt',
       rmconn    => 'nodehm:mgt',

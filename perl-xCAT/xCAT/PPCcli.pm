@@ -67,6 +67,14 @@ my %lsrefcode = (
   lpar   =>"lsrefcode -r lpar -m %s --filter lpar_ids=%s",
 );
 
+##############################################
+# mksysconn support formats
+##############################################
+my %mksysconn = (
+    fsp => "mksysconn --ip %s -r sys --passwd %s",
+    bpa => "mksysconn --ip %s -r frame --passwd %s"
+);
+
 ##########################################################################
 # Logon to remote server
 ##########################################################################
@@ -1137,6 +1145,20 @@ sub network_reset {
 
 }
 
+##########################################################################
+# Create connection for CEC/BPA
+##########################################################################
+sub mksysconn
+{
+    my $exp    = shift;
+    my $ip     = shift;
+    my $type   = shift;
+    my $passwd = shift;
+    
+    my $cmd = sprintf( $mksysconn{$type}, $ip, $passwd);
+    my $result = send_cmd( $exp, $cmd);
+    return ( $result);
+}
 
 1;
 

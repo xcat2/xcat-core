@@ -34,7 +34,10 @@ my %modules = (
         getmacs   => "xCAT::PPCmac",
         reventlog => "xCAT::PPClog",
         rspconfig => "xCAT::PPCcfg",
-        rflash => "xCAT::PPCrflash"
+        rflash => "xCAT::PPCrflash",
+        mkconn    => "xCAT::PPCconn",
+        rmconn    => "xCAT::PPCconn",
+        lsconn    => "xCAT::PPCconn"
         );
 
 ##########################################
@@ -549,7 +552,9 @@ sub preprocess_nodes {
 ######################################
         my $hcp  = @$d[3];
         my $mtms = @$d[2];
-
+######################################
+# Special case for rflash
+######################################
         if ( $request->{command} eq "rflash" ) {
             if(@$d[4] =~/^(fsp|lpar)$/) {
                 $f1 = 1;
@@ -565,8 +570,21 @@ sub preprocess_nodes {
 
             }
         }
-
-        $nodehash{$hcp}{$mtms}{$node} = $d;
+        ######################################
+        # Special case for mkconn
+        ######################################
+        if ( $request->{command} eq "mkconn" and 
+              exists $request->{opt}->{p})
+        {
+            $nodehash{ $request->{opt}->{p}}{$mtms}{$node} = $d;
+        }
+        ######################################
+        #The common case
+        ######################################
+        else 
+        {
+            $nodehash{$hcp}{$mtms}{$node} = $d;
+        }
     } 
 
     if($f1 * $f2) {
