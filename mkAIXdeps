@@ -59,6 +59,9 @@ echo "    rpm -Uvh tk-8.4.7-3.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 echo "    rpm -Uvh expect-5.42.1-3.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 echo "fi" >> $RPMDIR/instoss
 
+cp /opt/freeware/src/packages/RPMS/ppc/rsync-2.6.2-1.aix5.1.ppc.rpm $RPMDIR/
+echo "rpm -Uvh rsync-2.6.2-1.aix5.1.ppc.rpm" >> $RPMDIR/instoss
+
 cp /opt/freeware/src/packages/RPMS/ppc/conserver-8.1.16-2.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh conserver-8.1.16-2.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
