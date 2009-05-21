@@ -2,16 +2,6 @@
 # Setup hostname
 #
 echo "post scripts" >/root/post.log
-export HOSTNAME=#TABLE:nodelist:THISNODE:node#
-LAST=$(echo $HOSTNAME | awk -Fhab '{print $2}' | sed 's/^0//g')
-IP=192.168.99.$LAST
-export $IP
-echo "HOSTNAME: $HOSTNAME IP: $IP" >>/root/post.log
-echo "Changing switch" >>/root/post.log
-#
-# Setup hostname
-#
-echo "post scripts" >/root/post.log
 export PRINIC=#TABLE:noderes:THISNODE:primarynic#
 if [ -z "$PRINIC" ]
 then
@@ -38,6 +28,9 @@ export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
 cd /tmp
 mkdir -p /xcatpost
+service portmap start
+ifconfig
+cat /etc/resolv.conf
 mount $MASTER_IP:/install/postscripts /xcatpost
 cd /xcatpost
 export PATH=/xcatpost:$PATH
@@ -46,9 +39,9 @@ export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 syslog
 remoteshell
-setupntp
+#setupntp this has been added to setupesx...
 setupesx $HOSTNAME
-updateflag.awk $MASTER 3002
+updateflag.awk $MASTER #TABLE:site:key=xcatiport:value#
 umount /xcatpost
 cd /
 exit 0
