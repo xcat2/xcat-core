@@ -16,8 +16,8 @@ url --url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:o
 zerombr yes
 clearpart --all --initlabel --drives=sda
 part /boot    --fstype ext3    --size=100   --ondisk=sda
-part /        --fstype ext3    --size=1500  --ondisk=sda
-part swap                      --size=512   --ondisk=sda
+part /        --fstype ext3    --size=2048  --ondisk=sda
+part swap                      --size=2048   --ondisk=sda
 part None     --fstype vmfs3   --size=900 --ondisk=sda --grow
 part None     --fstype vmkcore --size=100   --ondisk=sda
 
