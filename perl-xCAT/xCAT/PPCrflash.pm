@@ -64,7 +64,7 @@ sub parse_args {
     	# Process command-line arguments
     	#############################################
     	if ( !defined( $args )) {
-        	return(usage( "No command specified" ));
+        	return(usage( "No arguments specified" ));
     	}
 
     	#############################################
@@ -86,7 +86,11 @@ sub parse_args {
 	if ( exists( $opt{v} )) {
         	return( \$::VERSION );
 	}
-		
+	
+    if ( exists( $opt{h}) || $opt{help}) {
+            return( usage());
+    }
+
 	#################################
 	#Option --activate not valid with --commit or --recover
 	#################################
