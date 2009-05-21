@@ -508,27 +508,11 @@ sub mkvterm {
         return( [RC_ERROR,"Command not supported on '$type'"] );
     }
     ##########################################
-    # For IVM, console sessions must explicitly
-    # be closed after each open using rmvt
-    # or they will remain open indefinitely. 
-    # For example, if the session is opened  
-    # using xterm and closed with the [x] in 
-    # the windows upper-right corner, we will
-    # not be able to catch (INT,HUP,QUIT,TERM) 
-    # before the window closes in order to 
-    # send an rmvt - so force any IVM sessions
-    # closed before we start. 
-    #
-    # For HMC, apparently, once the console
-    # session connection is broken, the HMC
-    # closes the session. Therefore, it is not
-    # necessary to explicitly close the session.
-    #
+    # Cleanup old sessions 
     ##########################################
-    if ( $hwtype eq "ivm" ) {
-        rmvterm( $exp, $lparid, $mtms );
-        sleep 1;
-    }
+    rmvterm( $exp, $lparid, $mtms );
+    sleep 1;
+
     ##########################################
     # Send command
     ##########################################
