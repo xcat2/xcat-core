@@ -1208,15 +1208,6 @@ sub preprocess_request {
         }
     }
 
-####################
-#suport for "rflash", copy the rpm and xml packages from user-spcefied-directory to /install/packages_fw
-#####################	
-    if ( ( $command eq "rflash" ) && (grep(/commit/,@exargs) == 0 && grep(/recover/,@exargs) == 0)) {
-# if ( $command eq "rflash" ) {
-    preprocess_for_rflash($req,$callback, \@exargs);
-}
-
-
 # find service nodes for the HCPs
 # build an individual request for each service node
 my $service  = "xcat";
@@ -1273,92 +1264,6 @@ sub parse_args
     return $opt;
 }
 
-sub preprocess_for_rflash {
-    my $req      = shift;
-    my $callback = shift;
-    my $exargs = shift;	
-
-    my $packages_fw = "/install/packages_fw";
-    my $c = 0;
-    my $packages_d;
-    foreach (@$exargs) {
-        $c++;
-        if($_ eq "-p") {
-            $packages_d = $$exargs[$c];
-            last;	
-        }
-    }
-    if($packages_d ne $packages_fw ) {
-        $$exargs[$c] = $packages_fw;
-        if(! -d $packages_d) {
-            $callback->({data=>["The directory $packages_d doesn't exist!"]});
-            $req = ();
-            return;
-        }
-
-#print "opening directory and reading names\n";
-        opendir DIRHANDLE, $packages_d;
-        my @dirlist= readdir DIRHANDLE;
-        closedir DIRHANDLE;
-
-        @dirlist = File::Spec->no_upwards( @dirlist );
-
-# Make sure we have some files to process
-#
-        if( !scalar( @dirlist ) ) {
-            $callback->({data=>["The directory $packages_d is empty !"]});
-            $req = ();
-            return;
-        }
-
-#Find the rpm lic file
-        my @rpmlist = grep /\.rpm$/, @dirlist;
-        my @xmllist = grep /\.xml$/, @dirlist;
-        if( @rpmlist == 0 | @xmllist == 0) {
-            $callback->({data=>["There isn't any rpm and xml files in the  directory $packages_d!"]});
-            $req = ();
-            return;
-        }
-
-        my $rpm_list =  join(" ", @rpmlist);
-        my $xml_list = join(" ", @xmllist);
-
-        my $cmd;
-        if( -d $packages_fw) {
-            $cmd = "rm -rf $packages_fw";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                $callback->({data=>["Failed to remove the old packages in $packages_fw."]});
-                $req = ();
-                return;
-
-            }
-        }
-
-        $cmd = "mkdir $packages_fw";
-        xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $callback->({data=>["$cmd failed."]});
-            $req = ();
-            return;
-
-        }
-
-        $cmd = "cp $packages_d/*.rpm  $packages_d/*.xml $packages_fw";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $callback->({data=>["$cmd failed."]});
-            $req = ();
-            return;
-
-        }
-
-        $req->{arg} = $exargs;
-    }
-}
 
 ##########################################################################
 # Process request from xCat daemon
