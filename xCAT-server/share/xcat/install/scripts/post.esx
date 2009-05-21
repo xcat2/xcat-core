@@ -38,8 +38,8 @@ export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 syslog
-remoteshell
-#setupntp this has been added to setupesx...
+#remoteshell this has been added in setupesx
+setupntp
 setupesx $HOSTNAME
 updateflag.awk $MASTER #TABLE:site:key=xcatiport:value#
 umount /xcatpost
