@@ -6018,6 +6018,12 @@ sub preprocess_request {
 
   if ($command eq "rpower") {
       my $subcmd=$exargs[0];
+			if($subcmd eq ''){
+	  		$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+	  		$request = {};
+				return 0;
+
+			}
       if ( ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot')) {
 	  $callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
 	  $request = {};
