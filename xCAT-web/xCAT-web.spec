@@ -17,9 +17,11 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 Provides: xCAT-web = %{version}
 
+%ifos linux
 # httpd is provided by apache2 on SLES and httpd on RHEL
 Requires: httpd
 # we also require php4-session on SLES, but this does not exist on RHEL, so do not know how to do the Require
+%endif
 
 %description
 Provides a browser-based interface for xCAT (extreme Cluster Administration Tool).
@@ -44,6 +46,7 @@ chmod 755 $RPM_BUILD_ROOT%{prefix}/web/*
 
 %post
 # Post-install script---------------------------------------------------
+%ifos linux
 # Set variables for apache because the names vary on redhat and suse
 if [ -e "/etc/redhat-release" ]; then
   	apachedaemon='httpd'
@@ -91,9 +94,31 @@ then
   true
 fi
 
+%else #on AIX, it's different
+ihs_config_dir='/usr/IBM/HTTPServer/conf'
+if [ "$1" = 1 ] #initial install
+then
+    # Update the apache config
+    echo "Updating ibm http server configuration for xCAT..."
+    /bin/rm -f $ihs_config_dir/xcat-web.conf
+    cp $ihs_config_dir/httpd.conf $ihs_config_dir/httpd.conf.xcat.web.bak
+    cat /opt/xcat/web/etc/apache2/conf.d/xcat-web.conf >> $ihs_config_dir/httpd.conf
+    /usr/IBM/HTTPServer/bin/apachectl restart
+fi
+
+if [ "$1" = 1 ] || [ "$1" = 2 ]      # initial install, or upgrade and this is the newer rpm
+then
+    # Uncomment this if we change xcat-web.conf again
+    #/etc/init.d/$apachedaemon reload
+    true
+fi
+
+%endif
+
 %preun
 # Pre-uninstall script -------------------------------------------------
 
+%ifos linux
 if [ "$1" = 0 ]         # final rpm being removed
 then
   if [ -e "/etc/redhat-release" ]; then
@@ -124,4 +149,11 @@ then
   #fi
 
 fi
+%else   #for AIX
+# Remove links made during the post install script
+echo "Undoing IBM HTTP Server configuration for xCAT..."
+cp $ihs_config_dir/httpd.conf.xcat.web.conf $ihs_config_dir/httpd.conf
+/bin/rm -rf $ihs_config_dir/httpd.conf.xcat.web.conf
+/usr/IBM/HTTPServer/bin/apachectl restart
+%endif
 
