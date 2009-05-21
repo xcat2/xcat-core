@@ -1,11 +1,40 @@
 # esx setup
 # example on how to set up ESX.  We setup ssh and also add a basic
 # VLAN configuration 
+logger -t xcat setupesx
+# Enable SSH access to root and exchange keys
 
-# Enable SSH access to root
 sed -e 's/PermitRootLogin no/PermitRootLogin yes/' /etc/ssh/sshd_config > /etc/ssh/sshd_config.new
 mv -f /etc/ssh/sshd_config.new /etc/ssh/sshd_config
 /etc/init.d/sshd restart
+
+if [ -r /etc/ssh/sshd_config ]
+then
+        logger -t xcat "Install: setup /etc/ssh/sshd_config"
+        cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
+        sed -i 's/^X11Forwarding .*$/X11Forwarding yes/' /etc/ssh/sshd_config
+        sed -i 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
+        sed -i 's/\(.*MaxStartups.*\)/#\1/' /etc/ssh/sshd_config
+        echo "MaxStartups 1024" >>/etc/ssh/sshd_config
+        echo "PasswordAuthentication no" >>/etc/ssh/sshd_config
+fi
+
+if [ -r /etc/ssh/sshd_config ]
+then
+   echo "   StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+fi
+
+if [ -d /xcatpost/_ssh ]
+then
+        logger -t xcat "Install: setup root .ssh"
+        cd /xcatpost/_ssh
+        mkdir -p /root/.ssh
+        cp -f * /root/.ssh
+   cd - >/dev/null
+        chmod 700 /root/.ssh
+        chmod 600 /root/.ssh/*
+fi
+
 
 # create a script that will launch the first time ESX does and configure
 # the network
@@ -14,13 +43,12 @@ cat >/tmp/esxcfg.sh <<EOF1
 # Configure ESX Server.  You'll need to put your own IP address
 # in here. We assume eth0 is your nic.  Change if needed.
 NIC=eth0
-IPADDR=`ifconfig $NIC |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}'`
+IPADDR=`ifconfig $NIC |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}' | head -1`
 NETMASK=`ifconfig $NIC |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
 
-Q=$(hostname | awk -Fhab '{print $2}' | sed 's/^0//g')
-esxcfg-vswitch -U vmnic0 vSwitch0
-esxcfg-vswitch -L vmnic1 vSwitch0
-esxcfg-vswif -i \$IPADDR -n $NETMASK vswif0
+#esxcfg-vswitch -U vmnic0 vSwitch0
+esxcfg-vswitch -L vmnic0 vSwitch0
+esxcfg-vswif -i \$IPADDR -n \$NETMASK vswif0
 esxcfg-firewall -e sshClient
 
 esxcfg-firewall -e ntpClient
@@ -31,7 +59,7 @@ service syslog restart
 
 EOF1
 
-chmod +x /tmp/esxcfg.sh
+chmod 755 /tmp/esxcfg.sh
 cp /etc/rc.d/rc.local /etc/rc.d/rc.local.bak
 
 cat >>/etc/rc.d/rc.local <<EOF
