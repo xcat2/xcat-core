@@ -152,7 +152,16 @@ sub parse_args {
     	if ( exists( $opt{V} )) {
         	$verbose = 1;
     	}
-
+ 
+      ####################
+      #suport for "rflash", copy the rpm and xml packages from user-spcefied-directory to /install/packages_fw
+        #####################	
+      if ( (!exists($opt{commit})) && (!exists($opt{ recover }))) {
+            if( preprocess_for_rflash($request, \%opt) == -1) {
+   	          return( usage() );
+            }
+       }
+   
 		
 	####################################
   	# No operands - add command name 
@@ -160,6 +169,131 @@ sub parse_args {
 	$request->{method} = $cmd;
 	return( \%opt );
 }
+
+##########################################################################
+# Invokes the callback with the specified message                    
+##########################################################################
+sub send_msg {
+
+    my $request = shift;
+    my $ecode   = shift;
+    my %output;
+
+    #################################################
+    # Called from child process - send to parent
+    #################################################
+    if ( exists( $request->{pipe} )) {
+        my $out = $request->{pipe};
+
+        $output{errorcode} = $ecode;
+        $output{data} = \@_;
+        print $out freeze( [\%output] );
+        print $out "\nENDOFFREEZE6sK4ci\n";
+    }
+    #################################################
+    # Called from parent - invoke callback directly
+    #################################################
+    elsif ( exists( $request->{callback} )) {
+        my $callback = $request->{callback};
+
+        $output{errorcode} = $ecode;
+        $output{data} = \@_;
+        $callback->( \%output );
+    }
+}
+
+
+
+
+sub preprocess_for_rflash {
+	my $request      = shift;
+	my $opt = shift;	
+
+ 	my $packages_fw = "/install/packages_fw";
+	my $c = 0;
+    my $packages_d;
+#	foreach (@$exargs) {
+#		$c++;
+#		if($_ eq "-p") {
+#			$packages_d = $$exargs[$c];
+#			last;	
+#		}
+#	} 
+    $packages_d = $$opt{p};
+	if($packages_d ne $packages_fw ) {
+		$$opt{p} = $packages_fw;
+		if(! -d $packages_d) {
+                send_msg($request, 1, "The directory $packages_d doesn't exist!");
+	      		$request = ();
+	       		return -1;
+        	}
+	
+		#print "opening directory and reading names\n";
+        	opendir DIRHANDLE, $packages_d;
+        	my @dirlist= readdir DIRHANDLE;
+       		closedir DIRHANDLE;
+
+        	@dirlist = File::Spec->no_upwards( @dirlist );
+
+        	# Make sure we have some files to process
+        	#
+        	if( !scalar( @dirlist ) ) {
+                send_msg($request, 1, "The directory $packages_d is empty !");
+	      		$request = ();
+	      		return -1;
+        	}
+	
+		#Find the rpm lic file
+        	my @rpmlist = grep /\.rpm$/, @dirlist;
+		my @xmllist = grep /\.xml$/, @dirlist;
+		if( @rpmlist == 0 | @xmllist == 0) {
+                send_msg($request, 1, "There isn't any rpm and xml files in the  directory $packages_d!");
+	      		$request = ();
+	      		return -1;
+		}
+	
+		my $rpm_list =  join(" ", @rpmlist);
+		my $xml_list = join(" ", @xmllist);
+		 
+		my $cmd;
+		if( -d $packages_fw) {
+             		$cmd = "rm -rf $packages_fw";
+			xCAT::Utils->runcmd($cmd, 0);
+	                if ($::RUNCMD_RC != 0)
+        	        {
+                            send_msg($request, 1, "Failed to remove the old packages in $packages_fw.");
+	      		            $request = ();
+                      		return -1;
+
+                	}
+        	}
+	
+		$cmd = "mkdir $packages_fw";
+   		xCAT::Utils->runcmd("$cmd", 0);
+		if ($::RUNCMD_RC != 0)
+    		{
+                send_msg($request, 1, "$cmd failed.");
+	      		$request = ();
+	         	return;
+
+		}
+	
+		$cmd = "cp $packages_d/*.rpm  $packages_d/*.xml $packages_fw";
+   		xCAT::Utils->runcmd($cmd, 0);
+		if ($::RUNCMD_RC != 0)
+    		{
+                send_msg($request, 1, "$cmd failed.");
+	      		$request = ();
+	         	return -1;
+
+		}
+
+#		$req->{arg} = $exargs;
+	}
+    return 0;
+}
+
+
 
 sub print_var {
 	my $j = shift;
@@ -271,24 +405,24 @@ sub get_lic_filenames {
          }
 
          $filename = File::Spec->catfile( $packages_dir, $dirlist[0] );
-         $dirlist[0] =~ /(\w{4}(\d{3})_(\w{3})_(\d{3}.rpm$))/;
-	##############
-	#If the release levels are different, it will be upgrade_required.
-	#############
-	if($fff ne $2) {
-		$upgrade_required = 1;
-	} else {
+         $dirlist[0] =~ /(\w{4})(\d{3})_(\w{3})_(\d{3}).rpm$/;
+    	##############
+    	#If the release levels are different, it will be upgrade_required.
+    	#############
+    	if($fff ne $2) {
+	    	$upgrade_required = 1;
+    	} else {
 
-       	 if(($pns eq $1) && ($4 < $active_level)) {
-		$msg = $msg. "Upgrade $mtms $activate!";
+       	 if(($pns eq $1) && ($4 <= $active_level)) {
+    		$msg = $msg. "Upgrade $mtms $activate!";
 	#	if($activate ne "concurrent") {
 	#		$msg = "Option --actviate's value should be disruptive";
 	#		return ("", "","", $msg, -1);
 	#	}
 	  } else {
 		$msg = $msg . "Upgrade $mtms disruptively!";
-                if($activate ne "disruptive") {
-			$msg = "Option --actviate's value shouldn't be concurrent, and it must be disruptive";
+           if($activate ne "disruptive") {
+	    		$msg = "Option --activate's value shouldn't be concurrent, and it must be disruptive";
 			return ("", "","", $msg, -1);
 		}
        	 } 
