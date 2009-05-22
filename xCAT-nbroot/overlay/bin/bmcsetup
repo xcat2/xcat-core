@@ -16,17 +16,23 @@ allowcred.awk &
 CREDPID=$!
 modprobe ipmi_si
 modprobe ipmi_devintf
-while ! getipmi
-do
-    echo "Retrying retrieval of IPMI settings from server"
+while [ -z "$BMCIP" ]; do
+    while ! getipmi
+    do
+        echo "Retrying retrieval of IPMI settings from server"
+    done
+    TIMEOUT=15
+    kill $CREDPID
+    BMCIP=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCGW=`grep gateway /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCUS=`grep username /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCPW=`grep password /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    if [ -z "$BMCIP" ]; then
+        echo "FAILED TO RETRIEVE SETTINGS, RETRYING in 15 seconds"
+        sleep 15
+    fi
 done
-TIMEOUT=15
-kill $CREDPID
-BMCIP=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-BMCGW=`grep gateway /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-BMCUS=`grep username /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-BMCPW=`grep password /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
 if [ "$IPMIMFG" == 2 ]; then #IBM
