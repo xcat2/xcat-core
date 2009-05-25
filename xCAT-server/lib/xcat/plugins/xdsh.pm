@@ -61,14 +61,18 @@ sub preprocess_request
     my $nodes   = $req->{node};
     my $service = "xcat";
     my @requests;
-    my $syncsn = 0;
+    my $syncsn     = 0;
+    my $syncsnfile = "NONE";
     foreach my $envar (@{$req->{env}})
     {
         my ($var, $value) = split(/=/, $envar, 2);
         if ($var eq "RSYNCSN")
         {    # syncing SN, will change
             $syncsn = 1;    # nodelist to the list of SN
-            last;           # for those nodes
+        }
+        if ($var eq "DSH_RSYNC_FILE")
+        {                   # if hierarchy,need to put file on the SN
+            $syncsnfile = $value;    # sync file to SN
         }
     }
 
@@ -78,9 +82,28 @@ sub preprocess_request
     {
         $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
         if ($syncsn == 0)
-        {                   # not syncing sn, do hierarchy
-                            # build each request for each service node
+        {                            # not syncing sn, do hierarchy
+                                     # build each request for each service node
 
+            foreach my $snkey (keys %$sn)
+            {
+                if ($syncsnfile ne "NONE")
+                {                    # need to send rsync file to SN
+                    my $addreq;
+                    $addreq->{node}->[0]      = $snkey;
+                    $addreq->{noderange}->[0] = $snkey;
+                    $addreq->{arg}->[0]       = $syncsnfile;
+                    $addreq->{arg}->[1]       = $syncsnfile;
+                    $addreq->{command}->[0]   = $req->{command}->[0];
+                    $addreq->{cwd}->[0]       = $req->{cwd}->[0];
+                    push @requests, $addreq;
+                }
+                else
+                {
+                    last;
+                }
+
+            }
             foreach my $snkey (keys %$sn)
             {
                 my $reqcopy = {%$req};

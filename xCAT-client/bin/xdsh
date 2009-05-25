@@ -171,6 +171,10 @@ if ($ENV{'DEVICETYPE'})
     push(@{$cmdref->{env}}, "DEVICETYPE=$ENV{'DEVICETYPE'}");
 }
 
+if ($ENV{'DSH_RSYNC_FILE'})
+{
+    push(@{$cmdref->{env}}, "DSH_RSYNC_FILE=$ENV{'DSH_RSYNC_FILE'}");
+}
 if ($ENV{'RSYNCSN'})
 {
     push(@{$cmdref->{env}}, "RSYNCSN=$ENV{'RSYNCSN'}");
@@ -452,6 +456,10 @@ sub parse_args_xdcp
     if ($options{'rsyncSN'})
     {
         $ENV{'RSYNCSN'} = "yes";    # rsync file to SN
+    }
+    if ($options{'File'})
+    {
+        $ENV{'DSH_RSYNC_FILE'} = $options{'File'} ;    # rsync file
     }
     if ($options{'version'})
     {

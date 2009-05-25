@@ -42,7 +42,7 @@ our @dsh_valid_env = (
                       'DSH_PATH',           'DSH_SYNTAX',
                       'DSH_TIMEOUT',        'DSH_REMOTE_PASSWORD',
                       'DSH_TO_USERID',      'DSH_FROM_USERID',
-                      'DEVICETYPE',         'RSYNCSN',
+                      'DEVICETYPE',         'RSYNCSN','DSH_RSYNC_FILE',
                       );
 select(STDERR);
 $| = 1;
