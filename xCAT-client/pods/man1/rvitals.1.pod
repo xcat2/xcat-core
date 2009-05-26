@@ -55,6 +55,14 @@ Retrieves power supply and VRM voltage readings.
 
 Retrieves fan speeds.
 
+=item B<lcds>
+
+Retrieves LCDs status.
+
+=item B<leds>
+
+Retrieves LEDs status.
+
 =item B<power>
 
 Retrieves power status.
@@ -72,10 +80,6 @@ unless the Service Processor flash gets updated.
 =item B<state>
 
 Retrieves the system state.
-
-=item B<lcds>
-
-Retrieves LCDs status.
 
 =item B<all>
 
