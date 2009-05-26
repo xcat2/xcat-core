@@ -174,6 +174,8 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkconn
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmconn
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsconn
 
+
+
 %clean
 # This step does not happen until *after* the %files packaging below
 rm -rf $RPM_BUILD_ROOT
@@ -193,16 +195,24 @@ rm -rf $RPM_BUILD_ROOT
 
 %post
 %ifos linux
-echo "XCATROOT=$RPM_INSTALL_PREFIX0
+cat << EOF > /etc/profile.d/xcat.sh
+XCATROOT=$RPM_INSTALL_PREFIX0
 PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
-MANPATH=\$MANPATH:\$XCATROOT/share/man
+MANPATH=\$MANPATH:\$XCATROOT/share/man:
 export XCATROOT PATH MANPATH
-export PERL_BADLANG=0" >/etc/profile.d/xcat.sh
+export PERL_BADLANG=0
+EOF
 
-echo "setenv XCATROOT \"$RPM_INSTALL_PREFIX0\"
+cat << EOF > /etc/profile.d/xcat.csh
+setenv XCATROOT "$RPM_INSTALL_PREFIX0"
 setenv PATH \${PATH}:\${XCATROOT}/bin:\${XCATROOT}/sbin
-setenv MANPATH \${MANPATH}:\${XCATROOT}/share/man
-setenv PERL_BADLANG 0" >/etc/profile.d/xcat.csh
+if !(\$?MANPATH) then
+     setenv MANPATH \${XCATROOT}/share/man:
+else
+     setenv MANPATH \${MANPATH}:\${XCATROOT}/share/man:
+endif
+setenv PERL_BADLANG 0
+EOF
 chmod 755 /etc/profile.d/xcat.*
 
 %else
