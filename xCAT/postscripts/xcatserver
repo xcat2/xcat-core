@@ -22,5 +22,6 @@ fi
     sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc > /etc/xcat/cfgloc.new
     mv /etc/xcat/cfgloc.new /etc/xcat/cfgloc
    chmod 600 /etc/xcat/cfgloc
-   cp _xcat/ca.pem /etc/xcat/cert/ca.pem
+   # do not assume working directory, use the full path
+   cp /xcatpost/_xcat/ca.pem /etc/xcat/cert/ca.pem
    kill -9 $CREDPID
