@@ -145,10 +145,17 @@ my %usage = (
 	rflash <noderange> [--commit | --recover] [-V|--verbose]",
     "mkconn" =>
 "Usage:
-    mkvm [-h|--help]
+    mkconn [-h|--help]
     mkconn noderange -t [--bind] [-V|--verbose]
     mkconn noderange -p single_hmc [-P fsp/bpa passwd] [-V|--verbose]",
-
+    "rmconn" =>
+"Usage:
+    rmconn [-h|--help]
+    rmconn noderange [-V|--verbose]",
+    "lsconn" =>
+"Usage:
+    lsconn [-h|--help]
+    lsconn noderange [-V|--verbose]",
 );
 my $vers = xCAT::Utils->Version();
 my %version = (

@@ -75,6 +75,21 @@ my %mksysconn = (
     bpa => "mksysconn --ip %s -r frame --passwd %s"
 );
 
+##############################################
+# rmsysconn support formats
+##############################################
+my %rmsysconn = (
+    fsp => "rmsysconn -o remove -m %s",
+    bpa => "mksysconn -o remove -e %s"
+);
+
+##############################################
+# lssysconn support formats
+##############################################
+my %lssysconn = (
+    all => "lssysconn -r all"
+);
+
 ##########################################################################
 # Logon to remote server
 ##########################################################################
@@ -1130,6 +1145,17 @@ sub network_reset {
 }
 
 ##########################################################################
+# List connection for CEC/BPA
+##########################################################################
+sub lssysconn
+{
+    my $exp = shift;
+    my $cmd = $lssysconn{all};
+    my $result = send_cmd( $exp, $cmd);
+    return ( $result);
+}
+
+##########################################################################
 # Create connection for CEC/BPA
 ##########################################################################
 sub mksysconn
@@ -1144,6 +1170,19 @@ sub mksysconn
     return ( $result);
 }
 
+##########################################################################
+# Remove connection for CEC/BPA
+##########################################################################
+sub rmsysconn
+{
+    my $exp    = shift;
+    my $type   = shift;
+    my $name   = shift;
+    
+    my $cmd = sprintf( $rmsysconn{$type}, $name);
+    my $result = send_cmd( $exp, $cmd);
+    return ( $result);
+}
 1;
 
 

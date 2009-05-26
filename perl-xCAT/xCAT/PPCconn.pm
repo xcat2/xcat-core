@@ -12,8 +12,7 @@ use xCAT::Usage;
 my %method = (
     mkconn => \&mkconn_parse_args,
     lsconn => \&lsconn_parse_args,
-    rmconn => \&rmconn_parse_args,
-    chconn => \&chconn_parse_args
+    rmconn => \&rmconn_parse_args
 );
 ##########################################################################
 # Parse the command line for options and operands
@@ -115,16 +114,72 @@ sub mkconn_parse_args
     return( \%opt);
 }
 
+##########################################################################
+# Parse arguments for lsconn
+##########################################################################
 sub lsconn_parse_args
 {
+    my $request = shift;
+    my $args    = shift;
+    my %opt = ();
+
+    local *usage = sub {
+        my $usage_string = xCAT::Usage->getUsage("lsconn");
+        return( [ $_[0], $usage_string] );
+    };
+#############################################
+# Get options in command line
+#############################################
+    local @ARGV = @$args;
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure( "bundling" );
+
+    if ( !GetOptions( \%opt, qw(V|verbose) )) {
+        return( usage() );
+    }
+
+    #############################################
+    # Process command-line arguments
+    #############################################
+    if ( scalar @$args) {
+        return(usage( "No additional flag is support by this command" ));
+    }
+    $request->{method} = 'lsconn';
+    return( \%opt);
 }
 
-sub chconn_parse_args
-{
-}
-
+##########################################################################
+# Parse arguments for rmconn
+##########################################################################
 sub rmconn_parse_args
 {
+    my $request = shift;
+    my $args    = shift;
+    my %opt = ();
+
+    local *usage = sub {
+        my $usage_string = xCAT::Usage->getUsage("rmconn");
+        return( [ $_[0], $usage_string] );
+    };
+#############################################
+# Get options in command line
+#############################################
+    local @ARGV = @$args;
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure( "bundling" );
+
+    if ( !GetOptions( \%opt, qw(V|verbose) )) {
+        return( usage() );
+    }
+
+    #############################################
+    # Process command-line arguments
+    #############################################
+    if ( scalar @$args) {
+        return(usage( "No additional flag is support by this command" ));
+    }
+    $request->{method} = 'rmconn';
+    return( \%opt);
 }
 ##########################################################################
 # Create connection for CECs/BPAs
@@ -176,66 +231,97 @@ sub mkconn
     }
     return \@value;
 }
-
-sub preprocess_nodes
+##########################################################################
+# List connection status for CECs/BPAs
+##########################################################################
+sub lsconn
 {
-    my $request   = shift;
-    my $nodes     = $request->{ node};
-    my @hmc_group = ();
-    my %tabs      = ();
-    my %nodehash  = ();
-    if ( exists $request->{opt}->{p})
-    {
-        my $hcp = $request->{opt}->{p};
-        push @hmc_group, $hcp;
-        if ( ! exists $request->{$hcp}->{cred})
-        {
-            my @cred = xCAT::PPCdb::credentials( $hcp, 'hmc');
-            $request->{$hcp}->{cred} = \@cred;
-        } 
-    }
-    else
-    {
-        foreach ( qw(ppc vpd nodetype) ) 
-        {
-            $tabs{$_} = xCAT::Table->new($_);
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $hwtype  = @$exp[2];
+    my $opt     = $request->{opt};
+    my @value   = ();
+    my $Rc      = undef;
 
-            if ( !exists( $tabs{$_} )) 
-            { 
-                xCAT::PPC::send_msg( $request, 1, sprintf( "'%s' database not defined", $_ )); 
-                return undef;
+    my $res = xCAT::PPCcli::lssysconn( $exp);
+    $Rc = shift @$res;
+    for my $cec_bpa ( keys %$hash)
+    {
+        my $node_hash = $hash->{$cec_bpa};
+        my ($node_name) = keys %$node_hash;
+        ############################################
+        # If lssysconn failed, put error into all
+        # nodes' return values
+        ############################################
+        if ( $Rc ) 
+        {
+            push @value, [$node_name, @$res[0], $Rc];
+            next;
+        }
+        ############################
+        # Search node in result
+        ############################
+        my $d = $node_hash->{$node_name};
+        my ( undef,undef,undef,undef,$type) = @$d;
+        if ( $type eq 'bpa')
+        {
+            $type='frame';
+        }
+        elsif ( $type eq 'fsp')
+        {
+            $type='sys';
+        }
+        else
+        {
+            push @value, [$node_name, 'Unsupported node type', 1];
+            next;
+        }
+        
+        if ( my @res_matched = grep /\Qtype_model_serial_num=$cec_bpa,\E/, @$res)
+        {
+            for my $r ( @res_matched)
+            {
+                $r =~ s/\Qtype_model_serial_num=$cec_bpa,\E//;
+                $r =~ s/\Qresource_type=$type,\E//;
+                $r =~ s/sp=.*?,//;
+                $r =~ s/sp_phys_loc=.*?,//;
+                push @value, [$node_name, $r, $Rc];
             }
         }
-        for my $node ( @$nodes)
+        else
         {
-            my $d = xCAT::PPC::resolve( $request, $node, \%tabs );
-
-######################################
-# Error locating node attributes
-######################################
-            if ( ref($d) ne 'ARRAY' ) 
-            {
-                xCAt::PPC::send_msg( $request, 1, "$node: $d");
-                next;
-            }
-######################################
-# Get data values 
-######################################
-            my $hcp  = @$d[3];
-            my $mtms = @$d[2];
-##########################################
-# Get userid and password
-##########################################
-            if ( ! exists $request->{$hcp}{cred})
-            {
-                my @cred = xCAT::PPCdb::credentials( $hcp, 'hmc');
-                $request->{$hcp}{cred} = \@cred;
-            } 
-            while (my ($hcp,$hash) = each(%nodehash) ) {    
-                push @hmc_group,[$hcp,$hash]; 
-            }
+            push @value, [$node_name, 'Connection not found', 1];
         }
     }
-    return \@hmc_group;
+    return \@value;
+}
+
+##########################################################################
+# Remove connection for CECs/BPAs to HMCs
+##########################################################################
+sub rmconn
+{
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $hwtype  = @$exp[2];
+    my $opt     = $request->{opt};
+    my @value   = ();
+    my $Rc      = undef;
+
+    for my $cec_bpa ( keys %$hash)
+    {
+        my $node_hash = $hash->{$cec_bpa};
+        my ($node_name) = keys %$node_hash;
+        my $d = $node_hash->{$node_name};
+
+        my ( undef,undef,undef,undef,$type) = @$d;
+
+        my $res = xCAT::PPCcli::mksysconn( $exp, $type, $cec_bpa);
+        $Rc = shift @$res;
+        push @value, [$node_name, @$res[0], $Rc];
+    }
+    return \@value;
 }
 1;
