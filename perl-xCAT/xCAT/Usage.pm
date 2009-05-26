@@ -35,8 +35,17 @@ my %usage = (
 "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
        rbeacon [-h|--help|-v|--version]",
     "rvitals" => 
-"Usage: rvitals <noderange> [all|temp|wattage|voltage|fanspeed|power|leds|lcds|state] [-V|--verbose]
-       rvitals [-h|--help|-v|--version]",
+"Usage:
+  Common:
+      rvitals [-h|--help|-v|--version]
+  FSP/LPAR specific:
+      rvitals noderange {temp|voltage|lcds|all}
+  MPA specific:
+      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
+  Blade specific:
+      rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
+  BMC specific:
+      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|lcds|summary|all}",
     "reventlog" => 
 "Usage: reventlog <noderange> [all|clear|<number of entries to retrieve>] [-V|--verbose]
        reventlog [-h|--help|-v|--version]",
