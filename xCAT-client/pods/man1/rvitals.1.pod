@@ -4,9 +4,23 @@ B<rvitals> - remote hardware vitals
 
 =head1 B<Synopsis>
 
-B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<lcds>|B<summary>|B<all>}
-
 B<rvitals> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head2 FSP/LPAR specific:
+
+B<rvitals> I<noderange> {B<temp>|B<voltage>|B<lcds>|B<all>}
+
+=head2 MPA specific:
+
+B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<summary>|B<all>}
+
+=head2 Blade specific:
+
+B<rvitals> I<noderange> {B<temp>|B<wattage>|B<fanspeed>|B<leds>|B<summary>|B<all>}
+
+=head2 BMC specific:
+
+B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<lcds>|B<summary>|B<all>}
 
 =head1 B<Description>
 
