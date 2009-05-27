@@ -375,10 +375,23 @@ sub getmacs {
     if ( !defined( $name )) {
         return( [[$node,"Node not found, lparid=$lparid",RC_ERROR]] );
     }
-    #########################################
-    # Manually collect MAC addresses.
-    #########################################
-    $result = do_getmacs( $request, $d, $exp, $name, $node );
+
+    my $sitetab  = xCAT::Table->new('site');
+    my $vcon = $sitetab->getAttribs({key => "conserveronhmc"}, 'value');
+    if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+        $result = xCAT::PPCcli::lpar_netboot(
+                            $exp,
+                            $request->{verbose},
+                            $name,
+                            $d,
+                            $opt );
+    } else {
+        #########################################
+        # Manually collect MAC addresses.
+        #########################################
+        $result = do_getmacs( $request, $d, $exp, $name, $node );
+    }
+    $sitetab->close;
     $Rc = shift(@$result);
    
     ##################################

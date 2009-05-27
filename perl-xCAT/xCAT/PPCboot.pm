@@ -306,11 +306,25 @@ sub rnetboot {
     if ( !defined( $name )) {
         return( [[$node,"Node not found, lparid=$lparid",RC_ERROR]] );
     }
-    #########################################
-    # Manually perform boot. 
-    #########################################
-    $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
+
+    my $sitetab  = xCAT::Table->new('site');
+    my $vcon = $sitetab->getAttribs({key => "conserveronhmc"}, 'value');
+    if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+        $result = xCAT::PPCcli::lpar_netboot(
+                            $exp,
+                            $request->{verbose},
+                            $name,
+                            $d,
+                            \%opt );
+    } else {
+        #########################################
+        # Manually perform boot. 
+        #########################################
+        $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
+    }
+    $sitetab->close;
     $Rc = shift(@$result);
+    
 
     ##################################
     # Form string from array results
