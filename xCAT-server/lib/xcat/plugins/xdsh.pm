@@ -78,6 +78,10 @@ sub preprocess_request
 
     # find service nodes for requested nodes
     # build an individual request for each service node
+    # find out the names for the Management Node 
+    my @MNnodeinfo   = xCAT::Utils->determinehostname;
+    my $MNnodename   = pop @MNnodeinfo; # hostname
+    my @MNnodeipaddr = @MNnodeinfo;  # ipaddresses 
     if ($nodes)
     {
         $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
@@ -87,6 +91,7 @@ sub preprocess_request
 
             foreach my $snkey (keys %$sn)
             {
+              if (!grep(/$snkey/, @MNnodeipaddr)) { # not the MN 
                 if ($syncsnfile ne "NONE")
                 {                    # need to send rsync file to SN
                     my $addreq;
@@ -103,6 +108,7 @@ sub preprocess_request
                     last;
                 }
 
+              }
             }
             foreach my $snkey (keys %$sn)
             {
