@@ -2200,7 +2200,7 @@ if { $set_boot_order > 1 } {
                 set done 1
             }
             timeout {
-                if { $retry_count == 2 } {
+                if { $retry_count == 3 } {
                     send_user "$PROGRAM: Timeout waiting for command prompt\n"
                     exit 1
                 }
@@ -2208,7 +2208,7 @@ if { $set_boot_order > 1 } {
                 incr retry_count
             }
             eof {
-                if { $retry_count == 2 } {
+                if { $retry_count == 3 } {
                     send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
                     exit 1
                 }
@@ -2235,7 +2235,7 @@ if { $set_boot_order > 1 } {
                 set done 1
             }
             timeout {
-                if { $retry_count == 1 } {
+                if { $retry_count == 3 } {
                     send_user "$PROGRAM: Timeout waiting for command prompt\n"
                     exit 1
                 }
@@ -2243,7 +2243,7 @@ if { $set_boot_order > 1 } {
                 incr retry_count
             }
             eof {
-                if { $retry_count == 1 } {
+                if { $retry_count == 3 } {
                     send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
                     exit 1
                 }
