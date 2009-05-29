@@ -30,18 +30,18 @@ my $dispatch_children=0;
 my %dispatched_children=();
 my $plugin_numchildren=0; 
 my %plugin_children;
-use IO::Socket::SSL;
 my $inet6support;
 $inet6support=eval { require Socket6 };
 if ($inet6support) {
     $inet6support = eval { require IO::Socket::INET6 };
 }
 if ($inet6support) {
-   $inet6support = eval { require IO::Socket::SSL::inet6 };
-}
+   $inet6support = eval { require IO::Socket::SSL; IO::Socket::SSL->import('inet6'); 1; };
+} 
 unless ($inet6support) {
   eval { require Socket };
   eval { require IO::Socket::INET };
+  eval { require IO::Socket::SSL; IO::Socket::SSL->import(); };
 }
 
 my $dispatch_requests = 1; # govern whether commands are dispatchable
@@ -516,11 +516,20 @@ unless ($pid) {
 }
 $$progname="xcatd: SSL listener";
 openlog("xCAT SSL","","local4");
-my $listener = IO::Socket::INET->new(
-    LocalPort => $port,
-    Listen => 64,
-    Reuse => 1,
-    );
+my $listener;
+if ($inet6support) {
+    $listener = IO::Socket::INET6->new(
+        LocalPort => $port,
+        Listen => 64,
+        Reuse => 1,
+        );
+} else {
+    $listener = IO::Socket::INET->new(
+        LocalPort => $port,
+        Listen => 64,
+        Reuse => 1,
+        );
+}
 
 unless ($listener) {
   kill 2, $pid;

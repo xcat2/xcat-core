@@ -7,17 +7,17 @@ BEGIN
 }
 
 my $inet6support;
-use IO::Socket::SSL;
 $inet6support=eval { require Socket6 };
 if ($inet6support) {
    $inet6support = eval { require IO::Socket::INET6 };
 }
 if ($inet6support) {
-   $inet6support = eval { require IO::Socket::SSL::inet6 };
+   $inet6support = eval { require IO::Socket::SSL; IO::Socket::SSL->import('inet6'); };
 }
 unless ($inet6support) {
   eval { require Socket };
   eval { require IO::Socket::INET };
+  eval { require IO::Socket::SSL; IO::Socket::SSL->import() };
 }
 
 
