@@ -51,7 +51,10 @@ sub expandatom {
 
     # Try to match groups?
         my $grptab = xCAT::Table->new('nodegroup');
-        my @grplist = @{$grptab->getAllEntries()};
+        my @grplist;
+        if ($grptab) { 
+            @grplist = @{$grptab->getAllEntries()};
+        }
         my $isdynamicgrp = 0;
         foreach my $grpdef_ref (@grplist) {
             my %grpdef = %$grpdef_ref;
