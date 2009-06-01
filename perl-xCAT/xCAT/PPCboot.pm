@@ -191,29 +191,42 @@ sub do_rnetboot {
     #######################################
     $cmd.= " -t ent -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
 
-    #######################################
-    # Execute command
-    #######################################
-    if ( !open( OUTPUT, "$cmd 2>&1 |")) {
-        return( [RC_ERROR,"$cmd fork error: $!"] );
-    }
-    #######################################
-    # Get command output
-    #######################################
-    while ( <OUTPUT> ) {
-        $result.=$_;
-    }
-    close OUTPUT;
-
-    #######################################
-    # Get command exit code
-    #######################################
+    my $done = 0;
     my $Rc = SUCCESS;
+    while ( $done < 2 ) {
+        #######################################
+        # Execute command
+        #######################################
+        if ( !open( OUTPUT, "$cmd 2>&1 |")) {
+            return( [RC_ERROR,"$cmd fork error: $!"] );
+        }
+        #######################################
+        # Get command output
+        #######################################
+        while ( <OUTPUT> ) {
+            $result.=$_;
+        }
+        close OUTPUT;
 
-    foreach ( split /\n/, $result ) {
-        if ( /^lpar_netboot: / ) {
-            $Rc = RC_ERROR;
-            last;
+        #######################################
+        # Get command exit code
+        #######################################
+
+        foreach ( split /\n/, $result ) {
+            if ( /^lpar_netboot: / ) {
+                $Rc = RC_ERROR;
+                last;
+            }
+        }
+
+        if ( $Rc == SUCCESS ) {
+            $done = 2;
+        } else {
+            if ( !exists( $opt->{f} )) {
+                $cmd.= " -i";
+            }
+            $done = $done + 1;
+            sleep 1;
         }
     }
     return( [$Rc,$result] );
