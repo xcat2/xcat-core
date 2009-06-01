@@ -33,6 +33,8 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/rmc
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
+mkdir -p $RPM_BUILD_ROOT/install/post/xcat/rmcmon/resources
+mkdir -p $RPM_BUILD_ROOT/install/post/xcat/rmcmon/scripts
 
 cp plugin/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
 cp -r resources $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/rmc
@@ -43,6 +45,18 @@ chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon/*
 cp scripts/configrmcnode $RPM_BUILD_ROOT/install/postscripts
 chmod 755 $RPM_BUILD_ROOT/install/postscripts/configrmcnode
 
+FILES_TO_COPY=`cat scripts/scripts_to_node|tr '\n' ' '` 
+echo "files=$FILES_TO_COPY"
+for file in $FILES_TO_COPY
+do
+   echo "file=$file"
+   cp scripts/$file $RPM_BUILD_ROOT/install/post/xcat/rmcmon/scripts
+done
+chmod 755 $RPM_BUILD_ROOT/install/post/xcat/rmcmon/scripts/*
+
+cp -r resources/node/* $RPM_BUILD_ROOT/install/post/xcat/rmcmon/resources 
+
+
 %clean
 rm -rf $RPM_BUILD_ROOT
 
@@ -52,6 +66,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-, root, root)
 %{prefix}
 /install/postscripts
+/install/post/xcat/rmcmon
 
 %changelog
 
