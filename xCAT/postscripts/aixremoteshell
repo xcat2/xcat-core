@@ -234,6 +234,7 @@ sub getresponse
 		my $msg = "aixremoteshell: Cannot connect to host \'$::servnode\'\n";
 		`logger -t xcat $msg`;
 		#print $msg;
+		kill 2, $lpid;
 		return undef;
 	}
 
