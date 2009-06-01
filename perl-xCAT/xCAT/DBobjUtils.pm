@@ -583,14 +583,31 @@ sub setobjdefs
     my %objhash = %$hash_ref;
     my %settableref;
     my $ret = 0;
-	my %allupdates;
-	my $setattrs=0;
+    my %allupdates;
+    my $setattrs=0;
 
-	# for each object figure out:
-	#	- what tables to update
-	#	- which table attrs correspond to which object attrs
-	#	- what the keys are for each table
-	# update the tables a row at a time
+    # get the attr=vals for these objects from the DB - if any
+    #       - so we can figure out where to put additional attrs
+    # The getobjdefs call was in the foreach loop,
+    # it caused mkdef/chdef performance issue,
+    # so it is moved out of the foreach loop
+
+    my %DBhash;
+    foreach my $objname (keys %objhash)
+    {
+        my $type = $objhash{$objname}{objtype};
+        $DBhash{$objname} = $type;
+    }
+
+    my %DBattrvals;
+
+    %DBattrvals = xCAT::DBobjUtils->getobjdefs(\%DBhash);
+
+    # for each object figure out:
+    #	- what tables to update
+    #	- which table attrs correspond to which object attrs
+    #	- what the keys are for each table
+    # update the tables a row at a time
     foreach my $objname (keys %objhash)
     {
 
@@ -601,16 +618,8 @@ sub setobjdefs
         if ($type eq 'monitoring')
         {
 
-			my %DBattrvals;
-			# if plus or minus then need to know current settings
-			if ( ($::plus_option) || ($::minus_option) ) {
-            	my %DBhash;
-            	$DBhash{$objname} = $type;
-            	%DBattrvals = xCAT::DBobjUtils->getobjdefs(\%DBhash);
-			}
-
-			# Get the names of the attrs stored in monitoring table
-			# get the object type decription from Schema.pm
+                # Get the names of the attrs stored in monitoring table
+                # get the object type decription from Schema.pm
         	my $datatype = $xCAT::Schema::defspec{$type};
 
         	#  get a list of valid attr names
@@ -723,12 +732,6 @@ sub setobjdefs
         # handle the site table as a special case !!!!!
         if ($type eq 'site')
         {
-            # if plus or minus then need to know current settings
-            my %DBhash;
-            $DBhash{$objname} = $type;
-            my %DBattrvals;
-            %DBattrvals = xCAT::DBobjUtils->getobjdefs(\%DBhash);
-
             # open the table
             my $thistable =
               xCAT::Table->new('site', -create => 1, -autocommit => 0);
@@ -837,15 +840,6 @@ sub setobjdefs
 		#
 		#  handle the rest of the object types
 		#
-
-        # get the attr=vals for these objects from the DB - if any
-        #       - so we can figure out where to put additional attrs
-        my %DBhash;
-        $DBhash{$objname} = $type;
-
-        my %DBattrvals;
-
-        %DBattrvals = xCAT::DBobjUtils->getobjdefs(\%DBhash);
 
         # get the object type decription from Schema.pm
         my $datatype = $xCAT::Schema::defspec{$type};
