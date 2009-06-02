@@ -1876,15 +1876,6 @@ sub defch
             }
 
         }    # end - if type = node
-        # If none of the attributes in nodelist is defined: groups,status,appstatus,primarysn,comments,disable
-        # the nodelist table will not be updated, caused chdef failed.
-        # We can give a restriction that the "groups" must be specified with chdef,
-        # but it is not so reasonable especially when the dynamic node group feature is implemented.
-        # fixing this issue with specifying an empty "groups" if the "groups" is not specified with the command line or stanza file
-        if (($type eq "node") && !defined($::FINALATTRS{$obj}{groups}))
-        {
-            $::FINALATTRS{$obj}{groups} = '';
-        }
 
     }    # end - for each object to update
 
