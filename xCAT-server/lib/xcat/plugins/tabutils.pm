@@ -540,6 +540,8 @@ sub nodech
     my $VERSION;
     my $HELP;
     my $deletemode;
+    my $grptab;
+    my @grplist;
 
     my $nodech_usage = sub
     {
@@ -753,6 +755,25 @@ sub nodech
                         	my $val = shift @valoppairs;
                         	my $op  = shift @valoppairs;
                         	my $key = $_;
+                                # When changing the groups of the node, check whether the new group
+                                # is a dynamic group.
+                                if (($key eq 'groups') && ($op eq '=')) {
+                                    if (scalar(@grplist) == 0) { # Do not call $grptab->getAllEntries for each node, performance issue.
+                                        $grptab = xCAT::Table->new('nodegroup');
+                                        @grplist = @{$grptab->getAllEntries()};
+                                    }
+                                    my @grps = split(/,/, $val);
+                                    foreach my $grp (@grps) {
+                                        foreach my $grpdef_ref (@grplist) {
+                                            my %grpdef = %$grpdef_ref;
+                                            if (($grpdef{'groupname'} eq $grp) && ($grpdef{'grouptype'} eq 'dynamic')) {
+                                                my %rsp;
+                                                $rsp{data}->[0] = "nodegroup $grp is a dynamic node group, should not add a node into a dynamic node group statically.\n";
+                                                $callback->(\%rsp);
+                                            }
+                                        }
+                                    }
+                                }
                         	if ($op eq '=') {
                             	$uhsh{$key} = $val;
                         	}
