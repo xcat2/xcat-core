@@ -16,6 +16,7 @@ sub parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
+    my @VERSION = qw( 2.1 );
 
     #############################################
     # Responds with usage statement
@@ -40,8 +41,21 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose f s=s) )) { 
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version  f s=s) )) { 
         return( usage() );
+    }
+
+    ####################################
+    # Option -h for Help
+    ####################################
+    if ( exists( $opt{h} )) {
+        return( usage() );
+    }
+    ####################################
+    # Option -v for version
+    ####################################
+    if ( exists( $opt{v} )) {
+        return( \@VERSION );
     }
 
     if ( exists( $opt{s} ) ){
