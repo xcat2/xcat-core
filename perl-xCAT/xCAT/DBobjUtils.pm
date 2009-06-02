@@ -1556,10 +1556,10 @@ sub getGroupMembers
 
             foreach my $testattr (keys %whereHash)
             {
-                if ($whereHash{$testattr} =~ /^\//) 
+                if ($whereHash{$testattr} =~ /^\|/) 
                 { # wherevals includes regular expression
                     my $tmpwherestring = $whereHash{$testattr};
-                    $tmpwherestring =~ /^\/(.*)\/$/g;
+                    $tmpwherestring =~ /^\|(.*)\|$/g;
                     $tmpwherestring = $1;
                     if (!defined($myhash{$objname}{$testattr}) || ($myhash{$objname}{$testattr} !~ /$tmpwherestring/) )
                     {
