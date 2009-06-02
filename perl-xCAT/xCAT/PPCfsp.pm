@@ -106,6 +106,9 @@ sub connect {
              return( "Unable to redirect STDERR: $!" );
         }
     }
+    $IO::Socket::SSL::VERSION = undef;
+    eval { require Net::SSL };
+
     ##################################
     # Turn on tracing
     ##################################
@@ -1727,11 +1730,16 @@ sub set_netcfg
 
     return ( [RC_ERROR,"Cannot find interface $inc_name"]) if ( ! exists ($$interfaces{ $real_inc_name}));
 
-    $interfaces->{ $real_inc_name}->{'selected'}->check();
-
+#not work on AIX
+#    $interfaces->{ $real_inc_name}->{'selected'}->check();
+    my @tmp_options = $interfaces->{ $real_inc_name}->{'selected'}->possible_values();
+    $interfaces->{ $real_inc_name}->{'selected'}->value(@tmp_options[1] );
     if ( $interfaces->{ $real_inc_name}->{'type'})
     {
-        $interfaces->{ $real_inc_name}->{'type'}->value('Static');
+        @tmp_options =  $interfaces->{ $real_inc_name}->{'type'}->possible_values();
+        $interfaces->{ $real_inc_name}->{'type'}->value(@tmp_options[0]);
+#not work on AIX
+#        $interfaces->{ $real_inc_name}->{'type'}->value('Static');
     }
     else
     {
@@ -1773,7 +1781,7 @@ sub set_netcfg
 
     #Go to the confirm page
     $form = HTML::Form->parse( $res->content, $res->base );
-#    $data = $form->click('submit');
+    $data = $form->click('submit');
     $res = $ua->request( $data);
     if ($res->is_success())
     {
@@ -1798,16 +1806,27 @@ sub format_netcfg
         $output .= "\n\t" . $inc . ":\n";
         $output =~ s/interface(\d)/eth$1/;
         # There are 2 possible value for $type, 
-        # 1 means "Dynamic", 2 means "Static"
+        # the first means "Dynamic", 2nd means "Static"
         # Now to find the correct type name
+	my $curr_type = $interfaces->{$inc}->{'type'}->value();
         my @possible_values = $interfaces->{$inc}->{'type'}->possible_values();
-        my @possible_names  = $interfaces->{$inc}->{'type'}->value_names();
-        my %value_names = {};
-        for ( my $i = 0; $i < scalar( @possible_values); $i++)
+        my $type;
+        if ($curr_type == @possible_values[0])
         {
-            $value_names{ @possible_values[$i]} = @possible_names[$i];
+            $type = "Dynamic";
         }
-        my $type = $interfaces->{$inc}->{'type'} ? $value_names{ $interfaces->{$inc}->{'type'}->value()} : undef;;
+        else
+        {
+            $type = "Static";
+        } 
+#not work on AIX
+        #my @possible_names  = $interfaces->{$inc}->{'type'}->value_names();
+        #my %value_names = {};
+        #for ( my $i = 0; $i < scalar( @possible_values); $i++)
+        #{
+        #    $value_names{ @possible_values[$i]} = @possible_names[$i];
+        #}
+        #my $type = $interfaces->{$inc}->{'type'} ? $value_names{ $interfaces->{$inc}->{'type'}->value()} : undef;;
         $type = "Static" if ( $type == 2);
         my $ip = $interfaces->{$inc}->{'ip'} ? $interfaces->{$inc}->{'ip'}->value() : undef;
         my $hostname = $interfaces->{$inc}->{'hostname'} ? $interfaces->{$inc}->{'hostname'}->value() : undef;

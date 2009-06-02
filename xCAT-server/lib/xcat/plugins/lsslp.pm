@@ -14,14 +14,8 @@ if ($^O =~ /^linux/i) {
 }
 use xCAT::PPCdb;
 
-#######################################
-# Perl::SNMP not working on AIX yet
-#######################################
-if ($^O =~ /^linux/i) {
-  eval { require xCAT::MacMap };
-  eval { require xCAT_plugin::blade };
-}
-
+require xCAT::MacMap;
+require xCAT_plugin::blade;
 
 #######################################
 # Constants
@@ -120,9 +114,7 @@ my $macmap;
 ##########################################################################
 sub handled_commands {
 
-    if ($^O =~ /^linux/i) {
-        $macmap = xCAT::MacMap->new();
-    }
+    $macmap = xCAT::MacMap->new();
     return( {lsslp=>"lsslp"} );
 }
 
@@ -663,7 +655,7 @@ sub invoke_cmd {
         }
         else #The rest must be fsp or bpa
         {
-            @cmds = ("network=$target_dev->{args}");
+            @cmds = ("network=$ip,$target_dev->{args}");
             trace( $request, "update config on $target_dev->{'type'} $ip");
             $result = xCAT::PPC::updconf_in_asm(
                     $ip,
@@ -1915,14 +1907,10 @@ sub preprocess_request {
     # find all the service nodes for xCAT cluster
     # build an individual request for each service node
     ###########################################
-    my $nrtab=xCAT::Table->new("noderes", -create =>0);  
     my %sv_hash=();
-    if ( $nrtab)
-    {
-	    my @all=$nrtab->getAllNodeAttribs(['servicenode']);
-	    foreach (@all) {
-		    if ($_->{servicenode}) {$sv_hash{$_->{servicenode}}=1;}
-	    }
+    my @all = xCAT::Utils::getAllSN();
+    foreach (@all) {
+	    if ($_->{servicenode}) {$sv_hash{$_->{servicenode}}=1;}
     }
     ###########################################
     # build each request for each service node
@@ -2064,6 +2052,19 @@ sub switch_cmd {
         if ( $^O eq 'aix' && $arpent =~ /\((\S+)\)\s+at\s+(\S+)/)
         {
             ($ip, $mac) = ($1,$2);
+            ######################################################
+            # Change mac format to be same as linux. For example:
+            # '0:d:60:f4:f8:22' to '00:0d:60:f4:f8:22'
+            ######################################################
+            if ( $mac)
+            {
+                my @mac_sections = split /:/, $mac;
+                for (@mac_sections)
+                {
+                    $_ = "0$_" if ( length($_) == 1);
+                }
+                $mac = join ':', @mac_sections;
+            }
         }
         elsif ( $arpent =~ /^(\S+)+\s+\S+\s+(\S+)\s/)
         {
@@ -2116,7 +2117,7 @@ sub switch_cmd {
             $name = disti_multi_node( $req, $names, $slp_all->{$ip});
             if ( ! $name)
             {
-                trace( $req, "Cannot distinguish $names.");
+                trace( $req, "Cannot identify node $ip.");
                 next;
             }
             
