@@ -4308,8 +4308,8 @@ sub doSNcopy
 	# keep track if spot/lpp_source has already been backed up
 	@::resbacked=();
 
-	my @nimresources;
 	foreach my $snkey (keys %$sn) {
+		my @nimresources;
 		if (!&is_me($snkey) ) {
 
 			# running on the management node so
@@ -5589,6 +5589,13 @@ sub rmdsklsnode
     #   - need to change to pass in the callback
     #   - just set global for now
     $::callback=$callback;
+
+	if (defined(@{$::args})) {
+        @ARGV = @{$::args};
+    } else {
+        &rmdsklsnode_usage($callback);
+        return 2;
+    }
 
 	my $Sname = &myxCATname();
 	chomp $Sname;
