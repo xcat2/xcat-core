@@ -7,9 +7,10 @@ BEGIN
 }
 
 my $inet6support;
-$inet6support=eval { require Socket6 };
 if ($^O =~ /^aix/i) {  # disable AIX IPV6  TODO fix
  $inet6support = 0;
+} else {
+  $inet6support=eval { require Socket6 };
 }
 if ($inet6support) {
    $inet6support = eval { require IO::Socket::INET6 };
