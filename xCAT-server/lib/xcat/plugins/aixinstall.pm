@@ -1571,10 +1571,21 @@ sub mk_lpp_source
 
 			# make cmd
 			my $lpp_cmd = "/usr/sbin/nim -Fo define -t lpp_source -a server=master ";
+
+			# set multi_volume to yes just in case /dev/cd0 is provided
+			$lpp_cmd .= "-a multi_volume=yes ";
+
 			# where to put it - the default is /install
 			$lpp_cmd .= "-a location=$loc ";
 
 			$lpp_cmd .= "-a source=$::opt_s $lppsrcname";
+
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{$rsp->{data}}, "Running: \'$lpp_cmd\'\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+
 			my $output = xCAT::Utils->runcmd("$lpp_cmd", -1);
    			if ($::RUNCMD_RC  != 0)
    			{
