@@ -128,6 +128,9 @@ sub getObjectsOfType
 
         Get data from tables 
 
+                $type_hash: objectname=>objtype hash
+                $attrs_ref: only get the specific attributes,
+                            this can be useful especially for performance considerations
         Arguments:
         Returns:
                 undef
@@ -145,7 +148,13 @@ sub getObjectsOfType
 #-----------------------------------------------------------------------------
 sub getobjattrs
 {
-    my ($class, $ref_hash) = @_;
+    my $class = shift;
+    my $ref_hash = shift;
+    my @attrs;
+    # The $attrs is an optional argument
+    if (ref $_[0]) {
+        @attrs = @{shift()};
+    }
 	my %typehash = %$ref_hash;
 
 	my %tableattrs;
@@ -172,6 +181,11 @@ sub getobjattrs
 
         	foreach my $this_attr (@{$datatype->{'attrs'}}) {
             	my $attr = $this_attr->{attr_name};
+                if (scalar(@attrs) > 0) { # Only query specific attributes
+                    if (!grep(/^$attr$/, @attrs)) {
+                        next; # This attribute is not needed
+                    }
+                }
 
 				# table_attr is the attr that actually appears in the
             	#  table which could possibly be different then the attr
@@ -223,6 +237,10 @@ sub getobjattrs
 
         Get object definitions from the DB.
 
+                $type_hash: objectname=>objtype hash
+                $verbose: optional
+                $attrs_ref: only get the specific attributes,
+                            this can be useful especially for performance considerations
         Arguments:
         Returns:
                 undef - error
@@ -244,10 +262,15 @@ sub getobjattrs
 #-----------------------------------------------------------------------------
 sub getobjdefs
 {
-    my ($class, $hash_ref, $verbose) = @_;
+    my ($class, $hash_ref, $verbose, $attrs_ref) = @_;
     my %objhash;
     my %typehash = %$hash_ref;
-	my %tabhash;
+    my %tabhash;
+    my @attrs;
+    if (ref($attrs_ref))
+    {
+        @attrs = @$attrs_ref;
+    }
 
 	@::foundTableList = ();
 	
@@ -275,7 +298,45 @@ sub getobjdefs
     #   values from when using 'only_if' - see below
 	# - but this saves lots of time
 	if ($getnodes) {
-		%tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash);
+        if (scalar(@attrs) > 0) # Only get specific attributes of the node
+        {
+	    %tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash, \@attrs);
+            # We only need to get specific attributes of the node,
+            # do not look up all the tables, 
+            # looking up all the tables will cause scaling issues
+            # just go through the tables returned in tabhash
+            my $datatype = $xCAT::Schema::defspec{'node'};
+            foreach my $objname (keys %typehash)
+            {
+                foreach my $lookup_table (keys %tabhash)
+                {   
+                    foreach my $tabattr (keys %{$tabhash{$lookup_table}{$objname}})
+                    {   
+                        if (defined($tabhash{$lookup_table}{$objname}{$tabattr}) )
+                        {   
+                            # Get the attribute name, 
+                            # node attribute name may be different with the attribute in the database tables
+                            my $objattr;
+                            foreach my $entry (@{$datatype->{'attrs'}})
+                            {
+                                if ($entry->{'tabentry'} eq "$lookup_table" . "\." . "$tabattr")
+                                {
+                                    $objattr = $entry->{'attr_name'}; 
+                                    last;
+                                }
+                            }
+                            $objhash{$objname}{$objattr} = $tabhash{$lookup_table}{$objname}{$tabattr};
+                            next;
+                        }
+                    }
+                }
+            }
+        return %objhash;
+        }
+        else
+        {
+            %tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash);
+        }
 	}
 
     foreach my $objname (sort (keys %typehash))
@@ -1511,6 +1572,9 @@ sub getGroupMembers
         # find all nodes that satisfy the criteria specified in "wherevals"
         #	value
         my %whereHash;
+        my @whereattrs;
+        my %tabhash;
+        my %nodeattrhash;
 
         # remove spaces and quotes so createnode won't get upset
         #$val =~ s/^\s*"\s*//;
@@ -1530,6 +1594,7 @@ sub getGroupMembers
             }
 
             $whereHash{$a} = $v;
+            push @whereattrs, $a;
 
         }
 
@@ -1544,11 +1609,11 @@ sub getGroupMembers
             $tmphash{$n} = 'node';
         }
 
-        # get all the attrs for these nodes
-        my %myhash = xCAT::DBobjUtils->getobjdefs(\%tmphash);
+        # Only get the specific attributes of the node
+        my %nodeattrhash = xCAT::DBobjUtils->getobjdefs(\%tmphash, 0, \@whereattrs);
 
         my $first = 1;
-        foreach my $objname (keys %myhash)
+        foreach my $objname (keys %nodeattrhash)
         {
 
             #  all the "where" attrs must match the object attrs
@@ -1561,7 +1626,7 @@ sub getGroupMembers
                     my $tmpwherestring = $whereHash{$testattr};
                     $tmpwherestring =~ /^\|(.*)\|$/g;
                     $tmpwherestring = $1;
-                    if (!defined($myhash{$objname}{$testattr}) || ($myhash{$objname}{$testattr} !~ /$tmpwherestring/) )
+                    if (!defined($nodeattrhash{$objname}{$testattr}) || ($nodeattrhash{$objname}{$testattr} !~ /$tmpwherestring/) )
                     {
                         # don't disply
                         $addlist = 0;
@@ -1570,7 +1635,7 @@ sub getGroupMembers
                 }
                 else #no regular expression in wherevals
                 {
-                    if ($myhash{$objname}{$testattr} ne $whereHash{$testattr})
+                    if (!defined($nodeattrhash{$objname}{$testattr}) || ($nodeattrhash{$objname}{$testattr} ne $whereHash{$testattr}))
                     {
 
                         # don't disply
