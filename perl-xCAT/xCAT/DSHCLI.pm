@@ -936,7 +936,7 @@ sub fork_fanout_dcp
                           "/bin/cp $src_file_diff_dest $dest_dir/$diff_basename\n";
                     }
                 }
-                print RSYNCCMDFILE "/bin/rm -f /tmp/rsync_$user_target\n";
+                #print RSYNCCMDFILE "/bin/rm -f /tmp/rsync_$user_target\n";
                 close RSYNCCMDFILE;
                 chmod 0755, "/tmp/rsync_$user_target";
                 @dcp_command = ('/bin/sh', '-c', "/tmp/rsync_$user_target");
@@ -4296,6 +4296,11 @@ sub parse_rsync_input_file
                     {    # get the file name from the destination
                         $dest_basename = basename($dest_file);
                     }
+                    if ($rsyncSN == 1) # dest file will be the same as src
+                    {    #  syncing the SN
+                        $dest_basename = $src_basename;
+                    }
+                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
                     $dest_basename =~ s/[\s;]//g;
 
                     # if the filename will be the same at the destination
