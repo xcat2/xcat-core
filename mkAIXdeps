@@ -130,6 +130,24 @@ echo "README" >> $RPMDIR/flist2
 tar -cvf $RPMDIR/xcat-mysql-$VER-$SNAP.tar -L $RPMDIR/flist2
 gzip $RPMDIR/xcat-mysql-$VER-$SNAP.tar
 
+
+# get the PHP5 readme file
+cd ./../../../xcat-dep/trunk/AIX/php5/
+cp README $RPMDIR/web-dep.README
+# make a third tar.gz for xcat-web-dep package
+cp *.rpm $RPMDIR/
+ls *.rpm > $RPMDIR/flist3
+cd $RPMDIR
+cp /opt/freeware/src/package/RPMS/ppc/php-5.2.6-0.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh php-5.2.6-0.aix5.3.ppc.rpm" >> $RPMDIR/instwebdep
+echo "php-5.2.6-0.aix5.3.ppc.rpm" > $RPMDIR/flist3
+
+chmod +x $RPMDIR/instwebdep
+echo "instwebdep" >> $RPMDIR/flist3
+echo "web-dep.README" >> $RPMDIR/flist3
+tar -cvf $RPMDIR/xcat-web-dep-$VER-$SNAP.tar -L $RPMDIR/flist3
+gzip $RPMDIR/xcat-web-dep-$VER-$SNAP.tar
+
 chgrp xcat *
 chmod g+w *
 
