@@ -144,7 +144,7 @@ sub process_request {
          unless ($rent and $rent->{primarynic}) { #if primarynic not set, set it to this nic
             $nrtab->setNodeAttribs($node,{primarynic=>@ifinfo[1]});
          }
-         unless ($rent and $rent->{primarynic}) {
+         unless ($rent and $rent->{nfsserver}) {
             $nrtab->setNodeAttribs($node,{nfsserver=>xCAT::Utils->my_ip_facing($hosttag)});
          }
          $usednames{$hosttag}=1;
