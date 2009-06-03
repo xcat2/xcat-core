@@ -118,6 +118,18 @@ To create node definitions for a set of node host names contained in the node ra
 
  mkdef -t node node1,node2,node3 power=hmc groups="all,aix"
 
+=item 8.
+
+To create a dynamic node group definition called HMCMgtNodes containing all the HMC managed nodes"
+
+ mkdef -t group -o HMCMgtNodes -d -w "mgt=hmc,cons=hmc"
+
+=item 9.
+
+To create a dynamic node group definition called SLESNodes containing all the SLES nodes
+
+ mkdef -t group -o SLESNodes -d -w "os=|^sles[0-9]+$|"
+
 =back
 
 

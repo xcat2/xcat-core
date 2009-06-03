@@ -118,6 +118,12 @@ To update a set of definitions based on information contained in the stanza file
 
  cat mystanzafile | chdef -z
 
+=item 8.
+
+To update a dynamic node group definition to add the cons=hmc wherevals pair.
+
+ chdef -t group -o dyngrp -d -p -w "cons=hmc"
+
 =back
 
 
