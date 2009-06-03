@@ -583,7 +583,7 @@ vpd => {
  },
   },
 nimimage  => {
- cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group nimmethod script bosinst_data installp_bundle mksysb fb_script comments disable)],
+ cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group nimmethod script bosinst_data installp_bundle mksysb fb_script shared_root comments disable)],
  keys => [qw(imagename)],
     table_desc => 'All the info that specifies a particular AIX operating system image that can be used to deploy AIX nodes.',
  descriptions => {
@@ -605,6 +605,7 @@ nimimage  => {
   bosinst_data => 'The name of a NIM bosinst_data resource.',
   installp_bundle => 'The name of a NIM installp_bundle resource.',
   mksysb => 'The name of a NIM mksysb resource.',
+  shared_root => 'A shared_root resource represents a directory that can be used as a / (root) directory by one or more diskless clients.',
   comments => 'Any user-provided notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1134,6 +1135,7 @@ my @nodeattrs = (
         {attr_name => 'slot',
                  tabentry => 'nodepos.slot',
                  access_tabentry => 'nodepos.node=attr:node',
+
   },
         {attr_name => 'room',
                  tabentry => 'nodepos.room',
@@ -1312,6 +1314,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  },
  {attr_name => 'shared_home',
                  tabentry => 'nimimage.shared_home',
+                 access_tabentry => 'nimimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'shared_root',
+                 tabentry => 'nimimage.shared_root',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'script',
