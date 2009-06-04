@@ -19,6 +19,9 @@ function updatenoderange() {
     		loadVitalsTab($('#rvitals-tab'));
     		}
     	}
+        if (index == 3) {
+            loadRpowerTab($('#rpower-tab'));
+        }
 
 }
 

@@ -19,6 +19,9 @@ if (getXmlErrors($xml,$errors)) { echo "<p class=Error>rvitals failed: ", implod
 echo "<p>\n";
 foreach ($xml->children() as $response) foreach ($response->children() as $o) {
 	$nodename = (string)$o->name;
+    if(empty($nodename)) {
+        continue;
+    }
 	$data = & $o->data;
 	$contents = (string)$data->contents;
 	$desc = (string)$data->desc;
