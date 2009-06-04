@@ -67,52 +67,83 @@ sub preprocess_request
     {
         my ($var, $value) = split(/=/, $envar, 2);
         if ($var eq "RSYNCSN")
-        {    # syncing SN, will change
-            $syncsn = 1;    # nodelist to the list of SN
+        {    # syncing SN, will change noderange to list of SN
+            $syncsn = 1;
         }
-        if ($var eq "DSH_RSYNC_FILE")
-        {                   # if hierarchy,need to put file on the SN
-            $syncsnfile = $value;    # sync file to SN
+        if ($var eq "DSH_RSYNC_FILE")    # from -F flag
+        {    # if hierarchy,need to copy file to the SN
+            $syncsnfile = $value;    # in the new /tmp/xcatrf.tmp
         }
     }
 
     # find service nodes for requested nodes
     # build an individual request for each service node
-    # find out the names for the Management Node 
+    # find out the names for the Management Node
     my @MNnodeinfo   = xCAT::Utils->determinehostname;
-    my $MNnodename   = pop @MNnodeinfo; # hostname
-    my @MNnodeipaddr = @MNnodeinfo;  # ipaddresses 
+    my $MNnodename   = pop @MNnodeinfo;                  # hostname
+    my @MNnodeipaddr = @MNnodeinfo;                      # ipaddresses
     if ($nodes)
     {
         $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
         if ($syncsn == 0)
-        {                            # not syncing sn, do hierarchy
-                                     # build each request for each service node
+        {    # not syncing the service node ( -s option) , do hierarchy
+                # build each request for each service node
+                # the file that will contain the sync request on the SN
+            my $tmpsyncsnfile = "/tmp/xcatrf.tmp";
 
-            foreach my $snkey (keys %$sn)
+            # if -F command to rsync the SN and nodes
+            # need to add to the commands to copy rsync file to the service node
+            # to the /tmp/xcatrf.tmp file
+            if ($syncsnfile ne "NONE")    # -F command
             {
-              if (!grep(/$snkey/, @MNnodeipaddr)) { # not the MN 
-                if ($syncsnfile ne "NONE")
-                {                    # need to send rsync file to SN
-                    my $addreq;
-                    $addreq->{node}->[0]      = $snkey;
-                    $addreq->{noderange}->[0] = $snkey;
-                    $addreq->{arg}->[0]       = $syncsnfile;
-                    $addreq->{arg}->[1]       = $syncsnfile;
-                    $addreq->{command}->[0]   = $req->{command}->[0];
-                    $addreq->{cwd}->[0]       = $req->{cwd}->[0];
-                    push @requests, $addreq;
-                }
-                else
+                foreach my $snkey (keys %$sn)
                 {
-                    last;
-                }
+                    if (!grep(/$snkey/, @MNnodeipaddr))
+                    {                     # not the MN
+                        my $addreq;
+                        $addreq->{node}->[0]      = $snkey;
+                        $addreq->{noderange}->[0] = $snkey;
+                        $addreq->{arg}->[0]       = $syncsnfile;
+                        $addreq->{arg}->[1]       = $tmpsyncsnfile;
+                        $addreq->{command}->[0]   = $req->{command}->[0];
+                        $addreq->{cwd}->[0]       = $req->{cwd}->[0];
+                        push @requests, $addreq;
+                    }
 
-              }
+                }
             }
+
+            # now for each service node build the command
             foreach my $snkey (keys %$sn)
             {
                 my $reqcopy = {%$req};
+                if (!grep(/$snkey/, @MNnodeipaddr))    # not the MN
+                {
+
+                    # if the -F option to sync the nodes
+                    # then for a Service Node
+                    # change the command to use the -F /tmp/xcatrf.tmp
+                    # because that is where the file was put on the SN
+                    #
+                    if ($syncsnfile ne "NONE")         # -F option
+                    {
+                        my $args = $reqcopy->{arg};
+                        my $i    = 0;
+                        foreach my $argument (@$args)
+                        {
+
+                            # find the -F and change the name of the
+                            # file in the next array entry to the tmp file
+                            if ($argument eq "-F")
+                            {
+                                $i++;
+                                $reqcopy->{arg}->[$i] = $tmpsyncsnfile;
+                                last;
+                            }
+                            $i++;
+                        }
+                    }
+                }
                 $reqcopy->{node}                   = $sn->{$snkey};
                 $reqcopy->{'_xcatdest'}            = $snkey;
                 $reqcopy->{_xcatpreprocessed}->[0] = 1;
@@ -121,7 +152,8 @@ sub preprocess_request
             }
         }
         else
-        {    # syncing SN
+        {    # syncing SN, the file are being sent to the service nodes
+                # of the noderange not to the noderange itself
                 # rebuild nodelist and noderange with service nodes
             my @snodes;
             my @snoderange;
@@ -248,7 +280,9 @@ sub xdcp
     }
 
     xCAT::MsgUtils->message("I", $rsp, $callback);
-
+    if ( -e "/tmp/xcatrf.tmp") { # used tmp file for -F option
+      `rm /tmp/xcatrf.tmp`;
+    }
     return;
 }
 
