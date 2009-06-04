@@ -33,7 +33,6 @@ sub addnode {
   
   while ($idx <= $#hosts) {
     if ($hosts[$idx] =~ /^${ip}\s/ or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r/) {
-      #TODO: if foundone, delete a dupe
       if ($foundone) {
         $hosts[$idx]=""; 
       } else {

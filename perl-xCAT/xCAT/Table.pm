@@ -8,6 +8,7 @@
 package xCAT::Table;
 use Sys::Syslog;
 use Data::Dumper;
+use IO::Socket::UNIX;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -25,6 +26,9 @@ require xCAT::NodeRange;
 use Text::Balanced qw(extract_bracketed);
 require xCAT::NotifHandler;
 
+my $dbworkerpid; #The process id of the database worker
+my $dbworkersocket;
+my $dbsockpath;
 #--------------------------------------------------------------------------------
 
 =head1 xCAT::Table
