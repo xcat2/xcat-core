@@ -56,13 +56,14 @@ sub preprocess_request
 {
     my $request  = shift;
     my $callback = shift;
+    my $subreq = shift;
     my $command  = $request->{command}->[0];
     if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
     my @requests=();
 
     if ($command eq "updatenode")
     {
-      return preprocess_updatenode($request, $callback);
+      return preprocess_updatenode($request, $callback, $subreq);
     } elsif ($command eq "updatenodestat") {
       return [$request];
     }
@@ -89,11 +90,12 @@ sub process_request
 {
     my $request  = shift;
     my $callback = shift;
+    my $subreq = shift;
     my $command  = $request->{command}->[0];
     my $localhostname=hostname();
 
     if ($command eq "updatenode") {
-       return updatenode($request, $callback);
+       return updatenode($request, $callback, $subreq);
     } elsif ($command eq "updatenodestat") {
        return updatenodestat($request, $callback);
     } else {
@@ -112,7 +114,7 @@ sub process_request
     Arguments:
       request - the request. The request->{arg} is of the format:
             [-h|--help|-v|--version] or
-            [noderange [postscripts]]         
+            [noderange [-s | -S] [postscripts]]         
       callback - the pointer to the callback function.
     Returns:
       A pointer to an array of requests.
@@ -121,6 +123,7 @@ sub process_request
 sub preprocess_updatenode {
   my $request = shift;
   my $callback = shift;
+  my $subreq = shift;
   my $args=$request->{arg};
   my @requests=();
 
@@ -130,7 +133,7 @@ sub preprocess_updatenode {
     my $cb=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  updatenode <noderange> [posts]";
+    $rsp->{data}->[1]= "  updatenode <noderange> [-s | -S] [posts]";
     $rsp->{data}->[2]= "  updatenode [-h|--help|-v|--version]";
     $rsp->{data}->[3]= "     noderange is a list of nodes or groups.";
     $rsp->{data}->[4]= "     posts is a comma separated list of postscript names.";
@@ -149,7 +152,9 @@ sub preprocess_updatenode {
   Getopt::Long::Configure("no_pass_through");
   if(!GetOptions(
       'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION))
+      'v|version'  => \$::VERSION,
+      's'          => \$::SYNCSN,
+      'S'          => \$::SKIPSYNCFILE ))
   {
     &updatenode_usage($callback);
     return  \@requests;;
@@ -198,6 +203,52 @@ sub preprocess_updatenode {
   # build an individual request for each service node
   my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
     
+  # If -s argument specified, sync files to the service node firstly
+  if ($::SYNCSN) {
+    my @MNnodeinfo   = xCAT::Utils->determinehostname;
+    my $MNnodename   = pop @MNnodeinfo; # hostname
+    my @MNnodeipaddr = @MNnodeinfo;  # ipaddresses
+
+    my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
+    my %syncfile_sn = ();
+    foreach my $snkey (keys %$sn)
+    {
+      # exclude the Management node
+      if (grep(/$snkey/, @MNnodeipaddr)) {
+        next;
+      }
+      my @synclists = ();
+      # Figure out the synclist files for the service node
+      foreach my $node (@{$sn->{$snkey}}) {
+        my $synclist = $$node_syncfile{$node};
+
+        unless ($synclist) {
+          next;
+        }
+        if (! grep /\Q$synclist\E/, @synclists) {
+            push @synclists, $synclist;
+            push @{$syncfile_sn{$synclist}}, $node;
+        }
+      }
+
+      # If there are multiple synclist files for certain SN, 
+      # the synclist files maybe have conflicted content, so
+      # display an warning message
+      if ($#synclists > 0) {
+        my $rsp = {};
+        my $files = join(',', @synclists);
+        $rsp->{data}->[0]= "Warning: The Service Node $snkey will be synced by following synclist files: $files";
+        $callback->($rsp);
+      }
+    }
+
+    foreach my $syncfile (keys %syncfile_sn) {
+      my $arg = ["-s", "-F", "$syncfile"];
+      my $env = ["RSYNCSN=yes", "DSH_RSYNC_FILE=$syncfile"];
+      $subreq->({command=>['xdcp'], node=>$syncfile_sn{$syncfile}, arg=>$arg, env=>$env}, $callback);
+    }
+  }
+
   # build each request for each service node
   foreach my $snkey (keys %$sn)
   {
@@ -227,10 +278,31 @@ sub preprocess_updatenode {
 sub updatenode {
   my $request = shift;
   my $callback = shift;
+  my $subreq = shift;
   my $postscripts="";
   if (($request->{postscripts}) && ($request->{postscripts}->[0])) {  $postscripts=$request->{postscripts}->[0];}
   my $nodes      =$request->{node};  
   my $localhostname=hostname();
+
+  # if not specifying -S, do the sync file operation
+  unless ($::SKIPSYNCFILE) {
+    my %syncfile_node = ();
+    my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
+    foreach my $node (@$nodes) {
+      my $synclist = $$node_syncfile{$node};
+
+      if ($synclist) {
+        push @{$syncfile_node{$synclist}}, $node;
+        next;
+      }
+    }
+
+    foreach my $synclist (keys %syncfile_node) {
+      my $args = ["-F", "$synclist"];
+      my $env = ["DSH_RSYNC_FILE=$synclist"];
+      $subreq->({command=>['xdcp'], node=>$syncfile_node{$synclist}, arg=>$args, env=>$env}, $callback);
+    }
+  }
 
   my $nodestring=join(',', @$nodes);
   #print "postscripts=$postscripts, nodestring=$nodestring\n";

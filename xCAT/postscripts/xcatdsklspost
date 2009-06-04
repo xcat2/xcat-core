@@ -88,6 +88,14 @@ while [ -z "$MYCONT" ]; do
     MYCONT=`cat /tmp/mypostscript`
 #    echo "MYCONT=$MYCONT"
 done
+
+# when called by the updatenode command,
+#modify the UPDATENODE flag to 1
+if [ $# -gt 0 ]; then
+  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /tmp/mypostscript`;
+  echo "$TMP" > /tmp/mypostscript;
+fi
+
 if [ $# -gt 1 ]; then
   POSTS=$2
   #remove all the postscripts

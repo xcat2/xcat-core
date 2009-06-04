@@ -153,6 +153,13 @@ if (-f $scriptname) {
 my $nodesetstat="standalone";
 if (-f $scriptname)
 {
+    # when called by the updatenode command, 
+    #modify the UPDATENODE flag to 1
+    if (@ARGV > 0) {
+      $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' $scriptname`;
+      `echo "$TMP" > $scriptname`;
+    }
+
     if (@ARGV>1) {
       my $scripts=$ARGV[1];
       my $POSTS=join('\n', split(',', $scripts));

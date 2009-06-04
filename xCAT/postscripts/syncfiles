@@ -1,0 +1,69 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#
+#   xCAT post script for configuration files distribution
+#
+#   It should be run after the remoteshell
+#   It is also run by the updatenode cmd
+#
+#####################################################
+
+
+# do nothing when UPDATENODE=1
+if ($ENV{'UPDATENODE'} == 1 
+    || $ENV{'NODESETSTATE'} eq "netboot"
+    || $ENV{'NODESETSTATE'} eq "diskless") {
+    exit 0;
+}
+
+`logger -t xCAT "Performing syncfiles postscript"`;
+
+# get platform
+my $osname = `uname`;
+chomp $osname;
+
+# run the xdcp on the MN/SN
+my $xcatpostdir = "/xcatpost";
+my $startsync = "";
+if ($osname eq "Linux") {
+`logger -t xCAT "run $xcatpostdir/startsyncfiles.awk"`;
+    $startsync = "$xcatpostdir/startsyncfiles.awk";
+    `$startsync`;
+} else {
+`logger -t xCAT "run $xcatpostdir/startsyncfilesaix.awk"`;
+    &startsyncfilesaix();
+}
+
+exit 0;
+
+
+sub  startsyncfilesaix 
+{
+  use IO::Socket;
+
+  my $port = "3002";
+  my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $ENV{'MASTER'}, PeerPort  => $port, );
+  unless ($remote) {
+    `logger -t xCAT "startsyncfiles: Cannot connect to host $ENV{'MASTER'}"`;
+  }
+
+  $remote->autoflush(1);
+
+  while (<$remote>) {
+    my $line = $_;
+    chomp($line);
+
+    if ($line =~ /ready/) {
+      print $remote "syncfiles\n";
+    }
+
+    if ($line =~ /syncfiles done/) {
+      close $remote;
+      return 0;
+    }
+  }
+
+  close $remote;
+  return 0;
+}
