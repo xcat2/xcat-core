@@ -32,14 +32,18 @@ sub addnode {
   my $foundone=0;
   
   while ($idx <= $#hosts) {
-    if ($hosts[$idx] =~ /^${ip}\s/ or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}\s/) {
+    if ($hosts[$idx] =~ /^${ip}\s/ or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r/) {
       #TODO: if foundone, delete a dupe
-      $hosts[$idx]=build_line($ip, $node, $domain, $othernames); 
+      if ($foundone) {
+        $hosts[$idx]=""; 
+      } else {
+        $hosts[$idx]=build_line($ip, $node, $domain, $othernames); 
+      }
       $foundone=1;
-      return;
     }
     $idx++;
   }
+  if ($foundone) { return;}
 
   my $line=build_line($ip, $node, $domain, $othernames); 
   push @hosts, $line;
