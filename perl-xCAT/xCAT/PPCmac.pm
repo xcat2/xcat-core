@@ -414,12 +414,6 @@ sub getmacs {
                 }
             }
                             
-            #########################################
-            # Put all the attributes required  
-            # together
-            #########################################
-            push @$result,"# Type     MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed\n";
-
             foreach ( keys %$hash ) {
                 my $node       = $_;
                 my $d          = $hash->{$_};
@@ -429,6 +423,12 @@ sub getmacs {
                 my $type;
 
                 push @$result,"\n$node:\n";
+
+                #########################################
+                # Put all the attributes required
+                # together
+                #########################################
+                push @$result,"#Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed\n";
 
                 for ( my $num = 1; $num <= $mac_count; $num++ ) {
                     my $mac_addr        = $nodeatt{$mtms}{$id}{$num}{'mac_addr'};
@@ -448,12 +448,12 @@ sub getmacs {
                     }
 
                     my %att = ();
-                    $att{'MAC_Address'}           = ($mac_addr) ? $mac_addr : "N/A";
-                    $att{'Adapter'}         = ($adapter_id) ? $adapter_id : "N/A";
+                    $att{'MAC_Address'}        = ($mac_addr) ? $mac_addr : "N/A";
+                    $att{'Adapter'}            = ($adapter_id) ? $adapter_id : "N/A";
                     $att{'Port_Group'}         = ($port_group) ? $port_group : "N/A"; 
-                    $att{'Phys_Port'}       = ($phys_port_id) ? $phys_port_id : "N/A"; 
-                    $att{'Logical_Port'}    = ($logical_port_id) ? $logical_port_id : "N/A";
-                    $att{'VLan'}            = ($vlan_id) ? $vlan_id : "N/A";
+                    $att{'Phys_Port'}          = ($phys_port_id) ? $phys_port_id : "N/A"; 
+                    $att{'Logical_Port'}       = ($logical_port_id) ? $logical_port_id : "N/A";
+                    $att{'VLan'}               = ($vlan_id) ? $vlan_id : "N/A";
                     $att{'VSwitch'}            = ($vswitch) ? $vswitch : "N/A";
                     $att{'Phys_Port_Loc'}      = ($phys_port_loc) ? $phys_port_loc : "N/A";
                     $att{'Curr_Conn_Speed'}    = ($curr_conn_speed) ? $curr_conn_speed : "N/A";

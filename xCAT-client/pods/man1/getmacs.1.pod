@@ -8,7 +8,9 @@ I<getmacs [-h| --help]>
 
 I<getmacs [-v| --version]>
 
-I<getmacs [-V| --verbose] noderange> [-f][-d][-D -S server -G gateway -C client]
+I<getmacs noderange> [-F filter]
+
+I<getmacs [-V| --verbose] noderange> [-f][-d][-D [-S server] [-G gateway] [-C client]]
 
 
 =head1 DESCRIPTION
@@ -26,6 +28,8 @@ B<-d>          Display MAC only. The default is to write the first valid adapter
 B<-D>          Perform ping test.
 
 B<-f>          Force immediate shutdown of the partition.
+
+B<-F>          Specify filters to select the correct adapter.  Acceptable filters are Type,MAC_Address,Phys_Port_Loc,Adapter,Port_Group,Phys_Port,Logical_Port,VLan,VSwitch,Curr_Conn_Speed.
 
 B<-G>          Gateway IP address of the partition.  The default is to read from xCAT database if no -G specified.
 
@@ -53,11 +57,15 @@ I<getmacs lpar4>
 
 Output is similar to:
 
+# Type     MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
+
 lpar4:
 
-#Type  Location Code   MAC Address      Full Path Name  Ping Result
+#Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
 
-ent U9133.55A.10B7D1G-V12-C4-T1 8e:e2:24:5c:f0:04 /vdevice/l-lan@30000004  virtual
+hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
+
+ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsuccessful physical
 
 
 
@@ -69,13 +77,29 @@ Output is similar to:
 
 lpar4:
 
-#Type  Location Code   MAC Address      Full Path Name  Ping Result
+#Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
 
-ent U9133.55A.10B7D1G-V12-C4-T1 8ee2245cf004 /vdevice/l-lan@30000004 virtual
+hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
+
+ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsuccessful physical
 
 
 
-3. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result only, enter:
+3. To retrieve the MAC address for the HMC-managed partition lpar4 with filter Type=hea,VSwitch=ETHERNET0.
+
+I<getmacs lpar4 -F Type=hea,VSwitch=ETHERNET0>
+
+Output is similar to:
+
+lpar4:
+
+#Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
+
+hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
+
+
+
+4. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result only, enter:
 
 I<getmacs lpar4 -d -D -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234>
 
