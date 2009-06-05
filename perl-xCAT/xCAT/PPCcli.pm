@@ -522,11 +522,17 @@ sub mkvterm {
     if ( $type ne "lpar" ) {
         return( [RC_ERROR,"Command not supported on '$type'"] );
     }
+
     ##########################################
-    # Cleanup old sessions 
+    # Close the old sessions
     ##########################################
-    rmvterm( $exp, $lparid, $mtms );
-    sleep 1;
+    if ( $hwtype eq "ivm" ) {
+        rmvterm( $exp, $lparid, $mtms );
+        sleep 1;
+    } else {
+        rmvterm_noforce( $exp, $lparid, $mtms );
+        sleep 1;
+    }
 
     ##########################################
     # Send command
@@ -599,17 +605,57 @@ sub rmvterm {
     $ssh->send( "$cmd\r" );
 }
 
+##########################################################################
+# Force close a virtual terminal session
+##########################################################################
+sub rmvterm_noforce {
+
+    my $exp    = shift;
+    my $lparid = shift;
+    my $mtms   = shift;
+    my $ssh    = @$exp[0];
+    my $hwtype = @$exp[2];
+
+    #####################################
+    # Format command based on HW Type
+    #####################################
+    my %rmvt = (
+        hmc =>"rmvterm --id %s -m %s",
+        ivm =>"rmvt -id %s"
+    );
+    #####################################
+    # Set command based on HW type
+    #   rmvt(erm) -id lparid -m cecmtms
+    #####################################
+    my $cmd = sprintf( $rmvt{$hwtype}, $lparid, $mtms );
+
+    #####################################
+    # Send command
+    #####################################
+    send_cmd( $exp, $cmd );
+
+}
+
 
 ##########################################################################
 # Lists the hardware resources of a managed system 
 ##########################################################################
 sub lshwres {
 
-    my $exp   = shift;
-    my $d     = shift;
-    my $mtms  = shift;
-    my $cmd   = "lshwres -r @$d[1] -m $mtms -F @$d[2]";
-    my $level = @$d[0];
+    my $exp      = shift;
+    my $d        = shift;
+    my $mtms     = shift;
+    my $cmd      = "lshwres -r @$d[1] -m $mtms";
+    my $level    = @$d[0];
+    my $Filter   = @$d[2];
+    my $rsubtype = @$d[3];
+
+    #####################################
+    # Specify Filters
+    #####################################
+    if ( $Filter ) {
+        $cmd .=" -F $Filter";
+    } 
  
     #####################################
     # level may be "sys" or "lpar" 
@@ -617,6 +663,14 @@ sub lshwres {
     if ( defined( $level )) {
         $cmd .=" --level $level";
     }
+
+    #####################################
+    # Specify subtype
+    #####################################
+    if ( $rsubtype ) {
+        $cmd .=" --rsubtype $rsubtype"
+    }
+
     #####################################
     # Send command
     #####################################
@@ -692,6 +746,7 @@ sub lpar_netboot {
                 if ( grep(/^$node$/, @nodelist) ) {
                     if ( !grep(/^$osname$/, @oslist) ) {
                         $cmd.= " -i";
+print "fortest:2\n";
                     }
                     $intable = 1;
                     last;
@@ -743,6 +798,7 @@ sub lpar_netboot {
     #####################################
     # Send command
     #####################################
+
     my $result = send_cmd( $exp, $cmd, $timeout );
     return( $result );
 }

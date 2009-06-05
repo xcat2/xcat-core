@@ -43,7 +43,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s D d f))) { 
+    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s D d f F=s))) { 
         return( usage() );
     }
     ####################################
@@ -326,126 +326,286 @@ sub do_getmacs {
 sub getmacs {
 
     my $request = shift;
-    my $d       = shift;
+    my $par     = shift;
     my $exp     = shift;
     my $opt     = $request->{opt};
     my $hwtype  = @$exp[2];
     my $result;
     my $name;
 
-    #########################################
-    # Get node data 
-    #########################################
-    my $lparid = @$d[0];
-    my $mtms   = @$d[2];
-    my $type   = @$d[4];
-    my $node   = @$d[6];
-
-    #########################################
-    # Invalid target hardware 
-    #########################################
-    if ( $type ne "lpar" ) {
-        return( [[$node,"Node must be LPAR",RC_ERROR]] );
-    }
-    #########################################
-    # Get name known by HCP
-    #########################################
-    my $filter = "name,lpar_id";
-    my $values = xCAT::PPCcli::lssyscfg( $exp, $type, $mtms, $filter );
-    my $Rc = shift(@$values);
-
-    #########################################
-    # Return error
-    #########################################
-    if ( $Rc != SUCCESS ) {
-        return( [[$node,@$values[0],$Rc]] );
-    }
-    #########################################
-    # Find LPARs by lpar_id
-    #########################################
-    foreach ( @$values ) {
-        if ( /^(.*),$lparid$/ ) {
-            $name = $1;
-            last;
+    if ( $par =~ /^HASH/ ) {
+        #########################################
+        # Parse the filters specified by user
+        #########################################
+        my $filter;
+        if ( $opt->{F} ) {
+            my @filters = split /,/,$opt->{F};
+            foreach ( @filters ) {
+                my @value = split /=/,$_;
+                $filter->{@value[0]} = @value[1];
+            }
         }
-    }
-    #########################################
-    # Node not found by lpar_id 
-    #########################################
-    if ( !defined( $name )) {
-        return( [[$node,"Node not found, lparid=$lparid",RC_ERROR]] );
-    }
 
-    my $sitetab  = xCAT::Table->new('site');
-    my $vcon = $sitetab->getAttribs({key => "conserveronhmc"}, 'value');
-    if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
-        $result = xCAT::PPCcli::lpar_netboot(
+        ######################################### 
+        # A hash to save lpar attributes
+        ######################################### 
+        my %nodeatt = ();
+        my $result  = ();
+
+        #########################################
+        # No ping test performed, call lshwres
+        # to achieve the MAC address
+        #########################################
+        foreach my $hcp ( keys %$par ) {
+            my $hash = $par->{$hcp};
+            my $cmd; 
+
+            #########################################
+            # Achieve virtual ethernet MAC address
+            #########################################
+            @$cmd[0] = ["lpar","virtualio","","eth"];
+            @$cmd[1] = ["port","hea","","logical"];
+            @$cmd[2] = ["port","hea","","phys"];
+
+            #########################################
+            # Parse the output of lshwres command
+            #########################################
+            for ( my $stat = 0; $stat < 3; $stat++ ) {
+                my $output = xCAT::PPCcli::lshwres( $exp, @$cmd[$stat], $hcp);
+                my $macs; 
+
+                foreach my $line ( @$output ) {
+                    if ( $line =~ /^.*lpar\_id=(\d+),.*$/ ) {
+                        #########################################
+                        # For the first two commands
+                        #########################################
+                        my $lparid = $1;
+                        $nodeatt{$hcp}{$lparid}{'num'}++;
+                        $macs      = $nodeatt{$hcp}{$lparid}{'num'};
+                        my @attrs  = split /,/, $line;
+                        foreach ( @attrs ) {
+                            my @attr = split /=/, $_;
+                            $nodeatt{$hcp}{$lparid}{$macs}{@attr[0]} = @attr[1];
+                        }
+
+                    } elsif ( ($line =~ /^(.*)port\_group=(\d+),(.*),"log\_port\_ids=(.*)"/) || ($line =~ /^(.*)port\_group=(\d+),(.*),log\_port\_ids=(.*)/) ) {
+                        #########################################
+                        # For the third command
+                        #########################################
+                        my $port_group = $2;
+                        if ( $4 !~ /^none$/ ) {
+                            my @ids        = split /,/, $4;
+                            my @attrs      = split /,/, $1;
+                            foreach (@attrs) {
+                                my @attr   = split /=/,$_;
+                                foreach (@ids) {
+                                    $nodeatt{$hcp}{$port_group}{$_}{@attr[0]} = @attr[1];
+                                }
+                            } 
+                            my @attrs      = split /,/, $3;
+                            foreach (@attrs) {
+                                my @attr   = split /=/,$_;
+                                foreach (@ids) {
+                                    $nodeatt{$hcp}{$port_group}{$_}{@attr[0]} = @attr[1];
+                                }
+                            }
+                        }    
+                    }
+                }
+            }
+                            
+            #########################################
+            # Put all the attributes required  
+            # together
+            #########################################
+            push @$result,"# Type     MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed\n";
+
+            foreach ( keys %$hash ) {
+                my $node       = $_;
+                my $d          = $hash->{$_};
+                my $mtms       = @$d[2];
+                my $id         = @$d[0];
+                my $mac_count  = $nodeatt{$mtms}{$id}{'num'};               
+                my $type;
+
+                push @$result,"\n$node:\n";
+
+                for ( my $num = 1; $num <= $mac_count; $num++ ) {
+                    my $mac_addr        = $nodeatt{$mtms}{$id}{$num}{'mac_addr'};
+                    my $adapter_id      = $nodeatt{$mtms}{$id}{$num}{'adapter_id'};
+                    my $port_group      = $nodeatt{$mtms}{$id}{$num}{'port_group'};
+                    my $phys_port_id    = $nodeatt{$mtms}{$id}{$num}{'phys_port_id'};
+                    my $logical_port_id = $nodeatt{$mtms}{$id}{$num}{'logical_port_id'};
+                    my $vlan_id         = $nodeatt{$mtms}{$id}{$num}{'port_vlan_id'};
+                    my $vswitch         = $nodeatt{$mtms}{$id}{$num}{'vswitch'};
+                    my $phys_port_loc   = $nodeatt{$mtms}{$port_group}{$logical_port_id}{'phys_port_loc'};
+                    my $curr_conn_speed = $nodeatt{$mtms}{$port_group}{$logical_port_id}{'curr_conn_speed'};
+
+                    if ( $phys_port_loc ) {
+                        $type = "virtualio";          
+                    } else {
+                        $type = "hea";
+                    }
+
+                    my %att = ();
+                    $att{'MAC_Address'}           = ($mac_addr) ? $mac_addr : "N/A";
+                    $att{'Adapter'}         = ($adapter_id) ? $adapter_id : "N/A";
+                    $att{'Port_Group'}         = ($port_group) ? $port_group : "N/A"; 
+                    $att{'Phys_Port'}       = ($phys_port_id) ? $phys_port_id : "N/A"; 
+                    $att{'Logical_Port'}    = ($logical_port_id) ? $logical_port_id : "N/A";
+                    $att{'VLan'}            = ($vlan_id) ? $vlan_id : "N/A";
+                    $att{'VSwitch'}            = ($vswitch) ? $vswitch : "N/A";
+                    $att{'Phys_Port_Loc'}      = ($phys_port_loc) ? $phys_port_loc : "N/A";
+                    $att{'Curr_Conn_Speed'}    = ($curr_conn_speed) ? $curr_conn_speed : "N/A";
+                    $att{'Type'}               = $type;
+
+                    #########################################
+                    # Parse the adapter with the filters
+                    # specified
+                    #########################################
+                    if ( defined($filter) ) {
+                        my $matched = 1;
+                        foreach ( keys %$filter ) {
+                            if ( $att{$_} ne $filter->{$_} ) {
+                                $matched = 0;
+                                last;
+                            }
+                        }
+                        if ( $matched == 1 ) {
+                            push @$result,"$att{'Type'}  $att{'MAC_Address'}  $att{'Phys_Port_Loc'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}\n";
+                        }
+                    } else {
+                        push @$result,"$att{'Type'}  $att{'MAC_Address'}  $att{'Phys_Port_Loc'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}\n";
+                    }
+                }
+
+                #########################################
+                # Write MAC address to database
+                #########################################
+                writemac( $node, $result );
+            }
+            
+            return([[join /''/,@$result]]); 
+        }
+    } else {
+        #########################################
+        # Connect to fsp to achieve MAC address
+        #########################################
+        my $d = $par;
+
+        #########################################
+        # Get node data 
+        #########################################
+        my $lparid  = @$d[0];
+        my $mtms    = @$d[2];
+        my $type    = @$d[4];
+        my $node    = @$d[6];
+
+        #########################################
+        # Invalid target hardware 
+        #########################################
+        if ( $type ne "lpar" ) {
+            return( [[$node,"Node must be LPAR",RC_ERROR]] );
+        }
+        #########################################
+        # Get name known by HCP
+        #########################################
+        my $filter = "name,lpar_id";
+        my $values = xCAT::PPCcli::lssyscfg( $exp, $type, $mtms, $filter );
+        my $Rc = shift(@$values);
+
+        #########################################
+        # Return error
+        #########################################
+        if ( $Rc != SUCCESS ) {
+            return( [[$node,@$values[0],$Rc]] );
+        }
+        #########################################
+        # Find LPARs by lpar_id
+        #########################################
+        foreach ( @$values ) {
+            if ( /^(.*),$lparid$/ ) {
+                $name = $1;
+                last;
+            }
+        }
+        #########################################
+        # Node not found by lpar_id 
+        #########################################
+        if ( !defined( $name )) {
+            return( [[$node,"Node not found, lparid=$lparid",RC_ERROR]] );
+        }
+
+        my $sitetab  = xCAT::Table->new('site');
+        my $vcon = $sitetab->getAttribs({key => "conserveronhmc"}, 'value');
+        if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+            $result = xCAT::PPCcli::lpar_netboot(
                             $exp,
                             $request->{verbose},
                             $name,
                             $d,
                             $opt );
-    } else {
-        #########################################
-        # Manually collect MAC addresses.
-        #########################################
-        $result = do_getmacs( $request, $d, $exp, $name, $node );
-    }
-    $sitetab->close;
-    $Rc = shift(@$result);
+        } else {
+            #########################################
+            # Manually collect MAC addresses.
+            #########################################
+            $result = do_getmacs( $request, $d, $exp, $name, $node );
+        }
+        $sitetab->close;
+        $Rc = shift(@$result);
    
-    ##################################
-    # Form string from array results 
-    ##################################
-    if ( exists($request->{verbose}) ) {
-        if ( $Rc == SUCCESS ) {
-            if ( !exists( $opt->{d} )) { 
-                writemac( $node, $result );
+        ##################################
+        # Form string from array results 
+        ##################################
+        if ( exists($request->{verbose}) ) {
+            if ( $Rc == SUCCESS ) {
+                if ( !exists( $opt->{d} )) { 
+                    writemac( $node, $result );
+                }
+            }
+            return( [[$node,join( '', @$result ),$Rc]] );
+        }
+        ##################################
+        # Return error
+        ##################################
+        if ( $Rc != SUCCESS ) {
+            if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
+                return( [[$node,$1,$Rc]] );
+            }
+            return( [[$node,join( '', @$result ),$Rc]] );
+        }
+        #####################################
+        # lpar_netboot returns:
+        #
+        #  # Connecting to lpar4\n
+        #  # Connected\n
+        #  # Checking for power off.\n
+        #  # Power off complete.\n
+        #  # Power on lpar4 to Open Firmware.\n
+        #  # Power on complete.\n
+        #  # Getting adapter location codes.\n
+        #  # Type\t Location Code\t MAC Address\t Full Path Name\tPing Result\n
+        #    ent U9117.MMA.10F6F3D-V5-C3-T1 1e0e122a930d /vdevice/l-lan@30000003
+        #
+        #####################################
+        my $data;
+
+        foreach ( @$result ) {
+            if ( /^#\s?Type/ ) {
+                $data.= "\n$_\n";
+            } elsif ( /^ent\s+/ ) {
+                $data.= format_mac( $_ );
             }
         }
-        return( [[$node,join( '', @$result ),$Rc]] );
-    }
-    ##################################
-    # Return error
-    ##################################
-    if ( $Rc != SUCCESS ) {
-        if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
-            return( [[$node,$1,$Rc]] );
+        #####################################
+        # Write first valid adapter MAC to database
+        #####################################
+        if ( !exists( $opt->{d} )) {
+            writemac( $node, $result );
         }
-        return( [[$node,join( '', @$result ),$Rc]] );
+        return( [[$node,$data,$Rc]] );
     }
-    #####################################
-    # lpar_netboot returns:
-    #
-    #  # Connecting to lpar4\n
-    #  # Connected\n
-    #  # Checking for power off.\n
-    #  # Power off complete.\n
-    #  # Power on lpar4 to Open Firmware.\n
-    #  # Power on complete.\n
-    #  # Getting adapter location codes.\n
-    #  # Type\t Location Code\t MAC Address\t Full Path Name\tPing Result\n
-    #    ent U9117.MMA.10F6F3D-V5-C3-T1 1e0e122a930d /vdevice/l-lan@30000003
-    #
-    #####################################
-    my $data;
-
-    foreach ( @$result ) {
-        if ( /^#\s?Type/ ) {
-            $data.= "\n$_\n";
-        } elsif ( /^ent\s+/ ) {
-            $data.= format_mac( $_ );
-        }
-    }
-    #####################################
-    # Write first valid adapter MAC to database
-    #####################################
-    if ( !exists( $opt->{d} )) {
-        writemac( $node, $result );
-    }
-    return( [[$node,$data,$Rc]] );
 }
-
 
 ##########################################################################
 # Insert colons in MAC addresses for Linux only
@@ -482,6 +642,8 @@ sub writemac {
     my $data  = shift;
     my $value;
     my $pingret;
+    my $ping_test;
+    my $mac;
     my @fields;
 
     #####################################
@@ -499,6 +661,7 @@ sub writemac {
             @fields = split /\s+/, $value;
             $pingret = $fields[4];
             if ( $pingret eq "successful" ) {
+                $ping_test = 0;
                 last;
             }
         }
@@ -510,7 +673,12 @@ sub writemac {
     if ( $pingret ne "successful" ) {
         foreach ( @$data ) {
             if ( /^ent\s+/ ) {
-            $value = $_;
+                $value = $_;
+                $ping_test = 0;
+                last;
+            } elsif ( /^hea\s+/ || /^virtualio\s+/ ) {
+                $value = $_;
+                $ping_test = 1;
                 last;
             }
         }
@@ -527,7 +695,12 @@ sub writemac {
     #####################################
     $value = format_mac( $value ); 
     @fields = split /\s+/, $value;
-    my $mac    = $fields[2];
+
+    if ( $ping_test ) {
+        $mac    = $fields[1];
+    } else {
+        $mac    = $fields[2];
+    }
 
     #####################################
     # Write adapter mac to database
