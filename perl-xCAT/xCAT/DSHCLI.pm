@@ -2560,7 +2560,7 @@ sub handle_signal_dsh
         $rsp->{data}->[0] =
           "Command execution ended prematurely due to a previous error or stop request from the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        exit(1);
+        exit (1);
     }
 
     elsif ($dsh_exec_state == $DSH_STATE_INIT_STARTED)
@@ -3335,8 +3335,8 @@ sub check_valid_options
             my $rsp = {};
             my $badopts = join(',', @invalid_opts);
             $rsp->{data}->[0] = "Invalid options: $badopts";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            return 1;
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,1);
+            return;
         }
     }
     return 0;
@@ -3386,7 +3386,7 @@ sub ignoreEnv
         my $rsp = {};
         $rsp->{data}->[0] = "Invalid Environment Variable: $env";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        exit 1;
+        return;
     }
     for $env (@dsh_valid_env)
     {
@@ -3452,8 +3452,8 @@ sub isFdNumExceed
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Unsupport ulimit return code!";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        exit 1;
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,1);
+        return;
     }
 
     my $pid = getpid;
@@ -3472,7 +3472,10 @@ sub isFdNumExceed
 
     if (($max_fd_req + $remain_fd_num) > $fdnum)
     {
-        return 1;
+        my $rsp = {};
+        $rsp->{data}->[0] = "Reached fdnum=  $fdnum";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,1);
+        return;
     }
     else
     {
@@ -3568,7 +3571,7 @@ sub parse_and_run_dsh
     if (!($args))
     {
         usage_dsh;
-        exit 1;
+        return;
     }
     @ARGV = @{$args};    # get arguments
     if ($ENV{'XCATROOT'})
@@ -3595,7 +3598,7 @@ sub parse_and_run_dsh
     if (xCAT::DSHCLI->check_valid_options(\@ARGV))
     {
         usage_dsh;
-        exit 1;
+        return 1;
     }
 
     if (
@@ -3647,7 +3650,7 @@ sub parse_and_run_dsh
     if ($options{'show-config'})
     {
         xCAT::DSHCLI->show_dsh_config;
-        exit 0;
+        return 0;
     }
     my $remotecommand = $options{'node-rsh'};
     if ($options{'node-rsh'}
@@ -3656,7 +3659,7 @@ sub parse_and_run_dsh
         $rsp->{data}->[0] =
           "Remote command: $remotecommand does not exist or is not executable.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        exit 1;
+        return;
     }
 
     # put rsync on a dsh command
@@ -3666,7 +3669,7 @@ sub parse_and_run_dsh
         $rsp->{data}->[0] =
           "Remote command: $remotecommand should be used with the dcp command. ";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        exit 1;
+        return;
     }
 
     if (defined $options{'ignore_env'})
@@ -3965,7 +3968,7 @@ sub parse_and_run_dcp
     if (!($args))
     {
         usage_dcp;
-        exit 1;
+        return 1;
     }
     @ARGV = @{$args};    # get arguments
     if ($ENV{'XCATROOT'})
@@ -3988,7 +3991,7 @@ sub parse_and_run_dcp
     if (xCAT::DSHCLI->check_valid_options(\@ARGV))
     {
         usage_dcp;
-        exit 1;
+        return 1;
     }
     if (
         !GetOptions(
@@ -4017,19 +4020,19 @@ sub parse_and_run_dcp
       )
     {
         usage_dcp;
-        exit(1);
+        return(1);
     }
 
     my $rsp = {};
     if ($options{'help'})
     {
         usage_dcp;
-        exit(0);
+        return(0);
     }
     if ($options{'show-config'})
     {
         xCAT::DSHCLI->show_dsh_config;
-        exit 0;
+        return 0;
     }
     if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
@@ -4044,7 +4047,7 @@ sub parse_and_run_dcp
         my $version = xCAT::Utils->Version();
         $rsp->{data}->[0] = "$version";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        exit(0);
+        return(0);
     }
 
     if (defined $options{'ignore_env'})
@@ -4078,7 +4081,7 @@ sub parse_and_run_dcp
     {
         $rsp->{data}->[0] = "File:$syncfile does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        exit;
+        return;
     }
 
     # invalid to put the -F  with the -r flag
@@ -4111,7 +4114,7 @@ sub parse_and_run_dcp
         $rsp->{data}->[0] =
           "Remote command: $remotecopycommand does not exist or is not executable.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        exit;
+        return;
     }
 
     #
@@ -4158,7 +4161,7 @@ sub parse_and_run_dcp
         {
             $rsp->{data}->[0] = "Missing file arguments";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-            exit;
+            return;
         }
 
         elsif (@ARGV == 1)
@@ -4167,7 +4170,7 @@ sub parse_and_run_dcp
             {
                 $rsp->{data}->[0] = "Missing target_path";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-                exit;
+                return; 
             }
 
             else
@@ -4181,7 +4184,7 @@ sub parse_and_run_dcp
         {
             $rsp->{data}->[0] = "Cannot pull more than one file from targets.";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
-            exit;
+            return;
         }
 
         else
@@ -4430,7 +4433,7 @@ sub runlocal_on_rootimg
         my $rsp = {};
         $rsp->{data}->[0] = "Command: $cmd failed, unable to process image.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        exit 1;
+        return;
 
     }
     my @newoutput;
