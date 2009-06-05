@@ -1,69 +1,32 @@
-#!/usr/bin/perl
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#!/bin/sh
+# IBM(c) 2009 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #
-#   xCAT post script for configuration files distribution
-#
-#   It should be run after the remoteshell
-#   It is also run by the updatenode cmd
+#   Initiate the xdcp from Mangement node to sync 
+#   files to this node
 #
 #####################################################
-
 
 # do nothing when UPDATENODE=1
-if ($ENV{'UPDATENODE'} == 1 
-    || $ENV{'NODESETSTATE'} eq "netboot"
-    || $ENV{'NODESETSTATE'} eq "diskless") {
-    exit 0;
-}
+if [ $UPDATENODE = 1 -o \
+     $NODESETSTATE = "netboot" -o \
+     $NODESETSTATE = "diskless" ] 
+then
+  exit 0
+fi
 
-`logger -t xCAT "Performing syncfiles postscript"`;
+logger -t xCAT "Performing syncfiles postscript"
 
-# get platform
-my $osname = `uname`;
-chomp $osname;
-
+osname=`uname`
 # run the xdcp on the MN/SN
-my $xcatpostdir = "/xcatpost";
-my $startsync = "";
-if ($osname eq "Linux") {
-`logger -t xCAT "run $xcatpostdir/startsyncfiles.awk"`;
-    $startsync = "$xcatpostdir/startsyncfiles.awk";
-    `$startsync`;
-} else {
-`logger -t xCAT "run $xcatpostdir/startsyncfilesaix.awk"`;
-    &startsyncfilesaix();
-}
+xcatpostdir="/xcatpost"
 
-exit 0;
+if [ $osname="Linux" ] 
+then
+  `$xcatpostdir/startsyncfiles.awk`
+elif [ $osname="AIX" ]
+then
+  `$xcatpostdir/startsyncfiles.aix`
+fi
 
-
-sub  startsyncfilesaix 
-{
-  use IO::Socket;
-
-  my $port = "3002";
-  my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $ENV{'MASTER'}, PeerPort  => $port, );
-  unless ($remote) {
-    `logger -t xCAT "startsyncfiles: Cannot connect to host $ENV{'MASTER'}"`;
-  }
-
-  $remote->autoflush(1);
-
-  while (<$remote>) {
-    my $line = $_;
-    chomp($line);
-
-    if ($line =~ /ready/) {
-      print $remote "syncfiles\n";
-    }
-
-    if ($line =~ /syncfiles done/) {
-      close $remote;
-      return 0;
-    }
-  }
-
-  close $remote;
-  return 0;
-}
+exit 0

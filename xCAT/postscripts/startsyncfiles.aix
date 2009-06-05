@@ -1,0 +1,40 @@
+#!/usr/bin/env perl -w
+# IBM(c) 2009 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#
+#   xCAT post script for AIX nodes
+#   This script will send command "syncfiles" to the xcatd on 
+#   management node or service node to initiate the sync file
+#   operation by xdcp command
+#
+#####################################################
+
+
+use IO::Socket;
+
+my $port = "3002";
+my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $ENV{MASTER}, PeerPort  => $port, );
+unless ($remote) {
+  `logger -t xCAT "startsyncfiles: Cannot connect to host $ENV{MASTER}"`;
+  exit 0;
+}
+
+$remote->autoflush(1);
+
+while (defined (my $line = <$remote>)) {
+  chomp($line);
+
+  if ($line =~ /ready/) {
+    print $remote "syncfiles\n";
+  }
+
+  if ($line =~ /syncfiles done/) {
+    close $remote;
+    exit 1;
+  }
+}
+
+close $remote;
+
+exit 1;
+
