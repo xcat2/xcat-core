@@ -1513,12 +1513,18 @@ sub spdump {
         $dump_setting = 0;
     }
     if ( $res->content !~ /$button/ ) {
-        return( [RC_ERROR,"'$button' button not found"] );
+        #################################################################
+        # For some firmware levels, button is changed to "initiate dump"
+        #################################################################
+        $button = "Initiate dump";
+        if ( $res->content !~ /$button/ ) {
+            return( [RC_ERROR,"'$button' button not found"] );
+        }
     }
     ######################################
     # We will lose conection after dump 
     ######################################
-    $ua->timeout(5);
+    $ua->timeout(10);
 
     ######################################
     # Send dump command 
@@ -1526,7 +1532,7 @@ sub spdump {
     $res = $ua->post( "https://$server/cgi-bin/cgi",
          [ form => $id,
            bdmp => $dump_setting,
-           dump => "Save settings and initiate dump" ]
+           dump => $button ]
     );
     ######################################
     # Will lose connection on success -500 
