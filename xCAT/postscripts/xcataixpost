@@ -230,6 +230,20 @@ if (-f $scriptname) {
 	}
 }
 
+# If this is a diskfull node then remove the xcat entry in the inittab file
+if ($nodesetstat eq 'standalone') {
+    # see if it is already there
+    my $lsicmd = "/usr/sbin/lsitab xcat > /dev/null 2>&1";
+    if (&runcmd($lsicmd) != 0) {
+        # ok - remove the entry
+        my $rmitab_cmd = 'rmitab "xcat"  > /dev/null 2>&1';
+        if (&runcmd($rmitab_cmd) != 0) {
+            print "$::sdate xcataixpost: Could not remove xcataixpost from /etc/inittab.\n";
+            print $::LOG_FILE "$::sdate xcataixpost: Could not remove xcataixpost from /etc/inittab.\n";
+        }
+    }
+}
+
 close($::LOG_FILE);
 
 exit 0;
