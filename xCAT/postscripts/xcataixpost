@@ -47,6 +47,7 @@ if (!GetOptions('copy|c' => \$::opt_c,))
 $::shorthost = `hostname -s`;
 chomp $::shorthost;
 
+my $foundxcatinfo=0;
 my $servnode;
 if (-f "/etc/xcatinfo") {
 	# if this file exists assume it has the correct server name
@@ -55,8 +56,15 @@ if (-f "/etc/xcatinfo") {
 	my $SNline = $::outref;
 	my $junk;
 	($junk, $servnode) =  split(/=/, $SNline);
-} else {
-	# get the name of my service node/NIM master from the /etc/niminfo file
+	chomp $servnode; 
+	$servnode =~ s/^\s*//;
+	if ($servnode) {
+		$foundxcatinfo=1;
+	}
+} 
+
+if (!$foundxcatinfo) {
+	# get the name of my service node (NIM master) from the /etc/niminfo file
 	if (-f "/etc/niminfo") {
     	$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
     	&runcmd($cmd);
@@ -64,18 +72,26 @@ if (-f "/etc/xcatinfo") {
 		my $junk;
     	($junk, $servnode) =  split(/=/, $SNline);
 
-		# save the servnode from niminfo in xcatinfo
-		my $xcatinfo="/etc/xcatinfo";
-		open(XCATINFO,">",$xcatinfo);
-		print XCATINFO "XCATSERVER=$servnode\n";
-		close(XCATINFO);
+		if ($servnode) {
+			chomp $servnode;
+			$servnode =~ s/^\s*//;
+			# save the servnode from niminfo in xcatinfo
+			my $xcatinfo="/etc/xcatinfo";
+			open(XCATINFO,">",$xcatinfo);
+			print XCATINFO "XCATSERVER=$servnode\n";
+			close(XCATINFO);
+		}
 	} else {
 		print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
     	print $::LOG_FILE "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
 	}
 }
-$servnode =~ s/^\s*//;
-chomp $servnode;
+
+unless ($servnode) {
+	print "$::sdate  xcataixpost: Could not determine server name.\n";
+	print $::LOG_FILE "$::sdate  xcataixpost: Could not determine server name.\n";
+	exit 0;
+}
 
 # if the /xcatpost dir has not been populated or the -c option is
 #   specified then do the mount and copy of /install/postscripts
@@ -153,7 +169,7 @@ if (-f $scriptname) {
 my $nodesetstat="standalone";
 if (-f $scriptname)
 {
-    # when called by the updatenode command, 
+	# when called by the updatenode command,
     #modify the UPDATENODE flag to 1
     if (@ARGV > 0) {
       $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' $scriptname`;
