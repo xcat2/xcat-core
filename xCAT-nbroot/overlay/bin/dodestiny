@@ -3,6 +3,9 @@
 if dmidecode|grep Vendor|grep QEMU; then #for now, reboot 
     IAMAVM=1
 fi
+if dmidecode|grep VMware; then #for now, reboot 
+    IAMAVM=1
+fi
 for parm in `cat /proc/cmdline`; do
   key=`echo $parm|awk -F= '{print $1}'`
   if [ "$key" == "xcatd" ]; then
