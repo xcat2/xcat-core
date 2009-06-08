@@ -69,7 +69,7 @@ sub remote_copy_command
     if ($$config{'destDir_srcFile'})
     {
 
-        my $rsync_opt;
+        my $sync_opt;
         $sync_opt = '-Lupotz ';
         $sync_opt .= $$config{'options'};
 
@@ -107,7 +107,7 @@ sub remote_copy_command
             }
 
         }
-        print RSCYCCMDFILE "/bin/rm -f /tmp/rsync_$$config{'dest-host'}\n";
+        #print RSCYCCMDFILE "/bin/rm -f /tmp/rsync_$$config{'dest-host'}\n";
         close RSCYCCMDFILE;
         chmod 0755, "/tmp/rsync_$$config{'dest-host'}";
         @command = ('/bin/sh', '-c', "/tmp/rsync_$$config{'dest-host'}");
