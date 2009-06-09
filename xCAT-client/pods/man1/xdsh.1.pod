@@ -1,6 +1,6 @@
 =head1 B<NAME>
 
-B<xdsh> - Concurrently runs commands on multiple nodes.
+B<xdsh> - Concurrently runs commands on multiple nodes, or an install image.
 
 =head1 B<SYNOPSIS>
 

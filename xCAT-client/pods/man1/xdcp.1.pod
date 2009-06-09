@@ -1,6 +1,6 @@
 =head1 B<NAME>
 
-B<xdcp> - Concurrently copies files to or from multiple nodes.
+B<xdcp> - Concurrently copies files to or from multiple nodes. In addition, provides an option to use rsync to update the files on the nodes, or to an installation image on the local node.
 
 =head1 B<SYNOPSIS>
 
@@ -8,6 +8,13 @@ B<xdcp> I<noderange>  [B<-C> I<context>] [B<-f> I<fanout>]
 [B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>]
 [B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>]
 [B<-T>] [B<-v>] [B<-X> I<env_list>] sourcefile.... targetpath
+
+B<xdcp> I<noderange>  [B<-F> I<rsync input file>] 
+
+B<xdcp> I<noderange>  [B<-s>] [B<-F> I<rsync input file>] 
+
+B<xdcp> [B<-i> I<path to install image>] [B<-F> I<rsync input file>] 
+
 
 B<xdcp> [B<-h> | B<-V> | B<-q>]
 
@@ -107,8 +114,10 @@ is not specified, a default fanout value of B<64> is used.
 Displays usage information.
 
 
-Specifies a remote user name to use for remote command exe-
-cution.
+=item B<-i>|B<--rootimg> I<install image>
+
+
+Specifies  the  full  path to the install image on the local node.
 
 
 =item B<-o>|B<--node-options> I<node_options>
@@ -156,6 +165,15 @@ targets, or when specified with the -P flag, recursively pulls
 (copies)  files  from  a remote directory to the local host. A
 single source directory can be specified using the source_file
 parameter.
+
+=item B<-s>
+
+Specifies that we are using rsync and the input rsync file (-F options) to
+update the service node. The noderange input should be the compute nodes.  The 
+command will look up the list of servicenodes that service the input noderange.
+It will then use the rsync file to send the files via rsync  to the
+service nodes. When the rsync command runs on the service node, the files 
+will be available to send from the service node to the compute nodes. 
 
 =item B<-t>|B<--timeout> I<timeout>
 
@@ -339,6 +357,48 @@ To copy the /etc/hosts  file  from  node1  and  node2  to the
 
 B<xdcp> I<node1,node2 -P /etc/hosts /tmp/hosts.dir>
 
+
+=item *
+
+To rsync the /etc/hosts file to your compute nodes: 
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/etc/hosts -> /etc/hosts
+
+Run:
+
+B<xdcp> I<compute -F /tmp/myrsync>
+
+
+=item *
+
+To rsync the /etc/hosts and passwd file to your service nodes and then to the compute nodes: 
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/etc/hosts /etc/passwd -> /etc
+
+Run:
+
+B<xdcp> I<compute -s -F /tmp/myrsync>  to update the Service Nodes
+
+B<xdcp> I<compute  -F /tmp/myrsync>    to update the Compute Nodes
+
+=item *
+
+To rsync the /etc/file1 and file2 to your service nodes and then update the compute node with filex and filey: 
+
+Create a rsync file /tmp/myrsync, with these line:
+
+/etc/file1 -> /etc/filex
+/etc/file2 -> /etc/filey
+
+Run:
+
+B<xdcp> I<compute -s -F /tmp/myrsync>  to update the Service Nodes
+
+B<xdcp> I<compute  -F /tmp/myrsync>    to update the Compute Nodes
 
 =back
 
