@@ -238,7 +238,7 @@ sub processArgs
         my $rsp;
         $rsp->{data}->[0] =
           "The \'-x\' (XML format) option is not yet implemented.";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
 
@@ -394,7 +394,7 @@ sub processArgs
                 my $rsp;
                 $rsp->{data}->[0] =
                   "\nType \'$t\' is not a valid xCAT object type.";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
 				return 3;
             }
             else
@@ -594,7 +594,7 @@ sub processArgs
                         $rsp->{data}->[0] =
                           "Could not get objects of type \'$t\'.\n";
                         #$rsp->{data}->[1] = "Skipping to the next type.\n";
-                        xCAT::MsgUtils->message("I", $rsp, $::callback);
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
                         return 3;
                     }
                 }
@@ -798,7 +798,7 @@ sub defmk
     {
         my $rsp;
         $rsp->{data}->[0] = "No object names were provided.\n";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
         &defmk_usage;
         return 1;
     }
@@ -1086,7 +1086,7 @@ sub defmk
                         my $rsp;
                         $rsp->{data}->[0] =
                           "Cannot determine a member list for group \'$obj\'.\n";
-                        xCAT::MsgUtils->message("I", $rsp, $::callback);
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
                     }
                 }
 
@@ -1363,7 +1363,7 @@ sub defch
     {
         my $rsp;
         $rsp->{data}->[0] = "No object names were provided.\n";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
         &defch_usage;
         return 1;
     }
