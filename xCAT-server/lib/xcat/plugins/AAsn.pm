@@ -193,6 +193,16 @@ sub init_plugin
                 {
                     xCAT::Utils->update_xCATSN($service);
                 }
+                # The nfsserver field in servicenode table 
+                # will also setup http service for Linux
+                if (xCAT::Utils->isLinux())
+                {
+                    $rc = &setup_HTTP($nodename);    # setup HTTP 
+                    if ($rc == 0)
+                    {
+                        xCAT::Utils->update_xCATSN('http');
+                    }
+                }
 
             }
             #
@@ -1016,4 +1026,33 @@ sub setup_TFTP
     return $rc;
 
 }
+
+#-----------------------------------------------------------------------------
+
+=head3 setup_HTTP
+
+    Sets up HTTP services on Service Node for Linux   
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub setup_HTTP
+{
+    my ($nodename) = @_;
+    my $rc = 0;
+
+    if (xCAT::Utils->isLinux())
+    {
+        my $os = xCAT::Utils->osver();
+        if ($os =~ /sles.*/) {
+           $rc = xCAT::Utils->startService("apache2");
+        }
+        else
+        {
+            $rc = xCAT::Utils->startService("httpd");
+        }
+    }
+    return $rc;
+}
+
 1;
