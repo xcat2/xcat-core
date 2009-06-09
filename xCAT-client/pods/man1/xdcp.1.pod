@@ -109,6 +109,20 @@ rently  executing  remote shell processes. Serial execution
 can be specified by indicating a fanout value of B<1>.  If  B<-f>
 is not specified, a default fanout value of B<64> is used.
 
+=item B<-F>|B<--File> I <rsync input file>
+
+Specifies the full path to the file that will be used to  
+build the rsync command.
+The format of the input file is as follows, each line contains:
+  I<path to source file1>,<path to source file2>,... ->  < path to destination file/directory>
+
+For example:
+  /etc/password /etc/hosts -> /etc 
+  /tmp/file1  ->  /tmp
+  /tmp/file2  ->  /tmp/filex
+
+
+
 =item B<-h>|B<--help>
 
 Displays usage information.
@@ -399,6 +413,31 @@ Run:
 B<xdcp> I<compute -s -F /tmp/myrsync>  to update the Service Nodes
 
 B<xdcp> I<compute  -F /tmp/myrsync>    to update the Compute Nodes
+
+=item *
+
+To rsync files in the Linux image at /install/netboot/fedora9/x86_64/compute/rootimg on the MN:
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/etc/hosts /etc/passwd -> /etc
+
+Run:
+
+B<xdcp> I<-i /install/netboot/fedora9/x86_64/compute/rootimg -F /tmp/myrsync>
+
+
+=item *
+
+To rsync files in the AIX image at /install/nim/spot/61Hdskls/usr/lpp/bos/inst_root on the MN:
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/etc/hosts /etc/passwd -> /etc
+
+Run:
+
+B<xdcp> I<-i /install/nim/spot/61Hdskls/usr/lpp/bos/inst_root -F /tmp/myrsync>
 
 =back
 
