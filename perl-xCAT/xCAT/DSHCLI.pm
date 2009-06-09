@@ -4304,7 +4304,7 @@ sub rsync_to_image
             my @srcfiles = (split ' ', $src_file);
             if (!(-d $imageupdatedir))
             {    # if it does not exist, make it
-                my $cmd = "mkdir $imageupdatedir";
+                my $cmd = "mkdir -p $imageupdatedir";
                 my @output = xCAT::Utils->runcmd($cmd, 0);
                 if ($::RUNCMD_RC != 0)
                 {
