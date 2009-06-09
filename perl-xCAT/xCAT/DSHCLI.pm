@@ -42,7 +42,8 @@ our @dsh_valid_env = (
                       'DSH_PATH',           'DSH_SYNTAX',
                       'DSH_TIMEOUT',        'DSH_REMOTE_PASSWORD',
                       'DSH_TO_USERID',      'DSH_FROM_USERID',
-                      'DEVICETYPE',         'RSYNCSN','DSH_RSYNC_FILE',
+                      'DEVICETYPE',         'RSYNCSN',
+                      'DSH_RSYNC_FILE',
                       );
 select(STDERR);
 $| = 1;
@@ -846,7 +847,7 @@ sub fork_fanout_dcp
         my $target_properties = $$resolved_targets{$user_target};
 
         my @shorthostname = split(/\./, $user_target);
-        $user_target=$shorthostname[0];
+        $user_target = $shorthostname[0];
         my @dcp_command;
 
         if (!$$target_properties{'localhost'})
@@ -936,6 +937,7 @@ sub fork_fanout_dcp
                           "/bin/cp $src_file_diff_dest $dest_dir/$diff_basename\n";
                     }
                 }
+
                 #print RSYNCCMDFILE "/bin/rm -f /tmp/rsync_$user_target\n";
                 close RSYNCCMDFILE;
                 chmod 0755, "/tmp/rsync_$user_target";
@@ -2560,7 +2562,7 @@ sub handle_signal_dsh
         $rsp->{data}->[0] =
           "Command execution ended prematurely due to a previous error or stop request from the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        exit (1);
+        exit(1);
     }
 
     elsif ($dsh_exec_state == $DSH_STATE_INIT_STARTED)
@@ -3335,7 +3337,7 @@ sub check_valid_options
             my $rsp = {};
             my $badopts = join(',', @invalid_opts);
             $rsp->{data}->[0] = "Invalid options: $badopts";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,1);
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
     }
@@ -3452,7 +3454,7 @@ sub isFdNumExceed
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Unsupport ulimit return code!";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,1);
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
 
@@ -3474,7 +3476,7 @@ sub isFdNumExceed
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Reached fdnum=  $fdnum";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,1);
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
     else
@@ -3715,7 +3717,7 @@ sub parse_and_run_dsh
         }
 
         # since we have no input nodes for running xdsh against the image
-        # we will use the create the nostname from the directory
+        # we will use the create the hostname from the directory
         # for the hostname in the output
         my $path = $options{'rootimg'};
         $imagename = xCAT::Utils->get_image_name($path);
@@ -4020,14 +4022,14 @@ sub parse_and_run_dcp
       )
     {
         usage_dcp;
-        return(1);
+        return (1);
     }
 
     my $rsp = {};
     if ($options{'help'})
     {
         usage_dcp;
-        return(0);
+        return (0);
     }
     if ($options{'show-config'})
     {
@@ -4047,7 +4049,7 @@ sub parse_and_run_dcp
         my $version = xCAT::Utils->Version();
         $rsp->{data}->[0] = "$version";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        return(0);
+        return (0);
     }
 
     if (defined $options{'ignore_env'})
@@ -4127,10 +4129,13 @@ sub parse_and_run_dcp
     }
     else
     {
-        my $rsp = {};
-        $rsp->{data}->[0] = "Noderange missing in command input.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
+        if (!($options{'rootimg'}))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Noderange missing in command input.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+        }
     }
 
     #
@@ -4142,18 +4147,34 @@ sub parse_and_run_dcp
     #
     my @results;
     my $syncSN = 0;
+
+    # if updating an install image
+    # only going to run rsync locally
+    if (($options{'File'}) && ($options{'rootimg'}))
+    {
+        my $image = $options{'rootimg'};
+        my $rc = &rsync_to_image($options{'File'}, $image);
+        if ($rc != 0)
+        {    # error from dcp
+            my $rsp = {};
+            $rsp->{data}->[0] = "Error running rsync to image:$image.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+
+        }
+        return;
+
+    }
     if ($options{'rsyncSN'})
     {
         $syncSN = 1;
     }
+
+    # if rsyncing the nodes
     if ($options{'File'})
     {
-        @results =
-          &parse_rsync_input_file(\@nodelist,       \%options,
-                                  $options{'File'}, $syncSN);
+        &parse_rsync_input_file(\@nodelist,       \%options,
+                                $options{'File'}, $syncSN);
 
-        # rdist not supported
-        #@results = &parse_rdist_input_file(\%options, $options{'File'});
     }
     else    # source and destination files are from command line
     {
@@ -4170,7 +4191,7 @@ sub parse_and_run_dcp
             {
                 $rsp->{data}->[0] = "Missing target_path";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-                return; 
+                return;
             }
 
             else
@@ -4207,6 +4228,120 @@ sub parse_and_run_dcp
 
     return (@results);
 
+}
+
+#-------------------------------------------------------------------------------
+
+=head3
+       rsync_to_image
+
+        This parses the -F rsync input file. and runs rsync to the input
+		image for the files
+
+        File format:
+          /.../file1 ->  /.../dir1/filex
+          /.../file1 ->  /.../dir1
+          /.../file1 /..../filex  -> /...../dir1
+
+       rsync command format
+	   /usr/bin/rsync -Lupotz  /etc/services  $pathtoimage/etc/services 
+	   /usr/bin/rsync -Lupotz  /tmp/lissa/file1 /tmp/lissa/file $pathtoimage/tmp/lissa
+
+        Arguments:
+		  Input:
+		  sync file
+		  path to image 
+
+        Returns:
+           Errors if invalid options or the executed dcp command
+
+        Globals:
+
+
+        Error:
+        	None
+
+        Example:
+
+        Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub rsync_to_image
+{
+    use File::Basename;
+
+    my ($input_file, $image) = @_;
+    my $rc = 0;
+    open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
+    while (my $line = <INPUTFILE>)
+    {
+        chomp $line;
+        if ($line =~ /(.+) -> (.+)/)
+        {
+            my $imageupdatedir  = $image;
+            my $imageupdatepath = $image;
+            my $src_file        = $1;
+            my $dest_file       = $2;
+            $dest_file =~ s/[\s;]//g;
+            my $dest_dir;
+            if (-d $dest_file)    # if a directory on the left side
+            {                     # if a directory , just use
+                $dest_dir = $dest_file;
+                $dest_dir =~ s/\s*//g;    #remove blanks
+                $imageupdatedir  .= $dest_dir;    # save the directory
+                $imageupdatepath .= $dest_dir;    # path is a directory
+            }
+            else                                  # if a file on the left side
+            {                                     # strip off the file
+                $dest_dir = dirname($dest_file);
+                $dest_dir =~ s/\s*//g;            #remove blanks
+                $imageupdatedir  .= $dest_dir;    # save directory
+                $imageupdatepath .= $dest_file;   # path to a file
+            }
+            my @srcfiles = (split ' ', $src_file);
+            if (!(-d $imageupdatedir))
+            {    # if it does not exist, make it
+                my $cmd = "mkdir $imageupdatedir";
+                my @output = xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Command: $cmd failed.";
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                    return;
+                }
+            }
+
+            # for each file on the line
+            my $synccmd = "";
+            $synccmd = "/usr/bin/rsync -Lupotz ";
+            my $syncopt = "";
+            foreach my $srcfile (@srcfiles)
+            {
+
+                $syncopt .= $srcfile;
+                $syncopt .= " ";
+            }
+            $syncopt .= $imageupdatepath;
+            $synccmd .= $syncopt;
+
+            my @output = xCAT::Utils->runcmd($synccmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Command: $synccmd failed.";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                return;
+            }
+
+        }    # valid line
+    }    # end reading file
+
+    close INPUTFILE;
+    return $rc;
 }
 
 #-------------------------------------------------------------------------------
@@ -4299,12 +4434,12 @@ sub parse_rsync_input_file
                     {    # get the file name from the destination
                         $dest_basename = basename($dest_file);
                     }
-                    if ($rsyncSN == 1) # dest file will be the same as src
-                    {    #  syncing the SN
+                    if ($rsyncSN == 1)    # dest file will be the same as src
+                    {                     #  syncing the SN
                         $dest_basename = $src_basename;
                     }
                     $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                    $dest_basename =~ s/[\s;]//g;
+                      $dest_basename =~ s/[\s;]//g;
 
                     # if the filename will be the same at the destination
                     if ($src_basename eq $dest_basename)
@@ -4329,78 +4464,6 @@ sub parse_rsync_input_file
     close INPUTFILE;
     $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
 
-}
-
-#-------------------------------------------------------------------------------
-
-=head3
-       parse_rdist_input_file
-
-        This parses the -F rdist fromat input file to build the call to execute_dcp.
-        Note: no longer used but may come back
-        Arguments:
-		  $nodes,$args,$callback,$command,$noderange
-		  These may exist, called from xdsh plugin
-
-        Returns:
-           Errors if invalid options or the executed dcp command
-
-        Globals:
-
-
-        Error:
-        	None
-
-        Example:
-
-        Comments:
-
-=cut
-
-#-------------------------------------------------------------------------------
-
-sub parse_rdist_input_file
-{
-    use File::Basename;
-    my ($options, $input_file) = @_;
-    open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
-    while (my $line = <INPUTFILE>)
-    {
-        chomp $line;
-        if ($line =~ /(.+) -> \((.+)\) install (.+)/)
-        {
-            my $src_file      = $1;
-            my $host_list     = $2;
-            my $dest_file     = $3;
-            my $src_basename  = basename($src_file);
-            my $dest_basename = basename($dest_file);
-            $dest_basename =~ s/[\s;]//g;
-            my @dest_host = split ' ', $host_list;
-            my $dest_dir  = dirname($dest_file);
-
-            foreach my $target_node (@dest_host)
-            {
-                $$options{'destDir_srcFile'}{$target_node}            ||= {};
-                $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||= {};
-                if ($src_basename eq $dest_basename)
-                {
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                      {'same_dest_name'} ||= [];
-                    push @{$$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'same_dest_name'}}, $src_file;
-                }
-                else
-                {
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                      {'diff_dest_name'} ||= {};
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                      {'diff_dest_name'}{$src_file} = $dest_basename;
-                }
-            }
-        }
-    }
-    close INPUTFILE;
-    $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
 }
 
 #-------------------------------------------------------------------------------
