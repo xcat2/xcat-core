@@ -468,6 +468,10 @@ sub parse_args_xdcp
         xCAT::MsgUtils->message("I", $version);
         exit 0;
     }
+    if ($options{'rootimg'})
+    {
+        $::ROOTIMG = 1;
+    }
     if (($options{'rootimg'}) && (!($options{'File'})))
     {
         xCAT::MsgUtils->message("E",
