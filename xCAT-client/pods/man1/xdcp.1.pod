@@ -109,16 +109,18 @@ rently  executing  remote shell processes. Serial execution
 can be specified by indicating a fanout value of B<1>.  If  B<-f>
 is not specified, a default fanout value of B<64> is used.
 
-=item B<-F>|B<--File> I <rsync input file>
+=item B<-F>|B<--File> I<rsync input file>
 
 Specifies the full path to the file that will be used to  
 build the rsync command.
 The format of the input file is as follows, each line contains:
-  I<path to source file1>,<path to source file2>,... ->  < path to destination file/directory>
+ I<path to source file1> <path to source file2> ... ->  < path to destination file/directory>
 
 For example:
-  /etc/password /etc/hosts -> /etc 
+  /etc/password /etc/hosts -> /etc
+ 
   /tmp/file1  ->  /tmp
+
   /tmp/file2  ->  /tmp/filex
 
 
@@ -406,6 +408,7 @@ To rsync the /etc/file1 and file2 to your service nodes and then update the comp
 Create a rsync file /tmp/myrsync, with these line:
 
 /etc/file1 -> /etc/filex
+
 /etc/file2 -> /etc/filey
 
 Run:
