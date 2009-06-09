@@ -7,7 +7,7 @@ require_once "$TOPDIR/lib/functions.php";
 if (isAIX()) { $aixDisabled = 'disabled'; }
 
 insertHeader('xCAT Groups and Nodes', array("$TOPDIR/jq/jsTree/tree_component.css",'groups.css','attributes.css',"$TOPDIR/manage/dsh.css"),
-	array("$TOPDIR/jq/jsTree/css.js","$TOPDIR/jq/jsTree/jquery.listen.js","$TOPDIR/jq/jsTree/tree_component.js","$TOPDIR/jq/jquery.cookie.js",'noderangetree.js','groups.js','attributes.js','rvitals.js','rpower.js'),
+	array("$TOPDIR/jq/jsTree/css.js","$TOPDIR/jq/jsTree/jquery.listen.js","$TOPDIR/jq/jsTree/tree_component.js","$TOPDIR/jq/jquery.cookie.js",'noderangetree.js','groups.js','attributes.js','rvitals.js','rpower.js','ping.js'),
 	array('machines','groups'));
 
 echo "<div id=content>\n";
@@ -21,9 +21,10 @@ $tabs = array('Attributes' => '#attributes-tab',
 				'Run Cmd' => '../manage/dsh.php?intab=1',
 				'Rvitals' => '#rvitals-tab',
 				'Rpower' => '#rpower-tab',
+                'Ping' => '#ping-tab',
 				);
 $tabsDisabled = array(//'Rpower' => 'rpower.php',
-				'Ping' => 'ping.php',
+				//'Ping' => 'ping.php',
 				'Copy' => 'copyfiles.php',
 				'SP Config' => 'spconfig.php',
 				'Diagnose' => 'diagnode.php',
@@ -43,6 +44,7 @@ echo "</ul>\n";
 echo "<div id='attributes-tab'></div>\n";
 echo "<div id='rvitals-tab'></div>\n";
 echo "<div id='rpower-tab'></div>\n";
+echo "<div id='ping-tab'></div>\n";
 
 echo "</div></td></tr></table>\n";
 

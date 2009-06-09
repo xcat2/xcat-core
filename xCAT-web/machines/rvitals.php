@@ -27,7 +27,7 @@ foreach ($xml->children() as $response) foreach ($response->children() as $o) {
 	$desc = (string)$data->desc;
 	//echo "<p>"; print_r($data); echo "</p>\n";
 	echo "$nodename: $desc: $contents<br>\n";
-	}
+}
 echo "</p>\n";
 
 

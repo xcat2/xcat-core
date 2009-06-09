@@ -7,7 +7,10 @@ $(document).ready(function(){
     		if (ui.tab.href.search('#rvitals-tab$') > -1) { loadVitalsTab($(ui.panel)); }
 		    if (ui.tab.href.search('#rpower-tab$') > -1) {
 			    loadRpowerTab($(ui.panel));
-   		}
+   		    }
+            if (ui.tab.href.search('#ping-tab$') > -1) {
+                loadPingTab($(ui.panel));
+            }
     	}});		// ends the properties passed to tabs()
   });
 

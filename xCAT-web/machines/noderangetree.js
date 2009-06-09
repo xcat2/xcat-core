@@ -22,6 +22,9 @@ function updatenoderange() {
         if (index == 3) {
             loadRpowerTab($('#rpower-tab'));
         }
+        if (index == 4) {
+            loadPingTab($('#ping-tab'));
+        }
 
 }
 
