@@ -199,56 +199,30 @@ sub preprocess_updatenode {
     }
   }
 
+  # If -s argument specified, sync files to the service nodes firstly
+  if ($::SYNCSN) {
+    my %syncfile_node = ();
+    my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
+    foreach my $node (@$nodes) {
+      my $synclist = $$node_syncfile{$node};
+
+      if ($synclist) {
+        push @{$syncfile_node{$synclist}}, $node;
+        next;
+      }
+    }
+
+    foreach my $syncfile (keys %syncfile_node) {
+      my $arg = ["-s", "-F", "$syncfile"];
+      my $env = ["RSYNCSN=yes", "DSH_RSYNC_FILE=$syncfile"];
+      $subreq->({command=>['xdcp'], node=>$syncfile_node{$syncfile}, arg=>$arg, env=>$env}, $callback);
+    }
+  }
+
   # find service nodes for requested nodes
   # build an individual request for each service node
   my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
     
-  # If -s argument specified, sync files to the service node firstly
-  if ($::SYNCSN) {
-    my @MNnodeinfo   = xCAT::Utils->determinehostname;
-    my $MNnodename   = pop @MNnodeinfo; # hostname
-    my @MNnodeipaddr = @MNnodeinfo;  # ipaddresses
-
-    my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
-    my %syncfile_sn = ();
-    foreach my $snkey (keys %$sn)
-    {
-      # exclude the Management node
-      if (grep(/$snkey/, @MNnodeipaddr)) {
-        next;
-      }
-      my @synclists = ();
-      # Figure out the synclist files for the service node
-      foreach my $node (@{$sn->{$snkey}}) {
-        my $synclist = $$node_syncfile{$node};
-
-        unless ($synclist) {
-          next;
-        }
-        if (! grep /\Q$synclist\E/, @synclists) {
-            push @synclists, $synclist;
-            push @{$syncfile_sn{$synclist}}, $node;
-        }
-      }
-
-      # If there are multiple synclist files for certain SN, 
-      # the synclist files maybe have conflicted content, so
-      # display an warning message
-      if ($#synclists > 0) {
-        my $rsp = {};
-        my $files = join(',', @synclists);
-        $rsp->{data}->[0]= "Warning: The Service Node $snkey will be synced by following synclist files: $files";
-        $callback->($rsp);
-      }
-    }
-
-    foreach my $syncfile (keys %syncfile_sn) {
-      my $arg = ["-s", "-F", "$syncfile"];
-      my $env = ["RSYNCSN=yes", "DSH_RSYNC_FILE=$syncfile"];
-      $subreq->({command=>['xdcp'], node=>$syncfile_sn{$syncfile}, arg=>$arg, env=>$env}, $callback);
-    }
-  }
-
   # build each request for each service node
   foreach my $snkey (keys %$sn)
   {
