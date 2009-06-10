@@ -2790,8 +2790,21 @@ sub defrm
     #	the memberlist nodes must be updated.
 
     my $numobjects = 0;
+    my %objTypeLists;
     foreach my $obj (keys %objhash)
     {
+        my $objtype = $objhash{$obj};
+        if (!defined($objTypeLists{$objtype})) # Do no call getObjectsOfType for the same objtype more than once.
+        {
+            @{$objTypeLists{$objtype}} = xCAT::DBobjUtils->getObjectsOfType($objtype);
+        }
+        if (!grep(/^$obj$/, @{$objTypeLists{$objtype}})) #Object is not in the db, do not need to delete
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "Could not find an object named \'$obj\' of type \'$objtype\'.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            next;
+        }
         $numobjects++;
 
         if ($objhash{$obj} eq 'group')
