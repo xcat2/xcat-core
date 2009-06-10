@@ -97,7 +97,7 @@ sub execute_dcp
     if (!scalar(%resolved_targets))
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "No hosts in node list";
+        $rsp->{data}->[0] = "No hosts in node list 1";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return ++$result;
     }
@@ -320,7 +320,7 @@ sub execute_dsh
 
     if (!scalar(%resolved_targets))
     {
-        $rsp->{data}->[0] = " No hosts in node list";
+        $rsp->{data}->[0] = " No hosts in node list 2";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return ++$result;
     }
@@ -366,7 +366,7 @@ sub execute_dsh
 =head3
         _execute_dsh
 
-        Wrapper routine for execute_dsh and execute_dsh_interactive
+        Wrapper routine for execute_dsh 
         to execute actual dsh call
 
         Arguments:
@@ -4172,8 +4172,13 @@ sub parse_and_run_dcp
     # if rsyncing the nodes
     if ($options{'File'})
     {
-        &parse_rsync_input_file(\@nodelist,       \%options,
+        my $rc=&parse_rsync_input_file(\@nodelist,       \%options,
                                 $options{'File'}, $syncSN);
+        if ($rc ==1) {
+            $rsp->{data}->[0] = "Error parsing the rsync file";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+        }
 
     }
     else    # source and destination files are from command line
@@ -4381,12 +4386,14 @@ sub parse_rsync_input_file
     use File::Basename;
     my ($nodes, $options, $input_file, $rsyncSN) = @_;
     my @dest_host = @$nodes;
+    my $process_line=0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
         if ($line =~ /(.+) -> (.+)/)
         {
+            $process_line=1;
             my $src_file  = $1;
             my $dest_file = $2;
             $dest_file =~ s/[\s;]//g;
@@ -4462,8 +4469,15 @@ sub parse_rsync_input_file
         }
     }
     close INPUTFILE;
-    $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
-
+    if ($process_line ==0) {   # no valid lines in the file
+      my $rsp = {};
+      $rsp->{data}->[0] = "Found no lines to process in $input_file.";
+      xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+      return 1;
+    } else {
+      $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+    }
+    return 0;
 }
 
 #-------------------------------------------------------------------------------
