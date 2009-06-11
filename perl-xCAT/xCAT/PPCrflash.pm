@@ -166,7 +166,8 @@ sub parse_args {
             }
        }
    
-		
+    send_msg($request, 1, "It may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting.");
+
 	####################################
   	# No operands - add command name 
  	####################################
@@ -483,12 +484,12 @@ sub get_one_mtms {
 ###########################
 sub rflash {
 
-    	my $request = shift;
-    	my $hash    = shift;
-    	my $exp     = shift;
-    	my $hwtype  = @$exp[2];
-    	my @result;
-        my $timeout    = $request->{ppctimeout};
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $hwtype  = @$exp[2];
+    my @result;
+    my $timeout    = $request->{ppctimeout};
 
 	$packages_dir = $request->{opt}->{p};
 	$activate = $request->{opt}->{activate};	
@@ -508,6 +509,7 @@ sub rflash {
 	my $stanza = undef;
 	my $mtms_t;	
 	my @value;
+    my %infor;
 
 	$hmc = @$exp[3];
 	dpush(\@value, [$hmc, "In rflash()"]);
@@ -532,24 +534,24 @@ sub rflash {
 	while(($mtms,$h) = each(%$hash)) {
 		dpush(\@value,[$hmc, "mtms:$mtms"]);
 		$mtms_t = "$mtms_t $mtms";
-        	my $lflag = 0;
+        my $lflag = 0;
 		my $managed_system = $mtms;
-      		if( defined( $housekeeping ) ) {
-               	    	#$hmc_has_work = 1;
-        	        #$::work_flag = 1;
-             		&dpush(\@value,[$hmc,"$mtms:creating stanza for housekeeping operation\n"]);
-                    	$stanza = "updlic::" . $managed_system . "::" . $housekeeping . "::::";
+      	if( defined( $housekeeping ) ) {
+            #$hmc_has_work = 1;
+        	#$::work_flag = 1;
+            &dpush(\@value,[$hmc,"$mtms:creating stanza for housekeeping operation\n"]);
+            $stanza = "updlic::" . $managed_system . "::" . $housekeeping . "::::";
                     	
 			&dpush(\@value,[$hmc, "$mtms:Writing $stanza to file\n"]);
-			push(@result,[$hmc,"$mtms:$housekeeping successfully!"]);
-                    	print TMP "$stanza\n";
-       		} else {
+			#push(@result,[$hmc,"$mtms:$housekeeping successfully!"]);
+            $infor{$mtms} = [$housekeeping];            
+            print TMP "$stanza\n";
+       	} else {
 			while(my ($name, $d) = each(%$h)) {
 				if ( @$d[4] !~ /^(fsp|bpa|lpar)$/ ) {
-               				 push @value,
-                 				 [$name,"Information only available for LPAR/CEC/BPA",RC_ERROR];
-               				 next;
-           		    	}
+               	    push @value, [$name,"Information only available for LPAR/CEC/BPA",RC_ERROR];
+               		next;
+           		}
 			
 				###############
 				#If $name is a Lpar, the flag will be changed from "lpar" to "fsp"
@@ -567,13 +569,13 @@ sub rflash {
 				dpush(\@value, [$hmc,"$mtms:component:$component!"]);
 	
 				my $values = xCAT::PPCcli::lslic( $exp, $d, $timeout );
-        	    		my $Rc = shift(@$values);
-            			#####################################
-            			# Return error
-      		      		#####################################
-            			if ( $Rc != SUCCESS ) {
-                			push @value, [$name,@$values[0],$Rc];
-                			next;
+        	    my $Rc = shift(@$values);
+            	#####################################
+            	# Return error
+      		    #####################################
+            	if ( $Rc != SUCCESS ) {
+                	push @value, [$name,@$values[0],$Rc];
+                    next;
 				}
 				
 				if ( @$values[0] =~ /ecnumber=(\w+)/ ) {
@@ -609,7 +611,7 @@ sub rflash {
                         		push @xml_files, $xml_file;
                         	}
 				my ($volume,$directories,$file) = File::Spec->splitpath($rpm_file);
-				push(@result,[$hmc, "Upgrade $mtms from release level:$release_level activated level:$active_level to $file successfully"]);
+                #push(@result,[$hmc, "Upgrade $mtms from release level:$release_level activated level:$active_level to $file successfully"]);
 			
 				#If mtms is a bpa, we should change the managed_system to a cec whose parent is a bpa.	
         			if($component eq "power") {
@@ -621,8 +623,8 @@ sub rflash {
 					}
 					dpush(\@value,[$hmc, $msg]);
 				}
-								
-                        }
+		        $infor{$managed_system} = ["upgrade", $release_level, $active_level, $file];						
+            }
 			
 			my $rpm_dest = $::POWER_DEST_DIR."/".$dirlist[0];
 			# The contents of the stanza file are slightly different depending
@@ -709,17 +711,19 @@ sub rflash {
 #	$options{ 'command' } = "ls -al";
 
 	@res = xCAT::DSHCLI->runDsh_api(\%options, 0);
+    my $Rc = pop(@res);
+    push(@value, [$Rc]);
 	if ($::RUNCMD_RC ) {    # error from dsh 
-        	my $rsp={};
-        	$rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
-        	xCAT::MsgUtils->message("S", $rsp, $::CALLBACK, 1);
+        my $rsp={};
+        $rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
+        xCAT::MsgUtils->message("S", $rsp, $::CALLBACK, 1);
 		dpush(\@value,[$hmc,"failed to run  xCAT::DSHCLI->runDsh_api()"]);
 		push(@value,[$hmc,$rsp->{data}->[0]]);
         #push(@value,[$hmc,"Please check whether the HMC $hmc is configured to allow remote ssh connections"]);
 		#push (@value, [$hmc,"Failed to run the upgrade command \"rflash\" on $hmc"]);
 		push (@value, [$hmc,"Failed to upgrade the firmware of $mtms_t  on $hmc"]);
 		return(\@value);
-    	}
+    }
 
 
 	%options = ();
@@ -727,7 +731,43 @@ sub rflash {
 	my $r = ();
 	foreach $r (@res){
 		push(@value, [$r]);	
-
+        #hmc1: mtms : LIC_RC = 0 -- successful
+        #hmc1: mtms : LIC_RC = 8 -- failed
+        #hmc1: mtms : LIC_RC = 12 -- failed
+        if(index($r, "LIC_RC") == -1) {
+            next; 
+        }
+        my @tmp1 = split(/:/, $r);
+        $tmp1[1] =~ s/\s+//g;
+        # LIC_RC = 0
+        # LIC_RC = 8 
+        $tmp1[2] =~ /LIC_RC\s=\s(\d*)/;   
+        if($1 != 0) {  # failed
+            my $tmp3 = $infor{$tmp1[1]};
+            print "++ tmp1 ++\n";
+            print Dumper(@tmp1);
+            print "++ tmp3 ++\n";
+            print Dumper($tmp3);
+            print "++ infor +\n";
+            print Dumper(%infor);
+            print "++++\n";
+            if($$tmp3[0] eq "upgrade") {
+		        push(@result,[$hmc, "failed to $$tmp3[0] $tmp1[1] from release level:$$tmp3[1] activated level:$$tmp3[2] to $$tmp3[3]"]);
+            } else {
+                push(@result,[$hmc, "failed to $$tmp3[0] the firmware for $tmp1[1]"] );
+            }
+        } else { # successful
+            my $tmp3 = $infor{$tmp1[1]};
+            if($$tmp3[0] eq "upgrade") {
+		        push(@result,[$hmc, "$$tmp3[0] $tmp1[1] from release level:$$tmp3[1] activated level:$$tmp3[2] to $$tmp3[3] successfully"]);
+            } else {
+                push(@result,[$hmc, "$$tmp3[0] the firmware for $tmp1[1] successfully"]); 
+               
+            }
+             
+        
+        }
+        
 	}
 	push(@value, @result);
 	return (\@value);	
