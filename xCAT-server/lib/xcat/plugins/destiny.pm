@@ -46,7 +46,9 @@ sub process_request {
   $request = shift;
   $callback = shift;
   $subreq = shift;
-  my $result= xCAT::Utils->checkCredFiles($callback);
+  if (xCAT::Utils->isMN()) {
+      my $result= xCAT::Utils->checkCredFiles($callback);
+  }
   if ($request->{command}->[0] eq 'getdestiny') {
     getdestiny(0);
   }
