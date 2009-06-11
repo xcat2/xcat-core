@@ -82,6 +82,7 @@ sub remote_copy_command
             $dest_user_host =
               "$$config{'dest-user'}@" . "$$config{'dest-host'}";
         }
+        print RSCYCCMDFILE "#!/bin/sh\n";
         print RSCYCCMDFILE
           "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
 
@@ -89,7 +90,8 @@ sub remote_copy_command
         {
             my @src_file =
               @{$$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'}};
-            @src_file = map { $_ if -e $_; } @src_file;
+            #Remove a file from the list if it does not exist 
+            #@src_file = map { $_ if -e $_; } @src_file; 
             my $src_file_list = join ' ', @src_file;
             if ($src_file_list)
             {

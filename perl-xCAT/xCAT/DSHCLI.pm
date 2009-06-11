@@ -912,6 +912,7 @@ sub fork_fanout_dcp
                   or die "can not open file /tmp/rsync_$user_target";
                 my $dest_dir_list = join ' ',
                   keys %{$$options{'destDir_srcFile'}{$user_target}};
+                print RSYNCCMDFILE "#!/bin/sh\n";
                 print RSYNCCMDFILE "/bin/mkdir -p $dest_dir_list\n";
                 foreach my $dest_dir (
                              keys %{$$options{'destDir_srcFile'}{$user_target}})
