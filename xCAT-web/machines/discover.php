@@ -49,13 +49,29 @@ function expandNR($nr) {
 //		see pping as an example of the client/server for noderange expansion
 $a = array();
 if (empty($nr)) return $a;
+
+// Check for square bracket range
+$parts = array();
+if (preg_match('/(.*?)\[(.*?)\](.*)/',$nr,$parts)) {
+	$range = preg_split('/([\-\:])/', $parts[2]);
+	if (count($range) < 2) { msg('E', "Invalid node range: $parts[2]"); return $a; }		// ill-formed range
+	$numlen = strlen($range[0]);
+	for ($i=$range[0]; $i<=$range[1]; $i++) {
+		$istr = "$i";
+		if (strlen($istr) < $numlen) { $istr = substr('000000',0,$numlen-strlen($istr)) . $istr; }
+		$a = array_merge($a, expandNR("$parts[1]$istr$parts[3]"));
+	}
+	return $a;
+}
+
+// Check for range with dash
 if (strpos($nr,'-')===FALSE) { $a[] = $nr; return $a; }		// a single node
 list($begin, $end) = explode('-', $nr);
 $begParts = array();
-if (!preg_match('/^(\D+)(\d+)$/', $begin, $begParts)) { msg('E',"Error in noderange syntax: $nr"); return NULL; }
+if (!preg_match('/^(\D+)(\d+)$/', $begin, $begParts)) { $a[] = $nr; return $a; }		// a single node
 $endParts = array();
-if (!preg_match('/^(\D+)(\d+)$/', $end, $endParts)) { msg('E',"Error in noderange syntax: $nr"); return NULL; }
-if ($begParts[1] != $endParts[1]) { msg('E',"Error in noderange syntax: $nr"); return NULL; }
+if (!preg_match('/^(\D+)(\d+)$/', $end, $endParts)) { $a[] = $nr; return $a; }		// a single node
+if ($begParts[1] != $endParts[1]) { $a[] = $nr; return $a; }		// a single node
 $numlen = strlen($begParts[2]);
 for ($i=$begParts[2]; $i<=$endParts[2]; $i++) {
 	$istr = "$i";
@@ -99,6 +115,7 @@ echo "<td width=10></td><td class=Right><label for=bpaIP>Starting IP Address:</l
 echo "<tr><td colspan=5 class=Center><h3>Drawers (FSPs/CECs)</h3></td></tr>\n";
 echo "<tr class=WizardInputSection><td class=Right><label for=fspHostname>Hostname Range:</label></td><td class=Left><input type=text name=fspHostname id=fspHostname value='", @$_SESSION['fspHostname'], "'></td>\n";
 echo "<td width=10></td><td class=Right><label for=fspIP>Starting IP Address:</label></td><td class=Left><input type=text name=fspIP id=fspIP value='", @$_SESSION['fspIP'], "'></td></tr>\n";
+echo "<tr class=WizardInputSection><td class=Right><label for=numFspsPerFrame>Number of Drawers per Frame:</label></td><td class=Left><input type=text name=numFspsPerFrame id=numFspsPerFrame value='", @$_SESSION['numFspsPerFrame'], "'></td><td></td><td></td><td></td></tr>\n";
 
 /*
 echo "<tr><td colspan=2 class=Center><h3>Switch Patterns</h3></td></tr>\n";
@@ -132,6 +149,7 @@ function patterns1b($action, $step) {
 savePostVars();
 
 // Figure out how many switches there need to be
+//todo: do not want to count the fsps if they are on the bpa hubs
 $hmcs = expandNR($_SESSION['hmcHostname']);
 $bpas = expandNR($_SESSION['bpaHostname']);
 $fsps = expandNR($_SESSION['fspHostname']);
@@ -218,15 +236,23 @@ foreach ($switches as $k => $sw) {
 	$port = 1;
 	foreach ($seq as $s) {			// each $s is something like:  FSP:5
 		list($type, $num) = explode(':', $s);
+		$andFsps = NULL; 
 		if (preg_match('/^hmc$/i',$type)) $ar=&$hmcs;
+		elseif (preg_match('/^bpa\/fsp$/i',$type)) { $ar=&$bpas; $andFsps=&$fsps; }
 		elseif (preg_match('/^bpa$/i',$type)) $ar=&$bpas;
 		elseif (preg_match('/^fsp$/i',$type)) $ar=&$fsps;
 		elseif (preg_match('/^space$/i',$type)) {if ($num=='*') {break;} $port+=$num; if ($port>$numports) break; else continue;}
-		else { msg('E', "Invalid HW control point type in $s"); return; }
+		else { msg('E', "Invalid HW component type: $s"); nextStep(++$step,TRUE); return; }
 		if ($num == '*') { $num = count($ar); }
 		for ($i=1; $i<=$num; $i++) {
 			$node = array_shift($ar);
+			if (!$node) { $port++;  continue; }
 			$data[] = array($node,$sw,@$_SESSION['portPrefix'].$port);
+			for ($j=1; $j<=$_SESSION['numFspsPerFrame']; $j++) {
+				$f = array_shift($andFsps);
+				if (!$f) { break; }
+				$data[] = array($f,$sw,@$_SESSION['portPrefix'].$port);
+				}
 			/* $xml = docmd('nodeadd',NULL,array($node,'groups=all',"switch.node=$node","switch.switch=$sw","switch.port=$port"));
 			if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd failed: " . implode(' ',$errors)); return; }
 			else { echo "Wrote: $node,$sw,$port<br>\n"; }*/
@@ -234,7 +260,7 @@ foreach ($switches as $k => $sw) {
 			}
 		}
 	}
-//echo "</p>\n"; ob_flush(); flush();
+//echo "</p>\n"; myflush();
 //array_unshift($data, array('#node,switch,port,vlan,interface,comments,disable'));
 $xml = doTabrestore('switch', $data);
 if (getXmlErrors($xml,$errors)) { msg('E',"tabrestore switch failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
@@ -245,24 +271,27 @@ nextStep(++$step,FALSE);
 
 //-----------------------------------------------------------------------------
 // Using the hcp ranges, write out the hosts table
+//todo: maybe should not use tabrestore in case we are just discovery additional hw
 function writeHostsTable($step) {
 $machines = array();
-$machines[$_SESSION['switchIP']] = expandNR($_SESSION['switchHostname']);
-$machines[$_SESSION['hmcIP']] = expandNR($_SESSION['hmcHostname']);
-$machines[$_SESSION['bpaIP']] = expandNR($_SESSION['bpaHostname']);
-$machines[$_SESSION['fspIP']] = expandNR($_SESSION['fspHostname']);
-$machines[$_SESSION['subnet']] = expandNR($_SESSION['computeNodename']);
+if (isset($_SESSION['switchIP']) && !empty($_SESSION['switchIP'])) { $machines[$_SESSION['switchIP']] = expandNR($_SESSION['switchHostname']); }
+if (isset($_SESSION['hmcIP']) && !empty($_SESSION['hmcIP'])) { $machines[$_SESSION['hmcIP']] = expandNR($_SESSION['hmcHostname']); }
+if (isset($_SESSION['bpaIP']) && !empty($_SESSION['bpaIP'])) { $machines[$_SESSION['bpaIP']] = expandNR($_SESSION['bpaHostname']); }
+if (isset($_SESSION['fspIP']) && !empty($_SESSION['fspIP'])) { $machines[$_SESSION['fspIP']] = expandNR($_SESSION['fspHostname']); }
+if (isset($_SESSION['subnet']) && !empty($_SESSION['subnet'])) { $machines[$_SESSION['subnet']] = expandNR($_SESSION['computeNodename']); }
+if (empty($machines)) { nextStep(++$step,FALSE);  return; } 
+
 $data = array(array('#node,ip,hostnames,comments,disable'));
 //echo "<p>\n";
 foreach ($machines as $ip => $ar) {		// this loop goes thru each type of hw
 	foreach ($ar as $hostname) {		// this loop goes thru each of the hostnames for that type of hw
 		$data[] = array($hostname,$ip);
-		//echo "<p class=WizardProgressOutput>Wrote: $hostname,$ip</p>\n"; ob_flush(); flush();
+		//echo "<p class=WizardProgressOutput>Wrote: $hostname,$ip</p>\n"; myflush();
 		//sleep(1);	// remove
 		incrementIP($ip);
 		}
 	}
-//echo "</p>\n"; ob_flush(); flush();
+//echo "</p>\n"; myflush();
 $xml = doTabrestore('hosts', $data);
 if (getXmlErrors($xml,$errors)) { msg('E',"tabrestore hosts failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 
@@ -274,8 +303,8 @@ nextStep(++$step,FALSE);
 function incrementIP(& $ip) {
 
 //todo: hard coded for the percs demo cluster - remove
-if ($ip == '192.168.200.233') { $ip='192.168.200.237'; return; }
-if ($ip == '192.168.200.237') { $ip='192.168.200.239'; return; }
+//if ($ip == '192.168.200.233') { $ip='192.168.200.237'; return; }
+//if ($ip == '192.168.200.237') { $ip='192.168.200.239'; return; }
 
 $parts = explode('.', $ip);
 $parts[3]++;
@@ -320,6 +349,7 @@ nextStep(++$step,FALSE);
 //-----------------------------------------------------------------------------
 function makedhcp($step) {
 //todo: remove this check because we should always be running makedhcp, but it is starting dhcpd, which we do not want on the demo system
+//todo: also can not do makedhcp on aix yet, but for now just do not set the dynamic ip
 if (isset($_SESSION["dynamicIP"]) && !empty($_SESSION["dynamicIP"])) {
 	$xml = docmd('makedhcp',NULL,array('-n'));
 	if (getXmlErrors($xml,$errors)) { msg('E',"makedhcp failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
@@ -356,26 +386,67 @@ elseif ($step == 1) { lsslp($step); }
 
 
 //-----------------------------------------------------------------------------
-//todo: we are just simulating lsslp right now
 function lsslp($step) {
 
-$xml = docmd('nodeadd',NULL,array($_SESSION['hmcHostname'],'groups=hmc,all','nodetype.nodetype=hmc','nodehm.mgt=hmc'));
-if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd hmc failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
-echo "<p class=WizardProgressOutput>Discovered and defined ", $_SESSION['hmcHostname'], ".</p>\n"; ob_flush(); flush();
+//todo: input the IP addr to disover over
+$discoverIP = '192.168.199.206';
+	
+//todo: enable HMC discovery
+//$xml = docmd('nodeadd',NULL,array($_SESSION['hmcHostname'],'groups=hmc,all','nodetype.nodetype=hmc','nodehm.mgt=hmc'));
+//if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd hmc failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+//echo "<p class=WizardProgressOutput>Discovered and defined ", $_SESSION['hmcHostname'], ".</p>\n"; myflush();
 
-$xml = docmd('nodeadd',NULL,array($_SESSION['bpaHostname'],'groups=frame,all','nodetype.nodetype=bpa','nodehm.mgt=hmc','nodehm.power=hmc','ppc.comments=bpa','vpd.mtm=9A00-100' /* ,'vpd.serial=|(\D+)(\d+)|($2)|' */ ));
+//$xml = docmd('nodeadd',NULL,array($_SESSION['bpaHostname'],'groups=frame,all','nodetype.nodetype=bpa','nodehm.mgt=hmc','nodehm.power=hmc','ppc.comments=bpa','vpd.mtm=9A00-100' /* ,'vpd.serial=|(\D+)(\d+)|($2)|' */ ));
+$xml = docmd('nodeadd',NULL,array($_SESSION['bpaHostname'],'groups=frame,all','nodetype.nodetype=bpa','ppc.hcp=|^(.+)$|($1)|','ppc.comments=bpa'));
 if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd bpa failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
-echo "<p class=WizardProgressOutput>Discovered and defined ", $_SESSION['bpaHostname'], ".</p>\n"; ob_flush(); flush();
+echo "<p class=WizardProgressOutput>Defined ", $_SESSION['bpaHostname'], ".</p>\n"; myflush();
 
-$parts = array();
-preg_match('/^(\D+)/', $_SESSION['bpaHostname'], $parts);
-$bpaprefix = $parts[1];
+echo "<p class=WizardProgressOutput>Discovering BPAs...</p>\n"; myflush();
+//$xml = docmd('lsslp','',array('-s','BPA','-w','-H','-i',$discoverIP,'-c','1000,2000,2000,3000,4000'));
+$xml = docmd('lsslp','',array('-s','BPA','-w','-H','-i',$discoverIP,'-t','9'));
+if (getXmlErrors($xml,$errors)) { msg('E',"lsslp BPA failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+$numfound = 0;
+foreach ($xml->children() as $response) foreach ($response->children() as $line) {
+	$line = (string) $line;
+	//echo "<p class=WizardProgressOutput>$line</p>\n"; myflush();
+	$parts = array();
+	if (!preg_match('/^\s+(\S+)\s+=>/', $line, $parts)) { continue; }
+	echo "<p class=WizardProgressOutput>&nbsp;found $parts[1]</p>\n"; myflush();
+	$numfound++;
+}
+echo "<p class=WizardProgressOutput>Found $numfound BPAs.</p>\n"; myflush();
+	
+//$parts = array();
+//preg_match('/^(\D+)/', $_SESSION['bpaHostname'], $parts);
+//$bpaprefix = $parts[1];
 
-// We are assuming there are 5 fsps in each bpa
-//todo: when we use the real lsslp, it probably will not set nodepos attrs
-$xml = docmd('nodeadd',NULL,array($_SESSION['fspHostname'],'groups=cec,all','nodetype.nodetype=fsp','nodehm.mgt=hmc','nodehm.power=hmc','ppc.id=|\D+(\d+)|((((($1-1)%5)+1)*2)-1)|','ppc.parent=|\D+(\d+)|'.$bpaprefix.'((($1-1)/5)+1)|','nodepos.u=|\D+(\d+)|((((($1-1)%5)+1)*2)-1)|','nodepos.rack=|\D+(\d+)|((($1-1)/5)+1)|','vpd.mtm=9125-F2A' /* ,'vpd.serial=|(\D+)(\d+)|($2)|' */ ));
+//todo: we are hardcoding the cage # offset for now
+//todo: now that we use the real lsslp, it is not setting nodepos attrs
+//$xml = docmd('nodeadd',NULL,array($_SESSION['fspHostname'],'groups=cec,all','nodetype.nodetype=fsp','nodehm.mgt=hmc','nodehm.power=hmc','ppc.id=|\D+(\d+)|((((($1-1)%5)+1)*2)-1)|','ppc.parent=|\D+(\d+)|'.$bpaprefix.'((($1-1)/5)+1)|','nodepos.u=|\D+(\d+)|((((($1-1)%5)+1)*2)-1)|','nodepos.rack=|\D+(\d+)|((($1-1)/5)+1)|','vpd.mtm=9125-F2A' /* ,'vpd.serial=|(\D+)(\d+)|($2)|' */ ));
+$xml = docmd('nodeadd',NULL,array($_SESSION['fspHostname'],'groups=cec,all','nodetype.nodetype=fsp','ppc.hcp=|^(.+)$|($1)|','ppc.id=|\D+(\d+)|((($1-1)%'.$_SESSION['numFspsPerFrame'].')+5)|'));
 if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd fsp failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
-echo "<p class=WizardProgressOutput>Discovered and defined ", $_SESSION['fspHostname'], ".</p>\n"; ob_flush(); flush();
+
+//todo: because of the irregularity in the cage numbers in frame 4 and 8, we have to do something special
+$fsps = expandNR($_SESSION['fspHostname']);
+$xml = docmd('nodech',"$fsps[36]-$fsps[41],$fsps[84]-$fsps[89]",array('ppc.id=|\D+(\d+)|((($1-1)%'.$_SESSION['numFspsPerFrame'].')+1)|'));
+if (getXmlErrors($xml,$errors)) { msg('E',"nodech frame failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+$xml = docmd('nodech',"$fsps[42]-$fsps[47],$fsps[90]-$fsps[95]",array('ppc.id=|\D+(\d+)|((($1-1)%'.$_SESSION['numFspsPerFrame'].')+3)|'));
+if (getXmlErrors($xml,$errors)) { msg('E',"nodech frame failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+echo "<p class=WizardProgressOutput><br>Defined ", $_SESSION['fspHostname'], ".</p>\n"; myflush();
+
+echo "<p class=WizardProgressOutput>Discovering FSPs...</p>\n"; myflush();
+//$xml = docmd('lsslp','',array('-s','FSP','-w','-H','-i',$discoverIP,'-t','2','-c','3000,3000,3000,3000,3000'));
+$xml = docmd('lsslp','',array('-s','FSP','-w','-H','-i',$discoverIP,'-t','9'));
+if (getXmlErrors($xml,$errors)) { msg('E',"lsslp FSP failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+$numfound = 0;
+foreach ($xml->children() as $response) foreach ($response->children() as $line) {
+	$line = (string) $line;
+	$parts = array();
+	if (!preg_match('/^\s+(\S+)\s+=>/', $line, $parts)) { continue; }
+	echo "<p class=WizardProgressOutput>&nbsp;found $parts[1]</p>\n"; myflush();
+	$numfound++;
+}
+echo "<p class=WizardProgressOutput>Found $numfound FSPs.</p>\n"; myflush();
 
 /*
 $xml = docmd('chdef',NULL,array('-t','group','bpa','serial=|(\D+)(\d+)|($2)|','mtm=|(\D+)(\d+)|($1)|'));
@@ -445,14 +516,15 @@ while (TRUE) {
 	//trace("b=$b, numFrames=$numFrames, length=$length.");
 	//echo "<p>bpas:"; print_r($bpas); "</p>\n";
 	//trace("nodech ".implode(',',$bslice));
-	$xml = docmd('nodech',implode(',',$bslice),array("ppc.hcp=$hmcs[$h]","ppc.parent=$hmcs[$h]"));
+	//$xml = docmd('nodech',implode(',',$bslice),array('nodehm.mgt=hmc',"ppc.hcp=$hmcs[$h]","ppc.parent=$hmcs[$h]"));
+	$xml = docmd('nodech',implode(',',$bslice),array('nodehm.mgt=hmc',"ppc.hcp=$hmcs[$h]"));
 	if (getXmlErrors($xml,$errors)) { msg('E',"nodech bpa failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 
 	// Collect the list of the fsps in these bpas
 	$fsprange = array();
 	foreach ($bslice as $b2) { $fsprange = array_merge($fsprange, $bpacecs[$b2]); }
 	//trace("nodech ".implode(',',$fsprange));
-	$xml = docmd('nodech',implode(',',$fsprange),array("ppc.hcp=$hmcs[$h]"));
+	$xml = docmd('nodech',implode(',',$fsprange),array('nodehm.mgt=hmc',"ppc.hcp=$hmcs[$h]"));
 	if (getXmlErrors($xml,$errors)) { msg('E',"nodech fsp failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 
 	// Decide if we are all out of bpas
@@ -478,8 +550,10 @@ nextStep(++$step,FALSE);
 function nameres($step) {
 $xml = docmd('makehosts',NULL,NULL);
 if (getXmlErrors($xml,$errors)) { msg('E',"makehosts failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
-$xml = docmd('makedns',NULL,NULL);
-if (getXmlErrors($xml,$errors)) { msg('E',"makedns failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+
+//todo: enable this on non-aix
+//$xml = docmd('makedns',NULL,NULL);
+//if (getXmlErrors($xml,$errors)) { msg('E',"makedns failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 
 nextStep(++$step,TRUE);
 }
@@ -539,14 +613,15 @@ foreach ($fsps as $f) {
 	$bpa = $fspattrs[$f]['ppc.parent'];
 
 	//todo: currently can not create the 1st lpar in the cec
-	$xml = docmd('nodeadd',NULL,array($nodes[$n],"groups=lpars-$f,lpars-$bpa,lpars-$hcp,lpar,all",'nodetype.nodetype=lpar,osi',
-								'nodehm.mgt=hmc','nodehm.power=hmc','nodehm.cons=hmc','noderes.netboot=yaboot',
-								'nodetype.arch=ppc64','ppc.id=3',
-								"ppc.parent=$f","ppc.hcp=$hcp",'ppc.pprofile=diskless2'));
+	$xml = docmd('nodeadd',NULL,array($nodes[$n],"groups=lpars-$f,lpars-$bpa,lpars-$hcp,lpar,compute,all",'nodetype.nodetype=lpar,osi',
+								'nodehm.mgt=hmc','nodehm.power=hmc','nodehm.cons=hmc',
+								'nodetype.arch=ppc64','ppc.id=1',
+								"ppc.parent=$f","ppc.hcp=$hcp","ppc.pprofile=$nodes[$n]"));
 	if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd nodes failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
-	echo "<p class=WizardProgressOutput>Created and defined $nodes[$n] in $f.</p>\n"; ob_flush(); flush();
+	echo "<p class=WizardProgressOutput>Created and defined $nodes[$n] in $f.</p>\n"; myflush();
 	$length--; $n++;
 
+	if ($length == 0) continue;		// the case of only 1 lpar per cec
 	$nmax = $length + $n;
 	$numnodes = 5;		// how many lpars to create before displaying some output
 	$n2 = $n;
@@ -568,7 +643,7 @@ foreach ($fsps as $f) {
 			$xml = docmd('chvm',$nstr,array('-p','diskless2'));
 			if (getXmlErrors($xml,$errors)) { msg('E',"chvm failed for $nstr: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 			}
-		echo "<p class=WizardProgressOutput>Created and defined $nstr in $f.</p>\n"; ob_flush(); flush();
+		echo "<p class=WizardProgressOutput>Created and defined $nstr in $f.</p>\n"; myflush();
 
 		$n2 += $length2;
 		if ($n2 >= $nmax) break;
@@ -590,6 +665,15 @@ if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd nodes failed: " . implode(' '
 */
 
 nextStep(++$step,TRUE);
+}
+
+
+
+//-----------------------------------------------------------------------------
+// Flush the output buffers
+function myflush() {
+	if ($_SERVER["SERVER_SOFTWARE"] != 'IBM_HTTP_Server') { ob_flush(); }	// for some reason ob_flush() does not work on aix
+	flush();
 }
 
 
