@@ -274,7 +274,7 @@ sub processArgs
 
                 # if the type was not provided or it is "node"
                 #	then set noderange
-                @::noderange = &noderange($a, 0);
+                @::noderange = &noderange($a, 1); # Use the "verify" option to support regular expression
             }
 
         }
@@ -520,7 +520,7 @@ sub processArgs
         }
         elsif ($::opt_t eq 'node')
         {
-            @::clobjnames = &noderange($::opt_o, 0);
+            @::clobjnames = &noderange($::opt_o, 1); #Use the "verify" option to support regular expression
         }
         else
         {
