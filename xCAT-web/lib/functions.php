@@ -873,11 +873,11 @@ function getGroups() {
 
 //-----------------------------------------------------------------------------
 // Returns true if we are running on AIX
-function isAIX() { }     //todo: implement
+function isAIX() { if(exec("oslevel")) {return TRUE;}else {return FALSE;} }     //todo: implement
 
 //-----------------------------------------------------------------------------
 // Returns true if we are running on Linux
-function isLinux() { }     //todo: implement
+function isLinux() { if(exec("uname") == "Linux") {return TRUE;} else {return FALSE;} }     //todo: implement
 
 //-----------------------------------------------------------------------------
 // Returns true if we are running on Windows
