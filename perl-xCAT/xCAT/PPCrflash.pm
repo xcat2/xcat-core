@@ -622,8 +622,10 @@ sub rflash {
 					
 					}
 					dpush(\@value,[$hmc, $msg]);
-				}
-		        $infor{$managed_system} = ["upgrade", $release_level, $active_level, $file];						
+		            $infor{$managed_system} = ["upgrade", $release_level, $active_level, $file, "power", $mtms];						
+				} else {
+		            $infor{$managed_system} = ["upgrade", $release_level, $active_level, $file];						
+                }
             }
 			
 			my $rpm_dest = $::POWER_DEST_DIR."/".$dirlist[0];
@@ -751,6 +753,9 @@ sub rflash {
             print "++ infor +\n";
             print Dumper(%infor);
             print "++++\n";
+            if($$tmp3[4] eq "power") {
+               $tmp1[1] = $$tmp3[5];
+            }
             if($$tmp3[0] eq "upgrade") {
 		        push(@result,[$hmc, "failed to $$tmp3[0] $tmp1[1] from release level:$$tmp3[1] activated level:$$tmp3[2] to $$tmp3[3]"]);
             } else {
@@ -758,6 +763,9 @@ sub rflash {
             }
         } else { # successful
             my $tmp3 = $infor{$tmp1[1]};
+            if($$tmp3[4] eq "power") {
+               $tmp1[1] = $$tmp3[5];
+            }
             if($$tmp3[0] eq "upgrade") {
 		        push(@result,[$hmc, "$$tmp3[0] $tmp1[1] from release level:$$tmp3[1] activated level:$$tmp3[2] to $$tmp3[3] successfully"]);
             } else {
