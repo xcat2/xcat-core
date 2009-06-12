@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Build and upload the xcat-core code.  This script and the rest of the xcat-core source should
-# be in a dir called <rel>/src/xcat-code, where <rel> is the same as the release dir it will be
+# be in a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
 # uploaded to in sourceforge (e.g. devel, or 2.2).
 
 # Usage:  buildcore.sh [promote]
@@ -180,7 +180,7 @@ chmod g+w $TARNAME
 
 # Upload the tarball and individual RPMs to sourceforge
 rsync -rLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
-if [ "$1" = "promote" -a "$1" != "devel" ]; then
+if [ "$1" = "promote" -a "$REL" != "devel" ]; then
 	# upload tarball to FRS area
 	scp $TARNAME $UPLOADUSER@web.sourceforge.net:uploads/
 	echo "$TARNAME has been uploaded to the FRS uploads dir.  Remember to move it into the release."
@@ -189,7 +189,7 @@ else
 fi
 
 # Extract and upload the man pages in html format
-if [ "$1" != "promote" ]; then
+if [ "$REL" = "devel" -a "$1" != "promote" ]; then
 	mkdir -p man
 	cd man
 	rm -rf opt
