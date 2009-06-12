@@ -873,11 +873,12 @@ function getGroups() {
 
 //-----------------------------------------------------------------------------
 // Returns true if we are running on AIX
-function isAIX() { if(exec("oslevel")) {return TRUE;}else {return FALSE;} }     //todo: implement
+// use dirty trick
+function isAIX() { if($_SERVER["SERVER_SOFTWARE"] == "IBM_HTTP_Server") {return TRUE;}else {return FALSE;} }     //todo: update to one elegant way later
 
 //-----------------------------------------------------------------------------
 // Returns true if we are running on Linux
-function isLinux() { if(exec("uname") == "Linux") {return TRUE;} else {return FALSE;} }     //todo: implement
+function isLinux() { if(strstr($_SERVER["SERVER_SOFTWARE"], "Apache")==FALSE) {return FALSE;} else {return TRUE;} }     //todo: update to one elegant way later
 
 //-----------------------------------------------------------------------------
 // Returns true if we are running on Windows
