@@ -187,3 +187,14 @@ if [ "$1" = "promote" -a "$1" != "devel" ]; then
 else
 	scp $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
 fi
+
+# Extract and upload the man pages in html format
+if [ "$1" != "promote" ]; then
+	mkdir -p man
+	cd man
+	rm -rf opt
+	rpm2cpio ../$CORE/xCAT-client-*.noarch.rpm | cpio -id '*.html'
+	rpm2cpio ../$CORE/perl-xCAT-*.noarch.rpm | cpio -id '*.html'
+	scp -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+	cd ..
+fi
