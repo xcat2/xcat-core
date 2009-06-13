@@ -47,6 +47,13 @@ case "$1" in
 			DOBLOCK=yes
 		fi
 
+		if grep "\bgpfs\b" /etc/fstab >/dev/null 2>&1
+		then
+			:
+		else
+			DOBLOCK=no
+		fi
+
 		while [ "$DOBLOCK" = "yes" ]
 		do
 			DOBLOCK=no
