@@ -22,7 +22,7 @@ $noderange = @$_REQUEST['noderange'];
 if(empty($noderange)) { echo "<p>Select one or more groups or nodes for ping.</p>\n"; exit; }
 
 //pping is one local command, which doesn't use xcat client/server protocol;
-$xml = docmd('webrun',$noderange,array("pping $noderange",));#The default pping option is NULL
+$xml = docmd('webrun',"",array("pping $noderange",));#The default pping option is NULL
 
 if(getXmlErrors($xml,$errors)) { echo "<p class=Error>ping failed: ", implode(' ',$errors), "</p>\n"; exit; }
 
