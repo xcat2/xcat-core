@@ -274,7 +274,14 @@ sub processArgs
 
                 # if the type was not provided or it is "node"
                 #	then set noderange
-                @::noderange = &noderange($a, 1); # Use the "verify" option to support regular expression
+                if (($::command ne 'mkdef') && ($a =~ m/^\//))
+                {
+                    @::noderange = &noderange($a, 1); # Use the "verify" option to support regular expression
+                }
+                else
+                {
+                    @::noderange = &noderange($a, 0); # mkdef could not spport regular expression
+                }
             }
 
         }
@@ -520,7 +527,14 @@ sub processArgs
         }
         elsif ($::opt_t eq 'node')
         {
-            @::clobjnames = &noderange($::opt_o, 1); #Use the "verify" option to support regular expression
+            if (($::command ne 'mkdef') && ($a =~ m/^\//))
+            {
+                @::clobjnames = &noderange($::opt_o, 1); #Use the "verify" option to support regular expression
+            }
+            else
+            {
+                @::clobjnames = &noderange($::opt_o, 0); #mkdef can not support regular expression
+            }
         }
         else
         {
