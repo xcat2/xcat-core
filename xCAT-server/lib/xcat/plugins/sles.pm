@@ -357,7 +357,7 @@ sub mkinstall
                     #special case for sles 11
                     if ( $os eq 'sles11' and -r "/install/$os/$arch/1/suseboot/yaboot")
                     {
-                         copy("/install/$os/$arch/1/suseboot/yaboot", "/tftpboot/");
+                        copy("/install/$os/$arch/1/suseboot/yaboot", "/tftpboot/");
                     }
                 }
                 $doneimgs{"$os|$arch"} = 1;
@@ -395,17 +395,43 @@ sub mkinstall
               . " install=http://"
               . $ent->{nfsserver}
               . "/install/$os/$arch/1";
-            if ($ent->{installnic})
+
+            my $mgtref = $hmtab->getNodeAttribs($node, ['mgt']);
+            #special case for system P machines, which is mgted by hmc or ivm
+            #mac address is used to identify the netdevice
+            if( ($mgtref->{mgt} eq "hmc" || $mgtref->{mgt} eq "ivm") && $arch =~ /ppc/) 
             {
-                $kcmdline .= " netdevice=" . $ent->{installnic};
-            }
-            elsif ($ent->{primarynic})
+                my $mactab = xCAT::Table->new("mac");
+                my $macref = $mactab->getNodeAttribs($node, ['mac']);
+
+                if (defined $macref->{mac}) 
+                {
+                    $kcmdline .= " netdevice=" . $macref->{mac};
+                }
+                else 
+                {
+                    $callback->(
+                        {
+                            error => ["No mac.mac for $node defined"],
+                            errorcode => [1]
+                        }
+                    );
+                }
+            } 
+            else 
             {
-                $kcmdline .= " netdevice=" . $ent->{primarynic};
-            }
-            else
-            {
-                $kcmdline .= " netdevice=eth0";
+                if ($ent->{installnic})
+                {
+                    $kcmdline .= " netdevice=" . $ent->{installnic};
+                }
+                elsif ($ent->{primarynic})
+                {
+                    $kcmdline .= " netdevice=" . $ent->{primarynic};
+                }
+                else
+                {
+                    $kcmdline .= " netdevice=eth0";
+                }
             }
 
             #TODO: driver disk handling should in SLES case be a mod of the install source, nothing to see here
