@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lsconn> - Use this command to display the connection status from FSP and BPA nodes.
+B<lsconn> - Use this command to display the connection status for FSP and BPA nodes.
 
 =head1 SYNOPSIS
 
@@ -45,12 +45,20 @@ To display connection status for all FSP nodes in node group fsp:
  lsconn fsp
 
 Output is similar to:
-cec1: ipaddr=192.168.200.245,alt_ipaddr=unavailable,state=Connected
-cec2: Connection not found
+
+ cec1: ipaddr=192.168.200.245,alt_ipaddr=unavailable,state=Connected
+ cec2: Connection not found
+
+=item 2.
 
 To display connection status for BPA node frame1:
-frame1: side=a,ipaddr=192.168.200.247,alt_ipaddr=unavailable,state=Connected
-frame1: side=b,ipaddr=192.168.200.248,alt_ipaddr=unavailable,state=Connected
+
+ lsconn frame1
+
+Output is similar to:
+
+ frame1: side=a,ipaddr=192.168.200.247,alt_ipaddr=unavailable,state=Connected
+ frame1: side=b,ipaddr=192.168.200.248,alt_ipaddr=unavailable,state=Connected
 
 =back
 

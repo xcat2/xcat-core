@@ -47,7 +47,10 @@ To disconnect all FSP nodes in node group fsp from their HMC nodes:
 
  rmconn fsp
 
+=item 2.
+
 To remove the connection for BPA node frame1:
+
  rmconn frame1
 
 =back
