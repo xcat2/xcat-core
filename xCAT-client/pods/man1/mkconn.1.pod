@@ -1,0 +1,93 @@
+=head1 NAME
+
+B<mkconn> - Use this command to setup connections for FSP and BPA nodes to HMC nodes.
+
+=head1 SYNOPSIS
+
+B<mkconn> [B<-h>| B<--help>]
+
+B<mkconn> [B<-v>| B<--version>]
+
+B<mkconn> [B<-V>| B<--verbose>] noderange B<-t>
+
+B<mkconn> [B<-V>| B<--verbose>] noderange B<-H> hmc [B<-P> passwd]
+
+=head1 DESCRIPTION
+
+This command is used to setup connections for FSP and BPA nodes to HMC nodes. If the connection already exists, it will not bread this connection. 
+
+When -t is specified, this command reads the connection information from xCAT ppc table, and read the user/password from ppcdirect table. Then this command will assign FSP nodes and BPA nodes to HMC nodes. 
+
+When -H is specified, this command read the connection information from command line. The default user/password for FSP and BPA nodes are admin/admin.
+
+In any case, before running this command, the FSP and BPA nodes need be defined with correct nodetype.nodetype value (fsp or bpa) and nodehm.mgt value (hmc).
+
+Note: If a CEC (FSP node represents) belongs to a frame, which has a BPA installed, this CEC should not be assigned to an HMC individually. Instead, the whole frame (BPA node represents) should be assigned to the HMC.
+
+=head1 OPTIONS
+
+=over 5
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-t>
+
+Read connection information from xCAT DB.
+
+=item B<-H>
+
+The HMC node name. Only one HMC nodes can be specified by this flag. To setup connection for multiple HMC nodes, use flag -t.
+
+=item B<-P>
+
+The password of user 'admin' on FSP and BPA nodes. This flag is optional. Default password is 'admin'.
+
+=item B<-V|--verbose>
+
+Verbose output.
+
+=back
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To setup the connection for all FSP nodes in node group fsp, according to the definition in xCAT DB:
+
+ mkconn fsp -t
+
+=item 2.
+
+To setup the connection for BPA nodes in node group frame_grp1 to HMC node hmc1, with password 'abc123':
+
+ mkconn frame_grp1 -H hmc1 -P abc123
+
+=back
+
+
+=head1 FILES
+
+$XCATROOT/bin/mkconn
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+=head1 SEE ALSO
+
+L<lsconn(1)|lsconn.1>, L<rmconn(1)|rmconn.1>

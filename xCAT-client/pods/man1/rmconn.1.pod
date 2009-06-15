@@ -1,0 +1,70 @@
+=head1 NAME
+
+B<rmconn> - Use this command to remove connections from FSP and BPA nodes to HMC nodes.
+
+=head1 SYNOPSIS
+
+B<rmconn> [B<-h>| B<--help>]
+
+B<rmconn> [B<-v>| B<--version>]
+
+B<rmconn> [B<-V>| B<--verbose>] noderange
+
+=head1 DESCRIPTION
+
+This command is used to disconnect FSP and BPA nodes from HMC nodes, according to the connection information defined in ppc talbe in xCAT DB. 
+
+Note: If a CEC (FSP node represents) belongs to a frame with a BPA installed, this CEC cannot be disconnected individually. Instead, the whole frame (BPA node represents) should be disconnected.
+
+=head1 OPTIONS
+
+=over 5
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-V|--verbose>
+
+Verbose output.
+
+=back
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To disconnect all FSP nodes in node group fsp from their HMC nodes:
+
+ rmconn fsp
+
+To remove the connection for BPA node frame1:
+ rmconn frame1
+
+=back
+
+
+=head1 FILES
+
+$XCATROOT/bin/rmconn
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+=head1 SEE ALSO
+
+L<lsconn(1)|lsconn.1>, L<mkconn(1)|mkconn.1>

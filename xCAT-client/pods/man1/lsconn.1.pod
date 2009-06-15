@@ -1,0 +1,72 @@
+=head1 NAME
+
+B<lsconn> - Use this command to display the connection status from FSP and BPA nodes.
+
+=head1 SYNOPSIS
+
+B<lsconn> [B<-h>| B<--help>]
+
+B<lsconn> [B<-v>| B<--version>]
+
+B<lsconn> [B<-V>| B<--verbose>] noderange
+
+=head1 DESCRIPTION
+
+This command is used to display the connection status for FSP and BPA node. 
+=head1 OPTIONS
+
+=over 5
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-V|--verbose>
+
+Verbose output.
+
+=back
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To display connection status for all FSP nodes in node group fsp:
+
+ lsconn fsp
+
+Output is similar to:
+cec1: ipaddr=192.168.200.245,alt_ipaddr=unavailable,state=Connected
+cec2: Connection not found
+
+To display connection status for BPA node frame1:
+frame1: side=a,ipaddr=192.168.200.247,alt_ipaddr=unavailable,state=Connected
+frame1: side=b,ipaddr=192.168.200.248,alt_ipaddr=unavailable,state=Connected
+
+=back
+
+
+=head1 FILES
+
+$XCATROOT/bin/lsconn
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+=head1 SEE ALSO
+
+L<rmconn(1)|rmconn.1>, L<mkconn(1)|mkconn.1>
