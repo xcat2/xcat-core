@@ -1,0 +1,27 @@
+install url  http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
+timezone --utc "#TABLE:site:key=timezone:value#"
+#vmserialnum --esx=todo-prod-key-here
+keyboard us
+#firewall --disable
+rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
+auth --enableshadow --enablemd5
+clearpart --firstdisk --overwritevmfs yes
+autopart --firstdisk
+network --addvmportgroup=true --device=#TABLE:noderes:$NODE:primarynic# --bootproto=dhcp
+
+#VMware specific
+accepteula
+#Server Based:
+#Standard License Type
+#vmlicense --mode=server --server=27000@192.168.0.25 -edition=esxFull
+#Starter License Type
+#vmlicense --mode=server --server=27000@192.168.0.25 -edition=esxExpress
+#File Based: 
+#Place the content of the lincese file 
+#in a single line in the %vmlicense_text section
+#vmlicense --mode=file
+
+%pre
+#INCLUDE:../scripts/pre.rh#
+%post
+#INCLUDE:../scripts/post.esx4#

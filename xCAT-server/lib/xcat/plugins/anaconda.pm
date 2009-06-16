@@ -509,20 +509,40 @@ sub mkinstall
                     );
             next;
         }
+        my $installdir="/install"; #TODO: not hardcode installdir
+        my $tftpdir = "/tftpboot";
 
         # create the node-specific post scripts
         #mkpath "/install/postscripts/";
         #xCAT::Postage->writescript($node,"/install/postscripts/".$node, "install", $callback);
+        my $kernpath;
+        my $initrdpath;
+        my $maxmem;
 
         if (
             (
-                 $arch =~ /x86/
-             and -r "/install/$os/$arch/images/pxeboot/vmlinuz"
-             and -r "/install/$os/$arch/images/pxeboot/initrd.img"
-            )
-            or (    $arch =~ /ppc/
-                and -r "/install/$os/$arch/ppc/ppc64/vmlinuz"
-                and -r "/install/$os/$arch/ppc/ppc64/ramdisk.image.gz")
+                 $arch =~ /x86/ and 
+                    (
+                         -r "$installdir/$os/$arch/images/pxeboot/vmlinuz"
+                         and $kernpath = "$installdir/$os/$arch/images/pxeboot/vmlinuz"
+                         and -r "$installdir/$os/$arch/images/pxeboot/initrd.img"
+                         and $initrdpath = "$installdir/$os/$arch/images/pxeboot/initrd.img"
+                    ) or ( #Handle the case seen in VMWare 4.0 ESX media
+                        #In VMWare 4.0 they dropped the pxe-optimized initrd
+                        #leaving us no recourse but the rather large optical disk
+                        #initrd, but perhaps we can mitigate with gPXE
+                         -d "$installdir/$os/$arch/VMware" 
+                         and -r "$installdir/$os/$arch/isolinux/vmlinuz"
+                         and $kernpath ="$installdir/$os/$arch/isolinux/vmlinuz"
+                         and -r "$installdir/$os/$arch/isolinux/initrd.img"
+                         and $initrdpath = "$installdir/$os/$arch/isolinux/initrd.img"
+                         and $maxmem="512M" #Have to give up linux room to make room for vmware hypervisor evidently
+                    )
+            ) or (    $arch =~ /ppc/
+                and -r "$installdir/$os/$arch/ppc/ppc64/vmlinuz"
+                and $kernpath = "$installdir/$os/$arch/ppc/ppc64/vmlinuz"
+                and -r "$installdir/$os/$arch/ppc/ppc64/ramdisk.image.gz"
+                and $initrdpath = "$installdir/$os/$arch/ppc/ppc64/ramdisk.image.gz")
           )
         {
 
@@ -530,30 +550,8 @@ sub mkinstall
             unless ($doneimgs{"$os|$arch"})
             {
                 mkpath("/tftpboot/xcat/$os/$arch");
-                if ($arch =~ /x86/)
-                {
-                    copy("/install/$os/$arch/images/pxeboot/vmlinuz",
-                         "/tftpboot/xcat/$os/$arch/");
-                    copy("/install/$os/$arch/images/pxeboot/initrd.img",
-                         "/tftpboot/xcat/$os/$arch/");
-                }
-                elsif ($arch =~ /ppc/)
-                {
-                    copy("/install/$os/$arch/ppc/ppc64/vmlinuz",
-                         "/tftpboot/xcat/$os/$arch/");
-                    copy("/install/$os/$arch/ppc/ppc64/ramdisk.image.gz",
-                         "/tftpboot/xcat/$os/$arch/initrd.img");
-                }
-                else
-                {
-                    $callback->(
-                                {
-                                 error => ["Can not handle architecture $arch"],
-                                 errorcode => [1]
-                                }
-                                );
-                    next;
-                }
+                copy($kernpath,"$tftpdir/xcat/$os/$arch");
+                copy($initrdpath,"$tftpdir/xcat/$os/$arch/initrd.img");
                 $doneimgs{"$os|$arch"} = 1;
             }
 
@@ -583,6 +581,9 @@ sub mkinstall
               . $ent->{nfsserver}
               . "/install/autoinst/"
               . $node;
+            if ($maxmem) {
+                $kcmdline.=" mem=$maxmem";
+            }
             if ($ent->{installnic})
             {
                 $kcmdline .= " ksdevice=" . $ent->{installnic};
