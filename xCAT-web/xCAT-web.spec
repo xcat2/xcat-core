@@ -100,9 +100,9 @@ if [ "$1" = 1 ] #initial install
 then
     # Update the apache config
     echo "Updating ibm http server configuration for xCAT..."
-    /bin/rm -f $ihs_config_dir/xcat-web.conf
-    cp $ihs_config_dir/httpd.conf $ihs_config_dir/httpd.conf.xcat.web.bak
-    cat /opt/xcat/web/etc/apache2/conf.d/xcat-web.conf >> $ihs_config_dir/httpd.conf
+    /bin/rm -f /usr/IBM/HTTPServer/conf/xcat-web.conf
+    cp /usr/IBM/HTTPServer/conf/httpd.conf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.web.bak
+    cat /opt/xcat/web/etc/apache2/conf.d/xcat-web.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
     /usr/IBM/HTTPServer/bin/apachectl restart
 fi
 
@@ -152,8 +152,8 @@ fi
 %else   #for AIX
 # Remove links made during the post install script
 echo "Undoing IBM HTTP Server configuration for xCAT..."
-cp $ihs_config_dir/httpd.conf.xcat.web.conf $ihs_config_dir/httpd.conf
-/bin/rm -rf $ihs_config_dir/httpd.conf.xcat.web.conf
+cp /usr/IBM/HTTPServer/conf/httpd.conf.xcat.web.conf /usr/IBM/HTTPServer/conf/httpd.conf
+rm -rf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.web.conf
 /usr/IBM/HTTPServer/bin/apachectl restart
 %endif
 
