@@ -59,7 +59,7 @@ sub handled_commands
     return {
             copycd    => "anaconda",
             mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)",
-            mkinstall => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)",
+            mkinstall => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)",
             };
 }
 
@@ -207,6 +207,10 @@ sub mknetboot
         elsif ($osver =~ /fedora.*/)
         {
             $platform = "fedora";
+        }
+        elsif ($osver =~ /esx.*/)
+        {
+            $platform = "esx";
         }
 
         my $arch    = $ent->{arch};
@@ -448,6 +452,10 @@ sub mkinstall
         elsif ($os =~ /fedora.*/)
         {
             $platform = "fedora";
+        }
+        elsif ($os =~ /esx.*/)
+        {
+            $platform = "esx";
         }
         my $genos = $os;
         $genos =~ s/\..*//;
