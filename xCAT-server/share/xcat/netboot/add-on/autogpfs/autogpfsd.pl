@@ -101,7 +101,7 @@ while (!$quit) {
 		$node =~ s/-eth\d$//;
 		$node =~ s/-myri\d$//;
 		logger('info',"connection from: $node");
-		interact($connection,$node);
+		interact($connection,$node,inet_ntoa($connection->peeraddr));
 		#kill(10,$pid);
 		exit 0;
 	}
@@ -141,6 +141,7 @@ logger('info',"exiting clean");
 sub interact {
 	my $sock = shift;
 	my $node = shift;
+	my $addr = shift;
 
 	STDIN->fdopen($sock,"<")  or die "Can't reopen STDIN: $!";
 	STDOUT->fdopen($sock,">") or die "Can't reopen STDOUT: $!";
@@ -152,6 +153,12 @@ sub interact {
 #		print "busy\n";
 #		return;
 #	}
+
+	if($node eq "") {
+		print "gethostbyaddr failed, who are you $addr?\n";
+		logger('info',"gethostbyaddr failed for $addr");
+		last;
+	}
 
 	while(<>) {
 		my $line = $_;
@@ -179,7 +186,7 @@ sub interact {
 				next;
 			}
 
-			if($line =~ /-------/) {
+			if($line =~ /------------------------------------------------/) {
 				$inlist = 1;
 				next;
 			}
@@ -189,6 +196,9 @@ sub interact {
 			}
 
 			s/^\s+//;
+			if($_ eq "") {
+				next;
+			}
 			my @a = split(/[\.\s]+/);
 			my $lnode = $a[1];
 
@@ -315,7 +325,6 @@ sub daemonic {
 	open(STDERR,">&STDOUT");
 	chdir('/');
 	umask(0);
-	#cannot remember why I needed this
 	#$ENV{PATH} = "$ENV{XCATROOT}/bin:$ENV{XCATROOT}/sbin:$ENV{XCATROOT}/lib:$ENV{PATH}";
 	return $$;
 }
@@ -364,8 +373,8 @@ sub logger {
 	syslog($type,$msg);
 	closelog();
 
-	#hack for no syslog
-	#system("(date;echo : $type $msg) >>/tmp/autogpfsd.log");
+	#no syslog hack
+	system("(date;echo : $type $msg) >>/tmp/autogpfsd.log");
 }
 
 END { unlink PIDFILE if $$ == $pid; }
