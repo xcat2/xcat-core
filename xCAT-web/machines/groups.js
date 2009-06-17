@@ -11,6 +11,12 @@ $(document).ready(function(){
             if (ui.tab.href.search('#ping-tab$') > -1) {
                 loadPingTab($(ui.panel));
             }
+            if (ui.tab.href.search('#copy-tab$') > -1) {
+                loadCopyTab($(ui.panel));
+            }
+            if (ui.tab.href.search('#spcfg-tab$') > -1) {
+                loadSPCfgTab($(ui.panel));
+            }
     	}});		// ends the properties passed to tabs()
   });
 

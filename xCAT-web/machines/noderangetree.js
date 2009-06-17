@@ -25,6 +25,12 @@ function updatenoderange() {
         if (index == 4) {
             loadPingTab($('#ping-tab'));
         }
+        if (index == 5) {
+            loadCopyTab($('#copy-tab'));
+        }
+        if (index == 6) {
+            loadSPCfgTab($('#spcfg-tab'));
+        }
 
 }
 
