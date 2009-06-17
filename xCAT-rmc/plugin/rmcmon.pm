@@ -13,6 +13,7 @@ use Socket;
 use xCAT::Utils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
+use xCAT_monitoring::rmcmetrix;
 use xCAT::MsgUtils;
 #print "xCAT_monitoring::rmcmon loaded\n";
 1;
@@ -152,7 +153,16 @@ sub start {
       } 
     } 
   } #if ($callback)
-
+  my @metrixconf = xCAT_monitoring::rmcmetrix::get_metrix_conf();
+  my @rmetrixcmd = ();
+  while(@metrixconf){
+	  my ($rsrc, $rname, $attrlist, $minute);
+	  $rsrc  = shift @metrixconf;
+	  $rname = shift @metrixconf;
+	  $attrlist = shift @metrixconf;
+	  $minute = shift @metrixconf;
+	  push @rmetrixcmd, "$rsrc $rname $attrlist $minute";
+  }
   if ($scope) {
     #get a list of managed nodes
     $result=`/usr/bin/lsrsrc-api -s IBM.MngNode::::Name 2>&1`;  
@@ -165,6 +175,13 @@ sub start {
     }
     chomp($result);
     my @rmc_nodes=split(/\n/, $result);
+    my @svc_nodes = ();
+    my $node = undef;
+    foreach $node (@rmc_nodes){
+      if(xCAT::Utils->isSN($node)){
+	push @svc_nodes, $node;
+      }
+    }
     
     #start the rmc daemons for its children
     if (@rmc_nodes > 0) {
@@ -174,8 +191,22 @@ sub start {
         reportError( $result, $callback); 
       }
     }
+
+    #add to cron task
+    if(@svc_nodes > 0){
+      my $nodestring=join(',', @svc_nodes);
+      foreach (@rmetrixcmd){
+      	$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring $::XCATROOT/sbin/rmcmon/rmcmetrixmon init $_ 2>&1`;
+      }
+      if(($result)){
+      	reportError( $result, $callback);
+      }
+    }
   }
 
+  foreach (@rmetrixcmd){
+	  xCAT::Utils->runcmd("XCATBYPASS=Y $::XCATROOT/sbin/rmcmon/rmcmetrixmon init $_", 0);
+  }
   if ($callback) {
     my $rsp={};
     $rsp->{data}->[0]="$localhostname: done.";
@@ -254,7 +285,7 @@ sub stop {
   my $localhostname=hostname();
 
   
-
+  system("$::XCATROOT/sbin/rmcmon/rmcmetrixmon clean");
   my $result;
   chomp(my $pid= `/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
   if ($pid){
@@ -332,6 +363,10 @@ sub stop {
 
       if (@nodes_to_stop > 0) {
         my $nodestring=join(',', @nodes_to_stop);
+	$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring $::XCATROOT/sbin/rmcmon/rmcmetrixmon clean 2>&1`;
+	if($result){
+	  reportError($result, $callback);
+	}
         #$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring stopsrc -s ctrmc 2>&1`;
         $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring "/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{if (\\\$2>0) system(\\\"stopsrc -s ctrmc\\\")}' 2>&1"`;
 
@@ -1415,5 +1450,170 @@ sub getPostscripts {
   return $ret;
 }
 
+sub showmetrix($rrddir, $attrs, $start_time, $end_time)
+{
+	my($rrddir, $attrs, $start_time, $end_time) = @_;
+	my $result = [];
+	my $output = undef;
+	my @files = ();
+	my $file = undef;
+	my @attrlist = split /,/,$attrs;
+	my $attr = undef;
+	my $line = undef;
+	my @namelist = ();
+	my @timelist = ();
+	my %hash = {};
+	my $name = undef;
+	my $timestamp = undef;
+	my $sum = undef;
+	my $num = undef;
+	
+	foreach $attr (@attrlist) {
+		@namelist = ();
+		@timelist = ();
+		%hash = {};
+		$output = `ls -A $rrddir/$attr*`;
+		@files = split /\n/, $output;
+		foreach $file (@files) {
+			if($file =~ /$attr\.rrd$/){
+				$name = "$attr";
+			} elsif ($file =~ /${attr}_(\S+)\.rrd$/) {
+				$name = $1;
+			}
+			push @namelist, $name;
+			$output = xCAT_monitoring::rrdutil::RRD_fetch($file, $start_time, $end_time);
+			$line = pop(@$output);
+			if($line =~ /ERROR/){
+				push @$result, $line;
+				next;
+			} else {
+				push @$output, $line;
+			}
+			foreach $line (@$output){
+				if($line =~ /NaNQ/){
+					next;
+				} elsif ($line =~ /^(\d+): (\S+) (\S+)/){
+					$timestamp = $1;
+					$sum = $2;
+					$num = $3;
+					if(! grep {/$timestamp/} @timelist){
+						push @timelist, $timestamp;
+					}
+					$hash{$name}{$timestamp} = sprintf "%.4f:%d", $sum, $num;
+				} elsif ($line =~ /^(\d+): (\S+)/){
+					$timestamp = $1;
+					$sum = $2;
+					if(! grep {/$timestamp/} @timelist){
+						push @timelist, $timestamp;
+					}
+					$hash{$name}{$timestamp} = sprintf "%.4f", $sum;
+				}
+			}
+		}
+		$line = join "\t", (@namelist);
+		$line = "                          ".$line;
+		push @$result, $line;
+		@timelist = sort @timelist;
+		foreach $timestamp (@timelist){
+			$line = localtime($timestamp)."  ";
+			foreach $name (@namelist){
+				if(exists $hash{$name}{$timestamp}){
+					$line =$line."$hash{$name}{$timestamp}\t";
+				} else {
+					$line = $line."-\t";
+				}
+			}
+			push @$result, $line;
+		}
+	}
+	
+	return $result;
 
+}
+#--------------------------------------------------------------------------------
+=head3    show
+      This function configures the cluster for the given nodes.  
+      This function is called when moncfg command is issued or when xcatd starts
+      on the service node. It will configure the cluster to include the given nodes within
+      the monitoring doamin. 
+    Arguments:
+       p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
+       scope -- the action scope, it indicates the node type the action will take place.
+                0 means localhost only. 
+                2 means localhost and nodes, 
+       callback -- the callback pointer for error and status displaying. It can be null.
+    Returns:
+       (error code, error message)
+=cut
+#--------------------------------------------------------------------------------
+sub show {
+  print "rmcmon:show called\n";
+  no strict 'refs';
+  my ($noderef, $sum, $time, $attrs, $pe, $callback) = @_;
+  my $rsp = {};
+  my $localhostname=hostname();
+  my $start_time = undef;
+  my $end_time = undef;
+  my $node = undef;
+  my $output = undef;
+  my $rrddir = undef;
+
+  $end_time = `date +%s`;
+  if($time =~ /(\d+)-(\d+)/){
+    $start_time = $end_time - $1 * 60;
+    $end_time = $end_time - $2 * 60;
+  } else {
+    $start_time = $end_time - $time * 60;
+  }
+  
+  #the identification of this node
+  my $isSV=xCAT::Utils->isServiceNode();
+
+  if(!$isSV && ($sum&0x2)){
+    push @$noderef, $localhostname;
+  }
+  print "$localhostname: @$noderef\n";
+  $sum &= 0x1;
+
+  if($sum){
+    foreach $node (@$noderef){
+      if($node eq $localhostname){
+	if($isSV){
+	  $rrddir = "/var/rrd/summary";
+        } else {
+	  $rrddir = "/var/rrd/cluster";
+	  my @metrixconf = xCAT_monitoring::rmcmetrix::get_metrix_conf();
+	  my $rmetrixcmd = undef;
+  	  while(@metrixconf){
+	    my ($rsrc, $rname, $attrlist, $minute);
+	    $rsrc  = shift @metrixconf;
+	    $rname = shift @metrixconf;
+	    $attrlist = shift @metrixconf;
+	    $minute = shift @metrixconf;
+	    $rmetrixcmd = "/opt/xcat/sbin/rmcmon/rmcmetrixmon sum $rsrc $attrlist $minute";
+	    xCAT::Utils->runcmd($rmetrixcmd, 0);
+          }
+        }
+      }	else {
+        $rrddir = "/var/rrd/$node";
+      }
+      $output = &showmetrix($rrddir, $attrs, $start_time, $end_time);
+      push @{$rsp->{data}}, "\n$node-sum:";
+      push @{$rsp->{data}}, @$output;
+    }
+  } else {
+    foreach $node (@$noderef){
+      $rrddir = "/var/rrd/$node";
+      $output = &showmetrix($rrddir, $attrs, $start_time, $end_time);
+      push @{$rsp->{data}}, "\n$node:";
+      push @{$rsp->{data}}, @$output;
+    }
+  }
+  $callback->($rsp);
+  return (0, "");
+}
+
+#my $nref = ["hv8plus02", "hv8plus03"];
+#my $cb = {};
+#&show($nref, '0', '100', 'RecByteRate,XmitByteRate', 0, $cb);
 

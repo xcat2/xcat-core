@@ -1368,41 +1368,63 @@ sub  getNodeConfData {
   return %ret;
 }
 
+#--------------------------------------------------------------------------------
+=head3    show
+      This function show performance for the given nodes.  
+    Arguments:
+       names -- a pointer to an  array of monitoring plug-in names. If non is specified,
+         all the plug-ins registered in the monitoring table will be notified.
+       p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
+       sum -- 
+                0 indicates to show performance of specified node.
+		1 indicates to show sum of performance of one or more management domain which managed by node specified in the noderange.
+                2 means to show performance of specified node and MN.
+		3 means to show sum of performance of whole cluster and one or more management domain which managed by node specified in the noderange.
+       time -- data in a range of time to show
+       attrs -- data of specified attrbuites to show
+       pe -- TODO;
+       callback -- the callback pointer for error and status displaying. It can be null.
+    Returns:
+        ret a hash with plug-in name as the keys and the an arry of 
+        [return code, error message] as the values.
+=cut
+#--------------------------------------------------------------------------------
+sub show {
+  my $nameref=shift;
+  if ($nameref =~ /xCAT_monitoring::monitorctrl/) {
+    $nameref=shift;
+  }
+  my ($noderef, $sum, $time, $attrs, $pe, $callback) = @_;
+  my %ret=();
+  my @product_names=@$nameref;
 
+  my %all=getAllRegs();  
+  if (@product_names == 0) {
+    @product_names=keys(%all);    
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  foreach(@product_names) {
+    if (exists($all{$_})) {
+      my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$_.pm";
+      my $module_name="xCAT_monitoring::$_";
+      #load the module in memory
+      eval {require($file_name)};
+      if ($@) {   
+        my @ret3=(1, "The file $file_name cannot be located or has compiling errors.\n"); 
+        $ret{$_}=\@ret3;
+        next;
+      }
+      undef $SIG{CHLD};
+      #initialize and start monitoring
+      no strict  "refs";
+      if (defined(${$module_name."::"}{show})) {
+        my @ret1 = ${$module_name."::"}{show}->($noderef, $sum, $time, $attrs, $pe, $callback);
+        $ret{$_}=\@ret1;
+      }
+    } else {
+       $ret{$_}=[1, "Monitoring plug-in module $_ is not registered."];
+    }
+  }
+  return %ret;
+}
 

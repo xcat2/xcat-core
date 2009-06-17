@@ -46,6 +46,7 @@ sub handled_commands {
     monrm => "monctrlcmds",
     moncfg => "monctrlcmds",
     mondecfg => "monctrlcmds",
+    monshow => "monctrlcmds",
   }
 }
 
@@ -67,7 +68,7 @@ sub preprocess_request
   my @requests=();
 
  
-  if (($command eq "monstart") || ($command eq "monstop") || ($command eq "moncfg") || ($command eq "mondecfg") )  {
+  if (($command eq "monstart") || ($command eq "monstop") || ($command eq "moncfg") || ($command eq "mondecfg") || ($command eq "monshow"))  {
     my @a_ret; #(0, $modulename, $nodestatutmon, $scope, \@nodes)
     if ($command eq "monstart") {
       @a_ret=preprocess_monstart($args, $callback);
@@ -75,8 +76,10 @@ sub preprocess_request
       @a_ret=preprocess_monstop($args, $callback);
     } elsif ($command eq "moncfg") {
       @a_ret=preprocess_moncfg($args, $callback);
-    } else {  
+    } elsif ($command eq "mondecfg") {  
       @a_ret=preprocess_mondecfg($args, $callback);
+    } elsif ($command eq "monshow") {
+      @a_ret=preprocess_monshow($args, $callback);
     }
 
     if ($a_ret[0] != 0) {
@@ -89,6 +92,16 @@ sub preprocess_request
       my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
       my $module_name="xCAT_monitoring::$pname";
       undef $SIG{CHLD};
+      if(($command eq "monshow") && (@$allnodes==0)){
+        my $reqcopy = {%$req};
+	push @{$reqcopy->{module}}, $a_ret[1];
+	push @{$reqcopy->{priv}}, $a_ret[2];
+	push @{$reqcopy->{priv}}, $a_ret[3];
+	push @{$reqcopy->{priv}}, $a_ret[5];
+	push @{$reqcopy->{priv}}, $a_ret[6];
+	push @requests, $reqcopy;
+	return \@requests;
+      }
       #initialize and start monitoring
       no strict  "refs";
       my $mon_hierachy;
@@ -115,6 +128,38 @@ sub preprocess_request
       foreach(@hostinfo) {$iphash{$_}=1;}
       if (!$isSV) { $iphash{'noservicenode'}=1;}
 
+#      if($command eq "monshow"){
+#	my $keynosvcnode = undef;
+   #       foreach (@mon_servers){
+#	   my @server_pair=split(':', $_);
+#	   my $sv=$server_pair[0];
+#	   my $mon_nodes=$mon_hierachy->{$_};
+#	   if ((!$mon_nodes) || (@$mon_nodes ==0)) { next; }
+#	   if(($sv eq 'noservicenode') && ($a_ret[2] & 0x1)){
+#	     $keynosvcnode = $_;
+#	     my $i = 0;
+#	     foreach (@$mon_nodes){
+#	       if(xCAT::Utils->isSN($_)){
+#	         push @{$mon_hierachy->{$_}}, $_;
+#		 push @mon_servers, $_;
+#		 delete $mon_nodes->[$i];
+#	       }
+#	       $i++;
+#	     }
+#	   }
+#	}
+#	if(($keynosvcnode) && ($a_ret[2] & 0x2)){
+#	  if(@{$mon_hierachy->{$keynosvcnode}} == 0){
+#           my $reqcopy = {%$req};
+#	    push @{$reqcopy->{module}}, $a_ret[1];
+#	    push @{$reqcopy->{priv}}, $a_ret[2];
+#	    push @{$reqcopy->{priv}}, $a_ret[3];
+#	    push @{$reqcopy->{priv}}, $a_ret[5];
+#	    push @{$reqcopy->{priv}}, $a_ret[6];
+#	    push @requests, $reqcopy;
+#	  }
+#	}
+#      }
       foreach (@mon_servers) {
         #service node come in pairs, the first one is the monserver adapter that facing the mn,
         # the second one is facing the cn. we use the first one here
@@ -129,13 +174,20 @@ sub preprocess_request
 	  if ($isSV) { next; } #if the command is issued on the monserver, only handle its children.
 	  $reqcopy->{'_xcatdest'}=$sv;
 	  my $rsp2={};
-	  $rsp2->{data}->[0]="sending request to $sv...";
+	  $rsp2->{data}->[0]="sending request to $sv..., ".join(',', @$mon_nodes);
 	  $callback->($rsp2);
         } 
 
         push @{$reqcopy->{module}}, $a_ret[1];
-        push @{$reqcopy->{nodestatmon}}, $a_ret[2];
-        push @{$reqcopy->{scope}}, $a_ret[3];
+	if($command eq "monshow"){
+		push @{$reqcopy->{priv}}, $a_ret[2];
+		push @{$reqcopy->{priv}}, $a_ret[3];
+		push @{$reqcopy->{priv}}, $a_ret[5];
+		push @{$reqcopy->{priv}}, $a_ret[6];
+	} else {
+        	push @{$reqcopy->{nodestatmon}}, $a_ret[2];
+        	push @{$reqcopy->{scope}}, $a_ret[3];
+	}
         push @{$reqcopy->{nodeinfo}}, join(',', @$mon_nodes);
         push @requests, $reqcopy;
       } 
@@ -194,7 +246,10 @@ sub process_request {
   }
   elsif ($command eq "mondecfg") {
     return mondecfg($request, $callback, $doreq);
-  }  else {
+  }
+  elsif ($command eq "monshow") {
+    return monshow($request, $callback, $doreq);
+  } else {
     my $rsp={};
     $rsp->{data}->[0]= "unsupported command: $command.";
     $callback->($rsp);
@@ -1551,7 +1606,220 @@ sub mondecfg
   return 0;
 }
 
+#--------------------------------------------------------------------------------
+=head3  preprocess_monshow
+        This function handles the syntax checking for monshow command.
+    Arguments:
+      callback - the pointer to the callback function.
+      args - The format of the args is:
+        [-h|--help|-v|--version] or
+        name noderange [-s] [-t time] [-a attributes] [-o pe]        
+        where
+          name is the monitoring plug-in name. For example: rmcmon. Only for rmcmon currently.
+          noderange a range of nodes to be showed for. 
+          -s shows the summary data only, default is not setting
+          -t specify to display data in a range of time, default is 1h before until now
+	  -a specfiy the attribute of RMC resource
+    Returns:
+        (0, $modulename, $sum, $time, \@nodes, $attrs, $pe) for success.
+        (1, "") for unsuccess. The error messages are returns through the callback pointer.
+=cut
+#--------------------------------------------------------------------------------
+sub preprocess_monshow
+{
+  my $args=shift; 
+  my $callback=shift; 
 
+  # subroutine to display the usage
+  sub monshow_usage
+  {
+    my $cb=shift;
+    my $error=shift;
+    my $rsp={};
+    $rsp->{data}->[0]= "Usage:";
+    $rsp->{data}->[1]= "  monshow name noderange [-s] [-t time] [-a attributes] [-o pe]";
+    $rsp->{data}->[2]= "  monshow [-h|--help|-v|--version]";
+    $rsp->{data}->[3]= "     name is the name of the monitoring plug-in module to be invoked.";
+    $rsp->{data}->[4]= "        Only for rmcmon currently";
+    $rsp->{data}->[5]= "     noderange is a range of nodes to be showed for."; 
+    $rsp->{data}->[6]= "     -s option, shows the sum data only, default is not setting.";
+    $rsp->{data}->[7]= "     -t option, specify to display data in a range of time, default is last 1h";
+    $rsp->{data}->[8]= "     -a option, specfiy the attribute of RMC resource, default is all specified in monsetting.";
+#    $cb->($rsp);
+    if($error){
+      xCAT::MsgUtils->message("E", $rsp, $callback);
+    } else {
+      xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
+  }
 
+  @ARGV=();
+  if ($args) { @ARGV=@{$args} ; }
+  
+  # parse the options
+  if(!GetOptions(
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION,      
+      's'  => \$::SUMMARY,
+      't=s' => \$::TIME,
+      'a=s' => \$::ATTRS,
+      'o=s' => \$::PE))
+  {
+    &monshow_usage($callback, 1);
+    return (1, "");
+  }
 
+  # display the usage if -h or --help is specified
+  if ($::HELP) { 
+    &monshow_usage($callback, 0);
+    return (1, "");
+  }
+
+  # display the version statement if -v or --verison is specified
+  if ($::VERSION)
+  {
+    my $rsp={};
+    $rsp->{data}->[0]= xCAT::Utils->Version();
+    $callback->($rsp);
+    return (1, "");
+  }
+
+  if(@ARGV != 2) {
+    &monshow_usage($callback, 1);
+    return (1, "");
+  }
+
+  my $pname="";
+  my $sum=0;
+  my $time = 60;
+  my @nodes=();
+  my $attrs=undef;
+  my $pe = 0;
+
+  if($::SUMMARY) {$sum=1;}
+  if($::TIME) {$time=$::TIME;}
+  if($::ATTRS) {
+    $attrs=$::ATTRS;
+  } else {
+    my $conftable = xCAT::Table->new('monsetting');
+    my @metrixconf = $conftable->getAttribs({'name'=>'rmcmon'}, ('key','value'));
+    foreach (@metrixconf){
+      my $key = $_->{key};
+      my $value = $_->{value};
+      my $temp = undef;
+      if($key =~ /^rmetrics/){
+        if($value =~ /\]/){
+	  ($temp, $value) = split /\]/, $value;	
+	}
+	($value, $temp) = split /:/, $value;
+	if($attrs){
+	  $attrs = "$attrs,$value";
+	} else {
+	  $attrs = $value;
+	}
+      } 
+    }
+  }
+  if($::PE) {$pe=$::PE;}
+  
+  $pname=$ARGV[0];
+  my $noderange=$ARGV[1];
+  @nodes = noderange($noderange);
+  my @temp = nodesmissed;
+  if(@temp && xCAT::Utils->isMN()){
+    my $localhost = hostname();
+    my $i = 0;
+    foreach (@temp) {
+      if($_ eq $localhost){
+        $sum |= 0x2;
+	splice @temp, $i, 1;
+	last;
+      }
+      $i++;
+    }
+  }
+  if (xCAT::Utils->isMN() && @temp) {
+    my $rsp={};
+    $rsp->{data}->[0]= "Invalid nodes in noderange:".join(',',@temp);
+    xCAT::MsgUtils->message("E", $rsp, $callback);
+    return (1, "");
+  } 
+
+  my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+  if (!-e $file_name) {
+    my $rsp={};
+    $rsp->{data}->[0]="File $file_name does not exist.";
+    xCAT::MsgUtils->message("E", $rsp, $callback);
+    return (1, "");
+  }  else {
+    #load the module in memory
+    eval {require($file_name)};
+    if ($@) {   
+      my $rsp={};
+      $rsp->{data}->[0]="The file $file_name has compiling errors:\n$@\n";
+      xCAT::MsgUtils->message("E", $rsp, $callback);
+      return (1, "");  
+    }      
+  }
+
+  my $table=xCAT::Table->new("monitoring", -create => 1,-autocommit => 1);
+  if ($table) {
+    my $found=0;
+    my $tmp1=$table->getAllEntries();
+    if (defined($tmp1) && (@$tmp1 > 0)) {
+      foreach(@$tmp1) {
+	if ($pname eq $_->{name}) {
+	  $found=1;
+          last;
+	}
+      }
+    }
+
+    if (!$found) {
+      my $rsp={};
+      $rsp->{data}->[0]="$pname cannot be found in the monitoring table.";
+      xCAT::MsgUtils->message("E", $rsp, $callback);
+      $table->close(); 
+      return (1, "");
+    }
+
+    $table->close(); 
+  } else {
+    my $rsp={};
+    $rsp->{data}->[0]="Failed to open the monitoring table.";
+    xCAT::MsgUtils->message("E", $rsp, $callback);
+    return (1, "");
+  }
+  
+  return (0, $pname, $sum, $time, \@nodes, $attrs, $pe);
+}
+
+#--------------------------------------------------------------------------------
+=head3   monshow
+      This function configures the cluster performance for the given nodes.  
+    Arguments:
+      request -- a hash table which contains the command name and the arguments.
+      callback -- the callback pointer for error and status displaying. It can be null.
+    Returns:
+        0 for success. The output is returned through the callback pointer.
+        1. for unsuccess. The error messages are returns through the callback pointer.
+=cut
+#--------------------------------------------------------------------------------
+sub monshow
+{
+  my $request=shift;
+  my $callback=shift;
+  
+  my $pname=$request->{module}->[0];
+  my $nodeinfo=$request->{nodeinfo}->[0];
+  my $sum=$request->{priv}->[0];
+  my $time=$request->{priv}->[1];
+  my $attrs=$request->{priv}->[2];
+  my $pe=$request->{priv}->[3];
+
+  my @nodes=split(',', $nodeinfo);
+
+  xCAT_monitoring::monitorctrl->show([$pname], \@nodes,  $sum, $time, $attrs, $pe, $callback); 
+  return 0;
+}
 
