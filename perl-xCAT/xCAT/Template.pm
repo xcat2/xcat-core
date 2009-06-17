@@ -167,6 +167,7 @@ sub tabdb
       return "";
     }
     my $ent;
+    my $bynode=0;
     if ($key eq "THISNODE" or $key eq '$NODE') {
       $ent = $tabh->getNodeAttribs($node,[$field]);
       $key="node=$node";
@@ -175,10 +176,28 @@ sub tabdb
       foreach (split /,/,$key) {
         my $key;
         my $val;
-        ($key,$val) = split /=/,$_;
-        $kp{$key}=$val;
+        if ($_ eq 'THISNODE' or $_ eq '$NODE') {
+            $bynode=1;
+        } else {
+            ($key,$val) = split /=/,$_;
+            $kp{$key}=$val;
+        }
       }
-      ($ent) = $tabh->getAttribs(\%kp,$field);
+      if ($bynode) {
+          my @ents = $tabh->getNodeAttribs($node,[keys %kp,$field]);
+          my $tent; #Temporary ent
+          TENT: foreach $tent (@ents) {
+              foreach (keys %kp) {
+                  unless ($kp{$_} eq $tent->{$_}) {
+                      next TENT;
+                  }
+              } #If still here, we found it
+             $ent = $tent;
+              
+          }
+      } else {
+          ($ent) = $tabh->getAttribs(\%kp,$field);
+      }
     }
     $tabh->close;
     unless($ent and  defined($ent->{$field})) {
