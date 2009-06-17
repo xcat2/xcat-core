@@ -1,0 +1,150 @@
+#!/usr/bin/env perl
+use Getopt::Long;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+#Modules to use
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
+use xCAT_monitoring::rrdutil;
+use xCAT_monitoring::rmcmetrix;
+
+###############################################################
+#Error handle
+#Input:
+#	$c	error code
+#	$m	error msg
+#return:
+#	None;
+##############################################################
+sub err_handle
+{
+	my ($c, $m) = @_;
+	if($c != 0){
+		print "ERROR: $m\n";
+		exit($c);
+	}
+}
+###############################################################
+#sub getcrontime
+#Input:
+#	$minute	interval in minute
+#return:
+#	string whose format is "MIN HOUR DAY MONTH *"
+##############################################################
+sub getcrontime
+{
+	my $minute = shift @_;
+	my ($min, $hour, $day, $month);
+	my $temp = undef;
+	my $temp1 = undef;
+	$temp =  $minute % 60 ;
+	if($temp < 2){
+		$min = '*';
+	} else {
+		$temp1 = $temp;
+		$min = '0';
+		while($temp1 < 60){
+			$min = $min.",$temp1";
+			$temp1 = $temp1 + $temp;
+		}
+	}
+	$minute = int $minute/60;
+	$temp = $minute % 24;
+	if($temp < 2){
+		$hour = '*';
+	} else {
+		$temp1 = $temp;
+		$hour = '0';
+		while($temp1 < 24){
+			$hour = $hour.",$temp1";
+			$temp1 = $temp1 + $temp;
+		}
+	}
+	$minute = int $minute/24;
+	$temp = $minute % 31;
+	if($temp < 2){
+		$day = '*';
+	} else {
+		$temp1 = $temp;
+		$day = '0';
+		while($day < 31){
+			$day = $day.",$temp1";
+			$temp1 = $temp1 + $temp;
+		}
+	}
+	$minute = int $minute/31;
+	$temp = $minute % 12;
+	if($temp < 2){
+		$month = '*';
+	} else {
+		$month = '0';
+		while($month < 12){
+			$month = $month.",$temp1";
+			$temp1 = $temp1 + $temp;
+		}
+	}
+	return "$min $hour $day $month *";
+
+}
+################################################################
+#Usage:
+#	1. To start RRD server
+#	./rmcmetrixmon init rrdserver
+#	2. To stop RRD server
+#	./rmcmetrixmon clean rrdserver
+#	3. To start a data collector
+#	./rmcmetrixmon init resourceclass resoucename attr0, attr1, attr2, ... minute
+#	4. To stop all data collectors and data consolidators
+#	./rmcmetrixmon clean 
+#	5. To work as a data collector 
+#	./rmcmetrixmon data resourceclass resourcename attr0, attr1, attr2, ... minute
+#	6. To work as a data consolidator 
+#	./rmcmetrixmon sum resourceclass attr0, attr1, attr2, ... minute
+#################################################################	
+
+my $cmd = $ARGV[0];
+my @tabs = ();
+my $entry = undef;
+my $minute = undef;
+my $crontime = undef;
+my $code = 0;
+my $msg = undef;
+if($cmd eq 'init'){
+	if ($ARGV[1] eq 'rrdserver'){
+		$code = xCAT_monitoring::rrdutil::start_RRD_server('13900', "/var/rrd/");
+		&err_handle($code, "can't start RRD server");
+	}
+	$minute = $ARGV[4];
+	$crontime = &getcrontime($minute);
+	($code, $msg) = xCAT::Utils->add_cron_job("$crontime /opt/xcat/sbin/rmcmon/rmcmetrixmon data $ARGV[1] $ARGV[2] $ARGV[3] $ARGV[4] > /dev/null");
+	&err_handle($code, $msg);
+	if(xCAT::Utils->isMN()){
+		$minute = $minute * 5;
+		$crontime = &getcrontime($minute);
+		($code, $msg) = xCAT::Utils->add_cron_job("$crontime /opt/xcat/sbin/rmcmon/rmcmetrixmon sum $ARGV[1] $ARGV[3] $ARGV[4] > /dev/null");
+		&err_handle($code, $msg);
+	}
+} elsif ($cmd eq 'clean'){
+	$msg = `rm -rf /var/rrd/*`; 
+	&err_handle($?, $msg);
+	@tabs = `/usr/bin/crontab -l 2>/dev/null;`;
+	foreach $entry (@tabs){
+		chomp($entry);
+		if($entry =~ /rmcmetrixmon/){
+			($code, $msg) = xCAT::Utils->remove_cron_job($entry);
+			&err_handle($code, $msg);
+		}
+	}
+} elsif ($cmd eq 'data'){
+	($code, $msg) = &xCAT_monitoring::rmcmetrix::getmetrix($ARGV[1], $ARGV[2], $ARGV[3], $ARGV[4]);
+	&err_handle($code, $msg);
+} elsif ($cmd eq 'sum'){
+	($code, $msg) = &xCAT_monitoring::rmcmetrix::get_sum_metrix($ARGV[2], $ARGV[3]);
+	&err_handle($code, $msg);
+} else {
+	print "ERROR:Invalid parameter\n";
+}
+
+1;
