@@ -503,7 +503,7 @@ sub ll_jobs {
     close $TMPL_FILE;
 
     # Query LL for list of machines and their status
-    my $cmd = "llstatus -r %n %sca 2>/dev/null";
+    my $cmd = "llstatus -r %n %sta 2>/dev/null";
 	if ($::VERBOSE) {
 		my $rsp;
 		push @{ $rsp->{data} }, "Running command: $cmd ";
@@ -836,7 +836,7 @@ sub rebootnodes {
     if ( $scheduler eq 'loadleveler' ) {
 
         # Query LL for list of machines and their status
-        my $cmd = "llstatus -r %n %sca 2>/dev/null";
+        my $cmd = "llstatus -r %n %sta 2>/dev/null";
 		if ($::VERBOSE) { 
 			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
 			print RULOG localtime()." Running command \'$cmd\'\n";
