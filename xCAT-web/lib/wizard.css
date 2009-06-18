@@ -52,7 +52,7 @@
 
 .WizardProgressTable P#output { margin-left: 35px; }
 
-.WizardProgressTable IFRAME#output { margin-left: 35px; width: 400px; }
+.WizardProgressTable IFRAME#output { margin-left: 35px; width: 400px; height: 400px; }
 
 .WizardProgressOutput { margin: 0px; }
 

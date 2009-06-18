@@ -452,6 +452,10 @@ function dumpGlobals() {
 	foreach ($_POST as $key => $val) { trace("$key=$val."); }
 	trace('<b>$_COOKIE:</b>');
 	foreach ($_COOKIE as $key => $val) { trace("$key=$val."); }
+	trace('<b>$_ENV:</b>');
+	foreach ($_ENV as $key => $val) { trace("$key=$val."); }
+	trace('<b>$_SERVER:</b>');
+	foreach ($_SERVER as $key => $val) { trace("$key=$val."); }
 	if (isset($_SESSION)) {
 		trace('<b>$_SESSION:</b>');
 		foreach ($_SESSION as $key => $val) { trace("$key=$val."); }

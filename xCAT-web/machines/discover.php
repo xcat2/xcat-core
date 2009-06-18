@@ -117,26 +117,6 @@ echo "<tr class=WizardInputSection><td class=Right><label for=fspHostname>Hostna
 echo "<td width=10></td><td class=Right><label for=fspIP>Starting IP Address:</label></td><td class=Left><input type=text name=fspIP id=fspIP value='", @$_SESSION['fspIP'], "'></td></tr>\n";
 echo "<tr class=WizardInputSection><td class=Right><label for=numFspsPerFrame>Number of Drawers per Frame:</label></td><td class=Left><input type=text name=numFspsPerFrame id=numFspsPerFrame value='", @$_SESSION['numFspsPerFrame'], "'></td><td></td><td></td><td></td></tr>\n";
 
-/*
-echo "<tr><td colspan=2 class=Center><h3>Switch Patterns</h3></td></tr>\n";
-echo "<tr><td class=Right><label for=switchHostname>Switch Hostname Pattern:</label></td><td class=Left><input type=text name=switchHostname id=switchHostname value='", @$_SESSION['switchHostname'], "'></td></tr>\n";
-echo "<tr><td class=Right><label for=switchIP>Switch IP Address Pattern:</label></td><td class=Left><input type=text name=switchIP id=switchIP value='", @$_SESSION['switchIP'], "'></td></tr>\n";
-echo "<tr><td class=Right><label for=portsPerSwitch>Number of Ports Per Switch:</label></td><td class=Left><input type=text name=portsPerSwitch id=portsPerSwitch value='", @$_SESSION['portsPerSwitch'], "'></td></tr>\n";
-
-echo "<tr><td colspan=2 class=Center><h3>HMCs</h3></td></tr>\n";
-echo "<tr><td class=Right><label for=hmcHostname>HMC Hostname Pattern:</label></td><td class=Left><input type=text name=hmcHostname id=hmcHostname value='", @$_SESSION['hmcHostname'], "'></td></tr>\n";
-echo "<tr><td class=Right><label for=hmcIP>HMC IP Address Pattern:</label></td><td class=Left><input type=text name=hmcIP id=hmcIP value='", @$_SESSION['hmcIP'], "'></td></tr>\n";
-echo "<tr><td class=Right><label for=numCECs>Number of CECs per HMC:</label></td><td class=Left><input type=text name=numCECs id=numCECs value='", @$_SESSION['numCECs'], "'></td></tr>\n";
-
-echo "<tr><td colspan=2 class=Center><h3>Frame (BPA) Patterns</h3></td></tr>\n";
-echo "<tr><td class=Right><label for=bpaHostname>BPA Hostname Pattern:</label></td><td class=Left><input type=text name=bpaHostname id=bpaHostname value='", @$_SESSION['bpaHostname'], "'></td></tr>\n";
-echo "<tr><td class=Right><label for=bpaIP>BPA IP Address Pattern:</label></td><td class=Left><input type=text name=bpaIP id=bpaIP value='", @$_SESSION['bpaIP'], "'></td></tr>\n";
-
-echo "<tr><td colspan=2 class=Center><h3>Drawer (FSP/CEC) Patterns</h3></td></tr>\n";
-echo "<tr><td class=Right><label for=fspHostname>FSP Hostname Pattern:</label></td><td class=Left><input type=text name=fspHostname id=fspHostname value='", @$_SESSION['fspHostname'], "'></td></tr>\n";
-echo "<tr><td class=Right><label for=fspIP>FSP IP Address Pattern:</label></td><td class=Left><input type=text name=fspIP id=fspIP value='", @$_SESSION['fspIP'], "'></td></tr>\n";
-*/
-
 echo "</table></form>\n";
 
 //todo: get HCP userids/pws from the user
@@ -145,16 +125,18 @@ echo "</table></form>\n";
 
 //-----------------------------------------------------------------------------
 function patterns1b($action, $step) {
-//todo: do validation of all pages that have input
+//todo: do validation of all pages that have input, and strip preceding and trailing blanks
 savePostVars();
 
 // Figure out how many switches there need to be
-//todo: do not want to count the fsps if they are on the bpa hubs
 $hmcs = expandNR($_SESSION['hmcHostname']);
 $bpas = expandNR($_SESSION['bpaHostname']);
-$fsps = expandNR($_SESSION['fspHostname']);
+// Note: in the IH case, the FSPs are almost always plugged into the BPA hub, not the service LAN switch, so do not count them
+//todo: handle the HV case in which the fsps are plugged directly into the service LAN switch
+//$fsps = expandNR($_SESSION['fspHostname']);
+
 //echo "<p>", implode(',',$hmcs), "</p>\n";
-$total = count($hmcs) + count($bpas) + count($fsps);
+$total = count($hmcs) + count($bpas);
 if (!$_SESSION['portsPerSwitch']) { $numswitches = 1; }
 else { $numswitches = (integer) ((($total-1) / $_SESSION['portsPerSwitch']) + 1); }
 //echo "<p>$numswitches</p>\n";
@@ -171,6 +153,7 @@ foreach ($switches as $k => $sw) {
 
 echo "<tr><td colspan=2 class=Center><h3>Discovery Information</h3></td></tr>\n";
 echo "<tr class=WizardInputSection><td class=Right><label for=dynamicIP>Dynamic IP Range for DHCP:</label></td><td class=Left><input type=text size=30 name=dynamicIP id=dynamicIP value='", @$_SESSION["dynamicIP"], "'></td></tr>\n";
+echo "<tr class=WizardInputSection><td class=Right><label for=discoveryIP>IP Address to Broadcast From:</label></td><td class=Left><input type=text size=30 name=discoveryIP id=discoveryIP value='", @$_SESSION["discoveryIP"], "'></td></tr>\n";
 echo "<p>&nbsp;<br></p>\n";
 echo "</table></form>\n";
 }
@@ -248,11 +231,13 @@ foreach ($switches as $k => $sw) {
 			$node = array_shift($ar);
 			if (!$node) { $port++;  continue; }
 			$data[] = array($node,$sw,@$_SESSION['portPrefix'].$port);
-			for ($j=1; $j<=$_SESSION['numFspsPerFrame']; $j++) {
-				$f = array_shift($andFsps);
-				if (!$f) { break; }
-				$data[] = array($f,$sw,@$_SESSION['portPrefix'].$port);
-				}
+			if ($andFsps) {
+				for ($j=1; $j<=$_SESSION['numFspsPerFrame']; $j++) {
+					$f = array_shift($andFsps);
+					if (!$f) { break; }
+					$data[] = array($f,$sw,@$_SESSION['portPrefix'].$port);
+					}
+			}
 			/* $xml = docmd('nodeadd',NULL,array($node,'groups=all',"switch.node=$node","switch.switch=$sw","switch.port=$port"));
 			if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd failed: " . implode(' ',$errors)); return; }
 			else { echo "Wrote: $node,$sw,$port<br>\n"; }*/
@@ -301,10 +286,6 @@ nextStep(++$step,FALSE);
 
 //-----------------------------------------------------------------------------
 function incrementIP(& $ip) {
-
-//todo: hard coded for the percs demo cluster - remove
-//if ($ip == '192.168.200.233') { $ip='192.168.200.237'; return; }
-//if ($ip == '192.168.200.237') { $ip='192.168.200.239'; return; }
 
 $parts = explode('.', $ip);
 $parts[3]++;
@@ -389,44 +370,70 @@ elseif ($step == 1) { lsslp($step); }
 function lsslp($step) {
 
 //todo: input the IP addr to disover over
-$discoverIP = '192.168.199.206';
-	
-//todo: enable HMC discovery
-//$xml = docmd('nodeadd',NULL,array($_SESSION['hmcHostname'],'groups=hmc,all','nodetype.nodetype=hmc','nodehm.mgt=hmc'));
-//if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd hmc failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
-//echo "<p class=WizardProgressOutput>Discovered and defined ", $_SESSION['hmcHostname'], ".</p>\n"; myflush();
+$discoveryIP = @$_SESSION["discoveryIP"];
 
+// Discover HMCs
+$xml = docmd('nodeadd',NULL,array($_SESSION['hmcHostname'],'groups=hmc,all','nodetype.nodetype=hmc','nodehm.mgt=hmc'));
+if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd hmc failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+echo "<p class=WizardProgressOutput>Defined ", $_SESSION['hmcHostname'], ".</p>\n"; myflush();
+
+echo "<p class=WizardProgressOutput>Discovering HMCs...</p>\n"; myflush();
+$xml = docmd('lsslp','',array('-s','HMC','-w','-H','-i',$discoveryIP,'-t','3'));
+if (getXmlErrors($xml,$errors)) { msg('E',"lsslp HMC failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+$numfound = 0;
+foreach ($xml->children() as $response) foreach ($response->children() as $line) {
+	$line = (string) $line;
+	//echo "<p class=WizardProgressOutput>$line</p>\n"; myflush();
+	$parts = array();
+	if (preg_match('/^\s+(\S+)\s+=>/', $line, $parts)) {
+		$hostname = $parts[1];
+	//if (preg_match('/^Received SLP response from\s+(\d+\.\d+\.\d+\.\d+)/', $line, $parts)) {
+	//	$hostname = gethostbyaddr($parts[1]);
+	//	if ($hostname != $parts[1]) {
+			echo "<p class=WizardProgressOutput>&nbsp;found $hostname</p>\n"; myflush();
+			$numfound++;
+	//	}
+	}
+}
+echo "<p class=WizardProgressOutput>Found $numfound HMCs.</p>\n"; myflush();
+
+// Discover BPAs
 //$xml = docmd('nodeadd',NULL,array($_SESSION['bpaHostname'],'groups=frame,all','nodetype.nodetype=bpa','nodehm.mgt=hmc','nodehm.power=hmc','ppc.comments=bpa','vpd.mtm=9A00-100' /* ,'vpd.serial=|(\D+)(\d+)|($2)|' */ ));
 $xml = docmd('nodeadd',NULL,array($_SESSION['bpaHostname'],'groups=frame,all','nodetype.nodetype=bpa','ppc.hcp=|^(.+)$|($1)|','ppc.comments=bpa'));
 if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd bpa failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 echo "<p class=WizardProgressOutput>Defined ", $_SESSION['bpaHostname'], ".</p>\n"; myflush();
 
 echo "<p class=WizardProgressOutput>Discovering BPAs...</p>\n"; myflush();
-//$xml = docmd('lsslp','',array('-s','BPA','-w','-H','-i',$discoverIP,'-c','1000,2000,2000,3000,4000'));
-$xml = docmd('lsslp','',array('-s','BPA','-w','-H','-i',$discoverIP,'-t','9'));
+//$xml = docmd('lsslp','',array('-s','BPA','-w','-H','-i',$discoveryIP,'-c','1000,2000,2000,3000,4000'));
+$xml = docmd('lsslp','',array('-s','BPA','-w','-H','-i',$discoveryIP,'-t','3'));
 if (getXmlErrors($xml,$errors)) { msg('E',"lsslp BPA failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 $numfound = 0;
 foreach ($xml->children() as $response) foreach ($response->children() as $line) {
 	$line = (string) $line;
 	//echo "<p class=WizardProgressOutput>$line</p>\n"; myflush();
 	$parts = array();
-	if (!preg_match('/^\s+(\S+)\s+=>/', $line, $parts)) { continue; }
-	echo "<p class=WizardProgressOutput>&nbsp;found $parts[1]</p>\n"; myflush();
-	$numfound++;
+	if (preg_match('/^\s+(\S+)\s+=>/', $line, $parts)) {
+		$hostname = $parts[1];
+	//if (preg_match('/^Received SLP response from\s+(\d+\.\d+\.\d+\.\d+)/', $line, $parts)) {
+	//	$hostname = gethostbyaddr($parts[1]);
+	//	if ($hostname != $parts[1]) {
+			echo "<p class=WizardProgressOutput>&nbsp;found $hostname</p>\n"; myflush();
+			$numfound++;
+	//	}
+	}
 }
 echo "<p class=WizardProgressOutput>Found $numfound BPAs.</p>\n"; myflush();
-	
-//$parts = array();
-//preg_match('/^(\D+)/', $_SESSION['bpaHostname'], $parts);
-//$bpaprefix = $parts[1];
 
-//todo: we are hardcoding the cage # offset for now
+//nextStep(++$step,TRUE); return;		//todo: REMOVE!!!!!!
+
+// Discover FSPs
+//todo: we are hardcoding the cage # offset for now.  On the bp cluster, most frames start with cage # 5.  This value should be input from the user.
 //todo: now that we use the real lsslp, it is not setting nodepos attrs
 //$xml = docmd('nodeadd',NULL,array($_SESSION['fspHostname'],'groups=cec,all','nodetype.nodetype=fsp','nodehm.mgt=hmc','nodehm.power=hmc','ppc.id=|\D+(\d+)|((((($1-1)%5)+1)*2)-1)|','ppc.parent=|\D+(\d+)|'.$bpaprefix.'((($1-1)/5)+1)|','nodepos.u=|\D+(\d+)|((((($1-1)%5)+1)*2)-1)|','nodepos.rack=|\D+(\d+)|((($1-1)/5)+1)|','vpd.mtm=9125-F2A' /* ,'vpd.serial=|(\D+)(\d+)|($2)|' */ ));
 $xml = docmd('nodeadd',NULL,array($_SESSION['fspHostname'],'groups=cec,all','nodetype.nodetype=fsp','ppc.hcp=|^(.+)$|($1)|','ppc.id=|\D+(\d+)|((($1-1)%'.$_SESSION['numFspsPerFrame'].')+5)|'));
 if (getXmlErrors($xml,$errors)) { msg('E',"nodeadd fsp failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 
-//todo: because of the irregularity in the cage numbers in frame 4 and 8, we have to do something special
+//todo: because of the irregularity in the cage numbers in the bp cluster in frame 4 and 8, we have to do something special
 $fsps = expandNR($_SESSION['fspHostname']);
 $xml = docmd('nodech',"$fsps[36]-$fsps[41],$fsps[84]-$fsps[89]",array('ppc.id=|\D+(\d+)|((($1-1)%'.$_SESSION['numFspsPerFrame'].')+1)|'));
 if (getXmlErrors($xml,$errors)) { msg('E',"nodech frame failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
@@ -435,16 +442,22 @@ if (getXmlErrors($xml,$errors)) { msg('E',"nodech frame failed: " . implode(' ',
 echo "<p class=WizardProgressOutput><br>Defined ", $_SESSION['fspHostname'], ".</p>\n"; myflush();
 
 echo "<p class=WizardProgressOutput>Discovering FSPs...</p>\n"; myflush();
-//$xml = docmd('lsslp','',array('-s','FSP','-w','-H','-i',$discoverIP,'-t','2','-c','3000,3000,3000,3000,3000'));
-$xml = docmd('lsslp','',array('-s','FSP','-w','-H','-i',$discoverIP,'-t','9'));
+//$xml = docmd('lsslp','',array('-s','FSP','-w','-H','-i',$discoveryIP,'-t','2','-c','3000,3000,3000,3000,3000'));
+$xml = docmd('lsslp','',array('-s','FSP','-w','-H','-i',$discoveryIP,'-t','9'));
 if (getXmlErrors($xml,$errors)) { msg('E',"lsslp FSP failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 $numfound = 0;
 foreach ($xml->children() as $response) foreach ($response->children() as $line) {
 	$line = (string) $line;
 	$parts = array();
-	if (!preg_match('/^\s+(\S+)\s+=>/', $line, $parts)) { continue; }
-	echo "<p class=WizardProgressOutput>&nbsp;found $parts[1]</p>\n"; myflush();
-	$numfound++;
+	if (preg_match('/^\s+(\S+)\s+=>/', $line, $parts)) {
+		$hostname = $parts[1];
+	//if (preg_match('/^Received SLP response from\s+(\d+\.\d+\.\d+\.\d+)/', $line, $parts)) {
+	//	$hostname = gethostbyaddr($parts[1]);
+	//	if ($hostname != $parts[1]) {
+			echo "<p class=WizardProgressOutput>&nbsp;found $hostname</p>\n"; myflush();
+			$numfound++;
+	//	}
+	}
 }
 echo "<p class=WizardProgressOutput>Found $numfound FSPs.</p>\n"; myflush();
 
@@ -483,9 +496,13 @@ elseif ($step == 4) { nameres($step); }
 //-----------------------------------------------------------------------------
 // Give frame numbers to each bpa
 function assignframenums($step) {
-//todo: this just uses the number from the nodename of the frame.  Should instead count from the beginning.
-$xml = docmd('nodech','frame',array('ppc.id=|\D+(\d+)|($1)|'));
-if (getXmlErrors($xml,$errors)) { msg('E',"nodech frame failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+$bpas = expandNR($_SESSION['bpaHostname']);
+$num = 0;
+foreach ($bpas as $b) {
+	$num++;
+	$xml = docmd('nodech',$b,array("ppc.id=$num"));
+	if (getXmlErrors($xml,$errors)) { msg('E',"nodech $b failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+}
 
 nextStep(++$step,FALSE);
 }
@@ -539,7 +556,7 @@ nextStep(++$step,FALSE);
 
 //-----------------------------------------------------------------------------
 function createhcpgroups($step) {
-//todo: may need to do this once we are using the real lsslp
+// since we had to create skeleton definitions for the hmcs, bpas, and fsps before discovering them via lsslp, we already created the groups
 
 nextStep(++$step,FALSE);
 }
@@ -551,9 +568,10 @@ function nameres($step) {
 $xml = docmd('makehosts',NULL,NULL);
 if (getXmlErrors($xml,$errors)) { msg('E',"makehosts failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
 
-//todo: enable this on non-aix
-//$xml = docmd('makedns',NULL,NULL);
-//if (getXmlErrors($xml,$errors)) { msg('E',"makedns failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+if (!isAIX()) {
+	$xml = docmd('makedns',NULL,NULL);
+	if (getXmlErrors($xml,$errors)) { msg('E',"makedns failed: " . implode(' ',$errors)); nextStep(++$step,TRUE); return; }
+}
 
 nextStep(++$step,TRUE);
 }
@@ -599,21 +617,29 @@ elseif ($step == 1) { createlpars($step); }
 function createlpars($step) {
 $numlpars = $_SESSION['numLPARs'];
 $fsps = expandNR($_SESSION['fspHostname']);
+$bpas = expandNR($_SESSION['bpaHostname']);
 $nodes = expandNR($_SESSION['computeNodename']);
 $n = 0;		// index into the nodes array
 //$parts = array();
 //preg_match('/^(\D+)/', $_SESSION['fspHostname'], $parts);
 //$fspprefix = $parts[1];
 $fspattrs = getNodes($_SESSION['fspHostname'], array('ppc.hcp','ppc.parent'));
+$bpaattrs = getNodes($_SESSION['bpaHostname'], array('ppc.id'));
+//foreach ($bpaattrs as $k => $v) { echo "<p class=WizardProgressOutput>$k:$v.</p>\n"; myflush(); }
 
 // Go thru each fsp and create/define the nodes that should be in that fsp
 foreach ($fsps as $f) {
 	$length = min($numlpars, count($nodes)-$n);
 	$hcp = $fspattrs[$f]['ppc.hcp'];
 	$bpa = $fspattrs[$f]['ppc.parent'];
+	$framenum = $bpaattrs[$bpa];
+	//echo "<p class=WizardProgressOutput>$bpa:$framenum.</p>\n"; myflush();
 
-	//todo: currently can not create the 1st lpar in the cec
-	$xml = docmd('nodeadd',NULL,array($nodes[$n],"groups=lpars-$f,lpars-$bpa,lpars-$hcp,lpar,compute,all",'nodetype.nodetype=lpar,osi',
+	//todo: currently can not create the 1st lpar in the cec, but should at least set the lpar name, etc. (See configCEC.)
+	//todo: for p7, we should accept an lsvm file, or clone the 1st lpar of the 1st cec.
+	//todo: add lpars- groups back in
+	//$xml = docmd('nodeadd',NULL,array($nodes[$n],"groups=lpars-$f,lpars-$bpa,f$framenum,lpars-$hcp,lpar,compute,all",'nodetype.nodetype=lpar,osi',
+	$xml = docmd('nodeadd',NULL,array($nodes[$n],"groups=f$framenum,compute,lpar,all",'nodetype.nodetype=lpar,osi',
 								'nodehm.mgt=hmc','nodehm.power=hmc','nodehm.cons=hmc',
 								'nodetype.arch=ppc64','ppc.id=1',
 								"ppc.parent=$f","ppc.hcp=$hcp","ppc.pprofile=$nodes[$n]"));
@@ -672,7 +698,7 @@ nextStep(++$step,TRUE);
 //-----------------------------------------------------------------------------
 // Flush the output buffers
 function myflush() {
-	if ($_SERVER["SERVER_SOFTWARE"] != 'IBM_HTTP_Server') { ob_flush(); }	// for some reason ob_flush() does not work on aix
+	if (!isAIX()) { ob_flush(); }	// for some reason ob_flush() does not work on aix
 	flush();
 }
 

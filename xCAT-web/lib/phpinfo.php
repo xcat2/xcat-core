@@ -11,7 +11,7 @@ echo "</head><body>\n";
 //insertLogin();
 
 dumpGlobals();
-echo '<p>'; print_r($_SESSION['editable-hosts']); echo "</p>\n";
+//echo '<p>'; print_r($_SESSION['editable-hosts']); echo "</p>\n";
 //foreach ($_SESSION['editable-deps'] as $key => $val) { trace("$key=$val."); }
 
 /*
