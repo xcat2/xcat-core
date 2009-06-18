@@ -11,7 +11,9 @@ if(empty($noderange)) { echo "<p>Select one or more groups or nodes.</p>\n"; exi
 
 ?>
 
-</script>
+<style type="text/css">
+.need_to_fill { border-style: solid; border-color: red;}
+</style>
 
 <FORM NAME=copyForm>
 
@@ -25,21 +27,66 @@ $.ui.dialog.defaults.bgiframe = true;
 var diagOpts = {
     bgiframe: true,
     modal: true,
-    //autoOpen: false,
+    autoOpen: false,
 };
 $(function() {
     $("#copyDialog").dialog(diagOpts);
+
+    //remove the underlying CSS style "need_to_fill" for the input element: sourcefile and destdir
+    $("#sourcefile").bind("click", function() {
+        $(this).removeClass("need_to_fill");
+        });
+    $("#destdir").bind("click", function() {
+        $(this).removeClass("need_to_fill");
+        });
 });
 
 function copydialog() {
-    $("#copyDialog").dialog("show");
+    var args = {};
+    args.command="xdcp";
+    
+    if(window.noderange && window.noderange != "") {
+        args.noderange = window.noderange;
+    }else if($("#nodegrps")) {
+        args.noderange = $("#nodegrps option:selected").val();
+    }else if($("#nodeList")){
+        args.noderange = $("#nodeList").val();
+    }
+
+    var tmp = $("#sourcefile").val();
+    if(tmp.length) { args.src = tmp; }
+    else {
+        $("#sourcefile").addClass("need_to_fill");
+        return;
+    }
+
+    var tmp = $("#destdir").val();
+    if(tmp.length) { args.dest = tmp; }
+    else {
+        $("#destdir").addClass("need_to_fill");
+        return;
+    }
+
+    $("#copyDialog").children().remove();
+    $("#copyDialog").dialog("open");
+    $("#copyDialog").load("./copy_action.php", args);
 }
 
 </script>
 
 <?php insertButtons(array('label' => 'Copy Files', 'id'=> 'copyButton', 'onclick' => 'copydialog()')); ?>
 
-<div id="copyDialog" title="This is the tile" class="flora"></div>
+<div id="copyDialog" title="The result" class="flora"></div>
+<table cellspacing=0 cellpadding=5>
+<tr>
+<td>Source File:</td><td> <input id='sourcefile' type="text"></td>
+    <td>The source file you need to copy to another path</td>
+</tr>
+<tr>
+<td>Dest Directory:</td><td> <input id='destdir' type="text"></td>
+<td>The destination directory you want to copy the source file to</td>
+</tr>
+</table>
 
 <h3>Options:</h3>
 <TABLE id=inner_table  cellspacing=0 cellpadding=5>
