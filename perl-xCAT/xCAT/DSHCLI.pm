@@ -447,7 +447,7 @@ sub _execute_dsh
         {
             my @active_list = keys(%targets_active);
             $rsp->{data}->[0] =
-              " Timed out waiting for response from child processes for the followint nodes. Terminating the child processes. ";
+              " Timed out waiting for response from child processes for the following nodes. Terminating the child processes. ";
             $rsp->{data}->[1] = " @active_list";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             @targets_failed = keys(%targets_active);
