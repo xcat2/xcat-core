@@ -4082,5 +4082,55 @@ sub getsynclistfile()
 
 }
 
+#-----------------------------------------------------------------------------
+
+
+=head3 getrootimage
+    Get the directory of root image for a node; 
+    Note: This subroutine only works for diskless node
+
+    Arguments:
+      $node
+    Returns:
+      string - directory of the root image
+      undef - this is not a diskless node or the root image does not existed
+    Globals:
+        none
+    Error:
+    Example:
+         my $node_syncfile=xCAT::Utils->getrootimage($node);
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub getrootimage()
+{
+  my $node = shift;
+  if (($node) && ($node =~ /xCAT::Utils/))
+  {
+    $node = shift;
+  }
+      # get the os,arch,profile attributes for the nodes
+  my $nodetype_t = xCAT::Table->new('nodetype');
+  unless ($nodetype_t) {
+    return ;
+  }
+  my $nodetype_v = $nodetype_t->getNodeAttribs($node, ['profile','os','arch']);
+  my $profile = $nodetype_v->{'profile'};
+  my $os = $nodetype_v->{'os'};
+  my $arch = $nodetype_v->{'arch'};
+
+  if ($^O eq "linux") {
+    my $rootdir = "/install/netboot/$os/$arch/$profile/rootimg/";
+    if (-d $rootdir) {
+      return $rootdir;
+    } else {
+      return undef;
+    }
+  } else {
+    # For AIX
+  }
+}
 
 1;

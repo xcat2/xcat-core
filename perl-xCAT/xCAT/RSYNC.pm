@@ -11,7 +11,7 @@ use base xCAT::DSHRemoteShell;
 
 if ($^O eq 'aix')
 {
-    our $RSYNC_CMD = '/usr/bin/rsync';
+    our $RSYNC_CMD = '/usr/local/bin/rsync';
 }
 
 if ($^O eq 'linux')
@@ -70,7 +70,14 @@ sub remote_copy_command
     {
 
         my $sync_opt;
-        $sync_opt = '-Lupotz ';
+        if ($^O eq 'aix')
+        {
+            $sync_opt = '--rsync-path /usr/local/bin/rsync ';
+        } else {
+            $sync_opt = '--rsync-path /usr/bin/rsync ';
+        }
+
+        $sync_opt .= '-Lupotz ';
         $sync_opt .= $$config{'options'};
 
         open RSCYCCMDFILE, "> /tmp/rsync_$$config{'dest-host'}"

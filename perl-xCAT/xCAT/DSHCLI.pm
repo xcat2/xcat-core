@@ -4108,8 +4108,15 @@ sub parse_and_run_dcp
     }
 
     # -s chosen or -F set rsync path
-    (   ($options{'rsyncSN'} || $options{'File'})
-     && ($options{'node-rcp'} = '/usr/bin/rsync'));
+   if ($options{'rsyncSN'} || $options{'File'}) {
+      if ($^O eq 'aix')
+      {
+        $options{'node-rcp'} = '/usr/local/bin/rsync';
+      } elsif ($^O eq 'linux')
+      {
+        $options{'node-rcp'} = '/usr/bin/rsync';
+      }
+    }
     my $remotecopycommand = $options{'node-rcp'};
     if ($options{'node-rcp'}
         && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
@@ -4323,7 +4330,11 @@ sub rsync_to_image
 
             # for each file on the line
             my $synccmd = "";
-            $synccmd = "/usr/bin/rsync -Lupotz ";
+            if ($^O eq 'aix') {
+                $synccmd = "/usr/local/bin/rsync -Lupotz ";
+            } else {
+                $synccmd = "/usr/bin/rsync -Lupotz ";
+            }
             my $syncopt = "";
             foreach my $srcfile (@srcfiles)
             {
@@ -4334,6 +4345,7 @@ sub rsync_to_image
             $syncopt .= $imageupdatepath;
             $synccmd .= $syncopt;
 
+            xCAT::MsgUtils->message("S", "rsync2image: $synccmd\n");
             my @output = xCAT::Utils->runcmd($synccmd, 0);
             if ($::RUNCMD_RC != 0)
             {

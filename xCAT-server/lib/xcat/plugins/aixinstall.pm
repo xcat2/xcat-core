@@ -4537,6 +4537,7 @@ sub mkdsklsnode
 	my $nethash = shift;
 	my $imaghash = shift;
 	my $locs = shift;
+	my $subreq = shift;
 
 	my %lochash = %{$locs};
 	my %objhash = %{$nodehash};
@@ -4666,6 +4667,7 @@ ll~;
 	#
 	my $error=0;
 	my @nodesfailed;
+	my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
 	foreach my $node (@nodelist) 
 	{
 		my $image_name = $nodeosi{$node};
@@ -4897,6 +4899,23 @@ ll~;
 			push(@nodesfailed, $node);
 			next;
        	}
+
+		# Update the files in /install/custom/netboot/AIX/syncfile to the root image
+		# figure out the path of root image 
+		my $cmd = "/usr/sbin/lsnim -a location $imagehash{$image_name}{root} | /usr/bin/grep location 2>/dev/null";
+		my $location = xCAT::Utils->runcmd("$cmd", -1);
+		$location =~ s/\s*location = //;
+		chomp($location);
+		my $root_location = $location.'/'.$nim_name.'/';
+		if (-d $root_location) {
+			my $syncfile = $$node_syncfile{$node};
+xCAT::MsgUtils->message("S", "mkdsklsnode: $root_location, $syncfile");
+
+			my $arg = ["-i", "$root_location", "-F", "$syncfile"];
+			my $env = ["RSYNCSN=yes", "DSH_RSYNC_FILE=$syncfile"];
+			$subreq->({command=>['xdcp'], node=>[$node], arg=>$arg, env=>$env}, $callback);
+		}
+
 	} # end - for each node
 
 	#

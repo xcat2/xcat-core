@@ -261,20 +261,46 @@ sub updatenode {
   # if not specifying -S, do the sync file operation
   unless ($::SKIPSYNCFILE) {
     my %syncfile_node = ();
+    my %syncfile_rootimage = ();
     my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
     foreach my $node (@$nodes) {
       my $synclist = $$node_syncfile{$node};
 
       if ($synclist) {
         push @{$syncfile_node{$synclist}}, $node;
-        next;
+      }
+
+      # Figure out the directory of the root image
+      # one $synclist will only map to one root image, so 
+      # just find the root image one time
+      # only for netboot node (diskless)
+      if ($synclist && $synclist =~ /\/netboot\//) {
+        if (! defined($syncfile_rootimage{$synclist})) {
+          my $root_dir = xCAT::Utils->getrootimage($node);
+          if (-d $root_dir) {
+            $syncfile_rootimage{$synclist} = $root_dir;
+          } else {
+            $syncfile_rootimage{$synclist} = "no_root_image";
+          }
+        }
       }
     }
 
+    # Sync files to the target nodes
     foreach my $synclist (keys %syncfile_node) {
       my $args = ["-F", "$synclist"];
       my $env = ["DSH_RSYNC_FILE=$synclist"];
       $subreq->({command=>['xdcp'], node=>$syncfile_node{$synclist}, arg=>$args, env=>$env}, $callback);
+    }
+
+    # Sync files to the root image for the diskless nodes
+    foreach my $synclist (keys %syncfile_rootimage) {
+      if ($syncfile_rootimage{$synclist} eq "no_root_image") {
+        next;
+      }
+      my $args = ["-i", $syncfile_rootimage{$synclist}, "-F", $synclist];
+      my $env = ["DSH_RSYNC_FILE=$synclist"];
+      $subreq->({command=>['xdcp'], arg=>$args, env=>$env}, $callback);
     }
   }
 
