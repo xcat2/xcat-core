@@ -1467,12 +1467,25 @@ sub showmetrix($rrddir, $attrs, $start_time, $end_time)
 	my $timestamp = undef;
 	my $sum = undef;
 	my $num = undef;
+	my $remote = undef;
+
+	if($rrddir =~ /:/){
+		($remote,$rrddir) = split /:/,$rrddir;
+	}
 	
 	foreach $attr (@attrlist) {
 		@namelist = ();
 		@timelist = ();
 		%hash = {};
-		$output = `ls -A $rrddir/$attr*`;
+		if($remote){
+			$output = xCAT::Utils->runcmd("xdsh $remote 'ls -A /var/rrd/$rrddir/$attr*'", 0);
+			if($::RUNCMD_RC != 0){
+				return $result;
+			}
+			$output =~ s/$remote: \/var\/rrd\//''/;
+		} else {
+			$output = xCAT::Utils->runcmd("ls -A $rrddir/$attr*", 0);
+		}
 		@files = split /\n/, $output;
 		foreach $file (@files) {
 			if($file =~ /$attr\.rrd$/){
@@ -1481,7 +1494,11 @@ sub showmetrix($rrddir, $attrs, $start_time, $end_time)
 				$name = $1;
 			}
 			push @namelist, $name;
-			$output = xCAT_monitoring::rrdutil::RRD_fetch($file, $start_time, $end_time);
+			if($remote){
+				$output = xCAT_monitoring::rrdutil::RRD_fetch($file, $start_time, $end_time, $remote);
+			} else {
+				$output = xCAT_monitoring::rrdutil::RRD_fetch($file, $start_time, $end_time);
+			}
 			$line = pop(@$output);
 			if($line =~ /ERROR/){
 				push @$result, $line;
@@ -1499,7 +1516,7 @@ sub showmetrix($rrddir, $attrs, $start_time, $end_time)
 					if(! grep {/$timestamp/} @timelist){
 						push @timelist, $timestamp;
 					}
-					$hash{$name}{$timestamp} = sprintf "%.4f:%d", $sum, $num;
+					$hash{$name}{$timestamp} = sprintf "%.4f", $sum/$num;
 				} elsif ($line =~ /^(\d+): (\S+)/){
 					$timestamp = $1;
 					$sum = $2;
@@ -1578,23 +1595,21 @@ sub show {
   if($sum){
     foreach $node (@$noderef){
       if($node eq $localhostname){
-	if($isSV){
-	  $rrddir = "/var/rrd/summary";
-        } else {
-	  $rrddir = "/var/rrd/cluster";
-	  my @metrixconf = xCAT_monitoring::rmcmetrix::get_metrix_conf();
-	  my $rmetrixcmd = undef;
-  	  while(@metrixconf){
-	    my ($rsrc, $rname, $attrlist, $minute);
-	    $rsrc  = shift @metrixconf;
-	    $rname = shift @metrixconf;
-	    $attrlist = shift @metrixconf;
-	    $minute = shift @metrixconf;
-	    $rmetrixcmd = "/opt/xcat/sbin/rmcmon/rmcmetrixmon sum $rsrc $attrlist $minute";
-	    xCAT::Utils->runcmd($rmetrixcmd, 0);
-          }
+	$rrddir = "/var/rrd/cluster";
+	my @metrixconf = xCAT_monitoring::rmcmetrix::get_metrix_conf();
+	my $rmetrixcmd = undef;
+  	while(@metrixconf){
+	  my ($rsrc, $rname, $attrlist, $minute);
+	  $rsrc  = shift @metrixconf;
+	  $rname = shift @metrixconf;
+	  $attrlist = shift @metrixconf;
+	  $minute = shift @metrixconf;
+	  $rmetrixcmd = "/opt/xcat/sbin/rmcmon/rmcmetrixmon sum $rsrc $attrlist $minute";
+	  xCAT::Utils->runcmd($rmetrixcmd, 0);
         }
-      }	else {
+      }	elsif(xCAT::Utils->isSN($node)){
+	$rrddir = "$node:summary";
+      } else {
         $rrddir = "/var/rrd/$node";
       }
       $output = &showmetrix($rrddir, $attrs, $start_time, $end_time);
@@ -1612,8 +1627,4 @@ sub show {
   $callback->($rsp);
   return (0, "");
 }
-
-#my $nref = ["hv8plus02", "hv8plus03"];
-#my $cb = {};
-#&show($nref, '0', '100', 'RecByteRate,XmitByteRate', 0, $cb);
 

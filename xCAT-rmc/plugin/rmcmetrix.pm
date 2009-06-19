@@ -77,6 +77,7 @@ sub update_metrix2rrd
 	my $rrd = undef;
 	my $process_time = xCAT::Utils->runcmd("date +%s", 0);
 	$process_time = (int $process_time/$step)*$step;
+	my $temp = undef;
 
 	while(($attr, $nnlist) = each %metrix){
 		while(($nnlist, $name) = each %{$metrix{$attr}}){
@@ -89,7 +90,8 @@ sub update_metrix2rrd
 			}
 			if($nnlist eq 'summary'){
 				$rrd = "$rrddir/"."$attr.rrd";
-				$ret = xCAT_monitoring::rrdutil::push_data_to_rrd($rrd, $metrix{$attr}{summary}, $metrix{$attr}{number}, $step, $process_time, 'GAUGE');
+				$temp = $metrix{$attr}{summary}/$metrix{$attr}{number};
+				$ret = xCAT_monitoring::rrdutil::push_data_to_rrd($rrd, $temp, $metrix{$attr}{number}, $step, $process_time, 'GAUGE');
 				if($ret != 0){
 					return ($ret, "Can't push data to $rrd\n");
 				}
@@ -100,7 +102,8 @@ sub update_metrix2rrd
 					}
 					if($name eq 'summary'){
 						$rrd = "$rrddir/$attr.rrd";
-						$ret = xCAT_monitoring::rrdutil::push_data_to_rrd($rrd, $metrix{$attr}{$nnlist}{summary}, $metrix{$attr}{$nnlist}{number}, $step, $process_time, 'GAUGE');
+						$temp = $metrix{$attr}{$nnlist}{summary}/$metrix{$attr}{$nnlist}{number};
+						$ret = xCAT_monitoring::rrdutil::push_data_to_rrd($rrd, $temp, $metrix{$attr}{$nnlist}{number}, $step, $process_time, 'GAUGE');
 						if($ret != 0){
 							return($ret, "Can't push data to $rrd\n");
 						}
@@ -215,28 +218,28 @@ sub getmetrix
 	@attrs = split /,/, $attrlist;
 	
 	$attr = join '::', @attrs;
-	if(xCAT::Utils->isMN()){
-		if($rname eq "__ALL__"){
-			$cmd = "CT_MANAGEMENT_SCOPE=1 lsrsrc-api -i -s $rsrc"."::::Name::NodeNameList::$attr";
-			@output = xCAT::Utils->runcmd($cmd, 0);
-			if($::RUNCMD_RC  != 0){
-				$line = join '', @output;
-				return ($::RUNCMD_RC, $line);
-			}
-			&parse_lsrsrc_output($rsrc, \@attrs, \@output);
-		} else {
-			@names = split /,/, $rname;
-			foreach $name (@names){
-				$cmd = "CT_MANAGEMENT_SCOPE=1 lsrsrc-api -i -s $rsrc"."::\'Name==\"$name\"\'::Name::NodeNameList::$attr";
-				@output = xCAT::Utils->runcmd($cmd, 0);
-				if($::RUNCMD_RC != 0){
-					$line = join '', @output;
-					return ($::RUNCMD_RC, $line);
-				}
-				&parse_lsrsrc_output($rsrc, \@attrs, \@output);
-			}
-		}
-	}
+#	if(xCAT::Utils->isMN()){
+#		if($rname eq "__ALL__"){
+#			$cmd = "CT_MANAGEMENT_SCOPE=1 lsrsrc-api -i -s $rsrc"."::::Name::NodeNameList::$attr";
+#			@output = xCAT::Utils->runcmd($cmd, 0);
+#			if($::RUNCMD_RC  != 0){
+#				$line = join '', @output;
+#				return ($::RUNCMD_RC, $line);
+#			}
+#			&parse_lsrsrc_output($rsrc, \@attrs, \@output);
+#		} else {
+#			@names = split /,/, $rname;
+#			foreach $name (@names){
+#				$cmd = "CT_MANAGEMENT_SCOPE=1 lsrsrc-api -i -s $rsrc"."::\'Name==\"$name\"\'::Name::NodeNameList::$attr";
+#				@output = xCAT::Utils->runcmd($cmd, 0);
+#				if($::RUNCMD_RC != 0){
+#					$line = join '', @output;
+#					return ($::RUNCMD_RC, $line);
+#				}
+#				&parse_lsrsrc_output($rsrc, \@attrs, \@output);
+#			}
+#		}
+#	}
 
 	if($rname eq "__ALL__"){
 		$cmd = "CT_MANAGEMENT_SCOPE=3 lsrsrc-api -i -s $rsrc"."::::Name::NodeNameList::$attr";
@@ -263,7 +266,7 @@ sub getmetrix
 		foreach $nnlist (keys %{$metrix{$attr}}){
 			if(($nnlist ne 'summary') && ($nnlist ne 'number')){
 				$metrix{$attr}{summary} += $metrix{$attr}{$nnlist}{summary};
-				$metrix{$attr}{number} += 1;
+				$metrix{$attr}{number} += $metrix{$attr}{$nnlist}{number};
 			}
 			
 		}
@@ -339,6 +342,7 @@ sub get_sum_metrix
 	my @rmc_nodes = ();
 	my @svc_nodes = ();
 	my $node = undef;
+	my $temp = undef;
 #	my @threads = ();
 #	my $current_thread = 0;
 	my $i = undef;
@@ -436,10 +440,12 @@ sub get_sum_metrix
 		foreach $nodename (keys %{$summary{$attribute}}){
 			foreach $time (keys %{$summary{$attribute}{$nodename}}){
 				print "$attribute.$nodename.$time $summary{$attribute}{$nodename}{$time}{sum} $summary{$attribute}{$nodename}{$time}{num}\n";
-				$summetrix{$attribute}{$time}{sum} += $summary{$attribute}{$nodename}{$time}{sum};
+				$temp = $summary{$attribute}{$nodename}{$time}{sum} * $summary{$attribute}{$nodename}{$time}{num};
+				$summetrix{$attribute}{$time}{sum} += $temp;
 				$summetrix{$attribute}{$time}{num} += $summary{$attribute}{$nodename}{$time}{num};
 			}
 		}
+		
 	}
 
 	my $rrdcluster = "/var/rrd/cluster";
@@ -450,7 +456,8 @@ sub get_sum_metrix
 		my @times = keys(%{$summetrix{$attribute}});
 		my @sorttimes = sort @times;
 		foreach $time (@sorttimes){
-			$code = xCAT_monitoring::rrdutil::push_data_to_rrd("$rrdcluster/$attribute.rrd", $summetrix{$attribute}{$time}{sum}, $summetrix{$attribute}{$time}{num}, $step, $time, 'GAUGE');
+			$temp = $summetrix{$attribute}{$time}{sum}/$summetrix{$attribute}{$time}{num};
+			$code = xCAT_monitoring::rrdutil::push_data_to_rrd("$rrdcluster/$attribute.rrd", $temp, $summetrix{$attribute}{$time}{num}, $step, $time, 'GAUGE');
 			if($code != 0){
 				return($code, "Can't push data to $rrdcluster/$attribute.rrd");
 			}

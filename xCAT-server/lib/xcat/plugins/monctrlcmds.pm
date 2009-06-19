@@ -128,38 +128,6 @@ sub preprocess_request
       foreach(@hostinfo) {$iphash{$_}=1;}
       if (!$isSV) { $iphash{'noservicenode'}=1;}
 
-#      if($command eq "monshow"){
-#	my $keynosvcnode = undef;
-   #       foreach (@mon_servers){
-#	   my @server_pair=split(':', $_);
-#	   my $sv=$server_pair[0];
-#	   my $mon_nodes=$mon_hierachy->{$_};
-#	   if ((!$mon_nodes) || (@$mon_nodes ==0)) { next; }
-#	   if(($sv eq 'noservicenode') && ($a_ret[2] & 0x1)){
-#	     $keynosvcnode = $_;
-#	     my $i = 0;
-#	     foreach (@$mon_nodes){
-#	       if(xCAT::Utils->isSN($_)){
-#	         push @{$mon_hierachy->{$_}}, $_;
-#		 push @mon_servers, $_;
-#		 delete $mon_nodes->[$i];
-#	       }
-#	       $i++;
-#	     }
-#	   }
-#	}
-#	if(($keynosvcnode) && ($a_ret[2] & 0x2)){
-#	  if(@{$mon_hierachy->{$keynosvcnode}} == 0){
-#           my $reqcopy = {%$req};
-#	    push @{$reqcopy->{module}}, $a_ret[1];
-#	    push @{$reqcopy->{priv}}, $a_ret[2];
-#	    push @{$reqcopy->{priv}}, $a_ret[3];
-#	    push @{$reqcopy->{priv}}, $a_ret[5];
-#	    push @{$reqcopy->{priv}}, $a_ret[6];
-#	    push @requests, $reqcopy;
-#	  }
-#	}
-#      }
       foreach (@mon_servers) {
         #service node come in pairs, the first one is the monserver adapter that facing the mn,
         # the second one is facing the cn. we use the first one here
@@ -1726,7 +1694,7 @@ sub preprocess_monshow
   my $noderange=$ARGV[1];
   @nodes = noderange($noderange);
   my @temp = nodesmissed;
-  if(@temp && xCAT::Utils->isMN()){
+  if($sum && @temp && xCAT::Utils->isMN()){
     my $localhost = hostname();
     my $i = 0;
     foreach (@temp) {
