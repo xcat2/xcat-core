@@ -78,14 +78,14 @@ export PATH
 chmod +x /xcatpost/*;
 echo "PATH=$PATH" 
 /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
-MYCONT=`cat /tmp/mypostscript`
+MYCONT=`grep MASTER /tmp/mypostscript`
 #echo "MYCONT=$MYCONT"
 while [ -z "$MYCONT" ]; do
     let SLI=$RANDOM%10
     let SLI=10+$SLI
     sleep $SLI
     /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
-    MYCONT=`cat /tmp/mypostscript`
+    MYCONT=`grep MASTER /tmp/mypostscript`
 #    echo "MYCONT=$MYCONT"
 done
 
