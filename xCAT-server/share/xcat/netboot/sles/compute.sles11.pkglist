@@ -13,3 +13,4 @@ sysconfig
 syslog-ng
 klogd
 vim
+rsync

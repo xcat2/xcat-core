@@ -9,3 +9,4 @@ busybox-anaconda
 wget
 ntp
 vim-minimal
+rsync

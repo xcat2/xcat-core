@@ -39,3 +39,4 @@ xCATsn
 perl-DBD-mysql
 portmap
 zypper
+rsync

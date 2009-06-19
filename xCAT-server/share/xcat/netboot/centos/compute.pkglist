@@ -7,3 +7,4 @@ openssh-server
 openssh-clients
 busybox-anaconda
 wget
+rsync
