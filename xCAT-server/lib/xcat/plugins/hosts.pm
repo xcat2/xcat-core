@@ -32,7 +32,7 @@ sub addnode {
   my $foundone=0;
   
   while ($idx <= $#hosts) {
-    if ($hosts[$idx] =~ /^${ip}\s/ or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r/) {
+    if ($hosts[$idx] =~ /^${ip}\s/ or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.]/) {
       if ($foundone) {
         $hosts[$idx]=""; 
       } else {

@@ -760,7 +760,9 @@ sub nodech
                                 if (($key eq 'groups') && ($op eq '=')) {
                                     if (scalar(@grplist) == 0) { # Do not call $grptab->getAllEntries for each node, performance issue.
                                         $grptab = xCAT::Table->new('nodegroup');
-                                        @grplist = @{$grptab->getAllEntries()};
+                                        if ($grptab) {
+                                            @grplist = @{$grptab->getAllEntries()};
+                                        }
                                     }
                                     my @grps = split(/,/, $val);
                                     foreach my $grp (@grps) {
