@@ -88,6 +88,15 @@ sub expandatom {
                 }
           }
 
+  # check to see if atom is a defined group name that didn't have any current members                                               
+  if ( scalar @nodes == 0 ) {                                                                                                       
+    for my $row ( $nodegroup->getAllAttribs('groupname') ) {                                                                        
+      if ( $row->{groupname} eq $atom ) {                                                                                           
+        return ();                                                                                                                  
+      }                                                                                                                             
+    }                                                                                                                               
+  }
+
 	if ($atom =~ m/^[0-9]+\z/) {    # if only numbers, then add the prefix
 		my $nodename=$nprefix.$atom.$nsuffix;
 		return expandatom($nodename,$verify);
