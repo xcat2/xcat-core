@@ -835,6 +835,8 @@ sub plugin_command {
             xCAT::MsgUtils->message("S","xcatd: $error");
             $callback->({error=>[$error],errorcode=>[1]});
             xexit(0); #Die like we should have done
+        } elsif ($@) { #We are still alive, should be alive, but yet we have an error.  This means we are in the case of 'do_request' or something similar.  Forward up the death since our communication channel is intact..
+            die $@;
         }
       } else {
         $plugin_children{$child}=1;
