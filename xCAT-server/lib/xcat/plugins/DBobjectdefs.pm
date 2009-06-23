@@ -1525,9 +1525,9 @@ sub defch
                     return 1;
 
                 }
-               # $grptype = $grphash{$obj}{grouptype};
+                $grptype = $grphash{$obj}{grouptype};
 				# for now all groups are static
-				$grptype = 'static';
+				#$grptype = 'static';
             }
             else
             {    #not defined
