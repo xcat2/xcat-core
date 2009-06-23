@@ -10,7 +10,7 @@ There are two times to configure IB adapters, during node installation or with c
 
 To use this script, users need to firstly setup DNS for the new adapters before node installation or before triggering command updatenode depending on when to start IB configuration, either time is supported: 
 
-1.The IP address entries for IB interfaces in /etc/hosts on xCAT managed nodes should have the node short hostname and the unique IB interface name in them.  The format should be <ip_address_for_this_ib_interface node_short_hostname-ib_interfacename>.
+1.The IP address entries for IB interfaces in /etc/hosts on xCAT management nodes should have the node short hostname and the unique IB interface name in them.  The format should be <ip_address_for_this_ib_interface node_short_hostname-ib_interfacename>.
 For example:
 c890f11ec01 is the node short hostname, c890f11ec01-ib0, c890f11ec01-ib1, c890f11ec01-ib2, etc. are the IP names for the IB interfaces on c890f11ec01.
 
@@ -46,7 +46,7 @@ or
 updatenode c890f11ec01 configiba.2ports
 
 
-As a sample postscript, the netmask is set to default value: 255.255.0.0 and gateway is set to "X.X.255.254".  If the IB interface name is not a simple combination of short hostname and ibX or netmask and gateway cannot meet user's requirement, user can modify this scripts by himself, like the example below:
+As a sample postscript, the netmask is set to default value: 255.255.255.0 and gateway is set to "X.X.255.254".  If the IB interface name is not a simple combination of short hostname and ibX or netmask and gateway cannot meet user's requirement, user can modify this scripts by himself, like the example below:
 
 The node short hostname is 890f11ec01-en, and the IB interface name is 890f11ec01-ib0, c890f11ec01-ib1, etc. The user needs to modify 
 my $hostname = "$ENV{NODE}-$nic";
