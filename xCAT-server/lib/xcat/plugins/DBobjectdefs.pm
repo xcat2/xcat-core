@@ -2837,6 +2837,12 @@ sub defrm
                 next;
             }
 
+            # Dynamic node group stores in nodegroup table
+            # do not need to update the nodelist table
+            if ($grphash{$obj}{'grouptype'} eq 'dynamic')
+            {
+                next;
+            }
             # get the members list
 			#  all groups are "static" for now
 			$grphash{$obj}{'grouptype'} = "static";
@@ -2849,21 +2855,25 @@ sub defrm
             my @gprslist;
             foreach my $m (@members)
             {
-
-                # need to update the "groups" attr of the node def
-
                 # get the def of this node
                 $nhash{$m} = 'node';
+            }
+            # Performance: Only call getobjdefs once
                 %nodehash = xCAT::DBobjUtils->getobjdefs(\%nhash);
                 if (!defined(%nodehash))
                 {
                     my $rsp;
+                my @nodes = keys %nhash;
+                my $m = join ',', @nodes;
                     $rsp->{data}->[0] =
                       "Could not get xCAT object definition for \'$m\'.";
                     xCAT::MsgUtils->message("I", $rsp, $::callback);
                     next;
                 }
 
+            foreach my $m (keys %nodehash)
+            {
+                # need to update the "groups" attr of the node def
                 # split the "groups" to get a list
                 @gprslist = split(',', $nodehash{$m}{groups});
 
