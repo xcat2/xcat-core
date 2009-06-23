@@ -84,6 +84,7 @@ cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 cp share/xcat/cons/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 cp share/xcat/ib/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/*
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/*
 ln -sf /%{prefix}/share/xcat/cons/hmc $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/ivm
 
 cp lib/xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
