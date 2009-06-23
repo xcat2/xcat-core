@@ -452,9 +452,10 @@ sub _execute_dsh
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             @targets_failed = keys(%targets_active);
 
-            &handle_signal_dsh('INT', 1);
+            &handle_signal_dsh('INT', 2);
             $result++;
-            last;
+
+            #last;
         }
 
         my @select_out_fhs =
@@ -2746,41 +2747,45 @@ sub handle_signal_dsh
             $! = $last_error;
         }
 
-        if (@{$dsh_target_status{'waiting'}})
-        {
-            foreach my $user_target (@{$dsh_target_status{'waiting'}})
+        # if 2 input then this was a timeout on one process, we do
+        # not want to remove all the rest
+        if ($fatal_error != 2)
+        {    # remove the waiting processes
+            if (@{$dsh_target_status{'waiting'}})
             {
-                if ($fatal_error)
+                foreach my $user_target (@{$dsh_target_status{'waiting'}})
                 {
+                    if ($fatal_error)
+                    {
 
-                    $rsp->{data}->[0] =
-                      "Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
-                    xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+                        $rsp->{data}->[0] =
+                          "Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
+                        xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+                    }
+
+                    else
+                    {
+
+                        $rsp->{data}->[0] =
+                          "Running the command on $user_target has been cancelled due to unrecoverable error or stop request by the user.  The command was never sent to the host.";
+                        xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
+
+                        $rsp->{data}->[0] =
+                          "dsh>  Remote_command_cancelled $user_target";
+                        $$dsh_options{'monitor'}
+                          && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    }
+
+                    push @{$dsh_target_status{'canceled'}}, $user_target;
                 }
-
-                else
-                {
-
-                    $rsp->{data}->[0] =
-                      "Running the command on $user_target has been cancelled due to unrecoverable error or stop request by the user.  The command was never sent to the host.";
-                    xCAT::MsgUtils->message("V", $rsp, $::CALLBACK);
-
-                    $rsp->{data}->[0] =
-                      "dsh>  Remote_command_cancelled $user_target";
-                    $$dsh_options{'monitor'}
-                      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                }
-
-                push @{$dsh_target_status{'canceled'}}, $user_target;
             }
-        }
 
-        @{$dsh_target_status{'waiting'}} = ();
+            @{$dsh_target_status{'waiting'}} = ();
 
-        $rsp->{data}->[0] =
-          "Command execution ended prematurely due to a previous unrecoverable error or stop request by the user.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-
+            $rsp->{data}->[0] =
+              "Command execution ended prematurely due to a previous unrecoverable error or stop request by the user.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        }    #end fatal_error != 2
         if ($$dsh_options{'stats'})
         {
             my @empty_targets = ();
@@ -4108,14 +4113,16 @@ sub parse_and_run_dcp
     }
 
     # -s chosen or -F set rsync path
-   if ($options{'rsyncSN'} || $options{'File'}) {
-      if ($^O eq 'aix')
-      {
-        $options{'node-rcp'} = '/usr/local/bin/rsync';
-      } elsif ($^O eq 'linux')
-      {
-        $options{'node-rcp'} = '/usr/bin/rsync';
-      }
+    if ($options{'rsyncSN'} || $options{'File'})
+    {
+        if ($^O eq 'aix')
+        {
+            $options{'node-rcp'} = '/usr/local/bin/rsync';
+        }
+        elsif ($^O eq 'linux')
+        {
+            $options{'node-rcp'} = '/usr/bin/rsync';
+        }
     }
     my $remotecopycommand = $options{'node-rcp'};
     if ($options{'node-rcp'}
@@ -4180,9 +4187,11 @@ sub parse_and_run_dcp
     # if rsyncing the nodes
     if ($options{'File'})
     {
-        my $rc=&parse_rsync_input_file(\@nodelist,       \%options,
-                                $options{'File'}, $syncSN);
-        if ($rc ==1) {
+        my $rc =
+          &parse_rsync_input_file(\@nodelist,       \%options,
+                                  $options{'File'}, $syncSN);
+        if ($rc == 1)
+        {
             $rsp->{data}->[0] = "Error parsing the rsync file";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -4330,9 +4339,12 @@ sub rsync_to_image
 
             # for each file on the line
             my $synccmd = "";
-            if ($^O eq 'aix') {
+            if ($^O eq 'aix')
+            {
                 $synccmd = "/usr/local/bin/rsync -Lupotz ";
-            } else {
+            }
+            else
+            {
                 $synccmd = "/usr/bin/rsync -Lupotz ";
             }
             my $syncopt = "";
@@ -4398,15 +4410,15 @@ sub parse_rsync_input_file
 {
     use File::Basename;
     my ($nodes, $options, $input_file, $rsyncSN) = @_;
-    my @dest_host = @$nodes;
-    my $process_line=0;
+    my @dest_host    = @$nodes;
+    my $process_line = 0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
         if ($line =~ /(.+) -> (.+)/)
         {
-            $process_line=1;
+            $process_line = 1;
             my $src_file  = $1;
             my $dest_file = $2;
             $dest_file =~ s/[\s;]//g;
@@ -4482,13 +4494,16 @@ sub parse_rsync_input_file
         }
     }
     close INPUTFILE;
-    if ($process_line ==0) {   # no valid lines in the file
-      my $rsp = {};
-      $rsp->{data}->[0] = "Found no lines to process in $input_file.";
-      xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-      return 1;
-    } else {
-      $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+    if ($process_line == 0)
+    {    # no valid lines in the file
+        my $rsp = {};
+        $rsp->{data}->[0] = "Found no lines to process in $input_file.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return 1;
+    }
+    else
+    {
+        $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
     }
     return 0;
 }
