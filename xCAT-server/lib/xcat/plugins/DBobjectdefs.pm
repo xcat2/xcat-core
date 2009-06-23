@@ -2849,6 +2849,11 @@ sub defrm
             my $memberlist = xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
             my @members = split(',', $memberlist);
 
+            # No node in the group
+            if (scalar(@members) == 0)
+            {
+                next;
+            }
             # foreach member node of the group
             my %nodehash;
             my %nhash;
