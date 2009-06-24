@@ -1,0 +1,331 @@
+// Javascript functions
+
+function injs() {	
+		jQuery('ul.sf-menu').superfish();
+
+		// got this next part from:
+		// http://nettuts.com/javascript-ajax/how-to-load-in-and-animate-content-with-jquery/	
+		// Check for hash value in URL
+
+ 		var hash = window.location.hash.substr(1);
+		var fullLoc = hash;
+		//alert(hash);
+		// check to see if there is a query of it.
+		if(hash.indexOf("?") !=-1){
+			hash = 	hash.slice(0,hash.indexOf("?"));
+		//	alert(hash);
+		}
+		var href = $('#sf-menu li a').each(function(){
+			var href = $(this).attr('href');
+			// alert(href + " = " + hash + "?");
+			if(hash==href){
+				var toLoad = fullLoc;
+				$('#main').load(toLoad)
+				// change the document title
+				var subM = href.slice(0,href.indexOf(".php"));
+				document.title = "xCAT: " + subM;
+    			} 
+		});
+
+		// if no page is specified load the default main page.
+		if(hash == false ){
+			$('#main').load('main.php');
+			document.title = "xCAT Control Center";
+		}
+
+
+    $('#sf-menu li a').click(function(){
+			var toLoad = $(this).attr('href');
+			$('#main').hide('fast',loadContent);
+			$('#load').remove();
+			$('#wrapper').append('<span id="load">LOADING...</span>');
+			$('#load').fadeIn('normal');
+			// update the location
+			// window.location.hash = $(this).attr('href').substr(0,$(this).attr('href').length-5);
+			window.location.hash = $(this).attr('href');
+			// update the title
+			document.title = "xCAT: " + $(this).attr('href').slice(0,$(this).attr('href').indexOf(".php"));
+
+			function loadContent() {
+				$('#main').load(toLoad,'',showNewContent())
+			}
+
+			function showNewContent() {
+    		$('#main').show('normal',hideLoader());
+			}
+			function hideLoader() {
+				$('#load').fadeOut('normal');
+			}
+			return false;
+		});
+
+
+		// code for processing form
+		var options = {
+			target: '#main',
+			url: 'command.php'
+		}
+		$('#cmdForm').hover(function(){
+			$(this).css("background", "url(img/cmd-active.png) no-repeat")
+			},function(){
+			$(this).css("background", "url(img/cmd.png) no-repeat")
+		});
+		$('#cmdForm').ajaxForm(options);
+		$('#cmd').focus(function() {
+			this.value	= "";
+		});
+}
+
+
+function loadConfigTab(tab) {
+	// if they don't add a table definition, just go to the
+	// main page.
+	if(tab === undefined){
+		document.title = "xCAT: config";
+    		$('#main').load('config.php');
+		window.location.hash = "config.php";
+	}else{
+		// update the title
+		document.title = "xCAT: config " + tab;
+		// update the URL
+		window.location.hash = "config.php?t=" + tab;
+	
+		// load the page
+		$('#main').load('config.php?t=' + tab);
+	}
+}
+
+
+function controlCmd(cmd, nr){
+	//var nrt = $("#nrcmdnoderange").html();
+	// strip off Noderange:
+	//var nr = nrt.split(" ");
+	//nr = nr[1];
+	$("#nrcmdnodegrange").text("Noderange: " + nr);
+	$("#nrcmdcmd").text("Action: " + cmd);
+	// update window command
+	window.location.hash = "control.php?nr="+ nr + "&cmd=" + cmd;
+	$('#rangedisplay').empty().html('<img src="img/throbber.gif">');	
+	$('#rangedisplay').load('rangeDisplay.php?t=control&nr='+nr+'&cmd='+cmd);
+}
+
+function loadMainPage(page){
+	// blank the page out
+	$('#main').empty().html('<img src="img/throbber.gif">');	
+
+	// change the title to the new one.
+	var subM = page.slice(0,page.indexOf(".php"));
+	document.title = "xCAT: " + subM;
+
+
+	// load the page
+	$('#main').load(page);
+
+	// change the URL
+	window.location.hash = page;
+}
+
+
+
+// call this to update the table with unique log entries.  
+// we should probably be more robust cause we may miss some entries
+// that happen at the same time.
+function tableUpdater(count,oldEntry){
+
+	// The first time this is called, oldEntry is nothing.
+	if(oldEntry == ''){
+		// this is the base date.
+		oldEntry = "<tr>" + $("table tbody tr").html() + "</tr>";
+	}
+
+	$.get( "logentry.php?l="+count, function(html) {
+			// get the existing entry and see if it matches:
+			// we have to format it a little bit to make it match:
+			var newEntry = html;
+			if(oldEntry != newEntry) {
+				// The next test we have to do is be sure that they 
+				// newEntry is newer than old entry, just cause we see
+				// bugs here when its going really fast
+				if(badDates(oldEntry, newEntry)){
+					// we're done cause the dates were bad.  Just stop here.
+					t=setTimeout("tableUpdater(0,'')",5000);
+					return;
+				}
+				// append this output to table body
+				$("table tbody").append(html);
+				// trigger the update
+				$("table").trigger("update");
+				// sort on first and second column with newest 
+				// entry first 0 - column 0, 1- descending order
+				var sorting = [ [0,1], [1,1]];
+				$("table").trigger("sorton",[sorting]);
+
+				// see if there were any more 
+				tableUpdater(count + 1,oldEntry);
+			}else{
+				// The enties mached so now we're done looping.
+				// we'll wait for 5 seconds and see if something new comes.
+				//alert('dates are the same');
+				t=setTimeout("tableUpdater(0,'')",5000);
+			}
+		});
+}
+
+// make sure that old entry is actually older than new entry
+function badDates(oldEntry,newEntry){
+	var rc = 1;
+	// brute force regular expressions!!!
+	var oldDay = oldEntry.replace(/<tr>\n<td>(\w+\s+\d+).*\n.*\n.*\n.*\n.*\n.*/gi,"$1");
+	var newDay = newEntry.replace(/<tr>\n<td>(\w+\s+\d+).*\n.*\n.*\n.*\n.*\n.*/gi,"$1");
+	var oldTime = oldEntry.replace(/<tr>\n<td>.*\n<td>(\d+:\d+:\d+).*\n.*\n.*\n.*\n.*/gi,"$1");
+	var newTime = newEntry.replace(/<tr>\n<td>.*\n<td>(\d+:\d+:\d+).*\n.*\n.*\n.*\n.*/gi,"$1");
+	//alert(newDay + '\n' + newTime);
+	//alert(oldDay + '\n' + oldTime);
+	// assume these happened in the same year...
+	var d = new Date();
+	var year = d.getFullYear();
+	//alert('old date: ' + oldDay + ", " + year + " " + oldTime);
+	var oDate = new Date(oldDay + ", " + year + " " + oldTime);
+	var nDate = new Date(newDay + ", " + year + " " + newTime);
+	//alert(oDate + nDate);	
+	if(oDate.getTime() < nDate.getTime()){
+		rc = 0;
+	}
+	return rc;
+}
+
+// These functions are the wizard for installing an OS:
+// the screen has two divs: part1 and part2.
+// as we walk through the  menues we start updateing.
+// First we grab the OS:
+
+// function for changing OS version type
+function changeOS(){
+	var os = $('#os').val();
+	$("#nrcmdos").text("Operating System: " + os);
+	if(os != ''){
+		$("#part2").fadeIn(2000);	
+	}else{
+		// if you select null, then go back to the start
+		$("#part2").css({'display' : 'none'});
+	}
+}
+
+
+// next we grab the architecture.
+
+function changeArch(){
+	var arch = $("#arch").val();
+	$("#nrcmdarch").text("Architecture: " + arch);
+	// make sure its not an empty string
+	if(arch != ''){
+		var os = $("#nrcmdos").text();
+		// have to get the OS, its :<space> then the value
+		// that's why I add 2
+		os = os.slice(os.indexOf(':')+2);
+		var uri = '/install/' + os + '/' + arch + '/';
+		$('#part1').empty().html('checking if media is present for ' + uri + '...');
+		$('#part2').empty().html('<img src="img/throbber.gif">');	
+		$('#part2').load(uri,"",
+			function(responseText,textStatus,XMLHttpRequest) {
+
+				if(textStatus == 'error'){
+					$('#part2').empty();
+					$('#part1').html("Looks like you need to copy the media first.  Please run copycds for " + os  + '-' + arch + '<br>Click on a noderange to start over');
+				}else {
+					$('#part1').empty();
+					$('#part2').empty();
+					$("#part3").fadeIn(2000);	
+				}
+			}
+		);
+	}
+}
+
+
+function changeMeth(){
+	var meth = $('#method').val();
+	if(meth != ''){
+		$("#nrcmdmethod").text("Install Method: " + meth);
+		$("#part3").empty();
+		// get the OS:
+		var os = $("#nrcmdos").text();
+		os = os.slice(os.indexOf(':')+2);
+		// get the Arch:
+		var arch = $("#nrcmdarch").text();
+		arch = arch.slice(arch.indexOf(':')+2);
+		// get the noderange:
+		var nr = $("#nrcmdnoderange").text();
+		nr = nr.slice(nr.indexOf(':')+2);
+		$("#part1").load('lib/profiles.php?nr='+nr+'&m='+meth+'&o='+os+'&a='+arch);
+	}	
+}
+
+function changeProf(){
+	var prof = $('#prof').val();
+	if(prof != ''){
+		$("#nrcmdprofile").text("Profile: " + prof);
+		// get the OS:
+		var os = $("#nrcmdos").text();
+		os = os.slice(os.indexOf(':')+2);
+		// get the Arch:
+		var arch = $("#nrcmdarch").text();
+		arch = arch.slice(arch.indexOf(':')+2);
+		// get the noderange:
+		var nr = $("#nrcmdnoderange").text();
+		nr = nr.slice(nr.indexOf(':')+2);
+		// get the method:
+		var meth = $("#nrcmdmethod").text();
+		meth = meth.slice(meth.indexOf(':')+2);
+
+		// ask if this is really what they want to do.
+		$("#part1").empty().html("Ok, xCAT is ready to provision the noderange <b>"+nr+"</b> with <b>"+os+"-"+arch+"-"+prof+"</b>  These nodes will be provisioned via the "+meth+" method.<br><br>Are you sure you want to do this?<br><br>")  
+		$("#part2").empty().html("<a class='button' id='doit'><span>Yes, Do it!</span></a>");
+
+		$("#doit").click(function(){
+				var args = "nodetype.os="+os+" nodetype.arch="+arch+" nodetype.profile="+prof;
+				$("#part1").empty().html("running: <i>nodech "+nr+ " "+args+"</i>");
+				// put the waiting image while we run the command:
+				$('#part2').empty().html('<img src="img/throbber.gif">');	
+				// change the args so that we don't ask for any spaces:
+				// we have to do this to encode it to the URL
+				// yes, this does suck and no, I don't think
+				// this function could be any more confusing.
+				args = args.replace(/ /g, '+');
+				$('#part2').load('command.php?nr='+nr+'&cmd=nodech&args='+args,'',
+				function(responseText,textStatus,XMLHttpRequest) {
+					if(textStatus != 'error'){
+						$('#part2').html('Success.');
+						$('#part3').html('running: <i>nodeset '+nr+' '+meth+'</i>');	
+						$('#part4').html('<img src="img/throbber.gif">');	
+						$('#part4').fadeIn('normal');	
+						$('#part4').load('command.php?nr='+nr+'&cmd=nodeset&args='+meth,
+							function(responseText,textStatus,XMLHttpRequest) {
+								if(textStatus != 'error'){
+									$('#part4').html('Success.'+responseText);
+									$('#part5').html('running: <i>rpower '+nr+' boot</i>');
+									$('#part5').fadeIn('normal');	
+									$('#part6').html('<img src="img/throbber.gif">');	
+									$('#part6').fadeIn('normal');	
+									$('#part6').load('command.php?nr='+nr+'&cmd=rpower&args=boot',
+										function(responseText,textStatus,XMLHttpRequest) {
+											if(textStatus != 'error'){
+												$('#part6').html('Nodes have rebooted and should be installing...'+responseText);
+											}
+										}
+									);
+								}
+							}
+						);
+					}else{
+						$('#part2').html('There was a problem...');
+					}
+				}
+				);
+			}
+		);
+	} // so yeah, all these }'s and )'s really suck.  I hope you never have to
+		// debug this.  If you do, please make this code easier to read.
+}
+// load progress bar
+myBar.loaded('xcat.js');
