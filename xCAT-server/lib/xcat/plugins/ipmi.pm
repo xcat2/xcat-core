@@ -1546,7 +1546,9 @@ sub beacon {
 	my $rc = 0;
 	my $text;
 	my $code;
-
+	if($subcommand eq ""){
+                return(1,"please specify on or off for ipmi nodes");
+        }
 	if($subcommand eq "on") {
         if ($ipmiv2) {
 		    @cmd = (0x04,0x0,0x01);
