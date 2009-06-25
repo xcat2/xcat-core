@@ -426,7 +426,6 @@ sub parse_args_xdcp
                     'q|show-config'    => \$options{'show-config'},
                     'p|preserve'       => \$options{'preserve'},
                     'r|c|node-rcp=s'   => \$options{'node-rcp'},
-                    's'                => \$options{'rsyncSN'},
                     't|timeout=i'      => \$options{'timeout'},
                     'v|verify'         => \$options{'verify'},
                     'B|bypass'         => \$options{'bypass'},
@@ -453,13 +452,18 @@ sub parse_args_xdcp
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
     }
-    if ($options{'rsyncSN'})
+
+    # if rsyncing to a node,  not the root image
+    # then must sync to service node first, if using hierarchy
+    # These env variable are used in xdsh.pm preprocessing
+    if ((!($options{'rootimg'})) && ($options{'File'}))
     {
-        $ENV{'RSYNCSN'} = "yes";    # rsync file to SN
+        $ENV{'RSYNCSN'} = "yes";    #rsync file to SN, if exist
     }
+
     if ($options{'File'})
     {
-        $ENV{'DSH_RSYNC_FILE'} = $options{'File'} ;    # rsync file
+        $ENV{'DSH_RSYNC_FILE'} = $options{'File'};    # rsync file
     }
     if ($options{'version'})
     {
