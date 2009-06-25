@@ -15,8 +15,8 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 
-Requires: perl-xCAT >= %{epoch}:%{version}
-Requires: xCAT-server  >= %{epoch}:%{version}
+Requires: perl-xCAT >= %{epoch}:%(cat Version|cut -d. -f 1,2)
+Requires: xCAT-server  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
 
 Provides: xCAT-rmc = %{version}
 

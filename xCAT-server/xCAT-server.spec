@@ -19,8 +19,8 @@ BuildArch: noarch
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-IO-Tty
 %endif
 
-Requires: perl-xCAT >= %{epoch}:%{version}
-Requires: xCAT-client  >= %{epoch}:%{version}
+Requires: perl-xCAT >= %{epoch}:%(cat Version|cut -d. -f 1,2)
+Requires: xCAT-client  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
 
 Provides: xCAT-server = %{epoch}:%{version}
 
