@@ -11,8 +11,6 @@ B<xdcp> I<noderange>  [B<-C> I<context>] [B<-f> I<fanout>]
 
 B<xdcp> I<noderange>  [B<-F> I<rsync input file>] 
 
-B<xdcp> I<noderange>  [B<-s>] [B<-F> I<rsync input file>] 
-
 B<xdcp> [B<-i> I<path to install image>] [B<-F> I<rsync input file>] 
 
 
@@ -182,14 +180,6 @@ targets, or when specified with the -P flag, recursively pulls
 single source directory can be specified using the source_file
 parameter.
 
-=item B<-s>
-
-Specifies that we are using rsync and the input rsync file (-F options) to
-update the service node. The noderange input should be the compute nodes.  The 
-command will look up the list of servicenodes that service the input noderange.
-It will then use the rsync file to send the files via rsync  to the
-service nodes. When the rsync command runs on the service node, the files 
-will be available to send from the service node to the compute nodes. 
 
 =item B<-t>|B<--timeout> I<timeout>
 
@@ -389,7 +379,8 @@ B<xdcp> I<compute -F /tmp/myrsync>
 
 =item *
 
-To rsync the /etc/hosts and passwd file to your service nodes and then to the compute nodes: 
+To rsync to the compute nodes, using service nodes, the command will first
+rsync the files to the /var/xcat/syncfiles directory on the service nodes and then rsync the files from that directory to the compute nodes.  The /var/xcat/syncfiles default directory on the service nodes, can be changed by putting a directory value in the site table SNsyncfiledir attribute. 
 
 Create a rsync file /tmp/myrsync, with this line:
 
@@ -397,13 +388,11 @@ Create a rsync file /tmp/myrsync, with this line:
 
 Run:
 
-B<xdcp> I<compute -s -F /tmp/myrsync>  to update the Service Nodes
-
 B<xdcp> I<compute  -F /tmp/myrsync>    to update the Compute Nodes
 
 =item *
 
-To rsync the /etc/file1 and file2 to your service nodes and then update the compute node with filex and filey: 
+To rsync the /etc/file1 and file2 to your compute nodes and rename to  filex and filey: 
 
 Create a rsync file /tmp/myrsync, with these line:
 
@@ -412,8 +401,6 @@ Create a rsync file /tmp/myrsync, with these line:
 /etc/file2 -> /etc/filey
 
 Run:
-
-B<xdcp> I<compute -s -F /tmp/myrsync>  to update the Service Nodes
 
 B<xdcp> I<compute  -F /tmp/myrsync>    to update the Compute Nodes
 
@@ -446,9 +433,6 @@ B<xdcp> I<-i /install/nim/spot/61Hdskls/usr/lpp/bos/inst_root -F /tmp/myrsync>
 
 =head1 B<Files>
 
-B</opt/xcat/xdsh/Context/>
-
-Location of the contexts available to use with  DSH  Utilities.
 
 =head1 B<SEE ALSO>
 
