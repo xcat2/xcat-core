@@ -656,7 +656,6 @@ sub _execute_dsh
     return @targets_failed;
 }
 
-
 #----------------------------------------------------------------------------
 
 =head3
@@ -4041,17 +4040,27 @@ sub parse_and_run_dcp
         return;
 
     }
+
+    my $synfiledir = "/var/xcat/syncfiles";
     if ($options{'rsyncSN'})
     {
         $syncSN = 1;
+
+        # get the directory on the servicenode to put the rsync files in
+        my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
+        if ($syndir[0])
+        {
+            $synfiledir = $syndir[0];
+        }
+
     }
 
     # if rsyncing the nodes
     if ($options{'File'})
     {
         my $rc =
-          &parse_rsync_input_file(\@nodelist,       \%options,
-                                  $options{'File'}, $syncSN);
+          &parse_rsync_input_file(\@nodelist, \%options, $options{'File'},
+                                  $syncSN, $synfiledir);
         if ($rc == 1)
         {
             $rsp->{data}->[0] = "Error parsing the rsync file";
@@ -4249,7 +4258,9 @@ sub rsync_to_image
           /.../file1 /..../filex  -> /...../dir1
 
         Arguments:
-		  Input nodelist,options, pointer to the sync file 
+		  Input nodelist,options, pointer to the sync file and
+		  if syncing to a service node,  the directory to syn the files to
+		  based on defaults or the site.SNsyncfiledir attribute
 
         Returns:
            Errors if invalid options or the executed dcp command
@@ -4271,7 +4282,7 @@ sub rsync_to_image
 sub parse_rsync_input_file
 {
     use File::Basename;
-    my ($nodes, $options, $input_file, $rsyncSN) = @_;
+    my ($nodes, $options, $input_file, $rsyncSN, $syncdir) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
@@ -4306,10 +4317,12 @@ sub parse_rsync_input_file
                 {
 
                     #  if syncing the Service Node, file goes to the same place
-                    # from which it came
+                    # from which it came in the input syncdir on the service
+                    # node
                     if ($rsyncSN == 1)
                     {    #  syncing the SN
-                        $dest_dir = dirname($srcfile);
+                        $dest_dir = $syncdir;    # the SN sync dir
+                        $dest_dir .= dirname($srcfile);
                         $dest_dir =~ s/\s*//g;    #remove blanks
                     }
                     $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
