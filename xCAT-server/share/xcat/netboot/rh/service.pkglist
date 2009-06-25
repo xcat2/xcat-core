@@ -1,5 +1,5 @@
 bash
-stunnel
+openssl
 dhclient
 kernel
 openssh-server

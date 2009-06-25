@@ -38,19 +38,11 @@ do
 		#wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.gz
 		if [ "$?" = "0" ]
 		then
-         if [ -x /usr/sbin/stunnel -o -x /usr/bin/stunnel ]; then #Stop if no stunnel to help the next bit
-            echo client=yes > /etc/stunnel/stunnel.conf
-            echo foreground=yes >> /etc/stunnel/stunnel.conf
-            echo output=/dev/null >> /etc/stunnel/stunnel.conf
-            echo verify=0 >> /etc/stunnel/stunnel.conf
-            echo '[xcatd]' >> /etc/stunnel/stunnel.conf
-            echo accept=400 >> /etc/stunnel/stunnel.conf
-            echo connect=$i:3001 >> /etc/stunnel/stunnel.conf
-
-            stunnel &
-            STUN_PID=$!
-            sleep 1
+         if [ ! -x /usr/bin/openssl ]; then #Stop if no openssl to help the next bit
+            exit 1
          fi
+         XCATSERVER=$i:3001
+         export XCATSERVER
          mv $i/postscripts /xcatpost
          rm -rf $i
          chmod +x /xcatpost/*
@@ -92,5 +84,4 @@ updateflag.awk $MASTER 3002
 cd /
 rm -Rf /xcatpost
 rm -f /tmp/mypostscript
-rm -f /etc/stunnel/stunnel.conf
 exit 0

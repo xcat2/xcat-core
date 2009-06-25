@@ -1,6 +1,6 @@
 bash 
 nfs-utils
-stunnel
+openssl
 dhclient 
 kernel 
 openssh-server 

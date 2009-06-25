@@ -34,7 +34,7 @@ pam-modules
 timezone
 mysql-client
 perl-Expect
-#stunnel
+openssl
 xCATsn
 perl-DBD-mysql
 portmap

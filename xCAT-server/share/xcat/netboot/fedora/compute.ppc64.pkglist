@@ -1,6 +1,6 @@
 bash
 nfs-utils
-stunnel
+openssl
 glibc.ppc64
 dhclient 
 kernel.ppc64

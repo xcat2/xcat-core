@@ -1,7 +1,7 @@
 aaa_base
 bash 
 nfs-utils
-stunnel
+openssl
 dhcpcd 
 kernel-ppc64
 openssh

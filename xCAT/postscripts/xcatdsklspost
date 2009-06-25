@@ -38,28 +38,9 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
 fi
 
 
-if [ -x /usr/bin/stunnel -o -x /usr/sbin/stunnel ]; then 
-    mkdir -p /etc/stunnel
-    mkdir -p /var/stunnel
-    mkdir -p /usr/var/run/stunnel   #at least for SLES11
-    
-cat > /etc/stunnel/stunnel.conf << EOF
-client=yes
-foreground=no
-output=/dev/null
-#output=/var/log/stunnel.log
-verify=0
-[xcatd]
-accept=400
-EOF
-echo "connect=$SIP:3001" >> /etc/stunnel/stunnel.conf
-stunnel; 
-sleep 1; 
-elif [ -x /usr/bin/openssl ]; then
+if [ -x /usr/bin/openssl ]; then
      XCATSERVER="$SIP:3001"
      export XCATSERVER
-     USEOPENSSLFORXCAT=1
-     export USEOPENSSLFORXCAT
 fi
 mkdir -p /xcatpost; 
 mkdir -p /tmp/postage
@@ -123,11 +104,6 @@ if [ -x /tmp/mypostscript ];then
    /tmp/mypostscript
 fi
 rm -f /tmp/mypostscript
-
-if [ -x /usr/bin/stunnel -o -x /usr/sbin/stunnel ]; then 
-killall stunnel
-rm -rf /etc/stunnel
-fi
 
 #tell user it is done when this is called by updatenode command
 if [ $# -gt 0 ]; then

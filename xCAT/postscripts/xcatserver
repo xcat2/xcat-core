@@ -4,13 +4,8 @@
 #(C)IBM Corp
 #
 
-if [ ! -x /usr/sbin/stunnel -a ! -x /usr/bin/stunnel ]; then #Stop if no stunnel to help the next bit
-   if [ -x /usr/bin/openssl ]; then
-      USEOPENSSLFORXCAT=1
-      export USEOPENSSLFORXCAT
-   else 
-       exit 0
-   fi
+if [ ! -x /usr/bin/openssl ]; then
+   exit 0
 fi
    allowcred.awk &
    CREDPID=$!

@@ -49,29 +49,8 @@ do
 
 		if [ "$?" = "0" ]
 		then
-            if [ -x  /usr/bin/openssl ]; then
-                USEOPENSSLFORXCAT=1
-                export USEOPENSSLFORXCAT
-                XCATSERVER=$i:3001
-                export XCATSERVER
-            else
-                 rpm -ivh $i/post/otherpkgs/sles11/$NODE_ARCH/stunnel*.rpm
-                 mkdir -p /usr/var/run/stunnel
-                     mkdir -p /var/stunnel
-                     if [ -x /usr/sbin/stunnel ]; then #Stop if no stunnel to help the next bit
-                        echo client=yes > /etc/stunnel/stunnel.conf
-                        echo foreground=no >> /etc/stunnel/stunnel.conf
-                        echo output=/dev/null >> /etc/stunnel/stunnel.conf
-                        echo verify=0 >> /etc/stunnel/stunnel.conf
-                        echo '[xcatd]' >> /etc/stunnel/stunnel.conf
-                        echo accept=400 >> /etc/stunnel/stunnel.conf
-                        echo connect=$i:3001 >> /etc/stunnel/stunnel.conf
-
-                        stunnel
-                        STUN_PID=$!
-                        sleep 1
-                     fi
-         fi
+         XCATSERVER=$i:3001
+         export XCATSERVER
          mv $i/postscripts /xcatpost
          rm -rf $i
          chmod +x /xcatpost/*
@@ -103,9 +82,6 @@ cd /
 /xcatpost/#TABLE:nodelist:$NODE:node#
 rm -Rf /xcatpost
 rm -f /tmp/mypostscript
-if [ ! -x /usr/bin/stunnel ]; then 
-    rm -f /etc/stunnel/stunnel.conf
-fi
 rmdir /xcatpost
 ]]>
 

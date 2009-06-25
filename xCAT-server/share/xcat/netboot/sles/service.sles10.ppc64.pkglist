@@ -6,7 +6,7 @@ syslogd
 klogd
 device-mapper
 bash
-stunnel
+openssl
 nfs-utils
 ksh
 syslog-ng
