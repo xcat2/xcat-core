@@ -659,6 +659,145 @@ sub _execute_dsh
 #----------------------------------------------------------------------------
 
 =head3
+        execute_dshservice
+
+        This is the main driver routine for an instance of the dshservice command.
+        Given the options configured in the $options hash table, the routine
+        executes the actions specified by the routine
+
+        Arguments:
+        	$options - options hash table describing dshservice configuration options
+
+        Returns:
+        	None
+
+        Globals:
+        	None
+
+        Error:
+        	None
+
+        Example:
+
+        Comments:
+
+=cut
+
+sub execute_dshservice
+{
+    my ($class, $options) = @_;
+
+    if ($$options{'all-valid-contexts'})
+    {
+        scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
+
+        foreach my $context (sort(@dsh_valid_contexts))
+        {
+            print STDOUT "$context\n";
+        }
+    }
+
+    my $rsp = {};
+    my $result;
+    if ($$options{'query'})
+    {
+        xCAT::DSHCLI->config_default_context($options);
+
+        if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
+        {
+            $rsp->{data}->[0] = " Context: $$options{'context'} not valid.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+            return ++$result;
+        }
+
+        if ($$options{'nodes'})
+        {
+            my %resolved_targets   = ();
+            my %unresolved_targets = ();
+            my %context_targets    = ();
+            my @nodenames;
+
+            xCAT::DSHCLI->resolve_targets($options, \%resolved_targets,
+                                       \%unresolved_targets, \%context_targets);
+
+            foreach my $user_node (sort keys(%resolved_targets))
+            {
+                my $properties = $resolved_targets{$user_node};
+                my $context    = $$properties{context};
+                my $node       = $$properties{hostname};
+                $context->query_node($node);
+            }
+            foreach my $user_node (sort keys(%unresolved_targets))
+            {
+                my $properties = $unresolved_targets{$user_node};
+                my $context    = $$properties{context};
+                my $node       = $$properties{hostname};
+                $context->query_node($node);
+            }
+
+        }
+        if ($$options{'defaults'})
+        {
+            scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
+
+            print STDOUT "DefaultContext=$$options{'context'}\n";
+
+            my $dsh_defaults = xCAT::DSHCLI->get_dsh_defaults;
+
+            foreach my $context (sort keys(%$dsh_defaults))
+            {
+                my $context_defaults = $$dsh_defaults{$context};
+                foreach my $key (sort keys(%$context_defaults))
+                {
+                    my $key_label = $key;
+                    ($key eq 'RemoteShell')
+                      && ($key_label = 'NodeRemoteShell');
+                    print STDOUT
+                      "$context:$key_label=$$context_defaults{$key}\n";
+                }
+            }
+        }
+    }
+
+    if ($$options{'resolve'})
+    {
+        my %resolved_targets   = ();
+        my %unresolved_targets = ();
+        my %context_targets    = ();
+
+        xCAT::DSHCLI->config_default_context($options);
+
+        if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
+        {
+
+            $rsp->{data}->[0] = " Context: $$options{'context'} not valid.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return ++$result;
+        }
+
+        xCAT::DSHCLI->resolve_targets($options, \%resolved_targets,
+                                      \%unresolved_targets, \%context_targets);
+
+        my @targets = (sort keys(%resolved_targets));
+        push @targets, (sort keys(%unresolved_targets));
+
+        foreach my $target (@targets)
+        {
+            print STDOUT "$target\n";
+        }
+    }
+
+    if ($$options{'show-config'})
+    {
+        xCAT::DSHCLI->show_dsh_config($options);
+    }
+
+}
+
+#----------------------------------------------------------------------------
+
+=head3
         fork_fanout_dcp
 
         Main process forking routine for an instance of the dcp command.
@@ -4040,27 +4179,17 @@ sub parse_and_run_dcp
         return;
 
     }
-
-    my $synfiledir = "/var/xcat/syncfiles";
     if ($options{'rsyncSN'})
     {
         $syncSN = 1;
-
-        # get the directory on the servicenode to put the rsync files in
-        my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
-        if ($syndir[0])
-        {
-            $synfiledir = $syndir[0];
-        }
-
     }
 
     # if rsyncing the nodes
     if ($options{'File'})
     {
         my $rc =
-          &parse_rsync_input_file(\@nodelist, \%options, $options{'File'},
-                                  $syncSN, $synfiledir);
+          &parse_rsync_input_file(\@nodelist,       \%options,
+                                  $options{'File'}, $syncSN);
         if ($rc == 1)
         {
             $rsp->{data}->[0] = "Error parsing the rsync file";
@@ -4258,9 +4387,7 @@ sub rsync_to_image
           /.../file1 /..../filex  -> /...../dir1
 
         Arguments:
-		  Input nodelist,options, pointer to the sync file and
-		  if syncing to a service node,  the directory to syn the files to
-		  based on defaults or the site.SNsyncfiledir attribute
+		  Input nodelist,options, pointer to the sync file 
 
         Returns:
            Errors if invalid options or the executed dcp command
@@ -4282,7 +4409,7 @@ sub rsync_to_image
 sub parse_rsync_input_file
 {
     use File::Basename;
-    my ($nodes, $options, $input_file, $rsyncSN, $syncdir) = @_;
+    my ($nodes, $options, $input_file, $rsyncSN) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
@@ -4317,12 +4444,10 @@ sub parse_rsync_input_file
                 {
 
                     #  if syncing the Service Node, file goes to the same place
-                    # from which it came in the input syncdir on the service
-                    # node
+                    # from which it came
                     if ($rsyncSN == 1)
                     {    #  syncing the SN
-                        $dest_dir = $syncdir;    # the SN sync dir
-                        $dest_dir .= dirname($srcfile);
+                        $dest_dir = dirname($srcfile);
                         $dest_dir =~ s/\s*//g;    #remove blanks
                     }
                     $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
