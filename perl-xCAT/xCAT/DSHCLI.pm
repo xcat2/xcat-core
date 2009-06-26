@@ -4313,13 +4313,20 @@ sub parse_rsync_input_file_on_MN
             my $dest_file = $2;
             $dest_file =~ s/[\s;]//g;
             my $dest_dir;
-            if (-d $dest_file)
-            {    # if a directory , just use
-                $dest_dir = $dest_file;
+            if (-e $dest_file)
+            {    # if dest file exist
+                if (-d $dest_file)
+                {    # if a directory , just use
+                    $dest_dir = $dest_file;
+                }
+                else
+                {    # strip off the file
+                    $dest_dir = dirname($dest_file);
+                }
             }
             else
-            {    # strip off the file
-                $dest_dir = dirname($dest_file);
+            {        # destination does not exist, just use as is
+                $dest_dir = $dest_file;
             }
             $dest_dir =~ s/\s*//g;    #remove blanks
 
@@ -4350,13 +4357,20 @@ sub parse_rsync_input_file_on_MN
                     my $src_basename = basename($srcfile);    # get file name
 
                     my $dest_basename;    # destination file name
-                    if (-d $dest_file)
-                    {    # if a directory, get filename from src
-                        $dest_basename = $src_basename;
+                    if (-e $dest_file)
+                    {                     # if destination file  exist
+                        if (-d $dest_file)
+                        {    # if a directory, get filename from src
+                            $dest_basename = $src_basename;
+                        }
+                        else
+                        {    # get the file name from the destination
+                            $dest_basename = basename($dest_file);
+                        }
                     }
                     else
-                    {    # get the file name from the destination
-                        $dest_basename = basename($dest_file);
+                    {        #destination does not exist, get filename from src
+                        $dest_basename = $src_basename;
                     }
                     if ($rsyncSN == 1)    # dest file will be the same as src
                     {                     #  syncing the SN
@@ -4451,13 +4465,20 @@ sub parse_rsync_input_file_on_SN
             my $dest_file = $2;
             $dest_file =~ s/[\s;]//g;
             my $dest_dir;
-            if (-d $dest_file)
-            {    # if a directory , just use
-                $dest_dir = $dest_file;
+            if (-e $dest_file)
+            {
+                if (-d $dest_file)
+                {    # if a directory , just use
+                    $dest_dir = $dest_file;
+                }
+                else
+                {    # strip off the file
+                    $dest_dir = dirname($dest_file);
+                }
             }
             else
-            {    # strip off the file
-                $dest_dir = dirname($dest_file);
+            {        # destination does not exist
+                $dest_dir = $dest_file;
             }
             $dest_dir =~ s/\s*//g;    #remove blanks
 
@@ -4481,13 +4502,20 @@ sub parse_rsync_input_file_on_SN
                     my $src_basename = basename($srcfile);    # get file name
 
                     my $dest_basename;    # destination file name
-                    if (-d $dest_file)
-                    {    # if a directory, get filename from src
-                        $dest_basename = $src_basename;
+                    if (-e $dest_file)
+                    {                     # if destination file  exist
+                        if (-d $dest_file)
+                        {    # if a directory, get filename from src
+                            $dest_basename = $src_basename;
+                        }
+                        else
+                        {    # get the file name from the destination
+                            $dest_basename = basename($dest_file);
+                        }
                     }
                     else
-                    {    # get the file name from the destination
-                        $dest_basename = basename($dest_file);
+                    {        #destination does not exist, get filename from src
+                        $dest_basename = $src_basename;
                     }
                     $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
                       $dest_basename =~ s/[\s;]//g;
