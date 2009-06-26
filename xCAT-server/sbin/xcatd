@@ -1274,7 +1274,11 @@ sub service_connection {
           $req->{'_xcat_clienthost'} = [$peerhost];
           $req->{'_xcat_clientfqdn'} = [$peerfqdn];
           $req->{'_xcat_clientport'}= [$peerport];
-          $$progname="xCATd SSL: ".$req->{command}->[0]." for ".($peername ? $peername ."@".$peerhost : $peerhost);
+          $$progname="xCATd SSL: ".$req->{command}->[0];
+          if ($req->{noderange}) {
+              $$progname .= " to ".$req->{noderange}->[0];
+          }
+          $$progname .= " for ".($peername ? $peername ."@".$peerhost : $peerhost);
           if ($req->{command}->[0] eq "authcheck") { #provide a method for UI to verify a user without actually requesting action
               my $resp;
               if ($peername or $peername eq "0") {
@@ -1523,6 +1527,7 @@ sub validate {
     if ($rule->{rule}) {
       if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
         my $logst = "xCAT: Allowing ".$request->{command}->[0];
+        if ($request->{noderange}) { $logst .= " to ".$request->{noderange}->[0]; }
         if ($peername) { $logst .= " for " . $peername };
         if ($peerhost) { $logst .= " from " . $peerhost };
          xCAT::MsgUtils->message("S",$logst);

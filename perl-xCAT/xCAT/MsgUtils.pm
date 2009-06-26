@@ -407,7 +407,7 @@ sub message
         else
         {                             # print to stdout
 
-            print $stdouterrf $rsp;    # print the message
+            print $stdouterrf $rsp."\n";    # print the message
         }
     }
 
