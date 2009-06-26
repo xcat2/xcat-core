@@ -123,8 +123,26 @@ sub setdestiny {
       if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
       $bptab->setNodeAttribs($_,$hash);
      }
-  } elsif ($state =~ /^install$/ or $state eq "install" or $state eq "netboot" or $state eq "image" or $state eq "winshell") {
+  } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell") {
     chomp($state);
+    my $target;
+    if ($state =~ /=/) {
+        ($state,$target) = split /=/,$state,2;
+    }
+    if ($target) {
+        my $updateattribs;
+        if ($target =~ /(.*)-(.*)-(.*)/) {
+            $updateattribs->{os}=$1;
+            $updateattribs->{arch}=$2;
+            $updateattribs->{profile}=$3;
+        } else {
+            $updateattribs->{profile}=$target;
+        }
+        my $nodetypetable = xCAT::Table->new('nodetype',-create=>1);
+        $nodetypetable->setNodesAttribs($req->{node},$updateattribs);
+    }
+
+        
     $errored=0;
     $subreq->({command=>["mk$state"],
               node=>$req->{node}}, \&relay_response);
