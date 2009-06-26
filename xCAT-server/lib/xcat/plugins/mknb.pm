@@ -95,6 +95,7 @@ sub process_request {
    system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/nbfs.$arch.gz");
    system ("rm -rf $tempdir");
    my $hexnets = xCAT::Utils->my_hexnets();
+   my $normnets = xCAT::Utils->my_nets();
    my $consolecmdline;
    if (defined($serialport) and $serialspeed) {
        $consolecmdline = "console=ttyS$serialport,$serialspeed";
@@ -104,6 +105,8 @@ sub process_request {
    }
    my $cfgfile;
    if ($arch =~ /x86/) {
+      mkpath("$tftpdir/xcat/xnba/nets");
+      chmod(0755,"$tftpdir/xcat/xnba");
       mkpath("$tftpdir/pxelinux.cfg");
       chmod(0755,"$tftpdir/pxelinux.cfg");
       if (! -r "$tftpdir/pxelinux.0") {
@@ -125,6 +128,40 @@ sub process_request {
       }
    }
    my $dopxe=0;
+   foreach (keys %{$normnets}) {
+      my $net = $_;
+      $net =~s/\//_/;
+      $dopxe=0;
+      if ($arch =~ /x86/) { #only do pxe if just x86 or x86_64 and no x86
+          if ($arch =~ /x86_64/) {
+              if (-r "$tftpdir/xcat/xnba/$_.net") {
+                  my $cfg;
+                  my @contents;
+                  open($cfg,"<","$tftpdir/xcat/xnba/nets/$net");
+                  @contents = <$cfg>;
+                  close($cfg);
+                   if (grep (/x86_64/,@contents)) {
+                      $dopxe=1;
+                   }
+             } else {
+                 $dopxe = 1;
+             }
+          } else {
+             $dopxe = 1;
+          }
+      }
+      if ($dopxe) {
+          my $cfg;
+         open($cfg,">","$tftpdir/xcat/xnba/nets/$net");
+         print $cfg "#!gpxe\n";
+         print $cfg 'imgfetch -n kernel tftp://${next-server}/xcat/nbk.'."$arch quiet xcatd=".$normnets->{$_}.":$xcatdport $consolecmdline\n";
+         print $cfg 'imgfetch -n nbfs tftp://${next-server}/xcat/nbfs.'."$arch.gz\n";
+         print $cfg "imgload kernel\n";
+         print $cfg "imgexec kernel\n";
+         close($cfg);
+      }
+   }
+   $dopxe=0;
    foreach (keys %{$hexnets}) {
       $dopxe=0;
       if ($arch =~ /x86/) { #only do pxe if just x86 or x86_64 and no x86

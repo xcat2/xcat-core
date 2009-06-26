@@ -1829,6 +1829,27 @@ sub my_hexnets
     return $rethash;
 }
 
+sub my_nets
+{
+    my $rethash;
+    my @nets = split /\n/, `/sbin/ip addr`; #could use ip route, but to match hexnets...
+    foreach (@nets)
+    {
+        my @elems = split /\s+/;
+        unless (/^\s*inet\s/)
+        {
+            next;
+        }
+        (my $curnet, my $maskbits) = split /\//, $elems[2];
+        my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
+        my $nown     = unpack("N", inet_aton($curnet));
+        $nown = $nown & $curmask;
+        my $textnet=inet_ntoa(pack("N",$nown));
+        $textnet.="/$maskbits";
+        $rethash->{$textnet} = $curnet;
+    }
+    return $rethash;
+}
 #-------------------------------------------------------------------------------
 
 =head3   my_if_netmap
