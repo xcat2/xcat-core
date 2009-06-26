@@ -4083,6 +4083,46 @@ sub getsynclistfile()
 }
 
 #-----------------------------------------------------------------------------
+=head3 acquire_lock
+    Get a lock on an arbirtrary named resource.  For now, this is only across the scope of one service node/master node, an argument may be added later if/when 'global' locks are supported. This call will block until the lock is free.
+    Arguments:
+        A string name for the lock to acquire
+    Returns:
+        false on failure
+        A reference for the lock being held.
+=cut
+
+sub acquire_lock {
+    my $lock_name = shift;
+    use File::Path;
+    mkpath("/var/lock/xcat/");
+    use Fcntl ":flock";
+    my $tlock;
+    $tlock->{path}="/var/lock/xcat/".$lock_name;
+    open($tlock->{fd},">",$tlock->{path}) or return undef;
+    unless ($tlock->{fd}) { return undef; }
+    flock($tlock->{fd},LOCK_EX) or return undef;
+    return $tlock;
+}
+        
+#---------------------
+=head3 release_lock
+    Release an acquired lock
+    Arguments:
+        reference to lock
+    Returns:
+        false on failure, true on success
+=cut
+
+sub release_lock {
+    my $tlock = shift;
+    unlink($tlock->{path});
+    flock($tlock->{fd},LOCK_UN);
+    close($tlock->{fd});
+}
+
+
+#-----------------------------------------------------------------------------
 
 
 =head3 getrootimage
