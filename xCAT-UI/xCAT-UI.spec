@@ -6,7 +6,7 @@ Epoch: 4
 
 License: EPL
 Group: Applications/System
-Source: xCAT-web-%(cat Version).tar.gz
+Source: xCAT-UI-%(cat Version).tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 URL: http://xcat.org
@@ -15,7 +15,7 @@ Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
 BuildArch: noarch
-Provides: xCAT-web = %{version}
+Provides: xCAT-UI = %{version}
 
 %ifos linux
 # httpd is provided by apache2 on SLES and httpd on RHEL
@@ -27,21 +27,21 @@ Requires: httpd
 Provides a browser-based interface for xCAT (extreme Cluster Administration Tool).
 
 %prep
-%setup -q -n xCAT-web
+%setup -q -n xCAT-UI
 %build
 %install
 
 rm -rf $RPM_BUILD_ROOT
 
-mkdir -p $RPM_BUILD_ROOT%{prefix}/web
+mkdir -p $RPM_BUILD_ROOT%{prefix}/ui
 
-cp -r * $RPM_BUILD_ROOT%{prefix}/web
-chmod 755 $RPM_BUILD_ROOT%{prefix}/web/*
+cp -r * $RPM_BUILD_ROOT%{prefix}/ui
+chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
 
 %files
 %defattr(-,root,root)
 # %defattr( 555, root, root, 755 )
-%{prefix}/web
+%{prefix}/ui
 
 
 %post
@@ -65,14 +65,14 @@ if [ "$1" = 1 ]    # initial install
 then
   # Update the apache config
   #echo "Updating $apachedaemon configuration for xCAT..."
-  /bin/rm -f /etc/$apachedaemon/conf.d/xcat-web.conf
-  /bin/ln -s %{prefix}/web/etc/apache2/conf.d/xcat-web.conf /etc/$apachedaemon/conf.d/xcat-web.conf
+  /bin/rm -f /etc/$apachedaemon/conf.d/xcat-ui.conf
+  /bin/ln -s %{prefix}/ui/etc/apache2/conf.d/xcat-ui.conf /etc/$apachedaemon/conf.d/xcat-ui.conf
   /etc/init.d/$apachedaemon reload
 
   # Link to the grpattr cmd.  Note: this was for xcat 1.3.  Do not use this anymore.
   #/bin/rm -f %{prefix}/bin/grpattr
   #mkdir -p %{prefix}/bin
-  #/bin/ln -s %{prefix}/web/cmds/grpattr %{prefix}/bin/grpattr
+  #/bin/ln -s %{prefix}/ui/cmds/grpattr %{prefix}/bin/grpattr
 
   # Config sudo.  Note: this was for xcat 1.3.  Do not use this anymore.
   #if ! egrep -q "^$apacheuser ALL=\(ALL\) NOPASSWD:ALL" /etc/sudoers; then
@@ -84,12 +84,12 @@ then
   #echo -e "y\ny\ny" | %{prefix}/share/xcat/scripts/setup-local-client.sh $apacheuser
   #XCATROOT=%{prefix} %{prefix}/sbin/chtab priority=5 policy.name=$apacheuser policy.rule=allow
 
-  echo "To use xCAT-web, point your browser to http://"`hostname`"/xcat"
+  echo "To use xCAT-UI, point your browser to http://"`hostname`"/xcat"
 fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]        # initial install, or upgrade and this is the newer rpm
 then
-  # Uncomment this if we change xcat-web.conf again
+  # Uncomment this if we change xcat-ui.conf again
   #/etc/init.d/$apachedaemon reload
   true
 fi
@@ -100,15 +100,15 @@ if [ "$1" = 1 ] #initial install
 then
     # Update the apache config
     echo "Updating ibm http server configuration for xCAT..."
-    /bin/rm -f /usr/IBM/HTTPServer/conf/xcat-web.conf
-    cp /usr/IBM/HTTPServer/conf/httpd.conf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.web.bak
-    cat /opt/xcat/web/etc/apache2/conf.d/xcat-web.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
+    /bin/rm -f /usr/IBM/HTTPServer/conf/xcat-ui.conf
+    cp /usr/IBM/HTTPServer/conf/httpd.conf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak
+    cat /opt/xcat/ui/etc/apache2/conf.d/xcat-ui.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
     /usr/IBM/HTTPServer/bin/apachectl restart
 fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]      # initial install, or upgrade and this is the newer rpm
 then
-    # Uncomment this if we change xcat-web.conf again
+    # Uncomment this if we change xcat-ui.conf again
     #/etc/init.d/$apachedaemon reload
     true
 fi
@@ -136,7 +136,7 @@ then
 
   # Remove links made during the post install script
   echo "Undoing $apachedaemon configuration for xCAT..."
-  /bin/rm -f /etc/$apachedaemon/conf.d/xcat-web.conf
+  /bin/rm -f /etc/$apachedaemon/conf.d/xcat-ui.conf
   /etc/init.d/$apachedaemon reload
   #/bin/rm -f %{prefix}/bin/grpattr
 
@@ -152,8 +152,8 @@ fi
 %else   #for AIX
 # Remove links made during the post install script
 echo "Undoing IBM HTTP Server configuration for xCAT..."
-cp /usr/IBM/HTTPServer/conf/httpd.conf.xcat.web.conf /usr/IBM/HTTPServer/conf/httpd.conf
-rm -rf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.web.conf
+cp /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.conf /usr/IBM/HTTPServer/conf/httpd.conf
+rm -rf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.conf
 /usr/IBM/HTTPServer/bin/apachectl restart
 %endif
 
