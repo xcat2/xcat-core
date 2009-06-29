@@ -86,6 +86,9 @@ sub setstate {
       }
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/;
   }
+  if ($kern->{addkcmdline}) {
+      $kern->{kcmdline} .= " ".$kern->{addkcmdline};
+  }
   my $pcfg;
   unless (-d "$tftpdir/etc") {
      mkpath("$tftpdir/etc");
@@ -316,7 +319,7 @@ sub process_request {
   }
   if ($errored) { return; }
   my $bptab=xCAT::Table->new('bootparams',-create=>1);
-  my $bphash = $bptab->getNodesAttribs(\@nodes,['kernel','initrd','kcmdline']);
+  my $bphash = $bptab->getNodesAttribs(\@nodes,['kernel','initrd','kcmdline','addkcmdline']);
   my $chaintab=xCAT::Table->new('chain',-create=>1);
   my $chainhash=$chaintab->getNodesAttribs(\@nodes,['currstate']);
   my $mactab=xCAT::Table->new('mac',-create=>1);

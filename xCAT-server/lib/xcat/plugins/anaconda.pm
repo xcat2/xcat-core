@@ -178,8 +178,8 @@ sub mknetboot
     my $hmhash =
           $hmtab->getNodesAttribs(\@nodes,
                                  ['serialport', 'serialspeed', 'serialflow']);
-    my $addkcmdhash =
-        $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
+    #my $addkcmdhash =
+    #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
     foreach $node (@nodes)
     {
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
@@ -360,13 +360,13 @@ sub mknetboot
         }
         # add the addkcmdline attribute  to the end
         # of the command, if it exists
-        my $addkcmd   = $addkcmdhash->{$node}->[0];
+        #my $addkcmd   = $addkcmdhash->{$node}->[0];
         # add the extra addkcmd command info, if in the table
-        if ($addkcmd->{'addkcmdline'}) {
-                $kcmdline .= " ";
-                $kcmdline .= $addkcmd->{'addkcmdline'};
+        #if ($addkcmd->{'addkcmdline'}) {
+        #        $kcmdline .= " ";
+        #        $kcmdline .= $addkcmd->{'addkcmdline'};
            
-        }
+        #}
         
 	my $kernstr="xcat/netboot/$osver/$arch/$profile/kernel";
 	if ($xenstyle) {
@@ -410,8 +410,8 @@ sub mkinstall
     my %hents = 
               %{$hmtab->getNodesAttribs(\@nodes,
                                      ['serialport', 'serialspeed', 'serialflow'])};
-    my $addkcmdhash =
-        $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
+    #my $addkcmdhash =
+    #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
     require xCAT::Template;
     foreach $node (@nodes)
     {
@@ -624,12 +624,12 @@ sub mkinstall
             $kcmdline .= " noipv6";
             # add the addkcmdline attribute  to the end
             # of the command, if it exists
-            my $addkcmd   = $addkcmdhash->{$node}->[0];
+            #my $addkcmd   = $addkcmdhash->{$node}->[0];
             # add the extra addkcmd command info, if in the table
-            if ($addkcmd->{'addkcmdline'}) {
-                    $kcmdline .= " ";
-                    $kcmdline .= $addkcmd->{'addkcmdline'};
-            }
+            #if ($addkcmd->{'addkcmdline'}) {
+            #        $kcmdline .= " ";
+            #        $kcmdline .= $addkcmd->{'addkcmdline'};
+            #}
 
             $bptab->setNodeAttribs(
                                    $node,
