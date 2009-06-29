@@ -1,8 +1,4 @@
 #!/usr/bin/env perl
-BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
-use lib "$::XCATROOT/lib/perl";
-use xCAT::Utils;
-
 use File::Basename;
 use File::Path;
 use File::Copy;
@@ -193,15 +189,6 @@ elsif (-x "$pathtofiles/$profile.postinstall") {
 }
 
 mkinitrd();
-
-# sync fils to the rootimage
-my $syncfile = xCAT::Utils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
-if (defined ($syncfile) && -f $syncfile
-    && -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {
-    print "sync files from $syncfile to the $installroot/netboot/$osver/$arch/$profile/rootimg\n";
-    `$::XCATROOT/bin/xdcp -i "$installroot/netboot/$osver/$arch/$profile/rootimg" -F $syncfile`;
-}
-
 
 sub getlibs {
 	my $file = shift;
