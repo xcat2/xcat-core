@@ -711,6 +711,7 @@ sub fork_fanout_dcp
         my @shorthostname = split(/\./, $user_target);
         $user_target = $shorthostname[0];
         my @dcp_command;
+        my $rsyncfile;
 
         if (!$$target_properties{'localhost'})
         {
@@ -770,8 +771,18 @@ sub fork_fanout_dcp
         {
             if ($$options{'destDir_srcFile'}{$user_target})
             {
-                open(RSYNCCMDFILE, "> /tmp/rsync_$user_target")
-                  or die "can not open file /tmp/rsync_$user_target";
+                if ($::SYNCSN == 1)
+                {    # syncing service node
+                    
+                    $rsyncfile = "/tmp/rsync_$user_target";
+                    $rsyncfile .= "_s";
+                }
+                else
+                {
+                    $rsyncfile = "/tmp/rsync_$user_target";
+                }
+                open(RSYNCCMDFILE, "> $rsyncfile")
+                  or die "can not open file $rsyncfile";
                 my $dest_dir_list = join ' ',
                   keys %{$$options{'destDir_srcFile'}{$user_target}};
                 print RSYNCCMDFILE "#!/bin/sh\n";
@@ -801,10 +812,10 @@ sub fork_fanout_dcp
                     }
                 }
 
-                #print RSYNCCMDFILE "/bin/rm -f /tmp/rsync_$user_target\n";
+                #print RSYNCCMDFILE "/bin/rm -f $rsyncfile\n";
                 close RSYNCCMDFILE;
-                chmod 0755, "/tmp/rsync_$user_target";
-                @dcp_command = ('/bin/sh', '-c', "/tmp/rsync_$user_target");
+                chmod 0755, $rsyncfile;
+                @dcp_command = ('/bin/sh', '-c', $rsyncfile);
             }
             else
             {
@@ -3944,13 +3955,22 @@ sub parse_and_run_dcp
             return;
         }
     }
-    my $syncfile = $options{'File'};
-    if ($options{'File'}
-        && (!-f $options{'File'}))
+    if ($options{'File'})
     {
-        $rsp->{data}->[0] = "File:$syncfile does not exist.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
+
+        # input -F file is copied to tmp file on a service node
+        if (xCAT::Utils->isServiceNode())
+        {    # running on service node
+            $options{'File'} = "/tmp/xcatrf.tmp";
+        }
+        my $syncfile = $options{'File'};
+        if (!-f $options{'File'})
+        {
+
+            my $rsp->{data}->[0] = "File:$syncfile does not exist.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+        }
     }
 
     # invalid to put the -F  with the -r flag
@@ -3978,7 +3998,7 @@ sub parse_and_run_dcp
     {
         if ($^O eq 'aix')
         {
-            $options{'node-rcp'} = '/usr/local/bin/rsync';
+            $options{'node-rcp'} = '/usr/bin/rsync';
         }
         elsif ($^O eq 'linux')
         {
@@ -4022,7 +4042,7 @@ sub parse_and_run_dcp
     #    /....file*   /...../sample*  -> /..../directory
     #
     my @results;
-    my $syncSN = 0;
+    $::SYNCSN = 0;
 
     # if updating an install image
     # only going to run rsync locally
@@ -4048,7 +4068,7 @@ sub parse_and_run_dcp
         # if syncing a service node
         if ($options{'rsyncSN'})
         {
-            $syncSN = 1;
+            $::SYNCSN = 1;
         }
 
         # set default sync dir on service node
@@ -4073,7 +4093,7 @@ sub parse_and_run_dcp
         {    # running on MN
             $rc =
               &parse_rsync_input_file_on_MN(\@nodelist, \%options, $syncfile,
-                                            $syncSN, $synfiledir);
+                                            $::SYNCSN, $synfiledir);
         }
         if ($rc == 1)
         {
@@ -4226,7 +4246,7 @@ sub rsync_to_image
             my $synccmd = "";
             if ($^O eq 'aix')
             {
-                $synccmd = "/usr/local/bin/rsync -Lupotz ";
+                $synccmd = "/usr/bin/rsync -Lupotz ";
             }
             else
             {
@@ -4312,9 +4332,12 @@ sub parse_rsync_input_file_on_MN
             my $src_file  = $1;
             my $dest_file = $2;
             $dest_file =~ s/[\s;]//g;
+            my @srcfiles = (split ' ', $src_file);
+            my $arraysize = scalar @srcfiles;    # of source files on the line
             my $dest_dir;
             if (-e $dest_file)
             {    # if dest file exist
+
                 if (-d $dest_file)
                 {    # if a directory , just use
                     $dest_dir = $dest_file;
@@ -4325,12 +4348,21 @@ sub parse_rsync_input_file_on_MN
                 }
             }
             else
-            {        # destination does not exist, just use as is
-                $dest_dir = $dest_file;
+            {
+
+                # does not exist,  if only more than one file on the line
+                # assume that the destination  is a directory
+                # else assume a file
+                if ($arraysize > 1)
+                {
+                    $dest_dir = $dest_file;
+                }
+                else
+                {
+                    $dest_dir = dirname($dest_file);
+                }
             }
             $dest_dir =~ s/\s*//g;    #remove blanks
-
-            my @srcfiles = (split ' ', $src_file);
 
             foreach my $target_node (@dest_host)
             {
@@ -4370,7 +4402,17 @@ sub parse_rsync_input_file_on_MN
                     }
                     else
                     {        #destination does not exist, get filename from src
-                        $dest_basename = $src_basename;
+                         # does not exist,  if only more than one file on the line
+                         # assume that the destination  is a directory
+                         # else assume a file
+                        if ($arraysize > 1)
+                        {
+                            $dest_basename = $src_basename;
+                        }
+                        else
+                        {
+                            $dest_basename = basename($dest_file);
+                        }
                     }
                     if ($rsyncSN == 1)    # dest file will be the same as src
                     {                     #  syncing the SN
@@ -4464,9 +4506,12 @@ sub parse_rsync_input_file_on_SN
             my $src_file  = $1;
             my $dest_file = $2;
             $dest_file =~ s/[\s;]//g;
+            my @srcfiles = (split ' ', $src_file);
+            my $arraysize = scalar @srcfiles;    # of source files on the line
             my $dest_dir;
             if (-e $dest_file)
             {
+
                 if (-d $dest_file)
                 {    # if a directory , just use
                     $dest_dir = $dest_file;
@@ -4478,11 +4523,19 @@ sub parse_rsync_input_file_on_SN
             }
             else
             {        # destination does not exist
-                $dest_dir = $dest_file;
+                     # does not exist,  if only more than one file on the line
+                     # assume that the destination  is a directory
+                     # else assume a file
+                if ($arraysize > 1)
+                {
+                    $dest_dir = $dest_file;
+                }
+                else
+                {
+                    $dest_dir = dirname($dest_file);
+                }
             }
             $dest_dir =~ s/\s*//g;    #remove blanks
-
-            my @srcfiles = (split ' ', $src_file);
 
             foreach my $target_node (@dest_host)
             {
@@ -4515,7 +4568,17 @@ sub parse_rsync_input_file_on_SN
                     }
                     else
                     {        #destination does not exist, get filename from src
-                        $dest_basename = $src_basename;
+                         # does not exist,  if only more than one file on the line
+                         # assume that the destination  is a directory
+                         # else assume a file
+                        if ($arraysize > 1)
+                        {
+                            $dest_basename = $src_basename;
+                        }
+                        else
+                        {
+                            $dest_basename = basename($dest_file);
+                        }
                     }
                     $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
                       $dest_basename =~ s/[\s;]//g;

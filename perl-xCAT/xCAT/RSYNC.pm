@@ -11,7 +11,7 @@ use base xCAT::DSHRemoteShell;
 
 if ($^O eq 'aix')
 {
-    our $RSYNC_CMD = '/usr/local/bin/rsync';
+    our $RSYNC_CMD = '/usr/bin/rsync';
 }
 
 if ($^O eq 'linux')
@@ -65,23 +65,33 @@ sub remote_copy_command
     $exec_path || ($exec_path = $RSYNC_CMD);
 
     my @command = ();
-
+    my $rsyncfile;
     if ($$config{'destDir_srcFile'})
     {
 
         my $sync_opt;
         if ($^O eq 'aix')
         {
-            $sync_opt = '--rsync-path /usr/local/bin/rsync ';
-        } else {
+            $sync_opt = '--rsync-path /usr/bin/rsync ';
+        }
+        else
+        {
             $sync_opt = '--rsync-path /usr/bin/rsync ';
         }
 
         $sync_opt .= '-Lupotz ';
         $sync_opt .= $$config{'options'};
-
-        open RSCYCCMDFILE, "> /tmp/rsync_$$config{'dest-host'}"
-          or die "Can not open file /tmp/rsync_$$config{'dest-host'}";
+        if ($::SYNCSN == 1)
+        {    # syncing service node
+            $rsyncfile = "/tmp/rsync_$$config{'dest-host'}";
+            $rsyncfile .= "_s";
+        }
+        else
+        {
+            $rsyncfile = "/tmp/rsync_$$config{'dest-host'}";
+        }
+        open RSCYCCMDFILE, "> $rsyncfile"
+          or die "Can not open file $rsyncfile";
         my $dest_dir_list = join ' ', keys %{$$config{'destDir_srcFile'}};
         my $dest_user_host = $$config{'dest-host'};
         if ($$config{'dest-user'})
@@ -97,8 +107,9 @@ sub remote_copy_command
         {
             my @src_file =
               @{$$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'}};
-            #Remove a file from the list if it does not exist 
-            #@src_file = map { $_ if -e $_; } @src_file; 
+
+            #Remove a file from the list if it does not exist
+            #@src_file = map { $_ if -e $_; } @src_file;
             my $src_file_list = join ' ', @src_file;
             if ($src_file_list)
             {
@@ -116,10 +127,11 @@ sub remote_copy_command
             }
 
         }
-        #print RSCYCCMDFILE "/bin/rm -f /tmp/rsync_$$config{'dest-host'}\n";
+
+        #print RSCYCCMDFILE "/bin/rm -f $rsyncfile\n";
         close RSCYCCMDFILE;
-        chmod 0755, "/tmp/rsync_$$config{'dest-host'}";
-        @command = ('/bin/sh', '-c', "/tmp/rsync_$$config{'dest-host'}");
+        chmod 0755, $rsyncfile;
+        @command = ('/bin/sh', '-c', $rsyncfile);
 
     }
     else
