@@ -97,6 +97,7 @@ sub setstate {
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/;
   }
   my $pcfg;
+  unlink($tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
   open($pcfg,'>',$tftpdir."/xcat/xnba/nodes/".$node);
   my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
   print $pcfg "#!gpxe\n";
