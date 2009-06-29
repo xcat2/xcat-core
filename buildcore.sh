@@ -71,13 +71,21 @@ if [ $BUILDIT -eq 1 ]; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
    mv /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm $DESTDIR/
    mv /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
 fi
-if $GREP xCAT-web $SVNUP; then
+# Starting in 2.3 we should build xCAT-UI instead of xCAT-web
+if [ "$REL" = "devel" ]; then
+	UI="UI"
+	MAKEUI=makeuirpm
+else
+	UI="web"
+	MAKEUI=makewebrpm
+fi
+if $GREP xCAT-$UI $SVNUP; then
    UPLOAD=1
-   rm -f $DESTDIR/xCAT-web*
-   rm -f $SRCDIR/xCAT-web*
-   ./makewebrpm
-   mv /usr/src/$pkg/RPMS/noarch/xCAT-web-$VER*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCAT-web-$VER*rpm $SRCDIR
+   rm -f $DESTDIR/xCAT-$UI*
+   rm -f $SRCDIR/xCAT-$UI*
+   ./$MAKEUI
+   mv /usr/src/$pkg/RPMS/noarch/xCAT-$UI-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCAT-$UI-$VER*rpm $SRCDIR
 fi
 if $GREP xCAT-server $SVNUP; then
    UPLOAD=1
