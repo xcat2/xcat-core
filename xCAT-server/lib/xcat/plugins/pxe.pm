@@ -4,6 +4,7 @@ use Data::Dumper;
 use Sys::Syslog;
 use Socket;
 use File::Copy;
+use File::Path;
 
 my $request;
 my $callback;
@@ -39,7 +40,16 @@ sub check_dhcp {
 sub getstate {
   my $node = shift;
   if (check_dhcp($node)) {
-    if (-r $tftpdir . "/pxelinux.cfg/".$node) {
+    if (-r $tftpdir . "/xcat/xnba/nodes/".$node) {
+      my $fhand;
+      open ($fhand,$tftpdir . "/xcat/xnba/nodes/".$node);
+      my $headline = <$fhand>;
+      $headline = <$fhand>; #second line is the comment now...
+      close $fhand;
+      $headline =~ s/^#//;
+      chomp($headline);
+      return $headline;
+    } elsif (-r $tftpdir . "/pxelinux.cfg/".$node) {
       my $fhand;
       open ($fhand,$tftpdir . "/pxelinux.cfg/".$node);
       my $headline = <$fhand>;
@@ -66,6 +76,10 @@ sub setstate {
   my %chainhash = %{shift()};
   my %machash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
+  if ($kern->{addkcmdline}) { #Implement the kcmdline append here for 
+                              #most generic, least code duplication
+      $kern->{kcmdline} .= " ".$kern->{addkcmdline};
+  }
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = xCAT::Utils->my_ip_facing($node);
       unless ($ipfn) {
@@ -83,37 +97,63 @@ sub setstate {
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/;
   }
   my $pcfg;
-  open($pcfg,'>',$tftpdir."/pxelinux.cfg/".$node);
+  open($pcfg,'>',$tftpdir."/xcat/xnba/nodes/".$node);
   my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
+  print $pcfg "#!gpxe\n";
   if ($cref->{currstate}) {
     print $pcfg "#".$cref->{currstate}."\n";
   }
-  print $pcfg "DEFAULT xCAT\n";
-  print $pcfg "LABEL xCAT\n";
   if ($cref and $cref->{currstate} eq "boot") {
-    print $pcfg "LOCALBOOT 0\n";
+    print $pcfg "exit\n";
     close($pcfg);
   } elsif ($kern and $kern->{kernel}) {
-    if ($kern->{kernel} =~ /!/) {
-	my $hypervisor;
-	my $kernel;
-	($kernel,$hypervisor) = split /!/,$kern->{kernel};
-    	print $pcfg " KERNEL mboot.c32\n";
-	print $pcfg " APPEND $hypervisor --- $kernel ".$kern->{kcmdline}." --- ".$kern->{initrd}."\n";
+    if ($kern->{kernel} =~ /!/) { #TODO: deprecate this, do stateless Xen like stateless ESXi
+    	my $hypervisor;
+    	my $kernel;
+    	($kernel,$hypervisor) = split /!/,$kern->{kernel};
+    	print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
+    	print $pcfg " set 210:string http://".'${next-server}'."/tftpboot/\n";
+    	print $pcfg " imgfetch -n pxelinux.0 http://".'${next-server}'."/tftpboot/pxelinux.0\n";
+    	print $pcfg " imgload pxelinux.0\n";
+    	print $pcfg " imgexec pxelinux.0\n";
+        close($pcfg);
+        open($pcfg,'>',$tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
+        print $pcfg "DEFAULT xCAT\nLABEL xCAT\n   KERNEL mboot.c32\n";
+	    print $pcfg " APPEND $hypervisor --- $kernel ".$kern->{kcmdline}." --- ".$kern->{initrd}."\n";
     } else {
-    #It's time to set pxelinux for this node to boot the kernel..
-    print $pcfg " KERNEL ".$kern->{kernel}."\n";
-    if ($kern->{initrd} or $kern->{kcmdline}) {
-      print $pcfg " APPEND ";
-    }
-    if ($kern and $kern->{initrd}) {
-      print $pcfg "initrd=".$kern->{initrd}." ";
-    }
-    if ($kern and $kern->{kcmdline}) {
-      print $pcfg $kern->{kcmdline}."\n";
-    } else {
-      print $pcfg "\n";
-    }
+        if ($kern->{kernel} =~ /\.c32\z/) { #gPXE comboot support seems insufficient, chain pxelinux instead
+        	print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
+        	print $pcfg " set 210:string http://".'${next-server}'."/tftpboot/\n";
+        	print $pcfg " imgfetch -n pxelinux.0 http://".'${next-server}'."/tftpboot/pxelinux.0\n";
+        	print $pcfg " imgload pxelinux.0\n";
+        	print $pcfg " imgexec pxelinux.0\n";
+            close($pcfg);
+            open($pcfg,'>',$tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
+           #It's time to set pxelinux for this node to boot the kernel..
+            print $pcfg "DEFAULT xCAT\nLABEL xCAT\n";
+            print $pcfg " KERNEL ".$kern->{kernel}."\n";
+            if ($kern->{initrd} or $kern->{kcmdline}) {
+              print $pcfg " APPEND ";
+            }
+            if ($kern and $kern->{initrd}) {
+              print $pcfg "initrd=".$kern->{initrd}." ";
+            }
+            if ($kern and $kern->{kcmdline}) {
+              print $pcfg $kern->{kcmdline}."\n";
+            } else {
+              print $pcfg "\n";
+            }
+        } else { #other than comboot/multiboot, we won't have need of pxelinux
+            print $pcfg "imgfetch -n kernel http://".'${next-server}/tftpboot/'.$kern->{kernel}."\n";
+            print $pcfg "imgload kernel\n";
+            if ($kern->{kcmdline}) {
+                print $pcfg "imgargs kernel ".$kern->{kcmdline}."\n";
+            }
+            if ($kern->{initrd}) {
+                print $pcfg "imgfetch http://".'${next-server}'."/tftpboot/".$kern->{initrd}."\n";
+            }
+            print $pcfg "imgexec kernel\n";
+        }
     }
     close($pcfg);
     my $inetn = inet_aton($node);
@@ -324,9 +364,10 @@ sub process_request {
   my $bptab = xCAT::Table->new('bootparams',-create=>1);
   my $chaintab = xCAT::Table->new('chain');
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
-  my %bphash = %{$bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline)])};
+  my %bphash = %{$bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline addkcmdline)])};
   my %chainhash = %{$chaintab->getNodesAttribs(\@nodes,[qw(currstate)])};
   my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
+  mkpath($tftpdir."/xcat/xnba/nodes/");
   foreach (@nodes) {
     my %response;
     $response{node}->[0]->{name}->[0]=$_;

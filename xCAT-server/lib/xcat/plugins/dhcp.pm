@@ -226,21 +226,23 @@ sub addnode
                 $lstatements = "next-server $nxtsrv;$statements";
             }
         }
+        my $doiscsi=0;
         if ($ient and $ient->{server} and $ient->{target}) {
+            $doiscsi=1;
             if (defined ($ient->{lun})) {
                 $lstatements = 'option root-path \"iscsi:'.$ient->{server}.':::'.$ient->{lun}.':'.$ient->{target}.'\";'.$lstatements;
             } else {
                 $lstatements = 'option root-path \"iscsi:'.$ient->{server}.':::'.$ient->{lun}.':'.$ient->{target}.'\";'.$lstatements;
             }
-            if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe') {
-                if (-f "$tftpdir/undionly.kpxe") {
-                    if ($chainent and $chainent->{currstate} and $chainent->{currstate} eq 'iscsiboot') {
-                        $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements;
-                    } else {
-                        $lstatements = 'if exists gpxe.bus-id { filename = \"pxelinux.0\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive gPXE
-                    } 
-                } #TODO: warn when windows
-            }
+        }
+        if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe') {
+            if (-f "$tftpdir/undionly.kpxe") {
+                if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
+                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements;
+                } else {
+                    $lstatements = 'if exists gpxe.bus-id { filename = \"xcat/xnba/nodes/'.$node.'\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive gPXE
+                } 
+            } #TODO: warn when windows
         }
 
 
@@ -845,8 +847,18 @@ sub addnet
         {
             push @netent, "    option domain-name-servers  $nameservers;\n";
         }
-        push @netent, "    if option client-architecture = 00:00  { #x86\n";
-        push @netent, "      filename \"pxelinux.0\";\n";
+        my $tmpmaskn = unpack("N", inet_aton($mask));
+        my $maskbits = 32;
+        while (not ($tmpmaskn & 1)) {
+            $maskbits--;
+            $tmpmaskn=$tmpmaskn>>1;
+        }
+
+                       # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements;
+        push @netent, "    if exists gpxe.bus-id { #x86, gPXE\n";
+        push @netent, "       filename = \"xcat/xnba/nets/".$net."_".$maskbits."\";\n";
+        push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
+        push @netent, "      filename \"undionly.kpxe\";\n";
         push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
         push @netent, "      filename \"pxelinux.0\";\n";
         push @netent,

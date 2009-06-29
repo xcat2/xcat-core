@@ -107,6 +107,7 @@ sub process_request {
    if ($arch =~ /x86/) {
       mkpath("$tftpdir/xcat/xnba/nets");
       chmod(0755,"$tftpdir/xcat/xnba");
+      chmod(0755,"$tftpdir/xcat/xnba/nets");
       mkpath("$tftpdir/pxelinux.cfg");
       chmod(0755,"$tftpdir/pxelinux.cfg");
       if (! -r "$tftpdir/pxelinux.0") {
@@ -134,7 +135,7 @@ sub process_request {
       $dopxe=0;
       if ($arch =~ /x86/) { #only do pxe if just x86 or x86_64 and no x86
           if ($arch =~ /x86_64/) {
-              if (-r "$tftpdir/xcat/xnba/$_.net") {
+              if (-r "$tftpdir/xcat/xnba/nets/$net") {
                   my $cfg;
                   my @contents;
                   open($cfg,"<","$tftpdir/xcat/xnba/nets/$net");
@@ -154,8 +155,8 @@ sub process_request {
           my $cfg;
          open($cfg,">","$tftpdir/xcat/xnba/nets/$net");
          print $cfg "#!gpxe\n";
-         print $cfg 'imgfetch -n kernel tftp://${next-server}/xcat/nbk.'."$arch quiet xcatd=".$normnets->{$_}.":$xcatdport $consolecmdline\n";
-         print $cfg 'imgfetch -n nbfs tftp://${next-server}/xcat/nbfs.'."$arch.gz\n";
+         print $cfg 'imgfetch -n kernel http://${next-server}/tftpboot/xcat/nbk.'."$arch quiet xcatd=".$normnets->{$_}.":$xcatdport $consolecmdline\n";
+         print $cfg 'imgfetch -n nbfs http://${next-server}/tftpboot/xcat/nbfs.'."$arch.gz\n";
          print $cfg "imgload kernel\n";
          print $cfg "imgexec kernel\n";
          close($cfg);
