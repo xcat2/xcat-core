@@ -8,7 +8,7 @@ B<mkdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
 B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-z>|B<--stanza>] [B<-d>|B<--dynamic>] [B<-f>|B<--force>]
-[B<-w> I<attr>=I<val>,[I<attr>=I<val...>]] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
+[[B<-w> "I<attr>==I<val>"] [B<-w> "I<attr>=~I<val>"] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
 
 
 =head1 DESCRIPTION
@@ -52,9 +52,11 @@ A set of comma delimited object types.  Use the help option to get a list of val
 
 Verbose mode.
 
-=item B<-w> I<attr=val,[attr=val...]>
+=item B<-w> I<"attr==val"> B<-w> I<"attr=~val"> ... 
 
-A comma-separated list of attributes and values that can be used to select objects. Use the help option to get a list of validattributes for each object type.
+Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. For mkdef commmand, the -w flag only makes sense for creating dynamic node group. Use the help option to get a list of validattributes for each object type.
+
+Note: the operator !~ will be parsed by shell, if you want to use !~ in the selection string, use single quote instead. For example:-w 'mgt!~ipmi'.
 
 =item B<-z|--stanza>
 
@@ -122,13 +124,13 @@ To create node definitions for a set of node host names contained in the node ra
 
 To create a dynamic node group definition called HMCMgtNodes containing all the HMC managed nodes"
 
- mkdef -t group -o HMCMgtNodes -d -w "mgt=hmc,cons=hmc"
+ mkdef -t group -o HMCMgtNodes -d -w "mgt==hmc" -w "cons==hmc"
 
 =item 9.
 
 To create a dynamic node group definition called SLESNodes containing all the SLES nodes
 
- mkdef -t group -o SLESNodes -d -w "os=|^sles[0-9]+$|"
+ mkdef -t group -o SLESNodes -d -w "os=~^sles[0-9]+$"
 
 =back
 

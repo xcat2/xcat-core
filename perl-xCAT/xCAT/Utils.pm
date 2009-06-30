@@ -4194,4 +4194,135 @@ sub getrootimage()
   }
 }
 
+#----------------------------------------------------------------------------
+
+=head3  parse_selection_string
+        Parse the selection string and 
+        write the parsed result into %wherehash
+
+        Arguments:
+            $ss_ref - selection string array from -w flag
+            \%wherehash - selection string hash %::WhereHash
+        Returns:
+            0 - parse successfully
+            1 - parse failed
+        Globals:
+            %wherehash
+
+        Error:
+
+        Example:
+
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_selection_string()
+{
+    my ($class, $ss_ref, $wherehash_ref) = @_;
+
+    foreach my $m (@{$ss_ref})
+    {
+        my $attr;
+        my $val;
+        my $matchtype;
+        if ($m =~ /^[^=]*\==/) {
+            ($attr, $val) = split /==/,$m,2;
+            $matchtype='match';
+        } elsif ($m =~ /^[^=]*=~/) {
+            ($attr, $val) = split /=~/,$m,2;
+            $val =~ s/^\///;
+            $val =~ s/\/$//;
+            $matchtype='regex';
+        } elsif ($m =~ /^[^=]*\!=/) {
+             ($attr,$val) = split /!=/,$m,2;
+             $matchtype='natch';
+        } elsif ($m =~ /[^=]*!~/) {
+            ($attr,$val) = split /!~/,$m,2;
+            $val =~ s/^\///;
+            $val =~ s/\/$//;
+            $matchtype='negex';
+        } elsif ($m =~ /^[^=]*=[^=]+$/) { # attr=val is the same as attr==val
+            ($attr, $val) = split /=/,$m,2;
+            $matchtype='match';
+        } else {
+           return 1;
+        }
+
+        if (!defined($attr) || !defined($val))
+        {
+            return 1;
+        }
+
+        $wherehash_ref->{$attr}->{'val'} = $val;
+        $wherehash_ref->{$attr}->{'matchtype'} = $matchtype;
+    }
+    return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  selection_string_match
+        Check whether a node matches the selection string 
+        defined in hash %wherehash
+
+        Arguments:
+            \%objhash - the hash contains the objects definition
+            $objname - the object name
+            $wherehash_ref - the selection string hash
+        Returns:
+            0 - NOT match
+            1 - match
+        Globals:
+            %wherehash
+
+        Error:
+
+        Example:
+
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub selection_string_match()
+{
+     my ($class, $objhash_ref, $objname, $wherehash_ref) = @_;
+       
+     my %wherehash = %$wherehash_ref;
+     my $match = 1;
+     foreach my $testattr (keys %wherehash) {
+         # access non-exists hash entry will create an empty one
+         # we should not modify the $objhash_ref
+         if (exists($objhash_ref->{$objname}) && exists($objhash_ref->{$objname}->{$testattr})) { 
+             if($wherehash{$testattr}{'matchtype'} eq 'match') { #attr==val or attr=val
+                 if ($objhash_ref->{$objname}->{$testattr} ne $wherehash{$testattr}{'val'}) {
+                     $match = 0;
+                     last;
+                 }
+             }
+             if(($wherehash{$testattr}{'matchtype'} eq 'natch')) { #attr!=val
+                 if ($objhash_ref->{$objname}->{$testattr} eq $wherehash{$testattr}{'val'}) {
+                     $match = 0;
+                     last;
+                 }
+             }
+             if($wherehash{$testattr}{'matchtype'} eq 'regex') { #attr=~val
+                 if ($objhash_ref->{$objname}->{$testattr} !~ $wherehash{$testattr}{'val'}) {
+                     $match = 0;
+                     last;
+                 }
+             }
+             if($wherehash{$testattr}{'matchtype'} eq 'negex') { #attr!~val
+                 if ($objhash_ref->{$objname}->{$testattr} =~ $wherehash{$testattr}{'val'}) {
+                     $match = 0;
+                     last;
+                 }
+             }
+        } else { #$objhash_ref->{$objname}->{$testattr} does not exist
+            $match = 0;
+            last;
+        }
+     }
+     return $match;
+}
 1;

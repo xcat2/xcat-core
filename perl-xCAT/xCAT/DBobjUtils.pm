@@ -1572,7 +1572,6 @@ sub getGroupMembers
         # find all nodes that satisfy the criteria specified in "wherevals"
         #	value
         my %whereHash;
-        my @whereattrs;
         my %tabhash;
         my %nodeattrhash;
 
@@ -1580,22 +1579,15 @@ sub getGroupMembers
         #$val =~ s/^\s*"\s*//;
         #$val =~ s/\s*"\s*$//;
 
-        my @tmpWhereList = split(',', $objhash{$objectname}{'wherevals'});
-        foreach my $w (@tmpWhereList)
+        my @tmpWhereList = split('::', $objhash{$objectname}{'wherevals'});
+        my $rc = xCAT::Utils->parse_selection_string(\@tmpWhereList, \%whereHash);
+        if ($rc != 0)
         {
-            my ($a, $v) = $w =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
-            if (!defined($a) || !defined($v))
-            {
-                my $rsp;
-                $rsp->{data}->[0] =
-                  "The \'-w\' option has an incorrect attr=val pair - \'$w\'.";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
-                next;
-            }
-
-            $whereHash{$a} = $v;
-            push @whereattrs, $a;
-
+            my $rsp;
+            $rsp->{data}->[0] =
+              "The \'-w\' option has an incorrect attr=val pair.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            next;
         }
 
         # see what nodes have these attr=values
@@ -1610,41 +1602,13 @@ sub getGroupMembers
         }
 
         # Only get the specific attributes of the node
+        my @whereattrs = keys %whereHash;
         my %nodeattrhash = xCAT::DBobjUtils->getobjdefs(\%tmphash, 0, \@whereattrs);
 
         my $first = 1;
         foreach my $objname (keys %nodeattrhash)
         {
-
-            #  all the "where" attrs must match the object attrs
-            my $addlist = 1;
-
-            foreach my $testattr (keys %whereHash)
-            {
-                if ($whereHash{$testattr} =~ /^\|/) 
-                { # wherevals includes regular expression
-                    my $tmpwherestring = $whereHash{$testattr};
-                    $tmpwherestring =~ /^\|(.*)\|$/g;
-                    $tmpwherestring = $1;
-                    if (!defined($nodeattrhash{$objname}{$testattr}) || ($nodeattrhash{$objname}{$testattr} !~ /$tmpwherestring/) )
-                    {
-                        # don't disply
-                        $addlist = 0;
-                        next;
-                     }
-                }
-                else #no regular expression in wherevals
-                {
-                    if (!defined($nodeattrhash{$objname}{$testattr}) || ($nodeattrhash{$objname}{$testattr} ne $whereHash{$testattr}))
-                    {
-
-                        # don't disply
-                        $addlist = 0;
-                        next;
-                     }
-                }
-            }
-            if ($addlist)
+            if (xCAT::Utils->selection_string_match(\%nodeattrhash, $objname, \%whereHash))
             {
                 chomp($objname);
                 if (!$first)

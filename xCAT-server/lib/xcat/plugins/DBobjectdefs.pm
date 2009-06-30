@@ -15,6 +15,7 @@ use xCAT::DBobjUtils;
 use Data::Dumper;
 use Getopt::Long;
 use xCAT::MsgUtils;
+use xCAT::Utils;
 use strict;
 
 # options can be bundled up like -vV
@@ -221,7 +222,7 @@ sub processArgs
                     't=s'       => \$::opt_t,
                     'verbose|V' => \$::opt_V,
                     'version|v' => \$::opt_v,
-                    'w=s'       => \$::opt_w,
+                    'w=s@'       => \$::opt_w,
                     'x|xml'     => \$::opt_x,
                     'z|stanza'  => \$::opt_z
         )
@@ -687,23 +688,13 @@ sub processArgs
     #  check for the -w option
     if ($::opt_w)
     {
-        my @tmpWhereList = split(',', $::opt_w);
-        foreach my $w (@tmpWhereList)
+        my $rc = xCAT::Utils->parse_selection_string($::opt_w, \%::WhereHash);
+        if ($rc != 0)
         {
-            if ($w =~ /=/)
-            {
-                my ($a, $v) = $w =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
-                if (!defined($a) || !defined($v))
-                {
-                    my $rsp;
-                    $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    return 3;
-                }
-
-                $::WhereHash{$a} = $v;
-
-            }
+            my $rsp;
+            $rsp->{data}->[0] = "Incorrect selection string specified with -w flag\n";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 3;
         }
     }
 
@@ -1009,7 +1000,8 @@ sub defmk
                 {
                     if ($::opt_w)
                     {
-                        $::FINALATTRS{$obj}{wherevals} = $::opt_w;
+                        $::FINALATTRS{$obj}{wherevals} = join ('::', @{$::opt_w});
+                        #$::FINALATTRS{$obj}{wherevals} = $::opt_w;
                     }
                     else
                     {
@@ -1073,22 +1065,7 @@ sub defmk
                         foreach my $objname (keys %myhash)
                         {
 
-                            #  all the "where" attrs must match the object attrs
-                            my $addlist = 1;
-
-                            foreach my $testattr (keys %::WhereHash)
-                            {
-								if ( !($myhash{$objname}{$testattr} =~ /\b$::WhereHash{$testattr}\b/) )
-                                {
-
-                                    # don't disply
-                                    $addlist = 0;
-                                    next;
-                                }
-                            }
-
-                            if ($addlist)
-                            {
+                            if (xCAT::Utils->selection_string_match(\%myhash, $objname, \%::WhereHash)) {
                                 push(@memberlist, $objname);
 
                             }
@@ -1550,7 +1527,8 @@ sub defch
             {
                 if ($::opt_w)
                 {
-                    $::FINALATTRS{$obj}{wherevals} = $::opt_w;
+                    $::FINALATTRS{$obj}{wherevals} = join ('::', @{$::opt_w});
+                    #$::FINALATTRS{$obj}{wherevals} = $::opt_w;
                 }
             }
 
@@ -1600,53 +1578,25 @@ sub defch
                     # get all the attrs for these nodes
                     my %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
 
-                    # get a list of attr=val pairs
-                    my @tmpWhereList =
-                      split(',', $::FINALATTRS{$obj}{wherevals});
-
-                    # create an attr-val hash
-                    foreach my $w (@tmpWhereList)
+                    # get a list of attr=val pairs, is it really necessary??
+                    my @wherevals = split(/::/, $::FINALATTRS{$obj}{wherevals});
+                    my $rc = xCAT::Utils->parse_selection_string(\@wherevals, \%::WhereHash);
+                    if ($rc != 0)
                     {
-                        if ($w =~ /=/)
-                        {
-                            my ($a, $v) = $w =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
-                            if (!defined($a) || !defined($v))
-                            {
-                                my $rsp;
-                                $rsp->{data}->[0] =
-                                  "Incorrect \'attr=val\' pair - $a\n";
-                                xCAT::MsgUtils->message("E", $rsp, $::callback);
-                                return 3;
-                            }
-                            $::WhereHash{$a} = $v;
-                        }
+                         my $rsp;
+                         $rsp->{data}->[0] = "Incorrect selection string specified with -m flag";
+                         xCAT::MsgUtils->message("E", $rsp, $::callback);
+                         return 3;
                     }
 
                     # see which ones match the where values
                     foreach my $objname (keys %myhash)
                     {
 
-                        #  all the "where" attrs must match the object attrs
-                        my $addlist = 1;
-
-                        foreach my $testattr (keys %::WhereHash)
-                        {
-
-                            if ($myhash{$objname}{$testattr} ne
-                                $::WhereHash{$testattr})
-                            {
-
-                                # don't disply
-                                $addlist = 0;
-                                next;
-                            }
-                        }
-
-                        if ($addlist)
-                        {
+                        if (xCAT::Utils->selection_string_match(\%myhash, $objname, \%::WhereHash)) {
                             push(@memberlist, $objname);
-
                         }
+
                     }
 
                 }
@@ -2288,22 +2238,7 @@ sub defls
     {
         foreach my $obj (sort (keys %myhash))
         {
-
-            #  all the "where" attrs must match the object attrs
-            my $dodisplay = 1;
-
-            foreach my $testattr (keys %::WhereHash)
-            {
-                if ($myhash{$obj}{$testattr} ne $::WhereHash{$testattr})
-                {
-
-                    # don't disply
-                    $dodisplay = 0;
-                    next;
-                }
-            }
-            if ($dodisplay)
-            {
+            if (xCAT::Utils->selection_string_match(\%myhash, $obj, \%::WhereHash)) {
                 push(@displayObjList, $obj);
             }
         }
