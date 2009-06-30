@@ -655,7 +655,7 @@ sub procsrCheckAIX()
         return $::NOK;
     }
     my $ValidAIXNodes = join (",", @ValidAIXNodes);
-    my $checkCmd = "xdsh $ValidAIXNodes \"$::AIXProcCmd -M\" 2>/dev/null";
+    my $checkCmd = "xdsh $ValidAIXNodes \"$::AIXProcCmd\" 2>/dev/null";
     print $::LOG_FILE_HANDLE "Running command: $checkCmd.\n";
     my @output = `$checkCmd`;
     if ($?)
