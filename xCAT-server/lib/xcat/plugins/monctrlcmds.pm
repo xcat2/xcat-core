@@ -62,7 +62,8 @@ sub preprocess_request
   my $req = shift;
   my $callback  = shift;
   my $command = $req->{command}->[0];
-  if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+#  if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+  if ($req->{module}) { return [$req]; }
   my $args=$req->{arg};
 
   my @requests=();
