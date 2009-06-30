@@ -277,7 +277,8 @@ sub confGmond
 	    my $str = join('',@raw_data);
 	    $str =~ s/setuid = yes/setuid = no/;
 	    $str =~ s/bind/#bind/;
-	    $str =~ s/mcast_join = .*/host = $master/;
+#	    $str =~ s/mcast_join = .*/host = $master/;
+	    $str =~ s/mcast_join = .*/host = $hostname/;
 
             my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
 	    if (ref($pPairHash) eq 'ARRAY') {
@@ -357,7 +358,8 @@ sub confGmond
 	    my $str = join('',@raw_data);
 	    $str =~ s/setuid = yes/setuid = no/;
 	    $str =~ s/bind/#bind/;
-	    $str =~ s/mcast_join = .*/host = $master/;
+#	    $str =~ s/mcast_join = .*/host = $master/;
+	    $str =~ s/mcast_join = .*/host = $hostname/;
             my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
 	    if (ref($pPairHash) eq 'ARRAY') {
 	       if ($callback) {
@@ -600,17 +602,21 @@ sub confGmetad
          my $num=@children;
           if (-e "/etc/xCATSN")
                 {
-                 for (my $i = 0; $i < $num; $i++)
-                  {
-                   print ( OUTFILE "data_source \"$cluster\" $children[ $i ]  \n");
-                  }
+                 print ( OUTFILE "gridname \"$cluster\"\n");
+		 print ( OUTFILE "data_source \"$cluster\" localhost\n");
+		 my $master=xCAT::Utils->get_site_Master();
+		 print ( OUTFILE "trusted_hosts $master\n");
+#                 for (my $i = 0; $i < $num; $i++)
+#                  {
+#                   print ( OUTFILE "data_source \"$cluster\" $children[ $i ]  \n");
+#                  }
                 } 
        
              else
               {
                 for (my $j = 0; $j < $num; $j++)
                  {
-                  print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]  \n");
+                  print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]:8651  \n");
                  }
               }
        print(OUTFILE "# xCAT gmetad settings done \n");
@@ -698,17 +704,22 @@ else
          my $num=@children;
           if (-e "/etc/xCATSN")
                 {
-                 for (my $i = 0; $i < $num; $i++)
-                  {
-                   print ( OUTFILE "data_source \"$cluster\" $children[ $i ]  \n");
-                  }
+                 print ( OUTFILE "gridname \"$cluster\"\n");
+		 print ( OUTFILE "data_source \"$cluster\" localhost\n");
+		 my $master=xCAT::Utils->get_site_Master();
+		 print ( OUTFILE "trusted_hosts $master\n");
+
+#                 for (my $i = 0; $i < $num; $i++)
+#                  {
+#                   print ( OUTFILE "data_source \"$cluster\" $children[ $i ]  \n");
+#                  }
                 } 
        
              else
               {
                 for (my $j = 0; $j < $num; $j++)
                  {
-                  print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]  \n");
+                  print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]:8651  \n");
                  }
               }
        print(OUTFILE "# xCAT gmetad settings done \n");
