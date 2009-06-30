@@ -394,7 +394,7 @@ notification => {
  },
   },
 osimage  => {
- cols => [qw(imagename imagetype osname osvers osdistro osarch comments disable)],
+ cols => [qw(imagename imagetype osname osvers osdistro osarch synclists comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -404,6 +404,7 @@ osimage  => {
   osvers => 'Not used.',
   osdistro => 'Not used.',
   osarch => 'Not used.',
+  synclists => ' A comma-separated list of fully qualified file names each containing a list of files to synchronize on the nodes.',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1318,6 +1319,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
  {attr_name => 'script',
                  tabentry => 'nimimage.script',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'synclists',
+                 tabentry => 'osimage.synclists',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
                  },
  {attr_name => 'fb_script',
                  tabentry => 'nimimage.fb_script',

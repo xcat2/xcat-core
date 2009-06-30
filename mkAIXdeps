@@ -138,7 +138,7 @@ cp README $RPMDIR/web-dep.README
 cp *.rpm $RPMDIR/
 ls *.rpm > $RPMDIR/flist3
 cd $RPMDIR
-cp /opt/freeware/src/package/RPMS/ppc/php-5.2.6-0.aix5.3.ppc.rpm $RPMDIR/
+cp /opt/freeware/src/packages/RPMS/ppc/php-5.2.6-0.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh php-5.2.6-0.aix5.3.ppc.rpm" >> $RPMDIR/instwebdep
 echo "php-5.2.6-0.aix5.3.ppc.rpm" > $RPMDIR/flist3
 

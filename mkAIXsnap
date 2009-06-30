@@ -76,9 +76,9 @@ echo "rpm -Uvh xCAT-$VER-*rpm" >> $RPMDIR/instxcat
 mv /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc-$VER-*rpm $RPMDIR/
 echo "rpm -Uvh xCAT-rmc-$VER-*rpm" >> $RPMDIR/instxcat
 
-./makeuirpm
-mv /opt/freeware/src/packages/RPMS/noarch/xCAT-UI-$VER-*rpm $RPMDIR/
-#echo "rpm -Uvh xCAT-UI-$VER-*rpm" >> $RPMDIR/instxcat
+./makewebrpm
+mv /opt/freeware/src/packages/RPMS/noarch/xCAT-web-$VER-*rpm $RPMDIR/
+#echo "rpm -Uvh xCAT-web-$VER-*rpm" >> $RPMDIR/instxcat
 
 #
 # create the tar.gz file to upload
