@@ -1050,6 +1050,13 @@ sub setobjdefs
             }
 
             my $val;
+            my $delim = ',';
+            if(($type eq 'group') && ($DBattrvals{$objname}{'grouptype'} eq 'dynamic')) 
+            {
+                # dynamic node group selection string use "::" as delimiter
+                $delim = '::';
+            }
+            
             if ($::plus_option)
             {
 
@@ -1058,8 +1065,8 @@ sub setobjdefs
                 {
                     # add the attr into the list if it's not already in the list!
                     # and avoid the duplicate values
-                    my @DBattrarray = split(',', $DBattrvals{$objname}{$attr_name});
-                    my @objhasharray = split(',', $objhash{$objname}{$attr_name});
+                    my @DBattrarray = split(/$delim/, $DBattrvals{$objname}{$attr_name});
+                    my @objhasharray = split(/$delim/, $objhash{$objname}{$attr_name});
                     foreach my $objattr (@objhasharray)
                     {
                         if (!grep(/^\Q$objattr\E$/, @DBattrarray))
@@ -1067,7 +1074,7 @@ sub setobjdefs
                             push @DBattrarray, $objattr;
                         }
                      }
-                     $val = join(',', @DBattrarray);
+                     $val = join($delim, @DBattrarray);
                 }
                 else
                 {
@@ -1085,8 +1092,8 @@ sub setobjdefs
 
                     # get the list of attrs to remove
                     my @currentList =
-                      split(/,/, $DBattrvals{$objname}{$attr_name});
-                    my @minusList = split(/,/, $objhash{$objname}{$attr_name});
+                      split(/$delim/, $DBattrvals{$objname}{$attr_name});
+                    my @minusList = split(/$delim/, $objhash{$objname}{$attr_name});
 
                     # make a new list without the one specified
                     my $first = 1;
@@ -1100,7 +1107,7 @@ sub setobjdefs
                             # set new list for node
                             if (!$first)
                             {
-                                $newlist .= ",";
+                                $newlist .= "$delim";
                             }
                             $newlist .= $i;
                             $first = 0;
