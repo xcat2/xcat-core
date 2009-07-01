@@ -1582,6 +1582,7 @@ sub mondecfg
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
+	name -s [-t time] [-a attributes] [-o pe]
         name noderange [-s] [-t time] [-a attributes] [-o pe]        
         where
           name is the monitoring plug-in name. For example: rmcmon. Only for rmcmon currently.
@@ -1606,14 +1607,16 @@ sub preprocess_monshow
     my $error=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  monshow name noderange [-s] [-t time] [-a attributes] [-o pe]";
-    $rsp->{data}->[2]= "  monshow [-h|--help|-v|--version]";
-    $rsp->{data}->[3]= "     name is the name of the monitoring plug-in module to be invoked.";
-    $rsp->{data}->[4]= "        Only for rmcmon currently";
-    $rsp->{data}->[5]= "     noderange is a range of nodes to be showed for."; 
-    $rsp->{data}->[6]= "     -s option, shows the sum data only, default is not setting.";
-    $rsp->{data}->[7]= "     -t option, specify to display data in a range of time, default is last 1h";
-    $rsp->{data}->[8]= "     -a option, specfiy the attribute of RMC resource, default is all specified in monsetting.";
+    $rsp->{data}->[1]= "  monshow name -s [-t time] [-a attributes] [-o pe]";
+    $rsp->{data}->[2]= "  monshow name noderange [-s] [-t time] [-a attributes] [-o pe]";
+    $rsp->{data}->[3]= "  monshow [-h|--help|-v|--version]";
+    $rsp->{data}->[4]= "     name is the name of the monitoring plug-in module to be invoked.";
+    $rsp->{data}->[5]= "        Only for rmcmon currently";
+    $rsp->{data}->[6]= "     noderange is a range of nodes to be showed for.If no noderange is specified with -s,";
+    $rsp->{data}->[7]= "        summary of the whole cluster will be showed"; 
+    $rsp->{data}->[8]= "     -s option, shows the sum data only, default is not setting.";
+    $rsp->{data}->[9]= "     -t option, specify to display data in a range of time, default is last 1h";
+    $rsp->{data}->[10]= "    -a option, specfiy the attribute of RMC resource, default is all specified in monsetting.";
 #    $cb->($rsp);
     if($error){
       xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1653,11 +1656,6 @@ sub preprocess_monshow
     return (1, "");
   }
 
-  if(@ARGV != 2) {
-    &monshow_usage($callback, 1);
-    return (1, "");
-  }
-
   my $pname="";
   my $sum=0;
   my $time = 60;
@@ -1692,24 +1690,25 @@ sub preprocess_monshow
   if($::PE) {$pe=$::PE;}
   
   $pname=$ARGV[0];
-  my $noderange=$ARGV[1];
-  @nodes = noderange($noderange);
-  my @temp = nodesmissed;
-  if($sum && @temp && xCAT::Utils->isMN()){
-    my $localhost = hostname();
-    my $i = 0;
-    foreach (@temp) {
-      if($_ eq $localhost){
-        $sum |= 0x2;
-	splice @temp, $i, 1;
-	last;
-      }
-      $i++;
+
+  if(@ARGV != 2) {
+    if($sum){
+      $sum |= 0x2;
+    } else {
+      &monshow_usage($callback, 1);
+      return (1, "");
     }
   }
-  if (xCAT::Utils->isMN() && @temp) {
+
+  my $noderange = '';;
+  if(($sum & 0x2) == 0){
+    $noderange = $ARGV[1]
+  }
+  @nodes = noderange($noderange);
+
+  if (xCAT::Utils->isMN() && nodesmissed) {
     my $rsp={};
-    $rsp->{data}->[0]= "Invalid nodes in noderange:".join(',',@temp);
+    $rsp->{data}->[0]= "Invalid nodes in noderange:".join(',',nodesmissed);
     xCAT::MsgUtils->message("E", $rsp, $callback);
     return (1, "");
   } 
