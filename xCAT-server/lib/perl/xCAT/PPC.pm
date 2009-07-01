@@ -1285,8 +1285,15 @@ sub process_request {
     my $request = {%$req};
     $request->{command} = $req->{command}->[0];
     $request->{stdin}   = $req->{stdin}->[0]; 
-    $request->{hwtype}  = $package;
+#    $request->{hwtype}  = $package;
     $request->{callback}= $callback;
+    #########################
+    #This is a special case for rspconfig, we shouldn't set hwtype as$package. and reserved for other commands.
+    #########################
+    if($request->{command} ne "rspconfig") {
+        $request->{hwtype}  = $package;
+    }
+
     ####################################
     # Option -V for verbose output
     ####################################
