@@ -276,7 +276,9 @@ sub makescript {
       my @otherpkgs=();
       if (open(FILE1, "<$pkglist")) {
         while (readline(FILE1)) {
-	  chomp($_);
+	  chomp($_); #remove newline
+          s/\s+$//;  #remove trailing spaces
+          next if /^\s*$/; #-- skip empty lines
           push(@otherpkgs,$_);
         }
         close(FILE1);
@@ -365,6 +367,8 @@ sub includefile
    
    while(<INCLUDE>) {
        chomp($_);
+       s/\s+$//;  #remove trailing spaces
+       next if /^\s*$/; #-- skip empty lines
        push(@text, $_);
    }
    
