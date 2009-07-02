@@ -6,6 +6,7 @@ use xCAT::NodeRange;
 use xCAT::Utils;
 use xCAT::SvrUtils;
 use Data::Dumper;
+use File::Basename;
 use strict;
 BEGIN
 {
@@ -280,8 +281,21 @@ sub makescript {
         }
         close(FILE1);
       } 
-      if ( @otherpkgs > 0) { 
-        push @scriptd, "OTHERPKGS=". join(',',@otherpkgs) . " \n";
+      if ( @otherpkgs > 0) {
+        my $pkgtext=join(',',@otherpkgs);
+      
+        #handle the #INLCUDE# tag recursively
+        my $idir = dirname($pkglist);
+        my $doneincludes=0;
+	while (not $doneincludes) {
+	    $doneincludes=1;
+	    if ($pkgtext =~ /#INCLUDE:[^#]+#/) {
+		$doneincludes=0;
+		$pkgtext =~ s/#INCLUDE:([^#]+)#/includefile($1,$idir)/eg;
+	    }
+	}
+ 
+        push @scriptd, "OTHERPKGS=$pkgtext\n";
         push @scriptd, "export OTHERPKGS\n";
 
         if (-r "/install/post/otherpkgs/$os/$arch/repodata/repomd.xml") {
@@ -326,6 +340,37 @@ sub makescript {
   push @scriptd, "# postscripts-end-here\n";
 
   return @scriptd;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   includefile
+
+        handles #INCLUDE# in otherpkg.pkglist file
+=cut
+
+#-----------------------------------------------------------------------------
+sub includefile
+{
+   my $file = shift;
+   my $idir = shift;
+   my @text = ();
+   unless ($file =~ /^\//) {
+       $file = $idir."/".$file;
+   }
+   
+   open(INCLUDE,$file) || \
+       return "#INCLUDEBAD:cannot open $file#";
+   
+   while(<INCLUDE>) {
+       chomp($_);
+       push(@text, $_);
+   }
+   
+   close(INCLUDE);
+   
+   return join(',', @text);
 }
 
 #----------------------------------------------------------------------------
