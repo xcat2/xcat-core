@@ -82,10 +82,6 @@ unless ($onlyinitrd) {
       exit 1;
    }
 
-   #this is for extra packages
-   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
-   my $pkgnames=get_extra_package_names();
-
    my $yumconfig;
    open($yumconfig,">","/tmp/genimage.$$.yum.conf");
    my $repnum=0;
@@ -94,10 +90,6 @@ unless ($onlyinitrd) {
       $repnum += 1;
    }
    $repnum-=1;
-   #add the section for other packages
-   if ($pkgnames) {
-     print $yumconfig "[$osver-$arch-otherpkgs]\nname=$osver-$arch-otherpkgs\nbaseurl=file://$srcdir_otherpkgs\ngpgpcheck=0\n\n";
-   }
    close($yumconfig);
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/etc";
    my $fd;
@@ -109,11 +101,6 @@ unless ($onlyinitrd) {
       $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
    }
    
-   #enable extra package repo
-   if ($pkgnames) {
-    $yumcmd .= "--enablerepo=$osver-$arch-otherpkgs ";
-   }
-
    $yumcmd .= "install ";
    mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
 
@@ -125,7 +112,7 @@ unless ($onlyinitrd) {
 
    if (!$pkglist) {
       print "Unable to find package list for $profile!";
-      return 1;
+      exit 1;
    }
 
    open($yumconfig,"<","$pkglist");
@@ -134,12 +121,6 @@ unless ($onlyinitrd) {
       $yumcmd .= $_ . " ";
    }
    close($yumconfig);
-
-   #append extra pkg names to yum command 
-   if ($pkgnames) {
-       $yumcmd .= " $pkgnames ";
-   }   
-
    $yumcmd =~ s/ $/\n/;
     
    #debug
@@ -152,6 +133,50 @@ unless ($onlyinitrd) {
       print "yum invocation failed\n";
       exit 1;
    }
+
+   #Now let's handle extra packages
+   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
+   my %extra_hash=get_extra_package_names();
+   my $extrapkgnames; 
+
+  if (keys(%extra_hash) > 0) {
+      open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
+      my $index=1;
+      foreach (keys(%extra_hash)) {
+	  print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+	  $index++;
+	  my $pa=$extra_hash{$_};
+	  $extrapkgnames .= " " . join(' ', @$pa);
+      }
+      close($yumconfig);
+      $index--;
+      #enable extra package repo
+      $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* ";
+      foreach (0..$repnum) {
+	  $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
+      }
+      for (1..$index) {
+	  $yumcmd .= "--enablerepo=otherpkgs$_ ";
+      } 
+      $yumcmd .= "install ";
+      #append extra pkg names to yum command 
+      if ($extrapkgnames) {
+	  $yumcmd .= " $extrapkgnames ";
+      }   
+      $yumcmd =~ s/ $/\n/;
+    
+      #debug
+      #print "yumcmd=$yumcmd\n";
+      #my $repo=`cat /tmp/genimage.$$.yum.conf`;
+      #print "repo=$repo";
+      
+      my $rc = system($yumcmd);
+      if ($rc) { 
+	  print "yum invocation failed\n";
+	  exit 1;
+      }
+   }
+
    postscripts(); #run 'postscripts'
 }
 #Default to the first kernel found in the install image if nothing specified explicitly.
@@ -591,20 +616,78 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 sub get_extra_package_names {
    my $otherpkglist=get_extra_pkglist_file_name($customdir);
    if (!$otherpkglist) { $otherpkglist=get_extra_pkglist_file_name($pathtofiles); }
-   my $pkgnames;
+   my %pkgnames=();
+   my @tmp_array=();
+
 
    if ($otherpkglist) {
      my $pkgfile;
      open($pkgfile,"<","$otherpkglist");
      while (<$pkgfile>) {
         chomp;
-        $pkgnames .= $_ . " ";
+	s/\s+$//;   #remove trailing white spaces
+	next if /^\s*$/; #-- skip empty lines
+	push(@tmp_array,$_);
      }
      close($pkgfile);
+
+     if ( @tmp_array > 0) {
+        my $pkgtext=join(',',@tmp_array);
+      
+        #handle the #INLCUDE# tag recursively
+        my $idir = dirname($otherpkglist);
+        my $doneincludes=0;
+	while (not $doneincludes) {
+	    $doneincludes=1;
+	    if ($pkgtext =~ /#INCLUDE:[^#]+#/) {
+		$doneincludes=0;
+		$pkgtext =~ s/#INCLUDE:([^#]+)#/include_file($1,$idir)/eg;
+	    }
+	}
+     
+        #print "pkgtext=$pkgtext\n";
+	my @tmp=split(',', $pkgtext);
+	foreach (@tmp) { 
+	    my $idir=dirname($_);
+	    my $fn=basename($_);
+	    if (exists($pkgnames{$idir})) {
+		my $pa=$pkgnames{$idir};
+		push(@$pa, $fn);
+	    } else {
+		$pkgnames{$idir}=[$fn];
+	    }
+	}
+     }
    }
 
-   return $pkgnames;
+   return %pkgnames;
 }
+
+
+sub include_file
+{
+   my $file = shift;
+   my $idir = shift;
+   my @text = ();
+   unless ($file =~ /^\//) {
+       $file = $idir."/".$file;
+   }
+   
+   open(INCLUDE,$file) || \
+       return "#INCLUDEBAD:cannot open $file#";
+   
+   while(<INCLUDE>) {
+       chomp($_);
+       s/\s+$//;  #remove trailing spaces
+       next if /^\s*$/; #-- skip empty lines
+       push(@text, $_);
+   }
+   
+   close(INCLUDE);
+   
+   return join(',', @text);
+}
+
 
 sub get_extra_pkglist_file_name {
    my $base=shift;
