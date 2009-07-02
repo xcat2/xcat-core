@@ -75,6 +75,7 @@ fi
 repo_path=()
 repo_pkgs=""
 plain_pkgs=""
+handled_path=()
 for x in `echo "$OTHERPKGS" | tr "," "\n"`
 do
     if [ $hasyum -eq 0 ] && [ $haszypper -eq 0 ]; then
@@ -86,18 +87,26 @@ do
    path=`dirname $x`
    whole_path=$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/$path
 
-   #find out if this path has already saved added in the repo
+   #find out if this path has already handled
    try_repo=1
    rc=1
    i=0
-   while [ $i -lt ${#repo_path[*]} ]; do
-       if [ ${repo_path[$i]} = $path ]; then
+   while [ $i -lt ${#handled_path[*]} ]; do
+       if [ ${handled_path[$i]} = $path ]; then
            try_repo=0
-           rc=0
+           j=0
+           while [ $j -lt ${#repo_path[*]} ]; do
+               if [ ${repo_path[$j]} = $path ]; then
+                   rc=0
+                   break
+               fi
+               let j++
+           done
            break 
        fi
        let i++
    done
+
 
    #try to add the path to the repo
    if [ $try_repo -eq 1 ]; then
@@ -146,6 +155,7 @@ do
        #now no hope we have to use rpm command
        plain_pkgs="$plain_pkgs $x-*"
    fi
+   handled_path[${#handled_path[*]}]=$path
 done  
 
 #Now we have parse the input, let start the installation using yum or zypper     
