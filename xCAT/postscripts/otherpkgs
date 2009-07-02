@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -28,181 +28,184 @@ if [[ -z "$OTHERPKGS" ]]; then
   exit 0
 fi
 
-#if [[ $OSTYPE = linux* ]]; then
-#  #find out the server
-#  SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
-#  if [ -z "$SIP" ]; then
-#    SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
-#  fi
-#update SIP for SLES11
-#if [ "$OSVER" = "sles11" ]; then
-#    SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '
-#fi
-
-  if [[ -z "$NFSSERVER" ]]; then
+if [[ -z "$NFSSERVER" ]]; then
     NFSSERVER=$MASTER
-  fi
+fi
 
-  if [[ $OTHERPKGS_HASREPO -eq 1 ]]; then
-    rpm -q yum
-    if [ $? -eq 0 ]; then 
-      #use yum
-      REPOFILE="/tmp/xCAT-otherpkgs.repo"
-      echo "[xcat-otherpkgs]" > $REPOFILE
-      echo "name=xcat-otherpkgs" >> $REPOFILE
-      echo "baseurl=ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH" >> $REPOFILE
-      echo "enabled=1" >> $REPOFILE
-      echo "gpgcheck=0" >> $REPOFILE
-      #clean meta data to make possible for update
-      yum -c $REPOFILE clean metadata
 
-      INSTALLPKGS=""
-      UPDATEPKGS=""
-      #check if the packges are installed already
-      for x in `echo "$OTHERPKGS" | tr "," "\n"`
-      do
-        rpm -q $x
-        if [ $? -eq 0 ]; then
-          UPDATEPKGS="$UPDATEPKGS $x"  
-        else
-          INSTALLPKGS="$INSTALLPKGS $x"  
-        fi  
-      done      
-
-      #update packages
-      if [[ ! -z $UPDATEPKGS ]]; then
-        echo "yum -c $REPOFILE -y update $UPDATEPKGS"
-        result=`yum -c $REPOFILE -y update $UPDATEPKGS 2>&1`
-        if [ $? -ne 0 ]; then 
-          echo "$result"
-          logger "otherpkgs: $result"
-        fi
-        exit 0
-      fi      
-
-      #install packages
-      if [[ ! -z $INSTALLPKGS ]]; then
-        echo "yum -c $REPOFILE -y install $INSTALLPKGS"
-        result=`yum -c $REPOFILE -y install $INSTALLPKGS 2>&1`
-        if [ $? -ne 0 ]; then 
-          echo "$result"
-          logger "otherpkgs: $result"
-        fi
-        exit 0
-      fi      
+#check if /install is mounted on the server, we may need to add code to conver NFSSERVER to ip 
+mounted=0;
+result=`mount |grep /install |grep $NFSSERVER`
+if [ $? -eq 0 ]; then
+    if [[ -z "$INSTALLDIR" ]]; then
+        NFSSERVER="/install"
+    else
+        NFSSERVER=$INSTALLDIR
     fi
-    
+    mounted=1 
+fi
 
-    #try zypper
+#echo NFSSERVER=$NFSSERVER
+
+#check if the node has yum or zypper installed, it will try yum first, then zypper and last rpm
+hasyum=0  
+haszypper=0;          
+result=`rpm -q yum`
+if [ $? -eq 0 ]; then 
+    hasyum=1
+    mkdir -p /etc/yum.repos.d
+    result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
+    result=`yum clean all`
+    repo_base="/etc/yum.repos.d"
+else
     result=`rpm -q zypper`
     if [ "$?" = "0" ]; then 
-      #use zypper
-      if [ "$OSVER" = "sles11" ]; then
-	    zypper ar ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/ otherpkgs
-      else
-        zypper sa ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/
-      fi
-
-      zypper refresh       
-
-      #install
-      PKGS=`echo "$OTHERPKGS" | tr "," " "`
-      echo "zypper install -y $PKGS"
-      result=`zypper install -y $PKGS 2>&1`
-      if [ $? -ne 0 ]; then 
-        logger "otherpkgs: $result"
-      fi
-      exit 0
+	haszypper=1
+        #remove old repo
+        old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
+        for x in $old_repo
+        do
+            result=`zypper sd $x`
+        done
+        repo_base="/tmp"
     fi
-  fi
+fi
 
-  #if it is not handled by the above code, we will use wget to download the rpms
-  mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH; 
-  rm -f -R /xcatpost/post/otherpkgs/*
-  mkdir -p /tmp/postage/
-  rm -f -R /tmp/postage/*
-  cd /tmp/postage
 
-  for x in `echo "$OTHERPKGS" | tr "," "\n"`
-  do
-    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/$x-* 2> /tmp/wget.log  
-  done
+repo_path=()
+repo_pkgs=""
+plain_pkgs=""
+for x in `echo "$OTHERPKGS" | tr "," "\n"`
+do
+    if [ $hasyum -eq 0 ] && [ $haszypper -eq 0 ]; then
+	plain_pkgs="$plain_pkgs $x-*"
+	continue
+    fi
+	
+   fn=`basename $x`
+   path=`dirname $x`
+   whole_path=$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/$path
 
-  mv $NFSSERVER/post/otherpkgs/* /xcatpost/post/otherpkgs; 
-  rm -rf $NFSSERVER
+   #find out if this path has already saved added in the repo
+   try_repo=1
+   rc=1
+   i=0
+   while [ $i -lt ${#repo_path[*]} ]; do
+       if [ ${repo_path[$i]} = $path ]; then
+           try_repo=0
+           rc=0
+           break 
+       fi
+       let i++
+   done
 
-  #try zypper with local dir first
-  result=`rpm -q zypper`
-  if [ "$?" = "0" ]; then
-    #use zypper
-    if [ "$OSVER" = "sles11" ]; then
-      zypper ar file:/xcatpost/post/otherpkgs/$OSVER/$ARCH/ otherpkgs
+   #try to add the path to the repo
+   if [ $try_repo -eq 1 ]; then
+       index=${#repo_path[*]}
+       REPOFILE="$repo_base/xCAT-otherpkgs$index.repo"
+       echo "[xcat-otherpkgs$index]" > $REPOFILE
+       echo "name=xcat-otherpkgs$index" >> $REPOFILE
+       if [ $mounted -eq 0 ]; then
+           echo "baseurl=ftp://$whole_path" >> $REPOFILE
+       else
+           echo "baseurl=file://$whole_path" >> $REPOFILE
+       fi
+       echo "enabled=1" >> $REPOFILE
+       echo "gpgcheck=0" >> $REPOFILE
+
+       if [ $hasyum -eq 1 ]; then 
+	   #use yum
+           result=`yum list $fn 2>&1`
+           if [ $? -eq 0 ]; then  
+               rc=0
+               repo_path[${#repo_path[*]}]=$path
+           else
+               rm $REPOFILE
+	   fi
+       elif [ $haszypper -eq 1 ]; then
+           #use zypper
+	   if [ "$OSVER" = "sles11" ]; then
+	       result=`zypper ar -c $REPOFILE`
+	   else
+	       result=`zypper sa -c $REPOFILE` 
+	   fi	
+
+           result=`zypper refresh xcat-otherpkgs$index 2>&1`
+           if [ $? -eq 0 ]; then  
+	       rc=0
+               repo_path[${#repo_path[*]}]=$path
+           else
+               result=`zypper sd xcat-otherpkgs$index`
+	   fi
+       fi
+   fi
+       
+   if [ $rc -eq 0 ]; then
+       repo_pkgs="$repo_pkgs $fn"  
+   else
+       #now no hope we have to use rpm command
+       plain_pkgs="$plain_pkgs $x-*"
+   fi
+done  
+
+#Now we have parse the input, let start the installation using yum or zypper     
+if [ "$repo_pkgs" != "" ]; then
+    if [ $hasyum -eq 1 ]; then 
+        echo "yum -y install $repo_pkgs"
+        result=`yum -y install $repo_pkgs 2>&1`
+        echo "$result"
+        if [ $? -ne 0 ]; then 
+            logger "otherpkgs: $result"
+        fi
+    elif [ $haszypper -eq 1 ]; then
+        echo "zypper install -y $repo_pkgs"
+	result=`zypper install -y $repo_pkgs 2>&1`
+        echo "$result"
+	if [ $? -ne 0 ]; then 
+            logger "otherpkgs: $result"
+	fi
+        #remove the repos
+        old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
+        for x in $old_repo
+        do
+            result=`zypper sd $x`
+        done
+    fi
+fi 
+
+#Handle the rest with rpm
+if [ "$plain_pkgs" != "" ]; then 
+    if [ $mounted -eq 0 ]; then
+        mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH; 
+        rm -f -R /xcatpost/post/otherpkgs/*
+        mkdir -p /tmp/postage/
+        rm -f -R /tmp/postage/*
+        cd /tmp/postage
+    
+        for x in `echo "$plain_pkgs" | tr " " "\n"`
+        do
+	    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/$x 2> /tmp/wget.log  
+        done
+    
+        mv $NFSSERVER/post/otherpkgs/* /xcatpost/post/otherpkgs; 
+        rm -rf $NFSSERVER
+        cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
     else
-      zypper sa file:/xcatpost/post/otherpkgs/$OSVER/$ARCH/
+        cd $NFSSERVER/post/otherpkgs/$OSVER/$ARCH
     fi
 
-    zypper refresh
-
-    #install
-    PKGS=`echo "$OTHERPKGS" | tr "," " "`
-    echo "zypper install -y $PKGS"
-    result=`zypper install -y $PKGS 2>&1`
-    if [ $? -ne 0 ]; then
-      logger "otherpkgs: $result"
+    echo "rpm -Uvh --replacepkgs $plain_pkgs" 
+    result=`rpm -Uvh --replacepkgs $plain_pkgs 2>&1`
+    #result=`rpm -Fvh $plain_pkgs 2>&1`
+    echo "$result"
+    if [ $? -ne 0 ]; then 
+	logger "otherpkgs $result"
     fi
-    rm -f -R /xcatpost/post/otherpkgs/*
-    exit 0
-  fi
-
-  #last, try rpm
-  cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
-  echo "using rpm command to install packages" >> /tmp/updatenode.out
-  result=`rpm -Uvh --replacepkgs * 2>&1`
-  #result=`rpm -Fvh * 2>&1`
-  echo "$result"
-  echo "$result" >> /tmp/updatenode.out
-  if [ $? -ne 0 ]; then 
-    logger "otherpkgs $result"
-  fi
-  rm -f -R /xcatpost/post/otherpkgs/*
-  exit 0
-#else #AIX
-  #mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH
-  #rm -f -R /xcatpost/post/otherpkgs/$OSVER/$ARCH/*
-
-  # get the name of my service node/NIM master from the /etc/niminfo file
-  #if [ -f "/etc/niminfo" ]; then
-  #  servnode=`grep NIM_MASTER_HOSTNAME /etc/niminfo|tr "=" " "|awk {'print $3'}`
-  #  echo "servnode=$servnode"
-  #else 
-  #  echo "Could not find /etc/niminfo file"
-  #  logger "otherpkgs: Could not find /etc/niminfo file" 
-  #  exit 1
-  #fi
-
-  #for x in `echo "$OTHERPKGS" | tr "," "\n"`
-  #do
-  #  result=`rcp -r $servnode:/install/post/otherpkgs/$OSVER/$ARCH/$x* /xcatpost/post/otherpkgs/$OSVER/$ARCH/.`
-  #  if [ $? -ne 0 ]; then 
-  #    echo "$result"
-  #    logger "otherpkgs: $result"
-  #  fi
-  #done
-
-  #on AIX use geninstall
-  #PKGS=`echo "$OTHERPKGS" | tr "," " "`
-  #cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
-  #result=`geninstall -I aX -Y -d /xcatpost/post/otherpkgs/$OSVER/$ARCH $PKGS 2>&1`
-  #rc=$?
-  #if [ $rc -ne 0 ]; then
-  #  echo "$result"
-  #  logger "otherpkgs: $result"
-  #fi
-  #exit $rc
-
-#  echo "Please use nimnodecust command to add additional packages to AIX nodes."
-#  logger "xCAT otherpkgs: Please use nimnodecust command to add addition packages to AIX nodes."
-#fi
+    
+    if [ $mounted -eq 0 ]; then
+        rm -f -R /xcatpost/post/otherpkgs/*
+    fi
+fi
 
 exit 0
 
