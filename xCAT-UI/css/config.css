@@ -58,7 +58,7 @@ table.tabTable thead tr th, table.tabTable tfoot tr th {
 table.tabTable tbody td {
        color: #3D3D3D;
        padding: 4px;
-       vertical-align: center;
+       vertical-align: middle;
 
 }
 
