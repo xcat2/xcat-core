@@ -62,7 +62,7 @@ else
     if [ "$?" = "0" ]; then 
 	haszypper=1
         #remove old repo
-        old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
+        old_repo=`zypper sl |grep xcat-otherpkgs | cut -f2 -d '|'`
         for x in $old_repo
         do
             result=`zypper sd $x`
