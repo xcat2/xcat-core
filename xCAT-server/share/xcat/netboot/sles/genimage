@@ -119,7 +119,7 @@ unless ($onlyinitrd) {
 
    #this is for extra packages
    my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
-   my $extrapkgnames=get_extra_package_names();
+   my %extra_hash=get_extra_package_names();
 
 
    mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/etc";
@@ -140,16 +140,39 @@ unless ($onlyinitrd) {
 	   system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir");
    }
 
-   #for extra packages
-   if ($extrapkgnames) {
-     if($osver_host == 11) {	#SLES11
-        if(-e "$installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo") {
-            system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo");
-        }
-     	system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar -t Plaindir file:$srcdir_otherpkgs otherpkg");
-     }else {
-        system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa -t Plaindir file:$srcdir_otherpkgs");
-     }
+   #remove the old repository for extra packages
+   my $result=`zypper -R /install/netboot/sles11/ppc64/test/rootimg/ sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+   if ($result =~ /\S/) {
+       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sd $result");
+   }
+
+   #add the new repository for extra packages
+   my $extrapkgnames; 
+   if($osver_host == 11) {	#SLES11
+      if(-e "$installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo") {
+	  system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo");
+      }
+   }
+   my $index=1;
+   foreach (keys(%extra_hash)) {
+       $whole_path="$srcdir_otherpkgs/$_";
+       if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
+	   if($osver_host == 11) { 
+	       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+	   }else {
+	       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir_otherpkgs/$_");
+	   }
+       } else {
+	   if($osver_host == 11) { 
+	       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+	   }else {
+	       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa -t Plaindir file:$srcdir_otherpkgs/$_");
+	   }
+       }
+       $index++;
+
+       my $pa=$extra_hash{$_};
+       $extrapkgnames .= " " . join(' ', @$pa);
    }
 
    #-- add custom repositories to the image
@@ -673,21 +696,76 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 sub get_extra_package_names {
    my $otherpkglist=get_extra_pkglist_file_name($customdir);
    if (!$otherpkglist) { $otherpkglist=get_extra_pkglist_file_name($pathtofiles); }
-   my $pkgnames;
+   my %pkgnames=();
+   my @tmp_array=();
+
 
    if ($otherpkglist) {
      my $pkgfile;
      open($pkgfile,"<","$otherpkglist");
      while (<$pkgfile>) {
         chomp;
-	s/\s*#.*//;      #-- remove comments 
+	s/\s+$//;   #remove trailing white spaces
 	next if /^\s*$/; #-- skip empty lines
-        $pkgnames .= $_ . " ";
+	push(@tmp_array,$_);
      }
      close($pkgfile);
+
+     if ( @tmp_array > 0) {
+        my $pkgtext=join(',',@tmp_array);
+      
+        #handle the #INLCUDE# tag recursively
+        my $idir = dirname($otherpkglist);
+        my $doneincludes=0;
+	while (not $doneincludes) {
+	    $doneincludes=1;
+	    if ($pkgtext =~ /#INCLUDE:[^#]+#/) {
+		$doneincludes=0;
+		$pkgtext =~ s/#INCLUDE:([^#]+)#/include_file($1,$idir)/eg;
+	    }
+	}
+     
+        print "pkgtext=$pkgtext\n";
+	my @tmp=split(',', $pkgtext);
+	foreach (@tmp) { 
+	    my $idir=dirname($_);
+	    my $fn=basename($_);
+	    if (exists($pkgnames{$idir})) {
+		my $pa=$pkgnames{$idir};
+		push(@$pa, $fn);
+	    } else {
+		$pkgnames{$idir}=[$fn];
+	    }
+	}
+     }
    }
 
-   return $pkgnames;
+   return %pkgnames;
+}
+
+
+sub include_file
+{
+   my $file = shift;
+   my $idir = shift;
+   my @text = ();
+   unless ($file =~ /^\//) {
+       $file = $idir."/".$file;
+   }
+   
+   open(INCLUDE,$file) || \
+       return "#INCLUDEBAD:cannot open $file#";
+   
+   while(<INCLUDE>) {
+       chomp($_);
+       s/\s+$//;  #remove trailing spaces
+       next if /^\s*$/; #-- skip empty lines
+       push(@text, $_);
+   }
+   
+   close(INCLUDE);
+   
+   return join(',', @text);
 }
 
 sub get_extra_pkglist_file_name {
