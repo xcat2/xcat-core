@@ -8,7 +8,7 @@ B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
 B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-a>|B<--all>] [B<-t> I<object-types>]
 [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list>]
-[[B<-w> "I<attr>==I<val>"] [B<-w> "I<attr>=~I<val>"] ...] [I<noderange>]
+[[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
 
 =head1 DESCRIPTION
@@ -54,11 +54,11 @@ A set of comma delimited object types. Use the help option to get a list of vali
 
 Verbose mode.
 
-=item B<-w> I<"attr==val"> B<-w> I<"attr=~val"> ...
+=item B<-w> I<attr==val> B<-w> I<attr=~val> ...
 
 Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of validattributes for each object type.
 
-Note: the operator !~ will be parsed by shell, if you want to use !~ in the selection string, use single quote instead. For example:-w 'mgt!~ipmi'.
+Note: if the "val" fields includes spaces or any other characters that will be parsed by shell, the "attr<operator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
 
 =item B<-z|--stanza>
 
@@ -125,7 +125,7 @@ To list an osimage definition named "aix53J".
 
 To list all node definitions that have a status value of "booting".
 
- lsdef -t node -w "status==booting"
+ lsdef -t node -w status==booting
 
 =item 9.
 

@@ -8,7 +8,7 @@ B<chdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
 B<chdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-d>|B<--dynamic>] [B<-p>|B<--plus>] [B<-m>|B<--minus>] [B<-z>|B<--stanza>]
-[[B<-w> "I<attr>==I<val>"] [B<-w> "I<attr>=~I<val>"] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
+[[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
 
 =head1 DESCRIPTION
 
@@ -54,7 +54,7 @@ A set of comma delimited object types.  Use the help option to get a list of val
 
 Verbose mode.
 
-=item B<-w> I<"attr==val"> B<-w> I<"attr=~val"> ... 
+=item B<-w> I<attr==val> B<-w> I<attr=~val> ... 
 
 Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of validattributes for each object type.
 
@@ -124,7 +124,7 @@ To update a set of definitions based on information contained in the stanza file
 
 To update a dynamic node group definition to add the cons=hmc wherevals pair.
 
- chdef -t group -o dyngrp -d -p -w "cons==hmc"
+ chdef -t group -o dyngrp -d -p -w cons==hmc
 
 =back
 
