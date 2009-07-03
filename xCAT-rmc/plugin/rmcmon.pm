@@ -1480,7 +1480,7 @@ sub showmetrix($rrddir, $attrs, $start_time, $end_time)
 			if($::RUNCMD_RC != 0){
 				return $result;
 			}
-			$output =~ s/$remote: \/var\/rrd\//''/;
+			$output =~ s/(\S+): \/var\/rrd\//''/;
 		} else {
 			$output = xCAT::Utils->runcmd("ls -A $rrddir/$attr*", 0);
 		}
