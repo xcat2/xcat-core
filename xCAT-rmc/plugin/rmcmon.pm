@@ -153,15 +153,25 @@ sub start {
       } 
     } 
   } #if ($callback)
+  my $montype = 'event';
+  my $entry = undef;
+  my $conftable =  xCAT::Table->new('monsetting');
+  $entry = $conftable->getAttribs({'name'=>'rmcmon','key'=>'montype'}, 'value');
+  if($entry){
+	  $montype = $entry->{value};
+  }
+  $conftable->close;
+
   my @metrixconf = xCAT_monitoring::rmcmetrix::get_metrix_conf();
-  my @rmetrixcmd = ();
-  while(@metrixconf){
-	  my ($rsrc, $rname, $attrlist, $minute);
-	  $rsrc  = shift @metrixconf;
-	  $rname = shift @metrixconf;
-	  $attrlist = shift @metrixconf;
-	  $minute = shift @metrixconf;
-	  push @rmetrixcmd, "$rsrc $rname $attrlist $minute";
+  if($montype =~ /perf/){
+    while(@metrixconf){
+      my ($rsrc, $rname, $attrlist, $minute);
+      $rsrc  = shift @metrixconf;
+      $rname = shift @metrixconf;
+      $attrlist = shift @metrixconf;
+      $minute = shift @metrixconf;
+      xCAT::Utils->runcmd("$::XCATROOT/sbin/rmcmon/rmcmetrixmon init $rsrc $rname $attrlist $minute", 0);
+    }
   }
   if ($scope) {
     #get a list of managed nodes
@@ -175,13 +185,6 @@ sub start {
     }
     chomp($result);
     my @rmc_nodes=split(/\n/, $result);
-    my @svc_nodes = ();
-    my $node = undef;
-    foreach $node (@rmc_nodes){
-      if(xCAT::Utils->isSN($node)){
-	push @svc_nodes, $node;
-      }
-    }
     
     #start the rmc daemons for its children
     if (@rmc_nodes > 0) {
@@ -191,21 +194,6 @@ sub start {
         reportError( $result, $callback); 
       }
     }
-
-    #add to cron task
-    if(@svc_nodes > 0){
-      my $nodestring=join(',', @svc_nodes);
-      foreach (@rmetrixcmd){
-      	$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring $::XCATROOT/sbin/rmcmon/rmcmetrixmon init $_ 2>&1`;
-      }
-      if(($result)){
-      	reportError( $result, $callback);
-      }
-    }
-  }
-
-  foreach (@rmetrixcmd){
-	  xCAT::Utils->runcmd("XCATBYPASS=Y $::XCATROOT/sbin/rmcmon/rmcmetrixmon init $_", 0);
   }
   if ($callback) {
     my $rsp={};
@@ -363,11 +351,6 @@ sub stop {
 
       if (@nodes_to_stop > 0) {
         my $nodestring=join(',', @nodes_to_stop);
-	$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring $::XCATROOT/sbin/rmcmon/rmcmetrixmon clean 2>&1`;
-	if($result){
-	  reportError($result, $callback);
-	}
-        #$result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring stopsrc -s ctrmc 2>&1`;
         $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring "/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{if (\\\$2>0) system(\\\"stopsrc -s ctrmc\\\")}' 2>&1"`;
 
         if (($result) && ($result !~ /0513-044/)){ #0513-0544 is normal value
@@ -510,6 +493,10 @@ sub config {
     my $error= "Error when creating predefined resources on $localhostname:\n$result";
     reportError($error, $callback);
   }
+  if(!$isSV){
+    xCAT::Utils->runcmd("chtab key='rmetrics_IBM.Host' monsetting.name=rmcmon monsetting.value='PctTotalTimeIdle,PctTotalTimeWait,PctTotalTimeUser,PctTotalTimeKernel,PctRealMemFree:1'", 0);
+    xCAT::Utils->runcmd("chtab key='rmetrics_IBM.EthernetDevice' monsetting.name=rmcmon monsetting.value='RecByteRate,RecPacketRate,XmitByteRate,XmitPacketRate:1'", 0);
+  }
 }
 
 #--------------------------------------------------------------------------------
@@ -548,6 +535,10 @@ sub deconfig {
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   if (!$isSV) { $iphash{'noservicenode'}=1;}
+  if(!$isSV){
+    xCAT::Utils->runcmd("chtab -d key='rmetrics_IBM.Host' monsetting", 0);
+    xCAT::Utils->runcmd("chtab -d key='rmetrics_IBM.EthernetDevice' monsetting", 0);
+  }
 
   foreach my $key (keys (%$pPairHash)) {
     my @key_a=split(':', $key);
