@@ -5,6 +5,8 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
+use xCAT::Utils;
+use xCAT::MsgUtils;
 
 
 ##########################################################################
@@ -67,6 +69,12 @@ sub parse_args {
          }
     }
 
+    if (exists( $opt{m} ) ){
+        my $res = xCAT::Utils->check_deployment_monitoring_settings($request, \%opt);
+        if ($res != SUCCESS) {
+             return(usage());
+        } 
+    }
     ####################################
     # Check for "-" with no option
     ####################################
@@ -259,7 +267,7 @@ sub rnetboot {
     my $hwtype  = @$exp[2];
     my $result;
     my $name;
-
+    my $callback = $request->{callback};
     #####################################
     # Get node data 
     #####################################
@@ -350,6 +358,44 @@ sub rnetboot {
         $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
     }
     $sitetab->close;
+
+    if (defined($request->{opt}->{m})) {
+    
+        my $retries = 0;
+        my @monnodes = ($name);
+        my $monsettings = xCAT::Utils->generate_monsettings($request, \@monnodes);
+        xCAT::Utils->monitor_installation($request, $monsettings);;
+        while ($retries++ < $monsettings->{'retrycount'} && scalar(keys %{$monsettings->{'nodes'}}) > 0) {
+            ####lparnetboot can not support multiple nodes in one invocation
+            ####for now, does not know how the $d and \%opt will be changed if
+            ####support mulitiple nodes in one invocation,
+            ####so just use the original node name and node attribute array and hash
+             
+             my $rsp={};
+             $rsp->{data}->[0] = "$node: Reinitializing the installation: $retries retry";
+             xCAT::MsgUtils->message("I", $rsp, $callback);
+            if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+                $result = xCAT::PPCcli::lpar_netboot(
+                                    $exp,
+                                    $request->{verbose},
+                                    $name,
+                                    $d,
+                                    \%opt );
+            } else {
+                $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
+            }
+            xCAT::Utils->monitor_installation($request, $monsettings);
+                
+        }
+        #failed after retries
+        if (scalar(keys %{$monsettings->{'nodes'}}) > 0) {
+            foreach my $node (keys %{$monsettings->{'nodes'}}) {
+                my $rsp={};
+                $rsp->{data}->[0] = "The node \"$node\" can not reach the expected status after $monsettings->{'retrycount'} retries, the installation for this done failed";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+         }
+    }
     $Rc = shift(@$result);
     
 

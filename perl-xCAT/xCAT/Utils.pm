@@ -4325,4 +4325,285 @@ sub selection_string_match()
      }
      return $match;
 }
+#-------------------------------------------------------------------------------
+
+=head3 check_deployment_monitoring_settings 
+       Check the deployment retry monitoring settings.
+    Arguments:
+      $request: request hash
+      $mstring: The monitoring setting string 
+               specified with the -m flag for rpower or rnetboot 
+    Returns:
+        0 - ok
+        1 - failed
+    Globals:
+        none 
+    Example:
+         my $rc=xCAT::Utils->check_deployment_monitoring_settings($opt(m))
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub check_deployment_monitoring_settings()
+{
+    my ($class, $request, $opt_ref) = @_;
+    
+    my $callback = $request->{callback};
+    my @mstring = @{$opt_ref->{'m'}};
+    
+    # -r flag is required with -m flag
+    if (!defined($opt_ref->{'t'})) {
+        my $rsp={};
+        $rsp->{data}->[0] = "Flag missing, the -t flag is required";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    foreach my $m (@mstring) {
+        if ($m eq '') {
+            #No value specified with -m flag
+            next;
+        }
+        my $attr;
+        my $val;
+        if ($m =~ /[^=]*==/) {
+           ($attr, $val) = split /==/,$m,2;
+        } elsif ($m =~ /^[^=]*=~/) {
+           ($attr, $val) = split /=~/,$m,2;
+           $val =~ s/^\///;
+           $val =~ s/\/$//;
+        } else {
+           my $rsp={};
+           $rsp->{data}->[0] = "Invalid string \"$m\" specified with -m flag";
+           xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+
+        # The attr is table.column
+        if ($attr !~ /\..*$/) {
+            my $rsp={};
+            $rsp->{data}->[0] = "Invalid attribute \"$attr\" specified with -m flag, should be table.column";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        if($val eq '') {
+           my $rsp={};
+           $rsp->{data}->[0] = "The value of attribute \"$attr\" can not be NULL";
+           xCAT::MsgUtils->message("E", $rsp, $callback);
+           return 1;
+        } 
+    }
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 generate_monsettings()
+       Generate installation monitoring settings hash.
+    Arguments:
+      $request: request hash
+      \@monnodes: nodes to be monitored
+    Returns:
+        \%monsettings - the ref of %monsettings hash
+    Globals:
+        none
+    Example:
+         my $monsettings_ref = xCAT::Utils->generate_monsettings($request, \@monnodes)
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub generate_monsettings()
+{
+    my ($class, $request, $monnodes_ref) = @_;
+
+    my @monnodes = @$monnodes_ref;
+    my $callback = $request->{callback};
+    my @mstring = @{$request->{opt}->{m}};
+    my %monsettings = ();
+
+    #set default value for each attribute,
+    #to avoid ugly perl syntax error
+    my %defaultattrs = (
+                       "timeout"        => "10",
+                       "retrycount"        => "3"
+                        );
+
+    #Monitoring settings check already done in parse_args,
+    #Assume it is correct.
+    foreach my $m (@mstring) {
+        if ($m eq '') {
+           # No value specified with -m flag
+           next;
+        }
+        my $attr;
+        my $val;
+        my $matchtype; 
+        if ($m =~ /^[^=]*\==/) {
+            ($attr, $val) = split /==/,$m,2;
+            $matchtype='match';
+        } elsif ($m =~ /^[^=]*=~/) {
+            ($attr, $val) = split /=~/,$m,2;
+            $val =~ s/^\///;
+            $val =~ s/\/$//;
+            $matchtype='regex';
+        }
+            
+        #This is a table.column
+        my ($tab, $col) = split '\.', $attr;
+        $monsettings{'monattrs'}{$tab}{$col}{'val'} = $val;
+        $monsettings{'monattrs'}{$tab}{$col}{'matchtype'} = $matchtype;
+    }
+
+    if (defined($request->{opt}->{r})) {
+        $monsettings{'retrycount'} = $request->{opt}->{r};
+    }
+    if (defined($request->{opt}->{t})) {
+        $monsettings{'timeout'} = $request->{opt}->{t};
+    }
+
+    #Set the default values
+    foreach my $attr (keys %defaultattrs) {
+        if ((!defined($monsettings{$attr})) || ($monsettings{$attr} eq '')) {
+            $monsettings{$attr} = $defaultattrs{$attr};
+        }
+    }
+    if(!defined($monsettings{'monattrs'}) || (scalar(keys %{$monsettings{'monattrs'}}) == 0)) {
+        $monsettings{'monattrs'}{'nodelist'}{'status'}{'val'} = "booted";
+        $monsettings{'monattrs'}{'nodelist'}{'status'}{'matchtype'} = "match";
+    }
+    
+    #Initialize the %{$monsettings{'nodes'}} hash
+    foreach my $node (@monnodes) {
+        foreach my $tab (keys %{$monsettings{'monattrs'}}) {
+            foreach my $col (keys %{$monsettings{'monattrs'}{$tab}}) {
+                $monsettings{'nodes'}{$node}{'status'}{$tab}{$col} = '';
+            }
+        }
+    }
+    return \%monsettings;
+}
+#-------------------------------------------------------------------------------
+
+=head3 monitor_installation
+       Monitoring os installation progress.
+    Arguments:
+      $request: request hash
+    Returns:
+        0 - ok
+        1 - failed
+    Globals:
+        none
+    Example:
+         my $rc=xCAT::Utils->monitor_installation($opt(m))
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub monitor_installation()
+{
+    my ($class, $request, $monsettings) = @_;
+    my $callback = $request->{callback};
+
+    my $mstring = $request->{opt}->{m};
+    #This is the first time the monitor_installation is called,
+
+#    my $rsp={};
+#    my $monnodes = join ',', @monitornodes;
+#    $rsp->{data}->[0] = "Start monitoring the installation progress with settings \"$mstring\" for nodes $monnodes";
+#    xCAT::MsgUtils->message("I", $rsp, $callback);
+
+    $monsettings->{'timeelapsed'} = 0;
+    while(($monsettings->{'timeelapsed'} < $monsettings->{'timeout'}) &&(scalar(keys %{$monsettings->{'nodes'}}))) {
+        #polling interval is 1 minute, 
+        #do not do the first check until 1 minute after the os installation starts
+        sleep 5; #TODO, change it to 60 before checkin code
+
+
+        #update the timeelapsed
+        $monsettings->{'timeelapsed'}++;
+
+        my @monitornodes = keys %{$monsettings->{'nodes'}};
+        # Look up tables, do not look up the same table more than once
+        my %tabattrs = ();
+        foreach my $tab (keys %{$monsettings->{'monattrs'}}) {
+            foreach my $col (keys %{$monsettings->{'monattrs'}->{$tab}}) {
+                if (!grep(/^$col$/, @{$tabattrs{$tab}})) {
+                    push @{$tabattrs{$tab}}, $col;
+                }
+            }
+        }
+
+        foreach my $node (keys %{$monsettings->{'nodes'}}) {
+            foreach my $montable (keys %tabattrs) {
+                #Get the new status of the node
+                my $montab_ref = xCAT::Table->new($montable);
+                if ($montab_ref) {
+                    my @attrs = @{$tabattrs{$montable}};
+                    my $tabdata = $montab_ref->getNodesAttribs(\@monitornodes, \@attrs);
+                    foreach my $attr (@{$tabattrs{$montable}}) {
+                        # nodestatus changed, print a message
+                        if (($monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} ne '') 
+                            && ($monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} ne $tabdata->{$node}->[0]->{$attr})) {
+                             my $rsp={};
+                             $rsp->{data}->[0] = "$node $montable.$attr: $monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} => $tabdata->{$node}->[0]->{$attr}";
+                            xCAT::MsgUtils->message("I", $rsp, $callback);
+                        }
+                        #set the new status
+                        $monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} = $tabdata->{$node}->[0]->{$attr};
+                    }
+                $montab_ref->close();
+             } else { #can not open the table
+                 my $rsp={};
+                 $rsp->{data}->[0] = "Open table $montable failed";
+                 xCAT::MsgUtils->message("E", $rsp, $callback);
+                 return ();
+             }
+         }
+         #expected status??
+         my $statusmatch = 1;
+         foreach my $temptab (keys %{$monsettings->{'monattrs'}}) {
+            foreach my $tempcol (keys %{$monsettings->{'monattrs'}->{$temptab}}) {
+               my $currentstatus = $monsettings->{'nodes'}->{$node}->{'status'}->{$temptab}->{$tempcol};
+               my $expectedstatus = $monsettings->{'monattrs'}->{$temptab}->{$tempcol}->{'val'};
+               my $matchtype = $monsettings->{'monattrs'}->{$temptab}->{$tempcol}->{'matchtype'};
+               #regular expression
+               if($matchtype eq 'match') {
+                   if ($currentstatus ne $expectedstatus) {
+                       $statusmatch = 0;
+                   }
+               } elsif($matchtype eq 'regex') {
+                   if ($currentstatus !~ /$expectedstatus/) { 
+                       $statusmatch = 0;
+                   }
+               }
+             } #end foreach
+         } #end foreach
+         if ($statusmatch == 1) {
+            my $rsp={};
+            $rsp->{data}->[0] = "$node: Reached the expected status";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+            delete $monsettings->{'nodes'}->{$node};
+         } 
+ 
+
+       } #end foreach my $node
+    } #end while
+
+    if(scalar(keys %{$monsettings->{'nodes'}}) > 0)
+    {
+        foreach my $n (keys %{$monsettings->{'nodes'}}) {
+             my $rsp={};
+             $rsp->{data}->[0] = "$n: does not transit to the expected status";
+             xCAT::MsgUtils->message("E",$rsp, $callback);
+        }
+    }
+    return $monsettings;
+}
 1;

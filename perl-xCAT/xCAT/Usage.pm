@@ -17,10 +17,10 @@ use xCAT::Utils;
 
 my %usage = (
     "rnetboot" => 
-"Usage: rnetboot <noderange> [-s net|hd] [-f] [-V|--verbose]
+"Usage: rnetboot <noderange> [-s net|hd] [-f] [-V|--verbose] [-m table.colum==expectedstatus] [-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rnetboot [-h|--help|-v|--version]",
     "rpower" => 
-"Usage: rpower <noderange> [--nodeps] [on|onstandby|off|reset|stat|state|boot] [-V|--verbose]
+"Usage: rpower <noderange> [--nodeps] [on|onstandby|off|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]

@@ -5,7 +5,7 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
-
+use xCAT::MsgUtils;
 
 ##########################################################################
 # Parse the command line for options and operands
@@ -39,7 +39,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose m:s@ t=s r=s) )) {
         return( usage() );
     }
     ####################################
@@ -75,6 +75,13 @@ sub parse_args {
        $cmd = ($cmd eq "boot") ? "powercmd_boot" : "powercmd";
     }
     $request->{method} = $cmd;
+
+    if (exists( $opt{m} ) ){
+        my $res = xCAT::Utils->check_deployment_monitoring_settings($request, \%opt);
+        if ($res != SUCCESS) {
+             return(usage());
+        }
+    }
     return( \%opt );
 }
 
@@ -136,6 +143,7 @@ sub powercmd_boot {
     my $hash    = shift;
     my $exp     = shift;
     my @output  = ();
+    my $callback = $request->{'callback'};
 
     ######################################
     # Power commands are grouped by CEC 
@@ -191,6 +199,62 @@ sub powercmd_boot {
                             $d );
         push @output, [$name,@$result[1],@$result[0]];
     }
+    if (defined($request->{opt}->{m})) {
+
+        my $retries = 0;
+        my @monnodes = keys %$hash;
+        my $monsettings = xCAT::Utils->generate_monsettings($request, \@monnodes);
+        xCAT::Utils->monitor_installation($request, $monsettings);
+        while ($retries++ < $monsettings->{'retrycount'} && scalar(keys %{$monsettings->{nodes}}) > 0) {
+
+             #The nodes that need to retry
+             my @nodesretry = keys %{$monsettings->{'nodes'}};
+             my $nodes = join ',', @nodesretry;
+             my $rsp={};
+             $rsp->{data}->[0] = "$nodes: Reinitializing the installation: $retries retry";
+             xCAT::MsgUtils->message("I", $rsp, $callback);
+
+
+             foreach my $node (keys %$hash)
+             {
+                 # The installation for this node has been finished
+                 if(!grep(/^$node$/, @nodesretry)) {
+                     delete($hash->{$node});
+                 }
+              }
+              while (my ($name,$d) = each(%$hash) ) {
+                  my $type = @$d[4];
+                  my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
+
+                  if ( $Rc != SUCCESS ) {
+                       push @output, [$name,$data,$Rc];
+                       next;
+                  }
+                  if ( !exists( $data->{$id} )) {
+                       push @output, [$name,"Node not found",1];
+                       next;
+                  }
+                  my $state = power_status($data->{$id});
+                  my $op    = ($state =~ /^off$/) ? "on" : "reset";
+
+                  my $result = xCAT::PPCcli::chsysstate(
+                                   $exp,
+                                   $op,
+                                   $d );
+                  push @output, [$name,@$result[1],@$result[0]];
+              }
+              my @monnodes = keys %{$monsettings->{nodes}};
+              xCAT::Utils->monitor_installation($request, $monsettings);
+        }
+        #failed after retries
+        if (scalar(keys %{$monsettings->{'nodes'}}) > 0) {
+            foreach my $node (keys %{$monsettings->{nodes}}) {
+                my $rsp={};
+                $rsp->{data}->[0] = "The node \"$node\" can not reach the expected status after $monsettings->{'retrycount'} retries, the installation for this done failed";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+             }
+        }
+     }
     return( \@output );
 }
 
@@ -204,6 +268,7 @@ sub powercmd {
     my $hash    = shift;
     my $exp     = shift;
     my @result  = ();
+    my $callback = $request->{'callback'};
 
     ####################################
     # Power commands are grouped by CEC 
@@ -225,6 +290,50 @@ sub powercmd {
         ################################
         push @result, [$name,@$values[0],$Rc];
     }
+
+    if (defined($request->{opt}->{m})) {
+
+        my $retries = 0;
+        my @monnodes = keys %$hash;
+        my $monsettings = xCAT::Utils->generate_monsettings($request, \@monnodes);
+        xCAT::Utils->monitor_installation($request, $monsettings);
+        while ($retries++ < $monsettings->{'retrycount'} && scalar(keys %{$monsettings->{nodes}}) > 0) {
+             #The nodes that need to retry
+             my @nodesretry = keys %{$monsettings->{'nodes'}};
+             my $nodes = join ',', @nodesretry;
+
+             my $rsp={};
+             $rsp->{data}->[0] = "$nodes: Reinitializing the installation: $retries retry";
+             xCAT::MsgUtils->message("I", $rsp, $callback);
+
+             foreach my $node (keys %$hash)
+             {
+                 # The installation for this node has been finished
+                 if(!grep(/^$node$/, @nodesretry)) {
+                     delete($hash->{$node});
+                 }
+              }
+              while (my ($name,$d) = each(%$hash) ) {
+                  my $values = xCAT::PPCcli::chsysstate(
+                                    $exp,
+                                    $request->{op},
+                                    $d );
+                  my $Rc = shift(@$values);
+
+                  push @result, [$name,@$values[0],$Rc];
+              }
+              my @monnodes = keys %{$monsettings->{nodes}};
+              xCAT::Utils->monitor_installation($request, $monsettings);
+        }
+        #failed after retries
+        if (scalar(keys %{$monsettings->{'nodes'}}) > 0) {
+            foreach my $node (keys %{$monsettings->{nodes}}) {
+                my $rsp={};
+                $rsp->{data}->[0] = "The node \"$node\" can not reach the expected status after $monsettings->{'retrycount'} retries, the installation for this done failed";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+             }
+        }
+     }
     return( \@result );
 }
 
