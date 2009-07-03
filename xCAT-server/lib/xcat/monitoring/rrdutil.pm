@@ -55,9 +55,9 @@ sub start_RRD_server
 	
 	open FILE, ">/etc/services.new" or return -1;
 	foreach (@old){
-		print FILE "$_\n";
+		print FILE "$_\n" or return -1;
 	}
-	close FILE;
+	close FILE or return -1;
 	$cmd = "mv -f /etc/services.new /etc/services";
 	xCAT::Utils->runcmd($cmd, -2);
 
@@ -73,7 +73,7 @@ sub start_RRD_server
 	@old = xCAT::Utils->runcmd("cat /etc/inetd.conf", -2);
 	$offset = 0;
 	$found = 0;
-	push @new, "rrdsrv stream tcp no wait root /usr/bin/rrdtool rrdtool - $dir";
+	push @new, "rrdsrv stream tcp nowait root /usr/bin/rrdtool rrdtool - $dir";
 	foreach (@old) {
 		if ($_ =~ /rrdsrv/){
 			if(!$found){
@@ -91,9 +91,9 @@ sub start_RRD_server
 	}
 	open FILE, ">/etc/inetd.conf.new" or return -1;
         foreach (@old){
-                print FILE "$_\n";
+                print FILE "$_\n" or return -1;
         }
-	close FILE;
+	close FILE or return -1;
 	xCAT::Utils->runcmd("mv -f /etc/inetd.conf.new /etc/inetd.conf", -2);
 
 	if(xCAT::Utils->isAIX()){
@@ -130,9 +130,9 @@ sub stop_RRD_server
 	}
 	open FILE, ">/etc/services.new" or return -1;
         foreach (@old){
-                print FILE "$_\n";
+                print FILE "$_\n" or return -1;
         }
-	close FILE;
+	close FILE or return -1;
 	xCAT::Utils->runcmd("mv -f /etc/services.new /etc/services", -1);
 
 	@old = ();
@@ -147,9 +147,9 @@ sub stop_RRD_server
 	}
 	open FILE, ">/etc/inetd.conf.new" or return -1;
         foreach (@old){
-                print FILE "$_\n";
+                print FILE "$_\n" or return -1;
         }
-	close FILE;
+	close FILE or return -1;
 	xCAT::Utils->runcmd("mv -f /etc/inetd.conf.new /etc/inetd.conf", -2);
 	if(xCAT::Utils->isAIX()){
 		xCAT::Utils->runcmd("stopsrc -s inetd", 0);
