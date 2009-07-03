@@ -173,6 +173,9 @@ sub start {
       xCAT::Utils->runcmd("$::XCATROOT/sbin/rmcmon/rmcmetrixmon init $rsrc $rname $attrlist $minute", 0);
     }
   }
+  if(xCAT::Utils->isServiceNode()){
+    xCAT::Utils->runcmd("$::XCATROOT/sbin/rmcmon/rmcmetrixmon init rrdserver", 0);
+  }
   if ($scope) {
     #get a list of managed nodes
     $result=`/usr/bin/lsrsrc-api -s IBM.MngNode::::Name 2>&1`;  
@@ -273,7 +276,10 @@ sub stop {
   my $localhostname=hostname();
 
   
-  system("$::XCATROOT/sbin/rmcmon/rmcmetrixmon clean");
+  xCAT::Utils->runcmd("$::XCATROOT/sbin/rmcmon/rmcmetrixmon clean", 0);
+  if(xCAT::Utils->isServiceNode()){
+    xCAT::Utils->runcmd("$::XCATROOT/sbin/rmcmon/rmcmetrixmon clean rrdserver", 0);
+  } 
   my $result;
   chomp(my $pid= `/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print \$2}'`);
   if ($pid){
@@ -328,6 +334,7 @@ sub stop {
     #the identification of this node
     my @hostinfo=xCAT::Utils->determinehostname();
     my $isSV=xCAT::Utils->isServiceNode();
+
     my %iphash=();
     foreach(@hostinfo) {$iphash{$_}=1;}
     if (!$isSV) { $iphash{'noservicenode'}=1;}

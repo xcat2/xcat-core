@@ -115,6 +115,7 @@ if($cmd eq 'init'){
 	if ($ARGV[1] eq 'rrdserver'){
 		$code = xCAT_monitoring::rrdutil::start_RRD_server('13900', "/var/rrd/");
 		&err_handle($code, "can't start RRD server");
+		exit 0;
 	}
 	$minute = $ARGV[4];
 	$crontime = &getcrontime($minute);
@@ -127,6 +128,12 @@ if($cmd eq 'init'){
 		&err_handle($code, $msg);
 	}
 } elsif ($cmd eq 'clean'){
+	if ($ARGV[1] eq 'rrdserver'){
+		$code = xCAT_monitoring::rrdutil::stop_RRD_server();
+		&err_handle($code, "can't stop RRD server");
+		exit 0;
+	}
+
 	$msg = `rm -rf /var/rrd/*`; 
 	&err_handle($?, $msg);
 	@tabs = `/usr/bin/crontab -l 2>/dev/null;`;
