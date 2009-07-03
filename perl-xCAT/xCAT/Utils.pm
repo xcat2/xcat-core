@@ -4523,7 +4523,7 @@ sub monitor_installation()
     while(($monsettings->{'timeelapsed'} < $monsettings->{'timeout'}) &&(scalar(keys %{$monsettings->{'nodes'}}))) {
         #polling interval is 1 minute, 
         #do not do the first check until 1 minute after the os installation starts
-        sleep 5; #TODO, change it to 60 before checkin code
+        sleep 60; 
 
 
         #update the timeelapsed
