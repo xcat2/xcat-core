@@ -4251,9 +4251,13 @@ sub rsync_to_image
             my $synccmd = "";
             if ($^O eq 'aix')
             {
-                $synccmd = "/usr/bin/rsync -Lupotz ";
+              if (-e ("/usr/bin/rsync")) {
+               $synccmd  = "/usr/bin/rsync -Lupotz ";
+              } else {
+               $synccmd = "/usr/local/bin/rsync -Lupotz ";
+              }
             }
-            else
+            else  # linux
             {
                 $synccmd = "/usr/bin/rsync -Lupotz ";
             }
