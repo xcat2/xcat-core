@@ -1177,6 +1177,7 @@ sub addNodes {
     #use 2 here to tell xcataixpost that there is only one postscript, download only it. It applies to AIX only     
     if (xCAT::Utils->isLinux()) {
       $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost 2 configrmcnode 2>&1";
+      print "$cmd\n";
     }
     else {
       $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost -c 2 configrmcnode 2>&1";
