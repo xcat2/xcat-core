@@ -11,7 +11,12 @@ use base xCAT::DSHRemoteShell;
 
 if ($^O eq 'aix')
 {
-    our $RSYNC_CMD = '/usr/bin/rsync';
+
+    if (-e ("/usr/bin/rsync")) {
+      our $RSYNC_CMD = '/usr/bin/rsync';
+    } else {
+      our $RSYNC_CMD = '/usr/local/bin/rsync';
+    }
 }
 
 if ($^O eq 'linux')

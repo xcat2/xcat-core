@@ -3998,7 +3998,12 @@ sub parse_and_run_dcp
     {
         if ($^O eq 'aix')
         {
-            $options{'node-rcp'} = '/usr/bin/rsync';
+            if (-e ("/usr/bin/rsync")) {
+             $options{'node-rcp'} = '/usr/bin/rsync';
+            } else {
+             $options{'node-rcp'} = '/usr/local/bin/rsync';
+            }
+ 
         }
         elsif ($^O eq 'linux')
         {
