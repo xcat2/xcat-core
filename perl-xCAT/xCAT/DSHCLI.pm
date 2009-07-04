@@ -4277,8 +4277,7 @@ sub rsync_to_image
             {
                 my $rsp = {};
                 $rsp->{data}->[0] = "Command: $synccmd failed.";
-                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-                return;
+                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             }
 
         }    # valid line
