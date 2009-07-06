@@ -229,18 +229,33 @@ sub addnode
         my $doiscsi=0;
         if ($ient and $ient->{server} and $ient->{target}) {
             $doiscsi=1;
-            if (defined ($ient->{lun})) {
-                $lstatements = 'option root-path \"iscsi:'.$ient->{server}.':::'.$ient->{lun}.':'.$ient->{target}.'\";'.$lstatements;
-            } else {
-                $lstatements = 'option root-path \"iscsi:'.$ient->{server}.':::'.$ient->{lun}.':'.$ient->{target}.'\";'.$lstatements;
+            unless (defined ($ient->{lun})) { #Some firmware fails to properly implement the spec, so we must explicitly say zero for such firmware
+                $ient->{lun} = 0;
+            }
+            my $iscsirootpath ='iscsi:'.$ient->{server}.':6:3260:'.$ient->{lun}.':'.$ient->{target};
+            if (defined ($ient->{iname})) { #Attempt to use gPXE or IBM iSCSI formats to specify the initiator
+                #This all goes on one line, but will break it out to at least be readable in here
+                $lstatements = 'if option vendor-class-identifier = \"ISAN\" { ' #This is declared by IBM iSCSI initiators, will call it 'ISAN' mode
+                                   .'option isan.iqn \"'.$ient->{iname}.'\"; '  #Use vendor-spcefic option to declare the expected Initiator name
+                                   .'option isan.root-path \"'.$iscsirootpath.'\"; ' #We must *not* use standard root-path if using ISAN style options
+                              .'} else { '
+                                   .'option root-path \"'.$iscsirootpath.'\"; ' #For everything but ISAN, use standard, RFC defined behavior for root
+                                   .'if exists gpxe.bus-id { '  #Since our iscsi-initiator-iqn is in no way a standardized thing, only use it for gPXE
+                                       . ' option iscsi-initiator-iqn \"'.$ient->{iname}.'\";' #gPXE will consider option 203 for initiator IQN
+                                   . '}'
+                             . '}'
+                             .$lstatements;
+                print $lstatements;
+            } else { #We stick to the good old RFC defined behavior, ISAN, gPXE, everyone should be content with this so long as no initiator name need be specified
+                $lstatements = 'option root-path \"'.$iscsirootpath.'\";'.$lstatements;
             }
         }
         if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe') {
-            if (-f "$tftpdir/undionly.kpxe") {
+            if (-f "$tftpdir/xcat/xnba.kpxe") {
                 if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
-                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements;
+                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
                 } else {
-                    $lstatements = 'if exists gpxe.bus-id { filename = \"xcat/xnba/nodes/'.$node.'\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive gPXE
+                    $lstatements = 'if exists gpxe.bus-id { filename = \"xcat/xnba/nodes/'.$node.'\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive gPXE
                 } 
             } #TODO: warn when windows
         }
@@ -606,7 +621,7 @@ sub process_request
         $nrhash = $nrtab->getNodesAttribs($req->{node}, ['tftpserver','netboot']);
         my $iscsitab = xCAT::Table->new('iscsi');
         if ($iscsitab) {
-            $iscsients = $iscsitab->getNodesAttribs($req->{node},[qw(server target lun)]);
+            $iscsients = $iscsitab->getNodesAttribs($req->{node},[qw(server target lun iname)]);
         }
         my $mactab = xCAT::Table->new('mac');
         $machash = $mactab->getNodesAttribs($req->{node},['mac']);
@@ -854,11 +869,11 @@ sub addnet
             $tmpmaskn=$tmpmaskn>>1;
         }
 
-                       # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"undionly.kpxe\"; } '.$lstatements;
+                       # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
         push @netent, "    if exists gpxe.bus-id { #x86, gPXE\n";
         push @netent, "       filename = \"xcat/xnba/nets/".$net."_".$maskbits."\";\n";
         push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
-        push @netent, "      filename \"undionly.kpxe\";\n";
+        push @netent, "      filename \"xcat/xnba.kpxe\";\n";
         push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
         push @netent, "      filename \"pxelinux.0\";\n";
         push @netent,
@@ -929,12 +944,19 @@ sub newconfig
     push @dhcpconf, "#xCAT generated dhcp configuration\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "authoritative;\n";
+    push @dhcpconf, "option space isan;\n";
+    push @dhcpconf, "option isan-encap-opts code 43 = encapsulate isan;\n";
+    push @dhcpconf, "option isan.iqn code 203 = string;\n";
+    push @dhcpconf, "option isan.root-path code 201 = string;\n";
     push @dhcpconf, "option space gpxe;\n";
     push @dhcpconf, "option gpxe-encap-opts code 175 = encapsulate gpxe;\n";
     push @dhcpconf, "option gpxe.bus-id code 177 = string;\n";
+    push @dhcpconf, "option gpxe.no-pxedhcp code 176 = unsigned integer 8;\n";
+    push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
     push @dhcpconf, "ddns-update-style none;\n";
     push @dhcpconf,
       "option client-architecture code 93 = unsigned integer 16;\n";
+    push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "omapi-port 7911;\n";        #Enable omapi...
     push @dhcpconf, "key xcat_key {\n";
