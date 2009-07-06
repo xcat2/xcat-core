@@ -449,7 +449,7 @@ sub _execute_dsh
             $rsp->{data}->[0] =
               " Timed out waiting for response from child processes for the following nodes. Terminating the child processes. ";
             $rsp->{data}->[1] = " @active_list";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             @targets_failed = keys(%targets_active);
 
             &handle_signal_dsh('INT', 2);
@@ -561,8 +561,11 @@ sub _execute_dsh
                 $rsp->{data}->[0] = "dsh>  Remote_command_failed $user_target";
                 $$options{'monitor'}
                   && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-
-                push @targets_failed, $user_target;
+                if (!grep(/$user_target/, @targets_failed))
+                {    # not already in list
+ 
+                  push @targets_failed, $user_target;
+                }
                 push @{$dsh_target_status{'failed'}}, $user_target
                   if !$signal_interrupt_flag;
 
