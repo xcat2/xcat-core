@@ -285,7 +285,7 @@ sub mountInstall
     my $rc         = 0;
     my $installdir = "/install";    # default
     my $installloc = "/install";    # default
-
+    my $newinstallloc;
     # read DB for nodeinfo
     my $master;
     my $os;
@@ -308,10 +308,11 @@ sub mountInstall
         {
             if (grep /:/, $installlocation[0])
             {
-                my ($hostname, $installloc) = split ":", $installlocation[0];
+                my ($hostname, $newinstallloc) = split ":", $installlocation[0];
                 if ($hostname)
                 {    # hostname set in /installloc attribute
                     $master = $hostname;    # set name for mount
+                    $installloc = $newinstallloc; #set path for mount point
                 }
             }
             else
