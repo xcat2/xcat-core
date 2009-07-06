@@ -174,8 +174,13 @@ sub preprocess_request
                 push @requests, $reqcopy;
             }
             else
-            {    # non hierarchy , just push the original command
-                push @requests, $reqcopy;
+            {    # non hierarchy , build for Management node
+                 my $reqcopy = {%$req};
+                 $reqcopy->{node} = $sn->{$snkey};
+                 $reqcopy->{'_xcatdest'} = $snkey;
+                 $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                 push @requests, $reqcopy;  
+                 
             }
         }
 
