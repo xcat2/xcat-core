@@ -1592,9 +1592,8 @@ sub getGroupMembers
         {
             my $rsp;
             $rsp->{data}->[0] =
-              "The \'-w\' option has an incorrect attr=val pair.";
+              "The \'-w\' option has an incorrect attr*val pair.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
-            next;
         }
 
         # see what nodes have these attr=values

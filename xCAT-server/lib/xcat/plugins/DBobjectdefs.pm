@@ -1584,7 +1584,7 @@ sub defch
                     if ($rc != 0)
                     {
                          my $rsp;
-                         $rsp->{data}->[0] = "Incorrect selection string specified with -m flag";
+                         $rsp->{data}->[0] = "Incorrect selection string";
                          xCAT::MsgUtils->message("E", $rsp, $::callback);
                          return 3;
                     }
@@ -2938,7 +2938,7 @@ sub defmk_usage
     $rsp->{data}->[2] =
       "  mkdef [-V | --verbose] [-t object-types] [-o object-names] [-z|--stanza ]";
     $rsp->{data}->[3] =
-      "      [-d | --dynamic] [-w \"attr==val\" [-w \"attr=~val\"] ...]";
+      "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
     $rsp->{data}->[4] =
       "      [-f | --force] [noderange] [attr=val [attr=val...]]\n";
     $rsp->{data}->[5] =
@@ -2987,7 +2987,7 @@ sub defch_usage
     $rsp->{data}->[3] =
       "    [-z | --stanza] [-m | --minus] [-p | --plus]";
     $rsp->{data}->[4] =
-      "    [-w \"attr==val\" [-w \"attr=~val\"] ... ] [noderange] [attr=val [attr=val...]]\n";
+      "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
     $rsp->{data}->[5] =
       "\nThe following data object types are supported by xCAT.\n";
     my $n = 6;
@@ -3033,7 +3033,7 @@ sub defls_usage
     $rsp->{data}->[3] =
       "    [ -l | --long] [-a | --all] [-z | --stanza ]";
     $rsp->{data}->[4] =
-      "    [-i attr-list] [-w \"attr==val\" [-w \"attr=~val\"] ...] [noderange]\n";
+      "    [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
     $rsp->{data}->[5] =
       "\nThe following data object types are supported by xCAT.\n";
     my $n = 6;

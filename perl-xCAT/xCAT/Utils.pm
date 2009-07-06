@@ -4221,23 +4221,25 @@ sub parse_selection_string()
 {
     my ($class, $ss_ref, $wherehash_ref) = @_;
 
+    # selection string is specified with one or multiple -w flags
+    # stored in an array
     foreach my $m (@{$ss_ref})
     {
         my $attr;
         my $val;
         my $matchtype;
-        if ($m =~ /^[^=]*\==/) {
+        if ($m =~ /^[^=]*\==/) { #attr==val
             ($attr, $val) = split /==/,$m,2;
             $matchtype='match';
-        } elsif ($m =~ /^[^=]*=~/) {
+        } elsif ($m =~ /^[^=]*=~/) { #attr=~val
             ($attr, $val) = split /=~/,$m,2;
             $val =~ s/^\///;
             $val =~ s/\/$//;
             $matchtype='regex';
-        } elsif ($m =~ /^[^=]*\!=/) {
+        } elsif ($m =~ /^[^=]*\!=/) { #attr!=val
              ($attr,$val) = split /!=/,$m,2;
              $matchtype='natch';
-        } elsif ($m =~ /[^=]*!~/) {
+        } elsif ($m =~ /[^=]*!~/) { #attr!~val
             ($attr,$val) = split /!~/,$m,2;
             $val =~ s/^\///;
             $val =~ s/\/$//;
@@ -4300,7 +4302,7 @@ sub selection_string_match()
                      last;
                  }
              }
-             if(($wherehash{$testattr}{'matchtype'} eq 'natch')) { #attr!=val
+             if($wherehash{$testattr}{'matchtype'} eq 'natch') { #attr!=val
                  if ($objhash_ref->{$objname}->{$testattr} eq $wherehash{$testattr}{'val'}) {
                      $match = 0;
                      last;
