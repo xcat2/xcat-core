@@ -13,7 +13,12 @@
 
 use File::Path;
 use IO::Socket;
+my $useSocketSSL=eval { require IO::Socket::SSL; };
+if ($useSocketSSL) {
+        require IO::Socket::SSL;
+}
 use Getopt::Long;
+use XML::Simple;
 
 sleep int(rand(10));
 
@@ -170,7 +175,7 @@ my $nodesetstat="standalone";
 if (-f $scriptname)
 {
 	# when called by the updatenode command,
-    #modify the UPDATENODE flag to 1
+    #	modify the UPDATENODE flag to 1
     if (@ARGV > 0) {
       $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' $scriptname`;
       `echo "$TMP" > $scriptname`;
@@ -234,7 +239,7 @@ if (-f $scriptname) {
 if ($nodesetstat eq 'standalone') {
     # see if it is already there
     my $lsicmd = "/usr/sbin/lsitab xcat > /dev/null 2>&1";
-    if (&runcmd($lsicmd) != 0) {
+    if (&runcmd($lsicmd) == 0) {
         # ok - remove the entry
         my $rmitab_cmd = 'rmitab "xcat"  > /dev/null 2>&1';
         if (&runcmd($rmitab_cmd) != 0) {
@@ -256,38 +261,58 @@ exit 0;
 #
 #####################################################
 sub  getmypost {
-
-	my $port = "3002";
 	
-	my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servnode, PeerPort  => $port, );
+	my $port = "3001";
 
-	unless ($remote) { 
-		print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
-		print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
-		return 1;
-	}
+	# open a socket to request credentials
+    my $remote = IO::Socket::SSL->new(
+        PeerAddr => $servnode,
+        PeerPort  => $port,
+        Proto    => 'tcp',
+    );
 
-	$remote->autoflush(1);
-	print $remote "getpostscript\n";
+	unless ($remote) {
+        print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+        return 1;
+    }
 
 	if (!open(POSTSCRIPT, ">$scriptname") ) {
-		print "$::sdate  xcataixpost: Could not open $scriptname.\n";
-		print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n";
-		close $remote;
-		return 1;
-	}
+        print "$::sdate  xcataixpost: Could not open $scriptname.\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n"
+;
+        close $remote;
+        return 1;
+    }
 
-	my $line;
-	while (defined ($line = <$remote>)) {
-		chomp $line;
-		if ( ($line eq "ready") || ($line eq "done")) {
-			next;
+	# request must be in XML format
+    print $remote "<xcatrequest>\n";
+    print $remote "   <command>getpostscript</command>\n";
+    print $remote "</xcatrequest>\n";
+
+	# get reponse in XML format
+	my $response='';
+	my $rsp;
+	while (<$remote>) {
+		$response .= $_;
+		if ($response =~ m/<\/xcatresponse>/) {
+			$rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
+
+			if ($rsp->{serverdone}) {
+				last;			
+			}
+
+			foreach my $line (@{$rsp->{data}}) {
+				$line =~ s/^\s+//;    # strip any leading spaces
+				print POSTSCRIPT "$line";
+			}
+			$response='';
 		}
-		print POSTSCRIPT "$line\n";
-	}
+    }
+	
 	close(POSTSCRIPT);
-	close $remote;
-	return 0;
+    close $remote;
+    return 0;
 }
 
 ############################################################
