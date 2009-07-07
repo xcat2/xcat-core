@@ -19,6 +19,7 @@ package xCAT::SINV;
 use strict;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
+use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 use xCAT::Utils;
 use Fcntl qw(:flock);
 use Getopt::Long;
@@ -1124,6 +1125,7 @@ sub diffoutput
     return @info;
 }
 
+
 #------------------------------------------------------------------------------
 
 =head3   writereport  			    	 
@@ -1181,10 +1183,16 @@ sub writereport
                 $nodelist .= ',';
             }
         }
+      
         chop $nodelist;
+        # convert to noderanges if possible
+        my $nodearray;
+        $nodearray->{0} = \@nodearray;
+        my $newnodelist = abbreviate_noderange($nodearray->{0});        
         if ($ignorefirsttemplate ne "YES")
         {                                              #  report first template
-            $rsp->{data}->[0] = "$nodelist\n";
+                $rsp->{data}->[0] = "$newnodelist\n";
+            
             if ($::OUTPUT_FILE_HANDLE)
             {
                 print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
@@ -1472,7 +1480,7 @@ sub storeresults
     close(XCOLL);
     close FILE;
 
-    system("/bin/rm  $newtempfile");
+    #system("/bin/rm  $newtempfile");
 
     # capture errors
     #
