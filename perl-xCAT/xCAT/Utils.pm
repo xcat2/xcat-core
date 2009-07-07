@@ -1917,6 +1917,7 @@ sub my_ip_facing
     {
         $peer = shift;
     }
+    return my_ip_facing_aix( $peer) if ( $^O eq 'aix');
     my $noden = unpack("N", inet_aton($peer));
     my @nets = split /\n/, `/sbin/ip addr`;
     foreach (@nets)
@@ -1937,6 +1938,175 @@ sub my_ip_facing
     return undef;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3   my_ip_facing_aix
+         Returns my ip address  
+         AIX only
+    Arguments:
+        nodename 
+    Returns:
+    Globals:
+        none
+    Error:
+        none
+    Example:
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_ip_facing_aix
+{
+    my $peer = shift;
+    my @nets = `ifconfig -a`;
+    chomp @nets;
+    foreach my $net (@nets)
+    {
+        if ( $net =~ /^\s*inet\s+([\d\.]+)\s+netmask\s+(\w+)\s+broadcast/)
+        {
+            my ($curnet,$netmask) = ($1,$2);
+            if (isInSameSubnet($peer, $curnet, $netmask, 2))
+            {
+                return $curnet;
+            }
+        }
+    }
+    return undef;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 formatNetmask
+    Description:
+        Transform netmask to one of 3 formats (255.255.255.0, 24, 0xffffff00).
+        
+    Arguments:
+        $netmask: the original netmask
+        $origType: the original netmask type. The valid value can be 0, 1, 2:
+            Type 0: 255.255.255.0
+            Type 1: 24
+            Type 2: 0xffffff00
+        $newType: the new netmask type, valid values can be 0,1,2, as above.
+        
+    Returns:  
+        Return undef if any error. Otherwise return the netmask in new format.
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::Utils::formatNetmask( '24', 1, 0); #return '255.255.255.0'.
+    
+    Comments:
+        none
+=cut
+#-----------------------------------------------------------------------
+sub formatNetmask
+{
+    my $mask = shift;
+    my $origType = shift;
+    my $newType = shift;
+    my $maskn;
+    if ( $origType == 0)
+    {
+        $maskn = unpack("N", inet_aton($mask));
+    }
+    elsif ( $origType == 1)
+    {
+        $maskn = 2**$mask - 1 << (32 - $mask);
+    }
+    elsif( $origType == 2)
+    {
+        $maskn = hex $mask;
+    }
+    else
+    {
+        return undef;
+    }
+
+    if ( $newType == 0)
+    {
+        return inet_ntoa( pack('N', $maskn));
+    }
+    if ( $newType == 1)
+    {
+        my $bin = unpack ("B32", pack("N", $maskn));
+        my @dup = ( $bin =~ /(1{1})0*/g);
+        return scalar ( @dup);
+    }
+    if ( $newType == 2)
+    {
+        return sprintf "0x%1x", $maskn;
+    }
+    return undef;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 isInSameSubnet
+    Description:
+        Check if 2 given IP addresses are in same subnet
+        
+    Arguments:
+        $ip1: the first IP
+        $ip2: the second IP
+        $mask: the netmask, here are 3 possible netmask types, following are examples for these 3 types:
+            Type 0: 255.255.255.0
+            Type 1: 24
+            Type 2: 0xffffff00
+        $masktype: the netmask type, 3 possible values: 0,1,2, as indicated above
+        
+    Returns:  
+        1: they are in same subnet
+        2: not in same subnet
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::Utils::isInSameSubnet( '192.168.10.1', '192.168.10.2', '255.255.255.0', 0);
+    
+    Comments:
+        none
+=cut
+#-----------------------------------------------------------------------
+sub isInSameSubnet
+{
+    my $ip1 = shift;
+    my $ip2 = shift;
+    my $mask = shift;
+    my $maskType = shift;
+
+    my $maskn;
+    if ( $maskType == 0)
+    {
+        $maskn = unpack("N", inet_aton($mask));
+    }
+    elsif ( $maskType == 1)
+    {
+        $maskn = 2**$mask - 1 << (32 - $mask);
+    }
+    elsif( $maskType == 2)
+    {
+        $maskn = hex $mask;
+    }
+    else
+    {
+        return undef;
+    }
+
+    my $ip1n = unpack("N", inet_aton($ip1));
+    my $ip2n = unpack("N", inet_aton($ip2));
+
+    return ( ( $ip1n & $maskn) == ( $ip2n & $maskn) );
+}
 #-------------------------------------------------------------------------------
 
 =head3 nodeonmynet - checks to see if node is on any network this server is attached to or remote network potentially managed by this system
@@ -1975,7 +2145,20 @@ sub nodeonmynet
     if ($utildata->{nodeonmynetdata} and $utildata->{nodeonmynetdata}->{pid} == $$) {
         @nets = @{$utildata->{nodeonmynetdata}->{nets}};
     } else {
-        @nets = split /\n/, `/sbin/ip route`;
+        if ( $^O eq 'aix')
+        {
+            my @subnets = get_subnet_aix();
+            for my $net_ent (@subnets)
+            {
+                my @ents = split /:/ , $net_ent;
+                push @nets, $ents[0] . '/' . $ents[2] . ' dev ' . $ents[1];
+            }
+
+        }
+        else
+        {
+            @nets = split /\n/, `/sbin/ip route`;
+        }
         my $nettab=xCAT::Table->new("networks");
         my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
         foreach (@vnets) {
@@ -2036,7 +2219,15 @@ sub thishostisnot
         $comparison = shift;
     }
 
-    my @ips = split /\n/, `/sbin/ip addr`;
+    my @ips;
+    if ( $^O eq 'aix')
+    {
+        @ips = split /\n/, `/usr/sbin/ifconfig -a`;
+    }
+    else
+    {
+        @ips = split /\n/, `/sbin/ip addr`;
+    }
     my $comp = inet_aton($comparison);
     if ($comp)
     {
@@ -4608,4 +4799,50 @@ sub monitor_installation()
     }
     return $monsettings;
 }
+#-------------------------------------------------------------------------------
+
+=head3 get_subnet_aix 
+    Description:
+        To get present subnet configuration by parsing the output of 'netstat'. Only designed for AIX.
+    Arguments:
+        None
+    Returns:
+        @aix_nrn : An array with entries in format "net:nic:netmask:flag". Following is an example entry:
+            9.114.47.224:en0:27:U
+    Globals:
+        none 
+    Error:
+        none
+    Example:
+         my @nrn =xCAT::Utils::get_subnet_aix
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_subnet_aix
+{
+    my @netstat_res = `/usr/bin/netstat -rn`;
+    chomp @netstat_res;
+    my @aix_nrn;
+    for my $entry ( @netstat_res)
+    {
+#We need to find entries like:
+#Destination        Gateway           Flags   Refs     Use  If   Exp  Groups
+#9.114.47.192/27    9.114.47.205      U         1         1 en0
+        if ( $entry =~ /^\s*([\d\.]+)\/(\d+)\s+[\d\.]+\s+(\w+)\s+\d+\s+\d+\s(\w+)/)
+        {
+            my ( $net, $netmask, $flag, $nic) = ($1,$2,$3,$4);
+            my @dotsec = split /\./, $net;
+            for ( my $i = 4; $i > scalar(@dotsec); $i--)
+            {
+                $net .= '.0';
+            }
+            push @aix_nrn, "$net:$nic:$netmask:$flag" if ($net ne '127.0.0.0');
+        }
+    }
+    return @aix_nrn;
+}
+
 1;

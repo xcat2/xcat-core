@@ -29,6 +29,7 @@ my $machash;
 my $iscsients;
 my $chainents;
 my $tftpdir='/tftpboot';
+my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf'; 
 
 sub handled_commands
 {
@@ -120,6 +121,7 @@ sub addnode
     my $nrent;
     my $chainent;
     my $ient;
+    my $tftpserver;
     if ($chainents and $chainents->{$node}) {
         $chainent = $chainents->{$node}->[0];
     }
@@ -133,9 +135,10 @@ sub addnode
         $nrent = $nrhash->{$node}->[0];
         if ($nrent and $nrent->{tftpserver})
         {
+            $tftpserver = inet_ntoa(inet_aton($nrent->{tftpserver}));
             $lstatements =
                 'next-server '
-              . inet_ntoa(inet_aton($nrent->{tftpserver})) . ';'
+              . $tftpserver . ';'
               . $statements;
         }
         else
@@ -223,6 +226,7 @@ sub addnode
             my $nxtsrv = xCAT::Utils->my_ip_facing($hname);
             if ($nxtsrv)
             {
+                $tftpserver = $nxtsrv;
                 $lstatements = "next-server $nxtsrv;$statements";
             }
         }
@@ -261,54 +265,148 @@ sub addnode
         }
 
 
-
-        #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
-        print $omshell "new host\n";
-        print $omshell
-          "set name = \"$hname\"\n";    #Find and destroy conflict name
-        print $omshell "open\n";
-        print $omshell "remove\n";
-        print $omshell "close\n";
-        print $omshell "new host\n";
-        print $omshell "set ip-address = $ip\n";   #find and destroy ip conflict
-        print $omshell "open\n";
-        print $omshell "remove\n";
-        print $omshell "close\n";
-        print $omshell "new host\n";
-        print $omshell "set hardware-address = " . $mac
-          . "\n";    #find and destroy mac conflict
-        print $omshell "open\n";
-        print $omshell "remove\n";
-        print $omshell "close\n";
-        print $omshell "new host\n";
-        print $omshell "set name = \"$hname\"\n";
-        print $omshell "set hardware-address = " . $mac . "\n";
-        print $omshell "set hardware-type = 1\n";
-
-        if ($ip eq "DENIED")
-        { #Blacklist this mac to preclude confusion, give best shot at things working
-            print $omshell "set statements = \"deny booting;\"\n";
+        if ( $^O eq 'aix')
+        {
+            addnode_aix( $ip, $mac, $hname, $tftpserver);
         }
         else
         {
-            print $omshell "set ip-address = $ip\n";
-            if ($lstatements)
-            {
-                $lstatements = 'send host-name \"'.$node.'\";'.$lstatements;
+            #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
+            print $omshell "new host\n";
+            print $omshell
+                "set name = \"$hname\"\n";    #Find and destroy conflict name
+                print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
+            print $omshell "new host\n";
+            print $omshell "set ip-address = $ip\n";   #find and destroy ip conflict
+                print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
+            print $omshell "new host\n";
+            print $omshell "set hardware-address = " . $mac
+                . "\n";    #find and destroy mac conflict
+                print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
+            print $omshell "new host\n";
+            print $omshell "set name = \"$hname\"\n";
+            print $omshell "set hardware-address = " . $mac . "\n";
+            print $omshell "set hardware-type = 1\n";
 
-            } else {
-                $lstatements = 'send host-name \"'.$node.'\";';
+            if ($ip eq "DENIED")
+            { #Blacklist this mac to preclude confusion, give best shot at things working
+                print $omshell "set statements = \"deny booting;\"\n";
             }
-            print $omshell "set statements = \"$lstatements\"\n";
-        }
+            else
+            {
+                print $omshell "set ip-address = $ip\n";
+                if ($lstatements)
+                {
+                    $lstatements = 'send host-name \"'.$node.'\";'.$lstatements;
 
-        print $omshell "create\n";
-        print $omshell "close\n";
-        unless (grep /#definition for host $node aka host $hname/, @dhcpconf)
-        {
-            push @dhcpconf,
-              "#definition for host $node aka host $hname can be found in the dhcpd.leases file\n";
+                } else {
+                    $lstatements = 'send host-name \"'.$node.'\";';
+                }
+                print $omshell "set statements = \"$lstatements\"\n";
+            }
+
+            print $omshell "create\n";
+            print $omshell "close\n";
+            unless (grep /#definition for host $node aka host $hname/, @dhcpconf)
+            {
+                push @dhcpconf,
+                     "#definition for host $node aka host $hname can be found in the dhcpd.leases file\n";
+            }
         }
+    }
+}
+
+######################################################
+# Add nodes into dhcpsd.cnf. For AIX only
+######################################################
+sub addnode_aix
+{
+    my $ip          = shift;
+    my $mac         = shift;
+    my $hname       = shift;
+    my $tftpserver  = shift;
+
+    $restartdhcp = 1;
+
+    # Format the mac address to aix
+    $mac =~ s/://g;
+    $mac = lc($mac);
+
+    delnode_aix ( $hname);
+
+#Find the location to insert node
+    my $isSubnetFound = 0;
+    my $i;
+    my $netmask;
+    for ($i = 0; $i < scalar(@dhcpconf); $i++)
+    {
+        if ( $dhcpconf[$i] =~ / ([\d\.]+)\/(\d+) ip configuration end/)
+        {
+            if (xCAT::Utils::isInSameSubnet( $ip, $1, $2, 1))
+            {
+                $isSubnetFound = 1;
+                $netmask = $2;
+                last;
+            }
+        }
+    }
+
+# Format the netmask from AIX format (24) to Linux format (255.255.255.0)
+    my $netmask_linux = xCAT::Utils::formatNetmask( $netmask,1,0);
+
+    # Create node section
+    my @node_section = ();
+    push @node_section, "        client 1 $mac $ip #node $hname start\n";
+    push @node_section, "        {\n";
+    push @node_section, "            option 1 $netmask_linux\n";
+    push @node_section, "            option 12 $hname\n";
+    push @node_section, "            option sa $tftpserver\n";
+    push @node_section, "            option bf \"/tftpboot/$hname\"\n";
+    push @node_section, "        } # node $hname end\n";
+    
+
+    if ( $isSubnetFound)
+    {
+        splice @dhcpconf, $i, 0, @node_section;
+    }
+}
+
+###################################################
+# Delete nodes in dhcpsd.cnf. For AIX only
+###################################################
+sub delnode_aix
+{
+    my $hname = shift;
+    my $i;
+    my $node_start = 0;
+    my $node_end   = 0;
+    for ($i = 0; $i < scalar(@dhcpconf); $i++)
+    {
+        if ( $dhcpconf[$i] =~ /node $hname start/)
+        {
+            $node_start = $i;
+        }
+        elsif ( $dhcpconf[$i] =~ /node $hname end/)
+        {
+            $node_end = $i;
+            last;
+        }
+    }
+    if ( $node_start && $node_end)
+    {
+        $restartdhcp = 1;
+        splice @dhcpconf, $node_start, ($node_end - $node_start + 1);
+        return 1;
+    }
+    else
+    {
+        return 0;
     }
 }
 
@@ -452,16 +550,16 @@ sub process_request
    flock($dhcplockfd,LOCK_EX);
    if (grep /^-n$/, @{$req->{arg}})
     {
-        if (-e "/etc/dhcpd.conf")
+        if (-e $dhcpconffile)
         {
-            my $bakname = "/etc/dhcpd.conf.xcatbak";
-            rename("/etc/dhcpd.conf", $bakname);
+            my $bakname = "$dhcpconffile.xcatbak";
+            rename("$dhcpconffile", $bakname);
         }
     }
     else
     {
         my $rconf;
-        open($rconf, "/etc/dhcpd.conf");    # Read file into memory
+        open($rconf, $dhcpconffile);    # Read file into memory
         if ($rconf)
         {
             while (<$rconf>)
@@ -478,11 +576,18 @@ sub process_request
     }
 	my $nettab = xCAT::Table->new("networks");
 	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
-    my @nsrnoutput = split /\n/,`/bin/netstat -rn`;
-    splice @nsrnoutput, 0, 2;
-    foreach (@nsrnoutput) { #scan netstat
-        my @parts = split  /\s+/;
-        push @nrn,$parts[0].":".$parts[7].":".$parts[2].":".$parts[3];
+    if ($^O eq 'aix')
+    {
+        @nrn = xCAT::Utils::get_subnet_aix();
+    }
+    else
+    {
+        my @nsrnoutput = split /\n/,`/bin/netstat -rn`;
+        splice @nsrnoutput, 0, 2;
+        foreach (@nsrnoutput) { #scan netstat
+            my @parts = split  /\s+/;
+            push @nrn,$parts[0].":".$parts[7].":".$parts[2].":".$parts[3];
+        }
     }
 
 	foreach(@vnets){
@@ -501,64 +606,72 @@ sub process_request
             my @ent = split /:/;
             my $firstoctet = $ent[0];
             $firstoctet =~ s/^(\d+)\..*/$1/;
-            if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239) or $ent[0] eq "127.0.0.0")
+            if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239) or $ent[0] eq "127.0.0.0" or $ent[0] eq '127')
             {
                 next;
             }
-            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan)/)
+            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\d+)/)
             {    #Mask out many types of interfaces, like xCAT 1.x
                 $activenics{$ent[1]} = 1;
             }
         }
     }
-    #add the active nics to /etc/sysconfig/dhcpd
-    if (-e "/etc/sysconfig/dhcpd") {
-        open DHCPD_FD, "/etc/sysconfig/dhcpd";
-        my $syscfg_dhcpd = "";
-        my $found = 0;
-        my $dhcpd_key = "DHCPDARGS";
-        my $os = xCAT::Utils->osver();
-        if ($os =~ /sles/i) {
-            $dhcpd_key = "DHCPD_INTERFACE";
-        }
-
-        my $ifarg = "$dhcpd_key=\"";
-        foreach (keys %activenics) {
-            if (/!remote!/) { next; }
-            $ifarg .= " $_";
-        }
-        $ifarg =~ s/^ //;
-        $ifarg .= "\"\n";
-
-        while (<DHCPD_FD>) {
-            if ($_ =~ m/^$dhcpd_key/) {
-                $found = 1;
-                $syscfg_dhcpd .= $ifarg;
-            }else {
-                $syscfg_dhcpd .= $_;
+    
+    if ( $^O ne 'aix')
+    {
+#add the active nics to /etc/sysconfig/dhcpd
+        if (-e "/etc/sysconfig/dhcpd") {
+            open DHCPD_FD, "/etc/sysconfig/dhcpd";
+            my $syscfg_dhcpd = "";
+            my $found = 0;
+            my $dhcpd_key = "DHCPDARGS";
+            my $os = xCAT::Utils->osver();
+            if ($os =~ /sles/i) {
+                $dhcpd_key = "DHCPD_INTERFACE";
             }
-        }
 
-        if ( $found eq 0 ) {
-            $syscfg_dhcpd .= $ifarg;
-        }
-        close DHCPD_FD; 
+            my $ifarg = "$dhcpd_key=\"";
+            foreach (keys %activenics) {
+                if (/!remote!/) { next; }
+                $ifarg .= " $_";
+            }
+            $ifarg =~ s/^ //;
+            $ifarg .= "\"\n";
 
-        open DBG_FD, '>', "/etc/sysconfig/dhcpd";
-        print DBG_FD $syscfg_dhcpd;
-        close DBG_FD;
-    } else {
-        $callback->({error=>"The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"});
-        return;
+            while (<DHCPD_FD>) {
+                if ($_ =~ m/^$dhcpd_key/) {
+                    $found = 1;
+                    $syscfg_dhcpd .= $ifarg;
+                }else {
+                    $syscfg_dhcpd .= $_;
+                }
+            }
+
+            if ( $found eq 0 ) {
+                $syscfg_dhcpd .= $ifarg;
+            }
+            close DHCPD_FD; 
+
+            open DBG_FD, '>', "/etc/sysconfig/dhcpd";
+            print DBG_FD $syscfg_dhcpd;
+            close DBG_FD;
+        } else {
+            $callback->({error=>"The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"});
+#        return;
+        }
     }
+    
     unless ($dhcpconf[0])
     {            #populate an empty config with some starter data...
         $restartdhcp=1;
         newconfig();
     }
-    foreach (keys %activenics)
+    if ( $^O ne 'aix')
     {
-        addnic($_);
+        foreach (keys %activenics)
+        {
+            addnic($_);
+        }
     }
     if (grep /^-a$/, @{$req->{arg}})
     {
@@ -594,23 +707,27 @@ sub process_request
         $statements = "";
         GetOptions('s|statements=s' => \$statements);
 
-        my $passtab = xCAT::Table->new('passwd');
-        my $ent;
-        ($ent) = $passtab->getAttribs({key => "omapi"}, qw(username password));
-        unless ($ent->{username} and $ent->{password})
+        if ($^O ne 'aix')
         {
-            $callback->({error=>["Unable to access omapi key from passwd table, add the key from dhcpd.conf or makedhcp -n to create a new one"],errorcode=>[1]});
-            syslog("local4|err","Unable to access omapi key from passwd table, unable to update DHCP configuration");
-            return;
-        }    # TODO sane err
-             #Have nodes to update
-             #open2($omshellout,$omshell,"/usr/bin/omshell");
-        open($omshell, "|/usr/bin/omshell > /dev/null");
+            my $passtab = xCAT::Table->new('passwd');
+            my $ent;
+            ($ent) = $passtab->getAttribs({key => "omapi"}, qw(username password));
+            unless ($ent->{username} and $ent->{password})
+            {
+                $callback->({error=>["Unable to access omapi key from passwd table, add the key from dhcpd.conf or makedhcp -n to create a new one"],errorcode=>[1]});
+                syslog("local4|err","Unable to access omapi key from passwd table, unable to update DHCP configuration");
+                return;
+            }    # TODO sane err
+#Have nodes to update
+#open2($omshellout,$omshell,"/usr/bin/omshell");
+            open($omshell, "|/usr/bin/omshell > /dev/null");
 
-        print $omshell "key "
-          . $ent->{username} . " \""
-          . $ent->{password} . "\"\n";
-        print $omshell "connect\n";
+            print $omshell "key "
+                . $ent->{username} . " \""
+                . $ent->{password} . "\"\n";
+            print $omshell "connect\n";
+        }
+        
         my $nrtab = xCAT::Table->new('noderes');
         my $chaintab = xCAT::Table->new('chain');
         if ($chaintab) {
@@ -629,7 +746,14 @@ sub process_request
         {
             if (grep /^-d$/, @{$req->{arg}})
             {
-                delnode $_;
+                if ( $^O eq 'aix')
+                {
+                    delnode_aix $_;
+                }
+                else
+                {
+                    delnode $_;
+                }
             }
             else
             {
@@ -640,7 +764,7 @@ sub process_request
                 addnode $_;
             }
         }
-        close($omshell);
+        close($omshell) if ($^O ne 'aix');
     }
     foreach (@nrn)
     {
@@ -658,12 +782,41 @@ sub process_request
     }
     writeout();
     if ($restartdhcp) {
-        system("/etc/init.d/dhcpd restart");
-        system("chkconfig dhcpd on");
+        if ( $^O eq 'aix')
+        {
+            restart_dhcpd_aix();
+        }
+        else
+        {
+            system("/etc/init.d/dhcpd restart");
+            system("chkconfig dhcpd on");
+        }
     }
     flock($dhcplockfd,LOCK_UN);
     umask $oldmask;
 }
+# Restart dhcpd on aix
+sub restart_dhcpd_aix
+{
+    #Check if dhcpd is running
+    my @res = xCAT::Utils->runcmd('lssrc -s dhcpsd',0);
+    if ( $::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", "Failed to check dhcpsd status\n");
+    }
+    if ( grep /\sactive/, @res)
+    {
+        xCAT::Utils->runcmd('refresh -s dhcpsd',0);
+        xCAT::MsgUtils->message("E", "Failed to refresh dhcpsd configuration\n") if ( $::RUNCMD_RC);
+    }
+    else
+    {
+        xCAT::Utils->runcmd('startsrc -s dhcpsd',0);
+        xCAT::MsgUtils->message("E", "Failed to start dhcpsd\n" ) if ( $::RUNCMD_RC);
+    }
+    return 1;
+}
+
 
 sub putmyselffirst {
     my $srvlist = shift;
@@ -710,17 +863,20 @@ sub addnet
         }
         #print " add $net $mask under $nic\n";
         my $idx = 0;
-        while ($idx <= $#dhcpconf)
+        if ( $^O ne 'aix')
         {
-            if ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
+            while ($idx <= $#dhcpconf)
+            {
+                if ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
             {
                 last;
             }
             $idx++;
-        }
-        unless ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
-        {
-            return 1;    #TODO: this is an error condition
+            }
+            unless ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
+            {
+                return 1;    #TODO: this is an error condition
+            }
         }
 
         # if here, means we found the idx before which to insert
@@ -735,8 +891,13 @@ sub addnet
         $myip = xCAT::Utils->my_ip_facing($net);
         if ($nettab)
         {
+            my $mask_formated = $mask;
+            if ( $^O eq 'aix')
+            {
+                $mask_formated = inet_ntoa(pack("N", 2**$mask - 1 << (32 - $mask)));
+            }
             my ($ent) =
-              $nettab->getAttribs({net => $net, mask => $mask},
+              $nettab->getAttribs({net => $net, mask => $mask_formated},
                     qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver));
             if ($ent and $ent->{ntpservers}) {
                 $ntpservers = $ent->{ntpservers};
@@ -815,7 +976,14 @@ sub addnet
             return 1;
         }
 
+        if ( $^O eq 'aix')
+        {
+            return gen_aix_net( $myip, $net, $mask, $gateway, $tftp, 
+                                $logservers, $ntpservers, $domain,
+                                $nameservers, $range);
+        }
         my @netent;
+                         
         my $maskn = unpack("N", inet_aton($mask));
         my $netn  = unpack("N", inet_aton($net));
         @netent = (
@@ -889,6 +1057,83 @@ sub addnet
     }
 }
 
+######################################################
+# Generate network configuration for aix
+######################################################
+sub gen_aix_net
+{
+    my $myip        = shift;
+    my $net         = shift; 
+    my $mask        = shift;
+    my $gateway     = shift;
+    my $tftp        = shift;
+    my $logservers  = shift;
+    my $ntpservers  = shift;
+    my $domain      = shift;
+    my $nameservers = shift;
+    my $range       = shift;
+
+    my $idx = 0;
+    while ( $idx <= $#dhcpconf)
+    {
+        if ($dhcpconf[$idx] =~ /#Network configuration end\n/)
+        {
+            last;
+        }
+        $idx++;
+    }
+    
+    unless ($dhcpconf[$idx] =~ /#Network configuration end\n/)
+    {
+        return 1;    #TODO: this is an error condition
+    }
+
+    $range =~ s/ /-/;
+    my @netent = ( "network $net $mask $range\n{\n");
+    if ( $gateway)
+    {
+        if (xCAT::Utils::isInSameSubnet($gateway,$net,$mask,1))
+        {
+            push @netent, "    option 3 $gateway\n";
+        }
+        else
+        {
+            $callback->(
+                    {
+                    error => [
+                    "Specified gateway $gateway is not valid for $net/$mask, must be on same network"
+                    ],
+                    errorcode => [1]
+                    }
+                    );
+        }
+    } 
+#    if ($tftp)
+#    {
+#        push @netent, "    option 66 $tftp\n";
+#    }
+    if ($logservers) {
+        push @netent, "    option 7 $logservers\n";
+    } elsif ($myip){
+        push @netent, "    option 7 $myip\n";
+    }
+    if ($ntpservers) {
+        push @netent, "    option 42 $ntpservers\n";
+    } elsif ($myip){
+        push @netent, "    option 42 $myip\n";
+    }
+    push @netent, "    option 15 \"$domain\"\n";
+    if ($nameservers)
+    {
+        push @netent, "    option 6 $nameservers\n";
+    }
+    push @netent, "    subnet $net\n    {\n";
+    push @netent, "    } # $net/$mask ip configuration end\n";
+    push @netent, "} # $net/$mask subnet_end\n\n";
+
+    splice(@dhcpconf, $idx, 0, @netent);
+}
+
 sub addnic
 {
     my $nic        = shift;
@@ -928,7 +1173,7 @@ sub addnic
 sub writeout
 {
     my $targ;
-    open($targ, '>', "/etc/dhcpd.conf");
+    open($targ, '>', $dhcpconffile);
     foreach (@dhcpconf)
     {
         print $targ $_;
@@ -938,6 +1183,7 @@ sub writeout
 
 sub newconfig
 {
+    return newconfig_aix() if ( $^O eq 'aix');
 
     # This function puts a standard header in and enough to make omapi work.
     my $passtab = xCAT::Table->new('passwd', -create => 1);
@@ -982,6 +1228,29 @@ sub newconfig
     push @dhcpconf, "};\n";
     push @dhcpconf, "omapi-key xcat_key;\n";
 }
+
+sub newconfig_aix
+{
+    push @dhcpconf, "#xCAT generated dhcp configuration\n";
+    push @dhcpconf, "\n";
+#push @dhcpconf, "numLogFiles 4\n";
+#push @dhcpconf, "logFileSize 100\n";
+#push @dhcpconf, "logFileName /var/log/dhcpsd.log\n";
+#push @dhcpconf, "logItem SYSERR\n";
+#push @dhcpconf, "logItem OBJERR\n";
+#push @dhcpconf, "logItem PROTERR\n";
+#push @dhcpconf, "logItem WARNING\n";
+#push @dhcpconf, "logItem EVENT\n";
+#push @dhcpconf, "logItem ACTION\n";
+#push @dhcpconf, "logItem INFO\n";
+#push @dhcpconf, "logItem ACNTING\n";
+#push @dhcpconf, "logItem TRACE\n";
+    
+    push @dhcpconf, "leaseTimeDefault 43200 seconds\n";
+    push @dhcpconf, "#Network configuration begin\n";
+    push @dhcpconf, "#Network configuration end\n";
+}
+
 
 sub genpassword
 {
