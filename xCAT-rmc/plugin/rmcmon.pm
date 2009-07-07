@@ -1506,7 +1506,7 @@ sub showmetrix($rrddir, $attrs, $start_time, $end_time)
 				push @$output, $line;
 			}
 			foreach $line (@$output){
-				if($line =~ /NaNQ/){
+				if($line =~ /[NaNQ|nan]/){
 					next;
 				} elsif ($line =~ /^(\d+): (\S+) (\S+)/){
 					$timestamp = $1;
