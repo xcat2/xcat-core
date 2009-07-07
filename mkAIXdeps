@@ -140,7 +140,7 @@ ls *.rpm > $RPMDIR/flist3
 cd $RPMDIR
 cp /opt/freeware/src/packages/RPMS/ppc/php-5.2.6-0.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh php-5.2.6-0.aix5.3.ppc.rpm" >> $RPMDIR/instwebdep
-echo "php-5.2.6-0.aix5.3.ppc.rpm" > $RPMDIR/flist3
+echo "php-5.2.6-0.aix5.3.ppc.rpm" >> $RPMDIR/flist3
 
 chmod +x $RPMDIR/instwebdep
 echo "instwebdep" >> $RPMDIR/flist3

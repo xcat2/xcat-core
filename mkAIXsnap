@@ -90,6 +90,7 @@ echo "instxcat" > $RPMDIR/flist
 
 # add the service node bundle files 
 cp $BLDTOP/xCATaixSN.bnd $RPMDIR/
+cp $BLDTOP/xCATaixSN2.bnd $RPMDIR/
 cp $BLDTOP/xCATaixSSH.bnd $RPMDIR/
 cp $BLDTOP/xCATaixSSL.bnd $RPMDIR/
 echo "xCATaixSN.bnd" >> $RPMDIR/flist
