@@ -152,8 +152,8 @@ fi
 %else   #for AIX
 # Remove links made during the post install script
 echo "Undoing IBM HTTP Server configuration for xCAT..."
-cp /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.conf /usr/IBM/HTTPServer/conf/httpd.conf
-rm -rf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.conf
+cp /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak /usr/IBM/HTTPServer/conf/httpd.conf
+rm -rf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak
 /usr/IBM/HTTPServer/bin/apachectl restart
 %endif
 
