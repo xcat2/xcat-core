@@ -13,6 +13,7 @@
 #-------------------------------------------------------
 package xCAT_plugin::xdsh;
 use strict;
+use Storable qw(dclone);
 require xCAT::Table;
 
 require xCAT::Utils;
@@ -55,7 +56,7 @@ sub preprocess_request
     my $cb  = shift;
     my %sn;
     my $sn;
-
+ 
     #if already preprocessed, go straight to request
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
     my $nodes   = $req->{node};
@@ -140,19 +141,20 @@ sub preprocess_request
         # the original command, and add for each SN, if hierarchical
         foreach my $snkey (keys %$sn)
         {
-            my $reqcopy = {%$req};
 
             if (!grep(/$snkey/, @MNnodeipaddr))
-            {    # not the MN
+            {    # entries run from the Service Node 
 
                 # if the -F option to sync the nodes
                 # then for a Service Node
                 # change the command to use the -F /tmp/xcatrf.tmp
                 # because that is where the file was put on the SN
                 #
+                my $newSNreq = dclone($req);
                 if ($syncsnfile)    # -F option
                 {
-                    my $args = $reqcopy->{arg};
+                    my $args = $newSNreq->{arg};
+                    
                     my $i    = 0;
                     foreach my $argument (@$args)
                     {
@@ -162,19 +164,19 @@ sub preprocess_request
                         if ($argument eq "-F")
                         {
                             $i++;
-                            $reqcopy->{arg}->[$i] = $tmpsyncsnfile;
+                            $newSNreq->{arg}->[$i] = $tmpsyncsnfile;
                             last;
                         }
                         $i++;
                     }
                 }
-                $reqcopy->{node}                   = $sn->{$snkey};
-                $reqcopy->{'_xcatdest'}            = $snkey;
-                $reqcopy->{_xcatpreprocessed}->[0] = 1;
-                push @requests, $reqcopy;
+                $newSNreq->{node}                   = $sn->{$snkey};
+                $newSNreq->{'_xcatdest'}            = $snkey;
+                $newSNreq->{_xcatpreprocessed}->[0] = 1;
+                push @requests, $newSNreq;
             }
             else
-            {    # non hierarchy , build for Management node
+            {    # entries run from  Management node
                  my $reqcopy = {%$req};
                  $reqcopy->{node} = $sn->{$snkey};
                  $reqcopy->{'_xcatdest'} = $snkey;
