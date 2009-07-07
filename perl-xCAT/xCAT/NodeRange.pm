@@ -311,7 +311,7 @@ sub abbreviate_noderange {
     }
     my $node;
     use Data::Dumper;
-    print Dumper(\%sizedgroups);
+    #print Dumper(\%sizedgroups);
     foreach (reverse sort {$a <=> $b} keys %sizedgroups) {
         GROUP: foreach $group (@{$sizedgroups{$_}}) {
                 foreach $node (@{$grouphash{$group}}) {
