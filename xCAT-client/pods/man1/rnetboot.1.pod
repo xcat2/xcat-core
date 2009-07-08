@@ -4,7 +4,7 @@ B<rnetboot> - Cause the range of nodes to boot to network.
 
 =head1 SYNOPSIS
 
-B<rnetboot> [B<-V>|B<--verbose>] B<[-s boot_device_order]> B<[-f]> I<noderange>
+B<rnetboot> [B<-V>|B<--verbose>] B<[-s boot_device_order]> B<[-f]> I<noderange> [-m table.column==expectedstatus [-m table.col-umn=~expectedstatus]] [-t timeout] [-r retrycount]
 
 B<rnetboot> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -20,6 +20,15 @@ system p nodes.
 B<-s>          Set the boot device order.  Accepted boot devices are hd and net.
 
 B<-f>          Force immediate shutdown of the partition.
+
+B<-m>          Use one or multiple -m flags to specify the node attributes and the expected status for the node installation monitor
+ing and automatic retry mechanism. The operators ==, !=, =~ and !~ are valid. This flag must be used with -t flag.
+
+Note: if the "val" fields includes spaces or any other characters that will be parsed by shell, the "attr<oper-ator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
+
+B<-r>          specify the number of retries that the monitoring process will perform before declare the failure. The default value is 3. Setting the retrycount to 0 means only monitoring the os installation progress and will not re-initiate the installation if the node status has not been changed to the expected value after timeout. This flag must be used with -m flag.
+
+B<-t>          Specify the the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
 
 B<-V>          Verbose output.
 
