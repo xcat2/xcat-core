@@ -355,7 +355,6 @@ sub getmacs {
         # Cleanup old data
         #########################################
         my $result  = ();
-        my $data    = ();
 
         #########################################
         # No ping test performed, call lshwres
@@ -426,13 +425,14 @@ sub getmacs {
                 my $id         = @$d[0];
                 my $mac_count  = $nodeatt{$mtms}{$id}{'num'};               
                 my $value      = ();
+                my $data    = ();
                 my $type;
 
                 #########################################
                 # Put all the attributes required
                 # together
                 #########################################
-                push @$value,"\n#Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed\n";
+                push @$value,"\n#Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed";
 
                 for ( my $num = 1; $num <= $mac_count; $num++ ) {
                     my $mac_addr        = $nodeatt{$mtms}{$id}{$num}{'mac_addr'};
@@ -476,19 +476,24 @@ sub getmacs {
                             }
                         }
                         if ( $matched == 1 ) {
-                            push @$value,"$att{'Type'}  $att{'MAC_Address'}  $att{'Phys_Port_Loc'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}\n";
+                            push @$value,"$att{'Type'}  $att{'Phys_Port_Loc'}  $att{'MAC_Address'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}";
                         }
                     } else {
-                        push @$value,"$att{'Type'}  $att{'MAC_Address'}  $att{'Phys_Port_Loc'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}\n";
+                        push @$value,"$att{'Type'}  $att{'Phys_Port_Loc'}  $att{'MAC_Address'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}";
                     }
                 }
-
                 #########################################
                 # Write MAC address to database
                 #########################################
                 writemac( $node, $value );
 
-                $data = join /''/,@$value;
+                foreach ( @$value ) {
+                    if ( /^#\s?Type/ ) {
+                        $data.= "\n$_\n";
+                    } else {
+                        $data.= format_mac( $_ );
+                    }
+                }
 
                 push @$result,[$node,$data,0];
             }
@@ -629,10 +634,10 @@ sub format_mac {
         $data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
         my $mac  = $2;
         my $save = $mac;
-
         #################################
         # Delineate MAC with colons 
         #################################
+        $mac    = lc($mac);
         $mac    =~ s/(\w{2})/$1:/g;
         $mac    =~ s/:$//;
         $data   =~ s/$save/$mac/;
@@ -703,12 +708,7 @@ sub writemac {
     #####################################
     $value = format_mac( $value ); 
     @fields = split /\s+/, $value;
-
-    if ( $ping_test ) {
-        $mac    = $fields[1];
-    } else {
-        $mac    = $fields[2];
-    }
+    $mac    = $fields[2];
 
     #####################################
     # Write adapter mac to database
