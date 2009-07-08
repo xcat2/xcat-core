@@ -46,6 +46,7 @@ my %modules = (
 my %errmsg = (
         NODE_UNDEF =>"Node not defined in '%s' database",
         NO_ATTR    =>"'%s' not defined in '%s' database",  
+        NO_UNDEF   =>"'%s' not defined in '%s' database for '%s'",
         DB_UNDEF   =>"'%s' database not defined"
         );
 
@@ -823,15 +824,12 @@ sub resolve {
                 my @attrs = qw(mtm serial);
                 my ($vpd) = $tabs->{vpd}->getNodeAttribs($ent->{parent},\@attrs);
 
-                if ( !defined( $vpd )) {
-                    return( sprintf( $errmsg{NO_UNDEF}, "vpd" )); 
-                }
                 ########################
                 # Verify attributes
                 ########################
                 foreach ( @attrs ) {
-                    if ( !exists( $vpd->{$_} )) {
-                        return( sprintf( $errmsg{NO_ATTR}, $_, "vpd" ));
+                    if ( !defined( $vpd ) || !exists( $vpd->{$_} )) {
+                        return( sprintf( $errmsg{NO_UNDEF}, $_, "vpd", $ent->{parent} ));
                     }
                 }
                 $att->{bpa} = "$vpd->{mtm}*$vpd->{serial}";
