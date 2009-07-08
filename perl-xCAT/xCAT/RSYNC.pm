@@ -77,9 +77,13 @@ sub remote_copy_command
         my $sync_opt;
         if ($^O eq 'aix')
         {
-            $sync_opt = '--rsync-path /usr/bin/rsync ';
+            if (-e ("/usr/bin/rsync")) {
+              $sync_opt = '--rsync-path /usr/bin/rsync ';
+            } else {
+              $sync_opt = '--rsync-path /usr/local/bin/rsync ';
+            }
         }
-        else
+        else #linux
         {
             $sync_opt = '--rsync-path /usr/bin/rsync ';
         }
