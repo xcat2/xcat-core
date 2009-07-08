@@ -90,6 +90,9 @@ sub parse_args {
         }
 
         if ( exists($opt{C}) ) {
+            if ( scalar(@$node) > 1 ) {
+                return( [RC_ERROR,"Option '-C' doesn't work with noderange\n"] );
+            }
             push @network, $_;
         } else {
             # get, check the node IP
