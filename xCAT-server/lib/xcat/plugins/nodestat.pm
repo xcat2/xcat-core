@@ -206,8 +206,13 @@ sub process_request_nmap {
           $installquerypossible=0; #reset possibility indicator
           %rsp=();
           unless ($deadnodes{$1}) {
+              my $shortname;
               foreach (keys %deadnodes) {
-                  if ($currnode =~ /^$_\./) {
+                  if (/\./) {
+                      $shortname = $_;
+                      $shortname =~ s/\..*//;
+                  }
+                  if ($currnode =~ /^$_\./ or ($shortname and $shortname eq $currnode)) {
                       $currnode = $_;
                       last;
                   }
