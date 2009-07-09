@@ -39,14 +39,15 @@ use xCAT::ExtTab;
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
 vm => {
-    cols => [qw(node host migrationdest storage memory cpus nics bootorder clockoffset virtflags vncport textconsole beacon comments disable)],
+    cols => [qw(node host migrationdest storage cfgstore memory cpus nics bootorder clockoffset virtflags vncport textconsole beacon comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
         'node' => 'The node or static group name',
         'host' => 'The system that currently hosts the VM',
         'migrationdest' => 'A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use',
-        'storage' => 'A list of storage files or devices to be used, pipe delimited.  i.e. /cluster/vm/<nodename>',
+        'storage' => 'A list of storage files or devices to be used, pipe delimited.  i.e. /cluster/vm/<nodename> for KVM/Xen, or nfs://<server>/path/to/folder/ for VMware',
+        'cfgstore' => 'Optional location for persistant storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data',
         'memory' => 'Megabytes of memory the VM currently should be set to.',
         'cpus' => 'Number of CPUs the node should see.',
         'nics' => 'Network configuration parameters',
@@ -1151,6 +1152,10 @@ my @nodeattrs = (
                 },
 		{attr_name => 'vmstorage',
                  tabentry => 'vm.storage',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+		{attr_name => 'vmcfgstore',
+                 tabentry => 'vm.cfgstore',
                  access_tabentry => 'vm.node=attr:node',
                 },
 		{attr_name => 'vmmemory',
