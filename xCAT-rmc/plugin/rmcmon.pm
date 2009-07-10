@@ -1384,13 +1384,27 @@ sub getDescription {
     of Reliable Scalable Cluster Technology (RSCT) to monitor the 
     xCAT cluster. RMC has built-in resources such as CPU, memory, 
     process, network, file system etc for monitoring. RMC can also be 
-    used to provide node liveness status monitoring for xCAT. RMC is 
-    good for threadhold monitoring. xCAT automatically sets up the 
-    monitoring domain for RMC during node deployment time. 
+    used to provide node liveness status monitoring and performance monitoring for xCAT. 
+    RMC is good for threadhold monitoring. xCAT automatically sets up the 
+    monitoring domain for RMC during node deployment time. And if performance
+    monitoring is enabled, xCAT monitoring will collect and consolidate performance
+    data based on montype&rmetrics setting, and then store to RRD database. 
   Settings:
     rfanout -- indicating the fanout number for configuring or deconfiguring 
         remote nodes.
     nodeusebatch -- use RMC event batching function when doing node status monitoring.
+    montype -- indicating type of performance monitoring, the value could be 
+               \"event\" : event monitoring (default),
+	       \"perf\" : performance monitoring,
+               \"event,perf\" or \"perf,event\" : both.
+    rmetrics -- defines resource class,resouce names, attributes and sample interval for 
+                performance monitoring. 
+		Syntax of key: rmetrics_resource class For example: rmetrics_IBM.Processor
+		Syntax of value: [resource names]attribute names:sample interval
+		The unit of sample interval is minute.
+		For example:
+		  [proc0,proc1]PctTimeIdle,PctTimeWait,PctTimeKernel,PctTimeUser:5
+				  
 ";
 }
 
