@@ -3984,6 +3984,15 @@ sub parse_and_run_dcp
         xCAT::DSHCLI->show_dsh_config;
         return 0;
     }
+    
+    if (defined($options{'rootimg'})) {
+      if (xCAT::Utils->isAIX()) {
+        my $rsp = ();
+        $rsp->{data}->[0] = "The -i option is not supported on AIX.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        return;
+      }
+    }
     if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = ();
