@@ -1092,7 +1092,11 @@ sub register_vm_callback {
 sub getcfgdatastore {
     my $node = shift;
     my $dses = shift;
-    my $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{storage}; #TODO: need a new cfglocation field in case of stateless guest?
+    my $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{cfgstore};
+    unless ($cfgdatastore) {
+        $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{storage}; 
+        #TODO: if multiple drives are specified, make sure to split this out
+    }
     $cfgdatastore =~ s/,.*$//;
     $cfgdatastore =~ s/\/$//;
     $cfgdatastore = "[".$dses->{$cfgdatastore}."]";

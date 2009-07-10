@@ -18,7 +18,7 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
     $callback->({data=>["Cannot open vm table"]});
     return;
   }
-  $cfghash->{vm} = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','storage','memory','cpus','nics','bootorder','virtflags']);
+  $cfghash->{vm} = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','cfgstore','storage','memory','cpus','nics','bootorder','virtflags']);
   my $mactab = xCAT::Table->new("mac",-create=>1);
   my $nrtab= xCAT::Table->new("noderes",-create=>1);
   $cfghash->{mac} = $mactab->getAllNodeAttribs(['mac'],1);
