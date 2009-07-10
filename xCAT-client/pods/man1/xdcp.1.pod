@@ -131,7 +131,8 @@ Displays usage information.
 =item B<-i>|B<--rootimg> I<install image>
 
 
-Specifies  the  full  path to the install image on the local node.
+Specifies  the  full  path to the install image on the local Linux node.
+
 
 
 =item B<-o>|B<--node-options> I<node_options>
@@ -416,18 +417,6 @@ Run:
 
 B<xdcp> I<-i /install/netboot/fedora9/x86_64/compute/rootimg -F /tmp/myrsync>
 
-
-=item *
-
-To rsync files in the AIX image at /install/nim/spot/61Hdskls/usr/lpp/bos/inst_root on the MN:
-
-Create a rsync file /tmp/myrsync, with this line:
-
-/etc/hosts /etc/passwd -> /etc
-
-Run:
-
-B<xdcp> I<-i /install/nim/spot/61Hdskls/usr/lpp/bos/inst_root -F /tmp/myrsync>
 
 =back
 
