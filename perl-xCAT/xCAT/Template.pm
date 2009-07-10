@@ -64,7 +64,7 @@ sub subvars {
     $doneincludes=1;
     if ($inc =~ /#INCLUDE:[^#]+#/) {
       $doneincludes=0;
-      $inc =~ s/#INCLUDE:([^#]+)#/includefile($1)/eg;
+      $inc =~ s/#INCLUDE:([^#]+)#/includefile($1, 0)/eg;
     }
   }
   #ok, now do everything else..
@@ -74,6 +74,8 @@ sub subvars {
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  $inc =~ s/#INCLUDE_NOP:([^#]+)#/includefile($1,1)/eg;
+
   if ($tmplerr) {
      close ($outh);
      return $tmplerr;
@@ -84,23 +86,29 @@ sub subvars {
 }
 sub includefile
 {
-	my $file = shift;
-	my $text = "";
+    my $file = shift;
+    my $special=shift;
+    my $text = "";
     unless ($file =~ /^\//) {
       $file = $idir."/".$file;
     }
 
-	open(INCLUDE,$file) || \
-		return "#INCLUDEBAD:cannot open $file#";
+    open(INCLUDE,$file) || \
+	return "#INCLUDEBAD:cannot open $file#";
+    
+    while(<INCLUDE>) {
+	$text .= "$_";
+    }
+    
+    close(INCLUDE);
+    
+    if ($special) {
+	$text =~ s/\$/\\\$/g;
+	$text =~ s/`/\\`/g;
+    }
 
-	while(<INCLUDE>) {
-		$text .= "$_";
-	}
-
-	close(INCLUDE);
-
-	chomp($text);
-	return($text);
+    chomp($text);
+    return($text);
 }
 
 sub command

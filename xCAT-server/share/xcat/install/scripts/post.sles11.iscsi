@@ -35,54 +35,22 @@ echo "$MASTER:/install  /install    nfs timeo=14,intr   1 2" >>/etc/fstab
 # check the arch for nodetype
 NODE_ARCH=#TABLE:nodetype:$NODE:arch#
 
-#
-#  This script has not yet been updated to work with service nodes
-#
-for i in $(seq 1 20)
-do
-	GOTIT=0
-	for i in $MASTER_IPS
-	do
-		#mount -r $i:/install/postscripts /xcatpost
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/post/otherpkgs/sles11/$NODE_ARCH
+cat >/etc/init.d/xcatpostinit << EOF
+#INCLUDE_NOP:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit#
+EOF
+chmod 755 /etc/init.d/xcatpostinit
+ln -s /etc/init.d/xcatpostinit /etc/init.d/rc3.d/S84xcatpostinit
+ln -s /etc/init.d/xcatpostinit /etc/init.d/rc4.d/S84xcatpostinit
+ln -s /etc/init.d/xcatpostinit /etc/init.d/rc5.d/S84xcatpostinit
 
-		if [ "$?" = "0" ]
-		then
-         XCATSERVER=$i:3001
-         export XCATSERVER
-         mv $i/postscripts /xcatpost
-         rm -rf $i
-         chmod +x /xcatpost/*
-         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-         MYCONT=`cat /tmp/mypostscript`
-         while [ -z "$MYCONT" ]; do
-            let SLI=$RANDOM%10+10
-            sleep $SLI
-            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-            MYCONT=`cat /tmp/mypostscript`
-         done
-         chmod +x /tmp/mypostscript
-			GOTIT=1
-			break
-		fi
-	done
-	if [ "$GOTIT" = "1" ]
-	then
-		break
-	fi
-	RAND=$(perl -e 'print int(rand(5)). "\n"')
-	sleep $RAND
-done
-PATH=/xcatpost:$PATH
-export PATH
-/tmp/mypostscript
-updateflag.awk $MASTER 3002
-cd /
-/xcatpost/#TABLE:nodelist:$NODE:node#
-rm -Rf /xcatpost
-rm -f /tmp/mypostscript
-rmdir /xcatpost
+mkdir -p /opt/xcat
+cat >/opt/xcat/xcatdsklspost << EOF
+#INCLUDE_NOP:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
+chkconfig xcatpostinit off
+EOF
+chmod 755 /opt/xcat/xcatdsklspost
+
+chkconfig --add xcatpostinit
 ]]>
 
           </source>
