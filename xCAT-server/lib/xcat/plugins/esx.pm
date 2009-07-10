@@ -1508,6 +1508,22 @@ sub mount_nfs_datastore {
     ($server,$path) = split /\//,$location,2;
     $location =~ s/\//_/g;
     $location= 'nfs_'.$location;
+    #VMware has a 42 character limit, we will start mangling to get under 42.
+    #Will try to preserve as much informative detail as possible, hence several conditionals instead of taking the easy way out
+    if (length($location) > 42) {
+        $location =~ s/nfs_//; #Ditch unique names for different protocols to the same path, seems unbelievably unlikely
+    }
+    if (length($location) > 42) {
+        $location =~ s/\.//g; #Next, ditch host delimiter, it is unlikely that hosts will have unique names if their dots are removed
+    }
+    if (length($location) > 42) {
+        $location =~ s/_//g; #Next, ditch path delimiter, it is unlikely that two paths will happen to look the same without delimiters
+    }
+    if (length($location) > 42) { #finally, replace the middle with ellipsis
+        substr($location,20,-20,'..');
+    }
+        
+
     my $nds = HostNasVolumeSpec->new(accessMode=>'readWrite',
                                     remoteHost=>$server,
                                     localPath=>$location,
