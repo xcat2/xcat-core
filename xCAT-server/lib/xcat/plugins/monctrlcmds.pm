@@ -93,7 +93,7 @@ sub preprocess_request
       my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
       my $module_name="xCAT_monitoring::$pname";
       undef $SIG{CHLD};
-      if(($command eq "monshow") && (@$allnodes==0)){
+      if(($command eq "monshow") && (@$allnodes==0) && ($a_ret[2]&0x2!=0)){
         my $reqcopy = {%$req};
 	push @{$reqcopy->{module}}, $a_ret[1];
 	push @{$reqcopy->{priv}}, $a_ret[2];
@@ -1582,14 +1582,13 @@ sub mondecfg
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-	name -s [-t time] [-a attributes] [-o pe]
-        name noderange [-s] [-t time] [-a attributes] [-o pe]        
+        name [noderange] [-s] [-t time] [-a attributes] [-o pe]        
         where
           name is the monitoring plug-in name. For example: rmcmon. Only for rmcmon currently.
-          noderange a range of nodes to be showed for. 
-          -s shows the summary data only, default is not setting
-          -t specify to display data in a range of time, default is 1h before until now
-	  -a specfiy the attribute of RMC resource
+          noderange a range of nodes to be showed for. If omitted, the data for all the nodes will be displayed.
+          -s shows the summary data only
+          -t specify a range of time for the data, default is last 60 minutes
+	  -a specifies a comma-separated list of attributes or metrics names. The default is all.
     Returns:
         (0, $modulename, $sum, $time, \@nodes, $attrs, $pe) for success.
         (1, "") for unsuccess. The error messages are returns through the callback pointer.
@@ -1607,16 +1606,16 @@ sub preprocess_monshow
     my $error=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  monshow name -s [-t time] [-a attributes] [-o pe]";
-    $rsp->{data}->[2]= "  monshow name noderange [-s] [-t time] [-a attributes] [-o pe]";
-    $rsp->{data}->[3]= "  monshow [-h|--help|-v|--version]";
-    $rsp->{data}->[4]= "     name is the name of the monitoring plug-in module to be invoked.";
-    $rsp->{data}->[5]= "        Only for rmcmon currently";
-    $rsp->{data}->[6]= "     noderange is a range of nodes to be showed for.If no noderange is specified with -s,";
-    $rsp->{data}->[7]= "        summary of the whole cluster will be showed"; 
-    $rsp->{data}->[8]= "     -s option, shows the sum data only, default is not setting.";
-    $rsp->{data}->[9]= "     -t option, specify to display data in a range of time, default is last 1h";
-    $rsp->{data}->[10]= "    -a option, specfiy the attribute of RMC resource, default is all specified in monsetting.";
+    $rsp->{data}->[1]= "  monshow name noderange [-s] [-t time] [-a attributes] [-o pe]";
+    $rsp->{data}->[2]= "  monshow [-h|--help|-v|--version]";
+    $rsp->{data}->[3]= "     name is the name of the monitoring plug-in module to be invoked.";
+    $rsp->{data}->[4]= "     noderange is a list of nodes to be showed for. If omitted,";
+    $rsp->{data}->[5]= "        the data for all the nodes will be displayed."; 
+    $rsp->{data}->[6]= "     -s shows the summary data.";
+    $rsp->{data}->[7]= "     -t specifies a range of time for the data, The default is last 60 minutes";
+    $rsp->{data}->[8]= "     -a specifies a comma-separated list of attributes or metrics names. The default is all.";
+    $rsp->{data}->[9]= "     -o specifies montype, it can be p, e or pe.";
+    $rsp->{data}->[10]= "        p means performance, e means events, not used now.";
 #    $cb->($rsp);
     if($error){
       xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1663,6 +1662,11 @@ sub preprocess_monshow
   my $attrs=undef;
   my $pe = 0;
 
+  if(@ARGV < 1) {
+    &monshow_usage($callback, 1);
+    return (1, "");
+  }
+
   if($::SUMMARY) {$sum=1;}
   if($::TIME) {$time=$::TIME;}
   if($::ATTRS) {
@@ -1691,19 +1695,15 @@ sub preprocess_monshow
   
   $pname=$ARGV[0];
 
-  if(@ARGV != 2) {
+  my $noderange = '';;
+  if(@ARGV == 1) {
     if($sum){
       $sum |= 0x2;
-    } else {
-      &monshow_usage($callback, 1);
-      return (1, "");
-    }
+    } 
+  } else {
+    $noderange = $ARGV[1];
   }
 
-  my $noderange = '';;
-  if(($sum & 0x2) == 0){
-    $noderange = $ARGV[1]
-  }
   @nodes = noderange($noderange);
 
   if (xCAT::Utils->isMN() && nodesmissed) {
