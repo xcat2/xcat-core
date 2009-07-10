@@ -1,0 +1,75 @@
+=head1 NAME
+
+B<monshow> - Shows event data for monitoring.
+
+
+
+=head1 SYNOPSIS
+
+I<monshow [-h| --help]>
+
+I<monshow [-v| --version]>
+
+I<monshow name [noderange] [-s] [-t time] [-a attributes] [-o pe]>
+
+
+
+=head1 DESCRIPTION
+
+This command displays the events that happened on the given nodes or the monitoring data that is collected from the given nodes for a monitoring plugin.
+
+
+=head1 Parameters
+
+I<name> is the name of the monitoring plug-in module to be invoked. 
+
+I<noderange> is a list of nodes to be showed for. If omitted, the data for all the nodes will be displayed.
+
+=head1 OPTIONS
+
+
+B<-h | --help>          Display usage message.
+
+B<-v | --version >      Command Version.
+
+B<-s>	shows the summary data. 
+
+B<-t>	specifies a range of time for the data, The default is last 60 minutes. For example -t 6-4, it will display the data from last 6 minutes to 4 minutes; If it is -t 6, it will display the data from last 6 minutes until now.
+
+B<-a>	specifies a comma-separated list of attributes or metrics names. The default is all. 
+
+B<-o>	specifies montype, it can be p, e or pe. p means performance, e means events, not used now.
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To show summary data about PctRealMemFree and PctTotalTimeIdle of cluster in last 6 minutes, enter:
+
+  monshow rmcmon -s -a PctRealMemFree,PctTotalTimeIdle -t 6
+
+2. To show all data of node1 and node2, enter:
+
+  monshow rmcmon node1,node2
+
+3. To show summary data of nodes which managed by servicenode1, enter:
+
+  monshow rmcmon servicenode1 -s
+
+
+=head1 FILES
+
+/opt/xcat/bin/monshow
+
+
+=head1 SEE ALSO
+
+L<monls(1)|monls.1>, L<monstart(1)|monstart.1>, L<monstop(1)|monstop.1>, L<monadd(1)|monadd.1>, L<monrm(1)|monrm.1>, L<moncfg(1)|moncfg.1>, L<mondecfg(1)|mondecfg.1>
+
+
+
