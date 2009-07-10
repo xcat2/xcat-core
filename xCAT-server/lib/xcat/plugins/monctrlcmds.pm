@@ -849,10 +849,10 @@ sub monadd {
     $rsp->{data}->[3]= "     name is the name of the monitoring plug-in module to be added.";
     $rsp->{data}->[4]= "       Use 'monls -a' command to list all the monitoring plug-in names.";
     $rsp->{data}->[5]= "     settings is used by the monitoring plug-in to customize its behavior.";
-    $rsp->{data}->[6]= "       Format: [key1=value1],[key2=value2]... ";
+    $rsp->{data}->[6]= "       Format: -s key1=value1 -s key2=value2 ... ";
     $rsp->{data}->[7]= "       Please note that the square brackets are needed. ";
     $rsp->{data}->[7]= "       Use 'monls name -d' command to look for the possible settings for a plug-in.";
-    $rsp->{data}->[8]= "  Example: monadd xcatmon -n -s [ping-interval=10]";
+    $rsp->{data}->[8]= "  Example: monadd xcatmon -n -s ping-interval=10";
     $cb->($rsp);
   }
   
@@ -865,7 +865,7 @@ sub monadd {
       'h|help'     => \$::HELP,
       'v|version'  => \$::VERSION,
       'n|nodestatmon'  => \$::NODESTATMON,
-      's|settings=s'  => \$settings))
+      's|settings=s@'  => \$settings))
   {
     &monadd_usage($callback);
     return 1;
@@ -952,11 +952,21 @@ sub monadd {
       my $table1=xCAT::Table->new("monsetting", -create => 1,-autocommit => 1);
       my %key_col1 = (name=>$pname);
       #parse the settings. Setting format: key="value",key="value"....
-      while ($settings =~ s/^\[([^\[\]\=]*)=([^\[\]]*)\](,)*//) { 
-        $key_col1{key}=$1; 
-        my %setting_hash=();
-        $setting_hash{value}=$2;
-        $table1->setAttribs(\%key_col1, \%setting_hash);
+      foreach (@$settings) {
+        if (/^\[(.*)\]$/) { #backward compatible
+	    while (s/^\[([^\[\]\=]*)=([^\[\]]*)\](,)*//) { 
+		$key_col1{key}=$1; 
+		my %setting_hash=();
+		$setting_hash{value}=$2;
+		$table1->setAttribs(\%key_col1, \%setting_hash);
+	    }
+	} else {
+	    /^([^\=]*)=(.*)/;
+	    $key_col1{key}=$1;
+	    my %setting_hash=();
+	    $setting_hash{value}=$2;
+	    $table1->setAttribs(\%key_col1, \%setting_hash);
+	}
       }
       $table1->close();
     }
