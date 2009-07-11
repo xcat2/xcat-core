@@ -23,7 +23,7 @@ Requires: atftp dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsft
 # No additional requires for zLinux right now
 %else
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
-Requires: conserver yaboot-xcat
+Requires: conserver yaboot-xcat perl-Net-Telnet
 %endif
 %ifarch ppc64
 Requires: perl-IO-Stty
