@@ -93,6 +93,8 @@ if (!$batch) {
 	}
 
 	open(FILE1, "<$filename");
+        readline(FILE1);#skip first 2 lines
+        readline(FILE1);
 	my $line1=readline(FILE1);
 	my @aTemp=split(/=/, $line1);
 	my $num_events=$aTemp[1];
@@ -103,7 +105,7 @@ if (!$batch) {
         my @inactive=();
         my %new_value=();
 	for ($count = 1; $count <= $num_events; $count++) {
-	    my $content=`sed -n "/Event $count\$/, /(null)/ p" $filename`;
+	    my $content=`sed -n "/Event $count\$/,/ERRM_COND_BATCH/ p" $filename`;
 	    
 	    my @content_array=split(/\n/, $content);
 	    pop(@content_array);  #get rid of last line
