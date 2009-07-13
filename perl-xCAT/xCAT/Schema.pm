@@ -59,6 +59,15 @@ vm => {
         'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM."
     }
 },
+hypervisor => {
+        cols => [qw(noe mgr comments disable)],
+        keys => [qw(node)],
+        table_desc => 'Hypervisor parameters',
+        descriptions => {
+            'node' => 'The node or static group name',
+            mgr => 'The virtualization specific manager of this hypervisor when applicable',
+        }
+},
 websrv => { 
     cols => [qw(node port username password comments disable)],
     keys => [qw(node)],

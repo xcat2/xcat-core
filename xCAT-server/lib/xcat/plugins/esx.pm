@@ -210,7 +210,12 @@ sub preprocess_request {
     }
     #TODO: per hypervisor table password lookup
 	my $sn = xCAT::Utils->get_ServiceNode(\@hyps, $service, "MN");
-    $vmtabhash = $vmtab->getNodesAttribs(\@hyps,['host']);
+    #vmtabhash was from when we had vm.host do double duty for hypervisor data
+    #$vmtabhash = $vmtab->getNodesAttribs(\@hyps,['host']);
+    #We now use hypervisor fields to be unambiguous
+    my $hyptab = xCAT::Table->new('hypervisor');
+    my $hyptabhash = $hyptab->getNodesAttribs(\@hyps,['mgr']);
+
 
 	# build each request for each service node
 	foreach my $snkey (keys %$sn){
@@ -227,8 +232,8 @@ sub preprocess_request {
             } else {
                 $cfgdata = "[$_][][$username][$password][$vusername][$vpassword]"; #TODO: not use vm.host?
             }
-            if (defined $vmtabhash->{$_}->[0]->{host}) {
-                $cfgdata .= "[". $vmtabhash->{$_}->[0]->{host}."]";
+            if (defined $hyptabhash->{$_}->[0]->{mgr}) {
+                $cfgdata .= "[". $hyptabhash->{$_}->[0]->{mgr}."]";
             } else { 
                 $cfgdata .= "[]";
             }
@@ -476,7 +481,7 @@ sub get_hostview {
         $subargs{properties}=$args{properties};
     }
     foreach (@{$args{conn}->find_entity_views(%subargs)}) {
-       if ($_->name =~ /$host[\.\$]/ or $_->name =~ /localhost[\.\$]/) {
+       if ($_->name =~ /$host(?:\.\z)/ or $_->name =~ /localhost(?:\.|\z)//) {
            return $_;
            last;
        }
@@ -617,7 +622,7 @@ sub actually_migrate {
         }
         my $dstview;# = $hyphash{$target}->{conn}->find_entity_view(view_type=>'HostSystem',filter=>{'name'=>$target});
         foreach (@{$hyphash{$target}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['name','parent'])}) {
-            if ($_->name =~ /$target[\.\$]/) {
+            if ($_->name =~ /$target(?:\.|\z)/) {
                 $dstview = $_;
                 last;
             }
@@ -1003,7 +1008,7 @@ sub setboot {
     }
     my $bootorder = ${$args{exargs}}[0];
     #NOTE: VMware simply does not currently seem to allow programatically changing the boot
-    #order like other virtualiazation solutions supported by xCAT.
+    #order like other virtualization solutions supported by xCAT.
     #This doesn't behave quite like any existing mechanism:
     #vm.bootorder was meant to take the place of system nvram, vmware imitates that unfortunate aspect of bare metal too well..
     #rsetboot was created to describe the ipmi scenario of a transient boot device, this is persistant *except* for setup, which is not
@@ -1185,6 +1190,7 @@ sub build_cfgspec {
     $currkey=0;
     push @devices,create_storage_devs($node,$dses,$disksize);
     push @devices,create_nic_devs($node,$netmap);
+    getcfgdatastore($node,$dses);
     my $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{storage}; #TODO: need a new cfglocation field in case of stateless guest?
     $cfgdatastore =~ s/,.*$//;
     $cfgdatastore =~ s/\/$//;
@@ -1325,7 +1331,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         force=>1,
         );
     foreach  (@{$hyphash{$hyp}->{vcenter}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'])}) {
-        if ($_->{'summary.config.name'} =~ /^$hyp[\.\$]/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
+        if ($_->{'summary.config.name'} =~ /^$hyp(?:\.|\z)/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
             if ($_->{'summary.runtime.connectionState'}->val eq 'connected') {
                 enable_vmotion(hypname=>$hyp,hostview=>$_,conn=>$hyphash{$hyp}->{vcenter}->{conn});
                 $vcenterhash{$vcenter}->{$hyp} = 'good';
@@ -1376,7 +1382,8 @@ sub  addhosttovcenter {
             die;
         }
     }
-    my $hfolder =  $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['hostFolder'])->hostFolder;
+    my $datacenter = validate_datacenter_prereqs($hyp);
+    my $hfolder =  $datacenter->hostFolder; #$hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['hostFolder'])->hostFolder;
     $hfolder = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$hfolder);
     $task = $hfolder->AddStandaloneHost_Task(spec=>$connspec,addConnected=>1);
     $running_tasks{$task}->{task} = $task;
@@ -1386,6 +1393,23 @@ sub  addhosttovcenter {
 
     #print Dumper @{$hyphash{$hyp}->{vcenter}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['runtime.connectionState'])};
 }
+
+sub validate_datacenter_prereqs {
+    my ($hyp) = @_;
+
+    my $datacenter = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type => 'Datacenter', properties=>['hostFolder']);
+
+    if (!defined $datacenter) {
+        my $vconn = $hyphash{$hyp}->{vcenter}->{conn};
+        my $root_folder = $vconn->get_view(mo_ref=>$vconn->get_service_content()->rootFolder);
+        $root_folder->CreateDatacenter(name=>'xcat-datacenter');
+        $datacenter = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type => 'Datacenter', properties=>['hostFolder']);
+    }
+
+    return $datacenter;
+}
+
+
 
 
 sub validate_network_prereqs {
@@ -1462,7 +1486,7 @@ sub validate_datastore_prereqs {
     unless ($hostview) {
         #$hyphash{$hyp}->{hostview} = $hyphash{$hyp}->{hostview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type=>'HostSystem'); #TODO: beware of vCenter case??
         foreach  (@{$hyphash{$hyp}->{conn}->find_entity_views(view_type=>'HostSystem')}) {
-            if ($_->name =~ /$hyp[\.\$]/) {
+            if ($_->name =~ /$hyp(?:\.|\z)/) {
                  $hyphash{$hyp}->{hostview} = $_;
                  last;
             }
@@ -1484,6 +1508,8 @@ sub validate_datastore_prereqs {
     }
     foreach $node (@$nodes) {
         my @storage = split /,/,$tablecfg{vm}->{$node}->[0]->{storage};
+        push @storage,$tablecfg{vm}->{$node}->[0]->{cfgstore};
+        print Dumper($tablecfg{vm}->{$node});
         foreach (@storage) {
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
             if (/:\/\//) {
@@ -1504,14 +1530,12 @@ sub validate_datastore_prereqs {
     return 1;
 }
 
-sub mount_nfs_datastore {
-    my $hostview = shift;
+sub getlabel_for_datastore {
+    my $method = shift;
     my $location = shift;
-    my $server;
-    my $path;
-    ($server,$path) = split /\//,$location,2;
+
     $location =~ s/\//_/g;
-    $location= 'nfs_'.$location;
+    $location= $method.'_'.$location;
     #VMware has a 42 character limit, we will start mangling to get under 42.
     #Will try to preserve as much informative detail as possible, hence several conditionals instead of taking the easy way out
     if (length($location) > 42) {
@@ -1526,7 +1550,16 @@ sub mount_nfs_datastore {
     if (length($location) > 42) { #finally, replace the middle with ellipsis
         substr($location,20,-20,'..');
     }
-        
+    return $location;
+}
+
+sub mount_nfs_datastore {
+    my $hostview = shift;
+    my $location = shift;
+    my $server;
+    my $path;
+    ($server,$path) = split /\//,$location,2;
+    $location = getlabel_for_datastore('nfs',$location);
 
     my $nds = HostNasVolumeSpec->new(accessMode=>'readWrite',
                                     remoteHost=>$server,
@@ -1987,3 +2020,4 @@ sub cpNetbootImages {
 
 
 1;
+# vi: set ts=4 sw=4 filetype=perl: 
