@@ -1580,6 +1580,7 @@ sub show {
   print "rmcmon:show called\n";
   no strict 'refs';
   my ($noderef, $sum, $time, $attrs, $pe, $callback) = @_;
+  my @monnodes = ();
   my $rsp = {};
   my $localhostname=hostname();
   my $start_time = undef;
@@ -1596,17 +1597,24 @@ sub show {
     $start_time = $end_time - $time * 60;
   }
   
+  foreach $node (@$noderef){
+    my $table = xCAT::Table->new('nodetype');
+    my $entry = $table->getNodeAttribs($node, ['nodetype']);
+    if($entry && ($entry->{nodetype} =~ /$::NODETYPE_OSI/)){
+      push @monnodes, $node;
+    }
+  }
+  
   #the identification of this node
   my $isSV=xCAT::Utils->isServiceNode();
 
   if(!$isSV && ($sum&0x2)){
-    push @$noderef, $localhostname;
+    push @monnodes, $localhostname;
   }
-  print "$localhostname: @$noderef\n";
   $sum &= 0x1;
 
   if($sum){
-    foreach $node (@$noderef){
+    foreach $node (@monnodes){
       if($node eq $localhostname){
 	$rrddir = "/var/rrd/cluster";
 	my @metrixconf = xCAT_monitoring::rmcmetrix::get_metrix_conf();
@@ -1626,11 +1634,11 @@ sub show {
         $rrddir = "/var/rrd/$node";
       }
       $output = &showmetrix($rrddir, $attrs, $start_time, $end_time);
-      push @{$rsp->{data}}, "\n$node-sum:";
+      push @{$rsp->{data}}, "\n$node-summary:";
       push @{$rsp->{data}}, @$output;
     }
   } else {
-    foreach $node (@$noderef){
+    foreach $node (@monnodes){
       $rrddir = "/var/rrd/$node";
       $output = &showmetrix($rrddir, $attrs, $start_time, $end_time);
       push @{$rsp->{data}}, "\n$node:";
