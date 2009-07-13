@@ -481,7 +481,7 @@ sub get_hostview {
         $subargs{properties}=$args{properties};
     }
     foreach (@{$args{conn}->find_entity_views(%subargs)}) {
-       if ($_->name =~ /$host(?:\.\z)/ or $_->name =~ /localhost(?:\.|\z)//) {
+       if ($_->name =~ /$host(?:\.\z)/ or $_->name =~ /localhost(?:\.|\z)/) {
            return $_;
            last;
        }
