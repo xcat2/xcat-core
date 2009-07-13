@@ -484,7 +484,7 @@ sub get_hostview {
         $subargs{properties}=$args{properties};
     }
     foreach (@{$args{conn}->find_entity_views(%subargs)}) {
-       if ($_->name =~ /$host(?:\.\z)/ or $_->name =~ /localhost(?:\.|\z)/) {
+       if ($_->name =~ /$host(?:\.|\z)/ or $_->name =~ /localhost(?:\.|\z)/) {
            return $_;
            last;
        }
@@ -677,7 +677,6 @@ sub migrate {
 sub reconfig_callback {
     my $task = shift;
     my $args = shift;
-    print Dumper($task->info);
     #$args->{reconfig_args}->{vmview}->update_view_data();
     delete $args->{reconfig_args}->{vmview}; #Force a reload of the view, update_view_data seems to not work as advertised..
     $args->{reconfig_fun}->(%{$args->{reconfig_args}});
@@ -1193,11 +1192,11 @@ sub build_cfgspec {
     $currkey=0;
     push @devices,create_storage_devs($node,$dses,$disksize);
     push @devices,create_nic_devs($node,$netmap);
-    getcfgdatastore($node,$dses);
-    my $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{storage}; #TODO: need a new cfglocation field in case of stateless guest?
-    $cfgdatastore =~ s/,.*$//;
-    $cfgdatastore =~ s/\/$//;
-    $cfgdatastore = "[".$dses->{$cfgdatastore}."]";
+    #my $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{storage}; #TODO: need a new cfglocation field in case of stateless guest?
+    #$cfgdatastore =~ s/,.*$//;
+    #$cfgdatastore =~ s/\/$//;
+    #$cfgdatastore = "[".$dses->{$cfgdatastore}."]";
+    my $cfgdatastore = getcfgdatastore($node,$dses);
     my $vfiles = VirtualMachineFileInfo->new(vmPathName=>$cfgdatastore);
     #my $nodeos = $tablecfg{nodetype}->{$node}->[0]->{os};
     #my $nodearch = $tablecfg{nodetype}->{$node}->[0]->{arch};
@@ -1512,7 +1511,6 @@ sub validate_datastore_prereqs {
     foreach $node (@$nodes) {
         my @storage = split /,/,$tablecfg{vm}->{$node}->[0]->{storage};
         push @storage,$tablecfg{vm}->{$node}->[0]->{cfgstore};
-        print Dumper($tablecfg{vm}->{$node});
         foreach (@storage) {
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
             if (/:\/\//) {
