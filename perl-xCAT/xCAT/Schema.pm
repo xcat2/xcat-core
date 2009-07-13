@@ -60,7 +60,7 @@ vm => {
     }
 },
 hypervisor => {
-        cols => [qw(noe mgr comments disable)],
+        cols => [qw(node mgr comments disable)],
         keys => [qw(node)],
         table_desc => 'Hypervisor parameters',
         descriptions => {

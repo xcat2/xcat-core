@@ -214,7 +214,10 @@ sub preprocess_request {
     #$vmtabhash = $vmtab->getNodesAttribs(\@hyps,['host']);
     #We now use hypervisor fields to be unambiguous
     my $hyptab = xCAT::Table->new('hypervisor');
-    my $hyptabhash = $hyptab->getNodesAttribs(\@hyps,['mgr']);
+    my $hyptabhash={};
+    if ($hyptab) {
+        $hyptabhash = $hyptab->getNodesAttribs(\@hyps,['mgr']);
+    }
 
 
 	# build each request for each service node
