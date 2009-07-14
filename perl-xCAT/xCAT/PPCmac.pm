@@ -488,7 +488,9 @@ sub getmacs {
                 #########################################
                 # Write MAC address to database
                 #########################################
-                writemac( $node, $value );
+                if ( !exists( $opt->{d} )) {
+                    writemac( $node, $value );
+                }
 
                 foreach ( @$value ) {
                     if ( /^#\s?Type/ ) {
