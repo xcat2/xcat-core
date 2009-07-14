@@ -1493,7 +1493,7 @@ sub validate_datastore_prereqs {
     my $hypconn = $hyphash{$hyp}->{conn};
     my $hostview = $hyphash{$hyp}->{hostview};
     unless ($hostview) {
-        hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$conn,properties=>['config','configManager']);
+        hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hypconn,properties=>['config','configManager']);
         $hostview = $hyphash{$hyp}->{hostview};
     }
     my $node;
