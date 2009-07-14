@@ -711,9 +711,6 @@ sub fork_fanout_dcp
         my $user_target       = shift @$targets_waiting;
         my $target_properties = $$resolved_targets{$user_target};
 
-        # todo remove code
-        #my @shorthostname = split(/\./, $user_target);
-        #$user_target = $shorthostname[0];
 
         my @dcp_command;
         my $rsyncfile;
@@ -2841,27 +2838,6 @@ sub _resolve_nodes
     # unresolved nodes will be determined when the remote shell runs
     xCAT::DSHCLI->bld_resolve_nodes_hash($options, \%resolved_nodes, @nodes);
 
-    # todo remove code
-    #xCAT::DSHCore->resolve_hostnames($options, \%resolved_nodes,
-    #                                 \%unresolved_nodes, $context_targets,
-    #                                 @nodes);
-    #xCAT::DSHCore->removeExclude(\%resolved_nodes, $unresolved_targets,
-    #                             $context_targets);
-    #xCAT::DSHCore->removeExclude($resolved_targets, \%unresolved_nodes,
-    #                             $context_targets);
-
-    #foreach my $node (keys(%unresolved_nodes))
-    #{
-    #    my $node_properties = $unresolved_nodes{$node};
-
-    #   $$node_properties{'type'} = 'node';
-    #    $$unresolved_targets{$node} = $node_properties;
-
-    #   my $rsp = {};
-    #   $rsp->{data}->[0] =
-    #     "The specified node $node address is not resolvable in the cluster.";
-    #   xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-    #}
 
     foreach my $user_node (keys(%resolved_nodes))
     {
@@ -2968,8 +2944,6 @@ sub verify_targets
     foreach my $user_target (keys(%$resolved_targets))
     {
 
-        # todo remove        my @shorthostname = split(/\./, $user_target);
-        #        push @ping_list, $shorthostname[0];
         my $hostname = $$resolved_targets{$user_target}{'hostname'};
         push @ping_list, $hostname;
     }
