@@ -972,7 +972,7 @@ sub mkvms {
         );
     $disksize = getUnits($disksize,'G',1024);
     my $node;
-    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']); 
+    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
     unless (validate_datastore_prereqs($nodes,$hyp)) {
         return;
     }
@@ -1412,7 +1412,7 @@ sub validate_vswitch_prereqs {
     my $switchname = shift;
     my $hostview = $hyphash{$hyp}->{hostview};
     unless ($hostview) {
-        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']); 
+        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
         $hostview = $hyphash{$hyp}->{hostview};
     }
 }
@@ -1425,7 +1425,7 @@ sub validate_network_prereqs {
     if ($hostview) {
         $hostview->update_view_data(); #pull in changes induced by previous activity
     } else {
-        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']); 
+        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager','network']); 
         $hostview = $hyphash{$hyp}->{hostview};
     }
     my $node;
@@ -1493,7 +1493,7 @@ sub validate_datastore_prereqs {
     my $hypconn = $hyphash{$hyp}->{conn};
     my $hostview = $hyphash{$hyp}->{hostview};
     unless ($hostview) {
-        hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hypconn,properties=>['config','configManager']);
+        hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hypconn); #,properties=>['config','configManager']);
         $hostview = $hyphash{$hyp}->{hostview};
     }
     my $node;
