@@ -278,6 +278,68 @@ sub process_command {
                 $children++;
             }
         }
+    } elsif ( $request->{command} =~ /^(getmacs)$/ && exists( $request->{opt}->{arp} ) ) {
+        my $node;
+        my $data;
+        my $unreachable_nodes;
+        my $noderange = join (',', @$nodes);
+        my @output = xCAT::Utils->runcmd("pping $noderange", -1);
+        foreach my $line (@output) {
+            my ($hostname, $result) = split ':', $line;
+            $node->{$hostname}->{reachable} = 1;
+        }
+
+        foreach ( @$nodes ) {
+            if ( $node->{$_}->{reachable} ) {
+                my $output;
+                my $IP = xCAT::Utils::toIP( $_ );
+                if ( xCAT::Utils->isAIX() ) {
+                    $output = `/usr/sbin/arp -a`;
+                } else {
+                    $output = `/sbin/arp -n`;
+                }
+
+                my ($ip, $mac);
+                my @lines = split /\n/, $output;
+                foreach my $line ( @lines ) {
+                    if ( xCAT::Utils->isAIX() && $line =~ /\((\S+)\)\s+at\s+(\S+)/ ) {
+                        ($ip, $mac) = ($1,$2);
+                        ######################################################
+                        # Change mac format to be same as linux. For example:
+                        # '0:d:60:f4:f8:22' to '00:0d:60:f4:f8:22'
+                        ######################################################
+                        if ( $mac)
+                        {
+                            my @mac_sections = split /:/, $mac;
+                            for (@mac_sections)
+                            {
+                                $_ = "0$_" if ( length($_) == 1);
+                            }
+                            $mac = join ':', @mac_sections;
+                        }
+                    } elsif ( $line =~ /^(\S+)+\s+\S+\s+(\S+)\s/ ) {
+                        ($ip, $mac) = ($1,$2);
+                    } else {
+                        ($ip, $mac) = (undef,undef);
+                    }
+                    if ( @$IP[1] !~ $ip ) {
+                        ($ip, $mac) = (undef,undef);
+                    } else {
+                        last;
+                    }
+                }
+                if ( $ip && $mac ) {
+                    $callback->({data=>["$_:"]});
+                    $callback->({data=>["#IP           MAC"]});
+                    $callback->({data=>["$ip  $mac\n"]});
+                    $callback->({node=>[{name=>[$_],data=>["\n#IP           MAC\n$ip  $mac\n"]}]});
+                }
+            } else {
+                $unreachable_nodes = join (",", $_, $unreachable_nodes);
+            }
+        }
+        $callback->({data=>["Unreachable Nodes:"]});
+        $callback->({data=>["$unreachable_nodes\n"]});
     } else {
         $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
         my $hw;
@@ -605,6 +667,10 @@ sub preprocess_nodes {
             $hcpgroup{$hcp}{'index'} = 0;
         }
         return( \%hcpgroup );
+    }
+
+    elsif ( $method =~ /^(getmacs)$/ && exists( $request->{opt}->{arp} ) ) {
+        return( $noderange );
     }
 
     ##########################################
