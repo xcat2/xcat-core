@@ -649,9 +649,9 @@ if ($::osname eq 'AIX')
         }
     }
 
-    $cmd = "lssrc -a | grep conserver";
+	$cmd = "lssrc -a | grep conserver >/dev/null 2>&1";
     $outref = xCAT::Utils->runcmd("$cmd", 0);
-    unless ($outref =~ /conserver/)
+    if ($::RUNCMD_RC != 0)
     {
         $cmd =
           "mkssys -p /opt/freeware/sbin/conserver -s conserver -u 0 -S -n 15 -f 15 -a \"-o -O1 -C /etc/conserver.cf\"";
@@ -1175,7 +1175,7 @@ if ($::osname eq 'AIX')
 
     # check if /install/postscripts is in /etc/exports
     my $catcmd =
-      "/bin/cat /etc/exports | grep '/install/postscripts ' >/dev/null 2>&1";
+      "/bin/cat /etc/exports 2>&1 | grep '/install/postscripts ' >/dev/null 2>&1";
     my $outref = xCAT::Utils->runcmd("$catcmd", -1);
     if ($::RUNCMD_RC != 0)
     {
