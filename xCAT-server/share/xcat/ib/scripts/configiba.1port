@@ -64,6 +64,7 @@ foreach my $num ( @nums ) {
         if ( $OS_name eq 'suse')
         {
             $dir = "/etc/sysconfig/network";
+            runcmd("echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf");
         }
         elsif ( $OS_name eq 'redhat' )
         {
