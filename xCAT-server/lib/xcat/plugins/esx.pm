@@ -623,13 +623,7 @@ sub actually_migrate {
             sendmsg([1,"Unable to verify target network state"]);
             return;
         }
-        my $dstview;# = $hyphash{$target}->{conn}->find_entity_view(view_type=>'HostSystem',filter=>{'name'=>$target});
-        foreach (@{$hyphash{$target}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['name','parent'])}) {
-            if ($_->name =~ /$target(?:\.|\z)/) {
-                $dstview = $_;
-                last;
-            }
-        }
+        my $dstview = get_hostview(conn=>$hyphash{$target}->{conn},hypname=>$target,properties=>['name','parent']);
         unless ($hyphash{$target}->{pool}) {
             $hyphash{$target}->{pool} = $hyphash{$target}->{conn}->get_view(mo_ref=>$dstview->parent,properties=>['resourcePool'])->resourcePool;
         }
@@ -978,7 +972,7 @@ sub mkvms {
         );
     $disksize = getUnits($disksize,'G',1024);
     my $node;
-    $hyphash{$hyp}->{hostview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type=>'HostSystem'); #TODO: beware of vCenter case??
+    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']); 
     unless (validate_datastore_prereqs($nodes,$hyp)) {
         return;
     }
@@ -1413,6 +1407,15 @@ sub validate_datacenter_prereqs {
 
 
 
+sub validate_vswitch_prereqs {
+    my $hyp = shift;
+    my $switchname = shift;
+    my $hostview = $hyphash{$hyp}->{hostview};
+    unless ($hostview) {
+        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']); 
+        $hostview = $hyphash{$hyp}->{hostview};
+    }
+}
 
 sub validate_network_prereqs {
     my $nodes = shift;
@@ -1422,7 +1425,7 @@ sub validate_network_prereqs {
     if ($hostview) {
         $hostview->update_view_data(); #pull in changes induced by previous activity
     } else {
-        $hyphash{$hyp}->{hostview} = $hyphash{$hyp}->{hostview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type=>'HostSystem'); #TODO: beware of vCenter case??
+        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']); 
         $hostview = $hyphash{$hyp}->{hostview};
     }
     my $node;
@@ -1441,7 +1444,11 @@ sub validate_network_prereqs {
         foreach (@networks) {
             my $switchname = 'vSwitch0'; #TODO: more than just vSwitch0
             s/=.*//; #TODO specify nic model with <blahe>=model
-            s/.*://; #TODO: support specifiying physical ports with :
+            if (/:/) {
+                s/(.*)://; #TODO: support specifiying physical ports with :
+                $switchname = $1;
+            }
+            #validate_vswitch_prereqs($switchname); #auto-add 
             my $netname = $_;
             my $netsys;
             my $policy = HostNetworkPolicy->new();
@@ -1486,13 +1493,7 @@ sub validate_datastore_prereqs {
     my $hypconn = $hyphash{$hyp}->{conn};
     my $hostview = $hyphash{$hyp}->{hostview};
     unless ($hostview) {
-        #$hyphash{$hyp}->{hostview} = $hyphash{$hyp}->{hostview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type=>'HostSystem'); #TODO: beware of vCenter case??
-        foreach  (@{$hyphash{$hyp}->{conn}->find_entity_views(view_type=>'HostSystem')}) {
-            if ($_->name =~ /$hyp(?:\.|\z)/) {
-                 $hyphash{$hyp}->{hostview} = $_;
-                 last;
-            }
-        }
+        hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$conn,properties=>['config','configManager']);
         $hostview = $hyphash{$hyp}->{hostview};
     }
     my $node;
