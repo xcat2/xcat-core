@@ -70,8 +70,11 @@ sub build_line {
 	}
     } 
 
-    if ($domain && !$longname) {
-	$longname="$node.$domain";
+    if ($node =~ m/\.$domain$/i) {
+        $longname = $node;
+        $node =~ s/\.$domain$//;
+    } elsif ($domain && !$longname) {
+	    $longname="$node.$domain";
     } 
 
     $othernames=join(' ', @o_names);
