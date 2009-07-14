@@ -59,6 +59,9 @@ echo "    rpm -Uvh tk-8.4.7-3.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 echo "    rpm -Uvh expect-5.42.1-3.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 echo "fi" >> $RPMDIR/instoss
 
+cp /opt/freeware/src/packages/RPMS/ppc/popt-1.7-2.aix5.1.ppc.rpm $RPMDIR/
+echo "rpm -Uvh popt-1.7-2.aix5.1.ppc.rpm" >> $RPMDIR/instoss
+
 cp /opt/freeware/src/packages/RPMS/ppc/rsync-2.6.2-1.aix5.1.ppc.rpm $RPMDIR/
 echo "rpm -Uvh rsync-2.6.2-1.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 
@@ -131,22 +134,27 @@ tar -cvf $RPMDIR/xcat-mysql-$VER-$SNAP.tar -L $RPMDIR/flist2
 gzip $RPMDIR/xcat-mysql-$VER-$SNAP.tar
 
 
-# get the PHP5 readme file
-cd ./../../../xcat-dep/trunk/AIX/php5/
-cp README $RPMDIR/web-dep.README
-# make a third tar.gz for xcat-web-dep package
-cp *.rpm $RPMDIR/
-ls *.rpm > $RPMDIR/flist3
-cd $RPMDIR
-cp /opt/freeware/src/packages/RPMS/ppc/php-5.2.6-0.aix5.3.ppc.rpm $RPMDIR/
-echo "rpm -Uvh php-5.2.6-0.aix5.3.ppc.rpm" >> $RPMDIR/instwebdep
-echo "php-5.2.6-0.aix5.3.ppc.rpm" >> $RPMDIR/flist3
+# create xcat-web-dep tar ball
+cp /xcat-web-dep.tar.gz $RPMDIR/
 
-chmod +x $RPMDIR/instwebdep
-echo "instwebdep" >> $RPMDIR/flist3
-echo "web-dep.README" >> $RPMDIR/flist3
-tar -cvf $RPMDIR/xcat-web-dep-$VER-$SNAP.tar -L $RPMDIR/flist3
-gzip $RPMDIR/xcat-web-dep-$VER-$SNAP.tar
+# get the PHP5 readme file
+#cd ./../../../xcat-dep/trunk/AIX/php5/
+#cp README $RPMDIR/web-dep.README
+# make a third tar.gz for xcat-web-dep package
+#cp *.rpm $RPMDIR/
+#ls *.rpm > $RPMDIR/flist3
+#cd $RPMDIR
+#cp /opt/freeware/src/packages/RPMS/ppc/php-5.2.6-0.aix5.3.ppc.rpm $RPMDIR/
+#echo "rpm -Uvh php-5.2.6-0.aix5.3.ppc.rpm" >> $RPMDIR/instwebdep
+#echo "php-5.2.6-0.aix5.3.ppc.rpm" >> $RPMDIR/flist3
+
+#chmod +x $RPMDIR/instwebdep
+#echo "instwebdep" >> $RPMDIR/flist3
+#echo "web-dep.README" >> $RPMDIR/flist3
+#tar -cvf $RPMDIR/xcat-web-dep-$VER-$SNAP.tar -L $RPMDIR/flist3
+#gzip $RPMDIR/xcat-web-dep-$VER-$SNAP.tar
+
+cd $RPMDIR
 
 chgrp xcat *
 chmod g+w *
