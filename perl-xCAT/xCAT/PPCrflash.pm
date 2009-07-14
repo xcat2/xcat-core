@@ -151,21 +151,25 @@ sub parse_args {
 	}
 
 	#############################################
-    	# Option -V for verbose output
-    	#############################################
-    	if ( exists( $opt{V} )) {
+    # Option -V for verbose output
+    ############################################
+    if ( exists( $opt{V} )) {
         	$verbose = 1;
-    	}
+    }
  
-      ####################
-      #suport for "rflash", copy the rpm and xml packages from user-spcefied-directory to /install/packages_fw
-        #####################	
-      if ( (!exists($opt{commit})) && (!exists($opt{ recover }))) {
-            if( preprocess_for_rflash($request, \%opt) == -1) {
+   ####################
+   #suport for "rflash", copy the rpm and xml packages from user-spcefied-directory to /install/packages_fw
+   #####################	
+   if ( (!exists($opt{commit})) && (!exists($opt{ recover }))) {
+        if( preprocess_for_rflash($request, \%opt) == -1) {
    	          return( usage() );
-            }
-       }
-   
+        }
+   }
+    
+   if(noderange_validate($request) == -1) {
+          return(usage());
+   }
+
     send_msg($request, 1, "It may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting.");
 
 	####################################
@@ -207,7 +211,54 @@ sub send_msg {
     }
 }
 
+#####################################
+#When run rflash with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.
+#####################################
+sub noderange_validate {
+    my $request = shift;
+    #my $opt = shift;	
+    my $noderange = $request->{node};
+    #my $t = print_var($request, "request");
+    #print $t;
+    ####################
+    ## $f1 and $f2 are the flags for rflash, to check if there are BPAs and CECs at the same time.
+    ##################
+    my $f1 = 0;
+    my $f2 = 0;
 
+    ###########################################
+    # Group nodes
+    ###########################################
+    foreach my $node ( @$noderange ) {
+        my $type = undef;
+        my $sitetab  = xCAT::Table->new( 'nodetype' );
+        if ( defined( $sitetab )) {
+            my ($ent) = $sitetab->getAttribs({ node=>$node},'nodetype');
+            if ( defined($ent) ) {
+               $type = $ent->{nodetype};
+            }
+        }
+        #print "type:$type\n";
+        if( $type =~/^(fsp|lpar)$/) {
+            $f1 = 1;
+        } else {
+            $f2 = 1;
+            my $exargs=$request->{arg};
+            #my $t = print_var($exargs, "exargs");
+            #print $t;
+            if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
+                send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
+                send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
+                return -1;
+             }
+        }
+    }
+
+    if($f1 * $f2) {
+        send_msg( $request, 1, "The argument noderange of rflash can't be BPA and CEC(or LPAR) at the same time");
+        return -1;
+    }
+}
 
 
 sub preprocess_for_rflash {

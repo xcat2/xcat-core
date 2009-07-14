@@ -530,11 +530,6 @@ sub preprocess_nodes {
         }
     }
 
-    ####################
-    # $f1 and $f2 are the flags for rflash, to check if there are BPAs and CECs at the same time.
-    #################
-    my $f1 = 0;	
-    my $f2 = 0;	
     ##########################################
     # Group nodes
     ##########################################
@@ -553,24 +548,7 @@ sub preprocess_nodes {
         ######################################
         my $hcp  = @$d[3];
         my $mtms = @$d[2];
-        ######################################
-        # Special case for rflash
-        ######################################
-        if ( $request->{command} eq "rflash" ) {
-            if(@$d[4] =~/^(fsp|lpar)$/) {
-                $f1 = 1;
-            } else {
-                $f2 = 1;
-                my $exargs=$request->{arg};
-                my $t= xCAT::PPCrflash::print_var($exargs, "exargs");
-                if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
-                    send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
-                    send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
-                    return undef;
-                }
-
-            }
-        }
+ 
         ######################################
         # Special case for mkconn
         ######################################
@@ -587,11 +565,6 @@ sub preprocess_nodes {
             $nodehash{$hcp}{$mtms}{$node} = $d;
         }
     } 
-
-    if($f1 * $f2) {
-        send_msg( $request, 1, "The argument noderange of rflash can't be BPA and CEC(or LPAR) at the same time");
-        return undef; 
-    }
 
     ##########################################
     # Get userid and password
