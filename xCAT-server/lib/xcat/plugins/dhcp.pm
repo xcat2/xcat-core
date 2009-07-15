@@ -419,10 +419,9 @@ sub preprocess_request
         @ARGV       = @{$req->{arg}};
         GetOptions('l' => \$localonly);
     }
-    if ($req->{_xcatdest})
-    {
-        return [$req];
-    }    #Exit if the packet has been preprocessed in its history
+    #Exit if the packet has been preprocessed
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+
     my @requests =
       ({%$req});    #Start with a straight copy to reflect local instance
     unless ($localonly) {
@@ -431,6 +430,7 @@ sub preprocess_request
         {
             my $reqcopy = {%$req};
             $reqcopy->{'_xcatdest'} = $s;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
             push @requests, $reqcopy;
         }
     }
