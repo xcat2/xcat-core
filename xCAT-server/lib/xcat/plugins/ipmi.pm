@@ -5999,7 +5999,8 @@ sub loadsdrcache {
 
 sub preprocess_request { 
   my $request = shift;
-  if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+  if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
+  #exit if preprocessed
   my $callback=shift;
   my @requests;
 
@@ -6056,6 +6057,7 @@ sub preprocess_request {
     my $reqcopy = {%$request};
     $reqcopy->{node} = $sn->{$snkey};
     $reqcopy->{'_xcatdest'} = $snkey;
+    $reqcopy->{_xcatpreprocessed}->[0] = 1;
     push @requests, $reqcopy;
   }
   return \@requests;
