@@ -65,6 +65,9 @@ echo "rpm -Uvh popt-1.7-2.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 cp /opt/freeware/src/packages/RPMS/ppc/rsync-2.6.2-1.aix5.1.ppc.rpm $RPMDIR/
 echo "rpm -Uvh rsync-2.6.2-1.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 
+cp /opt/freeware/src/packages/RPMS/ppc/expat-2.0.1-2.aix5.1.ppc.rpm $RPMDIR/
+echo "rpm -Uvh expat-2.0.1-2.aix5.1.ppc.rpm" >> $RPMDIR/instoss
+
 cp /opt/freeware/src/packages/RPMS/ppc/conserver-8.1.16-2.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh conserver-8.1.16-2.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
