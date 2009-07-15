@@ -240,7 +240,7 @@ sub preprocess_request {
 #sub preprocess_request {
 #   my $req = shift;
 #   $callback = shift;
-#   if ($req->{_xcatdest}) { return [$req]; } #Exit if the packet has been preprocessed in its history
+#   if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 #   my @requests = ({%$req}); #Start with a straight copy to reflect local instance
 #   my $sitetab = xCAT::Table->new('site');
 #   (my $ent) = $sitetab->getAttribs({key=>'xcatservers'},'value');
@@ -250,6 +250,7 @@ sub preprocess_request {
 #         if (xCAT::Utils->thishostisnot($_)) {
 #            my $reqcopy = {%$req};
 #            $reqcopy->{'_xcatdest'} = $_;
+#            $reqcopy->{_xcatpreprocessed}->[0] = 1;
 #            push @requests,$reqcopy;
 #         }
 #      }
