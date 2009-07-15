@@ -334,6 +334,15 @@ sub process_command {
                     }
                 }
                 if ( $ip && $mac ) {
+                    if ( !exists( $request->{opt}->{d} ) ) {
+                        #####################################
+                        # Write adapter mac to database
+                        #####################################
+                        my $mactab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
+                        $mactab->setNodeAttribs( $_,{mac=>$mac} );
+                        $mactab->close();
+                    }
+
                     $callback->({data=>["$_:"]});
                     $callback->({data=>["#IP           MAC"]});
                     $callback->({data=>["$ip  $mac\n"]});
