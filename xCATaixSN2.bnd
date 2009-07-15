@@ -10,7 +10,9 @@ I:bos.sysmgt.nim.master
 
 # RPMs
 R:bash-3.2-1.aix5.2.ppc.rpm
+R:popt-1.7-2.aix5.1.ppc.rpm
 R:rsync-2.6.2-1.aix5.1.ppc.rpm
+R:expat-2.0.1-2.aix5.1.ppc.rpm
 R:conserver-8.1.16-2.aix5.3.ppc.rpm
 R:fping-2.4b2_to-1.aix5.3.ppc.rpm
 R:perl-DBI-1.55-1.aix5.3.ppc.rpm
