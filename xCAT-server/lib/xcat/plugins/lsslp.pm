@@ -1883,7 +1883,7 @@ sub child_response {
 sub preprocess_request {
 
     my $req = shift;
-    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
     my $callback=shift;
     my @requests;
 
@@ -1921,6 +1921,7 @@ sub preprocess_request {
     foreach my $sn (keys (%sv_hash)) {
       my $reqcopy = {%$req};
       $reqcopy->{_xcatdest} = $sn;
+      $reqcopy->{_xcatpreprocessed}->[0] = 1;
       push @result, $reqcopy;
     }
     return \@result;
