@@ -88,6 +88,16 @@ fi
 #MYCONT=`cat /tmp/mypostscript`
 #echo "$MYCONT"
 
+# when called by the updatenode command,
+# if the first parameter equals 1, remove the otherpkgs postscript,
+# since the otherpkgs only run for software maintenance: xcatdsklspost 2 otherpkgs 
+if [ $# -gt 0 ]; then
+if [ $1 -eq 1 ]; then
+  TMP=`sed "/otherpkgs/ d" /tmp/mypostscript`
+  echo "$TMP" > /tmp/mypostscript
+fi
+fi
+
 if [ $# -eq 0 ]; then
   #notify the server that we are done with netbooting
   CNS=`grep NODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`

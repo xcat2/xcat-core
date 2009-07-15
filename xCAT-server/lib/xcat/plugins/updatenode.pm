@@ -133,11 +133,14 @@ sub preprocess_updatenode {
     my $cb=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  updatenode <noderange> [-s | -S] [posts]";
+    $rsp->{data}->[1]= "  updatenode <noderange> [-F] [-S] [-P] [postscript,...]";
     $rsp->{data}->[2]= "  updatenode [-h|--help|-v|--version]";
-    $rsp->{data}->[3]= "     noderange is a list of nodes or groups.";
-    $rsp->{data}->[4]= "     posts is a comma separated list of postscript names.";
-    $rsp->{data}->[5]= "     if omitted, all the postscripts will be run.";
+    $rsp->{data}->[3]= "     <noderange> is a list of nodes or groups.";
+    $rsp->{data}->[4]= "     -F: Perform File Syncing.";
+    $rsp->{data}->[5]= "     -S: Perform Software Maintenance.";
+    $rsp->{data}->[6]= "     -p: Re-run Postscripts listed in postscript.";
+    $rsp->{data}->[7]= "     [postscript,...] is a comma separated list of postscript names.";
+    $rsp->{data}->[8]= "         If omitted, all the postscripts defined for the nodes will be run.";
     $cb->($rsp);
   }
   
@@ -151,10 +154,11 @@ sub preprocess_updatenode {
   Getopt::Long::Configure("bundling");
   Getopt::Long::Configure("no_pass_through");
   if(!GetOptions(
-      'h|help'     => \$::HELP,
+      'h|help'      => \$::HELP,
       'v|version'  => \$::VERSION,
-      's'          => \$::SYNCSN,
-      'S'          => \$::SKIPSYNCFILE ))
+      'F'              => \$::FILESYNC,
+      'S'              => \$::SWMAINTENANCE,
+      'P:s'           => \$::RERUNPS))
   {
     &updatenode_usage($callback);
     return  \@requests;;
@@ -187,40 +191,44 @@ sub preprocess_updatenode {
   if (@nodes == 0) { return \@requests; }
 
   if (@ARGV > 0) {
-    $postscripts=$ARGV[0];
-    my @posts=split(',',$postscripts);
-    foreach (@posts) { 
-      if ( ! -e "/install/postscripts/$_") {
-        my $rsp={};
-        $rsp->{data}->[0]= "The postcript /install/postscripts/$_ does not exist.";
-        $callback->($rsp);
-        return \@requests;
+    &updatenode_usage($callback);
+    return  \@requests;
+  }
+
+  # If -F option specified, sync files to the noderange.
+  # Note: This action only happens on MN, since xdcp handles the hierarchical scenario
+  if ($::FILESYNC) {
+    my $reqcopy = {%$request};
+    $reqcopy->{FileSyncing} = "yes";
+    push @requests, $reqcopy;
+  }
+
+  # handle the re-run postscripts option -P
+  if (defined ($::RERUNPS)) {
+    if ($::RERUNPS eq "") {
+      $postscripts = "";
+    } else {
+      $postscripts=$::RERUNPS;
+      my @posts=split(',',$postscripts);
+      foreach (@posts) { 
+        if ( ! -e "/install/postscripts/$_") {
+          my $rsp={};
+          $rsp->{data}->[0]= "The postcript /install/postscripts/$_ does not exist.";
+          $callback->($rsp);
+          return \@requests;
+        }
       }
     }
   }
 
-  # If -s argument specified, sync files to the service nodes firstly
-  if ($::SYNCSN) {
-    my %syncfile_node = ();
-    my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
-    foreach my $node (@$nodes) {
-      my $synclist = $$node_syncfile{$node};
 
-      if ($synclist) {
-        push @{$syncfile_node{$synclist}}, $node;
-        next;
-      }
-    }
-
-    foreach my $syncfile (keys %syncfile_node) {
-      my $arg = ["-s", "-F", "$syncfile"];
-      my $env = ["RSYNCSN=yes", "DSH_RSYNC_FILE=$syncfile"];
-      $subreq->({command=>['xdcp'], node=>$syncfile_node{$syncfile}, arg=>$arg, env=>$env}, $callback);
-    }
-  }
-
+  # when specified -S or -P
   # find service nodes for requested nodes
   # build an individual request for each service node
+  unless (defined($::SWMAINTENANCE) || defined($::RERUNPS)) {
+    return \@requests; 
+  }
+  
   my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
     
   # build each request for each service node
@@ -229,11 +237,18 @@ sub preprocess_updatenode {
     my $reqcopy = {%$request};
     $reqcopy->{node} = $sn->{$snkey};
     $reqcopy->{'_xcatdest'} = $snkey;
-    $reqcopy->{postscripts} = [$postscripts];
+    if (defined ($::SWMAINTENANCE)) {
+      $reqcopy->{swmaintenance} = "yes";
+    }
+    if (defined ($::RERUNPS)) {
+      $reqcopy->{rerunps} = "yes";
+      $reqcopy->{postscripts} = [$postscripts];
+    }
+    
     push @requests, $reqcopy;
   }
-  return \@requests;    
   
+  return \@requests;    
 }
 
 
@@ -253,13 +268,11 @@ sub updatenode {
   my $request = shift;
   my $callback = shift;
   my $subreq = shift;
-  my $postscripts="";
-  if (($request->{postscripts}) && ($request->{postscripts}->[0])) {  $postscripts=$request->{postscripts}->[0];}
+
   my $nodes      =$request->{node};  
   my $localhostname=hostname();
 
-  # if not specifying -S, do the sync file operation
-  unless ($::SKIPSYNCFILE) {
+  if ($request->{FileSyncing} && $request->{FileSyncing} eq "yes") {
     my %syncfile_node = ();
     my %syncfile_rootimage = ();
     my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
@@ -269,21 +282,6 @@ sub updatenode {
       if ($synclist) {
         push @{$syncfile_node{$synclist}}, $node;
       }
-
-      # Figure out the directory of the root image
-      # one $synclist will only map to one root image, so 
-      # just find the root image one time
-      # only for netboot node (diskless)
-      if ($synclist && $synclist =~ /\/netboot\//) {
-        if (! defined($syncfile_rootimage{$synclist})) {
-          my $root_dir = xCAT::Utils->getrootimage($node);
-          if (-d $root_dir) {
-            $syncfile_rootimage{$synclist} = $root_dir;
-          } else {
-            $syncfile_rootimage{$synclist} = "no_root_image";
-          }
-        }
-      }
     }
 
     # Sync files to the target nodes
@@ -292,28 +290,18 @@ sub updatenode {
       my $env = ["DSH_RSYNC_FILE=$synclist"];
       $subreq->({command=>['xdcp'], node=>$syncfile_node{$synclist}, arg=>$args, env=>$env}, $callback);
     }
-
-    # Sync files to the root image for the diskless nodes
-    foreach my $synclist (keys %syncfile_rootimage) {
-      if ($syncfile_rootimage{$synclist} eq "no_root_image") {
-        next;
-      }
-      my $args = ["-i", $syncfile_rootimage{$synclist}, "-F", $synclist];
-      my $env = ["DSH_RSYNC_FILE=$synclist"];
-      $subreq->({command=>['xdcp'], arg=>$args, env=>$env}, $callback);
-    }
   }
 
-  my $nodestring=join(',', @$nodes);
-  #print "postscripts=$postscripts, nodestring=$nodestring\n";
-
-  if ($nodestring) {
+  if ($request->{swmaintenance} && $request->{swmaintenance} eq "yes") {
     my $cmd;
+    my $nodestring=join(',', @$nodes);
     if (xCAT::Utils->isLinux()) {
-      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost 1 $postscripts 2>&1";
+      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost 2 otherpkgs 2>&1";
     }
     else {
-      $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -c 1 $postscripts 2>&1";
+      my $rsp={};
+      $rsp->{data}->[0]= "Dose not support Software Maintenance for AIX nodes";
+      $callback->($rsp); 
     }
     if (! open (CMD, "$cmd |")) {
       my $rsp={};
@@ -329,8 +317,37 @@ sub updatenode {
     }
   }
 
-  return 0;
+  if ($request->{rerunps} && $request->{rerunps} eq "yes") {
+    my $postscripts="";
+    if (($request->{postscripts}) && ($request->{postscripts}->[0])) {  $postscripts=$request->{postscripts}->[0];}
+
+    my $nodestring=join(',', @$nodes);
+    #print "postscripts=$postscripts, nodestring=$nodestring\n";
   
+    if ($nodestring) {
+      my $cmd;
+      if (xCAT::Utils->isLinux()) {
+        $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost 1 $postscripts 2>&1";
+      }
+      else {
+        $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -c 1 $postscripts 2>&1";
+      }
+      if (! open (CMD, "$cmd |")) {
+        my $rsp={};
+        $rsp->{data}->[0]= "Cannot run command $cmd";
+        $callback->($rsp);    
+      } else {
+        while (<CMD>) {
+          my $rsp={};
+          $rsp->{data}->[0]= "$_";
+          $callback->($rsp);
+        }
+        close(CMD);
+      }
+    }
+  }
+
+  return 0;  
 }
 
 

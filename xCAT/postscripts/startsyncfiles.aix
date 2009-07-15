@@ -9,32 +9,46 @@
 #
 #####################################################
 
+use XML::Simple;
 
-use IO::Socket;
+my $useSocketSSL=eval { require IO::Socket::SSL; };
+if ($useSocketSSL) {
+        require IO::Socket::SSL;
+}
 
-my $port = "3002";
-my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $ENV{MASTER}, PeerPort  => $port, );
+my $port = "3001";
+my $remote = IO::Socket::SSL->new( Proto => "tcp", PeerAddr => $ENV{MASTER}, PeerPort  => $port, );
 unless ($remote) {
   `logger -t xCAT "startsyncfiles: Cannot connect to host $ENV{MASTER}"`;
   exit 0;
 }
 
-$remote->autoflush(1);
+# Send Syncing File request to the xcatd
+print $remote "<xcatrequest>\n";
+print $remote "   <command>syncfiles</command>\n";
+print $remote "</xcatrequest>\n";
 
-while (defined (my $line = <$remote>)) {
-  chomp($line);
 
-  if ($line =~ /ready/) {
-    print $remote "syncfiles\n";
-  }
+my $response='';
+my $rsp;
+while (<$remote>) {
+  $response .= $_;
+  if ($response =~ m/<\/xcatresponse>/) {
+    $rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
+    if ($rsp->{serverdone}) {
+      close $remote;
+      exit 1;
+    }
 
-  if ($line =~ /syncfiles done/) {
-    close $remote;
-    exit 1;
+    if ($rsp->{errorcode} || $rsp->{error}) {
+      close $remote;
+      exit 0;
+    }
+    $response='';
   }
 }
 
-close $remote;
 
-exit 1;
+close $remote;
+exit 0;
 

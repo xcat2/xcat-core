@@ -1,20 +1,25 @@
 #!/usr/bin/awk -f
 BEGIN {
-        server = "openssl s_client -quiet -connect " ENVIRON["XCATSERVER"]
+  server = "openssl s_client -quiet -connect " ENVIRON["XCATSERVER"]
 
-        quit = "no"
+  quit = "no"
+  exitcode = 1
 
-        print "<xcatrequest>" |& server
-        print "   <command>syncfiles</command>" |& server
-        print "</xcatrequest>" |& server
+  print "<xcatrequest>" |& server
+  print "   <command>syncfiles</command>" |& server
+  print "</xcatrequest>" |& server
 
-        while (server |& getline) {
-                if (match($0,"<syncfiles done>")) {
-                  quit = "yes"
-                }
-                if (match($0,"</xcatresponse>") && match(quit,"yes")) {
-                  close(server)
-                  exit
-               }
-        }
+  while (server |& getline) {
+    if (match($0,"<serverdone>")) {
+      quit = "yes"
+    }
+    if (match($0,"<errorcode>") || match($0,"<error>")) {
+      exitcode = 0
+    }
+
+    if (match($0,"</xcatresponse>") && match(quit,"yes")) {
+      close(server)
+      exit exitcode
+    }
+  }
 }

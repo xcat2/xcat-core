@@ -57,11 +57,6 @@ sub process_request
     }
 
     require xCAT::Postage;
-    my $rc = xCAT::Postage->syncfiles($client,$callback,$subreq);
-    if ($rc) {
-        xCAT::MsgUtils->message("S","Sync files to node $client completed");
-    } else {
-        xCAT::MsgUtils->message("S","Encountered error when using xdcp sync files to $client");
-    }
+    xCAT::Postage->syncfiles($client,$callback,$subreq);
 }
 

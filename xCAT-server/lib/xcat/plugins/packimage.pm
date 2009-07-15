@@ -5,7 +5,7 @@ use File::Path;
 use File::Copy;
 use Cwd;
 use File::Temp;
-use xCAT::Utils qw(genpassword);
+use xCAT::Utils qw(genpassword getsynclistfile);
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -134,6 +134,13 @@ sub process_request {
       }
    }
 
+    # sync fils configured in the synclist to the rootimage
+    my $syncfile = xCAT::Utils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
+    if (defined ($syncfile) && -f $syncfile
+        && -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {
+        print "sync files from $syncfile to the $installroot/netboot/$osver/$arch/$profile/rootimg\n";
+        `$::XCATROOT/bin/xdcp -i "$installroot/netboot/$osver/$arch/$profile/rootimg" -F $syncfile`;
+    }
 
     my $verb = "Packing";
     if ($method =~ /nfs/) {

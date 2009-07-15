@@ -21,12 +21,21 @@ osname=`uname`
 # run the xdcp on the MN/SN
 xcatpostdir="/xcatpost"
 
-if [ $osname="Linux" ] 
+if [ $osname = "Linux" ] 
 then
-  `$xcatpostdir/startsyncfiles.awk`
-elif [ $osname="AIX" ]
+`$xcatpostdir/startsyncfiles.awk`
+returncode=$?
+elif [ $osname = "AIX" ]
 then
-  `$xcatpostdir/startsyncfiles.aix`
+`$xcatpostdir/startsyncfiles.aix`
+returncode=$?
+fi
+
+if [ $returncode -eq 1 ]
+then
+  logger -t xCAT "Perform Syncing File action successfully"
+else
+  logger -t xCAT "Perform Syncing File action encountered error"
 fi
 
 exit 0
