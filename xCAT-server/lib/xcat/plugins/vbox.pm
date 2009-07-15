@@ -54,7 +54,8 @@ sub preprocess_request
 {
     my $req = shift;
     my $cb  = shift;
-    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    #exit if preprocessed
     my $nodes    = $req->{node};
     my $service  = "xcat";
 
@@ -73,6 +74,7 @@ sub preprocess_request
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
             push @requests, $reqcopy;
 
     }
