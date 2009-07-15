@@ -90,12 +90,14 @@ sub expandatom {
 
   # check to see if atom is a defined group name that didn't have any current members                                               
   if ( scalar @nodes == 0 ) {                                                                                                       
-    #for my $row ( $nodegroup->getAllAttribs('groupname') ) {                                                                        
-    for my $row ( $grptab->getAllAttribs('groupname') ) {                                                                        
-      if ( $row->{groupname} eq $atom ) {                                                                                           
-        return ();                                                                                                                  
-      }                                                                                                                             
-    }                                                                                                                               
+    if($grptab) {
+        my @grouplist = $grptab->getAllAttribs('groupname');
+        for my $row ( @grouplist ) { 
+            if ( $row->{groupname} eq $atom ) { 
+                return ();                                                                                                                  
+            } 
+        }
+     }
   }
 
 	if ($atom =~ m/^[0-9]+\z/) {    # if only numbers, then add the prefix
