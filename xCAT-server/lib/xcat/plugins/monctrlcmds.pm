@@ -63,6 +63,8 @@ sub preprocess_request
   my $callback  = shift;
   my $command = $req->{command}->[0];
 #  if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+  if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+
   if ($req->{module}) { return [$req]; }
   my $args=$req->{arg};
 
@@ -142,6 +144,7 @@ sub preprocess_request
 	if (! $iphash{$sv}) {
 	  if ($isSV) { next; } #if the command is issued on the monserver, only handle its children.
 	  $reqcopy->{'_xcatdest'}=$sv;
+	  $reqcopy->{_xcatpreprocessed}->[0] = 1;
 	  my $rsp2={};
 	  $rsp2->{data}->[0]="sending request to $sv..., ".join(',', @$mon_nodes);
 	  $callback->($rsp2);

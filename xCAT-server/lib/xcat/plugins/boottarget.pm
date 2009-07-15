@@ -35,6 +35,9 @@ sub preprocess_request
 {
     my $req      = shift;
     my $callback = shift;
+    #if already preprocessed, go straight to request
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+
     if ($req->{command}->[0] eq 'copycd')
     {    #don't farm out copycd
         return [$req];
@@ -84,6 +87,7 @@ sub preprocess_request
     {    #iterate dispatch targets
         my $reqcopy = {%$req};    #deep copy
         $reqcopy->{'_xcatdest'} = $dtarg;
+	$reqcopy->{_xcatpreprocessed}->[0] = 1;
         $reqcopy->{node} = [keys %{$dispatchhash{$dtarg}}];
         push @requests, $reqcopy;
     }

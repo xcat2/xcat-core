@@ -35,7 +35,8 @@ sub handled_commands {
 
 sub preprocess_request {
   my $request = shift;
-  if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+  #if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+  if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
   my $callback=shift;
   my @requests;
   my $noderange = $request->{node}; #Should be arrayref 
@@ -114,6 +115,7 @@ sub preprocess_request {
   if (!$isSN) { #
     my $reqcopy = {%$request};
     $reqcopy->{'_xcatdest'} = $master;
+    $reqcopy->{_xcatpreprocessed}->[0] = 1;
     $reqcopy->{'_allnodes'} = $allnodes; # the original command comes with nodes or not
     if ($allnodes==1) { @nodes=(); }
     $reqcopy->{node} = \@nodes;
@@ -134,6 +136,7 @@ sub preprocess_request {
     if ($doit) {
       my $reqcopy = {%$request};
       $reqcopy->{'_xcatdest'} = $cons;
+      $reqcopy->{_xcatpreprocessed}->[0] = 1;
       $reqcopy->{'_allnodes'} = [$allnodes]; # the original command comes with nodes or not
       $reqcopy->{node} = $cons_hash{$cons}{nodes};
       my $no=$reqcopy->{node};

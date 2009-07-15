@@ -58,7 +58,10 @@ sub preprocess_request
     my $callback = shift;
     my $subreq = shift;
     my $command  = $request->{command}->[0];
-    if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+    #if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+    #if already preprocessed, go straight to request
+    if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
+
     my @requests=();
 
     if ($command eq "updatenode")
@@ -237,6 +240,8 @@ sub preprocess_updatenode {
     my $reqcopy = {%$request};
     $reqcopy->{node} = $sn->{$snkey};
     $reqcopy->{'_xcatdest'} = $snkey;
+    $reqcopy->{_xcatpreprocessed}->[0] = 1;
+
     if (defined ($::SWMAINTENANCE)) {
       $reqcopy->{swmaintenance} = "yes";
     }
