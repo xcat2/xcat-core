@@ -151,7 +151,8 @@ sub preprocess_request {
 		return [$request];
 	}
 
-	if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+        if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; } 
+         # exit if preprocesses
 	my @requests;
 
 	my $noderange = $request->{node};  # array ref
@@ -224,6 +225,7 @@ sub preprocess_request {
 	foreach my $snkey (keys %$sn){
 		my $reqcopy = {%$request};
 		$reqcopy->{'_xcatdest'} = $snkey;
+                $reqcopy->{_xcatpreprocessed}->[0] = 1;
 		my $hyps1=$sn->{$snkey};
 		my @moreinfo=();
 		my @nodes=();
