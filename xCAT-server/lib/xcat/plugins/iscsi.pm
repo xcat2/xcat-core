@@ -27,7 +27,7 @@ sub preprocess_request {
    my $callback = shift;
    my @requests = ();
    my %iscsiserverhash;
-   if ($request->{_xcatdest}) { return [$request]; }
+   if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
    my $iscsitab = xCAT::Table->new('iscsi');
    foreach my $node (@{$request->{node}}) {
       my $tent = $iscsitab->getNodeAttribs($node,['server']);
@@ -41,6 +41,7 @@ sub preprocess_request {
    foreach my $iscsis (keys %iscsiserverhash) {
       my $reqcopy = {%$request};
       $reqcopy->{'_xcatdest'} = $iscsis;
+      $reqcopy->{_xcatpreprocessed}->[0] = 1;
       $reqcopy->{node} = [ keys %{$iscsiserverhash{$iscsis}} ];
       push @requests,$reqcopy;
    }
