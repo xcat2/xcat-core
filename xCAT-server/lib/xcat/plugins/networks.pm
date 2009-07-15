@@ -15,13 +15,15 @@ sub preprocess_request
 {
     my $req = shift;
     my $cb  = shift;
-    if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    # exit if preprocessed
     my @requests = ({%$req}); #first element is local instance
     my @sn = xCAT::Utils->getSNList();
     foreach my $s (@sn)
     {
         my $reqcopy = {%$req};
         $reqcopy->{'_xcatdest'} = $s;
+        $reqcopy->{_xcatpreprocessed}->[0] = 1;
         push @requests, $reqcopy;
     }
     return \@requests;
