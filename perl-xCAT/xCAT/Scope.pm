@@ -7,12 +7,14 @@ sub get_broadcast_scope {
       $req = shift;
    }
    $callback = shift;
-   if ($req->{_xcatdest}) { return [$req]; } #Exit if the packet has been preprocessed in its history
+   if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    #Exit if the packet has been preprocessed in its history
    my @requests = ({%$req}); #Start with a straight copy to reflect local instance
    foreach (xCAT::Utils->getSNList()) {
          if (xCAT::Utils->thishostisnot($_)) {
             my $reqcopy = {%$req};
             $reqcopy->{'_xcatdest'} = $_;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1; 
             push @requests,$reqcopy;
          }
    }
