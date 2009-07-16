@@ -269,11 +269,11 @@ sub Version
     my $version = shift;
     if ($version eq 'short')
     {
-        $version = ''    #XCATVERSIONSUBHERE ;
+        $version = ''    . '2.3' ;
     }
     else
     {
-        $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
+        $version = 'Version '    . '2.3' . ' (svn r, built Thu Jul 16 03:22:22 CDT 2009)' ;
     }
     return $version;
 
@@ -4212,6 +4212,52 @@ sub getsynclistfile()
   }
 
   my ($os, $arch, $profile, $inst_type) = @_;
+
+  # for aix node, use the node figure out the profile, then use the value of 
+  # profile (osimage name) to get the synclist file path (osimage.synclists)
+  if (isAIX()) {
+    my %node_syncfile = ();
+    my %osimage_syncfile = ();
+    my @profiles = ();
+    
+    # get the profile attributes for the nodes
+    my $nodetype_t = xCAT::Table->new('nodetype');
+    unless ($nodetype_t) {
+      return ;
+    }
+    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile']);
+
+    # the vaule of profile for AIX node is the osimage name
+    foreach my $node (@$nodes) {
+      my $profile = $nodetype_v->{$node}->[0]->{'profile'};
+      $node_syncfile{$node} = $profile;
+
+      if (! grep /$profile/, @profiles) {
+        push @profiles, $profile;
+      }
+    }
+
+    # get the syncfiles base on the osimage
+    my $osimage_t = xCAT::Table->new('osimage');
+    unless ($osimage_t) {
+      return ;
+    }
+    foreach my $osimage (@profiles) {
+      my $synclist = $osimage_t->getAttribs({imagename=>"$osimage"}, 'synclists');
+      if (-r $synclist->{'synclists'}) {
+        $osimage_syncfile{$osimage} = $synclist->{'synclists'};
+      } else {
+        $osimage_syncfile{$osimage} = undef;
+      }
+    }
+
+    # set the syncfiles to the nodes
+    foreach my $node (@$nodes) {
+      $node_syncfile{$node} = $osimage_syncfile{$node_syncfile{$node}};
+    }
+
+    return \%node_syncfile;
+  }
 
   # if does not specify the $node param, default consider for genimage command
   if ($nodes) {
