@@ -326,6 +326,11 @@ sub process_request {
 			$hyphash{$hyp}->{nodes}->{$node}=1;# $nodeid;
 		}
 	}
+    my $hyptab = xCAT::Table->new('hypervisor',create=>0);
+    if ($hyptab) {
+        my @hyps = keys %hyphash;
+        $tablecfg{hypervisor} = $hyptab->getNodesAttribs(\@hyps,['mgr','netmap']);
+    }
 
 	#my $children = 0;
     #my $vmmaxp = 84;
@@ -1409,14 +1414,95 @@ sub validate_datacenter_prereqs {
 
 
 
-sub validate_vswitch_prereqs {
+sub get_switchname_for_portdesc {
+#Thisk function will examine all current switches to find or create a switch to match the described requirement
     my $hyp = shift;
-    my $switchname = shift;
+    my $portdesc = shift;
+    my $description; #actual name to use for the virtual switch
+    if ($tablecfg{hypervisor}->{$hyp}->[0]->{netmap}) {
+        foreach (split /,/,$tablecfg{hypervisor}->{$hyp}->[0]->{netmap}) {
+            if (/^$portdesc=/) {
+                ($description,$portdesc) = split /=/,$_,2;
+                last;
+            }
+        }
+    } else {
+        $description = 'vsw'.$portdesc;
+    }
+    unless ($description) {
+        sendmsg([1,": Invalid format for hypervisor.netmap detected for $hyp"]);
+        return undef;
+    }
+    my %requiredports;
+    my %portkeys;
+    foreach (split /&/,$portdesc) {
+        $requiredports{$_}=1;
+    }
+
     my $hostview = $hyphash{$hyp}->{hostview};
     unless ($hostview) {
         $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
         $hostview = $hyphash{$hyp}->{hostview};
     }
+    foreach (@{$hostview->config->network->pnic}) {
+        if ($requiredports{$_->device}) { #We establish lookups both ways
+            $portkeys{$_->key}=$_->device;
+            delete $requiredports{$_->device};
+        }
+    }
+    if (keys %requiredports) {
+        sendmsg([1,":Unable to locate the following nics on $hyp: ".join(',',keys %requiredports)]);
+        return undef;
+    }
+    my $foundmatchswitch;
+    my $cfgmismatch=0;
+    my $vswitch;
+    foreach $vswitch (@{$hostview->config->network->vswitch}) {
+        $cfgmismatch=0; #new switch, no sign of mismatch
+        foreach (@{$vswitch->pnic}) {
+            if ($portkeys{$_}) {
+                $foundmatchswitch=$vswitch->name;
+                delete $requiredports{$portkeys{$_}};
+                delete $portkeys{$_};
+            } else {
+                $cfgmismatch=1; #If this turns out to have anything, it is bad
+            }
+        }
+        if ($foundmatchswitch) { last; }
+    }
+    if ($foundmatchswitch) {
+        if ($cfgmismatch) {
+            sendmsg([1,": Aggregation mismatch detected, request nic is aggregated with a nic not requested"]);
+            return undef;
+        }
+        unless (keys %portkeys) {
+            return $foundmatchswitch;
+        }
+        die "TODO: add physical nics to aggregation if requested";
+    } else {
+        return create_vswitch($hyp,$description,values %portkeys);
+    }
+    die "impossible occurance";
+    return undef;
+}
+sub create_vswitch {
+    my $hyp = shift;
+    my $description = shift;
+    my @ports = @_;
+    my $vswitch = HostVirtualSwitchBondBridge->new(
+        nicDevice=>\@ports
+        );
+    my $vswspec = HostVirtualSwitchSpec->new(
+        bridge=>$vswitch,
+        mtu=>9000,
+        numPorts=>64
+    );
+    my $hostview = $hyphash{$hyp}->{hostview};
+    my $netman=$hyphash{$hyp}->{conn}->get_view(mo_ref=>$hostview->configManager->networkSystem);
+    $netman->AddVirtualSwitch(
+        vswitchName=>$description,
+        spec=>$vswspec
+    );
 }
 
 sub validate_network_prereqs {
@@ -1448,9 +1534,8 @@ sub validate_network_prereqs {
             s/=.*//; #TODO specify nic model with <blahe>=model
             if (/:/) {
                 s/(.*)://; #TODO: support specifiying physical ports with :
-                $switchname = $1;
+                $switchname = get_switchname_for_portdesc($hyp,$1);
             }
-            #validate_vswitch_prereqs($switchname); #auto-add 
             my $netname = $_;
             my $netsys;
             my $policy = HostNetworkPolicy->new();
@@ -1513,7 +1598,9 @@ sub validate_datastore_prereqs {
     }
     foreach $node (@$nodes) {
         my @storage = split /,/,$tablecfg{vm}->{$node}->[0]->{storage};
-        push @storage,$tablecfg{vm}->{$node}->[0]->{cfgstore};
+        if ($tablecfg{vm}->{$node}->[0]->{cfgstore}) {
+            push @storage,$tablecfg{vm}->{$node}->[0]->{cfgstore};
+        }
         foreach (@storage) {
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
             if (/:\/\//) {

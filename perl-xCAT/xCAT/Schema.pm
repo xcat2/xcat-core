@@ -50,7 +50,7 @@ vm => {
         'cfgstore' => 'Optional location for persistant storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data',
         'memory' => 'Megabytes of memory the VM currently should be set to.',
         'cpus' => 'Number of CPUs the node should see.',
-        'nics' => 'Network configuration parameters',
+        'nics' => 'Network configuration parameters.  Of the general form [physnet:]interface[=model],.. Generally, interface describes the vlan entity (default for native, tagged for tagged, vl[number] for a specific vlan.  model is the type of device to imitate (i.e. virtio, e1000 (generally default), rtl8139, depending on the virtualization technology.  physnet is a virtual switch name or port description that is used for some virtualization technologies to construct virtual switches.  hypervisor.netmap can map names to hypervisor specific layouts, or the descriptions described there may be used directly here where possible.',
         'bootorder' => 'Boot sequence (i.e. net,hd)',
         'clockoffset' => 'Whether to have guest RTC synced to "localtime" or "utc"  If not populated, xCAT will guess based on the nodetype.os contents.',
         'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen")',
@@ -60,12 +60,13 @@ vm => {
     }
 },
 hypervisor => {
-        cols => [qw(node mgr comments disable)],
+        cols => [qw(node mgr netmap comments disable)],
         keys => [qw(node)],
         table_desc => 'Hypervisor parameters',
         descriptions => {
             'node' => 'The node or static group name',
             mgr => 'The virtualization specific manager of this hypervisor when applicable',
+            'netmap' => 'Optional mapping of useful names to relevant physical ports.  For example, 10ge=vmnic_16.0&vmnic_16.1,ge=vmnic1 would be requesting two virtual switches to be created, one called 10ge with vmnic_16.0 and vmnic_16.1 bonded, and another simply connected to vmnic1.  Use of this allows abstracting guests from network differences amongst hypervisors',
         }
 },
 websrv => { 
