@@ -1,5 +1,6 @@
 <?php
-require_once "lib/security.php";
+if(!isset($TOPDIR)) { $TOPDIR='/opt/xcat/ui';}
+require_once "$TOPDIR/lib/security.php";
 
 function displayHeader() {
 echo <<<EOS1
@@ -94,7 +95,10 @@ echo <<<EOS4
     <a href="provision.php">provision</a>
    </li>
    <li>
-    <a href="monitor.php">monitor</a>
+    <a href="monitor.php">syslog</a>
+   </li>
+   <li>
+    <a href="monitor/monlist.php">monitor</a>
    </li>
   </ul>
   <!-- <div id="cmdForm">
@@ -121,10 +125,12 @@ EOS5;
 }
 
 function displayFooter() {
-echo <<<EOS3
- <div id='bopper'>&nbsp;</div>
- <div id='footer'>xCAT Web v2.2.06242009</div>
-EOS3;
+echo "<div id='bopper'>&nbsp;</div>";
+//<div id='footer'>xCAT Web v2.2.06242009</div>
+# use system() to get the xCAT Web version;
+echo "<div id='footer'>";
+system("rpm -q xCAT-UI");
+echo "</div>";
 # comment out if statement to fix refresh but of logout.
 	if(!isAuthenticated()){
 		insertLogin();
@@ -492,7 +498,15 @@ echo <<<EOS
 <ul>
 	<li>Provision node</li>
 </ul>
-<h1><a href='#' onclick='loadMainPage("monitor.php")'>Monitor</a></h1>
+<h1><a href='#' onclick='loadMainPage("monitor.php")'>Syslog</a></h1>
+<ul>
+    <li>Show syslog Entries</li>
+</ul>
+<h1><a href='#' onclick='loadMainPage("monitor/monlist.php")'>Monitor</a></h1>
+<ul>
+    <li>Monitoring Events/Performances by Monitoring Plugins, such as RMC...</li>
+    <li>This is still <b>UNDER DEVELOPMENT</b>.</li>
+</ul>
 </div>
 EOS;
 }
