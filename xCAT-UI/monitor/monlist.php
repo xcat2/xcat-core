@@ -19,7 +19,7 @@ if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
          list($name, $stat) = preg_split("/\s+/", $data);
          echo <<<TAB1
             <tr>
-                <td><input type='checkbox' /><a href="monitor/plugin_desc.php?name=$name">$name</a></td>
+                <td><input type='checkbox' /><a href='#' onClick='loadMainPage("monitor/plugin_desc.php?name=$name")'>$name</a></td>
                 <td>$stat</td>
                 <td></td>
             </tr>
