@@ -53,9 +53,7 @@ use IO::Socket;
 use IO::Handle;
 use IO::Select;
 use XML::Simple;
-if ($^O =~ /^linux/i) {
-	$XML::Simple::PREFERRED_PARSER='XML::Parser';
-}
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::Table;
 use xCAT::ExtTab;
 use Data::Dumper;
