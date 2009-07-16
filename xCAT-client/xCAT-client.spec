@@ -22,6 +22,8 @@ Provides: xCAT-client = %{version}
 # fping is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
 Requires: nmap
+%else
+Requires: expat 
 %endif
 
 %description
