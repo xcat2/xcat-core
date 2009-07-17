@@ -329,7 +329,7 @@ sub process_request {
     my $hyptab = xCAT::Table->new('hypervisor',create=>0);
     if ($hyptab) {
         my @hyps = keys %hyphash;
-        $tablecfg{hypervisor} = $hyptab->getNodesAttribs(\@hyps,['mgr','netmap']);
+        $tablecfg{hypervisor} = $hyptab->getNodesAttribs(\@hyps,['mgr','netmap','defaultnet']);
     }
 
 	#my $children = 0;
@@ -1418,6 +1418,32 @@ sub validate_datacenter_prereqs {
 
 
 
+sub  get_default_switch_for_hypervisor {
+    #This will make sure the default, implicit switch is in order in accordance
+#with the configuration.  If nothing specified, it just spits out vSwitch0
+#if something specified, make sure it exists
+#if it doesn't exist, and the syntax explains how to build it, build it
+#return undef if something is specified, doesn't exist, and lacks instruction
+    my $hyp = shift;
+    my $defswitch = 'vSwitch0';
+    my $switchmembers;
+    if ($tablecfg{hypervisor}->{$hyp}->[0]->{defaultnet}) {
+        $defswitch = $tablecfg{hypervisor}->{$hyp}->[0]->{defaultnet};
+        ($defswitch,$switchmembers) = split /=/,$defswitch,2;
+        my $vswitch;
+        my $hostview = $hyphash{$hyp}->{hostview};
+        foreach $vswitch (@{$hostview->config->network->vswitch}) {
+            if ($vswitch->name eq $defswitch) {
+                return $defswitch;
+            }
+        }
+        #If still here, means we need to build the switch
+        unless ($switchmembers) { return undef; } #No hope, no idea how to make it
+        return create_vswitch($hyp,$defswitch,split(/&/,$switchmembers));
+    } else {
+        return 'vSwitch0';
+    }
+}
 sub get_switchname_for_portdesc {
 #Thisk function will examine all current switches to find or create a switch to match the described requirement
     my $hyp = shift;
@@ -1535,16 +1561,19 @@ sub validate_network_prereqs {
     foreach $node (@$nodes) {
         my @networks = split /,/,$tablecfg{vm}->{$node}->[0]->{nics};
         foreach (@networks) {
-            my $switchname = 'vSwitch0'; 
+            my $switchname = get_default_switch_for_hypervisor($hyp); 
             my $tabval=$_;
-            s/=.*//; #TODO specify nic model with <blahe>=model
-            if (/:/) {
+            my $pgname;
+            s/=.*//; #TODO specify nic model with <blah>=model
+            if (/:/) { #The config specifies a particular path in some way
                 s/(.*)://;
                 $switchname = get_switchname_for_portdesc($hyp,$1);
+                $pgname=$switchname."-".$_;
+            } else { #Use the default vswitch per table config to connect this through, use the same name we did before to maintain compatibility
+                $pgname=$_;
             }
             my $netname = $_;
             my $netsys;
-            my $pgname=$switchname."-".$netname;
             $hyphash{$hyp}->{pgnames}->{$tabval}=$pgname;
             my $policy = HostNetworkPolicy->new();
             unless ($hyphash{$hyp}->{nets}->{$pgname}) {

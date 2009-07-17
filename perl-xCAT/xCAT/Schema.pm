@@ -60,13 +60,14 @@ vm => {
     }
 },
 hypervisor => {
-        cols => [qw(node mgr netmap comments disable)],
+        cols => [qw(node mgr netmap defaultnet comments disable)],
         keys => [qw(node)],
         table_desc => 'Hypervisor parameters',
         descriptions => {
             'node' => 'The node or static group name',
             mgr => 'The virtualization specific manager of this hypervisor when applicable',
             'netmap' => 'Optional mapping of useful names to relevant physical ports.  For example, 10ge=vmnic_16.0&vmnic_16.1,ge=vmnic1 would be requesting two virtual switches to be created, one called 10ge with vmnic_16.0 and vmnic_16.1 bonded, and another simply connected to vmnic1.  Use of this allows abstracting guests from network differences amongst hypervisors',
+            'defaultnet' => 'Optionally specify a default network entity for guests to join to if they do not specify.'
         }
 },
 websrv => { 
