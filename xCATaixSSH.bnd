@@ -5,3 +5,7 @@ I:openssh.base
 I:openssh.license
 I:openssh.man.en_US
 I:openssh.msg.en_US
+
+# RPMs
+R:popt-1.7-2.aix5.1.ppc.rpm
+R:rsync-2.6.2-1.aix5.1.ppc.rpm
