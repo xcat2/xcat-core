@@ -821,7 +821,7 @@ if ((!-r "/etc/xcat/site.sqlite") || $::FORCE)
     }
     if ($::osname eq 'AIX')
     {
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=useSSHonAIX site.value=no;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=useSSHonAIX site.value=yes;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=consoleondemand site.value=yes;";
     }
