@@ -1,0 +1,77 @@
+#!/usr/bin/perl
+## snmp for monsetting to remove blade settings from blade when trap is recieved
+## example: 
+## 1.  user removes a blade from the chassis
+## 2.  snmp trap setup to point here
+## 3.  this script removes the blade configuration from xCAT
+## 4.  so if blade is placed in new slot or back in then xCAT goes 
+##     through rediscover process again.
+
+use strict;
+use Socket; # for name resolution
+my $ip='';
+my $mm='';
+my $slot='';
+my $log = "/var/log/xcatsnmp";
+open(FILE,">>$log") or die "Can't open log!!!";
+
+my $date = `date`;
+chomp($date);
+print FILE "====================  $date  ============================\n";
+sub rmblade {
+	my $blade = shift;
+	my $hex = ip2hex($blade);
+	print FILE "Running: nodech $blade chain.currstate='' chain.currchain=''\n";
+	`nodech $blade chain.currstate='' chain.currchain=''`; 
+	print FILE "Running: chtab -d node=$blade mac\n";
+	`chtab -d node=$blade mac`;
+	print FILE "Running: makedhcp -d $blade\n";
+	`makedhcp -d $blade`;
+	print FILE "Running: rm /tftpboot/pxelinux.cfg/$blade\n";
+	`rm  /tftpboot/pxelinux.cfg/$blade`;
+	print FILE "Running: rm /tftpboot/pxelinux.cfg/$hex\n";
+}
+
+sub ip2hex {
+	my $node = shift;
+	my $ip = '';
+	my @quad;
+	my $hex = '';
+	my $node = $ARGV[0];
+	my $packed_ip = gethostbyname($node);
+	if(defined $packed_ip){
+		$ip = inet_ntoa($packed_ip);	
+print FILE "IP that was removed is $ip\n";
+		@quad = split('\.', $ip);
+		$hex = sprintf("%02X%02X%02X%02X", @quad);
+	}
+	return $hex;
+}
+foreach (<>){
+	if(/ip=UDP/){
+		$ip = $_;
+		chomp($ip);
+		$ip =~ s/ip=UDP: \[(.*)\]:.*/$1/g;
+		$mm = gethostbyaddr(inet_aton($ip), AF_INET);
+	}elsif(/spTrapSourceId=/){
+		$slot = $_;
+		chomp($slot);
+		$slot =~ s/.*Blade_(\d\d)".*/$1/g;
+		$slot = $slot * 1; # to get rid of the leading 0's.
+	}
+}
+print "ip: $ip\n";
+print "host: $mm\n";
+print "slot: $slot\n";
+# we now have slot and amm.  Need to now get which blade this is:
+my $node = `nodels compute mp.id==$slot mp.mpa==$mm`;
+chomp($node);
+print "node: $node\n";
+if($node ne ''){
+	system("logger -t xcat 'removing $node configuration from xCAT'");
+	print FILE "removing $node configuration from xCAT\n";
+	&rmblade($node);
+}else{
+	system("logger -t xcat 'a blade was removed from $mm:$slot but could not be identified'");
+	print FILE "A blade was removed from $mm:$slot but could not be identified\n";
+}
