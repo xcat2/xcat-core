@@ -485,7 +485,9 @@ echo <<<EOS
 	<li>Run Command on All Nodes</li>
 </ul>
 <h1><a href='#' onclick='loadMainPage("config.php")'>Configure</a></h1>
-Edit xCAT Tables
+<ul>
+    <li>Edit xCAT Tables</li>
+</ul>
 EOS;
 #	echo "<ul>";
 #	$tables = getTabNames();
