@@ -1117,7 +1117,7 @@ sub mknewvm {
         my $disksize=shift;
         my $hyp=shift;
 #TODO: above
-        my $cfg = build_cfgspec($node,$hyphash{$hyp}->{datastoremap},$hyphash{$hyp}->{nets},$disksize);
+        my $cfg = build_cfgspec($node,$hyphash{$hyp}->{datastoremap},$hyphash{$hyp}->{nets},$disksize,$hyp);
         my $task = $hyphash{$hyp}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$hyphash{$hyp}->{pool});
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&mkvm_callback;
@@ -1181,6 +1181,7 @@ sub build_cfgspec {
     my $dses = shift; #map to match vm table to datastore names
     my $netmap = shift;
     my $disksize = shift;
+    my $hyp = shift;
     my $memory;
     my $ncpus;
     unless ($memory = getUnits($tablecfg{vm}->{$node}->[0]->{memory},"M",1048576)) {
@@ -1192,7 +1193,7 @@ sub build_cfgspec {
     my @devices;
     $currkey=0;
     push @devices,create_storage_devs($node,$dses,$disksize);
-    push @devices,create_nic_devs($node,$netmap);
+    push @devices,create_nic_devs($node,$netmap,$hyp);
     #my $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{storage}; #TODO: need a new cfglocation field in case of stateless guest?
     #$cfgdatastore =~ s/,.*$//;
     #$cfgdatastore =~ s/\/$//;
@@ -1217,6 +1218,7 @@ sub build_cfgspec {
 sub create_nic_devs {
     my $node = shift;
     my $netmap = shift;
+    my $hyp = shift;
     my @networks = split /,/,$tablecfg{vm}->{$node}->[0]->{nics};
     my @devs;
     my $idx = 0;
@@ -1227,12 +1229,14 @@ sub create_nic_devs {
                             startConnected => 1
                             );
     foreach (@networks) {
+        my $pgname = $hyphash{$hyp}->{pgnames}->{$_};
         s/.*://;
         s/=.*//;
         my $netname = $_;
+        print Dumper($netmap);
         my $backing = VirtualEthernetCardNetworkBackingInfo->new(
-            network => $netmap->{$netname},
-            deviceName=>$netname,
+            network => $netmap->{$pgname},
+            deviceName=>$pgname,
         );
         my $newcard=VirtualE1000->new(
             key=>0,#3, #$currkey++,
@@ -1494,7 +1498,7 @@ sub create_vswitch {
         );
     my $vswspec = HostVirtualSwitchSpec->new(
         bridge=>$vswitch,
-        mtu=>9000,
+        mtu=>1500,
         numPorts=>64
     );
     my $hostview = $hyphash{$hyp}->{hostview};
@@ -1503,6 +1507,7 @@ sub create_vswitch {
         vswitchName=>$description,
         spec=>$vswspec
     );
+    return $description;
 }
 
 sub validate_network_prereqs {
@@ -1530,16 +1535,19 @@ sub validate_network_prereqs {
     foreach $node (@$nodes) {
         my @networks = split /,/,$tablecfg{vm}->{$node}->[0]->{nics};
         foreach (@networks) {
-            my $switchname = 'vSwitch0'; #TODO: more than just vSwitch0
+            my $switchname = 'vSwitch0'; 
+            my $tabval=$_;
             s/=.*//; #TODO specify nic model with <blahe>=model
             if (/:/) {
-                s/(.*)://; #TODO: support specifiying physical ports with :
+                s/(.*)://;
                 $switchname = get_switchname_for_portdesc($hyp,$1);
             }
             my $netname = $_;
             my $netsys;
+            my $pgname=$switchname."-".$netname;
+            $hyphash{$hyp}->{pgnames}->{$tabval}=$pgname;
             my $policy = HostNetworkPolicy->new();
-            unless ($hyphash{$hyp}->{nets}->{$netname}) {
+            unless ($hyphash{$hyp}->{nets}->{$pgname}) {
                 my $vlanid;
                 if ($netname =~ /trunk/) {
                     $vlanid=4095;
@@ -1549,7 +1557,7 @@ sub validate_network_prereqs {
                     $vlanid = 0;
                 }
                 my $hostgroupdef = HostPortGroupSpec->new(
-                    name =>$netname,
+                    name =>$pgname,
                     vlanId=>$vlanid,
                     policy=>$policy,
                     vswitchName=>$switchname
@@ -1580,7 +1588,7 @@ sub validate_datastore_prereqs {
     my $hypconn = $hyphash{$hyp}->{conn};
     my $hostview = $hyphash{$hyp}->{hostview};
     unless ($hostview) {
-        hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hypconn); #,properties=>['config','configManager']);
+        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hypconn); #,properties=>['config','configManager']);
         $hostview = $hyphash{$hyp}->{hostview};
     }
     my $node;
