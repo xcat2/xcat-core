@@ -144,10 +144,10 @@ sub expandatom {
 
 	if ($atom =~ m/\+/) {  # process the + operator
 		$atom =~ m/^(.*)([0-9]+)([^0-9\+]*)\+([0-9]+)/;
-		my $pref=$1;
-		my $startnum=$2;
+                my ($front, $increment) = split(/\+/, $atom, 2);
+                my ($pref, $startnum, $dom) = $front =~ /^(.*?)(\d+)(\..+)?$/;
 		my $suf=$3;
-		my $end=$4+$startnum;
+		my $end=$startnum+$increment;
         my $endnum = sprintf("%d",$end);
         if (length ($startnum) > length ($endnum)) {
           $endnum = sprintf("%0".length($startnum)."d",$end);
