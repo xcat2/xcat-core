@@ -10,7 +10,7 @@ I<getmacs [-v| --version]>
 
 I<getmacs noderange> [-F filter]
 
-I<getmacs [-V| --verbose] noderange> [-f][-d][-D [-S server] [-G gateway] [-C client]]
+I<getmacs [-V| --verbose] noderange> [-f][-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]
 
 
 =head1 DESCRIPTION
@@ -21,11 +21,13 @@ If no ping test performed,  getmacs writes the first adapter MAC to the xCAT dat
 
 =head1 OPTIONS
 
+B<--arp>          Read MAC address with ARP protocal.
+
 B<-C>          Specify the IP address of the partition for ping test. The default is to read from xCAT database if no -C specified. 
 
 B<-d>          Display MAC only. The default is to write the first valid adapter MAC to the xCAT database.
 
-B<-D>          Perform ping test.
+B<-D>          Perform ping test.  Please be notified that in this way, the lpars will be reset.
 
 B<-f>          Force immediate shutdown of the partition.
 
@@ -68,8 +70,20 @@ hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
 ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsuccessful physical
 
 
+2. To retrieve the MAC address with ARP protocal:
 
-2. To retrieve the MAC address for the HMC-managed partition lpar4 and display the result only, enter:
+I<getmacs lpar4 --arp>
+
+Output is similar to:
+
+lpar4:
+
+#IP           MAC_Address
+
+192.168.0.10  00145eb55788
+
+
+3. To retrieve the MAC address for the HMC-managed partition lpar4 and display the result only, enter:
 
 I<getmacs lpar4 -d>
 
@@ -85,7 +99,7 @@ ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsu
 
 
 
-3. To retrieve the MAC address for the HMC-managed partition lpar4 with filter Type=hea,VSwitch=ETHERNET0.
+4. To retrieve the MAC address for the HMC-managed partition lpar4 with filter Type=hea,VSwitch=ETHERNET0.
 
 I<getmacs lpar4 -F Type=hea,VSwitch=ETHERNET0>
 
@@ -99,7 +113,7 @@ hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
 
 
 
-4. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result only, enter:
+5. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result only, enter:
 
 I<getmacs lpar4 -d -D -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234>
 
