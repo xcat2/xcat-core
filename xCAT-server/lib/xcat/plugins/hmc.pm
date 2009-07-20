@@ -24,7 +24,7 @@ sub handled_commands {
       rflash    => 'nodehm:mgt',
       mkconn    => 'nodehm:mgt',
       rmconn    => 'nodehm:mgt',
-      chconn    => 'nodehm:mgt'
+      lsconn    => 'nodehm:mgt'
   };
 }
 

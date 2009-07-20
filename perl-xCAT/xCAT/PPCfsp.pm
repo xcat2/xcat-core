@@ -1735,6 +1735,17 @@ sub set_netcfg
     }
 
     return ( [RC_ERROR,"Cannot find interface $inc_name"]) if ( ! exists ($$interfaces{ $real_inc_name}));
+    my $inc_type;
+    my @set_entries = ();
+    if ( $inc_ip eq '0.0.0.0')
+    {
+        $inc_type = 'Dynamic';
+        push @set_entries, 'IP type to dynamic.';
+    }
+    else
+    {
+        $inc_type = 'Static';
+    }
 
 #not work on AIX
 #    $interfaces->{ $real_inc_name}->{'selected'}->check();
@@ -1742,39 +1753,48 @@ sub set_netcfg
     $interfaces->{ $real_inc_name}->{'selected'}->value(@tmp_options[1] );
     if ( $interfaces->{ $real_inc_name}->{'type'})
     {
-        @tmp_options =  $interfaces->{ $real_inc_name}->{'type'}->possible_values();
-        $interfaces->{ $real_inc_name}->{'type'}->value(@tmp_options[0]);
+        my @type_options = @{$interfaces->{ $real_inc_name}->{'type'}->{'menu'}};
+        for my $typeopt ( @type_options)
+        {
+            if ( $typeopt->{'name'} eq $inc_type)
+            {
+                $interfaces->{ $real_inc_name}->{'type'}->value($typeopt->{'value'});
+                last;
+            }
+        }
 #not work on AIX
 #        $interfaces->{ $real_inc_name}->{'type'}->value('Static');
     }
     else
     {
-        return ( [RC_ERROR,"Cannot set this interface to static type"]);
+        return ( [RC_ERROR,"Cannot change interface type"]);
     }
-    my @set_entries = ();
-    if ( $inc_ip )
+    if ( $inc_type eq 'Static')
     {
-        return ( [RC_ERROR,"Cannot set IP address to $inc_ip"]) if (! $interfaces->{ $real_inc_name}->{'ip'});
-        $interfaces->{ $real_inc_name}->{'ip'}->value( $inc_ip);
-        push @set_entries, 'IP address';
-    }
-    if ( $inc_host)
-    {
-        return ( [RC_ERROR,"Cannot set hostname to $inc_host"]) if (! $interfaces->{ $real_inc_name}->{'hostname'});
-        $interfaces->{ $real_inc_name}->{'hostname'}->value( $inc_host);
-        push @set_entries, 'hostname';
-    }
-    if ( $inc_gateway)
-    {
-        return ( [RC_ERROR,"Cannot set gateway to $inc_gateway"]) if (! $interfaces->{ $real_inc_name}->{'gateway'});
-        $interfaces->{ $real_inc_name}->{'gateway'}->value( $inc_gateway);
-        push @set_entries, 'gateway';
-    }
-    if ( $inc_netmask)
-    {
-        return ( [RC_ERROR,"Cannot set netmask to $inc_netmask"]) if (! $interfaces->{ $real_inc_name}->{'netmask'});
-        $interfaces->{ $real_inc_name}->{'netmask'}->value( $inc_netmask);
-        push @set_entries, 'netmask';
+        if ( $inc_ip)
+        {
+            return ( [RC_ERROR,"Cannot set IP address to $inc_ip"]) if (! $interfaces->{ $real_inc_name}->{'ip'});
+            $interfaces->{ $real_inc_name}->{'ip'}->value( $inc_ip);
+            push @set_entries, 'IP address';
+        }
+        if ( $inc_host)
+        {
+            return ( [RC_ERROR,"Cannot set hostname to $inc_host"]) if (! $interfaces->{ $real_inc_name}->{'hostname'});
+            $interfaces->{ $real_inc_name}->{'hostname'}->value( $inc_host);
+            push @set_entries, 'hostname';
+        }
+        if ( $inc_gateway)
+        {
+            return ( [RC_ERROR,"Cannot set gateway to $inc_gateway"]) if (! $interfaces->{ $real_inc_name}->{'gateway'});
+            $interfaces->{ $real_inc_name}->{'gateway'}->value( $inc_gateway);
+            push @set_entries, 'gateway';
+        }
+        if ( $inc_netmask)
+        {
+            return ( [RC_ERROR,"Cannot set netmask to $inc_netmask"]) if (! $interfaces->{ $real_inc_name}->{'netmask'});
+            $interfaces->{ $real_inc_name}->{'netmask'}->value( $inc_netmask);
+            push @set_entries, 'netmask';
+        }
     }
 
     #Click "Continue" button
@@ -1788,15 +1808,22 @@ sub set_netcfg
     #Go to the confirm page
     $form = HTML::Form->parse( $res->content, $res->base );
     $data = $form->click('submit');
+    #xCAT::MsgUtils->message("I", "Updating network configuration for node " . $exp->[1] . "...");
+    $ua->timeout( 10);
     $res = $ua->request( $data);
-    if ($res->is_success())
-    {
-        return ( [SUCCESS, "Success to set " . join ',', @set_entries]);
-    }
-    else
-    {
-        return ( [RC_ERROR, "Failed to set " . join ',', @set_entries]);
-    }
+    ##############################################################
+    # We cannot get the result of this update, since the network
+    # is updated, the old URI is invalid anymore
+    # Return success directory
+    ##############################################################
+    #if ($res->is_success())
+    #{
+    return ( [SUCCESS, "Success to set " . join ',', @set_entries]);
+    #}
+    #else
+    #{
+    #    return ( [RC_ERROR, "Failed to set " . join ',', @set_entries]);
+    #}
 }
 
 ##########################################################################

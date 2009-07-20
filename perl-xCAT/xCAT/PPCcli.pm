@@ -80,7 +80,7 @@ my %mksysconn = (
 ##############################################
 my %rmsysconn = (
     fsp => "rmsysconn -o remove -m %s",
-    bpa => "mksysconn -o remove -e %s"
+    bpa => "rmsysconn -o remove -e %s"
 );
 
 ##############################################

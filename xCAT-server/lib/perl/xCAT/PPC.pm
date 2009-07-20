@@ -581,7 +581,8 @@ sub preprocess_nodes {
     #   Direct-attached FSP 
     ########################################
     if (( $request->{command} =~ /^(rscan|rspconfig)$/ ) or
-            ( $request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa")) {
+            ( $request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa") or
+        ($request->{command} eq 'lsconn' and $request->{nodetype} eq 'hmc')) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
     }

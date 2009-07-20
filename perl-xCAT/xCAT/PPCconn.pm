@@ -144,6 +144,41 @@ sub lsconn_parse_args
     if ( scalar @$args) {
         return(usage( "No additional flag is support by this command" ));
     }
+    my $notypetab = xCAT::Table->new('nodetype');
+    if (! $notypetab)
+    {
+        return( "Failed to open nodetype table.\n");
+    }
+
+    my $nodetype;
+    for my $node ( @{$request->{node}})
+    {
+        my $ent = $notypetab->getNodeAttribs( $node, [qw(nodetype)]);
+        if ( ! $ent) 
+        {
+            return( ["Failed to get node type for node $node.\n"]);
+        }
+        if ( $ent->{nodetype} ne 'hmc' 
+            and $ent->{nodetype} ne 'fsp' 
+            and $ent->{nodetype} ne 'bpa')
+        {
+            return( ["Node type $ent->{nodetype} is not supported for this command.\n"]);
+        }
+        if ( ! $nodetype)
+        {
+            $nodetype = $ent->{nodetype};
+        }
+        else
+        {
+            if ( $nodetype ne $ent->{nodetype})
+            {
+                return( ["Cannot support multiple node types in this command line.\n"]);
+            }
+        }
+    }
+    
+    $request->{nodetype} = $nodetype;
+
     $request->{method} = 'lsconn';
     return( \%opt);
 }
@@ -246,52 +281,91 @@ sub lsconn
 
     my $res = xCAT::PPCcli::lssysconn( $exp);
     $Rc = shift @$res;
-    for my $cec_bpa ( keys %$hash)
+    if ( $request->{nodetype} eq 'hmc')
     {
-        my $node_hash = $hash->{$cec_bpa};
-        my ($node_name) = keys %$node_hash;
-        ############################################
-        # If lssysconn failed, put error into all
-        # nodes' return values
-        ############################################
-        if ( $Rc ) 
+        if ( $Rc)
         {
-            push @value, [$node_name, @$res[0], $Rc];
-            next;
+            push @value, [$exp->[3], $res->[0], $Rc];
+            return \@value;
         }
-        ############################
-        # Search node in result
-        ############################
-        my $d = $node_hash->{$node_name};
-        my ( undef,undef,undef,undef,$type) = @$d;
-        if ( $type eq 'bpa')
+        my $vpdtab = xCAT::Table->new('vpd');
+        my @vpdentries = $vpdtab->getAllAttribs(qw(node serial mtm));
+        my %node_vpd_hash;
+        for my $vpdent ( @vpdentries)
         {
-            $type='frame';
-        }
-        elsif ( $type eq 'fsp')
-        {
-            $type='sys';
-        }
-        else
-        {
-            push @value, [$node_name, 'Unsupported node type', 1];
-            next;
-        }
-        
-        if ( my @res_matched = grep /\Qtype_model_serial_num=$cec_bpa,\E/, @$res)
-        {
-            for my $r ( @res_matched)
+            if ( $vpdent->{node} and $vpdent->{serial} and $vpdent->{mtm})
             {
-                $r =~ s/\Qtype_model_serial_num=$cec_bpa,\E//;
-                $r =~ s/\Qresource_type=$type,\E//;
-                $r =~ s/sp=.*?,//;
-                $r =~ s/sp_phys_loc=.*?,//;
-                push @value, [$node_name, $r, $Rc];
+                $node_vpd_hash{"$vpdent->{mtm}*$vpdent->{serial}"} = $vpdent->{node};
             }
         }
-        else
+        for my $r ( @$res)
         {
-            push @value, [$node_name, 'Connection not found', 1];
+            $r =~ s/type_model_serial_num=([^,]*),//;
+            my $mtms = $1;
+            $r =~ s/resource_type=([^,]*),//;
+            $r =~ s/sp=.*?,//;
+            $r =~ s/sp_phys_loc=.*?,//;
+            my $node_name;
+            if ( exists $node_vpd_hash{$mtms})
+            {
+                $node_name = $node_vpd_hash{$mtms};
+            }
+            else
+            {
+                $node_name = $mtms;
+            }
+            push @value, [ $node_name, $r, $Rc];
+        }
+    }
+    else
+    {
+        for my $cec_bpa ( keys %$hash)
+        {
+            my $node_hash = $hash->{$cec_bpa};
+            my ($node_name) = keys %$node_hash;
+            ############################################
+            # If lssysconn failed, put error into all
+            # nodes' return values
+            ############################################
+            if ( $Rc ) 
+            {
+                push @value, [$node_name, @$res[0], $Rc];
+                next;
+            }
+            ############################
+            # Search node in result
+            ############################
+            my $d = $node_hash->{$node_name};
+            my ( undef,undef,undef,undef,$type) = @$d;
+            if ( $type eq 'bpa')
+            {
+                $type='frame';
+            }
+            elsif ( $type eq 'fsp')
+            {
+                $type='sys';
+            }
+            else
+            {
+                push @value, [$node_name, 'Unsupported node type', 1];
+                next;
+            }
+
+            if ( my @res_matched = grep /\Qtype_model_serial_num=$cec_bpa,\E/, @$res)
+            {
+                for my $r ( @res_matched)
+                {
+                    $r =~ s/\Qtype_model_serial_num=$cec_bpa,\E//;
+                    $r =~ s/\Qresource_type=$type,\E//;
+                    $r =~ s/sp=.*?,//;
+                        $r =~ s/sp_phys_loc=.*?,//;
+                        push @value, [$node_name, $r, $Rc];
+                }
+            }
+            else
+            {
+                push @value, [$node_name, 'Connection not found', 1];
+            }
         }
     }
     return \@value;
@@ -318,7 +392,7 @@ sub rmconn
 
         my ( undef,undef,undef,undef,$type) = @$d;
 
-        my $res = xCAT::PPCcli::mksysconn( $exp, $type, $cec_bpa);
+        my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $cec_bpa);
         $Rc = shift @$res;
         push @value, [$node_name, @$res[0], $Rc];
     }

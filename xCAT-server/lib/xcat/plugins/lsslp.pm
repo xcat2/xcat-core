@@ -194,7 +194,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c u))) {
+            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c u H))) {
         return( usage() );
     }
     #############################################
@@ -247,14 +247,17 @@ sub parse_args {
     if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z})) > 1 ) {
         return( usage() );
     }
+    if ( (exists($opt{u}) + exists($opt{H})) > 1 ) {
+        return( usage("Cannot use flags -u and -H together"));
+    }
     #############################################
     # Command tries
     #############################################
     if ( exists( $opt{t} )) {
        $maxtries = $opt{t};
 
-       if ( $maxtries !~ /^0?[1-5]$/ ) {
-           return( usage( "Invalid command tries (1-5)" ));
+       if ( $maxtries !~ /^0?[1-9]$/ ) {
+           return( usage( "Invalid command tries (1-9)" ));
        }
     }
     #############################################
@@ -856,6 +859,13 @@ sub runslp {
                         my $url  = $data[$i++];
                         my $attr = $data[$i];
 
+                        #Give some intermediate output
+                        my ($url_ip) = $url =~ /:\/\/(\d+\.\d+\.\d+\.\d+)/;
+                        if ( ! $::DISCOVERED_HOST{$url_ip})
+                        {
+                            send_msg( $request, 0, "Received SLP response from $url_ip."); 
+                            $::DISCOVERED_HOST{$url_ip} = 1;
+                        }
                         if ( $verbose ) {
                             trace( $request, ">>>> SrvRqst Response" );
                             trace( $request, "URL: $url" );
@@ -966,7 +976,7 @@ sub format_output {
     # Query switch ports
     ###########################################
     my $rsp_targets = undef;
-    if ( $opt{u})
+    if ( $opt{u} or $opt{H})
     {
         $rsp_targets = switch_cmd( $request, $values );
     }
@@ -1093,10 +1103,33 @@ sub gethost_from_url {
         return undef;
     }
     #######################################
-    # Convert IP to hostname
+    # Read host from hosts table
     #######################################
+    if ( ! %::HOST_TAB_CATCH)
+    {
+        my $hosttab  = xCAT::Table->new( 'hosts' );
+        my @entries = $hosttab->getAllNodeAttribs(['node','ip']);
+        #Assuming IP is unique in hosts table
+        for my $entry ( @entries)
+        {
+            if ( defined $entry->{ 'ip'})
+            {
+                $::HOST_TAB_CATCH{$entry->{ 'ip'}} = $entry->{ 'node'};
+            }
+        }
+    }
+    if ( exists $::HOST_TAB_CATCH{ $ip})
+    {
+        return $::HOST_TAB_CATCH{ $ip};
+    }
+
+    ###############################################################
+    # Convert IP to hostname (Accoording to  DNS or /etc/hosts
+    ###############################################################
     my $host = gethostbyaddr( $packed, AF_INET );
     if ( !$host or $! ) {
+#Tentative solution
+return undef if ($opt{H});
         return( $ip );
     }
     #######################################
@@ -1360,6 +1393,23 @@ sub xCATdB {
     my $outhash = shift;
     my %keyhash = ();
     my %updates = ();
+    my %sn_node = ();
+    ############################
+    # Cache vpd table
+    ############################
+    my $vpdtab  = undef;
+    $vpdtab = xCAT::Table->new('vpd');
+    if ($vpdtab)
+    {
+        my @ents=$vpdtab->getAllNodeAttribs(['serial','mtm']);
+        for my $ent ( @ents)
+        {
+            if ( $ent->{mtm} and $ent->{serial})
+            {
+                $sn_node{"$ent->{mtm}*$ent->{serial}"} = $ent->{node};
+            }
+        }
+    }
 
     foreach ( keys %$outhash ) {
         my $data = $outhash->{$_};
@@ -1402,7 +1452,14 @@ sub xCATdB {
             # May be no Frame with this FSP
             ########################################
             if (( $bpc_model ne "0" ) and ( $bpc_serial ne "0" )) {
-                $frame = "$bpc_model*$bpc_serial";
+                if ( exists $sn_node{"$bpc_model*$bpc_serial"})
+                {
+                    $frame = $sn_node{"$bpc_model*$bpc_serial"};
+                }
+                else
+                {
+                    $frame = "$bpc_model*$bpc_serial";
+                }
             }
             ########################################
             # "Factory-default" FSP name format:
@@ -1786,7 +1843,11 @@ sub runcmd {
     # Fork one process per adapter
     ###########################################
     my $children = 0;
-    $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
+    $SIG{CHLD} = sub { 
+       my $rc_bak = $?; 
+       while (waitpid(-1, WNOHANG) > 0) { $children--; } 
+       $? = $rc_bak;
+    };
     my $fds = new IO::Select;
 
     foreach ( keys %ip_addr ) {
@@ -1975,47 +2036,68 @@ sub switch_cmd {
     if ( $verbose ) {
         trace( $req, "SWITCH/HOSTS TABLE:" );
     }
-    foreach my $nodename ( @entries ) {
-        my $ent = undef;
-        if ( $hosttab)
-        {
-            my $enthash = $hosttab->getNodeAttribs( $nodename,[qw(ip)]);
-            $ent = $enthash->{ip};
-        }
-        if (!$ent)
-        {
-            my $net_bin = inet_aton($nodename);
-            $ent = inet_ntoa($net_bin) if ($net_bin);
-        }
+    if ( $opt{u})
+    {
+        foreach my $nodename ( @entries ) {
+            my $ent = undef;
+            if ( $hosttab)
+            {
+                my $enthash = $hosttab->getNodeAttribs( $nodename,[qw(ip)]);
+                $ent = $enthash->{ip};
+            }
+            if (!$ent)
+            {
+                my $net_bin = inet_aton($nodename);
+                $ent = inet_ntoa($net_bin) if ($net_bin);
+            }
 
-        if ( !$ent ) {
-            next;
-        }
+            if ( !$ent ) {
+                next;
+            }
 
-        $hosts{ $nodename} = $ent;
-        if ( $verbose ) {
-            trace( $req, "\t\t($nodename)->($ent)" );
+            $hosts{ $nodename} = $ent;
+            if ( $verbose ) {
+                trace( $req, "\t\t($nodename)->($ent)" );
+            }
         }
-    }
-    ###########################################
-    # No MMs/HMCs in hosts/switch table
-    ###########################################
-    if ( !%hosts ) {
-        return undef;
+        ###########################################
+        # No MMs/HMCs in hosts/switch table
+        ###########################################
+        if ( !%hosts ) {
+            return undef;
+        }
     }
     ###########################################
     # Ping each MM/HMCs to update arp table
     ###########################################
+    my %internal_ping_catch;
     foreach my $ips ( keys %$slp_all ) {
         my @all_ips = split /,/, $ips;
         my $rc = 0;
         for my $single_ip (@all_ips)
         {
-            #not sure why runcmd cannot handle the return code
-            #my $res = xCAT::Utils->runcmd ("ping -c 1 -w 1 $single_ip", -1);
-            trace ($req, "Trying ping $single_ip");
-            my $rc = system("ping -c 1 -w 1 $single_ip 2>/dev/null 1>/dev/null");
-            if ( !$::RUNCMD_RC )
+            my $rc;
+            if ( exists $internal_ping_catch{ $single_ip})
+            {
+                 $rc = $internal_ping_catch{ $single_ip};
+            }
+            else
+            {
+                trace ($req, "Trying ping $single_ip");
+                #$rc = system("ping -c 1 -w 1 $single_ip 2>/dev/null 1>/dev/null");
+                my $res = `LANG=C ping -c 1 -w 1 $single_ip 2>&1`;
+                if ( $res =~ /100% packet loss/g)
+                { 
+                    $rc = 1;
+                }
+                else
+                {
+                    $rc = 0;
+                }
+		#$rc = $?;
+                $internal_ping_catch{ $single_ip} = $rc;
+            }
+            if ( !$rc )
             {
                 $slp_all->{$single_ip} = $slp_all->{ $ips};
                 delete $slp_all->{ $ips};
@@ -2092,7 +2174,7 @@ sub switch_cmd {
     if ( $verbose ) {
         trace( $req, "getting switch information...." );
     }
-    foreach my $ip ( keys %$slp_all ) {
+    foreach my $ip ( sort keys %$slp_all ) {
         #######################################
         # Not in SLP response
         #######################################
@@ -2118,7 +2200,7 @@ sub switch_cmd {
             $name = disti_multi_node( $req, $names, $slp_all->{$ip});
             if ( ! $name)
             {
-                trace( $req, "Cannot identify node $ip.");
+                trace( $req, "\t\tCannot identify node $ip.");
                 next;
             }
             
@@ -2133,43 +2215,78 @@ sub switch_cmd {
         #######################################
         # In hosts table
         #######################################
-        if ( defined( $hosts{$name} )) {
-            if ( $ip eq $hosts{$name} ) {
-                if ( $verbose ) {
-                    trace( $req, "\t\t\t$slp_all->{$ip}->{'type'} already set '$ip' - skipping" );
+        if ( $opt{u})
+        {
+            if ( defined( $hosts{$name} )) {
+                if ( $ip eq $hosts{$name} ) {
+                    if ( $verbose ) {
+                        trace( $req, "\t\t\t$slp_all->{$ip}->{'type'} already set '$ip' - skipping" );
 
+                    }
                 }
-            }
-            else
-            {
-                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} = "$hosts{$name},$name";
-                if ( $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} ne 'MM')
+                else
                 {
-                    my %netinfo = xCAT::DBobjUtils->getNetwkInfo([$hosts{$name}]);
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} .= ",$netinfo{$hosts{$name}}{'gateway'},$netinfo{$hosts{$name}}{'mask'}";
+                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} = "$hosts{$name},$name";
+                    if ( $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} ne 'MM')
+                    {
+                        my %netinfo = xCAT::DBobjUtils->getNetwkInfo([$hosts{$name}]);
+                        $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} .= ",$netinfo{$hosts{$name}}{'gateway'},$netinfo{$hosts{$name}}{'mask'}";
+                    }
+                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'mac'}  = $slp_all->{$ip}->{'mac'};
+                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'name'} = $name;
+                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'ip'}   = $hosts{$name};
+                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} = $slp_all->{$ip}->{'type'};
                 }
-                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'mac'}  = $slp_all->{$ip}->{'mac'};
-                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'name'} = $name;
-                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'ip'}   = $hosts{$name};
-                $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} = $slp_all->{$ip}->{'type'};
             }
+        }
+        else 
+        {
+            #An tentative solution. The final solution should be
+            #if there is any conflicting, remove this entry
+            $hosts{$name} = $ip if ( ! $hosts{$name});
         }
     }
     ###########################################
     # No rspconfig target found
     ###########################################
-    if ( !%$targets) {
+    if (( $opt{u} and !%$targets) or ( $opt{H} and !%hosts)) {
         if ( $verbose ) {
             trace( $req, "No ARP-Switch-SLP matches found" );
         }
-        return;
+        return undef;
     }
     ###########################################
     # Update target hardware w/discovery info
     ###########################################
-    return rspconfig( $req, $targets );
+    return rspconfig( $req, $targets ) if ($opt{u});
+    ###########################################
+    # Update hosts table
+    ###########################################
+     send_msg( $req, 0, "Updating hosts table...");
+    return update_hosts( $req, \%hosts);
 }
 
+###########################################
+# Update hosts table
+###########################################
+sub update_hosts
+{
+    my $req = shift;
+    my $hosts = shift;
+    my $hoststab = xCAT::Table->new( 'hosts', -create=>1, -autocommit=>0 );
+    if ( !$hoststab)
+    {
+        send_msg( $req, 1,  "Cannot open hosts table");
+        return undef;
+    }
+    for my $node (keys %$hosts)
+    {
+        send_msg( $req, 0, "\t$node => $hosts->{$node}");
+        $hoststab->setNodeAttribs( $node, {ip=>$hosts->{$node}});
+    }
+    $hoststab->commit;
+    return SUCCESS;
+}
 ##########################################################################
 # Distinguish 
 ##########################################################################
@@ -2179,10 +2296,13 @@ sub disti_multi_node
     my $names = shift;
     my $slp = shift;
 
-    return undef if ( ! exists $slp->{'cage-number'});    
+    return undef if ( $slp->{'type'} eq 'FSP' and ! exists $slp->{'cage-number'});    
+    return undef if ( $slp->{'type'} eq 'BPA' and ! exists $slp->{'frame-number'});
 
     my $ppctab = xCAT::Table->new( 'ppc');
     return undef if ( ! $ppctab);
+    my $nodetypetab = xCAT::Table->new( 'nodetype');
+    return undef if ( ! $nodetypetab);
 
     my $vpdtab = xCAT::Table->new( 'vpd');
     my @nodes = split /,/, $names;
@@ -2191,7 +2311,12 @@ sub disti_multi_node
     {
         my $id_parent = $ppctab->getNodeAttribs( $node, ['id','parent']);
         next if (! defined $id_parent or ! exists $id_parent->{'id'});
-        if ( $id_parent->{'id'} eq $slp->{'cage-number'})
+        my $nodetype = $nodetypetab->getNodeAttribs($node, ['nodetype']);
+	next if (! defined $nodetype or ! exists $nodetype->{'nodetype'});
+        next if ( $nodetype->{'nodetype'} ne lc($slp->{type}));
+        if ( ($nodetype->{'nodetype'} eq 'fsp' and $id_parent->{'id'} eq $slp->{'cage-number'}) or
+             ($nodetype->{'nodetype'} eq 'bpa' and $id_parent->{'id'} eq $slp->{
+ 'frame-number'}))
         {
             my $vpdnode = undef;
             if ( defined $id_parent->{ 'parent'})#if no parent defined, take it as is.  
