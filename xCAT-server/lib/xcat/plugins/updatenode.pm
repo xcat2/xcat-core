@@ -136,12 +136,12 @@ sub preprocess_updatenode {
     my $cb=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  updatenode <noderange> [-F] [-S] [-P] [postscript,...]";
+    $rsp->{data}->[1]= "  updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] [-P|--scripts] [postscript,...]";
     $rsp->{data}->[2]= "  updatenode [-h|--help|-v|--version]";
     $rsp->{data}->[3]= "     <noderange> is a list of nodes or groups.";
-    $rsp->{data}->[4]= "     -F: Perform File Syncing.";
-    $rsp->{data}->[5]= "     -S: Perform Software Maintenance.";
-    $rsp->{data}->[6]= "     -p: Re-run Postscripts listed in postscript.";
+    $rsp->{data}->[4]= "     -F|--sync: Perform File Syncing.";
+    $rsp->{data}->[5]= "     -S|--sw: Perform Software Maintenance.";
+    $rsp->{data}->[6]= "     -P|--scripts: Re-run Postscripts listed in postscript.";
     $rsp->{data}->[7]= "     [postscript,...] is a comma separated list of postscript names.";
     $rsp->{data}->[8]= "         If omitted, all the postscripts defined for the nodes will be run.";
     $cb->($rsp);
@@ -159,9 +159,10 @@ sub preprocess_updatenode {
   if(!GetOptions(
       'h|help'      => \$::HELP,
       'v|version'  => \$::VERSION,
-      'F'              => \$::FILESYNC,
-      'S'              => \$::SWMAINTENANCE,
-      'P:s'           => \$::RERUNPS))
+      'V|verbose'   => \$::VERBOSE,
+      'F|sync'              => \$::FILESYNC,
+      'S|sw'              => \$::SWMAINTENANCE,
+      'P|scripts:s'           => \$::RERUNPS))
   {
     &updatenode_usage($callback);
     return  \@requests;;
@@ -181,7 +182,20 @@ sub preprocess_updatenode {
     $callback->($rsp);
     return  \@requests;
   }
-  
+ 
+  # the -P flag is omitted when only postscritps are specified, 
+  # so if there are parameters without any flags, it means
+  # to re-run the postscripts.
+  if (@ARGV) {
+    if ($#ARGV == 0 &&
+        !($::FILESYNC || $::SWMAINTENANCE || $::RERUNPS) ) {
+      $::RERUNPS = $ARGV[0];
+    } else {
+      &updatenode_usage($callback);
+      return  \@requests;
+    }
+  } 
+
   my $nodes = $request->{node};
   if (!$nodes) {
     &updatenode_usage($callback);
