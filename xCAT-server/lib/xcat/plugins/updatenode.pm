@@ -136,14 +136,15 @@ sub preprocess_updatenode {
     my $cb=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] [-P|--scripts] [postscript,...]";
-    $rsp->{data}->[2]= "  updatenode [-h|--help|-v|--version]";
-    $rsp->{data}->[3]= "     <noderange> is a list of nodes or groups.";
-    $rsp->{data}->[4]= "     -F|--sync: Perform File Syncing.";
-    $rsp->{data}->[5]= "     -S|--sw: Perform Software Maintenance.";
-    $rsp->{data}->[6]= "     -P|--scripts: Re-run Postscripts listed in postscript.";
-    $rsp->{data}->[7]= "     [postscript,...] is a comma separated list of postscript names.";
-    $rsp->{data}->[8]= "         If omitted, all the postscripts defined for the nodes will be run.";
+    $rsp->{data}->[1]= "  updatenode [-h|--help|-v|--version]";
+    $rsp->{data}->[2]= "  updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] [-P|--scripts [script1,script2,...]]";
+    $rsp->{data}->[3]= "  updatenode <noderange> [-V|--verbose] [script1,script2,...]";
+    $rsp->{data}->[4]= "     <noderange> is a list of nodes or groups.";
+    $rsp->{data}->[5]= "     -F|--sync: Perform File Syncing.";
+    $rsp->{data}->[6]= "     -S|--sw: Perform Software Maintenance.";
+    $rsp->{data}->[7]= "     -P|--scripts: Re-run Postscripts listed in postscript.";
+    $rsp->{data}->[8]= "     [script1,script2,...] is a comma separated list of postscript names.";
+    $rsp->{data}->[9]= "         If omitted, all the postscripts defined for the nodes will be run.";
     $cb->($rsp);
   }
   

@@ -1,83 +1,273 @@
-=head1 NAME
-
-B<updatenode> - Reruns postsctipts or runs additional scripts on the nodes. 
 
 
+=head1 B<NAME>
 
-=head1 SYNOPSIS
-
-I<updatenode [-h| --help]>
-
-I<updatenode [-v| --version]>
-
-I<updatenode I<noderange> [I<script1>[,I<script2>...]]>
+B<updatenode> - Update nodes in an xCAT cluster environment.
 
 
-=head1 DESCRIPTION
+=head1 B<SYNOPSIS>
 
-This command is used for the following:
-1 install additional software for stateful nodes.
-2 run postscripts defined in the postscripts table for both stateful and stateless nodes.  
-3 run any script for both stateful and stateless nodes. 
+B<updatenode> [-h|--help|-v|--version]
 
-=head1 Parameters
+B<updatenode> <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] 
+[-P|--scripts [script1,script2...]] 
 
-I<noderange> is a list of nodes and node groups.
+B<updatenode> <noderange> [-V|--verbose] [script1,script2...]
 
-I<script1,script2...> a list of script names. The scripts must be copied under /install/postsctipts directory. They can be from the I<postsctipts> table or not. 
 
-=head1 OPTIONS
+=head1 B<DESCRIPTION>
 
-B<-h | --help>         Display usage message.
+The updatenode command is run on the xCAT management node and can be used
+to perform the following node updates:
+    1) Distribute and synchronize files.  
+    2) Install or update software on diskfull nodes.
+    3) Re-run postscripts.
 
-B<-v | --version >      Command Version.
+The default behavior of updatenode will be to attempt to perform all three
+types of updates.  If you wish to limit updatenode to one or two specific 
+actions you can use combinations of the "-S", "-P", and "-F" flags.
 
-=head1 RETURN VALUE
+For example, If you just want to synchronize configuration file you could
+specify the "-F" flag.   If you want to synchronize files and update 
+software you would specify the "-F" and "-S" flags. See the descriptions 
+of these flags and examples below.
+
+Note: In a large cluster environment the updating of nodes in an ad hoc 
+manner can quickly get out of hand, leaving the system administrator with 
+a very confusing environment to deal with. The updatenode command is 
+designed to encourage users to handle cluster updates in a manner that 
+is recorded and easily repeatable.  If you are not concerned about the 
+structure the updatenode command provides you can use other xCAT support
+such as xdsh and xdcp to accomplish these update tasks.
+
+=head2 B<To distribute and synchronize files>
+
+    The basic process for distributing and synchronizing nodes is:
+        - Create a synclist file.
+        - Indicate the location of the synclist file.
+        - Run the updatenode command to update the nodes.
+
+    Files may be distributed and synchronized for both diskless and 
+    diskfull nodes.  However, since some filesystems are mounted 
+    read-only on AIX diskless nodes it my not be possible to update all 
+    files on AIX systems.  For example, any files under /usr on AIX 
+    diskless nodes cannot be updated. 
+	
+    More details for synchronization file is described "Sync-File HowTo".
+
+    Create the synclist file.
+
+        The synclist file contains the configuration entries that specify 
+        where the files should be synced to. In the synclist file, each 
+        line is an entry which describes the location of the source files 
+        and the destination location for the files on the target node. 
+
+        The basic entry format looks like following:
+            path_of_src_file1  -> path_of_dst_file1
+            path_of_src_file1  path_of_src_file2 ... -> 
+                path_of_dst_directory
+
+        The path_of_src_file* should be the full path of the source file 
+        on the Management Node.
+        The path_of_dst_file* should be the full path of the destination 
+        file on target node.
+        The path_of_dst_directory should be the full path of the destina-
+        tion directory.
+        Since the synclist file is for common purpose, the target node 
+        need not be configured in it, it will be the noderange input to 
+        updatenode. 
+
+        The following formats are supported:
+        1) sync file /etc/file1 to the directory /etc on the node with 
+        the same file name
+            /etc/file1 -> /etc
+        2) sync file /etc/file2 to the file /etc/file2 on the node (with 
+        same file name)
+            /etc/file2 -> /etc/file2
+        3) sync file /etc/file2 to the file /etc/file3 on the node (with 
+        different file name)
+            /etc/file2 -> /etc/file3
+        4) sync the multiple files /etc/file1, /etc/file2,  /etc/file3, 
+        ... to the directory /tmp/etc (/tmp/etc must be a directory when 
+        multiple files are sync'd at one time).  If the diretory does 
+        not exist, xdcp will create it. 
+            /etc/file1 /etc/file2 /etc/file3 -> /tmp/etc
+
+        Comment lines are NOT supported in the synlist file.
+
+
+    Indicate the location of the synclist file.
+
+        For Linux nodes.
+
+            The path of the synclist should be following format:
+              /install/custom/<inst_type>/<distro>/<profile>.<os>.<arch>.
+                synclist
+                  <inst_type>: "install", "netboot"
+                  <distro>: "rh", "centos", "fedora", "sles"
+                  <profile>,<os> and <arch> are what you set for the node
+
+
+        For AIX nodes.
+
+            Add a full path of the synclist file to the "synclists" 
+            attribute base on the xCAT osimage name used by the node 
+            in the osimage table. 
+
+              chdef -t osimage -o myosimage synclists=/mydir/syncfile1
+
+    Run updatenode to synchronize the files.
+        
+        updatenode <noderange> -F
+
+
+=head2 B<To install or update software (only available on Linux Nodes)>
+
+    The basic process for updating software on diskfull nodes is:
+        - Copy the software to a mountable directory.
+        - Create a record of what software to install.
+        - Run the updatenode command to update the nodes.
+
+    On Linux systems
+   
+        To install additional software for Linux diskfull nodes, 
+    
+        First, copy the extra rpms you are going to add on to 
+        /install/post/otherpkgs/<os>/<arch>/* directory where <os> and 
+        <arch> are defined in the <nodetype> table.
+    
+        Second, add rpm names (without version number) into
+    
+            /install/custom/install/<ostype>/profile.otherpkgs.pkglist
+    
+        where <profile> is defined in the <nodetype> table. <ostype>
+        is the operating system name without the version number.
+        The following os types are recognized by xCAT.
+   
+            centos
+            fedora
+            rh
+            sles
+            windows
+   
+        Third, type:
+   
+            updatenode <noderange> -S
+
+
+=head2 B<To re-run postscripts>
+    
+    The scripts must be copied to the /install/postscripts 
+    directory on the xCAT management node. (Make sure they are 
+    executable.)
+
+    To run scripts on a node you must either specify them on the 
+    command line or you must add them to the "postscripts" attribute 
+    for the node.  
+
+    To set the postscripts attribute of the node (or group) 
+    definition you can use the xCAT chdef command. Set the value to 
+    be a comma separated list of the scripts that you want to be 
+    executed on the nodes. The order of the scripts in the list 
+    determines the order in which they will be run.  You could also set
+    the postscripts value by directly editing the xCAT "postscripts" 
+    database table using the xCAT tabedit command.
+
+    Scripts may be run on both diskless and diskfull nodes.
+
+    To re-run all the customization scripts that have been designated 
+    for the nodes, (in the "postscripts" attribute), type:
+        updatenode <noderange> -P
+
+    To re-run the "syslog" script for the nodes, type:
+        updatenode <noderange> -P syslog
+
+    To re-run a list of scripts, type:
+        updatenode <noderange> -P script1,script2
+
+    The flag '-P' is omitted when only postscripts parameters are
+    specified.
+
+    Note: script1,script2 may or may not be designated as a scripts to 
+    automatically run on the node. However, if you want script1 and 
+    script2 get invoked next time the nodes are deployed then make sure 
+    to add them to the "postscripts" values for the nodes. 
+
+
+=head1 B<PARAMETERS>
+
+<noderange>             A set of comma delimited xCAT node names
+                        and/or group names. See the xCAT "noderange"
+                        man page for details on additional supported 
+                        formats.
+
+<script1,script2...>    A comma-separated list of script names. 
+                        The scripts must be executable and copied 
+                        to the /install/postscripts directory.
+
+=head1 B<OPTIONS>
+
+-F|--sync               Specifies the file synchronization should be
+                        performed on the nodes.  rsync and ssh must
+                        be installed and configured on the nodes. 
+
+-h|--help               Display usage message.
+
+-P|--sw                 Specifies that node software should be updated.
+
+-S|--scripts            Specifies that postscripts should be run on the nodes.
+
+-v|--version            Command Version.
+
+-V|--verbose            Verbose mode.
+
+
+=head1 B<RETURN VALUE>
 
 0 The command completed successfully.
 
 1 An error has occurred.
 
-=head1 EXAMPLES
 
-1. To install additional software for Linux stateful nodes, first copy the extra rpms you are going to add on to
+=head1 B<EXAMPLES>
 
- /install/post/otherpkgs/<os>/<arch>/* 
+1)  To perform all updatenode features for the Linux nodes in the group
+"compute".
+    updatenode compute
 
-directory where <os> and <arch> are defined in the I<nodetype> table. 
+The command will: run any scripts listed in the nodes "postscripts" 
+attribute, install or update any software indicated in the 
+/install/custom/install/<ostype>/profile.otherpkgs.pkglist (refer to the 
+B<To install or update software part>), synchronize any files indicated by 
+the synclist files specified in the osimage "synclists" attribute.
 
-Second, add rpm names (without version number) into
+2)  To perform a software update and file synchronization only on the node
+"clstrn01".
+    updatenode clstrn01 -F -P
 
- /install/custom/install/<ostype>/profile.otherpkgs.pkglist 
+3) To re-run the postscripts which indicated in the postscripts attribute on 
+the node "clstrn01".
+    updatenode  clstrn01 -P
 
-where <profile> is defined in the I<nodetype> table. <ostype> is the operating system name without the version number. The following os types are recognized by xCAT.
+4) To re-run the postscripts script1 and script2 on the node "clstrn01". 
+Copy these scripts to the /install/postscripts first.
+    updatenode clstrn01 -P script1,script2
+Since flag '-P' is omitted when only postscripts parameters are specified, 
+the following command line are equivalent.
+    updatenode clstrn01 script1,script2
 
-  centos 
-  fedora 
-  rh
-  sles 
-  windows
+5) To synchronize the files on the node "clstrn01". Prepare the synclist file. 
+For AIX node, set the full path of synclist in  the osimage table synclists 
+attribute. For Linux node, put the synclist file into the location: 
+/install/custom/<inst_type>/<distro>/<profile>.<os>.<arch>.synclist
+    updatenode  clstrn01 -F
 
-Third, type:
-
-   updatenode <noderange> otherpkgs
- 
-2. To re-run all the postscripts for the nodes, type
-
-   updatenode <noderange> 
-
-3. To re-run the syslog postscripts for the nodes, type
-
-   updatenode <noderange> syslog
-
-4. To run a list of scripts, make sure the scripts are copied to /install/postscripts directory, then type
-   updatenode <noderange> script1,script2
-
-Note: script1,script2 may or may not be defined in the postscripts table. However if  you want script1 and script2 get invoked next time the nodes are deployed, add them into the postscripts table.
+6) To perform the software update on the Linux node "clstrn01". Copy the extra 
+rpm into the /install/post/otherpkgs/<os>/<arch>/* and add the rpm names into 
+the /install/custom/install/<ostype>/profile.otherpkgs.pkglist
+    updatenode clstrn01 -S
 
 
-=head1 FILES
+=head1 B<FILES>
 
 /opt/xcat/bin/updatenode
-
-
