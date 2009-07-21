@@ -195,7 +195,8 @@ sub new
     $self->{colnames} = \@{$self->{schema}->{cols}};
     $self->{descriptions} = \%{$self->{schema}->{descriptions}};
     my %otherargs  = @_;
-    my $create     = $otherargs{'-create'};      #(scalar(@_) == 1 ? shift : 0);
+    my $create = 1;
+    if (exists($otherargs{'-create'}) && ($otherargs{'-create'}==0)) {$create = 0;}
     $self->{autocommit} = $otherargs{'-autocommit'};
 
     unless (defined($self->{autocommit}))
