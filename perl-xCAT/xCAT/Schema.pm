@@ -417,7 +417,7 @@ osimage  => {
   osvers => 'Not used.',
   osdistro => 'Not used.',
   osarch => 'Not used.',
-  synclists => ' A comma-separated list of fully qualified file names each containing a list of files to synchronize on the nodes.',
+  synclists => 'The fully qualified name of a file containing a list of files to synchronize on the nodes.',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
