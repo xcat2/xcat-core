@@ -33,13 +33,22 @@ Note: Only if the state of named is active, we can continue to test DNS.
 4.Check if DNS for the IB network has been setup successfully
 nslookup [node_short_hostname-ib_interfacename]
 
-5.Add this script to postscripts
+5.Update /etc/resolv.conf
+If the computer node have already been installed and are runnning, make sure /etc/resolv.conf is available on the compute node before running updatenode, since configiba script will connect to name server to resolve IP address for the IB interfaces. If not, define /etc/resolv.conf on compute node or use rcp to copy resolv.conf from management node to the compute node. Following is an example of /etc/resolv.conf:
+nameserver 172.16.0.13
+domain ppd.pok.ibm.com
+search ppd.pok.ibm.com
+
+Note: 172.16.0.13 is the name server address which could provide the
+IP addresses for IB interfaces on compute nodes.
+
+6.Add this script to postscripts
 chtab node=c890f11ec01 postscripts.postscripts=configiba.1port
 or 
 chtab node=c890f11ec01 postscripts.postscripts=configiba.2ports
 Note: The postscripts name depends on the script copied to /install/postscripts/
 
-6.Now all the preparation work for IB configuration has been done, user can continue the general node installation or trigger updatenode command to configure IB adapters.
+7.Now all the preparation work for IB configuration has been done, user can continue the general node installation or trigger updatenode command to configure IB adapters.
 
 updatenode c890f11ec01 configiba.1port
 or
