@@ -397,7 +397,7 @@ sub processArgs
 
         foreach my $t (@tmptypes)
         {
-            if (!grep(/$t/, @xdeftypes))
+            if (!grep(/^$t$/, @xdeftypes))
             {
                 my $rsp;
                 $rsp->{data}->[0] =
@@ -839,7 +839,7 @@ sub defmk
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
-				if (!grep(/$attr/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
+				if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
@@ -1391,7 +1391,7 @@ sub defch
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
-				if (!grep(/$attr/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
+				if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
@@ -1459,7 +1459,7 @@ sub defch
             next;
         }
 
-        if (grep(/$obj/, @{$objTypeLists{$type}}))
+        if (grep(/^$obj$/, @{$objTypeLists{$type}}))
         {
             $isDefined = 1;
         }
@@ -1942,7 +1942,7 @@ sub setFINALattrs
             #  check if this object is one of the type specified
             if (@::clobtypes)
             {
-                if (!grep(/$::FILEATTRS{$objname}{objtype}/, @::clobtypes))
+                if (!grep(/^$::FILEATTRS{$objname}{objtype}$/, @::clobtypes))
                 {
                     next;
                 }
@@ -1974,7 +1974,7 @@ sub setFINALattrs
             {
 
                 # see if valid attr
-				if (!grep(/$attr/, @list) && ($::FILEATTRS{$objname}{objtype} ne 'site') && ($::FILEATTRS{$objname}{objtype} ne 'monitoring'))
+				if (!grep(/^$attr$/, @list) && ($::FILEATTRS{$objname}{objtype} ne 'site') && ($::FILEATTRS{$objname}{objtype} ne 'monitoring'))
                 {
 
                     my $rsp;
@@ -2011,7 +2011,7 @@ sub setFINALattrs
             if ($attr eq 'objtype')
             {
                 if (
-                    !grep(/^$::FINALATTRS{$objname}{objtype}/, @::finalTypeList)
+                    !grep(/^$::FINALATTRS{$objname}{objtype}$/, @::finalTypeList)
                   )
                 {
                     my $type = $::FINALATTRS{$objname}{objtype};
