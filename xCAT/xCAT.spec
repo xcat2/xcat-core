@@ -192,6 +192,7 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab priority=4 policy.commands=getdestiny policy.rule=allow
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow
+      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab priority=4.6 policy.commands=syncfiles policy.rule=allow
     fi
 
     if [ ! -d /etc/xcat/ca ]; then

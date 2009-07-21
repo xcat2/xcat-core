@@ -880,7 +880,9 @@ if ((!-r "/etc/xcat/policy.sqlite") || $::FORCE)
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow;";
         $chtabcmds .=
-          "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow";
+          "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab priority=4.6 policy.commands=syncfiles policy.rule=allow";
     }
     else
     {
@@ -895,7 +897,9 @@ if ((!-r "/etc/xcat/policy.sqlite") || $::FORCE)
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow;";
         $chtabcmds .=
-          "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow";
+          "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab priority=4.6 policy.commands=syncfiles policy.rule=allow";
     }
     my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
     if ($::RUNCMD_RC != 0)
