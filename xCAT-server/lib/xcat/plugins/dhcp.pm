@@ -135,7 +135,17 @@ sub addnode
         $nrent = $nrhash->{$node}->[0];
         if ($nrent and $nrent->{tftpserver})
         {
-            $tftpserver = inet_ntoa(inet_aton($nrent->{tftpserver}));
+            #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
+            #the value of inet_ntoa() will be "undef", which will cause fatal error
+            my $tmp_name = inet_aton($nrent->{tftpserver});
+            unless($tmp_name) {
+                #tell the reason to the user
+                $callback->(
+                    { error => ["Unable to resolve the tftpserver for node"], errorcode => [1]}
+                );
+                return;
+            }
+            $tftpserver = inet_ntoa($tmp_name);
             $lstatements =
                 'next-server '
               . $tftpserver . ';'
