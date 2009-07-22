@@ -4,12 +4,15 @@ B<xdcp> - Concurrently copies files to or from multiple nodes. In addition, prov
 
 =head1 B<SYNOPSIS>
 
-B<xdcp> I<noderange>  [B<-C> I<context>] [B<-f> I<fanout>]
+B<xdcp> I<noderange>  [[B<-f> I<fanout>]
 [B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>]
 [B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>]
 [B<-T>] [B<-v>] [B<-X> I<env_list>] sourcefile.... targetpath
 
 B<xdcp> I<noderange>  [B<-F> I<rsync input file>] 
+
+B<xdcp> I<computenoderange>  [B <-s> B<-F> I<rsync input file>] 
+
 
 B<xdcp> [B<-i> I<path to install image>] [B<-F> I<rsync input file>] 
 
@@ -92,14 +95,6 @@ and  the  remote  target  name  is  appended  to  the   copied
 source_file name in the target_path directory.
 
 
-=item B<-C>|B<--context> I<context>
-
-The default context to use when resolving target names. The
-I<context> value must correspond to a valid context  extension
-module  in  the B</opt/xcat/xdsh/Context> directory. For
-example, the B</opt/xcat/xdsh/Context/DSH.pm> file is  the  module
-for the B<DSH> context.
-
 =item B<-f>|B<--fanout> I<fanout_value>
 
 Specifies a fanout value for the maximum number of  concur-
@@ -181,6 +176,13 @@ targets, or when specified with the -P flag, recursively pulls
 single source directory can be specified using the source_file
 parameter.
 
+
+=item B<-s> I<synch service nodes>
+
+Will only sync the files listed in the synclist (-F), to the service
+nodes for the input compute node list. The files will be placed in the
+directory defined by the site.SNsyncfiledir attribute, or the default
+/var/xcat/syncfiles directory. 
 
 =item B<-t>|B<--timeout> I<timeout>
 
@@ -390,6 +392,19 @@ Create a rsync file /tmp/myrsync, with this line:
 Run:
 
 B<xdcp> I<compute  -F /tmp/myrsync>    to update the Compute Nodes
+
+=item *
+
+To rsync to the service nodes in preparation for rsyncing the compute nodes
+during an install from the service node.  
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/etc/hosts /etc/passwd -> /etc
+
+Run:
+
+B<xdcp> I<compute -s  -F /tmp/myrsync> to sync the service node for compute 
 
 =item *
 
