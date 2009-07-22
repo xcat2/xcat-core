@@ -56,7 +56,7 @@ sub preprocess_request
     my $cb  = shift;
     my %sn;
     my $sn;
- 
+
     #if already preprocessed, go straight to request
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
     my $nodes   = $req->{node};
@@ -69,8 +69,9 @@ sub preprocess_request
     foreach my $envar (@{$req->{env}})
     {
         my ($var, $value) = split(/=/, $envar, 2);
-        if ($var eq "RSYNCSN")
+        if ($var eq "RSYNCSNONLY")
         {    # syncing SN, will change noderange to list of SN
+                # we are only syncing the service node ( -s flag)
             $syncsn = 1;
         }
         if ($var eq "DSH_RSYNC_FILE")    # from -F flag
@@ -137,58 +138,62 @@ sub preprocess_request
             }
         }
 
-        # now for each node build the
+        # if not only syncing the service nodes ( -s flag)
+        # for each node build the
         # the original command, and add for each SN, if hierarchical
-        foreach my $snkey (keys %$sn)
-        {
+        if ($syncsn == 0)
+        {    #syncing the service node and nodes ( no -s flag)
+            foreach my $snkey (keys %$sn)
+            {
 
-            if (!grep(/$snkey/, @MNnodeipaddr))
-            {    # entries run from the Service Node 
+                if (!grep(/$snkey/, @MNnodeipaddr))
+                {    # entries run from the Service Node
 
-                # if the -F option to sync the nodes
-                # then for a Service Node
-                # change the command to use the -F /tmp/xcatrf.tmp
-                # because that is where the file was put on the SN
-                #
-                my $newSNreq = dclone($req);
-                if ($syncsnfile)    # -F option
-                {
-                    my $args = $newSNreq->{arg};
-                    
-                    my $i    = 0;
-                    foreach my $argument (@$args)
+                    # if the -F option to sync the nodes
+                    # then for a Service Node
+                    # change the command to use the -F /tmp/xcatrf.tmp
+                    # because that is where the file was put on the SN
+                    #
+                    my $newSNreq = dclone($req);
+                    if ($syncsnfile)    # -F option
                     {
+                        my $args = $newSNreq->{arg};
 
-                        # find the -F and change the name of the
-                        # file in the next array entry to the tmp file
-                        if ($argument eq "-F")
+                        my $i = 0;
+                        foreach my $argument (@$args)
                         {
+
+                            # find the -F and change the name of the
+                            # file in the next array entry to the tmp file
+                            if ($argument eq "-F")
+                            {
+                                $i++;
+                                $newSNreq->{arg}->[$i] = $tmpsyncsnfile;
+                                last;
+                            }
                             $i++;
-                            $newSNreq->{arg}->[$i] = $tmpsyncsnfile;
-                            last;
                         }
-                        $i++;
                     }
+                    $newSNreq->{node}                   = $sn->{$snkey};
+                    $newSNreq->{'_xcatdest'}            = $snkey;
+                    $newSNreq->{_xcatpreprocessed}->[0] = 1;
+                    push @requests, $newSNreq;
                 }
-                $newSNreq->{node}                   = $sn->{$snkey};
-                $newSNreq->{'_xcatdest'}            = $snkey;
-                $newSNreq->{_xcatpreprocessed}->[0] = 1;
-                push @requests, $newSNreq;
-            }
-            else
-            {    # entries run from  Management node
-                 my $reqcopy = {%$req};
-                 $reqcopy->{node} = $sn->{$snkey};
-                 $reqcopy->{'_xcatdest'} = $snkey;
-                 $reqcopy->{_xcatpreprocessed}->[0] = 1;
-                 push @requests, $reqcopy;  
-                 
-            }
-        }
+                else
+                {    # entries run from  Management node
+                    my $reqcopy = {%$req};
+                    $reqcopy->{node}                   = $sn->{$snkey};
+                    $reqcopy->{'_xcatdest'}            = $snkey;
+                    $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                    push @requests, $reqcopy;
+
+                }
+            }    # end foreach
+        }    # end syncing only service nodes
 
     }
     else
-    {            # running local on image
+    {        # running local on image
         return [$req];
     }
     return \@requests;
