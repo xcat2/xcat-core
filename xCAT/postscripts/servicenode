@@ -74,24 +74,10 @@ else
         if ( -f "/etc/SuSE-release") { #special case for SLES11
             &runcmd("rpm -e perl-doc"); #perl-doc conflicts with perl-Version which will be installed
         }
-        &runcmd("rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm");
+        my $osver=$ENV{'OSVER'};
+        my $arch=$ENV{'ARCH'};
+        &runcmd("OTHERPKGS=xcat/core-snap/xCATsn,xcat/xcat-dep/$osver/$arch/conserver /xcatpost/otherpkgs");
     }
-    #if ($ENV{'NODESETSTATE'} eq "install")
-    #{
-    #		$msg = "Installing xCAT";
-    #		`logger -t xcat $msg`;
-    #        if(-f "/etc/SuSE-release") {
-    ##            # `pkill -9 y2base`;
-    #            $msg = "xCATsn for SuSE";
-    #            `logger -t xCAT $msg`;
-                #$msg=`zypper ar -t plaindir file:/xcatpost/xcat/RPMS xcatsn > /root/dbg.log 2>&1`;
-                #`logger -t xCAT "$msg"`;
-                #`zypper install -y xCAT-server xCAT-client perl-xCAT perl-DBD-mysql xCATsn vsftpd perl-IO-Socket-SSL`;
-                #`rpm -ivh /xcatpost/xcat/RPMS/*.rpm`;
-                #        }else {
-                #	&runcmd("rpm -ivh /xcatpost/xcat/RPMS/*/*.rpm");
-                #}
-                #}
 	&runcmd("/opt/xcat/sbin/copycerts");
 }
 
