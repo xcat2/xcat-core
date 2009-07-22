@@ -43,7 +43,7 @@ our @dsh_valid_env = (
                       'DSH_TIMEOUT',        'DSH_REMOTE_PASSWORD',
                       'DSH_TO_USERID',      'DSH_FROM_USERID',
                       'DEVICETYPE',         'RSYNCSN',
-                      'DSH_RSYNC_FILE',
+                      'DSH_RSYNC_FILE',     'RSYNCSNONLY',
                       );
 select(STDERR);
 $| = 1;
@@ -710,7 +710,6 @@ sub fork_fanout_dcp
     {
         my $user_target       = shift @$targets_waiting;
         my $target_properties = $$resolved_targets{$user_target};
-
 
         my @dcp_command;
         my $rsyncfile;
@@ -2838,7 +2837,6 @@ sub _resolve_nodes
     # unresolved nodes will be determined when the remote shell runs
     xCAT::DSHCLI->bld_resolve_nodes_hash($options, \%resolved_nodes, @nodes);
 
-
     foreach my $user_node (keys(%resolved_nodes))
     {
         my $node_properties = $resolved_nodes{$user_node};
@@ -3958,14 +3956,16 @@ sub parse_and_run_dcp
         xCAT::DSHCLI->show_dsh_config;
         return 0;
     }
-    
-    if (defined($options{'rootimg'})) {
-      if (xCAT::Utils->isAIX()) {
-        my $rsp = ();
-        $rsp->{data}->[0] = "The -i option is not supported on AIX.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
-      }
+
+    if (defined($options{'rootimg'}))
+    {
+        if (xCAT::Utils->isAIX())
+        {
+            my $rsp = ();
+            $rsp->{data}->[0] = "The -i option is not supported on AIX.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+        }
     }
     if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
