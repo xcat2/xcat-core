@@ -3434,7 +3434,7 @@ sub usage_dsh
     my $usagemsg1  = " xdsh -h \n xdsh -q \n xdsh -V \n";
     my $usagemsg1a = "xdsh  [noderange] -K [-l logonuserid]\n";
     my $usagemsg2  =
-      "      [-B bypass ] [-C context] [-c] [-e] [-E environment_file]
+      "      [-B bypass ] [-c] [-e] [-E environment_file]
       [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
     my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
@@ -3824,7 +3824,7 @@ sub usage_dcp
     ### usage message
     my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp [noderange]\n";
     my $usagemsg2 =
-      "      [-B bypass] [-C context] [-c] [-f fanout] [-l user_ID]\n";
+      "      [-B bypass] [-c] [-f fanout] [-l user_ID]\n";
     my $usagemsg3 =
       "      [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
