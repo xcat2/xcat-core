@@ -4,7 +4,7 @@ B<xdsh> - Concurrently runs commands on multiple nodes, or an install image.
 
 =head1 B<SYNOPSIS>
 
-B<xdsh> I<noderange> [B<-B> I<bypass>] [B<-C> I<context>] [B<--devicetype> I<type_of_device>] [B<-e>] [B<-E> I<environment_file>]  [B<-f> I<fanout>]
+B<xdsh> I<noderange> [B<-B> I<bypass>]  [B<--devicetype> I<type_of_device>] [B<-e>] [B<-E> I<environment_file>]  [B<-f> I<fanout>]
 [B<-L>]  [B<-l>  I<userID>]   [B<-m>]   [B<-o>
 I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ksh>] [B<-t> I<timeout>]
 [B<-T>] [B<-v>] [B<-X> I<env_list>] [B<-z>] I<command_list>
@@ -26,19 +26,6 @@ from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
 The B<xdsh> command is an xCAT Distributed Shell Utility.
 
-B<TARGET CONTEXT>:
-
-The B<xdsh> command target context is the database  where  the  target  or
-target  group is defined. A default context can be configured using the
-B<-C> I<context> flag or the B<DSH_CONTEXT> environment variable. If neither are
-specified, the default context is B<XCAT>.
-
-A context is enabled for use with a DSH Utilities command by installing
-a context extension file in the B</opt/xcat/xdsh/Context>  directory.  The
-target  or target group context can be explicitly specified by qualify-
-ing a target name with a context name, or implicitly defined by  speci-
-fying  a  default  context  for  unqualified  target  names (See B<Target>
-B<lists>).
 
 B<TARGET> B<SPECIFICATION>:
 
@@ -202,13 +189,6 @@ running commands, are terminated (SIGTERM).
 
 =over 5
 
-=item B<-C>|B<--context> I<context>
-
-The default context to use when resolving target names. The
-I<context> value must correspond to a valid context  extension
-module  in  the B</opt/xcat/xdsh/Context> directory. For
-example, the B</opt/xcat/xdsh/Context/DSH.pm> file is  the  module
-for the B<DSH> context.
 
 =item B<-e>|B<--execute>
 
@@ -535,9 +515,6 @@ B<xdsh> I<-i /install/nim/spot/611dskls "/usr/bin/lslpp -l | grep bos">
 
 =head1 B<Files>
 
-B</opt/xcat/xdsh/Context/>
-
-Location of the contexts available to use with  DSH  Utilities.
 
 =head1 B<SEE ALSO>
 
