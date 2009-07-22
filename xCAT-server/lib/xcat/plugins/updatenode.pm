@@ -295,7 +295,7 @@ sub updatenode {
   if ($request->{FileSyncing} && $request->{FileSyncing} eq "yes") {
     my %syncfile_node = ();
     my %syncfile_rootimage = ();
-    my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
+    my $node_syncfile = xCAT::SvrUtils->getsynclistfile($nodes);
     foreach my $node (@$nodes) {
       my $synclist = $$node_syncfile{$node};
 

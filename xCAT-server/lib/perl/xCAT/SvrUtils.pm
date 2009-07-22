@@ -8,6 +8,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
+require xCAT::Utils;
 
 use strict;
 
@@ -174,6 +175,174 @@ sub get_nodeset_state
     }
 
     return $state;
+}
+
+#-----------------------------------------------------------------------------
+
+
+=head3 getsynclistfile
+    Get the synclist file for the nodes;
+    The arguments $os,$arch,$profile,$insttype are only available when no $nodes is specified
+
+    Arguments:
+      $nodes
+      $os
+      $arch
+      $profile
+      $insttype  - installation type (can be install or netboot)
+    Returns:
+      When specified $nodes: reference of a hash of node=>synclist
+      Otherwise: full path of the synclist file
+    Globals:
+        none
+    Error:
+    Example:
+         my $node_syncfile=xCAT::SvrUtils->getsynclistfile($nodes);
+         my $syncfile=xCAT::SvrUtils->getsynclistfile(undef, 'sles11', 'ppc64', 'compute', 'netboot');
+    Comments:
+        none
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+
+
+sub getsynclistfile()
+{
+  my $nodes = shift;
+  if (($nodes) && ($nodes =~ /xCAT::SvrUtils/))
+  {
+    $nodes = shift;
+  }
+
+  my ($os, $arch, $profile, $inst_type) = @_;
+
+  # for aix node, use the node figure out the profile, then use the value of
+  # profile (osimage name) to get the synclist file path (osimage.synclists)
+  if (xCAT::Utils->isAIX()) {
+    my %node_syncfile = ();
+    my %osimage_syncfile = ();
+    my @profiles = ();
+
+    # get the profile attributes for the nodes
+    my $nodetype_t = xCAT::Table->new('nodetype');
+    unless ($nodetype_t) {
+      return ;
+    }
+    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile']);
+
+    # the vaule of profile for AIX node is the osimage name
+    foreach my $node (@$nodes) {
+      my $profile = $nodetype_v->{$node}->[0]->{'profile'};
+      $node_syncfile{$node} = $profile;
+
+      if (! grep /$profile/, @profiles) {
+        push @profiles, $profile;
+      }
+    }
+
+    # get the syncfiles base on the osimage
+    my $osimage_t = xCAT::Table->new('osimage');
+    unless ($osimage_t) {
+      return ;
+    }
+    foreach my $osimage (@profiles) {
+      my $synclist = $osimage_t->getAttribs({imagename=>"$osimage"}, 'synclists');
+      if (-r $synclist->{'synclists'}) {
+        $osimage_syncfile{$osimage} = $synclist->{'synclists'};
+      } else {
+        $osimage_syncfile{$osimage} = undef;
+      }
+    }
+
+    # set the syncfiles to the nodes
+    foreach my $node (@$nodes) {
+      $node_syncfile{$node} = $osimage_syncfile{$node_syncfile{$node}};
+    }
+
+    return \%node_syncfile;
+  }
+
+  # if does not specify the $node param, default consider for genimage command
+  if ($nodes) {
+    my %node_syncfile = ();
+
+    my %node_insttype = ();
+    my %insttype_node = ();
+    # get the nodes installation type
+    xCAT::SvrUtils->getNodesetStates($nodes, \%insttype_node);
+    # convert the hash to the node=>type
+    foreach my $type (keys %insttype_node) {
+      foreach my $node (@{$insttype_node{$type}}) {
+        $node_insttype{$node} = $type;
+      }
+    }
+
+    # get the os,arch,profile attributes for the nodes
+    my $nodetype_t = xCAT::Table->new('nodetype');
+    unless ($nodetype_t) {
+      return ;
+    }
+    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile','os','arch']);
+
+    foreach my $node (@$nodes) {
+      $inst_type = $node_insttype{$node};
+      if ($inst_type eq "netboot" || $inst_type eq "diskless") {
+        $inst_type = "netboot";
+      } else {
+        $inst_type = "install";
+      }
+
+      $profile = $nodetype_v->{$node}->[0]->{'profile'};
+      $os = $nodetype_v->{$node}->[0]->{'os'};
+      $arch = $nodetype_v->{$node}->[0]->{'arch'};
+
+      my $platform = "";
+      if ($os) {
+        if ($os =~ /rh.*/)    { $platform = "rh"; }
+        elsif ($os =~ /centos.*/) { $platform = "centos"; }
+        elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
+        elsif ($os =~ /sles.*/) { $platform = "sles"; }
+        elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
+      }
+
+      my $base =  "/install/custom/$inst_type/$platform";
+      if (-r "$base/$profile.$os.$arch.synclist") {
+        $node_syncfile{$node} = "$base/$profile.$os.$arch.synclist";
+      } elsif (-r "$base/$profile.$arch.synclist") {
+        $node_syncfile{$node} = "$base/$profile.$arch.synclist";
+      } elsif (-r "$base/$profile.$os.synclist") {
+        $node_syncfile{$node} = "$base/$profile.$os.synclist";
+      } elsif (-r "$base/$profile.synclist") {
+        $node_syncfile{$node} = "$base/$profile.synclist";
+      }
+    }
+
+    return \%node_syncfile;
+  } else {
+    my $platform = "";
+    if ($os) {
+      if ($os =~ /rh.*/)    { $platform = "rh"; }
+      elsif ($os =~ /centos.*/) { $platform = "centos"; }
+      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
+      elsif ($os =~ /sles.*/) { $platform = "sles"; }
+      elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
+    }
+
+    my $base = "/install/custom/$inst_type/$platform";
+    if (-r "$base/$profile.$os.$arch.synclist") {
+      return "$base/$profile.$os.$arch.synclist";
+    } elsif (-r "$base/$profile.$arch.synclist") {
+      return "$base/$profile.$arch.synclist";
+    } elsif (-r "$base/$profile.$os.synclist") {
+      return "$base/$profile.$os.synclist";
+    } elsif (-r "$base/$profile.synclist") {
+      return "$base/$profile.synclist";
+    }
+
+  }
+
 }
 
 

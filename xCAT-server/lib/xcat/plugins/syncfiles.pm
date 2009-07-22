@@ -57,6 +57,49 @@ sub process_request
     }
 
     require xCAT::Postage;
-    xCAT::Postage->syncfiles($client,$callback,$subreq);
+    &syncfiles($client,$callback,$subreq);
 }
 
+
+#----------------------------------------------------------------------------
+
+=head3  syncfiles
+
+        Use the xdcp command to sync files from Management node/Service node t
+o the Compute node
+
+        Arguments:
+        Returns: 0 - failed; 1 - succeeded;
+        Example:
+                syncfiles($node, $callback);
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub syncfiles {
+  my $node = shift;
+  if ($node =~ /xCAT::Postage/) {
+    $node = shift;
+  }
+  my $callback = shift;
+  my $subreq = shift;
+
+  #get the sync file base on the node type
+  my $synclist = xCAT::SvrUtils->getsynclistfile([$node]);
+  if (!$synclist) {
+    xCAT::MsgUtils->message("S", "Cannot find synclist file for the $node");
+    return 0;
+  }
+
+  # call the xdcp plugin to handle the syncfile operation
+  my $args = ["-F", "$$synclist{$node}"];
+  my $env = ["DSH_RSYNC_FILE=$$synclist{$node}"];
+  $subreq->({command=>['xdcp'], node=>[$node], arg=>$args, env=>$env}, $callback);
+
+  return 1;
+}
+
+1;

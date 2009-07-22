@@ -5,7 +5,8 @@ use File::Path;
 use File::Copy;
 use Cwd;
 use File::Temp;
-use xCAT::Utils qw(genpassword getsynclistfile);
+use xCAT::Utils qw(genpassword);
+use xCAT::SvrUtils;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -135,7 +136,7 @@ sub process_request {
    }
 
     # sync fils configured in the synclist to the rootimage
-    my $syncfile = xCAT::Utils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
+    my $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
     if (defined ($syncfile) && -f $syncfile
         && -d "$installroot/netboot/$osver/$arch/$profile/rootimg") {
         print "sync files from $syncfile to the $installroot/netboot/$osver/$arch/$profile/rootimg\n";

@@ -4667,7 +4667,7 @@ ll~;
 	#
 	my $error=0;
 	my @nodesfailed;
-	my $node_syncfile = xCAT::Utils->getsynclistfile($nodes);
+	my $node_syncfile = xCAT::SvrUtils->getsynclistfile($nodes);
 	foreach my $node (@nodelist) 
 	{
 		my $image_name = $nodeosi{$node};
