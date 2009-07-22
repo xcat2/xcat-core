@@ -19,7 +19,7 @@ BuildArch: noarch
 
 Provides: xCAT-client = %{version}
 
-# fping is needed by pping (in case xCAT-client is installed by itself on a remote client)
+# fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
 Requires: nmap
 %else
@@ -27,7 +27,7 @@ Requires: expat
 %endif
 
 %description
-xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.
+xCAT-client provides the xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.
 
 %prep
 %setup -q -n xCAT-client
@@ -35,13 +35,6 @@ xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) 
 # This phase is done in (for RH): /usr/src/redhat/BUILD/xCAT-client-2.0
 # All of the tarball source has been unpacked there and is in the same file structure
 # as it is in svn.
-
-# Convert pods to man pages, e.g.:  pod2man pods/man1/tabdump.1.pod share/man/man1/tabdump.1
-# for i in pods/*/*.pod; do
-#   man="share/man${i#pods}"         # the substitute form is not supported on aix:  ${i/pods/share\/man}
-#   mkdir -p ${man%/*}
-#   pod2man $i ${man%.pod}
-# done
 
 # Convert pods to man pages and html pages
 ./xpod2man

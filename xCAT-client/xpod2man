@@ -114,7 +114,8 @@ descriptions of every table in the database.
 =head1 XCAT COMMANDS
 
 What follows is a short description of each xCAT command.  To get more information about a particular
-command, see its man page.
+command, see its man page.  Note that the commands are listed in alphabetical order B<within each section>,
+i.e. all the commands in section 1, then the commands in section 3, etc.
 
 =over 12
 EOS1
