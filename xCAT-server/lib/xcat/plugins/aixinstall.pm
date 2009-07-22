@@ -910,6 +910,7 @@ sub mknimimage
 		'f|force'	=> \$::FORCE,
 		'h|help'     => \$::HELP,
 		's=s'       => \$::opt_s,
+	 	'r|sharedroot'  => \$::SHAREDROOT,
 		'l=s'       => \$::opt_l,
 		'i=s'       => \$::opt_i,
 		't=s'		=> \$::NIMTYPE,
@@ -991,18 +992,17 @@ sub mknimimage
 	#  Install/config NIM master if needed
 	#
 	# check for master file set
-	#my $lsnimcmd = "/usr/bin/lslpp -l bos.sysmgt.nim.master >/dev/null 2>&1";
 	my $lsnimcmd = "/usr/sbin/lsnim -l >/dev/null 2>&1";
 	my $out = xCAT::Utils->runcmd("$lsnimcmd", -1);
 	if ($::RUNCMD_RC  != 0) {
-		# TODO - check for bos.sysmgt.nim.client first!
-
+# TODO - check for bos.sysmgt.nim.client first?
 		my $rsp;
         push @{$rsp->{data}}, "Configuring NIM.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
 		# if its not installed then run
 		#   - takes 21 sec even when already configured
+#  TODO - add location (opt_l) - so all res go in same place!
 		my $nimcmd = "nim_master_setup -a mk_resource=no -a device=$::opt_s";
 		if ($::VERBOSE) {
             my $rsp;
@@ -1061,9 +1061,6 @@ sub mknimimage
 	#
 
 	if ( ($::NIMTYPE eq "diskless") | ($::NIMTYPE eq "dataless") ) {
-
-		# need lpp_source, spot, dump, paging, & root
-		# user can specify others 
 
 		# get the xCAT image definition if provided
     	if ($::opt_i) {
@@ -1137,6 +1134,9 @@ sub mknimimage
 
 		} elsif ($::opt_i) {
 
+# TODO - this logic looks wrong - may have an image def but if
+#   no root then we still want to make one
+
 			# if one is provided in osimage use it    
 			if ($::imagedef{$::opt_i}{root}) {
 				$root_name=$::imagedef{$::opt_i}{root};
@@ -1147,8 +1147,12 @@ sub mknimimage
 			# may need to create new one
 
 			# use naming convention
-			# all will use the same root res for now
-			$root_name=$::image_name . "_root"; 
+			if ($::SHAREDROOT) {
+                $root_name=$::image_name . "_shared_root";
+            } else {
+                $root_name=$::image_name . "_root";
+            }
+            chomp $root_name;
 
 			# see if it's already defined
         	if (grep(/^$root_name$/, @::nimresources)) {
@@ -1157,8 +1161,14 @@ sub mknimimage
 				xCAT::MsgUtils->message("I", $rsp, $callback);
         	} else {
 				# it doesn't exist so create it
-				my $type="root";
-				if (&mknimres($root_name, $type, $callback, $::opt_l) != 0) {
+
+				my $type;
+                if ($::SHAREDROOT) {
+                    $type="shared_root";
+                } else {
+                    $type="root";
+                }
+				if (&mknimres($root_name, $type, $callback, $::opt_l, $spot_name) != 0) {
 					my $rsp;
 					push @{$rsp->{data}}, "Could not create a NIM definition for \'$root_name\'.\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1167,7 +1177,15 @@ sub mknimimage
 			}
 		} # end root res
 		chomp $root_name;
-		$newres{root} = $root_name;
+		if ($::SHAREDROOT) {
+            $newres{shared_root}= $root_name;
+        } else {
+            $newres{root} = $root_name;
+        }
+
+# TODO - dump is optional with new AIX versions
+#	- should check for AIX version?????
+if (0) {
 
 		#
 		# dump res
@@ -1208,6 +1226,7 @@ sub mknimimage
 		} # end dump res
 		chomp $dump_name;
         $newres{dump} = $dump_name;
+} # end no more dump res
 
 		#
 		# paging res
@@ -2857,7 +2876,7 @@ sub enoughspace {
         Globals:
 
         Example:
-            $rc = &mknimres($res_name, $res_type, $callback);
+			$rc = &mknimres($res_name, $res_type, $callback, $location, $spot_name);
 
         Comments:
 =cut
@@ -2868,6 +2887,7 @@ sub mknimres {
 	my $type = shift;
     my $callback = shift;
 	my $location = shift;
+	my $spot_name = shift;
 
 	if ($::VERBOSE) {
 		my $rsp;
@@ -2875,8 +2895,12 @@ sub mknimres {
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
-#####  check this!!!!
 	my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
+
+	# if this is a shared_root we need the spot name
+    if ($type eq 'shared_root'){
+        $cmd .= "-a spot=$spot_name ";
+    }
 
 	# where to put it - the default is /install
 	if ($location) {
@@ -3834,7 +3858,7 @@ sub prenimnodeset
 	}
 
 	#
-    # create a NIM script resource using the xcataixpost script
+    # create a NIM script resource using xcataixscript
 	#
 	if ($add_xcataixpost) {  # if we have at least one standalone node
 
@@ -4613,7 +4637,7 @@ sub mkdsklsnode
 
     #
     #  Get a list of the defined NIM machines
-	#    these are machines defined on the SN! 
+	#    these are machines defined on this server
     #
 	my @machines = [];
     my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/nu
@@ -4656,11 +4680,43 @@ ll~;
 
 	#
 	# if this isn't the NIM primary then make sure the local NIM defs 
-	#	have been created etc.
+	#	have been created 
 	#
 	if (!&is_me($nimprime)) {
 		&make_SN_resource($callback, \@nodelist, \@image_names, \%imagehash, \%lochash, \%nethash);
-	}
+	} else {
+        # if this is the NIM primary make sure we update any shared_root
+        # resources that are being used
+        foreach my $img (@image_names) {
+
+            # if have shared_root
+            if ($imagehash{$img}{shared_root}) {
+                # if it's allocated then don't update it
+                my $alloc_count = &get_nim_attr_val($imagehash{$img}{shared_root}, "alloc_count", $callback);
+                if ( defined($alloc_count) && ($alloc_count != 0) ){
+                    my $rsp;
+                    push @{$rsp->{data}}, "The resource named \'$imagehash{$img}{shared_root}\' is currently allocated. It will not be updated.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                    next;
+                }
+ 				if ($::VERBOSE) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$Sname: Updating \'$imagehash{$img}{shared_root}\'.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+                my $scmd = "nim -F -o sync_roots $imagehash{$img}{spot}";
+                my $output = xCAT::Utils->runcmd("$scmd", -1);
+                if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$Sname: Could not update $imagehash{$img}{shared_root}.\n";
+                    if ($::VERBOSE) {
+                        push @{$rsp->{data}}, "$output";
+                    }
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
+            }
+        }
+    } # end re-sync shared_root
 
 	#
 	# define and initialize the diskless/dataless nodes
@@ -4749,7 +4805,7 @@ ll~;
 		} # end already defined
 
        	# get, check the node IP
-		# TODO - need IPv6 update
+# TODO - need IPv6 update
        	my $IP = inet_ntoa(inet_aton($node));
        	chomp $IP;
        	unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
@@ -4767,7 +4823,8 @@ ll~;
 
 			# could be diskless or dataless
 			# mask, gateway, cosi, root, dump, paging
-			if (!$nethash{$node}{'mask'} || !$nethash{$node}{'gateway'} || !$imagehash{$image_name}{spot} || !$imagehash{$image_name}{root} || !$imagehash{$image_name}{dump}) {
+# TODO - need to fix this check for shared_root
+			if (!$nethash{$node}{'mask'} || !$nethash{$node}{'gateway'} || !$imagehash{$image_name}{spot}) {
 				my $rsp;
            		push @{$rsp->{data}}, "$Sname: Missing required information for node \'$node\'.\n";
            		xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -4841,7 +4898,12 @@ ll~;
 			$psize=$attrs{psize};
 		}
 
-		my $arg_string="-a spot=$imagehash{$image_name}{spot} -a root=$imagehash{$image_name}{root} -a dump=$imagehash{$image_name}{dump} -a size=$psize ";
+		my $arg_string;
+        if ($imagehash{$image_name}{shared_root}) {
+            $arg_string="-a spot=$imagehash{$image_name}{spot} -a shared_root=$imagehash{$image_name}{shared_root} -a size=$psize ";
+        } else {
+            $arg_string="-a spot=$imagehash{$image_name}{spot} -a root=$imagehash{$image_name}{root} -a size=$psize ";
+        }
 
 		# the rest of these resources may or may not be provided
 		if ($imagehash{$image_name}{paging} ) {
@@ -4864,12 +4926,14 @@ ll~;
 		#  make sure we have enough space for the new node root dir
 		#
 # TODO - test FS resize
+if (0) {
 		if (&enoughspace($imagehash{$image_name}{spot}, $imagehash{$image_name}{root}, $psize, $callback) != 0) {
 			my $rsp;
 			push @{$rsp->{data}}, "Could not initialize node \'$node\'\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
 			return 1;
 		}
+}
 
 		my $initcmd;
 		if ( $type eq "diskless") {
@@ -4878,13 +4942,14 @@ ll~;
 			$initcmd="/usr/sbin/nim -o dtls_init $arg_string $nim_name 2>&1";
 		}
 
-	#	if ($::VERBOSE) {
-			my $time=`date`;
-			my $rsp;
-			push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while. $time\n";
-			#push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
-			xCAT::MsgUtils->message("I", $rsp, $callback);
-	#	}
+		my $time=`date | cut -f4 -d' '`;
+		chomp $time;
+		my $rsp;
+		push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while. $time\n";
+		if ($::VERBOSE) {
+            push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
+        }
+		xCAT::MsgUtils->message("I", $rsp, $callback);
 
        	my $output = xCAT::Utils->runcmd("$initcmd", -1);
        	if ($::RUNCMD_RC  != 0)
@@ -5334,9 +5399,23 @@ sub make_SN_resource
 
 	# for each image
 	foreach my $image (@image_names) {
+		my @orderedtypelist;
+		# always do lpp 1st, spot 2nd, rest after that
+		#   ex. shared_root requires spot
+		if ($imghash{$image}{lpp_source} ) {
+    		push (@orderedtypelist, 'lpp_source');
+		}
+		if ($imghash{$image}{spot} ) {
+    		push (@orderedtypelist, 'spot');
+		}
+		foreach my $restype (keys (%{$imghash{$image}})) {
+    		if ( ($restype ne 'lpp_source') && ($restype ne 'spot')) {
+        		push (@orderedtypelist, $restype);
+    		}
+		}
 
 		# for each resource
-		foreach my $restype (keys (%{$imghash{$image}})) {
+		foreach my $restype (@orderedtypelist) {
 
 			# if a valid NIM type and a value is set
 			if (($imghash{$image}{$restype}) && (grep(/^$restype$/, @nimrestypes))) {
@@ -5398,14 +5477,15 @@ sub make_SN_resource
                     next;
                 }
 
-				# if root, tmp, home, shared_home, dump, paging then
+				# if root, shared_root, tmp, home, shared_home, dump, 
+				#	paging then
 				# 	these dont require copying anything from the nim primary
-				my @dir_res=("root", "tmp", "home", "shared_home", "dump", "paging");
+				my @dir_res=("root", "shared_root", "tmp", "home", "shared_home", "dump", "paging");
 				if (grep(/^$restype$/, @dir_res) ) {
 
 					my $loc = dirname(dirname($lochash{$imghash{$image}{$restype}}));
 					chomp $loc;
-					if (&mknimres($imghash{$image}{$restype}, $restype, $callback, $loc) != 0) {
+					if (&mknimres($imghash{$image}{$restype}, $restype, $callback, $loc, $imghash{$image}{spot}) != 0) {
 						next;
 					}
 				}
@@ -5519,6 +5599,12 @@ sub make_SN_resource
 					chomp $loc;
 
 					my $spotcmd = "/usr/lpp/bos.sysmgt/nim/methods/m_mkspot -o -a server=master -a location=$loc -a source=no $imghash{$image}{$restype}";
+
+					if ($::VERBOSE) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Running: \'$spotcmd\'\n";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
 					
 					my $output = xCAT::Utils->runcmd("$spotcmd", -1);
 					if ($::RUNCMD_RC  != 0) {
@@ -5786,7 +5872,7 @@ sub mknimimage_usage
     push @{$rsp->{data}}, "  Usage: ";
     push @{$rsp->{data}}, "\tmknimimage [-h | --help]";
     push @{$rsp->{data}}, "or";
-    push @{$rsp->{data}}, "\tmknimimage [-V] [-f|--force] [-l <location>] -s [image_source] \n\t\t[-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode]\n\t\t[-b mksysbfile] osimage_name [attr=val [attr=val ...]]\n";
+	push @{$rsp->{data}}, "\tmknimimage [-V] [-f|--force] [-r|--sharedroot] [-l <location>]\n\t\t-s [image_source] [-i current_image] [-t nimtype] [-m nimmethod]\n\t\t[-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
