@@ -179,6 +179,10 @@ if ($ENV{'RSYNCSN'})
 {
     push(@{$cmdref->{env}}, "RSYNCSN=$ENV{'RSYNCSN'}");
 }
+if ($ENV{'RSYNCSNONLY'})
+{
+    push(@{$cmdref->{env}}, "RSYNCSNONLY=$ENV{'RSYNCSNONLY'}");
+}
 
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
@@ -426,6 +430,7 @@ sub parse_args_xdcp
                     'q|show-config'    => \$options{'show-config'},
                     'p|preserve'       => \$options{'preserve'},
                     'r|c|node-rcp=s'   => \$options{'node-rcp'},
+                    's'                => \$options{'rsyncSN'},
                     't|timeout=i'      => \$options{'timeout'},
                     'v|verify'         => \$options{'verify'},
                     'B|bypass'         => \$options{'bypass'},
@@ -453,12 +458,18 @@ sub parse_args_xdcp
         exit 0;
     }
 
+    # rsync only to the service node
+    if ($options{'rsyncSN'})
+    {
+        $ENV{'RSYNCSNONLY'} = "yes";    # rsync file to SN
+    }
+
     # if rsyncing to a node,  not the root image
     # then must sync to service node first, if using hierarchy
     # These env variable are used in xdsh.pm preprocessing
     if ((!($options{'rootimg'})) && ($options{'File'}))
     {
-        $ENV{'RSYNCSN'} = "yes";    #rsync file to SN, if exist
+        $ENV{'RSYNCSN'} = "yes";        #rsync file to SN, if exist
     }
 
     if ($options{'File'})
