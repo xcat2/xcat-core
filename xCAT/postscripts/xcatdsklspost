@@ -18,7 +18,7 @@ if [ -e '/etc/SuSE-release' ]; then
    OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
 fi
 
-SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient-*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
+SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
 if [ -z "$SIP" ]; then
     SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
 fi
@@ -47,6 +47,7 @@ mkdir -p /tmp/postage
 rm -R -f /xcatpost/*
 rm -R -f /tmp/postage/*
 
+#here we get all the postscripts.  Please do not change this behaviour because some scripts depend on others
 cd /tmp/postage
 #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/install/postscripts 2> /tmp/wget.log
 wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
@@ -85,6 +86,13 @@ if [ $# -gt 1 ]; then
   #add requested postscripts in
   echo "$POSTS" | tr "," "\n" >> /tmp/mypostscript
 fi
+
+#ADDSITEYUM is set by post.rh and post.rh.iscsi for full installtion
+if [[ "$ADDSITEYUM" = "1" ]]; then
+  TMP=`sed "/postscripts-start-here/ a addsiteyum" /tmp/mypostscript`
+  echo "$TMP" > /tmp/mypostscript
+fi
+
 #MYCONT=`cat /tmp/mypostscript`
 #echo "$MYCONT"
 
@@ -113,7 +121,7 @@ chmod +x /tmp/mypostscript
 if [ -x /tmp/mypostscript ];then
    /tmp/mypostscript
 fi
-rm -f /tmp/mypostscript
+#rm -f /tmp/mypostscript
 
 #tell user it is done when this is called by updatenode command
 if [ $# -gt 0 ]; then
