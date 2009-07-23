@@ -115,9 +115,12 @@ cp ./../../../xcat-dep/trunk/AIX/README $RPMDIR/
 
 # make the default required RPM tar.gz file
 ls *.rpm > $RPMDIR/flist
-chmod +x $RPMDIR/instoss
 echo "README" >> $RPMDIR/flist
 echo "instoss" >> $RPMDIR/flist
+
+chmod 664 $RPMDIR/*
+chmod +x $RPMDIR/instoss
+
 tar -cvf $RPMDIR/dep-aix-$VER-$SNAP.tar -L $RPMDIR/flist
 gzip $RPMDIR/dep-aix-$VER-$SNAP.tar
 
