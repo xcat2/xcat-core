@@ -683,6 +683,7 @@ sub invoke_cmd {
     my $result  = runslp( $args, $ip, $services, $request );
     my $unicast = @$result[0];
     my $values  = @$result[1];
+    prt_result( $request, $values);
 
     ########################################
     # May have to send additional unicasts
@@ -725,6 +726,7 @@ sub invoke_cmd {
             ####################################
             if ( defined($attr) ) {
                 $values->{"URL: $url\n$attr\n"} = 1;
+                prt_result( $values);
             }
         }
     }
@@ -744,7 +746,29 @@ sub invoke_cmd {
     print $out "\nENDOFFREEZE6sK4ci\n";
 }
 
-
+#########################################################
+# print the slp result
+#########################################################
+sub prt_result
+{
+    my $request = shift;
+    my $values = shift;
+    my $nets = xCAT::Utils::my_nets();
+    for my $v (keys %$values)
+    {
+        if ( $v =~ /ip-address=([^\)]+)/g)
+        {
+            my $iplist = $1;
+            my $ip = getip_from_iplist( $iplist, $nets, $opt{i});
+            if ( $ip)
+            {
+#                send_msg($request, "Received SLP response from $ip.");
+#print "Received SLP response from $ip.\n";
+                xCAT::MsgUtils->message("I", "Received SLP response from $ip.", $::callback);
+            }
+        }
+    }
+}
 
 ##########################################################################
 # Run the SLP command, process the response, and send to parent
@@ -863,7 +887,6 @@ sub runslp {
                         my ($url_ip) = $url =~ /:\/\/(\d+\.\d+\.\d+\.\d+)/;
                         if ( ! $::DISCOVERED_HOST{$url_ip})
                         {
-                            send_msg( $request, 0, "Received SLP response from $url_ip."); 
                             $::DISCOVERED_HOST{$url_ip} = 1;
                         }
                         if ( $verbose ) {
@@ -1084,11 +1107,16 @@ sub gethost_from_url {
 
     my $request = shift;
     my $url     = shift;
+    my $type    = shift;
+    my $mtm     = shift;
+    my $sn      = shift;
+    my $iplist  = shift;
 
     #######################################
     # Extract IP from URL
     #######################################
-    my $ip = getip_from_url( $request, $url );
+    my $nets = xCAT::Utils::my_nets();
+    my $ip = getip_from_iplist( $iplist, $nets, $opt{i});
     if ( !defined( $ip )) {
         return undef;
     }
@@ -1105,7 +1133,7 @@ sub gethost_from_url {
     #######################################
     # Read host from hosts table
     #######################################
-    if ( ! %::HOST_TAB_CATCH)
+    if ( ! %::HOST_TAB_CACHE)
     {
         my $hosttab  = xCAT::Table->new( 'hosts' );
         my @entries = $hosttab->getAllNodeAttribs(['node','ip']);
@@ -1114,13 +1142,13 @@ sub gethost_from_url {
         {
             if ( defined $entry->{ 'ip'})
             {
-                $::HOST_TAB_CATCH{$entry->{ 'ip'}} = $entry->{ 'node'};
+                $::HOST_TAB_CACHE{$entry->{ 'ip'}} = $entry->{ 'node'};
             }
         }
     }
-    if ( exists $::HOST_TAB_CATCH{ $ip})
+    if ( exists $::HOST_TAB_CACHE{ $ip})
     {
-        return $::HOST_TAB_CATCH{ $ip};
+        return $::HOST_TAB_CACHE{ $ip} ."($ip)";
     }
 
     ###############################################################
@@ -1130,7 +1158,8 @@ sub gethost_from_url {
     if ( !$host or $! ) {
 #Tentative solution
 return undef if ($opt{H});
-        return( $ip );
+        $host = getFactoryHostname($type,$mtm,$sn);
+#return( $ip );
     }
     #######################################
     # Convert hostname to short-hostname
@@ -1138,19 +1167,68 @@ return undef if ($opt{H});
     if ( $host =~ /([^\.]+)\./ ) {
         $host = $1;
     }
-    return( $host );
+    return( "$host($ip)" );
 
-    ###########################################
-    #  Otherwise, URL is not in IP format
-    ###########################################
-    if ( !($url =~ /service:.*:\/\/(.*)/  )) {
-        if ( $verbose ) {
-            trace( $request, "Invalid URL: $_[0]" );
-        }
-        return undef;
+#    ###########################################
+#    #  Otherwise, URL is not in IP format
+#    ###########################################
+#    if ( !($url =~ /service:.*:\/\/(.*)/  )) {
+#        if ( $verbose ) {
+#            trace( $request, "Invalid URL: $_[0]" );
+#        }
+#        return undef;
+#    }
+#    return( $1 );
+
+}
+
+sub getFactoryHostname
+{
+    my $type = shift;
+    my $mtm  = shift;
+    my $sn   = shift;
+
+    if ( $type eq SERVICE_FSP)
+    {
+        return "Server-$mtm-SN$sn";
     }
-    return( $1 );
+    else
+    {
+        return "$mtm*$sn";
+    }
+}
 
+##########################################################################
+# Get correct IP from ip list in SLP Attr
+##########################################################################
+sub getip_from_iplist
+{
+    my $iplist  = shift;
+    my $nets    = shift;
+    my $inc     = shift;
+    
+    my @ips = split /,/, $iplist;
+    if ( $inc)
+    {
+        for my $net (keys %$nets)
+        {
+            delete $nets->{$net} if ( $nets->{$net} ne $inc);
+        }
+    }
+    
+    for my $ip (@ips)
+    {
+        for my $net ( keys %$nets)
+        {
+            my ($n,$m) = split /\//,$net;
+            if ( xCAT::Utils::isInSameSubnet( $n, $ip, $m, 1) and
+                 xCAT::Utils::isPingable( $ip))
+            {
+                return $ip;
+            }
+        }
+    }
+    return undef;
 }
 
 
@@ -1290,10 +1368,21 @@ sub parse_responses {
             unless ( $rsp =~ /\($_=([^\)]+)/ ) {
                 if ( $verbose ) {
                     trace( $request, "Attribute not found: [$_]->($rsp)" );
-                }
+                } 
+                next; 
+            } 
+            push @result, $1; 
+        }
+
+        ###########################################
+        # Get host directly from URL
+        ###########################################
+        if ( $type eq SERVICE_HMC or $type eq SERVICE_BPA 
+                or $type eq SERVICE_FSP) {
+            $host = gethost_from_url( $request, $1, @result);
+            if ( !defined( $host )) {
                 next;
             }
-            push @result, $1;
         }
         ###########################################
         # Use the IP/Hostname contained in the URL
@@ -1304,7 +1393,8 @@ sub parse_responses {
         # that instead of the URL.
         #
         ###########################################
-        if (( $type eq SERVICE_HMC ) or ( $type eq SERVICE_IVM )) {
+        if (!$host and (( $type eq SERVICE_HMC ) or ( $type eq SERVICE_IVM )
+            or ( $type eq SERVICE_BPA) )) {
             if ( $rsp =~ /\(name=([^\)]+)/ ) {
                 $host = $1;
 
@@ -1331,7 +1421,7 @@ sub parse_responses {
         ###########################################
         # If MM, use the discovered host
         ###########################################
-        if (( $type eq SERVICE_MM ) and ( defined( $mm ))) {
+        if (!$host and ( $type eq SERVICE_MM ) and ( defined( $mm ))) {
             my $ip = getip_from_url( $request, $1 );
 
             if ( defined( $ip )) {
@@ -1341,17 +1431,8 @@ sub parse_responses {
                 }
             }
         }
-        ###########################################
-        # Get host directly from URL
-        ###########################################
-        if ( !defined($host) ) {
-            $host = gethost_from_url( $request, $1 );
-            if ( !defined( $host )) {
-                next;
-            }
-        }
-        push @result, $host;
 
+        push @result, $host;
         ###################################
         # Strip off trailing ",lifetime"
         ###################################
@@ -1383,6 +1464,43 @@ sub parse_responses {
     return( \%outhash );
 }
 
+##########################################################################
+# Update /etc/hosts
+##########################################################################
+sub updateEtcHosts
+{
+    my $host_ip = shift;
+    my $fname = "/etc/hosts";
+    unless ( open( HOSTS,"<$fname" )) {
+        return undef;
+    }
+    my @rawdata = <HOSTS>;
+    close( HOSTS );
+
+    ######################################
+    # Remove old entry
+    ######################################
+    foreach my $host ( keys %$host_ip) {
+        my $ip = $host_ip->{ $host};
+        foreach ( @rawdata ) {
+            if ( /^#/ or /^\s*\n$/ ) {
+                next;
+            } elsif ( /\s+$host\s+$/ ) {
+                s/$_//;
+            }
+        }
+        push @rawdata,"$ip\t$host\n";
+    }
+    ######################################
+    # Rewrite file
+    ######################################
+    unless ( open( HOSTS,">$fname" )) {
+        return undef;
+    }
+    print HOSTS @rawdata;
+    close( HOSTS );
+    return 1;
+}
 
 
 ##########################################################################
@@ -1394,6 +1512,7 @@ sub xCATdB {
     my %keyhash = ();
     my %updates = ();
     my %sn_node = ();
+    my %host_ip = ();
     ############################
     # Cache vpd table
     ############################
@@ -1414,12 +1533,20 @@ sub xCATdB {
     foreach ( keys %$outhash ) {
         my $data = $outhash->{$_};
         my $type = @$data[0];
+        my $nameips = @$data[4];
+        my ($name,$ips);
+        if ( $nameips =~ /^([^\(]+)\(([^\)]+)\)$/)
+        {
+            $name = $1;
+            $ips  = $2;
+            $host_ip{$name} = $ips;
+        }
 
         if ( $type =~ /^BPA$/ ) {
             my $model  = @$data[1];
             my $serial = @$data[2];
-            my $ips    = @$data[3];
-            my $name   = @$data[4];
+            $ips    = @$data[3] if ( !$ips);
+            $name   = @$data[4] if ( !$name);
             my $id     = @$data[6];
 
             ####################################
@@ -1442,8 +1569,8 @@ sub xCATdB {
             my $frame      = "";
             my $model      = @$data[1];
             my $serial     = @$data[2];
-            my $ips        = @$data[3];
-            my $name       = @$data[4];
+            $ips        = @$data[3] if ( !$ips);
+            $name       = @$data[4] if ( !$name);
             my $bpc_model  = @$data[6];
             my $bpc_serial = @$data[7];
             my $cageid     = @$data[8];
@@ -1495,6 +1622,7 @@ sub xCATdB {
             xCAT::PPCdb::add_systemX( $type, $data );
         }
     }
+    updateEtcHosts(\%host_ip);
 }
 
 

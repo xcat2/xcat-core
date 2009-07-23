@@ -1829,10 +1829,132 @@ sub my_hexnets
     return $rethash;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 get_host_from_ip
+    Description:
+        Get the hostname of an IP addresses. First from hosts table, and then try system resultion.
+        If there is a shortname, it will be returned. Otherwise it will return long name. If the IP cannot be resolved, return undef;
+        
+    Arguments:
+        $ip: the IP to get;
+        
+    Returns:  
+        Return: the hostname.
+For an example
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::Utils::get_host_from_ip('192.168.200.1')
+    
+    Comments:
+=cut
+
+#-----------------------------------------------------------------------
+sub get_host_from_ip
+{
+    my $ip = shift;
+}
+ 
+#-------------------------------------------------------------------------------
+
+=head3 isPingable
+    Description:
+        Check if an IP address can be pinged
+        
+    Arguments:
+        $ip: the IP to ping;
+        
+    Returns:  
+        Return: 1 indicates yes; 0 indicates no.
+For an example
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::Utils::isPingable('192.168.200.1')
+    
+    Comments:
+        none
+=cut
+
+#-----------------------------------------------------------------------
+%::PING_CACHE;
+sub isPingable
+{
+    my $ip = shift;
+
+    my $rc;
+    if ( exists $::PING_CACHE{ $ip})
+    {
+         $rc = $::PING_CACHE{ $ip};
+    }
+    else
+    {
+        my $res = `LANG=C ping -c 1 -w 5 $ip 2>&1`;
+        if ( $res =~ /100% packet loss/g)
+        { 
+            $rc = 1;
+        }
+        else
+        {
+            $rc = 0;
+        }
+        $::PING_CACHE{ $ip} = $rc;
+    }
+
+    return ! $rc;    
+}
+ 
+#-------------------------------------------------------------------------------
+
+=head3 my_nets
+    Description:
+        Return a hash ref that contains all subnet and netmask on the mn (or sn). This subroutine can be invoked on both Linux and AIX.
+        
+    Arguments:
+        none.
+        
+    Returns:  
+        Return a hash ref. Each entry will be: <subnet/mask>=><existing ip>;
+        For an example:
+            '192.168.200.0/255.255.255.0' => '192.168.200.246';
+For an example
+        
+    Globals:
+        none
+        
+    Error:
+        none
+        
+    Example:
+        xCAT::Utils::my_nets().
+    
+    Comments:
+        none
+=cut
+#-----------------------------------------------------------------------
 sub my_nets
 {
     my $rethash;
-    my @nets = split /\n/, `/sbin/ip addr`; #could use ip route, but to match hexnets...
+    my @nets;
+    if ( $^O eq 'aix')
+    {
+        @nets = split /\n/, `/usr/sbin/ifconfig -a`;
+    }
+    else
+    {
+        @nets = split /\n/, `/sbin/ip addr`; #could use ip route, but to match hexnets...
+    }
     foreach (@nets)
     {
         my @elems = split /\s+/;
@@ -1840,7 +1962,16 @@ sub my_nets
         {
             next;
         }
-        (my $curnet, my $maskbits) = split /\//, $elems[2];
+        my $curnet; my $maskbits;
+        if ( $^O eq 'aix')
+        {
+            $curnet = $elems[2];
+            $maskbits = formatNetmask( $elems[4], 2, 1);
+        }
+        else
+        {
+            ($curnet, $maskbits) = split /\//, $elems[2];
+        }
         my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
         my $nown     = unpack("N", inet_aton($curnet));
         $nown = $nown & $curmask;
@@ -4722,4 +4853,47 @@ sub get_subnet_aix
     return @aix_nrn;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3    isIpaddr
+
+    returns 1 if parameter is has a valid IP address form.
+
+    Arguments:
+        dot qulaified IP address: e.g. 1.2.3.4
+    Returns:
+        1 - if legal IP address
+        0 - if not legal IP address.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if ($ipAddr) { blah; }
+    Comments:
+        Doesn't test if the IP address is on the network,
+        just tests its form.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isIpaddr
+{
+    my $addr = shift;
+
+    #print "addr=$addr\n";
+    if ($addr !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+    {
+        return 0;
+    }
+
+    if ($1 > 255 || $1 == 0 || $2 > 255 || $3 > 255 || $4 > 255)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
 1;
