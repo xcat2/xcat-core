@@ -332,8 +332,6 @@ sub  getmypost {
 sub  updateflag {
     my $nodesetstat=shift;
     my $state="booted";
-    if ($nodesetstat eq "standalone") { $state="installed booting"; }
-
  
     my $port = "3002";
     my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servnode, PeerPort  => $port, );
