@@ -843,7 +843,7 @@ sub defmk
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
-                      "\'$attr\' is not a valid attribute name for for an object type of \'$::objtype\'.\n";
+                      "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.\n";
                     $rsp->{data}->[1] = "Skipping to the next attribute.\n";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     $error = 1;
