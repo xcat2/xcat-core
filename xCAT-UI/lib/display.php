@@ -71,6 +71,9 @@ echo <<<EOS2
   <ul class="sf-menu" id='sf-menu'>
    <li>
     <a href="control.php">control</a>
+	<ul>
+	<li><a href="vm.php">VM Management</a></li>
+	</ul>
    </li>
    <li class="current">
     <a href="config.php">configure</a>
@@ -95,10 +98,12 @@ echo <<<EOS4
     <a href="provision.php">provision</a>
    </li>
    <li>
-    <a href="monitor.php">syslog</a>
-   </li>
-   <li>
     <a href="monitor/monlist.php">monitor</a>
+	<ul>
+   		<li>
+    			<a href="monitor.php">syslog</a>
+   		</li>
+	</ul>
    </li>
   </ul>
   <!-- <div id="cmdForm">
