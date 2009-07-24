@@ -116,9 +116,9 @@ To replace the current "groups" attribute value of "node01".
 
 =item 6.
 
-To add "node01" to the "memberslist" attribute of a group definition called "LinuxNodes".
+To add "node01" to the "members" attribute of a group definition called "LinuxNodes".
 
- chdef -p -t group -o LinuxNodes memberlist="node01"
+ chdef -p -t group -o LinuxNodes members="node01"
 
 =item 7.
 
