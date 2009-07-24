@@ -47,7 +47,7 @@ $::AIXIBCmd = "/usr/bin/ibstat";
 $::logging++;
 
 local *FILE;
-`/usr/bin/mkdir -p $::DEFAULT_RESULT_FILE_PATH`;
+`mkdir -p $::DEFAULT_RESULT_FILE_PATH`;
 unless (open(FILE, ">$::RESULT_FILE"))
 {
     print "Can't open file $::RESULT_FILE for writing.\n";
@@ -258,7 +258,7 @@ sub getArgs()
         $::RESULT_FILE = $::DEFAULT_RESULT_FILE;
         if (!-e "/var/opt/xcat/ib/")
         {
-            `/usr/bin/mkdir -p /var/opt/xcat/ib/`;
+            `mkdir -p /var/opt/xcat/ib/`;
             if ($?)
             {
                 $::GLOBAL_EXIT = $?;
@@ -375,7 +375,7 @@ sub append_logging()
     if (!-e $logfile)
     {
         #  create the log file if not already there
-        `/usr/bin/mkdir -p $::GUIDS_LOG_PATH`;
+        `mkdir -p $::GUIDS_LOG_PATH`;
         unless (open(LOGFILE, ">$logfile"))
         {
             # Cannot open file
