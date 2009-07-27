@@ -1550,7 +1550,7 @@ sub xCATdB {
             xCAT::PPCdb::add_ppc( lc($type), [$values] );
         }
         elsif ( $type =~ /^(HMC|IVM)$/ ) {
-            xCAT::PPCdb::add_ppchcp( lc($type), $data );
+            xCAT::PPCdb::add_ppchcp( lc($type), $name );
         }
         elsif ( $type =~ /^FSP$/ ) {
             ########################################

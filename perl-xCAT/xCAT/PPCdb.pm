@@ -174,10 +174,9 @@ sub updategroups {
 sub add_ppchcp {
 
     my $hwtype = shift;
-    my $data   = shift;
+    my $name   = shift;
     my @tabs   = qw(ppchcp nodehm nodelist nodetype);
     my %db     = ();
-    my $name   = @$data[4];
 
     ###################################
     # Open database needed
