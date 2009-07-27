@@ -206,7 +206,7 @@ sub add_ppchcp {
     ###################################
     # Update nodetype table
     ###################################
-    $db{nodetype}->setNodeAttrbs( $name, {nodetype=>lc($hwtype)});
+    $db{nodetype}->setNodeAttribs( $name, {nodetype=>lc($hwtype)});
 
     ###################################
     # Update nodelist table

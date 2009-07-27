@@ -1106,7 +1106,7 @@ sub getip_from_url {
 sub gethost_from_url {
 
     my $request = shift;
-    my $url     = shift;
+    my $rsp     = shift;
     my $type    = shift;
     my $mtm     = shift;
     my $sn      = shift;
@@ -1159,7 +1159,7 @@ sub gethost_from_url {
     if ( !$host or $! ) {
 #Tentative solution
 return undef if ($opt{H});
-        $host = getFactoryHostname($type,$mtm,$sn);
+        $host = getFactoryHostname($type,$mtm,$sn,$rsp);
 #return( $ip );
     }
 
@@ -1189,15 +1189,25 @@ sub getFactoryHostname
     my $type = shift;
     my $mtm  = shift;
     my $sn   = shift;
+    my $rsp  = shift;
+    my $host = undef;
+
+    if ( $rsp =~ /\(name=([^\)]+)/ ) {
+        $host = $1;
+
+    ###################################
+    # Convert to short-hostname
+    ###################################
+        if ( $host =~ /([^\.]+)\./ ) {
+            $host = $1;
+        }
+    }
 
     if ( $type eq SERVICE_FSP or $type eq SERVICE_BPA)
     {
-        return "Server-$mtm-SN$sn";
+        $host = "Server-$mtm-SN$sn";
     }
-    else
-    {
-        return "$mtm*$sn";
-    }
+    return $host;
 }
 
 ##########################################################################
@@ -1381,31 +1391,9 @@ sub parse_responses {
         ###########################################
         if ( $type eq SERVICE_HMC or $type eq SERVICE_BPA 
                 or $type eq SERVICE_FSP) {
-            $host = gethost_from_url( $request, $1, @result);
+            $host = gethost_from_url( $request, $rsp, @result);
             if ( !defined( $host )) {
                 next;
-            }
-        }
-        ###########################################
-        # Use the IP/Hostname contained in the URL
-        # not the (ip-address) field since for FSPs
-        # it may contain default IPs which could
-        # all be the same. If the response contains
-        # a "name" attribute as the HMC does, use
-        # that instead of the URL.
-        #
-        ###########################################
-        if (!$host and (( $type eq SERVICE_HMC ) or ( $type eq SERVICE_IVM )
-            or ( $type eq SERVICE_BPA) )) {
-            if ( $rsp =~ /\(name=([^\)]+)/ ) {
-                $host = $1;
-
-                ###################################
-                # Convert to short-hostname
-                ###################################
-                if ( $host =~ /([^\.]+)\./ ) {
-                    $host = $1;
-                }
             }
         }
         ###########################################
@@ -1562,7 +1550,7 @@ sub xCATdB {
             xCAT::PPCdb::add_ppc( lc($type), [$values] );
         }
         elsif ( $type =~ /^(HMC|IVM)$/ ) {
-            xCAT::PPCdb::add_ppchcp( $type, $data );
+            xCAT::PPCdb::add_ppchcp( lc($type), $data );
         }
         elsif ( $type =~ /^FSP$/ ) {
             ########################################
