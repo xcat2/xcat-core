@@ -8,6 +8,7 @@ use HTTP::Cookies;
 use HTML::Form;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
+use Socket;
 
 
 ##########################################
@@ -129,6 +130,7 @@ sub connect {
     ##################################
     # Set options
     ##################################
+#    my $serverip = inet_ntoa(inet_aton($server));
     my $url = "https://$server/cgi-bin/cgi?form=2";
     $ua->cookie_jar( $cookie );
     $ua->timeout( $timeout );
@@ -1741,6 +1743,11 @@ sub set_netcfg
     {
         $inc_type = 'Dynamic';
         push @set_entries, 'IP type to dynamic.';
+    }
+    elsif ( $inc_ip eq '*')
+    {
+        $inc_type = 'Static';
+        ($inc_ip, $inc_host, $inc_gateway, $inc_netmask) = xCAT::Utils::getNodeNetworkCfg(@$exp[1]);
     }
     else
     {

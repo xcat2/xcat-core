@@ -1120,6 +1120,7 @@ sub gethost_from_url {
     if ( !defined( $ip )) {
         return undef;
     }
+
     #######################################
     # Check if valid IP
     #######################################
@@ -1161,6 +1162,7 @@ return undef if ($opt{H});
         $host = getFactoryHostname($type,$mtm,$sn);
 #return( $ip );
     }
+
     #######################################
     # Convert hostname to short-hostname
     #######################################
@@ -1188,7 +1190,7 @@ sub getFactoryHostname
     my $mtm  = shift;
     my $sn   = shift;
 
-    if ( $type eq SERVICE_FSP)
+    if ( $type eq SERVICE_FSP or $type eq SERVICE_BPA)
     {
         return "Server-$mtm-SN$sn";
     }
@@ -1525,7 +1527,7 @@ sub xCATdB {
         {
             if ( $ent->{mtm} and $ent->{serial})
             {
-                $sn_node{"$ent->{mtm}*$ent->{serial}"} = $ent->{node};
+                $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} = $ent->{node};
             }
         }
     }
@@ -1585,7 +1587,7 @@ sub xCATdB {
                 }
                 else
                 {
-                    $frame = "$bpc_model*$bpc_serial";
+                    $frame = "Server-$bpc_model-SN$bpc_serial";
                 }
             }
             ########################################
@@ -1615,7 +1617,7 @@ sub xCATdB {
             my $server = "";
 
             my $values = join( ",",
-               lc($type),$name,$cageid,$model,$serial,$server,$prof,$frame,$ips );
+               lc($type),$name,$cageid,$model,$serial,$name,$prof,$frame,$ips );
             xCAT::PPCdb::add_ppc( "fsp", [$values] );
         }
         elsif ( $type =~ /^(RSA|MM)$/ ) {

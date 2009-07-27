@@ -175,7 +175,7 @@ sub add_ppchcp {
 
     my $hwtype = shift;
     my $data   = shift;
-    my @tabs   = qw(ppchcp nodehm nodelist);
+    my @tabs   = qw(ppchcp nodehm nodelist nodetype);
     my %db     = ();
     my $name   = @$data[4];
 
@@ -202,6 +202,11 @@ sub add_ppchcp {
     # Update nodehm table
     ###################################
     $db{nodehm}->setNodeAttribs( $name, {mgt=>lc($hwtype)} );
+    
+    ###################################
+    # Update nodetype table
+    ###################################
+    $db{nodetype}->setNodeAttrbs( $name, {nodetype=>lc($hwtype)});
 
     ###################################
     # Update nodelist table

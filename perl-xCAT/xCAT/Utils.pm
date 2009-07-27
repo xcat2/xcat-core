@@ -4896,4 +4896,44 @@ sub isIpaddr
         return 1;
     }
 }
+
+#-------------------------------------------------------------------------------
+
+=head3   getNodeNetworkCfg 
+    Description:
+        Get node network configuration, including "IP, hostname(the nodename),and netmask" by this node's name. 
+
+    Arguments:
+        node: the nodename
+    Returns:
+        Return an array, which contains (IP,hostname,gateway,netmask').
+        undef - Failed to get the network configuration info
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my ($ip,$host,undef,$mask) = xCAT::Utils::getNodeNetworkCfg('node1');
+    Comments:
+        Presently gateway is always blank. Need to be improved.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub getNodeNetworkCfg
+{
+    my $node = shift;
+
+    my $nets = xCAT::Utils::my_nets();
+    my $ip   = inet_ntoa(inet_aton($node));
+    my $mask = undef;
+    for my $net (keys %$nets)
+    {
+        my $netname;
+        ($netname,$mask) = split /\//, $net;
+        last if ( xCAT::Utils::isInSameSubnet( $netname, $ip, $mask, 1));
+    }
+    return ($ip, $node, undef, xCAT::Utils::formatNetmask($mask,1,0));
+}
+
 1;

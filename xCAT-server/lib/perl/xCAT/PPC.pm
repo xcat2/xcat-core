@@ -538,13 +538,14 @@ sub resolve_hcp {
     # Process each node
     ####################################
     foreach my $hcp ( @$noderange ) {
-        my ($ent) = $db->getAttribs( {hcp=>$hcp},"hcp" );
+#        my ($ent) = $db->getAttribs( {hcp=>$hcp},"hcp" );
+#        my ($ent) = $db->getNodeAttribs( $hcp, ["hcp"]);
 
-        if ( !defined( $ent )) {
-            my $msg = sprintf( "$hcp: $errmsg{NODE_UNDEF}", $tab );
-            send_msg( $request, 1, $msg );
-            next;
-        }
+#        if ( !defined( $ent )) {
+#            my $msg = sprintf( "$hcp: $errmsg{NODE_UNDEF}", $tab );
+#            send_msg( $request, 1, $msg );
+#            next;
+#        }
         ################################
         # Get userid and password 
         ################################
