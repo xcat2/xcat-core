@@ -2335,7 +2335,7 @@ sub rmnimimage
 	#  Get a list of the all the locally defined nim resources
 	#
 	my $cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
-	my @nimresources = [];
+	my @nimresources = ();
 	@nimresources = xCAT::Utils->runcmd("$cmd", -1);
 	if ($::RUNCMD_RC  != 0)
 	{
@@ -3448,7 +3448,7 @@ sub nimnodecust
 
 	# get list of NIM machines defined locally
 
-	my @machines = [];
+	my @machines = ();
     my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
 
     @machines = xCAT::Utils->runcmd("$cmd", -1);
@@ -4222,6 +4222,7 @@ sub copyres
 				return 1;
 			}
 			push @::resbacked, $resname;
+			push @::removebk, $bkfile;
 		}
 	
 		# copy the file to the SN
@@ -4243,6 +4244,7 @@ sub copyres
 				return 1;
 			}
 			push @::resbacked, $resname;
+			push @::removebk, $bkfile;
 		}
 
 		# copy the file to the SN
@@ -4340,8 +4342,11 @@ sub doSNcopy
 	#	- copy whatever is needed to the SNs
 	#
 	
-	# keep track if spot/lpp_source has already been backed up
+	# keep track if spot or lpp_source has already been backed up
 	@::resbacked=();
+
+	# list of backup files to remove from the MN when done
+    @::removebk=();
 
 	foreach my $snkey (keys %$sn) {
 		my @nimresources;
@@ -4435,6 +4440,20 @@ sub doSNcopy
 			} # end - for each image
 		} # end - if the SN is not me
 	} # end - for each SN
+
+	# remove any lpp_source or spot backup files that were created
+    foreach my $file (@::removebk) {
+        my $rmcmd = "/usr/bin/rm -f $file";
+        my $output = xCAT::Utils->runcmd("$rmcmd", -1);
+        if ($::RUNCMD_RC  != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not remove backup file: $file\n";
+            if ($::VERBOSE) {
+                push @{$rsp->{data}}, "$output";
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+    }
 
 	return 0;
 }
@@ -4639,7 +4658,7 @@ sub mkdsklsnode
     #  Get a list of the defined NIM machines
 	#    these are machines defined on this server
     #
-	my @machines = [];
+	my @machines = ();
     my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/nu
 ll~;
 
