@@ -19,6 +19,11 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use warnings "all";
 use xCAT::Table;
+my $output_handler;
+my $newiqns;
+my $domain;
+my $iscsitab;
+my $nodetypeinfo;
 
 sub handled_commands {
     return {
@@ -40,12 +45,68 @@ sub handled_commands {
 }
 my %iscsicfg;
 
+sub sendmsg { #TODO: common code
+    my $callback = $output_handler;
+    my $text = shift;
+    my $node = shift;
+    my $descr;
+    my $rc;
+    if (ref $text eq 'HASH') {
+        return $callback->($text);
+    } elsif (ref $text eq 'ARRAY') {
+        $rc = $text->[0];
+        $text = $text->[1];
+    }
+    if ($text =~ /:/) {
+        ($descr,$text) = split /:/,$text,2;
+    }
+    $text =~ s/^ *//;
+    $text =~ s/ *$//;
+    my $msg;
+    my $curptr;
+    if ($node) {
+        $msg->{node}=[{name => [$node]}];
+        $curptr=$msg->{node}->[0];
+    } else {
+        $msg = {};
+        $curptr = $msg;
+    }
+    if ($rc) {
+        $curptr->{errorcode}=[$rc];
+        $curptr->{error}=[$text];
+        $curptr=$curptr->{error}->[0];
+    } else {
+        $curptr->{data}=[{contents=>[$text]}];
+        $curptr=$curptr->{data}->[0];
+        if ($descr) { $curptr->{desc}=[$descr]; }
+    }
+    $callback->($msg);
+}
 sub process_request {
     my $request = shift;
-    my $callback = shift;
-    my $iscsitab = xCAT::Table->new('iscsi');
+    $output_handler = shift;
+    $iscsitab = xCAT::Table->new('iscsi');
+    unless ($iscsitab) {
+        sendmsg([1,"iSCSI configuration lacking from the iscsi table"]);
+        return;
+    }
     my @nodes = @{$request->{node}};
-    my $iscsitabdata = $iscsitab->getNodesAttribs(\@nodes,[qw/server iname file/]);
+    my $sitetab = xCAT::Table->new('site');
+    (my $dent) = $sitetab->getAttribs({key=>'domain'},'value');
+    if ($dent and $dent->{value}) {
+        $domain = $dent->{value};
+        $domain = join(".",reverse(split(/\./,$domain)));
+    } else {
+        sendmsg([1,"Cannot determine domain name for iqn generation from site table"]);
+        return;
+    }
+    my $nodetype =xCAT::Table->new('nodetype',-create=>0);
+    unless ($nodetype) {
+        sendmsg([1,"ONTAP plugin requires nodetype table to be populated"]);
+        return;
+    }
+    $nodetypeinfo = $nodetype->getNodesAttribs(\@nodes,['os']);
+    my $iscsitabdata = $iscsitab->getNodesAttribs(\@nodes,[qw/server lun iname file/]);
     my $node;
     foreach $node (keys %$iscsitabdata) { #Re-layout the data so we can iterate target-wise rather than node wise
         $iscsicfg{$iscsitabdata->{$node}->[0]->{server}}->{$node}=$iscsitabdata->{$node}->[0];
@@ -56,7 +117,6 @@ sub process_request {
         handle_targets($controller,$request);
     }
     use Data::Dumper;
-    print Dumper(\%iscsicfg);
 };
 
 sub get_controller_iqn {
@@ -68,64 +128,170 @@ sub get_controller_iqn {
     return $output;
 }
 
-sub get_luns_for_iqn {
-    #extract all the backing files presented to the given iqn, with lun id
+sub build_lunmap {
     my $controller = shift;
-    my $iqn = shift;
-    my @output = `ssh $controller igroup show `;
-    my %returns;
+    my @nodes = @_;
+    my $lunmap;
+    my @groupoutput = `ssh $controller igroup show `;
+    my @mapoutput = `ssh $controller lun show -m`;
+    shift @mapoutput; #Get rid of header
+    shift @mapoutput;
     my $groupname;
     my $tgr;
-    foreach (@output) {
-        if (/^    ([^ ]+)/) { #This is a new group
-            $tgr = $1;
-        } elsif (/^        $iqn/) {
-            $groupname = $tgr;
-        } 
-    }
-    unless ($groupname) {
-        return undef;
-    }
-    @output = `ssh $controller lun show -m`;
-    shift @output; #discard header
-    shift @output;
-    foreach (@output) {
-        unless (/iSCSI/) { next; }
-        my $backing;
-        my $igr;
-        my $lunid;
-        ($backing,$igr,$lunid) = split /\s+/,$_,3;
-        if ($igr eq $groupname) { 
-            $returns{$backing}=$lunid;
+    my $node;
+    my $iqn;
+    my @time = localtime;
+    my $year = 1900+$time[5];
+    my $month = $time[4]+1;
+    my %returns;
+    foreach $node (@nodes) {
+        $tgr = undef;
+        $iqn = $iscsicfg{$controller}->{$node}->{iname};
+        unless ($iqn) { #We must control client iqn, ONTAP acls require it
+            $newiqns->{$node} = sprintf("iqn.%d-%02d.%s:%s-initiator",$year,$month,$domain,$node);
+            $iqn = $newiqns->{$node};
+            $iscsicfg{$controller}->{$node}->{iname} = $iqn;
         }
+        foreach (@groupoutput) {
+            if (/^    ([^ ]+)/) { #This is a new group
+                $tgr = $1;
+            } elsif (/^        $iqn/) {
+                $groupname = $tgr;
+            } 
+        }
+        unless ($groupname) {
+            next;
+        }
+        foreach (@mapoutput) {
+            unless (/iSCSI/) { next; }
+            my $backing;
+            my $igr;
+            my $lunid;
+            my $method;
+            ($backing,$igr,$lunid,$method) = split /\s+/,$_,4;
+            if ($igr eq $groupname) { 
+                $returns{$node}->{$backing}=$lunid;
+            }
+        }
+    }
+    foreach $node (keys %$newiqns) { #setNodesAttribs won't work since the values are unique per node
+        $iscsitab->setNodeAttribs($node,{iname=>$newiqns->{$node}});
     }
     return \%returns;
 }
 
+    
 sub handle_targets {
     my $controller = shift;
     my $request = shift;
     my $node;
-    print get_controller_iqn($controller);
-    foreach $node (keys %{$iscsicfg{$controller}}) {
-        configure_node($controller,$node,$request);
+    my $target = get_controller_iqn($controller);
+    my @nodes = keys %{$iscsicfg{$controller}};
+    my @upnodes;
+    foreach $node (@nodes) { #though traversing this is marginally more expensive than just setting, 
+                             #do this to allow group level definitions to look sane when manually done
+        if ($iscsicfg{$controller}->{$node}->{target} ne $target)  {
+            push @upnodes,$node;
+        }
+    }
+    $iscsitab->setNodesAttribs(\@upnodes,{target=>$target});
+    my $lunmap = build_lunmap($controller,keys %{$iscsicfg{$controller}});
+    foreach $node (@nodes) {
+        configure_node($controller,$node,$lunmap,$request);
     }
     
+}
+
+sub getUnits {
+    my $amount = shift;
+    my $defunit = shift;
+    my $divisor=shift;
+    unless ($divisor) {
+        $divisor = 1;
+    }
+    if ($amount =~ /(\D)$/) { #If unitless, add unit
+        $defunit=$1;
+        chop $amount;
+    }
+    if ($defunit =~ /k/i) {
+        return $amount*1024/$divisor;
+    } elsif ($defunit =~ /m/i) {
+        return $amount*1048576/$divisor;
+    } elsif ($defunit =~ /g/i) {
+        return $amount*1073741824/$divisor;
+    }
+}
+
+
+sub create_new_lun {
+    my $controller = shift;
+    my $gname = shift;
+    my $cfg = shift;
+    my $lunsize = shift;
+    my $size = getUnits($lunsize,'g',1048576);
+    $size .= "m";
+    my %osmap = (
+        'rh.*' => 'linux',
+        'centos.*' => 'linux',
+        'sles.*' => 'linux',
+        'win2k8' => 'windows_2008',
+        'win2k3' => 'windows',
+        imagex => 'windows'
+    );
+    unless ($nodetypeinfo->{$gname}->[0]->{os}) {
+        sendmsg([1,"nodetype.os must be set for ONTAP plugin to create a lun"]);
+    }
+    my $ltype;
+    my $ost=$nodetypeinfo->{$gname}->[0]->{os};
+    foreach (keys %osmap) {
+        if ($ost =~ /$_/) {
+            $ltype = $osmap{$_};
+            last;
+        }
+    }
+    my $gtype = $ltype;
+    $gtype =~ s/_2008//; #The group types don't include a 2k8 specific type
+
+    my $file = $cfg->{file};
+    print Dumper($cfg);
+    my $iname = $cfg->{iname};
+
+
+    my $output;
+    unless ($size and $ltype and $file and $gtype) { #TODO etc
+        sendmsg([1,"Insufficient data"]);
+    }
+    print "ssh $controller lun create -s $size -t $ltype $file";
+    $output = `ssh $controller lun create -s $size -t $ltype $file`;
+    $output = `ssh $controller igroup create -i -t $gtype $gname`;
+    $output = `ssh $controller igroup add $gname $iname`;
+    $output = `ssh $controller lun map $file $gname`;
 }
 
 sub configure_node {
     my $controller = shift;
     my $node = shift;
+    my $cfg = $iscsicfg{$controller}->{$node};
+    my $lunmap = shift;
     my $request = shift;
     my $lunsize;
     if ($request->{arg}) {
+        use Getopt::Long;
         @ARGV=@{$request->{arg}};
          GetOptions(
                    "size|s=i" => \$lunsize,
          );
     }
-    my $current_view = get_luns_for_iqn($controller,$iscsicfg{$controller}->{$node}->{iname});
-    print Dumper($current_view);
+    unless (defined $lunmap->{$node}->{$cfg->{file}}) {
+        if ($lunsize) {
+            create_new_lun($controller,$node,$cfg,$lunsize);
+        } else {
+            die "IMPLEMENT MAKING NEW LUN";
+        }
+    }
+    if ($cfg->{lun} ne $lunmap->{$node}->{$cfg->{file}}) {
+        $iscsitab->setNodeAttribs($node,{lun=>$lunmap->{$node}->{$cfg->{file}}});
+    }
 }
     
 1;

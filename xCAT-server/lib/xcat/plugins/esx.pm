@@ -45,7 +45,9 @@ my %guestidmap = (
     "sles10.*" => "sles10_",
     "win2k8" => "winLonghorn",
     "win2k8r2" => "windows7Server",
-    "win2k3" => "winNetStardard"
+    "win2k3" => "winNetStandard",
+    "imagex" => "winNetStandard",
+    "boottarget" => "otherlinux"
 #otherGuest, otherGuest64, otherLinuxGuest, otherLinux64Guest
     );
 
