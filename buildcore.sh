@@ -193,7 +193,7 @@ if [ "$1" = "promote" -a "$REL" != "devel" ]; then
 	#scp $TARNAME $UPLOADUSER@web.sourceforge.net:uploads/
 	echo "$TARNAME has been built.  Remember to upload it to sourceforge using its File Manager."
 else
-	scp $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
+	rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
 fi
 
 # Extract and upload the man pages in html format
