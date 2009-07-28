@@ -1798,18 +1798,6 @@ proc Firmware_Dump { device_path phandle } {
     }
 }
 
-#
-# Signal handling stuff
-#
-trap {
-    global PROGRAM
-
-    set signal SIG[trap -name]
-
-    send_user "$PROGRAM: Received signal named '$signal'\n"
-    exit 3
-} {INT HUP QUIT TERM}
-
 
 
 #
@@ -2080,6 +2068,17 @@ if [ catch { spawn $CONSOLEBIN $name -f } rsconole_pid ] {
 
 set spawn_id_rconsole $spawn_id
 nc_msg "$PROGRAM Status: spawn_id is $spawn_id\n"
+
+#
+# Signal handling stuff
+#
+trap {
+    global PROGRAM
+    set signal SIG[trap -name]
+    send_user "$PROGRAM: Received signal named '$signal'\n"
+    exec kill -KILL $spawn_id_rconsole $ssh_spawn_id
+    exit 3
+} {INT HUP QUIT TERM}
 
 set timeout 10
 set pwd_sent 0

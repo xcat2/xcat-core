@@ -214,7 +214,14 @@ sub process_command {
         # Use the CHID signal to control the 
         #connection number of certain hcp    
         $SIG{CHLD} = sub { my $pid = 0; while (($pid = waitpid(-1, WNOHANG)) > 0) 
-            { $nodes->{$pid_owner{$pid}}{'runprocess'}--; $children--; } };
+            { $nodes->{$pid_owner{$pid}}{'runprocess'}--; delete $pid_owner{$pid}; $children--; } };
+
+        $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
+            foreach (keys %pid_owner) {
+                kill 9, $_;
+            }
+            exit 0;
+        };
 
         my $hasnode = 1;
         while ($hasnode) {
