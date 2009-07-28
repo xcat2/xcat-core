@@ -3,7 +3,7 @@ if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
  require_once "$TOPDIR/lib/security.php";
  require_once "$TOPDIR/lib/functions.php";
  require_once "$TOPDIR/lib/display.php";
- 
+
 #displayMonitorLists() will generate all the monitoring plug-ins,
 #the user can select the plug-ins he wants to operate on,
 #and press the "Next" button;
@@ -15,55 +15,66 @@ if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
          exit;
      }
      #then, parse the xml data
+     $ooe = 0;
+     $line = 0;
      foreach($xml->children() as $response) foreach($response->children() as $data) {
-         list($name, $stat) = preg_split("/\s+/", $data);
-         echo <<<TAB1
-            <tr>
-                <td><input type='checkbox' /><a href='#' onClick='loadMainPage("monitor/plugin_desc.php?name=$name")'>$name</a></td>
-                <td>$stat</td>
-                <td></td>
-            </tr>
-TAB1;
+         list($name, $stat, $nodemonstatus) = preg_split("/\s+/", $data);
+         $ooe = $ooe%2;
+         echo "<tr class='ListLine$ooe' id='row$line'>";
+         echo "<td><input type='radio' name='radio' id='radio_$name' class='r_plugin' /></td>";
+         echo "<td id='$line-0'><a class='description' href='#'>$name</a></td>";
+         echo "<td id='$line-1'>$stat</td>";
+         if(isset($nodemonstatus)) { echo "<td id='$line-2'>Yes</td>";}else {echo "<td id='$line-2'>No</td>";}
+         echo "   </tr>";
+         $ooe++;
+         $line++;
          //echo "<tr><td><input type='checkbox' />$name</td><td>$stat</td><td><a onclick='LoadMainPage("main.php")'>$name</a></td></tr>";
      }
      return 0;
  }
 ?>
 <script type="text/javascript">
-    $(function() {
-        $("#head").css("background-color", "rgb(141, 189, 216)");
-//        var dialogOpts = {
-//            hide: true
-//        }
-//        $("#description").dialog(dialogOpts);
+$(function(){
+    //the code can't run in firefox; that's strange
+    $("#dialog").dialog({buttons: {"OK": function() {$(this).dialog("close");}}, autoOpen: false});
+    $(".description").click(function(){
+        $.get("monitor/plugin_desc.php", {name: $(this).text()}, function(data){
+            $("#dialog").html(data);
+            $("#dialog").dialog('open');
+            return false;
+        })
     });
+});
 </script>
-<div class='mapper'>
+<div class='mapper' align="left">
 	<span>
 		<a href='#' onclick='loadMainPage("main.php")'>home</a> /
-		<a href='#' onclick='loadMainPage("monitor/monlist.php")'>Plug-ins' List</a>
+		<a href='#' onclick='loadMainPage("monitor/monlist.php")'>Monitor</a>
 	</span>
 </div>
 <div>
-<h3>Tips:</h3>
-    <p>Please select the available plug-ins, and click the "next" button for next steps;</p>
+<ul align="left" id="tips">
+    <h3>Tips:</h3>
+<li>Click the name of each plugin, you can get the plugin's description.</li>
+<li>You can also select one plugin, then you can set node/application status monitoring for the selected plugin</li>
+</ul>
 </div>
-<div>
-<table align="center">
-    <thead id="head">
-        <tr>
-            <th>Plug-in Name</th>
-            <th>Status</th>
-            <th>Node Status Monitoring</th>
+<div style="margin-right:30px;width:auto;margin-left:30px;">
+    <table id="tabTable" class="tabTable" cellspacing="1">
+    <thead>
+        <tr class="colHeaders">
+            <td></td>
+            <td>Plug-in Name</td>
+            <td>Status</td>
+            <td>Node Status Monitoring</td>
         </tr>
     </thead>
-    <tbody id="monlist" align="left">
+    <tbody id="monlist">
     <?php displayMonitorLists();?>
     </tbody>
 </table>
+    <div id="status_mon" display="none"></div>
 </div>
-<div id="description"></div>
+<div id="dialog" title="Plug-in Description"></div>
 
-<?php insertButtons(array('label'=>'NEXT', 'id'=>'next', 'onclick'=>'loadMainPage("main.php")')); ?>
-
-
+<div><?php insertButtons(array('label' => 'Next', 'id'=> 'next', 'onclick' => 'loadMainPage("monitor/stat_mon.php")'))?></div>

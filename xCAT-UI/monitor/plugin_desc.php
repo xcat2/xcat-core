@@ -21,8 +21,8 @@ if (getXmlErrors($xml, $errors)) {
 $information = "";
 
 foreach ($xml->children() as $response) foreach ($response->children() as $data) {
-    $information .= $data;
-    $information .= "\n";
+    $information .= str_replace("\n", "<br />", $data);;
+    $information .= "\n<br/>";
     //print_r($data);
 }
 echo $information;
