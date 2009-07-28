@@ -219,7 +219,12 @@ sub do_rnetboot {
         #######################################
         # Execute command
         #######################################
-        if ( !open( OUTPUT, "$cmd 2>&1 |")) {
+        my $pid = open( OUTPUT, "$cmd 2>&1 |");
+        $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
+            kill 9, $pid;
+            exit 0;
+        };
+        if ( !$pid ) {
             return( [RC_ERROR,"$cmd fork error: $!"] );
         }
         #######################################
