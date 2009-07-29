@@ -3,6 +3,11 @@
 #####################################################
 #
 #   Generic xCAT post script for diskless nodes
+#   This script is called in the following different palces:
+#      updatenode -P ... --> xcatdsklspost 1 ...
+#      updatenode -S --> xcatdsklspost 2 otherpkgs
+#      moncfg rmcmon --> xcatdsklspost 3 configrmcnodes
+#      node deployment  --> xcatdsklspost
 #
 #####################################################
 if [ ! `uname` == Linux ]; then
@@ -71,8 +76,8 @@ while [ -z "$MYCONT" ]; do
 #    echo "MYCONT=$MYCONT"
 done
 
-# when called by the updatenode command,
-#modify the UPDATENODE flag to 1
+# when called by the updatenode command
+#modify the UPDATENODE flag to 1 
 if [ $# -gt 0 ]; then
   TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /tmp/mypostscript`;
   echo "$TMP" > /tmp/mypostscript;
@@ -95,16 +100,6 @@ fi
 
 #MYCONT=`cat /tmp/mypostscript`
 #echo "$MYCONT"
-
-# when called by the updatenode command,
-# if the first parameter equals 1, remove the otherpkgs postscript,
-# since the otherpkgs only run for software maintenance: xcatdsklspost 2 otherpkgs 
-if [ $# -gt 0 ]; then
-if [ $1 -eq 1 ]; then
-  TMP=`sed "/otherpkgs/ d" /tmp/mypostscript`
-  echo "$TMP" > /tmp/mypostscript
-fi
-fi
 
 if [ $# -eq 0 ]; then
   #notify the server that we are done with netbooting

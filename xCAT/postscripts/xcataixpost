@@ -7,7 +7,8 @@
 #               This script is run from the /etc/inittab file on both
 #               diskless and diskfull AIX nodes
 #
-#               It is also run by the updatenode cmd
+#               It is also run by the updatenode cmd ( -c 1)
+#                 moncfg command (-c 3)
 #
 #####################################################
 
@@ -190,14 +191,6 @@ if (-f $scriptname)
       `echo "$TMP" > $scriptname`;
       #add requested postscripts in
       `echo "$POSTS" | tr "," "\n" >> $scriptname`;
-    }
-
-    # when called by the updatenode command,
-    # if the first parameter equals 1, remove the otherpkgs postscript,
-    # since the otherpkgs only run for Linux software maintenance
-    if (@ARGV > 0 && $ARGV[0] == 1) {
-      my $TMP=`sed "/otherpkgs/ d" $scriptname`;
-      `echo "$TMP" > $scriptname`;
     }
 
     $nodesetstat=`grep "NODESETSTATE=" $scriptname|awk -F \= '{print \$2}'`;

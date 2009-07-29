@@ -229,7 +229,7 @@ sub makescript {
   push @scriptd, "NODESETSTATE=".$nodesetstate."\n";
   push @scriptd, "export NODESETSTATE\n";
 
-  # set the UPDATENODE flag in the script, the default it 0, that means not in the updatenode process
+  # set the UPDATENODE flag in the script, the default it 0, that means not in the updatenode process, xcatdsklspost and xcataixpost will set it to 1 in updatenode case
   push @scriptd, "UPDATENODE=0\n";
   push @scriptd, "export UPDATENODE\n";
 
@@ -300,14 +300,16 @@ sub makescript {
         push @scriptd, "OTHERPKGS=$pkgtext\n";
         push @scriptd, "export OTHERPKGS\n";
 
-        if (-r "/install/post/otherpkgs/$os/$arch/repodata/repomd.xml") {
-          push @scriptd, "OTHERPKGS_HASREPO=1\n";
-          push @scriptd, "export OTHERPKGS_HASREPO\n";
-        }
       }    
     }
   }
   
+  # check if there are sync files to be handled
+  my $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $os, $arch, $profile, $nodesetstate);
+  if (! defined ($syncfile)) {
+      push @scriptd, "NOSYNCFILES=1\n";
+      push @scriptd, "export NOSYNCFILES\n";
+  }
 
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-start-here\n";

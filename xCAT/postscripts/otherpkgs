@@ -22,6 +22,16 @@
 #=cut
 #-------------------------------------------------------------------------------
 
+# do nothing for diskless deployment case because it is done in the image already
+if [[ $UPDATENODE -ne 1 ]]; then
+  if [ $NODESETSTATE = "netboot" -o \
+     $NODESETSTATE = "diskless" -o \
+     $NODESETSTATE = "dataless" ] 
+  then
+      exit 0
+  fi
+fi 
+
 #echo "OTHERPKGS=$OTHERPKGS"
 if [[ -z "$OTHERPKGS" ]]; then 
   echo "$0: no extra rpms to install"
