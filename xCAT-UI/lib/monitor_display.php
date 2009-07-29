@@ -37,9 +37,9 @@ function displayMapper_mon($mapper)
          $ooe = $ooe%2;
          echo "<tr class='ListLine$ooe' id='row$line'>";
          echo "<td><input type='radio' name='plugins' value='$name' /></td>";
-         echo "<td id='$line-0'><a class='description' href='#'>$name</a></td>";
-         echo "<td id='$line-1'>$stat</td>";
-         if(isset($nodemonstatus)) { echo "<td id='$line-2'>Yes</td>";}else {echo "<td id='$line-2'>No</td>";}
+         echo "<td ><a class='description' href='#'>$name</a></td>";
+         echo "<td >$stat</td>";
+         if(isset($nodemonstatus)) { echo "<td >Enabled</td>";}else {echo "<td >Disabled</td>";}
          echo "   </tr>";
          $ooe++;
          $line++;
@@ -91,6 +91,52 @@ TOS1;
     displayMonitorLists();
     echo "</tbody></table></div>";
     return 0;
+}
+
+function display_stat_mon_table($args)
+{
+    //create one table to disable or enable node/application monitoring
+    //the argument $args are one array like this:
+    //{ 'xcatmon' => {
+    //      'nodestat' => 'Enabled',
+    //      'appstat' => 'Disabled',
+    //  },
+    //};
+    //
+
+    echo '<div style="margin-right: 50px; width:auto; margin-left: 50px">';
+    foreach($args as $key => $value) {
+        $name = $key;
+
+        if($value{'nodestat'} == 'Enabled') {
+            $ns_tobe = 'Disable';
+        } else {
+            $ns_tobe = 'Enable';
+        }
+        if($value{'appstat'} == 'Enabled') {
+            $as_tobe = 'Disable';
+        } else {
+            $as_tobe = 'Enable';
+        }
+
+    }
+    echo "<h3>Node/Application Status Monitoring for $name</h3>";
+echo <<<TOS2
+<table cellspacing="1" class="tabTable" id="tabTable"><tbody>
+<tr class="ListLine0">
+<td>Node Status Application Monitoring</td>
+<td>
+TOS2;
+    insertButtons(array('label'=>$ns_tobe, 'id'=>'node_stat', 'onclick'=>"node_stat_control(\"$name\")"));
+    echo '</td>';
+    echo '</tr>';
+    echo '<tr class="ListLine1">';
+    echo '<td>Application Status Application Monitoring</td>';
+    echo '<td>';
+    insertbuttons(array('label'=>$as_tobe, 'id'=>'app_stat', 'onclick'=>''));
+    echo '</td>';
+    echo '</tr>';
+    echo '</tbody> </table> </div>';
 }
 
 function displayStatus()
