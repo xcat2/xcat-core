@@ -2697,10 +2697,31 @@ sub determinehostname
     }
     $hostname = $thostname[0];
 
-    # strip off domain, if there
-    my @shorthost = split(/\./, $hostname);
+    #get all potentially valid abbreviations, and pick the one that is ok
+    #by 'noderange'
+    my @hostnamecandidates;
+    my $nodename;
+    while ($hostname =~ /\./) {
+        push @hostnamecandidates,$hostname;
+        $hostname =~ s/\.[^\.]*//;
+    }
+    push @hostnamecandidates,$hostname;
+    my $checkhostnames = join(',',@hostnamecandidates);
+    my @validnodenames = xCAT::NodeRange::noderange($checkhostnames);
+    unless (scalar @validnodenames) { #If the node in question is not in table, take output literrally.
+        push @validnodenames,$hostnamecandidates[0];
+    }
+    use Data::Dumper;
+    print Dumper \@validnodenames;
+    #now, noderange doesn't guarantee the order, so we search the preference order, most to least specific.
+    foreach (@hostnamecandidates) {
+        if (grep /^$_$/,@validnodenames) {
+            $nodename = $_;
+            last;
+        }
+    }
     my @ips       = xCAT::Utils->gethost_ips;
-    my @hostinfo  = (@ips, $shorthost[0]);
+    my @hostinfo  = (@ips, $nodename);
 
     return @hostinfo;
 }
