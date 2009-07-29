@@ -5,9 +5,7 @@ use strict;
 use Getopt::Long;
 use Socket;
 use XML::Simple;
-if ($^O =~ /^linux/i) {
-	$XML::Simple::PREFERRED_PARSER='XML::Parser';
-}
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCdb;
 use xCAT::GlobalDef;
