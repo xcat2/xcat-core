@@ -4,7 +4,7 @@ B<rnetboot> - Cause the range of nodes to boot to network.
 
 =head1 SYNOPSIS
 
-B<rnetboot> [B<-V>|B<--verbose>] B<[-s boot_device_order]> B<[-f]> I<noderange> [-m table.column==expectedstatus [-m table.col-umn=~expectedstatus]] [-t timeout] [-r retrycount]
+B<rnetboot> [B<-V>|B<--verbose>] B<[-s boot_device_order]> B<[-F]> B<[-f]> I<noderange> [-m table.column==expectedstatus [-m table.col-umn=~expectedstatus]] [-t timeout] [-r retrycount]
 
 B<rnetboot> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -18,6 +18,8 @@ system p nodes.
 =head1 OPTIONS
 
 B<-s>          Set the boot device order.  Accepted boot devices are hd and net.
+
+B<-F>          Force reboot the system no matter what state the node is.  By default, rnetboot will not reboot the node if node is in 'boot' state.
 
 B<-f>          Force immediate shutdown of the partition.
 
