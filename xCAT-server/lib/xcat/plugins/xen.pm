@@ -23,9 +23,7 @@ my $vmhash;
 my $hmhash;
 
 use XML::Simple;
-if ($^O =~ /^linux/i) {
- $XML::Simple::PREFERRED_PARSER='XML::Parser';
-}
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
 use Data::Dumper;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
