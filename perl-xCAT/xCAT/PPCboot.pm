@@ -43,7 +43,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version  f s=s m:s@ r=s t=s) )) { 
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version F f s=s m:s@ r=s t=s) )) { 
         return( usage() );
     }
 
@@ -152,39 +152,9 @@ sub do_rnetboot {
     #######################################
     # Force LPAR shutdown
     #######################################
-    if ( exists( $opt->{f} )) {
+    if ( exists( $opt->{f} ) && !xCAT::Utils->isAIX() ) {
         $cmd.= " -i";
-    } else {
-        #################################
-        # Force LPAR shutdown if LPAR is
-        # running Linux
-        #################################
-        my $table = "nodetype";
-        my $intable = 0;
-        my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
-        if ( defined(@TableRowArray) ) {
-            foreach ( @TableRowArray ) {
-                my @nodelist = split(',', $_->{'node'});
-                my @oslist = split(',', $_->{'os'});
-                my $osname = "AIX";
-                if ( grep(/^$node$/, @nodelist) ) {
-                    if ( !grep(/^$osname$/, @oslist) ) {
-                        $cmd.= " -i";
-                    }
-                    $intable = 1;
-                    last;
-                }
-            }
-        }
-        #################################
-        # Force LPAR shutdown if LPAR OS
-        # type is not specified in table
-        # but mnt node is running Linux
-        #################################
-        if ( xCAT::Utils->isLinux() && $intable == 0 ) {
-            $cmd.= " -i";
-        }
-    }
+    } 
 
     #######################################
     # Write boot order
@@ -347,8 +317,21 @@ sub rnetboot {
         return( [[$node,"Node not found, lparid=$lparid",RC_ERROR]] );
     }
 
+    #########################################
+    # Check current node state.
+    # It is not allowed to rinitialize node
+    # if it is in boot state
+    #########################################
+    if ( !exists( $options->{F} ) && !xCAT::Utils->isAIX() ) {
+        my $chaintab = xCAT::Table->new('chain');
+        my $vcon = $chaintab->getAttribs({ node => "$node"}, 'currstate');
+        if ( $vcon and $vcon->{"currstate"} and $vcon->{"currstate"} eq "boot" ) {
+            return( [[$node,"Node is in boot state. Use nimnodeset command before rnetboot or -F option to forcely reinitialize",RC_ERROR]] );
+        }
+    }
+
     my $sitetab  = xCAT::Table->new('site');
-    my $vcon = $sitetab->getAttribs({key => "conserveronhmc"}, 'value');
+    my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
     if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
         $result = xCAT::PPCcli::lpar_netboot(
                             $exp,

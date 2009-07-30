@@ -561,7 +561,7 @@ sub getmacs {
         }
 
         my $sitetab  = xCAT::Table->new('site');
-        my $vcon = $sitetab->getAttribs({key => "conserveronhmc"}, 'value');
+        my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
         if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
             $result = xCAT::PPCcli::lpar_netboot(
                             $exp,
