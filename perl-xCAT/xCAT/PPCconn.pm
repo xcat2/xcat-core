@@ -73,8 +73,10 @@ sub mkconn_parse_args
     my $nodes = $request->{node};
     my $ppctab  = xCAT::Table->new( 'ppc' );
     my $nodetypetab = xCAT::Table->new( 'nodetype');
+    my $vpdtab = xCAT::Table->new( 'vpd');
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
+    my @frame_members    = ();
     if ( $ppctab)
     {
         for my $node ( @$nodes)
@@ -97,21 +99,76 @@ sub mkconn_parse_args
             {
                 push @bpa_ctrled_nodes, $node;
             }
+            
+            if ( $nodetype eq 'bpa')
+            {
+                my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
+                push @frame_members, @$my_frame_bpa_cec;
+            }
         }
     }
+
     if (scalar(@no_type_nodes))
     {
         my $tmp_nodelist = join ',', @no_type_nodes;
         return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist"));
     }
+
     if (scalar(@bpa_ctrled_nodes))
     {
         my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
         return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
     }
     
+    if ( scalar( @frame_members))
+    {
+         $request->{node} = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
+    }
+    # Set HW type to 'hmc' anyway, so that this command will not going to 
+    # PPCfsp.pm
+    $request->{ 'hwtype'} = 'hmc';
     $request->{method} = 'mkconn';
     return( \%opt);
+}
+
+####################################################
+# Get frame members
+####################################################
+#ppc/vpd nodes cache
+my @all_ppc_nodes;
+my @all_vpd_nodes;
+sub getFrameMembers
+{
+    my $node = shift; #this a BPA node
+    my $vpdtab = shift;
+    my $ppctab = shift;
+    my @frame_members;
+    my $vpdhash = $vpdtab->getNodeAttribs( $node, [qw(mtm serial)]);
+    my $mtm = $vpdhash->{mtm};
+    my $serial = $vpdhash->{serial};
+    if ( scalar( @all_ppc_nodes) == 0)
+    {
+        @all_ppc_nodes = $ppctab->getAllNodeAttribs( ['node', 'parent']);
+    }
+    for my $ppc_node (@all_ppc_nodes)
+    {
+        if ( $ppc_node->{parent} eq $node)
+        {
+            push @frame_members, $ppc_node->{'node'};
+        }
+    }
+    if ( scalar( @all_vpd_nodes) == 0)
+    {
+        @all_vpd_nodes = $vpdtab->getAllNodeAttribs( ['node', 'mtm', 'serial']);
+    }
+    for my $vpd_node (@all_vpd_nodes)
+    {
+        if ( $vpd_node->{'mtm'} eq $mtm and $vpd_node->{'serial'} eq $serial)
+        {
+            push @frame_members, $vpd_node->{'node'};
+        }
+    }
+    return \@frame_members;
 }
 
 ##########################################################################
@@ -130,7 +187,7 @@ sub lsconn_parse_args
 #############################################
 # Get options in command line
 #############################################
-    local @ARGV = @$args;
+    local @ARGV = ref($args) eq 'ARRAY'? @$args:();
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
@@ -141,7 +198,7 @@ sub lsconn_parse_args
     #############################################
     # Process command-line arguments
     #############################################
-    if ( scalar @$args) {
+    if ( $args && scalar @$args) {
         return(usage( "No additional flag is support by this command" ));
     }
     my $notypetab = xCAT::Table->new('nodetype');
@@ -263,6 +320,10 @@ sub mkconn
         my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
         $Rc = shift @$res;
         push @value, [$node_name, @$res[0], $Rc];
+        if ( !$Rc)
+        {
+            sethmcmgt( $node_name, $exp->[3]);
+        }
     }
     return \@value;
 }
@@ -395,7 +456,57 @@ sub rmconn
         my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $cec_bpa);
         $Rc = shift @$res;
         push @value, [$node_name, @$res[0], $Rc];
+        if ( !$Rc)
+        {
+            rmhmcmgt( $node_name, $type);
+        }
     }
     return \@value;
 }
+
+#################################################################
+# set node mgt to hmc, and hcp to the hmc node name
+#################################################################
+sub sethmcmgt
+{
+    my $node = shift;
+    my $hcp  = shift;
+
+    my $nodehm_tab = xCAT::Table->new('nodehm', -create=>1);
+    my $ent = $nodehm_tab->getNodeAttribs( $node, ['mgt']);
+    if ( !$ent or $ent->{mgt} ne 'hmc')
+    {
+        $nodehm_tab->setNodeAttribs( $node, { mgt=>'hmc'});
+    }
+    
+    my $ppc_tab = xCAT::Table->new('ppc', -create=>1);
+    my $ent = $ppc_tab->getNodeAttribs( $node, ['hcp']);
+    if ( !$ent or $ent->{hcp} ne $hcp)
+    {
+        $ppc_tab->setNodeAttribs( $node, { hcp=>$hcp});
+    }
+}
+#################################################################
+# set node as the standalone fsp/bpa node
+#################################################################
+sub rmhmcmgt
+{
+    my $node = shift;
+    my $hwtype = shift;
+
+    my $nodehm_tab = xCAT::Table->new('nodehm', -create=>1);
+    my $ent = $nodehm_tab->getNodeAttribs( $node, ['mgt']);
+    if ( !$ent or $ent->{mgt} ne $hwtype)
+    {
+        $nodehm_tab->setNodeAttribs( $node, { mgt=>$hwtype});
+    }
+    
+    my $ppc_tab = xCAT::Table->new('ppc', -create=>1);
+    my $ent = $ppc_tab->getNodeAttribs( $node, ['hcp']);
+    if ( !$ent or $ent->{hcp} ne $node)
+    {
+        $ppc_tab->setNodeAttribs( $node, { hcp=>$node});
+    }
+}
+
 1;

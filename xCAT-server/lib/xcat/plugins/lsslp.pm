@@ -1449,6 +1449,46 @@ sub parse_responses {
         $result[0] = $service_slp{$type};
         $outhash{$host} = \@result;
     }
+    
+    ##########################################################
+    # Correct BPA node name because both side
+    # have the same MTMS and may get the same factory name
+    # If there are same factory name for 2 BPA (should be 2 sides
+    # on one frame), change them to like <bpa>_1 and <bpa>_2
+    ##########################################################
+    my %hostname_record;
+    for my $h ( keys %outhash)
+    {
+        my ($name, $ip);
+        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/)
+        {
+            $name = $1;
+            $ip   = $2;
+        }
+        else
+        {
+            next;
+        }
+        
+        if (exists $hostname_record{$name})
+        {
+            #Name is duplicated
+            my ($old_h, $old_ip) = @{$hostname_record{$name}};
+
+            $outhash{$old_h}->[4] = $name . "-1" . "($old_ip)";
+            $outhash{$name . "-1" . "($old_ip)"} = $outhash{$old_h};
+            delete $outhash{$old_h};
+            
+            $outhash{$h}->[4] = $name . "-2" . "($ip)";
+            $outhash{$name . "-2" . "($ip)"} = $outhash{$h};
+            delete $outhash{$h};
+        }
+        else
+        {
+            $hostname_record{$name} = [$h,$ip];
+        }
+    }
+
     return( \%outhash );
 }
 
@@ -1513,7 +1553,13 @@ sub xCATdB {
         {
             if ( $ent->{mtm} and $ent->{serial})
             {
-                $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} = $ent->{node};
+                # if there is no BPA, or there is the second BPA, change it
+                if ( ! exists $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} or 
+                     $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} =~ /-2$/
+                   )
+                {
+                    $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} = $ent->{node};
+                }
             }
         }
     }
@@ -1567,9 +1613,9 @@ sub xCATdB {
             # May be no Frame with this FSP
             ########################################
             if (( $bpc_model ne "0" ) and ( $bpc_serial ne "0" )) {
-                if ( exists $sn_node{"$bpc_model*$bpc_serial"})
+                if ( exists $sn_node{"Server-$bpc_model-SN$bpc_serial"})
                 {
-                    $frame = $sn_node{"$bpc_model*$bpc_serial"};
+                    $frame = $sn_node{"Server-$bpc_model-SN$bpc_serial"};
                 }
                 else
                 {

@@ -589,8 +589,10 @@ sub preprocess_nodes {
     #   Direct-attached FSP 
     ########################################
     if (( $request->{command} =~ /^(rscan|rspconfig)$/ ) or
-            ( $request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa") or
-        ($request->{command} eq 'lsconn' and $request->{nodetype} eq 'hmc')) {
+#        (( $request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) and ( $request->{command} ne "mkconn")) or
+        ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) or
+        ($request->{command} eq 'lsconn' and $request->{nodetype} eq 'hmc')
+) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
     }
@@ -1348,9 +1350,12 @@ sub process_request {
 #    $request->{hwtype}  = $package;
     $request->{callback}= $callback;
     #########################
-    #This is a special case for rspconfig, we shouldn't set hwtype as$package. and reserved for other commands.
+    #This is a special case for rspconfig and mkconn, 
+    #we shouldn't set hwtype as$package. and reserved for other commands.
+    #probably for all HW ctrl commands it still true?
     #########################
-    if($request->{command} ne "rspconfig") {
+    if($request->{command} ne "rspconfig" and 
+        $request->{command} ne "mkconn") {
         $request->{hwtype}  = $package;
     }
 

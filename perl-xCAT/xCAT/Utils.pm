@@ -4965,4 +4965,35 @@ sub getNodeNetworkCfg
     return ($ip, $node, undef, xCAT::Utils::formatNetmask($mask,1,0));
 }
 
+#-------------------------------------------------------------------------------
+
+=head3   get_unique_members 
+    Description:
+        Return an array which have unique members
+
+    Arguments:
+        origarray: the original array to be treated
+    Returns:
+        Return an array, which contains unique members.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my @new_array = xCAT::Utils::get_unique_members(@orig_array);
+    Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_unique_members
+{
+    my @orig_array = @_;
+    my %tmp_hash = {};
+    for (@orig_array)
+    {
+        $tmp_hash{$_} = 1;
+    }
+    return keys %tmp_hash;
+}
 1;
