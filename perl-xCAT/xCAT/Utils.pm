@@ -2711,8 +2711,6 @@ sub determinehostname
     unless (scalar @validnodenames) { #If the node in question is not in table, take output literrally.
         push @validnodenames,$hostnamecandidates[0];
     }
-    use Data::Dumper;
-    print Dumper \@validnodenames;
     #now, noderange doesn't guarantee the order, so we search the preference order, most to least specific.
     foreach (@hostnamecandidates) {
         if (grep /^$_$/,@validnodenames) {
