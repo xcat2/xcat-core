@@ -187,7 +187,7 @@ chgrp xcat $TARNAME
 chmod g+w $TARNAME
 
 # Upload the tarball and individual RPMs to sourceforge
-rsync -rLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
+rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
 if [ "$1" = "promote" -a "$REL" != "devel" ]; then
 	# upload tarball to FRS area
 	#scp $TARNAME $UPLOADUSER@web.sourceforge.net:uploads/
