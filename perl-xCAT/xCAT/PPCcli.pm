@@ -79,8 +79,8 @@ my %mksysconn = (
 # rmsysconn support formats
 ##############################################
 my %rmsysconn = (
-    fsp => "rmsysconn -o remove -m %s",
-    bpa => "rmsysconn -o remove -e %s"
+    fsp => "rmsysconn -o remove --ip %s",
+    bpa => "rmsysconn -o remove --ip %s"
 );
 
 ##############################################

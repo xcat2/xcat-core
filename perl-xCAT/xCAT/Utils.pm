@@ -4989,10 +4989,10 @@ sub getNodeNetworkCfg
 sub get_unique_members
 {
     my @orig_array = @_;
-    my %tmp_hash = {};
-    for (@orig_array)
+    my %tmp_hash = ();
+    for my $ent (@orig_array)
     {
-        $tmp_hash{$_} = 1;
+        $tmp_hash{$ent} = 1;
     }
     return keys %tmp_hash;
 }

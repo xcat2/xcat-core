@@ -122,7 +122,8 @@ sub mkconn_parse_args
     
     if ( scalar( @frame_members))
     {
-         $request->{node} = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
+        my @all_nodes = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
+        $request->{node} = \@all_nodes;
     }
     # Set HW type to 'hmc' anyway, so that this command will not going to 
     # PPCfsp.pm
@@ -270,6 +271,64 @@ sub rmconn_parse_args
     if ( scalar @$args) {
         return(usage( "No additional flag is support by this command" ));
     }
+    ##########################################
+    # Check if CECs are controlled by a frame
+    ##########################################
+    my $nodes = $request->{node};
+    my $ppctab  = xCAT::Table->new( 'ppc' );
+    my $nodetypetab = xCAT::Table->new( 'nodetype');
+    my $vpdtab = xCAT::Table->new( 'vpd');
+    my @bpa_ctrled_nodes = ();
+    my @no_type_nodes    = ();
+    my @frame_members    = ();
+    if ( $ppctab)
+    {
+        for my $node ( @$nodes)
+        {
+            my $node_parent = undef;
+            my $nodetype    = undef;
+            my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
+            my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
+            $nodetype    = $nodetype_hash->{nodetype};
+            $node_parent = $node_parent_hash->{parent};
+            if ( !$nodetype)
+            {
+                push @no_type_nodes, $node;
+                next;
+            }
+            
+            if ( $nodetype eq 'fsp' and 
+                $node_parent and 
+                $node_parent ne $node)
+            {
+                push @bpa_ctrled_nodes, $node;
+            }
+            
+            if ( $nodetype eq 'bpa')
+            {
+                my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
+                push @frame_members, @$my_frame_bpa_cec;
+            }
+        }
+    }
+
+    if (scalar(@no_type_nodes))
+    {
+        my $tmp_nodelist = join ',', @no_type_nodes;
+        return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist"));
+    }
+
+    if (scalar(@bpa_ctrled_nodes))
+    {
+        my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
+        return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
+    }
+    
+    if ( scalar( @frame_members))
+    {
+        my @all_nodes = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
+        $request->{node} = \@all_nodes;
+    }
     $request->{method} = 'rmconn';
     return( \%opt);
 }
@@ -289,40 +348,49 @@ sub mkconn
     for my $cec_bpa ( keys %$hash)
     {
         my $node_hash = $hash->{$cec_bpa};
-        my ($node_name) = keys %$node_hash;
-        my $d = $node_hash->{$node_name};
+        for my $node_name ( keys %$node_hash)
+        {
+            my $d = $node_hash->{$node_name};
 
-        ############################
-        # Get IP address
-        ############################
-        my $hosttab  = xCAT::Table->new( 'hosts' );
-        my $node_ip = undef;
-        if ( $hosttab)
-        {
-            my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
-            $node_ip = $node_ip_hash->{ip};
-        }
-        if (!$node_ip)
-        {
-            my $ip_tmp_res  = xCAT::Utils::toIP($node_name);
-            ($Rc, $node_ip) = @$ip_tmp_res;
-            if ( $Rc ) 
+            ############################
+            # Get IP address
+            ############################
+            my $hosttab  = xCAT::Table->new( 'hosts' );
+            my $node_ip = undef;
+            if ( $hosttab)
             {
-                push @value, [$node_name, $node_ip, $Rc];
-                next;
+                my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
+                $node_ip = $node_ip_hash->{ip};
             }
-        }
+            if (!$node_ip)
+            {
+                my $ip_tmp_res  = xCAT::Utils::toIP($node_name);
+                ($Rc, $node_ip) = @$ip_tmp_res;
+                if ( $Rc ) 
+                {
+                    push @value, [$node_name, $node_ip, $Rc];
+                    next;
+                }
+            }
 
-        
-        my ( undef,undef,undef,undef,$type) = @$d;
-        my ($user, $passwd) = xCAT::PPCdb::credentials( $node_name, $type);
+            my ( undef,undef,undef,undef,$type) = @$d;
+            my ($user, $passwd);
+            if ( exists $opt->{P})
+            {
+                ($user, $passwd) = ('admin', $opt->{P});
+            }
+            else
+            {
+                ($user, $passwd) = xCAT::PPCdb::credentials( $node_name, $type);
+            }
 
-        my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
-        $Rc = shift @$res;
-        push @value, [$node_name, @$res[0], $Rc];
-        if ( !$Rc)
-        {
-            sethmcmgt( $node_name, $exp->[3]);
+            my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
+            $Rc = shift @$res;
+            push @value, [$node_name, @$res[0], $Rc];
+            if ( !$Rc)
+            {
+                sethmcmgt( $node_name, $exp->[3]);
+            }
         }
     }
     return \@value;
@@ -340,6 +408,7 @@ sub lsconn
     my @value   = ();
     my $Rc      = undef;
 
+    my $hosttab  = xCAT::Table->new( 'hosts' );
     my $res = xCAT::PPCcli::lssysconn( $exp);
     $Rc = shift @$res;
     if ( $request->{nodetype} eq 'hmc')
@@ -383,49 +452,53 @@ sub lsconn
         for my $cec_bpa ( keys %$hash)
         {
             my $node_hash = $hash->{$cec_bpa};
-            my ($node_name) = keys %$node_hash;
-            ############################################
-            # If lssysconn failed, put error into all
-            # nodes' return values
-            ############################################
-            if ( $Rc ) 
+            for my $node_name (keys %$node_hash)
             {
-                push @value, [$node_name, @$res[0], $Rc];
-                next;
-            }
-            ############################
-            # Search node in result
-            ############################
-            my $d = $node_hash->{$node_name};
-            my ( undef,undef,undef,undef,$type) = @$d;
-            if ( $type eq 'bpa')
-            {
-                $type='frame';
-            }
-            elsif ( $type eq 'fsp')
-            {
-                $type='sys';
-            }
-            else
-            {
-                push @value, [$node_name, 'Unsupported node type', 1];
-                next;
-            }
-
-            if ( my @res_matched = grep /\Qtype_model_serial_num=$cec_bpa,\E/, @$res)
-            {
-                for my $r ( @res_matched)
+                ############################################
+                # If lssysconn failed, put error into all
+                # nodes' return values
+                ############################################
+                if ( $Rc ) 
                 {
-                    $r =~ s/\Qtype_model_serial_num=$cec_bpa,\E//;
-                    $r =~ s/\Qresource_type=$type,\E//;
-                    $r =~ s/sp=.*?,//;
-                        $r =~ s/sp_phys_loc=.*?,//;
-                        push @value, [$node_name, $r, $Rc];
+                    push @value, [$node_name, @$res[0], $Rc];
+                    next;
                 }
-            }
-            else
-            {
-                push @value, [$node_name, 'Connection not found', 1];
+
+                ############################
+                # Get IP address
+                ############################
+                my $node_ip = undef;
+                if ( $hosttab)
+                {
+                    my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
+                    $node_ip = $node_ip_hash->{ip};
+                }
+                if (!$node_ip)
+                {
+                    my $ip_tmp_res  = xCAT::Utils::toIP($node_name);
+                    ($Rc, $node_ip) = @$ip_tmp_res;
+                    if ( $Rc ) 
+                    {
+                        push @value, [$node_name, $node_ip, $Rc];
+                        next;
+                    }
+                }
+
+                if ( my @res_matched = grep /\Qipaddr=$node_ip,\E/, @$res)
+                {
+                    for my $r ( @res_matched)
+                    {
+                        $r =~ s/\Qtype_model_serial_num=$cec_bpa,\E//;
+#                        $r =~ s/\Qresource_type=$type,\E//;
+                        $r =~ s/sp=.*?,//;
+                            $r =~ s/sp_phys_loc=.*?,//;
+                            push @value, [$node_name, $r, $Rc];
+                    }
+                }
+                else
+                {
+                    push @value, [$node_name, 'Connection not found', 1];
+                }
             }
         }
     }
@@ -448,17 +521,40 @@ sub rmconn
     for my $cec_bpa ( keys %$hash)
     {
         my $node_hash = $hash->{$cec_bpa};
-        my ($node_name) = keys %$node_hash;
-        my $d = $node_hash->{$node_name};
-
-        my ( undef,undef,undef,undef,$type) = @$d;
-
-        my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $cec_bpa);
-        $Rc = shift @$res;
-        push @value, [$node_name, @$res[0], $Rc];
-        if ( !$Rc)
+        for my $node_name (keys %$node_hash)
         {
-            rmhmcmgt( $node_name, $type);
+            my $d = $node_hash->{$node_name};
+
+            my ( undef,undef,undef,undef,$type) = @$d;
+
+            ############################
+            # Get IP address
+            ############################
+            my $hosttab  = xCAT::Table->new( 'hosts' );
+            my $node_ip = undef;
+            if ( $hosttab)
+            {
+                my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
+                $node_ip = $node_ip_hash->{ip};
+            }
+            if (!$node_ip)
+            {
+                my $ip_tmp_res  = xCAT::Utils::toIP($node_name);
+                ($Rc, $node_ip) = @$ip_tmp_res;
+                if ( $Rc ) 
+                {
+                    push @value, [$node_name, $node_ip, $Rc];
+                    next;
+                }
+            }
+
+            my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $node_ip);
+            $Rc = shift @$res;
+            push @value, [$node_name, @$res[0], $Rc];
+            if ( !$Rc)
+            {
+                rmhmcmgt( $node_name, $type);
+            }
         }
     }
     return \@value;
