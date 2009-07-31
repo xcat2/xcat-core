@@ -224,12 +224,19 @@ sub getUnits {
 
 
 sub create_new_lun {
+    print Dumper(@_);
     my $controller = shift;
     my $gname = shift;
     my $cfg = shift;
-    my $lunsize = shift;
-    my $size = getUnits($lunsize,'g',1048576);
-    $size .= "m";
+    my %args = @_;
+    my $lunsize;
+    my $mspec;
+    if ($args{mspec}) {
+        $mspec = $args{mspec}
+    } elsif ($args{lsize}) {
+        $lunsize = $args{lsize};
+    }
+    
     my %osmap = (
         'rh.*' => 'linux',
         'centos.*' => 'linux',
@@ -253,16 +260,24 @@ sub create_new_lun {
     $gtype =~ s/_2008//; #The group types don't include a 2k8 specific type
 
     my $file = $cfg->{file};
-    print Dumper($cfg);
     my $iname = $cfg->{iname};
 
 
     my $output;
-    unless ($size and $ltype and $file and $gtype) { #TODO etc
+    unless (($lunsize or $mspec) and $ltype and $file and $gtype) { #TODO etc
         sendmsg([1,"Insufficient data"]);
     }
-    print "ssh $controller lun create -s $size -t $ltype $file";
-    $output = `ssh $controller lun create -s $size -t $ltype $file`;
+    if ($lunsize) {
+        my $size = getUnits($lunsize,'g',1048576);
+        $size .= "m";
+         $output = `ssh $controller lun create -s $size -t $ltype $file`;
+    } elsif ($mspec) {
+        my $mlun;
+        my $msnap;
+        ($mlun,$msnap) = split /@/,$mspec,2;
+        my $output = `ssh $controller lun clone create $file -b $mlun $msnap`; 
+    }
+
     $output = `ssh $controller igroup create -i -t $gtype $gname`;
     $output = `ssh $controller igroup add $gname $iname`;
     $output = `ssh $controller lun map $file $gname`;
@@ -275,16 +290,20 @@ sub configure_node {
     my $lunmap = shift;
     my $request = shift;
     my $lunsize;
+    my $masterspec;
     if ($request->{arg}) {
         use Getopt::Long;
         @ARGV=@{$request->{arg}};
          GetOptions(
                    "size|s=i" => \$lunsize,
+                   "master|m=s" => \$masterspec,
          );
     }
     unless (defined $lunmap->{$node}->{$cfg->{file}}) {
         if ($lunsize) {
-            create_new_lun($controller,$node,$cfg,$lunsize);
+            create_new_lun($controller,$node,$cfg,lsize=>$lunsize);
+        } elsif ($masterspec) {
+            create_new_lun($controller,$node,$cfg,mspec=>$masterspec);
         } else {
             die "IMPLEMENT MAKING NEW LUN";
         }
