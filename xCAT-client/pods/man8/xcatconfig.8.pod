@@ -4,27 +4,71 @@ B<xcatconfig> - Sets up the  Managment Node during the xCAT install.
 
 =head1 SYNOPSIS
 
-
 B<xcatconfig> 
-
-B<xcatconfig> {B<-f>|B<--force>} 
 
 B<xcatconfig> {B<-h>|B<--help>}
 
+B<xcatconfig> {B<-v>|B<--version>}
+
+B<xcatconfig> {B<-i>|B<--initinstall>} 
+
+B<xcatconfig> {B<-u>|B<--updateinstall>} 
+
+B<xcatconfig> {B<-k>|B<--sshkeys>} {B<-s>|B<--sshnodehostkeys>} {B<-c>|B<--credentials>} {B<-d>|B<--database>} 
+
+B<xcatconfig> {B<-f>|B<--force>} 
+
+
 =head1 DESCRIPTION
 
-B<xcatconfig> During the install of the Management Node, it will generate the .ssh keys for root and the ssh hostkeys that will be shared by the nodes. It will generate the certificates used by the daemon and initialize the site table, and start the xcatd. 
+B<xcatconfig> Performs basic xCAT setup operations on an xCAT management node. This command should not be run on an xCAT Service Node, unless you are making it a Management Node. See flag description below for more details.
  
 =head1 OPTIONS
 
 =over 6
 
+=item B<-h> I<help>
+
+Displays the usage message.
+
+=item B<-v> I<version>
+
+Displays the release version of the code.
+
+=item B<-i> I<initialinstall>
+
+The install option is normally run as a post operation from the rpm xCAT.spec file during the initial install of xCAT on the Management Node. It will setup the root ssh keys, ssh node keys, xCAT credentials, initialize the datebase, export directories, start syslog and other daemons as needed after the initial install of xCAT.
+
+=item B<-u> I<updateinstall>
+
+The update install option is normally run as a post operation from the rpm xCAT.spec file during an update install of xCAT on the Management Node. It will check the setup the root ssh keys, ssh node keys, xCAT credentials, datebase, exported directories, syslog and the state of daemons needed by xCAT, after the updateinstall of xCAT. If setup is required, it will perform the operation.  It will restart the necessary daemons.
+
+
+=item B<-k> I<sshkeys>
+
+This option will remove and regenerate the root id_rsa keys.  It should only be used, if the keys are  deleted or corrupted. The key must then be redistribute to the nodes by installing or using xdsh -K option, for  root to be able to ssh to the nodes without being prompted for a password. rspconfig will need to be run to distribute the key to the MM. Any device, we need to ssh from the  MN to the device will also have to be updated with the new ssh keys.
+
+=item B<-s> I<sshnodehostkeys>
+
+This option will remove and regenerate the node host ssh keys.  It should only be used, if the keys are deleted or are corrupted. The keys must then be redistribute to the nodes by installing or using xdcp or pcp to copy the keys from /etc/xcat/hostkeys directory to the /etc/ssh directory on the nodes.
+
+
+=item B<-c> I<credentials>
+
+This option will remove and regenerate the xCAT credentials.  It should only be used, if they are deleted or become corrupted. The credentials must be redistribed to the service nodes by installing the service node. makeconservercf must be rerun to pick up the new credentials,  and conserver must be stop and started.
+
+
+=item B<-d> I<datebase>
+
+This option will reinitialize the basic xCAT database table setup.  It will not remove any new database entries that have been added, but it is strongly suggested that you backup you database (dumpxCATdb) before using it.
+
+
 =item B<-f> I<force>
 
-The force option may  be used after the install to reinitialize the Management Node. This will regenerate keys, credential and reinititialize the site table. This option should be used, if keys or credentials become corrupt or lost. 
-Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be stopped and started to pick up the new credentials, rspconfig needs to be rerun to distribute the new keys to the MM. 
-A new set of common ssh host keys will have  been generated for the nodes. If you wish your nodes to be able to ssh to each other with out password intervention,  then you should redistribute these new keys to the nodes.  You can do this my reinstalling the nodes, or by xdcp /install/postscripts/hostkeys/*  to the /etc/ssh directory on all nodes.  If the nodes hostkeys are updated then you will need to remove their entries from the known_hosts files on the managment node before using ssh, xdsh, xdcp. 
-For a service node,  it is probably best to re-install the service node to make sure the correct keys are picked up in the correct directory for node installs. 
+The force option may  be used after the install to reinitialize the Management Node. This option will  regenerate keys, credential and reinititialize the site table. This option should be used, if keys or credentials become corrupt or lost. 
+Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be rerun to pick up the new credentials and conserver stoped and started, rspconfig needs to be rerun to distribute the new keys to the MM. 
+A new set of common ssh host keys will have  been generated for the nodes. If you wish your nodes to be able to ssh to each other with out password intervention,  then you should redistribute these new keys to the nodes.  You can do this my reinstalling the nodes, or by xdcp or pcp /etc/xcat/hostkeys/*  to the /etc/ssh directory on all nodes.  If the nodes hostkeys are updated then you will need to remove their entries from the known_hosts files on the managment node before using ssh, xdsh, xdcp. 
+For a service node,  it is probably best to re-install the service node to make sure the correct keys and credentials are picked up  for node installs. 
 
 =back
 
@@ -37,6 +81,25 @@ For a service node,  it is probably best to re-install the service node to make 
 To force regeneration of keys and credentials and reinitialize the site table:
 
 B<xcatconfig> I<-f>
+
+=item *
+
+To regenerate root's ssh keys:
+
+B<xcatconfig> I<-k>
+
+
+=item *
+
+To regenerate node host ssh keys:
+
+B<xcatconfig> I<-s>
+
+=item *
+
+To regenerate node host ssh keys and credentials:
+
+B<xcatconfig> I<-s> I<-c>
 
 
 =back
