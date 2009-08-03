@@ -223,8 +223,7 @@ export XCATROOT PATH MANPATH" >>/etc/profile
 
 echo "
 # xCAT Perl setup
-PERL5LIB=/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi
-export PERL5LIB" >>/etc/environment
+PERL5LIB=/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi " >>/etc/environment
 fi
 %endif
 
