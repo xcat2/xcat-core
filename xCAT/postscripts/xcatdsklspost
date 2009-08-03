@@ -63,7 +63,7 @@ cd /xcatpost;
 PATH=/xcatpost:$PATH
 export PATH
 chmod +x /xcatpost/*;
-echo "PATH=$PATH" 
+#echo "PATH=$PATH" 
 /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
 MYCONT=`grep MASTER /tmp/mypostscript`
 #echo "MYCONT=$MYCONT"
@@ -120,6 +120,6 @@ fi
 
 #tell user it is done when this is called by updatenode command
 if [ $# -gt 0 ]; then
-  echo "returned"
+  echo "returned from postscript"
 fi
 

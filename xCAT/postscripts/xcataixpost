@@ -216,7 +216,7 @@ if (@ARGV<1) {
   }
 } else {
   #called by updatenode, infrom user it is done
-  print "returned";
+  print "returned from postscript";
 }
 
 if (-f $scriptname) {
