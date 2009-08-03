@@ -13,6 +13,16 @@ BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
+
+# if AIX - make sure we include perl 5.8.2 in INC path.
+#       Needed to find perl dependencies shipped in deps tarball.
+if ($^O =~ /^aix/i) {
+        use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
+        use lib "/usr/opt/perl5/lib/5.8.2";
+        use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
+        use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
+}
+
 use lib "$::XCATROOT/lib/perl";
 my $cachethreshold=16; #How many nodes in 'getNodesAttribs' before switching to full DB retrieval
 
