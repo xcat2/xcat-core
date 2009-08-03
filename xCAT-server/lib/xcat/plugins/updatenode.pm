@@ -142,7 +142,7 @@ sub preprocess_updatenode {
     $rsp->{data}->[4]= "     <noderange> is a list of nodes or groups.";
     $rsp->{data}->[5]= "     -F|--sync: Perform File Syncing.";
     $rsp->{data}->[6]= "     -S|--sw: Perform Software Maintenance.";
-    $rsp->{data}->[7]= "     -P|--scripts: Re-run Postscripts listed in postscript.";
+    $rsp->{data}->[7]= "     -P|--scripts: Perform Postscripts listed in postscripts table or parameters.";
     $rsp->{data}->[8]= "     [script1,script2,...] is a comma separated list of postscript names.";
     $rsp->{data}->[9]= "         If omitted, all the postscripts defined for the nodes will be run.";
     $cb->($rsp);
@@ -189,11 +189,17 @@ sub preprocess_updatenode {
   # to re-run the postscripts.
   if (@ARGV) {
     if ($#ARGV == 0 &&
-        !($::FILESYNC || $::SWMAINTENANCE || $::RERUNPS) ) {
+        !($::FILESYNC || $::SWMAINTENANCE || defined($::RERUNPS)) ) {
       $::RERUNPS = $ARGV[0];
     } else {
       &updatenode_usage($callback);
       return  \@requests;
+    }
+  } else {
+    if ( !($::FILESYNC || $::SWMAINTENANCE || defined($::RERUNPS)) ) {
+      $::FILESYNC = 1;
+      $::SWMAINTENANCE = 1;
+      $::RERUNPS = "";
     }
   } 
 
@@ -207,19 +213,6 @@ sub preprocess_updatenode {
   my $postscripts;
 
   if (@nodes == 0) { return \@requests; }
-
-  if (@ARGV > 0) {
-    &updatenode_usage($callback);
-    return  \@requests;
-  }
-
-  # If -F option specified, sync files to the noderange.
-  # Note: This action only happens on MN, since xdcp handles the hierarchical scenario
-  if ($::FILESYNC) {
-    my $reqcopy = {%$request};
-    $reqcopy->{FileSyncing} = "yes";
-    push @requests, $reqcopy;
-  }
 
   # handle the re-run postscripts option -P
   if (defined ($::RERUNPS)) {
@@ -239,6 +232,13 @@ sub preprocess_updatenode {
     }
   }
 
+  # If -F option specified, sync files to the noderange.
+  # Note: This action only happens on MN, since xdcp handles the hierarchical scenario
+  if ($::FILESYNC) {
+    my $reqcopy = {%$request};
+    $reqcopy->{FileSyncing} = "yes";
+    push @requests, $reqcopy;
+  }
 
   # when specified -S or -P
   # find service nodes for requested nodes
@@ -310,6 +310,9 @@ sub updatenode {
       my $env = ["DSH_RSYNC_FILE=$synclist"];
       $subreq->({command=>['xdcp'], node=>$syncfile_node{$synclist}, arg=>$args, env=>$env}, $callback);
     }
+    my $rsp={};
+    $rsp->{data}->[0]= "Complete the File Syncing";
+    $callback->($rsp);
   }
 
   if ($request->{swmaintenance} && $request->{swmaintenance} eq "yes") {
@@ -323,14 +326,18 @@ sub updatenode {
       $rsp->{data}->[0]= "Dose not support Software Maintenance for AIX nodes";
       $callback->($rsp); 
     }
-    if (! open (CMD, "$cmd |")) {
+    if ($cmd && ! open (CMD, "$cmd |")) {
       my $rsp={};
       $rsp->{data}->[0]= "Cannot run command $cmd";
       $callback->($rsp);    
     } else {
       while (<CMD>) {
         my $rsp={};
-        $rsp->{data}->[0]= "$_";
+        my $output = $_;
+        if ($output =~ /returned from postscript/) {
+          $output =~ s/returned from postscript/Complete the Software Maintenance/;
+        }
+        $rsp->{data}->[0]= "$output";
         $callback->($rsp);
       }
       close(CMD);
@@ -359,7 +366,11 @@ sub updatenode {
       } else {
         while (<CMD>) {
           my $rsp={};
-          $rsp->{data}->[0]= "$_";
+          my $output = $_;
+          if ($output =~ /returned from postscript/) {
+            $output =~ s/returned from postscript/Complete the Running Postscripts/;
+          }
+          $rsp->{data}->[0]= "$output";
           $callback->($rsp);
         }
         close(CMD);
