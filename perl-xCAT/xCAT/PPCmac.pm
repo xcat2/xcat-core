@@ -86,7 +86,7 @@ sub parse_args {
         # Network attributes undefined
         #####################################
         if ( !%client_nethash ) {
-            return( [RC_ERROR,"Cannot get network information for $node"] );
+            return( [RC_ERROR,"Cannot get network information for node"] );
         }
 
         if ( exists($opt{C}) ) {
