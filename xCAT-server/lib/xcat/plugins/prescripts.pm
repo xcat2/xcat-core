@@ -212,9 +212,18 @@ sub runendpre
     #yaboo sets up normalnodeset and breaknetboot; pxe does not, so we use $nodes for pxe
     my $normalnodeset=[];
     if (exists($request->{normalnodeset})) { $normalnodeset=$request->{normalnodeset};}
+    my %n_hash=();
+    foreach (@$normalnodeset) {
+	$n_hash{$_}=1;
+    }
+    
     my $breaknetboot=[];
     if (exists($request->{breaknetboot})) { $breaknetboot=$request->{breaknetboot};}
     if ((!$normalnodeset) && (!$breaknetboot)) { $normalnodeset=$nodes;}
+    my %b_hash=();
+    foreach (@$breaknetboot) {
+	$b_hash{$_}=1;
+    }
     
     print "prescripts:inittime=$inittime; normalnodeset=@$normalnodeset; breaknetboot=@$breaknetboot\n"; 
 
@@ -224,7 +233,6 @@ sub runendpre
         if ($runnodes && (@$runnodes>0)) {
 	    my $runnodes_s=join(',', @$runnodes);
             my %runnodes_hash=();
-            foreach (@$runnodes) { $runnodes_hash{$_}=1; }
 
 	    my $rsp = {};
 	    $rsp->{data}->[0]="$localhostname: Running $scripts for nodes $runnodes_s.";
@@ -240,11 +248,14 @@ sub runendpre
                     #remove the nodes from normalnodeset and breaknetboot that are not in runnodes
                     my @new_normalnodeset=();
                     my @new_breaknetboot=();
-                    foreach (@$normalnodeset) {
-			if ($runnodes_hash{$_}) { push(@new_normalnodeset, $_); }
-		    }
-                    foreach (@$breaknetboot) {
-			if ($runnodes_hash{$_}) { push(@new_breaknetboot, $_); }
+                    foreach (@$runnodes) {
+			if ($n_hash{$_}) { 
+			    push(@new_normalnodeset, $_); 
+			    $n_hash{$_}=0;
+			} elsif ($b_hash{$_}) { 
+			    push(@new_breaknetboot, $_); 
+			    $b_hash{$_}=0;
+			}
 		    }
 		    my $normalnodeset_s=join(',', @new_normalnodeset);
 		    my $breaknetboot_s=join(',',  @new_breaknetboot);
@@ -269,6 +280,49 @@ sub runendpre
 	    }
 	}
     } 
+
+    #now handle the left over nodes, need to run setupdhcp for them
+    my @new_normalnodeset=();
+    my @new_breaknetboot=();
+    foreach (keys %n_hash) {
+	if ($n_hash{$_}) { 
+	    push(@new_normalnodeset, $_); 
+	} 
+    }
+    foreach (keys %b_hash) {
+	if ($b_hash{$_}) { 
+	    push(@new_breaknetboot, $_); 
+	} 
+    }
+    if ((@new_normalnodeset>0) || (@new_breaknetboot> 0)) {
+	my $tab = xCAT::Table->new('prescripts',-create=>1);  
+	my $et = $tab->getAttribs({node=>"xcatdefaults"},'end');
+	my $tmp_def = $et->{end};
+	my $defscripts;
+	if ($tmp_def) {
+	    $defscripts=parseprescripts($tmp_def, $action);
+	}
+        
+        if ($defscripts =~ /setupdhcp/) {
+	    my $normalnodeset_s=join(',', @new_normalnodeset);
+	    my $breaknetboot_s=join(',',  @new_breaknetboot);
+	    if (!$normalnodeset_s) { $normalnodeset_s="NONE"; }
+	    if (!$breaknetboot_s) { $breaknetboot_s="NONE";}
+	    
+	    print "prescripts: setup dhcp inittime=$inittime; normalnodeset=$normalnodeset_s; breaknetboot=$breaknetboot_s\n";
+	    my $ret=`ACTION=$action $installdir/prescripts/setupdhcp $inittime $normalnodeset_s $breaknetboot_s 2>&1`;
+	    my $rsp = {};
+	    $rsp->{data}->[0]="$localhostname: setupdhsp: $ret";
+	    $callback->($rsp);
+	    my $err_code=$?;
+	    if ($err_code != 0) {
+		$rsp = {};
+		$rsp->{data}->[0]="$localhostname: setupdhcp: error code=$err_code.";
+		$callback->($rsp);
+	    }
+	}
+    }
+
     return;
 }
 
