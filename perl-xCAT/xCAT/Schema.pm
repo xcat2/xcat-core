@@ -321,7 +321,7 @@ nodelist => {
     descriptions => {
      node => 'The hostname of a node in the cluster.',
      groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group.",
-     status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. The default value is defined. The possible status change sequenses are: defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->alive,  defined->[discovering]->[configuring]->[standingby]->netbooting->booted->alive,  alive/unreachable->booting->alive,  alive->powering-off->unreachable, alive->unreachable',
+     status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequenses are: For installaton: defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series dicovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT.',
      appstatus => "A comma-delimited list monitored applications that are active on the node. For example 'sshd,rmcd,gmond",
      primarysn => "Not used currently. The primary servicenode, used by this node.",
      comments => 'Any user-written notes.',
@@ -659,6 +659,29 @@ eventlog => {
 	message => 'The full description of the event.',
 	rawdata => ' The data that associated with the event. ',    # in RMC, it's the attribute value, it takes the format of attname=attvalue[,atrrname=attvalue....]
 	comments => 'Any user-provided notes.',
+	disable => "Set to 'yes' or '1' to comment out this row.",
+    },
+},
+prescripts => {
+    cols => [qw(node begin end comments disable)],
+    keys => [qw(node)],
+    table_desc => 'The scripts that should be run at the beginning and the end of the nodeset or nimnodeset/mkdsklsnode (AIX) command.',
+    descriptions => {
+	node => 'The node name or group name.',
+	begin => 
+"The scripts to be run at the beginning of the nodeset (Linux) or nimnodeset/mkdsklsnode (AIX) command.\n". 
+"\t\tThe format is:\n".
+"\t\t[action1:]s1,s2...[|action2:s3,s4,s5...]\n".
+"\t\twhere action1 and action2 are the nodeset/nimnodeset actions specified in the command.\n".
+"\t\ts1 and s2 are the scripts to run for action1 in order. s3,s4,and s5 are the scripts\n".
+"\t\tto run for actions2. If actions are omitted, the scripts apply to all actions.\n".
+"\t\tExamples:\n".
+"\t\tmyscript1,myscript2\n".
+"\t\tinstall:myscript1,myscript2|netboot:myscript3",
+        end => 
+"The scripts to be run at the end of the nodeset (Linux) or nimnodeset/mkdsklsnode (AIX) command.\n" .
+"\t\tThe format is the same as the 'begin' column.",
+	comments => 'Any user-written notes.',
 	disable => "Set to 'yes' or '1' to comment out this row.",
     },
 },
@@ -1268,6 +1291,17 @@ my @nodeattrs = (
                  tabentry => 'nodelist.comments',
                  access_tabentry => 'nodelist.node=attr:node',
              },
+####################
+# prescripts table#
+####################
+        {attr_name => 'prescripts-begin',
+                 tabentry => 'prescripts.begin',
+                 access_tabentry => 'prescripts.node=attr:node',
+  },
+        {attr_name => 'prescripts-end',
+                 tabentry => 'prescripts.end',
+                 access_tabentry => 'prescripts.node=attr:node',
+  },
           );
 
 # add on the node attrs from other tables

@@ -35,6 +35,7 @@ else
 
 	cd `dirname $0`/xCAT
 	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
+	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/prescripts.tar.gz  prescripts
 	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/templates.tar.gz templates
 	cp xcat.conf /usr/src/$pkg/SOURCES
 	cd -

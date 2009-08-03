@@ -5,6 +5,7 @@ use Sys::Syslog;
 use xCAT::Scope;
 use File::Path;
 use Socket;
+use Getopt::Long;
 
 my $request;
 my %breaknetbootnodes;
@@ -187,6 +188,7 @@ sub setstate {
     
 my $errored = 0;
 sub pass_along { 
+    print "pass_along\n";
     my $resp = shift;
     $callback->($resp);
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
@@ -202,10 +204,76 @@ sub pass_along {
 
   
 sub preprocess_request {
+    my $req = shift;
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+
+    $callback = shift;
+    my $command  = $req->{command}->[0];
+    my $sub_req = shift;
+    my @args=();
+    if (ref($req->{arg})) {
+	@args=@{$req->{arg}};
+    } else {
+	@args=($req->{arg});
+    }
+    @ARGV = @args;
+
+    #use Getopt::Long;
+    Getopt::Long::Configure("bundling");
+    Getopt::Long::Configure("pass_through");
+    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) {
+      if($usage{$command}) {
+          my %rsp;
+          $rsp{data}->[0]=$usage{$command};
+          $callback->(\%rsp);
+      }
+      return;
+    }
+
+    if ($HELP) { 
+	if($usage{$command}) {
+	    my %rsp;
+	    $rsp{data}->[0]=$usage{$command};
+	    $callback->(\%rsp);
+	}
+	return;
+    }
+
+    if ($VERSION) {
+	my $ver = xCAT::Utils->Version();
+	my %rsp;
+	$rsp{data}->[0]="$ver";
+	$callback->(\%rsp);
+	return; 
+    }
+
+    if (@ARGV==0) {
+	if($usage{$command}) {
+	    my %rsp;
+	    $rsp{data}->[0]=$usage{$command};
+	    $callback->(\%rsp);
+	}
+	return;
+    }
+
+    #now run the begin part of the prescripts
+    #my @nodes=();
+    #if (ref($req->{node})) {
+#	@nodes = @{$req->{node}};
+#    } else {
+#	if ($req->{node}) { @nodes = ($req->{node}); }
+#    }    
+#    $errored=0;
+#    unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
+#	$sub_req->({command=>['runbeginpre'],
+#		    node=>\@nodes,
+#		    arg=>[$args[0]]},\&pass_along);
+#    } 
+#    if ($errored) { return; }
+
    #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
    #they specify no sharedtftp in site table
    my $stab = xCAT::Table->new('site');
-   my $req = shift;
   
    my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    if ($sent and ($sent->{value} == 0 or $sent->{value} =~ /no/i)) {
@@ -257,6 +325,7 @@ sub process_request {
   $request = shift;
   $callback = shift;
   $sub_req = shift;
+  my $command  = $request->{command}->[0];
   %breaknetbootnodes=();
   %normalnodes=();
 
@@ -275,7 +344,6 @@ sub process_request {
       return;
   }
 
-
   #back to normal business
   #if not shared tftpdir, then filter, otherwise, set up everything
   if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
@@ -288,27 +356,12 @@ sub process_request {
   } else {
      @nodes = @rnodes;
   }
+  #print "nodes=@nodes\nrnodes=@rnodes\n";
 
   if (ref($request->{arg})) {
     @args=@{$request->{arg}};
   } else {
     @args=($request->{arg});
-  }
- 
-  if(scalar grep /^--version$|^-v$/, @args) {
-      my $ver = xCAT::Utils->Version();
-      my %rsp;
-      $rsp{data}->[0]="$ver";
-      $callback->(\%rsp);
-      return;
-  }
-  if(scalar grep /^--help$|^-h$/, @args) {
-      if($usage{$request->{command}->[0]}) {
-          my %rsp;
-          $rsp{data}->[0]=$usage{$request->{command}->[0]};
-          $callback->(\%rsp);
-      }
-      return;
   }
   
   $errored=0;
@@ -318,6 +371,7 @@ sub process_request {
          arg=>[$args[0]]},\&pass_along);
   }
   if ($errored) { return; }
+
   my $bptab=xCAT::Table->new('bootparams',-create=>1);
   my $bphash = $bptab->getNodesAttribs(\@nodes,['kernel','initrd','kcmdline','addkcmdline']);
   my $chaintab=xCAT::Table->new('chain',-create=>1);
@@ -342,26 +396,34 @@ sub process_request {
       }
     }
   }
-  if ($request->{inittime}->[0]) { return; } #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
-  my @normalnodeset = keys %normalnodes;
-  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
-  $sub_req->({command=>['makedhcp'],arg=>['-l'],
-           node=>\@normalnodeset},$callback);
-  } else {
-  $sub_req->({command=>['makedhcp'],
-           node=>\@normalnodeset},$callback);
-  }
-  my @breaknetboot=keys %breaknetbootnodes;
-  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-    $sub_req->({command=>['makedhcp'],
-         node=>\@breaknetboot,
-         arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-  } else {
-    $sub_req->({command=>['makedhcp'],
-         node=>\@breaknetboot,
-         arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-  }
 
+  my $inittime=0;
+  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];}
+  if (!$inittime) { $inittime=0;}
+  my @normalnodeset = keys %normalnodes;
+  my @breaknetboot=keys %breaknetbootnodes;
+  #print "yaboot:inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";
+  
+  #now run the end part of the prescripts
+  unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
+      $errored=0;
+      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+	  $sub_req->({command=>['runendpre'],
+		      node=>\@nodes,
+		      inittime=>[$inittime],
+		      normalnodeset=>\@normalnodeset,
+		      breaknetboot=>\@breaknetboot,
+		      arg=>[$args[0], '-l']},\&pass_along);
+      } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
+	  $sub_req->({command=>['runendpre'],   
+		      node=>\@rnodes,
+		      inittime=>[$inittime],
+		      normalnodeset=>\@normalnodeset,
+		      breaknetboot=>\@breaknetboot,
+		      arg=>[$args[0]]},\&pass_along);
+      }
+      if ($errored) { return; }
+  }
 }
 
 #----------------------------------------------------------------------------

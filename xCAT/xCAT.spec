@@ -13,6 +13,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 Source1: xcat.conf
 Source2: postscripts.tar.gz
 Source3: templates.tar.gz
+Source4: prescripts.tar.gz
 
 Provides: xCAT = %{version}
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
@@ -44,6 +45,7 @@ hardware management and software management.
 %prep
 %ifos linux
 tar zxf %{SOURCE2}
+tar zxf %{SOURCE4}
 %else
 rm -rf postscripts
 cp %{SOURCE2} /opt/freeware/src/packages/BUILD
@@ -57,6 +59,7 @@ tar -xf postscripts.tar
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
+mkdir -p $RPM_BUILD_ROOT/install/prescripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 
@@ -74,6 +77,7 @@ cd $RPM_BUILD_ROOT/install
 
 %ifos linux
 tar zxf %{SOURCE2}
+tar zxf %{SOURCE4}
 %else
 cp %{SOURCE2} $RPM_BUILD_ROOT/install
 gunzip -f postscripts.tar.gz
@@ -109,4 +113,5 @@ fi
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
 /install/postscripts
+/install/prescripts
 %defattr(-,root,root)

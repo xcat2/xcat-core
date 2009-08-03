@@ -1,0 +1,27 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+#-------------------------------------------------------------------------------
+#=head1  setupdhcp
+#=head2  setupdhcp command is called by nodeset command as a end script.  
+#   It configures the local dhcp lease file. 
+#=cut
+#-------------------------------------------------------------------------------
+#the following 3 variables are set in yahoo.pm and pxe.pm.
+inittime=$1
+
+if [[ $inittime -eq 1 ]]; then
+   exit 0 #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
+fi
+
+normalnodeset=$2
+breaknetboot=$3
+if [ $normalnodeset != "NONE" ]; then  
+    TMP=`XCATBYPASS=Y $XCATROOT/sbin/makedhcp $normalnodeset -l`
+    echo $TMP 
+fi
+if [ $breaknetboot != "NONE" ]; then
+    TMP=`XCATBYPASS=Y $XCATROOT/sbin/makedhcp $breaknetboot -l -s 'filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";'`
+    echo $TMP
+fi
+exit 0;
