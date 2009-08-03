@@ -220,6 +220,11 @@ XCATROOT=$RPM_INSTALL_PREFIX0
 PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
 MANPATH=\$MANPATH:\$XCATROOT/share/man
 export XCATROOT PATH MANPATH" >>/etc/profile
+
+echo "
+# xCAT Perl setup
+PERL5LIB=/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi
+export PERL5LIB" >>/etc/environment
 fi
 %endif
 
