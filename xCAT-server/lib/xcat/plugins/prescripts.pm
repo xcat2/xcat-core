@@ -173,17 +173,16 @@ sub runbeginpre
             foreach my $s (@script_array) {
 		my $ret=`NODES=$runnodes_s ACTION=$action $installdir/prescripts/$s 2>&1`;
 		my $err_code=$?;
-		if ($err_code != 0) {
+		if ($ret) {
 		    my $rsp = {};
 		    $rsp->{data}->[0]="$localhostname: $s: $ret";
 		    $callback->($rsp);
-		    my $err_code=$?;
-		    if ($err_code != 0) {
-			$rsp = {};
-			$rsp->{data}->[0]="$localhostname: $s: error code=$err_code.";
-			$callback->($rsp);
-			last;
-		    }
+		}
+		if ($err_code != 0) {
+		    $rsp = {};
+		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code.";
+		    $callback->($rsp);
+		    last;
 		}
 	    }
 	}
@@ -226,13 +225,15 @@ sub runendpre
 	    my @script_array=split(',', $scripts);
             foreach my $s (@script_array) {
 		my $ret=`NODES=$runnodes_s ACTION=$action $installdir/prescripts/$s 2>&1`;
-		my $rsp = {};
-		$rsp->{data}->[0]="$localhostname: $s: $ret";
-		$callback->($rsp);
 		my $err_code=$?;
+		if ($ret) {
+		    my $rsp = {};
+		    $rsp->{data}->[0]="$localhostname: $s: $ret";
+		    $callback->($rsp);
+		}
 		if ($err_code != 0) {
 		    $rsp = {};
-		    $rsp->{data}->[0]="$localhostname: $s: error code=$err_code.";
+		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code.";
 		    $callback->($rsp);
 		    last;
 		}

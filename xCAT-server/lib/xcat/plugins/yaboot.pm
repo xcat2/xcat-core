@@ -11,6 +11,7 @@ my $request;
 my %breaknetbootnodes;
 my %normalnodes;
 my $callback;
+my $callback1;
 my $sub_req;
 my $dhcpconf = "/etc/dhcpd.conf";
 my $tftpdir = "/tftpboot";
@@ -188,8 +189,11 @@ sub setstate {
     
 my $errored = 0;
 sub pass_along { 
-    #print "pass_along\n";
+    print "pass_along\n";
     my $resp = shift;
+
+#    print Dumper($resp);
+    
     $callback->($resp);
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
         $errored=1;
@@ -201,13 +205,28 @@ sub pass_along {
     }
 }
 
+sub pass_along1 { 
+    print "pass_along1\n";
+    my $resp = shift;
 
+#    print Dumper($resp);
+    
+    $callback1->($resp);
+    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
+        $errored=1;
+    }
+    foreach (@{$resp->{node}}) {
+       if ($_->{error} or $_->{errorcode}) {
+          $errored=1;
+       }
+    }
+}
   
 sub preprocess_request {
     my $req = shift;
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
-    $callback = shift;
+    $callback1 = shift;
     my $command  = $req->{command}->[0];
     my $sub_req = shift;
     my @args=();
@@ -225,7 +244,7 @@ sub preprocess_request {
       if($usage{$command}) {
           my %rsp;
           $rsp{data}->[0]=$usage{$command};
-          $callback->(\%rsp);
+          $callback1->(\%rsp);
       }
       return;
     }
@@ -234,7 +253,7 @@ sub preprocess_request {
 	if($usage{$command}) {
 	    my %rsp;
 	    $rsp{data}->[0]=$usage{$command};
-	    $callback->(\%rsp);
+	    $callback1->(\%rsp);
 	}
 	return;
     }
@@ -243,7 +262,7 @@ sub preprocess_request {
 	my $ver = xCAT::Utils->Version();
 	my %rsp;
 	$rsp{data}->[0]="$ver";
-	$callback->(\%rsp);
+	$callback1->(\%rsp);
 	return; 
     }
 
@@ -251,25 +270,25 @@ sub preprocess_request {
 	if($usage{$command}) {
 	    my %rsp;
 	    $rsp{data}->[0]=$usage{$command};
-	    $callback->(\%rsp);
+	    $callback1->(\%rsp);
 	}
 	return;
     }
 
     #now run the begin part of the prescripts
-    #my @nodes=();
-    #if (ref($req->{node})) {
-#	@nodes = @{$req->{node}};
-#    } else {
-#	if ($req->{node}) { @nodes = ($req->{node}); }
-#    }    
-#    $errored=0;
-#    unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
-#	$sub_req->({command=>['runbeginpre'],
-#		    node=>\@nodes,
-#		    arg=>[$args[0]]},\&pass_along);
-#    } 
-#    if ($errored) { return; }
+    my @nodes=();
+    if (ref($req->{node})) {
+	@nodes = @{$req->{node}};
+    } else {
+	if ($req->{node}) { @nodes = ($req->{node}); }
+    }    
+    $errored=0;
+    unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
+	$sub_req->({command=>['runbeginpre'],
+		    node=>\@nodes,
+		    arg=>[$args[0]]},\&pass_along1);
+    } 
+    if ($errored) { return;  }
 
    #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
    #they specify no sharedtftp in site table
