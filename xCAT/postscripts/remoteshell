@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #egan@us.ibm.com
 #(C)IBM Corp
