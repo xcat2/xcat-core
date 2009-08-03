@@ -94,6 +94,7 @@ cp $BLDTOP/xCATaixSN2.bnd $RPMDIR/
 cp $BLDTOP/xCATaixSSH.bnd $RPMDIR/
 cp $BLDTOP/xCATaixSSL.bnd $RPMDIR/
 echo "xCATaixSN.bnd" >> $RPMDIR/flist
+echo "xCATaixSN2.bnd" >> $RPMDIR/flist
 echo "xCATaixSSH.bnd" >> $RPMDIR/flist
 echo "xCATaixSSL.bnd" >> $RPMDIR/flist
 
