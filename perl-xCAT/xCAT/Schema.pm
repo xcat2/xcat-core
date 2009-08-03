@@ -534,6 +534,7 @@ site => {
    "  defserialport:\tThe default serial port - currently only used by mknb.\n\n".
    "  defserialspeed:\tThe default serial speed - currently only used by mknb.\n\n".
    "  dhcpinterfaces\tThe network interfaces DHCP should listen on.  If it is the same for all nodes, use simple comma-separated list of NICs.  To specify different NICs for different nodes: mn|eth1,eth2;service|bond0.\n\n".
+   "  dhcpsetup:\tIf set to 'n', it'll skip the dhcp setup process in the nodeset command. The default value is 'y'.\n\n".
    "  domain:\tThe DNS domain name used for the cluster.\n\n".
    "  forwarders:\tThe DNS servers at your site that can provide names outside of the cluster.  The DNS on the management node will forward requests it does not know to these servers.\n\n".
    "  fsptimeout:\tThe timeout, in milliseconds, to use when communicating with  FSPs.\n\n".

@@ -447,20 +447,39 @@ sub process_request {
   my $inittime=0;
   if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];} 
   if (!$inittime) { $inittime=0;}
+
+  #dhcp stuff -- inittime is set when xcatd on sn is started
+  unless (($args[0] eq 'stat') || ($inittime)) {
+      my $do_dhcpsetup=1;
+      my $sitetab = xCAT::Table->new('site');
+      if ($sitetab) {
+          (my $ref) = $sitetab->getAttribs({key => 'dhcpsetup'}, 'value');
+          if ($ref) {
+             if ($ref->{value} =~ /0|n|N/) { $do_dhcpsetup=0; }
+          }
+      }
+      
+      if ($do_dhcpsetup) {
+        if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+            $sub_req->({command=>['makedhcp'],arg=>['-l'],
+                        node=>\@nodes},$callback);
+        } else {
+            $sub_req->({command=>['makedhcp'],
+                       node=>\@nodes},$callback);
+        }
+     }  
+  }
+
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
       $errored=0;
       if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
 	  $sub_req->({command=>['runendpre'],
 		      node=>\@nodes,
-		      inittime=>[$inittime],
-                      normalnodeset=>\@nodes,
 		      arg=>[$args[0], '-l']},\&pass_along);
       } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
 	  $sub_req->({command=>['runendpre'],   
 		      node=>\@rnodes,
-                      normalnodeset=>\@nodes,
-		      inittime=>[$inittime],
 		      arg=>[$args[0]]},\&pass_along);
       }
       if ($errored) { return; }

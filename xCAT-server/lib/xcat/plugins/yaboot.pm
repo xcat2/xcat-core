@@ -188,7 +188,7 @@ sub setstate {
     
 my $errored = 0;
 sub pass_along { 
-    print "pass_along\n";
+    #print "pass_along\n";
     my $resp = shift;
     $callback->($resp);
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
@@ -403,6 +403,38 @@ sub process_request {
   my @normalnodeset = keys %normalnodes;
   my @breaknetboot=keys %breaknetbootnodes;
   #print "yaboot:inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";
+
+  #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
+  unless (($args[0] eq 'stat') || ($inittime)) {
+      #dhcp stuff
+      my $do_dhcpsetup=1;
+      my $sitetab = xCAT::Table->new('site');
+      if ($sitetab) {
+          (my $ref) = $sitetab->getAttribs({key => 'dhcpsetup'}, 'value');
+          if ($ref) {
+             if ($ref->{value} =~ /0|n|N/) { $do_dhcpsetup=0; }
+          }
+      }
+
+      if ($do_dhcpsetup) {
+         if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
+	     $sub_req->({command=>['makedhcp'],arg=>['-l'],
+		        node=>\@normalnodeset},$callback);
+         } else {
+	     $sub_req->({command=>['makedhcp'],
+		      node=>\@normalnodeset},$callback);
+         }
+         if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+	     $sub_req->({command=>['makedhcp'],
+		      node=>\@breaknetboot,
+		      arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+         } else {
+	     $sub_req->({command=>['makedhcp'],
+		      node=>\@breaknetboot,
+		      arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+         }
+     }
+  }
   
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
@@ -410,16 +442,10 @@ sub process_request {
       if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
 	  $sub_req->({command=>['runendpre'],
 		      node=>\@nodes,
-		      inittime=>[$inittime],
-		      normalnodeset=>\@normalnodeset,
-		      breaknetboot=>\@breaknetboot,
 		      arg=>[$args[0], '-l']},\&pass_along);
       } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
 	  $sub_req->({command=>['runendpre'],   
 		      node=>\@rnodes,
-		      inittime=>[$inittime],
-		      normalnodeset=>\@normalnodeset,
-		      breaknetboot=>\@breaknetboot,
 		      arg=>[$args[0]]},\&pass_along);
       }
       if ($errored) { return; }
