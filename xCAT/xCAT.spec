@@ -13,7 +13,10 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 Source1: xcat.conf
 Source2: postscripts.tar.gz
 Source3: templates.tar.gz
+
+%ifos linux
 Source4: prescripts.tar.gz
+%endif
 
 Provides: xCAT = %{version}
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
