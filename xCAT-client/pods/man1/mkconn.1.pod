@@ -1,16 +1,16 @@
 =head1 NAME
 
-B<mkconn> - Use this command to setup connections for FSP and BPA nodes to HMC nodes.
+B<mkhwconn> - Use this command to setup connections for FSP and BPA nodes to HMC nodes.
 
 =head1 SYNOPSIS
 
-B<mkconn> [B<-h>| B<--help>]
+B<mkhwconn> [B<-h>| B<--help>]
 
-B<mkconn> [B<-v>| B<--version>]
+B<mkhwconn> [B<-v>| B<--version>]
 
-B<mkconn> [B<-V>| B<--verbose>] noderange B<-t>
+B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-t>
 
-B<mkconn> [B<-V>| B<--verbose>] noderange B<-H> hmc [B<-P> passwd]
+B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-H> hmc [B<-P> passwd]
 
 =head1 DESCRIPTION
 
@@ -65,20 +65,20 @@ Verbose output.
 
 To setup the connection for all FSP nodes in node group fsp, according to the definition in xCAT DB:
 
- mkconn fsp -t
+ mkhwconn fsp -t
 
 =item 2.
 
 To setup the connection for BPA nodes in node group frame_grp1 to HMC node hmc1, with password 'abc123':
 
- mkconn frame_grp1 -H hmc1 -P abc123
+ mkhwconn frame_grp1 -H hmc1 -P abc123
 
 =back
 
 
 =head1 FILES
 
-$XCATROOT/bin/mkconn
+$XCATROOT/bin/mkhwconn
 
 (The XCATROOT environment variable is set when xCAT is installed. The
 default value is "/opt/xcat".)
@@ -90,4 +90,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-L<lsconn(1)|lsconn.1>, L<rmconn(1)|rmconn.1>
+L<lshwconn(1)|lshwconn.1>, L<rmhwconn(1)|rmhwconn.1>

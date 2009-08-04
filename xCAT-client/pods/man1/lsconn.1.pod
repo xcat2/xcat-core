@@ -1,14 +1,14 @@
 =head1 NAME
 
-B<lsconn> - Use this command to display the connection status for FSP and BPA nodes.
+B<lshwconn> - Use this command to display the connection status for FSP and BPA nodes.
 
 =head1 SYNOPSIS
 
-B<lsconn> [B<-h>| B<--help>]
+B<lshwconn> [B<-h>| B<--help>]
 
-B<lsconn> [B<-v>| B<--version>]
+B<lshwconn> [B<-v>| B<--version>]
 
-B<lsconn> [B<-V>| B<--verbose>] noderange
+B<lshwconn> [B<-V>| B<--verbose>] noderange
 
 =head1 DESCRIPTION
 
@@ -42,7 +42,7 @@ Verbose output.
 
 To display connection status for all FSP nodes in node group fsp:
 
- lsconn fsp
+ lshwconn fsp
 
 Output is similar to:
 
@@ -53,7 +53,7 @@ Output is similar to:
 
 To display connection status for BPA node frame1:
 
- lsconn frame1
+ lshwconn frame1
 
 Output is similar to:
 
@@ -65,7 +65,7 @@ Output is similar to:
 
 =head1 FILES
 
-$XCATROOT/bin/lsconn
+$XCATROOT/bin/lshwconn
 
 (The XCATROOT environment variable is set when xCAT is installed. The
 default value is "/opt/xcat".)
@@ -77,4 +77,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-L<rmconn(1)|rmconn.1>, L<mkconn(1)|mkconn.1>
+L<rmhwconn(1)|rmhwconn.1>, L<mkhwconn(1)|mkhwconn.1>

@@ -1,14 +1,14 @@
 =head1 NAME
 
-B<rmconn> - Use this command to remove connections from FSP and BPA nodes to HMC nodes.
+B<rmhwconn> - Use this command to remove connections from FSP and BPA nodes to HMC nodes.
 
 =head1 SYNOPSIS
 
-B<rmconn> [B<-h>| B<--help>]
+B<rmhwconn> [B<-h>| B<--help>]
 
-B<rmconn> [B<-v>| B<--version>]
+B<rmhwconn> [B<-v>| B<--version>]
 
-B<rmconn> [B<-V>| B<--verbose>] noderange
+B<rmhwconn> [B<-V>| B<--verbose>] noderange
 
 =head1 DESCRIPTION
 
@@ -45,20 +45,20 @@ Verbose output.
 
 To disconnect all FSP nodes in node group fsp from their HMC nodes:
 
- rmconn fsp
+ rmhwconn fsp
 
 =item 2.
 
 To remove the connection for BPA node frame1:
 
- rmconn frame1
+ rmhwconn frame1
 
 =back
 
 
 =head1 FILES
 
-$XCATROOT/bin/rmconn
+$XCATROOT/bin/rmhwconn
 
 (The XCATROOT environment variable is set when xCAT is installed. The
 default value is "/opt/xcat".)
@@ -70,4 +70,4 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-L<lsconn(1)|lsconn.1>, L<mkconn(1)|mkconn.1>
+L<lshwconn(1)|lshwconn.1>, L<mkhwconn(1)|mkhwconn.1>
