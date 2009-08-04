@@ -143,21 +143,11 @@ sub getFrameMembers
     my $node = shift; #this a BPA node
     my $vpdtab = shift;
     my $ppctab = shift;
-    my @frame_members;
+    my @frame_members = ();
+    my @bpa_nodes     = ();
     my $vpdhash = $vpdtab->getNodeAttribs( $node, [qw(mtm serial)]);
     my $mtm = $vpdhash->{mtm};
     my $serial = $vpdhash->{serial};
-    if ( scalar( @all_ppc_nodes) == 0)
-    {
-        @all_ppc_nodes = $ppctab->getAllNodeAttribs( ['node', 'parent']);
-    }
-    for my $ppc_node (@all_ppc_nodes)
-    {
-        if ( $ppc_node->{parent} eq $node)
-        {
-            push @frame_members, $ppc_node->{'node'};
-        }
-    }
     if ( scalar( @all_vpd_nodes) == 0)
     {
         @all_vpd_nodes = $vpdtab->getAllNodeAttribs( ['node', 'mtm', 'serial']);
@@ -167,6 +157,22 @@ sub getFrameMembers
         if ( $vpd_node->{'mtm'} eq $mtm and $vpd_node->{'serial'} eq $serial)
         {
             push @frame_members, $vpd_node->{'node'};
+            push @bpa_nodes, $vpd_node->{'node'};
+        }
+    }
+
+    if ( scalar( @all_ppc_nodes) == 0)
+    {
+        @all_ppc_nodes = $ppctab->getAllNodeAttribs( ['node', 'parent']);
+    }
+    for my $bpa_node (@bpa_nodes)
+    {
+        for my $ppc_node (@all_ppc_nodes)
+        {
+            if ( $ppc_node->{parent} eq $bpa_node)
+            {
+                push @frame_members, $ppc_node->{'node'};
+            }
         }
     }
     return \@frame_members;
@@ -203,23 +209,37 @@ sub lshwconn_parse_args
     if ( scalar( @ARGV)) {
         return(usage( "No additional flag is support by this command" ));
     }
-    my $notypetab = xCAT::Table->new('nodetype');
-    if (! $notypetab)
+    my $nodetypetab = xCAT::Table->new('nodetype');
+    if (! $nodetypetab)
     {
-        return( "Failed to open nodetype table.\n");
+        return( ["Failed to open table 'nodetype'.\n"]);
+    }
+    my $nodehmtab = xCAT::Table->new('nodehm');
+    if (! $nodehmtab)
+    {
+        return( ["Failed to open table 'nodehm'.\n"]);
     }
 
     my $nodetype;
     for my $node ( @{$request->{node}})
     {
-        my $ent = $notypetab->getNodeAttribs( $node, [qw(nodetype)]);
+        my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
+        my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
         if ( ! $ent) 
         {
             return( ["Failed to get node type for node $node.\n"]);
         }
+        if ( ! $nodehm)
+        {
+            return( ["Failed to get nodehm.mgt value for node $node.\n"]);
+        }
+        elsif ( $nodehm->{mgt} ne 'hmc')
+        {
+            return( ["lshwconn can only support HMC nodes, or nodes managed by HMC, i.e. nodehm.mgt should be 'hmc'. Please make sure node $node has correect nodehm.mgt and ppc.hcp value.\n"]);
+        }
         if ( $ent->{nodetype} ne 'hmc' 
-            and $ent->{nodetype} ne 'fsp' 
-            and $ent->{nodetype} ne 'bpa')
+                and $ent->{nodetype} ne 'fsp' 
+                and $ent->{nodetype} ne 'bpa')
         {
             return( ["Node type $ent->{nodetype} is not supported for this command.\n"]);
         }
@@ -235,7 +255,7 @@ sub lshwconn_parse_args
             }
         }
     }
-    
+
     $request->{nodetype} = $nodetype;
 
     $request->{method} = 'lshwconn';
@@ -277,39 +297,50 @@ sub rmhwconn_parse_args
     ##########################################
     my $nodes = $request->{node};
     my $ppctab  = xCAT::Table->new( 'ppc' );
+    return( ["Failed to open table 'ppc'.\n"]) if ( ! $ppctab);
     my $nodetypetab = xCAT::Table->new( 'nodetype');
+    return( ["Failed to open table 'nodetype'.\n"]) if ( ! $nodetypetab);
     my $vpdtab = xCAT::Table->new( 'vpd');
+    return( ["Failed to open table 'vpd'.\n"]) if ( ! $vpdtab);
+    my $nodehmtab = xCAT::Table->new('nodehm');
+    return( ["Failed to open table 'nodehm'.\n"]) if (! $nodehmtab);
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
     my @frame_members    = ();
-    if ( $ppctab)
+    for my $node ( @$nodes)
     {
-        for my $node ( @$nodes)
+        my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
+        if ( ! $nodehm)
         {
-            my $node_parent = undef;
-            my $nodetype    = undef;
-            my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
-            my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
-            $nodetype    = $nodetype_hash->{nodetype};
-            $node_parent = $node_parent_hash->{parent};
-            if ( !$nodetype)
-            {
-                push @no_type_nodes, $node;
-                next;
-            }
-            
-            if ( $nodetype eq 'fsp' and 
+            return( ["Failed to get nodehm.mgt value for node $node.\n"]);
+        }
+        elsif ( $nodehm->{mgt} ne 'hmc')
+        {
+            return( ["rmhwconn can only support nodes managed by HMC, i.e. nodehm.mgt should be 'hmc'. Please make sure node $node has correect nodehm.mgt and ppc.hcp value.\n"]);
+        }
+        my $node_parent = undef;
+        my $nodetype    = undef;
+        my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
+        my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
+        $nodetype    = $nodetype_hash->{nodetype};
+        $node_parent = $node_parent_hash->{parent};
+        if ( !$nodetype)
+        {
+            push @no_type_nodes, $node;
+            next;
+        }
+
+        if ( $nodetype eq 'fsp' and 
                 $node_parent and 
                 $node_parent ne $node)
-            {
-                push @bpa_ctrled_nodes, $node;
-            }
-            
-            if ( $nodetype eq 'bpa')
-            {
-                my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
-                push @frame_members, @$my_frame_bpa_cec;
-            }
+        {
+            push @bpa_ctrled_nodes, $node;
+        }
+
+        if ( $nodetype eq 'bpa')
+        {
+            my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
+            push @frame_members, @$my_frame_bpa_cec;
         }
     }
 
