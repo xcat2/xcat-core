@@ -119,11 +119,11 @@ a.button:active span {
 #rangedisplay {
 	float: left;
 	text-align: left;
-	width: 700px;
+	width: auto;
 }
 #nrtree {
 	float: left;
-	width: 150px;
+	width: auto;
 	border-right: 1px dotted #555;
 }
 
@@ -317,4 +317,10 @@ padding:10px 2px;
         font-size: 8pt;
 	paddint-right: 0;
 
+}
+
+#ositree {
+    float: left;
+    width: auto;
+    border-right: 1px dotted #555;
 }

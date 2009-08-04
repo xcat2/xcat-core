@@ -332,7 +332,8 @@ function displayNrTree(){
 echo <<<EOS
 <div id=nrtree></div>
 <div id='rangedisplay' class='mContent'><h1>Please select a node or noderange on the left.</h1>
-You can use ctrl-click to select more than one node grouping, or expand the noderanges to select individual nodes.</div>
+<p>You can use ctrl-click to select more than one node grouping, </p>
+<p>or expand the noderanges to select individual nodes.</p></div>
 <script type="text/javascript" type"utf-8">
 	initTree();
 </script>
