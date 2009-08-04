@@ -167,9 +167,9 @@ ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/rmdef
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/xcat2nim
 ln -sf ../bin/xdsh $RPM_BUILD_ROOT/%{prefix}/bin/xdcp
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/mknb
-ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkconn
-ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmconn
-ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsconn
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkhwconn
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmhwconn
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lshwconn
 
 
 

@@ -10,9 +10,9 @@ use xCAT::Usage;
 # Globals
 ##############################################
 my %method = (
-    mkconn => \&mkconn_parse_args,
-    lsconn => \&lsconn_parse_args,
-    rmconn => \&rmconn_parse_args
+    mkhwconn => \&mkhwconn_parse_args,
+    lshwconn => \&lshwconn_parse_args,
+    rmhwconn => \&rmhwconn_parse_args
 );
 ##########################################################################
 # Parse the command line for options and operands
@@ -30,16 +30,16 @@ sub parse_args {
 }
 
 ##########################################################################
-# Parse arguments for mkconn
+# Parse arguments for mkhwconn
 ##########################################################################
-sub mkconn_parse_args
+sub mkhwconn_parse_args
 {
     my $request = shift;
     my $args    = shift;
     my %opt = ();
 
     local *usage = sub {
-        my $usage_string = xCAT::Usage->getUsage("mkconn");
+        my $usage_string = xCAT::Usage->getUsage("mkhwconn");
         return( [ $_[0], $usage_string] );
     };
     #############################################
@@ -53,7 +53,7 @@ sub mkconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose t p=s P=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s) )) {
         return( usage() );
     }
 
@@ -128,7 +128,7 @@ sub mkconn_parse_args
     # Set HW type to 'hmc' anyway, so that this command will not going to 
     # PPCfsp.pm
     $request->{ 'hwtype'} = 'hmc';
-    $request->{method} = 'mkconn';
+    $request->{method} = 'mkhwconn';
     return( \%opt);
 }
 
@@ -173,16 +173,16 @@ sub getFrameMembers
 }
 
 ##########################################################################
-# Parse arguments for lsconn
+# Parse arguments for lshwconn
 ##########################################################################
-sub lsconn_parse_args
+sub lshwconn_parse_args
 {
     my $request = shift;
     my $args    = shift;
     my %opt = ();
 
     local *usage = sub {
-        my $usage_string = xCAT::Usage->getUsage("lsconn");
+        my $usage_string = xCAT::Usage->getUsage("lshwconn");
         return( [ $_[0], $usage_string] );
     };
 #############################################
@@ -192,14 +192,15 @@ sub lsconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help) )) {
         return( usage() );
     }
+    return usage() if ( exists $opt{h});
 
     #############################################
     # Process command-line arguments
     #############################################
-    if ( $args && scalar @$args) {
+    if ( scalar( @ARGV)) {
         return(usage( "No additional flag is support by this command" ));
     }
     my $notypetab = xCAT::Table->new('nodetype');
@@ -237,21 +238,21 @@ sub lsconn_parse_args
     
     $request->{nodetype} = $nodetype;
 
-    $request->{method} = 'lsconn';
+    $request->{method} = 'lshwconn';
     return( \%opt);
 }
 
 ##########################################################################
-# Parse arguments for rmconn
+# Parse arguments for rmhwconn
 ##########################################################################
-sub rmconn_parse_args
+sub rmhwconn_parse_args
 {
     my $request = shift;
     my $args    = shift;
     my %opt = ();
 
     local *usage = sub {
-        my $usage_string = xCAT::Usage->getUsage("rmconn");
+        my $usage_string = xCAT::Usage->getUsage("rmhwconn");
         return( [ $_[0], $usage_string] );
     };
 #############################################
@@ -261,14 +262,14 @@ sub rmconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help) )) {
         return( usage() );
     }
 
     #############################################
     # Process command-line arguments
     #############################################
-    if ( $args && scalar @$args) {
+    if ( scalar (@ARGV)) {
         return(usage( "No additional flag is support by this command" ));
     }
     ##########################################
@@ -329,13 +330,13 @@ sub rmconn_parse_args
         my @all_nodes = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
         $request->{node} = \@all_nodes;
     }
-    $request->{method} = 'rmconn';
+    $request->{method} = 'rmhwconn';
     return( \%opt);
 }
 ##########################################################################
 # Create connection for CECs/BPAs
 ##########################################################################
-sub mkconn
+sub mkhwconn
 {
     my $request = shift;
     my $hash    = shift;
@@ -398,7 +399,7 @@ sub mkconn
 ##########################################################################
 # List connection status for CECs/BPAs
 ##########################################################################
-sub lsconn
+sub lshwconn
 {
     my $request = shift;
     my $hash    = shift;
@@ -508,7 +509,7 @@ sub lsconn
 ##########################################################################
 # Remove connection for CECs/BPAs to HMCs
 ##########################################################################
-sub rmconn
+sub rmhwconn
 {
     my $request = shift;
     my $hash    = shift;

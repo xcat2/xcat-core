@@ -11,9 +11,9 @@ use xCAT::PPC;
 sub handled_commands {
   return {
       rspconfig => 'nodehm:mgt',
-      mkconn    => 'nodehm:mgt',
-      rmconn    => 'nodehm:mgt',
-      chconn    => 'nodehm:mgt'
+      mkhwconn    => 'nodehm:mgt',
+      rmhwconn    => 'nodehm:mgt',
+      lshwconn    => 'nodehm:mgt'
   };
 }
 

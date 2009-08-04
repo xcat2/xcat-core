@@ -22,9 +22,9 @@ sub handled_commands {
       rnetboot  => 'nodehm:mgt',
       rspconfig => 'nodehm:mgt',
       rflash    => 'nodehm:mgt',
-      mkconn    => 'nodehm:mgt',
-      rmconn    => 'nodehm:mgt',
-      lsconn    => 'nodehm:mgt'
+      mkhwconn    => 'nodehm:mgt',
+      rmhwconn    => 'nodehm:mgt',
+      lshwconn    => 'nodehm:mgt'
   };
 }
 

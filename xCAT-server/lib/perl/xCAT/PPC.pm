@@ -35,9 +35,9 @@ my %modules = (
         reventlog => "xCAT::PPClog",
         rspconfig => "xCAT::PPCcfg",
         rflash => "xCAT::PPCrflash",
-        mkconn    => "xCAT::PPCconn",
-        rmconn    => "xCAT::PPCconn",
-        lsconn    => "xCAT::PPCconn"
+        mkhwconn    => "xCAT::PPCconn",
+        rmhwconn    => "xCAT::PPCconn",
+        lshwconn    => "xCAT::PPCconn"
         );
 
 ##########################################
@@ -589,9 +589,9 @@ sub preprocess_nodes {
     #   Direct-attached FSP 
     ########################################
     if (( $request->{command} =~ /^(rscan|rspconfig)$/ ) or
-#        (( $request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) and ( $request->{command} ne "mkconn")) or
+#        (( $request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) and ( $request->{command} ne "mkhwconn")) or
         ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) or
-        ($request->{command} eq 'lsconn' and $request->{nodetype} eq 'hmc')
+        ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc')
 ) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
@@ -637,9 +637,9 @@ sub preprocess_nodes {
         my $mtms = @$d[2];
  
         ######################################
-        # Special case for mkconn
+        # Special case for mkhwconn
         ######################################
-        if ( $request->{command} eq "mkconn" and 
+        if ( $request->{command} eq "mkhwconn" and 
               exists $request->{opt}->{p})
         {
             $nodehash{ $request->{opt}->{p}}{$mtms}{$node} = $d;
@@ -1350,12 +1350,12 @@ sub process_request {
 #    $request->{hwtype}  = $package;
     $request->{callback}= $callback;
     #########################
-    #This is a special case for rspconfig and mkconn, 
+    #This is a special case for rspconfig and mkhwconn, 
     #we shouldn't set hwtype as$package. and reserved for other commands.
     #probably for all HW ctrl commands it still true?
     #########################
     if($request->{command} ne "rspconfig" and 
-        $request->{command} ne "mkconn") {
+        $request->{command} ne "mkhwconn") {
         $request->{hwtype}  = $package;
     }
 

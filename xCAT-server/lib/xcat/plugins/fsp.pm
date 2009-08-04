@@ -13,9 +13,9 @@ sub handled_commands {
       rpower    => 'nodehm:power,mgt',
       reventlog => 'nodehm:mgt',
       rspconfig => 'nodehm:mgt',
-      mkconn    => 'nodehm:mgt',
-      rmconn    => 'nodehm:mgt',
-      chconn    => 'nodehm:mgt'
+      mkhwconn    => 'nodehm:mgt',
+      rmhwconn    => 'nodehm:mgt',
+      lshwconn    => 'nodehm:mgt'
   };
 }
 

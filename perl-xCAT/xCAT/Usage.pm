@@ -144,19 +144,19 @@ my %usage = (
 "Usage: rflash [ -h|--help|-v|--version]
 	rflash <noderange> -p directory [--activate concurrent | disruptive][-V|--verbose] 
 	rflash <noderange> [--commit | --recover] [-V|--verbose]",
-    "mkconn" =>
+    "mkhwconn" =>
 "Usage:
-    mkconn [-h|--help]
-    mkconn noderange -t [--bind] [-V|--verbose]
-    mkconn noderange -p single_hmc [-P fsp/bpa passwd] [-V|--verbose]",
-    "rmconn" =>
+    mkhwconn [-h|--help]
+    mkhwconn noderange -t [--bind] [-V|--verbose]
+    mkhwconn noderange -p single_hmc [-P fsp/bpa passwd] [-V|--verbose]",
+    "rmhwconn" =>
 "Usage:
-    rmconn [-h|--help]
-    rmconn noderange [-V|--verbose]",
-    "lsconn" =>
+    rmhwconn [-h|--help]
+    rmhwconn noderange [-V|--verbose]",
+    "lshwconn" =>
 "Usage:
-    lsconn [-h|--help]
-    lsconn noderange [-V|--verbose]",
+    lshwconn [-h|--help]
+    lshwconn noderange [-V|--verbose]",
 );
 my $vers = xCAT::Utils->Version();
 my %version = (
