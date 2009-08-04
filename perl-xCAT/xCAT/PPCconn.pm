@@ -49,7 +49,7 @@ sub mkconn_parse_args
         return(usage( "No command specified" ));
     }
 
-    local @ARGV = @$args;
+    local @ARGV = ref($args) eq 'ARRAY'? @$args:();
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
@@ -257,7 +257,7 @@ sub rmconn_parse_args
 #############################################
 # Get options in command line
 #############################################
-    local @ARGV = @$args;
+    local @ARGV = ref($args) eq 'ARRAY'? @$args:();
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
@@ -268,7 +268,7 @@ sub rmconn_parse_args
     #############################################
     # Process command-line arguments
     #############################################
-    if ( scalar @$args) {
+    if ( $args && scalar @$args) {
         return(usage( "No additional flag is support by this command" ));
     }
     ##########################################
