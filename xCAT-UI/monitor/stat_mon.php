@@ -13,34 +13,6 @@ require_once "$TOPDIR/lib/monitor_display.php";
 //get the name of the selected plug-in
 $name = $_REQUEST['name'];
 
-?>
-<script type="text/javascript">
-function node_stat_control(plugin)
-{
-    //get the label of the button
-    var action = $("#node_stat span").text();
-    if(action=='Enable') {
-        //enable node_stat_monitor
-        $.get("monitor/control_node_stat.php",{name:plugin, action:"enable"},function(data) {
-            if(data=='successful') {
-                //change the label to "Disable"
-                $("#node_stat span").text("Disable");
-            }
-        });
-    }else if(action=='Disable') {
-        //disable node_stat_monitor
-        $.get("monitor/control_node_stat.php",{name:plugin, action:"disable"},function(data) {
-            if(data=='successful') {
-                //change the label to "enable"
-                $("#node_stat span").text("Enable");
-            }
-        })
-        //then, change the label to "Enable""
-    }
-}
-</script>
-
-<?php
 displayMapper_mon(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php'));
 displayTips(array(
     "Enable/disable Node/App Status Monitoring by clicking the button",
@@ -70,5 +42,5 @@ display_stat_mon_table(array("$name"=>
 
 displayStatus();
 
-insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>''));
+insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>'goto_next()'));
 ?>

@@ -327,5 +327,59 @@ function changeProf(){
 	} // so yeah, all these }'s and )'s really suck.  I hope you never have to
 		// debug this.  If you do, please make this code easier to read.
 }
+
+//added for display the tree for
+function init_ositree(){
+    //display all the nodes with OSI type
+    nrtree = new tree_component();  //-tree begin
+    nrtree.init($("#ositree"),{
+        rules: { multiple: "Ctrl" },
+        ui: { animation: 250 },
+        data : {
+            type: "json",
+            async: "true",
+            url: "monitor/osi_source.php"
+        }
+    });
+}
+
+//node_stat_control() can enable/disable nodestatmon for the selected plugin
+function node_stat_control(plugin)
+{
+    //get the label of the button
+    var action = $("#node_stat span").text();
+    if(action=='Enable') {
+        //enable node_stat_monitor
+        $.get("monitor/control_node_stat.php",{name:plugin, action:"enable"},function(data) {
+            if(data=='successful') {
+                //change the label to "Disable"
+                $("#node_stat span").text("Disable");
+            }
+        });
+    }else if(action=='Disable') {
+        //disable node_stat_monitor
+        $.get("monitor/control_node_stat.php",{name:plugin, action:"disable"},function(data) {
+            if(data=='successful') {
+                //change the label to "enable"
+                $("#node_stat span").text("Enable");
+            }
+        })
+        //then, change the label to "Enable""
+    }
+}
+
+function goto_next()
+{
+    var str = location.href;
+    var plugin=str.slice(str.indexOf("name")+5);//get the argument from "?name=xxxxx"
+    if(plugin == "rmcmon") {
+        loadMainPage("monitor/rmc_event_define.php");
+    }else {
+        //TODO
+        //for the others, there's no web page to define evnets/performance now'
+        loadMainPage("monitor/monstart.php?name="+plugin);
+    }
+}
+
 // load progress bar
 myBar.loaded('xcat.js');

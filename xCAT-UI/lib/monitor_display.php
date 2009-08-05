@@ -56,12 +56,12 @@ function displayTips($tips)
     //  "Click the name of each plugin, you can get the plugin's description.",
     //  "You can also select one plugin, then you can set node/application status monitoring for the selected plugin.",
     //}
-    echo '<div><ul align="left" id="tips"><h3>Tips:</h3>';
+    echo '<div id="tips"><p><b>Tips:</b></p>';
     foreach ($tips as $tip) {
         echo "<li>$tip</li>";
         echo "\n";
     }
-    echo '</ul></div>';
+    echo '</div>';
     return 0;
 }
 
@@ -75,7 +75,7 @@ function displayDialog($id, $title)
 function displayMonTable()
 {
     //create one table to display the monitoring plugins' list
-    echo '<div style="margin-right:30px;width:auto;margin-left:30px;">';
+    echo '<div id="monlist_table">';
     echo <<<TOS1
 <table id="tabTable" class="tabTable" cellspacing="1">
     <thead>
@@ -124,14 +124,14 @@ function display_stat_mon_table($args)
 echo <<<TOS2
 <table cellspacing="1" class="tabTable" id="tabTable"><tbody>
 <tr class="ListLine0">
-<td>Node Status Application Monitoring</td>
+<td>Node Status Monitoring</td>
 <td>
 TOS2;
     insertButtons(array('label'=>$ns_tobe, 'id'=>'node_stat', 'onclick'=>"node_stat_control(\"$name\")"));
     echo '</td>';
     echo '</tr>';
     echo '<tr class="ListLine1">';
-    echo '<td>Application Status Application Monitoring</td>';
+    echo '<td>Application Status Monitoring</td>';
     echo '<td>';
     insertbuttons(array('label'=>$as_tobe, 'id'=>'app_stat', 'onclick'=>''));
     echo '</td>';
@@ -144,4 +144,78 @@ function displayStatus()
     //tell the user that the current interface is not done yet...
     echo "<div><p>This interface is still under development -use accordingly.</p></div>";
 }
+
+function displayOSITree()
+{
+    //display the node range tree, but only with the nodes with OSI type
+    //this follows the function displayNrTree();
+    //it doesn't work on firefox!!!
+echo <<<EOS3
+<script type="text/javascript">
+$(init_ositree());
+</script>
+<div id=ositree></div>
+EOS3;
+}
+
+function displayAssociation()
+{
+    echo '<div id="association">';
+echo <<<TOS5
+<b>Available Condition/Response Associations</b>
+<table id="tabTable" class="tabTable" cellspacing="1">
+    <thead>
+        <tr class="colHeaders">
+            <td>Condition</td>
+            <td>Response</td>
+            <td>Node</td>
+            <td>State</td>
+        </tr>
+    </thead>
+TOS5;
+    //$xml = docmd("webrun", "", array("lscondresp"));
+    //if(getXmlErrors($xml,$errors)) {
+        //echo "<p class=Error>",implode(' ', $errors), "</p>";
+        //exit;
+    //}
+    //get all the condition&response associations for RMC
+echo <<<TOS6
+<tbody>
+<tr class="ListLine0">
+<td>NodeReachability_H</td>
+<td>UpdatexCATNodeStatus</td>
+<td>hv8plus01.ppd.pok.ibm.com</td>
+<td>Not active</td>
+</tr>
+<tr class="ListLine1">
+<td>NodeReachability</td>
+<td>UpdatexCATNodeStatus</td>
+<td>hv8plus01.ppd.pok.ibm.com</td>
+<td>Not active</td>
+</tr>
+</tbody>
+</table>
+</div>
+TOS6;
+    return 0;
+}
+
+function displayCond($noderange)
+{
+    //the user selects one node/noderange from the #ositree div
+    echo '<div id="avail_cond">';
+    echo '<b>Available Conditions</b>';
+    
+    echo '</div>';
+    return 0;
+}
+
+function displayResp()
+{
+    echo '<div id="avail_resp">';
+    echo '<b>Available Response</b>';
+    echo '</div>';
+    return 0;
+}
+
 ?>

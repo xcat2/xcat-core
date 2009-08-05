@@ -105,10 +105,10 @@ var xStart = function(){
      myBar.addScript("hoverIntent.js");  
      myBar.addScript("superfish.js");  
      myBar.addScript("jquery-ui-all.min.js");  
-     myBar.addScript("xcat.js");  
+     myBar.addScript("xcat.js");
      myBar.addScript("xcatauth.js");  
      myBar.addScript("config.js");  
-     myBar.addScript("jquery.tablesorter.js");  
+     myBar.addScript("jquery.tablesorter.js");
      myBar.run();  
 };  
 //Called on click reset button  
