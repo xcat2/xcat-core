@@ -1818,6 +1818,16 @@ sub set_netcfg
     #xCAT::MsgUtils->message("I", "Updating network configuration for node " . $exp->[1] . "...");
     $ua->timeout( 10);
     $res = $ua->request( $data);
+#We should update the /etc/hosts for users, but 
+#following line can cause problem, because multiple processes will try to
+#update /etc/hosts concurrently. And for 0.0.0.0, what should we do?
+#Comment these lines
+#    if( $inc_ip and $inc_ip ne '0.0.0.0')
+#    {
+#        my %host_ip;
+#        $host_ip{$exp->[1]} = $inc_ip;
+#        xCAT::Utils::updateEtcHosts(\%host_ip);
+#    }
     ##############################################################
     # We cannot get the result of this update, since the network
     # is updated, the old URI is invalid anymore
