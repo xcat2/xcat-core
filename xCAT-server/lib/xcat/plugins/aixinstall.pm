@@ -669,6 +669,7 @@ ll~;
                     }
                 }
 
+
             }
         }
 
@@ -3141,6 +3142,7 @@ sub update_dd_boot {
 			if ($::RUNCMD_RC  != 0)
 			{
 				my $rsp;
+
         		push @{$rsp->{data}}, "Could not copy $dd_boot_file.\n";
         		xCAT::MsgUtils->message("E", $rsp, $callback);
         		return 1;
@@ -4354,17 +4356,36 @@ sub doSNcopy
 
 			# running on the management node so
 			# copy the /etc/hosts file to the SN
+			my $rcpcmd = "xdcp $snkey /etc/hosts /etc ";
 			if ($::VERBOSE) {
                 my $rsp;
                 push @{$rsp->{data}}, "Running: \'xdcp $snkey /etc/hosts /etc\'\n";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
-			my $rcpcmd = "xdcp $snkey /etc/hosts /etc ";
 			my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
 			if ($::RUNCMD_RC  != 0) {
 				my $rsp;
 				push @{$rsp->{data}}, "Could not copy /etc/hosts to $snkey.\n";
 				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+
+			# update the postscripts on the SN 
+			my $lscmd = "xdsh $snkey 'ls /install/postscripts' >/dev/null 2>&1";
+			my $output = xCAT::Utils->runcmd("$lscmd", -1);
+			if ($::RUNCMD_RC  == 0) {	
+				# if the dir exists then we can update it
+				my $cpcmd = "xdcp $snkey -p -R /install/postscripts/* /install/postscripts ";
+				if ($::VERBOSE) {
+					my $rsp;
+					push @{$rsp->{data}}, "Running: \'$cpcmd\'\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+				}
+				my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+				if ($::RUNCMD_RC  != 0) {
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy /install/postscripts to $snkey.\n";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}
 			}
 
 			# copy NIM files/dir to the remote SN - so that
@@ -6024,44 +6045,21 @@ sub  getnimprime
 
 sub myxCATname
 {
+    my ($junk, $name);
 
-	# get a list of all xCAT nodes
-	my @nodes=xCAT::Utils->list_all_nodes;
-
-	# get all the possible IPs for the node I'm running on
-    my $ifcmd = "ifconfig -a | grep 'inet '";
-    my @result = xCAT::Utils->runcmd($ifcmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
-		return undef;
+	my $catcmd="cat myxcatpost_* | grep '^NODE='";
+	my $output = xCAT::Utils->runcmd("$catcmd", -1);
+	if ($::RUNCMD_RC != 0) {
+		# if no match then just return hostname
+    	$name = hostname();
+	} else {
+		($junk, $name) = split('=', $output);
 	}
 
-	# try each interface until we find one that is defined for xCAT
-	foreach my $int (@result) {
-		my $hostname;
-   		my ($inet, $myIP, $str) = split(" ", $int);
-        chomp $myIP; 
-
-		my $packedaddr = inet_aton($myIP);
-        my $hostname = gethostbyaddr($packedaddr, AF_INET);
-
-        if ($hostname)
-        {
-            my $shorthost;
-			($shorthost = $hostname) =~ s/\..*$//;
-        	chomp $shorthost;
-			if (grep(/^$shorthost$/, @nodes) ) {
-            	return $shorthost;
-        	}
-        }
-	}
-
-	# if no match then just return hostname
-	my $hn = hostname();
 	my $shorthost;
-	($shorthost = $hn) =~ s/\..*$//;
-	chomp $shorthost;
-	return $shorthost;
+    ($shorthost = $name) =~ s/\..*$//;
+    chomp $shorthost;
+    return $shorthost;
 }
 
 
