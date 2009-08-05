@@ -44,7 +44,7 @@ B<rspconfig> I<noderange> B<ntp>={[B<ntpenable>],[B<ntpserver>],[B<frequency>],[
 
 =head2 FSP specific:
 
-B<rspconfig> I<noderange> {B<autopower>|B<iocap>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>}
+B<rspconfig> I<noderange> {B<autopower>|B<iocap>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>}
 
 B<rspconfig> I<noderange> B<autopower>={B<enable>|B<disable>}
 
@@ -59,6 +59,22 @@ B<rspconfig> I<noderange> B<decfg>={B<enable|disable>:B<policyname,...>}
 B<rspconfig> I<noderange> B<procdecfg>={B<configure|deconfigure>:B<processingunit>:B<id,...>}
 
 B<rspconfig> I<noderange> B<memdecfg>={B<configure|deconfigure>:B<processingunit>:B<unit|bank>:B<id,...>>}
+
+B<rspconfig> I<noderange> B<network>={B<nic,*>}
+
+B<rspconfig> I<noderange> B<network>={B<nic,[IP,][hostname,][gateway,][netmask]>}
+
+B<rspconfig> I<noderange> B<network>={B<nic,0.0.0.0>}
+
+=head2 BPA Specific:
+
+B<rspconfig> I<noderange> {B<network>}
+
+B<rspconfig> I<noderange> B<network>={B<nic,*>}
+
+B<rspconfig> I<noderange> B<network>={B<nic,[IP,][hostname,][gateway,][netmask]>}
+
+B<rspconfig> I<noderange> B<network>={B<nic,0.0.0.0>}
 
 =head2 HMC Specific:
 
@@ -129,7 +145,12 @@ The subnet mask.
 
 =item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
-Get or set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
+For MPA only. Get or set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
+
+=item B<network>={I<nic>,{[I<ip>],[I<host>],[I<gateway>],[I<netmask>]}|*}
+
+For FSP/BPA only. Get or set the FSP/BPA network parameters. If '*' is specified, all parameters are read from the xCAT database. 
+If the value of I<ip> is '0.0.0.0', this I<nic> will be configured as a DHCP client. Otherwise this I<nic> will be configured with a static IP.
 
 =item B<nonred>
 
@@ -263,6 +284,51 @@ To change only the gateway parameter for the MPA network mm01:
 B<rspconfig> I<mm01 network=,,192.168.1.1,>
 
  mm01: Gateway: 192.168.1.1
+
+=item *
+
+To display the FSP network parameters for fsp01:
+
+B<rspconfig> I<fsp01 network>
+
+ fsp01:
+        eth0:
+                IP Type: Dynamic
+                IP Address: 192.168.1.215
+                Hostname:
+                Gateway:
+                Netmask: 255.255.255.0
+
+        eth1:
+                IP Type: Dynamic
+                IP Address: 192.168.200.51
+                Hostname: fsp01
+                Gateway:
+                Netmask: 255.255.255.0
+
+=item *
+
+To change the FSP network parameters with the values in command line for eth0 on fsp01:
+
+B<rspconfig> I<fsp01 network=eth0,192.168.1.200,fsp01,,255.255.255.0>
+
+ fsp01: Success to set IP address,hostname,netmask
+
+=item *
+
+To change the FSP network parameters with the values in the xCAT database for eth0 on fsp01:
+
+B<rspconfig> I<fsp01 network=eth0,*>
+
+ fsp01: Success to set IP address,hostname,gateway,netmask
+
+=item *
+
+To configure eth0 on fsp01 to get dynamic IP address from DHCP server: 
+
+B<rspconfig> I<fsp01 network=eth0,0.0.0.0>
+
+ fsp01: Success to set IP type to dynamic.
 
 =item *
 

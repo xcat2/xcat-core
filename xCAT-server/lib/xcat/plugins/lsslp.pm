@@ -1493,45 +1493,6 @@ sub parse_responses {
 }
 
 ##########################################################################
-# Update /etc/hosts
-##########################################################################
-sub updateEtcHosts
-{
-    my $host_ip = shift;
-    my $fname = "/etc/hosts";
-    unless ( open( HOSTS,"<$fname" )) {
-        return undef;
-    }
-    my @rawdata = <HOSTS>;
-    close( HOSTS );
-
-    ######################################
-    # Remove old entry
-    ######################################
-    foreach my $host ( keys %$host_ip) {
-        my $ip = $host_ip->{ $host};
-        foreach ( @rawdata ) {
-            if ( /^#/ or /^\s*\n$/ ) {
-                next;
-            } elsif ( /\s+$host\s+$/ ) {
-                s/$_//;
-            }
-        }
-        push @rawdata,"$ip\t$host\n";
-    }
-    ######################################
-    # Rewrite file
-    ######################################
-    unless ( open( HOSTS,">$fname" )) {
-        return undef;
-    }
-    print HOSTS @rawdata;
-    close( HOSTS );
-    return 1;
-}
-
-
-##########################################################################
 # Write result to xCat database
 ##########################################################################
 sub xCATdB {
@@ -1656,7 +1617,7 @@ sub xCATdB {
             xCAT::PPCdb::add_systemX( $type, $data );
         }
     }
-    updateEtcHosts(\%host_ip);
+    xCAT::Utils::updateEtcHosts(\%host_ip);
 }
 
 

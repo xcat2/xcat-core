@@ -4996,4 +4996,82 @@ sub get_unique_members
     }
     return keys %tmp_hash;
 }
+
+#-------------------------------------------------------------------------------
+
+=head3   updateEtcHosts
+    Description:
+        Add nodes and their IP addresses into /etc/hosts.
+    Arguments:
+        $host_ip: the hostname-IP pairs to be updated in /etc/hosts
+    Returns:
+        1: Succesfully. 0: Failed.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils::updateEtcHosts(\%node_to_be_updated)
+
+    Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+# Update /etc/hosts
+##########################################################################
+sub updateEtcHosts
+{
+    my $host_ip = shift;
+    my $fname = "/etc/hosts";
+    unless ( open( HOSTS,"<$fname" )) {
+        return undef;
+    }
+    my @rawdata = <HOSTS>;
+    my @newdata = ();
+    close( HOSTS );
+    chomp @rawdata;
+
+    ######################################
+    # Remove old entry
+    ######################################
+    foreach my $host ( keys %$host_ip) {
+        my $ip = $host_ip->{ $host};
+        my $updated = 0;
+        foreach my $line ( @rawdata ) {
+            if ( $line =~ /^#/ or $line =~ /^\s*$/ ) {
+                next;
+            } 
+            if ( $line =~ /^\s*\Q$ip\E\s+/ ) 
+            {
+                if ( $line =~ /\s+\Q$host\E\s+/ or 
+                    $line =~ /\s+\Q$host\E$/) 
+                {
+                }
+                else
+                {
+                    $line .= "\t$host";
+                }
+                $updated = 1;
+                last;
+            }
+        }
+        if ( !$updated)
+        {
+            push @rawdata, "$ip\t$host";
+        }
+    }
+    ######################################
+    # Rewrite file
+    ######################################
+    unless ( open( HOSTS,">$fname" )) {
+        return undef;
+    }
+    for my $line (@rawdata)
+    {
+        print HOSTS "$line\n";
+    }
+    close( HOSTS );
+    return 1;
+}
 1;
