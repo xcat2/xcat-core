@@ -3150,6 +3150,89 @@ sub get_ServiceNode
 
 #-----------------------------------------------------------------------------
 
+=head3 getSNformattedhash
+
+     Will call get_ServiceNode to  get the Service node ( name or ipaddress)
+	 as known by the Management
+	 Server or Node for the input nodename or ipadress of the node
+	 It will then format the output into a single servicenode key with values
+	 the list of nodes service by that service node.  This routine will 
+	 break up pools of service nodes into individual node in the hash unlike
+	 get_ServiceNode which leaves the pool as the key.
+
+	 input:  Same as get_ServiceNode to call get_ServiceNode
+			list of nodenames and/or node ipaddresses (array ref)
+			service name
+			"MN" or "Node"  determines if you want the Service node as known
+			 by the Management Node  or by the node.
+
+		recognized service names: xcat,tftpserver,
+		nfsserver,conserver,monserver
+
+        service "xcat" is used by command like xdsh that need to know the
+		service node that will process the command but are not tied to a
+		specific service like tftp
+
+
+	 output: A hash ref  of arrays, the key is a single service node 
+	          pointing to
+			 a list of nodes that are serviced by that service node
+	        'rra000-m'=>['blade01', 'testnode']
+	        'sn1'=>['blade01', 'testnode']
+	        'sn2'=>['blade01']
+	        'sn3'=>['testnode']
+
+     Globals:
+        $::ERROR_RC
+     Error:
+         $::ERROR_RC=0 no error $::ERROR_RC=1 error
+
+	 example: $sn =xCAT::Utils->getSNformattedhash(\@nodes,$service,"MN");
+	  $sn =xCAT::Utils->getSNformattedhash(\@nodes,$service,"Node");
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getSNformattedhash
+{
+    my ($class, $node, $service, $request) = @_;
+    my @node_list = @$node;
+    my $cmd;
+    my %newsnhash;
+    my $sn = xCAT::Utils->get_ServiceNode(\@node_list, $service, $request);
+
+    # get the keys which are the service nodes and break apart any pool lists
+    # format into individual service node keys pointing to node lists
+
+    if ($sn)
+    {
+            foreach my $snkey (keys %$sn)
+            {
+                # split the key if pool of service nodes
+                #push my @nodes, $sn->{$snkey}->[0];
+                push my @tmpnodes, $sn->{$snkey};
+                my @nodes;
+                for my $i (0 .. $#tmpnodes) {
+                  for my $j ( 0 .. $#{$tmpnodes[$i]}) {
+                     my $check=$tmpnodes[$i][$j];
+                     push @nodes,$check; 
+                  }
+                }
+                my @servicenodes = split /,/, $snkey;
+                # now build new hash of individual service nodes
+                foreach my $newsnkey (@servicenodes) {
+                  push @{$newsnhash{$newsnkey}}, @nodes;
+                }
+
+            }
+    }
+
+    return \%newsnhash;
+
+}
+
+#-----------------------------------------------------------------------------
+
 =head3 toIP 
 
  IPv4 function to convert hostname to IP address
