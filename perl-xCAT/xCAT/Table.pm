@@ -93,6 +93,7 @@ sub init_dbworker {
     }
     unless ($dbworkerpid) {
         #This process is the database worker, it's job is to manage database queries to reduce required handles and to permit cross-process caching
+        $0 = "xcatd: DB Access";
         use File::Path;
         mkpath('/var/run/xcat/');
         use IO::Socket;
@@ -129,7 +130,7 @@ sub init_dbworker {
         unlink($dbsockpath);
         exit 0;
     }
-    print "INITTED\n";
+    return $dbworkerpid;
 }
 sub handle_dbc_conn {
     my $client = shift;
