@@ -1098,8 +1098,6 @@ sub HCACheckAIX()
     }
     
     #If --speed or --width is not set, this two hashes is used to record the speed and width of a interface.
-    my %speedhash;
-    my %widthhash;
     my $host;
     my $hca_id;
     my $port;
@@ -1140,6 +1138,11 @@ sub HCACheckAIX()
                 print "$host: ib$if_id Logical Port State is $1. UNEXPECTED STATE.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id Logical Port State is $1. UNEXPECTED STATE.\n";
             }
+            else
+            {
+                print "$host: ib$if_id Logical Port State is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Logical Port State is $1.\n";
+            }
             next;
         }
         #Check Physical Port State
@@ -1150,6 +1153,11 @@ sub HCACheckAIX()
                 $abnormal = 1;
                 print "$host: ib$if_id Physical Port State is $1. UNEXPECTED STATE.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port State is $1. UNEXPECTED STATE.\n";
+            }
+            else
+            {
+                print "$host: ib$if_id Physical Port State is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port State is $1.\n";
             }
             next;
         }
@@ -1162,6 +1170,11 @@ sub HCACheckAIX()
                 print "$host: ib$if_id Physical Port Physical State is $1. UNEXPECTED STATE.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port Physical State is $1. UNEXPECTED STATE.\n";
             }
+            else
+            {
+                print "$host: ib$if_id Physical Port Physical State is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port Physical State is $1.\n";
+            }
             next;
         }
         #Check speed
@@ -1169,13 +1182,19 @@ sub HCACheckAIX()
         {
             if (!defined($::HCASPEED))
             {
-                $speedhash{"$host: ib$if_id"} = $1; 
+                print "$host: ib$if_id speed is $1Gbps. \n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id speed is $1Gbps.\n";
             }
             elsif ($1 != $::HCASPEED)
             {
                 $abnormal = 1;
                 print "$host: ib$if_id speed is $1Gbps. UNEXPECTED SPEED.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id speed is $1Gbps. UNEXPECTED SPEED.\n";
+            }
+            else
+            {
+                print "$host: ib$if_id speed is $1Gbps. \n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id speed is $1Gbps.\n";
             }
             next;
         }
@@ -1184,7 +1203,8 @@ sub HCACheckAIX()
         {
             if ($::WIDTH eq "")
             {
-                $widthhash{"$host: ib$if_id"} = $1;
+                print "$host: ib$if_id Physical Port Width is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port Width is $1.\n";
             }
             elsif ($1 ne $::WIDTH)
             {
@@ -1192,24 +1212,24 @@ sub HCACheckAIX()
                 print "$host: ib$if_id Physical Port Width is $1. UNEXPECTED WIDTH.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port Width is $1. UNEXPECTED WIDTH.\n";
             }
+            else
+            {
+                print "$host: ib$if_id Physical Port Width is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id Physical Port Width is $1.\n";
+            }
             next;
         }
-    }
-    foreach my $key (sort keys %speedhash)
-    {
-        print "$key: Physical Port Speed: $speedhash{$key}G\n";
-        print $::LOG_FILE_HANDLE "$key: Physical Port Speed: $speedhash{$key}G\n";
-    }
-    foreach my $key (sort keys %widthhash)
-    {
-        print "$key: Physical Port Width: $widthhash{$key}\n";
-        print $::LOG_FILE_HANDLE "$key: Physical Port Width: $widthhash{$key}\n";
     }
     #All are normal
     if(!$abnormal)
     {
         print "HCA status of all nodes is normal.\n";
         print $::LOG_FILE_HANDLE "HCA status of all nodes is normal.\n";
+    }
+    else
+    {
+        print "HCA status of all nodes contains unexpected result.\n";
+        print $::LOG_FILE_HANDLE "HCA status of all nodes contains unexpected result.\n"
     }
     return $::OK;
 }
@@ -1251,8 +1271,6 @@ sub HCACheckLinux()
     }
     
     #If --speed or --width is not set, this two hashes is used to record the speed and width of a interface.
-    my %speedhash;
-    my %widthhash;
     my $host;
     my $hca_id;
     my $port;
@@ -1298,20 +1316,31 @@ sub HCACheckLinux()
                 print "$host: ib$if_id state is $1. UNEXPECTED STATE.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id state is $1. UNEXPECTED STATE.\n";
             }
+            else
+            {
+                print "$host: ib$if_id state is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id state is $1.\n";
+            }
             next;
         }
-        #Chenk width
+        #Check width
         if ($line =~ /\S*:\s*active_width:\s*(\w+)\s*\(.*/ && $ignore == 0)
         {
             if ($::WIDTH eq "")
             {
-                $widthhash{"$host: ib$if_id"} = $1;
+                print "$host: ib$if_id active_width is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id active_width is $1.\n";
             }
             elsif ($1 ne $::WIDTH)
             {
                 $abnormal = 1;
                 print "$host: ib$if_id active_width is $1. UNEXPECTED WIDTH.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id active_width is $1. UNEXPECTED WIDTH.\n";
+            }
+            else
+            {
+                print "$host: ib$if_id active_width is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id active_width is $1.\n";
             }
             next;
         }
@@ -1320,13 +1349,19 @@ sub HCACheckLinux()
         {
             if (!defined($::HCASPEED))
             {
-                $speedhash{"$host: ib$if_id"} = $1;
+                print "$host: ib$if_id active_speed is $1Gbps.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id active_speed is $1Gbps.\n";
             }
             elsif ($1 != $::HCASPEED)
             {
                 $abnormal = 1;
                 print "$host: ib$if_id active_speed is $1Gbps. UNEXPECTED SPEED.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id active_speed is $1Gbps. UNEXPECTED SPEED.\n";
+            }
+            else
+            {
+                print "$host: ib$if_id active_speed is $1Gbps.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id active_speed is $1Gbps.\n";
             }
             next;
         }
@@ -1339,24 +1374,25 @@ sub HCACheckLinux()
                 print "$host: ib$if_id phys_state is $1. UNEXPECTED STATE.\n";
                 print $::LOG_FILE_HANDLE "$host: ib$if_id phys_state is $1. UNEXPECTED STATE.\n";
             }
+            else
+            {
+                print "$host: ib$if_id phys_state is $1.\n";
+                print $::LOG_FILE_HANDLE "$host: ib$if_id phys_state is $1. \n";
+            }
             next;
         }
-    }
-    foreach my $key (sort keys %speedhash)
-    {
-        print "$key: Physical Port Speed: $speedhash{$key}G\n";
-        print $::LOG_FILE_HANDLE "$key: Physical Port Speed: $speedhash{$key}G\n";
-    }
-    foreach my $key (sort keys %widthhash)
-    {
-        print "$key: Physical Port Width: $widthhash{$key}\n";
-        print $::LOG_FILE_HANDLE "$key: Physical Port Width: $widthhash{$key}\n";
     }
     #All are normal
     if(!$abnormal)
     {
         print "HCA status of all nodes is normal.\n";
         print $::LOG_FILE_HANDLE "HCA status of all nodes is normal.\n";
+    }
+    else
+    {
+        print "HCA status of all nodes contains unexpected result.\n";
+        print $::LOG_FILE_HANDLE "HCA status of all nodes contains unexpected re
+sult.\n"
     }
     return $::OK;
 }
