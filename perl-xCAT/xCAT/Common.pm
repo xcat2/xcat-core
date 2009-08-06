@@ -124,7 +124,7 @@ sub usage_noderange {
   if (!$noderange) {
     $usage_string="Missing Noderange\n";
     $usage_string .=xCAT::Usage->getUsage($command);
-    $callback->({data=>$usage_string});
+    $callback->({error=>[$usage_string],errorcode=>[1]});
     $request = {};
     return;
   }   
