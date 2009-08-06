@@ -6,6 +6,8 @@ This README describes how to use the configiba script.
 
 This configiba postscript is used to do secondary adapter configuration for InfiniBand interfaces (ibX) and ml0 on both AIX and Linux Managed Nodes.  If only one port on each InfiniBand adapter is available, please copy configiba.1port to /install/postscripts.  If both ports on each adapter are available, please copy configiba.2ports to /install/postscripts.
 
+IB configuration with xCAT needs nameserver support to provide IP addresses for computes nodes.  We assume nameserver is setup on Management node.  Please follow similiar steps on the system that provide nameserver service if nameserver is not on management node.
+
 There are two times to configure IB adapters, during node installation or with command updatenode after node installation.  These two IB configuration ways are similar and finally they will trigger this sample postscript to configure IB adapters.  
 
 To use this script, users need to firstly setup DNS for the new adapters before node installation or before triggering command updatenode depending on when to start IB configuration, either time is supported: 
