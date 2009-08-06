@@ -65,6 +65,7 @@ use IO::Select;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::Table;
+my $dbmaster;
 use xCAT::ExtTab;
 use Data::Dumper;
 use Getopt::Long;
@@ -467,6 +468,7 @@ unless ($foreground) {
    daemonize;
 }
 
+$dbmaster=xCAT::Table::init_dbworker;
 my $CHILDPID=0; #Global for reapers
 sub generic_reaper {
    while (waitpid(-1,WNOHANG) > 0) {
@@ -647,6 +649,10 @@ if ($inet6support) {
   $cnnection->close();
 }
 $listener->close;
+xCAT::Table::shut_dbworker;
+if ($dbmaster) {
+    kill 2, $dbmaster;
+}
 
 #stop the monitoring process
 xCAT_monitoring::monitorctrl::stop($$);
