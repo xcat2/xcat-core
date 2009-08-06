@@ -440,7 +440,7 @@ sub format_stanza {
     #####################################
     shift(@$values);
 
-    foreach ( @$values ) {
+    foreach ( sort @$values ) {
         my @data = split /,/;
         my $type = $data[0];
         my $i = 0;
