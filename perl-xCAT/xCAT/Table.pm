@@ -39,7 +39,7 @@ require xCAT::NotifHandler;
 
 my $dbworkerpid; #The process id of the database worker
 my $dbworkersocket;
-my $dbsockpath = "/var/run/xcat/dbworker.sock";
+my $dbsockpath = "/tmp/xcat/dbworker.sock";
 my $exitdbthread;
 
 
@@ -95,7 +95,7 @@ sub init_dbworker {
         #This process is the database worker, it's job is to manage database queries to reduce required handles and to permit cross-process caching
         $0 = "xcatd: DB Access";
         use File::Path;
-        mkpath('/var/run/xcat/');
+        mkpath('/tmp/xcat/');
         use IO::Socket;
         $SIG{TERM} = $SIG{INT} = sub {
             $exitdbthread=1;
