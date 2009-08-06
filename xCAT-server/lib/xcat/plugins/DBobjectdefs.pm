@@ -1840,6 +1840,13 @@ sub defch
             }
 
         }    # end - if type = node
+        #special case for osimage, if the osimage was not defined,
+        #chdef can not create it correctly if no attribute in osimage table is defined
+        #set the default imagetype 'NIM' if it is not specified
+        if ((!$isDefined) && ($type eq 'osimage') && (!defined($::FINALATTRS{$obj}{imagetype})))
+        {
+            $::FINALATTRS{$obj}{imagetype} = 'NIM';
+        }
 
     }    # end - for each object to update
 
