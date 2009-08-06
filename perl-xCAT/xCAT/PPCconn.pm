@@ -56,6 +56,7 @@ sub mkhwconn_parse_args
     if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s) )) {
         return( usage() );
     }
+    return usage() if ( exists $opt{h});
 
     if ( exists $opt{t} and exists $opt{p})
     {
@@ -285,6 +286,7 @@ sub rmhwconn_parse_args
     if ( !GetOptions( \%opt, qw(V|verbose h|help) )) {
         return( usage() );
     }
+    return usage() if ( exists $opt{h});
 
     #############################################
     # Process command-line arguments
