@@ -1097,7 +1097,6 @@ sub HCACheckAIX()
         return $::NOK;
     }
     
-    #If --speed or --width is not set, this two hashes is used to record the speed and width of a interface.
     my $host;
     my $hca_id;
     my $port;
@@ -1270,7 +1269,6 @@ sub HCACheckLinux()
         return $::NOK;
     }
     
-    #If --speed or --width is not set, this two hashes is used to record the speed and width of a interface.
     my $host;
     my $hca_id;
     my $port;
