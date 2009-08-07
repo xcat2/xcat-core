@@ -2034,6 +2034,7 @@ sub mknetboot {
 	}
 	my %donetftp=();
 
+	my $bpadds = $bptab->getNodesAttribs(\@nodes,['addkcmdline']);
 	foreach my $node (@nodes){
 		my $ent =  $ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
 		my $arch = $ent->{'arch'};
@@ -2070,6 +2071,10 @@ e.g: nodech $node nodetype.arch=x86\n"]);
 		$append .= " --- $tp/oem.tgz";
 		$append .= " --- $tp/license.tgz";
 		$append .= " --- $tp/mod.tgz";
+		if (defined $bpadds->{$node}->[0]->{addkcmdline}) {
+			$append .= $bpadds->{$node}->[0]->{addkcmdline};
+		}
+
 
 		$bptab->setNodeAttribs(
 			$node,
