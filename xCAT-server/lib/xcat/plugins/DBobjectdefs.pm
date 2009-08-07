@@ -910,6 +910,7 @@ sub defmk
             $rsp->{data}->[0] = "No type was provided for object \'$obj\'.\n";
             $rsp->{data}->[1] = "Skipping to the next object.\n";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
+            $error = 1;
             next;
         }
 
