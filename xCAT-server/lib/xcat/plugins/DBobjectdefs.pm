@@ -985,6 +985,17 @@ sub defmk
             {
                 if ($::opt_d)
                 {
+                    # For dynamic node group, 
+                    # can not assign attributes for inherit
+                    # only the 'objtype' in %::FINALATTRS
+                    if (scalar(keys %{$::FINALATTRS{$obj}}) > 1)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        $error = 1;
+                        next;
+                    } 
                     $::FINALATTRS{$obj}{grouptype} = 'dynamic';
                     $::FINALATTRS{$obj}{members}   = 'dynamic';
                 }
@@ -1490,6 +1501,20 @@ sub defch
             # what kind of group is this? - static or dynamic
             my $grptype;
 			my %objhash;
+            if ($::opt_d)
+            {
+               # For dynamic node group,
+               # can not assign attributes for inherit
+               # only the 'objtype' in %::FINALATTRS
+               if (scalar(keys %{$::FINALATTRS{$obj}}) > 1)
+               {
+                   my $rsp;
+                   $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.\n";
+                   xCAT::MsgUtils->message("E", $rsp, $::callback);
+                   $error = 1;
+                   next;
+               }
+            }
             if ($isDefined)
             {
                 $objhash{$obj} = $type;
