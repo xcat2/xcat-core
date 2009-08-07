@@ -2264,6 +2264,52 @@ sub defls
         return 0;
     }
 
+
+    # need a special case for the node postscripts attribute,
+    # The 'xcatdefaults' postscript should be added to the postscript attribute
+    my $getnodes = 0;
+    foreach my $objtype (@::clobjtypes)
+    {
+        if ($objtype eq 'node')
+        {
+            $getnodes = 1;
+            last;
+        }
+    }
+    if ($getnodes)
+    {
+        my $xcatdefaultsps;
+        my @TableRowArray = xCAT::DBobjUtils->getDBtable('postscripts');
+        if (defined(@TableRowArray))
+        {
+            foreach my $tablerow (@TableRowArray)
+            {
+                if(($tablerow->{node} eq 'xcatdefaults') && !($tablerow->{disable}))
+                {
+                    $xcatdefaultsps = $tablerow->{postscripts};
+                    last;
+                }
+             }
+         }
+         foreach my $obj (keys %myhash)
+         {
+             if ($myhash{$obj}{objtype} eq 'node')
+             {
+                 if($xcatdefaultsps)
+                 {
+                     if ($myhash{$obj}{postscripts})
+                     {
+                         $myhash{$obj}{postscripts} = $xcatdefaultsps . ',' . $myhash{$obj}{postscripts};
+                     }
+                     else
+                     {
+                         $myhash{$obj}{postscripts} = $xcatdefaultsps;
+                     }
+                 }
+             }
+         }
+    }
+      
     # the list of objects may be limited by the "-w" option
     # see which objects have attr/val that match the where values
     #		- if provided
