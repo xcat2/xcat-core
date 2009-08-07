@@ -108,7 +108,6 @@ sub init_dbworker {
         unless ($dbworkersocket) {
             die $!;
         }
-        my $dbconn;
         my $currcon;
         my $clientset = new IO::Select;
         $clientset->add($dbworkersocket);
@@ -116,12 +115,12 @@ sub init_dbworker {
             my @ready_socks = $clientset->can_read;
             foreach $currcon (@ready_socks) {
                 if ($currcon == $dbworkersocket) { #We have a new connection to register
-                    $dbconn = $currcon->accept;
+                    my $dbconn = $currcon->accept;
                     if ($dbconn) {
                         $clientset->add($dbconn);
                     }
                 } else {
-                    handle_dbc_conn($dbconn,$clientset);
+                    handle_dbc_conn($currcon,$clientset);
                 }
             }
 
