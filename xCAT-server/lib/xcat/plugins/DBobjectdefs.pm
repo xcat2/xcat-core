@@ -2268,12 +2268,14 @@ sub defls
     # need a special case for the node postscripts attribute,
     # The 'xcatdefaults' postscript should be added to the postscript attribute
     my $getnodes = 0;
-    foreach my $objtype (@::clobjtypes)
-    {
-        if ($objtype eq 'node')
+    if (!$::opt_z) { #if -z flag is specified, do not add the xcatdefaults
+        foreach my $objtype (@::clobjtypes)
         {
-            $getnodes = 1;
-            last;
+            if ($objtype eq 'node')
+            {
+                $getnodes = 1;
+                last;
+            }
         }
     }
     if ($getnodes)
