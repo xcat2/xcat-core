@@ -16,6 +16,14 @@ my @allnodeset;
 my $retaincache=0;
 my $recurselevel=0;
 
+#TODO:  With a very large nodelist (i.e. 65k or so), deriving the members
+# of a group is a little sluggish.  We may want to put in a mechanism to 
+# maintain a two-way hash anytime nodelist or nodegroup changes, allowing
+# nodegroup table and nodelist to contain the same information about
+# group membership indexed in different ways to speed this up.
+# At low scale, little to no difference/impact would be seen
+# at high scale, changing nodelist or nodegroup would be perceptibly longer,
+# but many other operations would probably benefit greatly.
 
 sub subnodes (\@@) {
     #Subtract set of nodes from the first list
@@ -29,7 +37,7 @@ sub nodesmissed {
   return @$missingnodes;
 }
 
-sub expandatom {
+sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels5.3)
 	my $atom = shift;
 	my $verify = (scalar(@_) == 1 ? shift : 1);
         my @nodes= ();
@@ -50,7 +58,7 @@ sub expandatom {
      }
 
     # Try to match groups?
-        my $grptab = xCAT::Table->new('nodegroup');
+        my $grptab = xCAT::Table->new('nodegroup'); #TODO: build cache once per noderange and use it instead of repeats
         my @grplist;
         if ($grptab) { 
             @grplist = @{$grptab->getAllEntries()};
@@ -80,7 +88,7 @@ sub expandatom {
          # The atom is not a dynamic node group, is it a static node group???
          if(!$isdynamicgrp)
          {
-	        foreach($nodelist->getAllAttribs('node','groups')) {
+	        foreach($nodelist->getAllAttribs('node','groups')) { #TODO: change to a noderange managed cache for more performance
 	            my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
 	            if (grep { $_ eq "$atom" } @groups ) {
 		        push @nodes,$_->{node};
@@ -90,7 +98,7 @@ sub expandatom {
 
   # check to see if atom is a defined group name that didn't have any current members                                               
   if ( scalar @nodes == 0 ) {                                                                                                       
-    if($grptab) {
+    if($grptab) { #TODO: GET LOCAL CACHE OF GRPTAB
         my @grouplist = $grptab->getAllAttribs('groupname');
         for my $row ( @grouplist ) { 
             if ( $row->{groupname} eq $atom ) { 
@@ -115,7 +123,7 @@ sub expandatom {
         }
 		#TODO: check against all groups
 		$atom = substr($atom,1);
-        unless (scalar(@allnodeset)) {
+        unless (scalar(@allnodeset)) { #TODO: change to one noderange global cache per noderange call rather than table hosted cache for improved performance
             @allnodeset = $nodelist->getAllAttribs('node');
         }
 		foreach (@allnodeset) { #$nodelist->getAllAttribs('node')) {
@@ -270,7 +278,7 @@ sub extnoderange { #An extended noderange function.  Needed as the more straight
         my %grouphash=();
         my $nlent;
         foreach (@{$return->{node}}) {
-            $nlent=$nodelist->getNodeAttribs($_,['groups']);
+            $nlent=$nodelist->getNodeAttribs($_,['groups']); #TODO: move to noderange side cache
             if ($nlent and $nlent->{groups}) {
                 foreach (split /,/,$nlent->{groups}) {
                     $grouphash{$_}=1;
