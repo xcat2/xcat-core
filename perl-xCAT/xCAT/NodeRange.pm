@@ -338,9 +338,9 @@ sub noderange {
   my $verify = (scalar(@_) == 1 ? shift : 1);
   unless ($nodelist) { 
     $nodelist =xCAT::Table->new('nodelist',-create =>1); 
-    $nodelist->{_use_cache} = 0; #TODO: a more proper external solution
+    $nodelist->_set_use_cache(0); #TODO: a more proper external solution
     $nodelist->_build_cache(['node','groups']);
-    $nodelist->{_use_cache} = 1; #TODO: a more proper external solution
+    $nodelist->_set_use_cache(1); #TODO: a more proper external solution
   }
   my %nodes = ();
   my %delnodes = ();
