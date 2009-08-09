@@ -189,6 +189,129 @@ sub isAIX
 
 #-------------------------------------------------------------------------------
 
+=head3    get_OS_VRMF
+
+    Arguments:
+        none
+    Returns:
+        v.r.m.f  - if success
+        undef - if error
+    Example:
+         my $osversion = xCAT::Utils->get_OS_VRMF();
+    Comments:
+        Only implemented for AIX for now
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_OS_VRMF
+{
+	my $version;
+	if (xCAT::Utils->isAIX()) {
+		my $cmd = "/usr/bin/lslpp -cLq bos.rte";
+		my $output = xCAT::Utils->runcmd($cmd);
+		chomp($output);
+
+		# The third field in the lslpp output is the VRMF
+		$version = (split(/:/, $output))[2];
+
+		# not sure if the field would ever contain more than 4 parts?
+		my ($v1, $v2, $v3, $v4, $rest) = split(/\./, $version);
+		$version = join(".", $v1, $v2, $v3, $v4); 
+	}
+	return (length($version) ? $version : undef);
+}
+
+#----------------------------------------------------------------------------
+
+=head3    testversion
+
+        Compare version1 and version2 according to the operator and
+        return True or False.
+
+        Arguments:
+                $version1
+                $operator
+                $version2
+                $release1
+                $release2
+        Returns:
+                True or False
+
+        Example:
+                if (ArchiveUtils->testversion ( $ins_ver,
+												"<",
+                                                $req_ver,
+                                                $ins_rel,
+                                                $req_rel)){ blah; }
+
+        Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub testversion
+{
+    my ($class, $version1, $operator, $version2, $release1, $release2) = @_;
+
+	my @a1 = split(/\./, $version1);
+    my @a2 = split(/\./, $version2);
+    my $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
+    $#a1 = $len - 1;  # make the arrays the same length before appending release
+    $#a2 = $len - 1;
+    push @a1, split(/\./, $release1);
+    push @a2, split(/\./, $release2);
+    $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
+    my $num1 = '';
+    my $num2 = '';
+
+    for (my $i = 0 ; $i < $len ; $i++)
+    {
+        my ($d1) = $a1[$i] =~ /^(\d*)/;    # remove any non-numbers on the end
+        my ($d2) = $a2[$i] =~ /^(\d*)/;
+
+        my $diff = length($d1) - length($d2);
+        if ($diff > 0)                     # pad d2
+        {
+            $num1 .= $d1;
+            $num2 .= ('0' x $diff) . $d2;
+        }
+		elsif ($diff < 0)                  # pad d1
+        {
+            $num1 .= ('0' x abs($diff)) . $d1;
+            $num2 .= $d2;
+        }
+        else   # they are the same length
+        {
+            $num1 .= $d1;
+            $num2 .= $d2;
+        }
+    }
+
+    # Remove the leading 0s or perl will interpret the numbers as octal
+    $num1 =~ s/^0+//;
+    $num2 =~ s/^0+//;
+
+    #SLES Changes ??
+    # if $num1="", the "eval '$num1 $operator $num2'" will fail. 
+	#	So MUST BE be sure that $num1 is not a "".
+    if (length($num1) == 0) { $num1 = 0; }
+    if (length($num2) == 0) { $num2 = 0; }
+	#End of SLES Changes
+
+    if ($operator eq '=') { $operator = '=='; }
+    my $bool = eval "$num1 $operator $num2";
+
+	if (length($@))
+    {
+		# error msg ?
+	}
+
+	return $bool;
+}
+
+
+#-------------------------------------------------------------------------------
+
 =head3	xfork
 	forks, safely coping with open database handles
 	Argumens:
