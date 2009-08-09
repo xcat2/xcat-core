@@ -60,7 +60,7 @@ sub dbc_submit {
     my $request = shift;
     $request->{'wantarray'} = wantarray();
     my $data = freeze($request);
-    $data.= "ENDOFFREEZEQFVyo4Cj6Q0v\n";
+    $data.= "\nENDOFFREEZEQFVyo4Cj6Q0v\n";
     my $clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120 );
     unless ($clisock) {
         use Carp qw/cluck/;
@@ -68,8 +68,10 @@ sub dbc_submit {
     }
     print $clisock $data;
     $data="";
-    while ($data !~ /ENDOFFREEZEQFVyo4Cj6Q0j/) {
-        $data .= <$clisock>;
+    my $lastline="";
+    while ($lastline ne "ENDOFFREEZEQFVyo4Cj6Q0j\n") { #index($lastline,"ENDOFFREEZEQFVyo4Cj6Q0j") < 0) {
+        $lastline = <$clisock>;
+	$data .= $lastline;
     }
     my @returndata = @{thaw($data)};
     if (wantarray) {
@@ -136,8 +138,10 @@ sub handle_dbc_conn {
     my $clientset = shift;
     my $data;
     if ($data = <$client>) {
-        while ($data !~ /ENDOFFREEZEQFVyo4Cj6Q0v/) {
-            $data .= <$client>;
+	my $lastline;
+        while ($lastline ne "ENDOFFREEZEQFVyo4Cj6Q0v\n") { #$data !~ /ENDOFFREEZEQFVyo4Cj6Q0v/) {
+	    $lastline = <$client>;
+            $data .= $lastline;
         }
         my $request = thaw($data);
         use Data::Dumper;
@@ -149,7 +153,7 @@ sub handle_dbc_conn {
             @returndata = (scalar(handle_dbc_request($request)));
         }
         $response = freeze(\@returndata);
-        $response .= "ENDOFFREEZEQFVyo4Cj6Q0j\n";
+        $response .= "\nENDOFFREEZEQFVyo4Cj6Q0j\n";
         print $client $response;
     } else { #Connection terminated, clean up
         $clientset->remove($client);
@@ -199,11 +203,26 @@ sub handle_dbc_request {
          return $opentables{$tablename}->{$autocommit}->commit(@args);
     } elsif ($functionname eq 'rollback') {
          return $opentables{$tablename}->{$autocommit}->rollback(@args);
+    } elsif ($functionname eq 'getNodesAttribs') {
+         return $opentables{$tablename}->{$autocommit}->getNodesAttribs(@args);
+    } elsif ($functionname eq 'getNodeAttribs') {
+         return $opentables{$tablename}->{$autocommit}->getNodeAttribs(@args);
+    } elsif ($functionname eq '_set_use_cache') {
+         return $opentables{$tablename}->{$autocommit}->_set_use_cache(@args);
+    } elsif ($functionname eq '_build_cache') {
+         return $opentables{$tablename}->{$autocommit}->_build_cache(@args);
     } else {
         die "undefined function $functionname";
     }
 }
 
+sub _set_use_cache {
+    my $self = shift;
+    if ($dbworkerpid) {
+        return dbc_call($self,'_set_use_cache',@_);
+    }
+    $self->{_use_cache} = shift;
+}
 #--------------------------------------------------------------------------------
 
 =head1 xCAT::Table
@@ -1185,6 +1204,9 @@ sub setNodesAttribs {
 #--------------------------------------------------------------------------------
 sub getNodesAttribs {
     my $self = shift;
+    if ($dbworkerpid) {
+        return dbc_call($self,'getNodesAttribs',@_);
+    }
     my $nodelist = shift;
     my @attribs;
     if (ref $_[0]) {
@@ -1223,6 +1245,9 @@ sub getNodesAttribs {
 
 sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     my $self = shift;
+    if ($dbworkerpid) {
+        return dbc_call($self,'_build_cache',@_);
+    }
     my $attriblist = shift;
     unless (grep /^node$/,@$attriblist) {
         push @$attriblist,'node';
@@ -1268,6 +1293,9 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
 sub getNodeAttribs
 {
     my $self    = shift;
+    if ($dbworkerpid) {
+        return dbc_call($self,'getNodeAttribs',@_);
+    }
     my $node    = shift;
     my @attribs;
     if (ref $_[0]) {
