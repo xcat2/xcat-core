@@ -158,7 +158,7 @@ sub submit_request {
   my $cleanexit=0;
   while (<$client>) {
     $response .= $_;
-    if ($response =~ m/<\/xcatresponse>/) {
+    if (m/<\/xcatresponse>/) {
       $rsp = XMLin($response,SuppressEmpty=>undef,ForceArray=>1);
       $response='';
       $callback->($rsp);
