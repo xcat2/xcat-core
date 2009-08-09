@@ -50,13 +50,15 @@ function submit_request($req, $skipVerify){
  if($fp = stream_socket_client('ssl://'.$xcathost.':'.$port,$errno,$errstr,30,STREAM_CLIENT_CONNECT,$context)){
   fwrite($fp,$req->asXML());  // send the xml to xcatd
   while(!feof($fp)){    // and then read until there is no more
-   $response .= preg_replace('/\n/','', fgets($fp));  // remove newlines and add it to the response
+   $recentdata=fgets($fp);
+   $response .= preg_replace('/\n/','', $recentdata);  // remove newlines and add it to the response
 
    // Look for the serverdone response
    $fullpattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>/';
    $mixedpattern = '/<serverdone>\s*<\/serverdone>.*<\/xcatresponse>/';
+   $recentpattern = '/<\/xcatresponse>/';
    //$shortpattern = '/<serverdone>\s*<\/serverdone>/';
-   if(preg_match($mixedpattern,$response)) {  // transaction is done, pkg up the xml and return it
+   if(preg_match($recentpattern,$recentdata) && preg_match($mixedpattern,$response)) {  // transaction is done, pkg up the xml and return it
     //echo "<p>", htmlentities($response), "</p>\n";
     // remove the serverdone response and put an xcat tag around the rest
     $count = 0;
