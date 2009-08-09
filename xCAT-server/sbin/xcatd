@@ -1265,7 +1265,7 @@ sub service_connection {
       alarm(0);
       $request .= $_;
       #$req = eval { XMLin($request, ForceArray => [ 'attribute' , 'attributepair' ]) };
-      if ($request =~ m/<\/xcatrequest>/) {
+      if (m/<\/xcatrequest>/) {
         $req = eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
         #first change peername on 'becomeuser' tag if present and valid
         if (defined $req->{becomeuser}) {
