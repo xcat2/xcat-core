@@ -669,7 +669,6 @@ ll~;
                     }
                 }
 
-
             }
         }
 
@@ -1184,50 +1183,57 @@ sub mknimimage
             $newres{root} = $root_name;
         }
 
-# TODO - dump is optional with new AIX versions
-#	- should check for AIX version?????
-if (0) {
-
 		#
 		# dump res
+		#  - dump is optional with new AIX versions
 		#
-		my $dump_name;
-		if ( $::attrres{dump} ) {
-
-        	# if provided then use it
-        	$dump_name=$::attrres{dump};
-
-		} elsif ($::opt_i) {
-
-        	# if one is provided in osimage 
-        	if ($::imagedef{$::opt_i}{dump}) {
-            	$dump_name=$::imagedef{$::opt_i}{dump};
-        	}
-
-    	} else {
-
-			# may need to create new one
-			# all use the same dump res unless another is specified
-			$dump_name= $::image_name . "_dump";
-			# see if it's already defined
-        	if (grep(/^$dump_name$/, @::nimresources)) {
-				my $rsp;
-				push @{$rsp->{data}}, "Using existing dump resource named \'$dump_name\'.\n";
-				xCAT::MsgUtils->message("I", $rsp, $callback);
-        	} else {
-				# create it
-				my $type="dump";
-				if (&mknimres($dump_name, $type, $callback, $::opt_l) != 0) {
-					my $rsp;
-					push @{$rsp->{data}}, "Could not create a NIM definition for \'$dump_name\'.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					return 1;
-				}
+		my $dodumpold=0;
+		my $vrmf = xCAT::Utils->get_OS_VRMF();
+		if (defined($vrmf)) {
+			if (xCAT::Utils->testversion($vrmf, "<", "6.1.4.0")) {
+					$dodumpold=1;
 			}
-		} # end dump res
-		chomp $dump_name;
-        $newres{dump} = $dump_name;
-} # end no more dump res
+		}
+
+		if ($dodumpold) {
+
+			my $dump_name;
+			if ( $::attrres{dump} ) {
+
+        		# if provided then use it
+        		$dump_name=$::attrres{dump};
+
+			} elsif ($::opt_i) {
+
+        		# if one is provided in osimage 
+        		if ($::imagedef{$::opt_i}{dump}) {
+            		$dump_name=$::imagedef{$::opt_i}{dump};
+        		}
+
+    		} else {
+
+				# may need to create new one
+				# all use the same dump res unless another is specified
+				$dump_name= $::image_name . "_dump";
+				# see if it's already defined
+        		if (grep(/^$dump_name$/, @::nimresources)) {
+					my $rsp;
+					push @{$rsp->{data}}, "Using existing dump resource named \'$dump_name\'.\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+        		} else {
+					# create it
+					my $type="dump";
+					if (&mknimres($dump_name, $type, $callback, $::opt_l) != 0) {
+						my $rsp;
+						push @{$rsp->{data}}, "Could not create a NIM definition for \'$dump_name\'.\n";
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+						return 1;
+					}
+				}
+			} # end dump res
+			chomp $dump_name;
+        	$newres{dump} = $dump_name;
+		} # end dodump old
 
 		#
 		# paging res
@@ -3142,7 +3148,6 @@ sub update_dd_boot {
 			if ($::RUNCMD_RC  != 0)
 			{
 				my $rsp;
-
         		push @{$rsp->{data}}, "Could not copy $dd_boot_file.\n";
         		xCAT::MsgUtils->message("E", $rsp, $callback);
         		return 1;
@@ -3827,41 +3832,9 @@ sub prenimnodeset
 	}
 
 	#
-	# create a hash containing the locations of the NIM resources 
-	#	that are used for each osimage
-	# - the NIM resource names are unique!
-	#
-	foreach my $i (@image_names) {
-		foreach my $restype (keys %{$imghash{$i}} ) {
-			my @reslist;
-			if ( grep (/^$restype$/, @nimrestypes) ) {
-				# spot, mksysb etc.
-				my $resname = $imghash{$i}{$restype};
-
-				# if comma list - split and put in list
-				if ($resname) {
-					foreach (split /,/,$resname) {
-						chomp $_;
-						push (@reslist, $_);
-					}
-				}
-			}
-
-			foreach my $res (@reslist) {
-				# go to primary NIM master to get resource defs and 
-				#	pick out locations
-				# TODO - handle NIM prime!!
-				my $loc = &get_nim_attr_val($res, "location", $callback, $nimprime);
-
-				# add to hash
-				$lochash{$res} = "$loc";
-			}
-		}
-	}
-
-	#
     # create a NIM script resource using xcataixscript
 	#
+
 	if ($add_xcataixpost) {  # if we have at least one standalone node
 
 		my $pre;
@@ -3873,6 +3846,7 @@ sub prenimnodeset
 
 		my $createscript=0;
 		# see if it already exists
+
 		my $scmd = qq~$pre /usr/sbin/lsnim -l 'xcataixscript' 2>/dev/null~;
 		xCAT::Utils->runcmd($scmd, 0);
 		if ($::RUNCMD_RC != 0) {
@@ -3924,9 +3898,41 @@ sub prenimnodeset
 		my $ecmd = qq~$pre /usr/sbin/rmnfsexp -d /install/postscripts/xcataixpost -B 2>/dev/null~;
 		xCAT::Utils->runcmd($ecmd, 0);
 
-		$lochash{'xcataixpost'} = "/install/nim/scripts/xcataixpost";
+	#	$lochash{'xcataixpost'} = "/install/nim/scripts/xcataixpost";
 	}
 
+	#
+	# create a hash containing the locations of the NIM resources 
+	#	that are used for each osimage
+	# - the NIM resource names are unique!
+	#
+	foreach my $i (@image_names) {
+		foreach my $restype (keys %{$imghash{$i}} ) {
+			my @reslist;
+			if ( grep (/^$restype$/, @nimrestypes) ) {
+				# spot, mksysb etc.
+				my $resname = $imghash{$i}{$restype};
+
+				# if comma list - split and put in list
+				if ($resname) {
+					foreach (split /,/,$resname) {
+						chomp $_;
+						push (@reslist, $_);
+					}
+				}
+			}
+
+			foreach my $res (@reslist) {
+				# go to primary NIM master to get resource defs and 
+				#	pick out locations
+				# TODO - handle NIM prime!!
+				my $loc = &get_nim_attr_val($res, "location", $callback, $nimprime);
+
+				# add to hash
+				$lochash{$res} = "$loc";
+			}
+		}
+	}
 
 	# make sure any diskless images are updated
 	foreach my $i (@image_names) {
@@ -3954,7 +3960,6 @@ sub prenimnodeset
 	#		defined locally when this cmd runs there 
 	#
 	######################################################
-
 	if (&doSNcopy($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash, \%nodeosi)) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not copy NIM resources to the xCAT service nodes.\n";
@@ -4982,7 +4987,7 @@ if (0) {
 			$initcmd="/usr/sbin/nim -o dtls_init $arg_string $nim_name 2>&1";
 		}
 
-		my $time=`date | cut -f4 -d' '`;
+		my $time=`date | cut -f5 -d' '`;
 		chomp $time;
 		my $rsp;
 		push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while. $time\n";
@@ -5005,6 +5010,8 @@ if (0) {
 			next;
        	}
 
+if (0) {
+
 		# Update the files in /install/custom/netboot/AIX/syncfile to the root image
 		# figure out the path of root image 
 		my $cmd = "/usr/sbin/lsnim -a location $imagehash{$image_name}{root} | /usr/bin/grep location 2>/dev/null";
@@ -5020,6 +5027,10 @@ xCAT::MsgUtils->message("S", "mkdsklsnode: $root_location, $syncfile");
 			my $env = ["RSYNCSN=yes", "DSH_RSYNC_FILE=$syncfile"];
 			$subreq->({command=>['xdcp'], node=>[$node], arg=>$arg, env=>$env}, $callback);
 		}
+
+}
+
+
 
 	} # end - for each node
 
@@ -6061,7 +6072,6 @@ sub myxCATname
     chomp $shorthost;
     return $shorthost;
 }
-
 
 #----------------------------------------------------------------------------
 
