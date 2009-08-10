@@ -58,7 +58,7 @@ sub preprocess_request
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     GetOptions('l'  => \$::LOCAL);
-    my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+    my $sn = xCAT::Utils->getSNformattedhash($nodes, $service, "MN");
     my @requests;
     if ($::LOCAL) { #only handle the local nodes
         print "process local nodes: @$nodes\n";
@@ -164,7 +164,7 @@ sub runbeginpre
         if ($runnodes && (@$runnodes>0)) {
 	    my $runnodes_s=join(',', @$runnodes);
 	    my $rsp = {};
-	    $rsp->{data}->[0]="$localhostname: Running $scripts for nodes $runnodes_s.";
+	    $rsp->{data}->[0]="$localhostname: Running begin scripts $scripts for nodes $runnodes_s.";
 	    $callback->($rsp);
 
 	    #now run the scripts 
@@ -217,7 +217,7 @@ sub runendpre
             my %runnodes_hash=();
 
 	    my $rsp = {};
-	    $rsp->{data}->[0]="$localhostname: Running $scripts for nodes $runnodes_s.";
+	    $rsp->{data}->[0]="$localhostname: Running end scripts $scripts for nodes $runnodes_s.";
 	    $callback->($rsp);
 
 	    #now run the scripts 

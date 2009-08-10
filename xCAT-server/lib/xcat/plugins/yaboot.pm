@@ -11,7 +11,6 @@ my $request;
 my %breaknetbootnodes;
 my %normalnodes;
 my $callback;
-my $callback1;
 my $sub_req;
 my $dhcpconf = "/etc/dhcpd.conf";
 my $tftpdir = "/tftpboot";
@@ -205,28 +204,12 @@ sub pass_along {
     }
 }
 
-sub pass_along1 { 
-    print "pass_along1\n";
-    my $resp = shift;
-
-#    print Dumper($resp);
-    
-    $callback1->($resp);
-    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
-        $errored=1;
-    }
-    foreach (@{$resp->{node}}) {
-       if ($_->{error} or $_->{errorcode}) {
-          $errored=1;
-       }
-    }
-}
   
 sub preprocess_request {
     my $req = shift;
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
-    $callback1 = shift;
+    my $callback1 = shift;
     my $command  = $req->{command}->[0];
     my $sub_req = shift;
     my @args=();
@@ -275,20 +258,6 @@ sub preprocess_request {
 	return;
     }
 
-    #now run the begin part of the prescripts
-    my @nodes=();
-    if (ref($req->{node})) {
-	@nodes = @{$req->{node}};
-    } else {
-	if ($req->{node}) { @nodes = ($req->{node}); }
-    }    
-    $errored=0;
-    unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
-	$sub_req->({command=>['runbeginpre'],
-		    node=>\@nodes,
-		    arg=>[$args[0]]},\&pass_along1);
-    } 
-    if ($errored) { return;  }
 
    #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
    #they specify no sharedtftp in site table
@@ -363,7 +332,6 @@ sub process_request {
       return;
   }
 
-  #back to normal business
   #if not shared tftpdir, then filter, otherwise, set up everything
   if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
@@ -383,6 +351,22 @@ sub process_request {
     @args=($request->{arg});
   }
   
+  #now run the begin part of the prescripts
+  unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
+      $errored=0;
+      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+	  $sub_req->({command=>['runbeginpre'],
+		      node=>\@nodes,
+		      arg=>[$args[0], '-l']},\&pass_along);
+      } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
+	  $sub_req->({command=>['runbeginpre'],   
+		      node=>\@rnodes,
+		      arg=>[$args[0]]},\&pass_along);
+      }
+      if ($errored) { return; }
+  } 
+
+  #back to normal business
   $errored=0;
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
     $sub_req->({command=>['setdestiny'],
