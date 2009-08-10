@@ -37,6 +37,98 @@ sub nodesmissed {
   return @$missingnodes;
 }
 
+sub nodesbycriteria {
+   #TODO: this should be in a common place, shared by tabutils nodech/nodels and noderange
+   #there is a set of functions already, but the path is a little complicated and
+   #might be hooked into the objective usage style, which this function is not trying to match
+   #Return nodes by criteria.  Can accept a list reference of criteria
+   #returns a hash reference of criteria expressions to nodes that meet
+   my $nodes = shift; #the set from which to match
+   my $critlist = shift; #list of criteria to match
+   my %tables;
+   my %shortnames = (
+                  groups => [qw(nodelist groups)],
+                  tags   => [qw(nodelist groups)],
+                  mgt    => [qw(nodehm mgt)],
+                  #switch => [qw(switch switch)],
+                  );
+
+   unless (ref $critlist) {
+       $critlist = [ $critlist ];
+   }
+   my $criteria;
+   my %critnodes;
+   my $value;
+   my $tabcol;
+   my $matchtype;
+   foreach $criteria (@$critlist) {
+       my $table;
+       my $column;
+       $tabcol=$criteria;
+       if ($criteria =~ /^[^=]*\!=/) {
+        ($criteria,$value) = split /!=/,$criteria,2;
+        $matchtype='natch';
+       } elsif ($criteria =~ /^[^=]*=~/) {
+        ($criteria,$value) = split /=~/,$criteria,2;
+        $value =~ s/^\///;
+        $value =~ s/\/$//;
+        $matchtype='regex';
+       } elsif ($criteria =~ /[^=]*==/) {
+        ($criteria,$value) = split /==/,$criteria,2;
+        $matchtype='match';
+       } elsif ($criteria =~ /[^=]*!~/) {
+        ($criteria,$value) = split /!~/,$criteria,2;
+        $value =~ s/^\///;
+        $value =~ s/\/$//;
+        $matchtype='negex';
+       }
+       if ($shortnames{$criteria}) {
+           ($table, $column) = @{$shortnames{$criteria}};
+       } elsif ($criteria =~ /\./) {
+           ($table, $column) = split('\.', $criteria, 2);
+       } else {
+           return undef;
+       }
+       unless (grep /$column/,@{$xCAT::Schema::tabspec{$table}->{cols}}) {
+           return undef;
+       }
+       push @{$tables{$table}},[$column,$tabcol,$value,$matchtype];    #Mark this as something to get
+   }
+   my $tab;
+   foreach $tab (keys %tables) {
+       my $tabh = xCAT::Table->new($tab,-create=>0);
+       unless ($tabh) { next; }
+       my @cols;
+       foreach (@{$tables{$tab}}) {
+           push @cols, $_->[0];
+        }
+        my $rechash = $tabh->getNodesAttribs($nodes,\@cols); #TODO: if not defined nodes, getAllNodesAttribs may be faster actually...
+        foreach my $node (@$nodes) {
+            my $recs = $rechash->{$node};
+            my $critline;
+            foreach $critline (@{$tables{$tab}}) {
+                foreach my $rec (@$recs) {
+                    my $value="";
+                    if (defined $rec->{$critline->[0]}) {
+                        $value = $rec->{$critline->[0]};
+                    }
+                    my $compstring = $critline->[2];
+                    if ($critline->[3] eq 'match' and $value eq $compstring) {
+                        push @{$critnodes{$critline->[1]}},$node;
+                    } elsif ($critline->[3] eq 'natch' and $value ne $compstring) {
+                        push @{$critnodes{$critline->[1]}},$node;
+                    } elsif ($critline->[3] eq 'regex' and $value =~ /$compstring/) {
+                        push @{$critnodes{$critline->[1]}},$node;
+                    } elsif ($critline->[3] eq 'negex' and $value !~ /$compstring/) {
+                        push @{$critnodes{$critline->[1]}},$node;
+                    }
+                }
+            }
+        }
+   }
+   return \%critnodes;
+}
+
 sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels5.3)
 	my $atom = shift;
 	my $verify = (scalar(@_) == 1 ? shift : 1);
@@ -108,6 +200,16 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
      }
   }
 
+    if ($atom =~ m/[=~]/) { #TODO: this is the clunky, slow code path to acheive the goal.  It also is the easiest to write, strange coincidence.  Aggregating multiples would be nice
+        my @nodes;
+        unless (scalar(@allnodeset)) { #TODO: change to one noderange global cache per noderange call rather than table hosted cache for improved performance
+            @allnodeset = $nodelist->getAllAttribs('node');
+        }
+        foreach (@allnodeset) {
+            push @nodes,$_->{node};
+        }
+        return @{nodesbycriteria(\@nodes,[$atom])->{$atom}};
+    }
 	if ($atom =~ m/^[0-9]+\z/) {    # if only numbers, then add the prefix
 		my $nodename=$nprefix.$atom.$nsuffix;
 		return expandatom($nodename,$verify);
