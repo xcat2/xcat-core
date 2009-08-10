@@ -4957,6 +4957,9 @@ ll~;
 		if ($imagehash{$image_name}{resolv_conf}) {
 			$arg_string .= "-a resolv_conf=$imagehash{$image_name}{resolv_conf} ";
 		}
+		if ($imagehash{$image_name}{dump} ) {
+			$arg_string .= "-a dump=$imagehash{$image_name}{dump} "
+		}
 		if ($imagehash{$image_name}{home}) {
 			$arg_string .= "-a home=$imagehash{$image_name}{home} ";
 		}
@@ -4990,7 +4993,7 @@ if (0) {
 		my $time=`date | cut -f5 -d' '`;
 		chomp $time;
 		my $rsp;
-		push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while. $time\n";
+		push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while.\n";
 		if ($::VERBOSE) {
             push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
         }
