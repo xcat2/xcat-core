@@ -76,6 +76,9 @@ sub nodesbycriteria {
        } elsif ($criteria =~ /[^=]*==/) {
         ($criteria,$value) = split /==/,$criteria,2;
         $matchtype='match';
+       } elsif ($criteria =~ /[^=]*=/) {
+        ($criteria,$value) = split /=/,$criteria,2;
+        $matchtype='match';
        } elsif ($criteria =~ /[^=]*!~/) {
         ($criteria,$value) = split /!~/,$criteria,2;
         $value =~ s/^\///;
@@ -208,7 +211,11 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         foreach (@allnodeset) {
             push @nodes,$_->{node};
         }
-        return @{nodesbycriteria(\@nodes,[$atom])->{$atom}};
+        my $nbyc = nodesbycriteria(\@nodes,[$atom])->{$atom};
+        if (defined $nbyc) {
+            return @$nbyc;
+        }
+        return ();
     }
 	if ($atom =~ m/^[0-9]+\z/) {    # if only numbers, then add the prefix
 		my $nodename=$nprefix.$atom.$nsuffix;
