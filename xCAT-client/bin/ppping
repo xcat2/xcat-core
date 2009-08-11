@@ -4,31 +4,45 @@
 #I've not had the time.  Net::Ping shows perl code I could see being adapted for a somewhat
 #asynchronous ICMP ping (the tcp syn is interesting, but far too limited, and that is currently the only async 
 #method Net::Ping provides.
+
+# This script starts with a noderange from the user, expands it using the
+#  xcat daemon, then sends a command to every node that can be pinged
+#  from the machine where it is run to ping all of the other nodes
+#  obtained from the user.  It then prints out the result and exits.
 BEGIN
 {
+	# XCATROOT must be set for this script to work
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';  
 }
 use lib "$::XCATROOT/lib/perl";
 
 use IO::Socket::SSL;
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+if ($^O =~ /^linux/i) {
+  $XML::Simple::PREFERRED_PARSER='XML::Parser';
+}
 use Data::Dumper;
 use IO::Handle;
 use IO::Select;
 use xCAT::Utils;
 use Getopt::Long;
 my $interface;
+my $DEBUG = 0;
+my $VERBOSE = 0;
+my $HIERARCHY = 0;
 
-my $USAGE="Usage: ppping [-i|--interface interface] [-s|--serial] noderange
+my $USAGE="Usage: ppping [-i|--interface interface] [-d|--debug] [-v|--verbose] [-s|--serial] noderange
        ppping -h|--help
-       pping  -v|--version\n"; 
+       ppping  -V|--version\n"; 
 
-# parse the options
+# Parse the options
 if(!GetOptions(
       'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION,
+      'V|version'  => \$::VERSION,
       's|serial'  => \$::SERIAL,
+      'd|debug'  => \$DEBUG,
+      'v|verbose'  => \$VERBOSE,
+      'H|hierarchical' => \$HIERARCHY,
       'interface=s' => \$interface))
 {
   print "$USAGE";
@@ -37,6 +51,14 @@ if(!GetOptions(
 
 if ($::HELP) {  print "$USAGE"; exit 0}
 if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
+
+# A method to prefix and print debug information only if it is wanted.
+sub debug {
+  $debug_text = shift;
+  if($DEBUG){
+    print("---$debug_text");
+  }
+}
 
 my $xcathost='localhost:3001';
 if ($ENV{XCATHOST}) {
@@ -47,6 +69,8 @@ unless (@ARGV) {
    print "$USAGE";
    exit 1;
 }
+
+## Connect to xcatd to expand a noderange
 my $noderange = $ARGV[0];
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
@@ -58,12 +82,18 @@ my $client = IO::Socket::SSL->new(
              );
 die "Connection failure: $!\n" unless ($client);
 my %cmdref = (command => 'noderange', noderange => $noderange);
+# Request nodes from xcatd
+debug("[start] - request nodes from xcatd\n");
 $SIG{ALRM} = sub { die "No response getting noderange" };
 alarm(15);
 print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
 alarm(15);
+debug("[stop] - request nodes from xcatd\n");
+
+## Recieve nodes from xcatd and place them in @nodes
 my $response="";
 my @nodes=();
+debug("[start] - recieve nodes from xcatd\n");
 while (<$client>) {
   alarm(0);
   $response .= $_;
@@ -84,6 +114,9 @@ while (<$client>) {
   }
 }
 close($client);
+debug("[stop] - recieve nodes from xcatd\n");
+debug("\@nodes LENGTH:" . scalar @nodes . "\n");
+
 my $children = 0;
 my $inputs = new IO::Select;
 $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
@@ -92,8 +125,10 @@ unless (scalar(@nodes)) {
   exit;
 }
 
+## Use pping to determine which nodes are reachable
 my @reachable_nodes=();
 my @unreachable_nodes=();
+debug("[start] - find unreachable nodes\n");
 open (PPING, "$::XCATROOT/bin/pping ".join(',',@nodes). " 2> /dev/null|") or die("Cannot open pping-internal pipe: $!");
 while (<PPING>) {
   if ($_ =~ / ping/) {
@@ -106,33 +141,66 @@ while (<PPING>) {
   }
 }
 close(PPING);
+debug("[stop] - find unreachable nodes\n");
 
+## Dispose of the unreachable nodes now
 foreach(@unreachable_nodes) {
   print "$_: noping\n";
 }
 
-my $i_string="";
-if ($interface) { $i_string="-i $interface"; }
+## If there are nodes in @reachable nodes, use xdsh to make each reachable
+##  node pping2 every other node, even the unreachable ones.
+debug("[start] - deal with reachable nodes\n");
+debug("REACHABLE_NODES:@reachable_nodes\n");
 
 if (@reachable_nodes > 0) {
   my $allnodes=join(',', @nodes);
+	
+  ## If the serial option was set, pping2 one reachable node at a time.
   if ($::SERIAL) {
+  	debug("SERIAL:$::SERIAL\n");
+  	debug("[start] - xdsh to each reachable node\n");
     foreach(@reachable_nodes) {
-      my $result=`$::XCATROOT/bin/xdsh $_ -B -e $::XCATROOT/sbin/pping2 "$i_string -q $allnodes" 2>&1`;
+      my $result;
+
+      my $command = "$::XCATROOT/bin/xdsh $_ -e $::XCATROOT/sbin/pping2 \"$i_string -q $allnodes\" 2>&1";
+      # If verbose is set, take out the quiet flag
+      if($VERBOSE) {
+        $command =~ s/-q//;
+      }
+      # If hierarchical behavior is wanted, put in the bypass flag
+      if($HIERARCHY){
+        $command =~ s/\$_/\$_ -B/;
+      }
+      debug("Running \'$command\'\n");
+      $result=`$command`;
       print "$result";
     }
-  } else {
+	debug("[stop] - xdsh to each reachable node\n");
+  }
+	
+  ## If the serial option was not set, pping2 all the reachable nodes simultaneously.
+  else {
+		debug("SERIAL not set.\n");
     my $node_string=join(',', @reachable_nodes);
-    open (PPING2, "$::XCATROOT/bin/xdsh $node_string -B -s -e $::XCATROOT/sbin/pping2 \"$i_string -q $allnodes\" 2> /dev/null|") or die("Cannot open pping-internal pipe: $!");
+    my $command = "$::XCATROOT/bin/xdsh $node_string -s -e $::XCATROOT/sbin/pping2 \"$i_string -q $allnodes\" 2> /dev/null|";
+    # If verbose is set, take out the quiet flag
+    if($VERBOSE) {
+      $command =~ s/-q//;
+    }
+    # If hierarchical behavior is wanted, put in the bypass flag
+    if($HIERARCHY){
+      $command =~ s/\$_/\$_ -B/;
+    }
+    debug("Running \'$command\'");
+    open (PPING2, "$command") or die("Cannot open pping-internal pipe: $!");
+		# Print out the result
     while (<PPING2>) {
       print "$_";
     }
     close(PPING2); 
   }
-  
 }
+debug("[stop] - deal with reachable nodes\n");
 
 exit 0;
-
-
-
