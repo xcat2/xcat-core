@@ -52,7 +52,7 @@ sub preprocess_request
     }
     @ARGV = @args;
 
-    print "prepscripts: preprocess_request get called, args=@args, nodes=@$nodes\n";
+    #print "prepscripts: preprocess_request get called, args=@args, nodes=@$nodes\n";
     
     #use Getopt::Long;
     Getopt::Long::Configure("bundling");
@@ -61,7 +61,7 @@ sub preprocess_request
     my $sn = xCAT::Utils->getSNformattedhash($nodes, $service, "MN");
     my @requests;
     if ($::LOCAL) { #only handle the local nodes
-        print "process local nodes: @$nodes\n";
+        #print "process local nodes: @$nodes\n";
         #get its own children only
 	my @hostinfo=xCAT::Utils->determinehostname();
 	my %iphash=();
@@ -83,7 +83,7 @@ sub preprocess_request
 	    return \@requests;
 	}
     } else { #run on mn and need to dispatch the requests to the service nodes
-        print "dispatch to sn\n";
+        #print "dispatch to sn\n";
 	# find service nodes for requested nodes
 	# build an individual request for each service node
 	# find out the names for the Management Node
