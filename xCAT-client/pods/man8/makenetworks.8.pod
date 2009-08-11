@@ -1,24 +1,55 @@
 =head1 NAME
 
-B<makenetworks> - populates the xCAT networks table, using network information from the local system
+B<makenetworks> - Gather cluster network information and add it to the xCAT database.
 
 =head1 SYNOPSIS
 
-B<makenetworks>
+I<makenetworks [-h|--help ]>
 
+I<makenetworks [-v| --version]>
+
+I<makenetworks [-V|--verbose] [-d|--display]>
 
 =head1 DESCRIPTION
 
-The B<makenetworks> command is run by xCAT automatically, when xCAT is installed on the management node.
-It queries the network configuration of the management node and uses that information to populate the
-networks table in the xCAT database.  After that, you may want to update the networks table manually to,
-for example, disable the public network entry and add networks that service nodes are on that the management
-node can't see directly.
+The B<makenetworks> command can be used to gather network information from an xCAT cluster environment and create corresponding network definitions in the xCAT database.
 
-You normally do not need to run the B<makenetworks> command yourself.  But if you want to reset the networks
-table to its original state, remove all the entries from it (using tabedit), and then run B<makenetworks>
-again.
+Every network that will be used to install a cluster node must be defined in the xCAT database.
 
+The default behavior is to gather network information from the managment node, and any configured xCAT service nodes, and automatically save this information in the xCAT database.
+
+You can use the "-d" option to display the network information without writing it to the database.
+
+You can also redirect the output to a file that can be used with the xCAT B<mkdef> command to define the networks.
+
+For example:
+
+	makenetworks -d > mynetstanzas
+
+	cat mynetstanzas | mkdef -z
+
+This features allows you to verify and modify the network information before writing it to the database.
+
+When the network information is gathered a default value is created for the "netname" attribute.  This is done to make it possible to use the mkdef, chdef, lsdef, and rmdef commands to manage this data.
+
+The default naming convention is to use a hyphen separated "net" and "mask" value with the "." replace by "_". (ex. "8_124_47_64-255_255_255_0")
+
+You can also modify the xCAT "networks" database table directly using the xCAT B<tabedit> command.
+
+   	tabedit networks
+
+
+Note: The B<makenetworks> command is run automatically when xCAT is installed on a Linux management node.
+
+=head1 OPTIONS
+
+B<-d|--display>       Display the network definitions but do not write to the definitions to the xCAT database. The output will be in stanza file format and can be redirected to a stanza file that can be used with B<mkdef> or B<chdef> commands to create or modify the network definitions.
+
+B<-h | --help>         Display usage message.
+
+B<-v | --version>      Command Version.
+
+B<-V |--verbose>       Verbose mode.
 
 =head1 RETURN VALUE
 
@@ -26,8 +57,28 @@ again.
 
 1 An error has occurred.
 
+=head1 EXAMPLES
+
+1.  Gather cluster network information and create xCAT network definitions.
+
+	makenetworks
+
+2.  Display cluster network information but do not write the network definitions to the xCAT database.
+
+	makenetworks -d
+
+The output would be one or more stanzas of information similar to the following. The line that ends with a colon is the value of the "netname" attribute and is the name of the network object to use with the lsdef, mkdef, chdef and rmdef commands.
+
+9_114_37_0-255_255_255_0:
+    objtype=network
+    gateway=9.114.37.254
+    mask=255.255.255.0
+    net=9.114.37.0
+
+=head1 FILES
+
+/opt/xcat/sbin/makenetworks
 
 =head1 SEE ALSO
 
 L<makedhcp(8)|makedhcp.8>
-
