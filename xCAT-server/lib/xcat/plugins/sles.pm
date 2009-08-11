@@ -458,7 +458,13 @@ sub mkinstall
                     $kcmdline .= "n8r";
                 }
             }
-
+            # for pSLES installation, the dhcp request may timeout
+            # due to spanning tree settings or multiple network adapters.
+            # use dhcptimeout=150 to avoid dhcp timeout
+            if ($arch =~ /ppc/)
+            {
+                $kcmdline .= " dhcptimeout=150";
+            }
             if ($arch =~ /x86/)
             {
                 $bptab->setNodeAttribs(
