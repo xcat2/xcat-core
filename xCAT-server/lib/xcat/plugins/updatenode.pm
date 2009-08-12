@@ -236,7 +236,7 @@ sub preprocess_updatenode {
   # Note: This action only happens on MN, since xdcp handles the hierarchical scenario
   if ($::FILESYNC) {
     my $reqcopy = {%$request};
-    $reqcopy->{FileSyncing} = "yes";
+    $reqcopy->{FileSyncing}->[0] = "yes";
     push @requests, $reqcopy;
   }
 
@@ -252,16 +252,17 @@ sub preprocess_updatenode {
   # build each request for each service node
   foreach my $snkey (keys %$sn)
   {
+    #print "sn=$snkey\n";
     my $reqcopy = {%$request};
     $reqcopy->{node} = $sn->{$snkey};
     $reqcopy->{'_xcatdest'} = $snkey;
     $reqcopy->{_xcatpreprocessed}->[0] = 1;
 
     if (defined ($::SWMAINTENANCE)) {
-      $reqcopy->{swmaintenance} = "yes";
+      $reqcopy->{swmaintenance}->[0] = "yes";
     }
     if (defined ($::RERUNPS)) {
-      $reqcopy->{rerunps} = "yes";
+      $reqcopy->{rerunps}->[0] = "yes";
       $reqcopy->{postscripts} = [$postscripts];
     }
     
@@ -288,11 +289,12 @@ sub updatenode {
   my $request = shift;
   my $callback = shift;
   my $subreq = shift;
+  #print Dumper($request);
 
   my $nodes      =$request->{node};  
   my $localhostname=hostname();
 
-  if ($request->{FileSyncing} && $request->{FileSyncing} eq "yes") {
+  if ($request->{FileSyncing} && $request->{FileSyncing}->[0] eq "yes") {
     my %syncfile_node = ();
     my %syncfile_rootimage = ();
     my $node_syncfile = xCAT::SvrUtils->getsynclistfile($nodes);
@@ -315,7 +317,7 @@ sub updatenode {
     $callback->($rsp);
   }
 
-  if ($request->{swmaintenance} && $request->{swmaintenance} eq "yes") {
+  if ($request->{swmaintenance} && $request->{swmaintenance}->[0] eq "yes") {
     my $cmd;
     my $nodestring=join(',', @$nodes);
     if (xCAT::Utils->isLinux()) {
@@ -344,7 +346,7 @@ sub updatenode {
     }
   }
 
-  if ($request->{rerunps} && $request->{rerunps} eq "yes") {
+  if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes") {
     my $postscripts="";
     if (($request->{postscripts}) && ($request->{postscripts}->[0])) {  $postscripts=$request->{postscripts}->[0];}
 
