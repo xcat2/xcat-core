@@ -38,10 +38,10 @@ my $USAGE="Usage: ppping [-i|--interface interface] [-d|--debug] [-v|--verbose] 
 # Parse the options
 if(!GetOptions(
       'h|help'     => \$::HELP,
-      'V|version'  => \$::VERSION,
+      'v|version'  => \$::VERSION,
       's|serial'  => \$::SERIAL,
       'd|debug'  => \$DEBUG,
-      'v|verbose'  => \$VERBOSE,
+      'V|verbose'  => \$VERBOSE,
       'H|hierarchical' => \$HIERARCHY,
       'interface=s' => \$interface))
 {
@@ -155,7 +155,22 @@ debug("REACHABLE_NODES:@reachable_nodes\n");
 
 if (@reachable_nodes > 0) {
   my $allnodes=join(',', @nodes);
-	
+
+  # If verbose is set, take out the quiet flag
+  my $quiet = "-q";
+  if($VERBOSE){
+    $quiet = "";
+  }
+  # If hierarchical behavior is wanted, take out the bypass flag
+  my $bypass = "-B";
+  if($HIERARCHY){
+    $bypass = "";
+  }
+  my $i_string = "";
+  if($interface) {
+    $i_string = "-i $interface";
+  }
+
   ## If the serial option was set, pping2 one reachable node at a time.
   if ($::SERIAL) {
   	debug("SERIAL:$::SERIAL\n");
@@ -163,15 +178,8 @@ if (@reachable_nodes > 0) {
     foreach(@reachable_nodes) {
       my $result;
 
-      my $command = "$::XCATROOT/bin/xdsh $_ -e $::XCATROOT/sbin/pping2 \"$i_string -q $allnodes\" 2>&1";
-      # If verbose is set, take out the quiet flag
-      if($VERBOSE) {
-        $command =~ s/-q//;
-      }
-      # If hierarchical behavior is wanted, put in the bypass flag
-      if($HIERARCHY){
-        $command =~ s/\$_/\$_ -B/;
-      }
+      my $command = "$::XCATROOT/bin/xdsh $_ $bypass -e $::XCATROOT/sbin/pping2 \"$i_string $quiet $allnodes\" 2>&1";
+
       debug("Running \'$command\'\n");
       $result=`$command`;
       print "$result";
@@ -183,15 +191,7 @@ if (@reachable_nodes > 0) {
   else {
 		debug("SERIAL not set.\n");
     my $node_string=join(',', @reachable_nodes);
-    my $command = "$::XCATROOT/bin/xdsh $node_string -s -e $::XCATROOT/sbin/pping2 \"$i_string -q $allnodes\" 2> /dev/null|";
-    # If verbose is set, take out the quiet flag
-    if($VERBOSE) {
-      $command =~ s/-q//;
-    }
-    # If hierarchical behavior is wanted, put in the bypass flag
-    if($HIERARCHY){
-      $command =~ s/\$_/\$_ -B/;
-    }
+    my $command = "$::XCATROOT/bin/xdsh $node_string $bypass -s -e $::XCATROOT/sbin/pping2 \"$i_string $quiet $allnodes\" 2> /dev/null|";
     debug("Running \'$command\'");
     open (PPING2, "$command") or die("Cannot open pping-internal pipe: $!");
 		# Print out the result

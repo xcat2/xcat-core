@@ -28,6 +28,12 @@ B<-s> Ping serially
 
 B<-i interface> interface
 
+B<-V | verbose> verbose
+
+B<-H | hierarchical> Allow management node hierarchy
+
+B<-d | debug> Print debug information
+
 B<-h | help>  help
 
 B<-v | version> version
