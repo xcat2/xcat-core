@@ -1761,12 +1761,28 @@ sub set_netcfg
     if ( $interfaces->{ $real_inc_name}->{'type'})
     {
         my @type_options = @{$interfaces->{ $real_inc_name}->{'type'}->{'menu'}};
-        for my $typeopt ( @type_options)
+	if (ref( $type_options[0]) eq 'HASH')
         {
-            if ( $typeopt->{'name'} eq $inc_type)
+            for my $typeopt ( @type_options)
             {
-                $interfaces->{ $real_inc_name}->{'type'}->value($typeopt->{'value'});
-                last;
+                if ( $typeopt->{'name'} eq $inc_type)
+                {
+                    $interfaces->{ $real_inc_name}->{'type'}->value($typeopt->{'value'});
+                    last;
+                }
+            }
+        }
+        else #AIX made the things more complicated, it didn't ship the
+             #last HTML::Form. So let's take a guess of the type value
+             #Not sure if it can work for all AIX version
+        {
+            if ( $inc_type eq 'Dynamic')
+            {
+                $interfaces->{ $real_inc_name}->{'type'}->value(1);
+            }
+            else
+            {
+                $interfaces->{ $real_inc_name}->{'type'}->value(0);
             }
         }
 #not work on AIX
@@ -1789,6 +1805,10 @@ sub set_netcfg
             return ( [RC_ERROR,"Cannot set hostname to $inc_host"]) if (! $interfaces->{ $real_inc_name}->{'hostname'});
             $interfaces->{ $real_inc_name}->{'hostname'}->value( $inc_host);
             push @set_entries, 'hostname';
+            if( ! $interfaces->{ $real_inc_name}->{'hostname'}->value())
+            {
+                $inc_host = $exp->[1];
+            }
         }
         if ( $inc_gateway)
         {
