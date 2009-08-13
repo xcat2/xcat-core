@@ -12,9 +12,6 @@ require_once "$TOPDIR/lib/display.php";
 require_once "$TOPDIR/lib/monitor_display.php";
 
 
-?>
-
-<?php
 displayMapper_mon(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php'));
 
 displayTips(array(
@@ -24,18 +21,9 @@ displayTips(array(
         "then, click \"Save\" to create condition/response associations."
         ));
 displayOSITree();
-?>
 
-<div id="condresp">
-    
-<?php
-displayAssociation();
-displayCond("hv8plus06");
-displayResp();
-?>
-</div>
+displayCondResp();
 
-<?php
-insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>''));
+insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>'loadMainPage("monitor/rmc_resource_define.php")'));
 
 ?>

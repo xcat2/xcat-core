@@ -40,6 +40,18 @@ function displayMapper_mon($mapper)
          echo "<td ><a class='description' href='#'>$name</a></td>";
          echo "<td >$stat</td>";
          if(isset($nodemonstatus)) { echo "<td >Enabled</td>";}else {echo "<td >Disabled</td>";}
+         echo "<td>";
+         $name_str = "\"$name\"";
+         if($stat == "monitored") {
+             $act_str = "\"stop\"";
+             insertButtons(array('label'=>'Stop', 'id'=>'stop', 'onclick'=>"monsetupAction($name_str, $act_str)"));
+             $act_str = "\"restart\"";
+             insertButtons(array('label'=>'Restart', 'id'=>'restart', 'onclick'=>"monsetupAction($name_str, $act_str)"));
+         }else {
+             $act_str = "\"start\"";
+             insertButtons(array('label' => 'Start', 'id'=>'start', 'onclick' => "monsetupAction($name_str, $act_str)"));
+         }
+         echo "</td>";
          echo "   </tr>";
          $ooe++;
          $line++;
@@ -58,7 +70,7 @@ function displayTips($tips)
     //}
     echo '<div id="tips"><p><b>Tips:</b></p>';
     foreach ($tips as $tip) {
-        echo "<li>$tip</li>";
+        echo "<p>$tip</p>";
         echo "\n";
     }
     echo '</div>';
@@ -84,6 +96,7 @@ function displayMonTable()
             <td>Plug-in Name</td>
             <td>Status</td>
             <td>Node Status Monitoring</td>
+            <td>Action</td>
         </tr>
     </thead>
 TOS1;
@@ -142,7 +155,7 @@ TOS2;
 function displayStatus()
 {
     //tell the user that the current interface is not done yet...
-    echo "<div><p>This interface is still under development -use accordingly.</p></div>";
+    echo "<div id='devstatus'><p>This interface is still under development -use accordingly.</p></div>";
 }
 
 function displayOSITree()
@@ -172,50 +185,216 @@ echo <<<TOS5
             <td>State</td>
         </tr>
     </thead>
+    <tbody>
 TOS5;
-    //$xml = docmd("webrun", "", array("lscondresp"));
-    //if(getXmlErrors($xml,$errors)) {
-        //echo "<p class=Error>",implode(' ', $errors), "</p>";
-        //exit;
-    //}
+    $xml = docmd("webrun", "", array("lscondresp"));
+    if(getXmlErrors($xml,$errors)) {
+        echo "<p class=Error>",implode(' ', $errors), "</p>";
+        exit;
+    }
     //get all the condition&response associations for RMC
-echo <<<TOS6
-<tbody>
-<tr class="ListLine0">
-<td>NodeReachability_H</td>
-<td>UpdatexCATNodeStatus</td>
-<td>hv8plus01.ppd.pok.ibm.com</td>
-<td>Not active</td>
-</tr>
-<tr class="ListLine1">
-<td>NodeReachability</td>
-<td>UpdatexCATNodeStatus</td>
-<td>hv8plus01.ppd.pok.ibm.com</td>
-<td>Not active</td>
-</tr>
-</tbody>
-</table>
-</div>
-TOS6;
+    foreach ($xml->children() as $response) foreach($response->children() as $data) {
+        //get the data from xcatd
+        $association = explode("=", $data);
+
+        $ooe = 0;
+        $line = 0;
+        foreach($association as $elem) {
+            $ooe = $ooe%2;
+            //the format should be
+            //"NodeReachability"\t"EmailRootOffShift"\t"hv8plus01.ppd.pok.ibm.com"\t"Active"
+            $record = explode("\"", $elem);
+            $cond = $record[1];
+            $resp = $record[3];
+            $node = $record[5];
+            $state = $record[7];
+            echo "<tr class='ListLine$ooe' id='row$line'>";
+            echo "<td>$cond</td>";
+            echo "<td>$resp</td>";
+            echo "<td>$node</td>";
+            echo "<td>$state</td>";
+            echo "</tr>";
+            $ooe++;
+            $line++;
+        }
+    }
+    echo "</tbody></table></div>";
     return 0;
 }
 
-function displayCond($noderange)
+function displayCond()
 {
     //the user selects one node/noderange from the #ositree div
-    echo '<div id="avail_cond">';
-    echo '<b>Available Conditions</b>';
-    
-    echo '</div>';
+echo <<<COND
+<div id="avail_cond">
+<b>Available Conditions</b>
+<table id="tabTable" class="tabTable" cellspacing="1">
+    <thead>
+        <tr class="colHeaders">
+            <td></td>
+            <td>Conditions</td>
+        </tr>
+    </thead>
+    <tbody>
+COND;
+    $xml = docmd("webrun", '', array("lscondition"));
+    foreach($xml->children() as $response) foreach($response->children() as $data) {
+        //get the data from xcatd
+        $conditions = explode("=", $data);
+    }
+    $ooe = 0;
+    $line = 0;
+    foreach($conditions as $elem) {
+        $ooe = $ooe%2;
+        echo "<tr class='ListLine$ooe' id='row$line'>";
+        echo "<td><input type=\"radio\" name=\"conditions\" value=\"$elem\" /></td>";
+        echo "<td>$elem</td>";
+        echo "</tr>";
+        $ooe++;
+        $line++;
+    }
+    echo "</tbody></table></div>";
     return 0;
+
 }
 
 function displayResp()
 {
-    echo '<div id="avail_resp">';
-    echo '<b>Available Response</b>';
-    echo '</div>';
+echo <<<RESP
+<div id="avail_resp">
+<b>Available Response</b>
+<table id="tabTable" class="tabTable" cellspacing="1">
+    <thead>
+        <tr class="colHeaders">
+            <td></td>
+            <td>Response</td>
+        </tr>
+    </thead>
+    <tbody>
+RESP;
+  $xml=docmd("webrun", '', array("lsresponse"));
+  $ooe=0;
+  $line=0;
+  foreach($xml->children() as $response) foreach($response->children() as $data) {
+      $responses = explode("=", $data);
+  }
+  foreach($responses as $elem) {
+      $ooe = $ooe%2;
+      echo "<tr class='ListLine$ooe' id='row$line'>";
+      echo "<td><input type='checkbox' name='responses' value='$elem' /></td>";
+      echo "<td>$elem</td>";
+      echo "</tr>";
+      $ooe++;
+      $line++;
+  }
+    echo '</tbody></table></div>';
     return 0;
+}
+
+function displayCondResp()
+{
+    echo '<div id="condresp">';
+    displayAssociation();
+    displayCond();
+    displayResp();
+    insertButtons(array('label'=>'Add', id=>'addAssociation', 'onclick'=>'mkCondResp()'));
+    insertButtons(array('label'=>'Cancel', id=>'cancel_op', 'onclick'=>''));
+    echo '</div>';
+    displayStatus();
+}
+
+function displayMonsetting()
+//TODO: copied from the function displayTable() from display.php, need update
+{
+    echo "<div class='mContent'>";
+    echo "<h1>$tab</h1>\n";
+    insertButtons(array('label' => 'Save','id' => 'saveit'),
+                    array('label' => 'Cancel', 'id' => 'reset')
+            );
+    $xml = docmd('tabdump', '', array("monsetting"));
+    $headers = getTabHeaders($xml);
+    if(!is_array($headers)){ die("<p>Can't find header line in $tab</p>"); }
+    echo "<table id='tabTable' class='tabTable' cellspacing='1'>\n";
+    #echo "<table class='tablesorter' cellspacing='1'>\n";
+    echo "<thead>";
+    echo "<tr class='colHeaders'><td></td>\n"; # extra cell for the red x
+    #echo "<tr><td></td>\n"; # extra cell for the red x
+    foreach($headers as $colHead) {echo "<td>$colHead</td>"; }
+    echo "</tr>\n"; # close header row
+
+    echo "</thead><tbody>";
+    $tableWidth = count($headers);
+    $ooe = 0;
+    $item = 0;
+    $line = 0;
+    $editable = array();
+    foreach($xml->children() as $response) foreach($response->children() as $arr){
+            $arr = (string) $arr;
+            if(ereg("^#", $arr)){
+                    $editable[$line++][$item] = $arr;
+                    continue;
+            }
+            $cl = "ListLine$ooe";
+            $values = splitTableFields($arr);
+            # X row
+            echo "<tr class=$cl id=row$line><td class=Xcell><a class=Xlink title='Delete row'><img class=Ximg src=img/red-x2-light.gif></a></td>";
+            foreach($values as $v){
+                    echo "<td class=editme id='$line-$item'>$v</td>";
+                    $editable[$line][$item++] = $v;
+            }
+            echo "</tr>\n";
+            $line++;
+            $item = 0;
+            $ooe = 1 - $ooe;
+    }
+    echo "</tbody></table>\n";
+    $_SESSION["editable-$tab"] = & $editable; # save the array so we can access it in the next call of this file or change.php
+    echo "<p>";
+    insertButtons(array('label' => 'Add Row', 'id' => 'newrow'));
+    echo "</p>\n";
+}
+
+function displayRMCRsrc()
+{
+echo <<<TOS0
+<b>Available RMC Resources</b>
+<table id="tabTable" class="tabTable" cellspacing="1">
+<thead>
+    <tr class="colHeaders">
+    <td></td>
+    <td>Class Name</td>
+    </tr>
+</thead>
+<tbody>
+TOS0;
+    $xml = docmd("webrun", "", array("lsrsrc"));
+    if(getXmlErrors($xml,$errors)) {
+        echo "<p class=Error>",implode(' ', $errors), "</p>";
+        exit;
+    }
+    foreach($xml->children() as $response) foreach($response->children() as $data) {
+        //get all the class name
+        $classes = explode("=", $data);
+    }
+    $ooe = 0;
+    $line = 0;
+    foreach($classes as $class) {
+        $ooe = $ooe%2;
+        echo "<tr class='ListLine$ooe' id='row$line'>";
+        echo "<td><input type='radio' name='classGrp' value='$class' onclick='showRMCAttrib()' /> </td>";
+        echo "<td>$class</td>";
+        echo "</tr>";
+        $ooe++;
+        $line++;
+    }
+
+    echo "</tbody></table>";
+    return 0;
+}
+
+function displayRMCAttr()
+{
+    echo "<p>Select the RMC Resource, you will see all its available attributes here.</p>";
 }
 
 ?>

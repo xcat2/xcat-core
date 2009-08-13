@@ -13,7 +13,14 @@ require_once "$TOPDIR/lib/monitor_display.php";
 
 $name = $_REQUEST['name'];
 
-echo $name;
-return 0;
+//echo $name;
 
+displayMapper_mon(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php'));
+
+displayTips(array(""));
+
+
+displayStatus();
+
+insertButtons(array('label' => 'Next', 'id'=> 'next', 'onclick'=>''));
 ?>

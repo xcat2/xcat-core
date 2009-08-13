@@ -42,5 +42,5 @@ display_stat_mon_table(array("$name"=>
 
 displayStatus();
 
-insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>'goto_next()'));
+insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>'loadMainPage("monitor/monlist.php")'));
 ?>

@@ -369,8 +369,10 @@ function node_stat_control(plugin)
 }
 
 function goto_next()
+//TODO: change the function name! it's too silly now!
 {
     var str = location.href;
+    //TODO:one bug is here.
     var plugin=str.slice(str.indexOf("name")+5);//get the argument from "?name=xxxxx"
     if(plugin == "rmcmon") {
         loadMainPage("monitor/rmc_event_define.php");
@@ -379,6 +381,53 @@ function goto_next()
         //for the others, there's no web page to define evnets/performance now'
         loadMainPage("monitor/monstart.php?name="+plugin);
     }
+}
+
+function mkCondResp()
+{
+    //get the name of the selected condition
+    //then, get the response in "checked" status
+    //then, run the command "mkcondresp"
+    var cond_val = $('input[@name=conditions][@checked]').val();
+    if(cond_val) {
+        //get the response in "checked" status
+        var resps_obj = $('input[@name=responses][@checked]');
+        if(resps_obj) {
+            $.each(resps_obj,function(i,n) {
+                //i is the index
+                //n is the content
+                //TODO:add one new php file to handle "mkcondresp" command
+                $.get("monitor/makecondresp.php", {cond: cond_val, resp: n.value}, function(data) {
+                    $("#devstatus").html(data);
+                });
+            });
+        $("#association").load("monitor/updateCondRespTable.php");
+        }
+    }
+}
+
+function showRMCAttrib()
+{
+    var class_val = $('input[@name=classGrp][@checked]').val();
+    if(class_val) {
+        $.get("monitor/rmc_resource_attr.php", {name: class_val}, function(data) {
+            $("#rmcScrAttr").html(data);
+        });
+    }
+}
+
+function monsetupAction(plugin, action_val)
+{
+    //plugin = the name of plugin
+    //action = "start" or "stop" or "restart"
+    $.get("monitor/setup.php", {name: plugin, action: action_val}, function(data) {
+
+        
+       $.get("monitor/updateMonList.php", {}, function(data) {
+           $("#monlist").html(data);
+       });
+       
+    });
 }
 
 // load progress bar
