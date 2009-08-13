@@ -528,7 +528,7 @@ sub processArgs
         }
         elsif ($::opt_t eq 'node')
         {
-            if (($::command ne 'mkdef') && ($a =~ m/^\//))
+            if (($::command ne 'mkdef') && ($::opt_o =~ m/^\//))
             {
                 @::clobjnames = &noderange($::opt_o, 1); #Use the "verify" option to support regular expression
             }
