@@ -192,7 +192,7 @@ if (@reachable_nodes > 0) {
 		debug("SERIAL not set.\n");
     my $node_string=join(',', @reachable_nodes);
     my $command = "$::XCATROOT/bin/xdsh $node_string $bypass -s -e $::XCATROOT/sbin/pping2 \"$i_string $quiet $allnodes\" 2> /dev/null|";
-    debug("Running \'$command\'");
+    debug("Running \'$command\'\n");
     open (PPING2, "$command") or die("Cannot open pping-internal pipe: $!");
 		# Print out the result
     while (<PPING2>) {
