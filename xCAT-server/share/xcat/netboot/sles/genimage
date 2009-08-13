@@ -264,7 +264,17 @@ if (($postinstall_filename) && (-x $postinstall_filename)) {
 
 #some rpms mounts the imageroot/proc on the /proc, need to release it, 
 #otherwise got kernal panic when installing 
-`umount $installroot/netboot/$osver/$arch/$profile/rootimg/proc`; 
+#sometimes, the proc fs is not mounted, so one warning/error message will display,
+#and I add one check point here.
+my $MTABFD;
+open MTABFD, "/etc/mtab";
+my @lines = <MTABFD>;
+close MTABFD;
+
+my $ret = grep m{$installroot/netboot/$osver/$arch/$profile/rootimg/proc}, @lines;
+if($ret > 0) {
+    system("umount $installroot/netboot/$osver/$arch/$profile/rootimg/proc");
+}
 
 mkinitrd();
 
