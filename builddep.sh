@@ -49,9 +49,11 @@ fi
 
 # Upload the dir structure to SF yum area.  Currently we do not have it preserving permissions
 # because that gives errors when different users try to do it.
-rsync -rlv * $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/xcat-dep/
+while ! rsync -rlv --delete * $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/xcat-dep/
+do : ; done
 #ssh jbjohnso@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/yum/; rm -rf dep-snap; tar jxvf $DFNAME"
 
-# Upload the tarball to the SF uploads dir for the FRS
-#scp ../$DFNAME $UPLOADUSER@web.sourceforge.net:uploads/
-echo "$DFNAME has been built.  Remember to upload it to sourceforge using its File Manager."
+# Upload the tarball to the SF FRS Area
+#scp ../$DFNAME "$UPLOADUSER@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x Linux/"
+while ! rsync -v ../$DFNAME "$UPLOADUSER,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x Linux/"
+do : ; done

@@ -200,7 +200,8 @@ do : ; done
 if [ "$PROMOTE" = 1 -a "$REL" != "devel" ]; then
 	# upload tarball to FRS area
 	#scp $TARNAME $UPLOADUSER@web.sourceforge.net:uploads/
-	echo "$TARNAME has been built.  Remember to upload it to sourceforge using its File Manager."
+	while ! rsync -v $TARNAME "$UPLOADUSER,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat/$REL.x Linux/"
+	do : ; done
 else
 	while ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
 	do : ; done
