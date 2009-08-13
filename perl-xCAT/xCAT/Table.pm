@@ -6,6 +6,7 @@
 #creating new sqlite db files when only requested to read non-existant table, easy to fix,
 #class xcattable
 package xCAT::Table;
+use xCAT::MsgUtils;
 use Sys::Syslog;
 use Storable qw/freeze thaw/;
 use Data::Dumper;
@@ -114,18 +115,22 @@ sub init_dbworker {
         my $clientset = new IO::Select;
         $clientset->add($dbworkersocket);
         while (not $exitdbthread) {
-            my @ready_socks = $clientset->can_read;
-            foreach $currcon (@ready_socks) {
-                if ($currcon == $dbworkersocket) { #We have a new connection to register
-                    my $dbconn = $currcon->accept;
-                    if ($dbconn) {
-                        $clientset->add($dbconn);
+            eval {
+                my @ready_socks = $clientset->can_read;
+                foreach $currcon (@ready_socks) {
+                    if ($currcon == $dbworkersocket) { #We have a new connection to register
+                        my $dbconn = $currcon->accept;
+                        if ($dbconn) {
+                            $clientset->add($dbconn);
+                        }
+                    } else {
+                        handle_dbc_conn($currcon,$clientset);
                     }
-                } else {
-                    handle_dbc_conn($currcon,$clientset);
                 }
+            };
+            if ($@) { 
+                xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT DB worker ".$@);
             }
-
         }
         close($dbworkersocket);
         unlink($dbsockpath);
