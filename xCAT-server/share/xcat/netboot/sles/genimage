@@ -354,6 +354,9 @@ sub mkinitrd {
    print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
    print $inifile "mkdir /dev/shm\n";
    print $inifile "mkdir /dev/mapper\n";
+
+   print $inifile "mknod /dev/random c 1 8\n";
+   print $inifile "mknod /dev/urandom c 1 9\n";
    print $inifile "mknod /dev/null c 1 3\n";
    print $inifile "mknod /dev/zero c 1 5\n";
    print $inifile "mknod /dev/systty c 4 0\n";
