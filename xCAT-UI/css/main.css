@@ -363,6 +363,7 @@ padding:10px 2px;
     float:left;
     display: block;
     width: 720px;
+    border-bottom: 1px dotted #555;
 }
 #avail_cond {
     width: 275px;
@@ -417,4 +418,20 @@ padding:10px 2px;
     padding: 5px;
     float: left;
     background-color:silver;
+}
+
+#options {
+    width: 880px;
+    margin: 5px;
+    padding: 5px;
+    float: left;
+}
+
+#plugin_desc {
+    width: 880px;
+    margin: 5px;
+    padding: 5px;
+    float: left;
+    background-color:#FAF8CC;
+    text-align: left;
 }

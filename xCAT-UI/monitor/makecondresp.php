@@ -10,8 +10,8 @@ require_once "$TOPDIR/lib/functions.php";
 require_once "$TOPDIR/lib/display.php";
 require_once "$TOPDIR/lib/monitor_display.php";
 
-$cond = $_REQUEST["cond"];
-$resp = $_REQUEST["resp"];
+$cond = '"' . $_REQUEST["cond"] . '"';
+$resp = '"' . $_REQUEST["resp"] . '"';
 
 $xml=docmd("webrun", '', array("mkcondresp $cond $resp"));
 if(getXmlErrors($xml, $errors)) {

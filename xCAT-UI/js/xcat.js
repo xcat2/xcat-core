@@ -406,6 +406,25 @@ function mkCondResp()
     }
 }
 
+function control_RMCAssoc(cond, node, resp, action)
+{
+    //TODO:for define_rmc_event
+    //control the RMC Association: startcondresp & stopcondresp;
+    $.get("monitor/updateCondResp.php", 
+        {c: cond, n: node, r: resp, a: action},
+        function(data) {
+            $("#association").html(data);
+        }
+    );
+}
+
+function clearEventDisplay()
+{
+    $('input[@name=conditions][@checked]').attr('checked', false);
+    $('input[@name=responses][@checked]').attr('checked', false);
+}
+
+
 function showRMCAttrib()
 {
     var class_val = $('input[@name=classGrp][@checked]').val();
@@ -427,6 +446,27 @@ function monsetupAction(plugin, action_val)
            $("#monlist").html(data);
        });
        
+    });
+}
+
+function showPluginOptions()
+{
+    //for monlist.php, when the user clicks the radiobox, the available options for the plugin will display
+    $("input[@name=plugins]").click(function() {
+        //when one radiobox is selected, the #options <div> is show available options to the user
+        var plugin = $(this).attr('value');
+        $.get("monitor/options.php", {name:plugin},function(data) {
+            $("#options").html(data);
+        });
+    });
+}
+
+function showPluginDescription()
+{
+    $(".description").click(function(){
+        $.get("monitor/plugin_desc.php", {name: $(this).text()}, function(data){
+            $("#plugin_desc").html(data);
+        })
     });
 }
 

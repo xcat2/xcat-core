@@ -64,7 +64,7 @@ function monrestart($plugin, $nmstat)
 
 function monstart($plugin, $nmstat)
 {
-    //before starting the $plugin,
+    //TODO:before starting the $plugin,
     //we have to make sure that the plugin is added in the "monitoring" table
     $xml = docmd("monstart", "", array("$plugin", "-r"));
     return 0;

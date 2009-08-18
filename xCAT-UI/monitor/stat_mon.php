@@ -16,7 +16,7 @@ $name = $_REQUEST['name'];
 displayMapper_mon(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php'));
 displayTips(array(
     "Enable/disable Node/App Status Monitoring by clicking the button",
-    "Click the \"Next\" button to define Events for the desired plug-in"));
+    "In order to take affect, you have to START/RESTART the desired plugin"));
 
 //get the current status for "node-status-monitor"
 $xml = docmd("monls", ' ', array($name));
@@ -42,5 +42,5 @@ display_stat_mon_table(array("$name"=>
 
 displayStatus();
 
-insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>'loadMainPage("monitor/monlist.php")'));
+//insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>'loadMainPage("monitor/monlist.php")'));
 ?>

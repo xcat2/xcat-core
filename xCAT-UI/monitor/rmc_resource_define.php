@@ -18,15 +18,17 @@ displayTips(array("All the available RMC resources are listed here;",
 
 displayMonsetting();
 
-?>
 
-<div id="monsetting_tips">
-    <div id="rmcSrcList"><?php displayRMCRsrc(); ?></div>
-    <div id="rmcScrAttr"><?php displayRMCAttr(); ?></div>
-</div>
+echo '<div id="monsetting_tips">';
+echo '<div id="rmcSrcList">';
+displayRMCRsrc();
+echo '</div>';
+echo '<div id="rmcScrAttr">';
+displayRMCAttr();
+echo '</div>';
+echo '</div>';
 
 
-<div><?php displayStatus(); ?></div>
-<?php
-insertButtons(array('label'=>'Next', 'id'=>'next', 'onclick'=>'loadMainPage("monitor/monlist.php");'));
+displayStatus();
+
 ?>

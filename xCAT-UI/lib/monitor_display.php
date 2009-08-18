@@ -77,11 +77,9 @@ function displayTips($tips)
     return 0;
 }
 
-function displayDialog($id, $title)
+function insertDiv($id)
 {
-    //add one new <div> to display jQuery dialog;
-    echo "<div id=$id title=\"$title\"></div>";
-    return 0;
+    echo "<div id=$id></div>";
 }
 
 function displayMonTable()
@@ -183,6 +181,7 @@ echo <<<TOS5
             <td>Response</td>
             <td>Node</td>
             <td>State</td>
+            <td>Action</td>
         </tr>
     </thead>
     <tbody>
@@ -213,6 +212,13 @@ TOS5;
             echo "<td>$resp</td>";
             echo "<td>$node</td>";
             echo "<td>$state</td>";
+            echo "<td>";
+            if($state == "Active") {
+                insertButtons(array('label'=>'DeActivate', 'id'=>'deactivate', 'onclick'=>"control_RMCAssoc(\"$cond\", \"$node\", \"$resp\", \"stop\")"));
+            }else if($state == "Not active"){
+                insertButtons(array('label'=>'Activate', 'id'=>'activate', 'onclick'=>"control_RMCAssoc(\"$cond\", \"$node\", \"$resp\", \"start\")"));
+            }
+            echo "</td>"; 
             echo "</tr>";
             $ooe++;
             $line++;
@@ -298,7 +304,7 @@ function displayCondResp()
     displayCond();
     displayResp();
     insertButtons(array('label'=>'Add', id=>'addAssociation', 'onclick'=>'mkCondResp()'));
-    insertButtons(array('label'=>'Cancel', id=>'cancel_op', 'onclick'=>''));
+    insertButtons(array('label'=>'Cancel', id=>'cancel_op', 'onclick'=>'clearEventDisplay()'));
     echo '</div>';
     displayStatus();
 }
