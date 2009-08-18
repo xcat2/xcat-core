@@ -2064,16 +2064,25 @@ e.g: nodech $node nodetype.arch=x86\n"]);
 		# now make <HEX> file entry stuff
 		my $tp = "xcat/netboot/$osver/$arch";
 		my $kernel = "$tp/mboot.c32";
-		my $append = "$tp/vmkboot.gz";
-		$append .= " --- $tp/vmk.gz";
+		my $prepend = "$tp/vmkboot.gz";
+		my $append = " --- $tp/vmk.gz";
 		$append .= " --- $tp/sys.vgz";
 		$append .= " --- $tp/cim.vgz";
 		$append .= " --- $tp/oem.tgz";
 		$append .= " --- $tp/license.tgz";
 		$append .= " --- $tp/mod.tgz";
 		if (defined $bpadds->{$node}->[0]->{addkcmdline}) {
-			$append .= $bpadds->{$node}->[0]->{addkcmdline};
+            my $modules;
+            my $kcmdline;
+            ($kcmdline,$modules) = split /---/,$bpadds->{$node}->[0]->{addkcmdline},2;
+            if ($modules) {
+                $append .= " --- ".$modules;
+            }
+            $prepend .= " ".$kcmdline;
 		}
+        $append = $prepend.$append;
+        $output_handler->({node=>[{name=>[$node],'_addkcmdlinehandled'=>[1]}]});
+
 
 
 		$bptab->setNodeAttribs(

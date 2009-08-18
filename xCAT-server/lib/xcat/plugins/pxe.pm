@@ -1,12 +1,12 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::pxe;
-use Data::Dumper;
 use Sys::Syslog;
 use Socket;
 use File::Copy;
 use File::Path;
 use Getopt::Long;
 
+my $addkcmdlinehandled;
 my $request;
 my $callback;
 my $dhcpconf = "/etc/dhcpd.conf";
@@ -77,9 +77,11 @@ sub setstate {
   my %chainhash = %{shift()};
   my %machash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
-  if ($kern->{addkcmdline}) { #Implement the kcmdline append here for 
+  unless ($addkcmdlinehandled->{$node}) { #Tag to let us know the plugin had a special syntax implemented for addkcmdline
+    if ($kern->{addkcmdline}) { #Implement the kcmdline append here for 
                               #most generic, least code duplication
       $kern->{kcmdline} .= " ".$kern->{addkcmdline};
+    }
   }
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = xCAT::Utils->my_ip_facing($node);
@@ -210,7 +212,6 @@ sub setstate {
 my $errored = 0;
 sub pass_along { 
     my $resp = shift;
-    $callback->($resp);
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
         $errored=1;
     }
@@ -218,7 +219,12 @@ sub pass_along {
        if ($_->{error} or $_->{errorcode}) {
           $errored=1;
        }
+       if ($_->{_addkcmdlinehandled}) {
+           $addkcmdlinehandled->{$_->{name}->[0]}=1;
+           return; #Don't send back to client this internal hint
+       }
     }
+    $callback->($resp);
 }
 
 
