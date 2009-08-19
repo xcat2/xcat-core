@@ -538,6 +538,7 @@ site => {
    "  domain:\tThe DNS domain name used for the cluster.\n\n".
    "  forwarders:\tThe DNS servers at your site that can provide names outside of the cluster.  The DNS on the management node will forward requests it does not know to these servers.\n\n".
    "  fsptimeout:\tThe timeout, in milliseconds, to use when communicating with  FSPs.\n\n".
+   "  genmacprefix:\tWhen generating mac addresses automatically, use this manufacturing prefix (i.e. 00:11:aa)\n\n".
    "  genpasswords:\tAutomatically generate random passwords for BMCs when configuring them.\n\n".
    "  installdir:\tThe local directory name used to hold the node deployment packages.\n\n".
    "  installloc:\tThe location that service nodes should mount the install directory from in format hostname:/path.  If hostname is omitted, it defaults to the management node.\n\n".
