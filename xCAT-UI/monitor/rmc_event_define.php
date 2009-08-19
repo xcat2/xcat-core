@@ -12,7 +12,7 @@ require_once "$TOPDIR/lib/display.php";
 require_once "$TOPDIR/lib/monitor_display.php";
 
 
-displayMapper_mon(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php'));
+displayMapper_mon(array('home'=>'main.php', 'monitor' =>'monitor/monlist.php'));
 
 displayTips(array(
         "All the conditions and the responses are here;",

@@ -435,19 +435,6 @@ function showRMCAttrib()
     }
 }
 
-function monsetupAction(plugin, action_val)
-{
-    //plugin = the name of plugin
-    //action = "start" or "stop" or "restart"
-    $.get("monitor/setup.php", {name: plugin, action: action_val}, function(data) {
-
-        
-       $.get("monitor/updateMonList.php", {}, function(data) {
-           $("#monlist").html(data);
-       });
-       
-    });
-}
 
 function showPluginOptions()
 {
@@ -469,6 +456,18 @@ function showPluginDescription()
         })
     });
 }
+function monsetupAction(plugin, action_val)
+{
+    //plugin = the name of plugin
+    //action = "start" or "stop" or "restart"
+    $.get("monitor/setup.php", {name: plugin, action: action_val}, function(data) {
+        $.get("monitor/updateMonList.php", {}, function(data) {
+            $("#monlist_table").html(data);
+        });
+       
+    });
+}
+
 
 // load progress bar
 myBar.loaded('xcat.js');

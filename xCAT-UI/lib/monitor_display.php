@@ -98,6 +98,12 @@ function displayMonTable()
         </tr>
     </thead>
 TOS1;
+echo <<<TOS9
+<script type="text/javascript">
+    showPluginOptions();
+    showPluginDescription();
+</script>
+TOS9;
     echo '<tbody id="monlist">';
     displayMonitorLists();
     echo "</tbody></table></div>";

@@ -6,12 +6,9 @@ if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
  require_once "$TOPDIR/lib/monitor_display.php";
 
 ?>
-<script type="text/javascript">
-    showPluginOptions();
-    showPluginDescription();
-</script>
+
 <?php
-displayMapper_mon(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php'));
+displayMapper_mon(array('home'=>'main.php', 'monitor' =>'monitor/monlist.php'));
 
 displayTips(array("Click the name of each plugin, you can get the plugin's description.",
         "Select one plugin, choose the options for set up monitoring ",
@@ -22,4 +19,6 @@ displayMonTable();
 insertDiv("plugin_desc");
 
 insertDiv("options");
+
+insetDiv("view");   //display options to the users for viewing event log & performance in text/graphics format
 ?>

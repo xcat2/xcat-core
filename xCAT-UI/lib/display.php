@@ -98,11 +98,17 @@ echo <<<EOS4
     <a href="provision.php">provision</a>
    </li>
    <li>
-    <a href="monitor/monlist.php">monitor</a>
+    <a>monitor</a>
 	<ul>
    		<li>
     			<a href="monitor.php">syslog</a>
    		</li>
+                <li>
+                        <a href="monitor/monlist.php">Monitor Setup</a>
+                </li>
+                <li>
+                        <a href="#">View Events</a>
+                </li>
 	</ul>
    </li>
   </ul>
@@ -512,6 +518,12 @@ echo <<<EOS
 </ul>
 <h1><a href='#' onclick='loadMainPage("monitor/monlist.php")'>Monitor</a></h1>
 <ul>
+    <li><a href='#' onclick='loadMainPage("monitor.php")'>Show syslog Entries</a></li>
+    <li><a href='#' onclick='loadMainPage("monitor/monlist.php")'>Monitor Setup</a></li>
+    <li><a href='#' onclick=''>View Events Log</a></li>
+    <li>There's only text format for events' log</li>
+    <li><a href='#' onclick=''>View Performance</a></li>
+    <li>There're text/graphics formats for performance view</li>
     <li>Monitoring Events/Performances by Monitoring Plugins, such as RMC...</li>
     <li>This is still <b>UNDER DEVELOPMENT</b>.</li>
 </ul>
