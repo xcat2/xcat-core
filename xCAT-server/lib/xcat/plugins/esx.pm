@@ -2035,6 +2035,23 @@ sub mknetboot {
 	my %donetftp=();
 
 	my $bpadds = $bptab->getNodesAttribs(\@nodes,['addkcmdline']);
+    my %tablecolumnsneededforaddkcmdline;
+    my %nodesubdata;
+	foreach my $key (keys %$bpadds){ #First, we identify all needed table.columns needed to aggregate database call
+        my $add = $bpadds->{$key}->[0]->{addkcmdline};
+        while ($add =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) { 
+            push @{$tablecolumnsneededforaddkcmdline{$1}},$2;
+            $add =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#//;
+        }
+    }
+    foreach my $table (keys %tablecolumnsneededforaddkcmdline) {
+        my $tab = xCAT::Table->new($table,-create=>0);
+        if ($tab) {
+            $nodesubdata{$table}=$tab->getNodesAttribs(\@nodes,$tablecolumnsneededforaddkcmdline{$table});
+        }
+    }
+
+
 	foreach my $node (@nodes){
 		my $ent =  $ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
 		my $arch = $ent->{'arch'};
@@ -2075,6 +2092,7 @@ e.g: nodech $node nodetype.arch=x86\n"]);
             my $modules;
             my $kcmdline;
             ($kcmdline,$modules) = split /---/,$bpadds->{$node}->[0]->{addkcmdline},2;
+            $kcmdline =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$nodesubdata{$1}->{$node}->[0]->{$2}/eg;
             if ($modules) {
                 $append .= " --- ".$modules;
             }
