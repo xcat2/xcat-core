@@ -297,7 +297,7 @@ sub do_getmacs {
     my $pid = open( OUTPUT, "$cmd 2>&1 |");
     $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
         kill 9, $pid;
-        exit 0;
+        return( [RC_ERROR,"Received INT or TERM signal"] );
     };
     if ( !$pid ) {
         return( [RC_ERROR,"$cmd fork error: $!"] );
