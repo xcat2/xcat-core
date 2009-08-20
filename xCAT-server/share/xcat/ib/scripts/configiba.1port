@@ -99,9 +99,9 @@ foreach my $num ( @nums ) {
             }
         }
         #Configure the IB interfaces.  Customize the port num.
-        my $iba_num = int($num / 2);
+        my $iba_num = $num;
         my $ib_adapter = "iba$iba_num";
-        my $port = $num + 1;
+        my $port = 1;
         my $mkib_cmd = "mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask";
         runcmd($mkib_cmd);
         system("logger -t xcat 'configiba: successfully configured $nic.'");
