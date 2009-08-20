@@ -36,6 +36,8 @@ B<-o object-names>       A set of comma delimited xCAT object names.
 
 B<-t object-types>       A set of comma delimited xCAT object types. Supported types include: node and group.
 
+Note: If the object type is "group", it means that the xcat2nim command will operate on a NIM machine group definition corresponding to the xCAT node group definition. Before creating a NIM machine group, all the NIM client nodes definition must have been created. 
+
 B<-r|--remove>         Remove NIM definitions corresponding to xCAT definitions.
 
 B<-u|--update>         Update existing NIM definitions based on xCAT definitions.
