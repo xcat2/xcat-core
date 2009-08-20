@@ -606,56 +606,25 @@ sub updateschema
     my $self = shift;
     my $xcatcfg = shift;
     my $descr=$xCAT::Schema::tabspec{$self->{tabname}};
+    my $tn=$self->{tabname};
 
     my @columns;
     my %dbkeys;
     if ($self->{backend_type} eq 'sqlite')
     {
         my $dbexistq =
-          "SELECT sql from sqlite_master WHERE type='table' and name = ?";
+          "PRAGMA table_info('$tn')";
         my $sth = $self->{dbh}->prepare($dbexistq);
-        $sth->execute($self->{tabname});
-        my $cstmt = $sth->fetchrow();
-        $sth->finish;
-
-        #my $cstmt = $result->{sql};
-        $cstmt =~ s/.*\(//;
-        $cstmt =~ s/\)$//;
-        #print "cstmt=$cstmt\n";
-        my @entries = split /\n/, $cstmt;
-        foreach (@entries)
-        {
-            s/VARCHAR\(\d+\)/TEXT/;
-  	    if (/\(/)
-	    {
-		my $keynames=$_;
-		if ($keynames =~ /PRIMARY KEY/) {
-		    $keynames =~ s/\"//g;
-		    $keynames =~ /\((.*)\)/;
-		    $keynames=$1;
-                  # print "keynames=$keynames\n";
-                   my @keyname_arrays=split(',', $keynames);
-                   foreach my $key_col (@keyname_arrays) {
-		       $dbkeys{$key_col}=1;
-                       #print "key_col=$key_col\n";
-		   }
-		}
+        $sth->execute;
+            my $tn=$self->{tabname};
+        while ( my $col_info = $sth->fetchrow_hashref ) {
+	    #print Dumper($col_info);
+	    push @columns, $col_info->{name};
+	    if ($col_info->{pk}) {
+		$dbkeys{$col_info->{name}}=1;
 	    }
-	    else 
-            {    #Filter out the PRIMARY KEY statement, but not if on a col
-                my $colname = $_;
-                my $iskey=0;
-                if ($colname =~ /PRIMARY KEY/) {
-		    $iskey=1;
-		}
-                $colname =~ s/^\s*(\S+)\s+.*\s*$/$1/
-                  ; #I don't understand why it won't work otherwise for "    colname TEXT     "
-                $colname =~ s/^"//;
-                $colname =~ s/"$//;
-                push @columns, $colname;
-                if ($iskey) { $dbkeys{$colname}=1;}
-            } 
-        }
+	}
+        $sth->finish;
     } else { #Attempt generic dbi..
        #my $sth = $self->{dbh}->column_info('','',$self->{tabname},'');
        my $sth = $self->{dbh}->column_info(undef,undef,$self->{tabname},'%'); 
@@ -704,8 +673,8 @@ sub updateschema
 
     #for existing columns that are new keys now,
     my @new_dbkeys=@{$descr->{keys}};
-    #my @old_dbkeys=keys %dbkeys;
-    #print "new_dbkeys=@new_dbkeys;  old_dbkeys=@old_dbkeys\n";
+    my @old_dbkeys=keys %dbkeys;
+    #print "new_dbkeys=@new_dbkeys;  old_dbkeys=@old_dbkeys; columns=@columns\n";
     my $change_keys=0;
     foreach my $dbkey (@new_dbkeys) {
         if (! exists($dbkeys{$dbkey})) { 
@@ -757,7 +726,6 @@ sub updateschema
 	    }
 	} else { #for the rest, recreate the table
             print "need to change keys\n";
-            my $tn=$self->{tabname};
             my $btn=$tn . "_xcatbackup";
             
             #remove the backup table just in case;
