@@ -308,33 +308,16 @@ sub buildcreatestmt
     my $retv  = "CREATE TABLE $tabn (\n  ";
     my $col;
     my $types=$descr->{types};
-    my $pkset=0;
 
     foreach $col (@{$descr->{cols}})
     {
-	if (($types) && ($types->{$col})) {
-            if ($types->{$col} =~ /INTEGER AUTO_INCREMENT/) {
-		if ($xcatcfg =~ /^SQLite:/) {
-		    $retv .= "\"$col\" INTEGER PRIMARY KEY AUTOINCREMENT ";
-                    $pkset=1;
-		} elsif ($xcatcfg =~ /^Pg:/) {
-		    $retv .= "\"$col\" SERIAL ";
-		} elsif ($xcatcfg =~ /^mysql:/){
-		    $retv .= "\"$col\" INTEGER AUTO_INCREMENT ";
-		} elsif ($xcatcfg =~ /^db2:/){
-		    $retv .= "\"$col\" INTEGER GENERATED ALWAYS AS IDENTITY ";  #have not tested on DB2
-		} else {
-		}
-	    } else {
-		$retv .= "\"$col\" " . $types->{$col};
+        my $datatype=get_datatype_string($col,$xcatcfg, $types);
+        if ($datatype eq "TEXT") {
+	    if (isAKey(\@{$descr->{keys}}, $col)) {   # keys need defined length
+		$datatype = "VARCHAR(128)";
 	    }
-	} else {
-	    if (isAKey(\@{$descr->{keys}},$col)) {   # keys need defined length
-		$retv .= "\"$col\" VARCHAR(128)";
-	    } else {
-		$retv .= "\"$col\" TEXT";
-	    } 
 	}
+        $retv .= "\"$col\" $datatype ";
 
         if (grep /^$col$/, @{$descr->{required}})
         {
@@ -342,7 +325,7 @@ sub buildcreatestmt
         }
         $retv .= ",\n  ";
     }
-    if ($pkset) {
+    if ($retv =~ /PRIMARY KEY/) {
 	$retv =~ s/,\n  $/\n)/;
     } else {
 	$retv .= "PRIMARY KEY (";
@@ -353,7 +336,70 @@ sub buildcreatestmt
 	$retv =~ s/,$/)\n)/;
     }
 	#print "retv=$retv\n";
-    return $retv;
+    return $retv; 
+}
+
+sub get_datatype_string {
+    my $col=shift;    #column name
+    my $xcatcfg=shift;  #db config string
+    my $types=shift;  #hash pointer
+    my $ret;
+
+    if (($types) && ($types->{$col})) {
+	if ($types->{$col} =~ /INTEGER AUTO_INCREMENT/) {
+	    if ($xcatcfg =~ /^SQLite:/) {
+		$ret = "INTEGER PRIMARY KEY AUTOINCREMENT";
+	    } elsif ($xcatcfg =~ /^Pg:/) {
+		$ret = "SERIAL";
+	    } elsif ($xcatcfg =~ /^mysql:/){
+		$ret = "INTEGER AUTO_INCREMENT";
+	    } elsif ($xcatcfg =~ /^db2:/){
+		$ret = "INTEGER GENERATED ALWAYS AS IDENTITY";  #have not tested on DB2
+	    } else {
+	    }
+	} else {
+	    $ret = $types->{$col};
+	}
+    } else {
+	$ret = "TEXT";
+    }
+    return $ret;
+}
+
+
+sub get_xcatcfg
+{
+    my $xcatcfg = (defined $ENV{'XCATCFG'} ? $ENV{'XCATCFG'} : '');
+    unless ($xcatcfg) {
+        if (-r "/etc/xcat/cfgloc") {
+	    my $cfgl;
+	    open($cfgl,"<","/etc/xcat/cfgloc");
+	    $xcatcfg = <$cfgl>;
+	    close($cfgl);
+	    chomp($xcatcfg);
+	    $ENV{'XCATCFG'}=$xcatcfg; #Store it in env to avoid many file reads
+        }
+    }
+    if ($xcatcfg =~ /^$/)
+    {
+        if (-d "/opt/xcat/cfg")
+        {
+            $xcatcfg = "SQLite:/opt/xcat/cfg";
+        }
+        else
+        {
+            if (-d "/etc/xcat")
+            {
+                $xcatcfg = "SQLite:/etc/xcat";
+            }
+        }
+    }
+    ($xcatcfg =~ /^$/) && die "Can't locate xCAT configuration";
+    unless ($xcatcfg =~ /:/)
+    {
+        $xcatcfg = "SQLite:" . $xcatcfg;
+    }
+    return $xcatcfg;
 }
 
 #--------------------------------------------------------------------------
@@ -416,36 +462,8 @@ sub new
         $self->{dbuser}="";
         $self->{dbpass}="";
 
-        my $xcatcfg = (defined $ENV{'XCATCFG'} ? $ENV{'XCATCFG'} : '');
-        unless ($xcatcfg) {
-            if (-r "/etc/xcat/cfgloc") {
-               my $cfgl;
-               open($cfgl,"<","/etc/xcat/cfgloc");
-               $xcatcfg = <$cfgl>;
-               close($cfgl);
-               chomp($xcatcfg);
-               $ENV{'XCATCFG'}=$xcatcfg; #Store it in env to avoid many file reads
-            }
-        }
-        if ($xcatcfg =~ /^$/)
-        {
-            if (-d "/opt/xcat/cfg")
-            {
-                $xcatcfg = "SQLite:/opt/xcat/cfg";
-            }
-            else
-            {
-                if (-d "/etc/xcat")
-                {
-                    $xcatcfg = "SQLite:/etc/xcat";
-                }
-            }
-        }
-        ($xcatcfg =~ /^$/) && die "Can't locate xCAT configuration";
-        unless ($xcatcfg =~ /:/)
-        {
-            $xcatcfg = "SQLite:" . $xcatcfg;
-        }
+	my $xcatcfg =get_xcatcfg();
+
         if ($xcatcfg =~ /^SQLite:/)
         {
             $self->{backend_type} = 'sqlite';
@@ -542,7 +560,7 @@ sub new
          }
 
 
-        updateschema($self);
+       updateschema($self, $xcatcfg);
     } #END DB ACCESS SPECIFIC SECTION
     if ($self->{tabname} eq 'nodelist')
     {
@@ -586,7 +604,11 @@ sub updateschema
 
     #This determines alter table statements required..
     my $self = shift;
+    my $xcatcfg = shift;
+    my $descr=$xCAT::Schema::tabspec{$self->{tabname}};
+
     my @columns;
+    my %dbkeys;
     if ($self->{backend_type} eq 'sqlite')
     {
         my $dbexistq =
@@ -599,44 +621,178 @@ sub updateschema
         #my $cstmt = $result->{sql};
         $cstmt =~ s/.*\(//;
         $cstmt =~ s/\)$//;
-        my @entries = split /,/, $cstmt;
+        #print "cstmt=$cstmt\n";
+        my @entries = split /\n/, $cstmt;
         foreach (@entries)
         {
             s/VARCHAR\(\d+\)/TEXT/;
-            unless (/\(/)
+  	    if (/\(/)
+	    {
+		my $keynames=$_;
+		if ($keynames =~ /PRIMARY KEY/) {
+		    $keynames =~ s/\"//g;
+		    $keynames =~ /\((.*)\)/;
+		    $keynames=$1;
+                  # print "keynames=$keynames\n";
+                   my @keyname_arrays=split(',', $keynames);
+                   foreach my $key_col (@keyname_arrays) {
+		       $dbkeys{$key_col}=1;
+                       #print "key_col=$key_col\n";
+		   }
+		}
+	    }
+	    else 
             {    #Filter out the PRIMARY KEY statement, but not if on a col
                 my $colname = $_;
+                my $iskey=0;
+                if ($colname =~ /PRIMARY KEY/) {
+		    $iskey=1;
+		}
                 $colname =~ s/^\s*(\S+)\s+.*\s*$/$1/
                   ; #I don't understand why it won't work otherwise for "    colname TEXT     "
                 $colname =~ s/^"//;
                 $colname =~ s/"$//;
                 push @columns, $colname;
-            }
+                if ($iskey) { $dbkeys{$colname}=1;}
+            } 
         }
     } else { #Attempt generic dbi..
        #my $sth = $self->{dbh}->column_info('','',$self->{tabname},'');
        my $sth = $self->{dbh}->column_info(undef,undef,$self->{tabname},'%'); 
        while (my $cd = $sth->fetchrow_hashref) {
+           #print Dumper($cd);
            push @columns,$cd->{'COLUMN_NAME'};
        }
 	foreach (@columns) { #Column names may end up quoted by database engin
 		s/"//g;
 	}
+
+       #get primary keys
+       $sth = $self->{dbh}->primary_key_info(undef,undef,$self->{tabname});
+       my $data = $sth->fetchall_arrayref;
+       #print "data=". Dumper($data);
+       foreach my $cd (@$data) {
+	   $dbkeys{$cd->[3]}=1;
+       }      
     }
 
-        #Now @columns reflects the *actual* columns in the database
-        my $dcol;
-        foreach $dcol (@{$self->{colnames}})
-        {
-            unless (grep /^$dcol$/, @columns)
-            {
+    #Now @columns reflects the *actual* columns in the database
+    my $dcol;
+    my $types=$descr->{types};
 
-                #TODO: log/notify of schema upgrade?
-                my $stmt =
-                  "ALTER TABLE " . $self->{tabname} . " ADD $dcol TEXT";
-                $self->{dbh}->do($stmt);
-            }
+    foreach $dcol (@{$self->{colnames}})
+    {
+        unless (grep /^$dcol$/, @columns)
+        {
+            #TODO: log/notify of schema upgrade?
+            my $datatype=get_datatype_string($dcol, $xcatcfg, $types);
+	    if ($datatype eq "TEXT") {
+		if (isAKey(\@{$descr->{keys}}, $dcol)) {   # keys need defined length
+		    $datatype = "VARCHAR(128)";
+		}
+	    }
+
+	    if (grep /^$dcol$/, @{$descr->{required}})
+	    {
+		$datatype .= " NOT NULL";
+	    }
+            my $stmt =
+                  "ALTER TABLE " . $self->{tabname} . " ADD $dcol $datatype";
+            $self->{dbh}->do($stmt);
         }
+    }
+
+    #for existing columns that are new keys now,
+    my @new_dbkeys=@{$descr->{keys}};
+    #my @old_dbkeys=keys %dbkeys;
+    #print "new_dbkeys=@new_dbkeys;  old_dbkeys=@old_dbkeys\n";
+    my $change_keys=0;
+    foreach my $dbkey (@new_dbkeys) {
+        if (! exists($dbkeys{$dbkey})) { 
+	    $change_keys=1; 
+            #for my sql, we do not have to recreate table, but we have to make sure the type is correct, 
+            #TEXT is not a valid type for a primary key
+	    if ($xcatcfg =~ /^mysql:/) {  
+		my $datatype=get_datatype_string($dbkey, $xcatcfg, $types);
+		if ($datatype eq "TEXT") {
+		    if (isAKey(\@{$descr->{keys}}, $dbkey)) {   # keys need defined length
+			$datatype = "VARCHAR(128)";
+		    }
+		}
+		
+		if (grep /^$dbkey$/, @{$descr->{required}})
+		{
+		    $datatype .= " NOT NULL";
+		}
+		my $stmt =
+		    "ALTER TABLE " . $self->{tabname} . " MODIFY COLUMN $dbkey $datatype";
+		print "stmt=$stmt\n";
+		$self->{dbh}->do($stmt);
+		if ($self->{dbh}->errstr) {
+		    xCAT::MsgUtils->message("S", "Error changing the keys for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
+		}
+	    }
+        }
+    }
+    #check for cloumns that used to be keys but now are not
+    if (!$change_keys) {
+	foreach(keys %dbkeys) {
+	    if (! isAKey(\@new_dbkeys, $_)) { 
+		$change_keys=1;
+		last;
+	    }
+	}
+    }
+
+    #finaly drop the old keys and add the new keys
+    if ($change_keys) {
+	if ($xcatcfg =~ /^mysql:/) {  #for mysql, just alter the table
+	    my $tmp=join(',',@new_dbkeys); 
+	    my $stmt =
+	        "ALTER TABLE " . $self->{tabname} . " DROP PRIMARY KEY, ADD PRIMARY KEY ($tmp)";
+	    print "stmt=$stmt\n";
+	    $self->{dbh}->do($stmt);
+            if ($self->{dbh}->errstr) {
+		xCAT::MsgUtils->message("S", "Error changing the keys for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
+	    }
+	} else { #for the rest, recreate the table
+            print "need to change keys\n";
+            my $tn=$self->{tabname};
+            my $btn=$tn . "_xcatbackup";
+            
+            #remove the backup table just in case;
+            my $str="DROP TABLE $btn";
+	    $self->{dbh}->do($str);
+
+	    #rename the table name to name_xcatbackup
+	    $str = "ALTER TABLE $tn RENAME TO $btn";
+	    $self->{dbh}->do($str);
+	    if ($self->{dbh}->errstr) {
+		xCAT::MsgUtils->message("S", "Error renaming the table from $tn to $btn:" . $self->{dbh}->errstr);
+	    }
+
+	    #create the table again
+	    $str = 
+                  buildcreatestmt($tn,
+                                  $descr,
+				  $xcatcfg);
+	    $self->{dbh}->do($str);
+	    if ($self->{dbh}->errstr) {
+		xCAT::MsgUtils->message("S", "Error recreating table $tn:" . $self->{dbh}->errstr);
+	    }
+
+            #copy the data from backup to the table
+            $str = "INSERT INTO $tn SELECT * FROM $btn";
+	    $self->{dbh}->do($str);
+	    if ($self->{dbh}->errstr) {
+		xCAT::MsgUtils->message("S", "Error copying data from table $btn to $tn:" . $self->{dbh}->errstr);
+	    } else {
+		#drop the backup table
+		$str = "DROP TABLE $btn";
+		$self->{dbh}->do($str);
+	    }
+	}
+    }
 }
 
 #--------------------------------------------------------------------------
