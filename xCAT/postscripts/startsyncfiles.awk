@@ -1,6 +1,6 @@
 #!/usr/bin/awk -f
 BEGIN {
-  server = "openssl s_client -quiet -connect " ENVIRON["XCATSERVER"]
+  server = "openssl s_client -quiet -connect " ENVIRON["XCATSERVER"] " 2> /dev/null"
 
   quit = "no"
   exitcode = 1
