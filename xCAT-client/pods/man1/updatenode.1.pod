@@ -21,7 +21,7 @@ The updatenode command is run on the xCAT management node and can be used
 to perform the following node updates:
     1) Distribute and synchronize files.  
     2) Install or update software on diskfull nodes.
-    3) Re-run postscripts.
+    3) Run postscripts.
 
 The default behavior of updatenode will be to attempt to perform all three
 types of updates.  If you wish to limit updatenode to one or two specific 
@@ -155,7 +155,7 @@ such as xdsh and xdcp to accomplish these update tasks.
             updatenode <noderange> -S
 
 
-=head2 B<To re-run postscripts>
+=head2 B<To run postscripts>
     
     The scripts must be copied to the /install/postscripts 
     directory on the xCAT management node. (Make sure they are 
@@ -175,14 +175,14 @@ such as xdsh and xdcp to accomplish these update tasks.
 
     Scripts may be run on both diskless and diskfull nodes.
 
-    To re-run all the customization scripts that have been designated 
+    To run all the customization scripts that have been designated 
     for the nodes, (in the "postscripts" attribute), type:
         updatenode <noderange> -P
 
-    To re-run the "syslog" script for the nodes, type:
+    To run the "syslog" script for the nodes, type:
         updatenode <noderange> -P syslog
 
-    To re-run a list of scripts, type:
+    To run  a list of scripts, type:
         updatenode <noderange> -P script1,script2
 
     The flag '-P' is omitted when only postscripts parameters are
@@ -245,11 +245,11 @@ the synclist files specified in the osimage "synclists" attribute.
 "clstrn01".
     updatenode clstrn01 -F -P
 
-3) To re-run the postscripts which indicated in the postscripts attribute on 
+3) To run the postscripts which indicated in the postscripts attribute on 
 the node "clstrn01".
     updatenode  clstrn01 -P
 
-4) To re-run the postscripts script1 and script2 on the node "clstrn01". 
+4) To run the postscripts script1 and script2 on the node "clstrn01". 
 Copy these scripts to the /install/postscripts first.
     updatenode clstrn01 -P script1,script2
 Since flag '-P' is omitted when only postscripts parameters are specified, 
