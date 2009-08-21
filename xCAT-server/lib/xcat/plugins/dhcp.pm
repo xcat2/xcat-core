@@ -130,6 +130,7 @@ sub addnode
     }
     my $lstatements       = $statements;
     my $guess_next_server = 0;
+    my $nxtsrv;
     if ($nrhash)
     {
         $nrent = $nrhash->{$node}->[0];
@@ -146,6 +147,7 @@ sub addnode
                 return;
             }
             $tftpserver = inet_ntoa($tmp_name);
+            $nxtsrv = $tftpserver;
             $lstatements =
                 'next-server '
               . $tftpserver . ';'
@@ -233,7 +235,7 @@ sub addnode
         }
         if ($guess_next_server and $ip ne "DENIED")
         {
-            my $nxtsrv = xCAT::Utils->my_ip_facing($hname);
+            $nxtsrv = xCAT::Utils->my_ip_facing($hname);
             if ($nxtsrv)
             {
                 $tftpserver = $nxtsrv;
@@ -269,7 +271,7 @@ sub addnode
                 if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
                     $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
                 } else {
-                    $lstatements = 'if exists gpxe.bus-id { filename = \"xcat/xnba/nodes/'.$node.'\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive gPXE
+                    $lstatements = 'if option user-class-identifier = \"xNBA\" { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive xNBA
                 } 
             } #TODO: warn when windows
         }
@@ -1048,8 +1050,8 @@ sub addnet
         }
 
                        # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
-        push @netent, "    if exists gpxe.bus-id { #x86, gPXE\n";
-        push @netent, "       filename = \"xcat/xnba/nets/".$net."_".$maskbits."\";\n";
+        push @netent, "    if option user-class-identifier = \"xNBA\" { #x86, xCAT Network Boot Agent\n";
+        push @netent, "       filename = \"http://$tftp/tftpboot/xcat/xnba/nets/".$net."_".$maskbits."\";\n";
         push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
         push @netent, "      filename \"xcat/xnba.kpxe\";\n";
         push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
@@ -1207,6 +1209,7 @@ sub newconfig
     push @dhcpconf, "option space gpxe;\n";
     push @dhcpconf, "option gpxe-encap-opts code 175 = encapsulate gpxe;\n";
     push @dhcpconf, "option gpxe.bus-id code 177 = string;\n";
+    push @dhcpconf, "option user-class-identifier code 77 = string;\n";
     push @dhcpconf, "option gpxe.no-pxedhcp code 176 = unsigned integer 8;\n";
     push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
     push @dhcpconf, "ddns-update-style none;\n";
