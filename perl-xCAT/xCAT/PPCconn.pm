@@ -12,7 +12,8 @@ use xCAT::Usage;
 my %method = (
     mkhwconn => \&mkhwconn_parse_args,
     lshwconn => \&lshwconn_parse_args,
-    rmhwconn => \&rmhwconn_parse_args
+    rmhwconn => \&rmhwconn_parse_args,
+    inithwpw => \&inithwpw_parse_args
 );
 ##########################################################################
 # Parse the command line for options and operands

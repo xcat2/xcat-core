@@ -479,7 +479,7 @@ ppc => {
   },
 ppcdirect => {
     cols => [qw(hcp username password comments disable)],
-    keys => [qw(hcp)],
+    keys => [qw(hcp username)],
     table_desc => 'Info necessary to use FSPs to control system p CECs.',
  descriptions => {
   hcp => 'Hostname of the FSP.',
