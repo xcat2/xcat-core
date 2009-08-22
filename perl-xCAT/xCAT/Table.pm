@@ -107,7 +107,7 @@ sub init_dbworker {
         };
         unlink($dbsockpath);
         umask(0077);
-        $dbworkersocket = IO::Socket::UNIX->new(Local => $dbsockpath, Type => SOCK_STREAM, Listen => 3);
+        $dbworkersocket = IO::Socket::UNIX->new(Local => $dbsockpath, Type => SOCK_STREAM, Listen => 8192);
         unless ($dbworkersocket) {
             die $!;
         }

@@ -28,7 +28,7 @@ use Fcntl ":flock";
 use xCAT::Client qw(submit_request);
 my $clientselect = new IO::Select;
 my $sslclients = 0; #THROTTLE
-my $maxsslclients = 16; #default
+my $maxsslclients = 512; #default
 
 sub xexit {
    while (wait() > 0) {
@@ -175,12 +175,12 @@ if ($inet6support) {
   $socket = IO::Socket::INET6->new(LocalPort=>$sport,
                                      Proto    => 'tcp',
                                      ReuseAddr => 1,
-                                     Listen => 64);
+                                     Listen => 8192);
 } else {
 	 $socket = IO::Socket::INET->new(LocalPort=>$sport,
                                      Proto    => 'tcp',
                                      ReuseAddr => 1,
-                                     Listen => 64);
+                                     Listen => 8192);
 }
 
   unless ($socket) {
@@ -538,13 +538,13 @@ my $listener;
 if ($inet6support) {
     $listener = IO::Socket::INET6->new(
         LocalPort => $port,
-        Listen => 64,
+        Listen => 8192,
         Reuse => 1,
         );
 } else {
     $listener = IO::Socket::INET->new(
         LocalPort => $port,
-        Listen => 64,
+        Listen => 8192,
         Reuse => 1,
         );
 }
