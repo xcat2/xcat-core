@@ -71,7 +71,7 @@ if (!($output))
 }
 
 # call cfmupdatenode and build cfm distribution files
-#$rc = &buildcfmdistfiles($input);
+$rc = &buildcfmdistfiles($input);
 if ($rc == 0)
 {
 
