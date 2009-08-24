@@ -54,6 +54,6 @@ do : ; done
 #ssh jbjohnso@shell1.sf.net "cd /home/groups/x/xc/xcat/htdocs/yum/; rm -rf dep-snap; tar jxvf $DFNAME"
 
 # Upload the tarball to the SF FRS Area
-#scp ../$DFNAME "$UPLOADUSER@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x Linux/"
-while ! rsync -v ../$DFNAME "$UPLOADUSER,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x Linux/"
+#scp ../$DFNAME $UPLOADUSER@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x_Linux/
+while ! rsync -v ../$DFNAME $UPLOADUSER,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x_Linux/
 do : ; done
