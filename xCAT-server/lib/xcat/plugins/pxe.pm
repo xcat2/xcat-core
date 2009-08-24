@@ -404,11 +404,11 @@ sub process_request {
 
   #back to normal business
   if (! -r "$tftpdir/xcat/pxelinux.0") {
-    unless (-r $::XCATROOT."share/xcat/netboot/syslinux/pxelinux.0") {
-       $callback->({error=>["Unable to find pxelinux.0 at ".$::XCATROOT."share/xcat/netboot/syslinux/pxelinux.0"],errorcode=>[1]});
+    unless (-r $::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0") {
+       $callback->({error=>["Unable to find pxelinux.0 at ".$::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0"],errorcode=>[1]});
        return;
     }
-    copy($::XCATROOT."share/xcat/netboot/syslinux/pxelinux.0","$tftpdir/xcat/pxelinux.0");
+    copy($::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0","$tftpdir/xcat/pxelinux.0");
      chmod(0644,"$tftpdir/pxelinux.0");
   }
   unless ( -r "$tftpdir/xcat/pxelinux.0" ) {
