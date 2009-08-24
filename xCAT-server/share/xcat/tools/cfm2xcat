@@ -1,0 +1,362 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#####################################################
+# cfm2xcat:
+#
+# This routine will read in cfmupdatenode distribution files
+# and build the files need to input to xdcp rsync function
+# in xCAT.
+#
+# cfm2xcat will run cfmupdatenode -a,  it sets the environment
+# variable  CSM_CFM_SAVE_DISTFILE to the file path input with the -i option
+# to save the  built cfm distribution file(s).
+# These are normally deleted after cfm runs.
+#
+# cfm2xcat will then take the files that were created from calling
+# cfmupdatenode and create xCAT xdcp files synch files and store them in the
+# path input with the -o flag.
+#
+#   Example:
+#    cfm2xcat -i <...cfmsave>  -o < path to output file>
+#    cfm2xcat -i /tmp/cfmsave -o /tmp/xcat/xcatdistfile
+#
+#  The routine will process all the /.../cfmsave* files and when finished,
+#  you will have the new files xcatdistfile* and noderange* generated which
+#  will be the correct format to input to the xdcp -F command in xCAT to run
+#  the equivalent syncing of files that you were running on CSM.
+#
+#  Take the files in the /tmp/xcat/* directory from the example above and
+#  place on your xCAT Management Node.  Then run for each file combination:
+#   xdcp ^/tmp/xcat/noderange1 -F /tmp/xcat/xcatdistfile1
+#  More information is in the manpage for cfm2xcat and xdcp
+#####################################################
+
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+
+my $help;
+my $input;
+my $output;
+my $rc = 0;
+
+if (
+    !GetOptions(
+                'h|help'     => \$help,
+                'i|input=s'  => \$input,
+                'o|output=s' => \$output,
+    )
+  )
+{
+    &usage;
+    exit 1;
+}
+
+if ($help)
+{
+    &usage;
+    exit 0;
+}
+if (!($input))
+{
+    print "Input file path must be supplied with the -i flag.\n";
+    exit 1;
+}
+if (!($output))
+{
+    print "Output file path and name must be supplied with the -o flag.\n";
+    exit 1;
+}
+
+# call cfmupdatenode and build cfm distribution files
+#$rc = &buildcfmdistfiles($input);
+if ($rc == 0)
+{
+
+    # build the xcat sync files
+    $rc = &buildxcatrsyncfiles($input, $output);
+    if ($rc == 0)
+    {
+        print
+          "Conversion finished, please carefully review $output files! Make sure that all the files list to sync to the nodes are relevant and available on the xCAT system in the directory indicated. \n";
+    }
+    else
+    {
+        print " Error converting cfm file to xdcp files.\n";
+    }
+}
+else
+{
+    print " Error building CFM dist files.\n";
+}
+exit 0;
+
+# end main
+#
+#
+# Builds the CFM distribution files from the cfmupdatenode -a call
+#
+
+sub buildcfmdistfiles
+{
+
+    my ($cfmfile) = @_;
+    my $cmd;
+    my @output;
+
+    # remove old files , if they exist
+    my $tmpcfmfile = $cfmfile;
+    if (-e ($tmpcfmfile))
+    {
+        $tmpcfmfile .= "*";
+        $cmd    = "rm  $tmpcfmfile";
+        @output = runcmd($cmd);
+        if ($::RUNCMD_RC != 0)
+        {
+            print " Error running $cmd.\n";
+            return 1;
+
+        }
+    }
+
+    # export the CSM_CFM_SAVE_DISTFILE variable to the input (-i)
+    # path, makes cfmupdatenode save the dist file(s) from the run in a
+    # file by that name
+
+    $cmd = "CSM_CFM_SAVE_DISTFILE=$cfmfile cfmupdatenode -a";
+
+    # run the cfmupdate command
+    @output = runcmd($cmd);
+    if ($::RUNCMD_RC != 0)
+    {
+        print " Error running $cmd.\n";
+        return 1;
+
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+#
+#
+# Builds the xdcp sync files from the CFM dist files
+#
+
+sub buildxcatrsyncfiles
+{
+
+    my ($CFMfiles, $xcatfile) = @_;
+    my $cmd;
+    my @output;
+    my %noderangequeue;
+
+    # remove old files, if they exist
+    my $tmpxcatfile = $xcatfile;
+    if (-e ($tmpxcatfile))
+    {
+        $tmpxcatfile .= "*";
+        $cmd    = "rm  $tmpxcatfile";
+        @output = runcmd($cmd);
+        if ($::RUNCMD_RC != 0)
+        {
+            print " Error running $cmd.\n";
+            return 1;
+
+        }
+    }
+
+    # get list of CFM files that were built
+    $cmd = "ls $CFMfiles";
+    $cmd .= "*";
+    my @CFMfilelist = runcmd($cmd);
+    if ($::RUNCMD_RC != 0)
+    {
+        print " Error running $cmd.\n";
+        return 1;
+
+    }
+
+    my $msg = "Building xCat rsync files $xcatfile from $CFMfiles\n";
+    print "$msg";
+
+    # For each CFM output file, open the CFM input file to read
+    foreach my $cfmfile (@CFMfilelist)
+    {
+        open(CFM, "< $cfmfile")
+          or die "Can't open $cfmfile for reading: $!";
+
+        #
+        # convert the CFM rdist format to the xdcp format for rsync
+        # build a hash of noderange ->  to distribution files
+        #
+        while (my $line = <CFM>)
+        {
+            chomp $line;
+            if ($line =~ /^#/)    # skip commments
+            {
+                next;
+            }
+            if ($line =~ /.runclocal/)    # skip sending runclocal
+            {
+                next;
+            }
+            my ($sourcefile, $rest)     = split("->",      $line);
+            my ($tmpnodes,   $destfile) = split("install", $rest);
+
+            # get rid of parenthesis
+            my ($paren, $tnodes) = split(/\(/, $tmpnodes);
+            my ($nodes, $paren2) = split(/\)/, $tnodes);
+            chomp $nodes;
+
+            # strip off /cfmroot and /var/opt/csm/cfmlocal paths
+
+            my ($root, $strippedsourcefile) = split("cfmroot", $sourcefile);
+            chomp $strippedsourcefile;
+            my ($root2, $strippeddestfile) = split("cfmlocal", $destfile);
+            chomp $strippeddestfile;
+            chop $strippeddestfile;
+            $noderangequeue{$nodes}{'files'}{$strippedsourcefile} =
+              $strippeddestfile;
+
+        }
+
+        close(CFM);
+    }
+
+    #
+    # now take the hash and build the xdcp file(s), key is the noderange
+    # (use short hostname)
+    # one for each noderange  and a matching noderange file
+    #  for example   xdcpfile1   xdcpfile1.noderange
+    #
+    my $index;
+    foreach (keys %noderangequeue)
+    {
+        my $noderange = $_;
+
+        # open the xCAT output files to write
+
+        my $newxcatfilenr = $xcatfile;
+        $newxcatfilenr .= ".nr";
+
+        # file to hold the noderange
+        if ($index)
+        {    # processing more than one noderange then  building
+                # more than one xdcp file
+            $newxcatfilenr .= "$index";
+        }
+        open(XCATNR, "> $newxcatfilenr")
+          or die "Can't open $newxcatfilenr for writing: $!";
+
+        # create an appropriate noderange ( comma seperated)
+        my @nodes = split(/ /, $noderange);
+        my $goodnr = "";
+        foreach my $node (@nodes)
+        {
+            if ($node !~ /^\s*$/)
+            {    #skip blanks
+                my @shorthost = split(/\./, $node);
+                $goodnr .= $shorthost[0];
+                $goodnr .= ",";
+
+            }
+        }
+        chop $goodnr;
+
+        # write into the noderange file
+        write_line_nr($goodnr);
+        write_line_nr("\n");
+
+        # file to hold the rsync interface file to file list
+        my $newxcatfile = $xcatfile;
+
+        # file to hold the noderange
+        if ($index)
+        {    # processing more than one noderange then  building
+                # more than one xdcp file
+            $newxcatfile .= "$index";
+        }
+        open(XCAT, "> $newxcatfile")
+          or die "Can't open $newxcatfile for writing: $!";
+        my $srcfile;
+        my $destfile;
+        foreach my $sourcefile (keys %{$noderangequeue{$noderange}{'files'}})
+        {
+            $srcfile  = $sourcefile;
+            $destfile = $noderangequeue{$noderange}{'files'}{$sourcefile};
+            write_line($srcfile);
+            write_line("-> ");
+            write_line($destfile);
+            write_line("\n");
+        }
+        close(XCAT);
+        close(XCATNR);
+        $index++;
+    }
+
+    return 0;
+}
+
+#
+# runs the input command and handles the errors.   Returns the output
+#
+
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc = 0;
+    $::RUNCMD_RC = 0;
+    my $outref = [];
+    @$outref = `$cmd`;
+    if ($?)
+    {
+        $rc          = $?;
+        $::RUNCMD_RC = $rc;
+        if ($rc > 0)
+        {
+            my $msg = "$cmd returned rc=$rc @$outref\n";
+            print "$msg";
+        }
+    }
+    chomp(@$outref);
+    return @$outref;
+
+}
+
+sub usage
+{
+    print "CFM distribution file to xCAT xdcp rsync migration facility.\n";
+    print "Usage:\n";
+    print "\t-h - usage\n";
+    print
+      "\t-i - Complete path to the CFM file(s) saved to be converted for xCAT.";
+    print "                Be sure directory exists.\n";
+    print
+      "\t-o - Complete Path to the xCAT xdcp rsync input file(s) created from.";
+    print "                the CFM file. Be sure directory exists.\n";
+    print
+      "    Example: cfm2xcat -i /tmp/migration/cfmfiles -o /tmp/migration/xdcpfiles.";
+    print "\n";
+    return;
+}
+
+#
+# write to xCAT rsync files
+#
+sub write_line
+{
+    print XCAT @_;
+}
+
+#
+# write to xCAT rsync noderange files
+#
+sub write_line_nr
+{
+    print XCATNR @_;
+}
+
