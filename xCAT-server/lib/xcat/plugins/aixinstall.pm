@@ -1727,7 +1727,13 @@ sub mk_spot
 				my $cmd = "/usr/sbin/nim -o define -t spot -a server=master ";
 
 				# source of images
-				$cmd .= "-a source=$lppsrcname ";
+				if ($::METHOD eq "mksysb") {
+					# Create spot from mksysb image
+					my $mksysbname = $::image_name . "_mksysb";
+					$cmd .= "-a source=$mksysbname ";
+				} else {
+					$cmd .= "-a source=$lppsrcname ";
+				}
 
 				# where to put it - the default is /install
 				my $loc;
@@ -1785,12 +1791,22 @@ sub mk_spot
 				push @{$rsp->{data}}, "Creating a NIM SPOT resource. This could take a while.\n";
 				xCAT::MsgUtils->message("I", $rsp, $callback);
 
+				if ($::VERBOSE) {
+					my $rsp;
+					push @{$rsp->{data}}, "Running: \'$cmd\'\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+				}
 				my $output = xCAT::Utils->runcmd("$cmd", -1);
 				if ($::RUNCMD_RC  != 0)
 				{
 					my $rsp;
 					push @{$rsp->{data}}, "Could not create a NIM definition for \'$spot_name\'.\n";
 					xCAT::MsgUtils->message("E", $rsp, $callback);
+					if ($::VERBOSE) {
+						my $rsp;
+						push @{$rsp->{data}}, "Error message is: \'$output\'\n";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+					}
 					return undef;
 				}
 			} # end - if spot doesn't exist
