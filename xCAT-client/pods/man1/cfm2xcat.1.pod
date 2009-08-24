@@ -4,7 +4,7 @@ B<cfm2xcat> - Migrates the CFM setup in CSM to the xdcp rsync setup in xCAT.
 
 =head1 B<SYNOPSIS>
 
-B<csm2xcat> [{B<-i>} I<path of the CFM distribution files generated >] [{B<-o>} I<path of the xdcp rsync files generated from the CFM distribution files >]
+B<csm2xcat> [B<-i> I<path of the CFM distribution files generated >] [B<-o> I<path of the xdcp rsync files generated from the CFM distribution files >]
 
 B<csm2xcat> [B<-h>] 
 

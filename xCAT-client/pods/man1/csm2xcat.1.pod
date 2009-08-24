@@ -4,7 +4,7 @@ B<csm2xcat> - Allows the migration of a CSM database to an xCAT database.
 
 =head1 SYNOPSIS
 
-B<csm2xcat> [{B<--dir>} I<path>]
+B<csm2xcat> [B<--dir> I<path>]
 
 B<csm2xcat> [B<-h>] 
 
