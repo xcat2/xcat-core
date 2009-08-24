@@ -125,7 +125,7 @@ sub setstate {
         print $pcfg "DEFAULT xCAT\nLABEL xCAT\n   KERNEL mboot.c32\n";
 	    print $pcfg " APPEND $hypervisor --- $kernel ".$kern->{kcmdline}." --- ".$kern->{initrd}."\n";
     } else {
-        if ($kern->{kernel} =~ /\.c32\z/) { #gPXE comboot support seems insufficient, chain pxelinux instead
+        if ($kern->{kernel} =~ /\.c32\z/ or $kern->{kernel} eq 'memdisk') { #gPXE comboot support seems insufficient, chain pxelinux instead
         	print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
         	print $pcfg " set 210:string http://".'${next-server}'."/tftpboot/\n";
         	print $pcfg " imgfetch -n pxelinux.0 http://".'${next-server}'."/tftpboot/pxelinux.0\n";
