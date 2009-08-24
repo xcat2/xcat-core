@@ -294,6 +294,12 @@ sub  getmypost {
         close $remote;
         return 1;
     }
+    # setup the perl library path for xcat-dep packages
+    # this is necessary for AIX 5.3V/61H and beyond
+    # but does not hurt old AIX versions
+    print POSTSCRIPT "PERL5LIB='/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi'\n";
+    print POSTSCRIPT "export PERL5LIB\n";
+    
 
 	# request must be in XML format
     print $remote "<xcatrequest>\n";
