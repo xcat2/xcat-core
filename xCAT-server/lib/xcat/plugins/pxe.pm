@@ -117,7 +117,7 @@ sub setstate {
     	($kernel,$hypervisor) = split /!/,$kern->{kernel};
     	print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
     	print $pcfg " set 210:string http://".'${next-server}'."/tftpboot/\n";
-    	print $pcfg " imgfetch -n pxelinux.0 http://".'${next-server}'."/tftpboot/pxelinux.0\n";
+    	print $pcfg " imgfetch -n pxelinux.0 http://".'${next-server}'."/tftpboot/xcat/pxelinux.0\n";
     	print $pcfg " imgload pxelinux.0\n";
     	print $pcfg " imgexec pxelinux.0\n";
         close($pcfg);
@@ -128,7 +128,7 @@ sub setstate {
         if ($kern->{kernel} =~ /\.c32\z/ or $kern->{kernel} eq 'memdisk') { #gPXE comboot support seems insufficient, chain pxelinux instead
         	print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
         	print $pcfg " set 210:string http://".'${next-server}'."/tftpboot/\n";
-        	print $pcfg " imgfetch -n pxelinux.0 http://".'${next-server}'."/tftpboot/pxelinux.0\n";
+        	print $pcfg " imgfetch -n pxelinux.0 http://".'${next-server}'."/tftpboot/xcat/pxelinux.0\n";
         	print $pcfg " imgload pxelinux.0\n";
         	print $pcfg " imgexec pxelinux.0\n";
             close($pcfg);
@@ -403,19 +403,15 @@ sub process_request {
   }  
 
   #back to normal business
-  if (! -r "$tftpdir/pxelinux.0") {
-    unless (-r "/usr/lib/syslinux/pxelinux.0" or -r "/usr/share/syslinux/pxelinux.0") {
-       $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
+  if (! -r "$tftpdir/xcat/pxelinux.0") {
+    unless (-r $::XCATROOT."share/xcat/netboot/syslinux/pxelinux.0") {
+       $callback->({error=>["Unable to find pxelinux.0 at ".$::XCATROOT."share/xcat/netboot/syslinux/pxelinux.0"],errorcode=>[1]});
        return;
     }
-    if (-r "/usr/lib/syslinux/pxelinux.0") {
-       copy("/usr/lib/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
-    } else {
-       copy("/usr/share/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
-     }
+    copy($::XCATROOT."share/xcat/netboot/syslinux/pxelinux.0","$tftpdir/xcat/pxelinux.0");
      chmod(0644,"$tftpdir/pxelinux.0");
   }
-  unless ( -r "$tftpdir/pxelinux.0" ) {
+  unless ( -r "$tftpdir/xcat/pxelinux.0" ) {
      $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
      return;
   }
