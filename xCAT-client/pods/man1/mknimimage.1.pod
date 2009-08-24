@@ -116,19 +116,25 @@ This command will use node27 to create a mksysb backup image and use that to def
 
 4) Create an osimage definition using a mksysb image provided on the command line.
 
-B<mknimimage -m mksysb -b /tmp/backups/mysysbimage spot=myspot bosinst_data=mybdata>
+B<mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb spot=myspot bosinst_data=mybdata>
 
 This command defines a NIM mksysb resource using mysysbimage.
 
-5) Create a diskless image called 61spot using the AIX product media.
+5) Create an osimage definition and create a spot definition using a mksysb image provided on the command line.
+
+B<mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb bosinst_data=mybdata>
+
+This command defines a NIM mksysb resource and a spot definition using mysysbimage.
+
+6) Create a diskless image called 61spot using the AIX product media.
 
 B<mknimimage -t diskless -s /dev/cd0 61spot>
 
-6) Create a new diskless image by copying an existing image.
+7) Create a new diskless image by copying an existing image.
 
 B<mknimimage -t diskless -i 61cosi 61cosi_updt1>
 
-3) Create a diskless image using an existing lpp_source resource named 61cosi_lpp_source and include the /tmp & /home resources.  This assumes that the mytmp and myhome NIM resources have already been created by using NIM commands.
+8) Create a diskless image using an existing lpp_source resource named 61cosi_lpp_source and include the /tmp & /home resources.  This assumes that the mytmp and myhome NIM resources have already been created by using NIM commands.
 
 B<mknimimage -t diskless -s 61cosi_lpp_source 611cosi tmp=mytmp home=myhome>
 
