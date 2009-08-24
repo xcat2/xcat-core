@@ -249,11 +249,7 @@ sub getsynclistfile()
     }
     foreach my $osimage (@profiles) {
       my $synclist = $osimage_t->getAttribs({imagename=>"$osimage"}, 'synclists');
-      if (-r $synclist->{'synclists'}) {
-        $osimage_syncfile{$osimage} = $synclist->{'synclists'};
-      } else {
-        $osimage_syncfile{$osimage} = undef;
-      }
+      $osimage_syncfile{$osimage} = $synclist->{'synclists'};
     }
 
     # set the syncfiles to the nodes

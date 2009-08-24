@@ -306,6 +306,16 @@ sub updatenode {
       }
     }
 
+    # Check the existence of the synclist file
+    foreach my $synclist (keys %syncfile_node) {
+      if (! (-r $synclist)) {
+        my $rsp={};
+        $rsp->{data}->[0]= "The Synclist file $synclist which specified for certain node does NOT existed.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+      }
+    }
+
     # Sync files to the target nodes
     foreach my $synclist (keys %syncfile_node) {
       my $args = ["-F", "$synclist"];
