@@ -271,6 +271,7 @@ sub process_command {
                 }
             }
 
+            Time::HiRes::sleep(0.1);
             my ($pipe, $pid) = fork_cmd( $nodes->{$least_hcp}{'nodegroup'}->[$nodes->{$least_hcp}{'index'}]->[0], 
                     $nodes->{$least_hcp}{'nodegroup'}->[$nodes->{$least_hcp}{'index'}]->[1], $request );
 
