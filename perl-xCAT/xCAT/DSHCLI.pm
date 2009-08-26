@@ -4393,8 +4393,13 @@ sub parse_rsync_input_file_on_MN
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
+        if ($line =~ /^#/)    # skip commments
+        {
+              next;
+        }
         if ($line =~ /(.+) -> (.+)/)
         {
+             
             $process_line = 1;
             my $src_file  = $1;
             my $dest_file = $2;
