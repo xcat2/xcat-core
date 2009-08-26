@@ -1289,7 +1289,7 @@ sub service_connection {
           $req->{'_xcat_clientfqdn'} = [$peerfqdn];
           $req->{'_xcat_clientport'}= [$peerport];
           $$progname="xCATd SSL: ".$req->{command}->[0];
-          if ($req->{noderange}) {
+          if ($req->{noderange} && defined($req->{noderange}->[0])) {
               $$progname .= " to ".$req->{noderange}->[0];
           }
           $$progname .= " for ".($peername ? $peername ."@".$peerhost : $peerhost);
@@ -1541,7 +1541,7 @@ sub validate {
     if ($rule->{rule}) {
       if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
         my $logst = "xCAT: Allowing ".$request->{command}->[0];
-        if ($request->{noderange}) { $logst .= " to ".$request->{noderange}->[0]; }
+        if ($request->{noderange} && defined($request->{noderange}->[0])) { $logst .= " to ".$request->{noderange}->[0]; }
         if ($peername) { $logst .= " for " . $peername };
         if ($peerhost) { $logst .= " from " . $peerhost };
          xCAT::MsgUtils->message("S",$logst);

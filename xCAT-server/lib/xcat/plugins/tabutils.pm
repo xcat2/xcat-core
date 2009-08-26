@@ -148,6 +148,7 @@ sub gettab
     };
 
 	# Process arguments
+	if (!defined($req->{arg})) { $gettab_usage->(1); return; }
     @ARGV = @{$req->{arg}};
     if (!GetOptions('h|?|help' => \$HELP,'H|with-fieldname' => \$NOTERSE)) { $gettab_usage->(1); return; }
 
@@ -840,6 +841,15 @@ sub tabgrep
     my $node = shift;
     my @tablist;
     my $callback = shift;
+
+    if (!defined($node) || !scalar(@$node)) {
+        my %rsp;
+        push @{$rsp{data}}, "Usage: tabgrep nodename";
+        push @{$rsp{data}}, "       tabgrep [-?|-h|--help]";
+        $rsp{errorcode} = 1;
+        $callback->(\%rsp);
+        return;
+    }
 
     foreach (keys %{xCAT::Schema::tabspec})
     {

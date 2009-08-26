@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<gettab> - search through tables using keys and return attributes.
+B<gettab> - select table rows, based on attribute criteria, and display specific attributes.
 
 =head1 SYNOPSIS
 
@@ -10,8 +10,10 @@ B<gettab> [B<-?> | B<-h> | B<--help>]
 
 =head1 DESCRIPTION
 
-The gettab command uses the specified key values to search the specified tables.  For each matched
-row, the specified attributes are displayed.
+The B<gettab> command uses the specified key values to select a row in each of the tables requested.
+For each selected row, the specified attributes are displayed.  The B<gettab> command can be used instead
+of B<nodels> for tables that are not keyed by nodename (e.g. the B<site> table), or to select rows based
+on an attribute value other than nodename.
 
 =head1 OPTIONS
 
@@ -19,7 +21,8 @@ row, the specified attributes are displayed.
 
 =item B<-H|--with-fieldname>
 
-Always display table.column description next to result
+Always display table.attribute name next to result.  By default, this is done only if more than
+one table.attribute is requested.
 
 =item B<-?|-h|--help>
 
@@ -47,23 +50,23 @@ An error has occurred.
 
 =item *
 
-To display node names that have B<mgt> set to B<blade> in the nodehm table:
+To display setting for B<master> (management node) in the site table:
+
+B<gettab -H> I<key=master site.value>
+
+The output would be similar to:
+
+     site.value: mgmtnode.cluster.com
+
+=item *
+
+To display the first node or group name that has B<mgt> set to B<blade> in the nodehm table:
 
 B<gettab> I<mgt=blade nodehm.node>
 
 The output would be similar to:
 
-     nodehm.node: blades
-
-=item *
-
-To display setting for B<master> (management node) in the site table:
-
-B<gettab> I<key=master site.value>
-
-The output would be similar to:
-
-     site.value: mgmtnode.cluster.com
+     blades
 
 =back
 
