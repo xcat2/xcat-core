@@ -432,6 +432,7 @@ sub scan_plugins {
         #This next bit of code iterates through the handlers.
         #If the value doesn't contain an equal, and has an equivalent entry added by 
         # another plugin already, don't add (otherwise would hit the DB multiple times)
+        #referring to having redundant nodehm:mgt handlers registered, for example
         # a better idea, restructure the cmd_handlers as a multi-level hash
         # prove out this idea real quick before doing that
         foreach (@{$cmd_handlers{$_}}) {
@@ -696,10 +697,28 @@ sub plugin_command {
   my $useunhandled=0;
   if (defined($cmd_handlers{$req->{command}->[0]})) {
     my $hdlspec;
+    my @globalhandlers=();
+    my $useglobals=1; #If it stays 1, then use globals normally, if 0, use only for 'unhandled_nodes, if -1, don't do at all
     foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
       $hdlspec =$_->[1];
       my $ownmod = $_->[0];
-      if ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
+      if ($hdlspec =~ /^site:/) { #A site entry specifies a plugin
+          my $sitekey = $hdlspec;
+          $sitekey =~ s/^site://;
+          $sitetab = xCAT::Table->new('site');
+          my $sent = $sitetab->getAttribs({key=>$sitekey},['value']);
+          if ($sent and $sent->{value}) { #A site style plugin specification is just like
+                                          #a static global, it grabs all nodes rather than some
+            $useglobals = -1; #If they tried to specify anything, don't use the default global handlers at all
+            unless (@nodes) {
+              $handler_hash{$sent->{value}} = 1;
+            }
+            foreach (@nodes) { #Specified a specific plugin, not a table lookup
+              $handler_hash{$sent->{value}}->{$_} = 1;
+            }
+          }
+      } elsif ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
+        $useglobals = 0; #Only contemplate nodes that aren't caught through searching below in the global handler
         $useunhandled=1;
         my $table;
         my $cols;
@@ -754,6 +773,15 @@ sub plugin_command {
         }
 	$hdlrtable->close;
       } else {
+          push @globalhandlers,$hdlspec;
+      }
+    }
+  } else {
+    return 1;  #TODO: error back that request has no known plugin for it
+  }
+  if ($useglobals == 1) {  #Behavior when globals have not been overriden
+      my $hdlspec;
+      foreach $hdlspec (@globalhandlers) {
         unless (@nodes) {
           $handler_hash{$hdlspec} = 1;
         }
@@ -761,10 +789,13 @@ sub plugin_command {
           $handler_hash{$hdlspec}->{$_} = 1;
         }
       }
-    }
-  } else {
-    return 1;  #TODO: error back that request has no known plugin for it
-  }
+  } elsif ($useglobals == 0) {
+      foreach $hdlspec (@globalhandlers) {
+        foreach (keys %unhandled_nodes) { #Specified a specific plugin, not a table lookup
+          $handler_hash{$hdlspec}->{$_} = 1;
+        }
+      }
+  } #Otherwise, global handler is implicitly disabled
   if ($useunhandled) { 
    my $queuelist;
    foreach (@{$cmd_handlers{$req->{command}->[0]}->[0]}) {
