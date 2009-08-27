@@ -378,8 +378,8 @@ sub addnode_aix
     push @node_section, "        {\n";
     push @node_section, "            option 1 $netmask_linux\n";
     push @node_section, "            option 12 $hname\n";
-    push @node_section, "            option sa $tftpserver\n";
-    push @node_section, "            option bf \"/tftpboot/$hname\"\n";
+#    push @node_section, "            option sa $tftpserver\n";
+#    push @node_section, "            option bf \"/tftpboot/$hname\"\n";
     push @node_section, "        } # node $hname end\n";
     
 
@@ -1125,11 +1125,13 @@ sub gen_aix_net
 #        push @netent, "    option 66 $tftp\n";
 #    }
     if ($logservers) {
+        $logservers =~ s/,/ /g;
         push @netent, "    option 7 $logservers\n";
     } elsif ($myip){
         push @netent, "    option 7 $myip\n";
     }
     if ($ntpservers) {
+        $ntpservers =~ s/,/ /g;
         push @netent, "    option 42 $ntpservers\n";
     } elsif ($myip){
         push @netent, "    option 42 $myip\n";
@@ -1137,6 +1139,7 @@ sub gen_aix_net
     push @netent, "    option 15 \"$domain\"\n";
     if ($nameservers)
     {
+        $nameservers =~ s/,/ /g;
         push @netent, "    option 6 $nameservers\n";
     }
     push @netent, "    subnet $net\n    {\n";
