@@ -4572,7 +4572,7 @@ sub parse_rsync_input_file_on_SN
             {
                 $dest_dir = $dest_file;
             }
-            else
+            else # a file path
             {
                 $dest_dir = dirname($dest_file);
             }
