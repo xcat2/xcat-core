@@ -88,7 +88,7 @@ sub remote_copy_command
             $sync_opt = '--rsync-path /usr/bin/rsync ';
         }
 
-        $sync_opt .= '-Lupotz ';
+        $sync_opt .= '-Lpotz ';
         $sync_opt .= $$config{'options'};
         if ($::SYNCSN == 1)
         {    # syncing service node
