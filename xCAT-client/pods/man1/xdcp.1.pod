@@ -109,12 +109,14 @@ build the rsync command.
 The format of the input file is as follows, each line contains:
  I<path to source file1> <path to source file2> ... ->  < path to destination file/directory>
 
+ I<path to source file> -> <path to destination file>
+
 For example:
   /etc/password /etc/hosts -> /etc
- 
-  /tmp/file1  ->  /tmp
 
-  /tmp/file2  ->  /tmp/filex
+  /tmp/file2  ->  /tmp/file2
+
+  /tmp/filex  ->  /tmp/source/filey
 
 
 

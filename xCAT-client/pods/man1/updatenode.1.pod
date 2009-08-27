@@ -80,20 +80,20 @@ such as xdsh and xdcp to accomplish these update tasks.
         The following formats are supported:
         1) sync file /etc/file1 to the directory /etc on the node with 
         the same file name
-            /etc/file1 -> /etc
-        2) sync file /etc/file2 to the file /etc/file2 on the node (with 
-        same file name)
-            /etc/file2 -> /etc/file2
-        3) sync file /etc/file2 to the file /etc/file3 on the node (with 
+            /etc/file1 -> /etc/file1
+        2) sync file /etc/file2 to the file /etc/file3 on the node (with 
         different file name)
             /etc/file2 -> /etc/file3
+        3) sync file /etc/file2 to the file /etc/tmp/file3 on the node (with 
+        different file name, different directory) If the directory does not
+        exist, it will be created. 
+            /etc/file2 -> /etc/tmp/file3
         4) sync the multiple files /etc/file1, /etc/file2,  /etc/file3, 
         ... to the directory /tmp/etc (/tmp/etc must be a directory when 
-        multiple files are sync'd at one time).  If the diretory does 
+        multiple files are sync'd at one time).  If the directory does 
         not exist, xdcp will create it. 
             /etc/file1 /etc/file2 /etc/file3 -> /tmp/etc
 
-        Comment lines are NOT supported in the synlist file.
 
 
     Indicate the location of the synclist file.
