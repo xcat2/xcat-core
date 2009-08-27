@@ -3433,8 +3433,7 @@ sub usage_dsh
 ## usage message
     my $usagemsg1  = " xdsh -h \n xdsh -q \n xdsh -V \n";
     my $usagemsg1a = "xdsh  [noderange] -K [-l logonuserid]\n";
-    my $usagemsg2  =
-      "      [-B bypass ] [-c] [-e] [-E environment_file]
+    my $usagemsg2  = "      [-B bypass ] [-c] [-e] [-E environment_file]
       [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
     my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
@@ -3823,8 +3822,7 @@ sub usage_dcp
 {
     ### usage message
     my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp [noderange]\n";
-    my $usagemsg2 =
-      "      [-B bypass] [-c] [-f fanout] [-l user_ID]\n";
+    my $usagemsg2 = "      [-B bypass] [-c] [-f fanout] [-l user_ID]\n";
     my $usagemsg3 =
       "      [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
@@ -4395,11 +4393,11 @@ sub parse_rsync_input_file_on_MN
         chomp $line;
         if ($line =~ /^#/)    # skip commments
         {
-              next;
+            next;
         }
         if ($line =~ /(.+) -> (.+)/)
         {
-             
+
             $process_line = 1;
             my $src_file  = $1;
             my $dest_file = $2;
@@ -4407,32 +4405,17 @@ sub parse_rsync_input_file_on_MN
             my @srcfiles = (split ' ', $src_file);
             my $arraysize = scalar @srcfiles;    # of source files on the line
             my $dest_dir;
-            if (-e $dest_file)
-            {    # if dest file exist
 
-                if (-d $dest_file)
-                {    # if a directory , just use
-                    $dest_dir = $dest_file;
-                }
-                else
-                {    # strip off the file
-                    $dest_dir = dirname($dest_file);
-                }
-            }
-            else
+            # if more than one file on the line then
+            # the destination  is a directory
+            # else assume a file
+            if ($arraysize > 1)
             {
-
-                # does not exist,  if only more than one file on the line
-                # assume that the destination  is a directory
-                # else assume a file
-                if ($arraysize > 1)
-                {
-                    $dest_dir = $dest_file;
-                }
-                else
-                {
-                    $dest_dir = dirname($dest_file);
-                }
+                $dest_dir = $dest_file;
+            }
+            else    # only one file 
+            {       # strip off the file
+                $dest_dir = dirname($dest_file);
             }
             $dest_dir =~ s/\s*//g;    #remove blanks
 
@@ -4581,31 +4564,17 @@ sub parse_rsync_input_file_on_SN
             my @srcfiles = (split ' ', $src_file);
             my $arraysize = scalar @srcfiles;    # of source files on the line
             my $dest_dir;
-            if (-e $dest_file)
-            {
 
-                if (-d $dest_file)
-                {    # if a directory , just use
-                    $dest_dir = $dest_file;
-                }
-                else
-                {    # strip off the file
-                    $dest_dir = dirname($dest_file);
-                }
+            # if only more than one file on the line
+            # then the destination  is a directory
+            # else a file, 
+            if ($arraysize > 1)
+            {
+                $dest_dir = $dest_file;
             }
             else
-            {        # destination does not exist
-                     # does not exist,  if only more than one file on the line
-                     # assume that the destination  is a directory
-                     # else assume a file
-                if ($arraysize > 1)
-                {
-                    $dest_dir = $dest_file;
-                }
-                else
-                {
-                    $dest_dir = dirname($dest_file);
-                }
+            {
+                $dest_dir = dirname($dest_file);
             }
             $dest_dir =~ s/\s*//g;    #remove blanks
 
