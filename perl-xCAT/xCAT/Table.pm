@@ -216,6 +216,8 @@ sub handle_dbc_request {
          return $opentables{$tablename}->{$autocommit}->_set_use_cache(@args);
     } elsif ($functionname eq '_build_cache') {
          return $opentables{$tablename}->{$autocommit}->_build_cache(@args);
+    } elsif ($functionname eq '_clear_cache') {
+         return $opentables{$tablename}->{$autocommit}->_clear_cache(@args);
     } else {
         die "undefined function $functionname";
     }
@@ -1367,9 +1369,22 @@ sub getNodesAttribs {
         my @nodeentries=$self->getNodeAttribs($_,\@attribs);
         $rethash->{$_} = \@nodeentries; #$self->getNodeAttribs($_,\@attribs);
     }
+    $self->_clear_cache;
     $self->{_use_cache} = 0;
+    $self->{nodelist}->_clear_cache;
     $self->{nodelist}->{_use_cache} = 0;
     return $rethash;
+}
+
+sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
+    #This is no longer sufficient to do at destructor time, as Table objects actually live an indeterminite amount of time now
+    my $self = shift;
+    if ($dbworkerpid) {
+        return dbc_call($self,'_clear_cache',$_);
+    }
+    $self->{_use_cache}=0; # Signal slow operation to any in-flight operations that may fail with empty cache
+    undef $self->{_tablecache};
+    undef $self->{_nodecache};
 }
 
 sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
@@ -1377,6 +1392,9 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     if ($dbworkerpid) {
         return dbc_call($self,'_build_cache',@_);
     }
+    my $oldusecache = $self->{_use_cache}; #save previous 'use_cache' setting
+    $self->{_use_cache} = 0; #This function must disable cache 
+                            #to function
     my $attriblist = shift;
     unless (grep /^node$/,@$attriblist) {
         push @$attriblist,'node';
@@ -1390,6 +1408,7 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
         }
     }
 
+    $self->{_use_cache} = $oldusecache; #Restore setting to previous value
     $self->{_cachestamp} = time;
 }
 #--------------------------------------------------------------------------

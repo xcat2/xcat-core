@@ -397,6 +397,7 @@ sub extnoderange { #An extended noderange function.  Needed as the more straight
         $return->{intersectinggroups}=[sort keys %grouphash];
     }
     $retaincache=0;
+    $nodelist->_clear_cache();
     undef ($nodelist);
     @allnodeset=();
     return $return;
@@ -523,6 +524,7 @@ sub noderange {
         $recurselevel--;
     } else {
         unless ($retaincache) {
+            $nodelist->_clear_cache();
             undef $nodelist;
             @allnodeset=();
         }
