@@ -53,7 +53,8 @@ such as xdsh and xdcp to accomplish these update tasks.
     files on AIX systems.  For example, any files under /usr on AIX 
     diskless nodes cannot be updated. 
 	
-    More details for synchronization file is described "Sync-File HowTo".
+    More information on using the  synchronization file function is in  
+             "xCAT2SyncFilesHowTo.pdf".
 
     Create the synclist file.
 
