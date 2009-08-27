@@ -79,15 +79,16 @@ such as xdsh and xdcp to accomplish these update tasks.
         updatenode. 
 
         The following formats are supported:
-        1) sync file /etc/file1 to the directory /etc on the node with 
-        the same file name
+        1) sync file /etc/file1 to the file /etc/file1 on the node with 
+        the same file name. Note with one file, full path to file 
+        must be provide.
             /etc/file1 -> /etc/file1
         2) sync file /etc/file2 to the file /etc/file3 on the node (with 
         different file name)
             /etc/file2 -> /etc/file3
-        3) sync file /etc/file2 to the file /etc/tmp/file3 on the node (with 
-        different file name, different directory) If the directory does not
-        exist, it will be created. 
+        3) sync file /etc/file2 to the file /etc/tmp/file3 on the node  
+        with different file name, different directory)
+         If the directory does not exist, it will be created. 
             /etc/file2 -> /etc/tmp/file3
         4) sync the multiple files /etc/file1, /etc/file2,  /etc/file3, 
         ... to the directory /tmp/etc (/tmp/etc must be a directory when 
