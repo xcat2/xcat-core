@@ -776,26 +776,26 @@ sub plugin_command {
           push @globalhandlers,$hdlspec;
       }
     }
+      if ($useglobals == 1) {  #Behavior when globals have not been overriden
+          my $hdlspec;
+          foreach $hdlspec (@globalhandlers) {
+            unless (@nodes) {
+              $handler_hash{$hdlspec} = 1;
+            }
+            foreach (@nodes) { #Specified a specific plugin, not a table lookup
+              $handler_hash{$hdlspec}->{$_} = 1;
+            }
+          }
+      } elsif ($useglobals == 0) {
+          foreach $hdlspec (@globalhandlers) {
+            foreach (keys %unhandled_nodes) { #Specified a specific plugin, not a table lookup
+              $handler_hash{$hdlspec}->{$_} = 1;
+            }
+          }
+      } #Otherwise, global handler is implicitly disabled
   } else {
     return 1;  #TODO: error back that request has no known plugin for it
   }
-  if ($useglobals == 1) {  #Behavior when globals have not been overriden
-      my $hdlspec;
-      foreach $hdlspec (@globalhandlers) {
-        unless (@nodes) {
-          $handler_hash{$hdlspec} = 1;
-        }
-        foreach (@nodes) { #Specified a specific plugin, not a table lookup
-          $handler_hash{$hdlspec}->{$_} = 1;
-        }
-      }
-  } elsif ($useglobals == 0) {
-      foreach $hdlspec (@globalhandlers) {
-        foreach (keys %unhandled_nodes) { #Specified a specific plugin, not a table lookup
-          $handler_hash{$hdlspec}->{$_} = 1;
-        }
-      }
-  } #Otherwise, global handler is implicitly disabled
   if ($useunhandled) { 
    my $queuelist;
    foreach (@{$cmd_handlers{$req->{command}->[0]}->[0]}) {
