@@ -424,7 +424,7 @@ proc get_phandle {} {
     # Using the -d flag helped a lot in finding the correct pattern.  
     #
     nc_msg "$PROGRAM Status: sending ls command\n"
-    set command  "ls\r"   
+    set command  "ls \r"   
     send_command
 
     set adapter_found 0
@@ -1586,6 +1586,7 @@ proc multiple_open-dev {} {
     global NODENAME
     global comman
     global env
+    global command
 
     set command  "dev /packages/net \r"
     send_command
