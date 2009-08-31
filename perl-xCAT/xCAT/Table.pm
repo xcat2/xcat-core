@@ -621,9 +621,11 @@ sub updateschema
             my $tn=$self->{tabname};
         while ( my $col_info = $sth->fetchrow_hashref ) {
 	    #print Dumper($col_info);
-	    push @columns, $col_info->{name};
+            my $tmp_col=$col_info->{name};
+            $tmp_col =~ s/"//g;
+	    push @columns, $tmp_col;
 	    if ($col_info->{pk}) {
-		$dbkeys{$col_info->{name}}=1;
+		$dbkeys{$tmp_col}=1;
 	    }
 	}
         $sth->finish;
@@ -643,7 +645,9 @@ sub updateschema
        my $data = $sth->fetchall_arrayref;
        #print "data=". Dumper($data);
        foreach my $cd (@$data) {
-	   $dbkeys{$cd->[3]}=1;
+           my $tmp_col=$cd->[3];
+           $tmp_col =~ s/"//g;
+           $dbkeys{$tmp_col}=1;
        }      
     }
 
