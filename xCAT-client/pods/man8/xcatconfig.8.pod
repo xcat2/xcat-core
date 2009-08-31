@@ -46,7 +46,8 @@ The update install option is normally run as a post operation from the rpm xCAT.
 
 =item B<-k> I<sshkeys>
 
-This option will remove and regenerate the root id_rsa keys.  It should only be used, if the keys are  deleted or corrupted. The key must then be redistribute to the nodes by installing or using xdsh -K option, for  root to be able to ssh to the nodes without being prompted for a password. rspconfig will need to be run to distribute the key to the MM. Any device, we need to ssh from the  MN to the device will also have to be updated with the new ssh keys.
+This option will remove and regenerate the root id_rsa keys.  It should only be used, if the keys are  deleted or corrupted. The key must then be distribute to the nodes by installing or using xdsh -K option, for root to be able to ssh to the nodes without being prompted for a password. 
+rspconfig will need to be run to distribute the key to the MM and HMCs. Any device, we need to ssh from the MN to the device will also have to be updated with the new ssh keys.
 
 =item B<-s> I<sshnodehostkeys>
 
@@ -66,7 +67,7 @@ This option will reinitialize the basic xCAT database table setup.  It will not 
 =item B<-f> I<force>
 
 The force option may  be used after the install to reinitialize the Management Node. This option will  regenerate keys, credential and reinititialize the site table. This option should be used, if keys or credentials become corrupt or lost. 
-Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be rerun to pick up the new credentials and conserver stoped and started, rspconfig needs to be rerun to distribute the new keys to the MM. 
+Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be rerun to pick up the new credentials and conserver stoped and started, rspconfig needs to be rerun to distribute the new keys to the MM and the HMCs. 
 A new set of common ssh host keys will have  been generated for the nodes. If you wish your nodes to be able to ssh to each other with out password intervention,  then you should redistribute these new keys to the nodes.  You can do this my reinstalling the nodes, or by xdcp or pcp /etc/xcat/hostkeys/*  to the /etc/ssh directory on all nodes.  If the nodes hostkeys are updated then you will need to remove their entries from the known_hosts files on the managment node before using ssh, xdsh, xdcp. 
 For a service node,  it is probably best to re-install the service node to make sure the correct keys and credentials are picked up  for node installs. 
 
