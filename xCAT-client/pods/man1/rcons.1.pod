@@ -4,17 +4,29 @@ B<rcons> - remotely accesses the serial console of a node
 
 =head1 B<Synopsis>
 
-B<rcons> I<singlenode>
+B<rcons> I<singlenode> [I<conserver-host>] [B<-f>]
 
-B<rcons> [I<-h>|I<--help>|I<-v>|I<--version>]
+B<rcons> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 B<Description>
 
-B<rcons> provides access to a single remote node serial console.
+B<rcons> provides access to a single remote node serial console, using the out-of-band infrastructure for the node
+(e.g. BMC, Management Module, HMC, KVM, etc.).  It uses the conserver open source package to provide one read-write and
+multiple read-only instances of the console, plus console logging.
+
+If I<conserver-host> is specified, the conserver daemon on that host will be contacted, instead of on the local host.
+
+To exit the console session, enter:  <ctrl><shift>e c .
 
 =head1 B<Options>
 
 =over 5
+
+=item B<-f>
+
+If another console for this node is already open in read-write mode, force that console into read-only (spy) mode, and
+open this console in read-write mode.  If -f is not specified, this console will be put in spy mode if another console
+is already open in read-write mode.
 
 =item B<-h>|B<--help>
 

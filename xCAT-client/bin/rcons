@@ -1,12 +1,11 @@
 #!/bin/sh
-if [ $1 = -h  ]; then
+if [ -z "$1" ] || [ "$1" = "-h"  ]; then
     echo "rcons - remotely accesses the serial console of a node"
-    echo "rcons <singlenode>"
     echo "rcons <singlenode> [conserver] [-f]"
     echo "rcons [-h|--help|-v|--version]"
     exit 0
 fi
-if [ $1 = -v  ]; then
+if [ "$1" = "-v"  ]; then
     echo "Version 2.1"
     exit 0
 fi
