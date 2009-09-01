@@ -7,6 +7,8 @@
 if [ ! -x /usr/bin/openssl ]; then
    exit 0
 fi
+USEOPENSSLFORXCAT=1
+export USEOPENSSLFORXCAT
    allowcred.awk &
    CREDPID=$!
    sleep 1

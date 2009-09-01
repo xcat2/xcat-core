@@ -46,6 +46,8 @@ fi
 if [ -x /usr/bin/openssl ]; then
      XCATSERVER="$SIP:3001"
      export XCATSERVER
+     USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+     export USEOPENSSLFORXCAT
 fi
 mkdir -p /xcatpost; 
 mkdir -p /tmp/postage

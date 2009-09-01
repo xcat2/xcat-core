@@ -7,6 +7,8 @@
 if [ ! -x /usr/bin/openssl ]; then #Unless we have openssl stup
    exit 0
 fi
+USEOPENSSLFORXCAT=1 #Declare 2.3 style SSL
+export USEOPENSSLFORXCAT
    allowcred.awk &
    CREDPID=$!
    sleep 1
