@@ -23,7 +23,7 @@ do
     PCI=$(echo $i | awk -F% '{print $1}')
     VID="0x0000$(echo $i | awk -F% '{print $2}' |awk -F: '{print $1}')"
     DID="0x0000$(echo $i | awk -F% '{print $2}' |awk -F: '{print $2}')"
-    if egrep "^[^   ]*[     ]*$VID[     ]*$DID" /lib/modules/*/modules.pcimap >/dev/null
+    if egrep "^[^   ]*[     ]*$VID[     ]*$DID" /lib/modules/`uname -r`/modules.pcimap >/dev/null
     then
         TYPE=$(
             lspci | \
@@ -38,7 +38,7 @@ do
             sed 's/^ *//'
         )
         MOD=$(
-            egrep "^[^  ]*[     ]*$VID[     ]*$DID" /lib/modules/*/modules.pcimap | \
+            egrep "^[^  ]*[     ]*$VID[     ]*$DID" /lib/modules/`uname -r`/modules.pcimap | \
             head -1 | \
             awk '{print $1}' | \
             tr -d '"'
