@@ -3,7 +3,7 @@
  * makecondresp.php
  * run the command "mkcondresp" and return the value
  */
-if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
+if(!isset($TOPDIR)) { $TOPDIR="..";}
 
 require_once "$TOPDIR/lib/security.php";
 require_once "$TOPDIR/lib/functions.php";

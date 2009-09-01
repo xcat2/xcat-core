@@ -4,7 +4,7 @@
  * to display the web page for the command "monstart" and the command "monstop" for the selected plugins
  * the link looks like "monitor/monstart.php?name=rmcmon".
  */
-if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
+if(!isset($TOPDIR)) { $TOPDIR="..";}
 
 require_once "$TOPDIR/lib/security.php";
 require_once "$TOPDIR/lib/functions.php";
@@ -15,7 +15,7 @@ $name = $_REQUEST['name'];
 
 //echo $name;
 
-displayMapper_mon(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php'));
+displayMapper(array('home'=>'main.php', 'monitor'=>''));
 
 displayTips(array(""));
 

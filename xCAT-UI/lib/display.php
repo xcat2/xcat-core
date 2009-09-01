@@ -1,5 +1,5 @@
 <?php
-if(!isset($TOPDIR)) { $TOPDIR='/opt/xcat/ui';}
+if(!isset($TOPDIR)) { $TOPDIR='.';}
 require_once "$TOPDIR/lib/security.php";
 
 function displayHeader() {
@@ -107,7 +107,7 @@ echo <<<EOS4
                         <a href="monitor/monlist.php">Monitor Setup</a>
                 </li>
                 <li>
-                        <a href="#">View Events</a>
+                        <a href="monitor/rmc_lsevent.php">View Events</a>
                 </li>
 	</ul>
    </li>
@@ -156,7 +156,28 @@ EOS3;
 
 }
 
+// Create the bread crumb links.  The mapper arg is a hash of label/url pairs, where
+// the final url is usually ''.
+function displayMapper($mapper)
+{
+    echo "<div class=mapper><span>";
+    $first = 1;
+    foreach ($mapper as $key => $value) {
+    	if (!$first) { echo " / "; }
+    	$first = 0;
+    	if (!strlen($value)) { echo $key; }
+    	else {
+    		if ($value == 'main.php') { $href = '#'; }
+    		else { $href = "#$value"; }
+        	echo "<a href='$href' onclick='loadMainPage(\"$value\")'>$key</a>";
+    	}
+    }
+    echo "</span></div>";
+}
+
 function displayTabMain(){
+displayMapper(array('home'=>'main.php', 'config' =>''));
+/*
 echo <<<MAPPER
 <div class='mapper'>
 	<span>
@@ -164,9 +185,10 @@ echo <<<MAPPER
 		config
 	</span>
 </div>
-<div class='mContent'>
 MAPPER;
+*/
 echo <<<EOS
+<div class='mContent'>
 <h1>Configuration Menu</h1>
 xCAT is configured by several tables.  Each of the tables below
 tweeks a setting in xCAT.  Click on a table below to configure xCAT
@@ -184,15 +206,18 @@ EOS;
 }
 
 function displayTab($tab){
-echo <<<MAPPER
+displayMapper(array('home'=>'main.php', 'config' =>'config.php', "$tab"=>''));
+/*
+	echo <<<MAPPER
 <div class='mapper'>
 	<span>
 		<a href='#' onclick='loadMainPage("main.php")'>home</a> / 
-		<a href='#' onclick='loadMainPage("config.php")'>config</a> / 
+		<a href='#config.php' onclick='loadMainPage("config.php")'>config</a> / 
 		$tab
 	</span>
 </div>
 MAPPER;
+*/
 	echo "<div class='mContent'>";
 	echo "<h1>$tab</h1>\n";
 	insertButtons(array('label' => 'Save','id' => 'saveit'),
@@ -316,13 +341,7 @@ EOS7;
 // Functions to control display of trees and control functions
 
 function displayCtrlPage($cmd){
-echo <<<MAPPER
-<div class='mapper'>
-	<span>
-		<a href='#' onclick='loadMainPage("main.php")'>home</a> / 
-		control
-	</span>
-MAPPER;
+displayMapper(array('home'=>'main.php', 'control' =>''));
 	echo "<div class='nrcmd'>";
 	echo "<div id='nrcmdnoderange'>Noderange:</div>";
 	echo "<div id='nrcmdcmd'>Action: $cmd</div>";
@@ -539,6 +558,7 @@ function displayLogTable(){
 	if(($line = getLastLine('')) === 0){
 		return;
 	};
+displayMapper(array('home'=>'main.php', 'syslog' =>''));
 echo <<<EOS
 <div class='mContent'>
 <h1>Syslog Entries</h1>
@@ -605,13 +625,7 @@ FOO;
 # a - arch (x86, x86_64)
 # p - profile (compute, or user defined)
 function displayProvisionPage($m,$o,$a,$p){
-echo <<<MAPPER
-<div class='mapper'>
-	<span>
-		<a href='#' onclick='loadMainPage("main.php")'>home</a> / 
-		provision
-	</span>
-MAPPER;
+displayMapper(array('home'=>'main.php', 'provision' =>''));
 	echo "<div class='nrcmd'>";
 	echo "<div id='nrcmdnoderange'>Noderange:</div>";
 	echo "<div id='nrcmdos'>Operating System: $o</div>";

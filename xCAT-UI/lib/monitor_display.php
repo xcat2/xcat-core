@@ -2,22 +2,6 @@
 /* 
  * All the <html> code related with monitor interface is put here.
  */
-function displayMapper_mon($mapper)
-{
-    //display the Mapper for monitoring interface;
-    //the argument $mapper is an array
-    //$mapper = {
-    //  "home" => "main.php",
-    //  "Monitor" => "monitor/monlist.php",
-    //};
-    echo "<div class='mapper' align='left'>";
-    echo "<span>";
-    foreach ($mapper as $key => $value) {
-        echo "<a href='#' onclick='loadMainPage(\"$value\")'>$key</a>";
-        echo "/";
-    }
-    echo "</span></div>";
-}
 
 #displayMonitorLists() will generate all the monitoring plug-ins,
 #the user can select the plug-ins he wants to operate on,

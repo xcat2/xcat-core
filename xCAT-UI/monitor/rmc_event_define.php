@@ -4,7 +4,7 @@
  * to define the events for RMC
  * the url is: monitor/rmc_event_define.php
  */
-if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
+if(!isset($TOPDIR)) { $TOPDIR="..";}
 
 require_once "$TOPDIR/lib/security.php";
 require_once "$TOPDIR/lib/functions.php";
@@ -12,7 +12,7 @@ require_once "$TOPDIR/lib/display.php";
 require_once "$TOPDIR/lib/monitor_display.php";
 
 
-displayMapper_mon(array('home'=>'main.php', 'monitor' =>'monitor/monlist.php'));
+displayMapper(array('home'=>'main.php', 'monitor' =>''));
 
 displayTips(array(
         "All the conditions and the responses are here;",

@@ -4,7 +4,7 @@
  * this file is invoked by the file "stat_mon.php"
  * update the table "monitoring",
  */
-if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
+if(!isset($TOPDIR)) { $TOPDIR="..";}
 
 require_once "$TOPDIR/lib/security.php";
 require_once "$TOPDIR/lib/functions.php";

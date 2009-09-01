@@ -2,7 +2,7 @@
 
 //activate/deactivate the specified condition&response association;
 //then, update the content of the table in <div id="association">;
-if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
+if(!isset($TOPDIR)) { $TOPDIR="..";}
 
 require_once "$TOPDIR/lib/security.php";
 require_once "$TOPDIR/lib/functions.php";

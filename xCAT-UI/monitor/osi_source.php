@@ -4,7 +4,7 @@
  * to provide the JSON-style data to the function init_ositree();
  */
 
-if(!isset($TOPDIR)) { $TOPDIR="/opt/xcat/ui";}
+if(!isset($TOPDIR)) { $TOPDIR="..";}
 
 require_once "$TOPDIR/lib/functions.php";
 require_once "$TOPDIR/lib/security.php";
