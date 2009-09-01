@@ -40,8 +40,6 @@ fi
 if [ ! -x /usr/bin/openssl ]; then
     exit 0
 fi
-USEOPENSSLFORXCAT=1 #explicitly declare the 2.3 method
-export USEOPENSSLFORXCAT
 allowcred.awk &
 CREDPID=$!
 sleep 1
