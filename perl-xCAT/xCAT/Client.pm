@@ -137,10 +137,12 @@ sub submit_request {
     SSL_cert_file => $certfile,
     SSL_ca_file => $cafile,
     SSL_use_cert => 1,
+    Timeout => 15,
     );
   } else {
      $client = IO::Socket::SSL->new(
-      PeerAddr => $xcathost
+      PeerAddr => $xcathost,
+      Timeout => 15,
      );
    }
   unless ($client) {
