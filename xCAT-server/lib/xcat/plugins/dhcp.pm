@@ -940,8 +940,8 @@ sub addnet
                 }
             }
             $nameservers=putmyselffirst($nameservers);
-            $ntpservers=putmyselffirst($nameservers);
-            $logservers=putmyselffirst($nameservers);
+            $ntpservers=putmyselffirst($ntpservers);
+            $logservers=putmyselffirst($logservers);
 
 
             if ($ent and $ent->{tftpserver})
