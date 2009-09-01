@@ -294,7 +294,7 @@ sub mknetboot
         }
         else
         {
-            $ient = $reshash->{node}->[0]; #$restab->getNodeAttribs($node, ['xcatmaster']);
+            $ient = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['xcatmaster']);
             if ($ient and $ient->{xcatmaster})
             {
                 $imgsrv = $ient->{xcatmaster};
