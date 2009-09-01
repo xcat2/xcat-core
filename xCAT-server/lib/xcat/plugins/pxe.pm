@@ -84,7 +84,7 @@ sub setstate {
     }
   }
   if ($kern->{kcmdline} =~ /!myipfn!/) {
-      my $ipfn = "${next-server}";#xCAT::Utils->my_ip_facing($node);
+      my $ipfn = '${next-server}';#xCAT::Utils->my_ip_facing($node);
       unless ($ipfn) {
         my @myself = xCAT::Utils->determinehostname();
         my $myname = $myself[(scalar @myself)-1];
