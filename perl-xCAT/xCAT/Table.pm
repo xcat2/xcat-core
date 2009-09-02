@@ -1909,6 +1909,8 @@ sub getAllNodeAttribs
             }
         }
     }
+    $self->_clear_cache();
+    $self->{nodelist}->_clear_cache();
     $self->{_use_cache} = 0;
     $self->{nodelist}->{_use_cache} = 0;
     xCAT::NodeRange::retain_cache(0);
