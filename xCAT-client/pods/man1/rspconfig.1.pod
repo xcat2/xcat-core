@@ -24,7 +24,7 @@ B<rspconfig> I<noderange> B<garp>={I<time>}
 
 =head2 MPA specific:
 
-B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>}
+B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>|B<frame>}
 
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
@@ -37,6 +37,10 @@ B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
 B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
 
 B<rspconfig> I<noderange> B<textid>={B<*|textid>}
+
+B<rspconfig> I<singlenode> B<frame>={B<frame_number>}
+
+B<rspconfig> I<noderange> B<frame>={B<*>}
 
 B<rspconfig> I<noderange> B<swnet>={[B<ip>],[B<gateway>],[B<netmask>]}
 
@@ -114,6 +118,10 @@ Enter the current date.
 =item B<decfg>={I<enable|disable>:I<policyname,...>}
 
 Enables or disables deconfiguration policies.
+
+=item B<frame>={B<framenumber>|I<*>}
+
+Set or get frame number.  If no framenumber and * specified, framenumber for the nodes will be displayed and updated in xCAAT database.  If framenumber is specified, it only support single node and the framenumber will be set for that frame.  If * is specified, it supports noderange and all the frame numbers for the noderange will be read from xCAT database and set to frames. 
 
 =item B<frequency>
 
@@ -254,6 +262,31 @@ To display the destination setting for SNMP alerts for node4:
 B<rspconfig> I<node4 snmpdest>
 
  node4: BMC SNMP Destination 1: 9.114.47.227
+
+=item *
+
+To display the frame number for frame 9A00-10000001
+
+B<rspconfig> I<9A00-10000001 frame>
+
+ 9A00-10000001: 1
+
+=item *
+
+To set the frame number for frame 9A00-10000001
+
+B<rspconfig> I<9A00-10000001 frame=2>
+
+ 9A00-10000001: SUCCESS
+
+=item *
+
+To set the frame numbers for frame 9A00-10000001 and 9A00-10000002
+
+B<rspconfig> I<9A00-10000001,9A00-10000002 frame=*>
+
+ 9A00-10000001: SUCCESS
+ 9A00-10000002: SUCCESS
 
 =item *
 
