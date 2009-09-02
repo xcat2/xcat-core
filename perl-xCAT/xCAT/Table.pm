@@ -1,4 +1,15 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#TODO:
+# just enough notes to remind me of the design that I think would allow for
+#   -cache to persist so long as '_build_cache' calls concurrently stack (for NodeRange interpretation mainly) (done)
+#   -Allow plugins to define a staleness threshold for getNodesAttribs freshness (complicated enough to postpone...)
+#    so that actions requested by disparate managed nodes may aggregate in SQL calls
+# reference count managed cache lifetime, if clear_cache is called, and build_chache has been called twice, decrement the counter
+# if called again, decrement again and clear cache
+# for getNodesAttribs, we can put a parameter to request allowable staleneess
+# if the cachestamp is too old, build_cache is called
+# in this mode, 'use_cache' is temporarily set to 1, regardless of 
+# potential other consumers (notably, NodeRange)
 #perl errors/and warnings are not currently wrapped.
 #  This probably will be cleaned
 #up
@@ -1382,20 +1393,37 @@ sub getNodesAttribs {
 
 sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
     #This is no longer sufficient to do at destructor time, as Table objects actually live an indeterminite amount of time now
+    #TODO: only clear cache if ref count mentioned in build_cache is 1, otherwise decrement ref count
     my $self = shift;
     if ($dbworkerpid) {
         return dbc_call($self,'_clear_cache',$_);
     }
+    if ($self->{_cache_ref} > 1) { #don't clear the cache if there are still live references
+        $self->{_cache_ref} -= 1;
+        return;
+    } elsif ($self->{_cache_ref} == 1) { #If it is 1, decrement to zero and carry on
+        $self->{_cache_ref} = 0;
+    }
+    #it shouldn't have been zero, but whether it was 0 or 1, ensure that the cache is gone
     $self->{_use_cache}=0; # Signal slow operation to any in-flight operations that may fail with empty cache
     undef $self->{_tablecache};
     undef $self->{_nodecache};
 }
 
 sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
+#TODO: increment a reference counter type thing to preserve current cache
+#Also, if ref count is 1 or greater, and the current cache is less than 3 seconds old, reuse the cache?
     my $self = shift;
     if ($dbworkerpid) {
         return dbc_call($self,'_build_cache',@_);
     }
+    if ($self->{_cache_ref}) { #we have active cache reference, increment counter and return
+        #TODO: ensure that the cache isn't somehow still ludirously old
+        $self->{_cache_ref} += 1;
+        return;
+    }
+    #If here, _cache_ref indicates no cache
+    $self->{_cache_ref} = 1;
     my $oldusecache = $self->{_use_cache}; #save previous 'use_cache' setting
     $self->{_use_cache} = 0; #This function must disable cache 
                             #to function
