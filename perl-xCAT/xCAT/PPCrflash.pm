@@ -12,6 +12,7 @@ use Getopt::Long;
 use File::Spec;
 use POSIX qw(tmpnam);
 
+use Data::Dumper;
 
 
 my $packages_dir= ();
