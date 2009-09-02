@@ -68,12 +68,12 @@ sub subvars {
     }
   }
   #ok, now do everything else..
-  $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
+  $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
+  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg;
   $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
-  $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
-  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/#INCLUDE_NOP:([^#]+)#/includefile($1,1)/eg;
 
   if ($tmplerr) {
