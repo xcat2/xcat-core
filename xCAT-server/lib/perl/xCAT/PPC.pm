@@ -271,7 +271,7 @@ sub process_command {
                 }
             }
 
-            Time::HiRes::sleep(0.1);
+            Time::HiRes::sleep(0.2);
             my ($pipe, $pid) = fork_cmd( $nodes->{$least_hcp}{'nodegroup'}->[$nodes->{$least_hcp}{'index'}]->[0], 
                     $nodes->{$least_hcp}{'nodegroup'}->[$nodes->{$least_hcp}{'index'}]->[1], $request );
 
@@ -528,7 +528,6 @@ sub child_response {
 # Finds attributes for given node is various databases
 ##########################################################################
 sub resolve_hcp {
-
     my $request   = shift;
     my $noderange = shift;
     my @nodegroup = ();
@@ -555,7 +554,7 @@ sub resolve_hcp {
 #            next;
 #        }
         ################################
-        # Get userid and password 
+        # Get userid and password
         ################################
         my @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype} );
         $request->{$hcp}{cred} = \@cred;
@@ -580,7 +579,7 @@ sub preprocess_nodes {
     my $method    = $request->{method};
     my %nodehash  = ();
     my @nodegroup = ();
-    my %hcpgroup = ();
+    my %hcpgroup  = ();
     my %tabs      = ();
     my $netwk;
 
@@ -589,10 +588,10 @@ sub preprocess_nodes {
     #   rscan - Nodes are hardware control pts 
     #   Direct-attached FSP 
     ########################################
-    if (( $request->{command} =~ /^(rscan|rspconfig)$/ ) or
-#        (( $request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) and ( $request->{command} ne "mkhwconn")) or
-        ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) or
-        ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc')
+    if (( !$request->{hcp} && ($request->{hcp} ne "hmc" )) and
+        (( $request->{command} =~ /^(rscan|rspconfig)$/ ) or
+         ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) or
+         ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc'))
 ) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
@@ -658,8 +657,13 @@ sub preprocess_nodes {
     # Get userid and password
     ##########################################
     while (my ($hcp,$hash) = each(%nodehash) ) {   
-        my @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype} );
-        $request->{$hcp}{cred} = \@cred;
+        my @cred;
+        if ($request->{hcp} && ($request->{hcp} eq "hmc" )) {
+            @cred = xCAT::PPCdb::credentials( $hcp, $request->{hcp} );
+        } else {
+            @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype} );
+        }
+            $request->{$hcp}{cred} = \@cred;
     } 
     ##########################################
     # Group the nodes - we will fork one 
@@ -1015,6 +1019,8 @@ sub invoke_cmd {
     my $request = shift;
     my $hwtype  = $request->{hwtype};
     my $verbose = $request->{verbose};
+    my $cmd     = $request->{command};
+    my $power   = $request->{hcp};
     my @exp;
     my $verbose_log;
     my @outhash;
@@ -1022,8 +1028,7 @@ sub invoke_cmd {
     ########################################
     # Direct-attached FSP handler 
     ########################################
-    if ( $hwtype eq "fsp" or $hwtype eq "bpa") {
-
+    if ( ($power ne "hmc") && ( $hwtype eq "fsp" or $hwtype eq "bpa")) {
         ####################################
         # Dynamically load FSP module
         ####################################
@@ -1064,8 +1069,11 @@ sub invoke_cmd {
     # Connect to list of remote servers
     ########################################
     foreach ( split /,/, $host ) {
-        @exp = xCAT::PPCcli::connect( $request, $hwtype, $_ );
-
+        if ( $power ne "hmc" ) {
+            @exp = xCAT::PPCcli::connect( $request, $hwtype, $_ );
+        } else {
+            @exp = xCAT::PPCcli::connect( $request, $power, $_);
+        }
         ####################################
         # Successfully connected 
         ####################################
