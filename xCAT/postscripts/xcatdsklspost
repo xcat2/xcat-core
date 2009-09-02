@@ -23,9 +23,9 @@ if [ -e '/etc/SuSE-release' ]; then
    OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
 fi
 
-SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
+SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases 2> /dev/null|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
 if [ -z "$SIP" ]; then
-    SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info|awk -F= '{print $2}'|tail -n 1`
+    SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|tail -n 1`
 fi
 
 #echo "SIP=$SIP"
