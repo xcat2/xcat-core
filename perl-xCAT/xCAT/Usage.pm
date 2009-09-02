@@ -83,8 +83,9 @@ my %usage = (
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
    MPA specific:
-       rspconfig <noderange>  [sshcfg|snmpcfg|pd1|pd2|network|swnet|ntp|textid]
+       rspconfig <noderange>  [sshcfg|snmpcfg|pd1|pd2|network|swnet|ntp|textid|frame]
        rspconfig <singlenode> [textid=name]
+       rspconfig <singlenode> [frame=number]
        rspconfig <noderange>  [sshcfg=<enable|disable>|
            snmpcfg=<enable|disable>|                             
            pd1=<nonred|redwoperf|redwperf>|
@@ -92,6 +93,7 @@ my %usage = (
            network=<*|[ip],[host],[gateway],[netmask]>|
            swnet=<[ip],[gateway],[netmask]>|
            textid=<*>|
+           frame=<*>|
            ntp=<[ntp],[ip],[frequency],[v3]>
    FSP specific:
        rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump]
