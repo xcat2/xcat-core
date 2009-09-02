@@ -38,6 +38,11 @@ my %lssyscfg = (
   cage   =>"lssyscfg -r cage -e %s -F %s"
 );
 
+my %chsyscfg = (
+  prof   =>"chsyscfg -r prof -m %s -i %s",
+  bpa    =>"chsyscfg -r frame -e %s -i frame_num=%s"
+);
+
 ##############################################
 # Power control supported formats 
 ##############################################
@@ -304,15 +309,9 @@ sub chsyscfg {
     my $cfgdata = shift;
 
     #####################################
-    # Command only support on LPARs 
+    # Select command
     #####################################
-    if ( @$d[4] ne "lpar" ) {
-        return( [RC_ERROR,"Command not supported on '@$d[4]'"] );
-    }
-    #####################################
-    # Format command based on CEC name
-    #####################################
-    my $cmd = "chsyscfg -r prof -m @$d[2] -i \"$cfgdata\""; 
+    my $cmd = sprintf( $chsyscfg{@$d[4]}, @$d[2], $cfgdata); 
 
     #####################################
     # Send command
@@ -1019,6 +1018,7 @@ sub send_cmd {
     if ( !defined( $timeout )) {
         $timeout = @$exp[7];
     }
+
     ##########################################
     # Send command 
     ##########################################

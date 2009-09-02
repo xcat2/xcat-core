@@ -11,7 +11,8 @@ use xCAT::Usage;
 # Globals
 ##########################################
 my %rspconfig = ( 
-    sshcfg => \&sshcfg
+    sshcfg => \&sshcfg,
+    frame => \&frame
 );
 
 
@@ -39,7 +40,8 @@ sub parse_args {
         "network"
     );
     my @bpa = (
-        "network"
+        "network",
+        "frame"
     );
     my @ppc = (
         "sshcfg"
@@ -138,6 +140,14 @@ sub parse_args {
         $request->{method} = "cfg";
         return( \%opt );
     }
+    ####################################
+    # Return method to invoke
+    ####################################
+    if ( exists($cmds{frame}) ) {
+        $request->{power} = "hmc";
+        $request->{method} = "cfg";
+        return( \%opt );
+    }
     $request->{method} = \%cmds;
     return( \%opt );
 }
@@ -212,6 +222,12 @@ sub parse_option {
         return ( "Invalid netmask format") if ( $netmask and $netmask !~ /\d+\.\d+\.\d+\.\d+/);
     }
 
+    if ( $command eq 'frame' ){
+        if ( $value !~ /^\d+$/i && $value ne '*' ) { 
+            return( "Invalid frame number '$value'" );
+        }
+    }
+
     return undef;
 }
 
@@ -236,7 +252,7 @@ sub cfg {
             my ($cmd,$value) = split /=/;
 
             no strict 'refs';
-            $result = $rspconfig{$cmd}( $exp, $value );
+            $result = $rspconfig{$cmd}( $request, $exp, $value, $hash );
             use strict;
         }
     }
@@ -249,12 +265,12 @@ sub cfg {
 ##########################################################################
 sub sshcfg {
 
-    my $exp    = shift;
-    my $mode   = shift;
-    my $server = @$exp[3];
-    my $userid = @$exp[4];
-    my $fname  = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
-    my $auth   = "/home/$userid/.ssh/authorized_keys2";
+    my $exp     = shift;
+    my $mode    = shift;
+    my $server  = @$exp[3];
+    my $userid  = @$exp[4];
+    my $fname   = ((xCAT::Utils::isAIX()) ? "/.ssh/":"/root/.ssh/")."id_rsa.pub";
+    my $auth    = "/home/$userid/.ssh/authorized_keys2";
 
     #####################################
     # Get SSH key on Management Node
@@ -311,8 +327,109 @@ sub sshcfg {
     return( [[$server,lc($mode."d"),SUCCESS]] );
 }
 
-1;
+sub frame {
+    my $request = shift;
+    my $exp     = shift;
+    my $value   = shift;
+    my $hash    = shift;
+    my $arg     = $request->{arg};
 
+    foreach ( @$arg ) {
+        my $result;
+        my $Rc;
+        my $data;
+
+        my ($cmd, $value) = split /=/, $_;
+        if ( $cmd ne "frame" ) {
+            return( [[@$exp[2],"Multiple option $cmd and frame is not accepted",SUCCESS]] );
+        }
+
+        #################################
+        # Open xCAT database to sync with
+        # the frame number between hcp
+        # and database
+        #################################
+        my $tab = xCAT::Table->new( "ppc" );
+
+        while ( my ($cec,$h) = each(%$hash) ) {
+            while ( my ($node,$d) = each(%$h) ) {
+                if ( !defined($value) ) {
+
+                    #################################
+                    # Get frame number
+                    #################################
+                    $data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'frame_num' );
+                    $Rc = shift(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != SUCCESS ) {
+                        return( [[$node,@$data[0],$Rc]] );
+                    }
+
+                    push @$result, [$node,@$data[0],SUCCESS];
+
+                    #################################
+                    # Set frame number to database
+                    #################################
+                    $tab->setNodeAttribs( $node, { id=>@$data[0] } );
+
+                } elsif ( $value eq '*' ) {
+                    #################################
+                    # Set frame number
+                    # Read the settings from database 
+                    #################################
+                    my $ent=$tab->getNodeAttribs( $node,['id'] );
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( !defined($ent) or !defined($ent->{id}) ) {
+                        return( [[$node,"Cannot find frame num in database",RC_ERROR]] );
+                    }
+                    $data = xCAT::PPCcli::chsyscfg( $exp, $d, $ent->{id} );
+                    $Rc = shift(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != SUCCESS ) {
+                        return( [[$node,@$data[0],$Rc]] );
+                    }
+
+                    push @$result, [$node,@$data[0],SUCCESS];
+
+                } else {
+                    #################################
+                    # Set frame number
+                    # Read the frame number from opt
+                    #################################
+                    $data = xCAT::PPCcli::chsyscfg( $exp, $d, $value );
+                    $Rc = shift(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != SUCCESS ) {
+                        return( [[$node,@$data[0],$Rc]] );
+                    }
+
+                    push @$result, [$node,@$data[0],SUCCESS];
+
+                    #################################
+                    # Set frame number to database
+                    #################################
+                    $tab->setNodeAttribs( $node, { id=>$value } );
+                }
+            }
+
+            return( [@$result] );
+        }  
+    }
+}
+
+1;
 
 
 
