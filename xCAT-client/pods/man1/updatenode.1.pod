@@ -125,33 +125,39 @@ such as xdsh and xdcp to accomplish these update tasks.
 
 =head2 B<To install or update software (only available on Linux Nodes)>
 
-    The basic process for updating software on diskfull nodes is:
-        - Copy the software to a mountable directory.
+    The basic process for updating software on a node is:
+        - Copy the software to a directory.
         - Create a record of what software to install.
         - Run the updatenode command to update the nodes.
 
     On Linux systems
    
-        To install additional software for Linux diskfull nodes, 
+        To install additional software for Linux nodes, 
     
         First, copy the extra rpms you are going to add on to 
-        /install/post/otherpkgs/<os>/<arch>/* directory where <os> and 
-        <arch> are defined in the <nodetype> table.
+        /install/post/otherpkgs/<os>/<arch>/* directory where <os>
+        and <arch> are defined in the <nodetype> table.
     
         Second, add rpm names (without version number) into
     
-            /install/custom/install/<ostype>/profile.otherpkgs.pkglist
-    
-        where <profile> is defined in the <nodetype> table. <ostype>
-        is the operating system name without the version number.
-        The following os types are recognized by xCAT.
-   
+            /install/custom/<inst_type>/<ostype>/
+                <profile>.<os>.<arch>.otherpkgs.pkglist
+
+        In the file path, the <inst_type> should be "install" if the
+        node was installed in diskfull state, otherwise it should be 
+        "netboot" if it was installed in diskless state.
+        <ostype> is the operating system name without the version
+        number.The following <ostype> are recognized by xCAT.   
             centos
             fedora
             rh
             sles
             windows
-   
+        In the file name, the <profile>, <os>, <arch> are defined in
+        the <nodetype> table. And the <os> and <arch> fields can be
+        ignored if the pkglist file is available just depend on the 
+        <profile> attribute.
+
         Third, type:
    
             updatenode <noderange> -S
