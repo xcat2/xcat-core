@@ -507,14 +507,31 @@ function monsetupAction(plugin, action_val)
        
     });
 }
-function show_monshow_data() {
-    //used for the OK button in the web page "rmc_monshow.php";
-    $("#monshow_opt").hide("slow");
-    $(":input[@checked]").each(function(i) {
-        $.get("monitor/rmc_monshow_data_source.php", {value: $(this).attr("value")}, function(data) {
-            $("#monshow_data").append(data);
+
+function show_monshow_graph() {
+    //used for the "view by graph" button in the web page "rmc_monshow.php"
+    if($(":input[@checked]").size() != 0) {
+        $("#monshow_data").empty();
+        $("#monshow_opt").hide("slow");
+        $(":input[@checked]").each(function(i) {
+            //generate graphics for all the attributes in "checked" status
         });
-    });
+    } else {
+    }
+}
+function show_monshow_text() {
+    //used for the "view by text"  button in the web page "rmc_monshow.php";
+    if($(":input[@checked]").size() != 0) {
+        $("#monshow_data").empty();
+        $("#monshow_opt").hide("slow");
+        $(":input[@checked]").each(function(i) {
+            $.get("monitor/rmc_monshow_data_source.php", {value: $(this).attr("value")}, function(data) {
+                $("#monshow_data").append(data);
+            });
+        });
+    } else {
+        $("#monshow_data").html("<p><b>Please select one or more attributes from the table</b></p>");
+    }
 }
 
 function rmc_monshow_back_to_opts() {
