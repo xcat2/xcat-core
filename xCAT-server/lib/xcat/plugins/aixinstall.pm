@@ -950,6 +950,30 @@ sub mknimimage
 		$::METHOD = "rte";
 	}
 
+    if ($::opt_l)
+    {
+        # This is not a full path
+        if($::opt_l !~ /^\//)
+        {
+            my $abspath = Cwd::abs_path($::opt_l);
+            if ($abspath)
+            {
+                $::opt_l = Cwd::abs_path($::opt_l);
+            }
+        }
+    }
+    if ($::opt_s)
+    {
+        # This is not a full path
+        if($::opt_s !~ /^\//)
+        {
+            my $abspath = Cwd::abs_path($::opt_s);
+            if ($abspath)
+            {
+                $::opt_s = Cwd::abs_path($::opt_s);
+            }
+        }
+    }
 	#
     # process @ARGV
     #
