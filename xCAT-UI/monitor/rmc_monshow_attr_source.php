@@ -34,7 +34,8 @@ TOS0;
 show_rmc_monsetting();
 echo "<div>";
 //click the "OK" button, "monshow" data for the selected attributes will display
-insertButtons(array('label'=>'OK', 'id'=>'monshow_ok_btn', 'onclick'=>'show_monshow_data()'));
+insertButtons(array('label'=>'View by Text', 'id'=>'monshow_text_btn', 'onclick'=>'show_monshow_text()'));
+insertButtons(array('label'=>'View by Graphics', 'id'=>'monshow_graph_btn', 'onclick'=>'show_monshow_graph()'));
 echo "</div>";
 echo "</div>";
 }
@@ -46,9 +47,9 @@ function show_rmc_monsetting()
     echo <<<TOS1
 <thead>
 <tr class="colHeaders">
-<td>name</td>
-<td>key</td>
-<td>value</td>
+<td>Name</td>
+<td>Resources</td>
+<td>Attributes</td>
 <td>comments</td>
 </tr>
 </thead>
