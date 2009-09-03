@@ -19,7 +19,7 @@ Source4: prescripts.tar.gz
 %endif
 
 Provides: xCAT = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite xnba-undi syslinux-xcat
+Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
 Requires: atftp dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
@@ -39,6 +39,7 @@ Requires: perl-IO-Stty
 # The nb rpms are used for dhcp-based discovery, and flashing, so for now we do not need them on a ppc MN.
 Requires: xCAT-nbroot-oss-x86 xCAT-nbroot-core-x86 xCAT-nbkernel-x86 xCAT-nbroot-oss-x86_64 xCAT-nbroot-core-x86_64 xCAT-nbkernel-x86_64 xCAT-nbroot-oss-ppc64 xCAT-nbroot-core-ppc64 xCAT-nbkernel-ppc64 syslinux
 Requires: ipmitool >= 1.8.9
+Requires: xnba-undi syslinux-xcat
 %endif
 
 %description
