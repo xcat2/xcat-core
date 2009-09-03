@@ -524,5 +524,19 @@ function rmc_monshow_back_to_opts() {
     $("#monshow_opt").show("slow");
 }
 
+function handle_tips() {
+    ///add dynamic effects for <div class="tips">
+    $(".tips > .tips_content").hide();
+    $(".tips > .tips_head").click(function() {
+        if($(".tips > .tips_content").css("display") == "none") {
+            $(".tips > .tips_head").html("<b>Tips:</b>(Click me to remove tips)");
+            $(".tips > .tips_content").show("slow");
+        }else {
+            $(".tips > .tips_head").html("<b>Tips:</b>(Click me to display tips)");
+            $(".tips > .tips_content").hide("slow");
+        }
+    });
+}
+
 // load progress bar
 myBar.loaded('xcat.js');

@@ -52,11 +52,18 @@ function displayTips($tips)
     //  "Click the name of each plugin, you can get the plugin's description.",
     //  "You can also select one plugin, then you can set node/application status monitoring for the selected plugin.",
     //}
-    echo '<div id="tips"><p><b>Tips:</b></p>';
+    echo '<div class="tips">'; 
+    echo '<p class="tips_head"><b>Tips:</b>(Click me to display tips)</p>';
+    echo '<div class="tips_content">';
     foreach ($tips as $tip) {
         echo "<p>$tip</p>";
         echo "\n";
     }
+    echo "</div>";
+
+    echo '<script type="text/javascript">';
+    echo '$(handle_tips());';
+    echo '</script>';
     echo '</div>';
     return 0;
 }

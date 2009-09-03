@@ -363,7 +363,7 @@ padding:10px 2px;
     display: block;
 }
 
-#tips  {
+.tips  {
     margin-right: 10px;
     margin-left: 10px;
     padding: 10px;
@@ -372,6 +372,9 @@ padding:10px 2px;
     display: block;
     border-bottom: 1px dotted #555;
     /*display: none;*/
+}
+.tips_head {
+    color: #339933;
 }
 
 #monlist_table {
