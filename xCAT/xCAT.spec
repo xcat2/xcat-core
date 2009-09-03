@@ -19,7 +19,7 @@ Source4: prescripts.tar.gz
 %endif
 
 Provides: xCAT = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xnba-undi syslinux-xcat
 
 %ifos linux
 Requires: atftp dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
