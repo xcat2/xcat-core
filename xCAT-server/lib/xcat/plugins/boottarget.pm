@@ -149,7 +149,7 @@ sub mknetboot
         }
 	
         my $profile = $ent->{profile};
-    	($tent) = $ttab->getAttribs({'bprofile' => $profile}, 'kernel', 'initrd', 'kcmdline');
+    	($tent) = $ttab->getAttribs({'bprofile' => $profile}, 'kernel', 'initrd', 'kcmdline'); #TODO: coalesce these queries into one Table query, speed it up
 	if(! defined($tent)){
 		my $msg =  "$profile in nodetype table was not defined in boottarget table";
 		$callback->({
@@ -160,6 +160,14 @@ sub mknetboot
 	$kernel = $tent->{kernel};
 	$initrd = $tent->{initrd};
 	$kcmdline = $tent->{kcmdline};
+	#TODO: big todo, cheap and rapid, but should be more like esx.pm implementation, i.e. more scalable
+	while ($kcmdline =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
+	    my $natab = xCAT::Table->new($1);
+	    my $naent = getNodeAttribs($node,[$2]);
+	    my $naval = $naent->{$2};
+            $add =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
+        }
+
 	if($initrd eq ''){
         	$bptab->setNodeAttribs(
                       $node,
