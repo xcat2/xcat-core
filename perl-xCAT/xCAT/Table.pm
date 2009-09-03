@@ -185,6 +185,18 @@ sub handle_dbc_request {
     my $tablename = $request->{tablename};
     my @args = @{$request->{args}};
     my $autocommit = $request->{autocommit};
+    my $dbindex;
+    foreach $dbindex (keys %{$::XCAT_DBHS}) {
+        unless ($::XCAT_DBHS->{$dbindex}->ping) {
+            my @afflictedobjs = @{$::XCAT_DBOBJSFORHANDLE->{$::XCAT_DBHS->{$dbindex}}};
+            my $oldhandle = $::XCAT_DBHS->{$dbindex};
+            $::XCAT_DBHS->{$dbindex} = $::XCAT_DBHS->{$dbindex}->clone();
+            foreach (@afflictedobjs) { 
+                $$_->{dbh} = $::XCAT_DBHS->{$dbindex};
+            }   
+            $oldhandle->disconnect();
+        }   
+    }   
     if ($functionname eq 'new') {
         unless ($opentables{$tablename}->{$autocommit}) {
             shift @args; #Strip repeat class stuff
@@ -510,6 +522,11 @@ sub new
          umask $oldumask;
 
         $self->{dbh} = $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}};
+        #Store the Table object reference as afflicted by changes to the DBH
+        #This for now is ok, as either we aren't in DB worker mode, in which case this structure would be short lived...
+        #or we are in db worker mode, in which case Table objects live indefinitely
+        #TODO: be able to reap these objects sanely, just in case
+        push @{$::XCAT_DBOBJSFORHANDLE->{$::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}}},\$self;
           #DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $autocommit});
         if ($xcatcfg =~ /^SQLite:/)
         {
