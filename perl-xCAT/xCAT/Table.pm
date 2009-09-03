@@ -53,6 +53,7 @@ my $dbworkerpid; #The process id of the database worker
 my $dbworkersocket;
 my $dbsockpath = "/tmp/xcat/dbworker.sock";
 my $exitdbthread;
+my $dbobjsforhandle;
 
 
 sub dbc_call {
@@ -187,8 +188,9 @@ sub handle_dbc_request {
     my $autocommit = $request->{autocommit};
     my $dbindex;
     foreach $dbindex (keys %{$::XCAT_DBHS}) {
-        unless ($::XCAT_DBHS->{$dbindex}->ping) {
-            my @afflictedobjs = @{$::XCAT_DBOBJSFORHANDLE->{$::XCAT_DBHS->{$dbindex}}};
+        unless ($::XCAT_DBHS->{$dbindex}) { next; }
+        unless ($::XCAT_DBHS->{$dbindex} and $::XCAT_DBHS->{$dbindex}->ping) {
+            my @afflictedobjs = @{$dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}}};
             my $oldhandle = $::XCAT_DBHS->{$dbindex};
             $::XCAT_DBHS->{$dbindex} = $::XCAT_DBHS->{$dbindex}->clone();
             foreach (@afflictedobjs) { 
@@ -526,7 +528,7 @@ sub new
         #This for now is ok, as either we aren't in DB worker mode, in which case this structure would be short lived...
         #or we are in db worker mode, in which case Table objects live indefinitely
         #TODO: be able to reap these objects sanely, just in case
-        push @{$::XCAT_DBOBJSFORHANDLE->{$::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}}},\$self;
+        push @{$dbobjsforhandle->{$::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}}},\$self;
           #DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $autocommit});
         if ($xcatcfg =~ /^SQLite:/)
         {
