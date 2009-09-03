@@ -134,7 +134,7 @@ TOS2;
     echo '<tr class="ListLine1">';
     echo '<td>Application Status Monitoring</td>';
     echo '<td>';
-    insertbuttons(array('label'=>$as_tobe, 'id'=>'app_stat', 'onclick'=>''));
+    insertButtons(array('label'=>$as_tobe, 'id'=>'app_stat', 'onclick'=>'show_monshow_data()'));
     echo '</td>';
     echo '</tr>';
     echo '</tbody> </table> </div>';
@@ -392,5 +392,90 @@ function displayRMCAttr()
 {
     echo "<p>Select the RMC Resource, you will see all its available attributes here.</p>";
 }
+
+
+function RMCEventLogToTable()
+{
+    $xml = docmd("webrun", "", array("lsevent"));
+
+
+    //var_dump($xml);
+    foreach($xml->children() as $response) foreach($response->children() as $records)
+    {
+        //$data should be one array to store all the RMC event log.
+        echo "<tr>";
+        foreach($records->children() as $data) {
+            echo "<td>$data</td>";
+        }
+        echo "</tr>";
+    }
+}
+//displayRMCEventLog() to display the RMC event logs in one table with "tablesorter" class
+function displayRMCEvnetLog()
+{
+echo <<<TOS9
+<table class="tablesorter" cellspacing="1">
+<thead>
+    <tr>
+        <th>Time</th>
+        <th>Category</th>
+        <th>Message</th>
+</thead>
+<tbody>
+TOS9;
+    RMCEventLogToTable();
+    echo "</tbody></table>";
+    //TODO: the following javascript doesn't work well.
+echo <<<TOS8
+<script type="text/javascript" type"utf-8">
+ $("table").tablesorter({ sortList:  [[0,1],[1,1]] });
+</script>
+TOS8;
+    echo "</div>";
+}
+
+function displayRMCMonshowAttr($attr) {
+    //TODO: should add one argument to support the noderange argument
+    echo "<div>";
+    echo "<table class='tablesorter' cellspacing='1'>";
+    echo "<thead>";
+    echo "<tr>";
+    echo "<td>Time</td>";
+    echo "<td>$attr</td>";
+    echo "</tr>";
+    echo "</thead>";
+    echo "<tbody>";
+
+    //get all the data by the command "monshow"
+    $xml = docmd("monshow", "", array("rmcmon", "-s", "-t", "10", "-a", "$attr"));
+    //the error handling is skipped
+    $index = 0;
+    foreach($xml->children() as $response) foreach($response->children() as $data) {
+        //handle the data here
+        //skip the first 3 lines
+        if($index++ < 3) {
+            continue;
+        }
+        echo "<tr>";
+        $elements = explode(" ", $data);
+        echo "<td>";
+        $i = 0;
+        while($i < 7) {
+            echo $elements[$i],"\t";
+            $i++;
+        }
+        echo "</td>";
+        echo "<td>$elements[7]</td>";
+        //var_dump($elements);
+        echo "</tr>";
+
+        
+    }
+
+    echo "</tbody>";
+    echo "</table>";
+    echo "</div>";
+}
+
 
 ?>

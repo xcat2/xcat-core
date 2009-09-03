@@ -328,6 +328,41 @@ padding:10px 2px;
     /*display: none;*/
 }
 
+#rmc_tree {
+    float: left;
+    width: auto;
+    min-height: 255px;
+    border-right: 1px dotted #555;
+    min-width: 130px;
+    /*display: none;*/
+}
+
+#rmc_monshow {
+    float: left;
+    width: 701px;  /*need update*/
+    margin: 10px;
+    padding: 10px;
+    display: block;
+}
+
+#mon_keys {
+    float: left;
+    width: 100%;
+    display: block;
+}
+
+#monshow_opt {
+    float: left;
+    width: 100%;
+    display: block;
+}
+
+#monshow_data {
+    float: left;
+    width: 100%;
+    display: block;
+}
+
 #tips  {
     margin-right: 10px;
     margin-left: 10px;
@@ -422,9 +457,18 @@ padding:10px 2px;
 
 #options {
     width: 880px;
-    margin: 5px;
-    padding: 5px;
+    margin: 10px;
+    padding: 10px;
+}
+
+#monconfig {
+    width: 48%;
     float: left;
+}
+
+#monview {
+    width: 48%;
+    float: right;
 }
 
 #plugin_desc {

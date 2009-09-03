@@ -9,6 +9,7 @@ require_once "$TOPDIR/lib/monitor_display.php";
 
 $name = $_REQUEST['name'];
 
+echo "<div id='monconfig'>";
 echo "<p>Available Configurations for  <b>$name</b></p>";
 
 echo '<table id="tabTable" class="tabTable" cellspacing="1">';
@@ -49,4 +50,41 @@ if($name == "rmcmon") {
 }
 
 echo "</tbody></table>";
+
+echo "</div>";
+
+echo "<div id='monview'>";
+echo "<p>View Options for <b>$name</b></p>";
+//there should be many choices for the user to view the clusters' status
+echo <<<TOS1
+<table id="view_tab" class="tabTable" cellspacing="1">
+<thead>
+    <tr class='colHeaders'>
+        <td>Monitor Items</td>
+        <td>Display Formats</td>
+    </tr>
+</thead>
+<tbody>
+TOS1;
+if($name == "rmcmon") {
+    #display two rows, one for RMC event, another for RMC Resource Performance monitoring.
+    echo "<tr class='ListLine0' id='row0'>";
+    echo "<td>RMC Event Logs</td>";
+    echo "<td>";
+    insertButtons(array('label'=>'View in Text', 'id'=>'rmc_event_text', 'onclick'=>'loadMainPage("monitor/rmc_lsevent.php")'));
+    echo "</td>";
+    echo "</tr>";
+    echo "<tr class='ListLine1' id='row1'>";
+    echo "<td>RMC Resource Logs</td>";
+    echo "<td>";
+    insertButtons(array('label'=>'View in Text', 'id'=>'rmc_resrc_text', 'onclick'=>'loadMainPage("monitor/rmc_monshow.php")'));
+    insertButtons(array('label'=>'View in Graphics', 'id'=>'rmc_resrc_graph', 'onclick'=>''));
+    echo "</td>";
+    echo "</tr>";
+}
+else {
+    echo "<p>There's no view functions for $name.</p>";
+}
+
+echo "</tbody></table></div>";
 ?>

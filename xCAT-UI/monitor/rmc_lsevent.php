@@ -17,9 +17,14 @@ $name = $_REQUEST['name'];
 
 displayMapper(array('home'=>'main.php', 'monitor' =>''));
 
-displayTips(array(""));
+displayTips(array("View all RMC events here","TODO"));
 
+//Following the "Syslog Entries" web page
+echo '<div class="mContent">';
 
+displayRMCEvnetLog();
+
+echo '</div>';
 displayStatus();
 
 insertButtons(array('label' => 'Next', 'id'=> 'next', 'onclick'=>''));

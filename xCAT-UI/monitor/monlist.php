@@ -4,7 +4,6 @@ if(!isset($TOPDIR)) { $TOPDIR="..";}
  require_once "$TOPDIR/lib/functions.php";
  require_once "$TOPDIR/lib/display.php";
  require_once "$TOPDIR/lib/monitor_display.php";
-
 ?>
 
 <?php
@@ -20,5 +19,4 @@ insertDiv("plugin_desc");
 
 insertDiv("options");
 
-insetDiv("view");   //display options to the users for viewing event log & performance in text/graphics format
 ?>

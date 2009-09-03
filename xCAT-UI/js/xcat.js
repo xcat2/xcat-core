@@ -328,7 +328,8 @@ function changeProf(){
 		// debug this.  If you do, please make this code easier to read.
 }
 
-//added for display the tree for
+//added for display the tree
+// TODO: there're still issues here.
 function init_ositree(){
     //display all the nodes with OSI type
     nrtree = new tree_component();  //-tree begin
@@ -339,6 +340,45 @@ function init_ositree(){
             type: "json",
             async: "true",
             url: "monitor/osi_source.php"
+        }
+    });
+}
+
+//function updatermcnr()
+//{
+//    myselection = nrtree.selected_arr;
+//
+//    for (node in myselection) {
+//        $("#rmc_monshow").html($("#rmc_monshow").html()+node);
+//    }
+//
+//}
+
+//update the osi tree used in
+function init_rmc_ositree() {
+    nrtree = new tree_component();  //-tree begin
+    nrtree.init($("#rmc_tree"),{
+        rules: { multiple: "Ctrl" },
+        ui: { animation: 250 },
+        callback: {
+            onchange: function(n) {
+                if(n.id) {
+                    if($(n).parent().parent().attr("id") == ",lpar") {
+                        //parse the id, then display the "monshow" data for selected noderange
+                        $.get("monitor/rmc_monshow_attr_source.php", {id: n.id}, function(data) {
+                            //display the "monshow" result
+                            $("#monshow_opt").html(data);
+                        });
+                    }
+                }
+            }
+        },
+        //http://jstree.com/reference/_examples/3_callbacks.html
+        //onchange is used to
+        data : {
+            type: "json",
+            async: "true",
+            url: "monitor/rmc_source.php"
         }
     });
 }
@@ -467,7 +507,22 @@ function monsetupAction(plugin, action_val)
        
     });
 }
+function show_monshow_data() {
+    //used for the OK button in the web page "rmc_monshow.php";
+    $("#monshow_opt").hide("slow");
+    $(":input[@checked]").each(function(i) {
+        $.get("monitor/rmc_monshow_data_source.php", {value: $(this).attr("value")}, function(data) {
+            $("#monshow_data").append(data);
+        });
+    });
+}
 
+function rmc_monshow_back_to_opts() {
+    //clear the <div id='monshow_data'>
+    //and, display <div id='monshow_opts'>
+    $("#monshow_data").empty();
+    $("#monshow_opt").show("slow");
+}
 
 // load progress bar
 myBar.loaded('xcat.js');
