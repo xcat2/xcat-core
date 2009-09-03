@@ -163,7 +163,7 @@ sub mknetboot
 	#TODO: big todo, cheap and rapid, but should be more like esx.pm implementation, i.e. more scalable
 	while ($kcmdline =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
 	    my $natab = xCAT::Table->new($1);
-	    my $naent = getNodeAttribs($node,[$2]);
+	    my $naent = $natab->getNodeAttribs($node,[$2]);
 	    my $naval = $naent->{$2};
             $add =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
         }
