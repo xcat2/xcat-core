@@ -109,6 +109,8 @@ var xStart = function(){
      myBar.addScript("xcatauth.js");  
      myBar.addScript("config.js");  
      myBar.addScript("jquery.tablesorter.js");
+     myBar.addScript("jquery.flot.js");
+     myBar.addScript("excanvas.js");
      myBar.run();  
 };  
 //Called on click reset button  
