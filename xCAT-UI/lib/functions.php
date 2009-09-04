@@ -306,7 +306,7 @@ function getLastLine($line){
 				if($line == ''){ $line = 0; };
         $f = "/var/log/messages";
         $fp = fopen($f, 'r');
-        if($fp === false){ echo "Couldn't open /var/log/messages.  Hint: chmod 666 /var/log/messages might make it work.\n"; return 0; }
+        if($fp === false){ echo "Couldn't open /var/log/messages.  Hint: chmod 644 /var/log/messages might make it work.\n"; return 0; }
         $pos = -2;
         $t = " ";
 	// number of new lines we have seen.
