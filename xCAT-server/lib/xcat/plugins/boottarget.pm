@@ -165,8 +165,8 @@ sub mknetboot
 	    my $natab = xCAT::Table->new($1);
 	    my $naent = $natab->getNodeAttribs($node,[$2]);
 	    my $naval = $naent->{$2};
-            $add =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
-        }
+        $kcmdline =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
+    }
 
 	if($initrd eq ''){
         	$bptab->setNodeAttribs(
