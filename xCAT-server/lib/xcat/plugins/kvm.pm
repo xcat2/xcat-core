@@ -905,6 +905,10 @@ sub process_request {
       } elsif ($command eq "rmigrate") {
           $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
           return;
+      } elsif ($command eq "mkvm") { #mkvm can happen devoid of any hypervisor, make a fake hypervisor entry to allow this to occur
+          foreach (keys %orphans) {
+              $hyphash{'!@!XCATDUMMYHYPERVISOR!@!'}->{nodes}->{$_}=1;
+          }
       } else {
           $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
           return;
@@ -1116,7 +1120,11 @@ sub dohyp {
 
 
   eval { #Contain Sys::Virt bugs that make $@ useless
-    $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$hyp."/system?no_tty=1&netcat=nc");
+    if ($hyp eq '!@!XCATDUMMYHYPERVISOR!@!') {  #Fake connection for commands that have a fake hypervisor key
+        $hypconn = 1;
+    } else { 
+        $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$hyp."/system?no_tty=1&netcat=nc");
+    }
   };
   unless ($hypconn) {
     eval { #Contain Sys::Virt bugs that make $@ useless
