@@ -513,8 +513,12 @@ function show_monshow_graph() {
     if($(":input[@checked]").size() != 0) {
         $("#monshow_data").empty();
         $("#monshow_opt").hide("slow");
+        $("#back_btn").show("slow");
         $(":input[@checked]").each(function(i) {
             //generate graphics for all the attributes in "checked" status
+            $.get("monitor/rmc_monshow_data_source.php", {mode: "graph", value: $(this).attr("value")}, function(data) {
+                $("#monshow_data").append(data);
+            });
         });
     } else {
     }
@@ -524,8 +528,9 @@ function show_monshow_text() {
     if($(":input[@checked]").size() != 0) {
         $("#monshow_data").empty();
         $("#monshow_opt").hide("slow");
+        $("#back_btn").show("slow");
         $(":input[@checked]").each(function(i) {
-            $.get("monitor/rmc_monshow_data_source.php", {value: $(this).attr("value")}, function(data) {
+            $.get("monitor/rmc_monshow_data_source.php", {mode: "text", value: $(this).attr("value")}, function(data) {
                 $("#monshow_data").append(data);
             });
         });
@@ -534,10 +539,15 @@ function show_monshow_text() {
     }
 }
 
+function init_rmc_monshow_back_btn() {
+    $("#back_btn").hide();
+}
+
 function rmc_monshow_back_to_opts() {
     //clear the <div id='monshow_data'>
     //and, display <div id='monshow_opts'>
     $("#monshow_data").empty();
+    $("#back_btn").hide("slow");
     $("#monshow_opt").show("slow");
 }
 
