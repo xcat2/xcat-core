@@ -764,10 +764,14 @@ sub initDB
     my $xcatiport  = "3002";
     my $tftpdir    = "/tftpboot";
     my $installdir = "/install";
-
+    my $master;
     my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
-    my $master = inet_ntoa($addrs[0]);
-
+    if ($? == 0) {
+     $master = inet_ntoa($addrs[0]);
+    } else {
+      xCAT::MsgUtils->message("E","Hostname resolution for $hname failed.\n");
+     $master="NORESOLUTION";
+    }
     # set value based on OS
     my ($domain, $timezone);
     if ($::osname eq 'AIX')
