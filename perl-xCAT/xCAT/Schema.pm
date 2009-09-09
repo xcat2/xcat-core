@@ -728,10 +728,12 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
 #                         # this data object.
 #                tabentry => '<table.attr>',
 #                         # where the data is stored in the database
-#                access_tabentry => '<table.attr>=<value>',
-#      # how to look up tabentry.  For <value>,
+#                access_tabentry => '<table.attr>=<value>::<table.attr>=<value>',
+#      # how to look up tabentry. Now support multiple lookup entries, useful for 'multiple keys" in the table 
+#                         For <value>,
 #                         # if "attr:<attrname>", use a previously resolved
 #                         #    attribute value from the data object
+#                         # for now, only supports the objectname in attr:<attrname>
 #                         # if "str:<value>" use the value directly
 #                description => '<description of this attribute>',
 #                },
@@ -1093,15 +1095,20 @@ my @nodeattrs = (
 #######################
 #  ppcdirect table    #
 #######################
-        {attr_name => 'username',
-                 only_if => 'mgt=fsp',
-                 tabentry => 'ppcdirect.username',
-                 access_tabentry => 'ppcdirect.hcp=attr:node',
-  },
-        {attr_name => 'password',
+        {attr_name => 'passwd.HMC',
                  only_if => 'mgt=fsp',
                  tabentry => 'ppcdirect.password',
-                 access_tabentry => 'ppcdirect.hcp=attr:node',
+                 access_tabentry => 'ppcdirect.hcp=attr:node::ppcdirect.username=str:HMC',
+  },
+        {attr_name => 'passwd.admin',
+                 only_if => 'mgt=fsp',
+                 tabentry => 'ppcdirect.password',
+                 access_tabentry => 'ppcdirect.hcp=attr:node::ppcdirect.username=str:admin',
+  },
+        {attr_name => 'passwd.general',
+                 only_if => 'mgt=fsp',
+                 tabentry => 'ppcdirect.password',
+                 access_tabentry => 'ppcdirect.hcp=attr:node::ppcdirect.username=str:general',
   },
 ##################
 #  ipmi table    #

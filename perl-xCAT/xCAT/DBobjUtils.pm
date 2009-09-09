@@ -435,53 +435,78 @@ sub getobjdefs
             #  ex. noderes.nfsdir
             my ($tab, $tabattr) = split('\.', $this_attr->{tabentry});
 
-            # ex. 'nodelist.node', 'attr:node'
-            my ($lookup_key, $lookup_value) = split('\=', $this_attr->{access_tabentry});
-
-            # ex. 'nodelist', 'node'
-            my ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
-
-            # ex. 'attr', 'node'
-            my ($lookup_type, $lookup_data) = split('\:', $lookup_value);
-
-            #
-            # Get the attr values 
-            #
-
-			# lookup_attr is the key to the table we are looking in
-			# if we're looking up a node attr and the key is 'node'
-			#	then the value should be in %tabhash
-			if ( ($lookup_attr eq 'node') && ($type eq 'node') )
+            my %tabentry = ();
+            # def commands need to support multiple keys in one table
+            # the subroutine parse_access_tabentry is used for supporting multiple keys
+            my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname, 
+                                                             $this_attr->{access_tabentry}, \%tabentry);
+            if ($rc != 0)
             {
-				if (defined($tabhash{$lookup_table}{$objname}{$tabattr}) ) {
-					if ($verbose == 1) {
-						$objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Column:$tabattr)";
-					} else {
-						$objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$tabattr};
-					}
-				}
-
-			}
-            else
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
+                 xCAT::MsgUtils->message("E", $rsp, $::callback);
+                next;
+            }
+            #
+            # Only allow one table in the access_tabentry
+            # use multiple tables to look up tabentry does not make any sense
+            my $lookup_table = $tabentry{'lookup_table'};
+            my $intabhash = 0;
+            foreach my $lookup_attr (keys %{$tabentry{'lookup_attrs'}})
+            {
+                # Check whether the attribute is already in %tabhash
+                # The %tabhash is for performance considerations
+                if ( ($lookup_attr eq 'node') && ($type eq 'node') 
+                    && (defined($tabhash{$lookup_table}{$objname}{$tabattr})))
+                {
+                    if ($verbose == 1)
+                    {
+                        $objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Column:$tabattr)";
+                    }
+                    else
+                    {
+                        $objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$tabattr};
+                    }
+                    $intabhash = 1;
+                    last;
+                }
+            }
+            # Not in tabhash,
+            # Need to lookup the table
+            if ($intabhash == 0)
             {
                 # look up attr values
                 my @rows = xCAT::DBobjUtils->getDBtable($lookup_table);
                 if (defined(@rows))
                 {
-                    foreach (@rows)
+                    foreach my $rowent (@rows)
                     {
-                        if ($_->{$lookup_attr} eq $objname)
+                        my $match = 1;
+                        my $matchedattr;
+                        # Again, multiple keys support needs the "foreach"
+                        foreach my $lookup_attr (keys %{$tabentry{'lookup_attrs'}})
                         {
-							if (defined($_->{$tabattr}) ) {
-								if ($verbose == 1) {
-									$objhash{$objname}{$attr} = "$_->{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Column:$tabattr)";
-								} else {
-                           			$objhash{$objname}{$attr} = $_->{$tabattr};
-								}
-							}
+                            if ($rowent->{$lookup_attr} ne $tabentry{'lookup_attrs'}{$lookup_attr})
+                            {
+                                $match = 0;
+                                last;
+                            }
                         }
-                    }
-                }
+                        if ($match == 1)
+                        {
+                             if ($verbose == 1)
+                             {
+                                 my @lookup_attrs = keys %{$tabentry{'lookup_attrs'}};
+                                 $objhash{$objname}{$attr} = "$rowent->{$tabattr}\t(Table:$lookup_table - Key: @lookup_attrs - Column:$tabattr)";
+                             }
+                             else 
+                             {
+                                 $objhash{$objname}{$attr} = $rowent->{$tabattr};
+                             }
+                         } #end if ($match...
+                    } #end foreach
+                } # end if (defined...
                 else
                 {
                     my $rsp;
@@ -490,9 +515,8 @@ sub getobjdefs
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     return undef;
                 }
-
-            }
-        }
+            } #end if ($intabhash...
+        } #end foreach my $this_attr 
 
 		if ($typehash{$objname} eq 'monitoring') {
 		
@@ -962,6 +986,7 @@ sub setobjdefs
 
             my %keyhash;
             my %updates;
+            my %tabentry;
 			my ($lookup_table, $lookup_attr, $lookup_data);
             my $attr_name = $this_attr->{attr_name};
 
@@ -1032,17 +1057,25 @@ sub setobjdefs
                 #    - may be different then the attr name used for the object.
                 ($::tab, $::tabattr) = split('\.', $this_attr->{tabentry});
 
-                # get the lookup info from defspec in Schema.pm
-                # ex. 'nodelist.node', 'attr:node'
-                my ($lookup_key, $lookup_value) =
-                  split('\=', $this_attr->{access_tabentry});
-
-                # ex. 'nodelist', 'node'
-                ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
-
-                # ex. 'attr', 'node'
-                my ($lookup_type, $lookup_data) = split('\:', $lookup_value);
-
+                my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname, 
+                                                                $this_attr->{access_tabentry}, \%tabentry);
+                if ($rc != 0)
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
+                     xCAT::MsgUtils->message("E", $rsp, $::callback);
+                     next;
+                }
+                my $lookup_table = $tabentry{'lookup_table'};
+                my $attr_name = $this_attr->{attr_name};
+                # Set the lookup criteria for this attribute into %allupdates
+                # the key is 'lookup_attrs'
+                foreach my $lookup_attr (keys %{$tabentry{'lookup_attrs'}})
+                {
+                    $allupdates{$lookup_table}{$objname}{$attr_name}{'lookup_attrs'}{$lookup_attr} 
+                                             =$tabentry{'lookup_attrs'}{$lookup_attr};
+                }
             }
             else
             {
@@ -1125,8 +1158,11 @@ sub setobjdefs
 
             }
 
-			$allupdates{$lookup_table}{$objname}{$lookup_attr}{$lookup_attr}=$objname;
-			$allupdates{$lookup_table}{$objname}{$lookup_attr}{$::tabattr} = $val;
+                        my $lookup_table = $tabentry{'lookup_table'};
+                        my $attr_name = $this_attr->{attr_name};
+                        # Set the values into %allupdates
+                        # the key is 'tabattrs'
+			$allupdates{$lookup_table}{$objname}{$attr_name}{'tabattrs'}{$::tabattr} = $val;
 			$setattrs=1;
 
 			push(@setattrlist, $attr_name);
@@ -1160,7 +1196,47 @@ if (0) {
 }
 
     }    # end - foreach object
-
+#==========================================================#
+#%allupdates structure:
+# for command: chdef -t node -o node1 groups=all 
+#              usercomment=ddee passwd.HMC=HMC 
+#              passwd.admin=cluster passwd.general=abc123
+# the %allupdates will be:
+#0  'ppcdirect'
+#1  HASH(0x12783d30)
+#   'node1' => HASH(0x12783cc4)
+#      'passwd.HMC' => HASH(0x12783ed4)
+#         'lookup_attrs' => HASH(0x12783f70)
+#            'hcp' => 'node1'
+#            'username' => 'HMC'
+#         'tabattrs' => HASH(0x12783e8c)
+#            'password' => 'HMC'
+#      'passwd.admin' => HASH(0x12783c64)
+#         'lookup_attrs' => HASH(0x12784000)
+#            'hcp' => 'node1'
+#            'username' => 'admin'
+#         'tabattrs' => HASH(0x12783f64)
+#            'password' => 'cluster'
+#      'passwd.general' => HASH(0x12783a6c)
+#         'lookup_attrs' => HASH(0x12784198)
+#            'hcp' => 'node1'
+#            'username' => 'general'
+#         'tabattrs' => HASH(0x12783aa8)
+#            'password' => 'abc123'
+#2  'nodelist'
+#3  HASH(0x127842b8)
+#   'node1' => HASH(0x12784378)
+#      'groups' => HASH(0x12784090)
+#         'lookup_attrs' => HASH(0x127844bc)
+#            'node' => 'node1'
+#         'tabattrs' => HASH(0x1277fd34)
+#            'groups' => 'all'
+#      'usercomment' => HASH(0x12784318)
+#         'lookup_attrs' => HASH(0x12780550)
+#            'node' => 'node1'
+#         'tabattrs' => HASH(0x127842f4)
+#            'comments' => 'ddee'
+#=================================================================#
 	# now set the attribute values in the tables
 	#   - handles all except site, monitoring & monsetting for now
 	if ($setattrs) {
@@ -1179,45 +1255,40 @@ if (0) {
 				return 1;
 			}
 
-			ROW: foreach my $row (keys %{$allupdates{$table}}) {
+			OBJ: foreach my $obj (keys %{$allupdates{$table}}) {
+                            ROW: foreach my $row (keys %{$allupdates{$table}{$obj}}) {
 				my %keyhash;
 				my %updates;
-				foreach my $key (keys %{$allupdates{$table}{$row}}) {
-					foreach my $column (keys %{$allupdates{$table}{$row}{$key}}) {
-						# make sure we have a value for each key
-						foreach my $k (@$keys) {
-							if (!$allupdates{$table}{$row}{$key}{$k}) {
-								my $rsp;
-								$rsp->{data}->[0] = "\nMissing required attribute values for the \'$row\' object. The required attributes are: @$keys\n";
-								xCAT::MsgUtils->message("E", $rsp, $::callback);
-								$ret = 1;
-								next ROW;
-							}
-						}
-
-						# need to add obj name
-						if ( grep(/^$key$/, @$keys)) {
-							# ex. $keyhash{netname}=clstr_net;
-							$keyhash{$key}=$row;
-						} else {
-							$updates{$key}=$row;
-						}
-
-						# if attrs are keys then add to keyhash
-						if ( grep(/^$column$/, @$keys)) {
-							# ex. $keyhash{node}= node1
-							$keyhash{$column}=$allupdates{$table}{$row}{$key}{$column};
-						} else {
-							# ex.  $updates{os}= "AIX"
-							$updates{$column} = $allupdates{$table}{$row}{$key}{$column};
-						}
+				# make sure we have a value for each key
+				foreach my $k (@$keys) {
+					if (!$allupdates{$table}{$obj}{$row}{'lookup_attrs'}) {
+						my $rsp;
+						$rsp->{data}->[0] = "\nMissing required attribute values for the \'$obj\' object. The required attributes are: @$keys\n";
+						xCAT::MsgUtils->message("E", $rsp, $::callback);
+						$ret = 1;
+						next ROW;
 					}
+				}
+
+				# lookup keys in %hashkey
+                                # ex. $keyhash{'hcp'} = node1
+				foreach my $key (keys %{$allupdates{$table}{$obj}{$row}{'lookup_attrs'}}) {
+					$keyhash{$key} = $allupdates{$table}{$obj}{$row}{'lookup_attrs'}{$key};
+				}
+
+				# set values in %updates
+				# ex. $updates{'groups'} = 'all,lpar'
+				foreach my $attr (keys %{$allupdates{$table}{$obj}{$row}{'tabattrs'}}) {
+
+					$updates{$attr} = $allupdates{$table}{$obj}{$row}{'tabattrs'}{$attr};
+
 				}
 				# do table updates one object/row at a a time???
 				my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
-			}
+                            } #end foreach my $row
+			} #end foreach my $obj
 			$thistable->commit;
-		}
+		} #end forach my $table
 	}
     return $ret;
 }
@@ -1307,24 +1378,83 @@ sub rmobjdefs
 
             }
 
-            #  get the info needed to access the DB table
-            # ex. 'nodelist.node', 'attr:node'
-            my ($lookup_key, $lookup_value) =
-              split('\=', $this_attr->{access_tabentry});
 
-            # ex. 'nodelist', 'node'
-            my ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
+            # def commands need to support multiple keys in one table
+            # the subroutine parse_access_tabentry is used for supporting multiple keys
+            my %tabentry = ();
+            my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname, $this_attr->{access_tabentry}, \%tabentry);
+            if ($rc != 0)
+            {
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
+                 xCAT::MsgUtils->message("E", $rsp, $::callback);
+                 next;
+            }
 
-            # ex. 'attr', 'node'
-            my ($lookup_type, $lookup_data) = split('\:', $lookup_value);
-
-            # we'll need table name, key name, & object name
+            # Only allow one table in the access_tabentry
+            # use multiple tables to look up tabentry does not make any sense
+            my $lookup_table = $tabentry{'lookup_table'};
+            # The attr_name is the *def attribute name instead of db column
+            my $attr_name = $this_attr->{'attr_name'};
+            # we'll need table name, object name, attribute name and the lookup entries
             # put this info in a hash - we'll process it later - below
+            foreach my $lookup_attr (keys %{$tabentry{'lookup_attrs'}})
+            {
+                $tablehash{$lookup_table}{$objname}{$attr_name}{$lookup_attr} 
+                                    = $tabentry{'lookup_attrs'}{$lookup_attr};
+            }
 
-            push @{$tablehash{$lookup_table}{$lookup_attr}}, $objname;
         }
     }
-
+#=============================================#
+# The tablehash looks like this
+ # DB<5> x %tablehash
+ # 'bootparams'
+ # HASH(0x1280828c)
+ #  'node1' => HASH(0x127bca50)
+ #     'addkcmdline' => HASH(0x127fb114)
+ #        'node' => 'node1'
+ #     'initrd' => HASH(0x127bcb40)
+ #        'node' => 'node1'
+ #     'kcmdline' => HASH(0x127fb24c)
+ #        'node' => 'node1'
+ #     'kernel' => HASH(0x127b2e80)
+ #        'node' => 'node1'
+ #  'testfsp' => HASH(0x1280e71c)
+ #     'addkcmdline' => HASH(0x1280e7a0)
+ #        'node' => 'testfsp'
+ #     'initrd' => HASH(0x1280e740)
+ #        'node' => 'testfsp'
+ #     'kcmdline' => HASH(0x1280e77c)
+ #        'node' => 'testfsp'
+ #     'kernel' => HASH(0x1280e758)
+ #        'node' => 'testfsp'
+ #...
+ # 'ppcdirect'
+ # HASH(0x1278fe1c)
+ #  'node1' => HASH(0x12808370)
+ #     'passwd.HMC' => HASH(0x128083e8)
+ #        'hcp' => 'node1'
+ #        'username' => 'HMC'
+ #     'passwd.admin' => HASH(0x128081c0)
+ #        'hcp' => 'node1'
+ #        'username' => 'admin'
+ #     'passwd.general' => HASH(0x128075d8)
+ #        'hcp' => 'node1'
+ #        'username' => 'general'
+ #  'testfsp' => HASH(0x12790620)
+ #     'passwd.HMC' => HASH(0x1280ee84)
+ #        'hcp' => 'testfsp'
+ #        'username' => 'HMC'
+ #     'passwd.admin' => HASH(0x128082f8)
+ #        'hcp' => 'testfsp'
+ #        'username' => 'admin'
+ #     'passwd.general' => HASH(0x1280843c)
+ #        'hcp' => 'testfsp'
+ #        'username' => 'general'
+ #...
+##=========================================================#
     # now for each table - clear the entry
     foreach my $table (keys %tablehash)
     {
@@ -1333,18 +1463,15 @@ sub rmobjdefs
         my $thistable =
           xCAT::Table->new($table, -create => 1, -autocommit => 0);
 
-        #  some tables have multiple keys  !!??
-        foreach my $key (keys %{$tablehash{$table}})
-        {
-
-            #  - may have a list of objects to remove from the table
-            # ex. say key is "node" and table is "nodelist"
-            foreach my $obj (@{$tablehash{$table}{$key}})
+        foreach my $obj (keys %{$tablehash{$table}}) {
+            foreach my $attr (keys %{$tablehash{$table}{$obj}})
             {
+                foreach my $key (keys %{$tablehash{$table}{$obj}{$attr}})
+                {
 
-                # ex. $keyhash{node}=c68m3hvp01
-                $keyhash{$key} = $obj;
-
+                    # ex. $keyhash{node}=c68m3hvp01
+                    $keyhash{$key} = $tablehash{$table}{$obj}{$attr}{$key};
+                }
                 # ex. delete the c68m3hvp01 entry of the node column in the
                 #	nodelist table
                 $thistable->delEntries(\%keyhash);
@@ -1728,5 +1855,98 @@ sub getNetwkInfo
 
 	return %nethash;
 }
+#----------------------------------------------------------------------------
 
+=head3   parse_access_tabentry
+
+        Parse the access_tabentry field in Schema.pm.
+        We needs to support multiple keys in the table
+        Arguments:
+                $objname: objectname=>objtype hash
+                $access_tabentry: the access_tabentry defined in Schema.pm
+                $tabentry_ref: return the parsed result through this hash ref 
+                                  The structure of the hash is:
+                                  {
+                                      'lookup_tables' => <table_name>
+                                      'lookup_attrs =>
+                                      {
+                                          'attr1' => 'val1'
+                                          'attr2' => 'val2'
+                                          ...
+                                       }
+                                  }
+        Returns:
+                0 - success
+                1 - failed
+        Globals:
+        Error:
+        Example:
+
+		To parse the access_tabentry field
+
+                my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname, $this_attr->{access_tabentry}, \%tabentry);
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub parse_access_tabentry()
+{
+    my ($class, $objname, $access_tabentry, $tabentry_ref) = @_;
+
+    # ex. 'nodelist.node', 'attr:node'
+    foreach my $ent (split('::', $access_tabentry))
+    {
+        # ex. 'nodelist.node', 'attr:node'
+        my ($lookup_key, $lookup_value) = split('\=', $ent);
+
+        # ex. 'nodelist', 'node'
+        my ($lookup_table, $lookup_attr) = split('\.', $lookup_key);
+
+        # ex. 'attr', 'node'
+        my ($lookup_type, $lookup_data) = split('\:', $lookup_value);
+
+        if (!defined($tabentry_ref->{'lookup_table'}))
+        {
+            $tabentry_ref->{'lookup_table'} = $lookup_table;
+        }
+
+        # Only support one lookup table in the access_tabentry
+        # Do we need to support multiple tables in one access_tabentry ????
+        # has not seen any requirement...
+        if ($lookup_table ne $tabentry_ref->{'lookup_table'})
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
+                  "The access_tabentry \"$access_tabentry\" is not valid, can not specify more than one tables to look up.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
+        }
+
+       if ($lookup_type eq 'attr')
+       {
+           # TODO: may need to update in the future
+           # for now, the "val" in attr:val in 
+           # Schema.pm can only be the object name
+           # In the future, even if we need to change here,
+           # be caution about the performance
+           # looking up table is time consuming
+           $tabentry_ref->{'lookup_attrs'}->{$lookup_attr} = $objname;
+       }
+       elsif ($lookup_type eq 'str')
+       {
+           $tabentry_ref->{'lookup_attrs'}->{$lookup_attr} = $lookup_data;
+       } 
+       else
+       {
+           my $rsp;
+           $rsp->{data}->[0] =
+                 "The access_tabentry \"$access_tabentry\" is not valid, the lookup type can only be 'attr' or 'str'.";
+           xCAT::MsgUtils->message("E", $rsp, $::callback);
+           return 1;
+       }
+    }
+    return 0;
+}
 1;
