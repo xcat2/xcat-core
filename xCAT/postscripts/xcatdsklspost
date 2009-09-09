@@ -33,6 +33,36 @@ if [ "$OSVER" = "11" ]; then
     SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '   
 fi
 
+#open the xcatinfo file to look for the master if it is not set
+frominfofile=0
+if [ -z $SIP ]; then
+    if [ -f /opt/xcat/xcatinfo ]; then
+	SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+	frominfofile=1
+    fi   
+fi
+
+#no hope, now let's get out here.
+if [ -z $SIP ]; then
+    hn=`hostname`
+    echo "Cannot find the xCAT server for node $hn"
+    exit  
+fi
+
+#save the SIP into the xcatinfo file
+if [ $frominfofile -eq 0 ]; then
+    if [ ! -f /opt/xcat/xcatinfo ]; then
+	mkdir -p /opt/xcat
+        touch /opt/xcat/xcatinfo
+    fi
+    grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    if [ $? -eq 0 ]; then
+	sed -i "s/XCATSERVER=.*/XCATSERVER=$SIP/" /opt/xcat/xcatinfo
+    else
+	echo "XCATSERVER=$SIP" >> /opt/xcat/xcatinfo
+    fi
+fi    
+
 if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     touch /var/lock/subsys/xcatmounts
     echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts

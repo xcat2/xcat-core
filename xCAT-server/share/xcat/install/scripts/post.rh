@@ -41,6 +41,10 @@ echo "$TMP" > /opt/xcat/xcatdsklspost
 chmod 755 /opt/xcat/xcatdsklspost
 chkconfig --add xcatpostinit
 
+cat >/opt/xcat/xcatinfo << EOF
+XCATSERVER=#XCATVAR:XCATMASTER#
+EOF
+
 #something Jarrod knows
 sed -i 's/^serial/#serial/' /boot/grub/menu.lst
 sed -i 's/^terminal/#terminal/' /boot/grub/menu.lst

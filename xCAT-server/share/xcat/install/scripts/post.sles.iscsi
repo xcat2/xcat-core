@@ -42,6 +42,10 @@ EOF
 chmod 755 /opt/xcat/xcatdsklspost
 
 chkconfig --add xcatpostinit
+
+cat >/opt/xcat/xcatinfo << EOF
+XCATSERVER=#XCATVAR:XCATMASTER#
+EOF
 ]]>
 
           </source>

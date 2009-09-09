@@ -40,6 +40,10 @@ echo "$TMP" > /opt/xcat/xcatdsklspost
 chmod 755 /opt/xcat/xcatdsklspost
 chkconfig --add xcatpostinit
 
+cat >/opt/xcat/xcatinfo << EOF
+XCATSERVER=#XCATVAR:XCATMASTER#
+EOF
+
 export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
