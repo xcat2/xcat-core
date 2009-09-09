@@ -1334,7 +1334,7 @@ sub setupSSH
       or die "cannot open file $home/.ssh/copy.sh\n";
     print FILE "#!/bin/sh
 umask 0077
-home=`egrep \"^$to_userid\" /etc/passwd | cut -f6 -d :`
+home=`egrep \"^$to_userid:\" /etc/passwd | cut -f6 -d :`
 dest_dir=\"\$home/.ssh\"
 mkdir -p \$dest_dir
 cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1
