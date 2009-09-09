@@ -1486,6 +1486,8 @@ sub cpSSHFiles
         || !(-e "$home/.ssh/id_rsa.pub")
         || !(-e "$home/.ssh/id_dsa.pub"))
     {
+        $rsp->{data}->[0] = "A public key was missing in the .ssh directory.";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
