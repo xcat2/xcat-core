@@ -1,5 +1,13 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #TODO:
+#MEMLEAK fix
+# see NodeRange.pm for notes about how to produce a memory leak
+# xCAT as it stands at this moment shouldn't leak anymore due to what is 
+# described there, but that only hides from the real problem and the leak will
+# likely crop up if future architecture changes happen
+# in summary, a created Table object without benefit of db worker thread
+# to abstract its existance will consume a few kilobytes of memory
+# that never gets reused
 # just enough notes to remind me of the design that I think would allow for
 #   -cache to persist so long as '_build_cache' calls concurrently stack (for NodeRange interpretation mainly) (done)
 #   -Allow plugins to define a staleness threshold for getNodesAttribs freshness (complicated enough to postpone...)

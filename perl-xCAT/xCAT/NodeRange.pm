@@ -11,6 +11,25 @@ our @EXPORT_OK = qw(extnoderange abbreviate_noderange);
 
 my $missingnodes=[];
 my $nodelist; #=xCAT::Table->new('nodelist',-create =>1);
+my $grptab;
+#TODO: MEMLEAK note
+# I've moved grptab up here to avoid calling 'new' on it on every noderange
+# Something is wrong in the Table object such that it leaks
+# a few kilobytes of memory, even if nodelist member is not created
+# To reproduce the mem leak, move 'my $grptab' to the place where it is used
+# then call 'getAllNodesAttribs' a few thousand times on some table
+# No one noticed before 2.3 because the lifetime of processes doing noderange 
+# expansion was short (seconds)
+# In 2.3, the problem has been 'solved' for most contexts in that the DB worker
+# reuses Table objects rather than ever destroying them
+# The exception is when the DB worker process itself wants to expand
+# a noderange, which only ever happens from getAllNodesAttribs
+# in this case, we change NodeRange to reuse the same Table object
+# even if not relying upon DB worker to figure it out for noderange
+# This may be a good idea anyway, regardless of memory leak
+# It remains a good way to induce the memleak to correctly fix it 
+# rather than hiding from the problem
+
 #my $nodeprefix = "node";
 my @allnodeset;
 my $retaincache=0;
@@ -153,7 +172,9 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
      }
 
     # Try to match groups?
-        my $grptab = xCAT::Table->new('nodegroup'); #TODO: build cache once per noderange and use it instead of repeats
+        unless ($grptab) {
+           $grptab = xCAT::Table->new('nodegroup'); #TODO: build cache once per noderange and use it instead of repeats
+        }
         my @grplist;
         if ($grptab) { 
             @grplist = @{$grptab->getAllEntries()};
