@@ -305,13 +305,14 @@ sub lssyscfg {
 sub chsyscfg {
 
     my $exp     = shift;
+    my $res     = shift;
     my $d       = shift;
     my $cfgdata = shift;
 
     #####################################
     # Select command
     #####################################
-    my $cmd = sprintf( $chsyscfg{@$d[4]}, @$d[2], $cfgdata); 
+    my $cmd = sprintf( $chsyscfg{$res}, @$d[2], $cfgdata ); 
 
     #####################################
     # Send command

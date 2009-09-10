@@ -788,7 +788,7 @@ sub modify_by_attr {
                     push @values, [$lpar, $err_msg, $Rc];
                     next;
                 }
-                my $result = xCAT::PPCcli::chsyscfg( $exp, $d, $cfgdata );
+                my $result = xCAT::PPCcli::chsyscfg( $exp, "prof", $d, $cfgdata );
                 $Rc = shift(@$result);
                 push @values, [$lpar,@$result[0],$Rc];
             }
@@ -999,7 +999,7 @@ sub modify_by_prof {
                push @values, [$lpar,@$result[0],$Rc];
             }
             else {
-               my $result = xCAT::PPCcli::chsyscfg( $exp, $d, $cfg );
+               my $result = xCAT::PPCcli::chsyscfg( $exp, "prof", $d, $cfg );
                my $Rc = shift(@$result);
                push @values, [$lpar,@$result[0],$Rc];
             }
