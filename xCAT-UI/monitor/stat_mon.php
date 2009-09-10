@@ -13,34 +13,8 @@ require_once "$TOPDIR/lib/monitor_display.php";
 //get the name of the selected plug-in
 $name = $_REQUEST['name'];
 
-displayMapper(array('home'=>'main.php', 'monitor'=>''));
-displayTips(array(
-    "Enable/disable Node/App Status Monitoring by clicking the button",
-    "In order to take affect, you have to START/RESTART the desired plugin"));
-
-//get the current status for "node-status-monitor"
-$xml = docmd("monls", ' ', array($name));
-if(getXmlErrors($xml,$errors)) {
-    echo "<p class=Error>",implode(' ',$errors), "</p>";
-    exit;
-}
-#then, parse the xml data
-foreach($xml->children() as $response) foreach($response->children() as $data) {
-    list($n, $stat, $nodemonstatus) = preg_split("/\s+/",$data);
-    if(isset($nodemonstatus)) {
-        $ns = "Enabled";
-    }else {
-        $ns = "Disabled";
-    }
-}
-
-display_stat_mon_table(array("$name"=>
-        array(
-            'nodestat'=>$ns,
-            'appstat'=>'Disabled',  //currently application status monitoring is not supported by xCAT monitor Arch.
-        )));
+displayNodeAppStatus($name);
 
 displayStatus();
 
-//insertButtons(array('label'=>'Next', id=>'next', 'onclick'=>'loadMainPage("monitor/monlist.php")'));
 ?>

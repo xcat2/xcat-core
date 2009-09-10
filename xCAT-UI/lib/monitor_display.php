@@ -136,6 +136,7 @@ echo <<<TOS2
 <td>
 TOS2;
     insertButtons(array('label'=>$ns_tobe, 'id'=>'node_stat', 'onclick'=>"node_stat_control(\"$name\")"));
+    //TODO: change the function name of node_stat_control
     echo '</td>';
     echo '</tr>';
     echo '<tr class="ListLine1">';
@@ -454,35 +455,171 @@ function displayRMCMonshowAttr($attr) {
     echo "<tbody>";
 
     //get all the data by the command "monshow"
-    $xml = docmd("monshow", "", array("rmcmon", "-s", "-t", "10", "-a", "$attr"));
+    $xml = docmd("monshow", "", array("rmcmon", "-s", "-t", "60", "-a", "$attr"));
     //the error handling is skipped
     $index = 0;
     foreach($xml->children() as $response) foreach($response->children() as $data) {
         //handle the data here
-        //skip the first 3 lines
-        if($index++ < 3) {
+        //skip the first 2 lines
+        if($index++ < 2) {
             continue;
         }
+        //then, parse "date" & "value"
+        $arr = preg_split("/\s+/", $data);
+        array_pop($arr);
+        $val = array_pop($arr);
+        $time = implode(" ", $arr);
         echo "<tr>";
-        $elements = explode(" ", $data);
-        echo "<td>";
-        $i = 0;
-        while($i < 7) {
-            echo $elements[$i],"\t";
-            $i++;
-        }
-        echo "</td>";
-        echo "<td>$elements[7]</td>";
-        //var_dump($elements);
-        echo "</tr>";
-
-        
+        echo "<td>$time</td>";
+        echo "<td>$val</td>";
+        echo "</tr>";        
     }
+
 
     echo "</tbody>";
     echo "</table>";
     echo "</div>";
 }
 
+function displayRMCMonshowGraph($value) {
+//display the RMC Performance Data
+echo <<<TOS11
+<div>
+<script type="text/javascript">
+rmc_monshow_draw_by_flot("$value");
+</script>
+<p><b>The Graph View for RMC Resource</b></p>
+<div id='placeholder' style='width:600px;height:300px'>
+</div>
+</div>
+TOS11;
+}
+
+/*
+ * function displayOptionsForPlugin($plugin)
+ * *****************************************
+ * when the user selects one plugin, the avaiable configuration options will display in <div id='monconfig'> 
+ * TODO: for the non-rmcmon plugins, only the option "node/application status monitoring setting" is shown;
+ * 
+ * the avaiable view options will also display in <div id='monview'>, 
+ * TODO: right now, it's only implemented for rmcmon plugin.
+ */
+function displayOptionsForPlugin($name)
+{
+    echo "<div id='monconfig'>";
+    echo "<p>Available Configurations for  <b>$name</b></p>";
+
+    echo '<table id="tabTable" class="tabTable" cellspacing="1">';
+    echo "<tbody>";
+
+    //set up the options for the plugin with the name "$name"
+    if($name == "rmcmon") {
+        //node status monitor, RMC events, RMC resources
+        echo "<tr class='ListLine0' id='row0'>";
+        echo "<td>Node/Application Status Monitoring Setting</td>";
+        echo "<td>";
+        insertButtons(array('label'=>'Configure', 'id'=>'rmc_nodestatmon', 'onclick'=>'loadMainPage("monitor/stat_mon.php?name=rmcmon")'));
+        echo "</td>";
+        echo "</tr>";
+
+        echo "<tr class='ListLine1' id='row1'>";
+        echo "<td>RMC Events Monitoring Setting</td>";
+        echo "<td>";
+        insertButtons(array('label'=>'Configure', 'id'=>'rmc_event', 'onclick'=>'loadMainPage("monitor/rmc_event_define.php")'));
+        echo "</td>";
+        echo "</tr>";
+
+        echo "<tr class='ListLine0' id='row2'>";
+        echo "<td>RMC Resource Monitoring Setting</td>";
+        echo "<td>";
+        insertButtons(array('label'=>'Configure', 'id'=>'rmc_resource', 'onclick'=>'loadMainPage("monitor/rmc_resource_define.php")'));
+        echo "</td>";
+        echo "</tr>";
+
+    } else {
+        //there's only "node status monitoring" is enabled
+        echo "<tr class='ListLine0' id='row0'>";
+        echo "<td>Node/Application Status Monitoring Setting</td>";
+        echo "<td>";
+        insertButtons(array('label'=>'Configure', 'id'=>$name."_nodestatmon", 'onclick'=>"loadMainPage(\"monitor/stat_mon.php?name=$name\")"));
+        echo "</td>";
+        echo "</tr>";
+    }
+
+    echo "</tbody></table>";
+
+    echo "</div>";
+
+    echo "<div id='monview'>";
+    echo "<p>View Options for <b>$name</b></p>";
+    //there should be many choices for the user to view the clusters' status
+echo <<<TOS1
+<table id="view_tab" class="tabTable" cellspacing="1">
+<thead>
+    <tr class='colHeaders'>
+        <td>Monitor Items</td>
+        <td>Display Formats</td>
+    </tr>
+</thead>
+<tbody>
+TOS1;
+    if($name == "rmcmon") {
+        #display two rows, one for RMC event, another for RMC Resource Performance monitoring.
+        echo "<tr class='ListLine0' id='row0'>";
+        echo "<td>RMC Event Logs</td>";
+        echo "<td>";
+        insertButtons(array('label'=>'View in Text', 'id'=>'rmc_event_text', 'onclick'=>'loadMainPage("monitor/rmc_lsevent.php")'));
+        echo "</td>";
+        echo "</tr>";
+        echo "<tr class='ListLine1' id='row1'>";
+        echo "<td>RMC Resource Logs</td>";
+        echo "<td>";
+        insertButtons(array('label'=>'View in Text', 'id'=>'rmc_resrc_text', 'onclick'=>'loadMainPage("monitor/rmc_monshow.php")'));
+        insertButtons(array('label'=>'View in Graphics', 'id'=>'rmc_resrc_graph', 'onclick'=>''));
+        echo "</td>";
+        echo "</tr>";
+    }
+    else {
+        echo "<p>There's no view functions for $name.</p>";
+    }
+
+    echo "</tbody></table></div>";
+}
+
+/*
+ * function displayNodeAppStatus($name)
+ * ************************************
+ * to display the web page "Node/Application Status Monitoring"
+ * 
+ */
+function displayNodeAppStatus($name)
+{
+    displayMapper(array('home'=>'main.php', 'monitor'=>''));
+    displayTips(array(
+        "Enable/disable Node/App Status Monitoring by clicking the button",
+        "In order to take affect, you have to START/RESTART the desired plugin"));
+
+    //get the current status for "node-status-monitor"
+    $xml = docmd("monls", ' ', array($name));
+    if(getXmlErrors($xml,$errors)) {
+        echo "<p class=Error>",implode(' ',$errors), "</p>";
+        exit;
+    }
+    #then, parse the xml data
+    foreach($xml->children() as $response) foreach($response->children() as $data) {
+        list($n, $stat, $nodemonstatus) = preg_split("/\s+/",$data);
+        if(isset($nodemonstatus)) {
+            $ns = "Enabled";
+        }else {
+            $ns = "Disabled";
+        }
+    }
+
+    display_stat_mon_table(array("$name"=>
+        array(
+            'nodestat'=>$ns,
+            'appstat'=>'Disabled',  //currently application status monitoring is not supported by xCAT monitor Arch.
+        )));
+}
 
 ?>

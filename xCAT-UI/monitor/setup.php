@@ -1,7 +1,8 @@
 <?php
-/* 
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+
+/*
+ * setup.php
+ * perform the "monstart", "monadd" and "monstop" actions for selected monitoring plugins
  */
 
 if(!isset($TOPDIR)) { $TOPDIR="..";}

@@ -565,5 +565,22 @@ function handle_tips() {
     });
 }
 
+function rmc_monshow_draw_by_flot(value)
+{
+    //collecting data from "monshow" command,
+    //then, draw by the jQuery-plugin: flot
+    //http://groups.google.com/group/flot-graphs/browse_thread/thread/93358c68d44412a4?pli=1
+    var options = {
+        xaxis: {
+            mode: 'time'
+        },
+        lines: {show: true, fill: true}
+    };
+
+    $.getJSON("monitor/flot_get_data.php", {attr: value}, function(data) {
+        $.plot($("#placeholder"),data, options);
+    });
+}
+
 // load progress bar
 myBar.loaded('xcat.js');
