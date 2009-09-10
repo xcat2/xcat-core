@@ -35,6 +35,18 @@ sub process_request
         #command => function
         'pping' => \&web_pping,
         'update'=> \&web_update,
+        'chtab'=> \&web_chtab,
+        'lscondition'=> \&web_lscond,
+        'lsresponse'=> \&web_lsresp,
+        'lscondresp' => \&web_lscondresp,
+        'mkcondresp' => \&web_mkcondresp,
+        'startcondresp' => \&web_startcondresp,
+        'stopcondresp' => \&web_stopcondresp,
+        'lsrsrc' => \&web_lsrsrc,
+        'lsrsrcdef-api' => \&web_lsrsrcdef,
+        'gettab' => \&web_gettab,
+        'lsevent' => \&web_lsevent,
+        'lsdef' => \&web_lsdef,
         #'xdsh' => \&web_xdsh,
         #THIS list needs to be updated
     );
@@ -50,6 +62,203 @@ sub process_request
         $callback->({error=>"$cmd is not authorizied!\n",errorcode=>[1]});
     }
 }
+
+sub web_lsdef {
+    my ($request, $callback, $sub_req) = @_;
+    print Dumper($request);
+
+    #TODO: web_lsdef works only for "lsdef <noderange> -i nodetype"
+    my $ret = `$request->{arg}->[0]`;
+    my @lines = split '\n', $ret;
+    
+    split '=', $lines[2];
+    my $ntype = $_[1];
+
+    $callback->({data=>"$ntype"});
+}
+
+sub web_lsevent {
+    my ($request, $callback, $sub_req) = @_;
+    my $ret = `$request->{arg}->[0]`;
+    
+    #please see the manpage for "lsevent" to see the output format
+
+    my @lines = split '\n', $ret;
+
+    my $length = scalar @lines;
+    my $line = 0;
+
+    my %data = ();
+
+    while($line < $length) {
+        split "=", $lines[$line];
+        my $time = $_[1];
+
+        split "=", $lines[$line+1];
+        my $cate = $_[1];
+
+        split "=", $lines[$line+2];
+        my $event = $_[1];
+
+        $data{$line} = {
+            "time" => $time,
+            "category" => $cate,
+            "event" => $event
+        };
+        $line +=4;
+    }
+
+    #print Dumper(\%data);
+
+    foreach my $key ( sort keys %data) {
+        $callback->({data => \%{$data{$key}}});
+    }
+}
+
+sub web_lsrsrcdef {
+    my ($request, $callback, $sub_req) = @_;
+    my $ret = `$request->{arg}->[0]`;
+
+    my @lines = split '\n', $ret;
+    shift @lines;
+    print Dumper(\@lines);
+    my $data = join("=", @lines);
+    $callback->({data=>"$data"});
+
+}
+
+sub web_lsrsrc {
+    my ($request, $callback, $sub_req)  = @_;
+    my $ret = `$request->{arg}->[0]`;
+    my @classes;
+
+    my @lines = split '\n', $ret;
+    shift @lines;
+    foreach my $line(@lines) {
+        my $index = index($line, '"', 1);
+        push @classes, substr($line, 1, $index-1);
+    }
+    my $data = join("=",@classes);
+    $callback->({data=>"$data"});
+}
+
+
+
+sub web_mkcondresp {
+    my ($request, $callback, $sub_req) = @_;
+    print Dumper($request->{arg}->[0]);#debug
+    my $ret = system($request->{arg}->[0]);
+    #there's no output for "mkcondresp"
+    #TODO
+    if($ret) {
+        #failed
+    }
+}
+
+sub web_startcondresp {
+    my ($request, $callback, $sub_req) = @_;
+    print Dumper($request->{arg}->[0]);#debug
+    my $ret = system($request->{arg}->[0]);
+    if($ret) {
+        #to handle the failure
+    }
+}
+
+sub web_stopcondresp {
+    my ($request, $callback, $sub_req) = @_;
+    print Dumper($request->{arg}->[0]);#debug
+    my $ret = system($request->{arg}->[0]);
+    if($ret) {
+        #to handle the failure
+    }
+}
+
+sub web_lscond {
+    my ($request, $callback, $sub_req) = @_;
+    my $ret = `lscondition`;
+    my @conds;
+    
+    my @lines  = split '\n', $ret;
+    shift @lines;
+    shift @lines;
+    foreach my $line (@lines) {
+        #
+        my $index = index($line, '"', 1);
+        push @conds, substr($line, 1, $index-1);
+    }
+
+    #all the conditions are stored in @conds
+    my $data = join("=",@conds);
+    $callback->({data=>"$data"});
+}
+
+sub web_lsresp {
+    my ($request, $callback, $sub_req) = @_;
+    my $ret = `lsresponse`;
+    my @resps;
+
+    my @lines = split '\n', $ret;
+    shift @lines;
+    shift @lines;
+
+    foreach my $line (@lines) {
+        my $index = index($line, '"', 1);
+        push @resps, substr($line, 1, $index-1);
+    }
+    #all the responses are stored in @resps
+    my $data = join("=",@resps);
+    $callback->({data=>"$data"});
+}
+
+sub web_lscondresp {
+    my ($request, $callback, $sub_req) = @_;
+    my @ret = `lscondresp`;
+    shift @ret;
+    shift @ret;
+
+    my $data;
+
+    foreach my $line (@ret) {
+        chomp $line;
+        $data .=$line;
+        $data .="=";
+    }
+
+    $callback->({data=>"$data"});
+
+}
+# currently, web_chtab only handle chtab for the table "monitoring"
+sub web_chtab {
+    my ($request, $callback, $sub_req) = @_;
+    split ' ', $request->{arg}->[0];
+    my $tmp_str = $_[2];
+    split '\.', $tmp_str;
+    my $table = $_[0];   #get the table name
+    if($table == "monitoring") {
+        system("$request->{arg}->[0]");
+    }else {
+        $callback->({error=>"the table $table is not authorized!\n",errorcode=>[1]});
+    }
+}
+ sub web_gettab {
+    #right now, gettab only support the monitoring table
+    my ($request, $callback, $sub_req) = @_;
+    split ' ', $request->{arg}->[0];
+    my $tmp_str = $_[2];
+    split '\.', $tmp_str;
+    my $table = $_[0];
+    if($table == "monitoring") {
+        my $val = `$request->{arg}->[0]`;
+        chomp $val;
+        $callback->({data=>$val});
+    }else {
+        $callback->(
+            {error=>"The table $table is not authorized to get!\n",
+                errorcode=>[1]});
+    }
+}
+
+   
 
 sub web_pping {
     my ($request, $callback, $sub_req) = @_;
