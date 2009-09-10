@@ -388,7 +388,7 @@ sub frame {
                     if ( !defined($ent) or !defined($ent->{id}) ) {
                         return( [[$node,"Cannot find frame num in database",RC_ERROR]] );
                     }
-                    $data = xCAT::PPCcli::chsyscfg( $exp, "frame", $d, $ent->{id} );
+                    $data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, $ent->{id} );
                     $Rc = shift(@$data);
 
                     #################################
@@ -405,7 +405,7 @@ sub frame {
                     # Set frame number
                     # Read the frame number from opt
                     #################################
-                    $data = xCAT::PPCcli::chsyscfg( $exp, "frame", $d, $value );
+                    $data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, $value );
                     $Rc = shift(@$data);
 
                     #################################
