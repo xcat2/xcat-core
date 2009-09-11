@@ -300,15 +300,29 @@ sub credentials {
 
     my $server = shift;
     my $hwtype = shift;
-    my $user   = @{$logon{$hwtype}}[0];
-    my $pass   = @{$logon{$hwtype}}[1];
+    my $user   = shift;
+    my $pass   = undef;
+    my $user_specified = $user;
+    if ( !$user_specified or $user eq @{$logon{$hwtype}}[0])
+    {
+        $user = @{$logon{$hwtype}}[0];
+        $pass   = @{$logon{$hwtype}}[1];
+    }
 
     ###########################################
     # Check passwd tab
     ###########################################
     my $tab = xCAT::Table->new( 'passwd' );
     if ( $tab ) {
-        my ($ent) = $tab->getAttribs( {key=>$hwtype}, qw(username password));
+        my $ent;
+        if ( $user_specified)
+        {
+            ($ent) = $tab->getAttribs( {key=>$hwtype,username=>$user},qw(password));
+        }
+        else
+        {
+            ($ent) = $tab->getAttribs( {key=>$hwtype}, qw(username password));
+        }
         if ( $ent ) {
             if (defined($ent->{password})) { $pass = $ent->{password}; }
             if (defined($ent->{username})) { $user = $ent->{username}; }
@@ -319,7 +333,15 @@ sub credentials {
     ##########################################
     $tab = xCAT::Table->new( $hcptab{$hwtype} );
     if ( $tab ) {
-        my ($ent) = $tab->getAttribs( {hcp=>$server}, qw(username password));
+        my $ent;
+        if ( $user_specified)
+        {
+            ($ent) = $tab->getAttribs( {hcp=>$server,username=>$user},qw(password));
+        }
+        else
+        {
+            ($ent) = $tab->getAttribs( {hcp=>$server}, qw(username password));
+        }
         if ( $ent){
             if (defined($ent->{password})) { $pass = $ent->{password}; }
             if (defined($ent->{username})) { $user = $ent->{username}; }
@@ -329,8 +351,18 @@ sub credentials {
     ##############################################################
         elsif( ($ent) = $tab->getAttribs( {hcp=>$defaultgrp{$hwtype}}, qw(username password)))
         {
-            if (defined($ent->{password})) { $pass = $ent->{password}; }
-            if (defined($ent->{username})) { $user = $ent->{username}; }
+            if ( $user_specified)
+            {
+                ($ent) = $tab->getAttribs( {hcp=>$defaultgrp{$hwtype},username=>$user},qw(password));
+            }
+            else
+            {
+                ($ent) = $tab->getAttribs( {hcp=>$defaultgrp{$hwtype}}, qw(username password));
+            }
+            if ( $ent){
+                if (defined($ent->{password})) { $pass = $ent->{password}; }
+                if (defined($ent->{username})) { $user = $ent->{username}; }
+            }
         }
     }
     return( $user,$pass );

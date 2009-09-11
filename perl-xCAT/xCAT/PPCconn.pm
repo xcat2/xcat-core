@@ -412,11 +412,17 @@ sub mkhwconn
             my ($user, $passwd);
             if ( exists $opt->{P})
             {
-                ($user, $passwd) = ('admin', $opt->{P});
+                ($user, $passwd) = ('HMC', $opt->{P});
             }
             else
             {
-                ($user, $passwd) = xCAT::PPCdb::credentials( $node_name, $type);
+                ($user, $passwd) = xCAT::PPCdb::credentials( $node_name, $type,'HMC');
+                if ( !$passwd)
+                {
+                    push @value, [$node_name, "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.",1];
+                    next;
+                }
+
             }
 
             my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
