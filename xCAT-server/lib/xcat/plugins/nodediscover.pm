@@ -102,8 +102,8 @@ sub process_request {
   if (defined($request->{arch})) {
     #Set the architecture in nodetype.  If 32-bit only x86 or ppc detected, overwrite.  If x86_64, only set if either not set or not an x86 family
     my $typetab=xCAT::Table->new("nodetype",-create=>1);
+    (my $nent) = $typetab->getNodeAttribs($node,['arch','supportedarchs']);
     if ($request->{arch}->[0] =~ /x86_64/) {
-      (my $nent) = $typetab->getNodeAttribs($node,['arch','supportedarchs']);
       if ($nent and ($nent->{arch} =~ /x86/)) { #If already an x86 variant, do not change
          unless ($nent and $nent->{supportedarchs} =~ /x86_64/) {
             $typetab->setNodeAttribs($node,{supportedarchs=>"x86,x86_64"});
