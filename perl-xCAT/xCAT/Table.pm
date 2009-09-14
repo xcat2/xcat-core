@@ -1433,12 +1433,6 @@ sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
     }
     #it shouldn't have been zero, but whether it was 0 or 1, ensure that the cache is gone
     $self->{_use_cache}=0; # Signal slow operation to any in-flight operations that may fail with empty cache
-    if (ref $self->{_tablecache}) {
-        undef %{$self->{_tablecache}};
-    }
-    if (ref $self->{_nodecache}) {
-        undef %{$self->{_nodecache}};
-    }
     undef $self->{_tablecache};
     undef $self->{_nodecache};
 }
