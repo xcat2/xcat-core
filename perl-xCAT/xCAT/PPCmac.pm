@@ -508,9 +508,8 @@ sub getmacs {
 
                 push @$result,[$node,$data,0];
             }
-            
-            return([@$result]); 
         }
+        return([@$result]);
     } else {
         #########################################
         # Connect to fsp to achieve MAC address
