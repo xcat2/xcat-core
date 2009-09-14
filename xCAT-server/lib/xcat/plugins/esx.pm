@@ -47,7 +47,7 @@ my %guestidmap = (
     "win2k8r2" => "windows7Server",
     "win2k3" => "winNetStandard",
     "imagex" => "winNetStandard",
-    "boottarget" => "otherlinux"
+    "boottarget" => "otherLinux"
 #otherGuest, otherGuest64, otherLinuxGuest, otherLinux64Guest
     );
 
