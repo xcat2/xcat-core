@@ -380,7 +380,7 @@ noderes => {
         },
     },
 nodetype => {
-    cols => [qw(node os arch profile nodetype comments disable)],
+    cols => [qw(node os arch profile supportedarchs nodetype comments disable)],
     keys => [qw(node)],
     table_desc => 'A few hardware and software characteristics of the nodes.',
  descriptions => {
@@ -388,6 +388,7 @@ nodetype => {
   os => 'The operating system deployed on this node.  Valid values: AIX, rh*, centos*, fedora*, sles* (where * is the version #).',
   arch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
   profile => 'Either the name of an xCAT osimage definition or a pointer to a kickstart or autoyast template to use for OS deployment of this node.',
+  supportedarchs => 'Comma delimited list of architectures this node can execute.',
   nodetype => 'A comma-delimited list of characteristics of this node.  Valid values: blade, vm (virtual machine), lpar, osi (OS image), hmc, fsp, ivm, bpa, mm, rsa, switch.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -899,6 +900,10 @@ my @nodeattrs = (
 ######################
         {attr_name => 'arch',
                  tabentry => 'nodetype.arch',
+                 access_tabentry => 'nodetype.node=attr:node',
+  },
+        {attr_name => 'supportedarchs',
+                 tabentry => 'nodetype.supportedarchs',
                  access_tabentry => 'nodetype.node=attr:node',
   },
         {attr_name => 'os',

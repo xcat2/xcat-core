@@ -103,13 +103,19 @@ sub process_request {
     #Set the architecture in nodetype.  If 32-bit only x86 or ppc detected, overwrite.  If x86_64, only set if either not set or not an x86 family
     my $typetab=xCAT::Table->new("nodetype",-create=>1);
     if ($request->{arch}->[0] =~ /x86_64/) {
-      (my $nent) = $typetab->getNodeAttribs($node,['arch']);
-      unless ($nent and ($nent->{arch} =~ /x86/)) { #If already an x86 variant, do not change
-         $typetab->setNodeAttribs($node,{arch=>$request->{arch}->[0]});
+      (my $nent) = $typetab->getNodeAttribs($node,['arch','supportedarchs']);
+      if ($nent and ($nent->{arch} =~ /x86/)) { #If already an x86 variant, do not change
+         unless ($nent and $nent->{supportedarchs} =~ /x86_64/) {
+            $typetab->setNodeAttribs($node,{supportedarchs=>"x86,x86_64"});
+         }
+      } else {
+         $typetab->setNodeAttribs($node,{arch=>$request->{arch}->[0],supportedarchs=>"x86,x86_64"});
          #this check is so that if an admin explicitly declares a node 'x86', the 64 bit capability is ignored
       }
     } else {
-      $typetab->setNodeAttribs($node,{arch=>$request->{arch}->[0]});
+        unless ($nent and $nent->{supportedarchs} eq $request->{arch}->[0] and $nent->{arch} eq $request->{arch}->[0]) {
+            $typetab->setNodeAttribs($node,{arch=>$request->{arch}->[0],supportedarchs=>$request->{arch}->[0]});
+        }
     }
     my $currboot='';
     $nrtab = xCAT::Table->new('noderes'); #Attempt to check and set if wrong the netboot method on discovery, if admin omitted
