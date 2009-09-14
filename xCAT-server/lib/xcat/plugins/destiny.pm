@@ -131,14 +131,21 @@ sub setdestiny {
     }
     if ($target) {
         my $updateattribs;
+        my $nodetypetable = xCAT::Table->new('nodetype',-create=>1);
+        my $archentries = $nodetypetable->getNodesAttribs($req->{node},['supportedarchs']);
         if ($target =~ /(.*)-(.*)-(.*)/) {
             $updateattribs->{os}=$1;
             $updateattribs->{arch}=$2;
             $updateattribs->{profile}=$3;
+            foreach (@{$req->{node}}) {
+                if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$2(\z|,)/) {
+                    $callback->({errorcode=>1,error=>"Requested architecture ".$updateattribs->{arch}." is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports ".$archentries->{$_}->[0]->{supportedarchs}.")"});
+                    return;
+                }
+            }
         } else {
             $updateattribs->{profile}=$target;
         }
-        my $nodetypetable = xCAT::Table->new('nodetype',-create=>1);
         $nodetypetable->setNodesAttribs($req->{node},$updateattribs);
     }
 
