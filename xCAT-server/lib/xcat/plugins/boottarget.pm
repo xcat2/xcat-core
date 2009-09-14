@@ -167,6 +167,21 @@ sub mknetboot
 	    my $naval = $naent->{$2};
         $kcmdline =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
     }
+	while ($kcmdline =~ /#TABLE:([^:#]+):([^:#]+):([^:#]+)#/) {
+        if ($2 =~ /THISNODE/ or $2 =~ /\$NODE/) {
+    	    my $natab = xCAT::Table->new($1);
+	        my $naent = $natab->getNodeAttribs($node,[$3]);
+	        my $naval = $naent->{$3};
+            $kcmdline =~ s/#NODEATTRIB:([^:#]+):([^:#]+):([^:#]+)#/$naval/;
+        } else {
+		    my $msg =  "Table key of $2 not yet supported by boottarget mini-template";
+    		$callback->({
+    			error => ["$msg"],
+    	                errorcode => [1]
+    		});
+            
+        }
+    }
 
 	if($initrd eq ''){
         	$bptab->setNodeAttribs(
