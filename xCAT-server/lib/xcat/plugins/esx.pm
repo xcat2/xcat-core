@@ -76,7 +76,6 @@ sub preprocess_request {
     my $vusername = "Administrator";
     my $vpassword = "";
 
-    xCAT::Common::usage_noderange($request,$callback);
     unless ($request) { return; }
 
 	if ($request->{command}->[0] eq 'copycd')
@@ -85,6 +84,7 @@ sub preprocess_request {
 	}elsif($request->{command}->[0] eq 'mknetboot'){
 		return [$request];
 	}
+    xCAT::Common::usage_noderange($request,$callback);
 
         if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; } 
          # exit if preprocesses
