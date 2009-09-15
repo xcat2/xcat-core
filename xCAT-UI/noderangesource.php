@@ -39,10 +39,12 @@ require_once "js/jsonwrapper.php";
 
         }
     } #If there were more groups than nodes, leave the signal to noise ratio down
-    foreach ($rvals->xcatresponse->node as $node) {
-        $jdata[] = array("data"=>"$node",
+    if ($root == 0) {
+        foreach ($rvals->xcatresponse->node as $node) {
+            $jdata[] = array("data"=>"$node",
                          "attributes"=>array("id"=>",$node",
                                              "rel"=>'node'));
+        }
     }
 #    header('Content-type: text/html');
     echo json_encode($jdata);
