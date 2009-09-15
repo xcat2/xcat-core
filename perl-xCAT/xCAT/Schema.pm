@@ -556,6 +556,7 @@ site => {
    "  ppcmaxp:\tThe max # of processes for PPC hw ctrl.\n\n".
    "  ppcretry:\tThe max # of PPC hw connection attempts before failing.\n\n".
    "  ppctimeout:\tThe timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
+   "  pruneservices:\tWhether to enable service pruning when noderm is run (i.e. removing DHCP entries when noderm is executed)\n\n".
    "  sharedtftp:\tSet to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1.\n\n".
    "  timezone:\t(e.g. America/New_York)\n\n".
    "  useSSHonAIX:\t(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX.\n\n".

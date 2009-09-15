@@ -15,6 +15,7 @@ use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 use xCAT::Schema;
 use xCAT::Utils;
 use Getopt::Long;
+my $requestcommand;
 
 1;
 
@@ -74,6 +75,7 @@ sub process_request
 
     my $request  = shift;
     my $callback = shift;
+    $requestcommand = shift;
     my $nodes    = $request->{node};
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
@@ -243,6 +245,13 @@ sub noderm
     }
 
     if (!$nodes) { $noderm_usage->(1); return; }
+    my $sitetab = xCAT::Table->new('site');
+    my $pdhcp = $sitetab->getAttribs({key=>'pruneservices'},['value']);
+    if ($pdhcp and $pdhcp->{value} and $pdhcp->{value} !~ /n(\z|o)/i) {
+        $executecommand->({command=>['makedhcp'],node=>$nodes,arg=>['-d']});
+    }
+
+    
 
     # Build the argument list for using the -d option of nodech to do our work for us
     my @tablist = ("-d");
