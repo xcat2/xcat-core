@@ -227,13 +227,13 @@ if ($inet6support) {
             node => [ $node ],
             arg => [ 'next' ],
             );
-          close($conn);
           #node should be blocked, race condition may occur otherwise
           #my $pid=xCAT::Utils->xfork();
           #unless ($pid) { #fork off the nodeset and potential slowness
             plugin_command(\%request,undef,\&build_response);
           #  exit(0);
           #}
+          close($conn);
         } elsif ($text =~ /installstatus/) {
 	  my @tmpa=split(' ', $text);
           for (my $i = 1; $i <= @tmpa-1; $i++) {
