@@ -28,7 +28,7 @@ require_once "js/jsonwrapper.php";
     $numsubgroups=count($rvals->xcatresponse->intersectinggroups);
     $numnodes=count($rvals->xcatresponse->node);
     $jdata=array();
-    if ($numnodes >= $numsubgroups) { #If there are few enough subgroups to be helpful filters, add them in
+    if ($numnodes >= $numsubgroups || $root==1) { #If there are few enough subgroups to be helpful filters, add them in
         foreach ($rvals->xcatresponse->intersectinggroups as $group) {
             if (! in_array("$group",$parents)) {
             $jdata[]= array("data"=>"$group",
@@ -39,12 +39,10 @@ require_once "js/jsonwrapper.php";
 
         }
     } #If there were more groups than nodes, leave the signal to noise ratio down
-    if ($root==0) {
     foreach ($rvals->xcatresponse->node as $node) {
         $jdata[] = array("data"=>"$node",
                          "attributes"=>array("id"=>",$node",
                                              "rel"=>'node'));
-    }
     }
 #    header('Content-type: text/html');
     echo json_encode($jdata);
