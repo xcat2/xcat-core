@@ -1410,7 +1410,7 @@ sub makenetworks
     # set the nameserver in the site table
     my @names =
       xCAT::Utils->runcmd(
-                       "/bin/grep nameserver /etc/resolv.conf | cut -d' ' -f 2",
+                       "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'",
                        0);
     my $ns     = join(',', @names);
     my $cmd    = "$::XCATROOT/sbin/chtab key=nameservers site.value=$ns";
