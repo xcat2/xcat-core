@@ -1035,7 +1035,7 @@ sub memCheckAIX()
                 print $::LOG_FILE_HANDLE "$host total memory is $mem MB. UNEXPECTED small size\n";
             }
         }
-        if ($line =~ /(\S*):\s*\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)/ && defined($::MIN_FREELP))
+        elsif ($line =~ /(\S*):\s*\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)/ && defined($::MIN_FREELP))
         {
             # Get node hostname and number of free large page
             $host = $1;
@@ -1045,6 +1045,18 @@ sub memCheckAIX()
                 $abnormalflp = 1;
                 print "$host Free large page is $freelp. UNEXPECTED small size\n";
                 print $::LOG_FILE_HANDLE "$host Free large page is $freelp. UNEXPECTED small size\n";
+            }
+        }
+        elsif ($line =~ /(\S*):.*lcpu=(\d+)\s+mem=(\d+)MB/ && defined($::MIN_MEMORY) && $abnormalmem != 1)
+        {
+            # Get node hostname and memory size
+            $host = $1;
+            $mem = $3;
+            if ($mem < $::MIN_MEMORY)
+            {
+                $abnormalmem = 1;
+                print "$host total memory is $mem MB. UNEXPECTED small size\n";
+                print $::LOG_FILE_HANDLE "$host total memory is $mem MB. UNEXPECTED small size\n";
             }
         }
     }
