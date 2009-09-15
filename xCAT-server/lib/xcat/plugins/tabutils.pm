@@ -248,7 +248,7 @@ sub noderm
     my $sitetab = xCAT::Table->new('site');
     my $pdhcp = $sitetab->getAttribs({key=>'pruneservices'},['value']);
     if ($pdhcp and $pdhcp->{value} and $pdhcp->{value} !~ /n(\z|o)/i) {
-        $executecommand->({command=>['makedhcp'],node=>$nodes,arg=>['-d']});
+        $requestcommand->({command=>['makedhcp'],node=>$nodes,arg=>['-d']});
     }
 
     
