@@ -355,7 +355,7 @@ sub mknetboot
                 next;
             }
             $kcmdline .=
-              "console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+              "console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
             if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
             {
                 $kcmdline .= "n8r";
@@ -616,7 +616,7 @@ sub mkinstall
                     next;
                 }
                 $kcmdline .=
-                    " console=ttyS"
+                    " console=tty0 console=ttyS"
                   . $sent->{serialport} . ","
                   . $sent->{serialspeed};
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/)

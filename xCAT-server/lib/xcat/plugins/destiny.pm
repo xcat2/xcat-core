@@ -206,7 +206,7 @@ sub setdestiny {
       }
       $ent = $hments->{$_}->[0]; #$nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
       if ($ent and defined($ent->{serialport})) {
-         $kcmdline .= "console=ttyS".$ent->{serialport};
+         $kcmdline .= "console=tty0 console=ttyS".$ent->{serialport};
          #$ent = $nodehm->getNodeAttribs($_,['serialspeed']);
          unless ($ent and defined($ent->{serialspeed})) {
             $callback->({error=>["Serial port defined in noderes, but no nodehm.serialspeed set for $_"],errorcode=>[1]});

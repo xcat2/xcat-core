@@ -98,7 +98,7 @@ sub process_request {
    my $normnets = xCAT::Utils->my_nets();
    my $consolecmdline;
    if (defined($serialport) and $serialspeed) {
-       $consolecmdline = "console=ttyS$serialport,$serialspeed";
+       $consolecmdline = "console=tty0 console=ttyS$serialport,$serialspeed";
       if ($serialflow =~ /cts/ or $serialflow =~ /hard/) {
          $consolecmdline .= "n8r";
       } 
