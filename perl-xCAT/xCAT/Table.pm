@@ -217,7 +217,18 @@ sub handle_dbc_request {
         } else {
             return 0;
         }
-    } elsif ($functionname eq 'getAllAttribs') {
+    } else { 
+        unless (defined $opentables{$tablename}->{$autocommit}) {
+        #We are servicing a Table object that used to be 
+        #non data-worker.  Create a new DB worker side Table like the one
+        #that requests this
+            $opentables{$tablename}->{$autocommit} = xCAT::Table->new($tablename,-create=>0,-autocommit=>$autocommit);
+            unless ($opentables{$tablename}->{$autocommit}) {
+                return undef;
+            }
+        }
+    }
+    if ($functionname eq 'getAllAttribs') {
          return $opentables{$tablename}->{$autocommit}->getAllAttribs(@args);
     } elsif ($functionname eq 'getAttribs') {
          return $opentables{$tablename}->{$autocommit}->getAttribs(@args);
