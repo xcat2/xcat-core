@@ -269,7 +269,7 @@ sub xdsh
                                       $command, $noderange);
     push @{$rsp->{data}}, @local_results;
 
-    xCAT::MsgUtils->message("I", $rsp, $callback);
+    xCAT::MsgUtils->message("D", $rsp, $callback);
 
     return;
 }
@@ -302,7 +302,7 @@ sub xdcp
         $i++;
     }
 
-    xCAT::MsgUtils->message("I", $rsp, $callback);
+    xCAT::MsgUtils->message("D", $rsp, $callback);
     if (-e "/tmp/xcatrf.tmp")
     {    # used tmp file for -F option
             #`rm /tmp/xcatrf.tmp`;
