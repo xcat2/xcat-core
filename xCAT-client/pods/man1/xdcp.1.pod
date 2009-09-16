@@ -107,9 +107,11 @@ is not specified, a default fanout value of B<64> is used.
 Specifies the full path to the file that will be used to  
 build the rsync command.
 The format of the input file is as follows, each line contains:
- I<path to source file1> <path to source file2> ... ->  < path to destination file/directory>
+ <path to source file1> <path to source file2> ... ->  < path to destination file/directory>
 
- I<path to source file> -> <path to destination file>
+or
+
+ <path to source file> -> <path to destination file>
 
 For example:
   /etc/password /etc/hosts -> /etc
