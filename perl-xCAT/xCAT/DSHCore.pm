@@ -376,7 +376,7 @@ sub pipe_handler
 
                 my $rsp={};
                 $rsp->{data}->[0] = $line;
-                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                 #print $write_fh $line;
             }
 
