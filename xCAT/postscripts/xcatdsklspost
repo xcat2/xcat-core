@@ -99,7 +99,17 @@ chmod +x /xcatpost/*;
 /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
 MYCONT=`grep MASTER /tmp/mypostscript`
 #echo "MYCONT=$MYCONT"
+#if getpostscript.awk fails, the postscript will fall into infinit loop
+#so one retry_number is added to avoid sunc a condition
+MAX_RETRIES=10
+RETRY=0
 while [ -z "$MYCONT" ]; do
+    RETRY=$(($RETRY+1))
+    if [ $RETRY -eq $MAX_RETRIES ]
+    then
+        break
+    fi
+
     let SLI=$RANDOM%10
     let SLI=10+$SLI
     sleep $SLI
