@@ -289,6 +289,15 @@ sub tabrestore
     $header =~ s/^#//;
     $header =~ s/\s+$//;
     my @colns = split(/,/, $header);
+    my $tcol;
+    foreach $tcol (@colns) { #validate the restore data has no invalid column names
+        unless (grep /^$tcol\z/,@{$xCAT::Schema::tabspec{$table}->{cols}}) {
+            $cb->({error => "The header line indicates that column '$tcol' should exist, which is not defined in the schema for '$table'",errorcode=>1});
+            return;
+        }
+        print Dumper(grep /^$tcol\z/,@{$xCAT::Schema::tabspec{$table}->{cols}});
+    }
+    print "We passed it!\n";
     my $line;
     my $rollback = 0;
 
