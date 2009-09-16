@@ -77,12 +77,15 @@ sub preprocess_request
     my $req = shift;
     my $cb  = shift;
     my %sn;
-    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    if ((defined($req->{_xcatpreprocessed})) &&
+      ($req->{_xcatpreprocessed}->[0] == 1)) {
+      return [$req];
+    }
     my $nodes    = $req->{node};
     my $service  = "xcat";
     my @requests;
     if ($nodes){  
-       return [$req]; #For now, do not distribute, nodestat seems to lose accuracy and slow down distributed
+      return [$req]; #For now, do not distribute, nodestat seems to lose accuracy and slow down distributed
       # find service nodes for requested nodes
       # build an individual request for each service node
       my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
