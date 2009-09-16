@@ -92,7 +92,8 @@ files  to on the target. If the -P flag is specified, the tar-
 get_path is the local host location for the copied files.  The
 remote file directory structure is recreated under target_path
 and  the  remote  target  name  is  appended  to  the   copied
-source_file name in the target_path directory.
+source_file name in the target_path directory. Note: the targetpath 
+directory must exist.
 
 
 =item B<-f>|B<--fanout> I<fanout_value>
@@ -354,13 +355,73 @@ using rsync (ssh) and input -t flag to rsync, enter:
 
 I<xdcp node1 -r /usr/bin/rsync -o "-t"  /localnode/smallfile /tmp/bigfile /tmp>
 
-
 =item *
 
 To copy the /etc/hosts file from the local host to all the nodes
 in the cluster, enter:
 
 B<xdcp> I<all /etc/hosts /etc/hosts>
+
+=item *
+
+To copy all the files in /tmp/testdir from the local host to all the nodes
+in the cluster, enter:
+
+B<xdcp> I<all /tmp/testdir/* /tmp/testdir>
+
+=item *
+
+To copy all the files in /tmp/testdir and it's subdirectories 
+from the local host to node1 in the cluster, enter:
+
+B<xdcp> I<node1 -R /tmp/testdir/* /tmp/testdir>
+
+=item *
+
+To copy the /etc/hosts  file  from  node1  and  node2  to the
+/tmp/hosts.dir directory on the local host, enter:
+
+B<xdcp> I<node1,node2 -P /etc/hosts /tmp/hosts.dir>
+
+
+=item *
+
+To rsync the /etc/hosts file to your compute nodes: 
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/etc/hosts -> /etc/hosts
+
+Run:
+
+B<xdcp> I<compute -F /tmp/myrsync>
+
+
+=item *
+
+To rsync to the compute nodes, using service nodes, the command will first
+rsync the files to the /var/xcat/syncfiles directory on the service nodes and then rsync the files from that directory to the compute nodes.  The /var/xcat/syncfiles default directory on the service nodes, can be changed by putting a directory value in the site table SNsyncfiledir attribute. 
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/etc/hosts /etc/passwd -> /etc
+
+Run:
+
+B<xdcp> I<compute  -F /tmp/myrsync>    to update the Compute Nodes
+
+=item *
+
+To rsync to the service nodes in preparation for rsyncing the compute nodes
+during an install from the service node.  
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/etc/hosts /etc/passwd -> /etc
+
+Run:
+
+B<xdcp> I<compute -s  -F /tmp/myrsync> to sync the service node for compute 
 
 
 =item *
