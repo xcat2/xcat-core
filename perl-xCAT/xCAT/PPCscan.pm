@@ -304,7 +304,7 @@ sub enumerate {
         }
         foreach ( @$lpars ) {
             my ($name,$lparid,$dprof,$curprof) = split /,/;
-            my $prof = (length($curprof)) ? $curprof : $dprof;
+            my $prof = (length($curprof) && ($curprof !~ /^none$/)) ? $curprof : $dprof;
             my $ips  = "";
             
             #####################################
