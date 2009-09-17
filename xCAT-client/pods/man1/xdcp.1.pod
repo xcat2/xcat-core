@@ -11,7 +11,7 @@ B<xdcp> I<noderange>  [[B<-f> I<fanout>]
 
 B<xdcp> I<noderange>  [B<-F> I<rsync input file>] 
 
-B<xdcp> I<computenoderange>  [B <-s> B<-F> I<rsync input file>] 
+B<xdcp> I<computenoderange>  [B<-s> B<-F> I<rsync input file>] 
 
 
 B<xdcp> [B<-i> I<path to install image>] [B<-F> I<rsync input file>] 
