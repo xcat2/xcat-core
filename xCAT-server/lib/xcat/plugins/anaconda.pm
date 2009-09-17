@@ -462,7 +462,7 @@ sub mkinstall
         }
         my $genos = $os;
         $genos =~ s/\..*//;
-        if ($genos =~ /rh.s(\d*)/)
+        if ($genos =~ /rh.*s(\d*)/)
         {
             unless (-r "$installroot/custom/install/$platform/$profile.$genos.$arch.tmpl"
                  or -r "/install/custom/install/$platform/$profile.$genos.tmpl"
@@ -473,8 +473,8 @@ sub mkinstall
             }
         }
       
-        my $tmplfile=get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
-        if (! $tmplfile) { $tmplfile=get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
+        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
         unless ( -r "$tmplfile")  
         {
             $callback->(
@@ -852,34 +852,34 @@ sub copycd
     }
 }
 
-sub get_tmpl_file_name {
-  my $base=shift;
-  my $profile=shift;
-  my $os=shift;
-  my $arch=shift;
-  my $genos=shift;
-
-  if (-r   "$base/$profile.$os.$arch.tmpl") {
-    return  "$base/$profile.$os.$arch.tmpl";     
-  }
-  elsif (-r "$base/$profile.$genos.$arch.tmpl") {
-    return  "$base/$profile.$genos.$arch.tmpl";
-  }
-  elsif (-r "$base/$profile.$arch.tmpl") {
-    return  "$base/$profile.$arch.tmpl";
-  }
-  elsif ( -r "$base/$profile.$os.tmpl") {
-    return   "$base/$profile.$os.tmpl";
-  }
-  elsif (-r "$base/$profile.$genos.tmpl") {
-    return  "$base/$profile.$genos.tmpl";
-  }
-  elsif (-r "$base/$profile.tmpl") {
-    return  "$base/$profile.tmpl";  
-  }
-
-  return "";
-}
+#sub get_tmpl_file_name {
+#  my $base=shift;
+#  my $profile=shift;
+#  my $os=shift;
+#  my $arch=shift;
+#  my $genos=shift;
+#
+#  if (-r   "$base/$profile.$os.$arch.tmpl") {
+#    return  "$base/$profile.$os.$arch.tmpl";     
+#  }
+#  elsif (-r "$base/$profile.$genos.$arch.tmpl") {
+#    return  "$base/$profile.$genos.$arch.tmpl";
+#  }
+#  elsif (-r "$base/$profile.$arch.tmpl") {
+#    return  "$base/$profile.$arch.tmpl";
+#  }
+#  elsif ( -r "$base/$profile.$os.tmpl") {
+#    return   "$base/$profile.$os.tmpl";
+#  }
+#  elsif (-r "$base/$profile.$genos.tmpl") {
+#    return  "$base/$profile.$genos.tmpl";
+#  }
+#  elsif (-r "$base/$profile.tmpl") {
+#    return  "$base/$profile.tmpl";  
+#  }
+#
+#  return "";
+#}
 
 
 1;

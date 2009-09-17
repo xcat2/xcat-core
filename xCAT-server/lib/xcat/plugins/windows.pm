@@ -10,6 +10,7 @@ use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use Socket;
 use xCAT::MsgUtils;
 use Data::Dumper;
@@ -245,8 +246,8 @@ sub mkinstall
                      next;
         } 
 
-        my $tmplfile=get_tmpl_file_name("$installroot/custom/install/windows", $profile, $os, $arch);
-        if (! $tmplfile) { $tmplfile=get_tmpl_file_name("$::XCATROOT/share/xcat/install/windows", $profile, $os, $arch); }
+        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/windows", $profile, $os, $arch);
+        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/windows", $profile, $os, $arch); }
         unless ( -r "$tmplfile")
         {
             $callback->(
@@ -493,28 +494,26 @@ sub copycd
     }
 }
 
-sub get_tmpl_file_name {
-  my $base=shift;
-  my $profile=shift;
-  my $os=shift;
-  my $arch=shift;
-  if (-r   "$base/$profile.$os.$arch.tmpl") {
-    return "$base/$profile.$os.$arch.tmpl";
-  }
-  elsif (-r "$base/$profile.$arch.tmpl") {
-    return  "$base/$profile.$arch.tmpl";
-  }
-  elsif (-r "$base/$profile.$os.tmpl") {
-    return  "$base/$profile.$os.tmpl";
-  }
-  elsif (-r "$base/$profile.tmpl") {
-    return  "$base/$profile.tmpl";
-  }
-
-  return "";
-}
-
-
+#sub get_tmpl_file_name {
+#  my $base=shift;
+#  my $profile=shift;
+#  my $os=shift;
+#  my $arch=shift;
+#  if (-r   "$base/$profile.$os.$arch.tmpl") {
+#    return "$base/$profile.$os.$arch.tmpl";
+#  }
+#  elsif (-r "$base/$profile.$arch.tmpl") {
+#    return  "$base/$profile.$arch.tmpl";
+#  }
+#  elsif (-r "$base/$profile.$os.tmpl") {
+#    return  "$base/$profile.$os.tmpl";
+#  }
+#  elsif (-r "$base/$profile.tmpl") {
+#    return  "$base/$profile.tmpl";
+#  }
+#
+#  return "";
+#}
 1;
 
 

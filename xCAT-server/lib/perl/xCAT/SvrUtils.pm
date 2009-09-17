@@ -341,5 +341,42 @@ sub getsynclistfile()
 
 }
 
+sub get_tmpl_file_name {
+    my ($searchpath, $profile, $os, $arch, $genos) = @_;
+    #usally there're only 4 arguments passed for this function
+    #the $genos is only used for the Redhat family
+
+    my $dotpos = rindex($os, ".");
+    my $osbase = substr($os, 0, $dotpos);
+    #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
+
+    if (-r "$searchpath/$profile.$os.$arch.tmpl") {
+        return "$searchpath/$profile.$os.$arch.tmpl";
+    }
+    elsif (-r "$searchpath/$profile.$osbase.$arch.tmpl") {
+        return "$searchpath/$profile.$osbase.$arch.tmpl";
+    }
+    elsif (-r "$searchpath/$profile.$genos.$arch.tmpl") {
+        return "$searchpath/$profile.$genos.$arch.tmpl";
+    }
+    elsif (-r "$searchpath/$profile.$os.tmpl") {
+        return "$searchpath/$profile.$os.tmpl";
+    }
+    elsif (-r "$searchpath/$profile.$osbase.tmpl") {
+        return "$searchpath/$profile.$osbase.tmpl";
+    }
+    elsif (-r "$searchpath/$profile.$genos.tmpl") {
+        return "$searchpath/$profile.$genos.tmpl";
+    }
+    elsif (-r "$searchpath/$profile.$arch.tmpl") {
+        return "$searchpath/$profile.$arch.tmpl";
+    }
+    elsif (-r "$searchpath/$profile.tmpl") {
+        return "$searchpath/$profile.tmpl";
+    }
+    else {
+        return undef;
+    }
+}
 
 1;
