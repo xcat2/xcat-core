@@ -354,7 +354,7 @@ function init_ositree(){
 //
 //}
 
-//update the osi tree used in
+//update the osi tree 
 function init_rmc_ositree() {
     nrtree = new tree_component();  //-tree begin
     nrtree.init($("#rmc_tree"),{
@@ -362,14 +362,15 @@ function init_rmc_ositree() {
         ui: { animation: 250 },
         callback: {
             onchange: function(n) {
+                $("#monshow_tip_1").hide();
                 if(n.id) {
-                    if($(n).parent().parent().attr("id") == ",lpar") {
-                        //parse the id, then display the "monshow" data for selected noderange
-                        $.get("monitor/rmc_monshow_attr_source.php", {id: n.id}, function(data) {
-                            //display the "monshow" result
-                            $("#monshow_opt").html(data);
-                        });
-                    }
+                    //if($(n).parent().parent().attr("id") == ",lpar") {
+                    //parse the id, then display the "monshow" data for selected noderange
+                    $.get("monitor/rmc_monshow_attr_source.php", {id: n.id}, function(data) {
+                        //display the "monshow" result
+                        $("#monshow_opt").html(data);
+                    });
+                    //}
                 }
             }
         },
@@ -481,6 +482,10 @@ function showPluginOptions()
     //for monlist.php, when the user clicks the radiobox, the available options for the plugin will display
     $("input[@name=plugins]").click(function() {
         //when one radiobox is selected, the #options <div> is show available options to the user
+        //at first, hide the <div> named with "#plugin_desc"
+        if($("#plugin_desc").css("display") == "block") {
+            $("#plugin_desc").hide("slow");
+        }
         var plugin = $(this).attr('value');
         $.get("monitor/options.php", {name:plugin},function(data) {
             $("#options").html(data);
@@ -491,6 +496,9 @@ function showPluginOptions()
 function showPluginDescription()
 {
     $(".description").click(function(){
+        if($("#plugin_desc").css("display") == "none") {
+            $("#plugin_desc").show();
+        }
         $.get("monitor/plugin_desc.php", {name: $(this).text()}, function(data){
             $("#plugin_desc").html(data);
         })
@@ -506,6 +514,26 @@ function monsetupAction(plugin, action_val)
         });
        
     });
+}
+
+function show_monshow_data(type,range)
+{
+    //type = "text" or "graph"
+    //range = "cluster", "summary" and nodename
+    //used in the web page "rmc_monshow.php"
+    if($(":input[@checked]").size() != 0) {
+        $("#monshow_data").empty();
+        $("#monshow_opt").hide("slow");
+        $("#back_btn").show("slow");
+        $(":input[@checked]").each(function(i) {
+            //generate text/graphics for all the attributes in "checked" status
+            $.get("monitor/rmc_monshow_data_source.php", {mode: type, value: $(this).attr("value"), nr: range}, function(data) {
+                $("#monshow_data").append(data);
+            });
+        });
+    }else {
+        $("#monshow_data").html("<p><b>Please select one or more attributes from the table</b></p>");
+    }
 }
 
 function show_monshow_graph() {

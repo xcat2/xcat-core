@@ -46,7 +46,7 @@ foreach ($xml->children() as $response) foreach($response->children() as $data)
     $val = array_pop($arr);
     $time = implode(" ", $arr);
     $timestamp = strtotime($time);
-    $timestamp .=1000;
+    $timestamp .="000";
     if($index++==2) {
         echo "[$timestamp,$val]";
     } else {

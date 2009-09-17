@@ -16,9 +16,14 @@ displayTips(array("All the available RMC resources are listed here;",
     "Edit this table to define the RMC performance monitoring;",
     "Select the RMC resource, you can get all the available attributes."));
 
-displayMonsetting();
-
-
+//displayMonsetting();
+echo "<div id='testme'>";
+echo "</div>";
+echo<<<TOS0
+<script type="text/javascript">
+$('#testme').load('config.php?t=monsetting');
+</script>
+TOS0;
 echo '<div id="monsetting_tips">';
 echo '<div id="rmcSrcList">';
 displayRMCRsrc();

@@ -6,38 +6,47 @@ require_once "$TOPDIR/lib/functions.php";
 require_once "$TOPDIR/lib/display.php";
 require_once "$TOPDIR/lib/monitor_display.php";
 
-//$id is the sel
+//$id is the selected noderange to display
 $id = $_REQUEST['id'];
 $id = preg_replace('/^,/', '', $id);
 
-//TODO: now it only supports one single node
+if($id == "cluster") {
+    //handle the condition: with option -s and the noderange is MN
+    show_monshow_options($id);
+} elseif($id == "summary") {
+    //handle the "-s" option
+    //TODO: the condition with option -s and the noderange is SN(s) is not considered
+    show_monshow_options($id);
 
-//check whether the node is "osi" type or not
-//using the command = webrun "lsdef -t node $id -i nodetype"
-$xml = docmd("webrun", "", array("lsdef $id -i nodetype"));
-//no error message will be returned
+} else {
+    //check whether the node is "osi" type or not
+    //using the command = webrun "lsdef -t node $id -i nodetype"
 
-foreach($xml->children() as $response) foreach($response->children() as $data) {
+    $xml = docmd("webrun", "", array("lsdef $id -i nodetype"));
+    //no error message will be returned
 
+    foreach($xml->children() as $response) foreach($response->children() as $data) {
+
+    }
+    if(false !== strpos($data, "lpar")) {
+        //display the options for the "monshow" command
+
+        show_monshow_options($id);
+    } else {
+        echo "<b>Currently, it only supports one single node. Please select one single node under the LPAR tree.</b>";
+    }
 }
-if(false !== strpos($data, "lpar")) {
-    //display the options for the "monshow" command
 
-    show_monshow_options();
-}
-
-function show_monshow_options()
+function show_monshow_options($id)
 {
-echo <<<TOS0
-<b>Choose the attributes to display</b>
-TOS0;
-show_rmc_monsetting();
-echo "<div>";
-//click the "OK" button, "monshow" data for the selected attributes will display
-insertButtons(array('label'=>'View by Text', 'id'=>'monshow_text_btn', 'onclick'=>'show_monshow_text()'));
-insertButtons(array('label'=>'View by Graphics', 'id'=>'monshow_graph_btn', 'onclick'=>'show_monshow_graph()'));
-echo "</div>";
-echo "</div>";
+    echo "<b>Choose the attributes to display</b>";
+    show_rmc_monsetting();
+    echo "<div>";
+    //click the "OK" button, "monshow" data for the selected attributes will display
+    insertButtons(array('label'=>'Text View', 'id'=>'monshow_text_btn', 'onclick'=>"show_monshow_data(\"text\",\"$id\")"));
+    insertButtons(array('label'=>'Graph View', 'id'=>'monshow_graph_btn', 'onclick'=>"show_monshow_data(\"graph\",\"$id\")"));
+    echo "</div>";
+    echo "</div>";
 }
 
 function show_rmc_monsetting()

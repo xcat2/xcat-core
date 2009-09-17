@@ -307,57 +307,6 @@ function displayCondResp()
     displayStatus();
 }
 
-function displayMonsetting()
-//TODO: copied from the function displayTable() from display.php, need update
-{
-    echo "<div class='mContent'>";
-    echo "<h1>$tab</h1>\n";
-    insertButtons(array('label' => 'Save','id' => 'saveit'),
-                    array('label' => 'Cancel', 'id' => 'reset')
-            );
-    $xml = docmd('tabdump', '', array("monsetting"));
-    $headers = getTabHeaders($xml);
-    if(!is_array($headers)){ die("<p>Can't find header line in $tab</p>"); }
-    echo "<table id='tabTable' class='tabTable' cellspacing='1'>\n";
-    #echo "<table class='tablesorter' cellspacing='1'>\n";
-    echo "<thead>";
-    echo "<tr class='colHeaders'><td></td>\n"; # extra cell for the red x
-    #echo "<tr><td></td>\n"; # extra cell for the red x
-    foreach($headers as $colHead) {echo "<td>$colHead</td>"; }
-    echo "</tr>\n"; # close header row
-
-    echo "</thead><tbody>";
-    $tableWidth = count($headers);
-    $ooe = 0;
-    $item = 0;
-    $line = 0;
-    $editable = array();
-    foreach($xml->children() as $response) foreach($response->children() as $arr){
-            $arr = (string) $arr;
-            if(ereg("^#", $arr)){
-                    $editable[$line++][$item] = $arr;
-                    continue;
-            }
-            $cl = "ListLine$ooe";
-            $values = splitTableFields($arr);
-            # X row
-            echo "<tr class=$cl id=row$line><td class=Xcell><a class=Xlink title='Delete row'><img class=Ximg src=img/red-x2-light.gif></a></td>";
-            foreach($values as $v){
-                    echo "<td class=editme id='$line-$item'>$v</td>";
-                    $editable[$line][$item++] = $v;
-            }
-            echo "</tr>\n";
-            $line++;
-            $item = 0;
-            $ooe = 1 - $ooe;
-    }
-    echo "</tbody></table>\n";
-    $_SESSION["editable-$tab"] = & $editable; # save the array so we can access it in the next call of this file or change.php
-    echo "<p>";
-    insertButtons(array('label' => 'Add Row', 'id' => 'newrow'));
-    echo "</p>\n";
-}
-
 function displayRMCRsrc()
 {
 echo <<<TOS0
@@ -442,7 +391,7 @@ TOS8;
     echo "</div>";
 }
 
-function displayRMCMonshowAttr($attr) {
+function displayRMCMonshowAttr($attr, $nr) {
     //TODO: should add one argument to support the noderange argument
     echo "<div>";
     echo "<table class='tablesorter' cellspacing='1'>";
@@ -454,9 +403,17 @@ function displayRMCMonshowAttr($attr) {
     echo "</thead>";
     echo "<tbody>";
 
-    //get all the data by the command "monshow"
-    $xml = docmd("monshow", "", array("rmcmon", "-s", "-t", "60", "-a", "$attr"));
-    //the error handling is skipped
+    if($nr == "cluster") {
+        //get all the data by the command "monshow"
+        $xml = docmd("monshow", "", array("rmcmon", "-t", "60", "-a", "$attr"));
+        //the error handling is skipped
+    }elseif($nr == "summary") {
+        $xml = docmd("monshow", "", array("rmcmon", "-s", "-t", "60", "-a", "$attr"));
+    }else {
+        $xml = docmd("monshow", "", array("rmcmon", "$nr", "-t", "60", "-a", "$attr"));
+    }
+    //the formats of the data are different based on $nr
+    //print_r($xml);
     $index = 0;
     foreach($xml->children() as $response) foreach($response->children() as $data) {
         //handle the data here
@@ -467,21 +424,22 @@ function displayRMCMonshowAttr($attr) {
         //then, parse "date" & "value"
         $arr = preg_split("/\s+/", $data);
         array_pop($arr);
-        $val = array_pop($arr);
-        $time = implode(" ", $arr);
-        echo "<tr>";
-        echo "<td>$time</td>";
-        echo "<td>$val</td>";
-        echo "</tr>";        
+        $tmp = array_pop($arr);
+        if($tmp == '-') {
+            $val = array_pop($arr);
+            $time = implode(" ", $arr);
+            echo "<tr>";
+            echo "<td>$time</td>";
+            echo "<td>$val</td>";
+            echo "</tr>";
+        }
     }
-
-
     echo "</tbody>";
     echo "</table>";
     echo "</div>";
 }
 
-function displayRMCMonshowGraph($value) {
+function displayRMCMonshowGraph($value, $nr) {
 //display the RMC Performance Data
 echo <<<TOS11
 <div>
@@ -555,12 +513,6 @@ function displayOptionsForPlugin($name)
     //there should be many choices for the user to view the clusters' status
 echo <<<TOS1
 <table id="view_tab" class="tabTable" cellspacing="1">
-<thead>
-    <tr class='colHeaders'>
-        <td>Monitor Items</td>
-        <td>Display Formats</td>
-    </tr>
-</thead>
 <tbody>
 TOS1;
     if($name == "rmcmon") {
@@ -574,8 +526,7 @@ TOS1;
         echo "<tr class='ListLine1' id='row1'>";
         echo "<td>RMC Resource Logs</td>";
         echo "<td>";
-        insertButtons(array('label'=>'View in Text', 'id'=>'rmc_resrc_text', 'onclick'=>'loadMainPage("monitor/rmc_monshow.php")'));
-        insertButtons(array('label'=>'View in Graphics', 'id'=>'rmc_resrc_graph', 'onclick'=>''));
+        insertButtons(array('label'=>'View By text/graphics', 'id'=>'rmc_resrc_text', 'onclick'=>'loadMainPage("monitor/rmc_monshow.php")'));
         echo "</td>";
         echo "</tr>";
     }

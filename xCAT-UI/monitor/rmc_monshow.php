@@ -25,6 +25,7 @@ insertDiv("rmc_tree");
 <?php
 
 echo "<div id='rmc_monshow'>";
+echo "<div id='monshow_tip_1'><p><b>Select the monitor range from the tree on the left</b></p></div>";
 echo "<div id='monshow_opt'></div>";
 //if the user clicks the "View by Text" button, the div named "monshow_data" will show 
 // the text data from the "monshow" command;
