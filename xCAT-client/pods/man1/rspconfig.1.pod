@@ -427,7 +427,7 @@ B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
 
 =head1 SEE ALSO
 
-L<noderange(3)|noderange.3>, L<rpower(1)|rpower.1>, L<rcons(1)|rcons.1>, L<rinv(1)|rinv.1>, L<rvitals(1)|rvitals.1>, L<rscan(1)|rscan.1>
+L<noderange(3)|noderange.3>, L<rpower(1)|rpower.1>, L<rcons(1)|rcons.1>, L<rinv(1)|rinv.1>, L<rvitals(1)|rvitals.1>, L<rscan(1)|rscan.1>, L<rflash(1)|rflash.1>
 
 
 
