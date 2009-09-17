@@ -1,11 +1,11 @@
 
 =head1 NAME
 
-B<pping> - parallel ping.
+B<pping> - parallel ping the nodes.
 
 =head1 SYNOPSIS
 
-B<pping>  [B<-q>] [B<-s>] [B<-i> I<interface>] I<noderange>
+B<pping> [B<-i>|B<--interface> I<interface>] I<noderange>
 
 B<pping> [B<-h>|B<--help>]
 
@@ -14,42 +14,56 @@ B<pping> {B<-v>|B<--version>}
 
 =head1 DESCRIPTION
 
-B<pping> is a utility used to ping list of nodes in parallel.See noderange(3).
-B<pping> will return an unsorted list of nodes with a ping or noping status.  The list is actually sorted by first ping, unless -s is specified.
-B<pping> front-ends ping and fping if available.
+B<pping> is a utility used to ping a list of nodes in parallel.
+B<pping> will return an unsorted list of nodes with a ping or noping status.
+B<pping> front-ends nmap and fping if available.
 
 This command does not support the xcatd client/server communication.  It must be run on the management node.
 
 =head1 OPTIONS
 
-B<-q> quiet, only show noping nodes
+=over 10
 
-B<-s> Ping serially
+=item B<-i>|B<--interface> I<interface>
 
-B<-i interface> interface
+An interface name that should be pinged instead of the interface represented by the nodename/hostname.
+The following name resolution convention is assumed:  an interface is reachable by the hostname <nodename>-<interface>.  For example,
+the ib2 interface on node3 has a hostname of node3-ib2.
 
-B<-h | help>  help
+=item B<-h>|B<--help>
 
-B<-v | version> version
+Show usage information.
 
+=item B<-v>|B<--version>
+
+Display the installed version of xCAT.
+
+=back
 
 =head1 EXAMPLES
 
-	pping all
+=over 3
 
-	blade7: ping
-	blade8: ping
-	blade9: ping
-	devmaster: ping
-	node4: ping
-	node2: noping
+=item 1.
 
-	pping -q all
+pping all
 
-	node2: noping
+ blade7: ping
+ blade8: ping
+ blade9: ping
+ devmaster: ping
+ node4: ping
+ node2: noping
 
+=item 2.
+
+pping all -i eth1
+
+ node2-eth1: noping
+
+=back
 
 =head1 SEE ALSO
 
-L<psh(1)|psh.1>
+L<psh(1)|psh.1>, L<noderange(3)|noderange.3>
 

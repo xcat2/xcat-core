@@ -1,57 +1,98 @@
 
 =head1 NAME
 
-B<ppping> - parallel ping between nodes in cluster.
+B<ppping> - parallel ping from nodes to other nodes in the cluster.
 
 =head1 SYNOPSIS
 
-B<ppping>   [B<-s>] [B<-i> I<interface>] I<noderange>
+B<ppping> [B<-i>|B<--interface> I<interfaces>] [B<-d>|B<--debug>] [B<-V>|B<--verbose>] [B<-q>|B<--quiet>] [B<-s>|B<--serial>] [B<-H>|B<--hierarchical>] I<noderange>
 
 B<ppping> [B<-h>|B<--help>]
 
 B<pping> {B<-v>|B<--version>}
 
-
 =head1 DESCRIPTION
 
-B<ppping> is a utility used to test ping between nodes in the noderange.
-B<ppping> will return an unsorted list of nodes with a noping status.  
-B<ppping> front-ends ping and fping if available.
+B<ppping> is a utility used to test the connectivity between nodes in the noderange using ping.
+By default, B<ppping> will return an unsorted list of the node pairs that are not able to ping each other, or a message that all nodes are pingable.
+More or less output can be controlled by the -V and -q options.
+B<ppping> front-ends B<pping> and B<xdsh>.
 
 This command does not support the xcatd client/server communication.  It must be run on the management node. 
 
-
 =head1 OPTIONS
 
+=over 10
 
-B<-s> Ping serially
+=item B<-s>
 
-B<-i interface> interface
+Ping serially instead of in parallel.
 
-B<-V | verbose> verbose
+=item B<-i>|B<--interface> I<interfaces>
 
-B<-H | hierarchical> Allow management node hierarchy
+A comma separated list of network interface names that should be pinged instead of the interface represented by the nodename/hostname.
+The following name resolution convention is assumed:  an interface is reachable by the hostname <nodename>-<interface>.  For example,
+the ib2 interface on node3 has a hostname of node3-ib2.
 
-B<-d | debug> Print debug information
+If more than one interface is specified, each interface will be combined with the nodenames as described above and will be pinged in turn.
 
-B<-h | help>  help
+=item B<-V>|B<--verbose>
 
-B<-v | version> version
+Display verbose output.  The result of every ping attempt from every node will be displayed.  Without this option, just a summary
+of the successful pings are displayed, along with all of the unsuccessful pings.
 
+=item B<-q>|B<--quiet>
+
+Display minimum output:  just the unsuccessful pings.  This option has the effect that if all pings are successful, nothing is displayed.
+But it also has the performance benefit that each node does not have to send successful ping info back to the management node.
+
+=item B<-H>|B<--hierarchical>
+
+Enable B<ppping> to run in hierarchical mode (i.e. through service nodes).  By default, B<ppping> does not go through xcatd.
+
+=item B<-d>|B<--debug>
+
+Print debug information.
+
+=item B<-h>|B<--help>
+
+Show usage information.
+
+=item B<-v>|B<--version>
+
+Display the installed version of xCAT.
+
+=back
 
 =head1 EXAMPLES
 
-	ppping all
+=over 3
 
-	blade7: node2: noping
-	blade8: node2: noping
-	blade9: node2: noping
-	devmaster: node2: noping
-	node2: noping
+=item 1.
 
+ppping all -q
 
+ blade7: node2: noping
+ blade8: node2: noping
+ blade9: node2: noping
+ devmaster: node2: noping
+ node2: noping
+
+=item 2.
+
+ppping node1,node2 -i ib0,ib1,ib2,ib3
+
+ node1: pinged all nodes successfully on interface ib0
+ node1: pinged all nodes successfully on interface ib1
+ node1: pinged all nodes successfully on interface ib2
+ node1: pinged all nodes successfully on interface ib3
+ node2: pinged all nodes successfully on interface ib0
+ node2: pinged all nodes successfully on interface ib1
+ node2: pinged all nodes successfully on interface ib2
+ node2: pinged all nodes successfully on interface ib3
+
+=back
 
 =head1 SEE ALSO
 
 L<psh(1)|psh.1>, L<pping(1)|pping.1>
-

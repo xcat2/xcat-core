@@ -8,29 +8,53 @@ BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
+use strict;
 use lib "$::XCATROOT/lib/perl";
 
+use xCAT::Utils;
+use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use IO::Socket::SSL;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use Data::Dumper;
 use IO::Handle;
 use IO::Select;
-use xCAT::Utils;
 use Getopt::Long;
+
+my $USAGE="Usage: pping [-i|--interface interface] noderange
+       pping -h|--help
+       pping -v|--version\n"; 
+
 my $interface;
-GetOptions("interface=s" => \$interface);
+if(!GetOptions(
+      'h|help'     => \$::HELP,
+      'v|version'  => \$::VERSION,
+      'X|noexpand'  => \$::NOEXPAND,
+      'interface=s' => \$interface))
+	{
+		print "$USAGE";
+		exit 1;
+	}
+
+if ($::HELP) {  print "$USAGE"; exit 0}
+if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
 my $xcathost='localhost:3001';
 if ($ENV{XCATHOST}) {
   $xcathost=$ENV{XCATHOST};
 }
 
 unless (@ARGV) {
-    print "Usage: pping [-i suffix] <noderange>\n";
+    print "$USAGE";
     exit(1);
 }
 my $noderange = $ARGV[0];
-my $client = IO::Socket::SSL->new(
+my @nodes=();
+
+if ($::NOEXPAND) {		# this is when ppping is calling us and has already expanded the noderange
+	@nodes = split(/,/, $noderange);
+}
+else { 		# the normal case of the user running the cmd - expand the noderange using xcatd
+	my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=> xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem",
                 SSL_cert_file=> xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem",
@@ -38,34 +62,39 @@ my $client = IO::Socket::SSL->new(
                 SSL_use_cert => 1,
                 #SSL_verify_mode => 1,
              );
-die "Connection failure: $!\n" unless ($client);
-my %cmdref = (command => 'noderange', noderange => $noderange);
-$SIG{ALRM} = sub { die "No response getting noderange" };
-alarm(15);
-print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
-alarm(15);
-my $response="";
-my @nodes=();
-while (<$client>) {
-  alarm(0);
-  $response .= $_;
-  if ($response =~ m/<\/xcatresponse>/) {
-    $rsp=XMLin($response, ForceArray => ['node']);
-    $response='';
-    if ($rsp->{warning}) {
-      printf "Warning: ".$rsp->{warning}."\n";
-    }
-    if ($rsp->{error}) {
-      die ("ERROR: ".$rsp->{error}."\n");
-    } elsif ($rsp->{node}) {
-      @nodes=@{$rsp->{node}};
-    }
-    if ($rsp->{serverdone}) {
-      last;
-    }
-  }
+	die "Connection failure: $!\n" unless ($client);
+	my %cmdref = (command => 'noderange', noderange => $noderange);
+	$SIG{ALRM} = sub { die "No response getting noderange" };
+	alarm(15);
+	print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+	alarm(15);
+	my $response="";
+	while (<$client>) {
+	  alarm(0);
+	  $response .= $_;
+	  if ($response =~ m/<\/xcatresponse>/) {
+	    my $rsp=XMLin($response, ForceArray => ['node']);
+	    $response='';
+	    if ($rsp->{warning}) {
+	      printf "Warning: ".$rsp->{warning}."\n";
+	    }
+	    if ($rsp->{error}) {
+	      die ("ERROR: ".$rsp->{error}."\n");
+	    } elsif ($rsp->{node}) {
+	      @nodes=@{$rsp->{node}};
+	    }
+	    if ($rsp->{serverdone}) {
+	      last;
+	    }
+	  }
+	}
+	close($client);
+}	# end of else that expands the noderange using xcatd
+
+unless (scalar(@nodes)) {
+   exit 1;
 }
-close($client);
+
 my $children = 0;
 my $inputs = new IO::Select;
 $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
@@ -75,10 +104,6 @@ if ($interface) {
   }
 }
 
-#exec "fping ".join(' ',@nodes). " 2> /dev/null";
-unless (scalar(@nodes)) {
-   exit;
-}
 if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') {
     nmap_pping();
     exit;

@@ -114,5 +114,5 @@ This command is part of the xCAT software product.
 
 =head1 SEE ALSO
 
-rinv(1)
+L<rinv(1)|rinv.1>, L<rspconfig(1)|rspconfig.1>
 
