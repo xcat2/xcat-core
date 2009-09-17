@@ -370,7 +370,7 @@ proc get_phandle {} {
     send_command
     expect {
         -i $spawn_id_rconsole
-        -re ">" {
+        -re "dev(.*)ok(.*)0 >" {
             nc_msg "$PROGRAM Status: at root\n"
         }
         -re "]" {
@@ -2078,7 +2078,7 @@ trap {
     set signal SIG[trap -name]
     send_user "$PROGRAM: Received signal named '$signal'\n"
     exec kill -KILL $spawn_id_rconsole $ssh_spawn_id
-    exit 3
+    exit -1 
 } {INT HUP QUIT TERM}
 
 set timeout 10
@@ -2290,39 +2290,22 @@ while { ! $done } {
     sleep 1
 }
 
+set retry 0
 set done 0
-set timeout 120
+set timeout 10
 nc_msg "$PROGRAM Status: Check for active console.\n"
 while { ! $done } {
-    expect {  
+    expect {
         -i $spawn_id_rconsole
-        -re "(.*)\[SCSI|scsi\](.*)0 >" {
-            nc_msg "$PROGRAM Status: active console\n"
-            set done 1
-        }
-        -re "PowerPC Firmware(.*)SMS(.*)" {
-            nc_msg "$PROGRAM Status: SMS active console\n"
-            set done 1
-        } 
-        -re "To select this console as the active console press 0" {
-            nc_msg "$PROGRAM Status: selecting active console\n"
-            exec sleep 1
-            send -i $spawn_id_rconsole "0";
-        }
-        -re "Press 0 to select this console.*as the active console" {
-            nc_msg "$PROGRAM Status: selecting active console\n"
-            exec sleep 1
-            send -i $spawn_id_rconsole "0";
-        }
         -re "(.*)elect this consol(.*)" {
             nc_msg "$PROGRAM Status: selecting active console\n"
-            exec sleep 1
-            send -i $spawn_id_rconsole "0";
+            set command  "0"
+            send_command
         }
         -re "English|French|German|Italian|Spanish|Portuguese|Chinese|Japanese|Korean" {
             nc_msg "$PROGRAM Status: Languagae Selection Panel received\n"
-            exec sleep 1
-            send -i $spawn_id_rconsole "2\r"
+            set command  "2\r"
+            send_command
         }
         -re "'admin'" {
             nc_msg "$PROGRAM Status: No password specified\n"
@@ -2334,22 +2317,24 @@ while { ! $done } {
             send_user "$PROGRAM Status: FSP password is invalid.\n"
             exit 1
         }
-        -re "0 >" {
+        -re "ok(.*)0 >" {
             nc_msg "$PROGRAM Status: at ok prompt\n"
             set done 1
         }
-        -re "bumped" {
-            exp_continue
-        }
         timeout {
-            send_user "$PROGRAM: Timeout; exiting\n"
-            exit 1
+            set command  "\r"
+            send_command
+            incr retry
+            if { $retry == 9 } {
+                send_user "$PROGRAM: Timeout waiting for ok prompt; exiting.\n"
+                exit 1
+            }
         }
         eof {
             send_user "$PROGRAM: Cannot connect to $NODENAME\n"
             exit 1
         }
-    }
+    } 
 }
 
 if { $set_boot_order > 1 } {
@@ -2358,16 +2343,27 @@ if { $set_boot_order > 1 } {
 
 global phandle
 
-# 
-# Call get_phandle to gather information for all the supported network adapters
-# in the device tree.
-#
-get_phandle
+set done 0
+set retry 0
+exec sleep 1
+while { ! $done } {
+    # 
+    # Call get_phandle to gather information for all the supported network adapters
+    # in the device tree.
+    #
+    get_phandle
 
-if { $rc } {
-    send_user "$PROGRAM: Unable to obtain network adapter information.  Quitting.\n"
-    exit 1
+    if { $rc } {
+        incr retry 
+        if { $retry == 3 } {
+            send_user "$PROGRAM: Unable to obtain network adapter information.  Quitting.\n"
+            exit 1
+        }
+    } else {
+        set done 1 
+    }
 }
+
 
 # Call multiple_open-dev to circumvent firmware OPEN-DEV failure
 multiple_open-dev
