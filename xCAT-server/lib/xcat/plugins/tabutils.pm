@@ -1061,8 +1061,13 @@ sub nodels
                         $matchtypes{$_->[0]} = $_->[3]; 
                     }
                 }
+                my $nodekey = "node";
+                if (defined $xCAT::Schema::tabspec{$tab}->{nodecol}) {
+                    $nodekey = $xCAT::Schema::tabspec{$tab}->{nodecol}
+                };
+
                 my $removenodecol=1;
-                if (grep /^node$/,@cols) {
+                if (grep /^$nodekey$/,@cols) {
                     $removenodecol=0;
                 }
                 my $rechash=$tabh->getNodesAttribs($nodes,\@cols);
@@ -1075,7 +1080,7 @@ sub nodels
 
                         foreach (keys %$rec)
                         {
-                          if ($_ eq "node" and $removenodecol) { next; }
+                          if ($_ eq $nodekey and $removenodecol) { next; }
                           $satisfiedreqs{$_}=1;
                           my %datseg=();
                           if (defined $values{$_}) {

@@ -28,7 +28,6 @@ package xCAT::Table;
 use xCAT::MsgUtils;
 use Sys::Syslog;
 use Storable qw/freeze thaw/;
-use Data::Dumper;
 use IO::Socket;
 BEGIN
 {
@@ -50,7 +49,6 @@ my $cachethreshold=16; #How many nodes in 'getNodesAttribs' before switching to 
 use DBI;
 
 use strict;
-#use Data::Dumper;
 use Scalar::Util qw/weaken/;
 require xCAT::Schema;
 require xCAT::NodeRange;
@@ -169,7 +167,6 @@ sub handle_dbc_conn {
             $data .= $lastline;
         }
         my $request = thaw($data);
-        use Data::Dumper;
         my $response;
         my @returndata;
         if ($request->{'wantarray'}) {
@@ -1466,15 +1463,19 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     $self->{_use_cache} = 0; #This function must disable cache 
                             #to function
     my $attriblist = shift;
-    unless (grep /^node$/,@$attriblist) {
-        push @$attriblist,'node';
+    my $nodekey = "node";
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    };
+    unless (grep /^$nodekey$/,@$attriblist) {
+        push @$attriblist,$nodekey;
     }
     my @tabcache = $self->getAllAttribs(@$attriblist);
     $self->{_tablecache} = \@tabcache;
     $self->{_nodecache}  = {};
-    if ($tabcache[0]->{node}) {
+    if ($tabcache[0]->{$nodekey}) {
         foreach(@tabcache) {
-            push @{$self->{_nodecache}->{$_->{node}}},$_;
+            push @{$self->{_nodecache}->{$_->{$nodekey}}},$_;
         }
     }
 
@@ -1700,7 +1701,11 @@ sub getNodeAttribs_nosub_returnany
     my @results;
 
     #my $recurse = ((scalar(@_) == 1) ?  shift : 1);
-    @results = $self->getAttribs({node => $node}, @attribs);
+    my $nodekey = "node";
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    };
+    @results = $self->getAttribs({$nodekey => $node}, @attribs);
     my $data = $results[0];
     if (!defined($data))
     {
@@ -1714,7 +1719,7 @@ sub getNodeAttribs_nosub_returnany
         my $group;
         foreach $group (@nodegroups)
         {
-            @results = $self->getAttribs({node => $group}, @attribs);
+            @results = $self->getAttribs({$nodekey => $group}, @attribs);
 	    $data = $results[0];
             if ($data != undef)
             {
