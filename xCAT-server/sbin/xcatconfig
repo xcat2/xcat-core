@@ -829,7 +829,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=domain site.value=$domain;";
         $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=timezone site.value=$timezone";
+          "$::XCATROOT/sbin/chtab key=timezone site.value=$timezone;";
 
         if ($::osname eq 'AIX')
         {
