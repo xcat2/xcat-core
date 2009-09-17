@@ -341,6 +341,7 @@ sub getmacs {
     my $hwtype  = @$exp[2];
     my $result;
     my $name;
+    my @emptynode;
 
     if ( $par =~ /^HASH/ ) {
         #########################################
@@ -432,10 +433,19 @@ sub getmacs {
                 my $d          = $hash->{$_};
                 my $mtms       = @$d[2];
                 my $id         = @$d[0];
+                my $nodetype       = @$d[4];
+
                 my $mac_count  = $nodeatt{$mtms}{$id}{'num'};               
                 my $value      = ();
                 my $data    = ();
                 my $type;
+
+                #########################################
+                # Invalid target hardware
+                #########################################
+                if ( $nodetype ne "lpar" ) {
+                    return( [[$node,"Node must be LPAR",RC_ERROR]] );
+                }
 
                 #########################################
                 # Put all the attributes required
@@ -498,6 +508,26 @@ sub getmacs {
                     writemac( $node, $value );
                 }
 
+
+                if ( scalar(@$value) < 2 ) {
+                    my $filter = "lpar_id,curr_profile";
+                    my $prof   = xCAT::PPCcli::lssyscfg( $exp, "node", $mtms, $filter, $id );
+                    my $Rc = shift(@$prof);
+
+                    #########################################
+                    # Return error
+                    #########################################
+                    if ( $Rc != SUCCESS ) {
+                        return( [[$node,@$prof[0],$Rc]] );
+                    }
+
+                    foreach my $val ( @$prof ) {
+                        my ($lpar_id,$curr_profile) = split  /,/, $val;
+                        if ( !length($curr_profile) || ($curr_profile =~ /^none$/) ) {
+                            push @emptynode,$node;
+                        }
+                    }
+                }
                 foreach ( @$value ) {
                     if ( /^#\s?Type/ ) {
                         $data.= "\n$_\n";
@@ -509,6 +539,9 @@ sub getmacs {
                 push @$result,[$node,$data,0];
             }
         }
+        if ( scalar(@emptynode) > 0 ) {
+            return([[join(",", @emptynode),"\nThese nodes have no active profiles.  Please active the nodes to enable the default profiles",RC_ERROR]]);
+        } 
         return([@$result]);
     } else {
         #########################################
