@@ -198,14 +198,37 @@ if (-f $scriptname)
       #remove all the postscripts
       my $TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" $scriptname`;
       `echo "$TMP" > $scriptname`;
+      `echo "# postscripts-start-here" >> $scriptname`;
       #add requested postscripts in
       `echo "$POSTS" | tr "," "\n" >> $scriptname`;
+      `echo "# postscripts-end-here" >> $scriptname`;
     }
+
+    # use the run_ps subroutine to run the postscripts
+    my $TMP1=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\\(.*\\)/run_ps \\1/;s/run_ps *#/#/;s/run_ps *\$//" $scriptname`;
+    `echo "
+# subroutine used to run postscripts
+run_ps () {
+ if [[ -f \\\$1 ]]; then
+  echo \\"Running postscript: \\\$1\\"
+  OUTPUT=\\\`\\\$1 2>&1\\\`
+  if [[ -n \\\$OUTPUT ]]; then
+    echo \\"\\\$OUTPUT\\"
+  fi
+ else
+  echo \\"Postscript \\\$1 does NOT exist.\\"
+ fi
+}
+# subroutine end
+
+" > $scriptname`;
+    `echo "$TMP1" >> $scriptname`;
 
     $nodesetstat=`grep "NODESETSTATE=" $scriptname|awk -F \= '{print \$2}'`;
     chomp($nodesetstat);
     $ENV{PATH}="/xcatpost:$ENV{PATH}";
     &runcmd("cd /xcatpost;$scriptname");
+    print $::outref;
 } else {
 	print "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";

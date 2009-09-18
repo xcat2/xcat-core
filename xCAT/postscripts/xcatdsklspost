@@ -130,8 +130,10 @@ if [ $# -gt 1 ]; then
   #remove all the postscripts
   TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
   echo "$TMP" > /tmp/mypostscript
+  echo "# postscripts-start-here\n" >> /tmp/mypostscript
   #add requested postscripts in
   echo "$POSTS" | tr "," "\n" >> /tmp/mypostscript
+  echo "# postscripts-end-here\n" >> /tmp/mypostscript
 fi
 
 #ADDSITEYUM is set by post.rh and post.rh.iscsi for full installtion
@@ -142,6 +144,27 @@ fi
 
 #MYCONT=`cat /tmp/mypostscript`
 #echo "$MYCONT"
+
+# use the run_ps subroutine to run the postscripts
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
+echo "
+# subroutine used to run postscripts
+run_ps () { 
+ if [[ -f \$1 ]]; then 
+  echo \"Running postscript: \$1\"
+  OUTPUT=\`\$1 2>&1\`
+  if [[ -n \$OUTPUT ]]; then
+    echo \"\$OUTPUT\"
+  fi
+ else
+  echo \"Postscript \$1 does NOT exist.\"
+ fi
+}
+# subroutine end
+
+" > /tmp/mypostscript
+echo "$TMP" >> /tmp/mypostscript
+
 
 if [ $# -eq 0 ]; then
   #notify the server that we are done with netbooting
