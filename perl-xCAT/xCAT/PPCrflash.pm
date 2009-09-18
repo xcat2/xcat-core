@@ -799,11 +799,11 @@ sub rflash {
         if($1 != 0) {  # failed
             my $tmp3 = $infor{$tmp1[1]};
             print "++ tmp1 ++\n";
-            print Dumper(@tmp1);
+            #  print Dumper(@tmp1);
             print "++ tmp3 ++\n";
-            print Dumper($tmp3);
+            #    print Dumper($tmp3);
             print "++ infor +\n";
-            print Dumper(%infor);
+            #     print Dumper(%infor);
             print "++++\n";
             if($$tmp3[4] eq "power") {
                $tmp1[1] = $$tmp3[5];
