@@ -962,18 +962,7 @@ sub mknimimage
             }
         }
     }
-    if ($::opt_s)
-    {
-        # This is not a full path
-        if($::opt_s !~ /^\//)
-        {
-            my $abspath = Cwd::abs_path($::opt_s);
-            if ($abspath)
-            {
-                $::opt_s = Cwd::abs_path($::opt_s);
-            }
-        }
-    }
+
 	#
     # process @ARGV
     #
@@ -1024,8 +1013,15 @@ sub mknimimage
         push @{$rsp->{data}}, "Configuring NIM.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
-		# if its not installed then run
+		# if its not installed then run nim_master_setup
 		#   - takes 21 sec even when already configured
+
+		if($::opt_s !~ /^\//) {
+			my $abspath = Cwd::abs_path($::opt_s);
+			if ($abspath) {
+				$::opt_s = Cwd::abs_path($::opt_s);
+			}
+		}
 #  TODO - add location (opt_l) - so all res go in same place!
 		my $nimcmd = "nim_master_setup -a mk_resource=no -a device=$::opt_s";
 		if ($::VERBOSE) {
@@ -1549,18 +1545,14 @@ sub mk_lpp_source
 		}
 
 	} elsif ($::opt_s) { 
-
-		# if this isn't a dir and it is an 
-		#existing lpp_source then use it
-		if ( !(-d $::opt_s) ) {
-            if ((grep(/^$::opt_s$/, @lppresources))) {
-                # if an lpp_source was provided then use it
-                return $::opt_s;
-
-            }
-        }
-
 		# if source is provided we may need to create a new lpp_source
+
+		# if existing lpp_source then use it
+        if ((grep(/^$::opt_s$/, @lppresources))) {
+            # if an lpp_source was provided then use it
+            return $::opt_s;
+
+        }
 
 		#   make a name using the convention and check if it already exists
 		$lppsrcname= $::image_name . "_lpp_source";
@@ -1573,20 +1565,24 @@ sub mk_lpp_source
 
 			# create a new one
 
-			# the source could be a directory or an existing 
+			# the opt_s must be a source directory or an existing 
 			#	lpp_source resource
-			if ( !(-e $::opt_s) ) {
-				# if it's not a directory then is it the name of 
-				#	an existing lpp_source?
-				if (!(grep(/^$::opt_s$/, @lppresources))) {
+			if (!(grep(/^$::opt_s$/, @lppresources))) {
+				if($::opt_s !~ /^\//) {
+					my $abspath = Cwd::abs_path($::opt_s);
+					if ($abspath) {
+						$::opt_s = Cwd::abs_path($::opt_s);
+					}
+				}
+				if ( !(-e $::opt_s) ) {
 					my $rsp;
 					push @{$rsp->{data}}, "\'$::opt_s\' is not a source directory or the name of a NIM lpp_source resource.\n";
-               		xCAT::MsgUtils->message("E", $rsp, $callback);
-               		&mknimimage_usage($callback);
-               		return undef;
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					&mknimimage_usage($callback);
+					return undef;
 				}
 			}
-			
+
 			my $loc;
 			if ($::opt_l) {
 				$loc = "$::opt_l/lpp_source/$lppsrcname";
@@ -4401,12 +4397,12 @@ sub doSNcopy
 
 			# running on the management node so
 			# copy the /etc/hosts file to the SN
-			my $rcpcmd = "xdcp $snkey /etc/hosts /etc ";
 			if ($::VERBOSE) {
                 my $rsp;
                 push @{$rsp->{data}}, "Running: \'xdcp $snkey /etc/hosts /etc\'\n";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
+			my $rcpcmd = "xdcp $snkey /etc/hosts /etc ";
 			my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
 			if ($::RUNCMD_RC  != 0) {
 				my $rsp;
@@ -4425,6 +4421,7 @@ sub doSNcopy
 					push @{$rsp->{data}}, "Running: \'$cpcmd\'\n";
 					xCAT::MsgUtils->message("I", $rsp, $callback);
 				}
+				my $cpcmd = "xdcp $snkey -p -R /install/postscripts/* /install/postscripts ";
 				my $output = xCAT::Utils->runcmd("$cpcmd", -1);
 				if ($::RUNCMD_RC  != 0) {
 					my $rsp;
@@ -6066,7 +6063,6 @@ sub  getnimprime
 	if ($et and $et->{value}) {
 		$nimprime = $et->{value};
 	}
-	chomp $nimprime;
 
 	my $hostname;
 	if ($nimprime) {
@@ -6091,6 +6087,7 @@ sub  getnimprime
 =head3  myxCATname
 
 	Gets the name of the node I'm running on - as known by xCAT
+	(Either the management node or a service node)
 
 
 =cut
@@ -6101,13 +6098,25 @@ sub myxCATname
 {
     my ($junk, $name);
 
-	my $catcmd="cat myxcatpost_* | grep '^NODE='";
-	my $output = xCAT::Utils->runcmd("$catcmd", -1);
-	if ($::RUNCMD_RC != 0) {
-		# if no match then just return hostname
-    	$name = hostname();
-	} else {
-		($junk, $name) = split('=', $output);
+	$name = hostname();
+
+	if (xCAT::Utils->isMN()) {
+		# read the site table, master attrib
+		my $hostname = xCAT::Utils->get_site_Master(); 
+		if ($hostname =~ /\d+\.\d+\.\d+\.\d+/) {
+			my $packedaddr = inet_aton($hostname);
+			$name = gethostbyaddr($packedaddr, AF_INET);
+		} else {
+			$name = $hostname;
+		}
+
+	} elsif (xCAT::Utils->isServiceNode()) {
+
+		my $catcmd="cat /xcatpost/myxcatpost_* | grep '^NODE='";
+		my $output = xCAT::Utils->runcmd("$catcmd", -1);
+		if ($::RUNCMD_RC == 0) {
+			($junk, $name) = split('=', $output);
+		}
 	}
 
 	my $shorthost;
