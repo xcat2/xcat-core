@@ -18,10 +18,6 @@
 #	  /home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
 #	- nothing is added to the release download area
 #
-# scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/xcat-core
-#scp core-aix-2.3.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel 
-#scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/2.2/core-snap
-#scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/2.2
 
 BLDTOP=`pwd`
 RPMDIR=$BLDTOP/aix-core-snap
@@ -114,12 +110,15 @@ chmod g+w *
 if [ $UPLOAD == 1 ]; then
 
   # clear out the old files - do this manually with winscp session!
+#while ! rsync -urLv --delete aix-core-snap nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/
+#do : ; done
 
   scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
 
-  scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel 
+  scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel
 
-
+# scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/xcat-core
+#scp core-aix-2.3.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel
 # for dep-aix
 #scp dep-aix-$VER.tar.gz nott@web.sourceforge.net:uploads/
 
