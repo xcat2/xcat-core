@@ -74,7 +74,11 @@ do
         esac
     fi
 done
-if [ -d /proc/device-tree/vdevice/l-lan* ]; then
+NEEDVETH=0;
+for dir in /proc/device-tree/vdevice/l-lan*; do
+    if [ -d $dir ]; then NEEDVETH=1; fi
+done
+if [ $NEEDVETH ==  1 ]; then
 	modprobe ibmveth
         for i in /sys/bus/vio/drivers/ibmveth/*/net*; do
     	    udhcpc -i eth$nic -b
@@ -86,8 +90,11 @@ if [ -d /proc/device-tree/vdevice/l-lan* ]; then
             nic=$(($nic + 1))
 	done
 fi
-	
-if [ -d /proc/device-tree/lhea* ]; then
+NEEDEHEA=0;
+for dir in /proc/device-tree/lhea*; do
+    if [ -d $dir ]; then NEEDEHEA=1; fi
+done
+if [ $NEEDEHEA == 1 ]; then
 		    modprobe ehea
             for i in /sys/bus/ibmebus/devices/port*; do
     		    udhcpc -i eth$nic -b
