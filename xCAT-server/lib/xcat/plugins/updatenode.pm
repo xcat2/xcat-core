@@ -318,12 +318,17 @@ sub updatenode {
 
     # Sync files to the target nodes
     foreach my $synclist (keys %syncfile_node) {
+      if (defined($::VERBOSE)) {
+        my $rsp={};
+        $rsp->{data}->[0]= "  Internal call command: xdcp -F $synclist";
+        $callback->($rsp);
+      }
       my $args = ["-F", "$synclist"];
       my $env = ["DSH_RSYNC_FILE=$synclist"];
       $subreq->({command=>['xdcp'], node=>$syncfile_node{$synclist}, arg=>$args, env=>$env}, $callback);
     }
     my $rsp={};
-    $rsp->{data}->[0]= "Complete the File Syncing";
+    $rsp->{data}->[0]= "Running of File Syncing has completed.";
     $callback->($rsp);
   }
 
@@ -338,6 +343,13 @@ sub updatenode {
       $rsp->{data}->[0]= "Dose not support Software Maintenance for AIX nodes";
       $callback->($rsp); 
     }
+
+    if (defined($::VERBOSE)) {
+      my $rsp={};
+      $rsp->{data}->[0]= "  Internal call command: $cmd";
+      $callback->($rsp);
+    }
+
     if ($cmd && ! open (CMD, "$cmd |")) {
       my $rsp={};
       $rsp->{data}->[0]= "Cannot run command $cmd";
@@ -346,8 +358,10 @@ sub updatenode {
       while (<CMD>) {
         my $rsp={};
         my $output = $_;
+        chomp($output);
+        $output =~ s/\\cM//;
         if ($output =~ /returned from postscript/) {
-          $output =~ s/returned from postscript/Complete the Software Maintenance/;
+          $output =~ s/returned from postscript/Running of Software Maintenance has completed./;
         }
         $rsp->{data}->[0]= "$output";
         $callback->($rsp);
@@ -371,6 +385,13 @@ sub updatenode {
       else {
         $cmd="XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -c 1 $postscripts 2>&1";
       }
+
+      if (defined($::VERBOSE)) {
+        my $rsp={};
+        $rsp->{data}->[0]= "  Internal call command: $cmd";
+        $callback->($rsp);
+      }
+
       if (! open (CMD, "$cmd |")) {
         my $rsp={};
         $rsp->{data}->[0]= "Cannot run command $cmd";
@@ -379,8 +400,10 @@ sub updatenode {
         while (<CMD>) {
           my $rsp={};
           my $output = $_;
+          chomp($output);
+          $output =~ s/\\cM//;
           if ($output =~ /returned from postscript/) {
-            $output =~ s/returned from postscript/Complete the Running Postscripts/;
+            $output =~ s/returned from postscript/Running of postscripts has completed./;
           }
           $rsp->{data}->[0]= "$output";
           $callback->($rsp);
