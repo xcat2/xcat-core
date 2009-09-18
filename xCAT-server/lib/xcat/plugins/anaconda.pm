@@ -12,7 +12,7 @@ use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-use Data::Dumper;
+#use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -670,7 +670,7 @@ sub copycd
     if ($sitetab)
     {
         (my $ref) = $sitetab->getAttribs({key => installdir}, value);
-        print Dumper($ref);
+        #print Dumper($ref);
         if ($ref and $ref->{value})
         {
             $installroot = $ref->{value};

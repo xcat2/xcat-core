@@ -16,7 +16,7 @@ use File::Path;
 use File::Temp qw/tempdir/;
 use File::Copy;
 use IO::Socket; #Need name resolution
-use Data::Dumper;
+#use Data::Dumper;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 my @cpiopid;
@@ -634,7 +634,7 @@ sub retry_rmvm {
     my $node = $args->{node};
     my $state = $task->info->state->val;
     if ($state eq "success") {
-    $Data::Dumper::Maxdepth=2;
+    #$Data::Dumper::Maxdepth=2;
         delete $args->{args}->{vmview};
         rmvm(%{$args->{args}});
     } elsif ($state eq 'error') {
@@ -1168,7 +1168,7 @@ sub create_nic_devs {
         s/.*://;
         s/=.*//;
         my $netname = $_;
-        print Dumper($netmap);
+        #print Dumper($netmap);
         my $backing = VirtualEthernetCardNetworkBackingInfo->new(
             network => $netmap->{$pgname},
             deviceName=>$pgname,

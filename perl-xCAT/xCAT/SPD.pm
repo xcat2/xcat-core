@@ -1,7 +1,7 @@
 package xCAT::SPD;
 #This module provides the ability to decode DIMM SPD data to human readable format
 use strict;
-use Data::Dumper;
+#use Data::Dumper;
 require Exporter;
 our @ISA=qw/Exporter/;
 our @EXPORT_OK=qw/decode_spd/;
@@ -675,7 +675,7 @@ sub decode_spd {
 
     my @spd = @_;
     my $rethash;
-    print Dumper(@spd);
+    #print Dumper(@spd);
     if (($spd[0] & 0xf) > 3) { #TODO: Remove workaround for buggy SPD
         $rethash->{product}->{extra}=[{value=>'Malformed SPD (missing leading byte)',encoding=>3}];
         unshift @spd,3;

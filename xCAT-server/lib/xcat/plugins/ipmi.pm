@@ -50,7 +50,7 @@ sub handled_commands {
 }
 
     
-use Data::Dumper;
+#use Data::Dumper;
 use POSIX "WNOHANG";
 use IO::Handle;
 use IO::Socket;
@@ -3358,7 +3358,7 @@ sub eventlog {
             \@auxlogcmd,
             \@auxdata);
         @auxdata=splice @auxdata,36-$authoffset;
-        print Dumper(\@auxdata);
+        #print Dumper(\@auxdata);
         unless ($error or $auxdata[0] or $auxdata[5] != 0x4d or $auxdata[6] != 0x4f or $auxdata[7] !=0x0 ) { #Don't bother if support cannot be confirmed by service processor
             $netfn=0x2e<<2; #switch netfunctions to read
             my $numauxlogs = $auxdata[8]+($auxdata[9]<<8);
@@ -3386,7 +3386,7 @@ sub eventlog {
                     }
                 }
             }
-            print Dumper(\%auxloginfo);
+            #print Dumper(\%auxloginfo);
         }
     }
 
