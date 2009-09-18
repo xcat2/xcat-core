@@ -1,0 +1,829 @@
+#!/usr/bin/env perl
+use File::Basename;
+use File::Path;
+use File::Copy;
+use File::Find;
+use Getopt::Long;
+use Cwd qw(realpath);
+#use strict;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+
+my $prinic; #TODO be flexible on node primary nic
+my $othernics; #TODO be flexible on node primary nic
+my $netdriver;
+my @yumdirs;
+my $arch = `uname -m`;
+chomp($arch);
+if ($arch =~ /i.86$/) {
+   $arch = x86;
+}
+my %libhash;
+my @filestoadd;
+my $profile;
+my $osver;
+my $pathtofiles=dirname($0);
+my $fullpath=realpath($pathtofiles);
+my $name = basename($0);
+my $onlyinitrd=0;
+if ($name =~ /geninitrd/) {
+   $onlyinitrd=1;
+}
+my $rootlimit;
+my $tmplimit;
+my $installroot = "/install";
+my $kernelver = ""; #`uname -r`;
+my $basekernelver; # = $kernelver;
+my $customdir=$fullpath;
+$customdir =~ s/.*share\/xcat/$installroot\/custom/;
+
+sub xdie {
+   system("rm -rf /tmp/xcatinitrd.$$");
+   die @_;
+}
+
+#-- fetch current version form CVS (overwrite locally changed versions)
+# if (opendir(CVS,"$pathtofiles/CVS")){
+#   close CVS;
+#   my $cvsout = qx/cd $pathtofiles; cvs update -C 2>&1/;
+#   chomp $cvsout;
+#   if ( $cvsout ne "cvs update: Updating ." ) {
+#     print "Difference of local copy from CVS detected\n";
+#     print $cvsout,"\n";
+#     print "Trying to re-run $name\n";
+#     print("$pathtofiles/$name ",join(" ",@ARGV),"\n");
+#     exec("$pathtofiles/$name",@ARGV);
+#   }
+# }
+
+
+$SIG{INT} = $SIG{TERM} = sub { xdie "Interrupted" };
+GetOptions(
+   'a=s' => \$arch,
+   'p=s' => \$profile,
+   'o=s' => \$osver,
+   'n=s' => \$netdriver,
+   'i=s' => \$prinic,
+   'r=s' => \$othernics,
+   'l=s' => \$rootlimit,
+   't=s' => \$tmplimit,
+   'k=s' => \$kernelver
+);
+#Default to the first kernel found in the install image if nothing specified explicitly.
+#A more accurate guess than whatever the image build server happens to be running
+#If specified, that takes precedence.
+#if image has one, that is used
+#if all else fails, resort to uname -r like this script did before
+my @KVERS= <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/*>;
+if (scalar(@KVERS)) {
+    $basekernelver = basename($KVERS[0]);
+}
+unless ($basekernelver) {
+    $basekernelver = `uname -r`;
+}
+unless ($kernelver) {
+    $kernelver=$basekernelver;
+}
+chomp($kernelver);
+unless ($osver and $profile and $netdriver and $prinic) {
+   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER>'."\n";
+   print "Examples:\n";
+   print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
+   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
+   exit 1;
+}
+my @ndrivers;
+foreach (split /,/,$netdriver) {
+   unless (/\.ko$/) {
+      s/$/.ko/;
+   }
+   if (/^$/) {
+      next;
+   }
+   push @ndrivers,$_;
+}
+unless (grep /af_packet/,@ndrivers) {
+   unshift(@ndrivers,"af_packet.ko");
+}
+
+my $osver_host;
+if(`grep VERSION /etc/SuSE-release` =~ /VERSION = (\d+)/) {
+    $osver_host=$1;
+} else {
+    $osver_host=11;
+}
+
+unless ($onlyinitrd) {
+   my $srcdir = "$installroot/$osver/$arch/1";
+
+
+   #this is for extra packages
+   my $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
+   my %extra_hash=get_extra_package_names();
+
+
+   mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/etc";
+   mkpath "$installroot/netboot/$osver/$arch/$profile/rootimg/dev";
+   #system "mount -o bind /dev $installroot/netboot/$osver/$arch/$profile/rootimg/dev";
+   system "mknod $installroot/netboot/$osver/$arch/$profile/rootimg/dev/zero c 1 5";
+   system "mknod $installroot/netboot/$osver/$arch/$profile/rootimg/dev/null c 1 3"; #that's neccessary for SLES11
+   open($fd,">>","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/fstab");
+   print $fd "#Dummy fstab for rpm postscripts to see\n";
+   close($fd);
+   if($osver_host == 11) {#zypper in SLES11 is different
+	   my $rootimg_dir="$installroot/netboot/$osver/$arch/$profile/rootimg";
+	   if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
+		   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
+	   }
+	   system("zypper -R $rootimg_dir ar file:$srcdir $osver");
+   }else {
+	   system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir");
+   }
+
+   #remove the old repository for extra packages
+   my $result=`zypper -R /install/netboot/sles11/ppc64/test/rootimg/ sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+   if ($result =~ /\S/) {
+       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sd $result");
+   }
+
+   #add the new repository for extra packages
+   my $extrapkgnames; 
+   if($osver_host == 11) {	#SLES11
+      if(-e "$installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo") {
+	  system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/etc/zypp/repos.d/otherpkg.repo");
+      }
+   }
+   my $index=1;
+   foreach (keys(%extra_hash)) {
+       $whole_path="$srcdir_otherpkgs/$_";
+       if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
+	   if($osver_host == 11) { 
+	       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+	   }else {
+	       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir_otherpkgs/$_");
+	   }
+       } else {
+	   if($osver_host == 11) { 
+	       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+	   }else {
+	       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa -t Plaindir file:$srcdir_otherpkgs/$_");
+	   }
+       }
+       $index++;
+
+       my $pa=$extra_hash{$_};
+       $extrapkgnames .= " " . join(' ', @$pa);
+   }
+
+   #-- add custom repositories to the image
+   if ( -r "$pathtofiles/$profile.$osver.$arch.repolist") {
+       $repolist = "$pathtofiles/$profile.$osver.$arch.repolist";
+   }elsif ( -r "$pathtofiles/$profile.$osver.repolist") {
+       $repolist = "$pathtofiles/$profile.$osver.repolist";
+   }elsif ( -r "$pathtofiles/$profile.repolist") {
+       $repolist = "$pathtofiles/$profile.repolist";
+   }
+
+   if ( -r "$repolist") {
+     print "Reading custom repositories\n";
+     open($repoconfig,"<","$repolist");
+     while (<$repoconfig>) {
+       chomp;
+       next if /^\s*#/;
+       ($repotype,$repourl,$repoalias) = split m/\|/;
+       system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ ar $repourl $repoalias");
+     }
+   }
+
+   #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ --disablerepo=* ";
+   #$yumcmd .= "install ";
+   #mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
+   my $yumcmd;
+   if($osver =~ /suse11/ && $osver_host == 11) {
+       $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -l "; #add -l for SLES11
+   }else {
+        $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install ";
+   }
+   my $pkglist= get_pkglist_file_name($customdir);
+   if (!$pkglist) {
+     $pkglist= get_pkglist_file_name($pathtofiles);
+   } 
+   #print "pkglist=$pkglist\n";
+
+   if (!$pkglist) {
+      print "Unable to find package list for $profile!";
+      exit 1;
+   }
+
+   my $pkgnames;
+   open($yumconfig,"<","$pkglist");
+   while (<$yumconfig>) {
+      chomp; 
+      s/\s*#.*//;      #-- remove comments 
+      next if /^\s*$/; #-- skip empty lines
+      $pkgnames .= $_ . " ";
+   }
+   close($yumconfig);
+   
+
+   #$yumcmd =~ s/ $/\n/;
+   #print "$yumcmd $pkgnames\n";
+   my $rc = system("$yumcmd $pkgnames");
+   if ($rc) { 
+      print "zypper invocation failed\n";
+      exit 1;
+   }
+
+   #add extra packages in the list
+   if ($extrapkgnames) {
+       #print "$yumcmd $extrapkgnames\n";
+       $rc = system("$yumcmd $extrapkgnames");
+       if ($rc) { 
+	   print "zypper invocation failed\n";
+	   exit 1;
+       }
+   }
+
+   postscripts(); #run 'postscripts'
+}
+unlink "/tmp/genimage.$$.yum.conf";
+
+#-- run postinstall script
+my $postinstall_filename= get_postinstall_file_name($customdir);
+if (!$postinstall_filename) {
+    $postinstall_filename= get_postinstall_file_name($pathtofiles);
+} 
+
+if (($postinstall_filename) && (-x $postinstall_filename)) {
+    my $rc = system($postinstall_filename, "$installroot/netboot/$osver/$arch/$profile/rootimg",$osver,$arch,$profile);
+    if($rc) {
+        print "postinstall script failed\n";
+        exit 1;
+    }
+}
+
+#some rpms mounts the imageroot/proc on the /proc, need to release it, 
+#otherwise got kernal panic when installing 
+#sometimes, the proc fs is not mounted, so one warning/error message will display,
+#and I add one check point here.
+my $MTABFD;
+open MTABFD, "/etc/mtab";
+my @lines = <MTABFD>;
+close MTABFD;
+
+my $ret = grep m{$installroot/netboot/$osver/$arch/$profile/rootimg/proc}, @lines;
+if($ret > 0) {
+    system("umount $installroot/netboot/$osver/$arch/$profile/rootimg/proc");
+}
+
+mkinitrd();
+
+
+sub getlibs {
+	my $file = shift;
+	my $liblist = `chroot $installroot/netboot/$osver/$arch/$profile/rootimg ldd $file`;
+	my @libs = split/\n/,$liblist;
+	my @return;
+	foreach (@libs) {
+      unless (/=>/) {
+         (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
+         $lib =~ s/^\///;
+         $libhash{$lib}=1;
+         next;
+      }
+		(my $temp1,my $temp2) = split />/,$_,2;
+		(my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
+		unless ($temp1 =~ /\//) {
+			next;
+		}
+      $temp1 =~ s/^\///;
+		$libhash{$temp1}=1;
+   }
+}
+
+sub mkinitrd {
+	mkpath("/tmp/xcatinitrd.$$/bin");
+	if($basekernelver eq $kernelver) {
+        if (-f "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver") {
+		    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+	         } elsif (-f "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux-$kernelver"){
+                    rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+                 }
+        }
+	else {
+	    if(-r "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver") {
+		    rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+        } elsif(-r "$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux-$kernelver") {
+            rename("$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+        }  elsif(-r "/boot/vmlinuz-$kernelver") {
+		    copy("/boot/vmlinuz-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+	    } elsif(-r "/boot/vmlinux-$kernelver") {#for SLES10,11
+			copy("/boot/vmlinux-$kernelver","$installroot/netboot/$osver/$arch/$profile/kernel");
+	    }
+	    else {
+		    xdie("Cannot read /boot/vmlinuz-$kernelver");
+	    }
+	}
+	symlink("bin","/tmp/xcatinitrd.$$/sbin");
+	mkpath("/tmp/xcatinitrd.$$/usr/bin");
+	mkpath("/tmp/xcatinitrd.$$/usr/sbin");
+	mkpath("/tmp/xcatinitrd.$$/usr/lib");
+	mkpath("/tmp/xcatinitrd.$$/usr/lib64");
+	mkpath("/tmp/xcatinitrd.$$/lib/firmware");
+	mkpath("/tmp/xcatinitrd.$$/tmp");
+	mkpath("/tmp/xcatinitrd.$$/var/run");
+	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
+	if($osver =~ /sles/ && $arch eq "ppc64") {#SLES for Power6
+	    mkpath("/tmp/xcatinitrd.$$/lib64/power6");
+	}
+	mkpath("/tmp/xcatinitrd.$$/lib/power6");#SLES10
+	mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
+	mkpath("/tmp/xcatinitrd.$$/proc");
+	mkpath("/tmp/xcatinitrd.$$/sys");
+	mkpath("/tmp/xcatinitrd.$$/dev/mapper");
+	mkpath("/tmp/xcatinitrd.$$/sysroot");
+	mkpath("/tmp/xcatinitrd.$$/etc/ld.so.conf.d");
+	mkpath("/tmp/xcatinitrd.$$/var/lib/dhcpcd");
+	my $inifile;
+	open($inifile,">","/tmp/xcatinitrd.$$/init");
+	print $inifile "#!/bin/bash -x\n";
+	print $inifile "mount -t proc /proc /proc\n";
+	print $inifile "mount -t sysfs /sys /sys\n";
+   print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
+   print $inifile "mkdir /dev/pts\n";
+   print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
+   print $inifile "mkdir /dev/shm\n";
+   print $inifile "mkdir /dev/mapper\n";
+
+   print $inifile "mknod /dev/random c 1 8\n";
+   print $inifile "mknod /dev/urandom c 1 9\n";
+   print $inifile "mknod /dev/null c 1 3\n";
+   print $inifile "mknod /dev/zero c 1 5\n";
+   print $inifile "mknod /dev/systty c 4 0\n";
+   print $inifile "mknod /dev/tty c 5 0\n";
+   print $inifile "mknod /dev/console c 5 1\n";
+   print $inifile "mknod /dev/ptmx c 5 2\n";
+   print $inifile "mknod /dev/rtc c 10 135\n";
+   print $inifile "mknod /dev/tty0 c 4 0\n";
+   print $inifile "mknod /dev/tty1 c 4 1\n";
+   print $inifile "mknod /dev/tty2 c 4 2\n";
+   print $inifile "mknod /dev/tty3 c 4 3\n";
+   print $inifile "mknod /dev/tty4 c 4 4\n";
+   print $inifile "mknod /dev/tty5 c 4 5\n";
+   print $inifile "mknod /dev/tty6 c 4 6\n";
+   print $inifile "mknod /dev/tty7 c 4 7\n";
+   print $inifile "mknod /dev/tty8 c 4 8\n";
+   print $inifile "mknod /dev/tty9 c 4 9\n";
+   print $inifile "mknod /dev/tty10 c 4 10\n";
+   print $inifile "mknod /dev/tty11 c 4 11\n";
+   print $inifile "mknod /dev/tty12 c 4 12\n";
+   print $inifile "mknod /dev/ttyS0 c 4 64\n";
+   print $inifile "mknod /dev/ttyS1 c 4 65\n";
+   print $inifile "mknod /dev/ttyS2 c 4 66\n";
+   print $inifile "mknod /dev/ttyS3 c 4 67\n";
+   foreach (@ndrivers) {
+      print $inifile "insmod /lib/$_\n";
+   }
+   print $inifile <<EOMS;
+netstart
+ip addr add dev lo 127.0.0.1/8
+ip link set lo up
+cd /
+for i in `cat /proc/cmdline`; do
+   KEY=`echo \$i |awk -F= '{print \$1}'`
+   if [ "\$KEY" == 'imgurl' ]; then
+      VALUE=`echo \$i |awk -F= '{print \$2}'`
+      if [ "http" == "`echo \$VALUE|awk -F: '{print \$1}'`" ]; then
+        #NOTE needs FT retry code to scale
+        #NOTE: should prob have max count
+        FILENAME=`echo \$VALUE|awk -F/ '{print \$NF}'`
+        while [ ! -r "\$FILENAME" ]; do
+          echo Getting \$VALUE...
+          if ! wget \$VALUE; then
+            sleep 5 #should be random, exponential for scale
+            rm -f \$FILENAME
+          fi
+        done
+        NFS=0
+      fi
+      if [ "nfs" == "`echo \$VALUE|awk -F: '{print \$1}'`" ]; then
+        NFS=1
+        SERVER=`echo \$VALUE|awk -F/ '{print \$3}'`
+        ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=4;i<=NF;i++) printf "/%s",\$i}'`
+      fi
+   fi
+done
+if [ "\$NFS" = "1" ]; then
+  echo Setting up nfs with ram overlay.
+  mknod /dev/loop0 b 7 0
+  mkdir -p /ro
+  mkdir -p /rw
+  #NOTE: should prob have max count
+  while [ ! -d /ro/bin ]; do
+    echo mounting \$SERVER:\$ROOTDIR on /ro
+    mount \$SERVER:\$ROOTDIR /ro -r -n -o nolock,rsize=32768,udp,nfsvers=3,timeo=14
+    sleep 5 #should be random, exponential for scale
+  done
+  mount -t tmpfs rw /rw
+  mkdir -p /rw/etc
+  mkdir -p /rw/var/lib/dhcpcd
+  mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot
+  mkdir -p /sysroot/ro
+  mkdir -p /sysroot/rw
+  mount --move /ro /sysroot/ro
+  mount --move /rw /sysroot/rw
+elif [ -r /rootimg.sfs ]; then
+  echo Setting up squashfs with ram overlay.
+  mknod /dev/loop0 b 7 0
+  mkdir -p /ro
+  mkdir -p /rw
+  mount -t squashfs /rootimg.sfs /ro
+  mount -t tmpfs rw /rw
+  mount -t aufs -o dirs=/rw:/ro mergedroot /sysroot
+  mkdir -p /sysroot/ro
+  mkdir -p /sysroot/rw
+  mount --move /ro /sysroot/ro
+  mount --move /rw /sysroot/rw
+EOMS
+   print $inifile "elif [ -r /rootimg.gz ]; then\n";
+   print $inifile "echo Setting up RAM-root tmpfs.\n";
+   if ($rootlimit) {
+      print $inifile "  mount -o size=$rootlimit -t tmpfs rootfs /sysroot\n";
+   } else {
+      print $inifile "  mount -t tmpfs rootfs /sysroot\n";
+   }
+   print $inifile "  cd /sysroot\n";
+   print $inifile "  echo -n \"Extracting root filesystem:\"\n";
+   print $inifile "  if [ -x /bin/cpio ]; then\n";
+   print $inifile "  zcat /rootimg.gz |/bin/cpio -idum\n";
+   print $inifile "  else\n";
+   print $inifile "  zcat /rootimg.gz |cpio -idum\n";
+   print $inifile "  fi\n";
+   print $inifile "  echo Done\n";
+   print $inifile "else\n";
+   print $inifile "  echo -n Failed to download image, panicing in 5...\n";
+   print $inifile "  for i in 4 3 2 1 0; do\n";
+   print $inifile "    /bin/sleep 1\n";
+   print $inifile "    echo -n \$i...\n";
+   print $inifile "  done\n";
+   print $inifile "  echo\n";
+ print $inifile <<EOMS;
+  echo "You're dead.  rpower nodename reset to play again.
+
+* Did you packimage with -m cpio, -m squashfs, or -m nfs?
+* If using -m squashfs did you include aufs.ko with geninitrd?
+  e.g.:  -n tg3,squashfs,aufs,loop
+* If using -m nfs did you export NFS and sync rootimg?  And
+  did you include the aufs and nfs modules in the proper order:
+  e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs
+
+"
+  sleep 5
+EOMS
+   print $inifile "  exit\n";
+   print $inifile "fi\n";
+   print $inifile "cd /\n";
+   print $inifile "mkdir /sysroot/var/lib/dhcpcd/\n";	#neccessary for SLES11, not sure for SLES10
+   print $inifile "cp /var/lib/dhcpcd/* /sysroot/var/lib/dhcpcd/\n";
+   print $inifile "cp /etc/resolv.conf /sysroot/etc/\n";
+   print $inifile "cp /etc/HOSTNAME /sysroot/etc/\n";
+   print $inifile "mknod /sysroot/dev/console c 5 1\n";
+   print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console /sysroot /sbin/init\n";
+   close($inifile);
+   open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
+   print $inifile "#!/bin/bash\n";
+   print $inifile "dhcpcd $prinic\n";
+
+   #-- Bring other NICs up in /bin/netstart in initrd for NIC failover
+   foreach (split /,/,$othernics) {
+      if (/^$/) { next; }
+      print $inifile "dhcpcd $_\n";
+   }
+
+   print $inifile <<END;
+cat /var/lib/dhcpcd/*info | grep DOMAIN | uniq | awk -F= '{print \"search\",\$2}' | sed \"s/'//g\" >> /etc/resolv.conf
+cat /var/lib/dhcpcd/*info | grep HOSTNAME | uniq | awk -F= '{print \$2}'| sed \"s/'//g\" >> /etc/HOSTNAME
+for names in \$(cat /var/lib/dhcpcd/*info | grep DNS | uniq | awk -F= '{print \$2}' | sed 's/,/\\n/'); do
+  echo nameserver \$names >> /etc/resolv.conf
+done
+END
+
+   close($inifile);
+	chmod(0755,"/tmp/xcatinitrd.$$/init");
+	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
+   @filestoadd=();
+   foreach (@ndrivers) {
+     if (-f "$customdir/$_") {
+         push @filestoadd,[$_,"lib/$_"];
+     } elsif (-f "$pathtofiles/$_") {
+         push @filestoadd,[$_,"lib/$_"];
+     }
+   }
+   foreach ("usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed") {
+      getlibs($_); #there's one small bug for getlibs
+      push @filestoadd,$_;
+   }
+   if ($arch =~ /x86_64/) {
+      push @filestoadd,"lib64/libnss_dns.so.2";
+   }
+   else {
+      push @filestoadd,"lib/libnss_dns.so.2";
+   }
+   push @filestoadd,keys %libhash;
+	if($basekernelver ne $kernelver) {
+		system("rm -rf $installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$basekernelver");
+        unless (-d "$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$kernelver") {
+		    if(-d "/lib/modules/$kernelver") {
+		    	system("cd /lib/modules;cp -r $kernelver $installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/");
+		    }
+		    else {
+		    	xdie("Cannot read /lib/modules/$kernelver");
+		    }
+        }
+	}
+   find(\&isnetdriver, <$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/$kernelver/*>);
+   foreach (@filestoadd) {
+      if (ref($_)) {
+         #print "$_->[0], $_->[1]\n";
+         my $srcpath = "$installroot/netboot/$osver/$arch/$profile/rootimg/".$_->[0];
+         if (-f "$customdir/".$_->[0]) {
+            $srcpath="$customdir/".$_->[0];
+         } elsif (-f "$pathtofiles/".$_->[0]) {
+            $srcpath="$pathtofiles/".$_->[0];
+         }
+         copy($srcpath,"/tmp/xcatinitrd.$$/".$_->[1]);
+         chmod 0755,"/tmp/xcatinitrd.$$/".$_->[1];
+      } else {
+         #print "$_\n";
+         my $srcpath = "$installroot/netboot/$osver/$arch/$profile/rootimg/$_";
+         if (-f "$customdir/$_") {
+            $srcpath = "$customdir/$_";
+         } elsif (-f "$pathtofiles/$_") {
+            $srcpath = "$pathtofiles/$_";
+         }
+         copy("$srcpath","/tmp/xcatinitrd.$$/$_");
+         chmod 0755,"/tmp/xcatinitrd.$$/".$_;
+      }
+   }
+
+   #copy("$installroot/netboot/$osver/$arch/$profile/rootimg/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
+   system("cd /tmp/xcatinitrd.$$/bin/; ln -sf bash sh");	#neccessary for SLES11
+   system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $installroot/netboot/$osver/$arch/$profile/initrd.gz");
+   system("rm -rf /tmp/xcatinitrd.$$");
+
+}
+
+sub isyumdir {
+   if ($File::Find::name =~ /\/repodata$/) {
+      my $location = $File::Find::name;
+      $location =~ s/\/repodata$//;
+      push @yumdirs,$location;
+   }
+}
+
+sub isnetdriver {
+   foreach (@ndrivers) {
+      if ($File::Find::name =~ /\/$_/) {
+         my $filetoadd = $File::Find::name;
+         $filetoadd =~ s!$installroot/netboot/$osver/$arch/$profile/rootimg/!!;
+         push @filestoadd,[$filetoadd,"lib/$_"];
+      }
+   }
+}
+      	
+
+
+
+
+
+
+sub postscripts { # TODO: customized postscripts
+   generic_post();
+   if (-d "$installroot/postscripts/hostkeys") {
+      for my $key (<$installroot/postscripts/hostkeys/*key>) {
+         copy ($key,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/");
+      }
+      chmod 0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/etc/ssh/*key>;
+   }
+   if (-d "/$installroot/postscripts/.ssh") {
+      mkpath("/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh");
+      chmod(0700,"/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/");
+      for my $file (</$installroot/postscripts/.ssh/*>) {
+         copy ($file,"/$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/");
+      }
+      chmod(0600,</$installroot/netboot/$osver/$arch/$profile/rootimg/root/.ssh/*>);
+   }
+
+}
+
+sub generic_post { #This function is meant to leave the image in a state approximating a normal install
+   my $cfgfile;
+   unlink("$installroot/netboot/$osver/$arch/$profile/rootimg/dev/null");
+   system("mknod $installroot/netboot/$osver/$arch/$profile/rootimg/dev/null c 1 3");
+   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/fstab");
+   print $cfgfile "devpts  /dev/pts devpts   gid=5,mode=620 0 0\n";
+   print $cfgfile "tmpfs   /dev/shm tmpfs    defaults       0 0\n";
+   print $cfgfile "proc    /proc    proc     defaults       0 0\n";
+   print $cfgfile "sysfs   /sys     sysfs    defaults       0 0\n";
+   if ($tmplimit) {
+      print $cfgfile "tmpfs   /tmp     tmpfs    defaults       0 0\n";
+      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults       0 0\n";
+   }
+   close($cfgfile);
+   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network");
+   print $cfgfile "NETWORKING=yes\n";
+   close($cfgfile);
+   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/resolv.conf");
+   print $cfgfile "#Dummy resolv.conf to make boot cleaner";
+   close($cfgfile);
+   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network-scripts/ifcfg-$prinic");
+   print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
+   close($cfgfile);
+   foreach (split /,/,$othernics) {
+      if (/^$/) { next; }
+      open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/sysconfig/network-scripts/ifcfg-$_");
+      print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n";
+      close($cfgfile);
+   }
+   open($cfgfile,">>","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/securetty");
+   print $cfgfile "ttyS0\n";
+   print $cfgfile "ttyS1\n";
+   print $cfgfile "console\n";
+   close($cfgfile);
+   my @passwd;
+   open($cfgfile,"<","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/passwd");
+   @passwd = <$cfgfile>;
+   close($cfgfile);
+   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/passwd");
+   foreach (@passwd) {
+      if (/^root:/) {
+         s/^root:\*/root:x/
+      }
+      print $cfgfile $_;
+   }
+   close($cfgfile);
+   foreach (<$installroot/netboot/$osver/$arch/$profile/rootimg/etc/skel/.*>) {
+      if (basename($_) eq '.' or basename($_) eq '..') {
+         next;
+      }
+      copy $_,"$installroot/netboot/$osver/$arch/$profile/rootimg/root/";
+   }
+   open($cfgfile,">","$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/gettyset");
+   print $cfgfile "#!/bin/bash\n"; 
+   print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
+   print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
+   print $cfgfile "  if [ \"\$KEY\" == \"console\" ]; then\n";
+   print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
+   print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
+   print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
+   print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
+   print $cfgfile "        FLOWFLAG=\"-h\"\n";
+   print $cfgfile "     fi\n";
+   print $cfgfile "     echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
+   print $cfgfile "     init q\n";
+   print $cfgfile "  fi\n";
+   print $cfgfile "done\n";
+   print $cfgfile "/etc/init.d/boot.localnet start\n";
+   print $cfgfile "/opt/xcat/xcatdsklspost\n";
+   close($cfgfile);
+   chmod(0755,"$installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/gettyset");
+   #link("$installroot/netboot/$osver/$arch/$profile/rootimg/sbin/init","$installroot/netboot/$osver/$arch/$profile/rootimg/init");
+   my $rc = system("grep sshd $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
+   if ($rc) {
+      system("sed -i '".'s/^\(TARGETS = .*\)$/\1 sshd/'."' $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
+      system("ln -s ../sshd $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/rc3.d/S20sshd");
+   }
+   my $rc = system("grep gettyset $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
+   if ($rc) {
+      system("sed -i '".'s/^\(TARGETS = .*\)$/\1 gettyset/'."' $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/.depend.start");
+      system("ln -s ../gettyset $installroot/netboot/$osver/$arch/$profile/rootimg/etc/init.d/rc3.d/S60gettyset");
+   }
+   if(($osver =~ /sles11/) || ($osver =~ /suse11/) || ($osver =~ /sles10/)) {#for sles11,sles10,suse11
+	   rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinux*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+   }else {
+   	   rename(<$installroot/netboot/$osver/$arch/$profile/rootimg/boot/vmlinuz*>,"$installroot/netboot/$osver/$arch/$profile/kernel");
+   }
+}
+
+#get th extra package name
+sub get_extra_package_names {
+   my $otherpkglist=get_extra_pkglist_file_name($customdir);
+   if (!$otherpkglist) { $otherpkglist=get_extra_pkglist_file_name($pathtofiles); }
+   my %pkgnames=();
+   my @tmp_array=();
+
+
+   if ($otherpkglist) {
+     my $pkgfile;
+     open($pkgfile,"<","$otherpkglist");
+     while (<$pkgfile>) {
+        chomp;
+	s/\s+$//;   #remove trailing white spaces
+	next if /^\s*$/; #-- skip empty lines
+	push(@tmp_array,$_);
+     }
+     close($pkgfile);
+
+     if ( @tmp_array > 0) {
+        my $pkgtext=join(',',@tmp_array);
+      
+        #handle the #INLCUDE# tag recursively
+        my $idir = dirname($otherpkglist);
+        my $doneincludes=0;
+	while (not $doneincludes) {
+	    $doneincludes=1;
+	    if ($pkgtext =~ /#INCLUDE:[^#]+#/) {
+		$doneincludes=0;
+		$pkgtext =~ s/#INCLUDE:([^#]+)#/include_file($1,$idir)/eg;
+	    }
+	}
+     
+        print "pkgtext=$pkgtext\n";
+	my @tmp=split(',', $pkgtext);
+	foreach (@tmp) { 
+	    my $idir=dirname($_);
+	    my $fn=basename($_);
+	    if (exists($pkgnames{$idir})) {
+		my $pa=$pkgnames{$idir};
+		push(@$pa, $fn);
+	    } else {
+		$pkgnames{$idir}=[$fn];
+	    }
+	}
+     }
+   }
+
+   return %pkgnames;
+}
+
+
+sub include_file
+{
+   my $file = shift;
+   my $idir = shift;
+   my @text = ();
+   unless ($file =~ /^\//) {
+       $file = $idir."/".$file;
+   }
+   
+   open(INCLUDE,$file) || \
+       return "#INCLUDEBAD:cannot open $file#";
+   
+   while(<INCLUDE>) {
+       chomp($_);
+       s/\s+$//;  #remove trailing spaces
+       next if /^\s*$/; #-- skip empty lines
+       push(@text, $_);
+   }
+   
+   close(INCLUDE);
+   
+   return join(',', @text);
+}
+
+sub get_extra_pkglist_file_name {
+   my $base=shift;
+   if (-r "$base/$profile.$osver.$arch.otherpkgs.pkglist") {
+      return  "$base/$profile.$osver.$arch.otherpkgs.pkglist";
+   } elsif (-r "$base/$profile.$arch.otherpkgs.pkglist") {
+      return "$base/$profile.$arch.otherpkgs.pkglist";
+   } elsif (-r "$base/$profile.$osver.otherpkgs.pkglist") {
+      return "$base/$profile.$osver.otherpkgs.pkglist";
+   } elsif (-r "$base/$profile.otherpkgs.pkglist") {
+      return "$base/$profile.otherpkgs.pkglist";
+   } 
+   return "";
+}
+
+sub get_pkglist_file_name {
+   my $base=shift;
+   if (-r "$base/$profile.$osver.$arch.pkglist") {
+      return "$base/$profile.$osver.$arch.pkglist";
+   } elsif (-r "$base/$profile.$arch.pkglist") {
+      return "$base/$profile.$arch.pkglist";
+   } elsif (-r "$base/$profile.$osver.pkglist") {
+      return "$base/$profile.$osver.pkglist";
+   } elsif (-r "$base/$profile.pkglist") {
+      return "$base/$profile.pkglist";
+   } 
+
+   return "";
+}
+
+
+sub get_postinstall_file_name {
+   my $base=shift;
+   if (-x "$base/$profile.$osver.$arch.postinstall") {
+      return "$base/$profile.$osver.$arch.postinstall";
+   } elsif (-x "$base/$profile.$arch.postinstall") {
+      return "$base/$profile.$arch.postinstall";
+   } elsif (-x "$base/$profile.$osver.postinstall") {
+      return "$base/$profile.$osver.postinstall";
+   } elsif (-x "$base/$profile.postinstall") {
+      return "$base/$profile.postinstall";
+   } 
+
+   return "";
+}
+
+
