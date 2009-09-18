@@ -12,7 +12,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use xCAT::SvrUtils;
 use xCAT::MsgUtils;
-#use Data::Dumper;
+use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -25,8 +25,8 @@ sub handled_commands
 {
     return {
             copycd    => "sles",
-            mknetboot => "nodetype:os=sles.*",
-            mkinstall => "nodetype:os=sles.*"
+            mknetboot => "nodetype:os=(sles.*)|(suse.*)",
+            mkinstall => "nodetype:os=(sles.*)|(suse.*)"
             };
 }
 
@@ -72,7 +72,9 @@ sub mknetboot
         if ($osver =~ /sles.*/)
         {
             $platform = "sles";
-        }
+        }elsif($osver =~ /suse.*/){
+            $platform = "sles";
+	}
 
         my $arch    = $ent->{arch};
         my $profile = $ent->{profile};
@@ -273,8 +275,19 @@ sub mkinstall
         my $os      = $ent->{os};
         my $arch    = $ent->{arch};
         my $profile = $ent->{profile};
-        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("/install/custom/install/sles", $profile, $os, $arch);
-        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/sles", $profile, $os, $arch); }
+	my $plat = "";
+	if($os =~/sles.*/){
+		$plat = "sles";
+	}elsif($os =~/suse.*/){
+		$plat = "suse";
+	}else{
+		$plat = "foobar";
+		print "You should never get here!  Programmer error!";
+		return;
+	}
+
+        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("/install/custom/install/$plat", $profile, $os, $arch);
+        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
         unless ( -r "$tmplfile")     
         {
             $callback->(
@@ -522,7 +535,7 @@ sub copycd
     if ($sitetab)
     {
         (my $ref) = $sitetab->getAttribs({key => installdir}, value);
-        #print Dumper($ref);
+        print Dumper($ref);
         if ($ref and $ref->{value})
         {
             $installroot = $ref->{value};
@@ -541,10 +554,10 @@ sub copycd
         #this plugin needs $path...
         return;
     }
-    if ($distname and $distname !~ /^sles/)
+    if ($distname and $distname !~ /^sles|^suse/)
     {
 
-        #If they say to call it something other than SLES, give up?
+        #If they say to call it something other than SLES or SUSE, give up?
         return;
     }
     unless (-r $path . "/content")
@@ -597,7 +610,12 @@ sub copycd
                 my @subparts = split /-/,   $parts[2];
                 $detdistname = "sles" . $subparts[0];
                 unless ($distname) { $distname = "sles" . $subparts[0] };
-            }
+            }elsif($prod =~ m/cselx 1.0-0/){
+			# GE healthcare special SuSE distribution
+			$distname = "suse11";
+                	$detdistname = "suse11";
+		}
+	    
         }
     }
     unless ($distname and $discnumber)
