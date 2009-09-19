@@ -67,8 +67,8 @@ sub process_request {
         return;
     }
     my $oldpath=cwd();
-    my $exlistloc=get_exlist_file_name("$installroot/custom/netboot/$distname", $profile, $osver, $arch);
-    if (!$exlistloc) {  $exlistloc=get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); }
+    my $exlistloc=xCAT::SvrUtils->get_exlist_file_name("$installroot/custom/netboot/$distname", $profile, $osver, $arch);
+    if (!$exlistloc) {  $exlistloc=xCAT::SvrUtils->get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); }
 
     if (!$exlistloc)
     {
@@ -215,7 +215,11 @@ sub process_request {
        }
        chmod(0644,"../rootimg.sfs");
     }
-    chdir($oldpath);
+   chdir($oldpath);
+   my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile);
+   if ($ret[0] != 0) {
+       $callback->({error=>["Error when updating the osimage tables: " . $ret[1]]});
+   }
 }
 
 ###########################################################
@@ -282,21 +286,3 @@ sub copybootscript {
 	return 0;
 }
 
-sub get_exlist_file_name {
-    my $base=shift;
-    my $profile=shift;
-    my $osver=shift;
-    my $arch=shift;
-    
-    my $exlistloc="";
-    if (-r "$base/$profile.$osver.$arch.exlist") {
-       $exlistloc = "$base/$profile.$osver.$arch.exlist";
-    } elsif (-r "$base/$profile.$arch.exlist") {
-       $exlistloc = "$base/$profile.$arch.exlist";
-    } elsif (-r "$base/$profile.$osver.exlist") {
-       $exlistloc = "$base/$profile.$osver.exlist";
-    } elsif (-r "$base/$profile.exlist") {
-       $exlistloc = "$base/$profile.exlist";
-   }
-    return $exlistloc;
-}

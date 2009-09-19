@@ -12,6 +12,7 @@ use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT::SvrUtils;
 #use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -849,6 +850,10 @@ sub copycd
     else
     {
         $callback->({data => "Media copy operation successful"});
+	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch);
+        if ($ret[0] != 0) {
+	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
+	}
     }
 }
 

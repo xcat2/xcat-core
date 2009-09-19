@@ -745,6 +745,11 @@ sub copycd
     else
     {
         $callback->({data => "Media copy operation successful"});
+	my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch);
+        if ($ret[0] != 0) {
+	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
+	}
+
     }
 }
 

@@ -6,6 +6,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use Time::HiRes qw (sleep);
 use xCAT::MsgUtils;
+use xCAT::SvrUtils;
 use xCAT::Common;
 use xCAT::VMCommon;
 use POSIX "WNOHANG";
@@ -1908,7 +1909,13 @@ sub copycd {
 	if ($rc != 0){
         sendmsg([1,"Media copy operation failed, status $rc"]);
 	}else{
-        sendmsg("Media copy operation successful");
+	    sendmsg("Media copy operation successful");
+	    my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch);
+	    if ($ret[0] != 0) {
+		sendmsg("Error when updating the osimage tables: " . $ret[1]);
+	    }
+	
+
 	}
 }
 sub  makecustomizedmod {
