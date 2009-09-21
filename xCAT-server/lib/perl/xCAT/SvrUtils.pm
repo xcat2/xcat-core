@@ -477,9 +477,11 @@ sub  update_tables_with_templates
     
     my $osname=$osver;;  #like sles, rh, centos, windows
     my $ostype="Linux";  #like Linux, Windows
+    my $imagetype="linux";
     if ($osver =~ /^win/) {
 	$osname="windows";
 	$ostype="Windows";
+        $imagetype="windows";
     } else {
 	until (-r  "$::XCATROOT/share/xcat/install/$osname/" or not $osname) {
 	    chop($osname);
@@ -570,7 +572,8 @@ sub  update_tables_with_templates
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
 		my %key_col = (imagename=>$imagename);
-		my %tb_cols=(imagetype=>"install", 
+		my %tb_cols=(imagetype=>$imagetype,
+			     provmethod=>"install",
 			     profile=>$profile, 
 			     osname=>$ostype,
 			     osvers=>$osver,
@@ -628,9 +631,11 @@ sub  update_tables_with_diskless_image
     
     my $osname=$osver;;  #like sles, rh, centos, windows
     my $ostype="Linux";  #like Linux, Windows
+    my $imagetype="linux";
     if ($osver =~ /^win/) {
 	$osname="windows";
 	$ostype="Windows";
+	$imagetype="windows";
     } else {
 	until (-r  "$::XCATROOT/share/xcat/netboot/$osname/" or not $osname) {
 	    chop($osname);
@@ -707,7 +712,8 @@ sub  update_tables_with_diskless_image
 	    #TODO: check if there happen to be a row that has the same imagename but with different contents
 	    #now we can wirte the info into db
 	    my %key_col = (imagename=>$imagename);
-	    my %tb_cols=(imagetype=>"netboot", 
+	    my %tb_cols=(imagetype=>$imagetype, 
+			 provmethod=>"netboot",
 			 profile=>$profile, 
 			 osname=>$ostype,
 			 osvers=>$osver,
