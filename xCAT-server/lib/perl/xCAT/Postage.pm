@@ -269,8 +269,8 @@ sub makescript {
       elsif ($os =~ /aix.*/) { $platform = "aix"; }
     }
     if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
-    my $pkglist=xCAT::SvrUtil->get_otherpkgs_pkglist_file_name("/install/custom/$stat/$platform", $profile,  $os, $arch);
-    if (!$pkglist) { $pkglist=xCAT::SvrUtil->get_otherpkgs_pkglist_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
+    my $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("/install/custom/$stat/$platform", $profile,  $os, $arch);
+    if (!$pkglist) { $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
 
     if ($pkglist) {
       my @otherpkgs=();
