@@ -28,7 +28,7 @@ if [ -z "$SIPS" ]; then
     SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
 fi
 
-SIP=`echo $SIPS|tail -n 1` #Pick one for wget
+SIP=`echo $SIPS|awk '{printf $NF}' | tail -n 1` #Pick one for wget
 
 #open the xcatinfo file to look for the master if it is not set
 frominfofile=0
