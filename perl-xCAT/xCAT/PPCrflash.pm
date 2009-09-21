@@ -783,18 +783,14 @@ sub rflash {
     $::RUNCMD_RC = $?;
 	if ($::RUNCMD_RC ) {    # error from dsh 
         my $rsp={};
-        $rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
+        $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
         xCAT::MsgUtils->message("S", $rsp, $::CALLBACK, 1);
-		dpush(\@value,[$hmc,"failed to run  xCAT::DSHCLI->runDsh_api()"]);
+		dpush(\@value,[$hmc,"failed to run  $cmd"]);
 		push(@value,[$hmc,$rsp->{data}->[0]]);
-        #push(@value,[$hmc,"Please check whether the HMC $hmc is configured to allow remote ssh connections"]);
-		#push (@value, [$hmc,"Failed to run the upgrade command \"rflash\" on $hmc"]);
 		push (@value, [$hmc,"Failed to upgrade the firmware of $mtms_t  on $hmc"]);
 		return(\@value);
     }
 
-
-	%options = ();
 
 	my $r = ();
 	foreach $r (@res){
