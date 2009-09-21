@@ -27,7 +27,8 @@ nodes. The command issues a remote copy com-
 mand for each node or device specified. When files are  pulled  from  a
 target,  they  are  placed  into  the  target_path with the name of the
 remote node or device appended to  the  copied  source_file  name.  The
-/usr/bin/rcp command is the model for syntax and security. If using hierarchy, then xdcp actually runs on the service node that is servicing the compute node. The file to be copied to the compute node must first be copied to the service node. 
+/usr/bin/rcp command is the model for syntax and security. 
+If using hierarchy, then xdcp actually runs on the service node that is servicing the compute node. The file will first be copied to the path defined in the site table, SNsyncfiledir attribute, or the default path /var/xcat/syncfiles on the service node, if the attribute is not defined.  
 
 B<TARGET> B<SPECIFICATION>:
 
@@ -296,12 +297,10 @@ that an error was encountered during the remote copy. If a remote  copy
 command  encounters an error, execution of the remote copy on that tar-
 get is bypassed.
 
-The xdcp command exit code is 0 if  the  xdcp  command  executed  without
+The xdcp command exit code is 0, if  the  xdcp  command  executed  without
 errors  and  all remote copy commands finished with exit codes of 0. If
 internal xdcp errors occur or the remote copy commands do  not  complete
-successfully,  the xdcp  command exit value is greater than 0. The exit
-value is increased by 1 for each successive instance of an unsuccessful
-remote copy command execution.
+successfully,  the xdcp  command exit value is greater than 0.  
 
 
 
@@ -374,7 +373,7 @@ B<xdcp> I<all /tmp/testdir/* /tmp/testdir>
 To copy all the files in /tmp/testdir and it's subdirectories 
 from the local host to node1 in the cluster, enter:
 
-B<xdcp> I<node1 -R /tmp/testdir/* /tmp/testdir>
+B<xdcp> I<node1 -R /tmp/testdir /tmp/testdir>
 
 =item *
 
@@ -400,7 +399,8 @@ B<xdcp> I<compute -F /tmp/myrsync>
 =item *
 
 To rsync to the compute nodes, using service nodes, the command will first
-rsync the files to the /var/xcat/syncfiles directory on the service nodes and then rsync the files from that directory to the compute nodes.  The /var/xcat/syncfiles default directory on the service nodes, can be changed by putting a directory value in the site table SNsyncfiledir attribute. 
+rsync the files to the  /var/xcat/syncfiles directory on the service nodes and then rsync the files from that directory to the compute nodes. The /var/xcat/syncfiles default directory on the service nodes, can be changed by putting a directory value in the site table SNsyncfiledir attribute.
+ 
 
 Create a rsync file /tmp/myrsync, with this line:
 
