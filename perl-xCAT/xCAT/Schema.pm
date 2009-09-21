@@ -552,7 +552,7 @@ site => {
  descriptions => {
   key => "Name of the attribute:\tDescription\n".
    "  blademaxp:\tThe maximum number of processes for blade hardware control. Default is 64.\n\n".
-   "  consoleondemand:\tWhen set to 'yes', conserver connects and creates the console output only when the user opens the console. Default is no.\n\n".
+   "  consoleondemand:\tWhen set to 'yes', conserver connects and creates the console output only when the user opens the console. Default is no on Linux, yes on AIX.\n\n".
    "  defserialflow:\tThe default serial flow - currently only used by the mknb command.\n\n".
    "  defserialport:\tThe default serial port - currently only used by mknb.\n\n".
    "  defserialspeed:\tThe default serial speed - currently only used by mknb.\n\n".
