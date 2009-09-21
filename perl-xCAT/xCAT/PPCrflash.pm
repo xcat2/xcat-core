@@ -749,24 +749,38 @@ sub rflash {
 	
 #	print_var(@res);
 	%options = ();
-	push(@value,[$hmc, "copy files to $hmc complete"]);
+	push(@value,[$hmc, "copy files to $hmc completely"]);
 
-	#`$::XDSH $hmc -K`;
 	###############################################
 	# Now that all the stanzas files have been built and copied to the HMCs,
 	# we can use a single dsh command to invoke them all.
 	################################################
-	$options{ 'user' } = $user; 
-	$options{ 'nodes' } = $hmc; 
-	$options{ 'exit-status' } = 1;
-	$options{ 'stream' } = 1;	
-	$options{ 'preserve' } = 1;
-	$options{ 'command' } = "csmlicutil $tmp_file";
+    #    @res =  xCAT::Utils->runcmd( $cmd, 0, 1);
+    #    my @re1 = xCAT::Utils->runxcmd(  {
+    #                                 command => ['xdsh'],
+    #                                 node    => [$hmc],
+    #                                 arg     => [ "-l", $user , $cmd_hmc ]
+    #                              },
+    #                              , $subreq, 0, 1);
+    #
+#	$options{ 'user' } = $user; 
+#	$options{ 'nodes' } = $hmc; 
+#	$options{ 'exit-status' } = 1;
+#	$options{ 'stream' } = 1;	
+#	$options{ 'command' } = "csmlicutil $tmp_file";
 #	$options{ 'command' } = "ls -al";
 
-	@res = xCAT::DSHCLI->runDsh_api(\%options, 0);
-    my $Rc = pop(@res);
-    push(@value, [$Rc]);
+#	@res = xCAT::DSHCLI->runDsh_api(\%options, 0);
+#    my $Rc = pop(@res);
+#    push(@value, [$Rc]);
+#  The above code isn't supported.
+    
+    my $cmd_hmc = "csmlicutil $tmp_file";
+    #my $cmd_hmc = "ls";
+    my $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $hmc -l$user \"$cmd_hmc\"";
+    $SIG{CHLD} = ();
+    @res = `$cmd`;
+    $::RUNCMD_RC = $?;
 	if ($::RUNCMD_RC ) {    # error from dsh 
         my $rsp={};
         $rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
