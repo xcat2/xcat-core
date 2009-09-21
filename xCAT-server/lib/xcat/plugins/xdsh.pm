@@ -14,6 +14,8 @@
 package xCAT_plugin::xdsh;
 use strict;
 use Storable qw(dclone);
+use File::Basename;
+use File::Path;
 require xCAT::Table;
 
 require xCAT::Utils;
@@ -56,6 +58,7 @@ sub preprocess_request
     my $cb  = shift;
     my %sn;
     my $sn;
+    my $command = $req->{command}->[0];    # xdsh vs xdcp
 
     #if already preprocessed, go straight to request
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
@@ -86,35 +89,48 @@ sub preprocess_request
     my @MNnodeinfo    = xCAT::Utils->determinehostname;
     my $MNnodename    = pop @MNnodeinfo;                  # hostname
     my @MNnodeipaddr  = @MNnodeinfo;                      # ipaddresses
+    my $mnname        = $MNnodeipaddr[0];
     my $tmpsyncsnfile = "/tmp/xcatrf.tmp";
+    my $SNpath;
+
+    my $synfiledir = "/var/xcat/syncfiles";               # default
     if ($nodes)
     {
         $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+        my @snodes;
+        my @snoderange;
 
-        # if -F command to rsync the SN and nodes
-        if ($syncsnfile)                                  # -F command was input
+        # check to see if service nodes and not just the MN
+        if ($sn)
         {
-            my @snodes;
-            my @snoderange;
-
-            # first add command to sync the service nodes, if hierarchical
-            # check to see if service nodes and not must the MN
-            if ($sn)
+            foreach my $snkey (keys %$sn)
             {
-                foreach my $snkey (keys %$sn)
-                {
-                    if (!grep(/$snkey/, @MNnodeipaddr))
-                    {                                     # not the MN
-                        push @snodes, $snkey;
-                        $snoderange[0] .= "$snkey,";
+                if (!grep(/$snkey/, @MNnodeipaddr))
+                {    # if not the MN
+                    push @snodes, $snkey;
+                    $snoderange[0] .= "$snkey,";
 
-                    }
                 }
-                if (@snodes)
-                {    # are there are service nodes not just the MN
-                        #change noderange to the service nodes
+            }
+
+            if (@snodes)
+            {
+
+                # get the directory on the servicenode to put the  files in
+                my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
+                if ($syndir[0])
+                {
+                    $synfiledir = $syndir[0];
+                }
+
+                # if -F command and service nodes first need to rsync the SN
+                if ($syncsnfile)
+                {
+
+                    #change noderange to the service nodes
                     my $addreq;
                     chop $snoderange[0];
+                    $addreq->{'_xcatdest'}  = $mnname;
                     $addreq->{node}         = \@snodes;
                     $addreq->{noderange}    = \@snoderange;
                     $addreq->{arg}->[0]     = "-s";
@@ -127,6 +143,7 @@ sub preprocess_request
                     # need to add to the queue to copy rsync file( -F input)
                     # to the service node  to the /tmp/xcatrf.tmp file
                     my $addreq;
+                    $addreq->{'_xcatdest'}  = $mnname;
                     $addreq->{node}         = \@snodes;
                     $addreq->{noderange}    = \@snoderange;
                     $addreq->{arg}->[0]     = $syncsnfile;
@@ -135,14 +152,56 @@ sub preprocess_request
                     $addreq->{cwd}->[0]     = $req->{cwd}->[0];
                     push @requests, $addreq;
                 }
+                else
+                {
+
+                    # if other xdcp command
+                    # mk the diretory on the SN to hold the files
+                    # to be sent to the CN.
+                    # build a command to update the service nodes
+                    # change the destination to the tmp location on
+                    # the service node. 
+                    if ($command eq "xdcp")
+                    {
+
+                        #make the needed directory on the service node
+                        # create new directory for path on Service Node
+                        my $frompath = $req->{arg}->[-2];
+                        $SNpath = $synfiledir;
+                        $SNpath .= $frompath;
+                        my $SNdir;
+                        $SNdir = dirname($SNpath); # get directory
+                        my $addreq= dclone($req);
+                        $addreq->{'_xcatdest'}  = $mnname;
+                        $addreq->{node}         = \@snodes;
+                        $addreq->{noderange}    = \@snoderange;
+                        $addreq->{arg}->[0]     = "mkdir ";
+                        $addreq->{arg}->[1]     = "-p ";
+                        $addreq->{arg}->[2]     = $SNdir;
+                        $addreq->{command}->[0] = "xdsh";
+                        $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+                        push @requests, $addreq;
+
+                        # now sync file to the service node to the new
+                        # tmp path
+                        my $addreq = dclone($req);
+                        $addreq->{'_xcatdest'} = $mnname;
+                        chop $snoderange[0];
+                        $addreq->{node}      = \@snodes;
+                        $addreq->{noderange} = \@snoderange;
+                        $addreq->{arg}->[-1] = $SNdir;
+                        push @requests, $addreq;
+
+                    }
+                }
             }
-        }
+        }    # end if SN
 
         # if not only syncing the service nodes ( -s flag)
         # for each node build the
-        # the original command, and add for each SN, if hierarchical
+        # the command, to sync from the service node
         if ($syncsn == 0)
-        {    #syncing the service node and nodes ( no -s flag)
+        {    #syncing nodes ( no -s flag)
             foreach my $snkey (keys %$sn)
             {
 
@@ -174,13 +233,21 @@ sub preprocess_request
                             $i++;
                         }
                     }
+                    else
+                    {    # if other dcp command, change from directory
+                            # to be the tmp directory on the service node
+                        if ($command eq "xdcp")
+                        {
+                            $newSNreq->{arg}->[-2] = $SNpath;
+                        }
+                    }
                     $newSNreq->{node}                   = $sn->{$snkey};
                     $newSNreq->{'_xcatdest'}            = $snkey;
                     $newSNreq->{_xcatpreprocessed}->[0] = 1;
                     push @requests, $newSNreq;
                 }
                 else
-                {    # entries run from  Management node
+                {           # just run normal dsh dcp
                     my $reqcopy = {%$req};
                     $reqcopy->{node}                   = $sn->{$snkey};
                     $reqcopy->{'_xcatdest'}            = $snkey;
