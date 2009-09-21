@@ -672,7 +672,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "#!/bin/bash\n"; 
    print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
    print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
-   print $cfgfile "  if [ \"\$KEY\" == \"console\" && \"\$i\" != \"console=tty0\" ]; then\n";
+   print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
    print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
    print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
    print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
