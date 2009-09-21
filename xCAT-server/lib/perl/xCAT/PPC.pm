@@ -1038,11 +1038,11 @@ sub invoke_cmd {
         ########################################
         # Format and send back to parent
         ########################################
-        foreach ( @$result ) {
+        foreach my $line ( @$result ) {
             my %output;
-            $output{node}->[0]->{name}->[0] = @$_[0];
-            $output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];
-            $output{errorcode} = @$_[2];
+            $output{node}->[0]->{name}->[0] = @$line[0];
+            $output{node}->[0]->{data}->[0]->{contents}->[0] = @$line[1];
+            $output{errorcode} = @$line[2];
             push @outhash, \%output;
         }
         my $out = $request->{pipe};

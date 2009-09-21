@@ -1,4 +1,4 @@
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2009 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::PPCenergy;
 
@@ -116,7 +116,7 @@ sub parse_args {
                             return (&usage());
                         }
 
-                        if (!grep (/$q_attr/, @no_dup_query_list)) {
+                        if (!grep (/^$q_attr$/, @no_dup_query_list)) {
                             push @no_dup_query_list, $q_attr;
                         }
                     }
@@ -159,6 +159,7 @@ sub parse_args {
             push @notfspnodes, $node;
         }
     }
+    $nodetype_tb->close();
 
     if (@notfspnodes) {
         return (1, "Error: The hardware type of following nodes are not fsp: ".join(',', @notfspnodes));
@@ -205,7 +206,7 @@ sub renergy {
     # Check the existence of cim client
     if ( (! -f $::CIM_CLIENT_PATH)
       || (! -x $::CIM_CLIENT_PATH) ) {
-        return ([[$node, "ERROR: Cannot find the xCAT CIM Client [$::CIM_CLIENT_PATH]. Please install the xCAT_cim_client package correctly.", 1]]);
+        return ([[$node, "ERROR: Cannot find the xCAT CIM Client [$::CIM_CLIENT_PATH] or it's NOT executable. Please install the xCAT-cimclient package correctly.", 1]]);
     }
 
     # Generate the url path for CIM communication
@@ -233,15 +234,14 @@ sub renergy {
     $SIG{CHLD} = (); 
 
     # Call the xCAT_cim_client to query or set the energy capabilities
-    my @result = `$cmd 2>&1`;
-    my $rc = $? >> 8;
-
+    my @result = xCAT::Utils->runcmd("$cmd", -1);
+    
     foreach my $line (@result) {
         chomp($line);
         if ($line =~ /^\s*$/) {
             next;
         }
-        push @return_msg, [$node, $line, $rc];
+        push @return_msg, [$node, $line, $::RUNCMD_RC];
     }        
             
     return \@return_msg;

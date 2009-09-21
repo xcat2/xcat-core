@@ -25,23 +25,23 @@ a machine. Presently, it only supports IBM POWER6 rack-mounted servers.
 Note: The keyword 'server' in this document is identical to 
 'rack-mounted server'.
 
-The parameter 'noderange' can be a list of server's name (CEC's name). 
-Note: Lpar's name is not acceptable.
+The parameter 'noderange' can be a list of node names (CEC's name). 
+Note: Lpar name is not acceptable.
 
-Renergy command can accept multiple attributes to query. If only 
+B<renergy> command can accept multiple attributes to query. If only 
 keywords list is specified, without the '=', it displays the current 
 value.
-Renergy command only can set one attribute once running.
+B<energy> command can only set one attribute once running.
 
-For the attributes that not supported by certain server, the return 
+For the attributes that are not supported by certain server, the return 
 value will be 'na'.
 
 Prerequisite:
-Before running the Renergy command, a prerequisite package 
-B<xCAT_cim_client> needs to be downloaded form IBM web site and installed. 
+Before running the B<energy> command, a prerequisite package 
+B<xCAT-cimclient> needs to be downloaded from IBM web site and installed. 
 Note:
 Each query operation for attribute CPUspeed, averageAC or averageDC 
-costs about 30 Second to complete the operation. Query others attributes 
+costs about 30 seconds to complete. Query for the others attributes 
 will get response immediately.
 
 
@@ -54,7 +54,7 @@ The energy capability of specific hardware:
     Supports attributes: savingstatus,CPUspeed,ambienttemp, 
     exhausttemp,averageAC
 
-9117-MMA (cpu speed should quicker than 4G)
+9117-MMA (cpu speed should greater than 4.0 GHz)
     Supports attributes: powersaving
 
 =head1 B<OPTIONS>
@@ -66,7 +66,7 @@ The energy capability of specific hardware:
     Display the version information.
 
 -V				
-    Display the Verbose information.
+    Verbose output.
 
 				
 all
@@ -86,7 +86,7 @@ savingstatus={on | off}
 
 cappingstatus
     Query the Power Capping status. The result should be 
-    'on' of 'off'.
+    'on' or 'off'.
 
 cappingstatus={on | off}
     Set the Power Capping status. The value must be 'on' 
@@ -95,16 +95,16 @@ cappingstatus={on | off}
 cappingwatt=watt 
     Set the Power Capping value base on the watt unit.  
     If the 'watt' >  maximum of cappingmaxmin or 'watt' 
-    < minimum of cappingmaxmim, The setting operation 
+    < minimum of cappingmaxmim, the setting operation 
     will fail.
 
 cappingperc=percentage
     Set the Power Capping value base on the percentage of 
-    the max-min capping value.
+    the max-min of capping value.
 
 cappingmaxmin
     Query the maximum and minimum of Power Capping value 
-    that can be set for a machine. (Unit is watt) 
+    that can be set for a CEC. (Unit is watt) 
 
 cappingvalue
     Query the current Power Capping value. (Unit is watt)
@@ -115,7 +115,7 @@ cappingsoftmin
 
 averageAC
     Query the average power consumed (Input). (Unit is watt)
-    Note: For HI and HE server, the value of attribute 
+    Note: For 9125 and 9119 server, the value of attribute 
     averageAC is the aggregate for all of the servers in the 
     rack.
 
@@ -124,10 +124,10 @@ averageDC
     watt)
 
 ambienttemp
-    Query the current ambient temperature. (Unit is B0C)
+    Query the current ambient temperature. (Unit is centigrade)
 
 exhausttemp
-    Query the current exhaust temperature. (Unit is B0C)
+    Query the current exhaust temperature. (Unit is centigrade)
 
 CPUspeed
     Query the effective CPU speed. (Unit is MHz)
@@ -187,7 +187,7 @@ CPUspeed
 
 4. Set the Power Capping value base on the percentage of the 
     max-min capping value
-    B<renergy> CEC1 -s cappingperc=50
+    B<renergy> CEC1 cappingperc=50
 
     If the maximum capping value of the CEC1 is 850w, and the 
     minimum capping value of the CEC1 is 782w, the Power Capping 
