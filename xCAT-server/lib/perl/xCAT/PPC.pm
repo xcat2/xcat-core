@@ -391,7 +391,7 @@ sub process_command {
             }
             $hw = @$_[0];
 
-            Time::HiRes::sleep(0.2);
+            Time::HiRes::sleep(0.5);
             my ($pipe) = fork_cmd( @$_[0], @$_[1], $request );
             if ( $pipe ) {
                 $fds->add( $pipe );
