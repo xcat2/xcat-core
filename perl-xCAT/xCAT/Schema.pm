@@ -390,7 +390,7 @@ nodetype => {
   os => 'The operating system deployed on this node.  Valid values: AIX, rh*, centos*, fedora*, sles* (where * is the version #).',
   arch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
   profile => 'Either the name of an xCAT osimage definition or a pointer to a kickstart or autoyast template to use for OS deployment of this node.',
-  provmethod => 'The provisioning method for node deployment. The valid values are install,netboot or an os image name from the osimage table',
+  provmethod => 'The provisioning method for node deployment. The valid values are install and netboot.',
   supportedarchs => 'Comma delimited list of architectures this node can execute.',
   nodetype => 'A comma-delimited list of characteristics of this node.  Valid values: blade, vm (virtual machine), lpar, osi (OS image), hmc, fsp, ivm, bpa, mm, rsa, switch.',
      comments => 'Any user-written notes.',
@@ -411,13 +411,12 @@ notification => {
  },
   },
 osimage  => {
- cols => [qw(imagename profile imagetype provmethod osname osvers osdistro osarch synclists comments disable)],
+ cols => [qw(imagename profile imagetype osname osvers osdistro osarch synclists comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
  descriptions => {
   imagename => 'The name of this xCAT OS image definition.',
   imagetype => 'The type of operating system image this definition represents.',
-  provmethod => 'The provisioning method for node deployment. The valid values are install or netboot. It is not used by AIX.',
   profile => 'The node usage category. For example compute, service.',
   osname => 'Operating system name- AIX or Linux.',
   osvers => 'Not used.',
@@ -552,8 +551,8 @@ site => {
     table_desc => "Global settings for the whole cluster.  This table is different from the \nother tables in that each attribute is just named in the key column, rather \nthan having a separate column for each attribute. The following is a list of \nthe attributes currently used by xCAT.\n",
  descriptions => {
   key => "Name of the attribute:\tDescription\n".
-   "  blademaxp:\tThe maximum number of processes for blade hardware control.\n\n".
-   "  consoleondemand:\tWhen set to 'yes', conserver connects and creates the console output only when the user opens the console.\n\n".
+   "  blademaxp:\tThe maximum number of processes for blade hardware control. Default is 64.\n\n".
+   "  consoleondemand:\tWhen set to 'yes', conserver connects and creates the console output only when the user opens the console. Default is no.\n\n".
    "  defserialflow:\tThe default serial flow - currently only used by the mknb command.\n\n".
    "  defserialport:\tThe default serial port - currently only used by mknb.\n\n".
    "  defserialspeed:\tThe default serial speed - currently only used by mknb.\n\n".
@@ -561,36 +560,37 @@ site => {
    "  dhcpsetup:\tIf set to 'n', it'll skip the dhcp setup process in the nodeset command. The default value is 'y'.\n\n".
    "  domain:\tThe DNS domain name used for the cluster.\n\n".
    "  forwarders:\tThe DNS servers at your site that can provide names outside of the cluster.  The DNS on the management node will forward requests it does not know to these servers.\n\n".
-   "  fsptimeout:\tThe timeout, in milliseconds, to use when communicating with  FSPs.\n\n".
+   "  fsptimeout:\tThe timeout, in milliseconds, to use when communicating with  FSPs. Default is 0.\n\n".
    "  genmacprefix:\tWhen generating mac addresses automatically, use this manufacturing prefix (i.e. 00:11:aa)\n\n".
    "  genpasswords:\tAutomatically generate random passwords for BMCs when configuring them.\n\n".
-   "  installdir:\tThe local directory name used to hold the node deployment packages.\n\n".
-   "  installloc:\tThe location that service nodes should mount the install directory from in format hostname:/path.  If hostname is omitted, it defaults to the management node.\n\n".
-   "  ipmimaxp:\tThe max # of processes for ipmi hw ctrl.\n\n".
-   "  ipmiretries:\tThe # of retries to use when communicating with BMCs.\n\n".
+   "  installdir:\tThe local directory name used to hold the node deployment packages. Default is /install.\n\n".
+   "  installloc:\tThe location that service nodes should mount the install directory from in format hostname:/path.  If hostname is omitted, it defaults to the management node. Default is /install.\n\n".
+   "  ipmimaxp:\tThe max # of processes for ipmi hw ctrl. Default is 64.\n\n".
+   "  ipmiretries:\tThe # of retries to use when communicating with BMCs. Default is 3.\n\n".
    "  ipmisdrcache -\n\n".
-   "  ipmitimeout:\tThe timeout to use when communicating with BMCs.\n\n".
+   "  ipmitimeout:\tThe timeout to use when communicating with BMCs. Default is 2 seconds.\n\n".
    "  iscsidir:\tThe path to put the iscsi disks in on the mgmt node.\n\n".
    "  master:\tThe hostname of the xCAT management node, as known by the nodes.\n\n".
-   "  maxssh:\tThe max # of SSH connections at any one time to the hw ctrl point for PPC hw ctrl purposes.\n\n".
+   "  maxssh:\tThe max # of SSH connections at any one time to the hw ctrl point for PPC hw ctrl purposes. Default is 10.\n\n".
    "  nameservers:\tA comma delimited list of DNS servers that each node in the cluster should use - often the xCAT management node.\n\n".
    "  nodestatus:\tIf set to 'n', the nodelist.status column will not be updated during the node deployment, node discovery and power operation.\n\n".
    "  ntpservers:\tA comma delimited list of NTP servers for the cluster - often the xCAT management node.\n\n".
-   "  ppcmaxp:\tThe max # of processes for PPC hw ctrl.\n\n".
-   "  ppcretry:\tThe max # of PPC hw connection attempts before failing.\n\n".
-   "  ppctimeout:\tThe timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
+   "  ppcmaxp:\tThe max # of processes for PPC hw ctrl. Default is 64.\n\n".
+   "  ppcretry:\tThe max # of PPC hw connection attempts before failing. Default is 3.\n\n".
+   "  ppctimeout:\tThe timeout, in milliseconds, to use when communicating with PPC hw. Default is 0.\n\n".
    "  pruneservices:\tWhether to enable service pruning when noderm is run (i.e. removing DHCP entries when noderm is executed)\n\n".
-   "  sharedtftp:\tSet to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1.\n\n".
+   "  sharedtftp:\tSet to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1/yes.\n\n".
    "  timezone:\t(e.g. America/New_York)\n\n".
-   "  useSSHonAIX:\t(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX.\n\n".
-   "  rsh:\tpath to remote shell command for xdsh.\n\n".
-   "  rcp:\tpath to remote copy command for xdcp.\n\n".
-   "  SNsyncfiledir:\tThe directory on the Service Node, where xdcp will sync the files from the MN that will eventually be sync'd to the compute nodes. Default is /var/xcat/syncfiles.\n\n".
+   "  tftpdir:\ttftp directory path. Default is /tftpdir\n\n".
+   "  useSSHonAIX:\t(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
+   "  rsh:\tpath to remote shell command for xdsh. Default is /usr/bin/ssh.\n\n".
+   "  rcp:\tpath to remote copy command for xdcp. Default is /usr/bin/scp.\n\n".
+   "  SNsyncfiledir:\tThe directory on the Service Node, where xdcp will copy the files from the MN that will eventually be copied to the compute nodes. Default is /var/xcat/syncfiles.\n\n".
    "  snmpc:\tThe snmp community string that xcat should use when communicating with the switches.\n\n".
    "  svloglocal:\tsyslog on the service node does not get forwarded to the mgmt node - default is 0.\n\n".
    "  xcatconfdir:\t(default /etc/xcat)\n\n".
-   "  xcatdport:\tThe port used by the xcatd daemon for client/server communication.\n\n".
-   "  xcatiport:\tThe port used by xcatd to receive install status updates from nodes.\n\n".
+   "  xcatdport:\tThe port used by the xcatd daemon for client/server communication. Default is 3001.\n\n".
+   "  xcatiport:\tThe port used by xcatd to receive install status updates from nodes. Default is 3002.\n\n".
    "  xcatservers:\t(Deprecated!  Will be replaced by the servicenode table.  Li
 st service nodes)\n\n",
   value => 'The value of the attribute specified in the "key" column.',
@@ -1362,10 +1362,6 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'osimage.imagetype',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
- {attr_name => 'provmethod',
-                 tabentry => 'osimage.provmethod',
-                 access_tabentry => 'osimage.imagename=attr:imagename',
-                 },
  {attr_name => 'profile',
                  tabentry => 'osimage.profile',
                  access_tabentry => 'osimage.imagename=attr:imagename',
@@ -1394,42 +1390,42 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
 # linuximage table#
 ####################
  {attr_name => 'template',
-                 only_if => 'imagetype=linux',
+                 only_if => 'osname=Linux',
                  tabentry => 'linuximage.template',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
  {attr_name => 'pkglist',
-                 only_if => 'imagetype=linux',
+                 only_if => 'osname=Linux',
                  tabentry => 'linuximage.pkglist',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
  {attr_name => 'pkgdir',
-                 only_if => 'imagetype=linux',
+                 only_if => 'osname=Linux',
                  tabentry => 'linuximage.pkgdir',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
  {attr_name => 'otherpkglist',
-                 only_if => 'imagetype=linux',
+                 only_if => 'osname=Linux',
                  tabentry => 'linuximage.otherpkglist',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
  {attr_name => 'otherpkgdir',
-                 only_if => 'imagetype=linux',
+                 only_if => 'osname=Linux',
                  tabentry => 'linuximage.otherpkgdir',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
  {attr_name => 'exlist',
-                 only_if => 'imagetype=linux',
+                 only_if => 'osname=Linux',
                  tabentry => 'linuximage.exlist',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
  {attr_name => 'postinstall',
-                 only_if => 'imagetype=linux',
+                 only_if => 'osname=Linux',
                  tabentry => 'linuximage.postinstall',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
  {attr_name => 'rootimgdir',
-                 only_if => 'imagetype=linux',
+                 only_if => 'osname=Linux',
                  tabentry => 'linuximage.rootimgdir',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
@@ -1437,92 +1433,90 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
 # nimimage table#
 ####################
  {attr_name => 'nimtype',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.nimtype',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'nimmethod',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.nimmethod',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'lpp_source',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.lpp_source',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'spot',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.spot',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'root',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.root',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'dump',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.dump',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'paging',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.paging',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'resolv_conf',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.resolv_conf',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'tmp',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.tmp',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'home',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.home',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'shared_home',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.shared_home',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'shared_root',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.shared_root',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'script',
-                only_if => 'imagetype=NIM',
+                only_if => 'osname=AIX',
                  tabentry => 'nimimage.script',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'fb_script',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.fb_script',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'bosinst_data',
-                 only_if => 'imagetype=NIM',
                  tabentry => 'nimimage.bosinst_data',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'installp_bundle',
-                 only_if => 'imagetype=NIM',                 
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.installp_bundle',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
  {attr_name => 'filesets',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
 				tabentry => 'nimimage.filesets',
 				access_tabentry => 'nimimage.imagename=attr:imagename',
 				},
  {attr_name => 'mksysb',
-                 only_if => 'imagetype=NIM',
                  tabentry => 'nimimage.mksysb',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
@@ -1531,7 +1525,7 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
 #                 access_tabentry => 'nimimage.imagename=attr:imagename',
 #                 },
  {attr_name => 'usercomment',
-                 only_if => 'imagetype=NIM',
+                 only_if => 'osname=AIX',
                  tabentry => 'nimimage.comments',
                  access_tabentry => 'nimimage.imagename=attr:imagename',
                  },
