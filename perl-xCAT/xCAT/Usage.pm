@@ -159,6 +159,12 @@ my %usage = (
 "Usage:
     lshwconn [-h|--help]
     lshwconn noderange [-V|--verbose]",
+    "renergy" =>
+"Usage:
+    renergy [-h | --help]
+    renergy [-v | --version]
+    renergy noderange [-V] {all | {[savingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed]}}
+    renergy noderange [-V] {{savingstatus}={on | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage}",
 );
 my $vers = xCAT::Utils->Version();
 my %version = (
@@ -178,7 +184,8 @@ my %version = (
     "chvm" => "$vers",
     "rmvm" => "$vers",
     "lsslp" => "$vers",
-    "rflash" => "$vers"
+    "rflash" => "$vers",
+    "renergy" => "$vers"
 );
 
 #--------------------------------------------------------------------------------

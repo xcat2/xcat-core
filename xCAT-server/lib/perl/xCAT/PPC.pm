@@ -34,10 +34,11 @@ my %modules = (
         getmacs   => "xCAT::PPCmac",
         reventlog => "xCAT::PPClog",
         rspconfig => "xCAT::PPCcfg",
-        rflash => "xCAT::PPCrflash",
-        mkhwconn    => "xCAT::PPCconn",
-        rmhwconn    => "xCAT::PPCconn",
-        lshwconn    => "xCAT::PPCconn"
+        rflash    => "xCAT::PPCrflash",
+        mkhwconn  => "xCAT::PPCconn",
+        rmhwconn  => "xCAT::PPCconn",
+        lshwconn  => "xCAT::PPCconn",
+        renergy   => "xCAT::PPCenergy"
         );
 
 ##########################################
@@ -589,11 +590,12 @@ sub preprocess_nodes {
     #   rscan - Nodes are hardware control pts 
     #   Direct-attached FSP 
     ########################################
-    if (( !$request->{hcp} && ($request->{hcp} ne "hmc" )) and
-        (( $request->{command} =~ /^(rscan|rspconfig)$/ ) or
-         ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) or
-         ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc'))
-) {
+    if (( !$request->{hcp} && ($request->{hcp} ne "hmc" )) 
+        and ($request->{command} !~ /^renergy$/)
+        and (( $request->{command} =~ /^(rscan|rspconfig)$/ ) 
+            or ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) 
+            or ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc'))
+       ) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
     }
@@ -712,7 +714,7 @@ sub preprocess_nodes {
     # single CEC, the CEC itself will serialize 
     # them - fork one process per CEC.
     ##########################################
-    elsif ( $method =~ /^powercmd/ ) {
+    elsif ( $method =~ /^powercmd/ || $method =~ /^renergy/ ) {
         while (my ($hcp,$hash) = each(%nodehash) ) {    
             while (my ($mtms,$h) = each(%$hash) ) {    
                 push @nodegroup,[$hcp,$h]; 
@@ -1025,6 +1027,30 @@ sub invoke_cmd {
     my @exp;
     my $verbose_log;
     my @outhash;
+
+    ########################################
+    # If the request command is renergy, just
+    # uses the xCAT CIM Client to handle it
+    ########################################
+    if ( $request->{command} eq "renergy" ) {
+        my $result = &runcmd($request, $host, $nodes);
+
+        ########################################
+        # Format and send back to parent
+        ########################################
+        foreach ( @$result ) {
+            my %output;
+            $output{node}->[0]->{name}->[0] = @$_[0];
+            $output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];
+            $output{errorcode} = @$_[2];
+            push @outhash, \%output;
+        }
+        my $out = $request->{pipe};
+        print $out freeze( [@outhash] );
+        print $out "\nENDOFFREEZE6sK4ci\n";
+
+        return;
+    }
 
     ########################################
     # Direct-attached FSP handler 

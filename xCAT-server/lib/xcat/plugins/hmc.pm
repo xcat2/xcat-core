@@ -24,7 +24,8 @@ sub handled_commands {
       rflash    => 'nodehm:mgt',
       mkhwconn    => 'nodehm:mgt',
       rmhwconn    => 'nodehm:mgt',
-      lshwconn    => 'nodehm:mgt'
+      lshwconn    => 'nodehm:mgt',
+      renergy   => 'nodehm.mgt'
   };
 }
 

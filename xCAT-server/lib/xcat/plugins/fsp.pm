@@ -15,7 +15,8 @@ sub handled_commands {
       rspconfig => 'nodehm:mgt',
       mkhwconn    => 'nodehm:mgt',
       rmhwconn    => 'nodehm:mgt',
-      lshwconn    => 'nodehm:mgt'
+      lshwconn    => 'nodehm:mgt',
+      renergy   => 'nodehm:mgt'
   };
 }
 
