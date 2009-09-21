@@ -819,15 +819,47 @@ sub initDB
         || $::initDB)
     {
         my $chtabcmds;
+        my $confdir="/etc/xcat";
+        my $syncdir="/var/xcat/syncfiles";
+        my $remoteshdir="/usr/bin/ssh";
+        my $remotecpdir="/usr/bin/scp";
         $chtabcmds =
+          "$::XCATROOT/sbin/chtab key=blademaxp site.value=64;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=domain site.value=$domain;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=fsptimeout site.value=0;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=installdir site.value=$installdir;";
+        if ($::osname eq 'Linux')
+        {
+           $chtabcmds .=
+            "$::XCATROOT/sbin/chtab key=ipmimaxp site.value=64;";
+           $chtabcmds .=
+            "$::XCATROOT/sbin/chtab key=ipmiretries site.value=3;";
+           $chtabcmds .=
+            "$::XCATROOT/sbin/chtab key=ipmitimeout site.value=2;";
+            $chtabcmds .=
+              "$::XCATROOT/sbin/chtab key=consoleondemand site.value=no;";
+        }
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=maxssh site.value=10;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=ppcmaxp site.value=64;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=ppcretry site.value=3;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=ppctimeout site.value=0;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=rsh site.value=$remoteshdir;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=rcp site.value=$remotecpdir;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=sharedtftp site.value=0;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=SNsyncfiledir site.value=$syncdir;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=tftpdir site.value=$tftpdir;";
+        $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=xcatdport site.value=$xcatport;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=xcatiport site.value=$xcatiport;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=tftpdir site.value=$tftpdir;";
-        $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=installdir site.value=$installdir;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=domain site.value=$domain;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatconfdir site.value=$confdir;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=timezone site.value=$timezone;";
 
