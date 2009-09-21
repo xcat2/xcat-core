@@ -564,7 +564,7 @@ site => {
    "  genmacprefix:\tWhen generating mac addresses automatically, use this manufacturing prefix (i.e. 00:11:aa)\n\n".
    "  genpasswords:\tAutomatically generate random passwords for BMCs when configuring them.\n\n".
    "  installdir:\tThe local directory name used to hold the node deployment packages. Default is /install.\n\n".
-   "  installloc:\tThe location that service nodes should mount the install directory from in format hostname:/path.  If hostname is omitted, it defaults to the management node. Default is /install.\n\n".
+   "  installloc:\tThe location that service nodes should mount the install directory from in format hostname:/path.  If hostname is omitted, it defaults to the management node.\n\n".
    "  ipmimaxp:\tThe max # of processes for ipmi hw ctrl. Default is 64.\n\n".
    "  ipmiretries:\tThe # of retries to use when communicating with BMCs. Default is 3.\n\n".
    "  ipmisdrcache -\n\n".
