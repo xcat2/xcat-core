@@ -23,15 +23,12 @@ if [ -e '/etc/SuSE-release' ]; then
    OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
 fi
 
-SIP=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases 2> /dev/null|tail -n 1|awk '{print $3}'|sed -e 's/;//'`
-if [ -z "$SIP" ]; then
-    SIP=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|tail -n 1`
+SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
+if [ -z "$SIPS" ]; then
+    SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
 fi
 
-#echo "SIP=$SIP"
-if [ "$OSVER" = "11" ]; then
-    SIP=`echo $SIP |awk -F\' '{print $2}'` #trim '   
-fi
+SIP=`echo $SIPS|tail -n 1` #Pick one for wget
 
 #open the xcatinfo file to look for the master if it is not set
 frominfofile=0
@@ -48,20 +45,6 @@ if [ -z $SIP ]; then
     echo "Cannot find the xCAT server for node $hn"
     exit  
 fi
-
-#save the SIP into the xcatinfo file
-if [ $frominfofile -eq 0 ]; then
-    if [ ! -f /opt/xcat/xcatinfo ]; then
-	mkdir -p /opt/xcat
-        touch /opt/xcat/xcatinfo
-    fi
-    grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
-    if [ $? -eq 0 ]; then
-	sed -i "s/XCATSERVER=.*/XCATSERVER=$SIP/" /opt/xcat/xcatinfo
-    else
-	echo "XCATSERVER=$SIP" >> /opt/xcat/xcatinfo
-    fi
-fi    
 
 if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     touch /var/lock/subsys/xcatmounts
@@ -113,10 +96,35 @@ while [ -z "$MYCONT" ]; do
     let SLI=$RANDOM%10
     let SLI=10+$SLI
     sleep $SLI
-    /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
-    MYCONT=`grep MASTER /tmp/mypostscript`
+    for SIP in $SIPS; do #Attempt against several candidates
+        if [ -x /usr/bin/openssl ]; then
+             XCATSERVER="$SIP:3001"
+             export XCATSERVER
+             USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+             export USEOPENSSLFORXCAT
+        fi
+        /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
+        MYCONT=`grep MASTER /tmp/mypostscript`
+        if [ ! -z "$MYCONT" ]; then
+            break;
+        fi
+    done
 #    echo "MYCONT=$MYCONT"
 done
+
+#save the SIP into the xcatinfo file
+if [ $frominfofile -eq 0 ]; then
+    if [ ! -f /opt/xcat/xcatinfo ]; then
+	mkdir -p /opt/xcat
+        touch /opt/xcat/xcatinfo
+    fi
+    grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    if [ $? -eq 0 ]; then
+	sed -i "s/XCATSERVER=.*/XCATSERVER=$SIP/" /opt/xcat/xcatinfo
+    else
+	echo "XCATSERVER=$SIP" >> /opt/xcat/xcatinfo
+    fi
+fi    
 
 # when called by the updatenode command
 #modify the UPDATENODE flag to 1 
