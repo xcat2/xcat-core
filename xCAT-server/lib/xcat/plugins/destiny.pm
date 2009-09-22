@@ -83,13 +83,27 @@ sub setdestiny {
   my $state = $req->{arg}->[0];
   my %nstates;
   if ($state eq "enact") {
+      my $nodetypetab = xCAT::Table->new('nodetype',-create=>1);
       my %nodestates;
       my %stents = %{$chaintab->getNodesAttribs($req->{node},"currstate")};
+      my %ntents = %{$nodetypetab->getNodesAttribs($req->{node},"provmethod")};
       my $state;
+      my $sninit=0;
+      if (exists($req->{inittime})) { # this is called in AAsn.pm
+	  $sninit=$req->{inittime}->[0];
+      }
+
       foreach (@{$req->{node}}) { #First, build a hash of all of the states to attempt to keep things as aggregated as possible
           if ($stents{$_}->[0]->{currstate}) {
               $state = $stents{$_}->[0]->{currstate};
               $state =~ s/ .*//;
+              #get the osimagename if nodetype.provmethod has osimage specified
+	      if (($sninit ==1) && (($state eq 'install') || ($state eq 'netboot'))) {
+		  my $osimage=$ntents{$_}->[0]->{provmethod};
+		  if (($osimage) && ($osimage ne 'install') && ($osimage ne 'netboot')) {
+		     $state="osimage=$osimage"; 
+		  }
+	      }
               push @{$nodestates{$state}},$_;
           }
       }
@@ -123,39 +137,70 @@ sub setdestiny {
       if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
       $bptab->setNodeAttribs($_,$hash);
      }
-  } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell") {
+  } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/) {
     chomp($state);
     my $target;
     if ($state =~ /=/) {
         ($state,$target) = split /=/,$state,2;
     }
-    if ($target) {
+    my $nodetypetable = xCAT::Table->new('nodetype', -create=>1);
+    if ($state eq 'install' or $state eq 'netboot') {
         my $updateattribs;
-        my $nodetypetable = xCAT::Table->new('nodetype',-create=>1);
-        my $archentries = $nodetypetable->getNodesAttribs($req->{node},['supportedarchs']);
-        if ($target =~ /(.*)-(.*)-(.*)/) {
-            $updateattribs->{os}=$1;
-            $updateattribs->{arch}=$2;
-            $updateattribs->{profile}=$3;
-            foreach (@{$req->{node}}) {
-                if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$2(\z|,)/) {
-                    $callback->({errorcode=>1,error=>"Requested architecture ".$updateattribs->{arch}." is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports ".$archentries->{$_}->[0]->{supportedarchs}.")"});
-                    return;
-                }
+        if ($target) {
+            my $archentries = $nodetypetable->getNodesAttribs($req->{node},['supportedarchs']);
+            if ($target =~ /(.*)-(.*)-(.*)/) {
+                $updateattribs->{os}=$1;
+                $updateattribs->{arch}=$2;
+                $updateattribs->{profile}=$3;
+                foreach (@{$req->{node}}) {
+                    if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$2(\z|,)/) {
+                        $callback->({errorcode=>1,error=>"Requested architecture ".$updateattribs->{arch}." is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports ".$archentries->{$_}->[0]->{supportedarchs}.")"});
+                        return;
+                    }
+                } #end foreach
+            } else {
+                $updateattribs->{profile}=$target;
             }
-        } else {
-            $updateattribs->{profile}=$target;
-        }
+        } #end if($target) 
+        $updateattribs->{provmethod}=$state;
         $nodetypetable->setNodesAttribs($req->{node},$updateattribs);
     }
 
-        
+    if ($state eq 'osimage') {
+	if (@{$req->{node}} == 0) { return;}
+        if ($target) {
+	    my $osimagetable=xCAT::Table->new('osimage');
+            (my $ref) = $osimagetable->getAttribs({imagename => $target}, 'provmethod', 'osvers', 'profile', 'osarch');
+            if ($ref) {
+		if ($ref->{provmethod}) {
+		    $state=$ref->{provmethod};
+		} else {
+		    $errored =1; $callback->({error=>"osimage.provmethod for $target must be set."});
+		    return;
+		}
+	    } else {
+		$errored =1; $callback->({error=>"Cannot find the OS image $target on the osimage table."});
+		return;
+	    }
+	    my $updateattribs;
+            $updateattribs->{provmethod}=$target;
+            $updateattribs->{profile}=$ref->{profile};
+            $updateattribs->{os}=$ref->{osvers};
+            $updateattribs->{arch}=$ref->{osarch};
+            $nodetypetable->setNodesAttribs($req->{node},$updateattribs);
+        } else { 
+            $errored =1; $callback->({error=>"OS image name must be specified."});
+	    return;
+        }
+    }
+      
+#print Dumper($req); 
     $errored=0;
     $subreq->({command=>["mk$state"],
               node=>$req->{node}}, \&relay_response);
     if ($errored) { return; }
-    my $nodetype = xCAT::Table->new('nodetype');
-    my $ntents = $nodetype->getNodesAttribs($req->{node},[qw(os arch profile)]);
+     
+    my $ntents = $nodetypetable->getNodesAttribs($req->{node},[qw(os arch profile)]);
     foreach (@{$req->{node}}) {
       $nstates{$_} = $state; #local copy of state variable for mod
       my $ntent = $ntents->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(os arch profile)]);

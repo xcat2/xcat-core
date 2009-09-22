@@ -17,7 +17,7 @@ my $tftpdir = "/tftpboot";
 #my $dhcpver = 3;
 
 my %usage = (
-    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot]",
+    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>]",
 );
 sub handled_commands {
   return {
@@ -367,11 +367,15 @@ sub process_request {
   } 
 
   #back to normal business
+  my $inittime=0;
+  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];}
+  if (!$inittime) { $inittime=0;}
   $errored=0;
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
     $sub_req->({command=>['setdestiny'],
-           node=>\@nodes,
-         arg=>[$args[0]]},\&pass_along);
+		node=>\@nodes,
+		inittime=>[$inittime],
+		arg=>[$args[0]]},\&pass_along);
   }
   if ($errored) { return; }
 
@@ -400,9 +404,6 @@ sub process_request {
     }
   }
 
-  my $inittime=0;
-  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];}
-  if (!$inittime) { $inittime=0;}
   my @normalnodeset = keys %normalnodes;
   my @breaknetboot=keys %breaknetbootnodes;
   #print "yaboot:inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";

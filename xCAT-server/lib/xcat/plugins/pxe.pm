@@ -14,7 +14,7 @@ my $tftpdir = "/tftpboot";
 #my $dhcpver = 3;
 
 my %usage = (
-    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot]",
+    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>]",
 );
 sub handled_commands {
   return {
@@ -418,11 +418,15 @@ sub process_request {
 
       
 
+  my $inittime=0;
+  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];} 
+  if (!$inittime) { $inittime=0;}
   $errored=0;
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
-    $sub_req->({command=>['setdestiny'],
-           node=>\@nodes,
-         arg=>[$args[0]]},\&pass_along);
+      $sub_req->({command=>['setdestiny'],
+		  node=>\@nodes,
+		  inittime=>[$inittime],
+		  arg=>[$args[0]]},\&pass_along);
   }
   if ($errored) { return; }
   #Time to actually configure the nodes, first extract database data with the scalable calls
@@ -449,9 +453,6 @@ sub process_request {
     }
   }
 
-  my $inittime=0;
-  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];} 
-  if (!$inittime) { $inittime=0;}
 
   #dhcp stuff -- inittime is set when xcatd on sn is started
   unless (($args[0] eq 'stat') || ($inittime)) {
