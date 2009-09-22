@@ -144,17 +144,18 @@ sub setdestiny {
         ($state,$target) = split /=/,$state,2;
     }
     my $nodetypetable = xCAT::Table->new('nodetype', -create=>1);
-    if ($state eq 'install' or $state eq 'netboot') {
+    if ($state ne 'osimage') {
         my $updateattribs;
         if ($target) {
             my $archentries = $nodetypetable->getNodesAttribs($req->{node},['supportedarchs']);
-            if ($target =~ /(.*)-(.*)-(.*)/) {
+            if ($target =~ /^([^-]*)-([^-]*)-(.*)/) {
                 $updateattribs->{os}=$1;
                 $updateattribs->{arch}=$2;
                 $updateattribs->{profile}=$3;
+                my $nodearch=$2;
                 foreach (@{$req->{node}}) {
-                    if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$2(\z|,)/) {
-                        $callback->({errorcode=>1,error=>"Requested architecture ".$updateattribs->{arch}." is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports ".$archentries->{$_}->[0]->{supportedarchs}.")"});
+                    if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$nodearch(\z|,)/) {
+                        $callback->({errorcode=>1,error=>"Requested architecture ".$nodearch." is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports ".$archentries->{$_}->[0]->{supportedarchs}.")"});
                         return;
                     }
                 } #end foreach
@@ -164,9 +165,7 @@ sub setdestiny {
         } #end if($target) 
         $updateattribs->{provmethod}=$state;
         $nodetypetable->setNodesAttribs($req->{node},$updateattribs);
-    }
-
-    if ($state eq 'osimage') {
+    } else {
 	if (@{$req->{node}} == 0) { return;}
         if ($target) {
 	    my $osimagetable=xCAT::Table->new('osimage');
@@ -281,6 +280,46 @@ sub setdestiny {
       $callback->({error=>["Unknown state $state requested"],errorcode=>[1]});
       return;
   }
+
+  #blank out the nodetype.provmethod if the previous provisioning method is not 'install'
+  if ($state eq "iscsiboot" or $state eq "boot") {
+     my $nodetype = xCAT::Table->new('nodetype',-create=>1);
+     my $osimagetab = xCAT::Table->new('osimage', -create=>1);
+     my $ntents = $nodetype->getNodesAttribs($req->{node},[qw(os arch profile provmethod)]);
+     my @nodestoblank=();
+     my %osimage_hash=();
+     foreach (@{$req->{node}}) {
+	 my $ntent = $ntents->{$_}->[0];
+
+         #if the previous nodeset staute is not install, then blank nodetype.provmethod
+	 if ($ntent and $ntent->{provmethod}){
+	     my $provmethod=$ntent->{provmethod};
+	     if (($provmethod ne 'install') && ($provmethod ne 'netboot')) {
+		 if (exists($osimage_hash{$provmethod})) {
+		     $provmethod= $osimage_hash{$provmethod};
+		 } else {
+		     (my $ref) = $osimagetab->getAttribs({imagename => $provmethod}, 'provmethod');
+		     if (($ref) && $ref->{provmethod}) {
+			 $osimage_hash{$provmethod}=$ref->{provmethod};
+			 $provmethod=$ref->{provmethod};
+		     } 
+		 }
+	     }
+	     if ($provmethod ne 'install') {
+		 push(@nodestoblank, $_);
+	     }
+	 }
+     } #end foreach
+     
+     #now blank out the nodetype.provmethod
+     #print "nodestoblank=@nodestoblank\n";
+     if (@nodestoblank > 0) {
+	 my $newhash;
+	 $newhash->{provmethod}="";
+	 $nodetype->setNodesAttribs(\@nodestoblank, $newhash);
+     }
+  }
+
   if ($noupdate) { return; } #skip table manipulation if just doing 'enact'
   foreach (@nodes) {
     my $lstate = $state;
