@@ -24,9 +24,6 @@ if ($^O =~ /^aix/i) {
 use File::Path;
 use IO::Socket;
 my $useSocketSSL=eval { require IO::Socket::SSL; };
-if ($useSocketSSL) {
-        require IO::Socket::SSL;
-}
 use Getopt::Long;
 use XML::Simple;
 
@@ -48,6 +45,13 @@ my $logfile = $logdir . "/xcat.log";
 # at least we'll have the errors preserved
 open(LOGFILE,">>",$logfile);
 $::LOG_FILE = \*LOGFILE;
+
+unless ($useSocketSSL) {
+    print "$::sdate  xcataixpost: Error: cannot load necessary library IO::Socket::SSL.\n";
+    print $::LOG_FILE "$::sdate  xcataixpost: Error: cannot load necessary library IO::Socket::SSL.\n";
+
+    exit 1;
+}
 
 #
 # Process the command line...
