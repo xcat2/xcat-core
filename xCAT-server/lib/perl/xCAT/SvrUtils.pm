@@ -730,7 +730,8 @@ sub  update_tables_with_diskless_image
 				 otherpkglist=>$otherpkgsfile,
 				 otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch",
 				 exlist=>$exlistfile,
-				 postinstall=>$postfile);
+				 postinstall=>$postfile,
+				 rootimgdir=>"$installroot/netboot/$osver/$arch/$profile");
 		    $linuximagetab->setAttribs(\%key_col, \%tb_cols);
 		    
 		} else {
