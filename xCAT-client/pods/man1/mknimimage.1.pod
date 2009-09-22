@@ -70,7 +70,7 @@ The NIM client machine to use to create a mksysb image.
 
 =item B<-s image_source>
 
-The source of software to use when creating the new NIM lpp_source resource. This could be a source directory, (ex. /dev/cd0), or a previously defined lpp_source resource name.
+The source of software to use when creating the new NIM lpp_source resource. This could be a source directory, (ex. /dev/cd0), or a previously defined NIM lpp_source resource name.  B<When specifying a source directory make sure to use the full path name.>
 
 =item B<-t nimtype>
 
