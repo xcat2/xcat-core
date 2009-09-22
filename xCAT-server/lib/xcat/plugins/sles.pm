@@ -18,7 +18,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
-
+use strict;
 my @cpiopid;
 
 sub handled_commands
@@ -36,39 +36,93 @@ sub mknetboot
     my $callback = shift;
     my $doreq    = shift;
     my $tftpdir  = "/tftpboot";
-    my $nodes    = @{$request->{node}};
-    my @args     = @{$req->{arg}};
+    my $nodes    = @{$req->{node}};
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
     my $sitetab  = xCAT::Table->new('site');
+    my $linuximagetab;
+    my $osimagetab;
     my $installroot;
     $installroot = "/install";
 
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => installdir}, value);
+        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
         if ($ref and $ref->{value})
         {
             $installroot = $ref->{value};
         }
     }
-    my %donetftp=();
-    foreach $node (@nodes)
-    {
-        my $ent = $ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
-        unless ($ent->{os} and $ent->{arch} and $ent->{profile})
-        {
-            $callback->(
-                        {
-                         error     => ["Insufficient nodetype entry for $node"],
-                         errorcode => [1]
-                        }
-                        );
-            next;
-        }
 
-        my $osver = $ent->{os};
-        my $platform;
+    my $ntents = $ostab->getNodesAttribs($req->{node}, ['os', 'arch', 'profile', 'provmethod']);
+    my %img_hash=();
+
+    my %donetftp=();
+    foreach my $node (@nodes)
+    {
+        my $osver;
+        my $arch;
+        my $profile;
+        my $rootimgdir;
+	
+	my $ent= $ntents->{$node}->[0];
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot')) {
+	    my $imagename=$ent->{provmethod};
+	    #print "imagename=$imagename\n";
+	    if (!exists($img_hash{$imagename})) {
+		if (!$osimagetab) {
+		    $osimagetab=xCAT::Table->new('osimage', -create=>1);
+		}
+		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+		if ($ref) {
+		    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
+		    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+		    $img_hash{$imagename}->{profile}=$ref->{'profile'};
+		    $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
+		    if (!$linuximagetab) {
+			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+		    }
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir');
+		    if (($ref1) && ($ref1->{'rootimgdir'})) {
+			$img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
+		    }
+		} else {
+		    $callback->(
+			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
+			 errorcode => [1]});
+		    next;
+		}
+	    }
+	    my $ph=$img_hash{$imagename};
+	    $osver = $ph->{osver};
+	    $arch  = $ph->{osarch};
+	    $profile = $ph->{profile};
+	
+	    $rootimgdir=$ph->{rootimgdir};
+	    if (!$rootimgdir) {
+		$rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+	    }
+	}
+	else {
+	    $osver = $ent->{os};
+	    $arch    = $ent->{arch};
+	    $profile = $ent->{profile};
+	    $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+	}
+
+	unless ($osver and $arch and $profile)
+	{
+	    $callback->(
+		{
+		    error     => ["Insufficient nodetype entry or osimage entry for $node"],
+		    errorcode => [1]
+		}
+		);
+	    next;
+	}
+
+    #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
+	my $platform;
         if ($osver =~ /sles.*/)
         {
             $platform = "sles";
@@ -76,25 +130,23 @@ sub mknetboot
             $platform = "sles";
 	}
 
-        my $arch    = $ent->{arch};
-        my $profile = $ent->{profile};
-        my $suffix  = 'gz';
-        if (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.sfs")
+        my $suffix  = 'gz';       
+        if (-r "$rootimgdir/rootimg.sfs")
         {
             $suffix = 'sfs';
         }
-        if (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.nfs")
+        if (-r "$rootimgdir/rootimg.nfs")
         {
             $suffix = 'nfs';
         }
         unless (
                 (
-                    -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.gz"
-                 or -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.sfs"
-                 or -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.nfs"
+                    -r "$rootimgdir/rootimg.gz"
+                 or -r "$rootimgdir/rootimg.sfs"
+                 or -r "$rootimgdir/rootimg.nfs"
                 )
-                and -r "/$installroot/netboot/$osver/$arch/$profile/kernel"
-                and -r "/$installroot/netboot/$osver/$arch/$profile/initrd.gz"
+                and -r "$rootimgdir/kernel"
+                and -r "$rootimgdir/initrd.gz"
           )
         {
             $callback->(
@@ -112,9 +164,9 @@ sub mknetboot
 
         #TODO: only copy if newer...
         unless ($donetftp{$osver,$arch,$profile}) {
-        copy("/$installroot/netboot/$osver/$arch/$profile/kernel",
+        copy("$rootimgdir/kernel",
              "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        copy("/$installroot/netboot/$osver/$arch/$profile/initrd.gz",
+        copy("$rootimgdir/initrd.gz",
              "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             $donetftp{$osver,$arch,$profile} = 1;
         }
@@ -256,39 +308,112 @@ sub mkinstall
     my @nodes    = @{$request->{node}};
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
+    my $sitetab  = xCAT::Table->new('site');
+    my $linuximagetab;
+    my $osimagetab;
+
+    my $ntents = $ostab->getNodesAttribs($request->{node}, ['os', 'arch', 'profile', 'provmethod']);
+    my %img_hash=();
+    my $installroot;
+    $installroot = "/install";
+
+    if ($sitetab)
+    {
+        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $installroot = $ref->{value};
+        }
+    }
+
     my %doneimgs;
     require xCAT::Template; #only used here, load so memory can be COWed
     foreach $node (@nodes)
     {
+        my $os;
+        my $arch;
+        my $profile;
+        my $tmplfile;
+        my $pkgdir;
         my $osinst;
-        my $ent = $ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
-        unless ($ent->{os} and $ent->{arch} and $ent->{profile})
-        {
-            $callback->(
-                        {
-                         error => ["No profile defined in nodetype for $node"],
-                         errorcode => [1]
-                        }
-                        );
-            next;    #No profile
-        }
-        my $os      = $ent->{os};
-        my $arch    = $ent->{arch};
-        my $profile = $ent->{profile};
-	my $plat = "";
-	if($os =~/sles.*/){
+        my $ent = $ntents->{$node}->[0];
+
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot')) {
+	    my $imagename=$ent->{provmethod};
+	    #print "imagename=$imagename\n";
+	    if (!exists($img_hash{$imagename})) {
+		if (!$osimagetab) {
+		    $osimagetab=xCAT::Table->new('osimage', -create=>1);
+		}
+		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+		if ($ref) {
+		    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
+		    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+		    $img_hash{$imagename}->{profile}=$ref->{'profile'};
+		    $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
+		    if (!$linuximagetab) {
+			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+		    }
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir');
+		    if ($ref1) {
+			if ($ref1->{'template'}) {
+			    $img_hash{$imagename}->{template}=$ref1->{'template'};
+			}
+			if ($ref1->{'pkgdir'}) {
+			    $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
+			}
+		    }
+		} else {
+		    $callback->(
+			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
+			 errorcode => [1]});
+		    next;
+		}
+	    }
+	    my $ph=$img_hash{$imagename};
+	    $os = $ph->{osver};
+	    $arch  = $ph->{osarch};
+	    $profile = $ph->{profile};
+	
+	    $tmplfile=$ph->{template};
+            $pkgdir=$ph->{pkgdir};
+	    if (!$pkgdir) {
+		$pkgdir="$installroot/$os/$arch";
+	    }
+	}
+	else {
+	    $os = $ent->{os};
+	    $arch    = $ent->{arch};
+	    $profile = $ent->{profile};
+	    my $plat = "";
+	    if($os =~/sles.*/){
 		$plat = "sles";
-	}elsif($os =~/suse.*/){
+	    }elsif($os =~/suse.*/){
 		$plat = "suse";
-	}else{
+	    }else{
 		$plat = "foobar";
 		print "You should never get here!  Programmer error!";
 		return;
+	    }
+	    $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$plat", $profile, $os, $arch);
+	    if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
+	    $pkgdir="$installroot/$os/$arch";
+	}
+	
+
+	unless ($os and $arch and $profile)
+	{
+	    $callback->(
+		{
+		    error     => ["No profile defined in nodetype or osimage table for $node"],
+		    errorcode => [1]
+		}
+		);
+	    next;
 	}
 
-        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("/install/custom/install/$plat", $profile, $os, $arch);
-        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
-        unless ( -r "$tmplfile")     
+        
+	unless ( -r "$tmplfile")     
         {
             $callback->(
                       {
@@ -307,7 +432,7 @@ sub mkinstall
             $tmperr =
               xCAT::Template->subvars(
                          $tmplfile,
-                         "/install/autoinst/$node",
+                         "$installroot/autoinst/$node",
                          $node
                          );
         }
@@ -335,16 +460,16 @@ sub mkinstall
         if (
             (
              $arch =~ /x86_64/
-             and -r "/install/$os/$arch/1/boot/$arch/loader/linux"
-             and -r "/install/$os/$arch/1/boot/$arch/loader/initrd"
+             and -r "$pkgdir/1/boot/$arch/loader/linux"
+             and -r "$pkgdir/1/boot/$arch/loader/initrd"
             )
             or
             (
              $arch =~ /x86$/
-             and -r "/install/$os/$arch/1/boot/i386/loader/linux"
-             and -r "/install/$os/$arch/1/boot/i386/loader/initrd"
+             and -r "$pkgdir/1/boot/i386/loader/linux"
+             and -r "$pkgdir/1/boot/i386/loader/initrd"
             )
-            or ($arch =~ /ppc/ and -r "/install/$os/$arch/1/suseboot/inst64")
+            or ($arch =~ /ppc/ and -r "$pkgdir/1/suseboot/inst64")
           )
         {
 
@@ -354,24 +479,24 @@ sub mkinstall
                 mkpath("/tftpboot/xcat/$os/$arch");
                 if ($arch =~ /x86_64/)
                 {
-                    copy("/install/$os/$arch/1/boot/$arch/loader/linux",
+                    copy("$pkgdir/1/boot/$arch/loader/linux",
                          "/tftpboot/xcat/$os/$arch/");
-                    copy("/install/$os/$arch/1/boot/$arch/loader/initrd",
+                    copy("$pkgdir/1/boot/$arch/loader/initrd",
                          "/tftpboot/xcat/$os/$arch/");
                 } elsif ($arch =~ /x86/) {
-                    copy("/install/$os/$arch/1/boot/i386/loader/linux",
+                    copy("$pkgdir/1/boot/i386/loader/linux",
                          "/tftpboot/xcat/$os/$arch/");
-                    copy("/install/$os/$arch/1/boot/i386/loader/initrd",
+                    copy("$pkgdir/1/boot/i386/loader/initrd",
                          "/tftpboot/xcat/$os/$arch/");
                 }
                 elsif ($arch =~ /ppc/)
                 {
-                    copy("/install/$os/$arch/1/suseboot/inst64",
+                    copy("$pkgdir/1/suseboot/inst64",
                          "/tftpboot/xcat/$os/$arch");
                     #special case for sles 11
-                    if ( $os eq 'sles11' and -r "/install/$os/$arch/1/suseboot/yaboot")
+                    if ( $os eq 'sles11' and -r "$pkgdir/1/suseboot/yaboot")
                     {
-                        copy("/install/$os/$arch/1/suseboot/yaboot", "/tftpboot/");
+                        copy("$pkgdir/1/suseboot/yaboot", "/tftpboot/");
                     }
                 }
                 $doneimgs{"$os|$arch"} = 1;
@@ -404,11 +529,11 @@ sub mkinstall
             my $kcmdline =
                 "autoyast=http://"
               . $ent->{nfsserver}
-              . "/install/autoinst/"
+              . "$installroot/autoinst/"
               . $node
               . " install=http://"
               . $ent->{nfsserver}
-              . "/install/$os/$arch/1";
+              . "$pkgdir/1";
 
             my $mgtref = $hmtab->getNodeAttribs($node, ['mgt']);
             #special case for system P machines, which is mgted by hmc or ivm
@@ -530,11 +655,13 @@ sub copycd
     my $distname = "";
     my $detdistname = "";
     my $installroot;
+    my $arch;
+    my $path;
     $installroot = "/install";
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => installdir}, value);
+        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
         print Dumper($ref);
         if ($ref and $ref->{value})
         {
@@ -566,6 +693,7 @@ sub copycd
     }
     my $dinfo;
     open($dinfo, $path . "/content");
+    my $darch;
     while (<$dinfo>)
     {
         if (m/^DEFAULTBASE\s+(\S+)/)
