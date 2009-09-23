@@ -182,6 +182,10 @@ if ($ENV{'RSYNCSNONLY'})
 {
     push(@{$cmdref->{env}}, "RSYNCSNONLY=$ENV{'RSYNCSNONLY'}");
 }
+if ($ENV{'DCP_PULL'})
+{
+    push(@{$cmdref->{env}}, "DCP_PULL=$ENV{'DCP_PULL'}");
+}
 
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
@@ -461,6 +465,12 @@ sub parse_args_xdcp
     if ($options{'rsyncSN'})
     {
         $ENV{'RSYNCSNONLY'} = "yes";    # rsync file to SN
+    }
+
+    # if Pull function hierarchy must be handled special in plugin 
+    if ($options{'pull'})
+    {
+        $ENV{'DCP_PULL'} = "yes";
     }
 
     # if rsyncing to a node,  not the root image
