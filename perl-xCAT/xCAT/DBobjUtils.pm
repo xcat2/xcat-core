@@ -1047,8 +1047,9 @@ sub setobjdefs
 
 					if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr}  =~ /\b$check_value\b/) )
                     {
+                        my $rsp;
                         push @{$rsp->{data}}, "Cannot set the \'$attr_name\' attribute unless \'$check_attr=$check_value\'.\n";
-                        xCAT::MsgUtils->message("E", $rsp, $::callback)
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
                         next;
 
                     }
