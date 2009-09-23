@@ -97,7 +97,7 @@ sub setstate {
                 }
                 );
       }
-      $kern->{kcmdline} =~ s/!myipfn!/$ipfn/;
+      $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
   }
   my $pcfg;
   unlink($tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
