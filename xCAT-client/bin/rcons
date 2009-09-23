@@ -29,10 +29,8 @@ fi
 #parsing
 CONSERVER=`echo $CONSERVER|cut -d: -f 1`
 
-#NOTE: on SuSE(at least SLES11), SSL is not complied in the application "console"; 
-#so SuSE doesn't need the configuration in the file .consolerc
-
-if [ ! -f /etc/SuSE-release ]; then
+#Detect console support of SSL, only fixup consolerc if encryption is detected
+if ! console -h 2>&1 | grep "encryption not compiled" > /dev/null; then
     if [ ! -f $HOME/.consolerc ]; then
 	    echo 'config * {' > $HOME/.consolerc
 	    echo "	port 782;" >> $HOME/.consolerc
