@@ -67,6 +67,7 @@ sub preprocess_request
     my @requests;
     my $syncsn = 0;
     my $syncsnfile;
+    my $dcppull = 0;
 
     # read the environment variables for rsync setup
     foreach my $envar (@{$req->{env}})
@@ -80,6 +81,10 @@ sub preprocess_request
         if ($var eq "DSH_RSYNC_FILE")    # from -F flag
         {    # if hierarchy,need to copy file to the SN
             $syncsnfile = $value;    # in the new /tmp/xcatrf.tmp
+        }
+        if ($var eq "DCP_PULL")    # from -P flag
+        {   
+            $dcppull = 1;    # TBD  handle pull hierarchy  
         }
     }
 
@@ -160,8 +165,8 @@ sub preprocess_request
                     # to be sent to the CN.
                     # build a command to update the service nodes
                     # change the destination to the tmp location on
-                    # the service node. 
-                    if ($command eq "xdcp")
+                    # the service node, if not pull function 
+                    if (($command eq "xdcp") && ($dcppull == 0))
                     {
 
                         #make the needed directory on the service node
@@ -236,7 +241,8 @@ sub preprocess_request
                     else
                     {    # if other dcp command, change from directory
                             # to be the tmp directory on the service node
-                        if ($command eq "xdcp")
+                         # if not pull (-P) funcion
+                        if (($command eq "xdcp") && ($dcppull == 0))
                         {
                             $newSNreq->{arg}->[-2] = $SNpath;
                         }
