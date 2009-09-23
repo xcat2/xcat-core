@@ -266,7 +266,7 @@ sub addnode
                 $lstatements = 'option root-path \"'.$iscsirootpath.'\";'.$lstatements;
             }
         }
-        if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe') {
+        if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {
             if (-f "$tftpdir/xcat/xnba.kpxe") {
                 if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
                     $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
