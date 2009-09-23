@@ -28,7 +28,9 @@ mand for each node or device specified. When files are  pulled  from  a
 target,  they  are  placed  into  the  target_path with the name of the
 remote node or device appended to  the  copied  source_file  name.  The
 /usr/bin/rcp command is the model for syntax and security. 
-If using hierarchy, then xdcp actually runs on the service node that is servicing the compute node. The file will first be copied to the path defined in the site table, SNsyncfiledir attribute, or the default path /var/xcat/syncfiles on the service node, if the attribute is not defined.  
+If using hierarchy, then xdcp runs on the service node that is servicing the compute node. The file will first be copied to the path defined in the site table, SNsyncfiledir attribute, or the default path /var/xcat/syncfiles on the service node, if the attribute is not defined. The -P flag will not automatically copy
+the files from the compute node to the Management node, hierarchically.  There
+is a two step process, see -P flag.  
 
 B<TARGET> B<SPECIFICATION>:
 
@@ -147,7 +149,6 @@ quotation marks ("") to distinguish them from B<xdsh> options.
 Preserves  the  source  file characteristics as implemented by
 the configured remote copy command.
 
-
 =item B<-P>|B<--pull>
 
 Pulls (copies) the files from the targets and places  them  in
@@ -157,7 +158,9 @@ must be a directory. Files pulled from  remote  machines  have
 them. When the -P flag is used with the -R flag,  ._target  is
 appended to the directory. Only one file per invocation of the
 xdcp pull command can be pulled from the specified  targets.
-
+Hierarchy is not automatically support yet.   You must first pull
+the file to the Service Node and then pull the file to the Management 
+node. 
 
 =item B<-q>|B<--show-config>
 
