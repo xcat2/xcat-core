@@ -249,6 +249,7 @@ sub init_plugin
         # $rc = &setup_NTPmn();  # setup NTP on the Management Node
         if (xCAT::Utils->isLinux())
         {
+        	print "\n";		# make OK prints look better.  Only need to do this for the 1st service.
             $rc = &setup_FTP();    # setup FTP
         }
     }

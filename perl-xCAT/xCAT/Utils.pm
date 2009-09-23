@@ -3978,12 +3978,14 @@ sub startService
             if (($service ne "conserver") && ($service ne "nfs"))
             {
                 $cmd = "service $service stop";
+                print ' ';		# indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
                 {    # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                 }
                 $cmd = "service $service start";
+                print ' ';		# indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
                 {    # error
@@ -3999,6 +4001,7 @@ sub startService
                 if (grep(/running/, @output))
                 {
                     $cmd = "service $service stop";
+	                print ' ';		# indent service output to separate it from the xcatd service output
                     system $cmd;
                     if ($? > 0)
                     {    # error
@@ -4006,6 +4009,7 @@ sub startService
                                                 "Error on command: $cmd\n");
                     }
                     $cmd = "service $service start";
+                	print ' ';		# indent service output to separate it from the xcatd service output
                     system $cmd;
                     if ($? > 0)
                     {    # error
@@ -4020,6 +4024,7 @@ sub startService
 
                     # not running , just start
                     $cmd = "service $service start";
+	                print ' ';		# indent service output to separate it from the xcatd service output
                     system $cmd;
                     if ($? > 0)
                     {    # error
@@ -4039,6 +4044,7 @@ sub startService
             if (grep(/stopped/, @output))    # stopped
             {
                 $cmd = "service $service start";
+                print ' ';		# indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
                 {                            # error
@@ -4049,12 +4055,14 @@ sub startService
             else
             {                                # not sure
                 $cmd = "service $service stop";
+                print ' ';		# indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
                 {                            # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                 }
                 $cmd = "service $service start";
+                print ' ';		# indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
                 {                            # error

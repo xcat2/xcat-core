@@ -109,7 +109,7 @@ foreach (@extSchema) {
 sub updateTables
 {
     #print "\nupdateTables\n";
-    print "\n";
+    #print "\n";
     foreach (keys %ext_tabspec) {
 	my $table= xCAT::Table->new($_,-create=>1,-autocommit=>1);
     }

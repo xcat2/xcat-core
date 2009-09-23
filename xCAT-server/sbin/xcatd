@@ -458,9 +458,11 @@ sub scan_plugins {
   }
 }
 scan_plugins;
-eval {
-    xCAT::MsgUtils->message("S","xCATd: service starting");
-};
+unless (xCAT::Utils->isLinux()) {	# messes up the output of the service cmd on linux
+	eval {
+	    xCAT::MsgUtils->message("S","xCATd: service starting");
+	};
+}
 if ($@) {
    print "ERROR: $@";
    xexit;
