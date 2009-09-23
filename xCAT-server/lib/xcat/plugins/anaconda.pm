@@ -19,6 +19,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
+#use strict;
 my @cpiopid;
 
 my %distnames = (
@@ -157,24 +158,27 @@ sub mknetboot
     my $callback = shift;
     my $doreq    = shift;
     my $tftpdir  = "/tftpboot";
-    my $nodes    = @{$request->{node}};
+    my $nodes    = @{$req->{node}};
     my @args     = @{$req->{arg}};
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
     my $sitetab  = xCAT::Table->new('site');
+    my $linuximagetab;
+    my $osimagetab;
+    my %img_hash=();
     my $installroot;
     $installroot = "/install";
 
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => installdir}, value);
+        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
         if ($ref and $ref->{value})
         {
             $installroot = $ref->{value};
         }
     }
     my %donetftp=();
-    my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile)])};
+    my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile provmethod)])};
     my $restab = xCAT::Table->new('noderes');
     my $bptab  = xCAT::Table->new('bootparams',-create=>1);
     my $hmtab  = xCAT::Table->new('nodehm');
@@ -184,58 +188,89 @@ sub mknetboot
                                  ['serialport', 'serialspeed', 'serialflow']);
     #my $addkcmdhash =
     #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
-    foreach $node (@nodes)
+    foreach my $node (@nodes)
     {
+        my $osver;
+        my $arch;
+        my $profile;
+	my $platform;
+        my $rootimgdir;
+
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
-        unless ($ent->{os} and $ent->{arch} and $ent->{profile})
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot')) {
+	    my $imagename=$ent->{provmethod};
+	    #print "imagename=$imagename\n";
+	    if (!exists($img_hash{$imagename})) {
+		if (!$osimagetab) {
+		    $osimagetab=xCAT::Table->new('osimage', -create=>1);
+		}
+		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+		if ($ref) {
+		    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
+		    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+		    $img_hash{$imagename}->{profile}=$ref->{'profile'};
+		    $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
+		    if (!$linuximagetab) {
+			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+		    }
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir');
+		    if (($ref1) && ($ref1->{'rootimgdir'})) {
+			$img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
+		    }
+		} else {
+		    $callback->(
+			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
+			 errorcode => [1]});
+		    next;
+		}
+	    }
+	    my $ph=$img_hash{$imagename};
+	    $osver = $ph->{osver};
+	    $arch  = $ph->{osarch};
+	    $profile = $ph->{profile};
+	
+	    $rootimgdir=$ph->{rootimgdir};
+	    if (!$rootimgdir) {
+		$rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+	    }
+	}
+	else {
+	    $osver = $ent->{os};
+	    $arch    = $ent->{arch};
+	    $profile = $ent->{profile};
+	    $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+	}
+
+        #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
+        unless ($osver and $arch and $profile)
         {
             $callback->(
                         {
-                         error     => ["Insufficient nodetype entry for $node"],
+                         error     => ["Insufficient nodetype entry or osimage entry for $node"],
                          errorcode => [1]
                         }
                         );
             next;
         }
 
-        my $osver = $ent->{os};
-        my $platform;
-        if ($osver =~ /rh.*/)
-        {
-            $platform = "rh";
-        }
-        elsif ($osver =~ /centos.*/)
-        {
-            $platform = "centos";
-        }
-        elsif ($osver =~ /fedora.*/)
-        {
-            $platform = "fedora";
-        }
-        elsif ($osver =~ /esx.*/)
-        {
-            $platform = "esx";
-        }
-
-        my $arch    = $ent->{arch};
-        my $profile = $ent->{profile};
+        $platform=xCAT_plugin::anaconda::getplatform($osver);       
         my $suffix  = 'gz';
-        if (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.sfs")
+        if (-r "$rootimgdir/rootimg.sfs")
         {
             $suffix = 'sfs';
         }
-        if (-r "/$installroot/netboot/$osver/$arch/$profile/rootimg.nfs")
+        if (-r "$rootimgdir/rootimg.nfs")
         {
             $suffix = 'nfs';
         }
         unless (
                 (
-                    -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.gz"
-                 or -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.sfs"
-                 or -r "/$installroot/netboot/$osver/$arch/$profile/rootimg.nfs"
+                    -r "$rootimgdir/rootimg.gz"
+                 or -r "$rootimgdir/rootimg.sfs"
+                 or -r "$rootimgdir/rootimg.nfs"
                 )
-                and -r "/$installroot/netboot/$osver/$arch/$profile/kernel"
-                and -r "/$installroot/netboot/$osver/$arch/$profile/initrd.gz"
+                and -r "$rootimgdir/kernel"
+                and -r "$rootimgdir/initrd.gz"
           )
         {
             $callback->(
@@ -257,14 +292,14 @@ sub mknetboot
 
         #TODO: only copy if newer...
         unless ($donetftp{$osver,$arch,$profile}) {
-	if (-f "/$installroot/netboot/$osver/$arch/$profile/hypervisor") {
-        	copy("/$installroot/netboot/$osver/$arch/$profile/hypervisor",
+	if (-f "$rootimgdir/hypervisor") {
+        	copy("$rootimgdir/hypervisor",
              	"/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
 		$xenstyle=1;
 	}
-        copy("/$installroot/netboot/$osver/$arch/$profile/kernel",
+        copy("$rootimgdir/kernel",
              "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        copy("/$installroot/netboot/$osver/$arch/$profile/initrd.gz",
+        copy("$rootimgdir/initrd.gz",
              "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             $donetftp{$osver,$arch,$profile} = 1;
         }
@@ -398,8 +433,21 @@ sub mkinstall
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{$request->{node}};
+    my $sitetab  = xCAT::Table->new('site');
+    my $linuximagetab;
+    my $osimagetab;
+    my %img_hash=();
+
     my $installroot;
     $installroot = "/install";
+    if ($sitetab)
+    {
+        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $installroot = $ref->{value};
+        }
+    }
 
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
@@ -407,7 +455,7 @@ sub mkinstall
     my $restab = xCAT::Table->new('noderes');
     my $bptab  = xCAT::Table->new('bootparams',-create=>1);
     my $hmtab  = xCAT::Table->new('nodehm');
-    my %osents = %{$ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch'])};
+    my %osents = %{$ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch', 'provmethod'])};
     my %rents =
               %{$restab->getNodesAttribs(\@nodes,
                                      ['nfsserver', 'primarynic', 'installnic'])};
@@ -419,19 +467,98 @@ sub mkinstall
     require xCAT::Template;
     foreach $node (@nodes)
     {
+        my $os;
+        my $arch;
+        my $profile;
+        my $tmplfile;
+        my $pkgdir;
+	my $imagename;
+	my $platform;
+
         my $osinst;
         my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot')) {
+	    $imagename=$ent->{provmethod};
+	    #print "imagename=$imagename\n";
+	    if (!exists($img_hash{$imagename})) {
+		if (!$osimagetab) {
+		    $osimagetab=xCAT::Table->new('osimage', -create=>1);
+		}
+		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+		if ($ref) {
+		    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
+		    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+		    $img_hash{$imagename}->{profile}=$ref->{'profile'};
+		    $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
+		    if (!$linuximagetab) {
+			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+		    }
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir');
+		    if ($ref1) {
+			if ($ref1->{'template'}) {
+			    $img_hash{$imagename}->{template}=$ref1->{'template'};
+			}
+			if ($ref1->{'pkgdir'}) {
+			    $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
+			}
+		    }
+		} else {
+		    $callback->(
+			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
+			 errorcode => [1]});
+		    next;
+		}
+	    }
+	    my $ph=$img_hash{$imagename};
+	    $os = $ph->{osver};
+	    $arch  = $ph->{osarch};
+	    $profile = $ph->{profile};
+	    $platform=xCAT_plugin::anaconda::getplatform($os);
+	
+	    $tmplfile=$ph->{template};
+            $pkgdir=$ph->{pkgdir};
+	    if (!$pkgdir) {
+		$pkgdir="$installroot/$os/$arch";
+	    }
+	}
+	else {
+	    $os = $ent->{os};
+	    $arch    = $ent->{arch};
+	    $profile = $ent->{profile};
+	    $platform=xCAT_plugin::anaconda::getplatform($os);
+	    my $genos = $os;
+	    $genos =~ s/\..*//;
+	    if ($genos =~ /rh.*s(\d*)/)
+	    {
+		unless (-r "$installroot/custom/install/$platform/$profile.$genos.$arch.tmpl"
+			or -r "/install/custom/install/$platform/$profile.$genos.tmpl"
+			or -r "$::XCATROOT/share/xcat/install/$platform/$profile.$genos.$arch.tmpl"
+			or -r "$::XCATROOT/share/xcat/install/$platform/$profile.$genos.tmpl")
+		{
+		    $genos = "rhel$1";
+		}
+	    }
+	    
+	    $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+	    if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
+
+	    $pkgdir="$installroot/$os/$arch";
+	}
+
         my @missingparms;
-        unless ($ent->{os}) {
-            push @missingparms,"nodetype.os";
+        unless ($os) {
+	    if ($imagename) { push @missingparms,"osimage.osvers";  }
+            else { push @missingparms,"nodetype.os";}
         }
-        unless ($ent->{arch}) {
-            push @missingparms,"nodetype.arch";
+        unless ($arch) {
+	    if ($imagename) { push @missingparms,"osimage.osarch";  }
+            else { push @missingparms,"nodetype.arch";}
         }
-        unless ($ent->{profile}) {
-            push @missingparms,"nodetype.profile";
+        unless ($profile) {
+	    if ($imagename) { push @missingparms,"osimage.profile";  }
+            else { push @missingparms,"nodetype.profile";}
         }
-        unless ($ent->{os} and $ent->{arch} and $ent->{profile})
+        unless ($os and $arch and $profile)
         {
             $callback->(
                         {
@@ -441,48 +568,14 @@ sub mkinstall
                         );
             next;    #No profile
         }
-        my $os      = $ent->{os};
-        my $arch    = $ent->{arch};
-        my $profile = $ent->{profile};
-        my $platform;
-        if ($os =~ /rh.*/)
-        {
-            $platform = "rh";
-        }
-        elsif ($os =~ /centos.*/)
-        {
-            $platform = "centos";
-        }
-        elsif ($os =~ /fedora.*/)
-        {
-            $platform = "fedora";
-        }
-        elsif ($os =~ /esx.*/)
-        {
-            $platform = "esx";
-        }
-        my $genos = $os;
-        $genos =~ s/\..*//;
-        if ($genos =~ /rh.*s(\d*)/)
-        {
-            unless (-r "$installroot/custom/install/$platform/$profile.$genos.$arch.tmpl"
-                 or -r "/install/custom/install/$platform/$profile.$genos.tmpl"
-                 or -r "$::XCATROOT/share/xcat/install/$platform/$profile.$genos.$arch.tmpl"
-                 or -r "$::XCATROOT/share/xcat/install/$platform/$profile.$genos.tmpl")
-            {
-                $genos = "rhel$1";
-            }
-        }
-      
-        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
-        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
+
         unless ( -r "$tmplfile")  
         {
             $callback->(
                         {
                          error => [
                                    "No $platform kickstart template exists for "
-                                     . $ent->{profile}
+                                     . $profile
                          ],
                          errorcode => [1]
                         }
@@ -491,8 +584,12 @@ sub mkinstall
         }
 
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
-        my $tmperr =
-          "Unable to find template in /install/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arch combination)";
+        my $tmperr;
+	if ($imagename) {
+	    $tmperr="Unable to find template file: $tmplfile";
+	} else {
+          $tmperr="Unable to find template in /install/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arch combination)";
+	}
         if (-r "$tmplfile")
         {
             $tmperr =
@@ -513,7 +610,7 @@ sub mkinstall
                     );
             next;
         }
-        my $installdir="/install"; #TODO: not hardcode installdir
+        #my $installdir="/install"; #TODO: not hardcode installdir
         my $tftpdir = "/tftpboot";
 
         # create the node-specific post scripts
@@ -527,26 +624,26 @@ sub mkinstall
             (
                  $arch =~ /x86/ and 
                     (
-                         -r "$installdir/$os/$arch/images/pxeboot/vmlinuz"
-                         and $kernpath = "$installdir/$os/$arch/images/pxeboot/vmlinuz"
-                         and -r "$installdir/$os/$arch/images/pxeboot/initrd.img"
-                         and $initrdpath = "$installdir/$os/$arch/images/pxeboot/initrd.img"
+                         -r "$pkgdir/images/pxeboot/vmlinuz"
+                         and $kernpath = "$pkgdir/images/pxeboot/vmlinuz"
+                         and -r "$$pkgdir/images/pxeboot/initrd.img"
+                         and $initrdpath = "$pkgdir/images/pxeboot/initrd.img"
                     ) or ( #Handle the case seen in VMWare 4.0 ESX media
                         #In VMWare 4.0 they dropped the pxe-optimized initrd
                         #leaving us no recourse but the rather large optical disk
                         #initrd, but perhaps we can mitigate with gPXE
-                         -d "$installdir/$os/$arch/VMware" 
-                         and -r "$installdir/$os/$arch/isolinux/vmlinuz"
-                         and $kernpath ="$installdir/$os/$arch/isolinux/vmlinuz"
-                         and -r "$installdir/$os/$arch/isolinux/initrd.img"
-                         and $initrdpath = "$installdir/$os/$arch/isolinux/initrd.img"
+                         -d "$pkgdir/VMware" 
+                         and -r "$pkgdir/isolinux/vmlinuz"
+                         and $kernpath ="$pkgdir/isolinux/vmlinuz"
+                         and -r "$pkgdir/isolinux/initrd.img"
+                         and $initrdpath = "$pkgdir/isolinux/initrd.img"
                          and $maxmem="512M" #Have to give up linux room to make room for vmware hypervisor evidently
                     )
             ) or (    $arch =~ /ppc/
-                and -r "$installdir/$os/$arch/ppc/ppc64/vmlinuz"
-                and $kernpath = "$installdir/$os/$arch/ppc/ppc64/vmlinuz"
-                and -r "$installdir/$os/$arch/ppc/ppc64/ramdisk.image.gz"
-                and $initrdpath = "$installdir/$os/$arch/ppc/ppc64/ramdisk.image.gz")
+                and -r "$pkgdir/ppc/ppc64/vmlinuz"
+                and $kernpath = "$pkgdir/ppc/ppc64/vmlinuz"
+                and -r "$pkgdir/ppc/ppc64/ramdisk.image.gz"
+                and $initrdpath = "$pkgdir/ppc/ppc64/ramdisk.image.gz")
           )
         {
 
@@ -670,13 +767,17 @@ sub copycd
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => installdir}, value);
+        (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
         #print Dumper($ref);
         if ($ref and $ref->{value})
         {
             $installroot = $ref->{value};
         }
     }
+
+    my $distname;
+    my $arch;
+    my $path;
 
     @ARGV = @{$request->{arg}};
     GetOptions(
@@ -857,34 +958,27 @@ sub copycd
     }
 }
 
-#sub get_tmpl_file_name {
-#  my $base=shift;
-#  my $profile=shift;
-#  my $os=shift;
-#  my $arch=shift;
-#  my $genos=shift;
-#
-#  if (-r   "$base/$profile.$os.$arch.tmpl") {
-#    return  "$base/$profile.$os.$arch.tmpl";     
-#  }
-#  elsif (-r "$base/$profile.$genos.$arch.tmpl") {
-#    return  "$base/$profile.$genos.$arch.tmpl";
-#  }
-#  elsif (-r "$base/$profile.$arch.tmpl") {
-#    return  "$base/$profile.$arch.tmpl";
-#  }
-#  elsif ( -r "$base/$profile.$os.tmpl") {
-#    return   "$base/$profile.$os.tmpl";
-#  }
-#  elsif (-r "$base/$profile.$genos.tmpl") {
-#    return  "$base/$profile.$genos.tmpl";
-#  }
-#  elsif (-r "$base/$profile.tmpl") {
-#    return  "$base/$profile.tmpl";  
-#  }
-#
-#  return "";
-#}
 
+sub getplatform {
+    my $os=shift;
+    my $platform;
+    if ($os =~ /rh.*/) 
+    {
+	$platform = "rh";
+    }
+    elsif ($os =~ /centos.*/)
+    {
+	$platform = "centos";
+    }
+    elsif ($os =~ /fedora.*/)
+    {
+	$platform = "fedora";
+    }
+    elsif ($os =~ /esx.*/)
+    {
+	$platform = "esx";
+    }
+    return $platform;
+}
 
 1;
