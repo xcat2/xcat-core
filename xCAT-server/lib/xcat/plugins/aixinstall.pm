@@ -1896,7 +1896,9 @@ sub mk_bosinst_data
             }
 
 			# copy/modify the template supplied by NIM
-			my $sedcmd = "/usr/bin/sed 's/CONSOLE = .*/CONSOLE = Default/; s/INSTALL_METHOD = .*/INSTALL_METHOD = overwrite/; s/PROMPT = .*/PROMPT = no/; s/EXISTING_SYSTEM_OVERWRITE = .*/EXISTING_SYSTEM_OVERWRITE = yes/; s/RECOVER_DEVICES = .*/RECOVER_DEVICES = no/; s/ACCEPT_LICENSES = .*/ACCEPT_LICENSES = yes/; s/DESKTOP = .*/DESKTOP = NONE/' /usr/lpp/bosinst/bosinst.template >$loc/$bosinst_data_name";
+			#  - this will also set the default to rte install a minimal
+			#	AIX OS image
+			my $sedcmd = "/usr/bin/sed 's/GRAPHICS_BUNDLE = .*/GRAPHICS_BUNDLE = no/; s/SYSTEM_MGMT_CLIENT_BUNDLE = .*/SYSTEM_MGMT_CLIENT_BUNDLE = no/; s/CONSOLE = .*/CONSOLE = Default/; s/INSTALL_METHOD = .*/INSTALL_METHOD = overwrite/; s/PROMPT = .*/PROMPT = no/; s/EXISTING_SYSTEM_OVERWRITE = .*/EXISTING_SYSTEM_OVERWRITE = yes/; s/RECOVER_DEVICES = .*/RECOVER_DEVICES = no/; s/ACCEPT_LICENSES = .*/ACCEPT_LICENSES = yes/; s/DESKTOP = .*/DESKTOP = NONE/' /usr/lpp/bosinst/bosinst.template >$loc/$bosinst_data_name";
 
 			my $output = xCAT::Utils->runcmd("$sedcmd", -1);
 			if ($::RUNCMD_RC  != 0) {
