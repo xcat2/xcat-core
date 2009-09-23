@@ -611,7 +611,8 @@ sub getDBtable
         	return undef;
     	}
 
-    	@rows = $thistable->getTable;
+    	#@rows = $thistable->getTable;
+	@rows = @{$thistable->getAllEntries()};
 
     	#   !!!! this routine returns rows even if the table is empty!!!!!!
 
