@@ -18,7 +18,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
-use strict;
+#use strict;
 my @cpiopid;
 
 sub handled_commands

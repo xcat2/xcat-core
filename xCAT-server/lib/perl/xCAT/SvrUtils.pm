@@ -560,7 +560,7 @@ sub  update_tables_with_templates
 		my $tmp1=$osimagetab->getAllEntries();
 		if (defined($tmp1) && (@$tmp1 > 0)) {
 		    foreach my $rowdata(@$tmp1) {
-			if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{imagetype} eq "install") && ($profile eq $rowdata->{profile})){
+			if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq "install") && ($profile eq $rowdata->{profile})){
 			    $found=1;
 			    last;
 			}
@@ -700,13 +700,13 @@ sub  update_tables_with_diskless_image
 	    my $tmp1=$osimagetab->getAllEntries();
 	    if (defined($tmp1) && (@$tmp1 > 0)) {
 		foreach my $rowdata(@$tmp1) {
-		    if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{imagetype} eq "netboot") && ($profile eq $rowdata->{profile})){
+		    if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq "netboot") && ($profile eq $rowdata->{profile})){
 			$found=1;
 			last;
 		    }
 		}
 	    }
-	    if ($found) { print "$profile already in\n"; return (0, ""); } 
+	    if ($found) { print "The image is already in the db.\n"; return (0, ""); } 
 	    
 	    my $imagename=$osver . "-" . $arch . "-netboot-" . $profile;
 	    #TODO: check if there happen to be a row that has the same imagename but with different contents
