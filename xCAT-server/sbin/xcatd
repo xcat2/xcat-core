@@ -28,7 +28,7 @@ use Fcntl ":flock";
 use xCAT::Client qw(submit_request);
 my $clientselect = new IO::Select;
 my $sslclients = 0; #THROTTLE
-my $maxsslclients = 512; #default
+my $maxsslclients = 64; #default
 
 sub xexit {
    while (wait() > 0) {
