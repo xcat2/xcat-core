@@ -626,7 +626,7 @@ sub mkinstall
                     (
                          -r "$pkgdir/images/pxeboot/vmlinuz"
                          and $kernpath = "$pkgdir/images/pxeboot/vmlinuz"
-                         and -r "$$pkgdir/images/pxeboot/initrd.img"
+                         and -r "$pkgdir/images/pxeboot/initrd.img"
                          and $initrdpath = "$pkgdir/images/pxeboot/initrd.img"
                     ) or ( #Handle the case seen in VMWare 4.0 ESX media
                         #In VMWare 4.0 they dropped the pxe-optimized initrd
