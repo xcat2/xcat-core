@@ -119,8 +119,9 @@ if [ $UPLOAD == 1 ]; then
 
 # scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/xcat-core
 #scp core-aix-2.3.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel
-# for dep-aix
-#scp dep-aix-$VER.tar.gz nott@web.sourceforge.net:uploads/
+
+# for dep-aix & mysql etc.
+#scp ./dep-aix-2.3-200909241259.tar.gz nott,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x_AIX/
 
 fi
 
