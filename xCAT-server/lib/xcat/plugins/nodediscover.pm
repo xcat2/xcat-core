@@ -123,8 +123,8 @@ sub process_request {
     if ($rent and $rent->{'netboot'}) {
        $currboot=$rent->{'netboot'};
     }
-    if ($request->{arch}->[0] =~ /x86/ and $currboot !~ /pxe/) {
-       $nrtab->setNodeAttribs($node,{netboot=>'pxe'});
+    if ($request->{arch}->[0] =~ /x86/ and $currboot !~ /pxe/ and $currboot !~ /xnba/) {
+       $nrtab->setNodeAttribs($node,{netboot=>'xnba'});
     } elsif ($request->{arch}->[0] =~ /ppc/ and $currboot  !~ /yaboot/) {
        $nrtab->setNodeAttribs($node,{netboot=>'yaboot'});
     }
