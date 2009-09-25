@@ -717,6 +717,19 @@ prescripts => {
     },
 },
 
+zvm => {
+	cols => [qw(node hcp userid comments disable)],
+	keys => [qw(node)],
+	table_desc => 'List of z/VM virtual servers.',
+	descriptions => {
+		node => 'The node name.',
+		hcp => 'The hardware control point for this node.',
+		userid => 'The z/VM userID of this node.',
+		comments => 'Any user provided notes.',
+		disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+},
+
 );        # end of tabspec definition
 
 
@@ -1146,6 +1159,21 @@ my @nodeattrs = (
                  tabentry => 'ppcdirect.password',
                  access_tabentry => 'ppcdirect.hcp=attr:node::ppcdirect.username=str:general',
   },
+
+####################
+#  zvm table       #
+####################
+	{attr_name => 'hcp',
+		only_if => 'mgt=zvm',
+		tabentry => 'zvm.hcp',
+		access_tabentry => 'zvm.node=attr:node',
+	},
+	{attr_name => 'userid',
+		only_if => 'mgt=zvm',
+		tabentry => 'zvm.userid',
+		access_tabentry => 'zvm.node=attr:node',
+	},
+	
 ##################
 #  ipmi table    #
 ##################
