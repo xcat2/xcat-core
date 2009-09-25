@@ -29,6 +29,7 @@ use xCAT::MsgUtils;
 use Sys::Syslog;
 use Storable qw/freeze thaw/;
 use IO::Socket;
+use Data::Dumper;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -681,6 +682,13 @@ sub updateschema
        while (my $cd = $sth->fetchrow_hashref) {
            #print Dumper($cd);
            push @columns,$cd->{'COLUMN_NAME'};
+
+           #special code for old version of perl-DBD-mysql
+           if (exists($cd->{mysql_is_pri_key}) && ($cd->{mysql_is_pri_key}==1)) {
+               my $tmp_col=$cd->{'COLUMN_NAME'};
+               $tmp_col =~ s/"//g;
+               $dbkeys{$tmp_col}=1;
+ 	   }
        }
 	foreach (@columns) { #Column names may end up quoted by database engin
 		s/"//g;
@@ -688,13 +696,15 @@ sub updateschema
 
        #get primary keys
        $sth = $self->{dbh}->primary_key_info(undef,undef,$self->{tabname});
-       my $data = $sth->fetchall_arrayref;
-       #print "data=". Dumper($data);
-       foreach my $cd (@$data) {
-           my $tmp_col=$cd->[3];
-           $tmp_col =~ s/"//g;
-           $dbkeys{$tmp_col}=1;
-       }      
+       if ($sth) {
+           my $data = $sth->fetchall_arrayref;
+           #print "data=". Dumper($data);
+           foreach my $cd (@$data) {
+               my $tmp_col=$cd->[3];
+               $tmp_col =~ s/"//g;
+               $dbkeys{$tmp_col}=1;
+           }      
+        }
     }
 
     #Now @columns reflects the *actual* columns in the database
