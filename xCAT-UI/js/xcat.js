@@ -536,37 +536,6 @@ function show_monshow_data(type,range)
     }
 }
 
-function show_monshow_graph() {
-    //used for the "view by graph" button in the web page "rmc_monshow.php"
-    if($(":input[@checked]").size() != 0) {
-        $("#monshow_data").empty();
-        $("#monshow_opt").hide("slow");
-        $("#back_btn").show("slow");
-        $(":input[@checked]").each(function(i) {
-            //generate graphics for all the attributes in "checked" status
-            $.get("monitor/rmc_monshow_data_source.php", {mode: "graph", value: $(this).attr("value")}, function(data) {
-                $("#monshow_data").append(data);
-            });
-        });
-    } else {
-    }
-}
-function show_monshow_text() {
-    //used for the "view by text"  button in the web page "rmc_monshow.php";
-    if($(":input[@checked]").size() != 0) {
-        $("#monshow_data").empty();
-        $("#monshow_opt").hide("slow");
-        $("#back_btn").show("slow");
-        $(":input[@checked]").each(function(i) {
-            $.get("monitor/rmc_monshow_data_source.php", {mode: "text", value: $(this).attr("value")}, function(data) {
-                $("#monshow_data").append(data);
-            });
-        });
-    } else {
-        $("#monshow_data").html("<p><b>Please select one or more attributes from the table</b></p>");
-    }
-}
-
 function init_rmc_monshow_back_btn() {
     $("#back_btn").hide();
 }
@@ -593,20 +562,30 @@ function handle_tips() {
     });
 }
 
-function rmc_monshow_draw_by_flot(value)
+function rmc_monshow_draw_by_flot(div, value)
 {
     //collecting data from "monshow" command,
     //then, draw by the jQuery-plugin: flot
     //http://groups.google.com/group/flot-graphs/browse_thread/thread/93358c68d44412a4?pli=1
+    //update the graph by every  minutes
+    var division = document.getElementById(div);
+    window.setInterval(function() {
+        if($("#monshow_data") && $("#monshow_data").html() != "") {
+            $.getJSON("monitor/flot_get_data.php", {attr: value}, function(data) {
+                $.plot($(division),data, options);
+            });
+        }
+    }
+    , 60*1000);
     var options = {
         xaxis: {
             mode: 'time'
         },
         lines: {show: true, fill: true}
     };
-
+ 
     $.getJSON("monitor/flot_get_data.php", {attr: value}, function(data) {
-        $.plot($("#placeholder"),data, options);
+        $.plot($(division),data, options);
     });
 }
 

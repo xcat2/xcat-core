@@ -539,12 +539,15 @@ echo <<<EOS
 <ul>
     <li><a href='#' onclick='loadMainPage("monitor.php")'>Show syslog Entries</a></li>
     <li><a href='#' onclick='loadMainPage("monitor/monlist.php")'>Monitor Setup</a></li>
-    <li><a href='#' onclick=''>View Events Log</a></li>
+    <li><a href='#' onclick='loadMainPage("monitor/rmc_lsevent.php")'>View RMC Events Log</a></li>
     <li>There's only text format for events' log</li>
-    <li><a href='#' onclick=''>View Performance</a></li>
+    <li><a href='#' onclick='loadMainPage("monitor/rmc_monshow.php")'>View RMC Performance</a></li>
     <li>There're text/graphics formats for performance view</li>
     <li>Monitoring Events/Performances by Monitoring Plugins, such as RMC...</li>
     <li>This is still <b>UNDER DEVELOPMENT</b>.</li>
+</ul>
+<ul>
+<h1><a href='#' onclick='loadMainPage("monitor/newmonlist.php")'>New Style for Monitor</a></h1>
 </ul>
 </div>
 EOS;

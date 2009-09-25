@@ -30,7 +30,6 @@ if($id == "cluster") {
     }
     if(false !== strpos($data, "lpar")) {
         //display the options for the "monshow" command
-
         show_monshow_options($id);
     } else {
         echo "<b>Currently, it only supports one single node. Please select one single node under the LPAR tree.</b>";

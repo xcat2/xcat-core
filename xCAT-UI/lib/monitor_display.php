@@ -370,8 +370,9 @@ function RMCEventLogToTable()
 //displayRMCEventLog() to display the RMC event logs in one table with "tablesorter" class
 function displayRMCEvnetLog()
 {
+echo '<div class="mContent">';
 echo <<<TOS9
-<table class="tablesorter" cellspacing="1">
+<table id="lsevent_tab" class="tablesorter" cellspacing="1">
 <thead>
     <tr>
         <th>Time</th>
@@ -385,10 +386,11 @@ TOS9;
     //TODO: the following javascript doesn't work well.
 echo <<<TOS8
 <script type="text/javascript" type"utf-8">
- $("table").tablesorter({ sortList:  [[0,1],[1,1]] });
+ $("#lsevent_tab").tablesorter({ sortList:  [[0,1],[1,1]] });
 </script>
 TOS8;
     echo "</div>";
+
 }
 
 function displayRMCMonshowAttr($attr, $nr) {
@@ -441,15 +443,12 @@ function displayRMCMonshowAttr($attr, $nr) {
 
 function displayRMCMonshowGraph($value, $nr) {
 //display the RMC Performance Data
+$place = $nr.$value;
 echo <<<TOS11
-<div>
 <script type="text/javascript">
-rmc_monshow_draw_by_flot("$value");
+rmc_monshow_draw_by_flot("$place","$value");
 </script>
-<p><b>The Graph View for RMC Resource</b></p>
-<div id='placeholder' style='width:600px;height:300px'>
-</div>
-</div>
+<div id="$place" style="width:100%;height:240px"></div>
 TOS11;
 }
 
