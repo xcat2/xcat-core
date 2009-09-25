@@ -264,7 +264,7 @@ sub cfg {
 # Enables/disables/displays SSH access to HMC/IVM  
 ##########################################################################
 sub sshcfg {
-
+    my $request = shift;
     my $exp     = shift;
     my $mode    = shift;
     my $server  = @$exp[3];
