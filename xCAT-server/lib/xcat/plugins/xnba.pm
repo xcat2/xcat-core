@@ -1,5 +1,5 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-package xCAT_plugin::pxe;
+package xCAT_plugin::xnba;
 use Sys::Syslog;
 use Socket;
 use File::Copy;
@@ -76,6 +76,7 @@ sub setstate {
   my %bphash = %{shift()};
   my %chainhash = %{shift()};
   my %machash = %{shift()};
+  my %iscsihash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   unless ($addkcmdlinehandled->{$node}) { #Tag to let us know the plugin had a special syntax implemented for addkcmdline
     if ($kern->{addkcmdline}) { #Implement the kcmdline append here for 
@@ -108,7 +109,12 @@ sub setstate {
     print $pcfg "#".$cref->{currstate}."\n";
   }
   if ($cref and $cref->{currstate} eq "boot") {
-    print $pcfg "exit\n";
+    my $ient = $iscsihash{$node}->[0];
+    if ($ient and $ient->{server} and $ient->{target}) {
+        print $pcfg "hdboot\n";
+    } else {
+        print $pcfg "exit\n";
+    }
     close($pcfg);
   } elsif ($kern and $kern->{kernel}) {
     if ($kern->{kernel} =~ /!/) { #TODO: deprecate this, do stateless Xen like stateless ESXi
@@ -435,6 +441,11 @@ sub process_request {
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
   my %bphash = %{$bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline addkcmdline)])};
   my %chainhash = %{$chaintab->getNodesAttribs(\@nodes,[qw(currstate)])};
+  my %iscsihash;
+  my $iscsitab = xCAT::Table->new('iscsi');
+  if ($iscsitab) {
+      %iscsihash = %{$iscsitab->getNodesAttribs(\@nodes,[qw(server target)])};
+  }
   my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
   mkpath($tftpdir."/xcat/xnba/nodes/");
   foreach (@nodes) {
@@ -444,7 +455,7 @@ sub process_request {
       $response{node}->[0]->{data}->[0]= getstate($_);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash);
+      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%iscsihash);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
