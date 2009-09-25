@@ -981,6 +981,7 @@ sub setobjdefs
 
 		my @setattrlist=();
 		my @checkedattrs;
+                my $invalidattr;
 
         foreach my $this_attr (@{$datatype->{'attrs'}})
         {
@@ -1042,18 +1043,26 @@ sub setobjdefs
                         }
 						xCAT::MsgUtils->message("I", $rsp, $::callback);
 						push(@checkedattrs, $attr_name);
+                        if ( $invalidattr->{$attr_name}->{valid} ne 1 ) {
+                            $invalidattr->{$attr_name}->{valid} = 0;
+                            $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";
+                        }
+
                         next;
                     }
 
 					if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr}  =~ /\b$check_value\b/) )
                     {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Cannot set the \'$attr_name\' attribute unless \'$check_attr=$check_value\'.\n";
-                        xCAT::MsgUtils->message("E", $rsp, $::callback);
-                        next;
+                        if ( $invalidattr->{$attr_name}->{valid} ne 1 ) {
+                            $invalidattr->{$attr_name}->{valid} = 0;
+                            $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";
 
+                        }
+
+                        next;
                     }
                 }
+                $invalidattr->{$attr_name}->{valid} = 1;
 
                 #  get the info needed to write to the DB table
                 #
@@ -1172,6 +1181,15 @@ sub setobjdefs
 			push(@setattrlist, $attr_name);
 
         }    # end - foreach attribute
+
+        my $rsp;
+        foreach my $att (keys %$invalidattr) {
+            if ( $invalidattr->{$att}->{valid} ne 1) {
+my $tt = $invalidattr->{$att}->{valid};
+                push @{$rsp->{data}}, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition}.\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+            }
+        }
 
 
 # TODO - need to get back to this
