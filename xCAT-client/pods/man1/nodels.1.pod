@@ -2,7 +2,6 @@
 
 B<nodels> - lists the nodes, and their attributes, from the xCAT database.
 
-
 =head1 SYNOPSIS
 
 B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table.column> | I<shortname>] [I<...>]
@@ -10,7 +9,6 @@ B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table.column> | I<shor
 B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table>]
 
 B<nodels> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
-
 
 =head1 DESCRIPTION
 
@@ -58,12 +56,10 @@ Select nodes where the table.column value does not match a given regular express
 
 =back
 
-
 The B<nodels> command with a specific node and one or more table.attribute parameters is a good substitute
 for grep'ing through the tab files, as was typically done in xCAT 1.x.  This is because nodels will translate
 any regular expression rows in the tables into their meaning for the specified node.  The tab* commands
 will not do this, instead they will just display the regular expression row verbatim.
-
 
 =head1 OPTIONS
 
@@ -83,21 +79,11 @@ Display usage message.
 
 =back
 
-
 =head1 RETURN VALUE
 
-=over 3
+0  The command completed successfully.
 
-=item 0
-
-The command completed successfully.
-
-=item 1
-
-An error has occurred.
-
-=back
-
+1  An error has occurred.
 
 =head1 EXAMPLES
 
@@ -206,6 +192,7 @@ Listing the switch.switch value for nodes in the second rack:
  nodels all nodepos.rack==2 switch.switch
 
 Output is similar to:
+
    n41: switch.switch: switch2
    n42: switch.switch: switch2
    n43: switch.switch: switch2
@@ -227,6 +214,7 @@ Listing the blade slot number for anything managed through a device with a name 
  nodels all mp.mpa=~/^amm.*/ mp.id
 
 Output looks like:
+
    blade1: mp.id: 1
    blade10: mp.id: 10
    blade11: mp.id: 11
@@ -241,15 +229,11 @@ Output looks like:
    blade8: mp.id: 8
    blade9: mp.id: 9
 
-
-
 =back
-
 
 =head1 FILES
 
 /opt/xcat/bin/nodels
-
 
 =head1 SEE ALSO
 
