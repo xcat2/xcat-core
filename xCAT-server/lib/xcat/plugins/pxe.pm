@@ -4,6 +4,7 @@ use Data::Dumper;
 use Sys::Syslog;
 use Socket;
 use File::Copy;
+use Getopt::Long;
 
 my $addkcmdlinehandled;
 my $request;
@@ -13,7 +14,7 @@ my $tftpdir = "/tftpboot";
 #my $dhcpver = 3;
 
 my %usage = (
-    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot]",
+    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>]",
 );
 sub handled_commands {
   return {
@@ -195,6 +196,53 @@ sub preprocess_request {
    #they specify no sharedtftp in site table
    my $stab = xCAT::Table->new('site');
    my $req = shift;
+   my $callback1 = shift;
+   my $command = $req->{command}->[0];
+   my $sub_req = shift;
+   my @args=();
+   if (ref($req->{arg})) {
+       @args=@{$req->{arg}};
+    } else { 
+        @args=($req->{arg});
+    }
+    @ARGV = @args;
+    GetOpt::Long::Configure("bundling");
+    Getopt::Long::Configure("pass_through");
+    if (!GetOptions('h|?|help' => \$HELP, 'v|version' => \$VERSION) ) {
+        if($usage{$command}) {
+            my %rsp;
+            $rsp{data}->[0]=$usage{$command};
+            $callback1->(\%rsp);
+        }
+        return;
+    }
+
+    if ($HELP) {
+        if($usage{$command}) {
+            my %rsp;
+            $rsp{data}->[0]=$usage{$command};
+            $callback1->(\%rsp);
+        }
+        return;
+    }
+
+    if ($VERSION) {
+        my $ver = xCAT::Utils->Version();
+        my %rsp;
+        $rsp{data}->[0]="$ver";
+        $callback1->(\%rsp);
+        return; 
+    }
+
+    if (@ARGV==0) {
+        if($usage{$command}) {
+            my %rsp;
+            $rsp{data}->[0]=$usage{$command};
+            $callback1->(\%rsp);
+        }
+        return;
+    }
+
    my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    if ($sent and ($sent->{value} == 0 or $sent->{value} =~ /no/i)) {
       $req->{'_disparatetftp'}=[1];
@@ -271,15 +319,6 @@ sub process_request {
     if ($request->{node}) { @rnodes = ($request->{node}); }
   }
 
-  my $args_ref = $request->{arg};
-  if(scalar grep(/^--version$|^-v$/, @$args_ref)) {
-      my $ver = xCAT::Utils->Version();
-      my %rsp;
-      $rsp{data}->[0]="$ver";
-      $callback->(\%rsp);
-      return;
-  }
-
   unless (@rnodes) {
       if ($usage{$request->{command}->[0]}) {
           $callback->({data=>$usage{$request->{command}->[0]}});
@@ -298,7 +337,29 @@ sub process_request {
   } else {
      @nodes = @rnodes;
   }
+
+  if (ref($request->{arg})) {
+      @args=@{$request->{arg}};
+  } else {
+      @args=($request->{arg});
+  }
+
+   #now run the begin part of the prescripts
+   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
+       $errored=0;
+       if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+           $sub_req->({command=>['runbeginpre'],
+           node=>\@nodes,
+           arg=>[$args[0], '-l']},\&pass_along);
+       } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
+        $sub_req->({command=>['runbeginpre'],   
+                    node=>\@rnodes,
+                    arg=>[$args[0]]},\&pass_along);
+       }
+       if ($errored) { return; }
+   }
   
+#end prescripts code
   if (! -r "$tftpdir/pxelinux.0") {
     unless (-r "/usr/lib/syslinux/pxelinux.0" or -r "/usr/share/syslinux/pxelinux.0") {
        $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
@@ -317,16 +378,15 @@ sub process_request {
   }
 
       
-  if (ref($request->{arg})) {
-    @args=@{$request->{arg}};
-  } else {
-    @args=($request->{arg});
-  }
   $errored=0;
+  my $inittime=0;
+  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];}
+  if (!$inittime) { $inittime=0;}
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
     $sub_req->({command=>['setdestiny'],
-           node=>\@nodes,
-         arg=>[$args[0]]},\&pass_along);
+               node=>\@nodes,
+               inittime=>[$inittime],
+               arg=>[$args[0]]},\&pass_along);
   }
   if ($errored) { return; }
   #Time to actually configure the nodes, first extract database data with the scalable calls
@@ -351,16 +411,51 @@ sub process_request {
       }
     }
   }
-  if ($request->{inittime}->[0]) { return; } #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
-  if ($args[0] ne 'stat') {
-  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-    $sub_req->({command=>['makedhcp'],arg=>['-l'],
-           node=>\@nodes},$callback);
-  } else {
-    $sub_req->({command=>['makedhcp'],
-           node=>\@nodes},$callback);
-   }
+
+  my $inittime=0;
+  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];} 
+  if (!$inittime) { $inittime=0;}
+
+  #dhcp stuff -- inittime is set when xcatd on sn is started
+  unless (($args[0] eq 'stat') || ($inittime)) {
+      my $do_dhcpsetup=1;
+      my $sitetab = xCAT::Table->new('site');
+      if ($sitetab) {
+          (my $ref) = $sitetab->getAttribs({key => 'dhcpsetup'}, 'value');
+          if ($ref) {
+             if ($ref->{value} =~ /0|n|N/) { $do_dhcpsetup=0; }
+          }
+      }
+      
+      if ($do_dhcpsetup) {
+        if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+            $sub_req->({command=>['makedhcp'],arg=>['-l'],
+                        node=>\@nodes},$callback);
+        } else {
+            $sub_req->({command=>['makedhcp'],
+                       node=>\@nodes},$callback);
+        }
+     }  
+
   }
+  #now run the end part of the prescripts
+  unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
+      $errored=0;
+      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles 
+y own children
+         $sub_req->({command=>['runendpre'],
+                     node=>\@nodes,
+                     arg=>[$args[0], '-l']},\&pass_along);
+      } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their
+masters
+         $sub_req->({command=>['runendpre'],   
+                     node=>\@rnodes,
+                     arg=>[$args[0]]},\&pass_along);
+      }
+      if ($errored) { return; }
+  }
+
+
 
 }
 
