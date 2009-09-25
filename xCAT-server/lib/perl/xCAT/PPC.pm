@@ -51,6 +51,7 @@ my %errmsg = (
         DB_UNDEF   =>"'%s' database not defined"
         );
 
+my $subreq;
 
 ##########################################################################
 # Invokes the callback with the specified message                    
@@ -1118,7 +1119,7 @@ sub invoke_cmd {
     ########################################
     # Process specific command 
     ########################################
-    my $result = runcmd( $request, $nodes, \@exp );
+    my $result = runcmd( $request, $nodes, \@exp , $subreq);
 
     ########################################
     # Close connection to remote server
@@ -1371,6 +1372,7 @@ sub process_request {
     my $package  = shift;
     my $req      = shift;
     my $callback = shift;
+    $subreq      = shift;
 
     ####################################
     # Get hwtype 

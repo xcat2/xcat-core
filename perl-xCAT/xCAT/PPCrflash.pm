@@ -539,6 +539,7 @@ sub rflash {
     my $request = shift;
     my $hash    = shift;
     my $exp     = shift;
+    my $subreq  = shift;
     my $hwtype  = @$exp[2];
     my @result;
     my $timeout    = $request->{ppctimeout};
@@ -704,9 +705,9 @@ sub rflash {
 	close TMP;
 	
 	##################################
-    	# Get userid/password
-    	##################################
-    	my $cred = $request->{$hmc}{cred};
+    # Get userid/password
+    ##################################
+    my $cred = $request->{$hmc}{cred};
 	$user =  @$cred[0];
 	
 	dpush(\@value, [$hmc,"user: $user"]);;
@@ -716,23 +717,26 @@ sub rflash {
 	my $rpm_file_list = join(" ", @rpm_files);	
 	my $xml_file_list = join(" ", @xml_files);	
 	###############################
-	#Prepare for "xdcp"-----runDcp_api
+	#Prepare for "xdcp"-----runDcp_api  is removed.
 	##############################
-	my %options = ();
-	$options{ 'user' } = $user; 
-	$options{ 'nodes' } = $hmc; 
-	$options{ 'exit-status' } = 1;
-	$options{ 'preserve' } = 1;
-	$options{ 'source' } = "$tmp_file $rpm_file_list $xml_file_list";
-	$options{ 'target' } = "/tmp";
-	
-	my @res = xCAT::DSHCLI->runDcp_api( \%options, 0);
-	my $Rc = shift(@res);
-	if ($::RUNCMD_RC || $Rc =~ /denied/) {   # error from dcp
-        	my $rsp={};
-		dpush(\@value, [$hmc,"invoking RunDcp_api()"]);
-        	$rsp->{data}->[0] = "Error from dsh. Return Code = $::RUNCMD_RC";
-        	xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+    my $source = "$tmp_file $rpm_file_list $xml_file_list";
+    my $target = "/tmp";
+   	my $current_userid = getpwuid($>);
+        
+    my $res = xCAT::Utils->runxcmd(  {
+                                     command => ['xdcp'],
+                                     node    => [$hmc],
+                                     arg     => [ "-l", $user, $source, $target  ],
+				                     env => ["DSH_FROM_USERID=$current_userid","DSH_TO_USERID=$user"],
+                                  },
+                                   $subreq, 0, 1);
+	print Dumper(@$res);
+
+    if ($::RUNCMD_RC ) {   # error from dcp
+       	my $rsp={};
+		dpush(\@value, [$hmc,"invoking xdcp"]);
+      	$rsp->{data}->[0] = "Error from xdcp. Return Code = $::RUNCMD_RC";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 		push(@value,[$hmc,$rsp->{data}->[0]]);
 		push(@value,[$hmc,"Failed to copy $tmp_file $rpm_file_list $xml_file_list to $hmc"]);
         #push(@value,[$hmc,"Please check whether the HMC $hmc is configured to allow remote ssh connections"]);
@@ -741,14 +745,12 @@ sub rflash {
     	}
 
 	my $r = ();
-	foreach $r (@res){
+	foreach $r (@$res){
 		push(@value, [$r]);	
 
 	}
 		
 	
-#	print_var(@res);
-	%options = ();
 	push(@value,[$hmc, "copy files to $hmc completely"]);
 
 	###############################################
@@ -776,16 +778,21 @@ sub rflash {
 #  The above code isn't supported.
     
     my $cmd_hmc = "csmlicutil $tmp_file";
-    #my $cmd_hmc = "ls";
-    my $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $hmc -l$user \"$cmd_hmc\"";
-    $SIG{CHLD} = ();
-    @res = `$cmd`;
-    $::RUNCMD_RC = $?;
-	if ($::RUNCMD_RC ) {    # error from dsh 
+    print "before runxcmd, current_userid = $current_userid\n";
+    my $res = xCAT::Utils->runxcmd(  {
+                                     command => ['xdsh'],
+                                     node    => [$hmc],
+                                     arg     => [ "-l", $user , $cmd_hmc ],
+	                			     env => ["DSH_FROM_USERID=$current_userid","DSH_TO_USERID=$user"],
+                                  },
+                                   $subreq, 0, 1);
+	print Dumper(@$res);
+
+    if ($::RUNCMD_RC ) {    # error from dsh 
         my $rsp={};
         $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
         xCAT::MsgUtils->message("S", $rsp, $::CALLBACK, 1);
-		dpush(\@value,[$hmc,"failed to run  $cmd"]);
+		dpush(\@value,[$hmc,"failed to run  xdsh"]);
 		push(@value,[$hmc,$rsp->{data}->[0]]);
 		push (@value, [$hmc,"Failed to upgrade the firmware of $mtms_t  on $hmc"]);
 		return(\@value);
@@ -793,7 +800,7 @@ sub rflash {
 
 
 	my $r = ();
-	foreach $r (@res){
+	foreach $r (@$res){
 		push(@value, [$r]);	
         #hmc1: mtms : LIC_RC = 0 -- successful
         #hmc1: mtms : LIC_RC = 8 -- failed
