@@ -108,7 +108,7 @@ sub setstate {
     print $pcfg "#".$cref->{currstate}."\n";
   }
   if ($cref and $cref->{currstate} eq "boot") {
-    print $pcfg "hdboot\n";
+    print $pcfg "exit\n";
     close($pcfg);
   } elsif ($kern and $kern->{kernel}) {
     if ($kern->{kernel} =~ /!/) { #TODO: deprecate this, do stateless Xen like stateless ESXi
