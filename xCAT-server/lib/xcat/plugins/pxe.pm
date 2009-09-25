@@ -206,7 +206,7 @@ sub preprocess_request {
         @args=($req->{arg});
     }
     @ARGV = @args;
-    GetOpt::Long::Configure("bundling");
+    Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     if (!GetOptions('h|?|help' => \$HELP, 'v|version' => \$VERSION) ) {
         if($usage{$command}) {
@@ -441,13 +441,11 @@ sub process_request {
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
       $errored=0;
-      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles 
-y own children
+      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
          $sub_req->({command=>['runendpre'],
                      node=>\@nodes,
                      arg=>[$args[0], '-l']},\&pass_along);
-      } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their
-masters
+      } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
          $sub_req->({command=>['runendpre'],   
                      node=>\@rnodes,
                      arg=>[$args[0]]},\&pass_along);
