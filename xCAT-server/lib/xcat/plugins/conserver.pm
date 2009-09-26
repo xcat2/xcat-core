@@ -309,7 +309,10 @@ sub makeconservercf {
             dotsent($_,\@filecontent);
             $termservers{$_->{termserver}}=1; #prevent needless cycles being burned
           }
-          donodeent($_,\@filecontent,$delmode);
+          if (donodeent($_,\@filecontent,$delmode) eq "BADCFG") {
+              $cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
+
+          }
         }
       }
     }
@@ -338,7 +341,9 @@ sub makeconservercf {
           $termservers{$_->{termserver}}=1; #prevent needless cycles being burned
         }
         if ( $type{$_->{node}} !~ /fsp|bpa|hmc|ivm/ ) {
-          donodeent($_,\@filecontent);
+          if (donodeent($_,\@filecontent) eq "BADCFG") {
+              $cb->({node=>[{name=>$_,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
+          }
         }
       }
     }
@@ -440,10 +445,13 @@ sub donodeent {
   if ($delmode) {
       return;
   }
+  my $cmeth=$cfgent->{cons};
+  if (not $cmeth or (grep(/^$cmeth$/,@cservers) and (not $cfgent->{termserver} or not $cfgent->{termport}))) {
+      return "BADCFG";
+  }
   push @$content,"#xCAT BEGIN $node CONS\n";
   push @$content,"console $node {\n";
   #if ($cfgent->{cons}
-  my $cmeth=$cfgent->{cons};
   #print $cmeth."\n";
   if (grep(/^$cmeth$/,@cservers)) {
     push @$content," include ".$cfgent->{termserver}.";\n";
