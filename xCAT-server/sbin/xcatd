@@ -112,9 +112,18 @@ my $port;
 my $sport;
 my $domain;
 my $xcatdir;
-my $sitetab=xCAT::Table->new('site');
+my $sitetab;
+my $retries = 0;
+# The database initialization may take some time in the system boot scenario
+# wait for a while for the database initialization
+while (!($sitetab=xCAT::Table->new('site')) && $retries < 20)
+{
+    print ("Can not open basic site table for configuration, waiting the database to be initialized.\n");
+    sleep 1;
+    $retries++;
+}
 unless ($sitetab) {
-    print ("ERROR: Unable to open basic site table for configuration\n");
+    die "ERROR: Unable to open basic site table for configuration\n";
 }
 
 my ($tmp) = $sitetab->getAttribs({'key'=>'xcatdport'},'value');
