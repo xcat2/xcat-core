@@ -739,7 +739,7 @@ sub rflash {
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 		push(@value,[$hmc,$rsp->{data}->[0]]);
 		push(@value,[$hmc,"Failed to copy $tmp_file $rpm_file_list $xml_file_list to $hmc"]);
-        #push(@value,[$hmc,"Please check whether the HMC $hmc is configured to allow remote ssh connections"]);
+        push(@value,[$hmc,"Please check whether the HMC $hmc is configured to allow remote ssh automatic connections"]);
 		push (@value, [$hmc,"Failed to upgrade the firmware of $mtms_t  on $hmc"]);
 		return(\@value);
     	}
