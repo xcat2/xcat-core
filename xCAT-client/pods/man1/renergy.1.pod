@@ -45,17 +45,15 @@ costs about 30 seconds to complete. Query for the others attributes
 will get response immediately.
 
 
-The energy capability of specific hardware: 
+Only following specific hardware types are supported by B<renergy> command:
 
-8204-E8A 
+8203-E4A, 8204-E8A 
     Supports attributes: all
 
-9125-F2A, 9119-FHA 
+9125-F2A 
     Supports attributes: savingstatus,CPUspeed,ambienttemp, 
     exhausttemp,averageAC
 
-9117-MMA (cpu speed should greater than 4.0 GHz)
-    Supports attributes: powersaving
 
 =head1 B<OPTIONS>
 
