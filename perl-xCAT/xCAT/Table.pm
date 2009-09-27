@@ -587,6 +587,10 @@ sub new
                 $self->{dbh}->do($str);
             }
         } else { #generic DBI
+           if (!$self->{dbh})
+           {
+               return undef;
+           }
            my $tbexistq = $self->{dbh}->table_info('','',$self->{tabname},'TABLE');
         my $found = 0;
            while (my $data = $tbexistq->fetchrow_hashref) {
