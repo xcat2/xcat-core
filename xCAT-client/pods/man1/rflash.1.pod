@@ -20,7 +20,7 @@ The POWER5  and POWER6 systems contain several components that use Licensed Inte
 
 The B<noderange> can be an CEC or CEC list, a Lpar or Lpar list and a BPA or BPA list. But CEC (or Lpar) and BPA B<can't> be used at the same time. When the I<noderange> is an CEC or CEC list, B<rflash> will upgrade the firmware of the CEC or CECs in the cec list. If I<noderange> is a Lpar or Lpar list, B<rflash> will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes.  If I<noderange> is a BPA or BPA list, B<rflash> will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The I<noderange> can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the I<noderange>  man  page  for  detailed usage information. 
 
-The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates. Before run B<rflash>, please use B<rspconfig> to make sure if the related HMC ssh is enabledn. If using HMC to enable ssh connection, please use B<rspconfig> comamnd.
+The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates. Before run B<rflash>, please use B<rspconfig> to check if the related HMC ssh is enabled. If enable a HMC ssh connection, please use B<rspconfig> comamnd.
 
 B<Warning!>  This command may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems.
 
