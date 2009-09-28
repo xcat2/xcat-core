@@ -913,7 +913,6 @@ sub mkvms {
     GetOptions(
         'size|s=s' => \$disksize
         );
-    $disksize = getUnits($disksize,'G',1024);
     my $node;
     $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
     unless (validate_datastore_prereqs($nodes,$hyp)) {
@@ -1193,7 +1192,8 @@ sub create_nic_devs {
 sub create_storage_devs {
     my $node = shift;
     my $sdmap = shift;
-    my $size = shift;
+    my $sizes = shift;
+    my @sizes = split /[,:]/, $sizes;
     my $scsicontrollerkey=0;
     my $idecontrollerkey=200; #IDE 'controllers' exist at 200 and 201 invariably, with no flexibility?
                               #Cannot find documentation that declares this absolute, but attempts to do otherwise
@@ -1209,6 +1209,9 @@ sub create_storage_devs {
     my %disktocont;
     my $dev;
     foreach (split /,/,$tablecfg{vm}->{$node}->[0]->{storage}) {
+        my $disksize = shift @sizes;
+        unless (scalar @sizes) { @sizes = ($disksize); } #if we emptied the array, stick the last entry back on to allow it to specify all remaining disks
+        $disksize = getUnits($disksize,'G',1024);
         s/\/$//;
         $backingif = VirtualDiskFlatVer2BackingInfo->new(diskMode => 'persistent',
                                                            fileName => "[".$sdmap->{$_}."]");
@@ -1230,7 +1233,7 @@ sub create_storage_devs {
                         controllerKey => $idecontrollerkey,
                         key => $currkey++,
                         unitNumber => $unitnum++,
-                        capacityInKB => $size); 
+                        capacityInKB => $disksize); 
         push @devs,VirtualDeviceConfigSpec->new(device => $dev,
                                                 fileOperation => VirtualDeviceConfigSpecFileOperation->new('create'),
                                                 operation =>  VirtualDeviceConfigSpecOperation->new('add'));
