@@ -84,8 +84,10 @@ sub preprocess_request
     my $nodes    = $req->{node};
     my $service  = "xcat";
     my @requests;
-    if ($nodes){  
-      return [$req]; #For now, do not distribute, nodestat seems to lose accuracy and slow down distributed
+    if ($nodes){ 
+      if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') { 
+        return [$req]; #For now, do not distribute, nodestat seems to lose accuracy and slow down distributed, if using nmap
+      }
       # find service nodes for requested nodes
       # build an individual request for each service node
       my $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
