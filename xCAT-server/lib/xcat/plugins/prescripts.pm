@@ -180,7 +180,7 @@ sub runbeginpre
 		}
 		if ($err_code != 0) {
 		    $rsp = {};
-		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code.";
+		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
 		    $callback->($rsp);
 		    last;
 		}
@@ -233,7 +233,7 @@ sub runendpre
 		}
 		if ($err_code != 0) {
 		    $rsp = {};
-		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code.";
+		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
 		    $callback->($rsp);
 		    last;
 		}
