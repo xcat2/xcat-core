@@ -1829,7 +1829,7 @@ sub copycd {
         while($line = <LINE>){
             chomp($line);
             if($line =~ /VMware ESXi version 4.0.0/){
-                $darch = "x86";
+                $darch = "x86_64";
                 $distname = "esxi4";
                 $found = 1;
                 if( $arch and $arch ne $darch){
@@ -2007,37 +2007,67 @@ sub mknetboot {
 		my $arch = $ent->{'arch'};
 		my $profile = $ent->{'profile'};
 		my $osver = $ent->{'os'};
-		if($arch ne 'x86'){	
-			sendmsg([1,"VMware ESX hypervisors are x86, please change the nodetype.arch value to x86 instead of $arch for $node before proceeding:
-e.g: nodech $node nodetype.arch=x86\n"]);
-			return;
-		}
+		#if($arch ne 'x86'){	
+		#	sendmsg([1,"VMware ESX hypervisors are x86, please change the nodetype.arch value to x86 instead of $arch for $node before proceeding:
+        #e.g: nodech $node nodetype.arch=x86\n"]);
+		#	return;
+		#}
 		# first make sure copycds was done:
+        my $custprofpath = $profile;
+        unless ($custprofpath =~ /^\//) {#If profile begins with a /, assume it already is a path
+            $custprofpath = $installroot."/custom/install/esxi/$arch/$profile";
+        }
 		unless(
-				-r "$installroot/$osver/$arch/mboot.c32"
+            -r "$custprofpath/vmkboot.gz"
+			or	-r "$installroot/$osver/$arch/mboot.c32"
 			or -r "$installroot/$osver/$arch/install.tgz" ){
-			sendmsg([1,"Please run copycds first for $osver"]);
+			sendmsg([1,"Please run copycds first for $osver or create custom image in $custprofpath/"]);
 		}
 
 		mkpath("$tftpdir/xcat/netboot/$osver/$arch/");
+        my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz oem.tgz license.tgz mod.tgz/; #Required modules for an image to be considered complete
+        my %mods;
+        foreach (@reqmods) {
+            $mods{$_} = 1;
+        }
 		unless($donetftp{$osver,$arch}) {
 			my $srcdir = "$installroot/$osver/$arch";
 			my $dest = "$tftpdir/xcat/netboot/$osver/$arch";
-			cpNetbootImages($osver,$srcdir,$dest);
+			cpNetbootImages($osver,$srcdir,$dest,$custprofpath,\%mods);
             makecustomizedmod($osver,$dest);
 			copy("$srcdir/mboot.c32", $dest);
 			$donetftp{$osver,$arch,$profile} = 1;
 		}
-		# now make <HEX> file entry stuff
 		my $tp = "xcat/netboot/$osver/$arch";
+        my $bail=0;
+        foreach (@reqmods) {
+            unless (-r "$tftpdir/$tp/$_") { 
+                sendmsg([1,"$_ is missing from the target destination, ensure that either copycds has been run or that $custprofpath contains this file"]);
+                $bail=1; #only flag to bail, present as many messages as possible to user
+            }
+        }
+        if ($bail) { #if the above loop detected one or more failures, bail out
+           return;
+        }
+		# now make <HEX> file entry stuff
 		my $kernel = "$tp/mboot.c32";
 		my $prepend = "$tp/vmkboot.gz";
+        delete $mods{"vmkboot.gz"};
 		my $append = " --- $tp/vmk.gz";
+        delete $mods{"vmk.gz"};
 		$append .= " --- $tp/sys.vgz";
+        delete $mods{"sys.vgz"};
 		$append .= " --- $tp/cim.vgz";
+        delete $mods{"cim.vgz"};
 		$append .= " --- $tp/oem.tgz";
+        delete $mods{"oem.tgz"};
 		$append .= " --- $tp/license.tgz";
+        delete $mods{"license.tgz"};
 		$append .= " --- $tp/mod.tgz";
+        delete $mods{"mod.tgz"};
+        foreach (keys %mods) {
+            $append .= " --- $tp/$_";
+        }
 		if (defined $bpadds->{$node}->[0]->{addkcmdline}) {
             my $modules;
             my $kcmdline;
@@ -2069,11 +2099,13 @@ sub cpNetbootImages {
 	my $osver = shift;
 	my $srcDir = shift;
 	my $destDir = shift;	
+    my $overridedir = shift;
+    my $modulestoadd = shift;
 	my $tmpDir = "/tmp/xcat.$$";
 	if($osver =~ /esxi4/){
 		# we don't want to go through this all the time, so if its already
 		# there we're not going to extract:
-		if(   -r "$destDir/vmk.gz" 
+		unless(   -r "$destDir/vmk.gz" 
 			and -r "$destDir/vmkboot.gz"
 			and -r "$destDir/sys.vgz"
 			and -r "$destDir/license.tgz"
@@ -2083,47 +2115,58 @@ sub cpNetbootImages {
 			and -r "$destDir/cimstg.tgz"
 			and -r "$destDir/boot.cfg"
 		){
-			# files already copied don't need to replace.
-            sendmsg("images ready in $destDir");
-			return;
-		}
-		mkdir($tmpDir);
-		chdir($tmpDir);
-		sendmsg("extracting netboot files from OS image.  This may take about a minute or two...hopefully you have ~1GB free in your /tmp dir\n");
-		my $cmd = "tar zxvf $srcDir/image.tgz";
-		print "\n$cmd\n";
-		if(system("tar zxf $srcDir/image.tgz")){
-			sendmsg([1,"Unable to extract $srcDir/image.tgz\n"]); 
-		}
-		# this has the big image and may take a while.
-		# this should now create:
-		# /tmp/xcat.1234/usr/lib/vmware/installer/VMware-VMvisor-big-164009-x86_64.dd.bz2 or some other version.  We need to extract partition 5 from it.
-		system("bunzip2 $tmpDir/usr/lib/vmware/installer/*bz2");
-		sendmsg("finished extracting, now copying files...\n");
+            if (-r "$srcDir/image.tgz") { #it still may work without image.tgz if profile customization has everything replaced
+		    mkdir($tmpDir);
+		    chdir($tmpDir);
+            sendmsg("extracting netboot files from OS image.  This may take about a minute or two...hopefully you have ~1GB free in your /tmp dir\n");
+            my $cmd = "tar zxvf $srcDir/image.tgz";
+            print "\n$cmd\n";
+            if(system("tar zxf $srcDir/image.tgz")){
+                sendmsg([1,"Unable to extract $srcDir/image.tgz\n"]); 
+            }
+            # this has the big image and may take a while.
+            # this should now create:
+            # /tmp/xcat.1234/usr/lib/vmware/installer/VMware-VMvisor-big-164009-x86_64.dd.bz2 or some other version.  We need to extract partition 5 from it.
+            system("bunzip2 $tmpDir/usr/lib/vmware/installer/*bz2");
+            sendmsg("finished extracting, now copying files...\n");
 	
-		# now we need to get partition 5 which has the installation goods in it.
-		my $scmd = "fdisk -lu $tmpDir/usr/lib/vmware/installer/*dd 2>&1 | grep dd5 | awk '{print \$2}'";
-		print "running: $scmd\n";
-		my $sector = `$scmd`;
-		chomp($sector);
-		my $offset = $sector * 512;
-		mkdir "/mnt/xcat";
-		my $mntcmd = "mount $tmpDir/usr/lib/vmware/installer/*dd  /mnt/xcat -o loop,offset=$offset";
-		print "$mntcmd\n";
-		if(system($mntcmd)){
-			sendmsg([1,"unable to mount partition 5 of the ESX netboot image to /mnt/xcat"]);
-			return;
-		}
-		
-		if(system("cp /mnt/xcat/* $destDir/")){
-			sendmsg([1,"Could not copy netboot contents to $destDir"]);
-			system("umount /mnt/xcat");
-			return;
-		}
-		chdir("/tmp");
-		system("umount /mnt/xcat");
-		print "tempDir: $tmpDir\n";
-		system("rm -rf $tmpDir");
+            # now we need to get partition 5 which has the installation goods in it.
+            my $scmd = "fdisk -lu $tmpDir/usr/lib/vmware/installer/*dd 2>&1 | grep dd5 | awk '{print \$2}'";
+            print "running: $scmd\n";
+            my $sector = `$scmd`;
+            chomp($sector);
+            my $offset = $sector * 512;
+            mkdir "/mnt/xcat";
+            my $mntcmd = "mount $tmpDir/usr/lib/vmware/installer/*dd  /mnt/xcat -o loop,offset=$offset";
+            print "$mntcmd\n";
+            if(system($mntcmd)){
+                sendmsg([1,"unable to mount partition 5 of the ESX netboot image to /mnt/xcat"]);
+                return;
+            }
+            
+            if(system("cp /mnt/xcat/* $destDir/")){
+                sendmsg([1,"Could not copy netboot contents to $destDir"]);
+                system("umount /mnt/xcat");
+                return;
+            }
+            chdir("/tmp");
+            system("umount /mnt/xcat");
+            print "tempDir: $tmpDir\n";
+            system("rm -rf $tmpDir");
+            }
+        }
+        if (-d $overridedir) { #Copy over all modules 
+            use File::Basename;
+            foreach (glob "$overridedir/*") {
+                my $mod = scalar fileparse($_);
+                if ($mod !~ /mboot.c32/ and $mod !~ /boot.cfg/ and $mod !~ /pkgdb.tgz/) {
+                    $modulestoadd->{$mod}=1;
+                }
+                copy($_,"$destDir/$mod") or sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"]);
+            }
+        }
+
+
 	}else{
 			sendmsg([1,"VMware $osver is not supported for netboot"]);
 	}
