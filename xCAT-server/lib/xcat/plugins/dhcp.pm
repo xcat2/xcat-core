@@ -266,7 +266,7 @@ sub addnode
                 $lstatements = 'option root-path \"'.$iscsirootpath.'\";'.$lstatements;
             }
         }
-        if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {
+        if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'xnba' and $lstatements !~ /filename/) {
             if (-f "$tftpdir/xcat/xnba.kpxe") {
                 if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
                     $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
@@ -274,6 +274,14 @@ sub addnode
                     $lstatements = 'if option user-class-identifier = \"xNBA\" { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive xNBA
                 } 
             } #TODO: warn when windows
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {
+            if (-f "$tftpdir/xcat/xnba.kpxe") {
+                if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
+                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
+                } else {
+                    $lstatements = 'filename = \"pxelinux.0\";'.$lstatements;
+                }
+            }
         }
 
 
