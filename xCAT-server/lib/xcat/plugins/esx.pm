@@ -1039,6 +1039,7 @@ sub getcfgdatastore {
     unless ($cfgdatastore) {
         $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{storage}; 
         #TODO: if multiple drives are specified, make sure to split this out
+        #DONE: I believe the regex after this conditional takes care of that case already..
     }
     $cfgdatastore =~ s/,.*$//;
     $cfgdatastore =~ s/\/$//;
@@ -1208,13 +1209,18 @@ sub create_storage_devs {
                    #changing hypervisor technology
     my %disktocont;
     my $dev;
-    foreach (split /,/,$tablecfg{vm}->{$node}->[0]->{storage}) {
+    my @storelocs = split /,/,$tablecfg{vm}->{$node}->[0]->{storage};
+    #number of devices is the larger of the specified sizes (TODO: masters) or storage pools to span
+    my $numdevs = (scalar @storelocs > scalar @sizes ? scalar @storelocs : scalar @sizes);
+    while ($numdevs-- > 0) {
+        my $storeloc = shift @storelocs;
+        unless (scalar @storelocs) { @storelocs = ($storeloc); } #allow reuse of one cfg specified pool for multiple devs
         my $disksize = shift @sizes;
         unless (scalar @sizes) { @sizes = ($disksize); } #if we emptied the array, stick the last entry back on to allow it to specify all remaining disks
         $disksize = getUnits($disksize,'G',1024);
-        s/\/$//;
+        $storeloc =~ s/\/$//;
         $backingif = VirtualDiskFlatVer2BackingInfo->new(diskMode => 'persistent',
-                                                           fileName => "[".$sdmap->{$_}."]");
+                                                           fileName => "[".$sdmap->{$storeloc}."]");
         if ($disktype eq 'ide' and $idecontrollerkey eq 1 and $unitnum eq 0) { #reserve a spot for CD
             $unitnum = 1;
         } elsif ($disktype eq 'ide' and $unitnum eq 2) { #go from current to next ide 'controller'
@@ -1238,6 +1244,7 @@ sub create_storage_devs {
                                                 fileOperation => VirtualDeviceConfigSpecFileOperation->new('create'),
                                                 operation =>  VirtualDeviceConfigSpecOperation->new('add'));
     }
+
     #It *seems* that IDE controllers are not subject to require creation, so we skip it
     if ($havescsidevs) { #need controllers to attach the disks to
         foreach(0..$scsicontrollerkey) {
