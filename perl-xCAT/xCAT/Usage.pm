@@ -150,7 +150,7 @@ my %usage = (
 "Usage:
     mkhwconn [-h|--help]
     mkhwconn noderange -t [--bind] [-V|--verbose]
-    mkhwconn noderange -p single_hmc [-P fsp/bpa passwd] [-V|--verbose]",
+    mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]",
     "rmhwconn" =>
 "Usage:
     rmhwconn [-h|--help]
