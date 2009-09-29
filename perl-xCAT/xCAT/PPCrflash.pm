@@ -539,7 +539,7 @@ sub rflash {
     my $request = shift;
     my $hash    = shift;
     my $exp     = shift;
-    my $subreq  = shift;
+    my $subreq  = $request->{subreq};
     my $hwtype  = @$exp[2];
     my @result;
     my $timeout    = $request->{ppctimeout};

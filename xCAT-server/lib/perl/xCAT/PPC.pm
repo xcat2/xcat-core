@@ -51,8 +51,6 @@ my %errmsg = (
         DB_UNDEF   =>"'%s' database not defined"
         );
 
-my $subreq;
-
 ##########################################################################
 # Invokes the callback with the specified message                    
 ##########################################################################
@@ -1119,7 +1117,7 @@ sub invoke_cmd {
     ########################################
     # Process specific command 
     ########################################
-    my $result = runcmd( $request, $nodes, \@exp , $subreq);
+    my $result = runcmd( $request, $nodes, \@exp );
 
     ########################################
     # Close connection to remote server
@@ -1372,7 +1370,7 @@ sub process_request {
     my $package  = shift;
     my $req      = shift;
     my $callback = shift;
-    $subreq      = shift;
+    my $subreq      = shift;
 
     ####################################
     # Get hwtype 
@@ -1387,6 +1385,7 @@ sub process_request {
     $request->{stdin}   = $req->{stdin}->[0]; 
 #    $request->{hwtype}  = $package;
     $request->{callback}= $callback;
+    $request->{subreq}  = $subreq;
     #########################
     #This is a special case for rspconfig and mkhwconn, 
     #we shouldn't set hwtype as$package. and reserved for other commands.
