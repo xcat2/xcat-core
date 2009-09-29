@@ -1199,9 +1199,16 @@ sub setAttribs
         {
 	    $newpairs{$_} = $keypairs{$_};
 	}
+        my $needinsert=0;
         for my $col (keys %$elems)
         {
-	    $newpairs{$col} = $$elems{$col};
+	        $newpairs{$col} = $$elems{$col};
+            if (defined $newpairs{$col} and not $newpairs{$col} eq "") {
+               $needinsert=1;
+            }
+        }
+        unless ($needinsert) {  #Don't bother inserting truly blank lines
+            return;
         }
 	foreach (keys %newpairs) {
             #$cols .= $_ . ",";  # mysql changes
