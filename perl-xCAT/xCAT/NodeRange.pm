@@ -232,9 +232,13 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         foreach (@allnodeset) {
             push @nodes,$_->{node};
         }
-        my $nbyc = nodesbycriteria(\@nodes,[$atom])->{$atom};
-        if (defined $nbyc) {
-            return @$nbyc;
+        my $nbyc_ref = nodesbycriteria(\@nodes,[$atom]);
+        if ($nbyc_ref)
+        {
+            my $nbyc = $nbyc_ref->{$atom};
+            if (defined $nbyc) {
+                return @$nbyc;
+            }
         }
         return ();
     }
