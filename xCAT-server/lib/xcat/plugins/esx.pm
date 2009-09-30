@@ -153,7 +153,7 @@ sub preprocess_request {
     my $hyptab = xCAT::Table->new('hypervisor');
     my $hyptabhash={};
     if ($hyptab) {
-        $hyptabhash = $hyptab->getNodesAttribs(\@hyps,['mgr']);
+        $hyptabhash = $hyptab->getNodesAttribs(\@hyps,['mgr','cluster','preferdirect']);
     }
 
 
