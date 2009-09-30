@@ -52,8 +52,8 @@ echo $HOSTNAME
 
 /sbin/portmap
 
-cat >/etc/init.d/xcatpostinit << EOF
-#INCLUDE_NOP:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit#
+cat >/etc/init.d/xcatpostinit << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit#
 EOF
 chmod 755 /etc/init.d/xcatpostinit
 ln -s /etc/init.d/xcatpostinit /etc/init.d/rc3.d/S84xcatpostinit
@@ -61,8 +61,8 @@ ln -s /etc/init.d/xcatpostinit /etc/init.d/rc4.d/S84xcatpostinit
 ln -s /etc/init.d/xcatpostinit /etc/init.d/rc5.d/S84xcatpostinit
 
 mkdir -p /opt/xcat
-cat >/opt/xcat/xcatdsklspost << EOF
-#INCLUDE_NOP:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
+cat >/opt/xcat/xcatdsklspost << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
 chkconfig xcatpostinit off
 EOF
 chmod 755 /opt/xcat/xcatdsklspost

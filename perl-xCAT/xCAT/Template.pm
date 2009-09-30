@@ -75,6 +75,8 @@ sub subvars {
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/#INCLUDE_NOP:([^#]+)#/includefile($1,1)/eg;
+  $inc =~ s/#INCLUDE:([^#]+)#/includefile($1, 0)/eg;
+
 
   if ($tmplerr) {
      close ($outh);
