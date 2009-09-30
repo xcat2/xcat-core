@@ -89,9 +89,16 @@ sub dbc_submit {
     print $clisock $data;
     $data="";
     my $lastline="";
-    while ($lastline ne "ENDOFFREEZEQFVyo4Cj6Q0j\n") { #index($lastline,"ENDOFFREEZEQFVyo4Cj6Q0j") < 0) {
+    while ($lastline ne "ENDOFFREEZEQFVyo4Cj6Q0j\n" and $lastline ne "*XCATBUGDETECTED*76e9b54341\n") { #index($lastline,"ENDOFFREEZEQFVyo4Cj6Q0j") < 0) {
         $lastline = <$clisock>;
-	$data .= $lastline;
+	    $data .= $lastline;
+    }
+    if ($lastline eq "*XCATBUGDETECTED*76e9b54341\n") { #if it was an error
+        #in the midst of the operation, die like it used to die
+        my $err;
+        $data =~ /\*XCATBUGDETECTED\*:(.*):\*XCATBUGDETECTED\*/s;
+        $err = $1;
+        die $err;
     }
     my @returndata = @{thaw($data)};
     if (wantarray) {
@@ -143,12 +150,25 @@ sub init_dbworker {
                             $clientset->add($dbconn);
                         }
                     } else {
-                        handle_dbc_conn($currcon,$clientset);
+                        eval {
+                            handle_dbc_conn($currcon,$clientset);
+                        };
+                        if ($@) { 
+                            my $err=$@;
+                            xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT DB worker ".$err);
+                            if ($currcon) {
+                                eval { #avoid hang by allowin client to die too
+                                    print $currcon "*XCATBUGDETECTED*:$err:*XCATBUGDETECTED*\n";
+                                    print $currcon "*XCATBUGDETECTED*76e9b54341\n";
+                                };
+                            }
+                        }
                     }
                 }
             };
-            if ($@) { 
-                xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT DB worker ".$@);
+            if ($@) { #this should never be reached, but leave it intact just in case
+                my $err=$@;
+                xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT DB worker ".$err);
             }
         }
         close($dbworkersocket);
