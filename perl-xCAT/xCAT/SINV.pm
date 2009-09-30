@@ -23,6 +23,7 @@ use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 use xCAT::Utils;
 use Fcntl qw(:flock);
 use Getopt::Long;
+use Data::Dumper;
 my $tempfile;
 my $errored = 0;
 my @dshresult;
@@ -1325,6 +1326,15 @@ sub xdshoutput
             push(@cmdresult, $line);
         }
     }
+    if ($rsp->{data})
+    {
+        foreach (@{$rsp->{data}})
+        {
+            my $line = $_;
+            $line .= "\n";
+            push(@cmdresult, $line);
+        }
+    }
 
     return $rc;
 
@@ -1342,7 +1352,8 @@ sub xdshoutput
 sub rinvoutput
 {
     my $rsp = shift;
-
+    #print "I am here \n"; 
+    #print Dumper($rsp); 
     # Handle node structure, like rinv returns
     my $errflg = 0;
 
@@ -1480,7 +1491,7 @@ sub storeresults
     close(XCOLL);
     close FILE;
 
-    #system("/bin/rm  $newtempfile");
+    system("/bin/rm  $newtempfile");
 
     # capture errors
     #
