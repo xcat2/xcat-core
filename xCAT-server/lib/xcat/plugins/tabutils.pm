@@ -934,7 +934,7 @@ sub nodech
             	            if ($curval) {
             	                my @vals = split(/,/, $curval);
             	                unless (grep /^$val$/, @vals) {
-            	                    @vals = (@vals, $val);
+                                    unshift @vals,$val;
             	                    my $newval = join(',', @vals);
             	                    $uhsh{$key} = $newval;
             	                }
