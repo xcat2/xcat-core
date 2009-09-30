@@ -417,6 +417,23 @@ sub connecthost_callback {
     }
 }
 
+sub get_clusterview {
+    my %args = @_;
+    my $clustname = $args{clustname};
+    my %subargs = (
+        view_type=>'ClusterComputeResource',
+    );
+    if ($args{properties}) {
+        $subargs{properties}=$args{properties};
+    }
+    foreach (@{$args{conn}->find_entity_views(%subargs)}) {
+       if ($_->name =~ /$clustname/) {
+           return $_;
+           last;
+       }
+    }
+}
+
 sub get_hostview {
     my %args = @_;
     my $host = $args{hypname};
