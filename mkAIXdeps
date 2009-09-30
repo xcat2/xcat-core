@@ -65,6 +65,9 @@ echo "rpm -Uvh popt-1.7-2.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 cp /opt/freeware/src/packages/RPMS/ppc/rsync-2.6.2-1.aix5.1.ppc.rpm $RPMDIR/
 echo "rpm -Uvh rsync-2.6.2-1.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 
+cp /opt/freeware/src/packages/RPMS/ppc/wget-1.9.1-1.aix5.1.ppc.rpm $RPMDIR/
+echo "rpm -Uvh wget-1.9.1-1.aix5.1.ppc.rpm" >> $RPMDIR/instoss
+
 cp /opt/freeware/src/packages/RPMS/ppc/expat-2.0.1-2.aix5.1.ppc.rpm $RPMDIR/
 echo "rpm -Uvh expat-2.0.1-2.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 
@@ -135,13 +138,16 @@ cp /opt/freeware/src/packages/RPMS/ppc/perl-DBD-mysql-4.007-1.aix5.3.ppc.rpm $RP
 echo "rpm -Uvh perl-DBD-mysql-4.007-1.aix5.3.ppc.rpm" >> $RPMDIR/instmysql
 echo "perl-DBD-mysql-4.007-1.aix5.3.ppc.rpm" > $RPMDIR/flist2
 
-cp /opt/freeware/src/packages/RPMS/ppc/xcat-mysql-5.0-1.aix5.3.ppc.rpm $RPMDIR/
-echo "rpm -Uvh xcat-mysql-5.0-1.aix5.3.ppc.rpm" >> $RPMDIR/instmysql
-echo "xcat-mysql-5.0-1.aix5.3.ppc.rpm" >> $RPMDIR/flist2
+cp /opt/freeware/src/packages/RPMS/ppc/xcat-mysql-5.1-37.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh xcat-mysql-5.1-37.aix5.3.ppc.rpm" >> $RPMDIR/instmysql
+echo "xcat-mysql-5.1-37.aix5.3.ppc.rpm" >> $RPMDIR/flist2
 
-cp /opt/freeware/src/packages/RPMS/ppc/xcat-mysql-connector-odbc-3.51-27.aix5.3.ppc.rpm $RPMDIR/
-echo "rpm -Uvh xcat-mysql-connector-odbc-3.51-27.aix5.3.ppc.rpm" >> $RPMDIR/instmysql
-echo "xcat-mysql-connector-odbc-3.51-27.aix5.3.ppc.rpm" >> $RPMDIR/flist2
+#cp /opt/freeware/src/packages/RPMS/ppc/xcat-mysql-connector-odbc-3.51-27.aix5.3.ppc.rpm $RPMDIR/
+#echo "rpm -Uvh xcat-mysql-connector-odbc-3.51-27.aix5.3.ppc.rpm" >> $RPMDIR/instmysql
+#echo "xcat-mysql-connector-odbc-3.51-27.aix5.3.ppc.rpm" >> $RPMDIR/flist2
+
+cp /opt/freeware/src/packages/RPMS/ppc/mysql-connector-odbc-3.51.27-32bit.aix5.3.ppc.rpm $RPMDIR/
+echo "mysql-connector-odbc-3.51.27-32bit.aix5.3.ppc.rpm" >> $RPMDIR/flist2
 
 
 chmod +x $RPMDIR/instmysql
