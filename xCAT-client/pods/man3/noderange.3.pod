@@ -26,6 +26,8 @@ I<Examples:>
 
  group1@group2
 
+ table.attribute<operator>value
+
 =head1 B<Description>
 
 B<noderange> is a syntax that can be used in most xCAT commands to
@@ -212,6 +214,15 @@ nodes that start with node2 or node3 and end in  anything  or  nothing.
 E.g. node2, node3, node20, node30, node21234 all match.
 
  /node[23].*
+
+=item 8.
+
+Generates  a  list of nodes which have the value hmc in the nodehm.cons 
+attribute. 
+
+ nodehm.cons==hmc
+
+ nodehm.cons=~hmc 
 
 =back
 
