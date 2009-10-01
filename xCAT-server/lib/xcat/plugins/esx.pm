@@ -1340,7 +1340,13 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
                 $depfun->($depargs);
                 return 1;
             } else {
-                my $task = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$_->parent)->Destroy_Task(); #THIS DESTROYS THE CLUSTER, FIX
+                my $ref_to_delete;
+                if ($_->parent->type eq 'ClusterComputeResource') { #We are allowed to specifically kill a host in a cluster
+                    $ref_to_delete = $_->{mo_ref};
+                } elsif ($_->parent->type eq 'ComputeResource') { #For some reason, we must delete the container instead
+                    $ref_to_delete = $_->{parent};
+                }
+                my $task = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$ref_to_delete)->Destroy_Task();
                 $running_tasks{$task}->{task} = $task;
                 $running_tasks{$task}->{callback} = \&addhosttovcenter;
                 $running_tasks{$task}->{conn} = $hyphash{$hyp}->{vcenter}->{conn};
@@ -1391,7 +1397,6 @@ sub  addhosttovcenter {
             $hypready{$hyp}=-1; #Declare impossiblility to be ready
             return;
         }
-        sendmsg("Why yes, I was able to find ".$tablecfg{hypervisor}->{$hyp}->[0]->{cluster});
         $task = $cluster->AddHost_Task(spec=>$connspec,asConnected=>1);
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&connecthost_callback;
