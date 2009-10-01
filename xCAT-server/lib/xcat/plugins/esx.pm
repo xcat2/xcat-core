@@ -30,6 +30,7 @@ our @ISA = 'xCAT::Common';
 #my %esx_comm_pids;
 my %hyphash; #A data structure to hold hypervisor-wide variables (i.e. the current resource pool, virtual machine folder, connection object
 my %vcenterhash; #A data structure to reflect the state of vcenter connectivity to hypervisors
+my %hypready; #A structure for hypervisor readiness to be tracked before proceeding to normal operations
 my %running_tasks; #A struct to track this processes
 my $output_handler; #Pointer to the function to drive results to client
 my $executerequest;
@@ -153,7 +154,7 @@ sub preprocess_request {
     my $hyptab = xCAT::Table->new('hypervisor');
     my $hyptabhash={};
     if ($hyptab) {
-        $hyptabhash = $hyptab->getNodesAttribs(\@hyps,['mgr','cluster','preferdirect']);
+        $hyptabhash = $hyptab->getNodesAttribs(\@hyps,['mgr']);
     }
 
 
@@ -265,13 +266,13 @@ sub process_request {
     my $hyptab = xCAT::Table->new('hypervisor',create=>0);
     if ($hyptab) {
         my @hyps = keys %hyphash;
-        $tablecfg{hypervisor} = $hyptab->getNodesAttribs(\@hyps,['mgr','netmap','defaultnet']);
+        $tablecfg{hypervisor} = $hyptab->getNodesAttribs(\@hyps,['mgr','netmap','defaultnet','cluster','preferdirect']);
     }
 
 	#my $children = 0;
     #my $vmmaxp = 84;
 	#$SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { delete $esx_comm_pids{$cpid}; $children--; } };
-    my $viavcenter = 0;
+    my $viavcenter = 1;
     if ($command eq 'rmigrate') { #Only use vcenter when required, fewer prereqs
         $viavcenter = 1;
     }
@@ -283,6 +284,10 @@ sub process_request {
 	foreach my $hyp (sort(keys %hyphash)){
 		#if($pid == 0){
         if ($viavcenter) {
+            $hypready{$hyp} = 0; #This hypervisor requires a flag be set to signify vCenter sanenes before proceeding
+            $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk"); #Direct connect to install/check licenses
+            $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
+            validate_licenses($hyp);
             my $vcenter = $hyphash{$hyp}->{vcenter}->{name};
             unless ($vcenterhash{$vcenter}->{conn}) {
                 $vcenterhash{$vcenter}->{conn} =
@@ -294,6 +299,10 @@ sub process_request {
             }
             $hyphash{$hyp}->{conn} = $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
             $hyphash{$hyp}->{vcenter}->{conn} = $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
+            validate_vcenter_prereqs($hyp, \&declare_ready, {
+                hyp=>$hyp,
+                vcenter=>$vcenter
+                });
         } else {
             $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk");
             $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
@@ -303,6 +312,20 @@ sub process_request {
 		#	$esx_comm_pids{$pid} = 1;
 		#}
 	}
+    while (grep { $_ == 0 } values %hypready) {
+        wait_for_tasks();
+        sleep (1); #We'll check back in every second.  Unfortunately, we have to poll since we are in web service land
+    }
+    if (grep { $_ == -1 } values %hypready) {
+        my @badhypes;
+        foreach (keys %hypready) {
+            if ($hypready{$_} == -1) {
+                push @badhypes,$_;
+            }
+        }
+        sendmsg([1,"The following hypervisors failed to become ready for the operation: ".join(',',@badhypes)]);
+        return;
+    } 
     do_cmd($command,@exargs);
 }
 
@@ -358,7 +381,6 @@ sub process_tasks {
             } else {
                 $curcon = $hyphash{$running_tasks{$_}->{hyp}}->{conn};
             }
-
             my $curt = $curcon->get_view(mo_ref=>$running_tasks{$_}->{task});
             my $state = $curt->info->state->val;
             unless ($state eq 'running' or $state eq 'queued') {
@@ -382,9 +404,10 @@ sub connecthost_callback {
     my $hv = $args->{hostview};
     my $state = $task->info->state->val;
     if ($state eq "success") {
+        $hypready{$args->{hypname}}=1; #declare readiness
+        enable_vmotion(hypname=>$args->{hypname},hostview=>$args->{hostview},conn=>$args->{conn});
         $vcenterhash{$args->{vcenter}}->{$args->{hypname}} = 'good';
         if (defined $args->{depfun}) { #If a function is waiting for the host connect to go valid, call it
-            enable_vmotion(hypname=>$args->{hypname},hostview=>$args->{hostview},conn=>$args->{conn});
             $args->{depfun}->($args->{depargs});
         }
         return;
@@ -393,13 +416,15 @@ sub connecthost_callback {
     eval {
         $thumbprint = $task->{info}->error->fault->thumbprint;
     };
-    if ($thumbprint) {
+    if ($thumbprint) { #was an unknown certificate error, retry and accept the unknown certificate
        $args->{connspec}->{sslThumbprint}=$task->info->error->fault->thumbprint;
        my $task;
        if (defined $args->{hostview}) {#It was a reconnect request
            $task = $hv->ReconnectHost_Task(cnxSpec=>$args->{connspec});
        } elsif (defined $args->{foldview}) {#was an add host request
             $task = $args->{foldview}->AddStandaloneHost_Task(spec=>$args->{connspec},addConnected=>1);
+       } elsif (defined $args->{cluster}) {#was an add host to cluster request
+            $task = $args->{cluster}->AddHost_Task(spec=>$args->{connspec},asConnected=>1);
        }
        $running_tasks{$task}->{task} = $task;
        $running_tasks{$task}->{callback} = \&connecthost_callback;
@@ -413,6 +438,7 @@ sub connecthost_callback {
             }
         }
         sendmsg([1,$error]); #,$node);
+        $hypready{$args->{hypname}} = -1; #Impossible for this hypervisor to ever be ready
         $vcenterhash{$args->{vcenter}}->{$args->{hypname}} = 'bad';
     }
 }
@@ -427,7 +453,7 @@ sub get_clusterview {
         $subargs{properties}=$args{properties};
     }
     foreach (@{$args{conn}->find_entity_views(%subargs)}) {
-       if ($_->name =~ /$clustname/) {
+       if ($_->name eq "$clustname") {
            return $_;
            last;
        }
@@ -614,6 +640,7 @@ sub migrate {
     my $vcenter = $hyphash{$hyp}->{vcenter}->{name};
 #We do target first to prevent multiple sources to single destination from getting confused
 #one source to multiple destinations (i.e. revacuate) may require other provisions
+#by getting confused, I mean that actually migrate not thinking both are good before it's correct
     validate_vcenter_prereqs($tgthyp, \&actually_migrate, {
         nodes=>$nodes,
         hyp=>$hyp,
@@ -1278,6 +1305,11 @@ sub create_storage_devs {
 #    my $ctlr = VirtualIDEController->new(
 }
 
+sub declare_ready {
+    my %args = %{shift()};
+    $hypready{$args{hyp}}=1;
+}
+
 sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is added correctly to a vCenter instance when an operation requires it
     my $hyp = shift;
     my $depfun = shift;
@@ -1308,7 +1340,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
                 $depfun->($depargs);
                 return 1;
             } else {
-                my $task = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$_->parent)->Destroy_Task();
+                my $task = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$_->parent)->Destroy_Task(); #THIS DESTROYS THE CLUSTER, FIX
                 $running_tasks{$task}->{task} = $task;
                 $running_tasks{$task}->{callback} = \&addhosttovcenter;
                 $running_tasks{$task}->{conn} = $hyphash{$hyp}->{vcenter}->{conn};
@@ -1352,14 +1384,29 @@ sub  addhosttovcenter {
             die;
         }
     }
-    my $datacenter = validate_datacenter_prereqs($hyp);
-    my $hfolder =  $datacenter->hostFolder; #$hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['hostFolder'])->hostFolder;
-    $hfolder = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$hfolder);
-    $task = $hfolder->AddStandaloneHost_Task(spec=>$connspec,addConnected=>1);
-    $running_tasks{$task}->{task} = $task;
-    $running_tasks{$task}->{callback} = \&connecthost_callback;
-    $running_tasks{$task}->{conn} = $hyphash{$hyp}->{vcenter}->{conn};
-    $running_tasks{$task}->{data} = { depfun => $depfun, depargs=> $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec, foldview=>$hfolder, hypname=>$hyp, vcenter=>$vcenter };
+    if ($tablecfg{hypervisor}->{$hyp}->[0]->{cluster}) {
+        my $cluster = get_clusterview(clustname=>$tablecfg{hypervisor}->{$hyp}->[0]->{cluster},conn=>$hyphash{$hyp}->{vcenter}->{conn});
+        unless ($cluster) {
+            sendmsg([1,$tablecfg{hypervisor}->{$hyp}->[0]->{cluster}. " is not a known cluster to the vCenter server."]);
+            $hypready{$hyp}=-1; #Declare impossiblility to be ready
+            return;
+        }
+        sendmsg("Why yes, I was able to find ".$tablecfg{hypervisor}->{$hyp}->[0]->{cluster});
+        $task = $cluster->AddHost_Task(spec=>$connspec,asConnected=>1);
+        $running_tasks{$task}->{task} = $task;
+        $running_tasks{$task}->{callback} = \&connecthost_callback;
+        $running_tasks{$task}->{conn} = $hyphash{$hyp}->{vcenter}->{conn};
+        $running_tasks{$task}->{data} = { depfun => $depfun, depargs=> $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec, cluster=>$cluster, hypname=>$hyp, vcenter=>$vcenter };
+    } else {
+        my $datacenter = validate_datacenter_prereqs($hyp);
+        my $hfolder =  $datacenter->hostFolder; #$hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['hostFolder'])->hostFolder;
+        $hfolder = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$hfolder);
+        $task = $hfolder->AddStandaloneHost_Task(spec=>$connspec,addConnected=>1);
+        $running_tasks{$task}->{task} = $task;
+        $running_tasks{$task}->{callback} = \&connecthost_callback;
+        $running_tasks{$task}->{conn} = $hyphash{$hyp}->{vcenter}->{conn};
+        $running_tasks{$task}->{data} = { depfun => $depfun, depargs=> $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec, foldview=>$hfolder, hypname=>$hyp, vcenter=>$vcenter };
+    }
 
     #print Dumper @{$hyphash{$hyp}->{vcenter}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['runtime.connectionState'])};
 }
