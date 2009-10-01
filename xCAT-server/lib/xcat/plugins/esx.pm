@@ -272,7 +272,7 @@ sub process_request {
 	#my $children = 0;
     #my $vmmaxp = 84;
 	#$SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { delete $esx_comm_pids{$cpid}; $children--; } };
-    my $viavcenter = 1;
+    my $viavcenter = 0;
     if ($command eq 'rmigrate') { #Only use vcenter when required, fewer prereqs
         $viavcenter = 1;
     }
@@ -283,7 +283,7 @@ sub process_request {
     }
 	foreach my $hyp (sort(keys %hyphash)){
 		#if($pid == 0){
-        if ($viavcenter) {
+        if ($viavcenter or (defined $tablecfg{hypervisor}->{$hyp}->[0]->{mgr} and not $tablecfg{hypervisor}->{$hyp}->[0]->{preferdirect})) {
             $hypready{$hyp} = 0; #This hypervisor requires a flag be set to signify vCenter sanenes before proceeding
             $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk"); #Direct connect to install/check licenses
             $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
