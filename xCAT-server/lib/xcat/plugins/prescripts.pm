@@ -182,7 +182,7 @@ sub runbeginpre
 		    $rsp = {};
 		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
 		    $callback->($rsp);
-		    last;
+		    #last;
 		}
 	    }
 	}
@@ -235,7 +235,7 @@ sub runendpre
 		    $rsp = {};
 		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
 		    $callback->($rsp);
-		    last;
+		    #last;
 		}
 	    }
 	}
