@@ -62,7 +62,7 @@ sub handled_commands{
 		rmigrate => 'nodehm:power,mgt',
 		mkvm => 'nodehm:mgt',
 		rmvm => 'nodehm:mgt',
-		lsvm => 'nodehm:mgt',
+		#lsvm => 'nodehm:mgt', not really supported yet
 	};
 }
 
@@ -1722,72 +1722,6 @@ sub lsvm {
 }
 
 
-sub mkvm {
-	my $mpa = shift;
-	my $mpahash = shift;
-	my $callback = shift;
-	my ($node,$img, $imgname, $out);
-	# get console
-	my $nodehmtab = xCAT::Table->new("nodehm");
-	# get os
-	my $nodetypetab = xCAT::Table->new("nodetype");
-	# get mac address
-	my $mactab = xCAT::Table->new("mac");
-	unless ($nodehmtab) {
-   	$callback->({data=>["Cannot open nodehm table"]});
- 	}
-	unless ($nodetypetab) {
-		$callback->({data=>["Cannot open nodetype table"]});
-	}
-	unless ($mactab) {
-		$callback->({data=>["Cannot open mac table"]});
-	}
-
-
-	
-	foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})){
-		my $vncEnt=$nodehmtab->getNodeAttribs($node,['termport']);
-		# the comment is where we put the network name (ANodes,BNodes,CNodes)
-		my $osEnt=$nodetypetab->getNodeAttribs($node,['profile' ,'os','comments']);
-		my $mac=$mactab->getNodeAttribs($node,['mac']);
-		my $file = "/install/autoinst/$node";
-		my $targetdir = "/vmfs/volumes/images/$node";
-		open(FH, ">$file") or die "Can't open $file for writing!\n";
-		print FH <<	"EOF";
-#!/bin/sh
-mkdir -p $targetdir
-cat > $targetdir/$node.vmx <<END
-guestOS = "$osEnt->{os}"
-config.version = "8"
-virtualHW.version = "4"
-displayName = "$node"
-scsi0.present = "true"
-scsi0.sharedBus = "none"
-scsi0.virtualDev = "lsilogic"
-scsi0:0.present = "true"
-scsi0:0.fileName = "$node.vmdk"
-scsi0:0.deviceType = "scsi-hardDisk"
-memsize = "128"
-ethernet0.present = "true"
-ethernet0.allowGuestConnectionControl = "false"
-ethernet0.networkName = "$osEnt->{comments}"
-ethernet0.address = "$mac->{mac}"
-ethernet0.addressType = "static"
-remoteDisplay.vnc.enabled = "true"
-remoteDisplay.vnc.port = "$vncEnt->{termport}"
-END
-
-vmkfstools -i /install/$osEnt->{os}/$osEnt->{profile} $targetdir/$node.vmdk
-vmware-cmd -s register $targetdir/$node.vmx
-
-EOF
-	close(FH);	
-	system("chmod 755 $file");
-	`ssh $mpa $file`;
-	}
-}
-
-
 sub build_more_info{
   die("TODO: fix this function if called");
   print "Does this acually get called????**********************************\n";
@@ -2101,13 +2035,16 @@ sub mknetboot {
         }
 		unless($donetftp{$osver,$arch}) {
 			my $srcdir = "$installroot/$osver/$arch";
-			my $dest = "$tftpdir/xcat/netboot/$osver/$arch";
+            my $shortprofname = $profile;
+            $shortprofname =~ s/\/\z//;
+            $shortprofname =~ s/.*\///;
+			my $dest = "$tftpdir/xcat/netboot/$osver/$arch/$shortprofname";
 			cpNetbootImages($osver,$srcdir,$dest,$custprofpath,\%mods);
             makecustomizedmod($osver,$dest);
 			copy("$srcdir/mboot.c32", $dest);
 			$donetftp{$osver,$arch,$profile} = 1;
 		}
-		my $tp = "xcat/netboot/$osver/$arch";
+		my $tp = "xcat/netboot/$osver/$arch/$shortprofname";
         my $bail=0;
         foreach (@reqmods) {
             unless (-r "$tftpdir/$tp/$_") { 
