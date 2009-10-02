@@ -2033,11 +2033,11 @@ sub mknetboot {
         foreach (@reqmods) {
             $mods{$_} = 1;
         }
+        my $shortprofname = $profile;
+        $shortprofname =~ s/\/\z//;
+        $shortprofname =~ s/.*\///;
 		unless($donetftp{$osver,$arch}) {
 			my $srcdir = "$installroot/$osver/$arch";
-            my $shortprofname = $profile;
-            $shortprofname =~ s/\/\z//;
-            $shortprofname =~ s/.*\///;
 			my $dest = "$tftpdir/xcat/netboot/$osver/$arch/$shortprofname";
 			cpNetbootImages($osver,$srcdir,$dest,$custprofpath,\%mods);
             makecustomizedmod($osver,$dest);
