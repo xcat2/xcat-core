@@ -88,7 +88,7 @@ rm -rf $RPM_BUILD_ROOT
 if [ "$1" -gt 1 ]; then #Ugrade only, restart daemon and migrate settings
    if [ -x /etc/init.d/xcatd ] && [ -f "/proc/cmdline" ]; then
       . /etc/profile.d/xcat.sh
-      /etc/init.d/xcatd restart
+      /etc/init.d/xcatd reload
    fi
 fi
 %endif

@@ -10,13 +10,13 @@ B<xcatconfig> {B<-h>|B<--help>}
 
 B<xcatconfig> {B<-v>|B<--version>}
 
-B<xcatconfig> {B<-i>|B<--initinstall>} 
+B<xcatconfig> {B<-i>|B<--initinstall>}  [B<-V>|B<--verbose>]
 
-B<xcatconfig> {B<-u>|B<--updateinstall>} 
+B<xcatconfig> {B<-u>|B<--updateinstall>}  [B<-V>|B<--verbose>]
 
-B<xcatconfig> {B<-k>|B<--sshkeys>} {B<-s>|B<--sshnodehostkeys>} {B<-c>|B<--credentials>} {B<-d>|B<--database>} 
+B<xcatconfig> [B<-k>|B<--sshkeys>] [B<-s>|B<--sshnodehostkeys>] [B<-c>|B<--credentials>] [B<-d>|B<--database>] [B<-V>|B<--verbose>]
 
-B<xcatconfig> {B<-f>|B<--force>} 
+B<xcatconfig> {B<-f>|B<--force>} [B<-V>|B<--verbose>]
 
 =head1 DESCRIPTION
 
@@ -26,40 +26,44 @@ B<xcatconfig> Performs basic xCAT setup operations on an xCAT management node. T
 
 =over 6
 
-=item B<-h> I<help>
+=item B<-h|--help>
 
 Displays the usage message.
 
-=item B<-v> I<version>
+=item B<-v|--version>
 
 Displays the release version of the code.
 
-=item B<-i> I<initialinstall>
+=item B<-V|--verbose>
+
+Displays verbose messages.
+
+=item B<-i|--initialinstall>
 
 The install option is normally run as a post operation from the rpm xCAT.spec file during the initial install of xCAT on the Management Node. It will setup the root ssh keys, ssh node keys, xCAT credentials, initialize the datebase, export directories, start syslog and other daemons as needed after the initial install of xCAT.
 
-=item B<-u> I<updateinstall>
+=item B<-u|--updateinstall>
 
 The update install option is normally run as a post operation from the rpm xCAT.spec file during an update install of xCAT on the Management Node. It will check the setup the root ssh keys, ssh node keys, xCAT credentials, datebase, exported directories, syslog and the state of daemons needed by xCAT, after the updateinstall of xCAT. If setup is required, it will perform the operation.  It will restart the necessary daemons.
 
-=item B<-k> I<sshkeys>
+=item B<-k|--sshkeys>
 
 This option will remove and regenerate the root id_rsa keys.  It should only be used, if the keys are  deleted or corrupted. The key must then be distribute to the nodes by installing or using xdsh -K option, for root to be able to ssh to the nodes without being prompted for a password. 
 rspconfig will need to be run to distribute the key to the MM and HMCs. Any device, we need to ssh from the MN to the device will also have to be updated with the new ssh keys.
 
-=item B<-s> I<sshnodehostkeys>
+=item B<-s|--sshnodehostkeys>
 
 This option will remove and regenerate the node host ssh keys.  It should only be used, if the keys are deleted or are corrupted. The keys must then be redistribute to the nodes by installing or using xdcp or pcp to copy the keys from /etc/xcat/hostkeys directory to the /etc/ssh directory on the nodes.
 
-=item B<-c> I<credentials>
+=item B<-c|--credentials>
 
 This option will remove and regenerate the xCAT credentials.  It should only be used, if they are deleted or become corrupted. The credentials must be redistribed to the service nodes by installing the service node. makeconservercf must be rerun to pick up the new credentials,  and conserver must be stop and started.
 
-=item B<-d> I<database>
+=item B<-d|--database>
 
 This option will reinitialize the basic xCAT database table setup.  It will not remove any new database entries that have been added, but it is strongly suggested that you backup you database (dumpxCATdb) before using it.
 
-=item B<-f> I<force>
+=item B<-f|--force>
 
 The force option may  be used after the install to reinitialize the Management Node. This option will  regenerate keys, credential and reinititialize the site table. This option should be used, if keys or credentials become corrupt or lost. 
 Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be rerun to pick up the new credentials and conserver stoped and started, rspconfig needs to be rerun to distribute the new keys to the MM and the HMCs. 

@@ -74,13 +74,13 @@ rm -rf $RPM_BUILD_ROOT
 %ifos linux
   if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     if [ -f $RPM_INSTALL_PREFIX0/sbin/xcatd  ]; then
-      /etc/init.d/xcatd restart
+      /etc/init.d/xcatd reload
     fi
   fi
 %else
   #restart the xcatd on if xCAT or xCATsn is installed already
   if [ -f $RPM_INSTALL_PREFIX0/sbin/xcatd  ]; then
-    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/xcatstart
+    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/xcatstart -r
   fi
 %endif
 

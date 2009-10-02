@@ -174,14 +174,14 @@ if [ "$1" -gt "1" ]; then #only on upgrade...
   XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d
  
   if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-    /etc/init.d/xcatd restart
+    /etc/init.d/xcatd reload
   fi
 fi
 %else
 if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
     #migration issue for monitoring
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d 
-    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/xcatstart
+    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/xcatstart -r
 fi  
 %endif
 

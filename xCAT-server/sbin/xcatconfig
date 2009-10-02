@@ -47,6 +47,7 @@ if (
                 'd|database'        => \$::initDB,
                 'h|help'            => \$::HELP,
                 'v|version'         => \$::VERSION,
+                'V|verbose'         => \$::VERBOSE,
     )
   )
 {
@@ -109,7 +110,7 @@ if (($::INITIALINSTALL) && ($::UPDATEINSTALL))
 #
 # Display command
 #
-xCAT::MsgUtils->message("I", "Running $::command \n");
+verbose("Running $::command");
 if (xCAT::Utils->isAIX())
 {
     $::osname = 'AIX';
@@ -138,12 +139,12 @@ if ($::RUNCMD_RC != 0)
 {
     xCAT::MsgUtils->message(
         'E',
-        "Could not create /etc/xCATMN file. Management Node not successfully setup. Manually, touch /etc/xCATMN.\n"
+        "Could not create /etc/xCATMN file. Management Node not successfully setup. Manually, touch /etc/xCATMN."
         );
 }
 else
 {
-    xCAT::MsgUtils->message('I', "Created /etc/xCATMN file.\n");
+    verbose("Created /etc/xCATMN file.");
 }
 
 # Make sure service node file is not there
@@ -155,37 +156,36 @@ if (-f "/etc/xCATSN")
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not remove /etc/xCATSN file. Management Node not successfully setup. Manually, remove /etc/xCATSN.\n"
+            "Could not remove /etc/xCATSN file. Management Node not successfully setup. Manually, remove /etc/xCATSN."
             );
     }
     else
     {
         xCAT::MsgUtils->message(
             'I',
-            "Removed /etc/xCATSN file. This node is being converted from a Service Node to a Management Node.\n"
+            "Removed /etc/xCATSN file. This node is being converted from a Service Node to a Management Node."
             );
     }
 }
 
 # some Linux-only config
-if ($::osname eq 'Linux')
-{
-
+# Do not need to start vsftpd here, because when xcatd starts, it will restart it
+#if ($::osname eq 'Linux')
+#{
     # start vsftpd
-    my $cmd    = "/sbin/chkconfig vsftpd on";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    my $cmd    = "/etc/init.d/vsftpd restart";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message('E', "Could not start VSFTPD.\n");
-    }
-    else
-    {
-        xCAT::MsgUtils->message('I', "VSFTPD has been restarted.\n");
-    }
-
-}    # end Linux-only
+#    my $cmd    = "/sbin/chkconfig vsftpd on";
+#    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+#    my $cmd    = "/etc/init.d/vsftpd restart";
+#    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+#    if ($::RUNCMD_RC != 0)
+#    {
+#        xCAT::MsgUtils->message('E', "Could not start VSFTPD.");
+#    }
+#    else
+#    {
+#        xCAT::MsgUtils->message('I', "VSFTPD has been restarted.");
+#    }
+#}    # end Linux-only
 
 #
 # Generate ssh host keys for the nodes
@@ -217,12 +217,11 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                             "Could not create /var/log/consoles directory.\n");
+                             "Could not create /var/log/consoles directory.");
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                                    "Created /var/log/consoles directory.\n");
+            verbose("Created /var/log/consoles directory.");
         }
     }
 
@@ -265,11 +264,11 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
-        xCAT::MsgUtils->message('E', "Could not set up syslog.\n");
+        xCAT::MsgUtils->message('E', "Could not set up syslog.");
     }
     else
     {
-        xCAT::MsgUtils->message('I', "syslog has been set up.\n");
+        verbose("syslog has been set up.");
     }
 }
 
@@ -314,12 +313,11 @@ if (($::osname eq 'Linux') && (($::INITIALINSTALL || $::FORCE)))
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                           "Could not remove /tftpboot/pxelinux.cfg/default\n");
+                           "Could not remove /tftpboot/pxelinux.cfg/default");
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                                   "Removed /tftpboot/pxelinux.cfg/default.\n");
+            verbose("Removed /tftpboot/pxelinux.cfg/default.");
         }
     }
 
@@ -330,7 +328,7 @@ if (($::osname eq 'Linux') && (($::INITIALINSTALL || $::FORCE)))
     &makenetworks;
 
     my $linux_note =
-      "xCAT is now installed, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.\n";
+      "xCAT is now installed, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.";
     xCAT::MsgUtils->message('I', $linux_note);
 
 }    #End - more - Linux-only config
@@ -355,14 +353,20 @@ sub usage
 {
     xCAT::MsgUtils->message(
         'I',
-        "Usage:\nxcatconfig - Performs basic xCAT setup operations on an xCAT management node. This command should not be run on an xCAT Service Node, unless you are making it a Management Node. \n"
+        "Usage:\nxcatconfig - Performs basic xCAT setup operations on an xCAT management node. This command should not be run on an xCAT Service Node, unless you are making it a Management Node.\n"
         );
     xCAT::MsgUtils->message(
         'I',
-        "xcatconfig [-h|--help]\nxcatconfig [-v|--version]\nxcatconfig [-f|--force]\nxcatconfig [-i|--initinstall] \nxcatconfig [-u|--updateinstall]\nxcatconfig [-k|--sshkeys] [-s|--sshnodehostkeys] [-c|--credentials] [-d|database]\n\n"
+        "xcatconfig [-h|--help]\nxcatconfig [-v|--version]\nxcatconfig [-f|--force] [-V|--verbose]\nxcatconfig [-i|--initinstall] [-V|--verbose]\nxcatconfig [-u|--updateinstall] [-V|--verbose]\nxcatconfig [-k|--sshkeys] [-s|--sshnodehostkeys] [-c|--credentials] [-d|database] [-V|--verbose]"
         );
 }
 
+sub verbose
+{
+	if (!$::VERBOSE) { return; }
+	my $msg = shift;
+	xCAT::MsgUtils->message("I", $msg);
+}
 #-----------------------------------------------------------------------------
 
 =head3    genSSHRootKeys 
@@ -388,11 +392,11 @@ sub genSSHRootKeys
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                    "Could not create $sshdir directory.\n");
+                                    "Could not create $sshdir directory.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Created $sshdir directory.\n");
+            verbose("Created $sshdir directory.");
         }
     }
 
@@ -416,12 +420,12 @@ sub genSSHRootKeys
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',
-                                       "Could not update the $cfgfile file.\n");
+                                       "Could not update the $cfgfile file.");
             }
             else
             {
                 xCAT::MsgUtils->message('I',
-                                       "Added updates to the $cfgfile file.\n");
+                                       "Added updates to the $cfgfile file.");
             }
         }
     }
@@ -435,12 +439,12 @@ sub genSSHRootKeys
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                    "Could not update the $cfgfile file.\n");
+                                    "Could not update the $cfgfile file.");
         }
         else
         {
             xCAT::MsgUtils->message('I',
-                                    "Added updates to the $cfgfile file.\n");
+                                    "Added updates to the $cfgfile file.");
         }
     }
 
@@ -454,12 +458,11 @@ sub genSSHRootKeys
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                     "Could not create /install/postscripts/_ssh directory.\n");
+                     "Could not create /install/postscripts/_ssh directory.");
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                              "Created /install/postscripts/_ssh directory.\n");
+            verbose("Created /install/postscripts/_ssh directory.");
         }
     }
 
@@ -478,13 +481,13 @@ sub genSSHRootKeys
         {
             xCAT::MsgUtils->message(
                   'E',
-                  "Could not remove id_rsa files from $::root/.ssh directory.\n"
+                  "Could not remove id_rsa files from $::root/.ssh directory."
                   );
         }
         else
         {
             xCAT::MsgUtils->message('I',
-                         "Removed id_rsa files from $::root/.ssh directory.\n");
+                         "Removed id_rsa files from $::root/.ssh directory.");
         }
     }
 
@@ -495,11 +498,11 @@ sub genSSHRootKeys
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not generate $pubfile.\n");
+            xCAT::MsgUtils->message('E', "Could not generate $pubfile.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Generated $pubfile.\n");
+            xCAT::MsgUtils->message('I', "Generated $pubfile.");
 
         }
     }
@@ -514,14 +517,14 @@ sub genSSHRootKeys
         {
             xCAT::MsgUtils->message(
                 'E',
-                "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys.\n"
+                "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys."
                 );
         }
         else
         {
             xCAT::MsgUtils->message(
                 'I',
-                "Copied $pubfile to /install/postscripts/_ssh/authorized_keys.\n"
+                "Copied $pubfile to /install/postscripts/_ssh/authorized_keys."
                 );
         }
     }
@@ -529,7 +532,7 @@ sub genSSHRootKeys
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys,because $pubfile does not exist.\n"
+            "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys,because $pubfile does not exist."
             );
     }
 }
@@ -570,7 +573,7 @@ sub genSSHNodeHostKey
             {
                 xCAT::MsgUtils->message(
                     'E',
-                    "Could not create /install/postscripts/hostkeys directory.\n"
+                    "Could not create /install/postscripts/hostkeys directory."
                     );
             }
         }
@@ -581,7 +584,7 @@ sub genSSHNodeHostKey
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',
-                            "Could not create /etc/xcat/hostkeys directory.\n");
+                            "Could not create /etc/xcat/hostkeys directory.");
             }
         }
 
@@ -594,7 +597,7 @@ sub genSSHNodeHostKey
             {
                 xCAT::MsgUtils->message(
                     'I',
-                    "Could not remove ssh keys from /install/postscripts/hostkeys directory. They may not exist.\n"
+                    "Could not remove ssh keys from /install/postscripts/hostkeys directory. They may not exist."
                     );
             }
         }
@@ -608,7 +611,7 @@ sub genSSHNodeHostKey
             {
                 xCAT::MsgUtils->message(
                     'I',
-                    "Could not remove ssh keys from /etc/xcat/hostkeys directory. They may not exist.\n"
+                    "Could not remove ssh keys from /etc/xcat/hostkeys directory. They may not exist."
                     );
             }
         }
@@ -616,32 +619,32 @@ sub genSSHNodeHostKey
         #
         # generate new hostkeys
         #
-        xCAT::MsgUtils->message('I', "Generating new node hostkeys...\n");
-        xCAT::MsgUtils->message('I', "Generating SSH1 RSA Key...\n");
+        xCAT::MsgUtils->message('I', "Generating new node hostkeys...");
+        xCAT::MsgUtils->message('I', "Generating SSH1 RSA Key...");
         my $cmd =
           "/usr/bin/ssh-keygen -t rsa1 -f /etc/xcat/hostkeys/ssh_host_key -C '' -N ''";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not generate SSH1 RSA key.\n");
+            xCAT::MsgUtils->message('E', "Could not generate SSH1 RSA key.");
         }
 
-        xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...\n");
+        xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...");
         my $cmd =
           "/usr/bin/ssh-keygen -t rsa -f /etc/xcat/hostkeys/ssh_host_rsa_key -C '' -N ''";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.\n");
+            xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.");
         }
 
-        xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...\n");
+        xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...");
         my $cmd =
           "/usr/bin/ssh-keygen -t dsa -f /etc/xcat/hostkeys/ssh_host_dsa_key -C '' -N ''";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not generate SSH2 DSA key.\n");
+            xCAT::MsgUtils->message('E', "Could not generate SSH2 DSA key.");
         }
 
         # copy the public keys to install directory
@@ -650,11 +653,11 @@ sub genSSHNodeHostKey
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+            xCAT::MsgUtils->message('E', "$cmd not successful.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "$cmd is successful\n");
+            verbose("$cmd is successful");
         }
     }
     else
@@ -671,7 +674,7 @@ sub genSSHNodeHostKey
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+                xCAT::MsgUtils->message('E', "$cmd not successful.");
             }
 
             # remove private keys from install dir, leave the public keys
@@ -682,7 +685,7 @@ sub genSSHNodeHostKey
                 my $outref = xCAT::Utils->runcmd("$cmd", 0);
                 if ($::RUNCMD_RC != 0)
                 {
-                    xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+                    xCAT::MsgUtils->message('E', "$cmd not successful.");
                 }
             }
             if (-f "/install/postscripts/hostkeys/ssh_host_key")
@@ -691,7 +694,7 @@ sub genSSHNodeHostKey
                 my $outref = xCAT::Utils->runcmd("$cmd", 0);
                 if ($::RUNCMD_RC != 0)
                 {
-                    xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+                    xCAT::MsgUtils->message('E', "$cmd not successful.");
                 }
             }
             if (-f "/install/postscripts/hostkeys/ssh_host_rsa_key")
@@ -701,7 +704,7 @@ sub genSSHNodeHostKey
                 my $outref = xCAT::Utils->runcmd("$cmd", 0);
                 if ($::RUNCMD_RC != 0)
                 {
-                    xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+                    xCAT::MsgUtils->message('E', "$cmd not successful.");
                 }
             }
         }
@@ -718,11 +721,11 @@ sub genSSHNodeHostKey
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',
-                                 "$cmd not successful. Files may not exist.\n");
+                                 "$cmd not successful. Files may not exist.");
             }
             else
             {
-                xCAT::MsgUtils->message('I', "$cmd is successful\n");
+                verbose("$cmd is successful");
             }
 
             # copy the public keys to install directory
@@ -731,11 +734,11 @@ sub genSSHNodeHostKey
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message('E', "$cmd not successful.\n");
+                xCAT::MsgUtils->message('E', "$cmd not successful.");
             }
             else
             {
-                xCAT::MsgUtils->message('I', "$cmd is successful\n");
+                verbose("$cmd is successful");
             }
         }
     }
@@ -769,7 +772,7 @@ sub initDB
     if ($? == 0) {
      $master = inet_ntoa($addrs[0]);
     } else {
-      xCAT::MsgUtils->message("E","Hostname resolution for $hname failed.\n");
+      xCAT::MsgUtils->message("E","Hostname resolution for $hname failed.");
      $master="NORESOLUTION";
     }
     # set value based on OS
@@ -874,11 +877,11 @@ sub initDB
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not create site definition.\n");
+            xCAT::MsgUtils->message('E', "Could not create site definition.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Updated cluster site definition.\n");
+            xCAT::MsgUtils->message('I', "Updated cluster site definition.");
         }
     }
 
@@ -908,11 +911,11 @@ sub initDB
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                  "Could not create postscripts definition.\n");
+                                  "Could not create postscripts definition.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Created postscripts definition.\n");
+            verbose("Created postscripts definition.");
         }
     }
 
@@ -956,11 +959,11 @@ sub initDB
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                    "Could not create policy definition.\n");
+                                    "Could not create policy definition.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Created policy definition.\n");
+            verbose("Created policy definition.");
         }
     }
 
@@ -976,13 +979,12 @@ sub initDB
         {
             xCAT::MsgUtils->message(
                 'E',
-                "Could not update postscripts definition.\n"
+                "Could not update postscripts definition."
                 );
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                    "Updated postscripts definition.\n");
+            verbose("Updated postscripts definition.");
         }
 
     }
@@ -1008,20 +1010,20 @@ sub genCredentials
     {
         xCAT::MsgUtils->message(
             'I',
-            "\nSetting up basic certificates.  Respond with a \'y\' when prompted.\n\n"
+            "\nSetting up basic certificates.  Respond with a \'y\' when prompted.\n"
             );
         my $cmd =
           "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-xcat-ca.sh 'xCAT CA'";
-        xCAT::MsgUtils->message('I', "Running $cmd\n");
+        verbose("Running $cmd");
         my $rc = system($cmd);
         if ($rc >> 8)
         {
             xCAT::MsgUtils->message('E',
-                        "Could not create xCAT certificate in /etc/xcat/ca.\n");
+                        "Could not create xCAT certificate in /etc/xcat/ca.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
+            xCAT::MsgUtils->message('I', "Created xCAT certificate.");
         }
     }
 
@@ -1033,12 +1035,12 @@ sub genCredentials
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                 "Could not create /install/postscripts/ca/certs directory.\n");
+                 "Could not create /install/postscripts/ca/certs directory.");
     }
     else
     {
         xCAT::MsgUtils->message('I',
-                          "Created /install/postscripts/ca/certs directory.\n");
+                          "Created /install/postscripts/ca/certs directory.");
     }
     my $cmd = "/bin/cp -r /etc/xcat/ca/* /install/postscripts/ca";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1046,29 +1048,29 @@ sub genCredentials
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy /etc/xcat/ca/* to  /install/postscripts/ca directory.\n"
+            "Could not copy /etc/xcat/ca/* to  /install/postscripts/ca directory."
             );
     }
     else
     {
         xCAT::MsgUtils->message('I',
-               "Copied /etc/xcat/ca/* to /install/postscripts/ca directory.\n");
+               "Copied /etc/xcat/ca/* to /install/postscripts/ca directory.");
     }
 
     if ((!-d "/etc/xcat/cert") || $::FORCE || $::genCredentials)
     {
         my $cmd =
           "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-server-cert.sh $hname";
-        xCAT::MsgUtils->message('I', "Running $cmd\n");
+        verbose("Running $cmd");
         my $rc = system($cmd);
         if ($rc >> 8)
         {
             xCAT::MsgUtils->message('E',
-                      "Could not create xCAT certificate in /etc/xcat/cert.\n");
+                      "Could not create xCAT certificate in /etc/xcat/cert.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
+            xCAT::MsgUtils->message('I', "Created xCAT certificate.");
         }
     }
 
@@ -1080,12 +1082,11 @@ sub genCredentials
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                     "Could not create /install/postscripts/cert directory.\n");
+                     "Could not create /install/postscripts/cert directory.");
     }
     else
     {
-        xCAT::MsgUtils->message('I',
-                              "Created /install/postscripts/cert directory.\n");
+        verbose("Created /install/postscripts/cert directory.");
     }
     my $cmd = "/bin/cp -r /etc/xcat/cert/* /install/postscripts/cert";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1093,14 +1094,14 @@ sub genCredentials
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy /etc/xcat/cert/* to  /install/postscripts/cert directory.\n"
+            "Could not copy /etc/xcat/cert/* to  /install/postscripts/cert directory."
             );
     }
     else
     {
         xCAT::MsgUtils->message(
              'I',
-             "Copied /etc/xcat/cert/* to /install/postscripts/cert directory.\n"
+             "Copied /etc/xcat/cert/* to /install/postscripts/cert directory."
              );
     }
 
@@ -1109,18 +1110,18 @@ sub genCredentials
 
         my $cmd =
           "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-local-client.sh root";
-        xCAT::MsgUtils->message('I', "Running $cmd\n");
+        verbose("Running $cmd");
         my $rc = system($cmd);
         if ($rc >> 8)
         {
             xCAT::MsgUtils->message(
                  'E',
-                 "Could not create xCAT certificate in /.xcat/client-key.pem.\n"
+                 "Could not create xCAT certificate in /.xcat/client-key.pem."
                  );
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Created xCAT certificate.\n");
+            xCAT::MsgUtils->message('I', "Created xCAT certificate.");
         }
     }
 
@@ -1132,12 +1133,11 @@ sub genCredentials
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                    "Could not create /install/postscripts/_xcat directory.\n");
+                    "Could not create /install/postscripts/_xcat directory.");
     }
     else
     {
-        xCAT::MsgUtils->message('I',
-                             "Created /install/postscripts/_xcat directory.\n");
+        verbose("Created /install/postscripts/_xcat directory.");
     }
     my $cmd = "/bin/cp -r $::root/.xcat/* /install/postscripts/_xcat";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1145,14 +1145,14 @@ sub genCredentials
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy $::root/.xcat/* to  /install/postscripts/_xcat directory.\n"
+            "Could not copy $::root/.xcat/* to  /install/postscripts/_xcat directory."
             );
     }
     else
     {
         xCAT::MsgUtils->message(
              'I',
-             "Copied $::root/.xcat/* to /install/postscripts/_xcat directory.\n"
+             "Copied $::root/.xcat/* to /install/postscripts/_xcat directory."
              );
     }
     my $cmd = "/bin/cp -r /etc/xcat/ca/certs/* /install/postscripts/ca/certs";
@@ -1161,14 +1161,14 @@ sub genCredentials
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy /etc/xcat/ca/certs/* to  /install/postscripts/ca/certs directory.\n"
+            "Could not copy /etc/xcat/ca/certs/* to  /install/postscripts/ca/certs directory."
             );
     }
     else
     {
         xCAT::MsgUtils->message(
             'I',
-            "Copied /etc/xcat/ca/certs* to /install/postscripts/ca/certs directory.\n"
+            "Copied /etc/xcat/ca/certs* to /install/postscripts/ca/certs directory."
             );
     }
 }
@@ -1194,13 +1194,12 @@ sub setupAIXconserver
         {
             xCAT::MsgUtils->message(
                 'E',
-                "Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.\n"
+                "Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver."
                 );
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                  "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.\n");
+            verbose("ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.");
         }
     }
     if (!-f "/usr/bin/console")
@@ -1211,13 +1210,12 @@ sub setupAIXconserver
         {
             xCAT::MsgUtils->message(
                 'E',
-                "Could not ln -sf /opt/freeware/bin/console /usr/bin/console.\n"
+                "Could not ln -sf /opt/freeware/bin/console /usr/bin/console."
                 );
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                        "ln -sf /opt/freeware/bin/console /usr/bin/console.\n");
+            verbose("ln -sf /opt/freeware/bin/console /usr/bin/console.");
         }
     }
 
@@ -1231,11 +1229,11 @@ sub setupAIXconserver
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                    "Could not add subsystem conserver.\n");
+                                    "Could not add subsystem conserver.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Add subsystem conserver.\n");
+            xCAT::MsgUtils->message('I', "Added subsystem conserver.");
         }
     }
 
@@ -1269,7 +1267,7 @@ sub setupAIXexports
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                   "Could not update the /etc/exports file.\n");
+                                   "Could not update the /etc/exports file.");
         }
     }
 }
@@ -1306,12 +1304,11 @@ sub setupLinuxexports
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                   "Could not update the /etc/exports file.\n");
+                                   "Could not update the /etc/exports file.");
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                                 "Added /tftpboot to the /etc/exports file.\n");
+            verbose("Added /tftpboot to the /etc/exports file.");
             $changed_exports++;
         }
     }
@@ -1333,12 +1330,11 @@ sub setupLinuxexports
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                   "Could not update the /etc/exports file.\n");
+                                   "Could not update the /etc/exports file.");
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                                  "Added /install to the /etc/exports file.\n");
+            verbose("Added /install to the /etc/exports file.");
             $changed_exports++;
         }
     }
@@ -1351,32 +1347,32 @@ sub setupLinuxexports
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not restart NFS.\n");
+            xCAT::MsgUtils->message('E', "Could not restart NFS.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "NFS has been restarted.\n");
+            xCAT::MsgUtils->message('I', "NFS has been restarted.");
         }
 
         my $cmd = "/sbin/chkconfig nfs on";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Could not enable NFS.\n");
+            xCAT::MsgUtils->message('E', "Could not enable NFS.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "NFS has been enabled.\n");
+            verbose("NFS has been enabled.");
         }
         my $cmd = "/usr/sbin/exportfs -a";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E', "Error with $cmd.\n");
+            xCAT::MsgUtils->message('E', "Error with $cmd.");
         }
         else
         {
-            xCAT::MsgUtils->message('I', "Ran $cmd.\n");
+            verbose("Ran $cmd.");
         }
     }
 }
@@ -1401,12 +1397,12 @@ sub mknb
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',
-                        "The mknb $ar command returned error: $::RUNCMD_RC.\n");
+                        "The mknb $ar command returned error: $::RUNCMD_RC.");
             }
             else
             {
                 xCAT::MsgUtils->message('I',
-                               "The mknb $ar command was run with no error.\n");
+                               "The mknb $ar command completed successfully.");
             }
         }
     }
@@ -1431,12 +1427,12 @@ sub makenetworks
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                    "The makenetworks command returned error: $::RUNCMD_RC.\n");
+                    "The makenetworks command returned error: $::RUNCMD_RC.");
     }
     else
     {
         xCAT::MsgUtils->message('I',
-                           "The makenetworks command was run with no error.\n");
+                           "The makenetworks command was run with no error.");
     }
 
     # set the nameserver in the site table
@@ -1450,12 +1446,11 @@ sub makenetworks
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                           "The chtab command returned error: $::RUNCMD_RC.\n");
+                           "The chtab command returned error: $::RUNCMD_RC.");
     }
     else
     {
-        xCAT::MsgUtils->message('I',
-             "Updated the site definition with the value of the nameserver.\n");
+        verbose("Updated the site definition with the value of the nameserver.");
     }
 
     # restart httpd
@@ -1471,11 +1466,11 @@ sub makenetworks
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
-        xCAT::MsgUtils->message('E', "Could not restart httpd.\n");
+        xCAT::MsgUtils->message('E', "Could not restart httpd.");
     }
     else
     {
-        xCAT::MsgUtils->message('I', "httpd has been restarted.\n");
+        xCAT::MsgUtils->message('I', "httpd has been restarted.");
     }
 
     # enable httpd
@@ -1490,10 +1485,10 @@ sub makenetworks
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
-        xCAT::MsgUtils->message('E', "Could not enable httpd.\n");
+        xCAT::MsgUtils->message('E', "Could not enable httpd.");
     }
     else
     {
-        xCAT::MsgUtils->message('I', "httpd has been enabled.\n");
+        verbose("httpd has been enabled.");
     }
 }
