@@ -6,14 +6,20 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 B<genimage> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>]
 
+B<genimage> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> B<-o> [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] imagename
+
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 
 =head1 DESCRIPTION
 
-Generates a stateless image that can be used to boot xCAT nodes in a diskless mode.  The default packages included
+Generates a stateless image that can be used to boot xCAT nodes in a diskless mode.  
+If I<imagename> is not specified, the default packages included
 (and excluded) in the image are specified by /opt/xcat/share/xcat/netboot/<OS>/<profile>.pkglist and
-/opt/xcat/share/xcat/netboot/<OS>/<profile>.exlist. Customized package lists can be specified under /install/custom/netboot/<OS> directory. The generated image will be put in /install/netboot/<OS>/<arch>/<profile>.
+/opt/xcat/share/xcat/netboot/<OS>/<profile>.exlist. 
+Additional packages that are not from the os distro can be specified in a <profile>.otherpkgs.pkglist file.
+Customized package list files can be specified under /install/custom/netboot/<OS> directory. The generated image will be put in /install/netboot/<OS>/<arch>/<profile>.
+If I<imagename> is specified, the package list files are specified in the I<osimage> table and I<linuximage> table. 
 
 The B<genimage> command must be run on a system that is the same architecture as the nodes it will be
 used on.  If the management node is not the same architecture, copy the contents of
@@ -24,6 +30,10 @@ The B<genimage> command will run geninitrd automatically.  (You can run geninitr
 you want to rebuild the initrd.)  After your image is created, you can chroot to the
 image, install any additional software you would like, or make modifications to files, and then run
 B<packimage> to prepare the image for deployment.
+
+=head1 Parameters
+
+I<imagename> specifies the name of a os image definition to be used. The specification for the image is storted in the I<osimage> table and I<linuximage> table.
 
 
 =head1 OPTIONS
