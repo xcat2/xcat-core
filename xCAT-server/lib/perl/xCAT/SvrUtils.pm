@@ -208,7 +208,6 @@ sub get_nodeset_state
 #-----------------------------------------------------------------------------
 
 
-
 sub getsynclistfile()
 {
   my $nodes = shift;
@@ -231,13 +230,18 @@ sub getsynclistfile()
     unless ($nodetype_t) {
       return ;
     }
-    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile']);
+    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile', 'provmethod']);
 
     # the vaule of profile for AIX node is the osimage name
     foreach my $node (@$nodes) {
       my $profile = $nodetype_v->{$node}->[0]->{'profile'};
+      my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
+      if ($provmethod) {
+	  $profile=$provmethod;
+      }
+	  
       $node_syncfile{$node} = $profile;
-
+      
       if (! grep /$profile/, @profiles) {
         push @profiles, $profile;
       }
@@ -281,38 +285,50 @@ sub getsynclistfile()
     unless ($nodetype_t) {
       return ;
     }
-    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile','os','arch']);
+    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile','os','arch','provmethod']);
 
     foreach my $node (@$nodes) {
-      $inst_type = $node_insttype{$node};
-      if ($inst_type eq "netboot" || $inst_type eq "diskless") {
-        $inst_type = "netboot";
+      my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
+      if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot")) {
+	  # get the syncfiles base on the osimage
+	  my $osimage_t = xCAT::Table->new('osimage');
+	  unless ($osimage_t) {
+	      return ;
+	  }
+	  my $synclist = $osimage_t->getAttribs({imagename=>$provmethod}, 'synclists');
+	  if ($synclist && $synclist->{'synclists'}) {
+	      $node_syncfile{$node} = $synclist->{'synclists'};
+	  }  
       } else {
-        $inst_type = "install";
-      }
+	  $inst_type = $node_insttype{$node};
+	  if ($inst_type eq "netboot" || $inst_type eq "diskless") {
+	      $inst_type = "netboot";
+	  } else {
+	      $inst_type = "install";
+	  }
+	  
+	  $profile = $nodetype_v->{$node}->[0]->{'profile'};
+	  $os = $nodetype_v->{$node}->[0]->{'os'};
+	  $arch = $nodetype_v->{$node}->[0]->{'arch'};
+	  my $platform = "";
+	  if ($os) {
+	      if ($os =~ /rh.*/)    { $platform = "rh"; }
+	      elsif ($os =~ /centos.*/) { $platform = "centos"; }
+	      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
+	      elsif ($os =~ /sles.*/) { $platform = "sles"; }
+	      elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
+	  }
 
-      $profile = $nodetype_v->{$node}->[0]->{'profile'};
-      $os = $nodetype_v->{$node}->[0]->{'os'};
-      $arch = $nodetype_v->{$node}->[0]->{'arch'};
-
-      my $platform = "";
-      if ($os) {
-        if ($os =~ /rh.*/)    { $platform = "rh"; }
-        elsif ($os =~ /centos.*/) { $platform = "centos"; }
-        elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
-        elsif ($os =~ /sles.*/) { $platform = "sles"; }
-        elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
-      }
-
-      my $base =  "/install/custom/$inst_type/$platform";
-      if (-r "$base/$profile.$os.$arch.synclist") {
-        $node_syncfile{$node} = "$base/$profile.$os.$arch.synclist";
-      } elsif (-r "$base/$profile.$arch.synclist") {
-        $node_syncfile{$node} = "$base/$profile.$arch.synclist";
-      } elsif (-r "$base/$profile.$os.synclist") {
-        $node_syncfile{$node} = "$base/$profile.$os.synclist";
-      } elsif (-r "$base/$profile.synclist") {
-        $node_syncfile{$node} = "$base/$profile.synclist";
+	  my $base =  "/install/custom/$inst_type/$platform";
+	  if (-r "$base/$profile.$os.$arch.synclist") {
+	      $node_syncfile{$node} = "$base/$profile.$os.$arch.synclist";
+	  } elsif (-r "$base/$profile.$arch.synclist") {
+	      $node_syncfile{$node} = "$base/$profile.$arch.synclist";
+	  } elsif (-r "$base/$profile.$os.synclist") {
+	      $node_syncfile{$node} = "$base/$profile.$os.synclist";
+	  } elsif (-r "$base/$profile.synclist") {
+	      $node_syncfile{$node} = "$base/$profile.synclist";
+	  }
       }
     }
 
@@ -478,7 +494,7 @@ sub  update_tables_with_templates
     my $osname=$osver;;  #like sles, rh, centos, windows
     my $ostype="Linux";  #like Linux, Windows
     my $imagetype="linux";
-    if ($osver =~ /^win/) {
+    if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
 	$osname="windows";
 	$ostype="Windows";
         $imagetype="windows";
@@ -632,7 +648,7 @@ sub  update_tables_with_diskless_image
     my $osname=$osver;;  #like sles, rh, centos, windows
     my $ostype="Linux";  #like Linux, Windows
     my $imagetype="linux";
-    if ($osver =~ /^win/) {
+    if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
 	$osname="windows";
 	$ostype="Windows";
 	$imagetype="windows";

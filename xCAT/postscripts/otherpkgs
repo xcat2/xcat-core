@@ -42,20 +42,28 @@ if [[ -z "$NFSSERVER" ]]; then
     NFSSERVER=$MASTER
 fi
 
+if [[ -z "$INSTALLDIR" ]]; then
+    INSTALLDIR="/install"
+fi
 
 #check if /install is mounted on the server, we may need to add code to conver NFSSERVER to ip 
 mounted=0;
 result=`mount |grep /install |grep $NFSSERVER`
 if [ $? -eq 0 ]; then
-    if [[ -z "$INSTALLDIR" ]]; then
-        NFSSERVER="/install"
-    else
-        NFSSERVER=$INSTALLDIR
-    fi
+    NFSSERVER=$INSTALLDIR
     mounted=1 
 fi
 
-#echo NFSSERVER=$NFSSERVER
+if [[ -z "$OTHERPKGDIR" ]]; then
+    OTHERPKGDIR="$NFSSERVER/post/otherpkgs/$OSVER/$ARCH"
+fi
+
+if [ $mounted -eq 0 ]; then
+    OTHERPKGDIR=${OTHERPKGDIR/#$INSTALLDIR/$NFSSERVER/}
+fi
+
+echo NFSSERVER=$NFSSERVER
+echo OTHERPKGDIR=$OTHERPKGDIR
 
 #check if the node has yum or zypper installed, it will try yum first, then zypper and last rpm
 hasyum=0  
@@ -95,7 +103,7 @@ do
 	
    fn=`basename $x`
    path=`dirname $x`
-   whole_path=$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/$path
+   whole_path=$OTHERPKGDIR/$path
 
    #find out if this path has already handled
    try_repo=1
@@ -196,22 +204,23 @@ fi
 #Handle the rest with rpm
 if [ "$plain_pkgs" != "" ]; then 
     if [ $mounted -eq 0 ]; then
-        mkdir -p /xcatpost/post/otherpkgs/$OSVER/$ARCH; 
-        rm -f -R /xcatpost/post/otherpkgs/*
+	dir_no_ftproot=${OTHERPKGDIR#$INSTALLDIR/}
+        mkdir -p /xcatpost/$dir_no_ftproot 
+        rm -f -R /xcatpost/$dir_no_ftproot/*
         mkdir -p /tmp/postage/
         rm -f -R /tmp/postage/*
         cd /tmp/postage
     
         for x in `echo "$plain_pkgs" | tr " " "\n"`
         do
-	    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/post/otherpkgs/$OSVER/$ARCH/$x 2> /tmp/wget.log  
+	    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$OTHERPKGDIR/$x 2> /tmp/wget.log  
         done
     
-        mv $NFSSERVER/post/otherpkgs/* /xcatpost/post/otherpkgs; 
+        mv $dir_no_ftproot/* /xcatpost/$dir_no_ftproot; 
         rm -rf $NFSSERVER
-        cd /xcatpost/post/otherpkgs/$OSVER/$ARCH
+        cd /xcatpost/$dir_no_ftproot
     else
-        cd $NFSSERVER/post/otherpkgs/$OSVER/$ARCH
+        cd $OTHERPKGDIR
     fi
 
     echo "rpm -Uvh --replacepkgs $plain_pkgs" 
@@ -223,7 +232,9 @@ if [ "$plain_pkgs" != "" ]; then
     fi
     
     if [ $mounted -eq 0 ]; then
-        rm -f -R /xcatpost/post/otherpkgs/*
+	cd /xcatpost
+	dir_no_ftproot=${OTHERPKGDIR#$INSTALLDIR/}
+        rm -f -R $dir_no_ftproot
     fi
 fi
 

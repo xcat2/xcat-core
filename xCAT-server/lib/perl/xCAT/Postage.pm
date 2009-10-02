@@ -1,5 +1,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::Postage;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
@@ -8,11 +13,7 @@ use xCAT::SvrUtils;
 use Data::Dumper;
 use File::Basename;
 use strict;
-BEGIN
-{
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-}
-use lib "$::XCATROOT/lib/perl";
+
 
 #-------------------------------------------------------------------------------
 
@@ -160,7 +161,7 @@ sub makescript {
   push @scriptd, "NODE=$node\n";
   push @scriptd, "export NODE\n";
  
-  my $et = $typetab->getNodeAttribs($node,['os','arch','profile']);
+  my $et = $typetab->getNodeAttribs($node,['os','arch','profile','provmethod']);
   if ($^O =~ /^linux/i) {
 	unless ($et and $et->{'os'} and $et->{'arch'}) {
 		my %rsp;
@@ -179,6 +180,7 @@ sub makescript {
   my $os;
   my $profile;
   my $arch;
+  my $provmethod=$et->{'provmethod'};
   if ($et->{'os'}) {
         $os=$et->{'os'};
   	push @scriptd, "OSVER=".$et->{'os'}."\n";
@@ -258,54 +260,84 @@ sub makescript {
   }
 
   #get packge names for extra rpms
-  my $stat="install";
-  if ($profile) {
-    my $platform="rh";
-    if ($os) {
-      if ($os =~ /rh.*/)    { $platform = "rh"; }
-      elsif ($os =~ /centos.*/) { $platform = "centos"; }
-      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
-      elsif ($os =~ /sles.*/) { $platform = "sles"; }
-      elsif ($os =~ /aix.*/) { $platform = "aix"; }
-    }
-    if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
-    my $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("/install/custom/$stat/$platform", $profile,  $os, $arch);
-    if (!$pkglist) { $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
+  my $otherpkgdir;
+  my $pkglist;
+  if (($^O =~ /^linux/i) && ($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot")) {
+      #this is the case where image from the osimage table is used
+      my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+      (my $ref1) = $linuximagetab->getAttribs({imagename => $provmethod}, 'otherpkglist', 'otherpkgdir');
+      if ($ref1) {
+	  if ($ref1->{'otherpkglist'}) {
+	      $pkglist=$ref1->{'otherpkglist'};
+	      if ($ref1->{'otherpkgdir'}) {
+		  push @scriptd, "OTHERPKGDIR=". $ref1->{'otherpkgdir'} . "\n";
+		  push @scriptd, "export OTHERPKGDIR\n";
+	      }
+	  }
+      }
+  } else {
+      my $stat="install";
+      if ($profile) {
+	  my $platform="rh";
+	  if ($os) {
+	      if ($os =~ /rh.*/)    { $platform = "rh"; }
+	      elsif ($os =~ /centos.*/) { $platform = "centos"; }
+	      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
+	      elsif ($os =~ /sles.*/) { $platform = "sles"; }
+	      elsif ($os =~ /aix.*/) { $platform = "aix"; }
+	  }
+	  if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
+	  $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("/install/custom/$stat/$platform", $profile,  $os, $arch);
+	  if (!$pkglist) { $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
+      }
+  }
+  print "pkglist=$pkglist\n";
 
-    if ($pkglist) {
+  if ($pkglist) {
       my @otherpkgs=();
       if (open(FILE1, "<$pkglist")) {
-        while (readline(FILE1)) {
-	  chomp($_); #remove newline
-          s/\s+$//;  #remove trailing spaces
-          next if /^\s*$/; #-- skip empty lines
-          push(@otherpkgs,$_);
-        }
-        close(FILE1);
+	  while (readline(FILE1)) {
+	      chomp($_); #remove newline
+	      s/\s+$//;  #remove trailing spaces
+	      next if /^\s*$/; #-- skip empty lines
+	      push(@otherpkgs,$_);
+	  }
+	  close(FILE1);
       } 
       if ( @otherpkgs > 0) {
-        my $pkgtext=join(',',@otherpkgs);
-      
-        #handle the #INLCUDE# tag recursively
-        my $idir = dirname($pkglist);
-        my $doneincludes=0;
-	while (not $doneincludes) {
-	    $doneincludes=1;
-	    if ($pkgtext =~ /#INCLUDE:[^#]+#/) {
-		$doneincludes=0;
-		$pkgtext =~ s/#INCLUDE:([^#]+)#/includefile($1,$idir)/eg;
-	    }
-	}
- 
-        push @scriptd, "OTHERPKGS=$pkgtext\n";
-        push @scriptd, "export OTHERPKGS\n";
+	  my $pkgtext=join(',',@otherpkgs);
+	  
+	  #handle the #INLCUDE# tag recursively
+	  my $idir = dirname($pkglist);
+	  my $doneincludes=0;
+	  while (not $doneincludes) {
+	      $doneincludes=1;
+	      if ($pkgtext =~ /#INCLUDE:[^#]+#/) {
+		  $doneincludes=0;
+		  $pkgtext =~ s/#INCLUDE:([^#]+)#/includefile($1,$idir)/eg;
+	      }
+	  }
+	  
+	  push @scriptd, "OTHERPKGS=$pkgtext\n";
+	  push @scriptd, "export OTHERPKGS\n";
 
       }    
-    }
   }
+
   
   # check if there are sync files to be handled
-  my $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $os, $arch, $profile, $nodesetstate);
+  my $syncfile;
+  if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot")) {
+      my $osimagetab=xCAT::Table->new('osimage', -create=>1);
+      if ($osimagetab) {
+	  (my $ref) = $osimagetab->getAttribs({imagename => $provmethod}, 'osvers', 'osarch', 'profile', 'provmethod', 'synclists');
+	  if ($ref) {
+	      $syncfile=$ref->{'synclists'}
+	  }
+      }
+  } else {
+      $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $os, $arch, $profile, $nodesetstate);
+  }
   if (! defined ($syncfile)) {
       push @scriptd, "NOSYNCFILES=1\n";
       push @scriptd, "export NOSYNCFILES\n";
