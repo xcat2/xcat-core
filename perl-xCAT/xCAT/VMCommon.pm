@@ -85,6 +85,7 @@ sub getMacAddresses {
 sub genMac { #Generates a mac address for a node, does NOT assure uniqueness, calling code needs to do that
     my $node=shift;
     my $prefix = shift;
+    srand(); #Re-seed the rng.  I haven't been able to reproduce it, but duplicate macs were somehow making it
     if ($prefix) { #Specific prefix requested, honor it
         my $tail = int(rand(0xffffff)); #With only 24 bits of space, use random bits;
         $tail = sprintf("%06x",$tail);
