@@ -764,7 +764,7 @@ sub scanVM {
 		# Create output string
 		$str .= "$managedNode:\n";
 		$str .= "  objtype=node\n";
-		$str .= "  id=$id\n";
+		$str .= "  userid=$id\n";
 		$str .= "  os=$os\n";
 		$str .= "  arch=$arch\n";
 		$str .= "  hcp=$hcp\n";
