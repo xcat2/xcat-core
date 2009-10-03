@@ -10,6 +10,11 @@ BEGIN {
 	while(1) {
                 if((ns |& getline) > 0)
                         print $0 | "logger -t xcat"
+                else {
+                    print "Retrying iSCSI paramater config script"
+                    close(ns)
+                    system("sleep 1")
+                }
 
                 if($0 == "ready")
                         print "setiscsiparms "kernel" "initrd" "kcmd |& ns

@@ -8,6 +8,11 @@ BEGIN {
 	 while(1) {
                 if((ns |& getline) > 0)
                         print $0 | "logger -t xcat"
+                else {
+                    print "Retrying unlock of tftp directory"
+                    close(ns)
+                    system("sleep 5")
+                }
 
                 if($0 == "ready")
                         print "unlocktftpdir" |& ns

@@ -8,6 +8,11 @@ BEGIN {
 	 while(1) {
                 if((ns |& getline) > 0)
                         print $0 | "logger -t xcat"
+                else { #socket dead, retry
+                    print "TFTP lockdir request retrying" | "logger -t xcat"
+                    close(ns)
+                    system("sleep 1")
+                }
 
                 if($0 == "ready")
                         print "locktftpdir" |& ns

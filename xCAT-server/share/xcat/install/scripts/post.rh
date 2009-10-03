@@ -62,6 +62,11 @@ BEGIN {
 	while(1) {
 		if((ns |& getline) > 0)
 			print \$0
+        else {
+            print "Retrying update"
+            close(ns)
+            system("sleep 5")
+        }
 
 		if(\$0 == "ready")
 			print "next" |& ns

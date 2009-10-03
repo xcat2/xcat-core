@@ -13,6 +13,11 @@ BEGIN {
 	while(1) {
 		if((ns |& getline) > 0)
 			print $0 | "logger -t xcat"
+        else {
+            print "Retrying flag update" | "logger -t xcat"
+            close(ns)
+            system("sleep 10")
+        }
 
 		if($0 == "ready")
 			print flag |& ns
