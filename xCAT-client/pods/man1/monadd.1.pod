@@ -2,8 +2,6 @@
 
 B<monadd> - Registers a monitoring plug-in to the xCAT cluster.
 
-
-
 =head1 SYNOPSIS
 
 I<monadd  [-h| --help]>
@@ -26,15 +24,25 @@ I<settings> is the monitoring plug-in specific settings. It is used to customize
 
 =head1 OPTIONS
 
+=over 10
 
-B<-h | --help>          Display usage message.
+=item B<-h | --help>
 
-B<-n | --nodestatmon>   Indicate that this monitoring plug-in will be used for feeding the node liveness status to the xCAT I<nodelist> table.
+Display usage message.
 
-B<-s | --settings>     Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. -s mon_interval=10 -s toggle=1.
+=item B<-n | --nodestatmon>
 
-B<-v | --version >      Command Version.
+Indicate that this monitoring plug-in will be used for feeding the node liveness status to the xCAT I<nodelist> table.
 
+=item B<-s | --settings>
+
+Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. -s mon_interval=10 -s toggle=1.
+
+=item B<-v | --version >
+
+Command Version.
+
+=back
 
 =head1 RETURN VALUE
 
@@ -44,36 +52,41 @@ B<-v | --version >      Command Version.
 
 =head1 EXAMPLES
 
-1. To register gangliamon plug-in module (which interacts with Ganglia monitoring software) to monitor the xCAT cluster, enter:
+=over 3
+
+=item 1.
+
+To register gangliamon plug-in module (which interacts with Ganglia monitoring software) to monitor the xCAT cluster, enter:
 
   monadd gangliamon
 
-2. To register rmcmon plug-in module (which interacts with IBM's RSCT monitoring software) to monitor the xCAT cluster and have it feed the node liveness status to xCAT's I<nodelist> table, enter:
+=item 2.
+
+To register rmcmon plug-in module (which interacts with IBM's RSCT monitoring software) to monitor the xCAT cluster and have it feed the node liveness status to xCAT's I<nodelist> table, enter:
 
   monadd rmcmon -n
 
 This will also add the I<configrmcnode> to the I<postscripts> table. To view the content of the I<postscripts> table, enter:
+
   tabdump postscritps
   #node,postscripts,comments,disable
   "service","servicenode",,
   "xcatdefaults","syslog,remoteshell,configrmcnode",,
 
-3. To register xcatmon plug-in module to feed the node liveness status to xCAT's I<nodelist> table, enter:
+=item 3.
 
-  monaddt rmcmon -n -s ping-interval=2
+To register xcatmon plug-in module to feed the node liveness status to xCAT's I<nodelist> table, enter:
+
+  monadd rmcmon -n -s ping-interval=2
 
 where 2 is the number of minutes between the pings.
 
-
+=back
 
 =head1 FILES
 
 /opt/xcat/bin/monadd
 
-
 =head1 SEE ALSO
 
 L<monls(1)|monls.1>, L<monrm(1)|monrm.1>, L<monstart(1)|monstart.1>, L<monstop(1)|monstop.1>, L<moncfg(1)|moncfg.1>, L<mondecfg(1)|mondecfg.1>
-
-
-
