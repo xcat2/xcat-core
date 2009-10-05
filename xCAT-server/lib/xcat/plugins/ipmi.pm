@@ -809,9 +809,12 @@ sub ipmicmd {
 
 	if($noclose == 0) {
 		$error = closesession();
-		if($error) {
-			return(1,"$text, session close: $error");
-		}
+        #In most cases where closesession fails to receive a response,
+        #the BMC is ignoring us because it managed to get the first one
+        #and the network dropped it on the way back
+		#if($error) {
+		#	return(1,"$text, session close: $error");
+		#}
 		if($debug) {
 			print "$node: session closed.\n";
 		}
@@ -5634,7 +5637,7 @@ sub closesession()
 		@message
 	);
 
-	($error,@response) = domsg($sock,\@msg,$timeout,1);
+	($error,@response) = domsg($sock,\@msg,1,1); #Have a quicker retry on the close session
 
 	if(!$error) {
 		$code = $response[36-$authoffset];
