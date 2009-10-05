@@ -180,12 +180,25 @@ if [ $ADD -eq 1 ]; then
   fi
   mkdir -p /var/xcat/rmcmon
   rm -f -R /var/xcat/rmcmon
-  mkdir -p /tmp/postage/rmcmon
-  rm -f -R /tmp/postage/rmcmon/*
-  cd /tmp/postage/rmcmon
-  wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/post/xcat/rmcmon 2> /tmp/wget.log
-  mv $NFSSERVER/post/xcat/rmcmon /var/xcat/rmcmon;
-  rm -rf $NFSSERVER
+  if [[ $OSTYPE = linux* ]]; then
+      mkdir -p /tmp/postage/rmcmon
+      rm -f -R /tmp/postage/rmcmon/*
+      cd /tmp/postage/rmcmon
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/postscripts/rmcmon 2> /tmp/wget.log
+      mv $NFSSERVER/postscripts/rmcmon /var/xcat/rmcmon;
+      rm -rf $NFSSERVER
+  else
+      mkdir -p /xcatmnt
+      result=`mount $NFSSERVER:/install/postscripts /xcatmnt`
+      if [ $? -gt 0 ]; then
+	  echo "Failed to mount:$result"
+	  logger xCAT "Failed to mount $result"
+	  exit 1
+      fi
+      cp -p -R /xcatmnt/rmcmon /var/xcat/rmcmon 2>/dev/null
+      umount /xcatmnt
+      rmdir /xcatmnt
+  fi
   chmod 755 /var/xcat/rmcmon/scripts/*
   /var/xcat/rmcmon/scripts/mkrmcresources /var/xcat/rmcmon/resources
 else
