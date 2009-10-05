@@ -294,7 +294,7 @@ sub mountInstall
     my $nomount = 0;
 
     my $retdata = xCAT::Utils->readSNInfo($nodename);
-    if ($retdata->{'arch'})
+    if (ref $retdata and $retdata->{'arch'})
     {                               # no error
         $master = $retdata->{'master'};    # management node
         $os     = $retdata->{'os'};
