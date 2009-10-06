@@ -1,0 +1,64 @@
+=head1 NAME
+
+B<groupfiles4dsh> - Builds a directory of files for each defined nodegroup in xCAT. 
+
+=head1 SYNOPSIS
+
+B<groupfiles4dsh> [{B<-p>|B<--path>} I<path>]
+
+B<groupfiles4dsh> [B<-h>|B<--help>] [B<-v>|B<--version>]
+
+
+=head1 DESCRIPTION
+
+This tool will build a directory of files, one for each defined
+nodegroup in xCAT.  The file will be named the nodegroup name and
+contain a list of nodes that belong to the nodegroup.
+The file can be used as input to the AIX dsh command.
+The purpose of this tool is to allow backward compatiblity with scripts
+that were created using the AIX or CSM dsh command
+
+Reference: man dsh.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version.
+
+B<-p>          Path to the directory to create the nodegroup files (must exist).
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To create the nodegroup files in directory /tmp/nodegroupfiles, enter:
+
+B<groupfiles4dsh -p /tmp/nodegroupfiles>
+
+To use with dsh:
+
+   export DSH_CONTEXT=DSH  ( default unless CSM is installed)
+   export DSH_NODE_RSH=/bin/ssh   (default is rsh)
+   export DSH_NODEGROUP_PATH= /tmp/nodegroupfiles
+
+   dsh  -N all  date   (where all is a group defined in xCAT)
+   dsh -a date  (will look in all nodegroupfiles and build a list of all nodes) 
+
+=head1 FILES
+
+/opt/xcat/share/xcat/tools/groupfiles4dsh
+
+=head1 SEE ALSO
+
+L<xdsh(1)|xdsh.1>
+
+
+
+
