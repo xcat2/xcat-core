@@ -48,6 +48,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man3
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
@@ -97,10 +98,10 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man3/*
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man5/*
 # cp share/doc/man8/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man8
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man8/*
-
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
 
+cp share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 #cp usr/share/xcat/scripts/setup-local-client.sh $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
 #chmod 755 $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
 
