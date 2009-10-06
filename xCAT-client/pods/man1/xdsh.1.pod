@@ -438,6 +438,12 @@ flag.
 
 =back
 
+=head1 B<Compatibility with AIX dsh>
+
+To provide backward compatibility for scripts written using dsh in
+ AIX and CSM, a tool has been provide B<groupfiles4dsh>,
+ which will build node group files from the
+xCAT database that can be used by dsh.   See man groupfiles4dsh. 
 
 =head1 B<Security>
 
@@ -518,4 +524,4 @@ B<xdsh> I<-i /install/nim/spot/611dskls "/usr/bin/lslpp -l | grep bos">
 
 =head1 B<SEE ALSO>
 
-L<xdshbak(1)|xdshbak.1>, L<noderange(3)|noderange.3>
+L<xdshbak(1)|xdshbak.1>, L<noderange(3)|noderange.3, L<groupfiles4dsh(1)|groupfiles4dsh.1>
