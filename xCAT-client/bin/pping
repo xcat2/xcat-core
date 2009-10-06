@@ -21,7 +21,7 @@ use IO::Handle;
 use IO::Select;
 use Getopt::Long;
 
-my $USAGE="Usage: pping [-i|--interface interface] noderange
+my $USAGE="Usage: pping [-i|--interface interfaces] noderange
        pping -h|--help
        pping -v|--version\n"; 
 
@@ -95,35 +95,54 @@ unless (scalar(@nodes)) {
    exit 1;
 }
 
-my $children = 0;
-my $inputs = new IO::Select;
-$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
-if ($interface) {
-  foreach (@nodes) {
-    s/$/-$interface/;
-  }
+# I think this was only needed when we forked ping ourselves
+#my $children = 0;
+#my $inputs = new IO::Select;
+#$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
+
+my $usenmap = (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap');
+
+my @interfaces;
+if ($interface) { @interfaces = split(/,/, $interface); }
+else { $interfaces[0] = ''; }
+
+# Do the pings to the nodes for each interface in sequence.  We could consider doing all the interfaces
+# in parallel, but then the output would get all mixed up and be confusing for the user.
+foreach my $interf (@interfaces) {
+	my $noderef;
+	if ($interf) {
+		# make a copy of the node list and add the interface on
+		$noderef = [ @nodes ];
+		foreach (@$noderef) { s/$/-$interf/; }
+	}
+	else {
+		$noderef = \@nodes;		# use the original node list
+	}
+	
+	if ($usenmap) { nmap_pping($noderef); }
+	else { fping_pping($noderef); }
 }
 
-if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') {
-    nmap_pping();
-    exit;
-}
-open (FPING, "fping ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open fping pipe: $!");
-while (<FPING>) {
-  if ($_ =~ /is unreachable/) {
-    s/ is unreachable/: noping/;
-  } elsif ($_ =~ /is alive/) {
-    s/ is alive/: ping/;
-  }
-  print $_;
+sub fping_pping {
+	my $nodes = shift;
+	open (FPING, "fping ".join(' ',@$nodes). " 2>&1 |") or die("Cannot open fping pipe: $!");
+	while (<FPING>) {
+	  if ($_ =~ /is unreachable/) {
+	    s/ is unreachable/: noping/;
+	  } elsif ($_ =~ /is alive/) {
+	    s/ is alive/: ping/;
+	  }
+	  print $_;
+	}
 }
 
 sub nmap_pping {
+	my $nodes = shift;
     my %deadnodes;
-    foreach (@nodes) {
+    foreach (@$nodes) {
         $deadnodes{$_}=1;
     }
-    open (FPING, "nmap -PE --send-ip -sP ".join(' ',@nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+    open (FPING, "nmap -PE --send-ip -sP ".join(' ',@$nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
     my $node;
     while (<FPING>) {
       if (/Host (.*) \(.*\) appears to be up/) {
