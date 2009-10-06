@@ -240,6 +240,7 @@ unless ($onlyinitrd) {
       open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
       my $index=1;
       foreach (keys(%extra_hash)) {
+	  if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
 	  print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
 	  $index++;
 	  my $pa=$extra_hash{$_};
@@ -247,7 +248,6 @@ unless ($onlyinitrd) {
       }
       close($yumconfig);
       $index--;
-      #enable extra package repo
       $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
       foreach (0..$repnum) {
 	  $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
@@ -255,6 +255,19 @@ unless ($onlyinitrd) {
       for (1..$index) {
 	  $yumcmd .= "--enablerepo=otherpkgs$_ ";
       } 
+
+      #remove the packages that are specified in the otherpkgs.list files with leading '-'
+      my $yumcmd_remove= "$yumcmd erase ";
+      if (exists ($extra_hash{'PRE_REMOVE'})) {
+	  my $pa=$extra_hash{'PRE_REMOVE'};
+	  my $rm_packges= join(' ', @$pa);
+	  if ($rm_packges) {
+	      $rc = system("$yumcmd_remove $rm_packges");
+	  }
+      }
+
+
+      #enable extra package repo
       $yumcmd .= "install ";
       #append extra pkg names to yum command 
       if ($extrapkgnames) {
@@ -271,6 +284,15 @@ unless ($onlyinitrd) {
       if ($rc) { 
 	  print "yum invocation failed\n";
 	  exit 1;
+      }
+	
+      #remove the packages that are specified in the otherpkgs.list files with leading '--'
+      if (exists ($extra_hash{'POST_REMOVE'})) {
+	  my $pa=$extra_hash{'POST_REMOVE'};
+	  my $rm_packges= join(' ', @$pa);
+	  if ($rm_packges) {
+	      $rc = system("$yumcmd_remove $rm_packges");
+	  }
       }
    }
 
@@ -709,12 +731,15 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    rename(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel");
 }
 
+
 #get th extra package name
 sub get_extra_package_names {
     if (!$imagename) {
 	$otherpkglist=get_extra_pkglist_file_name($customdir);
 	if (!$otherpkglist) { $otherpkglist=get_extra_pkglist_file_name($pathtofiles); }
     }
+
+   #print "customdir=$customdir,pathtofiles=$pathtofiles,otherpkglist=$otherpkglist\n";
    my %pkgnames=();
    my @tmp_array=();
 
@@ -746,8 +771,17 @@ sub get_extra_package_names {
      
         #print "pkgtext=$pkgtext\n";
 	my @tmp=split(',', $pkgtext);
-	foreach (@tmp) { 
-	    my $idir=dirname($_);
+	foreach (@tmp) {
+	    my $idir;
+	    if (/^--/) {	
+		$idir="POST_REMOVE";   #line starts with -- means the package should be removed after otherpkgs are installed
+		s/^--//;
+            } elsif  (/^-/) {
+		$idir="PRE_REMOVE"; #line starts with single - means the package should be removed before otherpkgs are installed
+		s/^-//;
+            } else { 
+		$idir=dirname($_); 
+	    }
 	    my $fn=basename($_);
 	    if (exists($pkgnames{$idir})) {
 		my $pa=$pkgnames{$idir};
@@ -761,6 +795,7 @@ sub get_extra_package_names {
 
    return %pkgnames;
 }
+
 
 
 sub include_file
