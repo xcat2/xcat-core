@@ -228,7 +228,7 @@ sub makescript {
 	}
 
   if (!$nodesetstate) { $nodesetstate=getnodesetstate($node);}
-  push @scriptd, "NODESETSTATE=".$nodesetstate."\n";
+  push @scriptd, "NODESETSTATE=\"".$nodesetstate."\"\n";
   push @scriptd, "export NODESETSTATE\n";
 
   # set the UPDATENODE flag in the script, the default it 0, that means not in the updatenode process, xcatdsklspost and xcataixpost will set it to 1 in updatenode case
