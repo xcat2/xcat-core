@@ -78,7 +78,7 @@ sub preprocess_request {
     my $vusername = "Administrator";
     my $vpassword = "";
 
-    unless ($request) { return; }
+    unless ($request and $request->{command} and $request->{command}->[0]) { return; }
 
 	if ($request->{command}->[0] eq 'copycd')
 	{    #don't farm out copycd
