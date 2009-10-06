@@ -36,7 +36,7 @@ use xCAT::Utils;
 		 export DSH_NODE_RSH=/bin/ssh   (default is rsh)
 		 export DSH_NODEGROUP_PATH= /tmp/dshnodegrpfiles
          
-		 dsh  -N /tmp/dshnodegrpfiles/allnodes  date
+		 dsh  -N all  date  ( all is a group in xCAT)
 		 dsh -a date   ( see man dsh,  DSH context)
 
 =cut
