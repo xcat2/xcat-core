@@ -95,9 +95,11 @@ if (xCAT::Utils->isLinux()) {
   if (-f "/etc/fedora-release") {
     $init_file="/etc/init.d/rsyslog"; 
   }
-  my $result=`$init_file status 2>&1`;
-  if ($result !~ /running/i) {
-    `$init_file start`;  
+  if ( -x $init_file ) {
+    my $result=`$init_file status 2>&1`;
+    if ($result !~ /running/i) {
+      `$init_file start`;  
+    }
   }
 } else {
   my $result=`lssrc -s syslogd 2>&1`;
