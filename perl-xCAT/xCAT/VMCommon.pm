@@ -31,9 +31,46 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
       $macs=$cfghash->{mac}->{$_}->[0]->{mac};
       foreach $mac (split /\|/,$macs) {
           $mac =~ s/\!.*//;
-          $cfghash->{usedmacs}->{lc($mac)}=1;
+          if ($cfghash->{usedmacs}->{lc($mac)}) {
+              $cfghash->{usedmacs}->{lc($mac)} += 1;
+          } else {
+              $cfghash->{usedmacs}->{lc($mac)}=1;
+          }
       }
   }
+}
+
+sub macsAreUnique { #internal function, do not call, argument format may change without warning
+    #Take a list of macs, ensure that in the table view, they are unique.
+    #this should be performed after the macs have been committed to 
+    #db
+    my $cfghash = shift;
+    my @macs = @_;
+    my $mactab = xCAT::Table->new("mac",-create=>0);
+    unless ($mactab) {
+        return 1;
+    }
+    $cfghash->{mac} = $mactab->getAllNodeAttribs(['mac'],1);
+    $cfghash->{usedmacs} = {};
+    my $macs;
+    my $mac;
+    foreach (keys %{$cfghash->{mac}}) {
+      $macs=$cfghash->{mac}->{$_}->[0]->{mac};
+      foreach $mac (split /\|/,$macs) {
+          $mac =~ s/\!.*//;
+          if ($cfghash->{usedmacs}->{lc($mac)}) {
+              $cfghash->{usedmacs}->{lc($mac)} += 1;
+          } else {
+              $cfghash->{usedmacs}->{lc($mac)}=1;
+          }
+      }
+    }
+    foreach $mac (@macs) {
+        if ($cfghash->{usedmacs}->{lc($mac)} > 1) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 sub getMacAddresses {
@@ -56,6 +93,7 @@ sub getMacAddresses {
     }
 
     srand(); #Re-seed the rng.  This will make the mac address generation less deterministic
+    while ($count > 0) {
     while ($count > 0) { #still need more, autogen
         $macaddr = "";
         while (not $macaddr) {
@@ -78,6 +116,19 @@ sub getMacAddresses {
         $mactab->setNodeAttribs($node,{mac=>$macdata});
         $tablecfg->{dhcpneeded}->{$node}=1; #at our leisure, this dhcp binding should be updated
     }
+    #TODO: LOCK if a distributed lock management structure goes in place, that may be a faster solution than this
+    #this code should be safe though as it is, if a tiny bit slower
+    #can also be sped up by doing it for a noderange in a sweep instead of once per node
+    #but the current architecture has this called at a place that is unaware of the larger context
+    #TODO2.4 would be either the lock management or changing this to make large scale mkvm faster
+    unless (macsAreUnique($tablecfg,@macs)) { #Throw away ALL macs and try again
+                #this currently includes manually specified ones
+        $count += scalar(@macs);
+        @macs = ();
+        $macdata="";
+    }
+    }
+
     return @macs;
 #    $cfghash->{usedmacs}-{lc{$mac}};
 
