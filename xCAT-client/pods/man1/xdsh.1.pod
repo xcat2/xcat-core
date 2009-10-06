@@ -441,9 +441,9 @@ flag.
 =head1 B<Compatibility with AIX dsh>
 
 To provide backward compatibility for scripts written using dsh in
- AIX and CSM, a tool has been provide B<groupfiles4dsh>,
- which will build node group files from the
-xCAT database that can be used by dsh.   See man groupfiles4dsh. 
+AIX and CSM, a tool has been provide B<groupfiles4dsh>,
+which will build node group files from the
+xCAT database that can be used by dsh. See man groupfiles4dsh. 
 
 =head1 B<Security>
 
