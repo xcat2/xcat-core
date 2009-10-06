@@ -86,25 +86,27 @@ sub parse_args
       )
     {
         $usagemsg =
-          " restorexCATdb -h \n restorexCATdb [-p] [path to restore .csv files]\n";
+          " restorexCATdb -h \n restorexCATdb -v \n restorexCATdb [-p] [path to restore .csv files]\n";
         xCAT::MsgUtils->message("E", $usagemsg);
         exit 1;
     }
     if ($::HELP)
     {
         $usagemsg =
-          " restorexCATdb -h \n restorexCATdb [-p] [path to restore .csv files]\n";
+          " restorexCATdb -h \n restorexCATdb -v \n restorexCATdb [-p] [path to restore .csv files]\n";
         xCAT::MsgUtils->message("I", $usagemsg);
         exit 0;
     }
     if ($::VERSION)
     {
-        xCAT::MsgUtils->message("I", "Version 2.0\n");
+        my $version = xCAT::Utils->Version();
+        xCAT::MsgUtils->message("N", $version);
+
         exit 0;
     }
     if (!($::PATH))
     {
-        my $msg = " -p with path to place dump files is required \n";
+        my $msg = " -p with path to database files is required \n";
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
     }

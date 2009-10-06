@@ -77,25 +77,26 @@ sub parse_args
       )
     {
         $usagemsg =
-          " dumpxCATdb -h \n dumpxCATdb [-p] [path to dump directory]\n";
+          " dumpxCATdb -h \n dumpxCATdb -v \n dumpxCATdb [-p] [path to dump directory]\n";
         xCAT::MsgUtils->message("E", $usagemsg);
         exit 1;
     }
     if ($::HELP)
     {
         $usagemsg =
-          " dumpxCATdb -h \n dumpxCATdb [-p] [path to dump directory]\n";
+          " dumpxCATdb -h \n dumpxCATdb -v \n dumpxCATdb [-p] [path to dump directory]\n";
         xCAT::MsgUtils->message("I", $usagemsg);
         exit 0;
     }
     if ($::VERSION)
     {
-        xCAT::MsgUtils->message("I", "Version 2.0\n");
+        my $version = xCAT::Utils->Version();
+        xCAT::MsgUtils->message("N", $version);
         exit 0;
     }
     if (!($::PATH))
     {
-        my $msg = " -p with path to directory to hold db files.\n";
+        my $msg = " Requires -p with path to directory to hold db files.\n";
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
     }
