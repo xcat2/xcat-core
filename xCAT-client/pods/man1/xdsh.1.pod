@@ -27,20 +27,6 @@ formatted so that command results  from  all  nodes  can  be  managed.
 The B<xdsh> command is an xCAT Distributed Shell Utility.
 
 
-B<TARGET> B<SPECIFICATION>:
-
-A target is a node where a remote command will be executed.  Node
-targets are specified inputting the I<node_list> or I<nodegroups>.
-
-If  the local host is included as part of the targets, the I<command_list>
-is executed directly on the local host and not through  the  configured
-remote  shell,  unless  a  I<user_ID>  is specified for execution with the
-local host (see B<Remote> B<user>).
-
-Node targets can also be specified using node ranges  as  supported  by
-xCAT.  If  the same target is specified more than once, the remote com-
-mand will only be executed once on the specified target.
-
 B<COMMAND> B<SPECIFICATION>:
 
 The commands to execute on the remote  targets  are  specified  by  the
@@ -378,11 +364,6 @@ issued command is B<0>.
 =head1 B<Environment> B<Variables>
 
 =over 4
-
-=item B<DSH_CONTEXT>
-
-Specifies the default context to use  when  resolving
-targets. This variable is overridden by the B<-C> flag.
 
 =item B<DEVICETYPE>
 

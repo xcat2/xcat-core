@@ -32,11 +32,6 @@ If using hierarchy, then xdcp runs on the service node that is servicing the com
 the files from the compute node to the Management node, hierarchically.  There
 is a two step process, see -P flag.  
 
-B<TARGET> B<SPECIFICATION>:
-
-Target specification is identical for the xdcp and xdsh commands. See the
-xdsh man page for details on specifying targets for the xdcp command.
-
 B<REMOTE> B<USER>:
 
 A  user_ID  can  be specified for the remote copy command.  Remote user
@@ -90,13 +85,14 @@ When  used  with the -P flag, only a single file can be specified.
 
 =item B<targetpath>
 
-Specifies the complete path to copy one  or  more  source_file
-files  to on the target. If the -P flag is specified, the tar-
-get_path is the local host location for the copied files.  The
-remote file directory structure is recreated under target_path
-and  the  remote  target  name  is  appended  to  the   copied
-source_file name in the target_path directory. Note: the targetpath 
-directory must exist.
+If one source_file file, then it specifies the file to copy the source_file
+file to on the target. If multiple source_file files, it specifies
+the directory to copy the source_file files to on the target.
+If the -P flag is specified, the target_path is the local host location
+for the copied files.  The remote file directory structure is recreated
+under target_path and  the  remote  target  name  is  appended 
+to  the   copied source_file name in the target_path directory.
+Note: the targetpath directory must exist.
 
 
 =item B<-f>|B<--fanout> I<fanout_value>
@@ -228,11 +224,6 @@ Displays the B<xdcp> command version information.
 =head1 B<Environment> B<Variables>
 
 =over 4
-
-=item B<DSH_CONTEXT>
-
-Specifies the default context to use  when  resolving
-targets. This variable is overridden by the B<-C> flag.
 
 =item B<DSH_ENVIRONMENT>
 
