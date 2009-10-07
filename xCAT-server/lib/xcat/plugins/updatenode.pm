@@ -8,8 +8,6 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 
-use strict;
-use warnings;
 use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
