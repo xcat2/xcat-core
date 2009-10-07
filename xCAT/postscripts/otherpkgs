@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -85,6 +85,7 @@ else
         do
             result=`zypper sd $x`
         done
+	zypper refresh
         repo_base="/tmp"
     fi
 fi
@@ -92,112 +93,177 @@ fi
 
 repo_path=()
 repo_pkgs=""
+repo_pkgs_preremove=""
+repo_pkgs_postremove=""
 plain_pkgs=""
+plain_pkgs_preremove=""
+plain_pkgs_postremove=""
 handled_path=()
 for x in `echo "$OTHERPKGS" | tr "," "\n"`
 do
+    #check if the file name starts with -- or -. 
+    #If it is start with -,  then the rpm must be removed before installing other packages
+    #If it is start with --, then the rpm will be removed after  installing other packages
+    string_type=0;  #nornmal rpm
+    pos=`expr index  $x -`
+    if [ $pos -eq 1 ]; then 
+	x=`echo ${x#-}`
+	pos=`expr index  $x -`
+	if [ $pos -eq 1 ]; then
+	    x=`echo ${x#-}`
+	    string_type=1  #start with --
+	else
+	    string_type=-1 #start with -
+	fi
+    fi
+	    
     if [ $hasyum -eq 0 ] && [ $haszypper -eq 0 ]; then
-	plain_pkgs="$plain_pkgs $x-*"
+	if [  $string_type -eq -1 ]; then
+	    plain_pkgs_preremove="$plain_pkgs_preremove $x"
+        elif [  $string_type -eq 1 ]; then
+	    plain_pkgs_postremove="$plain_pkgs_postremove $x"
+	else
+	    plain_pkgs="$plain_pkgs $x-*"
+	fi
 	continue
     fi
+
+    if [  $string_type -eq -1 ]; then
+	repo_pkgs_preremove="$repo_pkgs_preremove $x"
+    elif [  $string_type -eq 1 ]; then
+	repo_pkgs_postremove="$repo_pkgs_postremove $x"
+    else
+	fn=`basename $x`
+	path=`dirname $x`
+	whole_path=$OTHERPKGDIR/$path
 	
-   fn=`basename $x`
-   path=`dirname $x`
-   whole_path=$OTHERPKGDIR/$path
-
-   #find out if this path has already handled
-   try_repo=1
-   rc=1
-   i=0
-   while [ $i -lt ${#handled_path[*]} ]; do
-       if [ ${handled_path[$i]} = $path ]; then
-           try_repo=0
-           j=0
-           while [ $j -lt ${#repo_path[*]} ]; do
-               if [ ${repo_path[$j]} = $path ]; then
-                   rc=0
-                   break
-               fi
-               let j++
-           done
-           break 
-       fi
-       let i++
-   done
-
-
-   #try to add the path to the repo
-   if [ $try_repo -eq 1 ]; then
-       index=${#repo_path[*]}
-       REPOFILE="$repo_base/xCAT-otherpkgs$index.repo"
-       echo "[xcat-otherpkgs$index]" > $REPOFILE
-       echo "name=xcat-otherpkgs$index" >> $REPOFILE
-       if [ $mounted -eq 0 ]; then
-           echo "baseurl=ftp://$whole_path" >> $REPOFILE
-       else
-           echo "baseurl=file://$whole_path" >> $REPOFILE
-       fi
-       echo "enabled=1" >> $REPOFILE
-       echo "gpgcheck=0" >> $REPOFILE
-
-       if [ $hasyum -eq 1 ]; then 
-	   #use yum
-           result=`yum list $fn 2>&1`
-           if [ $? -eq 0 ]; then  
-               rc=0
-               repo_path[${#repo_path[*]}]=$path
-           else
-               rm $REPOFILE
-	   fi
-       elif [ $haszypper -eq 1 ]; then
-           #use zypper
-	   if [ "$OSVER" = "sles11" ]; then
-	       result=`zypper ar -c $REPOFILE`
-	   else
-	       result=`zypper sa -c $REPOFILE` 
-	   fi	
-
-           result=`zypper refresh xcat-otherpkgs$index 2>&1`
-           if [ $? -eq 0 ]; then  
-	       rc=0
-               repo_path[${#repo_path[*]}]=$path
-           else
-               result=`zypper sd xcat-otherpkgs$index`
-	   fi
-       fi
-   fi
-       
-   if [ $rc -eq 0 ]; then
-       repo_pkgs="$repo_pkgs $fn"  
-   else
-       #now no hope we have to use rpm command
-       plain_pkgs="$plain_pkgs $x-*"
-   fi
-   handled_path[${#handled_path[*]}]=$path
+        #find out if this path has already handled
+	try_repo=1
+	rc=1
+	i=0
+	while [ $i -lt ${#handled_path[*]} ]; do
+	    if [ ${handled_path[$i]} = $path ]; then
+		try_repo=0
+		j=0
+		while [ $j -lt ${#repo_path[*]} ]; do
+		    if [ ${repo_path[$j]} = $path ]; then
+			rc=0
+			break
+		    fi
+		    let j++
+		done
+		break 
+	    fi
+	    let i++
+	done
+	
+	
+        #try to add the path to the repo
+	if [ $try_repo -eq 1 ]; then
+	    index=${#repo_path[*]}
+	    REPOFILE="$repo_base/xCAT-otherpkgs$index.repo"
+	    echo "[xcat-otherpkgs$index]" > $REPOFILE
+	    echo "name=xcat-otherpkgs$index" >> $REPOFILE
+	    if [ $mounted -eq 0 ]; then
+		echo "baseurl=ftp://$whole_path" >> $REPOFILE
+	    else
+		echo "baseurl=file://$whole_path" >> $REPOFILE
+	    fi
+	    echo "enabled=1" >> $REPOFILE
+	    echo "gpgcheck=0" >> $REPOFILE
+	    
+	    if [ $hasyum -eq 1 ]; then 
+	        #use yum
+		result=`yum list $fn 2>&1`
+		if [ $? -eq 0 ]; then  
+		    rc=0
+		    repo_path[${#repo_path[*]}]=$path
+		else
+		    rm $REPOFILE
+		fi
+	    elif [ $haszypper -eq 1 ]; then
+                #use zypper
+		if [ "$OSVER" = "sles11" ]; then
+		    result=`zypper ar -c $REPOFILE`
+		else
+		    result=`zypper sa -c $REPOFILE` 
+		fi	
+		
+		result=`zypper refresh xcat-otherpkgs$index 2>&1`
+		if [ $? -eq 0 ]; then  
+		    rc=0
+		    repo_path[${#repo_path[*]}]=$path
+		else
+		    result=`zypper sd xcat-otherpkgs$index`
+		fi
+	    fi
+	fi
+	
+	if [ $rc -eq 0 ]; then
+	    repo_pkgs="$repo_pkgs $fn"  
+	else
+            #now no hope we have to use rpm command
+	    plain_pkgs="$plain_pkgs $x-*"
+	fi
+	handled_path[${#handled_path[*]}]=$path
+    fi
 done  
 
-#Now we have parse the input, let start the installation using yum or zypper     
+#echo "repo_pkgs=$repo_pkgs,\nrepo_pkgs_preremove=$repo_pkgs_preremove,\nrepo_pkgs_postremove=$repo_pkgs_postremove"
+#echo "plain_pkgs=$plain_pkgs,\nplain_pkgs_preremove=$plain_pkgs_preremove,\nplain_pkgs_postremove=$plain_pkgs_postremove"
+
+
+#Now we have parse the input, let's remove rpms if is specified with -
+if [ "$repo_pkgs_preremove" != "" ]; then
+    if [ $hasyum -eq 1 ]; then 
+        echo "yum -y removel $repo_pkgs_preremove"
+        result=`yum -y remove $repo_pkgs_preremove 2>&1`
+        ###echo "$result"
+        if [ $? -ne 0 ]; then 
+            logger "otherpkgs: $result"
+        fi
+    elif [ $haszypper -eq 1 ]; then
+        echo "zypper remove -y $repo_pkgs_preremove"
+	result=`zypper remove -y $repo_pkgs_preremove 2>&1`
+        ###echo "$result"
+	if [ $? -ne 0 ]; then 
+            logger "otherpkgs: $result"
+	fi
+    fi
+fi 
+
+if [ "$plain_pkgs_preremove" != "" ]; then 
+    echo "rpm -ev $plain_pkgs_preremove" 
+    result=`rpm -ev $plain_pkgs_preremove 2>&1`
+    echo "$result"
+    if [ $? -ne 0 ]; then 
+	logger "otherpkgs $result"
+    fi
+fi
+
+
+#installation using yum or zypper     
 if [ "$repo_pkgs" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y install $repo_pkgs"
         result=`yum -y install $repo_pkgs 2>&1`
-        echo "$result"
+        ###echo "$result"
         if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
         fi
     elif [ $haszypper -eq 1 ]; then
         echo "zypper install -y $repo_pkgs"
 	result=`zypper install -y $repo_pkgs 2>&1`
-        echo "$result"
+        ###echo "$result"
 	if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
 	fi
         #remove the repos
-        old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
-        for x in $old_repo
-        do
-            result=`zypper sd $x`
-        done
+        #old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
+        #for x in $old_repo
+        #do
+        #    result=`zypper sd $x`
+        #done
     fi
 fi 
 
@@ -235,6 +301,34 @@ if [ "$plain_pkgs" != "" ]; then
 	cd /xcatpost
 	dir_no_ftproot=${OTHERPKGDIR#$INSTALLDIR/}
         rm -f -R $dir_no_ftproot
+    fi
+fi
+
+#remove more rpms if specified with --
+if [ "$repo_pkgs_postremove" != "" ]; then
+    if [ $hasyum -eq 1 ]; then 
+        echo "yum -y removel $repo_pkgs_postremove"
+        result=`yum -y remove $repo_pkgs_postremove 2>&1`
+        ###echo "$result"
+        if [ $? -ne 0 ]; then 
+            logger "otherpkgs: $result"
+        fi
+    elif [ $haszypper -eq 1 ]; then
+        echo "zypper remove -y $repo_pkgs_postremove"
+	result=`zypper remove -y $repo_pkgs_postremove 2>&1`
+        ###echo "$result"
+	if [ $? -ne 0 ]; then 
+            logger "otherpkgs: $result"
+	fi
+    fi
+fi 
+
+if [ "$plain_pkgs_postremove" != "" ]; then 
+    echo "rpm -ev $plain_pkgs_postremove" 
+    result=`rpm -ev $plain_pkgs_postremove 2>&1`
+    echo "$result"
+    if [ $? -ne 0 ]; then 
+	logger "otherpkgs $result"
     fi
 fi
 
