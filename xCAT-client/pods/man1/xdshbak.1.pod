@@ -1,4 +1,4 @@
-=head1 B<NAME>
+=head1 NAME
 
 B<xdshbak> - Formats the output of the B<xdsh> command.
 
@@ -6,12 +6,12 @@ B<xdshbak> - Formats the output of the B<xdsh> command.
 
 B<xdshbak> [B<-c> | B<-x> | B<-h> | B<-q>]
 
-=head1 B<DESCRIPTION>
+=head1 DESCRIPTION
 
 The  B<xdshbak>  command formats output from the B<xdsh> command. The B<xdshbak>
 command takes, as input, lines in the following format:
 
-host_name: line of output from remote command
+ host_name: line of output from remote command
 
 The B<xdshbak> command formats the lines as follows  and  writes  them  to
 standard  output. Assume that the output from node3 and node4
@@ -44,15 +44,15 @@ is identical, and the B<-c> (collapse) flag was specified:
 
 When output is displayed from more than one node in collapsed form, the
 host  names are displayed alphabetically. When output is not collapsed,
-output is displayed sorted alphabetically by  host  name.
+output is displayed sorted alphabetically by host name.
 
 If the B<-q> quiet flag is not set then  B<xdshbak>
 command writes "." for each 1000 lines of output processed (to show progress),
 since it won't display the output until it has processed all of it.
 
-If the B<-x> flag is specified, the extra header lines that xdshbak nor-
-mally displays for each node will be omitted, and the hostname at the beginning
-of each line is not stripped off, but B<xdshbak>  still  sorts
+If the B<-x> flag is specified, the extra header lines that xdshbak normally
+displays for each node will be omitted, and the hostname at the beginning
+of each line is not stripped off, but B<xdshbak>  still sorts
 the output by hostname for easier viewing:
 
  node1: lines from xdsh for node1
@@ -62,15 +62,15 @@ the output by hostname for easier viewing:
  .
  .
 
-B<Standard> B<Error>
+=head2 Standard Error
 
-When  the B<xdshbak> filter is used and standard error messages are gener-
-ated, all error messages on standard error appear before  all  standard
+When the B<xdshbak> filter is used and standard error messages are generated,
+all error messages on standard error appear before all standard
 output messages. This is true with and without the B<-c> flag.
 
-=head1 B<OPTIONS>
+=head1 OPTIONS
 
-=over 4
+=over 6
 
 =item B<-c>
 
@@ -93,9 +93,7 @@ Displays usage information.
 
 Quiet mode, do not display "." for each 1000 lines of output.
 
-
 =back
-
 
 =head1 B<EXAMPLES>
 
@@ -106,21 +104,21 @@ Quiet mode, do not display "." for each 1000 lines of output.
 To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
 
-B<xdsh> I<node1,node2,node3 cat /etc/passwd> | B<xdshbak>
+ xdsh node1,node2,node3 cat /etc/passwd | xdshbak
 
 =item *
 
-To display the results of a command issued on several nodes  with
+To display the results of a command issued on several nodes with
 identical output displayed only once, enter:
 
-B<xdsh> I<host1,host2,host3 pwd> | B<xdshbak -c>
+ xdsh host1,host2,host3 pwd | xdshbak -c
 
 =item *
 
 To display the results of a command issued on several nodes with
 compact output and be sorted alphabetically by host name, enter:
 
-B<xdsh> I<host1,host2,host3 date> | B<xdshbak -x>
+ xdsh host1,host2,host3 date | xdshbak -x
 
 =back
 
