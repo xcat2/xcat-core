@@ -879,31 +879,35 @@ sub nodech
         my $tabhdl = xCAT::Table->new($tab, -create => 1, -autocommit => 0);
         if ($tabhdl)
         {
-            if ($deletemode)
-            {
-                foreach (@$nodes)
-                {
-                    $tabhdl->delEntries({'node' => $_});
-                }
+            my @entities;
+            if ($groupmode) {
+                @entities = @groups;
+            } else {
+                @entities = @$nodes;
             }
-            else
-            {
-
-                #$tabhdl->setNodeAttribs($_,$tables{$tab});
-                my %uhsh;
-                my $node = $_;
-                foreach (keys %{$tables{$tab}})		# for each column specified for this table
-                {
-                    #my $op  = $tables{$tab}->{$_}->[1];
-                    #my $val = $tables{$tab}->{$_}->[0];
-                    my @valoppairs = @{$tables{$tab}->{$_}}; #Deep copy
-                    while (scalar(@valoppairs)) {			# alternating list of value and op for this table.column
-            	        my $val = shift @valoppairs;
-            	        my $op  = shift @valoppairs;
-            	        my $key = $_;
+            my $entity;
+            foreach $entity (@entities) {
+                if ($deletemode) {
+                    $tabhdl->delEntries({'node' => $entity});
+                } else {
+                    #$tabhdl->setNodeAttribs($_,$tables{$tab});
+                    my %uhsh;
+                    foreach (keys %{$tables{$tab}})		# for each column specified for this table
+                    {
+                        #my $op  = $tables{$tab}->{$_}->[1];
+                        #my $val = $tables{$tab}->{$_}->[0];
+                        my @valoppairs = @{$tables{$tab}->{$_}}; #Deep copy
+                        while (scalar(@valoppairs)) {			# alternating list of value and op for this table.column
+                            my $val = shift @valoppairs;
+                            my $op  = shift @valoppairs;
+                            my $key = $_;
                             # When changing the groups of the node, check whether the new group
                             # is a dynamic group.
                             if (($key eq 'groups') && ($op eq '=')) {
+                                if ($groupmode) {
+                                    $callback->({error => "Group membership is not changeable via nodegrpch",errorcode=>1});
+                                    return;
+                                }
                                 if (scalar(@grplist) == 0) { # Do not call $grptab->getAllEntries for each node, performance issue.
                                     $grptab = xCAT::Table->new('nodegroup');
                                     if ($grptab) {
@@ -922,67 +926,71 @@ sub nodech
                                     }
                                 }
                             }
-            	        if ($op eq '=') {
-            	            $uhsh{$key} = $val;
-            	        }
-            	        elsif ($op eq ',=') {    #splice assignment
-            		        my $curval = $uhsh{$key};    # in case it was already set
-            		        if (!defined($curval)) {
-            		            my $cent = $tabhdl->getNodeAttribs($node, [$key]);
-            		            if ($cent) { $curval = $cent->{$key}; }
-            		        }
-            	            if ($curval) {
-            	                my @vals = split(/,/, $curval);
-            	                unless (grep /^$val$/, @vals) {
-                                    unshift @vals,$val;
-            	                    my $newval = join(',', @vals);
-            	                    $uhsh{$key} = $newval;
-            	                }
-            	            } else {
-            	                $uhsh{$key} = $val;
-            	            }
-            	        }
-            	        elsif ($op eq '^=') {
-            		        my $curval = $uhsh{$key};    # in case it was already set
-            		        if (!defined($curval)) {
-            		            my $cent = $tabhdl->getNodeAttribs($node, [$key]);
-            		            if ($cent) { $curval = $cent->{$key}; }
-            		        }
-            	            if ($curval) {
-            	                my @vals = split(/,/, $curval);
-            	                if (grep /^$val$/, @vals) {    #only bother if there
-            	                    @vals = grep(!/^$val$/, @vals);
-            	                    my $newval = join(',', @vals);
-            	                    $uhsh{$key} = $newval;
-            	                }
-            	            }    #else, what they asked for is the case alredy
-            	        }
-                    }		# end of while @valoppairs
-                }		# end of foreach column specified for this table
+                            if ($op eq '=') {
+                                $uhsh{$key} = $val;
+                            } elsif ($op eq ',=') {    #splice assignment
+                                if ($groupmode) {
+                                    $callback->({error => ",= and ^= are not supported by nodegrpch",errorcode=>1});
+                                    return;
+                                }
+                                my $curval = $uhsh{$key};    # in case it was already set
+                                if (!defined($curval)) {
+                                    my $cent = $tabhdl->getNodeAttribs($entity, [$key]);
+                                    if ($cent) { $curval = $cent->{$key}; }
+                                }
+                                if ($curval) {
+                                    my @vals = split(/,/, $curval);
+                                    unless (grep /^$val$/, @vals) {
+                                        unshift @vals,$val;
+                                        my $newval = join(',', @vals);
+                                        $uhsh{$key} = $newval;
+                                    }
+                                } else {
+                                    $uhsh{$key} = $val;
+                                }
+                            } elsif ($op eq '^=') {
+                                if ($groupmode) {
+                                    $callback->({error => ",= and ^= are not supported by nodegrpch",errorcode=>1});
+                                    return;
+                                }
+                                my $curval = $uhsh{$key};    # in case it was already set
+                                if (!defined($curval)) {
+                                    my $cent = $tabhdl->getNodeAttribs($entity, [$key]);
+                                    if ($cent) { $curval = $cent->{$key}; }
+                                }
+                                if ($curval) {
+                                    my @vals = split(/,/, $curval);
+                                    if (grep /^$val$/, @vals) {    #only bother if there
+                                        @vals = grep(!/^$val$/, @vals);
+                                        my $newval = join(',', @vals);
+                                        $uhsh{$key} = $newval;
+                                    }
+                                }    #else, what they asked for is the case alredy
+                            }
+                        }		# end of while @valoppairs
+                    }		# end of foreach column specified for this table
 
-                if (keys %uhsh)
-                {
-                    if ($groupmode) { 
-                        my $nodekey = "node";
-                        if (defined $xCAT::Schema::tabspec{$tab}->{nodecol}) {
-                            $nodekey = $xCAT::Schema::tabspec{$tab}->{nodecol}
-                        }
-                        my %clrhash; #First, we prepare to clear all nodes of their overrides on these columns
-                        foreach (keys %uhsh) {
-                            if ($_ eq $nodekey) { next; } #skip attempts to manipulate 'node' type columns in a groupch
-                            $clrhash{$_}="";    
-                        }
-                        foreach my $group (@groups) {
-                            $tabhdl->setAttribs({node=>$group},\%uhsh);
-    	                    $nodes = [noderange($group)];
+                    if (keys %uhsh)
+                    {
+                        if ($groupmode) { 
+                            my $nodekey = "node";
+                            if (defined $xCAT::Schema::tabspec{$tab}->{nodecol}) {
+                                $nodekey = $xCAT::Schema::tabspec{$tab}->{nodecol}
+                            }
+                            my %clrhash; #First, we prepare to clear all nodes of their overrides on these columns
+                            foreach (keys %uhsh) {
+                                if ($_ eq $nodekey) { next; } #skip attempts to manipulate 'node' type columns in a groupch
+                                $clrhash{$_}="";    
+                            }
+                            $tabhdl->setAttribs({node=>$entity},\%uhsh);
+                            $nodes = [noderange($entity)];
                             unless (scalar @$nodes) { next; }
                             $tabhdl->setNodesAttribs($nodes,\%clrhash);
-                        }
-                    } else {
-                        my @rc = $tabhdl->setNodesAttribs($nodes, \%uhsh);
-                        if (not defined($rc[0]))
-                        {
-                            $callback->({error => "DB error " . $rc[1],errorcode=>1});
+                        } else {
+                            my @rc = $tabhdl->setNodeAttribs($entity, \%uhsh);
+                            if (not defined($rc[0])) {
+                                $callback->({error => "DB error " . $rc[1],errorcode=>1});
+                            }
                         }
                     }
                 }
