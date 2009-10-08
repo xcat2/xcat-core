@@ -49,6 +49,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man5
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man7
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man7
 
+set +x
 cp -r xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data
@@ -69,6 +70,7 @@ cp share/man/man7/* $RPM_BUILD_ROOT/%{prefix}/share/man/man7
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/man/man7/*
 cp share/doc/man7/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man7
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man7/*
+set -x
 
 %clean
 # This step does not happen until *after* the %files packaging below

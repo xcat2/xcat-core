@@ -35,8 +35,10 @@ rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT%{prefix}/ui
 
+set +x
 cp -r * $RPM_BUILD_ROOT%{prefix}/ui
 chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
+set -x
 
 %files
 %defattr(-,root,root)

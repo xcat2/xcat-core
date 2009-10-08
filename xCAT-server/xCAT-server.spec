@@ -50,6 +50,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 
+set +x
 %ifos linux
 cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -a share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
@@ -92,6 +93,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
 
 cp lib/perl/xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
+set -x
 
 # For now, don't ship these plugins - to avoid AIX dependency on SNMP.
 %ifnos linux
@@ -107,14 +109,15 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
 chmod 644 $RPM_BUILD_ROOT/opt/xcat/xdsh/Context/*
 
+set +x
 cp -r lib/xcat/monitoring/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/*
+set -x
 
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp/*
-
 
 cp -r lib/xcat/schema/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/*
