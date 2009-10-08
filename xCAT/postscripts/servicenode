@@ -86,7 +86,7 @@ else
         }
         my $osver=$ENV{'OSVER'};
         my $arch=$ENV{'ARCH'};
-        &runcmd("OTHERPKGS=xcat/core-snap/xCATsn,xcat/xcat-dep/$osver/$arch/conserver /xcatpost/otherpkgs");
+        &runcmd("OTHERPKGS=xcat/xcat-core/xCATsn,xcat/xcat-dep/$osver/$arch/conserver /xcatpost/otherpkgs");
     }
 	&runcmd("/opt/xcat/sbin/copycerts");
 }
