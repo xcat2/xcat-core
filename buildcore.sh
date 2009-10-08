@@ -28,6 +28,7 @@ CURDIR=`pwd`
 D=${CURDIR/\/src\/xcat-core/}
 REL=`basename $D`
 
+XCATCORE="xcat-core"
 VER=`cat Version`
 if [ "$PROMOTE" = 1 ]; then
 	CORE="xcat-core"
@@ -36,7 +37,7 @@ else
 	CORE="core-snap"
 	TARNAME=core-rpms-snap.tar.bz2
 fi
-DESTDIR=../../$CORE
+DESTDIR=../../$XCATCORE
 
 
 if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting
@@ -188,11 +189,14 @@ fi
 
 # Build the tarball
 cd ..
-tar -hjcvf $TARNAME $CORE
+tar -hjcvf $TARNAME $XCATCORE
 chgrp xcat $TARNAME
 chmod g+w $TARNAME
 
 # Upload the individual RPMs to sourceforge
+if [ ! -e core-snap ]; then
+	ln -s xcat-core core-snap
+fi
 while ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
 do : ; done
 
@@ -212,8 +216,8 @@ if [ "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
 	mkdir -p man
 	cd man
 	rm -rf opt
-	rpm2cpio ../$CORE/xCAT-client-*.noarch.rpm | cpio -id '*.html'
-	rpm2cpio ../$CORE/perl-xCAT-*.noarch.rpm | cpio -id '*.html'
+	rpm2cpio ../$XCATCORE/xCAT-client-*.noarch.rpm | cpio -id '*.html'
+	rpm2cpio ../$xCATCORE/perl-xCAT-*.noarch.rpm | cpio -id '*.html'
 	# Note: for some reason scp kept getting "Connection reset by peer" part way thru
 	while ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done
