@@ -323,7 +323,7 @@ sub process_request
 
     my $request  = shift;
     my $callback = shift;
-    my $sub_req = shift; 
+    $::sub_req = shift; 
     my $ret;
     my $msg;
     
@@ -348,7 +348,7 @@ sub process_request
     # figure out which cmd and call the subroutine to process
     if ($command eq "mkdsklsnode")
     {
-        ($ret, $msg) = &mkdsklsnode($callback, $nodes, $nodehash, $nethash, $imagehash, $lochash, $sub_req);
+        ($ret, $msg) = &mkdsklsnode($callback, $nodes, $nodehash, $nethash, $imagehash, $lochash, $::sub_req);
     }
     elsif ($command eq "mknimimage")
     {
@@ -365,7 +365,7 @@ sub process_request
 	} 
 	elsif ($command eq "nimnodeset")
 	{
-		($ret, $msg) = &nimnodeset($callback, $nodes, $nodehash, $nethash, $imagehash, $lochash, $sub_req);
+		($ret, $msg) = &nimnodeset($callback, $nodes, $nodehash, $nethash, $imagehash, $lochash, $::sub_req);
 	}
 
 	elsif ($command eq "nimnodecust")
@@ -849,8 +849,282 @@ if (0) {
 
 #----------------------------------------------------------------------------
 
-=head3   mknimimage
+=head3	spot_updates
+			Update a NIM SPOT resource on the NIM primary and
+				any service nodes that have the SPOT defined.
 
+		Arguments:
+		Returns:
+			0 - OK
+			1 - error
+
+		Error:   
+
+		Example:
+
+		Usage:
+	my $rc = 
+		&spot_updates($callback, $imagename, \%osimagehash, \%attrvals, $lpp_source);
+
+		Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub spot_updates
+{
+	my $callback = shift;
+	my $image_name = shift;
+	my $image = shift;
+	my $attrs = shift;
+	my $lpp_source_name = shift;
+
+	my %imagedef = %{$image}; # osimage definition
+	my %attrvals = %{$attrs}; # cmd line attr=val pairs
+
+	#my $spot_name=$imagedef{$image_name}{spot};
+	my $spot_name=$image_name;
+	chomp $spot_name;
+
+	my @allservers;  # list of all service nodes 
+
+	#
+	# see if spot is defined on NIM prime and if so, update it
+	#
+
+	# get the name of the primary NIM server
+	#   - either the NIMprime attr of the site table or the management node
+	my $nimprime = &getnimprime();
+	chomp $nimprime;
+
+	# see if the spot exists and if it is allocated.
+	# get list of SPOTS
+	my @spots;
+	my $lcmd = qq~/usr/sbin/lsnim -t spot | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+	my $nout = &xcmd($callback, "xdsh", $nimprime, $lcmd, 1);
+	@spots=@$nout;
+	if ($::RUNCMD_RC  != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get NIM spot definitions from $nimprime.";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	# see if spot defined 
+	if (!grep(/^$spot_name$/, @spots)) {
+		my $rsp;
+		push @{$rsp->{data}}, "The NIM resource named \'$spot_name\' is not defined and therefore cannot be updated.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	} else {
+		# ok - spot is defined - see if the spot is allocated
+		my $alloc_count = &get_nim_attr_val($spot_name, "alloc_count", $callback, $nimprime);
+		if ( defined($alloc_count) && ($alloc_count != 0) ){
+			my $rsp;
+			push @{$rsp->{data}}, "The resource named \'$spot_name\' is currently allocated. It cannot be updated.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	}
+
+	# if this is an update - check the SNs
+	my @SNlist; # list of SNs to have spot removed
+	if ($::UPDATE) {
+        # get list of SNs
+        @allservers=xCAT::Utils->getAllSN();
+
+		# we don't want to include the nimprime in the list of SNs
+		#  need to compare IPs of nimprime and SN
+		my $ip = inet_ntoa(inet_aton($nimprime));
+		chomp $ip;     
+
+		my ($p1, $p2, $p3, $p4) = split /\./, $ip;
+
+        # for each SN -
+        foreach my $srvnode (@allservers) {
+
+			# if the SN is the same as the nim prime then skip it
+			#  nimprime is handle differently
+			my $ip = inet_ntoa(inet_aton($srvnode));
+			chomp $ip;
+			my ($s1, $s2, $s3, $s4) = split /\./, $ip;
+			if ( ($s1 == $p1) && ($s2 == $p2) && ($s3 == $p3) && ($s4 == $p4) ) {
+				next;
+			}
+
+            # get list of SPOTS
+            my $lscmd = qq~/usr/sbin/lsnim -t spot | /usr/bin/cut -f1 -d' ' ~;
+			my $nout = &xcmd($callback, "xdsh", $srvnode, $lscmd, 1);
+            if ($::RUNCMD_RC  != 0) {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not get NIM spot definitions from $
+srvnode.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+			}
+			my @spots = @$nout;
+
+			# see if spot defined
+			if (!grep(/$spot_name$/, @spots)) {
+				# if not then check the next one
+                next;
+            } else {
+                # ok - spot is defined on this SN
+                # 	- see if the spot is allocated
+                my $alloc_count = &get_nim_attr_val($spot_name, "alloc_count", $
+callback, $srvnode);
+
+                if ( defined($alloc_count) && ($alloc_count != 0) ){
+                    my $rsp;
+                    push @{$rsp->{data}}, "The resource named \'$spot_name\' is
+currently allocated on service node \'$srvnode\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                } else {
+					# spot exists and is not allocated 
+					#  so it can be removed - just make a list of SNs for now
+					push @SNlist, $srvnode;
+				}
+			}
+		} # end - for each SN
+
+	} # end - if UPDATE
+
+	# ok -then the spot can be updated
+	if ($::VERBOSE) {
+		my $rsp;
+		push @{$rsp->{data}}, "Updating the NIM spot resource named \'$spot_name\'.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+
+	#
+	# update spot with additional software if have bnds 
+	# 	or otherpkgs
+	#
+
+	# if have no bndls, pkgs or sync files on cmd line then use osimage def
+	#    otherwise just use what is on the cmd line only
+	my $bundles = undef;
+	my $otherpkgs = undef;
+	my $synclistfile = undef;
+	my $osimageonly = 0;
+	my $cmdlineonly = 0;
+
+	# if this is an update - either use the osimage only or the 
+	#	 cmd line only
+	if ($::UPDATE) {
+		 if (!$attrvals{installp_bundle} && !$attrvals{otherpkgs} && !$attrvals{synclists} ) {
+			# if nothing is provided on the cmd line then we just use
+			# 	the osimage def - used for permanent updates - saved
+			# 	in the osimage def
+			$osimageonly = 1;
+		} else {
+			# if anything is provided on the cmd line then just use that
+			#	 - used for ad hoc updates
+			$cmdlineonly = 1;
+		}
+	}
+
+	# if this is the initial creation of the osimage then we 
+	#	just look at the cmd line
+	if (!$::UPDATE) {
+		$cmdlineonly = 1;
+	}
+
+	if ( defined($imagedef{$image_name}{installp_bundle}) && $osimageonly ) {
+		$bundles=$imagedef{$image_name}{installp_bundle};
+	}
+	if ( $attrvals{installp_bundle} && $cmdlineonly) {
+		$bundles=$attrvals{installp_bundle};
+	}
+
+	if ( defined($imagedef{$image_name}{otherpkgs}) && $osimageonly ) {
+		$otherpkgs = $imagedef{$image_name}{otherpkgs};
+	}
+	if ( $attrvals{otherpkgs} && $cmdlineonly) {
+		$otherpkgs=$attrvals{otherpkgs};
+	}
+
+	my $installp_flags = undef;
+	if ( $attrvals{installp_flags} ) {
+		$installp_flags=$attrvals{installp_flags};
+	}
+
+	# if have bundles or otherpkgs then then add software 
+	#	to image (spot) 
+	if ($bundles || $otherpkgs) {
+		my $rc=0;
+		my $lpp_name=$lpp_source_name;
+
+		$rc = &update_spot_sw($callback, $spot_name, $lpp_name, $nimprime, $bundles, $otherpkgs, $installp_flags);
+		if ($rc != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not update software in the NIM SPOT called \'$spot_name\'.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		} else {
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{$rsp->{data}}, "Updated software in the NIM SPOT called \'$spot_name\'.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+		}
+	}
+
+	# update spot with cfg files if have synclists file
+	# check image def and command line
+	if ( defined($imagedef{$image_name}{synclists}) && $osimageonly) {
+		 $synclistfile=$imagedef{$image_name}{synclists};
+	}
+	if ( $attrvals{synclists} && $cmdlineonly) {
+		 $synclistfile=$attrvals{synclists};
+	}
+
+	# if synclistfile then add files to image (spot) 
+	if (defined($synclistfile)) {
+		my $rc=0;
+		$rc = &sync_spot_files($callback, $image_name, $nimprime, $synclistfile, $spot_name);
+		if ($rc != 0) {
+			my $rsp;
+			$rsp->{data}->[0] = "Could not update synclists files.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		} else {
+			if ($::VERBOSE) {
+				my $rsp;
+				$rsp->{data}->[0] = "Updated synclists files.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+		}
+	}
+
+	#
+    # if this is an update then check each SN and remove the spot if it exists
+    #
+    if ($::UPDATE) {
+		foreach my $sn (@SNlist) {
+			# remove the spot
+			if ($::VERBOSE) {
+                my $rsp;
+                $rsp->{data}->[0] = "Removing SPOT \'$spot_name\' on service node $sn.\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+
+			my $rmcmd = qq~nim -o remove $spot_name 2>/dev/null~;
+			my $nout = &xcmd($callback, "xdsh", $sn, $rmcmd, 1);
+			if ($::RUNCMD_RC  != 0) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not remove $spot_name from service node $sn.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+		}
+	}
+	return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   mknimimage
 
 		Creates an AIX/NIM image 
 
@@ -867,7 +1141,8 @@ if (0) {
         Usage:
 
 		mknimimage [-V] [-f | --force] [-l location] [-s image_source]
-		   [-i current_image] image_name [attr=val [attr=val ...]]
+		   [-u |--update] [-i current_image] image_name 
+			[attr=val [attr=val ...]]
 
 		Comments:
 
@@ -916,6 +1191,7 @@ sub mknimimage
 		't=s'		=> \$::NIMTYPE,
 		'm=s'		=> \$::METHOD,
 		'n=s'		=> \$::MKSYSBNODE,
+		'u|update'  => \$::UPDATE,
 		'verbose|V' => \$::VERBOSE,
 		'v|version'  => \$::VERSION,))
 	{
@@ -940,14 +1216,25 @@ sub mknimimage
         return 0;
     }
 
-	# the type is standalone by default
-	if (!$::NIMTYPE) {
-		$::NIMTYPE = "standalone";
-	}
+	# get this systems name as known by xCAT management node
+	my $Sname = &myxCATname();
+	chomp $Sname;
 
-	# the NIM method is rte by default
-	if (($::NIMTYPE eq "standalone") && !$::METHOD) {
-		$::METHOD = "rte";
+	# get the name of the primary NIM server
+	#   - either the NIMprime attr of the site table or the management node
+	my $nimprime = &getnimprime();
+	chomp $nimprime;
+
+	if (!$::UPDATE) {
+		# the type is standalone by default
+		if (!$::NIMTYPE) {
+			$::NIMTYPE = "standalone";
+		}
+
+		# the NIM method is rte by default
+		if (($::NIMTYPE eq "standalone") && !$::METHOD) {
+			$::METHOD = "rte";
+		}
 	}
 
     if ($::opt_l)
@@ -993,7 +1280,7 @@ sub mknimimage
         }
     }
 
-	if ( ($::NIMTYPE eq "standalone") && $::OSIMAGE) {
+	if ( ($::NIMTYPE eq "standalone") && $::opt_i) {
 		my $rsp;
 		push @{$rsp->{data}}, "The \'-i\' option is only valid for diskless and dataless nodes.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1004,32 +1291,34 @@ sub mknimimage
 	#
 	#  Install/config NIM master if needed
 	#
-	# check for master file set
-	my $lsnimcmd = "/usr/sbin/lsnim -l >/dev/null 2>&1";
-	my $out = xCAT::Utils->runcmd("$lsnimcmd", -1);
+
+	# see if NIM is configured
+	my $lsnimcmd = qq~/usr/sbin/lsnim -l >/dev/null 2>&1~;
+	# xcmd decides whether to run local or remote and calls
+	#	either runcmd or runxcmd
+	my $out = &xcmd($callback, "xdsh", $nimprime, $lsnimcmd, 1);
 	if ($::RUNCMD_RC  != 0) {
-# TODO - check for bos.sysmgt.nim.client first?
 		my $rsp;
         push @{$rsp->{data}}, "Configuring NIM.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
 		# if its not installed then run nim_master_setup
-		#   - takes 21 sec even when already configured
-
 		if($::opt_s !~ /^\//) {
 			my $abspath = Cwd::abs_path($::opt_s);
 			if ($abspath) {
 				$::opt_s = Cwd::abs_path($::opt_s);
 			}
 		}
+
 #  TODO - add location (opt_l) - so all res go in same place!
-		my $nimcmd = "nim_master_setup -a mk_resource=no -a device=$::opt_s";
+
+		my $nimcmd = qq~nim_master_setup -a mk_resource=no -a device=$::opt_s~;
 		if ($::VERBOSE) {
             my $rsp;
             push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
-		my $nimout = xCAT::Utils->runcmd("$nimcmd", -1);
+		my $nimout = &xcmd($callback, "xdsh", $nimprime, $nimcmd, 0);
 		if ($::RUNCMD_RC  != 0) {
 			my $rsp;
 			push @{$rsp->{data}}, "Could not install and configure NIM.\n";
@@ -1042,20 +1331,80 @@ sub mknimimage
 	}
 
 	#
-	# see if the image_name (osimage) provided is already defined
+	#  get list of defined xCAT osimage objects
 	#
-	my @deflist = xCAT::DBobjUtils->getObjectsOfType("osimage");
+	my @deflist = undef;
+	@deflist = xCAT::DBobjUtils->getObjectsOfType("osimage");
+
+	# if our image is defined get the defnition
+	my $is_defined = 0;
+	my %imagedef=undef;
 	if (grep(/^$::image_name$/, @deflist)) {
-		if ($::FORCE) {
+		# get the osimage def
+        my %objtype;
+        $objtype{$::image_name} = 'osimage';
+        %imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+        if (!defined(%imagedef))
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not get the xCAT osimage definition for
+ \'$::image_name\'.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+		$is_defined=1;
+	}
+
+	#
+	# do diskless spot update - if requested
+	#
+	if ($::UPDATE) {
+		# don't update spot unlees it is for diskless/dataless
+		if ( $imagedef{$::image_name}{nimtype} eq "standalone") {
+			my $rsp;
+			push @{$rsp->{data}}, "The \'-u\' option is only valid for diskless and dataless nodes.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			&mknimimage_usage($callback);
+			return 1;
+		}
+
+		# if it doesn't exist we can't update it!
+		if (!$is_defined) {
+			my $rsp;
+			push @{$rsp->{data}}, "The osimage object named \'$::image_name\' is not defined.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		} else {
+			# just update the existing spot on the NIM primary 
+			#	- and remove spot from the other SNs
+			#   - when dskls nodes are re-init the new spot will be created
+			#		on the SNs and the root dirs will be re-synced 	
+
+			if (&spot_updates($callback, $::image_name, \%imagedef, \%::attrres, $imagedef{$::image_name}{lpp_source}) != 0) {
+				# error - could not update spots
+				return 1;
+			}
+			return 0;
+		}
+	}
+
+	#
+    #   if exists and not doing update then remove or return
+    #
+	if ($is_defined) {
+		if ($::FORCE) {	
+
 			# remove the existing osimage def and continue
 			my %objhash;
 			$objhash{$::image_name} = "osimage";
 			if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0) {
 				my $rsp;
 				push @{$rsp->{data}}, "Could not remove the existing xCAT definition for \'$::image_name\'.\n";
-				xCAT::MsgUtils->message("E", $rsp, $::callback);
+				xCAT::MsgUtils->message("E", $rsp, $callback);
 			}
 		} else {
+			
+			# just return with error
 			my $rsp;
 			push @{$rsp->{data}}, "The osimage definition \'$::image_name\' already exists.\n";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1066,8 +1415,9 @@ sub mknimimage
 	#
     #  Get a list of the all defined resources
     #
-    my $cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
-    @::nimresources = xCAT::Utils->runcmd("$cmd", -1);
+   	my $cmd = qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+	my $nout = &xcmd($callback, "xdsh", $nimprime, $cmd, 1);
+    @::nimresources = @$nout;
     if ($::RUNCMD_RC  != 0)
     {
         my $rsp;
@@ -1079,7 +1429,6 @@ sub mknimimage
 	#
 	#  Handle diskless, rte, & mksysb 
 	#
-
 	if ( ($::NIMTYPE eq "diskless") | ($::NIMTYPE eq "dataless") ) {
 
 		# get the xCAT image definition if provided
@@ -1090,7 +1439,7 @@ sub mknimimage
 			# get the image def
         	$objtype{$::opt_i} = 'osimage';
 
-			%::imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
+			%::imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
 			if (!defined(%::imagedef))
 			{
 				my $rsp;
@@ -1305,6 +1654,12 @@ sub mknimimage
 		} # end paging res
 		chomp $paging_name;
         $newres{paging} = $paging_name;
+
+		# update spot with additional software and sync files
+        if (&spot_updates($callback, $::image_name, \%imagedef, \%::attrres, $lpp_source_name) != 0) {
+            # error - could not update spots
+            return 1;
+        }
 
 		#
 		# end diskless section 
@@ -1896,8 +2251,6 @@ sub mk_bosinst_data
             }
 
 			# copy/modify the template supplied by NIM
-			#  - this will also set the default to rte install a minimal
-			#	AIX OS image
 			my $sedcmd = "/usr/bin/sed 's/GRAPHICS_BUNDLE = .*/GRAPHICS_BUNDLE = no/; s/SYSTEM_MGMT_CLIENT_BUNDLE = .*/SYSTEM_MGMT_CLIENT_BUNDLE = no/; s/CONSOLE = .*/CONSOLE = Default/; s/INSTALL_METHOD = .*/INSTALL_METHOD = overwrite/; s/PROMPT = .*/PROMPT = no/; s/EXISTING_SYSTEM_OVERWRITE = .*/EXISTING_SYSTEM_OVERWRITE = yes/; s/RECOVER_DEVICES = .*/RECOVER_DEVICES = no/; s/ACCEPT_LICENSES = .*/ACCEPT_LICENSES = yes/; s/DESKTOP = .*/DESKTOP = NONE/' /usr/lpp/bosinst/bosinst.template >$loc/$bosinst_data_name";
 
 			my $output = xCAT::Utils->runcmd("$sedcmd", -1);
@@ -2390,10 +2743,6 @@ sub rmnimimage
         return 1;
 	}
 
-	my $rsp;
-	push @{$rsp->{data}}, "Removing NIM resource definitions. This could take a while!";
-	xCAT::MsgUtils->message("I", $rsp, $callback);
-
 	# foreach attr in the image def
 	my $error;
 	foreach my $attr (sort(keys %{$imagedef{$image_name}}))
@@ -2646,18 +2995,16 @@ sub get_nim_attr_val
 	my $resname = shift;
 	my $attrname = shift;
 	my $callback = shift;
-	my $nimprime = shift;
+	my $target = shift;
 
-	my $cmd;
-	if ( ($nimprime) && (!is_me($nimprime)) ) {
-		# if the NIM primary is not the node we're running on
-		$cmd = qq~xdsh $nimprime "/usr/sbin/lsnim -l $resname 2>/dev/null"~;
-	} else {
-		# assume we're running on the NIM primary
-		$cmd = "/usr/sbin/lsnim -l $resname 2>/dev/null";
+	if (!$target) {
+		$target = &getnimprime();
 	}
+	chomp $target;
 
-	my @result = xCAT::Utils->runcmd("$cmd", -1);
+	my $cmd = "/usr/sbin/lsnim -l $resname 2>/dev/null";
+	my $nout = &xcmd($callback, "xdsh", $target, $cmd, 1);
+	my @result = @$nout;
     if ($::RUNCMD_RC  != 0)
     {
 		my $rsp;
@@ -2666,8 +3013,12 @@ sub get_nim_attr_val
         return 1;
     }
 
-	foreach (@result){
-		my ($attr,$value) = split('=');
+	foreach my $line (@result){
+		my ($junk, $out);
+		if (grep(/:/, $line)) { # strip off node name if used xdsh
+            ($junk, $out) = split(/:/, $line);
+		}
+		my ($attr,$value) = split('\=', $out);
 		chomp $attr;
 		$attr =~ s/\s*//g;  # remove blanks
 		chomp $value;
@@ -5961,11 +6312,13 @@ sub mknimimage_usage
 	my $callback = shift;
 
 	my $rsp;
-    push @{$rsp->{data}}, "\n  mknimimage - Use this xCAT command to create AIX image definitions.";
+    push @{$rsp->{data}}, "\n  mknimimage - Use this xCAT command to create xCAT osimage definitions \n\t\tand related AIX/NIM resources. The command can also be used \n\t\tto update an existing AIX diskless image(SPOT).\n";
     push @{$rsp->{data}}, "  Usage: ";
     push @{$rsp->{data}}, "\tmknimimage [-h | --help]";
     push @{$rsp->{data}}, "or";
-	push @{$rsp->{data}}, "\tmknimimage [-V] [-f|--force] [-r|--sharedroot] [-l <location>]\n\t\t-s [image_source] [-i current_image] [-t nimtype] [-m nimmethod]\n\t\t[-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t [attr=val [attr=val ...]]\n";
+	push @{$rsp->{data}}, "\tmknimimage [-V] -u osimage_name [attr=val [attr=val ...]]";
+	push @{$rsp->{data}}, "or";
+	push @{$rsp->{data}}, "\tmknimimage [-V] [-f|--force] [-r|--sharedroot] [-l <location>] \n\t\t[-s image_source] [-i current_image] [-t nimtype] \n\t\t[-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name \n\t\t[attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -6114,6 +6467,7 @@ sub myxCATname
 
 	} elsif (xCAT::Utils->isServiceNode()) {
 
+		# the myxcatpost_<nodename> file should exist on all nodes!
 		my $catcmd="cat /xcatpost/myxcatpost_* | grep '^NODE='";
 		my $output = xCAT::Utils->runcmd("$catcmd", -1);
 		if ($::RUNCMD_RC == 0) {
@@ -6168,7 +6522,7 @@ sub is_me
 
 	# get all the possible IPs for the node I'm running on
     my $ifcmd = "ifconfig -a | grep 'inet '";
-    my @result = xCAT::Utils->runcmd($ifcmd, 0);
+    my $result = xCAT::Utils->runcmd($ifcmd, 0, 1);
     if ($::RUNCMD_RC != 0)
     {
 		my $rsp;
@@ -6177,7 +6531,7 @@ sub is_me
 		return 0;
     }
 
-    foreach my $int (@result)
+    foreach my $int (@$result)
     {
         my ($inet, $myIP, $str) = split(" ", $int);
 		chomp $myIP;
@@ -6275,6 +6629,357 @@ sub getNodesetState {
   }
 
   return $state;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3	xcmd
+		Run command either locally or on a remote system.
+		Calls either runcmd or runxcmd and does either xdcp or xdsh.
+
+ 	Arguments:
+
+   	Returns:
+		Output of runcmd or runxcmd or blank.
+
+   	Comments:
+
+	ex.	&xcmd($callback, "xdcp", $nimprime, $cmd);
+=cut
+
+#-------------------------------------------------------------------------------
+sub xcmd
+{
+	my $callback = shift;
+	my $xdcmd = shift;		# xdcp or xdsh
+	my $target = shift;		# the node to run it on
+	my $cmd = shift; 		# the actual cmd to run
+	my $doarray = shift;    # should the return be a string or array ptr?
+
+	my $returnformat = 0;   # default is to return string
+	if ($doarray) {
+		$returnformat = $doarray;
+	}
+
+	my $output;
+    if (&is_me($target)) {
+        $output=xCAT::Utils->runcmd($cmd, 0, $returnformat);
+
+    } else {
+        # need xdsh or xdcp
+        my @snodes;
+        push( @snodes, $target );
+        $output=xCAT::Utils->runxcmd(
+                                {
+                                    command => [$xdcmd],
+                                    node    => \@snodes,
+                                    arg     => [ $cmd ]
+                                },
+                                $::sub_req,
+                                0, $returnformat
+        );
+    }
+
+	if ($::VERBOSE) {
+		my $rsp;
+		if(ref($output) eq 'ARRAY'){
+			if (scalar(@$output)) {
+				push @{$rsp->{data}}, "Running command \'$cmd\' on \'$target\'\n";
+				push @{$rsp->{data}}, "Output from command: \'@$output\'.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+		} else {
+			if ($output) {	
+				push @{$rsp->{data}}, "Running command \'$cmd\' on \'$target\'\n";
+				push @{$rsp->{data}}, "Output from command: \'$output\'.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+		}
+	}
+
+	return $output;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   update_spot_sw
+	   			Update the NIM spot resource for diskless images
+				- on NIM primary only
+				- install the additional software specified in the NIM
+					installp_bundle resources
+				- install the additional software specified by the 
+					fileset names
+				- use installp flags if specified
+				- uses bnds, filesets and flags from osimage def or
+					command line
+   Arguments:
+		   
+   Returns:
+			0 - OK
+			1 - error
+
+   Comments:
+			This uses the NIM "nim -o cust" command.
+	Note - this assumes bnd and fileset lists are comma separated!
+=cut
+
+#-------------------------------------------------------------------------------
+sub update_spot_sw {
+	my $callback = shift;
+	my $spotname = shift;
+	my $lppsource = shift;
+	my $nimprime = shift;
+	my $bndls = shift;
+	my $otherpkgs = shift;
+	my $iflags = shift;
+
+	my @bndlnames;
+
+	# if installp bundles are provided make sure they are defined
+	if ($bndls) { 
+		# get a list of defined installp_bundle resources
+		my $cmd = qq~/usr/sbin/lsnim -t installp_bundle | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+		my $b = &xcmd($callback, "xdsh", $nimprime, $cmd, 1);
+		my @bndresources = @$b;
+		if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not get NIM installp_bundle resource definitions.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+
+		# see if the NIM installp_bundle resources are defined
+		@bndlnames = split(',', $bndls);
+		foreach my $bnd (@bndlnames)  {
+			chomp $bnd;
+			if (!grep(/^$bnd$/, @bndresources)) {
+				my $rsp;
+				push @{$rsp->{data}}, "The installp_bundle resource \'$bnd' is not defined to NIM.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
+			}
+		}
+	}  # end - checking bundles
+
+	#  do installp_bundles - if any
+	#  cust operation can only do one bnd at a time!!!!
+	if (scalar(@bndlnames) > 0) {
+		# do separate cust for each bndl 
+		foreach my $bndl (@bndlnames) {
+			my $opt_string = "";
+			$opt_string .= "-a installp_bundle=$bndl ";
+			if (defined($iflags) ) {
+				$opt_string .= "-a installp_flags=$iflags ";
+			}
+			# construct the cmd
+			my $custcmd="/usr/sbin/nim -o cust -a lpp_source=$lppsource $opt_string $spotname";
+
+			# run it! - make sure output goes in error message
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{$rsp->{data}}, "Running \'$custcmd\' on $nimprime.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+			my $output = &xcmd($callback, "xdsh", $nimprime, $custcmd, 0);
+			if ($::RUNCMD_RC  != 0) {
+				my $rsp;
+				push @{$rsp->{data}}, "Could not update the NIM SPOT called \'$spotname\' on $nimprime.";
+				if ($::VERBOSE) {
+					push @{$rsp->{data}}, "$output";
+				}
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
+			}
+			
+		}
+	} # end - bndls
+
+	# do the otherpkgs - if any
+	if (defined($otherpkgs) ) {
+		my $fsets="";		
+		my $opt_string="";
+		foreach (split /,/,$otherpkgs) {
+			chomp $_;
+			$fsets .= "$_ ";
+		}
+		$opt_string .= qq~-a filesets=\"$fsets\" ~;
+
+		if (defined($iflags) ) {
+			$opt_string .= "-a installp_flags=$iflags ";
+		}
+
+		# construct the cmd
+		my $custcmd="/usr/sbin/nim -o cust -a lpp_source=$lppsource $opt_string $spotname";
+
+		# run it! - output goes in error message
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "Running \'$custcmd\' on $nimprime.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
+		my $output = &xcmd($callback, "xdsh", $nimprime, $custcmd, 0);
+		if ($::RUNCMD_RC  != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not update the NIM SPOT called \'$spotname\' on $nimprime.";
+			if ($::VERBOSE) {
+				push @{$rsp->{data}}, "$output";
+			}
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	} # end otherpkgs
+
+	return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   sync_spot_files
+
+	Update a NIM SPOT resource by synchronizing configurations files listed
+	in an xCAT synclist file.
+
+   	Arguments:
+
+  	Returns:
+	  0 - OK
+	  1 - error
+
+ 	Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub sync_spot_files {
+	my $callback = shift;
+	my $imagename = shift;
+	my $nimprime = shift;
+	my $syncfile = shift;
+	my $spot_name = shift;
+
+	#  spot location is - ex. /install/nim/spot/61H39Adskls/usr
+	#  dskls nodes /usr is mounted /install/nim/spot/61H39Adskls/usr
+	#  root in spot is /install/nim/spot/61H38dskls/usr/lpp/bos/inst_root
+	#  inst_root is used to populate nodes / when dskls nodes 
+	#	are initialized - node root dir is mounted to diskless node
+	# if file is in /usr then goes to spot location
+	# if not then it goes in the path of inst_root          
+	#   - add file dest path to usr or inst_root path
+
+	# get location of spot dirs
+	my $lcmd = qq~/usr/sbin/lsnim -a location $spot_name | /usr/bin/grep location 2>/dev/null~;
+	my $usrloc=&xcmd($callback, "xdsh", $nimprime, $lcmd, 0);
+	if ($::RUNCMD_RC  != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not run lsnim command: \'$lcmd\'.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+	$usrloc =~ s/\s*location = //;
+	chomp($usrloc);
+
+	my $rootloc = "$usrloc/lpp/bos/inst_root"; 
+	chomp $rootloc;
+
+	# process file to get list of files to copy to spot
+	#  !!!! synclist file is always on MN - but files contained in list
+	#	must have been copied to the nimprime 
+
+# TODO  - need to support auotmatically copying files to nimprime if needed
+
+	unless (open(SYNCFILE, "<$syncfile")) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not open $syncfile.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	while (my $line = <SYNCFILE>) {
+		chomp $line;
+        if ($line =~ /(.+) -> (.+)/) {
+			my $imageupdatedir;
+            my $imageupdatepath;
+            my $src_file        = $1;
+            my $dest_file       = $2;
+            $dest_file =~ s/[\s;]//g;
+			my @srcfiles = (split ' ', $src_file);
+			my $arraysize = scalar @srcfiles;    # of source files on the line
+            my $dest_dir;
+
+			# if more than one file on the line then
+            # the destination  is a directory
+            # else assume a file
+            if ($arraysize > 1)
+            {
+                $dest_dir = $dest_file;
+				$dest_dir =~ s/\s*//g;    #remove blanks
+				$imageupdatedir  .= $dest_dir;    # save the directory
+				$imageupdatepath .= $dest_dir;    # path is a directory
+            }
+            else    # only one file
+            {       # strip off the file
+                $dest_dir = dirname($dest_file);
+				$dest_dir =~ s/\s*//g;            #remove blanks
+				$imageupdatedir  .= $dest_dir;    # save directory
+				$imageupdatepath .= $dest_file;   # path to a file
+            }
+
+			# add the spot path to the dest_dir
+			if ($imageupdatepath =~ /^\/usr/) {
+				my $dname = dirname($usrloc);
+                $imageupdatepath = "$dname" . "$imageupdatepath";
+				$imageupdatedir = "$dname" . "$imageupdatedir";
+			} else {
+				$imageupdatepath = "$rootloc" . "$imageupdatepath";
+				$imageupdatedir = "$rootloc" . "$imageupdatedir";
+			}
+
+			# make sure the dest dir exists in the spot
+			my $mcmd = qq~/usr/bin/mkdir -p $imageupdatedir~;
+			my $output=&xcmd($callback, "xdsh", $nimprime, $mcmd, 0);
+			if ($::RUNCMD_RC != 0) {
+				my $rsp;
+               	push @{$rsp->{data}}, "Command: $mcmd failed.";
+               	xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+
+			# for each file on the line
+			# create rsync cmd
+			#  run from management node even if it's not the nim primary
+			my $synccmd = "rsync -Lpotz ";
+
+			my $syncopt = "";
+            foreach my $srcfile (@srcfiles)
+            {
+
+                $syncopt .= $srcfile;
+                $syncopt .= " ";
+            }
+
+           	$syncopt .= $imageupdatepath;
+            $synccmd .= $syncopt;
+
+			# ex. xdsh $nimprime "rsync -Lpotz /etc/foo /install/nim/spot/.../inst_root/etc"
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{$rsp->{data}}, "Running \'$synccmd\' on $nimprime.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+
+			my $output=&xcmd($callback, "xdsh", $nimprime, $synccmd, 0);
+            if ($::RUNCMD_RC != 0) {
+                my $rsp;
+                push @{$rsp->{data}}, "Command: \'$synccmd\' failed.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+				return 1;
+            }
+		}
+	}
+
+	close SYNCFILE;
+	return 0;
 }
 
 1;
