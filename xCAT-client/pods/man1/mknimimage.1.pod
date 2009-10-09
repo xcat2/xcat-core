@@ -1,30 +1,44 @@
 =head1 NAME
 
-B<mknimimage> - Use this xCAT command to create AIX image definitions.
+B<mknimimage> - Use this xCAT command to create xCAT osimage definitions and related AIX/NIM resources. The command can also be used to update an existing AIX diskless image(SPOT).
 
 =head1 SYNOPSIS
 
 B<mknimimage [-h | --help ]>
 
+B<mknimimage [-V] -u osimage_name [attr=val [attr=val ...]]>
+
 B<mknimimage [-V] [-f|--force] [-l location] [-s image_source] [-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
-This command may be used to create an AIX image.  It will create both an xCAT osimage definition and the corresponding NIM resource definitions.
+This command will create both an xCAT osimage definition and the corresponding NIM resource definitions. The command can also be used to update an existing AIX diskless image(SPOT).
 
-This command will also install the NIM master software and configure NIM if needed.
+The command will also install the NIM master software and configure NIM if needed.
 
-The naming convention for the NIM SPOT resource definition is to use the same name as the xCAT osimage.  The naming convention for any other NIM resources that are create is"<osimage_name>_<resource_type>". (ex. "61image_lpp_source" )
+The naming convention for the NIM SPOT resource definition is to use the same name as the xCAT osimage.  The naming convention for any other NIM resources that are created is "<osimage_name>_<resource_type>". (ex. "61image_lpp_source" )
 
-The "-n" option can be used to create a mksysb image from an existing NIM client machine.   When creating an osimage definition you will have to specify the corresponding SPOT resource and any additional resources you need by using the "attr=val" option. You can also create the mksysb image manually using the "mksysb" command and then use the image as a source when creating the osimage definition.
+When creating a mksysb image definition you must specify either the "-n" or the "-b" option. The "-n" option can be used to create a mksysb image from an existing NIM client machine.  The "-b" option can be used to specify an existing mksysb backup file.
 
-To list the contents of the xCAT osimage definition use the xCAT lsdef command ("lsdef -t osimage -l -o <osimage_name>").
+When creating a diskless osimage definition you also have the option of automatically updating the NIM SPOT resource.  You can have additional software installed or you can have configuration files added or updated.  To have software installed you must provide either the names of NIM installp_bundle resources or fileset names on the command line using the "attr=val" option. You may also supply the installp flags to use when installing the software. 
 
-To change the xCAT osimage definition you can use the xCAT chdef command.
+To have configuration files updated you must provide the full path name of a "synclists" file which contains the the list of actual files to update.  The xCAT osimage definition that is created will contain the installp_bundle, otherpkgs, and synclists files that are provided on the command line.
 
-To remove an xCAT osimage definition along with the associated NIM resource definitions use the rmnimimage command.
+If you wish to update an existing diskless image after it has already been created you can use the "-u" (update) option.  In this case the xCAT osimage definition will not be updated. 
 
-To list a NIM resource definition use the AIX lsnim command ("lsnim -l <resource_name>").
+There are two ways to use the update feature.  
+
+You can update the osimage definition and run the B<mknimimage> command with no "installp_bundle", "otherpkgs", or "synclists" command line values. The information for updating the SPOT will come from the osimage definition only.  This has the advantage of keeping a record of any changes that were made to the SPOT. 
+
+Or, you could do a more ad hoc update by providing one or more of the "installp_bundle", "otherpkgs", or "synclists" values on the command line. If any of these values are provided the B<mknimimage> command will use those values only. The osimage definition will not be used or updated.
+
+To change the xCAT osimage definition you can use the xCAT B<chdef> command.
+
+To list the contents of the xCAT osimage definition use the xCAT B<lsdef> command ("lsdef -t osimage -l -o <osimage_name>").
+
+To remove an xCAT osimage definition along with the associated NIM resource definitions use the rmnimimage command. Be careful not to accidently remove NIM resources if they are still needed.
+
+To list a NIM resource definition use the AIX B<lsnim> command ("lsnim -l <resource_name>").
 
 To remove specific NIM resource definitons use the AIX nim command.
 
@@ -34,15 +48,15 @@ To remove specific NIM resource definitons use the AIX nim command.
 
 =item B<attr=val [attr=val ...]>
 
-Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify additional or different resource names to use when creating the the xCAT osimage definition. The usage is: "<nim_resource_type>=<resource_name>". (ex. "root=myrootres")  Note that you may specify multiple "script" and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript").
+Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify additional or different information to use when creating the the xCAT osimage definition.  Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). Valid attribute names include any of the attributes of the xCAT osimage object plus "installp_flags". (The default for installp_flags is "agQX".)
 
 =item B<-b mksysbfile>
 
-Used to specify the location of a mksysb image to use when defining a NIM mksysb resource.
+Used to specify the full path name of a mksysb file to use when defining a NIM mksysb resource.
 
 =item B<-f|--force>
 
-Use the force option to re-create xCAT osimage definition. This option removes the old definition before creating the new one. It does not remove any of the NIM resource definitions named in the osimage definition.  Use the rmnimimage command to remove the NIM resources associated with an xCAT osimage definition.
+Use the force option to re-create xCAT osimage definition. This option removes the old definition before creating the new one. It does not remove any of the NIM resource definitions named in the osimage definition.  Use the B<rmnimimage> command to remove the NIM resources associated with an xCAT osimage definition.
 
 =item B<-h |--help>
 
@@ -50,7 +64,7 @@ Display usage message.
 
 =item B<osimage_name>
 
-The name of the xCAT osimage definition to create.  This will be used as the name of the xCAT osimage definition as well as the name of the NIM SPOT resource.
+The name of the xCAT osimage definition.  This will be used as the name of the xCAT osimage definition as well as the name of the NIM SPOT resource.
 
 =item B<-i current_image>
 
@@ -66,15 +80,19 @@ Used to specify the NIM installation method to use. The possible values are "rte
 
 =item B<-n mksysbnode>
 
-The NIM client machine to use to create a mksysb image.
+The xCAT node to use to create a mksysb image.  The node must be a defined as a NIM client machine.
 
 =item B<-s image_source>
 
-The source of software to use when creating the new NIM lpp_source resource. This could be a source directory, (ex. /dev/cd0), or a previously defined NIM lpp_source resource name.  B<When specifying a source directory make sure to use the full path name.>
+The source of software to use when creating the new NIM lpp_source resource. This could be a source directory or a previously defined NIM lpp_source resource name.  B<When specifying a source directory make sure to use the full path name.>
 
 =item B<-t nimtype>
 
 Used to specify the NIM machine type. The possible values are "standalone", "diskless" or "dataless".  The default is "standalone".
+
+=item B<-u>
+
+Used to update an AIX/NIM SPOT resource with additional software and configuration files.  This option is only valid for xCAT diskless osimage objects. The SPOT resource associated with the xCAT osimage definition will be updated.
 
 =item B<-V |--verbose>
 
@@ -98,13 +116,13 @@ An error has occurred.
 
 =head1 EXAMPLES
 
-1) Create an osimage definition and the basic NIM resources needed to do a NIM "standalone" "rte" installation of node "node01".
+1) Create an osimage definition and the basic NIM resources needed to do a NIM "standalone" "rte" installation of node "node01".  Assume the software contained on the AIX product media has been copied to the /AIX/instimages directory.
 
-B<mknimimage -s /dev/cd0 61image>
+B<mknimimage -s /AIX/instimages  61image>
 
 2) Create an osimage definition that includes some additional NIM resources.
 
-B<mknimimage -s /dev/cd0 61image installp_bundle=mybndlres,addswbnd>
+B<mknimimage -s /AIX/instimages 61image installp_bundle=mybndlres,addswbnd>
 
 This command will create lpp_source, spot, and bosinst_data resources using the source specified by the "-s" option.  The installp_bundle information will also be included in the osimage definition.  The mybndlres and addswbnd resources must be created before using this osimage definition to install a node.
 
@@ -120,24 +138,39 @@ B<mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb spot=myspot bosinst_d
 
 This command defines a NIM mksysb resource using mysysbimage.
 
-5) Create an osimage definition and create a spot definition using a mksysb image provided on the command line.
+5) Create an osimage definition and create the required spot definition using the mksysb backup file provided on the command line.
 
 B<mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb bosinst_data=mybdata>
 
 This command defines a NIM mksysb resource and a spot definition using mysysbimage.
 
-6) Create a diskless image called 61spot using the AIX product media.
+6) Create a diskless image called 61dskls using the AIX source file provided in the /AIX/instimages directory.
 
-B<mknimimage -t diskless -s /dev/cd0 61spot>
+B<mknimimage -t diskless -s /AIX/instimages 61dskls>
 
 7) Create a new diskless image by copying an existing image.
 
 B<mknimimage -t diskless -i 61cosi 61cosi_updt1>
 
-8) Create a diskless image using an existing lpp_source resource named 61cosi_lpp_source and include the /tmp & /home resources.  This assumes that the mytmp and myhome NIM resources have already been created by using NIM commands.
+8) Create a diskless image using an existing lpp_source resource named 61cosi_lpp_source and include NIM /tmp & /home resources.  This assumes that the "mytmp" and "myhome" NIM resources have already been created by using NIM commands.
 
 B<mknimimage -t diskless -s 61cosi_lpp_source 611cosi tmp=mytmp home=myhome>
 
+9) Create a diskless image and update it with additional software and configuration files. 
+
+B<mknimimage -t diskless -s 61cosi_lpp_source 61dskls otherpkgs=fset1,R:foo.rpm synclists=/install/mysyncfile>
+
+The xCAT osimage definition created by this command will include the "otherpkgs" and "synclists" values.  The NIM SPOT resource associated with this osimage will be updated with the additional software and configuration files.
+
+10) Update an existing diskless image (AIX/NIM SPOT) using the information saved in the xCAT "61dskls" osimage definition. Also specify verbose messages.  
+
+B<mknimimage -V -u 61dskls>
+
+11) Update an existing diskless image called "61dskls".  Install the additional software specified in the NIM "bndres1" and "bndres2" installp_bundle resources using the installp flags "agcQX".  (The NIM "bndres1" and "bndres2" definitions must be created before using them in this command.)
+
+B<mknimimage -u 61dskls installp_bundle=bndres1,bndres2 installp_flags=agcQX>
+
+Note that when "installp_bundle", "otherpkgs", or "synclists" values are specified with the "-u" option then the xCAT osimage definiton is not used or updated.
 
 =head1 FILES
 
