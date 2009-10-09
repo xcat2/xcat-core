@@ -218,14 +218,14 @@ if [ "$repo_pkgs_preremove" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y removel $repo_pkgs_preremove"
         result=`yum -y remove $repo_pkgs_preremove 2>&1`
-        ###echo "$result"
+        echo "$result"
         if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
         fi
     elif [ $haszypper -eq 1 ]; then
         echo "zypper remove -y $repo_pkgs_preremove"
 	result=`zypper remove -y $repo_pkgs_preremove 2>&1`
-        ###echo "$result"
+        echo "$result"
 	if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
 	fi
@@ -247,14 +247,14 @@ if [ "$repo_pkgs" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y install $repo_pkgs"
         result=`yum -y install $repo_pkgs 2>&1`
-        ###echo "$result"
+        echo "$result"
         if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
         fi
     elif [ $haszypper -eq 1 ]; then
         echo "zypper install -y $repo_pkgs"
 	result=`zypper install -y $repo_pkgs 2>&1`
-        ###echo "$result"
+        echo "$result"
 	if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
 	fi
@@ -309,14 +309,14 @@ if [ "$repo_pkgs_postremove" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y removel $repo_pkgs_postremove"
         result=`yum -y remove $repo_pkgs_postremove 2>&1`
-        ###echo "$result"
+        echo "$result"
         if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
         fi
     elif [ $haszypper -eq 1 ]; then
         echo "zypper remove -y $repo_pkgs_postremove"
 	result=`zypper remove -y $repo_pkgs_postremove 2>&1`
-        ###echo "$result"
+        echo "$result"
 	if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
 	fi
