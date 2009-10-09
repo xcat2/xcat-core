@@ -161,7 +161,17 @@ sub submit_request {
   while (<$client>) {
     $response .= $_;
     if (m/<\/xcatresponse>/) {
+      #replace ESC with xxxxESCxxx because XMLin cannot handle it
+      $response =~ s/\e/xxxxESCxxxx/g;
+
       $rsp = XMLin($response,SuppressEmpty=>undef,ForceArray=>1);
+
+      #add ESC back
+      foreach my $key (keys %$rsp) {
+	  if (ref($rsp->{$key}) eq 'ARRAY') { foreach my $text (@{$rsp->{$key}}) { $text =~ s/xxxxESCxxxx/\e/g; } }
+	  else { $rsp->{$key} =~ s/xxxxESCxxxx/\r/g; }
+      }
+	  
       $response='';
       $callback->($rsp);
       if ($rsp->{serverdone}) {
