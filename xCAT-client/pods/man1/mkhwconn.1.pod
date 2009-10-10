@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<mkhwconn> - Use this command to setup connections for FSP and BPA nodes to HMC nodes.
+B<mkhwconn> - Sets up connections for FSP and BPA nodes to HMC nodes.
 
 =head1 SYNOPSIS
 
@@ -14,15 +14,18 @@ B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-H> hmc [B<-P> passwd]
 
 =head1 DESCRIPTION
 
-This command is used to setup connections for FSP and BPA nodes to HMC nodes. If the connection already exists, it will not bread this connection. 
+This command is used to set up connections for FSP and BPA nodes to HMC nodes. (If the connection already exists, it will not break it.)
+This command is useful when you have multiple HMCs, each of which will manage a subset of the FSPs/BPAs.  Use B<mkhwconn> to tell
+each HMC which FSPs/BPAs it should manage.  When using this, you should turn off the self-discovery on each HMC.  You also need
+to put all the HMCs and all the BPAs on a single flat service network.
 
-When -t is specified, this command reads the connection information from xCAT ppc table, and read the user/password from ppcdirect table. Then this command will assign FSP nodes and BPA nodes to HMC nodes. 
+When -t is specified, this command reads the connection information from the xCAT ppc table (e.g. the parent attribute), and read the user/password from the ppcdirect table. Then this command will assign FSP nodes and BPA nodes to HMC nodes. 
 
-When -H is specified, this command read the connection information from command line. The default user/password for FSP and BPA nodes are admin/admin.
+When -H is specified, this command gets the connection information from command line arguments. If -P is not specified, the default password for FSP and BPA nodes is used.
 
 In any case, before running this command, the FSP and BPA nodes need be defined with correct nodetype.nodetype value (fsp or bpa) and nodehm.mgt value (hmc).
 
-Note: If a CEC (FSP node represents) belongs to a frame, which has a BPA installed, this CEC should not be assigned to an HMC individually. Instead, the whole frame (BPA node represents) should be assigned to the HMC.
+Note: If a CEC (FSP) belongs to a frame, which has a BPA installed, this CEC should not be assigned to an HMC individually. Instead, the whole frame (BPA) should be assigned to the HMC.
 
 =head1 OPTIONS
 
@@ -34,7 +37,8 @@ Display usage message.
 
 =item B<-t>
 
-Read connection information from xCAT DB.
+Read connection information from xCAT DB (ppc and ppcdirect tables).  Use this option if you need to connect multiple FSPs/BPAs
+to multiple HMCs in a single command.
 
 =item B<-H>
 
@@ -49,7 +53,6 @@ The password of user 'admin' on FSP and BPA nodes. This flag is optional. Defaul
 Verbose output.
 
 =back
-
 
 =head1 RETURN VALUE
 
@@ -75,7 +78,6 @@ To setup the connection for BPA nodes in node group frame_grp1 to HMC node hmc1,
 
 =back
 
-
 =head1 FILES
 
 $XCATROOT/bin/mkhwconn
@@ -86,7 +88,6 @@ default value is "/opt/xcat".)
 =head1 NOTES
 
 This command is part of the xCAT software product.
-
 
 =head1 SEE ALSO
 
