@@ -397,6 +397,12 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 
 sub retain_cache { #A semi private operation to be used *ONLY* in the interesting Table<->NodeRange module interactions.
     $retaincache=shift;
+    unless ($retaincache) { #take a call to retain_cache(0) to also mean that any existing
+        #cache must be zapped
+        if ($nodelist) { $nodelist->_clear_cache(); }
+        undef $nodelist;
+        @allnodeset=();
+    }
 }
 sub extnoderange { #An extended noderange function.  Needed as the more straightforward function return format too simple for this.
     my $range = shift;
