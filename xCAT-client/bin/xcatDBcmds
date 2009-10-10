@@ -74,8 +74,9 @@ if (grep(/^$bname$/, @checkcmds) ) {
 	getopts('ab:d:fh?i:l:urs:m:no:t:vVp:');
 	# check the operands for a noderange
 	while (my $a = shift(@ARGV)) {
-		if (!($a =~ /=/)) {
+		if (!($a =~ /=/) && !($a =~ /^-/)) {
 			$cmdref->{noderange}->[0]=$a;
+			last;
 		}
 	}
 }
