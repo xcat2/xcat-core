@@ -1668,6 +1668,7 @@ sub defch
                     {
 
                         $membhash{$n}{groups} = $obj;
+                        $membhash{$n}{objtype} = 'node';
                     }
                     $::plus_option  = 1;
                     $::minus_option = 0;
