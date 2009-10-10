@@ -507,14 +507,6 @@ sub getobjdefs
                          } #end if ($match...
                     } #end foreach
                 } # end if (defined...
-                else
-                {
-                    my $rsp;
-                    $rsp->{data}->[0] =
-                          "Could not read the \'$lookup_table\' table from the xCAT database.";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    return undef;
-                }
             } #end if ($intabhash...
         } #end foreach my $this_attr 
 
