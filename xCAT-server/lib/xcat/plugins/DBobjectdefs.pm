@@ -308,6 +308,25 @@ sub processArgs
         }
     }
 
+    # Check arguments for rmdef command
+    # rmdef is very dangerous if wrong flag is specified
+    # it may cause all the objects to be deleted, check the flags
+    # for example: rmdef -t node -d, the user want to delete the node named "-d",
+    # but it will delete all the nodes!
+    # use -o instead
+    if ($::command eq 'rmdef')
+    {
+        if (defined($::opt_d) || defined($::opt_i) || defined($::opt_l) 
+           || defined($::opt_m) || defined($::opt_p) || defined($::opt_w) 
+           || defined($::opt_x) || defined($::opt_z))
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "Invalid flag specified, see rmdef manpage for details.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
+        }
+    }
+
     # Option -h for Help
     # if user specifies "-t" & "-h" they want a list of valid attrs
     if (defined($::opt_h) && !defined($::opt_t))
@@ -695,6 +714,26 @@ sub processArgs
             $rsp->{data}->[0] = "Incorrect selection string specified with -w flag\n";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 3;
+        }
+        # For dynamic node groups, check the selection string
+        if (($::opt_t eq 'group') && ($::opt_d))
+        {
+            my $datatype = $xCAT::Schema::defspec{'node'};
+            my @nodeattrs = ();
+            foreach my $this_attr (@{$datatype->{'attrs'}})
+            {
+                push @nodeattrs, $this_attr->{attr_name};
+            }
+            foreach my $whereattr (keys %::WhereHash)
+            {
+                if (!grep(/^$whereattr$/, @nodeattrs))
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] = "Incorrect attribute \'$whereattr\' in the selection string specified with -w flag.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    return 1;
+                }
+             }
         }
     }
 
