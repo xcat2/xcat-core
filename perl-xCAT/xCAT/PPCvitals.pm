@@ -373,9 +373,11 @@ sub all {
         @{voltage(@_)}, 
         @{state(@_)},
         @{power(@_)},
-	@{lcds(@_)}, 
+        @{lcds(@_)}, 
     ); 
-    return( \@values );
+
+    my @sorted_values = sort {$a->[0] cmp $b->[0]} @values;
+    return( \@sorted_values );
 }
 
 
