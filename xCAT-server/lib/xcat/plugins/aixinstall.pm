@@ -3002,32 +3002,20 @@ sub get_nim_attr_val
 	}
 	chomp $target;
 
-	my $cmd = "/usr/sbin/lsnim -l $resname 2>/dev/null";
-	my $nout = &xcmd($callback, "xdsh", $target, $cmd, 1);
-	my @result = @$nout;
-    if ($::RUNCMD_RC  != 0)
-    {
+	my $cmd = "/usr/sbin/lsnim -a location -Z $resname 2>/dev/null";
+	my $nout = &xcmd($callback, "xdsh", $target, $cmd, 0);
+	if ($::RUNCMD_RC  != 0)
+	{
 		my $rsp;
-        push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
-
-	foreach my $line (@result){
-		my ($junk, $out);
-		if (grep(/:/, $line)) { # strip off node name if used xdsh
-            ($junk, $out) = split(/:/, $line);
-		}
-		my ($attr,$value) = split('\=', $out);
-		chomp $attr;
-		$attr =~ s/\s*//g;  # remove blanks
-		chomp $value;
-		$value =~ s/^\s*//;
-		if ($attr eq $attrname) {
-			return $value;
-		}
+		push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return undef;
 	}
-	return undef;
+
+	my ($junk, $junk, $junk, $loc) = split(/:/, $nout);
+	chomp $loc;
+
+	return $loc;
 }
 
 
