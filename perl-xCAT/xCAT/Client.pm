@@ -169,7 +169,7 @@ sub submit_request {
       #add ESC back
       foreach my $key (keys %$rsp) {
 	  if (ref($rsp->{$key}) eq 'ARRAY') { foreach my $text (@{$rsp->{$key}}) { $text =~ s/xxxxESCxxxx/\e/g; } }
-	  else { $rsp->{$key} =~ s/xxxxESCxxxx/\r/g; }
+	  else { $rsp->{$key} =~ s/xxxxESCxxxx/\e/g; }
       }
 	  
       $response='';
