@@ -373,7 +373,7 @@ sub getobjdefs
             else
             {
 				 my $rsp;
-                 $rsp->{data}->[0] ="Could not read the \'$objname\' object from the \'site\' table.\n";
+                 $rsp->{data}->[0] ="Could not read the \'$objname\' object from the \'site\' table.";
                  xCAT::MsgUtils->message("E", $rsp, $::callback);	
             }
             next;
@@ -548,7 +548,7 @@ sub getobjdefs
             else
             {
 				 my $rsp;
-                 $rsp->{data}->[0] ="Could not read the \'$objname\' object from the \'monsetting\' table.\n";
+                 $rsp->{data}->[0] ="Could not read the \'$objname\' object from the \'monsetting\' table.";
                  xCAT::MsgUtils->message("E", $rsp, $::callback);	
             }
             next;
@@ -899,7 +899,7 @@ sub setobjdefs
                     	{
                         	my $rsp;
                         	$rsp->{data}->[0] =
-                          	"Could not set the \'$attr\' attribute of the \'$objname\' object in the xCAT database.\n";
+                          	"Could not set the \'$attr\' attribute of the \'$objname\' object in the xCAT database.";
                         	$rsp->{data}->[1] =
                           	"Error returned is \'$str->errstr\'.";
                         	xCAT::MsgUtils->message("I", $rsp, $::callback);
@@ -1021,7 +1021,7 @@ sub setobjdefs
                         # if I didn't already check for this attr
                         my $rsp;
                         if (!grep(/^$attr_name$/, @checkedattrs)) {
-                            push @{$rsp->{data}}, "Cannot set the \'$attr_name\' attribute unless a value is provided for \'$check_attr\'.\n";
+                            push @{$rsp->{data}}, "Cannot set the \'$attr_name\' attribute unless a value is provided for \'$check_attr\'.";
 
                             foreach my $tmp_attr (@{$datatype->{'attrs'}}) {
                                 my $attr = $tmp_attr->{attr_name};
@@ -1029,7 +1029,7 @@ sub setobjdefs
                                     my ($tab, $at) = split(/\./, $tmp_attr->{tabentry});
                                     my $schema = xCAT::Table->getTableSchema($tab);
                                     my $desc = $schema->{descriptions}->{$at};
-                                    push @{$rsp->{data}}, "$check_attr => $desc\n";
+                                    push @{$rsp->{data}}, "$check_attr => $desc";
                                 }
                             }
                         }
@@ -1178,7 +1178,7 @@ sub setobjdefs
         foreach my $att (keys %$invalidattr) {
             if ( $invalidattr->{$att}->{valid} ne 1) {
 my $tt = $invalidattr->{$att}->{valid};
-                push @{$rsp->{data}}, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition}.\n";
+                push @{$rsp->{data}}, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition}.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
             }
         }
@@ -1203,7 +1203,7 @@ if (0) {
 		}
 		if ($ret == 2) {
 			my $rsp;
-			$rsp->{data}->[0] = "Could not set the following attributes for the \'$objname\' definition in the xCAT database: \'@errlist\'\n";
+			$rsp->{data}->[0] = "Could not set the following attributes for the \'$objname\' definition in the xCAT database: \'@errlist\'";
 			xCAT::MsgUtils->message("E", $rsp, $::callback);
 		}
 
@@ -1277,7 +1277,7 @@ if (0) {
 				foreach my $k (@$keys) {
 					if (!$allupdates{$table}{$obj}{$row}{'lookup_attrs'}) {
 						my $rsp;
-						$rsp->{data}->[0] = "\nMissing required attribute values for the \'$obj\' object. The required attributes are: @$keys\n";
+						$rsp->{data}->[0] = "\nMissing required attribute values for the \'$obj\' object. The required attributes are: @$keys";
 						xCAT::MsgUtils->message("E", $rsp, $::callback);
 						$ret = 1;
 						next ROW;
