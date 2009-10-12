@@ -3002,7 +3002,7 @@ sub get_nim_attr_val
 	}
 	chomp $target;
 
-	my $cmd = "/usr/sbin/lsnim -a location -Z $resname 2>/dev/null";
+	my $cmd = "/usr/sbin/lsnim -a $attrname -Z $resname 2>/dev/null";
 	my $nout = &xcmd($callback, "xdsh", $target, $cmd, 0);
 	if ($::RUNCMD_RC  != 0)
 	{
