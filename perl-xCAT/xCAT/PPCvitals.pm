@@ -146,15 +146,17 @@ sub enumerate_lcds {
     foreach $value (@$values){
         #Return error
         $Rc = shift @$value;
-        if ($Rc != SUCCESS){
-            push @refcode, ( [$Rc, @$value[0]] );
-        } else {
-            if( @$value[0] =~ /refcode=(\w+)/){
-                  push @refcode, ( [$Rc, $1] );
-	    } else {
-                  push @refcode, ( [$Rc, @$value[0]]);
+        if( @$value[0] =~ /refcode=(\w*)/){
+            my $code = $1;
+            if ( ! $code)
+            {
+                push @refcode, [$Rc, "blank"];
             }
-        }
+            else
+            {
+                push @refcode, [$Rc, $code] ;
+            }
+	    } 
     }
 
     return \@refcode;
