@@ -113,7 +113,7 @@ cappingsoftmin
 
 averageAC
     Query the average power consumed (Input). (Unit is watt)
-    Note: For 9125 and 9119 server, the value of attribute 
+    Note: For 9125-F2A server, the value of attribute 
     averageAC is the aggregate for all of the servers in the 
     rack.
 
