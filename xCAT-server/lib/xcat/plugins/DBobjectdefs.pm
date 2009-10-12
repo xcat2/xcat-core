@@ -2461,7 +2461,7 @@ sub defls
         }
 
 		# for each object
-        foreach my $obj (keys %defhash)
+        foreach my $obj (sort keys %defhash)
         {
 
             unless ($obj)
