@@ -24,6 +24,13 @@
 #Some known weird behaviors
 #creating new sqlite db files when only requested to read non-existant table, easy to fix,
 #class xcattable
+#FYI on emulated AutoCommit:
+#SQLite specific behavior has Table layer implementing AutoCommit.  There
+#is a significant limitation, 'rollback' may not roll all the way back
+#if an intermediate transaction occured on the same table
+#TODO: short term, have tabutils implement it's own rollback (the only consumer)
+#TODO: longer term, either figure out a way to properly implement it or 
+#      document it as a limitation for SQLite configurations
 package xCAT::Table;
 use xCAT::MsgUtils;
 use Sys::Syslog;
@@ -507,6 +514,7 @@ sub new
     my $create = 1;
     if (exists($otherargs{'-create'}) && ($otherargs{'-create'}==0)) {$create = 0;}
     $self->{autocommit} = $otherargs{'-autocommit'};
+    $self->{realautocommit} = $self->{autocommit}; #Assume we let the DB do the work, i.e. the autocommit is either not used or is not emulated by Table.pm
     unless (defined($self->{autocommit}))
     {
         $self->{autocommit} = 1;
@@ -531,6 +539,7 @@ sub new
         if ($xcatcfg =~ /^SQLite:/)
         {
             $self->{backend_type} = 'sqlite';
+            $self->{realautocommit} = 0; #We will emulate autocommit if autocommit is requested
             my @path = split(':', $xcatcfg, 2);
             unless (-e $path[1] . "/" . $self->{tabname} . ".sqlite" || $create)
             {
@@ -554,13 +563,13 @@ sub new
             #return undef;
         }
         my $oldumask= umask 0077;
-        unless ($::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}) { #= $self->{tabname};
-          $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}} =
-            DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $self->{autocommit}});
+        unless ($::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{realautocommit}}) { #= $self->{tabname};
+          $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{realautocommit}} =
+            DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $self->{realautocommit}});
          }
          umask $oldumask;
 
-        $self->{dbh} = $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}};
+        $self->{dbh} = $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{realautocommit}};
         #Store the Table object reference as afflicted by changes to the DBH
         #This for now is ok, as either we aren't in DB worker mode, in which case this structure would be short lived...
         #or we are in db worker mode, in which case Table objects live indefinitely
@@ -584,6 +593,7 @@ sub new
                                       $xCAT::Schema::tabspec{$self->{tabname}},
                       $xcatcfg);
                     $self->{dbh}->do($str);
+                    $self->{dbh}->commit;
                 }
                 else { return undef; }
             }
@@ -754,6 +764,9 @@ sub updateschema
             my $stmt =
                   "ALTER TABLE " . $self->{tabname} . " ADD $dcol $datatype";
             $self->{dbh}->do($stmt);
+            if ($self->{autocommit} and not $self->{realautocommit}) {
+                $self->{dbh}->commit;
+            }
         }
     }
 
@@ -845,6 +858,9 @@ sub updateschema
 		$str = "DROP TABLE $btn";
 		$self->{dbh}->do($str);
 	    }
+        if ($self->{autocommit} and not $self->{realautocommit}) {
+            $self->{dbh}->commit;
+        }
 	}
     }
 }
@@ -987,6 +1003,10 @@ sub addAttribs
         xCAT::NotifHandler->notify("a", $self->{tabname}, [0],
                                           \%new_notif_data);
     }
+    if ($self->{autocommit} and not $self->{realautocommit}) {
+        $self->{dbh}->commit();
+    }
+    $sth->finish();
 
 }
 
@@ -1205,7 +1225,10 @@ sub setAttribs
         {
             return (undef, $sth->errstr);
         }
-	$sth->finish;
+	    $sth->finish;
+        if ($self->{autocommit} and not $self->{realautocommit}) {
+            $self->{dbh}->commit;
+        }
     }
     else
     {
@@ -1248,7 +1271,10 @@ sub setAttribs
         {
             return (undef, $sth->errstr);
         }
-	$sth->finish;
+	    $sth->finish;
+        if ($self->{autocommit} and not $self->{realautocommit}) {
+            $self->{dbh}->commit();
+        }
     }
 
     #notify the interested parties
@@ -1365,6 +1391,9 @@ sub setAttribsWhere
                                  \@notif_data, \%new_notif_data);
     }
     $sth->finish;
+    if ($self->{autocommit} and not $self->{realautocommit}) {
+        $self->{dbh}->commit;
+    }
     return 0;
 }
 
