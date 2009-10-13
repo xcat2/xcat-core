@@ -1017,8 +1017,9 @@ sub list {
     my $request = shift;
     my $hash    = shift;
     my $exp     = shift;
-    my $args   = $request->{opt};
-    my @values  = ();
+    my $args    = $request->{opt};
+    my $values  = ();
+    my @value   = ();
     my @lpars   = ();
     my $result;
 
@@ -1033,7 +1034,7 @@ sub list {
             # Must be CEC or LPAR
             ####################################
             if ( $type !~ /^(lpar|fsp)$/ ) {
-                push @values, [$lpar,"Node must be LPAR or CEC",RC_ERROR];
+                $values->{$lpar} = [$lpar,"Node must be LPAR or CEC",RC_ERROR];
                 next;
             }
             ####################################
@@ -1058,7 +1059,7 @@ sub list {
                 # Expect error
                 ################################
                 if ( $Rc != SUCCESS  ) {
-                    push @values, [$lpar, @$result[0], $Rc];
+                    $values->{$lpar} = [$lpar,@$result[0], $Rc];
                     next;
                 }
                 ################################
@@ -1088,7 +1089,7 @@ sub list {
                 # Return error
                 #################################
                 if ( $Rc != SUCCESS ) {
-                    push @values, [$lpar, @$prof[0], $Rc];
+                    $values->{$lpar} = [$lpar,@$prof[0], $Rc];
                     next;
                 }
                 #################################
@@ -1106,10 +1107,15 @@ sub list {
              $pprofile .= "@$prof[0]\n\n";
          }
      }                
-            push @values, [$lpar, $pprofile, SUCCESS];
+            $values->{$lpar} = [$lpar, $pprofile, SUCCESS];
         }
     }
-    return( \@values );
+
+    foreach ( sort keys %$values ) {
+        push @value,$values->{$_};
+    }
+
+    return( \@value );
 }
 ##########################################################################
 # Increments hca adapter in partition profile
@@ -1118,18 +1124,18 @@ sub hca_adapter {
 
     my $cfgdata = shift;
 
-#########################################
-# Increment HCA adapters if present
-# "23001eff/2550010250300/2,23001eff/2550010250400/2"  
-# Increment the last 2 number of 2550010250300 and 
-# 2550010250400 in example above.
-#########################################
+    #########################################
+    # Increment HCA adapters if present
+    # "23001eff/2550010250300/2,23001eff/2550010250400/2"  
+    # Increment the last 2 number of 2550010250300 and 
+    # 2550010250400 in example above.
+    #########################################
     if ( $cfgdata =~ /(\"*hca_adapters)/ ) {
 
-#####################################
-# If double-quoted, has comma-
-# seperated list of adapters
-#####################################
+        #####################################
+        # If double-quoted, has comma-
+        # seperated list of adapters
+        #####################################
         my $delim = ( $1 =~ /^\"/ ) ? "\\\\\"" : ","; 
         $cfgdata  =~ /hca_adapters=([^$delim]+)|$/;
         my @hcas = split ",", $1;
@@ -1262,9 +1268,9 @@ sub get_iba_replace_pair
     my $unassigned_iba = shift;
     my $profile        = shift;
 
-#############################
-# Get hca info from profile
-#############################
+    #############################
+    # Get hca info from profile
+    #############################
     my @oldhca_prefixes;
     for my $cfg (@$profile)
     {
@@ -1287,9 +1293,9 @@ sub get_iba_replace_pair
             }
         }
     }
-###########################################
-# Get hca info from unasigned hca array
-###########################################
+    ###########################################
+    # Get hca info from unasigned hca array
+    ###########################################
     my @newhca_prefixes;
     for my $newhca ( @$unassigned_iba)
     {
@@ -1306,9 +1312,9 @@ sub get_iba_replace_pair
             }
         }
     }
-#############################    
-# Create replacement pair
-#############################
+    #############################    
+    # Create replacement pair
+    #############################
     my %pair_hash;
     for ( my $i = 0; $i < scalar @oldhca_prefixes; $i++)
     {
@@ -1768,6 +1774,7 @@ sub lsvm {
 
 
 1;
+
 
 
 
