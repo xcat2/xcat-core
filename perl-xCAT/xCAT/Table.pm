@@ -122,6 +122,15 @@ sub shut_dbworker {
 }
 sub init_dbworker {
 #create a db worker process
+#First, release all non-db-worker owned db handles (will recreate if we have to)
+    foreach (values %{$::XCAT_DBHS})
+    {    #@{$drh->{ChildHandles}}) {
+        if ($_) { $_->disconnect(); }
+        $_->{InactiveDestroy} = 1;
+        undef $_;
+    }
+
+
     $dbworkerpid = fork;
 
     unless (defined $dbworkerpid) {
