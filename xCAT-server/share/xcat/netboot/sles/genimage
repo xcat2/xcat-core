@@ -144,7 +144,7 @@ if (@ARGV > 0) {
 }
 
 if (!$arch) {
-    my $arch = `uname -m`;
+    $arch = `uname -m`;
     chomp($arch);
     if ($arch =~ /i.86$/) {
 	$arch = "x86";
@@ -918,12 +918,19 @@ sub include_file
 
 sub get_extra_pkglist_file_name {
    my $base=shift;
+   my $dotpos = rindex($osver, ".");
+   my $osbase = substr($osver, 0, $dotpos);
+
    if (-r "$base/$profile.$osver.$arch.otherpkgs.pkglist") {
       return  "$base/$profile.$osver.$arch.otherpkgs.pkglist";
+   } elsif (-r "$base/$profile.$osbase.$arch.otherpkgs.pkglist") {
+      return "$base/$profile.$osbase.$arch.otherpkgs.pkglist";
    } elsif (-r "$base/$profile.$arch.otherpkgs.pkglist") {
       return "$base/$profile.$arch.otherpkgs.pkglist";
    } elsif (-r "$base/$profile.$osver.otherpkgs.pkglist") {
       return "$base/$profile.$osver.otherpkgs.pkglist";
+   } elsif (-r "$base/$profile.$osbase.otherpkgs.pkglist") {
+      return "$base/$profile.$osbase.otherpkgs.pkglist";
    } elsif (-r "$base/$profile.otherpkgs.pkglist") {
       return "$base/$profile.otherpkgs.pkglist";
    } 
@@ -932,12 +939,18 @@ sub get_extra_pkglist_file_name {
 
 sub get_pkglist_file_name {
    my $base=shift;
+   my $dotpos = rindex($osver, ".");
+   my $osbase = substr($osver, 0, $dotpos);
    if (-r "$base/$profile.$osver.$arch.pkglist") {
       return "$base/$profile.$osver.$arch.pkglist";
+   } elsif (-r "$base/$profile.$osbase.$arch.pkglist") {
+      return "$base/$profile.$osbase.$arch.pkglist";
    } elsif (-r "$base/$profile.$arch.pkglist") {
       return "$base/$profile.$arch.pkglist";
    } elsif (-r "$base/$profile.$osver.pkglist") {
       return "$base/$profile.$osver.pkglist";
+   } elsif (-r "$base/$profile.$osbase.pkglist") {
+      return "$base/$profile.$osbase.pkglist";
    } elsif (-r "$base/$profile.pkglist") {
       return "$base/$profile.pkglist";
    } 
@@ -948,12 +961,18 @@ sub get_pkglist_file_name {
 
 sub get_postinstall_file_name {
    my $base=shift;
+   my $dotpos = rindex($osver, ".");
+   my $osbase = substr($osver, 0, $dotpos);
    if (-x "$base/$profile.$osver.$arch.postinstall") {
       return "$base/$profile.$osver.$arch.postinstall";
+   } elsif (-x "$base/$profile.$osbase.$arch.postinstall") {
+      return "$base/$profile.$osbase.$arch.postinstall";
    } elsif (-x "$base/$profile.$arch.postinstall") {
       return "$base/$profile.$arch.postinstall";
    } elsif (-x "$base/$profile.$osver.postinstall") {
       return "$base/$profile.$osver.postinstall";
+   } elsif (-x "$base/$profile.$osbase.postinstall") {
+      return "$base/$profile.$osbase.postinstall";
    } elsif (-x "$base/$profile.postinstall") {
       return "$base/$profile.postinstall";
    } 

@@ -144,7 +144,7 @@ if (@ARGV > 0) {
 }
 
 if (!$arch) {
-    my $arch = `uname -m`;
+    $arch = `uname -m`;
     chomp($arch);
     if ($arch =~ /i.86$/) {
 	$arch = "x86";

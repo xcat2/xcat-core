@@ -31,6 +31,11 @@ none            /tmp     tmpfs  defaults,size=10m 0 2
 none            /var/tmp tmpfs  defaults,size=10m 0 2
 END
 
+#-- Setup the console
+TMP_inittab=`sed 's/\(#\)\(cons:12345.*\)$/\2/' $installroot/etc/inittab`
+echo "$TMP_inittab" > $installroot/etc/inittab
+
+
 #-- Example of booted image versioning
 #-- We want to know, with what configuration (version of the image) each node was booted.
 #-- Hence, we keep image definition files and postscripts in CVS. During image generation we create file /etc/IMGVERSION and fill it with CVS "$Id$" of files with image definition (.pkglist, .exlist, .repolist, .postinstall). Then, during boot, each  "CVS enabled" postscript (see /install/postscripts/cvs_template.sh and /install/postscripts/cvs_template.pl) adds one line to /etc/IMGVERSION. Then you can determine in any time what image you are running and what postscipts in which versions were run.
