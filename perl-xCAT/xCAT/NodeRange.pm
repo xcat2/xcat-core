@@ -32,6 +32,7 @@ my $grptab;
 
 #my $nodeprefix = "node";
 my @allnodeset;
+my @grplist;
 my $retaincache=0;
 my $recurselevel=0;
 
@@ -153,12 +154,15 @@ sub nodesbycriteria {
 
 sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels5.3)
 	my $atom = shift;
+    unless (scalar(@allnodeset)) { #Build a cache of all nodes, some corner cases will perform worse, but by and large it will do better.  We could do tests to see where the breaking points are, and predict how many atoms we have to evaluate to mitigate, for now, implement the strategy that keeps performance from going completely off the rails
+        @allnodeset = $nodelist->getAllAttribs('node','groups');
+    }
 	my $verify = (scalar(@_) == 1 ? shift : 1);
         my @nodes= ();
     #TODO: these env vars need to get passed by the client to xcatd
 	my $nprefix=(defined ($ENV{'XCAT_NODE_PREFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : 'node');
 	my $nsuffix=(defined ($ENV{'XCAT_NODE_SUFFIX'}) ? $ENV{'XCAT_NODE_SUFFIX'} : '');
-	if ($nodelist->getAttribs({node=>$atom},'node')) {		#The atom is a plain old nodename
+	if (grep {$_->{node} eq $atom} @allnodeset) {		#The atom is a plain old nodename
 		return ($atom);
 	}
     if ($atom =~ /^\(.*\)$/) {     # handle parentheses by recursively calling noderange()
@@ -173,10 +177,9 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 
     # Try to match groups?
         unless ($grptab) {
-           $grptab = xCAT::Table->new('nodegroup'); #TODO: build cache once per noderange and use it instead of repeats
+           $grptab = xCAT::Table->new('nodegroup');
         }
-        my @grplist;
-        if ($grptab) { 
+        if ($grptab and not scalar @grplist) { 
             @grplist = @{$grptab->getAllEntries()};
         }
         my $isdynamicgrp = 0;
@@ -204,7 +207,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
          # The atom is not a dynamic node group, is it a static node group???
          if(!$isdynamicgrp)
          {
-	        foreach($nodelist->getAllAttribs('node','groups')) { #TODO: change to a noderange managed cache for more performance
+	        foreach(@allnodeset) { 
 	            my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
 	            if (grep { $_ eq "$atom" } @groups ) {
 		        push @nodes,$_->{node};
@@ -214,9 +217,9 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 
   # check to see if atom is a defined group name that didn't have any current members                                               
   if ( scalar @nodes == 0 ) {                                                                                                       
-    if($grptab) { #TODO: GET LOCAL CACHE OF GRPTAB
-        my @grouplist = $grptab->getAllAttribs('groupname');
-        for my $row ( @grouplist ) { 
+    if(scalar @grplist) { #Use previously constructed cache to avoid hitting DB worker so much
+        #my @grouplist = $grptab->getAllAttribs('groupname');
+        for my $row ( @grplist ) { 
             if ( $row->{groupname} eq $atom ) { 
                 return ();                                                                                                                  
             } 
@@ -226,9 +229,6 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 
     if ($atom =~ m/[=~]/) { #TODO: this is the clunky, slow code path to acheive the goal.  It also is the easiest to write, strange coincidence.  Aggregating multiples would be nice
         my @nodes;
-        unless (scalar(@allnodeset)) { #TODO: change to one noderange global cache per noderange call rather than table hosted cache for improved performance
-            @allnodeset = $nodelist->getAllAttribs('node');
-        }
         foreach (@allnodeset) {
             push @nodes,$_->{node};
         }
@@ -257,9 +257,6 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         }
 		#TODO: check against all groups
 		$atom = substr($atom,1);
-        unless (scalar(@allnodeset)) { #TODO: change to one noderange global cache per noderange call rather than table hosted cache for improved performance
-            @allnodeset = $nodelist->getAllAttribs('node');
-        }
 		foreach (@allnodeset) { #$nodelist->getAllAttribs('node')) {
 			if ($_->{node} =~ m/^${atom}$/) {
 				push(@nodes,$_->{node});
@@ -402,6 +399,7 @@ sub retain_cache { #A semi private operation to be used *ONLY* in the interestin
         if ($nodelist) { $nodelist->_clear_cache(); }
         undef $nodelist;
         @allnodeset=();
+        @grplist=();
     }
 }
 sub extnoderange { #An extended noderange function.  Needed as the more straightforward function return format too simple for this.
@@ -427,10 +425,7 @@ sub extnoderange { #An extended noderange function.  Needed as the more straight
         }
         $return->{intersectinggroups}=[sort keys %grouphash];
     }
-    $retaincache=0;
-    $nodelist->_clear_cache();
-    undef ($nodelist);
-    @allnodeset=();
+    retain_cache(0);
     return $return;
 }
 sub abbreviate_noderange { 
@@ -555,9 +550,7 @@ sub noderange {
         $recurselevel--;
     } else {
         unless ($retaincache) {
-            $nodelist->_clear_cache();
-            undef $nodelist;
-            @allnodeset=();
+            retain_cache(0);
         }
     }
     return sort (keys %nodes);
