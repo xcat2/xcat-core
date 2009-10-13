@@ -219,7 +219,7 @@ if [ "$REL" = "devel" -a "$PROMOTE" != 1 ]; then
 	rpm2cpio ../$XCATCORE/xCAT-client-*.noarch.rpm | cpio -id '*.html'
 	rpm2cpio ../$xCATCORE/perl-xCAT-*.noarch.rpm | cpio -id '*.html'
 	# Note: for some reason scp kept getting "Connection reset by peer" part way thru
-	while ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+	while ! rsync -rv opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done
 	cd ..
 fi
