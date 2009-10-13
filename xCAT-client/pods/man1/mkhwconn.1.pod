@@ -10,7 +10,7 @@ B<mkhwconn> [B<-v>| B<--version>]
 
 B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-t>
 
-B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-H> hmc [B<-P> passwd]
+B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-p> hmc [B<-P> passwd]
 
 =head1 DESCRIPTION
 
@@ -21,7 +21,7 @@ to put all the HMCs and all the BPAs on a single flat service network.
 
 When -t is specified, this command reads the connection information from the xCAT ppc table (e.g. the parent attribute), and read the user/password from the ppcdirect table. Then this command will assign FSP nodes and BPA nodes to HMC nodes. 
 
-When -H is specified, this command gets the connection information from command line arguments. If -P is not specified, the default password for FSP and BPA nodes is used.
+When -p is specified, this command gets the connection information from command line arguments. If -P is not specified, the default password for FSP and BPA nodes is used.
 
 In any case, before running this command, the FSP and BPA nodes need be defined with correct nodetype.nodetype value (fsp or bpa) and nodehm.mgt value (hmc).
 
@@ -40,7 +40,7 @@ Display usage message.
 Read connection information from xCAT DB (ppc and ppcdirect tables).  Use this option if you need to connect multiple FSPs/BPAs
 to multiple HMCs in a single command.
 
-=item B<-H>
+=item B<-p>
 
 The HMC node name. Only one HMC nodes can be specified by this flag. To setup connection for multiple HMC nodes, use flag -t.
 
@@ -74,7 +74,7 @@ To setup the connection for all FSP nodes in node group fsp, according to the de
 
 To setup the connection for BPA nodes in node group frame_grp1 to HMC node hmc1, with password 'abc123':
 
- mkhwconn frame_grp1 -H hmc1 -P abc123
+ mkhwconn frame_grp1 -p hmc1 -P abc123
 
 =back
 
