@@ -32,7 +32,9 @@ my $grptab;
 
 #my $nodeprefix = "node";
 my @allnodeset;
+my %allnodehash;
 my @grplist;
+my %allgrphash;
 my $retaincache=0;
 my $recurselevel=0;
 
@@ -156,13 +158,14 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 	my $atom = shift;
     unless (scalar(@allnodeset)) { #Build a cache of all nodes, some corner cases will perform worse, but by and large it will do better.  We could do tests to see where the breaking points are, and predict how many atoms we have to evaluate to mitigate, for now, implement the strategy that keeps performance from going completely off the rails
         @allnodeset = $nodelist->getAllAttribs('node','groups');
+        %allnodehash = map { $_->{node} => 1 } @allnodeset;
     }
 	my $verify = (scalar(@_) == 1 ? shift : 1);
         my @nodes= ();
     #TODO: these env vars need to get passed by the client to xcatd
 	my $nprefix=(defined ($ENV{'XCAT_NODE_PREFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : 'node');
 	my $nsuffix=(defined ($ENV{'XCAT_NODE_SUFFIX'}) ? $ENV{'XCAT_NODE_SUFFIX'} : '');
-	if (grep {$_->{node} eq $atom} @allnodeset) {		#The atom is a plain old nodename
+	if ($allnodehash{$atom}) {		#The atom is a plain old nodename
 		return ($atom);
 	}
     if ($atom =~ /^\(.*\)$/) {     # handle parentheses by recursively calling noderange()
@@ -207,12 +210,19 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
          # The atom is not a dynamic node group, is it a static node group???
          if(!$isdynamicgrp)
          {
-	        foreach(@allnodeset) { 
-	            my @groups=split(/,/,$_->{groups}); #The where clause doesn't guarantee the atom is a full group name, only that it could be
-	            if (grep { $_ eq "$atom" } @groups ) {
-		        push @nodes,$_->{node};
-	            }
+            unless (scalar %allgrphash) { #build a group membership cache
+                my $nlent;
+	            foreach $nlent (@allnodeset) { 
+	                my @groups=split(/,/,$nlent->{groups}); 
+                    my $grp;
+                    foreach $grp (@groups) {
+                        push @{$allgrphash{$grp}},$nlent->{node};
+                    }
                 }
+            }
+            if ($allgrphash{$atom})  {
+                push @nodes,@{$allgrphash{$atom}};
+	        }
           }
 
   # check to see if atom is a defined group name that didn't have any current members                                               
@@ -399,7 +409,9 @@ sub retain_cache { #A semi private operation to be used *ONLY* in the interestin
         if ($nodelist) { $nodelist->_clear_cache(); }
         undef $nodelist;
         @allnodeset=();
+        %allnodehash=();
         @grplist=();
+        %allgrphash=();
     }
 }
 sub extnoderange { #An extended noderange function.  Needed as the more straightforward function return format too simple for this.
