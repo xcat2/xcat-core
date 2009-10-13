@@ -103,7 +103,7 @@ sub process_command {
     $request->{ppctimeout} = 0;
     $request->{fsptimeout} = 0;
     $request->{ppcretry}   = 3;
-    $request->{maxssh}     = 10;
+    $request->{maxssh}     = 8;
 
     #######################################
     # Get site table attributes 
@@ -1488,7 +1488,7 @@ sub sshcmds_on_hmc
             ppctimeout => 0,
             fsptimeout => 0,
             ppcretry   => 3,
-            maxssh     => 10
+            maxssh     => 8 
 
             );
 
@@ -1568,7 +1568,7 @@ sub updconf_in_asm
             ppctimeout  => 0,
             fsptimeout  => 0,
             ppcretry    => 3,
-            maxssh      => 10,
+            maxssh      => 8,
             arg         => \@cmds,
             method      => \%handled,
             command     => 'rspconfig',

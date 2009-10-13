@@ -846,7 +846,7 @@ sub initDB
         }
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
         $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=maxssh site.value=10;";
+          "$::XCATROOT/sbin/chtab key=maxssh site.value=8;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=ppcmaxp site.value=64;";
         $chtabcmds .=

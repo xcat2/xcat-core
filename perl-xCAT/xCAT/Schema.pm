@@ -576,7 +576,7 @@ site => {
    "  ipmitimeout:\tThe timeout to use when communicating with BMCs. Default is 2 seconds.\n\n".
    "  iscsidir:\tThe path to put the iscsi disks in on the mgmt node.\n\n".
    "  master:\tThe hostname of the xCAT management node, as known by the nodes.\n\n".
-   "  maxssh:\tThe max # of SSH connections at any one time to the hw ctrl point for PPC hw ctrl purposes. Default is 10.\n\n".
+   "  maxssh:\tThe max # of SSH connections at any one time to the hw ctrl point for PPC hw ctrl purposes. Default is 8.\n\n".
    "  nameservers:\tA comma delimited list of DNS servers that each node in the cluster should use - often the xCAT management node.\n\n".
    "  nodestatus:\tIf set to 'n', the nodelist.status column will not be updated during the node deployment, node discovery and power operation.\n\n".
    "  ntpservers:\tA comma delimited list of NTP servers for the cluster - often the xCAT management node.\n\n".
