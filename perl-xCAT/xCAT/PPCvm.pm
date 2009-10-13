@@ -747,7 +747,7 @@ sub modify_by_attr {
                 # profile has been applied yet (before first 
                 # boot?), use the default_profile
                 ##############################################
-                if ( ! @$cfg_res[0])
+                if ( (!@$cfg_res[0]) || (@$cfg_res[0] =~ /^none$/) )
                 {
                     $cfg_res = xCAT::PPCcli::lssyscfg(
                             $exp,
