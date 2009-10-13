@@ -120,7 +120,6 @@ sub process_command {
         $start = Time::HiRes::gettimeofday();
     }
 
-    $request->{maxssh} = int($request->{maxssh}/2);
     #######################################
     # Group nodes based on command
     #######################################
@@ -213,6 +212,7 @@ sub process_command {
     if ( ($request->{command} =~ /^(getmacs)$/ && exists( $request->{opt}->{D} )) || ($request->{command} =~ /^(rnetboot)$/) ) {
         my %pid_owner = ();
 
+        $request->{maxssh} = int($request->{maxssh}/2);
         # Use the CHID signal to control the 
         #connection number of certain hcp    
         $SIG{CHLD} = sub { my $pid = 0; while (($pid = waitpid(-1, WNOHANG)) > 0) 
@@ -273,7 +273,7 @@ sub process_command {
                 }
             }
 
-            Time::HiRes::sleep(0.2);
+            Time::HiRes::sleep(0.1);
             my ($pipe, $pid) = fork_cmd( $nodes->{$least_hcp}{'nodegroup'}->[$nodes->{$least_hcp}{'index'}]->[0], 
                     $nodes->{$least_hcp}{'nodegroup'}->[$nodes->{$least_hcp}{'index'}]->[1], $request );
 
