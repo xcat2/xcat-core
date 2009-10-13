@@ -1352,6 +1352,23 @@ sub rscan_stanza {
 
 sub getmacs {
    (my $code,my @macs)=inv('mac');
+   foreach (@macs) {
+       if (/(.*) ->/) { #Convert JS style mac ranges to pretend to be simple
+                        #this is not a guarantee of how the macs work, but 
+                        #this is as complex as this function can reasonably accomodate
+                        #if you need more complexity, the auto-discovery process
+                        #can actually cope
+           my $basemac = $1;
+           $basemac =~ s/mac address \d: //i;
+           $basemac =~ s/://g;
+           my $macnum = hex($basemac);
+           $macnum += 1;
+           my $newmac = sprintf("%012X",$macnum);
+           $newmac =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
+           my $newidx = scalar(@macs)+1;
+           push @macs,"MAC Address $newidx: ".$newmac;
+       }
+   }
    my $midx=0;
    my @midxary;
    my $nrtab = xCAT::Table->new('noderes');
