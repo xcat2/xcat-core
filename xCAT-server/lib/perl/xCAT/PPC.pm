@@ -119,6 +119,8 @@ sub process_command {
     if ( exists( $request->{verbose} )) {
         $start = Time::HiRes::gettimeofday();
     }
+
+    $request->{maxssh} = int($request->{maxssh}/2);
     #######################################
     # Group nodes based on command
     #######################################
@@ -362,6 +364,57 @@ sub process_command {
         }
         $callback->({data=>["Unreachable Nodes:"]});
         $callback->({data=>["$unreachable_nodes\n"]});
+    } elsif ( $request->{command} =~ /^rpower$/ ) {
+        my $hw;
+        my $sessions;
+        my $pid_owner;
+        my $remain_node = $nodes;
+
+        while ( scalar($remain_node) ) {
+            $remain_node = ();
+            foreach my $hash ( @$nodes ) {
+                $SIG{CHLD} = sub { my $pid = 0; while (($pid = waitpid(-1, WNOHANG)) > 0) { $hw->{$pid_owner->{$pid}}--; $children--; } };
+ 
+                while ( $children >= $request->{ppcmaxp} ) {
+                    my $handlednodes={};
+                    child_response( $callback, $fds, $handlednodes);
+
+                    #update the node status to the nodelist.status table
+                    if ($check) {
+                        updateNodeStatus($handlednodes, \@allerrornodes);
+                    }
+
+                    Time::HiRes::sleep(0.1);
+                }
+                if ( $hw->{@$hash[0]} >= $request->{maxssh} ) {
+                    my $handlednodes={};
+                    child_response( $callback, $fds, $handlednodes);
+
+                    #update the node status to the nodelist.status table
+                    if ($check) {
+                        updateNodeStatus($handlednodes, \@allerrornodes);
+                    }
+
+                    Time::HiRes::sleep(0.1);
+                    push( @$remain_node, [@$hash[0], @$hash[1]] );
+                    next;
+                }
+
+                my ($pipe,$pid) = fork_cmd( @$hash[0], @$hash[1], $request );
+
+                if ($pid) {
+                    $pid_owner->{$pid} = @$hash[0];
+                    $hw->{@$hash[0]}++;
+                }
+
+                if ( $pipe ) {
+                    $fds->add( $pipe );
+                    $children++;
+                }
+            }
+
+            $nodes = $remain_node;
+        }
     } else {
         $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
         my $hw;
@@ -391,7 +444,6 @@ sub process_command {
             }
             $hw = @$_[0];
 
-            Time::HiRes::sleep(0.5);
             my ($pipe) = fork_cmd( @$_[0], @$_[1], $request );
             if ( $pipe ) {
                 $fds->add( $pipe );
