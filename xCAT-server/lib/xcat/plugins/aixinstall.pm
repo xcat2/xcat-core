@@ -513,7 +513,9 @@ ll~;
 			# from the command line
 			$nodeosi{$node} = $::OSIMAGE;
 		} else {
-			if ( $objhash{$node}{profile} ) {
+			if ( $objhash{$node}{provmethod} ) {
+				$nodeosi{$node} = $objhash{$node}{provmethod};
+			} elsif ( $objhash{$node}{profile} ) {
 				$nodeosi{$node} = $objhash{$node}{profile};
 			} else {
 				my $rsp;
@@ -772,6 +774,7 @@ ll~;
             $nodeattrs{$node}{os} = "AIX";
             if ($::OSIMAGE) {
                 $nodeattrs{$node}{profile} = $::OSIMAGE;
+				$nodeattrs{$node}{provmethod} = $::OSIMAGE;
             }
         }
     }
@@ -1944,6 +1947,7 @@ sub mk_lpp_source
 			} else {
 				$loc = "/install/nim/lpp_source/$lppsrcname";
 			}
+
 			
 			# create resource location 
             my $cmd = "/usr/bin/mkdir -p $loc";
@@ -4122,7 +4126,9 @@ sub prenimnodeset
             # from the command line
             $nodeosi{$node} = $::OSIMAGE;
         } else {
-            if ( $objhash{$node}{profile} ) {
+            if ( $objhash{$node}{provmethod} ) {
+				$nodeosi{$node} = $objhash{$node}{provmethod};
+			} elsif ( $objhash{$node}{profile} ) {
                 $nodeosi{$node} = $objhash{$node}{profile};
             } else {
                 my $rsp;
@@ -5079,6 +5085,8 @@ ll~;
 		if ($::OSIMAGE){
 			# from the command line
 			$nodeosi{$node} = $::OSIMAGE;
+		} elsif ( $objhash{$node}{provmethod} ) {
+			$nodeosi{$node} = $objhash{$node}{provmethod};
 		} elsif ( $objhash{$node}{profile} ) {
 			$nodeosi{$node} = $objhash{$node}{profile};
 		}
@@ -5427,6 +5435,7 @@ xCAT::MsgUtils->message("S", "mkdsklsnode: $root_location, $syncfile");
             $nodeattrs{$node}{os} = "AIX";
             if ($::OSIMAGE) {
                 $nodeattrs{$node}{profile} = $::OSIMAGE;
+				$nodeattrs{$node}{provmethod} = $::OSIMAGE;
             }
         }
     }
@@ -6561,12 +6570,18 @@ sub getNodesetStates {
     if (! $nimtab) { return (1, "Unable to open nimimage table.");}
 
     my %nimimage=();
-    my $nttabdata=$nttab->getNodesAttribs(\@nodes,['node', 'profile']); 
+    my $nttabdata=$nttab->getNodesAttribs(\@nodes,['node', 'profile', 'provmethod']); 
     foreach my $node (@nodes) {
       my $tmp1=$nttabdata->{$node}->[0];
       my $stat;
       if ($tmp1) {
-        my $profile=$tmp1->{profile};
+		my $profile;
+		if ($tmp1->{provmethod}) {
+			$profile=$tmp1->{provmethod};
+		} elsif ($tmp1->{profile}) {
+        	$profile=$tmp1->{profile};
+		}
+
         if ( ! exists($nimimage{$profile})) { 
           (my $tmp)=$nimtab->getAttribs({'imagename'=>$profile},'nimtype');
           if (defined($tmp)) { $nimimage{$profile} = $tmp->{nimtype}; }
@@ -6606,11 +6621,16 @@ sub getNodesetState {
   my $nttab = xCAT::Table->new('nodetype');
   my $nimtab = xCAT::Table->new('nimimage');
   if ($nttab && $nimtab) {
-    my $tmp1 = $nttab->getNodeAttribs($node,['profile']);
-    if ($tmp1 && $tmp1->{profile}) {
-       my $profile=$tmp1->{profile};
-       my $tmp2=$nimtab->getAttribs({'imagename'=>$profile},'nimtype');
-        if (defined($tmp2)) { $state = $tmp2->{nimtype}; }
+    my $tmp1 = $nttab->getNodeAttribs($node,['profile', 'provmethod']);
+	if ($tmp1 && ($tmp1->{provmethod}) || $tmp1->{profile}){
+       	my $profile;
+		if ($tmp1->{provmethod}) {
+			$profile=$tmp1->{provmethod};
+		} elsif ($tmp1->{profile}) {
+			$profile=$tmp1->{profile};
+		}
+       	my $tmp2=$nimtab->getAttribs({'imagename'=>$profile},'nimtype');
+		if (defined($tmp2)) { $state = $tmp2->{nimtype}; }
     }
     $nttab->close();
     $nimtab->close();
