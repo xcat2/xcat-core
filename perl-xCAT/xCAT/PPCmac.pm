@@ -179,6 +179,21 @@ sub parse_args {
     } elsif ( exists($opt{S}) || exists($opt{G}) || exists($opt{C}) ) {
         return( [RC_ERROR,"Option '-D' is required for ping test\n"] );
     }
+
+    ####################################
+    # Check -F options's format 
+    ####################################
+        if ( exists($opt{F}) ) {
+            my @filters = split /,/,$opt{F};
+            foreach ( @filters ) {
+                my @value = split /=/,$_;
+                if ( !@value[1] ) {
+                    return( usage("Option '-F' contains wrong filter format") );
+                }
+            }
+        }
+
+
     ####################################
     # Set method to invoke 
     ####################################
