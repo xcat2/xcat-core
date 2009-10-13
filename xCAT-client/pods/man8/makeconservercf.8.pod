@@ -4,7 +4,9 @@ B<makeconservercf> - creates the conserver configuration file from info in the x
 
 =head1 SYNOPSIS
 
-B<makeconservercf> [B<-l|--local|-d|--delete>] [I<noderange>]
+B<makeconservercf> [B<-d|--delete>] I<noderange>
+
+B<makeconservercf> [B<-l|--local>] [I<noderange>]
 
 B<makeconservercf> [B<-h|--help|-v|--version>]
 
