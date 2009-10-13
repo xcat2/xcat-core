@@ -436,7 +436,7 @@ padding:10px 2px;
 }
 
 #monsetting_tips {
-    width: 888px;
+    width: 920px;
     margin: 5px;
     padding: 5px;
     float: left;
@@ -448,6 +448,8 @@ padding:10px 2px;
     padding: 5px;
     float: left;
     background-color:silver;
+    height: 480px;
+    overflow-y: scroll;
 }
 
 #rmcScrAttr {

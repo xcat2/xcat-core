@@ -415,7 +415,6 @@ function displayRMCMonshowAttr($attr, $nr) {
         $xml = docmd("monshow", "", array("rmcmon", "$nr", "-t", "60", "-a", "$attr"));
     }
     //the formats of the data are different based on $nr
-    //print_r($xml);
     $index = 0;
     foreach($xml->children() as $response) foreach($response->children() as $data) {
         //handle the data here
@@ -426,15 +425,13 @@ function displayRMCMonshowAttr($attr, $nr) {
         //then, parse "date" & "value"
         $arr = preg_split("/\s+/", $data);
         array_pop($arr);
-        $tmp = array_pop($arr);
-        if($tmp == '-') {
-            $val = array_pop($arr);
-            $time = implode(" ", $arr);
-            echo "<tr>";
-            echo "<td>$time</td>";
-            echo "<td>$val</td>";
-            echo "</tr>";
-        }
+        //print_r($arr);
+        $val = array_pop($arr);
+        $time = implode(" ", $arr);
+        echo "<tr>";
+        echo "<td>$time</td>";
+        echo "<td>$val</td>";
+        echo "</tr>";
     }
     echo "</tbody>";
     echo "</table>";
