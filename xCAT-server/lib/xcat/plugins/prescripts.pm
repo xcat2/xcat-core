@@ -317,9 +317,14 @@ sub  parseprescripts
     my $ret;
     if ($scripts) {
 	if ($scripts =~ /:/) {
-	    if ($scripts =~ /$action:([^|]*)/) {
-		$ret=$1;
-	    }
+            my @a=split(/\|/,$scripts);
+            foreach my $token (@a) {
+                #print "token=$token, action=$action\n";
+	        if ($token =~ /^$action:(.*)/) {
+		    $ret=$1;
+                    last;
+	        }
+            }   
 	} else {
 	    $ret=$scripts;
 	}
