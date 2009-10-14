@@ -623,11 +623,7 @@ EOMS
    }
 
    print $inifile <<END;
-cat /var/lib/dhcpcd/*info | grep DOMAIN | uniq | awk -F= '{print \"search\",\$2}' | sed \"s/'//g\" >> /etc/resolv.conf
 cat /var/lib/dhcpcd/*info | grep HOSTNAME | uniq | awk -F= '{print \$2}'| sed \"s/'//g\" >> /etc/HOSTNAME
-for names in \$(cat /var/lib/dhcpcd/*info | grep DNS | uniq | awk -F= '{print \$2}' | sed 's/,/\\n/'); do
-  echo nameserver \$names >> /etc/resolv.conf
-done
 END
 
    close($inifile);
