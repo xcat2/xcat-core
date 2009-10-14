@@ -202,6 +202,7 @@ while ($temp=<STDIN>) {
     foreach (@varray) { $_=hex($_); }
     my $error = xCAT_plugin::ipmi->decodealert($trapid, $node1, @varray);
     $briefmsg .= $error;
+    $message .= "    eventsummary=$error\n";
 
     #severity value from decodealert are: 
     #LOG,INFORMATION,OK,CRITICAL,NON-RECOVERABLE,MONITOR and UNKNOWN-SEVERITY
