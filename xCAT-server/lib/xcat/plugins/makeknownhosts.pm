@@ -59,16 +59,19 @@ sub process_request
     my $callback = shift;
     my $nodes    = $request->{node};
     my $rc       = 0;
-    my $HELP;
 
     # parse the input
     if ($request && $request->{arg}) { @ARGV = @{$request->{arg}}; }
     else { @ARGV = (); }
 
-    my $usage = "Usage: makeknownhosts <noderange>\n       makeknownhosts -h";
+    my $usage = "Usage: makeknownhosts <noderange> [-r] [-V]\n       makeknownhosts -h";
 
     # print "argv=@ARGV\n";
-    if (!GetOptions('h|help' => \$HELP))
+    if (!GetOptions(
+                     'h|help'    => \$::opt_h,
+                     'V|verbose' => \$::opt_V,
+                     'r|remove'  => \$::opt_r
+                   )) 
     {
         my $rsp = {};
         $rsp->{data}->[0] = $usage;
@@ -77,7 +80,7 @@ sub process_request
     }
 
     # display the usage if -h
-    if ($HELP)
+    if ($::opt_h)
     {
         my $rsp = {};
         $rsp->{data}->[0] = $usage;
@@ -100,43 +103,61 @@ sub process_request
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
     }
-    $rc = create_known_hosts_file($callback);
+
+    # Backup the existing known_hosts file to known_hosts.backup
+    $rc = backup_known_hosts_file($callback);
     if ($rc != 0)
     {
         my $rsp = {};
-        $rsp->{data}->[0] = "Error building known_hosts file.";
+        $rsp->{data}->[0] = "Error backing up known_hosts file.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
 
     }
-    my @nodelist = @$nodes;
-    foreach my $node (@nodelist)
+
+    # Remove the nodes from knownhosts file
+    $rc = remove_nodes_from_knownhosts($callback, $nodes);
+    if ($rc != 0)
     {
-        $rc = add_known_host($node, $callback);
-        if ($rc != 0)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] = "Error building known_hosts file.";
-            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-            return 1;
-        }
+        my $rsp = {};
+        $rsp->{data}->[0] = "Error backing up known_hosts file.";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        return 1;
+
     }
+
+    # if -r flag is not specified, adding the nodes back to known_hosts file
+    if (!$::opt_r)
+    {
+        my @nodelist = @$nodes;
+        foreach my $node (@nodelist)
+        {
+            $rc = add_known_host($node, $callback);
+            if ($rc != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Error building known_hosts file.";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                return 1;
+            }
+        }
+     }
     return 0;
 }
 
 #-------------------------------------------------------
 
-=head3  create_known_hosts file 
+=head3  backup_known_hosts file 
 
-  Creates a new known_hosts file in roots  .ssh directory, backs up the 
-  old one, if it exists
+  Backs up the old known_hosts file in roots  .ssh directory,
+  if it exists. 
 
 
 
 =cut
 
 #-------------------------------------------------------
-sub create_known_hosts_file
+sub backup_known_hosts_file
 {
 
     my ($callback) = @_;
@@ -159,27 +180,16 @@ sub create_known_hosts_file
         {
             my $newfile = $file;
             $newfile .= ".backup";
-            $cmd = "mv $file $newfile";
+            $cmd = "cat $file > $newfile";
             xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "$cmd failed";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                return 1;
+            }
 
-        }
-        $cmd = " touch $file";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] = "Could not create $file";
-            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-            return 1;
-        }
-        $cmd = " chmod 0644 $file";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] = "$cmd failed";
-            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-            return 1;
         }
     }
     return 0;
@@ -214,6 +224,12 @@ sub add_known_host
 
     # get the key
     $cmd = "cat $hostkey";
+    if ($::opt_V)
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Running command: $cmd";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
     my @output = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -251,6 +267,12 @@ sub add_known_host
         $line .= $output[0];
         $line .= "\"";
         $cmd = "echo  $line >> $known_hosts";
+        if ($::opt_V)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Running command: $cmd";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
         xCAT::Utils->runcmd($cmd, 0);
 
         if ($::RUNCMD_RC != 0)
@@ -261,5 +283,128 @@ sub add_known_host
             return 1;
         }
     }
+    return 0;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3    remove_nodes_from_knownhosts
+
+        Removes the nodes from SSH known hosts
+
+        Arguments:
+                \@node_hostnames
+
+        Returns:
+                1 - error
+                0 - success
+        Globals:
+                none
+        Example:
+                remove_nodes_from_knownhosts(\@nodes);
+        Comments:
+                none
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub remove_nodes_from_knownhosts
+{
+    my ($callback, $ref_nodes) = @_;
+    my @node_hostnames = @$ref_nodes;
+    my $home           = xCAT::Utils->getHomeDir("root");
+    
+    my @all_names;
+    
+    my ($hostname, $aliases, $addrtype, $length, @addrs);
+    
+    # Put all the possible knownhosts entries 
+    # for the nodes into @all_names
+    foreach my $node (@node_hostnames)
+    {
+        if (!grep(/^$node$/, @all_names))
+        { 
+            push @all_names, $node;
+        }
+        if (($hostname, $aliases, $addrtype, $length, @addrs) =
+            gethostbyname($node))
+        {
+            if (!grep(/^$hostname$/, @all_names))
+            {
+                push @all_names, $hostname;
+            }
+            foreach my $ipaddr (@addrs)
+            {
+                my $realip = inet_ntoa($ipaddr);
+                if (!grep(/^$realip$/, @all_names))
+                {
+                    push @all_names, $realip;
+                }
+            }
+            my @newaliaslist = split (/ /,$aliases);
+        
+            foreach my $entry (@newaliaslist) {
+                if (!grep(/^$entry$/, @all_names))
+                {
+                    push @all_names, $entry;
+                }
+            }
+        }
+    }
+
+    #create the sed command
+    my $sed = "/bin/sed -e ";
+    $sed .= "\"";
+    foreach my $n (@all_names)
+    {
+        $sed .= "/^$n\[,| ]/d; ";
+    }
+    chop $sed;    #get rid of last space
+    $sed .= "\"";
+    my $file = "/tmp/$$";
+    while (-e $file)
+    {
+        $file = xCAT::Utils->CreateRandomName($file);
+    }
+    if (-e "$home/.ssh/known_hosts")
+    {
+        $sed .= " $home/.ssh/known_hosts";
+        $sed .= " > $file";
+        my $printsed = $sed;
+        $printsed =~ s/"//g;    #"
+        if ($::opt_V)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Running command: $printsed";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+        xCAT::Utils->runcmd($sed, -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Command \"$printsed\" failed.";
+            xCAT::MsgUtils->message("I", $rsp, $callback, 1);
+            return 1;
+        }
+
+        my $cp = "cat $file > $home/.ssh/known_hosts";
+        if ($::opt_V)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Running command: $cp";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+
+        xCAT::Utils->runcmd($cp, -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] = "Command \"$cp\" failed.";
+            xCAT::MsgUtils->message("I", $rsp, $callback, 1);
+            return 1;
+        }
+    }
+    xCAT::Utils->runcmd("$::RM -f $file", -1);
     return 0;
 }
