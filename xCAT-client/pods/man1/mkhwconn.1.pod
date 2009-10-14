@@ -46,7 +46,7 @@ The HMC node name. Only one HMC nodes can be specified by this flag. To setup co
 
 =item B<-P>
 
-The password of user 'admin' on FSP and BPA nodes. This flag is optional. Default password is 'admin'.
+The password of HMC based FSP/BPA login user(Default user name is 'HMC'). This flag is optional.
 
 =item B<-V|--verbose>
 
