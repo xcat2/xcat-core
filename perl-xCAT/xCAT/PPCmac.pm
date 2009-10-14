@@ -480,7 +480,7 @@ sub getmacs {
                     my $curr_conn_speed = $nodeatt{$mtms}{$port_group}{$logical_port_id}{'curr_conn_speed'};
 
                     if ( $phys_port_loc ) {
-                        $type = "hea";          
+                        $type = "hea      ";          
                     } else {
                         $type = "virtualio";
                     }
