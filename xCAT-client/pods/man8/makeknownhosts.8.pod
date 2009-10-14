@@ -4,13 +4,13 @@ B<makeknownhosts> - Make a known_hosts file under $ROOTHOME/.ssh for input noder
 
 =head1 SYNOPSIS
 
-B<makeknownhosts> I<noderange>
+B<makeknownhosts> I<noderange> [B<-r>|B<--remove>] [B<-V>|B<--verbose>]
 
 B<makeknownhosts> {B<-h>|B<--help>}
 
 =head1 DESCRIPTION
 
-B<makeknownhosts> Replaces in the known_hosts file in the $ROOTHOME/.ssh directory, the enties for the nodes from the noderange input to the command.
+B<makeknownhosts> Replaces or removes in the known_hosts file in the $ROOTHOME/.ssh directory, the enties for the nodes from the noderange input to the command.
 The known_hosts file entry is built from the shared ssh host key that xCAT distributes to the installed nodes.
 
 HMCs, AMM, switches, etc., where xCAT does not distribute the shared ssh host key, should not be put in the noderange.
@@ -23,6 +23,19 @@ The file should be distributed using xdcp to all the nodes, if you want node to 
 =head1 OPTIONS
 
 =over 6
+
+=item I<noderange>
+
+A set of comma delimited node names and/or group names.
+See the "noderange" man page for details on supported formats.
+
+=item B<-r|--remove>
+
+Only removes the entries for the nodes from the known_hosts file.
+
+=item B<-V|--verbose>
+
+Verbose mode.
 
 =back
 
@@ -37,6 +50,10 @@ makeknownhosts compute
 =item *
 
 makeknownhosts lpars,service 
+
+=item *
+
+makeknownhosts node02 -r
 
 =back
 
