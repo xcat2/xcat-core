@@ -1361,9 +1361,21 @@ sub getmacs {
            my $basemac = $1;
            $basemac =~ s/mac address \d: //i;
            $basemac =~ s/://g;
-           my $macnum = hex($basemac);
-           $macnum += 1;
-           my $newmac = sprintf("%012X",$macnum);
+           # Since 32bit Operating System can only handle 32bit integer, 
+           # split the mac address as high 24bit and low 24bit 
+           $basemac =~ /(......)(......)/;
+           my ($basemac_h6, $basemac_l6) = ($1, $2);
+           my $macnum_l6 = hex($basemac_l6);
+           my $macnum_h6 = hex($basemac_h6);
+           $macnum_l6 += 1;
+           if ($macnum_l6 > 0xFFFFFF) {
+               $macnum_h6 += 1;
+           }
+           my $newmac_l6 = sprintf("%06X", $macnum_l6);
+           $newmac_l6 =~ /(......)$/;
+           $newmac_l6 = $1;
+           my $newmac_h6 = sprintf("%06X", $macnum_h6);
+           my $newmac = $newmac_h6.$newmac_l6;
            $newmac =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
            my $newidx = scalar(@macs)+1;
            push @macs,"MAC Address $newidx: ".$newmac;
