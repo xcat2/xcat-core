@@ -30,6 +30,8 @@ B<nodeset> only sets the next boot state, but does not reboot.
 B<nodeset>  is  called  by rinstall and winstall and is also called by the
 installation process remotely to set the boot state back to "boot".
 
+User can supply their own scripts to be run on the mn or on the service node (if their is hierarchy) for a node during the nodeset command. Such scripts are called B<prescripts>. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the nodeset command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the noodeset command are stored in the 'end' column of I<prescripts> table. Please run 'tabdump prescripts -d' command for details.  
+
 =head1 B<Options>
 
 =over 7

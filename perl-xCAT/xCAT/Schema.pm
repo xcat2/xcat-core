@@ -698,11 +698,11 @@ eventlog => {
 prescripts => {
     cols => [qw(node begin end comments disable)],
     keys => [qw(node)],
-    table_desc => 'The scripts that should be run at the beginning and the end of the nodeset or nimnodeset/mkdsklsnode (AIX) command.',
+    table_desc => 'The scripts that should be run at the beginning and the end of the nodeset command.',
     descriptions => {
 	node => 'The node name or group name.',
 	begin => 
-"The scripts to be run at the beginning of the nodeset (Linux) or nimnodeset/mkdsklsnode (AIX) command.\n". 
+"The scripts to be run at the beginning of the nodeset (Linux) command.\n". 
 "\t\tThe format is:\n".
 "\t\t[action1:]s1,s2...[|action2:s3,s4,s5...]\n".
 "\t\twhere action1 and action2 are the nodeset/nimnodeset actions specified in the command.\n".
@@ -712,7 +712,7 @@ prescripts => {
 "\t\tmyscript1,myscript2\n".
 "\t\tinstall:myscript1,myscript2|netboot:myscript3",
         end => 
-"The scripts to be run at the end of the nodeset (Linux) or nimnodeset/mkdsklsnode (AIX) command.\n" .
+"The scripts to be run at the end of the nodeset (Linux) command.\n" .
 "\t\tThe format is the same as the 'begin' column.",
 	comments => 'Any user-written notes.',
 	disable => "Set to 'yes' or '1' to comment out this row.",
