@@ -548,7 +548,7 @@ sub new
         if ($xcatcfg =~ /^SQLite:/)
         {
             $self->{backend_type} = 'sqlite';
-            $self->{realautocommit} = 0; #We will emulate autocommit if autocommit is requested
+            $self->{realautocommit} = 1; #Regardless of autocommit semantics, only electively do autocommit due to SQLite locking difficulties
             my @path = split(':', $xcatcfg, 2);
             unless (-e $path[1] . "/" . $self->{tabname} . ".sqlite" || $create)
             {
@@ -773,9 +773,6 @@ sub updateschema
             my $stmt =
                   "ALTER TABLE " . $self->{tabname} . " ADD $dcol $datatype";
             $self->{dbh}->do($stmt);
-            if ($self->{autocommit} and not $self->{realautocommit}) {
-                $self->{dbh}->commit;
-            }
         }
     }
 
@@ -867,9 +864,6 @@ sub updateschema
 		$str = "DROP TABLE $btn";
 		$self->{dbh}->do($str);
 	    }
-        if ($self->{autocommit} and not $self->{realautocommit}) {
-            $self->{dbh}->commit;
-        }
 	}
     }
 }
@@ -967,6 +961,10 @@ sub addAttribs
     if ($dbworkerpid) {
         return dbc_call($self,'addAttribs',@_);
     }
+    if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=1;
+        $self->{dbh}->{AutoCommit}=0;
+    }
     my $key    = shift;
     my $keyval = shift;
     my $elems  = shift;
@@ -1012,9 +1010,6 @@ sub addAttribs
         xCAT::NotifHandler->notify("a", $self->{tabname}, [0],
                                           \%new_notif_data);
     }
-    if ($self->{autocommit} and not $self->{realautocommit}) {
-        $self->{dbh}->commit();
-    }
     $sth->finish();
 
 }
@@ -1051,6 +1046,10 @@ sub rollback
         return dbc_call($self,'rollback',@_);
     }
     $self->{dbh}->rollback;
+    if ($self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=0;
+        $self->{dbh}->{AutoCommit}=1;
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -1084,6 +1083,10 @@ sub commit
         return dbc_call($self,'commit',@_);
     }
     $self->{dbh}->commit;
+    if ($self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=0;
+        $self->{dbh}->{AutoCommit}=1;
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -1147,6 +1150,10 @@ sub setAttribs
     my @qargs   = ();
     my $query;
     my $data;
+    if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=1;
+        $self->{dbh}->{AutoCommit}=0;
+    }
 
     if (($pKeypairs != undef) && (keys(%keypairs)>0)) {
 	foreach (keys %keypairs)
@@ -1235,9 +1242,6 @@ sub setAttribs
             return (undef, $sth->errstr);
         }
 	    $sth->finish;
-        if ($self->{autocommit} and not $self->{realautocommit}) {
-            $self->{dbh}->commit;
-        }
     }
     else
     {
@@ -1281,9 +1285,6 @@ sub setAttribs
             return (undef, $sth->errstr);
         }
 	    $sth->finish;
-        if ($self->{autocommit} and not $self->{realautocommit}) {
-            $self->{dbh}->commit();
-        }
     }
 
     #notify the interested parties
@@ -1342,6 +1343,10 @@ sub setAttribsWhere
     my @bind  = ();
     my $action;
     my @notif_data;
+    if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=1;
+        $self->{dbh}->{AutoCommit}=0;
+    }
     my $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE " . $where_clause;
     my @qargs   = ();
     my $query = $self->{dbh}->prepare($qstring);
@@ -1400,9 +1405,6 @@ sub setAttribsWhere
                                  \@notif_data, \%new_notif_data);
     }
     $sth->finish;
-    if ($self->{autocommit} and not $self->{realautocommit}) {
-        $self->{dbh}->commit;
-    }
     return 0;
 }
 
@@ -2166,6 +2168,10 @@ sub delEntries
     }
     my $keyref = shift;
     my %keypairs;
+    if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=1;
+        $self->{dbh}->{AutoCommit}=0;
+    }
     if ($keyref)
     {
         %keypairs = %{$keyref};
