@@ -746,7 +746,6 @@ sub lpar_netboot {
                 if ( grep(/^$node$/, @nodelist) ) {
                     if ( !grep(/^$osname$/, @oslist) ) {
                         $cmd.= " -i";
-print "fortest:2\n";
                     }
                     $intable = 1;
                     last;
