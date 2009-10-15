@@ -1833,6 +1833,21 @@ sub set_netcfg
     }
 
     #Go to the confirm page
+    if ( $res->content !~ /\Q<input type=\'submit\'\E/) #If there is no submit button,get the error message and return
+    {
+        my @page_lines = split /\n/, $res->content;
+        my @lines_to_print;
+        for my $page_line (@page_lines)
+        {
+            chomp $page_line;
+            if ( $page_line =~ s/<br>$//)
+            {
+                push @lines_to_print, $page_line;
+            }
+        }
+        return ( [RC_ERROR,join "\n", @lines_to_print]);
+    }
+
     $form = HTML::Form->parse( $res->content, $res->base );
     $data = $form->click('submit');
     #xCAT::MsgUtils->message("I", "Updating network configuration for node " . $exp->[1] . "...");

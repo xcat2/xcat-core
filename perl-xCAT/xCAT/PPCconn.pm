@@ -469,6 +469,14 @@ sub lshwconn
                 $node_vpd_hash{"$vpdent->{mtm}*$vpdent->{serial}"} = $vpdent->{node};
             }
         }
+        my %node_ppc_hash;
+        my $ppctab =  xCAT::Table->new('ppc');
+        for my $node ( values %node_vpd_hash)
+        {
+            my $node_parent_hash = $ppctab->getNodeAttribs( $node, [qw(parent)]);
+            $node_ppc_hash{$node} = $node_parent_hash->{parent};
+        }
+
         for my $r ( @$res)
         {
             $r =~ s/type_model_serial_num=([^,]*),//;
@@ -480,10 +488,12 @@ sub lshwconn
             if ( exists $node_vpd_hash{$mtms})
             {
                 $node_name = $node_vpd_hash{$mtms};
+                $r = "hcp=$exp->[3],parent=$node_ppc_hash{$node_name}," . $r;
             }
             else
             {
                 $node_name = $mtms;
+                $r = "hcp=$exp->[3],parent=," . $r;
             }
             push @value, [ $node_name, $r, $Rc];
         }
