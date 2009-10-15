@@ -2081,7 +2081,7 @@ trap {
     exit -1 
 } {INT HUP QUIT TERM}
 
-set timeout 10
+set timeout 30
 set pwd_sent 0
 send_user "# Connecting to $name\n"
  
