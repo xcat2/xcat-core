@@ -51,14 +51,13 @@ sub usage
 
     my $usagemsg1 =
       "The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
-    my $usagemsg1a = "sinv -h \nsinv -v \nsinv \n";
-    my $usagemsg2  = "      [-V verbose] [-v version] [-h usage]\n ";
+    my $usagemsg1a = "sinv -h \nsinv -v \nsinv";
     my $usagemsg3  =
-      "     [-o output file ] [-p <template path>] [-t <template count>]\n";
+      " -p <template path> [-o output file ] [-t <template count>]\n";
     my $usagemsg4 = "      [-r remove templates] [-s <seednode>]\n";
     my $usagemsg5 = "      [-e exactmatch] [-i ignore]\n";
-    my $usagemsg6 = "      [-c <command>  | -f <command file>] \n ";
-    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
+    my $usagemsg6 = "      {-c <command>  | -f <command file>}";
+    my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg3 .= $usagemsg4 .=
       $usagemsg5 .= $usagemsg6;
 ###  end usage mesage
 
