@@ -3432,14 +3432,14 @@ sub usage_dsh
 {
 ## usage message
     my $usagemsg1  = " xdsh -h \n xdsh -q \n xdsh -V \n";
-    my $usagemsg1a = "xdsh  [noderange] -K [-l logonuserid]\n";
+    my $usagemsg1a = "xdsh  <noderange> [-K] [-l logonuserid]\n";
     my $usagemsg2  = "      [-B bypass ] [-c] [-e] [-E environment_file]
       [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
     my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
       [-i image path] [-s] [-S ksh | csh] [-t timeout]\n";
     my $usagemsg5 = "      [-T] [-X environment variables] [-v] [-z]\n";
-    my $usagemsg6 = "      [command_list]\n";
+    my $usagemsg6 = "      <command_list>";
     my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg2 .= $usagemsg3 .=
       $usagemsg4 .= $usagemsg5 .= $usagemsg6;
 ###  end usage mesage
@@ -3821,24 +3821,21 @@ sub parse_and_run_dsh
 sub usage_dcp
 {
     ### usage message
-    my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp [noderange]\n";
+    my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp <noderange>\n";
     my $usagemsg2 = "      [-B bypass] [-c] [-f fanout] [-l user_ID]\n";
     my $usagemsg3 =
       "      [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
       "      [-R] [-t timeout] [-T] [-X environment variables] [-v] \n";
     my $usagemsg5    = "      source_file... target_path\n";
-    my $usagemsg5a   = " xdcp [noderange] [-F <rsyncfile>] ";
+    my $usagemsg5a   = " xdcp <noderange> [-s] -F <rsyncfile> ";
     my $usagemsg5b   = "[-f fanout] [-t timeout] [-o options] [-v]\n";
-    my $usagemsg5aa  = " xdcp [noderange] [-s] [-F <rsyncfile>] ";
-    my $usagemsg5bb  = "[-f fanout] [-t timeout]\n";
-    my $usagemsg5bbb = "                  [-o options] [-v]\n";
-    my $usagemsg5c   = " xdcp [-i imagepath] [-F <rsyncfile>] ";
-    my $usagemsg5d   = "[-o options]\n";
+    my $usagemsg5c   = " xdcp <-i imagepath> -F <rsyncfile> ";
+    my $usagemsg5d   = "[-o options]";
 
     my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg5 .= $usagemsg5a .= $usagemsg5b .= $usagemsg5aa .=
-      $usagemsg5bb .= $usagemsg5bbb;
+      $usagemsg5 .= $usagemsg5a .= $usagemsg5b .= $usagemsg5c .=
+      $usagemsg5d;
 
     if ($::CALLBACK)
     {
