@@ -129,6 +129,13 @@ sub init_dbworker {
         $_->{InactiveDestroy} = 1;
         undef $_;
     }
+    $::XCAT_DBHS={};
+    $dbobjsforhandle={};#TODO: It's not said explicitly, but this means an 
+    #existing TABLE object is useless if going into db worker.  Table objects
+    #must be recreated after the transition.  Only xcatd should have to
+    #worry about it.  This may warrant being done better, making a Table
+    #object meaningfully survive in much the same way it survives a DB handle
+    #migration in handle_dbc_request
 
 
     $dbworkerpid = fork;
@@ -229,16 +236,25 @@ sub handle_dbc_request {
     my @args = @{$request->{args}};
     my $autocommit = $request->{autocommit};
     my $dbindex;
-    foreach $dbindex (keys %{$::XCAT_DBHS}) {
-        unless ($::XCAT_DBHS->{$dbindex}) { next; }
+    foreach $dbindex (keys %{$::XCAT_DBHS}) { #Go through the current open DB handles
+        unless ($::XCAT_DBHS->{$dbindex}) { next; } #If we have a stale dbindex entry skip it (should no longer happen with additions to init_dbworker
         unless ($::XCAT_DBHS->{$dbindex} and $::XCAT_DBHS->{$dbindex}->ping) {
-            my @afflictedobjs = @{$dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}}};
-            my $oldhandle = $::XCAT_DBHS->{$dbindex};
-            $::XCAT_DBHS->{$dbindex} = $::XCAT_DBHS->{$dbindex}->clone();
-            foreach (@afflictedobjs) { 
+            #We have a database that we were unable to reach, migrate database 
+            #handles out from under table objects
+            my @afflictedobjs = (); #Get the list of objects whose database handle needs to be replaced
+            if (defined $dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}}) {
+                @afflictedobjs = @{$dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}}};
+            } else {
+                die "DB HANDLE TRACKING CODE HAS A BUG";
+            }
+            my $oldhandle = $::XCAT_DBHS->{$dbindex}; #store old handle off 
+            $::XCAT_DBHS->{$dbindex} = $::XCAT_DBHS->{$dbindex}->clone(); #replace broken db handle with nice, new, working one
+            $dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}} = $dbobjsforhandle->{$oldhandle}; #Move the map of depenednt objects to the new handle
+            foreach (@afflictedobjs) {  #migrate afflicted objects to the new DB handle
                 $$_->{dbh} = $::XCAT_DBHS->{$dbindex};
             }   
-            $oldhandle->disconnect();
+            delete $dbobjsforhandle->{$oldhandle}; #remove the entry for the stale handle
+            $oldhandle->disconnect(); #free resources associated with dead handle
         }   
     }   
     if ($functionname eq 'new') {
@@ -583,7 +599,7 @@ sub new
         #This for now is ok, as either we aren't in DB worker mode, in which case this structure would be short lived...
         #or we are in db worker mode, in which case Table objects live indefinitely
         #TODO: be able to reap these objects sanely, just in case
-        push @{$dbobjsforhandle->{$::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}}},\$self;
+        push @{$dbobjsforhandle->{$::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{realautocommit}}}},\$self;
           #DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $autocommit});
         if ($xcatcfg =~ /^SQLite:/)
         {
