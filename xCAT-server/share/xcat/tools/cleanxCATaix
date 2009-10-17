@@ -49,9 +49,6 @@ print " Removing OSS prerequisite software.\n";
 `rpm -e perl-IO-Tty-1.07-1`;
 `rpm -e perl-Expect-1.21-1`;
 `rpm -e conserver-8.1.16-2`;
-`rpm -e expect-5.42.1-3`;
-`rpm -e tk-8.4.7-3`;
-`rpm -e tcl-8.4.7-3`;
 `rpm -e perl-DBD-SQLite-1.13-1`;
 `rpm -e perl-DBI-1.55-1`;
 
