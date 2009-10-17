@@ -238,6 +238,12 @@ sub setupAIXsn
 	#   !!!!! can't do diskless nodes w/ nimsh & SSL enabled!!!!
 	#
 
+	# restore the original .rhosts that was removed by NIM setup
+	if (&runcmd("cp /.rhosts.prev /.rhosts ") != 0 ) {
+		$msg = "$::sdate servicenode: Could not restore the .rhosts file.\n";
+		`logger -t xcat $msg`;
+	}
+
 	return 0;
 }
 
