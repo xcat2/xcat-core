@@ -116,7 +116,7 @@ sub process_request {
     #Develop serially first, then put fork semantics in place
         handle_targets($controller,$request);
     }
-    use Data::Dumper;
+    #use Data::Dumper;
 };
 
 sub get_controller_iqn {
@@ -224,7 +224,7 @@ sub getUnits {
 
 
 sub create_new_lun {
-    print Dumper(@_);
+    #print Dumper(@_);
     my $controller = shift;
     my $gname = shift;
     my $cfg = shift;
