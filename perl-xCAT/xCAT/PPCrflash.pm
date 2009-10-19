@@ -12,7 +12,6 @@ use Getopt::Long;
 use File::Spec;
 use POSIX qw(tmpnam);
 
-use Data::Dumper;
 
 
 my $packages_dir= ();
@@ -730,7 +729,6 @@ sub rflash {
 				                     env => ["DSH_FROM_USERID=$current_userid","DSH_TO_USERID=$user"],
                                   },
                                    $subreq, 0, 1);
-	print Dumper(@$res);
 
     if ($::RUNCMD_RC ) {   # error from dcp
        	my $rsp={};
@@ -786,7 +784,6 @@ sub rflash {
 	                			     env => ["DSH_FROM_USERID=$current_userid","DSH_TO_USERID=$user"],
                                   },
                                    $subreq, 0, 1);
-	print Dumper(@$res);
 
     if ($::RUNCMD_RC ) {    # error from dsh 
         my $rsp={};
@@ -815,13 +812,6 @@ sub rflash {
         $tmp1[2] =~ /LIC_RC\s=\s(\d*)/;   
         if($1 != 0) {  # failed
             my $tmp3 = $infor{$tmp1[1]};
-            print "++ tmp1 ++\n";
-            #  print Dumper(@tmp1);
-            print "++ tmp3 ++\n";
-            #    print Dumper($tmp3);
-            print "++ infor +\n";
-            #     print Dumper(%infor);
-            print "++++\n";
             if($$tmp3[4] eq "power") {
                $tmp1[1] = $$tmp3[5];
             }
