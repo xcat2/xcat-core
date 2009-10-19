@@ -39,7 +39,7 @@ use xCAT::ExtTab;
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
 vm => {
-    cols => [qw(node host migrationdest storage cfgstore memory cpus nics bootorder clockoffset virtflags vncport textconsole beacon comments disable)],
+    cols => [qw(node host migrationdest storage cfgstore memory cpus nics bootorder clockoffset virtflags vncport textconsole powerstate beacon comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
@@ -56,6 +56,7 @@ vm => {
         'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen")',
         'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
         'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
+        'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
         'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM."
     }
 },

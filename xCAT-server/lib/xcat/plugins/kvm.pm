@@ -18,6 +18,8 @@ use IO::Select;
 use strict;
 #use warnings;
 my %vm_comm_pids;
+my %offlinehyps;
+my %offlinevms;
 my @destblacklist;
 my $vmhash;
 my $nthash; #to store nodetype data
@@ -400,8 +402,11 @@ sub pick_target {
 
 
 sub migrate {
-    my $node = shift();
+    $node = shift();
     my $targ = shift();
+    if ($offlinevms{$node}) {
+        return power("on");
+    }
     unless ($targ) {
         $targ = pick_target($node);
     }
@@ -805,6 +810,8 @@ sub process_request {
      }
      exit 0;
   };
+  %offlinehyps=();
+  %offlinevms=();
   my $request = shift;
   my $callback = shift;
   my $libvirtsupport = eval { 
@@ -834,9 +841,15 @@ sub process_request {
   } else {
     @exargs = ($request->{arg});
   }
+  my $forcemode = 0;
+  my %orphans=();
   if ($command eq 'revacuate') {
       my $newnoderange;
+      if (grep { $_ eq '-f' } @exargs) {
+          $forcemode=1;
+      }
       foreach (@$noderange) {
+        my $hyp = $_; #I used $_ too much here... sorry
         $hypconn=undef;
         push @destblacklist,$_;
         eval { #Contain bugs that won't be in $@
@@ -848,15 +861,38 @@ sub process_request {
             };
         }
         unless ($hypconn)  {
-            $callback->({node=>[{name=>[$_],error=>["Cannot communicate via libvirt to node"]}]});
+            if ($forcemode) { #forcemode indicates the hypervisor is probably already dead, and to clear vm.host of all the nodes, and adopt the ones that are supposed to be 'on', power them on
+                $offlinehyps{$hyp}=1;
+                unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>0); }
+                unless ($vmtab) { next; }
+                my @vents = $vmtab->getAttribs({host=>$hyp},['node','powerstate']);
+                my $vent;
+                my $nodestozap;
+                foreach $vent (@vents) {
+                    my @nodes = noderange($vent->{node});
+                    if ($vent->{powerstate} eq 'on') {
+                        foreach (@nodes) { 
+                            $offlinevms{$_}=1;
+                            $orphans{$_}=1; 
+                            push @$newnoderange,$_;
+                        }
+                    }
+                    push @$nodestozap,@nodes;
+                }
+                $vmtab->setNodesAttribs($nodestozap,{host=>'|^.*$||'});
+            } else {
+                $callback->({node=>[{name=>[$_],error=>["Cannot communicate via libvirt to node"]}]});
+            }
             next;
         }
-        foreach ($hypconn->list_domains()) {
-            my $guestname = $_->get_name();
-            if ($guestname eq 'Domain-0') {
-                next;
+        if ($hypconn) {
+            foreach ($hypconn->list_domains()) {
+                my $guestname = $_->get_name();
+                if ($guestname eq 'Domain-0') {
+                    next;
+                }
+                push @$newnoderange,$guestname;
             }
-            push @$newnoderange,$guestname;
         }
       }
       $hypconn=undef;
@@ -882,7 +918,6 @@ sub process_request {
   my $inputs = new IO::Select;;
   my $sub_fds = new IO::Select;
   %hyphash=();
-  my %orphans=();
   foreach (keys %{$vmhash}) {
       if ($vmhash->{$_}->[0]->{host}) {
           $hyphash{$vmhash->{$_}->[0]->{host}}->{nodes}->{$_}=1;
@@ -903,8 +938,15 @@ sub process_request {
               }
           }
       } elsif ($command eq "rmigrate") {
-          $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
-          return;
+          if ($forcemode) {
+            unless (adopt(\%orphans,\%hyphash)) {
+                $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
+                return 1;
+              }
+          } else {
+            $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
+            return;
+          }
       } elsif ($command eq "mkvm") { #mkvm can happen devoid of any hypervisor, make a fake hypervisor entry to allow this to occur
           foreach (keys %orphans) {
               $hyphash{'!@!XCATDUMMYHYPERVISOR!@!'}->{nodes}->{$_}=1;
