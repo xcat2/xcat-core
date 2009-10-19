@@ -1234,8 +1234,19 @@ sub setupAIXconserver
         else
         {
             xCAT::MsgUtils->message('I', "Added subsystem conserver.");
+            # add to the /etc/inittab file
+            my $mkitab_cmd =
+            'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver" > /dev/null 2>&1';
+            my $rc = system($mkitab_cmd);    # may already be there no error check
         }
+    } else { # conserver already a service
+            # make sure it is registered in /etc/inittab file
+            my $mkitab_cmd =
+            'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver" > /dev/null 2>&1';
+            my $rc = system($mkitab_cmd);    # may already be there no error check
     }
+    # now make sure conserver is started
+    xCAT::Utils->startService("conserver");
 
 }
 
