@@ -160,6 +160,8 @@ For MPA only. Get or set the MPA network parameters. If '*' is specified, all pa
 For FSP/BPA only. Get or set the FSP/BPA network parameters. If '*' is specified, all parameters are read from the xCAT database. 
 If the value of I<ip> is '0.0.0.0', this I<nic> will be configured as a DHCP client. Otherwise this I<nic> will be configured with a static IP.
 
+Note that IPs of FSP/BPAs will be updated with this option, user needs to put the new IPs to /etc/hosts manually or with xCAT command makehosts. For more details, see the man page of makehosts.
+
 =item B<nonred>
 
 Allows loss of redundancy.
