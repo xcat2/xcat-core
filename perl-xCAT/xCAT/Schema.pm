@@ -60,11 +60,12 @@ vm => {
     }
 },
 hypervisor => {
-        cols => [qw(node mgr netmap defaultnet cluster preferdirect comments disable)],
+        cols => [qw(node type mgr netmap defaultnet cluster preferdirect comments disable)],
         keys => [qw(node)],
         table_desc => 'Hypervisor parameters',
         descriptions => {
             'node' => 'The node or static group name',
+            'type' => 'The plugin associated with hypervisor specific commands such as revacuate',
             mgr => 'The virtualization specific manager of this hypervisor when applicable',
             'netmap' => 'Optional mapping of useful names to relevant physical ports.  For example, 10ge=vmnic_16.0&vmnic_16.1,ge=vmnic1 would be requesting two virtual switches to be created, one called 10ge with vmnic_16.0 and vmnic_16.1 bonded, and another simply connected to vmnic1.  Use of this allows abstracting guests from network differences amongst hypervisors',
             'defaultnet' => 'Optionally specify a default network entity for guests to join to if they do not specify.',
@@ -278,7 +279,7 @@ networks => {
   nameservers => 'The nameservers for this network.  Used in creating the DHCP network definition, and DNS configuration.',
   ntpservers => 'The ntp servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
   logservers => 'The log servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
-  dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.',
+  dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.  This should not overlap with entities expected to be configured with static host declarations, i.e. anything ever expected to be a node with an address registered in the mac table.',
   nodehostname => 'A regular expression used to specify node name to network-specific hostname.  i.e. "/\z/-secondary/" would mean that the hostname of "n1" would be n1-secondary on this network.  By default, the nodename is assumed to equal the hostname, followed by nodename-interfacename.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
