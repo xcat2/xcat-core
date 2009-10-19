@@ -56,7 +56,7 @@ sub handled_commands {
     #rinv => 'nodehm:mgt',
     getrvidparms => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
-    revacuate => 'vm:virtflags',
+    revacuate => 'hypervisor:type',
     #rspreset => 'nodehm:mgt',
     #rspconfig => 'nodehm:mgt',
     #rbootseq => 'nodehm:mgt',
