@@ -1351,6 +1351,15 @@ sub rscan_stanza {
 }
 
 sub getmacs {
+   my (@args) = @_;
+
+   my $display = ();
+   foreach my $arg (@args) {
+      if ($arg eq "-d") {
+         $display = "yes";
+      }
+   }
+
    (my $code,my @macs)=inv('mac');
    foreach (@macs) {
        if (/(.*) ->/) { #Convert JS style mac ranges to pretend to be simple
@@ -1423,10 +1432,14 @@ sub getmacs {
     }
 
     my $macstring = join("|",@allmacs);
-    my $mactab = xCAT::Table->new('mac',-create=>1);
-    $mactab->setNodeAttribs($curn,{mac=>$macstring});
-    $mactab->close;
-    return 0,":mac.mac set to $macstring";
+    if ($display =~ /yes/) {
+       return 0,":The mac address is $macstring";
+    } else {
+       my $mactab = xCAT::Table->new('mac',-create=>1);
+       $mactab->setNodeAttribs($curn,{mac=>$macstring});
+       $mactab->close;
+       return 0,":mac.mac set to $macstring";
+    }
    } else {
       return $code,$macs[0];
    }
@@ -1974,6 +1987,19 @@ sub preprocess_request {
     $callback->({data=>$usage_string});
     $request = {};
     return;
+  }
+
+  #parse the arguments for commands
+  if ($command eq "getmacs") {
+    foreach my $arg (@exargs) {
+      if (defined($arg) && $arg !~ /^-V|--verbose|-d$/) {
+        $usage_string="Error arguments\n";
+        $usage_string .=xCAT::Usage->getUsage($command);
+        $callback->({data=>$usage_string});
+        $request = {};
+        return;
+      }
+    }
   }
 
   if (!$noderange) {

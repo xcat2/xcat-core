@@ -110,7 +110,7 @@ my %usage = (
     "getmacs" => 
 "Usage: 
    Common:
-       getmacs <noderange> [-V|--verbose]
+       getmacs <noderange> [-d] [-V|--verbose]
        getmacs [-h|--help|-v|--version]
    PPC specific:
        getmacs <noderange> [-F filter] 
