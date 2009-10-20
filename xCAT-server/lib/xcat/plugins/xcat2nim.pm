@@ -690,6 +690,17 @@ sub x2n
 			# create a NIM group definition
 			if ($::objtype{$objname} eq 'group') {
 				$::objhash{$objname}{'grouptype'}='static';
+                                my $grptab = xCAT::Table->new('nodegroup');
+                                my @grplist = @{$grptab->getAllEntries()}; #dynamic groups and static groups in nodegroup table
+                                foreach my $grpdef_ref (@grplist) {
+                                    my %grpdef = %$grpdef_ref;
+                                    if (($grpdef{'groupname'} eq $objname) && ($grpdef{'grouptype'} eq 'dynamic')) {
+                                        $::objhash{$objname}{'grouptype'}='dynamic';
+                                        last;
+                                    }
+                                }
+                                $grptab->close;
+
 				if (mkgrpdef($objname, $callback)) {
 					# could not create group definition
 					$error++;
