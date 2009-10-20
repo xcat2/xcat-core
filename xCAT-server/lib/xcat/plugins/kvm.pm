@@ -823,7 +823,11 @@ sub adopt {
         unless ($target) {
             next;
         }
-        $addmemory{$target}+=getUnits($vmhash->{$node}->[0]->{memory},"M",1024);
+        if ($vmhash->{$node}->[0]->{memory}) {
+            $addmemory{$target}+=getUnits($vmhash->{$node}->[0]->{memory},"M",1024);
+        } else {
+            $addmemory{$target}+=getUnits("512","M",1024);
+        }
         $hyphash{$target}->{nodes}->{$node}=1;
         delete $orphash->{$node};
         push @{$hypsethash{$target}},$node;
