@@ -1,2754 +1,1295 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-
-package xCAT_plugin::lsslp;
+package xCAT_plugin::dhcp;
 use strict;
+use xCAT::Table;
+use Data::Dumper;
+use MIME::Base64;
 use Getopt::Long;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
 use Socket;
-use POSIX "WNOHANG";
-use Storable qw(freeze thaw);
-use Time::HiRes qw(gettimeofday);
-use IO::Select;
-use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
-use xCAT::PPCdb;
-
-require xCAT::MacMap;
-require xCAT_plugin::blade;
-
-#######################################
-# Constants
-#######################################
-use constant {
-    HARDWARE_SERVICE => "service:management-hardware.IBM",
-    SOFTWARE_SERVICE => "service:management-software.IBM",
-    WILDCARD_SERVICE => "service:management-*",
-    P6_SERVICE       => "service:management-hardware.IBM",
-    SERVICE_FSP      => "cec-service-processor",
-    SERVICE_BPA      => "bulk-power-controller",
-    SERVICE_HMC      => "hardware-management-console",
-    SERVICE_IVM      => "integrated-virtualization-manager",
-    SERVICE_MM       => "management-module",
-    SERVICE_RSA      => "remote-supervisor-adapter",
-    SERVICE_RSA2     => "remote-supervisor-adapter-2",
-    SLP_CONF         => "/usr/local/etc/slp.conf",
-    SLPTOOL          => "/usr/local/bin/slptool",
-    TYPE_MM          => "MM",
-    TYPE_RSA         => "RSA",
-    TYPE_BPA         => "BPA",
-    TYPE_HMC         => "HMC",
-    TYPE_IVM         => "IVM",
-    TYPE_FSP         => "FSP",
-    IP_ADDRESSES     => 3,
-    TEXT             => 0,
-    FORMAT           => 1,
-    SUCCESS          => 0,
-    RC_ERROR         => 1
-};
-
-#######################################
-# Globals
-#######################################
-my %service_slp = (
-    @{[ SERVICE_FSP  ]} => TYPE_FSP,
-    @{[ SERVICE_BPA  ]} => TYPE_BPA,
-    @{[ SERVICE_HMC  ]} => TYPE_HMC,
-    @{[ SERVICE_IVM  ]} => TYPE_IVM,
-    @{[ SERVICE_MM   ]} => TYPE_MM,
-    @{[ SERVICE_RSA  ]} => TYPE_RSA,
-    @{[ SERVICE_RSA2 ]} => TYPE_RSA
-);
-
-#######################################
-# SLP display header
-#######################################
-my @header = (
-    ["device",        "%-8s" ],
-    ["type-model",    "%-12s"],
-    ["serial-number", "%-15s"],
-    ["ip-addresses",  "placeholder"],
-    ["hostname",      "%s"]
-);
-
-#######################################
-# Hardware specific SLP attributes
-#######################################
-my %exattr = (
-  @{[ SERVICE_FSP ]} => [
-      "bpc-machinetype-model",
-      "bpc-serial-number",
-      "cage-number"
-    ],
-  @{[ SERVICE_BPA ]} => [
-      "frame-number"
-    ]
-);
-
-#######################################
-# Power methods
-#######################################
-my %mgt = (
-    lc(TYPE_FSP) => "hmc",
-    lc(TYPE_HMC) => "hmc",
-    lc(TYPE_MM)  => "blade",
-    lc(TYPE_HMC) => "hmc",
-    lc(TYPE_IVM) => "ivm",
-    lc(TYPE_RSA) => "blade"
-);
-
-my @attribs    = qw(nodetype model serial groups node mgt mpa id);
-my $verbose    = 0;
-my %ip_addr    = ();
-my %slp_result = ();
-my %rsp_result = ();
-my %opt        = ();
-my $maxtries   = 1;
-my $openSLP    = 1;
-my @converge;
-my $macmap;
-
-
-##########################################################################
-# Command handler method from tables
-##########################################################################
-sub handled_commands {
-
-    $macmap = xCAT::MacMap->new();
-    return( {lsslp=>"lsslp"} );
-}
-
-
-##########################################################################
-# Invokes the callback with the specified message
-##########################################################################
-sub send_msg {
-
-    my $request = shift;
-    my $ecode   = shift;
-    my %output;
-
-    #################################################
-    # Called from child process - send to parent
-    #################################################
-    if ( exists( $request->{pipe} )) {
-        my $out = $request->{pipe};
-
-        $output{errorcode} = $ecode;
-        $output{data} = \@_;
-        print $out freeze( [\%output] );
-        print $out "\nENDOFFREEZE6sK4ci\n";
-    }
-    #################################################
-    # Called from parent - invoke callback directly
-    #################################################
-    elsif ( exists( $request->{callback} )) {
-        my $callback = $request->{callback};
-        $output{errorcode} = $ecode;
-        $output{data} = \@_;
-        $callback->( \%output );
-    }
-}
-
-
-
-##########################################################################
-# Parse the command line options and operands
-##########################################################################
-sub parse_args {
-
-    my $request  = shift;
-    my $args     = $request->{arg};
-    my $cmd      = $request->{command};
-    my %services = (
-        HMC => SOFTWARE_SERVICE.":".SERVICE_HMC.":",
-        IVM => SOFTWARE_SERVICE.":".SERVICE_IVM.":",
-        BPA => HARDWARE_SERVICE.":".SERVICE_BPA,
-        FSP => HARDWARE_SERVICE.":".SERVICE_FSP,
-        RSA => HARDWARE_SERVICE.":".SERVICE_RSA.":",
-        MM  => HARDWARE_SERVICE.":".SERVICE_MM.":"
-    );
-    #############################################
-    # Responds with usage statement
-    #############################################
-    local *usage = sub {
-        my $usage_string = xCAT::Usage->getUsage($cmd);
-        return( [$_[0], $usage_string] );
-    };
-    #############################################
-    # No command-line arguments - use defaults
-    #############################################
-    if ( !defined( $args )) {
-        return(0);
-    }
-    #############################################
-    # Checks case in GetOptions, allows opts
-    # to be grouped (e.g. -vx), and terminates
-    # at the first unrecognized option.
-    #############################################
-    @ARGV = @$args;
-    $Getopt::Long::ignorecase = 0;
-    Getopt::Long::Configure( "bundling" );
-
-    #############################################
-    # Process command-line flags
-    #############################################
-    if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c u H))) {
-        return( usage() );
-    }
-    #############################################
-    # Check for switch "-" with no option
-    #############################################
-    if ( grep(/^-$/, @ARGV )) {
-        return(usage( "Missing option: -" ));
-    }
-    #############################################
-    # Set convergence
-    #############################################
-    if ( exists( $opt{c} )) {
-
-        #################################
-        # Use values set in slp.conf
-        #################################
-        if ( !defined( $ARGV[0] )) {
-            @converge = (0);
-        }
-        #################################
-        # Use new values
-        #################################
-        else {
-            @converge = split /,/,$ARGV[0];
-            if ( scalar( @converge ) > 5 ) {
-                return(usage( "Convergence timeouts limited to 5 maximum" ));
-            }
-            foreach ( @converge ) {
-                unless ( /^[1-9]{1}$|^[1-9]{1}[0-9]{1,4}$/) {
-                    return(usage( "Invalid convergence timeout: $_" ));
-                }
-            }
-        }
-    }
-    #############################################
-    # Check for an argument
-    #############################################
-    elsif ( defined( $ARGV[0] )) {
-        return(usage( "Invalid Argument: $ARGV[0]" ));
-    }
-    #############################################
-    # Option -V for verbose output
-    #############################################
-    if ( exists( $opt{V} )) {
-        $verbose = 1;
-    }
-    #############################################
-    # Check for mutually-exclusive formatting
-    #############################################
-    if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z})) > 1 ) {
-        return( usage() );
-    }
-    if ( (exists($opt{u}) + exists($opt{H})) > 1 ) {
-        return( usage("Cannot use flags -u and -H together"));
-    }
-    #############################################
-    # Command tries
-    #############################################
-    if ( exists( $opt{t} )) {
-       $maxtries = $opt{t};
-
-       if ( $maxtries !~ /^0?[1-9]$/ ) {
-           return( usage( "Invalid command tries (1-9)" ));
-       }
-    }
-    #############################################
-    # Select SLP command
-    #############################################
-    if ( exists( $opt{e} )) {
-       if ( $opt{e} !~ /slptool/ ) {
-           $openSLP = 0;
-       }
-    }
-    #############################################
-    # Check for unsupported service type
-    #############################################
-    if ( exists( $opt{s} )) {
-        if ( !exists( $services{$opt{s}} )) {
-            return(usage( "Invalid service: $opt{s}" ));
-        }
-        $request->{service} = $services{$opt{s}};
-    }
-    return(0);
-}
-
-
-##########################################################################
-# Validate comma-seperated list of IPs
-##########################################################################
-sub validate_ip {
-
-    my $request = shift;
-
-    ###########################################
-    # Option -i not specified (no IPs specified)
-    ###########################################
-    if ( !exists( $opt{i} )) {
-
-        #######################################
-        # Determine interfaces
-        #######################################
-        my $ips = $openSLP ?
-                  slptool_ifconfig( $request ) : slpquery_ifconfig( $request );
-
-        #######################################
-        # Command failed
-        #######################################
-        if ( @$ips[0] ) {
-            return( $ips );
-        }
-        return( [0] );
-    }
-    ###########################################
-    # Option -i specified - validate entries
-    ###########################################
-    foreach ( split /,/, $opt{i} ) {
-        my $ip = $_;
-
-        ###################################
-        # Length for IPv4 addresses
-        ###################################
-        my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-        if ( scalar(@octets) != 4 ) {
-            return( [1,"Invalid IP address: $ip"] );
-        }
-        foreach my $octet ( @octets ) {
-            if (( $octet < 0 ) or ( $octet > 255 )) {
-                return( [1,"Invalid IP address: $ip"] );
-            }
-        }
-        $ip_addr{$ip} = 1;
-    }
-    return( [0] );
-}
-
-
-##########################################################################
-# Verbose mode (-V)
-##########################################################################
-sub trace {
-
-    my $request = shift;
-    my $msg     = shift;
-
-    if ( $verbose ) {
-        my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
-        my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
-        send_msg( $request, 0, $msg );
-    }
-}
-
-
-##########################################################################
-# Determine adapters available - slptool always uses adapter IP
-##########################################################################
-sub slptool_ifconfig {
-
-    my $request = shift;
-    my $cmd     = "ifconfig -a";
-    my $result  = `$cmd`;
-    my $mode    = "MULTICAST";
-
-    #############################################
-    # Display broadcast IPs, but use adapter IP
-    #############################################
-    if ( !exists( $opt{m} )) {
-        $mode = "BROADCAST";
-    }
-    #############################################
-    # Error running command
-    #############################################
-    if ( !$result ) {
-        return( [1, "Error running '$cmd': $!"] );
-    }
-    if ( $verbose ) {
-        trace( $request, $cmd );
-        trace( $request, "$mode Interfaces:" );
-    }
-    if (xCAT::Utils->isAIX()) {
-        ##############################################################
-        # Should look like this for AIX:
-        # en0: flags=4e080863,80<UP,BROADCAST,NOTRAILERS,RUNNING,
-        #      SIMPLEX,MULTICAST,GROUPRT,64BIT,PSEG,CHAIN>
-        #      inet 30.0.0.1    netmask 0xffffff00 broadcast 30.0.0.255
-        #      inet 192.168.2.1 netmask 0xffffff00 broadcast 192.168.2.255
-        # en1: ...
-        #
-        ##############################################################
-        my @adapter = split /\w+\d+:\s+flags=/, $result;
-        foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK/ ) and
-                   $_ =~ /UP(,|>)/ and
-                   $_ =~ /$mode/ ) {
-                my @ip = split /\n/;
-                foreach ( @ip ) {
-                    if ( $mode eq "BROADCAST" ) {
-                        if ( $_ =~ /^\s*inet\s+/ and
-                             $_ =~ /broadcast\s+(\d+\.\d+\.\d+\.\d+)/ ) {
-
-                            if ( $verbose ) {
-                                trace( $request, "\t\t$1\tUP,$mode" );
-                            }
-                        }
-                    }
-                    if ( $_ =~ /^\s*inet\s*(\d+\.\d+\.\d+\.\d+)/ ) {
-                        $ip_addr{$1} = 1;
-
-                        if ( exists( $opt{m} )) {
-                            trace( $request, "\t\t$1\tUP,$mode" );
-                        }
-                    }
-                }
-            }
-        }
-    }
-    else {
-        ##############################################################
-        # Should look like this for Linux:
-        # eth0 Link encap:Ethernet  HWaddr 00:02:55:7B:06:30
-        #      inet addr:9.114.154.193  Bcast:9.114.154.223
-        #      inet6 addr: fe80::202:55ff:fe7b:630/64 Scope:Link
-        #      UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-        #      RX packets:1280982 errors:0 dropped:0 overruns:0 frame:0
-        #      TX packets:3535776 errors:0 dropped:0 overruns:0 carrier:0
-        #      collisions:0 txqueuelen:1000
-        #      RX bytes:343489371 (327.5 MiB)  TX bytes:870969610 (830.6 MiB)
-        #      Base address:0x2600 Memory:fbfe0000-fc0000080
-        #
-        # eth1 ...
-        #
-        ##############################################################
-        my @adapter= split /\n{2,}/, $result;
-        foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK / ) and
-                   $_ =~ /UP / and
-                   $_ =~ /$mode / ) {
-
-                my @ip = split /\n/;
-                foreach ( @ip ) {
-                    if ( $mode eq "BROADCAST" ) {
-                        if ( $_ =~ /^\s*inet addr:/ and
-                             $_ =~ /Bcast:(\d+\.\d+\.\d+\.\d+)/ ) {
-
-                            if ( $verbose ) {
-                                trace( $request, "\t\t$1\tUP,$mode" );
-                            }
-                        }
-                    }
-                    if ( $_ =~ /^\s*inet addr:\s*(\d+\.\d+\.\d+\.\d+)/ ) {
-                        $ip_addr{$1} = 1;
-
-                        if ( exists( $opt{m} )) {
-                            trace( $request, "\t\t$1\tUP,$mode" );
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if ( (keys %ip_addr) == 0 ) {
-        return( [1,"No adapters configured for $mode"] );
-    }
-    #########################
-    # Log results
-    #########################
-    if ( $verbose ) {
-        if ( (keys %ip_addr) == 0 ) {
-            trace( $request, "$cmd\n$result" );
-        }
-    }
-    return([0]);
-}
-
-
-##########################################################################
-# Determine adapters available - slp_query always used broadcast IP
-##########################################################################
-sub slpquery_ifconfig {
-
-    my $request = shift;
-    my $cmd     = "ifconfig -a";
-    my $result  = `$cmd`;
-    my $mode    = "BROADCAST";
-
-    ######################################
-    # Error running command
-    ######################################
-    if ( !$result ) {
-        return( [1, "Error running '$cmd': $!"] );
-    }
-    if ( $verbose ) {
-        trace( $request, $cmd );
-        trace( $request, "$mode Interfaces:" );
-    }
-    if (xCAT::Utils->isAIX()) {
-        ##############################################################
-        # Should look like this for AIX:
-        # en0: flags=4e080863,80<UP,BROADCAST,NOTRAILERS,RUNNING,
-        #      SIMPLEX,MULTICAST,GROUPRT,64BIT,PSEG,CHAIN>
-        #      inet 30.0.0.1    netmask 0xffffff00 broadcast 30.0.0.255
-        #      inet 192.168.2.1 netmask 0xffffff00 broadcast 192.168.2.255
-        # en1: ...
-        #
-        ##############################################################
-        my @adapter = split /\w+\d+:\s+flags=/, $result;
-        foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK/ ) and
-                   $_ =~ /UP(,|>)/ and
-                   $_ =~ /$mode/ ) {
-
-                my @ip = split /\n/;
-                foreach ( @ip ) {
-                    if ( $_ =~ /^\s*inet\s+/ and
-                         $_ =~ /broadcast\s+(\d+\.\d+\.\d+\.\d+)/ ) {
-                        $ip_addr{$1} = 1;
-                    }
-                }
-            }
-        }
-    }
-    else {
-        ##############################################################
-        # Should look like this for Linux:
-        # eth0 Link encap:Ethernet  HWaddr 00:02:55:7B:06:30
-        #      inet addr:9.114.154.193  Bcast:9.114.154.223
-        #      inet6 addr: fe80::202:55ff:fe7b:630/64 Scope:Link
-        #      UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-        #      RX packets:1280982 errors:0 dropped:0 overruns:0 frame:0
-        #      TX packets:3535776 errors:0 dropped:0 overruns:0 carrier:0
-        #      collisions:0 txqueuelen:1000
-        #      RX bytes:343489371 (327.5 MiB)  TX bytes:870969610 (830.6 MiB)
-        #      Base address:0x2600 Memory:fbfe0000-fc0000080
-        #
-        # eth1 ...
-        #
-        ##############################################################
-        my @adapter= split /\n{2,}/, $result;
-        foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK / ) and
-                   $_ =~ /UP / and
-                   $_ =~ /$mode / ) {
-
-                my @ip = split /\n/;
-                foreach ( @ip ) {
-                    if ( $_ =~ /^\s*inet addr:/ and
-                         $_ =~ /Bcast:(\d+\.\d+\.\d+\.\d+)/ ) {
-                        $ip_addr{$1} = 1;
-                    }
-                }
-            }
-        }
-    }
-    if ( (keys %ip_addr) == 0 ) {
-        return( [1,"No adapters configured for $mode"] );
-    }
-    #########################
-    # Log results
-    #########################
-    if ( $verbose ) {
-        foreach ( keys %ip_addr ) {
-            trace( $request, "\t\t$_\tUP,BROADCAST" );
-        }
-        if ( (keys %ip_addr) == 0 ) {
-            trace( $request, "$cmd\n$result" );
-        }
-    }
-    return([0]);
-}
-
-
-##########################################################################
-# Forks a process to run the slp command (1 per adapter)
-##########################################################################
-sub fork_cmd {
-
-    my $request  = shift;
-    my $ip       = shift;
-    my $arg      = shift;
-    my $services = shift;
-
-    #######################################
-    # Pipe childs output back to parent
-    #######################################
-    my $parent;
-    my $child;
-    pipe $parent, $child;
-    my $pid = fork;
-
-    if ( !defined($pid) ) {
-        ###################################
-        # Fork error
-        ###################################
-        send_msg( $request, 1, "Fork error: $!" );
-        return undef;
-    }
-    elsif ( $pid == 0 ) {
-        ###################################
-        # Child process
-        ###################################
-        close( $parent );
-        $request->{pipe} = $child;
-
-        invoke_cmd( $request, $ip, $arg, $services );
-        exit(0);
-    }
-    else {
-        ###################################
-        # Parent process
-        ###################################
-        close( $child );
-        return( $parent );
-    }
-    return(0);
-}
-
-
-
-##########################################################################
-# Run the forked command and send reply to parent
-##########################################################################
-sub invoke_cmd {
-
-    my $request  = shift;
-    my $ip       = shift;
-    my $args     = shift;
-    my $services = shift;
-
-    ########################################
-    # Telnet (rspconfig) command
-    ########################################
-    if ( !defined( $services )) {
-        my $target_dev = $args->{$ip};
-        my @cmds;
-        my $result;
-        if ( $verbose ) {
-            trace( $request, "Forked: ($ip)->($target_dev->{args})" );
-        }
-        if ($target_dev->{'type'} eq 'MM')
-        {
-            @cmds = (
-                    "snmpcfg=enable",
-                    "sshcfg=enable",
-                    "network_reset=$target_dev->{args}"
-                    );
-            $result = xCAT_plugin::blade::telnetcmds(
-                    $ip,
-                    $target_dev->{username},
-                    $target_dev->{password},
-                    0,
-                    @cmds );
-        }
-        elsif($target_dev->{'type'} eq 'HMC')
-        {
-            @cmds = ("network_reset=$target_dev->{args}");
-            trace( $request, "sshcmds on hmc $ip");
-            $result = xCAT::PPC::sshcmds_on_hmc(
-                    $ip,
-                    $target_dev->{username},
-                    $target_dev->{password},
-                    @cmds );
-        }
-        else #The rest must be fsp or bpa
-        {
-            @cmds = ("network=$ip,$target_dev->{args}");
-            trace( $request, "update config on $target_dev->{'type'} $ip");
-            $result = xCAT::PPC::updconf_in_asm(
-                    $ip,
-                    $target_dev,
-                    @cmds );
-        }
-        ####################################
-        # Pass result array back to parent
-        ####################################
-        my @data = ("RSPCONFIG6sK4ci", $ip, @$result[0], @$result[2]);
-        my $out = $request->{pipe};
-
-
-        print $out freeze( \@data );
-        print $out "\nENDOFFREEZE6sK4ci\n";
-        return;
-    }
-
-    ########################################
-    # SLP command
-    ########################################
-    my $result  = runslp( $args, $ip, $services, $request );
-    my $unicast = @$result[0];
-    my $values  = @$result[1];
-    prt_result( $request, $values);
-
-    ########################################
-    # May have to send additional unicasts
-    ########################################
-    if ( keys (%$unicast) )  {
-        foreach my $url ( keys %$unicast ) {
-            my ($service,$addr) = split "://", $url;
-
-            ####################################
-            # Strip off trailing ",lifetime"
-            ####################################
-            $addr =~ s/,*\d*$//;
-            my $sockaddr = inet_aton( $addr );
-            $url =~ s/,*\d*$//;
-
-            ####################################
-            # Make sure can resolve if hostname
-            ####################################
-            if  ( !defined( $sockaddr )) {
-                if ( $verbose ) {
-                    trace( $request, "Cannot convert '$addr' to dot-notation" );
-                }
-                next;
-            }
-            $addr = inet_ntoa( $sockaddr );
-
-            ####################################
-            # Select command format
-            ####################################
-            if ( $openSLP ) {
-                $result = runslp( $args, $ip, [$url], $request, 1 );
-            } else {
-                $result = runslp( $args, $addr, [$service], $request, 1 );
-            }
-            my $data   = @$result[1];
-            my ($attr) = keys %$data;
-
-            ####################################
-            # Save results
-            ####################################
-            if ( defined($attr) ) {
-                $values->{"URL: $url\n$attr\n"} = 1;
-                prt_result( $values);
-            }
-        }
-    }
-    ########################################
-    # No valid responses received
-    ########################################
-    if (( keys (%$values )) == 0 ) {
-        return;
-    }
-    ########################################
-    # Pass result array back to parent
-    ########################################
-    my @results = ("FORMATDATA6sK4ci", $values );
-    my $out = $request->{pipe};
-
-    print $out freeze( \@results );
-    print $out "\nENDOFFREEZE6sK4ci\n";
-}
-
-#########################################################
-# print the slp result
-#########################################################
-sub prt_result
+use Sys::Syslog;
+use IPC::Open2;
+use xCAT::Utils;
+use xCAT::NodeRange;
+use Fcntl ':flock';
+
+my @dhcpconf; #Hold DHCP config file contents to be written back.
+my @nrn;      # To hold output of networks table to be consulted throughout process
+my $domain;
+my $omshell;
+my $statements;    #Hold custom statements to be slipped into host declarations
+my $callback;
+my $restartdhcp;
+my $sitenameservers;
+my $sitentpservers;
+my $sitelogservers;
+my $nrhash;
+my $machash;
+my $iscsients;
+my $chainents;
+my $tftpdir='/tftpboot';
+my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf'; 
+
+sub handled_commands
 {
-    my $request = shift;
-    my $values = shift;
-    my $nets = xCAT::Utils::my_nets();
-    for my $v (keys %$values)
-    {
-        if ( $v =~ /ip-address=([^\)]+)/g)
-        {
-            my $iplist = $1;
-            my $ip = getip_from_iplist( $iplist, $nets, $opt{i});
-            if ( $ip)
-            {
-#                send_msg($request, "Received SLP response from $ip.");
-#print "Received SLP response from $ip.\n";
-                xCAT::MsgUtils->message("I", "Received SLP response from $ip.", $::callback);
-            }
-        }
-    }
+    return {makedhcp => "dhcp",};
 }
 
-##########################################################################
-# Run the SLP command, process the response, and send to parent
-##########################################################################
-sub runslp {
-
-    my $slpcmd   = shift;
-    my $ip       = shift;
-    my $services = shift;
-    my $request  = shift;
-    my $attreq   = shift;
-    my %result   = ();
-    my %unicast  = ();
-    my $cmd;
-
-    foreach my $type ( @$services ) {
-        my $try = 0;
-
-        ###########################################
-        # OpenSLP - slptool command
-        ###########################################
-        if ( $openSLP ) {
-            $cmd = $attreq ?
-               "$slpcmd findattrsusingiflist $ip $type" :
-               "$slpcmd findsrvsusingiflist $ip $type";
-        }
-        ###########################################
-        # IBM SLP - slp_query command
-        ###########################################
-        else {
-            $cmd = $attreq ?
-               "$slpcmd --address=$ip --type=$type" :
-               "$slpcmd --address=$ip --type=$type --converge=1";
-        }
-
-        ###########################################
-        # Run the command
-        ###########################################
-        while ( $try++ < $maxtries ) {
-            if ( $verbose ) {
-                trace( $request, $cmd );
-                trace( $request, "Attempt $try of $maxtries\t( $ip\t$type )" );
-            }
-            #######################################
-            # Serialize transmits out each adapter
-            #######################################
-            if ( !open( OUTPUT, "$cmd 2>&1 |")) {
-                send_msg( $request, 1, "Fork error: $!" );
-                return undef;
-            }
-            ###############################
-            # Get command output
-            ###############################
-            my $rsp;
-            while ( <OUTPUT> ) {
-                $rsp.=$_;
-            }
-            close OUTPUT;
-
-            ###############################
-            # No replies
-            ###############################
-            if ( !$rsp ) {
-                if ( $verbose ) {
-                    trace( $request, ">>>>>> No Response" );
-                }
-                next;
-            }
-            ###########################################
-            # For IVM, running AIX 53J (6/07) release,
-            # there is an AIX SLP bug where IVM will
-            # respond to SLP service-requests with its
-            # URL only and not its attributes. An SLP
-            # unicast to the URL address is necessary
-            # to acquire the attributes. This was fixed
-            # in AIX 53L (11/07).
-            #
-            ###########################################
-
-            ###########################################
-            # OpenSLP response format:
-            #   service:management-software.IBM...
-            #   (type=hardware-management-cons...
-            #   (serial-number=KPHHK24),(name=c76v2h...
-            #   1ab1dd89ca8e0763e),(ip-address=192.1...
-            #   0CR3*KPHHK24),(web-management-interf...
-            #   2.ppd.pok.ibm.com:8443),(cimom-port=...
-            #   ...
-            ###########################################
-            if ( $openSLP ) {
-                my @data = split /\n/,$rsp;
-                my $length = scalar( @data );
-                my $i = 0;
-
-                while ($i < $length ) {
-                    ###################################
-                    # Service-Request response
-                    ###################################
-                    if ( $data[$i] =~
-                        /^service\:management-(software|hardware)\.IBM\:([^\:]+)/) {
-
-                        ###############################
-                        # Invalid service-type
-                        ###############################
-                        if ( !exists( $service_slp{$2} )) {
-                            if ( $verbose ) {
-                                trace( $request, "DISCARDING: $data[$i]" );
-                            }
-                            $i++;
-                            next;
-                        }
-                        my $url  = $data[$i++];
-                        my $attr = $data[$i];
-
-                        #Give some intermediate output
-                        my ($url_ip) = $url =~ /:\/\/(\d+\.\d+\.\d+\.\d+)/;
-                        if ( ! $::DISCOVERED_HOST{$url_ip})
-                        {
-                            $::DISCOVERED_HOST{$url_ip} = 1;
-                        }
-                        if ( $verbose ) {
-                            trace( $request, ">>>> SrvRqst Response" );
-                            trace( $request, "URL: $url" );
-                        }
-                        ###############################
-                        # No "ATTR" - have to unicast
-                        ###############################
-                        if ( $attr !~ /^(\(type=.*)$/ ) {
-                           $unicast{$url} = $url;
-                        }
-                        ###############################
-                        # Response has "ATTR" field
-                        ###############################
-                        else {
-                            if ( $verbose ) {
-                                trace( $request, "ATTR: $attr\n" );
-                            }
-                            my $val = "URL: $url\nATTR: $attr";
-                            $result{$val} = 1;
-                            $i++;
-                        }
-                    }
-                    ###################################
-                    # Attribute-Request response
-                    ###################################
-                    elsif ( $data[$i] =~ /(\(type=.*)$/ ) {
-                        my $attr = "ATTR: $data[$i++]";
-
-                        if ( $verbose ) {
-                            trace( $request, ">>>> AttrRqst Response" );
-                            trace( $request, $attr );
-                        }
-                        $result{$attr} = 1;
-                    }
-                    ###################################
-                    # Unrecognized response
-                    ###################################
-                    else {
-                        if ( $verbose ) {
-                            trace( $request, "DISCARDING: $data[$i]" );
-                        }
-                        $i++;
-                    }
-                }
-            }
-            ###########################################
-            # IBM SLP response format:
-            #   0
-            #   1
-            #   75
-            #   URL: service:management-software.IBM...
-            #   ATTR: (type=hardware-management-cons...
-            #   (serial-number=KPHHK24),(name=c76v2h...
-            #   1ab1dd89ca8e0763e),(ip-address=192.1...
-            #   0CR3*KPHHK24),(web-management-interf...
-            #   2.ppd.pok.ibm.com:8443),(cimom-port=...
-            #
-            #   0
-            #   1
-            #   69
-            #   URL:...
-            #   ATTR:..
-            #   ..
-            ###########################################
-            else {
-                foreach ( split /\n{2,}/,$rsp ) {
-                    if ( $_ =~ s/(\d+)\n(\d+)\n(\d+)\n// ) {
-                        if ( $verbose ) {
-                            trace( $request, "SrvRqst Response ($1)($2)($3)" );
-                            trace( $request, "$_\n" );
-                        }
-                        ###############################
-                        # Response has "ATTR" field
-                        ###############################
-                        if ( /ATTR: /  ) {
-                            $result{$_} = 1;
-                        }
-                        ###############################
-                        # No "ATTR" - have to unicast
-                        ###############################
-                        elsif ( /.*URL: (.*)/ ) {
-                            $unicast{$1} = $1;
-                        }
-                    }
-                    elsif ( $verbose ) {
-                        trace( $request, "DISCARDING: $_" );
-                    }
-                }
-            }
-        }
-    }
-    return( [\%unicast,\%result] );
-}
-
-
-
-##########################################################################
-# Formats slp responses
-##########################################################################
-sub format_output {
-
-    my $request = shift;
-    my $values  = shift;
-    my $length  = length( $header[IP_ADDRESSES][TEXT] );
-    my $result;
-
-    ###########################################
-    # Query switch ports
-    ###########################################
-    my $rsp_targets = undef;
-    if ( $opt{u} or $opt{H})
-    {
-        $rsp_targets = switch_cmd( $request, $values );
-    }
-
-    ###########################################
-    # Parse responses and add to hash
-    ###########################################
-    my $outhash = parse_responses( $request, $values, $rsp_targets, \$length );
-
-    ###########################################
-    # No responses
-    ###########################################
-    if (( keys %$outhash ) == 0 ){
-        send_msg( $request, 0, "No responses" );
-        return;
-    }
-    ###########################################
-    # -w flag for write to xCat database
-    ###########################################
-    if ( exists( $opt{w} )) {
-        xCATdB( $outhash );
-    }
-    ###########################################
-    # -r flag for raw response format
-    ###########################################
-    if ( exists( $opt{r} )) {
-        foreach ( keys %$outhash ) {
-            $result .= "@{ $outhash->{$_}}[5]\n";
-        }
-        send_msg( $request, 0, $result );
-        return;
-    }
-    ###########################################
-    # -x flag for xml format
-    ###########################################
-    if ( exists( $opt{x} )) {
-        send_msg( $request, 0, format_xml( $outhash ));
-        return;
-    }
-    ###########################################
-    # -z flag for stanza format
-    ###########################################
-    if ( exists( $opt{z} )) {
-        send_msg( $request, 0, format_stanza( $outhash ));
-        return;
-    }
-
-    ###########################################
-    # Get longest IP for formatting purposes
-    ###########################################
-    my $format = sprintf "%%-%ds", ( $length + 2 );
-    $header[IP_ADDRESSES][FORMAT] = $format;
-
-    ###########################################
-    # Display header
-    ###########################################
-    foreach ( @header ) {
-        $result .= sprintf @$_[1], @$_[0];
-    }
-    $result .= "\n";
-
-    ###########################################
-    # Display response attributes
-    ###########################################
-    foreach ( sort keys %$outhash ) {
-        my $data = $outhash->{$_};
-        my $i = 0;
-
-        foreach ( @header ) {
-            $result .= sprintf @$_[1], @$data[$i++];
-        }
-        $result .= "\n";
-    }
-    send_msg( $request, 0, $result );
-}
-
-
-##########################################################################
-# Get IP from SLP URL response
-##########################################################################
-sub getip_from_url {
-
-    my $request = shift;
-    my $url     = shift;
-
-    ######################################################################
-    # Extract the IP from the URL. Generally, the URL
-    # should be in the following format (the ":0" port number
-    # may or may not be present):
-    # service:management-hardware.IBM:management-module://9.114.113.78:0
-    # service:management-software.IBM:integrated-virtualization-manager://zd21p1.rchland.ibm.com
-    ######################################################################
-    if (($url !~ /service:.*:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*/ )) {
-        return undef;
-    }
-    return( $1 );
-}
-
-
-
-##########################################################################
-# Get hostname from SLP URL response
-##########################################################################
-sub gethost_from_url {
-
-    my $request = shift;
-    my $rsp     = shift;
-    my $type    = shift;
-    my $mtm     = shift;
-    my $sn      = shift;
-    my $iplist  = shift;
-
-    #######################################
-    # Extract IP from URL
-    #######################################
-    my $nets = xCAT::Utils::my_nets();
-    my $ip = getip_from_iplist( $iplist, $nets, $opt{i});
-    if ( !defined( $ip )) {
-        return undef;
-    }
-
-    #######################################
-    # Check if valid IP
-    #######################################
-    my $packed = inet_aton( $ip );
-    if ( length( $packed ) != 4 ) {
-        if ( $verbose ) {
-            trace( $request, "Invalid IP address in URL: $ip" );
-        }
-        return undef;
-    }
-    #######################################
-    # Read host from hosts table
-    #######################################
-    if ( ! %::HOST_TAB_CACHE)
-    {
-        my $hosttab  = xCAT::Table->new( 'hosts' );
-        my @entries = $hosttab->getAllNodeAttribs(['node','ip']);
-        #Assuming IP is unique in hosts table
-        for my $entry ( @entries)
-        {
-            if ( defined $entry->{ 'ip'})
-            {
-                $::HOST_TAB_CACHE{$entry->{ 'ip'}} = $entry->{ 'node'};
-            }
-        }
-    }
-    if ( exists $::HOST_TAB_CACHE{ $ip})
-    {
-        return $::HOST_TAB_CACHE{ $ip} ."($ip)";
-    }
-
-    ###############################################################
-    # Convert IP to hostname (Accoording to  DNS or /etc/hosts
-    ###############################################################
-    my $host = gethostbyaddr( $packed, AF_INET );
-    if ( !$host or $! ) {
-#Tentative solution
-return undef if ($opt{H});
-        $host = getFactoryHostname($type,$mtm,$sn,$rsp);
-#return( $ip );
-    }
-
-    #######################################
-    # Convert hostname to short-hostname
-    #######################################
-    if ( $host =~ /([^\.]+)\./ ) {
-        $host = $1;
-    }
-    return( "$host($ip)" );
-
-#    ###########################################
-#    #  Otherwise, URL is not in IP format
-#    ###########################################
-#    if ( !($url =~ /service:.*:\/\/(.*)/  )) {
-#        if ( $verbose ) {
-#            trace( $request, "Invalid URL: $_[0]" );
-#        }
-#        return undef;
-#    }
-#    return( $1 );
-
-}
-
-sub getFactoryHostname
+sub delnode
 {
-    my $type = shift;
-    my $mtm  = shift;
-    my $sn   = shift;
-    my $rsp  = shift;
-    my $host = undef;
+    my $node  = shift;
+    my $inetn = inet_aton($node);
 
-    if ( $rsp =~ /\(name=([^\)]+)/ ) {
-        $host = $1;
-
-    ###################################
-    # Convert to short-hostname
-    ###################################
-        if ( $host =~ /([^\.]+)\./ ) {
-            $host = $1;
-        }
-    }
-
-    if ( $type eq SERVICE_FSP or $type eq SERVICE_BPA)
+    my $mactab = xCAT::Table->new('mac');
+    my $ent;
+    if ($machash) { $ent = $machash->{$node}->[0]; }
+    if ($ent and $ent->{mac})
     {
-        $host = "Server-$mtm-SN$sn";
-    }
-    return $host;
-}
-
-##########################################################################
-# Get correct IP from ip list in SLP Attr
-##########################################################################
-sub getip_from_iplist
-{
-    my $iplist  = shift;
-    my $nets    = shift;
-    my $inc     = shift;
-    
-    my @ips = split /,/, $iplist;
-    if ( $inc)
-    {
-        for my $net (keys %$nets)
+        my @macs = split(/\|/, $ent->{mac});
+        my $mace;
+        foreach $mace (@macs)
         {
-            delete $nets->{$net} if ( $nets->{$net} ne $inc);
-        }
-    }
-    
-    for my $ip (@ips)
-    {
-        for my $net ( keys %$nets)
-        {
-            my ($n,$m) = split /\//,$net;
-            if ( xCAT::Utils::isInSameSubnet( $n, $ip, $m, 1) and
-                 xCAT::Utils::isPingable( $ip))
+            my $mac;
+            my $hname;
+            ($mac, $hname) = split(/!/, $mace);
+            unless ($hname) { $hname = $node; }
+            print $omshell "new host\n";
+            print $omshell
+              "set name = \"$hname\"\n";    #Find and destroy conflict name
+            print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
+
+            if ($mac)
             {
-                return $ip;
+                print $omshell "new host\n";
+                print $omshell "set hardware-address = " . $mac
+                  . "\n";                   #find and destroy mac conflict
+                print $omshell "open\n";
+                print $omshell "remove\n";
+                print $omshell "close\n";
             }
-        }
-    }
-    return undef;
-}
-
-
-##########################################################################
-# Example OpenSLP slptool "service-request" output. The following
-# attributes can be returned in any order within an SLP response.
-#
-# service:management-hardware.IBM:management-module://192.20.154.19,48659
-# (type=management-module),(level=3),(serial-number= K10WM39916W),
-# (fru=73P9297     ),(name=WMN315724834),(ip-address=192.20.154.19),
-# (enclosure-serial-number=78AG034),(enclosure-fru=59P6609     ),
-# (enclosure-machinetype-model=86772XX),(status=0),(enclosure-uuid=
-#  \ff\e6\4f\0b\41\de\0d\11\d7\bd\be\b5\3c\ab\f0\46\04),
-# (web-url=http://192.20.154.19:80),(snmp-port=161),(slim-port=6090),
-# (ssh-port=22),(secure-slim-port=0),(secure-slim-port-enabled=false),
-# (firmware-image-info=BRET86P:16:01-29-08,BRBR82A:16:06-01-05),
-# (telnet-port=23),(slot=1),0
-#  ...
-#
-# Example OpenSLP slptool "attribute-request" output. The following
-# attributes can be returned in any order within an SLP response.
-#
-# (type=integrated-virtualization-manager),(level=3),(machinetype-model=911051A),
-# (serial-number=1075ECF),(name=p510ivm.clusters.com)(ip-address=192.168.1.103),
-# (web-url=http://p510ivm.clusters.com/),(mtms=911051A*1075ECF),
-# (web-management-interface=TRUE),(secure-web-url=https://p510ivm.clusters.com/),
-# (cimom-port=5988),(secure-cimom-port=5989),(lparid=1)
-#  ...
-#
-#------------------------------------------------------------------------
-#
-# Example IBM SLP slp_query command "service-request" output. The following
-# attributes can be returned in any order within an SLP response.
-# Note: The leading 3 numbers preceeding the URL: and ATTR: fields
-# represent:
-#        error code,
-#        URL count,
-#        URL length, respectively.
-# 0
-# 1
-# 75
-# URL: service:management-software.IBM:hardware-management-console://192.168.1.110
-# ATTR: (type=hardware-management-console),(level=3),(machinetype-model=7310CR3),
-# (serial-number=KPHHK24),(name=c76v2hmc02.ppd.pok.ibm.com),(uuid=de335adf051eb21
-# 1ab1dd89ca8e0763e),(ip-address=192.168.1.110,9.114.47.154),(web-url=),(mtms=731
-# 0CR3*KPHHK24),(web-management-interface=true),(secure-web-url=https://c76v2hmc0
-# 2.ppd.pok.ibm.com:8443),(cimom-port=),(secure-cimom-port=5989)
-#
-# 0
-# 1
-# 69
-# ...
-#
-# Example IBM SLP slp_query command "attribute-request" output. The following
-# attributes can be returned in any order within an SLP response.
-# Note: The leading 3 numbers preceeding the URL: and ATTR: fields
-# represent:
-#        error code,
-#        0, (hardcoded)
-#        ATTR  length, respectively.
-# 0
-# 0
-# 354
-# ATTR: (type=integrated-virtualization-manager),(level=3),(machinetype-model=911051A),
-# (serial-number=1075ECF),(name=p705ivm.clusters.com),(ip-address=192.168.1.103),
-# (web-url=http://p705ivm.clusters.com/),(mtms=911051A*1075ECF),(web-management-
-# interface=TRUE),(secure-web-url=https://p705ivm.clusters.com/),(cimom-port=5988),
-# (secure-cimom-port=5989),(lparid=1)
-#
-#########################################################################
-sub parse_responses {
-
-    my $request = shift;
-    my $values  = shift;
-    my $mm      = shift;
-    my $length  = shift;
-
-    my %outhash = ();
-    my @attrs   = (
-       "type",
-       "machinetype-model",
-       "serial-number",
-       "ip-address" );
-
-    #######################################
-    # RSA/MM Attributes
-    #######################################
-    my @xattrs = (
-       "type",
-       "enclosure-machinetype-model",
-       "enclosure-serial-number",
-       "ip-address" );
-
-    foreach my $rsp ( @$values ) {
-        ###########################################
-        # Get service-type from response
-        ###########################################
-        my @result = ();
-        my $host;
-
-        ###########################################
-        # service-type attribute not found
-        ###########################################
-        if ( $rsp !~ /\(type=([^\)]+)/ ) {
-            if ( $verbose ) {
-                trace( $request, "(type) attribute not found: $rsp" );
-            }
-            next;
-        }
-        ###########################################
-        # Valid service-type attribute
-        ###########################################
-        my $type = $1;
-
-        ###########################################
-        # Unsupported service-type
-        ###########################################
-        if ( !exists($service_slp{$type} )) {
-            if ( $verbose ) {
-                trace( $request, "Discarding unsupported type: $type" );
-            }
-            next;
-        }
-        ###########################################
-        # RSA/MM - slightly different attributes
-        ###########################################
-        my $attr = \@attrs;
-        if (( $type eq SERVICE_RSA ) or ( $type eq SERVICE_RSA2 ) or
-            ( $type eq SERVICE_MM )) {
-            $attr = \@xattrs;
-        }
-
-        ###########################################
-        # Extract the attributes
-        ###########################################
-        foreach ( @$attr ) {
-            unless ( $rsp =~ /\($_=([^\)]+)/ ) {
-                if ( $verbose ) {
-                    trace( $request, "Attribute not found: [$_]->($rsp)" );
-                } 
-                next; 
-            } 
-            push @result, $1; 
-        }
-
-        ###########################################
-        # Get host directly from URL
-        ###########################################
-        if ( $type eq SERVICE_HMC or $type eq SERVICE_BPA 
-                or $type eq SERVICE_FSP) {
-            $host = gethost_from_url( $request, $rsp, @result);
-            if ( !defined( $host )) {
-                next;
-            }
-        }
-        ###########################################
-        # Seperate ATTR and URL portions:
-        # URL: service:management-software.IBM...
-        # ATTR: (type=hardware-management-cons...
-        # (serial-number=KPHHK24),(name=c76v2h...
-        # 1ab1dd89ca8e0763e),(ip-address=192.1...
-        # 0CR3*KPHHK24),(web-management-interf...
-        # 2.ppd.pok.ibm.com:8443),(cimom-port=...
-        #
-        ###########################################
-        $rsp =~ /.*URL: (.*)\nATTR: +(.*)/;
-
-        ###########################################
-        # If MM, use the discovered host
-        ###########################################
-        if (!$host and ( $type eq SERVICE_MM ) and ( defined( $mm ))) {
-            my $ip = getip_from_url( $request, $1 );
-
-            if ( defined( $ip )) {
-                if ( exists( $mm->{$ip}->{args} )) {
-                    $mm->{$ip}->{args} =~ /^.*,(.*)$/;
-                    $host = $1;
+            if ($inetn)
+            {
+                my $ip;
+                if (inet_aton($hname))
+                {
+                    $ip = inet_ntoa(inet_aton($hname));
+                }
+                if ($ip)
+                {
+                    print $omshell "new host\n";
+                    print $omshell
+                      "set ip-address = $ip\n";    #find and destroy ip conflict
+                    print $omshell "open\n";
+                    print $omshell "remove\n";
+                    print $omshell "close\n";
                 }
             }
         }
-
-        push @result, $host;
-        ###################################
-        # Strip off trailing ",lifetime"
-        ###################################
-        my $at = $2;
-        $at =~ s/,\d+$//;
-        push @result, $at;
-
-        ###########################################
-        # Strip commas from IP list
-        ###########################################
-        $result[3] =~ s/,/ /g;
-        my $ip     = $result[3];
-
-        ###########################################
-        # Process any extra attributes
-        ###########################################
-        foreach ( @{$exattr{$type}} ) {
-             push @result, ($rsp =~ /\($_=([\w\-\.,]+)\)/) ? $1 : "0";
-        }
-        ###########################################
-        # Save longest IP for formatting purposes
-        ###########################################
-        if ( length( $ip ) > $$length ) {
-            $$length = length( $ip );
-        }
-        $result[0] = $service_slp{$type};
-        $outhash{$host} = \@result;
     }
-    
-    ##########################################################
-    # Correct BPA node name because both side
-    # have the same MTMS and may get the same factory name
-    # If there are same factory name for 2 BPA (should be 2 sides
-    # on one frame), change them to like <bpa>_1 and <bpa>_2
-    ##########################################################
-    my %hostname_record;
-    for my $h ( keys %outhash)
+    print $omshell "new host\n";
+    print $omshell "set name = \"$node\"\n";    #Find and destroy conflict name
+    print $omshell "open\n";
+    print $omshell "remove\n";
+    print $omshell "close\n";
+    if ($inetn)
     {
-        my ($name, $ip);
-        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/)
+        my $ip = inet_ntoa(inet_aton($node));
+        unless ($ip) { return; }
+        print $omshell "new host\n";
+        print $omshell "set ip-address = $ip\n";   #find and destroy ip conflict
+        print $omshell "open\n";
+        print $omshell "remove\n";
+        print $omshell "close\n";
+    }
+}
+
+sub addnode
+{
+
+    #Use omshell to add the node.
+    #the process used is blind typing commands that should work
+    #it tries to delet any conflicting entries matched by name and
+    #hardware address and ip address before creating a brand now one
+    #unfortunate side effect: dhcpd.leases can look ugly over time, when
+    #doing updates would keep it cleaner, good news, dhcpd restart cleans
+    #up the lease file the way we would want anyway.
+    my $node = shift;
+    my $ent;
+    my $nrent;
+    my $chainent;
+    my $ient;
+    my $tftpserver;
+    if ($chainents and $chainents->{$node}) {
+        $chainent = $chainents->{$node}->[0];
+    }
+    if ($iscsients and $iscsients->{$node}) {
+        $ient = $iscsients->{$node}->[0];
+    }
+    my $lstatements       = $statements;
+    my $guess_next_server = 0;
+    my $nxtsrv;
+    if ($nrhash)
+    {
+        $nrent = $nrhash->{$node}->[0];
+        if ($nrent and $nrent->{tftpserver})
         {
-            $name = $1;
-            $ip   = $2;
+            #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
+            #the value of inet_ntoa() will be "undef", which will cause fatal error
+            my $tmp_name = inet_aton($nrent->{tftpserver});
+            unless($tmp_name) {
+                #tell the reason to the user
+                $callback->(
+                    { error => ["Unable to resolve the tftpserver for node"], errorcode => [1]}
+                );
+                return;
+            }
+            $tftpserver = inet_ntoa($tmp_name);
+            $nxtsrv = $tftpserver;
+            $lstatements =
+                'next-server '
+              . $tftpserver . ';'
+              . $statements;
         }
         else
         {
-            next;
-        }
-        
-        if (exists $hostname_record{$name})
-        {
-            #Name is duplicated
-            my ($old_h, $old_ip) = @{$hostname_record{$name}};
-
-            $outhash{$old_h}->[4] = $name . "-1" . "($old_ip)";
-            $outhash{$name . "-1" . "($old_ip)"} = $outhash{$old_h};
-            delete $outhash{$old_h};
-            
-            $outhash{$h}->[4] = $name . "-2" . "($ip)";
-            $outhash{$name . "-2" . "($ip)"} = $outhash{$h};
-            delete $outhash{$h};
-        }
-        else
-        {
-            $hostname_record{$name} = [$h,$ip];
-        }
-    }
-
-    return( \%outhash );
-}
-
-##########################################################################
-# Write result to xCat database
-##########################################################################
-sub xCATdB {
-
-    my $outhash = shift;
-    my %keyhash = ();
-    my %updates = ();
-    my %sn_node = ();
-    my %host_ip = ();
-    ############################
-    # Cache vpd table
-    ############################
-    my $vpdtab  = undef;
-    $vpdtab = xCAT::Table->new('vpd');
-    if ($vpdtab)
-    {
-        my @ents=$vpdtab->getAllNodeAttribs(['serial','mtm']);
-        for my $ent ( @ents)
-        {
-            if ( $ent->{mtm} and $ent->{serial})
-            {
-                # if there is no BPA, or there is the second BPA, change it
-                if ( ! exists $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} or 
-                     $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} =~ /-2$/
-                   )
-                {
-                    $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} = $ent->{node};
-                }
-            }
-        }
-    }
-
-    foreach ( keys %$outhash ) {
-        my $data = $outhash->{$_};
-        my $type = @$data[0];
-        my $nameips = @$data[4];
-        my ($name,$ips);
-        if ( $nameips =~ /^([^\(]+)\(([^\)]+)\)$/)
-        {
-            $name = $1;
-            $ips  = $2;
-            $host_ip{$name} = $ips;
+            $guess_next_server = 1;
         }
 
-        if ( $type =~ /^BPA$/ ) {
-            my $model  = @$data[1];
-            my $serial = @$data[2];
-            $ips    = @$data[3] if ( !$ips);
-            $name   = @$data[4] if ( !$name);
-            my $id     = @$data[6];
-
-            ####################################
-            # N/A Values
-            ####################################
-            my $prof  = "";
-            my $frame = "";
-
-            my $values = join( ",",
-               lc($type),$name,$id,$model,$serial,$name,$prof,$frame,$ips );
-            xCAT::PPCdb::add_ppc( lc($type), [$values] );
-        }
-        elsif ( $type =~ /^(HMC|IVM)$/ ) {
-            xCAT::PPCdb::add_ppchcp( lc($type), $name );
-        }
-        elsif ( $type =~ /^FSP$/ ) {
-            ########################################
-            # BPA frame this CEC is in
-            ########################################
-            my $frame      = "";
-            my $model      = @$data[1];
-            my $serial     = @$data[2];
-            $ips        = @$data[3] if ( !$ips);
-            $name       = @$data[4] if ( !$name);
-            my $bpc_model  = @$data[6];
-            my $bpc_serial = @$data[7];
-            my $cageid     = @$data[8];
-
-            ########################################
-            # May be no Frame with this FSP
-            ########################################
-            if (( $bpc_model ne "0" ) and ( $bpc_serial ne "0" )) {
-                if ( exists $sn_node{"Server-$bpc_model-SN$bpc_serial"})
-                {
-                    $frame = $sn_node{"Server-$bpc_model-SN$bpc_serial"};
-                }
-                else
-                {
-                    $frame = "Server-$bpc_model-SN$bpc_serial";
-                }
-            }
-            ########################################
-            # "Factory-default" FSP name format:
-            # Server-<type>-<model>-<serialnumber>
-            # ie. Server-9117-MMA-SN10F6F3D
-            #
-            # If the IP address cannot be converted
-            # to a shirt-hostname use the following:
-            #
-            # Note that this may not be the name
-            # that the user (or the HMC) knows this
-            # CEC as. This is the "factory-default"
-            # CEC name. SLP does not return the
-            # user- or system-defined CEC name and
-            # FSPs are assigned dynamic hostnames
-            # by DHCP so there is no point in using
-            # the short-hostname as the name.
-            ########################################
-            if ( $name =~ /^[\d]{1}/ ) {
-                $name = "Server-$model-$serial";
-            }
-            ########################################
-            # N/A Values
-            ########################################
-            my $prof   = "";
-            my $server = "";
-
-            my $values = join( ",",
-               lc($type),$name,$cageid,$model,$serial,$name,$prof,$frame,$ips );
-            xCAT::PPCdb::add_ppc( "fsp", [$values] );
-        }
-        elsif ( $type =~ /^(RSA|MM)$/ ) {
-            xCAT::PPCdb::add_systemX( $type, $data );
-        }
-    }
-    xCAT::Utils::updateEtcHosts(\%host_ip);
-}
-
-
-##########################################################################
-# Stanza formatting
-##########################################################################
-sub format_stanza {
-
-    my $outhash = shift;
-    my $result;
-
-    #####################################
-    # Write attributes
-    #####################################
-    foreach ( keys %$outhash ) {
-        my @data = @{$outhash->{$_}};
-        my $type = lc($data[0]);
-        my $name = $data[4];
-        my $i = 0;
-
-        #################################
-        # Node attributes
-        #################################
-        $result .= "$name:\n\tobjtype=node\n";
-
-        #################################
-        # Add each attribute
-        #################################
-        foreach ( @attribs ) {
-            my $d = $data[$i++];
-
-            if ( /^node$/ ) {
-                next;
-            } elsif ( /^nodetype$/ ) {
-                $d = $type;
-            } elsif ( /^groups$/ ) {
-                $d = "$type,all";
-            } elsif ( /^mgt$/ ) {
-                $d = $mgt{$type};
-            } elsif ( /^(id|mpa)$/ ) {
-                if ( $type =~ /^(mm|rsa)$/ ) {
-                    $d = (/^id$/) ? "0" : $name;
-                } else {
-                    next;
-                }
-            }
-            $result .= "\t$_=$d\n";
-        }
-    }
-    return( $result );
-}
-
-
-
-##########################################################################
-# XML formatting
-##########################################################################
-sub format_xml {
-
-    my $outhash = shift;
-    my $xml;
-
-    #####################################
-    # Create XML formatted attributes
-    #####################################
-    foreach ( keys %$outhash ) {
-        my @data = @{ $outhash->{$_}};
-        my $type = lc($data[0]);
-        my $name = $data[4];
-        my $i = 0;
-
-        #################################
-        # Initialize hash reference
-        #################################
-        my $href = {
-            Node => { }
-        };
-        #################################
-        # Add each attribute
-        #################################
-        foreach ( @attribs ) {
-            my $d = $data[$i++];
-
-            if ( /^nodetype$/ ) {
-                $d = $type;
-            } elsif ( /^groups$/ ) {
-                $d = "$type,all";
-            } elsif ( /^mgt$/ ) {
-                $d = $mgt{$type};
-            } elsif ( /^(id|mpa)$/ ) {
-                if ( $type =~ /^(mm|rsa)$/ ) {
-                    $d = (/^id$/) ? "0" : $name;
-                } else {
-                    next;
-                }
-            }
-            $href->{Node}->{$_} = $d;
-        }
-        #################################
-        # XML encoding
-        #################################
-        $xml.= XMLout($href,
-                     NoAttr   => 1,
-                     KeyAttr  => [],
-                     RootName => undef );
-    }
-    return( $xml );
-}
-
-
-##########################################################################
-# OpenSLP running on:
-#     P6 FSP
-#     P6 BPA
-# IBM SLP running on:
-#     P5 FSP
-#     P5 BPA
-#     HMC
-#     MM
-#     RSA
-# AIX SLP
-#     IVM
-#
-# Notes:
-# IBM SLP requires trailing ':' (i.e. service:management-hardware.IBM:)
-# There is one exception to this rule when dealing with FSP
-# concrete" service types, it will work with/without the trailing ':'
-# (i.e. "service:management-hardware.IBM:cec-service-processor[:]")
-#
-# OpenSLP does not support ':' at the end of services
-# (i.e. service:management-hardware.IBM:). Unfortunately, IBM SLP
-# requires it.
-#
-# Given the above, to collect all the above service types, it is
-# necessary to multicast:
-# (1) "service:management-*" for all IBM SLP hardware
-# (2) "service:management-hardware.IBM" for OpenSLP hardware (P6 FSP/BPA)
-#      (IBM SLP hardware will not respond to this since there is no trailing ":")
-#
-# * One exception to the above rule is when using FSP concrete
-#   service type, it will work with/without the trailing ":"
-#   (i.e. "service:management-hardware.IBM:cec-service-processor[:]"
-#
-##########################################################################
-
-
-##########################################################################
-# Run IBM SLP version
-##########################################################################
-sub slp_query {
-
-    my $request  = shift;
-    my $callback = $request->{callback};
-    my $cmd      = $opt{e};
-
-    #############################################
-    # slp_query not installed
-    #############################################
-    if ( !-x $cmd ) {
-        send_msg( $request, 1, "Command not found: $cmd" );
-        return( [RC_ERROR] );
-    }
-    #############################################
-    # slp_query runnable - dependent on libstdc++
-    # Test for usage statement.
-    #############################################
-    my $output = `$cmd 2>&1`;
-    if ( $output !~ /slp_query --type=service-type-string/ ) {
-        send_msg( $request, 1, $output );
-        return( [RC_ERROR] );
-    }
-    my $result = runcmd( $request, $cmd );
-    return( $result );
-}
-
-
-##########################################################################
-# Run OpenSLP version
-##########################################################################
-sub slptool {
-
-    my $request = shift;
-    my $cmd     = SLPTOOL;
-    my $start;
-
-    #########################################
-    # slptool not installed
-    #########################################
-    if ( !-x $cmd ) {
-        send_msg( $request, 1, "Command not found: $cmd" );
-        return( [RC_ERROR] );
-    }
-    #########################################
-    # slptool runnable - test for version
-    #########################################
-    my $output = `$cmd -v 2>&1`;
-    if ( $output !~ /^slptool version = 1.2.1\nlibslp version = 1.2.1/ ) {
-        send_msg( $request, 1, "Incorrect 'slptool' command installed" );
-        return( [RC_ERROR] );
-    }
-    #########################################
-    # Select broadcast, convergence, etc
-    #########################################
-    my $mode = selectmode( $request );
-    if ( defined($mode) ) {
-        return( $mode );
-    }
-    my $result = runcmd( $request, $cmd );
-    return( $result );
-}
-
-
-##########################################################################
-# Select OpenSLP slptool broadcast convergence, etc
-##########################################################################
-sub selectmode {
-
-    my $request = shift;
-    my $fname   = SLP_CONF;
-    my $mode;
-    my $maxtimeout;
-    my $converge;
-
-    ##################################
-    # Select convergence
-    ##################################
-    if ( exists( $opt{c} )) {
-        $converge = join( ',',@converge );
-
-        ##############################
-        # Maximum timeout
-        ##############################
-        foreach ( @converge ) {
-            $maxtimeout += $_;
-        }
-    }
-    ##################################
-    # Select multicast or broadcast
-    ##################################
-    if ( !exists( $opt{m} )) {
-        $mode = "true";
-    }
-
-    ##################################
-    # slp.conf attributes
-    ##################################
-    my %attr = (
-        "net.slp.multicastTimeouts"    => $converge,
-        "net.slp.isBroadcastOnly"      => $mode,
-        "net.slp.multicastMaximumWait" => $maxtimeout
-    );
-
-    if ( $verbose ) {
-        my $msg = !defined($mode) ? "Multicasting SLP...":"Broadcasting SLP...";
-        trace( $request, $msg );
-    }
-    ##################################
-    # Open/read slp.conf
-    ##################################
-    unless ( open( CONF, $fname )) {
-        send_msg( $request, 1, "Error opening: '$fname'" );
-        return( [RC_ERROR] );
-    }
-    my @raw_data = <CONF>;
-    close( CONF );
-
-    ##################################
-    # Find attribute
-    ##################################
-    foreach my $name ( keys %attr ) {
-        my $found = 0;
-
-        foreach ( @raw_data ) {
-            if ( /^;*$name\s*=/ ) {
-                if ( !defined( $attr{$name} )) {
-                    s/^;*($name\s*=\s*[\w,]+)/;$1/;
-                } elsif ( $attr{$name} == 0 ) {
-                    s/^;*($name\s*=\s*[\w,]+)/$1/;
-                } else {
-                    s/^;*$name\s*=\s*[\w,]+/$name = $attr{$name}/;
-                }
-                $found = 1;
-                last;
-            }
-        }
-        if ( !$found ) {
-            send_msg( $request, 1, "'$name' not found in '$fname'" );
-            return( [RC_ERROR] );
-        }
-    }
-    ##################################
-    # Rewrite file contents
-    ##################################
-    unless ( open( CONF, "+>$fname" )) {
-        send_msg( $request, 1, "Error opening: '$fname'" );
-        return( [RC_ERROR] );
-    }
-    print CONF @raw_data;
-    close( CONF );
-    return undef;
-}
-
-
-##########################################################################
-# Run the SLP command
-##########################################################################
-sub runcmd {
-
-    my $request  = shift;
-    my $cmd      = shift;
-    my $services = shift;
-    my $callback = $request->{callback};
-    my @services = ( WILDCARD_SERVICE, P6_SERVICE );
-    my $start;
-
-    ###########################################
-    # Query specific service; otherwise,
-    # query all hardware/software services
-    ###########################################
-    if ( exists( $opt{s} )) {
-        @services = $request->{service};
-    }
-
-    if ( $verbose ) {
-        #######################################
-        # Write header for trace
-        #######################################
-        my $tm  = localtime( time );
-        my $msg = "\n--------  $tm\nTime     PID";
-        trace( $request, $msg );
-    }
-    ###########################################
-    # Get/validate broadcast IPs
-    ###########################################
-    my $result = validate_ip( $request );
-    my $Rc = shift(@$result);
-
-    if ( $Rc ) {
-        send_msg( $request, 1, @$result[0] );
-        return( [RC_ERROR] );
-    }
-    if ( $verbose ) {
-        $start = Time::HiRes::gettimeofday();
-    }
-    ###########################################
-    # Fork one process per adapter
-    ###########################################
-    my $children = 0;
-    $SIG{CHLD} = sub { 
-       my $rc_bak = $?; 
-       while (waitpid(-1, WNOHANG) > 0) { $children--; } 
-       $? = $rc_bak;
-    };
-    my $fds = new IO::Select;
-
-    foreach ( keys %ip_addr ) {
-        my $pipe = fork_cmd( $request, $_, $cmd, \@services );
-        if ( $pipe ) {
-            $fds->add( $pipe );
-            $children++;
-        }
-    }
-    ###########################################
-    # Process slp responses from children
-    ###########################################
-    while ( $children > 0 ) {
-        child_response( $callback, $fds );
-    }
-    while (child_response($callback,$fds)) {}
-
-    if ( $verbose ) {
-        my $elapsed = Time::HiRes::gettimeofday() - $start;
-        my $msg = sprintf( "Total SLP Time: %.3f sec\n", $elapsed );
-        trace( $request, $msg );
-    }
-    ###########################################
-    # Combined responses from all children
-    ###########################################
-    my @all_results = keys %slp_result;
-    format_output( $request, \@all_results );
-    return( [SUCCESS,\@all_results] );
-}
-
-
-##########################################################################
-# Collect output from the child processes
-##########################################################################
-sub child_response {
-
-    my $callback = shift;
-    my $fds = shift;
-    my @ready_fds = $fds->can_read(1);
-
-    foreach my $rfh (@ready_fds) {
-        my $data = <$rfh>;
-
-        #################################
-        # Read from child process
-        #################################
-        if ( defined( $data )) {
-            while ($data !~ /ENDOFFREEZE6sK4ci/) {
-                $data .= <$rfh>;
-            }
-            my $responses = thaw($data);
-
-            #############################
-            # Formatted SLP results
-            #############################
-            if ( @$responses[0] =~ /^FORMATDATA6sK4ci$/ ) {
-                shift @$responses;
-                foreach ( keys %$responses ) {
-                    $slp_result{$_} = 1;
-                }
-                next;
-            }
-            #############################
-            # rspconfig results
-            #############################
-            if ( @$responses[0] =~ /^RSPCONFIG6sK4ci$/ ) {
-                shift @$responses;
-                my $ip = shift(@$responses);
-
-                $rsp_result{$ip} = $responses;
-                next;
-            }
-            #############################
-            # Message or verbose trace
-            #############################
-            foreach ( @$responses ) {
-                $callback->( $_ );
-            }
-            next;
-        }
-        #################################
-        # Done - close handle
-        #################################
-        $fds->remove($rfh);
-        close($rfh);
-    }
-}
-
-
-
-#############################################################################
-# Preprocess request from xCat daemon and send request to service nodes
-#############################################################################
-sub preprocess_request {
-
-    my $req = shift;
-    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
-    my $callback=shift;
-    my @requests;
-
-    ####################################
-    # Prompt for usage if needed
-    ####################################
-    my $noderange = $req->{node}; #Should be arrayref
-    my $command = $req->{command}->[0];
-    my $extrargs = $req->{arg};
-    my @exargs=($req->{arg});
-    if (ref($extrargs)) {
-        @exargs=@$extrargs;
-    }
-    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
-    if ($usage_string) {
-        $callback->({data=>[$usage_string]});
-        $req = {};
-        return;
-    }
-    ###########################################
-    # find all the service nodes for xCAT cluster
-    # build an individual request for each service node
-    ###########################################
-    my %sv_hash=();
-    my @all = xCAT::Utils::getAllSN();
-    foreach (@all) {
-	    if ($_->{servicenode}) {$sv_hash{$_->{servicenode}}=1;}
-    }
-    ###########################################
-    # build each request for each service node
-    ###########################################
-    my @result = ();
-    my $mncopy = {%$req};
-    push @result, $mncopy;
-    foreach my $sn (keys (%sv_hash)) {
-      my $reqcopy = {%$req};
-      $reqcopy->{_xcatdest} = $sn;
-      $reqcopy->{_xcatpreprocessed}->[0] = 1;
-      push @result, $reqcopy;
-    }
-    return \@result;
-}
-
-
-##########################################################################
-# Match SLP IP/ARP MAC/Switch table port to actual switch data
-##########################################################################
-sub switch_cmd {
-
-    my $req = shift;
-    my $slp = shift;
-    my $slp_all = undef;
-    my %hosts;
-    my @entries;
-    my $targets = {};
-    my $hosttab  = xCAT::Table->new( 'hosts' );
-    my $swtab    = xCAT::Table->new( 'switch' );
-
-    ###########################################
-    # No tables
-    ###########################################
-    if ( !defined($swtab)) {
-    #if ( !defined($swtab) or !defined($hosttab) ) {
-        return;
-    }
-    ###########################################
-    # Any MMs/HMCs/FSPs/BPAs in SLP response
-    ###########################################
-    foreach my $slp_entry ( @$slp ) {
-        my $slp_hash = get_slp_attr( $slp_entry);
-        $slp_all->{$slp_hash->{'ip-address'}} = $slp_hash if ($slp_hash);
-    }
-    ###########################################
-    # No MMs/HMCs/FSPs/BPAs in response
-    ###########################################
-    if ( !$slp_all ) {
-        return;
-    }
-
-    ###########################################
-    # Any entries in switch table
-    ###########################################
-    foreach ( $swtab->getAllNodeAttribs([qw(node)]) ) {
-        push @entries, $_->{node};
-    }
-    ###########################################
-    # Any entries in hosts table
-    ###########################################
-    if ( $verbose ) {
-        trace( $req, "SWITCH/HOSTS TABLE:" );
-    }
-    if ( $opt{u})
-    {
-        foreach my $nodename ( @entries ) {
-            my $ent = undef;
-            if ( $hosttab)
-            {
-                my $enthash = $hosttab->getNodeAttribs( $nodename,[qw(ip)]);
-                $ent = $enthash->{ip};
-            }
-            if (!$ent)
-            {
-                my $net_bin = inet_aton($nodename);
-                $ent = inet_ntoa($net_bin) if ($net_bin);
-            }
-
-            if ( !$ent ) {
-                next;
-            }
-
-            $hosts{ $nodename} = $ent;
-            if ( $verbose ) {
-                trace( $req, "\t\t($nodename)->($ent)" );
-            }
-        }
-        ###########################################
-        # No MMs/HMCs in hosts/switch table
-        ###########################################
-        if ( !%hosts ) {
-            return undef;
-        }
-    }
-    ###########################################
-    # Ping each MM/HMCs to update arp table
-    ###########################################
-    my %internal_ping_catch;
-    foreach my $ips ( keys %$slp_all ) {
-        my @all_ips = split /,/, $ips;
-        my $rc = 0;
-        for my $single_ip (@all_ips)
-        {
-            my $rc;
-            if ( exists $internal_ping_catch{ $single_ip})
-            {
-                 $rc = $internal_ping_catch{ $single_ip};
-            }
-            else
-            {
-                trace ($req, "Trying ping $single_ip");
-                #$rc = system("ping -c 1 -w 1 $single_ip 2>/dev/null 1>/dev/null");
-                my $res = `LANG=C ping -c 1 -w 1 $single_ip 2>&1`;
-                if ( $res =~ /100% packet loss/g)
-                { 
-                    $rc = 1;
-                }
-                else
-                {
-                    $rc = 0;
-                }
-		#$rc = $?;
-                $internal_ping_catch{ $single_ip} = $rc;
-            }
-            if ( !$rc )
-            {
-                $slp_all->{$single_ip} = $slp_all->{ $ips};
-                delete $slp_all->{ $ips};
-                last;
-            }
-        }
-        if ( $rc)
-        {
-            trace( $req, "Cannot ping any IP of $ips, it's because the network is too slow?");
-            delete $slp_all->{ $ips};
-        }
-    }
-    ###########################################
-    # Match discovered IP to MAC in arp table
-    ###########################################
-    return undef if ( ! scalar( keys %$slp_all));
-    my $arp;
-    if ( $^O eq 'aix')
-    {
-        $arp = `/usr/sbin/arp -a`;
+        #else {
+        # $nrent = $nrtab->getNodeAttribs($node,['servicenode']);
+        # if ($nrent and $nrent->{servicenode}) {
+        #  $statements = 'next-server  = \"'.inet_ntoa(inet_aton($nrent->{servicenode})).'\";'.$statements;
+        # }
+        #}
     }
     else
     {
-        $arp = `/sbin/arp -n`;
+        $guess_next_server = 1;
     }
-
-    my @arpents = split /\n/, $arp;
-
-    if ( $verbose ) {
-        trace( $req, "ARP TABLE:" );
-    }
-    my $isMacFound = 0;
-    foreach my $arpent ( @arpents ) {
-        my ($ip, $mac);
-        if ( $^O eq 'aix' && $arpent =~ /\((\S+)\)\s+at\s+(\S+)/)
-        {
-            ($ip, $mac) = ($1,$2);
-            ######################################################
-            # Change mac format to be same as linux. For example:
-            # '0:d:60:f4:f8:22' to '00:0d:60:f4:f8:22'
-            ######################################################
-            if ( $mac)
-            {
-                my @mac_sections = split /:/, $mac;
-                for (@mac_sections)
-                {
-                    $_ = "0$_" if ( length($_) == 1);
-                }
-                $mac = join ':', @mac_sections;
-            }
-        }
-        elsif ( $arpent =~ /^(\S+)+\s+\S+\s+(\S+)\s/)
-        {
-            ($ip, $mac) = ($1,$2);
-        }
-        else
-        {
-             ($ip, $mac) = (undef,undef);
-        }
-        if ( exists( $slp_all->{$ip} )) {
-            if ( $verbose ) {
-                trace( $req, "\t\t($ip)->($mac)" );
-            }
-            $slp_all->{$ip}->{'mac'} = $mac;
-            $isMacFound = 1;
-        }
-    }
-    ###########################################
-    # No discovered IP - MAC matches
-    ###########################################
-    if ( ! $isMacFound) {
+    unless ($machash)
+    {
+        $callback->(
+                   {
+                    error => ["Unable to open mac table, it may not exist yet"],
+                    errorcode => [1]
+                   }
+                   );
         return;
     }
-    if ( $verbose ) {
-        trace( $req, "getting switch information...." );
+    $ent = $machash->{$node}->[0]; #tab->getNodeAttribs($node, [qw(mac)]);
+    unless ($ent and $ent->{mac})
+    {
+        $callback->(
+                    {
+                     error     => ["Unable to find mac address for $node"],
+                     errorcode => [1]
+                    }
+                    );
+        return;
     }
-    foreach my $ip ( sort keys %$slp_all ) {
-        #######################################
-        # Not in SLP response
-        #######################################
-        if ( !defined( $slp_all->{$ip}->{'mac'} ) or !defined( $macmap )) {
-            next;
-        }
-        #######################################
-        # Get node from switch
-        #######################################
-        my $names = $macmap->find_mac( $slp_all->{$ip}->{'mac'} );
-        if ( !defined( $names )) {
-            if ( $verbose ) {
-                trace( $req, "\t\t($slp_all->{$ip}->{'mac'})-> NOT FOUND" );
-            }
-            next;
-        }
-        
-        #######################################
-        # Identify multiple nodes
-        #######################################
-        my $name;
-        if ( $names =~/,/ ) {
-            $name = disti_multi_node( $req, $names, $slp_all->{$ip});
-            if ( ! $name)
-            {
-                trace( $req, "\t\tCannot identify node $ip.");
-                next;
-            }
-            
+    my @macs = split(/\|/, $ent->{mac});
+    my $mace;
+    foreach $mace (@macs)
+    {
+        my $mac;
+        my $hname;
+        $hname = "";
+        ($mac, $hname) = split(/!/, $mace);
+        unless ($hname)
+        {
+            $hname = $node;
+        }    #Default to hostname equal to nodename
+        unless ($mac) { next; }    #Skip corrupt format
+        my $inetn;
+        $inetn = "";
+        if ($hname eq '*NOIP*')
+        {
+            $inetn = "DENIED";
+            $hname = $node . "-noip" . $mac;
+            $hname =~ s/://g;
         }
         else
         {
-            $name = $names;
+            $inetn = inet_aton($hname);
         }
-        if ( $verbose ) {
-            trace( $req, "\t\t($slp_all->{$ip}->{'mac'})-> $name" );
-        }
-        #######################################
-        # In hosts table
-        #######################################
-        if ( $opt{u})
+        unless ($inetn)
         {
-            if ( defined( $hosts{$name} )) {
-                if ( $ip eq $hosts{$name} ) {
-                    if ( $verbose ) {
-                        trace( $req, "\t\t\t$slp_all->{$ip}->{'type'} already set '$ip' - skipping" );
+            syslog(
+                  "local1|err",
+                  "xCAT DHCP plugin unable to resolve IP for $hname (for $node)"
+                  );
+            return;
+        }
+        my $ip;
+        $ip = "";
+        if ($inetn eq "DENIED")
+        {
+            $ip = "DENIED";
+        }
+        else
+        {
+            $ip = inet_ntoa(inet_aton($hname));
+        }
+        if ($guess_next_server and $ip ne "DENIED")
+        {
+            $nxtsrv = xCAT::Utils->my_ip_facing($hname);
+            if ($nxtsrv)
+            {
+                $tftpserver = $nxtsrv;
+                $lstatements = "next-server $nxtsrv;$statements";
+            }
+        }
+        my $doiscsi=0;
+        if ($ient and $ient->{server} and $ient->{target}) {
+            $doiscsi=1;
+            unless (defined ($ient->{lun})) { #Some firmware fails to properly implement the spec, so we must explicitly say zero for such firmware
+                $ient->{lun} = 0;
+            }
+            my $iscsirootpath ='iscsi:'.$ient->{server}.':6:3260:'.$ient->{lun}.':'.$ient->{target};
+            if (defined ($ient->{iname})) { #Attempt to use gPXE or IBM iSCSI formats to specify the initiator
+                #This all goes on one line, but will break it out to at least be readable in here
+                $lstatements = 'if option vendor-class-identifier = \"ISAN\" { ' #This is declared by IBM iSCSI initiators, will call it 'ISAN' mode
+                                   .'option isan.iqn \"'.$ient->{iname}.'\"; '  #Use vendor-spcefic option to declare the expected Initiator name
+                                   .'option isan.root-path \"'.$iscsirootpath.'\"; ' #We must *not* use standard root-path if using ISAN style options
+                              .'} else { '
+                                   .'option root-path \"'.$iscsirootpath.'\"; ' #For everything but ISAN, use standard, RFC defined behavior for root
+                                   .'if exists gpxe.bus-id { '  #Since our iscsi-initiator-iqn is in no way a standardized thing, only use it for gPXE
+                                       . ' option iscsi-initiator-iqn \"'.$ient->{iname}.'\";' #gPXE will consider option 203 for initiator IQN
+                                   . '}'
+                             . '}'
+                             .$lstatements;
+                print $lstatements;
+            } else { #We stick to the good old RFC defined behavior, ISAN, gPXE, everyone should be content with this so long as no initiator name need be specified
+                $lstatements = 'option root-path \"'.$iscsirootpath.'\";'.$lstatements;
+            }
+        }
+        if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'xnba' and $lstatements !~ /filename/) {
+            if (-f "$tftpdir/xcat/xnba.kpxe") {
+                if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
+                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
+                } else {
+                    $lstatements = 'if option user-class-identifier = \"xNBA\" { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive xNBA
+                } 
+            } #TODO: warn when windows
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {
+            if (-f "$tftpdir/xcat/xnba.kpxe") {
+                if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
+                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
+                } else {
+                    $lstatements = 'filename = \"pxelinux.0\";'.$lstatements;
+                }
+            }
+        }
 
+
+        if ( $^O eq 'aix')
+        {
+            addnode_aix( $ip, $mac, $hname, $tftpserver);
+        }
+        else
+        {
+            #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
+            print $omshell "new host\n";
+            print $omshell
+                "set name = \"$hname\"\n";    #Find and destroy conflict name
+                print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
+            print $omshell "new host\n";
+            print $omshell "set ip-address = $ip\n";   #find and destroy ip conflict
+                print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
+            print $omshell "new host\n";
+            print $omshell "set hardware-address = " . $mac
+                . "\n";    #find and destroy mac conflict
+                print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
+            print $omshell "new host\n";
+            print $omshell "set name = \"$hname\"\n";
+            print $omshell "set hardware-address = " . $mac . "\n";
+            print $omshell "set hardware-type = 1\n";
+
+            if ($ip eq "DENIED")
+            { #Blacklist this mac to preclude confusion, give best shot at things working
+                print $omshell "set statements = \"deny booting;\"\n";
+            }
+            else
+            {
+                print $omshell "set ip-address = $ip\n";
+                if ($lstatements)
+                {
+                    $lstatements = 'send host-name \"'.$node.'\";'.$lstatements;
+
+                } else {
+                    $lstatements = 'send host-name \"'.$node.'\";';
+                }
+                print $omshell "set statements = \"$lstatements\"\n";
+            }
+
+            print $omshell "create\n";
+            print $omshell "close\n";
+            unless (grep /#definition for host $node aka host $hname/, @dhcpconf)
+            {
+                push @dhcpconf,
+                     "#definition for host $node aka host $hname can be found in the dhcpd.leases file\n";
+            }
+        }
+    }
+}
+
+######################################################
+# Add nodes into dhcpsd.cnf. For AIX only
+######################################################
+sub addnode_aix
+{
+    my $ip          = shift;
+    my $mac         = shift;
+    my $hname       = shift;
+    my $tftpserver  = shift;
+
+    $restartdhcp = 1;
+
+    # Format the mac address to aix
+    $mac =~ s/://g;
+    $mac = lc($mac);
+
+    delnode_aix ( $hname);
+
+#Find the location to insert node
+    my $isSubnetFound = 0;
+    my $i;
+    my $netmask;
+    for ($i = 0; $i < scalar(@dhcpconf); $i++)
+    {
+        if ( $dhcpconf[$i] =~ / ([\d\.]+)\/(\d+) ip configuration end/)
+        {
+            if (xCAT::Utils::isInSameSubnet( $ip, $1, $2, 1))
+            {
+                $isSubnetFound = 1;
+                $netmask = $2;
+                last;
+            }
+        }
+    }
+
+# Format the netmask from AIX format (24) to Linux format (255.255.255.0)
+    my $netmask_linux = xCAT::Utils::formatNetmask( $netmask,1,0);
+
+    # Create node section
+    my @node_section = ();
+    push @node_section, "        client 1 $mac $ip #node $hname start\n";
+    push @node_section, "        {\n";
+    push @node_section, "            option 1 $netmask_linux\n";
+    push @node_section, "            option 12 $hname\n";
+#    push @node_section, "            option sa $tftpserver\n";
+#    push @node_section, "            option bf \"/tftpboot/$hname\"\n";
+    push @node_section, "        } # node $hname end\n";
+    
+
+    if ( $isSubnetFound)
+    {
+        splice @dhcpconf, $i, 0, @node_section;
+    }
+}
+
+###################################################
+# Delete nodes in dhcpsd.cnf. For AIX only
+###################################################
+sub delnode_aix
+{
+    my $hname = shift;
+    my $i;
+    my $node_start = 0;
+    my $node_end   = 0;
+    for ($i = 0; $i < scalar(@dhcpconf); $i++)
+    {
+        if ( $dhcpconf[$i] =~ /node $hname start/)
+        {
+            $node_start = $i;
+        }
+        elsif ( $dhcpconf[$i] =~ /node $hname end/)
+        {
+            $node_end = $i;
+            last;
+        }
+    }
+    if ( $node_start && $node_end)
+    {
+        $restartdhcp = 1;
+        splice @dhcpconf, $node_start, ($node_end - $node_start + 1);
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+sub preprocess_request
+{
+    my $req = shift;
+    $callback = shift;
+    my $localonly;
+    if (ref $req->{arg}) {
+        @ARGV       = @{$req->{arg}};
+        GetOptions('l' => \$localonly);
+    }
+    #Exit if the packet has been preprocessed
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+
+    my @requests =
+      ({%$req});    #Start with a straight copy to reflect local instance
+    unless ($localonly) {
+        my @sn = xCAT::Utils->getSNList('dhcpserver');
+        foreach my $s (@sn)
+        {
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $s;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            push @requests, $reqcopy;
+        }
+    }
+    if (scalar(@requests) > 1)
+    {               #hierarchy detected, enforce more rigorous sanity
+        my $ntab = xCAT::Table->new('networks');
+        if ($ntab)
+        {
+            foreach (@{$ntab->getAllEntries()})
+            {
+                if ($_->{dynamicrange} and not $_->{dhcpserver})
+                {
+                    $callback->({error=>["Hierarchy requested, therefore networks.dhcpserver must be set for net=".$_->{net}.""],errorcode=>[1]});
+                    return [];
+                }
+            }
+        }
+    }
+
+    return \@requests;
+}
+
+sub process_request
+{
+    my $oldmask = umask 0077;
+    $restartdhcp=0;
+    my $req = shift;
+    $callback = shift;
+    my $sitetab = xCAT::Table->new('site');
+    my %activenics;
+    my $querynics = 1;
+    if ($sitetab)
+    {
+        my $href;
+        ($href) = $sitetab->getAttribs({key => 'dhcpinterfaces'}, 'value');
+        unless ($href and $href->{value})
+        {    #LEGACY: singular keyname for old style site value
+            ($href) = $sitetab->getAttribs({key => 'dhcpinterface'}, 'value');
+        }
+        if ($href and $href->{value})
+        #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
+        #depending on complexity of network wished to be described
+        {
+           my $dhcpinterfaces = $href->{value};
+           my $dhcpif;
+           INTF: foreach $dhcpif (split /;/,$dhcpinterfaces) {
+              my $host;
+              my $savehost;
+              my $foundself=1;
+              if ($dhcpif =~ /\|/) {
+                 $foundself=0;
+                 
+                 (my $ngroup,$dhcpif) = split /\|/,$dhcpif;
+                 foreach $host (noderange($ngroup)) {
+                    $savehost=$host;
+                    unless (xCAT::Utils->thishostisnot($host)) {
+                        $foundself=1;
+                        last;
                     }
+                 }
+                 if (!defined($savehost)) { # host not defined in db,
+                                 # probably management node
+                    unless (xCAT::Utils->thishostisnot($ngroup)) {
+                        $foundself=1;
+                    }
+                 }
+              }
+              unless ($foundself) {
+                  next INTF;
+              }
+              foreach (split /[,\s]+/, $dhcpif)
+              {
+                 $activenics{$_} = 1;
+                 $querynics = 0;
+              }
+           }
+        }
+        ($href) = $sitetab->getAttribs({key => 'nameservers'}, 'value');
+        if ($href and $href->{value}) {
+            $sitenameservers = $href->{value};
+        }
+        ($href) = $sitetab->getAttribs({key => 'ntpservers'}, 'value');
+        if ($href and $href->{value}) {
+            $sitentpservers = $href->{value};
+        }
+        ($href) = $sitetab->getAttribs({key => 'logservers'}, 'value');
+        if ($href and $href->{value}) {
+            $sitelogservers = $href->{value};
+        }
+        ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
+        ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
+        unless ($href and $href->{value})
+        {
+            $callback->(
+                 {error => ["No domain defined in site tabe"], errorcode => [1]}
+                 );
+            return;
+        }
+        $domain = $href->{value};
+    }
+
+    @dhcpconf = ();
+    unless ($req->{arg} or $req->{node})
+    {
+        $callback->({data => ["Usage: makedhcp <-n> <noderange>"]});
+        return;
+    }
+    
+   if(grep /-h/,@{$req->{arg}}) {
+        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
+        $callback->({data => [$usage]});
+        return;
+    }
+
+   my $dhcplockfd;
+   open($dhcplockfd,"/tmp/xcat/dhcplock");
+   flock($dhcplockfd,LOCK_EX);
+   if (grep /^-n$/, @{$req->{arg}})
+    {
+        if (-e $dhcpconffile)
+        {
+            my $bakname = "$dhcpconffile.xcatbak";
+            rename("$dhcpconffile", $bakname);
+        }
+    }
+    else
+    {
+        my $rconf;
+        open($rconf, $dhcpconffile);    # Read file into memory
+        if ($rconf)
+        {
+            while (<$rconf>)
+            {
+                push @dhcpconf, $_;
+            }
+            close($rconf);
+        }
+        unless ($dhcpconf[0] =~ /^#xCAT/)
+        {    #Discard file if not xCAT originated, like 1.x did
+            $restartdhcp=1;
+            @dhcpconf = ();
+        }
+    }
+	my $nettab = xCAT::Table->new("networks");
+	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+    if ($^O eq 'aix')
+    {
+        @nrn = xCAT::Utils::get_subnet_aix();
+    }
+    else
+    {
+        my @nsrnoutput = split /\n/,`/bin/netstat -rn`;
+        splice @nsrnoutput, 0, 2;
+        foreach (@nsrnoutput) { #scan netstat
+            my @parts = split  /\s+/;
+            push @nrn,$parts[0].":".$parts[7].":".$parts[2].":".$parts[3];
+        }
+    }
+
+	foreach(@vnets){
+		my $n = $_->{net};
+		my $if = $_->{mgtifname};
+		my $nm = $_->{mask};
+		#$callback->({data => ["array of nets $n : $if : $nm"]});
+        if ($if =~ /!remote!/) { #only take in networks with special interface
+    		push @nrn, "$n:$if:$nm";
+        }
+	}
+    if ($querynics)
+    {    #Use netstat to determine activenics only when no site ent.
+        foreach (@nrn)
+        {
+            my @ent = split /:/;
+            my $firstoctet = $ent[0];
+            $firstoctet =~ s/^(\d+)\..*/$1/;
+            if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239) or $ent[0] eq "127.0.0.0" or $ent[0] eq '127')
+            {
+                next;
+            }
+            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\d+)/)
+            {    #Mask out many types of interfaces, like xCAT 1.x
+                $activenics{$ent[1]} = 1;
+            }
+        }
+    }
+    
+    if ( $^O ne 'aix')
+    {
+#add the active nics to /etc/sysconfig/dhcpd
+        if (-e "/etc/sysconfig/dhcpd") {
+            open DHCPD_FD, "/etc/sysconfig/dhcpd";
+            my $syscfg_dhcpd = "";
+            my $found = 0;
+            my $dhcpd_key = "DHCPDARGS";
+            my $os = xCAT::Utils->osver();
+            if ($os =~ /sles/i) {
+                $dhcpd_key = "DHCPD_INTERFACE";
+            }
+
+            my $ifarg = "$dhcpd_key=\"";
+            foreach (keys %activenics) {
+                if (/!remote!/) { next; }
+                $ifarg .= " $_";
+            }
+            $ifarg =~ s/^ //;
+            $ifarg .= "\"\n";
+
+            while (<DHCPD_FD>) {
+                if ($_ =~ m/^$dhcpd_key/) {
+                    $found = 1;
+                    $syscfg_dhcpd .= $ifarg;
+                }else {
+                    $syscfg_dhcpd .= $_;
+                }
+            }
+
+            if ( $found eq 0 ) {
+                $syscfg_dhcpd .= $ifarg;
+            }
+            close DHCPD_FD; 
+
+            open DBG_FD, '>', "/etc/sysconfig/dhcpd";
+            print DBG_FD $syscfg_dhcpd;
+            close DBG_FD;
+        } else {
+            $callback->({error=>"The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"});
+#        return;
+        }
+    }
+    
+    unless ($dhcpconf[0])
+    {            #populate an empty config with some starter data...
+        $restartdhcp=1;
+        newconfig();
+    }
+    if ( $^O ne 'aix')
+    {
+        foreach (keys %activenics)
+        {
+            addnic($_);
+        }
+    }
+    if (grep /^-a$/, @{$req->{arg}})
+    {
+        if (grep /-d$/, @{$req->{arg}})
+        {
+            $req->{node} = [];
+            my $nodelist = xCAT::Table->new('nodelist');
+            my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
+            foreach (@entries)
+            {
+                push @{$req->{node}}, $_->{node};
+            }
+        }
+        else
+        {
+            $req->{node} = [];
+            my $mactab  = xCAT::Table->new('mac');
+
+            my @entries=();
+            if ($mactab) {
+                @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
+            }
+            foreach (@entries)
+            {
+                push @{$req->{node}}, $_->{node};
+            }
+        }
+    }
+
+    if ($req->{node})
+    {
+        @ARGV       = @{$req->{arg}};
+        $statements = "";
+        GetOptions('s|statements=s' => \$statements);
+
+        if ($^O ne 'aix')
+        {
+            my $passtab = xCAT::Table->new('passwd');
+            my $ent;
+            ($ent) = $passtab->getAttribs({key => "omapi"}, qw(username password));
+            unless ($ent->{username} and $ent->{password})
+            {
+                $callback->({error=>["Unable to access omapi key from passwd table, add the key from dhcpd.conf or makedhcp -n to create a new one"],errorcode=>[1]});
+                syslog("local4|err","Unable to access omapi key from passwd table, unable to update DHCP configuration");
+                return;
+            }    # TODO sane err
+#Have nodes to update
+#open2($omshellout,$omshell,"/usr/bin/omshell");
+            open($omshell, "|/usr/bin/omshell > /dev/null");
+
+            print $omshell "key "
+                . $ent->{username} . " \""
+                . $ent->{password} . "\"\n";
+            print $omshell "connect\n";
+        }
+        
+        my $nrtab = xCAT::Table->new('noderes');
+        my $chaintab = xCAT::Table->new('chain');
+        if ($chaintab) {
+            $chainents = $chaintab->getNodesAttribs($req->{node},['currstate']);
+        } else {
+            $chainents = undef;
+        }
+        $nrhash = $nrtab->getNodesAttribs($req->{node}, ['tftpserver','netboot']);
+        my $iscsitab = xCAT::Table->new('iscsi');
+        if ($iscsitab) {
+            $iscsients = $iscsitab->getNodesAttribs($req->{node},[qw(server target lun iname)]);
+        }
+        my $mactab = xCAT::Table->new('mac');
+        $machash = $mactab->getNodesAttribs($req->{node},['mac']);
+        foreach (@{$req->{node}})
+        {
+            if (grep /^-d$/, @{$req->{arg}})
+            {
+                if ( $^O eq 'aix')
+                {
+                    delnode_aix $_;
                 }
                 else
                 {
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} = "$hosts{$name},$name";
-                    if ( $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} ne 'MM')
-                    {
-                        my %netinfo = xCAT::DBobjUtils->getNetwkInfo([$hosts{$name}]);
-                        $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} .= ",$netinfo{$hosts{$name}}{'gateway'},$netinfo{$hosts{$name}}{'mask'}";
-                    }
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'mac'}  = $slp_all->{$ip}->{'mac'};
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'name'} = $name;
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'ip'}   = $hosts{$name};
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} = $slp_all->{$ip}->{'type'};
+                    delnode $_;
                 }
             }
-        }
-        else 
-        {
-            #An tentative solution. The final solution should be
-            #if there is any conflicting, remove this entry
-            $hosts{$name} = $ip if ( ! $hosts{$name});
-        }
-    }
-    ###########################################
-    # No rspconfig target found
-    ###########################################
-    if (( $opt{u} and !%$targets) or ( $opt{H} and !%hosts)) {
-        if ( $verbose ) {
-            trace( $req, "No ARP-Switch-SLP matches found" );
-        }
-        return undef;
-    }
-    ###########################################
-    # Update target hardware w/discovery info
-    ###########################################
-    return rspconfig( $req, $targets ) if ($opt{u});
-    ###########################################
-    # Update hosts table
-    ###########################################
-     send_msg( $req, 0, "Updating hosts table...");
-    return update_hosts( $req, \%hosts);
-}
-
-###########################################
-# Update hosts table
-###########################################
-sub update_hosts
-{
-    my $req = shift;
-    my $hosts = shift;
-    my $hoststab = xCAT::Table->new( 'hosts', -create=>1, -autocommit=>0 );
-    if ( !$hoststab)
-    {
-        send_msg( $req, 1,  "Cannot open hosts table");
-        return undef;
-    }
-    for my $node (keys %$hosts)
-    {
-        send_msg( $req, 0, "\t$node => $hosts->{$node}");
-        $hoststab->setNodeAttribs( $node, {ip=>$hosts->{$node}});
-    }
-    $hoststab->commit;
-    return SUCCESS;
-}
-##########################################################################
-# Distinguish 
-##########################################################################
-sub disti_multi_node
-{
-    my $req = shift;
-    my $names = shift;
-    my $slp = shift;
-
-    return undef if ( $slp->{'type'} eq 'FSP' and ! exists $slp->{'cage-number'});    
-    return undef if ( $slp->{'type'} eq 'BPA' and ! exists $slp->{'frame-number'});
-
-    my $ppctab = xCAT::Table->new( 'ppc');
-    return undef if ( ! $ppctab);
-    my $nodetypetab = xCAT::Table->new( 'nodetype');
-    return undef if ( ! $nodetypetab);
-
-    my $vpdtab = xCAT::Table->new( 'vpd');
-    my @nodes = split /,/, $names;
-    my $correct_node = undef;
-    for my $node ( @nodes)
-    {
-        my $id_parent = $ppctab->getNodeAttribs( $node, ['id','parent']);
-        next if (! defined $id_parent or ! exists $id_parent->{'id'});
-        my $nodetype = $nodetypetab->getNodeAttribs($node, ['nodetype']);
-	next if (! defined $nodetype or ! exists $nodetype->{'nodetype'});
-        next if ( $nodetype->{'nodetype'} ne lc($slp->{type}));
-        if ( ($nodetype->{'nodetype'} eq 'fsp' and $id_parent->{'id'} eq $slp->{'cage-number'}) or
-             ($nodetype->{'nodetype'} eq 'bpa' and $id_parent->{'id'} eq $slp->{
- 'frame-number'}))
-        {
-            my $vpdnode = undef;
-            if ( defined $id_parent->{ 'parent'})#if no parent defined, take it as is.  
+            else
             {
-                if( $vpdtab
-                        and $vpdnode = $vpdtab->getNodeAttribs($id_parent->{ 'parent'}, ['serial','mtm'])
-                        and exists $vpdnode->{'serial'}
-                        and exists $vpdnode->{'mtm'})
+                unless (xCAT::Utils->nodeonmynet($_))
                 {
-                    if ( $vpdnode->{'serial'} ne $slp->{'bpc-serial-number'} 
-                            or $vpdnode->{'mtm'} ne $slp->{'bpc-machinetype-model'})
-                    {
-                        next;
+                    next;
+                }
+                addnode $_;
+            }
+        }
+        close($omshell) if ($^O ne 'aix');
+    }
+    foreach (@nrn)
+    {
+        my @line = split /:/;
+        my $firstoctet = $line[0]; 
+        $firstoctet =~ s/^(\d+)\..*/$1/;
+        if ($line[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
+        {
+            next;
+        }
+        if ($activenics{$line[1]} and $line[3] !~ /G/)
+        {
+            addnet($line[0], $line[2]);
+        }
+    }
+    writeout();
+    if ($restartdhcp) {
+        if ( $^O eq 'aix')
+        {
+            restart_dhcpd_aix();
+        }
+        else
+        {
+            system("/etc/init.d/dhcpd restart");
+            system("chkconfig dhcpd on");
+        }
+    }
+    flock($dhcplockfd,LOCK_UN);
+    umask $oldmask;
+}
+# Restart dhcpd on aix
+sub restart_dhcpd_aix
+{
+    #Check if dhcpd is running
+    my @res = xCAT::Utils->runcmd('lssrc -s dhcpsd',0);
+    if ( $::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", "Failed to check dhcpsd status\n");
+    }
+    if ( grep /\sactive/, @res)
+    {
+        xCAT::Utils->runcmd('refresh -s dhcpsd',0);
+        xCAT::MsgUtils->message("E", "Failed to refresh dhcpsd configuration\n") if ( $::RUNCMD_RC);
+    }
+    else
+    {
+        xCAT::Utils->runcmd('startsrc -s dhcpsd',0);
+        xCAT::MsgUtils->message("E", "Failed to start dhcpsd\n" ) if ( $::RUNCMD_RC);
+    }
+    return 1;
+}
+
+
+sub putmyselffirst {
+    my $srvlist = shift;
+            if ($srvlist =~ /,/) { #TODO: only reshuffle when requested, or allow opt out of reshuffle?
+                my @dnsrvs = split /,/,$srvlist;
+                my @reordered;
+                foreach (@dnsrvs) {
+                    if (xCAT::Utils->thishostisnot($_)) {
+                        push @reordered,$_;
+                    } else {
+                        unshift @reordered,$_;
                     }
                 }
-                elsif ( "$slp->{'bpc-machinetype-model'}*$slp->{'bpc-serial-number'}" ne $id_parent->{ 'parent'})
-                {
-                    next;
-                }
-                    
+                $srvlist = join(', ',@reordered);
             }
-            return undef if ( $correct_node);#had matched another node before
-            $correct_node = $node;
-        }
-    }
-    return $correct_node;    
+            return $srvlist;
 }
-##########################################################################
-# Run rspconfig against targets
-##########################################################################
-sub get_slp_attr
+sub addnet
 {
-    my $slp_entry = shift;
-    my $slp_hash  = undef;
-
-    $slp_entry =~ s/^[^\(]*?\((.*)\)[^\)]*?$/$1/;
-    
-    my @entries = split /\),\(/, $slp_entry;
-    for my $entry ( @entries)
+    my $net  = shift;
+    my $mask = shift;
+    my $nic;
+    my $firstoctet = $net;
+    $firstoctet =~ s/^(\d+)\..*/$1/;
+    if ($net eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239)) {
+        return;
+    }
+    unless (grep /\} # $net\/$mask subnet_end/, @dhcpconf)
     {
-        if ( $entry =~ /^(.+?)=(.*)$/)
+        $restartdhcp=1;
+        foreach (@nrn)
+        {    # search for relevant NIC
+            my @ent = split /:/;
+            $firstoctet = $ent[0];
+            $firstoctet =~ s/^(\d+)\..*/$1/;
+            if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
+            {
+                next;
+            }
+            if ($ent[0] eq $net and $ent[2] eq $mask)
+            {
+                $nic = $ent[1];
+            }
+        }
+        #print " add $net $mask under $nic\n";
+        my $idx = 0;
+        if ( $^O ne 'aix')
         {
-            $slp_hash->{$1} = $2;
+            while ($idx <= $#dhcpconf)
+            {
+                if ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
+            {
+                last;
+            }
+            $idx++;
+            }
+            unless ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
+            {
+                return 1;    #TODO: this is an error condition
+            }
         }
+
+        # if here, means we found the idx before which to insert
+        my $nettab = xCAT::Table->new("networks");
+        my $nameservers;
+        my $ntpservers;
+        my $logservers;
+        my $gateway;
+        my $tftp;
+        my $range;
+        my $myip;
+        $myip = xCAT::Utils->my_ip_facing($net);
+        if ($nettab)
+        {
+            my $mask_formated = $mask;
+            if ( $^O eq 'aix')
+            {
+                $mask_formated = inet_ntoa(pack("N", 2**$mask - 1 << (32 - $mask)));
+            }
+            my ($ent) =
+              $nettab->getAttribs({net => $net, mask => $mask_formated},
+                    qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver));
+            if ($ent and $ent->{ntpservers}) {
+                $ntpservers = $ent->{ntpservers};
+            } elsif ($sitentpservers) {
+                $ntpservers = $sitentpservers;
+            }
+            if ($ent and $ent->{logservers}) {
+                $logservers = $ent->{logservers};
+            } elsif ($sitelogservers) {
+                $logservers = $sitelogservers;
+            }
+            if ($ent and $ent->{nameservers})
+            {
+                $nameservers = $ent->{nameservers};
+            }
+            else
+            {
+                if ($sitenameservers) {
+                    $nameservers = $sitenameservers;
+                } else {
+                $callback->(
+                    {
+                     warning => [
+                         "No $net specific entry for nameservers, and no nameservers defined in site table."
+                     ]
+                    }
+                    );
+                }
+            }
+            $nameservers=putmyselffirst($nameservers);
+            $ntpservers=putmyselffirst($ntpservers);
+            $logservers=putmyselffirst($logservers);
+
+
+            if ($ent and $ent->{tftpserver})
+            {
+                $tftp = $ent->{tftpserver};
+            }
+            else
+            {    #presume myself to be it, dhcp no longer does this for us
+                $tftp = $myip;
+            }
+            if ($ent and $ent->{gateway})
+            {
+                $gateway = $ent->{gateway};
+            }
+            if ($ent and $ent->{dynamicrange})
+            {
+                unless ($ent->{dhcpserver}
+                        and xCAT::Utils->thishostisnot($ent->{dhcpserver}))
+                {    #If specific, only one dhcp server gets a dynamic range
+                    $range = $ent->{dynamicrange};
+                    $range =~ s/[,-]/ /g;
+                }
+            }
+            else
+            {
+                $callback->(
+                    {
+                     warning => [
+                         "No dynamic range specified for $net, unknown systems on this network will not receive an address"
+                     ]
+                    }
+                    );
+            }
+        }
+        else
+        {
+            $callback->(
+                  {
+                   error =>
+                     ["Unable to open networks table, please run makenetworks"],
+                   errorcode => [1]
+                  }
+                  );
+            return 1;
+        }
+
+        if ( $^O eq 'aix')
+        {
+            return gen_aix_net( $myip, $net, $mask, $gateway, $tftp, 
+                                $logservers, $ntpservers, $domain,
+                                $nameservers, $range);
+        }
+        my @netent;
+                         
+        my $maskn = unpack("N", inet_aton($mask));
+        my $netn  = unpack("N", inet_aton($net));
+        @netent = (
+                   "  subnet $net netmask $mask {\n",
+                   "    max-lease-time 43200;\n",
+                   "    min-lease-time 43200;\n",
+                   "    default-lease-time 43200;\n"
+                   );
+        if ($gateway)
+        {
+            my $gaten = unpack("N", inet_aton($gateway));
+            if (($gaten & $maskn) == ($maskn & $netn))
+            {
+                push @netent, "    option routers  $gateway;\n";
+            }
+            else
+            {
+                $callback->(
+                    {
+                     error => [
+                         "Specified gateway $gateway is not valid for $net/$mask, must be on same network"
+                     ],
+                     errorcode => [1]
+                    }
+                    );
+            }
+        }
+        if ($tftp)
+        {
+            push @netent, "    next-server  $tftp;\n";
+        }
+        if ($logservers) {
+        	push @netent, "    option log-servers $logservers;\n";
+        } elsif ($myip){
+        	push @netent, "    option log-servers $myip;\n";
+        }
+        if ($ntpservers) {
+        	push @netent, "    option ntp-servers $ntpservers;\n";
+        } elsif ($myip){
+        	push @netent, "    option ntp-servers $myip;\n";
+        }
+        push @netent, "    option domain-name \"$domain\";\n";
+        if ($nameservers)
+        {
+            push @netent, "    option domain-name-servers  $nameservers;\n";
+        }
+        my $tmpmaskn = unpack("N", inet_aton($mask));
+        my $maskbits = 32;
+        while (not ($tmpmaskn & 1)) {
+            $maskbits--;
+            $tmpmaskn=$tmpmaskn>>1;
+        }
+
+                       # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
+        push @netent, "    if option user-class-identifier = \"xNBA\" { #x86, xCAT Network Boot Agent\n";
+        push @netent, "       filename = \"http://$tftp/tftpboot/xcat/xnba/nets/".$net."_".$maskbits."\";\n";
+        push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
+        push @netent, "      filename \"xcat/xnba.kpxe\";\n";
+        push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
+        push @netent, "      filename \"xcat/xnba.kpxe\";\n";
+        push @netent,
+          "    } else if option client-architecture = 00:02 { #ia64\n ";
+        push @netent, "      filename \"elilo.efi\";\n";
+        push @netent,
+          "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
+        push @netent, "      filename \"/yaboot\";\n";
+        push @netent, "    }\n";
+        if ($range) { push @netent, "    range dynamic-bootp $range;\n" }
+        push @netent, "  } # $net\/$mask subnet_end\n";
+        splice(@dhcpconf, $idx, 0, @netent);
     }
-    
-    if ( $slp_hash->{'type'})
-    {
-        $slp_hash->{'type'} = 'MM'  if ($slp_hash->{'type'} eq SERVICE_MM);
-        $slp_hash->{'type'} = 'FSP' if ($slp_hash->{'type'} eq SERVICE_FSP);
-        $slp_hash->{'type'} = 'BPA' if ($slp_hash->{'type'} eq SERVICE_BPA);
-        $slp_hash->{'type'} = 'HMC' if ($slp_hash->{'type'} eq SERVICE_HMC);
-    }
-    
-    return $slp_hash;
 }
 
-##########################################################################
-# Run rspconfig against targets
-##########################################################################
-sub rspconfig {
-
-    my $request   = shift;
-    my $targets   = shift;
-    my $callback  = $request->{callback};
-    my $start = Time::HiRes::gettimeofday();
-
-    my %rsp_dev = get_rsp_dev( $request, $targets);
-    #############################################
-    # Fork one process per MM/HMC
-    #############################################
-    my $children = 0;
-    $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
-    my $fds = new IO::Select;
-
-    foreach my $ip ( keys %rsp_dev) {
-        my $pipe = fork_cmd( $request, $ip, \%rsp_dev);
-        if ( $pipe ) {
-            $fds->add( $pipe );
-            $children++;
-        }
-    }
-    #############################################
-    # Process responses from children
-    #############################################
-    while ( $children > 0 ) {
-        child_response( $callback, $fds );
-    }
-    while (child_response($callback,$fds)) {}
-
-    if ( $verbose ) {
-        my $elapsed = Time::HiRes::gettimeofday() - $start;
-        my $msg = sprintf( "Total rspconfig Time: %.3f sec\n", $elapsed );
-        trace( $request, $msg );
-    }
-
-    foreach my $ip ( keys %rsp_result ) {
-        #################################
-        # Error logging on to MM
-        #################################
-        my $result = $rsp_result{$ip};
-        my $Rc = shift(@$result);
-
-        if ( $Rc != SUCCESS ) {
-            #############################
-            # MM connect error
-            #############################
-            if ( ref(@$result[0]) ne 'ARRAY' ) {
-                if ( $verbose ) {
-                    trace( $request, "$ip: @$result[0]" );
-                }
-                delete $rsp_dev{$ip};
-                next;
-            }
-        }
-        ##################################
-        # Process each response
-        ##################################
-        foreach ( @{@$result[0]} ) {
-            if ( $verbose ) {
-                trace( $request, "$ip: $_" );
-            }
-            /^(\S+)\s+(\d+)/;
-            my $cmd = $1;
-            $Rc = $2;
-
-            if ( $cmd =~ /^network_reset/ ) {
-                if ( $Rc != SUCCESS ) {
-                    delete $rsp_dev{$ip};
-                    next;
-                }
-                if ( $verbose ) {
-                    trace( $request,"Resetting management-module ($ip)...." );
-                }
-            }
-        }
-    }
-    ######################################
-    # Update etc/hosts
-    ######################################
-    my $fname = "/etc/hosts";
-    if ( $verbose ) {
-        trace( $request, "updating /etc/hosts...." );
-    }
-    unless ( open( HOSTS,"<$fname" )) {
-        if ( $verbose ) {
-            trace( $request, "Error opening '$fname'" );
-        }
-        return( \%rsp_dev );
-    }
-    my @rawdata = <HOSTS>;
-    close( HOSTS );
-
-    ######################################
-    # Remove old entry
-    ######################################
-    foreach ( keys %rsp_dev) {
-        my ($ip,$host) = split /,/,$rsp_dev{$_}->{args};
-        foreach ( @rawdata ) {
-            if ( /^#/ or /^\s*\n$/ ) {
-                next;
-            } elsif ( /\s+$host\s+$/ ) {
-                s/$_//;
-            }
-        }
-        push @rawdata,"$ip\t$host\n";
-    }
-    ######################################
-    # Rewrite file
-    ######################################
-    unless ( open( HOSTS,">$fname" )) {
-        if ( $verbose ) {
-            trace( $request, "Error opening '$fname'" );
-        }
-        return( \%rsp_dev );
-    }
-    print HOSTS @rawdata;
-    close( HOSTS );
-    return( \%rsp_dev );
-}
-
-#############################################
-# Get rsp devices and their logon info
-#############################################
-sub get_rsp_dev
+######################################################
+# Generate network configuration for aix
+######################################################
+sub gen_aix_net
 {
-    my $request = shift;
-    my $targets = shift;
+    my $myip        = shift;
+    my $net         = shift; 
+    my $mask        = shift;
+    my $gateway     = shift;
+    my $tftp        = shift;
+    my $logservers  = shift;
+    my $ntpservers  = shift;
+    my $domain      = shift;
+    my $nameservers = shift;
+    my $range       = shift;
 
-    my $mm  = $targets->{'MM'}  ? $targets->{'MM'} : {};
-    my $hmc = $targets->{'HMC'} ? $targets->{'HMC'}: {};
-    my $fsp = $targets->{'FSP'} ? $targets->{'FSP'}: {};
-    my $bpa = $targets->{'BPA'} ? $targets->{'BPA'}: {};
-
-    if (%$mm)
+    my $idx = 0;
+    while ( $idx <= $#dhcpconf)
     {
-        my $bladeuser = 'USERID';
-        my $bladepass = 'PASSW0RD';
-        if ( $verbose ) {
-            trace( $request, "telneting to management-modules....." );
+        if ($dhcpconf[$idx] =~ /#Network configuration end\n/)
+        {
+            last;
         }
-        #############################################
-        # Check passwd table for userid/password
-        #############################################
-        my $passtab = xCAT::Table->new('passwd');
-        if ( $passtab ) {
-            my ($ent) = $passtab->getAttribs({key=>'blade'},'username','password');
-            if ( defined( $ent )) {
-                $bladeuser = $ent->{username};
-                $bladepass = $ent->{password};
-            }
-        }
-        #############################################
-        # Get MM userid/password
-        #############################################
-        my $mpatab = xCAT::Table->new('mpa');
-        foreach ( keys %$mm ) {
-            my $user = $bladeuser;
-            my $pass = $bladepass;
-
-            if ( defined( $mpatab )) {
-                my ($ent) = $mpatab->getAttribs({mpa=>$_},'username','password');
-                if ( defined( $ent->{password} )) { $pass = $ent->{password}; }
-                if ( defined( $ent->{username} )) { $user = $ent->{username}; }
-            }
-            $mm->{$_}->{username} = $user;
-            $mm->{$_}->{password} = $pass;
-        }
-    }
-    if (%$hmc )
-    {
-        #############################################
-        # Get HMC userid/password
-        #############################################
-        foreach ( keys %$hmc ) {
-            ( $hmc->{$_}->{username}, $hmc->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($hmc->{$_}->{'type'})); 
-            trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
-        }
-    }
-
-    if ( %$fsp)
-    {
-        #############################################
-        # Get FSP userid/password
-        #############################################
-        foreach ( keys %$fsp ) {
-            ( $fsp->{$_}->{username}, $fsp->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($fsp->{$_}->{'type'})); 
-            trace( $request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
-        }
-    }
-
-    if ( %$bpa)
-    {
-        #############################################
-        # Get BPA userid/password
-        #############################################
-        foreach ( keys %$bpa ) {
-            ( $bpa->{$_}->{username}, $bpa->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($bpa->{$_}->{'type'})); 
-            trace( $request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
-        }
+        $idx++;
     }
     
-    return (%$mm,%$hmc,%$fsp,%$bpa);
-}
-
-##########################################################################
-# Process request from xCat daemon
-##########################################################################
-sub process_request {
-
-    my $req      = shift;
-    my $callback = shift;
-    my $doreq    = shift;
-
-    ###########################################
-    # Build hash to pass around
-    ###########################################
-    my %request;
-    $request{arg}      = $req->{arg};
-    $request{callback} = $callback;
-    $request{command}  = $req->{command}->[0];
-
-    ####################################
-    # Process command-specific options
-    ####################################
-    my $result = parse_args( \%request );
-
-    ####################################
-    # Return error
-    ####################################
-    if ( ref($result) eq 'ARRAY' ) {
-        send_msg( \%request, 1, @$result );
-        return(1);
+    unless ($dhcpconf[$idx] =~ /#Network configuration end\n/)
+    {
+        return 1;    #TODO: this is an error condition
     }
-    ###########################################
-    # SLP service-request - select program
-    ###########################################
-    $result = $openSLP ? slptool( \%request ) : slp_query( \%request );
-    my $Rc  = shift(@$result);
 
-    return( $Rc );
+    $range =~ s/ /-/;
+    my @netent = ( "network $net $mask\n{\n");
+    if ( $gateway)
+    {
+        if (xCAT::Utils::isInSameSubnet($gateway,$net,$mask,1))
+        {
+            push @netent, "    option 3 $gateway\n";
+        }
+        else
+        {
+            $callback->(
+                    {
+                    error => [
+                    "Specified gateway $gateway is not valid for $net/$mask, must be on same network"
+                    ],
+                    errorcode => [1]
+                    }
+                    );
+        }
+    } 
+#    if ($tftp)
+#    {
+#        push @netent, "    option 66 $tftp\n";
+#    }
+    if ($logservers) {
+        $logservers =~ s/,/ /g;
+        push @netent, "    option 7 $logservers\n";
+    } elsif ($myip){
+        push @netent, "    option 7 $myip\n";
+    }
+    if ($ntpservers) {
+        $ntpservers =~ s/,/ /g;
+        push @netent, "    option 42 $ntpservers\n";
+    } elsif ($myip){
+        push @netent, "    option 42 $myip\n";
+    }
+    push @netent, "    option 15 \"$domain\"\n";
+    if ($nameservers)
+    {
+        $nameservers =~ s/,/ /g;
+        push @netent, "    option 6 $nameservers\n";
+    }
+    push @netent, "    subnet $net $range\n    {\n";
+    push @netent, "    } # $net/$mask ip configuration end\n";
+    push @netent, "} # $net/$mask subnet_end\n\n";
+
+    splice(@dhcpconf, $idx, 0, @netent);
 }
 
+sub addnic
+{
+    my $nic        = shift;
+    my $firstindex = 0;
+    my $lastindex  = 0;
+    unless (grep /} # $nic nic_end/, @dhcpconf)
+    {    #add a section if not there
+        $restartdhcp=1;
+        print "Adding NIC $nic\n";
+        if ($nic =~ /!remote!/) {
+            push @dhcpconf, "#shared-network $nic {\n";
+            push @dhcpconf, "#\} # $nic nic_end\n";
+        } else {
+            push @dhcpconf, "shared-network $nic {\n";
+            push @dhcpconf, "\} # $nic nic_end\n";
+        }
+
+    }
+
+    #return; #Don't touch it, it should already be fine..
+    #my $idx=0;
+    #while ($idx <= $#dhcpconf) {
+    #  if ($dhcpconf[$idx] =~ /^shared-network $nic {/) {
+    #    $firstindex = $idx; # found the first place to chop...
+    #  } elsif ($dhcpconf[$idx] =~ /} # $nic network_end/) {
+    #    $lastindex=$idx;
+    #  }
+    #  $idx++;
+    #}
+    #print Dumper(\@dhcpconf);
+    #if ($firstindex and $lastindex) {
+    #  splice @dhcpconf,$firstindex,($lastindex-$firstindex+1);
+    #}
+    #print Dumper(\@dhcpconf);
+}
+
+sub writeout
+{
+    my $targ;
+    open($targ, '>', $dhcpconffile);
+    foreach (@dhcpconf)
+    {
+        print $targ $_;
+    }
+    close($targ);
+}
+
+sub newconfig
+{
+    return newconfig_aix() if ( $^O eq 'aix');
+
+    # This function puts a standard header in and enough to make omapi work.
+    my $passtab = xCAT::Table->new('passwd', -create => 1);
+    push @dhcpconf, "#xCAT generated dhcp configuration\n";
+    push @dhcpconf, "\n";
+    push @dhcpconf, "authoritative;\n";
+    push @dhcpconf, "option space isan;\n";
+    push @dhcpconf, "option isan-encap-opts code 43 = encapsulate isan;\n";
+    push @dhcpconf, "option isan.iqn code 203 = string;\n";
+    push @dhcpconf, "option isan.root-path code 201 = string;\n";
+    push @dhcpconf, "option space gpxe;\n";
+    push @dhcpconf, "option gpxe-encap-opts code 175 = encapsulate gpxe;\n";
+    push @dhcpconf, "option gpxe.bus-id code 177 = string;\n";
+    push @dhcpconf, "option user-class-identifier code 77 = string;\n";
+    push @dhcpconf, "option gpxe.no-pxedhcp code 176 = unsigned integer 8;\n";
+    push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
+    push @dhcpconf, "ddns-update-style none;\n";
+    push @dhcpconf,
+      "option client-architecture code 93 = unsigned integer 16;\n";
+    push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
+    push @dhcpconf, "\n";
+    push @dhcpconf, "omapi-port 7911;\n";        #Enable omapi...
+    push @dhcpconf, "key xcat_key {\n";
+    push @dhcpconf, "  algorithm hmac-md5;\n";
+    (my $passent) =
+      $passtab->getAttribs({key => 'omapi', username => 'xcat_key'}, 'password');
+    my $secret = encode_base64(genpassword(32));    #Random from set of  62^32
+    chomp $secret;
+    if ($passent->{password}) { $secret = $passent->{password}; }
+    else
+    {
+        $callback->(
+             {
+              data =>
+                ["The dhcp server must be restarted for OMAPI function to work"]
+             }
+             );
+        $passtab->setAttribs({key => 'omapi'},
+                             {username => 'xcat_key', password => $secret});
+    }
+
+    push @dhcpconf, "  secret \"" . $secret . "\";\n";
+    push @dhcpconf, "};\n";
+    push @dhcpconf, "omapi-key xcat_key;\n";
+}
+
+sub newconfig_aix
+{
+    push @dhcpconf, "#xCAT generated dhcp configuration\n";
+    push @dhcpconf, "\n";
+#push @dhcpconf, "numLogFiles 4\n";
+#push @dhcpconf, "logFileSize 100\n";
+#push @dhcpconf, "logFileName /var/log/dhcpsd.log\n";
+#push @dhcpconf, "logItem SYSERR\n";
+#push @dhcpconf, "logItem OBJERR\n";
+#push @dhcpconf, "logItem PROTERR\n";
+#push @dhcpconf, "logItem WARNING\n";
+#push @dhcpconf, "logItem EVENT\n";
+#push @dhcpconf, "logItem ACTION\n";
+#push @dhcpconf, "logItem INFO\n";
+#push @dhcpconf, "logItem ACNTING\n";
+#push @dhcpconf, "logItem TRACE\n";
+    
+    push @dhcpconf, "leaseTimeDefault 43200 seconds\n";
+    push @dhcpconf, "#Network configuration begin\n";
+    push @dhcpconf, "#Network configuration end\n";
+}
+
+
+sub genpassword
+{
+
+    #Generate a pseudo-random password of specified length
+    my $length     = shift;
+    my $password   = '';
+    my $characters =
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890';
+    srand;    #have to reseed, rand is not rand otherwise
+    while (length($password) < $length)
+    {
+        $password .= substr($characters, int(rand 63), 1);
+    }
+    return $password;
+}
 
 1;
-
-
-
-
-
-
-

@@ -185,7 +185,7 @@ sub connect {
     # Check for specific failures
     ##############################
     if ( $res->content =~ /(Invalid user ID or password|Too many users)/i ) {
-        return( $lwp_log.$1 );
+        return( $lwp_log.$1 . ". Please check node attribute hcp and its password settings.");
     }
     return( $lwp_log."Logon failure" );
 
