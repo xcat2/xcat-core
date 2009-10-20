@@ -1109,7 +1109,7 @@ sub gen_aix_net
     }
 
     $range =~ s/ /-/;
-    my @netent = ( "network $net $mask $range\n{\n");
+    my @netent = ( "network $net $mask\n{\n");
     if ( $gateway)
     {
         if (xCAT::Utils::isInSameSubnet($gateway,$net,$mask,1))
@@ -1150,7 +1150,7 @@ sub gen_aix_net
         $nameservers =~ s/,/ /g;
         push @netent, "    option 6 $nameservers\n";
     }
-    push @netent, "    subnet $net\n    {\n";
+    push @netent, "    subnet $net $range\n    {\n";
     push @netent, "    } # $net/$mask ip configuration end\n";
     push @netent, "} # $net/$mask subnet_end\n\n";
 
