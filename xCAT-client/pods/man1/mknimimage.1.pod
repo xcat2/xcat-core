@@ -8,7 +8,7 @@ B<mknimimage [-h | --help ]>
 
 B<mknimimage [-V] -u osimage_name [attr=val [attr=val ...]]>
 
-B<mknimimage [-V] [-f|--force] [-l location] [-s image_source] [-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
+B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-l location] [-s image_source] [-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -82,6 +82,10 @@ Used to specify the NIM installation method to use. The possible values are "rte
 
 The xCAT node to use to create a mksysb image.  The node must be a defined as a NIM client machine.
 
+=item B<-r|--sharedroot>
+
+Use this option to specify that a NIM "shared_root" resource be created for the AIX diskless nodes.  The default is to create a NIM "root" resource.  This feature is only available when using AIX version 6.1.4 or beyond. See the AIX/NIM documentation for a description of the "root" and "shared_root" resources.
+
 =item B<-s image_source>
 
 The source of software to use when creating the new NIM lpp_source resource. This could be a source directory or a previously defined NIM lpp_source resource name.  B<When specifying a source directory make sure to use the full path name.>
@@ -144,29 +148,33 @@ B<mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb bosinst_data=mybdata>
 
 This command defines a NIM mksysb resource and a spot definition using mysysbimage.
 
-6) Create a diskless image called 61dskls using the AIX source file provided in the /AIX/instimages directory.
+6) Create a diskless image called 61dskls using the AIX source files provided in the /AIX/instimages directory.
 
 B<mknimimage -t diskless -s /AIX/instimages 61dskls>
 
-7) Create a new diskless image by copying an existing image.
+7) Create a diskless image called "614dskls" that includes a NIM "shared_root" resource.  Use the existing NIM lpp_resource called "614_lpp_source". Also specify verbose output.
+
+B<mknimimage -V -r -t diskless -s 614_lpp_source 614dskls>
+
+8) Create a new diskless image by copying an existing image.
 
 B<mknimimage -t diskless -i 61cosi 61cosi_updt1>
 
-8) Create a diskless image using an existing lpp_source resource named 61cosi_lpp_source and include NIM /tmp & /home resources.  This assumes that the "mytmp" and "myhome" NIM resources have already been created by using NIM commands.
+9) Create a diskless image using an existing lpp_source resource named "61cosi_lpp_source" and include NIM tmp and home resources.  This assumes that the "mytmp" and "myhome" NIM resources have already been created by using NIM commands.
 
 B<mknimimage -t diskless -s 61cosi_lpp_source 611cosi tmp=mytmp home=myhome>
 
-9) Create a diskless image and update it with additional software and configuration files. 
+10) Create a diskless image and update it with additional software and configuration files. 
 
 B<mknimimage -t diskless -s 61cosi_lpp_source 61dskls otherpkgs=fset1,R:foo.rpm synclists=/install/mysyncfile>
 
 The xCAT osimage definition created by this command will include the "otherpkgs" and "synclists" values.  The NIM SPOT resource associated with this osimage will be updated with the additional software and configuration files.
 
-10) Update an existing diskless image (AIX/NIM SPOT) using the information saved in the xCAT "61dskls" osimage definition. Also specify verbose messages.  
+11) Update an existing diskless image (AIX/NIM SPOT) using the information saved in the xCAT "61dskls" osimage definition. Also specify verbose messages.  
 
 B<mknimimage -V -u 61dskls>
 
-11) Update an existing diskless image called "61dskls".  Install the additional software specified in the NIM "bndres1" and "bndres2" installp_bundle resources using the installp flags "agcQX".  (The NIM "bndres1" and "bndres2" definitions must be created before using them in this command.)
+12) Update an existing diskless image called "61dskls".  Install the additional software specified in the NIM "bndres1" and "bndres2" installp_bundle resources using the installp flags "agcQX".  (The NIM "bndres1" and "bndres2" definitions must be created before using them in this command.)
 
 B<mknimimage -u 61dskls installp_bundle=bndres1,bndres2 installp_flags=agcQX>
 
