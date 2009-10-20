@@ -13,10 +13,13 @@ use xCAT_monitoring::monitorctrl;
 use xCAT::Table;
 use XML::Simple qw(XMLout);
 use Thread qw(yield);
+use File::Basename qw/fileparse/;
+use File::Path qw/mkpath/;
 use IO::Socket;
 use IO::Select;
 use strict;
 #use warnings;
+my $use_xhrm=0; #xCAT Hypervisor Resource Manager, to satisfy networking and storage prerequisites, default to not using it for the moment
 my %vm_comm_pids;
 my %offlinehyps;
 my %offlinevms;
@@ -74,6 +77,28 @@ my %hyphash;
 my $node;
 my $vmtab;
 
+sub get_path_for_nfsuri {
+    my $diskname = shift;
+    $diskname =~ /nfs:\/\/([^\/]*)(\/.*)/;
+    my $server = $1;
+    my $path = $2;
+    print $diskname." $server $path \n";
+    if (xCAT::Utils::thishostisnot($server)) {
+        my $foundmount;
+        my @mounts = `mount`;
+        foreach (@mounts) {
+            if (/^$server:$path/) {
+                s/ on (\S*) type nfs/$1/;
+                return $_;
+            }
+        }
+        die "$diskname must be mounted on the xCAT server for this operation"; #TODO: correctly return
+    } else { #I am the server
+        return $path;
+    }
+}
+
+        
 sub waitforack {
     my $sock = shift;
     my $select = new IO::Select;
@@ -128,7 +153,7 @@ sub build_diskstruct {
 
     if (defined $vmhash->{$node}->[0]->{storage}) {
         my $disklocs=$vmhash->{$node}->[0]->{storage};
-        my @locations=split /\|/,$disklocs;
+        my @locations=split /\|/,$disklocs; 
         foreach my $disk (@locations) {
             #Setting default values of a virtual disk backed by a file at hd*.
             my $diskhash;
@@ -141,11 +166,14 @@ sub build_diskstruct {
             if (substr($disk_parts[0], 0, 4) eq 'phy:') {
                 $diskhash->{type}='block';
                 $diskhash->{source}->{dev} = substr($disk_parts[0], 4);
+            } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/) {
+                $diskhash->{source}->{file} = "/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
             } else {
                 $diskhash->{source}->{file} = $disk_parts[0];
             }
 
             #See if there are any other options. If not, increment suffidx because the already determined device node was used.
+            #evidently, we support specificying explicitly how to target the system..
             if (@disk_parts gt 1) {
                 my @disk_opts = split(/:/, $disk_parts[1]);
                 if ($disk_opts[0] ne '') {
@@ -506,6 +534,8 @@ sub getpowstate {
     }
 }
 
+sub xhrm_satisfy {
+}
 sub makedom {
     my $node=shift;
     my $cdloc = shift;
@@ -528,6 +558,10 @@ sub createstorage {
     my $filename=shift;
     my $mastername=shift;
     my $size=shift;
+    my $basename;
+    my $dirname;
+    ($basename,$dirname) = fileparse($filename);
+    mkpath($dirname);
     if ($mastername and $size) {
         return 1,"Can not specify both a master to clone and a size";
     }
@@ -563,13 +597,17 @@ sub mkvm {
     'force|f'=>\$force
  );
  build_xmldesc($node);
+ my $diskstruct = build_diskstruct();
  if (defined $vmhash->{$node}->[0]->{storage}) {
     my $diskname=$vmhash->{$node}->[0]->{storage};
     if ($diskname =~ /^phy:/) { #in this case, mkvm should have no argumens
         if ($mastername or $disksize) {
             return 1,"mkvm management of block device storage not implemented";
         }
-    } elsif (-f $diskname) {
+    } elsif ($diskname =~ /^nfs:/) {
+        $diskname = get_path_for_nfsuri($diskname)."/$node/".fileparse($diskstruct->[0]->{source}->{file});
+    }
+    if (-f $diskname) {
         if ($mastername or $disksize) {
             if ($force) {
                 unlink $diskname;
