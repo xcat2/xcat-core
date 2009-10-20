@@ -102,6 +102,7 @@ sub get_path_for_nfsuri {
 sub nodesockopen {
    my $node = shift;
    my $port = shift;
+   unless ($node) { return 0; }
    my $socket;
    my $addr = gethostbyname($node);
    my $sin = sockaddr_in($port,$addr);
@@ -404,8 +405,8 @@ sub pick_target {
     my $node = shift;
     my $addmemory = shift;
     my $target;
-    my $leastusedmemory=undef;
-    my $currentusedmemory;
+    my $mostfreememory=undef;
+    my $currentfreememory;
     my $candidates= $vmhash->{$node}->[0]->{migrationdest};
     my $currhyp=$vmhash->{$node}->[0]->{host};
     unless ($candidates) {
@@ -414,7 +415,6 @@ sub pick_target {
     foreach (noderange($candidates)) {
         my $targconn;
         my $cand=$_;
-        $currentusedmemory=0;
         if ($_ eq $currhyp) { next; } #skip current node
         if ($offlinehyps{$_}) { next }; #skip already offlined nodes
         if (grep { "$_" eq $cand } @destblacklist) { next; } #skip blacklisted destinations
@@ -428,19 +428,20 @@ sub pick_target {
                 };
             }
         unless ($targconn) { next; } #skip unreachable destinations
+        $currentfreememory=$targconn->get_node_info()->{memory};
         foreach ($targconn->list_domains()) {
             if ($_->get_name() eq 'Domain-0') { next; } #Dom0 memory usage is elastic, we are interested in HVM DomU memory, which is inelastic
 
-            $currentusedmemory += $_->get_info()->{memory};
+            $currentfreememory -= $_->get_info()->{memory};
         }
         if ($addmemory and $addmemory->{$_}) {
-            $currentusedmemory += $addmemory->{$_};
+            $currentfreememory -= $addmemory->{$_};
         }
-        if (not defined ($leastusedmemory)) {
-            $leastusedmemory=$currentusedmemory;
+        if (not defined ($mostfreememory)) {
+            $mostfreememory=$currentfreememory;
             $target=$_;
-        } elsif ($currentusedmemory < $leastusedmemory) {
-            $leastusedmemory=$currentusedmemory;
+        } elsif ($currentfreememory > $mostfreememory) {
+            $mostfreememory=$currentfreememory;
             $target=$_;
         }
     }
@@ -1294,7 +1295,7 @@ sub dohyp {
   my $node;
   my $args = \@exargs;
   $vmtab = xCAT::Table->new("vm");
-  unless ($offlinehyps{$hyp} or nodesockopen($hyp,22)) {
+  unless ($offlinehyps{$hyp} or ($hyp eq '!@!XCATDUMMYHYPERVISOR!@!') or nodesockopen($hyp,22)) {
     $offlinehyps{$hyp}=1;
   }
 
