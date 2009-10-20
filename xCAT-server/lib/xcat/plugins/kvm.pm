@@ -219,6 +219,7 @@ sub build_nicstruct {
         my $macstr;
         my $tmac;
         my $leading;
+        srand;
         while ($neededmacs--) {
             my $allbutmult = 65279; # & mask for bitwise clearing of the multicast bit of mac
             my $localad=512; # | to set the bit for locally admnistered mac address
@@ -254,6 +255,8 @@ sub build_nicstruct {
         unless ($nic) {
             last; #Don't want to have multiple vnics tied to the same switch
         }
+        $nic =~ s/.*://; #the detail of how the bridge was built is of no
+                        #interest to this segment of code
         if ($nic =~ /=/) {
             ($nic,$type) = split /=/,$nic,2;
         }
@@ -441,6 +444,9 @@ sub migrate {
     unless ($targ) {
         return (1,"Unable to identify a suitable target host for guest $node");
     }
+    if ($use_xhrm) {
+        xhrm_satisfy($node,$targ);
+    }
     my $prevhyp;
     my $target = "qemu+ssh://root@".$targ."/system?no_tty=1";
     my $currhyp="qemu+ssh://root@";
@@ -535,6 +541,25 @@ sub getpowstate {
 }
 
 sub xhrm_satisfy {
+    my $node = shift;
+    my $hyp = shift;
+    my @nics=();
+    my @storage=();
+    if ($vmhash->{$node}->[0]->{nics}) {
+        @nics = split /,/,$vmhash->{$node}->[0]->{nics};
+    }
+    if ($vmhash->{$node}->[0]->{storage}) {
+        @storage = split /\|/,$vmhash->{$node}->[0]->{storage};
+    }
+    foreach (@nics) {
+        s/=.*//; #this code cares not about the model of virtual nic
+        system("ssh $hyp xHRM bridgeprereq $_");
+    }
+    foreach (@storage) {
+        if (/^nfs:\/\//) {
+            system("ssh $hyp xHRM storageprereq $_");
+        }
+    }
 }
 sub makedom {
     my $node=shift;
@@ -652,6 +677,9 @@ sub power {
     my $errstr;
     if ($subcommand eq 'on') {
         unless ($dom) {
+            if ($use_xhrm) {
+                xhrm_satisfy($node,$hyp);
+            }
             ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
         } else {
@@ -670,6 +698,9 @@ sub power {
         if ($dom) {
             $dom->destroy();
             undef $dom;
+            if ($use_xhrm) {
+                xhrm_satisfy($node,$hyp);
+            }
             ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
             $retstring.="reset";
@@ -939,6 +970,12 @@ sub process_request {
   }
 
   my $sitetab = xCAT::Table->new('site');
+  if ($sitetab) {
+      my $xhent = $sitetab->getAttribs({key=>usexhrm},['value']);
+      if ($xhent and $xhent->{value} and $xhent->{value} !~ /no/i and $xhent->{value} !~ /disable/i) {
+          $use_xhrm=1;
+      }
+  }
   grab_table_data($noderange,$callback);
 
   if ($command eq 'revacuate' or $command eq 'rmigrate') {
