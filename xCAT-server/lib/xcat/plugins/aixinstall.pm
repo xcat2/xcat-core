@@ -1219,6 +1219,16 @@ sub mknimimage
         return 0;
     }
 
+	if ($::SHAREDROOT) {
+		if ($::NIMTYPE ne 'diskless') {
+			my $rsp;
+			push @{$rsp->{data}}, "The \'-r\' option is only valid for diskless images.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			&mknimimage_usage($callback);
+			return 1;
+		}
+	}
+
 	# get this systems name as known by xCAT management node
 	my $Sname = &myxCATname();
 	chomp $Sname;
