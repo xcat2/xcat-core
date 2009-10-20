@@ -62,6 +62,7 @@ sub handled_commands {
     getrvidparms => 'nodehm:mgt',
     rbeacon => 'nodehm:mgt',
     revacuate => 'hypervisor:type',
+    vmstatenotify => 'hypervisor:type',
     #rspreset => 'nodehm:mgt',
     #rspconfig => 'nodehm:mgt',
     #rbootseq => 'nodehm:mgt',
@@ -912,6 +913,33 @@ sub process_request {
   }
   my $forcemode = 0;
   my %orphans=();
+  if ($command eq 'vmstatenotify') {
+  print "I see the command $command ".$exargs[0]." ".$exargs[1]."\n";
+      unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>1); }
+      my $state = $exargs[0];
+      if ($state eq 'vmoff') {
+          $vmtab->setNodeAttribs($exargs[1],{powerstate=>'off'});
+          print "Completion?\n";
+          return;
+      } elsif ($state eq 'vmon') {
+          print "Completion?\n";
+          $vmtab->setNodeAttribs($exargs[1],{powerstate=>'on'});
+          return;
+      } elsif ($state eq 'hypshutdown') { #turn this into an evacuate
+          $command="revacuate";
+          @exargs=();
+      } elsif ($state eq 'hypstartup') { #if starting up, check for nodes on this hypervisor and start them up
+          my @tents = $vmtab->getAttribs({host=>$noderange->[0],power=>'on'},['node']);
+          $noderange=[];
+          foreach (@tents) {
+              push @$noderange,noderange($_->{node});
+          }
+          print "I'm thinking about ".$noderange->[0]."\n";
+          $command="rpower";
+          @exargs=("on");
+      }
+
+  }
   if ($command eq 'revacuate') {
       my $newnoderange;
       if (grep { $_ eq '-f' } @exargs) {
@@ -971,7 +999,7 @@ sub process_request {
 
   my $sitetab = xCAT::Table->new('site');
   if ($sitetab) {
-      my $xhent = $sitetab->getAttribs({key=>usexhrm},['value']);
+      my $xhent = $sitetab->getAttribs({key=>'usexhrm'},['value']);
       if ($xhent and $xhent->{value} and $xhent->{value} !~ /no/i and $xhent->{value} !~ /disable/i) {
           $use_xhrm=1;
       }
