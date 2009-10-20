@@ -1234,16 +1234,23 @@ sub setupAIXconserver
         else
         {
             xCAT::MsgUtils->message('I', "Added subsystem conserver.");
+            # Remove old setting
+            my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
+            my $rc = system($rmitab_cmd);
+
             # add to the /etc/inittab file
             my $mkitab_cmd =
-            'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver" > /dev/null 2>&1';
-            my $rc = system($mkitab_cmd);    # may already be there no error check
+            'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
+            $rc = system($mkitab_cmd);    # may already be there no error check
         }
     } else { # conserver already a service
+            # Remove old setting
+            my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
+            my $rc = system($rmitab_cmd);
             # make sure it is registered in /etc/inittab file
             my $mkitab_cmd =
-            'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver" > /dev/null 2>&1';
-            my $rc = system($mkitab_cmd);    # may already be there no error check
+            'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
+            $rc = system($mkitab_cmd);    # may already be there no error check
     }
     # now make sure conserver is started
     xCAT::Utils->startService("conserver");
