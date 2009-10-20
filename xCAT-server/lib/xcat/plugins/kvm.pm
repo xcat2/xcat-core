@@ -99,6 +99,19 @@ sub get_path_for_nfsuri {
     }
 }
 
+sub nodesockopen {
+   my $node = shift;
+   my $port = shift;
+   my $socket;
+   my $addr = gethostbyname($node);
+   my $sin = sockaddr_in($port,$addr);
+   my $proto = getprotobyname('tcp');
+   socket($socket,PF_INET,SOCK_STREAM,$proto) || return 0;
+   connect($socket,$sin) || return 0;
+   return 1;
+}
+
+
         
 sub waitforack {
     my $sock = shift;
@@ -403,7 +416,9 @@ sub pick_target {
         my $cand=$_;
         $currentusedmemory=0;
         if ($_ eq $currhyp) { next; } #skip current node
+        if ($offlinehyps{$_}) { next }; #skip already offlined nodes
         if (grep { "$_" eq $cand } @destblacklist) { next; } #skip blacklisted destinations
+        if (not nodesockopen($_,22)) { $offlinehyps{$_}=1; next; } #skip unusable destinations
             eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
                 $targconn = Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1&netcat=nc");
             };
@@ -463,28 +478,38 @@ sub migrate {
     }
     my $srchypconn;
     my $desthypconn;
+    unless ($offlinehyps{$prevhyp} or nodesockopen($prevhyp,22)) {
+        $offlinehyps{$prevhyp}=1;
+    }
     my $srcnetcatadd="&netcat=nc";
-    eval {#Contain Sys::Virt bugs
-        $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$prevhyp."/system?no_tty=1$srcnetcatadd");
-    };
-    unless ($srchypconn) {
-        $srcnetcatadd="";
+    unless ($offlinehyps{$prevhyp}) {
         eval {#Contain Sys::Virt bugs
-            $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$prevhyp."/system?no_tty=1");
+            $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$prevhyp."/system?no_tty=1$srcnetcatadd");
         };
+        unless ($srchypconn) {
+            $srcnetcatadd="";
+            eval {#Contain Sys::Virt bugs
+                $srchypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$prevhyp."/system?no_tty=1");
+            };
+        }
     }
     unless ($srchypconn) {
         return (1,"Unable to reach $prevhyp to perform operation of $node, use nodech to change vm.host if certain of no split-brain possibility exists");
     }
+    unless ($offlinehyps{$targ} or nodesockopen($targ,22)) {
+        $offlinehyps{$targ}=1;
+    }
     my $destnetcatadd="&netcat=nc";
-    eval {#Contain Sys::Virt bugs
-        $desthypconn= Sys::Virt->new(uri=>$target.$destnetcatadd);
-    };
-    unless ($desthypconn) {
-        $destnetcatadd="";
+    unless ($offlinehyps{$targ}) {
         eval {#Contain Sys::Virt bugs
-            $desthypconn= Sys::Virt->new(uri=>$target);
+            $desthypconn= Sys::Virt->new(uri=>$target.$destnetcatadd);
         };
+        unless ($desthypconn) {
+            $destnetcatadd="";
+            eval {#Contain Sys::Virt bugs
+                $desthypconn= Sys::Virt->new(uri=>$target);
+            };
+        }
     }
     unless ($desthypconn) {
         return (1,"Unable to reach $targ to perform operation of $node, destination unusable.");
@@ -595,6 +620,7 @@ sub createstorage {
         unless ($mastername =~ /^\//) {
             $mastername = $xCAT_plugin::kvm::masterdir.'/'.$mastername;
         }
+        chdir($dirname);
         my $rc=system("qemu-img create -f qcow2 -b $mastername $filename");
         if ($rc) {
             return $rc,"Failure creating image $filename from $mastername";
@@ -953,17 +979,19 @@ sub process_request {
         my $hyp = $_; #I used $_ too much here... sorry
         $hypconn=undef;
         push @destblacklist,$_;
-        eval { #Contain bugs that won't be in $@
-            $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1&netcat=nc");
-        };
-        unless ($hypconn) { #retry for socat
+        if ((not $offlinehyps{$_}) and nodesockopen($_,22)) {
             eval { #Contain bugs that won't be in $@
-                $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1");
+                $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1&netcat=nc");
             };
+            unless ($hypconn) { #retry for socat
+                eval { #Contain bugs that won't be in $@
+                    $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1");
+                };
+            }
         }
         unless ($hypconn)  {
+            $offlinehyps{$hyp}=1;
             if ($forcemode) { #forcemode indicates the hypervisor is probably already dead, and to clear vm.host of all the nodes, and adopt the ones that are supposed to be 'on', power them on
-                $offlinehyps{$hyp}=1;
                 unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>0); }
                 unless ($vmtab) { next; }
                 my @vents = $vmtab->getAttribs({host=>$hyp},['node','powerstate']);
@@ -1266,16 +1294,19 @@ sub dohyp {
   my $node;
   my $args = \@exargs;
   $vmtab = xCAT::Table->new("vm");
+  unless ($offlinehyps{$hyp} or nodesockopen($hyp,22)) {
+    $offlinehyps{$hyp}=1;
+  }
 
 
   eval { #Contain Sys::Virt bugs that make $@ useless
     if ($hyp eq '!@!XCATDUMMYHYPERVISOR!@!') {  #Fake connection for commands that have a fake hypervisor key
         $hypconn = 1;
-    } else { 
+    } elsif (not $offlinehyps{$hyp}) { 
         $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$hyp."/system?no_tty=1&netcat=nc");
     }
   };
-  unless ($hypconn) {
+  unless ($hypconn or $offlinehyps{$hyp}) {
     eval { #Contain Sys::Virt bugs that make $@ useless
         $hypconn= Sys::Virt->new(uri=>"qemu+ssh://root@".$hyp."/system?no_tty=1");
     };
