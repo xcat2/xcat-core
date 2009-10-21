@@ -1600,6 +1600,28 @@ sub xCATdB {
             my $bpc_serial = @$data[7];
             my $cageid     = @$data[8];
 
+            ############################################################
+            # For HE machine, there are 2 FSPs, but only one FSP have the 
+            # BPA information. We need to go through the outhash and
+            # find its BPA
+            ############################################################
+            if (($bpc_model eq "0" ) and ( $bpc_serial eq "0" )) 
+            {
+                for my $he_node ( keys %$outhash )
+                {
+                    if ( $model eq $outhash->{$he_node}->[1] and
+                         $serial eq $outhash->{$he_node}->[2] and
+                         $outhash->{$he_node}->[6] and
+                         $outhash->{$he_node}->[7]
+                        )
+                    {
+                        $bpc_model = $outhash->{$he_node}->[6];
+                        $bpc_serial = $outhash->{$he_node}->[7];
+                        $cageid = $outhash->{$he_node}->[8];
+                    }
+                }
+            }
+
             ########################################
             # May be no Frame with this FSP
             ########################################
@@ -1613,6 +1635,7 @@ sub xCATdB {
                     $frame = "Server-$bpc_model-SN$bpc_serial";
                 }
             }
+
             ########################################
             # "Factory-default" FSP name format:
             # Server-<type>-<model>-<serialnumber>
