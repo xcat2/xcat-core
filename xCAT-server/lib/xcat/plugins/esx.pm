@@ -7,6 +7,7 @@ use xCAT::Utils;
 use Time::HiRes qw (sleep);
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
+use xCAT::NodeRange;
 use xCAT::Common;
 use xCAT::VMCommon;
 use POSIX "WNOHANG";
@@ -36,6 +37,7 @@ my $output_handler; #Pointer to the function to drive results to client
 my $executerequest;
 my %tablecfg; #to hold the tables
 my $currkey;
+my $viavcenter;
 
 
 my %guestidmap = (
@@ -272,7 +274,7 @@ sub process_request {
 	#my $children = 0;
     #my $vmmaxp = 84;
 	#$SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { delete $esx_comm_pids{$cpid}; $children--; } };
-    my $viavcenter = 0;
+    $viavcenter = 0;
     if ($command eq 'rmigrate') { #Only use vcenter when required, fewer prereqs
         $viavcenter = 1;
     }
@@ -284,6 +286,7 @@ sub process_request {
 	foreach my $hyp (sort(keys %hyphash)){
 		#if($pid == 0){
         if ($viavcenter or (defined $tablecfg{hypervisor}->{$hyp}->[0]->{mgr} and not $tablecfg{hypervisor}->{$hyp}->[0]->{preferdirect})) {
+	    $viavcenter=1;
             $hypready{$hyp} = 0; #This hypervisor requires a flag be set to signify vCenter sanenes before proceeding
             $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk"); #Direct connect to install/check licenses
             $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
@@ -359,11 +362,11 @@ sub do_cmd {
     my $command = shift;
     my @exargs = @_;
     if ($command eq 'rpower') {
-        generic_vm_operation(['config.name','config','runtime.powerState'],\&power,@exargs);
+        generic_vm_operation(['config.name','config','runtime.powerState','runtime.host'],\&power,@exargs);
     } elsif ($command eq 'rmvm') {
-        generic_vm_operation(['config.name','runtime.powerState'],\&rmvm,@exargs);
+        generic_vm_operation(['config.name','runtime.powerState','runtime.host'],\&rmvm,@exargs);
     } elsif ($command eq 'rsetboot') {
-        generic_vm_operation(['config.name'],\&setboot,@exargs);
+        generic_vm_operation(['config.name','runtime.host'],\&setboot,@exargs);
     } elsif ($command eq 'mkvm') {
         generic_hyp_operation(\&mkvms,@exargs);
     } elsif ($command eq 'rmigrate') { #Technically, on a host view, but vcenter path is 'weirder'
@@ -890,9 +893,48 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
     my $properties = shift; #The relevant properties to the general task, MUST INCLUDE config.name
     my $function = shift; #The function to actually run against the right VM view
     my @exargs = @_; #Store the rest to pass on
-    my $hyp;
+    my $hyp; 
+    my $vmviews;
+    my %vcviews; #views populated once per vcenter server for improved performance
+    if ($viavcenter) {
+        foreach $hyp (keys %hyphash) {
+            if ($vcviews{$hyphash{$hyp}->{vcenter}->{name}}) { next; }
+            $vcviews{$hyphash{$hyp}->{vcenter}->{name}} = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
+            foreach (@{$vcviews{$hyphash{$hyp}->{vcenter}->{name}}}) {
+                my $node = $_->{'config.name'};
+                unless (defined $tablecfg{vm}->{$node}) {
+                    $node =~ s/\..*//; #try the short name;
+                }
+                if (defined $tablecfg{vm}->{$node}) { #see if the host pointer requires a refresh 
+                    my $host = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$_->{'runtime.host'});
+                    $host = $host->summary->config->name;
+                    if ( $tablecfg{vm}->{$node}->[0]->{host} eq "$host" ) { next; }
+                    my $shost = $host;
+                    $shost =~ s/\..*//;
+                    if ( $tablecfg{vm}->{$node}->[0]->{host} eq "$shost" ) { next; }
+                    #time to figure out which of these is a node
+                    my @nodes = noderange("$host,$shost");
+                    my $vmtab = xCAT::Table->new("vm",-create=>1);
+                    unless($vmtab){
+                        die "Error opening vm table";
+                    }
+                    if ($nodes[0]) {
+                        print $node. " and ".$nodes[0];
+                        $vmtab->setNodeAttribs($node,{host=>$nodes[0]});
+                    } else {
+                        $vmtab->setNodeAttribs($node,{host=>$host});
+                    }
+
+                }
+            }
+        }
+    }
     foreach $hyp (keys %hyphash) {
-        my $vmviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
+        if ($viavcenter) { 
+            $vmviews= $vcviews{$hyphash{$hyp}->{vcenter}->{name}}
+        } else {
+		    $vmviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
+	    }
         my %mgdvms; #sort into a hash for convenience
         foreach (@$vmviews) {
          $mgdvms{$_->{'config.name'}} = $_;
