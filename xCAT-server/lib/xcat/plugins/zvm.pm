@@ -36,7 +36,15 @@ use warnings;
 #-------------------------------------------------------
 
 sub handled_commands {
-	return { zvm => "zvm" };
+	return {
+		rpower => "zvm",
+		rinv   => "zvm",
+		mkvm   => "zvm",
+		rmvm   => "zvm",
+		lsvm   => "zvm",
+		chvm   => "zvm",
+		rscan  => "zvm",
+	};
 }
 
 #-------------------------------------------------------
@@ -396,6 +404,12 @@ sub removeVM {
 	$out = `ssh $hcp $::DIR/deletevs $userId`;
 	xCAT::zvmUtils->printLn( $callback, "$out" );
 
+	# Check for errors
+	my $rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
+	if ( $rtn == -1 ) {
+		return;
+	}
+
 	# Remove node from 'zvm', 'nodelist', 'nodehm', and 'hosts' table
 	xCAT::zvmUtils->delTabNode( 'zvm',      $node );
 	xCAT::zvmUtils->delTabNode( 'nodelist', $node );
@@ -479,7 +493,10 @@ sub changeVM {
 		my $mode    = $args->[3];
 		my $blksize = $args->[4];
 		my $blks    = $args->[5];
-		$out = `ssh $hcp $::DIR/add9336 $userId $pool $addr $mode $blksize $blks`;
+		my $readPw  = $args->[6];
+		my $writePw = $args->[7];
+		my $multiPw = $args->[8];
+		$out = `ssh $hcp $::DIR/add9336 $userId $pool $addr $mode $blksize $blks $readPw $writePw $multiPw`;
 	}
 
 	# addnic [address] [type] [device count]
@@ -540,6 +557,12 @@ sub changeVM {
 	# deleteipl
 	elsif ( $args->[0] eq "--deleteipl" ) {
 		$out = `ssh $hcp $::DIR/deleteipl $userId`;
+	}
+
+	# grantvswitch [VSwitch]
+	elsif ( $args->[0] eq "--grantvswitch" ) {
+		my $vsw = $args->[1];
+		$out = xCAT::zvmCPUtils->grantVSwitch( $callback, $hcp, $userId, $vsw );
 	}
 
 	# disconnectnic [address]
@@ -1087,19 +1110,9 @@ sub cloneVM {
 	}
 
 	# Get read, write, and multi password
-	my $readPw = $inputs{"readpw"};
-	if ( !$readPw ) {
-		xCAT::zvmUtils->printLn( $callback, "Error: Missing read password" );
-		return;
-	}
-	my $writePw = $inputs{"writepw"};
-	if ( !$writePw ) {
-		xCAT::zvmUtils->printLn( $callback, "Error: Missing write password" );
-		return;
-	}
-	my $multiPw = $inputs{"multipw"};
-	if ( !$multiPw ) {
-		xCAT::zvmUtils->printLn( $callback, "Error: Missing multi password" );
+	my $trgtPw = $inputs{"pw"};
+	if ( !$trgtPw ) {
+		xCAT::zvmUtils->printLn( $callback, "Error: Missing read/write/multi password" );
 		return;
 	}
 
@@ -1128,6 +1141,7 @@ sub cloneVM {
 	}
 
 	# Load VMCP module
+	$out = xCAT::zvmCPUtils->loadVmcp($hcp);
 	$out = xCAT::zvmCPUtils->loadVmcp($sourceNode);
 
 	# Get VSwitch of master node
@@ -1137,7 +1151,7 @@ sub cloneVM {
 	# GuestLan do not need permissions
 	xCAT::zvmUtils->printLn( $callback, "$targetNode: Granting VSwitch access" );
 	foreach (@vswitchId) {
-		$out = xCAT::zvmUtils->grantVSwitch( $callback, $hcp, $targetUserId, $_ );
+		$out = xCAT::zvmCPUtils->grantVSwitch( $callback, $hcp, $targetUserId, $_ );
 
 		# Check for errors
 		$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
@@ -1155,14 +1169,16 @@ sub cloneVM {
 	my $type;
 	my $mode;
 	my $cyl;
+	my $srcMultiPw;
 	foreach (@srcDisks) {
 
 		# Get disk device address
 		@parms = split( ' ', $_ );
 		$addr = $parms[1];
 		push( @trgtDisks, $addr );
-		$type = $parms[2];
-		$mode = $parms[6];
+		$type       = $parms[2];
+		$mode       = $parms[6];
+		$srcMultiPw = $parms[9];
 
 		# Add ECKD disk
 		if ( $type eq '3390' ) {
@@ -1174,7 +1190,7 @@ sub cloneVM {
 
 			# Add disk
 			xCAT::zvmUtils->printLn( $callback, "$targetNode: Adding minidisk" );
-			$out = `ssh $hcp $::DIR/add3390 $targetUserId $pool $addr $mode $cyl $readPw $writePw $multiPw`;
+			$out = `ssh $hcp $::DIR/add3390 $targetUserId $pool $addr $mode $cyl $trgtPw $trgtPw $trgtPw`;
 
 			# Check for errors
 			$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
@@ -1194,15 +1210,33 @@ sub cloneVM {
 
 	}
 
-	# Format and copy source disks
-	my $targetAddr;
-	my $targetDevNode;
-	my $sourceDevNode;
-	foreach (@trgtDisks) {
-		$targetAddr = $_ + 1000;
+	# Load VMCP module on HCP
+	$out = xCAT::zvmCPUtils->loadVmcp($hcp);
 
-		# Check if there is an existing address
-		$out = xCAT::zvmUtils->isAddressUsed( $sourceNode, $targetAddr );
+	# Link , format, and copy source disks
+	my $srcAddr;
+	my $targetAddr;
+	my $sourceDevNode;
+	my $targetDevNode;
+	foreach (@trgtDisks) {
+		$srcAddr    = $_ + 1000;
+		$targetAddr = $_ + 2000;
+
+		# Check if there is an existing address (source address)
+		$out = xCAT::zvmUtils->isAddressUsed( $hcp, $srcAddr );
+
+		# If there is an existing address
+		while ( $out == 0 ) {
+
+			# Generate a new address
+			# Sleep 2 seconds to let existing disk appear
+			sleep(2);
+			$srcAddr = $srcAddr + 1;
+			$out = xCAT::zvmUtils->isAddressUsed( $hcp, $srcAddr );
+		}
+
+		# Check if there is an existing address (target address)
+		$out = xCAT::zvmUtils->isAddressUsed( $hcp, $targetAddr );
 
 		# If there is an existing address
 		while ( $out == 0 ) {
@@ -1211,74 +1245,99 @@ sub cloneVM {
 			# Sleep 2 seconds to let existing disk appear
 			sleep(2);
 			$targetAddr = $targetAddr + 1;
-			$out = xCAT::zvmUtils->isAddressUsed( $sourceNode, $targetAddr );
+			$out = xCAT::zvmUtils->isAddressUsed( $hcp, $targetAddr );
 		}
 
-		# Link target disk to source disk
-		$out = `ssh $sourceNode vmcp link $targetUserId $_ $targetAddr MW $multiPw`;
+		# Link source disk
+		$out = `ssh -o ConnectTimeout=5 $hcp vmcp link $sourceId $_ $srcAddr MW $srcMultiPw`;
 
-		# Get for errors
+		# Check for errors
 		$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
 		if ( $rtn == -1 ) {
 			xCAT::zvmUtils->printLn( $callback, "$out" );
 			return;
 		}
 
-		# Enable target disk
-		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $sourceNode, "-e", $targetAddr );
+		# Link target disk
+		$out = `ssh -o ConnectTimeout=5 $hcp vmcp link $targetUserId $_ $targetAddr MW $trgtPw`;
 
-		# Determine target device node
-		$out           = `ssh $sourceNode cat /proc/dasd/devices | grep ".$targetAddr("`;
-		@parms         = split( ' ', $out );
-		$targetDevNode = $parms[6];
+		# Check for errors
+		$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
+		if ( $rtn == -1 ) {
+			xCAT::zvmUtils->printLn( $callback, "$out" );
+			return;
+		}
 
-		# Determine source device node
-		$out           = `ssh $sourceNode cat /proc/dasd/devices | grep "$_"`;
-		@parms         = split( ' ', $out );
-		$sourceDevNode = $parms[6];
-
-		# Format disk
-		xCAT::zvmUtils->printLn( $callback, "$targetNode: Formating disk" );
-		$out = `ssh $sourceNode dasdfmt -b 4096 -y -f /dev/$targetDevNode`;
+		# Use FLASHCOPY
+		xCAT::zvmUtils->printLn( $callback, "$targetNode: Copying source disk using FLASHCOPY" );
+		$out = xCAT::zvmCPUtils->flashCopy( $hcp, $srcAddr, $targetAddr );
 
 		# Check for errors
 		$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
 		if ( $rtn == -1 ) {
 
-			# Exit on bad output
-			xCAT::zvmUtils->printLn( $callback, "$out" );
-			return;
+			# FLASHCOPY is not supported
+			xCAT::zvmUtils->printLn( $callback, "$targetNode: FLASHCOPY not supported.  Using Linux DD" );
+
+			# Enable source disk
+			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $srcAddr );
+
+			# Enable target disk
+			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $targetAddr );
+
+			# Determine source device node
+			$out           = `ssh $hcp cat /proc/dasd/devices | grep ".$srcAddr("`;
+			@parms         = split( ' ', $out );
+			$sourceDevNode = $parms[6];
+
+			# Determine target device node
+			$out           = `ssh $hcp cat /proc/dasd/devices | grep ".$targetAddr("`;
+			@parms         = split( ' ', $out );
+			$targetDevNode = $parms[6];
+
+			# Format target disk
+			xCAT::zvmUtils->printLn( $callback, "$targetNode: Formating disk" );
+			$out = `ssh $hcp dasdfmt -b 4096 -y -f /dev/$targetDevNode`;
+
+			# Check for errors
+			$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
+			if ( $rtn == -1 ) {
+
+				# Exit on bad output
+				xCAT::zvmUtils->printLn( $callback, "$out" );
+				return;
+			}
+
+			# Sleep 2 seconds to let the system settle
+			sleep(2);
+
+			# Copy source disk to target disk
+			xCAT::zvmUtils->printLn( $callback, "$targetNode: Copying source disk" );
+			$out = `ssh $hcp dd if=/dev/$sourceDevNode of=/dev/$targetDevNode bs=4096`;
+
+			# Check for error
+			$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
+			if ( $rtn == -1 ) {
+				xCAT::zvmUtils->printLn( $callback, "$out" );
+				return;
+			}
+
+			# Sleep 2 seconds to let the system settle
+			sleep(2);
 		}
-
-		# Sleep 2 seconds to let the system settle
-		sleep(2);
-
-		# Copy source disk to target disk
-		xCAT::zvmUtils->printLn( $callback, "$targetNode: Copying source disk" );
-		$out = `ssh $sourceNode dd if=/dev/$sourceDevNode of=/dev/$targetDevNode bs=4096`;
-
-		# Check for error
-		$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
-		if ( $rtn == -1 ) {
-			xCAT::zvmUtils->printLn( $callback, "$out" );
-			return;
-		}
-
-		# Sleep 2 seconds to let the system settle
-		sleep(2);
 
 		# Disable and enable target disk
-		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $sourceNode, "-d", $targetAddr );
-		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $sourceNode, "-e", $targetAddr );
+		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $targetAddr );
+		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $targetAddr );
 
-		# Determine target device node
-		$out           = `ssh $sourceNode cat /proc/dasd/devices | grep ".$targetAddr("`;
+		# Determine target device node (it might have changed)
+		$out           = `ssh $hcp cat /proc/dasd/devices | grep ".$targetAddr("`;
 		@parms         = split( ' ', $out );
 		$targetDevNode = $parms[6];
 
-		# Get source device node that is mounted on (/)
-		my $sourceRootDevNode = xCAT::zvmUtils->getRootNode($sourceNode);
-		if ( $sourceRootDevNode =~ m/$sourceDevNode/i ) {
+		# Get disk address that is the root partition
+		my $rootPartitionAddr = xCAT::zvmUtils->getRootDiskAddr($sourceNode);
+		if ( $_ eq $rootPartitionAddr ) {
 
 			# Set network configuration
 			xCAT::zvmUtils->printLn( $callback, "$targetNode: Setting network configuration" );
@@ -1286,14 +1345,11 @@ sub cloneVM {
 			# Mount target disk
 			my $cloneMntPt = "/mnt/$targetUserId";
 			$targetDevNode .= "1";
-
-			# xCAT::zvmUtils->printLn( $callback, "Mounting $cloneMntPt..." );
-			$out = `ssh $sourceNode mkdir $cloneMntPt`;
-			$out = `ssh $sourceNode mount /dev/$targetDevNode $cloneMntPt`;
+			$out = `ssh $hcp mkdir $cloneMntPt`;
+			$out = `ssh $hcp mount /dev/$targetDevNode $cloneMntPt`;
 
 			# Set hostname
-			$out = `ssh $sourceNode sed --in-place -e "s/$sourceNode/$targetNode/g" $cloneMntPt/etc/HOSTNAME`;
-			$out = `ssh $sourceNode cat $cloneMntPt/etc/HOSTNAME`;
+			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$targetNode/g" $cloneMntPt/etc/HOSTNAME`;
 
 			# Set IP address
 			my $sourceIp  = xCAT::zvmUtils->getIp($sourceNode);
@@ -1302,19 +1358,23 @@ sub cloneVM {
 			my $ifcfgPath = $cloneMntPt;
 			$ifcfgPath .= $ifcfg;
 			$out =
-`ssh $sourceNode sed --in-place -e "s/$sourceNode/$targetNode/g" \ -e "s/$sourceIp/$targetIp/g" $cloneMntPt/etc/hosts`;
-			$out =
-`ssh $sourceNode sed --in-place -e "s/$sourceIp/$targetIp/g" \ -e "s/$sourceNode/$targetNode/g" $ifcfgPath`;
+`ssh $hcp sed --in-place -e "s/$sourceNode/$targetNode/g" \ -e "s/$sourceIp/$targetIp/g" $cloneMntPt/etc/hosts`;
+			$out = `ssh $hcp sed --in-place -e "s/$sourceIp/$targetIp/g" \ -e "s/$sourceNode/$targetNode/g" $ifcfgPath`;
 
 			# Flush disk
-			$out = `ssh $sourceNode sync`;
+			$out = `ssh $hcp sync`;
 
 			# Unmount disk
-			$out = `ssh $sourceNode umount $cloneMntPt`;
+			$out = `ssh $hcp umount $cloneMntPt`;
 		}
 
-		# Detatch disk
-		$out = `ssh $sourceNode vmcp det $targetAddr`;
+		# Disable disks
+		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $srcAddr );
+		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $targetAddr );
+
+		# Detatch disks
+		$out = `ssh $hcp vmcp det $srcAddr`;
+		$out = `ssh $hcp vmcp det $targetAddr`;
 	}
 
 	# Power on target virtual server
