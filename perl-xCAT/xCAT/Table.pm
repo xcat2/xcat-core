@@ -1528,7 +1528,7 @@ sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
     #TODO: only clear cache if ref count mentioned in build_cache is 1, otherwise decrement ref count
     my $self = shift;
     if ($dbworkerpid) {
-        return dbc_call($self,'_clear_cache',$_);
+        return dbc_call($self,'_clear_cache',@_);
     }
     if ($self->{_cache_ref} > 1) { #don't clear the cache if there are still live references
         $self->{_cache_ref} -= 1;
