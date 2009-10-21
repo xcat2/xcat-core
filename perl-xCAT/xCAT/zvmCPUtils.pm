@@ -333,3 +333,74 @@ sub getVswitchId {
 
 	return @vswitch;
 }
+
+#-------------------------------------------------------
+
+=head3   grantVSwitch
+
+	Description	: Grant access to VSwitch for specified user ID
+    Arguments	: 	zHCP node
+    				User ID 
+    				Vswitch ID
+    Returns		: Output string
+    Example		: my $out = xCAT::zvmCPUtils->grantVswitch($callback, $hcp, $userId, $vswitchId);
+    
+=cut
+
+#-------------------------------------------------------
+sub grantVSwitch {
+
+	# Get inputs
+	my ( $class, $callback, $hcp, $userId, $vswitchId ) = @_;
+
+	my $out = `ssh $hcp vmcp set vswitch $vswitchId grant $userId`;
+	$out = xCAT::zvmUtils->trim($out);
+	my $retStr;
+	if ( $out eq "Command complete" ) {
+		$retStr = "Done\n";
+	}
+	else {
+		$retStr = "Failed\n";
+		return ($retStr);
+	}
+
+	return ($retStr);
+}
+
+#-------------------------------------------------------
+
+=head3   flashCopy
+
+	Description	: Flash copy disks
+    Arguments	: 	Node
+    				Source address
+    				Target address
+    Returns		: Output string
+    Example		: my $out = xCAT::zvmCPUtils->flashCopy($node, $srcAddr, $targetAddr);
+    
+=cut
+
+#-------------------------------------------------------
+sub flashCopy {
+
+	# Get inputs
+	my ( $class, $node, $srcAddr, $targetAddr ) = @_;
+
+	my $out = `ssh $node vmcp flashcopy $srcAddr 0 end to $targetAddr 0 end`;
+	$out = xCAT::zvmUtils->trim($out);
+	my $retStr;
+
+	# If return string contains 'Command complete'
+	if ( $out =~ m/Command complete/i ) {
+
+		# Done
+		$retStr = "Done\n";
+	}
+	else {
+		$retStr = "Failed\n";
+		return ($retStr);
+	}
+
+	return ($retStr);
+}
+

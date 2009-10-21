@@ -270,17 +270,17 @@ sub getIfcfg {
 
 #-------------------------------------------------------
 
-=head3   getIpBroadcast
+=head3   getBroadcastIP
 
 	Description	: Get IP broadcast of specified node
     Arguments	: Node
     Returns		: IP broadcast
-    Example		: my $broadcast = xCAT::zvmUtils->getIpBroadcast($node);
+    Example		: my $broadcast = xCAT::zvmUtils->getBroadcastIP($node);
     
 =cut
 
 #-------------------------------------------------------
-sub getIpBroadcast {
+sub getBroadcastIP {
 
 	# Get inputs
 	my ( $class, $node ) = @_;
@@ -369,25 +369,30 @@ sub sendFile {
 
 #-------------------------------------------------------
 
-=head3   getRootNode
+=head3   getRootDiskAddr
 
-	Description	: Get device node mounted on (/)
+	Description	: Get root disk address
     Arguments	: 	Node name
-    Returns		: 	Device node mounted on (/)
-    Example		: my $deviceNode = xCAT::zvmUtils->getRootNode($node);
+    Returns		: 	Root disk address
+    Example		: my $deviceNode = xCAT::zvmUtils->getRootDiskAddr($node);
     
 =cut
 
 #-------------------------------------------------------
-sub getRootNode {
+sub getRootDiskAddr {
 
 	# Get inputs
 	my ( $class, $node ) = @_;
 
 	# Get device node mounted on (/)
-	my $out = `ssh $node mount | grep "/ type"`;
-	my @parms = split( ' ', $out );
-	$parms[0] = xCAT::zvmUtils->trim( $parms[0] );
+	my $out = `ssh $node  mount | grep "/ type" | sed 's/1//'`;
+	my @parms = split( " ", $out );
+	@parms = split( "/", xCAT::zvmUtils->trim( $parms[0] ) );
+	my $devNode = $parms[0];
+
+	# Get minidisk address
+	$out = `ssh $node cat /proc/dasd/devices | grep "$devNode" | sed 's/(ECKD)//'| sed 's/(FBA )//' | sed 's/0.0.//'`;
+	@parms = split( " ", $out );
 
 	return ( $parms[0] );
 }
@@ -397,8 +402,7 @@ sub getRootNode {
 =head3   disableEnableDisk
 
 	Description	: Disable or enable disk for specified node
-    Arguments	: 	Node 
-    				Device address
+    Arguments	: 	Device address
     				Option [-d | -e]
     Returns		: Nothing
     Example		: my $out = xCAT::zvmUtils->disableEnableDisk($callback, $node, $option, $devAddr);
@@ -413,14 +417,8 @@ sub disableEnableDisk {
 
 	# --- Disable or enable disk ---
 	if ( $option eq "-d" || $option eq "-e" ) {
-
-		# Do nothing
+		my $out = `ssh $node chccwdev $option $devAddr`;
 	}
-	else {
-		return;
-	}
-
-	my $out = `ssh $node chccwdev $option $devAddr`;
 
 	return;
 }
@@ -474,39 +472,6 @@ sub getMdisks {
 		}
 	}
 	return (@disks);
-}
-
-#-------------------------------------------------------
-
-=head3   grantVSwitch
-
-	Description	: Grant access to VSwitch for specified user ID
-    Arguments	: 	zHCP node
-    				User ID 
-    				Vswitch ID
-    Returns		: Output string
-    Example		: my $out = xCAT::zvmUtils->grantVswitch($callback, $hcp, $userId, $vswitchId);
-    
-=cut
-
-#-------------------------------------------------------
-sub grantVSwitch {
-
-	# Get inputs
-	my ( $class, $callback, $hcp, $userId, $vswitchId ) = @_;
-
-	my $out = `ssh $hcp vmcp set vswitch $vswitchId grant $userId`;
-	$out = xCAT::zvmUtils->trim($out);
-	my $retStr;
-	if ( $out eq "Command complete" ) {
-		$retStr = "  Operation Successful\n";
-	}
-	else {
-		$retStr = "  Operation Failed\n";
-		return ($retStr);
-	}
-
-	return ($retStr);
 }
 
 #-------------------------------------------------------
@@ -694,8 +659,8 @@ sub isOutputGood {
 	my @outLn = split( "\n", $out );
 	foreach (@outLn) {
 
-		# If output contains 'Operation Failed' return -1
-		if ( $_ =~ m/Operation Failed/i ) {
+		# If output contains 'Failed' return -1
+		if ( $_ =~ m/Failed/i ) {
 			return -1;
 		}
 	}
@@ -708,7 +673,8 @@ sub isOutputGood {
 =head3   isAddressUsed
 
 	Description	: 	Check if specified address is used
-    Arguments	: 	Disk address
+    Arguments	: 	Node
+    				Disk address
     Returns		: 	0	Address used
     				-1	Address not used
     Example		: my $ans = xCAT::zvmUtils->isAddressUsed($node, $address);
@@ -720,7 +686,7 @@ sub isAddressUsed {
 	my ( $class, $node, $address ) = @_;
 
 	# Search for disk address
-	my $out = `ssh $node vmcp q v dasd | grep "DASD $address"`;
+	my $out = `ssh -o ConnectTimeout=5 $node vmcp q v dasd | grep "DASD $address"`;
 	if ($out) {
 		return 0;
 	}
