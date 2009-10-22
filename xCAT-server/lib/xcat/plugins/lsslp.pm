@@ -689,6 +689,7 @@ sub invoke_cmd {
     if ( keys (%$unicast) )  {
         foreach my $url ( keys %$unicast ) {
             my ($service,$addr) = split "://", $url;
+            next if ($addr =~ /:/);#skip IPV6
 
             ####################################
             # Strip off trailing ",lifetime"
@@ -1254,6 +1255,7 @@ sub getip_from_iplist
     
     for my $ip (@ips)
     {
+        next if ( $ip =~ /:/); #skip IPV6 addresses
         for my $net ( keys %$nets)
         {
             my ($n,$m) = split /\//,$net;
