@@ -248,7 +248,7 @@ sub ifconfig_inet
 =cut
 
 #---------------------------------------------------------------------------
-# NOTE: global environment $::__DSH_LAST_LINE only can be used in DSHCore::pipe_handler and DSHCore::pipe_handler_buffer
+# NOTE: global environment $::__DSH_LAST_LINE} only can be used in DSHCore::pipe_handler and DSHCore::pipe_handler_buffer
 $::__DSH_LAST_LINE  = undef;
 sub pipe_handler
 {
@@ -307,12 +307,12 @@ sub pipe_handler
             if ($cust_rc_deal)
             {
                 # Dump the last line at the beginning of current buffer
-                if ($::__DSH_LAST_LINE)
+                if ($::__DSH_LAST_LINE->{$label})
                 {
-                    unshift @lines, "$::__DSH_LAST_LINE" ;
+                    unshift @lines, "$::__DSH_LAST_LINE->{$label}" ;
                 }
-                # Pop current buffer to $::__DSH_LAST_LINE
-                $::__DSH_LAST_LINE = $lines[scalar @lines - 1];
+                # Pop current buffer to $::__DSH_LAST_LINE->{$label}
+                $::__DSH_LAST_LINE->{$label} = $lines[scalar @lines - 1];
                 pop @lines;
                 # Skip this loop if array @lines is empty.
                 if (scalar @lines == 0)
@@ -334,7 +334,7 @@ sub pipe_handler
                 $line =~ s/:DSH_TARGET_RC=$target_rc:\n//g;
                 $$target_properties{'target-rc'} = $target_rc;
             }
-            if ( $::__DSH_LAST_LINE =~ /DSH_RC/ && $cust_rc_deal) {
+            if ( $::__DSH_LAST_LINE->{$label} =~ /DSH_RC/ && $cust_rc_deal) {
                 my $target_rc = undef;
                 # Get the number in the last line
                 $line =~ /[\D]*([0-9]+)\s*$/ ;
@@ -343,8 +343,8 @@ sub pipe_handler
                 # Remove the last line
                 $line =~ s/$target_rc\s*\n$//g;
                 #$line = $line . "## ret=$target_rc";
-                # Clean up $::__DSH_LAST_LINE
-                undef $::__DSH_LAST_LINE ;
+                # Clean up $::__DSH_LAST_LINE->{$label}
+                undef $::__DSH_LAST_LINE->{$label} ;
                 # when '-z' is specified, display return code
                 $::DSH_EXIT_STATUS &&
                     ($line .="Remote_command_rc = $target_rc");
@@ -499,12 +499,12 @@ sub pipe_handler_buffer
             if ($cust_rc_deal)
             {
                 # Dump the last line at the beginning of current buffer
-                if ($::__DSH_LAST_LINE)
+                if ($::__DSH_LAST_LINE->{$label})
                 {
-                    unshift @lines, "$::__DSH_LAST_LINE" ;
+                    unshift @lines, "$::__DSH_LAST_LINE->{$label}" ;
                 }
-                # Pop current buffer to $::__DSH_LAST_LINE
-                $::__DSH_LAST_LINE = $lines[scalar @lines - 1];
+                # Pop current buffer to $::__DSH_LAST_LINE->{$label}
+                $::__DSH_LAST_LINE->{$label} = $lines[scalar @lines - 1];
                 pop @lines;
                 # Skip this loop if array @lines is empty.
                 if (scalar @lines == 0)
@@ -526,7 +526,7 @@ sub pipe_handler_buffer
                 $line =~ s/:DSH_TARGET_RC=$target_rc:\n//g;
                 $$target_properties{'target-rc'} = $target_rc;
             }
-            if ( $::__DSH_LAST_LINE =~ /DSH_RC/ && $cust_rc_deal) {
+            if ( $::__DSH_LAST_LINE->{$label} =~ /DSH_RC/ && $cust_rc_deal) {
                 my $target_rc = undef;
                 # Get the number in the last line
                 $line =~ /[\D]*([0-9]+)\s*$/ ;
@@ -535,8 +535,8 @@ sub pipe_handler_buffer
                 # Remove the last line
                 $line =~ s/$target_rc\s*\n$//g;
                 #$line = $line . "## ret=$target_rc";
-                # Clean up $::__DSH_LAST_LINE
-                undef $::__DSH_LAST_LINE ;
+                # Clean up $::__DSH_LAST_LINE->{$label}
+                undef $::__DSH_LAST_LINE->{$label} ;
                 # when '-z' is specified, display return code
                 $::DSH_EXIT_STATUS &&
                     ($line .="Remote_command_rc = $target_rc");
