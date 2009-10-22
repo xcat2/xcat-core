@@ -8,6 +8,8 @@
 # Provides: xcatpostinit
 # Default-Start: 3 4 5
 # Default-stop: 0 1 2 6
+# Required-Start: 
+# Required-Stop:
 # Short-Description: xCATpost
 # Description: xCAT post boot script
 ### END INIT INFO
