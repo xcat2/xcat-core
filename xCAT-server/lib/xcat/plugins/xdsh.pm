@@ -291,7 +291,6 @@ sub process_request
     my $args     = $request->{arg};
     my $envs     = $request->{env};
     my $rsp      = {};
-
     # get the Environment Variables and set them in the current environment
     foreach my $envar (@{$request->{env}})
     {
@@ -334,16 +333,30 @@ sub xdsh
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
 
-    my $rsp = {};
 
     # parse dsh input
     my @local_results =
       xCAT::DSHCLI->parse_and_run_dsh($nodes,   $args, $callback,
                                       $command, $noderange);
-    push @{$rsp->{data}}, @local_results;
-
-    xCAT::MsgUtils->message("D", $rsp, $callback);
-
+    #print $local_results[0];
+    #print "\n";
+    #`echo $local_results[0] >> /tmp/lissa/testxdsh`;
+    my $maxlines=10000;
+    my $arraylen=@local_results;
+    my $rsp = {};
+    my $i=0;
+    my $j;
+    while ($i < $arraylen) {
+      for ($j = 0 ; $j < $maxlines ; $j++) { 
+         if ($i > $arraylen) {
+          last;
+         } else {
+           $rsp->{data}->[$j]= $local_results[$i]; # send  max lines
+         }
+         $i++
+      }
+      xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
     return;
 }
 
