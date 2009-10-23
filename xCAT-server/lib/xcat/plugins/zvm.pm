@@ -17,7 +17,6 @@ use Sys::Hostname;
 use xCAT::Table;
 use xCAT::Utils;
 use Getopt::Long;
-use Switch;
 use strict;
 use warnings;
 
@@ -136,208 +135,204 @@ sub process_request {
 	# Child process IDs
 	my @children;
 
-	# Determine command sent
-	switch ($command) {
+	# Controls the power for a single or range of nodes
+	if ( $command eq "rpower" ) {
+		foreach (@nodes) {
+			$pid = fork();
 
-		# Controls the power for a single or range of nodes
-		case "rpower" {
-			foreach (@nodes) {
-				$pid = fork();
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
 
-				# Parent process
-				if ($pid) {
-					push( @children, $pid );
+			# Child process
+			elsif ( $pid == 0 ) {
+				powerVM( $callback, $_, $args );
+
+				# Exit process
+				exit(0);
+			}
+			else {
+
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
+
+		}    # End of foreach
+	}    # End of case
+
+	# Remote hardware inventory
+	elsif ( $command eq "rinv" ) {
+		foreach (@nodes) {
+			$pid = fork();
+
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
+
+			# Child process
+			elsif ( $pid == 0 ) {
+				inventoryVM( $callback, $_, $args );
+
+				# Exit process
+				exit(0);
+			}
+			else {
+
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
+
+		}    # End of foreach
+	}    # End of case
+
+	# Creates zVM virtual server
+	elsif ( $command eq "mkvm" ) {
+		foreach (@nodes) {
+
+			$pid = fork();
+
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
+
+			# Child process
+			elsif ( $pid == 0 ) {
+
+				# Determine if the argument is a node
+				my $ans = 'FALSE';
+				if ( $args->[0] ) {
+					$ans = xCAT::zvmUtils->isZvmNode( $args->[0] );
 				}
 
-				# Child process
-				elsif ( $pid == 0 ) {
-					powerVM( $callback, $_, $args );
-
-					# Exit process
-					exit(0);
+				# If it is a node -- then clone specified node
+				if ( $ans eq 'TRUE' ) {
+					cloneVM( $callback, $_, $args );
 				}
+
+				# If it is not a node -- then create node based on directory entry
+				# Or create a NOLOG if no entry is provided
 				else {
-
-					# Ran out of resources
-					die "Error: Could not fork\n";
+					makeVM( $callback, $_, $args );
 				}
 
-			}    # End of foreach
-		}    # End of case
+				# Exit process
+				exit(0);
+			}    # End of elsif
+			else {
 
-		# Remote hardware inventory
-		case "rinv" {
-			foreach (@nodes) {
-				$pid = fork();
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
 
-				# Parent process
-				if ($pid) {
-					push( @children, $pid );
-				}
+		}    # End of foreach
+	}    # End of case
 
-				# Child process
-				elsif ( $pid == 0 ) {
-					inventoryVM( $callback, $_, $args );
+	# Removes zVM virtual server
+	elsif ( $command eq "rmvm" ) {
+		foreach (@nodes) {
+			$pid = fork();
 
-					# Exit process
-					exit(0);
-				}
-				else {
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
 
-					# Ran out of resources
-					die "Error: Could not fork\n";
-				}
+			# Child process
+			elsif ( $pid == 0 ) {
+				removeVM( $callback, $_ );
 
-			}    # End of foreach
-		}    # End of case
+				# Exit process
+				exit(0);
+			}
+			else {
 
-		# Creates zVM virtual server
-		case "mkvm" {
-			foreach (@nodes) {
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
 
-				$pid = fork();
+		}    # End of foreach
+	}    # End of case
 
-				# Parent process
-				if ($pid) {
-					push( @children, $pid );
-				}
+	# Lists zVM user directory entry
+	elsif ( $command eq "lsvm" ) {
+		foreach (@nodes) {
+			$pid = fork();
 
-				# Child process
-				elsif ( $pid == 0 ) {
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
 
-					# Determine if the argument is a node
-					my $ans = 'FALSE';
-					if ( $args->[0] ) {
-						$ans = xCAT::zvmUtils->isZvmNode( $args->[0] );
-					}
+			# Child process
+			elsif ( $pid == 0 ) {
+				listVM( $callback, $_ );
 
-					# If it is a node -- then clone specified node
-					if ( $ans eq 'TRUE' ) {
-						cloneVM( $callback, $_, $args );
-					}
+				# Exit process
+				exit(0);
+			}
+			else {
 
-					# If it is not a node -- then create node based on directory entry
-					# Or create a NOLOG if no entry is provided
-					else {
-						makeVM( $callback, $_, $args );
-					}
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
 
-					# Exit process
-					exit(0);
-				}    # End of elsif
-				else {
+		}    # End of foreach
+	}    # End of case
 
-					# Ran out of resources
-					die "Error: Could not fork\n";
-				}
+	# Changes zVM user directory entry
+	elsif ( $command eq "chvm" ) {
+		foreach (@nodes) {
+			$pid = fork();
 
-			}    # End of foreach
-		}    # End of case
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
 
-		# Removes zVM virtual server
-		case "rmvm" {
-			foreach (@nodes) {
-				$pid = fork();
+			# Child process
+			elsif ( $pid == 0 ) {
+				changeVM( $callback, $_, $args );
 
-				# Parent process
-				if ($pid) {
-					push( @children, $pid );
-				}
+				# Exit process
+				exit(0);
+			}
+			else {
 
-				# Child process
-				elsif ( $pid == 0 ) {
-					removeVM( $callback, $_ );
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
 
-					# Exit process
-					exit(0);
-				}
-				else {
+		}    # End of foreach
+	}    # End of case
 
-					# Ran out of resources
-					die "Error: Could not fork\n";
-				}
+	# Collects node information from one or more hardware control points.
+	elsif ( $command eq "rscan" ) {
+		foreach (@nodes) {
+			$pid = fork();
 
-			}    # End of foreach
-		}    # End of case
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
 
-		# Lists zVM user directory entry
-		case "lsvm" {
-			foreach (@nodes) {
-				$pid = fork();
+			# Child process
+			elsif ( $pid == 0 ) {
+				scanVM( $callback, $_ );
 
-				# Parent process
-				if ($pid) {
-					push( @children, $pid );
-				}
+				# Exit process
+				exit(0);
+			}
+			else {
 
-				# Child process
-				elsif ( $pid == 0 ) {
-					listVM( $callback, $_ );
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
 
-					# Exit process
-					exit(0);
-				}
-				else {
-
-					# Ran out of resources
-					die "Error: Could not fork\n";
-				}
-
-			}    # End of foreach
-		}    # End of case
-
-		# Changes zVM user directory entry
-		case "chvm" {
-			foreach (@nodes) {
-				$pid = fork();
-
-				# Parent process
-				if ($pid) {
-					push( @children, $pid );
-				}
-
-				# Child process
-				elsif ( $pid == 0 ) {
-					changeVM( $callback, $_, $args );
-
-					# Exit process
-					exit(0);
-				}
-				else {
-
-					# Ran out of resources
-					die "Error: Could not fork\n";
-				}
-
-			}    # End of foreach
-		}    # End of case
-
-		# Collects node information from one or more hardware control points.
-		case "rscan" {
-			foreach (@nodes) {
-				$pid = fork();
-
-				# Parent process
-				if ($pid) {
-					push( @children, $pid );
-				}
-
-				# Child process
-				elsif ( $pid == 0 ) {
-					scanVM( $callback, $_ );
-
-					# Exit process
-					exit(0);
-				}
-				else {
-
-					# Ran out of resources
-					die "Error: Could not fork\n";
-				}
-
-			}    # End of foreach
-		}    # End of case
-	}    # End of switch
+		}    # End of foreach
+	}    # End of case
 
 	# Wait for all processes to end
 	foreach (@children) {
@@ -559,6 +554,95 @@ sub changeVM {
 		$out = `ssh $hcp $::DIR/deleteipl $userId`;
 	}
 
+	# formatdisk [address] [multi password]
+	elsif ( $args->[0] eq "--formatdisk" ) {
+
+		# Get disk address
+		my $addr    = $args->[1];
+		my $lnkAddr = $addr + 1000;
+		my $multiPw = $args->[2];
+
+		# Check if there is an existing address (disk address)
+		$out = xCAT::zvmUtils->isAddressUsed( $hcp, $addr );
+
+		# If there is an existing address
+		while ( $out == 0 ) {
+
+			# Generate a new address
+			# Sleep 2 seconds to let existing disk appear
+			sleep(2);
+			$lnkAddr = $lnkAddr + 1;
+			$out = xCAT::zvmUtils->isAddressUsed( $hcp, $lnkAddr );
+		}
+
+		# Load VMCP module
+		$out = xCAT::zvmCPUtils->loadVmcp($node);
+
+		# Link target disk
+		$out = `ssh -o ConnectTimeout=5 $hcp vmcp link $userId $addr $lnkAddr MW $multiPw`;
+
+		# Check for errors
+		my $rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
+		if ( $rtn == -1 ) {
+			xCAT::zvmUtils->printLn( $callback, "Linking disk... Failed" );
+			xCAT::zvmUtils->printLn( $callback, "$out" );
+			return;
+		}
+
+		# Enable disk
+		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $lnkAddr );
+
+		# Determine device node
+		$out = `ssh $hcp cat /proc/dasd/devices | grep ".$lnkAddr("`;
+		my @parms   = split( ' ', $out );
+		my $devNode = $parms[6];
+
+		# Format target disk
+		$out = `ssh $hcp dasdfmt -b 4096 -y -f /dev/$devNode`;
+
+		# Check for errors
+		$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
+		if ( $rtn == -1 ) {
+			xCAT::zvmUtils->printLn( $callback, "Formating disk... Failed" );
+			xCAT::zvmUtils->printLn( $callback, "$out" );
+
+			# Disable disk
+			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $lnkAddr );
+
+			# Detatch disk
+			$out = `ssh -o ConnectTimeout=5 $hcp vmcp det $lnkAddr`;
+
+			# Check for errors
+			$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
+			if ( $rtn == -1 ) {
+				xCAT::zvmUtils->printLn( $callback, "Detaching disk... Failed" );
+				xCAT::zvmUtils->printLn( $callback, "$out" );
+				return;
+			}
+
+			return;
+		}
+		else {
+			xCAT::zvmUtils->printLn( $callback, "Formating disk... Done" );
+		}
+
+		# Disable disk
+		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $lnkAddr );
+
+		# Detatch disk
+		$out = `ssh -o ConnectTimeout=5 $hcp vmcp det $lnkAddr`;
+
+		# Check for errors
+		$rtn = xCAT::zvmUtils->isOutputGood( $callback, $out );
+		if ( $rtn == -1 ) {
+			xCAT::zvmUtils->printLn( $callback, "Detaching disk... Failed" );
+			xCAT::zvmUtils->printLn( $callback, "$out" );
+			return;
+		}
+
+		$out = "";
+	}
+
 	# grantvswitch [VSwitch]
 	elsif ( $args->[0] eq "--grantvswitch" ) {
 		my $vsw = $args->[1];
@@ -571,8 +655,8 @@ sub changeVM {
 		$out = `ssh $hcp $::DIR/disconnectnic $userId $addr`;
 	}
 
-	# removemdisk [virtual device address]
-	elsif ( $args->[0] eq "--removemdisk" ) {
+	# removedisk [virtual device address]
+	elsif ( $args->[0] eq "--removedisk" ) {
 		my $addr = $args->[1];
 		$out = `ssh $hcp $::DIR/removemdisk $userId $addr`;
 	}
@@ -945,7 +1029,7 @@ sub listVM {
 	}
 
 	# Get virtual server directory entry
-	my $out = `ssh $hcp $::DIR/getimagerecords $userId`;
+	my $out = `ssh $hcp $::DIR/getuserentry $userId`;
 	xCAT::zvmUtils->printLn( $callback, "$out" );
 
 	return;
