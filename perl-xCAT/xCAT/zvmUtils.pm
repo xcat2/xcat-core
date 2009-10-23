@@ -457,7 +457,7 @@ sub getMdisks {
 		return;
 	}
 
-	my $out = `ssh $hcp $dir/getimagerecords $userId`;
+	my $out = `ssh $hcp $dir/getuserentry $userId`;
 
 	# Get MDISK statements
 	my @lines = split( '\n', $out );
@@ -586,7 +586,7 @@ sub saveDirEntryNoDisk {
 		return;
 	}
 
-	my $out = `ssh $hcp $dir/getimagerecords $userId`;
+	my $out = `ssh $hcp $dir/getuserentry $userId`;
 
 	# Create a file to save output
 	open( DIRENTRY, ">$file" );
