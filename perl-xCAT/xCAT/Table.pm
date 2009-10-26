@@ -88,7 +88,11 @@ sub dbc_submit {
     $request->{'wantarray'} = wantarray();
     my $data = freeze($request);
     $data.= "\nENDOFFREEZEQFVyo4Cj6Q0v\n";
-    my $clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120 );
+    my $clisock;
+    while(!($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120) ) ) {
+        #print "waiting for clisock to be available\n";
+        sleep 0.1;
+    }
     unless ($clisock) {
         use Carp qw/cluck/;
         cluck();
