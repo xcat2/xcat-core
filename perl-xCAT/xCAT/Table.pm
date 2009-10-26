@@ -88,11 +88,7 @@ sub dbc_submit {
     $request->{'wantarray'} = wantarray();
     my $data = freeze($request);
     $data.= "\nENDOFFREEZEQFVyo4Cj6Q0v\n";
-    my $clisock;
-    while(!($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120) ) ) {
-        #print "waiting for clisock to be available\n";
-        sleep 0.1;
-    }
+    my $clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120 );
     unless ($clisock) {
         use Carp qw/cluck/;
         cluck();
@@ -133,6 +129,13 @@ sub init_dbworker {
         $_->{InactiveDestroy} = 1;
         undef $_;
     }
+    $::XCAT_DBHS={};
+    $dbobjsforhandle={};#TODO: It's not said explicitly, but this means an 
+    #existing TABLE object is useless if going into db worker.  Table objects
+    #must be recreated after the transition.  Only xcatd should have to
+    #worry about it.  This may warrant being done better, making a Table
+    #object meaningfully survive in much the same way it survives a DB handle
+    #migration in handle_dbc_request
 
 
     $dbworkerpid = fork;
@@ -233,16 +236,25 @@ sub handle_dbc_request {
     my @args = @{$request->{args}};
     my $autocommit = $request->{autocommit};
     my $dbindex;
-    foreach $dbindex (keys %{$::XCAT_DBHS}) {
-        unless ($::XCAT_DBHS->{$dbindex}) { next; }
+    foreach $dbindex (keys %{$::XCAT_DBHS}) { #Go through the current open DB handles
+        unless ($::XCAT_DBHS->{$dbindex}) { next; } #If we have a stale dbindex entry skip it (should no longer happen with additions to init_dbworker
         unless ($::XCAT_DBHS->{$dbindex} and $::XCAT_DBHS->{$dbindex}->ping) {
-            my @afflictedobjs = @{$dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}}};
-            my $oldhandle = $::XCAT_DBHS->{$dbindex};
-            $::XCAT_DBHS->{$dbindex} = $::XCAT_DBHS->{$dbindex}->clone();
-            foreach (@afflictedobjs) { 
+            #We have a database that we were unable to reach, migrate database 
+            #handles out from under table objects
+            my @afflictedobjs = (); #Get the list of objects whose database handle needs to be replaced
+            if (defined $dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}}) {
+                @afflictedobjs = @{$dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}}};
+            } else {
+                die "DB HANDLE TRACKING CODE HAS A BUG";
+            }
+            my $oldhandle = $::XCAT_DBHS->{$dbindex}; #store old handle off 
+            $::XCAT_DBHS->{$dbindex} = $::XCAT_DBHS->{$dbindex}->clone(); #replace broken db handle with nice, new, working one
+            $dbobjsforhandle->{$::XCAT_DBHS->{$dbindex}} = $dbobjsforhandle->{$oldhandle}; #Move the map of depenednt objects to the new handle
+            foreach (@afflictedobjs) {  #migrate afflicted objects to the new DB handle
                 $$_->{dbh} = $::XCAT_DBHS->{$dbindex};
             }   
-            $oldhandle->disconnect();
+            delete $dbobjsforhandle->{$oldhandle}; #remove the entry for the stale handle
+            $oldhandle->disconnect(); #free resources associated with dead handle
         }   
     }   
     if ($functionname eq 'new') {
@@ -552,7 +564,7 @@ sub new
         if ($xcatcfg =~ /^SQLite:/)
         {
             $self->{backend_type} = 'sqlite';
-            $self->{realautocommit} = 0; #We will emulate autocommit if autocommit is requested
+            $self->{realautocommit} = 1; #Regardless of autocommit semantics, only electively do autocommit due to SQLite locking difficulties
             my @path = split(':', $xcatcfg, 2);
             unless (-e $path[1] . "/" . $self->{tabname} . ".sqlite" || $create)
             {
@@ -587,7 +599,7 @@ sub new
         #This for now is ok, as either we aren't in DB worker mode, in which case this structure would be short lived...
         #or we are in db worker mode, in which case Table objects live indefinitely
         #TODO: be able to reap these objects sanely, just in case
-        push @{$dbobjsforhandle->{$::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{autocommit}}}},\$self;
+        push @{$dbobjsforhandle->{$::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{realautocommit}}}},\$self;
           #DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, {AutoCommit => $autocommit});
         if ($xcatcfg =~ /^SQLite:/)
         {
@@ -777,9 +789,6 @@ sub updateschema
             my $stmt =
                   "ALTER TABLE " . $self->{tabname} . " ADD $dcol $datatype";
             $self->{dbh}->do($stmt);
-            if ($self->{autocommit} and not $self->{realautocommit}) {
-                $self->{dbh}->commit;
-            }
         }
     }
 
@@ -871,9 +880,6 @@ sub updateschema
 		$str = "DROP TABLE $btn";
 		$self->{dbh}->do($str);
 	    }
-        if ($self->{autocommit} and not $self->{realautocommit}) {
-            $self->{dbh}->commit;
-        }
 	}
     }
 }
@@ -971,6 +977,10 @@ sub addAttribs
     if ($dbworkerpid) {
         return dbc_call($self,'addAttribs',@_);
     }
+    if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=1;
+        $self->{dbh}->{AutoCommit}=0;
+    }
     my $key    = shift;
     my $keyval = shift;
     my $elems  = shift;
@@ -1016,9 +1026,6 @@ sub addAttribs
         xCAT::NotifHandler->notify("a", $self->{tabname}, [0],
                                           \%new_notif_data);
     }
-    if ($self->{autocommit} and not $self->{realautocommit}) {
-        $self->{dbh}->commit();
-    }
     $sth->finish();
 
 }
@@ -1055,6 +1062,10 @@ sub rollback
         return dbc_call($self,'rollback',@_);
     }
     $self->{dbh}->rollback;
+    if ($self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=0;
+        $self->{dbh}->{AutoCommit}=1;
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -1088,6 +1099,10 @@ sub commit
         return dbc_call($self,'commit',@_);
     }
     $self->{dbh}->commit;
+    if ($self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=0;
+        $self->{dbh}->{AutoCommit}=1;
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -1151,6 +1166,10 @@ sub setAttribs
     my @qargs   = ();
     my $query;
     my $data;
+    if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=1;
+        $self->{dbh}->{AutoCommit}=0;
+    }
 
     if (($pKeypairs != undef) && (keys(%keypairs)>0)) {
 	foreach (keys %keypairs)
@@ -1239,9 +1258,6 @@ sub setAttribs
             return (undef, $sth->errstr);
         }
 	    $sth->finish;
-        if ($self->{autocommit} and not $self->{realautocommit}) {
-            $self->{dbh}->commit;
-        }
     }
     else
     {
@@ -1285,9 +1301,6 @@ sub setAttribs
             return (undef, $sth->errstr);
         }
 	    $sth->finish;
-        if ($self->{autocommit} and not $self->{realautocommit}) {
-            $self->{dbh}->commit();
-        }
     }
 
     #notify the interested parties
@@ -1346,6 +1359,10 @@ sub setAttribsWhere
     my @bind  = ();
     my $action;
     my @notif_data;
+    if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=1;
+        $self->{dbh}->{AutoCommit}=0;
+    }
     my $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE " . $where_clause;
     my @qargs   = ();
     my $query = $self->{dbh}->prepare($qstring);
@@ -1404,9 +1421,6 @@ sub setAttribsWhere
                                  \@notif_data, \%new_notif_data);
     }
     $sth->finish;
-    if ($self->{autocommit} and not $self->{realautocommit}) {
-        $self->{dbh}->commit;
-    }
     return 0;
 }
 
@@ -1514,7 +1528,7 @@ sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
     #TODO: only clear cache if ref count mentioned in build_cache is 1, otherwise decrement ref count
     my $self = shift;
     if ($dbworkerpid) {
-        return dbc_call($self,'_clear_cache',$_);
+        return dbc_call($self,'_clear_cache',@_);
     }
     if ($self->{_cache_ref} > 1) { #don't clear the cache if there are still live references
         $self->{_cache_ref} -= 1;
@@ -2170,6 +2184,10 @@ sub delEntries
     }
     my $keyref = shift;
     my %keypairs;
+    if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        $self->{intransaction}=1;
+        $self->{dbh}->{AutoCommit}=0;
+    }
     if ($keyref)
     {
         %keypairs = %{$keyref};
