@@ -1584,10 +1584,10 @@ sub xCATdB {
 
             my $values = join( ",",
                lc($type),$name,$id,$model,$serial,$name,$prof,$frame,$ips );
-            xCAT::PPCdb::add_ppc( lc($type), [$values] );
+            xCAT::PPCdb::add_ppc( lc($type), [$values],1 );
         }
         elsif ( $type =~ /^(HMC|IVM)$/ ) {
-            xCAT::PPCdb::add_ppchcp( lc($type), $name );
+            xCAT::PPCdb::add_ppchcp( lc($type), $name,1 );
         }
         elsif ( $type =~ /^FSP$/ ) {
             ########################################
@@ -1666,7 +1666,7 @@ sub xCATdB {
 
             my $values = join( ",",
                lc($type),$name,$cageid,$model,$serial,$name,$prof,$frame,$ips );
-            xCAT::PPCdb::add_ppc( "fsp", [$values] );
+            xCAT::PPCdb::add_ppc( "fsp", [$values],1 );
         }
         elsif ( $type =~ /^(RSA|MM)$/ ) {
             xCAT::PPCdb::add_systemX( $type, $data );

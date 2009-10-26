@@ -44,6 +44,7 @@ sub add_ppc {
 
     my $hwtype   = shift;
     my $values   = shift;
+    my $not_overwrite = shift;
     my @tabs     = qw(ppc vpd nodehm nodelist nodetype); 
     my %db       = ();
     my %nodetype = (
@@ -85,6 +86,41 @@ sub add_ppc {
             $db{nodetype}{commit} = 1;
         }
         ###############################
+        # If cannot be overwroten, get
+        # old data firstly
+        ###############################
+        my $mgt;
+        my $cons;
+        if ( $not_overwrite)
+        {
+            my $enthash = $db{ppc}->getNodeAttribs( $name, [qw(hcp id pprofile parent)]);
+            if ( $enthash )
+            {
+                $server   = $enthash->{hcp} if ($enthash->{hcp});
+                $id       = $enthash->{id}  if ( $enthash->{id});
+                $pprofile = $enthash->{pprofile} if ( $enthash->{pprofile});
+                $parent   = $enthash->{parent} if ( $enthash->{parent});
+            }
+            $enthash = $db{nodehm}->getNodeAttribs( $name, [qw(mgt)]);
+            if ( $enthash )
+            {
+                $mgt= $enthash->{mgt} if ( $enthash->{mgt});
+                $cons= $enthash->{cons} if ( $enthash->{cons});
+            }
+            $enthash = $db{vpd}->getNodeAttribs( $name, [qw(mtm serial)]);
+            if ( $enthash )
+            {
+                $model = $enthash->{mtm} if ( $enthash->{mtm});
+                $serial= $enthash->{serial} if ( $enthash->{serial});
+            }
+        }
+        else
+        {
+            $mgt = $hwtype;
+            $cons = $hwtype;
+        }
+
+        ###############################
         # Update ppc table
         ###############################
         if ( $type =~ /^(fsp|bpa|lpar)$/ ) {
@@ -106,9 +142,9 @@ sub add_ppc {
             # Update nodehm table
             ###########################
             if($type =~ /^lpar$/){
-                $db{nodehm}->setNodeAttribs( $name, {mgt=>$hwtype,cons=>$hwtype} );
+                $db{nodehm}->setNodeAttribs( $name, {mgt=>$mgt,cons=>$cons} );
             } else {
-                $db{nodehm}->setNodeAttribs( $name, {mgt=>$hwtype} );
+                $db{nodehm}->setNodeAttribs( $name, {mgt=>$mgt} );
             }
             $db{nodehm}{commit} = 1;
         }
