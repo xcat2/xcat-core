@@ -129,6 +129,14 @@ if ( $PLTFRM eq "AIX" ) {
         exit;
     }
 
+    #Check whether the ml0 is available
+    my $lsdev_cmd = "lsdev -C | grep ml0 2>&1 >/dev/null";
+    `$lsdev_cmd`;
+    if ( $? ) {
+        my $cfgmgr_cmd = "cfgmgr 2>&1 >/dev/null";
+        `$cfgmgr_cmd`;
+    }
+
     my $chdev_cmd = "chdev -l ml0 -a state=detach 2>&1";
     runcmd($chdev_cmd);
 
