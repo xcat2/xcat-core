@@ -1155,6 +1155,7 @@ sub defmk
                   xCAT::Table->new('nodelist', -create => 1, -autocommit => 0);
 
                 my $newgroups;
+                my $changed=0;
                 foreach my $n (@memberlist)
                 {
                     if ($::verbose)
@@ -1192,11 +1193,13 @@ sub defmk
                     if ($newgroups)
                     {
                         $tab->setNodeAttribs($n, {groups => $newgroups});
+			$changed=1;
                     }
 
                 }
-
-                $tab->commit;
+		if ($changed) {
+		    $tab->commit;
+		}
 
 
             }

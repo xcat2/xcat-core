@@ -224,7 +224,7 @@ sub getobjattrs
 						}
 					}
 				}
-				$thistable->commit;
+				#$thistable->commit;
 			}
 	  	}
 	}
@@ -614,7 +614,7 @@ sub getDBtable
 
         @{$::TableHash{$table}} = @rows;
 
-    	$thistable->commit;
+    	#$thistable->commit;
 
 	} # end if not cached
 
