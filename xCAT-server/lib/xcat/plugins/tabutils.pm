@@ -879,6 +879,7 @@ sub nodech
         my $tabhdl = xCAT::Table->new($tab, -create => 1, -autocommit => 0);
         if ($tabhdl)
         {
+	    my $changed=0;
             my @entities;
             if ($groupmode) {
                 @entities = @groups;
@@ -889,6 +890,7 @@ sub nodech
             foreach $entity (@entities) {
                 if ($deletemode) {
                     $tabhdl->delEntries({'node' => $entity});
+		    $changed=1;
                 } else {
                     #$tabhdl->setNodeAttribs($_,$tables{$tab});
                     my %uhsh;
@@ -983,11 +985,14 @@ sub nodech
                                 $clrhash{$_}="";    
                             }
                             $tabhdl->setAttribs({node=>$entity},\%uhsh);
+			    $changed=1;
                             $nodes = [noderange($entity)];
                             unless (scalar @$nodes) { next; }
                             $tabhdl->setNodesAttribs($nodes,\%clrhash);
+			    $changed=1;
                         } else {
                             my @rc = $tabhdl->setNodeAttribs($entity, \%uhsh);
+			    $changed=1;
                             if (not defined($rc[0])) {
                                 $callback->({error => "DB error " . $rc[1],errorcode=>1});
                             }
@@ -995,7 +1000,9 @@ sub nodech
                     }
                 }
             }
-            $tabhdl->commit;
+	    if ($changed) {
+		$tabhdl->commit;
+	    }
         }
         else
         {
