@@ -622,7 +622,9 @@ sub new
                                       $xCAT::Schema::tabspec{$self->{tabname}},
                       $xcatcfg);
                     $self->{dbh}->do($str);
-                    $self->{dbh}->commit;
+                    if (!$self->{dbh}->{AutoCommit}) {
+                        $self->{dbh}->commit;
+                    }
                 }
                 else { return undef; }
             }
