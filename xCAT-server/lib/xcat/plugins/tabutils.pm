@@ -236,6 +236,8 @@ sub noderm
 
     if ($args) {
         @ARGV = @{$args};
+    } else {
+        @ARGV = ();
     }
     if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) { $noderm_usage->(1); return; }
 
