@@ -20,9 +20,11 @@ use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
 use POSIX qw(ceil);
 use Socket;
+use Sys::Hostname;
 use strict;
 require xCAT::Schema;
-require Data::Dumper;
+#require Data::Dumper;
+use Data::Dumper;
 require xCAT::NodeRange;
 require DBI;
 
@@ -166,7 +168,6 @@ sub myxCATname
 sub is_me
 {
     my ($class, $name) = @_;
-	#my $name = shift;
 
 	# convert to IP
 	my $nameIP = inet_ntoa(inet_aton($name));
@@ -229,6 +230,7 @@ sub get_nim_attr_val
 	my $attrname = shift;
 	my $callback = shift;
 	my $target = shift;
+	my $sub_req = shift;
 
 	if (!$target) {
 		$target = xCAT::InstUtils->getnimprime();
@@ -236,7 +238,7 @@ sub get_nim_attr_val
 	chomp $target;
 
 	my $cmd = "/usr/sbin/lsnim -a $attrname -Z $resname 2>/dev/null";
-    my $nout = xCAT::InstUtils->xcmd($callback, "xdsh", $target, $cmd, 0);
+    my $nout = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $cmd, 0);
     if ($::RUNCMD_RC  != 0)
     {
         my $rsp;
@@ -251,8 +253,6 @@ sub get_nim_attr_val
     return $loc;
 }
 
-
-
 #-------------------------------------------------------------------------------
 
 =head3	xcmd
@@ -262,11 +262,12 @@ sub get_nim_attr_val
  	Arguments:
 
    	Returns:
-		Output of runcmd or runxcmd or blank.
+		Output of runcmd or runxcmd or undef.
 
    	Comments:
 
-	ex.	xCAT::InstUtils->xcmd($callback, "xdcp", $nimprime, $cmd);
+	ex.	xCAT::InstUtils->xcmd($callback, $sub_req, "xdcp", $nimprime, $doarray, $cmd);
+
 =cut
 
 #-------------------------------------------------------------------------------
@@ -274,6 +275,7 @@ sub xcmd
 {
 	my $class = shift;
 	my $callback = shift;
+	my $sub_req = shift;
 	my $xdcmd = shift;		# xdcp or xdsh
 	my $target = shift;		# the node to run it on
 	my $cmd = shift; 		# the actual cmd to run
@@ -293,35 +295,25 @@ sub xcmd
         # need xdsh or xdcp
         my @snodes;
         push( @snodes, $target );
+
         $output=xCAT::Utils->runxcmd(
                                 {
                                     command => [$xdcmd],
                                     node    => \@snodes,
                                     arg     => [ $cmd ]
                                 },
-                                $::sub_req,
+                                $sub_req,
                                 $exitcode, $returnformat
         );
     }
 
-	if ($::VERBOSE) {
-		my $rsp;
-		if(ref($output) eq 'ARRAY'){
-			if (scalar(@$output)) {
-				push @{$rsp->{data}}, "Running command \'$cmd\' on \'$target\'\n";
-				push @{$rsp->{data}}, "Output from command: \'@$output\'.\n";
-				xCAT::MsgUtils->message("I", $rsp, $callback);
-			}
-		} else {
-			if ($output) {	
-				push @{$rsp->{data}}, "Running command \'$cmd\' on \'$target\'\n";
-				push @{$rsp->{data}}, "Output from command: \'$output\'.\n";
-				xCAT::MsgUtils->message("I", $rsp, $callback);
-			}
-		}
+	if ($doarray) {
+		return @$output;
+	} else {
+		return $output;
 	}
 
-	return $output;
+	return undef;
 }
 
 #----------------------------------------------------------------------------
@@ -337,14 +329,14 @@ sub xcmd
 sub  readBNDfile
 {
 
-	my ($class, $callback, $BNDname, $nimprime) = @_;
+	my ($class, $callback, $BNDname, $nimprime, $sub_req) = @_;
 
 	my $junk;
 	my @pkglist,
 	my $pkgname;
 
 	# get the location of the file from the NIM resource definition
-	my $bnd_file_name = xCAT::InstUtils->get_nim_attr_val($BNDname, 'location', $callback, $nimprime);
+	my $bnd_file_name = xCAT::InstUtils->get_nim_attr_val($BNDname, 'location', $callback, $nimprime, $sub_req);
 
 	# open the file
 	unless (open(BNDFILE, "<$bnd_file_name")) {
@@ -366,5 +358,150 @@ sub  readBNDfile
 	return (0, \@pkglist, $bnd_file_name);
 }
 
+#----------------------------------------------------------------------------
+
+=head3   restore_request
+
+		Restores an xcatd request from a remote management server
+		into the proper format by removing arrays that were added by
+		XML and removing tags that were added to numeric hash keys.
+
+		Arguments:
+        Returns:
+                ptr to hash
+                undef
+        Globals:
+        Example:
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub restore_request
+{
+	my $class = shift;
+	my $in_struct = shift;
+	my $callback = shift;
+
+	my $out_struct;
+
+	if (ref($in_struct) eq "ARRAY") {
+		# flatten the array it it has only one element 
+		#  otherwise leave it alone
+		if ( scalar(@$in_struct) == 1) {
+    		return (xCAT::InstUtils->restore_request($in_struct->[0]));
+		} else {
+			return ($in_struct);
+		}
+	}
+
+	if (ref($in_struct) eq "HASH") {
+    	foreach my $struct_key (keys %{$in_struct}) {
+        	my $stripped_key = $struct_key;
+        	$stripped_key =~ s/^xxXCATxx(\d)/$1/;
+			# do not flatten the arg or node arrays
+			if (($stripped_key =~ /^arg$/) || ($stripped_key =~ /^node$/)){
+				$out_struct->{$stripped_key} = $in_struct->{$struct_key};
+			} else {
+        		$out_struct->{$stripped_key} = xCAT::InstUtils->restore_request($in_struct->{$struct_key});
+			}
+    	}
+    	return $out_struct;
+	}
+
+	if ((ref($in_struct) eq "SCALAR") || (ref(\$in_struct) eq "SCALAR")) {
+    	return ($in_struct);
+	}
+
+	print "Unsupported data reference in restore_request().\n";
+	return undef;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   taghash
+
+		Add a non-numeric tag to any hash keys that are numeric.  
+
+		Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Example:
+        Comments:
+			XML will choke on numeric values.  This happens when including
+			a hash in a request to a remote service node.
+
+=cut
+
+#-----------------------------------------------------------------------
+sub taghash
+{
+	my ($class, $hash) = @_;
+
+    if (ref($hash) eq "HASH") {
+        foreach my $k (keys %{$hash}) {
+            if ($k =~ /^(\d)./ ) {
+                my $tagged_key = "xxXCATxx" . $k;
+                $hash->{$tagged_key} = $hash->{$k};
+				delete($hash->{$k});
+            }
+        }
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3  getOSnodes
+			Split a noderange into arrays of AIX and Linux nodes.
+
+    Arguments:
+			\@noderange - reference to onde list array
+    Returns:
+		$rc -
+			1 - yes, all the nodes are AIX
+			0 - no, at least one node is not AIX
+		\@aixnodes - ref to array of AIX nodes
+		\@linuxnodes - ref to array of Linux nodes
+		
+
+    Comments:
+		Based on "os" attr of node definition.  This assumes that the "os" 
+		attribute of AIX nodes will always be set!
+
+	Example:
+    	my ($rc, $AIXnodes, $Linuxnodes) 
+					= xCAT::InstUtils->getOSnodes(\@noderange) 
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub getOSnodes
+{
+	my ($class, $nodes) = @_;
+
+	my @nodelist = @$nodes;
+	my $rc=1;  # all AIX nodes
+	my @aixnodes;
+	my @linuxnodes;
+
+	my $nodetab = xCAT::Table->new('nodetype');
+    my $os = $nodetab->getNodesAttribs( \@nodelist, [ 'node', 'os' ]);
+	foreach my $n (@nodelist) {
+		if ( ($os->{$n}->[0]->{os} ne "AIX") && ($os->{$n}->[0]->{os} ne "aix")) {
+			push(@linuxnodes, $n);
+			$rc = 0;
+		} else {
+			push(@aixnodes, $n);
+		}
+	}
+	$nodetab->close;
+
+	return ($rc, \@aixnodes, \@linuxnodes);
+}
 
 1;
