@@ -1142,7 +1142,7 @@ sub gethost_from_url {
         {
             if ( $entry->{mtm} and $entry->{serial})
             {
-                $::VPD_TAB_CACHE{$entry->{mtm} . '*' . $entry->{serial}} = $entry->{ 'node'};
+                $::VPD_TAB_CACHE{$entry->{ 'node'}} = $entry->{mtm} . '*' . $entry->{serial};
             }
         }
     }
@@ -1152,7 +1152,13 @@ sub gethost_from_url {
         if ( $rsp =~ /\(serial-number=(.*?)\)/)
         {
             my $sn = $1;
-            return $::VPD_TAB_CACHE{ $mtm . '*' . $sn} . "($ip)" if ( exists $::VPD_TAB_CACHE{ $mtm . '*' . $sn});
+            foreach my $node ( keys %::VPD_TAB_CACHE ) {
+                if ( $::VPD_TAB_CACHE{$node} eq $mtm . '*' . $sn ) {
+
+                    delete $::VPD_TAB_CACHE{$node};
+                    return $node . "($ip)";
+                }
+            }
         }
     }
 
@@ -1187,7 +1193,6 @@ return undef if ($opt{H});
         $host = getFactoryHostname($type,$mtm,$sn,$rsp);
 #return( $ip );
     }
-
     #######################################
     # Convert hostname to short-hostname
     #######################################
@@ -1497,20 +1502,17 @@ sub parse_responses {
         {
             next;
         }
-        
+
         if (exists $hostname_record{$name})
         {
             #Name is duplicated
             my ($old_h, $old_ip) = @{$hostname_record{$name}};
-            if ( ! grep /^\Q$name\E$/, values %::VPD_TAB_CACHE)
-            {
-                #if the node has been defined, keep one for old node name
-                #otherwise create new node name
-                $outhash{$old_h}->[4] = $name . "-1" . "($old_ip)";
-                $outhash{$name . "-1" . "($old_ip)"} = $outhash{$old_h};
-                delete $outhash{$old_h};
-            }
-            
+            #if the node has been defined, keep one for old node name
+            #otherwise create new node name
+            $outhash{$old_h}->[4] = $name . "-1" . "($old_ip)";
+            $outhash{$name . "-1" . "($old_ip)"} = $outhash{$old_h};
+            delete $outhash{$old_h};
+
             $outhash{$h}->[4] = $name . "-2" . "($ip)";
             $outhash{$name . "-2" . "($ip)"} = $outhash{$h};
             delete $outhash{$h};
