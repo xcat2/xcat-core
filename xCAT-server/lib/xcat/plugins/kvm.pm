@@ -135,7 +135,11 @@ sub build_oshash {
         my @bootdevs = split(/[:,]/,$bootorder);
         my $bootnum = 0;
         foreach (@bootdevs) {
-            $rethash{boot}->[$bootnum]->{dev}=$_;
+            if ("net" eq $_ or "n" eq $_) {
+                $rethash{boot}->[$bootnum]->{dev}="network";
+            } else {
+                $rethash{boot}->[$bootnum]->{dev}=$_;
+            }
             $bootnum++;
         }
     } else {
