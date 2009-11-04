@@ -59,7 +59,9 @@ my %usage = (
     MPA specific:
        rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm]
     PPC specific:
-       rinv <noderange> [bus|config|serial|model|firm|all]",
+       rinv <noderange> [bus|config|serial|model|firm|all]
+    Blade specific:
+       rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]",
     "rsetboot" => 
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose]
        rsetboot [-h|--help|-v|--version]",

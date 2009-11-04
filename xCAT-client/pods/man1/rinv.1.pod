@@ -14,6 +14,10 @@ B<rinv> I<noderange> {B<pci>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<devic
 
 B<rinv> I<noderange> {B<bus>|B<config>|B<serial>|B<model>|B<firm>|B<all>}
 
+=head2 Blade specific:
+
+B<rinv> I<noderange> {B<mtm>|B<serial>|B<mac>|B<bios>|B<diag>|B<mprom>|B<mparom>|B<firm>|B<all>}
+
 =head1 B<Description>
 
 B<rinv>  retrieves  hardware  configuration  information from the on-board
@@ -55,6 +59,10 @@ Retrieves asset tag.  Usually it's the MAC address of eth0.
 =item B<vpd>
 
 Same as specifying model, serial, deviceid, and mprom.
+
+=item B<diag>
+
+Diagnostics information of firmware.
 
 =item B<mprom>
 
