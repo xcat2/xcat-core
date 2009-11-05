@@ -595,6 +595,7 @@ site => {
    "  SNsyncfiledir:\tThe directory on the Service Node, where xdcp will copy the files from the MN that will eventually be copied to the compute nodes. Default is /var/xcat/syncfiles.\n\n".
    "  snmpc:\tThe snmp community string that xcat should use when communicating with the switches.\n\n".
    "  svloglocal:\tsyslog on the service node does not get forwarded to the mgmt node - default is 0.\n\n".
+   "  useNmapfromMN:\tWhen set to yes, nodestat command should obtain the node status using nmap (if available) from the management node instead of the service node. This will improve the performance in a flat network. Default is no.\n\n".
    "  xcatconfdir:\t(default /etc/xcat)\n\n".
    "  xcatdport:\tThe port used by the xcatd daemon for client/server communication. Default is 3001.\n\n".
    "  xcatiport:\tThe port used by xcatd to receive install status updates from nodes. Default is 3002.\n\n".

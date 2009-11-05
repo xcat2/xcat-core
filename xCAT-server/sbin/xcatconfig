@@ -865,6 +865,8 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatconfdir site.value=$confdir;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=timezone site.value=$timezone;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=useNmapfromMN site.value=no;";
 
         if ($::osname eq 'AIX')
         {

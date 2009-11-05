@@ -85,8 +85,18 @@ sub preprocess_request
     my $service  = "xcat";
     my @requests;
     if ($nodes){ 
-      if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') { 
-        return [$req]; #For now, do not distribute, nodestat seems to lose accuracy and slow down distributed, if using nmap
+      if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') {
+	  my $usenmapfrommn=0;
+	  my $sitetab = xCAT::Table->new('site');
+	  if ($sitetab) {
+	      (my $ref) = $sitetab->getAttribs({key => 'useNmapfromMN'}, 'value');
+	      if ($ref) {
+		  if ($ref->{value} =~ /1|yes|YES|Y|y/) { $usenmapfrommn=1; }
+	      }
+	  }
+	  if ($usenmapfrommn) {       
+	      return [$req]; #do not distribute, nodestat seems to lose accuracy and slow down distributed, if using nmap
+	  }
       }
       # find service nodes for requested nodes
       # build an individual request for each service node
