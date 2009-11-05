@@ -380,9 +380,8 @@ padding:10px 2px;
 #monlist_table {
     margin-right: 30px;
     margin-left: 30px;
-    width: 850px;
+    width: 910px;
     padding: 10px;
-    float: left;
     display: block;
 }
 
@@ -476,11 +475,3 @@ padding:10px 2px;
     float: right;
 }
 
-#plugin_desc {
-    width: 880px;
-    margin: 5px;
-    padding: 5px;
-    float: left;
-    background-color:#FAF8CC;
-    text-align: left;
-}

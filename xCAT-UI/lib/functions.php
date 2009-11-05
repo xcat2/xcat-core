@@ -1,7 +1,7 @@
 <?php
 
 session_start();  
-
+header("Cache-control: private"); 
 
 function getTabNames() {
         $xml = docmd('tabdump','',NULL);

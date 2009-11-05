@@ -20,19 +20,19 @@
          list($name, $stat, $nodemonstatus) = preg_split("/\s+/", $data);
          $ooe = $ooe%2;
          echo "<tr class='ListLine$ooe' id='row$line'>";
-         echo "<td><input type='radio' name='plugins' value='$name' /></td>";
-         echo "<td ><a class='description' href='#'>$name</a></td>";
+         echo "<td >$name</td>";
          echo "<td >$stat</td>";
          if(isset($nodemonstatus)) { echo "<td >Enabled</td>";}else {echo "<td >Disabled</td>";}
          echo "<td>";
-         $name_str = "\"$name\"";
+         insertButtons(array('label'=>'Configure', 'id'=>'configure', 'onclick'=>''));
+         echo "</td>";
+         echo "<td>";
+         $name_str = '"'.$name.'"';
          if($stat == "monitored") {
-             $act_str = "\"stop\"";
+             $act_str = '"stop"';
              insertButtons(array('label'=>'Stop', 'id'=>'stop', 'onclick'=>"monsetupAction($name_str, $act_str)"));
-             $act_str = "\"restart\"";
-             insertButtons(array('label'=>'Restart', 'id'=>'restart', 'onclick'=>"monsetupAction($name_str, $act_str)"));
          }else {
-             $act_str = "\"start\"";
+             $act_str = addslashes('"start"');
              insertButtons(array('label' => 'Start', 'id'=>'start', 'onclick' => "monsetupAction($name_str, $act_str)"));
          }
          echo "</td>";
@@ -81,18 +81,17 @@ function displayMonTable()
 <table id="tabTable" class="tabTable" cellspacing="1">
     <thead>
         <tr class="colHeaders">
-            <td></td>
-            <td>Plug-in Name</td>
-            <td>Status</td>
-            <td>Node Status Monitoring</td>
-            <td>Action</td>
+            <td><b>Plug-in Name</b></td>
+            <td><b>Status</b></td>
+            <td><b>Node Status Monitoring</b></td>
+            <td><b>Configure</b></td>
+            <td><b>Action</b></td>
         </tr>
     </thead>
 TOS1;
 echo <<<TOS9
 <script type="text/javascript">
-    showPluginOptions();
-    showPluginDescription();
+    hoverOnMonlist();
 </script>
 TOS9;
     echo '<tbody id="monlist">';
@@ -541,7 +540,7 @@ TOS1;
  */
 function displayNodeAppStatus($name)
 {
-    displayMapper(array('home'=>'main.php', 'monitor'=>''));
+    displayMapper(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php', 'Node Status Setup'=> ''));
     displayTips(array(
         "Enable/disable Node/App Status Monitoring by clicking the button",
         "In order to take affect, you have to START/RESTART the desired plugin"));

@@ -13,6 +13,7 @@ echo <<<EOS1
 <link rel="stylesheet" type="text/css" href="css/superfish.css" media="screen">
 <link rel="stylesheet" type="text/css" href="css/security.css" media="screen">
 <link rel="stylesheet" type="text/css" href="css/config.css" media="screen">
+<link rel="stylesheet" type="text/css" href="css/monitor.css" media="screen">
 <link rel="stylesheet" type="text/css" href="css/theme/jquery-ui-themeroller.css" media="screen">
 <link rel="stylesheet" type="text/css" href="js/jsTree/tree_component.css" media="screen">
 <script type="text/javascript" src="js/loading.js"></script>
@@ -98,16 +99,16 @@ echo <<<EOS4
     <a href="provision.php">provision</a>
    </li>
    <li>
-    <a>monitor</a>
+    <a href="monitor/monlist.php">monitor</a>
 	<ul>
    		<li>
     			<a href="monitor.php">syslog</a>
    		</li>
                 <li>
-                        <a href="monitor/monlist.php">Monitor Setup</a>
+                        <a href="monitor/rmc_monshow.php">Resource Performance</a>
                 </li>
                 <li>
-                        <a href="monitor/rmc_lsevent.php">View Events</a>
+                        <a href="monitor/rmc_lsevent.php">RMC Events</a>
                 </li>
 	</ul>
    </li>
@@ -537,13 +538,8 @@ echo <<<EOS
 </ul>
 <h1><a href='#' onclick='loadMainPage("monitor/monlist.php")'>Monitor</a></h1>
 <ul>
-    <li><a href='#' onclick='loadMainPage("monitor.php")'>Show syslog Entries</a></li>
-    <li><a href='#' onclick='loadMainPage("monitor/monlist.php")'>Monitor Setup</a></li>
-    <li><a href='#' onclick='loadMainPage("monitor/rmc_lsevent.php")'>View RMC Events Log</a></li>
-    <li>There's only text format for events' log</li>
-    <li><a href='#' onclick='loadMainPage("monitor/rmc_monshow.php")'>View RMC Performance</a></li>
-    <li>There're text/graphics formats for performance view</li>
-    <li>Monitoring Events/Performances by Monitoring Plugins, such as RMC...</li>
+    <li>Set up xCAT Monitoring Plug-in</a></li>
+    <li>Monitor Events/Performances by Plugins, such as RMC...</li>
     <li>This is still <b>UNDER DEVELOPMENT</b>.</li>
 </ul>
 </div>

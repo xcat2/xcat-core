@@ -9,7 +9,7 @@ require_once "$TOPDIR/lib/functions.php";
 require_once "$TOPDIR/lib/display.php";
 require_once "$TOPDIR/lib/monitor_display.php";
 
-displayMapper(array('home'=>'main.php', 'monitor' =>''));
+displayMapper(array('home'=>'main.php', 'monitor' =>'monitor/monlist.php', 'monshow'=>''));
 
 displayTips(array("Select the domain: the whole cluser or the compute nodes under \"<b>lpar</b>\",",
 "then select the desired attributes. click the \"View by Text\" button or the \"View by Graphics\" button"));

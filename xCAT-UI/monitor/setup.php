@@ -14,7 +14,6 @@ require_once "$TOPDIR/lib/monitor_display.php";
 
 $name = $_REQUEST['name'];
 $action = $_REQUEST['action'];
-
 //read the "monitoring" table to see whether node status monitoring is enable or not
 //$xml = docmd("webrun", "", array("gettab name=$name monitoring.nodestatmon"));
 //if(getXmlErrors($xml, $errors)) {

@@ -493,6 +493,8 @@ function showPluginOptions()
     });
 }
 
+
+//TODO: remove it
 function showPluginDescription()
 {
     $(".description").click(function(){
@@ -504,10 +506,25 @@ function showPluginDescription()
         })
     });
 }
+
+//TODO: when mouse hover the list of monitor plugins, the .ListLine_hover style will
+//be applied on the <tr>,
+function hoverOnMonlist()
+{
+    $(".tabTable tr").hover(
+        function() {
+            $(this).addClass("ListLine_hover");
+        },
+        function() {
+            $(this).removeClass("ListLine_hover");
+        }
+    );
+}
+
 function monsetupAction(plugin, action_val)
 {
     //plugin = the name of plugin
-    //action = "start" or "stop" or "restart"
+    //action = "start" or "stop"
     $.get("monitor/setup.php", {name: plugin, action: action_val}, function(data) {
         $.get("monitor/updateMonList.php", {}, function(data) {
             $("#monlist_table").html(data);

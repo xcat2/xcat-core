@@ -17,8 +17,6 @@ displayTips(array("Click the name of each plugin, you can get the plugin's descr
 //And, list all the monitoring plugins under the tree? Not sure now.
 displayMonTable();
 
-insertDiv("plugin_desc");
-
 insertDiv("options");
 
 ?>
