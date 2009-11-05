@@ -738,8 +738,10 @@ sub copycd
                 my @subparts = split /-/,   $parts[2];
                 $detdistname = "sles" . $subparts[0];
                 unless ($distname) { $distname = "sles" . $subparts[0] };
-            }elsif($prod =~ m/cselx 1.0-0/){
-			# GE healthcare special SuSE distribution
+		# check media.1/products for text.  
+		# the cselx is a special GE built version.
+		# openSUSE is the normal one.
+            }elsif($prod =~ m/cselx 1.0-0|openSUSE 11.1-0/){
 			$distname = "suse11";
                 	$detdistname = "suse11";
 		}
