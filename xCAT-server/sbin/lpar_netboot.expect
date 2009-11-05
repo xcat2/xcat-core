@@ -694,13 +694,29 @@ proc get_mac_addr { phandle } {
     # used to eliminate the spaces put in by the dump command.
     # state 2, mac-address on stack
     set done(2) 0
-    set cmd(2) "dump\r"
-    set msg(2) "$PROGRAM Status: mac-address displayed, stack empty\n"
-    set pattern(2) "(.*)(: )(.*)( :)(.*)(: ok)"
+    set cmd(2) ": dump-mac ( prop-addr prop-len -- ) \
+                cr  \
+                dup decode-bytes  2swap 2drop   ( data-addr data-len ) \
+                ( data-len ) 0 ?do \
+                    dup c@ 2 u.r                  ( data-addr ) \
+                    char+                        ( data-addr' ) \
+                loop \
+                drop \
+                cr \
+                ; \r"
+    set msg(2) "$PROGRAM Status: set command\n"
+    set pattern(2) "(.*)ok"
     set newstate(2) 3
 
-    # state 3, all done
-    set done(3) 1
+    set done(3) 0
+    set cmd(3) "dump-mac\r"
+    set msg(3) "$PROGRAM Status: mac-address displayed, stack empty\n"
+    set pattern(3) "dump-mac(.*)ok"
+    set newstate(3) 4
+
+
+    # state 4, all done
+    set done(4) 1
 
     set state 0
     set timeout 60     ;# shouldn't take long
@@ -769,8 +785,8 @@ proc get_mac_addr { phandle } {
         }
     }
     # if the state is 0, 1, or 2, an error occurred and the join will fail
-    if { $state == 3 } {
-        set mac_address [ join $expect_out(3,string) "" ]
+    if { $state == 4 } {
+        set mac_address [ join $expect_out(1,string) "" ]
         set rc 0
         return $mac_address
     } else {
