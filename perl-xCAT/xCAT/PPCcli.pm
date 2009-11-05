@@ -558,9 +558,9 @@ sub mkvterm {
     ##########################################
     # Success...
     # Give control to the user and intercept
-    # the Ctrl-X (\030), and "~." sequences.
+    # the Ctrl-X (\030).
     ##########################################
-    my $escape = "\030|~.";
+    my $escape = "\030";
     $ssh->send( "\r" );
     $ssh->interact( \*STDIN, $escape );
     
