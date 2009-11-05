@@ -94,26 +94,25 @@ window.onresize = function(){
 //Called on body load  
 
 var xStart = function(){  
-     myBar.addScript("jquery.min.js");  
      myBar.addScript("jsTree/jquery.listen.js");  
      myBar.addScript("jsTree/tree_component.js");  
      myBar.addScript("jsTree/jquery.cookie.js");  
-     myBar.addScript("noderangetree.js");  
      myBar.addScript("jsTree/css.js");  
      myBar.addScript("jquery.form.js");  
      myBar.addScript("jquery.jeditable.mini.js");  
      myBar.addScript("hoverIntent.js");  
      myBar.addScript("superfish.js");  
-     myBar.addScript("jquery-ui-all.min.js");  
-     myBar.addScript("xcat.js");
-     myBar.addScript("xcatauth.js");  
-     myBar.addScript("config.js");  
      myBar.addScript("jquery.tablesorter.js");
      myBar.addScript("jquery.flot.js");
      myBar.addScript("excanvas.js");
+     myBar.addScript("noderangetree.js");  
+     myBar.addScript("xcat.js");
+     myBar.addScript("xcatauth.js");  
+     myBar.addScript("config.js");  
      myBar.run();  
 };  
 //Called on click reset button  
 restart = function(){  
     window.location.reload();  
 };
+setTimeout("myBar.loaded('xcatauth.js')", 500);
