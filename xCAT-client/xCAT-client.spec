@@ -219,13 +219,6 @@ chmod 755 /etc/profile.d/xcat.*
 %else
 if [ "$1" = "1" ]; then #Only if installing for the first time..
 echo "
-# xCAT setup
-XCATROOT=$RPM_INSTALL_PREFIX0
-PATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin
-MANPATH=\$MANPATH:\$XCATROOT/share/man
-export XCATROOT PATH MANPATH" >>/etc/profile
-
-echo "
 # xCAT Perl setup
 PERL5LIB=/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi " >>/etc/environment
 fi
