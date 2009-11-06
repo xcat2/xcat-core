@@ -79,7 +79,7 @@ LoadBar.prototype.loaded = function(file) {
         //load the reset button to try one more time!  
 	//$(document).ready(function () {
 	injs();
-        document.getElementById("wrapper").style.display = "block";  
+        document.getElementById("wrapper").style.display = "none";  
 	//});
     }  
 };  

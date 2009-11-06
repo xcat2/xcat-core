@@ -12,6 +12,7 @@ function onlogin (data, textstatus) {
         $("#logstatus").text("Logged in successfully");
         //todo: nrtree.refresh(); // Fix tree potentiall broken through attempts to operate without auth
         $("#logdialog").dialog("close");
+	$("#wrapper").show();
         //window.location = 'index.php';	// it has remembered what page they were trying to go to
     } else {
         $("#logstatus").text("Authentication failure");
@@ -22,6 +23,7 @@ function onlogin (data, textstatus) {
 function logout() {
 	$.post("security/log.php",{logout:1})
 	$("#logstatus").html("");
+	$("#wrapper").hide();	//hide the current page
 	$("#logdialog").dialog("open");
 }
 
