@@ -441,6 +441,11 @@ pertain to the remote environment and remote shell command are
 userdefined.
 
 
+=head1 B<Exit Status>
+
+The dsh command exit code is 0 if the command executed without errors and all remote shell commands finished with exit codes of 0. If internal dsh errors occur or the remote shell commands do not complete successfully, the dsh command exit value is greater than 0. The exit value is increased by 1 for each successive instance of an unsuccessful remote command execution.  If the remotely issued command is run in the background, the exit code of the remotely issued command is 0.
+
+
 =head1 B<Examples>
 
 =over 3
