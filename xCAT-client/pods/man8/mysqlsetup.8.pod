@@ -41,11 +41,11 @@ The init option is used to setup an installed MySQL database so that xCAT can us
 
 =item B<-u|--update>
 
-To run the update option,  you must first have run the -i option and have xcat successfully up and running on the MySQL database. You can chose the -f and/or the -o option, to run update.    
+To run the update option,  you must first have run the -i option and have xcat successfully up and running on the MySQL database. You can chose the -f and/or the -o option, to update.    
 
 =item B<-f|--hostfile>
 
-This option run during update, will take all the host from the input file, and give them database access to the xcatdb in  MySQL for the xcatadmin id. Wildcards and ipaddresses may be used. xCAT  must have been previously successfully setup to use MySQL. 
+This option runs during update, it will take all the host from the input file (provide a full path) and give them database access to the xcatdb in  MySQL for the xcatadmin id. Wildcards and ipaddresses may be used. xCAT  must have been previously successfully setup to use MySQL. xcatadmin and MySQL root password are required. 
 
 =item B<-o|--setupODBC>
 
@@ -65,7 +65,7 @@ B<XCATMYSQLADMIN_PW> - the password for the xcatadmin id that will be assigned i
 
 =item *
 
-B<XCATMYSQLROOT_PW> - the password for the root id that will be assigned to the MySQL root id, if the script creates it.  The password to use to run MySQL command to the database as the MySQL root id.  This password may be different than the root password on the Management Node.  
+B<XCATMYSQLROOT_PW> - the password for the root id that will be assigned to the MySQL root id, if the script creates it.  The password to use to run MySQL command to the database as the MySQL root id.  This password may be different than the unix root password on the Management Node.  
 
 =back
 
@@ -84,6 +84,13 @@ B<mysqlsetup> I<-i>
 To add hosts from /tmp/xcat/hostlist that can access the xcatd database in MySQL:
 
 B<mysqlsetup> I<-u> I<-f /tmp/xcat/hostlist>
+
+Where the file contains a host per line, for example:
+
+         node1
+         1.115.85.2
+         10.%.%.%
+         nodex.cluster.net
 
 =item * 
 
