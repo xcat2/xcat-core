@@ -9,7 +9,8 @@
 #    directories that are needed.
 #  - You probably also want to put root's pub key from the build machine onto sourceforge for
 #    the upload user listed below, so you don't have to keep entering pw's.  You can do this
-#    at https://sourceforge.net/account/ssh .
+#    at https://sourceforge.net/account/ssh
+#  - Also make sure createrepo is installed on the build machine
 
 # Usage:  buildcore.sh [attr=value attr=value ...]
 #		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.
@@ -171,8 +172,8 @@ build-utils/rpmsign.exp $DESTDIR/*rpm
 build-utils/rpmsign.exp $SRCDIR/*rpm
 createrepo $DESTDIR
 createrepo $SRCDIR
-rm $SRCDIR/repodata/repomd.xml.asc
-rm $DESTDIR/repodata/repomd.xml.asc
+rm -f $SRCDIR/repodata/repomd.xml.asc
+rm -f $DESTDIR/repodata/repomd.xml.asc
 gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
 gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
 # make everything have a group of xcat, so anyone can manage them once they get on SF
@@ -185,14 +186,24 @@ fi		# end of very long if-not-promote
 
 
 # Modify the repo file to point to either xcat-core or core-snap
+# Always recreate it, in case the whole dir was copied from devel to 2.x
 cd $DESTDIR
-if [ "$PROMOTE" = 1 ]; then
-	sed -e 's|/core-snap|/xcat-core|' xCAT-core.repo > xCAT-core.repo.new
-	mv -f xCAT-core.repo.new xCAT-core.repo
-else
-	sed -e 's|/xcat-core|/core-snap|' xCAT-core.repo > xCAT-core.repo.new
-	mv -f xCAT-core.repo.new xCAT-core.repo
-fi
+cat >xCAT-core.repo << EOF
+[xcat-2-core]
+name=xCAT 2 Core packages
+baseurl=http://xcat.sourceforge.net/yum/$REL/$CORE
+enabled=1
+gpgcheck=1
+gpgkey=http://xcat.sourceforge.net/yum/$REL/$CORE/repodata/repomd.xml.key
+EOF
+
+#if [ "$PROMOTE" = 1 ]; then
+#	sed -e 's|/core-snap|/xcat-core|' xCAT-core.repo > xCAT-core.repo.new
+#	mv -f xCAT-core.repo.new xCAT-core.repo
+#else
+#	sed -e 's|/xcat-core|/core-snap|' xCAT-core.repo > xCAT-core.repo.new
+#	mv -f xCAT-core.repo.new xCAT-core.repo
+#fi
 
 # Build the tarball
 cd ..
