@@ -9,8 +9,6 @@
 #    the upload user listed below, so you don't have to keep entering pw's.  You can do this
 #    at https://sourceforge.net/account/ssh
 #  - Also make sure createrepo is installed on the build machine
-#  - Copy the gpg keys from http://pokgsa.ibm.com/projects/x/xcat/build/linux/keys/ to /root/.gnupg
-#  - Copy repomd.xml.key from http://pokgsa.ibm.com/projects/x/xcat/build/linux/keys/ to <rel>/src
 #  - Run this script from the local svn repository you just created.  It will create the other
 #    directories that are needed.
 
@@ -22,6 +20,8 @@
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
+
+GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
 
 set -x
 
@@ -170,6 +170,13 @@ else
 fi
 
 # Prepare the RPMs for pkging and upload
+# get gpg keys in place
+mkdir -p $HOME/.gnupg
+for i in pubring.gpg secring.gpg trustdb.gpg; do
+	if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
+		wget -P $HOME/.gnupg $GSA/keys/$i
+	fi
+done
 # tell rpm to use gpg to sign
 MACROS=$HOME/.rpmmacros
 if ! $GREP -q '%_signature gpg' $MACROS 2>/dev/null; then
@@ -187,10 +194,10 @@ rm -f $DESTDIR/repodata/repomd.xml.asc
 gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
 gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
 if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
-	cp ../repomd.xml.key $DESTDIR/repodata/repomd.xml.key		# copy it from the src dir
+	wget -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
 fi
 if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
-	cp ../repomd.xml.key $SRCDIR/repodata/repomd.xml.key		# copy it from the src dir
+	wget -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
 fi
 # make everything have a group of xcat, so anyone can manage them once they get on SF
 groupadd -f xcat
