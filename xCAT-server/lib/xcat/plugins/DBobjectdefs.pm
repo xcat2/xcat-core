@@ -1033,6 +1033,7 @@ sub defmk
                         $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
                         $error = 1;
+                        delete($::FINALATTRS{$obj});
                         next;
                     } 
                     $::FINALATTRS{$obj}{grouptype} = 'dynamic';
@@ -1579,6 +1580,7 @@ sub defch
                    $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
                    xCAT::MsgUtils->message("E", $rsp, $::callback);
                    $error = 1;
+                   delete($::FINALATTRS{$obj});
                    next;
                }
             }
@@ -1596,6 +1598,15 @@ sub defch
 
                 }
                 $grptype = $grphash{$obj}{grouptype};
+                if (($grptype eq "dynamic") && (scalar(keys %{$::FINALATTRS{$obj}}) > 1))
+                {
+                    my $rsp;
+                   $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
+                   xCAT::MsgUtils->message("E", $rsp, $::callback);
+                   $error = 1; 
+                   delete($::FINALATTRS{$obj});
+                   next;
+                }
 				# for now all groups are static
 				#$grptype = 'static';
             }
