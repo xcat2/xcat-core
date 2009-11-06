@@ -1,8 +1,15 @@
 #!/bin/bash
 
-# Build and upload the xcat-core code.  This script and the rest of the xcat-core source should
-# be in a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
-# uploaded to in sourceforge (e.g. devel, or 2.2).
+# Build and upload the xcat-core code.
+# Getting Started:
+#  - Check out the xcat-core svn repository (either the trunk or a branch) into
+#    a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
+#    uploaded to in sourceforge (e.g. devel, or 2.3).
+#  - Run this script from the local svn repository you just created.  It will create the other
+#    directories that are needed.
+#  - You probably also want to put root's pub key from the build machine onto sourceforge for
+#    the upload user listed below, so you don't have to keep entering pw's.  You can do this
+#    at https://sourceforge.net/account/ssh .
 
 # Usage:  buildcore.sh [attr=value attr=value ...]
 #		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.
@@ -15,12 +22,12 @@ UPLOADUSER=bp-sawyers
 
 set -x
 
-# Process cmd line variable assignments
+# Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
 	declare `echo $i|cut -d '=' -f 1`=`echo $i|cut -d '=' -f 2`
 done
 
-export HOME=/root
+export HOME=/root		# i think this is for sudo purposes
 cd `dirname $0`
 
 # Strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
@@ -38,11 +45,12 @@ else
 	TARNAME=core-rpms-snap.tar.bz2
 fi
 DESTDIR=../../$XCATCORE
+SRCD=core-snap-srpms
 
 
 if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting
 mkdir -p $DESTDIR
-SRCDIR=../../core-snap-srpms
+SRCDIR=../../$SRCD
 mkdir -p $SRCDIR
 GREP=grep
 UPLOAD=0
@@ -53,10 +61,13 @@ else
   pkg="packages"
 fi
 
+# If they have not given us a premade update file, do an svn update and capture the results
 if [ -z "$SVNUP" ]; then
 	SVNUP=../coresvnup
 	svn up > $SVNUP
 fi
+
+# If anything has changed, we should rebuild perl-xCAT
 BUILDIT=0
 if ! grep 'At revision' $SVNUP; then
    BUILDIT=1
@@ -78,21 +89,13 @@ if [ $BUILDIT -eq 1 ]; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
    mv /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm $DESTDIR/
    mv /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
 fi
-# Starting in 2.3 we should build xCAT-UI instead of xCAT-web
-if [ "$REL" = "devel" ]; then
-	UI="UI"
-	MAKEUI=makeuirpm
-else
-	UI="web"
-	MAKEUI=makewebrpm
-fi
-if $GREP xCAT-$UI $SVNUP; then
+if $GREP xCAT-UI $SVNUP; then
    UPLOAD=1
-   rm -f $DESTDIR/xCAT-$UI*
-   rm -f $SRCDIR/xCAT-$UI*
-   ./$MAKEUI
-   mv /usr/src/$pkg/RPMS/noarch/xCAT-$UI-$VER*rpm $DESTDIR
-   mv /usr/src/$pkg/SRPMS/xCAT-$UI-$VER*rpm $SRCDIR
+   rm -f $DESTDIR/xCAT-UI*
+   rm -f $SRCDIR/xCAT-UI*
+   ./makeuirpm
+   mv /usr/src/$pkg/RPMS/noarch/xCAT-UI-$VER*rpm $DESTDIR
+   mv /usr/src/$pkg/SRPMS/xCAT-UI-$VER*rpm $SRCDIR
 fi
 if $GREP xCAT-server $SVNUP; then
    UPLOAD=1
@@ -172,8 +175,12 @@ rm $SRCDIR/repodata/repomd.xml.asc
 rm $DESTDIR/repodata/repomd.xml.asc
 gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
 gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
+# make everything have a group of xcat, so anyone can manage them once they get on SF
+groupadd -f xcat
 chgrp -R xcat $DESTDIR
 chmod -R g+w $DESTDIR
+chgrp -R xcat $SRCDIR
+chmod -R g+w $SRCDIR
 fi		# end of very long if-not-promote
 
 
@@ -198,6 +205,10 @@ if [ ! -e core-snap ]; then
 	ln -s xcat-core core-snap
 fi
 while ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
+do : ; done
+
+# Upload the individual source RPMs to sourceforge
+while ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:htdocs/yum/$REL/
 do : ; done
 
 # Upload the tarball to sourceforge
