@@ -175,6 +175,7 @@ mkdir -p $HOME/.gnupg
 for i in pubring.gpg secring.gpg trustdb.gpg; do
 	if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
 		wget -P $HOME/.gnupg $GSA/keys/$i
+		chmod 600 $HOME/.gnupg/$i
 	fi
 done
 # tell rpm to use gpg to sign
