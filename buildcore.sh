@@ -9,7 +9,8 @@
 #    the upload user listed below, so you don't have to keep entering pw's.  You can do this
 #    at https://sourceforge.net/account/ssh
 #  - Also make sure createrepo is installed on the build machine
-#  - Copy the keys from http://pokgsa.ibm.com/projects/x/xcat/build/linux/keys/ to /root/.gnupg
+#  - Copy the gpg keys from http://pokgsa.ibm.com/projects/x/xcat/build/linux/keys/ to /root/.gnupg
+#  - Copy repomd.xml.key from http://pokgsa.ibm.com/projects/x/xcat/build/linux/keys/ to <rel>/src
 #  - Run this script from the local svn repository you just created.  It will create the other
 #    directories that are needed.
 
@@ -185,6 +186,12 @@ rm -f $SRCDIR/repodata/repomd.xml.asc
 rm -f $DESTDIR/repodata/repomd.xml.asc
 gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
 gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
+if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
+	cp ../repomd.xml.key $DESTDIR/repodata/repomd.xml.key		# copy it from the src dir
+fi
+if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
+	cp ../repomd.xml.key $SRCDIR/repodata/repomd.xml.key		# copy it from the src dir
+fi
 # make everything have a group of xcat, so anyone can manage them once they get on SF
 groupadd -f xcat
 chgrp -R xcat $DESTDIR
