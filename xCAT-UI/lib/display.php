@@ -14,7 +14,7 @@ echo <<<EOS1
 <link rel="stylesheet" type="text/css" href="css/security.css" media="screen">
 <link rel="stylesheet" type="text/css" href="css/config.css" media="screen">
 <link rel="stylesheet" type="text/css" href="css/monitor.css" media="screen">
-<link rel="stylesheet" type="text/css" href="css/theme/jquery-ui-themeroller.css" media="screen">
+<link rel="stylesheet" type="text/css" href="css/theme/jquery-ui-1.7.2.custom.css" media="screen">
 <link rel="stylesheet" type="text/css" href="js/jsTree/tree_component.css" media="screen">
 <script type="text/javascript" src="js/jquery.min.js"></script>
 <script type="text/javascript" src="js/jquery-ui-all.min.js"></script>
