@@ -1269,6 +1269,43 @@ if (0) {
 				return 1;
 			}
 
+                        # Special case for the postscripts table
+                        # Does not set the postscripts to the postscripts table
+                        # if the postscripts already in xcatdefaults
+                        # for code logic, it will be clearer to put the special case into defch,
+                        # but putting it into defch will introduce additional table access for postscripts table.
+                        # accessing table is time consuming.
+			if ($table eq "postscripts") {
+			    my $xcatdefaultsps;
+			    my @TableRowArray = xCAT::DBobjUtils->getDBtable('postscripts');
+			    if (defined(@TableRowArray))
+			    {
+				foreach my $tablerow (@TableRowArray)
+				{
+				    if(($tablerow->{node} eq 'xcatdefaults') && !($tablerow->{disable}))
+				    {
+					$xcatdefaultsps = $tablerow->{postscripts};
+					last;
+				    }
+				 }
+			     }
+			     my @xcatdefps = split(/,/, $xcatdefaultsps);
+			     foreach my $obj(keys %{$allupdates{$table}}) {
+				 my @newps;
+				 if (defined($allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
+				     foreach my $tempps (split(/,/, $allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
+					 if (grep(/^$tempps$/, @xcatdefps)) {
+					     my $rsp;
+					     $rsp->{data}->[0] = "$obj: postscripts \'$tempps\' is already included in the \'xcatdefaults\'.";
+					     xCAT::MsgUtils->message("E", $rsp, $::callback);
+					 } else {
+					     push @newps, $tempps;
+					 }
+				     }
+				     $allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'} = join(',', @newps);
+				 }
+			     }
+			}
 			OBJ: foreach my $obj (keys %{$allupdates{$table}}) {
                             ROW: foreach my $row (keys %{$allupdates{$table}{$obj}}) {
 				my %keyhash;
