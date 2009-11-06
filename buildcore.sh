@@ -5,12 +5,13 @@
 #  - Check out the xcat-core svn repository (either the trunk or a branch) into
 #    a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
 #    uploaded to in sourceforge (e.g. devel, or 2.3).
-#  - Run this script from the local svn repository you just created.  It will create the other
-#    directories that are needed.
 #  - You probably also want to put root's pub key from the build machine onto sourceforge for
 #    the upload user listed below, so you don't have to keep entering pw's.  You can do this
 #    at https://sourceforge.net/account/ssh
 #  - Also make sure createrepo is installed on the build machine
+#  - Copy the keys from http://pokgsa.ibm.com/projects/x/xcat/build/linux/keys/ to /root/.gnupg
+#  - Run this script from the local svn repository you just created.  It will create the other
+#    directories that are needed.
 
 # Usage:  buildcore.sh [attr=value attr=value ...]
 #		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.
@@ -28,7 +29,7 @@ for i in $*; do
 	declare `echo $i|cut -d '=' -f 1`=`echo $i|cut -d '=' -f 2`
 done
 
-export HOME=/root		# i think this is for sudo purposes
+export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 cd `dirname $0`
 
 # Strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
@@ -70,7 +71,7 @@ fi
 
 # If anything has changed, we should rebuild perl-xCAT
 BUILDIT=0
-if ! grep 'At revision' $SVNUP; then
+if ! $GREP 'At revision' $SVNUP; then
    BUILDIT=1
 fi
 
@@ -168,6 +169,14 @@ else
 fi
 
 # Prepare the RPMs for pkging and upload
+# tell rpm to use gpg to sign
+MACROS=$HOME/.rpmmacros
+if ! $GREP -q '%_signature gpg' $MACROS 2>/dev/null; then
+	echo '%_signature gpg' >> $MACROS
+fi
+if ! $GREP -q '%_gpg_name' $MACROS 2>/dev/null; then
+	echo '%_gpg_name Jarrod Johnson' >> $MACROS
+fi
 build-utils/rpmsign.exp $DESTDIR/*rpm
 build-utils/rpmsign.exp $SRCDIR/*rpm
 createrepo $DESTDIR
