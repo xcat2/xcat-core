@@ -934,8 +934,8 @@ sub setupmysqlroot
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message(
-            "E",
-            "mysqladmin -u root password command failed, trying to set root password in MySQL. Possibly already set."
+            "I",
+            "Warning, mysqladmin -u root password command failed, trying to set root password in MySQL. If root id has been defined in MySQL, and has a password then this message can be ignored."
             );
 
     }
