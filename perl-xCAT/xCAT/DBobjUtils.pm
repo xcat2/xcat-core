@@ -1291,6 +1291,10 @@ if (0) {
 			     }
 			     my @xcatdefps = split(/,/, $xcatdefaultsps);
 			     foreach my $obj(keys %{$allupdates{$table}}) {
+                                 if ($obj eq 'xcatdefaults') {
+                                     #xcatdefaults can be treated as a node?
+                                     next;
+                                 }
 				 my @newps;
 				 if (defined($allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
 				     foreach my $tempps (split(/,/, $allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
