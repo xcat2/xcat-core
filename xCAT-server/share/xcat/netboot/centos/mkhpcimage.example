@@ -152,7 +152,7 @@ perl -pi -e 's/dhcp/none/g' $IMGROOT/etc/sysconfig/network-scripts/ifcfg-eth0
 #umount $IMGROOT/sys
 #umount $IMGROOT/proc
 # configure IB IP address
-#echo "IP=\`host \$HOSTNAME-ib0 | awk '{ print \$4 }'\`" >> $IMGROOT/etc/rc.d/rc.local
+#echo "IP=\`host \$HOSTNAME-ib0 | awk '{ print \$4 }' | head -1\`" >> $IMGROOT/etc/rc.d/rc.local
 #echo "ifconfig ib0 \$IP" >> $IMGROOT/etc/rc.d/rc.local
 #echo "ifconfig ib0 netmask 255.255.0.0" >> $IMGROOT/etc/rc.d/rc.local
 ### End IB Stuff ####
