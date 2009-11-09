@@ -533,14 +533,31 @@ sub _execute_dsh
                       . join("", @{$error_buffers{$user_target}});
                     if ($$options{'display_output'})
                     {
-                        print STDOUT @{$output_buffers{$user_target}};
-                        print STDERR @{$error_buffers{$user_target}};
+                       # print STDOUT @{$output_buffers{$user_target}};
+                       # print STDERR @{$error_buffers{$user_target}};
+                        chomp (@{$output_buffers{$user_target}});
+                        chomp (@{$error_buffers{$user_target}});
+                        my $rsp = {};
+                        push @{$rsp->{data}},@{$output_buffers{$user_target}};
+                        xCAT::MsgUtils->message("D", $rsp,$::CALLBACK);
+                        $rsp = {};
+                        push @{$rsp->{data}},@{$error_buffers{$user_target}};
+                        xCAT::MsgUtils->message("D", $rsp,$::CALLBACK);
                     }
                 }
                 else
                 {
-                    print STDOUT @{$output_buffers{$user_target}};
-                    print STDERR @{$error_buffers{$user_target}};
+                    #print STDOUT @{$output_buffers{$user_target}};
+                    #print STDERR @{$error_buffers{$user_target}};
+                     chomp (@{$output_buffers{$user_target}});
+                     chomp (@{$error_buffers{$user_target}});
+                     my $rsp = {};
+                     push @{$rsp->{data}},@{$output_buffers{$user_target}};
+                     xCAT::MsgUtils->message("D", $rsp,$::CALLBACK);
+                     $rsp = {};
+                     push @{$rsp->{data}},@{$error_buffers{$user_target}};
+                     xCAT::MsgUtils->message("D", $rsp,$::CALLBACK);
+ 
                 }
             }
 
@@ -554,9 +571,9 @@ sub _execute_dsh
             if ($exit_code != 0)
             {
 
-                $rsp->{data}->[0] =
-                  " $user_target remote Command return code = $exit_code.";
-                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                #$rsp->{data}->[0] =
+                 # " $user_target remote Command return code = $exit_code.";
+                #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
 
                 $rsp->{data}->[0] = "dsh>  Remote_command_failed $user_target";
                 $$options{'monitor'}
@@ -575,10 +592,7 @@ sub _execute_dsh
             {
                 if ($target_rc != 0)
                 {
-
-                    $rsp->{data}->[0] =
-                      " $user_target remote Command return code = $$target_properties{'target-rc'}.";
-                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                    
 
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_failed $user_target";
@@ -3784,13 +3798,21 @@ sub parse_and_run_dsh
 
         #
         # Execute the dsh api
-        @results = xCAT::DSHCLI->runDsh_api(\%options, 0);
-        if ($::RUNCMD_RC)
-        {    # error from dsh
-            $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        #@results = xCAT::DSHCLI->runDsh_api(\%options, 0);
+        #if ($::RUNCMD_RC)
+        #{    # error from dsh
+         #   $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
+          #  xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
-        }
+        #}
+        # Execute the dsh command 
+        xCAT::DSHCLI->execute_dsh(\%options);
+        #if ($::RUNCMD_RC)
+        #{    # error from dsh
+         #   $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
+          # xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+
+        #}
     }
     return (@results);
 }
