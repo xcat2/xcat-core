@@ -412,6 +412,19 @@ sub copycd
             $distname = "win2k8";
         }
     }
+    # add support for Win7
+    if(-r $path . "/sources/idwbinfo.txt"){
+	open(DBNAME, $path . "/sources/idwbinfo.txt");
+	while(<DBNAME>){
+		if(/BuildArch=amd64/){
+			$darch = "x86_64";
+		}
+		if(/BuildBranch=win7_rtm/){
+			$distname = "win7";
+		}
+	}
+	close(DBNAME);
+    }
     unless ($distname)
     {
         return;
