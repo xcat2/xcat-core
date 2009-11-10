@@ -333,8 +333,8 @@ sub xdsh
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
 
-
-    # parse dsh input
+    $::FAILED_NODES=0;
+    # parse dsh input, will return $::NUMBER_NODES_FAILED
     my @local_results =
       xCAT::DSHCLI->parse_and_run_dsh($nodes,   $args, $callback,
                                       $command, $noderange);
@@ -357,7 +357,11 @@ sub xdsh
       }
       xCAT::MsgUtils->message("D", $rsp, $callback);
     }
-    return;
+    # set return code
+    $rsp = {};
+    $rsp->{errorcode}= $::FAILED_NODES;
+    $callback->($rsp);
+    return();
 }
 
 #-------------------------------------------------------
