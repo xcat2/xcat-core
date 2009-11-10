@@ -565,7 +565,7 @@ sub _execute_dsh
             delete $error_buffers{$user_target};
 
             my $exit_code = $targets_buffered{$user_target}{'exit-code'};
-            my $target_rc = $targets_buffered{$user_target}{'target-rc'};
+            my $target_rc = ($targets_buffered{$user_target}{'target-rc'}) ? $targets_buffered{$user_target}{'target-rc'} : 0;
             my $rsp       = {};
 
             if ($exit_code != 0)
