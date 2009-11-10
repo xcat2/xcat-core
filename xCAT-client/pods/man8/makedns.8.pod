@@ -111,7 +111,7 @@ Default subnet mask.
 
 =item B<-n> I<mask>
 
-Subnet mask.  If not specified, all the netmasks from the B<networks> table are used.
+Network:SubnetMask. If not specified, all the networks from the B<networks> table will be used.
 
 =back
 
