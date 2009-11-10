@@ -1320,7 +1320,7 @@ sub HCACheckLinux()
         #Check state
         if ($line =~ /\S*:\s*state:\s*(\w+)\s*\(.*/ && $ignore == 0)
         {
-            if ($1 ne "PORT_ACTIVE")
+            if ($1 ne "PORT_ACTIVE" && $1 ne "active")
             {
                 $abnormal = 1;
                 print "$host: ib$if_id state is $1. UNEXPECTED STATE.\n";
