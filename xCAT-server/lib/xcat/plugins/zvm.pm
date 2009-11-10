@@ -18,6 +18,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use Getopt::Long;
 use strict;
+
 # use warnings;
 
 # If this line is not included, you get:
@@ -36,7 +37,7 @@ use strict;
 
 sub handled_commands {
 	return {
-		rpower  => 'nodehm:mgt',
+		rpower  => 'nodehm:power,mgt',
 		rinv    => 'nodehm:mgt',
 		mkvm    => 'nodehm:mgt',
 		rmvm    => 'nodehm:mgt',
@@ -392,7 +393,7 @@ sub process_request {
 	foreach (@children) {
 		waitpid( $_, 0 );
 	}
-	
+
 	return;
 }
 
