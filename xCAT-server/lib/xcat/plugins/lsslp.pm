@@ -1488,8 +1488,11 @@ sub parse_responses {
     # have the same MTMS and may get the same factory name
     # If there are same factory name for 2 BPA (should be 2 sides
     # on one frame), change them to like <bpa>_1 and <bpa>_2
+    # Also, remove those nodes that have same IP addresses and
+    # give a warning message.
     ##########################################################
     my %hostname_record;
+    my %ip_record;
     for my $h ( keys %outhash)
     {
         my ($name, $ip);
@@ -1501,6 +1504,27 @@ sub parse_responses {
         else
         {
             next;
+        }
+
+#        my $name_node_pair = {$name=>$h};
+#        if ( not exists $ip_record{$ip})
+#        {
+#            $ip_record{$ip} = [$name_node_pair];
+#        }
+#        else
+#        {
+#            push @{$ip_record{$ip}}, $name_node_pair;
+#        }
+        if ( ! $ip_record{$ip})
+        {
+            $ip_record{$ip} = $h;
+        }
+        else
+        {
+            my $response;
+            $response->{data}->[0] =  "IP address of node $h is conflicting to node $ip_record{$ip}. Remove node $h from discovery result.";
+            xCAT::MsgUtils->message("W", $response, $request->{callback});
+            delete $outhash{$h};
         }
 
         if (exists $hostname_record{$name})
