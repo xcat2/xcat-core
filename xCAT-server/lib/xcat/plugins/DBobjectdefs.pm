@@ -283,6 +283,13 @@ sub processArgs
                 {
                     @::noderange = &noderange($a, 0); # mkdef could not spport regular expression
                 }
+                if (scalar(@::noderange) == 0)
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] = "No node in \'$a\', check the noderange syntax.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    return 1;
+                }
             }
 
         }
