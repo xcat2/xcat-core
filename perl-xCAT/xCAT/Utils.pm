@@ -1349,9 +1349,42 @@ rmdir \"/tmp/$to_userid\"";
 
     close FILE;
     chmod 0777,"$home/.ssh/copy.sh";
-
+    my $auth_key=0;
+    my $auth_key2=0;
     if (xCAT::Utils->isMN())
     {    # if on Management Node
+        # if there is an authorized_keys or authorized_keys2 file in 
+        # root home directory, back it up  to authorized_keys*.xcatbackup
+        # we are going to build a new one to send to the nodes and need
+        # to restore the admins files after we are finished
+        #
+        
+        if (-e("$home/.ssh/authorized_keys")) {
+           my $cmd="mv $home/.ssh/authorized_keys  $home/.ssh/authorized_keys.xcatbackup";
+           xCAT::Utils->runcmd($cmd, 0);
+           my $rsp = {};
+           if ($::RUNCMD_RC != 0)
+           {
+              $rsp->{data}->[0] = "$cmd failed.\n";
+              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+              return (1);
+
+           }
+           $auth_key=1;
+        }
+        if (-e("$home/.ssh/authorized_keys2")) {
+         my $cmd="mv $home/.ssh/authorized_keys2  $home/.ssh/authorized_keys2.xcatbackup";
+         xCAT::Utils->runcmd($cmd, 0);
+         my $rsp = {};
+         if ($::RUNCMD_RC != 0)
+         {
+                    $rsp->{data}->[0] = "$cmd failed.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                    return (1);
+
+         }
+         $auth_key2=1;
+        }
         if ($from_userid eq "root")
         {
 
@@ -1398,21 +1431,73 @@ rmdir \"/tmp/$to_userid\"";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
     }
-
-    #remove $home/.ssh/authorized_keys*
-    #Easy to remote this code, if we want
-    #The MN to be able to ssh to itself and nodes to ssh to the MN
+    #  if on the MN
+    #  remove the created authorized_keys* and restore if a backed up 
+    #  version of authorized_keys* was created because the file
+    #   existed when the command was run
     if (xCAT::Utils->isMN())
     {
-        $cmd = "rm  $home/.ssh/authorized_keys*";
-        xCAT::Utils->runcmd($cmd, 0);
-        my $rsp = {};
-        if ($::RUNCMD_RC != 0)
-        {
+        if ($auth_key == 1) {  # need to restore
+           my $cmd="cp $home/.ssh/authorized_keys.xcatbackup  $home/.ssh/authorized_keys";
+           xCAT::Utils->runcmd($cmd, 0);
+           my $rsp = {};
+           if ($::RUNCMD_RC != 0)
+           {
+              $rsp->{data}->[0] = "$cmd failed.\n";
+              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+              return (1);
+
+           }
+           $cmd = "rm  $home/.ssh/authorized_keys.xcatbackup";
+           xCAT::Utils->runcmd($cmd, 0);
+           my $rsp = {};
+           if ($::RUNCMD_RC != 0)
+           {
+              $rsp->{data}->[0] = "$cmd failed.\n";
+              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+           }
+        } else {  # just delete
+          $cmd = "rm  $home/.ssh/authorized_keys";
+          xCAT::Utils->runcmd($cmd, 0);
+          my $rsp = {};
+          if ($::RUNCMD_RC != 0)
+          {
             $rsp->{data}->[0] = "$cmd failed.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            return (1);
 
+          }
+        }
+        if ($auth_key2 == 1) {  # need to restore
+          my $cmd=
+           "cp $home/.ssh/authorized_keys2.xcatbackup  $home/.ssh/authorized_keys2";
+          xCAT::Utils->runcmd($cmd, 0);
+          my $rsp = {};
+          if ($::RUNCMD_RC != 0)
+          {
+              $rsp->{data}->[0] = "$cmd failed.\n";
+              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+              return (1);
+
+          } 
+          $cmd = "rm  $home/.ssh/authorized_keys2.xcatbackup";
+          xCAT::Utils->runcmd($cmd, 0);
+          my $rsp = {};
+          if ($::RUNCMD_RC != 0)
+          {
+              $rsp->{data}->[0] = "$cmd failed.\n";
+              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+          } 
+
+        } else { # just delete it
+            $cmd = "rm  $home/.ssh/authorized_keys2";
+            xCAT::Utils->runcmd($cmd, 0);
+            my $rsp = {};
+            if ($::RUNCMD_RC != 0)
+            {
+              $rsp->{data}->[0] = "$cmd failed.\n";
+              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+            }
         }
     }
 
