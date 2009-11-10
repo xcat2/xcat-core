@@ -140,7 +140,7 @@ sub process_request {
 	# Controls the power for a single or range of nodes
 	if ( $command eq "rpower" ) {
 		foreach (@nodes) {
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {
@@ -166,7 +166,7 @@ sub process_request {
 	# Remote hardware inventory
 	elsif ( $command eq "rinv" ) {
 		foreach (@nodes) {
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {
@@ -193,7 +193,7 @@ sub process_request {
 	elsif ( $command eq "mkvm" ) {
 		foreach (@nodes) {
 
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {
@@ -235,7 +235,7 @@ sub process_request {
 	# Removes zVM virtual server
 	elsif ( $command eq "rmvm" ) {
 		foreach (@nodes) {
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {
@@ -261,7 +261,7 @@ sub process_request {
 	# Lists zVM user directory entry
 	elsif ( $command eq "lsvm" ) {
 		foreach (@nodes) {
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {
@@ -287,7 +287,7 @@ sub process_request {
 	# Changes zVM user directory entry
 	elsif ( $command eq "chvm" ) {
 		foreach (@nodes) {
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {
@@ -313,7 +313,7 @@ sub process_request {
 	# Collects node information from one or more hardware control points
 	elsif ( $command eq "rscan" ) {
 		foreach (@nodes) {
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {

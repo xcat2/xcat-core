@@ -335,7 +335,7 @@ sub xfork
         #my %drivers = DBI->installed_drivers;
         foreach (values %{$::XCAT_DBHS})
         {    #@{$drh->{ChildHandles}}) {
-            if ($_) { $_->disconnect(); }
+            #if ($_) { $_->disconnect(); }
             $_->{InactiveDestroy} = 1;
             undef $_;
         }
