@@ -175,7 +175,7 @@ sub process_request {
        $includestr =~ s/-o $//;
        $includestr = "find . " .  $includestr;
    }
-   print "\nexcludestr=$excludestr\n\n includestr=$includestr\n\n";
+   #print "\nexcludestr=$excludestr\n\n includestr=$includestr\n\n";
 
    # add the xCAT post scripts to the image
     if (! -d "$rootimg_dir") {
