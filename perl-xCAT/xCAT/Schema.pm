@@ -711,6 +711,7 @@ prescripts => {
 "\t\twhere action1 and action2 are the nodeset/nimnodeset actions specified in the command.\n".
 "\t\ts1 and s2 are the scripts to run for action1 in order. s3,s4,and s5 are the scripts\n".
 "\t\tto run for actions2. If actions are omitted, the scripts apply to all actions.\n".
+"\t\tAll the scripts should be copied to /install/prescripts directory.\n".
 "\t\tExamples:\n".
 "\t\tmyscript1,myscript2\n".
 "\t\tinstall:myscript1,myscript2|netboot:myscript3",
