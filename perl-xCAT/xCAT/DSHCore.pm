@@ -278,9 +278,9 @@ sub pipe_handler
     while (sysread($read_fh, $line, $buffer_size) != 0
            || ($eof_reached = 1))
     {
-        last if ($eof_reached);
+        last if ($eof_reached && (!defined($::__DSH_LAST_LINE->{$label})));
 
-        if ($line =~ /^\n$/)
+        if ($line =~ /^\n$/ && scalar(@$write_buffer) == 0)
         {
 
             # need to preserve blank lines in the output.
@@ -312,12 +312,15 @@ sub pipe_handler
                     unshift @lines, "$::__DSH_LAST_LINE->{$label}" ;
                 }
                 # Pop current buffer to $::__DSH_LAST_LINE->{$label}
-                $::__DSH_LAST_LINE->{$label} = $lines[scalar @lines - 1];
-                pop @lines;
-                # Skip this loop if array @lines is empty.
-                if (scalar @lines == 0)
+                if($line) 
                 {
-                    next;
+                    $::__DSH_LAST_LINE->{$label} = $lines[scalar @lines - 1];
+                    pop @lines;
+                    # Skip this loop if array @lines is empty.
+                    if (scalar @lines == 0)
+                    {
+                        next;
+                    }
                 }
             }
 
@@ -471,8 +474,8 @@ sub pipe_handler_buffer
     while (   (sysread($read_fh, $line, $buffer_size) != 0)
            || ($eof_reached = 1))
     {
-        last if ($eof_reached);
-        if ($line =~ /^\n$/)
+        last if ($eof_reached && (!defined($::__DSH_LAST_LINE->{$label})));
+        if ($line =~ /^\n$/ && scalar(@$write_buffer) == 0)
         {
 
             # need to preserve blank lines in the output.
@@ -494,7 +497,7 @@ sub pipe_handler_buffer
             push @$write_buffer, (pop @lines);
         }
 
-        if (@lines)
+        if (@lines || $::__DSH_LAST_LINE->{$label})
         {
             if ($cust_rc_deal)
             {
@@ -502,14 +505,17 @@ sub pipe_handler_buffer
                 if ($::__DSH_LAST_LINE->{$label})
                 {
                     unshift @lines, "$::__DSH_LAST_LINE->{$label}" ;
+                    undef $::__DSH_LAST_LINE->{$label}
                 }
-                # Pop current buffer to $::__DSH_LAST_LINE->{$label}
-                $::__DSH_LAST_LINE->{$label} = $lines[scalar @lines - 1];
-                pop @lines;
-                # Skip this loop if array @lines is empty.
-                if (scalar @lines == 0)
-                {
-                    next;
+                if ($line) {
+                    # Pop current buffer to $::__DSH_LAST_LINE->{$label}
+                    $::__DSH_LAST_LINE->{$label} = $lines[scalar @lines - 1];
+                    pop @lines;
+                    # Skip this loop if array @lines is empty.
+                    if (scalar @lines == 0)
+                    {
+                        next;
+                    }
                 }
             }
 
