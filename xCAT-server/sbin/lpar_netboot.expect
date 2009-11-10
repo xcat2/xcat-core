@@ -2677,4 +2677,7 @@ if { (!$noboot) && ( $rc == 0 ) } {
     }                                                                
 }
 
+set command "~."
+send_command
+
 exit $rc
