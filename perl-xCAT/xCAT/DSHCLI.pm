@@ -565,7 +565,7 @@ sub _execute_dsh
             delete $error_buffers{$user_target};
 
             my $exit_code = $targets_buffered{$user_target}{'exit-code'};
-            my $target_rc = ($targets_buffered{$user_target}{'target-rc'}) ? $targets_buffered{$user_target}{'target-rc'} : 0;
+            my $target_rc = $targets_buffered{$user_target}{'target-rc'};
             my $rsp       = {};
 
             if ($exit_code != 0)
@@ -3806,13 +3806,8 @@ sub parse_and_run_dsh
 
         #}
         # Execute the dsh command 
-        xCAT::DSHCLI->execute_dsh(\%options);
-        #if ($::RUNCMD_RC)
-        #{    # error from dsh
-         #   $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
-          # xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-
-        #}
+        # number of nodes failed becomes the xdsh return code
+        $::FAILED_NODES = xCAT::DSHCLI->execute_dsh(\%options);
     }
     return (@results);
 }
