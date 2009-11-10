@@ -4,28 +4,63 @@
 # all relevant architectures from the src & spec files in svn.
 
 # When running this script to package xcat-dep:
-#  - run it from the root dir of where all the built dep rpms are
-#  - use sudo to execute it with root privilege:  sudo builddep.sh
-#  - the root userid's home dir on the build machine should have:
-#    - .rpmmacros that contains values for %_signature and %_gpg_name
-#    - .gnupg dir with appropriate files
+#  - You need to install gsa-client on the build machine.
+#  - You probably want to put root's pub key from the build machine onto sourceforge for
+#    the upload user listed below, so you don't have to keep entering pw's.  You can do this
+#    at https://sourceforge.net/account/ssh
+#  - Also make sure createrepo is installed on the build machine
+
+# Usage:  builddep.sh [attr=value attr=value ...]
+#		DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep, relative
+#					to where this script is located.
+# 		UP=0 or UP=1 - override the default upload behavior 
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
 
-if [ ! -d rh5 ]; then
-	echo "builddep:  It appears that you are not running this from the top level of the xcat-dep directory structure."
+GSA=/gsa/pokgsa/projects/x/xcat/build/linux/xcat-dep
+export HOME=/root		# This is so rpm and gpg will know home, even in sudo
+
+# Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
+for i in $*; do
+	declare `echo $i|cut -d '=' -f 1`=`echo $i|cut -d '=' -f 2`
+done
+
+if [ ! -d $GSA ]; then
+	echo "builddep:  It appears that you do not have gsa installed to access the xcat-dep pkgs."
 	exit 1;
 fi
-XCATCOREDIR=`dirname $0`
-#export DESTDIR=.
-UPLOAD=1
-if [ "$1" == "NOUPLOAD" ]; then
-   UPLOAD=0
-fi
 set -x
+XCATCOREDIR=`dirname $0`
+if [ -z "$DESTDIR" ]; then
+	DESTDIR=../../../xcat-dep
+fi
+
+# Sync from the GSA master copy of the dep rpms
+mkdir -p $DESTDIR/xcat-dep
+rsync -ilrtpu --delete $GSA/ $DESTDIR/xcat-dep
+
+# Get gpg keys in place
+mkdir -p $HOME/.gnupg
+for i in pubring.gpg secring.gpg trustdb.gpg; do
+	if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
+		rm -f $HOME/.gnupg/$i
+		cp $GSA/../keys/$i $HOME/.gnupg
+		chmod 600 $HOME/.gnupg/$i
+	fi
+done
+
+# Tell rpm to use gpg to sign
+MACROS=$HOME/.rpmmacros
+if ! $GREP -q '%_signature gpg' $MACROS 2>/dev/null; then
+	echo '%_signature gpg' >> $MACROS
+fi
+if ! $GREP -q '%_gpg_name' $MACROS 2>/dev/null; then
+	echo '%_gpg_name Jarrod Johnson' >> $MACROS
+fi
 
 # Sign the rpms that are not already signed.  The "standard input reopened" warnings are normal.
+cd $DESTDIR/xcat-dep
 $XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'`
 
 # Create the repodata dirs
@@ -43,7 +78,7 @@ cd ..
 tar jcvf $DFNAME xcat-dep
 cd xcat-dep
 
-if [ $UPLOAD == 0 ]; then
+if [ "$UP" == 0 ]; then
  exit 0;
 fi
 
