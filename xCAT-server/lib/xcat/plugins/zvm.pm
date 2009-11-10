@@ -18,7 +18,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use Getopt::Long;
 use strict;
-use warnings;
+# use warnings;
 
 # If this line is not included, you get:
 # /opt/xcat/lib/perl/xCAT_plugin/zvm.pm did not return a true value
@@ -339,7 +339,7 @@ sub process_request {
 	# Set the boot state for a noderange
 	elsif ( $command eq "nodeset" ) {
 		foreach (@nodes) {
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {
@@ -365,7 +365,7 @@ sub process_request {
 	# Collects node MAC address
 	elsif ( $command eq "getmacs" ) {
 		foreach (@nodes) {
-			$pid = fork();
+			$pid = xCAT::Utils->xfork();
 
 			# Parent process
 			if ($pid) {
@@ -392,7 +392,7 @@ sub process_request {
 	foreach (@children) {
 		waitpid( $_, 0 );
 	}
-
+	
 	return;
 }
 
