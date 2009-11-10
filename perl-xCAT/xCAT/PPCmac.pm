@@ -49,9 +49,9 @@ sub parse_args {
     ####################################
     # Option -h for Help
     ####################################
-    if ( exists( $opt{h} )) {
-        return( usage() );
-    }
+    #if ( exists( $opt{h} )) {
+    #    return( usage() );
+    #}
     ####################################
     # Option -v for version
     ####################################
