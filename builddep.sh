@@ -31,7 +31,8 @@ if [ ! -d $GSA ]; then
 	exit 1;
 fi
 set -x
-XCATCOREDIR=`dirname $0`
+cd `dirname $0`
+XCATCOREDIR=`/bin/pwd`
 if [ -z "$DESTDIR" ]; then
 	DESTDIR=../../../xcat-dep
 fi
