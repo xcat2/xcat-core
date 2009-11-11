@@ -13,6 +13,7 @@ Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %ifos linux
 BuildArch: noarch
+Requires: perl-SOAP-Lite
 %endif
 
 Provides: perl(xCAT) = %{version}
