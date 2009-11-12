@@ -38,6 +38,11 @@ my $executerequest;
 my %tablecfg; #to hold the tables
 my $currkey;
 my $viavcenter;
+my $vmwaresdkdetect = eval {
+    require VMware::VIRuntime;
+    VMware::VIRuntime->import();
+    1;
+};
 
 
 my %guestidmap = (
@@ -218,11 +223,13 @@ sub process_request {
 	}
     #From here on out, code for managing guests under VMware
     #Detect whether or not the VMware SDK is available on this specific system
-    my $vmwaresdkdetect = eval {
-        require VMware::VIRuntime;
-        VMware::VIRuntime->import();
-        1;
-    };
+    unless ($vmwaresdkdetect) {
+        $vmwaresdkdetect = eval {
+            require VMware::VIRuntime;
+            VMware::VIRuntime->import();
+            1;
+        };
+    }
     unless ($vmwaresdkdetect) {
         sendmsg([1,"VMWare SDK required for operation, but not installed"]);
         return;
