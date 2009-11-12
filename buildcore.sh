@@ -155,19 +155,12 @@ if $GREP -E '^[UAD] +xCAT/' $SVNUP; then
    mv /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm $DESTDIR
 fi
 
-# Decide whether to upload or not
-if [ -n "$UP" ]; then
-	if [ $UP == 0 ]; then
-		exit 0;
-	fi
-	#else we will continue
-else
-	if [ $UPLOAD == 0 ]; then
-		echo "Nothing new detected"
-		exit 0;
-	fi
-	#else we will continue
+# Decide if anything was built or not
+if [ $UPLOAD == 0 ]; then
+	echo "Nothing new detected"
+	exit 0;
 fi
+#else we will continue
 
 # Prepare the RPMs for pkging and upload
 # get gpg keys in place
@@ -235,6 +228,12 @@ cd ..
 tar -hjcvf $TARNAME $XCATCORE
 chgrp xcat $TARNAME
 chmod g+w $TARNAME
+
+# Decide whether to upload or not
+if [ -n "$UP" ] && [ "$UP" == 0 ]; then
+	exit 0;
+fi
+#else we will continue
 
 # Upload the individual RPMs to sourceforge
 if [ ! -e core-snap ]; then
