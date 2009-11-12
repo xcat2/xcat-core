@@ -967,8 +967,15 @@ sub fork_fanout_dsh
                   || $$target_properties{'remote-shell'}
                   || $$options{'node-rsh-defaults'}{$context};
                 ($remote_shell =~ /\/ssh$/) && ($rsh_extension = 'SSH');
-                $rsh_config{'options'} = "-n "
+
+                # if IB switch device, do not set -n, causes no returncode
+                if  (($$options{'devicetype'})) {
+                   $rsh_config{'options'} = 
+                     $$options{'node-options'}{$$target_properties{'context'}};
+                } else { # not a device
+                   $rsh_config{'options'} = "-n "
                   . $$options{'node-options'}{$$target_properties{'context'}};
+                }
             }
 
             #eval "require RemoteShell::$rsh_extension";
