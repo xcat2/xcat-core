@@ -288,9 +288,6 @@ sub process_request {
         if ($viavcenter or (defined $tablecfg{hypervisor}->{$hyp}->[0]->{mgr} and not $tablecfg{hypervisor}->{$hyp}->[0]->{preferdirect})) {
 	    $viavcenter=1;
             $hypready{$hyp} = 0; #This hypervisor requires a flag be set to signify vCenter sanenes before proceeding
-            $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk"); #Direct connect to install/check licenses
-            $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
-            validate_licenses($hyp);
             my $vcenter = $hyphash{$hyp}->{vcenter}->{name};
             unless ($vcenterhash{$vcenter}->{conn}) {
                 $vcenterhash{$vcenter}->{conn} =
@@ -1412,6 +1409,9 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         }
     }
     #If still in function, haven't found any likely host entries, make a new one
+    $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk"); #Direct connect to install/check licenses
+    $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
+    validate_licenses($hyp);
     addhosttovcenter(undef,{
         depfun => $depfun,
         depargs => $depargs,
