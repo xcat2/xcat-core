@@ -330,6 +330,9 @@ sub process_request {
         return;
     } 
     do_cmd($command,@exargs);
+	foreach my $hyp (sort(keys %hyphash)){
+            $hyphash{$hyp}->{conn}->logout();
+    }
 }
 
 sub validate_licenses {
