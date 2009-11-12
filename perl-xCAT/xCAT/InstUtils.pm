@@ -9,11 +9,12 @@ BEGIN
 
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
-if ($^O =~ /^aix/i) {
-        use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
-        use lib "/usr/opt/perl5/lib/5.8.2";
-        use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
-        use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
+if ($^O =~ /^aix/i)
+{
+    use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
+    use lib "/usr/opt/perl5/lib/5.8.2";
+    use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
+    use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -23,6 +24,7 @@ use Socket;
 use Sys::Hostname;
 use strict;
 require xCAT::Schema;
+
 #require Data::Dumper;
 use Data::Dumper;
 require xCAT::NodeRange;
@@ -63,35 +65,40 @@ related commands.
 
 #-----------------------------------------------------------------------------
 
-sub  getnimprime
+sub getnimprime
 {
 
-	# the primary NIM master is either specified in the site table
-	# or it is the xCAT management node.
+    # the primary NIM master is either specified in the site table
+    # or it is the xCAT management node.
 
-	my $nimprime = xCAT::Utils->get_site_Master();
-	my $sitetab = xCAT::Table->new('site');
-	(my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
-	if ($et and $et->{value}) {
-		$nimprime = $et->{value};
-	}
+    my $nimprime = xCAT::Utils->get_site_Master();
+    my $sitetab  = xCAT::Table->new('site');
+    (my $et) = $sitetab->getAttribs({key => "NIMprime"}, 'value');
+    if ($et and $et->{value})
+    {
+        $nimprime = $et->{value};
+    }
 
-	my $hostname;
-	if ($nimprime) {
-		if ($nimprime =~ /\d+\.\d+\.\d+\.\d+/) {
-			my $packedaddr = inet_aton($nimprime);
-			$hostname = gethostbyaddr($packedaddr, AF_INET);
-		} else {
-			$hostname = $nimprime;
-		}
+    my $hostname;
+    if ($nimprime)
+    {
+        if ($nimprime =~ /\d+\.\d+\.\d+\.\d+/)
+        {
+            my $packedaddr = inet_aton($nimprime);
+            $hostname = gethostbyaddr($packedaddr, AF_INET);
+        }
+        else
+        {
+            $hostname = $nimprime;
+        }
 
-		my $shorthost;
-		($shorthost = $hostname) =~ s/\..*$//;
-		chomp $shorthost;
-		return $shorthost;
-	} 
+        my $shorthost;
+        ($shorthost = $hostname) =~ s/\..*$//;
+        chomp $shorthost;
+        return $shorthost;
+    }
 
-	return undef;
+    return undef;
 }
 
 #----------------------------------------------------------------------------
@@ -108,31 +115,39 @@ sub  getnimprime
 
 sub myxCATname
 {
-	my ($junk, $name);
+    my ($junk, $name);
 
-	$name = hostname();
+    $name = hostname();
 
-	if (xCAT::Utils->isMN()) {
-		# read the site table, master attrib
-		my $hostname = xCAT::Utils->get_site_Master(); 
-		if ($hostname =~ /\d+\.\d+\.\d+\.\d+/) {
-			my $packedaddr = inet_aton($hostname);
-			$name = gethostbyaddr($packedaddr, AF_INET);
-		} else {
-			$name = $hostname;
-		}
+    if (xCAT::Utils->isMN())
+    {
 
-	} elsif (xCAT::Utils->isServiceNode()) {
+        # read the site table, master attrib
+        my $hostname = xCAT::Utils->get_site_Master();
+        if ($hostname =~ /\d+\.\d+\.\d+\.\d+/)
+        {
+            my $packedaddr = inet_aton($hostname);
+            $name = gethostbyaddr($packedaddr, AF_INET);
+        }
+        else
+        {
+            $name = $hostname;
+        }
 
-		# the myxcatpost_<nodename> file should exist on all nodes!
-		my $catcmd="cat /xcatpost/myxcatpost_* | grep '^NODE='";
-		my $output = xCAT::Utils->runcmd("$catcmd", -1);
-		if ($::RUNCMD_RC == 0) {
-			($junk, $name) = split('=', $output);
-		}
-	}
+    }
+    elsif (xCAT::Utils->isServiceNode())
+    {
 
-	my $shorthost;
+        # the myxcatpost_<nodename> file should exist on all nodes!
+        my $catcmd = "cat /xcatpost/myxcatpost_* | grep '^NODE='";
+        my $output = xCAT::Utils->runcmd("$catcmd", -1);
+        if ($::RUNCMD_RC == 0)
+        {
+            ($junk, $name) = split('=', $output);
+        }
+    }
+
+    my $shorthost;
     ($shorthost = $name) =~ s/\..*$//;
     chomp $shorthost;
     return $shorthost;
@@ -169,36 +184,39 @@ sub is_me
 {
     my ($class, $name) = @_;
 
-	# convert to IP
-	my $nameIP = inet_ntoa(inet_aton($name));
+    # convert to IP
+    my $nameIP = inet_ntoa(inet_aton($name));
     chomp $nameIP;
 
-	# split into octets
-	my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
+    # split into octets
+    my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
 
-	# get all the possible IPs for the node I'm running on
+    # get all the possible IPs for the node I'm running on
     my $ifcmd = "ifconfig -a | grep 'inet '";
     my $result = xCAT::Utils->runcmd($ifcmd, 0, 1);
     if ($::RUNCMD_RC != 0)
     {
-		my $rsp;
-	#	push @{$rsp->{data}}, "Could not run $ifcmd.\n";
-    #    xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 0;
+        my $rsp;
+
+        #	push @{$rsp->{data}}, "Could not run $ifcmd.\n";
+        #    xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 0;
     }
 
     foreach my $int (@$result)
     {
         my ($inet, $myIP, $str) = split(" ", $int);
-		chomp $myIP;
-		# Split the two ip addresses up into octets
-    	my ($a1, $a2, $a3, $a4) = split /\./, $myIP;		
+        chomp $myIP;
 
-		if ( ($a1 == $b1) && ($a2 == $b2) && ($a3 == $b3) && ($a4 == $b4) ) {
-			return 1;
-		}		
+        # Split the two ip addresses up into octets
+        my ($a1, $a2, $a3, $a4) = split /\./, $myIP;
+
+        if (($a1 == $b1) && ($a2 == $b2) && ($a3 == $b3) && ($a4 == $b4))
+        {
+            return 1;
+        }
     }
-	return 0;
+    return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -223,23 +241,25 @@ sub is_me
 =cut
 
 #-----------------------------------------------------------------------------
-sub get_nim_attr_val 
+sub get_nim_attr_val
 {
-	my $class = shift;
-	my $resname = shift;
-	my $attrname = shift;
-	my $callback = shift;
-	my $target = shift;
-	my $sub_req = shift;
+    my $class    = shift;
+    my $resname  = shift;
+    my $attrname = shift;
+    my $callback = shift;
+    my $target   = shift;
+    my $sub_req  = shift;
 
-	if (!$target) {
-		$target = xCAT::InstUtils->getnimprime();
-	}
-	chomp $target;
+    if (!$target)
+    {
+        $target = xCAT::InstUtils->getnimprime();
+    }
+    chomp $target;
 
-	my $cmd = "/usr/sbin/lsnim -a $attrname -Z $resname 2>/dev/null";
-    my $nout = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $cmd, 0);
-    if ($::RUNCMD_RC  != 0)
+    my $cmd  = "/usr/sbin/lsnim -a $attrname -Z $resname 2>/dev/null";
+    my $nout =
+      xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $cmd, 0);
+    if ($::RUNCMD_RC != 0)
     {
         my $rsp;
         push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
@@ -273,47 +293,76 @@ sub get_nim_attr_val
 #-------------------------------------------------------------------------------
 sub xcmd
 {
-	my $class = shift;
-	my $callback = shift;
-	my $sub_req = shift;
-	my $xdcmd = shift;		# xdcp or xdsh
-	my $target = shift;		# the node to run it on
-	my $cmd = shift; 		# the actual cmd to run
-	my $doarray = shift;    # should the return be a string or array ptr?
+    my $class    = shift;
+    my $callback = shift;
+    my $sub_req  = shift;
+    my $xdcmd    = shift;    # xdcp or xdsh
+    my $target   = shift;    # the node to run it on
+    my $cmd      = shift;    # the actual cmd to run
+    my $doarray  = shift;    # should the return be a string or array ptr?
 
-	my $returnformat = 0;   # default is to return string
-	my $exitcode = 0;
-	if ($doarray) {
-		$returnformat = $doarray;
-	}
-
-	my $output;
-    if (xCAT::InstUtils->is_me($target)) {
-        $output=xCAT::Utils->runcmd($cmd, $exitcode, $returnformat);
-
-    } else {
-        # need xdsh or xdcp
-        my @snodes;
-        push( @snodes, $target );
-
-        $output=xCAT::Utils->runxcmd(
-                                {
-                                    command => [$xdcmd],
-                                    node    => \@snodes,
-                                    arg     => [ $cmd ]
-                                },
-                                $sub_req,
-                                $exitcode, $returnformat
-        );
+    my $returnformat = 0;    # default is to return string
+    my $exitcode     = -1;   # don't display error
+    if ($doarray)
+    {
+        $returnformat = $doarray;
     }
 
-	if ($doarray) {
-		return @$output;
-	} else {
-		return $output;
-	}
+    # runxcmd uses global
+    $::CALLBACK = $callback;
 
-	return undef;
+    my $output;
+    if (!ref($target))
+    {                        # must be node name
+        if (xCAT::InstUtils->is_me($target))
+        {
+            $output = xCAT::Utils->runcmd($cmd, $exitcode, $returnformat);
+        }
+        else
+        {
+            my @snodes;
+            push(@snodes, $target);
+            $output =
+              xCAT::Utils->runxcmd(
+                                   {
+                                    command => [$xdcmd],
+                                    node    => \@snodes,
+                                    arg     => ["-v", $cmd]
+                                   },
+                                   $sub_req,
+                                   $exitcode,
+                                   $returnformat
+                                   );
+        }
+    }
+    else
+    {
+
+        # it is an array ref
+        my @snodes;
+        @snodes = @{$target};
+        $output =
+          xCAT::Utils->runxcmd(
+                               {
+                                command => [$xdcmd],
+                                node    => \@snodes,
+                                arg     => ["-v", $cmd]
+                               },
+                               $sub_req,
+                               $exitcode,
+                               $returnformat
+                               );
+    }
+    if ($returnformat == 1)
+    {
+        return @$output;
+    }
+    else
+    {
+        return $output;
+    }
+
+    return undef;
 }
 
 #----------------------------------------------------------------------------
@@ -326,36 +375,39 @@ sub xcmd
 =cut
 
 #-----------------------------------------------------------------------------
-sub  readBNDfile
+sub readBNDfile
 {
 
-	my ($class, $callback, $BNDname, $nimprime, $sub_req) = @_;
+    my ($class, $callback, $BNDname, $nimprime, $sub_req) = @_;
 
-	my $junk;
-	my @pkglist,
-	my $pkgname;
+    my $junk;
+    my @pkglist, my $pkgname;
 
-	# get the location of the file from the NIM resource definition
-	my $bnd_file_name = xCAT::InstUtils->get_nim_attr_val($BNDname, 'location', $callback, $nimprime, $sub_req);
+    # get the location of the file from the NIM resource definition
+    my $bnd_file_name =
+      xCAT::InstUtils->get_nim_attr_val($BNDname,  'location', $callback,
+                                        $nimprime, $sub_req);
 
-	# open the file
-	unless (open(BNDFILE, "<$bnd_file_name")) {
-		return (1);
-	}
+    # open the file
+    unless (open(BNDFILE, "<$bnd_file_name"))
+    {
+        return (1);
+    }
 
-	# get the names of the packages
-	while (my $l = <BNDFILE>) {
+    # get the names of the packages
+    while (my $l = <BNDFILE>)
+    {
 
-		chomp $l;
+        chomp $l;
 
-		# skip blank and comment lines
+        # skip blank and comment lines
         next if ($l =~ /^\s*$/ || $l =~ /^\s*#/);
 
-		push (@pkglist, $l);
-	}
-	close(BNDFILE);
+        push(@pkglist, $l);
+    }
+    close(BNDFILE);
 
-	return (0, \@pkglist, $bnd_file_name);
+    return (0, \@pkglist, $bnd_file_name);
 }
 
 #----------------------------------------------------------------------------
@@ -379,42 +431,55 @@ sub  readBNDfile
 #-----------------------------------------------------------------------------
 sub restore_request
 {
-	my $class = shift;
-	my $in_struct = shift;
-	my $callback = shift;
+    my $class     = shift;
+    my $in_struct = shift;
+    my $callback  = shift;
 
-	my $out_struct;
+    my $out_struct;
 
-	if (ref($in_struct) eq "ARRAY") {
-		# flatten the array it it has only one element 
-		#  otherwise leave it alone
-		if ( scalar(@$in_struct) == 1) {
-    		return (xCAT::InstUtils->restore_request($in_struct->[0]));
-		} else {
-			return ($in_struct);
-		}
-	}
+    if (ref($in_struct) eq "ARRAY")
+    {
 
-	if (ref($in_struct) eq "HASH") {
-    	foreach my $struct_key (keys %{$in_struct}) {
-        	my $stripped_key = $struct_key;
-        	$stripped_key =~ s/^xxXCATxx(\d)/$1/;
-			# do not flatten the arg or node arrays
-			if (($stripped_key =~ /^arg$/) || ($stripped_key =~ /^node$/)){
-				$out_struct->{$stripped_key} = $in_struct->{$struct_key};
-			} else {
-        		$out_struct->{$stripped_key} = xCAT::InstUtils->restore_request($in_struct->{$struct_key});
-			}
-    	}
-    	return $out_struct;
-	}
+        # flatten the array it it has only one element
+        #  otherwise leave it alone
+        if (scalar(@$in_struct) == 1)
+        {
+            return (xCAT::InstUtils->restore_request($in_struct->[0]));
+        }
+        else
+        {
+            return ($in_struct);
+        }
+    }
 
-	if ((ref($in_struct) eq "SCALAR") || (ref(\$in_struct) eq "SCALAR")) {
-    	return ($in_struct);
-	}
+    if (ref($in_struct) eq "HASH")
+    {
+        foreach my $struct_key (keys %{$in_struct})
+        {
+            my $stripped_key = $struct_key;
+            $stripped_key =~ s/^xxXCATxx(\d)/$1/;
 
-	print "Unsupported data reference in restore_request().\n";
-	return undef;
+            # do not flatten the arg or node arrays
+            if (($stripped_key =~ /^arg$/) || ($stripped_key =~ /^node$/))
+            {
+                $out_struct->{$stripped_key} = $in_struct->{$struct_key};
+            }
+            else
+            {
+                $out_struct->{$stripped_key} =
+                  xCAT::InstUtils->restore_request($in_struct->{$struct_key});
+            }
+        }
+        return $out_struct;
+    }
+
+    if ((ref($in_struct) eq "SCALAR") || (ref(\$in_struct) eq "SCALAR"))
+    {
+        return ($in_struct);
+    }
+
+    print "Unsupported data reference in restore_request().\n";
+    return undef;
 }
 
 #----------------------------------------------------------------------------
@@ -438,18 +503,23 @@ sub restore_request
 #-----------------------------------------------------------------------
 sub taghash
 {
-	my ($class, $hash) = @_;
+    my ($class, $hash) = @_;
 
-    if (ref($hash) eq "HASH") {
-        foreach my $k (keys %{$hash}) {
-            if ($k =~ /^(\d)./ ) {
+    if (ref($hash) eq "HASH")
+    {
+        foreach my $k (keys %{$hash})
+        {
+            if ($k =~ /^(\d)./)
+            {
                 my $tagged_key = "xxXCATxx" . $k;
                 $hash->{$tagged_key} = $hash->{$k};
-				delete($hash->{$k});
+                delete($hash->{$k});
             }
         }
         return 0;
-    } else {
+    }
+    else
+    {
         return 1;
     }
 }
@@ -482,26 +552,30 @@ sub taghash
 #-------------------------------------------------------------------------------
 sub getOSnodes
 {
-	my ($class, $nodes) = @_;
+    my ($class, $nodes) = @_;
 
-	my @nodelist = @$nodes;
-	my $rc=1;  # all AIX nodes
-	my @aixnodes;
-	my @linuxnodes;
+    my @nodelist = @$nodes;
+    my $rc       = 1;         # all AIX nodes
+    my @aixnodes;
+    my @linuxnodes;
 
-	my $nodetab = xCAT::Table->new('nodetype');
-    my $os = $nodetab->getNodesAttribs( \@nodelist, [ 'node', 'os' ]);
-	foreach my $n (@nodelist) {
-		if ( ($os->{$n}->[0]->{os} ne "AIX") && ($os->{$n}->[0]->{os} ne "aix")) {
-			push(@linuxnodes, $n);
-			$rc = 0;
-		} else {
-			push(@aixnodes, $n);
-		}
-	}
-	$nodetab->close;
+    my $nodetab = xCAT::Table->new('nodetype');
+    my $os = $nodetab->getNodesAttribs(\@nodelist, ['node', 'os']);
+    foreach my $n (@nodelist)
+    {
+        if (($os->{$n}->[0]->{os} ne "AIX") && ($os->{$n}->[0]->{os} ne "aix"))
+        {
+            push(@linuxnodes, $n);
+            $rc = 0;
+        }
+        else
+        {
+            push(@aixnodes, $n);
+        }
+    }
+    $nodetab->close;
 
-	return ($rc, \@aixnodes, \@linuxnodes);
+    return ($rc, \@aixnodes, \@linuxnodes);
 }
 
 1;
