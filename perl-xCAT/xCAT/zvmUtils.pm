@@ -51,7 +51,7 @@ sub getNodeProps {
     				Key value
     				Requested properties
     Returns		: Properties from specifed table
-    Example		: my @attrs = xCAT::zvmUtils->getTabPropsByKey($tabName, $key, $keyValue, @reqProps);
+    Example		: my $propVals = xCAT::zvmUtils->getTabPropsByKey($tabName, $key, $keyValue, @reqProps);
     
 =cut
 
@@ -103,18 +103,18 @@ sub setNodeProp {
 
 #-------------------------------------------------------
 
-=head3   delTabNode
+=head3   delTabEntry
 
 	Description	: Delete node
     Arguments	: 	Table
     				Node 
     Returns		: Nothing
-    Example		: xCAT::zvmUtils->delTabNode($tabName, $node);
+    Example		: xCAT::zvmUtils->delTabEntry($tabName, $node);
     
 =cut
 
 #-------------------------------------------------------
-sub delTabNode {
+sub delTabEntry {
 
 	# Get inputs
 	my ( $class, $tabName, $node ) = @_;
@@ -808,21 +808,183 @@ sub isAddressUsed {
 
 #-------------------------------------------------------
 
-=head3   ascii2hex
+=head3   getMacID
 
-	Description	: Convert ASCII to HEX
-    Arguments	: ASCII string
-    Returns		: HEX string
-    Example		: my $str = xCAT::zvmUtils->ascii2hex($str);
+	Description	: Get MACID from /opt/zhcp/conf/next_mac on HCP
+    Arguments	: HCP node
+    Returns		: MACID
+    Example		: my $mac = xCAT::zvmUtils->getMacID($hcp);
     
 =cut
 
 #-------------------------------------------------------
-sub ascii2hex {
-	my ( $class, $str ) = @_;
+sub getMacID {
+	my ( $class, $hcp ) = @_;
 
-	# Convert ASCII to HEX
-	$str =~ s/(.|\n)/sprintf("%02lx", ord $1)/eg;
+	# Check /opt/zhcp/conf directory on HCP
+	my $out = `ssh -o ConnectTimeout=5 $hcp "test -d /opt/zhcp/conf && echo 'Directory exists'"`;
+	if ( $out =~ m/Directory exists/i ) {
 
-	return $str;
+		# Read next_mac file
+		$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_mac"`;
+	}
+	else {
+
+		# Create /opt/zhcp/conf directory
+		# Create next_mac -- Contains next MAC address to use
+		$out = `ssh -o ConnectTimeout=5 $hcp "mkdir /opt/zhcp/conf"`;
+		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_mac"`;
+	}
+
+	# Create /opt/zhcp/conf/next_mac file on HCP
+	$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_mac"`;
+	my $mac = xCAT::zvmUtils->trimStr($out);
+
+	return $mac;
+}
+
+#-------------------------------------------------------
+
+=head3   generateMac
+
+	Description	: Generate a MAC address 
+    Arguments	: 	HCP node
+    Returns		: MAC suffix
+    Example		: my $mac = xCAT::zvmUtils->generateMac($hcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub generateMac {
+	my ( $class, $hcp ) = @_;
+
+	# Check /opt/zhcp/conf directory on HCP
+	my $out = `ssh -o ConnectTimeout=5 $hcp "test -d /opt/zhcp/conf && echo 'Directory exists'"`;
+	if ( $out =~ m/Directory exists/i ) {
+
+		# Read next_mac file
+		$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_mac"`;
+	}
+	else {
+
+		# Create /opt/zhcp/conf directory
+		# Create next_mac -- Contains next MAC address to use
+		$out = `ssh -o ConnectTimeout=5 $hcp "mkdir /opt/zhcp/conf"`;
+		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_mac"`;
+	}
+
+	# Read /opt/zhcp/conf/next_mac file
+	$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_mac"`;
+	my $mac = xCAT::zvmUtils->trimStr($out);
+	my $int;
+
+	if ($mac) {
+
+		# Convert hexadecimal to decimal
+		$int = hex($mac);
+		$mac = sprintf( "%d", $int );
+
+		# Generate new MAC suffix
+		$mac = $mac - 1;
+
+		# Convert decimal to hexadecimal
+		$mac = sprintf( "%X", $mac );
+		$out = `ssh -o ConnectTimeout=5 $hcp "echo $mac > /opt/zhcp/conf/next_mac"`;
+	}
+
+	return $mac;
+
+	#	# Find the highest MAC address on given LAN
+	#	my $newMac = 0;
+	#	my $mac;
+	#	my $temp;
+	#	my $layer = -1;
+	#	my @vars;
+	#	my $out   = `ssh -o ConnectTimeout=5 $hcp "vmcp --buffer 1000000 q lan $lanName details"`;
+	#	my @outLn = split( "\n", $out );
+	#
+	#	# Go through each line
+	#	foreach (@outLn) {
+	#
+	#		# Get the MAC address for layer 3 LAN
+	#		if ( $layer == 3 ) {
+	#			@vars = split( " ", $_ );
+	#			$mac  = $vars[2];
+	#
+	#			# Replace - with :
+	#			$mac = xCAT::zvmUtils->replaceStr( $mac, "-", ":" );
+	#
+	#			# Convert to decimal
+	#			if ($mac) {
+	#
+	#				# Remove dash
+	#				$temp = xCAT::zvmUtils->replaceStr( $mac, ":", "" );
+	#
+	#				$temp = hex($temp);
+	#				$mac = sprintf( "%d", $temp );
+	#			}
+	#
+	#			# Compare MAC address value to previous one
+	#			# Save the highest MAC address
+	#			if ( $mac > $newMac ) {
+	#				$newMac = $mac;
+	#			}
+	#
+	#			$layer = -1;
+	#		}
+	#
+	#		# Get the MAC address for layer 2 LAN
+	#		elsif ( $layer == 2 ) {
+	#			@vars = split( " ", $_ );
+	#			$mac  = $vars[0];
+	#
+	#			# Replace - with :
+	#			$mac = xCAT::zvmUtils->replaceStr( $mac, "-", ":" );
+	#
+	#			# Convert to decimal
+	#			if ($mac) {
+	#
+	#				# Remove dash
+	#				$temp = xCAT::zvmUtils->replaceStr( $mac, ":", "" );
+	#
+	#				$temp = hex($temp);
+	#				$mac = sprintf( "%d", $temp );
+	#			}
+	#
+	#			# Compare MAC address value to previous one
+	#			# Save the highest MAC address
+	#			if ( $mac > $newMac ) {
+	#				$newMac = $mac;
+	#			}
+	#
+	#			$layer = -1;
+	#		}
+	#
+	#		# If the line contains 'Unicast IP/MAC Addresses' -- Then the next line contain a MAC address
+	#		if ( $_ =~ m/Unicast IP Addresses/i ) {
+	#			$layer = 3;
+	#		}
+	#		elsif ( $_ =~ m/ Unicast MAC Addresses/i ) {
+	#			$layer = 2;
+	#		}
+	#	}
+	#
+	#	# Convert the highest MAC address from decimal to hexadecimal
+	#	$newMac = $newMac + 1;
+	#	$newMac = sprintf( "%x", $newMac );
+	#
+	#	# Append a zero if length is less than 12
+	#	if ( length($newMac) != 12 ) {
+	#		$newMac = "0" . $newMac;
+	#	}
+	#
+	#	$newMac =
+	#	    substr( $newMac, 0, 2 ) . ":"
+	#	  . substr( $newMac, 2,  2 ) . ":"
+	#	  . substr( $newMac, 4,  2 ) . ":"
+	#	  . substr( $newMac, 6,  2 ) . ":"
+	#	  . substr( $newMac, 8,  2 ) . ":"
+	#	  . substr( $newMac, 10, 2 );
+	#
+	#	return $newMac;
 }

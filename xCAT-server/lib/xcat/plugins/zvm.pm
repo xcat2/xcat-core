@@ -44,8 +44,8 @@ sub handled_commands {
 		lsvm    => 'nodehm:mgt',
 		chvm    => 'nodehm:mgt',
 		rscan   => 'nodehm:mgt',
-		nodeset => 'nodehm:mgt',
-		getmacs => 'nodehm:mgt',
+		nodeset => 'noderes:netboot',
+		getmacs => 'nodehm:getmac,mgt',
 	};
 }
 
@@ -402,7 +402,7 @@ sub process_request {
 =head3   removeVM
 
 	Description	: Remove a virtual server
-    Arguments	: Node
+    Arguments	: Node to remove
     Returns		: Nothing
     Example		: removeVM($callback, $node);
     
@@ -464,8 +464,12 @@ sub removeVM {
 		return;
 	}
 
-	# Remove node from tables
-	$out = `noderm $node`;
+	# Remove node from 'zvm', 'nodelist', 'nodetype', 'noderes', and 'nodehm' tables
+	xCAT::zvmUtils->delTabEntry( 'zvm',      $node );
+	xCAT::zvmUtils->delTabEntry( 'nodelist', $node );
+	xCAT::zvmUtils->delTabEntry( 'nodetype', $node );
+	xCAT::zvmUtils->delTabEntry( 'noderes',  $node );
+	xCAT::zvmUtils->delTabEntry( 'nodehm',   $node );
 
 	return;
 }
@@ -733,8 +737,8 @@ sub changeVM {
 		$out = `ssh $hcp "$::DIR/removeprocessor $userId $addr"`;
 	}
 
-	# replaceuserentry [file]
-	elsif ( $args->[0] eq "--replaceuserentry" ) {
+	# replacevs [file]
+	elsif ( $args->[0] eq "--replacevs" ) {
 		my $file = $args->[1];
 
 		# Target system (HCP) -- root@gpok2.endicott.ibm.com
@@ -917,6 +921,7 @@ sub scanVM {
 	# Get nodes managed by this HCP
 	# Look in 'zvm' table
 	my $tab = xCAT::Table->new( 'zvm', -create => 1, -autocommit => 0 );
+	my @results = $tab->getAllAttribsWhere( "hcp like '%" . $hcp . "%'", 'node', 'userid' );
 
 	my $out;
 	my $managedNode;
@@ -927,7 +932,6 @@ sub scanVM {
 
 	# Search for nodes managed by specified HCP
 	# Get 'node' and 'userid' properties
-	my @results = $tab->getAllAttribsWhere( "hcp like '%" . $hcp . "%'", 'node', 'userid' );
 	foreach (@results) {
 		$managedNode = $_->{'node'};
 
@@ -1132,8 +1136,9 @@ sub listVM {
 =head3   makeVM
 
 	Description	: Create a virtual server
+					- Unique MAC address is assigned to the virtual server
     Arguments	: 	Node 
-    				User entry as text file
+    				User entry text file
     Returns		: Nothing
     Example		: makeVM($callback, $node, $args);
     
@@ -1168,21 +1173,91 @@ sub makeVM {
 		return;
 	}
 
-	# Get file (if any)
-	my $file = $args->[0];
-	my $out;
+	# Get user entry file (if any)
+	my $userEntry = $args->[0];
 
-	# Target system (HCP) -- root@gpok123.endicott.ibm.com
-	my $target = "root@";
-	$target .= $hcp;
-	if ($file) {
+	my $out;
+	my $nodeStr = "root@" . $hcp;
+	if ($userEntry) {
+
+		# Grab first NICDEF statement in user entry
+		$out = `cat $userEntry | grep "NICDEF"`;
+		my @lines = split( '\n', $out );
+		my @vars  = split( ' ',  $lines[0] );
+
+		# Get LAN name
+		my $lanName = $vars[6];
+
+		# Get MAC address in 'mac' table
+		@propNames = ('mac');
+		$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $node, @propNames );
+		my $generateNew = 0;
+		my $suffix;
+		if ($propVals) {
+			$suffix = $propVals->{'mac'};
+			$suffix = xCAT::zvmUtils->replaceStr( $suffix, ":", "" );
+
+			# Get MAC suffix
+			$suffix = substr( $suffix, 6 );
+		}
+		else {
+
+			# If no MAC suffix is found in 'mac' table, get new MAC suffix
+			$suffix = xCAT::zvmUtils->getMacID($hcp);
+			if ( !$suffix ) {
+				xCAT::zvmUtils->printLn( $callback, "Error: Could not generate MACID" );
+				return;
+			}
+
+			$generateNew = 1;
+		}
+
+		# Append MACID at the end of the NICDEF statement in user entry text file
+		$out = `sed --in-place -e "s,$lanName,$lanName MACID $suffix,g" $userEntry`;
 
 		# SCP file over to HCP
-		$out = `scp $file $target:$file`;
+		$out = `scp $userEntry $nodeStr:$userEntry`;
 
 		# Create virtual server
-		$out = `ssh $hcp "$::DIR/createvs $userId $file"`;
+		$out = `ssh $hcp "$::DIR/createvs $userId $userEntry"`;
 		xCAT::zvmUtils->printLn( $callback, "$out" );
+
+		# Check output
+		my $rc = xCAT::zvmUtils->isOutputGood( $callback, $out );
+		if ( $rc == 0 ) {
+
+			# Get HCP MAC address
+			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep $lanName`;
+			my @lines = split( "\n", $out );
+			my @vars  = split( " ",  $lines[0] );
+			my $prefix = $vars[1];
+			$prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
+			$prefix = substr( $prefix, 0, 6 );
+
+			# Generate MAC address
+			my $mac = $prefix . $suffix;
+
+			# Append a zero if length is less than 12
+			if ( length($mac) != 12 ) {
+				$mac = "0" . $mac;
+			}
+
+			$mac =
+			    substr( $mac, 0, 2 ) . ":"
+			  . substr( $mac, 2,  2 ) . ":"
+			  . substr( $mac, 4,  2 ) . ":"
+			  . substr( $mac, 6,  2 ) . ":"
+			  . substr( $mac, 8,  2 ) . ":"
+			  . substr( $mac, 10, 2 );
+
+			# Save MAC address in 'mac' table
+			xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
+
+			# Generate new MAC suffix
+			if ( $generateNew == 1 ) { 
+				$mac = xCAT::zvmUtils->generateMac($hcp); 
+			}
+		}
 	}
 	else {
 
@@ -1605,7 +1680,9 @@ sub cloneVM {
 =head3   nodeSet
 
 	Description	: Set the boot state for a noderange 
-				(Perform installation of zLinux)
+					- Installs zLinux
+					- Layer 2 and 3 VSwitch/Lan supported 
+					- The 1st NICDEF in the user entry will be used
     Arguments	: Node
     Returns		: Nothing
     Example		: nodeSet($callback, $node, $args);
@@ -1652,14 +1729,14 @@ sub nodeSet {
 		return;
 	}
 
-	# Get profile
+	# Get autoyast/kickstart template
 	my $profile = $propVals->{'profile'};
 	if ( !$distr ) {
 		xCAT::zvmUtils->printLn( $callback, "Error: Missing profile for this node" );
 		return;
 	}
 
-	# Get network adapter
+	# Get network interface
 	@propNames = ( 'primarynic', 'tftpserver' );
 	$propVals = xCAT::zvmUtils->getNodeProps( 'noderes', $node, @propNames );
 	my $interface = $propVals->{'primarynic'};
@@ -1680,17 +1757,53 @@ sub nodeSet {
 
 	# Get NIC address from user entry
 	$out = `ssh $hcp "$::DIR/getuserentry $userId" | grep "NICDEF"`;
-	my @lines = split( '\n', $out );
-	if ( !$lines[0] ) {
+	if ( !$out ) {
 		xCAT::zvmUtils->printLn( $callback, "Error: Missing NICDEF statement in user entry of node" );
 		return;
 	}
 
-	# Grab the first NICDEF address
+	# Grab first NICDEF address
+	my @lines = split( '\n', $out );
 	@parms = split( ' ', $lines[0] );
 	my $readChannel  = "0.0.0" . ( $parms[1] + 0 );
 	my $writeChannel = "0.0.0" . ( $parms[1] + 1 );
 	my $dataChannel  = "0.0.0" . ( $parms[1] + 2 );
+
+	# Get network type (Layer 2 or 3)
+	my $lanName = $parms[6];
+	$out = `ssh $hcp "vmcp q lan $lanName"`;
+	if ( !$out ) {
+		xCAT::zvmUtils->printLn( $callback, "Error: Missing NICDEF statement in user entry of node" );
+		return;
+	}
+
+	# Go through each line and search for ETHERNET -- Which means layer 2
+	my $layer = 3;    # Default to layer 3
+	@lines = split( '\n', $out );
+	foreach (@lines) {
+
+		# If the line contains ETHERNET, then it is a layer 2 network
+		if ( $_ =~ m/ETHERNET/i ) {
+			$layer = 2;
+		}
+	}
+
+	# Get MAC address -- Only for layer 2 LAN
+	my $mac = "";
+	my @propNames;
+	my $propVals;
+	if ( $layer == 2 ) {
+
+		# Search 'mac' table for node
+		@propNames = ('mac');
+		$propVals  = xCAT::zvmUtils->getTabPropsByKey( 'mac', 'node', $node, @propNames );
+		$mac       = $propVals->{'mac'};
+
+		# If no MAC address is found, generate a new one
+		if ( !$mac ) {
+			$mac = xCAT::zvmUtils->generateMac($hcp);
+		}
+	}
 
 	# Get domain from site table
 	my $siteTab    = xCAT::Table->new('site');
@@ -1742,7 +1855,6 @@ sub nodeSet {
 	my $netType  = "qeth";
 	my $portName = "FOOBAR";
 	my $portNo   = "0";
-	my $layer    = "0";
 
 	# SUSE installation
 	my $template;
@@ -1759,7 +1871,7 @@ sub nodeSet {
 		my $device  = "qeth-bus-ccw-$readChannel";
 		my $chanIds = "$readChannel $writeChannel $dataChannel";
 		$out =
-`sed --in-place -e "s,replace_host_address,$hostIP,g" \ -e "s,replace_long_name,$hostname,g" \ -e "s,replace_short_name,$node,g" \ -e "s,replace_domain,$domain,g" \ -e "s,replace_hostname,$node,g" \ -e "s,replace_nameserver,$node,g" \ -e "s,replace_broadcast,$broadcast,g" \ -e "s,replace_device,$device,g" \ -e "s,replace_ipaddr,$hostIP,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_network,$network,g" \ -e "s,replace_ccw_chan_ids,$chanIds,g" \ -e "s,replace_ccw_chan_mode,FOOBAR,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_root_password,rootpw,g" $template`;
+`sed --in-place -e "s,replace_host_address,$hostIP,g" \ -e "s,replace_long_name,$hostname,g" \ -e "s,replace_short_name,$node,g" \ -e "s,replace_domain,$domain,g" \ -e "s,replace_hostname,$node,g" \ -e "s,replace_nameserver,$node,g" \ -e "s,replace_broadcast,$broadcast,g" \ -e "s,replace_device,$device,g" \ -e "s,replace_ipaddr,$hostIP,g" \ -e "s,replace_lladdr,$mac,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_network,$network,g" \ -e "s,replace_ccw_chan_ids,$chanIds,g" \ -e "s,replace_ccw_chan_mode,FOOBAR,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_root_password,rootpw,g" $template`;
 
 		# Read sample parmfile in /install/sles10.2/s390x/1/boot/s390x/
 		$sampleParm = "/install/$distr/s390x/1/boot/s390x/parmfile";
@@ -1783,7 +1895,7 @@ sub nodeSet {
 		# 	ramdisk_size=65536 root=/dev/ram1 ro init=/linuxrc TERM=dumb
 		# 	HostIP=10.0.0.5 Hostname=gpok5.endicott.ibm.com
 		# 	Gateway=10.0.0.1 Netmask=255.255.255.0
-		# 	Broadcast=10.0.0.0 Layer2=0
+		# 	Broadcast=10.0.0.0 Layer2=1 OSAHWaddr=02:00:01:00:00:05
 		# 	ReadChannel=0.0.0800  WriteChannel=0.0.0801  DataChannel=0.0.0802
 		# 	Nameserver=9.0.2.11 Portname=OSAPORT
 		#	Install=ftp://10.0.0.1/sles10.2/s390x/1/
@@ -1795,7 +1907,15 @@ sub nodeSet {
 		$parms = $parms . "AutoYaST=$ay\n";
 		$parms = $parms . "HostIP=$hostIP Hostname=$hostname\n";
 		$parms = $parms . "Gateway=$gateway Netmask=$mask\n";
-		$parms = $parms . "Broadcast=$network Layer2=$layer\n";
+
+		# Set layer in autoyast profile
+		if ( $layer == 2 ) {
+			$parms = $parms . "Broadcast=$network Layer2=1 OSAHWaddr=$mac\n";
+		}
+		else {
+			$parms = $parms . "Broadcast=$network Layer2=0\n";
+		}
+
 		$parms = $parms . "ReadChannel=$readChannel WriteChannel=$writeChannel DataChannel=$dataChannel\n";
 		$parms = $parms . "Nameserver=$nameserver Portname=$portName\n";
 		$parms = $parms . "Install=ftp://$ftp/$distr/s390x/1/\n";
@@ -1902,7 +2022,7 @@ sub nodeSet {
 			}
 		}
 
-		# Create parmfile LINUX5 PARM-R53
+		# Create parmfile
 		# Limit to 80 characters/line -- maximum of 11 lines
 		# End result should be --
 		#	ramdisk_size=40000 root=/dev/ram0 ro ip=off
@@ -1927,7 +2047,15 @@ sub nodeSet {
 		$parms = $parms . "NETWORK=$network NETMASK=$mask\n";
 		$parms = $parms . "SEARCHDNS=$domain BROADCAST=$broadcast\n";
 		$parms = $parms . "GATEWAY=$gateway DNS=$nameserver MTU=1500\n";
-		$parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=$layer\n";
+
+		# Set layer in kickstart profile
+		if ( $layer == 2 ) {
+			$parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=1 MACADDR=$mac\n";
+		}
+		else {
+			$parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=0\n";
+		}
+
 		$parms = $parms . "vnc vncpassword=123456\n";
 
 		# Write to parmfile
@@ -2007,7 +2135,9 @@ sub nodeSet {
 
 =head3   getMacs
 
-	Description	: Collects node MAC address
+	Description	: Collects node MAC address 
+					- This operation requires the node be online
+					- This operating gets the 1st MAC address found
     Arguments	: Node
     Returns		: Nothing
     Example		: getMacs($callback, $node, $args);
@@ -2038,9 +2168,71 @@ sub getMacs {
 		return;
 	}
 
-	# Get the last 3 letters of userID
-	my $hexStr = xCAT::zvmUtils->ascii2hex("123");
-	xCAT::zvmUtils->printLn( $callback, "Hex string -- $hexStr" );
+	# Load VMCP module
+	my $out = xCAT::zvmCPUtils->loadVmcp($node);
+
+	# Get xCat MN Lan/VSwitch name
+	$out = `vmcp q v nic | egrep -i "VSWITCH|LAN"`;
+	my @lines = split( '\n', $out );
+	my @vars;
+
+	# Go through each line and extract VSwitch and Lan names
+	# and create search string
+	my $searchStr = "";
+	my @vswitches;
+	my @lans;
+	my $i;
+	for ( $i = 0 ; $i < @lines ; $i++ ) {
+
+		# Extract VSwitch name
+		if ( $lines[$i] =~ m/VSWITCH/i ) {
+			@vars = split( ' ', $lines[$i] );
+			push( @vswitches, $vars[4] );
+			$searchStr = $searchStr . "$vars[4]";
+		}
+
+		# Extract Lan name
+		elsif ( $lines[$i] =~ m/LAN/i ) {
+			@vars = split( ' ', $lines[$i] );
+			push( @lans, $vars[4] );
+			$searchStr = $searchStr . "$vars[4]";
+		}
+
+		if ( $i != ( @lines - 1 ) ) {
+			$searchStr = $searchStr . "|";
+		}
+	}
+
+	# Get MAC address of node
+	# This node should be on only 1 of the networks that the xCat MN is on
+	$out = `ssh -o ConnectTimeout=5 $node "vmcp q v nic" | egrep -i "$searchStr"`;
+	if ( !$out ) {
+		xCAT::zvmUtils->printLn( $callback, "Error: Could not find MAC address" );
+		return;
+	}
+
+	@lines = split( '\n', $out );
+	@vars  = split( ' ',  $lines[0] );
+	my $mac = $vars[1];
+
+	# Replace - with :
+	$mac = xCAT::zvmUtils->replaceStr( $mac, "-", ":" );
+	xCAT::zvmUtils->printLn( $callback, "$mac" );
+
+	# Get network interface using MAC address
+	$out = `ssh -o ConnectTimeout=5 $node "ifconfig" | grep "$mac"`;
+	if ( !$out ) {
+		xCAT::zvmUtils->printLn( $callback, "Error: Could not find network interface" );
+		return;
+	}
+
+	@lines = split( '\n', $out );
+	@vars  = split( ' ',  $lines[0] );
+	my $interface = $vars[0];
+
+	# Save MAC address and network interface into 'mac' table
+	xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac',       $mac );
+	xCAT::zvmUtils->setNodeProp( 'mac', $node, 'interface', $interface );
 
 	return;
 }
