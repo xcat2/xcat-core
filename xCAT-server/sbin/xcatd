@@ -683,6 +683,7 @@ sub plugin_command {
   my $sock = shift;
   my $callback = shift;
   my %handler_hash;
+  my $usesiteglobal = 0;
   use xCAT::NodeRange qw/extnoderange nodesmissed noderange/;
   $Main::resps={};  
   my @nodes;
@@ -725,6 +726,7 @@ sub plugin_command {
             $useglobals = -1; #If they tried to specify anything, don't use the default global handlers at all
             unless (@nodes) {
               $handler_hash{$sent->{value}} = 1;
+              $usesiteglobal = 1;
             }
             foreach (@nodes) { #Specified a specific plugin, not a table lookup
               $handler_hash{$sent->{value}}->{$_} = 1;
@@ -800,7 +802,17 @@ sub plugin_command {
             }
           }
       } elsif ($useglobals == 0) {
+          unless (@nodes or $usesiteglobal) { #if something like 'makedhcp -n',
+              foreach (keys %handler_hash) {
+                  if ($handler_hash{$_} == 1) {
+                      delete ($handler_hash{$_})
+                  }
+              }
+          }
           foreach $hdlspec (@globalhandlers) {
+            unless (@nodes or $usesiteglobal) {
+              $handler_hash{$hdlspec} = 1;
+            }
             foreach (keys %unhandled_nodes) { #Specified a specific plugin, not a table lookup
               $handler_hash{$hdlspec}->{$_} = 1;
             }
