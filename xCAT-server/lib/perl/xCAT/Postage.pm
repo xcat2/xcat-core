@@ -336,7 +336,9 @@ sub makescript {
 	  }
       }
   } else {
-      $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $os, $arch, $profile, $nodesetstate);
+      my $stat="install";
+      if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
+      $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $os, $arch, $profile, $stat);
   }
   if (! defined ($syncfile)) {
       push @scriptd, "NOSYNCFILES=1\n";
