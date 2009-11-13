@@ -1021,6 +1021,7 @@ sub format_output {
     if ( exists( $opt{w} )) {
         xCATdB( $outhash );
     }
+
     ###########################################
     # -r flag for raw response format
     ###########################################
@@ -1146,6 +1147,23 @@ sub gethost_from_url {
             }
         }
     }
+
+    ###############################################################
+    # Convert IP to hostname (Accoording to  DNS or /etc/hosts
+    ###############################################################
+    my $host = gethostbyaddr( $packed, AF_INET );
+    if ( !$host or $! ) {
+        #Tentative solution
+        return undef if ($opt{H});
+    }
+
+    if ( $host ) {
+        if ( $::VPD_TAB_CACHE{$host} ) {
+            delete $::VPD_TAB_CACHE{$host};
+        }
+        return( "$host($ip)" );
+    } 
+
     if ( $rsp =~ /\(machinetype-model=(.*?)\)/ )
     {
         my $mtm = $1;
@@ -1154,6 +1172,12 @@ sub gethost_from_url {
             my $sn = $1;
             foreach my $node ( keys %::VPD_TAB_CACHE ) {
                 if ( $::VPD_TAB_CACHE{$node} eq $mtm . '*' . $sn ) {
+                    my $iip = gethostbyname($node);
+                    if ( !$iip ) {
+
+                        delete $::VPD_TAB_CACHE{$node};
+                        return $node . "($ip)";
+                    }
 
                     delete $::VPD_TAB_CACHE{$node};
                     return $node . "($ip)";
@@ -1183,16 +1207,7 @@ sub gethost_from_url {
         return $::HOST_TAB_CACHE{ $ip} ."($ip)";
     }
 
-    ###############################################################
-    # Convert IP to hostname (Accoording to  DNS or /etc/hosts
-    ###############################################################
-    my $host = gethostbyaddr( $packed, AF_INET );
-    if ( !$host or $! ) {
-#Tentative solution
-return undef if ($opt{H});
-        $host = getFactoryHostname($type,$mtm,$sn,$rsp);
-#return( $ip );
-    }
+    $host = getFactoryHostname($type,$mtm,$sn,$rsp);
     #######################################
     # Convert hostname to short-hostname
     #######################################
@@ -1595,11 +1610,16 @@ sub xCATdB {
             $host_ip{$name} = $ips;
         }
 
+        $ips    = @$data[3] if ( !$ips);
+        $name   = @$data[4] if ( !$name);
+
+        my $hostip = xCAT::Utils::updateEtcHosts($name,$ips);
+        $name = @$hostip[0];
+        $ips = @$hostip[1];
+
         if ( $type =~ /^BPA$/ ) {
             my $model  = @$data[1];
             my $serial = @$data[2];
-            $ips    = @$data[3] if ( !$ips);
-            $name   = @$data[4] if ( !$name);
             my $id     = @$data[6];
 
             ####################################
@@ -1698,7 +1718,7 @@ sub xCATdB {
             xCAT::PPCdb::add_systemX( $type, $data );
         }
     }
-    xCAT::Utils::updateEtcHosts(\%host_ip);
+#    xCAT::Utils::updateEtcHosts(\%host_ip);
 }
 
 

@@ -5324,7 +5324,8 @@ sub get_unique_members
 ##########################################################################
 sub updateEtcHosts
 {
-    my $host_ip = shift;
+    my $host = shift;
+    my $ip = shift;
     my $fname = "/etc/hosts";
     unless ( open( HOSTS,"<$fname" )) {
         return undef;
@@ -5337,31 +5338,21 @@ sub updateEtcHosts
     ######################################
     # Remove old entry
     ######################################
-    foreach my $host ( keys %$host_ip) {
-        my $ip = $host_ip->{ $host};
-        my $updated = 0;
-        foreach my $line ( @rawdata ) {
-            if ( $line =~ /^#/ or $line =~ /^\s*$/ ) {
-                next;
-            } 
-            if ( $line =~ /^\s*\Q$ip\E\s+/ ) 
-            {
-                if ( $line =~ /\s+\Q$host\E\s+/ or 
-                    $line =~ /\s+\Q$host\E$/) 
-                {
-                }
-                else
-                {
-                    $line .= "\t$host";
-                }
-                $updated = 1;
-                last;
-            }
+    my $updated = 0;
+    foreach my $line ( @rawdata ) {
+        if ( $line =~ /^#/ or $line =~ /^\s*$/ ) {
+            next;
         }
-        if ( !$updated)
+        if ( $line =~ /^\s*\Q$ip\E\s+(.*)$/ )
         {
-            push @rawdata, "$ip\t$host";
+            $host = $1;
+            $updated = 1;
+            last;
         }
+    }
+    if ( !$updated)
+    {
+        push @rawdata, "$ip\t$host";
     }
     ######################################
     # Rewrite file
@@ -5374,6 +5365,7 @@ sub updateEtcHosts
         print HOSTS "$line\n";
     }
     close( HOSTS );
-    return 1;
+    return [$host,$ip];
 }
+
 1;
