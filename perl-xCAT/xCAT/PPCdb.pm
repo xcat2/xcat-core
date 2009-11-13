@@ -89,8 +89,8 @@ sub add_ppc {
         # If cannot be overwroten, get
         # old data firstly
         ###############################
-        my $mgt;
-        my $cons;
+        my $mgt = $hwtype;
+        my $cons= $hwtype;
         if ( $not_overwrite)
         {
             my $enthash = $db{ppc}->getNodeAttribs( $name, [qw(hcp id pprofile parent)]);
@@ -113,11 +113,6 @@ sub add_ppc {
                 $model = $enthash->{mtm} if ( $enthash->{mtm});
                 $serial= $enthash->{serial} if ( $enthash->{serial});
             }
-        }
-        else
-        {
-            $mgt = $hwtype;
-            $cons = $hwtype;
         }
 
         ###############################
