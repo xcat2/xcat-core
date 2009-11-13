@@ -4,7 +4,7 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [I<script1,script2...>]] 
+B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [I<script1,script2...>]] [B<-c>|B<--cmdlineonly>] [I<attr=val> [I<attr=val...>]]
 
 B<updatenode> I<noderange> [B<-V>|B<--verbose>] [I<script1,script2...>]
 
@@ -44,9 +44,7 @@ Note: In a large cluster environment the updating of nodes in an ad hoc
 manner can quickly get out of hand, leaving the system administrator with 
 a very confusing environment to deal with. The updatenode command is 
 designed to encourage users to handle cluster updates in a manner that 
-is recorded and easily repeatable.  If you are not concerned about the 
-structure the updatenode command provides you can use other xCAT support
-such as xdsh and xdcp to accomplish these update tasks.
+is recorded and easily repeatable.  
 
 =head2 To distribute and synchronize files
 
@@ -159,7 +157,7 @@ in the osimage table.
   updatenode <noderange> -F
 
 
-=head2 To install or update software (only available on Linux Nodes)
+=head2 To install or update software
 
 The basic process for updating software on a node is:
 
@@ -179,7 +177,9 @@ Run the updatenode command to update the nodes.
 
 =back
 
-On Linux systems, to install additional software for Linux nodes:
+=over 3
+
+B<For Linux systems:>
 
 =over 3
 
@@ -227,6 +227,80 @@ ignored if the pkglist file is available just depend on the
 Type:
 
   updatenode <noderange> -S
+
+=back
+
+B<For AIX systems:>
+
+Note: The updatenode command is used to update AIX diskfull nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
+
+The software packages that you wish to install on the nodes must be 
+copied to the appropriate directory locations in the NIM lpp_source 
+resource associated with the node. A simple way to do this is to use 
+the "nim -o update" command.  For example, assuming the software is in 
+/images and the lpp_source resource used for this node is named "mylpp" then 
+you could run:
+
+B<nim -o update -a packages=all -a source=/images mylpp>
+
+Note: To find the correct lpp_source for the node get the name of 
+the xCAT osimage definition from the "provmethod" attribute of the xCAT node
+definition and then get the name of the lpp_source resource from the 
+osimage definition. You can use the xCAT lsdef command to display the node and osimage definitions.
+
+The software you wish to install or update must be specified to
+the updatenode command.  There are two methods that may be used to specify 
+the software to update.
+
+The first is to set the "installp_bundle" and/or the "otherpkgs" attributes 
+of the xCAT osimage definition you are using for the node.  
+
+The second is to specify one or both of these attribute values on the 
+updatenode command line.
+
+Using the first method provides a record of what was updated which is stored
+in the xCAT database. This can be useful when managing a large cluster 
+environment.  The second method is more "ad hoc" but also can be more flexible.
+
+The updatenode command will either use the information in the database or the
+information on the command line - BUT NOT BOTH.  If you specify infornmation
+on the command line it will use that, otherwise it will use what is in the 
+database.
+
+The "installp_bundle" attribute value may be set to a comma separated list of
+one or more NIM installp_bundle resource names.  These NIM resources must
+be created using standard NIM interfaces. See the AIX documentation for more 
+information on creating NIM resources. Also, there are examples for creating installp_bundle resources in several of the xCAT for AIX documents.
+
+The "otherpkgs" attribute value may be set to a comma separated list of 
+installp filesets or RPM packages.
+
+When specifying RPM names you must use a prefix of "R:".  (ex. "R:foo.rpm").
+
+Along with the names of the software to install you may also provide the
+specific installp and rpm flags you want used when those commands are run
+on the nodes.  Use the "installp_flags" and "rpm_flags" attributes to provide
+this information.  Make sure you specify the exact string you want used in
+quotes.  For example: I<installp_flags="-apXY" rpm_flags="-i --nodeps">.
+
+The default value for installp_flags is "-agQX" and the default value for 
+rpm_flags is "-Uvh".
+
+When doing software maintenance on AIX nodes you may also find the "-c" 
+flag useful.  When you specify this flag on the updatenode command line
+the command will know to use the command line information ONLY, even if
+there is no software specified (i.e. It won't go look in the database.).  
+This option would be needed when using installp or rpm options that do not 
+require a list of software.
+
+If you wish to see the output from the installp or rpm commands that are run
+then you must specifiy "-V" on the updatenode command line.
+
+See the examples below for more details.
+
+When working in a hierarchical xCAT cluster the updatenode command will
+automatically take care of distributing the software to the 
+appropriate service nodes.
 
 =back
 
@@ -288,11 +362,25 @@ A comma-separated list of script names.
 The scripts must be executable and copied 
 to the /install/postscripts directory.
 
+=item [I<attr=val> [I<attr=val...>]]
+
+Specifies one or more "attribute equals value" pairs, separated by spaces.
+Attr=val pairs must be specified last on the command line.  The currently
+supported attributes are: "installp_bundle", "otherpkgs", "installp_flags", 
+and "rpm_flags".  These attribute are only valid for AIX software
+maintenance support.
+
 =back
 
 =head1 OPTIONS
 
 =over 10
+
+=item -c|cmdlineonly
+
+Specifies that the updatenode command should only use software maintenance
+information provided on the command line.  This flag is only valid when
+using AIX software maintenance support.
 
 =item -F|--sync
 
@@ -338,7 +426,7 @@ Verbose mode.
 To perform all updatenode features for the Linux nodes in the group
 "compute":
 
-  updatenode compute
+B<updatenode compute>
 
 The command will: run any scripts listed in the nodes "postscripts" 
 attribute, install or update any software indicated in the 
@@ -351,26 +439,27 @@ the synclist files specified in the osimage "synclists" attribute.
 To perform a software update and file synchronization only on the node
 "clstrn01":
 
-  updatenode clstrn01 -F -P
+B<updatenode clstrn01 -F -P>
 
 =item 3
 
 To run the postscripts which indicated in the postscripts attribute on 
 the node "clstrn01":
 
-  updatenode  clstrn01 -P
+B<updatenode clstrn01 -P>
 
 =item 4
 
 To run the postscripts script1 and script2 on the node "clstrn01":
 
-  cp script1,script2 /install/postscripts
-  updatenode clstrn01 -P script1,script2
+B<cp script1,script2 /install/postscripts>
+
+B<updatenode clstrn01 -P script1,script2>
 
 Since flag '-P' can be omitted when only postscripts parameters are specified, 
 the following command is equivalent:
 
-  updatenode clstrn01 script1,script2
+B<updatenode clstrn01 script1,script2>
 
 =item 5
 
@@ -380,7 +469,7 @@ attribute. For Linux, put the synclist file into the location:
 /install/custom/<inst_type>/<distro>/<profile>.<os>.<arch>.synclist
 Then:
 
-  updatenode  clstrn01 -F
+B<updatenode clstrn01 -F>
 
 =item 6
 
@@ -388,7 +477,56 @@ To perform the software update on the Linux node "clstrn01":  Copy the extra
 rpm into the /install/post/otherpkgs/<os>/<arch>/* and add the rpm names into 
 the /install/custom/install/<ostype>/profile.otherpkgs.pkglist .  Then:
 
-  updatenode clstrn01 -S
+B<updatenode clstrn01 -S>
+
+=item 7
+
+To update the AIX node named "xcatn11" using the "installp_bundle" and/or
+"otherpkgs" attribute values stored in the xCAT database.  Use the default installp ("-agQX") and rpm ("-Uvh") flags.
+
+B<updatenode xcatn11 -S>
+
+Note: The xCAT "xcatn11" node definition points to an xCAT osimage definition which contains the "installp_bundle" and "otherpkgs" attributes.
+
+=item 8
+
+To update the AIX node "xcatn11" by installing the "bos.cpr" fileset using 
+the "-agQXY" installp flags.  Also display the output of the installp command.
+
+B<updatenode xcatn11 -V -S otherpkgs="bos.cpr" installp_flags="-agQXY">
+
+=item 9 
+
+To uninstall the "bos.cpr" fileset that was installed in the previous example.
+
+B<updatenode xcatn11 -V -S otherpkgs="bos.cpr" installp_flags="-u">
+
+=item 10
+
+To update the AIX nodes "xcatn11" and "xcatn12" with the "gpfs.base" fileset
+and the "rsync" rpm using the installp flags "-agQXY" and the rpm flags "-i --nodeps".
+
+B<updatenode xcatn11,xcatn12 -V -S otherpkgs="gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i --nodeps">
+
+Note: Using the "-V" flag with multiple nodes may result in a large amount of output.
+
+=item 11
+
+Update the AIX node "node01" using the software specified in the NIM "sslbnd" and "sshbnd" installp_bundle resources and the "-agQXY" installp flags.
+
+B<updatenode node01 -V -S installp_bundle="sslbnd,sshbnd" installp_flags="-agQXY">
+
+=item 12
+
+To get a preview of what would happen if you tried to install the "rsct.base" fileset on AIX node "node42".  (You must use the "-V" option to get the full output from the installp command.)
+
+B<updatenode node42 -V -S otherpkgs="rsct.base" installp_flags="-apXY">
+
+=item 13
+
+To check what rpm packages are installed on the AIX node "node09". (You must use the "-c" flag so updatenode does not get a list of packages from the database.)
+
+B<updatenode node09 -V -c -S rpm_flags="-qa">
 
 =back
 
