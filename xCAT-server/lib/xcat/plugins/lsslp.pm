@@ -1178,9 +1178,6 @@ sub gethost_from_url {
                         delete $::VPD_TAB_CACHE{$node};
                         return $node . "($ip)";
                     }
-
-                    delete $::VPD_TAB_CACHE{$node};
-                    return $node . "($ip)";
                 }
             }
         }
