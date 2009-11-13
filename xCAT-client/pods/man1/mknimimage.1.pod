@@ -48,7 +48,7 @@ To remove specific NIM resource definitons use the AIX nim command.
 
 =item B<attr=val [attr=val ...]>
 
-Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify additional or different information to use when creating the the xCAT osimage definition.  Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). Valid attribute names include any of the attributes of the xCAT osimage object plus "installp_flags". (The default for installp_flags is "agQX".)
+Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify additional or different information to use when creating the the xCAT osimage definition.  Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). Valid attribute names include any of the attributes of the xCAT osimage object plus "installp_flags". (The default for installp_flags is "-agQX".)
 
 =item B<-b mksysbfile>
 
@@ -174,9 +174,9 @@ The xCAT osimage definition created by this command will include the "otherpkgs"
 
 B<mknimimage -V -u 61dskls>
 
-12) Update an existing diskless image called "61dskls".  Install the additional software specified in the NIM "bndres1" and "bndres2" installp_bundle resources using the installp flags "agcQX".  (The NIM "bndres1" and "bndres2" definitions must be created before using them in this command.)
+12) Update an existing diskless image called "61dskls".  Install the additional software specified in the NIM "bndres1" and "bndres2" installp_bundle resources using the installp flags "-agcQX".  (The NIM "bndres1" and "bndres2" definitions must be created before using them in this command.)
 
-B<mknimimage -u 61dskls installp_bundle=bndres1,bndres2 installp_flags=agcQX>
+B<mknimimage -u 61dskls installp_bundle=bndres1,bndres2 installp_flags="-agcQX">
 
 Note that when "installp_bundle", "otherpkgs", or "synclists" values are specified with the "-u" option then the xCAT osimage definiton is not used or updated.
 
