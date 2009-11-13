@@ -56,6 +56,12 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data/*
 
+
+# For now, don't ship these plugins - to avoid AIX dependency error.
+%ifnos linux
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
+%endif
+
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT/*
 
