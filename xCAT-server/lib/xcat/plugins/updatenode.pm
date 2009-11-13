@@ -184,7 +184,7 @@ sub preprocess_updatenode
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'c|cmdline'   => \$::CMDLINE,
+                    'c|cmdlineonly'   => \$::CMDLINE,
                     'h|help'      => \$::HELP,
                     'v|version'   => \$::VERSION,
                     'V|verbose'   => \$::VERBOSE,
@@ -460,7 +460,7 @@ sub updatenode
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'c|cmdline'   => \$::CMDLINE,
+                    'c|cmdlineonly'   => \$::CMDLINE,
                     'h|help'      => \$::HELP,
                     'v|version'   => \$::VERSION,
                     'V|verbose'   => \$::VERBOSE,
@@ -1299,8 +1299,9 @@ sub updateAIXsoftware
 
             # do installp first
             # if we have installp filesets or other installp flags
+			# we may just get flags!
             if (   (scalar(@installp_pkgs))
-                || ($imagedefs{$img}{installp_flags} =~ /C|L|l/))
+                || ($imagedefs{$img}{installp_flags}))
             {
 
                 # - use installp with file
@@ -1380,7 +1381,8 @@ sub updateAIXsoftware
                 next;
             }
 
-            if (scalar(@rpm_pkgs) || ($imagedefs{$img}{rpm_flags} =~ /q/))
+			# we may just get rpm flags!
+            if (scalar(@rpm_pkgs) || ($imagedefs{$img}{rpm_flags}))
             {
 
                 # don't do rpms if these installp flags were specified
