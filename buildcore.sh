@@ -156,7 +156,7 @@ if $GREP -E '^[UAD] +xCAT/' $SVNUP; then
 fi
 
 # Decide if anything was built or not
-if [ $UPLOAD == 0 ]; then
+if [ $UPLOAD == 0 -a "$UP" != 1 ]; then
 	echo "Nothing new detected"
 	exit 0;
 fi
@@ -214,6 +214,15 @@ enabled=1
 gpgcheck=1
 gpgkey=http://xcat.sourceforge.net/yum/$REL/$CORE/repodata/repomd.xml.key
 EOF
+
+# Create the mklocalrepo script
+cat >mklocalrepo.sh << 'EOF2'
+#!/bin/sh
+cd `dirname $0`
+REPOFILE=`basename xCAT-*.repo`
+sed -e 's|baseurl=.*|baseurl=file://'`pwd`'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'`pwd`'/repodata/repomd.xml.key|' > /etc/yum.repos.d/$REPOFILE
+cd -
+EOF2
 
 #if [ "$PROMOTE" = 1 ]; then
 #	sed -e 's|/core-snap|/xcat-core|' xCAT-core.repo > xCAT-core.repo.new
