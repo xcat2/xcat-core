@@ -1757,7 +1757,7 @@ sub mknimimage
 		#
 		# create resolv_conf
 		#
-        my $resolv_conf_name = &mk_resolv_conf($callback);
+        my $resolv_conf_name = &mk_resolv_conf($callback, $subreq);
 		if (defined($resolv_conf_name)) {
         	chomp $resolv_conf_name;
         	$newres{resolv_conf} = $resolv_conf_name;
@@ -2322,6 +2322,10 @@ sub mk_resolv_conf_file
 {
 	my $callback = shift;
 	my $loc = shift;
+	my $subreq = shift;
+
+	my $nimprime = xCAT::InstUtils->getnimprime();
+	chomp $nimprime;
 
 	my $fullname = "$loc/resolv.conf";
 
@@ -2338,33 +2342,52 @@ sub mk_resolv_conf_file
 		# fullname is something like 
 		#	/install/nim/resolv_conf/610img_resolv_conf/resolv.conf
 
-		my $mkcmd = "/usr/bin/mkdir -p $loc";
-		my $output = xCAT::Utils->runcmd("$mkcmd", -1);
-		if ($::RUNCMD_RC  != 0) {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not create $loc.\n";
-			if ($::VERBOSE) {
-				push @{$rsp->{data}}, "$output\n";
-			}
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return undef;
-		}
+                my $mkcmd = qq~/usr/bin/mkdir -p $loc~;
+                my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $mkcmd, 0); 
+                if ($::RUNCMD_RC  != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not create $loc.\n";
+                        if ($::VERBOSE) {
+                                push @{$rsp->{data}}, "$output\n";
+                        }
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return undef;
+                }
 
-		unless (open(RSCNF, ">$fullname")) {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not open $fullname.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-        }
-		
-		# add the domain
-		print RSCNF "search $domain\n";
+                my $cmd = qq~echo search $domain > $fullname~;
+                if ($::VERBOSE) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Set domain $domain into $fullname";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+                # add the domain
+		my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
+                if ($::RUNCMD_RC  != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not add domain into $fullname";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
+                }
 
-		# add nameservers
-		foreach (split /,/,$nameservers) {
-			print RSCNF "nameserver $_\n";
-		}
-		close (RSCNF);
+                # add nameservers
+                my $nameserverstr;
+                foreach (split /,/,$nameservers) {
+                        $nameserverstr .= "nameserver $_\n";
+                }
+		chomp($nameserverstr);
+                my $cmd = qq~echo $nameserverstr >> $fullname~;
+                if ($::VERBOSE) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Set nameservers $nameserverstr into $fullname";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+		my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
+                if ($::RUNCMD_RC  != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not add nameservers into $fullname";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
+                }
 	} else {
         return 1;
     }
@@ -2389,6 +2412,7 @@ sub mk_resolv_conf_file
 sub mk_resolv_conf
 {
     my $callback = shift;
+    my $subreq = shift;
 
 	my $resolv_conf_name = $::image_name . "_resolv_conf";
 
@@ -2436,7 +2460,7 @@ sub mk_resolv_conf
 
 				# create the resolv.conf file based on the domain & nameservers
 				#	attrs in the xCAT site table
-				my $rc = &mk_resolv_conf_file($callback, $loc);
+				my $rc = &mk_resolv_conf_file($callback, $loc, $subreq);
 				if ($rc != 0) {
             		return undef;
         		}
@@ -2945,6 +2969,10 @@ sub update_inittab
 {
 	my $spot_loc = shift;
 	my $callback = shift;
+	my $subreq = shift;
+	my $nimprime = xCAT::InstUtils->getnimprime();
+    chomp $nimprime;
+
     my ($cmd, $rc, $entry);
 
 	my $spotinittab = "$spot_loc/lpp/bos/inst_root/etc/inittab";
@@ -2953,25 +2981,25 @@ sub update_inittab
 
 	# see if xcataixpost is already in the file
 	my $cmd = "cat $spotinittab | grep xcataixpost";
-	my @result = xCAT::Utils->runcmd("$cmd", -1);
+	my @result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 1);
     if ($::RUNCMD_RC == 0)
     {
 		# it's already there so return
 		return 0;
     }
 
-	unless (open(INITTAB, ">>$spotinittab")) {
-		my $rsp;
-		push @{$rsp->{data}}, "Could not open $spotinittab for appending.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
-	}
+        my $cmd = "echo $entry >>$spotinittab";
+	my @result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 1);
+        if ($::RUNCMD_RC != 0)
+        {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not open $spotinittab for appending.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+        }
 
-	print INITTAB $entry;
 
-	close (INITTAB);
-
-	return 0;
+        return 0;
 }
 
 #----------------------------------------------------------------------------
@@ -2998,10 +3026,17 @@ sub get_res_loc {
 
 	my $spotname = shift;
 	my $callback = shift;
+	my $subreq = shift;
+
+	#
+	# get the primary NIM master - default to management node
+	#
+	my $nimprime = xCAT::InstUtils->getnimprime();
+	chomp $nimprime;
 
 	my $cmd = "/usr/sbin/lsnim -l $spotname 2>/dev/null";
 
-	my @result = xCAT::Utils->runcmd("$cmd", -1);
+	my @result = xCAT::InstUtils->xcmd($callback, $subreq,  "xdsh", $nimprime, $cmd, 1);
     if ($::RUNCMD_RC  != 0)
     {
 		my $rsp;
@@ -3010,8 +3045,10 @@ sub get_res_loc {
         return 1;
     }
 
-	foreach (@result){
-		my ($attr,$value) = split('=');
+	foreach my $line (@result){
+		# may contains the xdsh prefix <nodename>:
+		$line =~ s/.*?://;
+		my ($attr,$value) = split('=', $line);
 		chomp $attr;
 		$attr =~ s/\s*//g;  # remove blanks
 		chomp $value;
@@ -3281,7 +3318,8 @@ sub mknimres {
 sub updatespot {
 	my $spot_name = shift;
 	my $lppsrcname = shift;
-    my $callback = shift;
+	my $callback = shift;
+	my $subreq = shift;
 
 	my $spot_loc;
 
@@ -3291,6 +3329,11 @@ sub updatespot {
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
+	# get the name of the primary NIM server
+	#   - either the NIMprime attr of the site table or the management node
+	my $nimprime = xCAT::InstUtils->getnimprime();
+	chomp $nimprime;
+
 	#
 	#  add rpm.rte to the SPOT 
 	#	- it contains gunzip which is needed on the nodes
@@ -3298,7 +3341,7 @@ sub updatespot {
 	#	- assume the source for the spot also has the rpm.rte fileset
 	#
 	my $cmd = "/usr/sbin/nim -o showres $spot_name | grep rpm.rte";
-	my $output = xCAT::Utils->runcmd("$cmd", -1);
+        my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
 	if ($::RUNCMD_RC  != 0) {
 		# it's not already installed - so install it
 
@@ -3309,7 +3352,8 @@ sub updatespot {
     	}
 
 		my $cmd = "/usr/sbin/chcosi -i -s $lppsrcname -f rpm.rte $spot_name";
-		my $output = xCAT::Utils->runcmd("$cmd", -1);
+		#my $output = xCAT::Utils->runcmd("$cmd", -1);
+		my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
 		if ($::RUNCMD_RC  != 0)
 		{
 			my $rsp;
@@ -3322,7 +3366,7 @@ sub updatespot {
 	#
 	#  Get the SPOT location ( path to ../usr)
 	#
-	$spot_loc = &get_res_loc($spot_name, $callback);
+	$spot_loc = &get_res_loc($spot_name, $callback, $subreq);
 	if (!defined($spot_loc) ) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not get the location of the SPOT/COSI named $spot_loc.\n";
@@ -3334,40 +3378,61 @@ sub updatespot {
 	# Create ODMscript in the SPOT and modify the rc.dd-boot script
 	#	- need for rnetboot to work - handles default console setting
 	#
-	my $odmscript = "$spot_loc/ODMscript";
-	if ( !(-e $odmscript)) {
+        my $odmscript = "$spot_loc/ODMscript";
+        my $odmscript_mn = "/tmp/ODMscript";
+        my $cmd = qq~ls $odmscript~;
+	my $output = xCAT::InstUtils->xcmd($callback, $subreq,  "xdsh", $nimprime, $cmd, 0);
+	if ($::RUNCMD_RC  != 0) {
 		if ($::VERBOSE) {
         	my $rsp;
         	push @{$rsp->{data}}, "Adding $odmscript to the image.\n";
         	xCAT::MsgUtils->message("I", $rsp, $callback);
-    	}
+    		}
 
-		#  Create ODMscript script
-		my $text = "CuAt:\n\tname = sys0\n\tattribute = syscons\n\tvalue = /dev/vty0\n\ttype = R\n\tgeneric =\n\trep = s\n\tnls_index = 0";
+                #  Create ODMscript script
+                my $text = "CuAt:\n\tname = sys0\n\tattribute = syscons\n\tvalue = /dev/vty0\n\ttype = R\n\tgeneric =\n\trep = s\n\tnls_index = 0";
 
-		if ( open(ODMSCRIPT, ">$odmscript") ) {
-			print ODMSCRIPT $text;
-			close(ODMSCRIPT);
-		} else {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not open $odmscript for writing.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return 1;
-		}
-		my $cmd = "chmod 444 $odmscript";
-		my @result = xCAT::Utils->runcmd("$cmd", -1);
-		if ($::RUNCMD_RC  != 0)
-		{
-			my $rsp;
-			push @{$rsp->{data}}, "Could not run the chmod command.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
-			return 1;
-		}
-	}
+                if ( open(ODMSCRIPT, ">$odmscript_mn") ) {
+                        print ODMSCRIPT $text;
+                        close(ODMSCRIPT);
+                } else {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not open $odmscript for writing.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
+                }
+                my $cmd = "chmod 444 $odmscript_mn";
+                my @result = xCAT::Utils->runcmd("$cmd", -1);
+                if ($::RUNCMD_RC  != 0)
+                {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not run the chmod command.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
+                }
+                my $cmd;
+                if(!xCAT::InstUtils->is_me($nimprime))
+                {
+                        $cmd = "xdcp  $nimprime $odmscript_mn $odmscript";
+                }
+                else
+                {
+                        $cmd = "cp $odmscript_mn $odmscript";
+                }
+                        my @result = xCAT::Utils->runcmd("$cmd", -1);
+                        if ($::RUNCMD_RC  != 0)
+                        {
+                                my $rsp;
+                                push @{$rsp->{data}}, "Could not copy the odmscript back";
+                                xCAT::MsgUtils->message("E", $rsp, $callback);
+                                return 1;
+                        }
+        }
+
 
 	# Modify the rc.dd-boot script to set the ODM correctly
 	my $boot_file = "$spot_loc/lib/boot/network/rc.dd_boot";
-	if (&update_dd_boot($boot_file, $callback) != 0) {
+	if (&update_dd_boot($boot_file, $callback, $subreq) != 0) {
 		my $rsp;
 		push @{$rsp->{data}}, "Could not update the rc.dd_boot file in the SPOT.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -3393,7 +3458,7 @@ sub updatespot {
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
-	my @result = xCAT::Utils->runcmd("$cpcmd", -1);
+	my @result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 1);
 	if ($::RUNCMD_RC  != 0)
 	{
 		my $rsp;
@@ -3403,7 +3468,7 @@ sub updatespot {
     }	
 
 	# add an entry to the /etc/inittab file in the COSI/SPOT
-	if (&update_inittab($spot_loc, $callback) != 0) {
+	if (&update_inittab($spot_loc, $callback, $subreq) != 0) {
 		my $rsp;
         push @{$rsp->{data}}, "Could not update the /etc/inittab file in the SPOT.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -3412,7 +3477,7 @@ sub updatespot {
 
 	# add resolv.conf to image if data is provided in site table
 	my $fileloc = "$spot_loc/lpp/bos/inst_root/etc";
-	my $rc = &mk_resolv_conf_file($callback, $fileloc);
+	my $rc = &mk_resolv_conf_file($callback, $fileloc, $subreq);
 
 	# change the inst_root dir to "root system"
     # the default is "bin bin" which will not work if the user
@@ -3425,7 +3490,7 @@ sub updatespot {
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
-    my @result = xCAT::Utils->runcmd("$chcmd", -1);
+    my @result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $chcmd, 1);
     if ($::RUNCMD_RC  != 0)
     {
         my $rsp;
@@ -3456,14 +3521,29 @@ sub update_dd_boot {
 
 	my $dd_boot_file = shift;
 	my $callback = shift;
+	my $subreq = shift;
 
+    my $nimprime = xCAT::InstUtils->getnimprime();
+    chomp $nimprime;
+    my $dd_boot_file_mn;
 	my @lines;
 
 	# see if orig file exists
-	if (-e $dd_boot_file) {
-
-		# only update if it has not been done yet
-        my $cmd = "cat $dd_boot_file | grep 'xCAT support'";
+        my $cmd;
+        if (!xCAT::InstUtils->is_me($nimprime))
+        {
+                $cmd = "xdcp $nimprime -P $dd_boot_file /tmp";
+                $dd_boot_file_mn = "/tmp/rc.dd_boot._$nimprime";
+        }
+        else
+        {
+                $cmd = "cp $dd_boot_file /tmp";
+                $dd_boot_file_mn = "/tmp/rc.dd_boot";
+        }
+        my @result = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC == 0) {
+                # only update if it has not been done yet
+        my $cmd = "cat $dd_boot_file_mn | grep 'xCAT support'";
         my @result = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC != 0) {
             if ($::VERBOSE) {
@@ -3472,70 +3552,77 @@ sub update_dd_boot {
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
 
-			my $patch = qq~\n\t# xCAT support\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
+                        my $patch = qq~\n\t# xCAT support\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
 
-			# back up the original file
-			my $cmd    = "cp -f $dd_boot_file $dd_boot_file.orig";
- 			my $output = xCAT::Utils->runcmd("$cmd", -1);
-			if ($::RUNCMD_RC  != 0)
-			{
-				my $rsp;
-        		push @{$rsp->{data}}, "Could not copy $dd_boot_file.\n";
-        		xCAT::MsgUtils->message("E", $rsp, $callback);
-        		return 1;
-			}
-	
-			if ( open(DDBOOT, "<$dd_boot_file") ) {
-				@lines = <DDBOOT>;
-				close(DDBOOT);
-			} else {
-				my $rsp;
-        		push @{$rsp->{data}}, "Could not open $dd_boot_file for reading.\n";
-        		xCAT::MsgUtils->message("E", $rsp, $callback);
-				return 1;
-			}
 
-			# remove the file
-			my $cmd    = "rm $dd_boot_file";
-			my $output = xCAT::Utils->runcmd("$cmd", -1);
-			if ($::RUNCMD_RC  != 0)
-    		{
-				my $rsp;
-        		push @{$rsp->{data}}, "Could not remove original $dd_boot_file.\n";
-        		xCAT::MsgUtils->message("E", $rsp, $callback);
-        		return 1;
-    		}
+                        if ( open(DDBOOT, "<$dd_boot_file_mn") ) {
+                                @lines = <DDBOOT>;
+                                close(DDBOOT);
+                        } else {
+                                my $rsp;
+                        push @{$rsp->{data}}, "Could not open $dd_boot_file for reading.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                                return 1;
+                        }
 
-			# Create a new one
-			my $dontupdate=0;
-			if ( open(DDBOOT, ">$dd_boot_file") ) {
-				foreach my $l (@lines)
-				{
-					if ($l =~ /xCAT support/) {
-						$dontupdate=1;
-					}
+                        # remove the file
+                        my $cmd    = qq~rm $dd_boot_file~;
+			my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
+                        if ($::RUNCMD_RC  != 0)
+                {
+                                my $rsp;
+                        push @{$rsp->{data}}, "Could not remove original $dd_boot_file.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
+                }
 
-					if ( ($l =~ /0x620/) && (!$dontupdate) ){
-						# add the patch
-						print DDBOOT $patch;
-					}
-					print DDBOOT $l;
-				}
-				close(DDBOOT);
+                        # Create a new one
+                        my $dontupdate=0;
+                        if ( open(DDBOOT, ">$dd_boot_file_mn") ) {
+                                foreach my $l (@lines)
+                                {
+                                        if ($l =~ /xCAT support/) {
+                                                $dontupdate=1;
+                                        }
+                                        if ( ($l =~ /0x620/) && (!$dontupdate) ){
+                                                # add the patch
+                                                print DDBOOT $patch;
+                                        }
+                                        print DDBOOT $l;
+                                }
+                                close(DDBOOT);
 
-			} else {
-				my $rsp;
-        		push @{$rsp->{data}}, "Could not open $dd_boot_file for writing.\n";
-        		xCAT::MsgUtils->message("E", $rsp, $callback);
-				return 1;
-    		}
+                        } else {
+                                my $rsp;
+                        push @{$rsp->{data}}, "Could not open $dd_boot_file for writing.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                                return 1;
+                }
+                my $cmd;
+                if (!xCAT::InstUtils->is_me($nimprime)) {
+                        $cmd    = "xdcp $nimprime $dd_boot_file_mn $dd_boot_file";
+                }
+                else
+                {
+                        $cmd    = "cp $dd_boot_file_mn $dd_boot_file";
+                }
 
-			if ($::VERBOSE) {
-				my $rsp;
-        		push @{$rsp->{data}}, "Updated $dd_boot_file.\n";
-        		xCAT::MsgUtils->message("I", $rsp, $callback);
-			}
-		}
+
+                my $output = xCAT::Utils->runcmd("$cmd", -1);
+                if ($::RUNCMD_RC  != 0)
+                {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Could not copy the $dd_boot_file back";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
+                }
+
+                        if ($::VERBOSE) {
+                                my $rsp;
+                        push @{$rsp->{data}}, "Updated $dd_boot_file.\n";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                        }
+                }
 	} else {  # dd_boot file doesn't exist
 		return 1;
 	}
@@ -4213,7 +4300,7 @@ sub prenimnodeset
 	foreach my $i (@image_names) {
         if ( !($imghash{$i}{nimtype} =~ /standalone/)) {
 			# must be diskless or dataless so update spot
-			my $rc=&updatespot($imghash{$i}{'spot'}, $imghash{$i}{'lpp_source'}, $callback);
+			my $rc=&updatespot($imghash{$i}{'spot'}, $imghash{$i}{'lpp_source'}, $callback, $subreq);
 			if ($rc != 0) {
 				my $rsp;
 				push @{$rsp->{data}}, "Could not update the SPOT resource named \'$imghash{$i}{'spot'}\'.\n";
@@ -4240,6 +4327,12 @@ sub prenimnodeset
 		push @{$rsp->{data}}, "Could not copy NIM resources to the xCAT service nodes.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return (1);
+	} else {
+		if ($::VERBOSE) {
+                	my $rsp;
+               		push @{$rsp->{data}}, "NIM resources are copied to the xCAT service nodes successfully.\n";
+                	xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 	}
 
 	# pass this along to the process_request routine
@@ -5321,7 +5414,7 @@ xCAT::MsgUtils->message("S", "mkdsklsnode: $root_location, $syncfile");
 #-----------------------------------------------------------------------------
 sub checkNIMnetworks
 {
-	my $callback = shift;
+    my $callback = shift;
     my $nodes = shift;
     my $nethash = shift;
 
