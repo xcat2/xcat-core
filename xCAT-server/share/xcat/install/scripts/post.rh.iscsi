@@ -86,6 +86,6 @@ sed -i 's/^terminal/#terminal/' /boot/grub/menu.lst
 
 #remove all the repos, later addsiteyum will add the one from the master node.
 rm -f /etc/yum.repos.d/*
-
+export PATH=/xcatpost:/tmp/xcatpost:$PATH
 uploadboot
 exit 0
