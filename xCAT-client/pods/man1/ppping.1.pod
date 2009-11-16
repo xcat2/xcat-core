@@ -5,7 +5,7 @@ B<ppping> - parallel ping from nodes to other nodes in the cluster.
 
 =head1 SYNOPSIS
 
-B<ppping> [B<-i>|B<--interface> I<interfaces>] [B<-d>|B<--debug>] [B<-V>|B<--verbose>] [B<-q>|B<--quiet>] [B<-s>|B<--serial>] [B<-H>|B<--hierarchical>] I<noderange>
+B<ppping> [B<-i>|B<--interface> I<interfaces>] [B<-d>|B<--debug>] [B<-V>|B<--verbose>] [B<-q>|B<--quiet>] [B<-s>|B<--serial>] I<noderange>
 
 B<ppping> [B<-h>|B<--help>]
 
@@ -17,8 +17,6 @@ B<ppping> is a utility used to test the connectivity between nodes in the nodera
 By default, B<ppping> will return an unsorted list of the node pairs that are not able to ping each other, or a message that all nodes are pingable.
 More or less output can be controlled by the -V and -q options.
 B<ppping> front-ends B<pping> and B<xdsh>.
-
-This command does not support the xcatd client/server communication.  It must be run on the management node. 
 
 =head1 OPTIONS
 
@@ -45,10 +43,6 @@ of the successful pings are displayed, along with all of the unsuccessful pings.
 
 Display minimum output:  just the unsuccessful pings.  This option has the effect that if all pings are successful, nothing is displayed.
 But it also has the performance benefit that each node does not have to send successful ping info back to the management node.
-
-=item B<-H>|B<--hierarchical>
-
-Enable B<ppping> to run in hierarchical mode (i.e. through service nodes).  By default, B<ppping> does not go through xcatd.
 
 =item B<-d>|B<--debug>
 

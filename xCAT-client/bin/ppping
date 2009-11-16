@@ -30,7 +30,7 @@ use IO::Select;
 use Getopt::Long;
 my $interface;
 
-my $USAGE="Usage: ppping [-i|--interface interfaces] [-d|--debug] [-V|--verbose] [-q|--quiet] [-s|--serial] [-H|--hierarchical] noderange
+my $USAGE="Usage: ppping [-i|--interface interfaces] [-d|--debug] [-V|--verbose] [-q|--quiet] [-s|--serial] noderange
        ppping -h|--help
        ppping  -v|--version\n"; 
 
@@ -166,9 +166,8 @@ my $allnodes=join(',', @nodes);
 #			to count the pings that come back, unless they request fully quiet mode.
 my $quiet = "";
 if($::QUIET) { $quiet = "-q "; }
-# If hierarchical behavior is wanted, take out the bypass flag
-my $bypass = "-B";
-if($::HIERARCHY){ $bypass = ""; }
+# bypass mode for xdsh is not used any more, because it doesn't give any advantage
+my $bypass = "";
 
 my @interfaces;
 if ($interface) { @interfaces = split(/,/, $interface); }
