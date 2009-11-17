@@ -949,7 +949,6 @@ sub process_request {
   my $forcemode = 0;
   my %orphans=();
   if ($command eq 'vmstatenotify') {
-  print "I see the command $command ".$exargs[0]." ".$exargs[1]."\n";
       unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>1); }
       my $state = $exargs[0];
       if ($state eq 'vmoff') {
@@ -961,15 +960,31 @@ sub process_request {
           $vmtab->setNodeAttribs($exargs[1],{powerstate=>'on'});
           return;
       } elsif ($state eq 'hypshutdown') { #turn this into an evacuate
+          my $nodelisttab = xCAT::Table->new('nodelist');
+          my $appstatus = $nodelisttab->getNodeAttribs($noderange->[0],['appstatus']);
+          my @apps =split /,/,$appstatus->{'appstatus'};
+          my @newapps;
+          foreach (@apps) {
+              if ($_ eq 'virtualization') { next; }
+              push @newapps,$_;
+          }
+          $nodelisttab->setNodeAttribs($noderange->[0],{appstatus=>join(',',@newapps)});
+        print "oh eah\n";
           $command="revacuate";
           @exargs=();
       } elsif ($state eq 'hypstartup') { #if starting up, check for nodes on this hypervisor and start them up
+          my $nodelisttab = xCAT::Table->new('nodelist');
+          my $appstatus = $nodelisttab->getNodeAttribs($noderange->[0],['appstatus']);
+          my @apps =split /,/,$appstatus->{appstatus};
+          unless (grep {$_ eq 'virtualization'} @apps) {
+              push @apps,'virtualization';
+              $nodelisttab->setNodeAttribs($noderange->[0],{appstatus=>join(',',@apps)});
+          }
           my @tents = $vmtab->getAttribs({host=>$noderange->[0],power=>'on'},['node']);
           $noderange=[];
           foreach (@tents) {
               push @$noderange,noderange($_->{node});
           }
-          print "I'm thinking about ".$noderange->[0]."\n";
           $command="rpower";
           @exargs=("on");
       }
