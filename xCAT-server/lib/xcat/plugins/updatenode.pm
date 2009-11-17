@@ -1167,6 +1167,7 @@ sub updateAIXsoftware
     my @installp_files;    # list of tmp installp files created
     foreach my $img (keys %imagedefs)
     {
+		my $noinstallp=0;
         chomp $img;
         if ($img)
         {
@@ -1177,7 +1178,6 @@ sub updateAIXsoftware
             #   - remove leading prefix - if any
             my @rpm_pkgs;
             my @installp_pkgs;
-
             my @pkglist = split(/,/, $imagedefs{$img}{pkglist});
             if (scalar(@pkglist))
             {
@@ -1330,40 +1330,50 @@ sub updateAIXsoftware
                 # don't provide a list of filesets with these flags
                 if ($flags !~ /C|L|l/)
                 {
-                    $inpcmd .= qq~-f /mnt/$installp_file_name~;
+					if ( !(-e "/mnt/$installp_file_name" )) {
+						$noinstallp=1;
+					} else {
+                    	$inpcmd .= qq~-f /mnt/$installp_file_name~;
+					}
                 }
 
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Running: \'$inpcmd\'.\n";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
+				#  - could just have installp flags by mistake -ugh!
+				#	- but don't have fileset to install - so don't run
+				#		installp - UNLESS the flags don't need filesets
+			  	if ($noinstallp == 0 ) {
 
-                my @output =
-                  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", \@nodes,
+                	if ($::VERBOSE)
+                	{
+                    	my $rsp;
+                    	push @{$rsp->{data}}, "Running: \'$inpcmd\'.\n";
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                	}
+
+                	my @output =
+                  	xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", \@nodes,
                                         $inpcmd, 1);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Could not run installp command.\n";
-                    foreach my $o (@output)
-                    {
-                        push @{$rsp->{data}}, "$o";
-                    }
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                    $error++;
-                    next;
-                }
-                if ($::VERBOSE)
-                {
-                    my $rsp;
-                    foreach my $o (@output)
-                    {
-                        push @{$rsp->{data}}, "$o";
-                    }
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
+                	if ($::RUNCMD_RC != 0)
+                 	{
+                    	my $rsp;
+                    	push @{$rsp->{data}}, "Could not run installp command.\n";
+                    	foreach my $o (@output)
+                    	{
+                        	push @{$rsp->{data}}, "$o";
+                    	}
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                    	$error++;
+                    	next;
+                	}
+                	if ($::VERBOSE)
+                	{
+                    	my $rsp;
+                    	foreach my $o (@output)
+                    	{
+                        	push @{$rsp->{data}}, "$o";
+                    	}
+                    	xCAT::MsgUtils->message("I", $rsp, $callback);
+                	}
+			  	}
             }
 
             # - run updtvpkg to make sure installp software
