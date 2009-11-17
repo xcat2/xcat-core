@@ -468,10 +468,15 @@ B<xdsh> I<node1 -K>
 
 =item *
 
-To run the B<ps> command on node targets B<node1> and B<node2>, enter:
+To run the B<ps -ef > command on node targets B<node1> and B<node2>, enter:
 
-B<xdsh> I<node1,node2 ps>
+B<xdsh> I<node1,node2 "ps -ef">
 
+=item *
+
+To run the B<ps> command on node targets B<node1> and run the remote command with the -v and -t flag, enter:
+
+B<xdsh> I<node1,node2  -o"-v -t" ps>
 =item *
 
 To execute the commands contained in B<myfile> in the B<XCAT>
