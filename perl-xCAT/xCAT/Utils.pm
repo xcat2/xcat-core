@@ -2585,7 +2585,7 @@ sub thishostisnot
     {
         foreach (@ips)
         {
-            if (/^\s*inet/)
+            if (/^\s*inet\s+/)
             {
                 my @ents = split(/\s+/);
                 my $ip   = $ents[2];
