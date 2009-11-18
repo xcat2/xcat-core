@@ -197,7 +197,7 @@ sub scan_plugins {
   foreach (@plugins) {
     /.*\/([^\/]*).pm$/;
     my $modname = $1;
-    require "$_";
+    unless (eval { require "$_" }) { print "Error loading module $_  ...skipping\n"; next;}
     no strict 'refs';
     my $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
     foreach (keys %$cmd_adds) {

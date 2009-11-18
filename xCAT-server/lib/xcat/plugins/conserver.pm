@@ -165,6 +165,7 @@ sub preprocess_request {
       my $rsp;
       $rsp->{data}->[0] = "In preprocess_request, request is " . Dumper(@requests);
       xCAT::MsgUtils->message("I", $rsp, $callback);
+   }
   }
   return \@requests;
 }
