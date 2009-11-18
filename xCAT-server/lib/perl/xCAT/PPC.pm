@@ -304,10 +304,10 @@ sub process_command {
             }
         }
 
-        foreach ( @$nodes ) {
-            if ( $node->{$_}->{reachable} ) {
+        foreach my $n ( @$nodes ) {
+            if ( $node->{$n}->{reachable} ) {
                 my $output;
-                my $IP = xCAT::Utils::toIP( $_ );
+                my $IP = xCAT::Utils::toIP( $n );
                 if ( xCAT::Utils->isAIX() ) {
                     $output = `/usr/sbin/arp -a`;
                 } else {
@@ -326,9 +326,9 @@ sub process_command {
                         if ( $mac)
                         {
                             my @mac_sections = split /:/, $mac;
-                            for (@mac_sections)
+                            for my $m (@mac_sections)
                             {
-                                $_ = "0$_" if ( length($_) == 1);
+                                $m = "0$m" if ( length($m) == 1);
                             }
                             $mac = join ':', @mac_sections;
                         }
@@ -349,17 +349,14 @@ sub process_command {
                         # Write adapter mac to database
                         #####################################
                         my $mactab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
-                        $mactab->setNodeAttribs( $_,{mac=>$mac} );
+                        $mactab->setNodeAttribs( $n,{mac=>$mac} );
                         $mactab->close();
                     }
 
-                    $callback->({data=>["$_:"]});
-                    $callback->({data=>["#IP           MAC"]});
-                    $callback->({data=>["$ip  $mac\n"]});
-                    $callback->({node=>[{name=>[$_],data=>["\n#IP           MAC\n$ip  $mac\n"]}]});
+                    $callback->({node=>[{name=>[$n],data=>["\n#IP           MAC\n$ip  $mac\n"]}]});
                 }
             } else {
-                $unreachable_nodes = join (",", $_, $unreachable_nodes);
+                $unreachable_nodes = join (",", $n, $unreachable_nodes);
             }
         }
         $callback->({data=>["Unreachable Nodes:"]});
