@@ -384,30 +384,6 @@ function init_rmc_ositree() {
     });
 }
 
-//node_stat_control() can enable/disable nodestatmon for the selected plugin
-function node_stat_control(plugin)
-{
-    //get the label of the button
-    var action = $("#node_stat span").text();
-    if(action=='Enable') {
-        //enable node_stat_monitor
-        $.get("monitor/control_node_stat.php",{name:plugin, action:"enable"},function(data) {
-            if(data=='successful') {
-                //change the label to "Disable"
-                $("#node_stat span").text("Disable");
-            }
-        });
-    }else if(action=='Disable') {
-        //disable node_stat_monitor
-        $.get("monitor/control_node_stat.php",{name:plugin, action:"disable"},function(data) {
-            if(data=='successful') {
-                //change the label to "enable"
-                $("#node_stat span").text("Enable");
-            }
-        })
-        //then, change the label to "Enable""
-    }
-}
 
 function goto_next()
 //TODO: change the function name! it's too silly now!
@@ -474,37 +450,6 @@ function showRMCAttrib()
             $("#rmcScrAttr").html(data);
         });
     }
-}
-
-
-function showPluginOptions()
-{
-    //for monlist.php, when the user clicks the radiobox, the available options for the plugin will display
-    $("input[@name=plugins]").click(function() {
-        //when one radiobox is selected, the #options <div> is show available options to the user
-        //at first, hide the <div> named with "#plugin_desc"
-        if($("#plugin_desc").css("display") == "block") {
-            $("#plugin_desc").hide("slow");
-        }
-        var plugin = $(this).attr('value');
-        $.get("monitor/options.php", {name:plugin},function(data) {
-            $("#options").html(data);
-        });
-    });
-}
-
-
-//TODO: remove it
-function showPluginDescription()
-{
-    $(".description").click(function(){
-        if($("#plugin_desc").css("display") == "none") {
-            $("#plugin_desc").show();
-        }
-        $.get("monitor/plugin_desc.php", {name: $(this).text()}, function(data){
-            $("#plugin_desc").html(data);
-        })
-    });
 }
 
 //TODO: when mouse hover the list of monitor plugins, the .ListLine_hover style will

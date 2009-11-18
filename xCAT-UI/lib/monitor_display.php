@@ -100,52 +100,6 @@ TOS9;
     return 0;
 }
 
-function display_stat_mon_table($args)
-{
-    //create one table to disable or enable node/application monitoring
-    //the argument $args are one array like this:
-    //{ 'xcatmon' => {
-    //      'nodestat' => 'Enabled',
-    //      'appstat' => 'Disabled',
-    //  },
-    //};
-    //
-
-    echo '<div style="margin-right: 50px; width:auto; margin-left: 50px">';
-    foreach($args as $key => $value) {
-        $name = $key;
-
-        if($value{'nodestat'} == 'Enabled') {
-            $ns_tobe = 'Disable';
-        } else {
-            $ns_tobe = 'Enable';
-        }
-        if($value{'appstat'} == 'Enabled') {
-            $as_tobe = 'Disable';
-        } else {
-            $as_tobe = 'Enable';
-        }
-
-    }
-    echo "<h3>Node/Application Status Monitoring for $name</h3>";
-echo <<<TOS2
-<table cellspacing="1" class="tabTable" id="tabTable"><tbody>
-<tr class="ListLine0">
-<td>Node Status Monitoring</td>
-<td>
-TOS2;
-    insertButtons(array('label'=>$ns_tobe, 'id'=>'node_stat', 'onclick'=>"node_stat_control(\"$name\")"));
-    //TODO: change the function name of node_stat_control
-    echo '</td>';
-    echo '</tr>';
-    echo '<tr class="ListLine1">';
-    echo '<td>Application Status Monitoring</td>';
-    echo '<td>';
-    insertButtons(array('label'=>$as_tobe, 'id'=>'app_stat', 'onclick'=>'show_monshow_data()'));
-    echo '</td>';
-    echo '</tr>';
-    echo '</tbody> </table> </div>';
-}
 
 function displayStatus()
 {
@@ -532,40 +486,41 @@ TOS1;
     echo "</tbody></table></div>";
 }
 
-/*
- * function displayNodeAppStatus($name)
- * ************************************
- * to display the web page "Node/Application Status Monitoring"
- * 
+/*displayMList() will display the list of monitor plugins
+ * For the new style monitor list
  */
-function displayNodeAppStatus($name)
+function displayMList()
 {
-    displayMapper(array('home'=>'main.php', 'monitor'=>'monitor/monlist.php', 'Node Status Setup'=> ''));
-    displayTips(array(
-        "Enable/disable Node/App Status Monitoring by clicking the button",
-        "In order to take affect, you have to START/RESTART the desired plugin"));
-
-    //get the current status for "node-status-monitor"
-    $xml = docmd("monls", ' ', array($name));
-    if(getXmlErrors($xml,$errors)) {
-        echo "<p class=Error>",implode(' ',$errors), "</p>";
+    $xml = docmd("monls", "", array('-a'));
+    if(getXmlErrors($xml, $errors)) {
+        echo "<p class=Error>", implode(' ', $errors), "</p>";
         exit;
     }
-    #then, parse the xml data
-    foreach($xml->children() as $response) foreach($response->children() as $data) {
-        list($n, $stat, $nodemonstatus) = preg_split("/\s+/",$data);
-        if(isset($nodemonstatus)) {
-            $ns = "Enabled";
-        }else {
-            $ns = "Disabled";
-        }
+
+    foreach($xml->children() as $response) foreach ($response->children() as $data) {
+        list($name, $stat, $nodemon) = preg_split("/\s+/", $data);
+        //create .pluginstat class for each plugin
+        echo "<div class='pluginstat ui-corner-all' id=$name>";
+        //TODO: I have to make it beautiful
+        createPluginStatElem($name, $stat, $nodemon);
+        echo "</div>";
+        echo "<span class='ui-icon ui-icon-grip-dotted-horizontal'></span>";
     }
 
-    display_stat_mon_table(array("$name"=>
-        array(
-            'nodestat'=>$ns,
-            'appstat'=>'Disabled',  //currently application status monitoring is not supported by xCAT monitor Arch.
-        )));
+    return 0;
+}
+
+function createPluginStatElem($name, $stat, $nodemon)
+{
+    if($nodemon) {
+        echo "<div class='lef'><span class='ui-icon ui-icon-circle-check'></span></div>";
+        echo "<div class='mid'>$name<br/>Enabled</div>";
+    }else {
+        echo "<div class='lef'><span class='ui-icon ui-icon-circle-close'></span></div>";
+        echo "<div class='mid ftsz'>$name<br />Disabled</div>";
+    }
+   echo "<div class='rig'></div>";
+
 }
 
 ?>

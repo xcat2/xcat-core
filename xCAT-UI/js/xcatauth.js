@@ -59,7 +59,7 @@ function openDialog(){
 	    background: "#2e2e2e url(img/auth.gif) repeat",
             opacity: 1.0
         },
-        height: 250,
+        height: 275,
         width: 350,
         autoOpen: true,
         buttons: {

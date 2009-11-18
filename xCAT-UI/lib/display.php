@@ -544,6 +544,7 @@ echo <<<EOS
     <li>Monitor Events/Performances by Plugins, such as RMC...</li>
     <li>This is still <b>UNDER DEVELOPMENT</b>.</li>
 </ul>
+<h1><a href='#' onclick='loadMainPage("monitor/newmonlist.php")'>New_style Monitor</a></h1>
 </div>
 EOS;
 }

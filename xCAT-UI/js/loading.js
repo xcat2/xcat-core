@@ -79,7 +79,7 @@ LoadBar.prototype.loaded = function(file) {
         //load the reset button to try one more time!  
 	//$(document).ready(function () {
 	injs();
-        document.getElementById("wrapper").style.display = "none";  
+        //document.getElementById("wrapper").style.display = "none";
 	//});
     }  
 };  
@@ -105,7 +105,8 @@ var xStart = function(){
      myBar.addScript("jquery.tablesorter.js");
      myBar.addScript("jquery.flot.js");
      myBar.addScript("excanvas.js");
-     myBar.addScript("noderangetree.js");  
+     myBar.addScript("noderangetree.js");
+     myBar.addScript("monitor.js");
      myBar.addScript("xcat.js");
      myBar.addScript("xcatauth.js");  
      myBar.addScript("config.js");  
