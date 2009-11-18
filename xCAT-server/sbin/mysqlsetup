@@ -332,6 +332,13 @@ if ($::INIT)
     #
     &restorexcatdb;
 
+    if ($::osname eq 'AIX')
+    {
+        xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.\nYou should log out and back in, so that the new ulimit settings will take affect.");
+    } else {
+        xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.");
+    } 
+
 }    # end initialization
 
 if ($::SETUPODBC)
@@ -395,14 +402,24 @@ sub setulimits
     my $limitsfile    = "/etc/security/limits";
     my $limitstmpfile = "/etc/security/limits.tmp";
     my $limitsbackup  = "/etc/security/limits.backup";
-    my $cmd           =
-      "ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
-    xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message("E", " $cmd failed.");
-        exit(1);
-    }
+    #my $cmd           =
+     # "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
+    #xCAT::Utils->runcmd($cmd, 0);
+    #if ($::RUNCMD_RC != 0)
+    #{
+     #   xCAT::MsgUtils->message("E", " $cmd failed.");
+     #   exit(1);
+    #}
+
+    #sleep 20;
+    #$cmd  = "ulimit -a ";
+    #my @output=xCAT::Utils->runcmd($cmd, 0);
+    #if ($::RUNCMD_RC != 0)
+    #{
+    #   xCAT::MsgUtils->message("E", " $cmd failed.");
+    #  exit(1);
+    #}
+    #   xCAT::MsgUtils->message("I", " $output[0]\n, $output[1]\n, $output[2]\n,$output[3]\n.");
 
     # backup ulimits if not already backed up
     if (!(-e ("$limitsbackup")))
@@ -759,10 +776,12 @@ sub initmysqldb
 
     # Create the MySQL data directory and initialize the grant tables
     # if not already setup
+    my $cmd2 =
+      "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
     if ($::osname eq 'AIX')
     {
-
-        $cmd =
+        $cmd = $cmd2;
+        $cmd .=
           "$::installdir/scripts/mysql_install_db --user=mysql --basedir=$::installdir";
     }
     else
@@ -799,7 +818,10 @@ sub mysqlstart
         chomp $hostname;
 
         #$cmd = "$::installdir/bin/mysqld_safe --user=mysql &"; #doesnot return
-        $cmd =
+        my $cmd2 =
+          "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
+        $cmd = $cmd2;
+        $cmd .=
           "$::installdir/bin/mysqld --user=mysql --basedir=$::installdir --datadir=/var/lib/mysql --user=mysql --log-error=/var/lib/mysql/$hostname.err --pid-file=/var/lib/mysql/$hostname.pid --socket=/tmp/mysql.sock --port=3306 &";
     }
     else
@@ -820,11 +842,29 @@ sub mysqlstart
         exit(1);
     }
 
+    # make sure running
+    $cmd = "ps -ef | grep mysqld";
+    my $i;
+    for ($i = 0 ; $i < 12 ; $i++)
+    {
+        my @output = xCAT::Utils->runcmd($cmd, 0);
+        my $mysqlcheck = "--datadir";    # see if really running
+        if (grep(/$mysqlcheck/, @output))
+        {
+            sleep 10;  # give a few extra seconds to be sure
+            return;
+        }
+        else
+        {
+            sleep 10;   # wait for daemon
+        }
+    }
+    xCAT::MsgUtils->message("E",
+            " Could not start the mysql daemon, in time allocated ( 2minutes)");
+    exit(1);
+
 }
 
-#-----------------------------------------------------------------------------
-
-=head3   mysqlreboot 
 #-----------------------------------------------------------------------------
 
 =head3   mysqlreboot 
@@ -923,7 +963,10 @@ sub setupmysqlroot
     # set root password in database
     if ($::osname eq 'AIX')
     {
-        $cmd = "$::installdir/bin/mysqladmin -u root password $::rootpassword";
+        my $cmd2 =
+          "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
+        $cmd = $cmd2;
+        $cmd .= "$::installdir/bin/mysqladmin -u root password $::rootpassword";
     }
     else
     {
