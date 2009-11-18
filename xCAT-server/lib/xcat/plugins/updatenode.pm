@@ -334,12 +334,8 @@ sub preprocess_updatenode
           &doAIXcopy($callback, \%attrvals, $AIXnodes, $subreq);
         if ($rc != 0)
         {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not copy software to service nodes.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return \@requests;
-
-            #return undef; ???
+            # Do nothing when doAIXcopy failed
+            return undef;
         }
     }
 
@@ -919,7 +915,7 @@ sub doAIXcopy
         {
             my $rsp;
             push @{$rsp->{data}},
-              "The osimage \'$img\' is not a standalone type.  \nThe updatenode command can only be used for standalone (diskfull) type nodes. \nUse the mknimimage comamand to update diskless osimages.";
+              "The osimage \'$img\' is not a standalone type.  \nThe software maintenance function of updatenode command can only be used for standalone (diskfull) type nodes. \nUse the mknimimage comamand to update diskless osimages.";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
