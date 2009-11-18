@@ -15,15 +15,20 @@ my %termservers; #list of noted termservers
 my $usage_string=
 "  makeconservercf [-d|--delete] noderange
   makeconservercf [-l|--local]
+  makeconservercf [-c|--conserver]
   makeconservercf 
   makeconservercf -h|--help
   makeconservercf -v|--version
-    -l|--local   The conserver gets set up only on the local host.
-                 The default goes down to all the conservers on
-                 the server nodes and set them up
-    -d|--delete  Conserver has the relevant entries for the given noderange removed immediately from configuration
-    -h|--help    Display this usage statement.
-    -v|--version Display the version number.";
+    -c|--conserver   The conserver gets set up only on the conserver host.
+                     The default goes down to all the conservers on
+                     the server nodes and set them up
+    -l|--local       The conserver gets set up only on the local host.
+                     The default goes down to all the conservers on
+                     the server nodes and set them up
+    -d|--delete      Conserver has the relevant entries for the given noderange removed immediately from configuration
+    -h|--help        Display this usage statement.
+    -V|--verbose     Verbose mode.
+    -v|--version     Display the version number.";
 
 my $version_string=xCAT::Utils->Version(); 
 
@@ -57,9 +62,12 @@ sub preprocess_request {
   $Getopt::Long::ignorecase=0;
   #$Getopt::Long::pass_through=1;
   if(!GetOptions(
+      'c|conserver' => \$::CONSERVER,
       'l|local'     => \$::LOCAL,
       'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION)) {
+      'D|debug'     => \$::DEBUG,
+      'v|version'  => \$::VERSION,
+      'V|verbose'  => \$::VERBOSE)) {
     $request = {};
     return;
   }
@@ -79,6 +87,11 @@ sub preprocess_request {
       $request = {};
       return;
     }
+  }
+  if ($::CONSERVER && $::LOCAL) {
+      $callback->({data=>"Can not specify -l or --local together with -c or --conserver."});
+      $request = {};
+      return;
   }
   
   
@@ -112,7 +125,12 @@ sub preprocess_request {
   }
 
   #send all nodes to the MN
-  if (!$isSN) { #
+  if (!$isSN && !$::CONSERVER) { #If -c flag is set, do not add the all nodes to the management node
+    if ($::VERBOSE) {
+        my $rsp;
+        $rsp->{data}->[0] = "Setting the nodes into /etc/conserver.cf on the management node";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
     my $reqcopy = {%$request};
     $reqcopy->{'_xcatdest'} = $master;
     $reqcopy->{_xcatpreprocessed}->[0] = 1;
@@ -123,14 +141,14 @@ sub preprocess_request {
     if ($::LOCAL) { return \@requests; }
   }
 
-  # send to SN
+  # send to conserver hosts
   foreach my $cons (keys %cons_hash) {
     #print "cons=$cons\n";
     my $doit=0;
     if ($isSN) {
       if (exists($iphash{$cons})) { $doit=1; }
     } else {
-      if (!exists($iphash{$cons})) { $doit=1; }
+      if (!exists($iphash{$cons}) || $::CONSERVER) { $doit=1; }
     }
 
     if ($doit) {
@@ -143,6 +161,10 @@ sub preprocess_request {
       #print "node=@$no\n";
       push @requests, $reqcopy;
     }
+  if ($::DEBUG) {
+      my $rsp;
+      $rsp->{data}->[0] = "In preprocess_request, request is " . Dumper(@requests);
+      xCAT::MsgUtils->message("I", $rsp, $callback);
   }
   return \@requests;
 }
@@ -284,6 +306,11 @@ sub makeconservercf {
     if ($_->{cons} or defined($_->{'serialport'})) { push @cfgents, $_; }
   }
 
+  if ($::DEBUG) {
+      my $rsp;
+      $rsp->{data}->[0] = "In makeconservercf, cfgents is " . Dumper(@cfgents);
+      xCAT::MsgUtils->message("I", $rsp, $cb);
+  }
   # get the teminal servers and terminal port when cons is mrv or cyclades
   foreach (@cfgents) {
      unless ($_->{cons}) {$_->{cons} = $_->{mgt};} #populate with fallback
@@ -349,6 +376,11 @@ sub makeconservercf {
     }
   }
   open $cfile,'>','/etc/conserver.cf';
+  if ($::VERBOSE) {
+      my $rsp;
+      $rsp->{data}->[0] = "Setting the following lines into /etc/conserver.cf:\n @filecontent";
+      xCAT::MsgUtils->message("I", $rsp, $cb);
+  }
   foreach (@filecontent) {
     print $cfile $_;
   }
