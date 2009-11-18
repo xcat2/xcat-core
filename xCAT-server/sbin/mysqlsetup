@@ -402,24 +402,6 @@ sub setulimits
     my $limitsfile    = "/etc/security/limits";
     my $limitstmpfile = "/etc/security/limits.tmp";
     my $limitsbackup  = "/etc/security/limits.backup";
-    #my $cmd           =
-     # "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
-    #xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-    #{
-     #   xCAT::MsgUtils->message("E", " $cmd failed.");
-     #   exit(1);
-    #}
-
-    #sleep 20;
-    #$cmd  = "ulimit -a ";
-    #my @output=xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-    #{
-    #   xCAT::MsgUtils->message("E", " $cmd failed.");
-    #  exit(1);
-    #}
-    #   xCAT::MsgUtils->message("I", " $output[0]\n, $output[1]\n, $output[2]\n,$output[3]\n.");
 
     # backup ulimits if not already backed up
     if (!(-e ("$limitsbackup")))
