@@ -4,9 +4,11 @@ B<makeconservercf> - creates the conserver configuration file from info in the x
 
 =head1 SYNOPSIS
 
-B<makeconservercf> [B<-d|--delete>] I<noderange>
+B<makeconservercf> [B<-V|--verbose>] [B<-d|--delete>] I<noderange>
 
-B<makeconservercf> [B<-l|--local>] [I<noderange>]
+B<makeconservercf> [B<-V|--verbose>] [B<-l|--local>]
+
+B<makeconservercf> [B<-V|--verbose>] [B<-c|--conserver>] I<noderange>
 
 B<makeconservercf> [B<-h|--help|-v|--version>]
 
@@ -32,6 +34,11 @@ all relevant management/service nodes.  If -l is specified, it will only create 
 
 Delete rather than add or refresh the nodes specified as a noderange.
 
+=item B<-c|--conserver>
+
+Only set up the conserver on the conserver host. If no conserver host
+is set for nodes, the conserver gets set up only on the management node.
+
 =item B<-l|--local>
 
 Only run B<makeconservercf> locally and create the local /etc/conserver.cf.  The default is to also
@@ -40,6 +47,10 @@ run it on all service nodes, if there are any.
 =item B<-v|--version>
 
 Display version.
+
+=item B<-V|--verbose>
+
+Verbose mode.
 
 =item B<-h|--help>
 
