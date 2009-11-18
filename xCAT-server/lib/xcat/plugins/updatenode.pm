@@ -1326,7 +1326,7 @@ sub updateAIXsoftware
                 # don't provide a list of filesets with these flags
                 if ($flags !~ /C|L|l/)
                 {
-					if ( !(-e "/mnt/$installp_file_name" )) {
+					if ( scalar(@installp_pkgs) == 0  ) {
 						$noinstallp=1;
 					} else {
                     	$inpcmd .= qq~-f /mnt/$installp_file_name~;
