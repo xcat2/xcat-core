@@ -1050,7 +1050,7 @@ sub dispatch_request {
     if (ref $_->{'_xcatdest'} and (ref $_->{'_xcatdest'}) eq 'ARRAY') {
         _->{'_xcatdest'} =  $_->{'_xcatdest'}->[0];
     }
-    if ($onlyone and not ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'}))) {
+    if ($onlyone and not ($_->{'_xcatdest'} and xCAT::Utils->thishostisnot($_->{'_xcatdest'}))) {
         $SIG{CHLD}='DEFAULT';
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
         return;
@@ -1091,7 +1091,7 @@ sub dispatch_request {
      my $request_satisfied=0;
      foreach $xcatdest (@xcatdests) {
         my $dlock;
-        if ($xcatdest and thishostisnot($xcatdest)) {
+        if ($xcatdest and xCAT::Utils->thishostisnot($xcatdest)) {
             #mkpath("/var/lock/xcat/"); #For now, limit intra-xCAT requests to one at a time, to mitigate DB handle usage
             #open($dlock,">","/var/lock/xcat/dispatchto_$xcatdest");
             #flock($dlock,LOCK_EX);
@@ -1137,43 +1137,6 @@ sub dispatch_request {
  while (relay_dispatch($child_fdset)) { } #Potentially useless drain.
 }
 
-sub thishostisnot {
-  my $comparison = shift;
-
-  # use "ip addr" for linux, since ifconfig 
-  # doesn't list "ip addr add" aliases for linux
-  # 
-  my $cmd = ($^O !~ /^aix/i) ? "/sbin/ip addr" : "ifconfig -a";
-  my @ips = split /\n/,`$cmd`;
-  my $comp=inet_aton($comparison);
-  unless ($comp) {
-      return 1;
-  }
-  foreach (@ips) {
-	if (xCAT::Utils->isAIX()) {
-        # don't want "inet6" entry - causes error in inet_aton
-        if (/^\s*inet\s+/) {
-            my @ents = split(/\s+/);
-            my $ip=$ents[2];
-            $ip =~ s/\/.*//;
-            if (inet_aton($ip) and inet_aton($ip) eq $comp) {
-                return 0;
-            }
-        }
-    } else {
-        if (/^\s*inet/) {
-            my @ents = split(/\s+/);
-            my $ip=$ents[2];
-            $ip =~ s/\/.*//;
-            if (inet_aton($ip) and inet_aton($ip) eq $comp) {
-                return 0;
-            }
-        }
-		#print Dumper(inet_aton($ip));
-    }
-  }
-  return 1;
-}
 
 sub do_request {
   my $req = shift;
