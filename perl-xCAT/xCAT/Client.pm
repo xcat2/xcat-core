@@ -496,7 +496,7 @@ sub dispatch_request {
 #   }
 #   undef $SIG{CHLD};
 #     $dispatch_parentfd = $parfd;
-     if ($_->{'_xcatdest'} and thishostisnot($_->{'_xcatdest'})) {
+     if ($_->{'_xcatdest'} and xCAT::Utils->thishostisnot($_->{'_xcatdest'})) {
 #----- added to Client.pm -----#
        $dispatch_cb->({warning=>['XCATBYPASS is set, skipping hierarchy call to '.$_->{'_xcatdest'}.'']});
 
@@ -520,58 +520,6 @@ sub dispatch_request {
 #while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset) }
 #while (relay_dispatch($child_fdset)) { } #Potentially useless drain.
 }
-
-
-
-
-###################################
-# thishostisnot
-#    does the requested IP belong to this local host? 
-#
-# NOTE:  This is copied from xcatd (last merge 5/21/08).
-#        Will eventually move to using common source....
-###################################
-sub thishostisnot {
-  my $comparison = shift;
-
-  # use "ip addr" for linux, since ifconfig
-  # doesn't list "ip addr add" aliases for linux
-  #
-  my $cmd = ($^O !~ /^aix/i) ? "/sbin/ip addr" : "ifconfig -a";
-  my @ips = split /\n/,`$cmd`;
-####
-# TODO:  AIX will hang on the inet_aton call if it gets passed an IPv6
-#        address, since we have not added INET6 support to AIX yet.
-#        The ifconfig -a output may contain an IPv6 address for localhost.
-#        This code should only get called if using hierarchy
-####
-  my $comp=IO::Socket::inet_aton($comparison);
-  foreach (@ips) {
-	if (xCAT::Utils->isAIX()) {
-        # don't want "inet6" entry - causes error in inet_aton
-        if (/^\s*inet\s+/) {
-            my @ents = split(/\s+/);
-            my $ip=$ents[2];
-            $ip =~ s/\/.*//;
-            if (IO::Socket::inet_aton($ip) eq $comp) {
-                return 0;
-            }
-        }
-    } else {
-        if (/^\s*inet/) {
-            my @ents = split(/\s+/);
-            my $ip=$ents[2];
-            $ip =~ s/\/.*//;
-            if (IO::Socket::inet_aton($ip) eq $comp) {
-                return 0;
-            }
-        }
-    }
-  }
-  return 1;
-}
-
-
 
 
 ###################################
