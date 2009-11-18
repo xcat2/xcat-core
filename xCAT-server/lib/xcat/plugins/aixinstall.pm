@@ -6037,6 +6037,7 @@ sub rmdsklsnode
 {
 	my $callback = shift;
 	my $nodes = shift;
+	my $subreq = shift;
     my @nodelist = @$nodes;
 
 	# To-Do
@@ -6086,6 +6087,49 @@ sub rmdsklsnode
 			$nodename=$name . "_" . $::opt_i;
 		}
 
+		# see if the node is running
+		my $mstate = xCAT::InstUtils->get_nim_attr_val($nodename, "Mstate", $callback, $Sname, $subreq);
+
+		# if it's not in ready state then 
+		if ( defined($mstate) && ($mstate =~ /currently running/)) {
+			if ($::FORCE) {
+
+				if ($::VERBOSE) {
+					my $rsp;
+					push @{$rsp->{data}}, "Shutting down node \'$nodename\'";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+				}
+
+				# shut down the node
+				my $scmd = "shutdown -Fr &";
+				my $output;
+				$output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nodename, $scmd, 0);
+				if ($::RUNCMD_RC  != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not shut down node \'$nodename\'.";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					push(@nodesfailed, $nodename);
+					next;
+				}
+			} else {
+				# don't remove the def
+				my $rsp;
+				push @{$rsp->{data}}, "Node \'$nodename\' is currently in running state.  The NIM definition will not be removed.";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
+				push(@nodesfailed, $nodename);
+				next;
+			}
+		}
+
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "Resetting node \'$nodename\'";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+
 		# nim -Fo reset c75m5ihp05_53Lcosi
 		my $cmd = "nim -Fo reset $nodename  >/dev/null 2>&1";
 		my $output;
@@ -6095,7 +6139,7 @@ sub rmdsklsnode
 		{
 			my $rsp;
 			if ($::VERBOSE) {
-				push @{$rsp->{data}}, "Could not remove the NIM machine definition \'$nodename\'.\n";
+				push @{$rsp->{data}}, "Could not reset the NIM machine definition for \'$nodename\'.\n";
 				push @{$rsp->{data}}, "$output";
 			}
 			xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -6104,14 +6148,19 @@ sub rmdsklsnode
 			next;
 		}
 
-		$cmd = "nim -Fo deallocate -a subclass=all $nodename  >/dev/null 2>&1";
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "Deallocating resources for node \'$nodename\'";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 
+		$cmd = "nim -Fo deallocate -a subclass=all $nodename  >/dev/null 2>&1";
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
 		{
 			my $rsp;
 			if ($::VERBOSE) {
-				push @{$rsp->{data}}, "Could not remove the NIM machine definition \'$nodename\'.\n";
+				push @{$rsp->{data}}, "Could not deallocate resources for the NIM machine definition \'$nodename\'.\n";
 				push @{$rsp->{data}}, "$output";
 			}
 			xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -6120,8 +6169,13 @@ sub rmdsklsnode
 			next;
 		}
 
-		$cmd = "nim -Fo remove $nodename  >/dev/null 2>&1";
+		if ($::VERBOSE) {
+			my $rsp;
+			push @{$rsp->{data}}, "Removing the NIM definition for node \'$nodename\'";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 
+		$cmd = "nim -Fo remove $nodename  >/dev/null 2>&1";
     	$output = xCAT::Utils->runcmd("$cmd", -1);
     	if ($::RUNCMD_RC  != 0)
 		{
@@ -6147,6 +6201,10 @@ sub rmdsklsnode
 		}
 		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
+	} else {
+		my $rsp;
+		push @{$rsp->{data}}, "NIM machine definitions were successfully removed.";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 	return 0;
 }
