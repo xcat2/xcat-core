@@ -20,6 +20,10 @@ if [ -n "$2" ] && [ "$2" = "-f" ]; then
 fi
 
 if [ -z "$CONSERVER" ]; then
+        CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
+fi
+
+if [ -z "$CONSERVER" ]; then
 	CONSERVER=$XCATHOST
 fi
 if [ -z "$CONSERVER" ]; then
