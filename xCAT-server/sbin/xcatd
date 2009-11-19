@@ -764,6 +764,7 @@ sub plugin_command {
 
         unless (@nodes) { #register the plugin in the event of usage
           $handler_hash{$ownmod} = 1;
+          $useglobals = 1;
         }
         my $hdlrcache;
 	if ($hdlrtable) {
