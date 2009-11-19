@@ -160,13 +160,14 @@ sub preprocess_request {
       my $no=$reqcopy->{node};
       #print "node=@$no\n";
       push @requests, $reqcopy;
-    }
+    } #end if
+  } #end foreach
+
   if ($::DEBUG) {
       my $rsp;
       $rsp->{data}->[0] = "In preprocess_request, request is " . Dumper(@requests);
       xCAT::MsgUtils->message("I", $rsp, $callback);
    }
-  }
   return \@requests;
 }
 
