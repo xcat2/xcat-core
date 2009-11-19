@@ -69,7 +69,7 @@ my %usage = (
 "Usage: rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...
        rbootseq [-h|--help|-v|--version]",
     "rscan" => 
-"Usage: rscan <noderange> [-w][-x|-z] [-V|--verbose]
+"Usage: rscan <noderange> [-u][-w][-x|-z] [-V|--verbose]
        rscan [-h|--help|-v|--version]",
     "rspconfig" => 
 "Usage: 

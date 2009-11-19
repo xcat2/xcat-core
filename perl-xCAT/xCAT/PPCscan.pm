@@ -64,7 +64,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose w x z) )){
+    if ( !GetOptions( \%opt, qw(V|Verbose u w x z) )){
         return( usage() );
     }
     ####################################
@@ -84,6 +84,12 @@ sub parse_args {
     #############################################
     if (( exists($opt{x}) + exists($opt{z})) > 1 ) {
         return( usage() );
+    }
+    #############################################
+    # Check for mutually-exclusive flags
+    #############################################
+    if (( exists($opt{u}) + exists($opt{w})) > 1 ) {
+        return(usage( "Flag -u cannot be used with flag -w"));
     }
     ####################################
     # No operands - add command name
@@ -347,19 +353,36 @@ sub format_output {
         my @val = grep( !/^#.*: ERROR /, @$values );
         xCAT::PPCdb::add_ppc( $hwtype, \@val );
     }
+
+    ###########################################
+    # -u flag for write to xCat database
+    ###########################################
+    if ( exists( $opt->{u} )) {
+        #######################################
+        # Strip errors for results
+        #######################################
+        my @val = grep( !/^#.*: ERROR /, @$values );
+        $values = xCAT::PPCdb::update_ppc( $hwtype, \@val );
+        if ( exists( $opt->{x} ) or exists( $opt->{z} ))
+        {
+            unshift @$values, "hmc";
+        }
+    }
+
     ###########################################
     # -x flag for xml format
     ###########################################
     if ( exists( $opt->{x} )) {
-        $result = format_xml( $hwtype, $values );
+        $result .= format_xml( $hwtype, $values );
     }
     ###########################################
     # -z flag for stanza format
     ###########################################
     elsif ( exists( $opt->{z} )) {
-        $result = format_stanza( $hwtype, $values );
+        $result .= format_stanza( $hwtype, $values );
     }
     else {
+        $result = sprintf( "#Updated following nodes:\n") if ( exists( $opt->{u}));
         #######################################
         # Get longest name for formatting
         #######################################
@@ -433,6 +456,7 @@ sub format_stanza {
 
     my $hwtype = shift;
     my $values = shift;
+    
     my $result;
 
     #####################################

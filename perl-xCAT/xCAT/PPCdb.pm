@@ -166,6 +166,250 @@ sub add_ppc {
     return undef;
 }
 
+##########################################################################
+# Update nodes in the xCAT databases
+##########################################################################
+sub update_ppc {
+
+    my $hwtype   = shift;
+    my $values   = shift;
+    my $not_overwrite = shift;
+    my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect); 
+    my %db       = ();
+    my %nodetype = (
+        fsp  => $::NODETYPE_FSP,
+        bpa  => $::NODETYPE_BPA,
+        lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
+        hmc  => $::NODETYPE_HMC,
+        ivm  => $::NODETYPE_IVM,
+    );
+    my @update_list = ();
+
+    ###################################
+    # Open database needed
+    ###################################
+    foreach ( @tabs ) {
+        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
+        if ( !$db{$_} ) {
+            return( "Error opening '$_'" );
+        }
+    }
+    my @vpdlist = $db{vpd}->getAllNodeAttribs(['node','serial','mtm']);
+    my @ppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
+                                               'pprofile','parent','supernode',
+                                               'comments', 'disable']);
+    ###################################
+    # Update FSP in tables 
+    ###################################
+    foreach my $value ( @$values ) {
+        my ($type,
+            $name,
+            $id,
+            $model,
+            $serial,
+            $server,
+            $pprofile,
+            $parent,
+            $ips ) = split /,/, $value;
+         
+        next if ( $type ne 'fsp' );
+
+        my $predefined_node = undef;
+        foreach my $vpdent (@vpdlist)
+        {
+            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial)
+            {
+                $predefined_node = $vpdent->{node};
+                last;
+            }
+        }
+
+        next if ( !$predefined_node);
+        
+        if ( update_node_attribs($hwtype, $type, $name, $id, $model, $serial, 
+                            $server, $pprofile, $parent, $ips, 
+                            \%db, $predefined_node, \@ppclist))
+        {
+            push @update_list, $value;
+        }
+    }
+
+    ###################################
+    # Update BPA in tables 
+    ###################################
+    foreach my $value ( @$values ) {
+        my ($type,
+            $name,
+            $id,
+            $model,
+            $serial,
+            $server,
+            $pprofile,
+            $parent,
+            $ips ) = split /,/;
+         
+        next if ( $type ne 'bpa');
+
+        my $predefined_node = undef;
+        foreach my $vpdent (@vpdlist)
+        {
+            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial)
+            {
+                $predefined_node = $vpdent->{node};
+                last;
+            }
+        }
+
+        next if ( !$predefined_node);
+        
+        if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, 
+                            $server, $pprofile, $parent, $ips, 
+                            \%db, $predefined_node, \@ppclist))
+        {
+            push @update_list, $value;
+        }
+    }
+
+    ###################################
+    # Commit changes 
+    ###################################
+    foreach ( @tabs ) {
+        if ( exists( $db{$_}{commit} )) {
+           $db{$_}->commit;
+        }
+    }
+    return \@update_list;
+}
+
+##########################################################################
+# Update one node in the xCAT databases
+##########################################################################
+sub update_node_attribs
+{
+    my $mgt = shift;
+    my $type = shift;
+    my $name = shift;
+    my $id = shift;
+    my $model = shift;
+    my $serial = shift;
+    my $server = shift;
+    my $pprofile = shift;
+    my $parent = shift;
+    my $ips = shift;
+    my $db = shift;
+    my $predefined_node = shift;
+    my $ppclist = shift;
+
+    my $updated = undef;
+    my $namediff = $name ne $predefined_node;
+    my $key_col = { node=>$predefined_node};
+
+    #############################
+    # update vpd table
+    #############################
+    my $vpdhash = $db->{vpd}->getNodeAttribs( $name, [qw(mtm serial)]);
+    if ( $model ne $vpdhash->{mtm} or $serial ne $vpdhash->{serial} or $namediff)
+    {
+        $db->{vpd}->delEntries( $key_col) if ( $namediff);
+        $db->{vpd}->setNodeAttribs( $name, { mtm=>$model, serial=>$serial});
+        $db->{vpd}->{commit} = 1;
+        $updated = 1;
+    }
+
+    ###########################
+    # Update ppcdirect table
+    ###########################
+    my $pwhash = $db->{ppcdirect}->getNodeAttribs( $predefined_node, [qw(username password comments disable)]);
+    if ( $pwhash)
+    {
+        if ( $namediff)
+        {
+            $db->{ppcdirect}->delEntries( {hcp=>$predefined_node}) if ( $namediff);;
+            $db->{ppcdirect}->setAttribs({hcp=>$name},
+                    {username=>$pwhash->{username},
+                    password=>$pwhash->{password},
+                    comments=>$pwhash->{comments},
+                    disable=>$pwhash->{disable}});
+            $db->{vpd}->{commit} = 1;
+            $updated = 1;
+        }
+    }
+
+    #############################
+    # update ppc table
+    #############################
+    my $ppchash = $db->{ppc}->getNodeAttribs( $name, [qw(hcp id pprofile parent)]);
+    if ( $server ne $ppchash->{hcp} or
+         $id     ne $ppchash->{id} or
+         $pprofile ne $ppchash->{pprofile} or
+         $parent ne $ppchash->{parent} or
+         $namediff)
+    {
+        $db->{ppc}->delEntries( $key_col) if ( $namediff);
+        $db->{ppc}->setNodeAttribs( $name,
+                { hcp=>$server,
+                id=>$id,
+                pprofile=>$pprofile,
+                parent=>$parent
+                }); 
+        if ( $namediff)
+        {
+            for my $ppcent (@$ppclist)
+            {
+                next if ($ppcent->{node} eq $predefined_node);
+                if ($ppcent->{parent} eq $predefined_node)
+                {
+                    $db->{ppc}->setNodeAttribs( $ppcent->{node}, {parent=>$name});
+                }
+            }
+        }
+        $db->{ppc}->{commit} = 1;
+        $updated = 1;
+    }
+
+    ###########################
+    # Update nodehm table
+    ###########################
+    my $nodehmhash = $db->{nodehm}->getNodeAttribs( $name, [qw(mgt)]);
+    if ( $mgt ne $nodehmhash->{mgt} or $namediff)
+    {
+        $db->{nodehm}->delEntries( $key_col) if ( $namediff);
+        $db->{nodehm}->setNodeAttribs( $name, {mgt=>$mgt} );
+        $db->{nodehm}->{commit} = 1;
+        $updated = 1;
+    }
+
+    ###########################
+    # Update nodetype table
+    ###########################
+    my $nodetypehash = $db->{nodetype}->getNodeAttribs( $name, [qw(nodetype)]);
+    if ( $type ne $nodetypehash->{nodetype} or $namediff)
+    {
+        $db->{nodetype}->delEntries( $key_col) if ( $namediff);
+        $db->{nodetype}->setNodeAttribs( $name,{nodetype=>$type} );
+        $db->{nodetype}->{commit} = 1;
+        $updated = 1;
+    }
+
+    ###########################
+    # Update nodelist table
+    ###########################
+    my $nodelisthash = $db->{nodelist}->getNodeAttribs( $name, [qw(groups status appstatus primarysn comments disable)]);
+    if ( $namediff)
+    {
+        updategroups( $name, $db->{nodelist}, $type );
+        $db->{nodelist}->setNodeAttribs( $name, {status=>$nodelisthash->{status},
+                                                 appstatus=>$nodelisthash->{appstatus},
+                                                 primarysn=>$nodelisthash->{primarysn},
+                                                 comments=>$nodelisthash->{comments},
+                                                 disable=>$nodelisthash->{disable}
+                                               });
+        $db->{nodelist}->delEntries( $key_col);
+        $db->{nodelist}->{commit} = 1;
+        $updated = 1;
+    }
+    return $updated;
+}
 
 ##########################################################################
 # Updates the nodelist.groups attribute 
