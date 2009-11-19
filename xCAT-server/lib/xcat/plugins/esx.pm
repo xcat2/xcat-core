@@ -14,7 +14,7 @@ use POSIX "WNOHANG";
 use Getopt::Long;
 use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
-use File::Path;
+use File::Path qw/mkpath rmtree/;
 use File::Temp qw/tempdir/;
 use File::Copy;
 use IO::Socket; #Need name resolution
@@ -2044,6 +2044,9 @@ sub mknetboot {
     my %nodesubdata;
 	foreach my $key (keys %$bpadds){ #First, we identify all needed table.columns needed to aggregate database call
         my $add = $bpadds->{$key}->[0]->{addkcmdline};
+
+        next if ! defined $add;
+
         while ($add =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) { 
             push @{$tablecolumnsneededforaddkcmdline{$1}},$2;
             $add =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#//;
@@ -2200,6 +2203,11 @@ sub cpNetbootImages {
             if(system($mntcmd)){
                 sendmsg([1,"unable to mount partition 5 of the ESX netboot image to /mnt/xcat"]);
                 return;
+            }
+
+            if (! -d $destDir) {
+                print "making $destDir\n";
+                mkpath($destDir);
             }
             
             if(system("cp /mnt/xcat/* $destDir/")){
