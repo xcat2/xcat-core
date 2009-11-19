@@ -15,9 +15,7 @@ I<rscan [-V|--verbose] noderange [-u][-w][-x|-z]>
 
 The rscan command lists hardware information for each node managed by the hardware control points specified in noderange.
 
-Note: except running this command with flag -u, the first line of the output always contains information about the hardware control point itself. When using the rscan command to generate output for HMC or IVM hardware control points, note that FSPs and BPAs are included in the output.
-
-
+Note: The first line of the output always contains information about the hardware control point. When using the rscan command to generate output for HMC or IVM hardware control points, it provides the FSPs and BPAs as part of the output. The only exception is the rscan -u flag which provides updates made hardware control point in the xCAT database. 
 
 =head1 OPTIONS
 
@@ -29,7 +27,7 @@ B<-v>          Command Version.
 
 B<-V>          Verbose output.
 
-B<-u>          Update node definition in xCAT database and print out updated nodes. It updates the existing nodes that have the same mtms and serial as the nodes managed by specified hardware control point. For a CEC and frame node, if the node name is not as same as the managed system name on hardware control point, this flag will update the node name to managed system name. In this release, it can only update CEC and Frame node definitions. 
+B<-u>          Updates and then prints out node definitions in the xCAT database for the hardware control point. It updates the existing nodes that contain the same mtms and serial number for nodes managed by thespecified hardware control point. This primarily works with CEC/FSP and frame/BPA nodes when the node name is not the same as the managed system name on hardware control point (HMC), This flag will update the BPA/FSP node name definitions to be listed as the managed system name. in the xCAT database.  
 
 B<-w>          Writes output to xCAT database.
 
