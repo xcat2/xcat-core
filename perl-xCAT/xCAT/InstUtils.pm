@@ -327,7 +327,7 @@ sub xcmd
                                    {
                                     command => [$xdcmd],
                                     node    => \@snodes,
-                                    arg     => ["-v", $cmd]
+                                    arg     => ["-s", $cmd]
                                    },
                                    $sub_req,
                                    $exitcode,
@@ -346,7 +346,7 @@ sub xcmd
                                {
                                 command => [$xdcmd],
                                 node    => \@snodes,
-                                arg     => ["-v", $cmd]
+                                arg     => ["-s", $cmd]
                                },
                                $sub_req,
                                $exitcode,

@@ -113,12 +113,19 @@ if [ $UPLOAD == 1 ]; then
 #while ! rsync -urLv --delete aix-core-snap nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/
 #do : ; done
 
-  scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
+# devel snapshot
+scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/core-snap
+scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel
 
-  scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel
+# release snapshot
 
-# scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel/xcat-core
-#scp core-aix-2.3.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/devel
+scp *.rpm nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/2.3/core-snap
+scp core-aix-snap.tar.gz nott,xcat@web.sourceforge.net:/home/groups/x/xc/xcat/htdocs/aix/2.3
+
+
+# new release
+scp core-aix-2.3.tar.gz nott,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat/2.3.x_AIX/
+
 
 # for dep-aix & mysql etc.
 #scp ./dep-aix-2.3-200909241259.tar.gz nott,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x_AIX/

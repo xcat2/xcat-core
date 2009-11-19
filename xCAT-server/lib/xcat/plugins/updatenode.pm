@@ -1412,7 +1412,14 @@ sub updateAIXsoftware
                         $pkg_string .= " /mnt/RPMS/ppc/$pkg";
                     }
 
-                    my $rcmd = qq~rpm $flags $pkg_string~;
+					my $rcmd;
+					if ($pkg_string =~ /xCAT/) {
+						# add temporary hack to handle problem installing
+						#  xCAT rpms that start the xcatd daemon.
+						$rcmd = qq~rpm $flags $pkg_string; /opt/xcat/sbin/xcatstart -r~;
+					} else {
+						$rcmd = qq~rpm $flags $pkg_string~;
+ 					}
 
                     if ($::VERBOSE)
                     {
