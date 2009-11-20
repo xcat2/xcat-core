@@ -67,12 +67,9 @@ echo <<<TOS10
     </div>
     <h3><a href='#'>The monsetting table Setting</a></h3>
     <div id="monsettingtabset">
-    <div class="ui-state-highlight ui-corner-all">
-    <p>Press the following buttons to enable/disable the settings</p>
-    <p>In order to make it effect, turn to the "Enable/Disable" tab for the plugin</p>
-    </div>
-    </div>
 TOS10;
+    showMonsettingTab();
+    echo "</div>";
     echo "</div>";
 }
 
@@ -186,11 +183,11 @@ function insertButtonSet($state1, $state2, $default)
     echo "<span class='ui-icon ui-icon-grip-solid-horizontal'></span>";
     echo "<div class='fg-buttonset fg-buttonset-single'>";
     if($default == 0) {
-        echo "<button class='fg-button ui-state-default ui-state-active ui-priority-primary ui-corner-left'>Enable</button>";
-        echo "<button class='fg-button ui-state-default ui-corner-right'>Disable</button>";
+        echo "<button class='fg-button ui-state-default ui-state-active ui-priority-primary ui-corner-left'>$state1</button>";
+        echo "<button class='fg-button ui-state-default ui-corner-right'>$state2</button>";
     }else {
-        echo "<button class='fg-button ui-state-default ui-corner-left'>Enable</button>";
-        echo "<button class='fg-button ui-state-default ui-state-active ui-priority-primary ui-corner-right'>Disable</button>";
+        echo "<button class='fg-button ui-state-default ui-corner-left'>$state1</button>";
+        echo "<button class='fg-button ui-state-default ui-state-active ui-priority-primary ui-corner-right'>$state2</button>";
     }
     echo "</div>";
 }
@@ -218,4 +215,63 @@ TOS3;
     echo "</div>";
 }
 
+
+function showMonsettingTab()
+{
+    $tab = "monsetting";
+
+    echo "<div class='mContent'>";
+    $xml = docmd('tabdump', '', array($tab));
+
+    echo "<table id='tabTable' cellspacing='1' class='ui-corner-all' style='float:left; font-size: .9em; table-layout: fixed; width: 615px; word-wrap: break-word; border: 1px solid #C0C0C0'>\n";
+    echo <<<TOS00
+    <tr style="font-size: .8em; background-color: #C0C0C0">
+        <th style="width:35px"></th>
+        <th style="width:65px">name</th>
+        <th style="width:110px">key</th>
+        <th style="width:300px">value</th>
+        <th style="width:55px">comments</th>
+        <th style="width:50px">disable</th>
+    </tr>
+TOS00;
+//    $headers = getTabHeaders($xml);
+//    if(!is_array($headers)){ die("<p>Can't find header line in $tab</p>"); }
+//    echo "<table id='tabTable' class='tabTable' cellspacing='1'>\n";
+//    #echo "<table class='tablesorter' cellspacing='1'>\n";
+//    echo "<tr><th></th>\n"; # extra cell for the red x
+//    #echo "<tr><td></td>\n"; # extra cell for the red x
+//    foreach($headers as $colHead) {echo "<th>$colHead</th>"; }
+//    echo "</tr>\n"; # close header row
+//    #echo "</thead><tbody>";
+    $tableWidth = count($headers);
+    $ooe = 0;
+    $item = 0;
+    $line = 0;
+    $editable = array();
+    foreach($xml->children() as $response) foreach($response->children() as $arr){
+            $arr = (string) $arr;
+            if(ereg("^#", $arr)){
+                    $editable[$line++][$item] = $arr;
+                    continue;
+            }
+            $cl = "ListLine$ooe";
+            $values = splitTableFields($arr);
+            # X row
+            echo "<tr class=$cl id=row$line><td class=Xcell><a class=Xlink title='Delete row'><img class=Ximg src=img/red-x2-light.gif></a></td>";
+            foreach($values as $v){
+                    echo "<td class=editme id='$line-$item'>$v</td>";
+                    $editable[$line][$item++] = $v;
+            }
+            echo "</tr>\n";
+            $line++;
+            $item = 0;
+            $ooe = 1 - $ooe;
+    }
+    echo "</table>\n";
+    $_SESSION["editable-$tab"] = & $editable; # save the array so we can access it in the next call of this file or change.php
+    echo "<p>";
+    echo "<button id='monsettingaddrow' class='fg-button ui-state-default ui-corner-all'>Add Row</button>";
+    insertButtonSet("Apply", "Cancel", 0);
+    echo "</p>\n";
+}
 ?>
