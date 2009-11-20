@@ -1,8 +1,20 @@
 #!/usr/bin/perl
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
 use strict;
+
+use Getopt::Long;
+require xCAT::MsgUtils;
+require xCAT::DSHCLI;
+use xCAT::Utils;
 use Term::ANSIColor;
 use File::Basename;
-use Getopt::Long;
 # genimage is a wrapper to the genimages located in 
 # /opt/xcat/share/xcat/netboot/<os>/
 # put tab completion
@@ -12,6 +24,7 @@ $::XCATROOT = "/opt/xcat";
 my $os = "";
 my $profile = "";
 my $interface = "";
+my $version;
 my $drivers = "";
 my $otherInterfaces = "";
 my $kernel = "";
@@ -21,26 +34,50 @@ my $profDir; # root where you do ./genimage from
 my $help;
 my $match = 0;
 
-GetOptions(
+#-----------------------------------------------------------------------------
+
+=head3 print_usage   - usage message
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub print_usage
+{
+   print "Usage: genimage -h\n";
+   print "       genimage -v\n";
+   print "       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <additional_nics>]\n                [-o <os>] [-p <profile>] [-k <kernal_version>]\n";
+   print "Examples:\n";
+   print " genimage -i eth0 -n igb,e1000e,bnx2 -o centos5.4 -p compute\n";
+   print " genimage -o suse11\n";
+   print " genimage\n";
+   return;
+}
+if (!GetOptions(
 	'o=s' => \$os,
 	'i=s' => \$interface,
 	'p=s' => \$profile,
 	'n=s' => \$drivers,
 	'k=s' => \$kernel,
 	'r=s' => \$otherInterfaces,
-	'h|help' => \$help
-);
-
-if($help){
-	print 'genimage is a shell for the genimage located in /opt/xcat/share/xcat/netboot/<osfamily>/\n';
-   print 'Usage: genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-o <OSVER>] [-p <PROFILE>] [-k <KERNELVER>]'."\n";
-   print "Examples:\n";
-   print " genimage -i eth0 -n igb,e1000e,bnx2 -o centos5.4 -p compute\n";
-   print " genimage -o suse11\n";
-   print " genimage\n";
+	'h|help' => \$help,
+	'v|version' => \$version
+)) {
+   &print_usage;
    exit 1;
 }
 
+if($help){
+	print "genimage is a shell for the genimage located in /opt/xcat/share/xcat/netboot/<osfamily>.\n";
+        &print_usage;
+   exit 0;
+}
+
+if ($version){
+        my $version = xCAT::Utils->Version();
+        xCAT::MsgUtils->message("N", $version);
+        exit 0;
+
+}
 unless($os){
 	# get the install directory
 	my $installdir = `gettab key=installdir site.value`;
