@@ -30,7 +30,7 @@ if ($inet6support) {
 unless ($inet6support) {
   eval { require Socket };
   eval { require IO::Socket::INET };
-  eval { require IO::Socket::SSL; IO::Socket::SSL->import() };
+  eval { require IO::Socket::SSL; IO::Socket::SSL->import('inet4') };
 }
 
 
