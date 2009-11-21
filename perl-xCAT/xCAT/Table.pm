@@ -921,7 +921,11 @@ sub setNodeAttribs
 {
     my $self = shift;
     my $node = shift;
-    return $self->setAttribs({'node' => $node}, @_);
+    my $nodekey = "node";
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    };
+    return $self->setAttribs({$nodekey => $node}, @_);
 }
 
 #--------------------------------------------------------------------------
