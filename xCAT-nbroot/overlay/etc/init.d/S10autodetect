@@ -53,11 +53,10 @@ do
                     echo "alias myri0 $MOD" >>/etc/modules.conf
                     echo "alias myri0 $MOD" >>/etc/modprobe.conf
                 else
-		    modprobe $MOD
-          ifconfig eth$nic up
-		    udhcpc -i eth$nic -b &
-          NICSTOWAIT="$NICSTOWAIT eth$nic"
-                    nic=$(($nic + 1))
+                    modprobe $MOD
+                    if [ "mlx4_core" = "$MOD" ]; then
+					    modprobe mlx4_en
+                    fi
                 fi
                 ;;
             scsi|raid)
@@ -80,15 +79,6 @@ for dir in /proc/device-tree/vdevice/l-lan*; do
 done
 if [ $NEEDVETH ==  1 ]; then
 	modprobe ibmveth
-        for i in /sys/bus/vio/drivers/ibmveth/*/net*; do
-    	    udhcpc -i eth$nic -b
-         let extrat=0
-         until ifconfig eth$nic|grep "inet addr" || [ $extrat == 30 ]; do
-             sleep 1
-             let extrat=extrat+1
-         done
-            nic=$(($nic + 1))
-	done
 fi
 NEEDEHEA=0;
 for dir in /proc/device-tree/lhea*; do
@@ -96,16 +86,15 @@ for dir in /proc/device-tree/lhea*; do
 done
 if [ $NEEDEHEA == 1 ]; then
 		    modprobe ehea
-            for i in /sys/bus/ibmebus/devices/port*; do
-    		    udhcpc -i eth$nic -b
-         let extrat=0
-         until ifconfig eth$nic|grep "inet addr" || [ $extrat == 30 ]; do
-             sleep 1
-             let extrat=extrat+1
-         done
-                nic=$(($nic + 1))
-            done
 fi
+
+NICSTOWAIT=`/sbin/ifconfig -a|grep HWaddr|grep ^eth|sed -e 's/ .*//'`
+for nic in $NICSTOWAIT; do
+	ifconfig $nic up
+	udhcpc -i $nic -b &
+done
+
+
 
 let extrat=0
 until [ $extrat == 80 -o -z "$NICSTOWAIT" ]; do
