@@ -2547,6 +2547,11 @@ sub snmpcfg {
   $user =~ /^(\d+)./;
   my $id = $1;
   my $pp  = ($value =~ /^enable$/i) ? "des" : "none";
+  if ($pp eq "des") {
+     @data = $t->cmd("snmp -a3 -on -T system:$mm");
+  } else {
+     @data = $t->cmd("snmp -a3 -off -T system:$mm");
+  }
  
   my $cmd= "users -$id -ap sha -at write -ppw $pass -pp $pp -T system:$mm";
   @data = $t->cmd($cmd);
