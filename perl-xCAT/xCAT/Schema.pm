@@ -53,7 +53,14 @@ vm => {
         'nics' => 'Network configuration parameters.  Of the general form [physnet:]interface[=model],.. Generally, interface describes the vlan entity (default for native, tagged for tagged, vl[number] for a specific vlan.  model is the type of device to imitate (i.e. virtio, e1000 (generally default), rtl8139, depending on the virtualization technology.  physnet is a virtual switch name or port description that is used for some virtualization technologies to construct virtual switches.  hypervisor.netmap can map names to hypervisor specific layouts, or the descriptions described there may be used directly here where possible.',
         'bootorder' => 'Boot sequence (i.e. net,hd)',
         'clockoffset' => 'Whether to have guest RTC synced to "localtime" or "utc"  If not populated, xCAT will guess based on the nodetype.os contents.',
-        'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen")',
+        'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
+            imageformat=[raw|fullraw|qcow2]
+                raw is a generic sparse file that allocates storage on demand
+                fullraw is a generic, non-sparse file that preallocates all space
+                qcow2 is a sparse, copy-on-write capable format implemented at the virtualization layer rather than the filesystem level
+            clonemethod=[qemu-img|reflink]
+                qemu-img allows use of qcow2 to generate virtualization layer copy-on-write
+                reflink uses a generic filesystem facility to clone the files on your behalf, but requires filesystem support such as btrfs ',
         'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
         'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
         'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",

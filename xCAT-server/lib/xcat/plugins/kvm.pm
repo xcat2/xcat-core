@@ -20,6 +20,8 @@ use IO::Select;
 use strict;
 #use warnings;
 my $use_xhrm=0; #xCAT Hypervisor Resource Manager, to satisfy networking and storage prerequisites, default to not using it for the moment
+my $imgfmt='raw'; #use raw format by default
+my $clonemethod='qemu-img'; #use qemu-img command
 my %vm_comm_pids;
 my %offlinehyps;
 my %offlinevms;
@@ -85,15 +87,7 @@ sub get_path_for_nfsuri {
     my $path = $2;
     print $diskname." $server $path \n";
     if (xCAT::Utils::thishostisnot($server)) {
-        my $foundmount;
-        my @mounts = `mount`;
-        foreach (@mounts) {
-            if (/^$server:$path/) {
-                s/ on (\S*) type nfs/$1/;
-                return $_;
-            }
-        }
-        die "$diskname must be mounted on the xCAT server for this operation"; #TODO: correctly return
+        return [$server,$path];
     } else { #I am the server
         return $path;
     }
@@ -574,6 +568,7 @@ sub getpowstate {
 sub xhrm_satisfy {
     my $node = shift;
     my $hyp = shift;
+    my $rc=0;
     my @nics=();
     my @storage=();
     if ($vmhash->{$node}->[0]->{nics}) {
@@ -584,13 +579,14 @@ sub xhrm_satisfy {
     }
     foreach (@nics) {
         s/=.*//; #this code cares not about the model of virtual nic
-        system("ssh $hyp xHRM bridgeprereq $_");
+        $rc |=system("ssh $hyp xHRM bridgeprereq $_");
     }
     foreach (@storage) {
         if (/^nfs:\/\//) {
-            system("ssh $hyp xHRM storageprereq $_");
+            $rc |= system("ssh $hyp xHRM storageprereq $_");
         }
     }
+    return $rc;
 }
 sub makedom {
     my $node=shift;
@@ -614,25 +610,97 @@ sub createstorage {
     my $filename=shift;
     my $mastername=shift;
     my $size=shift;
+    my $cfginfo = shift;
+    my $force = shift;
+    my $diskstruct = shift;
+    my $node = $cfginfo->{node};
+    my @flags = split /,/,$cfginfo->{virtflags};
+    foreach (@flags) {
+        if (/^imageformat=(.*)\z/) {
+            $imgfmt=$1;
+        } elsif (/^clonemethod=(.*)\z/) {
+            $clonemethod=$1;
+        }
+    }
+    my $mountpath;
+
+
+    my $storageserver;
+    #for nfs paths and qemu-img, we do the magic locally only for now
+    if ($filename =~ /^nfs:/) {
+        $filename = get_path_for_nfsuri($filename);
+        if (ref $filename) { #if we got a reference back instead of a string, it is a remote location
+            $storageserver = $filename->[0];
+            $filename = $filename->[1];
+        }
+        $mountpath = $filename;
+        $filename  .= "/$node/".fileparse($diskstruct->[0]->{source}->{file});
+    }
     my $basename;
     my $dirname;
     ($basename,$dirname) = fileparse($filename);
-    mkpath($dirname);
+    unless ($storageserver) {
+        if (-f $filename) {
+            unless ($force) {
+                return 1,"Storage already exists, delete manually or use --force";
+            }
+            unlink $filename;
+        }
+    }
+    if ($storageserver and $mastername and $clonemethod eq 'reflink') {
+        my $rc=system("ssh $storageserver mkdir -p $dirname");
+        if ($rc) {
+            return 1,"Unable to manage storage on remote server $storageserver";
+        }
+    } elsif ($storageserver) {
+        my @mounts = `mount`;
+        my $foundmount;
+        foreach (@mounts) {
+          if (/^$storageserver:$mountpath/) {
+             s/ on (\S*) type nfs/$1/;
+             $dirname = $_;
+             mkpath($dirname);
+             $foundmount=1;
+             last;
+          }
+        }
+        unless ($foundmount) {
+            return 1,"qemu-img cloning requires that the management server have the directory $mountpath from $storageserver mounted";
+        }
+    } else {
+        mkpath($dirname);
+    }
     if ($mastername and $size) {
         return 1,"Can not specify both a master to clone and a size";
     }
+    my $masterserver;
     if ($mastername) {
-        unless ($mastername =~ /^\//) {
+        unless ($mastername =~ /^\// or $mastername =~ /^nfs:/) {
             $mastername = $xCAT_plugin::kvm::masterdir.'/'.$mastername;
         }
-        chdir($dirname);
-        my $rc=system("qemu-img create -f qcow2 -b $mastername $filename");
+        if ($mastername =~ m!nfs://([^/]*)(/.*\z)!) {
+            $mastername = $2;
+            $masterserver = $1;
+        }
+        if ($masterserver ne $storageserver) {
+            return 1,"Not supporting cloning between $masterserver and $storageserver at this time, for now ensure master images and target VM images are on the same server";
+        }
+        my $rc;
+        if ($clonemethod eq 'qemu-img') {
+            $rc=system("qemu-img create -f qcow2 -b $mastername $filename");
+        } elsif ($clonemethod eq 'reflink') {
+            if ($storageserver) {
+                $rc=system("ssh $storageserver cp --reflink $mastername $filename");
+            } else {
+                $rc=system("cp --reflink $mastername $filename");
+            }
+        }
         if ($rc) {
             return $rc,"Failure creating image $filename from $mastername";
         }
     }
     if ($size) {
-        my $rc = system("qemu-img create -f qcow2 $filename ".getUnits($size,"g",1024));
+        my $rc = system("qemu-img create -f $imgfmt $filename ".getUnits($size,"g",1024));
         if ($rc) {
             return $rc,"Failure creating image $filename of size $size\n";
         }
@@ -661,24 +729,9 @@ sub mkvm {
         if ($mastername or $disksize) {
             return 1,"mkvm management of block device storage not implemented";
         }
-    } elsif ($diskname =~ /^nfs:/) {
-        $diskname = get_path_for_nfsuri($diskname)."/$node/".fileparse($diskstruct->[0]->{source}->{file});
     }
-    if (-f $diskname) {
-        if ($mastername or $disksize) {
-            if ($force) {
-                unlink $diskname;
-            } else {
-                return 1,"Storage already exists, delete manually or use --force";
-            }
-            createstorage($diskname,$mastername,$disksize);
-        }
-    } else {
-        if ($mastername or $disksize) {
-            createstorage($diskname,$mastername,$disksize);
-        } else {
-            #TODO: warn  they may have no disk? the mgt may not have visibility....
-        }
+    if ($mastername or $disksize) {
+       return createstorage($diskname,$mastername,$disksize,$vmhash->{$node}->[0],$force,$diskstruct);
     }
  } else {
      if ($mastername or $disksize) {
@@ -710,7 +763,9 @@ sub power {
     if ($subcommand eq 'on') {
         unless ($dom) {
             if ($use_xhrm) {
-                xhrm_satisfy($node,$hyp);
+                if (xhrm_satisfy($node,$hyp)) {
+			return (1,"Failure satisfying networking and storage requirements on $hyp for $node");
+		} 
             }
             ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
