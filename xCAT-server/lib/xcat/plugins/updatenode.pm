@@ -553,6 +553,28 @@ sub updatenode
         $callback->($rsp);
     }
 
+    if (scalar(@$AIXnodes))
+    {
+        if (xCAT::Utils->isLinux())
+        {
+            # mixed cluster enviornment, Linux MN=>AIX node
+            # linux nfs client can not mount AIX nfs directory with default settings.
+            # settting nfs_use_reserved_ports=1 could solve the problem
+            my $cmd   = qq~nfso -o nfs_use_reserved_ports=1~;
+            my $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $AIXnodes, $cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not set nfs_use_reserved_ports=1 on nodes. Error message is:\n";
+                push @{$rsp->{data}}, "$output\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+        }
+    }
+
     #
     #  handle software updates
     #
