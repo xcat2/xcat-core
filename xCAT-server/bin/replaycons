@@ -73,7 +73,7 @@ my @hostinfo=xCAT::Utils->determinehostname();
 my %iphash=();
 foreach(@hostinfo) {$iphash{$_}=1;}
 if (($conserver) && ($iphash{$conserver} != 1)) {
-  system("ssh -o BatchMode=yes $conserver replaycons $node $bps $tail 2>&1");
+  system("ssh -o BatchMode=yes $conserver $::XCATROOT/bin/replaycons $node $bps $tail 2>&1");
   exit(0);
 }
  
