@@ -1425,6 +1425,7 @@ sub dohyp {
       $output{node}->[0]->{errorcode} = $rc;
       $output{node}->[0]->{name}->[0]=$node;
       $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+      $output{node}->[0]->{error} = $text unless $rc == 0;
       print $out freeze([\%output]);
       print $out "\nENDOFFREEZE6sK4ci\n";
       yield();
