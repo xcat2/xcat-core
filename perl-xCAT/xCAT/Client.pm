@@ -197,39 +197,6 @@ sub scan_plugins {
   foreach (@plugins) {
     /.*\/([^\/]*).pm$/;
     my $modname = $1;
-    unless (eval { require "$_" }) {
-      print "Error loading module $_  ...skipping\n"; 
-      next;
-    }
-    no strict 'refs';
-    my $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
-    foreach (keys %$cmd_adds) {
-      my $value = $_;
-      if (defined($cmd_handlers{$_})) {
-        my $add=1;
-        #This next bit of code iterates through the handlers.
-        #If the value doesn't contain an equal, and has an equivalent entry added by
-        # another plugin already, don't add (otherwise would hit the DB multiple times)
-        # a better idea, restructure the cmd_handlers as a multi-level hash
-        # prove out this idea real quick before doing that
-        foreach (@{$cmd_handlers{$_}}) {
-          if (($_->[1] eq $cmd_adds->{$value}) and (($cmd_adds->{$value} !~ /=/) or ($_->[0] eq $modname))) {
-            $add = 0;
-          }
-        }
-        if ($add) { push @{$cmd_handlers{$_}},[$modname,$cmd_adds->{$_}]; }
-        #die "Conflicting handler information from $modname";
-      } else {
-        $cmd_handlers{$_} = [ [$modname,$cmd_adds->{$_}] ];
-      }
-    }
-  }
-}
-sub scan_plugins {
-  my @plugins=glob($plugins_dir."/*.pm");
-  foreach (@plugins) {
-    /.*\/([^\/]*).pm$/;
-    my $modname = $1;
     unless ( eval { require "$_" }) {
 #       xCAT::MsgUtils->message("S","Error loading module ".$_."  ...skipping");
         print "Error loading module $_  ...skipping\n"; 
