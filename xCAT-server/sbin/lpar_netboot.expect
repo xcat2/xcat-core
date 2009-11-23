@@ -1052,6 +1052,13 @@ proc ping_server { full_path_name phandle } {
                 }
             }
         }
+        
+        if { $properties_matched == 0 } {
+            set adap_speed $a_speed
+            set adap_duplex $a_duplex
+            set properties_matched 1
+            lappend adap_conn_list $a_conn
+        }
 
         set i [ llength $adap_conn_list ]
 
