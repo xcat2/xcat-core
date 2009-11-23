@@ -1198,7 +1198,10 @@ sub convey_response {
     build_response($resp);
     return;
   }
-  print $parent_fd XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
+  $resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
+  #sanitize the response, to avoid being killed by non-printable bytes
+  $resp =~ tr/\011-\177/?/c;
+  print $parent_fd $resp;
   yield; #parent must get timeslice anyway before an ack could possibly return
   my $parsel = new IO::Select;
   $parsel->add($parent_fd);
