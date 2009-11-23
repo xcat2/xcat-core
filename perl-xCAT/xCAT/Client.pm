@@ -189,7 +189,7 @@ sub submit_request {
 #    will load all plugin perl modules and build a list of supported
 #    commands
 #
-# NOTE:  This is copied from xcatd (last merge 5/21/08).
+# NOTE:  This is copied from xcatd (last merge 11/23/09).
 # TODO:  Will eventually move to using common source....
 ###################################
 sub scan_plugins {
@@ -197,7 +197,10 @@ sub scan_plugins {
   foreach (@plugins) {
     /.*\/([^\/]*).pm$/;
     my $modname = $1;
-    unless (eval { require "$_" }) { print "Error loading module $_  ...skipping\n"; next;}
+    unless (eval { require "$_" }) {
+      print "Error loading module $_  ...skipping\n"; 
+      next;
+    }
     no strict 'refs';
     my $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
     foreach (keys %$cmd_adds) {
@@ -222,6 +225,51 @@ sub scan_plugins {
     }
   }
 }
+sub scan_plugins {
+  my @plugins=glob($plugins_dir."/*.pm");
+  foreach (@plugins) {
+    /.*\/([^\/]*).pm$/;
+    my $modname = $1;
+    unless ( eval { require "$_" }) {
+#       xCAT::MsgUtils->message("S","Error loading module ".$_."  ...skipping");
+        print "Error loading module $_  ...skipping\n"; 
+        next;
+    }
+    no strict 'refs';
+    my $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
+    foreach (keys %$cmd_adds) {
+      my $value = $_;
+      if (defined($cmd_handlers{$_})) {
+        my $add=1;
+        #This next bit of code iterates through the handlers.
+        #If the value doesn't contain an equal, and has an equivalent entry added by
+        # another plugin already, don't add (otherwise would hit the DB multiple times)
+        #referring to having redundant nodehm:mgt handlers registered, for example
+        # a better idea, restructure the cmd_handlers as a multi-level hash
+        # prove out this idea real quick before doing that
+        foreach (@{$cmd_handlers{$_}}) {
+          if (($_->[1] eq $cmd_adds->{$value}) and (($cmd_adds->{$value} !~ /=/) or ($_->[0] eq $modname))) {
+            $add = 0;
+          }
+        }
+        if ($add) { push @{$cmd_handlers{$_}},[$modname,$cmd_adds->{$_}]; }
+        #die "Conflicting handler information from $modname";
+      } else {
+        $cmd_handlers{$_} = [ [$modname,$cmd_adds->{$_}] ];
+      }
+    }
+  }
+  foreach (@plugins) {
+    no strict 'refs';
+    /.*\/([^\/]*).pm$/;
+    my $modname = $1;
+    unless (defined(${"xCAT_plugin::".$modname."::"}{init_plugin})) {
+        next;
+    }
+    ${"xCAT_plugin::".$modname."::"}{init_plugin}->(\&do_request);
+  }
+}
+
 
 
 
@@ -229,7 +277,7 @@ sub scan_plugins {
 # plugin_command
 #    will invoke the correct plugin
 #
-# NOTE:  This is copied from xcatd (last merge 5/21/08).
+# NOTE:  This is copied from xcatd (last merge 11/23/09).
 # TODO:  Will eventually move to using common source....
 ###################################
 sub plugin_command {
@@ -237,6 +285,7 @@ sub plugin_command {
   my $sock = shift;
   my $callback = shift;
   my %handler_hash;
+  my $usesiteglobal = 0;
 
   # We require these only in bypass mode to reduce start up time for the normal case
   #use lib "$::XCATROOT/lib/perl";
@@ -274,10 +323,29 @@ sub plugin_command {
   my $useunhandled=0;
   if (defined($cmd_handlers{$req->{command}->[0]})) {
     my $hdlspec;
+    my @globalhandlers=();
+    my $useglobals=1; #If it stays 1, then use globals normally, if 0, use only for 'unhandled_nodes, if -1, don't do at all
     foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
       $hdlspec =$_->[1];
       my $ownmod = $_->[0];
-      if ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
+      if ($hdlspec =~ /^site:/) { #A site entry specifies a plugin
+          my $sitekey = $hdlspec;
+          $sitekey =~ s/^site://;
+          $sitetab = xCAT::Table->new('site');
+          my $sent = $sitetab->getAttribs({key=>$sitekey},['value']);
+          if ($sent and $sent->{value}) { #A site style plugin specification is just like
+                                          #a static global, it grabs all nodes rather than some
+            $useglobals = -1; #If they tried to specify anything, don't use the default global handlers at all
+            unless (@nodes) {
+              $handler_hash{$sent->{value}} = 1;
+              $usesiteglobal = 1;
+            }
+            foreach (@nodes) { #Specified a specific plugin, not a table lookup
+              $handler_hash{$sent->{value}}->{$_} = 1;
+            }
+          }
+      } elsif ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
+        $useglobals = 0; #Only contemplate nodes that aren't caught through searching below in the global handler
         $useunhandled=1;
         my $table;
         my $cols;
@@ -301,12 +369,19 @@ sub plugin_command {
           }
         }
 
+
         unless (@nodes) { #register the plugin in the event of usage
           $handler_hash{$ownmod} = 1;
+          $useglobals = 1;
+        }
+        my $hdlrcache;
+        if ($hdlrtable) {
+                $hdlrcache = $hdlrtable->getNodesAttribs(\@nodes,\@columns);
         }
         foreach $node (@nodes) {
-          my $attribs = $hdlrtable->getNodeAttribs($node,\@columns);
-          unless (defined($attribs)) { next; } #TODO: This really ought to craft an unsupported response for this request
+          unless ($hdlrcache) { next; }
+          my $attribs = $hdlrcache->{$node}->[0]; #$hdlrtable->getNodeAttribs($node,\@columns);
+          unless (defined($attribs)) { next; }
           foreach (@columns) {
             my $col=$_;
             if (defined($attribs->{$col})) {
@@ -326,16 +401,37 @@ sub plugin_command {
         }
         $hdlrtable->close;
       } else {
-        unless (@nodes) {
-          $handler_hash{$hdlspec} = 1;
-        }
-        foreach (@nodes) { #Specified a specific plugin, not a table lookup
-          $handler_hash{$hdlspec}->{$_} = 1;
-        }
+          push @globalhandlers,$hdlspec;
       }
     }
+      if ($useglobals == 1) {  #Behavior when globals have not been overriden
+          my $hdlspec;
+          foreach $hdlspec (@globalhandlers) {
+            unless (@nodes) {
+              $handler_hash{$hdlspec} = 1;
+            }
+            foreach (@nodes) { #Specified a specific plugin, not a table lookup
+              $handler_hash{$hdlspec}->{$_} = 1;
+            }
+          }
+      } elsif ($useglobals == 0) {
+          unless (@nodes or $usesiteglobal) { #if something like 'makedhcp -n',
+              foreach (keys %handler_hash) {
+                  if ($handler_hash{$_} == 1) {
+                      delete ($handler_hash{$_})
+                  }
+              }
+          }
+          foreach $hdlspec (@globalhandlers) {
+            unless (@nodes or $usesiteglobal) {
+              $handler_hash{$hdlspec} = 1;
+            }
+            foreach (keys %unhandled_nodes) { #Specified a specific plugin, not a table lookup
+              $handler_hash{$hdlspec}->{$_} = 1;
+            }
+          }
+      } #Otherwise, global handler is implicitly disabled
   } else {
-    print "$req->{command}->[0] xCAT command not found \n";
     return 1;  #TODO: error back that request has no known plugin for it
   }
   if ($useunhandled) {
@@ -352,7 +448,9 @@ sub plugin_command {
 #      if ($sock) {
 #         print $sock XMLout({node=>[{name=>[$_],data=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
 #      } else {
-         $callback->({node=>[{name=>[$_],data=>['Unable to identify plugin for this command, check relevant tables'],errorcode=>[1]}]});
+         my $tabdesc = $queuelist;
+         $tabdesc =~ s/=.*$//;
+         $callback->({node=>[{name=>[$_],error=>['Unable to identify plugin for this command, check relevant tables: '.$tabdesc],errorcode=>[1]}]});
 #      }
      }
   }
@@ -367,6 +465,7 @@ sub plugin_command {
 # }
   foreach (keys %handler_hash) {
     my $modname = $_;
+#   my $shouldbealivepid=$$;
     if (-r $plugins_dir."/".$modname.".pm") {
       require $plugins_dir."/".$modname.".pm";
 #     $plugin_numchildren++;
@@ -384,7 +483,9 @@ sub plugin_command {
 #     }
 #     unless (defined $child) { die "Fork failed"; }
 #     if ($child == 0) {
-#       $parent_fd = $parfd;
+#       if ($parfd) {  #If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
+#           $parent_fd = $parfd;
+#       }
         my $oldprogname=$$progname;
         $$progname=$oldprogname.": $modname instance";
 #       if ($sock) { close $pfd; }
@@ -393,16 +494,34 @@ sub plugin_command {
           $req->{node}=\@nodes;
         }
         no strict  "refs";
+#       eval { #REMOVEEVALFORDEBUG
 #       if ($dispatch_requests) {
                 dispatch_request($req,$callback,$modname);
 #       } else {
-#          undef $SIG{CHLD};
+#          $SIG{CHLD}='DEFAULT';
 #          ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
 #       }
         $$progname=$oldprogname;
 #       if ($sock) {
 #         close($parent_fd);
 #         xexit(0);
+#       }
+#       }; #REMOVEEVALFORDEBUG
+#       if ($sock or $shouldbealivepid != $$) { #We shouldn't still be alive, try to send as much detail to parent as possible as to why
+#           my $error= "$modname plugin bug, pid $$, process description: '$$progname'";
+#           if ($@) {
+#               $error .= " with error '$@'";
+#           } else { #Sys::Virt and perhaps Net::SNMP sometimes crashes in a way $@ won't catch..
+#               $error .= " with missing eval error, probably due to special manipulation of $@ or strange circumstances in an XS library, remove evals in xcatd marked 'REMOVEEVALFORDEBUG and run xcatd -f for more info";
+#           }
+#           if (scalar (@nodes)) { #Don't know which of the nodes, so one error message warning about the possibliity..
+#               $error .= " while trying to fulfill request for the following nodes: ".join(",",@nodes);
+#           }
+#           xCAT::MsgUtils->message("S","xcatd: $error");
+#           $callback->({error=>[$error],errorcode=>[1]});
+#           xexit(0); #Die like we should have done
+#       } elsif ($@) { #We are still alive, should be alive, but yet we have an error.  This means we are in the case of 'do_request' or something similar.  Forward up the death since our communication channel is intact..
+#           die $@;
 #       }
 #     } else {
 #       $plugin_children{$child}=1;
@@ -430,7 +549,13 @@ sub plugin_command {
 # if ($req->{transid}) {
 #   $done{transid}=$req->{transid}->[0];
 # }
-# if ($sock) { print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1); }
+# if ($sock) {
+#     my $clientpresence = new IO::Select; #The client may have gone away without confirmation, don't PIPE over this trivial thing
+#     $clientpresence->add($sock);
+#     if ($clientpresence->can_write(5)) {
+#         print $sock XMLout(\%done,RootName => 'xcatresponse',NoAttr=>1);
+#     }
+# }
 }
 
 
@@ -440,7 +565,7 @@ sub plugin_command {
 # dispatch_request
 #    dispatch the requested command
 #
-# NOTE:  This is copied from xcatd (last merge 5/21/08).
+# NOTE:  This is copied from xcatd (last merge 11/23/09).
 #        All we really need from this subroutine is to call preprocess_request
 #        and to only run the command for nodes handled by the local server
 #        Will eventually move to using common source....
@@ -464,7 +589,7 @@ sub dispatch_request {
    #will for now be required for a command to be scaled through service nodes
    #If the plugin offers a preprocess method, use it to set the request array
    if (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request})) {
-    undef $SIG{CHLD};
+   $SIG{CHLD}='DEFAULT';
     $reqs = ${"xCAT_plugin::".$modname."::"}{preprocess_request}->($req,$dispatch_cb,\&do_request);
    } else { #otherwise, pass it in without hierarchy support
     $reqs = [$req];
@@ -472,6 +597,11 @@ sub dispatch_request {
 
 # $dispatch_children=0;
 # $SIG{CHLD} = \&dispatch_reaper; #sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $dispatch_children--; } } };
+  my $onlyone=0;
+  if (defined $reqs and (scalar(@{$reqs}) == 1)) {
+      $onlyone=1;
+  }
+
    foreach (@{$reqs}) {
 #   my $pfd;
 #   my $parfd; #use a private variable so it won't trounce itself recursively
@@ -481,6 +611,17 @@ sub dispatch_request {
     if ($_->{node}) {
        $_->{noderange}->[0]=join(',',@{$_->{node}});
     }
+#----- end added to Client.pm -----#
+
+    if (ref $_->{'_xcatdest'} and (ref $_->{'_xcatdest'}) eq 'ARRAY') {
+        _->{'_xcatdest'} =  $_->{'_xcatdest'}->[0];
+    }
+    if ($onlyone and not ($_->{'_xcatdest'} and xCAT::Utils->thishostisnot($_->{'_xcatdest'}))) {
+       $SIG{CHLD}='DEFAULT';
+       ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
+        return;
+    }
+
 #   socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
 #   $parfd->autoflush(1);
 #   $pfd->autoflush(1);
@@ -496,25 +637,73 @@ sub dispatch_request {
 #   }
 #   undef $SIG{CHLD};
 #     $dispatch_parentfd = $parfd;
-     if ($_->{'_xcatdest'} and xCAT::Utils->thishostisnot($_->{'_xcatdest'})) {
+      my @prexcatdests=();
+      my @xcatdests=();
+     if (ref($_->{'_xcatdest'}) eq 'ARRAY') { #If array, consider it an 'anycast' operation, broadcast done through dupe
+                                              #requests, or an alternative join '&' maybe?
+         @prexcatdests=@{$_->{'_xcatdest'}};
+     } else {
+         @prexcatdests=($_->{'_xcatdest'});
+     }
+     foreach (@prexcatdests) {
+         if ($_ and /,/) {
+             push @xcatdests,split /,/,$_;
+         } else {
+             push @xcatdests,$_;
+         }
+     }
+     my $xcatdest;
+     my $numdests=scalar(@xcatdests);
+     my $request_satisfied=0;
+     foreach $xcatdest (@xcatdests) {
+        my $dlock;
+        if ($xcatdest and xCAT::Utils->thishostisnot($xcatdest)) {
 #----- added to Client.pm -----#
        $dispatch_cb->({warning=>['XCATBYPASS is set, skipping hierarchy call to '.$_->{'_xcatdest'}.'']});
+#----- end added to Client.pm -----#
 
-#       $ENV{XCATHOST} =  ( $_->{'_xcatdest'} =~ /:/ ? $_->{'_xcatdest'} : $_->{'_xcatdest'}.":3001" );
-#       $$progname.=": connection to ".$ENV{XCATHOST};
-#       eval {
-#       undef $_->{'_xcatdest'};
-#       xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem");
-#       };
-#       if ($@) {
-#          dispatch_callback({error=>["Error dispatching command to ".$ENV{XCATHOST}.""],errorcode=>[1]});
-#          syslog("local4|err","Error dispatching request: ".$@);
-#       }
-     } else {
-        $$progname.=": locally executing";
-        undef $SIG{CHLD};
-        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
+#           #mkpath("/var/lock/xcat/"); #For now, limit intra-xCAT requests to one at a time, to mitigate DB handle usage
+#           #open($dlock,">","/var/lock/xcat/dispatchto_$xcatdest");
+#           #flock($dlock,LOCK_EX);
+#           $ENV{XCATHOST} =  ($xcatdest =~ /:/ ? $xcatdest : $xcatdest.":3001" );
+#           $$progname.=": connection to ".$ENV{XCATHOST};
+#           my $errstr;
+#           eval {
+#           undef $_->{'_xcatdest'};
+#           xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem");
+#           };
+#           if ($@) {
+#            $errstr=$@;
+#           }
+#           #unlink("/var/lock/xcat/dispatchto_$xcatdest");
+#           #flock($dlock,LOCK_UN);
+#           if ($errstr) {
+#                   if ($numdests == 1) {
+#                   dispatch_callback({error=>["Unable to dispatch command to ".$ENV{XCATHOST}.", command will not make changes to that server ($errstr)"],errorcode=>[1]});
+#                       xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.": ".$errstr);
+#               } else {
+#                       xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.", trying other service nodes: ".$errstr);
+#               }
+#               next;
+#               } else {
+#               $request_satisfied=1;
+#               last;
+#           }
+         } else {
+            $$progname.=": locally executing";
+            $SIG{CHLD}='DEFAULT';
+#           ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
+#----- changed in Client.pm -----#
+            ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_cb,\&do_request);
+#----- end changed in Client.pm -----#
+            last;
+        }
      }
+#    if ($numdests > 1 and not $request_satisfied) {
+#           xCAT::MsgUtils->message("S","Error dispatching a request to all possible service nodes for request");
+#       dispatch_callback({error=>["Failed to dispatch command to any of the following service nodes: ".join(",",@xcatdests)],errorcode=>[1]});
+#    }
+
 #    xexit;
   }
 #while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset) }
@@ -522,11 +711,12 @@ sub dispatch_request {
 }
 
 
+
 ###################################
 # do_request
 #    called from a plugin to execute another xCAT plugin command internally
 #
-# NOTE:  This is copied from xcatd (last merge 5/21/08).
+# NOTE:  This is copied from xcatd (last merge 11/23/09).
 #        Will eventually move to using common source....
 ###################################
 sub do_request {
