@@ -50,7 +50,7 @@ sub preprocess_request
     my $callback  = shift;
     my %sn;
     #if already preprocessed, go straight to request
-    if ($req->{_xcatpreprocessed}->[0] == 1 ) { return [$req]; }
+    if (($req->{_xcatpreprocessed}) and ($req->{_xcatpreprocessed}->[0] == 1) ) { return [$req]; }
     my $nodes    = $req->{node};
     my $service  = "xcat";
 
