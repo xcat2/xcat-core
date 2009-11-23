@@ -1761,7 +1761,18 @@ sub mount_nfs_datastore {
                                     localPath=>$location,
                                     remotePath=>"/".$path);
     my $dsmv = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->datastoreSystem);
-    $dsmv->CreateNasDatastore(spec=>$nds);
+
+    eval {
+      $dsmv->CreateNasDatastore(spec=>$nds);
+    };
+
+    if ($@) {
+      die "$@" unless $@ =~ m/Fault detail: DuplicateNameFault/;
+
+      die "esx plugin: a datastore was discovered with the same name referring to a different nominatum- cannot continue\n$@"
+        unless &match_nfs_datastore($server,"/$path",$hostview->{vim});
+    }
+
     return $location;
 }
 sub lsvm {
@@ -2239,6 +2250,69 @@ sub cpNetbootImages {
 
 }
 
+
+# compares nfs target described by parameters to every share mounted by target hypervisor
+# returns 1 if matching datastore is present and 0 otherwise
+sub match_nfs_datastore {
+  my ($host, $path, $hypconn) = @_;
+  
+  die "esx plugin bug: no host provided for match_datastore" unless defined $host;
+  die "esx plugin bug: no path provided for match_datastore" unless defined $path;
+
+  my @ip;
+
+  eval {
+    if ($host =~ m/\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\//) {
+      use Socket;
+
+      @ip = ( $host );
+      $host = gethostbyaddr(inet_aton($host, AF_INET), AF_INET);
+    } else {
+      use Socket;
+
+      (undef, undef, undef, undef, @ip) = gethostbyname($host);
+
+      my @ip_ntoa = ();
+      foreach (@ip) {
+        push (@ip_ntoa, inet_ntoa($_));
+      }
+      @ip = @ip_ntoa;
+    }
+    
+  };
+
+  if ($@) {
+    die "error while resolving datastore host: $@\n";
+  } 
+
+  my %viewcrit = (
+    view_type => 'HostSystem',
+    properties => [ 'config.fileSystemVolume' ],
+  );
+
+  my $dsviews = $hypconn->find_entity_views(%viewcrit);
+
+  foreach (@$dsviews) {
+    foreach my $mount (@{$_->get_property('config.fileSystemVolume.mountInfo')}) {
+      next unless $mount->{'volume'}{'type'} eq 'NFS';
+
+      my $hostMatch = 0;
+      HOSTMATCH: foreach (@ip, $host) {
+        next HOSTMATCH unless $mount->{'volume'}{'remoteHost'} eq $_;
+
+        $hostMatch = 1;
+        last HOSTMATCH;
+      } 
+      next unless $hostMatch;
+
+      next unless $mount->{'volume'}{'remotePath'} eq $path;
+
+      return 1;
+    }
+  }
+
+  return 0; 
+}
 
 1;
 # vi: set ts=4 sw=4 filetype=perl: 
