@@ -19,6 +19,8 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
+use xCAT::Common;
+
 #use strict;
 my @cpiopid;
 
@@ -292,18 +294,19 @@ sub mknetboot
 
         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
 
-        #TODO: only copy if newer...
         unless ($donetftp{$osver,$arch,$profile}) {
-	if (-f "$rootimgdir/hypervisor") {
-        	copy("$rootimgdir/hypervisor",
-             	"/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-		$xenstyle=1;
-	}
-        copy("$rootimgdir/kernel",
-             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        copy("$rootimgdir/initrd.gz",
-             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-            $donetftp{$osver,$arch,$profile} = 1;
+                eval {
+                        if (-f "$rootimgdir/hypervisor") {
+                                xCAT::Common::copy_if_newer("$rootimgdir/hypervisor",
+                                "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+                                $xenstyle=1;
+                        }
+                        xCAT::Common::copy_if_newer("$rootimgdir/kernel",
+                             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+                        xCAT::Common::copy_if_newer("$rootimgdir/initrd.gz",
+                             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+                            $donetftp{$osver,$arch,$profile} = 1;
+                };
         }
         unless (    -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel"
                 and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd.gz")
@@ -653,8 +656,21 @@ sub mkinstall
             unless ($doneimgs{"$os|$arch"})
             {
                 mkpath("/tftpboot/xcat/$os/$arch");
-                copy($kernpath,"$tftpdir/xcat/$os/$arch");
-                copy($initrdpath,"$tftpdir/xcat/$os/$arch/initrd.img");
+                eval {
+                        xCAT::Common::copy_if_newer($kernpath,"$tftpdir/xcat/$os/$arch");
+                        xCAT::Common::copy_if_newer($initrdpath,"$tftpdir/xcat/$os/$arch/initrd.img");
+                };
+
+                if ($@) {
+                        $callback->(
+                                {
+                                  error => ["copying pxe files failed: $@"],
+                                  errorcode => [1],
+                                }
+                                );
+                        next;
+                }
+
                 $doneimgs{"$os|$arch"} = 1;
             }
 

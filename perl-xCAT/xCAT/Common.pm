@@ -4,6 +4,9 @@
 
 package xCAT::Common;
 
+use File::stat;
+use File::Copy;
+
 BEGIN
 {
       $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -128,6 +131,28 @@ sub usage_noderange {
     $request = {};
     return;
   }   
+}
+
+# copy, overwriting only if the source file is newer
+sub copy_if_newer {
+  my ($source, $dest) = @_;
+
+  die "ERROR: source file doesn't exist\n" unless (-e $source);
+
+  # resolve destination path
+  if ($dest =~ m/\/$/ || -d $dest) {
+    $dest .= '/' if ($dest !~ m/\/$/);
+    $dest .= $1 if $source =~ m/([^\/]+)$/;
+  }
+
+  if (-e $dest) {
+    my $smtime = stat($source)->mtime;
+    my $dmtime = stat($dest)->mtime;
+
+    return if ($smtime < $dmtime);
+  }
+
+  copy($source, $dest);
 }
 
 1;
