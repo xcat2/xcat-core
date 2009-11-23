@@ -5637,7 +5637,7 @@ sub closesession()
 		@message
 	);
 
-	($error,@response) = domsg($sock,\@msg,1,1); #Have a quicker retry on the close session
+	($error,@response) = domsg($sock,\@msg,$timeout,1); #Have a quicker retry on the close session
 
 	if(!$error) {
 		$code = $response[36-$authoffset];
