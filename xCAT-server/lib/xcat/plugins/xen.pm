@@ -12,7 +12,6 @@ use xCAT_monitoring::monitorctrl;
 
 use xCAT::Table;
 use XML::Simple qw(XMLout);
-use Thread qw(yield);
 use IO::Socket;
 use IO::Select;
 use strict;
@@ -21,6 +20,8 @@ my %vm_comm_pids;
 my @destblacklist;
 my $vmhash;
 my $hmhash;
+my $bptab;
+my $bphash;
 
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -29,7 +30,7 @@ use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use IO::Select;
 use IO::Handle;
-use Time::HiRes qw(gettimeofday sleep);
+use Time::HiRes qw(gettimeofday sleep usleep);
 use xCAT::DBobjUtils;
 use Getopt::Long;
 use xCAT::SvrUtils;
@@ -59,6 +60,7 @@ sub handled_commands {
     #rspconfig => 'nodehm:mgt',
     #rbootseq => 'nodehm:mgt',
     #reventlog => 'nodehm:mgt',
+    mkinstall => 'nodehm:mgt=(xen)',
   };
 }
 
@@ -71,6 +73,8 @@ my %hyphash;
 my $node;
 my $hmtab;
 my $vmtab;
+my $chaintab;
+my $chainhash;
 
 sub waitforack {
     my $sock = shift;
@@ -86,29 +90,37 @@ sub waitforack {
 }
 
 sub build_oshash {
+    my $node=shift;
     my %rethash;
-    $rethash{type}->{content}='hvm';
-    $rethash{loader}->{content}='/usr/lib/xen/boot/hvmloader';
-    if (defined $vmhash->{$node}->[0]->{bootorder}) {
-        my $bootorder = $vmhash->{$node}->[0]->{bootorder};
-        my @bootdevs = split(/[:,]/,$bootorder);
-        my $bootnum = 0;
-        foreach (@bootdevs) {
-            $rethash{boot}->[$bootnum]->{dev}=$_;
-            $bootnum++;
-        }
+    my $is_pv = $vmhash->{$node}->[0]->{'virtflags'} =~ 'paravirt' ? 1:0;
+    if ( $is_pv ) {
+        $rethash{type}->{content}= 'linux';
     } else {
-        $rethash{boot}->[0]->{dev}='network';
-        $rethash{boot}->[1]->{dev}='hd';
+        $rethash{type}->{content}='hvm';
+        $rethash{loader}->{content}='/usr/lib/xen/boot/hvmloader';
+        if (defined $vmhash->{$node}->[0]->{bootorder}) {
+            my $bootorder = $vmhash->{$node}->[0]->{bootorder};
+            my @bootdevs = split(/[:,]/,$bootorder);
+            my $bootnum = 0;
+            foreach (@bootdevs) {
+                $rethash{boot}->[$bootnum]->{dev}=$_;
+                $bootnum++;
+            }
+        } else {
+            $rethash{boot}->[0]->{dev}='network';
+            $rethash{boot}->[1]->{dev}='hd';
+        }
     }
     return \%rethash;
 }
 
 sub build_diskstruct {
+    my $node = shift;
     my @returns=();
     my $currdev;
     my @suffixes=('a'..'z');
     my $suffidx=0;
+    my $is_pv = $vmhash->{$node}->[0]->{'virtflags'} =~ 'paravirt' ? 1:0;
     if (defined $vmhash->{$node}->[0]->{storage}) {
         my $disklocs=$vmhash->{$node}->[0]->{storage};
         my @locations=split /\|/,$disklocs;
@@ -117,7 +129,11 @@ sub build_diskstruct {
             my $diskhash;
             $diskhash->{type} = 'file';
             $diskhash->{device} = 'disk';
-            $diskhash->{target}->{dev} = 'hd'.$suffixes[$suffidx];
+            if ( $is_pv ) {
+              $diskhash->{target}->{dev} = 'xvd'.$suffixes[$suffidx];
+            } else {
+              $diskhash->{target}->{dev} = 'hd'.$suffixes[$suffidx];
+            }
 
             my @disk_parts = split(/,/, $disk);
             #Find host file and determine if it is a file or a block device.
@@ -217,10 +233,14 @@ sub getUnits {
 sub build_xmldesc {
     my $node = shift;
     my %xtree=();
+    my $is_pv = $vmhash->{$node}->[0]->{'virtflags'} =~ 'paravirt' ? 1:0;
     $xtree{type}='xen';
+    if (! $is_pv) { 
+        $xtree{image}='hvm';
+    }
     $xtree{name}->{content}=$node;
     $xtree{uuid}->{content}=getNodeUUID($node);
-    $xtree{os} = build_oshash();
+    $xtree{os} = build_oshash($node);
     if (defined $vmhash->{$node}->[0]->{memory}) {
         $xtree{memory}->{content}=getUnits($vmhash->{$node}->[0]->{memory},"M",1024);
     } else {
@@ -231,13 +251,22 @@ sub build_xmldesc {
     $xtree{features}->{acpi}={};
     $xtree{features}->{apic}={};
     $xtree{features}->{content}="\n";
-    $xtree{devices}->{emulator}->{content}='/usr/lib64/xen/bin/qemu-dm';
-    $xtree{devices}->{disk}=build_diskstruct();
+    unless ( $is_pv ) {
+        $xtree{devices}->{emulator}->{content}='/usr/lib64/xen/bin/qemu-dm';
+    }
+    $xtree{devices}->{disk}=build_diskstruct($node);
     $xtree{devices}->{interface}=build_nicstruct($node);
     $xtree{devices}->{graphics}->{type}='vnc';
+    $xtree{devices}->{graphics}->{'listen'}='0.0.0.0';
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
-    return XMLout(\%xtree,RootName=>"domain");
+    if ( $is_pv ) {
+        $xtree{bootloader}{content} = '/usr/bin/pypxeboot';
+        $xtree{bootloader_args}{content} = 'mac=' . $xtree{devices}{interface}[0]{mac}{address};
+    } 
+    $xtree{on_poweroff}{content} = 'destroy';
+    $xtree{on_reboot}{content} = 'restart';
+    return XMLout(\%xtree,RootName=>"domain", KeyAttr=>{} );
 }
 
 sub refresh_vm {
@@ -497,6 +526,7 @@ sub power {
     } elsif ($subcommand eq 'off') {
         if ($dom) {
             $dom->destroy();
+            undef $dom;
         } else { $retstring .= " $status_noop"; }
     } elsif ($subcommand eq 'softoff') {
         if ($dom) {
@@ -609,7 +639,7 @@ sub preprocess_request {
     my $reqcopy = {%$request};
     $reqcopy->{node} = $sn->{$snkey};
     $reqcopy->{'_xcatdest'} = $snkey;
-    $reqcopy->{_xcatpreprocessed}->[0] = 1; 
+    $reqcopy->{_xcatpreprocessed}->[0] = 1;
 
     push @requests, $reqcopy;
   }
@@ -638,6 +668,10 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
   $mactab = xCAT::Table->new("mac",-create=>1);
   $nrtab= xCAT::Table->new("noderes",-create=>1);
   $machash = $mactab->getNodesAttribs($noderange,['mac']);
+  $chaintab = xCAT::Table->new("chain",-create=>1);
+  $chainhash = $chaintab->getNodesAttribs($noderange,['currstate']);
+  $bptab = xCAT::Table->new("bootparams",-create=>1);
+  $bphash = $bptab->getNodesAttribs($noderange,['kernel', 'initrd']);
 }
 
 sub process_request { 
@@ -703,6 +737,28 @@ sub process_request {
   }
 
   grab_table_data($noderange,$callback);
+  if ($command eq 'mkinstall') {
+      $DB::single=1;
+      eval {
+          require xCAT_plugin::anaconda;
+          xCAT_plugin::anaconda::mkinstall($request, $callback, $doreq);
+          for my $node ( @{$request->{node}} ) {
+              my $is_pv = $vmhash->{$node}->[0]->{'virtflags'} =~ 'paravirt' ? 1:0;
+              if ( $is_pv ) {
+                  my $kernel = $bphash->{$node}[0]{kernel};
+                  my $initrd = $bphash->{$node}[0]{initrd};
+                  $kernel =~ s|vmlinuz|xen/vmlinuz|;
+                  $initrd =~ s|initrd\.img|xen/initrd\.img|;
+                  $bptab->setNodeAttribs( $node, { kernel=>$kernel, initrd=>$initrd } );
+              }
+          }
+     };
+
+     if ($@) {
+         $callback->({error=>$@,errorcode=>[1]});
+     }
+     return;
+  }
 
   if ($command eq 'revacuate' or $command eq 'rmigrate') {
       $vmmaxp=1; #for now throttle concurrent migrations, requires more sophisticated heuristics to ensure sanity
@@ -929,7 +985,7 @@ sub forward_data {
       close($rfh);
     }
   }
-  yield(); #Try to avoid useless iterations as much as possible
+  usleep(0);  # yield
   return $rc;
 }
 
@@ -960,7 +1016,7 @@ sub dohyp {
      }
      print $out freeze([\%err]);
      print $out "\nENDOFFREEZE6sK4ci\n";
-     yield();
+     usleep(0);  # yield
      waitforack($out);
      return 1,"General error establishing libvirt communication";
   }
@@ -972,7 +1028,7 @@ sub dohyp {
       if (ref($_)) {
           print $out freeze([$_]);
           print $out "\nENDOFFREEZE6sK4ci\n";
-          yield();
+          usleep(0);  # yield 
           waitforack($out);
           next;
       }
@@ -992,12 +1048,13 @@ sub dohyp {
       $output{node}->[0]->{errorcode} = $rc;
       $output{node}->[0]->{name}->[0]=$node;
       $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+      $output{node}->[0]->{error} = $text unless $rc == 0;
       print $out freeze([\%output]);
       print $out "\nENDOFFREEZE6sK4ci\n";
-      yield();
+      usleep(0);  # yield
       waitforack($out);
     }
-    yield();
+    usleep(0);  # yield
   }
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";
