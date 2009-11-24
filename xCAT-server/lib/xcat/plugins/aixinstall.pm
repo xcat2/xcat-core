@@ -167,7 +167,7 @@ sub preprocess_request
 				$reqcopy->{'_xcatdest'} = $snkey;
 				if ($imagehash) {
 					# add tags to the hash keys that start with a number
-					xCAT::InstUtils->taghash($imagehash);  #?????
+					xCAT::InstUtils->taghash($imagehash); 
 					$reqcopy->{'imagehash'} = $imagehash;
 				}
 				push @requests, $reqcopy;
@@ -2634,6 +2634,8 @@ sub prermnimimage
     if(!GetOptions(
         'f|force'   => \$::FORCE,
         'h|help'    => \$::HELP,
+		'd|delete'  => \$::DELETE,
+        's=s'       => \$::SERVERLIST,
         'verbose|V' => \$::VERBOSE,
         'v|version' => \$::VERSION,))
     {
@@ -2680,6 +2682,12 @@ sub prermnimimage
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return (0);
     }
+
+	# if a servicenode list is provided then don't remove the 
+	#	osimage definition
+	if ($::SERVERLIST) {
+		return (0, \%imagedef);
+	}
 
 	#
     # remove the osimage def
@@ -2729,6 +2737,8 @@ sub rmnimimage
 	my $imaghash = shift;
 	my $subreq = shift;
 
+	my @servernodelist;
+
 	my %imagedef;
 	if ($imaghash) {
 		%imagedef = %{$imaghash};
@@ -2748,6 +2758,8 @@ sub rmnimimage
     if(!GetOptions(
         'f|force'   => \$::FORCE,
         'h|help'    => \$::HELP,
+		'd|delete'  => \$::DELETE,
+        's=s'       => \$::SERVERLIST,
         'verbose|V' => \$::VERBOSE,
         'v|version' => \$::VERSION,))
     {
@@ -2765,6 +2777,19 @@ sub rmnimimage
         xCAT::MsgUtils->message("E", $rsp, $callback);
         &rmnimimage_usage($callback);
         return 1;
+    }
+
+
+	# get this systems name as known by xCAT management node
+    my $Sname = xCAT::InstUtils->myxCATname();
+    chomp $Sname;
+
+    if ($::SERVERLIST) {
+        @servernodelist = xCAT::NodeRange::noderange($::SERVERLIST);
+        if (!grep(/^$Sname$/, @servernodelist) ) {
+            #  this node is not in the list so return
+            return 0;
+        }
     }
 
 	#
@@ -2785,11 +2810,14 @@ sub rmnimimage
 	my $error;
 	foreach my $attr (sort(keys %{$imagedef{$image_name}}))
     {
+		chomp $attr;
+
         if ($attr eq 'objtype') {
             next;
         }
 
 		my $resname = $imagedef{$image_name}{$attr};
+
 		# if it's a defined resource name we can try to remove it
 		if ( ($resname)  && (grep(/^$resname$/, @nimresources))) {
 
@@ -2822,8 +2850,39 @@ sub rmnimimage
 				xCAT::MsgUtils->message("I", $rsp, $callback);
 
 			}
-		}
 
+			if ($::DELETE) {
+
+				# clean up the files and directories that NIM leaves
+				my $loc;
+
+				# just use the NIM location value to remove these
+				if (($attr eq "lpp_source") || ($attr eq "bosinst_data") || ($attr eq "script") || ($attr eq "installp_bundle") || ($attr eq "root") || ($attr eq "shared_root") || ($attr eq "paging")) {
+					$loc = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, "", $subreq);
+				}
+
+				#  need the directory name to remove these
+				if (($attr eq "resolv_conf") || ($attr eq "spot")) {
+					my $tmp = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, "", $subreq);
+					$loc = dirname($tmp);
+				}
+
+
+				if ($loc) {
+					my $cmd = qq~/usr/bin/rm -R $loc 2>/dev/null~;
+					my $output = xCAT::Utils->runcmd("$cmd", -1);
+					if ($::RUNCMD_RC  != 0)
+					{
+				#		my $rsp;
+				#		push @{$rsp->{data}}, "Could not delete files for the the NIM resource \'$resname\'.\n";
+				#		push @{$rsp->{data}}, "$output";
+				#		xCAT::MsgUtils->message("E", $rsp, $callback);
+				#		$error++;
+				#		next;
+					}
+				}
+			}
+		}
 	}
 
 	if ($error) {
@@ -6288,11 +6347,11 @@ sub rmnimimage_usage
 	my $callback = shift;
 
 	my $rsp;
-	push @{$rsp->{data}}, "\n  rmnimimage - Use this xCAT command to remove an image definition.";
+	push @{$rsp->{data}}, "\n  rmnimimage - Use this xCAT command to remove an xCAT osimage definition and associated NIM resources.";
 	push @{$rsp->{data}}, "  Usage: ";
 	push @{$rsp->{data}}, "\trmnimimage [-h | --help]";
 	push @{$rsp->{data}}, "or";
-	push @{$rsp->{data}}, "\trmnimimage [-V] [-f|--force] image_name\n";
+	push @{$rsp->{data}}, "\trmnimimage [-V] [-f|--force] [-d|--delete] \n\t\t[-s <servernoderange>] image_name\n";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 	return 0;
 }
