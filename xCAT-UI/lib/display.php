@@ -541,10 +541,8 @@ echo <<<EOS
 <h1><a href='#' onclick='loadMainPage("monitor/monlist.php")'>Monitor</a></h1>
 <ul>
     <li>Set up xCAT Monitoring Plug-in</a></li>
-    <li>Monitor Events/Performances by Plugins, such as RMC...</li>
     <li>This is still <b>UNDER DEVELOPMENT</b>.</li>
 </ul>
-<h1><a href='#' onclick='loadMainPage("monitor/newmonlist.php")'>New_style Monitor</a></h1>
 </div>
 EOS;
 }

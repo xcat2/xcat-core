@@ -30,6 +30,9 @@ switch ($option) {
         //show all the options for configuration
         showPluginConf($name);
         break;
+    case"savetab":
+        saveMonsettingTab();
+        break;
     case "view":
         //show all the options for view
         showPluginView($name);
@@ -39,6 +42,25 @@ switch ($option) {
     default:
         showPluginDesc($name);
         break;
+}
+
+function saveMonsettingTab()
+{
+    $rsp = doTabRestore("monsetting",$_SESSION["editable-monsetting"]);
+    //TODO: to handle the errors in the future
+//    $errors = array();
+//    if(getXmlErrors($rsp,$errors)){
+//        displayErrors($errors);
+//        dumpGlobals();
+//        exit;
+//    }else {
+//        displaySuccess("monsetting");
+//    }
+    if(getXmlErrors($rsp, $errors)) {
+        echo "failed";
+    }else {
+        echo "successful";
+    }
 }
 
 function showPluginConf($name)
@@ -222,7 +244,31 @@ function showMonsettingTab()
 
     echo "<div class='mContent'>";
     $xml = docmd('tabdump', '', array($tab));
-
+echo <<<TOS22
+    <script type="text/javascript">
+        $(function() {
+            makeEditable('monsetting','.editme', '.Ximg', '.Xlink');
+            $("#reset").click(function() {
+                alert('You sure you want to discard changes?');
+                $("#settings").tabs("load",1);  //reload the "config" tabs
+                $("#settings .ui-tabs-panel #accordion").accordion('activate',1);//activate the "monsetting" accordion
+            });
+            $("#monsettingaddrow").click(function() {
+                var line = $(".mContent #tabTable tbody tr").length + 1;
+                var newrow = formRow(line, 6, line%2);
+                $(".mContent #tabTable tbody").append($(newrow));
+                makeEditable('monsetting', '.editme2', '.Ximg2', '.Xlink2');
+            });
+            $("#saveit").click(function() {
+                var plugin=$('.pluginstat.ui-state-active').attr('id');
+                $.get("monitor/options.php",{name:plugin, opt:"savetab"},function(data){
+                    $("#settings").tabs("load",1);  //reload the "config" tabs
+                    $("#settings .ui-tabs-panel #accordion").accordion('activate',1);//activate the "monsetting" accordion
+                });
+            });
+        });
+    </script>
+TOS22;
     echo "<table id='tabTable' cellspacing='1' class='ui-corner-all' style='float:left; font-size: .9em; table-layout: fixed; width: 615px; word-wrap: break-word; border: 1px solid #C0C0C0'>\n";
     echo <<<TOS00
     <tr style="font-size: .8em; background-color: #C0C0C0">
@@ -271,7 +317,11 @@ TOS00;
     $_SESSION["editable-$tab"] = & $editable; # save the array so we can access it in the next call of this file or change.php
     echo "<p>";
     echo "<button id='monsettingaddrow' class='fg-button ui-state-default ui-corner-all'>Add Row</button>";
-    insertButtonSet("Apply", "Cancel", 0);
+    echo "<span class='ui-icon ui-icon-grip-solid-horizontal'></span>";
+    echo "<div class='fg-buttonset fg-buttonset-single'>";
+    echo "<button id='saveit' class='fg-button ui-state-default ui-state-active ui-priority-primary ui-corner-left'>Apply</button>";
+    echo "<button id='reset' class='fg-button ui-state-default ui-corner-right'>Cancel</button>";
+    echo "</div>";
     echo "</p>\n";
 }
 ?>
