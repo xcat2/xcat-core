@@ -443,20 +443,8 @@ sub scan_plugins {
     foreach (keys %$cmd_adds) {
       my $value = $_;
       if (defined($cmd_handlers{$_})) {
-        my $add=1;
-        #This next bit of code iterates through the handlers.
-        #If the value doesn't contain an equal, and has an equivalent entry added by 
-        # another plugin already, don't add (otherwise would hit the DB multiple times)
-        #referring to having redundant nodehm:mgt handlers registered, for example
-        # a better idea, restructure the cmd_handlers as a multi-level hash
-        # prove out this idea real quick before doing that
-        foreach (@{$cmd_handlers{$_}}) {
-          if (($_->[1] eq $cmd_adds->{$value}) and (($cmd_adds->{$value} !~ /=/) or ($_->[0] eq $modname))) {
-            $add = 0;
-          }
-        }
-        if ($add) { push @{$cmd_handlers{$_}},[$modname,$cmd_adds->{$_}]; }
-        #die "Conflicting handler information from $modname";
+        # Add every plugin registration to cmd_handlers
+        push @{$cmd_handlers{$_}},[$modname,$cmd_adds->{$_}]; 
       } else {
         $cmd_handlers{$_} = [ [$modname,$cmd_adds->{$_}] ];
       }
@@ -737,61 +725,68 @@ sub plugin_command {
             }
           }
       } elsif ($hdlspec =~ /:/) { #Specificed a table lookup path for plugin name
-        $useglobals = 0; #Only contemplate nodes that aren't caught through searching below in the global handler
-        $useunhandled=1;
-        my $table;
-        my $cols;
-        ($table,$cols) = split(/:/,$hdlspec);
-        my @colmns=split(/,/,$cols);
-        my @columns;
-        my $hdlrtable=xCAT::Table->new($table);
-        unless ($hdlrtable) {
-          #TODO: proper error handling
-        }
-        my $node;
-        my $colvals = {};
-        foreach my $colu (@colmns) {
-          if ($colu =~ /=/) { #a value redirect to a pattern/specific name
-            my $coln; my $colv;
-            ($coln,$colv) = split(/=/,$colu,2);
-            $colvals->{$coln} = $colv;
-            push (@columns,$coln);
-          } else {
-            push (@columns,$colu);
+        if (@nodes) { # only use table lookup plugin if nodelist exists
+                      # Usage will be handled in common AAAhelp plugin
+          $useglobals = 0; #Only contemplate nodes that aren't caught through searching below in the global handler
+          $useunhandled=1;
+          my $table;
+          my $cols;
+          ($table,$cols) = split(/:/,$hdlspec);
+          my @colmns=split(/,/,$cols);
+          my @columns;
+          my $hdlrtable=xCAT::Table->new($table);
+          unless ($hdlrtable) {
+            #TODO: proper error handling
           }
-        }
+          my $node;
+          my $colvals = {};
+          foreach my $colu (@colmns) {
+            if ($colu =~ /=/) { #a value redirect to a pattern/specific name
+              my $coln; my $colv;
+              ($coln,$colv) = split(/=/,$colu,2);
+              $colvals->{$coln} = $colv;
+              push (@columns,$coln);
+            } else {
+              push (@columns,$colu);
+            }
+          }
             
 
-        unless (@nodes) { #register the plugin in the event of usage
-          $handler_hash{$ownmod} = 1;
-          $useglobals = 1;
-        }
-        my $hdlrcache;
-	if ($hdlrtable) {
-        	$hdlrcache = $hdlrtable->getNodesAttribs(\@nodes,\@columns);
-	}
-        foreach $node (@nodes) {
-	  unless ($hdlrcache) { next; }
-          my $attribs = $hdlrcache->{$node}->[0]; #$hdlrtable->getNodeAttribs($node,\@columns);
-          unless (defined($attribs)) { next; } 
-          foreach (@columns) {
-            my $col=$_;
-            if (defined($attribs->{$col})) {
-              if ($colvals->{$col}) { #A pattern match style request.
-                if ($attribs->{$col} =~ /$colvals->{$col}/) {
-                  $handler_hash{$ownmod}->{$node} = 1;
-                  delete $unhandled_nodes{$node};
-                  last;
+          unless (@nodes) { #register the plugin in the event of usage
+            $handler_hash{$ownmod} = 1;
+            $useglobals = 1;
+          }
+          my $hdlrcache;
+    	  if ($hdlrtable) {
+          	$hdlrcache = $hdlrtable->getNodesAttribs(\@nodes,\@columns);
+	  }
+          foreach $node (@nodes) {
+	    unless ($hdlrcache) { next; }
+            my $attribs = $hdlrcache->{$node}->[0]; #$hdlrtable->getNodeAttribs($node,\@columns);
+            unless (defined($attribs)) { next; } 
+            foreach (@columns) {
+              my $col=$_;
+              if (defined($attribs->{$col})) {
+                if ($colvals->{$col}) { #A pattern match style request.
+                  if ($attribs->{$col} =~ /$colvals->{$col}/) {
+                    $handler_hash{$ownmod}->{$node} = 1;
+                    delete $unhandled_nodes{$node};
+                    last;
+                  }
+                } else {
+                  # call the plugin that matches the table value for that node
+                  if ($attribs->{$col} =~ /$ownmod/) {
+                    $handler_hash{$attribs->{$col}}->{$node} = 1;
+                    delete $unhandled_nodes{$node};
+                    last;
+                  }
                 }
-              } else {
-                $handler_hash{$attribs->{$col}}->{$node} = 1;
-                delete $unhandled_nodes{$node};
-                last;
               }
             }
           }
-        }
-	$hdlrtable->close;
+  	  $hdlrtable->close;
+        }  # end if (@nodes)
+
       } else {
           push @globalhandlers,$hdlspec;
       }
@@ -827,14 +822,14 @@ sub plugin_command {
     return 1;  #TODO: error back that request has no known plugin for it
   }
   if ($useunhandled) { 
-   my $queuelist;
-   foreach (@{$cmd_handlers{$req->{command}->[0]}->[0]}) {
-     unless (/:/) {
-        next;
-     }
-     $queuelist .= "$_,";
+   my $queuelist='';
+   foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
+       my $queueitem = $_->[1];
+       if (($queueitem =~ /:/) and !($queuelist =~ /($queueitem)/)) {
+         $queuelist .= "$_->[1];";
+       }
    }
-   $queuelist =~ s/,$//;
+   $queuelist =~ s/;$//;
    $queuelist =~ s/:/./g;
    foreach (keys %unhandled_nodes) {
       if ($sock) {
