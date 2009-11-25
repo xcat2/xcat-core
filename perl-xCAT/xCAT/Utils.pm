@@ -21,6 +21,7 @@ require xCAT::Table;
 use POSIX qw(ceil);
 use Socket;
 use strict;
+require xCAT::InstUtils;
 require xCAT::Schema;
 require Data::Dumper;
 require xCAT::NodeRange;
@@ -403,11 +404,11 @@ sub Version
     my $version = shift;
     if ($version eq 'short')
     {
-        $version = ''    #XCATVERSIONSUBHERE ;
+		$version = ''    #XCATVERSIONSUBHERE ;
     }
     else
     {
-        $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
+		$version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
     }
     return $version;
 
@@ -1555,6 +1556,7 @@ rmdir \"/tmp/$to_userid\"";
 =cut
 
 #--------------------------------------------------------------------------------
+
 
 sub cpSSHFiles
 {
@@ -3158,6 +3160,8 @@ sub get_ServiceNode
     my $nodehmtab;
     my $noderestab;
     my $snattribute;
+	my $oshash;
+	my $nodetab;
     $::ERROR_RC = 0;
 
     # determine if the request is for the service node as known by the MN
@@ -3175,16 +3179,32 @@ sub get_ServiceNode
     my $master =
       xCAT::Utils->get_site_Master();    # read the site table, master attrib
 
+	# for AIX nodes the NIM primary will be either the site.NIMprime attr
+	#	or, if not set, the site.master attr
+	my $nimprime = xCAT::InstUtils->getnimprime();
+    chomp $nimprime;
+
     $noderestab = xCAT::Table->new('noderes');
+	$nodetab = xCAT::Table->new('nodetype');
+
     unless ($noderestab)    # no noderes table, use default site.master
     {
         xCAT::MsgUtils->message('I',
                          "Unable to open noderes table. Using site->Master.\n");
+
         if ($master)        # use site Master value
         {
+			if ($nodetab) {
+				$oshash = $nodetab->getNodesAttribs(\@node_list, ["os"]);
+			}
+				
             foreach my $node (@node_list)
-            {               # no noderes table, all use site Master
-                push @{$snhash{$master}}, $node;
+            {               
+				if ( ($oshash->{$node}->[0]->{os}) && ($oshash->{$node}->[0]->{os} eq "AIX"))  {
+					push @{$snhash{$nimprime}}, $node;
+				} else {
+					push @{$snhash{$master}}, $node;
+				}
             }
         }
         else
@@ -3192,6 +3212,10 @@ sub get_ServiceNode
             xCAT::MsgUtils->message('E', "Unable to read site Master value.\n");
             $::ERROR_RC = 1;
         }
+
+		if ($nodetab) {
+			$nodetab->close;
+		}
         return \%snhash;
     }
 
@@ -3199,6 +3223,9 @@ sub get_ServiceNode
     {    # find all service nodes for the nodes in the list
 
         $nodehash = $noderestab->getNodesAttribs(\@node_list, [$snattribute]);
+
+		$oshash = $nodetab->getNodesAttribs(\@node_list, ["os"]);
+
         foreach my $node (@node_list)
         {
             foreach my $rec (@{$nodehash->{$node}})
@@ -3209,13 +3236,18 @@ sub get_ServiceNode
                     push @{$snhash{$key}}, $node;
                 }
                 else
-                {    # use site.master
-                    push @{$snhash{$master}}, $node;
+                {    
+					if ($oshash->{$node}->[0]->{os} eq "AIX") {
+						push @{$snhash{$nimprime}}, $node;
+					} else {
+						push @{$snhash{$master}}, $node;
+					}
                 }
             }
         }
 
         $noderestab->close;
+		$nodetab->close;
         return \%snhash;
 
     }
