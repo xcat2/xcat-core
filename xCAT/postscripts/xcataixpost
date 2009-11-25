@@ -57,7 +57,7 @@ unless ($useSocketSSL) {
 # Process the command line...
 #
 #  the -c means redo the copy of scripts from the server
-if (!GetOptions('copy|c' => \$::opt_c,))
+if (!GetOptions('copy|c' => \$::opt_c, 'm=s' => \$::opt_m))
 {    # Gather options
         exit 1;
 }
@@ -68,6 +68,26 @@ chomp $::shorthost;
 
 my $foundxcatinfo=0;
 my $servnode;
+
+# create new xcatinfo file if -m value is provided
+if ($::opt_m) {
+
+	if(-f "/etc/xcatinfo") {
+		# backup the old file - or remove ???
+		my $cpcmd = "cp /etc/xcatinfo /etc/xcatinfo.orig 2>/dev/null";
+		if (&runcmd($cpcmd) != 0) {
+			print "$::sdate xcataixpost: Could not copy /etc/xcatinfo file.\n";
+			print $::LOG_FILE "$::sdate xcataixpost: Could not copy /etc/xcatinfo file.\n";
+		}
+	}
+
+	# put the new server in the file
+	my $xcatinfo="/etc/xcatinfo";
+	open(XCATINFO,">",$xcatinfo);
+	print XCATINFO "XCATSERVER=$::opt_m\n";
+	close(XCATINFO);
+}
+
 if (-f "/etc/xcatinfo") {
 	# if this file exists assume it has the correct server name
 	my $cmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
@@ -129,6 +149,8 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
     	print "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
     	print $::LOG_FILE "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
 	}
+
+	my $cpcmd;
 
 	if ((@ARGV==0) || ($ARGV[0] != 2)) {
     	$cpcmd = "cp -p -R /xcatmnt/* /xcatpost 2>/dev/null";
