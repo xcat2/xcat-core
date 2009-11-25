@@ -293,7 +293,7 @@ sub process_command {
         my $data;
         my $unreachable_nodes;
         my $noderange = join (',', @$nodes);
-        my @output = xCAT::Utils->runcmd("pping $noderange", -1);
+        my @output = xCAT::Utils->runcmd("/opt/xcat/bin/pping $noderange", -1);
 
         foreach my $line (@output) {
             my ($hostname, $result) = split ':', $line;
