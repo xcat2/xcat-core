@@ -700,42 +700,55 @@ sub updatenode
 
         if (scalar(@$AIXnodes))
         {    # we have AIX nodes
-            my $cmd;
-            my $nodestring = join(',', @$AIXnodes);
-            $cmd =
-              "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -c 1 $postscripts 2>&1";
 
-            if (defined($::VERBOSE))
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "  Internal call command: $cmd";
-                $callback->($rsp);
-            }
 
-            if (!open(CMD, "$cmd |"))
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "Cannot run command $cmd";
-                $callback->($rsp);
-            }
-            else
-            {
-                while (<CMD>)
-                {
-                    my $rsp    = {};
-                    my $output = $_;
-                    chomp($output);
-                    $output =~ s/\\cM//;
-                    if ($output =~ /returned from postscript/)
-                    {
-                        $output =~
-                          s/returned from postscript/Running of postscripts has completed./;
-                    }
-                    $rsp->{data}->[0] = "$output";
-                    $callback->($rsp);
-                }
-                close(CMD);
-            }
+# NEW
+			# need to pass the name of the server on the xcataixpost cmd line
+			#  - do all the nodes have the same server???? - they should
+			# - also we need the SN or the NIMprime as known by the node
+
+			$sn = xCAT::Utils->get_ServiceNode(\@$AIXnodes, "xcat", "Node");
+			foreach my $snkey (keys %$sn) {
+
+				my $nodes = $sn->{$snkey};
+				my $nodestring = join(',', @$nodes);
+            	my $cmd;
+
+            	$cmd =
+              		"XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -m $snkey -c 1 $postscripts 2>&1";
+
+            	if (defined($::VERBOSE))
+            	{
+                	my $rsp = {};
+                	$rsp->{data}->[0] = "  Internal call command: $cmd";
+                	$callback->($rsp);
+            	}
+
+            	if (!open(CMD, "$cmd |"))
+            	{
+                	my $rsp = {};
+                	$rsp->{data}->[0] = "Cannot run command $cmd";
+                	$callback->($rsp);
+            	}
+            	else
+            	{
+                	while (<CMD>)
+                	{
+                    	my $rsp    = {};
+                    	my $output = $_;
+                    	chomp($output);
+                    	$output =~ s/\\cM//;
+                    	if ($output =~ /returned from postscript/)
+                    	{
+                        	$output =~
+                          		s/returned from postscript/Running of postscripts has completed./;
+                    	}
+                    	$rsp->{data}->[0] = "$output";
+                    	$callback->($rsp);
+                	}
+                	close(CMD);
+            	}
+			}
         }
     }
 
