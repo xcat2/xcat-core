@@ -176,20 +176,14 @@ sub web_stopcondresp {
 sub web_lscond {
     my ($request, $callback, $sub_req) = @_;
     my $ret = `lscondition`;
-    my @conds;
     
     my @lines  = split '\n', $ret;
     shift @lines;
     shift @lines;
     foreach my $line (@lines) {
-        #
-        my $index = index($line, '"', 1);
-        push @conds, substr($line, 1, $index-1);
+	$callback->({data=>$line});
     }
 
-    #all the conditions are stored in @conds
-    my $data = join("=",@conds);
-    $callback->({data=>"$data"});
 }
 
 sub web_lsresp {
@@ -202,12 +196,8 @@ sub web_lsresp {
     shift @lines;
 
     foreach my $line (@lines) {
-        my $index = index($line, '"', 1);
-        push @resps, substr($line, 1, $index-1);
+	$callback->({data=>$line});
     }
-    #all the responses are stored in @resps
-    my $data = join("=",@resps);
-    $callback->({data=>"$data"});
 }
 
 sub web_lscondresp {
@@ -216,16 +206,10 @@ sub web_lscondresp {
     shift @ret;
     shift @ret;
 
-    my $data;
-
     foreach my $line (@ret) {
         chomp $line;
-        $data .=$line;
-        $data .="=";
+	$callback->({data=>$line});
     }
-
-    $callback->({data=>"$data"});
-
 }
 # currently, web_chtab only handle chtab for the table "monitoring"
 sub web_chtab {
