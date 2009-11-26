@@ -308,6 +308,8 @@ sub handle_dbc_request {
          return $opentables{$tablename}->{$autocommit}->rollback(@args);
     } elsif ($functionname eq 'getNodesAttribs') {
          return $opentables{$tablename}->{$autocommit}->getNodesAttribs(@args);
+    } elsif ($functionname eq 'setNodesAttribs') {
+         return $opentables{$tablename}->{$autocommit}->setNodesAttribs(@args);
     } elsif ($functionname eq 'getNodeAttribs') {
          return $opentables{$tablename}->{$autocommit}->getNodeAttribs(@args);
     } elsif ($functionname eq '_set_use_cache') {
@@ -1442,6 +1444,20 @@ sub setAttribsWhere
 
     Arguments:
         'self' (implicit in OO style call)
+        A reference to a two-level hash similar to:
+            {
+                'n1' => {
+                    comments => 'foo',
+                    data => 'foo2'
+                },
+                'n2' => {
+                    comments => 'bar',
+                    data => 'bar2'
+                }
+            }
+
+     Alternative arguments (same set of data to be applied to multiple nodes):
+        'self'
         Reference to a list of nodes (no noderanges, just nodes)
         A hash of attributes to set, like in 'setNodeAttribs'
 
@@ -1453,13 +1469,154 @@ sub setNodesAttribs {
 #The three steps should be:
 #-Query table and divide nodes into list to update and list to insert
 #-Update intelligently with respect to scale
-#-Insert intelligently with respect to scale
+#-Insert intelligently with respect to scale (prepare one statement, execute many times, other syntaxes not universal)
 #Intelligently in this case means folding them to some degree.  Update where clauses will be longer, but must be capped to avoid exceeding SQL statement length restrictions on some DBs.  Restricting even all the way down to 256 could provide better than an order of magnitude better performance though
     my $self = shift;
-    my $nodelist = shift;
-    foreach  (@$nodelist) {
-        $self->setNodeAttribs($_,@_);
+    if ($dbworkerpid) {
+        return dbc_call($self,'setNodesAttribs',@_);
     }
+    my $nodelist = shift;
+    my $keyset = shift;
+    my %cols = ();
+    my @orderedcols=();
+    my $oldac = $self->{dbh}->{AutoCommit}; #save autocommit state
+    $self->{dbh}->{AutoCommit}=0; #turn off autocommit for performance
+    my $hashrec;
+    my $colsmatch=1;
+    if (ref $nodelist eq 'HASH') { # argument of the form  { n001 => { groups => 'something' }, n002 => { groups => 'other' } }
+        $hashrec = $nodelist;
+        my @nodes = keys %$nodelist;
+        $nodelist = \@nodes;
+        my $firstpass=1;
+        foreach my $node (keys %$hashrec) { #Determine whether the passed structure is trying to set the same columns 
+                                   #for every node to determine if the short path can work or not
+            if ($firstpass) {
+                $firstpass=0;
+                foreach (keys %{$hashrec->{$node}}) {
+                    $cols{$_}=1;
+                }
+            } else {
+                foreach (keys %{$hashrec->{$node}}) { #make sure all columns in this entry are in the first
+                    unless (defined $cols{$_}) {
+                        $colsmatch=0;
+                        last;
+                    }
+                }
+                foreach my $col (keys %cols) { #make sure this entry does not lack any columns from the first
+                    unless (defined $hashrec->{$node}->{$col}) {
+                        $colsmatch=0;
+                        last;
+                    }
+                }
+            }
+        }
+
+    } else { #the legacy calling style with a list reference and a single hash reference of col=>va/ue pairs
+        $hashrec = {};
+        foreach (@$nodelist) {
+            $hashrec->{$_}=$keyset;
+        }
+        foreach (keys %$keyset) {
+            $cols{$_}=1;
+        }
+    }
+    #revert to the old way if notification is required or asymettric setNodesAttribs was requested with different columns
+    #for different nodes
+    if (not $colsmatch or xCAT::NotifHandler->needToNotify($self->{tabname}, 'u') or xCAT::NotifHandler->needToNotify($self->{tabname}, 'a')) {
+        #TODO: enhance performance of this case too, for now just call the notification-capable code per node
+        foreach  (keys %$hashrec) {
+            $self->setNodeAttribs($_,$hashrec->{$_});
+        }
+        $self->{dbh}->commit; #commit pending transactions
+        $self->{dbh}->{AutoCommit}=$oldac;#restore autocommit semantics
+        return;
+    }
+    #this code currently is notification incapable.  It enhances scaled setting by:
+    #-turning off autocommit if on (done for above code too, but to be clear document the fact here too
+    #-executing one select statement per set of nodes instead of per node (chopping into 1,000 node chunks for SQL statement length
+    #-aggregating update statements
+    #-preparing one insert statement and re-execing it (SQL-92 multi-row insert isn't ubiquitous enough)
+
+    my $nodekey = "node";
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+       $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    };
+    @orderedcols = keys %cols; #pick a specific column ordering explicitly to assure consistency
+    use Data::Dumper;
+    my $nodesatatime = int(1/(1/999+(scalar @orderedcols)/999)); #the update case statement will consume '?' of which we are allowed 999 in the most restricted DB we support
+    #ostensibly, we could do 999 at a time for the select statement, and subsequently limit the update aggregation only
+    #to get fewer sql statements, but the code is probably more complex than most people want to read
+    #at the moment anyway
+    my @currnodes = splice(@$nodelist,0,$nodesatatime); #Do a few at a time to stay under max sql statement length and max variable count
+    my $insertsth; #if insert is needed, this will hold the single prepared insert statement
+    while (scalar @currnodes) {
+        my %updatenodes=();
+        my %insertnodes=();
+        my $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $nodekey in (";#sort nodes into inserts and updates
+        $qstring .= '?, ' x scalar(@currnodes);
+        $qstring =~ s/, $/)/;
+    	my $query = $self->{dbh}->prepare($qstring);
+    	$query->execute(@currnodes);
+        my $rec;
+	    while ($rec = $query->fetchrow_hashref()) {
+            $updatenodes{$rec->{$nodekey}}=1;
+        }
+        if (scalar keys %updatenodes < scalar @currnodes) {
+            foreach (@currnodes) {
+                unless ($updatenodes{$_}) {
+                    $insertnodes{$_}=1;
+                }
+            }
+        }
+        my $havenodecol; #whether to put node first in execute arguments or let it go naturally
+        if (not $insertsth and keys %insertnodes) { #prepare an insert statement since one will be needed
+            my $columns="";
+            my $bindhooks="";
+            $havenodecol = defined $cols{$nodekey};
+            unless ($havenodecol) {
+                $columns = "$nodekey, ";
+                $bindhooks="?, ";
+            }
+            $columns .= join(", ",@orderedcols);
+            $bindhooks .= "?, " x scalar @orderedcols;
+            $bindhooks =~ s/, $//;
+            $columns =~ s/, $//;
+            my $instring = "INSERT INTO ".$self->{tabname}." ($columns) VALUES ($bindhooks)";
+            print $instring;
+            $insertsth = $self->{dbh}->prepare($instring);
+        }
+        foreach my $node (keys %insertnodes) {
+            my @args = ();
+            unless ($havenodecol) {
+                @args = ($node);
+            }
+            foreach my $col (@orderedcols) {
+                push @args,$hashrec->{$node}->{$col};
+            }
+            $insertsth->execute(@args);
+        }
+        if (scalar keys %updatenodes) {
+            my $upstring = "UPDATE ".$self->{tabname}." set ";
+            my @args=();
+            foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
+                $upstring .= "$col = CASE $nodekey ";
+                foreach my $node (keys %updatenodes) {
+                    $upstring .= "when '$node' then ? ";
+                    push @args,$hashrec->{$node}->{$col};
+                }
+                $upstring .= "END, ";
+            }
+            $upstring =~ s/, $/ where $nodekey in (/;
+            $upstring .= "?,"x scalar(keys %updatenodes);
+            $upstring =~ s/,$/)/;
+            push @args,keys %updatenodes;
+            my $upsth = $self->{dbh}->prepare($upstring);
+            $upsth->execute(@args);
+        }
+        @currnodes = splice(@$nodelist,0,$nodesatatime);
+    }
+    $self->{dbh}->commit; #commit pending transactions
+    $self->{dbh}->{AutoCommit}=$oldac;#restore autocommit semantics
 }
 
 #--------------------------------------------------------------------------
