@@ -1549,6 +1549,7 @@ sub setNodesAttribs {
     #at the moment anyway
     my @currnodes = splice(@$nodelist,0,$nodesatatime); #Do a few at a time to stay under max sql statement length and max variable count
     my $insertsth; #if insert is needed, this will hold the single prepared insert statement
+    my $upsth;
     while (scalar @currnodes) {
         my %updatenodes=();
         my %insertnodes=();
@@ -1595,23 +1596,24 @@ sub setNodesAttribs {
             }
             $insertsth->execute(@args);
         }
+        if (not $upsth and keys %updatenodes) { #prepare an insert statement since one will be needed
+            my $upstring = "UPDATE ".$self->{tabname}." set ";
+            foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
+                $upstring .= "$col = ?, ";
+            }
+            $upstring =~ s/, / where $nodekey = ?/;
+            $upsth = $self->{dbh}->prepare($upstring);
+        }
         if (scalar keys %updatenodes) {
             my $upstring = "UPDATE ".$self->{tabname}." set ";
-            my @args=();
-            foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
-                $upstring .= "$col = CASE $nodekey ";
-                foreach my $node (keys %updatenodes) {
-                    $upstring .= "when '$node' then ? ";
+            foreach my $node (keys %updatenodes) {
+                my @args=();
+                foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
                     push @args,$hashrec->{$node}->{$col};
                 }
-                $upstring .= "END, ";
+                push @args,$node;
+                $upsth->execute(@args);
             }
-            $upstring =~ s/, $/ where $nodekey in (/;
-            $upstring .= "?,"x scalar(keys %updatenodes);
-            $upstring =~ s/,$/)/;
-            push @args,keys %updatenodes;
-            my $upsth = $self->{dbh}->prepare($upstring);
-            $upsth->execute(@args);
         }
         @currnodes = splice(@$nodelist,0,$nodesatatime);
     }
