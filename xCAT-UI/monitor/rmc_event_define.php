@@ -19,8 +19,9 @@ displayTips(array(
         "Use \"mkcondition\" and \"mkresponse\" to create new conditions and new responses",
         "Select the condition, and response to create condition/response association"
     ));
+echo "<div>";
+    //TODO:one "text input" widget should be put here, to allow the user to input noderange
 displayOSITree();
-
 displayCondResp();
-
+echo "</div>";
 ?>

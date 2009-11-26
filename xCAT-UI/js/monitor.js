@@ -114,6 +114,30 @@ function monPluginSetStat()
     );
 }
 
+/*setMonsettingTab is used to initialize the configuration of monsetting in the monlist */
+function setMonsettingTab()
+{
+    makeEditable('monsetting','.editme', '.Ximg', '.Xlink');
+    $("#reset").click(function() {
+        alert('You sure you want to discard changes?');
+        $("#settings").tabs("load",1);  //reload the "config" tabs
+        $("#settings .ui-tabs-panel #accordion").accordion('activate',1);//activate the "monsetting" accordion
+    });
+    $("#monsettingaddrow").click(function() {
+        var line = $(".mContent #tabTable tbody tr").length + 1;
+        var newrow = formRow(line, 6, line%2);
+        $(".mContent #tabTable tbody").append($(newrow));
+        makeEditable('monsetting', '.editme2', '.Ximg2', '.Xlink2');
+    });
+    $("#saveit").click(function() {
+        var plugin=$('.pluginstat.ui-state-active').attr('id');
+        $.get("monitor/options.php",{name:plugin, opt:"savetab"},function(data){
+            $("#settings").tabs("load",1);  //reload the "config" tabs
+            $("#settings .ui-tabs-panel #accordion").accordion('activate',1);//activate the "monsetting" accordion
+        });
+    });
+}
+
 function nodemonSetStat()
 {
     //enable/disable buttons for setting of the Node monitoring status
@@ -128,6 +152,53 @@ function nodemonSetStat()
 function appmonSetStat()
 {
     //TODO
+}
+
+//create the associations for the condition & response
+//which is be used in the PHP function displayCondResp() in rmc_event_define.php
+function mkCondResp()
+{
+    //get the name of the selected condition
+    //then, get the response in "checked" status
+    //then, run the command "mkcondresp"
+    var cond_val = $(':input[name=conditions][checked]').val();
+    if(cond_val) {
+        //get the response in "checked" status
+        var resps_obj = $(':input[name=responses][checked]');
+        if(resps_obj) {
+            $.each(resps_obj,function(i,n) {
+                //i is the index
+                //n is the content
+                //TODO:add one new php file to handle "mkcondresp" command
+                $.get("monitor/makecondresp.php", {cond: cond_val, resp: n.value}, function(data) {
+                    $("#devstatus").html(data);
+                });
+            });
+        $("#association").load("monitor/updateCondRespTable.php");
+        }
+    }
+}
+
+//clearEventDisplay()
+//is used to clear the selection in the page for configuring the condtion&response association
+function clearEventDisplay()
+{
+    $(':input[name=conditions][checked]').attr('checked', false);
+    $(':input[name=responses][checked]').attr('checked', false);
+}
+
+//control_RMCAssoc()
+//is used to update the association table in rmc_event_define.php
+function control_RMCAssoc(cond, node, resp, action)
+{
+    //TODO:for define_rmc_event
+    //control the RMC Association: startcondresp & stopcondresp;
+    $.get("monitor/updateCondResp.php",
+        {c: cond, n: node, r: resp, a: action},
+        function(data) {
+            $("#association").html(data);
+        }
+    );
 }
 
 // for the progress bar

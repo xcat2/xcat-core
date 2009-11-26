@@ -16,6 +16,8 @@ echo <<<EOS1
 <link rel="stylesheet" type="text/css" href="css/monitor.css" media="screen">
 <link rel="stylesheet" type="text/css" href="css/theme/jquery-ui-1.7.2.custom.css" media="screen">
 <link rel="stylesheet" type="text/css" href="js/jsTree/tree_component.css" media="screen">
+<link rel="stylesheet" type="text/css" href="css/demo_page.css" media="screen">
+<link rel="stylesheet" type="text/css" href="css/demo_table.css" media="screen">
 <script type="text/javascript" src="js/jquery.min.js"></script>
 <script type="text/javascript" src="js/jquery-ui-all.min.js"></script>
 <script type="text/javascript" src="js/loading.js"></script>

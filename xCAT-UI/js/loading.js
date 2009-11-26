@@ -99,7 +99,8 @@ var xStart = function(){
      myBar.addScript("jsTree/jquery.cookie.js");  
      myBar.addScript("jsTree/css.js");  
      myBar.addScript("jquery.form.js");  
-     myBar.addScript("jquery.jeditable.mini.js");  
+     myBar.addScript("jquery.jeditable.mini.js");
+     myBar.addScript("jquery.dataTables.min.js");
      myBar.addScript("hoverIntent.js");  
      myBar.addScript("superfish.js");  
      myBar.addScript("jquery.tablesorter.js");

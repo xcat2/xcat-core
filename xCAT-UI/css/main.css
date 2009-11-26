@@ -385,54 +385,6 @@ padding:10px 2px;
     display: block;
 }
 
-#condresp {
-    width: 770px;
-    margin: 10px;
-    padding: 10px;
-    float: left;
-    display: block;
-    border-bottom: 1px dotted #555;
-}
-
-#assocaition {
-    margin: 10px;
-    padding: 10px;
-    float:left;
-    display: block;
-    width: 720px;
-    border-bottom: 1px dotted #555;
-}
-#avail_cond {
-    width: 275px;
-    margin: 5px;
-    padding: 10px;
-    float: left;
-    background-color: #ffee33;
-}
-
-#avail_cond tbody {
-    height: 640px;
-    overflow-y: scroll;
-    overflow-x: hide;
-}
-
-#condition .ui-selecting {background: #FECA40;}
-#condition .ui-selected { background: #F39814; color: white; }
-#condition {list-style-type: none; margin: 0; padding: 0;}
-
-#avail_resp {
-    width: 425px;
-    margin: 5px;
-    padding: 10px;
-    float: left;
-    background-color: #eeffee;
-}
-
-#avail_resp tbody {
-    height: 640px;
-    overflow-y: scroll;
-    overflow-x: hide;
-}
 
 #monsetting_tips {
     width: 920px;

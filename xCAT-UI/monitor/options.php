@@ -92,6 +92,37 @@ echo <<<TOS10
 TOS10;
     showMonsettingTab();
     echo "</div>";
+    if($name == "rmcmon") {//special cases for RMCMON
+        echo "<h3><a href='#'>RMC Event Monitor Setting</a></h3>";
+        echo "<div>";
+        echo <<<TOS11
+    <div class='ui-state-highlight ui-corner-all'>
+    <p>RMC Event configuration is independent from the monstart/monstop command</p>
+    <p>To make your change effect, you don't need to restart RMC plugin</p>
+    </div>
+TOS11;
+        showRMCAssocTab();
+        echo "<p>click the REDIRECT button to go to the configure web page</p>";
+        echo "<button class='fg-button ui-state-active ui-corner-all' onclick=\"loadMainPage('monitor/rmc_event_define.php')\">Redirect</button>";
+        echo "</div>";
+        echo "<h3><a href='#'>The Available RMC Resources and their attributes</a></h3>";
+        echo <<<TOS15
+        <div>
+            <p class='ui-state-highlight'>For your convenience, all the available RMC Resources and their attributes will list here</p>
+            
+        </div>
+TOS15;
+    }
+    echo "</div>";
+}
+
+/* showRMCAssocTab()
+ * is used to display all the current associations of RMC conditions&responses 
+ */
+function showRMCAssocTab()
+{
+    echo "<div>";
+
     echo "</div>";
 }
 
@@ -247,25 +278,7 @@ function showMonsettingTab()
 echo <<<TOS22
     <script type="text/javascript">
         $(function() {
-            makeEditable('monsetting','.editme', '.Ximg', '.Xlink');
-            $("#reset").click(function() {
-                alert('You sure you want to discard changes?');
-                $("#settings").tabs("load",1);  //reload the "config" tabs
-                $("#settings .ui-tabs-panel #accordion").accordion('activate',1);//activate the "monsetting" accordion
-            });
-            $("#monsettingaddrow").click(function() {
-                var line = $(".mContent #tabTable tbody tr").length + 1;
-                var newrow = formRow(line, 6, line%2);
-                $(".mContent #tabTable tbody").append($(newrow));
-                makeEditable('monsetting', '.editme2', '.Ximg2', '.Xlink2');
-            });
-            $("#saveit").click(function() {
-                var plugin=$('.pluginstat.ui-state-active').attr('id');
-                $.get("monitor/options.php",{name:plugin, opt:"savetab"},function(data){
-                    $("#settings").tabs("load",1);  //reload the "config" tabs
-                    $("#settings .ui-tabs-panel #accordion").accordion('activate',1);//activate the "monsetting" accordion
-                });
-            });
+            setMonsettingTab();
         });
     </script>
 TOS22;
@@ -314,6 +327,7 @@ TOS00;
             $ooe = 1 - $ooe;
     }
     echo "</table>\n";
+    echo "</div>";
     $_SESSION["editable-$tab"] = & $editable; # save the array so we can access it in the next call of this file or change.php
     echo "<p>";
     echo "<button id='monsettingaddrow' class='fg-button ui-state-default ui-corner-all'>Add Row</button>";

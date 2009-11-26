@@ -126,3 +126,49 @@ fieldset {
     outline: 1px dotted #ccc;
 }
 
+#condresp {
+    width: 71%;
+    margin: 5px;
+    padding: 5px;
+    float: left;
+    display: block;
+    border: 1px solid orange;
+}
+
+#assocaition {
+    margin: 5px;
+    padding: 5px;
+    float:left;
+    display: block;
+    border: 1px solid lime;
+}
+
+#avail_cond {
+    width: 33%;
+    margin: 5px;
+    padding: 5px;
+    float: left;
+    background-color: #ffee33;
+}
+
+#avail_cond tbody {
+    overflow-y: scroll;
+    overflow-x: hide;
+}
+
+#condition .ui-selecting {background: #FECA40;}
+#condition .ui-selected { background: #F39814; color: white; }
+#condition {list-style-type: none; margin: 0; padding: 0;}
+
+#avail_resp {
+    width: 60%;
+    margin: 5px;
+    padding: 5px;
+    float: left;
+    background-color: #eeffee;
+}
+
+#avail_resp tbody {
+    overflow-y: scroll;
+    overflow-x: hide;
+}

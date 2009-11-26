@@ -1,48 +1,4 @@
 <?php
-/* 
- * All the <html> code related with monitor interface is put here.
- */
-
-#displayMonitorLists() will generate all the monitoring plug-ins,
-#the user can select the plug-ins he wants to operate on,
-#and press the "Next" button;
- function displayMonitorLists() {
-     #The command "monls -a" is used to get the monitoring plug-ins list
-     $xml = docmd("monls"," ", array('-a'));
-     if(getXmlErrors($xml,$errors)) {
-         echo "<p class=Error>",implode(' ', $errors), "</p>";
-         exit;
-     }
-     #then, parse the xml data
-     $ooe = 0;
-     $line = 0;
-     foreach($xml->children() as $response) foreach($response->children() as $data) {
-         list($name, $stat, $nodemonstatus) = preg_split("/\s+/", $data);
-         $ooe = $ooe%2;
-         echo "<tr class='ListLine$ooe' id='row$line'>";
-         echo "<td >$name</td>";
-         echo "<td >$stat</td>";
-         if(isset($nodemonstatus)) { echo "<td >Enabled</td>";}else {echo "<td >Disabled</td>";}
-         echo "<td>";
-         insertButtons(array('label'=>'Configure', 'id'=>'configure', 'onclick'=>''));
-         echo "</td>";
-         echo "<td>";
-         $name_str = '"'.$name.'"';
-         if($stat == "monitored") {
-             $act_str = '"stop"';
-             insertButtons(array('label'=>'Stop', 'id'=>'stop', 'onclick'=>"monsetupAction($name_str, $act_str)"));
-         }else {
-             $act_str = addslashes('"start"');
-             insertButtons(array('label' => 'Start', 'id'=>'start', 'onclick' => "monsetupAction($name_str, $act_str)"));
-         }
-         echo "</td>";
-         echo "   </tr>";
-         $ooe++;
-         $line++;
-         //echo "<tr><td><input type='checkbox' />$name</td><td>$stat</td><td><a onclick='LoadMainPage("main.php")'>$name</a></td></tr>";
-     }
-     return 0;
- }
 
 function displayTips($tips)
 {
@@ -110,29 +66,49 @@ function displayStatus()
 function displayOSITree()
 {
     //display the node range tree, but only with the nodes with OSI type
-    //this follows the function displayNrTree();
-    //it doesn't work on firefox!!!
-echo <<<EOS3
+    //this follows the function showNrTreeInput();
+        echo "<div id=nrtree-input class='ui-state-default ui-corner-all'>";
+echo <<<TOS3
 <script type="text/javascript">
-$(init_ositree());
+    $(function() {
+        nrtree = new tree_component(); // -Tree begin
+        nrtree.init($("#nrtree-input"),{
+            rules: { multiple: "Ctrl" },
+            ui: { animation: 250 },
+            callback : { onchange : printtree },
+            data : {
+                type : "json",
+                async : "true",
+                url: "noderangesource.php"
+            }
+        });  //Tree finish
+    });
 </script>
-<div id=ositree></div>
-EOS3;
+TOS3;
+    echo "</div>";
 }
 
 function displayAssociation()
 {
-    echo '<div id="association">';
+    //TODO: the return message of "webrun lscondresp" is changed
+    //and, also, DataTables is used to draw the tabls
+    echo '<div id="association" class="ui-cornel-all">';
 echo <<<TOS5
-<b>Available Condition/Response Associations</b>
-<table id="tabTable" class="tabTable" cellspacing="1">
+    <script type="text/javascript">
+        $("#association").dataTable({
+            "bLengthChange": false,
+            "bFilter": true,
+            "bSort": true
+        });
+    </script>
+<table>
     <thead>
-        <tr class="colHeaders">
-            <td>Condition</td>
-            <td>Response</td>
-            <td>Node</td>
-            <td>State</td>
-            <td>Action</td>
+        <tr>
+            <th>Condition</td>
+            <th>Response</td>
+            <th>Node</td>
+            <th>State</td>
+            <th>Action</td>
         </tr>
     </thead>
     <tbody>
@@ -145,35 +121,46 @@ TOS5;
     //get all the condition&response associations for RMC
     foreach ($xml->children() as $response) foreach($response->children() as $data) {
         //get the data from xcatd
-        $association = explode("=", $data);
-
-        $ooe = 0;
-        $line = 0;
-        foreach($association as $elem) {
-            $ooe = $ooe%2;
-            //the format should be
-            //"NodeReachability"\t"EmailRootOffShift"\t"hv8plus01.ppd.pok.ibm.com"\t"Active"
-            $record = explode("\"", $elem);
-            $cond = $record[1];
-            $resp = $record[3];
-            $node = $record[5];
-            $state = $record[7];
-            echo "<tr class='ListLine$ooe' id='row$line'>";
-            echo "<td>$cond</td>";
-            echo "<td>$resp</td>";
-            echo "<td>$node</td>";
-            echo "<td>$state</td>";
-            echo "<td>";
-            if($state == "Active") {
-                insertButtons(array('label'=>'DeActivate', 'id'=>'deactivate', 'onclick'=>"control_RMCAssoc(\"$cond\", \"$node\", \"$resp\", \"stop\")"));
-            }else if($state == "Not active"){
-                insertButtons(array('label'=>'Activate', 'id'=>'activate', 'onclick'=>"control_RMCAssoc(\"$cond\", \"$node\", \"$resp\", \"start\")"));
-            }
-            echo "</td>"; 
-            echo "</tr>";
-            $ooe++;
-            $line++;
-        }
+        $record = split('"',$data);
+        echo "<tr>";
+echo <<<TOS6
+            <td>$record[1]</td>
+            <td>$record[3]</td>
+            <td>$record[5]</td>
+            <td>$record[7]</td>
+TOS6;
+        //TODO: insert the button here
+        echo "<td>Button</td>";
+        echo "</tr>";
+//        $association = explode("=", $data);
+//
+//        $ooe = 0;
+//        $line = 0;
+//        foreach($association as $elem) {
+//            $ooe = $ooe%2;
+//            //the format should be
+//            //"NodeReachability"\t"EmailRootOffShift"\t"hv8plus01.ppd.pok.ibm.com"\t"Active"
+//            $record = explode("\"", $elem);
+//            $cond = $record[1];
+//            $resp = $record[3];
+//            $node = $record[5];
+//            $state = $record[7];
+//            echo "<tr class='ListLine$ooe' id='row$line'>";
+//            echo "<td>$cond</td>";
+//            echo "<td>$resp</td>";
+//            echo "<td>$node</td>";
+//            echo "<td>$state</td>";
+//            echo "<td>";
+//            if($state == "Active") {
+//                insertButtons(array('label'=>'DeActivate', 'id'=>'deactivate', 'onclick'=>"control_RMCAssoc(\"$cond\", \"$node\", \"$resp\", \"stop\")"));
+//            }else if($state == "Not active"){
+//                insertButtons(array('label'=>'Activate', 'id'=>'activate', 'onclick'=>"control_RMCAssoc(\"$cond\", \"$node\", \"$resp\", \"start\")"));
+//            }
+//            echo "</td>";
+//            echo "</tr>";
+//            $ooe++;
+//            $line++;
+//        }
     }
     echo "</tbody></table></div>";
     return 0;
@@ -181,35 +168,49 @@ TOS5;
 
 function displayCond()
 {
-    //the user selects one node/noderange from the #ositree div
+    //display all the avaiable conditions to a <table> element
 echo <<<COND
 <div id="avail_cond">
 <b>Available Conditions</b>
-<table id="tabTable" class="tabTable" cellspacing="1">
+<table>
     <thead>
         <tr class="colHeaders">
-            <td></td>
-            <td>Conditions</td>
+            <th></td>
+            <th>Conditions</td>
         </tr>
     </thead>
     <tbody>
 COND;
     $xml = docmd("webrun", '', array("lscondition"));
     foreach($xml->children() as $response) foreach($response->children() as $data) {
-        //get the data from xcatd
-        $conditions = explode("=", $data);
+        /*
+         * the data format like this
+         * "HFI_not_configured"              "ca4lpar02" "Not monitored"
+         * "Drawer_not_configured"           "ca4lpar02" "Not monitored"
+         * "AnyNodeFileSystemSpaceUsed_H"    "ca4lpar02" "Not monitored"
+         */
+        $tmp = split('"', $data);
+        //$tmp[1] = condition name
+        //$tmp[3] = nodename
+        //$tmp[5] = status
+echo <<<TOS99
+        <tr>
+            <td><input type='radio' name='conditions' value='$tmp[1]]' /></td>
+            <td>$tmp[1]</td>
+        </tr>
+TOS99;
     }
-    $ooe = 0;
-    $line = 0;
-    foreach($conditions as $elem) {
-        $ooe = $ooe%2;
-        echo "<tr class='ListLine$ooe' id='row$line'>";
-        echo "<td><input type=\"radio\" name=\"conditions\" value=\"$elem\" /></td>";
-        echo "<td>$elem</td>";
-        echo "</tr>";
-        $ooe++;
-        $line++;
-    }
+//    $ooe = 0;
+//    $line = 0;
+//    foreach($conditions as $elem) {
+//        $ooe = $ooe%2;
+//        echo "<tr class='ListLine$ooe' id='row$line'>";
+//        echo "<td><input type=\"radio\" name=\"conditions\" value=\"$elem\" /></td>";
+//        echo "<td>$elem</td>";
+//        echo "</tr>";
+//        $ooe++;
+//        $line++;
+//    }
     echo "</tbody></table></div>";
     return 0;
 
@@ -233,17 +234,23 @@ RESP;
   $ooe=0;
   $line=0;
   foreach($xml->children() as $response) foreach($response->children() as $data) {
-      $responses = explode("=", $data);
-  }
-  foreach($responses as $elem) {
-      $ooe = $ooe%2;
-      echo "<tr class='ListLine$ooe' id='row$line'>";
-      echo "<td><input type='checkbox' name='responses' value='$elem' /></td>";
-      echo "<td>$elem</td>";
+      $record = split('"', $data);
+      echo "<tr>";
+echo <<<TOS7
+      <td><input type='checkbox' name='responses' value='$record[1]]' /></td>
+      <td>$record[1]</td>
+TOS7;
       echo "</tr>";
-      $ooe++;
-      $line++;
   }
+//  foreach($responses as $elem) {
+//      $ooe = $ooe%2;
+//      echo "<tr class='ListLine$ooe' id='row$line'>";
+//      echo "<td><input type='checkbox' name='responses' value='$elem' /></td>";
+//      echo "<td>$elem</td>";
+//      echo "</tr>";
+//      $ooe++;
+//      $line++;
+//  }
     echo '</tbody></table></div>';
     return 0;
 }
@@ -257,7 +264,6 @@ function displayCondResp()
     insertButtons(array('label'=>'Add', id=>'addAssociation', 'onclick'=>'mkCondResp()'));
     insertButtons(array('label'=>'Cancel', id=>'cancel_op', 'onclick'=>'clearEventDisplay()'));
     echo '</div>';
-    displayStatus();
 }
 
 function displayRMCRsrc()

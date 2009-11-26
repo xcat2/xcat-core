@@ -400,48 +400,6 @@ function goto_next()
     }
 }
 
-function mkCondResp()
-{
-    //get the name of the selected condition
-    //then, get the response in "checked" status
-    //then, run the command "mkcondresp"
-    var cond_val = $('input[@name=conditions][@checked]').val();
-    if(cond_val) {
-        //get the response in "checked" status
-        var resps_obj = $('input[@name=responses][@checked]');
-        if(resps_obj) {
-            $.each(resps_obj,function(i,n) {
-                //i is the index
-                //n is the content
-                //TODO:add one new php file to handle "mkcondresp" command
-                $.get("monitor/makecondresp.php", {cond: cond_val, resp: n.value}, function(data) {
-                    $("#devstatus").html(data);
-                });
-            });
-        $("#association").load("monitor/updateCondRespTable.php");
-        }
-    }
-}
-
-function control_RMCAssoc(cond, node, resp, action)
-{
-    //TODO:for define_rmc_event
-    //control the RMC Association: startcondresp & stopcondresp;
-    $.get("monitor/updateCondResp.php", 
-        {c: cond, n: node, r: resp, a: action},
-        function(data) {
-            $("#association").html(data);
-        }
-    );
-}
-
-function clearEventDisplay()
-{
-    $('input[@name=conditions][@checked]').attr('checked', false);
-    $('input[@name=responses][@checked]').attr('checked', false);
-}
-
-
 function showRMCAttrib()
 {
     var class_val = $('input[@name=classGrp][@checked]').val();
@@ -450,32 +408,6 @@ function showRMCAttrib()
             $("#rmcScrAttr").html(data);
         });
     }
-}
-
-//TODO: when mouse hover the list of monitor plugins, the .ListLine_hover style will
-//be applied on the <tr>,
-function hoverOnMonlist()
-{
-    $(".tabTable tr").hover(
-        function() {
-            $(this).addClass("ListLine_hover");
-        },
-        function() {
-            $(this).removeClass("ListLine_hover");
-        }
-    );
-}
-
-function monsetupAction(plugin, action_val)
-{
-    //plugin = the name of plugin
-    //action = "start" or "stop"
-    $.get("monitor/setup.php", {name: plugin, action: action_val}, function(data) {
-        $.get("monitor/updateMonList.php", {}, function(data) {
-            $("#monlist_table").html(data);
-        });
-       
-    });
 }
 
 function show_monshow_data(type,range)
