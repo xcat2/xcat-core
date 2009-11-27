@@ -255,6 +255,8 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
     if ($::osname eq 'AIX')
     {
         &setupAIXconserver;
+        
+	&setupAIXIPMITool;
 
         # for AIX systems add xcatd to the /etc/inittab file
         my $mkitab_cmd =
@@ -1285,6 +1287,39 @@ sub setupAIXconserver
     xCAT::Utils->startService("conserver");
 
 }
+
+#-----------------------------------------------------------------------------
+ 
+=head3    setupAIXIPMITool 
+       
+     Set AIX IPMI Tool 
+ 
+=cut
+ 
+#-----------------------------------------------------------------------------
+
+sub setupAIXIPMITool
+ 
+{
+    if (!-f "/usr/bin/ipmitool")
+    {
+        $cmd = "ln -sf /opt/freeware/bin/ipmitool /usr/bin/ipmitool";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message(
+                'E',
+                "Could not ln -sf /opt/freeware/bin/ipmitool /usr/bin/ipmitool."
+                );
+        }
+        else
+        {
+            verbose("ln -sf /opt/freeware/bin/ipmitool /usr/bin/ipmitool.");
+        }
+    }
+}
+
+#-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
 
