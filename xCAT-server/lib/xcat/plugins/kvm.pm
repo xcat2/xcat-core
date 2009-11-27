@@ -29,6 +29,7 @@ my @destblacklist;
 my $vmhash;
 my $nthash; #to store nodetype data
 my $hmhash;
+my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
 
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -228,6 +229,7 @@ sub build_nicstruct {
         }
     }
     unless (scalar(@macs) >= scalar(@nics)) {
+        #TODO: MUST REPLACE WITH VMCOMMON CODE
         my $neededmacs=scalar(@nics) - scalar(@macs);
         my $macstr;
         my $tmac;
@@ -351,7 +353,8 @@ sub refresh_vm {
     my $newxml=XMLin($dom->get_xml_description());
     my $vncport=$newxml->{devices}->{graphics}->{port};
     my $stty=$newxml->{devices}->{console}->{tty};
-    $vmtab->setNodeAttribs($node,{vncport=>$vncport,textconsole=>$stty});
+    $updatetable->{vm}->{$node}={vncport=>$vncport,textconsole=>$stty};
+    #$vmtab->setNodeAttribs($node,{vncport=>$vncport,textconsole=>$stty});
     return {vncport=>$vncport,textconsole=>$stty};
 }
 
@@ -544,7 +547,8 @@ sub migrate {
     #The migration seems tohave suceeded, but to be sure...
     close($sock);
     if ($desthypconn->get_domain_by_name($node)) {
-        $vmtab->setNodeAttribs($node,{host=>$targ});
+        $updatetable->{vm}->{$node}->{host} = $targ;
+        #$vmtab->setNodeAttribs($node,{host=>$targ});
         return (0,"migrated to $targ");
     } else { #This *should* not be possible
         return (1,"Failed migration from $prevhyp to $targ, despite normal looking run...");
@@ -900,10 +904,10 @@ sub preprocess_request {
 sub adopt {
     my $orphash = shift;
     my $hyphash = shift;
-    my %hypsethash;
     my %addmemory = ();
     my $node;
     my $target;
+    my $vmupdates;
     foreach $node (keys %{$orphash}) {
         $target=pick_target($node,\%addmemory);
         unless ($target) {
@@ -916,11 +920,9 @@ sub adopt {
         }
         $hyphash{$target}->{nodes}->{$node}=1;
         delete $orphash->{$node};
-        push @{$hypsethash{$target}},$node;
+        $vmupdates->{$node}->{host}=$target;
     }
-    foreach (keys %hypsethash) {
-        $vmtab->setNodesAttribs($hypsethash{$_},{'host'=>$_});
-    }
+    $vmtab->setNodesAttribs($vmupdates);
     if (keys %{$orphash}) {
         return 0;
     } else { 
@@ -1432,6 +1434,10 @@ sub dohyp {
       waitforack($out);
     }
     yield();
+  }
+  foreach (keys %$updatetable) {
+      my $tabhandle = xCAT::Table->new($_,-create=>1);
+      $tabhandle->setNodesAttribs($updatetable->{$_});
   }
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";
