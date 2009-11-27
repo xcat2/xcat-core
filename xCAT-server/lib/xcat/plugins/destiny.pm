@@ -124,6 +124,7 @@ sub setdestiny {
      my $nodetype = xCAT::Table->new('nodetype');
      my $ntents = $nodetype->getNodesAttribs($req->{node},[qw(os arch profile)]);
      my $ients = $iscsitab->getNodesAttribs($req->{node},[qw(kernel kcmdline initrd)]);
+     my $bpupdates;
      foreach (@{$req->{node}}) {
       my $ient = $ients->{$_}->[0]; #$iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
       my $ntent = $ntents->{$_}->[0];
@@ -135,8 +136,10 @@ sub setdestiny {
       $hash->{kernel} = $ient->{kernel};
       if ($ient->{initrd}) { $hash->{initrd} = $ient->{initrd} }
       if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
-      $bptab->setNodeAttribs($_,$hash);
+      $bpupdates->{$_}=$hash;
+      #$bptab->setNodeAttribs($_,$hash);
      }
+     $bptab->setNodesAttribs($bpupdates);
   } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/) {
     chomp($state);
     my $target;
@@ -200,6 +203,7 @@ sub setdestiny {
     if ($errored) { return; }
      
     my $ntents = $nodetypetable->getNodesAttribs($req->{node},[qw(os arch profile)]);
+    my $chainupdates;
     foreach (@{$req->{node}}) {
       $nstates{$_} = $state; #local copy of state variable for mod
       my $ntent = $ntents->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(os arch profile)]);
@@ -219,8 +223,9 @@ sub setdestiny {
           } else { $errored =1; $callback->({error=>"nodetype.profile not defined for $_"}); }
       }
       if ($errored) {return;}
-      unless ($state =~ /^netboot/) { $chaintab->setNodeAttribs($_,{currchain=>"boot"}); };
+      unless ($state =~ /^netboot/) { $chainupdates->{$_}->{currchain}='boot' ; };
     }
+    $chaintab->setNodesAttribs($chainupdates); };
   } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
     $restab=xCAT::Table->new('noderes',-create=>1);
     my $bootparms=xCAT::Table->new('bootparams',-create=>1);
@@ -232,6 +237,7 @@ sub setdestiny {
     (my $mastent) = $sitetab->getAttribs({key=>'master'},'value');
     my $enthash = $nodetype->getNodesAttribs(\@nodes,[qw(arch)]);
     my $resents = $restab->getNodeAttribs(\@nodes,[qw(xcatmaster)]);
+    my $bpupdates;
     foreach (@nodes) {
       my $ent = $enthash->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(arch)]);
       unless ($ent and $ent->{arch}) {
@@ -272,10 +278,11 @@ sub setdestiny {
       if ($portent and $portent->{value}) {
           $xcatdport = $portent->{value};
       }
-      $bootparms->setNodeAttribs($_,{kernel => "xcat/nbk.$arch",
+      $bpupdates->{$_} = {kernel => "xcat/nbk.$arch",
                                    initrd => "xcat/nbfs.$arch.gz",
-                                   kcmdline => $kcmdline."xcatd=$master:$xcatdport"});
+                                   kcmdline => $kcmdline."xcatd=$master:$xcatdport"};
     }
+    $bootparms->setNodesAttribs($bpupdates);
   } elsif (!($state eq "boot")) { 
       $callback->({error=>["Unknown state $state requested"],errorcode=>[1]});
       return;
@@ -321,13 +328,15 @@ sub setdestiny {
   }
 
   if ($noupdate) { return; } #skip table manipulation if just doing 'enact'
+  my $chainupdates;
   foreach (@nodes) {
     my $lstate = $state;
     if ($nstates{$_}) {
         $lstate = $nstates{$_};
     } 
-    $chaintab->setNodeAttribs($_,{currstate=>$lstate});
+    $chainupdates->{$_}->{currstate} = $lstate;
   }
+  $chaintab->setNodesAttbribs($chainupdates);
   return getdestiny($flag + 1);
 }
 
@@ -364,6 +373,7 @@ sub nextdestiny {
   my $node;
   $chaintab = xCAT::Table->new('chain');
   my $chainents = $chaintab->getNodesAttribs(\@nodes,[qw(currstate currchain chain)]);
+  my $updates;
   foreach $node (@nodes) {
     unless($chaintab) {
       syslog("local1|err","ERROR: $node requested destiny update, no chain table");
@@ -384,13 +394,15 @@ sub nextdestiny {
     unless ($ref->{currchain}) { #If we've gone off the end of the chain, have currchain stick
       $ref->{currchain} = $ref->{currstate};
     }
-    $chaintab->setNodeAttribs($node,$ref); #$ref is in a state to commit back to db
+    $updates->{$node}=$ref;
+    #$chaintab->setNodeAttribs($node,$ref); #$ref is in a state to commit back to db
 
     my %requ;
     $requ{node}=[$node];
     $requ{arg}=[$ref->{currstate}];
     setdestiny(\%requ, $flag+1);
   }
+  $chaintab->setNodesAttribs($updates);
   
   if ($callnodeset) {
      $subreq->({command=>['nodeset'],
