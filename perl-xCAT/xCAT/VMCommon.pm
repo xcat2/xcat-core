@@ -73,6 +73,81 @@ sub macsAreUnique { #internal function, do not call, argument format may change 
     return 1;
 }
 
+sub requestMacAddresses {
+#This function combs through the list of nodes to assure every vm.nic declared nic has a mac address
+    my $tablecfg = shift;
+    my $neededmacs = shift;
+    my $mactab = xCAT::Table->new("mac",-create=>1);
+    my $node;
+    my @allmacs;
+    my $complete = 0;
+    my $updatesneeded;
+    srand(); #Re-seed the rng.  This will make the mac address generation less deterministic
+    while (not $complete) {
+        foreach $node (@$neededmacs) {
+            my $count=0;
+            my $nicdata = $tablecfg->{vm}->{$node}->[0]->{nic};
+            unless ($nicdata) { $nicdata = "" }
+            my @nicsneeded = split /,/,$nicdata;
+            my $count = scalar(@nicsneeded);
+
+            my $macdata = $tablecfg->{mac}->{$node}->[0]->{mac};
+            unless ($macdata) { $macdata ="" }
+            my @macs;
+            my $macaddr;
+            foreach $macaddr (split /\|/,$macdata) {
+                 $macaddr =~ s/\!.*//;
+                 push @macs,lc($macaddr);
+            }
+            $count-=scalar(@macs);
+            if ($count > 0) {
+                $updatesneeded->{$node}=1;
+            }
+
+            while ($count > 0) { #still need more, autogen
+                $macaddr = "";
+                while (not $macaddr) {
+                    $macaddr = lc(genMac($node,$tablecfg->{site}->{genmacprefix}));
+                    push @allmacs,$macaddr;
+                    if ($tablecfg->{usedmacs}->{$macaddr}) {
+                        $macaddr = "";
+                    }
+                }
+                $count--;
+                $tablecfg->{usedmacs}->{$macaddr} = 1;
+                if (not $macdata) {
+                    $macdata = $macaddr;
+                } else {
+                    $macdata .= "|".$macaddr;
+                }
+                push @macs,$macaddr;
+            }
+            if (defined $updatesneeded->{$node}) {
+                $updatesneeded->{$node}->{mac}=$macdata;
+                $tablecfg->{dhcpneeded}->{$node}=1; #at our leisure, this dhcp binding should be updated
+            }
+            #TODO: LOCK if a distributed lock management structure goes in place, that may be a faster solution than this
+            #this code should be safe though as it is, if a tiny bit slower
+            #can also be sped up by doing it for a noderange in a sweep instead of once per node
+            #but the current architecture has this called at a place that is unaware of the larger context
+            #TODO2.4 would be either the lock management or changing this to make large scale mkvm faster
+        }
+        if (defined $updatesneeded) {
+            my $mactab = xCAT::Table->new('mac',-create=>1);
+            $mactab->setNodesAttribs($updatesneeded);
+            if(macsAreUnique($tablecfg,@allmacs)) {
+                $complete=1;
+            } else { #Throw away ALL macs and try again
+                #this currently includes manually specified ones
+                foreach $node (keys %$updatesneeded) {
+                    $tablecfg->{mac}->{$node}->[0]->{mac}="";
+                }
+                $tablecfg->{usedmacs} = {};
+            }
+        }
+    }
+#    $cfghash->{usedmacs}-{lc{$mac}};
+}
 sub getMacAddresses {
     my $tablecfg = shift;
     my $node = shift;
