@@ -8,6 +8,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use xCAT::GlobalDef;
 use xCAT::NodeRange;
+use xCAT::VMCommon;
 use xCAT_monitoring::monitorctrl;
 
 use xCAT::Table;
@@ -26,10 +27,16 @@ my %vm_comm_pids;
 my %offlinehyps;
 my %offlinevms;
 my @destblacklist;
-my $vmhash;
-my $nthash; #to store nodetype data
-my $hmhash;
 my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
+my $confdata; #a reference to serve as a common pointer betweer VMCommon functions and this plugin
+my $libvirtsupport;
+$libvirtsupport = eval { 
+    require Sys::Virt; 
+    if (Sys::Virt->VERSION < "0.2.0") {
+        die;
+    }
+    1;
+};
 
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -46,8 +53,6 @@ use xCAT::SvrUtils;
 my %runningstates;
 my $vmmaxp=64;
 my $mactab;
-my $nrtab;
-my $machash;
 my %usedmacs;
 my $status_noop="XXXno-opXXX";
 
@@ -73,7 +78,6 @@ sub handled_commands {
   };
 }
 
-my $vmhash;
 my $hypconn;
 my $hyp;
 my $doreq;
@@ -125,8 +129,8 @@ sub waitforack {
 sub build_oshash {
     my %rethash;
     $rethash{type}->{content}='hvm';
-    if (defined $vmhash->{$node}->[0]->{bootorder}) {
-        my $bootorder = $vmhash->{$node}->[0]->{bootorder};
+    if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
+        my $bootorder = $confdata->{vm}->{$node}->[0]->{bootorder};
         my @bootdevs = split(/[:,]/,$bootorder);
         my $bootnum = 0;
         foreach (@bootdevs) {
@@ -165,8 +169,8 @@ sub build_diskstruct {
     }
 
 
-    if (defined $vmhash->{$node}->[0]->{storage}) {
-        my $disklocs=$vmhash->{$node}->[0]->{storage};
+    if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
+        my $disklocs=$confdata->{vm}->{$node}->[0]->{storage};
         my @locations=split /\|/,$disklocs; 
         foreach my $disk (@locations) {
             #Setting default values of a virtual disk backed by a file at hd*.
@@ -216,13 +220,13 @@ sub build_nicstruct {
     my $node = shift;
     my @macs=();
     my @nics=();
-    if ($vmhash->{$node}->[0]->{nics}) {
-        @nics = split /,/,$vmhash->{$node}->[0]->{nics};
+    if ($confdata->{vm}->{$node}->[0]->{nics}) {
+        @nics = split /,/,$confdata->{vm}->{$node}->[0]->{nics};
     } else {
         @nics = ('virbr0');
     }
-    if ($machash->{$node}->[0]->{mac}) {
-        my $macdata=$machash->{$node}->[0]->{mac};
+    if ($confdata->{mac}->{$node}->[0]->{mac}) {
+        my $macdata=$confdata->{mac}->{$node}->[0]->{mac};
         foreach my $macaddr (split /\|/,$macdata) {
             $macaddr =~ s/\!.*//;
             push @macs,$macaddr;
@@ -258,9 +262,9 @@ sub build_nicstruct {
             $usedmacs{$tmac}=1;
             push @macs,$tmac;
         }
-        $mactab->setNodeAttribs($node,{mac=>join('|',@macs)});
-        $nrtab->setNodeAttribs($node,{netboot=>'pxe'});
-        $doreq->({command=>['makedhcp'],node=>[$node]});
+        #$mactab->setNodeAttribs($node,{mac=>join('|',@macs)});
+        #$nrtab->setNodeAttribs($node,{netboot=>'pxe'});
+        #$doreq->({command=>['makedhcp'],node=>[$node]});
     }
     my @rethashes;
     foreach (@macs) {
@@ -311,22 +315,22 @@ sub build_xmldesc {
     $xtree{name}->{content}=$node;
     $xtree{uuid}->{content}=getNodeUUID($node);
     $xtree{os} = build_oshash();
-    if (defined $vmhash->{$node}->[0]->{memory}) {
-        $xtree{memory}->{content}=getUnits($vmhash->{$node}->[0]->{memory},"M",1024);
+    if (defined $confdata->{vm}->{$node}->[0]->{memory}) {
+        $xtree{memory}->{content}=getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024);
     } else {
         $xtree{memory}->{content}=524288;
     }
-    if (defined $vmhash->{$node}->[0]->{cpus}) {
-        $xtree{vcpu}->{content}=$vmhash->{$node}->[0]->{cpus};
+    if (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
+        $xtree{vcpu}->{content}=$confdata->{vm}->{$node}->[0]->{cpus};
     } else {
         $xtree{vcpu}->{content}=1;
     }
-    if (defined ($vmhash->{$node}->[0]->{clockoffset})) {
+    if (defined ($confdata->{vm}->{$node}->[0]->{clockoffset})) {
         #If user requested a specific behavior, give it
-        $xtree{clock}->{offset}=$vmhash->{$node}->[0]->{clockoffset};
+        $xtree{clock}->{offset}=$confdata->{vm}->{$node}->[0]->{clockoffset};
     } else {
         #Otherwise, only do local time for things that look MS
-        if (defined ($nthash->{$node}->[0]->{os}) and $nthash->{$node}->[0]->{os} =~ /win.*/) {
+        if (defined ($confdata->{nodetype}->{$node}->[0]->{os}) and $confdata->{nodetype}->{$node}->[0]->{os} =~ /win.*/) {
             $xtree{clock}->{offset}='localtime';
         } else { #For everyone else, utc is preferred generally
             $xtree{clock}->{offset}='utc';
@@ -369,12 +373,12 @@ sub getcons {
         return 1,"Unable to query running VM";
     }
     my $consdata=refresh_vm($dom);
-    my $hyper=$vmhash->{$node}->[0]->{host};
+    my $hyper=$confdata->{vm}->{$node}->[0]->{host};
 
     if ($type eq "text") {
         my $serialspeed;
-        if ($hmhash) {
-            $serialspeed=$hmhash->{$node}->[0]->{serialspeed};
+        if ($confdata->{nodehm}) {
+            $serialspeed=$confdata->{nodehm}->{$node}->[0]->{serialspeed};
         }
         my $sconsparms = {node=>[{name=>[$node]}]};
         $sconsparms->{node}->[0]->{sshhost}=[$hyper];
@@ -408,8 +412,8 @@ sub pick_target {
     my $target;
     my $mostfreememory=undef;
     my $currentfreememory;
-    my $candidates= $vmhash->{$node}->[0]->{migrationdest};
-    my $currhyp=$vmhash->{$node}->[0]->{host};
+    my $candidates= $confdata->{vm}->{$node}->[0]->{migrationdest};
+    my $currhyp=$confdata->{vm}->{$node}->[0]->{host};
     unless ($candidates) {
         return undef;
     }
@@ -468,8 +472,8 @@ sub migrate {
     my $prevhyp;
     my $target = "qemu+ssh://root@".$targ."/system?no_tty=1";
     my $currhyp="qemu+ssh://root@";
-    if ($vmhash->{$node}->[0]->{host}) {
-        $prevhyp=$vmhash->{$node}->[0]->{host};
+    if ($confdata->{vm}->{$node}->[0]->{host}) {
+        $prevhyp=$confdata->{vm}->{$node}->[0]->{host};
         $currhyp.=$prevhyp;
     } else {
         return (1,"Unable to find current location of $node");
@@ -575,11 +579,11 @@ sub xhrm_satisfy {
     my $rc=0;
     my @nics=();
     my @storage=();
-    if ($vmhash->{$node}->[0]->{nics}) {
-        @nics = split /,/,$vmhash->{$node}->[0]->{nics};
+    if ($confdata->{vm}->{$node}->[0]->{nics}) {
+        @nics = split /,/,$confdata->{vm}->{$node}->[0]->{nics};
     }
-    if ($vmhash->{$node}->[0]->{storage}) {
-        @storage = split /\|/,$vmhash->{$node}->[0]->{storage};
+    if ($confdata->{vm}->{$node}->[0]->{storage}) {
+        @storage = split /\|/,$confdata->{vm}->{$node}->[0]->{storage};
     }
     foreach (@nics) {
         s/=.*//; #this code cares not about the model of virtual nic
@@ -727,15 +731,15 @@ sub mkvm {
  );
  build_xmldesc($node);
  my $diskstruct = build_diskstruct();
- if (defined $vmhash->{$node}->[0]->{storage}) {
-    my $diskname=$vmhash->{$node}->[0]->{storage};
+ if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
+    my $diskname=$confdata->{vm}->{$node}->[0]->{storage};
     if ($diskname =~ /^phy:/) { #in this case, mkvm should have no argumens
         if ($mastername or $disksize) {
             return 1,"mkvm management of block device storage not implemented";
         }
     }
     if ($mastername or $disksize) {
-       return createstorage($diskname,$mastername,$disksize,$vmhash->{$node}->[0],$force,$diskstruct);
+       return createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force,$diskstruct);
     }
  } else {
      if ($mastername or $disksize) {
@@ -913,8 +917,8 @@ sub adopt {
         unless ($target) {
             next;
         }
-        if ($vmhash->{$node}->[0]->{memory}) {
-            $addmemory{$target}+=getUnits($vmhash->{$node}->[0]->{memory},"M",1024);
+        if ($confdata->{vm}->{$node}->[0]->{memory}) {
+            $addmemory{$target}+=getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024);
         } else {
             $addmemory{$target}+=getUnits("512","M",1024);
         }
@@ -934,37 +938,6 @@ sub adopt {
 #    return 0;
 #}
      
-sub grab_table_data{ #grab table data relevent to VM guest nodes
-  my $noderange=shift;
-  my $callback=shift;
-  $vmtab = xCAT::Table->new("vm");
-  my $hmtab = xCAT::Table->new("nodehm");
-  my $nttab = xCAT::Table->new("nodetype");
-  if ($hmtab) {
-      $hmhash  = $hmtab->getNodesAttribs($noderange,['serialspeed']);
-  }
-  if ($nttab) {
-      $nthash  = $nttab->getNodesAttribs($noderange,['os']); #allow us to guess RTC config
-  }
-  unless ($vmtab) { 
-    $callback->({data=>["Cannot open vm table"]});
-    return;
-  }
-  $vmhash = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','storage','memory','cpus','nics','bootorder','virtflags']);
-  $mactab = xCAT::Table->new("mac",-create=>1);
-  $nrtab= xCAT::Table->new("noderes",-create=>1);
-  $machash = $mactab->getAllNodeAttribs(['mac'],1);
-  my $macs;
-  my $mac;
-  foreach (keys %$machash) {
-      $macs=$machash->{$_}->[0]->{mac};
-      foreach $mac (split /\|/,$macs) {
-          $mac =~ s/\!.*//;
-          $usedmacs{lc($mac)}=1;
-      }
-  }
-}
-
 sub process_request { 
   $SIG{INT} = $SIG{TERM} = sub { 
      foreach (keys %vm_comm_pids) {
@@ -976,13 +949,15 @@ sub process_request {
   %offlinevms=();
   my $request = shift;
   my $callback = shift;
-  my $libvirtsupport = eval { 
+  unless ($libvirtsupport) {
+      $libvirtsupport = eval { 
       require Sys::Virt; 
       if (Sys::Virt->VERSION < "0.2.0") {
           die;
       }
       1;
-  };
+      };
+  }
   unless ($libvirtsupport) { #Still no Sys::Virt module
       $callback->({error=>"Sys::Virt perl module missing or older than 0.2.0, unable to fulfill KVM plugin requirements",errorcode=>[42]});
       return [];
@@ -1026,7 +1001,6 @@ sub process_request {
               push @newapps,$_;
           }
           $nodelisttab->setNodeAttribs($noderange->[0],{appstatus=>join(',',@newapps)});
-        print "oh eah\n";
           $command="revacuate";
           @exargs=();
       } elsif ($state eq 'hypstartup') { #if starting up, check for nodes on this hypervisor and start them up
@@ -1113,7 +1087,12 @@ sub process_request {
           $use_xhrm=1;
       }
   }
-  grab_table_data($noderange,$callback);
+  $vmtab = xCAT::Table->new("vm");
+  $confdata={};
+  xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback);
+  if ($command eq 'mkvm' or $command eq 'rpower' and (grep { "$_" eq "on"  or $_ eq "boot" or $_ eq "reset" } @exargs)) {
+      xCAT::VMCommon::requestMacAddresses($confdata,$noderange);
+  }
 
   if ($command eq 'revacuate' or $command eq 'rmigrate') {
       $vmmaxp=1; #for now throttle concurrent migrations, requires more sophisticated heuristics to ensure sanity
@@ -1130,9 +1109,9 @@ sub process_request {
   my $inputs = new IO::Select;;
   my $sub_fds = new IO::Select;
   %hyphash=();
-  foreach (keys %{$vmhash}) {
-      if ($vmhash->{$_}->[0]->{host}) {
-          $hyphash{$vmhash->{$_}->[0]->{host}}->{nodes}->{$_}=1;
+  foreach (keys %{$confdata->{vm}}) {
+      if ($confdata->{vm}->{$_}->[0]->{host}) {
+          $hyphash{$confdata->{vm}->{$_}->[0]->{host}}->{nodes}->{$_}=1;
       } else {
           $orphans{$_}=1;
       }

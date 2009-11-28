@@ -85,8 +85,7 @@ sub requestMacAddresses {
     srand(); #Re-seed the rng.  This will make the mac address generation less deterministic
     while (not $complete) {
         foreach $node (@$neededmacs) {
-            my $count=0;
-            my $nicdata = $tablecfg->{vm}->{$node}->[0]->{nic};
+            my $nicdata = $tablecfg->{vm}->{$node}->[0]->{nics};
             unless ($nicdata) { $nicdata = "" }
             my @nicsneeded = split /,/,$nicdata;
             my $count = scalar(@nicsneeded);
@@ -101,7 +100,7 @@ sub requestMacAddresses {
             }
             $count-=scalar(@macs);
             if ($count > 0) {
-                $updatesneeded->{$node}=1;
+                $updatesneeded->{$node}->{mac}=1;
             }
 
             while ($count > 0) { #still need more, autogen
