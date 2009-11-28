@@ -34,6 +34,7 @@ my $grptab;
 my @allnodeset;
 my %allnodehash;
 my @grplist;
+my $didgrouplist;
 my %allgrphash;
 my $retaincache=0;
 my $recurselevel=0;
@@ -182,7 +183,8 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
         unless ($grptab) {
            $grptab = xCAT::Table->new('nodegroup');
         }
-        if ($grptab and not scalar @grplist) { 
+        if ($grptab and not $didgrouplist and not scalar @grplist) { 
+            $didgrouplist = 1;
             @grplist = @{$grptab->getAllEntries()};
         }
         my $isdynamicgrp = 0;
@@ -371,7 +373,7 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
             }
             foreach ($leftarr[$idx]..$rightarr[$idx]) {
               my @addnodes=expandatom($prefix.$_.$luffix,$verify);
-              @nodes=(@nodes,@addnodes);
+              push @nodes,@addnodes;
             }
             return (@nodes); #the return has been built, return, exiting loop and all
           }
