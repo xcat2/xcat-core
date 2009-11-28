@@ -225,7 +225,7 @@ sub setdestiny {
       if ($errored) {return;}
       unless ($state =~ /^netboot/) { $chainupdates->{$_}->{currchain}='boot' ; };
     }
-    $chaintab->setNodesAttribs($chainupdates); };
+    $chaintab->setNodesAttribs($chainupdates);
   } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
     $restab=xCAT::Table->new('noderes',-create=>1);
     my $bootparms=xCAT::Table->new('bootparams',-create=>1);
