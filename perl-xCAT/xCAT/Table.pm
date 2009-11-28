@@ -1601,7 +1601,7 @@ sub setNodesAttribs {
             foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
                 $upstring .= "$col = ?, ";
             }
-            $upstring =~ s/, / where $nodekey = ?/;
+            $upstring =~ s/, $/ where $nodekey = ?/;
             $upsth = $self->{dbh}->prepare($upstring);
         }
         if (scalar keys %updatenodes) {

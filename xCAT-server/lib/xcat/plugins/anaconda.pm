@@ -878,6 +878,13 @@ sub copycd
             $distname = "rhels5";
         }
     }
+    elsif ($desc =~ /^Red Hat Enterprise Linux 6\.0$/)
+    {
+        unless ($distname)
+        {
+            $distname = "rhel6";
+        }
+    }
 
     unless ($distname)
     {
