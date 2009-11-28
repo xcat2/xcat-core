@@ -1543,7 +1543,7 @@ sub setNodesAttribs {
     };
     @orderedcols = keys %cols; #pick a specific column ordering explicitly to assure consistency
     use Data::Dumper;
-    my $nodesatatime = int(1/(1/999+(scalar @orderedcols)/999)); #the update case statement will consume '?' of which we are allowed 999 in the most restricted DB we support
+    my $nodesatatime = 999; #the update case statement will consume '?' of which we are allowed 999 in the most restricted DB we support
     #ostensibly, we could do 999 at a time for the select statement, and subsequently limit the update aggregation only
     #to get fewer sql statements, but the code is probably more complex than most people want to read
     #at the moment anyway
