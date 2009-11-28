@@ -336,7 +336,7 @@ sub setdestiny {
     } 
     $chainupdates->{$_}->{currstate} = $lstate;
   }
-  $chaintab->setNodesAttbribs($chainupdates);
+  $chaintab->setNodesAttribs($chainupdates);
   return getdestiny($flag + 1);
 }
 
