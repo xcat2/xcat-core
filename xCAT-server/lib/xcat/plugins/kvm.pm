@@ -631,21 +631,24 @@ sub createstorage {
         }
     }
     my $mountpath;
+    my $pathappend;
 
 
     my $storageserver;
     #for nfs paths and qemu-img, we do the magic locally only for now
+    my $basename;
+    my $dirname;
     if ($filename =~ /^nfs:/) {
         $filename = get_path_for_nfsuri($filename);
         if (ref $filename) { #if we got a reference back instead of a string, it is a remote location
             $storageserver = $filename->[0];
             $filename = $filename->[1];
         }
+	$filename =~ s/\/$//;
         $mountpath = $filename;
         $filename  .= "/$node/".fileparse($diskstruct->[0]->{source}->{file});
+	$pathappend = "/$node/";
     }
-    my $basename;
-    my $dirname;
     ($basename,$dirname) = fileparse($filename);
     unless ($storageserver) {
         if (-f $filename) {
@@ -665,9 +668,10 @@ sub createstorage {
         my $foundmount;
         foreach (@mounts) {
           if (/^$storageserver:$mountpath/) {
-             s/ on (\S*) type nfs/$1/;
+	     chomp;
+             s/^.* on (\S*) type nfs.*$/$1/;
              $dirname = $_;
-             mkpath($dirname);
+             mkpath($dirname.$pathappend);
              $foundmount=1;
              last;
           }
