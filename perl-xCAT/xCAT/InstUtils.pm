@@ -267,8 +267,14 @@ sub get_nim_attr_val
         return undef;
     }
 
-    my ($junk, $junk, $junk, $loc) = split(/:/, $nout);
-    chomp $loc;
+    # The command output may have the xdsh prefix "target:"
+    #my ($junk, $junk, $junk, $loc) = split(/:/, $nout);
+    #chomp $loc;
+    my $loc;
+    if ($nout =~ /.*$resname:(.*):$/)
+    {
+        $loc = $1;
+    }
 
     return $loc;
 }
@@ -388,22 +394,24 @@ sub readBNDfile
       xCAT::InstUtils->get_nim_attr_val($BNDname,  'location', $callback,
                                         $nimprime, $sub_req);
 
-    # open the file
-    unless (open(BNDFILE, "<$bnd_file_name"))
-    {
-        return (1);
+    # The boundle file may be on nimprime
+    my $ccmd = qq~cat $bnd_file_name~;
+    my $output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $ccmd, 0);
+    if ($::RUNCMD_RC != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Command: $ccmd failed.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
     }
 
     # get the names of the packages
-    while (my $l = <BNDFILE>)
+    #$output =~ s/$nimprime:\s+//g;
+    foreach my $line (split(/\n/, $output))
     {
-
-        chomp $l;
-
+        #May include xdsh prefix $nimprime:
+        $line =~ s/$nimprime:\s+//;
         # skip blank and comment lines
-        next if ($l =~ /^\s*$/ || $l =~ /^\s*#/);
-
-        push(@pkglist, $l);
+        next if ($line =~ /^\s*$/ || $line =~ /^\s*#/);
+        push(@pkglist, $line);
     }
     close(BNDFILE);
 
