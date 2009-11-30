@@ -1092,6 +1092,12 @@ sub process_request {
   xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback);
   if ($command eq 'mkvm' or $command eq 'rpower' and (grep { "$_" eq "on"  or $_ eq "boot" or $_ eq "reset" } @exargs)) {
       xCAT::VMCommon::requestMacAddresses($confdata,$noderange);
+      my @dhcpnodes;
+      foreach (keys %{$tablecfg{dhcpneeded}}) {
+        push @dhcpnodes,$_;
+        delete $tablecfg{dhcpneeded}->{$_};
+     }
+     $executerequest->({command=>['makedhcp'],node=>\@dhcpnodes});
   }
 
   if ($command eq 'revacuate' or $command eq 'rmigrate') {
