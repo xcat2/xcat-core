@@ -419,7 +419,12 @@ sub buildcreatestmt
 		$datatype = "VARCHAR(128)";
 	    }
 	}
-        $retv .= "\"$col\" $datatype ";
+        if ($xcatcfg =~ /^mysql:/) {  #for mysql
+	      $retv .= q(`) . $col . q(`) . " $datatype";  # mysql change
+              
+        } else { # for other dbs
+            $retv .= "\"$col\" $datatype ";
+        }
 
         if (grep /^$col$/, @{$descr->{required}})
         {
@@ -433,7 +438,12 @@ sub buildcreatestmt
 	$retv .= "PRIMARY KEY (";
 	foreach (@{$descr->{keys}})
 	{
-	    $retv .= "\"$_\","
+            if ($xcatcfg =~ /^mysql:/) {  #for mysql
+	      $retv .= q(`) . $_ . q(`) . ",";  # mysql change
+              
+            } else { # for other dbs
+	      $retv .= "\"$_\",";
+            }
 	}
 	$retv =~ s/,$/)\n)/;
     }
@@ -1159,6 +1169,7 @@ sub setAttribs
     #-Key name
     #-Key value
     #-Hash reference of column-value pairs to set
+    my $xcatcfg =get_xcatcfg();
     my $self     = shift;
     if ($dbworkerpid) {
         return dbc_call($self,'setAttribs',@_);
@@ -1186,13 +1197,22 @@ sub setAttribs
     if (($pKeypairs != undef) && (keys(%keypairs)>0)) {
 	foreach (keys %keypairs)
 	{
-	    #$qstring .= "$_ = ? AND "; #mysql changes
+	    #$qstring .= "$_ = ? AND "; 
 	    #push @qargs, $keypairs{$_};
-	    $qstring .= "\"$_\" = ? AND ";
+	    #$qstring .= "\"$_\" = ? AND ";  # mysql change
+
+            if ($xcatcfg =~ /^mysql:/) {  #for mysql
+	      $qstring .= q(`) . $_ . q(`) . " = ? AND ";  # mysql change
+              
+            } else { # for other dbs
+	      $qstring .= "$_ = ? AND "; 
+            }  
+
 	    push @qargs, $keypairs{$_};
 	    
 	}
 	$qstring =~ s/ AND \z//;
+         #print "this is qstring1: $qstring\n";
 	$query = $self->{dbh}->prepare($qstring);
 	$query->execute(@qargs);
 	
@@ -1252,11 +1272,21 @@ sub setAttribs
         {
             if (ref($keypairs{$_}))
             {
-                $cmd .= "\"$_\"" . " = '" . $keypairs{$_}->[0] . "' AND ";
+                if ($xcatcfg =~ /^mysql:/) {  #for mysql
+                  $cmd .= q(`) . $_ . q(`) . " = '" . $keypairs{$_}->[0] . "' AND ";
+                } else {  #other dbs
+                  #$cmd .= "\"$_\"" . " = '" . $keypairs{$_}->[0] . "' AND ";
+                  $cmd .= "$_" . " = '" . $keypairs{$_}->[0] . "' AND ";
+                }
             }
             else
             {
-                $cmd .= "\"$_\"" . " = '" . $keypairs{$_} . "' AND ";
+                if ($xcatcfg =~ /^mysql:/) {  #for mysql
+                  $cmd .= q(`) . $_ . q(`) . " = '" . $keypairs{$_} . "' AND ";
+                } else {  #other dbs
+                  #$cmd .= "\"$_\"" . " = '" . $keypairs{$_} . "' AND ";
+                  $cmd .= "$_" . " = '" . $keypairs{$_} . "' AND ";
+                }
             }
         }
         $cmd =~ s/ AND \z//;
@@ -1295,8 +1325,12 @@ sub setAttribs
             return;
         }
 	foreach (keys %newpairs) {
-            #$cols .= $_ . ",";  # mysql changes
-            $cols .= "\"$_\"" . ",";
+	   if ($xcatcfg =~ /^mysql:/) {  #for mysql
+              $cols .= q(`) . $_ . q(`) . ","; 
+            } else {
+              $cols .= $_ . ","; # for other dbs 
+            }  
+            #$cols .= "\"$_\"" . ",";
             push @bind, $newpairs{$_};
         }
         chop($cols);
@@ -1338,6 +1372,9 @@ sub setAttribs
        This function sets the attributes for the rows selected by the where clause.
     Arguments:
          Where clause.
+         Note: if the Where clause contains any reserved keywords like
+         keys from the site table,  then you will have to code them in backticks
+         for MySQL  and not in backticks for Postgresql.
 	 Hash reference of column-value pairs to set
     Returns:
          None
@@ -1351,7 +1388,7 @@ sub setAttribs
 	   $updates{'profile'} = $prof;
 	   $updates{'frame'}   = $frame;
 	   $updates{'mtms'}    = "$model*$serial";
-	   $tab->setAttribs( "node in ('node1', 'node2', 'node3')", \%updates );
+	   $tab->setAttribsWhere( "node in ('node1', 'node2', 'node3')", \%updates );
     Comments:
         none
 =cut
@@ -1601,7 +1638,7 @@ sub setNodesAttribs {
             foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
                 $upstring .= "$col = ?, ";
             }
-            $upstring =~ s/, $/ where $nodekey = ?/;
+            $upstring =~ s/, / where $nodekey = ?/;
             $upsth = $self->{dbh}->prepare($upstring);
         }
         if (scalar keys %updatenodes) {
@@ -2043,13 +2080,20 @@ sub getAllEntries
     my $allentries = shift;
     my @rets;
     my $query;
+    my $xcatcfg =get_xcatcfg();
 
     if ($allentries) { # get all lines
      $query = $self->{dbh}->prepare('SELECT * FROM ' . $self->{tabname});
     } else {  # get only enabled lines
-      $query = $self->{dbh}->prepare('SELECT * FROM '
-                . $self->{tabname}
-              . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
+      if ($xcatcfg =~ /^mysql:/) {  #for mysql
+         $query = $self->{dbh}->prepare('SELECT * FROM '
+             . $self->{tabname}
+        . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
+      } else { # for other dbs
+         $query = $self->{dbh}->prepare('SELECT * FROM '
+             . $self->{tabname}
+          . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
+      }
     }
 
     $query->execute();
@@ -2096,18 +2140,28 @@ sub getAllAttribsWhere
 
     #Takes a list of attributes, returns all records in the table.
     my $self        = shift;
+    my $xcatcfg =get_xcatcfg();
     if ($dbworkerpid) {
         return dbc_call($self,'getAllAttribsWhere',@_);
     }
     my $whereclause = shift;
     my @attribs     = @_;
     my @results     = ();
-    my $query       =
-      $self->{dbh}->prepare('SELECT * FROM '
+    my $query;
+    if ($xcatcfg =~ /^mysql:/) {  #for mysql
+           $query = $self->{dbh}->prepare('SELECT * FROM '
+                . $self->{tabname}
+                . ' WHERE ('
+                . $whereclause
+                . ")  and " 
+                . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO'))");
+    } else { # for other dbs
+           $query = $self->{dbh}->prepare('SELECT * FROM '
                 . $self->{tabname}
                 . ' WHERE ('
                 . $whereclause
                 . ") and (\"disable\" is NULL or \"disable\" in ('0','no','NO','no'))");
+    }
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
     {
@@ -2264,6 +2318,7 @@ sub getAllAttribs
 
     #Takes a list of attributes, returns all records in the table.
     my $self    = shift;
+    my $xcatcfg =get_xcatcfg();
     if ($dbworkerpid) {
         return dbc_call($self,'getAllAttribs',@_);
     }
@@ -2294,10 +2349,16 @@ sub getAllAttribs
         }
         return undef;
     }
-    my $query   =
-      $self->{dbh}->prepare('SELECT * FROM '
+    my $query;
+    if ($xcatcfg =~ /^mysql:/) {  #for mysql
+         $query = $self->{dbh}->prepare('SELECT * FROM '
+             . $self->{tabname}
+        . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
+      } else { # for other dbs
+         $query =  $self->{dbh}->prepare('SELECT * FROM '
               . $self->{tabname}
               . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
+    }
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
     {
@@ -2348,6 +2409,7 @@ sub getAllAttribs
 sub delEntries
 {
     my $self   = shift;
+    my $xcatcfg =get_xcatcfg();
     if ($dbworkerpid) {
         return dbc_call($self,'delEntries',@_);
     }
@@ -2371,11 +2433,18 @@ sub delEntries
         my @qargs = ();
         foreach (keys %keypairs)
         {
-            $qstring .= "\"$_\" = ? AND "; #mysql change
+            #$qstring .= "\"$_\" = ? AND "; #mysql change
             #$qstring .= "$_ = ? AND ";
+            if ($xcatcfg =~ /^mysql:/) {  #for mysql
+	      $qstring .= q(`) . $_ . q(`) . " = ? AND ";  # mysql change
+            } else { # for other dbs
+	      $qstring .= "$_ = ? AND "; 
+            }  
+           
             push @qargs, $keypairs{$_};
         }
         $qstring =~ s/ AND \z//;
+        #print "this is qstring: $qstring";
         my $query = $self->{dbh}->prepare($qstring);
         $query->execute(@qargs);
 
@@ -2396,7 +2465,12 @@ sub delEntries
     foreach (keys %keypairs)
     {
         #$delstring .= $_ . ' = ? AND ';
-        $delstring .= "\"$_\"" . ' = ? AND '; #mysql change
+        #$delstring .= "\"$_\"" . ' = ? AND '; #mysql change
+        if ($xcatcfg =~ /^mysql:/) {  #for mysql
+	   $delstring .= q(`) . $_ . q(`) . ' = ? AND ';  # mysql change
+        } else { # for other dbs
+          $delstring .= $_ . ' = ? AND ';
+        }
         if (ref($keypairs{$_}))
         {   #XML transformed data may come in mangled unreasonably into listrefs
             push @stargs, $keypairs{$_}->[0];
@@ -2516,6 +2590,7 @@ sub getAttribs
         }
         return undef;
     }
+    my $xcatcfg =get_xcatcfg();
     #print "Uncached access to ".$self->{tabname}."\n";
     my $statement = 'SELECT * FROM ' . $self->{tabname} . ' WHERE ';
     my @exeargs;
@@ -2523,7 +2598,12 @@ sub getAttribs
     {
         if ($keypairs{$_})
         {
-            $statement .= "\"".$_ . "\" = ? and ";
+           # $statement .= "\"".$_ . "\" = ? and ";
+            if ($xcatcfg =~ /^mysql:/) {  #for mysql
+              $statement .= q(`) . $_ . q(`) . " = ? and "
+            } else { # for other dbs
+                $statement .= "$_ = ? and ";
+            }  
             if (ref($keypairs{$_}))
             {    #correct for XML process mangling if occurred
                 push @exeargs, $keypairs{$_}->[0];
@@ -2535,10 +2615,20 @@ sub getAttribs
         }
         else
         {
-            $statement .= "\"$_\" is NULL and ";
+            if ($xcatcfg =~ /^mysql:/) {  #for mysql
+	        $statement .= q(`) . $_ . q(`) . " is NULL and " ; 
+            } else { # for other dbs
+              #$statement .= "\"$_\" is NULL and ";
+              $statement .= "$_ is NULL and ";
+            }
         }
     }
-    $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";
+    if ($xcatcfg =~ /^mysql:/) {  #for mysql
+       $statement .= "(" . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO'))";
+    } else { # for other dbs
+       $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";
+    }
+    #print "This is my statement: $statement \n";
     my $query = $self->{dbh}->prepare($statement);
     unless (defined $query) {
         return undef;
