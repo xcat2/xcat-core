@@ -586,4 +586,71 @@ sub getOSnodes
     return ($rc, \@aixnodes, \@linuxnodes);
 }
 
+#-------------------------------------------------------------------------------
+
+=head3   get_server_nodes
+
+   		Determines the server node names as known by a lists of nodes. 
+
+    Arguments:
+		A list of node names.
+
+    Returns:
+		A hash ref  of arrays, the key is the service node pointing to
+             an array of nodes that are serviced by that service node
+
+    Example
+		my %servernodes = &get_server_nodes($callback, \@$AIXnodes);
+
+    Comments:
+        - Code runs on MN or SNs
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_server_nodes
+{
+	my $class = shift;
+	my $callback = shift;
+	my $nodes = shift;
+
+	my @nodelist;
+	if ($nodes)
+    {
+        @nodelist = @$nodes;
+    }
+
+	#
+    # get the server name for each node - as known by node
+    #
+    my $noderestab  = xCAT::Table->new('noderes');
+    my $xcatmasters = $noderestab->getNodesAttribs(\@nodelist, ['node', 'xcatmaster']);
+	$noderestab->close;
+
+	my %servernodes;
+    foreach my $node (@nodelist)
+    {
+		my $serv;
+        if ($xcatmasters->{$node}->[0]->{xcatmaster})
+        {
+			# get ip of node xcatmaster attribute
+			my $xcatmaster = $xcatmasters->{$node}->[0]->{xcatmaster};			
+			$serv = inet_ntoa(inet_aton($xcatmaster));
+        }
+        else
+        {
+            #  get ip facing node
+			$serv = xCAT::Utils->getFacingIP($node);
+        }
+		chomp $serv;
+
+		if (xCAT::Utils->validate_ip($serv)) {
+			push (@{$servernodes{$serv}}, $node);
+		}
+    }
+
+	return \%servernodes;
+}
+
+
 1;
