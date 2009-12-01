@@ -157,19 +157,20 @@ sub preprocess_updatenode
         $rsp->{data}->[1] = "  updatenode [-h|--help|-v|--version]";
         $rsp->{data}->[2] = "or";
         $rsp->{data}->[3] =
-          "  updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] [-P|--scripts [script1,script2,...]] [-c|--cmdlineonly] [attr=val [attr=val...]]";
+          "  updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] [-P|--scripts \n\t\t[-s|--sn] [script1,script2,...]] [-c|--cmdlineonly] \n\t\t[attr=val [attr=val...]]";
         $rsp->{data}->[4] = "or";
         $rsp->{data}->[5] =
           "  updatenode <noderange> [-V|--verbose] [script1,script2,...]\n";
         $rsp->{data}->[6] = "     <noderange> is a list of nodes or groups.";
-        $rsp->{data}->[7] = "     -F|--sync: Perform File Syncing.";
-        $rsp->{data}->[8] = "     -S|--sw: Perform Software Maintenance.";
+        $rsp->{data}->[7] = "     [-F|--sync] Perform File Syncing.";
+        $rsp->{data}->[8] = "     [-S|--sw] Perform Software Maintenance.";
         $rsp->{data}->[9] =
-          "     -P|--scripts: Perform Postscripts listed in postscripts table or parameters.";
+          "     [-P|--scripts] Execute postscripts listed in the postscripts table or \n\tparameters.";
         $rsp->{data}->[10] =
-          "     [script1,script2,...] is a comma separated list of postscript names.";
-        $rsp->{data}->[11] =
-          "         If omitted, all the postscripts defined for the nodes will be run.";
+          "     [-c|--cmdlineonly] Only use AIX software maintenance information provided \n\ton the command line. (AIX only)";
+		$rsp->{data}->[11] = "     [-s|--sn] Set the server information stored on the nodes.";
+        $rsp->{data}->[12] = "     [script1,script2,...] A comma separated list of postscript names. \n\tIf omitted, all the postscripts defined for the nodes will be run.";
+		$rsp->{data}->[13] = "     [attr=val [attr=val...]]  Specifies one or more 'attribute equals value'\n\tpairs, separated by spaces. (AIX only)";
         $cb->($rsp);
     }
 
@@ -190,6 +191,7 @@ sub preprocess_updatenode
                     'V|verbose'   => \$::VERBOSE,
                     'F|sync'      => \$::FILESYNC,
                     'S|sw'        => \$::SWMAINTENANCE,
+					's|sn'        => \$::SETSERVER,
                     'P|scripts:s' => \$::RERUNPS
         )
       )
@@ -461,6 +463,7 @@ sub updatenode
                     'v|version'   => \$::VERSION,
                     'V|verbose'   => \$::VERBOSE,
                     'F|sync'      => \$::FILESYNC,
+					's|sn'		  => \$::SETSERVER,
                     'S|sw'        => \$::SWMAINTENANCE,
                     'P|scripts:s' => \$::RERUNPS
         )
@@ -701,21 +704,21 @@ sub updatenode
         if (scalar(@$AIXnodes))
         {    # we have AIX nodes
 
-
-# NEW
 			# need to pass the name of the server on the xcataixpost cmd line
-			#  - do all the nodes have the same server???? - they should
-			# - also we need the SN or the NIMprime as known by the node
 
-			$sn = xCAT::Utils->get_ServiceNode(\@$AIXnodes, "xcat", "Node");
-			foreach my $snkey (keys %$sn) {
-
-				my $nodes = $sn->{$snkey};
-				my $nodestring = join(',', @$nodes);
+			# get server names as known by the nodes
+			my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@$AIXnodes)};
+			# it's possible that the nodes could have diff server names
+			# do all the nodes for a particular server at once
+			foreach my $snkey (keys %servernodes) {
+				$nodestring = join(',', @{$servernodes{$snkey}});
             	my $cmd;
+				if ($::SETSERVER) {
+					$cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -M $snkey -c 1 $postscripts 2>&1";
+				} else {
 
-            	$cmd =
-              		"XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -m $snkey -c 1 $postscripts 2>&1";
+            		$cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -m $snkey -c 1 $postscripts 2>&1";
+				}
 
             	if (defined($::VERBOSE))
             	{
@@ -1308,6 +1311,7 @@ sub updateAIXsoftware
             #
             # install sw on nodes
             #
+			# $serv is the name of the nodes server as known by the node
             foreach my $serv (@servers)
             {
 
@@ -1569,3 +1573,4 @@ sub updateAIXsoftware
     }
     return 0;
 }
+
