@@ -57,7 +57,9 @@ unless ($useSocketSSL) {
 # Process the command line...
 #
 #  the -c means redo the copy of scripts from the server
-if (!GetOptions('copy|c' => \$::opt_c, 'm=s' => \$::opt_m))
+Getopt::Long::Configure("no_pass_through");
+$Getopt::Long::ignorecase = 0;
+if (!GetOptions('copy|c' => \$::opt_c, 'm=s' => \$::opt_m, 'M=s' => \$::opt_M))
 {    # Gather options
         exit 1;
 }
@@ -69,9 +71,8 @@ chomp $::shorthost;
 my $foundxcatinfo=0;
 my $servnode;
 
-# create new xcatinfo file if -m value is provided
-if ($::opt_m) {
-
+# create new xcatinfo file if -M value is provided
+if ($::opt_M) {
 	if(-f "/etc/xcatinfo") {
 		# backup the old file - or remove ???
 		my $cpcmd = "cp /etc/xcatinfo /etc/xcatinfo.orig 2>/dev/null";
@@ -84,7 +85,7 @@ if ($::opt_m) {
 	# put the new server in the file
 	my $xcatinfo="/etc/xcatinfo";
 	open(XCATINFO,">",$xcatinfo);
-	print XCATINFO "XCATSERVER=$::opt_m\n";
+	print XCATINFO "XCATSERVER=$::opt_M\n";
 	close(XCATINFO);
 }
 
@@ -122,14 +123,24 @@ if (!$foundxcatinfo) {
 		}
 	} else {
 		print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
-    	print $::LOG_FILE "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
+		print $::LOG_FILE "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
 	}
 }
 
+# do ping test on server and use -m value if provides
+my $pcmd = "ping -c 2 -w 2 $servnode";
+if (&runcmd($pcmd) != 0) {
+	$servnode = "";
+	if ($::opt_m) {
+		chomp $::opt_m;
+		$servnode = $::opt_m;
+	} 
+}
+
 unless ($servnode) {
-	print "$::sdate  xcataixpost: Could not determine server name.\n";
+    print "$::sdate  xcataixpost: Could not determine server name.\n";
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not determine server name.\n";
-	exit 0;
+    exit 0;
 }
 
 # if the /xcatpost dir has not been populated or the -c option is
