@@ -24,6 +24,8 @@ This command is used to create xCAT object definitions which are stored in the x
 
 Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. Use the help option to get a list of valid attributes for each object type.
 
+Note: when creating node object definitions, the 'groups' attribute is required.
+
 =item B<-d|--dynamic>
 
 Use the dynamic option to create dynamic node groups. This option must be used with -w option.
