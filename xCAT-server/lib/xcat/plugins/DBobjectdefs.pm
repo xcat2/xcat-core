@@ -1213,6 +1213,19 @@ sub defmk
             }
         }    # end - if group type
 
+        # If none of the attributes in nodelist is defined: groups,status,appstatus,primarysn,comments,disable
+        # the nodelist table will not be updated, caused mkdef failed.
+        # We give a restriction that the "groups" must be specified with mkdef.
+        if (($type eq "node") && !defined($::FINALATTRS{$obj}{groups}))
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
+            "Attribute \'groups\' is not specified for node \'$obj\', skipping to the next node.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            next;
+        }
+
         #
         #  Need special handling for node objects that have the
         #	groups attr set - may need to create group defs
@@ -1282,15 +1295,6 @@ sub defmk
             }
 
         }    # end - if type = node
-        # If none of the attributes in nodelist is defined: groups,status,appstatus,primarysn,comments,disable
-        # the nodelist table will not be updated, caused mkdef failed.
-        # We can give a restriction that the "groups" must be specified with mkdef,
-        # but it is not so reasonable especially when the dynamic node group feature is implemented.
-        # fixing this issue with specifying an empty "groups" if the "groups" is not specified with the command line or stanza file
-        if (($type eq "node") && !defined($::FINALATTRS{$obj}{groups}))
-        {
-            $::FINALATTRS{$obj}{groups} = '';
-        }
 
     } # end of each obj
 
