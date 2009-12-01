@@ -39,6 +39,7 @@ D=${CURDIR/\/src\/xcat-core/}
 REL=`basename $D`
 
 XCATCORE="xcat-core"
+svn up Version
 VER=`cat Version`
 if [ "$PROMOTE" = 1 ]; then
 	CORE="xcat-core"
