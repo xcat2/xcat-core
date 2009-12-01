@@ -633,42 +633,6 @@ sub initmysqldb
 
     }
 
-    # for Linux and AIX, insert  sql_mode=ANSI_QUOTES in the [mysqld] stanza
-    # of the /etc/my.cnf file,if it is not already there
-
-    $cmd = "fgrep ANSI_QUOTES /etc/my.cnf";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)
-    {
-        if ($::osname eq 'AIX')
-        {
-
-            $cmd =
-              "awk '{gsub(\"\\\\[mysqld]\",\"\\[mysqld]\\nsql_mode = ANSI_QUOTES \"); print}'   /etc/my.cnf > /etc/my.cnf.xcat";
-        }
-        else
-        {
-
-            # linux different, above gives warning
-            $cmd =
-              "awk '{gsub(\"\\\\[mysqld]\",\"[mysqld]\\nsql_mode = ANSI_QUOTES \"); print}'   /etc/my.cnf > /etc/my.cnf.xcat";
-        }
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-
-            xCAT::MsgUtils->message("E", " $cmd failed.");
-            exit(1);
-        }
-        $cmd = "cp -p  /etc/my.cnf.xcat  /etc/my.cnf";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-
-            xCAT::MsgUtils->message("E", " $cmd failed.");
-            exit(1);
-        }
-    }
 
     # for AIX, insert  datadir=/var/lib/mysql in the [mysqld] stanza
     # of the /etc/my.cnf file,if it is not already there
