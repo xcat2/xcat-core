@@ -5,9 +5,9 @@ B<xdcp> - Concurrently copies files to or from multiple nodes. In addition, prov
 =head1 B<SYNOPSIS>
 
 B<xdcp> I<noderange>  [[B<-f> I<fanout>]
-[B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>]
-[B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>]
-[B<-T>] [B<-v>] [B<-X> I<env_list>] sourcefile.... targetpath
+[B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>] [B<-p>]
+[B<-P>] [B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>]
+[B<-T>] [B<-v>] [B<-q>] [B<-X> I<env_list>] sourcefile.... targetpath
 
 B<xdcp> I<noderange>  [B<-F> I<rsync input file>] 
 
