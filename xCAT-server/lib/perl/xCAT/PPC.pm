@@ -18,6 +18,7 @@ use xCAT::DBobjUtils;
 use xCAT_monitoring::monitorctrl;
 use Thread qw(yield);
 
+
 ##########################################
 # Globals
 ##########################################
@@ -119,6 +120,21 @@ sub process_command {
     if ( exists( $request->{verbose} )) {
         $start = Time::HiRes::gettimeofday();
     }
+
+    #xCAT doesn't support direct attach by default
+    $request->{direct_attach_support} = 0;
+    #######################################
+    # Direct-attached FSP handler
+    #########################################
+    my $hwtype  = $request->{hwtype}; 
+    if ( $hwtype eq "fsp" or $hwtype eq "bpa") {
+	    my $direct_attach_support = check_direct_attach($request);
+	    if($direct_attach_support == 0 && 
+		   ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/)) {
+	     #direct-attached fsp commands: such as rpower and so on.
+	        $request->{direct_attach_support} = 1;
+            }
+    } 
 
     #######################################
     # Group nodes based on command
@@ -642,7 +658,7 @@ sub preprocess_nodes {
         and ($request->{command} !~ /^renergy$/)
         and (( $request->{command} =~ /^(rscan|rspconfig)$/ ) 
             or ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) 
-            or ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc'))
+            or ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc')) and ($request->{direct_attach_support} != 1)
        ) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
@@ -1104,6 +1120,31 @@ sub invoke_cmd {
     # Direct-attached FSP handler 
     ########################################
     if ( ($power ne "hmc") && ( $hwtype eq "fsp" or $hwtype eq "bpa")) {
+ 
+	    if($request->{direct_attach_support} == 1 ) { 
+   	        #  direct-attached fsp commands: such as rpower and so on. Using fsp-api.
+       	    
+	        ########################################
+	        #Process specific command
+	        #########################################
+            print "in invoke cmd node: $nodes\n";
+	        my $result = runcmd( $request, $nodes );
+            #print '------after runcmd----\n';
+            #print Dumper($result);
+	        my $r;
+	        foreach $r ( @$$result ) {
+	            my %output;
+	            $output{node}->[0]->{name}->[0] = @$r[0];
+                $output{node}->[0]->{data}->[0]->{contents}->[0] = @$r[1];
+                $output{errorcode} = @$r[2];
+                push @outhash, \%output;
+            }
+            my $out = $request->{pipe};
+	        print $out freeze( [@outhash] );
+            print $out "\nENDOFFREEZE6sK4ci\n";
+            return;
+    	}
+
         ####################################
         # Dynamically load FSP module
         ####################################
@@ -1605,5 +1646,26 @@ sub updconf_in_asm
 
     return ([0, undef, \@data]);
 }
+
+sub check_direct_attach
+{
+    my $request = shift;
+    
+    my $fsp_api = "/opt/xcat/sbin/fsp-api";
+    my $libfsp  = "/usr/lib/libfsp.a";
+#    my $libfsp  = "/opt/xcat/lib/libfsp.a";
+#    my $hw_svr  = "/opt/csm/csmbin/hdwr_svr";
+    
+    my $msg = ();
+#    if((-e $fsp_api) && (-x $fsp_api)&& (-e $libfsp) && (-e $hw_svr)) {
+    if((-e $fsp_api) && (-x $fsp_api)&& (-e $libfsp)) {
+    	return 0;
+    }
+    
+    return -1;
+}
+
+
+
 1;
 

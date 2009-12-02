@@ -169,8 +169,8 @@ sub parse_args {
    if(noderange_validate($request) == -1) {
           return(usage());
    }
-
-    send_msg($request, 1, "It may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting.");
+  
+   $request->{callback}->({data =>[ "It may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting."]});
 
 	####################################
   	# No operands - add command name 
@@ -247,15 +247,15 @@ sub noderange_validate {
             #my $t = print_var($exargs, "exargs");
             #print $t;
             if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
-                send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
-                send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
+		    #send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
+                #send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
                 return -1;
              }
         }
     }
 
     if($f1 * $f2) {
-        send_msg( $request, 1, "The argument noderange of rflash can't be BPA and CEC(or LPAR) at the same time");
+	    #send_msg( $request, 1, "The argument noderange of rflash can't be BPA and CEC(or LPAR) at the same time");
         return -1;
     }
 }
@@ -264,7 +264,7 @@ sub noderange_validate {
 sub preprocess_for_rflash {
 	my $request      = shift;
 	my $opt = shift;	
-
+        my $callback = $request->{callback}; 
  	my $packages_fw = "/install/packages_fw";
 	my $c = 0;
     my $packages_d;
@@ -279,8 +279,9 @@ sub preprocess_for_rflash {
 	if($packages_d ne $packages_fw ) {
 		$$opt{p} = $packages_fw;
 		if(! -d $packages_d) {
-                send_msg($request, 1, "The directory $packages_d doesn't exist!");
-	      		$request = ();
+			#send_msg($request, 1, "The directory $packages_d doesn't exist!");
+			$callback->({data=>["The directory $packages_d doesn't exist!"]});      
+			$request = ();
 	       		return -1;
         	}
 	
@@ -294,7 +295,8 @@ sub preprocess_for_rflash {
         	# Make sure we have some files to process
         	#
         	if( !scalar( @dirlist ) ) {
-                send_msg($request, 1, "The directory $packages_d is empty !");
+			#send_msg($request, 1, "The directory $packages_d is empty !");
+			$callback->({data=>["The directory $packages_d is empty !"]});
 	      		$request = ();
 	      		return -1;
         	}
@@ -303,7 +305,8 @@ sub preprocess_for_rflash {
         	my @rpmlist = grep /\.rpm$/, @dirlist;
 		my @xmllist = grep /\.xml$/, @dirlist;
 		if( @rpmlist == 0 | @xmllist == 0) {
-                send_msg($request, 1, "There isn't any rpm and xml files in the  directory $packages_d!");
+			#send_msg($request, 1, "There isn't any rpm and xml files in the  directory $packages_d!");
+	      		$callback->({data=>["There isn't any rpm and xml files in the  directory $packages_d!"]});
 	      		$request = ();
 	      		return -1;
 		}
@@ -317,8 +320,9 @@ sub preprocess_for_rflash {
 			xCAT::Utils->runcmd($cmd, 0);
 	                if ($::RUNCMD_RC != 0)
         	        {
-                            send_msg($request, 1, "Failed to remove the old packages in $packages_fw.");
-	      		            $request = ();
+				#send_msg($request, 1, "Failed to remove the old packages in $packages_fw.");
+				$callback->({data=>["Failed to remove the old packages in $packages_fw."]});
+				$request = ();
                       		return -1;
 
                 	}
@@ -328,7 +332,8 @@ sub preprocess_for_rflash {
    		xCAT::Utils->runcmd("$cmd", 0);
 		if ($::RUNCMD_RC != 0)
     		{
-                send_msg($request, 1, "$cmd failed.");
+			#send_msg($request, 1, "$cmd failed.");
+		        $callback->({data=>["$cmd failed."]});	
 	      		$request = ();
 	         	return;
 
@@ -338,7 +343,8 @@ sub preprocess_for_rflash {
    		xCAT::Utils->runcmd($cmd, 0);
 		if ($::RUNCMD_RC != 0)
     		{
-                send_msg($request, 1, "$cmd failed.");
+			#send_msg($request, 1, "$cmd failed.");
+			$callback->({data=>["$cmd failed."]});
 	      		$request = ();
 	         	return -1;
 
@@ -543,8 +549,8 @@ sub rflash {
     my @result;
     my $timeout    = $request->{ppctimeout};
 
-	$packages_dir = $request->{opt}->{p};
-	$activate = $request->{opt}->{activate};	
+    $packages_dir = $request->{opt}->{p};
+    $activate = $request->{opt}->{activate};	
 
 	my $hmc;
 	my $mtms;
@@ -587,7 +593,7 @@ sub rflash {
 		dpush(\@value,[$hmc, "mtms:$mtms"]);
 		$mtms_t = "$mtms_t $mtms";
         my $lflag = 0;
-		my $managed_system = $mtms;
+	my $managed_system = $mtms;
       	if( defined( $housekeeping ) ) {
             #$hmc_has_work = 1;
         	#$::work_flag = 1;
@@ -776,6 +782,7 @@ sub rflash {
 #  The above code isn't supported.
     
     my $cmd_hmc = "csmlicutil $tmp_file";
+#   my $cmd_hmc = "ls";
     print "before runxcmd, current_userid = $current_userid\n";
     my $res = xCAT::Utils->runxcmd(  {
                                      command => ['xdsh'],

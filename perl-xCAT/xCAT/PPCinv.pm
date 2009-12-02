@@ -5,6 +5,7 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
+use xCAT::Directinv;
 
 
 ##########################################
@@ -430,6 +431,11 @@ sub firmware {
     my $exp     = shift;
     my $hwtype  = @$exp[2];
     my @result;
+
+    if($request->{direct_attach_support} == 1) {
+	my $res  = xCAT::Directinv::firmware($request, $hash);
+	return( \$res );
+    }
 
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($name,$d) = each(%$h) ) {

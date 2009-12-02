@@ -13,10 +13,13 @@ sub handled_commands {
       rpower    => 'nodehm:power,mgt',
       reventlog => 'nodehm:mgt',
       rspconfig => 'nodehm:mgt',
-      mkhwconn    => 'nodehm:mgt',
-      rmhwconn    => 'nodehm:mgt',
-      lshwconn    => 'nodehm:mgt',
-      renergy   => 'nodehm:mgt'
+      mkhwconn  => 'nodehm:mgt',
+      rmhwconn  => 'nodehm:mgt',
+      lshwconn  => 'nodehm:mgt',
+      renergy   => 'nodehm:mgt' ,
+      rinv      => 'nodehm:mgt',
+      rflash    => 'nodehm:mgt'
+
   };
 }
 
