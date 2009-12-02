@@ -83,7 +83,7 @@ sub requestMacAddresses {
     my $complete = 0;
     my $updatesneeded;
     srand(); #Re-seed the rng.  This will make the mac address generation less deterministic
-    while (not $complete) {
+    while (not $complete and scalar @$neededmacs) {
         foreach $node (@$neededmacs) {
             my $nicdata = $tablecfg->{vm}->{$node}->[0]->{nics};
             unless ($nicdata) { $nicdata = "" }

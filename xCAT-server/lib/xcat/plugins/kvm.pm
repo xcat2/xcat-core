@@ -25,6 +25,7 @@ my $imgfmt='raw'; #use raw format by default
 my $clonemethod='qemu-img'; #use qemu-img command
 my %vm_comm_pids;
 my %offlinehyps;
+my %hypstats;
 my %offlinevms;
 my @destblacklist;
 my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
@@ -423,21 +424,26 @@ sub pick_target {
         if ($_ eq $currhyp) { next; } #skip current node
         if ($offlinehyps{$_}) { next }; #skip already offlined nodes
         if (grep { "$_" eq $cand } @destblacklist) { next; } #skip blacklisted destinations
-        if (not nodesockopen($_,22)) { $offlinehyps{$_}=1; next; } #skip unusable destinations
-            eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
-                $targconn = Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1&netcat=nc");
-            };
-            unless ($targconn) {
+        if (defined $hypstats{$_}->{freememory}) {
+            $currentfreememory=$hypstats{$_}->{freememory}
+        } else {
+            if (not nodesockopen($_,22)) { $offlinehyps{$_}=1; next; } #skip unusable destinations
                 eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
-                    $targconn = Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1");
+                    $targconn = Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1&netcat=nc");
                 };
+                unless ($targconn) {
+                    eval {  #Sys::Virt has bugs that cause it to die out in weird ways some times, contain it here
+                        $targconn = Sys::Virt->new(uri=>"qemu+ssh://root@".$_."/system?no_tty=1");
+                    };
+                }
+            unless ($targconn) { next; } #skip unreachable destinations
+            $currentfreememory=$targconn->get_node_info()->{memory};
+            foreach ($targconn->list_domains()) {
+                if ($_->get_name() eq 'Domain-0') { next; } #Dom0 memory usage is elastic, we are interested in HVM DomU memory, which is inelastic
+    
+                $currentfreememory -= $_->get_info()->{memory};
             }
-        unless ($targconn) { next; } #skip unreachable destinations
-        $currentfreememory=$targconn->get_node_info()->{memory};
-        foreach ($targconn->list_domains()) {
-            if ($_->get_name() eq 'Domain-0') { next; } #Dom0 memory usage is elastic, we are interested in HVM DomU memory, which is inelastic
-
-            $currentfreememory -= $_->get_info()->{memory};
+            $hypstats{$cand}->{freememory}=$currentfreememory;
         }
         if ($addmemory and $addmemory->{$_}) {
             $currentfreememory -= $addmemory->{$_};
@@ -699,6 +705,10 @@ sub createstorage {
         }
         my $rc;
         if ($clonemethod eq 'qemu-img') {
+            my $dirn;
+            my $filn;
+            ($filn,$dirn) = fileparse($filename);
+            chdir($dirn);
             $rc=system("qemu-img create -f qcow2 -b $mastername $filename");
         } elsif ($clonemethod eq 'reflink') {
             if ($storageserver) {
@@ -950,6 +960,7 @@ sub process_request {
      exit 0;
   };
   %offlinehyps=();
+  %hypstats=();
   %offlinevms=();
   my $request = shift;
   my $callback = shift;
