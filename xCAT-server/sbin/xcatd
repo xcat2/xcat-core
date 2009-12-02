@@ -1254,7 +1254,7 @@ sub becomeuser {
         return undef;
     }
     $passent=$passent->{password};
-    if ($passent =~ /^\$1\$.*\$/) { #MD5 hash, calculate before comparison
+    if ($passent =~ /^\$(2a|1)\$.*\$/) { #MD5 or Blowfish hash, calculate before comparison
         $pass = crypt($pass,$passent);
     } #Not bothering with old DES method, for now assume plaintext if not set
     if ($pass eq $passent) {
