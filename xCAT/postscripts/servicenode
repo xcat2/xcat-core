@@ -162,24 +162,31 @@ sub setupAIXsn
         `logger -t xcat $msg`;
     }
 
-    # get the xCAT credentials from the server
+	# get the xCAT credentials from the server
 	&getcreds;
 
+	# Add the xcatd subsystem to the AIX
+	my $mkssys_cmd = 'mkssys -p /opt/xcat/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a "-f"';
+	if (&runcmd($mkssys_cmd) != 0) {
+		$msg = "$::sdate servicenode: Could not create subsystem for xcatd. It maybe already have been added.\n";
+		`logger -t xcat $msg`;
+	}
+
 	# start xcatd
-	if (&runcmd("/opt/xcat/sbin/xcatd &") != 0) {
+	if (&runcmd("/opt/xcat/sbin/restartxcatd") != 0) {
 		$msg = "$::sdate servicenode: Could not start xcatd.\n";
-        `logger -t xcat $msg`;
-    }
+        	`logger -t xcat $msg`;
+    	}
 
 	# add xcatd to /etc/inittab???
-	my $mkitab_cmd = 'mkitab "xcatd:2:once:/opt/xcat/sbin/xcatd > /dev/console 2>&1"';
+	my $mkitab_cmd = 'mkitab "xcatd:2:once:/opt/xcat/sbin/restartxcatd > /dev/console 2>&1"';
 
 	if (&runcmd($mkitab_cmd) != 0) {
 		# error might just mean that the entry is already there!
 
 	#	$msg = "$::sdate servicenode: Could not add xcatd to /etc/inittab.\n";
-    #    `logger -t xcat $msg`;
-    }
+	#    `logger -t xcat $msg`;
+	}
 
 	# set ulimit - so we can copy over large files - like spot
 	if (&runcmd("/usr/bin/chuser fsize=-1 root") != 0) {

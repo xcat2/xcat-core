@@ -849,7 +849,7 @@ sub mysqlreboot
             }
 
             $cmd =
-              "awk '{gsub(\"xcatd:2:once:/opt/xcat/sbin/xcatd > /dev/console 2>&1\",\"mysql:2:once:/usr/local/mysql/bin/mysqld_safe --user=mysql \\& \\nxcatd:2:once:/opt/xcat/sbin/xcatd > /dev/console 2>\\&1\"); print}' /etc/inittab > /etc/inittab.xcat";
+              "awk '{gsub(\"xcatd:2:once:/opt/xcat/sbin/restartxcatd > /dev/console 2>&1\",\"mysql:2:once:/usr/local/mysql/bin/mysqld_safe --user=mysql \\& \\nxcatd:2:once:/opt/xcat/sbin/restartxcatd > /dev/console 2>\\&1\"); print}' /etc/inittab > /etc/inittab.xcat";
 
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -1522,7 +1522,7 @@ sub restorexcatdb
     my $xcmd;
     if ($::osname eq 'AIX')
     {
-        $xcmd = "$::XCATROOT/sbin/xcatstart";
+        $xcmd = "$::XCATROOT/sbin/restartxcatd";
 
     }
     else

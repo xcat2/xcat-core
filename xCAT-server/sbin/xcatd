@@ -511,6 +511,9 @@ sub plugin_reaper {
 }
 
 $SIG{CHLD} = \&generic_reaper;
+
+my $pid_UDP;
+my $pid_MON;
 $SIG{TERM} = $SIG{INT} = sub { 
    printf("Asked to quit...\n"); 
    $quit++;
@@ -520,20 +523,30 @@ $SIG{TERM} = $SIG{INT} = sub {
    foreach (keys %plugin_children) {
       kill 2, $_;
    }
+   if ($pid_UDP) {
+      kill 2, $pid_UDP;
+   }
+   if ($pid_MON) {
+      kill 2, $pid_MON;
+   }
+   xCAT::Table::shut_dbworker;
+   if ($dbmaster) {
+      kill 2, $dbmaster;
+   }
    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 5 second grace period"; };
    alarm(2);
    };
   
-my $pid = xCAT::Utils->xfork;
-defined $pid or die "Unable to fork for UDP/TCP";
-unless ($pid) {
+$pid_UDP = xCAT::Utils->xfork;
+defined $pid_UDP or die "Unable to fork for UDP/TCP";
+unless ($pid_UDP) {
   $$progname="xcatd: UDP listener";
   do_udp_service;
   xexit(0);
 }
-$pid = xCAT::Utils->xfork;
-defined $pid or die "Unable to fork installmonitor";
-unless ($pid) {
+$pid_MON = xCAT::Utils->xfork;
+defined $pid_MON or die "Unable to fork installmonitor";
+unless ($pid_MON) {
   $$progname="xcatd: install monitor";
   do_installm_service;
   xexit(0);
@@ -556,7 +569,12 @@ if ($inet6support) {
 }
 
 unless ($listener) {
-  kill 2, $pid;
+  kill 2, $pid_UDP;
+  kill 2, $pid_MON;
+  xCAT::Table::shut_dbworker;
+  if ($dbmaster) {
+     kill 2, $dbmaster;
+  }
    xCAT::MsgUtils->message("S","xCAT service unable to open SSL services on $port: $!");
   closelog();
   die "ERROR:Unable to start xCAT service on port $port.";

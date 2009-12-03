@@ -258,10 +258,18 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
         
 	&setupAIXIPMITool;
 
+        # Add the xcatd subsystem to the AIX
+        no strict 'refs';
+        my $mkssys_cmd = "mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a \"-f\"";
+        system($mkssys_cmd);
+        use strict;
+
         # for AIX systems add xcatd to the /etc/inittab file
+        my $rmitab_cmd = "rmitab xcatd";
+        system($rmitab_cmd);
         my $mkitab_cmd =
-          'mkitab "xcatd:2:once:/opt/xcat/sbin/xcatd > /dev/console 2>&1" > /dev/null 2>&1';
-        my $rc = system($mkitab_cmd);    # may already be there no error check
+          "mkitab \"xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1\" > /dev/null 2>&1";
+        my $rc = system($mkitab_cmd);
 
         # add AIX needed exports
         &setupAIXexports;
@@ -319,15 +327,13 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     my $xcmd;
     if ($::osname eq 'AIX')
     {
-        $xcmd = "$::XCATROOT/sbin/xcatstart";
-
+        $xcmd = "$::XCATROOT/sbin/restartxcatd";
     }
     else
     {
         $xcmd = "/etc/init.d/xcatd restart";
     }
     system($xcmd);
-
 }
 
 # more - Linux-only config

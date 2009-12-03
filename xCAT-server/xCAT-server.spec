@@ -71,8 +71,6 @@ chmod -h 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 cp -h bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod -h 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 %endif
-ln -sf ../sbin/stopstartxcatd $RPM_BUILD_ROOT/%{prefix}/sbin/xcatstart
-ln -sf ../sbin/stopstartxcatd $RPM_BUILD_ROOT/%{prefix}/sbin/xcatstop
 #cp rc.d/* $RPM_BUILD_ROOT/%{prefix}/rc.d
 #chmod 755 $RPM_BUILD_ROOT/%{prefix}/rc.d/*
 
@@ -97,6 +95,7 @@ set -x
 
 # For now, don't ship these plugins - to avoid AIX dependency.
 %ifnos linux
+rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 #rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
@@ -186,7 +185,8 @@ fi
 if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
     #migration issue for monitoring
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d 
-    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/xcatstart -r
+
+    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
 fi  
 %endif
 
