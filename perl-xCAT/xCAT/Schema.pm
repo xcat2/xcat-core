@@ -597,8 +597,8 @@ site => {
    "  timezone:\t(e.g. America/New_York)\n\n".
    "  tftpdir:\ttftp directory path. Default is /tftpdir\n\n".
    "  useSSHonAIX:\t(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
-   "  rsh:\tpath to remote shell command for xdsh. Default is /usr/bin/ssh.\n\n".
-   "  rcp:\tpath to remote copy command for xdcp. Default is /usr/bin/scp.\n\n".
+   "  rsh:\tThis is no longer used. path to remote shell command for xdsh. Default is /usr/bin/ssh.\n\n".
+   "  rcp:\tThis is no longer used. path to remote copy command for xdcp. Default is /usr/bin/scp.\n\n".
    "  SNsyncfiledir:\tThe directory on the Service Node, where xdcp will copy the files from the MN that will eventually be copied to the compute nodes. Default is /var/xcat/syncfiles.\n\n".
    "  snmpc:\tThe snmp community string that xcat should use when communicating with the switches.\n\n".
    "  svloglocal:\tsyslog on the service node does not get forwarded to the mgmt node - default is 0.\n\n".
