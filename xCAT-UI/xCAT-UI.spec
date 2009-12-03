@@ -19,7 +19,7 @@ Provides: xCAT-UI = %{version}
 
 %ifos linux
 # httpd is provided by apache2 on SLES and httpd on RHEL
-Requires: httpd
+Requires: httpd mod_php_any  php
 # we also require php4-session on SLES, but this does not exist on RHEL, so do not know how to do the Require
 %endif
 
