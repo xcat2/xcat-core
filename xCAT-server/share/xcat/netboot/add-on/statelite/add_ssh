@@ -1,0 +1,78 @@
+#!/bin/sh
+
+function usage {
+	echo
+	echo "Usage: $MYNAME netboot_rootdir "
+	echo
+	echo "e.g."
+	echo
+	echo "$MYNAME /install/netboot/fedora8/x86_64/compute/rootimg "
+	echo
+}
+
+case "$#" in
+	1)
+		ROOTDIR=$1
+		;;
+	*)
+		usage >&2
+		exit 1
+		;;
+esac
+
+if [ -z "$XCATROOT" ]
+then
+	echo "${MYNAME}: XCATROOT no defined" >&2
+	exit 1
+fi
+
+if [ ! -d $ROOTDIR ]
+then
+	echo "${MYNAME}: root image $ROOTDIR does not exist" >&2
+	exit 1
+fi
+
+if [ -r $ROOTDIR/etc/ssh/sshd_config ]
+then
+	cp $ROOTDIR/etc/ssh/sshd_config $ROOTDIR/etc/ssh/sshd_config.ORIG
+	sed -i 's/^X11Forwarding .*$/X11Forwarding yes/' $ROOTDIR/etc/ssh/sshd_config
+	sed -i 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' $ROOTDIR/etc/ssh/sshd_config
+	sed -i 's/\(.*MaxStartups.*\)/#\1/' $ROOTDIR/etc/ssh/sshd_config
+	echo "MaxStartups 1024" >>$ROOTDIR/etc/ssh/sshd_config
+fi
+
+if [ -r $ROOTDIR/etc/ssh/sshd_config ]
+then
+   echo "   StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+fi
+
+if [ -d /install/postscripts/_ssh ]
+then
+	echo "setup root .ssh"
+	# this gets the authorized key
+	cd /install/postscripts/_ssh
+	mkdir -p $ROOTDIR/root/.ssh
+	cp -f * $ROOTDIR/root/.ssh
+	cd - >/dev/null
+	chmod 700 $ROOTDIR/root/.ssh
+	chmod 600 $ROOTDIR/root/.ssh/*
+fi
+
+# now we put node specific things in here...
+cp /etc/xcat/hostkeys/ssh_host_dsa_key $ROOTDIR/etc/ssh/
+chmod 600 $ROOTDIR/etc/ssh/ssh_host_dsa_key
+cp /etc/xcat/hostkeys/ssh_host_rsa_key $ROOTDIR/etc/ssh/
+chmod 600 $ROOTDIR/etc/ssh/ssh_host_rsa_key
+
+mkdir -p $ROOTDIR/root/.ssh/
+cp /root/.ssh/id_rsa $ROOTDIR/root/.ssh/id_rsa
+chmod 600 $ROOTDIR/root/.ssh/id_rsa
+cp /root/.ssh/id_rsa.pub $ROOTDIR/root/.ssh/id_rsa.pub
+chmod 644 $ROOTDIR/root/.ssh/id_rsa.pub
+cp /root/.ssh/config $ROOTDIR/root/.ssh/config
+chmod 600 $ROOTDIR/root/.ssh/config
+
+#chroot $ROOTDIR ssh-keygen -y -f /root/.ssh/id_rsa >/root/.ssh/id_rsa.pub
+
+
+

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+function usage {
+	echo
+	echo "Usage: $MYNAME netboot_rootdir "
+	echo
+	echo "e.g."
+	echo
+	echo "$MYNAME /install/netboot/fedora8/x86_64/compute/rootimg "
+	echo
+}
+
+case "$#" in
+	1)
+		ROOTDIR=$1
+		;;
+	*)
+		usage >&2
+		exit 1
+		;;
+esac
+
+if [ -z "$XCATROOT" ]
+then
+	echo "${MYNAME}: XCATROOT no defined" >&2
+	exit 1
+fi
+
+if [ ! -d $ROOTDIR ]
+then
+	echo "${MYNAME}: root image $ROOTDIR does not exist" >&2
+	exit 1
+fi
+
+# now we put node specific things in here...
+cp /etc/passwd $ROOTDIR/etc/
+cp /etc/group $ROOTDIR/etc/
+cp /etc/shadow $ROOTDIR/etc/
