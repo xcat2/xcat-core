@@ -15,8 +15,9 @@ B<xdsh> I<noderange>  [B<-K>] [B<-l>  I<userID>]
 
 B<xdsh> [B<-i> I<image path>] I<command_list>
 
-B<xdsh> [B<-h> | B<-V> | B<-q>]
+B<xdsh> I<servicenoderange>  [B<-c>] 
 
+B<xdsh> [B<-h> | B<-V> | B<-q>]
 
 =head1 B<DESCRIPTION>
 
@@ -175,6 +176,15 @@ running commands, are terminated (SIGTERM).
 
 =over 5
 
+
+=item B<-c>|B<--cleanup>
+
+This flag will have xdsh remove all files from the subdirectories of the
+the directory on the Service Node, where xdcp will copy the files from the
+ MN that will eventually be copied to the compute nodes as defined in the
+site table SNsyncfiledir attribute.  Default is /var/xcat/syncfiles.
+This is usually used when this directory has grown too large or is in an 
+error state.   
 
 =item B<-e>|B<--execute>
 
@@ -500,13 +510,19 @@ on the service node fedora9 diskless image, enter:
 
 B<xdsh> I<-i /install/netboot/fedora9/x86_64/service/rootimg "rpm -qa | grep xCAT">
 
-
 =item *
 
 To run on AIX, the xdsh command "lslpp -l | grep bos"  
 on the NIM 611dskls spot, enter:
 
 B<xdsh> I<-i /install/nim/spot/611dskls "/usr/bin/lslpp -l | grep bos">
+
+=item *
+
+To cleanup the servicenode directory that stages the copy of files to the
+nodes, enter:  
+
+B<xdsh> <servicenoderange -c >  
 
 =back
 
