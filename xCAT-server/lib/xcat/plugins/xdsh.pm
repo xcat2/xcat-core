@@ -54,20 +54,28 @@ sub handled_commands
 #-------------------------------------------------------
 sub preprocess_request
 {
-    my $req = shift;
-    my $cb  = shift;
+    my $req     = shift;
+    my $cb      = shift;
+    my $sub_req = shift;
     my %sn;
     my $sn;
-    my $command = $req->{command}->[0];    # xdsh vs xdcp
+    my $rc = 0;
 
     #if already preprocessed, go straight to request
-    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    if (   (defined($req->{_xcatpreprocessed}))
+        && ($req->{_xcatpreprocessed}->[0] == 1))
+    {
+        return [$req];
+    }
+    my $command = $req->{command}->[0];    # xdsh vs xdcp
     my $nodes   = $req->{node};
     my $service = "xcat";
     my @requests;
-    my $syncsn = 0;
-    my $syncsnfile;
-    my $dcppull = 0;
+    $::tmpsyncsnfile = "/tmp/xcatrf.tmp";
+    $::RUNCMD_RC     = 0;
+    @::good_SN;
+    @::bad_SN;
+    my $syncsn = 0;                        # sync service node only if 1
 
     # read the environment variables for rsync setup
     foreach my $envar (@{$req->{env}})
@@ -80,46 +88,57 @@ sub preprocess_request
         }
         if ($var eq "DSH_RSYNC_FILE")    # from -F flag
         {    # if hierarchy,need to copy file to the SN
-            $syncsnfile = $value;    # in the new /tmp/xcatrf.tmp
+            $::syncsnfile = $value;    # in the new /tmp/xcatrf.tmp
         }
-        if ($var eq "DCP_PULL")    # from -P flag
-        {   
-            $dcppull = 1;    # TBD  handle pull hierarchy  
+        if ($var eq "DCP_PULL")        # from -P flag
+        {
+            $::dcppull = 1;            # TBD  handle pull hierarchy
         }
     }
 
-    # find service nodes for requested nodes
-    # build an individual request for each service node
-    # find out the names for the Management Node
-    my @MNnodeinfo    = xCAT::Utils->determinehostname;
-    my $MNnodename    = pop @MNnodeinfo;                  # hostname
-    my @MNnodeipaddr  = @MNnodeinfo;                      # ipaddresses
-    my $mnname        = $MNnodeipaddr[0];
-    my $tmpsyncsnfile = "/tmp/xcatrf.tmp";
-    my $SNpath;
-
-    my $synfiledir = "/var/xcat/syncfiles";               # default
+    # there are nodes in the xdsh command, not xdsh  to an image
     if ($nodes)
     {
+
+        # find service nodes for requested nodes
+        # build an individual request for each service node
+        # find out the names for the Management Node
+        my @MNnodeinfo   = xCAT::Utils->determinehostname;
+        my $MNnodename   = pop @MNnodeinfo;                  # hostname
+        my @MNnodeipaddr = @MNnodeinfo;                      # ipaddresses
+        $::mnname = $MNnodeipaddr[0];
+        $::SNpath;    # syncfile path on the service node
         $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
         my @snodes;
         my @snoderange;
 
         # check to see if service nodes and not just the MN
+        # if just MN, then no hierarchy to deal with
         if ($sn)
         {
             foreach my $snkey (keys %$sn)
             {
                 if (!grep(/$snkey/, @MNnodeipaddr))
-                {    # if not the MN
+                {     # if not the MN
                     push @snodes, $snkey;
                     $snoderange[0] .= "$snkey,";
+                    chop $snoderange[0];
 
                 }
             }
+        }
 
-            if (@snodes)
+        # if servicenodes and if xdcp and not pull function
+        # send command to service nodes first and process errors
+        # return an array  of good service nodes
+        #
+        if (@snodes)    # service nodes
+        {
+
+            # if xdcp and not pull function
+            if (($command eq "xdcp") && ($::dcppull == 0))
             {
+                my $synfiledir;
 
                 # get the directory on the servicenode to put the  files in
                 my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
@@ -127,133 +146,63 @@ sub preprocess_request
                 {
                     $synfiledir = $syndir[0];
                 }
-
-                # if -F command and service nodes first need to rsync the SN
-                if ($syncsnfile)
-                {
-
-                    #change noderange to the service nodes
-                    my $addreq;
-                    chop $snoderange[0];
-                    $addreq->{'_xcatdest'}  = $mnname;
-                    $addreq->{node}         = \@snodes;
-                    $addreq->{noderange}    = \@snoderange;
-                    $addreq->{arg}->[0]     = "-s";
-                    $addreq->{arg}->[1]     = "-F";
-                    $addreq->{arg}->[2]     = $syncsnfile;
-                    $addreq->{command}->[0] = $req->{command}->[0];
-                    $addreq->{cwd}->[0]     = $req->{cwd}->[0];
-                    push @requests, $addreq;
-
-                    # need to add to the queue to copy rsync file( -F input)
-                    # to the service node  to the /tmp/xcatrf.tmp file
-                    my $addreq;
-                    $addreq->{'_xcatdest'}  = $mnname;
-                    $addreq->{node}         = \@snodes;
-                    $addreq->{noderange}    = \@snoderange;
-                    $addreq->{arg}->[0]     = $syncsnfile;
-                    $addreq->{arg}->[1]     = $tmpsyncsnfile;
-                    $addreq->{command}->[0] = $req->{command}->[0];
-                    $addreq->{cwd}->[0]     = $req->{cwd}->[0];
-                    push @requests, $addreq;
-                }
                 else
                 {
+                    $synfiledir = "/var/xcat/syncfiles";    # default
+                }
 
-                    # if other xdcp command
-                    # mk the diretory on the SN to hold the files
-                    # to be sent to the CN.
-                    # build a command to update the service nodes
-                    # change the destination to the tmp location on
-                    # the service node, if not pull function 
-                    if (($command eq "xdcp") && ($dcppull == 0))
-                    {
+                # setup the service node with the files to xdcp to the
+                # compute nodes
+                $rc =
+                  &process_servicenodes($req, $cb, $sub_req, \@snodes,
+                                        \@snoderange, $synfiledir);
 
-                        #make the needed directory on the service node
-                        # create new directory for path on Service Node
-                        my $frompath = $req->{arg}->[-2];
-                        $SNpath = $synfiledir;
-                        $SNpath .= $frompath;
-                        my $SNdir;
-                        $SNdir = dirname($SNpath); # get directory
-                        my $addreq= dclone($req);
-                        $addreq->{'_xcatdest'}  = $mnname;
-                        $addreq->{node}         = \@snodes;
-                        $addreq->{noderange}    = \@snoderange;
-                        $addreq->{arg}->[0]     = "mkdir ";
-                        $addreq->{arg}->[1]     = "-p ";
-                        $addreq->{arg}->[2]     = $SNdir;
-                        $addreq->{command}->[0] = "xdsh";
-                        $addreq->{cwd}->[0]     = $req->{cwd}->[0];
-                        push @requests, $addreq;
-
-                        # now sync file to the service node to the new
-                        # tmp path
-                        my $addreq = dclone($req);
-                        $addreq->{'_xcatdest'} = $mnname;
-                        chop $snoderange[0];
-                        $addreq->{node}      = \@snodes;
-                        $addreq->{noderange} = \@snoderange;
-                        $addreq->{arg}->[-1] = $SNdir;
-                        push @requests, $addreq;
-
-                    }
+                # fatal error need to stop
+                if ($rc != 0)
+                {
+                    return;
                 }
             }
-        }    # end if SN
+            else
+            {    # command is xdsh or xdcp pull
+                @::good_SN = @snodes;    # all good service nodes for now
+            }
 
-        # if not only syncing the service nodes ( -s flag)
-        # for each node build the
-        # the command, to sync from the service node
-        if ($syncsn == 0)
-        {    #syncing nodes ( no -s flag)
+        }
+        else
+        {                                # no servicenodes, no hierarchy
+                                         # process here on the MN
+            &process_request($req, $cb, $sub_req);
+            return;
+
+        }
+
+        # if  hierarchical work still to do
+        # Note there may still be a mix of nodes that are service from
+        # the MN and nodes that are serviced from the SN, for example
+        # a dsh to a list of servicenodes and nodes in the noderange.
+
+        if ($syncsn == 0)    # not just syncing (-s) the service nodes
+                             # taken care of in process_servicenodes
+
+        {
             foreach my $snkey (keys %$sn)
             {
 
+                # if it is not being service by the MN
                 if (!grep(/$snkey/, @MNnodeipaddr))
-                {    # entries run from the Service Node
+                {
 
-                    # if the -F option to sync the nodes
-                    # then for a Service Node
-                    # change the command to use the -F /tmp/xcatrf.tmp
-                    # because that is where the file was put on the SN
-                    #
-                    my $newSNreq = dclone($req);
-                    if ($syncsnfile)    # -F option
+                    # if it is a good SN, one ready to service the nodes
+                    if (grep(/$snkey/, @::good_SN))
                     {
-                        my $args = $newSNreq->{arg};
+                        my $noderequests = &process_nodes($req, $sn, $snkey);
+                        push @requests, $noderequests;    # build request queue
 
-                        my $i = 0;
-                        foreach my $argument (@$args)
-                        {
-
-                            # find the -F and change the name of the
-                            # file in the next array entry to the tmp file
-                            if ($argument eq "-F")
-                            {
-                                $i++;
-                                $newSNreq->{arg}->[$i] = $tmpsyncsnfile;
-                                last;
-                            }
-                            $i++;
-                        }
                     }
-                    else
-                    {    # if other dcp command, change from directory
-                            # to be the tmp directory on the service node
-                         # if not pull (-P) funcion
-                        if (($command eq "xdcp") && ($dcppull == 0))
-                        {
-                            $newSNreq->{arg}->[-2] = $SNpath;
-                        }
-                    }
-                    $newSNreq->{node}                   = $sn->{$snkey};
-                    $newSNreq->{'_xcatdest'}            = $snkey;
-                    $newSNreq->{_xcatpreprocessed}->[0] = 1;
-                    push @requests, $newSNreq;
                 }
-                else
-                {           # just run normal dsh dcp
+                else    # serviced by the MN, then
+                {       # just run normal dsh dcp
                     my $reqcopy = {%$req};
                     $reqcopy->{node}                   = $sn->{$snkey};
                     $reqcopy->{'_xcatdest'}            = $snkey;
@@ -262,14 +211,294 @@ sub preprocess_request
 
                 }
             }    # end foreach
-        }    # end syncing only service nodes
-
+        }    # end syncing  nodes
     }
-    else
-    {        # running local on image
+    else     # no nodes on the command
+    {        # running on local image
         return [$req];
     }
     return \@requests;
+}
+
+#-------------------------------------------------------
+
+=head3  process_servicenodes
+  Build the xdcp command to send to the service nodes first 
+  Return an array of servicenodes that do not have errors 
+  Returns error code:
+  if  = 0,  good return continue to process the
+	  nodes.
+  if  = 1,  global error need to quit
+
+=cut
+
+#-------------------------------------------------------
+sub process_servicenodes
+{
+
+    my $req        = shift;
+    my $callback   = shift;
+    my $sub_req    = shift;
+    my $sn         = shift;
+    my $snrange    = shift;
+    my $synfiledir = shift;
+    my @snodes     = @$sn;
+    my @snoderange = @$snrange;
+    my $args;
+    $::RUNCMD_RC = 0;
+    my $cmd = $req->{command}->[0];
+
+    # if xdcp -F command (input $syncsnfile) and service nodes first need
+    #   to be rsync to the
+    #  $synfiledir  directory
+    if ($::syncsnfile)
+    {
+        if (!-f $::syncsnfile)
+        {    # syncfile does not exist,  quit
+            my $rsp = {};
+            $rsp->{data}->[0] = "File:$::syncsnfile does not exist.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return (1);    # process no service nodes
+        }
+
+        # xdcp sync to the service node first
+        #change noderange to the service nodes
+        # sync each one and check for error
+        # if error do not add to good_SN array, add to bad_SN
+        foreach my $node (@snodes)
+        {
+
+            # run the command to each servicenode
+            # xdcp <sn> -s -F <syncfile>
+            my @sn = ();
+            push @sn, $node;
+
+            # don't use runxcmd, because can go straight to process_request,
+            # these are all service nodes. Also servicenode is taken from
+            # the noderes table and may not be the same name as in the nodelist
+            # table, for example may be an ip address.
+            # here on the MN
+            my $addreq;
+            $addreq->{'_xcatdest'}  = $::mnname;
+            $addreq->{node}         = \@sn;
+            $addreq->{noderange}    = \@sn;
+            $addreq->{arg}->[0]     = "-s";
+            $addreq->{arg}->[1]     = "-F";
+            $addreq->{arg}->[2]     = $::syncsnfile;
+            $addreq->{command}->[0] = $cmd;
+            $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+            $addreq->{env}          = $req->{env};
+            &process_request($addreq, $callback, $sub_req);
+
+            if ($::FAILED_NODES == 0)
+            {
+                push @::good_SN, $node;
+            }
+            else
+            {
+                push @::bad_SN, $node;
+            }
+        }    # end foreach good servicenode
+
+        # for all the service nodes that are still good
+        # need to xdcp rsync file( -F input)
+        # to the service node  to the /tmp/xcatrf.tmp file
+        my @good_SN2 = @::good_SN;
+        @::good_SN = ();
+        foreach my $node (@good_SN2)
+        {
+            my @sn = ();
+            push @sn, $node;
+
+            # run the command to each good servicenode
+            # xdcp <sn> <syncfile> <tmp/xcatrf.tmp>
+            my $addreq;
+            $addreq->{'_xcatdest'}  = $::mnname;
+            $addreq->{node}         = \@sn;
+            $addreq->{noderange}    = \@sn;
+            $addreq->{arg}->[0]     = "$::syncsnfile";
+            $addreq->{arg}->[1]     = "$::tmpsyncsnfile";
+            $addreq->{command}->[0] = $cmd;
+            $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+            $addreq->{env}          = $req->{env};
+            &process_request($addreq, $callback, $sub_req);
+
+            if ($::FAILED_NODES == 0)
+            {
+                push @::good_SN, $node;
+            }
+            else
+            {
+                push @::bad_SN, $node;
+            }
+
+        }    # end foreach good service node
+    }    # end  xdcp -F
+    else
+    {
+
+        # if other xdcp commands, and not pull function
+        # mk the directory on the SN to hold the files
+        # to be sent to the SN.
+        # build a command to update the service nodes
+        # change the destination to the tmp location on
+        # the service node
+        # hierarchical support for pull (TBD)
+
+        #make the needed directory on the service node
+        # create new directory for path on Service Node
+        # xdsh  <sn> mkdir -p $SNdir
+        my $frompath = $req->{arg}->[-2];
+        $::SNpath = $synfiledir;
+        $::SNpath .= $frompath;
+        my $SNdir;
+        $SNdir = dirname($::SNpath);    # get directory
+
+        foreach my $node (@snodes)
+        {
+            my @sn = ();
+            push @sn, $node;
+
+            # run the command to each servicenode
+            # to make the directory under the temporary
+            # SNsyncfiledir to hold the files that will be
+            # sent to the service nodes
+            # xdsh <sn> mkdir -p <SNsyncfiledir>/$::SNpath
+            my $addreq;
+            $addreq->{'_xcatdest'}  = $::mnname;
+            $addreq->{node}         = \@sn;
+            $addreq->{noderange}    = \@sn;
+            $addreq->{arg}->[0]     = "mkdir ";
+            $addreq->{arg}->[1]     = "-p ";
+            $addreq->{arg}->[2]     = $SNdir;
+            $addreq->{command}->[0] = 'xdsh';
+            $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+            $addreq->{env}          = $req->{env};
+            &process_request($addreq, $callback, $sub_req);
+
+            if ($::FAILED_NODES == 0)
+            {
+                push @::good_SN, $node;
+            }
+            else
+            {
+                push @::bad_SN, $node;
+            }
+        }    # end foreach good servicenode
+
+        # now xdcp file to the service node to the new
+        # tmp path
+
+        # for all the service nodes that are still good
+        my @good_SN2 = @::good_SN;
+        @::good_SN = ();
+        foreach my $node (@good_SN2)
+        {
+            my @sn;
+            push @sn, $node;
+
+            # copy the file to each good servicenode
+            # xdcp <sn> <file> <SNsyncfiledir/../file>
+            my $addreq = dclone($req);    # get original request
+            $addreq->{arg}->[-1] = $SNdir;    # change to tmppath on servicenode
+            $addreq->{'_xcatdest'} = $::mnname;
+            $addreq->{node}        = \@sn;
+            $addreq->{noderange}   = \@sn;
+            &process_request($addreq, $callback, $sub_req);
+
+            if ($::FAILED_NODES == 0)
+            {
+                push @::good_SN, $node;
+            }
+            else
+            {
+                push @::bad_SN, $node;
+            }
+
+        }    # end foreach good service node
+    }
+
+    # report bad service nodes]
+    if (@::bad_SN)
+    {
+        my $rsp = {};
+        my $badnodes;
+        foreach my $badnode (@::bad_SN)
+        {
+            $badnodes .= $badnode;
+            $badnodes .= ", ";
+        }
+        chop $badnodes;
+        my $msg =
+          "\nThe following servicenodes: $badnodes have errors and cannot be updated\n Until the error is fixed, xdcp will not work to nodes serviced by these service nodes. Run xdsh <servicenode,...> -c ,  to clean up the xdcp servicenode directory, and run the command again.";
+        $rsp->{data}->[0] = $msg;
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
+    return (0);
+}
+
+#-------------------------------------------------------
+
+=head3  process_nodes
+
+  Build the  request to send to the nodes, serviced by SN 
+  Return the request 
+
+=cut
+
+#-------------------------------------------------------
+sub process_nodes
+{
+
+    my $req     = shift;
+    my $sn      = shift;
+    my $snkey   = shift;
+    my $command = $req->{command}->[0];
+    my @requests;
+
+    # if the -F option to sync the nodes
+    # then for a Node
+    # change the command to use the -F /tmp/xcatrf.tmp
+    # because that is where the file was put on the SN
+    #
+    my $newSNreq = dclone($req);
+    if ($::syncsnfile)    # -F option
+    {
+        my $args = $newSNreq->{arg};
+
+        my $i = 0;
+        foreach my $argument (@$args)
+        {
+
+            # find the -F and change the name of the
+            # file in the next array entry to the tmp file
+            if ($argument eq "-F")
+            {
+                $i++;
+                $newSNreq->{arg}->[$i] = $::tmpsyncsnfile;
+                last;
+            }
+            $i++;
+        }
+    }
+    else
+    {    # if other dcp command, change from directory
+            # to be the site.SNsyncfiledir
+            #	directory on the service node
+            # if not pull (-P) pullfunction
+            # xdsh and xdcp pull just use the input request
+        if (($command eq "xdcp") && ($::dcppull == 0))
+        {
+            $newSNreq->{arg}->[-2] = $::SNpath;
+        }
+    }
+    $newSNreq->{node}                   = $sn->{$snkey};
+    $newSNreq->{'_xcatdest'}            = $snkey;
+    $newSNreq->{_xcatpreprocessed}->[0] = 1;
+
+    #push @requests, $newSNreq;
+
+    return $newSNreq;
 }
 
 #-------------------------------------------------------
@@ -286,11 +515,14 @@ sub process_request
 
     my $request  = shift;
     my $callback = shift;
-    my $nodes    = $request->{node};
-    my $command  = $request->{command}->[0];
-    my $args     = $request->{arg};
-    my $envs     = $request->{env};
-    my $rsp      = {};
+    my $sub_req  = shift;
+
+    my $nodes   = $request->{node};
+    my $command = $request->{command}->[0];
+    my $args    = $request->{arg};
+    my $envs    = $request->{env};
+    my $rsp     = {};
+
     # get the Environment Variables and set them in the current environment
     foreach my $envar (@{$request->{env}})
     {
@@ -333,35 +565,41 @@ sub xdsh
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
 
-    $::FAILED_NODES=0;
+    $::FAILED_NODES = 0;
+
     # parse dsh input, will return $::NUMBER_NODES_FAILED
     my @local_results =
       xCAT::DSHCLI->parse_and_run_dsh($nodes,   $args, $callback,
                                       $command, $noderange);
-    #print $local_results[0];
-    #print "\n";
-    #`echo $local_results[0] >> /tmp/lissa/testxdsh`;
-    my $maxlines=10000;
-    my $arraylen=@local_results;
-    my $rsp = {};
-    my $i=0;
+
+    my $maxlines = 10000;
+    my $arraylen = @local_results;
+    my $rsp      = {};
+    my $i        = 0;
     my $j;
-    while ($i < $arraylen) {
-      for ($j = 0 ; $j < $maxlines ; $j++) { 
-         if ($i > $arraylen) {
-          last;
-         } else {
-           $rsp->{data}->[$j]= $local_results[$i]; # send  max lines
-         }
-         $i++
-      }
-      xCAT::MsgUtils->message("D", $rsp, $callback);
+    while ($i < $arraylen)
+    {
+
+        for ($j = 0 ; $j < $maxlines ; $j++)
+        {
+            if ($i > $arraylen)
+            {
+                last;
+            }
+            else
+            {
+                $rsp->{data}->[$j] = $local_results[$i];    # send  max lines
+            }
+            $i++;
+        }
+        xCAT::MsgUtils->message("D", $rsp, $callback);
     }
+
     # set return code
     $rsp = {};
-    $rsp->{errorcode}= $::FAILED_NODES;
+    $rsp->{errorcode} = $::FAILED_NODES;
     $callback->($rsp);
-    return();
+    return;
 }
 
 #-------------------------------------------------------
@@ -378,6 +616,8 @@ sub xdcp
 {
     my ($nodes, $args, $callback, $command, $noderange) = @_;
 
+    $::FAILED_NODES = 0;
+
     #`touch /tmp/lissadebug`;
     # parse dcp input
     my @local_results =
@@ -386,17 +626,25 @@ sub xdcp
     my $rsp = {};
     my $i   = 0;
     ##  process return data
-    foreach my $line (@local_results)
+    if (@local_results)
     {
-        $rsp->{data}->[$i] = $line;
-        $i++;
-    }
+        foreach my $line (@local_results)
+        {
+            $rsp->{data}->[$i] = $line;
+            $i++;
+        }
 
-    xCAT::MsgUtils->message("D", $rsp, $callback);
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
     if (-e "/tmp/xcatrf.tmp")
     {    # used tmp file for -F option
             #`rm /tmp/xcatrf.tmp`;
     }
+
+    # set return code
+    $rsp = {};
+    $rsp->{errorcode} = $::FAILED_NODES;
+    $callback->($rsp);
     return;
 }
 
