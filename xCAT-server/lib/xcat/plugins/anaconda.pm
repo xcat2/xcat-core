@@ -19,8 +19,6 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
-use xCAT::Common;
-
 #use strict;
 my @cpiopid;
 
@@ -53,8 +51,6 @@ my %distnames = (
                  "1210111941.792844" => "fedora9",
                  "1227147467.285093" => "fedora10",
                  "1227142402.812888" => "fedora10",
-                 "1243981097.897160" => "fedora11", #x86_64 DVD ISO
-                 "1257725234.740991" => "fedora12", #x86_64 DVD ISO
                  "1194512200.047708" => "rhas4.6",
                  "1194512327.501046" => "rhas4.6",
                  );
@@ -69,6 +65,8 @@ sub handled_commands
             copycd    => "anaconda",
             mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)",
             mkinstall => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)",
+            mkstatelite => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)",
+	
             };
 }
 
@@ -149,7 +147,8 @@ sub process_request
     {
         return mkinstall($request, $callback, $doreq);
     }
-    elsif ($request->{command}->[0] eq 'mknetboot')
+    elsif ($request->{command}->[0] eq 'mknetboot' or 
+	$request->{command}->[0] eq 'mkstatelite')
     {
         return mknetboot($request, $callback, $doreq);
     }
@@ -161,6 +160,10 @@ sub mknetboot
     my $req      = shift;
     my $callback = shift;
     my $doreq    = shift;
+    my $statelite = 0;
+    if($req->{command}->[0] =~ 'mkstatelite'){
+        $statelite = "true";
+    }
     my $tftpdir  = "/tftpboot";
     my $nodes    = @{$req->{node}};
     my @args     = @{$req->{arg}};
@@ -201,7 +204,7 @@ sub mknetboot
         my $rootimgdir;
 
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
-        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot')) {
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    my $imagename=$ent->{provmethod};
 	    #print "imagename=$imagename\n";
 	    if (!exists($img_hash{$imagename})) {
@@ -267,11 +270,13 @@ sub mknetboot
         {
             $suffix = 'nfs';
         }
+	#statelite images are not packed.  
         unless (
                 (
                     -r "$rootimgdir/rootimg.gz"
                  or -r "$rootimgdir/rootimg.sfs"
                  or -r "$rootimgdir/rootimg.nfs"
+		 or $statelite
                 )
                 and -r "$rootimgdir/kernel"
                 and -r "$rootimgdir/initrd.gz"
@@ -294,19 +299,18 @@ sub mknetboot
 
         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
 
+        #TODO: only copy if newer...
         unless ($donetftp{$osver,$arch,$profile}) {
-                eval {
-                        if (-f "$rootimgdir/hypervisor") {
-                                xCAT::Common::copy_if_newer("$rootimgdir/hypervisor",
-                                "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-                                $xenstyle=1;
-                        }
-                        xCAT::Common::copy_if_newer("$rootimgdir/kernel",
-                             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-                        xCAT::Common::copy_if_newer("$rootimgdir/initrd.gz",
-                             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-                            $donetftp{$osver,$arch,$profile} = 1;
-                };
+	if (-f "$rootimgdir/hypervisor") {
+        	copy("$rootimgdir/hypervisor",
+             	"/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+		$xenstyle=1;
+	}
+        copy("$rootimgdir/kernel",
+             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+        copy("$rootimgdir/initrd.gz",
+             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            $donetftp{$osver,$arch,$profile} = 1;
         }
         unless (    -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel"
                 and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd.gz")
@@ -374,6 +378,10 @@ sub mknetboot
             $kcmdline =
               "imgurl=nfs://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg ";
         }
+	elsif($statelite){
+		$kcmdline = 
+		"NFSROOT=$imgsrv:/install/netboot/$osver/$arch/$profile SNAPSHOT= ";	
+	}
         else
         {
             $kcmdline =
@@ -656,21 +664,8 @@ sub mkinstall
             unless ($doneimgs{"$os|$arch"})
             {
                 mkpath("/tftpboot/xcat/$os/$arch");
-                eval {
-                        xCAT::Common::copy_if_newer($kernpath,"$tftpdir/xcat/$os/$arch");
-                        xCAT::Common::copy_if_newer($initrdpath,"$tftpdir/xcat/$os/$arch/initrd.img");
-                };
-
-                if ($@) {
-                        $callback->(
-                                {
-                                  error => ["copying pxe files failed: $@"],
-                                  errorcode => [1],
-                                }
-                                );
-                        next;
-                }
-
+                copy($kernpath,"$tftpdir/xcat/$os/$arch");
+                copy($initrdpath,"$tftpdir/xcat/$os/$arch/initrd.img");
                 $doneimgs{"$os|$arch"} = 1;
             }
 
@@ -876,13 +871,6 @@ sub copycd
         unless ($distname)
         {
             $distname = "rhels5";
-        }
-    }
-    elsif ($desc =~ /^Red Hat Enterprise Linux 6\.0$/)
-    {
-        unless ($distname)
-        {
-            $distname = "rhel6";
         }
     }
 
