@@ -50,16 +50,23 @@ my $check_num;
 # Check whether the xcatd subsystem has been created
 $cmd = "/usr/bin/lssrc -s xcatd | grep \"xcatd Subsystem is not on file\"";
 @output = `$cmd`;
-if (@output) {
-    xCAT::MsgUtils->message("E", "Cannot find the xcatd subsystem on the Management Node.\n");
-    exit 1;
+if (scalar(@output)) {
+    # create the subsystem if it does not exist
+    $cmd = "mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a \"-f\"";
+    $rc = system($cmd);
+    if ($rc >> 8) {
+        xCAT::MsgUtils->message("E", "Cannot create the xcatd subsystem.\n");
+        exit 1;
+    }
 }
 
 # Check the current status of xcatd subsystem
 $cmd = "lssrc -s xcatd | grep 'xcatd' | grep 'inoperative'";
 @output = `$cmd`;
 if (scalar(@output)) {
-    xCAT::MsgUtils->message("I", "xcatd subsystem in inoperative status.\n");
+    if ($::VERBOSE) {
+        xCAT::MsgUtils->message("I", "xcatd subsystem in inoperative status.\n");
+    }
     $inoperative = 1;
 }
 
@@ -117,7 +124,9 @@ if ($inoperative) {
         xCAT::MsgUtils->message("E", "Cannot stop the xcatd subsystem correctly.\n");
         exit 1;
     } else {
-        xCAT::MsgUtils->message("I", "Stoped the xcatd subsystem.\n");
+        if ($::VERBOSE) {
+            xCAT::MsgUtils->message("I", "Stopped the xcatd subsystem.\n");
+        }
     }
 }
 
@@ -160,7 +169,9 @@ if ($check_num <= 0) {
     xCAT::MsgUtils->message("E", "Cannot start the xcatd subsystem correctly.\n");
     exit 1;
 } else {
-    xCAT::MsgUtils->message("I", "Started the xcatd susbsystem.\n");
+    if ($::VERBOSE) {
+        xCAT::MsgUtils->message("I", "Started the xcatd subsystem.\n");
+    }
 }
 
 exit 0;
@@ -175,13 +186,12 @@ exit 0;
 
 #-----------------------------------------------------------------------------
 
-my $usagemsg = "restartxcatd [-h|-v|-r]\n";
 
 sub parse_args
 {
     my ($cmd) = @_;
-    my $msg;
-    my $usagemsg;
+    my $usagemsg = "restartxcatd [[-h|--help] | [-v|--version] | [-r|--reload]] [-V|--verbose]\n";
+
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
@@ -189,8 +199,8 @@ sub parse_args
         !GetOptions(
             'h|help'    => \$::HELP,
             'r|reload'  => \$::RELOAD,
-            'v|version' => \$::VERSION
-
+            'v|version' => \$::VERSION,
+            'V|verbose' => \$::VERBOSE
         )
       )
     {
