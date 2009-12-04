@@ -11,6 +11,7 @@ use xCAT::NodeRange;
 use Sys::Hostname;
 use Socket;
 use xCAT::Utils;
+use xCAT::InstUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT_monitoring::rmcmetrix;
@@ -1174,29 +1175,32 @@ sub addNodes {
     #this is remore case
     reportError("Configuring the following nodes. It may take a while.\n$nr", $callback);
     my $cmd;
-    #use 2 here to tell xcataixpost that there is only one postscript, download only it. It applies to AIX only     
-    if (xCAT::Utils->isLinux()) {
-      $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost 2 configrmcnode 2>&1";
-      print "$cmd\n";
+    my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@normal_nodes)};
+    # it's possible that the nodes could have diff server names
+    # do all the nodes for a particular server at once
+    foreach my $snkey (keys %servernodes) {
+	my $nr = join(',', @{$servernodes{$snkey}});
+	my $cmd;
+	if (xCAT::Utils->isLinux()) {
+	    $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost -m $snkey configrmcnode 2>&1";
+	    print "$cmd\n";
+	}
+	else {
+	    #use -c 2 here to tell xcataixpost that there is only one postscript, download only it. It applies to AIX only     
+	    $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost -m $snkey -c 2 configrmcnode 2>&1";
+	}
+	if (! open (CMD, "$cmd |")) {
+	    reportError("Cannot run command $cmd", $callback);
+	} else {
+	    while (<CMD>) {
+		chomp;
+		my $rsp={};
+		$rsp->{data}->[0]="$_";
+		$callback->($rsp);
+	    }
+	    close(CMD);
+	}
     }
-    else {
-      $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost -c 2 configrmcnode 2>&1";
-    }
-    if (! open (CMD, "$cmd |")) {
-      reportError("Cannot run command $cmd", $callback);
-    } else {
-      while (<CMD>) {
-	chomp;
-        my $rsp={};
-        $rsp->{data}->[0]="$_";
-        $callback->($rsp);
-      }
-      close(CMD);
-    }
-    #$result=`XCATBYPASS=Y $::XCATROOT/bin/updatenode $nr configrmcnode 2>&1`;
-    #if ($?) {
-    #  reportError($result, $callback);
-    #}		   
   }
 
   return (0, "ok"); 

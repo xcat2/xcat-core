@@ -10,6 +10,36 @@
 #      node deployment  --> xcatdsklspost
 #
 #####################################################
+download_postscripts()
+{
+    server=$1
+    if [ -z $server ]; then
+	return 1;
+    fi
+
+    max_retries=5
+    retry=0
+    rc=1 
+    while [ 0 -eq 0 ]; do
+	wget -l inf -N -r --waitretry=10 --random-wait -T 60 ftp://$server/postscripts 2> /tmp/wget.log
+        rc=$?
+        
+	if [ $rc -eq 0 ]; then
+	    return 0;
+        fi
+
+	retry=$(($retry+1))
+	if [ $retry -eq $max_retries ]; then
+            break
+	fi
+
+	let sli=$RANDOM%20
+	sleep $sli
+    done
+    return $rc
+}
+
+
 if [ ! `uname` == Linux ]; then
    MYDIR=`dirname $0`
    exec $MYDIR/xcatdsklspost.aix
@@ -18,31 +48,71 @@ fi
 let SLI=$RANDOM%10
 sleep $SLI
 
-#setup $OSVER ,for SLES11
-if [ -e '/etc/SuSE-release' ]; then
-   OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
-fi
+mkdir -p /xcatpost; 
+mkdir -p /tmp/postage
+rm -R -f /xcatpost/*
+rm -R -f /tmp/postage/*
 
-SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
-if [ -z "$SIPS" ]; then
-    SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
-fi
+#here we get all the postscripts.  Please do not change this behaviour because some scripts depend on others
+cd /tmp/postage
 
-SIP=`echo $SIPS|awk '{printf $NF}' | tail -n 1` #Pick one for wget
-
+downloaded=0;
 #open the xcatinfo file to look for the master if it is not set
-frominfofile=0
-if [ -z $SIP ]; then
-    if [ -f /opt/xcat/xcatinfo ]; then
-	SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
-	frominfofile=1
-    fi   
+if [ -f /opt/xcat/xcatinfo ]; then
+    SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+    if [ -n "$SIP" ]; then
+	download_postscripts $SIP
+	if [ $? -eq 0 ]; then 
+	    downloaded=1
+	fi
+    fi
+fi   
+
+argnum=$#;
+#try the -m if it is specified, -m is passed in the updatenode command
+if [ $downloaded -eq 0 ]; then
+   #get the -m
+    while [ $# -gt 0 ]
+    do
+	case "$1" in
+	    -m) SIP="$2"; break;;
+	    -M) SIP="$2"; new_ms=$SIP;  break;;
+	esac
+	shift
+    done
+    if [ -n "$SIP" ]; then
+	download_postscripts $SIP
+	if [ $? -eq 0 ]; then 
+	    downloaded=1
+	fi
+    fi
+fi 
+
+
+#try the dhcp server, this is used for initial boot for the node.
+if [ $downloaded -eq 0 ]; then
+  #setup $OSVER ,for SLES11
+    if [ -e '/etc/SuSE-release' ]; then
+	OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
+    fi
+    SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
+    if [ -z "$SIPS" ]; then
+	SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
+    fi
+    SIP=`echo $SIPS|awk '{printf $NF}' | tail -n 1` #Pick one for wget
+    if [ -n "$SIP" ]; then
+	download_postscripts $SIP
+	if [ $? -eq 0 ]; then 
+	    downloaded=1
+	fi
+    fi
 fi
 
-#no hope, now let's get out here.
-if [ -z $SIP ]; then
+
+#no hope, now let's get out of here.
+if [ $downloaded -eq 0 ]; then
     hn=`hostname`
-    echo "Cannot find the xCAT server for node $hn"
+    echo "Cannot download the postscripts from the xCAT server for node $hn"
     exit  
 fi
 
@@ -56,21 +126,10 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
 fi
 
 
-if [ -x /usr/bin/openssl ]; then
-     XCATSERVER="$SIP:3001"
-     export XCATSERVER
-     USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
-     export USEOPENSSLFORXCAT
-fi
-mkdir -p /xcatpost; 
-mkdir -p /tmp/postage
-rm -R -f /xcatpost/*
-rm -R -f /tmp/postage/*
+#wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
 
-#here we get all the postscripts.  Please do not change this behaviour because some scripts depend on others
-cd /tmp/postage
-#wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/install/postscripts 2> /tmp/wget.log
-wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
+
+
 #mv $SIP/install/postscripts/* /xcatpost; 
 mv $SIP/postscripts/* /xcatpost; 
 rm -rf $SIP
@@ -79,6 +138,16 @@ PATH=/xcatpost:$PATH
 export PATH
 chmod +x /xcatpost/*;
 #echo "PATH=$PATH" 
+
+
+if [ -x /usr/bin/openssl ]; then
+     XCATSERVER="$SIP:3001"
+     export XCATSERVER
+     USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+     export USEOPENSSLFORXCAT
+fi
+
+
 /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
 MYCONT=`grep MASTER /tmp/mypostscript`
 #echo "MYCONT=$MYCONT"
@@ -112,29 +181,34 @@ while [ -z "$MYCONT" ]; do
 #    echo "MYCONT=$MYCONT"
 done
 
-#save the SIP into the xcatinfo file
-if [ $frominfofile -eq 0 ]; then
+#save the MASTER into the xcatinfo file for node deployment case, 
+#for updatenode case, only save it when -M is specified
+if [ $argnum -eq 0 ]; then
+    new_ms=`grep '^MASTER' /tmp/mypostscript |cut -d= -f2`
+fi
+if [ -n "$new_ms" ]; then
     if [ ! -f /opt/xcat/xcatinfo ]; then
 	mkdir -p /opt/xcat
-        touch /opt/xcat/xcatinfo
+	touch /opt/xcat/xcatinfo
     fi
     grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
     if [ $? -eq 0 ]; then
-	sed -i "s/XCATSERVER=.*/XCATSERVER=$SIP/" /opt/xcat/xcatinfo
+	sed -i "s/XCATSERVER=.*/XCATSERVER=$new_ms/" /opt/xcat/xcatinfo
     else
-	echo "XCATSERVER=$SIP" >> /opt/xcat/xcatinfo
+	echo "XCATSERVER=$new_ms" >> /opt/xcat/xcatinfo
     fi
-fi    
+fi
+    
 
 # when called by the updatenode command
 #modify the UPDATENODE flag to 1 
-if [ $# -gt 0 ]; then
+if [ $argnum -gt 0 ]; then
   TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /tmp/mypostscript`;
   echo "$TMP" > /tmp/mypostscript;
 fi
 
-if [ $# -gt 1 ]; then
-  POSTS=$2
+if [ $argnum -gt 2 ]; then
+  POSTS=$3
   #remove all the postscripts
   TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
   echo "$TMP" > /tmp/mypostscript
@@ -173,8 +247,7 @@ run_ps () {
 " > /tmp/mypostscript
 echo "$TMP" >> /tmp/mypostscript
 
-
-if [ $# -eq 0 ]; then
+if [ $argnum -eq 0 ]; then
   #notify the server that we are done with netbooting
   CNS=`grep NODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
@@ -192,7 +265,7 @@ fi
 #rm -f /tmp/mypostscript
 
 #tell user it is done when this is called by updatenode command
-if [ $# -gt 0 ]; then
+if [ $argnum -gt 0 ]; then
   echo "returned from postscript"
 fi
 

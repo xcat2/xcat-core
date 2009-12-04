@@ -591,41 +591,55 @@ sub updatenode
         if (scalar(@$Linuxnodes))
         {    # we have a list of linux nodes
             my $cmd;
-            my $nodestring = join(',', @$Linuxnodes);
-            $cmd =
-              "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost 2 otherpkgs 2>&1";
+ 	    # get server names as known by the nodes
+	    my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes)};
+	    # it's possible that the nodes could have diff server names
+	    # do all the nodes for a particular server at once
+	    foreach my $snkey (keys %servernodes) {
+		my $nodestring = join(',', @{$servernodes{$snkey}});
+            	my $cmd;
+		if ($::SETSERVER) {
+		    $cmd =
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost -M $snkey otherpkgs 2>&1";
 
-            if (defined($::VERBOSE))
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "  Internal call command: $cmd";
-                $callback->($rsp);
-            }
+		} else {
+		    
+		    $cmd =
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost -m $snkey otherpkgs 2>&1";
+		}
 
-            if ($cmd && !open(CMD, "$cmd |"))
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "Cannot run command $cmd";
-                $callback->($rsp);
-            }
-            else
-            {
-                while (<CMD>)
-                {
-                    my $rsp    = {};
-                    my $output = $_;
-                    chomp($output);
-                    $output =~ s/\\cM//;
-                    if ($output =~ /returned from postscript/)
-                    {
-                        $output =~
-                          s/returned from postscript/Running of Software Maintenance has completed./;
-                    }
-                    $rsp->{data}->[0] = "$output";
-                    $callback->($rsp);
-                }
-                close(CMD);
-            }
+		if (defined($::VERBOSE))
+		{
+		    my $rsp = {};
+		    $rsp->{data}->[0] = "  Internal call command: $cmd";
+		    $callback->($rsp);
+		}
+		
+		if ($cmd && !open(CMD, "$cmd |"))
+		{
+		    my $rsp = {};
+		    $rsp->{data}->[0] = "Cannot run command $cmd";
+		    $callback->($rsp);
+		}
+		else
+		{
+		    while (<CMD>)
+		    {
+			my $rsp    = {};
+			my $output = $_;
+			chomp($output);
+			$output =~ s/\\cM//;
+			if ($output =~ /returned from postscript/)
+			{
+			    $output =~
+				s/returned from postscript/Running of Software Maintenance has completed./;
+			}
+			$rsp->{data}->[0] = "$output";
+			$callback->($rsp);
+		    }
+		    close(CMD);
+		}
+	    }
 
         }
 
@@ -664,94 +678,109 @@ sub updatenode
         if (scalar(@$Linuxnodes))
         {    # we have Linux nodes
             my $cmd;
-            my $nodestring = join(',', @$Linuxnodes);
-            $cmd =
-              "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost 1 $postscripts 2>&1";
+	    # get server names as known by the nodes
+	    my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes)};
+	    # it's possible that the nodes could have diff server names
+	    # do all the nodes for a particular server at once
+	    foreach my $snkey (keys %servernodes) {
+		my $nodestring = join(',', @{$servernodes{$snkey}});
+            	my $cmd;
+		if ($::SETSERVER) {
+		    $cmd =
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost -M $snkey $postscripts 2>&1";
 
-            if (defined($::VERBOSE))
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "  Internal call command: $cmd";
-                $callback->($rsp);
-            }
+		} else {
+		    
+		    $cmd =
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost -m $snkey $postscripts 2>&1";
+		}
+		
 
-            if (!open(CMD, "$cmd |"))
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "Cannot run command $cmd";
-                $callback->($rsp);
-            }
-            else
-            {
-                while (<CMD>)
-                {
-                    my $rsp    = {};
-                    my $output = $_;
-                    chomp($output);
-                    $output =~ s/\\cM//;
-                    if ($output =~ /returned from postscript/)
-                    {
-                        $output =~
-                          s/returned from postscript/Running of postscripts has completed./;
-                    }
-                    $rsp->{data}->[0] = "$output";
-                    $callback->($rsp);
-                }
-                close(CMD);
-            }
+		if (defined($::VERBOSE))
+		{
+		    my $rsp = {};
+		    $rsp->{data}->[0] = "  Internal call command: $cmd";
+		    $callback->($rsp);
+		}
+		
+		if (!open(CMD, "$cmd |"))
+		{
+		    my $rsp = {};
+		    $rsp->{data}->[0] = "Cannot run command $cmd";
+		    $callback->($rsp);
+		}
+		else
+		{
+		    while (<CMD>)
+		    {
+			my $rsp    = {};
+			my $output = $_;
+			chomp($output);
+			$output =~ s/\\cM//;
+			if ($output =~ /returned from postscript/)
+			{
+			    $output =~
+				s/returned from postscript/Running of postscripts has completed./;
+			}
+			$rsp->{data}->[0] = "$output";
+			$callback->($rsp);
+		    }
+		    close(CMD);
+		}
+	    }
         }
 
         if (scalar(@$AIXnodes))
         {    # we have AIX nodes
 
-			# need to pass the name of the server on the xcataixpost cmd line
-
-			# get server names as known by the nodes
-			my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@$AIXnodes)};
-			# it's possible that the nodes could have diff server names
-			# do all the nodes for a particular server at once
-			foreach my $snkey (keys %servernodes) {
-				$nodestring = join(',', @{$servernodes{$snkey}});
+	    # need to pass the name of the server on the xcataixpost cmd line
+	    
+	    # get server names as known by the nodes
+	    my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@$AIXnodes)};
+	    # it's possible that the nodes could have diff server names
+	    # do all the nodes for a particular server at once
+	    foreach my $snkey (keys %servernodes) {
+		$nodestring = join(',', @{$servernodes{$snkey}});
             	my $cmd;
-				if ($::SETSERVER) {
-					$cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -M $snkey -c 1 $postscripts 2>&1";
-				} else {
-
-            		$cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -m $snkey -c 1 $postscripts 2>&1";
-				}
-
+		if ($::SETSERVER) {
+		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -M $snkey -c 1 $postscripts 2>&1";
+		} else {
+		    
+		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -m $snkey -c 1 $postscripts 2>&1";
+		}
+		
             	if (defined($::VERBOSE))
             	{
-                	my $rsp = {};
-                	$rsp->{data}->[0] = "  Internal call command: $cmd";
-                	$callback->($rsp);
+		    my $rsp = {};
+		    $rsp->{data}->[0] = "  Internal call command: $cmd";
+		    $callback->($rsp);
             	}
-
+		
             	if (!open(CMD, "$cmd |"))
             	{
-                	my $rsp = {};
-                	$rsp->{data}->[0] = "Cannot run command $cmd";
-                	$callback->($rsp);
+		    my $rsp = {};
+		    $rsp->{data}->[0] = "Cannot run command $cmd";
+		    $callback->($rsp);
             	}
             	else
             	{
-                	while (<CMD>)
-                	{
+		    while (<CMD>)
+		    {
                     	my $rsp    = {};
                     	my $output = $_;
                     	chomp($output);
                     	$output =~ s/\\cM//;
                     	if ($output =~ /returned from postscript/)
                     	{
-                        	$output =~
-                          		s/returned from postscript/Running of postscripts has completed./;
+			    $output =~
+				s/returned from postscript/Running of postscripts has completed./;
                     	}
                     	$rsp->{data}->[0] = "$output";
                     	$callback->($rsp);
-                	}
-                	close(CMD);
+		    }
+		    close(CMD);
             	}
-			}
+	    }
         }
     }
 
