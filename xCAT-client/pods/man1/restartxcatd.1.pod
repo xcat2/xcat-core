@@ -1,0 +1,45 @@
+=head1 NAME
+
+B<restartxcatd> - Restart the xCAT daemon (xcatd) on AIX.
+
+=head1 SYNOPSIS
+
+B<restartxcatd> [[B<-h>|B<--help>] | [B<-v>|B<--version>] | [B<-r>|B<--reload>]] [B<-V>|B<--verbose>]
+
+
+=head1 DESCRIPTION
+
+The B<restartxcatd> command restarts the xCAT daemon (xcatd) on AIX.  
+It uses the startsrc and stopsrc commands to do the restart work. If the xcatd subsystem was not created, B<restartxcatd> will create it automatically.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Command Version.
+
+B<-r>          On a Service Node, services will not be restarted.
+
+B<-V>          Display the verbose messages.
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. To restart the xCAT daemon, enter:
+
+B<restartxcatd>
+
+
+
+=head1 FILES
+
+/opt/xcat/sbin/restartxcatd
+
+
