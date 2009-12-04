@@ -11,6 +11,7 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use File::Basename;
 use Cwd;
+use Socket;
 
 #use Data::Dumper;
 use Getopt::Long;
@@ -87,7 +88,7 @@ else
     @ARGV = @SaveARGV;                   # noderange removed for parsing
     if ($bname eq "xdsh")
     {
-        &parse_args_xdsh;
+        &parse_args_xdsh($cmdref->{noderange}->[0]);
     }
     else
     {                                    # xdcp
@@ -140,14 +141,6 @@ if (!($::TIMEOUT))
     {
         push(@{$cmdref->{env}}, "DSH_TIMEOUT=$ENV{'DSH_TIMEOUT'}");
 
-    }
-}
-if (!($::CONTEXT_SET))
-{
-
-    if ($ENV{'DSH_CONTEXT'})
-    {
-        push(@{$cmdref->{env}}, "DSH_CONTEXT=$ENV{'DSH_CONTEXT'}");
     }
 }
 if ($ENV{'DSH_REMOTE_PASSWORD'})
@@ -204,7 +197,7 @@ exit $xCAT::Client::EXITCODE;
 #-----------------------------------------------------------------------------
 sub parse_args_xdsh
 {
-
+    my $snodes = shift;
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
@@ -225,7 +218,7 @@ sub parse_args_xdsh
             'v|verify'                 => \$options{'verify'},
             'z|exit-status'            => \$options{'exit-status'},
             'B|bypass'                 => \$options{'bypass'},
-            'C|context=s'              => \$options{'context'},
+            'c|cleanup'                => \$options{'cleanup'},
             'E|environment=s'          => \$options{'environment'},
             'I|ignore-sig|ignoresig=s' => \$options{'ignore-signal'},
             'K|keysetup'               => \$options{'ssh-setup'},
@@ -253,9 +246,60 @@ sub parse_args_xdsh
         xCAT::DSHCLI->usage_dsh;
         exit 0;
     }
+
+    # cleanup the service node temp directory and exit
+    # if default to not prompt,  if user specified prompt
+    if (($options{'cleanup'}) && (!$snodes))
+    {
+        my $msg = "Service node range must be supplied on the -c command.";
+        xCAT::MsgUtils->message("E", $msg);
+        exit 1;
+
+    }
+    if ($options{'cleanup'})
+    {
+
+        # get the directory on the servicenode to put the  files in
+        my $defaultsyndir = "/var/xcat/syncfiles";
+        my @syndir        = xCAT::Utils->get_site_attribute("SNsyncfiledir");
+        my $synfiledir;
+        if ($syndir[0])
+        {
+            $synfiledir = $syndir[0];
+        }
+        else
+        {
+            $synfiledir = "/var/xcat/syncfiles";    # default
+        }
+        if ($defaultsyndir ne $synfiledir)
+        {
+            my $answer;
+            my $msg =
+              "Do you wish to erase $synfiledir and all subdirectories?\n Enter Y or N.";
+            xCAT::MsgUtils->message('I', "$msg");
+            `stty -echo`;
+            chop($answer = <STDIN>);
+            `stty echo`;
+            $answer =~ tr/a-z/A-Z/;                 # convert to upper
+            if ($answer ne "Y")
+            {
+                exit 0;
+            }
+        }
+        my $cmd = "xdsh $snodes -v rm -rf $synfiledir/*";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {                                           # error
+            my $msg = "Error from $cmd: to cleanup servicenodes sync directory";
+            xCAT::MsgUtils->message("E", $msg);
+            exit 1;
+        }
+
+        exit 0;
+    }
     if ($options{'bypass'})
     {
-        $ENV{XCATBYPASS} = "yes";    # bypass xcatd
+        $ENV{XCATBYPASS} = "yes";                   # bypass xcatd
     }
     if ($options{'show-config'})
     {
@@ -390,10 +434,6 @@ sub parse_args_xdsh
     {
         $::TIMEOUT = 1;
     }
-    if ($options{'context'})      # if a context is specified, use it
-    {
-        $::CONTEXT_SET = 1;
-    }
     if (defined $options{'ignore_env'})
     {
         xCAT::DSHCLI->ignoreEnv($options{'ignore_env'});
@@ -437,7 +477,6 @@ sub parse_args_xdcp
                     't|timeout=i'      => \$options{'timeout'},
                     'v|verify'         => \$options{'verify'},
                     'B|bypass'         => \$options{'bypass'},
-                    'C|context=s'      => \$options{'context'},
                     'Q|silent'         => \$options{'silent'},
                     'P|pull'           => \$options{'pull'},
                     'R|recursive'      => \$options{'recursive'},
@@ -467,7 +506,7 @@ sub parse_args_xdcp
         $ENV{'RSYNCSNONLY'} = "yes";    # rsync file to SN
     }
 
-    # if Pull function hierarchy must be handled special in plugin 
+    # if Pull function hierarchy must be handled special in plugin
     if ($options{'pull'})
     {
         $ENV{'DCP_PULL'} = "yes";
@@ -478,7 +517,7 @@ sub parse_args_xdcp
     # These env variable are used in xdsh.pm preprocessing
     if ((!($options{'rootimg'})) && ($options{'File'}))
     {
-        $ENV{'RSYNCSN'} = "yes";        #rsync file to SN, if exist
+        $ENV{'RSYNCSN'} = "yes";    #rsync file to SN, if exist
     }
 
     if ($options{'File'})
@@ -530,6 +569,12 @@ sub check_invalid_exports
     #   DSH_NODEGROUP_PATH
     #  For support Env Variables tell them to use the command line flag
     ##
+
+    if ($ENV{'DSH_CONTEXT'})
+    {
+        xCAT::MsgUtils->message("I",
+              "DSH_CONTEXT is set but is not supported. It will be ignored.\n");
+    }
     if ($ENV{'DSH_LIST'})    # if file of nodes input
     {
         xCAT::MsgUtils->message("I",
