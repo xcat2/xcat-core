@@ -3559,7 +3559,7 @@ sub parse_and_run_dsh
             'v|verify'                 => \$options{'verify'},
             'z|exit-status'            => \$options{'exit-status'},
             'B|bypass'                 => \$options{'bypass'},
-            'c|cleanup=s'              => \$options{'cleanup'},
+            'c|cleanup'                => \$options{'cleanup'},
             'E|environment=s'          => \$options{'environment'},
             'I|ignore-sig|ignoresig=s' => \$options{'ignore-signal'},
             'K|keysetup'               => \$options{'ssh-setup'},
