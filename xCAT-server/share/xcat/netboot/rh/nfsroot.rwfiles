@@ -1,0 +1,53 @@
+# This file contains the list of files/directories to be stored in the 
+# snapshot directory for each statelite client.  
+# note that this file will be updated with updated versions of xCAT so  you 
+# should copy this nfsroot to a different node name.
+# e.g: cp nfsroot.pkglist mycustom.pkglist; cp nfsroot.exlist mycustom.exlist; ...
+/boot/kernel.h
+#/etc/resolv.conf
+#/etc/resolv.conf.predhclient
+/etc/yp.conf
+/etc/yp.conf.predhclient
+/etc/ntp.conf
+/etc/ntp.conf.predhclient
+/etc/ntp/step-tickers
+/etc/ntp/step-tickers.predhclient
+/etc/adjtime
+/etc/cups/certs/
+/etc/reader.conf
+/etc/smartd.conf
+/etc/printcap
+/etc/aliases.db
+/etc/modules.conf
+/etc/fstab
+/etc/mtab
+/etc/sysconfig/hwconf
+/etc/X11/XF86Config
+/etc/X11/XF86Config.backup
+/etc/X11/xorg.conf
+/etc/X11/xorg.conf.backup
+/etc/ssh/
+/etc/selinux/
+/etc/blkid/
+/var/empty/sshd/
+/var/gdm/
+/var/lib/nfs/
+/var/lib/random-seed
+/var/lib/xkb/
+/var/tmp/
+/var/lock/
+/var/run/
+/var/spool/
+/var/log/
+/var/lib/logrotate.status
+/var/cache/man/
+/var/lib/misc/
+/var/lib/mrtg/
+/var/lib/dhcp/
+/var/lib/dhclient/
+/var/lib/ntp/
+/var/lib/setroubleshoot/
+/var/lib/random-seed
+/var/yp/binding/
+/root/
+/tmp/
