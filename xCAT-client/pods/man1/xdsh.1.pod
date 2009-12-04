@@ -180,11 +180,8 @@ running commands, are terminated (SIGTERM).
 =item B<-c>|B<--cleanup>
 
 This flag will have xdsh remove all files from the subdirectories of the
-the directory on the Service Node, where xdcp will copy the files from the
- MN that will eventually be copied to the compute nodes as defined in the
-site table SNsyncfiledir attribute.  Default is /var/xcat/syncfiles.
-This is usually used when this directory has grown too large or is in an 
-error state.   
+the directory on the Service Node, where xdcp stages the copy to the 
+compute nodes as defined in the site table SNsyncfiledir attribute. 
 
 =item B<-e>|B<--execute>
 
@@ -522,7 +519,7 @@ B<xdsh> I<-i /install/nim/spot/611dskls "/usr/bin/lslpp -l | grep bos">
 To cleanup the servicenode directory that stages the copy of files to the
 nodes, enter:  
 
-B<xdsh> <servicenoderange -c >  
+B<xdsh> I<servicenoderange -c >  
 
 =back
 
