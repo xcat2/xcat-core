@@ -33,17 +33,17 @@ $::CONTEXT_DIR = "/opt/xcat/xdsh/Context/";
 $::__DCP_DELIM = 'Xcat,DELIMITER,Xcat';
 
 our @dsh_valid_env = (
-                      'DCP_NODE_OPTS',      'DCP_NODE_RCP',
-                      'DSH_CONTEXT',        'DSH_ENVIRONMENT',
-                      'DSH_FANOUT',         'DSH_LOG',
-                      'DSH_NODEGROUP_PATH', 'DSH_NODE_LIST',
-                      'DSH_NODE_OPTS',      'DSH_NODE_RCP',
-                      'DSH_NODE_RSH',       'DSH_OUTPUT',
-                      'DSH_PATH',           'DSH_SYNTAX',
-                      'DSH_TIMEOUT',        'DSH_REMOTE_PASSWORD',
-                      'DSH_TO_USERID',      'DSH_FROM_USERID',
-                      'DEVICETYPE',         'RSYNCSN',
-                      'DSH_RSYNC_FILE',     'RSYNCSNONLY',
+                      'DCP_NODE_OPTS',       'DCP_NODE_RCP',
+                      'DSH_ENVIRONMENT',     'DSH_FANOUT',
+                      'DSH_LOG',             'DSH_NODEGROUP_PATH',
+                      'DSH_NODE_LIST',       'DSH_NODE_OPTS',
+                      'DSH_NODE_RCP',        'DSH_NODE_RSH',
+                      'DSH_OUTPUT',          'DSH_PATH',
+                      'DSH_SYNTAX',          'DSH_TIMEOUT',
+                      'DSH_REMOTE_PASSWORD', 'DSH_TO_USERID',
+                      'DSH_FROM_USERID',     'DEVICETYPE',
+                      'RSYNCSN',             'DSH_RSYNC_FILE',
+                      'RSYNCSNONLY',
                       );
 select(STDERR);
 $| = 1;
@@ -533,31 +533,33 @@ sub _execute_dsh
                       . join("", @{$error_buffers{$user_target}});
                     if ($$options{'display_output'})
                     {
-                       # print STDOUT @{$output_buffers{$user_target}};
-                       # print STDERR @{$error_buffers{$user_target}};
-                        chomp (@{$output_buffers{$user_target}});
-                        chomp (@{$error_buffers{$user_target}});
+
+                        # print STDOUT @{$output_buffers{$user_target}};
+                        # print STDERR @{$error_buffers{$user_target}};
+                        chomp(@{$output_buffers{$user_target}});
+                        chomp(@{$error_buffers{$user_target}});
                         my $rsp = {};
-                        push @{$rsp->{data}},@{$output_buffers{$user_target}};
-                        xCAT::MsgUtils->message("D", $rsp,$::CALLBACK);
+                        push @{$rsp->{data}}, @{$output_buffers{$user_target}};
+                        xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                         $rsp = {};
-                        push @{$rsp->{data}},@{$error_buffers{$user_target}};
-                        xCAT::MsgUtils->message("D", $rsp,$::CALLBACK);
+                        push @{$rsp->{data}}, @{$error_buffers{$user_target}};
+                        xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     }
                 }
                 else
                 {
+
                     #print STDOUT @{$output_buffers{$user_target}};
                     #print STDERR @{$error_buffers{$user_target}};
-                     chomp (@{$output_buffers{$user_target}});
-                     chomp (@{$error_buffers{$user_target}});
-                     my $rsp = {};
-                     push @{$rsp->{data}},@{$output_buffers{$user_target}};
-                     xCAT::MsgUtils->message("D", $rsp,$::CALLBACK);
-                     $rsp = {};
-                     push @{$rsp->{data}},@{$error_buffers{$user_target}};
-                     xCAT::MsgUtils->message("D", $rsp,$::CALLBACK);
- 
+                    chomp(@{$output_buffers{$user_target}});
+                    chomp(@{$error_buffers{$user_target}});
+                    my $rsp = {};
+                    push @{$rsp->{data}}, @{$output_buffers{$user_target}};
+                    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+                    $rsp = {};
+                    push @{$rsp->{data}}, @{$error_buffers{$user_target}};
+                    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
                 }
             }
 
@@ -572,7 +574,7 @@ sub _execute_dsh
             {
 
                 #$rsp->{data}->[0] =
-                 # " $user_target remote Command return code = $exit_code.";
+                # " $user_target remote Command return code = $exit_code.";
                 #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
 
                 $rsp->{data}->[0] = "dsh>  Remote_command_failed $user_target";
@@ -592,7 +594,6 @@ sub _execute_dsh
             {
                 if ($target_rc != 0)
                 {
-                    
 
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_failed $user_target";
@@ -968,17 +969,17 @@ sub fork_fanout_dsh
                   || $$options{'node-rsh-defaults'}{$context};
                 ($remote_shell =~ /\/ssh$/) && ($rsh_extension = 'SSH');
 
-                # will not set -n for any command,  causing problems 
+                # will not set -n for any command,  causing problems
                 # with running xdsh to install rpms and start xcatd on AIX
                 # if IB switch device, do not set -n, causes no returncode
                 #if  (($$options{'devicetype'})) {
 
-                $rsh_config{'options'} = 
-                   $$options{'node-options'}{$$target_properties{'context'}};
+                $rsh_config{'options'} =
+                  $$options{'node-options'}{$$target_properties{'context'}};
 
                 #} else { # not a device
-                 #  $rsh_config{'options'} = "-n "
-                  #. $$options{'node-options'}{$$target_properties{'context'}};
+                #  $rsh_config{'options'} = "-n "
+                #. $$options{'node-options'}{$$target_properties{'context'}};
                 #}
             }
 
@@ -1743,19 +1744,19 @@ sub stream_error
 =head3
         config_default_context
 
-        Return the name of the default context to the caller
+        Return the name of the default context to the caller ( always XCAT)
 
         Arguments:
 			$options - options hash table describing dsh configuration options
 
         Returns:
-        	The name of the default context
+        	The name of the default context  which is always XCAT
 
         Globals:
         	None
 
         Error:
-        	None
+        If context file not found 	
 
         Example:
 
@@ -1767,21 +1768,14 @@ sub stream_error
 sub config_default_context
 {
     my ($class, $options) = @_;
-
-    if (!$$options{'context'})
+    my $contextdir = $::CONTEXT_DIR;
+    $contextdir .= "XCAT.pm";
+    if (-e "$contextdir")
     {
-        my $contextdir = $::CONTEXT_DIR;
-        $contextdir .= "XCAT.pm";
-        if (-e "$contextdir")
-        {
-            require Context::XCAT;
-            (XCAT->valid_context) && ($$options{'context'} = 'XCAT');
-        }
-
-        $$options{'context'} = $ENV{'DSH_CONTEXT'}
-          || $$options{'context'}
-          || 'DSH';
+        require Context::XCAT;
+        (XCAT->valid_context) && ($$options{'context'} = 'XCAT');
     }
+
 }
 
 #----------------------------------------------------------------------------
@@ -1828,7 +1822,8 @@ sub config_dcp
     if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
     {
 
-        $rsp->{data}->[0] = "Invalid context specified:$$options{'context'}.";
+        $rsp->{data}->[0] =
+          "Context file $::CONTEXT_DIR$$options{'context'}.pm does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
     }
@@ -2023,7 +2018,8 @@ sub config_dsh
     if (!(-e "$::CONTEXT_DIR$$options{'context'}.pm"))
     {
 
-        $rsp->{data}->[0] = "Invalid context specified: $$options{'context'}";
+        $rsp->{data}->[0] =
+          "Context file $::CONTEXT_DIR$$options{'context'}.pm does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
     }
@@ -3563,7 +3559,7 @@ sub parse_and_run_dsh
             'v|verify'                 => \$options{'verify'},
             'z|exit-status'            => \$options{'exit-status'},
             'B|bypass'                 => \$options{'bypass'},
-            'C|context=s'              => \$options{'context'},
+            'c|cleanup=s'              => \$options{'cleanup'},
             'E|environment=s'          => \$options{'environment'},
             'I|ignore-sig|ignoresig=s' => \$options{'ignore-signal'},
             'K|keysetup'               => \$options{'ssh-setup'},
@@ -3812,11 +3808,11 @@ sub parse_and_run_dsh
         #@results = xCAT::DSHCLI->runDsh_api(\%options, 0);
         #if ($::RUNCMD_RC)
         #{    # error from dsh
-         #   $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
-          #  xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+        #   $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
+        #  xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
         #}
-        # Execute the dsh command 
+        # Execute the dsh command
         # number of nodes failed becomes the xdsh return code
         $::FAILED_NODES = xCAT::DSHCLI->execute_dsh(\%options);
     }
@@ -3855,15 +3851,14 @@ sub usage_dcp
       "      [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
       "      [-R] [-t timeout] [-T] [-X environment variables] [-v] \n";
-    my $usagemsg5    = "      source_file... target_path\n";
-    my $usagemsg5a   = " xdcp <noderange> [-s] -F <rsyncfile> ";
-    my $usagemsg5b   = "[-f fanout] [-t timeout] [-o options] [-v]\n";
-    my $usagemsg5c   = " xdcp <-i imagepath> -F <rsyncfile> ";
-    my $usagemsg5d   = "[-o options]";
+    my $usagemsg5  = "      source_file... target_path\n";
+    my $usagemsg5a = " xdcp <noderange> [-s] -F <rsyncfile> ";
+    my $usagemsg5b = "[-f fanout] [-t timeout] [-o options] [-v]\n";
+    my $usagemsg5c = " xdcp <-i imagepath> -F <rsyncfile> ";
+    my $usagemsg5d = "[-o options]";
 
     my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
-      $usagemsg5 .= $usagemsg5a .= $usagemsg5b .= $usagemsg5c .=
-      $usagemsg5d;
+      $usagemsg5 .= $usagemsg5a .= $usagemsg5b .= $usagemsg5c .= $usagemsg5d;
 
     if ($::CALLBACK)
     {
@@ -3953,7 +3948,6 @@ sub parse_and_run_dcp
                     't|timeout=i'      => \$options{'timeout'},
                     'v|verify'         => \$options{'verify'},
                     'B|bypass'         => \$options{'bypass'},
-                    'C|context=s'      => \$options{'context'},
                     'Q|silent'         => \$options{'silent'},
                     'P|pull'           => \$options{'pull'},
                     'R|recursive'      => \$options{'recursive'},
@@ -4229,14 +4223,14 @@ sub parse_and_run_dcp
 
     # Execute the dcp api
     @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
-    if ($::RUNCMD_RC)
-    {    # error from dcp
-        my $rsp = {};
-        $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+    #if ($::RUNCMD_RC)
+    #{    # error from dcp
+    #    my $rsp = {};
+    #    $rsp->{data}->[0] = "Error from xdcp. Return Code = $::RUNCMD_RC";
+    #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
-    }
-
+    #}
+    $::FAILED_NODES=$::RUNCMD_RC;
     return (@results);
 
 }
@@ -4438,7 +4432,7 @@ sub parse_rsync_input_file_on_MN
             {
                 $dest_dir = $dest_file;
             }
-            else    # only one file 
+            else    # only one file
             {       # strip off the file
                 $dest_dir = dirname($dest_file);
             }
@@ -4592,12 +4586,12 @@ sub parse_rsync_input_file_on_SN
 
             # if only more than one file on the line
             # then the destination  is a directory
-            # else a file, 
+            # else a file,
             if ($arraysize > 1)
             {
                 $dest_dir = $dest_file;
             }
-            else # a file path
+            else    # a file path
             {
                 $dest_dir = dirname($dest_file);
             }
