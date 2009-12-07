@@ -41,7 +41,9 @@ for i in $*; do
 	export $i
 done
 
-export HOME=/root		# This is so rpm and gpg will know home, even in sudo
+if [ "$OSNAME" != "AIX" ]; then
+	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
+fi
 cd `dirname $0`
 
 # Strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
@@ -136,7 +138,7 @@ if $GREP xCAT-UI $SVNUP; then
    rm -f $DESTDIR/xCAT-UI*
    rm -f $SRCDIR/xCAT-UI*
    ./makeuirpm
-   mv $source/RPMS/$NOARCH/xCAT-UI-$VER*rpm $DESTDIR
+   mv $source/RPMS/noarch/xCAT-UI-$VER*rpm $DESTDIR
    mv $source/SRPMS/xCAT-UI-$VER*rpm $SRCDIR
 fi
 if [ "$OSNAME" = "AIX" ]; then
