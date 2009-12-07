@@ -360,8 +360,8 @@ displayMapper(array('home'=>'main.php', 'control' =>''));
 
 function displayNrTree(){
 echo <<<EOS
-<div id=nrtree></div>
-<div id='rangedisplay' class='mContent'><h1>Please select a node or noderange on the left.</h1>
+<div id=nrtree style='width:27%'></div>
+<div id='rangedisplay' class='mContent' style='width:70%'><h1>Please select a node or noderange on the left.</h1>
 <p>You can use ctrl-click to select more than one node grouping, </p>
 <p>or expand the noderanges to select individual nodes.</p></div>
 <script type="text/javascript" type"utf-8">
@@ -384,6 +384,7 @@ EOSS;
 }
 
 function displayRangeList($nr, $cmd){
+    echo "<div style='width:95%'>";
 	if($cmd == ""){
 		displayCommands($nr);
 		return;
@@ -403,6 +404,7 @@ function displayRangeList($nr, $cmd){
 	}else{
 		echo "I don't recognize the command: $cmd";
 	}
+    echo "</div>";
 }
 
 function displayCommands($nr){
@@ -455,49 +457,52 @@ EOF;
 }
 
 function controlRunCmd($nr, $cmd, $subcmd){
-	$rvals = docmd($cmd, $nr, array($subcmd));
-	#print_r($rvals);
-	$headers = attributesOfNodes($rvals,$cmd);
-	#echo "<br><br>Headers:<br>";
+//echo <<<JS00
+//<script type="text/javascript" type"utf-8">
+//$(document).ready(function() {
+//    $("#tableForCtrl").dataTable({
+//        "bLengthChange": true,
+//        "bFilter": true,
+//        "bSort": true
+//    });
+//});
+//</script>
+//JS00;
+    echo "<div id=tableForCtrl>";
+    $rvals = docmd($cmd, $nr, array($subcmd));
+    #print_r($rvals);
+    $headers = attributesOfNodes($rvals,$cmd);
+    #echo "<br><br>Headers:<br>";
 	#print_r($headers);
-	$nh = mkNodeHash($rvals,$cmd);
-	#echo "<br><br><br>";
-	#print_r($nh);
-	echo "<table class='tablesorter' cellspacing='1'>";
-	echo "<thead>\n";
-	echo "<tr>";
-	echo "<th>Node</th>";
-	foreach ($headers as $head){
-		echo "<th>$head</th>";	
-	}
-	echo "</tr>";
-	echo "</thead><tbody>";
-	$ooe = 0;
-	foreach($nh as $n => $vals){
-		$cl = "ListLine$ooe";
-		echo "<tr>\n";
-		#echo "<td class='$cl'>$n</td>";
-		echo "<td>$n</td>";
-		foreach($headers as $h){
-			if($vals[$h] == ''){
-				echo "&nbsp;";
-			}else{
-				#echo "<td class='$cl'>" . $vals[$h] . "</td>";
-				echo "<td>" . $vals[$h] . "</td>";
-			}
-		}	
-		echo "</tr>\n";
-		$ooe = 1 - $ooe;
-	}
-	echo "</tbody>";
-	echo "</table>\n";
-	echo <<<JS
-<script type="text/javascript" type"utf-8">
- $("table").tablesorter({
-                        sortList: [[0,0]]
-                });
-</script>
-JS;
+    $nh = mkNodeHash($rvals,$cmd);
+    #echo "<br><br><br>";
+    echo "<table style='width:100%'>";
+    echo "<thead>";
+    echo "<tr>";
+    echo "<th>Node</th>";
+    foreach ($headers as $head){
+            echo "<th>$head</th>";
+    }
+    echo "</tr>";
+    echo "</thead><tbody>";
+    foreach($nh as $n => $vals){
+            echo "<tr>\n";
+            #echo "<td class='$cl'>$n</td>";
+            echo "<td>$n</td>";
+            foreach($headers as $h){
+                    if($vals[$h] == ''){
+                            echo "&nbsp;";
+                    }else{
+                            #echo "<td class='$cl'>" . $vals[$h] . "</td>";
+                            echo "<td>" . $vals[$h] . "</td>";
+                    }
+            }
+            echo "</tr>";
+    }
+    echo "</tbody>";
+    echo "</table>";
+    echo "</div>";
+
 }
 
 

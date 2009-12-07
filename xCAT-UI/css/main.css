@@ -117,8 +117,9 @@ a.button:active span {
 }
 
 #rangedisplay {
-	float: left;
+	float: right;
 	text-align: left;
+        width: 650px;
 	width: auto;
 }
 #nrtree {
@@ -279,9 +280,9 @@ padding:10px 2px;
 	color: #ddd;
 }
 .mContent {
-	padding: 10px;
+	padding: 5px;
 	padding-top: 0px;
-	margin: 10px;
+	margin: 5px;
 	margin-top: 0px;
 	text-align: left;
 	color: #555;
@@ -302,8 +303,9 @@ padding:10px 2px;
  	color:#6ea1fa;  
 }
 .nrcmd {
-	float: right;
-	text-align: left;
+	float: left;
+	text-align: right;
+        width: 916px;
 }
 .mapper span {
 	float: left;
@@ -386,30 +388,7 @@ padding:10px 2px;
 }
 
 
-#monsetting_tips {
-    width: 920px;
-    margin: 5px;
-    padding: 5px;
-    float: left;
-}
 
-#rmcSrcList {
-    width: 420px;
-    margin: 5px;
-    padding: 5px;
-    float: left;
-    background-color:silver;
-    height: 480px;
-    overflow-y: scroll;
-}
-
-#rmcScrAttr {
-    width: 420px;
-    margin: 5px;
-    padding: 5px;
-    float: left;
-    background-color:silver;
-}
 
 #options {
     width: 880px;

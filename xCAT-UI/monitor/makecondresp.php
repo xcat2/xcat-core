@@ -12,7 +12,9 @@ require_once "$TOPDIR/lib/monitor_display.php";
 
 $cond = '"' . $_REQUEST["cond"] . '"';
 $resp = '"' . $_REQUEST["resp"] . '"';
+$nr = '"' . $_REQUEST["nr"] . '"';
 
+//Fixit: The parameter $nr can't work right now.
 $xml=docmd("webrun", '', array("mkcondresp $cond $resp"));
 if(getXmlErrors($xml, $errors)) {
     echo "<p class=Error>",implode(' ', $errors), "</p>";

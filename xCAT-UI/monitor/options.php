@@ -109,9 +109,15 @@ TOS11;
         echo <<<TOS15
         <div>
             <p class='ui-state-highlight'>For your convenience, all the available RMC Resources and their attributes will list here</p>
-            
-        </div>
+        <div id=monsetting_tips>
+        <div id=rmcSrcList>
 TOS15;
+        displayRMCRsrc();
+        echo "</div><div id=rmcSrcAttr>";
+        displayRMCAttr();
+        echo "</div>
+        </div>
+        </div>";
     }
     echo "</div>";
 }
@@ -122,13 +128,34 @@ TOS15;
 function showRMCAssocTab()
 {
     echo "<div>";
-
+    displayAssociation();
     echo "</div>";
 }
 
 function showPluginView($name)
 {
-    //TODO
+    //
+    echo "<div id=rmcViewAccord>";
+    echo <<<JS11
+    <script type="text/javascript">
+    $(function() {
+        $("#rmcViewAccord").accordion({autoHeight: false});
+    });
+    </script>
+JS11;
+    echo <<<ACD01
+    <h3><a href="#">RMC Event Log</a></h3>
+    <div>
+    <p>TODO</p>
+    </div>
+ACD01;
+    echo <<<ACD02
+    <h3><a href="#">RMC Performance Monitoring</a></h3>
+    <div>
+    <p>TODO</p>
+    </div>
+ACD02;
+    echo "</div>";
 }
 
 function updatePluginStat($name)

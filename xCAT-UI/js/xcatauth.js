@@ -76,7 +76,7 @@ function openDialog(){
             } else {
                 $("#password").focus();
             }
-        },
+        }
     });
 
     $("#username").keydown(function(event) { //When 'enter' is hit while in username, advance to password
@@ -86,7 +86,13 @@ function openDialog(){
     });
     $("#password").keydown(function(event) { //Submit authentication if enter is pressed in password field
         if (event.keyCode==13) {
-            authenticate();
+            //TODO: it doesn't work on Chrome and Safari
+            $(".ui-dialog-buttonpane button").each(function() {
+                if($(this).html() == "Log In") {
+                    $(this).click();
+                }
+            });
+            //authenticate();
         }
     });
 	  

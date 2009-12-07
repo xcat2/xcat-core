@@ -127,7 +127,7 @@ fieldset {
 }
 
 #condresp {
-    width: 71%;
+    width: 97%;
     margin: 5px;
     padding: 5px;
     float: left;
@@ -135,40 +135,54 @@ fieldset {
     border: 1px solid orange;
 }
 
-#assocaition {
+#association {
     margin: 5px;
     padding: 5px;
     float:left;
     display: block;
+    width: 94%;
     border: 1px solid lime;
 }
 
 #avail_cond {
-    width: 33%;
-    margin: 5px;
-    padding: 5px;
+    width: 40%;
+    margin: 3px;
+    padding: 3px;
     float: left;
-    background-color: #ffee33;
+    border: 1px solid lime;
 }
-
-#avail_cond tbody {
-    overflow-y: scroll;
-    overflow-x: hide;
-}
-
-#condition .ui-selecting {background: #FECA40;}
-#condition .ui-selected { background: #F39814; color: white; }
-#condition {list-style-type: none; margin: 0; padding: 0;}
 
 #avail_resp {
-    width: 60%;
-    margin: 5px;
-    padding: 5px;
+    width: 50%;
+    margin: 3px;
+    padding: 3px;
     float: left;
-    background-color: #eeffee;
+    border: 1px solid lime;
 }
 
-#avail_resp tbody {
-    overflow-y: scroll;
-    overflow-x: hide;
+/*For the RMC resources and their attributes*/
+#monsetting_tips {
+    width: 97%;
+    margin: 3px;
+    padding: 1px;
+    float: left;
 }
+
+#rmcSrcList {
+    width: 48%;
+    margin: 3px;
+    padding: 1px;
+    float: left;
+    background-color:silver;
+    height: 480px;
+    overflow-y: scroll;
+}
+
+#rmcSrcAttr {
+    width: 48%;
+    margin: 3px;
+    padding: 1px;
+    float: left;
+    background-color:silver;
+}
+/**/

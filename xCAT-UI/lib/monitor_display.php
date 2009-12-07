@@ -67,7 +67,7 @@ function displayOSITree()
 {
     //display the node range tree, but only with the nodes with OSI type
     //this follows the function showNrTreeInput();
-        echo "<div id=nrtree-input class='ui-state-default ui-corner-all'>";
+        echo "<div id=nrtree-input class='ui-corner-all'>";
 echo <<<TOS3
 <script type="text/javascript">
     $(function() {
@@ -130,7 +130,13 @@ echo <<<TOS6
             <td>$record[7]</td>
 TOS6;
         //TODO: insert the button here
-        echo "<td>Button</td>";
+        echo "<td>";
+        if($record[7] == "Active") {
+            echo "<button class='fg-button ui-corner-all'>Disable</button>";
+        }else {
+            echo "<button class='fg-button ui-corner-all'>Enable</button>";
+        }
+        echo "</td>";
         echo "</tr>";
 //        $association = explode("=", $data);
 //
@@ -170,8 +176,7 @@ function displayCond()
 {
     //display all the avaiable conditions to a <table> element
 echo <<<COND
-<div id="avail_cond">
-<b>Available Conditions</b>
+<div id="avail_cond" style="display:none">
 <table>
     <thead>
         <tr class="colHeaders">
@@ -200,17 +205,7 @@ echo <<<TOS99
         </tr>
 TOS99;
     }
-//    $ooe = 0;
-//    $line = 0;
-//    foreach($conditions as $elem) {
-//        $ooe = $ooe%2;
-//        echo "<tr class='ListLine$ooe' id='row$line'>";
-//        echo "<td><input type=\"radio\" name=\"conditions\" value=\"$elem\" /></td>";
-//        echo "<td>$elem</td>";
-//        echo "</tr>";
-//        $ooe++;
-//        $line++;
-//    }
+
     echo "</tbody></table></div>";
     return 0;
 
@@ -219,13 +214,12 @@ TOS99;
 function displayResp()
 {
 echo <<<RESP
-<div id="avail_resp">
-<b>Available Response</b>
-<table id="tabTable" class="tabTable" cellspacing="1">
+<div id="avail_resp" style="display:none">
+<table>
     <thead>
         <tr class="colHeaders">
-            <td></td>
-            <td>Response</td>
+            <th></td>
+            <th>Response</td>
         </tr>
     </thead>
     <tbody>
@@ -242,15 +236,6 @@ echo <<<TOS7
 TOS7;
       echo "</tr>";
   }
-//  foreach($responses as $elem) {
-//      $ooe = $ooe%2;
-//      echo "<tr class='ListLine$ooe' id='row$line'>";
-//      echo "<td><input type='checkbox' name='responses' value='$elem' /></td>";
-//      echo "<td>$elem</td>";
-//      echo "</tr>";
-//      $ooe++;
-//      $line++;
-//  }
     echo '</tbody></table></div>';
     return 0;
 }
@@ -258,11 +243,53 @@ TOS7;
 function displayCondResp()
 {
     echo '<div id="condresp">';
+echo <<<JS00
+    <script type="text/javascript">
+    $(function() {
+        $("#nrtree-input").hide();
+        $("#showOpt4association").click(function() {
+            if($("#avail_cond").css("display") == "none") {
+                $("#nrtree-input").show();
+                $("#assobuttonsets").show();
+                $("#avail_cond").show();
+                $("#avail_resp").show();
+            }
+        });
+        $("#addAssociation").click(function() {
+            mkCondResp();
+        });
+
+        $("#cancelAssociation").click(function() {
+            clearEventDisplay();
+        });
+    });
+    </script>
+JS00;
+    echo "<div style='display:block'>";
     displayAssociation();
+    echo "</div>";
+    echo "<div id='showOpt4association' style='display:block; border:1px solid lime;' class='ui-state-active'>";
+echo <<<TOS00
+<span class="ui-icon ui-icon-triangle-1-e" style="position:absolute"></span>
+<p>Click here if you want to create new associations...</p>
+TOS00;
+    echo "</div>";
+    echo "<div id=notify_me></div>";
+    echo "<div style='display:block'>";
+    displayOSITree();
+    echo "<div style='border: 1px dotted orange; float:right; width:73%'>";
+echo <<<BTN00
+    <div id="assobuttonsets" style="display:none">
+        <button id="addAssociation" class="fg-button ui-corner-all">Apply</button>
+        <button id="cancelAssociation" class="fg-button ui-corner-all">Cancel</button>
+    </div>
+BTN00;
+    echo "<div>";
     displayCond();
     displayResp();
-    insertButtons(array('label'=>'Add', id=>'addAssociation', 'onclick'=>'mkCondResp()'));
-    insertButtons(array('label'=>'Cancel', id=>'cancel_op', 'onclick'=>'clearEventDisplay()'));
+    echo "</div>";
+    echo "</div>";
+    echo "</div>";
     echo '</div>';
 }
 
@@ -329,9 +356,18 @@ function RMCEventLogToTable()
 //displayRMCEventLog() to display the RMC event logs in one table with "tablesorter" class
 function displayRMCEvnetLog()
 {
-echo '<div class="mContent">';
+echo '<div id=lseventLog>';
+echo <<<TOS8
+<script type="text/javascript" type"utf-8">
+$("#lseventLog").dataTable({
+    "bLengthChange": false,
+    "bFilter": true,
+    "bSort": true
+});
+</script>
+TOS8;
 echo <<<TOS9
-<table id="lsevent_tab" class="tablesorter" cellspacing="1">
+<table>
 <thead>
     <tr>
         <th>Time</th>
@@ -343,11 +379,6 @@ TOS9;
     RMCEventLogToTable();
     echo "</tbody></table>";
     //TODO: the following javascript doesn't work well.
-echo <<<TOS8
-<script type="text/javascript" type"utf-8">
- $("#lsevent_tab").tablesorter({ sortList:  [[0,1],[1,1]] });
-</script>
-TOS8;
     echo "</div>";
 
 }

@@ -258,23 +258,36 @@ function mkNodeHash ($ht,$cmd){
 	$name = "";
 	$desc = "";
 	$cont = "";
-	foreach($ht->children() as $response){
-		foreach($response as $node){
-			#print_r($response);
-			$name = (string) $node->name;
-			$desc = (string) $node->data->desc;
-			if($cmd == 'rpower'){ 
-				$desc = 'Power Status';
-			}elseif($cmd == 'rbeacon'){
-				$desc = 'Beacon Status';
-			}
-			$cont = (string) $node->data->contents;
-			if($cont == ''){
-				$cont = (string) $node->error;
-			}
-			$arr[$name][$desc] = $cont;
-		}
+	foreach($ht->children() as $response) foreach($response->children() as $node) {
+            if($node->name) {
+                $name = (string) $node->name;
+                $desc = (string) $node->data->desc;
+                if($cmd == 'rpower'){
+                    $desc = 'Power Status';
+                }elseif($cmd == 'rbeacon'){
+                    $desc = 'Beacon Status';
+                }
+                $cont = (string) $node->data->contents;
+                if($cont == ''){
+                    $cont = (string) $node->error;
+                }
+                $arr[$name][$desc] = $cont;
+            }
+//                #print_r($response);
+//                $name = (string) $node->name;
+//                $desc = (string) $node->data->desc;
+//                if($cmd == 'rpower'){
+//                        $desc = 'Power Status';
+//                }elseif($cmd == 'rbeacon'){
+//                        $desc = 'Beacon Status';
+//                }
+//                $cont = (string) $node->data->contents;
+//                if($cont == ''){
+//                        $cont = (string) $node->error;
+//                }
+//                $arr[$name][$desc] = $cont;
 	}
+	
 	// add the more fields so we can click in place.
 	if($cmd == 'rpower'){
 		foreach($arr as $n => $val){

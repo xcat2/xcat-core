@@ -400,16 +400,6 @@ function goto_next()
     }
 }
 
-function showRMCAttrib()
-{
-    var class_val = $('input[@name=classGrp][@checked]').val();
-    if(class_val) {
-        $.get("monitor/rmc_resource_attr.php", {name: class_val}, function(data) {
-            $("#rmcScrAttr").html(data);
-        });
-    }
-}
-
 function show_monshow_data(type,range)
 {
     //type = "text" or "graph"

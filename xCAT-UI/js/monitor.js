@@ -25,7 +25,7 @@ jQuery.fn.customInput = function(){//from http://www.filamentgroup.com/examples/
 						$(this).addClass('checkedHover');
 					}
 				},
-				function(){ $(this).removeClass('hover checkedHover'); }
+				function(){$(this).removeClass('hover checkedHover');}
 			);
 
 			//bind custom event, trigger it, bind click,focus,blur events
@@ -38,7 +38,7 @@ jQuery.fn.customInput = function(){//from http://www.filamentgroup.com/examples/
 					};
 					label.addClass('checked');
 				}
-				else { label.removeClass('checked checkedHover checkedFocus'); }
+				else {label.removeClass('checked checkedHover checkedFocus');}
 
 			})
 			.trigger('updateState')
@@ -51,7 +51,7 @@ jQuery.fn.customInput = function(){//from http://www.filamentgroup.com/examples/
 					$(this).addClass('checkedFocus');
 				}
 			})
-			.blur(function(){ label.removeClass('focus checkedFocus'); });
+			.blur(function(){label.removeClass('focus checkedFocus');});
 		}
 	});
 };
@@ -159,23 +159,31 @@ function appmonSetStat()
 function mkCondResp()
 {
     //get the name of the selected condition
+    //then, get the selected noderange
     //then, get the response in "checked" status
     //then, run the command "mkcondresp"
     var cond_val = $(':input[name=conditions][checked]').val();
-    if(cond_val) {
-        //get the response in "checked" status
-        var resps_obj = $(':input[name=responses][checked]');
-        if(resps_obj) {
-            $.each(resps_obj,function(i,n) {
-                //i is the index
-                //n is the content
-                //TODO:add one new php file to handle "mkcondresp" command
-                $.get("monitor/makecondresp.php", {cond: cond_val, resp: n.value}, function(data) {
-                    $("#devstatus").html(data);
-                });
+    var value="";//the noderange selected from the osi tree
+    var i=0;
+    var node_selected = nrtree.selected_arr;
+    for(; i< node_selected.length; i++) {
+        value += node_selected[i].attr('id');
+    }
+    //remove the "," at the front
+    value = value.substr(1);
+    var resps_obj = $(':input[name=responses][checked]');
+    if(cond_val && resps_obj && value) {
+        $.each(resps_obj,function(i,n) {
+            //i is the index
+            //n is the content
+            //TODO:add one new php file to handle "mkcondresp" command
+            $.get("monitor/makecondresp.php", {cond: cond_val, resp: n.value, nr: value}, function(data) {
+                    //nothing to do right now.
             });
-        $("#association").load("monitor/updateCondRespTable.php");
-        }
+        });
+        $("#notify_me").html("<p>The associations are created!</p>");
+        $("#notify_me").addClass("ui-state-highlight");
+        $("#association table tbody").load("monitor/updateCondRespTable.php");
     }
 }
 
@@ -200,6 +208,18 @@ function control_RMCAssoc(cond, node, resp, action)
         }
     );
 }
+
+/*when one RMC Resource is selected, this function is called to display its attributes*/
+function showRMCAttrib()
+{
+    var class_val = $('input[name=classGrp]:checked').val();
+    if(class_val) {
+        $.get("monitor/rmc_resource_attr.php", {name: class_val}, function(data) {
+            $("#rmcSrcAttr").html(data);
+        });
+    }
+}
+
 
 // for the progress bar
 myBar.loaded('monitor.js');
