@@ -23,7 +23,7 @@ use warnings;
     Arguments	: 	Table
     				Node
     				Properties
-    Returns		: Properties from specifed table
+    Returns		: Node properties from given table
     Example		: my $propVals = xCAT::zvmUtils->getNodeProps($tabName, $node, $propNames);
     
 =cut
@@ -34,23 +34,24 @@ sub getNodeProps {
 	# Get inputs
 	my ( $class, $tabName, $node, @propNames ) = @_;
 
-	# Get specified table
+	# Get table
 	my $tab = xCAT::Table->new($tabName);
 
-	# Get value from column
+	# Get property values
 	my $propVals = $tab->getNodeAttribs( $node, [@propNames] );
+
 	return ($propVals);
 }
 
 #-------------------------------------------------------
 
 =head3   getTabPropsByKey
-	Description	: Get node properties by key
+	Description	: Get table entry properties by key
     Arguments	: 	Table
-    				Key
+    				Key name
     				Key value
     				Requested properties
-    Returns		: Properties from specifed table
+    Returns		: Table entry properties
     Example		: my $propVals = xCAT::zvmUtils->getTabPropsByKey($tabName, $key, $keyValue, @reqProps);
     
 =cut
@@ -61,11 +62,11 @@ sub getTabPropsByKey {
 	# Get inputs
 	my ( $class, $tabName, $key, $keyVal, @propNames ) = @_;
 
-	# Get specified table
+	# Get table
 	my $tab = xCAT::Table->new($tabName);
 	my $propVals;
 
-	# Get table attributes matching specified key
+	# Get table attributes matching given key
 	$propVals = $tab->getAttribs( { $key => $keyVal }, @propNames );
 	return ($propVals);
 }
@@ -74,9 +75,9 @@ sub getTabPropsByKey {
 
 =head3   setNodeProp
 
-	Description	: Set node property
+	Description	: Set node property in a given table
     Arguments	: 	Table
-    				Node
+    			 	Node
     				Property
     Returns		: Nothing
     Example		: xCAT::zvmUtils->setNodeProp($tabName, $node, $propName, $propVal);
@@ -89,7 +90,7 @@ sub setNodeProp {
 	# Get inputs
 	my ( $class, $tabName, $node, $propName, $propVal ) = @_;
 
-	# Get specified table
+	# Get table
 	my $tab = xCAT::Table->new( $tabName, -create => 1, -autocommit => 0 );
 
 	# Set property
@@ -105,11 +106,12 @@ sub setNodeProp {
 
 =head3   delTabEntry
 
-	Description	: Delete node
+	Description	: Delete a table entry
     Arguments	: 	Table
-    				Node 
+    				Key name
+    				Key value 
     Returns		: Nothing
-    Example		: xCAT::zvmUtils->delTabEntry($tabName, $node);
+    Example		: xCAT::zvmUtils->delTabEntry($tabName, $keyName, $keyVal);
     
 =cut
 
@@ -117,13 +119,13 @@ sub setNodeProp {
 sub delTabEntry {
 
 	# Get inputs
-	my ( $class, $tabName, $node ) = @_;
+	my ( $class, $tabName, $keyName, $keyVal ) = @_;
 
-	# Get specified table
+	# Get table
 	my $tab = xCAT::Table->new( $tabName, -create => 1, -autocommit => 0 );
 
-	# Delete node from table
-	my %key = ( 'node' => $node );
+	# Delete entry from table
+	my %key = ( $keyName => $keyVal );
 	$tab->delEntries( \%key );
 
 	# Save table
@@ -163,7 +165,7 @@ sub tabStr {
 
 =head3   trimStr
 
-	Description	: Trim whitespaces in string
+	Description	: Trim whitespaces within a string
     Arguments	: String
     Returns		: Trimmed string
     Example		: my $str = xCAT::zvmUtils->trimStr($str);
@@ -189,9 +191,9 @@ sub trimStr {
 
 =head3   replaceStr
 
-	Description	: Replace string
+	Description	: Replace a given pattern within a string
     Arguments	: String
-    Returns		: Replaced string
+    Returns		: String with given pattern replaced
     Example		: my $str = xCAT::zvmUtils->replaceStr($str, $pattern, $replacement);
     
 =cut
@@ -237,7 +239,7 @@ sub printLn {
 
 =head3   isZvmNode
 
-	Description	: Check if a node is in the 'zvm' table
+	Description	: Checks if a given node is in the 'zvm' table
     Arguments	: Node
     Returns		: 	TRUE	Node exists
     				FALSE	Node does not exists
@@ -259,9 +261,11 @@ sub isZvmNode {
 
 	my @results = $tab->getAllAttribsWhere( "node like '%" . $node . "%'", 'userid' );
 	foreach (@results) {
+
+		# Get userID
 		$id = $_->{'userid'};
 
-		# Get userID if one is not in the table
+		# Return 'TRUE' if given node is in the table
 		if ($id) {
 			return ('TRUE');
 		}
@@ -274,9 +278,9 @@ sub isZvmNode {
 
 =head3   getIp
 
-	Description	: Get IP address of given node
+	Description	: Get the IP address of a given node
     Arguments	: Node
-    Returns		: IP address
+    Returns		: IP address of given node
     Example		: my $ip = xCAT::zvmUtils->getIp($node);
     
 =cut
@@ -307,9 +311,45 @@ sub getIp {
 
 #-------------------------------------------------------
 
+=head3   getHwcfg
+
+	Description	: 	Get hardware configuration file path of given node
+					SUSE --	/etc/sysconfig/hardware/hwcfg-qeth
+    Arguments	: Node
+    Returns		: Hardware configuration file path
+    Example		: my $hwcfg = xCAT::zvmUtils->getHwcfg($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getHwcfg {
+
+	# Get inputs
+	my ( $class, $node ) = @_;
+
+	# Get OS
+	my $os = xCAT::zvmCPUtils->getOs($node);
+
+	# Get network configuration file path
+	my $out;
+	my @parms;
+
+	# If it is SUSE -- hwcfg-qeth file is in /etc/sysconfig/hardware
+	if ( $os =~ m/SUSE/i ) {
+		$out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/hardware/hwcfg-qeth*"`;
+		@parms = split( '\n', $out );
+		return ( $parms[0] );
+	}
+
+	# If no file is found -- Return nothing
+	return;
+}
+
+#-------------------------------------------------------
+
 =head3   getIfcfg
 
-	Description	: 	Get network configuration file path for given node
+	Description	: 	Get network configuration file path of given node
 					Red Hat -- 	/etc/sysconfig/network-scripts/ifcfg-eth
 					SUSE 	-- 	/etc/sysconfig/network/ifcfg-qeth
     Arguments	: Node
@@ -353,7 +393,7 @@ sub getIfcfg {
 
 =head3   getIfcfgByNic
 
-	Description	: Get /etc/sysconfig/network/ifcfg-qeth file name for given NIC
+	Description	: Get /etc/sysconfig/network/ifcfg-qeth file name of given NIC
     Arguments	: 	Node
     				NIC address
     Returns		: /etc/sysconfig/network/ifcfg-qeth file name
@@ -467,11 +507,12 @@ sub getGateway {
 
 =head3   sendFile
 
-	Description	: SCP file to given node
+	Description	: Send a file to a given node using SCP
     Arguments	: 	Node 
-    				File
+    				Source file 
+    				Target file
     Returns		: Nothing
-    Example		: my $out = xCAT::zvmUtils->sendFile($node, $file);
+    Example		: xCAT::zvmUtils->sendFile($node, $srcFile, $trgtFile);
     
 =cut
 
@@ -479,14 +520,13 @@ sub getGateway {
 sub sendFile {
 
 	# Get inputs
-	my ( $class, $node, $file ) = @_;
+	my ( $class, $node, $srcFile, $trgtFile ) = @_;
 
 	# Create destination string
-	my $dest = "root@";
-	$dest .= $node;
+	my $dest = "root@" . $node;
 
 	# SCP directory entry file over to HCP
-	my $out = `scp $file $dest:$file`;
+	my $out = `scp $srcFile $dest:$trgtFile`;
 
 	return;
 }
@@ -496,8 +536,8 @@ sub sendFile {
 =head3   getRootDiskAddr
 
 	Description	: Get root disk address of given node
-    Arguments	: 	Node name
-    Returns		: 	Root disk address
+    Arguments	: Node name
+    Returns		: Root disk address
     Example		: my $deviceNode = xCAT::zvmUtils->getRootDiskAddr($node);
     
 =cut
@@ -525,9 +565,9 @@ sub getRootDiskAddr {
 
 =head3   disableEnableDisk
 
-	Description	: Disable or enable disk for given node
+	Description	: Disable/enable a disk for given node
     Arguments	: 	Device address
-    				Option [-d | -e]
+    				Option (-d|-e)
     Returns		: Nothing
     Example		: my $out = xCAT::zvmUtils->disableEnableDisk($callback, $node, $option, $devAddr);
     
@@ -539,7 +579,7 @@ sub disableEnableDisk {
 	# Get inputs
 	my ( $class, $callback, $node, $option, $devAddr ) = @_;
 
-	# Disable or enable disk
+	# Disable/enable disk
 	if ( $option eq "-d" || $option eq "-e" ) {
 		my $out = `ssh $node "chccwdev $option $devAddr"`;
 	}
@@ -586,100 +626,25 @@ sub getMdisks {
 		# Save MDISK statements
 		push( @disks, $_ );
 	}
+
 	return (@disks);
 }
 
 #-------------------------------------------------------
 
-=head3   readConfigFile
+=head3   getUserEntryWODisk
 
-	Description	: Read in configuration file
+	Description	: 	Get user directory entry for given node
+					without MDISK statments, and save it to a file
     Arguments	: 	Node
-    				Configuration file
-    Returns		: 	Hash arrary containing node configuration
-    Example		: my %nodeConfig = xCAT::zvmUtils->readConfigFile($callback, $node, $file);
-    
-=cut
-
-#-------------------------------------------------------
-sub readConfigFile {
-
-	# Get inputs
-	my ( $class, $callback, $node, $file ) = @_;
-
-	# Hash array containing new node configuration
-	my %target;
-
-	# Get configuration file
-	if ( !$file ) {
-		xCAT::zvmUtils->printLn( $callback, "Error: Missing configuration file" );
-		return;
-	}
-	else {
-
-		# Open configuration file
-		open( CONFIG, $file ) || die("Error: Could not open file");
-		my @configFile = <CONFIG>;
-		close(CONFIG);
-
-		# Read configuration file
-		my @parms;
-		my $pattern = $node . ":";
-		my $save    = 0;
-		foreach (@configFile) {
-			$_ = xCAT::zvmUtils->trimStr($_);
-
-			# If the line contains specified node
-			if ( $_ =~ m/$pattern/i ) {
-
-				# Save configuration
-				$save = 1;
-
-				# Find ':' and replace with ''
-				$_ =~ s/://g;
-				$target{"Hostname"} = $_;
-			}
-
-			# Stop saving at next line containing ':'
-			if ( $save == 1 && $_ =~ m/:/i ) {
-				$save = 0;
-			}
-
-			# Save configuration
-			if ( $save == 1 ) {
-
-				# Create hash array
-				@parms = split( "=", $_ );
-				$target{"$parms[0]"} = "$parms[1]";
-			}
-
-		}    # End of foreach
-	}    # End of else
-
-	# If there is not a new node configuration
-	if ( !$target{"Hostname"} ) {
-		xCAT::zvmUtils->printLn( $callback, "Error: Node configuration not found" );
-		return;
-	}
-
-	return %target;
-}
-
-#-------------------------------------------------------
-
-=head3   saveDirEntryNoDisk
-
-	Description	: 	Get user directory entry for given node,
-					remove MDISK statments, and save it to a file
-    Arguments	: 	Node name
-    				File name
+    				File name to save user entry under
     Returns		: 	Nothing
-    Example		: my $out = xCAT::zvmUtils->saveDirEntryNoDisk($callback, $node, $file);
+    Example		: my $out = xCAT::zvmUtils->getUserEntryWODisk($callback, $node, $file);
     
 =cut
 
 #-------------------------------------------------------
-sub saveDirEntryNoDisk {
+sub getUserEntryWODisk {
 
 	# Get inputs
 	my ( $class, $callback, $node, $file ) = @_;
@@ -729,7 +694,7 @@ sub saveDirEntryNoDisk {
 
 =head3   appendHostname
 
-	Description	: 	Append specified hostname in front of given string
+	Description	: 	Append specified hostname in front of a given string
     Arguments	: 	Hostname
     				String
     Returns		: 	String with hostname in front
@@ -753,18 +718,18 @@ sub appendHostname {
 
 #-------------------------------------------------------
 
-=head3   isOutputGood
+=head3   checkOutput
 
 	Description	: 	Check return of given output
     Arguments	: 	Output string
-    Returns		: 	0	Good output
+    Returns		: 	 0	Good output
     				-1	Bad output
-    Example		: my $ans = xCAT::zvmUtils->isOutputGood($callback, $out);
+    Example		: my $ans = xCAT::zvmUtils->checkOutput($callback, $out);
     
 =cut
 
 #-------------------------------------------------------
-sub isOutputGood {
+sub checkOutput {
 	my ( $class, $callback, $out ) = @_;
 
 	# Check output string
@@ -787,7 +752,7 @@ sub isOutputGood {
 	Description	: 	Check if given address is used
     Arguments	: 	Node
     				Disk address
-    Returns		: 	0	Address used
+    Returns		: 	 0	Address used
     				-1	Address not used
     Example		: my $ans = xCAT::zvmUtils->isAddressUsed($node, $address);
     
@@ -810,10 +775,10 @@ sub isAddressUsed {
 
 =head3   getMacID
 
-	Description	: Get MACID from /opt/zhcp/conf/next_mac on HCP
+	Description	: Get MACID from /opt/zhcp/conf/next_macid on HCP
     Arguments	: HCP node
     Returns		: MACID
-    Example		: my $mac = xCAT::zvmUtils->getMacID($hcp);
+    Example		: my $macId = xCAT::zvmUtils->getMacID($hcp);
     
 =cut
 
@@ -825,166 +790,149 @@ sub getMacID {
 	my $out = `ssh -o ConnectTimeout=5 $hcp "test -d /opt/zhcp/conf && echo 'Directory exists'"`;
 	if ( $out =~ m/Directory exists/i ) {
 
-		# Read next_mac file
-		$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_mac"`;
+		# Check next_macid file
+		$out = `ssh -o ConnectTimeout=5 $hcp "test -e /opt/zhcp/conf/next_macid && echo 'File exists'"`;
+		if ( $out =~ m/File exists/i ) {
+
+			# Do nothing
+		}
+		else {
+
+			# Create next_macid file
+			$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_macid"`;
+		}
 	}
 	else {
 
 		# Create /opt/zhcp/conf directory
 		# Create next_mac -- Contains next MAC address to use
 		$out = `ssh -o ConnectTimeout=5 $hcp "mkdir /opt/zhcp/conf"`;
-		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_mac"`;
+		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_macid"`;
 	}
 
-	# Create /opt/zhcp/conf/next_mac file on HCP
-	$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_mac"`;
-	my $mac = xCAT::zvmUtils->trimStr($out);
+	# Read /opt/zhcp/conf/next_macid file
+	$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_macid"`;
+	my $macId = xCAT::zvmUtils->trimStr($out);
 
-	return $mac;
+	return $macId;
 }
 
 #-------------------------------------------------------
 
-=head3   generateMac
+=head3   generateMacId
 
-	Description	: Generate a MAC address 
-    Arguments	: 	HCP node
-    Returns		: MAC suffix
-    Example		: my $mac = xCAT::zvmUtils->generateMac($hcp);
+	Description	: Generate a MACID 
+    Arguments	: HCP node
+    Returns		: MACID
+    Example		: my $macId = xCAT::zvmUtils->generateMacId($hcp);
     
 =cut
 
 #-------------------------------------------------------
-sub generateMac {
+sub generateMacId {
 	my ( $class, $hcp ) = @_;
 
 	# Check /opt/zhcp/conf directory on HCP
 	my $out = `ssh -o ConnectTimeout=5 $hcp "test -d /opt/zhcp/conf && echo 'Directory exists'"`;
 	if ( $out =~ m/Directory exists/i ) {
 
-		# Read next_mac file
-		$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_mac"`;
+		# Check next_macid file
+		$out = `ssh -o ConnectTimeout=5 $hcp "test -e /opt/zhcp/conf/next_macid && echo 'File exists'"`;
+		if ( $out =~ m/File exists/i ) {
+
+			# Do nothing
+		}
+		else {
+
+			# Create next_macid file
+			$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_macid"`;
+		}
 	}
 	else {
 
 		# Create /opt/zhcp/conf directory
 		# Create next_mac -- Contains next MAC address to use
 		$out = `ssh -o ConnectTimeout=5 $hcp "mkdir /opt/zhcp/conf"`;
-		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_mac"`;
+		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_macid"`;
 	}
 
-	# Read /opt/zhcp/conf/next_mac file
-	$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_mac"`;
-	my $mac = xCAT::zvmUtils->trimStr($out);
+	# Read /opt/zhcp/conf/next_macid file
+	$out = `ssh -o ConnectTimeout=5 $hcp "cat /opt/zhcp/conf/next_macid"`;
+	my $macId = xCAT::zvmUtils->trimStr($out);
 	my $int;
 
-	if ($mac) {
+	if ($macId) {
 
-		# Convert hexadecimal to decimal
-		$int = hex($mac);
-		$mac = sprintf( "%d", $int );
+		# Convert hexadecimal -- decimal
+		$int   = hex($macId);
+		$macId = sprintf( "%d", $int );
 
 		# Generate new MAC suffix
-		$mac = $mac - 1;
+		$macId = $macId - 1;
 
-		# Convert decimal to hexadecimal
-		$mac = sprintf( "%X", $mac );
-		$out = `ssh -o ConnectTimeout=5 $hcp "echo $mac > /opt/zhcp/conf/next_mac"`;
+		# Convert decimal -- hexadecimal
+		$macId = sprintf( "%X", $macId );
+		
+		# Save new MACID
+		$out = `ssh -o ConnectTimeout=5 $hcp "echo $macId > /opt/zhcp/conf/next_macid"`;
 	}
 
-	return $mac;
+	return $macId;
+}
 
-	#	# Find the highest MAC address on given LAN
-	#	my $newMac = 0;
-	#	my $mac;
-	#	my $temp;
-	#	my $layer = -1;
-	#	my @vars;
-	#	my $out   = `ssh -o ConnectTimeout=5 $hcp "vmcp --buffer 1000000 q lan $lanName details"`;
-	#	my @outLn = split( "\n", $out );
-	#
-	#	# Go through each line
-	#	foreach (@outLn) {
-	#
-	#		# Get the MAC address for layer 3 LAN
-	#		if ( $layer == 3 ) {
-	#			@vars = split( " ", $_ );
-	#			$mac  = $vars[2];
-	#
-	#			# Replace - with :
-	#			$mac = xCAT::zvmUtils->replaceStr( $mac, "-", ":" );
-	#
-	#			# Convert to decimal
-	#			if ($mac) {
-	#
-	#				# Remove dash
-	#				$temp = xCAT::zvmUtils->replaceStr( $mac, ":", "" );
-	#
-	#				$temp = hex($temp);
-	#				$mac = sprintf( "%d", $temp );
-	#			}
-	#
-	#			# Compare MAC address value to previous one
-	#			# Save the highest MAC address
-	#			if ( $mac > $newMac ) {
-	#				$newMac = $mac;
-	#			}
-	#
-	#			$layer = -1;
-	#		}
-	#
-	#		# Get the MAC address for layer 2 LAN
-	#		elsif ( $layer == 2 ) {
-	#			@vars = split( " ", $_ );
-	#			$mac  = $vars[0];
-	#
-	#			# Replace - with :
-	#			$mac = xCAT::zvmUtils->replaceStr( $mac, "-", ":" );
-	#
-	#			# Convert to decimal
-	#			if ($mac) {
-	#
-	#				# Remove dash
-	#				$temp = xCAT::zvmUtils->replaceStr( $mac, ":", "" );
-	#
-	#				$temp = hex($temp);
-	#				$mac = sprintf( "%d", $temp );
-	#			}
-	#
-	#			# Compare MAC address value to previous one
-	#			# Save the highest MAC address
-	#			if ( $mac > $newMac ) {
-	#				$newMac = $mac;
-	#			}
-	#
-	#			$layer = -1;
-	#		}
-	#
-	#		# If the line contains 'Unicast IP/MAC Addresses' -- Then the next line contain a MAC address
-	#		if ( $_ =~ m/Unicast IP Addresses/i ) {
-	#			$layer = 3;
-	#		}
-	#		elsif ( $_ =~ m/ Unicast MAC Addresses/i ) {
-	#			$layer = 2;
-	#		}
-	#	}
-	#
-	#	# Convert the highest MAC address from decimal to hexadecimal
-	#	$newMac = $newMac + 1;
-	#	$newMac = sprintf( "%x", $newMac );
-	#
-	#	# Append a zero if length is less than 12
-	#	if ( length($newMac) != 12 ) {
-	#		$newMac = "0" . $newMac;
-	#	}
-	#
-	#	$newMac =
-	#	    substr( $newMac, 0, 2 ) . ":"
-	#	  . substr( $newMac, 2,  2 ) . ":"
-	#	  . substr( $newMac, 4,  2 ) . ":"
-	#	  . substr( $newMac, 6,  2 ) . ":"
-	#	  . substr( $newMac, 8,  2 ) . ":"
-	#	  . substr( $newMac, 10, 2 );
-	#
-	#	return $newMac;
+#-------------------------------------------------------
+
+=head3   createMacAddr
+
+	Description	: 	Create a MAC address using HCP MAC prefix of given node
+					and given MAC suffix
+    Arguments	: 	Node
+    				MAC suffix
+    Returns		: 	MAC address
+    Example		: my $mac = xCAT::zvmUtils->createMacAddr($node, $suffix);
+    
+=cut
+
+#-------------------------------------------------------
+sub createMacAddr {
+	my ( $class, $node, $suffix ) = @_;
+
+	# Get node properties from 'zvm' table
+	my @propNames = ('hcp');
+	my $propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+
+	# Get HCP
+	my $hcp = $propVals->{'hcp'};
+	if ( !$hcp ) {
+		return -1;
+	}
+
+	# Get HCP MAC address
+	# Get the first MAC address found
+	my $out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep "MAC"`;
+	my @lines = split( "\n", $out );
+	my @vars  = split( " ", $lines[0] );
+
+	# Extract MAC prefix
+	my $prefix = $vars[1];
+	$prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
+	$prefix = substr( $prefix, 0, 6 );
+
+	# Generate MAC address of source node
+	my $mac = $prefix . $suffix;
+
+	# If length is less than 12, append a zero
+	if ( length($mac) != 12 ) {
+		$mac = "0" . $mac;
+	}
+
+	$mac =
+	    substr( $mac, 0, 2 ) . ":"
+	  . substr( $mac, 2,  2 ) . ":"
+	  . substr( $mac, 4,  2 ) . ":"
+	  . substr( $mac, 6,  2 ) . ":"
+	  . substr( $mac, 8,  2 ) . ":"
+	  . substr( $mac, 10, 2 );
+
+	return $mac;
 }
