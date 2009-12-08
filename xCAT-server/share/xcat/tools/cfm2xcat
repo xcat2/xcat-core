@@ -71,8 +71,8 @@ if (!($output))
 }
 
 # call cfmupdatenode and build cfm distribution files
-$rc = &buildcfmdistfiles($input);
-if ($rc == 0)
+&buildcfmdistfiles($input);
+if (-e ($input))  # if anything built
 {
 
     # build the xcat sync files
@@ -89,7 +89,7 @@ if ($rc == 0)
 }
 else
 {
-    print " Error building CFM dist files.\n";
+    print " Error building CFM dist files, or nothing to do.\n";
 }
 exit 0;
 
