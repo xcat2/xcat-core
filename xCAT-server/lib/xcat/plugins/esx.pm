@@ -35,6 +35,7 @@ my %hypready; #A structure for hypervisor readiness to be tracked before proceed
 my %running_tasks; #A struct to track this processes
 my $output_handler; #Pointer to the function to drive results to client
 my $executerequest;
+my $usehostnamesforvcenter;
 my %tablecfg; #to hold the tables
 my $currkey;
 my $viavcenter;
@@ -247,6 +248,13 @@ sub process_request {
 	} else {
 		@exargs = ($request->{arg});
 	}
+	my $sitetab = xCAT::Table->new('site');
+	if($sitetab){
+		(my $ref) = $sitetab->getAttribs({key => 'usehostnamesforvcenter'}, 'value');
+		if ($ref and $ref->{value}) {
+			$usehostnamesforvcenter = $ref->{value};
+		}
+	}
 
 
 	if ($request->{moreinfo}) { $moreinfo=$request->{moreinfo}; }
@@ -276,6 +284,11 @@ sub process_request {
     if ($hyptab) {
         my @hyps = keys %hyphash;
         $tablecfg{hypervisor} = $hyptab->getNodesAttribs(\@hyps,['mgr','netmap','defaultnet','cluster','preferdirect']);
+    }
+    my $hoststab = xCAT::Table->new('hosts',create=>0);
+    if ($hoststab) {
+        my @hyps = keys %hyphash;
+        $tablecfg{hosts} = $hoststab->getNodesAttribs(\@hyps,['hostnames']);
     }
 
 	#my $children = 0;
@@ -479,9 +492,17 @@ sub get_hostview {
     if ($args{properties}) {
         $subargs{properties}=$args{properties};
     }
+    my @addrs = gethostbyname($host);
+    my $ip=inet_ntoa($addrs[4]);
+    (my $name, my $aliases) = gethostbyaddr($addrs[4],AF_INET); #TODO: IPv6
+    my @matchvalues = ($host,$ip,$name);
+    foreach (split /\s+/,$aliases) {
+        push @matchvalues,$_;
+    }
     foreach (@{$args{conn}->find_entity_views(%subargs)}) {
-       if ($_->name =~ /$host(?:\.|\z)/ or $_->name =~ /localhost(?:\.|\z)/) {
-           return $_;
+       my $view = $_;
+       if ($_->name =~ /$host(?:\.|\z)/ or $_->name =~ /localhost(?:\.|\z)/ or grep { $view->name =~ /$_(?:\.|\z)/ } @matchvalues) {
+           return $view;
            last;
        }
     }
@@ -1375,14 +1396,20 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
 
 
     my $foundhyp;
+    my $name=$hyp;
+    if ($usehostnamesforvcenter and $usehostnamesforvcenter !~ /no/i) {
+        if ($tablecfg{hosts}->{$hyp}->[0]->{hostnames}) {
+            $name = $tablecfg{hosts}->{$hyp}->[0]->{hostnames};
+        }
+    }
     my $connspec = HostConnectSpec->new(
-        hostName=>$hyp,
+        hostName=>$name,
         password=>$hyphash{$hyp}->{password},
         userName=>$hyphash{$hyp}->{username},
         force=>1,
         );
     foreach  (@{$hyphash{$hyp}->{vcenter}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'])}) {
-        if ($_->{'summary.config.name'} =~ /^$hyp(?:\.|\z)/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
+        if ($_->{'summary.config.name'} =~ /^$hyp(?:\.|\z)/ or $_->{'summary.config.name'} =~ /^$name(?:\.|\z)/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
             if ($_->{'summary.runtime.connectionState'}->val eq 'connected') {
                 enable_vmotion(hypname=>$hyp,hostview=>$_,conn=>$hyphash{$hyp}->{vcenter}->{conn});
                 $vcenterhash{$vcenter}->{$hyp} = 'good';
