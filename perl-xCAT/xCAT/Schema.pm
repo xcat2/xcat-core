@@ -356,7 +356,7 @@ nodepos => {
  },
   },
 noderes => {
-    cols => [qw(node servicenode netboot tftpserver nfsserver monserver nfsdir installnic primarynic cmdinterface xcatmaster current_osimage next_osimage nimserver comments disable)],
+    cols => [qw(node servicenode netboot tftpserver nfsserver monserver nfsdir installnic primarynic discoverynics cmdinterface xcatmaster current_osimage next_osimage nimserver comments disable)],
     keys => [qw(node)],
     table_desc => 'Resources and settings to use when installing nodes.',
  descriptions => {
@@ -369,6 +369,7 @@ noderes => {
   nfsdir => 'Not used!  The path that should be mounted from the NFS server.',
   installnic => 'The network adapter on the node that will be used for OS deployment.  If not set, primarynic will be used.',
   primarynic => 'The network adapter on the node that will be used for xCAT management.  Default is eth0.',
+  discoverynics => 'If specified, force discovery to occur on specific network adapters only, regardless of detected connectivity.  Syntax can be simply "eth2,eth3" to restrict discovery to whatever happens to come up as eth2 and eth3, or by driver name such as "bnx2:0,bnx2:1" to specify the first two adapters managed by the bnx2 driver',
   defnetname => 'The host (or ip) by which a node should be addressed (i.e. in psh/pscp). By default, nodename is assumed to be equal to this',
   xcatmaster => 'The hostname of the xCAT service node (as known by this node).  This is the default value if nfsserver or tftpserver are not set.',
   current_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image currently deployed on this node.',

@@ -88,6 +88,8 @@ sub process_request {
   my $node = $request->{node}->[0];
   my $ip = $request->{'_xcat_clientip'};
   openlog("xCAT node discovery",'','local0');
+
+  
   #First, fill in tables with data fields..
   if (defined($request->{mtm}) or defined($request->{serial})) {
     my $vpdtab = xCAT::Table->new("vpd",-create=>1);
@@ -99,6 +101,7 @@ sub process_request {
     }
   }
   my $nrtab;
+  my @discoverynics;
   if (defined($request->{arch})) {
     #Set the architecture in nodetype.  If 32-bit only x86 or ppc detected, overwrite.  If x86_64, only set if either not set or not an x86 family
     my $typetab=xCAT::Table->new("nodetype",-create=>1);
@@ -119,7 +122,10 @@ sub process_request {
     }
     my $currboot='';
     $nrtab = xCAT::Table->new('noderes'); #Attempt to check and set if wrong the netboot method on discovery, if admin omitted
-    (my $rent) = $nrtab->getNodeAttribs($node,['netboot']);
+    (my $rent) = $nrtab->getNodeAttribs($node,['netboot','discoverynics']);
+    if ($rent and defined $rent->{discoverynics}) {
+        @discoverynics=split /,/,$rent->{discoverynics};
+    }
     if ($rent and $rent->{'netboot'}) {
        $currboot=$rent->{'netboot'};
     }
@@ -134,31 +140,58 @@ sub process_request {
     my @ifinfo;
     my $macstring = "";
     my %usednames;
+    my %bydriverindex;
+    my $forcenic=0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
     foreach (@{$request->{mac}}) {
-       @ifinfo = split /\|/;
-       if ($ifinfo[3]) {
-          (my $ip,my $netbits) = split /\//,$ifinfo[3];
-	  if ($ip =~ /\d+\.\d+\.\d+\.\d+/) {
-	  	my $ipn = unpack("N",inet_aton($ip));
-		my $mask = 2**$netbits-1<<(32-$netbits);
-		my $netn = inet_ntoa(pack("N",$ipn & $mask));
-		my $hosttag = gethosttag($node,$netn,@ifinfo[1],\%usednames);
-		if ($hosttag) {
-         (my $rent) = $nrtab->getNodeAttribs($node,['primarynic','nfsserver']);
-         unless ($rent and $rent->{primarynic}) { #if primarynic not set, set it to this nic
-            $nrtab->setNodeAttribs($node,{primarynic=>@ifinfo[1]});
-         }
-         unless ($rent and $rent->{nfsserver}) {
-            $nrtab->setNodeAttribs($node,{nfsserver=>xCAT::Utils->my_ip_facing($hosttag)});
-         }
-         $usednames{$hosttag}=1;
-		   $macstring .= $ifinfo[2]."!".$hosttag."|";
-		} else {
-         $macstring .= $ifinfo[2]."!*NOIP*|";
+      @ifinfo = split /\|/;
+      $bydriverindex{$ifinfo[0]} += 1;
+      if (scalar @discoverynics) {
+          $forcenic=-1; #$forcenic defaults to explicitly skip nic
+            foreach my $nic (@discoverynics) {
+                if ($nic =~ /:/) { #syntax like 'bnx2:0' to say the first bnx2 managed interface
+                    (my $driver,my $index) = split /:/,$nic;
+                    if ($driver eq $ifinfo[0] and $index == ($bydriverindex{$driver}-1)) { 
+                        $forcenic=1; #force nic to be put into database
+                        last;
+                    }
+                } else { #simple 'eth2' sort of argument
+                    if ($nic eq $ifinfo[1]) {
+                        $forcenic=1;
+                        last;
+                    }
+                    
+                }
+            }
       }
-	  }
-       }
+      if ($forcenic == -1) { #if force to skip, go to next nic
+          next;
+      }
+      if ($ifinfo[3]) {
+          (my $ip,my $netbits) = split /\//,$ifinfo[3];
+    	  if ($ip =~ /\d+\.\d+\.\d+\.\d+/) {
+    	  	my $ipn = unpack("N",inet_aton($ip));
+    		my $mask = 2**$netbits-1<<(32-$netbits);
+    		my $netn = inet_ntoa(pack("N",$ipn & $mask));
+    		my $hosttag = gethosttag($node,$netn,@ifinfo[1],\%usednames);
+    		if ($hosttag) {
+                 (my $rent) = $nrtab->getNodeAttribs($node,['primarynic','nfsserver']);
+                 unless ($rent and $rent->{primarynic}) { #if primarynic not set, set it to this nic
+                   $nrtab->setNodeAttribs($node,{primarynic=>@ifinfo[1]});
+                 }
+                 unless ($rent and $rent->{nfsserver}) {
+                    $nrtab->setNodeAttribs($node,{nfsserver=>xCAT::Utils->my_ip_facing($hosttag)});
+                 }
+                 $usednames{$hosttag}=1;
+    		   $macstring .= $ifinfo[2]."!".$hosttag."|";
+	    	} else {
+               if ($forcenic == 1) { $macstring .= $ifinfo[2]."|"; } else { $macstring .= $ifinfo[2]."!*NOIP*|"; }
+            }
+    	  }
+      } else {
+          if ($forcenic == 1) { $macstring .= $ifinfo[2]."|"; }
+      }
     }
+    $macstring =~ s/\|\z//;
     $mactab->setNodeAttribs($node,{mac=>$macstring});
     my %request = (
        command => ['makedhcp'],
