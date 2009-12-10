@@ -4,6 +4,9 @@
 function openlogdialog (data, textstatus) { //open the log in dialog if not logged in
 	if (data.authenticated == "no") {
 		$('#logdialog').dialog("open"); }
+        else {
+            $("#wrapper").show();
+        }
 }
 
 function onlogin (data, textstatus) {
