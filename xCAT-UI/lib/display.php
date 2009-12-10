@@ -457,17 +457,17 @@ EOF;
 }
 
 function controlRunCmd($nr, $cmd, $subcmd){
-//echo <<<JS00
-//<script type="text/javascript" type"utf-8">
-//$(document).ready(function() {
-//    $("#tableForCtrl").dataTable({
-//        "bLengthChange": true,
-//        "bFilter": true,
-//        "bSort": true
-//    });
-//});
-//</script>
-//JS00;
+echo <<<JS00
+<script type="text/javascript" type"utf-8">
+$(document).ready(function() {
+    $("#tableForCtrl").dataTable({
+        "bLengthChange": true,
+        "bFilter": true,
+        "bSort": true
+    });
+});
+</script>
+JS00;
     echo "<div id=tableForCtrl>";
     $rvals = docmd($cmd, $nr, array($subcmd));
     #print_r($rvals);
