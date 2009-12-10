@@ -1,10 +1,11 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-package xCAT::Directinv;
+package xCAT::FSPinv;
 use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
+use xCAT::PPCinv;
 use Data::Dumper;
 
 ##########################################
@@ -25,6 +26,15 @@ my @licmap = (
     ["curr_level_secondary",   "Level Secondary"]
 );
 
+##########################################################################
+# Parse the command line for options and operands 
+##########################################################################
+sub parse_args {
+    xCAT::PPCinv::parse_args(@_);
+}
+
+
+
 
 ##########################################################################
 # Returns FSP/BPA firmware information
@@ -35,13 +45,13 @@ sub firmware {
     my $hash    = shift;
     my @result;
  
-    # print "in Directinv \n";
+    # print "in FSPinv \n";
     #print Dumper($request);
     #print Dumper($hash);
 
     ####################################
-    # Power commands are grouped by hardware control point
-    # In Direct attach support, the hcp is the related fsp.  
+    # FSPinv with firm command is grouped by hardware control point
+    # In FSPinv, the hcp is the related fsp.  
     ####################################
     
     # Example of $hash.    
@@ -50,12 +60,12 @@ sub firmware {
     #                                   'Server-9110-51A-SN1075ECF' => [
     #    	                                                          0,
     #		                                                          0,
-    #									  '9110-51A*1075ECF',
-    #									  'fsp1_name',
-    #									  'fsp',
-    #									  0
-    #									  ]
-    #					 }
+    #                           									  '9110-51A*1075ECF',
+    #							                            		  'fsp1_name',
+    #				                            					  'fsp',
+    #									                               0
+    #									                               ]
+    #					                }
     # 	   };
 
     while (my ($mtms,$h) = each(%$hash) ) {
@@ -91,9 +101,10 @@ sub firmware {
 	        #####################################
             # Format fsp-api results
             #####################################
-            foreach ( @licmap ) {  
-                if ( $data->{$name} =~ /@$_[0]=(\w+)/ ) {
-                    push @result, [$name,"@$_[1]: $1",$Rc];
+            my $val;
+            foreach $val ( @licmap ) {  
+                if ( $data->{$name} =~ /@$val[0]=(\w+)/ ) {
+                    push @result, [$name,"@$val[1]: $1",$Rc];
                 }
             }
         }
@@ -101,13 +112,15 @@ sub firmware {
     return( \@result );
 }
 
+##########################################################################
+# invoke the fsp-api command
+##########################################################################
 sub action {
     my $node_name  = shift;
-    my $d          = shift;
+    my $attrs          = shift;
     my $action     = shift;
-#    my $user 	   = "HMC";
-#    my $password   = "abc123";
-    my $fsp_api    ="/opt/xcat/sbin/fsp-api"; 
+#    my $fsp_api    ="/opt/xcat/sbin/fsp-api"; 
+    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";    
     my $id         = 1;
     my $fsp_name   = ();
     my $fsp_ip     = ();
@@ -117,17 +130,17 @@ sub action {
     my $Rc = 0 ;
     my %outhash = ();
         
-    $id = $$d[0];
-    $fsp_name = $$d[3]; 
+    $id = $$attrs[0];
+    $fsp_name = $$attrs[3]; 
 
     my %objhash = (); 
     $objhash{$fsp_name} = "node";
     my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-    my $password    = $myhash{$fsp_name}{"passwd.HMC"};
+    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
     #print "fspname:$fsp_name password:$password\n";
     #print Dumper(%myhash);
     if(!$password ) {
-	    $outhash{$node_name} = "The password.HMC of $fsp_name in ppcdirect table is empty";
+	    $outhash{$node_name} = "The password.hscroot of $fsp_name in ppcdirect table is empty";
 	    return ([-1, \%outhash]);
     }
     #   my $user = "HMC";
@@ -136,10 +149,10 @@ sub action {
 #    my $user = @$cred[0];
 #    my $password = @$cred[1];
 	    
-    if($$d[4] =~ /^lpar$/) {
+    if($$attrs[4] =~ /^lpar$/) {
 	   	$type = 0;
 		$id = 1;
-	} elsif($$d[4] =~ /^fsp$/) { 
+	} elsif($$attrs[4] =~ /^fsp$/) { 
 		$type = 0;
 	} else {
 		 $type = 1;
@@ -148,24 +161,13 @@ sub action {
 	############################
     # Get IP address
     ############################
-    my $hosttab  = xCAT::Table->new( 'hosts' );
-    if ( $hosttab)
-    {
-        my $node_ip_hash = $hosttab->getNodeAttribs( $fsp_name,[qw(ip)]);
-        $fsp_ip = $node_ip_hash->{ip};
-    }
-    if (!$fsp_ip)
-    {
-        my $ip_tmp_res  = xCAT::Utils::toIP($fsp_name);
-        ($Rc, $fsp_ip) = @$ip_tmp_res;
-        if ( $Rc ) 
-        {
-		    $outhash{$node_name} = "Failed to get the $fsp_name\'s ip";
-		    return ([-1, \%outhash]);
-	    }
+   $fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
+    if($fsp_ip == -1) {
+        $outhash{$node_name} = "Failed to get the $fsp_name\'s ip";
+        return ([-1, \%outhash]);	
     }
 
-	
+
 	print "fsp name: $fsp_name\n";
 	print "fsp ip: $fsp_ip\n";
 
@@ -173,19 +175,14 @@ sub action {
 
     print "cmd: $cmd\n"; 
     $SIG{CHLD} = (); 
-    my @res = xCAT::Utils->runcmd($cmd, -1);
+    my $res = xCAT::Utils->runcmd($cmd, -1);
 	if($::RUNCMD_RC != 0){
 	   	$Rc = -1;	
 	} else {
 	  	$Rc = SUCCESS;
 	}
      
-    my $r = ();
-    foreach $r (@res) {
-        chomp $r;
-        print "r:$r\n";
-	    $outhash{ $node_name } = $r;
-    }
+	$outhash{ $node_name } = $res;
      
 	return( [$Rc,\%outhash] ); 
 

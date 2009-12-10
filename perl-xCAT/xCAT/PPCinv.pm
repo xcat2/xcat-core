@@ -5,7 +5,6 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
-use xCAT::Directinv;
 
 
 ##########################################
@@ -432,11 +431,6 @@ sub firmware {
     my $hwtype  = @$exp[2];
     my @result;
 
-    if($request->{direct_attach_support} == 1) {
-	my $res  = xCAT::Directinv::firmware($request, $hash);
-	return( \$res );
-    }
-
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($name,$d) = each(%$h) ) {
 
@@ -448,12 +442,12 @@ sub firmware {
                     [$name,"Information only available for CEC/BPA/LPAR",RC_ERROR];
                 next; 
             }
-	   #################
-	   #For support on  Lpars, the flag need to be changed.
-	   ##########
-	   if(@$d[4] eq "lpar")	{
-		@$d[4] = "fsp";
-	   }
+	        #################
+	        #For support on  Lpars, the flag need to be changed.
+	        ##########
+	        if(@$d[4] eq "lpar")	{
+		        @$d[4] = "fsp";
+	        }
            my $values = xCAT::PPCcli::lslic( $exp, $d );
             my $Rc = shift(@$values);
     

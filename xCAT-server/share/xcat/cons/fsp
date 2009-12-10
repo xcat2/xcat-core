@@ -1,0 +1,275 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use strict;
+use Getopt::Long;
+use xCAT::Table;
+use xCAT::PPCdb;
+use Expect;
+use xCAT::DBobjUtils;
+use Data::Dumper;
+
+##############################################
+# Globals
+##############################################
+my $verbose = 0;
+my $node;
+
+##########################################
+# Database errors
+##########################################
+my %errmsg = (
+  NODE_UNDEF =>"Node not defined in '%s' database",
+  NO_ATTR    =>"'%s' not defined in '%s' database",
+  DB_UNDEF   =>"'%s' database not defined"
+);
+
+
+
+##########################################################################
+# Parse the command line for options and operands
+##########################################################################
+sub parse_args {
+
+    my %opt = ();
+    my @VERSION = qw( 2.0 );
+
+    #############################################
+    # Responds with usage statement
+    #############################################
+    local *usage = sub {
+
+        my $cmd = __FILE__;
+        $cmd =~ s/.*([\w]{3}$)/$1/;
+
+        if ( defined( $_[0] )) {
+            print STDERR "$_[0]\n";
+        }
+        my @msg = ( 
+            "$cmd -h|--help\n",
+            "$cmd -v|--version\n",
+            "$cmd singlenode [-V|-Verbose]\n" );
+        print STDERR @msg;
+    };
+    #############################################
+    # Process command-line arguments
+    #############################################
+    if ( !defined( @ARGV )) {
+        usage( "No node specified" );
+        return(1);
+    }
+    #############################################
+    # Checks case in GetOptions, allows opts
+    # to be grouped (e.g. -vx), and terminates
+    # at the first unrecognized option.
+    #############################################
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure( "bundling" );
+
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
+        usage();
+        return(1);
+    }
+    #######################################
+    # Option -h for Help
+    #######################################
+    if ( exists( $opt{h} )) {
+        usage();
+        return(1);
+    }
+    #######################################
+    # Option -v for version
+    #######################################
+    if ( exists( $opt{v} )) {
+        print STDERR \@VERSION;
+        return(1);
+    }
+    #######################################
+    # Option -V for verbose output
+    #######################################
+    if ( exists( $opt{V} )) {
+        $verbose = 1;
+    }
+    #######################################
+    # Check for "-" with no option
+    #######################################
+    if ( grep(/^-$/, @ARGV )) {
+        usage( "Missing option: -" );
+        return(1);
+    }
+    #######################################
+    # Get node
+    #######################################
+    if ( !defined( $ARGV[0] )) {
+        usage( "No node specified" );
+        return(1);
+    }
+    #######################################
+    # Check for extra argument
+    #######################################
+    $node = shift @ARGV;
+    if ( defined( $ARGV[0] )) {
+        usage( "Invalid Argument: $ARGV[0]" );
+        return(1);
+    }
+    return(0);
+}
+
+
+
+##########################################################################
+# Open remote console 
+##########################################################################
+sub invoke_cmd {
+
+    my @attribs = qw(id parent hcp);
+    my %tabs    = ();
+
+    ##################################
+    # Open databases needed
+    ##################################
+    foreach ( qw(ppc vpd nodetype) ) {
+        $tabs{$_} = xCAT::Table->new($_);
+
+        if ( !exists( $tabs{$_} )) {
+            return( sprintf( $errmsg{DB_UNDEF}, $_ ));
+        }
+    }
+    ##################################
+    # Get node power type 
+    ##################################
+    my $hwtype = __FILE__;
+    $hwtype    =~ s/.*([\w]{3})$/$1/;
+
+    #################################
+    # Get node type
+    #################################
+    my ($ent) = $tabs{nodetype}->getNodeAttribs($node, ["nodetype"] );
+    if ( !defined( $ent )) {
+        return( sprintf( $errmsg{NODE_UNDEF}, "nodetype" ));
+    }
+    #################################
+    # Check for type
+    #################################
+    if ( !exists( $ent->{nodetype} )) {
+        return( sprintf( $errmsg{NO_ATTR}, $ent->{nodetype},"nodetype" ));
+    }
+    #################################
+    # Check for valid "type"
+    #################################
+    my @types = split /,/, $ent->{nodetype};
+    my ($type) = grep( /^(lpar|osi)$/, @types );
+
+    if ( !defined( $type )) {
+        return( "Invalid node type: $ent->{nodetype}" );
+    }
+    #################################
+    # Get attributes
+    #################################
+    my ($att) = $tabs{ppc}->getAttribs({'node'=>$node}, @attribs );
+
+    if ( !defined( $att )) {
+        return( sprintf( $errmsg{NODE_UNDEF}, "ppc" ));
+    }
+    #################################
+    # Verify required attributes
+    #################################
+    foreach my $at ( @attribs ) {
+        if ( !exists( $att->{$at} )) {
+            return( sprintf( $errmsg{NO_ATTR}, $at, "ppc" ));
+        }
+    }
+
+    my $fsp_name   = $att->{hcp};
+    my $id = $att->{id};
+    my %objhash = (); 
+    $objhash{$fsp_name} = "node";
+    my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
+    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
+    if(!$password ) {
+   	return "The password.hscroot of $fsp_name in ppcdirect table is empty"; 
+    }
+    
+    my $username = "hscroot";	
+#    my $fsp_api ="/opt/xcat/sbin/fsp-api";
+    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
+    my $action = "console";
+    my $type = "0";
+    my $fsp_ip = ();
+    my $Rc = 0;
+    
+    my $hosttab  = xCAT::Table->new( 'hosts' );
+    if ( $hosttab) {
+        my $node_ip_hash = $hosttab->getNodeAttribs( $fsp_name,[qw(ip)]);
+    	$fsp_ip = $node_ip_hash->{ip};
+    }
+    if (!$fsp_ip) {
+	my $ip_tmp_res  = xCAT::Utils::toIP($fsp_name);
+	($Rc, $fsp_ip) = @$ip_tmp_res;
+	if ( $Rc ) {
+   	     return "Failed to get the $fsp_name\'s ip";
+        }
+    }
+    
+    my $cmd = "$fsp_api -a $action -u $username -p $password -t $type:$fsp_ip:$id:$node:\r";
+#    print "cmd: $cmd\n";
+    my $running_failed_code = "Reason code: 0x1000000";
+    my $fsp_standby_msg = "Reason code: 0x1300";
+    my $timeout = 30;
+    my $failed = 0;
+    my $exp = new Expect;
+    $exp->log_stdout( 1 );
+    $exp->spawn( $cmd ) or die "Can't spawn $cmd\r\n";
+   
+    my @result = $exp->expect( $timeout,
+	       [ "$running_failed_code",
+		  sub {
+		  	$failed = 1;
+		      } ],
+		[ "$fsp_standby_msg",
+	          sub {
+			$failed = 2;
+			 
+		  }]
+		);
+     if($failed == 1) {
+	 $exp->hard_close();
+         return("Virtual terminal is already connected");
+     
+     }
+     if($failed == 2) {
+	 $exp->hard_close();
+         return("Failed to open the console. Please check the related FSP's status");
+     
+     }
+    
+    my $escape = "\030";
+    $exp->send( "\r" );
+    $exp->interact( \*STDIN, $escape );
+    
+    $exp->hard_close();    
+     
+    return(0);
+}
+
+
+##############################################
+# Start main body of code                                                 
+##############################################
+if ( parse_args() ) {
+    exit(1);
+}
+my $result = invoke_cmd();
+if ( $result ne "0" ) {
+    print STDERR "$node: $result\n";
+    exit(1);
+}
+exit(0);
+
+
+
+

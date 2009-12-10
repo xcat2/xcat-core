@@ -11,7 +11,7 @@ use xCAT::Table;
 use Getopt::Long;
 use File::Spec;
 use POSIX qw(tmpnam);
-
+use xCAT::FSPflash.pm
 
 
 my $packages_dir= ();
@@ -247,15 +247,15 @@ sub noderange_validate {
             #my $t = print_var($exargs, "exargs");
             #print $t;
             if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
-		    #send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
-                #send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
+		        send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
+                send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
                 return -1;
              }
         }
     }
 
     if($f1 * $f2) {
-	    #send_msg( $request, 1, "The argument noderange of rflash can't be BPA and CEC(or LPAR) at the same time");
+	    send_msg( $request, 1, "The argument noderange of rflash can't be BPA and CEC(or LPAR) at the same time");
         return -1;
     }
 }
@@ -264,7 +264,7 @@ sub noderange_validate {
 sub preprocess_for_rflash {
 	my $request      = shift;
 	my $opt = shift;	
-        my $callback = $request->{callback}; 
+    my $callback = $request->{callback}; 
  	my $packages_fw = "/install/packages_fw";
 	my $c = 0;
     my $packages_d;

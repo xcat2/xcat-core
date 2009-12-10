@@ -23,24 +23,48 @@ use Thread qw(yield);
 # Globals
 ##########################################
 my %modules = (
-        rinv      => "xCAT::PPCinv",
-        rpower    => "xCAT::PPCpower",
-        rvitals   => "xCAT::PPCvitals",
-        rscan     => "xCAT::PPCscan",
-        mkvm      => "xCAT::PPCvm",
-        rmvm      => "xCAT::PPCvm",
-        lsvm      => "xCAT::PPCvm",
-        chvm      => "xCAT::PPCvm",
-        rnetboot  => "xCAT::PPCboot",
-        getmacs   => "xCAT::PPCmac",
-        reventlog => "xCAT::PPClog",
-        rspconfig => "xCAT::PPCcfg",
-        rflash    => "xCAT::PPCrflash",
-        mkhwconn  => "xCAT::PPCconn",
-        rmhwconn  => "xCAT::PPCconn",
-        lshwconn  => "xCAT::PPCconn",
-        renergy   => "xCAT::PPCenergy"
+        rinv      => { hmc    => "xCAT::PPCinv",
+                       fsp    => "xCAT::FSPinv",
+                       bpa    => "xCAT::FSPinv",
+		       },
+        rpower    => { hmc    => "xCAT::PPCpower",
+                       fsp    => "xCAT::FSPpower",
+                       bpa    => "xCAT::FSPpower",
+		       },
+        rvitals   => { hmc    => "xCAT::PPCvitals",
+		       },
+        rscan     => { hmc    => "xCAT::PPCscan",
+		       },
+        mkvm      => { hmc    => "xCAT::PPCvm",
+		      },
+        rmvm      => { hmc    => "xCAT::PPCvm",
+		      },
+        lsvm      => { hmc    => "xCAT::PPCvm",
+		      },
+        chvm      => { hmc    => "xCAT::PPCvm",
+		      },
+        rnetboot  => { hmc    => "xCAT::PPCboot",
+		      },
+        getmacs   => { hmc    => "xCAT::PPCmac",
+		      },
+        reventlog => { hmc    => "xCAT::PPClog",
+		      },
+        rspconfig => { hmc    => "xCAT::PPCcfg",
+		      },
+        rflash    => { hmc    => "xCAT::PPCrflash",
+                       fsp    => "xCAT::FSPflash",
+                       bpa    => "xCAT::FSPflash",
+	              },
+        mkhwconn  => { hmc    => "xCAT::PPCconn",
+		      },
+        rmhwconn  => { hmc    => "xCAT::PPCconn",
+		      },
+        lshwconn  => { hmc    => "xCAT::PPCconn",
+		      },
+        renergy   => { hmc    => "xCAT::PPCenergy",
+		     },
         );
+
 
 ##########################################
 # Database errors
@@ -121,18 +145,18 @@ sub process_command {
         $start = Time::HiRes::gettimeofday();
     }
 
-    #xCAT doesn't support direct attach by default
-    $request->{direct_attach_support} = 0;
+    #xCAT doesn't support FSPpower,FSPinv and FSPrflash by default
+    $request->{fsp_api} = 0;
     #######################################
-    # Direct-attached FSP handler
+    # FSPpower, FSPinv and FSPrflash handler
     #########################################
     my $hwtype  = $request->{hwtype}; 
     if ( $hwtype eq "fsp" or $hwtype eq "bpa") {
-	    my $direct_attach_support = check_direct_attach($request);
-	    if($direct_attach_support == 0 && 
-		   ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/)) {
-	     #direct-attached fsp commands: such as rpower and so on.
-	        $request->{direct_attach_support} = 1;
+	    my $fsp_api = check_fsp_api($request);
+	    if($fsp_api == 0 && 
+		    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/)) {
+	        #support FSPpower, FSPinv and FSPrflash 
+	        $request->{fsp_api} = 1;
             }
     } 
 
@@ -652,13 +676,13 @@ sub preprocess_nodes {
     ########################################
     # Special cases
     #   rscan - Nodes are hardware control pts 
-    #   Direct-attached FSP 
+    #   FSPpower, FSPinv and FSPrflash 
     ########################################
     if (( !$request->{hcp} && ($request->{hcp} ne "hmc" )) 
         and ($request->{command} !~ /^renergy$/)
         and (( $request->{command} =~ /^(rscan|rspconfig)$/ ) 
             or ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) 
-            or ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc')) and ($request->{direct_attach_support} != 1)
+            or ($request->{command} eq 'lshwconn' and $request->{nodetype} eq 'hmc')) and ($request->{fsp_api} != 1)
        ) {
         my $result = resolve_hcp( $request, $noderange );
         return( $result );
@@ -1119,31 +1143,7 @@ sub invoke_cmd {
     ########################################
     # Direct-attached FSP handler 
     ########################################
-    if ( ($power ne "hmc") && ( $hwtype eq "fsp" or $hwtype eq "bpa")) {
- 
-	    if($request->{direct_attach_support} == 1 ) { 
-   	        #  direct-attached fsp commands: such as rpower and so on. Using fsp-api.
-       	    
-	        ########################################
-	        #Process specific command
-	        #########################################
-            print "in invoke cmd node: $nodes\n";
-	        my $result = runcmd( $request, $nodes );
-            #print '------after runcmd----\n';
-            #print Dumper($result);
-	        my $r;
-	        foreach $r ( @$$result ) {
-	            my %output;
-	            $output{node}->[0]->{name}->[0] = @$r[0];
-                $output{node}->[0]->{data}->[0]->{contents}->[0] = @$r[1];
-                $output{errorcode} = @$r[2];
-                push @outhash, \%output;
-            }
-            my $out = $request->{pipe};
-	        print $out freeze( [@outhash] );
-            print $out "\nENDOFFREEZE6sK4ci\n";
-            return;
-    	}
+    if ( ($power ne "hmc") && ( $hwtype eq "fsp" or $hwtype eq "bpa") && $request->{fsp_api} == 0) {
 
         ####################################
         # Dynamically load FSP module
@@ -1271,7 +1271,8 @@ sub runcmd {
     my $cmd     = $request->{command};
     my $method  = $request->{method};
     my $hwtype  = $request->{hwtype};
-    my $modname = $modules{$cmd};
+    #my $modname = $modules{$cmd};
+    my $modname = $modules{$cmd}{$hwtype};
 
     ######################################
     # Command not supported
@@ -1647,13 +1648,15 @@ sub updconf_in_asm
     return ([0, undef, \@data]);
 }
 
-sub check_direct_attach
+sub check_fsp_api
 {
     my $request = shift;
     
-    my $fsp_api = "/opt/xcat/sbin/fsp-api";
-    my $libfsp  = "/usr/lib/libfsp.a";
-#    my $libfsp  = "/opt/xcat/lib/libfsp.a";
+#    my $fsp_api = "/opt/xcat/sbin/fsp-api";
+    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
+#   my $libfsp  = "/usr/lib/libfsp.a";
+    my $libfsp  = "/opt/xcat/lib/libfsp.a";
+#    my $libfsp    = ($::XCATROOT) ? "$::XCATROOT/lib/libfsp.a" : "/opt/xcat/lib/libfsp.a";
 #    my $hw_svr  = "/opt/csm/csmbin/hdwr_svr";
     
     my $msg = ();

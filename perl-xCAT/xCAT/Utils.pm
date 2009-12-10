@@ -5333,6 +5333,50 @@ sub get_unique_members
 
 #-------------------------------------------------------------------------------
 
+=head3   get_hdwr_ip 
+    Description:
+        Get hardware(CEC, BPA) IP from the hosts table, and then /etc/hosts. 
+
+    Arguments:
+        node: the nodename(cec, or bpa)
+    Returns:
+        Return the node IP 
+        -1  - Failed to get the IP.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $ip = xCAT::Utils::get_hdwr_ip('node1');
+    Comments:
+        Used in FSPpower FSPflash, FSPinv.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_hdwr_ip
+{
+    my $node = shift;
+    my $ip   = undef; 
+    my $Rc   = undef;
+    my $hosttab  = xCAT::Table->new( 'hosts' );
+    if ( $hosttab) {
+        my $node_ip_hash = $hosttab->getNodeAttribs( $node,[qw(ip)]);
+        $ip = $node_ip_hash->{ip};
+    }
+    if (!$ip) {
+        my $ip_tmp_res  = xCAT::Utils::toIP($node);
+        ($Rc, $ip) = @$ip_tmp_res;
+        if ( $Rc ) {
+		    return -1;
+	    }
+    }
+
+    return $ip;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3   updateEtcHosts
     Description:
         Add nodes and their IP addresses into /etc/hosts.

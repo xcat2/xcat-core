@@ -6,7 +6,7 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::MsgUtils;
-use xCAT::Directpower;
+use xCAT::FSPpower;
 
 ##########################################################################
 # Parse the command line for options and operands
@@ -146,10 +146,6 @@ sub powercmd_boot {
     my @output  = ();
     my $callback = $request->{'callback'};
 
-    if($request->{direct_attach_support} == 1) {
-	my $res	 = xCAT::Directpower::powercmd_boot($request, $hash);	
-    	return( \$res );
-    }
 
     ######################################
     # Power commands are grouped by CEC 
@@ -276,10 +272,6 @@ sub powercmd {
     my @result  = ();
     my $callback = $request->{'callback'};
 
-    if($request->{direct_attach_support} == 1) {
-	my $res	 = xCAT::Directpower::powercmd($request, $hash);	
-    	return( \$res );
-    }
 
     ####################################
     # Power commands are grouped by CEC 
@@ -380,10 +372,6 @@ sub state {
     my $convert = shift;
     my @result  = ();
 
-    if($request->{direct_attach_support} == 1) {
-	my $res	 = xCAT::Directpower::state($request, $hash);	
-    	return( \$res );
-    }
 
     if ( !defined( $prefix )) {
         $prefix = "";
