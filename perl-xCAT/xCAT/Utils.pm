@@ -50,6 +50,7 @@ This program module file, is a set of utilities used by xCAT commands.
     Returns:
         string representation of a UUDv4, 
             for example: f16196d1-7534-41c1-a0ae-a9633b030583
+            for example: f16196d1-7534-41c1-a0ae-a9633b030583
 
 =cut
 
