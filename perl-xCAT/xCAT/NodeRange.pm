@@ -282,7 +282,9 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 	#xcat 1.2 does no better
 		my @subelems = split(/([\,\-\:])/,$2);
 		my $subrange="";
-		while (my $subelem = shift @subelems) {
+        my $subelem;
+		while (scalar @subelems) {
+            my $subelem = shift @subelems;
 			my $subop=shift @subelems;
 			$subrange=$subrange."$1$subelem$3$subop";
 		}
