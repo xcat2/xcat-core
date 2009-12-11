@@ -79,39 +79,40 @@ sub web_lsdef {
 
 sub web_lsevent {
     my ($request, $callback, $sub_req) = @_;
-    my $ret = `$request->{arg}->[0]`;
-    
-    #please see the manpage for "lsevent" to see the output format
+    my @ret = `$request->{arg}->[0]`;
 
-    my @lines = split '\n', $ret;
+    #print Dumper(\@ret);
+    #please refer the manpage for the output format of "lsevent"
 
-    my $length = scalar @lines;
-    my $line = 0;
 
     my %data = ();
 
-    while($line < $length) {
-        split "=", $lines[$line];
-        my $time = $_[1];
+    my %record = ();
 
-        split "=", $lines[$line+1];
-        my $cate = $_[1];
-
-        split "=", $lines[$line+2];
-        my $event = $_[1];
-
-        $data{$line} = {
-            "time" => $time,
-            "category" => $cate,
-            "event" => $event
-        };
-        $line +=4;
+    my $i = 0;
+    my $j = 0;
+    
+    foreach my $item (@ret) {
+        if($item ne "\n") {
+            chomp $item;
+            my ($key, $value) = split("=", $item);
+            $record{$key} = $value;
+            $j ++;
+            if($j == 3) {
+                $i++;
+                $j = 0;
+                while (my ($k, $v) = each %record) {
+                    $data{$i}{$k} = $v;
+                }
+                %record = ();
+            }
+        }
+        
     }
-
     #print Dumper(\%data);
 
-    foreach my $key ( sort keys %data) {
-        $callback->({data => \%{$data{$key}}});
+    while (my ($key, $value) = each %data) {
+        $callback->({data => $value});
     }
 }
 
