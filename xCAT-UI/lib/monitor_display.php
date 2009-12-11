@@ -132,41 +132,12 @@ TOS6;
         //TODO: insert the button here
         echo "<td>";
         if($record[7] == "Active") {
-            echo "<button class='fg-button ui-corner-all'>Disable</button>";
+            echo "<button class='fg-button ui-corner-all ui-state-active' onclick='control_RMCAssoc(\"$record[1]\", \"$record[5]\", \"$record[3]\", \"stop\")'>Disable</button>";
         }else {
-            echo "<button class='fg-button ui-corner-all'>Enable</button>";
+            echo "<button class='fg-button ui-corner-all ui-state-active' onclick='control_RMCAssoc(\"$record[1]\", \"$record[5]\", \"$record[3]\", \"start\")'>Enable</button>";
         }
         echo "</td>";
         echo "</tr>";
-//        $association = explode("=", $data);
-//
-//        $ooe = 0;
-//        $line = 0;
-//        foreach($association as $elem) {
-//            $ooe = $ooe%2;
-//            //the format should be
-//            //"NodeReachability"\t"EmailRootOffShift"\t"hv8plus01.ppd.pok.ibm.com"\t"Active"
-//            $record = explode("\"", $elem);
-//            $cond = $record[1];
-//            $resp = $record[3];
-//            $node = $record[5];
-//            $state = $record[7];
-//            echo "<tr class='ListLine$ooe' id='row$line'>";
-//            echo "<td>$cond</td>";
-//            echo "<td>$resp</td>";
-//            echo "<td>$node</td>";
-//            echo "<td>$state</td>";
-//            echo "<td>";
-//            if($state == "Active") {
-//                insertButtons(array('label'=>'DeActivate', 'id'=>'deactivate', 'onclick'=>"control_RMCAssoc(\"$cond\", \"$node\", \"$resp\", \"stop\")"));
-//            }else if($state == "Not active"){
-//                insertButtons(array('label'=>'Activate', 'id'=>'activate', 'onclick'=>"control_RMCAssoc(\"$cond\", \"$node\", \"$resp\", \"start\")"));
-//            }
-//            echo "</td>";
-//            echo "</tr>";
-//            $ooe++;
-//            $line++;
-//        }
     }
     echo "</tbody></table></div>";
     return 0;
@@ -271,7 +242,7 @@ JS00;
     echo "<div id='showOpt4association' style='display:block; border:1px solid lime;' class='ui-state-active'>";
 echo <<<TOS00
 <span class="ui-icon ui-icon-triangle-1-e" style="position:absolute"></span>
-<p>Click here if you want to create new associations...</p>
+<p class='ui-state-active'>Click here if you want to create new associations...</p>
 TOS00;
     echo "</div>";
     echo "<div id=notify_me></div>";
@@ -280,8 +251,8 @@ TOS00;
     echo "<div style='border: 1px dotted orange; float:right; width:73%'>";
 echo <<<BTN00
     <div id="assobuttonsets" style="display:none">
-        <button id="addAssociation" class="fg-button ui-corner-all">Apply</button>
-        <button id="cancelAssociation" class="fg-button ui-corner-all">Cancel</button>
+        <button id="addAssociation" class="fg-button ui-corner-all ui-state-active">Apply</button>
+        <button id="cancelAssociation" class="fg-button ui-corner-all ui-state-active">Cancel</button>
     </div>
 BTN00;
     echo "<div>";
@@ -359,26 +330,25 @@ function displayRMCEvnetLog()
 echo '<div id=lseventLog>';
 echo <<<TOS8
 <script type="text/javascript" type"utf-8">
-$("#lseventLog").dataTable({
-    "bLengthChange": false,
+$("#lseventLog table").dataTable({
+    "bLengthChange": true,
     "bFilter": true,
     "bSort": true
 });
 </script>
 TOS8;
 echo <<<TOS9
-<table>
+<table style='width:100%'>
 <thead>
     <tr>
-        <th>Time</th>
         <th>Category</th>
-        <th>Message</th>
+        <th>Description</th>
+        <th>Time</th>
 </thead>
 <tbody>
 TOS9;
     RMCEventLogToTable();
     echo "</tbody></table>";
-    //TODO: the following javascript doesn't work well.
     echo "</div>";
 
 }

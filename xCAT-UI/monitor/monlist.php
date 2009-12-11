@@ -69,7 +69,7 @@ $(function() {
 });
 </script>
 
-<div id="plist" class="ui-state-default ui-corner-all">
+<div id="plist" class="ui-corner-all">
 <?php displayMList(); ?>
 </div>
 <div id="settings">

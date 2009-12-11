@@ -15,9 +15,7 @@ $name = $_REQUEST['name'];
 
 //echo $name;
 
-displayMapper(array('home'=>'main.php', 'monitor' =>''));
-
-displayTips(array("You can view the latest 60 RMC events here"));
+displayMapper(array('home'=>'main.php', 'monitor' =>'monitor/monlist.php', 'RMC EventLog' => ''));
 
 //Following the "Syslog Entries" web page
 displayRMCEvnetLog();

@@ -40,6 +40,7 @@
     float: left;
     width: 180px;
     padding-left: 15px;
+    border-right: 1px solid gray;
 }
 
 #settings
@@ -99,7 +100,8 @@ fieldset {
     display: block;
     position: relative;
     z-index: 1;
-    font-size: 1.3em;
+    font-size: 0.9em;
+    color: green;
     padding-right: 1em;
     line-height: 1;
     padding: .5em 0 .5em 30px;
@@ -141,7 +143,7 @@ fieldset {
     float:left;
     display: block;
     width: 94%;
-    border: 1px solid lime;
+    border: 1px solid gray;
 }
 
 #avail_cond {
@@ -149,7 +151,7 @@ fieldset {
     margin: 3px;
     padding: 3px;
     float: left;
-    border: 1px solid lime;
+    border: 1px solid gray;
 }
 
 #avail_resp {
@@ -157,7 +159,7 @@ fieldset {
     margin: 3px;
     padding: 3px;
     float: left;
-    border: 1px solid lime;
+    border: 1px solid gray;
 }
 
 /*For the RMC resources and their attributes*/

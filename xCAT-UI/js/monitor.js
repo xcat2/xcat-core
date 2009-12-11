@@ -195,7 +195,7 @@ function clearEventDisplay()
     $(':input[name=responses][checked]').attr('checked', false);
 }
 
-//control_RMCAssoc()
+//function control_RMCAssoc()
 //is used to update the association table in rmc_event_define.php
 function control_RMCAssoc(cond, node, resp, action)
 {
@@ -204,7 +204,7 @@ function control_RMCAssoc(cond, node, resp, action)
     $.get("monitor/updateCondResp.php",
         {c: cond, n: node, r: resp, a: action},
         function(data) {
-            $("#association").html(data);
+            $("#association table tbody").load("monitor/updateCondRespTable.php");
         }
     );
 }
