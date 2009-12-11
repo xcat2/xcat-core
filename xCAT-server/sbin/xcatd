@@ -125,12 +125,14 @@ while (!($sitetab=xCAT::Table->new('site')) && $retries < 20)
     $retries++;
 }
 unless ($sitetab) {
-    die "ERROR: Unable to open basic site table for configuration\n";
+    xCAT::MsgUtils->message("S","ERROR: Unable to open basic site table for configuration");
+    die;
 }
 
 my ($tmp) = $sitetab->getAttribs({'key'=>'xcatdport'},'value');
 unless ($tmp) {
-  die "ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001";
+   xCAT::MsgUtils->message("S","ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001");
+   die;
 }
 $port = $tmp->{value};
 $sport = $tmp->{value}+1;
@@ -158,23 +160,32 @@ sub daemonize {
   chdir('/');
   umask 0022;
   my $pid;
-  defined($pid = xCAT::Utils->xfork) or die "Can't fork: $!";
+  if (! defined($pid = xCAT::Utils->xfork)) {
+    xCAT::MsgUtils->message("S","Can't fork: $!");
+    die;
+  }
   if ($pid) {
     if ($pidfile) {
       open(PFILE, '>', $pidfile);
       print PFILE $pid;
       close (PFILE);
     } else {
-      printf ("xCATd starting as PID $pid \n");
+      xCAT::MsgUtils->message("S","xCATd starting as PID $pid");
     }
     exit;
   }
-  open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
+  if (! open STDIN, '/dev/null') {
+    xCAT::MsgUtils->message("S","Can't read /dev/null: $!");
+    die;
+  }
   open STDOUT, '>/dev/null';
   open STDERR, '>/dev/null';
   $0='xcatd';
   $progname = \$0;
-  setsid or die "Can't start new session";
+  if (! setsid) {
+    xCAT::MsgUtils->message("S","Can't start new session");
+    die;
+  }
 }
   
 my %cmd_handlers;
@@ -199,7 +210,7 @@ if ($inet6support) {
     die;
   }
   until ($quit) {
-    $SIG{ALRM} = sub { die "XCATTIMEOUT"; }; 
+    $SIG{ALRM} = sub { xCAT::MsgUtils->message("S","XCATTIMEOUT"); die; }; 
     my $conn;
     next unless $conn = $socket->accept;
 
@@ -538,14 +549,20 @@ $SIG{TERM} = $SIG{INT} = sub {
    };
   
 $pid_UDP = xCAT::Utils->xfork;
-defined $pid_UDP or die "Unable to fork for UDP/TCP";
+if (! defined $pid_UDP) { 
+  xCAT::MsgUtils->message("S", "Unable to fork for UDP/TCP");
+  die;
+}
 unless ($pid_UDP) {
   $$progname="xcatd: UDP listener";
   do_udp_service;
   xexit(0);
 }
 $pid_MON = xCAT::Utils->xfork;
-defined $pid_MON or die "Unable to fork installmonitor";
+if (! defined $pid_MON) {
+  xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
+  die;
+}
 unless ($pid_MON) {
   $$progname="xcatd: install monitor";
   do_installm_service;
@@ -575,7 +592,7 @@ unless ($listener) {
   if ($dbmaster) {
      kill 2, $dbmaster;
   }
-   xCAT::MsgUtils->message("S","xCAT service unable to open SSL services on $port: $!");
+  xCAT::MsgUtils->message("S","xCAT service unable to open SSL services on $port: $!");
   closelog();
   die "ERROR:Unable to start xCAT service on port $port.";
 }
@@ -599,7 +616,8 @@ until ($quit) {
   my $child = xCAT::Utils->xfork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
   
   unless (defined $child) {
-    die "xCATd cannot fork";
+    xCAT::MsgUtils->message("S","xCATd cannot fork");
+    die;
   }
 
   if ($child == 0) {
@@ -876,7 +894,10 @@ sub plugin_command {
       my $parfd; #not causing a problem that I discern yet, but theoretically
       my $child;
       if ($sock) { #If $sock not passed in, don't fork..
-        socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+        if (! socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) {
+          xCAT::MsgUtils->message("S", "socketpair failed: $!");
+          die;
+        }
         #pipe($pfd,$cfd);
         $parfd->autoflush(1);
         $pfd->autoflush(1);
@@ -884,7 +905,10 @@ sub plugin_command {
       } else {
         $child = 0;
       }
-      unless (defined $child) { die "Fork failed"; }
+      unless (defined $child) {
+        xCAT::MsgUtils->message("S", "Fork failed");
+        die; 
+      }
       if ($child == 0) {
         if ($parfd) {  #If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
             $parent_fd = $parfd;
@@ -924,6 +948,7 @@ sub plugin_command {
             $callback->({error=>[$error],errorcode=>[1]});
             xexit(0); #Die like we should have done
         } elsif ($@) { #We are still alive, should be alive, but yet we have an error.  This means we are in the case of 'do_request' or something similar.  Forward up the death since our communication channel is intact..
+            xCAT::MsgUtils->message("S", "$@");
             die $@;
         }
       } else {
@@ -1074,7 +1099,10 @@ sub dispatch_request {
         return;
     }
 
-    socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+    if (! socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) {
+      xCAT::MsgUtils->message("S", "ERROR: socketpair: $!");
+      die;
+    }
     $parfd->autoflush(1);
     $pfd->autoflush(1);
     $child = xCAT::Utils->xfork;
@@ -1420,7 +1448,7 @@ sub service_connection {
       #should be no longer possible to hit this condition.
       print $sock,XMLout({error=>"A child jumped to where it should never ever be, this shouldn't be possible, please report this bug"});
   }
-  $SIG{ALRM}= sub { die "$$ failed shutting down" };
+  $SIG{ALRM}= sub { xCAT::MsgUtils->message("S","$$ failed shutting down"); die;};
   alarm(10);
   foreach (keys %tables) {
     $tables{$_}->commit;
@@ -1491,12 +1519,14 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
             $fds->remove($cin);
             close($cin);
          }
-         die "Client abort requested";
+         xCAT::MsgUtils->message("S", "Client abort requested");
+         die;
       }
    }
   yield; #Give other processes, including children, explicit control, to avoid uselessly aggressive looping
   if ($goneclient) {
-    die "SIGPIPE $$progname encountered a broken pipe (Sudden client disconnect)"
+    xCAT::MsgUtils->message("S", "SIGPIPE $$progname encountered a broken pipe (Sudden client disconnect)");
+    die;
   }
   return $rc;
 }
