@@ -42,7 +42,9 @@ open(LOG, ">$directory/conversion.log")
 &log_this("Conversion started at " . scalar(localtime()));
 
 # build the stanza files for the site table
-&getSiteinfo;
+#  rsh/rcp attribute not longer supported.  Leave logic here
+# incase we decide there are other attribute needed
+#&getSiteinfo;
 
 # build the stanza files for the node
 &getNodeinfo;
