@@ -710,7 +710,7 @@ sub usage
     print "Usage:\n";
     print "\t--help - usage\n";
     print
-      "\t--directory - output directory for stanza files.\n                      Default is /tmp/csm2xcat.\n";
+      "\t--dir - output directory for stanza files.\n                      Default is /tmp/csm2xcat.\n";
     print "\n";
     return;
 }
