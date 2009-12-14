@@ -4283,11 +4283,11 @@ sub readenergy {
     $entry = process_energy_from_iem($iem);
     $iem->prep_get_precision();
     execute_iem_commands($iem);
-    $entry .= sprintf(" +/- %.1f %",$iem->energy_ac_precision()*0.1);
+    $entry .= sprintf(" +/-%.1f%",$iem->energy_ac_precision()*0.1); #note while \x{B1} would be cool, it's non-trivial to support
     push @entries,$entry;
     $iem->prep_get_dc_energy();
     $entry = process_energy_from_iem($iem);
-    $entry .= sprintf(" +/- %.1f %",$iem->energy_dc_precision()*0.1);
+    $entry .= sprintf(" +/-%.1f%",$iem->energy_dc_precision()*0.1);
     push @entries,$entry;
     return (0,@entries);
 
