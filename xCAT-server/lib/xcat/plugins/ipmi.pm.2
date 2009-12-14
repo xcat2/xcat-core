@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #egan@us.ibm.com
 #modified by jbjohnso@us.ibm.com
@@ -26,6 +27,11 @@ use HTTP::Request::Common;
 my $tfactor = 0;
 my $vpdhash;
 my %bmc_comm_pids;
+my $iem_support;
+eval {
+    require IBM::EnergyManager;
+    $iem_support=1;
+};
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -4255,6 +4261,76 @@ sub getaddsensorevent {
 	return($text);
 }
 
+sub readenergy {
+    unless ($iem_support) { 
+        return (1,"IBM::EnergyManager package required for this value");
+    }
+    my $iem = IBM::EnergyManager->new();
+    my @payload = $iem->get_next_payload();
+    my $netfun = shift @payload;
+    my @returnd;
+
+	my $error = docmd(
+			$netfun<<2,
+			\@payload,
+			\@returnd
+		);
+    @returnd=splice @returnd,36-$authoffset;
+    $iem->handle_next_payload(@returnd);
+    my @entries;
+    $iem->prep_get_ac_energy();
+    my $entry;
+    $entry = process_energy_from_iem($iem);
+    $iem->prep_get_precision();
+    execute_iem_commands($iem);
+    $entry .= sprintf(" +/- %.1f %",$iem->energy_ac_precision()*0.1);
+    push @entries,$entry;
+    $iem->prep_get_dc_energy();
+    $entry = process_energy_from_iem($iem);
+    $entry .= sprintf(" +/- %.1f %",$iem->energy_dc_precision()*0.1);
+    push @entries,$entry;
+    return (0,@entries);
+
+}
+
+sub execute_iem_commands {
+    my $iem = shift;
+    my @payload = $iem->get_next_payload();
+    my @returnd;
+    while (scalar @payload) {
+        my $netfun = shift @payload;
+        my $error = docmd($netfun<<2,\@payload,\@returnd);
+        if ($error) { return $error; }
+        @returnd=splice @returnd,36-$authoffset;
+        $iem->handle_next_payload(@returnd);
+        @payload = $iem->get_next_payload();
+    }
+    return 0;
+}
+
+sub process_energy_from_iem {
+    my $iem = shift;
+    my @returnd;
+    my @iemdata;
+    if (!execute_iem_commands($iem)) {
+        @iemdata = $iem->extract_data;
+    }
+    my $label = shift @iemdata;
+    my $units = shift @iemdata;
+    my $value=0;
+    my $shift=0;
+    while (scalar @iemdata) { #stuff the 64-bits of data into an int, would break in 32 bit
+        $value+=pop(@iemdata)<<$shift;
+        #$value.=sprintf("%02x ",shift @iemdata);
+        $shift+=8;
+    }
+    if ($units eq "mJ") {
+        $units = "kWh";
+        $value = $value / 3600000000;
+    }
+    return sprintf("$label: %.4f $units",$value);
+}
+
 sub checkleds {
 	my $netfun = 0xe8; #really 0x3a
 	my @cmd;
@@ -4515,9 +4591,9 @@ sub vitals {
 		$text = sprintf($format,"Power Status:",$text,"");
 		push(@output,$text);
 		($rc,@cleds) = checkleds();
-		foreach $text (@cleds) {
-			push(@output,$text);
-		}
+        push @output,@cleds;
+        ($rc,@cleds)=readenergy();
+        push @output,@cleds;
 	}
 
 	return($rc,@output);
