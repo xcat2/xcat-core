@@ -43,6 +43,7 @@ our @EXPORT = qw(
 sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt',
+    renergy => 'nodehm:power,mgt',
     getipmicons => 'ipmi',
     rspconfig => 'nodehm:mgt',
     rvitals => 'nodehm:mgt',
@@ -785,6 +786,9 @@ sub ipmicmd {
 #	}
 	elsif($command eq "rvitals") {
 		($rc,@output) = vitals($subcommand);
+	}
+	elsif($command eq "renergy") {
+		($rc,@output) = renergy($subcommand);
 	}
 	elsif($command eq "rspreset") {
 		($rc,@output) = resetbmc();
@@ -4261,15 +4265,11 @@ sub getaddsensorevent {
 	return($text);
 }
 
-sub readenergy {
-    unless ($iem_support) { 
-        return (1,"IBM::EnergyManager package required for this value");
-    }
+sub initiem {
     my $iem = IBM::EnergyManager->new();
     my @payload = $iem->get_next_payload();
     my $netfun = shift @payload;
     my @returnd;
-
 	my $error = docmd(
 			$netfun<<2,
 			\@payload,
@@ -4277,17 +4277,25 @@ sub readenergy {
 		);
     @returnd=splice @returnd,36-$authoffset;
     $iem->handle_next_payload(@returnd);
+    return $iem;
+}
+
+sub readenergy {
+    unless ($iem_support) { 
+        return (1,"IBM::EnergyManager package required for this value");
+    }
     my @entries;
-    $iem->prep_get_ac_energy();
+    my $iem = initiem();
     my $entry;
-    $entry = process_energy_from_iem($iem);
+    $iem->prep_get_ac_energy();
+    $entry = process_data_from_iem($iem);
     $iem->prep_get_precision();
-    execute_iem_commands($iem);
-    $entry .= sprintf(" +/-%.1f%",$iem->energy_ac_precision()*0.1); #note while \x{B1} would be cool, it's non-trivial to support
+    execute_iem_commands($iem); #this gets all precision data initialized
+    $entry .= sprintf(" +/-%.1f%%",$iem->energy_ac_precision()*0.1); #note while \x{B1} would be cool, it's non-trivial to support
     push @entries,$entry;
     $iem->prep_get_dc_energy();
-    $entry = process_energy_from_iem($iem);
-    $entry .= sprintf(" +/-%.1f%",$iem->energy_dc_precision()*0.1);
+    $entry = process_data_from_iem($iem);
+    $entry .= sprintf(" +/-%.1f%%",$iem->energy_dc_precision()*0.1);
     push @entries,$entry;
     return (0,@entries);
 
@@ -4308,7 +4316,7 @@ sub execute_iem_commands {
     return 0;
 }
 
-sub process_energy_from_iem {
+sub process_data_from_iem {
     my $iem = shift;
     my @returnd;
     my @iemdata;
@@ -4327,8 +4335,12 @@ sub process_energy_from_iem {
     if ($units eq "mJ") {
         $units = "kWh";
         $value = $value / 3600000000;
+        return sprintf("$label: %.4f $units",$value);
+    } elsif ($units eq "mW") {
+        $units = "W";
+        $value = $value / 1000.0;
+        return sprintf("$label: %.1f $units",$value);
     }
-    return sprintf("$label: %.4f $units",$value);
 }
 
 sub checkleds {
@@ -4445,6 +4457,70 @@ sub checkleds {
 	return($rc,@output);
 }
 	
+sub renergy {
+    my @subcommands = shift;
+    my @output;
+    my @settable_keys = qw/savingstatus cappingstatus cappingwatt/;
+    unless ($iem_support) {
+        return (1,"Command unsupported without IBM::EnergyManager installed");
+    }
+    my $iem = initiem();
+    my @directives=();
+    foreach (@subcommands) {
+        push @directives,split /,/,$_;
+    }
+    my $directive;
+    my $value;
+    my $key;
+    foreach $directive (@directives) {
+        $value=undef;
+        $key=undef;
+        if ($directive =~ /(.*)=(.*)\z/) { #todo: assigment
+            $key = $1;
+            $value = $2;
+            unless (grep /$key/,@settable_keys and $value) {
+                return (1,"Malformed argument $directive");
+            }
+            if ($key eq "cappingwatt") {
+                $value = $value*1000; #convert to milliwatts
+                $iem->prep_set_cap($value);
+                execute_iem_commands($iem); #this gets all precision data initialized
+            }
+            if ($key eq "cappingstatus") {
+                if (grep /$value/,qw/enable on 1/) {
+                    $value = 1;
+                } else {
+                    $value = 0;
+                }
+                $iem->prep_set_capenable($value);
+                execute_iem_commands($iem); #this gets all precision data initialized
+            }
+
+        }
+        if ($directive =~ /cappingmaxmin/) {
+            my $entry;
+            $iem->prep_get_mincap();
+            $entry = process_data_from_iem($iem);
+            push @output,$entry;
+            $iem->prep_get_maxcap();
+            $entry = process_data_from_iem($iem);
+            push @output,$entry;
+        }
+        if ($directive =~ /cappingvalue/) {
+            my $entry;
+            $iem->prep_get_cap();
+            push @output,process_data_from_iem($iem);
+        }
+        if ($directive =~ /cappingstatus/) {
+            my $entry;
+            $iem->prep_get_powerstatus();
+            execute_iem_commands($iem);
+            my $capenabled = $iem->capping_enabled();
+            push @output,"cappingstatus: ".($capenabled ? "on" : "off");
+        }
+    }
+    return (0,@output);
+}
 sub vitals {
 	my $subcommand = shift;
     my @textfilters = split /,/,$subcommand;
