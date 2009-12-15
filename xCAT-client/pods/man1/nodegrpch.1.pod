@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<nodech> - Changes attributes at the group level in the xCAT cluster database.
+B<nodegrpch> - Changes attributes at the group level in the xCAT cluster database.
 
 
 =head1 SYNOPSIS
