@@ -706,7 +706,12 @@ sub pping_hostnames
 
     my $hostname_list = join ",", @hostnames;
     my @output =
-      xCAT::Utils->runcmd("pping $hostname_list", -1);
+      xCAT::Utils->runcmd("/opt/xcat/bin/pping $hostname_list", -1);
+      if ($::RUNCMD_RC !=0) {
+        my $rsp={};
+        $rsp->{data}->[0] = "Error from pping";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+      }
      $::RUNCMD_RC =0; # reset
     my @no_response = ();
     foreach my $line (@output)
