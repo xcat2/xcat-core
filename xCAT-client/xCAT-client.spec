@@ -124,6 +124,8 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rspreset
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rsetboot
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rbootseq
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/reventlog
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litefile
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litetree
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodels
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodech
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/noderm
@@ -147,6 +149,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makenetworks
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/copycds
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/regnotif
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/unregnotif
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/ilitefile
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monstart
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monstop
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monls
