@@ -19,7 +19,7 @@ Provides: xCAT-UI = %{version}
 
 %ifos linux
 # httpd is provided by apache2 on SLES and httpd on RHEL
-Requires: httpd mod_php_any  php
+Requires: httpd
 # we also require php4-session on SLES, but this does not exist on RHEL, so do not know how to do the Require
 %endif
 
@@ -45,6 +45,34 @@ set -x
 # %defattr( 555, root, root, 755 )
 %{prefix}/ui
 
+%pre
+# the %pre part is used to inspect whether the php-related rpm packages are installed into linux or not
+# if they're not installed, the installation of "xCAT-UI" will be failed.
+%ifos linux
+if [ -e "/etc/redhat-release" ]; then
+	rpm -q php >/dev/null
+	if [ $? != 0 ]; then
+		echo ""
+		echo "#####Notice!!!!#####";
+		echo "php has not been installed yet; ";
+		echo "please run: yum install php";
+		echo "before install xCAT-UI";
+		echo "####################";
+		exit -1;
+	fi
+else	#SUSE
+	rpm -q apache2-mod_php5 php5 >/dev/null
+	if [ $? != 0 ]; then
+		echo ""
+		echo "#####Notice!!!!#####";
+		echo "apache2-mod_php5 and php5 have not been installed yet;"
+		echo "please run: zypper install apache2-mod_php5 php5"
+		echo "before install xCAT-UI"
+		echo "####################";
+		exit -1;
+	fi
+fi
+%endif
 
 %post
 # Post-install script---------------------------------------------------
@@ -59,6 +87,7 @@ if [ -e "/etc/redhat-release" ]; then
 	#cp /etc/passwd /etc/passwd.orig
 	#perl -e 'while (<>) { s,^apache:(.*):/sbin/nologin$,apache:$1:/bin/bash,; print $_; }' /etc/passwd.orig >/etc/passwd
 else    # SuSE
+
   	apachedaemon='apache2'
   	apacheuser='wwwrun'
 fi
@@ -70,6 +99,8 @@ then
   /bin/rm -f /etc/$apachedaemon/conf.d/xcat-ui.conf
   /bin/ln -s %{prefix}/ui/etc/apache2/conf.d/xcat-ui.conf /etc/$apachedaemon/conf.d/xcat-ui.conf
   /etc/init.d/$apachedaemon reload
+  # automatically put the encrypted passwd into the xcat passwd db
+  %{prefix}/sbin/chtab key=xcat,username=root passwd.password=`grep root /etc/shadow|cut -d : -f 2`
 
   # Link to the grpattr cmd.  Note: this was for xcat 1.3.  Do not use this anymore.
   #/bin/rm -f %{prefix}/bin/grpattr
@@ -106,6 +137,10 @@ then
     cp /usr/IBM/HTTPServer/conf/httpd.conf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak
     cat /opt/xcat/ui/etc/apache2/conf.d/xcat-ui.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
     /usr/IBM/HTTPServer/bin/apachectl restart
+
+    # put the encrypted password in /etc/security/passwd to the xcat passwd db
+    CONT=`cat /etc/security/passwd`
+    %{prefix}/sbin/chtab key=xcat,username=root passwd.password=`echo $CONT |cut -d ' ' -f 4`
 fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]      # initial install, or upgrade and this is the newer rpm
