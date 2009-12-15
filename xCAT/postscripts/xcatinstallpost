@@ -1,0 +1,48 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#################################################################
+#
+#   xCAT script for running postboot scripts for full install case.
+#################################################################
+
+if [ ! `uname` == Linux ]; then
+   MYDIR=`dirname $0`
+   #exec $MYDIR/xcatdsklspost.aix
+   exit
+fi
+let SLI=$RANDOM%10
+sleep $SLI
+
+if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
+    touch /var/lock/subsys/xcatmounts
+    echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
+    echo umount -l /ro >> /etc/rc6.d/K10xcatmounts
+    echo umount -l /rw >> /etc/rc6.d/K10xcatmounts
+    chmod 755 /etc/rc6.d/K10xcatmounts
+    ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
+fi
+
+
+
+cd /xcatpost; 
+PATH=/xcatpost:$PATH
+export PATH
+chmod +x /xcatpost/*;
+
+if [ -x /usr/bin/openssl ]; then
+     XCATSERVER="$SIP:3001"
+     export XCATSERVER
+     USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+     export USEOPENSSLFORXCAT
+fi
+
+
+DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /tmp/mypostscript.post`
+echo "$DHCP_TMP" > /tmp/mypostscript
+
+echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript.post
+
+chmod +x /tmp/mypostscript.post
+if [ -x /tmp/mypostscript.post ];then
+   /tmp/mypostscript.post
+fi

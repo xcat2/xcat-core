@@ -219,10 +219,10 @@ if [ $argnum -gt 2 ]; then
 fi
 
 #ADDSITEYUM is set by post.rh and post.rh.iscsi for full installtion
-if [[ "$ADDSITEYUM" = "1" ]]; then
-  TMP=`sed "/postscripts-start-here/ a addsiteyum" /tmp/mypostscript`
-  echo "$TMP" > /tmp/mypostscript
-fi
+#if [[ "$ADDSITEYUM" = "1" ]]; then
+#  TMP=`sed "/postscripts-start-here/ a addsiteyum" /tmp/mypostscript`
+#  echo "$TMP" > /tmp/mypostscript
+#fi
 
 #MYCONT=`cat /tmp/mypostscript`
 #echo "$MYCONT"
@@ -246,6 +246,8 @@ run_ps () {
 
 " > /tmp/mypostscript
 echo "$TMP" >> /tmp/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript 
 
 if [ $argnum -eq 0 ]; then
   #notify the server that we are done with netbooting
