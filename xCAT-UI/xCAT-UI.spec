@@ -53,22 +53,14 @@ if [ -e "/etc/redhat-release" ]; then
 	rpm -q php >/dev/null
 	if [ $? != 0 ]; then
 		echo ""
-		echo "#####Notice!!!!#####";
-		echo "php has not been installed yet; ";
-		echo "please run: yum install php";
-		echo "before install xCAT-UI";
-		echo "####################";
+		echo "Error! php has not been installed yet;please run 'yum install php' before installing xCAT-UI";
 		exit -1;
 	fi
 else	#SUSE
 	rpm -q apache2-mod_php5 php5 >/dev/null
 	if [ $? != 0 ]; then
 		echo ""
-		echo "#####Notice!!!!#####";
-		echo "apache2-mod_php5 and php5 have not been installed yet;"
-		echo "please run: zypper install apache2-mod_php5 php5"
-		echo "before install xCAT-UI"
-		echo "####################";
+		echo "Error! apache2-mod_php5 and php5 have not been installed yet; please run 'zypper install apache2-mod_php5 php5'before installing xCAT-UI"
 		exit -1;
 	fi
 fi
