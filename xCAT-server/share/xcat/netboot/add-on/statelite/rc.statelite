@@ -1,0 +1,263 @@
+#!/bin/sh
+# rc.statelite will grab all the mount points we need to check 
+# for keeping an image together.  This will have to do until unionfs
+# is ready.
+# don't do chkconfig: 345 00 99
+# this file runs in a chroot environment.
+# description: statelite initialization script
+
+# get all the database files.
+#set -x
+SL=".statelite"
+ME=`hostname`
+MNTDIR="/sysroot"
+SYNCTREE="${MNTDIR}/$SL/litetree" 	# the list of directories to sync from
+SYNCLIST="${MNTDIR}/$SL/litefile" 	# the list of files to sync
+TREEMOUNT="${MNTDIR}/$SL/mnt"  	# where I mount all the trees.
+PERSISTENT="${MNTDIR}/$SL/persistent/$ME"
+TMPFS="${MNTDIR}/$SL/tmpfs"
+DEFAULT="${MNTDIR}/.default"
+LOG="${MNTDIR}/${SL}/statelite.log"
+
+
+if [ ! -d $MNTDIR ]
+then
+	echo "statelite is only to be run in initrdfs"
+	exit 1
+fi
+
+
+
+GetSyncInfo () {
+
+	# who is our xCAT server?  He's most likely our dhcp identifier.
+	
+	if [ ! -x ${MNTDIR}/usr/bin/openssl ]
+	then
+		echo "Image does not include openssl!"  
+		exit 1
+	fi
+	
+	# wish we had bash!
+	#for x in `cat /proc/cmdline`; do
+	#	[[ "$x" = "XCAT=*" ]] || continue
+	#	XCATSERVER="${x#XCAT=}"
+	#done
+
+	for i in `cat /proc/cmdline`; do
+		KEY=`echo $i | awk -F= '{print $1}'`
+		if [ "$KEY" == 	"XCAT" ]; then
+			XCATSERVER=`echo $i | awk -F= '{print $2}'`
+			break
+		fi
+	done
+	
+
+	if [ -z $XCATSERVER ]; then
+		hn=`hostname`
+		echo "Cannot find the xCAT server for node $hn"
+		exit 1
+	fi
+
+	# request the list of files from xCAT:
+	xCATCmd $XCATSERVER litefile  \
+		| sed  -e 's/<[^>]*>//g' \
+		| egrep -v '^ *$' 	\
+		| sed -e 's/^ *//' \
+		| awk -F: '{print $2}' \
+		| sed -e 's/^ *//' \
+		>  $SYNCLIST
+
+	# files will now be inside /.snapshot/tmpfs/synclist in the form:
+	# options path
+	xCATCmd $XCATSERVER litetree  \
+		| sed  -e 's/<[^>]*>//g' \
+		| egrep -v '^ *$' \
+		| sed -e 's/^ *//' \
+		| awk '{print $2}' \
+		> $SYNCTREE
+}
+
+xCATCmd () {
+# $1 is the xCAT server
+# $2 is the command
+	echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=/sysroot/lib64:/sysroot/usr/lib64 /sysroot/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
+
+}
+
+
+
+MountTrees () {
+	mkdir -p $TREEMOUNT
+	if [ -z $SYNCTREE ]
+	then
+		echo "Can't read $SYNCTREE.  Something is wrong with this image..." >/dev/console
+		exit 1
+	fi
+	P=1
+	for i in `cat $SYNCTREE | grep -v '^#'`;
+	do
+		mkdir $TREEMOUNT/$P
+		MAX=10
+		TRIES=1
+		while ! mount $i $TREEMOUNT/$P -r -n -o nolock
+		do
+			if [ "$TRIES" = "$MAX" ]
+			then
+				echo "Can't mount $i.  I give up.. ">/dev/console
+				break
+				#exit 1
+			fi
+			TRIES=`expr $TRIES + 1`
+			S=`expr $RANDOM % 20`
+			echo "Can't mount $i... Sleeping $S seconds then trying again" >/dev/console
+			sleep $S
+		done
+		P=`expr $P + 1`
+	done
+}
+
+
+ResolveLinks () {
+	# go through each file and do the right thing to it.
+	cat $SYNCLIST | grep -v "^#" | \
+	while read type path
+	do
+		FindFile ${path} ${type}
+	done
+}
+
+
+
+
+ProcessType () {
+	#MOUNT=$1  	# mount point where this is.
+	#PATH=$2	  	# file
+	#TYPE=$3		# type of file
+	
+	# every type has to have a base dir in tmpfs
+	if [ ! -d ${TMPFS}`dirname ${2}` ]
+	then
+		mkdir -p ${TMPFS}`dirname ${2}`
+		echo "mkdir -p ${TMPFS}`dirname ${2}`" >>$LOG
+	fi	
+	
+
+	case "${3}" in 
+		tmpfs,rw)
+			cp -a ${1} ${TMPFS}${2}
+			echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
+			# the link will already be in place on the image, so nothing else to do!
+			#mount -n --bind ${TMPFS}${2} ${1}
+			;;
+		con)
+			# cons go in tmpfs
+			cat ${1} >>${TMPFS}${2}
+			echo "cat ${1} >>${TMPFS}${2}" >>$LOG
+			
+			;;	
+		persistent*)
+			# everything from root image points to tmpfs	
+			# so have tmpfs point to persistent
+
+			# make tree in persistent and tmpfs
+			if [ ! -d ${PERSISTENT}`dirname ${2}` ]
+			then
+				mkdir -p ${PERSISTENT}`dirname ${2}`
+				echo "mkdir -p ${PERSISTENT}`dirname ${2}`" >>$LOG
+			fi
+	
+			# if the file doesn't exist, then copy it over to persistent
+			if [ ! -e ${PERSISTENT}${2} ]
+			then
+				#ln -s ${1} ${PERSISTENT}/${2}
+				# if its not there, then take it from something else
+				echo "cp -a ${1} ${PERSISTENT}${2}" >>$LOG
+				cp -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
+				
+				#mount -n --bind ${TMPFS}${2} ${1}
+			fi
+
+			# finally make the tmpfs link point to the persistent file
+
+			# you have to get rid of the /sysroot in the beginning 
+			# so that when the chroot happens the link is valid.	
+			LINK=`echo ${PERSISTENT}${2} | sed -e 's/^\/sysroot//'`
+			echo "ln -sf ${LINK} ${TMPFS}${2}" >>$LOG
+			ln -sf ${LINK} ${TMPFS}${2}	>>$LOG 2>&1
+			;;
+		ro)
+			# need to make sure directory exists:
+			if [ ! -d ${TMPFS}`dirname ${2}` ]
+			then
+				mkdir -p ${TMPFS}`dirname ${2}` >>$LOG 2>&1
+			fi
+			TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
+			#LINK=`echo ${1} | sed -e "s/^${MNTDIR}//"`
+			LINK=`echo ${1} | sed -e "s/^\/sysroot//"`
+			
+			echo "ln -sf ${LINK} ${TARGET}" >>$LOG 2>&1
+			ln -sf ${LINK} ${TARGET} >>$LOG 2>&1
+			;;
+		*)
+			;;
+	esac
+}
+
+
+FindFile () {
+	# $1 = Pathname to locate
+	# $2 = Type of file
+	path=$1
+	type=$2
+	FOUND=0
+	for DIR in `ls $TREEMOUNT`
+	do
+		if [ -e ${TREEMOUNT}/${DIR}${path} ]
+		then
+			FOUND=1  # we found it!
+			ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type}
+			if [ "${2}" = "con" ]
+			then
+				1
+			else
+				break
+			fi
+			
+		fi	
+	done
+
+
+	## Default behavior is to get from the image
+	if [ "$FOUND" = "0"  ]
+	then
+		if [ -e "${DEFAULT}${path}" ]
+		then
+			ProcessType ${DEFAULT}${path} ${path} ${type}
+		else
+			echo "Could not find ${path} in defaults or any other place" >/dev/console
+		fi
+		# if it wasn't found, mount rw in tmpfs
+	fi
+}
+
+
+########################################################################################
+# Start / MAIN / main
+########################################################################################
+
+# load up our files from xCAT
+GetSyncInfo
+
+# mount all the tree roots.  Usually there's probably only one.
+MountTrees
+
+# find the file and then see if its the one we need.
+ResolveLinks
+
+# make sure mtab points to the right place:
+ln -sf /proc/mounts ${TMPFS}/etc/mtab
+
+# catch all hack for debugging:
+#cp -a ${DEFAULT}/* /.snapshot/tmpfs/
+# foo
