@@ -1,20 +1,8 @@
 #!/usr/bin/perl
-BEGIN
-{
-    $::XCATROOT =
-        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
-      : -d '/opt/xcat'   ? '/opt/xcat'
-      : '/usr';
-}
-use lib "$::XCATROOT/lib/perl";
 use strict;
-
-use Getopt::Long;
-require xCAT::MsgUtils;
-require xCAT::DSHCLI;
-use xCAT::Utils;
 use Term::ANSIColor;
 use File::Basename;
+use Getopt::Long;
 # genimage is a wrapper to the genimages located in 
 # /opt/xcat/share/xcat/netboot/<os>/
 # put tab completion
@@ -24,35 +12,18 @@ $::XCATROOT = "/opt/xcat";
 my $os = "";
 my $profile = "";
 my $interface = "";
-my $version;
 my $drivers = "";
 my $otherInterfaces = "";
 my $kernel = "";
+my $method = "";
 my @oses; # available OSes.
 my @profiles; # available profiles
 my $profDir; # root where you do ./genimage from
 my $help;
 my $match = 0;
+my $color = 0;
 
-#-----------------------------------------------------------------------------
-
-=head3 print_usage   - usage message
-
-=cut
-
-#-----------------------------------------------------------------------------
-sub print_usage
-{
-   print "Usage: genimage -h\n";
-   print "       genimage -v\n";
-   print "       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <additional_nics>]\n                [-o <os>] [-p <profile>] [-k <kernal_version>]\n";
-   print "Examples:\n";
-   print " genimage -i eth0 -n igb,e1000e,bnx2 -o centos5.4 -p compute\n";
-   print " genimage -o suse11\n";
-   print " genimage\n";
-   return;
-}
-if (!GetOptions(
+GetOptions(
 	'o=s' => \$os,
 	'i=s' => \$interface,
 	'p=s' => \$profile,
@@ -60,24 +31,20 @@ if (!GetOptions(
 	'k=s' => \$kernel,
 	'r=s' => \$otherInterfaces,
 	'h|help' => \$help,
-	'v|version' => \$version
-)) {
-   &print_usage;
+	'm=s' => \$method,
+	'c' => \$color
+);
+
+if($help){
+	print 'genimage is a shell for the genimage located in /opt/xcat/share/xcat/netboot/<osfamily>/\n';
+   print 'Usage: genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-o <OSVER>] [-p <PROFILE>] [-k <KERNELVER>] <-m statelite>'."\n";
+   print "Examples:\n";
+   print " genimage -i eth0 -n igb,e1000e,bnx2 -o centos5.4 -p compute\n";
+   print " genimage -o suse11\n";
+   print " genimage\n";
    exit 1;
 }
 
-if($help){
-	print "genimage is a shell for the genimage located in /opt/xcat/share/xcat/netboot/<osfamily>.\n";
-        &print_usage;
-   exit 0;
-}
-
-if ($version){
-        my $version = xCAT::Utils->Version();
-        xCAT::MsgUtils->message("N", $version);
-        exit 0;
-
-}
 unless($os){
 	# get the install directory
 	my $installdir = `gettab key=installdir site.value`;
@@ -108,9 +75,13 @@ unless($os){
 	# now they have the OSes, make sure they select one that is available
 	$match = 0;
 	while(1){
-		print color("bold"), "Available OSes: \n", color("reset");
+		print color("bold") if $color;
+		print "Available OSes: \n";
+		print color("reset") if $color;
 		foreach(@oses){
-			print color("yellow bold"),  "$_\n", color("reset");	
+			print color("yellow bold") if $color;
+			print "$_\n";
+			print color("reset") if $color;
 		}
 		# default is the first OS cause in many cases, they'll only have 1.
 		print "Which OS to you want to build a netboot image for? [";
@@ -138,7 +109,9 @@ unless($os){
 
 	chomp($os);
 }
-print color("cyan"), "os: $os\n", color("reset");
+print color("cyan") if $color;
+print "os: $os\n";
+print color("reset");
 
 
 
@@ -175,7 +148,9 @@ unless($profile){
 	while(1){
 		print color("bold"), "Available Profiles for $os: \n", color("reset");
 		foreach(@profiles){
-			print color("yellow bold"),  "$_\n", color("reset");	
+			print color("yellow bold") if $color;
+			print "$_\n";
+			print color("reset") if $color;
 		}
 		# default is the first OS cause in many cases, they'll only have 1.
 		print "Which profile do you want to use for $os?  [";
@@ -198,7 +173,9 @@ unless($profile){
 		}
 	}
 }
-print color("cyan"), "profile: $profile\n", color("reset");
+print color("cyan") if $color;
+print "profile: $profile\n";
+print color("reset") if $color;
 
 # get the interface
 unless($interface){
@@ -213,7 +190,9 @@ unless($interface){
 			last;
 		}else{
 			print "You want your stateless machines to boot off of ";
-			print color("cyan"), $interface ,color("reset");
+			print color("cyan") if $color;
+			print $interface;
+			print color("reset") if $color;
 			print "? ";
 			print color("bold"),"[Y/n] ", color("reset");
 			my $conf = <stdin>;
@@ -227,14 +206,18 @@ unless($interface){
 		}
 	}
 }
-print color("cyan"), "interface: $interface\n", color("reset");
+print color("cyan") if $color;
+print "interface: $interface\n";
+print color("reset") if $color;
 
 
 # get drivers
 unless($drivers){
 	while(1){
 		print "Which network drivers will you need? (press enter if you're not sure) ";
-		print color("bold"), "\n[igb,e1000e,e1000,bnx2,tg3] ", color("reset");
+		print color("bold");
+		print "\n[igb,e1000e,e1000,bnx2,tg3] ";
+		print color("reset");
 
 		$drivers = <stdin>;
 		chomp($drivers);
@@ -243,7 +226,9 @@ unless($drivers){
 			last;
 		}else{
 			print "You want to use the following driver(s):";
-			print color("cyan"), $drivers ,color("reset");
+			print color("cyan") if $color;
+			print $drivers;
+			print color("reset") if $color;
 			print "? ";
 			print color("bold"),"[Y/n] ", color("reset");
 			my $conf = <stdin>;
@@ -257,7 +242,9 @@ unless($drivers){
 		}
 	}
 }
-print color("cyan"), "$drivers\n", color("reset");
+print color("cyan") if $color;
+print "$drivers\n";
+print color("reset") if $color;
 
 # get other interfaces
 unless($otherInterfaces){
@@ -283,7 +270,9 @@ unless($otherInterfaces){
 				last;
 			}else{
 				print "You want to also set up:";
-				print color("cyan"), $tmp ,color("reset");
+				print color("cyan") if $color;
+				print $tmp ;
+				print color("reset") if $color;
 				print "? ";
 				print color("bold"),"[Y/n] ", color("reset");
 				my $conf = <stdin>;
@@ -301,7 +290,9 @@ unless($otherInterfaces){
 	} # end question loop
 } # end getting other interfaces
 if($otherInterfaces){
-	print color("cyan"), "Other Interfaces: $otherInterfaces\n", color("reset");
+	print color("cyan") if $color;
+	print "Other Interfaces: $otherInterfaces\n";
+	print color("reset") if $color;
 }
 
 
@@ -316,13 +307,15 @@ unless($kernel){
 		if($kernel eq ""){
 			# special case of RHEL5.4 where kenrel must be specified or you 
 			# get some other one
-			if($os eq "rhels5.4"){
+			if($os =~ /rhels5.4|centos5.4/){
 				$kernel = "2.6.18-164.el5";
 			}
 			last;	
 		}else{
 			print "You want to use: ";
-			print color("cyan"), $kernel ,color("reset");
+			print color("cyan") if $color;
+			print $kernel;
+			print color("reset") if $color;
 			print "? ";
 			print color("bold"),"[Y/n] ", color("reset");
 			my $conf = <stdin>;
@@ -336,8 +329,31 @@ unless($kernel){
 		}
 	}
 } # end unless kernel
+
+unless($method){
+	while(1){
+		print "Do you want the image to be statelite? [";
+		print color("bold"), "[y/N] ", color("reset");
+		my $conf = <stdin>;
+		chomp($conf);
+		if($conf =~ /Y|y|[Yy][Ee][Ss]/){
+			$method	 = "statelite";
+			last;
+		}
+		if($conf eq ""){
+			last;	
+		} 	
+		if($conf =~ /N|n|[Nn][Oo]/){
+			last;
+		}
+	}
+}
+
+
 if($kernel){
-	print color("blue"), "kernel: $kernel\n", color("reset");
+	print color("blue") if $color;
+	print "kernel: $kernel\n";
+	print color("reset") if $color;
 }
 
 print "Generating image:\n";
@@ -348,6 +364,15 @@ if($kernel){
 if($otherInterfaces){
 	$cmd .= " -r $otherInterfaces";
 }
-print color("cyan"), "cd $profDir\n", color("reset");
-print color("cyan"), "$cmd\n", color("reset");
+if($method){
+	$cmd .= " -m $method";
+}
+print color("cyan") if $color; 
+print "cd $profDir\n";
+print color("reset") if $color;
+
+print color("cyan") if $color;
+print "$cmd\n";
+print color("reset") if $color;
+
 exec("cd $profDir; $cmd");
