@@ -137,7 +137,7 @@ sub setdestiny {
       if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
       $bptab->setNodeAttribs($_,$hash);
      }
-  } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state eq 'statelite') {
+  } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state =~ /^statelite/) {
     chomp($state);
     my $target;
     if ($state =~ /=/) {
