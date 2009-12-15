@@ -488,13 +488,14 @@ policy => {
  },
   },
 postscripts => {
-    cols => [qw(node postscripts comments disable)],
+    cols => [qw(node postscripts postbootscripts comments disable)],
     keys => [qw(node)],
     table_desc => ' The scripts that should be run on each node after installation or diskless boot.',
  descriptions => {
   node => 'The node name or group name.',
-  postscripts => 'Comma separated list of scripts that should be run on this node after installation or diskless boot. xCAT automatically adds the syslog and remoteshell postscripts to the xcatdefaults row of the table. The default scripts will run first on the nodes after install.',
-     comments => 'Any user-written notes.',
+  postscripts => 'Comma separated list of scripts that should be run on this node after installation or diskless boot. xCAT automatically adds the syslog and remoteshell postscripts to the xcatdefaults row of the table. The default scripts will run first on the nodes after install. For installation of ReadHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboor but before the init.d process. For diskless deployment, the scripts will be run at the init.d time together with the scripts on the postbootscripts column.',
+  postbootscripts => 'Comma separated list of scripts that should be run on this node at the init.d time after installation or diskless boot. xCAT automatically adds the otherpkgs and syncfile postscripts to the xcatdefaults row of the table.',
+    comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
@@ -830,6 +831,10 @@ my @nodeattrs = (
 ####################
         {attr_name => 'postscripts',
                  tabentry => 'postscripts.postscripts',
+                 access_tabentry => 'postscripts.node=attr:node',
+  },
+        {attr_name => 'postbootscripts',
+                 tabentry => 'postscripts.postbootscripts',
                  access_tabentry => 'postscripts.node=attr:node',
   },
 ####################
