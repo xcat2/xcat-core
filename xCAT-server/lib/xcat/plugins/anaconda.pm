@@ -175,6 +175,7 @@ sub mknetboot
     my %img_hash=();
     my $installroot;
     $installroot = "/install";
+    my $xcatdport = "3001";
 
     if ($sitetab)
     {
@@ -183,16 +184,27 @@ sub mknetboot
         {
             $installroot = $ref->{value};
         }
+        ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $xcatdport = $ref->{value};
+        }
     }
     my %donetftp=();
     my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile provmethod)])};
     my $restab = xCAT::Table->new('noderes');
     my $bptab  = xCAT::Table->new('bootparams',-create=>1);
     my $hmtab  = xCAT::Table->new('nodehm');
-    my $reshash    = $restab->getNodesAttribs(\@nodes, ['primarynic','tftpserver','xcatmaster']);
+    my $reshash    = $restab->getNodesAttribs(\@nodes, ['primarynic','tftpserver','xcatmaster','nfsserver','nfsdir']);
     my $hmhash =
           $hmtab->getNodesAttribs(\@nodes,
                                  ['serialport', 'serialspeed', 'serialflow']);
+    my $statetab;
+    my $stateHash;
+    if($statelite){
+        $statetab = xCAT::Table->new('statelite',-create=>1);
+        $stateHash = $statetab->getNodeAttribs(\@nodes, ['statemnt']);
+    }
     #my $addkcmdhash =
     #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
     foreach my $node (@nodes)
@@ -282,15 +294,19 @@ sub mknetboot
                 and -r "$rootimgdir/initrd.gz"
           )
         {
-            $callback->(
-                {
-                 error => [
-                     "No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (i.e.  packimage -o $osver -p $profile -a $arch"
-                 ],
-                 errorcode => [1]
-                }
-                );
-            next;
+		if($statelite){
+			$callback->({error=> ["$node: statelite image $osver-$arch-$profile does not exist"], errorcode =>[1] });
+		}else{
+            		$callback->(
+                	{
+                 	error => [
+                     	"No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (i.e.  packimage -o $osver -p $profile -a $arch"
+                 	],
+                 	errorcode => [1]
+                	}
+                	);
+		}
+            	next;
         }
 
         # create the node-specific post scripts
@@ -379,8 +395,27 @@ sub mknetboot
               "imgurl=nfs://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg ";
         }
 	elsif($statelite){
+		# get entry for nfs root if it exists:
+		# have to get nfssvr and nfsdir from noderes table
+		my $nfssrv = $imgsrv;
+		my $nfsdir = $rootimgdir;
+		if($ient->{nfsserver} ){
+			$nfssrv = $ient->{nfsserver};
+		}
+		if($ient->{nfsdir} ne ''){	
+			$nfsdir = $ient->{nfsdir} . "/netboot/$osver/$arch/$profile";
+			
+		}
+
 		$kcmdline = 
-		"NFSROOT=$imgsrv:/install/netboot/$osver/$arch/$profile SNAPSHOT= ";	
+		"NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
+		if($stateHash->{statemnt} ){
+			$kcmdline .= $stateHash->{statemnt} . " ";
+		}else{
+			$kcmdline .= " ";
+		}
+		$kcmdline .=
+			"XCAT=$imgsrv:$xcatdport ";
 	}
         else
         {
