@@ -349,8 +349,8 @@ sub makescript {
   push @scriptd, "# postscripts-start-here\n";
 
   my %post_hash=();  #used to reduce duplicates
-  # get the xcatdefaults entry in the postscripts table
-  my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts');
+ # get the xcatdefaults entry in the postscripts table
+  my $et = $posttab->getAttribs({node=>"xcatdefaults"},'postscripts','postbootscripts');
   my $defscripts = $et->{'postscripts'};
   if ($defscripts) {
     foreach my $n (split(/,/, $defscripts)) {
@@ -362,8 +362,8 @@ sub makescript {
   }
 
   # get postscripts
-  my $et = $posttab->getNodeAttribs($node, ['postscripts']);
-  $ps = $et->{'postscripts'};
+  my $et1 = $posttab->getNodeAttribs($node, ['postscripts','postbootscripts']);
+  $ps = $et1->{'postscripts'};
   if ($ps) {
     foreach my $n (split(/,/, $ps)) {
       if (! exists($post_hash{$n})) {
@@ -376,6 +376,37 @@ sub makescript {
  
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-end-here\n";
+
+
+  ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
+  push @scriptd, "# postbootscripts-start-here\n";
+
+  my %postboot_hash=();  #used to reduce duplicates
+  my $defscripts = $et->{'postbootscripts'};
+  if ($defscripts) {
+    foreach my $n (split(/,/, $defscripts)) {
+      if (! exists($postboot_hash{$n})) {
+	$postboot_hash{$n}=1;
+        push @scriptd, $n."\n";
+      }
+    }
+  }
+  
+
+  # get postscripts
+  my $ps = $et1->{'postbootscripts'};
+  if ($ps) {
+    foreach my $n (split(/,/, $ps)) {
+      if (! exists($postboot_hash{$n})) {
+	$postboot_hash{$n}=1;
+        push @scriptd, $n."\n";
+      }
+    }
+  }
+
+ 
+  ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
+  push @scriptd, "# postbootscripts-end-here\n";
 
   return @scriptd;
 }
