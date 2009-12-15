@@ -21,6 +21,7 @@ BEGIN
 }
 
 use lib "$::XCATROOT/lib/perl";
+use strict;
 use xCAT::Utils;
 use Getopt::Long;
 use xCAT::MsgUtils;
@@ -172,7 +173,7 @@ if (-f "/etc/xCATSN")
 # Do not need to start vsftpd here, because when xcatd starts, it will restart it
 #if ($::osname eq 'Linux')
 #{
-    # start vsftpd
+# start vsftpd
 #    my $cmd    = "/sbin/chkconfig vsftpd on";
 #    my $outref = xCAT::Utils->runcmd("$cmd", 0);
 #    my $cmd    = "/etc/init.d/vsftpd restart";
@@ -203,31 +204,37 @@ if ($::INITIALINSTALL || $::FORCE || $::genSSHRootKeys)
     &genSSHRootKeys;    # gen new rsa ssh key for root
 }
 
-
 #
 #	Update /etc/profile on AIX
 #
-if ($::INITIALINSTALL) {
-	my $profname="/etc/profile";
-	if ($::osname eq 'AIX') {
-		my $cmd = qq~cat $profname | grep "XCATROOT"~;
-		my $outref = xCAT::Utils->runcmd("$cmd", -1);
-        if ($::RUNCMD_RC != 0) {
-			# make back up file 
-			my $cpcmd = qq~/bin/cp -p $profname $profname.orig~;
-			my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
-			if ($::RUNCMD_RC != 0) {
-				xCAT::MsgUtils->message('E',"Could not copy $profname.");
-			}
+if ($::INITIALINSTALL)
+{
+    my $profname = "/etc/profile";
+    if ($::osname eq 'AIX')
+    {
+        my $cmd = qq~cat $profname | grep "XCATROOT"~;
+        my $outref = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
 
-			# add xCAT paths 
-			my $eccmd = qq~echo '# xCAT setup\nXCATROOT=$::XCATROOT\nPATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin\nMANPATH=\$MANPATH:\$XCATROOT/share/man\nexport XCATROOT PATH MANPATH' >>$profname~;
-			my $outref = xCAT::Utils->runcmd("$eccmd", 0);
-			if ($::RUNCMD_RC != 0) {
-				xCAT::MsgUtils->message('E',"Could not update $profname.");
-			}
+            # make back up file
+            my $cpcmd = qq~/bin/cp -p $profname $profname.orig~;
+            my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not copy $profname.");
+            }
+
+            # add xCAT paths
+            my $eccmd =
+              qq~echo '# xCAT setup\nXCATROOT=$::XCATROOT\nPATH=\$PATH:\$XCATROOT/bin:\$XCATROOT/sbin\nMANPATH=\$MANPATH:\$XCATROOT/share/man\nexport XCATROOT PATH MANPATH' >>$profname~;
+            my $outref = xCAT::Utils->runcmd("$eccmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not update $profname.");
+            }
         }
-	}
+    }
 }
 
 if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
@@ -244,7 +251,7 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                             "Could not create /var/log/consoles directory.");
+                               "Could not create /var/log/consoles directory.");
         }
         else
         {
@@ -255,12 +262,13 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
     if ($::osname eq 'AIX')
     {
         &setupAIXconserver;
-        
-	&setupAIXIPMITool;
+
+        &setupAIXIPMITool;
 
         # Add the xcatd subsystem to the AIX
         no strict 'refs';
-        my $mkssys_cmd = "mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a \"-f\"";
+        my $mkssys_cmd =
+          "mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a \"-f\"";
         system($mkssys_cmd);
         use strict;
 
@@ -276,9 +284,9 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
 
     }
 
-    else                                 # for Linux
+    else    # for Linux
     {
-        &setupLinuxexports;              # add Linux exports
+        &setupLinuxexports;    # add Linux exports
 
     }
 }    # end install,update or force
@@ -348,7 +356,7 @@ if (($::osname eq 'Linux') && (($::INITIALINSTALL || $::FORCE)))
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                           "Could not remove /tftpboot/pxelinux.cfg/default");
+                             "Could not remove /tftpboot/pxelinux.cfg/default");
         }
         else
         {
@@ -398,10 +406,11 @@ sub usage
 
 sub verbose
 {
-	if (!$::VERBOSE) { return; }
-	my $msg = shift;
-	xCAT::MsgUtils->message("I", $msg);
+    if (!$::VERBOSE) { return; }
+    my $msg = shift;
+    xCAT::MsgUtils->message("I", $msg);
 }
+
 #-----------------------------------------------------------------------------
 
 =head3    genSSHRootKeys 
@@ -426,8 +435,7 @@ sub genSSHRootKeys
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E',
-                                    "Could not create $sshdir directory.");
+            xCAT::MsgUtils->message('E', "Could not create $sshdir directory.");
         }
         else
         {
@@ -455,12 +463,12 @@ sub genSSHRootKeys
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',
-                                       "Could not update the $cfgfile file.");
+                                        "Could not update the $cfgfile file.");
             }
             else
             {
                 xCAT::MsgUtils->message('I',
-                                       "Added updates to the $cfgfile file.");
+                                        "Added updates to the $cfgfile file.");
             }
         }
     }
@@ -473,13 +481,11 @@ sub genSSHRootKeys
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E',
-                                    "Could not update the $cfgfile file.");
+            xCAT::MsgUtils->message('E', "Could not update the $cfgfile file.");
         }
         else
         {
-            xCAT::MsgUtils->message('I',
-                                    "Added updates to the $cfgfile file.");
+            xCAT::MsgUtils->message('I', "Added updates to the $cfgfile file.");
         }
     }
 
@@ -493,7 +499,7 @@ sub genSSHRootKeys
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                     "Could not create /install/postscripts/_ssh directory.");
+                       "Could not create /install/postscripts/_ssh directory.");
         }
         else
         {
@@ -514,15 +520,13 @@ sub genSSHRootKeys
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message(
-                  'E',
-                  "Could not remove id_rsa files from $::root/.ssh directory."
-                  );
+            xCAT::MsgUtils->message('E',
+                  "Could not remove id_rsa files from $::root/.ssh directory.");
         }
         else
         {
             xCAT::MsgUtils->message('I',
-                         "Removed id_rsa files from $::root/.ssh directory.");
+                           "Removed id_rsa files from $::root/.ssh directory.");
         }
     }
 
@@ -558,9 +562,9 @@ sub genSSHRootKeys
         else
         {
             xCAT::MsgUtils->message(
-                'I',
-                "Copied $pubfile to /install/postscripts/_ssh/authorized_keys."
-                );
+                 'I',
+                 "Copied $pubfile to /install/postscripts/_ssh/authorized_keys."
+                 );
         }
     }
     else
@@ -607,9 +611,9 @@ sub genSSHNodeHostKey
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message(
-                    'E',
-                    "Could not create /install/postscripts/hostkeys directory."
-                    );
+                     'E',
+                     "Could not create /install/postscripts/hostkeys directory."
+                     );
             }
         }
         if (!-d "/etc/xcat/hostkeys")    # directory for public/private keys
@@ -619,7 +623,7 @@ sub genSSHNodeHostKey
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',
-                            "Could not create /etc/xcat/hostkeys directory.");
+                              "Could not create /etc/xcat/hostkeys directory.");
             }
         }
 
@@ -756,7 +760,7 @@ sub genSSHNodeHostKey
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',
-                                 "$cmd not successful. Files may not exist.");
+                                   "$cmd not successful. Files may not exist.");
             }
             else
             {
@@ -804,12 +808,16 @@ sub initDB
     my $installdir = "/install";
     my $master;
     my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
-    if ($? == 0) {
-     $master = inet_ntoa($addrs[0]);
-    } else {
-      xCAT::MsgUtils->message("E","Hostname resolution for $hname failed.");
-     $master="NORESOLUTION";
+    if ($? == 0)
+    {
+        $master = inet_ntoa($addrs[0]);
     }
+    else
+    {
+        xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
+        $master = "NORESOLUTION";
+    }
+
     # set value based on OS
     my ($domain, $timezone);
     if ($::osname eq 'AIX')
@@ -857,51 +865,42 @@ sub initDB
         || $::initDB)
     {
         my $chtabcmds;
-        my $confdir="/etc/xcat";
-        my $syncdir="/var/xcat/syncfiles";
-        my $remoteshdir="/usr/bin/ssh";
-        my $remotecpdir="/usr/bin/scp";
-        $chtabcmds =
-          "$::XCATROOT/sbin/chtab key=blademaxp site.value=64;";
+        my $confdir = "/etc/xcat";
+        my $syncdir = "/var/xcat/syncfiles";
+        $chtabcmds = "$::XCATROOT/sbin/chtab key=blademaxp site.value=64;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=domain site.value=$domain;";
-        $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=fsptimeout site.value=0;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=fsptimeout site.value=0;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=installdir site.value=$installdir;";
         if ($::osname eq 'Linux')
         {
-           $chtabcmds .=
-            "$::XCATROOT/sbin/chtab key=ipmimaxp site.value=64;";
-           $chtabcmds .=
-            "$::XCATROOT/sbin/chtab key=ipmiretries site.value=3;";
-           $chtabcmds .=
-            "$::XCATROOT/sbin/chtab key=ipmitimeout site.value=2;";
+            $chtabcmds .= "$::XCATROOT/sbin/chtab key=ipmimaxp site.value=64;";
+            $chtabcmds .=
+              "$::XCATROOT/sbin/chtab key=ipmiretries site.value=3;";
+            $chtabcmds .=
+              "$::XCATROOT/sbin/chtab key=ipmitimeout site.value=2;";
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab key=consoleondemand site.value=no;";
         }
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
-        $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=maxssh site.value=8;";
-        $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=ppcmaxp site.value=64;";
-        $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=ppcretry site.value=3;";
-        $chtabcmds .=
-          "$::XCATROOT/sbin/chtab key=ppctimeout site.value=0;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=rsh site.value=$remoteshdir;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=rcp site.value=$remotecpdir;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=maxssh site.value=8;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppcmaxp site.value=64;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppcretry site.value=3;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppctimeout site.value=0;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=sharedtftp site.value=0;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=SNsyncfiledir site.value=$syncdir;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=SNsyncfiledir site.value=$syncdir;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=tftpdir site.value=$tftpdir;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=xcatdport site.value=$xcatport;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=xcatiport site.value=$xcatiport;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatconfdir site.value=$confdir;";
+        $chtabcmds .=
+          "$::XCATROOT/sbin/chtab key=xcatconfdir site.value=$confdir;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=timezone site.value=$timezone;";
 
-		$chtabcmds .= "$::XCATROOT/sbin/chtab key=useNmapfromMN site.value=no;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=useNmapfromMN site.value=no;";
 
         if ($::osname eq 'AIX')
         {
@@ -924,31 +923,75 @@ sub initDB
 
     # create default postscript list in postscripts table
     # if it does not exist, or request reset
+    # If otherpkgs does not exist, then put otherpkgs
+    # in the postbootscripts attribute
+    # else leave it where it is
 
     if (   ((!-r "/etc/xcat/postscripts.sqlite") && (!-r "/etc/xcat/cfgloc"))
         || $::FORCE
         || $::initDB)
     {
-        my $chtabcmds;
+
+        # check to see if otherpkgs in the postscripts table
+        # if it does do not change it, otherwise put in postbootscripts
+        #  0 = does not exist
+        #  1 = exists in postscripts
+        #  2 = exists in postbootscripts
+        my $otherpkgsexist     = &checkotherpkgs;
+        my $otherpkgsprocessed = 0;
+
+        my $chtabcmds = "";
+
+        # if otherpkgs does not exist or we are initializing the DB
+        # put in postbootscripts
+        if (($otherpkgsexist == 0) || ($::initDB))
+        {
+            $chtabcmds =
+              "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postbootscripts='otherpkgs';";
+            $otherpkgsprocessed = 1;
+
+        }
         if ($::osname eq 'AIX')
         {
-            $chtabcmds =
-              "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,aixremoteshell,otherpkgs,syncfiles';";
+
+            # if already processed otherpkgs or it is in postbootscripts
+            # don't put in postscripts, else put in postscripts
+            if (($otherpkgsprocessed == 1) || ($otherpkgsexist == 2))
+            {
+                $chtabcmds .=
+                  "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,aixremoteshell,syncfiles';";
+            }
+            else
+            {    #  put otherpkgs in postscripts
+                $chtabcmds .=
+                  "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,aixremoteshell,otherpkgs,syncfiles';";
+            }
         }
-        else
+        else     # linux
         {
-            $chtabcmds =
-              "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,otherpkgs,syncfiles';";
+
+            # if already processed otherpkgs or it is in postbootscripts
+            # don't put in postscripts, else put in postscripts
+            if (($otherpkgsprocessed == 1) || ($otherpkgsexist == 2))
+            {
+                $chtabcmds .=
+                  "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,syncfiles';";
+            }
+            else
+            {    # put otherpkgs in postscripts attr
+                $chtabcmds .=
+                  "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,otherpkgs,syncfiles';";
+            }
         }
 
         $chtabcmds .=
-          "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode';";
+          "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode'";
 
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                  "Could not create postscripts definition.");
+                                    "Could not create postscripts definition.");
         }
         else
         {
@@ -995,8 +1038,7 @@ sub initDB
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E',
-                                    "Could not create policy definition.");
+            xCAT::MsgUtils->message('E', "Could not create policy definition.");
         }
         else
         {
@@ -1008,16 +1050,35 @@ sub initDB
     # adding otherpkgs and syncfiles new postscripts for migration
     if ($::UPDATEINSTALL)
     {
-        my $chdefcmd;
-        $chdefcmds .=
-          "$::XCATROOT/bin/chdef -t node -o xcatdefaults -p postscripts='otherpkgs,syncfiles';";
+
+        # check to see if otherpkgs in the postscripts table
+        # if it does do not change it, otherwise put in postbootscripts
+        #  0 = does not exist
+        #  1 = exists in postscripts
+        #  2 = exists in postbootscripts
+        my $otherpkgsexist = &checkotherpkgs;
+        my $chdefcmds ="";
+        if (($otherpkgsexist == 1) || ($otherpkgsexist == 2))
+        {    # otherpkgs already in postscripts or in postbootscripts
+            $chdefcmds =
+              "$::XCATROOT/bin/chdef -t node -o xcatdefaults -p postscripts='syncfiles'";
+        }
+        else
+        {    # else otherpkgs does not exist
+            if ($otherpkgsexist == 0)
+            {    #  put in postbootscripts
+                $chdefcmds =
+                  "$::XCATROOT/bin/chdef -t node -o xcatdefaults -p postbootscripts='otherpkgs';";
+            $chdefcmds .=
+              "$::XCATROOT/bin/chdef -t node -o xcatdefaults -p postscripts='syncfiles'";
+
+            } 
+        }
         my $outref = xCAT::Utils->runcmd("$chdefcmds", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message(
-                'E',
-                "Could not update postscripts definition."
-                );
+            xCAT::MsgUtils->message('E',
+                                    "Could not update postscripts definition.");
         }
         else
         {
@@ -1026,6 +1087,57 @@ sub initDB
 
     }
 }    # end initial DB install setup
+
+#-----------------------------------------------------------------------------
+
+=head3    check for otherpkgs 
+	
+    Check to see if other pkgs exists in postscripts table.
+	If it does not we will be putting it in postbootscripts
+	  return 0 does not exist
+	  return 1 exists  in postscripts
+	  return 2 exists in postbootscripts
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub checkotherpkgs
+{
+    my $otherpkgsexist = 0;
+    my $postscriptstab  = xCAT::Table->new('postscripts');
+    my $attr            = "xcatdefaults";
+    my @values;
+    if ($postscriptstab)
+    {
+        my $ref = $postscriptstab->getAttribs({node => $attr}, 'postscripts');
+        if ($ref)
+        {
+            @values = $ref->{postscripts};
+            if (grep(/otherpkgs/, @values))
+            {
+                $otherpkgsexist = 1;
+            }
+        }
+        if ($otherpkgsexist == 0)
+        {
+
+            # check postbootscripts
+            my $ref =
+              $postscriptstab->getAttribs({node => $attr}, 'postbootscripts');
+            if ($ref)
+            {
+                @values = $ref->{postscripts};
+                if (grep(/otherpkgs/, @values))
+                {
+                    $otherpkgsexist = 2;
+                }
+            }
+
+        }
+    }
+    return $otherpkgsexist;
+}
 
 #-----------------------------------------------------------------------------
 
@@ -1056,7 +1168,7 @@ sub genCredentials
         if ($rc >> 8)
         {
             xCAT::MsgUtils->message('E',
-                        "Could not create xCAT certificate in /etc/xcat/ca.");
+                          "Could not create xCAT certificate in /etc/xcat/ca.");
         }
         else
         {
@@ -1072,12 +1184,12 @@ sub genCredentials
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                 "Could not create /install/postscripts/ca/certs directory.");
+                   "Could not create /install/postscripts/ca/certs directory.");
     }
     else
     {
         xCAT::MsgUtils->message('I',
-                          "Created /install/postscripts/ca/certs directory.");
+                            "Created /install/postscripts/ca/certs directory.");
     }
     my $cmd = "/bin/cp -r /etc/xcat/ca/* /install/postscripts/ca";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1091,7 +1203,7 @@ sub genCredentials
     else
     {
         xCAT::MsgUtils->message('I',
-               "Copied /etc/xcat/ca/* to /install/postscripts/ca directory.");
+                 "Copied /etc/xcat/ca/* to /install/postscripts/ca directory.");
     }
 
     if ((!-d "/etc/xcat/cert") || $::FORCE || $::genCredentials)
@@ -1103,7 +1215,7 @@ sub genCredentials
         if ($rc >> 8)
         {
             xCAT::MsgUtils->message('E',
-                      "Could not create xCAT certificate in /etc/xcat/cert.");
+                        "Could not create xCAT certificate in /etc/xcat/cert.");
         }
         else
         {
@@ -1119,7 +1231,7 @@ sub genCredentials
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                     "Could not create /install/postscripts/cert directory.");
+                       "Could not create /install/postscripts/cert directory.");
     }
     else
     {
@@ -1136,10 +1248,8 @@ sub genCredentials
     }
     else
     {
-        xCAT::MsgUtils->message(
-             'I',
-             "Copied /etc/xcat/cert/* to /install/postscripts/cert directory."
-             );
+        xCAT::MsgUtils->message('I',
+             "Copied /etc/xcat/cert/* to /install/postscripts/cert directory.");
     }
 
     if ((!-r "$::root/.xcat/client-key.pem") || $::FORCE || $::genCredentials)
@@ -1151,10 +1261,8 @@ sub genCredentials
         my $rc = system($cmd);
         if ($rc >> 8)
         {
-            xCAT::MsgUtils->message(
-                 'E',
-                 "Could not create xCAT certificate in /.xcat/client-key.pem."
-                 );
+            xCAT::MsgUtils->message('E',
+                 "Could not create xCAT certificate in /.xcat/client-key.pem.");
         }
         else
         {
@@ -1170,7 +1278,7 @@ sub genCredentials
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                    "Could not create /install/postscripts/_xcat directory.");
+                      "Could not create /install/postscripts/_xcat directory.");
     }
     else
     {
@@ -1187,10 +1295,8 @@ sub genCredentials
     }
     else
     {
-        xCAT::MsgUtils->message(
-             'I',
-             "Copied $::root/.xcat/* to /install/postscripts/_xcat directory."
-             );
+        xCAT::MsgUtils->message('I',
+             "Copied $::root/.xcat/* to /install/postscripts/_xcat directory.");
     }
     my $cmd = "/bin/cp -r /etc/xcat/ca/certs/* /install/postscripts/ca/certs";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1246,9 +1352,9 @@ sub setupAIXconserver
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message(
-                'E',
-                "Could not ln -sf /opt/freeware/bin/console /usr/bin/console."
-                );
+                  'E',
+                  "Could not ln -sf /opt/freeware/bin/console /usr/bin/console."
+                  );
         }
         else
         {
@@ -1265,47 +1371,51 @@ sub setupAIXconserver
         $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message('E',
-                                    "Could not add subsystem conserver.");
+            xCAT::MsgUtils->message('E', "Could not add subsystem conserver.");
         }
         else
         {
             xCAT::MsgUtils->message('I', "Added subsystem conserver.");
+
             # Remove old setting
             my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
-            my $rc = system($rmitab_cmd);
+            my $rc         = system($rmitab_cmd);
 
             # add to the /etc/inittab file
             my $mkitab_cmd =
-            'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
+              'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
             $rc = system($mkitab_cmd);    # may already be there no error check
         }
-    } else { # conserver already a service
-            # Remove old setting
-            my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
-            my $rc = system($rmitab_cmd);
-            # make sure it is registered in /etc/inittab file
-            my $mkitab_cmd =
-            'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
-            $rc = system($mkitab_cmd);    # may already be there no error check
     }
+    else
+    {                                     # conserver already a service
+                                          # Remove old setting
+        my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
+        my $rc         = system($rmitab_cmd);
+
+        # make sure it is registered in /etc/inittab file
+        my $mkitab_cmd =
+          'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
+        $rc = system($mkitab_cmd);        # may already be there no error check
+    }
+
     # now make sure conserver is started
     xCAT::Utils->startService("conserver");
 
 }
 
 #-----------------------------------------------------------------------------
- 
+
 =head3    setupAIXIPMITool 
        
      Set AIX IPMI Tool 
  
 =cut
- 
+
 #-----------------------------------------------------------------------------
 
 sub setupAIXIPMITool
- 
+
 {
     if (!-f "/usr/bin/ipmitool")
     {
@@ -1355,7 +1465,7 @@ sub setupAIXexports
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                   "Could not update the /etc/exports file.");
+                                    "Could not update the /etc/exports file.");
         }
     }
 }
@@ -1392,7 +1502,7 @@ sub setupLinuxexports
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                   "Could not update the /etc/exports file.");
+                                    "Could not update the /etc/exports file.");
         }
         else
         {
@@ -1418,7 +1528,7 @@ sub setupLinuxexports
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                   "Could not update the /etc/exports file.");
+                                    "Could not update the /etc/exports file.");
         }
         else
         {
@@ -1485,12 +1595,12 @@ sub mknb
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',
-                        "The mknb $ar command returned error: $::RUNCMD_RC.");
+                          "The mknb $ar command returned error: $::RUNCMD_RC.");
             }
             else
             {
                 xCAT::MsgUtils->message('I',
-                               "The mknb $ar command completed successfully.");
+                                "The mknb $ar command completed successfully.");
             }
         }
     }
@@ -1515,30 +1625,31 @@ sub makenetworks
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                    "The makenetworks command returned error: $::RUNCMD_RC.");
+                      "The makenetworks command returned error: $::RUNCMD_RC.");
     }
     else
     {
         xCAT::MsgUtils->message('I',
-                           "The makenetworks command was run with no error.");
+                             "The makenetworks command was run with no error.");
     }
 
     # set the nameserver in the site table
     my @names =
       xCAT::Utils->runcmd(
-                       "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'",
-                       0);
+              "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'",
+              0);
     my $ns     = join(',', @names);
     my $cmd    = "$::XCATROOT/sbin/chtab key=nameservers site.value=$ns";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                           "The chtab command returned error: $::RUNCMD_RC.");
+                             "The chtab command returned error: $::RUNCMD_RC.");
     }
     else
     {
-        verbose("Updated the site definition with the value of the nameserver.");
+        verbose(
+               "Updated the site definition with the value of the nameserver.");
     }
 
     # restart httpd
