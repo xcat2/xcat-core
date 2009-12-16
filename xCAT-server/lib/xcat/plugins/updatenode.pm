@@ -1077,11 +1077,16 @@ sub doAIXcopy
         {
 
             # if lpp_source is not defined on SN then next
-            my $scmd =
-              qq~/usr/sbin/lsnim -l $imagedef{$img}{lpp_source} 2>/dev/null~;
-            my $out =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $scmd,
-                                    0);
+            #my $scmd =
+            #  qq~/usr/sbin/lsnim -l $imagedef{$img}{lpp_source} 2>/dev/null~;
+            #my $out =
+            #  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $scmd,
+            #                        0);
+
+            # Here has an issue when call the xcmd, as a workaround to use the
+            # runcmd, it should be recovered after fixing the xcmd issue
+            my $scmd = "$::XCATROOT/bin/xdsh $snkey /usr/sbin/lsnim -l $imagedef{$img}{lpp_source} 2>/dev/null";
+            xCAT::Utils->runcmd("$scmd", -1);
             if ($::RUNCMD_RC != 0)
             {
                 next;
