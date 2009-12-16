@@ -135,8 +135,8 @@ fi
 
 if $GREP xCAT-UI $SVNUP; then
    UPLOAD=1
-   rm -f $DESTDIR/xCAT-UI*
-   rm -f $SRCDIR/xCAT-UI*
+   rm -f $DESTDIR/xCAT-UI*rpm
+   rm -f $SRCDIR/xCAT-UI*rpm
    ./makeuirpm
    mv $source/RPMS/noarch/xCAT-UI-$VER*rpm $DESTDIR
    mv $source/SRPMS/xCAT-UI-$VER*rpm $SRCDIR
@@ -185,8 +185,8 @@ fi
 if [ "$OSNAME" != "AIX" ]; then
 	if $GREP -E '^[UAD] +xCATsn/' $SVNUP; then
 	   UPLOAD=1
-	   rm -f $DESTDIR/xCATsn-$VER*rpm
-	   rm -f $SRCDIR/xCATsn-$VER*rpm
+	   rm -f $DESTDIR/xCATsn-$REL*rpm
+	   rm -f $SRCDIR/xCATsn-$REL*rpm
 	   ./makexcatsnrpm x86_64
 	   mv $source/RPMS/*/xCATsn-$VER*rpm $DESTDIR
 	   mv $source/SRPMS/xCATsn-$VER*rpm $SRCDIR
@@ -201,8 +201,8 @@ fi
 
 if $GREP -E '^[UAD] +xCAT/' $SVNUP; then
    UPLOAD=1
-   rm -f $DESTDIR/xCAT-$VER*rpm
-   rm -f $SRCDIR/xCAT-$VER*rpm
+   rm -f $DESTDIR/xCAT-$REL*rpm
+   rm -f $SRCDIR/xCAT-$REL*rpm
 	if [ "$OSNAME" = "AIX" ]; then
 	   ./makexcatrpm
 	   mv $source/RPMS/*/xCAT-$VER*rpm $DESTDIR
