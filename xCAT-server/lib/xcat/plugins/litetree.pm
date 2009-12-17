@@ -155,13 +155,13 @@ sub showSync {
 		foreach my $priority (sort {$a <=> $b} keys %$dirs){
 			# split the nfs server up from the directory:
 			my ($server, $dir) = split(/:/,$dirs->{$priority});
-			if(grep /\$/, $dir){
-				$dir = subVar($dir,$node,'dir');
+			if(grep /\$|#CMD/, $dir){
+				$dir = subVar($dir,$node,'dir',$callback);
 				$dir =~ s/\/\//\//g;
 			}
 
 			if(grep /\$/, $server){
-				$server = subVar($server,$node,'server');
+				$server = subVar($server,$node,'server',$callback);
 			}
 			my $mntpnt = $server . ":" . $dir;
 			# ok, now we have all the mount points.  Let's go through them all?
@@ -187,13 +187,23 @@ sub subVar {
 	my $dir = shift;
 	my $node = shift;
 	my $type = shift;
+	my $callback = shift;
 	# parse all the dollar signs...	
 	# if its a directory then it has a / in it, so you have to parse it.
 	# if its a server, it won't have one so don't worry about it.
 	my @arr = split("/", $dir);
 	my $fdir = "";
 	foreach my $p (@arr){
-		if($p =~ /^\$/){
+		# have to make this geric so $ can be in the midle of the name: asdf$foobar.sitadsf
+		if($p =~ /\$/){
+			my $pre;
+			my $suf;
+			if($p =~ /([^\$]*)([^# ]*)(.*)/){
+				$pre= $1;
+				$p = $2;
+				$suf = $3;
+			}
+
 			# have to sub here:
 			# get rid of the $ sign.
 			$p =~ s/\$//g;
@@ -201,21 +211,28 @@ sub subVar {
 
 			if($p eq 'node'){
 				# it is so, just return the node.
-				$fdir .= "/$node";
+				$fdir .= "/$pre$node$suf";
 			}else{
 				# ask the xCAT DB what the attribute is.
 				my ($table, $col) = split('\.', $p);
 				my $tab = xCAT::Table->new($table);
-				my $ent = $tab->getNodeAttribs($node,[$col]);		
-				my $val = $ent->{$col};
+				my $ent;
+				my $val;
+				if($table eq 'site'){
+					$val = $tab->getAttribs( { key => "$col" }, 'value' );
+ 					$val = $val->{'value'};
+				}else{
+					$ent = $tab->getNodeAttribs($node,[$col]);		
+					$val = $ent->{$col};
+				}
 				unless($val){
 					# couldn't find the value!!
 					$val = "UNDEFINED"
 				}
 				if($type eq 'dir'){
-					$fdir .= "/$val";
+					$fdir .= "/$pre$val$suf";
 				}else{
-					$fdir .= $val;
+					$fdir .= $pre . $val . $suf;
 				}
 			}	
 		}else{
@@ -223,6 +240,27 @@ sub subVar {
 			$fdir .= "/$p";
 		}
 	}	
+	# now that we've processed variables, process commands
+	# this isn't quite rock solid.  You can't name directories with #'s in them.
+	if($fdir =~ /#CMD=/){	
+		my $dir;
+		foreach my $p (split(/#/,$fdir)){
+			if($p =~ /CMD=/){
+				$p =~ s/CMD=//;
+				my $cmd = $p;
+				#$callback->({info=>[$p]});
+				$p = `$p 2>&1`;
+				chomp($p);
+				#$callback->({info=>[$p]});
+				unless($p){
+					$p = "#CMD=$p did not return output#";
+				}
+			}
+			$dir .= $p;
+		}
+		$fdir = $dir;	
+	}
+
 	return $fdir;
 }
 
