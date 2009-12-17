@@ -864,15 +864,15 @@ sub updateschema
 		xCAT::MsgUtils->message("S", "Error changing the keys for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
 	    }
 	} else { #for the rest, recreate the table
-            print "need to change keys\n";
+            #print "need to change keys\n";
             my $btn=$tn . "_xcatbackup";
             
             #remove the backup table just in case;
-            my $str="DROP TABLE $btn";
-	    $self->{dbh}->do($str);
+            #my $str="DROP TABLE $btn";
+	    #$self->{dbh}->do($str);
 
 	    #rename the table name to name_xcatbackup
-	    $str = "ALTER TABLE $tn RENAME TO $btn";
+	    my $str = "ALTER TABLE $tn RENAME TO $btn";
 	    $self->{dbh}->do($str);
 	    if ($self->{dbh}->errstr) {
 		xCAT::MsgUtils->message("S", "Error renaming the table from $tn to $btn:" . $self->{dbh}->errstr);
@@ -898,6 +898,11 @@ sub updateschema
 		$str = "DROP TABLE $btn";
 		$self->{dbh}->do($str);
 	    }
+ 
+            if (!$self->{dbh}->{AutoCommit}) {
+                $self->{dbh}->commit;
+           }
+
 	}
     }
 }
