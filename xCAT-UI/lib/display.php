@@ -82,6 +82,9 @@ echo <<<EOS2
    </li>
    <li class="current">
     <a href="config.php">configure</a>
+        <ul>
+        <li><a href="#" onclick='loadLLCfgEditor()'>LoadLeveler</a></li>
+        </ul>
 EOS2;
    # 	echo "<ul>\n";
 #	$tables = getTabNames();

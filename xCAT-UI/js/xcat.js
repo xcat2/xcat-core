@@ -473,5 +473,14 @@ function rmc_monshow_draw_by_flot(div, value)
     });
 }
 
+/*
+ * loadLLCfgEditor()
+ * nav the webpage to LoadLeveler editor if it exists
+ */
+function loadLLCfgEditor()
+{
+    window.document.location="../ll/llconfig_editor.pl";
+}
+
 // load progress bar
 myBar.loaded('xcat.js');
