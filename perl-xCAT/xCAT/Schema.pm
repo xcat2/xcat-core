@@ -38,6 +38,54 @@ use xCAT::ExtTab;
 #certain SQL backends don't ascribe meaning to the data types anyway.
 #New format, not sql statements, but info enough to describe xcat tables
 %tabspec = (
+statelite => {
+	cols => [qw(node image statemnt comments disable)],
+	keys => [qw(node)],
+	required => [qw(node statemnt)],
+	table_desc => 'Node Statelite directories.',
+	descriptions => {
+		node => 'The name of the node that will use this snapshot.',
+		image => 'The name of the image that holds this snapshot information.  This can be left blank or say ALL for all images, or have the specific image name listed: nodetype.os-nodetype.arch-nodetype.profile',
+		statemnt => 'The persistant read/write area where a node will be written to.  e.g: 10.0.0.1/state/.  Do not use the node name as a name as this will be added by default. So in reality, 10.0.0.1:/state, becomes 10.0.0.1:/state/<nodename>',
+		comments => 'Any user-written notes.',
+		disable => "Set to 'yes' or '1' to comment out this row.",
+	},
+},
+
+litetree => {
+	cols => [qw(priority image directory comments disable)],
+	keys => [qw(priority)],
+	required => [qw(priority directory)],
+	table_desc => 'Directory hierarchy to traverse when syncing node files.',        
+	descriptions => {
+		priority => 'The priority value for this directory.  Tools that use syncdir will use the smaller number first in looking through trees.',
+		image => 'The name of the image that will use this directory.  You can also say \'ALL\' for this value to have all images use it.'  ,
+		directory => 'The hierarchical directory structure where the directory is:  e.g: $noderes.nfsserver://xcatmasternode/install/$node/#CMD=uname-r#/',
+		comments => 'Any user-written notes.',
+		disable => "Set to 'yes' or '1' to comment out this row.",      
+	},
+},
+
+litefile => {
+	cols => [qw(image file options comments disable)],
+	keys => [qw(image file)],
+	required => [qw(file)], # default type is rw nfsroot   
+	table_desc => 'Place to enter unique per node files for statelite nodes.',        
+	descriptions => {
+		image => "The name of the image that will use these files.  Leave blank or set to 'ALL' for this value to apply to all images.",            
+		file => 'The name of the file. e.g: /etc/hosts',
+		options => "Optional ways the file is to be synced.  
+\tSupported:
+\t- <empty>,ALL, or tmpfs - This is the default for statelite: the file is placed in tmpfs
+\t- con - This is rw file that is concatenated (advanced)
+\t- persistent - Requires a stateful mount point on the node.  Like tmpfs,rw, but persistent over reboots.  If file doesn't exist it's created.
+\t- persistent,con - rw file that is concatenated initially and then placed in persistent mount point.
+\t- ro - Read Only file",
+		comments => 'Any user-written notes.',
+		disable => "Set to 'yes' or '1' to comment out this row.",
+        }
+},
+
 vm => {
     cols => [qw(node host migrationdest storage cfgstore memory cpus nics bootorder clockoffset virtflags vncport textconsole powerstate beacon comments disable)],
     keys => [qw(node)],
