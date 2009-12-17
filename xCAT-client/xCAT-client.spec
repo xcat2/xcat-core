@@ -124,8 +124,6 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rspreset
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rsetboot
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rbootseq
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/reventlog
-ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litefile
-ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litetree
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodels
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodech
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/noderm
@@ -138,6 +136,8 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/chvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/tabgrep
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/updatenode
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/renergy
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litetree
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litefile
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsslp
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/nodegrpch
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/tabdump
@@ -149,7 +149,6 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makenetworks
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/copycds
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/regnotif
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/unregnotif
-ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/ilitefile
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monstart
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monstop
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monls
@@ -161,6 +160,8 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monshow
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/sinv
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/rollupdate
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webrun
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/ilitefile
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/liteimg
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/mkdsklsnode
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/rmdsklsnode
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/mknimimage
