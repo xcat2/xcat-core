@@ -2383,7 +2383,7 @@ sub defls
 
 
     # need a special case for the node postscripts attribute,
-    # The 'xcatdefaults' postscript should be added to the postscript attribute
+    # The 'xcatdefaults' postscript should be added to the postscripts and postbootscripts attribute
     my $getnodes = 0;
     if (!$::opt_z) { #if -z flag is specified, do not add the xcatdefaults
         foreach my $objtype (@::clobjtypes)
@@ -2398,6 +2398,7 @@ sub defls
     if ($getnodes)
     {
         my $xcatdefaultsps;
+        my $xcatdefaultspbs;
         my @TableRowArray = xCAT::DBobjUtils->getDBtable('postscripts');
         if (defined(@TableRowArray))
         {
@@ -2406,6 +2407,7 @@ sub defls
                 if(($tablerow->{node} eq 'xcatdefaults') && !($tablerow->{disable}))
                 {
                     $xcatdefaultsps = $tablerow->{postscripts};
+                    $xcatdefaultspbs = $tablerow->{postbootscripts};
                     last;
                 }
              }
@@ -2423,6 +2425,17 @@ sub defls
                      else
                      {
                          $myhash{$obj}{postscripts} = $xcatdefaultsps;
+                     }
+                 }
+                 if($xcatdefaultspbs)
+                 {
+                     if ($myhash{$obj}{postbootscripts})
+                     {
+                         $myhash{$obj}{postbootscripts} = $xcatdefaultspbs . ',' . $myhash{$obj}{postbootscripts};
+                     }
+                     else
+                     {
+                         $myhash{$obj}{postbootscripts} = $xcatdefaultspbs;
                      }
                  }
              }

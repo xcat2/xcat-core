@@ -1277,6 +1277,7 @@ if (0) {
                         # accessing table is time consuming.
 			if ($table eq "postscripts") {
 			    my $xcatdefaultsps;
+			    my $xcatdefaultspbs;
 			    my @TableRowArray = xCAT::DBobjUtils->getDBtable('postscripts');
 			    if (defined(@TableRowArray))
 			    {
@@ -1285,18 +1286,21 @@ if (0) {
 				    if(($tablerow->{node} eq 'xcatdefaults') && !($tablerow->{disable}))
 				    {
 					$xcatdefaultsps = $tablerow->{postscripts};
+					$xcatdefaultspbs = $tablerow->{postbootscripts};
 					last;
 				    }
 				 }
 			     }
 			     my @xcatdefps = split(/,/, $xcatdefaultsps);
+			     my @xcatdefpbs = split(/,/, $xcatdefaultspbs);
 			     foreach my $obj(keys %{$allupdates{$table}}) {
                                  if ($obj eq 'xcatdefaults') {
                                      #xcatdefaults can be treated as a node?
                                      next;
                                  }
 				 my @newps;
-				 if (defined($allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
+				 if (defined($allupdates{$table}{$obj}{'postscripts'}) 
+                                     && defined($allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
 				     foreach my $tempps (split(/,/, $allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
 					 if (grep(/^$tempps$/, @xcatdefps)) {
 					     my $rsp;
@@ -1307,6 +1311,20 @@ if (0) {
 					 }
 				     }
 				     $allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'} = join(',', @newps);
+				 }
+				 my @newpbs;
+				 if (defined($allupdates{$table}{$obj}{'postbootscripts'}) 
+                                     && defined($allupdates{$table}{$obj}{'postbootscripts'}{'tabattrs'}{'postbootscripts'})) {
+				     foreach my $temppbs (split(/,/, $allupdates{$table}{$obj}{'postbootscripts'}{'tabattrs'}{'postbootscripts'})) {
+					 if (grep(/^$temppbs$/, @xcatdefpbs)) {
+					     my $rsp;
+					     $rsp->{data}->[0] = "$obj: postbootscripts \'$temppbs\' is already included in the \'xcatdefaults\'.";
+					     xCAT::MsgUtils->message("E", $rsp, $::callback);
+					 } else {
+					     push @newpbs, $temppbs;
+					 }
+				     }
+				     $allupdates{$table}{$obj}{'postbootscripts'}{'tabattrs'}{'postbootscripts'} = join(',', @newpbs);
 				 }
 			     }
 			}
