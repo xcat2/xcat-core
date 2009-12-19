@@ -614,50 +614,73 @@ site => {
     keys => [qw(key)],
     table_desc => "Global settings for the whole cluster.  This table is different from the \nother tables in that each attribute is just named in the key column, rather \nthan having a separate column for each attribute. The following is a list of \nthe attributes currently used by xCAT.\n",
  descriptions => {
-  key => "Name of the attribute:\tDescription\n".
-   "  blademaxp:\tThe maximum number of processes for blade hardware control. Default is 64.\n\n".
-   "  consoleondemand:\tWhen set to 'yes', conserver connects and creates the console output only when the user opens the console. Default is no on Linux, yes on AIX.\n\n".
-   "  defserialflow:\tThe default serial flow - currently only used by the mknb command.\n\n".
-   "  defserialport:\tThe default serial port - currently only used by mknb.\n\n".
-   "  defserialspeed:\tThe default serial speed - currently only used by mknb.\n\n".
-   "  dhcpinterfaces\tThe network interfaces DHCP should listen on.  If it is the same for all nodes, use simple comma-separated list of NICs.  To specify different NICs for different nodes: mn|eth1,eth2;service|bond0.\n\n".
-   "  dhcpsetup:\tIf set to 'n', it'll skip the dhcp setup process in the nodeset command. The default value is 'y'.\n\n".
-   "  domain:\tThe DNS domain name used for the cluster.\n\n".
-   "  forwarders:\tThe DNS servers at your site that can provide names outside of the cluster.  The DNS on the management node will forward requests it does not know to these servers.\n\n".
-   "  fsptimeout:\tThe timeout, in milliseconds, to use when communicating with  FSPs. Default is 0.\n\n".
-   "  genmacprefix:\tWhen generating mac addresses automatically, use this manufacturing prefix (i.e. 00:11:aa)\n\n".
-   "  genpasswords:\tAutomatically generate random passwords for BMCs when configuring them.\n\n".
-   "  installdir:\tThe local directory name used to hold the node deployment packages. Default is /install.\n\n".
-   "  installloc:\tThe location that service nodes should mount the install directory from in format hostname:/path.  If hostname is omitted, it defaults to the management node.\n\n".
-   "  ipmimaxp:\tThe max # of processes for ipmi hw ctrl. Default is 64.\n\n".
-   "  ipmiretries:\tThe # of retries to use when communicating with BMCs. Default is 3.\n\n".
-   "  ipmisdrcache -\n\n".
-   "  ipmitimeout:\tThe timeout to use when communicating with BMCs. Default is 2 seconds.\n\n".
-   "  iscsidir:\tThe path to put the iscsi disks in on the mgmt node.\n\n".
-   "  master:\tThe hostname of the xCAT management node, as known by the nodes.\n\n".
-   "  maxssh:\tThe max # of SSH connections at any one time to the hw ctrl point for PPC hw ctrl purposes. Default is 8.\n\n".
-   "  nameservers:\tA comma delimited list of DNS servers that each node in the cluster should use - often the xCAT management node.\n\n".
-   "  nodestatus:\tIf set to 'n', the nodelist.status column will not be updated during the node deployment, node discovery and power operation.\n\n".
-   "  ntpservers:\tA comma delimited list of NTP servers for the cluster - often the xCAT management node.\n\n".
-   "  ppcmaxp:\tThe max # of processes for PPC hw ctrl. Default is 64.\n\n".
-   "  ppcretry:\tThe max # of PPC hw connection attempts before failing. Default is 3.\n\n".
-   "  ppctimeout:\tThe timeout, in milliseconds, to use when communicating with PPC hw. Default is 0.\n\n".
-   "  pruneservices:\tWhether to enable service pruning when noderm is run (i.e. removing DHCP entries when noderm is executed)\n\n".
-   "  sharedtftp:\tSet to no/0 if xCAT should not assume /tftpboot is mounted on all service nodes. Default is 1/yes.\n\n".
-   "  timezone:\t(e.g. America/New_York)\n\n".
-   "  tftpdir:\ttftp directory path. Default is /tftpdir\n\n".
-   "  useSSHonAIX:\t(yes/1 or no/0). If yes, ssh/scp will be setup and used. If no, rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
-   "  rsh:\tThis is no longer used. path to remote shell command for xdsh. Default is /usr/bin/ssh.\n\n".
-   "  rcp:\tThis is no longer used. path to remote copy command for xdcp. Default is /usr/bin/scp.\n\n".
-   "  SNsyncfiledir:\tThe directory on the Service Node, where xdcp will copy the files from the MN that will eventually be copied to the compute nodes. Default is /var/xcat/syncfiles.\n\n".
-   "  snmpc:\tThe snmp community string that xcat should use when communicating with the switches.\n\n".
-   "  svloglocal:\tsyslog on the service node does not get forwarded to the mgmt node - default is 0.\n\n".
-   "  useNmapfromMN:\tWhen set to yes, nodestat command should obtain the node status using nmap (if available) from the management node instead of the service node. This will improve the performance in a flat network. Default is no.\n\n".
-   "  xcatconfdir:\t(default /etc/xcat)\n\n".
-   "  xcatdport:\tThe port used by the xcatd daemon for client/server communication. Default is 3001.\n\n".
-   "  xcatiport:\tThe port used by xcatd to receive install status updates from nodes. Default is 3002.\n\n".
-   "  xcatservers:\t(Deprecated!  Will be replaced by the servicenode table.  Li
-st service nodes)\n\n",
+  # Do not put description text past column 88, so it displays well in a 100 char wide window.
+  # ----------------------------------------------------------------------------------|
+  key => "Attribute Name:  Description\n\n".
+   " blademaxp:  The maximum number of processes for blade hardware control.\n\n".
+   " consoleondemand:  When set to 'yes', conserver connects and creates the console\n".
+   "                   output only when the user opens the console. Default is no on\n".
+   "                   Linux, yes on AIX.\n\n".
+   " defserialflow:  The default serial flow - currently only used by the mknb command.\n\n".
+   " defserialport:  The default serial port - currently only used by mknb.\n\n".
+   " defserialspeed:  The default serial speed - currently only used by mknb.\n\n".
+   " dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same\n".
+   "                  for all nodes, use simple comma-separated list of NICs.  To\n".
+   "                  specify different NICs for different nodes:\n".
+   "                       mn|eth1,eth2;service|bond0.\n\n".
+   " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n".
+   " domain:  The DNS domain name used for the cluster.\n\n".
+   " forwarders:  The DNS servers at your site that can provide names outside of the\n".
+   "              cluster.  The DNS on the management node will forward requests it\n".
+   "              does not know to these servers.\n\n".
+   " fsptimeout:  The timeout, in milliseconds, to use when communicating with FSPs.\n\n".
+   " genmacprefix:  When generating mac addresses automatically, use this manufacturing\n".
+   "                prefix (e.g. 00:11:aa)\n\n".
+   " genpasswords:  Automatically generate random passwords for BMCs when configuring\n".
+   "                them.\n\n".
+   " installdir:  The local directory name used to hold the node deployment packages.\n\n".
+   " installloc:  The location that service nodes should mount the install directory\n".
+   "              from in format hostname:/path.  If hostname is omitted, it defaults\n".
+   "              to the management node.\n\n".
+   " ipmimaxp:  The max # of processes for ipmi hw ctrl.\n\n".
+   " ipmiretries:  The # of retries to use when communicating with BMCs.\n\n".
+   " ipmisdrcache:  If set to 'no', then the xCAT IPMI support will not cache locally\n".
+   "                the target node's SDR cache to improve performance.\n\n".
+   " ipmitimeout:  The timeout to use when communicating with BMCs.\n\n".
+   " iscsidir:  The path to put the iscsi disks in on the mgmt node.\n\n".
+   " master:  The hostname of the xCAT management node, as known by the nodes.\n\n".
+   " maxssh:  The max # of SSH connections at any one time to the hw ctrl point for PPC\n\n".
+   " nameservers:  A comma delimited list of DNS servers that each node in the cluster\n".
+   "               should use - often the xCAT management node.\n\n".
+   " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
+   "              the node deployment, node discovery and power operations.\n\n".
+   " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
+   "              xCAT management node.\n\n".
+   " ppcmaxp:  The max # of processes for PPC hw ctrl.\n\n".
+   " ppcretry:  The max # of PPC hw connection attempts before failing.\n\n".
+   " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
+   " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
+   "                 removing DHCP entries when noderm is executed)\n\n".
+   " sharedtftp:  Set to no or 0 if xCAT should not assume /tftpboot is mounted on all\n".
+   "              service nodes. Default is 1/yes.\n\n".
+   " timezone:  (e.g. America/New_York)\n\n".
+   " tftpdir:  tftp directory path. Default is /tftpdir\n\n".
+   " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no,\n".
+   "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
+   " rsh:  This is no longer used. path to remote shell command for xdsh.\n\n".
+   " rcp:  This is no longer used. path to remote copy command for xdcp.\n\n".
+   " SNsyncfiledir:  The directory on the Service Node, where xdcp will copy the files\n".
+   "                 from the MN that will eventually be copied to the compute nodes.\n\n".
+   " snmpc:  The snmp community string that xcat should use when communicating with the\n".
+   "         switches.\n\n".
+   " svloglocal:  if set to 1, syslog on the service node will not get forwarded to the\n".
+   "              mgmt node.\n\n".
+   " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n".
+   "                 using nmap (if available) from the management node instead of the\n".
+   "                 service node. This will improve the performance in a flat network.\n\n".
+   " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n".
+   " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
+   " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -761,20 +784,22 @@ prescripts => {
     table_desc => 'The scripts that should be run at the beginning and the end of the nodeset command.',
     descriptions => {
 	node => 'The node name or group name.',
+  # Do not put description text past column 88, so it displays well in a 100 char wide window.
+  # ----------------------------------------------------------------------------------|
 	begin => 
-"The scripts to be run at the beginning of the nodeset (Linux) command.\n". 
-"\t\tThe format is:\n".
-"\t\t[action1:]s1,s2...[|action2:s3,s4,s5...]\n".
-"\t\twhere action1 and action2 are the nodeset/nimnodeset actions specified in the command.\n".
-"\t\ts1 and s2 are the scripts to run for action1 in order. s3,s4,and s5 are the scripts\n".
-"\t\tto run for actions2. If actions are omitted, the scripts apply to all actions.\n".
-"\t\tAll the scripts should be copied to /install/prescripts directory.\n".
-"\t\tExamples:\n".
-"\t\tmyscript1,myscript2\n".
-"\t\tinstall:myscript1,myscript2|netboot:myscript3",
-        end => 
-"The scripts to be run at the end of the nodeset (Linux) command.\n" .
-"\t\tThe format is the same as the 'begin' column.",
+   "The scripts to be run at the beginning of the nodeset (Linux) command.\n\n". 
+   " The format is:\n".
+   "   [action1:]s1,s2...[|action2:s3,s4,s5...]\n".
+   " where:\n".
+   "  - action1 and action2 are the nodeset/nimnodeset actions specified in the command\n".
+   "  - s1 and s2 are the scripts to run for action1 in order\n".
+   "  - s3, s4, and s5 are the scripts to run for actions2\n\n".
+   " If actions are omitted, the scripts apply to all actions.\n".
+   " All the scripts should be copied to /install/prescripts directory.\n\n".
+   " Examples:\n".
+   "   myscript1,myscript2\n".
+   "   install:myscript1,myscript2|netboot:myscript3",
+    end => "The scripts to be run at the end of the nodeset (Linux) command. The format is the same as the 'begin' column.",
 	comments => 'Any user-written notes.',
 	disable => "Set to 'yes' or '1' to comment out this row.",
     },

@@ -887,7 +887,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppcmaxp site.value=64;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppcretry site.value=3;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppctimeout site.value=0;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=sharedtftp site.value=0;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=sharedtftp site.value=1;";
         $chtabcmds .=
           "$::XCATROOT/sbin/chtab key=SNsyncfiledir site.value=$syncdir;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=tftpdir site.value=$tftpdir;";
@@ -1016,7 +1016,7 @@ sub initDB
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow;";
             $chtabcmds .=
-              "$::XCATROOT/sbin/chtab priority=4.6 policy.commands=syncfiles policy.rule=allow";
+              "$::XCATROOT/sbin/chtab priority=4.6 policy.commands=syncfiles policy.rule=allow;";
         }
         else    # linux
         {
@@ -1033,11 +1033,11 @@ sub initDB
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow;";
             $chtabcmds .=
-              "$::XCATROOT/sbin/chtab priority=4.6 policy.commands=syncfiles policy.rule=allow";
+              "$::XCATROOT/sbin/chtab priority=4.6 policy.commands=syncfiles policy.rule=allow;";
             $chtabcmds .=
-              "$::XCATROOT/sbin/chtab priority=4.7 policy.commands=litefile policy.rule=allow";
+              "$::XCATROOT/sbin/chtab priority=4.7 policy.commands=litefile policy.rule=allow;";
             $chtabcmds .=
-              "$::XCATROOT/sbin/chtab priority=4.8 policy.commands=litetree policy.rule=allow";
+              "$::XCATROOT/sbin/chtab priority=4.8 policy.commands=litetree policy.rule=allow;";
         }
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
