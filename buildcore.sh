@@ -207,7 +207,6 @@ if $GREP -E '^[UAD] +xCAT/' $SVNUP; then
 	   ./makexcatrpm
 	   mv $source/RPMS/*/xCAT-$VER*rpm $DESTDIR
 	   mv $source/SRPMS/xCAT-$VER*rpm $SRCDIR
-		echo "rpm -Uvh xCAT-$VER-*rpm" >> $DESTDIR/instxcat
 	else
 	   ./makexcatrpm x86_64
 	   mv $source/RPMS/*/xCAT-$VER*rpm $DESTDIR
@@ -222,6 +221,7 @@ if $GREP -E '^[UAD] +xCAT/' $SVNUP; then
 fi
 
 if [ "$OSNAME" = "AIX" ]; then
+	echo "rpm -Uvh xCAT-$VER-*rpm" >> $DESTDIR/instxcat
 	# add the service node bundle files 
 	cp xCATaixSN.bnd xCATaixSN2.bnd xCATaixSSH.bnd xCATaixSSL.bnd $DESTDIR/
 fi
