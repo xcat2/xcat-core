@@ -64,6 +64,17 @@ else	#SUSE
 		exit -1;
 	fi
 fi
+
+%else   #on AIX
+    if [ -e "/usr/IBM/HTTPServer/conf/httpd.conf" ]; then
+        echo "Installing xCAT-UI on AIX..."
+    else
+        echo ""
+        echo "Error!"
+	    echo "The IBM HTTP Server is not installed or not installed into the default directory(/usr/IBM/HTTPServer/)"
+        exit -1;
+    fi
+
 %endif
 
 %post
@@ -124,22 +135,12 @@ ihs_config_dir='/usr/IBM/HTTPServer/conf'
 if [ "$1" = 1 ] #initial install
 then
     # check if IBM HTTP Server is installed into the default directory or not
-    if [ -f "/usr/IBM/HTTPServer/conf/httpd.conf" ]; then
-        # Update the apache config
-        echo "Updating ibm http server configuration for xCAT..."
-        /bin/rm -f /usr/IBM/HTTPServer/conf/xcat-ui.conf
-        cp /usr/IBM/HTTPServer/conf/httpd.conf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak
-        cat /opt/xcat/ui/etc/apache2/conf.d/xcat-ui.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
-        /usr/IBM/HTTPServer/bin/apachectl restart
-
-        # put the encrypted password in /etc/security/passwd to the xcat passwd db
-        CONT=`cat /etc/security/passwd`
-        %{prefix}/sbin/chtab key=xcat,username=root passwd.password=`echo $CONT |cut -d ' ' -f 4`
-    else
-	echo ""
-	echo "Error!"
-	echo "The IBM HTTP Server is not installed or not installed into the default directory(/usr/IBM/HTTPServer/)"
-    fi
+    # Update the apache config
+    echo "Updating ibm http server configuration for xCAT..."
+    bin/rm -f /usr/IBM/HTTPServer/conf/xcat-ui.conf
+    cp /usr/IBM/HTTPServer/conf/httpd.conf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak
+    cat /opt/xcat/ui/etc/apache2/conf.d/xcat-ui.conf >> /usr/IBM/HTTPServer/conf/httpd.conf
+    /usr/IBM/HTTPServer/bin/apachectl restart
 
     # put the encrypted password in /etc/security/passwd to the xcat passwd db
     CONT=`cat /etc/security/passwd`
@@ -192,7 +193,7 @@ fi
 %else   #for AIX
 # Remove links made during the post install script
 echo "Undoing IBM HTTP Server configuration for xCAT..."
-if [ -f "/usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak" ];then
+if [ -e "/usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak" ];then
     cp /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak /usr/IBM/HTTPServer/conf/httpd.conf
     rm -rf /usr/IBM/HTTPServer/conf/httpd.conf.xcat.ui.bak
 fi
