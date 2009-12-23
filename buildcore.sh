@@ -112,7 +112,7 @@ if ! $GREP 'At revision' $SVNUP; then		# Use to be:  $GREP perl-xCAT $SVNUP; the
    mv $source/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
 fi
 if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh perl-xCAT-$VER-*rpm" >> $DESTDIR/instxcat
+	echo "rpm -Uvh perl-xCAT-$VER-*rpm" > $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-client $SVNUP; then
@@ -125,7 +125,7 @@ if $GREP xCAT-client $SVNUP; then
 fi
 if [ "$OSNAME" = "AIX" ]; then
 	# For the 1st one we overwrite, not append
-	echo "rpm -Uvh xCAT-client-$VER-*rpm" > $DESTDIR/instxcat
+	echo "rpm -Uvh xCAT-client-$VER-*rpm" >> $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-UI $SVNUP; then
