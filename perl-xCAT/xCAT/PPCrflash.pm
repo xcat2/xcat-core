@@ -11,7 +11,7 @@ use xCAT::Table;
 use Getopt::Long;
 use File::Spec;
 use POSIX qw(tmpnam);
-use xCAT::FSPflash.pm;
+use xCAT::FSPflash;
 
 
 my $packages_dir= ();

@@ -94,7 +94,7 @@ sub firmware {
             # Return error
             #####################################
             if ( $Rc != SUCCESS ) {
-                push @result, [$name,@$values[0],$Rc];
+                push @result, [$name,$data->{$name},$Rc];
                 next; 
             }
             
