@@ -102,10 +102,17 @@ if [ -z "$SVNUP" ]; then
 	svn up > $SVNUP
 fi
 
-# If anything has changed, we should rebuild perl-xCAT
-BUILDIT=0
-if ! $GREP 'At revision' $SVNUP; then
-   BUILDIT=1
+# If anything has changed, we should always rebuild perl-xCAT
+if ! $GREP 'At revision' $SVNUP; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
+   UPLOAD=1
+   ./makeperlxcatrpm
+   rm -f $DESTDIR/perl-xCAT*rpm
+   rm -f $SRCDIR/perl-xCAT*rpm
+   mv $source/RPMS/$NOARCH/perl-xCAT-$VER*rpm $DESTDIR/
+   mv $source/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
+fi
+if [ "$OSNAME" = "AIX" ]; then
+	echo "rpm -Uvh perl-xCAT-$VER-*rpm" >> $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-client $SVNUP; then
@@ -119,18 +126,6 @@ fi
 if [ "$OSNAME" = "AIX" ]; then
 	# For the 1st one we overwrite, not append
 	echo "rpm -Uvh xCAT-client-$VER-*rpm" > $DESTDIR/instxcat
-fi
-
-if [ $BUILDIT -eq 1 ]; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
-   UPLOAD=1
-   ./makeperlxcatrpm
-   rm -f $DESTDIR/perl-xCAT*rpm
-   rm -f $SRCDIR/perl-xCAT*rpm
-   mv $source/RPMS/$NOARCH/perl-xCAT-$VER*rpm $DESTDIR/
-   mv $source/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
-fi
-if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh perl-xCAT-$VER-*rpm" >> $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-UI $SVNUP; then
@@ -154,7 +149,7 @@ if $GREP xCAT-server $SVNUP; then
    mv $source/SRPMS/xCAT-server-$VER*rpm $SRCDIR
 fi
 if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh xCAT-server-$VER-*rpm" >> $DESTDIR/instxcat
+	echo "rpm -Uvh --nodeps xCAT-server-$VER-*rpm" >> $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-rmc $SVNUP; then
