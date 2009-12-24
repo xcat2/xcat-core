@@ -161,9 +161,8 @@ if $GREP xCAT-rmc $SVNUP; then
    mv $source/RPMS/$NOARCH/xCAT-rmc-$VER*rpm $DESTDIR
    mv $source/SRPMS/xCAT-rmc-$VER*rpm $SRCDIR
 fi
-if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh xCAT-rmc-$VER-*rpm" >> $DESTDIR/instxcat
-fi
+# Note: not putting xCAT-rmc into instxcat for aix here, because it has to be installed
+#		after xCAT.
 
 if [ "$OSNAME" != "AIX" ]; then
 	if $GREP xCAT-nbroot $SVNUP; then
@@ -218,6 +217,7 @@ fi
 
 if [ "$OSNAME" = "AIX" ]; then
 	echo "rpm -Uvh xCAT-$VER-*rpm" >> $DESTDIR/instxcat
+	echo "rpm -Uvh xCAT-rmc-$VER-*rpm" >> $DESTDIR/instxcat
 	# add the service node bundle files 
 	cp xCATaixSN.bnd xCATaixSN2.bnd xCATaixSSH.bnd xCATaixSSL.bnd $DESTDIR/
 fi
