@@ -54,7 +54,7 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s N=s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -277,9 +277,9 @@ sub rmhwconn_parse_args
         my $usage_string = xCAT::Usage->getUsage("rmhwconn");
         return( [ $_[0], $usage_string] );
     };
-#############################################
-# Get options in command line
-#############################################
+    #############################################
+    # Get options in command line
+    #############################################
     local @ARGV = ref($args) eq 'ARRAY'? @$args:();
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
@@ -399,16 +399,10 @@ sub mkhwconn
             }
             if (!$node_ip)
             {
-                my $ip_tmp_res  = xCAT::Utils::toIP($node_name);
-                ($Rc, $node_ip) = @$ip_tmp_res;
-                if ( $Rc ) 
-                {
-                    push @value, [$node_name, $node_ip, $Rc];
-                    next;
-                }
+                push @value, [$node_name, $node_ip, $Rc];
+                next;
             }
-
-            my ( undef,undef,undef,undef,$type) = @$d;
+            my ( undef,undef,$mtms,undef,$type) = @$d;
             my ($user, $passwd);
             if ( exists $opt->{P})
             {
@@ -432,6 +426,14 @@ sub mkhwconn
             {
                 sethmcmgt( $node_name, $exp->[3]);
             }
+
+#            if ( exists $opt->{N} )
+#            {
+#                my $newpwd = $opt->{N};
+#                my $Res = xCAT::PPCcli::chsyspwd( $exp, "access", $type, $mtms, $passwd, $newpwd );
+#                $Rc = shift @$Res;
+#                push @value, [$node_name, @$Res[0], $Rc];
+#            }
         }
     }
     return \@value;
@@ -449,8 +451,9 @@ sub lshwconn
     my @value   = ();
     my $Rc      = undef;
 
+
     my $hosttab  = xCAT::Table->new( 'hosts' );
-    my $res = xCAT::PPCcli::lssysconn( $exp);
+    my $res = xCAT::PPCcli::lssysconn( $exp, "all" );
     $Rc = shift @$res;
     if ( $request->{nodetype} eq 'hmc')
     {
@@ -526,13 +529,8 @@ sub lshwconn
                 }
                 if (!$node_ip)
                 {
-                    my $ip_tmp_res  = xCAT::Utils::toIP($node_name);
-                    ($Rc, $node_ip) = @$ip_tmp_res;
-                    if ( $Rc ) 
-                    {
-                        push @value, [$node_name, $node_ip, $Rc];
-                        next;
-                    }
+                    push @value, [$node_name, $node_ip, $Rc];
+                    next;
                 }
 
                 if ( my @res_matched = grep /\Qipaddr=$node_ip,\E/, @$res)
@@ -590,13 +588,8 @@ sub rmhwconn
             }
             if (!$node_ip)
             {
-                my $ip_tmp_res  = xCAT::Utils::toIP($node_name);
-                ($Rc, $node_ip) = @$ip_tmp_res;
-                if ( $Rc ) 
-                {
-                    push @value, [$node_name, $node_ip, $Rc];
-                    next;
-                }
+                push @value, [$node_name, $node_ip, $Rc];
+                next;
             }
 
             my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $node_ip);

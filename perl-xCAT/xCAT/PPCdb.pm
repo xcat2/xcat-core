@@ -73,6 +73,7 @@ sub add_ppc {
             $id,
             $model,
             $serial,
+            $side,
             $server,
             $pprofile,
             $parent,
@@ -149,10 +150,12 @@ sub add_ppc {
         if ( $type =~ /^(fsp|bpa)$/ ) {
             $db{vpd}->setNodeAttribs( $name, 
                 { mtm=>$model,
-                  serial=>$serial
+                  serial=>$serial,
+                  side=>$side
                  });
             $db{vpd}{commit} = 1;
         }
+        
     }
 
     ###################################
@@ -174,7 +177,7 @@ sub update_ppc {
     my $hwtype   = shift;
     my $values   = shift;
     my $not_overwrite = shift;
-    my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect); 
+    my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect hosts); 
     my %db       = ();
     my %nodetype = (
         fsp  => $::NODETYPE_FSP,
@@ -194,7 +197,8 @@ sub update_ppc {
             return( "Error opening '$_'" );
         }
     }
-    my @vpdlist = $db{vpd}->getAllNodeAttribs(['node','serial','mtm']);
+    my @vpdlist = $db{vpd}->getAllNodeAttribs(['node','serial','mtm','side']);
+    my @hostslist = $db{hosts}->getAllNodeAttribs(['node','ip']);
     my @ppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
                                                'pprofile','parent','supernode',
                                                'comments', 'disable']);
@@ -207,6 +211,7 @@ sub update_ppc {
             $id,
             $model,
             $serial,
+            $side,
             $server,
             $pprofile,
             $parent,
@@ -217,7 +222,7 @@ sub update_ppc {
         my $predefined_node = undef;
         foreach my $vpdent (@vpdlist)
         {
-            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial)
+            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
             {
                 $predefined_node = $vpdent->{node};
                 last;
@@ -226,7 +231,13 @@ sub update_ppc {
 
         next if ( !$predefined_node);
         
-        if ( update_node_attribs($hwtype, $type, $name, $id, $model, $serial, 
+        if ( $predefined_node =~ /-A$/ ) {
+            $name = $name . "-A";
+        } elsif ( $predefined_node =~ /-B$/ ) {
+            $name = $name . "-B";
+        }
+
+        if ( update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side, 
                             $server, $pprofile, $parent, $ips, 
                             \%db, $predefined_node, \@ppclist))
         {
@@ -243,6 +254,7 @@ sub update_ppc {
             $id,
             $model,
             $serial,
+            $side,
             $server,
             $pprofile,
             $parent,
@@ -253,7 +265,7 @@ sub update_ppc {
         my $predefined_node = undef;
         foreach my $vpdent (@vpdlist)
         {
-            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial)
+            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
             {
                 $predefined_node = $vpdent->{node};
                 last;
@@ -262,7 +274,12 @@ sub update_ppc {
 
         next if ( !$predefined_node);
         
-        if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, 
+        if ( $predefined_node =~ /-A$/ ) {
+            $name = $name . "-A";
+        } elsif ( $predefined_node =~ /-B$/ ) {
+            $name = $name . "-B";
+        }
+        if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
                             $server, $pprofile, $parent, $ips, 
                             \%db, $predefined_node, \@ppclist))
         {
@@ -292,6 +309,7 @@ sub update_node_attribs
     my $id = shift;
     my $model = shift;
     my $serial = shift;
+    my $side   = shift;
     my $server = shift;
     my $pprofile = shift;
     my $parent = shift;
@@ -311,7 +329,7 @@ sub update_node_attribs
     if ( $model ne $vpdhash->{mtm} or $serial ne $vpdhash->{serial} or $namediff)
     {
         $db->{vpd}->delEntries( $key_col) if ( $namediff);
-        $db->{vpd}->setNodeAttribs( $name, { mtm=>$model, serial=>$serial});
+        $db->{vpd}->setNodeAttribs( $name, { mtm=>$model, serial=>$serial, side=>$side});
         $db->{vpd}->{commit} = 1;
         $updated = 1;
     }
@@ -406,6 +424,18 @@ sub update_node_attribs
                                                });
         $db->{nodelist}->delEntries( $key_col);
         $db->{nodelist}->{commit} = 1;
+        $updated = 1;
+    }
+
+    ###########################
+    # Update hosts table
+    ###########################
+    my $hostslisthash = $db->{hosts}->getNodeAttribs( $name, [qw(ip)]);
+    if ( $namediff )
+    {
+        $db->{hosts}->delEntries( $key_col);
+        $db->{hosts}->setNodeAttribs( $name,{ip=>$ips} );
+        $db->{hosts}->{commit} = 1;
         $updated = 1;
     }
     return $updated;
@@ -581,7 +611,7 @@ sub credentials {
     if ( !$user_specified or $user eq @{$logon{$hwtype}}[0])
     {
         $user = @{$logon{$hwtype}}[0];
-        $pass   = @{$logon{$hwtype}}[1];
+        $pass = @{$logon{$hwtype}}[1];
     }
 
     ###########################################
@@ -642,7 +672,6 @@ sub credentials {
     }
     return( $user,$pass );
 }
-
 
 1;
 

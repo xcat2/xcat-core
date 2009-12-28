@@ -21,9 +21,10 @@ my @header = (
     ["id",            "%-8s" ],
     ["type-model",    "%-12s" ],
     ["serial-number", "%-15s" ],
+    ["side",          "%-6s" ],
     ["address",       "%s\n" ]);
 
-my @attribs = qw(nodetype node id mtm serial hcp pprofile parent groups mgt cons);
+my @attribs = qw(nodetype node id mtm serial side hcp pprofile parent groups mgt cons);
 my %nodetype = (
     fsp  => $::NODETYPE_FSP,
     bpa  => $::NODETYPE_BPA,
@@ -133,6 +134,7 @@ sub enumerate {
     my $server = @$exp[3];
     my @values = (); 
     my %cage   = ();
+    my %hwconn = ();
     my $Rc;
     my $filter;
 
@@ -157,9 +159,37 @@ sub enumerate {
     my $prof = "";
     my $ips  = "";
     my $bpa  = "";
+    my $side = "";
 
     push @values, join( ",",
-        $hwtype,$server,$id,$model,$serial,$server,$prof,$bpa,$ips );
+        $hwtype,$server,$id,$model,$serial,$side,$server,$prof,$bpa,$ips );
+    }
+
+    #########################################
+    # Save hardware connections
+    #########################################
+    $filter = "type_model_serial_num,ipaddr,sp,side";
+    my $conns = xCAT::PPCcli::lssysconn( $exp, "alls", $filter );
+    $Rc = shift(@$conns);
+
+    #########################################
+    # Return error
+    #########################################
+    if ( $Rc != SUCCESS ) {
+        return( @$conns[0] );
+    }
+
+    foreach my $con ( @$conns ) {
+        my ($mtms,$ipaddr,$sp,$side) = split /,/,$con;
+        my $value = undef;
+ 
+        if ( $sp =~ /^primary$/ or $side =~ /^a$/ ) {
+            $value = "A";
+        } elsif ($sp =~ /^secondary$/ or $side =~ /^b$/ ) {
+            $value = "B";
+        }
+
+        $hwconn{$ipaddr} = "$mtms,$value";
     }
  
     #########################################
@@ -258,11 +288,21 @@ sub enumerate {
             if ( defined($host) ) {
                 $fname = $host;
             }
-            my $bpastr = join( ",","bpa",$fname,$id,$model,$serial,$server,$prof,$bpa,"$ipa $ipb");
+
+            #######################################
+            # Save two sides of BPA seperately
+            #######################################
+            my $bpastr = join( ",","bpa",$fname,$id,$model,$serial,"A",$server,$prof,$bpa,$ipa);
             if ( !grep /^\Q$bpastr\E$/, @values)
             {
                 push @values, join( ",",
-                    "bpa",$fname,$id,$model,$serial,$server,$prof,$bpa,"$ipa $ipb");
+                    "bpa",$fname,$id,$model,$serial,"A",$server,$prof,$bpa,$ipa);
+            }
+            $bpastr = join( ",","bpa",$fname,$id,$model,$serial,"B",$server,$prof,$bpa,$ipb);
+            if ( !grep /^\Q$bpastr\E$/, @values)
+            {
+                push @values, join( ",",
+                    "bpa",$fname,$id,$model,$serial,"B",$server,$prof,$bpa,$ipb);
             }
         }
         #####################################
@@ -278,8 +318,11 @@ sub enumerate {
         if ( defined($host) ) {
             $fsp = $host;
         }
+
+        my $mtmss = $hwconn{$ips};
+        my ($mtms,$side) = split /,/, $mtmss;
         push @values, join( ",",
-            "fsp",$fsp,$cageid,$model,$serial,$server,$prof,$fname,$ips );
+            "fsp",$fsp,$cageid,$model,$serial,$side,$server,$prof,$fname,$ips );
 
         #####################################
         # Enumerate LPARs 
@@ -312,12 +355,13 @@ sub enumerate {
             my ($name,$lparid,$dprof,$curprof) = split /,/;
             my $prof = (length($curprof) && ($curprof !~ /^none$/)) ? $curprof : $dprof;
             my $ips  = "";
+            my $port = "";
             
             #####################################
             # Save LPAR information
             #####################################
             push @values, join( ",",
-              "lpar",$name,$lparid,$model,$serial,$server,$prof,$fsp,$ips );
+              "lpar",$name,$lparid,$model,$serial,$port,$server,$prof,$fsp,$ips );
         }
     }
     return( \@values );

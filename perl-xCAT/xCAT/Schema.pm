@@ -701,13 +701,14 @@ switch =>  {
  },
   },
 vpd => {
-    cols => [qw(node serial mtm asset comments disable)],
+    cols => [qw(node serial mtm side asset comments disable)],
     keys => [qw(node)],
     table_desc => 'The Machine type, Model, and Serial numbers of each node.',
  descriptions => {
   node => 'The node name or group name.',
   serial => 'The serial number of the node.',
   mtm => 'The machine type and model number of the node.  E.g. 7984-6BU',
+  side => 'The side information for the BPA/FSP',
   asset => 'A field for administators to use to correlate inventory numbers they may have to accomodate',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -1130,6 +1131,10 @@ my @nodeattrs = (
         {attr_name => 'mtm',
                  tabentry => 'vpd.mtm',
                  access_tabentry => 'vpd.node=attr:node',
+  },
+        {attr_name => 'side',
+                tabentry => 'vpd.side',
+                access_tabentry => 'vpd.node=attr:node',
   },
 ##################
 #  mac table     #

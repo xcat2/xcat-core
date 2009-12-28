@@ -38,7 +38,7 @@ use constant {
     TYPE_HMC         => "HMC",
     TYPE_IVM         => "IVM",
     TYPE_FSP         => "FSP",
-    IP_ADDRESSES     => 3,
+    IP_ADDRESSES     => 4,
     TEXT             => 0,
     FORMAT           => 1,
     SUCCESS          => 0,
@@ -65,6 +65,7 @@ my @header = (
     ["device",        "%-8s" ],
     ["type-model",    "%-12s"],
     ["serial-number", "%-15s"],
+    ["side",          "%-6s" ],
     ["ip-addresses",  "placeholder"],
     ["hostname",      "%s"]
 );
@@ -95,7 +96,7 @@ my %mgt = (
     lc(TYPE_RSA) => "blade"
 );
 
-my @attribs    = qw(nodetype model serial groups node mgt mpa id);
+my @attribs    = qw(nodetype model serial groups node mgt mpa id side);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -1110,7 +1111,12 @@ sub gethost_from_url {
     my $type    = shift;
     my $mtm     = shift;
     my $sn      = shift;
+    my $side    = shift;
     my $iplist  = shift;
+
+    if ( $side =~ /^N\/A$/ ) {
+        $side = undef;
+    }
 
     #######################################
     # Extract IP from URL
@@ -1137,32 +1143,16 @@ sub gethost_from_url {
     if ( !%::VPD_TAB_CACHE)
     {
         my $vpdtab  = xCAT::Table->new( 'vpd' );
-        my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial']);
+        my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
         #Assuming IP is unique in hosts table
         for my $entry ( @entries)
         {
-            if ( $entry->{mtm} and $entry->{serial})
+            if ( $entry->{mtm} and $entry->{serial} and defined( $entry->{side} ))
             {
-                $::VPD_TAB_CACHE{$entry->{ 'node'}} = $entry->{mtm} . '*' . $entry->{serial};
+                $::VPD_TAB_CACHE{$entry->{ 'node'}} = $entry->{mtm} . '*' . $entry->{serial} . '-' . $entry->{side};
             }
         }
     }
-
-    ###############################################################
-    # Convert IP to hostname (Accoording to  DNS or /etc/hosts
-    ###############################################################
-    my $host = gethostbyaddr( $packed, AF_INET );
-    if ( !$host or $! ) {
-        #Tentative solution
-        return undef if ($opt{H});
-    }
-
-    if ( $host ) {
-        if ( $::VPD_TAB_CACHE{$host} ) {
-            delete $::VPD_TAB_CACHE{$host};
-        }
-        return( "$host($ip)" );
-    } 
 
     if ( $rsp =~ /\(machinetype-model=(.*?)\)/ )
     {
@@ -1171,18 +1161,13 @@ sub gethost_from_url {
         {
             my $sn = $1;
             foreach my $node ( keys %::VPD_TAB_CACHE ) {
-                if ( $::VPD_TAB_CACHE{$node} eq $mtm . '*' . $sn ) {
-                    my $iip = gethostbyname($node);
-                    if ( !$iip ) {
-
-                        delete $::VPD_TAB_CACHE{$node};
-                        return $node . "($ip)";
-                    }
+                if ( $::VPD_TAB_CACHE{$node} eq $mtm . '*' . $sn . '-' . $side ) {
+                    delete $::VPD_TAB_CACHE{$node};
+                    return $node . "($ip)";
                 }
             }
         }
     }
-
     #######################################
     # Read host from hosts table
     #######################################
@@ -1199,12 +1184,12 @@ sub gethost_from_url {
             }
         }
     }
-    if ( exists $::HOST_TAB_CACHE{ $ip})
+    if ( exists $::HOST_TAB_CACHE{$ip})
     {
-        return $::HOST_TAB_CACHE{ $ip} ."($ip)";
+        return $::HOST_TAB_CACHE{$ip} . "($ip)";
     }
 
-    $host = getFactoryHostname($type,$mtm,$sn,$rsp);
+    my $host = getFactoryHostname($type,$mtm,$sn,$side,$rsp);
     #######################################
     # Convert hostname to short-hostname
     #######################################
@@ -1231,6 +1216,7 @@ sub getFactoryHostname
     my $type = shift;
     my $mtm  = shift;
     my $sn   = shift;
+    my $side = shift;
     my $rsp  = shift;
     my $host = undef;
 
@@ -1247,7 +1233,7 @@ sub getFactoryHostname
 
     if ( $type eq SERVICE_FSP or $type eq SERVICE_BPA)
     {
-        $host = "Server-$mtm-SN$sn";
+        $host = "Server-$mtm-SN$sn-$side";
     }
     return $host;
 }
@@ -1366,6 +1352,7 @@ sub parse_responses {
        "type",
        "machinetype-model",
        "serial-number",
+       "slot",
        "ip-address" );
 
     #######################################
@@ -1375,6 +1362,7 @@ sub parse_responses {
        "type",
        "enclosure-machinetype-model",
        "enclosure-serial-number",
+       "slot",
        "ip-address" );
 
     foreach my $rsp ( @$values ) {
@@ -1424,9 +1412,17 @@ sub parse_responses {
                 if ( $verbose ) {
                     trace( $request, "Attribute not found: [$_]->($rsp)" );
                 } 
-                next; 
+                push @result, "N/A";
+                next;
             } 
-            push @result, $1; 
+            my $val = $1;
+            if (( $_ =~ /^slot$/ ) and ( $val == 0 )) {
+                push @result, "B";
+            } elsif (( $_ =~ /^slot$/ ) and ( $val == 1 )) {
+                push @result, "A";
+            } else {
+                push @result, $val; 
+            }
         }
 
         ###########################################
@@ -1503,7 +1499,6 @@ sub parse_responses {
     # Also, remove those nodes that have same IP addresses and
     # give a warning message.
     ##########################################################
-    my %hostname_record;
     my %ip_record;
     for my $h ( keys %outhash)
     {
@@ -1512,21 +1507,13 @@ sub parse_responses {
         {
             $name = $1;
             $ip   = $2;
+
         }
         else
         {
             next;
         }
 
-#        my $name_node_pair = {$name=>$h};
-#        if ( not exists $ip_record{$ip})
-#        {
-#            $ip_record{$ip} = [$name_node_pair];
-#        }
-#        else
-#        {
-#            push @{$ip_record{$ip}}, $name_node_pair;
-#        }
         if ( ! $ip_record{$ip})
         {
             $ip_record{$ip} = $h;
@@ -1537,25 +1524,6 @@ sub parse_responses {
             $response->{data}->[0] =  "IP address of node $h is conflicting to node $ip_record{$ip}. Remove node $h from discovery result.";
             xCAT::MsgUtils->message("W", $response, $request->{callback});
             delete $outhash{$h};
-        }
-
-        if (exists $hostname_record{$name})
-        {
-            #Name is duplicated
-            my ($old_h, $old_ip) = @{$hostname_record{$name}};
-            #if the node has been defined, keep one for old node name
-            #otherwise create new node name
-            $outhash{$old_h}->[4] = $name . "-1" . "($old_ip)";
-            $outhash{$name . "-1" . "($old_ip)"} = $outhash{$old_h};
-            delete $outhash{$old_h};
-
-            $outhash{$h}->[4] = $name . "-2" . "($ip)";
-            $outhash{$name . "-2" . "($ip)"} = $outhash{$h};
-            delete $outhash{$h};
-        }
-        else
-        {
-            $hostname_record{$name} = [$h,$ip];
         }
     }
 
@@ -1579,17 +1547,15 @@ sub xCATdB {
     $vpdtab = xCAT::Table->new('vpd');
     if ($vpdtab)
     {
-        my @ents=$vpdtab->getAllNodeAttribs(['serial','mtm']);
+        my @ents=$vpdtab->getAllNodeAttribs(['serial','mtm','side']);
         for my $ent ( @ents)
         {
-            if ( $ent->{mtm} and $ent->{serial})
+            if ( $ent->{mtm} and $ent->{serial} and defined( $ent->{side} ))
             {
                 # if there is no BPA, or there is the second BPA, change it
-                if ( ! exists $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} or 
-                     $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} =~ /-2$/
-                   )
+                if ( ! exists $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial} . "-" . $ent->{side}} )
                 {
-                    $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} = $ent->{node};
+                    $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial} . "-" . $ent->{side}} = $ent->{node};
                 }
             }
         }
@@ -1598,7 +1564,7 @@ sub xCATdB {
     foreach ( keys %$outhash ) {
         my $data = $outhash->{$_};
         my $type = @$data[0];
-        my $nameips = @$data[4];
+        my $nameips = @$data[5];
         my ($name,$ips);
         if ( $nameips =~ /^([^\(]+)\(([^\)]+)\)$/)
         {
@@ -1607,17 +1573,19 @@ sub xCATdB {
             $host_ip{$name} = $ips;
         }
 
-        $ips    = @$data[3] if ( !$ips);
-        $name   = @$data[4] if ( !$name);
+        $ips    = @$data[4] if ( !$ips);
+        $name   = @$data[5] if ( !$name);
 
-        my $hostip = xCAT::Utils::updateEtcHosts($name,$ips);
-        $name = @$hostip[0];
-        $ips = @$hostip[1];
+        ########################################
+        # Write result to hosts table
+        ########################################
+        my $hostip = writehost($name,$ips);
 
         if ( $type =~ /^BPA$/ ) {
             my $model  = @$data[1];
             my $serial = @$data[2];
-            my $id     = @$data[6];
+            my $side   = @$data[3];
+            my $id     = @$data[7];
 
             ####################################
             # N/A Values
@@ -1626,7 +1594,7 @@ sub xCATdB {
             my $frame = "";
 
             my $values = join( ",",
-               lc($type),$name,$id,$model,$serial,$name,$prof,$frame,$ips );
+               lc($type),$name,$id,$model,$serial,$side,$name,$prof,$frame,$ips );
             xCAT::PPCdb::add_ppc( lc($type), [$values],1 );
         }
         elsif ( $type =~ /^(HMC|IVM)$/ ) {
@@ -1639,11 +1607,12 @@ sub xCATdB {
             my $frame      = "";
             my $model      = @$data[1];
             my $serial     = @$data[2];
-            $ips        = @$data[3] if ( !$ips);
-            $name       = @$data[4] if ( !$name);
-            my $bpc_model  = @$data[6];
-            my $bpc_serial = @$data[7];
-            my $cageid     = @$data[8];
+            my $side       = @$data[3];
+            $ips           = @$data[4] if ( !$ips);
+            $name          = @$data[5] if ( !$name);
+            my $bpc_model  = @$data[7];
+            my $bpc_serial = @$data[8];
+            my $cageid     = @$data[9];
 
             ############################################################
             # For HE machine, there are 2 FSPs, but only one FSP have the 
@@ -1656,13 +1625,13 @@ sub xCATdB {
                 {
                     if ( $model eq $outhash->{$he_node}->[1] and
                          $serial eq $outhash->{$he_node}->[2] and
-                         $outhash->{$he_node}->[6] and
-                         $outhash->{$he_node}->[7]
+                         $outhash->{$he_node}->[8] and
+                         $outhash->{$he_node}->[9]
                         )
                     {
-                        $bpc_model = $outhash->{$he_node}->[6];
-                        $bpc_serial = $outhash->{$he_node}->[7];
-                        $cageid = $outhash->{$he_node}->[8];
+                        $bpc_model = $outhash->{$he_node}->[7];
+                        $bpc_serial = $outhash->{$he_node}->[8];
+                        $cageid = $outhash->{$he_node}->[9];
                     }
                 }
             }
@@ -1699,7 +1668,7 @@ sub xCATdB {
             # the short-hostname as the name.
             ########################################
             if ( $name =~ /^[\d]{1}/ ) {
-                $name = "Server-$model-$serial";
+                $name = "Server-$model-$serial-$side";
             }
             ########################################
             # N/A Values
@@ -1708,7 +1677,7 @@ sub xCATdB {
             my $server = "";
 
             my $values = join( ",",
-               lc($type),$name,$cageid,$model,$serial,$name,$prof,$frame,$ips );
+               lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ips );
             xCAT::PPCdb::add_ppc( "fsp", [$values],1 );
         }
         elsif ( $type =~ /^(RSA|MM)$/ ) {
@@ -1733,7 +1702,9 @@ sub format_stanza {
     foreach ( keys %$outhash ) {
         my @data = @{$outhash->{$_}};
         my $type = lc($data[0]);
-        my $name = $data[4];
+        my $name = $data[5];
+        my $ip   = $data[4];
+        my $side = $data[3]; 
         my $i = 0;
 
         #################################
@@ -1761,7 +1732,16 @@ sub format_stanza {
                 } else {
                     next;
                 }
+            } elsif ( /^side$/ ) {
+                if ( $type =~ /^(fsp|bpa)$/ ) {
+                    $d = $side;
+                } else {
+                    next;
+                }
+            } elsif ( /^ip$/ ) {
+                $d = $ip;
             }
+
             $result .= "\t$_=$d\n";
         }
     }
@@ -1784,7 +1764,9 @@ sub format_xml {
     foreach ( keys %$outhash ) {
         my @data = @{ $outhash->{$_}};
         my $type = lc($data[0]);
-        my $name = $data[4];
+        my $name = $data[5];
+        my $ip   = $data[4];
+        my $side = $data[3];
         my $i = 0;
 
         #################################
@@ -1811,6 +1793,16 @@ sub format_xml {
                 } else {
                     next;
                 }
+            } elsif ( /^side$/ ) {
+                if ( $type =~ /^(fsp|bpa)$/ ) {
+                    $d = $side;
+                } else {
+                    next;
+                }
+            } elsif ( /^node$/ ) {
+                $d = $name;
+            } elsif ( /^ip$/ ) {
+                $d = $ip;
             }
             $href->{Node}->{$_} = $d;
         }
@@ -2839,6 +2831,24 @@ sub process_request {
     my $Rc  = shift(@$result);
 
     return( $Rc );
+}
+
+##########################################################################
+# Write hostnames and IP address to host table.  If an existing entry 
+# with same IP address can be found, return the existing hostname and IP
+##########################################################################
+sub writehost {
+
+    my $hostname = shift;
+    my $ip       = shift;
+
+    my $hoststab = xCAT::Table->new( "hosts", -create=>1, -autocommit=>1 );
+    if ( !$hoststab ) {
+        return( [[$hostname,"Error opening 'hosts' table",RC_ERROR]] );
+    }
+
+    $hoststab->setNodeAttribs( $hostname,{ip=>$ip} );
+    $hoststab->close();
 }
 
 

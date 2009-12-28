@@ -12,7 +12,7 @@ use xCAT::Usage;
 ##########################################
 my %rspconfig = ( 
     sshcfg => \&sshcfg,
-    frame => \&frame
+    frame  => \&frame
 );
 
 
@@ -144,7 +144,7 @@ sub parse_args {
     # Return method to invoke
     ####################################
     if ( exists($cmds{frame}) ) {
-        $request->{hcp} = "hmc";
+        $request->{hwcp} = "hmc";
         $request->{method} = "cfg";
         return( \%opt );
     }
@@ -258,7 +258,6 @@ sub cfg {
     }
     return( $result );
 }
-
 
 ##########################################################################
 # Enables/disables/displays SSH access to HMC/IVM  

@@ -92,8 +92,19 @@ my %rmsysconn = (
 # lssysconn support formats
 ##############################################
 my %lssysconn = (
-    all => "lssysconn -r all"
+    all  => "lssysconn -r all",
+    alls => "lssysconn -r all -F %s"
 );
+
+##############################################
+# Change IP address for managed systems
+# or frames
+##############################################
+my %chsyspwd = (
+    fsp => "chsyspwd -t %s -m %s --passwd %s --newpasswd %s",
+    bpa => "chsyspwd -t %s -e %s --passwd %s --newpasswd %s"
+);
+
 
 ##########################################################################
 # Logon to remote server
@@ -1205,8 +1216,10 @@ sub network_reset {
 ##########################################################################
 sub lssysconn
 {
-    my $exp = shift;
-    my $cmd = $lssysconn{all};
+    my $exp    = shift;
+    my $res    = shift;
+    my $filter = shift;
+    my $cmd = sprintf( $lssysconn{$res}, $filter );
     my $result = send_cmd( $exp, $cmd);
     return ( $result);
 }
@@ -1224,6 +1237,23 @@ sub mksysconn
     my $cmd = sprintf( $mksysconn{$type}, $ip, $passwd);
     my $result = send_cmd( $exp, $cmd);
     return ( $result);
+}
+
+##########################################################################
+# Change IP address for managed systems or frames
+##########################################################################
+sub chsyspwd
+{
+    my $exp    = shift;
+    my $user   = shift;
+    my $type   = shift;
+    my $mtms   = shift;
+    my $passwd = shift;
+    my $newpwd = shift;
+
+    my $cmd = sprintf( $chsyspwd{$type}, $user, $mtms, $passwd, $newpwd );
+    my $result = send_cmd( $exp, $cmd);
+    return ( $result );
 }
 
 ##########################################################################
