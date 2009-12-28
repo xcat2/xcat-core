@@ -232,6 +232,9 @@ if (-f $scriptname)
       my $scripts=$ARGV[1];
       my $POSTS=join('\n', split(',', $scripts));
       #print "scripts=$scripts\n";
+      #remove all the postbootscripts
+      my $PSTMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" $scriptname`;
+      `echo "$PSTMP" > $scriptname`;
       #remove all the postscripts
       my $TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" $scriptname`;
       `echo "$TMP" > $scriptname`;
@@ -243,6 +246,8 @@ if (-f $scriptname)
 
     # use the run_ps subroutine to run the postscripts
     my $TMP1=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\\(.*\\)/run_ps \\1/;s/run_ps *#/#/;s/run_ps *\$//" $scriptname`;
+    `echo "$TMP1" > $scriptname`;
+    my $TMP2=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\\(.*\\)/run_ps \\1/;s/run_ps *#/#/;s/run_ps *\$//" $scriptname`;
     `echo "
 # subroutine used to run postscripts
 run_ps () {
@@ -259,7 +264,7 @@ run_ps () {
 # subroutine end
 
 " > $scriptname`;
-    `echo "$TMP1" >> $scriptname`;
+    `echo "$TMP2" >> $scriptname`;
 
     $nodesetstat=`grep "NODESETSTATE=" $scriptname|awk -F \= '{print \$2}'`;
     chomp($nodesetstat);
