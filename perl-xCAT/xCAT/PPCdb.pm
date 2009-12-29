@@ -673,5 +673,29 @@ sub credentials {
     return( $user,$pass );
 }
 
+##########################################################################
+# Set userids and passwords to tables
+##########################################################################
+sub update_credentials 
+{
+
+    my $server = shift;
+    my $hwtype = shift;
+    my $user   = shift;
+    my $pass   = shift;
+
+    ##########################################
+    # Set password to specific table
+    ##########################################
+    my $tab = xCAT::Table->new( $hcptab{$hwtype} );
+    if ( $tab ) {
+        my $ent;
+        $tab->setAttribs( {hcp=>$server, username=>$user},{password=>$pass} );
+    }
+
+    return undef;
+}
+
+
 1;
 

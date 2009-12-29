@@ -101,8 +101,10 @@ my %lssysconn = (
 # or frames
 ##############################################
 my %chsyspwd = (
-    fsp => "chsyspwd -t %s -m %s --passwd %s --newpasswd %s",
-    bpa => "chsyspwd -t %s -e %s --passwd %s --newpasswd %s"
+    initial_fsp => "chsyspwd -t %s -m %s --newpasswd %s",
+    initial_bpa => "chsyspwd -t %s -e %s --newpasswd %s",
+    fsp => "chsyspwd -t %s -m %s --newpasswd %s --passwd %s",
+    bpa => "chsyspwd -t %s -e %s --newpasswd %s --passwd %s"
 );
 
 
@@ -1248,11 +1250,20 @@ sub chsyspwd
     my $user   = shift;
     my $type   = shift;
     my $mtms   = shift;
-    my $passwd = shift;
     my $newpwd = shift;
+    my $pwd    = shift;
+    my $cmd;
 
-    my $cmd = sprintf( $chsyspwd{$type}, $user, $mtms, $passwd, $newpwd );
+    $user =~ s/^HMC$/access/;
+
+    if ( !$pwd ) {
+        $cmd = sprintf( $chsyspwd{"initial_$type"}, $user, $mtms, $newpwd );
+    } else {
+        $cmd = sprintf( $chsyspwd{$type}, $user, $mtms, $newpwd, $pwd );
+    }
+
     my $result = send_cmd( $exp, $cmd);
+
     return ( $result );
 }
 

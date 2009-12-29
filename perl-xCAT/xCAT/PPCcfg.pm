@@ -37,11 +37,17 @@ sub parse_args {
         "autopower",
         "sysdump",
         "spdump",
-        "network"
+        "network",
+        "HMC_passwd",
+        "admin_passwd",
+        "general_passwd"
     );
     my @bpa = (
-        "network",
-        "frame"
+        "password",
+        "newpassword",
+        "HMC_passwd",
+        "admin_passwd",
+        "general_passwd"
     );
     my @ppc = (
         "sshcfg"
@@ -122,6 +128,7 @@ sub parse_args {
         }
         $cmds{$command} = $value;
     } 
+
     ####################################
     # Check command arguments 
     ####################################
@@ -148,6 +155,16 @@ sub parse_args {
         $request->{method} = "cfg";
         return( \%opt );
     }
+
+    ####################################
+    # Return method to invoke
+    ####################################
+    if ( exists($cmds{HMC_passwd}) or exists($cmds{general_passwd}) or exists($cmds{admin_passwd}) ) {
+        $request->{hcp} = "hmc";
+        $request->{method} = "passwd";
+        return( \%opt );
+    }
+
     $request->{method} = \%cmds;
     return( \%opt );
 }
@@ -228,10 +245,58 @@ sub parse_option {
         }
     }
 
+    if ( $command eq 'admin_passwd' or $command eq 'general_passwd' ){
+        my ($passwd,$newpasswd) = split /,/, $value;
+        if ( !$passwd or !$newpasswd) {
+            return( "Current password and new password couldn't be empty for user 'admin' and 'general'" );
+        }
+    }
+
+    if ( $command eq 'HMC_passwd' ) {
+        my ($passwd,$newpasswd) = split /,/, $value;
+        if ( !$newpasswd ) {
+            return( "New password couldn't be empty for user 'HMC'" );
+        }
+    }
+
     return undef;
 }
 
+##########################################################################
+# Update passwords for different users on FSP/BPA
+##########################################################################
+sub passwd {
 
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $args    = $request->{arg};
+    my $result;
+
+    foreach my $arg ( @$args ) {
+        my ($user,$value) = split /=/, $arg;
+        my ($passwd,$newpasswd) = split /,/, $value;
+        $user =~ s/_passwd$//;
+
+        while ( my ($cec,$h) = each(%$hash) ) {
+            while ( my ($node,$d) = each(%$h) ) {
+                my $type = @$d[4];
+                my $data = xCAT::PPCcli::chsyspwd( $exp, $user, $type, $cec, $newpasswd, $passwd );
+                my $Rc = shift(@$data);
+                push @$result, [$node,@$data[0],$Rc];
+
+                ##################################
+                # Write the new password to table
+                ##################################
+                if ( $Rc == SUCCESS ) {
+                    xCAT::PPCdb::update_credentials( $node, $type, $user, $newpasswd );
+                }
+            }
+        }
+    }
+
+    return( [@$result] );
+}
 
 ##########################################################################
 # Handles all PPC rspconfig commands
