@@ -193,7 +193,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c u H))) {
+            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c u H n))) {
         return( usage() );
     }
     #############################################
@@ -1162,8 +1162,11 @@ sub gethost_from_url {
             my $sn = $1;
             foreach my $node ( keys %::VPD_TAB_CACHE ) {
                 if ( $::VPD_TAB_CACHE{$node} eq $mtm . '*' . $sn . '-' . $side ) {
-                    delete $::VPD_TAB_CACHE{$node};
-                    return $node . "($ip)";
+                    if ( exists( $opt{n} ) ) {
+                        return undef;
+                    } else {
+                        return $node . "($ip)";
+                    }
                 }
             }
         }
@@ -1186,7 +1189,11 @@ sub gethost_from_url {
     }
     if ( exists $::HOST_TAB_CACHE{$ip})
     {
-        return $::HOST_TAB_CACHE{$ip} . "($ip)";
+        if ( exists( $opt{n} ) ) {
+            return undef;
+        } else {
+            return $::HOST_TAB_CACHE{$ip} . "($ip)";
+        }
     }
 
     my $host = getFactoryHostname($type,$mtm,$sn,$side,$rsp);
@@ -1547,15 +1554,15 @@ sub xCATdB {
     $vpdtab = xCAT::Table->new('vpd');
     if ($vpdtab)
     {
-        my @ents=$vpdtab->getAllNodeAttribs(['serial','mtm','side']);
+        my @ents=$vpdtab->getAllNodeAttribs(['serial','mtm']);
         for my $ent ( @ents)
         {
-            if ( $ent->{mtm} and $ent->{serial} and defined( $ent->{side} ))
+            if ( $ent->{mtm} and $ent->{serial} )
             {
                 # if there is no BPA, or there is the second BPA, change it
-                if ( ! exists $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial} . "-" . $ent->{side}} )
+                if ( ! exists $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial} } )
                 {
-                    $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial} . "-" . $ent->{side}} = $ent->{node};
+                    $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} = $ent->{node};
                 }
             }
         }
