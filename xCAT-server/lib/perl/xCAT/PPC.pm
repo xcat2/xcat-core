@@ -50,6 +50,8 @@ my %modules = (
         reventlog => { hmc    => "xCAT::PPClog",
 		      },
         rspconfig => { hmc    => "xCAT::PPCcfg",
+                       fsp    => "xCAT::PPCcfg",
+                       bpa    => "xCAT::PPCcfg",
 		      },
         rflash    => { hmc    => "xCAT::PPCrflash",
                        fsp    => "xCAT::FSPflash",
@@ -684,7 +686,7 @@ sub preprocess_nodes {
     #   rscan - Nodes are hardware control pts 
     #   FSPpower, FSPinv and FSPrflash 
     ########################################
-    if (( !$request->{hwcp} && ($request->{hwcp} ne "hmc" )) 
+    if (( !$request->{hcp} && ($request->{hcp} ne "hmc" )) 
         and ($request->{command} !~ /^renergy$/)
         and (( $request->{command} =~ /^(rscan|rspconfig)$/ ) 
             or ($request->{hwtype} eq "fsp" or $request->{hwtype} eq "bpa" ) 
@@ -755,7 +757,7 @@ sub preprocess_nodes {
     ##########################################
     while (my ($hcp,$hash) = each(%nodehash) ) {   
         my @cred;
-        if ($request->{hwcp} && ($request->{hwcp} eq "hmc" )) {
+        if ($request->{hcp} && ($request->{hcp} eq "hmc" )) {
             @cred = xCAT::PPCdb::credentials( $hcp, $request->{hcp} );
         } else {
             @cred = xCAT::PPCdb::credentials( $hcp, $request->{hwtype} );
@@ -1117,7 +1119,7 @@ sub invoke_cmd {
     my $hwtype  = $request->{hwtype};
     my $verbose = $request->{verbose};
     my $cmd     = $request->{command};
-    my $power   = $request->{hwcp};
+    my $power   = $request->{hcp};
     my @exp;
     my $verbose_log;
     my @outhash;

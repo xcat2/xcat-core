@@ -144,7 +144,7 @@ sub parse_args {
     # Return method to invoke
     ####################################
     if ( exists($cmds{frame}) ) {
-        $request->{hwcp} = "hmc";
+        $request->{hcp} = "hmc";
         $request->{method} = "cfg";
         return( \%opt );
     }
