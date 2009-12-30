@@ -2419,83 +2419,102 @@ sub delEntries
         return dbc_call($self,'delEntries',@_);
     }
     my $keyref = shift;
+    my @all_keyparis;
     my %keypairs;
     if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
         $self->{intransaction}=1;
         $self->{dbh}->{AutoCommit}=0;
     }
-    if ($keyref)
+    if (ref($keyref) eq 'ARRAY')
     {
-        %keypairs = %{$keyref};
+        @all_keyparis = @{$keyref};
+    }else {
+        push @all_keyparis, $keyref;
     }
 
+    
     my $notif = xCAT::NotifHandler->needToNotify($self->{tabname}, 'd');
-    my @notif_data;
-    if ($notif == 1)
-    {
-        my $qstring = "SELECT * FROM " . $self->{tabname};
-        if ($keyref) { $qstring .= " WHERE "; }
-        my @qargs = ();
-        foreach (keys %keypairs)
-        {
-            #$qstring .= "\"$_\" = ? AND "; #mysql change
-            #$qstring .= "$_ = ? AND ";
-            if ($xcatcfg =~ /^mysql:/) {  #for mysql
-	      $qstring .= q(`) . $_ . q(`) . " = ? AND ";  # mysql change
-            } else { # for other dbs
-	      $qstring .= "$_ = ? AND "; 
-            }  
-           
-            push @qargs, $keypairs{$_};
-        }
-        $qstring =~ s/ AND \z//;
-        #print "this is qstring: $qstring";
-        my $query = $self->{dbh}->prepare($qstring);
-        $query->execute(@qargs);
 
-        #prepare the notification data
-        #put the column names at the very front
-        push(@notif_data, $query->{NAME});
-        my $temp_data = $query->fetchall_arrayref();
-        foreach (@$temp_data)
+    my $record_num = 100;
+    my @pieces = splice(@all_keyparis, 0, $record_num); 
+    while (@pieces) {
+        my @notif_data;
+        if ($notif == 1)
         {
-            push(@notif_data, $_);
-        }
-        $query->finish();
-    }
+            my $qstring = "SELECT * FROM " . $self->{tabname};
+            if ($keyref) { $qstring .= " WHERE "; }
+            my @qargs = ();
+            foreach my $keypairs (@pieces) {
+                $qstring .= "(";
+                foreach my $keypair (keys %{$keypairs})
+                {
+                    if ($xcatcfg =~ /^mysql:/) {
+                      $qstring .= q(`) . $keypair . q(`) . " = ? AND ";  # mysql change
+                    } else { # for other dbs
+                      $qstring .= "$keypair = ? AND ";
+                    }
 
-    my @stargs    = ();
-    my $delstring = 'DELETE FROM ' . $self->{tabname};
-    if ($keyref) { $delstring .= ' WHERE '; }
-    foreach (keys %keypairs)
-    {
-        #$delstring .= $_ . ' = ? AND ';
-        #$delstring .= "\"$_\"" . ' = ? AND '; #mysql change
-        if ($xcatcfg =~ /^mysql:/) {  #for mysql
-	   $delstring .= q(`) . $_ . q(`) . ' = ? AND ';  # mysql change
-        } else { # for other dbs
-          $delstring .= $_ . ' = ? AND ';
+                    push @qargs, $keypairs->{$keypair};
+                }
+                $qstring =~ s/ AND \z//;
+                $qstring .= ") OR ";
+            }
+            $qstring =~ s/\(\)//;
+            $qstring =~ s/ OR \z//;
+
+            
+            my $query = $self->{dbh}->prepare($qstring);
+            $query->execute(@qargs);
+    
+            #prepare the notification data
+            #put the column names at the very front
+            push(@notif_data, $query->{NAME});
+            my $temp_data = $query->fetchall_arrayref();
+            foreach (@$temp_data)
+            {
+                push(@notif_data, $_);
+            }
+            $query->finish();
         }
-        if (ref($keypairs{$_}))
-        {   #XML transformed data may come in mangled unreasonably into listrefs
-            push @stargs, $keypairs{$_}->[0];
+    
+        my @stargs    = ();
+        my $delstring = 'DELETE FROM ' . $self->{tabname};
+        if ($keyref) { $delstring .= ' WHERE '; }
+        foreach my $keypairs (@pieces) {
+            $delstring .= "(";
+            foreach my $keypair (keys %{$keypairs})
+            {
+                if ($xcatcfg =~ /^mysql:/) {
+                   $delstring .= q(`) . $keypair. q(`) . ' = ? AND ';  # mysql change
+                } else { # for other dbs
+                  $delstring .= $keypair . ' = ? AND ';
+                }
+                if (ref($keypairs->{$keypair}))
+                {   #XML transformed data may come in mangled unreasonably into listrefs
+                    push @stargs, $keypairs->{$keypair}->[0];
+                }
+                else
+                {
+                    push @stargs, $keypairs->{$keypair};
+                }
+            }
+            $delstring =~ s/ AND \z//;
+            $delstring .= ") OR ";
         }
-        else
+        $delstring =~ s/\(\)//;
+        $delstring =~ s/ OR \z//;
+        my $stmt = $self->{dbh}->prepare($delstring);
+        $stmt->execute(@stargs);
+        $stmt->finish;
+    
+        #notify the interested parties
+        if ($notif == 1)
         {
-            push @stargs, $keypairs{$_};
+            xCAT::NotifHandler->notify("d", $self->{tabname}, \@notif_data, {});
         }
+        @pieces = splice(@all_keyparis, 0, $record_num); 
     }
-    $delstring =~ s/ AND \z//;
-    my $stmt = $self->{dbh}->prepare($delstring);
-    $stmt->execute(@stargs);
-    $stmt->finish;
-
-    #notify the interested parties
-    if ($notif == 1)
-    {
-        xCAT::NotifHandler->notify("d", $self->{tabname}, \@notif_data,
-                                          {});
-    }
+    
 }
 
 #--------------------------------------------------------------------------

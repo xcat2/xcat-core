@@ -1118,7 +1118,8 @@ sub defmk
                         }
 
                         # get all the attrs for these nodes
-                        my %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+                        my @whereattrs = keys %::WhereHash;
+                        my %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, 0, \@whereattrs);
 
                         # see which ones match the where values
                         foreach my $objname (keys %myhash)
@@ -1598,7 +1599,9 @@ sub defch
             if ($isDefined)
             {
                 $objhash{$obj} = $type;
-                %grphash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+                my @finalattrs = keys %{$::FINALATTRS{$obj}};
+                push @finalattrs, 'grouptype';
+                %grphash = xCAT::DBobjUtils->getobjdefs(\%objhash, 0, \@finalattrs);
                 if (!defined(%grphash))
                 {
                     my $rsp;
@@ -1690,9 +1693,6 @@ sub defch
                         $objhash{$n} = 'node';
                     }
 
-                    # get all the attrs for these nodes
-                    my %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
-
                     # get a list of attr=val pairs, is it really necessary??
                     my @wherevals = split(/::/, $::FINALATTRS{$obj}{wherevals});
                     my $rc = xCAT::Utils->parse_selection_string(\@wherevals, \%::WhereHash);
@@ -1703,6 +1703,10 @@ sub defch
                          xCAT::MsgUtils->message("E", $rsp, $::callback);
                          return 3;
                     }
+
+                    # get the attrs for these nodes
+                    my @whereattrs = keys %::WhereHash;
+                    my %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, 0, \@whereattrs);
 
                     # see which ones match the where values
                     foreach my $objname (keys %myhash)
@@ -2240,7 +2244,7 @@ sub defls
     }
 
     # do we want just the object names or all the attr=val
-    if ($::opt_l || @::noderange || $::opt_i)
+    if ($::opt_l || $::opt_i)
     {
 
         # assume we want the the details - not just the names
@@ -2261,7 +2265,7 @@ sub defls
     } elsif ( @::noderange || $::opt_o) {
         # if they gave a list of objects then they must want more
         #       than the object names!
-        $::ATTRLIST="all";
+        $::ATTRLIST="none";
     } else {
         # otherwise just get a list of object names
         $::ATTRLIST="none";
@@ -2286,7 +2290,7 @@ sub defls
 
         }
 
-        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE);
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, \@::AttrList);
         if (!defined(%myhash))
         {
             my $rsp;
@@ -2303,7 +2307,7 @@ sub defls
     {
         %objhash = %::ObjTypeHash;
 
-        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE);
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, \@::AttrList);
         if (!defined(%myhash))
         {
             my $rsp;
@@ -2498,7 +2502,7 @@ sub defls
             return 0;
         }
 
-		# for each object
+        # for each object
         foreach my $obj (sort keys %defhash)
         {
 
@@ -2507,7 +2511,7 @@ sub defls
                 next;
             }
 
-			# if anything but the site table do this
+            # if anything but the site table do this
             if ($defhash{$obj}{'objtype'} ne 'site')
             {
                 my @tmplist =
@@ -2562,7 +2566,6 @@ sub defls
 					push(@alreadydone, $this_attr->{attr_name});
                 }
             }
-
 
             if ($::opt_x)
             {
@@ -2973,7 +2976,8 @@ sub defrm
             # get the group object definition
 			my %ghash;
             $ghash{$obj} = 'group';
-            my %grphash = xCAT::DBobjUtils->getobjdefs(\%ghash);
+            my @attrs = ('grouptype', 'wherevals');
+            my %grphash = xCAT::DBobjUtils->getobjdefs(\%ghash, 0, \@attrs);
             if (!defined(%grphash))
             {
                 my $rsp;
@@ -3010,7 +3014,8 @@ sub defrm
                 $nhash{$m} = 'node';
             }
             # Performance: Only call getobjdefs once
-                %nodehash = xCAT::DBobjUtils->getobjdefs(\%nhash);
+            my @attrs = ('groups');
+                %nodehash = xCAT::DBobjUtils->getobjdefs(\%nhash, 0, \@attrs);
                 if (!defined(%nodehash))
                 {
                     my $rsp;
