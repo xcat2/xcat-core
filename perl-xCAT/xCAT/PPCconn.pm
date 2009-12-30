@@ -54,7 +54,7 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s N=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
