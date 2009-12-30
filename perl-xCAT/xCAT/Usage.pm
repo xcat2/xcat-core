@@ -96,7 +96,10 @@ my %usage = (
            swnet=<[ip],[gateway],[netmask]>|
            textid=<*>|
            frame=<*>|
-           ntp=<[ntp],[ip],[frequency],[v3]>
+           ntp=<[ntp],[ip],[frequency],[v3]>|
+           access_passwd=[currentpasswd],[newpasswd]|
+           admin_passwd=[currentpasswd],[newpasswd]|
+           general_passwd=[currentpasswd],[newpasswd]
    FSP specific:
        rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump]
        rspconfig <noderange> autopower=<enable|disable>|
@@ -105,7 +108,10 @@ my %usage = (
            memdecfg=<configure|deconfigure>:<processing unit>:<bank|unit>:<bank/unit number>:id,...|
            procdecfg=<configure|deconfigure>:<processing unit>:id,...|
            date=<mm-dd-yyyy>|
-           time=<hh:mm:ss>
+           time=<hh:mm:ss>|
+           access_passwd=[currentpasswd],[newpasswd]|
+           admin_passwd=[currentpasswd],[newpasswd]|
+           general_passwd=[currentpasswd],[newpasswd]
    HMC specific:
            rspconfig <noderange>  [sshcfg]
            rspconfig <noderange>  [sshcfg=<enable|disable>]",
@@ -142,7 +148,7 @@ my %usage = (
        rmvm [-h|--help|-v|--version]",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
-       lsslp [-V|--verbose][-i ip[,ip..]][-w][-u] [-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]
+       lsslp [-V|--verbose][-i ip[,ip..]][-w][-u][-n][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]
              [-t tries][-m][-e cmd][-c [timeout[timeout,..]]]",
   "rflash" =>
 "Usage: rflash [ -h|--help|-v|--version]
