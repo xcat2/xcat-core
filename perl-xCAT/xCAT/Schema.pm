@@ -656,6 +656,8 @@ site => {
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
+   " powerinterval:  The time of seconds that rpower command will wait between performing action on each target object,\n".
+   "                 it is useful especially for controlling the cluster boot up speed in large clusters.\n\n".
    " ppcmaxp:  The max # of processes for PPC hw ctrl.\n\n".
    " ppcretry:  The max # of PPC hw connection attempts before failing.\n\n".
    " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw.\n\n".

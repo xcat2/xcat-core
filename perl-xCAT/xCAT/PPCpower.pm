@@ -192,6 +192,14 @@ sub powercmd_boot {
         my $state = power_status($data->{$id});
         my $op    = ($state =~ /^off$/) ? "on" : "reset";
 
+        # Attribute powerinterval in site table,
+        # to control the rpower forking speed
+        if ((defined($request->{op})) && ($request->{op} ne 'stat') && ($request->{op} ne 'status') 
+           && ($request->{op} ne 'state') && ($request->{op} ne 'off') && ($request->{op} ne 'softoff')) {
+            if(defined($request->{'powerinterval'}) && ($request->{'powerinterval'} ne '')) {
+                Time::HiRes::sleep($request->{'powerinterval'});
+            }    
+        } 
         ##############################
         # Send power command
         ##############################
@@ -279,6 +287,14 @@ sub powercmd {
     ####################################
 
     while (my ($name,$d) = each(%$hash) ) {
+        # Attribute powerinterval in site table,
+        # to control the rpower forking speed
+        if ((defined($request->{op})) && ($request->{op} ne 'stat') && ($request->{op} ne 'status') 
+           && ($request->{op} ne 'state') && ($request->{op} ne 'off') && ($request->{op} ne 'softoff')) {
+            if(defined($request->{'powerinterval'}) && ($request->{'powerinterval'} ne '')) {
+                Time::HiRes::sleep($request->{'powerinterval'});
+            }    
+        } 
         ################################
         # Send command to each LPAR
         ################################
