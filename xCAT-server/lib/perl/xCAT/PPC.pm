@@ -126,7 +126,7 @@ sub process_command {
     my %nodes    = ();
     my $callback = $request->{callback};
     my $sitetab  = xCAT::Table->new( 'site' );
-    my @site     = qw(ppcmaxp ppctimeout maxssh ppcretry fsptimeout); 
+    my @site     = qw(ppcmaxp ppctimeout maxssh ppcretry fsptimeout powerinterval); 
     my $start;
 
     #######################################
