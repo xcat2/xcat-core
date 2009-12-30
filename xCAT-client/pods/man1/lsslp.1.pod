@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-e command][-c [timeout[timeout,..]]]>
+I<lsslp [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-e command][-c [timeout[timeout,..]]]>
 
 
 =head1 DESCRIPTION
@@ -39,6 +39,8 @@ B<-e>          Path and command name of IBM SLP slp_query (defaults to OpenSLP -
 B<-h>          Display usage message.
 
 B<-m>          Multicast mode (defaults to broadcast).
+
+B<-n>          Only display and write the newly discovered hardwares.
 
 B<-r>          Display Raw SLP response.
 

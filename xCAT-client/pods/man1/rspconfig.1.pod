@@ -70,6 +70,12 @@ B<rspconfig> I<noderange> B<network>={B<nic,[IP,][hostname,][gateway,][netmask]>
 
 B<rspconfig> I<noderange> B<network>={B<nic,0.0.0.0>}
 
+B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
+
 =head2 BPA Specific:
 
 B<rspconfig> I<noderange> {B<network>}
@@ -79,6 +85,12 @@ B<rspconfig> I<noderange> B<network>={B<nic,*>}
 B<rspconfig> I<noderange> B<network>={B<nic,[IP,][hostname,][gateway,][netmask]>}
 
 B<rspconfig> I<noderange> B<network>={B<nic,0.0.0.0>}
+
+B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
 =head2 HMC Specific:
 
@@ -426,6 +438,17 @@ B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
 
 =back
 
+To update the existing admin password on fsp:
+
+B<rspconfig> I<fsp admin_passwd=admin,abc123>
+
+ fsp: Success
+
+To set the initial password for user HMC on fsp:
+
+B<rspconfig> I<fsp HMC_passwd=,abc123>
+
+ fsp: Success
 
 =head1 SEE ALSO
 

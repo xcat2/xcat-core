@@ -97,7 +97,7 @@ my %usage = (
            textid=<*>|
            frame=<*>|
            ntp=<[ntp],[ip],[frequency],[v3]>|
-           access_passwd=[currentpasswd],[newpasswd]|
+           HMC_passwd=[currentpasswd],[newpasswd]|
            admin_passwd=[currentpasswd],[newpasswd]|
            general_passwd=[currentpasswd],[newpasswd]
    FSP specific:
@@ -109,7 +109,7 @@ my %usage = (
            procdecfg=<configure|deconfigure>:<processing unit>:id,...|
            date=<mm-dd-yyyy>|
            time=<hh:mm:ss>|
-           access_passwd=[currentpasswd],[newpasswd]|
+           HMC_passwd=[currentpasswd],[newpasswd]|
            admin_passwd=[currentpasswd],[newpasswd]|
            general_passwd=[currentpasswd],[newpasswd]
    HMC specific:
