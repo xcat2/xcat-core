@@ -146,8 +146,7 @@ sub mkvm_parse_args {
     @ARGV = @$args;
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
-
-    if ( !GetOptions( \%opt, qw(V|verbose ibautocfg ibacap=s i=s l=s c=s p=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose ibautocfg ibacap=s i=s l=s c=s p=s full) )) {
         return( usage() );
     }
 ####################################
@@ -185,13 +184,21 @@ sub mkvm_parse_args {
 # -i and -l not valid with -c 
 ####################################
     if ( exists( $opt{c} ) ) {
-        if ( exists($opt{i}) or exists($opt{l})) {
+        if ( exists($opt{i}) or exists($opt{l}) or exists($opt{full})) {
             return( usage() );
         }
 ####################################
 # -p is required for -c
 ####################################
         if ( !exists($opt{p})) {
+            return( usage() );
+        }
+    }
+####################################
+# -i, -l and -c not valid with -f 
+####################################
+    elsif ( exists( $opt{full} ) ) {
+        if ( exists($opt{c}) or exists($opt{i}) or exists($opt{l})) {
             return( usage() );
         }
     }
@@ -228,7 +235,6 @@ sub mkvm_parse_args {
         }
         $opt{cec} = \@noderange;
     }
-
 #################################################
 # Swap the targets to be processed in PPC.pm
 #################################################
@@ -244,12 +250,51 @@ sub mkvm_parse_args {
         $request->{node} = [@{$opt{cec}}];
         $request->{noderange} = $opt{c};
     }    
-
 #############################################
 # Only 1 node allowed 
 #############################################
-    if ( scalar( @{$request->{node}} ) > 1) {
+    if ( !exists($opt{full}) && scalar( @{$request->{node}} ) > 1) {
         return(usage( "Multiple source specified" ));
+    } 
+
+################################################
+# Check if the multiple nodes of  the same CEC are specified with -f
+################################################
+
+if ( (exists($opt{full})) && (scalar (@{$opt{target}}) > 1) ) {
+		my $lparparent;
+
+		my $ppctab  = xCAT::Table->new('ppc');
+
+		foreach my $vnode (@{$opt{target}}) {
+        	my $vcon = $ppctab->getAttribs({node => $vnode}, ('node','parent'));
+        	if ($vcon and $vcon->{"node"} and $vcon->{"parent"}) {
+        		my $lparent = $vcon->{"parent"};
+				$lparparent->{$lparent}->{$vnode} = $vnode;
+        	}
+        }
+
+		$ppctab->close;
+
+		my $cbmsg		= "mkvm: multiple LPAR nodes which belong to the same CEC have been defined.\n";
+        	my $sameflag    = 0;
+
+        	foreach my $iparent (keys %$lparparent) {
+     			if (scalar (keys %{$lparparent->{$iparent}}) > 1) {
+           			$sameflag       = 1;
+           			$cbmsg	= $cbmsg .  $iparent . ":" . "\t";
+                		foreach my $inode (keys %{$lparparent->{$iparent}}) {
+                		$cbmsg  = $cbmsg . $inode . ",";
+                		}
+            		}
+			
+			$cbmsg =~ s/,$/ /;
+			$cbmsg = $cbmsg . "\n";
+        	}
+
+		if ($sameflag) {
+			return(usage( $cbmsg ));
+		}
     } 
 
 ####################################
@@ -573,13 +618,12 @@ sub remove {
     my $exp     = shift;
     my @lpars   = ();
     my @values  = ();
-
+    
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($lpar,$d) = each(%$h) ) {
             my $lparid = @$d[0];
             my $mtms   = @$d[2];
             my $type   = @$d[4];
-
             ####################################
             # Must be CEC or LPAR
             ####################################
@@ -604,7 +648,6 @@ sub remove {
                                              $mtms,
                                              $filter );
                 my $Rc = shift(@$result);
-
                 ################################
                 # Expect error
                 ################################
@@ -623,14 +666,35 @@ sub remove {
             # Remove the LPARs
             ####################################
             foreach ( @lpars ) {
-                my ($name,$id) = split /,/;
+		my $lparinfo   = shift(@lpars);
+                my ($name,$id) = split /,/, $lparinfo;
                 my $mtms = @$d[2];
-
-                ################################  
+                my $service_lparid = xCAT::PPCcli::lssyscfg(
+                                              $exp,
+                                              "fsp",
+                                              $mtms,
+                                              "service_lpar_id" );
+                my $Rc = shift(@$service_lparid);
+                
+		#####################################################
+                # Change the CEC's state to standby and set it's service lpar id to none
+                #####################################################
+                if ( $Rc == SUCCESS ) {
+                    my $cfgdata = @$service_lparid[0];
+                    if ( ($id == $cfgdata) && ($cfgdata !~ /none/) ) {
+                    	$cfgdata = "service_lpar_id=none";
+                        my $result = xCAT::PPCcli::chsyscfg( $exp, "sys", $d, $cfgdata );
+                        $Rc = shift(@$result);
+                        if ( $Rc != SUCCESS ) {
+                        	return( [[$lpar, @$service_lparid[0], $Rc]] );
+                        }
+                    }
+                }
+ 
+		################################  
                 # id profile mtms hcp type frame
                 ################################  
                 my @d = ( $id,0,$mtms,0,"lpar",0 );
-
                 ################################
                 # Send remove command 
                 ################################
@@ -1688,8 +1752,8 @@ sub xCATdB {
         my ($model,$serial) = split /\*/,@$d[2];
         my $server   = @$d[3];
         my $fsp      = @$d[2];
- 
-        ###################################
+        
+	###################################
         # Find FSP name in ppc database
         ###################################
         my $tab = xCAT::Table->new( "ppc" );
@@ -1725,12 +1789,14 @@ sub xCATdB {
             }
             $parent = $ent->{parent};
         }
+
         my $values = join( ",",
                 "lpar",
                 $name,
                 $lparid,
                 $model,
                 $serial,
+		"",
                 $server,
                 $profile,
                 $parent ); 
@@ -1741,12 +1807,155 @@ sub xCATdB {
 }
 
 
+##########################################################################
+# The mkfulllpar function is written in ksh, and used to create a full
+# system partition for each CECs Managed by the HMC. It will use ssh to
+# login the HMC with the hscroot userid in order to rename the CECs based
+# on a certain pattern specified through command line and create full
+# partition for all the CECs.
+##########################################################################
+
+sub mkfulllpar {
+
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $hwtype  = @$exp[2];
+    my $opt     = $request->{opt};
+    my @values  = ();
+    my $result;
+    my $lpar;
+    my $d;
+    my $lparid;
+    my $mtms;
+    my $type;
+    my $profile;
+   
+my $ppctab  = xCAT::Table->new('ppc'); 
+    #####################################
+    # Get source node information
+    #####################################
+    while ( my ($cec,$h) = each(%$hash) ) {
+        my ($name,$data) = each(%$h);
+            $d      = $data;
+            $lparid = @$d[0];
+            $mtms   = @$d[2];
+            $type   = @$d[4];
+            $lpar   = $name;
+    #####################################
+    # Must be CEC or LPAR 
+    #####################################
+    if ( $type !~ /^(lpar|fsp)$/ ) {
+        return( [[$lpar,"Node must be LPAR or CEC",RC_ERROR]] );
+    }
+
+	my $ppctab  = xCAT::Table->new('ppc');
+        #####################################
+	    # Check if a existing with requested LPAR ID has existed  
+	    #####################################
+	    my $value = xCAT::PPCcli::lssyscfg(
+	                              $exp,
+	                              "profs",
+	                              $mtms,
+				      "all_resources",   
+	                              "lpar_ids=$lparid" ); 
+	    my $Rc = shift(@$value);
+	    #######################################
+	    # make how to handle according to the result of lssyscfg
+	    #######################################
+	    if ( $Rc == SUCCESS ) {
+	    	# close the DB handler of the ppc table
+	    	$ppctab->close;
+	    	# change the lpar's attribute before removing it.	    	
+	    	my $all_res_flag = @$value[0];
+	    	if ( $all_res_flag != 1 ) {
+				return( [[$lpar,"The LPAR ID has been occupied",RC_ERROR]] );
+	    	}
+	    	else {
+				return( [[$lpar,"This full LPAR has been created",RC_ERROR]] );
+	    	}
+	    }
+	    
+	    #################################
+	    # Create the new full LPAR's configure data  
+	    #################################
+	    my ($lpar_id, $profname);
+	    my $vcon = $ppctab->getAttribs({node => $name}, ('id','pprofile'));
+       	if ($vcon) {
+       		if ($vcon->{"id"}) {
+				$lpar_id = $vcon->{"id"};
+       		} else {
+				$lpar_id = 1;
+       		}
+
+       		if ($vcon->{"pprofile"}) {
+				$profname = $vcon->{"pprofile"};
+       		} else {
+				$profname = $name;
+       		}
+       	} else {
+			$lpar_id	= 1;
+			$profname	= $name;
+       	}
+       	
+	    my $cfgdata	= "name=$name,profile_name=$profname,lpar_id=$lpar_id,lpar_env=aixlinux,all_resources=1,boot_mode=norm,conn_monitoring=0";
+				
+        #################################
+        # Create a new full LPAR
+        #################################
+        $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", $d, $cfgdata ); 
+        $Rc		= shift(@$result);
+
+        ###########################################
+        # Set the CEC's service_lpar_id to the lpar_id of the full LPAR
+        ###########################################
+		if ( $Rc == SUCCESS) {
+			$cfgdata	= "service_lpar_id=$lpar_id";  
+	    	$result		= xCAT::PPCcli::chsyscfg( $exp, "sys", $d, $cfgdata  );
+	    	$Rc			= shift(@$result);
+            if ( $Rc != SUCCESS ) {
+            	$ppctab->close;
+            	return( [[$lpar, @$result[0], $Rc]] );
+            }
+		}
+		
+        #################################
+        # Add a new full LPAR to database 
+        #################################
+        if ( $Rc == SUCCESS ) {
+        	$profile = $profname;
+			my $id = $lpar_id;
+            my $err = xCATdB( "mkvm", $name, $profile, $id, $d, $hwtype, $lpar);
+            if ( defined( $err )) {
+                push @values, [$name,$err,RC_ERROR];
+                next;
+            }
+        }
+        push @values, [$name,@$result[0],$Rc];
+    }
+
+    $ppctab->close;
+    return( \@values );
+}
+
 
 ##########################################################################
 # Creates logical partitions 
 ##########################################################################
 sub mkvm {
+    my $request = $_[0];
+    my $opt     = $request->{opt};
+    
+    # decide if issuing mkvm with the option '-f'.
+    # if yes, mklpar will be invoked to
+    # create a full system partition for each CECs managed by the HMC.
+        if ( exists($opt->{full})) {
+                return( mkfulllpar(@_) );
+        }
+        else {
+        # if no, it will execute the original function.
     return( create(@_) );
+	}
 }
 
 ##########################################################################

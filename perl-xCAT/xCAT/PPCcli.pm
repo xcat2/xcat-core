@@ -35,12 +35,14 @@ my %lssyscfg = (
   bpa    =>"lssyscfg -r frame -e %s -F %s",
   bpas   =>"lssyscfg -r frame -F %s",
   prof   =>"lssyscfg -r prof -m %s --filter %s",
+  profs  =>"lssyscfg -r prof -m %s -F %s --filter %s",
   cage   =>"lssyscfg -r cage -e %s -F %s"
 );
 
 my %chsyscfg = (
   prof   =>"chsyscfg -r prof -m %s -i %s",
-  bpa    =>"chsyscfg -r frame -e %s -i frame_num=%s"
+  bpa    =>"chsyscfg -r frame -e %s -i frame_num=%s",
+  sys    =>"chsyscfg -r sys -m %s -i %s"
 );
 
 ##############################################
@@ -101,10 +103,8 @@ my %lssysconn = (
 # or frames
 ##############################################
 my %chsyspwd = (
-    initial_fsp => "chsyspwd -t %s -m %s --newpasswd %s",
-    initial_bpa => "chsyspwd -t %s -e %s --newpasswd %s",
-    fsp => "chsyspwd -t %s -m %s --newpasswd %s --passwd %s",
-    bpa => "chsyspwd -t %s -e %s --newpasswd %s --passwd %s"
+    fsp => "chsyspwd -t %s -m %s --passwd %s --newpasswd %s",
+    bpa => "chsyspwd -t %s -e %s --passwd %s --newpasswd %s"
 );
 
 
@@ -1250,20 +1250,11 @@ sub chsyspwd
     my $user   = shift;
     my $type   = shift;
     my $mtms   = shift;
+    my $passwd = shift;
     my $newpwd = shift;
-    my $pwd    = shift;
-    my $cmd;
 
-    $user =~ s/^HMC$/access/;
-
-    if ( !$pwd ) {
-        $cmd = sprintf( $chsyspwd{"initial_$type"}, $user, $mtms, $newpwd );
-    } else {
-        $cmd = sprintf( $chsyspwd{$type}, $user, $mtms, $newpwd, $pwd );
-    }
-
+    my $cmd = sprintf( $chsyspwd{$type}, $user, $mtms, $passwd, $newpwd );
     my $result = send_cmd( $exp, $cmd);
-
     return ( $result );
 }
 
