@@ -15,6 +15,7 @@ I<mkvm [-v| --version]>
 I<mkvm [-V| --verbose] noderange -i id -l singlenode>
 
 I<mkvm [-V| --verbose] noderange -c destcec -p profile>
+I<mkvm [-V| --verbose] --full>
 
 =head2 For KVM:
 
@@ -46,6 +47,7 @@ B<-i>              Starting numeric id of the newly created partitions.
 B<-l>              The partition name of the source.
 
 B<-p>              The file that contains the profiles for the source partitions.
+B<--full>          Request to create a new full system partition for each CEC.
 
 B<-v|--version>    Command Version.
 
@@ -109,6 +111,25 @@ lpar6: Success
 lpar7: Success
 
 lpar8: Success
+
+
+4. To duplicate all the partitions associated with cec01 on cec02, one is for cec01, the other is for cec02:
+
+I<mkdef -t node -o lpar5,lpar6 mgt=hmc groups=all>
+
+I<chtab node=lpar5 ppc.parent=cec01>
+
+I<chtab node=lpar6 ppc.parent=cec02>
+
+then create lpars on cec01 and cec02:
+
+I<mkvm lpar5,lpar6 --full>
+
+Output is similar to:
+
+lpar5: Success
+
+lpar6: Success
 
 
 =head1 FILES
