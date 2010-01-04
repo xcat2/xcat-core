@@ -54,7 +54,7 @@ Output is similar to:
  lpar2: Success
  lpar3: Success
 
-2. To remove the service partitions of the specified CEC cec01 and cec02, enter:
+3. To remove the service partitions of the specified CEC cec01 and cec02, enter:
 
 I<rmvm cec01,cec02 --service>
 
