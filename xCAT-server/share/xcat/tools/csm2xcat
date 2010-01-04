@@ -280,18 +280,20 @@ sub getNodeinfo
 
                 }
             }
-            if ($attr eq "ManagementServer")
-            {
+            # since we are suggesting that the xCAT MN is a different machine
+            # than the CSM MS,  we will not use the Management Server value
+            #if ($attr eq "ManagementServer")
+            #{
 
-                my $installserver = $attrhash{"InstallServer"};
-                if ($installserver eq "")    # if no install server, use MN
-                {
-                    if ($value)
-                    {
-                        $xcatline = "    xcatmaster=$value\n";
-                    }
-                }
-            }
+            #   my $installserver = $attrhash{"InstallServer"};
+            #    if ($installserver eq "")    # if no install server, use MN
+            #    {
+            #        if ($value)
+            #        {
+            #            $xcatline = "    xcatmaster=$value\n";
+            #        }
+            #    }
+            #}
             if ($attr eq "InstallOSName")
             {
                 if ($value)
