@@ -139,7 +139,7 @@ my %usage = (
        chvm [-h|--help|-v|--version]
        chvm <noderange> <attr>=<val> [<attr>=<val>...]",
     "rmvm" => 
-"Usage: rmvm <noderange> [-V|--verbose] 
+"Usage: rmvm <noderange> [--service][-V|--verbose] 
        rmvm [-h|--help|-v|--version]",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]

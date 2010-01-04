@@ -379,7 +379,7 @@ sub rmvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose service) )) {
         return( usage() );
     }
     ####################################
@@ -669,27 +669,33 @@ sub remove {
 		my $lparinfo   = shift(@lpars);
                 my ($name,$id) = split /,/, $lparinfo;
                 my $mtms = @$d[2];
-                my $service_lparid = xCAT::PPCcli::lssyscfg(
-                                              $exp,
-                                              "fsp",
-                                              $mtms,
-                                              "service_lpar_id" );
-                my $Rc = shift(@$service_lparid);
                 
-		#####################################################
-                # Change the CEC's state to standby and set it's service lpar id to none
-                #####################################################
-                if ( $Rc == SUCCESS ) {
-                    my $cfgdata = @$service_lparid[0];
-                    if ( ($id == $cfgdata) && ($cfgdata !~ /none/) ) {
-                    	$cfgdata = "service_lpar_id=none";
-                        my $result = xCAT::PPCcli::chsyscfg( $exp, "sys", $d, $cfgdata );
-                        $Rc = shift(@$result);
-                        if ( $Rc != SUCCESS ) {
-                        	return( [[$lpar, @$service_lparid[0], $Rc]] );
-                        }
-                    }
-                }
+		if ($opt->{service}) {
+	                ###############################################
+	                # begin to retrieve the CEC's service lpar id
+	                ############################################### 
+                	my $service_lparid = xCAT::PPCcli::lssyscfg(
+                        	                      $exp,
+                                	              "fsp",
+                                        	      $mtms,
+                                              	"service_lpar_id" );
+                	my $Rc = shift(@$service_lparid);
+                
+			#####################################################
+                	# Change the CEC's state to standby and set it's service lpar id to none
+                	#####################################################
+                	if ( $Rc == SUCCESS ) {
+                    	my $cfgdata = @$service_lparid[0];
+                    		if ( ($id == $cfgdata) && ($cfgdata !~ /none/) ) {
+                    			$cfgdata = "service_lpar_id=none";
+                        		my $result = xCAT::PPCcli::chsyscfg( $exp, "sys", $d, $cfgdata );
+                        		$Rc = shift(@$result);
+                        		if ( $Rc != SUCCESS ) {
+                        			return( [[$lpar, @$service_lparid[0], $Rc]] );
+                        		}
+                    		}
+                	}
+		}
  
 		################################  
                 # id profile mtms hcp type frame
