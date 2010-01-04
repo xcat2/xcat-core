@@ -331,6 +331,13 @@ sub getNodeinfo
                     }
                 }
             }
+            if ($attr eq "HWControlPoint")
+            {
+                if ($value) 
+                {
+                    $xcatline = "    hcp=$value\n";
+                }
+            }
             if ($attr eq "LParID")
             {
                 if ($ARCH =~ /ppc/)
