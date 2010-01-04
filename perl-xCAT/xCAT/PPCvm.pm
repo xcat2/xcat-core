@@ -616,6 +616,7 @@ sub remove {
     my $request = shift;
     my $hash    = shift;
     my $exp     = shift;
+    my $opt     = $request->{opt};
     my @lpars   = ();
     my @values  = ();
     
