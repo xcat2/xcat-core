@@ -67,6 +67,11 @@ if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/) {
     m/(.*)=(.*)/;
     my $key=$1;
     my $val=$2;
+    if (!defined($key) || !defined($val)) {
+        print "Incorrect argument \"$_\".\n";
+        usage;
+        exit(1);
+    }
     $keyhash{$key}=$val;
   }
 } else {
