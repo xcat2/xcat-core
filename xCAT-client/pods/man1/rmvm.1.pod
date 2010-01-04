@@ -9,7 +9,7 @@ I<rmvm [-h| --help]>
 I<rmvm [-v| --version]>
 
 
-I<rmvm [-V| --verbose] noderange>
+I<rmvm [-V| --verbose] noderange [--service]>
 
 
 =head1 DESCRIPTION
@@ -24,6 +24,8 @@ B<-h>          Display usage message.
 B<-v>          Command Version.
 
 B<-V>          Verbose output.
+
+B<--service>   Remove the service partitions of the specified CECs.
 
 
 =head1 RETURN VALUE
@@ -51,6 +53,15 @@ Output is similar to:
  lpar1: Success
  lpar2: Success
  lpar3: Success
+
+2. To remove the service partitions of the specified CEC cec01 and cec02, enter:
+
+I<rmvm cec01,cec02 --service>
+
+Output is similar to:
+
+ cec01: Success
+ cec02: Success
 
 
 =head1 FILES
