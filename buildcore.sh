@@ -137,9 +137,10 @@ if $GREP xCAT-UI $SVNUP; then
    mv $source/RPMS/noarch/xCAT-UI-$VER*rpm $DESTDIR
    mv $source/SRPMS/xCAT-UI-$VER*rpm $SRCDIR
 fi
-if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh xCAT-UI-$VER-*rpm" >> $DESTDIR/instxcat
-fi
+# Do not automatically install xCAT-UI on AIX
+#if [ "$OSNAME" = "AIX" ]; then
+#	echo "rpm -Uvh xCAT-UI-$VER-*rpm" >> $DESTDIR/instxcat
+#fi
 
 if $GREP xCAT-server $SVNUP; then
    UPLOAD=1
