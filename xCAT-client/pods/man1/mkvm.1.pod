@@ -15,7 +15,7 @@ I<mkvm [-v| --version]>
 I<mkvm [-V| --verbose] noderange -i id -l singlenode>
 
 I<mkvm [-V| --verbose] noderange -c destcec -p profile>
-I<mkvm [-V| --verbose] --full>
+I<mkvm [-V| --verbose] noderange --full>
 
 =head2 For KVM:
 
