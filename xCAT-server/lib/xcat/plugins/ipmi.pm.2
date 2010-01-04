@@ -6516,6 +6516,8 @@ sub process_request {
       socketpair($pfd, $cfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
       $cfd->autoflush(1);
       $pfd->autoflush(1);
+      binmode($cfd,':utf8');
+      binmode($pfd,':utf8');
       my $child = xCAT::Utils->xfork();
       unless (defined $child) { die "Fork failed" };
 	if ($child == 0) { 
