@@ -901,6 +901,8 @@ sub plugin_command {
         #pipe($pfd,$cfd);
         $parfd->autoflush(1);
         $pfd->autoflush(1);
+        binmode($parfd,':utf8');
+        binmode($pfd,':utf8');
         $child = xCAT::Utils->xfork;
       } else {
         $child = 0;
@@ -1105,6 +1107,8 @@ sub dispatch_request {
     }
     $parfd->autoflush(1);
     $pfd->autoflush(1);
+    binmode($parfd,':utf8');
+    binmode($pfd,':utf8');
     $child = xCAT::Utils->xfork;
     if ($child) {
        $dispatch_children++;
@@ -1241,7 +1245,8 @@ sub convey_response {
   }
   $resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
   #sanitize the response, to avoid being killed by non-printable bytes
-  $resp =~ tr/\011-\177/?/c;
+  #$resp =~ tr/\011-\177/?/c;
+  #seeing if using utf-8 offloads potential issues to client terminal
   print $parent_fd $resp;
   yield; #parent must get timeslice anyway before an ack could possibly return
   my $parsel = new IO::Select;
