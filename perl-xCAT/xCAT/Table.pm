@@ -1643,7 +1643,11 @@ sub setNodesAttribs {
             foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
                 $upstring .= "$col = ?, ";
             }
-            $upstring =~ s/, / where $nodekey = ?/;
+            if (grep { $_ eq $nodekey } @orderedcols) {
+                $upstring =~ s/, \z//;
+            } else {
+                $upstring =~ s/, \z/ where $nodekey = ?/;
+            }
             $upsth = $self->{dbh}->prepare($upstring);
         }
         if (scalar keys %updatenodes) {
