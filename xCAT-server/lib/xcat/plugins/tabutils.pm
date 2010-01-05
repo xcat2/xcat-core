@@ -49,7 +49,8 @@ sub handled_commands
             chtype     => "tabutils",     # not implemented yet
             nr         => "tabutils",     # not implemented yet
             rnoderange => "tabutils",     # not implemented yet
-            tabgrep    => "tabutils"
+            tabgrep    => "tabutils",
+	    gennr	=> "tabutils"
             };
 }
 
@@ -109,6 +110,10 @@ sub process_request
     {
         return nodech($nodes, $args, $callback, "groupch");
     }
+		elsif ($command eq "gennr") 
+		{
+				return gennr($nodes, $args, $callback);
+		}
     elsif ($command eq "nodech" or $command eq "chnode")
     {
         return nodech($nodes, $args, $callback, 0);
@@ -1013,6 +1018,24 @@ sub nodech
                  );
         }
     }
+}
+
+# gennr linked to xcatclientnnr and is used to generate a list of nodes
+# external to the database.
+sub gennr {
+	my $nodes = shift;
+	my $args = shift;
+	my $callback = shift;
+	@ARGV = @{$args};
+	my $nr = shift @ARGV;
+	$nodes = [noderange($nr, 0)];
+	my %rsp;	# for output.
+	foreach (@$nodes){
+		#print $_ . "\n";
+		push @{$rsp{data}}, $_;
+		
+	}
+	$callback->(\%rsp);
 }
 
 sub tabgrep
