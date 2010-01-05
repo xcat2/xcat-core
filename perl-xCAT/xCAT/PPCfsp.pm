@@ -130,6 +130,13 @@ sub connect {
     ##################################
     # Set options
     ##################################
+    my $hosttab  = xCAT::Table->new( 'hosts' );
+    if ( $hosttab) {
+        my $hostshash = $hosttab->getNodeAttribs( $server, [qw(ip)]);
+        if ( $hostshash ) {
+            $server = $hostshash->{ip};
+        }
+    }
 #    my $serverip = inet_ntoa(inet_aton($server));
     my $url = "https://$server/cgi-bin/cgi?form=2";
     $ua->cookie_jar( $cookie );
