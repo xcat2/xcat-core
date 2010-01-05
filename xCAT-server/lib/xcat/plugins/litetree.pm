@@ -198,43 +198,53 @@ sub subVar {
 		if($p =~ /\$/){
 			my $pre;
 			my $suf;
+			my @fParts;
 			if($p =~ /([^\$]*)([^# ]*)(.*)/){
 				$pre= $1;
 				$p = $2;
 				$suf = $3;
 			}
-
 			# have to sub here:
 			# get rid of the $ sign.
-			$p =~ s/\$//g;
-			# check if p is just the node name:
-
-			if($p eq 'node'){
-				# it is so, just return the node.
-				$fdir .= "/$pre$node$suf";
-			}else{
-				# ask the xCAT DB what the attribute is.
-				my ($table, $col) = split('\.', $p);
-				my $tab = xCAT::Table->new($table);
-				my $ent;
-				my $val;
-				if($table eq 'site'){
-					$val = $tab->getAttribs( { key => "$col" }, 'value' );
- 					$val = $val->{'value'};
+			foreach my $part (split('\$',$p)){
+				if($part eq ''){ next; }
+				#$callback->({error=>["part is $part"],errorcode=>[1]});
+				# check if p is just the node name:
+				if($part eq 'node'){
+					# it is so, just return the node.
+					#$fdir .= "/$pre$node$suf";
+					push @fParts, $node;
 				}else{
-					$ent = $tab->getNodeAttribs($node,[$col]);		
-					$val = $ent->{$col};
-				}
-				unless($val){
-					# couldn't find the value!!
-					$val = "UNDEFINED"
-				}
-				if($type eq 'dir'){
+					# ask the xCAT DB what the attribute is.
+					my ($table, $col) = split('\.', $part);
+					unless($col){ $col = 'UNDEFINED' };
+					my $tab = xCAT::Table->new($table);
+					unless($tab){
+						$callback->({error=>["$table does not exist"],errorcode=>[1]});
+						return;
+					}
+					my $ent;
+					my $val;
+					if($table eq 'site'){
+						$val = $tab->getAttribs( { key => "$col" }, 'value' );
+ 						$val = $val->{'value'};
+					}else{
+						$ent = $tab->getNodeAttribs($node,[$col]);		
+						$val = $ent->{$col};
+					}
+					unless($val){
+						# couldn't find the value!!
+						$val = "UNDEFINED"
+					}
+					push @fParts, $val;
+				}	
+			}
+			my $val = join('.', @fParts);
+			if($type eq 'dir'){
 					$fdir .= "/$pre$val$suf";
-				}else{
+			}else{
 					$fdir .= $pre . $val . $suf;
-				}
-			}	
+			}
 		}else{
 			# no substitution here
 			$fdir .= "/$p";
