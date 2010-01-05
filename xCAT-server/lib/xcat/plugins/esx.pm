@@ -2263,7 +2263,7 @@ sub cpNetbootImages {
             use File::Basename;
             foreach (glob "$overridedir/*") {
                 my $mod = scalar fileparse($_);
-                if ($mod !~ /mboot.c32/ and $mod !~ /boot.cfg/ and $mod !~ /pkgdb.tgz/) {
+                if ($mod =~ /gz\z/ and $mod !~ /pkgdb.tgz/) {
                     $modulestoadd->{$mod}=1;
                 }
                 copy($_,"$destDir/$mod") or sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"]);
