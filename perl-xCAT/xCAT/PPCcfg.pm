@@ -43,6 +43,7 @@ sub parse_args {
         "general_passwd"
     );
     my @bpa = (
+        "frame",
         "password",
         "newpassword",
         "HMC_passwd",
