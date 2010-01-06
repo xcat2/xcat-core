@@ -37,6 +37,7 @@ use Sys::Syslog;
 use Storable qw/freeze thaw/;
 use IO::Socket;
 use Data::Dumper;
+use POSIX qw/WNOHANG/;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -149,6 +150,8 @@ sub init_dbworker {
     }
     unless ($dbworkerpid) {
         #This process is the database worker, it's job is to manage database queries to reduce required handles and to permit cross-process caching
+        $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {}}; #avoid zombies
+        #TODO: how children are being born, I'm not sure, but on occasion it happens
         $0 = "xcatd: DB Access";
         use File::Path;
         mkpath('/tmp/xcat/');
