@@ -31,21 +31,20 @@ use xCAT::Utils;
 
 #-----------------------------------------------------------------------------
 # Main
+
+my $rc;
+my @output;
+my $inoperative = 0;
+my $check_num;
 my $cmd = basename($0);
 if (!(xCAT::Utils->isAIX()))
 {    # only runs on AIX
-    xCAT::MsgUtils->message("E", "This command should only be run on AIX.\n");
+    xCAT::MsgUtils->message("E", "Error: This command should only be run on AIX.\n");
     exit 1;
 
 }
 
 &parse_args($cmd);
-
-my $rc;
-my $cmd;
-my @output;
-my $inoperative = 0;
-my $check_num;
 
 # Check whether the xcatd subsystem has been created
 $cmd = "/usr/bin/lssrc -s xcatd | grep \"xcatd Subsystem is not on file\"";
@@ -55,7 +54,7 @@ if (scalar(@output)) {
     $cmd = "mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a \"-f\"";
     $rc = system($cmd);
     if ($rc >> 8) {
-        xCAT::MsgUtils->message("E", "Cannot create the xcatd subsystem.\n");
+        xCAT::MsgUtils->message("E", "Error: Cannot create the xcatd subsystem.\n");
         exit 1;
     }
 }
@@ -70,45 +69,17 @@ if (scalar(@output)) {
     $inoperative = 1;
 }
 
-if ($inoperative) {
-    # Kill xcatd if needed
-    $cmd = "ps -ef | grep xcatd | grep 'SSL listener'";
-    @output = `$cmd`;
-    foreach my $ps (@output) {
-        $ps =~ s/^\s+//;    # strip any leading spaces
-        my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
-        $cmd = "/usr/bin/kill -15 -$pid";
-        $rc = system($cmd);
-        if ($rc >> 8) {
-            xCAT::MsgUtils->message("E", "Cannot kill the xcatd processes correctly.\n");
-            exit 1;
-        }
-    }
-    $check_num = 10;
-    while ($check_num > 0) {
-        $check_num--;
-        @output = `$cmd`;
-        if (scalar(@output)) {
-            sleep 1;
-        } else {
-            last;
-        }
-    }
-    if ($check_num <= 0) {
-        xCAT::MsgUtils->message("E", "Cannot kill the xcatd processes correctly.\n");
-        exit 1;
-    }
-} else {
+if (! $inoperative) {   # active
     # Stop the xcatd subsystem
     $cmd = "/usr/bin/stopsrc -s xcatd";
     $rc = system($cmd);
     if ($rc >> 8) {
-        xCAT::MsgUtils->message("E", "Cannot run stopsrc command correctly.\n");
+        xCAT::MsgUtils->message("E", "Error: Cannot run stopsrc command correctly.\n");
         exit 1;
     }
 
     # Wait for end of the xcatd subsystem
-    $check_num = 10;
+    $check_num = 3;
     while ($check_num > 0) {
         $check_num--;
         $cmd = "lssrc -s xcatd | grep 'xcatd' | grep 'inoperative'";
@@ -121,12 +92,50 @@ if ($inoperative) {
     }
 
     if ($check_num <= 0) {
-        xCAT::MsgUtils->message("E", "Cannot stop the xcatd subsystem correctly.\n");
+        xCAT::MsgUtils->message("E", "Error: Cannot stop the xcatd subsystem correctly.\n");
         exit 1;
     } else {
         if ($::VERBOSE) {
             xCAT::MsgUtils->message("I", "Stopped the xcatd subsystem.\n");
         }
+    }
+}
+
+# Kill xcatd manually if needed
+$cmd = "ps -ef | grep xcatd: | grep -v grep";
+@output = `$cmd`;
+if (scalar(@output)) {
+    $cmd = "ps -ef | grep xcatd | grep 'SSL listener'";
+    @output = `$cmd`;
+    foreach my $ps (@output) {
+        $ps =~ s/^\s+//;    # strip any leading spaces
+        my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
+        my $cmd = "/usr/bin/kill -15 -$pid >/dev/null 2>&1";
+        `$cmd`;
+    }
+    # Kill the xcatd by force if it still there
+    $cmd = "ps -ef | grep xcatd: | grep -v grep";
+    @output = `$cmd`;
+    foreach my $ps (@output) {
+        $ps =~ s/^\s+//;    # strip any leading spaces
+        my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
+        my $cmd = "/usr/bin/kill -9 $pid >/dev/null 2>&1";
+        `$cmd`;
+    }
+    $check_num = 3;
+    while ($check_num > 0) {
+        $check_num--;
+        $cmd = "ps -ef | grep xcatd: | grep -v grep";
+        @output = `$cmd`;
+        if (scalar(@output)) {
+            sleep 1;
+        } else {
+            last;
+        }
+    }
+    if ($check_num <= 0) {
+        xCAT::MsgUtils->message("E", "Error: Cannot kill the xcatd processes correctly.\n");
+        exit 1;
     }
 }
 
@@ -148,12 +157,14 @@ if ($ENV{XCATRELOAD} || $ENV{XCATROOT} || $ENV{PATH}) {
 }
 $rc = system($cmd);
 if ($rc >> 8) {
-    xCAT::MsgUtils->message("E", "Cannot run startsrc command correctly.\n");
+    xCAT::MsgUtils->message("E", "Error: Cannot run startsrc command correctly.\n");
     exit 1;
 }
+# Sleep a while to make sure the startsrc has completed it's work
+sleep 3;
 
 # Check the status of xcatd subsystem
-$check_num = 10;
+$check_num = 3;
 while ($check_num > 0) {
     $check_num--;
     $cmd = "lssrc -s xcatd | grep 'xcatd' | grep 'active'";
@@ -166,7 +177,7 @@ while ($check_num > 0) {
 }
 
 if ($check_num <= 0) {
-    xCAT::MsgUtils->message("E", "Cannot start the xcatd subsystem correctly.\n");
+    xCAT::MsgUtils->message("E", "Error: Cannot start the xcatd subsystem correctly.\n");
     exit 1;
 } else {
     if ($::VERBOSE) {
@@ -189,7 +200,6 @@ exit 0;
 
 sub parse_args
 {
-    my ($cmd) = @_;
     my $usagemsg = "restartxcatd [[-h|--help] | [-v|--version] | [-r|--reload]] [-V|--verbose]\n";
 
     Getopt::Long::Configure("posix_default");
