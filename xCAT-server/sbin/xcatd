@@ -621,6 +621,7 @@ until ($quit) {
   }
 
   if ($child == 0) {
+    $SIG{TERM} = $SIG{INT} = ();
     $SIG{CHLD} = \&generic_reaper; #THROTTLE
     $listener->close;
 
