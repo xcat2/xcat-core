@@ -10,6 +10,7 @@ use Getopt::Long;
 
 my @hosts; #Hold /etc/hosts data to be written back
 my $LONGNAME;
+my $OTHERNAMESFIRST;
 
 
 my %usage=(
@@ -79,6 +80,7 @@ sub build_line {
 
     $othernames=join(' ', @o_names);
     if ($LONGNAME) { return "$ip $longname $node $othernames\n"; } 
+    elsif ($OTHERNAMESFIRST) { return "$ip $othernames $node $longname\n"; }
     else { return "$ip $node $longname $othernames\n"; }
 }
 
@@ -116,6 +118,7 @@ sub process_request {
   if(!GetOptions(
       'h|help'  => \$HELP,
       'n'  => \$REMOVE,
+      'h|hostnamesfirst'  => \$OTHERNAMESFIRST,
       'l|longnamefirst'  => \$LONGNAME,))
   {
     $callback->({data=>$usage{makehosts}});
