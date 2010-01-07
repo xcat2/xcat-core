@@ -44,8 +44,10 @@ my %modules = (
         chvm      => { hmc    => "xCAT::PPCvm",
 		      },
         rnetboot  => { hmc    => "xCAT::PPCboot",
+                       fsp    => "xCAT::FSPboot",
 		      },
         getmacs   => { hmc    => "xCAT::PPCmac",
+                       fsp    => "xCAT::FSPmac",
 		      },
         reventlog => { hmc    => "xCAT::PPClog",
 		      },
@@ -162,7 +164,9 @@ sub process_command {
     if ( $hwtype eq "fsp" or $hwtype eq "bpa") {
 	    my $fsp_api = check_fsp_api($request);
 	    if($fsp_api == 0 && 
-		    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/)) {
+		    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/
+                || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/  )
+              ) {
 	        #support FSPpower, FSPinv and FSPrflash 
 	        $request->{fsp_api} = 1;
             }
@@ -1192,26 +1196,30 @@ sub invoke_cmd {
     # HMC and IVM-managed handler
     # Connect to list of remote servers
     ########################################
-    foreach ( split /,/, $host ) {
-        if ( $power ne "hmc" ) {
-            @exp = xCAT::PPCcli::connect( $request, $hwtype, $_ );
-        } else {
-            @exp = xCAT::PPCcli::connect( $request, $power, $_);
-        }
-        ####################################
-        # Successfully connected 
-        ####################################
-        if ( ref($exp[0]) eq "Expect" ) {
-            last;
-        }
+   if (  $request->{fsp_api} == 0 ) { 
+       foreach ( split /,/, $host ) {
+           if ( $power ne "hmc" ) {
+               @exp = xCAT::PPCcli::connect( $request, $hwtype, $_ );
+           } else {
+               @exp = xCAT::PPCcli::connect( $request, $power, $_);
+           }
+           ####################################
+           # Successfully connected 
+           ####################################
+           if ( ref($exp[0]) eq "Expect" ) {
+              last;
+           }
+       }
+    
+       ########################################
+       # Error connecting 
+       ########################################
+       if ( ref($exp[0]) ne "Expect" ) {
+           send_msg( $request, 1, $exp[0] );
+           return;
+       }
     }
-    ########################################
-    # Error connecting 
-    ########################################
-    if ( ref($exp[0]) ne "Expect" ) {
-        send_msg( $request, 1, $exp[0] );
-        return;
-    }
+
     ########################################
     # Process specific command 
     ########################################
@@ -1220,7 +1228,9 @@ sub invoke_cmd {
     ########################################
     # Close connection to remote server
     ########################################
-    xCAT::PPCcli::disconnect( \@exp );
+    if(  $request->{fsp_api} == 0 ) {
+        xCAT::PPCcli::disconnect( \@exp );
+    }
 
     ########################################
     # Get verbose Expect output
@@ -1662,8 +1672,8 @@ sub check_fsp_api
     
 #    my $fsp_api = "/opt/xcat/sbin/fsp-api";
     my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
-#   my $libfsp  = "/usr/lib/libfsp.a";
-    my $libfsp  = "/opt/xcat/lib/libfsp.a";
+    my $libfsp  = "/usr/lib/libfsp.a";
+#    my $libfsp  = "/opt/xcat/lib/libfsp.a";
 #    my $libfsp    = ($::XCATROOT) ? "$::XCATROOT/lib/libfsp.a" : "/opt/xcat/lib/libfsp.a";
 #    my $hw_svr  = "/opt/csm/csmbin/hdwr_svr";
     

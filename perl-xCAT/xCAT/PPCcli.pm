@@ -52,6 +52,7 @@ my %powercmd = (
   lpar => { 
       on    =>"chsysstate -r %s -m %s -o on -b norm --id %s -f %s",
       of    =>"chsysstate -r %s -m %s -o on --id %s -f %s -b of",
+      sms   =>"chsysstate -r %s -m %s -o on --id %s -f %s -b sms",
       reset =>"chsysstate -r %s -m %s -o shutdown --id %s --immed --restart",
       off   =>"chsysstate -r %s -m %s -o shutdown --id %s --immed",
       boot  =>"undetermined" },

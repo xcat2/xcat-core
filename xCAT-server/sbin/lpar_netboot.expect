@@ -75,7 +75,7 @@ proc connect {} {
 #
 # PROCEDURE
 #
-# Procedure to run the lssyscfg command
+# Procedure to run the rpower command
 # test its return code and capture its output 
 #
 proc run_lssyscfg {} {
@@ -89,29 +89,18 @@ proc run_lssyscfg {} {
     global profile
     global rc
     global prompt
+    global tmp
+    global BINPATH
 
     set timeout 20
-    send -i $ssh_spawn_id "lssyscfg -r lpar -m \"$manage\" --filter lpar_names=\"$node\" -F state; echo Rc=\$\?\r";
+         
+    set runcmd [list exec $BINPATH/rpower $node state]
+    set rc [catch $runcmd msg] 
+    nc_msg "$PROGRAM Status: run_lssyscg : partition status : $msg\n"
+    regexp "$node:\[ ]*(.*)" $msg tmp1 tmp
+    set msg $tmp
+    send_user "####msg:$msg#########"
 
-    expect {
-        -i $ssh_spawn_id \
-        -re "echo.*echo.*\r\n(.*)\r\nRc=(\[0-9]*)\r\n(.*)" {
-            set rc $expect_out(2,string)
-            set msg $expect_out(1,string)
-        }
-        -re "echo.*\r\n(.*)\r\nRc=(\[0-9]*)\r\n(.*)" {
-            set rc $expect_out(2,string)
-            set msg $expect_out(1,string)
-        }
-        timeout {
-            send_user "$PROGRAM: Timeout waiting for command prompt\n"
-            exit 1
-        }
-        eof {
-           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
-           exit 1
-       }
-    }
 
     # Slow down the requests speed to hcp, so that hcp will not busy on
     # query.  Instead, hcp should put more time on other activities.
@@ -121,7 +110,8 @@ proc run_lssyscfg {} {
 
     if { $rc } {
         send_user "$PROGRAM: Unable to determine machine state\n"
-        nc_msg "$PROGRAM Status: error from lssyscfg command\n"
+        nc_msg "$PROGRAM Status: error from rpower command\n"
+
 
         send_user "Error : $msg\n"
         exit 1
@@ -1254,7 +1244,7 @@ proc set_disk_boot {} {
 
     # state 0, get SMS screen
     set done(0) 0
-    regexp "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Select Boot Options(\r)" $expect_out(2,string) x0 x1 x2 command
+    regexp "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Select Boot Options(\r)" $expect_out(0,string) x0 x1 x2 command
     set cmd(0) "$command\r"
     set msg(0) "$PROGRAM Status: sending return to repaint SMS screen\n"
     set pattern(0) "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Configure Boot Device Order(\r)"
@@ -1345,6 +1335,15 @@ proc set_disk_boot {} {
 			set cmd($state) "$expect_out(3,string)\r"
                 }
             }
+            
+            -re "THE SELECTED DEVICES WERE NOT DETECTED IN THE SYSTEM" {
+                send_user "$PROGRAM Status: THE hard disk WERE NOT DETECTED IN THE SYSTEM!\n"
+                set rc 1
+                #return
+                exit 1
+            }
+                       
+
             timeout {
                 send_user "$PROGRAM: Timeout\n"
                 set rc 1
@@ -1827,8 +1826,8 @@ proc Firmware_Dump { device_path phandle } {
 #
 # Main MAIN main
 #
-set BINPATH "/opt/hsc/bin"
-set PROGRAM "lpar_netboot"
+set BINPATH "/opt/xcat/bin"
+set PROGRAM "lpar_netboot.expect"
 
 set CONSOLEBIN "/opt/xcat/bin/rcons"
 
@@ -2057,6 +2056,12 @@ if {$discovery && $client_ip != ""}   { nc_msg "$PROGRAM Status: using client IP
 if {$discovery && $gateway_ip != ""}  { nc_msg "$PROGRAM Status: using gateway IP address of $gateway_ip\n"   }
 if {$discovery && $macaddress != ""}  { nc_msg "$PROGRAM Status: using macaddress of $macaddress\n"           }
 if {$discovery && $phys_loc != ""}    { nc_msg "$PROGRAM Status: using physical location code of $phys_loc\n" }
+
+nc_msg "node: $node\n"
+nc_msg "name: $name\n"
+set node $name
+
+
 set NODENAME $node
 
 ck_args
@@ -2077,7 +2082,7 @@ set passwd $env(HCP_PASSWD)
 # Connect to the remote server
 #
 nc_msg "$PROGRAM Status: connecting to $hcp\n"
-connect
+#connect
 nc_msg "$PROGRAM Status: finished connecting to $hcp\n"
 
 #
@@ -2118,7 +2123,7 @@ expect {
         exit 1
     }
     eof {
-        send_user "$PROGRAM: ssh connection terminated unexpectedly, please make sure rcons $name works\n"
+        send_user "$PROGRAM: Please make sure rcons $name works\n"
         exit 1
     }
 }
@@ -2127,7 +2132,7 @@ send_user "# Checking for power off.\n"
 
 run_lssyscfg
 
-if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activated"] == 0) } {
+if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "off"] == 0)  || ([string compare "$msg" "Not Activated"] == 0) } {
     send_user "# Power off complete.\n"
 } else { 
 
@@ -2138,35 +2143,18 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
     set cmd "0"
 
     if { $immed_flag } {
-        set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" --immed -n \"$node\""
+        #set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" --immed -n \"$node\""
+        set cmd [list exec $BINPATH/rpower $node off]
     } else {
-        set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
+        #set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
+        set cmd [list exec $BINPATH/rpower $node off]
     }
     set timeout 120
-    send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
-
-    expect {
-        -i $ssh_spawn_id \
-        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*)" {
-            set rc $expect_out(2,string)
-            set msg $expect_out(1,string)
-        }
-        -re "\r\nRc=(\[0-9])\r\n(.*)" {
-            set rc $expect_out(1,string)
-        }
-        timeout {
-            send_user "$PROGRAM: Timeout waiting for command prompt\n"
-            exit 1
-        }
-        eof {
-           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
-           exit 1
-       }
-    }
+    set rc [catch $cmd msg]
 
     if { $rc } {
         send_user "$PROGRAM: Cannot power off $NODENAME\n"
-        nc_msg "$PROGRAM Status: error from chsysstate command\n"
+        nc_msg "$PROGRAM Status: error from rpower command\n"
         send_user "$PROGRAM: Error : $msg\n"
         exit 1
     }
@@ -2186,7 +2174,7 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
         #
         # separate the nodename from the query status
         #
-        if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activated"] == 0) } {
+        if { ([string compare "$msg" "Off"] == 0) ||  ([string compare "$msg" "off"] == 0)  || ([string compare "$msg" "Not Activated"] == 0) } {
             send_user "# Power off complete.\n"
             set done 1
             continue
@@ -2195,7 +2183,7 @@ if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "Not Activa
         incr query_count 
         if { $query_count > 300 } {
             send_user "$PROGRAM: Timed out waiting for power off of $NODENAME\n"
-            nc_msg "$PROGRAM Status: error from lssyscfg command : \"$msg\"\n"
+            nc_msg "$PROGRAM Status: error from rpower command : \"$msg\"\n"
             exit 1
         }
 
@@ -2209,71 +2197,42 @@ if { $set_boot_order > 1 } {
     send_user "$PROGRAM Status: Power on $NODENAME to SMS.\n"
     set timeout 120
     while { ! $done } {
-        send -i $ssh_spawn_id "chsysstate -r lpar -o on -b sms -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
-
-        expect {
-            -i $ssh_spawn_id \
-            -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*)" {
-                set rc $expect_out(2,string)
-                set msg $expect_out(1,string)
-                set done 1
+        set cmd [list exec $BINPATH/rpower $node sms]
+        set rc [catch $cmd msg]
+        nc_msg "$PROGRAM Status: wait for power on\n"
+        
+        if { $rc } { 
+            if { $retry_count == 3 } {
+                nc_msg "$PROGRAM Status: error from rpower command\n"
+                exit 1
             }
-            -re "\r\nRc=(\[0-9])\r\n(.*)" {
-                set rc $expect_out(1,string)
-                set done 1
-            }
-            timeout {
-                if { $retry_count == 3 } {
-                    send_user "$PROGRAM: Timeout waiting for command prompt\n"
-                    exit 1
-                }
-                sleep 1
-                incr retry_count
-            }
-            eof {
-                if { $retry_count == 3 } {
-                    send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
-                    exit 1
-                }
-                sleep 1
-                incr retry_count
-            }
+            sleep 1
+            incr retry_count
+        } else {
+            set done 1
         }
+        
     }
 } else {
     send_user "# Power on $NODENAME to Open Firmware.\n"
     set timeout 120
     while { ! $done } {
-        send -i $ssh_spawn_id "chsysstate -r lpar -o on -b of -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
-
-        expect {
-            -i $ssh_spawn_id \
-            -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*)" {
-                set rc $expect_out(2,string)
-                set msg $expect_out(1,string)
-                set done 1
+        #send -i $ssh_spawn_id "chsysstate -r lpar -o on -b of -m \"$manage\" -n \"$node\" -f \"$profile\"; echo Rc=\$\?\r"
+        set cmd [list exec $BINPATH/rpower $node of] 
+        set rc [catch $cmd msg]
+        nc_msg "$PROGRAM Status: wait for power on\n"
+        
+        if { $rc } { 
+            if { $retry_count == 3 } {
+                nc_msg "$PROGRAM Status: error from rpower command\n"
+                exit 1
             }
-            -re "\r\nRc=(\[0-9])\r\n(.*)" {
-                set rc $expect_out(1,string)
-                set done 1
-            }
-            timeout {
-                if { $retry_count == 3 } {
-                    send_user "$PROGRAM: Timeout waiting for command prompt\n"
-                    exit 1
-                }
-                sleep 1
-                incr retry_count
-            }
-            eof {
-                if { $retry_count == 3 } {
-                    send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
-                    exit 1
-                }
-                sleep 1
-                incr retry_count
-            }
-        }
+            sleep 1
+            incr retry_count
+       } else {
+            set done 1
+       }
+        
     }
 }
 
@@ -2281,7 +2240,7 @@ nc_msg "$PROGRAM Status: wait for power on\n"
 
 if { $rc } {
     send_user "$PROGRAM: Cannot power on $NODENAME\n"
-    nc_msg "$PROGRAM Status: error from chsysstate command\n"
+    nc_msg "$PROGRAM Status: error from rpower command\n"
     send_user "$PROGRAM: Error : $msg\n"
     exit 1
 }
@@ -2297,7 +2256,7 @@ while { ! $done } {
     #
     # separate the nodename from the query status
     #
-    if { ([string compare "$msg" "Open Firmware"] == 0) || ([string compare "$msg" "Open firmware"] == 0) } {
+    if { ([string compare "$msg" "Open Firmware"] == 0) || ([string compare "$msg" "Open firmware"] == 0) || ([string compare "$msg" "open-firmware"] == 0)  } {
         send_user "# Power on complete.\n"
         set done 1
         continue
@@ -2306,7 +2265,7 @@ while { ! $done } {
 
     if { $query_count > 300 } {
         send_user "$PROGRAM: Timed out waiting for power on of $NODENAME\n"
-        nc_msg "$PROGRAM Status: error from lssyscfg command : \"$msg\" \n"
+        nc_msg "$PROGRAM Status: error from rpower command : \"$msg\" \n"
         exit 1
     }
 
@@ -2344,6 +2303,11 @@ while { ! $done } {
             nc_msg "$PROGRAM Status: at ok prompt\n"
             set done 1
         }
+        -re "SMS(.*)Navigation Keys" {
+            nc_msg "$PROGRAM Status: SMS\n"
+            set done 1
+        }
+        
         timeout {
             set command  "\r"
             send_command
@@ -2489,35 +2453,18 @@ if { $noboot } { # Display information for all supported adapters
     set cmd "0"
 
     if { $immed_flag } {
-        set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" --immed -n \"$node\""
+        #set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" --immed -n \"$node\""
+        set cmd [list exec $BINPATH/rpower $node off]
     } else {
-        set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
+        #set cmd "chsysstate -r lpar -o shutdown -m \"$manage\" -n \"$node\""
+        set cmd [list exec $BINPATH/rpower $node off]
     }
     set timeout 120
-    send -i $ssh_spawn_id "$cmd; echo Rc=\$\?\r";
-
-    expect {
-        -i $ssh_spawn_id \
-        -re "\r\n(.*)\r\n\r\nRc=(\[0-9]*)\r\n(.*$prompt)" {
-            set rc $expect_out(2,string)
-            set msg $expect_out(1,string)
-        }
-        -re "\r\nRc=(\[0-9]*)\r\n(.*)" {
-            set rc $expect_out(1,string)
-        }
-        timeout {
-            send_user "$PROGRAM: Timeout waiting for command prompt\n"
-            exit 1
-        }
-        eof {
-           send_user "$PROGRAM: ssh connection to terminated unexpectedly\n"
-           exit 1
-       }
-    }
-    
+    set rc [catch $cmd msg]
+       
     if { $rc } {
         send_user "$PROGRAM: Cannot power off $NODENAME\n"
-        nc_msg "$PROGRAM Status: error from chsysstate command\n"
+        nc_msg "$PROGRAM Status: error from rpower command\n"
         send_user "$PROGRAM: Error : $msg\n"
         exit 1
     }

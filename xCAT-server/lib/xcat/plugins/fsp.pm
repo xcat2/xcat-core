@@ -18,7 +18,9 @@ sub handled_commands {
       lshwconn  => 'nodehm:mgt',
       renergy   => 'nodehm:mgt' ,
       rinv      => 'nodehm:mgt',
-      rflash    => 'nodehm:mgt'
+      rflash    => 'nodehm:mgt',
+      getmacs   => 'nodehm:mgt',
+      rnetboot  => 'nodehm:mgt'
 
   };
 }
