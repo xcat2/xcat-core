@@ -105,6 +105,7 @@ var xStart = function(){
      myBar.addScript("superfish.js");  
      myBar.addScript("jquery.tablesorter.js");
      myBar.addScript("jquery.flot.js");
+     myBar.addScript("jquery.flot.pie.js");
      myBar.addScript("excanvas.js");
      myBar.addScript("noderangetree.js");
      myBar.addScript("monitor.js");
