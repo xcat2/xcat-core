@@ -307,7 +307,7 @@ sub getMonNodesStatus {
   foreach(@mon_servers) {
     #service node come in pairs, the first one is the monserver adapter that facing the mn,
     # the second one is facing the cn. we use the first one here
-    my @server_pair=split(',', $_); 
+    my @server_pair=split(':', $_); 
     my $sv=$server_pair[0];
     if ($iphash{$sv}) {
       $monnodes=$hierachy->{$_};
