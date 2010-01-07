@@ -1727,6 +1727,7 @@ sub validate_datastore_prereqs {
             } #TODO: care about VMFS
         }
     }
+    my $refresh_names=0;
     foreach $node (@$nodes) {
         my @storage = split /,/,$tablecfg{vm}->{$node}->[0]->{storage};
         if ($tablecfg{vm}->{$node}->[0]->{cfgstore}) {
@@ -1741,12 +1742,26 @@ sub validate_datastore_prereqs {
                     return 0;
                 }
                 unless ($hyphash{$hyp}->{datastoremap}->{$_}) { #If not already there, must mount it
+                    $refresh_names=1;
                     $hyphash{$hyp}->{datastoremap}->{$_}=mount_nfs_datastore($hostview,$location);
                 }
             } else {
                 sendmsg([1,": $_ not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"],$node);
                 return 0;
             } #TODO: raw device mapping, VMFS via iSCSI, VMFS via FC?
+        }
+    }
+    if ($refresh_names) { #if we are in a vcenter context, vmware can rename a datastore behind our backs immediately after adding
+        $hostview->update_view_data();
+        if (defined $hostview->{datastore}) { # only iterate if it exists
+            foreach (@{$hostview->datastore}) {
+                my $dsv = $hypconn->get_view(mo_ref=>$_);
+                if (defined $dsv->info->{nas}) {
+                    if ($dsv->info->nas->type eq 'NFS') {
+                        $hyphash{$hyp}->{datastoremap}->{"nfs://".$dsv->info->nas->remoteHost.$dsv->info->nas->remotePath}=$dsv->info->name;
+                    } #TODO: care about SMB
+                } #TODO: care about VMFS
+            }
         }
     }
     return 1;
