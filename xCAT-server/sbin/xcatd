@@ -989,8 +989,6 @@ sub plugin_command {
   }
 }
 
-my $dispatch_dnf=0;
-my $dispatch_cb;
 my $dispatch_parentfd;
 sub dispatch_callback {
    my $rspo = shift;
@@ -1000,43 +998,39 @@ sub dispatch_callback {
    my $rsp = {%$rspo}; # deep copy
    delete $rsp->{serverdone};
    unless (%$rsp) { return; }
-   if ($dispatch_dnf) {
-      $dispatch_cb->($rsp);
-   } else {
-      print $dispatch_parentfd freeze($rsp);
-      print $dispatch_parentfd "\nENDOFFREEZE6sK6xa\n";
-      yield; #This has to happen before next line could possibly work anyway
-      my $parselect = new IO::Select;
-      $parselect->add($dispatch_parentfd);
-      my $selbits = $parselect->bits;
-      my $rsp;
-      while (defined($selbits) && ($rsp = select($selbits,undef,undef,5))) { #block for up to 5 seconds before continuing
-         if ($quit) { # termination requested by a clean shutdown facility
-             xexit 0;
-         }
-         if ($rsp == 0) { #The select call failed to find any ready items
-             last;
-         }
-         if ($rsp < 0) { #A child exited or other signal event that made select skip out before suggesting succes
-             next;
-         }
-         if ($rsp = <$dispatch_parentfd>) {
-            if ($rsp =~ /die/ or $quit) {
-               xexit 0;
-            }
-            last;
-         } else {
-            $parselect->remove($dispatch_parentfd); #Block until parent acks data
-            last;
-         }
-         $selbits = $parselect->bits;
-         yield;
+   print $dispatch_parentfd freeze($rsp);
+   print $dispatch_parentfd "\nENDOFFREEZE6sK6xa\n";
+   yield; #This has to happen before next line could possibly work anyway
+   my $parselect = new IO::Select;
+   $parselect->add($dispatch_parentfd);
+   my $selbits = $parselect->bits;
+   while (defined($selbits) && ($rsp = select($selbits,undef,undef,5))) { #block for up to 5 seconds before continuing
+      if ($quit) { # termination requested by a clean shutdown facility
+          xexit 0;
       }
+      if ($rsp == 0) { #The select call failed to find any ready items
+          last;
+      }
+      if ($rsp < 0) { #A child exited or other signal event that made select skip out before suggesting succes
+          next;
+      }
+      if ($rsp = <$dispatch_parentfd>) {
+         if ($rsp =~ /die/ or $quit) {
+            xexit 0;
+         }
+         last;
+      } else {
+         $parselect->remove($dispatch_parentfd); #Block until parent acks data
+         last;
+      }
+      $selbits = $parselect->bits;
+      yield;
    }
 }
 
 sub relay_dispatch {
    my $fds = shift;
+   my $dispatch_cb = shift;
    my @ready_ins = $fds->can_read(1);
    foreach my $rin (@ready_ins) {
       my $data;
@@ -1059,7 +1053,7 @@ sub relay_dispatch {
 sub dispatch_request {
    %dispatched_children=();
    my $req = shift;
-   $dispatch_cb = shift;
+   my $dispatch_cb = shift;
 
    my $modname = shift;
    my $reqs = [];
@@ -1184,8 +1178,8 @@ sub dispatch_request {
 
      xexit;
   }
- while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset) }
- while (relay_dispatch($child_fdset)) { } #Potentially useless drain.
+ while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset,$dispatch_cb) }
+ while (relay_dispatch($child_fdset,$dispatch_cb)) { } #Potentially useless drain.
 }
 
 
