@@ -16,7 +16,7 @@ sub parse_args {
     my $command = $request->{command};
     my $args    = $request->{arg};
     my %opt     = ();
-    my @rpower  = qw(on onstandby off stat state reset boot of);
+    my @rpower  = qw(on onstandby off stat state reset boot of sms);
 
     #############################################
     # Responds with usage statement
