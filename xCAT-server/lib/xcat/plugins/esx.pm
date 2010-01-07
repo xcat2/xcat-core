@@ -2039,11 +2039,6 @@ sub copycd {
 sub  makecustomizedmod {
     my $osver = shift;
     my $dest = shift;
-    mkpath("/tmp/xcat");
-    my $tempdir = tempdir("/tmp/xcat/esxmodcustXXXXXXXX");
-    my $shadow;
-    mkpath($tempdir."/etc/");
-    open($shadow,">",$tempdir."/etc/shadow");
     my $passtab = xCAT::Table->new('passwd');
     my $tmp;
     my $password;
@@ -2053,6 +2048,14 @@ sub  makecustomizedmod {
             $password = $tmp->{password};
         }
     }
+    unless ($password) {
+        return 0;
+    }
+    mkpath("/tmp/xcat");
+    my $tempdir = tempdir("/tmp/xcat/esxmodcustXXXXXXXX");
+    my $shadow;
+    mkpath($tempdir."/etc/");
+    open($shadow,">",$tempdir."/etc/shadow");
     $password = crypt($password,'$1$'.xCAT::Utils::genpassword(8));
     my $dayssince1970 = int(time()/86400); #Be truthful about /etc/shadow
     my @otherusers = qw/nobody nfsnobody dcui daemon vimuser/;
@@ -2070,6 +2073,7 @@ sub  makecustomizedmod {
     system("tar czf $dest/mod.tgz *");
     chdir($dir);
     rmtree($tempdir);
+    return 1;
 }
 sub mknetboot {
 	my $req      = shift;
@@ -2136,7 +2140,7 @@ sub mknetboot {
 		}
 
 		mkpath("$tftpdir/xcat/netboot/$osver/$arch/");
-        my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz oem.tgz license.tgz mod.tgz/; #Required modules for an image to be considered complete
+        my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz oem.tgz license.tgz/; #Required modules for an image to be considered complete
         my %mods;
         foreach (@reqmods) {
             $mods{$_} = 1;
@@ -2148,7 +2152,10 @@ sub mknetboot {
 			my $srcdir = "$installroot/$osver/$arch";
 			my $dest = "$tftpdir/xcat/netboot/$osver/$arch/$shortprofname";
 			cpNetbootImages($osver,$srcdir,$dest,$custprofpath,\%mods);
-            makecustomizedmod($osver,$dest);
+            if (makecustomizedmod($osver,$dest)) {
+                push @reqmods,"mod.tgz";
+                $mods{"mod.tgz"}=1;
+            }
 			copy("$srcdir/mboot.c32", $dest);
 			$donetftp{$osver,$arch,$profile} = 1;
 		}
@@ -2177,8 +2184,10 @@ sub mknetboot {
         delete $mods{"oem.tgz"};
 		$append .= " --- $tp/license.tgz";
         delete $mods{"license.tgz"};
-		$append .= " --- $tp/mod.tgz";
-        delete $mods{"mod.tgz"};
+        if ($mods{"mod.tgz"}) {
+		    $append .= " --- $tp/mod.tgz";
+            delete $mods{"mod.tgz"};
+        }
         foreach (keys %mods) {
             $append .= " --- $tp/$_";
         }
