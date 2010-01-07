@@ -196,10 +196,21 @@ sub processArgs
 {
     my $gotattrs = 0;
 
-	if (defined(@{$::args})) {
+    if (defined(@{$::args})) {
         @ARGV = @{$::args};
     } else {
-        return 2;
+        if ($::command eq "lsdef") {
+            push @ARGV, "-a";
+            push @ARGV, "-s";
+        } else {
+            return 2;
+        }
+    }
+
+    if ($::command eq "lsdef") {
+        if (scalar(@ARGV) == 1 && $ARGV[0] eq "-l") {
+            push @ARGV, "-a";
+        }
     }
 
     if (scalar(@ARGV) <= 0) {
@@ -216,6 +227,7 @@ sub processArgs
                     'i=s'       => \$::opt_i,
                     'help|h|?'    => \$::opt_h,
                     'long|l'    => \$::opt_l,
+                    'short|s'    => \$::opt_s,
                     'm|minus'   => \$::opt_m,
                     'o=s'       => \$::opt_o,
                     'p|plus'    => \$::opt_p,
@@ -239,6 +251,22 @@ sub processArgs
         my $rsp;
         $rsp->{data}->[0] =
           "The \'-x\' (XML format) option is not yet implemented.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    # -l and -s cannot be used together
+    if ($::opt_l && $::opt_s) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-l'\ and \'-s'\ cannot be used together.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    # -i and -s cannot be used together
+    if ($::opt_i && $::opt_s) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-i'\ and \'-s'\ cannot be used together.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
@@ -325,7 +353,7 @@ sub processArgs
     {
         if (defined($::opt_d) || defined($::opt_i) || defined($::opt_l) 
            || defined($::opt_m) || defined($::opt_p) || defined($::opt_w) 
-           || defined($::opt_x) || defined($::opt_z))
+           || defined($::opt_x) || defined($::opt_z) || defined($::opt_s))
         {
             my $rsp;
             $rsp->{data}->[0] = "Invalid flag specified, see rmdef manpage for details.";
@@ -2226,15 +2254,15 @@ sub defls
 
     my @objectlist;
     @::allobjnames;
-	my @displayObjList;
+    my @displayObjList;
 
     my $numtypes = 0;
+    my $rsp_info;
 
     # process the command line
     my $rc = &processArgs;
     if ($rc != 0)
     {
-
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
         if ($rc != 1)
         {
@@ -2244,13 +2272,16 @@ sub defls
     }
 
     # do we want just the object names or all the attr=val
-    if ($::opt_l || $::opt_i)
+    if ($::opt_l || @::noderange || $::opt_o || $::opt_i)
     {
 
         # assume we want the the details - not just the names
         # 	- if provided object names or noderange
         $long++;
 
+    }
+    if ($::opt_s) {
+        $long = 0;
     }
     
     # which attrs do we want?
@@ -2264,8 +2295,12 @@ sub defls
         $::ATTRLIST=$::opt_i;
     } elsif ( @::noderange || $::opt_o) {
         # if they gave a list of objects then they must want more
-        #       than the object names!
-        $::ATTRLIST="none";
+        # than the object names!
+        if ($::opt_s) {
+            $::ATTRLIST="none";
+        } else {
+            $::ATTRLIST="all";
+        }
     } else {
         # otherwise just get a list of object names
         $::ATTRLIST="none";
@@ -2278,6 +2313,17 @@ sub defls
 
     # if a set of objects was provided on the cmd line then there can
     #	be only one type value
+
+    # Figure out the attributes that needed in the def operation
+    my @neededattrs = ();
+    if ($::opt_i) {
+        @neededattrs = (@neededattrs, @::AttrList);
+        if ($::opt_w) {
+            my @whereattrs = keys %::WhereHash;
+            @neededattrs = (@neededattrs, @whereattrs);
+        }
+    }
+    
     if ($::objectsfrom_opto || $::objectsfrom_nr || $::objectsfrom_args)
     {
         my $type = @::clobjtypes[0];
@@ -2290,7 +2336,7 @@ sub defls
 
         }
 
-        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, \@::AttrList);
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, \@neededattrs);
         if (!defined(%myhash))
         {
             my $rsp;
@@ -2307,7 +2353,7 @@ sub defls
     {
         %objhash = %::ObjTypeHash;
 
-        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, \@::AttrList);
+        %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, \@neededattrs);
         if (!defined(%myhash))
         {
             my $rsp;
@@ -2467,9 +2513,7 @@ sub defls
 
     if ($::opt_z)
     {
-        my $rsp;
-        $rsp->{data}->[0] = "# <xCAT data object stanza file>";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        push (@{$rsp_info->{data}}, "# <xCAT data object stanza file>");
     }
 
     # group the objects by type to make the output easier to read
@@ -2502,6 +2546,42 @@ sub defls
             return 0;
         }
 
+        # Get all the objects of this type
+        my @allobjoftype;
+        if ($type ne 'site')
+        {
+            @allobjoftype = xCAT::DBobjUtils->getObjectsOfType($type);
+
+            unless (@allobjoftype)
+            {
+                my $rsp;
+                $rsp->{data}->[0] =
+                  "Could not find any objects of type \'$type\'.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                next;
+            }
+        }    # end - if not site table
+
+        my @attrlist;
+        if (($type ne 'site') && ($type ne 'monitoring'))
+        {
+            # get the list of all attrs for this type object
+            if (scalar(@::AttrList) > 0) {
+                @attrlist = @::AttrList;
+            } else {
+                # get the data type  definition from Schema.pm
+                my $datatype =
+                  $xCAT::Schema::defspec{$type};
+    
+                foreach my $this_attr (@{$datatype->{'attrs'}})
+                {
+                    if (!grep(/^$this_attr->{attr_name}$/, @attrlist)) {
+                        push(@attrlist, $this_attr->{attr_name});
+                    }
+                }
+            }
+        }
+            
         # for each object
         foreach my $obj (sort keys %defhash)
         {
@@ -2511,59 +2591,35 @@ sub defls
                 next;
             }
 
-            # if anything but the site table do this
-            if ($defhash{$obj}{'objtype'} ne 'site')
+            #  Return if this obj does not match the filter string
+            if ($::opt_w)
             {
-                my @tmplist =
-                  xCAT::DBobjUtils->getObjectsOfType($defhash{$obj}{'objtype'});
-
-                unless (@tmplist)
+                #  just display objects that match -w
+                if (! grep /^$obj$/, @displayObjList)
                 {
-                    my $rsp;
-                    $rsp->{data}->[0] =
-                      "Could not find any objects of type \'$defhash{$obj}{'objtype'}\'.";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
                     next;
                 }
+            }
 
-                if (!grep(/^$obj$/, @tmplist))
+            # if anything but the site table do this
+            if ($type ne 'site')
+            {
+                if (!grep(/^$obj$/, @allobjoftype))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
-                      "Could not find an object named \'$obj\' of type \'$defhash{$obj}{'objtype'}\'.";
+                      "Could not find an object named \'$obj\' of type \'$type\'.";
                     xCAT::MsgUtils->message("I", $rsp, $::callback);
                     next;
                 }
             }    # end - if not site table
 
-			#
             # special handling for site table - for now !!!!!!!
-			#
-            my @attrlist;
-            if (($defhash{$obj}{'objtype'} eq 'site') || ($defhash{$obj}{'objtype'} eq 'monitoring'))
+            if (($type eq 'site') || ($type eq 'monitoring'))
             {
-
                 foreach my $a (keys %{$defhash{$obj}})
                 {
-
                     push(@attrlist, $a);
-
-                }
-            }
-            else
-            {
-
-                # get the list of all attrs for this type object
-                # get the data type  definition from Schema.pm
-                my $datatype =
-                  $xCAT::Schema::defspec{$defhash{$obj}{'objtype'}};
-				my @alreadydone;
-                foreach my $this_attr (@{$datatype->{'attrs'}})
-                {
-					if (!grep(/^$this_attr->{attr_name}$/, @alreadydone)) {
-                    	push(@attrlist, $this_attr->{attr_name});
-					}
-					push(@alreadydone, $this_attr->{attr_name});
                 }
             }
 
@@ -2574,80 +2630,84 @@ sub defls
             }
             else
             {
-
-                #  standard output or stanza format
-                if ($::opt_w)
+                
+                # display all data
+                # do we want the short or long output?
+                if ($long)
                 {
-
-                    #  just display objects that match -w
-                    if (grep /^$obj$/, @displayObjList)
+                    if ($::opt_z)
                     {
-
-                        # display data
-                        # do we want the short or long output?
-                        if ($long)
+                        push (@{$rsp_info->{data}}, "\n$obj:");
+                        push (@{$rsp_info->{data}}, "    objtype=$defhash{$obj}{'objtype'}");
+                    }
+                    else
+                    {
+                        if ($#::clobjtypes > 0)
                         {
-                            if ($::opt_z)
+                            push (@{$rsp_info->{data}}, "\nObject name: $obj  ($defhash{$obj}{'objtype'})");
+                        }
+                        else
+                        {
+                            push (@{$rsp_info->{data}}, "\nObject name: $obj");
+                        }
+                    }
+
+                    foreach my $showattr (sort @attrlist)
+                    {
+                        if ($showattr eq 'objtype')
+                        {
+                            next;
+                        }
+
+                        my $attrval;
+                        if ( exists($defhash{$obj}{$showattr}))
+                        {
+                            $attrval = $defhash{$obj}{$showattr};
+                        }
+
+                        # if an attr list was provided then just display those
+                        if ($::opt_i)
+                        {
+                            if (grep (/^$showattr$/, @::AttrList))
                             {
-                                my $rsp;
-                                $rsp->{data}->[0] = "\n$obj:";
-                                $rsp->{data}->[1] =
-                                  "    objtype=$defhash{$obj}{'objtype'}";
-                                xCAT::MsgUtils->message("I", $rsp, $::callback);
-                            }
-                            else
-                            {
-                                if ($#::clobjtypes > 0)
+
+                                if ( ($defhash{$obj}{'objtype'} eq 'group') && ($showattr eq 'members'))
                                 {
-                                    my $rsp;
-                                    $rsp->{data}->[0] =
-                                      "Object name: $obj  ($defhash{$obj}{'objtype'})";
-                                    xCAT::MsgUtils->message("I", $rsp,
-                                                            $::callback);
+                                    my $memberlist =
+                                      xCAT::DBobjUtils->getGroupMembers(
+                                                                 $obj,
+                                                                 \%defhash);
+                                    push (@{$rsp_info->{data}}, "    $showattr=$memberlist");
                                 }
                                 else
                                 {
-                                    my $rsp;
-                                    $rsp->{data}->[0] = "Object name: $obj";
-                                    xCAT::MsgUtils->message("I", $rsp,
-                                                            $::callback);
+
+                                    # since they asked for this attr
+                                    #   show it even if not set
+                                    push (@{$rsp_info->{data}}, "    $showattr=$attrval");
                                 }
-
-                            }
-
-                            foreach my $showattr (sort @attrlist)
-                            {
-                                if ($showattr eq 'objtype')
-                                {
-                                    next;
-                                }
-
-                                if (exists($myhash{$obj}{$showattr}))
-                                {
-                                    my $rsp;
-                                    $rsp->{data}->[0] =
-                                      "    $showattr=$defhash{$obj}{$showattr}";
-                                    xCAT::MsgUtils->message("I", $rsp,
-                                                            $::callback);
-                                }
-
                             }
                         }
                         else
                         {
 
-                            # just give names of objects
-                            if ($::opt_z)
+                            if (   ($defhash{$obj}{'objtype'} eq 'group')
+                                && ($showattr eq 'members'))
+
                             {
-                                my $rsp;
-                                $rsp->{data}->[0] = "\n$obj:";
-                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+								#$defhash{$obj}{'grouptype'} = "static";
+                                my $memberlist =
+                                  xCAT::DBobjUtils->getGroupMembers($obj,\%defhash);
+                                push (@{$rsp_info->{data}}, "    $showattr=$memberlist");
                             }
                             else
                             {
-                                my $rsp;
-                                $rsp->{data}->[0] = "$obj";
-                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+
+                                # don't print unless set
+                                if ( (defined($attrval)) && ($attrval ne '') )
+                                {
+                                    push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                }
                             }
                         }
                     }
@@ -2656,170 +2716,48 @@ sub defls
                 else
                 {
 
-                    # not -w
-                    # display all data
-                    # do we want the short or long output?
-                    if ($long)
+                    if ($::opt_a)
                     {
                         if ($::opt_z)
                         {
-                            my $rsp;
-                            $rsp->{data}->[0] = "\n$obj:";
-                            $rsp->{data}->[1] =
-                              "    objtype=$defhash{$obj}{'objtype'}";
-                            xCAT::MsgUtils->message("I", $rsp, $::callback);
+                            push (@{$rsp_info->{data}}, "\n$obj:");
+                        }
+                        else
+                        {
+                            # give the type also
+                            push (@{$rsp_info->{data}}, "$obj ($::AllObjTypeHash{$obj})");
+                        }
+                    }
+                    else
+                    {
+
+                        # just give the name
+                        if ($::opt_z)
+                        {
+                            push (@{$rsp_info->{data}}, "\n$obj:");
                         }
                         else
                         {
                             if ($#::clobjtypes > 0)
                             {
-                                my $rsp;
-                                $rsp->{data}->[0] =
-                                  "\nObject name: $obj  ($defhash{$obj}{'objtype'})";
-                                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                                push (@{$rsp_info->{data}}, "$obj  ($defhash{$obj}{'objtype'})");
                             }
                             else
                             {
-                                my $rsp;
-                                $rsp->{data}->[0] = "\nObject name: $obj";
-                                xCAT::MsgUtils->message("I", $rsp, $::callback);
-                            }
-                        }
-
-                        foreach my $showattr (sort @attrlist)
-                        {
-                            if ($showattr eq 'objtype')
-                            {
-                                next;
-                            }
-
-                            my $attrval;
-							if ( exists($defhash{$obj}{$showattr}))
-                            {
-                                $attrval = $defhash{$obj}{$showattr};
-                            }
-
-                            # if an attr list was provided then just display those
-                            if ($::opt_i)
-                            {
-                                if (grep (/^$showattr$/, @::AttrList))
-                                {
-
-									if ( ($defhash{$obj}{'objtype'} eq 'group') && ($showattr eq 'members'))
-                                    {
-										#$defhash{$obj}{'grouptype'} = "static";
-                                        my $memberlist =
-                                          xCAT::DBobjUtils->getGroupMembers(
-                                                                     $obj,
-                                                                     \%defhash);
-                                        my $rsp;
-                                        $rsp->{data}->[0] =
-                                          "    $showattr=$memberlist";
-                                        xCAT::MsgUtils->message("I", $rsp,
-                                                                $::callback);
-                                    }
-                                    else
-                                    {
-
-                                        # since they asked for this attr
-                                        #   show it even if not set
-                                        my $rsp;
-                                        $rsp->{data}->[0] =
-                                          "    $showattr=$attrval";
-                                        xCAT::MsgUtils->message("I", $rsp,
-                                                                $::callback);
-                                    }
-                                }
-                            }
-                            else
-                            {
-
-                                if (   ($defhash{$obj}{'objtype'} eq 'group')
-                                    && ($showattr eq 'members'))
-
-                                {
-									#$defhash{$obj}{'grouptype'} = "static";
-                                    my $memberlist =
-                                      xCAT::DBobjUtils->getGroupMembers($obj,\%defhash);
-                                    my $rsp;
-                                    $rsp->{data}->[0] =
-                                      "    $showattr=$memberlist";
-                                    xCAT::MsgUtils->message("I", $rsp,
-                                                            $::callback);
-                                }
-                                else
-                                {
-
-                                    # don't print unless set
-									if ( (defined($attrval)) && ($attrval ne '') )
-                                    {
-                                        my $rsp;
-                                        $rsp->{data}->[0] =
-                                          "    $showattr=$attrval";
-                                        xCAT::MsgUtils->message("I", $rsp,
-                                                                $::callback);
-                                    }
-                                }
-                            }
-                        }
-
-                    }
-                    else
-                    {
-
-                        if ($::opt_a)
-                        {
-                            if ($::opt_z)
-                            {
-                                my $rsp;
-                                $rsp->{data}->[0] = "\n$obj:";
-                                xCAT::MsgUtils->message("I", $rsp, $::callback);
-                            }
-                            else
-                            {
-
-                                # give the type also
-                                my $rsp;
-                                $rsp->{data}->[0] =
-                                  "$obj ($::AllObjTypeHash{$obj})";
-                                xCAT::MsgUtils->message("I", $rsp, $::callback);
-                            }
-                        }
-                        else
-                        {
-
-                            # just give the name
-                            if ($::opt_z)
-                            {
-                                my $rsp;
-                                $rsp->{data}->[0] = "\n$obj:";
-                                xCAT::MsgUtils->message("I", $rsp, $::callback);
-                            }
-                            else
-                            {
-                                if ($#::clobjtypes > 0)
-                                {
-                                    my $rsp;
-                                    $rsp->{data}->[0] =
-                                      "$obj  ($defhash{$obj}{'objtype'})";
-                                    xCAT::MsgUtils->message("I", $rsp,
-                                                            $::callback);
-
-                                }
-                                else
-                                {
-                                    my $rsp;
-                                    $rsp->{data}->[0] = "$obj";
-                                    xCAT::MsgUtils->message("I", $rsp,
-                                                            $::callback);
-                                }
+                                push (@{$rsp_info->{data}}, "$obj");
                             }
                         }
                     }
                 }
-            } # end - standard output or stanza format
+            }
         } # end - for each object
     } # end - for each type
+
+    # Display the definition of objects
+    if (defined($rsp_info->{data}) && scalar(@{$rsp_info->{data}}) > 0) {
+        xCAT::MsgUtils->message("I", $rsp_info, $::callback);
+    }
+    
     return 0;
 }
 
@@ -3247,7 +3185,7 @@ sub defls_usage
     $rsp->{data}->[2] =
       "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
     $rsp->{data}->[3] =
-      "    [ -l | --long] [-a | --all] [-z | --stanza ]";
+      "    [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ]";
     $rsp->{data}->[4] =
       "    [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
     $rsp->{data}->[5] =
